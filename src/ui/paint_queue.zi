@@ -54,6 +54,8 @@ PaintCommand :: struct {
     asset_count: s64
     asset_block: s32
     owns_asset: bool
+    // A clipped label drawn as the extra stroke of emphasized text.
+    emphasis: bool
 }
 
 PaintEmitter :: #type (command: PaintCommand) -> ();
@@ -410,7 +412,10 @@ EmitRoundedOutline :: (command: PaintCommand) {
 }
 
 EmitLabel :: (command: PaintCommand) {
-    if command.kind == PaintKindClippedText {
+    if command.emphasis {
+        PaintTextEmphasisClipped(command.value, command.x, command.y,
+            command.font, command.color, command.clip)
+    } else if command.kind == PaintKindClippedText {
         PaintTextClipped(command.value, command.x, command.y,
             command.font, command.color, command.clip)
     } else {
@@ -656,6 +661,30 @@ PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32
     QueuePaint(session, *command)
 }
 
+// The extra stroke of emphasized text, at the position of its painted label.
+#program_export
+PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: s32,
+    font: s32, color: Color, clip: Rectangle) {
+    command: QueuedPaint
+    command.data.kind = PaintKindClippedText
+    command.data.node = node
+    command.data.value = value
+    command.data.x = x
+    command.data.y = y
+    command.data.font = font
+    command.data.color = color
+    command.data.clip = clip
+    command.data.emphasis = true
+    emit: PaintEmitter = EmitLabel
+    clip_for: PaintClipper = ClipLabel
+    command.emit = emit
+    command.clip_for = clip_for
+    command.has_emitter = true
+    command.builtin_emitter = true
+    command.clips = true
+    QueuePaint(session, *command)
+}
+
 #program_export
 PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
@@ -847,7 +876,7 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     if !SnapshotValueEqual(slot, current.value, previous.value_start,
         previous.value_count) { return false }
     if current.x != previous.data.x || current.y != previous.data.y ||
-    current.font != previous.data.font { return false }
+    current.font != previous.data.font || current.emphasis != previous.data.emphasis { return false }
     if !SnapshotAssetEqual(slot, current.asset_path, previous.asset_start,
         previous.asset_count) { return false }
     if current.texture_id != previous.data.texture_id ||

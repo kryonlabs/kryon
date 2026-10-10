@@ -168,6 +168,7 @@ text_align.zi
 text_area_widget.zi
 text_behavior.zi
 text_context_menu.zi
+text_emphasis.zi
 text_field_widget.zi
 text_host.zi
 text_input.zi

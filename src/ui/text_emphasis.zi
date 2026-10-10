@@ -1,0 +1,28 @@
+#import "drawing_props"
+#import "geometry"
+
+// Emphasized text is an extra stroke over a label that is already painted.
+// A backend that knows its screen pixels registers a raster that thickens
+// the glyphs by whole pixels, which stays crisp at any scale. Others get the
+// portable copy shifted by a logical stroke.
+TextEmphasisRaster :: #type (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) -> ();
+
+text_emphasis_raster: TextEmphasisRaster;
+text_emphasis_raster_set: bool;
+
+#program_export
+SetTextEmphasisRaster :: (raster: TextEmphasisRaster) {
+    text_emphasis_raster = raster
+    text_emphasis_raster_set = true
+}
+
+// Returns false when no backend raster is registered.
+RunTextEmphasisRaster :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) -> bool {
+    if !text_emphasis_raster_set {
+        return false
+    }
+    text_emphasis_raster(value, x, y, font, color, clip)
+    return true
+}

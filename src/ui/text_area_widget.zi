@@ -626,8 +626,6 @@ TextAreaPaintShown :: (session: Session, node: s32, value: string,
         }
         return
     }
-    stroke := font / 24
-    if stroke < 1 { stroke = 1 }
     cursor := start
     while cursor < end {
         piece_end := end
@@ -658,7 +656,7 @@ TextAreaPaintShown :: (session: Session, node: s32, value: string,
             text := TextSpan(value, cursor, piece_end - cursor)
             PaintClippedLabel(session, node, text, left, y, font, color, clip)
             if emphasized {
-                PaintClippedLabel(session, node, text, left + stroke, y, font, color, clip)
+                PaintClippedEmphasis(session, node, text, left, y, font, color, clip)
             }
         }
         cursor = piece_end
