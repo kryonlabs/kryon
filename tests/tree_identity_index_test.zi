@@ -1,0 +1,133 @@
+#import "session"
+#import "tree"
+#import "widget_kind"
+using Geometry :: #import "geometry";
+using WidgetKind;
+
+Identities :: struct {
+    left: u64
+    right: u64
+    child: u64
+    automatic: u64
+    valid: bool
+}
+
+Build :: (session: Session, reverse: bool, child_kind: s32,
+    right_parent: bool, width: float32 = 100.0) -> Identities {
+    result: Identities
+    bounds: Rectangle = .{0.0, 0.0, width, 20.0}
+    TreeStart(session, cast(u64)91, bounds)
+    left: s32
+    right: s32
+    if reverse {
+        right = TreeSubmit(session, cast(u64)20, 0, WidgetKindGroup, bounds)
+        left = TreeSubmit(session, cast(u64)10, 0, WidgetKindGroup, bounds)
+    } else {
+        left = TreeSubmit(session, cast(u64)10, 0, WidgetKindGroup, bounds)
+        right = TreeSubmit(session, cast(u64)20, 0, WidgetKindGroup, bounds)
+    }
+    if left < 0 || right < 0 { return result }
+    parent := ifx right_parent then right else left
+    child := TreeSubmit(session, cast(u64)77, parent, child_kind, bounds)
+    automatic := TreeSubmit(session, cast(u64)0, left, WidgetKindProgress, bounds)
+    if child < 0 || automatic < 0 || !TreeFinish(session) { return result }
+    result.left = TreeNodeAt(session, left).identity_generation
+    result.right = TreeNodeAt(session, right).identity_generation
+    result.child = TreeNodeAt(session, child).identity_generation
+    result.automatic = TreeNodeAt(session, automatic).identity_generation
+    result.valid = TreeCount(session) == 5 &&
+        TreeNodeAt(session, child).bounds.width == width &&
+        TreeNodeAt(session, child).parent == parent &&
+        TreeNodeAt(session, automatic).auto_key
+    return result
+}
+
+Same :: (left: Identities, right: Identities) -> bool {
+    return left.valid && right.valid && left.left == right.left &&
+        left.right == right.right && left.child == right.child &&
+        left.automatic == right.automatic
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    original := Build(session, false, WidgetKindText, false)
+    if !original.valid { return 1 }
+    for pass: 0..19 {
+        if !Same(original, Build(session, false, WidgetKindText, false,
+            cast(float32)(101 + pass))) { return 2 }
+    }
+    // Reordering preserves parent-local identities, including automatic keys.
+    for pass: 0..9 {
+        if !Same(original, Build(session, pass % 2 == 0, WidgetKindText, false)) {
+            return 3
+        }
+    }
+    moved := Build(session, false, WidgetKindText, true)
+    if !moved.valid || moved.child == original.child ||
+        moved.left != original.left || moved.automatic != original.automatic {
+        return 4
+    }
+    changed := Build(session, false, WidgetKindButton, true)
+    if !changed.valid || changed.child == moved.child { return 5 }
+    for pass: 0..9 {
+        if !Same(changed, Build(session, false, WidgetKindButton, true)) { return 6 }
+    }
+    // A rejected or cancelled partial frame leaves the last accepted tree.
+    bounds: Rectangle = .{0.0, 0.0, 100.0, 20.0}
+    TreeStart(session, cast(u64)91, bounds)
+    unused TreeSubmit(session, cast(u64)10, 0, WidgetKindGroup, bounds)
+    if TreeSubmit(session, cast(u64)10, 0, WidgetKindGroup, bounds) >= 0 ||
+        TreeFinish(session) || TreeCount(session) != 5 { return 7 }
+    if !Same(changed, Build(session, false, WidgetKindButton, true)) { return 8 }
+    TreeStart(session, cast(u64)91, bounds)
+    unused TreeSubmit(session, cast(u64)20, 0, WidgetKindGroup, bounds)
+    TreeCancel(session)
+    if !Same(changed, Build(session, false, WidgetKindButton, true)) { return 9 }
+    // Removing and restoring children must not reuse their retired identities.
+    TreeStart(session, cast(u64)91, bounds)
+    unused TreeSubmit(session, cast(u64)10, 0, WidgetKindGroup, bounds)
+    unused TreeSubmit(session, cast(u64)20, 0, WidgetKindGroup, bounds)
+    if !TreeFinish(session) || TreeCount(session) != 3 { return 10 }
+    restored := Build(session, false, WidgetKindButton, true)
+    if !restored.valid || restored.child == changed.child ||
+        restored.automatic == changed.automatic || restored.left != changed.left {
+        return 11
+    }
+    other := SessionOpen()
+    other_ids := Build(other, true, WidgetKindText, false)
+    if !Same(restored, Build(session, false, WidgetKindButton, true)) ||
+        !Same(other_ids, Build(other, true, WidgetKindText, false)) { return 12 }
+    TreeDispose(other)
+    if !SessionClose(other) { return 13 }
+    reopened := SessionOpen()
+    if reopened.slot != other.slot || reopened.epoch == other.epoch ||
+        !Build(reopened, false, WidgetKindText, false).valid { return 14 }
+    TreeDispose(reopened)
+    unused SessionClose(reopened)
+    TreeDispose(session)
+    unused SessionClose(session)
+    print("Tree identity ordering and lifecycle checks passed\n")
+    return 0
+}
+
+// The benchmark uses the same public submission and commit operations as UI
+// frames. Its checksum verifies that all repeated identities remain present.
+#program_export
+Benchmark :: (nodes: s32, frames: s32) -> u64 {
+    session := SessionOpen()
+    bounds: Rectangle = .{0.0, 0.0, 100.0, 20.0}
+    checksum: u64
+    for frame: 0..frames - 1 {
+        TreeStart(session, cast(u64)91, bounds)
+        for at: 0..nodes - 1 {
+            if TreeSubmit(session, cast(u64)(at + 100), 0,
+                WidgetKindProgress, bounds) < 0 { return cast(u64)0 }
+        }
+        if !TreeFinish(session) { return cast(u64)0 }
+        checksum += TreeNodeAt(session, nodes).identity_generation
+    }
+    TreeDispose(session)
+    unused SessionClose(session)
+    return checksum
+}
