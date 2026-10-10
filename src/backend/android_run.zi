@@ -46,7 +46,7 @@ AndroidCanvas :: () -> u32 {
 DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
     bounds: Rectangle) -> bool {
     BeginRaylibFrame()
-    ClearAndroidFrame(viewport, AndroidCanvas())
+    ClearAndroidFrame(viewport, AndroidCanvas(), RaylibZoom())
     pointer: PointerFrame = PollPointer()
     TreePointerUpdate(session, pointer)
     TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
@@ -118,6 +118,12 @@ AndroidRunMain :: () -> s32 {
             viewport.width = width
             viewport.height = height
         }
+        // Android apps lay out in density-independent pixels. The host draws
+        // and reads the pointer at the device density, so the application's
+        // bounds, sizes and fonts mean the same on every screen.
+        zoom := AndroidLayoutZoom()
+        RaylibSetZoom(zoom)
+        bounds = Rectangle.{bounds.x / zoom, bounds.y / zoom, bounds.width / zoom, bounds.height / zoom}
         AndroidTextInputBeginFrame(session)
         ok = DrawAndroidFrame(session, viewport, bounds)
         if ok && first_frame {

@@ -420,7 +420,8 @@ ReadAndroidSurfaceTransform :: (output: *AndroidSurfaceTransform) -> bool {
 // leaves behind them, so the strips outside the viewport are black. The
 // viewport itself takes the app's canvas color, given as 0xRRGGBBAA.
 #program_export
-ClearAndroidFrame :: (viewport: AndroidViewport, canvas: u32) {
+// The frame is already scaled by the host zoom; the fill takes logical units.
+ClearAndroidFrame :: (viewport: AndroidViewport, canvas: u32, zoom: float32 = 1.0) {
     fill := SurfaceColor.{cast(u8)(canvas >> 24), cast(u8)(canvas >> 16),
         cast(u8)(canvas >> 8), cast(u8)canvas}
     width: s32
@@ -432,5 +433,7 @@ ClearAndroidFrame :: (viewport: AndroidViewport, canvas: u32) {
         return
     }
     SurfaceClear(SurfaceColor.{0, 0, 0, 255})
-    SurfaceFill(viewport.x, viewport.y, viewport.width, viewport.height, fill)
+    scale := ifx zoom > 0.0 then zoom else 1.0
+    SurfaceFill(cast(s32)(cast(float32)viewport.x / scale), cast(s32)(cast(float32)viewport.y / scale),
+        cast(s32)(cast(float32)viewport.width / scale + 0.999), cast(s32)(cast(float32)viewport.height / scale + 0.999), fill)
 }

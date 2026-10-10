@@ -187,6 +187,14 @@ AndroidNativeInvalidateGraphics :: (env: *JniEnv, activity: *void) {
     }
 }
 
+// Physical pixels per density-independent pixel for layout and input. A
+// density outside Android's range (or not yet reported) lays out 1:1.
+#program_export
+AndroidLayoutZoom :: () -> float32 {
+    density := AndroidDensity()
+    return ifx density >= 0.75 && density <= 8.0 then density else 1.0
+}
+
 #program_export
 AndroidDensity :: () -> float32 {
     #if #defined(ANDROID_BUILD) {
