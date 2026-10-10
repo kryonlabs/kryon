@@ -95,6 +95,11 @@ desktop_height: s32;
 frame_clock: Clock.FrameClock;
 frame_frequency: u64;
 desktop_frame_unchanged: bool;
+// Unchanged app paint does not need another full-window pixel transfer.
+// Exposure still presents the current texture; resets require fresh pixels.
+desktop_present_pending: bool;
+desktop_texture_dirty: bool;
+desktop_texture_reset: bool;
 // A size ResizeDesktop asked for, applied when the next frame begins.
 desktop_next_width: s32;
 desktop_next_height: s32;
@@ -134,6 +139,9 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if texture == null { return false }
     desktop_width = width
     desktop_height = height
+    desktop_present_pending = true
+    desktop_texture_dirty = true
+    desktop_texture_reset = false
     StartTextInput()
     return OpenRaster(width, height)
 }
@@ -192,6 +200,8 @@ DesktopApplyResize :: () -> bool {
         height)
     if next == null { return false }
     CloseRaster()
+    desktop_texture_dirty = true
+    desktop_present_pending = true
     if !OpenRaster(width, height) {
         DestroyTexture(next)
         // Go back to the old size, which opened before.
@@ -242,6 +252,22 @@ PollDesktop :: () -> bool {
     desktop_codepoint_count = 0
     desktop_codepoint_next = 0
     while PollEvent(*event) != 0 {
+        if event.kind == cast(u32)0x200 && window != null &&
+            event.window_id == GetWindowID(window) {
+            detail := event.which & cast(u32)255
+            // SDL_WINDOWEVENT_SHOWN / EXPOSED / RESTORED / DISPLAY_CHANGED.
+            if detail == cast(u32)1 || detail == cast(u32)3 ||
+                detail == cast(u32)9 || detail == cast(u32)18 {
+                desktop_present_pending = true
+            }
+        }
+        // SDL renderer resets have no window ID. They invalidate the texture
+        // or its contents, even if the app's accepted paint is unchanged.
+        if event.kind == cast(u32)0x2000 || event.kind == cast(u32)0x2001 {
+            desktop_texture_dirty = true
+            desktop_present_pending = true
+            if event.kind == cast(u32)0x2001 { desktop_texture_reset = true }
+        }
         // SDL_WINDOWEVENT_RESIZED / SIZE_CHANGED. Resize only our SDL window;
         // its drawing surface follows the window manager at the next frame.
         if event.kind == cast(u32)0x200 && window != null &&
@@ -378,12 +404,27 @@ BeginDesktopFrame :: () {
 #program_export
 EndDesktopFrame :: () -> bool {
     if !FinishRasterFrame() { return false }
+    if !desktop_frame_unchanged { desktop_texture_dirty = true }
     // A hidden window keeps running the app's frames without presenting.
     if !WindowVisibleHost() { return true }
-    if UpdateTexture(texture, null, RasterSurfaceData(),
-        RasterSurfaceStride()) != 0 { return false }
+    if !desktop_texture_dirty && !desktop_present_pending { return true }
+    if desktop_texture_reset {
+        next := CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1,
+            desktop_width, desktop_height)
+        if next == null { return false }
+        DestroyTexture(texture)
+        texture = next
+        desktop_texture_reset = false
+    }
+    if desktop_texture_dirty {
+        if UpdateTexture(texture, null, RasterSurfaceData(),
+            RasterSurfaceStride()) != 0 { return false }
+        desktop_texture_dirty = false
+        desktop_present_pending = true
+    }
     if RenderCopy(renderer, texture, null, null) != 0 { return false }
     RenderPresent(renderer)
+    desktop_present_pending = false
     return true
 }
 
