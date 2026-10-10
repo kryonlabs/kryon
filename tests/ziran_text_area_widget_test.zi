@@ -11,6 +11,7 @@ TestSession :: () -> Session {
 #import "text_area_widget"
 #import "text_input"
 #import "text_input_props"
+#import "text_props"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
@@ -92,6 +93,13 @@ Frame :: () -> s32 {
     if phase == 27 { anchor = 0 }
     // The caller no longer remembers the focus it asked for.
     if phase == 45 { focused = false }
+    if phase == 46 {
+        value = "a**b**cd"
+        cursor = 0
+        anchor = 0
+        scroll_y = 0
+        selecting = false
+    }
     ime_state: CompositionState
     ime_state.active = ime_active
     ime_state.cursor = ime_cursor
@@ -250,6 +258,9 @@ Frame :: () -> s32 {
     }
     if phase == 43 { props.input.blur = true }
     if phase == 44 { props.input.focus = true }
+    // Markers hidden away from the edited line appear once the press lands.
+    hidden: [2]TextRange = .[TextRange.{.start = 1, .end = 3}, TextRange.{.start = 4, .end = 6}]
+    if phase == 46 { props.hidden = hidden[:] }
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 140.0})
     result: TextAreaResult = TextArea(TestSession(), props)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || result.node != 1 ||
@@ -479,6 +490,19 @@ Frame :: () -> s32 {
     } else if phase == 45 {
         // A focus request takes the session focus, as a blur releases it.
         if !result.focused { return -50 }
+        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 36.0,
+            true, true, false})
+    } else if phase == 46 {
+        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 36.0,
+            true, false, false})
+    } else if phase == 47 {
+        // A press that has not moved places a caret, even though the text
+        // under it shifted when its line showed the markers.
+        if result.selecting || result.anchor != result.cursor { return -51 }
+        TreePointerUpdate(TestSession(), PointerFrame.{50.0, 36.0,
+            false, false, true})
+    } else if phase == 48 {
+        if result.selecting || result.anchor != result.cursor { return -52 }
     }
     cursor = result.cursor
     anchor = result.anchor
@@ -525,7 +549,7 @@ main :: () -> s32 {
     // cursor, clipboard, syntax colors and IME with retained row layouts.
     GlyphMetricsChanged()
     index: s32 = 0
-    while index < 46 {
+    while index < 49 {
         SetCompositionPhase(index)
         if Frame() != index { return 1 }
         index += 1

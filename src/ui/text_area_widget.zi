@@ -954,6 +954,10 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                 result.cursor = selected
                 result.selecting = drag.active
             } else {
+                // A press that has not moved places a caret, even when the
+                // text under it shifted, as hidden markers appearing on the
+                // line it landed on.
+                result.anchor = selected
                 result.cursor = selected
                 result.selecting = false
             }
