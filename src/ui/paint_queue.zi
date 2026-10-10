@@ -679,11 +679,12 @@ PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
 
 #program_export
 PaintClear :: (session: Session) {
-    VecClear(pending_paint[SessionIndex(session)].items)
-    VecClear(pending_text[SessionIndex(session)])
-    pending_paint[SessionIndex(session)].overflow = false
-    pending_paint[SessionIndex(session)].overlays = false
-    pending_paint[SessionIndex(session)].ordered = false
+    slot := SessionIndex(session)
+    VecClear(pending_paint[slot].items)
+    VecClear(pending_text[slot])
+    pending_paint[slot].overflow = false
+    pending_paint[slot].overlays = false
+    pending_paint[slot].ordered = false
 }
 
 // Keep submission order within each layer, then draw overlays after the page.
@@ -1001,9 +1002,15 @@ PaintFlush :: (session: Session) {
     if PaintOverflow(session) || !PaintOrder(session) { PaintClear(session); return }
     index: s32 = 0
     while cast(s64)index < pending_paint[SessionIndex(session)].items.count {
-        command: QueuedPaint = pending_paint[SessionIndex(session)].items[index]
-        command.data = PendingPaintAt(session, index)
-        EmitPaint(command)
+        slot := SessionIndex(session)
+        // Read the callback before invoking it; it may append paint or close
+        // the session. Only the command data crosses that call, by value.
+        queued := *pending_paint[slot].items[index]
+        if queued.has_emitter {
+            emit: PaintEmitter = queued.emit
+            data := PendingPaintAt(session, index)
+            emit(data)
+        }
         index += 1
     }
     PaintClear(session)

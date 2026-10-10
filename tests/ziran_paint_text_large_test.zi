@@ -9,6 +9,45 @@ draws: s32;
 images: s32;
 bad: bool;
 changed_last: bool;
+callback_session: Session;
+callbacks: s32;
+
+QueueCallback :: (session: Session, value: string) {
+    command: QueuedPaint
+    command.data.node = -1
+    command.data.value = value
+    command.data.color.r = 1
+    command.emit = AppendDuringFlush
+    command.has_emitter = true
+    SubmitPaint(session, command)
+}
+
+// An emitter can grow the inspected queue. Its input remains a value copy,
+// and the newly appended command still owns its temporary label bytes.
+AppendDuringFlush :: (data: PaintCommand) {
+    expected := ifx callbacks == 0 then "first" else "later"
+    if data.value != expected || data.color.r != 1 { bad = true }
+    callbacks += 1
+    data.color.r = 99
+    if PendingPaintAt(callback_session, callbacks - 1).color.r != 1 { bad = true }
+    if callbacks == 1 {
+        bytes: [5]u8 = .[108, 97, 116, 101, 114]
+        for index: 0..15 { QueueCallback(callback_session, TextView(bytes[:])) }
+        for index: 0..4 { bytes[index] = 88 }
+    }
+}
+
+CheckAppendOwnership :: (session: Session) -> bool {
+    callback_session = session
+    PaintDispose(session)
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    bytes: [5]u8 = .[102, 105, 114, 115, 116]
+    QueueCallback(session, TextView(bytes[:]))
+    for index: 0..4 { bytes[index] = 88 }
+    PaintFlush(session)
+    TreeCancel(session)
+    return callbacks == 17 && !bad && PendingPaintCount(session) == 0
+}
 
 // Queue many glyph-sized buffers, reusing each immediately. The total text
 // exceeds the old frame limit, including thousands of temporary buffers.
@@ -151,6 +190,7 @@ main :: () -> s32 {
     }
     if images != 5001 || bad { return 16 }
     if !CheckMixedOwnership(session) { return 18 }
+    if !CheckAppendOwnership(session) { return 19 }
     // Overflow never emits partially borrowed or stale text, including a
     // caller that flushes directly instead of committing through EndFrame.
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
