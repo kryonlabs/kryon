@@ -4,6 +4,7 @@
 # and then uses these helpers for the parts every Kryon Android app shares:
 #
 #   include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
+#   kryon_android_reproducible_paths("${REPO_ROOT}") # before dependency targets
 #   kryon_android_raylib("${RAYLIB_DIR}")        # static target `raylib`
 #   add_library(main SHARED ${APP_SOURCES})
 #   kryon_android_app(main)                     # glue, size flags, system libs
@@ -15,6 +16,19 @@ include_guard(GLOBAL)
 
 set(KRYON_ANDROID_NATIVE_APP_GLUE_DIR
     "${ANDROID_NDK}/sources/android/native_app_glue")
+
+# Apply to every target in this directory and its children, including native
+# dependencies. Debug paths enter the linker's build ID before Gradle strips
+# the APK library; normalizing only the final app target is insufficient.
+# Keep debug information and build IDs so retained crash symbols still match.
+function(kryon_android_reproducible_paths source_root)
+    get_filename_component(source_root "${source_root}" ABSOLUTE)
+    add_compile_options(
+        "-fdebug-compilation-dir=."
+        "-ffile-prefix-map=${source_root}=."
+        "-ffile-prefix-map=${ANDROID_NDK}=./ndk"
+        "-ffile-prefix-map=${CMAKE_BINARY_DIR}=./build/android")
+endfunction()
 
 # Compile raylib's Android backend with the module and file-format set Kryon
 # uses: GLES2 rendering, raudio with OGG, PNG/JPG images, and TTF fonts.
