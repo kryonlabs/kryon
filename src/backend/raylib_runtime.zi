@@ -134,6 +134,9 @@ HostRaylibGetEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
 RaylibAsset :: struct {
     path: [1024]u8
     length: s32
+    // FNV-1a of the path: a lookup compares bytes only on a hash match,
+    // since cached thumbnail paths share long prefixes.
+    hash: u64
     texture: Texture2D
 }
 
@@ -846,11 +849,19 @@ RaylibDrawImageRounded :: (texture: Texture2D, source: Rectangle,
             region.height - radius * 2.0}, tint)
 }
 
+RaylibAssetHash :: (path: string) -> u64 {
+    hash: u64 = cast(u64)14695981039346656037
+    for byte: path { hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211 }
+    return hash
+}
+
 RaylibAssetIndex :: (path: string) -> s32 {
     if path.count == 0 || path.count >= 1024 { return -1 }
+    hash := RaylibAssetHash(path)
     index: s32 = 0
     while index < raylib_assets_count {
-        if raylib_assets[index].length == cast(s32)path.count {
+        if raylib_assets[index].hash == hash &&
+        raylib_assets[index].length == cast(s32)path.count {
             same: bool = true
             at: s32 = 0
             while at < cast(s32)path.count {
@@ -879,6 +890,7 @@ RaylibAssetIndex :: (path: string) -> s32 {
         return -1
     }
     raylib_assets[index].length = cast(s32)path.count
+    raylib_assets[index].hash = hash
     raylib_assets[index].texture =
     HostRaylibLoadTexture(*raylib_assets[index].path[0])
     if raylib_assets[index].texture.id == cast(u32)0 {
