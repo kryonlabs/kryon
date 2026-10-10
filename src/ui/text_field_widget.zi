@@ -234,7 +234,8 @@
         drag: PointerDrag = TreeTakeDragAt(session, previous)
         if TreeHasFocus(session) { result.focused = TreeFocusedAt(session, previous) }
         if props.disabled || props.input.blur { result.focused = false; TreeBlurAt(session, previous) }
-        if !props.disabled && props.input.focus { result.focused = true }
+        // A focus request takes the session focus, as a blur releases it.
+        if !props.disabled && props.input.focus { result.focused = true; unused TreeFocusAt(session, previous) }
         if previous >= 0 && !TreeInputAllowedAt(session, previous) { result.focused = false }
         face: StyleFrame = TextFieldFaceFor(props, result.focused)
         scale: float32 = props.scale

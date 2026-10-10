@@ -90,6 +90,8 @@ Frame :: () -> s32 {
     }
     if phase == 24 { anchor = 1 }
     if phase == 27 { anchor = 0 }
+    // The caller no longer remembers the focus it asked for.
+    if phase == 45 { focused = false }
     ime_state: CompositionState
     ime_state.active = ime_active
     ime_state.cursor = ime_cursor
@@ -246,6 +248,8 @@ Frame :: () -> s32 {
         props.input.composition_event.phase =
             cast(CompositionPhase)CompositionCancel
     }
+    if phase == 43 { props.input.blur = true }
+    if phase == 44 { props.input.focus = true }
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 140.0})
     result: TextAreaResult = TextArea(TestSession(), props)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || result.node != 1 ||
@@ -468,6 +472,13 @@ Frame :: () -> s32 {
         if result.composition.active ||
             result.scroll_y != 0 ||
             result.edit.changed { return -44 }
+    } else if phase == 43 {
+        if result.focused { return -48 }
+    } else if phase == 44 {
+        if !result.focused { return -49 }
+    } else if phase == 45 {
+        // A focus request takes the session focus, as a blur releases it.
+        if !result.focused { return -50 }
     }
     cursor = result.cursor
     anchor = result.anchor
@@ -514,7 +525,7 @@ main :: () -> s32 {
     // cursor, clipboard, syntax colors and IME with retained row layouts.
     GlyphMetricsChanged()
     index: s32 = 0
-    while index < 43 {
+    while index < 46 {
         SetCompositionPhase(index)
         if Frame() != index { return 1 }
         index += 1
