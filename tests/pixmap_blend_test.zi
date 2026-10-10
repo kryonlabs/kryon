@@ -1,0 +1,54 @@
+#import "pixmap"
+
+Reference :: (old: u32, source: u32, alpha: u32) -> u32 {
+    inverse := cast(u32)255 - alpha
+    red := (((source >> cast(u32)16) & cast(u32)255) * alpha +
+        ((old >> cast(u32)16) & cast(u32)255) * inverse + cast(u32)127) / cast(u32)255
+    green := (((source >> cast(u32)8) & cast(u32)255) * alpha +
+        ((old >> cast(u32)8) & cast(u32)255) * inverse + cast(u32)127) / cast(u32)255
+    blue := ((source & cast(u32)255) * alpha +
+        (old & cast(u32)255) * inverse + cast(u32)127) / cast(u32)255
+    return (red << cast(u32)16) | (green << cast(u32)8) | blue
+}
+
+Matches :: (old: u32, source: u32, alpha: u32) -> bool {
+    return PixmapBlendMaskRGB(old, source & cast(u32)0x00ff00ff,
+        (source >> cast(u32)8) & cast(u32)255, alpha) == Reference(old, source, alpha)
+}
+
+#program_export
+main :: () -> s32 {
+    edges: [9]u32 = .{0, 1, 2, 63, 127, 128, 253, 254, 255}
+    count: s32 = 9
+    #if #defined(PIXMAP_BLEND_EXHAUSTIVE) {
+        count = 256
+    }
+    for source_index: 0..count - 1 {
+        source: u32
+        #if #defined(PIXMAP_BLEND_EXHAUSTIVE) {
+            source = cast(u32)source_index
+        } else {
+            source = edges[source_index]
+        }
+        for old_index: 0..count - 1 {
+            old: u32
+            #if #defined(PIXMAP_BLEND_EXHAUSTIVE) {
+                old = cast(u32)old_index
+            } else {
+                old = edges[old_index]
+            }
+            for alpha: cast(u32)0..cast(u32)255 {
+                // Equal channels exercise simultaneous lane maxima; distinct
+                // channels exercise lane isolation and discarded host alpha.
+                if !Matches(old * cast(u32)0x00010101, source * cast(u32)0x00010101, alpha) { return 1 }
+                old_rgb := cast(u32)0xa5000000 | (old << cast(u32)16) |
+                    (source << cast(u32)8) | (old ^ source)
+                source_rgb := (source << cast(u32)16) | (old << cast(u32)8) |
+                    (cast(u32)255 - source)
+                if !Matches(old_rgb, source_rgb, alpha) { return 2 }
+            }
+        }
+    }
+    print("Exact packed glyph blending passed\n")
+    return 0
+}

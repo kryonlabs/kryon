@@ -100,6 +100,13 @@ PixmapOutlineValue :: (mono: bool, at: s32) -> s32 {
 // The font's glyph for a code point; -1 when it has none.
 PixmapGlyphExact :: (code: s32) -> s32 {
     PixmapFontReady()
+    // The font starts with the contiguous printable ASCII range. Verify the
+    // candidate so a regenerated font with a gap still uses sorted lookup.
+    // This needs neither a second index nor storage for a lookup cache.
+    if code >= 32 && code <= 126 {
+        glyph := code - 32
+        if glyph < PixmapFontGlyphs && pixmap_font_codes[glyph] == code { return glyph }
+    }
     low: s32 = 0
     high: s32 = PixmapFontGlyphs - 1
     while low <= high {
@@ -618,6 +625,18 @@ PixmapNextUnit :: (value: string, at: s32) -> PixmapTextUnit {
     unit.after = at
     unit.glyph = -1
     unit.emoji = -1
+    // A printable ASCII byte is one complete UTF-8 code point and cannot be
+    // an emoji or modifier. Keep controls and every non-ASCII byte on the
+    // general decoder, including truncated sequences and variation selectors.
+    if at >= 0 && at < cast(s32)value.count {
+        byte := value[at]
+        if byte >= cast(u8)32 && byte <= cast(u8)126 {
+            unit.after = at + 1
+            unit.glyph = PixmapGlyphFor(cast(u32)byte)
+            unit.advance = cast(s64)PixmapGlyphAdvance(unit.glyph)
+            return unit
+        }
+    }
     point: Decoded = Decode(value, at)
     if point.after <= at { return unit }
     unit.after = point.after

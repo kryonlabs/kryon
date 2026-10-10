@@ -11,6 +11,11 @@ case "${1:-both}" in
     source|saved) forms=$1 ;;
     *) echo 'usage: pixmap_surface_plan9_test.sh [both|source|saved]' >&2; exit 2 ;;
 esac
+fixture=${PIXMAP_PLAN9_FIXTURE:-pixmap_surface_test}
+case "$fixture" in
+    pixmap_surface_test|pixmap_measure_test) ;;
+    *) echo 'Unsupported native pixmap fixture' >&2; exit 2 ;;
+esac
 parent=$repo/build/scratch/pixmap-surface-plan9
 mkdir -p "$parent" "$taiji/usr/glenda/tmp"
 exec 9>"$parent/native.lock"
@@ -27,15 +32,15 @@ cleanup() {
     rm -rf "$stage"
 }
 trap cleanup EXIT HUP INT TERM
-source=$repo/tests/pixmap_surface_test.zi
+source=$repo/tests/$fixture.zi
 "$ziran" ir --project --root "$repo/tests" -o "$work/ir" "$source"
 for form in $forms; do
     if test "$form" = source; then
         "$ziran" build --project --target=plan9-c --root "$repo/tests" \
-            --entry pixmap_surface_test:main -o "$stage/source" "$source"
+            --entry "$fixture:main" -o "$stage/source" "$source"
     else
         "$ziran" build --target=plan9-c --root "$work/ir" --module-path "$work/ir" \
-            --entry pixmap_surface_test:main -o "$stage/saved" "$work/ir/pixmap_surface_test.zir"
+            --entry "$fixture:main" -o "$stage/saved" "$work/ir/$fixture.zir"
     fi
 done
 cat > "$work/qemu" <<'QEMU'
@@ -76,7 +81,7 @@ vm_pid=$!
 start=$(date +%s)
 while test "$(( $(date +%s) - start ))" -lt "$limit"; do
     if rg -q '^kryon-pixmap-all-ok' "$work/output.log"; then
-        echo "Pixmap pixel oracle passed native Plan 9 ($forms)"
+        echo "Pixmap oracle $fixture passed native Plan 9 ($forms)"
         exit 0
     fi
     if rg -q '^kryon-pixmap-failed|cannot init 9P|Operation not permitted' "$work/output.log"; then

@@ -1,4 +1,5 @@
 #import "session"
+#import "text_input_platform_host"
 test_session: Session;
 TestSession :: () -> Session {
     if !SessionValid(test_session) { test_session = SessionOpen() }

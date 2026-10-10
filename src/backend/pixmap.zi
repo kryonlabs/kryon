@@ -610,6 +610,21 @@ PixmapDrawEmoji :: (emoji: s32, x: s32, y: s32, size: s32) {
     }
 }
 
+// Blend red and blue in independent 16-bit lanes. Each weighted channel is
+// at most 255*255+127, so additions cannot carry into the adjacent lane.
+// For that range, (n+1+(n>>8))>>8 is exactly floor(n/255), including the
+// half-channel rounding already used by the raster. Keep green separate.
+PixmapBlendMaskRGB :: (old: u32, source_rb: u32, source_green: u32,
+    alpha: u32) -> u32 {
+    inverse := cast(u32)255 - alpha
+    weighted := source_rb * alpha + (old & cast(u32)0x00ff00ff) * inverse + cast(u32)0x007f007f
+    rb := ((weighted + cast(u32)0x00010001 +
+        ((weighted >> cast(u32)8) & cast(u32)0x00ff00ff)) >> cast(u32)8) & cast(u32)0x00ff00ff
+    green := source_green * alpha + ((old >> cast(u32)8) & cast(u32)255) * inverse + cast(u32)127
+    green = (green + cast(u32)1 + (green >> cast(u32)8)) >> cast(u32)8
+    return rb | (green << cast(u32)8)
+}
+
 // Clip a glyph once, then blend its contiguous mask and destination rows.
 // Source channels and host alpha are constant; only coverage and the old
 // RGB channels vary per pixel. No glyph-sized color cache is needed.
@@ -630,6 +645,7 @@ PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
     blue_source := cast(u32)color.b
     output_alpha := pixmap_alpha
     rgb := (red_source << cast(u32)16) | (green_source << cast(u32)8) | blue_source | output_alpha
+    source_rb := rgb & cast(u32)0x00ff00ff
     surface := pixmap_surface; stride := pixmap_width
     for y: top..bottom - 1 {
         row := (y - mask.top) * mask.width + left - mask.left
@@ -639,12 +655,7 @@ PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
             if source_alpha != cast(u32)255 { alpha = source_alpha * alpha / cast(u32)255 }
             if alpha == cast(u32)0 { continue }
             if alpha == cast(u32)255 { <<pixel = rgb; continue }
-            inverse := cast(u32)255 - alpha
-            old := <<pixel
-            red := (red_source * alpha + ((old >> cast(u32)16) & cast(u32)255) * inverse + cast(u32)127) / cast(u32)255
-            green := (green_source * alpha + ((old >> cast(u32)8) & cast(u32)255) * inverse + cast(u32)127) / cast(u32)255
-            blue := (blue_source * alpha + (old & cast(u32)255) * inverse + cast(u32)127) / cast(u32)255
-            <<pixel = (red << cast(u32)16) | (green << cast(u32)8) | blue | output_alpha
+            <<pixel = PixmapBlendMaskRGB(<<pixel, source_rb, green_source, alpha) | output_alpha
         }
     }
 }

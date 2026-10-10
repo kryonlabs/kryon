@@ -161,6 +161,13 @@ pixmap-font: project-toolchain
 	mv build/pixmap_font.zi src/backend/pixmap_font.zi
 
 # Installs the kryon command. Outside `ziran tool kryon` it forwards project
+.PHONY: pixmap-mono-font
+pixmap-mono-font:
+	$(ZIRAN_BIN) build --target=py --exe --root tools $(ZIRAN_STD_PATH) --entry outline_font:main -o build/tools/outline_font tools/outline_font.zi
+	printf '%s\n' assets/fonts/LiberationMono-Regular.ttf | python3 build/tools/outline_font | sed '/^PixmapFontUnits/,$$!d' > build/pixmap_mono_font.zi
+	printf '%s\n' '// Generated from assets/fonts/LiberationMono-Regular.ttf by tools/outline_font.zi.' '// Liberation Mono Regular outlines and advances; license LICENSE-Liberation.' '// Rebuild with make pixmap-mono-font.' '' > src/backend/pixmap_mono_font.zi
+	cat build/pixmap_mono_font.zi >> src/backend/pixmap_mono_font.zi
+
 # commands to ziran, which runs the Kryon each project's lock pins.
 PREFIX ?= $(HOME)/.local
 install-user: build/bin/kryon zib-player
@@ -391,6 +398,10 @@ test: pixmap-parallel-test
 .PHONY: pixmap-surface-plan9-test
 pixmap-surface-plan9-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_surface_plan9_test.sh
+
+.PHONY: pixmap-measure-plan9-test
+pixmap-measure-plan9-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS PIXMAP_PLAN9_FIXTURE=pixmap_measure_test sh tests/pixmap_surface_plan9_test.sh
 
 .PHONY: style-cache-test
 style-cache-test: project-toolchain

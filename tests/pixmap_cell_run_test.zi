@@ -1,0 +1,73 @@
+Cells :: #import "pixmap_cell_text";
+Pixels :: #import "pixmap";
+Mono :: #import "pixmap_mono_font";
+Sans :: #import "pixmap_font";
+using Geometry :: #import "geometry";
+using Drawing :: #import "drawing_props";
+
+expected: [2048]u32;
+pixels: [2048]u32;
+CompareRun :: (text: string, font: s32, pitch: s32, density: float32,
+    color: Color) -> bool {
+    row: Rectangle = .{-2.375, -0.625, 64.0, 28.0}
+    clip: Rectangle = .{3.125, 1.375, 33.25, 22.5}
+    unused Pixels.PixmapBeginInto(cast(u32)0x183421, 64, 32, expected[:])
+    unused Pixels.PixmapScale(density, density)
+    for at: 0..cast(s32)text.count - 1 {
+        cell := row; cell.x += cast(float32)((1 + at) * pitch)
+        cell.width = cast(float32)pitch
+        Cells.RasterTextCell(text[at:at + 1], cell, font, color, clip)
+    }
+    Pixels.PixmapEndInto()
+    unused Pixels.PixmapBeginInto(cast(u32)0x183421, 64, 32, pixels[:])
+    unused Pixels.PixmapScale(density, density)
+    Cells.RasterTextCells(text, row, 1, pitch, font, color, clip)
+    Pixels.PixmapEndInto()
+    for at: 0..2047 {
+        if expected[at] != pixels[at] {
+            print("Run parity failed font % pitch % density % alpha % pixel %\n",
+                font, pitch, density, color.a, at)
+            return false
+        }
+    }
+    return true
+}
+
+// Compare the run with independently decoded single cells. Exercise every
+// printable byte, mixed and repeated glyphs, transparent colors, density,
+// fractional clipping, narrow resampling and offscreen coordinates.
+#program_export
+main :: () -> s32 {
+    if Mono.pixmap_font_decoded || Sans.pixmap_font_decoded { return 3 }
+    unused Pixels.PixmapBeginInto(cast(u32)0x183421, 64, 32, pixels[:])
+    Pixels.PixmapClipPixels(.{3.125, 1.375, 33.25, 22.5})
+    left := Pixels.pixmap_clip_left; top := Pixels.pixmap_clip_top
+    right := Pixels.pixmap_clip_right; bottom := Pixels.pixmap_clip_bottom
+    Cells.RasterTextCells("    ", .{0.0, 0.0, 64.0, 28.0}, 0, 8, 20,
+        .{237, 119, 49, 127}, .{0.0, 0.0, 64.0, 32.0})
+    if Mono.pixmap_font_decoded || Sans.pixmap_font_decoded {
+        print("Space-only run decoded a font\n"); return 4
+    }
+    if Pixels.pixmap_clip_left != left || Pixels.pixmap_clip_top != top ||
+        Pixels.pixmap_clip_right != right || Pixels.pixmap_clip_bottom != bottom { return 5 }
+    for pixel: pixels { if pixel != cast(u32)0x183421 { return 6 } }
+    Pixels.PixmapEndInto()
+    fonts: [3]s32 = .[9, 20, 31]
+    pitches: [3]s32 = .[2, 8, 15]
+    densities: [3]float32 = .[0.5, 1.25, 2.25]
+    alphas: [3]u8 = .[0, 127, 255]
+    bytes: [4]u8
+    cases: s32
+    for byte: 32..126 {
+        bytes[0] = cast(u8)byte; bytes[1] = cast(u8)byte
+        bytes[2] = cast(u8)(158 - byte); bytes[3] = cast(u8)byte
+        for font: fonts { for pitch: pitches { for density: densities { for alpha: alphas {
+            color: Color = .{237, 119, 49, alpha}
+            if !CompareRun(TextView(bytes[:]), font, pitch, density, color) { return 2 }
+            cases += 1
+        } } } }
+    }
+    Pixels.PixmapCloseWorkers()
+    print("Printable cell-run parity: % cases passed\n", cases)
+    return 0
+}

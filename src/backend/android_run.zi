@@ -74,7 +74,13 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
         EndRaylibFrame()
         return false
     }
-    return EndRaylibFrame()
+    // Provider-backed images can disappear after the application composes
+    // the tree, for example when Android revokes access or pauses a gallery.
+    // RasterImage skips an unavailable asset; keep the activity alive so the
+    // next frame can read the new provider/lifecycle state. Tree and application
+    // failures above still stop the host.
+    unused EndRaylibFrame()
+    return true
 }
 
 #program_export

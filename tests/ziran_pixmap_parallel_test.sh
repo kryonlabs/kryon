@@ -5,6 +5,7 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 work="$repo/build/scratch/pixmap-parallel"
 mkdir -p "$work"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
+sh "$repo/tests/pixmap_blend_test.sh"
 for target in c cpp; do
     exe=--exe; if test "$target" = cpp; then exe=; fi
     "$ziran" build --project --root "$repo/tests" --target="$target" \
