@@ -1,0 +1,38 @@
+#import "session"
+State :: #import "session";
+
+#program_export
+main :: () -> s32 {
+    invalid: [4]Session = .{Session.{}, Session.{-1, 1}, Session.{9, 1}, Session.{2147483647, 1}}
+    for handle: invalid {
+        if SessionValid(handle) || SessionIndex(handle) != 0 || SessionClose(handle) { return 1 }
+    }
+    handles: [8]Session
+    for i: 0..7 {
+        handles[i] = SessionOpen()
+        if !SessionValid(handles[i]) || SessionIndex(handles[i]) != i + 1 { return 2 }
+    }
+    extra := SessionOpen()
+    if SessionValid(extra) || SessionIndex(extra) != 0 { return 3 }
+    original := handles[0]
+    if !SessionClose(original) || SessionValid(original) || SessionIndex(original) != 0 || SessionClose(original) { return 4 }
+    replacement := SessionOpen()
+    if replacement.slot != original.slot || replacement.epoch != original.epoch + cast(u64)1 ||
+        !SessionValid(replacement) || SessionValid(original) || SessionIndex(original) != 0 { return 5 }
+    wrong: Session = .{replacement.slot, 0}
+    if SessionValid(wrong) || SessionIndex(wrong) != 0 || SessionClose(wrong) { return 6 }
+    // A live slot can reach the last epoch, but a closed last epoch is never reused.
+    State.session_epochs[replacement.slot] = cast(u64)18446744073709551614
+    final: Session = .{replacement.slot, cast(u64)18446744073709551614}
+    if SessionValid(replacement) || SessionIndex(replacement) != 0 || !SessionClose(final) { return 7 }
+    final = SessionOpen()
+    if final.epoch != cast(u64)18446744073709551615 || !SessionValid(final) || SessionIndex(final) != 1 { return 8 }
+    if !SessionClose(final) || SessionValid(final) || SessionIndex(final) != 0 || SessionValid(SessionOpen()) { return 9 }
+    for i: 1..7 { if !SessionClose(handles[i]) { return 10 } }
+    for pass: 0..2047 {
+        handle := SessionOpen()
+        if handle.slot != 2 || !SessionValid(handle) || SessionIndex(handle) != 2 ||
+            !SessionClose(handle) || SessionValid(handle) || SessionIndex(handle) != 0 { return 11 }
+    }
+    return 0
+}
