@@ -134,7 +134,9 @@ Image :: (session: Session, image: ImageProps) {
         PaintImage(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, image.bounds,
             image.origin, image.rotation, radius, plan.tint, image.texture)
-    } else if !plan.draw {
+    } else if !plan.draw && texture.width >= 0 && texture.height >= 0 {
+        // A host still loading the asset reports a negative size; the
+        // placeholder is only for an image that is unavailable.
         PaintImagePlaceholder(session, node, image, faces.label)
     }
     if (faces.surface.fields & cast(u32)StyleBorderWidth) != cast(u32)0 &&

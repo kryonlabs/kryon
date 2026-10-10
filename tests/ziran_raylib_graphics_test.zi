@@ -100,5 +100,20 @@ main :: () -> s32 {
     if ImageWidth("updated.png") != 200 || texture_loads != loads + 1 {
         return 14
     }
+    // A frame decodes images until its budget is spent, always at least one.
+    // Later images report loading, draw nothing without an error, and load
+    // in the next frame.
+    load_seconds = 0.003
+    BeginRaylibFrame()
+    if ImageWidth("slow-a.png") != 200 || ImageHeight("slow-b.png") != 100 ||
+    ImageWidth("slow-c.png") != -1 || ImageHeight("slow-c.png") != -1 {
+        return 16
+    }
+    shown := presented
+    DrawAsset("slow-c.png")
+    if presented != shown || !EndRaylibFrame() { return 17 }
+    BeginRaylibFrame()
+    if ImageWidth("slow-c.png") != 200 || !EndRaylibFrame() { return 18 }
+    load_seconds = 0.0
     return 0
 }

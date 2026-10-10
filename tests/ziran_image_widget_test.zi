@@ -70,6 +70,17 @@ Frame :: () -> s32 {
         phase = 3
         return 2
     }
+    if phase == 4 {
+        // An image the host is still loading draws no placeholder.
+        image.asset_path = "loading.png"
+        image.alt_text = "Loading hero"
+        image.bounds = Rectangle.{0.0, 0.0, 100.0, 20.0}
+        BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
+        Image(TestSession(), image)
+        if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return -1 }
+        phase = 5
+        return 4
+    }
     image.asset_path = "missing.png"
     image.alt_text = "Missing hero"
     image.bounds = Rectangle.{0.0, 0.0, 100.0, 20.0}
@@ -84,10 +95,10 @@ Frame :: () -> s32 {
 
 #program_export
 main :: () -> s32 {
-    expected_sizes: [4]s32 = .[2, 2, 2, 4]
-    expected_draws: [4]s32 = .[0, 1, 2, 2]
+    expected_sizes: [5]s32 = .[2, 2, 2, 4, 6]
+    expected_draws: [5]s32 = .[0, 1, 2, 2, 2]
     index: s32 = 0
-    while index < 4 {
+    while index < 5 {
         if Frame() != index || ImageHostFailed() ||
             ImageSizes() != expected_sizes[index] ||
             ImageDraws() != expected_draws[index] { return 1 }

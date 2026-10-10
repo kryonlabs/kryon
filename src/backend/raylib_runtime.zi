@@ -111,6 +111,7 @@ HostRaylibIsKeyDown :: (key: s32) -> bool #foreign raylib "IsKeyDown";
 HostRaylibIsKeyPressedRepeat :: (key: s32) -> bool #foreign raylib "IsKeyPressedRepeat";
 HostRaylibGetCharPressed :: () -> s32 #foreign raylib "GetCharPressed";
 HostRaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
+HostRaylibGetTime :: () -> float64 #foreign raylib "GetTime";
 HostRaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
 HostRaylibRenderTexture :: struct {
     id: u32
@@ -146,6 +147,14 @@ RaylibAssetCapacity :: 128
 raylib_assets: [RaylibAssetCapacity]RaylibAsset;
 raylib_assets_count: s32;
 raylib_assets_next: s32;
+// Decoding a texture takes milliseconds on a phone. A frame decodes images
+// until this many seconds are spent, always at least one, and reports the
+// rest as loading: a grid scrolled into view spreads its new thumbnails
+// over several frames instead of stalling one.
+RaylibAssetLoadBudget :: 0.004
+RaylibAssetLoading :: -2
+raylib_asset_load_spent: float64;
+raylib_asset_loads: s32;
 raylib_pointer: PointerFrame;
 raylib_secondary: SecondaryPointerFrame;
 raylib_middle: SecondaryPointerFrame;
@@ -884,6 +893,12 @@ RaylibAssetIndex :: (path: string) -> s32 {
         }
         index += 1
     }
+    if raylib_asset_loads > 0 && raylib_asset_load_spent >= RaylibAssetLoadBudget {
+        return RaylibAssetLoading
+    }
+    started := HostRaylibGetTime()
+    raylib_asset_loads += 1
+    defer { raylib_asset_load_spent += HostRaylibGetTime() - started }
     if raylib_assets_count < RaylibAssetCapacity {
         index = raylib_assets_count
         raylib_assets_count += 1
@@ -1175,6 +1190,8 @@ RaylibWheelMove :: () -> float32 {
 #program_export
 BeginRaylibFrame :: () {
     raylib_image_error = false
+    raylib_asset_load_spent = 0.0
+    raylib_asset_loads = 0
     HostRaylibBeginDrawing()
     HostRaylibClearBackground(Color.{248, 250, 252, 255})
     // Scale the modelview matrix itself rather than pushing a transform:
@@ -1733,6 +1750,7 @@ DisposeFrameTexture :: (texture: Texture2D) {
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
     index: s32 = RaylibAssetIndex(asset_path)
+    if index == RaylibAssetLoading { return -1 }
     if index < 0 { return 0 }
     return raylib_assets[index].texture.width
 }
@@ -1740,6 +1758,7 @@ ImageWidth :: (asset_path: string) -> s32 {
 #program_export
 ImageHeight :: (asset_path: string) -> s32 {
     index: s32 = RaylibAssetIndex(asset_path)
+    if index == RaylibAssetLoading { return -1 }
     if index < 0 { return 0 }
     return raylib_assets[index].texture.height
 }
@@ -1765,6 +1784,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
         }
     } else if asset_path.count > 0 {
         index: s32 = RaylibAssetIndex(asset_path)
+        if index == RaylibAssetLoading { return }
         if index < 0 {
             raylib_image_error = true
             return
