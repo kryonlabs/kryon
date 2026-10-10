@@ -13,6 +13,8 @@ MeasureImage :: (asset_path: string, width: bool) -> s32 {
         if width { return 200 }
         return 100
     }
+    // The host is still loading this one.
+    if asset_path == "loading.png" { return -1 }
     if asset_path != "missing.png" { failed = true }
     return 0
 }

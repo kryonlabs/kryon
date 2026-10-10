@@ -10,11 +10,25 @@ flushes: s32;
 context_epoch: s32 = 1;
 lost_context: bool;
 graphics_failed: bool;
+// Each texture load advances the fake clock by this many seconds.
+load_seconds: float64;
+clock_seconds: float64;
+
+#program_export
+GetTime :: () -> float64 { return clock_seconds }
+
+#program_export
+ClearBackground :: (color: Color) { unused color }
+
+// The frame is not zoomed here; BeginRaylibFrame only scales a zoomed one.
+#program_export
+rlScalef :: (x: float32, y: float32, z: float32) { unused x; unused y; unused z; graphics_failed = true }
 
 #program_export
 LoadTexture :: (path: *u8) -> Texture2D {
     unused path
     texture_loads += 1
+    clock_seconds += load_seconds
     return Texture2D.{cast(u32)(context_epoch * 1000 + texture_loads),
         200, 100, 1, 7}
 }

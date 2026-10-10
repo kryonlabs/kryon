@@ -1,6 +1,7 @@
 host_api :: #system_library "host_api";
-// The platform supplies asset dimensions. Kryon chooses source,
-// destination, clipping, tint, and placeholder behavior.
+// The platform supplies asset dimensions: 0 when the asset is unavailable,
+// -1 while the host is still loading it (nothing is drawn for it that frame).
+// Kryon chooses source, destination, clipping, tint, and placeholder behavior.
 ImageWidth :: (asset_path: string) -> s32 #foreign host_api;
 ImageHeight :: (asset_path: string) -> s32 #foreign host_api;
 
