@@ -137,7 +137,10 @@ RaylibAsset :: struct {
     texture: Texture2D
 }
 
-raylib_assets: [32]RaylibAsset;
+// Image textures by asset path. A photo grid draws dozens of thumbnails per
+// frame; the cache must hold every visible image or each frame reloads them.
+RaylibAssetCapacity :: 128
+raylib_assets: [RaylibAssetCapacity]RaylibAsset;
 raylib_assets_count: s32;
 raylib_assets_next: s32;
 raylib_pointer: PointerFrame;
@@ -861,7 +864,7 @@ RaylibAssetIndex :: (path: string) -> s32 {
         }
         index += 1
     }
-    if raylib_assets_count < 32 {
+    if raylib_assets_count < RaylibAssetCapacity {
         index = raylib_assets_count
         raylib_assets_count += 1
     } else {
@@ -869,7 +872,7 @@ RaylibAssetIndex :: (path: string) -> s32 {
         // The draw batch can still refer to the texture being evicted.
         HostRaylibFlushBatch()
         HostRaylibUnloadTexture(raylib_assets[index].texture)
-        raylib_assets_next = (raylib_assets_next + 1) % 32
+        raylib_assets_next = (raylib_assets_next + 1) % RaylibAssetCapacity
     }
     if !CopyCString(path, raylib_assets[index].path[:]) {
         raylib_assets[index].length = 0

@@ -60,9 +60,10 @@ main :: () -> s32 {
 
     // Cache eviction must submit earlier draws before deleting their texture.
     before_flushes := flushes
-    paths: [32][1]u8
-    for index: 0..31 {
-        paths[index][0] = cast(u8)(index + 65)
+    paths: [RaylibAssetCapacity][2]u8
+    for index: 0..RaylibAssetCapacity - 1 {
+        paths[index][0] = cast(u8)(65 + index / 26)
+        paths[index][1] = cast(u8)(97 + index % 26)
         if ImageWidth(TextFromBytes(paths[index][:])) != 200 {
             return 9
         }
@@ -72,7 +73,7 @@ main :: () -> s32 {
         return 10
     }
     ResetRaylibGraphics()
-    if texture_unloads != 34 || graphics_failed {
+    if texture_unloads != 2 + RaylibAssetCapacity || graphics_failed {
         return 11
     }
     if !LoadTypefaceData("updated", ".ttf", "new font fixture", null, 0) ||
@@ -83,7 +84,7 @@ main :: () -> s32 {
     target_releases := unloads
     loads := texture_loads
     InvalidateRaylibAssets()
-    if texture_unloads != 35 || font_unloads != font_releases ||
+    if texture_unloads != 3 + RaylibAssetCapacity || font_unloads != font_releases ||
     unloads != target_releases || RetainedPreviousFrameTexture().id != frame ||
     !SelectTypeface("updated") || graphics_failed { return 13 }
     if ImageWidth("updated.png") != 200 || texture_loads != loads + 1 {
