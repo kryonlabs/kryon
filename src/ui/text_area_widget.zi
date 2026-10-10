@@ -26,6 +26,7 @@
 #import "text_input"
 #import "text_input_platform"
 #import "text_input_props"
+#import "text_props"
 #import "text_rows"
 #import "text_widget"
 #import "tree"
@@ -106,11 +107,66 @@ TextAreaFaceFor :: (props: TextAreaProps,
     return frame
 }
 
+// Hidden and strong ranges must be sorted, disjoint and on character
+// boundaries. Any other list is ignored as a whole, as Text ignores invalid
+// strong ranges.
+TextAreaRangesFor :: (value: string, ranges: []TextRange) -> []TextRange {
+    previous_end: s32 = 0
+    for range: ranges {
+        if !TextRangeValid(value, range, previous_end) {
+            none: []TextRange
+            return none
+        }
+        previous_end = range.end
+    }
+    return ranges
+}
+
+// A caret never stops strictly inside a hidden range.
+TextAreaHiddenInside :: (hidden: []TextRange, index: s32) -> bool {
+    for range: hidden {
+        if index <= range.start { return false }
+        if index < range.end { return true }
+    }
+    return false
+}
+
+// The shown width of value[start:end]: hidden bytes take no width.
+TextAreaShownWidth :: (value: string, start: s32, end: s32, font: s32,
+    typeface: string, hidden: []TextRange) -> s32 {
+    if end <= start { return 0 }
+    if hidden.count == 0 {
+        return GlyphWidth(TextSpan(value, start, end - start), font, typeface)
+    }
+    width: s32 = 0
+    cursor: s32 = start
+    for range: hidden {
+        if range.end <= cursor { continue }
+        if range.start >= end { break }
+        if range.start > cursor {
+            width += GlyphWidth(TextSpan(value, cursor, range.start - cursor), font, typeface)
+        }
+        cursor = range.end
+        if cursor >= end { return width }
+    }
+    width += GlyphWidth(TextSpan(value, cursor, end - cursor), font, typeface)
+    return width
+}
+
+TextAreaRangesHash :: (ranges: []TextRange) -> u64 {
+    hash: u64 = cast(u64)14695981039346656037
+    for range: ranges {
+        hash = (hash ^ cast(u64)cast(u32)range.start) * cast(u64)1099511628211
+        hash = (hash ^ cast(u64)cast(u32)range.end) * cast(u64)1099511628211
+    }
+    return hash
+}
+
 // Rows preserve every byte, including spaces at wrap boundaries. The cursor
 // can therefore address the original value without a shadow text buffer.
 TextAreaNextRowUncached :: (value: string, start: s32,
     wrap_width: s32, font: s32,
-    typeface: string) -> TextAreaRow {
+    typeface: string, hidden: []TextRange) -> TextAreaRow {
     row: TextAreaRow
     row.start = start
     row.end = start
@@ -125,8 +181,8 @@ TextAreaNextRowUncached :: (value: string, start: s32,
     break_after: s32 = -1
     while cursor < line.end {
         next: s32 = TextFieldNext(value, cursor)
-        width: s32 = GlyphWidth(TextSpan(value,
-            start, next - start), font, typeface)
+        width: s32 = TextAreaShownWidth(value, start, next, font,
+            typeface, hidden)
         if width > wrap_width {
             if fitted == start { fitted = next }
             if break_after > start && break_after <= fitted {
@@ -159,6 +215,7 @@ text_area_cache_face_lengths: [8]s32;
 text_area_cache_fonts: [8]s32;
 text_area_cache_widths: [8]s32;
 text_area_cache_revisions: [8]u64;
+text_area_cache_hidden: [8]u64;
 text_area_cache_rows: [8][256]TextAreaRow;
 text_area_cache_counts: [8]s32;
 text_area_cache_last: s32;
@@ -166,8 +223,8 @@ text_area_cache_used: [8]u64;
 text_area_cache_clock: u64;
 
 TextAreaCacheMatches :: (slot: s32, value: string, wrap_width: s32,
-    font: s32, typeface: string, revision: u64) -> bool {
-    return text_area_cache_revisions[slot] == revision &&
+    font: s32, typeface: string, revision: u64, hidden: u64) -> bool {
+    return text_area_cache_revisions[slot] == revision && text_area_cache_hidden[slot] == hidden &&
         text_area_cache_fonts[slot] == font && text_area_cache_widths[slot] == wrap_width &&
         text_area_cache_lengths[slot] == value.count && text_area_cache_face_lengths[slot] == typeface.count &&
         TextView(text_area_cache_bytes[slot][:text_area_cache_lengths[slot]]) == value &&
@@ -177,16 +234,24 @@ TextAreaCacheMatches :: (slot: s32, value: string, wrap_width: s32,
 #program_export
 TextAreaNextRow :: (value: string, start: s32, wrap_width: s32,
     font: s32, typeface: string) -> TextAreaRow {
+    none: []TextRange
+    return TextAreaNextRowWith(value, start, wrap_width, font, typeface, none)
+}
+
+#program_export
+TextAreaNextRowWith :: (value: string, start: s32, wrap_width: s32,
+    font: s32, typeface: string, hidden: []TextRange) -> TextAreaRow {
     revision := GlyphMetricsRevision()
     if revision == cast(u64)0 || value.count > 4096 || typeface.count > 128 ||
         start < 0 || start > cast(s32)value.count {
-        return TextAreaNextRowUncached(value, start, wrap_width, font, typeface)
+        return TextAreaNextRowUncached(value, start, wrap_width, font, typeface, hidden)
     }
+    hidden_hash := TextAreaRangesHash(hidden)
     slot := text_area_cache_last
-    if !TextAreaCacheMatches(slot, value, wrap_width, font, typeface, revision) {
+    if !TextAreaCacheMatches(slot, value, wrap_width, font, typeface, revision, hidden_hash) {
         found: bool
         for i: 0..cast(s32)7 {
-            if TextAreaCacheMatches(i, value, wrap_width, font, typeface, revision) { slot = i; found = true; break }
+            if TextAreaCacheMatches(i, value, wrap_width, font, typeface, revision, hidden_hash) { slot = i; found = true; break }
         }
         if !found {
             slot = 0
@@ -197,6 +262,7 @@ TextAreaNextRow :: (value: string, start: s32, wrap_width: s32,
             text_area_cache_face_lengths[slot] = cast(s32)typeface.count
             text_area_cache_fonts[slot] = font; text_area_cache_widths[slot] = wrap_width
             text_area_cache_revisions[slot] = revision
+            text_area_cache_hidden[slot] = hidden_hash
             text_area_cache_counts[slot] = 0
         }
         text_area_cache_last = slot
@@ -215,7 +281,7 @@ TextAreaNextRow :: (value: string, start: s32, wrap_width: s32,
     if low < text_area_cache_counts[slot] && text_area_cache_rows[slot][low].start == start {
         return text_area_cache_rows[slot][low]
     }
-    row := TextAreaNextRowUncached(value, start, wrap_width, font, typeface)
+    row := TextAreaNextRowUncached(value, start, wrap_width, font, typeface, hidden)
     count := text_area_cache_counts[slot]
     if count < 256 {
         while count > low { text_area_cache_rows[slot][count] = text_area_cache_rows[slot][count - 1]; count -= 1 }
@@ -227,11 +293,18 @@ TextAreaNextRow :: (value: string, start: s32, wrap_width: s32,
 #program_export
 TextAreaRowCount :: (value: string, wrap_width: s32,
     font: s32, typeface: string) -> s32 {
+    none: []TextRange
+    return TextAreaRowCountWith(value, wrap_width, font, typeface, none)
+}
+
+#program_export
+TextAreaRowCountWith :: (value: string, wrap_width: s32,
+    font: s32, typeface: string, hidden: []TextRange) -> s32 {
     count: s32 = 0
     offset: s32 = 0
     while offset <= (cast(s32)value.count) {
-        row: TextAreaRow = TextAreaNextRow(value, offset,
-            wrap_width, font, typeface)
+        row: TextAreaRow = TextAreaNextRowWith(value, offset,
+            wrap_width, font, typeface, hidden)
         count += 1
         if row.next <= offset { break }
         offset = row.next
@@ -243,13 +316,21 @@ TextAreaRowCount :: (value: string, wrap_width: s32,
 TextAreaCaretFor :: (value: string, cursor: s32,
     wrap_width: s32, font: s32, typeface: string,
     advance: s32) -> TextAreaCaret {
+    none: []TextRange
+    return TextAreaCaretForWith(value, cursor, wrap_width, font, typeface, advance, none)
+}
+
+#program_export
+TextAreaCaretForWith :: (value: string, cursor: s32,
+    wrap_width: s32, font: s32, typeface: string,
+    advance: s32, hidden: []TextRange) -> TextAreaCaret {
     caret: TextAreaCaret
     cursor = TextCursorForLength(cursor, (cast(s32)value.count))
     offset: s32 = 0
     index: s32 = 0
     while offset <= (cast(s32)value.count) {
-        row: TextAreaRow = TextAreaNextRow(value, offset,
-            wrap_width, font, typeface)
+        row: TextAreaRow = TextAreaNextRowWith(value, offset,
+            wrap_width, font, typeface, hidden)
         if cursor < row.end ||
             (cursor == row.end && !row.soft_wrap) ||
             row.next > (cast(s32)value.count) {
@@ -258,6 +339,10 @@ TextAreaCaretFor :: (value: string, cursor: s32,
             if within > row.end { within = row.end }
             caret.x = GlyphCaret(TextSpan(value, row.start, row.end - row.start),
                 within - row.start, font, typeface)
+            if hidden.count > 0 {
+                caret.x = TextAreaShownWidth(value, row.start, within, font,
+                    typeface, hidden)
+            }
             caret.y = index * advance
             caret.row_start = row.start
             caret.row_end = row.end
@@ -280,6 +365,9 @@ TextAreaView :: struct {
     replace_end: s32
     length: s32
     composing: bool
+    // Ranges of value, not of the view; they never reach the preedit.
+    hidden: []TextRange
+    strong: []TextRange
 }
 
 TextAreaViewSegment :: struct {
@@ -378,9 +466,16 @@ TextAreaViewSpanWidth :: (view: TextAreaView,
         right: s32 = end
         if right > segment.end { right = segment.end }
         if right > left {
-            width += GlyphWidth(TextSpan(segment.source,
-                segment.source_start + left - segment.start,
-                right - left), font, typeface)
+            if part == 1 {
+                width += GlyphWidth(TextSpan(segment.source,
+                    segment.source_start + left - segment.start,
+                    right - left), font, typeface)
+            } else {
+                width += TextAreaShownWidth(segment.source,
+                    segment.source_start + left - segment.start,
+                    segment.source_start + right - segment.start,
+                    font, typeface, view.hidden)
+            }
         }
         part += 1
     }
@@ -500,35 +595,94 @@ TextAreaViewPaintRow :: (session: Session, node: s32, view: TextAreaView,
         right: s32 = row.end
         if right > segment.end { right = segment.end }
         if right > left {
-            PaintClippedLabel(session, node,
-                TextSpan(segment.source,
+            left_x := x + TextAreaViewSpanWidth(view, row.start, left, font, typeface)
+            if part == 1 {
+                PaintClippedLabel(session, node,
+                    TextSpan(segment.source,
+                        segment.source_start + left - segment.start,
+                        right - left),
+                    left_x, y, font, color, clip)
+            } else {
+                TextAreaPaintShown(session, node, segment.source,
                     segment.source_start + left - segment.start,
-                    right - left),
-                x + TextAreaViewSpanWidth(view,
-                    row.start, left, font, typeface),
-                y, font, color, clip)
+                    segment.source_start + right - segment.start,
+                    left_x, y, font, typeface, color, clip,
+                    view.hidden, view.strong)
+            }
         }
         part += 1
+    }
+}
+
+// Paints value[start:end] from x, leaving hidden bytes out and drawing strong
+// bytes with the same small extra stroke Text uses, so advances never change.
+TextAreaPaintShown :: (session: Session, node: s32, value: string,
+    start: s32, end: s32, x: s32, y: s32, font: s32, typeface: string,
+    color: Color, clip: Rectangle, hidden: []TextRange, strong: []TextRange) {
+    if hidden.count == 0 && strong.count == 0 {
+        if end > start {
+            PaintClippedLabel(session, node, TextSpan(value, start, end - start),
+                x, y, font, color, clip)
+        }
+        return
+    }
+    stroke := font / 24
+    if stroke < 1 { stroke = 1 }
+    cursor := start
+    while cursor < end {
+        piece_end := end
+        concealed := false
+        for range: hidden {
+            if range.end <= cursor { continue }
+            if range.start > cursor {
+                if range.start < piece_end { piece_end = range.start }
+                break
+            }
+            concealed = true
+            if range.end < piece_end { piece_end = range.end }
+            break
+        }
+        emphasized := false
+        for range: strong {
+            if range.end <= cursor { continue }
+            if range.start > cursor {
+                if range.start < piece_end { piece_end = range.start }
+                break
+            }
+            emphasized = true
+            if range.end < piece_end { piece_end = range.end }
+            break
+        }
+        if !concealed {
+            left := x + TextAreaShownWidth(value, start, cursor, font, typeface, hidden)
+            text := TextSpan(value, cursor, piece_end - cursor)
+            PaintClippedLabel(session, node, text, left, y, font, color, clip)
+            if emphasized {
+                PaintClippedLabel(session, node, text, left + stroke, y, font, color, clip)
+            }
+        }
+        cursor = piece_end
     }
 }
 
 TextAreaPaintSourceSpan :: (session: Session, node: s32,
     value: string, row: TextAreaRow, start: s32, end: s32,
     x: s32, y: s32, font: s32, typeface: string,
-    color: u32, opacity: float32, clip: Rectangle) {
+    color: u32, opacity: float32, clip: Rectangle,
+    hidden: []TextRange, strong: []TextRange) {
     if end <= start { return }
-    prefix: string = TextSpan(value, row.start, start - row.start)
-    PaintClippedLabel(session, node,
-        TextSpan(value, start, end - start),
-        x + GlyphWidth(prefix, font, typeface), y, font,
-        ColorFromPacked(Opacity(color, opacity)), clip)
+    TextAreaPaintShown(session, node, value, start, end,
+        x + TextAreaShownWidth(value, row.start, start, font, typeface, hidden),
+        y, font, typeface, ColorFromPacked(Opacity(color, opacity)), clip,
+        hidden, strong)
 }
 
 TextAreaPaintColorRow :: (session: Session, node: s32,
     value: string, row: TextAreaRow,
     colors: []TextAreaColorSpan, x: s32, y: s32,
     font: s32, typeface: string, foreground: u32,
-    opacity: float32, clip: Rectangle) {
+    opacity: float32, clip: Rectangle,
+    hidden: []TextRange, strong: []TextRange) {
     cursor: s32 = row.start
     index: s32 = 0
     while index < cast(s32)colors.count && cursor < row.end {
@@ -542,34 +696,61 @@ TextAreaPaintColorRow :: (session: Session, node: s32,
         if right > row.end { right = row.end }
         TextAreaPaintSourceSpan(session, node, value, row,
             cursor, left, x, y, font, typeface,
-            foreground, opacity, clip)
+            foreground, opacity, clip, hidden, strong)
         TextAreaPaintSourceSpan(session, node, value, row,
             left, right, x, y, font, typeface,
-            span.color, opacity, clip)
+            span.color, opacity, clip, hidden, strong)
         cursor = right
     }
     TextAreaPaintSourceSpan(session, node, value, row,
         cursor, row.end, x, y, font, typeface,
-        foreground, opacity, clip)
+        foreground, opacity, clip, hidden, strong)
 }
 
 #program_export
 TextAreaCursorAtPoint :: (value: string, x: s32,
     y: s32, wrap_width: s32, font: s32,
     typeface: string, advance: s32) -> s32 {
+    none: []TextRange
+    return TextAreaCursorAtPointWith(value, x, y, wrap_width, font, typeface, advance, none)
+}
+
+#program_export
+TextAreaCursorAtPointWith :: (value: string, x: s32,
+    y: s32, wrap_width: s32, font: s32,
+    typeface: string, advance: s32, hidden: []TextRange) -> s32 {
     if advance < 1 { advance = 1 }
     if y < 0 { y = 0 }
     wanted: s32 = y / advance
     offset: s32 = 0
     index: s32 = 0
     while offset <= (cast(s32)value.count) {
-        row: TextAreaRow = TextAreaNextRow(value, offset,
-            wrap_width, font, typeface)
+        row: TextAreaRow = TextAreaNextRowWith(value, offset,
+            wrap_width, font, typeface, hidden)
         if index >= wanted || row.next > (cast(s32)value.count) {
-            span: string = TextSpan(value, row.start,
-                row.end - row.start)
-            return row.start + TextFieldCursorAtX(span,
-                x, font, typeface)
+            if hidden.count == 0 {
+                span: string = TextSpan(value, row.start,
+                    row.end - row.start)
+                return row.start + TextFieldCursorAtX(span,
+                    x, font, typeface)
+            }
+            best: s32 = row.start
+            best_distance: s32 = -1
+            position: s32 = row.start
+            while true {
+                if !TextAreaHiddenInside(hidden, position) {
+                    distance := TextAreaShownWidth(value, row.start, position,
+                        font, typeface, hidden) - x
+                    if distance < 0 { distance = -distance }
+                    if best_distance < 0 || distance < best_distance {
+                        best = position
+                        best_distance = distance
+                    }
+                }
+                if position >= row.end { break }
+                position = TextFieldNext(value, position)
+            }
+            return best
         }
         if row.next <= offset { break }
         offset = row.next
@@ -709,10 +890,13 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             cast(CompositionPhase)CompositionNone {
         initial_composition = CompositionState.{}
     }
+    hidden := TextAreaRangesFor(props.value, props.hidden)
+    strong := TextAreaRangesFor(props.value, props.strong)
     initial_view: TextAreaView = TextAreaViewFor(props.value,
         result.anchor, result.cursor, initial_composition)
-    content_height: s32 = TextAreaRowCount(props.value,
-        wrap_width, font, face.value.typeface) * advance
+    initial_view.hidden = hidden
+    content_height: s32 = TextAreaRowCountWith(props.value,
+        wrap_width, font, face.value.typeface, hidden) * advance
     if initial_view.composing {
         content_height = TextAreaViewRowCount(initial_view,
             wrap_width, font, face.value.typeface) * advance
@@ -741,15 +925,15 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             sample_x = origin_x
             sample_y = origin_y
         }
-        initial: s32 = TextAreaCursorAtPoint(props.value,
+        initial: s32 = TextAreaCursorAtPointWith(props.value,
             cast(s32)drag.grab_x - padding_x,
             cast(s32)drag.grab_y - padding_y + props.scroll_y,
-            wrap_width, font, face.value.typeface, advance)
-        selected: s32 = TextAreaCursorAtPoint(props.value,
+            wrap_width, font, face.value.typeface, advance, hidden)
+        selected: s32 = TextAreaCursorAtPointWith(props.value,
             cast(s32)sample_x - (cast(s32)bounds.x + padding_x),
             cast(s32)sample_y - (cast(s32)bounds.y + padding_y) +
                 result.scroll_y,
-            wrap_width, font, face.value.typeface, advance)
+            wrap_width, font, face.value.typeface, advance, hidden)
         dx: float32 = sample_x - origin_x
         dy: float32 = sample_y - origin_y
         if dx < 0.0 { dx = -dx }
@@ -804,9 +988,9 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             selection: TextSelectionRange =
                 TextSelectionRangeForLength(result.anchor,
                     result.cursor, (cast(s32)props.value.count))
-            caret: TextAreaCaret = TextAreaCaretFor(props.value,
+            caret: TextAreaCaret = TextAreaCaretForWith(props.value,
                 result.cursor, wrap_width, font,
-                face.value.typeface, advance)
+                face.value.typeface, advance, hidden)
             if props.input.left {
                 target = TextFieldPrevious(props.value,
                     result.cursor)
@@ -850,12 +1034,12 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                 }
                 result.preferred_x = preferred
                 result.preferred_x_valid = true
-                target = TextAreaCursorAtPoint(props.value,
+                target = TextAreaCursorAtPointWith(props.value,
                     preferred,
                     (caret.row_index + direction * rows) *
                         advance + 1,
                     wrap_width, font, face.value.typeface,
-                    advance)
+                    advance, hidden)
                 moved = true
             }
             if moved {
@@ -978,6 +1162,8 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     }
     view: TextAreaView = TextAreaViewFor(props.value,
         result.anchor, result.cursor, result.composition)
+    view.hidden = hidden
+    view.strong = strong
     display_cursor: s32 = result.cursor
     if view.composing {
         display_cursor = view.replace_start +
@@ -990,9 +1176,9 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             TextAreaMinWrapWidth(scale))
         result.scroll_y = paint.scroll_y
     }
-    display_caret: TextAreaCaret = TextAreaCaretFor(
+    display_caret: TextAreaCaret = TextAreaCaretForWith(
         props.value, result.cursor, wrap_width,
-        font, face.value.typeface, advance)
+        font, face.value.typeface, advance, hidden)
     if view.composing {
         display_caret = TextAreaViewCaretFor(view,
             display_cursor, wrap_width, font,
@@ -1067,9 +1253,9 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     offset: s32 = 0
     row_index: s32 = 0
     while offset <= view.length {
-        row: TextAreaRow = TextAreaNextRow(props.value,
+        row: TextAreaRow = TextAreaNextRowWith(props.value,
             offset, wrap_width, font,
-            face.value.typeface)
+            face.value.typeface, hidden)
         if view.composing {
             row = TextAreaViewNextRow(view, offset,
                 wrap_width, font, face.value.typeface)
@@ -1126,7 +1312,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                     cast(s32)paint.clip_bounds.x, y,
                     font, face.value.typeface,
                     face.value.foreground, opacity,
-                    paint.clip_bounds)
+                    paint.clip_bounds, hidden, strong)
             }
         }
         composition_start: s32 = props.composition_start
