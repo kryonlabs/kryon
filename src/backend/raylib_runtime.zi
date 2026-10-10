@@ -1066,6 +1066,7 @@ RaylibViewport :: () -> Rectangle {
 RaylibSetZoom :: (factor: float32) {
     if !(factor > 0.0) || factor == raylib_zoom { return }
     raylib_zoom = factor
+    SetPaintPixelScale(factor)
 }
 
 #program_export
