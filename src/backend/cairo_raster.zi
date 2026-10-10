@@ -192,6 +192,7 @@ ShapedCaret :: (value: string, byte: s32, font: s32, typeface: string) -> s32 {
 surface: *void;
 paint: *void;
 image_error: bool;
+frame_pending: bool;
 Decode :: #import "image_decode_linux";
 CachedImage :: struct { path: [4096]u8; length: s32; image: *void; used: u64; bytes: s64; }
 cached_images: [128]CachedImage;
@@ -329,18 +330,29 @@ CloseRaster :: () {
 }
 
 #program_export
-BeginRasterFrame :: () {
+BeginRasterFrame :: (retain: bool = false) {
+    frame_pending = true
+    image_error = false
+    text_error = false
+    if !retain { PrepareRasterPaint() }
+}
+
+// A retained host leaves the previous surface intact until actual paint is
+// emitted. Clear before clipping or drawing so changed geometry leaves no trail.
+PrepareRasterPaint :: () {
+    if !frame_pending { return }
+    frame_pending = false
     Save(paint)
     SetSourceRGBA(paint, 248.0 / 255.0, 250.0 / 255.0,
         252.0 / 255.0, 1.0)
     Paint(paint)
     Restore(paint)
-    image_error = false
-    text_error = false
 }
 
 #program_export
-FinishRasterFrame :: () -> bool {
+FinishRasterFrame :: (retain: bool = false) -> bool {
+    // A changed frame with no commands still replaces the previous picture.
+    if !retain { PrepareRasterPaint() }
     if image_error || text_error || Status(paint) != 0 { return false }
     SurfaceFlush(surface)
     return SurfaceStatus(surface) == 0
@@ -403,6 +415,7 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
+    PrepareRasterPaint()
     RoundBox(bounds, radius)
     SetColor(color)
     Fill(paint)
@@ -411,6 +424,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
+    PrepareRasterPaint()
     RoundBox(bounds, radius)
     SetColor(color)
     SetLineWidth(paint, width)
@@ -419,6 +433,7 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
+    PrepareRasterPaint()
     MoveTo(paint, line.x, line.y)
     LineTo(paint, (line.x + line.width),
         (line.y + line.height))
@@ -430,6 +445,7 @@ RasterLine :: (line: Rectangle, color: Color) {
 #program_export
 RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
+    PrepareRasterPaint()
     if !ShapedLayout(value, font, "") { text_error = true; return }
     MoveTo(paint, cast(float64)x, cast(float64)y)
     SetColor(color)
@@ -439,6 +455,7 @@ RasterText :: (value: string, x: s32, y: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32,
     font: s32, color: Color, clip: Rectangle) {
+    PrepareRasterPaint()
     Save(paint)
     CanvasRectangle(paint, clip.x, clip.y,
         clip.width, clip.height)
@@ -528,6 +545,7 @@ ImageHeight :: (asset_path: string) -> s32 {
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    PrepareRasterPaint()
     if texture_id != cast(u32)0 || asset_path.count == 0 ||
         source.width <= 0.0 || source.height <= 0.0 ||
         destination.width <= 0.0 || destination.height <= 0.0 ||

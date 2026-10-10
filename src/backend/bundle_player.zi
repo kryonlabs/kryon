@@ -23,7 +23,7 @@ Player :: struct {
     platform: HostCall; context: *void; closed: bool; keyboard: bool;
 }
 Supported :: (module: string, function: string) -> bool {
-    if ModuleName(module,"zib_run") { return function=="ReadBundleInput" || function=="TakeBundleCodepoint" || function=="BundleTextInputHost" || function=="BundleFrameFinishedHost" }
+    if ModuleName(module,"zib_run") { return function=="ReadBundleInput" || function=="TakeBundleCodepoint" || function=="BundleTextInputHost" || function=="BundleFrameFinishedHost" || function=="BundleFrameReusableHost" }
     if ModuleName(module,"font_metrics") { return function=="MeasureGlyphWidth" || function=="MeasureGlyphLineHeight" }
     if ModuleName(module,"raster_text") { return function=="RasterText" || function=="RasterTextClipped" }
     if ModuleName(module,"raster_shape") { return function=="RasterRoundedRectangle" || function=="RasterRoundedRectangleOutline" }
@@ -121,6 +121,10 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     if !Supported(module,function) { return 0 }; result.kind=HostVoid
     if function=="BundleTextInputHost" && count==1 && args[0].kind==HostInteger { player.keyboard=args[0].integer!=0; return 1 }
     if function=="BundleFrameFinishedHost" && count==1 && args[0].kind==HostInteger { return 1 }
+    if function=="BundleFrameReusableHost" && count==0 {
+        // Caller-owned surfaces may have been cleared or changed between calls.
+        result.kind=HostInteger; result.integer=0; return 1
+    }
     if function=="ReadBundleInput" && count==0 {
         input:=player.input
         player.fields[0].value.integer=cast(s64)input.width; player.fields[1].value.integer=cast(s64)input.height

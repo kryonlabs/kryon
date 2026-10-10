@@ -58,7 +58,7 @@ DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
         TreeCancel(session)
         return false
     }
-    finished := EndFrameRetained(session, false, Clock.Observe(*frame_activity, active))
+    finished := EndFrameRetained(session, DesktopFrameReusable(), Clock.Observe(*frame_activity, active))
     if finished.status != cast(FrameStatus)FrameOk { return false }
     DesktopFrameUnchanged(finished.paint_unchanged)
     if !accessibility_attempted && !CaptureRequested() {

@@ -100,6 +100,7 @@ desktop_frame_unchanged: bool;
 desktop_present_pending: bool;
 desktop_texture_dirty: bool;
 desktop_texture_reset: bool;
+desktop_pixels_valid: bool;
 // A size ResizeDesktop asked for, applied when the next frame begins.
 desktop_next_width: s32;
 desktop_next_height: s32;
@@ -142,6 +143,7 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     desktop_present_pending = true
     desktop_texture_dirty = true
     desktop_texture_reset = false
+    desktop_pixels_valid = false
     StartTextInput()
     return OpenRaster(width, height)
 }
@@ -200,6 +202,7 @@ DesktopApplyResize :: () -> bool {
         height)
     if next == null { return false }
     CloseRaster()
+    desktop_pixels_valid = false
     desktop_texture_dirty = true
     desktop_present_pending = true
     if !OpenRaster(width, height) {
@@ -398,12 +401,20 @@ CheckPointerEvents :: () -> bool {
 BeginDesktopFrame :: () {
     desktop_frame_unchanged = false
     unused DesktopApplyResize()
-    BeginRasterFrame()
+    BeginRasterFrame(true)
+}
+
+// GPU exposure/reset can reuse the held Cairo pixels. A new surface needs
+// paint, and a video pipeline can change pixels without changing widget props.
+#program_export
+DesktopFrameReusable :: () -> bool {
+    return desktop_pixels_valid && Video.pipeline == null
 }
 
 #program_export
 EndDesktopFrame :: () -> bool {
-    if !FinishRasterFrame() { return false }
+    if !FinishRasterFrame(desktop_frame_unchanged && desktop_pixels_valid) { return false }
+    desktop_pixels_valid = true
     if !desktop_frame_unchanged { desktop_texture_dirty = true }
     // A hidden window keeps running the app's frames without presenting.
     if !WindowVisibleHost() { return true }
@@ -430,7 +441,7 @@ EndDesktopFrame :: () -> bool {
 
 #program_export
 DesktopFrameUnchanged :: (unchanged: bool) {
-    desktop_frame_unchanged = unchanged
+    desktop_frame_unchanged = unchanged && Video.pipeline == null
 }
 
 #program_export
