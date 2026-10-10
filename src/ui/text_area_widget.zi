@@ -24,6 +24,7 @@
 #import "surface"
 #import "text_field_widget"
 #import "text_input"
+#import "text_input_platform"
 #import "text_input_props"
 #import "text_rows"
 #import "text_widget"
@@ -1210,6 +1211,10 @@ TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     result: TextAreaResult = TextAreaCore(session, props)
     if result.clipboard_write { SystemClipboardSet(result.clipboard_text) }
     if opened { result.focused = true }
+    // A focused editable area asks the host for the platform keyboard.
+    if result.focused && !props.read_only && !props.disabled {
+        TextInputNoteFocused(session)
+    }
     if TextMenuIsOpenFor(key) {
         TextMenuShow(session, editable && selection.has_selection,
             selection.has_selection, editable, props.value.count > 0,

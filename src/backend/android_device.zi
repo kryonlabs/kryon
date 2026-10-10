@@ -443,11 +443,13 @@ AndroidTextInputBeginFrame :: (session: Session) {
     unused session
 }
 
-// The app reports each frame whether a text field is focused; the keyboard
-// follows, and an inactive frame drops queued edits.
+// The app may report a focused input that Kryon does not draw; any focused
+// Kryon text field or area counts too. The keyboard follows, and an inactive
+// frame drops queued edits.
 #program_export
-AndroidTextInputFrame :: (session: Session, active: bool) {
+AndroidTextInputFrame :: (session: Session, requested: bool) {
     #if #defined(ANDROID_BUILD) {
+        active := requested || TextInputFocused(session)
         DeviceLock()
         owned := TextInputOwnerMatches(device_text_owner, session)
         if owned {
@@ -464,7 +466,7 @@ AndroidTextInputFrame :: (session: Session, active: bool) {
         }
     }
     unused session
-    unused active
+    unused requested
 }
 
 #program_export

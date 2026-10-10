@@ -23,6 +23,7 @@
     #import "system_clipboard"
     #import "text_context_menu"
     #import "text_input"
+    #import "text_input_platform"
     #import "text_input_props"
     #import "text_widget"
     #import "tree"
@@ -650,6 +651,10 @@
         result: TextFieldResult = TextFieldCore(session, props)
         if result.clipboard_write { SystemClipboardSet(result.clipboard_text) }
         if opened { result.focused = true }
+        // A focused editable field asks the host for the platform keyboard.
+        if result.focused && !props.read_only && !props.disabled {
+            TextInputNoteFocused(session)
+        }
         if TextMenuIsOpenFor(key) {
             TextMenuShow(session, editable && selection.has_selection,
                 !props.secure && selection.has_selection, editable,
