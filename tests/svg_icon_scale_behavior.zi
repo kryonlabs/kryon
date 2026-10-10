@@ -1,0 +1,38 @@
+// Icons rasterize at the host's screen pixels: on a frame scaled 2x the
+// painted cells are half a layout unit, so edges stay sharp on phones.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "paint_queue"
+#import "svg_icon"
+#import "ziran_navigation_bar_widget_host"
+
+// The smallest painted cell side, in layout units.
+Finest :: (session: Session) -> float32 {
+    finest: float32 = 1000.0
+    for index: 0..PendingPaintCount(session) - 1 {
+        command := PendingPaintAt(session, cast(s32)index)
+        if command.bounds.width < finest { finest = command.bounds.width }
+        if command.bounds.height < finest { finest = command.bounds.height }
+    }
+    return finest
+}
+
+#program_export
+main :: () -> s32 {
+    // A triangle has slanted, anti-aliased edges down to single cells.
+    shape := "F:M4 4H20L12 20Z"
+    bounds := Rectangle.{0.0, 0.0, 24.0, 24.0}
+    plain := SessionOpen()
+    PaintSvgIcon(plain, 0, shape, bounds, Color.{0, 0, 0, 255})
+    if PendingPaintCount(plain) == 0 || Finest(plain) != 1.0 { return 1 }
+    SetPaintPixelScale(2.0)
+    if PaintPixelScale() != 2.0 { return 2 }
+    scaled := SessionOpen()
+    PaintSvgIcon(scaled, 0, shape, bounds, Color.{0, 0, 0, 255})
+    if PendingPaintCount(scaled) <= PendingPaintCount(plain) || Finest(scaled) != 0.5 { return 3 }
+    // No scale or a nonsensical one paints at layout size.
+    SetPaintPixelScale(0.0)
+    if PaintPixelScale() != 1.0 { return 4 }
+    return 0
+}

@@ -219,3 +219,18 @@ StyleTokenColor :: (name: string) -> Color {
 GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
     return RectangleIntersection(a, b)
 }
+
+// Screen pixels per layout unit, set by a host that scales the whole frame
+// (density or zoom). Paint rasterized before it reaches the host, such as
+// icons, uses it to stay sharp; it is 1 on hosts that draw at layout size.
+paint_pixel_scale: float32 = 1.0;
+
+#program_export
+SetPaintPixelScale :: (scale: float32) {
+    paint_pixel_scale = ifx scale > 0.0 then scale else 1.0
+}
+
+#program_export
+PaintPixelScale :: () -> float32 {
+    return paint_pixel_scale
+}

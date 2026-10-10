@@ -7,7 +7,8 @@
 #import "svg_shape"
 
 SVG_ICON_CACHE :: 48;
-SVG_ICON_MAX :: 64;
+// Pixels across the largest cached raster: 48 units at density 2.
+SVG_ICON_MAX :: 96;
 SVG_ICON_LEVELS :: 32;
 
 SvgIconEntry :: struct {
@@ -54,7 +55,8 @@ SvgIconSlot :: (shape: string, size: s32) -> s32 {
     return slot
 }
 
-// Paints shape inside bounds in color. The icon is drawn square and centered.
+// Paints shape inside bounds in color. The icon is drawn square and centered,
+// rasterized at the host's screen pixels so a scaled frame keeps it sharp.
 #program_export
 PaintSvgIcon :: (session: Session, node: s32, shape: string, bounds: Rectangle,
     color: Color) {
@@ -63,7 +65,7 @@ PaintSvgIcon :: (session: Session, node: s32, shape: string, bounds: Rectangle,
     }
     edge: float32 = bounds.width
     if bounds.height < edge { edge = bounds.height }
-    size: s32 = cast(s32)(edge + 0.5)
+    size: s32 = cast(s32)(edge * PaintPixelScale() + 0.5)
     if size < 1 { size = 1 }
     if size > SVG_ICON_MAX { size = SVG_ICON_MAX }
     slot: s32 = SvgIconSlot(shape, size)
