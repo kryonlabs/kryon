@@ -9,6 +9,35 @@ using Drawing :: #import "drawing_props";
 
 TextCellWidth :: (font: s32) -> s32 { return Glyphs.PixmapCellWidth(font) }
 
+// Bounds, clip and font are already in device pixels. Both Unicode cells and
+// printable runs use this mask path, including narrow-cell resampling.
+RasterCellGlyph :: (glyph: s32, bounds: Rectangle, font: s32,
+    color: Color, advance: s32) {
+    baseline := cast(s64)bounds.y * 256 + Glyphs.PixmapCellBaseline(glyph, font)
+    mask: Glyphs.PixmapGlyphMask
+    origin := cast(s32)bounds.x + (cast(s32)bounds.width - advance) / 2
+    coverage := Glyphs.PixmapCachedGlyph(glyph, cast(s64)origin * 256, baseline, font, *mask)
+    if mask.width <= 0 || mask.height <= 0 || coverage.count == 0 { return }
+    width := mask.width
+    if width > cast(s32)bounds.width - 1 { width = cast(s32)bounds.width - 1 }
+    // Natural-width glyphs need no horizontal resampling.
+    if width == mask.width { Pixels.PixmapBlendMask(mask, coverage, color); return }
+    left := cast(s32)bounds.x + (cast(s32)bounds.width - width) / 2
+    for row: 0..mask.height - 1 {
+        y := mask.top + row
+        if y < Pixels.pixmap_clip_top || y >= Pixels.pixmap_clip_bottom { continue }
+        for column: 0..width - 1 {
+            x := left + column
+            if x < Pixels.pixmap_clip_left || x >= Pixels.pixmap_clip_right { continue }
+            start := column * mask.width / width
+            end := (column + 1) * mask.width / width
+            sum: s32
+            for source: start..end - 1 { sum += cast(s32)coverage[row * mask.width + source] }
+            Pixels.PixmapBlend(x, y, color, sum / (end - start))
+        }
+    }
+}
+
 RasterTextCell :: (value: string, bounds: Rectangle, font: s32,
     color: Color, clip: Rectangle) {
     if font <= 0 || bounds.width <= 1.0 || bounds.height <= 0.0 { return }
@@ -28,32 +57,7 @@ RasterTextCell :: (value: string, bounds: Rectangle, font: s32,
         }
         if unit.glyph < 0 { continue }
         glyph := Glyphs.PixmapCellGlyph(unit.glyph)
-        baseline := cast(s64)bounds.y * 256 + Glyphs.PixmapCellBaseline(glyph, font)
-        mask: Glyphs.PixmapGlyphMask
-        origin := cast(s32)bounds.x + (cast(s32)bounds.width - TextCellWidth(font)) / 2
-        coverage := Glyphs.PixmapCachedGlyph(glyph, cast(s64)origin * 256, baseline, font, *mask)
-        if mask.width <= 0 || mask.height <= 0 || coverage.count == 0 { continue }
-        width := mask.width
-        if width > cast(s32)bounds.width - 1 { width = cast(s32)bounds.width - 1 }
-        // Natural-width glyphs need no horizontal resampling. Reuse the
-        // ordinary clipped mask path instead of dividing for every pixel.
-        if width == mask.width { Pixels.PixmapBlendMask(mask, coverage, color); continue }
-        left := mask.left
-        if width != mask.width { left = cast(s32)bounds.x + (cast(s32)bounds.width - width) / 2 }
-        for row: 0..mask.height - 1 {
-            y := mask.top + row
-            if y < Pixels.pixmap_clip_top || y >= Pixels.pixmap_clip_bottom { continue }
-            for column: 0..width - 1 {
-                x := left + column
-                if x < Pixels.pixmap_clip_left || x >= Pixels.pixmap_clip_right { continue }
-                // Average each source span when a wide glyph is reduced.
-                start := column * mask.width / width
-                end := (column + 1) * mask.width / width
-                sum: s32
-                for source: start..end - 1 { sum += cast(s32)coverage[row * mask.width + source] }
-                Pixels.PixmapBlend(x, y, color, sum / (end - start))
-            }
-        }
+        RasterCellGlyph(glyph, bounds, font, color, TextCellWidth(font))
     }
     Pixels.PixmapClipAll()
 }
@@ -91,13 +95,36 @@ CellRunValid :: (value: string, first: s32, cell_width: s32, font: s32) -> bool 
 RasterTextCells :: (value: string, row: Rectangle, first: s32,
     cell_width: s32, font: s32, color: Color, clip: Rectangle) {
     if !CellRunValid(value, first, cell_width, font) { return }
+    if cell_width <= 1 || row.height <= 0.0 { return }
+    device_font := Pixels.PixmapDeviceFont(font)
+    device_clip := Pixels.PixmapDeviceBounds(clip)
+    advance: s32
+    // Lookup once for each distinct ASCII byte in this run. Coverage remains
+    // borrowed for only one glyph, so cache eviction cannot stale a mask.
+    glyphs: [95]s32
+    found: [95]bool
+    clipped: bool
     for at: 0..cast(s32)value.count - 1 {
-        if value[at] == cast(u8)32 { continue }
+        byte := value[at]
+        if byte == cast(u8)32 { continue }
+        if !clipped { advance = TextCellWidth(device_font); clipped = true }
+        index := cast(s32)byte - 32
+        if !found[index] {
+            glyphs[index] = Glyphs.PixmapCellGlyph(Glyphs.PixmapGlyphFor(cast(u32)byte))
+            found[index] = true
+        }
+        glyph := glyphs[index]
+        if glyph < 0 { continue }
         cell := row
         cell.x = row.x + cast(float32)((first + at) * cell_width)
         cell.width = cast(float32)cell_width
-        RasterTextCell(value[at:at + 1], cell, font, color, clip)
+        // Preserve each original logical-to-device conversion, including
+        // fractional origins and densities; do not round a row once and step.
+        cell = Pixels.PixmapDeviceBounds(cell)
+        Pixels.PixmapClipPixels(RectangleIntersection(cell, device_clip))
+        RasterCellGlyph(glyph, cell, device_font, color, advance)
     }
+    if clipped { Pixels.PixmapClipAll() }
 }
 
 EmitTextCells :: (command: Paint.PaintCommand) {

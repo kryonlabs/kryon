@@ -2,11 +2,85 @@
 #import "pixmap_text"
 #import "drawing_props"
 #import "geometry"
+Font :: #import "pixmap_font";
+Unicode :: #import "std/utf8";
+
+// The original sorted-font lookup and UTF-8 path remain the oracle for the
+// direct ASCII path, including controls, invalid bytes and variation selectors.
+ReferenceGlyph :: (code: s32) -> s32 {
+    Font.PixmapFontReady()
+    low: s32; high: s32 = Font.PixmapFontGlyphs - 1
+    while low <= high {
+        middle := (low + high) / 2
+        found := Font.pixmap_font_codes[middle]
+        if found == code { return middle }
+        if found < code { low = middle + 1 } else { high = middle - 1 }
+    }
+    return -1
+}
+
+ReferenceUnit :: (value: string, at: s32) -> PixmapTextUnit {
+    unit: PixmapTextUnit; unit.after = at; unit.glyph = -1; unit.emoji = -1
+    point := Unicode.Decode(value, at)
+    if point.after <= at { return unit }
+    unit.after = point.after
+    code := cast(s32)point.value
+    if point.value > cast(u32)1114111 { code = 63 }
+    if PixmapEmojiModifier(code) { return unit }
+    exact := ReferenceGlyph(code); emoji := PixmapEmojiFor(code)
+    if emoji >= 0 {
+        next: s32
+        if point.after < cast(s32)value.count {
+            following := Unicode.Decode(value, point.after)
+            if following.after > point.after { next = cast(s32)following.value }
+        }
+        shown := next == 65039 || exact < 0 || PixmapEmojiDefault(code)
+        if next == 65038 && exact >= 0 { shown = false }
+        if shown { unit.emoji = emoji; unit.advance = cast(s64)PixmapTextLine; return unit }
+    }
+    unit.glyph = exact
+    if unit.glyph < 0 { unit.glyph = ReferenceGlyph(63) }
+    if unit.glyph < 0 { unit.glyph = 0 }
+    unit.advance = cast(s64)Font.pixmap_font_advances[unit.glyph]
+    return unit
+}
+
+CheckUnits :: (value: string) -> bool {
+    for end: cast(s32)0..cast(s32)value.count {
+        for at: cast(s32)-1..end + 1 {
+            actual := PixmapNextUnit(value[:end], at)
+            expected := ReferenceUnit(value[:end], at)
+            if actual.after != expected.after || actual.glyph != expected.glyph ||
+                actual.emoji != expected.emoji || actual.advance != expected.advance { return false }
+        }
+    }
+    return true
+}
+
+CheckGlyphs :: () -> bool {
+    Font.PixmapFontReady()
+    for index: cast(s32)0..Font.PixmapFontGlyphs - 1 {
+        code := Font.pixmap_font_codes[index]
+        if PixmapGlyphExact(code) != index { return false }
+        if index + 1 < Font.PixmapFontGlyphs && code + 1 < Font.pixmap_font_codes[index + 1] {
+            if PixmapGlyphExact(code + 1) != -1 { return false }
+        }
+    }
+    for code: cast(s32)-1..159 {
+        if PixmapGlyphExact(code) != ReferenceGlyph(code) { return false }
+    }
+    bytes: [2]u8
+    for code: cast(s32)0..255 {
+        bytes[0] = cast(u8)code; bytes[1] = cast(u8)65
+        if !CheckUnits(TextView(bytes[:])) { return false }
+    }
+    return CheckUnits("A️ #️ 1️ café Á ☀︎ ☀️ ❤️ 👍🏽 \u200d🚀 日本語")
+}
 
 ReferenceWidth :: (value: string, font: s32) -> s32 {
     at: s32 = 0; units: s64 = 0
     while at < cast(s32)value.count {
-        unit := PixmapNextUnit(value, at)
+        unit := ReferenceUnit(value, at)
         if unit.after <= at { break }; at = unit.after; units += unit.advance
     }
     return PixmapTextWidth(units, font)
@@ -55,6 +129,7 @@ CheckFill :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Color) -> 
 
 #program_export
 main :: () -> s32 {
+    if !CheckGlyphs() { return 17 }
     // Growing text can also replace its old tail. A new selector changes
     // the preceding emoji's advance, including before an ASCII tail.
     unused MeasureGlyphWidth("☀A", 14, "")

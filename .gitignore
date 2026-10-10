@@ -15,6 +15,7 @@ build/
 dist/
 assets/fonts/*
 !assets/fonts/LiberationSans-Regular.ttf
+!assets/fonts/LiberationMono-Regular.ttf
 !assets/fonts/LICENSE-Liberation
 !assets/fonts/DejaVuSans.ttf
 !assets/fonts/LICENSE-DejaVu
