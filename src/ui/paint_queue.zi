@@ -457,8 +457,15 @@ ClipImage :: (command: PaintCommand, geometry: NodeGeometry) -> PaintCommand {
 
 #program_export
 SubmitPaint :: (session: Session, command: QueuedPaint) {
+    QueuePaint(session, *command)
+}
+
+// Widget painters own their local command until this call returns. Borrow it
+// while adjusting geometry and copy it once into the pending queue. Public
+// SubmitPaint keeps its value semantics for callers that reuse their command.
+QueuePaint :: (session: Session, command: *QueuedPaint) {
     if command.data.node < 0 && !TreeIsBuilding(session) {
-        EmitPaint(command)
+        EmitPaint(command.*)
         return
     }
     layer_node := command.data.node
@@ -511,7 +518,7 @@ SubmitPaint :: (session: Session, command: QueuedPaint) {
     destination := SessionIndex(session)
     KeepPaintText(destination, *command.data)
     KeepPaintAsset(destination, *command.data)
-    if !VecPush(pending_paint[destination].items, command) {
+    if !VecPush(pending_paint[destination].items, command.*) {
         pending_paint[destination].overflow = true
     }
 }
@@ -531,7 +538,7 @@ PaintLine :: (session: Session, node: s32, bounds: Rectangle,
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
-    SubmitPaint(session, command)
+    QueuePaint(session, *command)
 }
 
 // Corner radius that turns bounds into a pill, or a circle when square.
@@ -561,7 +568,7 @@ PaintRoundedFill :: (session: Session, node: s32, bounds: Rectangle, radius: flo
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
-    SubmitPaint(session, command)
+    QueuePaint(session, *command)
 }
 
 // Queued with the other paint so it lands above images submitted earlier in
@@ -582,7 +589,7 @@ PaintVerticalGradient :: (session: Session, node: s32, bounds: Rectangle,
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
-    SubmitPaint(session, command)
+    QueuePaint(session, *command)
 }
 
 #program_export
@@ -603,7 +610,7 @@ PaintRoundedOutline :: (session: Session, node: s32, bounds: Rectangle, radius: 
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
-    SubmitPaint(session, command)
+    QueuePaint(session, *command)
 }
 
 #program_export
@@ -624,7 +631,7 @@ PaintLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
     command.has_emitter = true
     command.builtin_emitter = true
     command.clips = true
-    SubmitPaint(session, command)
+    QueuePaint(session, *command)
 }
 
 #program_export
@@ -646,7 +653,7 @@ PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32
     command.has_emitter = true
     command.builtin_emitter = true
     command.clips = true
-    SubmitPaint(session, command)
+    QueuePaint(session, *command)
 }
 
 #program_export
@@ -674,7 +681,7 @@ PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
     command.has_emitter = true
     command.builtin_emitter = true
     command.clips = true
-    SubmitPaint(session, command)
+    QueuePaint(session, *command)
 }
 
 #program_export
