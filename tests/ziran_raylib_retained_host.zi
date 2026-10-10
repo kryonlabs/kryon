@@ -10,6 +10,8 @@ completeness_checks: s32;
 begins: s32;
 ends: s32;
 presented: u32;
+last_source: Rectangle;
+last_destination: Rectangle;
 
 #program_export
 LoadRenderTexture :: (width: s32, height: s32) -> HostRaylibRenderTexture {
@@ -54,10 +56,10 @@ EndTextureMode :: () {}
 #program_export
 DrawTexturePro :: (texture: Texture2D, source: Rectangle, destination: Rectangle,
     origin: Vector2, rotation: float32, tint: Color) {
-    unused source
-    unused destination
     unused origin
     unused rotation
     unused tint
     presented = texture.id
+    last_source = source
+    last_destination = destination
 }
