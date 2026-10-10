@@ -79,6 +79,8 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
 
 #program_export
 AndroidRunMain :: () -> s32 {
+    AndroidJniKeepHostThread()
+    defer { AndroidJniReleaseHostThread() }
     if !OpenRaylib() {
         CloseRaylib()
         return AndroidError("kryon: could not open the android window")
