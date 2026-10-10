@@ -1,0 +1,50 @@
+Desktop :: #import "desktop_runtime";
+Raster :: #import "cairo_raster";
+
+Pixel :: (x: s32, y: s32, expected: u32) -> bool {
+    pixels := cast(*u32)Raster.RasterSurfaceData()
+    return pixels[y * (Raster.RasterSurfaceStride() / 4) + x] == expected
+}
+
+Red :: (size: float32) {
+    Raster.RasterRoundedRectangle(.{0.0, 0.0, size, size}, 0.0, 0, .{220, 40, 60, 255})
+}
+
+main :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 1 }
+    defer Desktop.CloseDesktop()
+    Desktop.BeginDesktopFrame()
+    if Desktop.DesktopFrameReusable() { return 2 }
+    Red(100.0)
+    if !Desktop.EndDesktopFrame() || !Pixel(50, 50, cast(u32)0xffdc283c) { return 3 }
+    for i: 0..29 {
+        Desktop.BeginDesktopFrame()
+        if !Desktop.DesktopFrameReusable() || !Pixel(50, 50, cast(u32)0xffdc283c) { return 4 }
+        Desktop.DesktopFrameUnchanged(true)
+        if !Desktop.EndDesktopFrame() || !Pixel(50, 50, cast(u32)0xffdc283c) { return 5 }
+    }
+    // A smaller changed picture clears the old geometry before drawing.
+    Desktop.BeginDesktopFrame()
+    Red(30.0)
+    if !Desktop.EndDesktopFrame() || !Pixel(10, 10, cast(u32)0xffdc283c) ||
+        !Pixel(50, 50, cast(u32)0xfff8fafc) { return 6 }
+    // An empty changed picture also replaces the old pixels.
+    Desktop.BeginDesktopFrame()
+    if !Desktop.EndDesktopFrame() || !Pixel(10, 10, cast(u32)0xfff8fafc) { return 7 }
+    Desktop.BeginDesktopFrame(); Red(100.0)
+    if !Desktop.EndDesktopFrame() { return 8 }
+    // Deferred clearing must occur before a text command establishes a clip.
+    Desktop.BeginDesktopFrame()
+    Raster.RasterTextClipped("", 0, 0, 14, .{0, 0, 0, 255}, .{0.0, 0.0, 20.0, 20.0})
+    if !Desktop.EndDesktopFrame() || !Pixel(50, 50, cast(u32)0xfff8fafc) { return 9 }
+    if !Desktop.ResizeDesktop(180, 140) { return 10 }
+    Desktop.BeginDesktopFrame()
+    if Desktop.DesktopFrameReusable() { return 11 }
+    Red(100.0)
+    if !Desktop.EndDesktopFrame() || !Pixel(50, 50, cast(u32)0xffdc283c) { return 12 }
+    // Ordinary raster hosts retain their immediate clearing behavior.
+    Raster.BeginRasterFrame()
+    if !Pixel(50, 50, cast(u32)0xfff8fafc) || !Raster.FinishRasterFrame() { return 13 }
+    print("Retained Cairo pixels survive idle frames; changed, empty, clipped and resized frames replace them\n")
+    return 0
+}

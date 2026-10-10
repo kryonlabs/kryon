@@ -29,6 +29,7 @@ ReadBundleInput :: () -> BundleInput #foreign host_api;
 TakeBundleCodepoint :: () -> s32 #foreign host_api;
 BundleTextInputHost :: (focused: bool) #foreign host_api;
 BundleFrameFinishedHost :: (unchanged: bool) #foreign host_api;
+BundleFrameReusableHost :: () -> bool #foreign host_api;
 
 using FrameStatus;
 using WidgetKind;
@@ -80,7 +81,7 @@ main :: () -> s32 {
         TreeCancel(bundle_session)
         return result
     }
-    finished := EndFrameRetained(bundle_session, false, Clock.Observe(*bundle_activity, active))
+    finished := EndFrameRetained(bundle_session, BundleFrameReusableHost(), Clock.Observe(*bundle_activity, active))
     if finished.status != cast(FrameStatus)FrameOk { return 1 }
     BundleFrameFinishedHost(finished.paint_unchanged)
     BundleTextInputHost(TreeTextInputActive(bundle_session))

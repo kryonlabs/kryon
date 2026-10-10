@@ -50,7 +50,8 @@ Supported :: (module: string, function: string) -> bool {
     }
     if ModuleName(module, "zib_run") {
         return function == "ReadBundleInput" || function == "TakeBundleCodepoint" ||
-            function == "BundleTextInputHost" || function == "BundleFrameFinishedHost"
+            function == "BundleTextInputHost" || function == "BundleFrameFinishedHost" ||
+            function == "BundleFrameReusableHost"
     }
     if ModuleName(module, "font_metrics") {
         return function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight"
@@ -200,6 +201,11 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.kind = HostUnsigned; result.bits = cast(u64)Theme.SystemThemeColorHost(cast(s32)args[0].integer); return 1
     }
     if function=="BundleTextInputHost" && count==1 && args[0].kind==HostInteger { return 1 }
+    if function == "BundleFrameReusableHost" && count == 0 {
+        result.kind = HostInteger
+        result.integer = cast(s64)DesktopFrameReusable()
+        return 1
+    }
     if function == "BundleFrameFinishedHost" && count == 1 && args[0].kind == HostInteger {
         DesktopFrameUnchanged(args[0].integer != 0)
         return 1
