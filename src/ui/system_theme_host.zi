@@ -27,6 +27,14 @@ Token :: (name: string, value: u32) {
     bytes: [32]u8; for i: 0..cast(s32)name.count-1 { bytes[i] = name[i] }
     unused Drawing.SetStyleTokenColorBytes(bytes[:cast(s32)name.count], value)
 }
+// The colors of one button tone and emphasis; fields names the ones it sets.
+ButtonColors :: (rules: *Sheet.StyleRules, tone: s32, emphasis: s32, fields: u32,
+    background: u32, foreground: u32, border: u32, state: s32 = 0) {
+    item := *rules.items[rules.count]; item.selector = Sheet.StyleDefaultSelector(); item.selector.kind = Sheet.StyleKindButton()
+    item.selector.tone = tone; item.selector.emphasis = emphasis; item.state = state
+    item.style.fields = fields; item.style.background = background; item.style.foreground = foreground; item.style.border = border
+    rules.count += 1
+}
 // Installing plain palette roles avoids parsing an entire style sheet in the
 // portable frame. The same rules and tokens are used on native targets.
 SystemPaletteInstall :: (palette: SystemPalette) -> bool {
@@ -34,16 +42,34 @@ SystemPaletteInstall :: (palette: SystemPalette) -> bool {
     button := CssMix(bg, fg, 0.10); hover := CssMix(bg, fg, 0.16)
     Rule(*rules, Sheet.StyleKindApp(), bg, fg); Rule(*rules, Sheet.StyleKindSurface(), palette.base, fg)
     Rule(*rules, Sheet.StyleKindText(), bg, fg)
-    Rule(*rules, Sheet.StyleKindButton(), button, fg)
-    Rule(*rules, Sheet.StyleKindButton(), hover, fg, 2)
-    Rule(*rules, Sheet.StyleKindButton(), hover, fg, 4)
-    Rule(*rules, Sheet.StyleKindButton(), hover, fg, 7)
     Rule(*rules, Sheet.StyleKindTextField(), button, fg)
+    // Every button takes the palette's text size, corners and focus ring.
+    shape := *rules.items[rules.count]; shape.selector = Sheet.StyleDefaultSelector(); shape.selector.kind = Sheet.StyleKindButton(); rules.count += 1
     for i: 0..rules.count-1 {
         if rules.items[i].selector.kind == Sheet.StyleKindButton() || rules.items[i].selector.kind == Sheet.StyleKindTextField() {
             rules.items[i].style.fields |= cast(u32)Controls.StyleField.StyleFontSize | cast(u32)Controls.StyleField.StyleRadius | cast(u32)Controls.StyleField.StyleFocus
             rules.items[i].style.font_size = 15.0; rules.items[i].style.radius = 6.0; rules.items[i].style.focus = palette.selected
         }
+    }
+    // Buttons keep their tone and emphasis: each tone takes its palette role
+    // (accent is the selection color), and only filled and soft buttons get a
+    // background. Neutral buttons that are not filled use the text color.
+    fills: [5]u32 = .{button, palette.selected, palette.danger, palette.success, palette.warning}
+    inks: [5]u32 = .{fg, palette.selected_text, CssPack(255, 255, 255, 255), CssPack(255, 255, 255, 255), CssPack(0x11, 0x18, 0x27, 255)}
+    paint := cast(u32)Controls.StyleField.StyleBackground | cast(u32)Controls.StyleField.StyleForeground
+    ink := cast(u32)Controls.StyleField.StyleForeground
+    edge := ink | cast(u32)Controls.StyleField.StyleBorder
+    for index: 0..4 {
+        tone := cast(s32)index; fill := fills[index]; mark := ifx tone == 0 then fg else fill
+        lit := ifx tone == 0 then hover else CssMix(fill, fg, 0.12)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, fill, inks[index], 0)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, lit, inks[index], 0, 2)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, lit, inks[index], 0, 4)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, lit, inks[index], 0, 7)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisSoft, paint, CssMix(bg, mark, 0.16), mark, 0)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisOutline, edge, 0, mark, ifx tone == 0 then palette.border else fill)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisGhost, ink, 0, mark, 0)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisLink, ink, 0, mark, 0)
     }
     if !Sheet.InstallStyleRules(rules) { return false }
     Token("canvas", bg); Token("surface", palette.base); Token("card", palette.base); Token("text", fg)

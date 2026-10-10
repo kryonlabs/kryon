@@ -1,0 +1,63 @@
+// A system palette colors buttons by tone and keeps their emphasis: accent
+// takes the selection color, ghost and outline buttons stay transparent.
+#import "system_theme_host"
+#import "system_theme"
+#import "style_sheet"
+#import "style"
+#import "control_props"
+using ButtonTone;
+using ButtonEmphasis;
+using ButtonState;
+using StyleField;
+
+failures: s32;
+Check :: (ok: bool, name: string) { if !ok { failures += 1; print("FAIL: %\n", name) } }
+
+// The widget's own face, marked so an unchanged field is visible.
+Untouched :: 0x01020304
+Base :: () -> StyleData {
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground | cast(u32)StyleBorder | cast(u32)StyleFontSize
+    face.background = cast(u32)Untouched; face.foreground = cast(u32)Untouched; face.border = cast(u32)Untouched
+    face.font_size = 11.0
+    return face
+}
+Face :: (kind: s32, tone: s32, emphasis: s32, state: s32) -> StyleData {
+    facts := StyleControlRoleFacts(kind, 0, 0, StyleAny(), tone, emphasis, 0, state)
+    return ResolveInstalledStyleRules(Base(), facts, state)
+}
+
+#program_export
+main :: () -> s32 {
+    palette := SystemPaletteFallback(false)
+    palette.selected = CssPack(29, 185, 84, 255)
+    Check(SystemPaletteInstall(palette), "palette installs")
+    bg := palette.background; fg := palette.text
+    button := StyleKindButton()
+
+    plain := Face(button, ButtonToneNeutral, ButtonEmphasisFilled, 0)
+    Check(plain.background == CssMix(bg, fg, 0.10) && plain.foreground == fg && plain.font_size == 15.0, "plain buttons take the palette's button color")
+    hover := Face(button, ButtonToneNeutral, ButtonEmphasisFilled, cast(s32)ButtonStateHover)
+    Check(hover.background == CssMix(bg, fg, 0.16), "plain buttons keep a hover color")
+
+    accent := Face(button, ButtonToneAccent, ButtonEmphasisFilled, 0)
+    Check(accent.background == palette.selected && accent.foreground == palette.selected_text && accent.font_size == 15.0, "accent buttons take the selection color")
+    success := Face(button, ButtonToneSuccess, ButtonEmphasisFilled, 0)
+    Check(success.background == palette.success, "success buttons take the palette's success color")
+    danger := Face(button, ButtonToneDanger, ButtonEmphasisFilled, 0)
+    Check(danger.background == palette.danger, "danger buttons take the palette's danger color")
+
+    ghost := Face(button, ButtonToneNeutral, ButtonEmphasisGhost, 0)
+    Check(ghost.background == cast(u32)Untouched && ghost.foreground == fg && ghost.font_size == 15.0, "ghost buttons stay transparent with the text color")
+    chosen := Face(button, ButtonToneAccent, ButtonEmphasisGhost, cast(s32)ButtonStateSelected)
+    Check(chosen.background == cast(u32)Untouched && chosen.foreground == palette.selected, "selected accent ghost buttons use the selection color")
+    outline := Face(button, ButtonToneDanger, ButtonEmphasisOutline, 0)
+    Check(outline.background == cast(u32)Untouched && outline.foreground == palette.danger && outline.border == palette.danger, "outline buttons keep their tone's border")
+    link := Face(button, ButtonToneNeutral, ButtonEmphasisLink, 0)
+    Check(link.background == cast(u32)Untouched && link.foreground == fg, "link buttons keep no background")
+
+    field := Face(StyleKindTextField(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
+    Check(field.background == CssMix(bg, fg, 0.10) && field.font_size == 15.0, "text fields keep the palette's field color")
+    print("System palette buttons: % failures\n", failures)
+    return ifx failures == 0 then 0 else 1
+}
