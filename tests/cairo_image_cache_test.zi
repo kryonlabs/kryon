@@ -1,0 +1,43 @@
+Raster :: #import "cairo_raster";
+#import "std/byte_text_linux"
+#import "std/format"
+#import "std/vec"
+
+c :: #system_library "c";
+Free :: (bytes: *void) #foreign c "free";
+Release :: (text: string) {
+    descriptor := cast(*TextDescriptor)*text
+    Free(cast(*void)descriptor.data)
+}
+
+Path :: (root: string, index: s32) -> string {
+    text: Vec(u8)
+    BuilderPrint(*text, "%/image-%.png", root, index)
+    return BuilderFinish(text)
+}
+
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    root := TextFromCString(argv[1])
+    defer Raster.CloseRaster()
+    for index: 0..130 {
+        path := Path(root, cast(s32)index)
+        defer Release(path)
+        image := Raster.LoadPNG(path)
+        if image == null || Raster.ImageWidth(path) != index + 1 ||
+            Raster.ImageHeight(path) != 3 { return 2 }
+        if Raster.LoadPNG(path) != image { return 3 }
+    }
+    // The oldest entries have been evicted. Reloading them must retain the
+    // exact dimensions, including different paths with equal-length prefixes.
+    for index: 0..130 {
+        path := Path(root, cast(s32)index)
+        defer Release(path)
+        if Raster.ImageHeight(path) != 3 || Raster.ImageWidth(path) != index + 1 { return 4 }
+    }
+    missing := Path(root, -1)
+    defer Release(missing)
+    if Raster.ImageWidth("") != 0 || Raster.ImageHeight(missing) != 0 { return 5 }
+    print("Cairo cached and evicted images retain their exact paths and dimensions\n")
+    return 0
+}
