@@ -10,14 +10,16 @@ session_epochs: [9]u64;
 
 #program_export
 SessionValid :: (session: Session) -> bool {
-    return session.slot > 0 && session.slot < 9 &&
-        session_active[session.slot] &&
-        session_epochs[session.slot] == session.epoch
+    return SessionIndex(session) != 0
 }
 
 #program_export
 SessionIndex :: (session: Session) -> s32 {
-    if SessionValid(session) { return session.slot }
+    if session.slot > 0 && session.slot < 9 &&
+        session_active[session.slot] &&
+        session_epochs[session.slot] == session.epoch {
+        return session.slot
+    }
     return 0
 }
 
