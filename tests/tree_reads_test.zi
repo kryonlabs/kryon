@@ -1,0 +1,68 @@
+#import "session"
+#import "tree"
+#import "widget_kind"
+using Geometry :: #import "geometry";
+using WidgetKind;
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    bounds: Rectangle = .{0.0, 0.0, 500.0, 400.0}
+    child_bounds: Rectangle = .{12.0, 20.0, 45.0, 30.0}
+    TreeStart(session, cast(u64)91, bounds)
+    modal := TreeSubmit(session, cast(u64)10, 0, WidgetKindModal, bounds)
+    child := TreeSubmit(session, cast(u64)77, modal, WidgetKindButton, child_bounds)
+    nested := TreeSubmit(session, cast(u64)20, modal, WidgetKindModal, bounds)
+    inside := TreeSubmit(session, cast(u64)88, nested, WidgetKindButton, child_bounds)
+    if modal < 0 || child < 0 || nested < 0 || inside < 0 { return 2 }
+    TreeSetInteractive(session, child, false, true, 21)
+    snapshot := TreeSubmittedGeometryAt(session, child)
+    if snapshot.bounds.x != 12.0 || snapshot.measured_bounds.width != 45.0 ||
+        TreeOverlayLayerAt(session, child, false) != modal + 1 ||
+        TreeOverlayLayerAt(session, inside, false) != nested + 1 ||
+        TreeOverlayLayerAt(session, child, true) != 0 || !TreeFinish(session) { return 3 }
+    original := TreeInputAt(session, child)
+    if !original.interactive || !original.loading || original.disabled || original.focus_id != 21 ||
+        original.bounds.x != 12.0 || TreeOverlayLayerAt(session, inside, true) != nested + 1 { return 4 }
+
+    // Committed reads remain on the accepted frame while a different frame is
+    // submitted. Snapshots returned to callers never alias later tree changes.
+    TreeStart(session, cast(u64)91, bounds)
+    current_modal := TreeSubmit(session, cast(u64)10, 0, WidgetKindModal, bounds)
+    changed: Rectangle = .{90.0, 80.0, 70.0, 60.0}
+    current_child := TreeSubmit(session, cast(u64)77, current_modal, WidgetKindButton, changed)
+    TreeSetInteractive(session, current_child, true, false, 22)
+    if TreePrevious(session, current_modal, cast(u64)77, WidgetKindButton) != child ||
+        TreeSubmitted(session, current_modal, cast(u64)77, WidgetKindButton) != current_child ||
+        TreeSubmittedGeometryAt(session, current_child).bounds.x != 90.0 ||
+        TreeInputAt(session, child).focus_id != 21 || snapshot.bounds.x != 12.0 ||
+        original.bounds.x != 12.0 { return 5 }
+    TreeCancel(session)
+    if TreeInputAt(session, child).focus_id != 21 ||
+        TreeOverlayLayerAt(session, inside, true) != nested + 1 { return 6 }
+
+    // A nested modal changes layer selection; deleting it and accepting the
+    // replacement frame must not leave an index into the former tree.
+    TreeStart(session, cast(u64)91, bounds)
+    current_modal = TreeSubmit(session, cast(u64)10, 0, WidgetKindModal, bounds)
+    current_child = TreeSubmit(session, cast(u64)77, current_modal, WidgetKindButton, changed)
+    TreeSetInteractive(session, current_child, true, false, 22)
+    if !TreeFinish(session) || TreeInputAt(session, current_child).focus_id != 22 ||
+        TreeOverlayLayerAt(session, current_child, true) != current_modal + 1 ||
+        TreeOverlayLayerAt(session, inside, true) != 0 ||
+        snapshot.bounds.x != 12.0 || original.focus_id != 21 { return 7 }
+
+    TreeDispose(session)
+    if !SessionClose(session) { return 8 }
+    reopened := SessionOpen()
+    TreeStart(reopened, cast(u64)92, bounds)
+    unused TreeSubmit(reopened, cast(u64)77, 0, WidgetKindButton, changed)
+    if !TreeFinish(reopened) || reopened.slot != session.slot || reopened.epoch == session.epoch ||
+        TreeOverlayLayerAt(session, 1, true) != 0 || TreeInputAt(session, 1).interactive ||
+        TreeSubmittedGeometryAt(session, 1).bounds.width != 0.0 ||
+        snapshot.bounds.x != 12.0 || original.focus_id != 21 { return 9 }
+    TreeDispose(reopened)
+    unused SessionClose(reopened)
+    return 0
+}

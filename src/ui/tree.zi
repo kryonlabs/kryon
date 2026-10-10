@@ -301,6 +301,8 @@
         submitted_modal_layer: s32
         next_identity_generation: u64
         staged_identity_generation: u64
+        identity_index_valid: bool
+        identity_order_unchanged: bool
         building: bool
         error: FrameStatus
         // The widget that made the frame fail, so hosts can report it.
@@ -326,8 +328,12 @@
 
     TreeBuildOldIndex :: (session: Session) -> bool {
         slot: s32 = SessionIndex(session)
+        if trees[slot].identity_index_valid { return true }
         VecClear(trees[slot].slots)
-        if trees[slot].committed_count == 0 { return true }
+        if trees[slot].committed_count == 0 {
+            trees[slot].identity_index_valid = true
+            return true
+        }
         capacity: s32 = 8
         while cast(s64)capacity <= cast(s64)trees[slot].committed_count * 2 {
             if capacity > 1073741824 { return false }
@@ -350,6 +356,7 @@
             trees[slot].slots[position] = index
             index += 1
         }
+        trees[slot].identity_index_valid = true
         return true
     }
 
@@ -371,7 +378,7 @@
         }
         index = 0
         while index < trees[slot].submitted_count {
-            entry: NodeCore = trees[slot].submitted[index]
+            entry: *NodeCore = *trees[slot].submitted[index]
             if !entry.auto_key {
                 parent: u64 = TreeParentGeneration(session, index, false)
                 hash: u64 = TreeIdentityHash(parent, entry.key, 0)
@@ -395,7 +402,7 @@
         position: s32 = cast(s32)(hash & cast(u64)(capacity - 1))
         while trees[slot].slots[position] >= 0 {
             index: s32 = trees[slot].slots[position]
-            entry: NodeCore = trees[slot].committed[index]
+            entry: *NodeCore = *trees[slot].committed[index]
             if entry.key == key && entry.kind == kind &&
             entry.auto_key == auto_key &&
             (!auto_key || entry.auto_ordinal == auto_ordinal) &&
@@ -415,7 +422,7 @@
         slot: s32 = SessionIndex(session)
         if !trees[slot].building || parent_index < 0 ||
         parent_index >= trees[slot].submitted_count { return -1 }
-        parent: NodeCore = trees[slot].submitted[parent_index]
+        parent: *NodeCore = *trees[slot].submitted[parent_index]
         auto_key: bool = key == cast(u64)0
         ordinal: s32 = 0
         if auto_key {
@@ -591,7 +598,7 @@
         slot: s32 = SessionIndex(session)
         if !trees[slot].building || index < 0 ||
         index >= trees[slot].submitted_count { return geometry }
-        node: NodeCore = trees[slot].submitted[index]
+        node: *NodeCore = *trees[slot].submitted[index]
         geometry.bounds = node.bounds
         geometry.measured_bounds = node.measured_bounds
         geometry.clip = node.clip
@@ -736,6 +743,7 @@
         trees[slot].error_kind = 0
         trees[slot].staged_identity_generation =
         trees[slot].next_identity_generation
+        trees[slot].identity_order_unchanged = true
         VecClear(trees[slot].new_slots)
         if !TreeBuildOldIndex(session) {
             trees[slot].error = cast(FrameStatus)FrameAllocationFailed
@@ -916,6 +924,9 @@
         node.next_sibling = -1
         old_index: s32 = TreeFindOld(session, parent_generation,
             node.key, kind, node.auto_key, node.auto_ordinal)
+        // The existing lookup tells us whether every identity keeps its
+        // committed position. Geometry, semantics and state may still change.
+        if old_index != index { trees[slot].identity_order_unchanged = false }
         if old_index >= 0 {
             node.identity_generation = trees[slot].committed[old_index].identity_generation
         } else {
@@ -1087,6 +1098,11 @@
             return false
         }
         trees[slot].scope_depth = 0
+        // Reuse the lookup only for an accepted frame with identical identity
+        // ordering. Failed and cancelled submissions leave its owner intact.
+        trees[slot].identity_index_valid = trees[slot].identity_index_valid &&
+            trees[slot].identity_order_unchanged &&
+            trees[slot].submitted_count == trees[slot].committed_count
         VecSwap(trees[slot].committed, trees[slot].submitted)
         VecSwap(trees[slot].committed_semantics, trees[slot].submitted_semantics)
         VecSwap(trees[slot].committed_text, trees[slot].submitted_text)
@@ -1195,11 +1211,11 @@
         count := trees[slot].submitted_count
         if committed { count = trees[slot].committed_count }
         while index > 0 && index < count {
-            node: NodeCore
+            node: *NodeCore
             if committed {
-                node = trees[slot].committed[index]
+                node = *trees[slot].committed[index]
             } else {
-                node = trees[slot].submitted[index]
+                node = *trees[slot].submitted[index]
             }
             if node.kind == WidgetKindModal { return index + 1 }
             index = node.parent
@@ -1444,6 +1460,8 @@
         trees[slot].submitted_modal_layer = 0
         trees[slot].next_identity_generation = 0
         trees[slot].staged_identity_generation = 0
+        trees[slot].identity_index_valid = false
+        trees[slot].identity_order_unchanged = false
         trees[slot].building = false
     }
 
