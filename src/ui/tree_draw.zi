@@ -4,6 +4,7 @@
 #import "tree"
 #import "tree_input"
 #import "text_request"
+#import "text_input_platform"
 
 using FrameStatus;
 
@@ -13,6 +14,7 @@ BeginFrame :: (session: Session, screen_key: u64,
     bounds: Rectangle) -> FrameStatus {
     if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
     unused TreeKeyboardRoute(session)
+    TextInputFocusFrameBegin(session)
     PaintClear(session)
     frame_paint_unchanged[SessionIndex(session)] = false
     TreeStart(session, screen_key, bounds)

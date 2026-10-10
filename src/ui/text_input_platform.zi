@@ -25,8 +25,62 @@ TextKeyboardState :: struct {
     visible: bool
 }
 
+// Whether an editable text field or area held focus while a Session's frame
+// was built (`building`) and in its last finished frame (`last`). Hosts read
+// it to show the platform keyboard for any focused field.
+TextFocusFrameState :: struct {
+    owner: Session
+    building: bool
+    last: bool
+}
+
 text_input_queues: [9]TextInputQueueState;
 text_keyboards: [9]TextKeyboardState;
+text_focus_frames: [9]TextFocusFrameState;
+
+// An editable text field or area has focus in the frame being built.
+#program_export
+TextInputNoteFocused :: (session: Session) {
+    if !SessionValid(session) {
+        return
+    }
+    index := SessionIndex(session)
+    if !TextInputOwnerMatches(text_focus_frames[index].owner, session) {
+        text_focus_frames[index] = .{}
+        text_focus_frames[index].owner = session
+    }
+    text_focus_frames[index].building = true
+}
+
+// A new frame starts: the frame just built becomes the last one.
+#program_export
+TextInputFocusFrameBegin :: (session: Session) {
+    if !SessionValid(session) {
+        return
+    }
+    index := SessionIndex(session)
+    if !TextInputOwnerMatches(text_focus_frames[index].owner, session) {
+        text_focus_frames[index] = .{}
+        text_focus_frames[index].owner = session
+        return
+    }
+    text_focus_frames[index].last = text_focus_frames[index].building
+    text_focus_frames[index].building = false
+}
+
+// True while an editable text field or area has focus, read before or after
+// the next frame begins.
+#program_export
+TextInputFocused :: (session: Session) -> bool {
+    if !SessionValid(session) {
+        return false
+    }
+    index := SessionIndex(session)
+    if !TextInputOwnerMatches(text_focus_frames[index].owner, session) {
+        return false
+    }
+    return text_focus_frames[index].building || text_focus_frames[index].last
+}
 
 #program_export
 TextInputOwnerMatches :: (owner: Session, session: Session) -> bool {

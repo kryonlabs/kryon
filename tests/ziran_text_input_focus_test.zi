@@ -1,0 +1,55 @@
+// A focused editable text field asks the host for the platform keyboard
+// without any app flag; read-only and disabled fields never do.
+#import "session"
+#import "geometry"
+#import "text_field_widget"
+#import "text_input_platform"
+#import "text_input_props"
+#import "tree"
+#import "tree_draw"
+#import "ziran_composition_widget_host"
+#import "ziran_system_clipboard_host"
+
+using FrameStatus;
+
+DrawField :: (session: Session, focused: bool, read_only: bool,
+    disabled: bool) -> bool {
+    props: TextFieldProps
+    props.key = cast(u64)41
+    props.bounds = Rectangle.{20.0, 20.0, 220.0, 36.0}
+    props.value = "Diary"
+    props.label = "Entry"
+    props.cursor = 5
+    props.anchor = 5
+    props.focused = focused
+    props.focus_id = 41
+    props.read_only = read_only
+    props.disabled = disabled
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    unused TextField(session, props)
+    return EndFrame(session) == cast(FrameStatus)FrameOk
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    if TextInputFocused(session) { return 2 }
+    if !DrawField(session, true, false, false) { return 3 }
+    if !TextInputFocused(session) { return 4 }
+    // The focus seen last frame still holds until the next frame ends.
+    if !DrawField(session, false, false, false) { return 5 }
+    if !TextInputFocused(session) { return 6 }
+    if !DrawField(session, false, false, false) { return 7 }
+    if TextInputFocused(session) { return 8 }
+    if !DrawField(session, true, true, false) { return 9 }
+    if TextInputFocused(session) { return 10 }
+    if !DrawField(session, true, false, true) { return 11 }
+    if TextInputFocused(session) { return 12 }
+    // A closed Session never reports a keyboard for a reopened one.
+    if !DrawField(session, true, false, false) { return 13 }
+    unused SessionClose(session)
+    reopened := SessionOpen()
+    if TextInputFocused(reopened) { return 14 }
+    return 0
+}
