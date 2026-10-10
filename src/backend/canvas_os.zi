@@ -464,7 +464,6 @@
         if files.paths == null {
             return files
         }
-        files.capacity = cast(u32)count
         index: s32 = 0
         while index < count {
             path := OsDroppedPath(index)
@@ -503,6 +502,7 @@
         }
         root_length := OsLength(root)
         count := OsDirectoryCount(handle)
+        capacity: u32 = 0
         index: s32 = 0
         while index < count {
             name: [1024]u8
@@ -521,18 +521,18 @@
             if root_length + cast(usize)length + 2 > 1024 {
                 continue
             }
-            if files.count == files.capacity {
-                capacity := files.capacity * 2
-                if capacity == 0 {
-                    capacity = 8
+            if files.count == capacity {
+                grown_capacity := capacity * 2
+                if grown_capacity == 0 {
+                    grown_capacity = 8
                 }
                 grown := cast(**u8)OsResize(cast(*void)files.paths,
-                    cast(usize)capacity * size_of(*u8))
+                    cast(usize)grown_capacity * size_of(*u8))
                 if grown == null {
                     break
                 }
                 files.paths = grown
-                files.capacity = capacity
+                capacity = grown_capacity
             }
             path := cast(*u8)OsAllocate(root_length + cast(usize)length + 2)
             if path == null {

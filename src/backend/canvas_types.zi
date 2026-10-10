@@ -54,8 +54,8 @@ CanvasWave :: struct {
     channels: u32
     data: *void
 }
+// raylib 5.5's FilePathList layout, which hosts read by value.
 CanvasFilePathList :: struct {
-    capacity: u32
     count: u32
     paths: **u8
 }
