@@ -154,7 +154,7 @@ main :: () -> s32 {
     unused CopyCString(".txt", filter[:])
     unused CopyCString("/tmp/canvas-files/nested", path[:])
     files := LoadDirectoryFilesEx(*path[0], *filter[0], false)
-    if files.count != 1 || files.capacity < files.count ||
+    if size_of(CanvasFilePathList) != 2 * size_of(*u8) || files.count != 1 ||
         !TestText(files.paths[0], "/tmp/canvas-files/nested/a.txt") {
         return 13
     }
