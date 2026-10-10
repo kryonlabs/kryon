@@ -1,0 +1,65 @@
+Desktop :: #import "desktop_runtime";
+#import "std/thread_linux"
+
+sdl :: #system_library "SDL2";
+Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
+Counter :: () -> u64 #foreign sdl "SDL_GetPerformanceCounter";
+Frequency :: () -> u64 #foreign sdl "SDL_GetPerformanceFrequency";
+Push :: (event: *void) -> s32 #foreign sdl "SDL_PushEvent";
+Poll :: (event: *void) -> s32 #foreign sdl "SDL_PollEvent";
+Event :: struct {
+    kind: u32; timestamp: u32; window_id: u32; which: u32
+    button: u8; state: u8; clicks: u8; padding: u8
+    x: s32; y: s32; payload: [28]u8
+}
+Work :: struct { ready: u64; delivered: bool }
+Send :: (argument: *void) {
+    work := cast(*Work)argument
+    Delay(cast(u32)10)
+    key: Event; key.kind = cast(u32)0x300; key.x = 32
+    text: Event; text.kind = cast(u32)0x303; text.which = cast(u32)65
+    press: Event; press.kind = cast(u32)0x401; press.button = cast(u8)1
+    release: Event; release.kind = cast(u32)0x402; release.button = cast(u8)1
+    work.ready = Counter()
+    work.delivered = Push(cast(*void)*key) == 1 && Push(cast(*void)*text) == 1 &&
+        Push(cast(*void)*press) == 1 && Push(cast(*void)*release) == 1
+}
+
+main :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 1 }
+    defer Desktop.CloseDesktop()
+    Delay(cast(u32)100)
+    event: Event
+    for sample: 0..19 {
+        while Poll(cast(*void)*event) != 0 {}
+        if !Desktop.PollDesktop() { return 2 }
+        Desktop.DesktopFrameUnchanged(true)
+        Desktop.PauseDesktop()
+        if !Desktop.PollDesktop() { return 3 }
+        Desktop.DesktopFrameUnchanged(true)
+        work: Work; thread: Thread; procedure: ThreadProcedure = Send
+        if !ThreadStart(*thread, procedure, cast(*void)*work) { return 4 }
+        Desktop.PauseDesktop()
+        returned := Counter()
+        ThreadWait(*thread)
+        if !work.delivered || !Desktop.PollDesktop() { return 5 }
+        if Desktop.DesktopPressedKey() != 32 || Desktop.DesktopPressedKey() != 0 ||
+            Desktop.DesktopTypedCodepoint() != 65 || Desktop.DesktopTypedCodepoint() != 0 {
+            return 6
+        }
+        pointer := Desktop.PollPointer()
+        if !pointer.pressed || !pointer.released || !pointer.down { return 7 }
+        if !Desktop.PollDesktop() { return 8 }
+        pointer = Desktop.PollPointer()
+        if pointer.pressed || pointer.released || Desktop.DesktopPressedKey() != 0 ||
+            Desktop.DesktopTypedCodepoint() != 0 { return 9 }
+        // Joining publishes the worker timestamps; no result is read before it.
+        latency: float64 = -1.0
+        if returned >= work.ready {
+            latency = cast(float64)(returned-work.ready)*1000.0/cast(float64)Frequency()
+        }
+        print("wake % %\n",sample,latency)
+    }
+    print("Desktop idle waits preserve queued keyboard, text and pointer input exactly once\n")
+    return 0
+}

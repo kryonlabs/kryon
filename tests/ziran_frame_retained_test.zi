@@ -21,7 +21,7 @@ Frame :: (label: string, line_color: Color, image: bool) -> FrameEndResult {
 
 // `reuse` is false when the host repaints the frame anyway.
 ReuseFrame :: (label: string, line_color: Color, image: bool,
-    reuse: bool) -> FrameEndResult {
+    reuse: bool, compare: bool = true) -> FrameEndResult {
     BeginFrame(TestSession(), cast(u64)17, Rectangle.{0.0, 0.0, 100.0, 80.0})
     PaintLine(TestSession(), -1, Rectangle.{4.0, 8.0, 96.0, 8.0},
         line_color)
@@ -34,7 +34,7 @@ ReuseFrame :: (label: string, line_color: Color, image: bool,
             Rectangle.{0.0, 0.0, 100.0, 80.0}, Vector2.{}, 0.0, 0.0,
             Color.{255, 255, 255, 255})
     }
-    return EndFrameRetained(TestSession(), reuse)
+    return EndFrameRetained(TestSession(), reuse, compare)
 }
 
 ImageFrame :: (asset_path: string, texture_id: u32) -> FrameEndResult {
@@ -124,6 +124,16 @@ main :: () -> s32 {
     if result.paint_unchanged || RetainedImageDraws() != 4 { return 13 }
     result = ImageFrame("other.png", cast(u32)8)
     if !result.paint_unchanged || RetainedImageDraws() != 4 { return 14 }
+    // Active input emits its paint and invalidates the observed baseline.
+    // Returning to observation must repaint once before reporting equality.
+    result = ReuseFrame(changed_text, Color.{9, 2, 3, 255}, false, true, false)
+    if result.status != cast(FrameStatus)FrameOk || result.paint_unchanged ||
+        FramePaintUnchanged(TestSession()) { return 21 }
+    lines := RetainedLineDraws()
+    result = Frame(changed_text, Color.{9, 2, 3, 255}, false)
+    if result.paint_unchanged || RetainedLineDraws() != lines + 1 { return 22 }
+    result = Frame(changed_text, Color.{9, 2, 3, 255}, false)
+    if !result.paint_unchanged || RetainedLineDraws() != lines + 1 { return 23 }
     if RetainedHostFailed() { return 15 }
     return 0
 }

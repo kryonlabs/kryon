@@ -1,5 +1,6 @@
 #import "drawing_props"
 #import "geometry"
+#import "text_input_platform_host"
 
 fills: s32;
 failed: bool;
