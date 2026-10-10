@@ -152,9 +152,13 @@ raylib_assets_next: s32;
 // rest as loading: a grid scrolled into view spreads its new thumbnails
 // over several frames instead of stalling one.
 RaylibAssetLoadBudget :: 0.004
+// Hosts with their own frame loop never call BeginRaylibFrame. The budget
+// also renews once a frame interval has passed, so their images still load.
+RaylibAssetLoadWindow :: 0.016
 RaylibAssetLoading :: -2
 raylib_asset_load_spent: float64;
 raylib_asset_loads: s32;
+raylib_asset_load_window: float64 = -1.0;
 raylib_pointer: PointerFrame;
 raylib_secondary: SecondaryPointerFrame;
 raylib_middle: SecondaryPointerFrame;
@@ -893,10 +897,16 @@ RaylibAssetIndex :: (path: string) -> s32 {
         }
         index += 1
     }
+    started := HostRaylibGetTime()
+    if raylib_asset_load_window < 0.0 ||
+    started - raylib_asset_load_window >= RaylibAssetLoadWindow {
+        raylib_asset_load_window = started
+        raylib_asset_load_spent = 0.0
+        raylib_asset_loads = 0
+    }
     if raylib_asset_loads > 0 && raylib_asset_load_spent >= RaylibAssetLoadBudget {
         return RaylibAssetLoading
     }
-    started := HostRaylibGetTime()
     raylib_asset_loads += 1
     defer { raylib_asset_load_spent += HostRaylibGetTime() - started }
     if raylib_assets_count < RaylibAssetCapacity {
@@ -1192,6 +1202,7 @@ BeginRaylibFrame :: () {
     raylib_image_error = false
     raylib_asset_load_spent = 0.0
     raylib_asset_loads = 0
+    raylib_asset_load_window = HostRaylibGetTime()
     HostRaylibBeginDrawing()
     HostRaylibClearBackground(Color.{248, 250, 252, 255})
     // Scale the modelview matrix itself rather than pushing a transform:

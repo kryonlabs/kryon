@@ -114,6 +114,11 @@ main :: () -> s32 {
     if presented != shown || !EndRaylibFrame() { return 17 }
     BeginRaylibFrame()
     if ImageWidth("slow-c.png") != 200 || !EndRaylibFrame() { return 18 }
+    // A host with its own frame loop never calls BeginRaylibFrame. Its
+    // budget renews once a frame interval has passed.
+    if ImageWidth("own-a.png") != 200 || ImageWidth("own-b.png") != -1 { return 19 }
+    clock_seconds += 0.02
+    if ImageWidth("own-b.png") != 200 { return 20 }
     load_seconds = 0.0
     return 0
 }
