@@ -149,6 +149,36 @@ JniGetAndroidApp :: () -> *NativeAndroidApp #foreign raylib "GetAndroidApp";
 android :: #system_library "android";
 NativeActivityFinish :: (activity: *void) #foreign android "ANativeActivity_finish";
 
+libc :: #system_library "libc";
+JniThreadSelf :: () -> *void #foreign libc "pthread_self";
+
+// The host's frame thread stays attached to the VM between JNI calls:
+// attaching creates a Java thread each time, which cost milliseconds per
+// frame on a phone for an app that polls Java. The host detaches it once
+// when its loop ends, because a thread that exits attached aborts.
+android_jni_host_thread: *void;
+android_jni_host_attached: bool;
+
+#program_export
+AndroidJniKeepHostThread :: () {
+    android_jni_host_thread = JniThreadSelf()
+    android_jni_host_attached = false
+}
+
+#program_export
+AndroidJniReleaseHostThread :: () {
+    #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
+        if android_jni_host_attached && JniThreadSelf() == android_jni_host_thread {
+            app := JniGetAndroidApp()
+            if app != null && app.activity != null {
+                app.activity.vm.functions.DetachCurrentThread(app.activity.vm)
+            }
+        }
+    }
+    android_jni_host_thread = null
+    android_jni_host_attached = false
+}
+
 // Finish the activity from any thread; an unconsumed back key closes the
 // application the way Android users expect.
 #program_export
@@ -156,7 +186,9 @@ AndroidJniFinishActivity :: () {
     #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
         app := JniGetAndroidApp()
         if app != null && app.activity != null {
-            NativeActivityFinish(app.activity.activity)
+            // ANativeActivity_finish takes the native activity, not its
+            // Java object; passing the object crashed on the back key.
+            NativeActivityFinish(cast(*void)app.activity)
         }
     }
 }
@@ -239,7 +271,11 @@ AndroidJniDetachCurrent :: (session: *AndroidJniSession) {
     }
     env.functions.PopLocalFrame(env, null)
     if session.attached != 0 {
-        session.vm.functions.DetachCurrentThread(session.vm)
+        if android_jni_host_thread != null && JniThreadSelf() == android_jni_host_thread {
+            android_jni_host_attached = true
+        } else {
+            session.vm.functions.DetachCurrentThread(session.vm)
+        }
     }
     session.vm = null
     session.env = null
