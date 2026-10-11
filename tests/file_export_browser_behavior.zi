@@ -1,0 +1,51 @@
+// Run in headless Chromium by tests/file_export_browser_test.py, which
+// checks the downloaded files.
+#import "file_export"
+#import "web"
+#import "c_string"
+
+c :: #system_library "c";
+FileOpen :: (path: *u8, mode: *u8) -> *void #foreign c "fopen";
+FileWrite :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign c "fwrite";
+FileClose :: (file: *void) -> s32 #foreign c "fclose";
+
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+
+Check :: () -> string {
+    if !ExportBytes("hello export\n", "notes.txt", "text/plain", "Share notes") {
+        return "FAIL bytes"
+    }
+    path: [32]u8
+    mode: [4]u8
+    CopyCString("/tmp/report.json", path[:])
+    CopyCString("wb", mode[:])
+    file := FileOpen(*path[0], *mode[0])
+    text := "{\"ok\":true}"
+    data: [16]u8
+    CopyCString(text, data[:])
+    if file == null || FileWrite(*data[0], 1, cast(usize)text.count, file) != cast(usize)text.count ||
+    FileClose(file) != 0 {
+        return "FAIL write"
+    }
+    if !ExportFile("/tmp/report.json", "report.json", "application/json", "Share report") {
+        return "FAIL file"
+    }
+    // Nothing to export, or no name, is refused.
+    if ExportBytes("", "empty.txt", "text/plain", "") || ExportBytes("x", "", "text/plain", "") ||
+    ExportFile("/tmp/missing.json", "missing.json", "application/json", "") {
+        return "FAIL refusals"
+    }
+    return "PASS"
+}
+
+#program_export
+main :: () -> s32 {
+    Report(Check())
+    return 0
+}

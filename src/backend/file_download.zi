@@ -156,8 +156,9 @@ FileDownloadRelease :: (download: *FileDownload) {
     DownloadRename :: (source: *u8, destination: *u8) -> s32 #foreign download_c "rename";
     DownloadRemove :: (path: *u8) -> s32 #foreign download_c "remove";
     DownloadOpen :: (path: *u8, mode: *u8) -> *void #foreign download_c "fopen";
-    DownloadSeek :: (file: *void, offset: s64, origin: s32) -> s32 #foreign download_c "fseek";
-    DownloadTell :: (file: *void) -> s64 #foreign download_c "ftell";
+    // C long.
+    DownloadSeek :: (file: *void, offset: isize, origin: s32) -> s32 #foreign download_c "fseek";
+    DownloadTell :: (file: *void) -> isize #foreign download_c "ftell";
     DownloadClose :: (file: *void) -> s32 #foreign download_c "fclose";
 
     DownloadDigits :: (value: u64, output: []u8) {
@@ -228,7 +229,7 @@ FileDownloadRelease :: (download: *FileDownload) {
             file := DownloadOpen(*download.temporary[0], *mode[0])
             if file != null {
                 if DownloadSeek(file, 0, 2) == 0 {
-                    size := DownloadTell(file)
+                    size := cast(s64)DownloadTell(file)
                     if size > 0 {
                         download.bytes = cast(u64)size
                     }
