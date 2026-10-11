@@ -1,0 +1,151 @@
+// Android's document picker and QR scanner. Both answer later, through the
+// activity, so a request is opened and its result polled each frame. The
+// application numbers its requests (data, photo, audio...); a newer request
+// replaces any unanswered one.
+//
+// The activity implements
+//
+//     void openImportPicker(String mimeTypes, int request)
+//     void openQrScanner(String prompt, int request)
+//
+// and reports back through natives the application's JNI_OnLoad binds:
+//
+//     nativeImportSelectedFile(int request, String pathOrText)
+//         -> AndroidNativePickerSelected
+//     nativeImportCancelled(int request) -> AndroidNativePickerCancelled
+//
+// A picked document arrives as a readable path; a scanned code as its text.
+#import "android_jni"
+#import "c_string"
+
+AndroidPickerResult :: enum {
+    AndroidPickerNone :: 0
+    AndroidPickerSelected :: 1
+    AndroidPickerCancelled :: 2
+}
+
+ANDROID_PICKER_TEXT :: 512
+
+// The activity's callbacks and the frame thread share the pending result.
+#if #defined(ANDROID_BUILD) {
+    picker_c :: #system_library "c";
+    PickerMutexLock :: (mutex: *void) -> s32 #foreign picker_c "pthread_mutex_lock";
+    PickerMutexUnlock :: (mutex: *void) -> s32 #foreign picker_c "pthread_mutex_unlock";
+    // PTHREAD_MUTEX_INITIALIZER is zero on bionic.
+    picker_mutex: [8]u64;
+}
+picker_request: s32;
+picker_result: s32;
+picker_text: [ANDROID_PICKER_TEXT]u8;
+
+PickerLock :: () {
+    #if #defined(ANDROID_BUILD) {
+        unused PickerMutexLock(cast(*void)*picker_mutex[0])
+    }
+}
+
+PickerUnlock :: () {
+    #if #defined(ANDROID_BUILD) {
+        unused PickerMutexUnlock(cast(*void)*picker_mutex[0])
+    }
+}
+
+PickerStore :: (request: s32, result: s32, text: *u8) {
+    PickerLock()
+    picker_request = request
+    picker_result = result
+    length: s32 = 0
+    while text != null && length < ANDROID_PICKER_TEXT - 1 && text[length] != 0 {
+        picker_text[length] = text[length]
+        length += 1
+    }
+    picker_text[length] = 0
+    PickerUnlock()
+}
+
+PickerCall :: (name: string, text: string, request: s32) -> bool {
+    #if #defined(ANDROID_BUILD) {
+        bytes: [1024]u8
+        if !CopyCString(text, bytes[:]) {
+            return false
+        }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return false
+        }
+        defer AndroidJniDetachCurrent(*session)
+        method := AndroidJniMethod(*session, name, "(Ljava/lang/String;I)V")
+        if method == null {
+            return false
+        }
+        env := session.env
+        arguments: [2]JniValue
+        arguments[0].reference = AndroidJniString(env, *bytes[0])
+        arguments[1].integer = request
+        if arguments[0].reference == null {
+            return false
+        }
+        env.functions.CallVoidMethodA(env, session.activity, method, *arguments[0])
+        return env.functions.ExceptionCheck(env) == 0
+    }
+    unused name
+    unused text
+    unused request
+    return false
+}
+
+// Opens the document picker for mime_types ("*/*", "image/*").
+AndroidPickerOpen :: (request: s32, mime_types: string) -> bool {
+    PickerStore(request, cast(s32)AndroidPickerResult.AndroidPickerNone, null)
+    return PickerCall("openImportPicker", mime_types, request)
+}
+
+// Opens the camera to scan a QR code, showing prompt.
+AndroidScannerOpen :: (request: s32, prompt: string) -> bool {
+    PickerStore(request, cast(s32)AndroidPickerResult.AndroidPickerNone, null)
+    return PickerCall("openQrScanner", prompt, request)
+}
+
+// The answer to request, once: the path or text goes to output.
+AndroidPickerPoll :: (request: s32, output: []u8) -> AndroidPickerResult {
+    if output.count > 0 {
+        output[0] = 0
+    }
+    result: s32 = 0
+    PickerLock()
+    if picker_result != 0 && picker_request == request {
+        result = picker_result
+        length: s64 = 0
+        while length + 1 < output.count && picker_text[length] != 0 {
+            output[length] = picker_text[length]
+            length += 1
+        }
+        if output.count > 0 {
+            output[length] = 0
+        }
+        picker_result = 0
+        picker_text[0] = 0
+    }
+    PickerUnlock()
+    return cast(AndroidPickerResult)result
+}
+
+#program_export
+AndroidNativePickerSelected :: (env: *JniEnv, activity: *void, request: s32, text: *void) {
+    unused activity
+    selected: *u8
+    if env != null && text != null {
+        selected = env.functions.GetStringUTFChars(env, text, null)
+    }
+    PickerStore(request, cast(s32)AndroidPickerResult.AndroidPickerSelected, selected)
+    if selected != null {
+        env.functions.ReleaseStringUTFChars(env, text, selected)
+    }
+}
+
+#program_export
+AndroidNativePickerCancelled :: (env: *JniEnv, activity: *void, request: s32) {
+    unused env
+    unused activity
+    PickerStore(request, cast(s32)AndroidPickerResult.AndroidPickerCancelled, null)
+}
