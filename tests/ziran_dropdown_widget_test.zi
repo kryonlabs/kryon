@@ -5,6 +5,8 @@ TestSession :: () -> Session {
     return test_session
 }
 
+#import "button_props"
+#import "button_widget"
 #import "control_props"
 #import "dropdown"
 #import "dropdown_props"
@@ -123,14 +125,14 @@ Frame :: () -> s32 {
     } else if phase == 1 {
         if !result.open { return -21 }
         if !result.opened { return -22 }
-        if TreeCount(TestSession()) != 9 { return -24 }
+        if TreeCount(TestSession()) != 8 { return -24 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 88.0,
                 true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 88.0,
                 false, false, true})
     } else if phase == 2 {
         if !result.open || result.changed ||
-        TreeCount(TestSession()) != 9 { return -3 }
+        TreeCount(TestSession()) != 8 { return -3 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 115.0,
                 true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 115.0,
@@ -149,7 +151,7 @@ Frame :: () -> s32 {
         if result.open || !result.closed || !result.changed ||
         result.selected_index != 0 { return -7 }
     } else if phase == 7 {
-        if !result.open || TreeCount(TestSession()) != 9 { return -8 }
+        if !result.open || TreeCount(TestSession()) != 8 { return -8 }
         TreePointerUpdate(TestSession(), PointerFrame.{180.0, 180.0,
                 true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{180.0, 180.0,
@@ -163,11 +165,11 @@ Frame :: () -> s32 {
         TreeHitAt(TestSession(), 20.0, 20.0) != -1 { return -10 }
     } else if phase == 10 {
         // A long menu scrolls its rows in a standard Scroll.
-        if !result.open || TreeCount(TestSession()) != 11 ||
-        TreeNodeAt(TestSession(), 5).kind != WidgetKindScroll ||
+        if !result.open || TreeCount(TestSession()) != 10 ||
+        TreeNodeAt(TestSession(), 4).kind != WidgetKindScroll ||
         !OptionShown(long_options[0], 0) || OptionShown(long_options[7], 7) { return -11 }
     } else if phase == 11 {
-        if !result.open || TreeCount(TestSession()) != 11 ||
+        if !result.open || TreeCount(TestSession()) != 10 ||
         !OptionShown(long_options[0], 0) { return -12 }
     } else if phase == 12 {
         // Moving the highlight to the last row scrolls it into view.
@@ -352,6 +354,94 @@ DeviceMenu :: () -> s32 {
     return 0
 }
 
+// The open menu floats above the page without taking it over. A tap on the
+// app's sidebar closes the menu and still presses the sidebar button, and a
+// page control drawn after the dropdown cannot take a tap on a menu row.
+sidebar_selected: s32;
+sidebar_clicks: s32;
+page_clicks: s32;
+
+SidebarFrame :: () -> DropdownResult {
+    options: [8]DropdownOption
+    for index: cast(s32)0..7 {
+        options[index].key = cast(u64)cast(u32)(400 + index)
+        options[index].label = DeviceLabels[index]
+    }
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
+    props: DropdownProps
+    props.key = cast(u64)43
+    props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
+    props.selected_index = sidebar_selected
+    result: DropdownResult = Dropdown(TestSession(), props, options[:])
+    page: ButtonProps
+    page.key = cast(u64)51
+    page.id = 51
+    page.label = "Page"
+    page.bounds = Rectangle.{10.0, 60.0, 120.0, 28.0}
+    page_clicks += Button(TestSession(), page)
+    side: ButtonProps
+    side.key = cast(u64)52
+    side.id = 52
+    side.label = "Home"
+    side.bounds = Rectangle.{160.0, 20.0, 50.0, 40.0}
+    sidebar_clicks += Button(TestSession(), side)
+    unused TreeFinish(TestSession())
+    PaintClear(TestSession())
+    if result.changed { sidebar_selected = result.selected_index }
+    return result
+}
+
+SidebarTap :: (x: float32, y: float32) -> DropdownResult {
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+    unused SidebarFrame()
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
+    return SidebarFrame()
+}
+
+// The visible option with this label, or an empty rectangle.
+SidebarOption :: (label: string) -> Rectangle {
+    for node: cast(s32)0..TreeCount(TestSession()) - 1 {
+        entry := TreeNodeAt(TestSession(), node)
+        if entry.kind == WidgetKindSelectable && entry.semantic_label == label {
+            return entry.bounds
+        }
+    }
+    return Rectangle.{}
+}
+
+SidebarMenu :: () -> s32 {
+    sidebar_selected = 0
+    result: DropdownResult = SidebarFrame()
+    if result.open { return 1 }
+    result = SidebarTap(20.0, 20.0)
+    result = SidebarFrame()
+    if !result.open { return 2 }
+    // A row over the page button belongs to the menu.
+    over: s32 = -1
+    for index: cast(s32)0..7 {
+        row: Rectangle = SidebarOption(DeviceLabels[index])
+        if row.height > 0.0 && PointInBounds(40.0, 74.0, row) { over = index }
+    }
+    if over <= 0 { return 3 }
+    result = SidebarTap(40.0, 74.0)
+    if result.open || !result.changed || sidebar_selected != over || page_clicks != 0 { return 4 }
+    // Open again, then tap the sidebar: one tap closes the menu and presses it.
+    result = SidebarTap(20.0, 20.0)
+    result = SidebarFrame()
+    if !result.open { return 5 }
+    result = SidebarTap(185.0, 40.0)
+    if result.open || sidebar_clicks != 1 || sidebar_selected != over { return 6 }
+    result = SidebarFrame()
+    if result.open || sidebar_clicks != 1 { return 7 }
+    // With the menu open, the page button outside it takes a tap too.
+    result = SidebarTap(20.0, 20.0)
+    result = SidebarFrame()
+    if !result.open || SidebarOption("Seven").height > 0.0 { return 8 }
+    result = SidebarTap(185.0, 40.0)
+    if result.open || sidebar_clicks != 2 { return 9 }
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     fill_steps: [14]s32 = .[1, 3, 3, 1, 3, 4, 1, 3, 1, 1, 3, 3, 3, 1]
@@ -405,5 +495,7 @@ main :: () -> s32 {
     if uncontrolled != 0 { return 10 + uncontrolled }
     device: s32 = DeviceMenu()
     if device != 0 { return 30 + device }
+    sidebar: s32 = SidebarMenu()
+    if sidebar != 0 { return 50 + sidebar }
     return 0
 }

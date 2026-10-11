@@ -91,7 +91,7 @@ Frame :: () -> s32 {
             false, false, true})
     } else if phase == 2 {
         if !result.dropdown.open || !result.dropdown.opened ||
-            result.clicked_action != -1 || TreeCount(TestSession()) != 11 {
+            result.clicked_action != -1 || TreeCount(TestSession()) != 10 {
             return -3
         }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 100.0,

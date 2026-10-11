@@ -185,6 +185,9 @@
         clipped: bool
         clips_children: bool
         auto_placed: bool
+        // Drawn and hit above the page like a modal, without blocking input
+        // to the rest of it; see TreeSetPopup.
+        popup: bool
     }
 
     SemanticData :: struct {
@@ -1206,6 +1209,17 @@
     // Later overlays, including nested ones, sit above earlier overlays.
     #program_export
     TreeOverlayLayerAt :: (session: Session, index: s32, committed: bool) -> s32 {
+        return TreeLayerAt(session, index, committed, true)
+    }
+
+    // The modal layer that owns this node's input, ignoring popups: a popup
+    // floats above the page but takes no input away from it.
+    #program_export
+    TreeModalLayerAt :: (session: Session, index: s32) -> s32 {
+        return TreeLayerAt(session, index, true, false)
+    }
+
+    TreeLayerAt :: (session: Session, index: s32, committed: bool, popups: bool) -> s32 {
         if !SessionValid(session) { return 0 }
         slot := session.slot
         count := trees[slot].submitted_count
@@ -1217,10 +1231,21 @@
             } else {
                 node = *trees[slot].submitted[index]
             }
-            if node.kind == WidgetKindModal { return index + 1 }
+            if node.kind == WidgetKindModal || (popups && node.popup) { return index + 1 }
             index = node.parent
         }
         return 0
+    }
+
+    // A popup, such as a dropdown's open menu, is painted and hit above the
+    // rest of the page, but the page keeps its input: pressing outside the
+    // popup reaches the control there.
+    #program_export
+    TreeSetPopup :: (session: Session, index: s32) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+        trees[slot].submitted[index].popup = true
     }
 
     // Read a bounded UTF-8 byte range without exposing the tree's owned buffer.

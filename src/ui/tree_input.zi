@@ -40,6 +40,16 @@ PointerState :: struct {
     // The control a press focuses once it becomes a click; see
     // TreePointerUpdate.
     focus_generation: u64
+    // The latest press; see TreeLastPress.
+    press: PointerPress
+}
+
+// Presses are counted with where the last one landed, so a popup can tell a
+// new press outside it from one it has already seen.
+PointerPress :: struct {
+    serial: s32
+    x: float32
+    y: float32
 }
 
 PointerDrag :: struct {
@@ -292,7 +302,7 @@ TreeTopModalLayer :: (session: Session) -> s32 {
 #program_export
 TreeInputAllowedAt :: (session: Session, index: s32) -> bool {
     top := TreeTopModalLayer(session)
-    return top == 0 || TreeOverlayLayerAt(session, index, true) == top
+    return top == 0 || TreeModalLayerAt(session, index) == top
 }
 
 #program_export
@@ -326,7 +336,7 @@ TreeHitAt :: (session: Session, x: float32, y: float32,
         if entry.interaction_index >= 0 {
             interaction: *InteractionData =
                 *trees[slot].committed_interactions[entry.interaction_index]
-            if (top == 0 || TreeOverlayLayerAt(session, index, true) == top) &&
+            if (top == 0 || TreeModalLayerAt(session, index) == top) &&
             (TreeButtonLike(entry.kind) ||
                 entry.kind == WidgetKindCheckbox ||
                 entry.kind == WidgetKindToggle ||
@@ -369,24 +379,32 @@ TreeCursor :: (session: Session) -> s32 {
         node.disabled || node.loading)
 }
 
-// The most recently submitted scroll viewport under the pointer wins. A
-// child scroll clips to its parent, so an outer page cannot consume its wheel.
+// The scroll viewport under the pointer in the highest overlay layer wins,
+// and within a layer the most recently submitted one. A child scroll clips
+// to its parent, so an outer page cannot consume its wheel, and a popup's
+// scroll stays above page scrolls submitted after it.
 #program_export
 TreeScrollAt :: (session: Session, x: float32, y: float32) -> u64 {
     slot := SessionIndex(session)
     top := TreeTopModalLayer(session)
+    found: u64 = cast(u64)0
+    layer: s32 = -1
     index: s32 = trees[slot].committed_count - 1
     while index > 0 {
         entry: *NodeCore = *trees[slot].committed[index]
         if entry.kind == WidgetKindScroll &&
-        (top == 0 || TreeOverlayLayerAt(session, index, true) == top) &&
+        (top == 0 || TreeModalLayerAt(session, index) == top) &&
         PointInBounds(x, y, entry.bounds) &&
         (!entry.clipped || PointInBounds(x, y, entry.clip)) {
-            return entry.key
+            candidate: s32 = TreeOverlayLayerAt(session, index, true)
+            if candidate > layer {
+                layer = candidate
+                found = entry.key
+            }
         }
         index -= 1
     }
-    return cast(u64)0
+    return found
 }
 
 TreeTextKind :: (kind: s32) -> bool {
@@ -416,6 +434,8 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     hit: s32 = TreeHitAt(session, frame.x, frame.y)
     if frame.pressed {
         active_focus_visible[input_slot] = false
+        active_pointer[input_slot].press = PointerPress.{
+            active_pointer[input_slot].press.serial + 1, frame.x, frame.y}
         active_pointer[input_slot].focus_generation = 0
         if hit >= 0 && TreeTextFocused(session) &&
             !TreeTextKind(trees[input_slot].committed[hit].kind) {
@@ -477,6 +497,13 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
         active_pointer[input_slot].focus_generation = 0
     }
     return hit
+}
+
+// The latest press: its serial grows with every press, so a later frame
+// can tell whether a new one happened since it last looked.
+#program_export
+TreeLastPress :: (session: Session) -> PointerPress {
+    return active_pointer[SessionIndex(session)].press
 }
 
 // A control that owns dragging keeps it when the pointer leaves its bounds.

@@ -76,3 +76,31 @@ DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> Dism
     }
     return result
 }
+
+// The page under a popup keeps its input. The popup remembers the last press
+// it saw: one since then that landed outside it closes it, and that press
+// still reaches whatever it landed on. A popup that just opened has seen
+// every press so far.
+#program_export
+Popup :: (session: Session, props: PopupProps) -> PopupResult {
+    result: PopupResult
+    result.node = -1
+    result.panel_node = -1
+    if !TreeIsBuilding(session) { return result }
+    press: PointerPress = TreeLastPress(session)
+    previous: s32 = TreePrevious(session, TreeCurrentParent(session), props.key, WidgetKindCustom)
+    seen: s32 = press.serial
+    if previous >= 0 { seen = TreePreviousWidgetState(session, previous).index }
+    if press.serial != seen && !PointInBounds(press.x, press.y, props.bounds) &&
+        !PointInBounds(press.x, press.y, props.keep_bounds) {
+        result.closed = true
+        return result
+    }
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindCustom, TreeRootBounds(session))
+    if result.node < 0 { return result }
+    TreeSetPopup(session, result.node)
+    TreeSetWidgetState(session, result.node, WidgetState.{true, press.serial, 0})
+    result.panel_node = TreeSubmit(session, OverlayPanelKey(), result.node,
+        WidgetKindCustom, props.bounds)
+    return result
+}
