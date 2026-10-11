@@ -43,8 +43,10 @@ main :: () -> s32 {
         returned := Counter()
         ThreadWait(*thread)
         if !work.delivered || !Desktop.PollDesktop() { return 5 }
-        if Desktop.DesktopPressedKey() != 32 || Desktop.DesktopPressedKey() != 0 ||
-            Desktop.DesktopTypedCodepoint() != 65 || Desktop.DesktopTypedCodepoint() != 0 {
+        key := Desktop.DesktopPressedKey(); key_after := Desktop.DesktopPressedKey()
+        text := Desktop.DesktopTypedCodepoint(); text_after := Desktop.DesktopTypedCodepoint()
+        if key != 32 || key_after != 0 || text != 65 || text_after != 0 {
+            print("round %: key % then %, text % then %\n", sample, key, key_after, text, text_after)
             return 6
         }
         pointer := Desktop.PollPointer()
