@@ -2,7 +2,9 @@
 
 Kryon is a reusable UI library authored in Ziran. The Ziran language,
 compiler, `.zir` representation, `.zib` format, and portable runtime live in
-the separate `../ziran` repository. Kryon source lives in `src/ui/*.zi`.
+the separate Ziran repository (`~/Projects/ziranlang/ziran`). Kryon's widget
+modules live in `src/ui/*.zi`, its hosts in `src/backend/*.zi`, and the
+`kryon` project tool in `src/project/*.zi`.
 
 ## 100% Ziran rule
 
@@ -12,23 +14,27 @@ the separate `../ziran` repository. Kryon source lives in `src/ui/*.zi`.
   Generated native output under `build/` is an output of Ziran, not source.
 - Use the latest Ziran syntax and APIs directly. Do not add compatibility
   wrappers, aliases, fallback runtimes, or old-syntax paths for Ziran in Kryon.
-  When Ziran lacks a general capability, implement it in `../ziran` first and
+  When Ziran lacks a general capability, implement it in Ziran first and
   import it as an ordinary language capability. Do not add UI special cases to
   Ziran.
-- Existing handwritten non-Ziran host and example code is migration debt.
-  Remove or replace it with Ziran; do not copy, extend, or promote it into a
-  new Kryon backend.
+- The library, hosts, project tool, and examples are all Ziran. Python and
+  shell scripts are build and test tooling, and `templates/droid/` is the
+  Android project scaffold an app build copies; keep widget and host behavior
+  out of them.
 
 ## Source and build
 
 - Make changes in this upstream repository on `master`. Commit and push here
-  before updating a downstream application's clean `vendor/kryon` pointer.
+  before a downstream application updates its `ziran.lock` (or, for an app
+  that still vendors Kryon, its clean `vendor/kryon` pointer).
 - Never create or work in temporary Kryon or Ziran checkouts, clones, or
   worktrees. Edit the root repositories on `master`; reserve temporary
   directories for disposable test outputs only.
-- `src/ui/modules.txt` lists modules that pass the current C, C++, and Go
-  build. Moved modules outside that list still need conversion; a checker pass
-  alone does not establish native or portable readiness.
+- `src/ui/modules.txt` lists the core modules compiled into `libkryon.a`.
+  `*_laws.zi` files are proved by `make laws`, and optional modules such as
+  `Window`, `Media`, `Video`, `Clock`, and `Service` are package exports in
+  `ziran.toml`. A checker pass alone does not establish native or portable
+  readiness.
 - `make test` is the current Kryon gate. It builds the checked Ziran library
   and runs Ziran source, saved-IR, and bundle behavior tests without a display.
 - Put one-off experiment builds in `build/scratch/<name>/`, never in new

@@ -7,7 +7,7 @@ four raw pointer samples, font measurements, and SVG drawing effects. The
 application and host are both Ziran source. No window or display server is
 opened.
 
-From the Kryon repository root, with Ziran checked out beside it:
+From the Kryon repository root, with the `ziran` command installed:
 
 ```sh
 make -C examples
@@ -25,9 +25,8 @@ tests.
 
 This example shows the intended application boundary: Ziran compiles only the
 modules the application imports; Kryon supplies widget decisions; a separate
-Ziran host supplies raw input, font, and drawing effects. Production window
-loops, platform text services, and the remaining widget migration are still in
-progress.
+Ziran host supplies raw input, font, and drawing effects. Applications with a
+window use one of the hosts in [BACKENDS.md](../docs/BACKENDS.md) instead.
 
 An optional Ziran desktop host links the application with SDL2 and Cairo
 through declared foreign calls. Build it with `make -C examples desktop`.

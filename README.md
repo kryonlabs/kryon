@@ -16,13 +16,17 @@ imports Ziran modules normally. The Ziran compiler, `.zir` representation, and
 
 ## Build
 
-For a fresh clone, place Ziran next to Kryon:
+Install the `ziran` command first (`make install-user` in a
+[Ziran](https://github.com/ziranlang/ziran) checkout), then build Kryon:
 
 ```sh
-git clone https://github.com/ziranlang/ziran.git ../ziran
 make
 make test
 ```
+
+The Makefile builds against the Ziran revision locked in `ziran.lock`, found
+with `ziran pkg path ziran`. To build against a local Ziran checkout, name it
+in an ignored `ziran.local.toml` `[overrides]` table or set `ZIRAN_ROOT`.
 
 `make` checks the modules listed in [src/ui/modules.txt](src/ui/modules.txt),
 writes checked `.zir`, generates C, C++, and Go, and compiles the native outputs
@@ -97,10 +101,10 @@ and Wasm tests. Its semantic DOM profile is covered by a separate private
 headless Chromium document test. The [open-work plan](plan/README.md) lists
 the remaining platform-accessibility work.
 
-Downstream applications migrate their own sources and platform hosts at their
-own pace. Kryon commits land upstream first; apps then move only their clean
-`vendor/kryon` submodule pointer. This repository's tests verify Kryon itself,
-not every downstream application build.
+Kryon commits land upstream first. Applications then update their
+`ziran.lock` with Ziran's package commands; an app that still vendors Kryon
+moves only its clean `vendor/kryon` submodule pointer. This repository's tests
+verify Kryon itself, not every downstream application build.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the library boundary and
 [Ziran's implementation

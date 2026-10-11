@@ -14,6 +14,5 @@ primary, or primary with system fallback. The checked text widgets return
 copy, cut, and paste intents; the application handles those intents using this
 state and its platform host.
 
-OSC 52 and bracketed paste are terminal protocols owned by Kapsule. Their old
-Kryon host sources have been removed from the new library tree. Kapsule still
-uses its existing vendored Kryon version until its terminal host is migrated.
+OSC 52 and bracketed paste are terminal protocols. The Terminal application
+implements them; Kryon does not.
