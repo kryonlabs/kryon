@@ -1,0 +1,65 @@
+// Values that cross the portable bundle boundary. Records match fields by
+// name, so a bundle and its host may be built against different layouts: a
+// missing field keeps its zero value and an unknown one is ignored. The
+// usual field order is checked first.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+
+using HostValueKind;
+
+HOST_FIELD_LIMIT :: 512
+
+HostFieldAt :: (value: HostValue, position: s32, name: string) -> s32 {
+    count := cast(s32)value.field_count
+    if position < count && value.fields[position].name != null &&
+    TextFromCString(value.fields[position].name) == name {
+        return position
+    }
+    index: s32 = 0
+    while index < count {
+        if value.fields[index].name != null && TextFromCString(value.fields[index].name) == name {
+            return index
+        }
+        index += 1
+    }
+    return -1
+}
+
+HostScalarValid :: (value: HostValue, type_name: string, kind: s32) -> bool {
+    if value.kind != kind || TextFromCString(value.type_name) != type_name {
+        return false
+    }
+    if kind == cast(s32)HostString {
+        return value.length == 0 || value.data != null
+    }
+    return true
+}
+
+HostArrayValid :: (value: HostValue, type_name: string, count: usize) -> bool {
+    return value.kind == cast(s32)HostArray && TextFromCString(value.type_name) == type_name &&
+    value.length == count && value.elements != null
+}
+
+HostScalar :: (type_name: string, number: s64) -> HostValue {
+    value: HostValue
+    value.type_name = HostTextData(type_name)
+    value.integer = number
+    value.bits = cast(u64)number
+    value.kind = ifx type_name[0] == cast(u8)117 then cast(s32)HostUnsigned else cast(s32)HostInteger
+    return value
+}
+
+// Borrows the bytes of text that outlives the call, such as a literal.
+HostTextData :: (text: string) -> *u8 {
+    descriptor := cast(*TextDescriptor)(*text)
+    return descriptor.data
+}
+
+// The length of a decoded slice field, matched by name like its elements.
+HostSliceLength :: (value: HostValue, position: s32, name: string) -> s32 {
+    field_at := HostFieldAt(value, position, name)
+    if field_at < 0 {
+        return 0
+    }
+    return cast(s32)value.fields[field_at].value.length
+}

@@ -83,6 +83,18 @@ non-graphical Ziran programs. A program that does not import Kryon uses no
 Kryon code. A portable `.zib` links only imported modules and needs a host
 binding for any platform effect they call.
 
+An application that runs another `.zib` inside its own window draws that
+bundle's widgets with [`widget_host`](../src/backend/widget_host.zi). The
+bundle calls each widget's `HostedHost` function; the host binds
+`WidgetHostCall` for the functions `WidgetHostSupports` lists, and wraps each
+bundle frame in `WidgetHostBegin(session, asset_allowed)` and
+`WidgetHostEnd()`. The callback decides which asset paths the bundle may
+draw; texture handles never cross. Records match fields by name, so a bundle
+and its host may be built against different Kryon layouts.
+[`scripts/generate-widget-codecs.py`](../scripts/generate-widget-codecs.py)
+generates the codecs for Kryon's widget records and, with `--uses`, for an
+application's own records.
+
 [`src/ui/modules.txt`](../src/ui/modules.txt) is the core build inventory.
 `make test` checks source, saved `.zir`, `.zib`, and generated C/C++/Go behavior.
 See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for package and host verification.

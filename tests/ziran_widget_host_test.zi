@@ -1,0 +1,173 @@
+#import "std/bundle_host"
+#import "std/c_string"
+#import "std/byte_text_linux"
+#import "session"
+#import "geometry"
+#import "tree"
+#import "tree_draw"
+#import "text_props"
+#import "image_props"
+#import "button_props"
+#import "scroll_props"
+#import "text_input_props"
+#import "tab_bar_props"
+#import "font_metrics"
+#import "hosted_values"
+#import "widget_codec"
+#import "widget_host"
+// The fixed 5 px test font and raster calls for native builds.
+#import "ziran_composition_widget_host"
+#import "ziran_system_clipboard_host"
+
+using HostValueKind;
+using FrameStatus;
+
+// Image sizes for native builds; the photo is 40 px square.
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 40
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 40
+}
+
+// A bundle may draw its own photo and nothing else.
+asset_checks: s32;
+AllowPhoto :: (path: string) -> bool {
+    asset_checks += 1
+    return path == "" || path == "assets/photo.png"
+}
+
+module_name: [64]u8;
+function_name: [64]u8;
+session_codec: WidgetSessionCodec;
+text_codec: WidgetTextPropsCodec;
+image_codec: WidgetImagePropsCodec;
+button_codec: WidgetButtonPropsCodec;
+scroll_codec: WidgetScrollPropsCodec;
+area_codec: WidgetTextAreaPropsCodec;
+area_decoded: WidgetTextAreaPropsCodec;
+tab_bar_codec: WidgetTabBarPropsCodec;
+tab_codecs: [40]WidgetTabCodec;
+tab_values: [40]HostValue;
+
+// Calls the host as a bundle does: arguments as values, names as C text.
+Call :: (module: string, function: string, arguments: []HostValue, result: *HostValue) -> s32 {
+    unused CopyCString(module, module_name[:])
+    unused CopyCString(function, function_name[:])
+    return WidgetHostCall(null, *module_name[0], *function_name[0], *arguments[0],
+        cast(s32)arguments.count, result)
+}
+
+#program_export
+main :: () -> s32 {
+    if !WidgetHostSupports("toggle_widget", "ToggleHostedHost") ||
+    !WidgetHostSupports("tree", "EndHostedHost") ||
+    WidgetHostSupports("text_widget", "TextNativeHost") {
+        return 1
+    }
+    GlyphMetricsChanged()
+    session := SessionOpen()
+    result: HostValue
+    arguments: [3]HostValue
+    arguments[0] = WidgetEncodeSession(session, *session_codec)
+    arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted",
+            .bounds = Rectangle.{0.0, 0.0, 200.0, 20.0}}, *text_codec)
+    // Outside a bundle frame nothing draws.
+    if Call("text_widget", "TextHostedHost", arguments[:2], *result) != 0 {
+        return 2
+    }
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto)
+    if Call("text_widget", "TextHostedHost", arguments[:2], *result) != 1 {
+        return 3
+    }
+    // Another frame's session, a missing argument or the wrong record is refused.
+    stale := session
+    stale.epoch += cast(u64)1
+    stale_codec: WidgetSessionCodec
+    stale_arguments: [2]HostValue = .[WidgetEncodeSession(stale, *stale_codec), arguments[1]]
+    if Call("text_widget", "TextHostedHost", stale_arguments[:], *result) != 0 ||
+    Call("text_widget", "TextHostedHost", arguments[:1], *result) != 0 ||
+    Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 ||
+    Call("text_widget", "TextUnknownHost", arguments[:2], *result) != 0 {
+        return 4
+    }
+    // Fields match by name: a record from an older layout that lists only
+    // its text, in another position, still draws.
+    older := arguments[1]
+    older.fields = *text_codec.fields[2]
+    older.field_count = cast(usize)1
+    older_arguments: [2]HostValue = .[arguments[0], older]
+    if HostFieldAt(older, 0, "text") != 0 || Call("text_widget", "TextHostedHost", older_arguments[:], *result) != 1 {
+        return 5
+    }
+    // Assets pass the host's policy; texture handles never cross.
+    arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "assets/photo.png",
+            .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 {
+        return 6
+    }
+    arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "private/key.png"}, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 {
+        return 7
+    }
+    texture := ImageProps.{.asset_path = "assets/photo.png"}
+    texture.texture.id = cast(u32)3
+    arguments[1] = WidgetEncodeImageProps(texture, *image_codec)
+    checks := asset_checks
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 || asset_checks != checks {
+        return 8
+    }
+    arguments[1] = WidgetEncodeButtonProps(ButtonProps.{.id = 9, .label = "Save",
+            .bounds = Rectangle.{0.0, 60.0, 80.0, 30.0}}, *button_codec)
+    if Call("button_widget", "ButtonHostedHost", arguments[:2], *result) != 1 ||
+    result.kind != cast(s32)HostInteger || TextFromCString(result.type_name) != "s32" || result.integer != 0 {
+        return 9
+    }
+    // Slices decode into the codec and are attached by name.
+    hidden: [2]TextRange = .[TextRange.{.start = 0, .end = 2}, TextRange.{.start = 6, .end = 8}]
+    encoded := WidgetEncodeTextAreaProps(TextAreaProps.{.value = "**bold**", .hidden = hidden[:]}, *area_codec)
+    decoded := WidgetDecodeTextAreaProps(encoded, *area_decoded)
+    if HostSliceLength(encoded, 25, "hidden") != 2 || decoded.value != "**bold**" ||
+    area_decoded.hidden_decoded[1].start != 6 || area_decoded.hidden_decoded[1].end != 8 {
+        return 10
+    }
+    // A tab bar holds at most 32 tabs.
+    tabs: [40]Tab
+    index: s32 = 0
+    while index < 40 {
+        tab_values[index] = WidgetEncodeTab(tabs[index], *tab_codecs[index])
+        index += 1
+    }
+    arguments[1] = WidgetEncodeTabBarProps(TabBarProps.{}, *tab_bar_codec)
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]Tab"),
+        .length = cast(usize)33, .elements = *tab_values[0]}
+    if Call("tab_bar_widget", "TabBarHostedHost", arguments[:], *result) != 0 {
+        return 11
+    }
+    // Nothing is open to end yet; a scroll the bundle leaves open is closed
+    // by the host, so the frame still balances.
+    if Call("tree", "EndHostedHost", arguments[:1], *result) != 0 {
+        return 12
+    }
+    arguments[1] = WidgetEncodeScrollProps(ScrollProps.{.key = cast(u64)7,
+            .bounds = Rectangle.{0.0, 100.0, 200.0, 80.0}, .content_height = 400}, *scroll_codec)
+    if Call("scroll_widget", "ScrollHostedHost", arguments[:2], *result) != 1 ||
+    TextFromCString(result.type_name) != "ScrollResult" {
+        return 13
+    }
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk {
+        return 14
+    }
+    arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Late"}, *text_codec)
+    if Call("text_widget", "TextHostedHost", arguments[:2], *result) != 0 {
+        return 15
+    }
+    return 0
+}
