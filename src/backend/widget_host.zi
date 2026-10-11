@@ -1,0 +1,212 @@
+// Draws the widgets a portable bundle asks for. A bundle built with Kryon
+// calls the HostedHost function of each widget; its host binds
+// WidgetHostCall for those calls and wraps each bundle frame in
+// WidgetHostBegin and WidgetHostEnd. Calls draw into the frame's session
+// only, and only while that frame is open.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "session"
+#import "tree"
+#import "text_widget"
+#import "text_props"
+#import "image_widget"
+#import "button_widget"
+#import "checkbox_widget"
+#import "toggle_widget"
+#import "text_area_widget"
+#import "text_field_widget"
+#import "tab_bar_widget"
+#import "tab_bar_props"
+#import "box_widget"
+#import "box_props"
+#import "text_input_props"
+#import "scroll_widget"
+#import "hosted_values"
+#import "widget_codec"
+
+using HostValueKind;
+
+// Decides which asset paths a bundle may draw. Runtime texture handles
+// belong to the renderer and are always refused.
+WidgetAssetAllowed :: #type (path: string) -> bool;
+
+WIDGET_HOST_TAB_LIMIT :: 32
+WIDGET_HOST_SCROLL_DEPTH :: 16
+
+widget_host_session: Session;
+widget_host_active: bool;
+widget_host_depth: s32;
+widget_host_asset_allowed: WidgetAssetAllowed;
+widget_text_codec: WidgetTextPropsCodec;
+widget_image_codec: WidgetImagePropsCodec;
+widget_button_codec: WidgetButtonPropsCodec;
+widget_area_codec: WidgetTextAreaPropsCodec;
+widget_area_result_codec: WidgetTextAreaResultCodec;
+widget_scroll_codec: WidgetScrollPropsCodec;
+widget_scroll_result_codec: WidgetScrollResultCodec;
+widget_session_codec: WidgetSessionCodec;
+widget_checkbox_codec: WidgetCheckboxPropsCodec;
+widget_checkbox_result_codec: WidgetCheckboxValueResultCodec;
+widget_toggle_codec: WidgetTogglePropsCodec;
+widget_toggle_result_codec: WidgetToggleValueResultCodec;
+widget_field_codec: WidgetTextFieldPropsCodec;
+widget_field_result_codec: WidgetTextFieldResultCodec;
+widget_tabs: [WIDGET_HOST_TAB_LIMIT]Tab;
+widget_tab_codecs: [WIDGET_HOST_TAB_LIMIT]WidgetTabCodec;
+widget_tab_bar_codec: WidgetTabBarPropsCodec;
+widget_tab_bar_result_codec: WidgetTabBarResultCodec;
+widget_box_codec: WidgetBoxPropsCodec;
+
+// The widget calls WidgetHostCall answers, for checking a bundle's
+// capabilities before it runs.
+WidgetHostSupports :: (module: string, function: string) -> bool {
+    return (module == "text_widget" && function == "TextHostedHost") ||
+    (module == "image_widget" && function == "ImageHostedHost") ||
+    (module == "button_widget" && function == "ButtonHostedHost") ||
+    (module == "text_area_widget" && function == "TextAreaHostedHost") ||
+    (module == "scroll_widget" && function == "ScrollHostedHost") ||
+    (module == "tree" && function == "EndHostedHost") ||
+    (module == "text_field_widget" && function == "TextFieldHostedHost") ||
+    (module == "tab_bar_widget" && function == "TabBarHostedHost") ||
+    (module == "checkbox_widget" && function == "CheckboxHostedHost") ||
+    (module == "toggle_widget" && function == "ToggleHostedHost") ||
+    (module == "box_widget" && function == "BoxHostedHost")
+}
+
+WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed) {
+    widget_host_session = session
+    widget_host_asset_allowed = asset_allowed
+    widget_host_depth = 0
+    widget_host_active = true
+}
+
+// Closes any scroll the bundle left open, so the host's tree stays balanced.
+WidgetHostEnd :: () {
+    while widget_host_depth > 0 {
+        End(widget_host_session)
+        widget_host_depth -= 1
+    }
+    widget_host_active = false
+}
+
+WidgetHostAssetAllowed :: (path: string) -> bool {
+    return widget_host_asset_allowed(path)
+}
+
+// A HostCall for the hosted widget functions. Returns 0 for a call it does
+// not answer or refuses.
+WidgetHostCall :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    unused context
+    if !widget_host_active || count < 1 || !WidgetValidSession(arguments[0]) {
+        return 0
+    }
+    session := WidgetDecodeSession(arguments[0], *widget_session_codec)
+    if session.slot != widget_host_session.slot || session.epoch != widget_host_session.epoch {
+        return 0
+    }
+    owner := TextFromCString(module)
+    name := TextFromCString(function)
+    if owner == "tree" && name == "EndHostedHost" && count == 1 {
+        if widget_host_depth == 0 {
+            return 0
+        }
+        End(session)
+        widget_host_depth -= 1
+        result.* = HostScalar("bool", 1)
+        return 1
+    }
+    if owner == "tab_bar_widget" && name == "TabBarHostedHost" && count == 3 {
+        return WidgetHostTabBar(session, arguments, result)
+    }
+    if count != 2 {
+        return 0
+    }
+    props := arguments[1]
+    if owner == "box_widget" && name == "BoxHostedHost" && WidgetValidBoxProps(props) {
+        result.* = HostScalar("s32", cast(s64)Box(session, WidgetDecodeBoxProps(props, *widget_box_codec)))
+        return 1
+    }
+    if owner == "text_field_widget" && name == "TextFieldHostedHost" && WidgetValidTextFieldProps(props) {
+        edited := TextField(session, WidgetDecodeTextFieldProps(props, *widget_field_codec))
+        result.* = WidgetEncodeTextFieldResult(edited, *widget_field_result_codec)
+        return 1
+    }
+    if owner == "text_widget" && name == "TextHostedHost" && WidgetValidTextProps(props) {
+        text: TextProps = WidgetDecodeTextProps(props, *widget_text_codec)
+        text.strong = widget_text_codec.strong_decoded[:HostSliceLength(props, 15, "strong")]
+        Text(session, text)
+        return 1
+    }
+    if owner == "image_widget" && name == "ImageHostedHost" && WidgetValidImageProps(props) {
+        image := WidgetDecodeImageProps(props, *widget_image_codec)
+        if image.texture.id != cast(u32)0 || !WidgetHostAssetAllowed(image.asset_path) {
+            return 0
+        }
+        Image(session, image)
+        return 1
+    }
+    if owner == "button_widget" && name == "ButtonHostedHost" && WidgetValidButtonProps(props) {
+        button := WidgetDecodeButtonProps(props, *widget_button_codec)
+        if button.icon.id != cast(u32)0 || button.image.texture.id != cast(u32)0 ||
+        !WidgetHostAssetAllowed(button.image.asset_path) {
+            return 0
+        }
+        result.* = HostScalar("s32", cast(s64)Button(session, button))
+        return 1
+    }
+    if owner == "text_area_widget" && name == "TextAreaHostedHost" && WidgetValidTextAreaProps(props) {
+        area := WidgetDecodeTextAreaProps(props, *widget_area_codec)
+        area.colors = widget_area_codec.colors_decoded[:HostSliceLength(props, 16, "colors")]
+        area.hidden = widget_area_codec.hidden_decoded[:HostSliceLength(props, 25, "hidden")]
+        area.strong = widget_area_codec.strong_decoded[:HostSliceLength(props, 26, "strong")]
+        edited := TextArea(session, area)
+        result.* = WidgetEncodeTextAreaResult(edited, *widget_area_result_codec)
+        return 1
+    }
+    if owner == "scroll_widget" && name == "ScrollHostedHost" && WidgetValidScrollProps(props) {
+        if widget_host_depth >= WIDGET_HOST_SCROLL_DEPTH {
+            return 0
+        }
+        frame := Scroll(session, WidgetDecodeScrollProps(props, *widget_scroll_codec))
+        if frame.opened {
+            widget_host_depth += 1
+        }
+        result.* = WidgetEncodeScrollResult(frame, *widget_scroll_result_codec)
+        return 1
+    }
+    if owner == "checkbox_widget" && name == "CheckboxHostedHost" && WidgetValidCheckboxProps(props) {
+        checked := Checkbox(session, WidgetDecodeCheckboxProps(props, *widget_checkbox_codec))
+        result.* = WidgetEncodeCheckboxValueResult(checked, *widget_checkbox_result_codec)
+        return 1
+    }
+    if owner == "toggle_widget" && name == "ToggleHostedHost" && WidgetValidToggleProps(props) {
+        toggled := Toggle(session, WidgetDecodeToggleProps(props, *widget_toggle_codec))
+        result.* = WidgetEncodeToggleValueResult(toggled, *widget_toggle_result_codec)
+        return 1
+    }
+    return 0
+}
+
+WidgetHostTabBar :: (session: Session, arguments: *HostValue, result: *HostValue) -> s32 {
+    if !WidgetValidTabBarProps(arguments[1]) {
+        return 0
+    }
+    values := arguments[2]
+    if values.kind != cast(s32)HostSlice || TextFromCString(values.type_name) != "[]Tab" ||
+    values.length > cast(usize)WIDGET_HOST_TAB_LIMIT || (values.length > cast(usize)0 && values.elements == null) {
+        return 0
+    }
+    index: usize = 0
+    while index < values.length {
+        if !WidgetValidTab(values.elements[index]) {
+            return 0
+        }
+        widget_tabs[index] = WidgetDecodeTab(values.elements[index], *widget_tab_codecs[index])
+        index += cast(usize)1
+    }
+    selected := TabBar(session, WidgetDecodeTabBarProps(arguments[1], *widget_tab_bar_codec),
+        widget_tabs[:cast(s32)values.length])
+    result.* = WidgetEncodeTabBarResult(selected, *widget_tab_bar_result_codec)
+    return 1
+}
