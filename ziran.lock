@@ -2,9 +2,9 @@
   "format": 1,
   "packages": [
     {
-      "commit": "987f5843f9e3ba58278abd03e2573f0d0b432a3c",
+      "commit": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
       "dependencies": {},
-      "id": "p64bd7c976ed9a9d4",
+      "id": "p5a77c9c35110e925",
       "name": "raylib",
       "ref": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
       "source": true,
@@ -12,7 +12,7 @@
     }
   ],
   "root": {
-    "dependencies": {"raylib": "p64bd7c976ed9a9d4"},
+    "dependencies": {"raylib": "p5a77c9c35110e925"},
     "name": "kryon"
   },
   "toolchain": {
