@@ -1,0 +1,98 @@
+#import "http_transfer"
+#import "net_http"
+#import "std/byte_text_linux"
+#import "std/c_string"
+
+c :: #system_library "c";
+GetEnv :: (name: *u8) -> *u8 #foreign c "getenv";
+Sleep :: (microseconds: u32) -> s32 #foreign c "usleep";
+
+port: string;
+
+// net_http's blocking Send needs a host; these transfers never block.
+#program_export
+SendHost :: (request: HttpRequest) -> HttpResponse {
+    unused request
+    return HttpResponse.{.error = "blocking HTTP is not used here"}
+}
+
+Append :: (output: []u8, length: *s64, part: string) {
+    for index: cast(s64)0..part.count - 1 {
+        output[length.*] = part[index]
+        length.* += 1
+    }
+    output[length.*] = 0
+}
+
+Url :: (path: string, output: []u8) -> string {
+    length: s64 = 0
+    Append(output, *length, "http://127.0.0.1:")
+    Append(output, *length, port)
+    Append(output, *length, path)
+    return TextFromCString(*output[0])
+}
+
+// Polls until the transfer ends; -2 when it never does.
+Finish :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+    for attempt: 0..999 {
+        result := HttpTransferPoll(transfer, status)
+        if result >= 0 {
+            return result
+        }
+        unused Sleep(10000)
+    }
+    return -2
+}
+
+#program_export
+main :: () -> s32 {
+    name: [16]u8
+    CopyCString("HTTP_TEST_PORT", name[:])
+    port = TextFromCString(GetEnv(*name[0]))
+    url: [128]u8
+    output: [256]u8
+    status: s32
+    transfer: HttpTransfer
+    get := HttpRequest.{.method = "GET", .url = Url("/hello", url[:])}
+    if !HttpTransferStart(*transfer, get, output[:], 5000) || Finish(*transfer, *status) != 1 ||
+    status != 200 || TextFromCString(*output[0]) != "hello world" {
+        return 1
+    }
+    headers: [1]HttpHeader
+    headers[0] = HttpHeader.{.name = "X-Test", .value = "kept"}
+    post := HttpRequest.{.method = "POST", .url = Url("/echo", url[:]), .token = "secret",
+        .content_type = "text/plain", .body = "ping", .headers = headers[:]}
+    if !HttpTransferStart(*transfer, post, output[:], 5000) || Finish(*transfer, *status) != 1 ||
+    status != 201 || TextFromCString(*output[0]) != "Bearer secret|kept|text/plain|ping" {
+        return 2
+    }
+    // An answer larger than the output fails rather than arriving cut.
+    big := HttpRequest.{.method = "GET", .url = Url("/big", url[:])}
+    if !HttpTransferStart(*transfer, big, output[:], 5000) || Finish(*transfer, *status) != 0 ||
+    output[0] != 0 {
+        return 3
+    }
+    slow := HttpRequest.{.method = "GET", .url = Url("/slow", url[:])}
+    if !HttpTransferStart(*transfer, slow, output[:], 300) || Finish(*transfer, *status) != 0 {
+        return 4
+    }
+    // A cancelled transfer never writes into the caller's buffer.
+    late: [256]u8
+    late[0] = #char "-"
+    if !HttpTransferStart(*transfer, slow, late[:], 5000) {
+        return 5
+    }
+    late[0] = #char "-"
+    HttpTransferCancel(*transfer)
+    if transfer.job != null || HttpTransferPoll(*transfer, *status) != 0 {
+        return 6
+    }
+    unused Sleep(3500000)
+    if late[0] != #char "-" {
+        return 7
+    }
+    if HttpTransferStart(*transfer, HttpRequest.{.method = "GET", .url = "file:///etc/hostname"}, output[:], 5000) {
+        return 8
+    }
+    return 0
+}

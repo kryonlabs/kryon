@@ -1,0 +1,104 @@
+// Runs in headless Chromium against tests/http_transfer_server.py; the page's
+// query names the server's port.
+#import "http_transfer"
+#import "net_http"
+#import "web"
+#import "c_string"
+#import "byte_text_linux"
+
+#program_export
+SendHost :: (request: HttpRequest) -> HttpResponse {
+    unused request
+    return HttpResponse.{.error = "blocking HTTP is not used here"}
+}
+
+port: [16]u8;
+
+Append :: (output: []u8, length: *s64, part: string) {
+    for index: cast(s64)0..part.count - 1 {
+        output[length.*] = part[index]
+        length.* += 1
+    }
+    output[length.*] = 0
+}
+
+Url :: (path: string, output: []u8) -> string {
+    length: s64 = 0
+    Append(output, *length, "http://127.0.0.1:")
+    Append(output, *length, TextFromCString(*port[0]))
+    Append(output, *length, path)
+    return TextFromCString(*output[0])
+}
+
+Finish :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+    for attempt: 0..499 {
+        result := HttpTransferPoll(transfer, status)
+        if result >= 0 {
+            return result
+        }
+        WebSleep(10)
+    }
+    return -2
+}
+
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+
+Check :: () -> string {
+    scope := WebScope()
+    search := WebGet(WebGetObject(WebGlobal, WebName("location")), WebName("search"))
+    query: [32]u8
+    WebCopyString(WebAsObject(search), query[:])
+    WebEnd(scope)
+    // "?port=NNNNN"
+    CopyCString(TextFromCString(*query[6]), port[:])
+    url: [128]u8
+    output: [256]u8
+    status: s32
+    transfer: HttpTransfer
+    get := HttpRequest.{.method = "GET", .url = Url("/hello", url[:])}
+    if !HttpTransferStart(*transfer, get, output[:], 5000) {
+        return "FAIL get start"
+    }
+    if Finish(*transfer, *status) != 1 || status != 200 || TextFromCString(*output[0]) != "hello world" {
+        return "FAIL get"
+    }
+    headers: [1]HttpHeader
+    headers[0] = HttpHeader.{.name = "X-Test", .value = "kept"}
+    post := HttpRequest.{.method = "POST", .url = Url("/echo", url[:]), .token = "secret",
+        .content_type = "text/plain", .body = "ping", .headers = headers[:]}
+    if !HttpTransferStart(*transfer, post, output[:], 5000) || Finish(*transfer, *status) != 1 ||
+    status != 201 || TextFromCString(*output[0]) != "Bearer secret|kept|text/plain|ping" {
+        return "FAIL post"
+    }
+    big := HttpRequest.{.method = "GET", .url = Url("/big", url[:])}
+    if !HttpTransferStart(*transfer, big, output[:], 5000) || Finish(*transfer, *status) != 0 || output[0] != 0 {
+        return "FAIL big"
+    }
+    slow := HttpRequest.{.method = "GET", .url = Url("/slow", url[:])}
+    if !HttpTransferStart(*transfer, slow, output[:], 300) || Finish(*transfer, *status) != 0 {
+        return "FAIL timeout"
+    }
+    late: [256]u8
+    if !HttpTransferStart(*transfer, slow, late[:], 5000) {
+        return "FAIL cancel start"
+    }
+    late[0] = #char "-"
+    HttpTransferCancel(*transfer)
+    WebSleep(3500)
+    if late[0] != #char "-" {
+        return "FAIL cancel"
+    }
+    return "PASS"
+}
+
+#program_export
+main :: () -> s32 {
+    Report(Check())
+    return 0
+}

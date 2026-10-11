@@ -1,0 +1,864 @@
+// HTTP requests that run while the application keeps drawing. Start one,
+// poll it each frame, and cancel it when its answer no longer matters, for
+// example after the user switched accounts: a cancelled request can never
+// write into the caller's buffer.
+//
+// The desktop runs curl on a detached worker thread. Android asks the
+// activity, which owns TLS there, through these methods (Inner Breeze's
+// HttpTransport implements them):
+//
+//     int httpCreate(byte[] method, byte[] url, int capacity, int timeoutMs)
+//     boolean httpHeader(int handle, byte[] name, byte[] value)
+//     boolean httpSend(int handle, byte[] body)
+//     int httpPoll(int handle)        // -1 pending, 0 failed, else the status
+//     byte[] httpResponse(int handle)
+//     void httpCancel(int handle)
+//
+// The browser uses fetch through the web bridge, with credentials omitted
+// and redirects refused.
+//
+// Only http and https URLs are accepted. The answer is NUL-terminated text
+// in the caller's output, which must stay valid until the transfer is polled
+// to completion or cancelled. Answers that do not fit fail rather than
+// arriving cut.
+#import "net_http"
+#import "c_string"
+#import "byte_text_linux"
+
+HTTP_TRANSFER_ANDROID :: #defined(ANDROID_BUILD)
+HTTP_TRANSFER_WEB :: #defined(PLATFORM_WEB)
+HTTP_TRANSFER_NATIVE :: !#defined(ANDROID_BUILD) && !#defined(PLATFORM_WEB)
+
+HTTP_TRANSFER_MAXIMUM :: 16777216
+HTTP_TRANSFER_HEADERS :: 32
+
+HttpTransfer :: struct {
+    // Android's and the browser's transfer handle.
+    handle: s32
+    // The desktop worker's job.
+    job: *void
+    output: []u8
+}
+
+// 1 when an answer arrived (status holds its HTTP status), 0 when the
+// transfer failed, -1 while it is still running.
+HttpTransferPoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+    if transfer == null || status == null {
+        return 0
+    }
+    status.* = 0
+    #if HTTP_TRANSFER_NATIVE {
+        return NativePoll(transfer, status)
+    }
+    #if HTTP_TRANSFER_ANDROID {
+        return AndroidPoll(transfer, status)
+    }
+    #if HTTP_TRANSFER_WEB {
+        return BrowserPoll(transfer, status)
+    }
+}
+
+HttpTransferCancel :: (transfer: *HttpTransfer) {
+    if transfer == null {
+        return
+    }
+    #if HTTP_TRANSFER_NATIVE {
+        NativeCancel(transfer)
+    }
+    #if HTTP_TRANSFER_ANDROID {
+        AndroidCancel(transfer)
+    }
+    #if HTTP_TRANSFER_WEB {
+        BrowserCancel(transfer)
+    }
+    transfer.* = HttpTransfer.{}
+}
+
+// False when the request is malformed, too large, or cannot start; the
+// transfer then stays idle.
+HttpTransferStart :: (transfer: *HttpTransfer, request: HttpRequest,
+    output: []u8, timeout_ms: s32) -> bool {
+    if transfer == null || transfer.handle != 0 || transfer.job != null ||
+    output.count == 0 || output.count > HTTP_TRANSFER_MAXIMUM ||
+    request.body.count > HTTP_TRANSFER_MAXIMUM || request.method.count == 0 ||
+    request.method.count >= 32 || request.url.count == 0 || request.url.count >= 2048 ||
+    request.headers.count > HTTP_TRANSFER_HEADERS || timeout_ms < 1 || timeout_ms > 900000 ||
+    !TransferIsHttp(request.url) {
+        return false
+    }
+    output[0] = 0
+    #if HTTP_TRANSFER_NATIVE {
+        return NativeStart(transfer, request, output, timeout_ms)
+    }
+    #if HTTP_TRANSFER_ANDROID {
+        return AndroidStart(transfer, request, output, timeout_ms)
+    }
+    #if HTTP_TRANSFER_WEB {
+        return BrowserStart(transfer, request, output, timeout_ms)
+    }
+}
+
+// Only http and https URLs are fetched, so a URL can never name a local file.
+TransferIsHttp :: (url: string) -> bool {
+    return (url.count > 7 && url[0:7] == "http://") || (url.count > 8 && url[0:8] == "https://")
+}
+
+// "Bearer token" for the Authorization header; false when it does not fit.
+HttpTransferBearer :: (token: string, output: []u8) -> bool {
+    prefix := "Bearer "
+    if prefix.count + token.count >= output.count {
+        return false
+    }
+    for index: cast(s64)0..prefix.count - 1 {
+        output[index] = prefix[index]
+    }
+    index: s64 = 0
+    while index < token.count {
+        output[prefix.count + index] = token[index]
+        index += 1
+    }
+    output[prefix.count + token.count] = 0
+    return true
+}
+
+TransferBytes :: (text: string) -> *u8 {
+    if text.count == 0 {
+        return null
+    }
+    descriptor := cast(*TextDescriptor)(*text)
+    return descriptor.data
+}
+
+#if HTTP_TRANSFER_NATIVE {
+    #import "net_http_curl_linux"
+    transfer_c :: #system_library "c";
+    TransferAllocate :: (count: usize, size: usize) -> *void #foreign transfer_c "calloc";
+    TransferFree :: (pointer: *void) #foreign transfer_c "free";
+    TransferCopy :: (destination: *void, source: *void, count: usize) -> *void #foreign transfer_c "memcpy";
+
+    TransferWorker :: #type (*void) -> void;
+    TransferCall :: struct {
+        worker: TransferWorker
+        argument: *void
+    }
+
+    // The worker owns copies of the request; the response is written only
+    // into job memory, and only a poll copies it to the caller.
+    NativeJob :: struct {
+        method: string
+        url: string
+        token: string
+        accept: string
+        content_type: string
+        body: string
+        headers: [HTTP_TRANSFER_HEADERS]HttpHeader
+        header_count: s64
+        timeout_ms: s32
+        text: *u8
+        response: *u8
+        capacity: s64
+        result: CurlResult
+        done: bool
+        abandoned: bool
+    }
+
+    NativeKeep :: (job: *NativeJob, at: *s64, value: string) -> string {
+        if value.count == 0 {
+            return ""
+        }
+        start := *job.text[at.*]
+        TransferCopy(cast(*void)start, cast(*void)TransferBytes(value), cast(usize)value.count)
+        at.* += value.count
+        return TextFromBytes(BytesFromPointer(start, cast(u64)value.count))
+    }
+
+    NativeFreeJob :: (job: *NativeJob) {
+        TransferFree(cast(*void)job.text)
+        TransferFree(cast(*void)job.response)
+        TransferFree(cast(*void)job)
+    }
+
+    NativeWork :: (argument: *void) {
+        job := cast(*NativeJob)argument
+        request := HttpRequest.{.method = job.method, .url = job.url, .token = job.token,
+            .accept = job.accept, .content_type = job.content_type, .body = job.body,
+            .headers = job.headers[0:job.header_count]}
+        result := SendCurlWithin(request, BytesFromPointer(job.response, cast(u64)job.capacity),
+            job.timeout_ms)
+        TransferLock()
+        job.result = result
+        job.done = true
+        abandoned := job.abandoned
+        TransferUnlock()
+        if abandoned {
+            NativeFreeJob(job)
+        }
+    }
+
+    NativeStart :: (transfer: *HttpTransfer, request: HttpRequest,
+        output: []u8, timeout_ms: s32) -> bool {
+        size := request.method.count + request.url.count + request.token.count +
+            request.accept.count + request.content_type.count + request.body.count
+        for index: cast(s64)0..request.headers.count - 1 {
+            size += request.headers[index].name.count + request.headers[index].value.count
+        }
+        job := cast(*NativeJob)TransferAllocate(1, size_of(NativeJob))
+        if job == null {
+            return false
+        }
+        job.text = cast(*u8)TransferAllocate(cast(usize)(size + 1), 1)
+        job.response = cast(*u8)TransferAllocate(cast(usize)output.count, 1)
+        if job.text == null || job.response == null {
+            NativeFreeJob(job)
+            return false
+        }
+        at: s64 = 0
+        job.method = NativeKeep(job, *at, request.method)
+        job.url = NativeKeep(job, *at, request.url)
+        job.token = NativeKeep(job, *at, request.token)
+        job.accept = NativeKeep(job, *at, request.accept)
+        job.content_type = NativeKeep(job, *at, request.content_type)
+        job.body = NativeKeep(job, *at, request.body)
+        job.header_count = request.headers.count
+        for index: cast(s64)0..request.headers.count - 1 {
+            job.headers[index] = HttpHeader.{.name = NativeKeep(job, *at, request.headers[index].name),
+                .value = NativeKeep(job, *at, request.headers[index].value)}
+        }
+        job.capacity = output.count
+        job.timeout_ms = timeout_ms
+        if !TransferStartWorker(NativeWork, cast(*void)job) {
+            NativeFreeJob(job)
+            return false
+        }
+        transfer.job = cast(*void)job
+        transfer.output = output
+        return true
+    }
+
+    NativePoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+        if transfer.job == null {
+            return 0
+        }
+        job := cast(*NativeJob)transfer.job
+        TransferLock()
+        done := job.done
+        TransferUnlock()
+        if !done {
+            return -1
+        }
+        success := job.result.code == 0 && !job.result.truncated &&
+            job.result.length >= 0 && job.result.length < transfer.output.count
+        if success {
+            TransferCopy(cast(*void)*transfer.output[0], cast(*void)job.response,
+                cast(usize)job.result.length)
+            transfer.output[job.result.length] = 0
+            status.* = job.result.status
+        } else {
+            transfer.output[0] = 0
+        }
+        NativeFreeJob(job)
+        transfer.* = HttpTransfer.{}
+        return ifx success then 1 else 0
+    }
+
+    NativeCancel :: (transfer: *HttpTransfer) {
+        if transfer.job == null {
+            return
+        }
+        job := cast(*NativeJob)transfer.job
+        TransferLock()
+        done := job.done
+        job.abandoned = true
+        TransferUnlock()
+        if done {
+            NativeFreeJob(job)
+        }
+    }
+
+    #if !#defined(_WIN32) {
+        TransferThreadRoutine :: #type (*void) -> *void #c_call;
+        TransferOnceRoutine :: #type () -> void #c_call;
+        TransferOnce :: (state: *s32, routine: TransferOnceRoutine) -> s32 #foreign transfer_c "pthread_once";
+        TransferMutexInit :: (mutex: *void, attributes: *void) -> s32 #foreign transfer_c "pthread_mutex_init";
+        TransferMutexLock :: (mutex: *void) -> s32 #foreign transfer_c "pthread_mutex_lock";
+        TransferMutexUnlock :: (mutex: *void) -> s32 #foreign transfer_c "pthread_mutex_unlock";
+        TransferThreadCreate :: (thread: *usize, attributes: *void,
+            routine: TransferThreadRoutine, argument: *void) -> s32 #foreign transfer_c "pthread_create";
+        TransferThreadDetach :: (thread: usize) -> s32 #foreign transfer_c "pthread_detach";
+        TransferAbort :: () #foreign transfer_c "abort";
+
+        transfer_mutex_once: s32;
+        transfer_mutex: *void;
+
+        TransferMutexStart :: () {
+            // Large enough for every platform's pthread_mutex_t.
+            transfer_mutex = TransferAllocate(1, 128)
+            if transfer_mutex == null || TransferMutexInit(transfer_mutex, null) != 0 {
+                TransferAbort()
+            }
+        }
+
+        TransferLock :: () {
+            routine: TransferOnceRoutine = TransferMutexStart
+            unused TransferOnce(*transfer_mutex_once, routine)
+            unused TransferMutexLock(transfer_mutex)
+        }
+
+        TransferUnlock :: () {
+            unused TransferMutexUnlock(transfer_mutex)
+        }
+
+        TransferThread :: (argument: *void) -> *void {
+            call := cast(*TransferCall)argument
+            worker := call.worker
+            worker_argument := call.argument
+            TransferFree(argument)
+            worker(worker_argument)
+            return null
+        }
+
+        TransferStartWorker :: (worker: TransferWorker, argument: *void) -> bool {
+            // A function and its argument: two pointers.
+            call := cast(*TransferCall)TransferAllocate(2, size_of(*void))
+            if call == null {
+                return false
+            }
+            call.worker = worker
+            call.argument = argument
+            thread: usize
+            routine: TransferThreadRoutine = TransferThread
+            if TransferThreadCreate(*thread, null, routine, cast(*void)call) != 0 {
+                TransferFree(cast(*void)call)
+                return false
+            }
+            unused TransferThreadDetach(thread)
+            return true
+        }
+    }
+
+    #if #defined(_WIN32) {
+        transfer_kernel32 :: #system_library "kernel32";
+        TransferThreadRoutine :: #type (*void) -> u32 #c_call;
+        TransferSrwLock :: (lock: *usize) #foreign transfer_kernel32 "AcquireSRWLockExclusive";
+        TransferSrwUnlock :: (lock: *usize) #foreign transfer_kernel32 "ReleaseSRWLockExclusive";
+        TransferCreateThread :: (attributes: *void, stack_size: usize,
+            routine: TransferThreadRoutine, argument: *void,
+            flags: u32, thread_id: *u32) -> *void #foreign transfer_kernel32 "CreateThread";
+        TransferCloseHandle :: (handle: *void) -> s32 #foreign transfer_kernel32 "CloseHandle";
+
+        transfer_lock: usize;
+
+        TransferLock :: () {
+            TransferSrwLock(*transfer_lock)
+        }
+
+        TransferUnlock :: () {
+            TransferSrwUnlock(*transfer_lock)
+        }
+
+        TransferThread :: (argument: *void) -> u32 {
+            call := cast(*TransferCall)argument
+            worker := call.worker
+            worker_argument := call.argument
+            TransferFree(argument)
+            worker(worker_argument)
+            return 0
+        }
+
+        TransferStartWorker :: (worker: TransferWorker, argument: *void) -> bool {
+            // A function and its argument: two pointers.
+            call := cast(*TransferCall)TransferAllocate(2, size_of(*void))
+            if call == null {
+                return false
+            }
+            call.worker = worker
+            call.argument = argument
+            routine: TransferThreadRoutine = TransferThread
+            thread := TransferCreateThread(null, 0, routine, cast(*void)call, 0, null)
+            if thread == null {
+                TransferFree(cast(*void)call)
+                return false
+            }
+            unused TransferCloseHandle(thread)
+            return true
+        }
+    }
+}
+
+#if HTTP_TRANSFER_ANDROID {
+    #import "android_jni"
+
+    AndroidBytes :: (session: *AndroidJniSession, value: string) -> *void {
+        env := session.env
+        bytes := env.functions.NewByteArray(env, cast(s32)value.count)
+        if bytes == null {
+            return null
+        }
+        if value.count > 0 {
+            env.functions.SetByteArrayRegion(env, bytes, 0, cast(s32)value.count, TransferBytes(value))
+        }
+        if env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        return bytes
+    }
+
+    AndroidCancelHandle :: (session: *AndroidJniSession, handle: s32) {
+        unused AndroidJniCallVoidInteger(session, "httpCancel", "(I)V", handle)
+    }
+
+    AndroidHeader :: (session: *AndroidJniSession, handle: s32,
+        name: string, value: string) -> bool {
+        if name.count == 0 || name.count > 128 || value.count > 8192 {
+            return false
+        }
+        method := AndroidJniMethod(session, "httpHeader", "(I[B[B)Z")
+        if method == null {
+            return false
+        }
+        env := session.env
+        arguments: [3]JniValue
+        arguments[0].integer = handle
+        arguments[1].reference = AndroidBytes(session, name)
+        arguments[2].reference = AndroidBytes(session, value)
+        if arguments[1].reference == null || arguments[2].reference == null {
+            return false
+        }
+        ok := env.functions.CallBooleanMethodA(env, session.activity, method,
+            *arguments[0]) != 0 && env.functions.ExceptionCheck(env) == 0
+        env.functions.DeleteLocalRef(env, arguments[1].reference)
+        env.functions.DeleteLocalRef(env, arguments[2].reference)
+        return ok
+    }
+
+    AndroidConfigure :: (session: *AndroidJniSession, handle: s32,
+        request: HttpRequest) -> bool {
+        if request.accept.count > 0 && !AndroidHeader(session, handle, "Accept", request.accept) {
+            return false
+        }
+        if request.content_type.count > 0 &&
+        !AndroidHeader(session, handle, "Content-Type", request.content_type) {
+            return false
+        }
+        if request.token.count > 0 {
+            authorization: [8192]u8
+            if !HttpTransferBearer(request.token, authorization[:]) ||
+            !AndroidHeader(session, handle, "Authorization", TextFromCString(*authorization[0])) {
+                return false
+            }
+        }
+        for index: cast(s64)0..request.headers.count - 1 {
+            if !AndroidHeader(session, handle, request.headers[index].name, request.headers[index].value) {
+                return false
+            }
+        }
+        method := AndroidJniMethod(session, "httpSend", "(I[B)Z")
+        if method == null {
+            return false
+        }
+        arguments: [2]JniValue
+        arguments[0].integer = handle
+        arguments[1].reference = AndroidBytes(session, request.body)
+        if arguments[1].reference == null {
+            return false
+        }
+        env := session.env
+        return env.functions.CallBooleanMethodA(env, session.activity, method,
+            *arguments[0]) != 0 && env.functions.ExceptionCheck(env) == 0
+    }
+
+    AndroidStart :: (transfer: *HttpTransfer, request: HttpRequest,
+        output: []u8, timeout_ms: s32) -> bool {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return false
+        }
+        defer AndroidJniDetachCurrent(*session)
+        method := AndroidJniMethod(*session, "httpCreate", "([B[BII)I")
+        if method == null {
+            return false
+        }
+        arguments: [4]JniValue
+        arguments[0].reference = AndroidBytes(*session, request.method)
+        arguments[1].reference = AndroidBytes(*session, request.url)
+        arguments[2].integer = cast(s32)output.count
+        arguments[3].integer = timeout_ms
+        if arguments[0].reference == null || arguments[1].reference == null {
+            return false
+        }
+        env := session.env
+        handle := env.functions.CallIntMethodA(env, session.activity, method, *arguments[0])
+        if env.functions.ExceptionCheck(env) != 0 || handle <= 0 {
+            return false
+        }
+        if !AndroidConfigure(*session, handle, request) {
+            if env.functions.ExceptionCheck(env) != 0 {
+                env.functions.ExceptionClear(env)
+            }
+            AndroidCancelHandle(*session, handle)
+            return false
+        }
+        transfer.handle = handle
+        transfer.output = output
+        return true
+    }
+
+    AndroidPoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+        if transfer.handle == 0 {
+            return 0
+        }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            transfer.output[0] = 0
+            transfer.* = HttpTransfer.{}
+            return 0
+        }
+        defer AndroidJniDetachCurrent(*session)
+        env := session.env
+        method := AndroidJniMethod(*session, "httpPoll", "(I)I")
+        state: s32 = 0
+        arguments: [1]JniValue
+        arguments[0].integer = transfer.handle
+        if method != null {
+            state = env.functions.CallIntMethodA(env, session.activity, method, *arguments[0])
+        }
+        if env.functions.ExceptionCheck(env) != 0 {
+            env.functions.ExceptionClear(env)
+            state = 0
+        }
+        if state < 0 {
+            return -1
+        }
+        result: s32 = 0
+        if state > 0 {
+            method = AndroidJniMethod(*session, "httpResponse", "(I)[B")
+            if method != null {
+                bytes := env.functions.CallObjectMethodA(env, session.activity, method, *arguments[0])
+                if bytes != null && env.functions.ExceptionCheck(env) == 0 {
+                    length := env.functions.GetArrayLength(env, bytes)
+                    if length >= 0 && cast(s64)length < transfer.output.count {
+                        env.functions.GetByteArrayRegion(env, bytes, 0, length, *transfer.output[0])
+                        if env.functions.ExceptionCheck(env) == 0 {
+                            transfer.output[length] = 0
+                            status.* = state
+                            result = 1
+                        }
+                    }
+                }
+            }
+        }
+        if result == 0 {
+            transfer.output[0] = 0
+        }
+        if env.functions.ExceptionCheck(env) != 0 {
+            env.functions.ExceptionClear(env)
+        }
+        AndroidCancelHandle(*session, transfer.handle)
+        transfer.* = HttpTransfer.{}
+        return result
+    }
+
+    AndroidCancel :: (transfer: *HttpTransfer) {
+        if transfer.handle == 0 {
+            return
+        }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) != 0 {
+            AndroidCancelHandle(*session, transfer.handle)
+            AndroidJniDetachCurrent(*session)
+        }
+    }
+}
+
+#if HTTP_TRANSFER_WEB {
+    #import "web"
+
+    BROWSER_TRANSFERS :: 8
+
+    // One fetch. Its callbacks find it by slot and generation, so a late
+    // answer for a cancelled transfer is dropped.
+    BrowserTask :: struct {
+        generation: s32
+        busy: bool
+        done: bool
+        success: bool
+        status: s32
+        output: *u8
+        capacity: s32
+        length: s32
+        controller: s32
+        timer: s32
+        reader: s32
+        on_response: s32
+        on_chunk: s32
+        on_failure: s32
+        on_timeout: s32
+    }
+
+    browser_tasks: [BROWSER_TRANSFERS]BrowserTask;
+    browser_generation: s32;
+
+    // A transfer's handle is its slot plus its generation, never zero.
+    BrowserHandle :: (slot: s32, generation: s32) -> s32 {
+        return generation * BROWSER_TRANSFERS + slot + 1
+    }
+
+    BrowserTaskFor :: (handle: s32) -> *BrowserTask {
+        if handle <= 0 {
+            return null
+        }
+        slot := (handle - 1) % BROWSER_TRANSFERS
+        task := *browser_tasks[slot]
+        if !task.busy || BrowserHandle(slot, task.generation) != handle {
+            return null
+        }
+        return task
+    }
+
+    BrowserReleaseHandle :: (handle: s32) {
+        if handle != 0 {
+            WebRelease(handle)
+        }
+    }
+
+    BrowserRelease :: (task: *BrowserTask) {
+        BrowserReleaseHandle(task.controller)
+        BrowserReleaseHandle(task.reader)
+        BrowserReleaseHandle(task.on_response)
+        BrowserReleaseHandle(task.on_chunk)
+        BrowserReleaseHandle(task.on_failure)
+        BrowserReleaseHandle(task.on_timeout)
+        task.controller = 0
+        task.reader = 0
+        task.on_response = 0
+        task.on_chunk = 0
+        task.on_failure = 0
+        task.on_timeout = 0
+    }
+
+    // Ends the fetch: stops its timer, aborts it and drops its handles.
+    BrowserFinish :: (task: *BrowserTask, success: bool, status: s32) {
+        if task.done {
+            return
+        }
+        scope := WebScope()
+        if task.timer != 0 {
+            unused WebCall1(WebGlobal, WebName("clearTimeout"), WebNumber(cast(float64)task.timer))
+            task.timer = 0
+        }
+        if !success && task.controller != 0 {
+            unused WebCall0(task.controller, WebName("abort"))
+        }
+        if !success && task.reader != 0 {
+            promise := WebAsObject(WebCall0(task.reader, WebName("cancel")))
+            if promise != 0 && task.on_failure != 0 {
+                unused WebCall2(promise, WebName("then"), WebObject(task.on_failure), WebObject(task.on_failure))
+            }
+        }
+        WebEnd(scope)
+        task.done = true
+        task.success = success
+        task.status = status
+        if !success && task.output != null {
+            task.output[0] = 0
+        }
+    }
+
+    BrowserRead :: (task: *BrowserTask) {
+        scope := WebScope()
+        promise := WebAsObject(WebCall0(task.reader, WebName("read")))
+        if promise == 0 || WebFailed() {
+            WebEnd(scope)
+            BrowserFinish(task, false, 0)
+            return
+        }
+        unused WebCall2(promise, WebName("then"), WebObject(task.on_chunk), WebObject(task.on_failure))
+        WebEnd(scope)
+    }
+
+    BrowserOnResponse :: (handle: s32, response: s32, second: s32, third: s32) {
+        unused second
+        unused third
+        task := BrowserTaskFor(handle)
+        if task == null || task.done {
+            return
+        }
+        task.status = cast(s32)WebGetNumber(response, WebName("status"))
+        headers := WebGetObject(response, WebName("headers"))
+        declared := WebCall1(headers, WebName("get"), WebText("content-length"))
+        if declared.tag == WebStringTag {
+            length := WebAsNumber(WebCall1(WebGlobal, WebName("Number"), declared))
+            if length >= cast(float64)task.capacity {
+                BrowserFinish(task, false, 0)
+                return
+            }
+        }
+        body := WebGetObject(response, WebName("body"))
+        if body == 0 {
+            task.output[0] = 0
+            BrowserFinish(task, true, task.status)
+            return
+        }
+        task.reader = WebKeep(WebAsObject(WebCall0(body, WebName("getReader"))))
+        if task.reader == 0 || WebFailed() {
+            BrowserFinish(task, false, 0)
+            return
+        }
+        BrowserRead(task)
+    }
+
+    BrowserOnChunk :: (handle: s32, chunk: s32, second: s32, third: s32) {
+        unused second
+        unused third
+        task := BrowserTaskFor(handle)
+        if task == null || task.done {
+            return
+        }
+        if WebAsBool(WebGet(chunk, WebName("done"))) {
+            task.output[task.length] = 0
+            BrowserFinish(task, true, task.status)
+            return
+        }
+        value := WebGetObject(chunk, WebName("value"))
+        count := cast(s32)WebGetNumber(value, WebName("length"))
+        if value == 0 || count < 0 || count > task.capacity - task.length - 1 {
+            BrowserFinish(task, false, 0)
+            return
+        }
+        if count > 0 && WebCopyOut(value, cast(*void)*task.output[task.length], count) != count {
+            BrowserFinish(task, false, 0)
+            return
+        }
+        task.length += count
+        BrowserRead(task)
+    }
+
+    BrowserOnFailure :: (handle: s32, first: s32, second: s32, third: s32) {
+        unused first
+        unused second
+        unused third
+        task := BrowserTaskFor(handle)
+        if task != null {
+            BrowserFinish(task, false, 0)
+        }
+    }
+
+    BrowserHeaders :: (request: HttpRequest) -> s32 {
+        headers := WebNew0(WebGetObject(WebGlobal, WebName("Headers")))
+        if headers == 0 {
+            return 0
+        }
+        if request.accept.count > 0 {
+            unused WebCall2(headers, WebName("append"), WebText("Accept"), WebText(request.accept))
+        }
+        if request.content_type.count > 0 {
+            unused WebCall2(headers, WebName("append"), WebText("Content-Type"), WebText(request.content_type))
+        }
+        if request.token.count > 0 {
+            authorization: [8192]u8
+            if !HttpTransferBearer(request.token, authorization[:]) {
+                return 0
+            }
+            unused WebCall2(headers, WebName("append"), WebText("Authorization"),
+                WebText(TextFromCString(*authorization[0])))
+        }
+        for index: cast(s64)0..request.headers.count - 1 {
+            header := request.headers[index]
+            if header.name.count == 0 || header.name.count > 128 || header.value.count > 8192 {
+                return 0
+            }
+            unused WebCall2(headers, WebName("append"), WebText(header.name), WebText(header.value))
+            if WebFailed() {
+                return 0
+            }
+        }
+        return headers
+    }
+
+    BrowserStart :: (transfer: *HttpTransfer, request: HttpRequest,
+        output: []u8, timeout_ms: s32) -> bool {
+        slot: s32 = -1
+        for index: 0..BROWSER_TRANSFERS - 1 {
+            if slot < 0 && !browser_tasks[index].busy {
+                slot = cast(s32)index
+            }
+        }
+        if slot < 0 {
+            return false
+        }
+        browser_generation += 1
+        if browser_generation > 100000000 {
+            browser_generation = 1
+        }
+        task := *browser_tasks[slot]
+        task.* = BrowserTask.{.generation = browser_generation, .busy = true,
+            .output = *output[0], .capacity = cast(s32)output.count}
+        handle := BrowserHandle(slot, task.generation)
+        scope := WebScope()
+        defer WebEnd(scope)
+        headers := BrowserHeaders(request)
+        controller := WebNew0(WebGetObject(WebGlobal, WebName("AbortController")))
+        init := WebNewObject()
+        if headers == 0 || controller == 0 || init == 0 || WebFailed() {
+            task.* = BrowserTask.{}
+            return false
+        }
+        task.controller = WebKeep(controller)
+        WebSet(init, WebName("method"), WebText(request.method))
+        WebSet(init, WebName("headers"), WebObject(headers))
+        WebSet(init, WebName("redirect"), WebText("error"))
+        WebSet(init, WebName("credentials"), WebText("omit"))
+        WebSet(init, WebName("cache"), WebText("no-store"))
+        WebSet(init, WebName("signal"), WebGet(controller, WebName("signal")))
+        if request.body.count > 0 {
+            body := WebBytes(WebBytesUint8, cast(*void)TransferBytes(request.body), cast(s32)request.body.count)
+            WebSet(init, WebName("body"), WebObject(body))
+        }
+        task.on_response = WebFunction(BrowserOnResponse, handle)
+        task.on_chunk = WebFunction(BrowserOnChunk, handle)
+        task.on_failure = WebFunction(BrowserOnFailure, handle)
+        task.on_timeout = WebFunction(BrowserOnFailure, handle)
+        promise := WebAsObject(WebCall2(WebGlobal, WebName("fetch"), WebText(request.url), WebObject(init)))
+        if promise == 0 || WebFailed() {
+            BrowserRelease(task)
+            task.* = BrowserTask.{}
+            return false
+        }
+        unused WebCall2(promise, WebName("then"), WebObject(task.on_response), WebObject(task.on_failure))
+        task.timer = cast(s32)WebAsNumber(WebCall2(WebGlobal, WebName("setTimeout"),
+            WebObject(task.on_timeout), WebNumber(cast(float64)timeout_ms)))
+        transfer.handle = handle
+        transfer.output = output
+        return true
+    }
+
+    BrowserPoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+        task := BrowserTaskFor(transfer.handle)
+        if task == null {
+            transfer.* = HttpTransfer.{}
+            return 0
+        }
+        if !task.done {
+            return -1
+        }
+        status.* = task.status
+        result: s32 = ifx task.success then 1 else 0
+        BrowserRelease(task)
+        task.* = BrowserTask.{}
+        transfer.* = HttpTransfer.{}
+        return result
+    }
+
+    BrowserCancel :: (transfer: *HttpTransfer) {
+        task := BrowserTaskFor(transfer.handle)
+        if task == null {
+            return
+        }
+        // Stop the fetch; the caller's buffer is never written again.
+        task.output = null
+        BrowserFinish(task, false, 0)
+        BrowserRelease(task)
+        task.* = BrowserTask.{}
+    }
+
+}
