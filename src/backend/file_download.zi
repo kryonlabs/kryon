@@ -19,6 +19,7 @@
 // the network could not be reached, so the caller may retry later.
 #import "c_string"
 #import "byte_text_linux"
+#import "android_jni"
 
 FileDownloadStatus :: enum {
     Idle :: 0
@@ -573,7 +574,6 @@ FileDownloadRelease :: (download: *FileDownload) {
 }
 
 #if DOWNLOAD_ANDROID {
-    #import "android_jni"
     DownloadAllocate :: (count: usize, size: usize) -> *void #foreign download_c "calloc";
     DownloadFree :: (memory: *void) #foreign download_c "free";
     DownloadMutexLock :: (mutex: *void) -> s32 #foreign download_c "pthread_mutex_lock";
@@ -749,7 +749,7 @@ FileDownloadRelease :: (download: *FileDownload) {
 }
 
 #program_export
-FileDownloadNativeSucceeded :: (env: *void, activity: *void, handle: s64, bytes: s64, http_status: s32) {
+FileDownloadNativeSucceeded :: (env: *JniEnv, activity: *void, handle: s64, bytes: s64, http_status: s32) {
     unused env
     unused activity
     #if DOWNLOAD_ANDROID {
@@ -775,7 +775,7 @@ FileDownloadNativeSucceeded :: (env: *void, activity: *void, handle: s64, bytes:
 }
 
 #program_export
-FileDownloadNativeProgress :: (env: *void, activity: *void, handle: s64, bytes: s64, total_bytes: s64) {
+FileDownloadNativeProgress :: (env: *JniEnv, activity: *void, handle: s64, bytes: s64, total_bytes: s64) {
     unused env
     unused activity
     #if DOWNLOAD_ANDROID {
@@ -796,16 +796,15 @@ FileDownloadNativeProgress :: (env: *void, activity: *void, handle: s64, bytes: 
 }
 
 #program_export
-FileDownloadNativeFailed :: (env: *void, activity: *void, handle: s64, http_status: s32, error: *void) {
+FileDownloadNativeFailed :: (env: *JniEnv, activity: *void, handle: s64, http_status: s32, error: *void) {
     unused activity
     #if DOWNLOAD_ANDROID {
         if handle <= 0 {
             return
         }
-        jni := cast(*JniEnv)env
         message: *u8
         if error != null {
-            message = jni.functions.GetStringUTFChars(jni, error, null)
+            message = env.functions.GetStringUTFChars(env, error, null)
         }
         bounded: [256]u8
         if message != null && message[0] != 0 {
@@ -814,7 +813,7 @@ FileDownloadNativeFailed :: (env: *void, activity: *void, handle: s64, http_stat
             unused CopyCString("Android download failed", bounded[:])
         }
         if message != null {
-            jni.functions.ReleaseStringUTFChars(jni, error, message)
+            env.functions.ReleaseStringUTFChars(env, error, message)
         }
         DownloadLock()
         job := DownloadFind(cast(u64)handle)
