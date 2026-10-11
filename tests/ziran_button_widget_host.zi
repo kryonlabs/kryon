@@ -6,6 +6,9 @@ labels: s32;
 images: s32;
 icons: s32;
 icon_phase: bool;
+swatch_phase: bool;
+swatch_fills: s32;
+swatch_rings: s32;
 failed: bool;
 
 #program_export
@@ -25,6 +28,7 @@ ImageHeight :: (asset_path: string) -> s32 {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
+    if swatch_phase && value.count == 0 { return 0 }
     if value != "Run" || font != 14 || typeface.count != 0 {
         failed = true
     }
@@ -40,6 +44,15 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
+    // A swatch fills with its own colour, never the style's background.
+    if swatch_phase {
+        if color.r != cast(u8)0xd8 || color.g != cast(u8)0x74 ||
+            color.b != cast(u8)0xa4 || color.a != cast(u8)255 {
+            failed = true
+        }
+        swatch_fills += 1
+        return
+    }
     // Icon-only buttons use their own face; the icon phase checks the atlas.
     if icon_phase {
         fills += 1
@@ -58,12 +71,14 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
-    unused bounds
     unused radius
     unused segments
-    unused width
-    unused color
-    failed = true
+    // Only a chosen swatch draws rings: a light one inside, a dark edge.
+    if !swatch_phase || bounds.width <= 0.0 || width <= 0.0 ||
+        (color.r != cast(u8)255 && color.r != cast(u8)0) {
+        failed = true
+    }
+    swatch_rings += 1
 }
 
 #program_export
@@ -149,3 +164,18 @@ ButtonIcons :: () -> s32 { return icons }
 
 #program_export
 ExpectIcon :: () { icon_phase = true }
+
+#program_export
+ExpectSwatch :: () {
+    // The drag checks before draw labels without the earlier image; only
+    // the swatch frames that follow are checked.
+    swatch_phase = true
+    icon_phase = false
+    failed = false
+}
+
+#program_export
+SwatchFills :: () -> s32 { return swatch_fills }
+
+#program_export
+SwatchRings :: () -> s32 { return swatch_rings }

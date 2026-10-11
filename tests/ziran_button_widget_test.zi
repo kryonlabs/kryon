@@ -10,6 +10,7 @@ TestSession :: () -> Session {
 #import "button_widget"
 #import "control_props"
 #import "geometry"
+#import "drawing_props"
 #import "image_props"
 #import "style"
 #import "style_sheet"
@@ -175,5 +176,25 @@ main :: () -> s32 {
     drag = TreeTakeDragAt(TestSession(), 1)
     if !drag.ended || drag.active { return 44 }
     if TreeTakeActivationAt(TestSession(), 1) { return 45 }
+    // A swatch paints its own colour under any theme, and only the chosen
+    // one carries rings.
+    ExpectSwatch()
+    swatch: ButtonProps
+    swatch.key = cast(u64)90
+    swatch.id = 90
+    swatch.class_name = 9
+    swatch.circle = true
+    swatch.swatch = true
+    swatch.swatch_color = Color.{216, 116, 164, 255}
+    swatch.bounds = Rectangle.{10.0, 20.0, 40.0, 40.0}
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    unused Button(TestSession(), swatch)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || ButtonHostFailed() ||
+    SwatchFills() != 1 || SwatchRings() != 0 { return 47 }
+    swatch.selected = true
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    unused Button(TestSession(), swatch)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || ButtonHostFailed() ||
+    SwatchFills() != 2 || SwatchRings() != 2 { return 48 }
     return 0
 }
