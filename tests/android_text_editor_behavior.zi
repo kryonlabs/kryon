@@ -1,0 +1,68 @@
+// The Android input method editor: snapshots reach the focused field as text
+// requests, stale revisions are refused, a replaced field ignores late edits
+// of its predecessor, and a blurred field takes none. Runs with ANDROID_BUILD
+// on the host; Java stays stubbed.
+#import, file "../src/backend/android_device.zi";
+#import, file "android_device_host.zi";
+#import "android_text_editor"
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "text_host"
+#import "text_request"
+#import "widget_kind"
+using WidgetKind;
+
+c :: #system_library "c";
+TestExit :: (status: s32) #foreign c "exit";
+
+Require :: (condition: bool, code: s32) {
+    if !condition {
+        TestExit(code)
+    }
+}
+
+EditorFrame :: (session: Session, key: u64, value: string) -> s32 {
+    TreeStart(session, 1, .{0.0, 0.0, 400.0, 600.0})
+    node := TreeSubmitCurrent(session, key, WidgetKindTextArea, .{10.0, 20.0, 300.0, 50.0})
+    TreeSetInteractive(session, node, false, false, 1)
+    TreeSetSelected(session, node, true)
+    TreeSetTextValue(session, node, value, cast(s32)value.count, cast(s32)value.count, false, false)
+    TextHostPresent(session, node, value, cast(s32)value.count, cast(s32)value.count, false, false, false)
+    if !TreeFinish(session) {
+        return -1
+    }
+    unused TreeFocusAt(session, node)
+    AndroidTextInputFrame(session, true)
+    return node
+}
+
+// Opening the editor and each change of the focused field start a new
+// target, which Java names in its snapshots.
+#program_export
+main :: () -> s32 {
+    editor := SessionOpen()
+    AndroidTextInputOpen(editor)
+    node := EditorFrame(editor, 100, "")
+    Require(node >= 0 && AndroidTextEditorUpdate(2, 1, "hel", 3, 3), 1)
+    Require(AndroidTextEditorUpdate(2, 2, "hello 水😀", 13, 13) &&
+        !AndroidTextEditorUpdate(2, 1, "old", 3, 3) && !AndroidTextEditorUpdate(2, 2, "again", 5, 5), 2)
+    AndroidTextInputBeginFrame(editor)
+    request := TextRequestTake(editor, node)
+    Require(request.pending && request.replace && request.value == "hello 水😀" && request.cursor == 13, 3)
+    // Replacing a focused field changes its identity: late edits from the
+    // previous editor never reach the new field.
+    node = EditorFrame(editor, 101, "saved draft")
+    Require(!AndroidTextEditorUpdate(2, 3, "late", 4, 4) && AndroidTextEditorUpdate(3, 1, "new", 3, 3), 4)
+    AndroidTextInputBeginFrame(editor)
+    request = TextRequestTake(editor, node)
+    Require(request.pending && request.value == "new", 5)
+    AndroidTextInputFrame(editor, false)
+    Require(!AndroidTextEditorUpdate(3, 2, "after blur", 10, 10), 6)
+    // An invalid snapshot is refused.
+    node = EditorFrame(editor, 102, "")
+    Require(!AndroidTextEditorUpdate(5, 1, "ab", 5, 0) && AndroidTextEditorUpdate(5, 1, "ab", 2, 0), 7)
+    AndroidTextInputClose(editor)
+    SessionClose(editor)
+    return 0
+}
