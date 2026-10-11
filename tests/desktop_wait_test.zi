@@ -9,6 +9,7 @@ Push :: (event: *void) -> s32 #foreign sdl "SDL_PushEvent";
 Poll :: (event: *void) -> s32 #foreign sdl "SDL_PollEvent";
 EventState :: (kind: u32, state: s32) -> u8 #foreign sdl "SDL_EventState";
 TextInputActive :: () -> s32 #foreign sdl "SDL_IsTextInputActive";
+Peep :: (events: *void, count: s32, action: s32, first: u32, last: u32) -> s32 #foreign sdl "SDL_PeepEvents";
 Event :: struct {
     kind: u32; timestamp: u32; window_id: u32; which: u32
     button: u8; state: u8; clicks: u8; padding: u8
@@ -44,12 +45,18 @@ main :: () -> s32 {
         Desktop.PauseDesktop()
         returned := Counter()
         ThreadWait(*thread)
+        // SDL_PEEKEVENT copies the queue without removing anything.
+        queued: [8]Event
+        queued_count := Peep(cast(*void)*queued[0], 8, 1, cast(u32)0, cast(u32)0xFFFF)
         if !work.delivered || !Desktop.PollDesktop() { return 5 }
         key := Desktop.DesktopPressedKey(); key_after := Desktop.DesktopPressedKey()
         text := Desktop.DesktopTypedCodepoint(); text_after := Desktop.DesktopTypedCodepoint()
         if key != 32 || key_after != 0 || text != 65 || text_after != 0 {
             print("round %: key % then %, text % then %; text events enabled %, text input active %\n",
                 sample, key, key_after, text, text_after, EventState(cast(u32)0x303, -1), TextInputActive())
+            for i: 0..queued_count-1 {
+                print("queued %: type % window % text byte %\n", i, queued[i].kind, queued[i].window_id, queued[i].which & cast(u32)255)
+            }
             return 6
         }
         pointer := Desktop.PollPointer()
