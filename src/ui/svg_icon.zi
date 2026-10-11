@@ -58,6 +58,15 @@ SvgIconSlot :: (shape: string, size: s32) -> s32 {
 // Paints shape inside bounds in color. The icon is drawn square and centered,
 // rasterized at the host's screen pixels so a scaled frame keeps it sharp.
 #program_export
+// The nearest screen pixel boundary, in layout units.
+SvgIconSnap :: (value: float32, scale: float32) -> float32 {
+    pixels: float32 = value * scale
+    whole: float32 = cast(float32)cast(s32)pixels
+    if pixels < 0.0 && whole != pixels { whole -= 1.0 }
+    if pixels - whole >= 0.5 { whole += 1.0 }
+    return whole / scale
+}
+
 PaintSvgIcon :: (session: Session, node: s32, shape: string, bounds: Rectangle,
     color: Color) {
     if shape.count == 0 || bounds.width <= 0.0 || bounds.height <= 0.0 || color.a == cast(u8)0 {
@@ -65,14 +74,22 @@ PaintSvgIcon :: (session: Session, node: s32, shape: string, bounds: Rectangle,
     }
     edge: float32 = bounds.width
     if bounds.height < edge { edge = bounds.height }
-    size: s32 = cast(s32)(edge * PaintPixelScale() + 0.5)
+    scale: float32 = PaintPixelScale()
+    size: s32 = cast(s32)(edge * scale + 0.5)
     if size < 1 { size = 1 }
-    if size > SVG_ICON_MAX { size = SVG_ICON_MAX }
+    // Each raster cell is one screen pixel, and the icon's corner sits on a
+    // screen pixel, so the painted cells meet on whole pixels: no seams where
+    // the host anti-aliases a cell edge between two pixels.
+    cell: float32 = 1.0 / scale
+    if size > SVG_ICON_MAX {
+        size = SVG_ICON_MAX
+        cell = edge / cast(float32)size
+    }
     slot: s32 = SvgIconSlot(shape, size)
     if slot < 0 { return }
-    cell: float32 = edge / cast(float32)size
-    left: float32 = bounds.x + (bounds.width - edge) * 0.5
-    top: float32 = bounds.y + (bounds.height - edge) * 0.5
+    extent: float32 = cast(float32)size * cell
+    left: float32 = SvgIconSnap(bounds.x + (bounds.width - extent) * 0.5, scale)
+    top: float32 = SvgIconSnap(bounds.y + (bounds.height - extent) * 0.5, scale)
     index: s32 = 0
     while index < size * size {
         svg_icon_levels[index] = cast(u8)((cast(s32)svg_icon_cache[slot].coverage[index] *
