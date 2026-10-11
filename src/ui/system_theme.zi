@@ -351,6 +351,11 @@ SystemPaletteInstall :: (palette: SystemPalette, material: bool = false) -> bool
     Rule(*rules, Sheet.StyleKindTextArea(), button, fg)
     Rule(*rules, Sheet.StyleKindSpinbox(), palette.base, fg)
     Rule(*rules, Sheet.StyleKindSpinboxValue(), palette.base, fg)
+    // The scrollbar sits on the page, with a thumb that follows its palette.
+    Rule(*rules, Sheet.StyleKindScroll(), cast(u32)0, fg)
+    Rule(*rules, Sheet.StyleKindScrollThumb(), CssMix(bg, fg, 0.32), fg)
+    Rule(*rules, Sheet.StyleKindScrollThumb(), CssMix(bg, fg, 0.48), fg, 2)
+    Rule(*rules, Sheet.StyleKindScrollThumb(), CssMix(bg, fg, 0.64), fg, 4)
     inputs: [3]s32 = .{Sheet.StyleKindTextField(), Sheet.StyleKindTextArea(), Sheet.StyleKindSpinbox()}
     for index: 0..2 {
         edge := *rules.items[rules.count]; edge.selector = Sheet.StyleDefaultSelector(); edge.selector.kind = inputs[index]; rules.count += 1

@@ -107,13 +107,15 @@ ScrollFace :: (kind: s32, class_name: s32, disabled: bool,
     face: StyleData
     face.fields = cast(u32)StyleBackground | cast(u32)StyleRadius |
         cast(u32)StyleOpacity | cast(u32)StyleIconSize | cast(u32)StylePaddingX
-    face.background = cast(u32)0xe5e7ebff
-    face.radius = 4.0
+    face.background = cast(u32)0x00000000
+    face.radius = 3.0
     face.opacity = 1.0
     face.icon_size = track_width
     face.padding_x = 2.0
     if kind == StyleKindScrollThumb() {
-        face.background = cast(u32)0x9ca3afff
+        face.background = cast(u32)0x6b7280ff
+        if state == cast(s32)ButtonStateHover { face.background = cast(u32)0x4b5563ff }
+        if state == cast(s32)ButtonStatePressed { face.background = cast(u32)0x374151ff }
         face.icon_size = 16.0
     }
     if disabled { state = cast(s32)ButtonStateDisabled }
@@ -446,9 +448,6 @@ scroll_offset: s32, max_scroll: s32, metrics: ScrollMetrics) -> ScrollBarPaint {
         thumb_h = cast(s32)(cast(float32)viewport_h * (cast(float32)viewport_h / cast(float32)content_h))
     }
     if thumb_h < metrics.thumb_min_height { thumb_h = metrics.thumb_min_height }
-    max_thumb_h: s32 = cast(s32)(cast(float32)viewport_h * 0.28)
-    if max_thumb_h < metrics.thumb_min_height { max_thumb_h = metrics.thumb_min_height }
-    if thumb_h > max_thumb_h { thumb_h = max_thumb_h }
     if thumb_h > viewport_h { thumb_h = viewport_h }
     if thumb_h < 0 { thumb_h = 0 }
 
