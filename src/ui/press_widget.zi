@@ -1,0 +1,79 @@
+#import "session"
+#import "geometry"
+#import "press_props"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+using WidgetKind;
+
+PRESS_HOLD_SECONDS :: 0.5
+
+// The press's start in milliseconds on a clock that wraps every 2^31 ms, so
+// it fits the retained node's state.
+PressClock :: (now: float64) -> s32 {
+    milliseconds: s64 = cast(s64)(now * 1000.0)
+    return cast(s32)(milliseconds % cast(s64)2147483647)
+}
+
+PressElapsed :: (now: s32, start: s32) -> s32 {
+    elapsed: s32 = now - start
+    if elapsed < 0 { elapsed += 2147483647 }
+    return elapsed
+}
+
+// A pressable area submitted as a button, so it takes keyboard focus and
+// Enter or Space click it. Its retained state is open while pressed, offset
+// is the press's start and index is 1 once the press became a hold.
+#program_export
+Press :: (session: Session, props: PressProps) -> PressResult {
+    result: PressResult
+    result.node = -1
+    key: u64 = props.key
+    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+    previous: s32 = -1
+    if TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindButton)
+    }
+    state: WidgetState = TreePreviousWidgetState(session, previous)
+    // The click is read before the drag, whose end clears it.
+    activated: bool = TreeTakeActivationAt(session, previous)
+    drag: PointerDrag = TreeTakeDragAt(session, previous)
+    now: s32 = PressClock(props.now)
+    hold: float32 = ifx props.hold_seconds > 0.0 then props.hold_seconds else PRESS_HOLD_SECONDS
+    if drag.started || (drag.active && !state.open) {
+        state.open = true
+        state.offset = now
+        state.index = 0
+    }
+    if drag.active {
+        result.down = true
+        result.x = drag.x
+        result.y = drag.y
+        if state.index == 0 && cast(float32)PressElapsed(now, state.offset) >= hold * 1000.0 {
+            state.index = 1
+            result.held = true
+        }
+    }
+    if drag.ended {
+        result.released = true
+        result.x = drag.x
+        result.y = drag.y
+    }
+    // Lifting the pointer after a hold is not also a click.
+    held_before: bool = state.open && state.index == 1
+    result.clicked = activated && !props.disabled && !held_before
+    if !drag.active {
+        state.open = false
+        state.index = 0
+    }
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key, WidgetKindButton, props.bounds)
+        if result.node < 0 { return result }
+        TreeSetInteractive(session, result.node, props.disabled, false, props.id)
+        TreeSetDragCapture(session, result.node, props.capture)
+        TreeSetLabel(session, result.node, props.label)
+        TreeSetWidgetState(session, result.node, state)
+    }
+    return result
+}

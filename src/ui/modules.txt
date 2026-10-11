@@ -106,6 +106,8 @@ popup_ownership.zi
 popup_policy.zi
 popup_props.zi
 preference_policy.zi
+press_props.zi
+press_widget.zi
 primitive.zi
 profile_header.zi
 progress.zi
