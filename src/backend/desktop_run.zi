@@ -60,6 +60,7 @@ DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
     }
     finished := EndFrameRetained(session, DesktopFrameReusable(), Clock.Observe(*frame_activity, active))
     if finished.status != cast(FrameStatus)FrameOk { return false }
+    unused DesktopCursor(session)
     DesktopFrameUnchanged(finished.paint_unchanged)
     if !accessibility_attempted && !CaptureRequested() {
         accessibility_attempted = true

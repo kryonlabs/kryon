@@ -1,6 +1,5 @@
 // A system palette colors buttons by tone and keeps their emphasis: accent
 // takes the selection color, ghost and outline buttons stay transparent.
-#import "system_theme_host"
 #import "system_theme"
 #import "style_sheet"
 #import "style"
@@ -58,6 +57,15 @@ main :: () -> s32 {
 
     field := Face(StyleKindTextField(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
     Check(field.background == CssMix(bg, fg, 0.10) && field.font_size == 15.0, "text fields keep the palette's field color")
+    Check(field.border == palette.border, "input borders use the subtle palette border")
+    spin := Face(StyleKindSpinbox(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
+    value := Face(StyleKindSpinboxValue(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
+    Check(spin.background == palette.base && value.background == palette.base && spin.foreground == palette.text && value.foreground == palette.text, "spinbox and value share the palette's input colors")
+    Check(spin.border == palette.border && spin.focus == palette.selected, "spinbox keeps palette border and keyboard focus colors")
+    dark := SystemPaletteFallback(true)
+    Check(SystemPaletteInstall(dark), "dark palette installs without a platform host")
+    dark_value := Face(StyleKindSpinboxValue(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
+    Check(dark_value.background == dark.base && dark_value.foreground == dark.text, "numeric values remain readable with a dark palette")
     print("System palette buttons: % failures\n", failures)
     return ifx failures == 0 then 0 else 1
 }

@@ -45,6 +45,7 @@ DrawCanvasFrame :: (session: Session, viewport: Rectangle) -> bool {
         EndCanvasFrame()
         return false
     }
+    CanvasCursor(session)
     return EndCanvasFrame()
 }
 

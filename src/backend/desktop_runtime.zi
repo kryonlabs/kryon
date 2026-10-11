@@ -4,6 +4,7 @@
 #import "desktop_keys"
 #import "geometry"
 #import "tree_input"
+#import "session"
 #import "utf8"
 Presenter :: #import "pixmap_sdl";
 Video :: #import "video_linux";
@@ -65,6 +66,9 @@ SetHint :: (name: *u8, value: *u8) -> s32 #foreign sdl_library "SDL_SetHint";
 GetClipboardText :: () -> *u8 #foreign sdl_library "SDL_GetClipboardText";
 SetClipboardText :: (text: *u8) -> s32 #foreign sdl_library "SDL_SetClipboardText";
 FreeSdlMemory :: (memory: *void) #foreign sdl_library "SDL_free";
+CreateSystemCursor :: (shape: s32) -> *void #foreign sdl_library "SDL_CreateSystemCursor";
+SetCursor :: (cursor: *void) #foreign sdl_library "SDL_SetCursor";
+FreeCursor :: (cursor: *void) #foreign sdl_library "SDL_FreeCursor";
 
 window: *void;
 #program_export
@@ -104,6 +108,25 @@ desktop_pixels_valid: bool;
 // A size ResizeDesktop asked for, applied when the next frame begins.
 desktop_next_width: s32;
 desktop_next_height: s32;
+desktop_cursors: [11]*void;
+desktop_cursor_shape: s32 = -1;
+
+// UI chooses the shape; SDL applies it to this process's own window.
+#program_export
+DesktopCursor :: (session: Session) -> bool {
+    if window == null { return false }
+    shape := TreeCursor(session)
+    if shape == desktop_cursor_shape { return true }
+    native: [11]s32 = .{0, 0, 1, 3, 11, 7, 8, 5, 6, 9, 10}
+    if shape < 0 || shape >= 11 { return false }
+    if desktop_cursors[shape] == null {
+        desktop_cursors[shape] = CreateSystemCursor(native[shape])
+        if desktop_cursors[shape] == null { return false }
+    }
+    SetCursor(desktop_cursors[shape])
+    desktop_cursor_shape = shape
+    return true
+}
 
 // SDL_PIXELFORMAT_ARGB8888, which matches Cairo's image surface.
 DESKTOP_PIXEL_FORMAT :: 0x16362004
@@ -222,6 +245,12 @@ DesktopApplyResize :: () -> bool {
 
 #program_export
 CloseDesktop :: () {
+    if desktop_cursor_shape >= 0 { SetCursor(null) }
+    for index: 0..10 {
+        if desktop_cursors[index] != null { FreeCursor(desktop_cursors[index]) }
+        desktop_cursors[index] = null
+    }
+    desktop_cursor_shape = -1
     Video.VideoStopHost()
     StopTextInput()
     CloseRaster()
