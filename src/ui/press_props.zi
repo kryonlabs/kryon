@@ -1,0 +1,36 @@
+#import "geometry"
+
+// An area that reports a click, a hold and where the pointer is while the
+// press lasts, so a list can select an item by holding it and more items by
+// dragging across them. It paints nothing; the app draws the item.
+PressProps :: struct {
+    key: u64
+    id: s32
+    bounds: Rectangle
+    // Names the area for accessibility.
+    label: string
+    // The app's clock in seconds, which times the hold.
+    now: float64
+    // How long a press lasts before it is a hold; 0 means half a second.
+    hold_seconds: float32
+    // Keep the press when the pointer leaves the area instead of letting an
+    // enclosing scroll take it, so the pointer can sweep across items.
+    capture: bool
+    disabled: bool
+}
+
+PressResult :: struct {
+    node: s32
+    // Released on the area before the press became a hold, or pressed with
+    // Enter or Space after keyboard navigation.
+    clicked: bool
+    // The press became a hold; true on that frame only.
+    held: bool
+    // The press continues, on the area or, with capture, anywhere.
+    down: bool
+    // The press ended this frame.
+    released: bool
+    // Where the pointer is while the press continues or where it ended.
+    x: float32
+    y: float32
+}

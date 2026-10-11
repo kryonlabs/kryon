@@ -16,6 +16,10 @@
   nothing else handles it.
 - Widgets can keep their own state between frames on their retained node with
   `TreeSetWidgetState` and `TreePreviousWidgetState`.
+- `Press` reports a click, a hold and where the pointer is while a press
+  lasts, so lists can select an item by holding it and more by dragging
+  across them. It paints nothing, takes keyboard focus like a button, and
+  keeps the press off its area only when asked, so scrolling still works.
 - Lay out tiles of one height in a responsive grid: `MeasureGrid` picks the
   columns that fit the width, and `GridRowCount`, `GridCellsHeight`,
   `GridCellBounds` and `GridIndexAt` give the rows, the height, each tile's
