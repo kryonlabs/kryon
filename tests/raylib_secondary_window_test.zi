@@ -1,0 +1,303 @@
+// Secondary windows beside a real raylib window on a private Xvfb display:
+// rendered pixels, ownership of SDL events, clicks, dragging, keyboard grab,
+// resizing, and the main window's OpenGL context and input left untouched.
+#import "raylib_secondary_window"
+#import "std/c_string"
+#import "std/byte_text_linux"
+
+c :: #system_library "c";
+sdl :: #system_library "SDL2";
+raylib :: #system_library "raylib";
+GetEnv :: (name: *u8) -> *u8 #foreign c "getenv";
+
+Color :: struct {
+    r: u8
+    g: u8
+    b: u8
+    a: u8
+}
+
+SetTraceLogLevel :: (level: s32) #foreign raylib;
+InitWindow :: (width: s32, height: s32, title: *u8) #foreign raylib;
+IsWindowReady :: () -> bool #foreign raylib;
+DrawRectangle :: (x: s32, y: s32, width: s32, height: s32, color: Color) #foreign raylib;
+BeginDrawing :: () #foreign raylib;
+EndDrawing :: () #foreign raylib;
+GetScreenWidth :: () -> s32 #foreign raylib;
+GetScreenHeight :: () -> s32 #foreign raylib;
+WindowShouldClose :: () -> bool #foreign raylib;
+IsMouseButtonReleased :: (button: s32) -> bool #foreign raylib;
+IsWindowHidden :: () -> bool #foreign raylib;
+IsWindowMinimized :: () -> bool #foreign raylib;
+CloseWindow :: () #foreign raylib;
+
+CurrentWindow :: () -> *void #foreign sdl "SDL_GL_GetCurrentWindow";
+CurrentContext :: () -> *void #foreign sdl "SDL_GL_GetCurrentContext";
+WindowFromId :: (id: u32) -> *void #foreign sdl "SDL_GetWindowFromID";
+WindowId :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+WindowSurface :: (window: *void) -> *void #foreign sdl "SDL_GetWindowSurface";
+CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32, flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
+DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
+SetWindowSize :: (window: *void, width: s32, height: s32) #foreign sdl "SDL_SetWindowSize";
+PumpEvents :: () #foreign sdl "SDL_PumpEvents";
+PushEvent :: (event: *u8) -> s32 #foreign sdl "SDL_PushEvent";
+LockSurface :: (surface: *void) -> s32 #foreign sdl "SDL_LockSurface";
+UnlockSurface :: (surface: *void) #foreign sdl "SDL_UnlockSurface";
+GetRgba :: (pixel: u32, format: *void, r: *u8, g: *u8, b: *u8, a: *u8) #foreign sdl "SDL_GetRGBA";
+
+// SDL_Event is a 56-byte union; fields are written at their SDL2 offsets.
+Event :: struct {
+    bytes: [56]u8
+}
+
+Put32 :: (event: *Event, offset: s32, value: u32) {
+    for index: 0..3 {
+        event.bytes[offset + index] = cast(u8)((value >> cast(u32)(8 * index)) & cast(u32)255)
+    }
+}
+
+Button :: (kind: u32, window: u32, x: s32, y: s32) -> Event {
+    event: Event
+    Put32(*event, 0, kind)
+    Put32(*event, 8, window)
+    event.bytes[16] = 1
+    Put32(*event, 20, cast(u32)x)
+    Put32(*event, 24, cast(u32)y)
+    return event
+}
+
+Motion :: (window: u32, x: s32, y: s32) -> Event {
+    event: Event
+    Put32(*event, 0, 0x400)
+    Put32(*event, 8, window)
+    Put32(*event, 16, 1)
+    Put32(*event, 20, cast(u32)x)
+    Put32(*event, 24, cast(u32)y)
+    return event
+}
+
+WindowEvent :: (window: u32, kind: u8, first: s32, second: s32) -> Event {
+    event: Event
+    Put32(*event, 0, 0x200)
+    Put32(*event, 8, window)
+    event.bytes[12] = kind
+    Put32(*event, 16, cast(u32)first)
+    Put32(*event, 20, cast(u32)second)
+    return event
+}
+
+Push :: (event: Event) {
+    copy := event
+    unused PushEvent(*copy.bytes[0])
+}
+
+SurfaceLayout :: struct {
+    flags: u32
+    format: *void
+    width: s32
+    height: s32
+    pitch: s32
+    pixels: *u8
+}
+
+SurfaceColor :: (surface: *void, x: s32, y: s32) -> Color {
+    color: Color
+    unused LockSurface(surface)
+    layout := cast(*SurfaceLayout)surface
+    format := cast(*u8)layout.format
+    bytes_per_pixel := cast(s32)format[17]
+    offset := y * layout.pitch + x * bytes_per_pixel
+    pixel: u32 = 0
+    for index: 0..3 {
+        pixel |= cast(u32)layout.pixels[offset + cast(s32)index] << cast(u32)(8 * index)
+    }
+    GetRgba(pixel, layout.format, *color.r, *color.g, *color.b, *color.a)
+    UnlockSurface(surface)
+    return color
+}
+
+OtherWindow :: (main_window: *void) -> *void {
+    for id: 1..15 {
+        found := WindowFromId(cast(u32)id)
+        if found != null && found != main_window {
+            return found
+        }
+    }
+    return null
+}
+
+Environment :: (name: string) -> string {
+    bytes: [32]u8
+    if !CopyCString(name, bytes[:]) {
+        return ""
+    }
+    value := GetEnv(*bytes[0])
+    return ifx value == null then "" else TextFromCString(value)
+}
+
+// xvfb-run -n 200 or later, with its own authority file.
+PrivateDisplay :: () -> bool {
+    display := Environment("DISPLAY")
+    authority := Environment("XAUTHORITY")
+    if display.count < 4 || display[0] != #char ":" || authority.count == 0 {
+        return false
+    }
+    server: s64 = 0
+    index: s64 = 1
+    while index < display.count && display[index] >= #char "0" && display[index] <= #char "9" {
+        server = server * 10 + cast(s64)(display[index] - #char "0")
+        index += 1
+    }
+    found := false
+    for at: cast(s64)0..authority.count - 9 {
+        if authority[at:at + 9] == "xvfb-run." {
+            found = true
+        }
+    }
+    return found && server >= 200
+}
+
+Title :: (text: string, bytes: []u8) -> *u8 {
+    unused CopyCString(text, bytes)
+    return *bytes[0]
+}
+
+#program_export
+main :: () -> s32 {
+    if !PrivateDisplay() {
+        print("secondary window test requires private Xvfb display 200+\n")
+        return 1
+    }
+    names: [32]u8
+    SetTraceLogLevel(4)
+    InitWindow(100, 100, Title("private-xvfb-main", names[:]))
+    if !IsWindowReady() {
+        return 2
+    }
+    main_window := CurrentWindow()
+    main_context := CurrentContext()
+    if main_window == null || main_context == null {
+        return 3
+    }
+    handle := SecondaryWindowOpenHost(Title("owned-secondary", names[:]), 40, 40, 40, 40, 1, 0, 0, 0, 255, 1.0)
+    if handle == null {
+        return 4
+    }
+    if CurrentWindow() != main_window || CurrentContext() != main_context {
+        return 5
+    }
+    if !SecondaryWindowBeginHost(handle) {
+        return 6
+    }
+    DrawRectangle(0, 0, 40, 20, Color.{230, 41, 55, 255})
+    DrawRectangle(0, 20, 40, 20, Color.{0, 121, 241, 255})
+    if !SecondaryWindowEndHost(handle) {
+        return 7
+    }
+    if CurrentWindow() != main_window || CurrentContext() != main_context {
+        return 8
+    }
+    secondary := OtherWindow(main_window)
+    if secondary == null {
+        return 9
+    }
+    surface := WindowSurface(secondary)
+    if surface == null {
+        return 10
+    }
+    top := SurfaceColor(surface, 20, 5)
+    bottom := SurfaceColor(surface, 20, 35)
+    if top.r < 180 || top.b > 80 || bottom.b < 180 || bottom.r > 80 {
+        print("unexpected rendered colors: top=% % % bottom=% % %\n", top.r, top.g, top.b,
+            bottom.r, bottom.g, bottom.b)
+        return 11
+    }
+    // A click in a window this module did not open is not reported.
+    foreign := CreateWindow(Title("unregistered", names[:]), 100, 100, 20, 20, 8)
+    if foreign == null {
+        return 12
+    }
+    Push(Button(0x401, WindowId(foreign), 0, 0))
+    Push(Button(0x402, WindowId(foreign), 0, 0))
+    SecondaryWindowPumpHost()
+    if SecondaryWindowClickedHost(handle) {
+        return 13
+    }
+    DestroyWindow(foreign)
+    owned := WindowId(secondary)
+    Push(Button(0x401, owned, 10, 10))
+    Push(Button(0x402, owned, 10, 10))
+    SecondaryWindowPumpHost()
+    if !SecondaryWindowClickedHost(handle) || SecondaryWindowClickedHost(handle) {
+        return 14
+    }
+    before_x: s32
+    before_y: s32
+    SecondaryWindowPositionHost(handle, *before_x, *before_y)
+    Push(Button(0x401, owned, 10, 10))
+    Push(Motion(owned, 20, 10))
+    Push(Button(0x402, owned, 20, 10))
+    SecondaryWindowPumpHost()
+    after_x: s32
+    after_y: s32
+    SecondaryWindowPositionHost(handle, *after_x, *after_y)
+    if !SecondaryWindowDraggedHost(handle) || after_x != before_x + 10 || after_y != before_y ||
+    SecondaryWindowClickedHost(handle) {
+        return 15
+    }
+    if !SecondaryWindowKeyboardGrabHost(handle, false) {
+        return 16
+    }
+    SecondaryWindowCloseHost(handle)
+    SecondaryWindowPumpHost()
+    if SecondaryWindowClickedHost(handle) {
+        return 17
+    }
+    // A detached resizable window must not resize, click or close the main
+    // raylib window. Three owned windows can be open at once.
+    handle = SecondaryWindowOpenHost(Title("detached-practice", names[:]), 20, 20, 200, 248, 2 | 32, 0, 0, 0, 255, 1.0)
+    if handle == null {
+        return 18
+    }
+    secondary = OtherWindow(main_window)
+    second := SecondaryWindowOpenHost(Title("break", names[:]), 0, 0, 40, 40, 1, 0, 0, 0, 255, 1.0)
+    third := SecondaryWindowOpenHost(Title("hud", names[:]), 0, 0, 40, 40, 1, 0, 0, 0, 255, 1.0)
+    if second == null || third == null {
+        return 19
+    }
+    SetWindowSize(secondary, 240, 300)
+    PumpEvents()
+    owned = WindowId(secondary)
+    Push(WindowEvent(owned, 6, 240, 300))
+    Push(WindowEvent(owned, 14, 240, 300))
+    Push(Button(0x402, owned, 0, 0))
+    BeginDrawing()
+    EndDrawing()
+    if GetScreenWidth() != 100 || GetScreenHeight() != 100 || WindowShouldClose() ||
+    IsMouseButtonReleased(0) {
+        return 20
+    }
+    if !SecondaryWindowTakeCloseHost(handle) || SecondaryWindowTakeCloseHost(handle) ||
+    !SecondaryWindowClickedHost(handle) {
+        return 21
+    }
+    if !SecondaryWindowBeginHost(handle) {
+        return 22
+    }
+    width: s32
+    height: s32
+    SecondaryWindowSizeHost(handle, *width, *height)
+    if width != 240 || height != 300 || !SecondaryWindowEndHost(handle) {
+        return 23
+    }
+    SecondaryWindowCloseHost(third)
+    SecondaryWindowCloseHost(second)
+    SecondaryWindowCloseHost(handle)
+    BeginDrawing()
+    EndDrawing()
+    if IsWindowHidden() || IsWindowMinimized() || WindowShouldClose() {
+        return 24
+    }
+    CloseWindow()
+    return 0
+}
