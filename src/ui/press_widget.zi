@@ -65,6 +65,11 @@ Press :: (session: Session, props: PressProps) -> PressResult {
             state.index = 1
             result.held = true
         }
+        // A hold keeps the pointer, so dragging on selects instead of
+        // scrolling the list.
+        if state.index == 1 {
+            TreeCapturePressAt(session, previous)
+        }
     }
     if drag.ended {
         result.released = true
