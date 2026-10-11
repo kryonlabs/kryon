@@ -12,6 +12,7 @@ TestSession :: () -> Session {
 #import "geometry"
 #import "image_props"
 #import "paint_queue"
+#import "scroll_device"
 #import "semantic"
 #import "style"
 #import "style_sheet"
@@ -29,8 +30,17 @@ using PaintKind;
 phase: s32;
 open_state: bool;
 selected_state: s32;
-highlight_state: s32;
-scroll_state: s32;
+
+// Whether the long menu's option row is submitted, so on screen.
+OptionShown :: (option: DropdownOption, index: s32) -> bool {
+    key: u64 = DropdownOptionKey(cast(u64)11, option, index)
+    for node: cast(s32)0..TreeCount(TestSession()) - 1 {
+        entry := TreeNodeAt(TestSession(), node)
+        if entry.kind == WidgetKindSelectable && entry.key == key &&
+        entry.bounds.height >= 20.0 { return true }
+    }
+    return false
+}
 
 #program_export
 Frame :: () -> s32 {
@@ -70,8 +80,6 @@ Frame :: () -> s32 {
     props.class_name = 9
     props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
     props.selected_index = selected_state
-    props.highlight_index = highlight_state
-    props.scroll_offset = scroll_state
     props.open = open_state
     if phase == 4 {
         props.focused = true
@@ -88,7 +96,10 @@ Frame :: () -> s32 {
         props.disabled = true
     } else if phase >= 10 {
         props.open = true
-        if phase == 10 { props.wheel = -1.0 }
+        if phase == 12 {
+            props.menu_input.end = true
+            props.menu_input.navigating = true
+        }
         if phase == 13 { props.close = true }
     }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
@@ -112,15 +123,14 @@ Frame :: () -> s32 {
     } else if phase == 1 {
         if !result.open { return -21 }
         if !result.opened { return -22 }
-        if result.highlight_index != 0 { return -23 }
-        if TreeCount(TestSession()) != 8 { return -24 }
+        if TreeCount(TestSession()) != 9 { return -24 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 88.0,
                 true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 88.0,
                 false, false, true})
     } else if phase == 2 {
         if !result.open || result.changed ||
-        TreeCount(TestSession()) != 8 { return -3 }
+        TreeCount(TestSession()) != 9 { return -3 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 115.0,
                 true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 115.0,
@@ -130,16 +140,16 @@ Frame :: () -> s32 {
         result.selected_index != 2 || TreeCount(TestSession()) != 2 ||
         TreeNodeAt(TestSession(), 1).semantic_label != "Third" { return -4 }
     } else if phase == 4 {
-        if !result.open || !result.opened ||
-        result.highlight_index != 2 { return -5 }
+        if !result.open || !result.opened { return -5 }
     } else if phase == 5 {
-        if !result.open || result.highlight_index != 0 ||
-        result.changed { return -6 }
+        // Home moves the highlight to the first row; committing it in the
+        // next phase chooses that row.
+        if !result.open || result.changed { return -6 }
     } else if phase == 6 {
         if result.open || !result.closed || !result.changed ||
         result.selected_index != 0 { return -7 }
     } else if phase == 7 {
-        if !result.open || TreeCount(TestSession()) != 8 { return -8 }
+        if !result.open || TreeCount(TestSession()) != 9 { return -8 }
         TreePointerUpdate(TestSession(), PointerFrame.{180.0, 180.0,
                 true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{180.0, 180.0,
@@ -152,22 +162,17 @@ Frame :: () -> s32 {
         TreeCount(TestSession()) != 2 ||
         TreeHitAt(TestSession(), 20.0, 20.0) != -1 { return -10 }
     } else if phase == 10 {
-        if !result.open || result.scroll_offset != 28 ||
-        TreeCount(TestSession()) != 11 ||
-        TreeNodeAt(TestSession(), 10).kind != WidgetKindSlider ||
-        TreeHitAt(TestSession(), 126.0, 80.0) != 10 { return -11 }
-        TreePointerUpdate(TestSession(), PointerFrame.{126.0, 80.0,
-                true, true, false})
-        TreePointerUpdate(TestSession(), PointerFrame.{126.0, 160.0,
-                true, false, false})
+        // A long menu scrolls its rows in a standard Scroll.
+        if !result.open || TreeCount(TestSession()) != 11 ||
+        TreeNodeAt(TestSession(), 5).kind != WidgetKindScroll ||
+        !OptionShown(long_options[0], 0) || OptionShown(long_options[7], 7) { return -11 }
     } else if phase == 11 {
-        if !result.open || result.scroll_offset != 84 ||
-        TreeCount(TestSession()) != 11 { return -12 }
-        TreePointerUpdate(TestSession(), PointerFrame.{126.0, 160.0,
-                false, false, true})
+        if !result.open || TreeCount(TestSession()) != 11 ||
+        !OptionShown(long_options[0], 0) { return -12 }
     } else if phase == 12 {
-        if !result.open || result.scroll_offset != 84 ||
-        TreeCount(TestSession()) != 11 { return -13 }
+        // Moving the highlight to the last row scrolls it into view.
+        if !result.open || !OptionShown(long_options[7], 7) ||
+        OptionShown(long_options[0], 0) { return -13 }
     } else if phase == 13 {
         if result.open || TreeCount(TestSession()) != 2 ||
         TreeNodeAt(TestSession(), 1).semantic_label != "First" { return -14 }
@@ -175,8 +180,6 @@ Frame :: () -> s32 {
     PaintFlush(TestSession())
     open_state = result.open
     selected_state = result.selected_index
-    highlight_state = result.highlight_index
-    scroll_state = result.scroll_offset
     old: s32 = phase
     phase += 1
     return old
@@ -186,7 +189,7 @@ Frame :: () -> s32 {
 // open, its highlight and its scroll offset by itself between frames.
 uncontrolled_selected: s32;
 
-UncontrolledFrame :: (wheel: float32) -> DropdownResult {
+UncontrolledFrame :: () -> DropdownResult {
     options: [8]DropdownOption
     index: s32 = 0
     while index < 8 {
@@ -198,7 +201,6 @@ UncontrolledFrame :: (wheel: float32) -> DropdownResult {
     props.key = cast(u64)31
     props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
     props.selected_index = uncontrolled_selected
-    props.wheel = wheel
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
     result: DropdownResult = Dropdown(TestSession(), props, options[:])
     unused TreeFinish(TestSession())
@@ -216,23 +218,18 @@ Tap :: (x: float32, y: float32) {
 
 UncontrolledMenu :: () -> s32 {
     uncontrolled_selected = 0
-    result: DropdownResult = UncontrolledFrame(0.0)
+    result: DropdownResult = UncontrolledFrame()
     if result.open { return 1 }
     Tap(20.0, 20.0)
-    result = UncontrolledFrame(0.0)
+    result = UncontrolledFrame()
     if !result.open || !result.opened { return 2 }
     // The menu stays open in later frames without any caller state.
-    result = UncontrolledFrame(0.0)
+    result = UncontrolledFrame()
     if !result.open || result.opened { return 3 }
-    result = UncontrolledFrame(-1.0)
-    scrolled: s32 = result.scroll_offset
-    if !result.open || scrolled <= 0 { return 4 }
-    result = UncontrolledFrame(0.0)
-    if !result.open || result.scroll_offset != scrolled { return 5 }
-    // Choosing a visible row selects it and closes the menu.
+    // Choosing another visible row selects it and closes the menu.
     row: s32 = -1
     node: s32 = 0
-    while node < TreeCount(TestSession()) && row < 0 {
+    while node < TreeCount(TestSession()) {
         if TreeNodeAt(TestSession(), node).kind == WidgetKindSelectable {
             row = node
         }
@@ -241,18 +238,125 @@ UncontrolledMenu :: () -> s32 {
     if row < 0 { return 6 }
     bounds: Rectangle = TreeNodeAt(TestSession(), row).bounds
     Tap(bounds.x + bounds.width / 2.0, bounds.y + bounds.height / 2.0)
-    result = UncontrolledFrame(0.0)
+    result = UncontrolledFrame()
     if result.open || !result.changed || result.selected_index <= 0 { return 7 }
-    result = UncontrolledFrame(0.0)
+    result = UncontrolledFrame()
     if result.open || uncontrolled_selected != result.selected_index { return 8 }
+    return 0
+}
+
+// With the host's scroll device, the open menu scrolls like any Scroll: a
+// finger drag over the options scrolls without choosing one, the wheel needs
+// no props, a tap still chooses, and the menu reopens at the chosen row.
+device_selected: s32;
+device_time: float64;
+DeviceLabels: [8]string = .["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven"];
+
+DeviceFrame :: (x: float32, y: float32, pressed: bool, down: bool,
+    released: bool, wheel: float32) -> DropdownResult {
+    device_time += 0.016
+    BeginScrollFrame(TestSession(), Vector2.{x, y}, pressed, down, released,
+        wheel, device_time)
+    unused TreePointerUpdate(TestSession(), PointerFrame.{x, y, down, pressed, released})
+    options: [8]DropdownOption
+    for index: cast(s32)0..7 {
+        options[index].key = cast(u64)cast(u32)(300 + index)
+        options[index].label = DeviceLabels[index]
+    }
+    props: DropdownProps
+    props.key = cast(u64)37
+    props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
+    props.selected_index = device_selected
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
+    result: DropdownResult = Dropdown(TestSession(), props, options[:])
+    unused TreeFinish(TestSession())
+    PaintClear(TestSession())
+    if result.changed { device_selected = result.selected_index }
+    return result
+}
+
+DeviceTap :: (x: float32, y: float32) -> DropdownResult {
+    unused DeviceFrame(x, y, true, true, false, 0.0)
+    return DeviceFrame(x, y, false, false, true, 0.0)
+}
+
+// The bounds of the visible option with this label, or an empty rectangle.
+DeviceOption :: (label: string) -> Rectangle {
+    for node: cast(s32)0..TreeCount(TestSession()) - 1 {
+        entry := TreeNodeAt(TestSession(), node)
+        if entry.kind == WidgetKindSelectable && entry.semantic_label == label {
+            return entry.bounds
+        }
+    }
+    return Rectangle.{}
+}
+
+DeviceMenu :: () -> s32 {
+    device_selected = 0
+    result: DropdownResult = DeviceFrame(200.0, 200.0, false, false, false, 0.0)
+    if result.open { return 1 }
+    unused DeviceTap(20.0, 20.0)
+    result = DeviceFrame(200.0, 200.0, false, false, false, 0.0)
+    if !result.open { return 2 }
+    first: Rectangle = DeviceOption("Zero")
+    three: Rectangle = DeviceOption("Three")
+    if first.height < 20.0 || three.height < 20.0 { return 3 }
+    // The wheel over the menu scrolls it without any props.
+    x: float32 = first.x + 30.0
+    y: float32 = first.y + first.height / 2.0
+    result = DeviceFrame(x, y, false, false, false, -1.0)
+    wheeled: Rectangle = DeviceOption("Three")
+    if !result.open || wheeled.height <= 0.0 || wheeled.y >= three.y { return 4 }
+    // A finger drag that starts on an option scrolls back and chooses nothing.
+    start: Rectangle = DeviceOption("Two")
+    if start.height <= 0.0 { return 5 }
+    y = start.y + start.height / 2.0
+    result = DeviceFrame(x, y, true, true, false, 0.0)
+    step: s32 = 1
+    while step <= 6 {
+        result = DeviceFrame(x, y + cast(float32)step * 10.0, false, true, false, 0.0)
+        step += 1
+    }
+    result = DeviceFrame(x, y + 60.0, false, false, true, 0.0)
+    if !result.open || result.changed || DeviceOption("Three").y <= wheeled.y { return 6 }
+    result = DeviceFrame(200.0, 200.0, false, false, false, 0.0)
+    if !result.open || result.changed || device_selected != 0 { return 7 }
+    // Dragging up to the end, then tapping a row, chooses that row.
+    start = DeviceOption("Three")
+    if start.height <= 0.0 { return 8 }
+    y = start.y + start.height / 2.0
+    result = DeviceFrame(x, y, true, true, false, 0.0)
+    step = 1
+    while step <= 10 {
+        result = DeviceFrame(x, y - cast(float32)step * 15.0, false, true, false, 0.0)
+        step += 1
+    }
+    result = DeviceFrame(x, y - 150.0, false, false, true, 0.0)
+    if !result.open || result.changed || DeviceOption("Seven").height < 20.0 { return 9 }
+    // Let any fling settle before tapping.
+    settle: s32 = 0
+    while settle < 120 {
+        result = DeviceFrame(200.0, 200.0, false, false, false, 0.0)
+        settle += 1
+    }
+    six: Rectangle = DeviceOption("Six")
+    if six.height <= 0.0 { return 10 }
+    result = DeviceTap(six.x + 30.0, six.y + six.height / 2.0)
+    if result.open || !result.changed || result.selected_index != 6 { return 11 }
+    // Reopening shows the chosen row.
+    result = DeviceFrame(200.0, 200.0, false, false, false, 0.0)
+    unused DeviceTap(20.0, 20.0)
+    result = DeviceFrame(200.0, 200.0, false, false, false, 0.0)
+    if !result.open || DeviceOption("Six").height < 20.0 ||
+    DeviceOption("Zero").height > 0.0 { return 12 }
     return 0
 }
 
 #program_export
 main :: () -> s32 {
-    fill_steps: [14]s32 = .[1, 3, 3, 1, 3, 4, 1, 3, 1, 1, 4, 4, 4, 1]
+    fill_steps: [14]s32 = .[1, 3, 3, 1, 3, 4, 1, 3, 1, 1, 3, 3, 3, 1]
     outline_steps: [14]s32 = .[1, 2, 2, 1, 2, 2, 1, 2, 1, 1, 2, 2, 2, 1]
-    stroke_steps: [14]s32 = .[2, 4, 4, 2, 4, 4, 2, 4, 2, 2, 2, 2, 2, 2]
+    stroke_steps: [14]s32 = .[2, 4, 4, 2, 4, 4, 2, 4, 2, 2, 4, 4, 2, 2]
     label_steps: [14]s32 = .[1, 4, 4, 1, 4, 4, 1, 4, 1, 1, 6, 6, 6, 1]
     expected_fills: s32 = 0
     expected_outlines: s32 = 0
@@ -299,5 +403,7 @@ main :: () -> s32 {
     PaintClear(TestSession())
     uncontrolled: s32 = UncontrolledMenu()
     if uncontrolled != 0 { return 10 + uncontrolled }
+    device: s32 = DeviceMenu()
+    if device != 0 { return 30 + device }
     return 0
 }

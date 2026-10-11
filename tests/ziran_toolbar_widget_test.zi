@@ -24,8 +24,6 @@ using StyleField;
 phase: s32;
 open_state: bool;
 selected_state: s32;
-highlight_state: s32;
-scroll_state: s32;
 
 #program_export
 Frame :: () -> s32 {
@@ -65,8 +63,6 @@ Frame :: () -> s32 {
     props.dropdown.key = cast(u64)11
     props.dropdown.id = 11
     props.dropdown.selected_index = selected_state
-    props.dropdown.highlight_index = highlight_state
-    props.dropdown.scroll_offset = scroll_state
     props.dropdown.open = open_state
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 340.0, 180.0})
     result: ToolbarResult = Toolbar(TestSession(), props, options[0:2],
@@ -95,7 +91,7 @@ Frame :: () -> s32 {
             false, false, true})
     } else if phase == 2 {
         if !result.dropdown.open || !result.dropdown.opened ||
-            result.clicked_action != -1 || TreeCount(TestSession()) != 10 {
+            result.clicked_action != -1 || TreeCount(TestSession()) != 11 {
             return -3
         }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 100.0,
@@ -111,8 +107,6 @@ Frame :: () -> s32 {
     PaintFlush(TestSession())
     open_state = result.dropdown.open
     selected_state = result.dropdown.selected_index
-    highlight_state = result.dropdown.highlight_index
-    scroll_state = result.dropdown.scroll_offset
     old: s32 = phase
     phase += 1
     return old

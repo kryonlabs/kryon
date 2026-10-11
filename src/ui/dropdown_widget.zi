@@ -13,6 +13,8 @@
 #import "overlay"
 #import "overlay_widget"
 #import "paint_queue"
+#import "scroll_props"
+#import "scroll_widget"
 #import "semantic"
 #import "style"
 #import "style_sheet"
@@ -118,25 +120,11 @@ DropdownOptionKey :: (key: u64, option: DropdownOption,
     return key * cast(u64)131071 + item * cast(u64)17 + cast(u64)11
 }
 
+// The menu's options scroll in a standard Scroll, which follows the wheel,
+// a finger drag and a fling by itself and draws the shared scrollbar.
 #program_export
-DropdownScrollbarKey :: (key: u64) -> u64 {
+DropdownScrollKey :: (key: u64) -> u64 {
     return key * cast(u64)131071 + cast(u64)3
-}
-
-#program_export
-DropdownThumbBounds :: (track: Rectangle, viewport: float32,
-    content: s32, offset: s32, maximum: s32) -> Rectangle {
-    thumb: Rectangle = track
-    if content <= 0 || maximum <= 0 || track.height <= 0.0 {
-        thumb.height = 0.0
-        return thumb
-    }
-    thumb.height = track.height * viewport / cast(float32)content
-    if thumb.height < 16.0 { thumb.height = 16.0 }
-    if thumb.height > track.height { thumb.height = track.height }
-    travel: float32 = track.height - thumb.height
-    thumb.y += travel * cast(float32)offset / cast(float32)maximum
-    return thumb
 }
 
 #program_export
@@ -274,66 +262,75 @@ DropdownPaintRow :: (session: Session, node: s32, props: DropdownProps,
 
 // The dropdown keeps whether its menu is open, the highlighted row and the
 // scroll offset on its own retained node, so a caller passes only the
-// selected value and reads changed and selected_index. Keyboard and wheel
+// selected value and reads changed and selected_index. The open menu scrolls
+// like any Scroll: wheel, finger drag and fling need no props. Keyboard
 // samples are ordinary props; pointer ownership comes from the retained tree.
 // Call Dropdown after earlier page controls so the menu is submitted above
 // them in hit and paint order.
+// The menu's own state, kept on the dropdown's retained node between frames.
+DropdownMenu :: struct {
+    open: bool
+    highlight: s32
+    scroll: s32
+}
+
 #program_export
 Dropdown :: (session: Session, props: DropdownProps,
     options: []DropdownOption) -> DropdownResult {
-    if TreeIsBuilding(session) && !props.open {
+    menu: DropdownMenu
+    if TreeIsBuilding(session) {
         previous: s32 = TreePrevious(session, TreeCurrentParent(session),
             DropdownKey(session, props), WidgetKindDropdown)
         saved: WidgetState = TreePreviousWidgetState(session, previous)
         if saved.open {
-            props.open = true
-            props.highlight_index = saved.index
-            props.scroll_offset = saved.offset
+            menu.open = true
+            menu.highlight = saved.index
+            menu.scroll = saved.offset
         }
     }
-    if props.close {
-        props.open = false
-    }
-    result: DropdownResult = DropdownFrame(session, props, options)
+    if props.open { menu.open = true }
+    if props.close { menu.open = false }
+    result: DropdownResult = DropdownFrame(session, props, options, *menu)
     if result.node >= 0 {
         TreeSetWidgetState(session, result.node, WidgetState.{result.open,
-            result.highlight_index, result.scroll_offset})
+            menu.highlight, menu.scroll})
     }
     return result
 }
 
 DropdownFrame :: (session: Session, props: DropdownProps,
-    options: []DropdownOption) -> DropdownResult {
+    options: []DropdownOption, retained: *DropdownMenu) -> DropdownResult {
     result: DropdownResult
     result.node = -1
     result.selected_index = props.selected_index
-    result.highlight_index = props.highlight_index
-    result.scroll_offset = props.scroll_offset
-    result.open = props.open
+    result.open = retained.open
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
     key: u64 = DropdownKey(session, props)
     previous: s32 = -1
     previous_overlay: s32 = -1
     previous_panel: s32 = -1
+    previous_scroll: s32 = -1
     if TreeIsBuilding(session) {
         previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindDropdown)
         previous_overlay = TreePrevious(session, TreeCurrentParent(session),
             DropdownOverlayKey(key), WidgetKindModal)
         previous_panel = TreePreviousCommitted(session, previous_overlay,
             OverlayPanelKey(), WidgetKindCustom)
+        previous_scroll = TreePreviousCommitted(session, previous_panel,
+            DropdownScrollKey(key), WidgetKindScroll)
     }
     activated: bool = TreeTakeActivationAt(session, previous)
     decision: DropdownOpenDecision = DropdownOpenDecisionFor(
-        props.open, props.disabled, (cast(s32)options.count),
+        retained.open, props.disabled, (cast(s32)options.count),
         props.focused, true, activated,
         props.trigger_input, bounds.height, false, false, false)
     result.open = decision.open
     result.opened = decision.opened
     result.closed = decision.closed
     if result.opened {
-        result.highlight_index = props.selected_index
-        result.scroll_offset = 0
+        retained.highlight = props.selected_index
+        retained.scroll = 0
     }
     if result.open && TreeIsBuilding(session) {
         scrim: s32 = TreePreviousCommitted(session, previous_overlay,
@@ -362,7 +359,7 @@ DropdownFrame :: (session: Session, props: DropdownProps,
             result.closed = true
         } else {
             if props.menu_input.navigating || result.opened {
-                nav: Navigation = StartNavigation(result.highlight_index,
+                nav: Navigation = StartNavigation(retained.highlight,
                     (cast(s32)options.count), props.menu_input.up,
                     props.menu_input.down, props.menu_input.home,
                     props.menu_input.end)
@@ -370,15 +367,15 @@ DropdownFrame :: (session: Session, props: DropdownProps,
                     nav = ScanNavigation(nav,
                         !options[nav.index].disabled)
                 }
-                result.highlight_index = nav.result
+                retained.highlight = nav.result
             }
             if !result.opened && props.menu_input.commit &&
-            result.highlight_index >= 0 &&
-            result.highlight_index < (cast(s32)options.count) &&
-            !options[result.highlight_index].disabled {
+            retained.highlight >= 0 &&
+            retained.highlight < (cast(s32)options.count) &&
+            !options[retained.highlight].disabled {
                 result.changed = result.selected_index !=
-                result.highlight_index
-                result.selected_index = result.highlight_index
+                retained.highlight
+                result.selected_index = retained.highlight
                 result.open = false
                 result.closed = true
             }
@@ -387,14 +384,14 @@ DropdownFrame :: (session: Session, props: DropdownProps,
                 while option_index < (cast(s32)options.count) {
                     if !options[option_index].disabled {
                         old: s32 = TreePreviousCommitted(session,
-                            previous_panel, DropdownOptionKey(key,
+                            previous_scroll, DropdownOptionKey(key,
                             options[option_index], option_index),
                             WidgetKindSelectable)
                         if TreeTakeActivationAt(session, old) {
                             result.changed = result.selected_index !=
                             option_index
                             result.selected_index = option_index
-                            result.highlight_index = option_index
+                            retained.highlight = option_index
                             result.open = false
                             result.closed = true
                             break
@@ -456,31 +453,18 @@ DropdownFrame :: (session: Session, props: DropdownProps,
     layout: MenuLayout = MenuLayoutFor(menu, (cast(s32)options.count),
         row_height, metrics.padding_top, metrics.padding_bottom,
         metrics.scrollbar_width, metrics.scrollbar_gap)
-    result.scroll_offset = ScrollOffset(cast(float64)result.scroll_offset,
+    retained.scroll = ScrollOffset(cast(float64)retained.scroll,
         layout.max_scroll)
-    if props.wheel != 0.0 {
-        result.scroll_offset = WheelOffset(result.scroll_offset,
-            props.wheel, cast(float32)row_height, layout.max_scroll)
-    }
-    track: Rectangle = ScrollbarTrackBounds(
-        layout.scrollbar_bounds, metrics.scrollbar_track_inset)
-    thumb: Rectangle = DropdownThumbBounds(track, menu.height,
-        layout.content_height, result.scroll_offset,
-        layout.max_scroll)
-    if layout.max_scroll > 0 && TreeIsBuilding(session) {
-        old_thumb: s32 = TreePreviousCommitted(session, previous_panel,
-            DropdownScrollbarKey(key), WidgetKindSlider)
-        drag: PointerDrag = TreeTakeDragAt(session, old_thumb)
-        travel: float32 = track.height - thumb.height
-        if (drag.active || drag.ended) && travel > 0.0 {
-            top: float32 = drag.y - drag.grab_y - track.y
-            result.scroll_offset = ScrollOffset(
-                cast(float64)(top * cast(float32)layout.max_scroll / travel),
-                layout.max_scroll)
-            thumb = DropdownThumbBounds(track, menu.height,
-                layout.content_height, result.scroll_offset,
-                layout.max_scroll)
-        }
+    // Opening shows the selected row, and keyboard movement keeps the
+    // highlighted row in view.
+    if (props.menu_input.navigating || result.opened) && retained.highlight >= 0 {
+        top: s32 = retained.highlight * row_height
+        if top < retained.scroll { retained.scroll = top }
+        bottom: s32 = top + row_height + metrics.padding_top +
+            metrics.padding_bottom - cast(s32)menu.height
+        if bottom > retained.scroll { retained.scroll = bottom }
+        retained.scroll = ScrollOffset(cast(float64)retained.scroll,
+            layout.max_scroll)
     }
 
     overlay_props: DismissibleOverlayProps
@@ -507,13 +491,25 @@ DropdownFrame :: (session: Session, props: DropdownProps,
             panel_opacity)))
     }
     if !TreePushScope(session, panel_node) { return result }
-    rows: VisibleRows = Rows((cast(s32)options.count), result.scroll_offset,
+    scroll: ScrollProps
+    scroll.key = DropdownScrollKey(key)
+    scroll.scale = scale
+    scroll.bounds = menu
+    scroll.content_height = layout.content_height
+    scroll.scroll_offset = retained.scroll
+    scrolled: ScrollResult = Scroll(session, scroll)
+    retained.scroll = scrolled.scroll_offset
+    if !scrolled.opened {
+        End(session)
+        return result
+    }
+    rows: VisibleRows = Rows((cast(s32)options.count), retained.scroll,
         layout.content_bounds.height, cast(float32)row_height)
     index: s32 = rows.first
     while index < rows.end {
         paint: OptionPaint = OptionPaintFor(menu,
             layout.option_width, index, row_height,
-            result.scroll_offset, metrics.padding_top,
+            retained.scroll, metrics.padding_top,
             metrics.padding_bottom, metrics.highlight_inset_x,
             metrics.highlight_inset_y)
         visible: Rectangle = paint.visible_bounds
@@ -534,13 +530,13 @@ DropdownFrame :: (session: Session, props: DropdownProps,
                 TreeSetSelected(session, item_node,
                     result.selected_index == index)
                 hovered: bool = TreeHoveredAt(session,
-                    TreePrevious(session, panel_node,
+                    TreePrevious(session, scrolled.node,
                     DropdownOptionKey(key, item, index),
                     WidgetKindSelectable))
                 row_state: s32 = cast(s32)ButtonStateNormal
                 if item.disabled {
                     row_state = cast(s32)ButtonStateDisabled
-                } else if hovered || result.highlight_index == index {
+                } else if hovered || retained.highlight == index {
                     row_state = cast(s32)ButtonStateHover
                 }
                 face = DropdownFaceFor(props,
@@ -548,29 +544,13 @@ DropdownFrame :: (session: Session, props: DropdownProps,
                     result.selected_index == index)
                 DropdownPaintRow(session, item_node, props, item, row,
                     visible, result.selected_index == index,
-                    hovered || result.highlight_index == index,
+                    hovered || retained.highlight == index,
                     metrics, face)
             }
         }
         index += 1
     }
-    if layout.max_scroll > 0 && thumb.height > 0.0 {
-        scrollbar_node: s32 = TreeSubmitCurrent(session,
-            DropdownScrollbarKey(key), WidgetKindSlider, thumb)
-        if scrollbar_node >= 0 {
-            TreeSetInteractive(session, scrollbar_node, false, false, 0)
-            PaintRoundedFill(session, scrollbar_node, track,
-                scrollbar_face.value.radius, 8,
-                ColorFromPacked(Opacity(cast(u32)0xe5e7ebff,
-                panel_opacity)))
-            PaintRoundedFill(session, scrollbar_node, thumb,
-                scrollbar_face.value.radius, 8,
-                ColorFromPacked(Opacity(
-                scrollbar_face.value.background,
-                StyleOpacityValue(scrollbar_face.value.fields,
-                scrollbar_face.value.opacity))))
-        }
-    }
+    End(session)
     End(session)
     return result
 }
