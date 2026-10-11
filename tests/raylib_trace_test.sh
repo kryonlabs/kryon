@@ -3,8 +3,7 @@ set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
-raylib_source=${RAYLIB_SOURCE:-$("$ziran" pkg path raylib)}
-raylib=${RAYLIB_A:-"$raylib_source/src/libraylib.a"}
+raylib=${RAYLIB_A:-"$("$ziran" pkg path raylib)/src/libraylib.a"}
 raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
