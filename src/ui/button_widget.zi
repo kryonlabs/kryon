@@ -212,6 +212,13 @@
         radius: float32 = face.radius
         if props.pill || props.circle { radius = bounds.height * 0.5 }
         background: Color = ColorFromPacked(Opacity(face.background, opacity))
+        // A colour swatch shows its own colour, never the style's fill.
+        if props.swatch {
+            background = props.swatch_color
+            if props.disabled {
+                background.a = cast(u8)(cast(s32)background.a / 2)
+            }
+        }
         if background.a > cast(u8)0 {
             PaintRoundedFill(session, node, bounds, radius, 12, background)
         }
@@ -220,6 +227,26 @@
             if border.a > cast(u8)0 {
                 PaintRoundedOutline(session, node, bounds, radius, 12,
                     face.border_width, border)
+            }
+        }
+        // The chosen swatch carries a light ring with a dark edge, which
+        // shows on light and dark colours alike.
+        if props.swatch && props.selected {
+            ring: float32 = bounds.height * 0.08
+            if ring < 2.0 {
+                ring = 2.0
+            }
+            inner := Rectangle.{bounds.x + ring, bounds.y + ring,
+                bounds.width - ring * 2.0, bounds.height - ring * 2.0}
+            inner_radius: float32 = radius - ring
+            if inner_radius < 0.0 {
+                inner_radius = 0.0
+            }
+            if inner.width > 0.0 && inner.height > 0.0 {
+                PaintRoundedOutline(session, node, inner, inner_radius, 12,
+                    ring, Color.{255, 255, 255, 235})
+                PaintRoundedOutline(session, node, bounds, radius, 12,
+                    1.0, Color.{0, 0, 0, 110})
             }
         }
         // Keyboard focus draws a ring just outside the button, in the style's
