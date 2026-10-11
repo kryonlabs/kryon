@@ -1,0 +1,96 @@
+// Runs in headless Chromium against tests/http_transfer_server.py; the page's
+// query names the server's port.
+#import "file_download"
+#import "web"
+#import "c_string"
+#import "byte_text_linux"
+
+c :: #system_library "c";
+Access :: (path: *u8, mode: s32) -> s32 #foreign c "access";
+
+port: [16]u8;
+
+Append :: (output: []u8, length: *s64, part: string) {
+    for index: cast(s64)0..part.count - 1 {
+        output[length.*] = part[index]
+        length.* += 1
+    }
+    output[length.*] = 0
+}
+
+Url :: (path: string, output: []u8) -> string {
+    length: s64 = 0
+    Append(output, *length, "http://127.0.0.1:")
+    Append(output, *length, TextFromCString(*port[0]))
+    Append(output, *length, path)
+    return TextFromCString(*output[0])
+}
+
+Exists :: (path: string) -> bool {
+    bytes: [256]u8
+    return CopyCString(path, bytes[:]) && Access(*bytes[0], 0) == 0
+}
+
+Finish :: (download: *FileDownload) -> FileDownloadStatus {
+    for attempt: 0..499 {
+        status := FileDownloadPoll(download)
+        if status != .Downloading {
+            return status
+        }
+        WebSleep(10)
+    }
+    return .Downloading
+}
+
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+
+Check :: () -> string {
+    scope := WebScope()
+    search := WebGet(WebGetObject(WebGlobal, WebName("location")), WebName("search"))
+    query: [32]u8
+    WebCopyString(WebAsObject(search), query[:])
+    WebEnd(scope)
+    CopyCString(TextFromCString(*query[6]), port[:])
+    url: [128]u8
+    download: FileDownload
+    if !FileDownloadStart(*download, Url("/big", url[:]), "/tmp/big.bin") {
+        return "FAIL start"
+    }
+    if Finish(*download) != .Ready || download.bytes != 100000 || !Exists("/tmp/big.bin") ||
+    Exists("/tmp/big.bin.part") {
+        return "FAIL big"
+    }
+    download = FileDownload.{}
+    if !FileDownloadStart(*download, Url("/missing", url[:]), "/tmp/missing.bin") ||
+    Finish(*download) != .Error || Exists("/tmp/missing.bin") || Exists("/tmp/missing.bin.part") {
+        return "FAIL missing"
+    }
+    download = FileDownload.{.maximum_bytes = 1000}
+    if !FileDownloadStart(*download, Url("/big", url[:]), "/tmp/limited.bin") ||
+    Finish(*download) != .Error || Exists("/tmp/limited.bin") || Exists("/tmp/limited.bin.part") {
+        return "FAIL limit"
+    }
+    download = FileDownload.{}
+    if !FileDownloadStart(*download, Url("/slow", url[:]), "/tmp/slow.bin") {
+        return "FAIL slow start"
+    }
+    WebSleep(200)
+    FileDownloadRelease(*download)
+    WebSleep(3500)
+    if download.status != .Idle || Exists("/tmp/slow.bin") || Exists("/tmp/slow.bin.part") {
+        return "FAIL release"
+    }
+    return "PASS"
+}
+
+#program_export
+main :: () -> s32 {
+    Report(Check())
+    return 0
+}
