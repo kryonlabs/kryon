@@ -9,7 +9,8 @@ WaitState :: (target: s32) -> bool {
 main :: (argc: s32, argv: **u8) -> s32 {
     if argc != 2 { return 2 }
     if Video.VideoOpenHost("https://example.invalid/video.mp4") { return 3 }
-    if !Video.VideoOpenHost(TextFromCString(argv[1])) || !WaitState(2) { return 4 }
+    if !Video.VideoOpenHost(TextFromCString(argv[1])) { print("%\n", Video.message); return 4 }
+    if !WaitState(2) { return 4 }
     if Video.VideoFrameHost() != Video.VideoAsset || Video.width != 160 || Video.height != 90 || Video.VideoDurationHost() < 3900 { return 5 }
     if Video.pixels[1000] == 0 { return 6 }
     Video.VideoPauseHost(); if Video.state != 3 { return 7 }

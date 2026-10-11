@@ -17,6 +17,12 @@ for target in c cpp; do
         "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" "$work/$target"/*.cpp $libs \
             -o "$work/$target/desktop_wait_test"
     fi
-    xvfb-run -a "$work/$target/desktop_wait_test" > "$work/$target.log"
+    status=0
+    xvfb-run -a "$work/$target/desktop_wait_test" > "$work/$target.log" 2>&1 || status=$?
+    if test "$status" != 0; then
+        cat "$work/$target.log"
+        echo "desktop wait test ($target) exited with status $status" >&2
+        exit "$status"
+    fi
     tail -1 "$work/$target.log"
 done
