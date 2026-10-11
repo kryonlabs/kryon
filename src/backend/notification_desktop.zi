@@ -1,0 +1,101 @@
+// The notification host for Linux and BSD desktops: notify-send, started as
+// a detached grandchild so a slow notification daemon never blocks a frame
+// and leaves no zombie. Other platforms report notifications unsupported;
+// Android and the browser deliver their own.
+#import "notification"
+#import "c_string"
+
+DESKTOP_NOTIFICATIONS :: #defined(PLATFORM_DESKTOP) && !#defined(_WIN32)
+
+#if DESKTOP_NOTIFICATIONS {
+    notification_c :: #system_library "c";
+    notification_raylib :: #system_library "raylib";
+    NotificationAccess :: (path: *u8, mode: s32) -> s32 #foreign notification_c "access";
+    NotificationFork :: () -> s32 #foreign notification_c "fork";
+    NotificationWait :: (pid: s32, status: *s32,
+        options: s32) -> s32 #foreign notification_c "waitpid";
+    NotificationExec :: (path: *u8, first: *u8,
+        args: ..any) -> s32 #foreign notification_c "execl";
+    NotificationExit :: (status: s32) #foreign notification_c "_exit";
+    NotificationWindowFocused :: () -> bool #foreign notification_raylib "IsWindowFocused";
+}
+
+notification_app_name: [128]u8;
+
+#program_export
+NotificationSetAppNameHost :: (name: string) {
+    if !CopyCString(name, notification_app_name[:]) {
+        notification_app_name[0] = cast(u8)0
+    }
+}
+
+#program_export
+NotificationSupportedHost :: () -> bool {
+    #if DESKTOP_NOTIFICATIONS {
+        executable: [32]u8
+        if !CopyCString("/usr/bin/notify-send", executable[:]) {
+            return false
+        }
+        return NotificationAccess(*executable[0], 1) == 0
+    }
+    return false
+}
+
+#program_export
+NotificationAllowedHost :: () -> bool {
+    return NotificationSupportedHost()
+}
+
+#program_export
+NotificationRequestHost :: () -> bool {
+    return NotificationSupportedHost()
+}
+
+#program_export
+NotificationWindowFocusedHost :: () -> bool {
+    #if DESKTOP_NOTIFICATIONS {
+        return NotificationWindowFocused()
+    }
+    return false
+}
+
+#program_export
+NotificationSendHost :: (props: NotificationProps) -> bool {
+    #if DESKTOP_NOTIFICATIONS {
+        if !NotificationSupportedHost() {
+            return false
+        }
+        executable: [32]u8
+        app_flag: [4]u8
+        title: [256]u8
+        body: [2048]u8
+        if !CopyCString("/usr/bin/notify-send", executable[:]) ||
+            !CopyCString("-a", app_flag[:]) ||
+            !CopyCString(props.title, title[:]) ||
+            !CopyCString(props.body, body[:]) {
+            return false
+        }
+        parent_pid: s32 = NotificationFork()
+        if parent_pid < 0 {
+            return false
+        }
+        if parent_pid == 0 {
+            child_pid: s32 = NotificationFork()
+            if child_pid == 0 {
+                terminator: *u8 = null
+                NotificationExec(*executable[0], *executable[0],
+                    *app_flag[0], *notification_app_name[0],
+                    *title[0], *body[0], terminator)
+                NotificationExit(127)
+            }
+            if child_pid < 0 {
+                NotificationExit(1)
+            }
+            NotificationExit(0)
+        }
+        status: s32 = 0
+        return NotificationWait(parent_pid, *status, 0) == parent_pid &&
+            status == 0
+    }
+    return false
+}

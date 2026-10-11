@@ -1,0 +1,29 @@
+#import "window_close"
+
+// Events for another window or another kind are ignored; a close request is
+// reported once.
+#program_export
+main :: () -> s32 {
+    window_close_id = 42
+    event: WindowEventHeader
+    event.event_type = 0x200
+    event.window_id = 41
+    event.event = 14
+    WindowCloseEvent(null, cast(*void)(*event))
+    if WindowCloseTake() {
+        return 1
+    }
+    event.window_id = 42
+    event.event = 4
+    WindowCloseEvent(null, cast(*void)(*event))
+    if WindowCloseTake() {
+        return 2
+    }
+    event.event = 14
+    WindowCloseEvent(null, cast(*void)(*event))
+    if !WindowCloseTake() || WindowCloseTake() {
+        return 3
+    }
+    window_close_id = 0
+    return 0
+}

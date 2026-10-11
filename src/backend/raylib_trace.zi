@@ -1,0 +1,334 @@
+// Where raylib's log goes. raylib hands its callback a C va_list, which this
+// module consumes exactly once with the target's own ABI.
+//
+// RaylibTraceToConsole writes "LEVEL: message" lines to a copy of stderr
+// (Android: warnings and errors to logcat), dropping raylib's routine image,
+// texture and frame-timer notes. RaylibTraceToFile appends to a log file, for
+// Windows applications that have no console, and keeps recent errors for a
+// startup failure message. A terminal (KRYON_BACKEND_TERMI) build stays
+// silent unless KRYON_TERMINAL_LOG is set, so the log cannot draw over the
+// application.
+#import "c_string"
+#import "byte_text_linux"
+
+raylib_trace_c :: #system_library "c";
+raylib_trace_raylib :: #system_library "raylib";
+
+TRACE_STRUCT_ARGUMENTS :: #defined(__aarch64__) && !#defined(_WIN32) && !#defined(__APPLE__)
+#if TRACE_STRUCT_ARGUMENTS {
+    // AArch64's va_list is a record passed by value.
+    TraceArguments :: struct {
+        stack: *void
+        general_top: *void
+        vector_top: *void
+        general_offset: s32
+        vector_offset: s32
+    }
+} else {
+    TraceArguments :: struct {
+        cursor: *void
+    }
+}
+#if TRACE_STRUCT_ARGUMENTS {
+    TraceCallback :: #type (s32, *u8, TraceArguments) -> void #c_call;
+} else {
+    TraceCallback :: #type (s32, *u8, *void) -> void #c_call;
+}
+TraceSetCallback :: (callback: TraceCallback) #foreign raylib_trace_raylib "SetTraceLogCallback";
+TraceSetLevel :: (level: s32) #foreign raylib_trace_raylib "SetTraceLogLevel";
+TraceHostLog :: (level: s32, format: *u8, args: ..any) #foreign raylib_trace_raylib "TraceLog";
+TraceGetEnvironment :: (name: *u8) -> *u8 #foreign raylib_trace_c "getenv";
+TraceCloseStream :: (stream: *void) -> s32 #foreign raylib_trace_c "fclose";
+TraceFlushStream :: (stream: *void) -> s32 #foreign raylib_trace_c "fflush";
+TraceWriteBytes :: (bytes: *u8, size: usize, count: usize,
+    stream: *void) -> usize #foreign raylib_trace_c "fwrite";
+TraceWriteCharacter :: (character: s32, stream: *void) -> s32 #foreign raylib_trace_c "fputc";
+TraceOpenStream :: (path: *u8, mode: *u8) -> *void #foreign raylib_trace_c "fopen";
+#if TRACE_STRUCT_ARGUMENTS {
+    TraceNativePrint :: (stream: *void, format: *u8,
+        arguments: TraceArguments) -> s32 #foreign raylib_trace_c "vfprintf";
+    TraceNativeFormat :: (output: *u8, capacity: usize, format: *u8,
+        arguments: TraceArguments) -> s32 #foreign raylib_trace_c "vsnprintf";
+} else {
+    TraceNativePrint :: (stream: *void, format: *u8,
+        arguments: *void) -> s32 #foreign raylib_trace_c "vfprintf";
+    TraceNativeFormat :: (output: *u8, capacity: usize, format: *u8,
+        arguments: *void) -> s32 #foreign raylib_trace_c "vsnprintf";
+}
+#if #defined(_WIN32) {
+    TraceDuplicate :: (descriptor: s32) -> s32 #foreign raylib_trace_c "_dup";
+    TraceDescriptorStream :: (descriptor: s32, mode: *u8) -> *void #foreign raylib_trace_c "_fdopen";
+    TraceCloseDescriptor :: (descriptor: s32) -> s32 #foreign raylib_trace_c "_close";
+} else {
+    TraceDuplicate :: (descriptor: s32) -> s32 #foreign raylib_trace_c "dup";
+    TraceDescriptorStream :: (descriptor: s32, mode: *u8) -> *void #foreign raylib_trace_c "fdopen";
+    TraceCloseDescriptor :: (descriptor: s32) -> s32 #foreign raylib_trace_c "close";
+}
+#if #defined(ANDROID_BUILD) {
+    raylib_trace_log :: #system_library "log";
+    TraceAndroidWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign raylib_trace_log "__android_log_write";
+    #if TRACE_STRUCT_ARGUMENTS {
+        TraceAndroidPrint :: (priority: s32, tag: *u8, format: *u8,
+            arguments: TraceArguments) -> s32 #foreign raylib_trace_log "__android_log_vprint";
+    } else {
+        TraceAndroidPrint :: (priority: s32, tag: *u8, format: *u8,
+            arguments: *void) -> s32 #foreign raylib_trace_log "__android_log_vprint";
+    }
+}
+
+RAYLIB_TRACE_INFO :: 3
+RAYLIB_TRACE_WARNING :: 4
+RAYLIB_TRACE_ERROR :: 5
+
+RaylibTraceProps :: struct {
+    // Android's logcat tag for warnings and errors.
+    android_tag: string
+    // Info lines that start with this prefix also reach logcat, under
+    // android_note_tag; other info lines are dropped there.
+    android_note_prefix: string
+    android_note_tag: string
+}
+
+trace_props_tag: [32]u8;
+trace_props_note_prefix: [32]u8;
+trace_props_note_tag: [32]u8;
+trace_stream: *void;
+trace_file: *void;
+trace_errors: [2048]u8;
+trace_errors_length: s32;
+
+// Logs text as it is; a % in it is never read as a format.
+TraceLog :: (level: s32, message: string) {
+    if message.count > 2147483647 {
+        return
+    }
+    format: [8]u8
+    empty: [1]u8 = .[0]
+    if !CopyCString("%.*s", format[:]) {
+        return
+    }
+    data: *u8 = *empty[0]
+    if message.count > 0 {
+        descriptor := cast(*TextDescriptor)(*message)
+        data = descriptor.data
+    }
+    TraceHostLog(level, *format[0], cast(s32)message.count, data)
+}
+
+TracePrint :: (stream: *void, format: *u8, arguments: TraceArguments) {
+    #if TRACE_STRUCT_ARGUMENTS {
+        TraceNativePrint(stream, format, arguments)
+    } else {
+        TraceNativePrint(stream, format, arguments.cursor)
+    }
+}
+
+TraceFormat :: (output: *u8, capacity: usize, format: *u8,
+    arguments: TraceArguments) {
+    #if TRACE_STRUCT_ARGUMENTS {
+        TraceNativeFormat(output, capacity, format, arguments)
+    } else {
+        TraceNativeFormat(output, capacity, format, arguments.cursor)
+    }
+}
+
+TraceLevelName :: (level: s32) -> string {
+    if level == 1 {
+        return "TRACE"
+    }
+    if level == 2 {
+        return "DEBUG"
+    }
+    if level == 4 {
+        return "WARNING"
+    }
+    if level == 5 {
+        return "ERROR"
+    }
+    if level == 6 {
+        return "FATAL"
+    }
+    return "INFO"
+}
+
+TraceStartsWith :: (text: *u8, prefix: string) -> bool {
+    if text == null {
+        return false
+    }
+    index: s64 = 0
+    while index < prefix.count {
+        if text[index] != prefix[index] {
+            return false
+        }
+        index += 1
+    }
+    return true
+}
+
+TraceWriteText :: (stream: *void, value: string) {
+    if stream == null || value.count == 0 {
+        return
+    }
+    bytes := cast(*TextDescriptor)(*value)
+    TraceWriteBytes(bytes.data, 1, cast(usize)value.count, stream)
+}
+
+TraceConsole :: (level: s32, format: *u8, arguments: TraceArguments) {
+    if level < RAYLIB_TRACE_WARNING && (TraceStartsWith(format, "IMAGE:") ||
+        TraceStartsWith(format, "TEXTURE:") ||
+        TraceStartsWith(format, "TIMER: Target time per frame")) {
+        return
+    }
+    #if #defined(ANDROID_BUILD) {
+        if level == RAYLIB_TRACE_INFO {
+            if trace_props_note_prefix[0] == 0 || trace_props_note_tag[0] == 0 {
+                return
+            }
+            message: [1024]u8
+            TraceFormat(*message[0], 1024, format, arguments)
+            message[1023] = 0
+            if TraceStartsWith(*message[0], TextFromCString(*trace_props_note_prefix[0])) {
+                unused TraceAndroidWrite(4, *trace_props_note_tag[0], *message[0])
+            }
+            return
+        }
+        if level >= RAYLIB_TRACE_WARNING && trace_props_tag[0] != 0 {
+            #if TRACE_STRUCT_ARGUMENTS {
+                TraceAndroidPrint(5, *trace_props_tag[0], format, arguments)
+            } else {
+                TraceAndroidPrint(5, *trace_props_tag[0], format, arguments.cursor)
+            }
+        }
+        return
+    }
+    if trace_stream == null {
+        return
+    }
+    TraceWriteText(trace_stream, TraceLevelName(level))
+    TraceWriteText(trace_stream, ": ")
+    TracePrint(trace_stream, format, arguments)
+    TraceWriteCharacter(10, trace_stream)
+    TraceFlushStream(trace_stream)
+}
+
+TraceAppendError :: (text: string) {
+    index: s64 = 0
+    while index < text.count && trace_errors_length < 2047 {
+        trace_errors[trace_errors_length] = text[index]
+        trace_errors_length += 1
+        index += 1
+    }
+    trace_errors[trace_errors_length] = 0
+}
+
+TraceToFile :: (level: s32, format: *u8, arguments: TraceArguments) {
+    bytes: [1024]u8
+    TraceFormat(*bytes[0], 1024, format, arguments)
+    bytes[1023] = 0
+    text := TextFromCString(*bytes[0])
+    name := TraceLevelName(level)
+    if level >= RAYLIB_TRACE_WARNING && text.count > 0 {
+        TraceAppendError("[")
+        TraceAppendError(name)
+        TraceAppendError("] ")
+        TraceAppendError(text)
+        TraceAppendError("\n")
+    }
+    if trace_file != null {
+        TraceWriteText(trace_file, "[")
+        TraceWriteText(trace_file, name)
+        TraceWriteText(trace_file, "] ")
+        TraceWriteText(trace_file, text)
+        TraceWriteText(trace_file, "\n")
+        TraceFlushStream(trace_file)
+    }
+}
+
+#if TRACE_STRUCT_ARGUMENTS {
+    TraceConsoleCallback :: (level: s32, format: *u8, arguments: TraceArguments) {
+        TraceConsole(level, format, arguments)
+    }
+    TraceFileCallback :: (level: s32, format: *u8, arguments: TraceArguments) {
+        TraceToFile(level, format, arguments)
+    }
+} else {
+    TraceConsoleCallback :: (level: s32, format: *u8, arguments: *void) {
+        TraceConsole(level, format, TraceArguments.{arguments})
+    }
+    TraceFileCallback :: (level: s32, format: *u8, arguments: *void) {
+        TraceToFile(level, format, TraceArguments.{arguments})
+    }
+}
+
+RaylibTraceToConsole :: (props: RaylibTraceProps) {
+    #if #defined(KRYON_BACKEND_TERMI) {
+        name: [32]u8
+        if CopyCString("KRYON_TERMINAL_LOG", name[:]) &&
+        TraceGetEnvironment(*name[0]) == null {
+            TraceSetLevel(7)
+            return
+        }
+    }
+    if !CopyCString(props.android_tag, trace_props_tag[:]) {
+        trace_props_tag[0] = 0
+    }
+    if !CopyCString(props.android_note_prefix, trace_props_note_prefix[:]) {
+        trace_props_note_prefix[0] = 0
+    }
+    if !CopyCString(props.android_note_tag, trace_props_note_tag[:]) {
+        trace_props_note_tag[0] = 0
+    }
+    #if !#defined(ANDROID_BUILD) {
+        if trace_stream == null {
+            mode: [4]u8
+            if CopyCString("w", mode[:]) {
+                descriptor := TraceDuplicate(2)
+                if descriptor >= 0 {
+                    trace_stream = TraceDescriptorStream(descriptor, *mode[0])
+                    if trace_stream == null {
+                        TraceCloseDescriptor(descriptor)
+                    }
+                }
+            }
+        }
+    }
+    callback: TraceCallback = TraceConsoleCallback
+    TraceSetCallback(callback)
+}
+
+// Appends the log to path. False when the file cannot be opened; the log
+// then stays where it was.
+RaylibTraceToFile :: (path: string) -> bool {
+    name: [512]u8
+    mode: [4]u8
+    if !CopyCString(path, name[:]) || !CopyCString("ab", mode[:]) {
+        return false
+    }
+    file := TraceOpenStream(*name[0], *mode[0])
+    if file == null {
+        return false
+    }
+    if trace_file != null {
+        TraceCloseStream(trace_file)
+    }
+    trace_file = file
+    callback: TraceCallback = TraceFileCallback
+    TraceSetCallback(callback)
+    return true
+}
+
+// Warnings and errors logged since RaylibTraceToFile, as "[LEVEL] text" lines.
+RaylibTraceRecentErrors :: () -> string {
+    return TextFromCString(*trace_errors[0])
+}
+
+RaylibTraceClose :: () {
+    if trace_file != null {
+        TraceCloseStream(trace_file)
+        trace_file = null
+    }
+    if trace_stream != null {
+        TraceCloseStream(trace_stream)
+        trace_stream = null
+    }
+}

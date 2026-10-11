@@ -1,0 +1,155 @@
+// How long the desktop session has had no input, and whether it is Wayland.
+// It asks the session's idle service over D-Bus (GNOME's Mutter idle
+// monitor, then the freedesktop screen saver) at most twice a second; it
+// never opens or reads a display. Without GIO (APP_HAVE_GIO) the idle time is
+// unknown.
+#import "c_string"
+
+idle_time_c :: #system_library "c";
+IdleGetEnv :: (name: *u8) -> *u8 #foreign idle_time_c "getenv";
+IdleCompare :: (left: *u8, right: *u8) -> s32 #foreign idle_time_c "strcmp";
+
+IDLE_TIME_GIO :: #defined(APP_HAVE_GIO) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD)
+
+#if IDLE_TIME_GIO {
+    idle_time_gio :: #system_library "gio-2.0";
+    idle_time_glib :: #system_library "glib-2.0";
+    IdleBusGet :: (bus_type: s32, cancellable: *void,
+        error: **void) -> *void #foreign idle_time_gio "g_bus_get_sync";
+    IdleBusCall :: (connection: *void, bus_name: *u8,
+        object_path: *u8, interface_name: *u8, method_name: *u8,
+        parameters: *void, reply_type: *void, flags: s32,
+        timeout_msec: s32, cancellable: *void,
+        error: **void) -> *void #foreign idle_time_gio "g_dbus_connection_call_sync";
+    IdleErrorFree :: (error: *void) #foreign idle_time_glib "g_error_free";
+    IdleVariantUnref :: (value: *void) #foreign idle_time_glib "g_variant_unref";
+    IdleVariantChildren :: (value: *void) -> usize #foreign idle_time_glib "g_variant_n_children";
+    IdleVariantChild :: (value: *void, index: usize) -> *void #foreign idle_time_glib "g_variant_get_child_value";
+    IdleVariantType :: (value: *void) -> *u8 #foreign idle_time_glib "g_variant_get_type_string";
+    IdleVariantUint64 :: (value: *void) -> u64 #foreign idle_time_glib "g_variant_get_uint64";
+    IdleVariantUint32 :: (value: *void) -> u32 #foreign idle_time_glib "g_variant_get_uint32";
+    IdleMonotonicTime :: () -> s64 #foreign idle_time_glib "g_get_monotonic_time";
+
+    idle_time_bus: *void;
+    idle_time_backend: s32;
+    idle_time_initialized: bool;
+    idle_time_last_query: s64;
+    idle_time_cached: s64 = -1;
+}
+
+IsWaylandSession :: () -> bool {
+    session_name: [24]u8
+    display_name: [24]u8
+    wayland_name: [16]u8
+    if !CopyCString("XDG_SESSION_TYPE", session_name[:]) ||
+        !CopyCString("WAYLAND_DISPLAY", display_name[:]) ||
+        !CopyCString("wayland", wayland_name[:]) {
+        return false
+    }
+    session := IdleGetEnv(*session_name[0])
+    display := IdleGetEnv(*display_name[0])
+    return (session != null &&
+        IdleCompare(session, *wayland_name[0]) == 0) ||
+        (display != null && display[0] != 0)
+}
+
+#if IDLE_TIME_GIO {
+    IdleCall :: (name: string, path: string,
+        interface_name: string, method: string) -> s64 {
+        if idle_time_bus == null {
+            return -1
+        }
+        bus_name: [96]u8
+        object_path: [96]u8
+        interface_bytes: [96]u8
+        method_name: [40]u8
+        if !CopyCString(name, bus_name[:]) ||
+            !CopyCString(path, object_path[:]) ||
+            !CopyCString(interface_name, interface_bytes[:]) ||
+            !CopyCString(method, method_name[:]) {
+            return -1
+        }
+        error: *void
+        reply := IdleBusCall(idle_time_bus, *bus_name[0],
+            *object_path[0], *interface_bytes[0], *method_name[0],
+            null, null, 0, 500, null, *error)
+        if reply == null {
+            if error != null {
+                IdleErrorFree(error)
+            }
+            return -1
+        }
+        if IdleVariantChildren(reply) != 1 {
+            IdleVariantUnref(reply)
+            return -1
+        }
+        value := IdleVariantChild(reply, 0)
+        idle: u64 = cast(u64)9223372036854775808
+        value_type := IdleVariantType(value)
+        if value_type != null {
+            if value_type[0] == #char "t" && value_type[1] == 0 {
+                idle = IdleVariantUint64(value)
+            } else if value_type[0] == #char "u" && value_type[1] == 0 {
+                idle = cast(u64)IdleVariantUint32(value)
+            } else {
+                idle = cast(u64)9223372036854775808
+            }
+        }
+        IdleVariantUnref(value)
+        IdleVariantUnref(reply)
+        if idle > cast(u64)9223372036854775807 {
+            return -1
+        }
+        return cast(s64)idle
+    }
+
+    IdleInit :: () {
+        if idle_time_initialized {
+            return
+        }
+        idle_time_initialized = true
+        error: *void
+        idle_time_bus = IdleBusGet(2, null, *error)
+        if idle_time_bus == null {
+            if error != null {
+                IdleErrorFree(error)
+            }
+            return
+        }
+        if IdleCall("org.gnome.Mutter.IdleMonitor",
+            "/org/gnome/Mutter/IdleMonitor/Core",
+            "org.gnome.Mutter.IdleMonitor", "GetIdletime") >= 0 {
+            idle_time_backend = 1
+            return
+        }
+        if IdleCall("org.freedesktop.ScreenSaver", "/ScreenSaver",
+            "org.freedesktop.ScreenSaver", "GetSessionIdleTime") >= 0 {
+            idle_time_backend = 2
+        }
+    }
+}
+
+// Milliseconds since the last input in the session, or -1 when unknown.
+IdleMilliseconds :: () -> s64 {
+    #if IDLE_TIME_GIO {
+        now := IdleMonotonicTime()
+        if idle_time_last_query != 0 && now - idle_time_last_query < 500000 {
+            return idle_time_cached
+        }
+        idle_time_last_query = now
+        IdleInit()
+        if idle_time_backend == 1 {
+            idle_time_cached = IdleCall("org.gnome.Mutter.IdleMonitor",
+                "/org/gnome/Mutter/IdleMonitor/Core",
+                "org.gnome.Mutter.IdleMonitor", "GetIdletime")
+        } else if idle_time_backend == 2 {
+            idle_time_cached = IdleCall("org.freedesktop.ScreenSaver",
+                "/ScreenSaver", "org.freedesktop.ScreenSaver",
+                "GetSessionIdleTime")
+        } else {
+            idle_time_cached = -1
+        }
+        return idle_time_cached
+    }
+    return -1
+}

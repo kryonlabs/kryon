@@ -106,6 +106,16 @@ shell, Plan 9's plumber, an Android `ACTION_VIEW` intent or a new browser tab,
 and `CanOpenUri(uri)` says whether that platform can open it. Android code
 reaches the activity through [`android_jni`](../src/backend/android_jni.zi).
 
+Other platform services an application may import:
+
+| Module | Surface |
+| --- | --- |
+| [`file_picker`](../src/backend/file_picker.zi) | `PickFile(FilePickerProps, output)`: zenity on Linux and BSD, Windows' common dialog, and the browser's chooser, which copies the file into the page's file system |
+| [`window_close`](../src/backend/window_close.zi) | `WindowCloseWatch(window)` and `WindowCloseTake()`: close requests for the application's own SDL or Win32 window, so it can ask first or hide to a tray |
+| [`idle_time`](../src/backend/idle_time.zi) | `IdleMilliseconds()` from the session's idle service over D-Bus, and `IsWaylandSession()` |
+| [`notification_desktop`](../src/backend/notification_desktop.zi) | The `notification` host for Linux and BSD desktops, through notify-send |
+| [`raylib_trace`](../src/backend/raylib_trace.zi) | Where raylib's log goes: `RaylibTraceToConsole`, `RaylibTraceToFile` for Windows applications without a console, and `TraceLog(level, text)` |
+
 [`src/ui/modules.txt`](../src/ui/modules.txt) is the core build inventory.
 `make test` checks source, saved `.zir`, `.zib`, and generated C/C++/Go behavior.
 See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for package and host verification.

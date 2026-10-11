@@ -1,0 +1,42 @@
+#import "file_picker"
+#import "std/byte_text_linux"
+#import "std/c_string"
+
+c :: #system_library "c";
+SetEnv :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign c "setenv";
+
+// The fake zenity on PATH answers with FAKE_ZENITY: a path, cancel, or fail
+// as a missing program would.
+Answer :: (mode: string) -> bool {
+    name: [16]u8
+    value: [16]u8
+    return CopyCString("FAKE_ZENITY", name[:]) && CopyCString(mode, value[:]) &&
+    SetEnv(*name[0], *value[0], 1) == 0
+}
+
+#program_export
+main :: () -> s32 {
+    path: [256]u8
+    open := FilePickerProps.{.title = "Open data", .filter = "Data | *.json *.csv"}
+    if !Answer("path") || PickFile(open, path[:]) != 1 ||
+    TextFromCString(*path[0]) != "/home/test/data file.json" {
+        return 1
+    }
+    save := FilePickerProps.{.title = "Save data", .filter = "Data | *.json",
+        .suggested_name = "inbe export.json", .save = true}
+    if PickFile(save, path[:]) != 1 {
+        return 2
+    }
+    if !Answer("cancel") || PickFile(open, path[:]) != 0 || path[0] != 0 {
+        return 3
+    }
+    if !Answer("fail") || PickFile(open, path[:]) != -1 || path[0] != 0 {
+        return 4
+    }
+    // A path longer than the output is refused rather than cut.
+    short: [8]u8
+    if !Answer("path") || PickFile(open, short[:]) != -1 {
+        return 5
+    }
+    return 0
+}

@@ -219,6 +219,7 @@ web-js-boundary-test:
 .PHONY: canvas-test
 canvas-test: web-js-boundary-test canvas-events-test dom-spec-test canvas-audio-engine-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_backend_test.sh
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/file_picker_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_audio_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY EM_CACHE="$(abspath $(BUILD_DIR))/emscripten-cache" \
 		sh tests/canvas_text_os_wasm_test.sh
@@ -266,6 +267,10 @@ raylib-typeface-test: $(ZI2C_BIN)
 raylib-text-pixels-test: $(ZI2C_BIN)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" \
 		sh tests/raylib_text_pixels_test.sh
+
+.PHONY: raylib-trace-test
+raylib-trace-test: $(ZI2C_BIN)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_trace_test.sh
 
 .PHONY: raylib-clip-test
 raylib-clip-test: $(ZI2C_BIN)

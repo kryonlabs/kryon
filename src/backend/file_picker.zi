@@ -1,0 +1,489 @@
+// Ask the user for a file to open or a place to save one. PickFile returns
+// 1 with the chosen path in output, 0 when the user cancels and -1 when no
+// picker could run.
+//
+// Linux and BSD run zenity as a child process, with no shell and no display
+// lookup by this process; Windows shows its common dialog; the browser opens
+// its file chooser and copies the chosen file into the page's file system,
+// under /tmp, and a save there names a fresh /tmp path for the application to
+// write and then offer as a download.
+#import "c_string"
+
+PICKER_WINDOWS :: #defined(_WIN32)
+PICKER_WEB :: #defined(PLATFORM_WEB)
+PICKER_POSIX :: #defined(PLATFORM_DESKTOP) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD) && !#defined(_WIN32) && !#defined(KRYON_PLATFORM_PLAN9)
+
+FilePickerProps :: struct {
+    title: string
+    // A label, a bar and space-separated patterns, such as
+    // "Images | *.png *.jpg". Without a bar every file is offered.
+    filter: string
+    // The file name a save picker starts with.
+    suggested_name: string
+    save: bool
+}
+
+PickFile :: (props: FilePickerProps, output: []u8) -> s32 {
+    if output.count > 0 {
+        output[0] = 0
+    }
+    title: [256]u8
+    filter: [256]u8
+    suggested: [256]u8
+    if output.count < 2 || output.count > 2147483647 || !CopyCString(props.title, title[:]) ||
+    !CopyCString(props.filter, filter[:]) || !CopyCString(props.suggested_name, suggested[:]) {
+        return -1
+    }
+    capacity := cast(s32)output.count
+    #if PICKER_WINDOWS {
+        return PickWindowsFile(*title[0], *filter[0], *suggested[0], props.save, *output[0], capacity)
+    }
+    #if PICKER_WEB {
+        return PickBrowserFile(props, output)
+    }
+    #if PICKER_POSIX {
+        return PickPosixFile(*title[0], *filter[0], *suggested[0], props.save, *output[0], capacity)
+    }
+    unused capacity
+    return -1
+}
+
+#if PICKER_WINDOWS {
+    picker_dialog :: #system_library "comdlg32";
+    picker_user32 :: #system_library "user32";
+    FileDialog :: struct {
+        size: u32
+        owner: *void
+        instance: *void
+        filter: *u8
+        custom_filter: *u8
+        custom_filter_capacity: u32
+        filter_index: u32
+        file: *u8
+        file_capacity: u32
+        file_title: *u8
+        file_title_capacity: u32
+        initial_directory: *u8
+        title: *u8
+        flags: u32
+        file_offset: u16
+        extension_offset: u16
+        default_extension: *u8
+        custom_data: isize
+        hook: *void
+        template_name: *u8
+        reserved: *void
+        reserved_word: u32
+        flags_extended: u32
+    }
+    PickerOpenDialog :: (dialog: *FileDialog) -> s32 #foreign picker_dialog "GetOpenFileNameA";
+    PickerSaveDialog :: (dialog: *FileDialog) -> s32 #foreign picker_dialog "GetSaveFileNameA";
+    PickerDialogError :: () -> u32 #foreign picker_dialog "CommDlgExtendedError";
+    PickerActiveWindow :: () -> *void #foreign picker_user32 "GetActiveWindow";
+
+    // "Label | *.a *.b" becomes the dialog's "Label\0*.a;*.b\0\0".
+    PickWindowsFile :: (title: *u8, filter: *u8,
+        suggested_name: *u8, save: bool, output: *u8,
+        capacity: s32) -> s32 {
+        options: [256]u8
+        separator: s32 = 0
+        while filter[separator] != 0 && filter[separator] != #char "|" {
+            if separator >= 253 {
+                return -1
+            }
+            separator += 1
+        }
+        label_length := separator
+        while label_length > 0 && filter[label_length - 1] == #char " " {
+            label_length -= 1
+        }
+        if label_length == 0 {
+            return -1
+        }
+        index: s32 = 0
+        while index < label_length {
+            options[index] = filter[index]
+            index += 1
+        }
+        options[index] = 0
+        index = label_length + 1
+        if filter[separator] == 0 {
+            if index + 5 > 256 {
+                return -1
+            }
+            options[index] = #char "*"
+            options[index + 1] = #char "."
+            options[index + 2] = #char "*"
+            index += 3
+        }
+        if filter[separator] != 0 {
+            separator += 1
+            while filter[separator] == #char " " {
+                separator += 1
+            }
+            while filter[separator] != 0 {
+                if index >= 254 {
+                    return -1
+                }
+                byte := filter[separator]
+                options[index] = ifx byte == #char " " then #char ";" else byte
+                index += 1
+                separator += 1
+            }
+        }
+        options[index] = 0
+        options[index + 1] = 0
+        if save && suggested_name != null {
+            index = 0
+            while index + 1 < capacity && suggested_name[index] != 0 {
+                output[index] = suggested_name[index]
+                index += 1
+            }
+            output[index] = 0
+        }
+        dialog: FileDialog
+        dialog.size = cast(u32)size_of(FileDialog)
+        dialog.owner = PickerActiveWindow()
+        dialog.title = title
+        dialog.filter = *options[0]
+        dialog.file = output
+        dialog.file_capacity = cast(u32)capacity
+        // OFN_NOCHANGEDIR, OFN_HIDEREADONLY, and OFN_OVERWRITEPROMPT or
+        // OFN_FILEMUSTEXIST.
+        dialog.flags = 0x800 | 8 | (ifx save then 2 else 0x1000)
+        accepted := ifx save then PickerSaveDialog(*dialog) else PickerOpenDialog(*dialog)
+        if accepted != 0 {
+            return 1
+        }
+        output[0] = 0
+        return ifx PickerDialogError() == 0 then 0 else -1
+    }
+}
+
+PickerArgument :: struct {
+    value: *u8
+}
+
+#if PICKER_POSIX {
+    picker_c :: #system_library "c";
+    PickerPipe :: (descriptors: *s32) -> s32 #foreign picker_c "pipe";
+    PickerFork :: () -> s32 #foreign picker_c "fork";
+    PickerClose :: (descriptor: s32) -> s32 #foreign picker_c "close";
+    PickerDup :: (old_descriptor: s32, new_descriptor: s32) -> s32 #foreign picker_c "dup2";
+    PickerExec :: (file: *u8, arguments: **u8) -> s32 #foreign picker_c "execvp";
+    PickerExit :: (status: s32) #foreign picker_c "_exit";
+    PickerRead :: (descriptor: s32, buffer: *u8,
+        capacity: usize) -> s64 #foreign picker_c "read";
+    PickerWait :: (pid: s32, status: *s32,
+        options: s32) -> s32 #foreign picker_c "waitpid";
+    #if #defined(__FreeBSD__) || #defined(__APPLE__) {
+        PickerErrno :: () -> *s32 #foreign picker_c "__error";
+    } else {
+        PickerErrno :: () -> *s32 #foreign picker_c "__errno_location";
+    }
+
+    // zenity prints the chosen path; exit status 1 means cancelled.
+    PickPosixFile :: (title: *u8, filter: *u8, suggested_name: *u8,
+        save: bool, output: *u8, capacity: s32) -> s32 {
+        descriptors: [2]s32
+        if PickerPipe(*descriptors[0]) != 0 {
+            return -1
+        }
+        child := PickerFork()
+        if child < 0 {
+            PickerClose(descriptors[0])
+            PickerClose(descriptors[1])
+            return -1
+        }
+        if child == 0 {
+            PickerClose(descriptors[0])
+            if PickerDup(descriptors[1], 1) < 0 {
+                PickerExit(127)
+            }
+            PickerClose(descriptors[1])
+            program: [16]u8
+            selection: [24]u8
+            title_option: [16]u8
+            filter_option: [24]u8
+            save_option: [16]u8
+            overwrite_option: [24]u8
+            filename_option: [16]u8
+            empty: [1]u8
+            if !CopyCString("zenity", program[:]) ||
+                !CopyCString("--file-selection", selection[:]) ||
+                !CopyCString("--title", title_option[:]) ||
+                !CopyCString("--file-filter", filter_option[:]) ||
+                !CopyCString("--save", save_option[:]) ||
+                !CopyCString("--confirm-overwrite", overwrite_option[:]) ||
+                !CopyCString("--filename", filename_option[:]) {
+                PickerExit(127)
+            }
+            arguments: [11]PickerArgument
+            arguments[0].value = *program[0]
+            arguments[1].value = *selection[0]
+            arguments[2].value = *title_option[0]
+            arguments[3].value = title
+            arguments[4].value = *filter_option[0]
+            arguments[5].value = filter
+            if save {
+                arguments[6].value = *save_option[0]
+                arguments[7].value = *overwrite_option[0]
+                arguments[8].value = *filename_option[0]
+                arguments[9].value = ifx suggested_name != null then suggested_name else *empty[0]
+            }
+            PickerExec(*program[0], cast(**u8)(*arguments[0]))
+            PickerExit(127)
+        }
+
+        PickerClose(descriptors[1])
+        overflow := false
+        length: s32 = 0
+        chunk: [256]u8
+        while true {
+            count := PickerRead(descriptors[0], *chunk[0], 256)
+            if count == 0 {
+                break
+            }
+            if count < 0 {
+                if PickerErrno().* == 4 {
+                    continue
+                }
+                overflow = true
+                break
+            }
+            index: s64 = 0
+            while index < count {
+                if length + 1 < capacity {
+                    output[length] = chunk[index]
+                    length += 1
+                } else {
+                    overflow = true
+                }
+                index += 1
+            }
+        }
+        PickerClose(descriptors[0])
+        status: s32
+        while PickerWait(child, *status, 0) < 0 {
+            if PickerErrno().* != 4 {
+                output[0] = 0
+                return -1
+            }
+        }
+        if (status & 127) != 0 || ((status >> 8) & 255) == 127 || overflow {
+            output[0] = 0
+            return -1
+        }
+        if ((status >> 8) & 255) != 0 {
+            output[0] = 0
+            return 0
+        }
+        while length > 0 &&
+            (output[length - 1] == #char "\n" ||
+             output[length - 1] == #char "\r") {
+            length -= 1
+        }
+        output[length] = 0
+        if length == 0 {
+            return -1
+        }
+        return 1
+    }
+}
+
+#if PICKER_WEB {
+    #import "web"
+    #import "byte_text_linux"
+    picker_web_c :: #system_library "c";
+    PickerAllocate :: (size: usize) -> *u8 #foreign picker_web_c "malloc";
+    PickerFree :: (memory: *void) #foreign picker_web_c "free";
+    PickerOpen :: (path: *u8, mode: *u8) -> *void #foreign picker_web_c "fopen";
+    PickerWrite :: (data: *void, size: usize, count: usize, file: *void) -> usize #foreign picker_web_c "fwrite";
+    PickerCloseFile :: (file: *void) -> s32 #foreign picker_web_c "fclose";
+    PickerNow :: () -> float64 #foreign picker_web_c "emscripten_get_now";
+
+    // 0 while the chooser is open, 1 once a file is chosen, 2 when cancelled.
+    picker_web_state: s32;
+    picker_web_serial: s32;
+
+    PickerChanged :: (context: s32, first: s32, second: s32, third: s32) {
+        unused context
+        unused first
+        unused second
+        unused third
+        picker_web_state = 1
+    }
+
+    PickerCancelled :: (context: s32, first: s32, second: s32, third: s32) {
+        unused context
+        unused first
+        unused second
+        unused third
+        picker_web_state = 2
+    }
+
+    // ".png,.jpg" from "Images | *.png *.jpg"; false when it does not fit.
+    PickerAccept :: (filter: string, output: []u8) -> bool {
+        length: s64 = 0
+        index: s64 = 0
+        while index < filter.count && filter[index] != #char "|" {
+            index += 1
+        }
+        while index < filter.count {
+            if filter[index] == #char "*" && index + 1 < filter.count && filter[index + 1] == #char "." {
+                if length > 0 {
+                    if length + 1 >= output.count { return false }
+                    output[length] = #char ","
+                    length += 1
+                }
+                index += 1
+                while index < filter.count && filter[index] != #char " " {
+                    if length + 1 >= output.count { return false }
+                    output[length] = filter[index]
+                    length += 1
+                    index += 1
+                }
+            } else {
+                index += 1
+            }
+        }
+        output[length] = 0
+        return true
+    }
+
+    PickerAppendNumber :: (output: []u8, length: *s64, value: s64) -> bool {
+        digits: [24]u8
+        count: s64 = 0
+        if value < 0 { value = 0 }
+        while true {
+            digits[count] = cast(u8)(48 + value % 10)
+            count += 1
+            value = value / 10
+            if value == 0 { break }
+        }
+        while count > 0 {
+            if length.* + 1 >= output.count { return false }
+            count -= 1
+            output[length.*] = digits[count]
+            length.* += 1
+        }
+        output[length.*] = 0
+        return true
+    }
+
+    // A fresh path in the page's file system for this pick.
+    PickerPath :: (output: []u8) -> bool {
+        picker_web_serial += 1
+        prefix := "/tmp/kryon-file-"
+        if !CopyCString(prefix, output) { return false }
+        length := prefix.count
+        if !PickerAppendNumber(output, *length, cast(s64)PickerNow()) || length + 2 >= output.count {
+            return false
+        }
+        output[length] = #char "-"
+        length += 1
+        return PickerAppendNumber(output, *length, cast(s64)picker_web_serial)
+    }
+
+    PickBrowserFile :: (props: FilePickerProps, output: []u8) -> s32 {
+        if props.save {
+            return ifx PickerPath(output) then 1 else -1
+        }
+        // The chosen file is copied here; output names it only once it is.
+        path: [64]u8
+        if !PickerPath(path[:]) {
+            return -1
+        }
+        path_text := TextFromCString(*path[0])
+        scope := WebScope()
+        defer WebEnd(scope)
+        document := WebGetObject(WebGlobal, WebName("document"))
+        body: s32 = 0
+        if document != 0 {
+            body = WebGetObject(document, WebName("body"))
+        }
+        input: s32 = 0
+        if body != 0 {
+            input = WebAsObject(WebCall1(document, WebName("createElement"), WebText("input")))
+        }
+        if input == 0 || WebFailed() {
+            return -1
+        }
+        accept: [256]u8
+        if !PickerAccept(props.filter, accept[:]) {
+            return -1
+        }
+        WebSet(input, WebName("type"), WebText("file"))
+        WebSet(input, WebName("accept"), WebText(TextFromCString(*accept[0])))
+        unused WebCall2(input, WebName("setAttribute"), WebText("aria-label"), WebText(props.title))
+        style := WebGetObject(input, WebName("style"))
+        if style != 0 {
+            WebSet(style, WebName("display"), WebText("none"))
+        }
+        unused WebCall1(body, WebName("appendChild"), WebObject(input))
+        changed := WebFunction(PickerChanged, 0)
+        cancelled := WebFunction(PickerCancelled, 0)
+        defer WebRelease(changed)
+        defer WebRelease(cancelled)
+        once := WebNewObject()
+        WebSet(once, WebName("once"), WebBool(true))
+        unused WebCall3(input, WebName("addEventListener"), WebText("change"), WebObject(changed), WebObject(once))
+        unused WebCall3(input, WebName("addEventListener"), WebText("cancel"), WebObject(cancelled), WebObject(once))
+        picker_web_state = 0
+        unused WebCall0(input, WebName("click"))
+        if WebFailed() {
+            unused WebCall0(input, WebName("remove"))
+            return -1
+        }
+        while picker_web_state == 0 {
+            WebSleep(50)
+        }
+        result: s32 = 0
+        files := WebGetObject(input, WebName("files"))
+        file: s32 = 0
+        if picker_web_state == 1 && files != 0 {
+            file = WebAsObject(WebAt(files, 0))
+        }
+        if file != 0 {
+            result = PickerCopyFile(file, path_text, output)
+        }
+        unused WebCall0(input, WebName("remove"))
+        return result
+    }
+
+    // Copies the chosen file's bytes to path; 1 on success, -1 otherwise.
+    PickerCopyFile :: (file: s32, path: string, output: []u8) -> s32 {
+        buffer: WebValue
+        promise := WebAsObject(WebCall0(file, WebName("arrayBuffer")))
+        if promise == 0 || WebFailed() || !WebAwait(promise, *buffer) || buffer.tag != WebObjectTag {
+            return -1
+        }
+        bytes := WebNew1(WebGetObject(WebGlobal, WebName("Uint8Array")), buffer)
+        length := cast(s32)WebGetNumber(bytes, WebName("length"))
+        if bytes == 0 || length < 0 {
+            return -1
+        }
+        data := PickerAllocate(cast(usize)(ifx length > 0 then length else 1))
+        if data == null {
+            return -1
+        }
+        defer PickerFree(cast(*void)data)
+        if length > 0 && WebCopyOut(bytes, cast(*void)data, length) != length {
+            return -1
+        }
+        name: [64]u8
+        mode: [4]u8
+        if !CopyCString(path, name[:]) || !CopyCString("wb", mode[:]) {
+            return -1
+        }
+        stream := PickerOpen(*name[0], *mode[0])
+        if stream == null {
+            return -1
+        }
+        written := PickerWrite(cast(*void)data, 1, cast(usize)length, stream)
+        if PickerCloseFile(stream) != 0 || written != cast(usize)length || !CopyCString(path, output) {
+            return -1
+        }
+        return 1
+    }
+}
