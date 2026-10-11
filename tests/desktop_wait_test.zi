@@ -7,6 +7,8 @@ Counter :: () -> u64 #foreign sdl "SDL_GetPerformanceCounter";
 Frequency :: () -> u64 #foreign sdl "SDL_GetPerformanceFrequency";
 Push :: (event: *void) -> s32 #foreign sdl "SDL_PushEvent";
 Poll :: (event: *void) -> s32 #foreign sdl "SDL_PollEvent";
+EventState :: (kind: u32, state: s32) -> u8 #foreign sdl "SDL_EventState";
+TextInputActive :: () -> s32 #foreign sdl "SDL_IsTextInputActive";
 Event :: struct {
     kind: u32; timestamp: u32; window_id: u32; which: u32
     button: u8; state: u8; clicks: u8; padding: u8
@@ -46,7 +48,8 @@ main :: () -> s32 {
         key := Desktop.DesktopPressedKey(); key_after := Desktop.DesktopPressedKey()
         text := Desktop.DesktopTypedCodepoint(); text_after := Desktop.DesktopTypedCodepoint()
         if key != 32 || key_after != 0 || text != 65 || text_after != 0 {
-            print("round %: key % then %, text % then %\n", sample, key, key_after, text, text_after)
+            print("round %: key % then %, text % then %; text events enabled %, text input active %\n",
+                sample, key, key_after, text, text_after, EventState(cast(u32)0x303, -1), TextInputActive())
             return 6
         }
         pointer := Desktop.PollPointer()
