@@ -56,7 +56,8 @@ def main():
         for future in as_completed(futures):
             test, code, elapsed, output = future.result()
             status = "PASS" if code == 0 else "FAIL"
-            print(f"{status} {test.relative_to(repo)} ({elapsed:.1f}s)", flush=True)
+            detail = f", exit {code}" if code else ""
+            print(f"{status} {test.relative_to(repo)} ({elapsed:.1f}s{detail})", flush=True)
             if code:
                 failures += 1
                 print(output, end="" if output.endswith("\n") else "\n", flush=True)

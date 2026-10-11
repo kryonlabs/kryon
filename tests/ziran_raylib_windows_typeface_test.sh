@@ -41,8 +41,11 @@ for form in source saved; do
         fi
         if test "$target" = c; then compiler=${CC:-cc}; standard=c11; extension=c
         else compiler=${CXX:-c++}; standard=c++17; extension=cpp; fi
+        # This link has no Raylib: the optimizer must drop the Raylib calls
+        # that Windows never reaches. Sanitizer instrumentation keeps them, so
+        # the sanitizer job builds this boundary check uninstrumented.
         "$compiler" -std="$standard" -O2 -ffunction-sections -fdata-sections \
-            -Wl,--gc-sections -I"$output" "$output"/*."$extension" -lm \
+            -Wl,--gc-sections -fno-sanitize=all -I"$output" "$output"/*."$extension" -lm \
             -o "$output/test"
         "$output/test"
         if test "$target" = c && test -n "${WIN64_RAYLIB_A:-}" && \
