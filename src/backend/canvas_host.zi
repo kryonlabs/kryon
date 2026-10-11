@@ -10,6 +10,18 @@
 #import "canvas_events"
 #import "page_core"
 #import "page_files"
+#import "session"
+
+canvas_cursor_shape: s32 = -1;
+
+#program_export
+CanvasCursor :: (session: Session) {
+    shape := TreeCursor(session)
+    if shape != canvas_cursor_shape {
+        PageSetCursor(shape)
+        canvas_cursor_shape = shape
+    }
+}
 
 #program_export
 RequestWindowClose :: () {
@@ -79,6 +91,7 @@ InvalidateCanvasAssets :: () {
 
 #program_export
 CloseCanvas :: () {
+    canvas_cursor_shape = -1
     index: s32 = 0
     while index < canvas_assets_count {
         if canvas_assets[index].texture.id != cast(u32)0 {

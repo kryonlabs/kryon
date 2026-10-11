@@ -156,20 +156,48 @@ Spinbox :: (session: Session, props: SpinboxProps) -> SpinboxStepResult {
     face: StyleData = SpinboxFaceFor(props, false)
     value_face: StyleData = SpinboxFaceFor(props, true)
     SpinboxPaintFace(session, node, bounds, face)
-    SpinboxPaintFace(session, node, layout.text, value_face)
+    // One perimeter encloses the value and its step buttons. The value's
+    // themed fill stays inside it, without a second rounded border.
+    value_bounds := layout.text
+    inset := face.border_width
+    if inset < 0.0 { inset = 0.0 }
+    if inset > bounds.height * 0.5 { inset = bounds.height * 0.5 }
+    value_bounds.y += inset
+    value_bounds.height -= inset * 2.0
+    value_face.border_width = 0.0
+    value_face.radius = 0.0
+    SpinboxPaintFace(session, node, value_bounds, value_face)
+    button_inset: float32 = 2.0
+    if button_inset > layout.left.width * 0.25 {
+        button_inset = layout.left.width * 0.25
+    }
+    if button_inset > bounds.height * 0.25 {
+        button_inset = bounds.height * 0.25
+    }
     decrement: ButtonProps
     decrement.key = cast(u64)1
     decrement.bounds = layout.left
+    decrement.bounds.x += button_inset
+    decrement.bounds.y += button_inset
+    decrement.bounds.width -= button_inset
+    decrement.bounds.height -= button_inset * 2.0
     decrement.label = "-"
     decrement.id = SpinboxDecrementIdFor(props.id)
     decrement.class_name = props.class_name
-    decrement.disabled = props.disabled
+    decrement.disabled = props.disabled || props.min > props.max ||
+        (!props.wrap && props.value <= props.min)
+    decrement.emphasis = cast(ButtonEmphasis)ButtonEmphasisGhost
     decrement.size = cast(ControlSize)ControlSizeSmall
     increment: ButtonProps = decrement
     increment.key = cast(u64)2
     increment.bounds = layout.right
+    increment.bounds.y += button_inset
+    increment.bounds.width -= button_inset
+    increment.bounds.height -= button_inset * 2.0
     increment.label = "+"
     increment.id = SpinboxIncrementIdFor(props.id)
+    increment.disabled = props.disabled || props.min > props.max ||
+        (!props.wrap && props.value >= props.max)
     dec: bool = SubmitButton(session, decrement, node) != 0
     inc: bool = SubmitButton(session, increment, node) != 0
     result: SpinboxStepResult

@@ -2,6 +2,7 @@
 #import "session"
 #import "tree"
 #import "widget_kind"
+#import "cursor"
 
 using WidgetKind;
 
@@ -307,7 +308,9 @@ TreeScrollAllowed :: (session: Session, key: u64) -> bool {
 }
 
 #program_export
-TreeHitAt :: (session: Session, x: float32, y: float32) -> s32 {
+TreeHitAt :: (session: Session, x: float32, y: float32,
+    include_disabled: bool = false) -> s32 {
+    if !SessionValid(session) { return -1 }
     slot := SessionIndex(session)
     if trees[slot].committed_count == 0 ||
         !PointInBounds(x, y, trees[slot].committed[0].bounds) { return -1 }
@@ -340,13 +343,27 @@ TreeHitAt :: (session: Session, x: float32, y: float32) -> s32 {
                     layer = candidate_layer
                     hit = -1
                     if TreePointerActivatable(entry.kind, interaction.focus_id,
-                        interaction.disabled, interaction.loading) { hit = index }
+                        !include_disabled && interaction.disabled,
+                        !include_disabled && interaction.loading) { hit = index }
                 }
             }
         }
         index -= 1
     }
     return hit
+}
+
+// Cursor eligibility uses the same clipping, overlay and hit order as input.
+// Disabled controls still own their hit area, even though they cannot activate.
+#program_export
+TreeCursor :: (session: Session) -> s32 {
+    if !SessionValid(session) { return cast(s32)CursorShape.CursorDefault }
+    pointer := PointerSample(session)
+    hit := TreeHitAt(session, pointer.x, pointer.y, true)
+    if hit < 0 { return cast(s32)CursorShape.CursorDefault }
+    node := TreeInputAt(session, hit)
+    return CursorShapeForWidget(cast(WidgetKind)node.kind,
+        node.disabled || node.loading)
 }
 
 // The most recently submitted scroll viewport under the pointer wins. A

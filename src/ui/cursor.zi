@@ -61,6 +61,7 @@ CursorShapeForWidget :: (kind: WidgetKind,
         return cast(s32)CursorText
     }
     if kind == cast(WidgetKind)WidgetKindButton ||
+        kind == cast(WidgetKind)WidgetKindCard ||
         kind == cast(WidgetKind)WidgetKindLink ||
         kind == cast(WidgetKind)WidgetKindCheckbox ||
         kind == cast(WidgetKind)WidgetKindToggle ||

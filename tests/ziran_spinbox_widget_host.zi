@@ -2,6 +2,7 @@
 #import "geometry"
 
 fills: s32;
+outlines: s32;
 letters: [64]u8;
 length: s64;
 failed: bool;
@@ -14,6 +15,9 @@ SpinLetters :: () -> string { return TextView(letters[:length]) }
 
 #program_export
 SpinFills :: () -> s32 { return fills }
+
+#program_export
+SpinOutlines :: () -> s32 { return outlines }
 
 #program_export
 SpinHostFailed :: () -> bool { return failed }
@@ -51,7 +55,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     unused bounds
     unused radius
     unused segments
-    if fills % 4 == 1 &&
+    if bounds.x == 38.0 && bounds.width == 64.0 &&
         (color.r != cast(u8)0x12 || color.g != cast(u8)0x34 ||
             color.b != cast(u8)0x56) { failed = true }
     fills += 1
@@ -60,10 +64,13 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
-    unused bounds
+    if bounds.x != 10.0 || bounds.y != 20.0 ||
+        bounds.width != 120.0 || bounds.height != 36.0 || width != 1.0 {
+        failed = true
+    }
+    outlines += 1
     unused radius
     unused segments
-    unused width
     unused color
 }
 
