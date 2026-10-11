@@ -13,6 +13,21 @@ DismissibleOverlayProps :: struct {
     non_modal: bool
 }
 
+// A popup, such as a dropdown's menu, floats above the page without a
+// backdrop. A press outside bounds and keep_bounds closes it and still
+// reaches the control it landed on.
+PopupProps :: struct {
+    key: u64
+    bounds: Rectangle
+    keep_bounds: Rectangle
+}
+
+PopupResult :: struct {
+    node: s32
+    panel_node: s32
+    closed: bool
+}
+
 DismissibleOverlayResult :: struct {
     node: s32
     panel_node: s32

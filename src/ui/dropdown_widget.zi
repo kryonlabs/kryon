@@ -10,7 +10,6 @@
 #import "image_props"
 #import "image_widget"
 #import "overlay_props"
-#import "overlay"
 #import "overlay_widget"
 #import "paint_queue"
 #import "scroll_props"
@@ -314,7 +313,7 @@ DropdownFrame :: (session: Session, props: DropdownProps,
     if TreeIsBuilding(session) {
         previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindDropdown)
         previous_overlay = TreePrevious(session, TreeCurrentParent(session),
-            DropdownOverlayKey(key), WidgetKindModal)
+            DropdownOverlayKey(key), WidgetKindCustom)
         previous_panel = TreePreviousCommitted(session, previous_overlay,
             OverlayPanelKey(), WidgetKindCustom)
         previous_scroll = TreePreviousCommitted(session, previous_panel,
@@ -331,27 +330,6 @@ DropdownFrame :: (session: Session, props: DropdownProps,
     if result.opened {
         retained.highlight = props.selected_index
         retained.scroll = 0
-    }
-    if result.open && TreeIsBuilding(session) {
-        scrim: s32 = TreePreviousCommitted(session, previous_overlay,
-            OverlayScrimKey(), WidgetKindButton)
-        release: PointerDrag = TreeTakeDragAt(session, scrim)
-        if release.ended {
-            panel_face: StyleFrame = DropdownFaceFor(props,
-                DropdownPanelRole(), cast(s32)ButtonStateNormal,
-                false)
-            scale: float32 = props.scale
-            if scale <= 0.0 { scale = 1.0 }
-            panel_bounds: Rectangle = PopupBounds(bounds,
-                TreeRootBounds(session), (cast(s32)options.count), scale, panel_face)
-            dismissal: DismissibleOverlayPolicy =
-            DismissibleOverlayPolicyFor(true, false, false,
-                PointInBounds(release.x, release.y, panel_bounds))
-            if dismissal.closed {
-                result.open = false
-                result.closed = true
-            }
-        }
     }
     if result.open {
         if props.menu_input.escape {
@@ -467,11 +445,10 @@ DropdownFrame :: (session: Session, props: DropdownProps,
             layout.max_scroll)
     }
 
-    overlay_props: DismissibleOverlayProps
-    overlay_props.key = DropdownOverlayKey(key)
-    overlay_props.bounds = menu
-    overlay: DismissibleOverlayResult =
-    DismissibleOverlay(session, overlay_props)
+    // The open menu floats above the page without blocking it: a press
+    // anywhere else, such as on the app's sidebar, closes the menu and still
+    // reaches what it landed on. The trigger toggles the menu itself.
+    overlay: PopupResult = Popup(session, PopupProps.{DropdownOverlayKey(key), menu, bounds})
     if overlay.closed {
         result.open = false
         result.closed = true
