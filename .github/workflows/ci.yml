@@ -51,7 +51,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3 ripgrep xvfb \
-            pkg-config libsdl2-dev libcairo2-dev libfreetype-dev libfontconfig1-dev \
+            pkg-config libsdl2-dev libcairo2-dev libfreetype-dev libfontconfig1-dev libcurl4-openssl-dev \
             xclip xdotool python3-gi gir1.2-gtk-3.0 gir1.2-atspi-2.0 \
             libglib2.0-dev libpango1.0-dev at-spi2-core dbus-x11
 
@@ -212,7 +212,7 @@ jobs:
         run: |
           RAYLIB_A="$PWD/build/raylib-ziran/libraylib.a" \
           RAYLIB_LIBS="$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm" \
-          make raylib-typeface-test raylib-trace-test
+          make raylib-typeface-test raylib-trace-test raylib-secondary-window-test
 
       - name: Libdraw host
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make libdraw-project-test
