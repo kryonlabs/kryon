@@ -39,6 +39,8 @@ WindowSurface :: (window: *void) -> *void #foreign sdl "SDL_GetWindowSurface";
 CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32, flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
 DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
 SetWindowSize :: (window: *void, width: s32, height: s32) #foreign sdl "SDL_SetWindowSize";
+WindowFlags :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowFlags";
+WindowResizable :: 32
 PumpEvents :: () #foreign sdl "SDL_PumpEvents";
 PushEvent :: (event: *u8) -> s32 #foreign sdl "SDL_PushEvent";
 LockSurface :: (surface: *void) -> s32 #foreign sdl "SDL_LockSurface";
@@ -253,13 +255,24 @@ main :: () -> s32 {
     if SecondaryWindowClickedHost(handle) {
         return 17
     }
+    // Sticky is not resizable; resizable is its own flag.
+    handle = SecondaryWindowOpenHost(Title("sticky-break", names[:]), 0, 0, 40, 40, 1 | 32, 0, 0, 0, 255, 1.0)
+    secondary = OtherWindow(main_window)
+    if handle == null || secondary == null || (WindowFlags(secondary) & cast(u32)WindowResizable) != 0 {
+        return 25
+    }
+    SecondaryWindowCloseHost(handle)
+    SecondaryWindowPumpHost()
     // A detached resizable window must not resize, click or close the main
     // raylib window. Three owned windows can be open at once.
-    handle = SecondaryWindowOpenHost(Title("detached-practice", names[:]), 20, 20, 200, 248, 2 | 32, 0, 0, 0, 255, 1.0)
+    handle = SecondaryWindowOpenHost(Title("detached-practice", names[:]), 20, 20, 200, 248, 2 | 64, 0, 0, 0, 255, 1.0)
     if handle == null {
         return 18
     }
     secondary = OtherWindow(main_window)
+    if secondary == null || (WindowFlags(secondary) & cast(u32)WindowResizable) == 0 {
+        return 26
+    }
     second := SecondaryWindowOpenHost(Title("break", names[:]), 0, 0, 40, 40, 1, 0, 0, 0, 255, 1.0)
     third := SecondaryWindowOpenHost(Title("hud", names[:]), 0, 0, 40, 40, 1, 0, 0, 0, 255, 1.0)
     if second == null || third == null {

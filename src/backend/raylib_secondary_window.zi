@@ -6,9 +6,9 @@
 // found on the display is never touched. Up to three are open at a time.
 //
 // flags are NativeWindowFlags from window_flags: borderless, always on top,
-// skip the taskbar, place from the top right, or center. 32 makes the window
-// resizable, with a 160x196 minimum, and a left click then reports on
-// release instead of dragging the window.
+// skip the taskbar, place from the top right, or center. Resizable gives a
+// 160x196 minimum, and a left click then reports on release instead of
+// dragging the window. Sticky is not applied here.
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
@@ -446,7 +446,7 @@ SecondaryWindowOpenHost :: (title: *u8, x: s32, y: s32, width: s32,
         if (flags & 4) != 0 {
             window_flags |= cast(u32)65536
         }
-        if (flags & 32) != 0 {
+        if (flags & 64) != 0 {
             window_flags |= cast(u32)32
         }
         if (flags & 24) != 0 {
@@ -501,7 +501,7 @@ SecondaryWindowOpenHost :: (title: *u8, x: s32, y: s32, width: s32,
         window.window_id = SecondaryWindowId(window.window)
         window.width = width
         window.height = height
-        window.resizable = (flags & 32) != 0
+        window.resizable = (flags & 64) != 0
         if window.resizable {
             SecondaryMinimumSize(window.window, 160, 196)
         }
