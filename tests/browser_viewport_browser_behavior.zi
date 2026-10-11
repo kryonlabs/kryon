@@ -1,0 +1,87 @@
+// Runs in headless Chromium: browser_viewport measures the visual viewport,
+// narrowed to the canvas frame, the canvas's parent or the canvas.
+#import "browser_viewport"
+#import "web"
+
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+
+// A block of the given CSS size, appended to parent; 0 for the body.
+Box :: (parent: s32, tag: string, id: string, width: string, height: string) -> s32 {
+    document := WebGetObject(WebGlobal, WebName("document"))
+    element := WebAsObject(WebCall1(document, WebName("createElement"), WebText(tag)))
+    if id.count > 0 {
+        WebSet(element, WebName("id"), WebText(id))
+    }
+    style := WebGetObject(element, WebName("style"))
+    WebSet(style, WebName("display"), WebText("block"))
+    WebSet(style, WebName("width"), WebText(width))
+    WebSet(style, WebName("height"), WebText(height))
+    holder := ifx parent != 0 then parent else WebGetObject(document, WebName("body"))
+    unused WebCall1(holder, WebName("appendChild"), WebObject(element))
+    return element
+}
+
+Remove :: (element: s32) {
+    unused WebCall0(element, WebName("remove"))
+}
+
+Is :: (size: BrowserViewport, width: s32, height: s32) -> bool {
+    return size.width == width && size.height == height
+}
+
+Check :: () -> string {
+    viewport := WebGetObject(WebGlobal, WebName("visualViewport"))
+    width := cast(s32)(WebGetNumber(viewport, WebName("width")) + 0.5)
+    height := cast(s32)(WebGetNumber(viewport, WebName("height")) + 0.5)
+    if width < 400 || height < 300 {
+        return "viewport too small to test"
+    }
+    if !Is(BrowserViewportMeasure(.{7, 9}), width, height) {
+        return "visual viewport"
+    }
+    // The canvas frame wins, rounded to whole pixels.
+    frame := Box(0, "div", "canvas-frame", "300.4px", "200.6px")
+    if !Is(BrowserViewportMeasure(.{7, 9}), 300, 201) {
+        return "canvas frame"
+    }
+    // A frame larger than the viewport is cut to the viewport.
+    style := WebGetObject(frame, WebName("style"))
+    WebSet(style, WebName("width"), WebText("5000px"))
+    WebSet(style, WebName("height"), WebText("100px"))
+    if !Is(BrowserViewportMeasure(.{7, 9}), width, 100) {
+        return "frame wider than the viewport"
+    }
+    Remove(frame)
+    // Without a frame, the canvas's parent; an empty frame is skipped.
+    empty := Box(0, "div", "canvas-frame", "0px", "0px")
+    parent := Box(0, "section", "", "250px", "150px")
+    canvas := Box(parent, "canvas", "canvas", "20px", "10px")
+    if !Is(BrowserViewportMeasure(.{7, 9}), 250, 150) {
+        return "canvas parent"
+    }
+    // A parent with no size leaves the canvas itself.
+    parent_style := WebGetObject(parent, WebName("style"))
+    WebSet(parent_style, WebName("display"), WebText("contents"))
+    if !Is(BrowserViewportMeasure(.{7, 9}), 20, 10) {
+        return "canvas"
+    }
+    Remove(canvas)
+    Remove(parent)
+    Remove(empty)
+    if !Is(BrowserViewportMeasure(.{7, 9}), width, height) {
+        return "after removal"
+    }
+    return "PASS"
+}
+
+#program_export
+main :: () -> s32 {
+    Report(Check())
+    return 0
+}

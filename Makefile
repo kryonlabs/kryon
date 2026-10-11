@@ -224,6 +224,7 @@ canvas-test: web-js-boundary-test canvas-events-test dom-spec-test canvas-audio-
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/file_download_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/file_export_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/page_socket_browser_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/browser_viewport_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_audio_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY EM_CACHE="$(abspath $(BUILD_DIR))/emscripten-cache" \
 		sh tests/canvas_text_os_wasm_test.sh
