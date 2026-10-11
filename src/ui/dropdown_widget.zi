@@ -417,7 +417,13 @@ DropdownFrame :: (session: Session, props: DropdownProps,
         DropdownScrollbarRole(), cast(s32)ButtonStateNormal, false)
     scale: float32 = props.scale
     if scale <= 0.0 { scale = 1.0 }
-    menu: Rectangle = PopupBounds(bounds, TreeRootBounds(session),
+    // The menu fits the part of the window its scope shows: in a page that
+    // ends above an app's navigation it stays in the page and scrolls,
+    // rather than running under the navigation and losing its last rows.
+    view: Rectangle = TreeRootBounds(session)
+    scope: NodeGeometry = TreeCurrentPaintGeometry(session)
+    if scope.clipped { view = RectangleIntersection(view, scope.clip) }
+    menu: Rectangle = PopupBounds(bounds, view,
         (cast(s32)options.count), scale, panel)
     if menu.width <= 0.0 || menu.height <= 0.0 {
         result.open = false

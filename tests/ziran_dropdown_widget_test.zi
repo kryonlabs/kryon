@@ -15,6 +15,8 @@ TestSession :: () -> Session {
 #import "image_props"
 #import "paint_queue"
 #import "scroll_device"
+#import "scroll_props"
+#import "scroll_widget"
 #import "semantic"
 #import "style"
 #import "style_sheet"
@@ -442,6 +444,66 @@ SidebarMenu :: () -> s32 {
     return 0
 }
 
+// A page that ends above the app's navigation keeps an open menu inside it:
+// the menu scrolls to its last row instead of running under the navigation.
+page_selected: s32;
+page_to_end: bool;
+
+PageFrame :: () -> DropdownResult {
+    options: [8]DropdownOption
+    for index: cast(s32)0..7 {
+        options[index].key = cast(u64)cast(u32)(500 + index)
+        options[index].label = DeviceLabels[index]
+    }
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
+    page: ScrollProps
+    page.key = cast(u64)61
+    page.bounds = Rectangle.{0.0, 0.0, 220.0, 120.0}
+    page.content_height = 120
+    result: DropdownResult
+    if Scroll(TestSession(), page).opened {
+        props: DropdownProps
+        props.key = cast(u64)47
+        props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
+        props.selected_index = page_selected
+        props.menu_input.end = page_to_end
+        props.menu_input.navigating = page_to_end
+        result = Dropdown(TestSession(), props, options[:])
+        End(TestSession())
+    }
+    unused TreeFinish(TestSession())
+    PaintClear(TestSession())
+    return result
+}
+
+PageMenu :: () -> s32 {
+    page_selected = 0
+    page_to_end = false
+    result: DropdownResult = PageFrame()
+    TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, true, true, false})
+    unused PageFrame()
+    TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, false, false, true})
+    result = PageFrame()
+    result = PageFrame()
+    if !result.open { return 1 }
+    rows: s32 = 0
+    for node: cast(s32)0..TreeCount(TestSession()) - 1 {
+        entry := TreeNodeAt(TestSession(), node)
+        if entry.kind == WidgetKindSelectable {
+            rows += 1
+            if entry.bounds.y + entry.bounds.height > 120.0 { return 2 }
+        }
+    }
+    if rows == 0 || rows >= 8 { return 3 }
+    page_to_end = true
+    result = PageFrame()
+    page_to_end = false
+    result = PageFrame()
+    seven: Rectangle = SidebarOption("Seven")
+    if !result.open || seven.height < 20.0 || seven.y + seven.height > 120.0 { return 4 }
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     fill_steps: [14]s32 = .[1, 3, 3, 1, 3, 4, 1, 3, 1, 1, 3, 3, 3, 1]
@@ -497,5 +559,7 @@ main :: () -> s32 {
     if device != 0 { return 30 + device }
     sidebar: s32 = SidebarMenu()
     if sidebar != 0 { return 50 + sidebar }
+    paged: s32 = PageMenu()
+    if paged != 0 { return 70 + paged }
     return 0
 }
