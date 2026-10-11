@@ -6,7 +6,7 @@ import subprocess
 import sys
 import time
 
-from PIL import Image
+from PIL import ImageGrab
 from toolchain import ROOT, ZIRAN_ROOT, ZIRAN
 
 OUTPUT = ROOT / 'build/test/window-focus'
@@ -59,9 +59,9 @@ def drive(mode):
         return False
     def color(expected):
         assert child.poll() is None, child.stderr.read().decode()
-        image = OUTPUT/(mode+'.png')
-        subprocess.run(['import','-window',window,str(image)],check=True,timeout=5)
-        with Image.open(image) as picture: return picture.convert('RGB').getpixel((10,10)) == expected
+        # The probe is at the origin of this private display; nothing covers it.
+        pixel = ImageGrab.grab(bbox=(10,10,11,11),xdisplay=os.environ['DISPLAY'])
+        return pixel.convert('RGB').getpixel((0,0)) == expected
     try:
         wait(locate,'Focus probe did not open its window')
         subprocess.run(['xdotool','windowmove',window,'0','0'],check=True)
