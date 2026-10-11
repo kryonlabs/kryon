@@ -28,6 +28,32 @@ PolicyCheck :: () -> s32 {
     if viewport.insets.bottom != 120 || viewport.height != 380 {
         return 3
     }
+    // Back from the floating window, the surface keeps the shadow's margin
+    // around the frame; the insets stay relative to the frame.
+    margin := SurfaceMargin(356, 596, 320, 560)
+    if margin.left != 18 || margin.top != 18 || margin.right != 18 ||
+        margin.bottom != 18 {
+        return 6
+    }
+    viewport = ResolveViewport(356, 596, insets,
+        AndroidViewportPolicySafeArea(), 1, margin)
+    if viewport.x != 22 || viewport.y != 78 || viewport.width != 232 ||
+        viewport.height != 476 {
+        return 7
+    }
+    viewport = ResolveViewport(356, 596, insets,
+        AndroidViewportPolicyFull(), 1, margin)
+    if viewport.x != 18 || viewport.y != 18 || viewport.width != 320 ||
+        viewport.height != 560 {
+        return 8
+    }
+    // A resize in flight is not a margin: unequal, odd, unknown or smaller.
+    if SurfaceMargin(356, 600, 320, 560).left != 0 ||
+        SurfaceMargin(321, 561, 320, 560).left != 0 ||
+        SurfaceMargin(356, 596, 0, 0).left != 0 ||
+        SurfaceMargin(277, 337, 720, 1560).left != 0 {
+        return 9
+    }
     policy := AndroidViewportPolicySafeArea()
     policy.min_width = 260
     viewport = ResolveViewport(320, 560, insets, policy, 1)
