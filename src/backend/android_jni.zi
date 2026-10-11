@@ -136,21 +136,53 @@ NativeActivity :: struct {
 // android_native_app_glue's input handler: the app and one AInputEvent.
 AndroidInputHandler :: #type (*void, *void) -> s32 #c_call;
 
+// android_native_app_glue's struct android_app. tests/ziran_android_jni_test.sh
+// checks every offset against the NDK header for each Android ABI.
 NativeAndroidApp :: struct {
     userdata: *void
     command_callback: *void
     input_callback: AndroidInputHandler
     activity: *NativeActivity
+    configuration: *void
+    saved_state: *void
+    #if #defined(__arm__) || #defined(__i386__) {
+        saved_state_size: u32
+    } else {
+        saved_state_size: u64
+    }
+    looper: *void
+    input_queue: *void
+    window: *void
+    content_rect: [4]s32
+    activity_state: s32
+    destroy_requested: s32
+    // Bionic's opaque pthread storage.
+    #if #defined(__arm__) || #defined(__i386__) {
+        mutex_storage: [1]s32
+        condition_storage: [1]s32
+    } else {
+        mutex_storage: [10]s32
+        condition_storage: [12]s32
+    }
+    // The glue's command pipe; writing a command byte wakes its loop.
+    command_read: s32
+    command_write: s32
 }
 
-raylib :: #system_library "raylib";
-JniGetAndroidApp :: () -> *NativeAndroidApp #foreign raylib "GetAndroidApp";
+// Other targets compile this module too, so they never reference Android's
+// libraries.
+JNI_ANDROID :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
 
-android :: #system_library "android";
-NativeActivityFinish :: (activity: *void) #foreign android "ANativeActivity_finish";
+#if JNI_ANDROID {
+    raylib :: #system_library "raylib";
+    JniGetAndroidApp :: () -> *NativeAndroidApp #foreign raylib "GetAndroidApp";
 
-libc :: #system_library "libc";
-JniThreadSelf :: () -> *void #foreign libc "pthread_self";
+    android :: #system_library "android";
+    NativeActivityFinish :: (activity: *void) #foreign android "ANativeActivity_finish";
+
+    libc :: #system_library "libc";
+    JniThreadSelf :: () -> *void #foreign libc "pthread_self";
+}
 
 // The host's frame thread stays attached to the VM between JNI calls:
 // attaching creates a Java thread each time, which cost milliseconds per
@@ -161,13 +193,15 @@ android_jni_host_attached: bool;
 
 #program_export
 AndroidJniKeepHostThread :: () {
-    android_jni_host_thread = JniThreadSelf()
+    #if JNI_ANDROID {
+        android_jni_host_thread = JniThreadSelf()
+    }
     android_jni_host_attached = false
 }
 
 #program_export
 AndroidJniReleaseHostThread :: () {
-    #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
+    #if JNI_ANDROID {
         if android_jni_host_attached && JniThreadSelf() == android_jni_host_thread {
             app := JniGetAndroidApp()
             if app != null && app.activity != null {
@@ -183,7 +217,7 @@ AndroidJniReleaseHostThread :: () {
 // application the way Android users expect.
 #program_export
 AndroidJniFinishActivity :: () {
-    #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
+    #if JNI_ANDROID {
         app := JniGetAndroidApp()
         if app != null && app.activity != null {
             // ANativeActivity_finish takes the native activity, not its
@@ -247,7 +281,7 @@ AndroidJniAttachCurrent :: (session: *AndroidJniSession) -> s32 {
     session.env = null
     session.activity = null
     session.attached = 0
-    #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
+    #if JNI_ANDROID {
         app := JniGetAndroidApp()
         if app == null || app.activity == null {
             return 0
@@ -271,7 +305,11 @@ AndroidJniDetachCurrent :: (session: *AndroidJniSession) {
     }
     env.functions.PopLocalFrame(env, null)
     if session.attached != 0 {
-        if android_jni_host_thread != null && JniThreadSelf() == android_jni_host_thread {
+        host_thread := false
+        #if JNI_ANDROID {
+            host_thread = android_jni_host_thread != null && JniThreadSelf() == android_jni_host_thread
+        }
+        if host_thread {
             android_jni_host_attached = true
         } else {
             session.vm.functions.DetachCurrentThread(session.vm)
@@ -345,4 +383,15 @@ AndroidJniCallVoidInteger :: (session: *AndroidJniSession, name: string,
     env.functions.CallVoidMethodA(env, session.activity, method,
         *arguments[0])
     return env.functions.ExceptionCheck(env) == 0
+}
+
+// The application's private files folder, or null off Android.
+AndroidInternalDataPath :: () -> *u8 {
+    #if JNI_ANDROID {
+        app := JniGetAndroidApp()
+        if app != null && app.activity != null {
+            return app.activity.internal_data_path
+        }
+    }
+    return null
 }

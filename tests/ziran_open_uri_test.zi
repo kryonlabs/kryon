@@ -1,0 +1,47 @@
+#import "std/file"
+#import "std/byte_text_linux"
+#import "open_uri"
+#import "std/c_string"
+
+c :: #system_library "c";
+SetEnv :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign c "setenv";
+
+// The URI reaches the capture file unchanged, whatever its scheme.
+Opens :: (uri: string) -> bool {
+    if !OpenUri(uri) {
+        return false
+    }
+    text, ok := ReadEntireFile("open_uri_capture.txt")
+    return ok && text == uri
+}
+
+#program_export
+main :: () -> s32 {
+    if OpenUri("") || CanOpenUri("") {
+        return 1
+    }
+    name: [32]u8
+    path: [32]u8
+    if !CopyCString("KRYON_TEST_OPEN_URI_CAPTURE", name[:]) ||
+    !CopyCString("open_uri_capture.txt", path[:]) || SetEnv(*name[0], *path[0], 1) != 0 {
+        return 2
+    }
+    if !CanOpenUri("monero:84abc?tx_amount=0.1") || !Opens("monero:84abc?tx_amount=0.1") {
+        return 3
+    }
+    if !Opens("bitcoin:bc1qexample?amount=0.01") || !Opens("https://waozi.xyz/inbe?a=1&b=2") {
+        return 4
+    }
+    // A NUL byte would cut the URI short, and an oversized one cannot be passed.
+    if OpenUri("a\0b") {
+        return 5
+    }
+    oversized: [4096]u8
+    for index: 0..4095 {
+        oversized[index] = #char "a"
+    }
+    if OpenUri(TextFromBytes(oversized[:])) {
+        return 6
+    }
+    return 0
+}
