@@ -1,0 +1,168 @@
+// Hand a finished file to the user: a download in the browser, the share
+// sheet on Android. Desktops save files where the user picked
+// (file_picker), so there is nothing more to hand over and these return
+// false.
+//
+// Android asks the activity, which implements
+//
+//     void shareFile(byte[] data, String filename, String mime, String title)
+//
+// with an ACTION_SEND chooser titled title.
+#import "c_string"
+#import "byte_text_linux"
+
+EXPORT_WEB :: #defined(PLATFORM_WEB)
+EXPORT_ANDROID :: #defined(ANDROID_BUILD)
+EXPORT_LIMIT :: 2147483647
+
+export_c :: #system_library "c";
+
+// Exports bytes as a file named filename of type mime ("application/json").
+// title names Android's share sheet.
+ExportBytes :: (data: string, filename: string, mime: string, title: string) -> bool {
+    if data.count == 0 || data.count > EXPORT_LIMIT || filename.count == 0 {
+        return false
+    }
+    #if EXPORT_WEB {
+        return BrowserExport(data, filename, mime)
+    }
+    #if EXPORT_ANDROID {
+        return AndroidExport(data, filename, mime, title)
+    }
+    unused mime
+    unused title
+    return false
+}
+
+// Exports the file at path, read whole; see ExportBytes.
+ExportFile :: (path: string, filename: string, mime: string, title: string) -> bool {
+    #if EXPORT_WEB || EXPORT_ANDROID {
+        name: [4096]u8
+        mode: [4]u8
+        if !CopyCString(path, name[:]) || !CopyCString("rb", mode[:]) {
+            return false
+        }
+        file := ExportOpen(*name[0], *mode[0])
+        if file == null {
+            return false
+        }
+        size: s64 = -1
+        if ExportSeek(file, 0, 2) == 0 {
+            size = cast(s64)ExportTell(file)
+        }
+        if size <= 0 || size > EXPORT_LIMIT || ExportSeek(file, 0, 0) != 0 {
+            ExportClose(file)
+            return false
+        }
+        bytes := cast(*u8)ExportAllocate(cast(usize)size)
+        if bytes == null {
+            ExportClose(file)
+            return false
+        }
+        read := ExportRead(bytes, 1, cast(usize)size, file)
+        ExportClose(file)
+        exported := read == cast(usize)size &&
+            ExportBytes(TextFromBytes(BytesFromPointer(bytes, cast(u64)size)), filename, mime, title)
+        ExportFree(cast(*void)bytes)
+        return exported
+    }
+    unused path
+    unused filename
+    unused mime
+    unused title
+    return false
+}
+
+#if EXPORT_WEB || EXPORT_ANDROID {
+    ExportOpen :: (path: *u8, mode: *u8) -> *void #foreign export_c "fopen";
+    ExportRead :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign export_c "fread";
+    // C long: 32 bits on wasm and 32-bit Android.
+    ExportSeek :: (file: *void, offset: isize, origin: s32) -> s32 #foreign export_c "fseek";
+    ExportTell :: (file: *void) -> isize #foreign export_c "ftell";
+    ExportClose :: (file: *void) -> s32 #foreign export_c "fclose";
+    ExportAllocate :: (size: usize) -> *void #foreign export_c "malloc";
+    ExportFree :: (data: *void) #foreign export_c "free";
+}
+
+ExportData :: (data: string) -> *u8 {
+    descriptor := cast(*TextDescriptor)(*data)
+    return descriptor.data
+}
+
+#if EXPORT_WEB {
+    #import "web"
+
+    // A blob URL clicked as a download link, revoked once the browser has
+    // started the download.
+    BrowserExport :: (data: string, filename: string, mime: string) -> bool {
+        scope := WebScope()
+        defer WebEnd(scope)
+        bytes := WebBytes(WebBytesUint8, cast(*void)ExportData(data), cast(s32)data.count)
+        parts := WebNewArray()
+        options := WebNewObject()
+        if bytes == 0 || parts == 0 || options == 0 {
+            return false
+        }
+        unused WebCall1(parts, WebName("push"), WebObject(bytes))
+        WebSet(options, WebName("type"), WebText(ifx mime.count > 0 then mime else "application/octet-stream"))
+        blob := WebNew2(WebGetObject(WebGlobal, WebName("Blob")), WebObject(parts), WebObject(options))
+        url_class := WebGetObject(WebGlobal, WebName("URL"))
+        url := WebCall1(url_class, WebName("createObjectURL"), WebObject(blob))
+        document := WebGetObject(WebGlobal, WebName("document"))
+        body := WebGetObject(document, WebName("body"))
+        anchor := WebAsObject(WebCall1(document, WebName("createElement"), WebText("a")))
+        if blob == 0 || body == 0 || anchor == 0 || WebFailed() {
+            return false
+        }
+        WebSet(anchor, WebName("href"), url)
+        WebSet(anchor, WebName("download"), WebText(filename))
+        unused WebCall1(body, WebName("appendChild"), WebObject(anchor))
+        unused WebCall0(anchor, WebName("click"))
+        clicked := !WebFailed()
+        unused WebCall0(anchor, WebName("remove"))
+        revoke := WebGet(url_class, WebName("revokeObjectURL"))
+        bind := WebAsObject(WebCall2(WebAsObject(revoke), WebName("bind"), WebObject(url_class), url))
+        unused WebCall2(WebGlobal, WebName("setTimeout"), WebObject(bind), WebNumber(1000.0))
+        return clicked
+    }
+}
+
+#if EXPORT_ANDROID {
+    #import "android_jni"
+
+    AndroidExport :: (data: string, filename: string, mime: string, title: string) -> bool {
+        name: [256]u8
+        type: [128]u8
+        heading: [256]u8
+        if !CopyCString(filename, name[:]) || !CopyCString(mime, type[:]) || !CopyCString(title, heading[:]) {
+            return false
+        }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return false
+        }
+        defer AndroidJniDetachCurrent(*session)
+        method := AndroidJniMethod(*session, "shareFile",
+            "([BLjava/lang/String;Ljava/lang/String;Ljava/lang/String;)V")
+        if method == null {
+            return false
+        }
+        env := session.env
+        bytes := env.functions.NewByteArray(env, cast(s32)data.count)
+        if bytes == null {
+            return false
+        }
+        env.functions.SetByteArrayRegion(env, bytes, 0, cast(s32)data.count, ExportData(data))
+        arguments: [4]JniValue
+        arguments[0].reference = bytes
+        arguments[1].reference = AndroidJniString(env, *name[0])
+        arguments[2].reference = AndroidJniString(env, *type[0])
+        arguments[3].reference = AndroidJniString(env, *heading[0])
+        if env.functions.ExceptionCheck(env) != 0 || arguments[1].reference == null ||
+        arguments[2].reference == null || arguments[3].reference == null {
+            return false
+        }
+        env.functions.CallVoidMethodA(env, session.activity, method, *arguments[0])
+        return env.functions.ExceptionCheck(env) == 0
+    }
+}
