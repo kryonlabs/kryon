@@ -19,6 +19,7 @@
 #import "toggle_props"
 #import "tab_bar_props"
 #import "box_props"
+#import "press_props"
 using HostValueKind;
 
 WidgetRectangleCodec :: struct {
@@ -6226,6 +6227,267 @@ WidgetValidBoxProps :: (value: HostValue) -> bool {
     }
     {
         field_at := HostFieldAt(value, 4, "radius")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    return true
+}
+
+WidgetPressPropsCodec :: struct {
+    fields: [8]HostField
+    bounds: WidgetRectangleCodec
+}
+
+WidgetEncodePressProps :: (data: PressProps, codec: *WidgetPressPropsCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("PressProps")
+    value.fields = *codec.fields[0]
+    value.field_count = 8
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("id")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.id)
+    codec.fields[2].name = HostTextData("bounds")
+    codec.fields[2].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
+    codec.fields[3].name = HostTextData("label")
+    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
+    codec.fields[4].name = HostTextData("now")
+    codec.fields[4].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float64"), .real = cast(float64)data.now}
+    codec.fields[5].name = HostTextData("hold_seconds")
+    codec.fields[5].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.hold_seconds}
+    codec.fields[6].name = HostTextData("capture")
+    codec.fields[6].value = HostScalar("bool", ifx data.capture then 1 else 0)
+    codec.fields[7].name = HostTextData("disabled")
+    codec.fields[7].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    return value
+}
+
+WidgetDecodePressProps :: (value: HostValue, codec: *WidgetPressPropsCodec) -> PressProps {
+    data: PressProps
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "id")
+        if field_at >= 0 {
+            data.id = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "bounds")
+        if field_at >= 0 {
+            data.bounds = WidgetDecodeRectangle(value.fields[field_at].value, *codec.bounds)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "label")
+        if field_at >= 0 {
+            data.label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "now")
+        if field_at >= 0 {
+            data.now = cast(float64)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "hold_seconds")
+        if field_at >= 0 {
+            data.hold_seconds = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "capture")
+        if field_at >= 0 {
+            data.capture = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "disabled")
+        if field_at >= 0 {
+            data.disabled = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidPressProps :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "PressProps" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "id")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "bounds")
+        if field_at >= 0 {
+            if !WidgetValidRectangle(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "now")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float64", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "hold_seconds")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "capture")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "disabled")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetPressResultCodec :: struct {
+    fields: [7]HostField
+}
+
+WidgetEncodePressResult :: (data: PressResult, codec: *WidgetPressResultCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("PressResult")
+    value.fields = *codec.fields[0]
+    value.field_count = 7
+    codec.fields[0].name = HostTextData("node")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.node)
+    codec.fields[1].name = HostTextData("clicked")
+    codec.fields[1].value = HostScalar("bool", ifx data.clicked then 1 else 0)
+    codec.fields[2].name = HostTextData("held")
+    codec.fields[2].value = HostScalar("bool", ifx data.held then 1 else 0)
+    codec.fields[3].name = HostTextData("down")
+    codec.fields[3].value = HostScalar("bool", ifx data.down then 1 else 0)
+    codec.fields[4].name = HostTextData("released")
+    codec.fields[4].value = HostScalar("bool", ifx data.released then 1 else 0)
+    codec.fields[5].name = HostTextData("x")
+    codec.fields[5].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.x}
+    codec.fields[6].name = HostTextData("y")
+    codec.fields[6].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.y}
+    return value
+}
+
+WidgetDecodePressResult :: (value: HostValue, codec: *WidgetPressResultCodec) -> PressResult {
+    data: PressResult
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            data.node = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "clicked")
+        if field_at >= 0 {
+            data.clicked = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "held")
+        if field_at >= 0 {
+            data.held = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "down")
+        if field_at >= 0 {
+            data.down = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "released")
+        if field_at >= 0 {
+            data.released = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "x")
+        if field_at >= 0 {
+            data.x = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "y")
+        if field_at >= 0 {
+            data.y = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    return data
+}
+
+WidgetValidPressResult :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "PressResult" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "clicked")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "held")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "down")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "released")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "x")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "y")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
         }

@@ -23,11 +23,11 @@ KRYON_ROOT = Path(__file__).resolve().parent.parent
 KRYON_MODULES = ['session', 'geometry', 'drawing_props', 'text_props', 'image_props',
                  'button_props', 'control_props', 'text_input', 'text_input_props',
                  'scroll', 'scroll_props', 'semantic', 'text_align', 'checkbox_props',
-                 'toggle_props', 'tab_bar_props', 'box_props']
+                 'toggle_props', 'tab_bar_props', 'box_props', 'press_props']
 KRYON_ROOTS = ['TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
                'ScrollProps', 'ScrollResult', 'Session', 'CheckboxProps', 'CheckboxValueResult',
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
-               'TabBarProps', 'TabBarResult', 'BoxProps']
+               'TabBarProps', 'TabBarResult', 'BoxProps', 'PressProps', 'PressResult']
 
 
 def read_schema(paths):
