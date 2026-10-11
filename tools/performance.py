@@ -56,8 +56,9 @@ def main():
     for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS'):
         env.pop(key, None)
     env['YUE_DESKTOP_RECOVERY'] = '0'
-    ziran = env.get('ZIRAN_BIN', 'ziran')
-    toolchain = Path(subprocess.check_output([ziran, 'pkg', 'path', 'ziran'], cwd=ROOT, env=env, text=True).strip())
+    # CI names its Ziran checkout; otherwise use the configured package.
+    toolchain = Path(env.get('ZIRAN_ROOT') or subprocess.check_output(
+        [env.get('ZIRAN_BIN', 'ziran'), 'pkg', 'path', 'ziran'], cwd=ROOT, env=env, text=True).strip())
     ziran = str(toolchain / 'build/bin/ziran')
     # Keep stable build output exclusive for the entire build and run.
     with (build / 'lock').open('w') as lock:
