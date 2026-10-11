@@ -5,8 +5,7 @@
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
-raylib_source=${RAYLIB_SOURCE:-$("$ziran" pkg path raylib)}
-raylib=${RAYLIB_A:-"$raylib_source/src/libraylib.a"}
+raylib=${RAYLIB_A:-"$("$ziran" pkg path raylib)/src/libraylib.a"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 "$ziran_root/build/bin/zi2c" --no-main --define NATIVE_WINDOW_HAVE_SDL --root "$repo/tests" \
