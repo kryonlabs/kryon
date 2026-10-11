@@ -1,3 +1,14 @@
+// Submit the standard widget contract from a portable composition.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "press_props"
+    host_api :: #system_library "host_api";
+    PressHostedHost :: (session: Session, props: PressProps) -> PressResult #foreign host_api;
+    #program_export
+    Press :: (session: Session, props: PressProps) -> PressResult {
+        return PressHostedHost(session, props)
+    }
+} else {
 #import "session"
 #import "geometry"
 #import "press_props"
@@ -76,4 +87,5 @@ Press :: (session: Session, props: PressProps) -> PressResult {
         TreeSetWidgetState(session, result.node, state)
     }
     return result
+}
 }

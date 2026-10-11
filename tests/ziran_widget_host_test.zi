@@ -11,6 +11,7 @@
 #import "scroll_props"
 #import "text_input_props"
 #import "tab_bar_props"
+#import "press_props"
 #import "font_metrics"
 #import "hosted_values"
 #import "widget_codec"
@@ -52,6 +53,7 @@ scroll_codec: WidgetScrollPropsCodec;
 area_codec: WidgetTextAreaPropsCodec;
 area_decoded: WidgetTextAreaPropsCodec;
 tab_bar_codec: WidgetTabBarPropsCodec;
+press_codec: WidgetPressPropsCodec;
 tab_codecs: [40]WidgetTabCodec;
 tab_values: [40]HostValue;
 
@@ -66,6 +68,7 @@ Call :: (module: string, function: string, arguments: []HostValue, result: *Host
 #program_export
 main :: () -> s32 {
     if !WidgetHostSupports("toggle_widget", "ToggleHostedHost") ||
+    !WidgetHostSupports("press_widget", "PressHostedHost") ||
     !WidgetHostSupports("tree", "EndHostedHost") ||
     WidgetHostSupports("text_widget", "TextNativeHost") {
         return 1
@@ -128,6 +131,13 @@ main :: () -> s32 {
     if Call("button_widget", "ButtonHostedHost", arguments[:2], *result) != 1 ||
     result.kind != cast(s32)HostInteger || TextFromCString(result.type_name) != "s32" || result.integer != 0 {
         return 9
+    }
+    // A press area answers with its press state.
+    arguments[1] = WidgetEncodePressProps(PressProps.{.id = 12, .label = "Message",
+            .bounds = Rectangle.{0.0, 100.0, 200.0, 40.0}, .now = 1.0}, *press_codec)
+    if Call("press_widget", "PressHostedHost", arguments[:2], *result) != 1 ||
+    result.kind != cast(s32)HostRecord || TextFromCString(result.type_name) != "PressResult" {
+        return 30
     }
     // Slices decode into the codec and are attached by name.
     hidden: [2]TextRange = .[TextRange.{.start = 0, .end = 2}, TextRange.{.start = 6, .end = 8}]

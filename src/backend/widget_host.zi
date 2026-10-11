@@ -19,6 +19,8 @@
 #import "tab_bar_props"
 #import "box_widget"
 #import "box_props"
+#import "press_widget"
+#import "press_props"
 #import "text_input_props"
 #import "scroll_widget"
 #import "hosted_values"
@@ -56,6 +58,8 @@ widget_tab_codecs: [WIDGET_HOST_TAB_LIMIT]WidgetTabCodec;
 widget_tab_bar_codec: WidgetTabBarPropsCodec;
 widget_tab_bar_result_codec: WidgetTabBarResultCodec;
 widget_box_codec: WidgetBoxPropsCodec;
+widget_press_codec: WidgetPressPropsCodec;
+widget_press_result_codec: WidgetPressResultCodec;
 
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
@@ -70,7 +74,8 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (module == "tab_bar_widget" && function == "TabBarHostedHost") ||
     (module == "checkbox_widget" && function == "CheckboxHostedHost") ||
     (module == "toggle_widget" && function == "ToggleHostedHost") ||
-    (module == "box_widget" && function == "BoxHostedHost")
+    (module == "box_widget" && function == "BoxHostedHost") ||
+    (module == "press_widget" && function == "PressHostedHost")
 }
 
 WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed) {
@@ -178,6 +183,11 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     if owner == "checkbox_widget" && name == "CheckboxHostedHost" && WidgetValidCheckboxProps(props) {
         checked := Checkbox(session, WidgetDecodeCheckboxProps(props, *widget_checkbox_codec))
         result.* = WidgetEncodeCheckboxValueResult(checked, *widget_checkbox_result_codec)
+        return 1
+    }
+    if owner == "press_widget" && name == "PressHostedHost" && WidgetValidPressProps(props) {
+        pressed := Press(session, WidgetDecodePressProps(props, *widget_press_codec))
+        result.* = WidgetEncodePressResult(pressed, *widget_press_result_codec)
         return 1
     }
     if owner == "toggle_widget" && name == "ToggleHostedHost" && WidgetValidToggleProps(props) {
