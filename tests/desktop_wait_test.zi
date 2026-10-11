@@ -7,25 +7,46 @@ Counter :: () -> u64 #foreign sdl "SDL_GetPerformanceCounter";
 Frequency :: () -> u64 #foreign sdl "SDL_GetPerformanceFrequency";
 Push :: (event: *void) -> s32 #foreign sdl "SDL_PushEvent";
 Poll :: (event: *void) -> s32 #foreign sdl "SDL_PollEvent";
-EventState :: (kind: u32, state: s32) -> u8 #foreign sdl "SDL_EventState";
-TextInputActive :: () -> s32 #foreign sdl "SDL_IsTextInputActive";
-Peep :: (events: *void, count: s32, action: s32, first: u32, last: u32) -> s32 #foreign sdl "SDL_PeepEvents";
+WaitTimeout :: (event: *void, milliseconds: s32) -> s32 #foreign sdl "SDL_WaitEventTimeout";
 Event :: struct {
     kind: u32; timestamp: u32; window_id: u32; which: u32
     button: u8; state: u8; clicks: u8; padding: u8
     x: s32; y: s32; payload: [28]u8
 }
 Work :: struct { ready: u64; delivered: bool }
-Send :: (argument: *void) {
-    work := cast(*Work)argument
-    Delay(cast(u32)10)
+PushKey :: () -> bool {
     key: Event; key.kind = cast(u32)0x300; key.x = 32
+    return Push(cast(*void)*key) == 1
+}
+PushTextAndClick :: () -> bool {
     text: Event; text.kind = cast(u32)0x303; text.which = cast(u32)65
     press: Event; press.kind = cast(u32)0x401; press.button = cast(u8)1
     release: Event; release.kind = cast(u32)0x402; release.button = cast(u8)1
+    return Push(cast(*void)*text) == 1 && Push(cast(*void)*press) == 1 &&
+        Push(cast(*void)*release) == 1
+}
+Send :: (argument: *void) {
+    work := cast(*Work)argument
+    Delay(cast(u32)10)
     work.ready = Counter()
-    work.delivered = Push(cast(*void)*key) == 1 && Push(cast(*void)*text) == 1 &&
-        Push(cast(*void)*press) == 1 && Push(cast(*void)*release) == 1
+    work.delivered = PushKey() && PushTextAndClick()
+}
+// One poll takes the key, text and click exactly once; the next takes nothing.
+Received :: (round: s32) -> s32 {
+    if !Desktop.PollDesktop() { return 5 }
+    key := Desktop.DesktopPressedKey(); key_after := Desktop.DesktopPressedKey()
+    text := Desktop.DesktopTypedCodepoint(); text_after := Desktop.DesktopTypedCodepoint()
+    if key != 32 || key_after != 0 || text != 65 || text_after != 0 {
+        print("round %: key % then %, text % then %\n", round, key, key_after, text, text_after)
+        return 6
+    }
+    pointer := Desktop.PollPointer()
+    if !pointer.pressed || !pointer.released || !pointer.down { return 7 }
+    if !Desktop.PollDesktop() { return 8 }
+    pointer = Desktop.PollPointer()
+    if pointer.pressed || pointer.released || Desktop.DesktopPressedKey() != 0 ||
+        Desktop.DesktopTypedCodepoint() != 0 { return 9 }
+    return 0
 }
 
 main :: () -> s32 {
@@ -33,6 +54,14 @@ main :: () -> s32 {
     defer Desktop.CloseDesktop()
     Delay(cast(u32)100)
     event: Event
+    // A pump between two pushes leaves SDL's poll marker between them, as
+    // when the host wakes while another thread is still queueing input.
+    while Poll(cast(*void)*event) != 0 {}
+    if !PushKey() { return 10 }
+    unused WaitTimeout(null, 1)
+    if !PushTextAndClick() { return 10 }
+    status := Received(-1)
+    if status != 0 { return status }
     for sample: 0..19 {
         while Poll(cast(*void)*event) != 0 {}
         if !Desktop.PollDesktop() { return 2 }
@@ -45,26 +74,9 @@ main :: () -> s32 {
         Desktop.PauseDesktop()
         returned := Counter()
         ThreadWait(*thread)
-        // SDL_PEEKEVENT copies the queue without removing anything.
-        queued: [8]Event
-        queued_count := Peep(cast(*void)*queued[0], 8, 1, cast(u32)0, cast(u32)0xFFFF)
-        if !work.delivered || !Desktop.PollDesktop() { return 5 }
-        key := Desktop.DesktopPressedKey(); key_after := Desktop.DesktopPressedKey()
-        text := Desktop.DesktopTypedCodepoint(); text_after := Desktop.DesktopTypedCodepoint()
-        if key != 32 || key_after != 0 || text != 65 || text_after != 0 {
-            print("round %: key % then %, text % then %; text events enabled %, text input active %\n",
-                sample, key, key_after, text, text_after, EventState(cast(u32)0x303, -1), TextInputActive())
-            for i: 0..queued_count-1 {
-                print("queued %: type % window % text byte %\n", i, queued[i].kind, queued[i].window_id, queued[i].which & cast(u32)255)
-            }
-            return 6
-        }
-        pointer := Desktop.PollPointer()
-        if !pointer.pressed || !pointer.released || !pointer.down { return 7 }
-        if !Desktop.PollDesktop() { return 8 }
-        pointer = Desktop.PollPointer()
-        if pointer.pressed || pointer.released || Desktop.DesktopPressedKey() != 0 ||
-            Desktop.DesktopTypedCodepoint() != 0 { return 9 }
+        if !work.delivered { return 5 }
+        status = Received(cast(s32)sample)
+        if status != 0 { return status }
         // Joining publishes the worker timestamps; no result is read before it.
         latency: float64 = -1.0
         if returned >= work.ready {

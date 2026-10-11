@@ -48,7 +48,8 @@ UpdateTexture :: (texture: *void, rect: *void, pixels: *u8,
 RenderCopy :: (renderer: *void, texture: *void, source: *void,
     destination: *void) -> s32 #foreign sdl_library "SDL_RenderCopy";
 RenderPresent :: (renderer: *void) #foreign sdl_library "SDL_RenderPresent";
-PollEvent :: (event: *Event) -> s32 #foreign sdl_library "SDL_PollEvent";
+PumpEvents :: () #foreign sdl_library "SDL_PumpEvents";
+PeepEvents :: (events: *Event, count: s32, action: s32, first: u32, last: u32) -> s32 #foreign sdl_library "SDL_PeepEvents";
 WaitEventTimeout :: (event: *Event, milliseconds: s32) -> s32 #foreign sdl_library "SDL_WaitEventTimeout";
 PushEvent :: (event: *Event) -> s32 #foreign sdl_library "SDL_PushEvent";
 StartTextInput :: () #foreign sdl_library "SDL_StartTextInput";
@@ -283,7 +284,15 @@ PollDesktop :: () -> bool {
     desktop_key_modifiers = -1
     desktop_codepoint_count = 0
     desktop_codepoint_next = 0
-    while PollEvent(*event) != 0 {
+    // SDL_PollEvent stops at the marker its last pump left at the end of the
+    // queue, so events another thread pushed after that pump would wait for
+    // the next frame. Pump once and take every queued event; SDL_GETEVENT
+    // drops the marker. The bound keeps a flooding sender from holding a frame.
+    PumpEvents()
+    taken: s32 = 0
+    while taken < 4096 &&
+        PeepEvents(*event, 1, 2, cast(u32)0, cast(u32)0xFFFF) > 0 {
+        taken += 1
         if event.kind == cast(u32)0x200 && window != null &&
             event.window_id == GetWindowID(window) {
             detail := event.which & cast(u32)255

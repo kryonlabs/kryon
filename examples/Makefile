@@ -84,39 +84,42 @@ $(BUILD_DIR)/desktop-hello-native/desktop_hello.c: desktop_hello.zi ../src/backe
 	$(RM) $(BUILD_DIR)/desktop-hello-native/*.c $(BUILD_DIR)/desktop-hello-native/*.h
 	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
 		--module-path $(ZIRAN_DIR)/std \
-		-o $(BUILD_DIR)/desktop-hello-native desktop_hello.zi
+		--entry desktop_hello:main -o $(BUILD_DIR)/desktop-hello-native desktop_hello.zi
 
 $(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi image_demo.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
 	mkdir -p $(BUILD_DIR)/desktop-image-native
 	$(RM) $(BUILD_DIR)/desktop-image-native/*.c $(BUILD_DIR)/desktop-image-native/*.h
 	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
 		--module-path $(ZIRAN_DIR)/std \
-		-o $(BUILD_DIR)/desktop-image-native desktop_image.zi
+		--entry desktop_image:main -o $(BUILD_DIR)/desktop-image-native desktop_image.zi
 
 $(BUILD_DIR)/desktop-text-native/desktop_text.c: desktop_text.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi text_hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
 	mkdir -p $(BUILD_DIR)/desktop-text-native
 	$(RM) $(BUILD_DIR)/desktop-text-native/*.c $(BUILD_DIR)/desktop-text-native/*.h
 	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
 		--module-path $(ZIRAN_DIR)/std \
-		-o $(BUILD_DIR)/desktop-text-native desktop_text.zi
+		--entry desktop_text:main -o $(BUILD_DIR)/desktop-text-native desktop_text.zi
+
+# The desktop host draws with Cairo and Pango and finds fonts with Fontconfig.
+DESKTOP_LIBS = $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11) -lm -lpthread
 
 $(BUILD_DIR)/hello-desktop: $(BUILD_DIR)/desktop-hello-native/desktop_hello.c Makefile
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/desktop-hello-native \
 		$(BUILD_DIR)/desktop-hello-native/*.c \
-		$$(pkg-config --libs sdl2 cairo freetype2) -lm -o $@
+		$(DESKTOP_LIBS) -o $@
 
 $(BUILD_DIR)/image-desktop: $(BUILD_DIR)/desktop-image-native/desktop_image.c Makefile
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/desktop-image-native \
 		$(BUILD_DIR)/desktop-image-native/*.c \
-		$$(pkg-config --libs sdl2 cairo freetype2) -lm -o $@
+		$(DESKTOP_LIBS) -o $@
 
 $(BUILD_DIR)/text-desktop: $(BUILD_DIR)/desktop-text-native/desktop_text.c Makefile
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/desktop-text-native \
 		$(BUILD_DIR)/desktop-text-native/*.c \
-		$$(pkg-config --libs sdl2 cairo freetype2) -lm -o $@
+		$(DESKTOP_LIBS) -o $@
 
 desktop: $(BUILD_DIR)/hello-desktop
 
