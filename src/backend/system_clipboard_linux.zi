@@ -42,6 +42,11 @@ FnGetWindowProperty :: #type (*void, u64, u64, s64, s64, s32, u64, *u64,
 FnDeleteProperty :: #type (*void, u64, u64) -> s32 #c_call;
 FnFlush :: #type (*void) -> s32 #c_call;
 FnFree :: #type (*void) -> s32 #c_call;
+// libXRes: XResQueryClientIds, XResGetClientPid, XResClientIdsDestroy.
+FnQueryClientIds :: #type (*void, s64, *void, *s64, **void) -> s32 #c_call;
+FnClientPid :: #type (*void) -> s32 #c_call;
+FnClientIdsDestroy :: #type (s64, *void) #c_call;
+ProcessId :: () -> s32 #foreign c "getpid";
 
 x_open_display: FnOpenDisplay;
 x_default_root_window: FnRootWindow;
@@ -55,6 +60,11 @@ x_get_window_property: FnGetWindowProperty;
 x_delete_property: FnDeleteProperty;
 x_flush: FnFlush;
 x_free: FnFree;
+res_query_client_ids: FnQueryClientIds;
+res_client_pid: FnClientPid;
+res_client_ids_destroy: FnClientIdsDestroy;
+res_tried: bool;
+res_ready: bool;
 
 // Xlib event types and masks.
 SELECTION_NOTIFY :: 31;
@@ -117,6 +127,37 @@ Atom :: (name: string) -> u64 {
     bytes: [64]u8
     if !CopyCString(name, bytes[:]) { return 0 }
     return x_intern_atom(display, *bytes[0], 0)
+}
+
+// The X-Resource extension names the process behind a window. Without it,
+// every owner is treated as another application.
+LoadResources :: () -> bool {
+    if res_tried { return res_ready }
+    res_tried = true
+    name: [32]u8
+    if !CopyCString("libXRes.so.1", name[:]) { return false }
+    handle: *void = DlOpen(*name[0], 1)
+    if handle == null { return false }
+    ok: bool = Resolve(handle, cast(*void)*res_query_client_ids, "XResQueryClientIds")
+    ok = ok && Resolve(handle, cast(*void)*res_client_pid, "XResGetClientPid")
+    ok = ok && Resolve(handle, cast(*void)*res_client_ids_destroy, "XResClientIdsDestroy")
+    res_ready = ok
+    return ok
+}
+
+// Whether this process owns the selection, for example after the application
+// copied text through its own window. That window can only answer from the
+// event loop this read is blocking, so a conversion would wait out its limit.
+OwnedHere :: (owner: u64) -> bool {
+    if !LoadResources() { return false }
+    // XResClientIdSpec: the owner window, asking only for its client's PID.
+    spec: [2]u64 = .{owner, 2}
+    count: s64 = 0
+    values: *void = null
+    if res_query_client_ids(display, 1, cast(*void)*spec[0], *count, *values) != 0 { return false }
+    owned: bool = count > 0 && values != null && res_client_pid(values) == ProcessId()
+    if values != null { res_client_ids_destroy(count, values) }
+    return owned
 }
 
 // One connection and one unmapped window receive every conversion; the
@@ -193,7 +234,8 @@ SystemClipboardImage :: (buffer: []u8) -> SystemClipboardImageResult {
     result: SystemClipboardImageResult
     if !Connect() { return result }
     result.available = true
-    if x_get_selection_owner(display, clipboard_atom) == 0 { return result }
+    owner: u64 = x_get_selection_owner(display, clipboard_atom)
+    if owner == 0 || OwnedHere(owner) { return result }
     event: [24]s64
     // Drop events left over from an abandoned transfer.
     while x_check_typed_window_event(display, window, PROPERTY_NOTIFY,
