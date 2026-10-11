@@ -437,6 +437,21 @@ TreePointerCapturesDrag :: (session: Session) -> bool {
         active_pointer[input_slot].captures_drag
 }
 
+// A press that has become something of its own, such as a hold that
+// selects, keeps the pointer for the rest of the press: an enclosing scroll
+// can no longer take the gesture.
+#program_export
+TreeCapturePressAt :: (session: Session, index: s32) {
+    input_slot := SessionIndex(session)
+    if !SessionValid(session) || index < 0 || index >= TreeCount(session) {
+        return
+    }
+    generation: u64 = trees[input_slot].committed[index].identity_generation
+    if generation != 0 && active_pointer[input_slot].held_generation == generation {
+        active_pointer[input_slot].captures_drag = true
+    }
+}
+
 // A drag keeps its original node identity while held, including when the
 // pointer leaves that node or the root. The release sample is consumed once.
 #program_export
