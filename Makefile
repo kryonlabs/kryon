@@ -92,8 +92,11 @@ ziran-test: project-toolchain
 	@$(MAKE) --no-print-directory behavior-tests
 
 # Reuse the suite with instrumented host compilers without rebuilding Ziran.
+# The locked packages are fetched once first: parallel tests would otherwise
+# fetch the same package at the same time, and offline ones find none.
 .PHONY: behavior-tests
 behavior-tests:
+	@"$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" fetch
 	@ZIRAN_BIN="$(abspath $(ZIRAN_BUILD_DIR))/bin/ziran" \
 		ZIRAN_LIB="$(abspath $(ZIRAN_BUILD_DIR))/libziran.a" \
 		ZIRAN_INCLUDE="$(abspath $(ZIRAN_DIR))/include" \
