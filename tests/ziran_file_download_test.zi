@@ -1,0 +1,89 @@
+#import "file_download"
+#import "std/byte_text_linux"
+#import "std/c_string"
+
+c :: #system_library "c";
+GetEnv :: (name: *u8) -> *u8 #foreign c "getenv";
+Sleep :: (microseconds: u32) -> s32 #foreign c "usleep";
+Access :: (path: *u8, mode: s32) -> s32 #foreign c "access";
+
+port: string;
+
+Append :: (output: []u8, length: *s64, part: string) {
+    for index: cast(s64)0..part.count - 1 {
+        output[length.*] = part[index]
+        length.* += 1
+    }
+    output[length.*] = 0
+}
+
+Url :: (path: string, output: []u8) -> string {
+    length: s64 = 0
+    Append(output, *length, "http://127.0.0.1:")
+    Append(output, *length, port)
+    Append(output, *length, path)
+    return TextFromCString(*output[0])
+}
+
+Exists :: (path: string) -> bool {
+    bytes: [256]u8
+    return CopyCString(path, bytes[:]) && Access(*bytes[0], 0) == 0
+}
+
+Finish :: (download: *FileDownload) -> FileDownloadStatus {
+    for attempt: 0..999 {
+        status := FileDownloadPoll(download)
+        if status != .Downloading {
+            return status
+        }
+        unused Sleep(10000)
+    }
+    return .Downloading
+}
+
+#program_export
+main :: () -> s32 {
+    name: [16]u8
+    CopyCString("HTTP_TEST_PORT", name[:])
+    port = TextFromCString(GetEnv(*name[0]))
+    url: [128]u8
+    download: FileDownload
+    if !FileDownloadStart(*download, Url("/big", url[:]), "big.bin") || Finish(*download) != .Ready ||
+    download.bytes != 100000 || !Exists("big.bin") || Exists("big.bin.part") {
+        return 1
+    }
+    download = FileDownload.{}
+    if !FileDownloadStart(*download, Url("/missing", url[:]), "missing.bin") || Finish(*download) != .Error ||
+    TextFromCString(*download.error[0]) != "download failed" || Exists("missing.bin") || Exists("missing.bin.part") {
+        return 2
+    }
+    // A download larger than its limit fails and leaves nothing behind.
+    download = FileDownload.{.maximum_bytes = 1000}
+    if !FileDownloadStart(*download, Url("/big", url[:]), "limited.bin") || Finish(*download) != .Error ||
+    Exists("limited.bin") || Exists("limited.bin.part") {
+        return 3
+    }
+    download = FileDownload.{}
+    if !FileDownloadStart(*download, Url("/slow", url[:]), "slow.bin") {
+        return 4
+    }
+    unused Sleep(200000)
+    FileDownloadRelease(*download)
+    if download.status != .Idle || Exists("slow.bin") || Exists("slow.bin.part") {
+        return 5
+    }
+    // Nothing listens on port 9: the network is reported unreachable.
+    download = FileDownload.{}
+    if !FileDownloadStart(*download, "http://127.0.0.1:9/file", "refused.bin") || Finish(*download) != .Error ||
+    TextFromCString(*download.error[0]) != "NETWORK_UNAVAILABLE" {
+        return 6
+    }
+    // A second start while one runs is refused.
+    download = FileDownload.{}
+    if !FileDownloadStart(*download, Url("/slow", url[:]), "again.bin") ||
+    FileDownloadStart(*download, Url("/slow", url[:]), "again.bin") {
+        return 7
+    }
+    FileDownloadRelease(*download)
+    return 0
+}

@@ -1,0 +1,832 @@
+// Download a large file, such as music or an app package, to a path while
+// the application keeps drawing. The file appears at its destination only
+// once it is complete: it is written to destination + ".part" and renamed.
+//
+// Linux and BSD desktops run /usr/bin/curl as a child process; the browser
+// streams fetch's body into the page's file system through the web bridge;
+// Android asks the activity, which reports back through natives that the
+// application's JNI_OnLoad binds to FileDownloadNativeSucceeded,
+// FileDownloadNativeProgress and FileDownloadNativeFailed:
+//
+//     // Writes path + ".part" and renames it to path when complete.
+//     void startRuntimeAssetDownload(String url, String path, long handle, long maximum)
+//     void cancelRuntimeAssetDownload(long handle)
+//     native void nativeRuntimeAssetDownloadSucceeded(long handle, long bytes, int status)
+//     native void nativeRuntimeAssetDownloadProgress(long handle, long bytes, long total)
+//     native void nativeRuntimeAssetDownloadFailed(long handle, int status, String error)
+//
+// Windows has no download service yet. An error "NETWORK_UNAVAILABLE" means
+// the network could not be reached, so the caller may retry later.
+#import "c_string"
+#import "byte_text_linux"
+
+FileDownloadStatus :: enum {
+    Idle :: 0
+    Downloading
+    Ready
+    Error
+}
+
+FileDownload :: struct {
+    handle: u64
+    status: FileDownloadStatus
+    http_status: s32
+    bytes: u64
+    total_bytes: u64
+    // Zero allows 512 MiB.
+    maximum_bytes: u64
+    temporary: [4096]u8
+    destination: [4096]u8
+    error: [256]u8
+}
+
+FILE_DOWNLOAD_DEFAULT_MAXIMUM :: 536870912
+
+DOWNLOAD_ANDROID :: #defined(ANDROID_BUILD)
+DOWNLOAD_WEB :: #defined(PLATFORM_WEB)
+DOWNLOAD_CURL :: #defined(PLATFORM_DESKTOP) && !#defined(_WIN32) && !#defined(ANDROID_BUILD) && !#defined(PLATFORM_WEB)
+
+download_c :: #system_library "c";
+
+FileDownloadError :: (download: *FileDownload, message: string) {
+    download.status = .Error
+    if !CopyCString(message, download.error[:]) {
+        download.error[0] = 0
+    }
+}
+
+// destination + ".part" in download.temporary; false when it does not fit.
+FileDownloadPaths :: (download: *FileDownload, destination: string) -> bool {
+    if destination.count == 0 || destination.count + 6 >= 4096 ||
+    !CopyCString(destination, download.destination[:]) ||
+    !CopyCString(destination, download.temporary[:]) {
+        return false
+    }
+    suffix := ".part"
+    for index: cast(s64)0..suffix.count - 1 {
+        download.temporary[destination.count + index] = suffix[index]
+    }
+    download.temporary[destination.count + suffix.count] = 0
+    return true
+}
+
+// Starts downloading url to destination. False, with status Error and a
+// message, when it cannot start.
+FileDownloadStart :: (download: *FileDownload, url: string, destination: string) -> bool {
+    if download == null || url.count == 0 || destination.count == 0 ||
+    download.status == .Downloading {
+        return false
+    }
+    download.handle = 0
+    download.bytes = 0
+    download.total_bytes = 0
+    download.http_status = 0
+    download.error[0] = 0
+    if download.maximum_bytes == 0 {
+        download.maximum_bytes = FILE_DOWNLOAD_DEFAULT_MAXIMUM
+    }
+    if url.count >= 4096 {
+        FileDownloadError(download, "invalid download URL")
+        return false
+    }
+    if !FileDownloadPaths(download, destination) {
+        FileDownloadError(download, "invalid download path")
+        return false
+    }
+    #if DOWNLOAD_CURL {
+        return CurlStart(download, url)
+    }
+    #if DOWNLOAD_WEB {
+        return BrowserStart(download, url)
+    }
+    #if DOWNLOAD_ANDROID {
+        return AndroidStart(download, url)
+    }
+    FileDownloadError(download, "download service unavailable")
+    return false
+}
+
+// Advances the download and returns its status; Ready means the file is at
+// its destination.
+FileDownloadPoll :: (download: *FileDownload) -> FileDownloadStatus {
+    if download == null {
+        return .Idle
+    }
+    if download.status != .Downloading {
+        return download.status
+    }
+    #if DOWNLOAD_CURL {
+        CurlPoll(download)
+    }
+    #if DOWNLOAD_WEB {
+        BrowserPoll(download)
+    }
+    #if DOWNLOAD_ANDROID {
+        AndroidPoll(download)
+    }
+    return download.status
+}
+
+// Stops a running download and removes its partial file; the download
+// becomes Idle.
+FileDownloadRelease :: (download: *FileDownload) {
+    if download == null {
+        return
+    }
+    #if DOWNLOAD_CURL {
+        CurlRelease(download)
+    }
+    #if DOWNLOAD_WEB {
+        BrowserRelease(download)
+    }
+    #if DOWNLOAD_ANDROID {
+        AndroidRelease(download)
+    }
+    download.handle = 0
+    download.status = .Idle
+}
+
+#if DOWNLOAD_CURL {
+    DownloadFork :: () -> s32 #foreign download_c "fork";
+    DownloadExec :: (path: *u8, first: *u8, args: ..any) -> s32 #foreign download_c "execl";
+    DownloadExit :: (status: s32) #foreign download_c "_exit";
+    DownloadWait :: (pid: s32, status: *s32, options: s32) -> s32 #foreign download_c "waitpid";
+    DownloadKill :: (pid: s32, signal: s32) -> s32 #foreign download_c "kill";
+    DownloadRename :: (source: *u8, destination: *u8) -> s32 #foreign download_c "rename";
+    DownloadRemove :: (path: *u8) -> s32 #foreign download_c "remove";
+    DownloadOpen :: (path: *u8, mode: *u8) -> *void #foreign download_c "fopen";
+    DownloadSeek :: (file: *void, offset: s64, origin: s32) -> s32 #foreign download_c "fseek";
+    DownloadTell :: (file: *void) -> s64 #foreign download_c "ftell";
+    DownloadClose :: (file: *void) -> s32 #foreign download_c "fclose";
+
+    DownloadDigits :: (value: u64, output: []u8) {
+        digits: [24]u8
+        count: s32 = 0
+        while true {
+            digits[count] = cast(u8)(48 + value % 10)
+            count += 1
+            value = value / 10
+            if value == 0 {
+                break
+            }
+        }
+        index: s32 = 0
+        while count > 0 {
+            count -= 1
+            output[index] = digits[count]
+            index += 1
+        }
+        output[index] = 0
+    }
+
+    CurlStart :: (download: *FileDownload, url: string) -> bool {
+        url_bytes: [4096]u8
+        executable: [32]u8
+        fail_flag: [8]u8
+        location_flag: [16]u8
+        silent_flag: [16]u8
+        show_error_flag: [16]u8
+        output_flag: [16]u8
+        maximum_flag: [32]u8
+        timeout_flag: [32]u8
+        timeout_value: [8]u8
+        maximum: [32]u8
+        if !CopyCString(url, url_bytes[:]) || !CopyCString("/usr/bin/curl", executable[:]) ||
+        !CopyCString("--fail", fail_flag[:]) || !CopyCString("--location", location_flag[:]) ||
+        !CopyCString("--silent", silent_flag[:]) || !CopyCString("--show-error", show_error_flag[:]) ||
+        !CopyCString("--output", output_flag[:]) || !CopyCString("--max-filesize", maximum_flag[:]) ||
+        !CopyCString("--max-time", timeout_flag[:]) || !CopyCString("900", timeout_value[:]) {
+            FileDownloadError(download, "download service unavailable")
+            return false
+        }
+        DownloadDigits(download.maximum_bytes, maximum[:])
+        pid := DownloadFork()
+        if pid < 0 {
+            FileDownloadError(download, "failed to start download")
+            return false
+        }
+        if pid == 0 {
+            terminator: *u8 = null
+            DownloadExec(*executable[0], *executable[0], *fail_flag[0], *location_flag[0],
+                *silent_flag[0], *show_error_flag[0], *maximum_flag[0], *maximum[0],
+                *timeout_flag[0], *timeout_value[0], *output_flag[0],
+                *download.temporary[0], *url_bytes[0], terminator)
+            DownloadExit(127)
+        }
+        download.handle = cast(u64)pid
+        download.status = .Downloading
+        return true
+    }
+
+    CurlPoll :: (download: *FileDownload) {
+        if download.handle == 0 {
+            return
+        }
+        mode: [4]u8
+        if CopyCString("rb", mode[:]) {
+            file := DownloadOpen(*download.temporary[0], *mode[0])
+            if file != null {
+                if DownloadSeek(file, 0, 2) == 0 {
+                    size := DownloadTell(file)
+                    if size > 0 {
+                        download.bytes = cast(u64)size
+                    }
+                }
+                DownloadClose(file)
+            }
+        }
+        if download.bytes > download.maximum_bytes {
+            CurlRelease(download)
+            download.handle = 0
+            FileDownloadError(download, "download exceeds size limit")
+            return
+        }
+        status: s32 = 0
+        pid := cast(s32)download.handle
+        // WNOHANG
+        result := DownloadWait(pid, *status, 1)
+        if result == 0 {
+            return
+        }
+        download.handle = 0
+        if result == pid && status == 0 &&
+        DownloadRename(*download.temporary[0], *download.destination[0]) == 0 {
+            download.status = .Ready
+            download.total_bytes = download.bytes
+            return
+        }
+        DownloadRemove(*download.temporary[0])
+        // curl: could not resolve, could not connect, timed out.
+        exit_code := (status >> 8) & 255
+        if exit_code == 6 || exit_code == 7 || exit_code == 28 {
+            FileDownloadError(download, "NETWORK_UNAVAILABLE")
+        } else {
+            FileDownloadError(download, "download failed")
+        }
+    }
+
+    CurlRelease :: (download: *FileDownload) {
+        if download.status == .Downloading && download.handle != 0 {
+            pid := cast(s32)download.handle
+            DownloadKill(pid, 9)
+            status: s32 = 0
+            DownloadWait(pid, *status, 0)
+            DownloadRemove(*download.temporary[0])
+        }
+    }
+}
+
+#if DOWNLOAD_WEB {
+    #import "web"
+    DownloadOpen :: (path: *u8, mode: *u8) -> *void #foreign download_c "fopen";
+    DownloadWrite :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign download_c "fwrite";
+    DownloadClose :: (file: *void) -> s32 #foreign download_c "fclose";
+    DownloadRename :: (source: *u8, destination: *u8) -> s32 #foreign download_c "rename";
+    DownloadRemove :: (path: *u8) -> s32 #foreign download_c "remove";
+
+    BROWSER_DOWNLOADS :: 4
+    BROWSER_DOWNLOAD_CHUNK :: 65536
+
+    // One streaming fetch. Its callbacks find it by slot and generation and
+    // write only into its own file, never into the caller's download.
+    BrowserDownload :: struct {
+        generation: s32
+        busy: bool
+        // 0 running, 1 the body ended, 2 failed.
+        state: s32
+        network_failed: bool
+        status: s32
+        bytes: u64
+        total: u64
+        maximum: u64
+        file: *void
+        controller: s32
+        reader: s32
+        timer: s32
+        on_response: s32
+        on_chunk: s32
+        on_failure: s32
+    }
+
+    browser_downloads: [BROWSER_DOWNLOADS]BrowserDownload;
+    browser_download_generation: s32;
+    browser_download_chunk: [BROWSER_DOWNLOAD_CHUNK]u8;
+
+    BrowserHandle :: (slot: s32, generation: s32) -> s32 {
+        return generation * BROWSER_DOWNLOADS + slot + 1
+    }
+
+    BrowserFor :: (handle: s32) -> *BrowserDownload {
+        if handle <= 0 {
+            return null
+        }
+        slot := (handle - 1) % BROWSER_DOWNLOADS
+        task := *browser_downloads[slot]
+        if !task.busy || BrowserHandle(slot, task.generation) != handle {
+            return null
+        }
+        return task
+    }
+
+    BrowserReleaseHandle :: (handle: s32) {
+        if handle != 0 {
+            WebRelease(handle)
+        }
+    }
+
+    BrowserStop :: (task: *BrowserDownload, state: s32) {
+        if task.state != 0 {
+            return
+        }
+        task.state = state
+        scope := WebScope()
+        if task.timer != 0 {
+            unused WebCall1(WebGlobal, WebName("clearTimeout"), WebNumber(cast(float64)task.timer))
+            task.timer = 0
+        }
+        if state == 2 {
+            if task.controller != 0 {
+                unused WebCall0(task.controller, WebName("abort"))
+            }
+            if task.reader != 0 {
+                promise := WebAsObject(WebCall0(task.reader, WebName("cancel")))
+                if promise != 0 && task.on_failure != 0 {
+                    unused WebCall2(promise, WebName("then"), WebObject(task.on_failure), WebObject(task.on_failure))
+                }
+            }
+        }
+        WebEnd(scope)
+    }
+
+    BrowserRead :: (task: *BrowserDownload) {
+        scope := WebScope()
+        promise := WebAsObject(WebCall0(task.reader, WebName("read")))
+        if promise == 0 || WebFailed() {
+            WebEnd(scope)
+            BrowserStop(task, 2)
+            return
+        }
+        unused WebCall2(promise, WebName("then"), WebObject(task.on_chunk), WebObject(task.on_failure))
+        WebEnd(scope)
+    }
+
+    BrowserOnResponse :: (handle: s32, response: s32, second: s32, third: s32) {
+        unused second
+        unused third
+        task := BrowserFor(handle)
+        if task == null || task.state != 0 {
+            return
+        }
+        task.status = cast(s32)WebGetNumber(response, WebName("status"))
+        headers := WebGetObject(response, WebName("headers"))
+        declared := WebCall1(headers, WebName("get"), WebText("content-length"))
+        if declared.tag == WebStringTag {
+            length := WebAsNumber(WebCall1(WebGlobal, WebName("Number"), declared))
+            if length > cast(float64)task.maximum {
+                BrowserStop(task, 2)
+                return
+            }
+            if length > 0.0 {
+                task.total = cast(u64)length
+            }
+        }
+        body := WebGetObject(response, WebName("body"))
+        if body == 0 {
+            BrowserStop(task, 1)
+            return
+        }
+        task.reader = WebKeep(WebAsObject(WebCall0(body, WebName("getReader"))))
+        if task.reader == 0 || WebFailed() {
+            BrowserStop(task, 2)
+            return
+        }
+        BrowserRead(task)
+    }
+
+    BrowserOnChunk :: (handle: s32, chunk: s32, second: s32, third: s32) {
+        unused second
+        unused third
+        task := BrowserFor(handle)
+        if task == null || task.state != 0 {
+            return
+        }
+        if WebAsBool(WebGet(chunk, WebName("done"))) {
+            BrowserStop(task, 1)
+            return
+        }
+        value := WebGetObject(chunk, WebName("value"))
+        count := cast(s32)WebGetNumber(value, WebName("length"))
+        if value == 0 || count < 0 || task.bytes + cast(u64)count > task.maximum {
+            BrowserStop(task, 2)
+            return
+        }
+        offset: s32 = 0
+        while offset < count {
+            piece := count - offset
+            if piece > BROWSER_DOWNLOAD_CHUNK {
+                piece = BROWSER_DOWNLOAD_CHUNK
+            }
+            part := WebAsObject(WebCall2(value, WebName("subarray"), WebNumber(cast(float64)offset),
+                WebNumber(cast(float64)(offset + piece))))
+            if part == 0 || WebCopyOut(part, cast(*void)*browser_download_chunk[0], piece) != piece ||
+            DownloadWrite(*browser_download_chunk[0], 1, cast(usize)piece, task.file) != cast(usize)piece {
+                BrowserStop(task, 2)
+                return
+            }
+            offset += piece
+        }
+        task.bytes += cast(u64)count
+        BrowserRead(task)
+    }
+
+    BrowserOnFailure :: (handle: s32, first: s32, second: s32, third: s32) {
+        unused first
+        unused second
+        unused third
+        task := BrowserFor(handle)
+        if task != null && task.state == 0 {
+            // No response arrived: the network could not be reached.
+            task.network_failed = task.status == 0
+            BrowserStop(task, 2)
+        }
+    }
+
+    BrowserDiscard :: (download: *FileDownload, task: *BrowserDownload) {
+        if task == null {
+            return
+        }
+        BrowserStop(task, 2)
+        if task.file != null {
+            DownloadClose(task.file)
+            task.file = null
+            DownloadRemove(*download.temporary[0])
+        }
+        BrowserReleaseHandle(task.controller)
+        BrowserReleaseHandle(task.reader)
+        BrowserReleaseHandle(task.on_response)
+        BrowserReleaseHandle(task.on_chunk)
+        BrowserReleaseHandle(task.on_failure)
+        task.* = BrowserDownload.{}
+    }
+
+    BrowserStart :: (download: *FileDownload, url: string) -> bool {
+        slot: s32 = -1
+        for index: 0..BROWSER_DOWNLOADS - 1 {
+            if slot < 0 && !browser_downloads[index].busy {
+                slot = cast(s32)index
+            }
+        }
+        if slot < 0 {
+            FileDownloadError(download, "too many downloads")
+            return false
+        }
+        mode: [4]u8
+        unused CopyCString("wb", mode[:])
+        file := DownloadOpen(*download.temporary[0], *mode[0])
+        if file == null {
+            FileDownloadError(download, "could not open download file")
+            return false
+        }
+        browser_download_generation += 1
+        if browser_download_generation > 100000000 {
+            browser_download_generation = 1
+        }
+        task := *browser_downloads[slot]
+        task.* = BrowserDownload.{.generation = browser_download_generation, .busy = true,
+            .maximum = download.maximum_bytes, .file = file}
+        handle := BrowserHandle(slot, task.generation)
+        scope := WebScope()
+        defer WebEnd(scope)
+        controller := WebNew0(WebGetObject(WebGlobal, WebName("AbortController")))
+        init := WebNewObject()
+        if controller == 0 || init == 0 || WebFailed() {
+            BrowserDiscard(download, task)
+            FileDownloadError(download, "invalid download URL")
+            return false
+        }
+        task.controller = WebKeep(controller)
+        WebSet(init, WebName("method"), WebText("GET"))
+        WebSet(init, WebName("redirect"), WebText("follow"))
+        WebSet(init, WebName("credentials"), WebText("omit"))
+        WebSet(init, WebName("signal"), WebGet(controller, WebName("signal")))
+        task.on_response = WebFunction(BrowserOnResponse, handle)
+        task.on_chunk = WebFunction(BrowserOnChunk, handle)
+        task.on_failure = WebFunction(BrowserOnFailure, handle)
+        promise := WebAsObject(WebCall2(WebGlobal, WebName("fetch"), WebText(url), WebObject(init)))
+        if promise == 0 || WebFailed() {
+            BrowserDiscard(download, task)
+            FileDownloadError(download, "invalid download URL")
+            return false
+        }
+        unused WebCall2(promise, WebName("then"), WebObject(task.on_response), WebObject(task.on_failure))
+        task.timer = cast(s32)WebAsNumber(WebCall2(WebGlobal, WebName("setTimeout"),
+            WebObject(task.on_failure), WebNumber(900000.0)))
+        download.handle = cast(u64)handle
+        download.status = .Downloading
+        return true
+    }
+
+    BrowserPoll :: (download: *FileDownload) {
+        task := BrowserFor(cast(s32)download.handle)
+        if task == null {
+            download.handle = 0
+            FileDownloadError(download, "download handle expired")
+            return
+        }
+        download.http_status = task.status
+        download.bytes = task.bytes
+        download.total_bytes = task.total
+        if task.state == 0 {
+            if task.status != 0 && (task.status < 200 || task.status >= 300) {
+                BrowserDiscard(download, task)
+                download.handle = 0
+                FileDownloadError(download, "download failed")
+            }
+            return
+        }
+        failed := task.state == 2
+        network := task.network_failed
+        closed: s32 = 0
+        if !failed {
+            closed = DownloadClose(task.file)
+            task.file = null
+        }
+        if failed || task.status < 200 || task.status >= 300 || task.bytes == 0 || closed != 0 ||
+        DownloadRename(*download.temporary[0], *download.destination[0]) != 0 {
+            if task.file == null {
+                DownloadRemove(*download.temporary[0])
+            }
+            BrowserDiscard(download, task)
+            download.handle = 0
+            FileDownloadError(download, ifx network then "NETWORK_UNAVAILABLE" else "download failed")
+            return
+        }
+        BrowserDiscard(download, task)
+        download.handle = 0
+        download.total_bytes = download.bytes
+        download.status = .Ready
+    }
+
+    BrowserRelease :: (download: *FileDownload) {
+        BrowserDiscard(download, BrowserFor(cast(s32)download.handle))
+    }
+}
+
+#if DOWNLOAD_ANDROID {
+    #import "android_jni"
+    DownloadAllocate :: (count: usize, size: usize) -> *void #foreign download_c "calloc";
+    DownloadFree :: (memory: *void) #foreign download_c "free";
+    DownloadMutexLock :: (mutex: *void) -> s32 #foreign download_c "pthread_mutex_lock";
+    DownloadMutexUnlock :: (mutex: *void) -> s32 #foreign download_c "pthread_mutex_unlock";
+
+    // The activity's callbacks and the render thread share these jobs.
+    // 1 running, 2 succeeded, 3 failed.
+    DownloadJob :: struct {
+        handle: u64
+        status: s32
+        http_status: s32
+        bytes: u64
+        total_bytes: u64
+        error: [256]u8
+        next: *DownloadJob
+    }
+    // PTHREAD_MUTEX_INITIALIZER is zero on bionic.
+    download_mutex: [8]u64;
+    download_jobs: *DownloadJob;
+    download_next_handle: u64 = 1;
+
+    DownloadLock :: () {
+        unused DownloadMutexLock(cast(*void)*download_mutex[0])
+    }
+
+    DownloadUnlock :: () {
+        unused DownloadMutexUnlock(cast(*void)*download_mutex[0])
+    }
+
+    DownloadFind :: (handle: u64) -> *DownloadJob {
+        job := download_jobs
+        while job != null {
+            if job.handle == handle {
+                return job
+            }
+            job = job.next
+        }
+        return null
+    }
+
+    DownloadCopyError :: (output: []u8, text: *u8) {
+        length: s64 = 0
+        while text != null && length + 1 < output.count && text[length] != 0 {
+            output[length] = text[length]
+            length += 1
+        }
+        output[length] = 0
+    }
+
+    AndroidStart :: (download: *FileDownload, url: string) -> bool {
+        url_bytes: [4096]u8
+        if !CopyCString(url, url_bytes[:]) {
+            FileDownloadError(download, "invalid download URL")
+            return false
+        }
+        job := cast(*DownloadJob)DownloadAllocate(1, size_of(DownloadJob))
+        if job == null {
+            FileDownloadError(download, "Could not allocate download")
+            return false
+        }
+        DownloadLock()
+        handle := download_next_handle
+        download_next_handle += 1
+        job.handle = handle
+        job.status = 1
+        job.next = download_jobs
+        download_jobs = job
+        DownloadUnlock()
+        started := false
+        failure := "Android activity is not ready"
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) != 0 {
+            failure = "Android download failed to start"
+            method := AndroidJniMethod(*session, "startRuntimeAssetDownload",
+                "(Ljava/lang/String;Ljava/lang/String;JJ)V")
+            if method != null {
+                env := session.env
+                arguments: [4]JniValue
+                arguments[0].reference = AndroidJniString(env, *url_bytes[0])
+                arguments[1].reference = AndroidJniString(env, *download.destination[0])
+                arguments[2].long_integer = cast(s64)handle
+                arguments[3].long_integer = cast(s64)download.maximum_bytes
+                if arguments[0].reference != null && arguments[1].reference != null {
+                    env.functions.CallVoidMethodA(env, session.activity, method, *arguments[0])
+                    started = env.functions.ExceptionCheck(env) == 0
+                }
+            }
+            AndroidJniDetachCurrent(*session)
+        }
+        if !started {
+            AndroidForget(handle)
+            FileDownloadError(download, failure)
+            return false
+        }
+        download.handle = handle
+        download.status = .Downloading
+        return true
+    }
+
+    AndroidPoll :: (download: *FileDownload) {
+        status: s32 = 0
+        error: [256]u8
+        DownloadLock()
+        job := DownloadFind(download.handle)
+        if job != null {
+            status = job.status
+            download.http_status = job.http_status
+            download.bytes = job.bytes
+            download.total_bytes = job.total_bytes
+            DownloadCopyError(error[:], *job.error[0])
+        }
+        DownloadUnlock()
+        if job == null {
+            download.handle = 0
+            FileDownloadError(download, "download handle expired")
+            return
+        }
+        if status == 1 {
+            return
+        }
+        // The activity has renamed the finished file, or removed a failed one.
+        AndroidForget(download.handle)
+        download.handle = 0
+        if status == 2 {
+            download.status = .Ready
+            return
+        }
+        download.status = .Error
+        download.error = error
+    }
+
+    // Drops the job and asks the activity to stop it.
+    AndroidForget :: (handle: u64) {
+        removed: *DownloadJob
+        DownloadLock()
+        previous: *DownloadJob
+        job := download_jobs
+        while job != null {
+            if job.handle == handle {
+                removed = job
+                if previous == null {
+                    download_jobs = job.next
+                } else {
+                    previous.next = job.next
+                }
+                break
+            }
+            previous = job
+            job = job.next
+        }
+        DownloadUnlock()
+        if removed == null {
+            return
+        }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) != 0 {
+            method := AndroidJniMethod(*session, "cancelRuntimeAssetDownload", "(J)V")
+            if method != null {
+                argument: JniValue
+                argument.long_integer = cast(s64)handle
+                session.env.functions.CallVoidMethodA(session.env, session.activity, method, *argument)
+            }
+            AndroidJniDetachCurrent(*session)
+        }
+        DownloadFree(cast(*void)removed)
+    }
+
+    AndroidRelease :: (download: *FileDownload) {
+        if download.handle != 0 {
+            AndroidForget(download.handle)
+        }
+    }
+}
+
+#program_export
+FileDownloadNativeSucceeded :: (env: *void, activity: *void, handle: s64, bytes: s64, http_status: s32) {
+    unused env
+    unused activity
+    #if DOWNLOAD_ANDROID {
+        if handle <= 0 {
+            return
+        }
+        DownloadLock()
+        job := DownloadFind(cast(u64)handle)
+        if job != null && job.status == 1 {
+            job.http_status = http_status
+            job.bytes = ifx bytes > 0 then cast(u64)bytes else 0
+            if job.total_bytes == 0 {
+                job.total_bytes = job.bytes
+            }
+            job.error[0] = 0
+            job.status = 2
+        }
+        DownloadUnlock()
+    }
+    unused handle
+    unused bytes
+    unused http_status
+}
+
+#program_export
+FileDownloadNativeProgress :: (env: *void, activity: *void, handle: s64, bytes: s64, total_bytes: s64) {
+    unused env
+    unused activity
+    #if DOWNLOAD_ANDROID {
+        if handle <= 0 {
+            return
+        }
+        DownloadLock()
+        job := DownloadFind(cast(u64)handle)
+        if job != null && job.status == 1 {
+            job.bytes = ifx bytes > 0 then cast(u64)bytes else 0
+            job.total_bytes = ifx total_bytes > 0 then cast(u64)total_bytes else 0
+        }
+        DownloadUnlock()
+    }
+    unused handle
+    unused bytes
+    unused total_bytes
+}
+
+#program_export
+FileDownloadNativeFailed :: (env: *void, activity: *void, handle: s64, http_status: s32, error: *void) {
+    unused activity
+    #if DOWNLOAD_ANDROID {
+        if handle <= 0 {
+            return
+        }
+        jni := cast(*JniEnv)env
+        message: *u8
+        if error != null {
+            message = jni.functions.GetStringUTFChars(jni, error, null)
+        }
+        bounded: [256]u8
+        if message != null && message[0] != 0 {
+            DownloadCopyError(bounded[:], message)
+        } else {
+            unused CopyCString("Android download failed", bounded[:])
+        }
+        if message != null {
+            jni.functions.ReleaseStringUTFChars(jni, error, message)
+        }
+        DownloadLock()
+        job := DownloadFind(cast(u64)handle)
+        if job != null && job.status == 1 {
+            job.http_status = http_status
+            job.error = bounded
+            job.status = 3
+        }
+        DownloadUnlock()
+    }
+    unused env
+    unused handle
+    unused http_status
+    unused error
+}
