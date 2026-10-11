@@ -37,6 +37,9 @@ PointerState :: struct {
     released_x: float32
     released_y: float32
     captures_drag: bool
+    // The control a press focuses once it becomes a click; see
+    // TreePointerUpdate.
+    focus_generation: u64
 }
 
 PointerDrag :: struct {
@@ -386,6 +389,25 @@ TreeScrollAt :: (session: Session, x: float32, y: float32) -> u64 {
     return cast(u64)0
 }
 
+TreeTextKind :: (kind: s32) -> bool {
+    return kind == WidgetKindTextField || kind == WidgetKindTextArea
+}
+
+TreeTextFocused :: (session: Session) -> bool {
+    input_slot := SessionIndex(session)
+    if input_slot == 0 || active_focus[input_slot] == 0 { return false }
+    for index: 0..trees[input_slot].committed_count - 1 {
+        if trees[input_slot].committed[index].identity_generation == active_focus[input_slot] {
+            return TreeTextKind(trees[input_slot].committed[index].kind)
+        }
+    }
+    return false
+}
+
+// A press focuses the control under it. While a text field has the focus, a
+// press on another control waits until it becomes a click, so a drag that a
+// scroll takes over leaves the text focused and the soft keyboard open, as
+// when scrolling a list beside a text field on a phone.
 #program_export
 TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     input_slot := SessionIndex(session)
@@ -394,7 +416,14 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     hit: s32 = TreeHitAt(session, frame.x, frame.y)
     if frame.pressed {
         active_focus_visible[input_slot] = false
-        unused TreeFocusAt(session, hit)
+        active_pointer[input_slot].focus_generation = 0
+        if hit >= 0 && TreeTextFocused(session) &&
+            !TreeTextKind(trees[input_slot].committed[hit].kind) {
+            active_pointer[input_slot].focus_generation =
+                trees[input_slot].committed[hit].identity_generation
+        } else {
+            unused TreeFocusAt(session, hit)
+        }
     }
     active_pointer[input_slot].hovered_generation = 0
     if hit >= 0 {
@@ -434,12 +463,18 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
                 trees[input_slot].committed[hit].identity_generation {
                 active_pointer[input_slot].activation_generation =
                     active_pointer[input_slot].held_generation
+                if active_pointer[input_slot].focus_generation ==
+                    active_pointer[input_slot].held_generation {
+                    unused TreeFocusAt(session, hit)
+                }
             }
         }
         active_pointer[input_slot].held_generation = 0
+        active_pointer[input_slot].focus_generation = 0
     } else if !frame.down {
         active_pointer[input_slot].held_generation = 0
         active_pointer[input_slot].pressed_generation = 0
+        active_pointer[input_slot].focus_generation = 0
     }
     return hit
 }
@@ -531,6 +566,7 @@ TreePointerCancel :: (session: Session) {
     active_pointer[input_slot].pressed_generation = 0
     active_pointer[input_slot].released_generation = 0
     active_pointer[input_slot].activation_generation = 0
+    active_pointer[input_slot].focus_generation = 0
 }
 
 #program_export

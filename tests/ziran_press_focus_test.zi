@@ -1,0 +1,87 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "button_props"
+#import "button_widget"
+#import "geometry"
+#import "text_field_widget"
+#import "text_input_props"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_button_widget_host"
+#import "ziran_composition_widget_host"
+#import "ziran_system_clipboard_host"
+
+using FrameStatus;
+
+focused: bool;
+request_focus: bool;
+clicks: s32;
+
+// A text field above a button, as Lumi's composer sits beside its command
+// list. Returns 1 when the field is focused, 0 when not, -1 on a bad frame.
+Frame :: () -> s32 {
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    field: TextFieldProps
+    field.key = cast(u64)77
+    field.bounds = Rectangle.{20.0, 20.0, 220.0, 36.0}
+    field.value = "/"
+    field.label = "Message"
+    field.cursor = 1
+    field.anchor = 1
+    field.focused = focused
+    field.focus_id = 77
+    field.input.focus = request_focus
+    result: TextFieldResult = TextField(TestSession(), field)
+    button: ButtonProps
+    button.key = cast(u64)88
+    button.id = 88
+    button.label = "/todo"
+    button.bounds = Rectangle.{20.0, 100.0, 80.0, 30.0}
+    clicks += Button(TestSession(), button)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return -1 }
+    focused = result.focused
+    request_focus = false
+    if result.focused { return 1 }
+    return 0
+}
+
+Press :: (x: float32, y: float32) {
+    unused TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+}
+
+Release :: (x: float32, y: float32) {
+    unused TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
+}
+
+#program_export
+main :: () -> s32 {
+    // The field asks for the focus once it exists, as Lumi's composer does.
+    if Frame() != 0 { return 1 }
+    request_focus = true
+    if Frame() != 1 || !TreeHasFocus(TestSession()) { return 1 }
+    // A press on the button that a scroll then takes over keeps the field
+    // focused throughout, so the keyboard stays open.
+    Press(40.0, 115.0)
+    if Frame() != 1 { return 2 }
+    TreePointerCancel(TestSession())
+    Release(40.0, 115.0)
+    if Frame() != 1 || clicks != 0 { return 3 }
+    // A click on the button still takes the focus when it lands.
+    Press(40.0, 115.0)
+    if Frame() != 1 { return 4 }
+    Release(40.0, 115.0)
+    if Frame() != 0 || clicks != 1 { return 5 }
+    // Without a focused field, a press focuses at once, and a press on a
+    // text field always does.
+    Press(100.0, 38.0)
+    if Frame() != 1 { return 6 }
+    Release(100.0, 38.0)
+    if Frame() != 1 { return 7 }
+    return 0
+}
