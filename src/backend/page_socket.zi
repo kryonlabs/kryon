@@ -1,0 +1,245 @@
+// A browser WebSocket for text events, such as a sync server's change
+// notices, read by polling each frame. Messages wait in a short queue; a
+// binary message, one that does not fit, or a full queue closes the socket
+// (1003, 1009). A socket that has not opened after ten seconds closes.
+// Credentials never travel in the URL: a token goes in the second
+// subprotocol.
+#import "web"
+#import "c_string"
+
+PAGE_SOCKETS :: 4
+PAGE_SOCKET_QUEUE :: 16
+
+PageSocket :: struct {
+    generation: s32
+    busy: bool
+    closed: bool
+    capacity: s32
+    socket: s32
+    timer: s32
+    queue: [PAGE_SOCKET_QUEUE]s32
+    queued: s32
+    on_open: s32
+    on_message: s32
+    on_close: s32
+    on_fail: s32
+}
+
+page_sockets: [PAGE_SOCKETS]PageSocket;
+page_socket_generation: s32;
+
+PageSocketHandle :: (slot: s32, generation: s32) -> s32 {
+    return generation * PAGE_SOCKETS + slot + 1
+}
+
+PageSocketFor :: (handle: s32) -> *PageSocket {
+    if handle <= 0 {
+        return null
+    }
+    slot := (handle - 1) % PAGE_SOCKETS
+    socket := *page_sockets[slot]
+    if !socket.busy || PageSocketHandle(slot, socket.generation) != handle {
+        return null
+    }
+    return socket
+}
+
+PageSocketRelease :: (handle: s32) {
+    if handle != 0 {
+        WebRelease(handle)
+    }
+}
+
+PageSocketStopTimer :: (socket: *PageSocket) {
+    if socket.timer != 0 {
+        unused WebCall1(WebGlobal, WebName("clearTimeout"), WebNumber(cast(float64)socket.timer))
+        socket.timer = 0
+    }
+}
+
+PageSocketFail :: (socket: *PageSocket, code: s32) {
+    socket.closed = true
+    PageSocketStopTimer(socket)
+    unused WebCall1(socket.socket, WebName("close"), WebNumber(cast(float64)code))
+}
+
+PageSocketOpened :: (handle: s32, first: s32, second: s32, third: s32) {
+    unused first
+    unused second
+    unused third
+    socket := PageSocketFor(handle)
+    if socket != null {
+        PageSocketStopTimer(socket)
+    }
+}
+
+PageSocketClosed :: (handle: s32, first: s32, second: s32, third: s32) {
+    unused first
+    unused second
+    unused third
+    socket := PageSocketFor(handle)
+    if socket != null {
+        PageSocketStopTimer(socket)
+        socket.closed = true
+    }
+}
+
+PageSocketFailed :: (handle: s32, first: s32, second: s32, third: s32) {
+    unused first
+    unused second
+    unused third
+    socket := PageSocketFor(handle)
+    if socket != null && !socket.closed {
+        PageSocketFail(socket, 1000)
+    }
+}
+
+PageSocketMessage :: (handle: s32, event: s32, second: s32, third: s32) {
+    unused second
+    unused third
+    socket := PageSocketFor(handle)
+    if socket == null || socket.closed {
+        return
+    }
+    data := WebGet(event, WebName("data"))
+    if data.tag != WebStringTag {
+        PageSocketFail(socket, 1003)
+        return
+    }
+    text := WebAsObject(data)
+    if WebStringLength(text) >= socket.capacity || socket.queued >= PAGE_SOCKET_QUEUE {
+        PageSocketFail(socket, 1009)
+        return
+    }
+    socket.queue[socket.queued] = WebKeep(text)
+    socket.queued += 1
+}
+
+// ws:// or wss:// with no user or password in the authority.
+PageSocketUrlValid :: (url: string) -> bool {
+    start: s64 = 0
+    if url.count > 5 && url[0:5] == "ws://" {
+        start = 5
+    } else if url.count > 6 && url[0:6] == "wss://" {
+        start = 6
+    } else {
+        return false
+    }
+    at := start
+    while at < url.count && url[at] != #char "/" {
+        if url[at] == #char "@" {
+            return false
+        }
+        at += 1
+    }
+    return at > start
+}
+
+// Opens a socket; 0 when the URL or bounds are invalid or four are open.
+// capacity bounds each message, including its NUL.
+PageSocketOpen :: (url: string, protocol: string, authorization: string, capacity: s32) -> s32 {
+    if url.count >= 2048 || protocol.count > 128 || authorization.count > 8192 ||
+    capacity < 2 || capacity > 65536 || !PageSocketUrlValid(url) {
+        return 0
+    }
+    slot: s32 = -1
+    for index: 0..PAGE_SOCKETS - 1 {
+        if slot < 0 && !page_sockets[index].busy {
+            slot = cast(s32)index
+        }
+    }
+    if slot < 0 {
+        return 0
+    }
+    page_socket_generation += 1
+    if page_socket_generation > 100000000 {
+        page_socket_generation = 1
+    }
+    socket := *page_sockets[slot]
+    socket.* = PageSocket.{.generation = page_socket_generation, .busy = true, .capacity = capacity}
+    handle := PageSocketHandle(slot, socket.generation)
+    scope := WebScope()
+    defer WebEnd(scope)
+    protocols := WebNewArray()
+    if protocol.count > 0 {
+        unused WebCall1(protocols, WebName("push"), WebText(protocol))
+    }
+    if authorization.count > 0 {
+        unused WebCall1(protocols, WebName("push"), WebText(authorization))
+    }
+    created := WebNew2(WebGetObject(WebGlobal, WebName("WebSocket")), WebText(url), WebObject(protocols))
+    if created == 0 || WebFailed() {
+        socket.* = PageSocket.{}
+        return 0
+    }
+    socket.socket = WebKeep(created)
+    socket.on_open = WebFunction(PageSocketOpened, handle)
+    socket.on_message = WebFunction(PageSocketMessage, handle)
+    socket.on_close = WebFunction(PageSocketClosed, handle)
+    socket.on_fail = WebFunction(PageSocketFailed, handle)
+    WebSet(socket.socket, WebName("onopen"), WebObject(socket.on_open))
+    WebSet(socket.socket, WebName("onmessage"), WebObject(socket.on_message))
+    WebSet(socket.socket, WebName("onclose"), WebObject(socket.on_close))
+    WebSet(socket.socket, WebName("onerror"), WebObject(socket.on_fail))
+    socket.timer = cast(s32)WebAsNumber(WebCall2(WebGlobal, WebName("setTimeout"),
+        WebObject(socket.on_fail), WebNumber(10000.0)))
+    return handle
+}
+
+// The next message's length, copied NUL-terminated into output; -1 while
+// none waits; 0 once the socket has closed, which also frees it.
+PageSocketPoll :: (handle: s32, output: []u8) -> s32 {
+    socket := PageSocketFor(handle)
+    if socket == null || output.count < 2 {
+        return 0
+    }
+    if socket.closed {
+        PageSocketClose(handle)
+        return 0
+    }
+    if socket.queued == 0 {
+        return -1
+    }
+    text := socket.queue[0]
+    for index: 1..socket.queued - 1 {
+        socket.queue[index - 1] = socket.queue[index]
+    }
+    socket.queued -= 1
+    length := WebStringLength(text)
+    if length >= cast(s32)output.count {
+        PageSocketRelease(text)
+        PageSocketFail(socket, 1009)
+        PageSocketClose(handle)
+        return 0
+    }
+    copied := WebCopyString(text, output)
+    PageSocketRelease(text)
+    return copied
+}
+
+PageSocketClose :: (handle: s32) {
+    socket := PageSocketFor(handle)
+    if socket == null {
+        return
+    }
+    scope := WebScope()
+    PageSocketStopTimer(socket)
+    if !socket.closed {
+        unused WebCall1(socket.socket, WebName("close"), WebNumber(1000.0))
+    }
+    // Late events find no socket; drop the handlers with the socket.
+    WebSet(socket.socket, WebName("onmessage"), WebNull())
+    WebSet(socket.socket, WebName("onclose"), WebNull())
+    WebSet(socket.socket, WebName("onerror"), WebNull())
+    WebSet(socket.socket, WebName("onopen"), WebNull())
+    WebEnd(scope)
+    for index: 0..socket.queued - 1 {
+        PageSocketRelease(socket.queue[index])
+    }
+    PageSocketRelease(socket.socket)
+    PageSocketRelease(socket.on_open)
+    PageSocketRelease(socket.on_message)
+    PageSocketRelease(socket.on_close)
+    PageSocketRelease(socket.on_fail)
+    socket.* = PageSocket.{}
+}

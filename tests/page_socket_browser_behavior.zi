@@ -1,0 +1,90 @@
+// Runs in headless Chromium against tests/page_socket_server.py; the page's
+// query names the server's port.
+#import "page_socket"
+#import "web"
+#import "c_string"
+#import "byte_text_linux"
+
+port: [16]u8;
+
+Url :: (path: string, output: []u8) -> string {
+    length: s64 = 0
+    for part: 0..2 {
+        text := ifx part == 0 then "ws://127.0.0.1:" else ifx part == 1 then TextFromCString(*port[0]) else path
+        for index: cast(s64)0..text.count - 1 {
+            output[length] = text[index]
+            length += 1
+        }
+    }
+    output[length] = 0
+    return TextFromCString(*output[0])
+}
+
+// The next message, or "" once the socket closed.
+Next :: (socket: s32, output: []u8) -> string {
+    for attempt: 0..499 {
+        count := PageSocketPoll(socket, output)
+        if count > 0 {
+            return TextFromCString(*output[0])
+        }
+        if count == 0 {
+            return ""
+        }
+        WebSleep(10)
+    }
+    return "timeout"
+}
+
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+
+Check :: () -> string {
+    scope := WebScope()
+    search := WebGet(WebGetObject(WebGlobal, WebName("location")), WebName("search"))
+    query: [32]u8
+    WebCopyString(WebAsObject(search), query[:])
+    WebEnd(scope)
+    CopyCString(TextFromCString(*query[6]), port[:])
+    url: [128]u8
+    output: [64]u8
+    events := PageSocketOpen(Url("/events", url[:]), "daochi-sync-v1", "bearer.secret", 64)
+    if events == 0 {
+        return "FAIL open"
+    }
+    if Next(events, output[:]) != "hello" {
+        return "FAIL first message"
+    }
+    if Next(events, output[:]) != "daochi-sync-v1,bearer.secret" {
+        return "FAIL protocols"
+    }
+    PageSocketClose(events)
+    if PageSocketPoll(events, output[:]) != 0 {
+        return "FAIL closed"
+    }
+    // A message that does not fit, or a binary one, closes the socket.
+    big := PageSocketOpen(Url("/big", url[:]), "daochi-sync-v1", "", 64)
+    if big == 0 || Next(big, output[:]) != "" {
+        return "FAIL big"
+    }
+    binary := PageSocketOpen(Url("/binary", url[:]), "daochi-sync-v1", "", 64)
+    if binary == 0 || Next(binary, output[:]) != "" {
+        return "FAIL binary"
+    }
+    if PageSocketOpen("http://127.0.0.1/events", "", "", 64) != 0 ||
+    PageSocketOpen("ws://user:secret@127.0.0.1/events", "", "", 64) != 0 ||
+    PageSocketOpen(Url("/events", url[:]), "", "", 1) != 0 {
+        return "FAIL refusals"
+    }
+    return "PASS"
+}
+
+#program_export
+main :: () -> s32 {
+    Report(Check())
+    return 0
+}
