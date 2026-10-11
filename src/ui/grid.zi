@@ -97,3 +97,63 @@ GridCursorHeight :: (cursor: GridCursor) -> s32 {
     if height < 0 { height = 0 }
     return height
 }
+
+// Equal cells: a grid of tiles that share one height, laid out across the
+// columns MeasureGrid chose for the width, such as an app launcher.
+
+// Rows that count equal cells need.
+#program_export
+GridRowCount :: (metrics: GridMetrics, count: s32) -> s32 {
+    columns: s32 = ifx metrics.columns > 0 then metrics.columns else 1
+    if count <= 0 { return 0 }
+    return (count + columns - 1) / columns
+}
+
+// Height of count equal cells, with gaps only between rows.
+#program_export
+GridCellsHeight :: (metrics: GridMetrics, count: s32, cell_height: s32) -> s32 {
+    rows: s32 = GridRowCount(metrics, count)
+    if rows == 0 { return 0 }
+    return rows * cell_height + (rows - 1) * metrics.gap
+}
+
+// Bounds of equal cell index, in reading order.
+#program_export
+GridCellBounds :: (metrics: GridMetrics, index: s32, cell_height: s32) -> Rectangle {
+    columns: s32 = ifx metrics.columns > 0 then metrics.columns else 1
+    if index < 0 { index = 0 }
+    column: s32 = index % columns
+    row: s32 = index / columns
+    return Rectangle.{
+        metrics.content.x + cast(float32)(column * (metrics.cell_width + metrics.gap)),
+        metrics.content.y + cast(float32)(row * (cell_height + metrics.gap)),
+        cast(float32)metrics.cell_width,
+        cast(float32)cell_height
+    }
+}
+
+// The equal cell under a point, for dropping a dragged tile there: points
+// beside the columns or between cells pick the nearest cell, points above the
+// grid pick the first and points past the last cell give count.
+#program_export
+GridIndexAt :: (metrics: GridMetrics, x: float32, y: float32,
+    cell_height: s32, count: s32) -> s32 {
+    columns: s32 = ifx metrics.columns > 0 then metrics.columns else 1
+    if count <= 0 { return 0 }
+    pitch_x: s32 = metrics.cell_width + metrics.gap
+    pitch_y: s32 = cell_height + metrics.gap
+    if pitch_x <= 0 { pitch_x = 1 }
+    if pitch_y <= 0 { pitch_y = 1 }
+    column: s32 = 0
+    if x > metrics.content.x {
+        column = cast(s32)(x - metrics.content.x) / pitch_x
+    }
+    if column >= columns { column = columns - 1 }
+    row: s32 = 0
+    if y > metrics.content.y {
+        row = cast(s32)(y - metrics.content.y) / pitch_y
+    }
+    index: s32 = row * columns + column
+    if index > count { index = count }
+    return index
+}
