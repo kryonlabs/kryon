@@ -29,6 +29,20 @@ using WidgetKind;
 
 #program_export
 Answer :: () -> s32 {
+    metrics: ScrollMetrics
+    metrics.scrollbar_width = 10
+    metrics.thumb_min_height = 16
+    metrics.thumb_inset = 2
+    half := ScrollBarPaintFor(90, 10, 100, 200, 0, 100, metrics)
+    bottom := ScrollBarPaintFor(90, 10, 100, 200, 100, 100, metrics)
+    full := ScrollBarPaintFor(90, 10, 100, 100, 0, 0, metrics)
+    tiny := ScrollBarPaintFor(90, 10, 2, 1000, 998, 998, metrics)
+    if half.thumb_bounds.height != 50.0 || half.track_span != 50 ||
+        bottom.thumb_bounds.y + bottom.thumb_bounds.height != 110.0 ||
+        full.thumb_bounds.height != 100.0 || full.track_span != 0 ||
+        tiny.thumb_bounds.height != 2.0 || tiny.thumb_bounds.y != 10.0 {
+        return -20
+    }
     root: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
     TreeStart(TestSession(), cast(u64)1, root)
     props: ScrollProps

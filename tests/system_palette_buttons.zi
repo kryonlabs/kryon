@@ -4,6 +4,7 @@
 #import "style_sheet"
 #import "style"
 #import "control_props"
+#import "scroll"
 using ButtonTone;
 using ButtonEmphasis;
 using ButtonState;
@@ -62,10 +63,20 @@ main :: () -> s32 {
     value := Face(StyleKindSpinboxValue(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
     Check(spin.background == palette.base && value.background == palette.base && spin.foreground == palette.text && value.foreground == palette.text, "spinbox and value share the palette's input colors")
     Check(spin.border == palette.border && spin.focus == palette.selected, "spinbox keeps palette border and keyboard focus colors")
+    track := ScrollFace(StyleKindScroll(), 0, false, cast(s32)ButtonStateNormal, 10.0)
+    thumb := ScrollFace(StyleKindScrollThumb(), 0, false, cast(s32)ButtonStateNormal, 10.0)
+    thumb_hover := ScrollFace(StyleKindScrollThumb(), 0, false, cast(s32)ButtonStateHover, 10.0)
+    thumb_pressed := ScrollFace(StyleKindScrollThumb(), 0, false, cast(s32)ButtonStatePressed, 10.0)
+    Check(track.value.background == cast(u32)0 && thumb.value.radius == 3.0, "scrollbar has a transparent track and rounded thumb")
+    Check(CssLuminance(thumb.value.background) < CssLuminance(bg), "light scrollbar thumb contrasts with its page")
+    Check(thumb.value.background != thumb_hover.value.background && thumb_hover.value.background != thumb_pressed.value.background, "scrollbar shows hover and drag feedback")
     dark := SystemPaletteFallback(true)
     Check(SystemPaletteInstall(dark), "dark palette installs without a platform host")
     dark_value := Face(StyleKindSpinboxValue(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
     Check(dark_value.background == dark.base && dark_value.foreground == dark.text, "numeric values remain readable with a dark palette")
+    dark_thumb := ScrollFace(StyleKindScrollThumb(), 0, false, cast(s32)ButtonStateNormal, 10.0)
+    dark_track := ScrollFace(StyleKindScroll(), 0, false, cast(s32)ButtonStateNormal, 10.0)
+    Check(dark_track.value.background == cast(u32)0 && CssLuminance(dark_thumb.value.background) > CssLuminance(dark.background), "dark scrollbar follows its palette instead of a light track")
     print("System palette buttons: % failures\n", failures)
     return ifx failures == 0 then 0 else 1
 }
