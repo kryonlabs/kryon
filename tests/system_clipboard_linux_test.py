@@ -26,6 +26,7 @@ ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 APP = '''Desktop :: #import "kryon/Desktop";
 using UI :: #import "kryon/Widgets";
 using Clipboard :: #import "kryon/SystemClipboardLinux";
+using TextClipboard :: #import "kryon/system_clipboard";
 #import "kryon/Frame"
 #import "kryon/geometry"
 #import "std/byte_text_linux"
@@ -35,6 +36,7 @@ libc :: #system_library "c";
 Write :: (descriptor: s32, bytes: *u8, count: u64) -> s64 #foreign libc "write";
 GetEnvironment :: (name: *u8) -> *u8 #foreign libc "getenv";
 Allocate :: (count: usize, bytes: usize) -> *u8 #foreign libc "calloc";
+Clock :: (id: s32, time: *s64) -> s32 #foreign libc "clock_gettime";
 
 // Fixed arrays stop at a megabyte; a screenshot needs more.
 PNG_CAPACITY :: 8388608;
@@ -90,6 +92,23 @@ main :: () -> s32 {
     }
     if mode == "tiny" {
         Report(SystemClipboardImage(tiny[:]))
+        return 0
+    }
+    if mode == "self" {
+        // This window owns the clipboard; asking for an image must not wait
+        // on the event loop that the read itself blocks.
+        if !Desktop.OpenDesktopSized(320, 80) { return 2 }
+        if !SystemClipboardSet("copied here") { return 10 }
+        for pump: 0..4 { unused Desktop.PollDesktop(); Desktop.PauseDesktop() }
+        before: [2]s64
+        after: [2]s64
+        unused Clock(1, *before[0])
+        image: SystemClipboardImageResult = SystemClipboardImage(png[:])
+        unused Clock(1, *after[0])
+        Report(image)
+        digits: [32]u8
+        Say(1, FormatInteger((after[0] - before[0]) * 1000 + (after[1] - before[1]) / 1000000, digits[:]))
+        Desktop.CloseDesktop()
         return 0
     }
     if !Desktop.OpenDesktopSized(320, 80) { return 2 }
@@ -221,6 +240,11 @@ test "$(PROBE_MODE=read "$probe")" = "1 0 0 0"
 # Text only: no PNG is offered.
 gtk_owns --text "just text"
 test "$(PROBE_MODE=read "$probe")" = "1 0 0 0"
+# Text this process copied itself: no image, without waiting out the limit.
+release
+self=$(PROBE_MODE=self "$probe")
+test "$(echo "$self" | head -n 1)" = "1 0 0 0"
+test "$(echo "$self" | tail -n 1)" -lt 500 || { echo "own clipboard took $(echo "$self" | tail -n 1) ms" >&2; exit 1; }
 # The exact bytes arrive, whole and in INCR increments.
 for name in small large; do
     xclip_owns -t image/png -i "$work/$name.png"
@@ -307,7 +331,7 @@ def main():
     print(f"clipboard images: Ctrl+V in a TextField pasted GTK-copied images "
           f"(64x48, and 900x900 as a {pasted_size}-byte INCR PNG) pixel-exact; "
           f"xclip's {len(small)}- and {len(large)}-byte PNGs read byte-exact; "
-          f"empty, text-only, oversize and no-display cases passed on a private "
+          f"empty, text-only, own-copy, oversize and no-display cases passed on a private "
           f"Xvfb display ({elapsed:.1f}s)")
 
 
