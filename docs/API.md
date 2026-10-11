@@ -100,6 +100,12 @@ and its host may be built against different Kryon layouts.
 generates the codecs for Kryon's widget records and, with `--uses`, for an
 application's own records.
 
+[`open_uri`](../src/backend/open_uri.zi) opens a link with the platform's
+handler: `OpenUri(uri)` passes it unchanged to the desktop opener, Windows'
+shell, Plan 9's plumber, an Android `ACTION_VIEW` intent or a new browser tab,
+and `CanOpenUri(uri)` says whether that platform can open it. Android code
+reaches the activity through [`android_jni`](../src/backend/android_jni.zi).
+
 [`src/ui/modules.txt`](../src/ui/modules.txt) is the core build inventory.
 `make test` checks source, saved `.zir`, `.zib`, and generated C/C++/Go behavior.
 See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for package and host verification.

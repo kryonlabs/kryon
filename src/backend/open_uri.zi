@@ -1,0 +1,374 @@
+// Open a URI, such as a web page or a wallet's payment link, with the
+// platform's handler. The URI is passed unchanged as one argument, never
+// through a shell. Tests set KRYON_TEST_OPEN_URI_CAPTURE to a file path to
+// receive the URI there instead of opening anything.
+#import "c_string"
+
+URI_ANDROID :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
+URI_WEB :: #defined(PLATFORM_WEB) || #defined(__EMSCRIPTEN__)
+URI_WINDOWS :: #defined(_WIN32)
+URI_PLAN9 :: #defined(KRYON_BACKEND_LIBDRAW)
+
+OPEN_URI_CAPACITY :: 4096
+
+#if URI_ANDROID {
+    #import "android_jni"
+}
+#if URI_WEB {
+    #import "web"
+}
+
+open_uri_c :: #system_library "c";
+
+#if !URI_ANDROID && !URI_WEB {
+    UriGetEnv :: (name: *u8) -> *u8 #foreign open_uri_c "getenv";
+    UriFileOpen :: (path: *u8, mode: *u8) -> *void #foreign open_uri_c "fopen";
+    UriFileWrite :: (text: *u8, file: *void) -> s32 #foreign open_uri_c "fputs";
+    UriFileClose :: (file: *void) -> s32 #foreign open_uri_c "fclose";
+
+    // 1 when the URI was captured, -1 when capturing failed, 0 when no
+    // capture is requested.
+    UriTestCapture :: (uri: *u8) -> s32 {
+        variable: [32]u8
+        CopyCString("KRYON_TEST_OPEN_URI_CAPTURE", variable[:])
+        path := UriGetEnv(*variable[0])
+        if path == null || path[0] == 0 {
+            return 0
+        }
+        mode: [4]u8
+        CopyCString("wb", mode[:])
+        file := UriFileOpen(path, *mode[0])
+        if file == null {
+            return -1
+        }
+        written := UriFileWrite(uri, file)
+        closed := UriFileClose(file)
+        if written < 0 || closed != 0 {
+            return -1
+        }
+        return 1
+    }
+}
+
+#if URI_WINDOWS {
+    shell32 :: #system_library "shell32";
+    UriShellExecute :: (window: *void, operation: *u8, file: *u8,
+        parameters: *u8, directory: *u8, show: s32) -> isize #foreign shell32 "ShellExecuteA";
+}
+
+#if !URI_ANDROID && !URI_WEB && !URI_WINDOWS {
+    UriArguments :: struct {
+        command: *u8
+        uri: *u8
+        end: *u8
+    }
+    UriExec :: (path: *u8, arguments: **u8) -> s32 #foreign open_uri_c "execvp";
+    #if URI_PLAN9 {
+        UriFork :: (flags: s32) -> s32 #foreign open_uri_c "rfork";
+        UriPlan9Exec :: (path: *u8, arguments: **u8) -> s32 #foreign open_uri_c "exec";
+        UriPlan9Exit :: (message: *u8) #foreign open_uri_c "exits";
+    }
+    #if !URI_PLAN9 {
+        UriFork :: () -> s32 #foreign open_uri_c "fork";
+        UriExit :: (status: s32) #foreign open_uri_c "_exit";
+    }
+
+    // Starts the desktop's opener (plumb on Plan 9) as a child process.
+    UriSpawn :: (uri: *u8) -> bool {
+        command: [16]u8
+        #if URI_PLAN9 {
+            CopyCString("/bin/plumb", command[:])
+            process := UriFork(94)
+        }
+        #if !URI_PLAN9 {
+            #if #defined(__APPLE__) {
+                CopyCString("open", command[:])
+            } else {
+                CopyCString("xdg-open", command[:])
+            }
+            process := UriFork()
+        }
+        if process < 0 {
+            return false
+        }
+        if process == 0 {
+            arguments: UriArguments
+            arguments.command = *command[0]
+            arguments.uri = uri
+            #if URI_PLAN9 {
+                UriPlan9Exec(*command[0], cast(**u8)*arguments)
+                error: [8]u8
+                CopyCString("exec", error[:])
+                UriPlan9Exit(*error[0])
+            }
+            #if !URI_PLAN9 {
+                UriExec(*command[0], cast(**u8)*arguments)
+                UriExit(127)
+            }
+        }
+        return true
+    }
+}
+
+#if URI_WEB {
+    UriIsWeb :: (uri: string) -> bool {
+        return UriHasPrefix(uri, "http://") || UriHasPrefix(uri, "https://")
+    }
+
+    UriHasPrefix :: (uri: string, prefix: string) -> bool {
+        if uri.count < prefix.count {
+            return false
+        }
+        for index: cast(s64)0..prefix.count - 1 {
+            byte := uri[index]
+            if byte >= cast(u8)65 && byte <= cast(u8)90 {
+                byte += cast(u8)32
+            }
+            if byte != prefix[index] {
+                return false
+            }
+        }
+        return true
+    }
+
+    // A link clicked in a new tab, so the application keeps running.
+    UriBrowserOpen :: (uri: string) -> bool {
+        scope := WebScope()
+        defer WebEnd(scope)
+        document := WebGetObject(WebGlobal, WebName("document"))
+        if document == 0 || WebFailed() {
+            return false
+        }
+        body := WebGetObject(document, WebName("body"))
+        anchor := WebAsObject(WebCall1(document, WebName("createElement"), WebText("a")))
+        if body == 0 || anchor == 0 || WebFailed() {
+            return false
+        }
+        WebSet(anchor, WebName("href"), WebText(uri))
+        WebSet(anchor, WebName("target"), WebText("_blank"))
+        WebSet(anchor, WebName("rel"), WebText("noopener"))
+        unused WebCall1(body, WebName("appendChild"), WebObject(anchor))
+        if WebFailed() {
+            return false
+        }
+        unused WebCall0(anchor, WebName("click"))
+        clicked := !WebFailed()
+        unused WebCall0(anchor, WebName("remove"))
+        return clicked
+    }
+}
+
+#if URI_ANDROID {
+    UriFindClass :: (env: *JniEnv, name: string) -> *void {
+        bytes: [96]u8
+        if !CopyCString(name, bytes[:]) {
+            return null
+        }
+        return env.functions.FindClass(env, *bytes[0])
+    }
+
+    UriMethod :: (env: *JniEnv, klass: *void, name: string,
+        signature: string, is_static: bool) -> *void {
+        method: [64]u8
+        descriptor: [128]u8
+        if !CopyCString(name, method[:]) ||
+        !CopyCString(signature, descriptor[:]) {
+            return null
+        }
+        if is_static {
+            return env.functions.GetStaticMethodID(env, klass,
+                *method[0], *descriptor[0])
+        }
+        return env.functions.GetMethodID(env, klass,
+            *method[0], *descriptor[0])
+    }
+
+    UriField :: (env: *JniEnv, klass: *void, name: string,
+        signature: string) -> *void {
+        field: [64]u8
+        descriptor: [64]u8
+        if !CopyCString(name, field[:]) ||
+        !CopyCString(signature, descriptor[:]) {
+            return null
+        }
+        return env.functions.GetStaticFieldID(env, klass,
+            *field[0], *descriptor[0])
+    }
+
+    // new Intent(ACTION_VIEW, Uri.parse(uri)), browsable, in a new task.
+    UriNewIntent :: (env: *JniEnv, uri: *u8) -> *void {
+        text := AndroidJniString(env, uri)
+        uri_class := UriFindClass(env, "android/net/Uri")
+        if text == null || uri_class == null ||
+        env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        parse := UriMethod(env, uri_class, "parse",
+            "(Ljava/lang/String;)Landroid/net/Uri;", true)
+        if parse == null || env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        arguments: [2]JniValue
+        arguments[0].reference = text
+        uri_object := env.functions.CallStaticObjectMethodA(env, uri_class,
+            parse, *arguments[0])
+        if uri_object == null || env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        intent_class := UriFindClass(env, "android/content/Intent")
+        if intent_class == null || env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        action_field := UriField(env, intent_class, "ACTION_VIEW", "Ljava/lang/String;")
+        category_field := UriField(env, intent_class, "CATEGORY_BROWSABLE", "Ljava/lang/String;")
+        new_task_field := UriField(env, intent_class, "FLAG_ACTIVITY_NEW_TASK", "I")
+        constructor := UriMethod(env, intent_class, "<init>",
+            "(Ljava/lang/String;Landroid/net/Uri;)V", false)
+        add_category := UriMethod(env, intent_class, "addCategory",
+            "(Ljava/lang/String;)Landroid/content/Intent;", false)
+        add_flags := UriMethod(env, intent_class, "addFlags",
+            "(I)Landroid/content/Intent;", false)
+        if action_field == null || category_field == null || new_task_field == null ||
+        constructor == null || add_category == null || add_flags == null ||
+        env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        action := env.functions.GetStaticObjectField(env, intent_class, action_field)
+        category := env.functions.GetStaticObjectField(env, intent_class, category_field)
+        new_task := env.functions.GetStaticIntField(env, intent_class, new_task_field)
+        if action == null || category == null || env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        arguments[0].reference = action
+        arguments[1].reference = uri_object
+        intent := env.functions.NewObjectA(env, intent_class, constructor,
+            *arguments[0])
+        if intent == null || env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        arguments[0].reference = category
+        env.functions.CallObjectMethodA(env, intent, add_category, *arguments[0])
+        if env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        arguments[0].integer = new_task
+        env.functions.CallObjectMethodA(env, intent, add_flags, *arguments[0])
+        if env.functions.ExceptionCheck(env) != 0 {
+            return null
+        }
+        return intent
+    }
+
+    UriCanOpenAndroid :: (session: *AndroidJniSession,
+        intent: *void) -> bool {
+        env := session.env
+        get_manager := AndroidJniMethod(session, "getPackageManager",
+            "()Landroid/content/pm/PackageManager;")
+        if get_manager == null || env.functions.ExceptionCheck(env) != 0 {
+            return false
+        }
+        manager := env.functions.CallObjectMethodA(env, session.activity,
+            get_manager, null)
+        if manager == null || env.functions.ExceptionCheck(env) != 0 {
+            return false
+        }
+        manager_class := env.functions.GetObjectClass(env, manager)
+        if manager_class == null {
+            return false
+        }
+        resolve := UriMethod(env, manager_class, "resolveActivity",
+            "(Landroid/content/Intent;I)Landroid/content/pm/ResolveInfo;", false)
+        if resolve == null || env.functions.ExceptionCheck(env) != 0 {
+            return false
+        }
+        arguments: [2]JniValue
+        arguments[0].reference = intent
+        arguments[1].integer = 0
+        resolved := env.functions.CallObjectMethodA(env, manager,
+            resolve, *arguments[0])
+        return resolved != null && env.functions.ExceptionCheck(env) == 0
+    }
+
+    UriOpenAndroid :: (uri: *u8, open: bool) -> bool {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return false
+        }
+        result := false
+        intent := UriNewIntent(session.env, uri)
+        if intent != null {
+            if open {
+                // Android package visibility can hide a launchable handler.
+                // Try the intent directly; a missing handler raises an exception.
+                method := AndroidJniMethod(*session, "startActivity",
+                    "(Landroid/content/Intent;)V")
+                if method != null && session.env.functions.ExceptionCheck(session.env) == 0 {
+                    arguments: [1]JniValue
+                    arguments[0].reference = intent
+                    session.env.functions.CallVoidMethodA(session.env,
+                        session.activity, method, *arguments[0])
+                    if session.env.functions.ExceptionCheck(session.env) == 0 {
+                        result = true
+                    } else {
+                        // A fallback may follow. Do not log a private deep link.
+                        session.env.functions.ExceptionClear(session.env)
+                    }
+                }
+            } else {
+                result = UriCanOpenAndroid(*session, intent)
+            }
+        }
+        AndroidJniDetachCurrent(*session)
+        return result
+    }
+}
+
+// Copies uri for the platform; false when it is empty, holds a NUL byte or
+// does not fit.
+UriText :: (uri: string, bytes: []u8) -> bool {
+    return uri.count > 0 && CopyCString(uri, bytes)
+}
+
+// Whether the platform can open uri. A desktop hands any scheme to its
+// opener; a browser opens only web pages; Android asks for a handler.
+CanOpenUri :: (uri: string) -> bool {
+    bytes: [OPEN_URI_CAPACITY]u8
+    if !UriText(uri, bytes[:]) {
+        return false
+    }
+    #if URI_ANDROID {
+        return UriOpenAndroid(*bytes[0], false)
+    }
+    #if URI_WEB {
+        return UriIsWeb(uri)
+    }
+    return true
+}
+
+OpenUri :: (uri: string) -> bool {
+    bytes: [OPEN_URI_CAPACITY]u8
+    if !UriText(uri, bytes[:]) {
+        return false
+    }
+    #if URI_ANDROID {
+        return UriOpenAndroid(*bytes[0], true)
+    }
+    #if URI_WEB {
+        return UriIsWeb(uri) && UriBrowserOpen(uri)
+    }
+    #if !URI_ANDROID && !URI_WEB {
+        captured := UriTestCapture(*bytes[0])
+        if captured != 0 {
+            return captured > 0
+        }
+        #if URI_WINDOWS {
+            operation: [8]u8
+            CopyCString("open", operation[:])
+            return UriShellExecute(null, *operation[0], *bytes[0], null, null, 1) > cast(isize)32
+        }
+        #if !URI_WINDOWS {
+            return UriSpawn(*bytes[0])
+        }
+    }
+    return false
+}
