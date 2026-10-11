@@ -1,0 +1,196 @@
+// Android's document picker and QR scanner: requests reach the activity with
+// their number, each answer is taken once by the request that asked, and a
+// newer request replaces an unanswered one. Runs with ANDROID_BUILD on the
+// host; a fake JNI environment stands in for the activity.
+#import "android_jni"
+#import "android_picker"
+#import "c_string"
+
+c :: #system_library "c";
+TestExit :: (status: s32) #foreign c "exit";
+
+api: JniFunctions;
+vm_api: JniVmFunctions;
+environment: JniEnv;
+vm: JniVm;
+activity: NativeActivity;
+app: NativeAndroidApp;
+frames: s32;
+exception_pending: u8;
+method_name: [96]u8;
+method_signature: [192]u8;
+java_text: [256]u8;
+calls: s32;
+last_request: s32;
+java_throws: bool;
+
+Require :: (condition: bool, code: s32) {
+    if !condition {
+        TestExit(code)
+    }
+}
+
+CStringEquals :: (text: *u8, expected: string) -> bool {
+    if text == null {
+        return false
+    }
+    index: s64 = 0
+    while index < expected.count {
+        if text[index] != expected[index] {
+            return false
+        }
+        index += 1
+    }
+    return text[index] == 0
+}
+
+CopyText :: (text: *u8, output: []u8) {
+    index: s64 = 0
+    while index + 1 < output.count && text[index] != 0 {
+        output[index] = text[index]
+        index += 1
+    }
+    output[index] = 0
+}
+
+FakeGetEnv :: (machine: *JniVm, output: **JniEnv, version: s32) -> s32 {
+    unused machine
+    unused version
+    output[0] = *environment
+    return 0
+}
+FakePushFrame :: (env: *JniEnv, capacity: s32) -> s32 {
+    unused env
+    unused capacity
+    frames += 1
+    return 0
+}
+FakePopFrame :: (env: *JniEnv, result: *void) -> *void {
+    unused env
+    frames -= 1
+    return result
+}
+FakeException :: (env: *JniEnv) -> u8 {
+    unused env
+    return exception_pending
+}
+FakeDescribe :: (env: *JniEnv) {
+    unused env
+}
+FakeClear :: (env: *JniEnv) {
+    unused env
+    exception_pending = 0
+}
+FakeObjectClass :: (env: *JniEnv, object: *void) -> *void {
+    unused env
+    return object
+}
+FakeMethod :: (env: *JniEnv, klass: *void, name: *u8, signature: *u8) -> *void {
+    unused env
+    unused klass
+    CopyText(name, method_name[:])
+    CopyText(signature, method_signature[:])
+    return cast(*void)*method_name[0]
+}
+FakeString :: (env: *JniEnv, text: *u8) -> *void {
+    unused env
+    CopyText(text, java_text[:])
+    return cast(*void)*java_text[0]
+}
+FakeVoid :: (env: *JniEnv, object: *void, method: *void, arguments: *JniValue) {
+    unused env
+    unused object
+    unused method
+    calls += 1
+    last_request = arguments[1].integer
+    if java_throws {
+        exception_pending = 1
+    }
+}
+FakeReadText :: (env: *JniEnv, text: *void, copied: *u8) -> *u8 {
+    unused env
+    unused copied
+    return cast(*u8)text
+}
+FakeReleaseText :: (env: *JniEnv, text: *void, bytes: *u8) {
+    unused env
+    unused text
+    unused bytes
+}
+
+#program_export
+GetAndroidApp :: () -> *NativeAndroidApp {
+    return *app
+}
+
+#program_export
+ANativeActivity_finish :: (activity: *void) {
+    unused activity
+}
+
+#program_export
+main :: () -> s32 {
+    environment.functions = *api
+    vm.functions = *vm_api
+    activity.vm = *vm
+    activity.activity = cast(*void)*activity
+    app.activity = *activity
+    vm_api.GetEnv = FakeGetEnv
+    api.PushLocalFrame = FakePushFrame
+    api.PopLocalFrame = FakePopFrame
+    api.ExceptionCheck = FakeException
+    api.ExceptionDescribe = FakeDescribe
+    api.ExceptionClear = FakeClear
+    api.GetObjectClass = FakeObjectClass
+    api.GetMethodID = FakeMethod
+    api.NewStringUTF = FakeString
+    api.CallVoidMethodA = FakeVoid
+    api.GetStringUTFChars = FakeReadText
+    api.ReleaseStringUTFChars = FakeReleaseText
+
+    // A document request reaches openImportPicker with its number.
+    Require(AndroidPickerOpen(4, "image/*"), 1)
+    Require(calls == 1 && last_request == 4 && frames == 0, 2)
+    Require(CStringEquals(*method_name[0], "openImportPicker") &&
+        CStringEquals(*method_signature[0], "(Ljava/lang/String;I)V") &&
+        CStringEquals(*java_text[0], "image/*"), 3)
+    output: [64]u8
+    Require(AndroidPickerPoll(4, output[:]) == .AndroidPickerNone && output[0] == 0, 4)
+
+    // The answer belongs to its request and is taken once.
+    path: [64]u8
+    unused CopyCString("/data/files/import/photo.jpg", path[:])
+    AndroidNativePickerSelected(*environment, null, 4, cast(*void)*path[0])
+    Require(AndroidPickerPoll(0, output[:]) == .AndroidPickerNone, 5)
+    Require(AndroidPickerPoll(4, output[:]) == .AndroidPickerSelected &&
+        CStringEquals(*output[0], "/data/files/import/photo.jpg"), 6)
+    Require(AndroidPickerPoll(4, output[:]) == .AndroidPickerNone && output[0] == 0, 7)
+
+    // A scan request reaches openQrScanner; its code arrives as text, cut to
+    // the caller's buffer.
+    Require(AndroidScannerOpen(5, "Scan the code on your other device"), 8)
+    Require(calls == 2 && last_request == 5 &&
+        CStringEquals(*method_name[0], "openQrScanner") &&
+        CStringEquals(*java_text[0], "Scan the code on your other device"), 9)
+    code: [64]u8
+    unused CopyCString("inbe-link:abcdef", code[:])
+    AndroidNativePickerSelected(*environment, null, 5, cast(*void)*code[0])
+    short: [6]u8
+    Require(AndroidPickerPoll(5, short[:]) == .AndroidPickerSelected &&
+        CStringEquals(*short[0], "inbe-"), 10)
+
+    // A newer request replaces an unanswered one, and cancelling reports so.
+    Require(AndroidPickerOpen(0, "*/*") && AndroidPickerOpen(2, "audio/*"), 11)
+    AndroidNativePickerCancelled(*environment, null, 2)
+    Require(AndroidPickerPoll(0, output[:]) == .AndroidPickerNone, 12)
+    Require(AndroidPickerPoll(2, output[:]) == .AndroidPickerCancelled && output[0] == 0, 13)
+    // Opening clears an answer nobody took.
+    AndroidNativePickerSelected(*environment, null, 3, cast(*void)*path[0])
+    Require(AndroidPickerOpen(3, "*/*") && AndroidPickerPoll(3, output[:]) == .AndroidPickerNone, 14)
+
+    // A Java exception fails the request and is cleared.
+    java_throws = true
+    Require(!AndroidPickerOpen(1, "*/*") && !AndroidScannerOpen(5, "Scan"), 15)
+    Require(exception_pending == 0 && frames == 0 && calls == 7, 16)
+    return 0
+}
