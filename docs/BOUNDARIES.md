@@ -17,7 +17,8 @@ Its widget modules own focus, pointer capture, layout, semantics, and paint
 decisions. The host may call native libraries through declared Ziran foreign
 bindings, but must not duplicate widget policy.
 
-Make upstream Kryon changes on `master`, commit them there, and update a
-downstream app only through a clean `vendor/kryon` submodule pointer. Never
-edit the vendored source inside an application. See [ARCHITECTURE.md](ARCHITECTURE.md)
+Make upstream Kryon changes on `master` and commit them there. A downstream
+app picks them up by updating its `ziran.lock`, or, if it still vendors
+Kryon, by moving its clean `vendor/kryon` submodule pointer. Never edit
+Kryon's source inside an application. See [ARCHITECTURE.md](ARCHITECTURE.md)
 for source modules and [PROJECTS.md](PROJECTS.md) for package use.
