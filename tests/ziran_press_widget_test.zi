@@ -7,6 +7,10 @@
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "ziran_keyboard_navigation_host"
+#import "scroll_props"
+#import "scroll_widget"
+Motion :: #import "scroll_device";
 
 using FrameStatus;
 
@@ -78,8 +82,39 @@ Answer :: () -> s32 {
     if !Frame(5.1) || result.down { return 16 }
     Pointer(20.0, 20.0, false, false, true)
     if !Frame(5.2) || result.clicked { return 17 }
+    disabled = false
+
+    // In a scrollable list a press arms the list's drag; once the press is
+    // a hold it keeps the pointer, so moving on neither scrolls the list
+    // nor cancels the press.
+    if !ListFrame(10.0, 50.0, false, false, false) || list_offset != 0 { return 20 }
+    if !ListFrame(10.1, 50.0, true, true, false) || !result.down { return 21 }
+    if !ListFrame(10.7, 50.0, true, false, false) || !result.held { return 22 }
+    if !ListFrame(10.8, 150.0, true, false, false) || !result.down || result.y != 150.0 || list_offset != 0 { return 23 }
+    if !ListFrame(10.9, 250.0, true, false, false) || !result.down || list_offset != 0 { return 24 }
+    if !ListFrame(11.0, 250.0, false, false, true) || !result.released || list_offset != 0 { return 25 }
+    // Without a hold the same drag still scrolls the list.
+    if !ListFrame(12.0, 250.0, true, true, false) { return 26 }
+    if !ListFrame(12.1, 150.0, true, false, false) || !ListFrame(12.2, 100.0, true, false, false) || list_offset == 0 { return 27 }
     SessionClose(session)
     return 42
+}
+
+list_offset: s32;
+
+ListFrame :: (now: float64, y: float32, down: bool, pressed: bool, released: bool) -> bool {
+    Pointer(20.0, y, down, pressed, released)
+    Motion.BeginScrollFrame(session, Vector2.{20.0, y}, pressed, down, released, 0.0, now)
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    list := Scroll(session, ScrollProps.{.key = cast(u64)80, .bounds = Rectangle.{0.0, 0.0, 300.0, 300.0},
+            .content_height = 2000, .scroll_offset = list_offset})
+    list_offset = list.scroll_offset
+    if list.opened {
+        result = Press(session, PressProps.{.id = 81, .label = "Item",
+                .bounds = Rectangle.{0.0, list.content.y, 280.0, 2000.0}, .now = now})
+        End(session)
+    }
+    return EndFrame(session) == cast(FrameStatus)FrameOk
 }
 
 #program_export

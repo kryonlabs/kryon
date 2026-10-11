@@ -1,17 +1,41 @@
 #!/bin/sh
 set -eu
+
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
-unset DISPLAY WAYLAND_DISPLAY
-mkdir -p "$repo/build/scratch"
-work=$(mktemp -d "$repo/build/scratch/press-widget.XXXXXX")
+work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
+source=$repo/tests/ziran_press_widget_test.zi
+
+set -- \
+    --bind raster_shape:RasterRoundedRectangle=ziran_keyboard_navigation_host:RasterRoundedRectangle \
+    --bind raster_shape:RasterRoundedRectangleOutline=ziran_keyboard_navigation_host:RasterRoundedRectangleOutline
+
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+    --module-path "$ziran_root/std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$ziran_root/std" --entry ziran_press_widget_test:Answer \
-    -o "$work/test.zib" "$repo/tests/ziran_press_widget_test.zi"
-test "$("$ziran" run "$work/test.zib")" = 42
-"$ziran" build --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$ziran_root/std" --target=c \
-    --entry ziran_press_widget_test:main -o "$work/c" "$repo/tests/ziran_press_widget_test.zi"
-"${CC:-cc}" -std=c11 -O1 -I"$work/c" "$work/c"/*.c -o "$work/c/run"
-"$work/c/run"
+    --module-path "$ziran_root/std" "$@" \
+    --entry ziran_press_widget_test:main -o "$work/source.zib" "$source"
+"$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
+    --entry ziran_press_widget_test:main -o "$work/saved.zib" \
+    "$work/ir/ziran_press_widget_test.zir"
+cmp "$work/source.zib" "$work/saved.zib"
+test "$("$ziran" run "$work/source.zib")" = 0
+
+for input in source saved; do
+    if test "$input" = source; then
+        module=$source
+        module_root=$repo/tests
+        module_dir=$repo/src/ui
+    else
+        module=$work/ir/ziran_press_widget_test.zir
+        module_root=$work/ir
+        module_dir=$work/ir
+    fi
+    output=$work/go-$input
+    "$ziran" build --target=go --pkg main --exe \
+        --entry ziran_press_widget_test:main "$@" \
+        --root "$module_root" --module-path "$module_dir" \
+        --module-path "$ziran_root/std" -o "$output" "$module"
+    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
+done

@@ -714,6 +714,13 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
             frame.sample_seconds = input.sample_seconds
             frame.velocity = input.velocity
         }
+        // A widget that claimed the press after the drag armed, such as a
+        // hold that selects, keeps the gesture: the drag lets go unmoved.
+        if content_active && !frame.drag_moving && !input.pointer_allowed {
+            frame.clear_drag = true
+            frame.content_drag = false
+            content_active = false
+        }
         if content_active {
             delta: s32 = cast(s32)(input.mouse.y - frame.drag_origin_y)
             holding: bool = input.down || input.pressed
