@@ -83,7 +83,9 @@ def scalar_kind(kind):
 
 def generate(schema, needed, provided, header, imports):
     records = set(needed) | provided
-    lines = [header, *(f'#import {line}' for line in imports), 'using HostValueKind;', '']
+    # A file import is written `#import, file "name.zi";`.
+    lines = [header, *('#import' + ('' if line.startswith(',') else ' ') + line for line in imports),
+             'using HostValueKind;', '']
     for kind in needed:
         fields = schema[kind]
         lines += [f'Widget{kind}Codec :: struct {{', f'    fields: [{len(fields)}]HostField']
