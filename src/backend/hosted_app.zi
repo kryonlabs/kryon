@@ -1,0 +1,139 @@
+// Runs a portable bundle inside a host application. The host decides each
+// capability the bundle asks for and answers every call through one
+// HostCall; a restart keeps the working instance until the new one passes
+// the host's handshake. Bundles and their host may be built against
+// different record layouts, so fields match by name.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+
+HOSTED_APP_CAPABILITY_LIMIT :: 64
+// Instructions a single run may execute before it traps.
+HOSTED_APP_STEP_LIMIT :: 10000000
+
+HostedApp :: struct {
+    bundle: *void
+    instance: *void
+    // The last run trapped or returned no answer.
+    failed: bool
+}
+
+// Whether the bundle may call module.function. context is the one given to
+// every call of the bundle.
+HostedAppAllows :: #type (context: *void, module: string, function: string) -> bool;
+// The host's handshake for a started instance, such as a first run whose
+// answer identifies the app.
+HostedAppAccepts :: #type (context: *void) -> bool;
+
+HostedAsset :: struct {
+    found: bool
+    data: string
+}
+
+HostedAppOpen :: (app: *HostedApp, bytes: string) -> bool {
+    HostedAppClose(app)
+    descriptor := cast(*TextDescriptor)(*bytes)
+    app.bundle = OpenBundleBytes(descriptor.data, cast(u64)bytes.count)
+    return app.bundle != null
+}
+
+// Checks every capability with allows, binds them all to call and creates an
+// instance; it does not run it.
+HostedAppStart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall, context: *void) -> bool {
+    app.failed = false
+    if app.bundle == null {
+        return false
+    }
+    count := BundleCapabilities(app.bundle)
+    if count > cast(u64)HOSTED_APP_CAPABILITY_LIMIT {
+        return false
+    }
+    bindings: [HOSTED_APP_CAPABILITY_LIMIT]HostBinding
+    index: u64 = 0
+    while index < count {
+        module := BundleCapabilityModuleName(app.bundle, index)
+        function := BundleCapabilityFunctionName(app.bundle, index)
+        if module == null || function == null ||
+        !allows(context, TextFromCString(module), TextFromCString(function)) {
+            return false
+        }
+        bindings[index].module = module
+        bindings[index].function = function
+        bindings[index].call = call
+        bindings[index].context = context
+        index += 1
+    }
+    app.instance = InstantiateBundle(app.bundle, *bindings[0], count)
+    if app.instance == null {
+        return false
+    }
+    MatchBundleFieldsByName(app.instance, true)
+    LimitBundleSteps(app.instance, HOSTED_APP_STEP_LIMIT)
+    return true
+}
+
+// Runs the instance's entry once. False, and failed, when it traps or
+// returns no answer.
+HostedAppRun :: (app: *HostedApp, answer: *s64) -> bool {
+    if app.instance == null {
+        return false
+    }
+    has_answer: s32
+    if RunBundleInstance(app.instance, answer, *has_answer) == 0 || has_answer == 0 {
+        app.failed = true
+        return false
+    }
+    return true
+}
+
+// Starts a new instance of the open bundle. The current instance is closed
+// only once the new one passes accepts; otherwise the app keeps running it.
+HostedAppRestart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall,
+    context: *void, accepts: HostedAppAccepts) -> bool {
+    previous := app.instance
+    previous_failed := app.failed
+    app.instance = null
+    ready := HostedAppStart(app, allows, call, context) && accepts(context)
+    if ready {
+        CloseBundleInstance(previous)
+    } else {
+        CloseBundleInstance(app.instance)
+        app.instance = previous
+        app.failed = previous_failed
+    }
+    return ready
+}
+
+HostedAppClose :: (app: *HostedApp) {
+    CloseBundleInstance(app.instance)
+    CloseBundle(app.bundle)
+    app.* = HostedApp.{}
+}
+
+// The bytes of an asset packed in the bundle, borrowed while it is open.
+HostedAppAsset :: (app: *HostedApp, path: string) -> HostedAsset {
+    if app.bundle == null {
+        return HostedAsset.{}
+    }
+    count := BundleAssets(app.bundle)
+    index: u64 = 0
+    while index < count {
+        if HostedAssetNamed(BundleAssetPath(app.bundle, index), path) {
+            return HostedAsset.{.found = true, .data = TextFromBytes(BytesFromPointer(
+                        BundleAssetBytes(app.bundle, index), BundleAssetLength(app.bundle, index)))}
+        }
+        index += 1
+    }
+    return HostedAsset.{}
+}
+
+HostedAssetNamed :: (name: *u8, path: string) -> bool {
+    if name == null {
+        return false
+    }
+    for index: cast(s64)0..path.count - 1 {
+        if name[index] != path[index] {
+            return false
+        }
+    }
+    return name[path.count] == cast(u8)0
+}

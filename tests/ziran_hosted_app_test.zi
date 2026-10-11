@@ -1,0 +1,94 @@
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/file"
+#import "hosted_app"
+#import "hosted_values"
+
+using HostValueKind;
+
+// The bundles come from tests/ziran_hosted_app_test.sh.
+guest: HostedApp;
+looping: HostedApp;
+calls: s32;
+allow_greet: bool;
+accept_restart: bool;
+
+Allows :: (context: *void, module: string, function: string) -> bool {
+    unused context
+    return allow_greet && module == "hosted_app_guest" && function == "GreetHost"
+}
+
+// GreetHost adds one to its argument.
+Call :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    unused module
+    unused function
+    if context != cast(*void)*guest || count != 1 ||
+    !HostScalarValid(arguments[0], "s32", cast(s32)HostInteger) {
+        return 0
+    }
+    calls += 1
+    result.* = HostScalar("s32", arguments[0].integer + 1)
+    return 1
+}
+
+// A restarted guest must answer 7, and the test decides whether to take it.
+Accepts :: (context: *void) -> bool {
+    answer: s64
+    return HostedAppRun(cast(*HostedApp)context, *answer) && answer == 7 && accept_restart
+}
+
+#program_export
+main :: () -> s32 {
+    bytes, read := ReadEntireFile("hosted_app_guest.zib")
+    loop_bytes, loop_read := ReadEntireFile("hosted_app_loop.zib")
+    if !read || !loop_read || !HostedAppOpen(*guest, bytes) || !HostedAppOpen(*looping, loop_bytes) {
+        return 1
+    }
+    // The host refuses a capability it does not allow, and nothing runs.
+    allow_greet = false
+    if HostedAppStart(*guest, Allows, Call, cast(*void)*guest) || guest.instance != null {
+        return 2
+    }
+    allow_greet = true
+    if !HostedAppStart(*guest, Allows, Call, cast(*void)*guest) {
+        return 3
+    }
+    answer: s64
+    if !HostedAppRun(*guest, *answer) || answer != 7 || calls != 1 || guest.failed {
+        return 4
+    }
+    // A rejected restart keeps the working instance; an accepted one
+    // replaces it.
+    working := guest.instance
+    accept_restart = false
+    if HostedAppRestart(*guest, Allows, Call, cast(*void)*guest, Accepts) || guest.instance != working {
+        return 5
+    }
+    if !HostedAppRun(*guest, *answer) || answer != 7 {
+        return 6
+    }
+    accept_restart = true
+    if !HostedAppRestart(*guest, Allows, Call, cast(*void)*guest, Accepts) || guest.instance == working ||
+    guest.instance == null {
+        return 7
+    }
+    // Packed assets are found by their exact path.
+    note := HostedAppAsset(*guest, "notes/hello.txt")
+    if !note.found || note.data != "hello\n" || HostedAppAsset(*guest, "notes/hello").found {
+        return 8
+    }
+    // A bundle that never returns traps at the step limit.
+    if !HostedAppStart(*looping, Allows, Call, cast(*void)*looping) {
+        return 9
+    }
+    if HostedAppRun(*looping, *answer) || !looping.failed {
+        return 10
+    }
+    HostedAppClose(*guest)
+    HostedAppClose(*looping)
+    if guest.bundle != null || guest.instance != null || HostedAppRun(*guest, *answer) {
+        return 11
+    }
+    return 0
+}

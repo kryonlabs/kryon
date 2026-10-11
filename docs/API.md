@@ -83,7 +83,12 @@ non-graphical Ziran programs. A program that does not import Kryon uses no
 Kryon code. A portable `.zib` links only imported modules and needs a host
 binding for any platform effect they call.
 
-An application that runs another `.zib` inside its own window draws that
+An application runs another `.zib` inside its own window with
+[`hosted_app`](../src/backend/hosted_app.zi): `HostedAppOpen` takes the
+bundle's bytes, `HostedAppStart` asks the host about every capability the
+bundle requests and binds them to one `HostCall`, and `HostedAppRun` runs it
+under a step limit. `HostedAppRestart` keeps the working instance until the
+new one passes the host's handshake. It draws that
 bundle's widgets with [`widget_host`](../src/backend/widget_host.zi). The
 bundle calls each widget's `HostedHost` function; the host binds
 `WidgetHostCall` for the functions `WidgetHostSupports` lists, and wraps each

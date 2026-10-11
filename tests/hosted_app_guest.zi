@@ -1,0 +1,11 @@
+// A bundle for the hosted_app test: its host adds one, and it answers 7.
+host_api :: #system_library "host_api";
+GreetHost :: (value: s32) -> s32 #foreign host_api;
+
+#program_export
+main :: () -> s32 {
+    if GreetHost(20) != 21 {
+        return 1
+    }
+    return 7
+}

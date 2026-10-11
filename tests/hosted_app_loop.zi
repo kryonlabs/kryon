@@ -1,0 +1,10 @@
+// A bundle for the hosted_app test that never returns, so its run traps at
+// the host's step limit.
+#program_export
+main :: () -> s32 {
+    count: s64 = 0
+    while count >= 0 {
+        count += 1
+    }
+    return 0
+}
