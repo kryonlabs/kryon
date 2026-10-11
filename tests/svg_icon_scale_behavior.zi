@@ -19,6 +19,10 @@ Finest :: (session: Session) -> float32 {
     return finest
 }
 
+Whole :: (value: float32) -> bool {
+    return value == cast(float32)cast(s32)value
+}
+
 #program_export
 main :: () -> s32 {
     // A triangle has slanted, anti-aliased edges down to single cells.
@@ -47,5 +51,17 @@ main :: () -> s32 {
     // A density below one, like a nonsensical one, counts as one.
     SetPaintDeviceDensity(0.5)
     if PaintPixelScale() != 1.5 { return 8 }
+    // Cells start and end on whole screen pixels even when the icon does
+    // not, so no two cells meet inside a pixel and leave a seam.
+    SetPaintPixelScale(1.0)
+    SetPaintDeviceDensity(2.0)
+    offset := SessionOpen()
+    PaintSvgIcon(offset, 0, shape, Rectangle.{10.3, 7.7, 24.0, 24.0}, Color.{0, 0, 0, 255})
+    if PendingPaintCount(offset) == 0 { return 9 }
+    for index: 0..PendingPaintCount(offset) - 1 {
+        cell := PendingPaintAt(offset, cast(s32)index).bounds
+        if !Whole(cell.x * 2.0) || !Whole(cell.y * 2.0) ||
+            !Whole(cell.width * 2.0) || !Whole(cell.height * 2.0) { return 10 }
+    }
     return 0
 }
