@@ -64,6 +64,9 @@ surface_width: s32;
 surface_height: s32;
 window_insets: AndroidWindowInsets;
 insets_ready: s32;
+// The window frame's size, reported by the activity; 0 until it reports.
+window_width: s32;
+window_height: s32;
 viewport_policy: AndroidViewportPolicy;
 viewport_policy_set: bool;
 
@@ -90,6 +93,7 @@ viewport_policy_set: bool;
         values: [16]float32
     }
     SurfaceProjection :: () -> SurfaceMatrix #foreign raylib "rlGetMatrixProjection";
+    SurfaceMouseOffset :: (x: s32, y: s32) #foreign raylib "SetMouseOffset";
 
     // raylib exposes CORE as a global. This prefix matches its Window record
     // through screenScale; later raylib fields are never read or written here.
@@ -192,25 +196,53 @@ SafeAreaForPolicy :: (insets: AndroidWindowInsets,
     return area
 }
 
+// Where the window frame sits in its surface. Android grows a raised
+// window's surface past its frame by the shadow, the same on every side:
+// a window coming back from the floating picture-in-picture window keeps an
+// 18-pixel shadow on a 1.75x phone. Only an equal, even surplus on both axes
+// is such a margin; any other mismatch is a resize in flight.
+SurfaceMargin :: (width: s32, height: s32, frame_width: s32,
+    frame_height: s32) -> AndroidSafeArea {
+    margin: AndroidSafeArea
+    if frame_width <= 0 || frame_height <= 0 {
+        return margin
+    }
+    surplus := width - frame_width
+    if surplus <= 0 || surplus != height - frame_height || surplus % 2 != 0 {
+        return margin
+    }
+    margin.left = surplus / 2
+    margin.top = margin.left
+    margin.right = margin.left
+    margin.bottom = margin.left
+    return margin
+}
+
+// The insets are relative to the window frame, which lies margin inside
+// the surface; the viewport is in surface pixels.
 ResolveViewport :: (width: s32, height: s32,
     insets: AndroidWindowInsets, policy: AndroidViewportPolicy,
-    ready: s32) -> AndroidViewport {
+    ready: s32, margin: AndroidSafeArea = AndroidSafeArea.{}) -> AndroidViewport {
+    frame_width := width - margin.left - margin.right
+    frame_height := height - margin.top - margin.bottom
     area := SafeAreaForPolicy(insets, policy)
     viewport: AndroidViewport
     viewport.x = area.left
     viewport.y = area.top
-    viewport.width = ContentSize(width, area.left, area.right, policy.min_width)
-    viewport.height = ContentSize(height, area.top, area.bottom, policy.min_height)
+    viewport.width = ContentSize(frame_width, area.left, area.right, policy.min_width)
+    viewport.height = ContentSize(frame_height, area.top, area.bottom, policy.min_height)
     viewport.insets = area
     viewport.ready = ready
-    if viewport.width == width || viewport.width <= 0 {
+    if viewport.width == frame_width || viewport.width <= 0 {
         viewport.x = 0
-        viewport.width = width
+        viewport.width = frame_width
     }
-    if viewport.height == height || viewport.height <= 0 {
+    if viewport.height == frame_height || viewport.height <= 0 {
         viewport.y = 0
-        viewport.height = height
+        viewport.height = frame_height
     }
+    viewport.x += margin.left
+    viewport.y += margin.top
     return viewport
 }
 
@@ -235,6 +267,35 @@ SetAndroidWindowInsets :: (system_left: s32, system_top: s32,
     #if ANDROID_SURFACE {
         SurfaceMutexUnlock(cast(*void)*insets_mutex[0])
     }
+}
+
+// The activity reports its window frame's size whenever it lays out; 0
+// lets the app fill the whole surface, as in a floating window, which shows
+// the shadow margin too.
+#program_export
+SetAndroidWindowSize :: (width: s32, height: s32) {
+    #if ANDROID_SURFACE {
+        SurfaceMutexLock(cast(*void)*insets_mutex[0])
+    }
+    window_width = NonnegativeInset(width)
+    window_height = NonnegativeInset(height)
+    #if ANDROID_SURFACE {
+        SurfaceMutexUnlock(cast(*void)*insets_mutex[0])
+    }
+}
+
+// The window frame's distance from each edge of a surface this size.
+#program_export
+GetAndroidSurfaceMargin :: (width: s32, height: s32) -> AndroidSafeArea {
+    #if ANDROID_SURFACE {
+        SurfaceMutexLock(cast(*void)*insets_mutex[0])
+    }
+    frame_width := window_width
+    frame_height := window_height
+    #if ANDROID_SURFACE {
+        SurfaceMutexUnlock(cast(*void)*insets_mutex[0])
+    }
+    return SurfaceMargin(width, height, frame_width, frame_height)
 }
 
 #program_export
@@ -279,7 +340,8 @@ ResolveAndroidViewport :: (width: s32, height: s32,
     insets: AndroidWindowInsets
     ready := GetAndroidWindowInsets(*insets)
     if output != null {
-        output[0] = ResolveViewport(width, height, insets, policy, ready)
+        output[0] = ResolveViewport(width, height, insets, policy, ready,
+            GetAndroidSurfaceMargin(width, height))
     }
     return ready
 }
@@ -386,6 +448,12 @@ SyncAndroidViewport :: (output: *AndroidViewport) -> s32 {
     width: s32
     height: s32
     SyncAndroidSurfaceSize(*width, *height)
+    // Touches arrive in window frame coordinates; raylib's mouse offset
+    // moves them to the surface, where the frame is drawn.
+    #if ANDROID_SURFACE {
+        margin := GetAndroidSurfaceMargin(width, height)
+        SurfaceMouseOffset(margin.left, margin.top)
+    }
     return ResolveAndroidViewport(width, height, GetAndroidViewportPolicy(), output)
 }
 

@@ -76,6 +76,16 @@ AndroidNativeSetInsets :: (env: *JniEnv, activity: *void, left: s32, top: s32,
         cutout_top, cutout_right, cutout_bottom)
 }
 
+// An activity whose window can be raised, such as one with a floating
+// picture-in-picture window, reports its frame's size after each layout.
+#program_export
+AndroidNativeSetWindowSize :: (env: *JniEnv, activity: *void, width: s32,
+    height: s32) {
+    unused env
+    unused activity
+    SetAndroidWindowSize(width, height)
+}
+
 #program_export
 AndroidNativeSetDensity :: (env: *JniEnv, activity: *void,
     density: float32) {

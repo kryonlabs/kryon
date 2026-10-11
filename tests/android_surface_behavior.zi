@@ -88,6 +88,14 @@ rlGetMatrixProjection :: () -> SurfaceMatrix {
     return matrix
 }
 
+mouse_offset_x: s32 = -1;
+mouse_offset_y: s32 = -1;
+#program_export
+SetMouseOffset :: (x: s32, y: s32) {
+    mouse_offset_x = x
+    mouse_offset_y = y
+}
+
 clear_color: u32;
 fill_count: s32;
 fill_bounds: [4]s32;
@@ -178,5 +186,20 @@ main :: () -> s32 {
     geometry_result = -1
     native_width = 700
     Require(SyncAndroidSurfaceSize(*width, *height) == 0 && width == 1920, 32)
+    // A window back from the floating window keeps an 18-pixel shadow around
+    // its frame: the frame is drawn and touched inside the larger surface.
+    geometry_result = 0
+    native_width = 1116
+    native_height = 1956
+    SetAndroidViewportPolicy(AndroidViewportPolicySafeArea())
+    SetAndroidWindowSize(1080, 1920)
+    Require(SyncAndroidViewport(*viewport) == 1, 37)
+    Require(core.screen.width == 1116 && core.screen.height == 1956 &&
+        viewport.x == 22 && viewport.y == 78 && viewport.width == 992 &&
+        viewport.height == 1836 && mouse_offset_x == 18 && mouse_offset_y == 18, 38)
+    SetAndroidWindowSize(1116, 1956)
+    SyncAndroidViewport(*viewport)
+    Require(viewport.x == 4 && viewport.y == 60 && mouse_offset_x == 0 &&
+        mouse_offset_y == 0, 39)
     return 0
 }
