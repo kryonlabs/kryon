@@ -16,6 +16,10 @@
   nothing else handles it.
 - Widgets can keep their own state between frames on their retained node with
   `TreeSetWidgetState` and `TreePreviousWidgetState`.
+- Lay out tiles of one height in a responsive grid: `MeasureGrid` picks the
+  columns that fit the width, and `GridRowCount`, `GridCellsHeight`,
+  `GridCellBounds` and `GridIndexAt` give the rows, the height, each tile's
+  bounds and the tile under a point, for overlays and drag-and-drop.
 
 ### Fixed
 

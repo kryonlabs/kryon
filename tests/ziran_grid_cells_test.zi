@@ -1,0 +1,46 @@
+// Equal grid cells reflow with the width, and a point finds its cell.
+#import "geometry"
+#import "grid_props"
+#import "grid"
+
+Near :: (a: Rectangle, x: float32, y: float32, width: float32, height: float32) -> bool {
+    return a.x == x && a.y == y && a.width == width && a.height == height
+}
+
+#program_export
+Answer :: () -> s32 {
+    narrow := MeasureGrid(GridProps.{.bounds = Rectangle.{10.0, 20.0, 330.0, 0.0},
+            .min_item_width = 140, .max_columns = 6, .gap = 10})
+    if narrow.columns != 2 || narrow.cell_width != 160 { return 1 }
+    wide := MeasureGrid(GridProps.{.bounds = Rectangle.{10.0, 20.0, 1000.0, 0.0},
+            .min_item_width = 140, .max_columns = 6, .gap = 10})
+    if wide.columns != 6 || wide.cell_width != 158 { return 2 }
+    medium := MeasureGrid(GridProps.{.bounds = Rectangle.{0.0, 0.0, 600.0, 0.0},
+            .min_item_width = 140, .max_columns = 6, .gap = 10})
+    if medium.columns != 4 || medium.cell_width != 142 { return 3 }
+
+    if GridRowCount(narrow, 0) != 0 || GridRowCount(narrow, 5) != 3 || GridRowCount(wide, 5) != 1 { return 4 }
+    if GridCellsHeight(narrow, 0, 80) != 0 || GridCellsHeight(narrow, 5, 80) != 260 ||
+    GridCellsHeight(wide, 6, 80) != 80 { return 5 }
+    if !Near(GridCellBounds(narrow, 0, 80), 10.0, 20.0, 160.0, 80.0) { return 6 }
+    if !Near(GridCellBounds(narrow, 3, 80), 180.0, 110.0, 160.0, 80.0) { return 7 }
+    if !Near(GridCellBounds(wide, 5, 80), 850.0, 20.0, 158.0, 80.0) { return 8 }
+
+    if GridIndexAt(narrow, 15.0, 25.0, 80, 5) != 0 { return 9 }
+    if GridIndexAt(narrow, 300.0, 120.0, 80, 5) != 3 { return 10 }
+    // Beside the last column, above the grid and past the last cell.
+    if GridIndexAt(narrow, 900.0, 25.0, 80, 5) != 1 { return 11 }
+    if GridIndexAt(narrow, 15.0, -40.0, 80, 5) != 0 { return 12 }
+    if GridIndexAt(narrow, 300.0, 500.0, 80, 5) != 5 { return 13 }
+    if GridIndexAt(wide, 860.0, 30.0, 80, 6) != 5 { return 14 }
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    result := Answer()
+    if result != 42 {
+        return result
+    }
+    return 0
+}
