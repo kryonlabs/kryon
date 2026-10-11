@@ -85,8 +85,6 @@ Toolbar :: (session: Session, props: ToolbarProps, options: []DropdownOption,
     result.node = -1
     result.dropdown.node = -1
     result.dropdown.selected_index = props.dropdown.selected_index
-    result.dropdown.highlight_index = props.dropdown.highlight_index
-    result.dropdown.scroll_offset = props.dropdown.scroll_offset
     result.dropdown.open = props.dropdown.open
     result.selected_menu_item = -1
     result.clicked_action = -1

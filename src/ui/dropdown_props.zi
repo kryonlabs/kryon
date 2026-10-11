@@ -17,15 +17,13 @@ DropdownProps :: struct {
     class_name: s32
     placeholder: string
     selected_index: s32
-    highlight_index: s32
-    scroll_offset: s32
-    // The dropdown keeps its menu open by itself. open asks it to open and
-    // close asks it to close; neither is needed to keep a menu open.
+    // The dropdown keeps its menu, highlight and scroll by itself. open asks
+    // it to open and close asks it to close; neither is needed to keep a
+    // menu open, and the menu scrolls without any props.
     open: bool
     close: bool
     focused: bool
     scale: float32
-    wheel: float32
     trigger_input: DropdownTriggerInput
     menu_input: DropdownMenuInput
     disabled: bool
@@ -34,8 +32,6 @@ DropdownProps :: struct {
 DropdownResult :: struct {
     node: s32
     selected_index: s32
-    highlight_index: s32
-    scroll_offset: s32
     open: bool
     changed: bool
     opened: bool

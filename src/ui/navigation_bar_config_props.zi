@@ -24,9 +24,6 @@ NavigationBarConfigProps :: struct {
     wheel: float32
     dropdown_open: bool
     dropdown_row: s32
-    dropdown_highlight_index: s32
-    dropdown_scroll_offset: s32
-    dropdown_wheel: float32
     // Route keyboard samples to focused_row; the caller owns focus.
     focused_row: s32
     trigger_input: DropdownTriggerInput
@@ -47,6 +44,4 @@ NavigationBarConfigResult :: struct {
     scroll_offset: s32
     dropdown_open: bool
     dropdown_row: s32
-    dropdown_highlight_index: s32
-    dropdown_scroll_offset: s32
 }

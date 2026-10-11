@@ -102,8 +102,6 @@ TitleBar :: (session: Session, props: TitleBarProps,
     result.dropdown.node = -1
     result.dropdown.open = props.dropdown.open
     result.dropdown.selected_index = props.dropdown.selected_index
-    result.dropdown.highlight_index = props.dropdown.highlight_index
-    result.dropdown.scroll_offset = props.dropdown.scroll_offset
     bar: StyleFrame = TitleBarFaceFor(props, TitleBarBarRole())
     title: StyleFrame = TitleBarFaceFor(props, TitleBarTitleRole())
     action: StyleFrame = TitleBarFaceFor(props,

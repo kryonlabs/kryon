@@ -111,9 +111,6 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
     result.scroll_offset = props.scroll_offset
     result.dropdown_open = props.dropdown_open
     result.dropdown_row = props.dropdown_row
-    result.dropdown_highlight_index =
-        props.dropdown_highlight_index
-    result.dropdown_scroll_offset = props.dropdown_scroll_offset
     counts: NavigationBarConfigCounts =
         NavigationBarConfigCountsFor(props.route_count,
             props.max_route_count, (cast(s32)options.count), 16)
@@ -341,11 +338,6 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
             }
             if dropdown.open {
                 rendered_open = true
-                dropdown.highlight_index =
-                    result.dropdown_highlight_index
-                dropdown.scroll_offset =
-                    result.dropdown_scroll_offset
-                dropdown.wheel = props.dropdown_wheel
             }
             selection: DropdownResult = Dropdown(session, dropdown,
                 dropdown_options[0:cast(s64)counts.option_count])
@@ -361,12 +353,6 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
                 result.dropdown_row == index {
                 result.dropdown_open = false
                 result.dropdown_row = -1
-            }
-            if selection.open || selection.opened {
-                result.dropdown_highlight_index =
-                    selection.highlight_index
-                result.dropdown_scroll_offset =
-                    selection.scroll_offset
             }
         }
         index += 1

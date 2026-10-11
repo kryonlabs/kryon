@@ -19,8 +19,6 @@ route_count: s32;
 routes: [4]s32;
 open: bool;
 open_row: s32;
-highlight: s32;
-menu_scroll: s32;
 
 FindLabel :: (label: string) -> s32 {
     index: s32 = 0
@@ -69,8 +67,6 @@ Frame :: () -> s32 {
     props.max_route_count = 4
     props.dropdown_open = open
     props.dropdown_row = open_row
-    props.dropdown_highlight_index = highlight
-    props.dropdown_scroll_offset = menu_scroll
     props.focused_row = 0
     if phase == 6 { props.trigger_input.enter = true }
     if phase == 7 {
@@ -94,8 +90,6 @@ Frame :: () -> s32 {
     route_count = result.route_count
     open = result.dropdown_open
     open_row = result.dropdown_row
-    highlight = result.dropdown_highlight_index
-    menu_scroll = result.dropdown_scroll_offset
     if phase == 0 {
         if result.changed || open || FindLabel("Home") < 0 ||
             !Click(FindLabel("Home")) { return -1 }
@@ -119,11 +113,9 @@ Frame :: () -> s32 {
             return -6
         }
     } else if phase == 6 {
-        if !open || open_row != 0 || highlight != 1 {
-            return -7
-        }
+        if !open || open_row != 0 { return -7 }
     } else if phase == 7 {
-        if !open || highlight != 0 { return -8 }
+        if !open { return -8 }
     } else if phase == 8 {
         if open || !result.changed || routes[0] != 11 {
             return -9
