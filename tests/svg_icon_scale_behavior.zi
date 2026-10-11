@@ -1,5 +1,6 @@
-// Icons rasterize at the host's screen pixels: on a frame scaled 2x the
-// painted cells are half a layout unit, so edges stay sharp on phones.
+// Icons rasterize at the host's screen pixels: on a frame scaled 2x, or a
+// web canvas at devicePixelRatio 2, the painted cells are half a layout
+// unit, so edges stay sharp on phones and high-density screens.
 #import "session"
 #import "geometry"
 #import "drawing_props"
@@ -34,5 +35,17 @@ main :: () -> s32 {
     // No scale or a nonsensical one paints at layout size.
     SetPaintPixelScale(0.0)
     if PaintPixelScale() != 1.0 { return 4 }
+    // The web canvas draws at its devicePixelRatio: icons follow that
+    // density too, and it multiplies with a zoom.
+    SetPaintDeviceDensity(2.0)
+    if PaintPixelScale() != 2.0 { return 5 }
+    dense := SessionOpen()
+    PaintSvgIcon(dense, 0, shape, bounds, Color.{0, 0, 0, 255})
+    if Finest(dense) != 0.5 { return 6 }
+    SetPaintPixelScale(1.5)
+    if PaintPixelScale() != 3.0 { return 7 }
+    // A density below one, like a nonsensical one, counts as one.
+    SetPaintDeviceDensity(0.5)
+    if PaintPixelScale() != 1.5 { return 8 }
     return 0
 }

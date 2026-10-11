@@ -220,10 +220,13 @@ GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
     return RectangleIntersection(a, b)
 }
 
-// Screen pixels per layout unit, set by a host that scales the whole frame
-// (density or zoom). Paint rasterized before it reaches the host, such as
-// icons, uses it to stay sharp; it is 1 on hosts that draw at layout size.
+// Screen pixels per layout unit. Paint rasterized before it reaches the
+// host, such as icons, uses it to stay sharp. A host that scales the whole
+// frame sets the scale (density or zoom); a host whose framebuffer has more
+// pixels than its window, such as the web canvas at its devicePixelRatio,
+// sets the device density. Both are 1 on hosts that draw at layout size.
 paint_pixel_scale: float32 = 1.0;
+paint_device_density: float32 = 1.0;
 
 #program_export
 SetPaintPixelScale :: (scale: float32) {
@@ -231,6 +234,11 @@ SetPaintPixelScale :: (scale: float32) {
 }
 
 #program_export
+SetPaintDeviceDensity :: (density: float32) {
+    paint_device_density = ifx density > 1.0 then density else 1.0
+}
+
+#program_export
 PaintPixelScale :: () -> float32 {
-    return paint_pixel_scale
+    return paint_pixel_scale * paint_device_density
 }

@@ -1,4 +1,5 @@
 #import "canvas_types"
+#import "drawing_props"
 #import "canvas_text"
 #import "canvas_events"
 #import "byte_text_linux"
@@ -180,6 +181,8 @@
     BeginDrawing :: () {
         CanvasEventsBeginFrame()
         PageRefreshPixelRatio()
+        // Icons rasterize at the canvas's real pixels, not its CSS pixels.
+        SetPaintDeviceDensity(cast(float32)PageDpi())
         PageContextCall(PageOpFrameReset, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0)
     }
 
