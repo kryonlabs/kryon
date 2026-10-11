@@ -19,6 +19,11 @@
 
 ### Fixed
 
+- Keyboard navigation works in every application: Tab and Shift+Tab move
+  between controls, skipping disabled ones, and the focused button shows a
+  focus ring in the style's focus color. Enter and Space press the focused
+  control after Tab. A click hides the ring and leaves Enter and Space to the
+  application, so they never press the clicked button again.
 - A dropdown keeps its menu open, its highlighted row and its scroll position
   by itself, so an application passes only the selected value. Menus no longer
   close again right after opening when the application does not hold that

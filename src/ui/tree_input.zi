@@ -54,6 +54,9 @@ active_secondary: [9]SecondaryPointerFrame;
 active_key: [9]s32;
 active_modifiers: [9]s32;
 active_focus: [9]u64;
+// Keyboard navigation shows the focus: Tab turns it on, a pointer press turns
+// it off. While it is on, Enter and Space press the focused control.
+active_focus_visible: [9]bool;
 
 // Keyboard modifier bits reported by KeyboardModifiers.
 KeyModifierShift :: 1;
@@ -103,6 +106,7 @@ InputSnapshot :: struct {
     key: s32
     modifiers: s32
     focus: u64
+    focus_visible: bool
     codepoints: TypedInputQueue
     wheel: PointerWheelState
 }
@@ -119,6 +123,7 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
     snapshot.key = active_key[slot]
     snapshot.modifiers = active_modifiers[slot]
     snapshot.focus = active_focus[slot]
+    snapshot.focus_visible = active_focus_visible[slot]
     snapshot.codepoints = active_codepoints[slot]
     snapshot.wheel = active_wheel[slot]
     active_pointer[slot] = PointerState.{}
@@ -127,6 +132,7 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
     active_key[slot] = 0
     active_modifiers[slot] = 0
     active_focus[slot] = 0
+    active_focus_visible[slot] = false
     active_codepoints[slot] = TypedInputQueue.{}
     active_wheel[slot] = PointerWheelState.{}
     return snapshot
@@ -143,6 +149,7 @@ TreeInputResume :: (session: Session, snapshot: InputSnapshot) -> bool {
     active_key[slot] = snapshot.key
     active_modifiers[slot] = snapshot.modifiers
     active_focus[slot] = snapshot.focus
+    active_focus_visible[slot] = snapshot.focus_visible
     active_codepoints[slot] = snapshot.codepoints
     active_wheel[slot] = snapshot.wheel
     return true
@@ -368,7 +375,10 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     if TreeIsBuilding(session) { return -1 }
     active_sample[input_slot] = frame
     hit: s32 = TreeHitAt(session, frame.x, frame.y)
-    if frame.pressed { unused TreeFocusAt(session, hit) }
+    if frame.pressed {
+        active_focus_visible[input_slot] = false
+        unused TreeFocusAt(session, hit)
+    }
     active_pointer[input_slot].hovered_generation = 0
     if hit >= 0 {
         active_pointer[input_slot].hovered_generation =
@@ -545,6 +555,13 @@ TreeBlurAt :: (session: Session, index: s32) {
     }
 }
 
+// The focused control shows its focus after keyboard navigation, as with
+// :focus-visible on the web. A click focuses without showing it.
+#program_export
+TreeFocusVisibleAt :: (session: Session, index: s32) -> bool {
+    return TreeFocusedAt(session, index) && active_focus_visible[SessionIndex(session)]
+}
+
 #program_export
 TreeFocusedAt :: (session: Session, index: s32) -> bool {
     input_slot := SessionIndex(session)
@@ -604,12 +621,15 @@ TreeKeyboardRoute :: (session: Session) -> bool {
             node: NodeInput = TreeInputAt(session, current)
             if TreePointerActivatable(node.kind, node.focus_id, node.disabled, node.loading) &&
                 TreeFocusAt(session, current) {
+                active_focus_visible[slot] = true
                 active_key[slot] = 0
                 return true
             }
             tries += 1
         }
-    } else if key == KeyEnter || key == 32 {
+    } else if (key == KeyEnter || key == 32) && active_focus_visible[slot] {
+        // After a click these keys stay with the app, which may use them as
+        // shortcuts, instead of pressing the clicked control again.
         for index: 0..TreeCount(session) - 1 {
             node: NodeInput = TreeInputAt(session, index)
             if TreeFocusedAt(session, index) && node.kind != WidgetKindTextField &&
@@ -638,6 +658,7 @@ TreeInputReset :: (session: Session) {
     active_key[session.slot] = 0
     active_modifiers[session.slot] = 0
     active_focus[session.slot] = 0
+    active_focus_visible[session.slot] = false
     typed: TypedInputQueue
     active_codepoints[session.slot] = typed
 }

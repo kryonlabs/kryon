@@ -1,0 +1,76 @@
+// Every Kryon app moves focus with Tab and Shift+Tab, skips disabled
+// controls, shows where the focus is, and presses the focused button with
+// Space or Enter, without any app code.
+#import "session"
+#import "button_props"
+#import "button_widget"
+#import "geometry"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_keyboard_navigation_host"
+
+using FrameStatus;
+
+session: Session;
+pressed: [3]s32;
+
+Frame :: () -> bool {
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 100.0})
+    for index: cast(s32)0..2 {
+        props: ButtonProps
+        props.id = 100 + index
+        props.label = "Go"
+        props.bounds = Rectangle.{10.0 + cast(float32)index * 100.0, 10.0, 80.0, 30.0}
+        props.disabled = index == 1
+        pressed[index] = Button(session, props)
+    }
+    return EndFrame(session) == cast(FrameStatus)FrameOk
+}
+
+Key :: (key: s32, modifiers: s32) -> bool {
+    KeyboardModifiersSend(session, modifiers)
+    unused KeyboardSend(session, key)
+    return Frame()
+}
+
+#program_export
+Answer :: () -> s32 {
+    session = SessionOpen()
+    if !Frame() || FocusOutlines() != 0 { return 1 }
+
+    // Tab focuses the first control and draws its focus outline.
+    if !Key(KeyTab, 0) || FocusOutlines() != 1 || FocusOutlineX() >= 10.0 { return 2 }
+    // The next Tab skips the disabled control.
+    if !Key(KeyTab, 0) || FocusOutlines() != 1 || FocusOutlineX() < 200.0 { return 3 }
+    // Space presses the focused button once.
+    if !Key(32, 0) || pressed[2] != 1 || pressed[0] != 0 { return 4 }
+    if !Key(0, 0) || pressed[2] != 0 { return 5 }
+    // Tab past the last control wraps to the first; Shift+Tab goes back.
+    if !Key(KeyTab, 0) || FocusOutlineX() >= 10.0 { return 6 }
+    unused FocusOutlines()
+    if !Key(KeyTab, KeyModifierShift) || FocusOutlineX() < 200.0 { return 7 }
+    // Enter presses the focused button too.
+    if !Key(KeyEnter, 0) || pressed[2] != 1 { return 8 }
+    unused FocusOutlines()
+
+    // A pointer press hides the keyboard focus outline, and Space after a
+    // click is left to the app instead of pressing that button again.
+    TreePointerUpdate(session, PointerFrame.{20.0, 20.0, true, true, false})
+    TreePointerUpdate(session, PointerFrame.{20.0, 20.0, false, false, true})
+    if !Key(0, 0) || pressed[0] != 1 || FocusOutlines() != 0 { return 9 }
+    if !Key(32, 0) || pressed[0] != 0 || KeyboardTake(session) != 32 { return 10 }
+    // Tab brings the outline back from the clicked control.
+    if !Key(KeyTab, 0) || FocusOutlines() != 1 || FocusOutlineX() < 200.0 { return 11 }
+    SessionClose(session)
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    result := Answer()
+    if result != 42 {
+        return result
+    }
+    return 0
+}

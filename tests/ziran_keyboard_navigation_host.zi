@@ -1,0 +1,105 @@
+#import "drawing_props"
+#import "geometry"
+
+// Records each focus outline: its x position names the focused button.
+outlines: s32;
+outline_x: float32;
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    unused font
+    unused typeface
+    return cast(s32)value.count * 7
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused typeface
+    return font
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused color
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused radius
+    unused segments
+    unused width
+    unused color
+    outlines += 1
+    outline_x = bounds.x
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    unused clip
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+}
+
+#program_export
+FocusOutlines :: () -> s32 {
+    count := outlines
+    outlines = 0
+    return count
+}
+
+#program_export
+FocusOutlineX :: () -> float32 {
+    return outline_x
+}
