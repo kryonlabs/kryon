@@ -136,12 +136,6 @@ TransferBytes :: (text: string) -> *u8 {
     TransferFree :: (pointer: *void) #foreign transfer_c "free";
     TransferCopy :: (destination: *void, source: *void, count: usize) -> *void #foreign transfer_c "memcpy";
 
-    TransferWorker :: #type (*void) -> void;
-    TransferCall :: struct {
-        worker: TransferWorker
-        argument: *void
-    }
-
     // The worker owns copies of the request; the response is written only
     // into job memory, and only a poll copies it to the caller.
     NativeJob :: struct {
@@ -226,7 +220,7 @@ TransferBytes :: (text: string) -> *u8 {
         }
         job.capacity = output.count
         job.timeout_ms = timeout_ms
-        if !TransferStartWorker(NativeWork, cast(*void)job) {
+        if !TransferStartWorker(cast(*void)job) {
             NativeFreeJob(job)
             return false
         }
@@ -309,26 +303,15 @@ TransferBytes :: (text: string) -> *u8 {
         }
 
         TransferThread :: (argument: *void) -> *void {
-            call := cast(*TransferCall)argument
-            worker := call.worker
-            worker_argument := call.argument
-            TransferFree(argument)
-            worker(worker_argument)
+            NativeWork(argument)
             return null
         }
 
-        TransferStartWorker :: (worker: TransferWorker, argument: *void) -> bool {
-            // A function and its argument: two pointers.
-            call := cast(*TransferCall)TransferAllocate(2, size_of(*void))
-            if call == null {
-                return false
-            }
-            call.worker = worker
-            call.argument = argument
+        // Runs NativeWork(job) on a detached thread.
+        TransferStartWorker :: (job: *void) -> bool {
             thread: usize
             routine: TransferThreadRoutine = TransferThread
-            if TransferThreadCreate(*thread, null, routine, cast(*void)call) != 0 {
-                TransferFree(cast(*void)call)
+            if TransferThreadCreate(*thread, null, routine, job) != 0 {
                 return false
             }
             unused TransferThreadDetach(thread)
@@ -357,26 +340,15 @@ TransferBytes :: (text: string) -> *u8 {
         }
 
         TransferThread :: (argument: *void) -> u32 {
-            call := cast(*TransferCall)argument
-            worker := call.worker
-            worker_argument := call.argument
-            TransferFree(argument)
-            worker(worker_argument)
+            NativeWork(argument)
             return 0
         }
 
-        TransferStartWorker :: (worker: TransferWorker, argument: *void) -> bool {
-            // A function and its argument: two pointers.
-            call := cast(*TransferCall)TransferAllocate(2, size_of(*void))
-            if call == null {
-                return false
-            }
-            call.worker = worker
-            call.argument = argument
+        // Runs NativeWork(job) on a detached thread.
+        TransferStartWorker :: (job: *void) -> bool {
             routine: TransferThreadRoutine = TransferThread
-            thread := TransferCreateThread(null, 0, routine, cast(*void)call, 0, null)
+            thread := TransferCreateThread(null, 0, routine, job, 0, null)
             if thread == null {
-                TransferFree(cast(*void)call)
                 return false
             }
             unused TransferCloseHandle(thread)
