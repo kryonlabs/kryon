@@ -1,0 +1,89 @@
+// Run in headless Chromium by tests/file_picker_browser_test.py. The driver
+// sets each start flag with a user gesture, then answers the chooser.
+#import "file_picker"
+#import "web"
+#import "c_string"
+#import "byte_text_linux"
+
+c :: #system_library "c";
+FileOpen :: (path: *u8, mode: *u8) -> *void #foreign c "fopen";
+FileRead :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign c "fread";
+FileClose :: (file: *void) -> s32 #foreign c "fclose";
+
+WaitFor :: (flag: string) {
+    while true {
+        scope := WebScope()
+        ready := WebAsBool(WebGet(WebGlobal, WebName(flag)))
+        WebEnd(scope)
+        if ready {
+            return
+        }
+        WebSleep(20)
+    }
+}
+
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+
+Contents :: (path: *u8) -> string {
+    mode: [4]u8
+    CopyCString("rb", mode[:])
+    file := FileOpen(path, *mode[0])
+    if file == null {
+        return ""
+    }
+    bytes: [64]u8
+    count := FileRead(*bytes[0], 1, 63, file)
+    FileClose(file)
+    bytes[count] = 0
+    return TextFromCString(*bytes[0])
+}
+
+Check :: () -> string {
+    open := FilePickerProps.{.title = "Open notes", .filter = "Notes | *.txt *.md"}
+    first: [256]u8
+    WaitFor("kryonPickOpen")
+    picked := PickFile(open, first[:])
+    if picked == 0 {
+        return "FAIL open cancelled"
+    }
+    if picked != 1 {
+        return "FAIL open failed"
+    }
+    path := TextFromCString(*first[0])
+    if path.count < 16 || path[0:16] != "/tmp/kryon-file-" {
+        return "FAIL path"
+    }
+    if Contents(*first[0]) != "hello picker\n" {
+        return "FAIL contents"
+    }
+    // The chooser's accept list and label come from the props.
+    scope := WebScope()
+    accept := WebAsBool(WebGet(WebGlobal, WebName("kryonPickAcceptOk")))
+    WebEnd(scope)
+    if !accept {
+        return "FAIL accept"
+    }
+    second: [256]u8
+    WaitFor("kryonPickCancel")
+    if PickFile(open, second[:]) != 0 || second[0] != 0 {
+        return "FAIL cancel"
+    }
+    save := FilePickerProps.{.title = "Save notes", .filter = "Notes | *.txt",
+        .suggested_name = "notes.txt", .save = true}
+    if PickFile(save, second[:]) != 1 || TextFromCString(*second[0]) == path {
+        return "FAIL save"
+    }
+    return "PASS"
+}
+
+#program_export
+main :: () -> s32 {
+    Report(Check())
+    return 0
+}

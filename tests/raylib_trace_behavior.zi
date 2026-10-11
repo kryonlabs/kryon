@@ -1,0 +1,34 @@
+#import "raylib_trace"
+#import "c_string"
+
+raylib :: #system_library "raylib";
+HostTraceLog :: (level: s32, format: *u8, arguments: ..any) #foreign raylib "TraceLog";
+
+#program_export
+main :: () -> s32 {
+    RaylibTraceToConsole(RaylibTraceProps.{})
+    quiet: [32]u8
+    format: [32]u8
+    name: [16]u8
+    if !CopyCString("IMAGE: hidden", quiet[:]) || !CopyCString("values %d %.2f %s", format[:]) ||
+    !CopyCString("kryon.test", name[:]) {
+        return 1
+    }
+    // Routine image notes are dropped; the same words in a warning are kept.
+    HostTraceLog(3, *quiet[0])
+    TraceLog(4, "IMAGE: retained")
+    // raylib's own arguments are formatted once, with the target's va_list.
+    HostTraceLog(3, *format[0], 42, cast(float64)3.25, *name[0])
+    // Text logged by the application is never read as a format.
+    TraceLog(4, "100% %s done")
+    if !RaylibTraceToFile("raylib_trace.log") {
+        return 2
+    }
+    TraceLog(3, "file note")
+    TraceLog(5, "WGL test failure")
+    if RaylibTraceRecentErrors() != "[ERROR] WGL test failure\n" {
+        return 3
+    }
+    RaylibTraceClose()
+    return 0
+}

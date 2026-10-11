@@ -212,7 +212,7 @@ jobs:
         run: |
           RAYLIB_A="$PWD/build/raylib-ziran/libraylib.a" \
           RAYLIB_LIBS="$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm" \
-          make raylib-typeface-test
+          make raylib-typeface-test raylib-trace-test
 
       - name: Libdraw host
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make libdraw-project-test

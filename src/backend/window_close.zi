@@ -1,0 +1,127 @@
+// Close requests for the application's own window. The application decides
+// what a close means, such as asking first or hiding to a tray, instead of
+// the window closing at once. Only the window passed to WindowCloseWatch is
+// observed: an SDL window by its ID, a Win32 window by its own procedure.
+WINDOW_CLOSE_WINDOWS :: #defined(_WIN32) && !#defined(ANDROID_BUILD)
+WINDOW_CLOSE_SDL :: #defined(NATIVE_WINDOW_HAVE_SDL) && !#defined(_WIN32) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD)
+
+#if WINDOW_CLOSE_WINDOWS {
+    window_close_user32 :: #system_library "user32";
+    window_close_kernel32 :: #system_library "kernel32";
+    window_close_atomic :: #system_library "atomic";
+    WindowProcedure :: #type (*void, u32, usize, isize) -> isize #c_call;
+    WindowCloseSetProcedure :: (window: *void, index: s32,
+        procedure: WindowProcedure) -> isize #foreign window_close_user32 "SetWindowLongPtrW";
+    WindowCloseCallPrevious :: (procedure: isize,
+        window: *void, message: u32, wparam: usize,
+        lparam: isize) -> isize #foreign window_close_user32 "CallWindowProcW";
+    WindowCloseSetLastError :: (error: u32) #foreign window_close_kernel32 "SetLastError";
+    WindowCloseGetLastError :: () -> u32 #foreign window_close_kernel32 "GetLastError";
+    WindowCloseExchange :: (value: *s32, replacement: s32,
+        order: s32) -> s32 #foreign window_close_atomic "__atomic_exchange_4";
+
+    window_close_handle: *void;
+    window_close_previous: isize;
+    window_close_pending: s32;
+
+    WindowCloseProcedure :: (window: *void, message: u32,
+        wparam: usize, lparam: isize) -> isize {
+        previous := window_close_previous
+        // WM_CLOSE becomes a request; WM_NCDESTROY ends the watch.
+        if window == window_close_handle && message == 0x0010 {
+            WindowCloseExchange(*window_close_pending, 1, 4)
+            return cast(isize)0
+        }
+        if window == window_close_handle && message == 0x0082 {
+            window_close_handle = null
+            window_close_previous = cast(isize)0
+        }
+        return WindowCloseCallPrevious(previous, window, message,
+            wparam, lparam)
+    }
+}
+
+#if WINDOW_CLOSE_SDL {
+    window_close_sdl :: #system_library "SDL2";
+    WindowCloseEventFilter :: #type (*void, *void) -> s32 #c_call;
+    WindowCloseSdlId :: (window: *void) -> u32 #foreign window_close_sdl "SDL_GetWindowID";
+    WindowCloseAddWatch :: (callback: WindowCloseEventFilter,
+        userdata: *void) #foreign window_close_sdl "SDL_AddEventWatch";
+    WindowCloseRemoveWatch :: (callback: WindowCloseEventFilter,
+        userdata: *void) #foreign window_close_sdl "SDL_DelEventWatch";
+    WindowCloseAtomicSet :: (value: *s32, replacement: s32) -> s32 #foreign window_close_sdl "SDL_AtomicSet";
+
+    WindowEventHeader :: struct {
+        event_type: u32
+        timestamp: u32
+        window_id: u32
+        event: u8
+    }
+    window_close_id: u32;
+    window_close_pending: s32;
+
+    // SDL_WINDOWEVENT_CLOSE for the watched window only.
+    WindowCloseEvent :: (userdata: *void, event_data: *void) -> s32 {
+        unused userdata
+        if event_data != null {
+            event := cast(*WindowEventHeader)event_data
+            if event.event_type == 0x200 && event.event == 14 &&
+                event.window_id == window_close_id {
+                WindowCloseAtomicSet(*window_close_pending, 1)
+            }
+        }
+        return 1
+    }
+}
+
+// Starts observing close requests for window, the application's own SDL or
+// Win32 window. A second call keeps the first window.
+WindowCloseWatch :: (window: *void) {
+    #if WINDOW_CLOSE_WINDOWS {
+        if window == null || window == window_close_handle {
+            return
+        }
+        WindowCloseSetLastError(0)
+        procedure: WindowProcedure = WindowCloseProcedure
+        previous := WindowCloseSetProcedure(window, -4, procedure)
+        if previous == cast(isize)0 && WindowCloseGetLastError() != 0 {
+            return
+        }
+        window_close_handle = window
+        window_close_previous = previous
+        return
+    }
+    #if WINDOW_CLOSE_SDL {
+        if window == null || window_close_id != 0 {
+            return
+        }
+        window_close_id = WindowCloseSdlId(window)
+        if window_close_id != 0 {
+            callback: WindowCloseEventFilter = WindowCloseEvent
+            WindowCloseAddWatch(callback, null)
+        }
+        return
+    }
+    unused window
+}
+
+// Whether a close was requested since the last call.
+WindowCloseTake :: () -> bool {
+    #if WINDOW_CLOSE_WINDOWS {
+        return WindowCloseExchange(*window_close_pending, 0, 4) != 0
+    }
+    #if WINDOW_CLOSE_SDL {
+        return WindowCloseAtomicSet(*window_close_pending, 0) != 0
+    }
+    return false
+}
+
+WindowCloseStop :: () {
+    #if WINDOW_CLOSE_SDL {
+        if window_close_id != 0 {
+            callback: WindowCloseEventFilter = WindowCloseEvent
+            WindowCloseRemoveWatch(callback, null)
+            window_close_id = 0
+        }
+    }
+}
