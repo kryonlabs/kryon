@@ -1,0 +1,46 @@
+// browser_viewport off the browser: the fallback size, and the resize
+// debounce every platform shares.
+#import "browser_viewport"
+
+c :: #system_library "c";
+TestExit :: (status: s32) #foreign c "exit";
+
+Require :: (condition: bool, code: s32) {
+    if !condition {
+        TestExit(code)
+    }
+}
+
+#program_export
+main :: () -> s32 {
+    measured := BrowserViewportMeasure(BrowserViewport.{640, 480})
+    Require(measured.width == 640 && measured.height == 480, 1)
+
+    resize: BrowserResize
+    current := BrowserViewport.{640, 480}
+    changed := BrowserViewport.{800, 600}
+    // A new size settles on its second frame.
+    Require(!BrowserResizeSettled(*resize, current, changed, false), 2)
+    Require(BrowserResizeSettled(*resize, current, changed, false), 3)
+    // Settling starts over.
+    Require(!BrowserResizeSettled(*resize, current, changed, false), 4)
+    // Never while a pointer is down; it settles once released.
+    Require(BrowserResizeSettled(*resize, current, changed, false), 5)
+    Require(!BrowserResizeSettled(*resize, current, changed, true) &&
+        !BrowserResizeSettled(*resize, current, changed, true) &&
+        BrowserResizeSettled(*resize, current, changed, false), 6)
+    // A size that keeps changing never settles.
+    resize = .{}
+    Require(!BrowserResizeSettled(*resize, current, BrowserViewport.{700, 500}, false) &&
+        !BrowserResizeSettled(*resize, current, BrowserViewport.{710, 510}, false) &&
+        !BrowserResizeSettled(*resize, current, BrowserViewport.{720, 520}, false), 7)
+    // Pixel jitter is ignored, and reaching the current size forgets a
+    // pending one.
+    resize = .{}
+    Require(!BrowserResizeSettled(*resize, current, BrowserViewport.{641, 479}, false) &&
+        !BrowserResizeSettled(*resize, current, BrowserViewport.{641, 479}, false), 8)
+    Require(!BrowserResizeSettled(*resize, current, changed, false) &&
+        !BrowserResizeSettled(*resize, current, current, false) &&
+        resize.stable_frames == 0 && !BrowserResizeSettled(*resize, current, changed, false), 9)
+    return 0
+}

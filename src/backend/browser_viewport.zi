@@ -1,0 +1,127 @@
+// The room a canvas application has in the browser, in CSS pixels, and when
+// a new size has settled enough to resize to. For applications that draw
+// into one canvas themselves, such as raylib's web builds; Kryon's page
+// backend sizes its own canvas.
+BrowserViewport :: struct {
+    width: s32
+    height: s32
+}
+
+// Debounce state for BrowserResizeSettled; zero to start.
+BrowserResize :: struct {
+    pending: BrowserViewport
+    stable_frames: s32
+}
+
+// The visual viewport, or the window, narrowed to the first of the
+// element #canvas-frame, the canvas's parent and the canvas that has a
+// size. fallback off the browser and for anything the page cannot measure.
+BrowserViewportMeasure :: (fallback: BrowserViewport) -> BrowserViewport {
+    #if #defined(PLATFORM_WEB) {
+        return BrowserMeasure(fallback)
+    }
+    return fallback
+}
+
+// True once measured differs from current by more than a pixel and has
+// held for two frames, and never while a pointer is down, so a drag or a
+// mobile keyboard's animation does not resize the canvas under the user.
+BrowserResizeSettled :: (resize: *BrowserResize, current: BrowserViewport,
+    measured: BrowserViewport, pointer_down: bool) -> bool {
+    if measured.width == current.width && measured.height == current.height {
+        resize.* = BrowserResize.{}
+        return false
+    }
+    delta_width := measured.width - current.width
+    delta_height := measured.height - current.height
+    if delta_width >= -1 && delta_width <= 1 && delta_height >= -1 && delta_height <= 1 {
+        return false
+    }
+    if measured.width != resize.pending.width || measured.height != resize.pending.height {
+        resize.pending = measured
+        resize.stable_frames = 1
+        return false
+    }
+    resize.stable_frames += 1
+    if resize.stable_frames < 2 || pointer_down {
+        return false
+    }
+    resize.* = BrowserResize.{}
+    return true
+}
+
+#if #defined(PLATFORM_WEB) {
+    #import "web"
+
+    BrowserPositive :: (value: float64) -> bool {
+        // NaN compares false.
+        return value > 0.0
+    }
+
+    BrowserMeasure :: (fallback: BrowserViewport) -> BrowserViewport {
+        scope := WebScope()
+        defer WebEnd(scope)
+        width := cast(float64)fallback.width
+        height := cast(float64)fallback.height
+        document := WebGetObject(WebGlobal, WebName("document"))
+        viewport := WebGetObject(WebGlobal, WebName("visualViewport"))
+        viewport_width := ifx viewport != 0 then WebGetNumber(viewport, WebName("width")) else 0.0
+        viewport_height := ifx viewport != 0 then WebGetNumber(viewport, WebName("height")) else 0.0
+        if BrowserPositive(viewport_width) && BrowserPositive(viewport_height) {
+            width = viewport_width
+            height = viewport_height
+        } else {
+            root := ifx document != 0 then WebGetObject(document, WebName("documentElement")) else 0
+            inner_width := WebGetNumber(WebGlobal, WebName("innerWidth"))
+            inner_height := WebGetNumber(WebGlobal, WebName("innerHeight"))
+            if !BrowserPositive(inner_width) && root != 0 {
+                inner_width = WebGetNumber(root, WebName("clientWidth"))
+            }
+            if !BrowserPositive(inner_height) && root != 0 {
+                inner_height = WebGetNumber(root, WebName("clientHeight"))
+            }
+            if BrowserPositive(inner_width) {
+                width = inner_width
+            }
+            if BrowserPositive(inner_height) {
+                height = inner_height
+            }
+        }
+        if document != 0 {
+            canvas := WebGetObject(WebModule, WebName("canvas"))
+            if canvas == 0 {
+                canvas = WebAsObject(WebCall1(document, WebName("getElementById"), WebText("canvas")))
+            }
+            candidates: [3]s32
+            candidates[0] = WebAsObject(WebCall1(document, WebName("getElementById"), WebText("canvas-frame")))
+            candidates[1] = ifx canvas != 0 then WebGetObject(canvas, WebName("parentElement")) else 0
+            candidates[2] = canvas
+            for index: 0..2 {
+                element := candidates[index]
+                if element != 0 {
+                    bounds := WebAsObject(WebCall0(element, WebName("getBoundingClientRect")))
+                    bounds_width := ifx bounds != 0 then WebGetNumber(bounds, WebName("width")) else 0.0
+                    bounds_height := ifx bounds != 0 then WebGetNumber(bounds, WebName("height")) else 0.0
+                    if BrowserPositive(bounds_width) && BrowserPositive(bounds_height) {
+                        if bounds_width < width {
+                            width = bounds_width
+                        }
+                        if bounds_height < height {
+                            height = bounds_height
+                        }
+                        break
+                    }
+                }
+            }
+        }
+        return BrowserViewport.{BrowserRound(width, fallback.width), BrowserRound(height, fallback.height)}
+    }
+
+    BrowserRound :: (value: float64, fallback: s32) -> s32 {
+        if !BrowserPositive(value) || value > 1000000.0 {
+            value = cast(float64)fallback
+        }
+        rounded := cast(s32)(value + 0.5)
+        return ifx rounded < 1 then 1 else rounded
+    }
+}
