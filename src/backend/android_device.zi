@@ -5,6 +5,7 @@
 // so OS keyboard callbacks on the UI thread cannot target a recycled session.
 #import "android_jni"
 #import "android_surface"
+#import "android_text_editor"
 #import "c_string"
 #import "session"
 #import "text_input_platform"
@@ -402,6 +403,7 @@ AndroidTextInputOpen :: (session: Session) {
         }
         DeviceUnlock()
         TextKeyboardBind(session)
+        AndroidTextEditorOpen(session)
     }
     unused session
 }
@@ -411,6 +413,7 @@ AndroidTextInputClose :: (session: Session) {
     #if #defined(ANDROID_BUILD) {
         // Hide while the callback can still validate its native owner.
         TextKeyboardRelease(session)
+        AndroidTextEditorClose(session)
         DeviceLock()
         if device_text_owner.slot == session.slot &&
         device_text_owner.epoch == session.epoch {
@@ -431,6 +434,7 @@ AndroidTextInputClose :: (session: Session) {
 #program_export
 AndroidTextInputBeginFrame :: (session: Session) {
     #if #defined(ANDROID_BUILD) {
+        AndroidTextEditorBeginFrame(session)
         DeviceLock()
         device_text_frame_kind = 0
         device_text_frame_key = 0
@@ -470,7 +474,12 @@ AndroidTextInputFrame :: (session: Session, requested: bool) {
         }
         DeviceUnlock()
         if owned {
+            AndroidTextEditorFrame(session, active)
             TextKeyboardSetVisible(session, active)
+            // A tap on the field the input method edits shows the keyboard.
+            if active && AndroidTextEditorWantsKeyboard(session) {
+                DeviceSoftKeyboard(true)
+            }
         }
     }
     unused session

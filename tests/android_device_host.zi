@@ -44,13 +44,6 @@ GetWindowHandle :: () -> *void {
 }
 
 #program_export
-dlsym :: (library: *void, symbol: *u8) -> *void {
-    unused library
-    unused symbol
-    return null
-}
-
-#program_export
 ANativeWindow_getFormat :: (window: *void) -> s32 {
     unused window
     return 1
