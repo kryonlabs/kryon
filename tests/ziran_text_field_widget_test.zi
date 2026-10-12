@@ -360,6 +360,20 @@ main :: () -> s32 {
     edit_props.input.delete_forward = true
     edit = TextFieldEditFor(edit_props, 28, 28)
     if !edit.changed || edit.start != 28 || edit.end != 36 { return 6 }
+    // A numeric field takes digits only, typed, pasted or replaced whole.
+    number_props: TextFieldProps
+    number_props.numeric = true
+    number_props.value = "12"
+    number_props.max_codepoints = 4
+    if !TextFieldReplacementAllowed(number_props, 2, 2, "34") ||
+       TextFieldReplacementAllowed(number_props, 2, 2, "3a") ||
+       TextFieldReplacementAllowed(number_props, 0, 2, "-5") ||
+       TextFieldReplacementAllowed(number_props, 2, 2, "345") ||
+       !TextFieldReplacementAllowed(number_props, 0, 2, "") { return 7 }
+    number_props.input.text = "x"
+    if TextFieldEditFor(number_props, 2, 2).changed { return 8 }
+    number_props.input.text = "7"
+    if !TextFieldEditFor(number_props, 2, 2).changed { return 9 }
     index: s32 = 0
     while index < 27 {
         SetCompositionPhase(index)

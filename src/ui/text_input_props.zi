@@ -41,6 +41,8 @@ TextFieldProps :: struct {
     max_bytes: s32
     max_codepoints: s32
     secure: bool
+    // Accepts only the digits 0-9; touch keyboards open a number pad.
+    numeric: bool
     read_only: bool
     disabled: bool
     input: TextFieldInput
