@@ -341,6 +341,59 @@ Frame :: () -> s32 {
     return old
 }
 
+number_session: Session;
+number_cursor: s32;
+number_anchor: s32;
+number_focused: bool;
+number_blur: bool;
+
+NumberFrame :: () -> bool {
+    props: TextFieldProps
+    props.key = cast(u64)78
+    props.bounds = Rectangle.{20.0, 20.0, 120.0, 36.0}
+    props.value = "1250"
+    props.cursor = number_cursor
+    props.anchor = number_anchor
+    props.focused = number_focused
+    props.focus_id = 78
+    props.numeric = true
+    props.input.blur = number_blur
+    BeginFrame(number_session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    result := TextField(number_session, props)
+    number_cursor = result.cursor
+    number_anchor = result.anchor
+    number_focused = result.focused
+    return EndFrame(number_session) == cast(FrameStatus)FrameOk
+}
+
+// A tap that focuses a numeric field selects the whole number, whether the
+// release comes in a later frame or the same one; a tap in the focused field
+// places the cursor.
+NumberTap :: () -> s32 {
+    number_session = SessionOpen()
+    if !NumberFrame() || number_focused { return 20 }
+    TreePointerUpdate(number_session, PointerFrame.{30.0, 38.0, true, true, false})
+    if !NumberFrame() || !number_focused || number_anchor != 0 || number_cursor != 4 { return 21 }
+    TreePointerUpdate(number_session, PointerFrame.{30.0, 38.0, true, false, false})
+    if !NumberFrame() || number_anchor != 0 || number_cursor != 4 { return 22 }
+    TreePointerUpdate(number_session, PointerFrame.{30.0, 38.0, false, false, true})
+    if !NumberFrame() || !number_focused || number_anchor != 0 || number_cursor != 4 { return 23 }
+    TreePointerUpdate(number_session, PointerFrame.{30.0, 38.0, true, true, false})
+    TreePointerUpdate(number_session, PointerFrame.{30.0, 38.0, false, false, true})
+    if !NumberFrame() || !number_focused || number_anchor != number_cursor ||
+       number_cursor == 4 { return 24 }
+    number_blur = true
+    if !NumberFrame() || number_focused { return 25 }
+    number_blur = false
+    number_cursor = 1
+    number_anchor = 1
+    TreePointerUpdate(number_session, PointerFrame.{30.0, 38.0, true, true, false})
+    TreePointerUpdate(number_session, PointerFrame.{30.0, 38.0, false, false, true})
+    if !NumberFrame() || !number_focused || number_anchor != 0 || number_cursor != 4 { return 26 }
+    unused SessionClose(number_session)
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     // Editing moves by user-perceived characters; byte ranges remain public.
@@ -383,5 +436,5 @@ main :: () -> s32 {
     if FieldPreeditPaints() <= 0 || FieldUnderlinePaints() <= 0 {
         return 2
     }
-    return 0
+    return NumberTap()
 }
