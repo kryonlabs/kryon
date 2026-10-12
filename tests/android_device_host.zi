@@ -39,6 +39,12 @@ GetScreenHeight :: () -> s32 {
 }
 
 #program_export
+SetMouseOffset :: (x: s32, y: s32) {
+    unused x
+    unused y
+}
+
+#program_export
 GetWindowHandle :: () -> *void {
     return null
 }

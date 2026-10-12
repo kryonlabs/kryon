@@ -4,7 +4,8 @@
 // own text. The activity implements
 //
 //     void setTextInputState(long target, long revision, byte[] value,
-//         int cursor, int anchor, boolean secure, boolean multiline)
+//         int cursor, int anchor, boolean secure, boolean numeric,
+//         boolean multiline)
 //
 // and reports the input method's snapshots to AndroidNativeTextInputState,
 // bound by the application's JNI_OnLoad as
@@ -50,6 +51,7 @@ using WidgetKind;
     editor_stage_cursor: s32;
     editor_stage_anchor: s32;
     editor_stage_secure: bool;
+    editor_stage_numeric: bool;
     editor_stage_multiline: bool;
     editor_stage_edited: bool;
     editor_stage_ready: bool;
@@ -59,10 +61,12 @@ using WidgetKind;
     editor_sent_anchor: s32;
     editor_sent_revision: s64 = -1;
     editor_sent_secure: bool;
+    editor_sent_numeric: bool;
     editor_sent_multiline: bool;
 
     AndroidTextEditorPresent :: (session: Session, index: s32, value: string,
-        cursor: s32, anchor: s32, secure: bool, read_only: bool, edited: bool) {
+        cursor: s32, anchor: s32, secure: bool, numeric: bool, read_only: bool,
+        edited: bool) {
         if !TextInputOwnerMatches(editor_owner, session) || read_only ||
         value.count > editor_stage_bytes.count {
             return
@@ -79,6 +83,7 @@ using WidgetKind;
         editor_stage_cursor = cursor
         editor_stage_anchor = anchor
         editor_stage_secure = secure
+        editor_stage_numeric = numeric
         editor_stage_multiline = node.kind == WidgetKindTextArea
         editor_stage_edited = edited
         editor_stage_ready = true
@@ -90,7 +95,7 @@ using WidgetKind;
             return false
         }
         defer AndroidJniDetachCurrent(*session)
-        method := AndroidJniMethod(*session, "setTextInputState", "(JJ[BIIZZ)V")
+        method := AndroidJniMethod(*session, "setTextInputState", "(JJ[BIIZZZ)V")
         if method == null {
             return false
         }
@@ -103,14 +108,15 @@ using WidgetKind;
             env.functions.SetByteArrayRegion(env, bytes, 0, editor_stage_count,
                 *editor_stage_bytes[0])
         }
-        arguments: [7]JniValue
+        arguments: [8]JniValue
         arguments[0].long_integer = target
         arguments[1].long_integer = revision
         arguments[2].reference = bytes
         arguments[3].integer = editor_stage_cursor
         arguments[4].integer = editor_stage_anchor
         arguments[5].boolean = cast(u8)editor_stage_secure
-        arguments[6].boolean = cast(u8)editor_stage_multiline
+        arguments[6].boolean = cast(u8)editor_stage_numeric
+        arguments[7].boolean = cast(u8)editor_stage_multiline
         env.functions.CallVoidMethodA(env, session.activity, method, *arguments[0])
         return env.functions.ExceptionCheck(env) == 0
     }
@@ -300,7 +306,9 @@ AndroidTextEditorFrame :: (session: Session, active: bool) {
             sent := TextView(editor_sent_bytes[:ifx editor_sent_count < 0 then 0 else editor_sent_count])
             unchanged = editor_sent_count == editor_stage_count && sent == value &&
             editor_sent_cursor == editor_stage_cursor && editor_sent_anchor == editor_stage_anchor &&
-            editor_sent_secure == editor_stage_secure && editor_sent_multiline == editor_stage_multiline &&
+            editor_sent_secure == editor_stage_secure &&
+            editor_sent_numeric == editor_stage_numeric &&
+            editor_sent_multiline == editor_stage_multiline &&
             editor_sent_revision == revision
         }
         if unchanged {
@@ -315,6 +323,7 @@ AndroidTextEditorFrame :: (session: Session, active: bool) {
             editor_sent_anchor = editor_stage_anchor
             editor_sent_revision = revision
             editor_sent_secure = editor_stage_secure
+            editor_sent_numeric = editor_stage_numeric
             editor_sent_multiline = editor_stage_multiline
         }
     }

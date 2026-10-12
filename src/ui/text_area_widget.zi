@@ -1213,7 +1213,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             Grapheme.Boundary(props.value, result.cursor),
             Grapheme.Boundary(props.value, result.anchor), props.read_only, false)
         TextHostPresent(session, result.node, props.value, result.cursor,
-            result.anchor, false, props.read_only, result.edit.changed)
+            result.anchor, false, false, props.read_only, result.edit.changed)
         bounds = TreeSubmittedNodeAt(session, result.node).bounds
     }
     PaintRoundedFill(session, result.node, bounds,

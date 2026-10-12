@@ -145,6 +145,13 @@
         if props.max_bytes > 0 && length > props.max_bytes {
             return false
         }
+        index: s32 = 0
+        while props.numeric && index < (cast(s32)replacement.count) {
+            if replacement[index] < cast(u8)48 || replacement[index] > cast(u8)57 {
+                return false
+            }
+            index += 1
+        }
         if props.max_codepoints > 0 {
             removed: string = TextSpan(props.value,
                 start, end - start)
@@ -498,7 +505,8 @@
                 Grapheme.Boundary(props.value, result.cursor),
                 Grapheme.Boundary(props.value, result.anchor), props.read_only, props.secure)
             TextHostPresent(session, result.node, props.value, result.cursor,
-                result.anchor, props.secure, props.read_only, result.edit.changed)
+                result.anchor, props.secure, props.numeric, props.read_only,
+                result.edit.changed)
             bounds = TreeSubmittedNodeAt(session, result.node).bounds
         }
         PaintRoundedFill(session, result.node, bounds,

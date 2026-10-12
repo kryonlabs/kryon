@@ -100,7 +100,7 @@ dom_session: Session;
 dom_click: u64;
 dom_document_layout: bool;
 dom_css: s32;
-EditorStage :: struct { value: s32; cursor: s32; anchor: s32; secure: bool; read_only: bool; edited: bool; }
+EditorStage :: struct { value: s32; cursor: s32; anchor: s32; secure: bool; numeric: bool; read_only: bool; edited: bool; }
 dom_editors: [8192]EditorStage;
 
 DomDocumentLayout :: () -> bool { return dom_document_layout }
@@ -547,12 +547,13 @@ DomClearEditors :: () {
 }
 
 DomStageEditor :: (session: Session, node: s32, value: string,
-    cursor: s32, anchor: s32, secure: bool, read_only: bool, edited: bool) {
+    cursor: s32, anchor: s32, secure: bool, numeric: bool, read_only: bool,
+    edited: bool) {
     if session.slot != dom_session.slot || session.epoch != dom_session.epoch ||
         node < 0 || node >= 8192 || !Utf8.Valid(value) { return }
     scope: s32 = WebScope()
     if dom_editors[node].value != 0 { WebRelease(dom_editors[node].value) }
-    dom_editors[node] = EditorStage.{DomKeepText(value), cursor, anchor, secure, read_only, edited}
+    dom_editors[node] = EditorStage.{DomKeepText(value), cursor, anchor, secure, numeric, read_only, edited}
     WebEnd(scope)
 }
 
@@ -585,6 +586,9 @@ DomPublishEditor :: (key: s32) {
     element: s32 = record.element
     if stage.secure { DomSetAttribute(element, "type", "password") }
     else if TreeNodeAt(dom_session, record.index).kind == 9 { DomSetAttribute(element, "type", "text") }
+    if TreeNodeAt(dom_session, record.index).kind == 9 {
+        DomSetAttribute(element, "inputmode", ifx stage.numeric then "numeric" else "text")
+    }
     if WebAsBool(WebGet(element, WebName("readOnly"))) != stage.read_only {
         WebSet(element, WebName("readOnly"), WebBool(stage.read_only))
     }
