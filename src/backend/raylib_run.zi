@@ -86,6 +86,10 @@ main :: () -> s32 {
             wheel: float32 = RaylibWheelMove()
             if ZoomWheel(session, desktop, wheel, modifiers) { wheel = 0.0 }
             key: s32 = RaylibPressedKey()
+            if key == 0 {
+                // A held key repeats, as Backspace does in any text editor.
+                key = RaylibRepeatedKey()
+            }
             if key != 0 && !ZoomKey(session, desktop, key, modifiers) {
                 KeyboardSend(session, key)
             }
