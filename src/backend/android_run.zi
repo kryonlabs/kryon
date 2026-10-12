@@ -105,6 +105,10 @@ AndroidRunMain :: () -> s32 {
             ResetRaylibGraphics(true)
         }
         key := RaylibPressedKey()
+        if key == 0 {
+            // A held key repeats, as Backspace does in any text editor.
+            key = RaylibRepeatedKey()
+        }
         if key != 0 {
             // The hardware back key arrives as raylib's KEY_BACK (4).
             KeyboardSend(session, key)
