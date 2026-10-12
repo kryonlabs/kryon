@@ -1,0 +1,62 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "geometry"
+#import "paint_queue"
+#import "text_props"
+#import "text_widget"
+#import "tree"
+#import "ziran_widget_noop_host"
+
+// The labels queued for one Text, joined in paint order.
+QueuedText :: (into: []u8) -> string {
+    used: s64 = 0
+    index: s32 = 0
+    while index < PendingPaintCount(TestSession()) {
+        command: PaintCommand = PendingPaintAt(TestSession(), index)
+        if command.kind == 4 || command.kind == 6 {
+            for byte: command.value {
+                if used < into.count {
+                    into[used] = byte
+                    used += 1
+                }
+            }
+        }
+        index += 1
+    }
+    return TextView(into[0:used])
+}
+
+ShowText :: (text: string, width: float32, wrap: TextWrap) -> string {
+    PaintClear(TestSession())
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 80.0})
+    props: TextProps
+    props.bounds = Rectangle.{10.0, 10.0, width, 20.0}
+    props.text = text
+    props.font = 10
+    props.wrap = wrap
+    Text(TestSession(), props)
+    unused TreeFinish(TestSession())
+    return QueuedText(shown[:])
+}
+
+shown: [128]u8;
+
+// The test host makes every byte 5 units wide at font 10.
+#program_export
+main :: () -> s32 {
+    // A name that fits is shown whole, without dots.
+    if ShowText("Yoga", 60.0, TextWrap.TextWrapEllipsis) != "Yoga" { return 1 }
+    // "Jumping Rope" is 60 wide; in 50 the start that fits before the 15
+    // wide dots is 35 wide, "Jumping".
+    if ShowText("Jumping Rope", 50.0, TextWrap.TextWrapEllipsis) != "Jumping..." { return 2 }
+    // Without the ellipsis the line is clipped by its bounds, as before.
+    if ShowText("Jumping Rope", 50.0, TextWrap.TextWrapNone) != "Jumping Rope" { return 3 }
+    // A multi-byte character is never cut in half: "Ä" is two bytes.
+    if ShowText("ÄÄÄÄÄÄ", 30.0, TextWrap.TextWrapEllipsis) != "Ä..." { return 4 }
+    return 0
+}

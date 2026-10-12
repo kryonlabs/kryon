@@ -18,6 +18,8 @@ TextBaseSize :: 16
 TextWrap :: enum {
     TextWrapAuto :: 0
     TextWrapNone :: 1
+    // One line, like TextWrapNone; text wider than its bounds ends in "...".
+    TextWrapEllipsis :: 2
 }
 
 // UTF-8 byte ranges in the visible text, with an exclusive end. Invalid or
