@@ -144,6 +144,23 @@
         return prepared
     }
 
+    // The longest start of value, ending on a whole character, that is at
+    // most max_width wide.
+    TextEllipsisStart :: (value: string, max_width: s32, font: s32,
+        typeface: string) -> string {
+        end: s32 = cast(s32)value.count
+        while end > 0 {
+            end -= 1
+            while end > 0 && (value[end] & cast(u8)192) == cast(u8)128 {
+                end -= 1
+            }
+            if GlyphWidth(value[0:end], font, typeface) <= max_width {
+                return value[0:end]
+            }
+        }
+        return ""
+    }
+
     #program_export
     PaintTextLines :: (session: Session, node: s32, props: TextProps,
         prepared: PreparedText) {
@@ -159,6 +176,21 @@
                 prepared.typeface)
             value: string = TextSpan(props.text, line.start,
                 line.end - line.start)
+            // A line too wide for its bounds keeps the start that fits and
+            // ends in "...".
+            ellipsis: bool = props.wrap == TextWrap.TextWrapEllipsis &&
+                prepared.bounds.width > 0.0 &&
+                cast(float32)line.width > prepared.bounds.width
+            dots_width: s32 = 0
+            if ellipsis {
+                dots_width = GlyphWidth("...", prepared.font, prepared.typeface)
+                value = TextEllipsisStart(value,
+                    cast(s32)prepared.bounds.width - dots_width,
+                    prepared.font, prepared.typeface)
+                line.width = GlyphWidth(value, prepared.font, prepared.typeface) +
+                    dots_width
+                line.end = line.start + cast(s32)value.count
+            }
             x: s32 = TextLineXFor(cast(s32)prepared.bounds.x,
                 cast(s32)prepared.bounds.width, line.width, cast(s32)props.align)
             // A line that starts inside the box is drawn whole: a box a little
@@ -178,6 +210,11 @@
             if value != "" {
                 PaintClippedLabel(session, node, value, x, y, prepared.font,
                     prepared.color, clip)
+                if ellipsis {
+                    PaintClippedLabel(session, node, "...",
+                        x + line.width - dots_width, y, prepared.font,
+                        prepared.color, clip)
+                }
                 PaintTextEmphasis(session, node, props, prepared, line, x, y, clip)
                 if props.strikethrough {
                     strike: Rectangle = TextStrikethroughBounds(cast(float32)x,
