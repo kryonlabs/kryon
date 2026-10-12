@@ -239,6 +239,12 @@
         }
         activated: bool = TreeTakeActivationAt(session, previous)
         drag: PointerDrag = TreeTakeDragAt(session, previous)
+        // A press that focuses a numeric field selects its whole number until
+        // the release, so typing replaces the number; later taps place the
+        // cursor.
+        select_number: bool = TreePreviousWidgetState(session, previous).open &&
+        (drag.active || drag.ended || activated)
+        if props.numeric && drag.started { select_number = !props.focused }
         if TreeHasFocus(session) { result.focused = TreeFocusedAt(session, previous) }
         if props.disabled || props.input.blur { result.focused = false; TreeBlurAt(session, previous) }
         // A focus request takes the session focus, as a blur releases it.
@@ -280,6 +286,10 @@
                 result.anchor = selected
             }
             result.cursor = selected
+            if select_number {
+                result.anchor = 0
+                result.cursor = cast(s32)props.value.count
+            }
         }
         composition_state: CompositionState = props.composition
         if activated || drag.started || drag.active || drag.ended {
@@ -496,6 +506,9 @@
             if result.node < 0 { return result }
             TreeSetInteractive(session, result.node, props.disabled,
                 false, props.focus_id)
+            if select_number && drag.active && !drag.ended {
+                TreeSetWidgetState(session, result.node, WidgetState.{true, 0, 0})
+            }
             TreeSetSemantic(session, result.node,
                 cast(SemanticKind)SemanticTextField, 0)
             TreeSetLabel(session, result.node, props.label)
