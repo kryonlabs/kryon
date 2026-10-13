@@ -24,6 +24,11 @@
   columns that fit the width, and `GridRowCount`, `GridCellsHeight`,
   `GridCellBounds` and `GridIndexAt` give the rows, the height, each tile's
   bounds and the tile under a point, for overlays and drag-and-drop.
+- Android apps without Java code can make HTTP requests with
+  `kryon/http_transfer`: when the activity has no transport of its own, a
+  native worker drives the system's `HttpURLConnection` through JNI, so TLS
+  and certificate checks stay the platform's. Redirects and caches are
+  refused, and a request that outlives its timeout fails.
 
 ### Fixed
 

@@ -3,9 +3,9 @@
 // example after the user switched accounts: a cancelled request can never
 // write into the caller's buffer.
 //
-// The desktop runs curl on a detached worker thread. Android asks the
-// activity, which owns TLS there, through these methods (Inner Breeze's
-// HttpTransport implements them):
+// The desktop runs curl on a detached worker thread. On Android, an activity
+// that implements these methods owns the transfers (Inner Breeze's
+// HttpTransport does):
 //
 //     int httpCreate(byte[] method, byte[] url, int capacity, int timeoutMs)
 //     boolean httpHeader(int handle, byte[] name, byte[] value)
@@ -14,13 +14,22 @@
 //     byte[] httpResponse(int handle)
 //     void httpCancel(int handle)
 //
+// An activity without them, such as a plain NativeActivity with no Java code,
+// gets one detached native worker per transfer instead, at most eight at a
+// time. The worker attaches to the Java VM and drives the platform's own
+// java.net.HttpURLConnection through JNI, so TLS and certificate checks stay
+// the system's; redirects and caches are refused. Methods, URLs and header
+// names must be visible ASCII there, and header values ASCII text. The app
+// needs the INTERNET permission, and plain http URLs need cleartext traffic
+// allowed in its manifest.
+//
 // The browser uses fetch through the web bridge, with credentials omitted
 // and redirects refused.
 //
 // Only http and https URLs are accepted. The answer is NUL-terminated text
 // in the caller's output, which must stay valid until the transfer is polled
 // to completion or cancelled. Answers that do not fit fail rather than
-// arriving cut.
+// arriving cut, and a transfer that outlives its timeout fails.
 #import "net_http"
 #import "c_string"
 #import "byte_text_linux"
@@ -33,9 +42,9 @@ HTTP_TRANSFER_MAXIMUM :: 16777216
 HTTP_TRANSFER_HEADERS :: 32
 
 HttpTransfer :: struct {
-    // Android's and the browser's transfer handle.
+    // The Android activity's and the browser's transfer handle.
     handle: s32
-    // The desktop worker's job.
+    // The desktop or Android worker's job.
     job: *void
     output: []u8
 }
@@ -129,12 +138,60 @@ TransferBytes :: (text: string) -> *u8 {
     return descriptor.data
 }
 
-#if HTTP_TRANSFER_NATIVE {
-    #import "net_http_curl_linux"
+// The desktop and Android workers own their memory and share one lock.
+#if !HTTP_TRANSFER_WEB {
     transfer_c :: #system_library "c";
     TransferAllocate :: (count: usize, size: usize) -> *void #foreign transfer_c "calloc";
     TransferFree :: (pointer: *void) #foreign transfer_c "free";
     TransferCopy :: (destination: *void, source: *void, count: usize) -> *void #foreign transfer_c "memcpy";
+}
+
+#if !HTTP_TRANSFER_WEB && !#defined(_WIN32) {
+    TransferThreadRoutine :: #type (*void) -> *void #c_call;
+    TransferOnceRoutine :: #type () -> void #c_call;
+    TransferOnce :: (state: *s32, routine: TransferOnceRoutine) -> s32 #foreign transfer_c "pthread_once";
+    TransferMutexInit :: (mutex: *void, attributes: *void) -> s32 #foreign transfer_c "pthread_mutex_init";
+    TransferMutexLock :: (mutex: *void) -> s32 #foreign transfer_c "pthread_mutex_lock";
+    TransferMutexUnlock :: (mutex: *void) -> s32 #foreign transfer_c "pthread_mutex_unlock";
+    TransferThreadCreate :: (thread: *usize, attributes: *void,
+        routine: TransferThreadRoutine, argument: *void) -> s32 #foreign transfer_c "pthread_create";
+    TransferThreadDetach :: (thread: usize) -> s32 #foreign transfer_c "pthread_detach";
+    TransferAbort :: () #foreign transfer_c "abort";
+
+    transfer_mutex_once: s32;
+    transfer_mutex: *void;
+
+    TransferMutexStart :: () {
+        // Large enough for every platform's pthread_mutex_t.
+        transfer_mutex = TransferAllocate(1, 128)
+        if transfer_mutex == null || TransferMutexInit(transfer_mutex, null) != 0 {
+            TransferAbort()
+        }
+    }
+
+    TransferLock :: () {
+        routine: TransferOnceRoutine = TransferMutexStart
+        unused TransferOnce(*transfer_mutex_once, routine)
+        unused TransferMutexLock(transfer_mutex)
+    }
+
+    TransferUnlock :: () {
+        unused TransferMutexUnlock(transfer_mutex)
+    }
+
+    // Runs routine(job) on a detached thread.
+    TransferStartThread :: (routine: TransferThreadRoutine, job: *void) -> bool {
+        thread: usize
+        if TransferThreadCreate(*thread, null, routine, job) != 0 {
+            return false
+        }
+        unused TransferThreadDetach(thread)
+        return true
+    }
+}
+
+#if HTTP_TRANSFER_NATIVE {
+    #import "net_http_curl_linux"
 
     // The worker owns copies of the request; the response is written only
     // into job memory, and only a poll copies it to the caller.
@@ -192,7 +249,7 @@ TransferBytes :: (text: string) -> *u8 {
     NativeStart :: (transfer: *HttpTransfer, request: HttpRequest,
         output: []u8, timeout_ms: s32) -> bool {
         size := request.method.count + request.url.count + request.token.count +
-            request.accept.count + request.content_type.count + request.body.count
+        request.accept.count + request.content_type.count + request.body.count
         for index: cast(s64)0..request.headers.count - 1 {
             size += request.headers[index].name.count + request.headers[index].value.count
         }
@@ -241,7 +298,7 @@ TransferBytes :: (text: string) -> *u8 {
             return -1
         }
         success := job.result.code == 0 && !job.result.truncated &&
-            job.result.length >= 0 && job.result.length < transfer.output.count
+        job.result.length >= 0 && job.result.length < transfer.output.count
         if success {
             TransferCopy(cast(*void)*transfer.output[0], cast(*void)job.response,
                 cast(usize)job.result.length)
@@ -270,38 +327,6 @@ TransferBytes :: (text: string) -> *u8 {
     }
 
     #if !#defined(_WIN32) {
-        TransferThreadRoutine :: #type (*void) -> *void #c_call;
-        TransferOnceRoutine :: #type () -> void #c_call;
-        TransferOnce :: (state: *s32, routine: TransferOnceRoutine) -> s32 #foreign transfer_c "pthread_once";
-        TransferMutexInit :: (mutex: *void, attributes: *void) -> s32 #foreign transfer_c "pthread_mutex_init";
-        TransferMutexLock :: (mutex: *void) -> s32 #foreign transfer_c "pthread_mutex_lock";
-        TransferMutexUnlock :: (mutex: *void) -> s32 #foreign transfer_c "pthread_mutex_unlock";
-        TransferThreadCreate :: (thread: *usize, attributes: *void,
-            routine: TransferThreadRoutine, argument: *void) -> s32 #foreign transfer_c "pthread_create";
-        TransferThreadDetach :: (thread: usize) -> s32 #foreign transfer_c "pthread_detach";
-        TransferAbort :: () #foreign transfer_c "abort";
-
-        transfer_mutex_once: s32;
-        transfer_mutex: *void;
-
-        TransferMutexStart :: () {
-            // Large enough for every platform's pthread_mutex_t.
-            transfer_mutex = TransferAllocate(1, 128)
-            if transfer_mutex == null || TransferMutexInit(transfer_mutex, null) != 0 {
-                TransferAbort()
-            }
-        }
-
-        TransferLock :: () {
-            routine: TransferOnceRoutine = TransferMutexStart
-            unused TransferOnce(*transfer_mutex_once, routine)
-            unused TransferMutexLock(transfer_mutex)
-        }
-
-        TransferUnlock :: () {
-            unused TransferMutexUnlock(transfer_mutex)
-        }
-
         TransferThread :: (argument: *void) -> *void {
             NativeWork(argument)
             return null
@@ -309,13 +334,8 @@ TransferBytes :: (text: string) -> *u8 {
 
         // Runs NativeWork(job) on a detached thread.
         TransferStartWorker :: (job: *void) -> bool {
-            thread: usize
             routine: TransferThreadRoutine = TransferThread
-            if TransferThreadCreate(*thread, null, routine, job) != 0 {
-                return false
-            }
-            unused TransferThreadDetach(thread)
-            return true
+            return TransferStartThread(routine, job)
         }
     }
 
@@ -359,6 +379,7 @@ TransferBytes :: (text: string) -> *u8 {
 
 #if HTTP_TRANSFER_ANDROID {
     #import "android_jni"
+    #import "timer_linux"
 
     AndroidBytes :: (session: *AndroidJniSession, value: string) -> *void {
         env := session.env
@@ -448,7 +469,12 @@ TransferBytes :: (text: string) -> *u8 {
         defer AndroidJniDetachCurrent(*session)
         method := AndroidJniMethod(*session, "httpCreate", "([B[BII)I")
         if method == null {
-            return false
+            // No Java transport: clear the NoSuchMethodError and let a
+            // native worker drive HttpURLConnection.
+            if session.env.functions.ExceptionCheck(session.env) != 0 {
+                session.env.functions.ExceptionClear(session.env)
+            }
+            return ConnectionStart(transfer, request, output, timeout_ms, session.vm)
         }
         arguments: [4]JniValue
         arguments[0].reference = AndroidBytes(*session, request.method)
@@ -476,6 +502,9 @@ TransferBytes :: (text: string) -> *u8 {
     }
 
     AndroidPoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+        if transfer.job != null {
+            return ConnectionPoll(transfer, status)
+        }
         if transfer.handle == 0 {
             return 0
         }
@@ -531,6 +560,10 @@ TransferBytes :: (text: string) -> *u8 {
     }
 
     AndroidCancel :: (transfer: *HttpTransfer) {
+        if transfer.job != null {
+            ConnectionCancel(transfer)
+            return
+        }
         if transfer.handle == 0 {
             return
         }
@@ -538,6 +571,476 @@ TransferBytes :: (text: string) -> *u8 {
         if AndroidJniAttachCurrent(*session) != 0 {
             AndroidCancelHandle(*session, transfer.handle)
             AndroidJniDetachCurrent(*session)
+        }
+    }
+
+    CONNECTION_WORKERS :: 8
+    CONNECTION_HEADERS :: HTTP_TRANSFER_HEADERS + 3
+    CONNECTION_CHUNK :: 8192
+
+    // A transfer without the activity's transport. Like the desktop job, the
+    // worker owns NUL-terminated copies of the request and writes the answer
+    // only into job memory; only a poll copies it to the caller.
+    ConnectionJob :: struct {
+        vm: *JniVm
+        method: *u8
+        url: *u8
+        names: [CONNECTION_HEADERS]*u8
+        values: [CONNECTION_HEADERS]*u8
+        header_count: s32
+        body: *u8
+        body_count: s32
+        timeout_ms: s32
+        started_ms: s64
+        text: *u8
+        response: *u8
+        capacity: s64
+        length: s64
+        status: s32
+        success: bool
+        done: bool
+        abandoned: bool
+    }
+
+    // Running workers, cancelled ones included, under the transfer lock.
+    connection_workers: s32;
+
+    // JNI strings are modified UTF-8 without NUL, and the platform accepts
+    // only visible ASCII in methods, URLs and header names; values may also
+    // hold spaces and tabs.
+    ConnectionText :: (value: string, spaces: bool) -> bool {
+        for index: cast(s64)0..value.count - 1 {
+            byte := value[index]
+            visible := byte > 32 && byte < 127
+            if !visible && !(spaces && (byte == 32 || byte == 9)) {
+                return false
+            }
+        }
+        return true
+    }
+
+    ConnectionKeep :: (job: *ConnectionJob, at: *s64, value: string) -> *u8 {
+        start := *job.text[at.*]
+        if value.count > 0 {
+            TransferCopy(cast(*void)start, cast(*void)TransferBytes(value), cast(usize)value.count)
+        }
+        job.text[at.* + value.count] = 0
+        at.* += value.count + 1
+        return start
+    }
+
+    ConnectionHeader :: (job: *ConnectionJob, at: *s64, name: string, value: string) -> bool {
+        if name.count == 0 || name.count > 128 || value.count > 8192 ||
+        job.header_count >= CONNECTION_HEADERS || !ConnectionText(name, false) ||
+        !ConnectionText(value, true) {
+            return false
+        }
+        job.names[job.header_count] = ConnectionKeep(job, at, name)
+        job.values[job.header_count] = ConnectionKeep(job, at, value)
+        job.header_count += 1
+        return true
+    }
+
+    ConnectionHeaders :: (job: *ConnectionJob, at: *s64, request: HttpRequest) -> bool {
+        if request.accept.count > 0 && !ConnectionHeader(job, at, "Accept", request.accept) {
+            return false
+        }
+        if request.content_type.count > 0 &&
+        !ConnectionHeader(job, at, "Content-Type", request.content_type) {
+            return false
+        }
+        if request.token.count > 0 {
+            authorization: [8192]u8
+            if !HttpTransferBearer(request.token, authorization[:]) ||
+            !ConnectionHeader(job, at, "Authorization", TextFromCString(*authorization[0])) {
+                return false
+            }
+        }
+        for index: cast(s64)0..request.headers.count - 1 {
+            if !ConnectionHeader(job, at, request.headers[index].name, request.headers[index].value) {
+                return false
+            }
+        }
+        return true
+    }
+
+    ConnectionFreeJob :: (job: *ConnectionJob) {
+        TransferFree(cast(*void)job.text)
+        TransferFree(cast(*void)job.response)
+        TransferFree(cast(*void)job)
+    }
+
+    // Clears a pending Java exception; true when there was one.
+    ConnectionFailed :: (env: *JniEnv) -> bool {
+        if env.functions.ExceptionCheck(env) == 0 {
+            return false
+        }
+        env.functions.ExceptionClear(env)
+        return true
+    }
+
+    ConnectionClass :: (env: *JniEnv, name: string) -> *void {
+        bytes: [64]u8
+        if !CopyCString(name, bytes[:]) {
+            return null
+        }
+        klass := env.functions.FindClass(env, *bytes[0])
+        if ConnectionFailed(env) {
+            return null
+        }
+        return klass
+    }
+
+    ConnectionMethod :: (env: *JniEnv, klass: *void, name: string, signature: string) -> *void {
+        method_name: [64]u8
+        method_signature: [96]u8
+        if !CopyCString(name, method_name[:]) || !CopyCString(signature, method_signature[:]) {
+            return null
+        }
+        method := env.functions.GetMethodID(env, klass, *method_name[0], *method_signature[0])
+        if ConnectionFailed(env) {
+            return null
+        }
+        return method
+    }
+
+    ConnectionVoid :: (env: *JniEnv, object: *void, klass: *void, name: string,
+        signature: string, arguments: *JniValue) -> bool {
+        method := ConnectionMethod(env, klass, name, signature)
+        if method == null {
+            return false
+        }
+        env.functions.CallVoidMethodA(env, object, method, arguments)
+        return !ConnectionFailed(env)
+    }
+
+    ConnectionInteger :: (env: *JniEnv, object: *void, klass: *void, name: string,
+        signature: string, arguments: *JniValue, result: *s32) -> bool {
+        method := ConnectionMethod(env, klass, name, signature)
+        if method == null {
+            return false
+        }
+        result.* = env.functions.CallIntMethodA(env, object, method, arguments)
+        return !ConnectionFailed(env)
+    }
+
+    // The returned object may be null; false only when the call failed.
+    ConnectionObject :: (env: *JniEnv, object: *void, klass: *void, name: string,
+        signature: string, arguments: *JniValue, result: **void) -> bool {
+        method := ConnectionMethod(env, klass, name, signature)
+        if method == null {
+            return false
+        }
+        result.* = env.functions.CallObjectMethodA(env, object, method, arguments)
+        return !ConnectionFailed(env)
+    }
+
+    // A cancelled transfer or one past its timeout stops reading.
+    ConnectionStopped :: (job: *ConnectionJob) -> bool {
+        now := MonotonicMilliseconds()
+        TransferLock()
+        abandoned := job.abandoned
+        TransferUnlock()
+        return abandoned || now < 0 || now - job.started_ms >= cast(s64)job.timeout_ms
+    }
+
+    ConnectionSend :: (env: *JniEnv, job: *ConnectionJob, connection: *void, klass: *void) -> bool {
+        arguments: [1]JniValue
+        arguments[0].boolean = 1
+        if !ConnectionVoid(env, connection, klass, "setDoOutput", "(Z)V", *arguments[0]) {
+            return false
+        }
+        arguments[0].long_integer = 0
+        arguments[0].integer = job.body_count
+        if !ConnectionVoid(env, connection, klass, "setFixedLengthStreamingMode", "(I)V", *arguments[0]) {
+            return false
+        }
+        stream: *void
+        if !ConnectionObject(env, connection, klass, "getOutputStream", "()Ljava/io/OutputStream;",
+            *arguments[0], *stream) || stream == null {
+            return false
+        }
+        stream_class := ConnectionClass(env, "java/io/OutputStream")
+        if stream_class == null {
+            return false
+        }
+        bytes := env.functions.NewByteArray(env, job.body_count)
+        if ConnectionFailed(env) || bytes == null {
+            return false
+        }
+        env.functions.SetByteArrayRegion(env, bytes, 0, job.body_count, job.body)
+        if ConnectionFailed(env) {
+            return false
+        }
+        arguments[0].reference = bytes
+        if !ConnectionVoid(env, stream, stream_class, "write", "([B)V", *arguments[0]) {
+            return false
+        }
+        env.functions.DeleteLocalRef(env, bytes)
+        return ConnectionVoid(env, stream, stream_class, "close", "()V", *arguments[0])
+    }
+
+    // Reads the whole answer into job memory; fails rather than cutting it.
+    ConnectionReceive :: (env: *JniEnv, job: *ConnectionJob, stream: *void) -> bool {
+        stream_class := ConnectionClass(env, "java/io/InputStream")
+        if stream_class == null {
+            return false
+        }
+        read := ConnectionMethod(env, stream_class, "read", "([B)I")
+        if read == null {
+            return false
+        }
+        buffer := env.functions.NewByteArray(env, CONNECTION_CHUNK)
+        if ConnectionFailed(env) || buffer == null {
+            return false
+        }
+        arguments: [1]JniValue
+        arguments[0].reference = buffer
+        complete := false
+        while !ConnectionStopped(job) {
+            count := env.functions.CallIntMethodA(env, stream, read, *arguments[0])
+            if ConnectionFailed(env) || count < -1 || count > CONNECTION_CHUNK {
+                break
+            }
+            if count == -1 {
+                complete = true
+                break
+            }
+            if cast(s64)count > job.capacity - job.length - 1 {
+                break
+            }
+            if count > 0 {
+                env.functions.GetByteArrayRegion(env, buffer, 0, count, *job.response[job.length])
+                if ConnectionFailed(env) {
+                    break
+                }
+                job.length += count
+            }
+        }
+        closed := ConnectionVoid(env, stream, stream_class, "close", "()V", *arguments[0])
+        return complete && closed
+    }
+
+    ConnectionRequest :: (env: *JniEnv, job: *ConnectionJob, connection: *void, klass: *void) -> bool {
+        arguments: [2]JniValue
+        arguments[0].reference = env.functions.NewStringUTF(env, job.method)
+        if ConnectionFailed(env) || arguments[0].reference == null ||
+        !ConnectionVoid(env, connection, klass, "setRequestMethod", "(Ljava/lang/String;)V", *arguments[0]) {
+            return false
+        }
+        env.functions.DeleteLocalRef(env, arguments[0].reference)
+        arguments[0].long_integer = 0
+        arguments[0].integer = ifx job.timeout_ms < 15000 then job.timeout_ms else 15000
+        if !ConnectionVoid(env, connection, klass, "setConnectTimeout", "(I)V", *arguments[0]) {
+            return false
+        }
+        arguments[0].integer = job.timeout_ms
+        if !ConnectionVoid(env, connection, klass, "setReadTimeout", "(I)V", *arguments[0]) {
+            return false
+        }
+        arguments[0].long_integer = 0
+        if !ConnectionVoid(env, connection, klass, "setInstanceFollowRedirects", "(Z)V", *arguments[0]) ||
+        !ConnectionVoid(env, connection, klass, "setUseCaches", "(Z)V", *arguments[0]) {
+            return false
+        }
+        for index: 0..job.header_count - 1 {
+            arguments[0].reference = env.functions.NewStringUTF(env, job.names[index])
+            arguments[1].reference = env.functions.NewStringUTF(env, job.values[index])
+            ok := !ConnectionFailed(env) && arguments[0].reference != null &&
+            arguments[1].reference != null &&
+            ConnectionVoid(env, connection, klass, "setRequestProperty",
+                "(Ljava/lang/String;Ljava/lang/String;)V", *arguments[0])
+            if arguments[0].reference != null {
+                env.functions.DeleteLocalRef(env, arguments[0].reference)
+            }
+            if arguments[1].reference != null {
+                env.functions.DeleteLocalRef(env, arguments[1].reference)
+            }
+            if !ok {
+                return false
+            }
+        }
+        if job.body_count > 0 && !ConnectionSend(env, job, connection, klass) {
+            return false
+        }
+        status: s32
+        declared: s32
+        if !ConnectionInteger(env, connection, klass, "getResponseCode", "()I", *arguments[0], *status) ||
+        status < 100 || !ConnectionInteger(env, connection, klass, "getContentLength", "()I",
+            *arguments[0], *declared) || cast(s64)declared >= job.capacity {
+            return false
+        }
+        // Error answers arrive on the error stream, which may be absent.
+        stream: *void
+        if !ConnectionObject(env, connection, klass,
+            ifx status >= 400 then "getErrorStream" else "getInputStream",
+            "()Ljava/io/InputStream;", *arguments[0], *stream) {
+            return false
+        }
+        job.status = status
+        job.length = 0
+        return stream == null || ConnectionReceive(env, job, stream)
+    }
+
+    // True when a whole answer arrived; job.status and job.length hold it.
+    ConnectionExchange :: (env: *JniEnv, job: *ConnectionJob) -> bool {
+        url_class := ConnectionClass(env, "java/net/URL")
+        connection_class := ConnectionClass(env, "java/net/HttpURLConnection")
+        if url_class == null || connection_class == null {
+            return false
+        }
+        create := ConnectionMethod(env, url_class, "<init>", "(Ljava/lang/String;)V")
+        if create == null {
+            return false
+        }
+        arguments: [1]JniValue
+        arguments[0].reference = env.functions.NewStringUTF(env, job.url)
+        if ConnectionFailed(env) || arguments[0].reference == null {
+            return false
+        }
+        url := env.functions.NewObjectA(env, url_class, create, *arguments[0])
+        if ConnectionFailed(env) || url == null {
+            return false
+        }
+        connection: *void
+        if !ConnectionObject(env, url, url_class, "openConnection", "()Ljava/net/URLConnection;",
+            *arguments[0], *connection) || connection == null {
+            return false
+        }
+        if env.functions.IsInstanceOf(env, connection, connection_class) == 0 || ConnectionFailed(env) {
+            return false
+        }
+        success := ConnectionRequest(env, job, connection, connection_class)
+        // Pending exceptions are cleared, so the connection can always close.
+        return ConnectionVoid(env, connection, connection_class, "disconnect", "()V", *arguments[0]) &&
+        success
+    }
+
+    ConnectionWork :: (job: *ConnectionJob) {
+        vm := job.vm
+        env: *JniEnv = null
+        success := false
+        if vm.functions.AttachCurrentThread(vm, *env, null) == 0 && env != null {
+            if env.functions.PushLocalFrame(env, 32) == 0 {
+                success = ConnectionExchange(env, job)
+                unused ConnectionFailed(env)
+                env.functions.PopLocalFrame(env, null)
+            }
+            unused ConnectionFailed(env)
+            vm.functions.DetachCurrentThread(vm)
+        }
+        TransferLock()
+        job.success = success
+        job.done = true
+        connection_workers -= 1
+        abandoned := job.abandoned
+        TransferUnlock()
+        if abandoned {
+            ConnectionFreeJob(job)
+        }
+    }
+
+    ConnectionThread :: (argument: *void) -> *void {
+        ConnectionWork(cast(*ConnectionJob)argument)
+        return null
+    }
+
+    ConnectionStart :: (transfer: *HttpTransfer, request: HttpRequest,
+        output: []u8, timeout_ms: s32, vm: *JniVm) -> bool {
+        if vm == null || !ConnectionText(request.method, false) || !ConnectionText(request.url, false) {
+            return false
+        }
+        size := request.method.count + request.url.count + request.body.count +
+        request.accept.count + request.content_type.count + request.token.count + 64 +
+        2 * CONNECTION_HEADERS
+        for index: cast(s64)0..request.headers.count - 1 {
+            size += request.headers[index].name.count + request.headers[index].value.count
+        }
+        job := cast(*ConnectionJob)TransferAllocate(1, size_of(ConnectionJob))
+        if job == null {
+            return false
+        }
+        job.text = cast(*u8)TransferAllocate(cast(usize)size, 1)
+        job.response = cast(*u8)TransferAllocate(cast(usize)output.count, 1)
+        if job.text == null || job.response == null {
+            ConnectionFreeJob(job)
+            return false
+        }
+        at: s64 = 0
+        job.method = ConnectionKeep(job, *at, request.method)
+        job.url = ConnectionKeep(job, *at, request.url)
+        job.body = ConnectionKeep(job, *at, request.body)
+        job.body_count = cast(s32)request.body.count
+        job.vm = vm
+        job.capacity = output.count
+        job.timeout_ms = timeout_ms
+        job.started_ms = MonotonicMilliseconds()
+        if job.started_ms < 0 || !ConnectionHeaders(job, *at, request) {
+            ConnectionFreeJob(job)
+            return false
+        }
+        TransferLock()
+        room := connection_workers < CONNECTION_WORKERS
+        if room {
+            connection_workers += 1
+        }
+        TransferUnlock()
+        routine: TransferThreadRoutine = ConnectionThread
+        if !room || !TransferStartThread(routine, cast(*void)job) {
+            if room {
+                TransferLock()
+                connection_workers -= 1
+                TransferUnlock()
+            }
+            ConnectionFreeJob(job)
+            return false
+        }
+        transfer.job = cast(*void)job
+        transfer.output = output
+        return true
+    }
+
+    ConnectionPoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+        job := cast(*ConnectionJob)transfer.job
+        now := MonotonicMilliseconds()
+        TransferLock()
+        done := job.done
+        // A worker stuck past the timeout, for example resolving a name,
+        // is abandoned and frees its own job.
+        expired := !done && (now < 0 || now - job.started_ms >= cast(s64)job.timeout_ms)
+        if expired {
+            job.abandoned = true
+        }
+        TransferUnlock()
+        if !done && !expired {
+            return -1
+        }
+        success := done && job.success && job.length >= 0 && job.length < transfer.output.count
+        if success {
+            if job.length > 0 {
+                TransferCopy(cast(*void)*transfer.output[0], cast(*void)job.response,
+                    cast(usize)job.length)
+            }
+            transfer.output[job.length] = 0
+            status.* = job.status
+        } else {
+            transfer.output[0] = 0
+        }
+        if done {
+            ConnectionFreeJob(job)
+        }
+        transfer.* = HttpTransfer.{}
+        return ifx success then 1 else 0
+    }
+
+    ConnectionCancel :: (transfer: *HttpTransfer) {
+        job := cast(*ConnectionJob)transfer.job
+        TransferLock()
+        done := job.done
+        job.abandoned = true
+        TransferUnlock()
+        if done {
+            ConnectionFreeJob(job)
         }
     }
 }
