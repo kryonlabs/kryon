@@ -85,12 +85,16 @@ Frame :: () -> s32 {
 #program_export
 main :: () -> s32 {
     index: s32 = 0
+    marks: s32 = 0
     while index < 3 {
         if Frame() != index || CheckboxHostFailed() ||
             CheckboxFills() != index ||
             CheckboxOutlines() != index + 1 ||
-            CheckboxLines() != index * 4 ||
             CheckboxLabels() != index + 1 { return 1 }
+        // Unchecked, no check; checked, each frame paints the same check.
+        if index == 0 && CheckboxMarks() != 0 { return 1 }
+        if index == 1 { marks = CheckboxMarks() }
+        if index > 0 && (marks == 0 || CheckboxMarks() != marks * index) { return 1 }
         index += 1
     }
     return 0

@@ -3,7 +3,7 @@
 
 fills: s32;
 outlines: s32;
-lines: s32;
+marks: s32;
 labels: s32;
 failed: bool;
 
@@ -30,6 +30,17 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
+    // The check is a smooth stroke: square cells of coverage inside the box.
+    if radius == 0.0 && segments == 1 {
+        if bounds.x < 11.0 || bounds.y < 25.0 ||
+            bounds.x + bounds.width > 31.0 || bounds.y + bounds.height > 45.0 ||
+            color.r != cast(u8)255 || color.g != cast(u8)255 ||
+            color.b != cast(u8)255 || color.a == cast(u8)0 {
+            failed = true
+        }
+        marks += 1
+        return
+    }
     if !BoxIsExpected(bounds) || radius != cast(float32)0.18 ||
         segments != 8 || color.r != cast(u8)0x12 ||
         color.g != cast(u8)0x34 || color.b != cast(u8)0x56 {
@@ -52,13 +63,9 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
-    if line.x < 16.0 || line.x > 20.0 ||
-        line.y < 30.0 || line.y > 41.0 ||
-        line.width <= 0.0 || color.r != cast(u8)255 ||
-        color.g != cast(u8)255 || color.b != cast(u8)255 {
-        failed = true
-    }
-    lines += 1
+    unused line
+    unused color
+    failed = true
 }
 
 #program_export
@@ -110,7 +117,7 @@ CheckboxFills :: () -> s32 { return fills }
 CheckboxOutlines :: () -> s32 { return outlines }
 
 #program_export
-CheckboxLines :: () -> s32 { return lines }
+CheckboxMarks :: () -> s32 { return marks }
 
 #program_export
 CheckboxLabels :: () -> s32 { return labels }
