@@ -171,6 +171,10 @@ RasterImage :: (asset_path: string, texture_id: u32,
             return
         }
         texture = canvas_assets[index].texture
+        if CurrentPaintSmooth() && !canvas_assets[index].smooth {
+            SetTextureFilter(texture, 1)
+            canvas_assets[index].smooth = true
+        }
     } else {
         canvas_image_error = true
         return

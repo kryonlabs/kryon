@@ -56,6 +56,8 @@ PaintCommand :: struct {
     owns_asset: bool
     // A clipped label drawn as the extra stroke of emphasized text.
     emphasis: bool
+    // An image scaled smoothly.
+    smooth: bool
 }
 
 PaintEmitter :: #type (command: PaintCommand) -> ();
@@ -427,11 +429,13 @@ EmitLabel :: (command: PaintCommand) {
 EmitImage :: (command: PaintCommand) {
     if command.clip.width > 0.0 && command.clip.height > 0.0 {
         emitting_texture = command.texture
+        emitting_smooth = command.smooth
         RasterImage(command.asset_path, command.texture_id,
             command.source, command.bounds, command.clip,
             command.origin, command.rotation, command.radius,
             command.color)
         emitting_texture.id = cast(u32)0
+        emitting_smooth = false
     }
 }
 
@@ -689,9 +693,11 @@ PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: 
 PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
-    tint: Color, texture: Texture2D = Texture2D.{0, 0, 0, 0, 0}) {
+    tint: Color, texture: Texture2D = Texture2D.{0, 0, 0, 0, 0},
+    smooth: bool = false) {
     command: QueuedPaint
     command.data.kind = PaintKindImage
+    command.data.smooth = smooth
     command.data.node = node
     command.data.asset_path = asset_path
     command.data.texture_id = texture_id
@@ -893,6 +899,7 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     if current.origin.x != previous.data.origin.x ||
     current.origin.y != previous.data.origin.y ||
     current.rotation != previous.data.rotation { return false }
+    if current.smooth != previous.data.smooth { return false }
     return true
 }
 

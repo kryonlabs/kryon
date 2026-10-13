@@ -49,6 +49,11 @@
   multibyte character, and keeps the whole text's layout and accessible
   label, so no word moves while it appears and screen readers read it all.
   `TextCharactersEnd` gives where those characters end.
+- Images can scale smoothly: with `ImageProps.smooth` set, the raylib host
+  filters the image and draws it from mipmaps where the GPU allows them, and
+  browsers use their image smoothing, so a detailed picture drawn smaller or
+  larger than its pixels stays clean instead of turning jagged. Images
+  without it keep their sharp pixels.
 
 ### Fixed
 

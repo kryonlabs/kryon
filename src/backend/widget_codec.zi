@@ -614,7 +614,7 @@ WidgetValidTexture2D :: (value: HostValue) -> bool {
 }
 
 WidgetImagePropsCodec :: struct {
-    fields: [11]HostField
+    fields: [12]HostField
     bounds: WidgetRectangleCodec
     source: WidgetRectangleCodec
     origin: WidgetVector2Codec
@@ -626,7 +626,7 @@ WidgetEncodeImageProps :: (data: ImageProps, codec: *WidgetImagePropsCodec) -> H
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("ImageProps")
     value.fields = *codec.fields[0]
-    value.field_count = 11
+    value.field_count = 12
     codec.fields[0].name = HostTextData("asset_path")
     codec.fields[0].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.asset_path), .length = cast(usize)data.asset_path.count}
     codec.fields[1].name = HostTextData("alt_text")
@@ -649,6 +649,8 @@ WidgetEncodeImageProps :: (data: ImageProps, codec: *WidgetImagePropsCodec) -> H
     codec.fields[9].value = HostScalar("u32", cast(s64)data.tint)
     codec.fields[10].name = HostTextData("key")
     codec.fields[10].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[11].name = HostTextData("smooth")
+    codec.fields[11].value = HostScalar("bool", ifx data.smooth then 1 else 0)
     return value
 }
 
@@ -718,6 +720,12 @@ WidgetDecodeImageProps :: (value: HostValue, codec: *WidgetImagePropsCodec) -> I
         field_at := HostFieldAt(value, 10, "key")
         if field_at >= 0 {
             data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "smooth")
+        if field_at >= 0 {
+            data.smooth = value.fields[field_at].value.integer != 0
         }
     }
     return data
@@ -791,6 +799,12 @@ WidgetValidImageProps :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 10, "key")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "smooth")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     return true

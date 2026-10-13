@@ -13,6 +13,9 @@ graphics_failed: bool;
 // Each texture load advances the fake clock by this many seconds.
 load_seconds: float64;
 clock_seconds: float64;
+// Mipmaps built and trilinear filters set for smooth images.
+texture_mipmaps: s32;
+smooth_filters: s32;
 
 #program_export
 GetTime :: () -> float64 { return clock_seconds }
@@ -43,9 +46,24 @@ UnloadTexture :: (texture: Texture2D) {
 
 #program_export
 SetTextureFilter :: (texture: Texture2D, filter: s32) {
-    if lost_context || texture.id == 0 || filter != 1 {
+    if lost_context || texture.id == 0 || (filter != 1 && filter != 2) {
         graphics_failed = true
     }
+    // Trilinear filtering follows the mipmaps of the same texture.
+    if filter == 2 {
+        smooth_filters += 1
+        if texture.mipmaps < 2 { graphics_failed = true }
+    }
+}
+
+#program_export
+GenTextureMipmaps :: (texture: *Texture2D) {
+    if lost_context || texture == null || texture.id == 0 || flushes == 0 {
+        graphics_failed = true
+        return
+    }
+    texture.mipmaps = 8
+    texture_mipmaps += 1
 }
 
 #program_export

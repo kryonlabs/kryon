@@ -1,5 +1,6 @@
 #import "drawing_props"
 #import "geometry"
+#import "paint_texture"
 
 sizes: s32;
 images: s32;
@@ -39,7 +40,8 @@ RasterImage :: (asset_path: string, texture_id: u32,
     expected_blue: u8 = ifx images == 0 then cast(u8)0x30 else cast(u8)0x70
     if tint.r != expected_red || tint.g != expected_green ||
         tint.b != expected_blue || tint.a != cast(u8)0x7f ||
-        radius != 6.0 || origin.x != 0.0 || origin.y != 0.0 {
+        radius != 6.0 || origin.x != 0.0 || origin.y != 0.0 ||
+        CurrentPaintSmooth() != (images == 0) {
         failed = true
     }
     if images == 0 {
