@@ -677,9 +677,11 @@
         if result.focused && !props.read_only && !props.disabled {
             TextInputNoteFocused(session)
         }
+        // A secure field never gives its text away, but takes a pasted
+        // password or key like Ctrl+V does.
         if TextMenuIsOpenFor(key) {
             TextMenuShow(session, editable && selection.has_selection,
-                !props.secure && selection.has_selection, editable,
+                !props.secure && selection.has_selection, !props.read_only,
                 props.value.count > 0, props.input.escape)
         }
         return result
