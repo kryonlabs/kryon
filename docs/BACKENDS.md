@@ -117,7 +117,10 @@ generated `src/main.zi` delegates to `AndroidRunMain`, which drives the
 session with the shared raylib host, Kryon's Android viewport policies, and
 the session-owned text input queue. Applications with their own JNI surface
 keep their own `JNI_OnLoad` and call `AndroidJniOnLoad` with their activity
-class to add the canonical natives.
+class to add the canonical natives. An application without Java code, a plain
+`NativeActivity`, calls `PollAndroidWindowInsets` once per frame instead: it
+reads the system bar, keyboard and cutout insets from the window through JNI
+a few times a second, and stops once Java reports them.
 
 The generation runs `ziran ir --project` for the whole graph, so application
 module names may repeat Kryon module names; every package is prefixed in the

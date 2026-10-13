@@ -27,6 +27,12 @@
 
 ### Fixed
 
+- Android apps without Java code keep their content clear of the
+  navigation bar, the keyboard and display cutouts:
+  `PollAndroidWindowInsets` reads the window insets through JNI.
+- Fonts packed in an Android app's APK load by their relative path, so
+  phones older than Android 10, which cannot name a system font, use the
+  app's own font.
 - Keyboard navigation works in every application: Tab and Shift+Tab move
   between controls, skipping disabled ones, and the focused button shows a
   focus ring in the style's focus color. Enter and Space press the focused
