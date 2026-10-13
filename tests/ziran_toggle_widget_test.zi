@@ -63,6 +63,18 @@ Frame :: () -> s32 {
         label_rule.style.foreground = cast(u32)0xaabbccff
         rules.items[1] = label_rule
         InstallStyleRules(rules)
+        // A toggle given less room than its labels need keeps to it, each
+        // label in its half; its minimum size is the room it would take.
+        narrow: ToggleProps = labels
+        narrow.bounds.width = 40.0
+        narrow.bounds.height = 30.0
+        paint: TogglePaint = TogglePaintFor(ToggleSpecFor(narrow, false,
+            false, false))
+        minimum: Vector2 = ToggleMinimumSize(labels)
+        if minimum.x != 68.0 || paint.bounds.width != 40.0 ||
+            paint.track_bounds.x + paint.track_bounds.width > 50.0 ||
+            paint.off_label_bounds.x < 10.0 ||
+            paint.on_label_bounds.x < 30.0 { return -6 }
     }
     if phase >= 2 { plain.value = true }
     if phase >= 3 {

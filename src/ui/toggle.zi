@@ -197,8 +197,11 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint {
         spec.label)
     min_h: float32 = cast(float32)ToggleMinimumHeightForStyle(scale, spec.track,
         spec.thumb)
-    if bounds.width < min_w { bounds.width = min_w }
-    if bounds.height < min_h { bounds.height = min_h }
+    // A size of 0 asks for the toggle's natural size. A toggle given less
+    // than that keeps to the bounds it was given: its labels share the
+    // room, each in its own half, and its switch shrinks to fit.
+    if bounds.width <= 0.0 { bounds.width = min_w }
+    if bounds.height <= 0.0 { bounds.height = min_h }
 
     track_w: float32 = ToggleTrackWidthForStyle(spec.track, scale)
     track_h: float32 = ToggleTrackHeightForStyle(spec.track, scale)
@@ -244,11 +247,18 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint {
         paint.active_bounds.width = active_w
         paint.active_bounds.height = track.height - active_gap * 2.0
         text_y: float32 = bounds.y + (bounds.height - cast(float32)spec.font) * 0.5
-        paint.off_label_bounds.x = bounds.x + bounds.width * 0.25 - cast(float32)spec.off_width * 0.5
+        // Each label is centred in its half; one wider than its half starts
+        // where the half does.
+        half: float32 = bounds.width * 0.5
+        off_x: float32 = bounds.x + half * 0.5 - cast(float32)spec.off_width * 0.5
+        if off_x < bounds.x { off_x = bounds.x }
+        on_x: float32 = bounds.x + half * 1.5 - cast(float32)spec.on_width * 0.5
+        if on_x < bounds.x + half { on_x = bounds.x + half }
+        paint.off_label_bounds.x = off_x
         paint.off_label_bounds.y = text_y
         paint.off_label_bounds.width = cast(float32)spec.off_width
         paint.off_label_bounds.height = cast(float32)spec.font
-        paint.on_label_bounds.x = bounds.x + bounds.width * 0.75 - cast(float32)spec.on_width * 0.5
+        paint.on_label_bounds.x = on_x
         paint.on_label_bounds.y = text_y
         paint.on_label_bounds.width = cast(float32)spec.on_width
         paint.on_label_bounds.height = cast(float32)spec.font

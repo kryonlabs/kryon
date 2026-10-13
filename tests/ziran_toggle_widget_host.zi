@@ -67,8 +67,10 @@ RasterText :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
-    if font != 14 || y != 69 || clip.x != 10.0 || clip.y != 60.0 ||
-        clip.width != 68.0 || clip.height != 32.0 { failed = true }
+    // Each label is clipped to its half of the 68 wide track.
+    half_x: float32 = ifx value == "Off" then 10.0 else 44.0
+    if font != 14 || y != 69 || clip.x != half_x || clip.y != 60.0 ||
+        clip.width != 34.0 || clip.height != 32.0 { failed = true }
     if !(value == "Off" && x == 16) && !(value == "On" && x == 54) {
         failed = true
     }

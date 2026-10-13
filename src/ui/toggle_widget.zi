@@ -120,19 +120,22 @@ PaintToggleForNode :: (session: Session, node: s32, props: ToggleProps,
                 ColorFromPacked(Opacity(paint.active.value.border,
                     active_opacity)))
         }
+        // Each label shows only within its half of the track.
+        off_half: Rectangle = paint.track_bounds
+        off_half.width = paint.track_bounds.width * 0.5
+        on_half: Rectangle = off_half
+        on_half.x = paint.track_bounds.x + off_half.width
         if props.off_label != "" {
             PaintClippedLabel(session, node, props.off_label,
                 cast(s32)paint.off_label_bounds.x,
                 cast(s32)paint.off_label_bounds.y, font,
-                ColorFromPacked(paint.off_label_color),
-                paint.track_bounds)
+                ColorFromPacked(paint.off_label_color), off_half)
         }
         if props.on_label != "" {
             PaintClippedLabel(session, node, props.on_label,
                 cast(s32)paint.on_label_bounds.x,
                 cast(s32)paint.on_label_bounds.y, font,
-                ColorFromPacked(paint.on_label_color),
-                paint.track_bounds)
+                ColorFromPacked(paint.on_label_color), on_half)
         }
     } else {
         thumb: Rectangle = Rectangle.{
@@ -149,6 +152,56 @@ PaintToggleForNode :: (session: Session, node: s32, props: ToggleProps,
     }
 }
 
+// The toggle's styles and label widths for a value and pointer state.
+ToggleSpecFor :: (props: ToggleProps, value: bool, hovered: bool,
+    pressed: bool) -> ToggleSpec {
+    spec: ToggleSpec
+    spec.bounds = props.bounds
+    spec.checked = value
+    spec.enabled = !props.disabled
+    spec.hovered = hovered
+    spec.pressed = pressed
+    spec.has_labels = props.off_label != "" || props.on_label != ""
+    spec.scale = 1.0
+    state: s32 = ResolveState(cast(s32)ButtonStateAuto, props.disabled,
+        false, pressed, hovered, false, value)
+    tone: ButtonTone = cast(ButtonTone)ButtonToneNeutral
+    if value && !spec.has_labels { tone = cast(ButtonTone)ButtonToneAccent }
+    spec.track = ToggleFaceFor(props, StyleKindToggle(),
+        ToggleTrackRoleFor(value, spec.has_labels), tone, state)
+    spec.active = ToggleFaceFor(props, StyleKindToggle(), ToggleFillRole(),
+        cast(ButtonTone)ButtonToneAccent, state)
+    spec.label = ToggleFaceFor(props, StyleKindToggle(), ToggleLabelRole(),
+        cast(ButtonTone)ButtonToneNeutral, state)
+    spec.thumb = ToggleFaceFor(props, StyleKindToggleThumb(), StyleAny(),
+        tone, state)
+    spec.font = ResolveFont(0,
+        StyleFontValue(spec.label.value.fields, spec.label.value.font_size), 14)
+    if props.off_label != "" {
+        spec.off_width = GlyphWidth(props.off_label, spec.font,
+            spec.label.value.typeface)
+    }
+    if props.on_label != "" {
+        spec.on_width = GlyphWidth(props.on_label, spec.font,
+            spec.label.value.typeface)
+    }
+    return spec
+}
+
+// The size that shows a toggle whole: its switch, or both its labels with
+// their padding. A toggle given a size of 0 takes this size; one given less
+// keeps to its bounds, so a layout places it with this size.
+#program_export
+ToggleMinimumSize :: (props: ToggleProps) -> Vector2 {
+    spec: ToggleSpec = ToggleSpecFor(props, props.value, false, false)
+    return Vector2.{
+        cast(float32)ToggleMinimumWidthForStyle(spec.has_labels,
+            spec.off_width, spec.on_width, spec.scale, spec.track,
+            spec.active, spec.label),
+        cast(float32)ToggleMinimumHeightForStyle(spec.scale, spec.track,
+            spec.thumb)}
+}
+
 // The caller retains the value returned here and supplies it on the next
 // frame. Pointer activation is consumed from the previous committed tree.
 #program_export
@@ -161,52 +214,11 @@ Toggle :: (session: Session, props: ToggleProps) -> ToggleValueResult {
     }
     result: ToggleValueResult = ToggleValueFor(props.value,
         TreeTakeActivationAt(session, previous), !props.disabled, true)
-    has_labels: bool = props.off_label != "" || props.on_label != ""
-    state: s32 = ResolveState(cast(s32)ButtonStateAuto, props.disabled,
-        false, TreePressedAt(session, previous), TreeHoveredAt(session, previous),
-        false, result.value)
-    tone: ButtonTone = cast(ButtonTone)ButtonToneNeutral
-    if result.value && !has_labels { tone = cast(ButtonTone)ButtonToneAccent }
-    track: StyleFrame = ToggleFaceFor(props,
-        StyleKindToggle(), ToggleTrackRoleFor(result.value,
-            has_labels), tone, state)
-    active: StyleFrame = ToggleFaceFor(props,
-        StyleKindToggle(), ToggleFillRole(),
-        cast(ButtonTone)ButtonToneAccent, state)
-    label: StyleFrame = ToggleFaceFor(props,
-        StyleKindToggle(), ToggleLabelRole(),
-        cast(ButtonTone)ButtonToneNeutral, state)
-    thumb: StyleFrame = ToggleFaceFor(props,
-        StyleKindToggleThumb(), StyleAny(), tone, state)
-    font: s32 = ResolveFont(0,
-        StyleFontValue(label.value.fields, label.value.font_size), 14)
-    off_width: s32 = 0
-    on_width: s32 = 0
-    if has_labels {
-        if props.off_label != "" {
-            off_width = GlyphWidth(props.off_label, font,
-                label.value.typeface)
-        }
-        if props.on_label != "" {
-            on_width = GlyphWidth(props.on_label, font,
-                label.value.typeface)
-        }
-    }
-    spec: ToggleSpec
-    spec.bounds = props.bounds
-    spec.checked = result.value
-    spec.enabled = !props.disabled
-    spec.hovered = TreeHoveredAt(session, previous)
-    spec.pressed = TreePressedAt(session, previous)
-    spec.has_labels = has_labels
-    spec.off_width = off_width
-    spec.on_width = on_width
-    spec.font = font
-    spec.scale = 1.0
-    spec.track = track
-    spec.active = active
-    spec.label = label
-    spec.thumb = thumb
+    spec: ToggleSpec = ToggleSpecFor(props, result.value,
+        TreeHoveredAt(session, previous), TreePressedAt(session, previous))
+    has_labels: bool = spec.has_labels
+    label: StyleFrame = spec.label
+    font: s32 = spec.font
     paint: TogglePaint = TogglePaintFor(spec)
     if has_labels {
         inactive_color: u32 = Opacity(label.value.foreground,
