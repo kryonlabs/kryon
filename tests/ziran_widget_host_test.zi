@@ -12,6 +12,7 @@
 #import "text_input_props"
 #import "tab_bar_props"
 #import "press_props"
+#import "spinbox_props"
 #import "font_metrics"
 #import "hosted_values"
 #import "widget_codec"
@@ -54,6 +55,8 @@ area_codec: WidgetTextAreaPropsCodec;
 area_decoded: WidgetTextAreaPropsCodec;
 tab_bar_codec: WidgetTabBarPropsCodec;
 press_codec: WidgetPressPropsCodec;
+spinbox_codec: WidgetSpinboxPropsCodec;
+spinbox_result: WidgetSpinboxStepResultCodec;
 tab_codecs: [40]WidgetTabCodec;
 tab_values: [40]HostValue;
 
@@ -69,6 +72,7 @@ Call :: (module: string, function: string, arguments: []HostValue, result: *Host
 main :: () -> s32 {
     if !WidgetHostSupports("toggle_widget", "ToggleHostedHost") ||
     !WidgetHostSupports("press_widget", "PressHostedHost") ||
+    !WidgetHostSupports("spinbox_widget", "SpinboxHostedHost") ||
     !WidgetHostSupports("tree", "EndHostedHost") ||
     WidgetHostSupports("text_widget", "TextNativeHost") {
         return 1
@@ -138,6 +142,15 @@ main :: () -> s32 {
     if Call("press_widget", "PressHostedHost", arguments[:2], *result) != 1 ||
     result.kind != cast(s32)HostRecord || TextFromCString(result.type_name) != "PressResult" {
         return 30
+    }
+    // A spinbox answers with its value, kept within its range.
+    arguments[1] = WidgetEncodeSpinboxProps(SpinboxProps.{.id = 13, .label = "Length",
+            .bounds = Rectangle.{0.0, 140.0, 150.0, 38.0}, .min = 5, .max = 35, .step = 1,
+            .value = 16}, *spinbox_codec)
+    if Call("spinbox_widget", "SpinboxHostedHost", arguments[:2], *result) != 1 ||
+    TextFromCString(result.type_name) != "SpinboxStepResult" ||
+    WidgetDecodeSpinboxStepResult(result, *spinbox_result).value != 16 {
+        return 31
     }
     // Slices decode into the codec and are attached by name.
     hidden: [2]TextRange = .[TextRange.{.start = 0, .end = 2}, TextRange.{.start = 6, .end = 8}]

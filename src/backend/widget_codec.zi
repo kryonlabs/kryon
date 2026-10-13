@@ -20,6 +20,7 @@
 #import "tab_bar_props"
 #import "box_props"
 #import "press_props"
+#import "spinbox_props"
 using HostValueKind;
 
 WidgetRectangleCodec :: struct {
@@ -4708,7 +4709,7 @@ WidgetValidTextFieldInput :: (value: HostValue) -> bool {
 }
 
 WidgetTextFieldPropsCodec :: struct {
-    fields: [20]HostField
+    fields: [21]HostField
     bounds: WidgetRectangleCodec
     composition: WidgetCompositionStateCodec
     input: WidgetTextFieldInputCodec
@@ -4719,7 +4720,7 @@ WidgetEncodeTextFieldProps :: (data: TextFieldProps, codec: *WidgetTextFieldProp
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("TextFieldProps")
     value.fields = *codec.fields[0]
-    value.field_count = 20
+    value.field_count = 21
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("bounds")
@@ -4754,12 +4755,14 @@ WidgetEncodeTextFieldProps :: (data: TextFieldProps, codec: *WidgetTextFieldProp
     codec.fields[15].value = HostScalar("s32", cast(s64)data.max_codepoints)
     codec.fields[16].name = HostTextData("secure")
     codec.fields[16].value = HostScalar("bool", ifx data.secure then 1 else 0)
-    codec.fields[17].name = HostTextData("read_only")
-    codec.fields[17].value = HostScalar("bool", ifx data.read_only then 1 else 0)
-    codec.fields[18].name = HostTextData("disabled")
-    codec.fields[18].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[19].name = HostTextData("input")
-    codec.fields[19].value = WidgetEncodeTextFieldInput(data.input, *codec.input)
+    codec.fields[17].name = HostTextData("numeric")
+    codec.fields[17].value = HostScalar("bool", ifx data.numeric then 1 else 0)
+    codec.fields[18].name = HostTextData("read_only")
+    codec.fields[18].value = HostScalar("bool", ifx data.read_only then 1 else 0)
+    codec.fields[19].name = HostTextData("disabled")
+    codec.fields[19].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    codec.fields[20].name = HostTextData("input")
+    codec.fields[20].value = WidgetEncodeTextFieldInput(data.input, *codec.input)
     return value
 }
 
@@ -4868,19 +4871,25 @@ WidgetDecodeTextFieldProps :: (value: HostValue, codec: *WidgetTextFieldPropsCod
         }
     }
     {
-        field_at := HostFieldAt(value, 17, "read_only")
+        field_at := HostFieldAt(value, 17, "numeric")
+        if field_at >= 0 {
+            data.numeric = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 18, "read_only")
         if field_at >= 0 {
             data.read_only = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 18, "disabled")
+        field_at := HostFieldAt(value, 19, "disabled")
         if field_at >= 0 {
             data.disabled = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 19, "input")
+        field_at := HostFieldAt(value, 20, "input")
         if field_at >= 0 {
             data.input = WidgetDecodeTextFieldInput(value.fields[field_at].value, *codec.input)
         }
@@ -4995,19 +5004,25 @@ WidgetValidTextFieldProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 17, "read_only")
+        field_at := HostFieldAt(value, 17, "numeric")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 18, "disabled")
+        field_at := HostFieldAt(value, 18, "read_only")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 19, "input")
+        field_at := HostFieldAt(value, 19, "disabled")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 20, "input")
         if field_at >= 0 {
             if !WidgetValidTextFieldInput(value.fields[field_at].value) { return false }
         }
@@ -6490,6 +6505,253 @@ WidgetValidPressResult :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 6, "y")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    return true
+}
+
+WidgetSpinboxPropsCodec :: struct {
+    fields: [12]HostField
+    bounds: WidgetRectangleCodec
+}
+
+WidgetEncodeSpinboxProps :: (data: SpinboxProps, codec: *WidgetSpinboxPropsCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("SpinboxProps")
+    value.fields = *codec.fields[0]
+    value.field_count = 12
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("bounds")
+    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
+    codec.fields[2].name = HostTextData("id")
+    codec.fields[2].value = HostScalar("s32", cast(s64)data.id)
+    codec.fields[3].name = HostTextData("class_name")
+    codec.fields[3].value = HostScalar("s32", cast(s64)data.class_name)
+    codec.fields[4].name = HostTextData("label")
+    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
+    codec.fields[5].name = HostTextData("min")
+    codec.fields[5].value = HostScalar("s32", cast(s64)data.min)
+    codec.fields[6].name = HostTextData("max")
+    codec.fields[6].value = HostScalar("s32", cast(s64)data.max)
+    codec.fields[7].name = HostTextData("step")
+    codec.fields[7].value = HostScalar("s32", cast(s64)data.step)
+    codec.fields[8].name = HostTextData("value")
+    codec.fields[8].value = HostScalar("s32", cast(s64)data.value)
+    codec.fields[9].name = HostTextData("disabled")
+    codec.fields[9].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    codec.fields[10].name = HostTextData("value_text")
+    codec.fields[10].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.value_text), .length = cast(usize)data.value_text.count}
+    codec.fields[11].name = HostTextData("wrap")
+    codec.fields[11].value = HostScalar("bool", ifx data.wrap then 1 else 0)
+    return value
+}
+
+WidgetDecodeSpinboxProps :: (value: HostValue, codec: *WidgetSpinboxPropsCodec) -> SpinboxProps {
+    data: SpinboxProps
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "bounds")
+        if field_at >= 0 {
+            data.bounds = WidgetDecodeRectangle(value.fields[field_at].value, *codec.bounds)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "id")
+        if field_at >= 0 {
+            data.id = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "class_name")
+        if field_at >= 0 {
+            data.class_name = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "label")
+        if field_at >= 0 {
+            data.label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "min")
+        if field_at >= 0 {
+            data.min = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "max")
+        if field_at >= 0 {
+            data.max = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "step")
+        if field_at >= 0 {
+            data.step = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "value")
+        if field_at >= 0 {
+            data.value = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "disabled")
+        if field_at >= 0 {
+            data.disabled = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "value_text")
+        if field_at >= 0 {
+            data.value_text = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "wrap")
+        if field_at >= 0 {
+            data.wrap = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidSpinboxProps :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "SpinboxProps" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "bounds")
+        if field_at >= 0 {
+            if !WidgetValidRectangle(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "id")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "class_name")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "min")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "max")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "step")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "value")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "disabled")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "value_text")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "wrap")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetSpinboxStepResultCodec :: struct {
+    fields: [2]HostField
+}
+
+WidgetEncodeSpinboxStepResult :: (data: SpinboxStepResult, codec: *WidgetSpinboxStepResultCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("SpinboxStepResult")
+    value.fields = *codec.fields[0]
+    value.field_count = 2
+    codec.fields[0].name = HostTextData("value")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.value)
+    codec.fields[1].name = HostTextData("changed")
+    codec.fields[1].value = HostScalar("bool", ifx data.changed then 1 else 0)
+    return value
+}
+
+WidgetDecodeSpinboxStepResult :: (value: HostValue, codec: *WidgetSpinboxStepResultCodec) -> SpinboxStepResult {
+    data: SpinboxStepResult
+    {
+        field_at := HostFieldAt(value, 0, "value")
+        if field_at >= 0 {
+            data.value = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "changed")
+        if field_at >= 0 {
+            data.changed = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidSpinboxStepResult :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "SpinboxStepResult" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "value")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "changed")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     return true
