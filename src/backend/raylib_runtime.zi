@@ -482,8 +482,23 @@ RaylibCollectionSource :: (typeface: *RaylibTypeface, data: *u8,
     return true
 }
 
+// Android reads a relative path from the APK's assets, which FileExists
+// cannot see; raylib's file loader can.
+RaylibPackagedFile :: (path: *u8) -> bool {
+    #if #defined(ANDROID_BUILD) {
+        count: s32
+        bytes := HostTypefaceFileData(path, *count)
+        if bytes == null { return false }
+        HostTypefaceFileDataFree(bytes)
+        return count > 0
+    } else {
+        return false
+    }
+}
+
 RaylibFileSource :: (typeface: *RaylibTypeface, path: string, face: s32) -> bool {
-    if !CopyCString(path, typeface.path[:]) || !HostRaylibFileExists(*typeface.path[0]) { return false }
+    if !CopyCString(path, typeface.path[:]) { return false }
+    if !HostRaylibFileExists(*typeface.path[0]) && !RaylibPackagedFile(*typeface.path[0]) { return false }
     typeface.from_file = true
     typeface.file_face = face
     collection: bool = path.count >= 4 &&
@@ -1084,9 +1099,9 @@ PollRaylib :: () -> bool {
         // A touch that began and ended within one frame reports nothing.
         AndroidTouch.AndroidTouchInstall()
         touch := AndroidTouch.AndroidTouchSample(TouchSample.{
-            .position = Vector2.{raylib_pointer.x, raylib_pointer.y},
-            .pressed = raylib_pointer.pressed, .down = raylib_pointer.down,
-            .released = raylib_pointer.released})
+                .position = Vector2.{raylib_pointer.x, raylib_pointer.y},
+                .pressed = raylib_pointer.pressed, .down = raylib_pointer.down,
+                .released = raylib_pointer.released})
         raylib_pointer.x = touch.position.x
         raylib_pointer.y = touch.position.y
         raylib_pointer.pressed = touch.pressed

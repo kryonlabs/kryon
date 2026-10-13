@@ -35,7 +35,10 @@ JniCallObjectMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> *void #c_c
 JniCallBooleanMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> u8 #c_call;
 JniCallIntMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> s32 #c_call;
 JniCallVoidMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> void #c_call;
+JniGetFieldIDFn :: #type (*JniEnv, *void, *u8, *u8) -> *void #c_call;
+JniGetIntFieldFn :: #type (*JniEnv, *void, *void) -> s32 #c_call;
 JniGetStaticMethodIDFn :: #type (*JniEnv, *void, *u8, *u8) -> *void #c_call;
+JniCallStaticIntMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> s32 #c_call;
 JniCallStaticObjectMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> *void #c_call;
 JniCallStaticVoidMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> void #c_call;
 JniGetStaticFieldIDFn :: #type (*JniEnv, *void, *u8, *u8) -> *void #c_call;
@@ -80,11 +83,17 @@ JniFunctions :: struct {
     CallIntMethodA: JniCallIntMethodAFn
     reserved_52: [11]*void
     CallVoidMethodA: JniCallVoidMethodAFn
-    reserved_64: [49]*void
+    reserved_64: [30]*void
+    GetFieldID: JniGetFieldIDFn
+    reserved_95: [5]*void
+    GetIntField: JniGetIntFieldFn
+    reserved_101: [12]*void
     GetStaticMethodID: JniGetStaticMethodIDFn
     reserved_114: [2]*void
     CallStaticObjectMethodA: JniCallStaticObjectMethodAFn
-    reserved_117: [26]*void
+    reserved_117: [14]*void
+    CallStaticIntMethodA: JniCallStaticIntMethodAFn
+    reserved_132: [11]*void
     CallStaticVoidMethodA: JniCallStaticVoidMethodAFn
     GetStaticFieldID: JniGetStaticFieldIDFn
     GetStaticObjectField: JniGetStaticObjectFieldFn
@@ -248,7 +257,7 @@ AndroidJniAttach :: (session: *AndroidJniSession, vm: *JniVm,
     result := vm.functions.GetEnv(vm, *session.env, JniVersion)
     if result == -2 {
         if vm.functions.AttachCurrentThread(vm, *session.env, null) != 0 ||
-            session.env == null {
+        session.env == null {
             return false
         }
         session.attached = 1
@@ -331,7 +340,7 @@ AndroidJniMethod :: (session: *AndroidJniSession, name: string,
     method_name: [96]u8
     method_signature: [192]u8
     if !CopyCString(name, method_name[:]) ||
-        !CopyCString(signature, method_signature[:]) {
+    !CopyCString(signature, method_signature[:]) {
         return null
     }
     return env.functions.GetMethodID(env, klass, *method_name[0],

@@ -72,8 +72,192 @@ AndroidNativeSetInsets :: (env: *JniEnv, activity: *void, left: s32, top: s32,
     cutout_right: s32, cutout_bottom: s32) {
     unused env
     unused activity
+    device_java_insets = true
     SetAndroidWindowInsets(left, top, right, bottom, ime, cutout_left,
         cutout_top, cutout_right, cutout_bottom)
+}
+
+// An activity without Java code has nobody to report its insets, so the
+// render thread reads them from the window through JNI. A Java report wins.
+device_java_insets: bool;
+device_insets_wait: s32;
+
+#if #defined(ANDROID_BUILD) {
+    InsetsCString :: (text: string, output: []u8) -> *u8 {
+        if !CopyCString(text, output) {
+            return null
+        }
+        return *output[0]
+    }
+
+    InsetsFailed :: (env: *JniEnv) -> bool {
+        if env.functions.ExceptionCheck(env) == 0 {
+            return false
+        }
+        env.functions.ExceptionClear(env)
+        return true
+    }
+
+    // Calls a method that takes no arguments, or one integer.
+    InsetsObject :: (env: *JniEnv, object: *void, name: string,
+        signature: string, argument: s32 = 0) -> *void {
+        method_name: [48]u8
+        method_signature: [96]u8
+        if object == null {
+            return null
+        }
+        klass := env.functions.GetObjectClass(env, object)
+        method := env.functions.GetMethodID(env, klass, InsetsCString(name, method_name[:]),
+            InsetsCString(signature, method_signature[:]))
+        if method == null || InsetsFailed(env) {
+            return null
+        }
+        arguments: [1]JniValue
+        arguments[0].integer = argument
+        result := env.functions.CallObjectMethodA(env, object, method, *arguments[0])
+        if InsetsFailed(env) {
+            return null
+        }
+        return result
+    }
+
+    InsetsInteger :: (env: *JniEnv, object: *void, name: string) -> s32 {
+        method_name: [48]u8
+        signature: [8]u8
+        if object == null {
+            return 0
+        }
+        klass := env.functions.GetObjectClass(env, object)
+        method := env.functions.GetMethodID(env, klass, InsetsCString(name, method_name[:]),
+            InsetsCString("()I", signature[:]))
+        if method == null || InsetsFailed(env) {
+            return 0
+        }
+        arguments: [1]JniValue
+        value := env.functions.CallIntMethodA(env, object, method, *arguments[0])
+        if InsetsFailed(env) {
+            return 0
+        }
+        return value
+    }
+
+    InsetsField :: (env: *JniEnv, object: *void, name: string) -> s32 {
+        field_name: [16]u8
+        signature: [4]u8
+        if object == null {
+            return 0
+        }
+        klass := env.functions.GetObjectClass(env, object)
+        field := env.functions.GetFieldID(env, klass, InsetsCString(name, field_name[:]),
+            InsetsCString("I", signature[:]))
+        if field == null || InsetsFailed(env) {
+            return 0
+        }
+        return env.functions.GetIntField(env, object, field)
+    }
+
+    InsetsStaticInteger :: (env: *JniEnv, class_name: string, name: string,
+        method: bool) -> s32 {
+        class_bytes: [48]u8
+        member: [24]u8
+        signature: [8]u8
+        klass := env.functions.FindClass(env, InsetsCString(class_name, class_bytes[:]))
+        if klass == null || InsetsFailed(env) {
+            return 0
+        }
+        if !method {
+            field := env.functions.GetStaticFieldID(env, klass,
+                InsetsCString(name, member[:]), InsetsCString("I", signature[:]))
+            if field == null || InsetsFailed(env) {
+                return 0
+            }
+            return env.functions.GetStaticIntField(env, klass, field)
+        }
+        id := env.functions.GetStaticMethodID(env, klass,
+            InsetsCString(name, member[:]), InsetsCString("()I", signature[:]))
+        if id == null || InsetsFailed(env) {
+            return 0
+        }
+        arguments: [1]JniValue
+        value := env.functions.CallStaticIntMethodA(env, klass, id, *arguments[0])
+        if InsetsFailed(env) {
+            return 0
+        }
+        return value
+    }
+
+    // Reads the decor view's root insets; false until the view is attached.
+    InsetsRead :: (session: *AndroidJniSession) -> bool {
+        env := session.env
+        window := InsetsObject(env, session.activity, "getWindow", "()Landroid/view/Window;")
+        decor := InsetsObject(env, window, "getDecorView", "()Landroid/view/View;")
+        insets := InsetsObject(env, decor, "getRootWindowInsets", "()Landroid/view/WindowInsets;")
+        if insets == null {
+            return false
+        }
+        sdk := InsetsStaticInteger(env, "android/os/Build$VERSION", "SDK_INT", false)
+        left: s32
+        top: s32
+        right: s32
+        bottom: s32
+        ime: s32
+        if sdk >= 30 {
+            // Bars count while hidden too, so content never moves under a
+            // bar that a swipe brings back.
+            bars := InsetsStaticInteger(env, "android/view/WindowInsets$Type", "systemBars", true)
+            keyboard := InsetsStaticInteger(env, "android/view/WindowInsets$Type", "ime", true)
+            system := InsetsObject(env, insets, "getInsetsIgnoringVisibility",
+                "(I)Landroid/graphics/Insets;", bars)
+            left = InsetsField(env, system, "left")
+            top = InsetsField(env, system, "top")
+            right = InsetsField(env, system, "right")
+            bottom = InsetsField(env, system, "bottom")
+            ime = InsetsField(env, InsetsObject(env, insets, "getInsets",
+                "(I)Landroid/graphics/Insets;", keyboard), "bottom")
+        } else {
+            left = InsetsInteger(env, insets, "getStableInsetLeft")
+            top = InsetsInteger(env, insets, "getStableInsetTop")
+            right = InsetsInteger(env, insets, "getStableInsetRight")
+            bottom = InsetsInteger(env, insets, "getStableInsetBottom")
+            ime = InsetsInteger(env, insets, "getSystemWindowInsetBottom") - bottom
+        }
+        cutout_left: s32
+        cutout_top: s32
+        cutout_right: s32
+        cutout_bottom: s32
+        if sdk >= 28 {
+            cutout := InsetsObject(env, insets, "getDisplayCutout", "()Landroid/view/DisplayCutout;")
+            cutout_left = InsetsInteger(env, cutout, "getSafeInsetLeft")
+            cutout_top = InsetsInteger(env, cutout, "getSafeInsetTop")
+            cutout_right = InsetsInteger(env, cutout, "getSafeInsetRight")
+            cutout_bottom = InsetsInteger(env, cutout, "getSafeInsetBottom")
+        }
+        SetAndroidWindowInsets(left, top, right, bottom, ime, cutout_left,
+            cutout_top, cutout_right, cutout_bottom)
+        return true
+    }
+}
+
+// Call once per frame from the render thread. It reads the insets a few
+// times a second, which also follows the keyboard and rotation.
+#program_export
+PollAndroidWindowInsets :: () {
+    #if #defined(ANDROID_BUILD) {
+        if device_java_insets {
+            return
+        }
+        if device_insets_wait > 0 {
+            device_insets_wait -= 1
+            return
+        }
+        device_insets_wait = 15
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return
+        }
+        unused InsetsRead(*session)
+        AndroidJniDetachCurrent(*session)
+    }
 }
 
 // An activity whose window can be raised, such as one with a floating
