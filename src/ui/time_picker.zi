@@ -181,6 +181,7 @@ TimePickerPopup :: struct {
     minutes: Rectangle
     now: Rectangle
     done: Rectangle
+    clear: Rectangle
 }
 
 TimePickerPopupMetrics :: struct {
@@ -192,12 +193,14 @@ TimePickerPopupMetrics :: struct {
     gap: float32
     has_now: bool
     has_done: bool
+    has_clear: bool
 }
 
 // The popup for a field, inside view. It opens below the field when it fits
 // there, otherwise on the side with more room, and shows fewer rows when the
 // window is short. It is never wider or taller than the view; a narrow view
-// narrows its columns and a short one drops the Now and Done row first.
+// narrows its columns and a short one drops the actions' row first. The
+// actions share their row in the order Clear, Now, Done.
 #program_export
 TimePickerPopupFor :: (field: Rectangle, view: Rectangle,
     metrics: TimePickerPopupMetrics) -> TimePickerPopup {
@@ -215,7 +218,9 @@ TimePickerPopupFor :: (field: Rectangle, view: Rectangle,
     if width > view.width { width = view.width }
     if padding * 2.0 > width { padding = width * 0.5 }
     footer: float32 = 0.0
-    if metrics.has_now || metrics.has_done { footer = row + padding }
+    if metrics.has_now || metrics.has_done || metrics.has_clear {
+        footer = row + padding
+    }
 
     bottom: float32 = view.y + view.height
     below: float32 = bottom - (field.y + field.height + gap)
@@ -255,18 +260,29 @@ TimePickerPopupFor :: (field: Rectangle, view: Rectangle,
     popup.colon = Rectangle.{x + padding + column, top, colon, area}
     popup.minutes = Rectangle.{x + padding + column + colon, top, column, area}
     if footer > 0.0 {
-        actions: Rectangle = Rectangle.{x + padding, top + area + padding,
-            inner_width, row}
-        if metrics.has_now && metrics.has_done {
-            half: float32 = (inner_width - padding) * 0.5
-            if half < 0.0 { half = 0.0 }
-            popup.now = Rectangle.{actions.x, actions.y, half, row}
-            popup.done = Rectangle.{actions.x + inner_width - half, actions.y,
-                half, row}
-        } else if metrics.has_now {
-            popup.now = actions
-        } else {
-            popup.done = actions
+        count: s32 = 0
+        if metrics.has_clear { count += 1 }
+        if metrics.has_now { count += 1 }
+        if metrics.has_done { count += 1 }
+        each: float32 = (inner_width - padding * cast(float32)(count - 1)) /
+            cast(float32)count
+        if each < 0.0 { each = 0.0 }
+        step: float32 = each + padding
+        if count > 1 && inner_width < padding * cast(float32)(count - 1) {
+            step = each
+        }
+        at: float32 = x + padding
+        action_y: float32 = top + area + padding
+        if metrics.has_clear {
+            popup.clear = Rectangle.{at, action_y, each, row}
+            at += step
+        }
+        if metrics.has_now {
+            popup.now = Rectangle.{at, action_y, each, row}
+            at += step
+        }
+        if metrics.has_done {
+            popup.done = Rectangle.{at, action_y, each, row}
         }
     }
     return popup

@@ -17,6 +17,9 @@ TimePickerProps :: struct {
     // The popup's Now and Done actions show only with a label.
     now_label: string
     done_label: string
+    // With a label, the popup's Clear action: it takes the time away, to
+    // -1, and closes the popup.
+    clear_label: string
     scale: float32
     disabled: bool
 }

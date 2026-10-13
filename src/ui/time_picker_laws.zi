@@ -56,19 +56,21 @@ Shown :: (part: Rectangle, panel: Rectangle) -> bool {
 Placed :: (popup: TimePickerPopup, view: Rectangle) -> bool {
     return Inside(popup.panel, view) && Inside(popup.hours, popup.panel) &&
         Inside(popup.colon, popup.panel) && Inside(popup.minutes, popup.panel) &&
-        Shown(popup.now, popup.panel) && Shown(popup.done, popup.panel)
+        Shown(popup.now, popup.panel) && Shown(popup.done, popup.panel) &&
+        Shown(popup.clear, popup.panel)
 }
 
 Metrics :: (actions: s32) -> TimePickerPopupMetrics {
     return TimePickerPopupMetrics.{.column_width = 64.0, .colon_width = 24.0,
         .row_height = 32.0, .padding = 8.0, .gap = 4.0,
-        .has_now = actions >= 1, .has_done = actions >= 2}
+        .has_now = actions >= 1, .has_done = actions >= 2,
+        .has_clear = actions >= 3}
 }
 
 // Wherever its field is, even partly off the window, the popup and all its
 // parts stay on screen, in a large window or a small one.
-#law PopupStaysOnScreen forall x: 0..12, y: 0..12, width: 0..6, actions: 0..2 => Placed(TimePickerPopupFor(Rectangle.{cast(float32)(x * 30 - 60), cast(float32)(y * 30 - 40), cast(float32)(width * 50), 32.0}, Rectangle.{0.0, 0.0, 320.0, 300.0}, Metrics(actions)), Rectangle.{0.0, 0.0, 320.0, 300.0});
-#law SmallViewStaysOnScreen forall width: 0..8, height: 0..8, actions: 0..2 => Placed(TimePickerPopupFor(Rectangle.{20.0, 30.0, 120.0, 32.0}, Rectangle.{0.0, 0.0, cast(float32)(width * 25), cast(float32)(height * 30)}, Metrics(actions)), Rectangle.{0.0, 0.0, cast(float32)(width * 25), cast(float32)(height * 30)});
+#law PopupStaysOnScreen forall x: 0..12, y: 0..12, width: 0..6, actions: 0..3 => Placed(TimePickerPopupFor(Rectangle.{cast(float32)(x * 30 - 60), cast(float32)(y * 30 - 40), cast(float32)(width * 50), 32.0}, Rectangle.{0.0, 0.0, 320.0, 300.0}, Metrics(actions)), Rectangle.{0.0, 0.0, 320.0, 300.0});
+#law SmallViewStaysOnScreen forall width: 0..8, height: 0..8, actions: 0..3 => Placed(TimePickerPopupFor(Rectangle.{20.0, 30.0, 120.0, 32.0}, Rectangle.{0.0, 0.0, cast(float32)(width * 25), cast(float32)(height * 30)}, Metrics(actions)), Rectangle.{0.0, 0.0, cast(float32)(width * 25), cast(float32)(height * 30)});
 
 Key :: (open: s32, column: s32, key: s32) -> TimePickerKeyState {
     state: TimePickerKeyState
