@@ -146,3 +146,84 @@ PaintSvgIcon :: (session: Session, node: s32, shape: string, bounds: Rectangle,
         row += 1
     }
 }
+
+// Appends value with up to two decimals, as the shape language reads it.
+StrokeAppendNumber :: (output: []u8, length: *s32, value: float32) {
+    hundredths: s32 = cast(s32)(value * 100.0 + 0.5)
+    if hundredths < 0 { hundredths = 0 }
+    digits: [12]u8
+    count: s32 = 0
+    whole: s32 = hundredths / 100
+    if whole == 0 {
+        digits[0] = #char "0"
+        count = 1
+    }
+    while whole > 0 {
+        digits[count] = cast(u8)(#char "0" + whole % 10)
+        count += 1
+        whole /= 10
+    }
+    while count > 0 && length.* < cast(s32)output.count {
+        count -= 1
+        output[length.*] = digits[count]
+        length.* += 1
+    }
+    if length.* + 3 <= cast(s32)output.count {
+        output[length.*] = #char "."
+        output[length.* + 1] = cast(u8)(#char "0" + (hundredths / 10) % 10)
+        output[length.* + 2] = cast(u8)(#char "0" + hundredths % 10)
+        length.* += 3
+    }
+}
+
+StrokeAppendByte :: (output: []u8, length: *s32, byte: u8) {
+    if length.* < cast(s32)output.count {
+        output[length.*] = byte
+        length.* += 1
+    }
+}
+
+// Paints the line through points as a smooth stroke of the given width with
+// round caps and joins. It is rasterized like an icon, so it is
+// anti-aliased alike on every host and at every scale; up to eight points.
+#program_export
+PaintStroke :: (session: Session, node: s32, points: []Vector2,
+    width: float32, color: Color) {
+    if points.count < 2 || points.count > 8 || width <= 0.0 ||
+        color.a == cast(u8)0 {
+        return
+    }
+    left: float32 = points[0].x
+    right: float32 = points[0].x
+    top: float32 = points[0].y
+    bottom: float32 = points[0].y
+    for point: points {
+        if point.x < left { left = point.x }
+        if point.x > right { right = point.x }
+        if point.y < top { top = point.y }
+        if point.y > bottom { bottom = point.y }
+    }
+    // A square around the line and its round ends, centred on it.
+    edge: float32 = right - left
+    if bottom - top > edge { edge = bottom - top }
+    edge += width + 1.0
+    bounds: Rectangle = Rectangle.{(left + right - edge) * 0.5,
+        (top + bottom - edge) * 0.5, edge, edge}
+    unit: float32 = SHAPE_VIEW / edge
+    shape: [256]u8
+    length: s32 = 0
+    StrokeAppendByte(shape[:], *length, #char "S")
+    StrokeAppendNumber(shape[:], *length, width * unit)
+    StrokeAppendByte(shape[:], *length, #char "r")
+    StrokeAppendByte(shape[:], *length, #char "r")
+    StrokeAppendByte(shape[:], *length, #char ":")
+    index: s32 = 0
+    for point: points {
+        StrokeAppendByte(shape[:], *length, ifx index == 0 then #char "M" else #char "L")
+        StrokeAppendNumber(shape[:], *length, (point.x - bounds.x) * unit)
+        StrokeAppendByte(shape[:], *length, #char " ")
+        StrokeAppendNumber(shape[:], *length, (point.y - bounds.y) * unit)
+        index += 1
+    }
+    PaintSvgIcon(session, node, TextView(shape[0:length]), bounds, color)
+}

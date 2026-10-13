@@ -20,6 +20,7 @@
 #import "style"
 #import "style_sheet"
 #import "surface"
+#import "svg_icon"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -71,21 +72,6 @@ CheckboxFaceFor :: (props: CheckboxProps,
 }
 
 #program_export
-PaintCheckboxSegment :: (session: Session, node: s32, start: Vector2, end: Vector2,
-    width: float32, color: Color) {
-    strokes: s32 = cast(s32)(width + 0.5)
-    if strokes < 1 { strokes = 1 }
-    if strokes > 8 { strokes = 8 }
-    index: s32 = 0
-    while index < strokes {
-        offset: float32 = cast(float32)index - cast(float32)(strokes - 1) * 0.5
-        PaintLine(session, node, Rectangle.{start.x, start.y + offset,
-            end.x - start.x, end.y - start.y}, color)
-        index += 1
-    }
-}
-
-#program_export
 PaintCheckboxForNode :: (session: Session, node: s32, props: CheckboxProps,
     paint: CheckboxPaint, label: StyleFrame, font: s32,
     label_height: s32) {
@@ -117,10 +103,9 @@ PaintCheckboxForNode :: (session: Session, node: s32, props: CheckboxProps,
     if paint.show_mark {
         mark: Color = ColorFromPacked(Opacity(paint.mark_color,
             active_opacity))
-        PaintCheckboxSegment(session, node, paint.check_start, paint.check_middle,
-            paint.mark_width, mark)
-        PaintCheckboxSegment(session, node, paint.check_middle, paint.check_end,
-            paint.mark_width, mark)
+        check: [3]Vector2 = .[paint.check_start, paint.check_middle,
+            paint.check_end]
+        PaintStroke(session, node, check[:], paint.mark_width, mark)
     }
     if props.label != "" {
         x: s32 = cast(s32)CheckboxLabelXFor(paint.slot_bounds,
