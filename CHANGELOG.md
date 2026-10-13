@@ -60,6 +60,10 @@
 
 ### Fixed
 
+- A popup, such as a dropdown's menu or a time picker's hours and minutes,
+  shows whole over the edge of the scroll area or dialog it opens from; a
+  time picker in a dialog no longer squeezes its popup into the dialog.
+
 - Dropdowns follow Kryon's light and dark system palettes; a dark palette
   left their field and menu light before.
 - Android apps without Java code keep their content clear of the
