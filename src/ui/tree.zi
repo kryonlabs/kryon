@@ -1239,13 +1239,15 @@
 
     // A popup, such as a dropdown's open menu, is painted and hit above the
     // rest of the page, but the page keeps its input: pressing outside the
-    // popup reaches the control there.
+    // popup reaches the control there. It escapes the clip of the scroll area
+    // or dialog it opens from, so it shows whole over their edges.
     #program_export
     TreeSetPopup :: (session: Session, index: s32) {
         slot: s32 = SessionIndex(session)
         if !trees[slot].building || index < 0 ||
         index >= trees[slot].submitted_count { return }
         trees[slot].submitted[index].popup = true
+        trees[slot].submitted[index].clipped = false
     }
 
     // Read a bounded UTF-8 byte range without exposing the tree's owned buffer.

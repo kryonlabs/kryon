@@ -9,6 +9,8 @@ TestSession :: () -> Session {
 #import "geometry"
 #import "paint_queue"
 #import "scroll_device"
+#import "scroll_props"
+#import "scroll_widget"
 #import "semantic"
 #import "style"
 #import "style_sheet"
@@ -36,6 +38,8 @@ now_label: string;
 done_label: string;
 clear_label: string;
 disabled: bool;
+// Whether the picker sits in a short scroll area at the window's top.
+in_scroll: bool;
 // What the last frame showed in the field, and whether every one of the
 // field's paints stayed inside its bounds.
 field_text: [16]u8;
@@ -66,7 +70,18 @@ Inside :: (inner: Rectangle, outer: Rectangle) -> bool {
 Frame :: () -> TimePickerResult {
     props: TimePickerProps = Props()
     unused BeginFrame(TestSession(), cast(u64)1, Window())
-    result: TimePickerResult = TimePicker(TestSession(), props)
+    result: TimePickerResult
+    if in_scroll {
+        area: ScrollResult = Scroll(TestSession(), ScrollProps.{.key = cast(u64)90,
+            .bounds = Rectangle.{0.0, 0.0, 240.0, 80.0}, .content_height = 80,
+            .scale = 1.0})
+        if area.opened {
+            result = TimePicker(TestSession(), props)
+            End(TestSession())
+        }
+    } else {
+        result = TimePicker(TestSession(), props)
+    }
     field_text_length = 0
     for index: cast(s32)0..PendingPaintCount(TestSession()) - 1 {
         paint := PendingPaintAt(TestSession(), index)
@@ -152,6 +167,7 @@ Reset :: (time: s32) {
     done_label = ""
     clear_label = ""
     disabled = false
+    in_scroll = false
 }
 
 // A picker without a time shows its placeholder, opens at a tap and takes
@@ -346,6 +362,24 @@ Clearing :: () -> s32 {
     return 0
 }
 
+// A picker in a short scroll area, such as a dialog's, opens its popup over
+// the area's edge: its rows show and take taps outside the area too.
+ScrolledField :: () -> s32 {
+    Reset(600)
+    field = Rectangle.{20.0, 30.0, 140.0, 32.0}
+    in_scroll = true
+    result: TimePickerResult = Frame()
+    TapAt(field)
+    result = Frame()
+    below: Rectangle = Row(0, "12")
+    if !result.open || !Shown(Row(0, "10")) || !Shown(below) || below.y < 80.0 { return 1 }
+    TapAt(below)
+    result = Frame()
+    if !result.changed || result.value != 720 { return 2 }
+    in_scroll = false
+    return 0
+}
+
 // Near the bottom of the window the popup opens above the field, and every
 // paint stays inside the window.
 Placement :: () -> s32 {
@@ -444,6 +478,8 @@ main :: () -> s32 {
     if actions != 0 { return 70 + actions }
     cleared: s32 = Clearing()
     if cleared != 0 { return 110 + cleared }
+    scrolled: s32 = ScrolledField()
+    if scrolled != 0 { return 120 + scrolled }
     placed: s32 = Placement()
     if placed != 0 { return 80 + placed }
     device: s32 = DeviceScrolling()

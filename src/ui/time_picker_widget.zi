@@ -469,11 +469,10 @@ TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
     metrics.has_now = props.now_label != ""
     metrics.has_done = props.done_label != ""
     metrics.has_clear = props.clear_label != ""
-    // The popup fits the part of the window its scope shows, as a
-    // dropdown's menu does.
+    // The popup is an overlay above everything, so it fits the window, not
+    // the scroll area or dialog the field sits in: a picker near a small
+    // area's edge still shows its rows and actions in full.
     view: Rectangle = TreeRootBounds(session)
-    scope: NodeGeometry = TreeCurrentPaintGeometry(session)
-    if scope.clipped { view = RectangleIntersection(view, scope.clip) }
     popup: TimePickerPopup = TimePickerPopupFor(field, view, metrics)
     if popup.hours.width <= 0.0 || popup.hours.height <= 0.0 { return false }
 
