@@ -6,3 +6,9 @@ emitting_texture: Texture2D;
 
 #program_export
 CurrentPaintTexture :: () -> Texture2D { return emitting_texture }
+
+// Whether the image being emitted asked to be scaled smoothly.
+emitting_smooth: bool;
+
+#program_export
+CurrentPaintSmooth :: () -> bool { return emitting_smooth }

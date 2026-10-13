@@ -14,6 +14,8 @@ CanvasAsset :: struct {
     path: [1024]u8
     length: s32
     texture: Texture2D
+    // Drawn with the browser's image smoothing.
+    smooth: bool
 }
 
 canvas_assets: [32]CanvasAsset;
@@ -235,6 +237,7 @@ CanvasAssetIndex :: (path: string) -> s32 {
     canvas_assets[index].length = cast(s32)path.count
     canvas_assets[index].texture =
     LoadTexture(*canvas_assets[index].path[0])
+    canvas_assets[index].smooth = false
     if canvas_assets[index].texture.id == cast(u32)0 {
         canvas_assets[index].length = 0
         return -1

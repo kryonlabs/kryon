@@ -53,6 +53,8 @@ Frame :: () -> s32 {
         image.bounds = Rectangle.{10.0, 20.0, 100.0, 100.0}
         image.fit = cast(ImageFit)ImageFitContain
         image.rotation = 15.0
+        // The host is told to scale this image smoothly, and only this one.
+        image.smooth = true
         BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
         Image(TestSession(), image)
         phase = 1

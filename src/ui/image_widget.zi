@@ -133,7 +133,8 @@ Image :: (session: Session, image: ImageProps) {
     if plan.draw && tint.a > cast(u8)0 {
         PaintImage(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, image.bounds,
-            image.origin, image.rotation, radius, plan.tint, image.texture)
+            image.origin, image.rotation, radius, plan.tint, image.texture,
+            image.smooth)
     } else if !plan.draw && texture.width >= 0 && texture.height >= 0 {
         // A host still loading the asset reports a negative size; the
         // placeholder is only for an image that is unavailable.

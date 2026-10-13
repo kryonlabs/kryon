@@ -21,4 +21,8 @@ ImageProps :: struct {
     // A nonzero packed RGBA color tints this image. Zero uses its style color.
     tint: u32
     key: u64
+    // Scale the image smoothly: the host blends neighboring pixels and,
+    // where it can, smaller copies of the image, so a detailed picture drawn
+    // larger or smaller than its pixels stays clean. Off keeps sharp pixels.
+    smooth: bool
 }

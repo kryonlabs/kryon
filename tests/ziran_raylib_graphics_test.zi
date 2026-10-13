@@ -4,6 +4,7 @@
 #import "byte_text_linux"
 #import "drawing_props"
 #import "geometry"
+#import "paint_texture"
 
 DrawAsset :: (path: string) {
     source := Rectangle.{0.0, 0.0, 200.0, 100.0}
@@ -24,6 +25,15 @@ main :: () -> s32 {
     DrawAsset("banner.png")
     if presented != 1001 {
         return 3
+    }
+    // A smooth image is given mipmaps and a trilinear filter, once.
+    emitting_smooth = true
+    DrawAsset("banner.png")
+    DrawAsset("banner.png")
+    emitting_smooth = false
+    if texture_mipmaps != 1 || smooth_filters != 1 || presented != 1001 ||
+    graphics_failed {
+        return 16
     }
     // A cover-fit image is wider than its tile: only the visible part is
     // drawn, from the matching source, and no scissor flushes the batch.
