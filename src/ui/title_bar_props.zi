@@ -19,6 +19,10 @@ TitleBarProps :: struct {
     dropdown_height: s32
     // The title drawn with emphasis, as Text's strong ranges.
     strong_title: bool
+    // Room kept at the right for the caller's own controls, such as a
+    // toggle. The title stays centred clear of it; the result's
+    // trailing_bounds says where to draw them.
+    trailing_width: s32
 }
 
 TitleBarResult :: struct {
@@ -26,4 +30,7 @@ TitleBarResult :: struct {
     height: s32
     clicked_leading: bool
     dropdown: DropdownResult
+    // Where the caller draws its controls, the full height of the bar at
+    // its right; empty without trailing_width.
+    trailing_bounds: Rectangle
 }

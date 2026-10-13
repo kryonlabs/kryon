@@ -22,6 +22,7 @@ TitleBarLayout :: struct {
     leading_bounds: Rectangle
     title_bounds: Rectangle
     dropdown_bounds: Rectangle
+    trailing_bounds: Rectangle
     side_reserved: s32
 }
 
@@ -114,11 +115,20 @@ TitleBarStateFor :: (requested_height: s32, fallback_height: s32,
 #program_export
 TitleBarLayoutFor :: (view_width: s32, height: s32, has_leading: bool,
     has_dropdown: bool, dropdown_height: s32, dropdown_min_width: s32,
-    metrics: TitleBarMetrics) -> TitleBarLayout {
+    trailing_width: s32, metrics: TitleBarMetrics) -> TitleBarLayout {
     layout: TitleBarLayout
     layout.bounds.width = cast(float32)view_width
     layout.bounds.height = cast(float32)height
     layout.side_reserved = metrics.side_margin
+    if trailing_width < 0 { trailing_width = 0 }
+    // The caller's controls sit inside the side margin at the right.
+    trailing_x: s32 = view_width - metrics.side_margin - trailing_width
+    if trailing_x < 0 { trailing_x = 0 }
+    if trailing_width > 0 {
+        layout.trailing_bounds.x = cast(float32)trailing_x
+        layout.trailing_bounds.width = cast(float32)(view_width - metrics.side_margin - trailing_x)
+        layout.trailing_bounds.height = cast(float32)height
+    }
     if has_leading {
         button_size: s32 = metrics.leading_icon_size + metrics.leading_padding * 2
         y: s32 = (height - button_size) / 2
@@ -130,12 +140,25 @@ TitleBarLayoutFor :: (view_width: s32, height: s32, has_leading: bool,
         layout.side_reserved = metrics.leading_reserved
     }
 
-    max_width: s32 = view_width - layout.side_reserved * 2
-    if max_width < metrics.title_min_width {
+    // Both sides keep the wider reservation, so the title stays centred.
+    reserved: s32 = layout.side_reserved
+    if trailing_width > 0 {
+        trailing_reserved: s32 = metrics.side_margin + trailing_width + metrics.dropdown_gap
+        if trailing_reserved > reserved { reserved = trailing_reserved }
+    }
+    max_width: s32 = view_width - reserved * 2
+    title_x: s32 = (view_width - max_width) / 2
+    if max_width < metrics.title_min_width && trailing_width > 0 {
+        // Too narrow to centre: the title takes what is left between the
+        // leading side and the caller's controls.
+        title_x = layout.side_reserved
+        max_width = trailing_x - metrics.dropdown_gap - title_x
+    } else if max_width < metrics.title_min_width {
         max_width = view_width - metrics.title_horizontal_padding
+        title_x = (view_width - max_width) / 2
     }
     if max_width < 1 { max_width = 1 }
-    layout.title_bounds.x = cast(float32)((view_width - max_width) / 2)
+    layout.title_bounds.x = cast(float32)title_x
     layout.title_bounds.y = 0.0
     layout.title_bounds.width = cast(float32)max_width
     layout.title_bounds.height = cast(float32)height
@@ -151,7 +174,10 @@ TitleBarLayoutFor :: (view_width: s32, height: s32, has_leading: bool,
         dropdown_y: s32 = (height - dropdown_h) / 2
         if dropdown_y < 0 { dropdown_y = 0 }
         dropdown_w: s32 = view_width - dropdown_x - metrics.side_margin
-        if dropdown_min_width > 0 && dropdown_w < dropdown_min_width {
+        if trailing_width > 0 {
+            dropdown_w = trailing_x - metrics.dropdown_gap - dropdown_x
+        }
+        if dropdown_min_width > 0 && dropdown_w < dropdown_min_width && trailing_width == 0 {
             dropdown_w = view_width - dropdown_x
         }
         if dropdown_w < 1 { dropdown_w = 1 }

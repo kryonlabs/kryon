@@ -20,6 +20,9 @@
 #import "text_field_widget"
 #import "tab_bar_widget"
 #import "tab_bar_props"
+#import "title_bar_widget"
+#import "title_bar_props"
+#import "dropdown_props"
 #program_export
 main :: () -> s32 {
     session := Session.{.slot = 4, .epoch = cast(u64)12}
@@ -41,5 +44,8 @@ main :: () -> s32 {
     tabs: [2]Tab = .[Tab.{.label = "One"}, Tab.{.label = "Two"}]
     selected := TabBar(session, TabBarProps.{.selected_index = 0}, tabs[:])
     if selected.selected_index != 1 { return 9 }
+    options: [1]DropdownOption
+    bar := TitleBar(session, TitleBarProps.{.title = "Lumi", .trailing_width = 90}, options[0:0])
+    if bar.trailing_bounds.width != 90.0 { return 10 }
     return 42
 }

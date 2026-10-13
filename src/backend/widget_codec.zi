@@ -22,6 +22,9 @@
 #import "press_props"
 #import "spinbox_props"
 #import "time_picker_props"
+#import "dropdown"
+#import "dropdown_props"
+#import "title_bar_props"
 using HostValueKind;
 
 WidgetRectangleCodec :: struct {
@@ -7082,6 +7085,960 @@ WidgetValidTimePickerResult :: (value: HostValue) -> bool {
     }
     {
         field_at := HostFieldAt(value, 3, "open")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetDropdownTriggerInputCodec :: struct {
+    fields: [3]HostField
+}
+
+WidgetEncodeDropdownTriggerInput :: (data: DropdownTriggerInput, codec: *WidgetDropdownTriggerInputCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("DropdownTriggerInput")
+    value.fields = *codec.fields[0]
+    value.field_count = 3
+    codec.fields[0].name = HostTextData("enter")
+    codec.fields[0].value = HostScalar("bool", ifx data.enter then 1 else 0)
+    codec.fields[1].name = HostTextData("space")
+    codec.fields[1].value = HostScalar("bool", ifx data.space then 1 else 0)
+    codec.fields[2].name = HostTextData("down")
+    codec.fields[2].value = HostScalar("bool", ifx data.down then 1 else 0)
+    return value
+}
+
+WidgetDecodeDropdownTriggerInput :: (value: HostValue, codec: *WidgetDropdownTriggerInputCodec) -> DropdownTriggerInput {
+    data: DropdownTriggerInput
+    {
+        field_at := HostFieldAt(value, 0, "enter")
+        if field_at >= 0 {
+            data.enter = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "space")
+        if field_at >= 0 {
+            data.space = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "down")
+        if field_at >= 0 {
+            data.down = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidDropdownTriggerInput :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "DropdownTriggerInput" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "enter")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "space")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "down")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetDropdownMenuInputCodec :: struct {
+    fields: [7]HostField
+}
+
+WidgetEncodeDropdownMenuInput :: (data: DropdownMenuInput, codec: *WidgetDropdownMenuInputCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("DropdownMenuInput")
+    value.fields = *codec.fields[0]
+    value.field_count = 7
+    codec.fields[0].name = HostTextData("navigating")
+    codec.fields[0].value = HostScalar("bool", ifx data.navigating then 1 else 0)
+    codec.fields[1].name = HostTextData("up")
+    codec.fields[1].value = HostScalar("bool", ifx data.up then 1 else 0)
+    codec.fields[2].name = HostTextData("down")
+    codec.fields[2].value = HostScalar("bool", ifx data.down then 1 else 0)
+    codec.fields[3].name = HostTextData("home")
+    codec.fields[3].value = HostScalar("bool", ifx data.home then 1 else 0)
+    codec.fields[4].name = HostTextData("end")
+    codec.fields[4].value = HostScalar("bool", ifx data.end then 1 else 0)
+    codec.fields[5].name = HostTextData("commit")
+    codec.fields[5].value = HostScalar("bool", ifx data.commit then 1 else 0)
+    codec.fields[6].name = HostTextData("escape")
+    codec.fields[6].value = HostScalar("bool", ifx data.escape then 1 else 0)
+    return value
+}
+
+WidgetDecodeDropdownMenuInput :: (value: HostValue, codec: *WidgetDropdownMenuInputCodec) -> DropdownMenuInput {
+    data: DropdownMenuInput
+    {
+        field_at := HostFieldAt(value, 0, "navigating")
+        if field_at >= 0 {
+            data.navigating = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "up")
+        if field_at >= 0 {
+            data.up = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "down")
+        if field_at >= 0 {
+            data.down = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "home")
+        if field_at >= 0 {
+            data.home = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "end")
+        if field_at >= 0 {
+            data.end = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "commit")
+        if field_at >= 0 {
+            data.commit = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "escape")
+        if field_at >= 0 {
+            data.escape = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidDropdownMenuInput :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "DropdownMenuInput" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "navigating")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "up")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "down")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "home")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "end")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "commit")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "escape")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetDropdownPropsCodec :: struct {
+    fields: [13]HostField
+    bounds: WidgetRectangleCodec
+    trigger_input: WidgetDropdownTriggerInputCodec
+    menu_input: WidgetDropdownMenuInputCodec
+}
+
+WidgetEncodeDropdownProps :: (data: DropdownProps, codec: *WidgetDropdownPropsCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("DropdownProps")
+    value.fields = *codec.fields[0]
+    value.field_count = 13
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("bounds")
+    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
+    codec.fields[2].name = HostTextData("id")
+    codec.fields[2].value = HostScalar("s32", cast(s64)data.id)
+    codec.fields[3].name = HostTextData("class_name")
+    codec.fields[3].value = HostScalar("s32", cast(s64)data.class_name)
+    codec.fields[4].name = HostTextData("placeholder")
+    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.placeholder), .length = cast(usize)data.placeholder.count}
+    codec.fields[5].name = HostTextData("selected_index")
+    codec.fields[5].value = HostScalar("s32", cast(s64)data.selected_index)
+    codec.fields[6].name = HostTextData("open")
+    codec.fields[6].value = HostScalar("bool", ifx data.open then 1 else 0)
+    codec.fields[7].name = HostTextData("close")
+    codec.fields[7].value = HostScalar("bool", ifx data.close then 1 else 0)
+    codec.fields[8].name = HostTextData("focused")
+    codec.fields[8].value = HostScalar("bool", ifx data.focused then 1 else 0)
+    codec.fields[9].name = HostTextData("scale")
+    codec.fields[9].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
+    codec.fields[10].name = HostTextData("trigger_input")
+    codec.fields[10].value = WidgetEncodeDropdownTriggerInput(data.trigger_input, *codec.trigger_input)
+    codec.fields[11].name = HostTextData("menu_input")
+    codec.fields[11].value = WidgetEncodeDropdownMenuInput(data.menu_input, *codec.menu_input)
+    codec.fields[12].name = HostTextData("disabled")
+    codec.fields[12].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    return value
+}
+
+WidgetDecodeDropdownProps :: (value: HostValue, codec: *WidgetDropdownPropsCodec) -> DropdownProps {
+    data: DropdownProps
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "bounds")
+        if field_at >= 0 {
+            data.bounds = WidgetDecodeRectangle(value.fields[field_at].value, *codec.bounds)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "id")
+        if field_at >= 0 {
+            data.id = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "class_name")
+        if field_at >= 0 {
+            data.class_name = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "placeholder")
+        if field_at >= 0 {
+            data.placeholder = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "selected_index")
+        if field_at >= 0 {
+            data.selected_index = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "open")
+        if field_at >= 0 {
+            data.open = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "close")
+        if field_at >= 0 {
+            data.close = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "focused")
+        if field_at >= 0 {
+            data.focused = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "scale")
+        if field_at >= 0 {
+            data.scale = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "trigger_input")
+        if field_at >= 0 {
+            data.trigger_input = WidgetDecodeDropdownTriggerInput(value.fields[field_at].value, *codec.trigger_input)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "menu_input")
+        if field_at >= 0 {
+            data.menu_input = WidgetDecodeDropdownMenuInput(value.fields[field_at].value, *codec.menu_input)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 12, "disabled")
+        if field_at >= 0 {
+            data.disabled = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidDropdownProps :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "DropdownProps" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "bounds")
+        if field_at >= 0 {
+            if !WidgetValidRectangle(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "id")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "class_name")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "placeholder")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "selected_index")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "open")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "close")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "focused")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "scale")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "trigger_input")
+        if field_at >= 0 {
+            if !WidgetValidDropdownTriggerInput(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "menu_input")
+        if field_at >= 0 {
+            if !WidgetValidDropdownMenuInput(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 12, "disabled")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetTitleBarPropsCodec :: struct {
+    fields: [16]HostField
+    bounds: WidgetRectangleCodec
+    leading_image: WidgetImagePropsCodec
+    dropdown: WidgetDropdownPropsCodec
+}
+
+WidgetEncodeTitleBarProps :: (data: TitleBarProps, codec: *WidgetTitleBarPropsCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("TitleBarProps")
+    value.fields = *codec.fields[0]
+    value.field_count = 16
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("id")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.id)
+    codec.fields[2].name = HostTextData("class_name")
+    codec.fields[2].value = HostScalar("s32", cast(s64)data.class_name)
+    codec.fields[3].name = HostTextData("bounds")
+    codec.fields[3].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
+    codec.fields[4].name = HostTextData("title")
+    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.title), .length = cast(usize)data.title.count}
+    codec.fields[5].name = HostTextData("height")
+    codec.fields[5].value = HostScalar("s32", cast(s64)data.height)
+    codec.fields[6].name = HostTextData("scale")
+    codec.fields[6].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
+    codec.fields[7].name = HostTextData("leading_image")
+    codec.fields[7].value = WidgetEncodeImageProps(data.leading_image, *codec.leading_image)
+    codec.fields[8].name = HostTextData("leading_label")
+    codec.fields[8].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.leading_label), .length = cast(usize)data.leading_label.count}
+    codec.fields[9].name = HostTextData("has_leading_action")
+    codec.fields[9].value = HostScalar("bool", ifx data.has_leading_action then 1 else 0)
+    codec.fields[10].name = HostTextData("dropdown")
+    codec.fields[10].value = WidgetEncodeDropdownProps(data.dropdown, *codec.dropdown)
+    codec.fields[11].name = HostTextData("has_dropdown")
+    codec.fields[11].value = HostScalar("bool", ifx data.has_dropdown then 1 else 0)
+    codec.fields[12].name = HostTextData("dropdown_min_width")
+    codec.fields[12].value = HostScalar("s32", cast(s64)data.dropdown_min_width)
+    codec.fields[13].name = HostTextData("dropdown_height")
+    codec.fields[13].value = HostScalar("s32", cast(s64)data.dropdown_height)
+    codec.fields[14].name = HostTextData("strong_title")
+    codec.fields[14].value = HostScalar("bool", ifx data.strong_title then 1 else 0)
+    codec.fields[15].name = HostTextData("trailing_width")
+    codec.fields[15].value = HostScalar("s32", cast(s64)data.trailing_width)
+    return value
+}
+
+WidgetDecodeTitleBarProps :: (value: HostValue, codec: *WidgetTitleBarPropsCodec) -> TitleBarProps {
+    data: TitleBarProps
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "id")
+        if field_at >= 0 {
+            data.id = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "class_name")
+        if field_at >= 0 {
+            data.class_name = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "bounds")
+        if field_at >= 0 {
+            data.bounds = WidgetDecodeRectangle(value.fields[field_at].value, *codec.bounds)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "title")
+        if field_at >= 0 {
+            data.title = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "height")
+        if field_at >= 0 {
+            data.height = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "scale")
+        if field_at >= 0 {
+            data.scale = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "leading_image")
+        if field_at >= 0 {
+            data.leading_image = WidgetDecodeImageProps(value.fields[field_at].value, *codec.leading_image)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "leading_label")
+        if field_at >= 0 {
+            data.leading_label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "has_leading_action")
+        if field_at >= 0 {
+            data.has_leading_action = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "dropdown")
+        if field_at >= 0 {
+            data.dropdown = WidgetDecodeDropdownProps(value.fields[field_at].value, *codec.dropdown)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "has_dropdown")
+        if field_at >= 0 {
+            data.has_dropdown = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 12, "dropdown_min_width")
+        if field_at >= 0 {
+            data.dropdown_min_width = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 13, "dropdown_height")
+        if field_at >= 0 {
+            data.dropdown_height = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 14, "strong_title")
+        if field_at >= 0 {
+            data.strong_title = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 15, "trailing_width")
+        if field_at >= 0 {
+            data.trailing_width = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    return data
+}
+
+WidgetValidTitleBarProps :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "TitleBarProps" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "id")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "class_name")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "bounds")
+        if field_at >= 0 {
+            if !WidgetValidRectangle(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "title")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "height")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "scale")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "leading_image")
+        if field_at >= 0 {
+            if !WidgetValidImageProps(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "leading_label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "has_leading_action")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "dropdown")
+        if field_at >= 0 {
+            if !WidgetValidDropdownProps(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "has_dropdown")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 12, "dropdown_min_width")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 13, "dropdown_height")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 14, "strong_title")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 15, "trailing_width")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetDropdownResultCodec :: struct {
+    fields: [6]HostField
+}
+
+WidgetEncodeDropdownResult :: (data: DropdownResult, codec: *WidgetDropdownResultCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("DropdownResult")
+    value.fields = *codec.fields[0]
+    value.field_count = 6
+    codec.fields[0].name = HostTextData("node")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.node)
+    codec.fields[1].name = HostTextData("selected_index")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.selected_index)
+    codec.fields[2].name = HostTextData("open")
+    codec.fields[2].value = HostScalar("bool", ifx data.open then 1 else 0)
+    codec.fields[3].name = HostTextData("changed")
+    codec.fields[3].value = HostScalar("bool", ifx data.changed then 1 else 0)
+    codec.fields[4].name = HostTextData("opened")
+    codec.fields[4].value = HostScalar("bool", ifx data.opened then 1 else 0)
+    codec.fields[5].name = HostTextData("closed")
+    codec.fields[5].value = HostScalar("bool", ifx data.closed then 1 else 0)
+    return value
+}
+
+WidgetDecodeDropdownResult :: (value: HostValue, codec: *WidgetDropdownResultCodec) -> DropdownResult {
+    data: DropdownResult
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            data.node = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "selected_index")
+        if field_at >= 0 {
+            data.selected_index = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "open")
+        if field_at >= 0 {
+            data.open = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "changed")
+        if field_at >= 0 {
+            data.changed = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "opened")
+        if field_at >= 0 {
+            data.opened = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "closed")
+        if field_at >= 0 {
+            data.closed = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidDropdownResult :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "DropdownResult" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "selected_index")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "open")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "changed")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "opened")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "closed")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetTitleBarResultCodec :: struct {
+    fields: [5]HostField
+    dropdown: WidgetDropdownResultCodec
+    trailing_bounds: WidgetRectangleCodec
+}
+
+WidgetEncodeTitleBarResult :: (data: TitleBarResult, codec: *WidgetTitleBarResultCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("TitleBarResult")
+    value.fields = *codec.fields[0]
+    value.field_count = 5
+    codec.fields[0].name = HostTextData("node")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.node)
+    codec.fields[1].name = HostTextData("height")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.height)
+    codec.fields[2].name = HostTextData("clicked_leading")
+    codec.fields[2].value = HostScalar("bool", ifx data.clicked_leading then 1 else 0)
+    codec.fields[3].name = HostTextData("dropdown")
+    codec.fields[3].value = WidgetEncodeDropdownResult(data.dropdown, *codec.dropdown)
+    codec.fields[4].name = HostTextData("trailing_bounds")
+    codec.fields[4].value = WidgetEncodeRectangle(data.trailing_bounds, *codec.trailing_bounds)
+    return value
+}
+
+WidgetDecodeTitleBarResult :: (value: HostValue, codec: *WidgetTitleBarResultCodec) -> TitleBarResult {
+    data: TitleBarResult
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            data.node = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "height")
+        if field_at >= 0 {
+            data.height = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "clicked_leading")
+        if field_at >= 0 {
+            data.clicked_leading = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "dropdown")
+        if field_at >= 0 {
+            data.dropdown = WidgetDecodeDropdownResult(value.fields[field_at].value, *codec.dropdown)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "trailing_bounds")
+        if field_at >= 0 {
+            data.trailing_bounds = WidgetDecodeRectangle(value.fields[field_at].value, *codec.trailing_bounds)
+        }
+    }
+    return data
+}
+
+WidgetValidTitleBarResult :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "TitleBarResult" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "height")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "clicked_leading")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "dropdown")
+        if field_at >= 0 {
+            if !WidgetValidDropdownResult(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "trailing_bounds")
+        if field_at >= 0 {
+            if !WidgetValidRectangle(value.fields[field_at].value) { return false }
+        }
+    }
+    return true
+}
+
+WidgetDropdownOptionCodec :: struct {
+    fields: [5]HostField
+    image: WidgetImagePropsCodec
+}
+
+WidgetEncodeDropdownOption :: (data: DropdownOption, codec: *WidgetDropdownOptionCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("DropdownOption")
+    value.fields = *codec.fields[0]
+    value.field_count = 5
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("label")
+    codec.fields[1].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
+    codec.fields[2].name = HostTextData("image")
+    codec.fields[2].value = WidgetEncodeImageProps(data.image, *codec.image)
+    codec.fields[3].name = HostTextData("disabled")
+    codec.fields[3].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    codec.fields[4].name = HostTextData("separator_before")
+    codec.fields[4].value = HostScalar("bool", ifx data.separator_before then 1 else 0)
+    return value
+}
+
+WidgetDecodeDropdownOption :: (value: HostValue, codec: *WidgetDropdownOptionCodec) -> DropdownOption {
+    data: DropdownOption
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "label")
+        if field_at >= 0 {
+            data.label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "image")
+        if field_at >= 0 {
+            data.image = WidgetDecodeImageProps(value.fields[field_at].value, *codec.image)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "disabled")
+        if field_at >= 0 {
+            data.disabled = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "separator_before")
+        if field_at >= 0 {
+            data.separator_before = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidDropdownOption :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "DropdownOption" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "image")
+        if field_at >= 0 {
+            if !WidgetValidImageProps(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "disabled")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "separator_before")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }

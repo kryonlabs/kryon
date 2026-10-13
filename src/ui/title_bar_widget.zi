@@ -1,3 +1,17 @@
+// Portable compositions use the same title bar as retained native hosts.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "dropdown_props"
+    #import "title_bar_props"
+    host_api :: #system_library "host_api";
+    TitleBarHostedHost :: (session: Session, props: TitleBarProps,
+        options: []DropdownOption) -> TitleBarResult #foreign host_api;
+    #program_export
+    TitleBar :: (session: Session, props: TitleBarProps,
+        options: []DropdownOption) -> TitleBarResult {
+        return TitleBarHostedHost(session, props, options)
+    }
+} else {
 #import "session"
 #import "button_props"
 #import "button_widget"
@@ -77,11 +91,11 @@ TitleBarKey :: (session: Session, props: TitleBarProps) -> u64 {
 #program_export
 TitleBarLayoutAt :: (bounds: Rectangle, has_leading: bool,
     has_dropdown: bool, dropdown_height: s32,
-    dropdown_min_width: s32,
+    dropdown_min_width: s32, trailing_width: s32,
     metrics: TitleBarMetrics) -> TitleBarLayout {
     layout: TitleBarLayout = TitleBarLayoutFor(cast(s32)bounds.width,
         cast(s32)bounds.height, has_leading, has_dropdown,
-        dropdown_height, dropdown_min_width, metrics)
+        dropdown_height, dropdown_min_width, trailing_width, metrics)
     layout.bounds = bounds
     layout.leading_bounds.x += bounds.x
     layout.leading_bounds.y += bounds.y
@@ -89,6 +103,10 @@ TitleBarLayoutAt :: (bounds: Rectangle, has_leading: bool,
     layout.title_bounds.y += bounds.y
     layout.dropdown_bounds.x += bounds.x
     layout.dropdown_bounds.y += bounds.y
+    if layout.trailing_bounds.width > 0.0 {
+        layout.trailing_bounds.x += bounds.x
+        layout.trailing_bounds.y += bounds.y
+    }
     return layout
 }
 
@@ -140,7 +158,8 @@ TitleBar :: (session: Session, props: TitleBarProps,
     layout: TitleBarLayout = TitleBarLayoutAt(bounds,
         state.has_leading, state.has_dropdown,
         props.dropdown_height, props.dropdown_min_width,
-        metrics)
+        props.trailing_width, metrics)
+    result.trailing_bounds = layout.trailing_bounds
     opacity: float32 = StyleOpacityValue(bar.value.fields,
         bar.value.opacity)
     PaintRoundedFill(session, result.node, bounds, bar.value.radius, 12,
@@ -215,4 +234,5 @@ TitleBar :: (session: Session, props: TitleBarProps,
         }
     }
     return result
+}
 }

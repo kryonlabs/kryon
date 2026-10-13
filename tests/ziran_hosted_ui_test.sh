@@ -15,13 +15,14 @@ set -- --bind text_widget:TextHostedHost=hosted_ui_provider:Text \
     --bind toggle_widget:ToggleHostedHost=hosted_ui_provider:Toggle \
     --bind box_widget:BoxHostedHost=hosted_ui_provider:Box \
     --bind text_field_widget:TextFieldHostedHost=hosted_ui_provider:TextField \
-    --bind tab_bar_widget:TabBarHostedHost=hosted_ui_provider:TabBar
+    --bind tab_bar_widget:TabBarHostedHost=hosted_ui_provider:TabBar \
+    --bind title_bar_widget:TitleBarHostedHost=hosted_ui_provider:TitleBar
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" --define KRYON_HOSTED_UI "$@" \
     --entry hosted_ui:main -o "$work/ui.zib" \
     "$repo/tests/hosted_ui.zi" "$repo/tests/hosted_ui_provider.zi"
 test "$("$ziran" run "$work/ui.zib")" = 42
-printf '%s\n' 'Hosted portable Text, Image, Button, TextArea and Scroll contracts passed'
+printf '%s\n' 'Hosted portable Text, Image, Button, TextArea, Scroll and TitleBar contracts passed'
 for target in c cpp; do
     executable=
     if test "$target" = c; then executable=--exe; fi
