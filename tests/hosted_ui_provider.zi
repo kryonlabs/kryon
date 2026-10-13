@@ -68,3 +68,14 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
     }
     return TabBarResult.{.selected_index = props.selected_index + 1}
 }
+
+#import "title_bar_props"
+#import "dropdown_props"
+
+#program_export "TitleBarHostedHost"
+TitleBar :: (session: Session, props: TitleBarProps, options: []DropdownOption) -> TitleBarResult {
+    if session.slot != 4 || props.title != "Lumi" || options.count != 0 {
+        return TitleBarResult.{}
+    }
+    return TitleBarResult.{.trailing_bounds = Rectangle.{.width = cast(float32)props.trailing_width}}
+}

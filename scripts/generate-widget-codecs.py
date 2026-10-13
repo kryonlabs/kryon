@@ -24,12 +24,13 @@ KRYON_MODULES = ['session', 'geometry', 'drawing_props', 'text_props', 'image_pr
                  'button_props', 'control_props', 'text_input', 'text_input_props',
                  'scroll', 'scroll_props', 'semantic', 'text_align', 'checkbox_props',
                  'toggle_props', 'tab_bar_props', 'box_props', 'press_props', 'spinbox_props',
-                 'time_picker_props']
+                 'time_picker_props', 'dropdown', 'dropdown_props', 'title_bar_props']
 KRYON_ROOTS = ['TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
                'ScrollProps', 'ScrollResult', 'Session', 'CheckboxProps', 'CheckboxValueResult',
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
                'TabBarProps', 'TabBarResult', 'BoxProps', 'PressProps', 'PressResult',
-               'SpinboxProps', 'SpinboxStepResult', 'TimePickerProps', 'TimePickerResult']
+               'SpinboxProps', 'SpinboxStepResult', 'TimePickerProps', 'TimePickerResult',
+               'TitleBarProps', 'TitleBarResult', 'DropdownOption']
 
 
 def read_schema(paths):

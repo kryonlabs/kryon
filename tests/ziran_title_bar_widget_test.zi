@@ -108,6 +108,41 @@ Frame :: () -> s32 {
     return old
 }
 
+// Room for the caller's controls at the right keeps the title centred and
+// clear of them, and falls back to the room left when the bar is narrow.
+CheckTrailing :: () -> s32 {
+    metrics := TitleBarMetrics.{.side_margin = 12, .leading_reserved = 60,
+        .leading_icon_size = 18, .leading_padding = 10, .leading_x = 12,
+        .dropdown_gap = 4, .dropdown_default_height = 32, .title_min_width = 48,
+        .title_horizontal_padding = 16}
+    plain := TitleBarLayoutFor(360, 48, false, false, 0, 0, 0, metrics)
+    if plain.title_bounds.x != 12.0 || plain.title_bounds.width != 336.0 ||
+        plain.trailing_bounds.width != 0.0 { return 1 }
+    wide := TitleBarLayoutFor(360, 48, false, false, 0, 0, 120, metrics)
+    if wide.trailing_bounds.x != 228.0 || wide.trailing_bounds.width != 120.0 ||
+        wide.trailing_bounds.height != 48.0 || wide.title_bounds.x != 136.0 ||
+        wide.title_bounds.width != 88.0 { return 2 }
+    narrow := TitleBarLayoutFor(260, 48, true, false, 0, 0, 120, metrics)
+    if narrow.trailing_bounds.x != 128.0 || narrow.title_bounds.x != 60.0 ||
+        narrow.title_bounds.width != 64.0 { return 3 }
+    dropdown := TitleBarLayoutFor(360, 48, false, true, 0, 0, 120, metrics)
+    if dropdown.dropdown_bounds.x != 12.0 || dropdown.dropdown_bounds.width != 212.0 { return 4 }
+    // The widget reports the slot where the bar is placed.
+    props: TitleBarProps
+    props.key = cast(u64)20
+    props.bounds = Rectangle.{10.0, 5.0, 360.0, 48.0}
+    props.title = "Lumi"
+    props.trailing_width = 120
+    TreeStart(TestSession(), cast(u64)6, Rectangle.{0.0, 0.0, 400.0, 100.0})
+    options: [1]DropdownOption
+    result := TitleBar(TestSession(), props, options[0:0])
+    if !TreeFinish(TestSession()) || result.trailing_bounds.x != 238.0 ||
+        result.trailing_bounds.y != 5.0 || result.trailing_bounds.width != 120.0 ||
+        result.trailing_bounds.height != 48.0 { return 5 }
+    PaintFlush(TestSession())
+    return 0
+}
+
 #import "ziran_title_bar_widget_host"
 
 #program_export
@@ -120,5 +155,6 @@ main :: () -> s32 {
     if TitleFills() < 12 || TitleStrokes() < 16 ||
         TitleLabels() < 6 || TitleTitles() != 2 ||
         TitleStrongOffset() != 1 { return 2 }
+    if CheckTrailing() != 0 { return 3 }
     return 0
 }
