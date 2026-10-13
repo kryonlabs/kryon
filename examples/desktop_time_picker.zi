@@ -1,0 +1,161 @@
+// Runs the TimePicker example in a desktop window. With KRYON_CAPTURE_PATH
+// set it plays the scene TIME_PICKER_SCENE names instead, such as
+// "dark-open", and saves its last frame there.
+#import "c_string"
+#import "cairo_raster"
+#import "desktop_runtime"
+#import "geometry"
+#import "scroll_device"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+#import "std/byte_text_linux"
+#import "time_picker_demo"
+Timer :: #import "std/timer_linux";
+Dates :: #import "std/date_time_linux";
+Clock :: #import "frame_clock";
+
+using FrameStatus;
+using WidgetKind;
+
+activity: Clock.FrameActivity;
+
+// One frame with this pointer sample. The scroll device lets the picker's
+// columns follow the wheel, a finger drag and a fling.
+Draw :: (session: Session, pointer: PointerFrame, wheel: float32,
+    active: bool) -> bool {
+    BeginDesktopFrame()
+    viewport: Rectangle = DesktopViewport()
+    unused TreePointerUpdate(session, pointer)
+    PointerWheelSend(session, pointer.x, pointer.y, wheel)
+    BeginScrollFrame(session, Vector2.{pointer.x, pointer.y}, pointer.pressed,
+        pointer.down, pointer.released, wheel,
+        cast(float64)Timer.MonotonicMilliseconds() / 1000.0)
+    if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
+        return false
+    }
+    if Frame(session, viewport) != 0 {
+        TreeCancel(session)
+        return false
+    }
+    moving: bool = active || ScrollDeviceMoving(session)
+    finished: FrameEndResult = EndFrameRetained(session, DesktopFrameReusable(),
+        Clock.Observe(*activity, moving))
+    if finished.status != cast(FrameStatus)FrameOk { return false }
+    unused DesktopCursor(session)
+    DesktopFrameUnchanged(finished.paint_unchanged && !moving)
+    return EndDesktopFrame()
+}
+
+LocalMinutes :: () -> s32 {
+    local := Dates.LocalNow()
+    if !local.valid { return -1 }
+    return local.hour * 60 + local.minute
+}
+
+// The middle of the visible node of this kind and label, for a scripted tap.
+Target :: (session: Session, kind: s32, label: string) -> Vector2 {
+    for index: cast(s32)0..TreeCount(session) - 1 {
+        node := TreeNodeAt(session, index)
+        if node.kind == kind && node.semantic_label == label &&
+            node.bounds.width > 0.0 && node.bounds.height > 0.0 {
+            return Vector2.{node.bounds.x + node.bounds.width * 0.5,
+                node.bounds.y + node.bounds.height * 0.5}
+        }
+    }
+    return Vector2.{-1.0, -1.0}
+}
+
+Idle :: (session: Session, frames: s32) -> bool {
+    for frame: cast(s32)0..frames - 1 {
+        if !Draw(session, PointerFrame.{590.0, 650.0, false, false, false}, 0.0, true) {
+            return false
+        }
+    }
+    return true
+}
+
+Tap :: (session: Session, point: Vector2) -> bool {
+    if point.x < 0.0 { return false }
+    return Draw(session, PointerFrame.{point.x, point.y, true, true, false}, 0.0, true) &&
+        Draw(session, PointerFrame.{point.x, point.y, false, false, true}, 0.0, true) &&
+        Draw(session, PointerFrame.{point.x, point.y, false, false, false}, 0.0, true)
+}
+
+Press :: (session: Session, key: s32) -> bool {
+    unused KeyboardSend(session, key)
+    return Draw(session, PointerFrame.{590.0, 650.0, false, false, false}, 0.0, true)
+}
+
+Contains :: (text: string, part: string) -> bool {
+    if part.count > text.count { return false }
+    start: s64 = 0
+    while start + part.count <= text.count {
+        same: bool = true
+        index: s64 = 0
+        while index < part.count && same {
+            same = text[start + index] == part[index]
+            index += 1
+        }
+        if same { return true }
+        start += 1
+    }
+    return false
+}
+
+// Plays a scene for a screenshot: "dark" switches the palette, "open"
+// opens Started eating, "empty" the question without a time, and
+// "keyboard" opens A chosen time and steps its minute with the arrows.
+Scene :: (session: Session, scene: string) -> bool {
+    DemoSetNow(581)
+    if !Idle(session, 2) { return false }
+    if Contains(scene, "dark") {
+        if !Tap(session, Target(session, WidgetKindButton, "Dark")) { return false }
+    }
+    if Contains(scene, "open") {
+        if !Tap(session, Target(session, WidgetKindDropdown, "Started eating")) { return false }
+    }
+    if Contains(scene, "empty") {
+        if !Tap(session, Target(session, WidgetKindDropdown, "When did I start eating?")) { return false }
+    }
+    if Contains(scene, "keyboard") {
+        if !Tap(session, Target(session, WidgetKindDropdown, "A chosen time")) ||
+            !Press(session, KeyRight) || !Press(session, KeyDown) ||
+            !Press(session, KeyDown) { return false }
+    }
+    return Idle(session, 3)
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenDesktopSized(600, 660) {
+        CloseDesktop()
+        return 1
+    }
+    session: Session = SessionOpen()
+    ok: bool = SessionValid(session)
+    if ok && CaptureRequested() {
+        name: [32]u8
+        scene: string = "light"
+        if CopyCString("TIME_PICKER_SCENE", name[:]) {
+            chosen: *u8 = RasterGetEnvironment(*name[0])
+            if chosen != null { scene = TextFromCString(chosen) }
+        }
+        ok = Scene(session, scene) && CaptureConfigured()
+    } else {
+        while ok && PollDesktop() {
+            KeyboardModifiersSend(session, DesktopModifiers())
+            key: s32 = DesktopPressedKey()
+            if key != 0 { unused KeyboardSend(session, key) }
+            DemoSetNow(LocalMinutes())
+            ok = Draw(session, PollPointer(), DesktopWheelMove(), key != 0)
+            if ok { PauseDesktop() }
+        }
+    }
+    CloseSession(session)
+    CloseDesktop()
+    if ok { return 0 }
+    return 1
+}

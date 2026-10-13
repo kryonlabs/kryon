@@ -1,7 +1,5 @@
 #import "geometry"
 #import "style"
-#import "button"
-#import "surface"
 #import "control_props"
 
 using ButtonState;

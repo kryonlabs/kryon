@@ -311,11 +311,20 @@ SystemPaletteFromCss :: (css: string, dark_hint: bool) -> SystemPalette {
 Sheet :: #import "style_sheet";
 Controls :: #import "control_props";
 Drawing :: #import "drawing_props";
+Menu :: #import "dropdown";
 #scope_file
 Rule :: (rules: *Sheet.StyleRules, kind: s32, background: u32, foreground: u32, state: s32 = 0) {
     item := *rules.items[rules.count]; item.selector = Sheet.StyleDefaultSelector(); item.selector.kind = kind; item.state = state
     item.style.fields = cast(u32)Controls.StyleField.StyleBackground | cast(u32)Controls.StyleField.StyleForeground
     item.style.background = background; item.style.foreground = foreground; rules.count += 1
+}
+// A dropdown's field (role 0), menu panel or rows, which a time picker shares.
+DropdownRule :: (rules: *Sheet.StyleRules, role: s32, background: u32, foreground: u32,
+    border: u32, state: s32 = 0) {
+    item := *rules.items[rules.count]; item.selector = Sheet.StyleDefaultSelector(); item.selector.kind = Sheet.StyleKindDropdown()
+    item.selector.role = role; item.state = state
+    item.style.fields = cast(u32)Controls.StyleField.StyleBackground | cast(u32)Controls.StyleField.StyleForeground | cast(u32)Controls.StyleField.StyleBorder
+    item.style.background = background; item.style.foreground = foreground; item.style.border = border; rules.count += 1
 }
 Token :: (name: string, value: u32) {
     bytes: [32]u8; for i: 0..cast(s32)name.count-1 { bytes[i] = name[i] }
@@ -351,13 +360,24 @@ SystemPaletteInstall :: (palette: SystemPalette, material: bool = false) -> bool
     Rule(*rules, Sheet.StyleKindTextArea(), button, fg)
     Rule(*rules, Sheet.StyleKindSpinbox(), palette.base, fg)
     Rule(*rules, Sheet.StyleKindSpinboxValue(), palette.base, fg)
+    // A dropdown's field and menu, and so a time picker's, follow the palette
+    // too: the open field and the chosen or hovered row take the selection.
+    hover_state := cast(s32)Controls.ButtonState.ButtonStateHover
+    selected_state := cast(s32)Controls.ButtonState.ButtonStateSelected
+    DropdownRule(*rules, 0, button, fg, palette.border)
+    DropdownRule(*rules, 0, hover, fg, palette.border, hover_state)
+    DropdownRule(*rules, 0, CssMix(bg, fg, 0.22), fg, palette.border, cast(s32)Controls.ButtonState.ButtonStatePressed)
+    DropdownRule(*rules, 0, palette.selected, palette.selected_text, palette.selected, selected_state)
+    DropdownRule(*rules, Menu.DropdownPanelRole(), palette.base, fg, palette.border)
+    DropdownRule(*rules, Menu.DropdownOptionRole(), palette.selected, palette.selected_text, palette.selected, hover_state)
+    DropdownRule(*rules, Menu.DropdownOptionRole(), palette.selected, palette.selected_text, palette.selected, selected_state)
     // The scrollbar sits on the page, with a thumb that follows its palette.
     Rule(*rules, Sheet.StyleKindScroll(), cast(u32)0, fg)
     Rule(*rules, Sheet.StyleKindScrollThumb(), CssMix(bg, fg, 0.32), fg)
     Rule(*rules, Sheet.StyleKindScrollThumb(), CssMix(bg, fg, 0.48), fg, 2)
     Rule(*rules, Sheet.StyleKindScrollThumb(), CssMix(bg, fg, 0.64), fg, 4)
-    inputs: [3]s32 = .{Sheet.StyleKindTextField(), Sheet.StyleKindTextArea(), Sheet.StyleKindSpinbox()}
-    for index: 0..2 {
+    inputs: [4]s32 = .{Sheet.StyleKindTextField(), Sheet.StyleKindTextArea(), Sheet.StyleKindSpinbox(), Sheet.StyleKindDropdown()}
+    for index: 0..3 {
         edge := *rules.items[rules.count]; edge.selector = Sheet.StyleDefaultSelector(); edge.selector.kind = inputs[index]; rules.count += 1
         edge.style.fields = cast(u32)Controls.StyleField.StyleBorder | cast(u32)Controls.StyleField.StyleFocus
         edge.style.border = palette.border; edge.style.focus = palette.selected
@@ -366,7 +386,7 @@ SystemPaletteInstall :: (palette: SystemPalette, material: bool = false) -> bool
     shape := *rules.items[rules.count]; shape.selector = Sheet.StyleDefaultSelector(); shape.selector.kind = Sheet.StyleKindButton(); rules.count += 1
     for i: 0..rules.count-1 {
         kind := rules.items[i].selector.kind
-        if kind == Sheet.StyleKindButton() || kind == Sheet.StyleKindTextField() || kind == Sheet.StyleKindTextArea() || kind == Sheet.StyleKindSpinbox() || kind == Sheet.StyleKindSpinboxValue() {
+        if kind == Sheet.StyleKindButton() || kind == Sheet.StyleKindTextField() || kind == Sheet.StyleKindTextArea() || kind == Sheet.StyleKindSpinbox() || kind == Sheet.StyleKindSpinboxValue() || kind == Sheet.StyleKindDropdown() {
             rules.items[i].style.fields |= cast(u32)Controls.StyleField.StyleFontSize | cast(u32)Controls.StyleField.StyleRadius | cast(u32)Controls.StyleField.StyleFocus | cast(u32)Controls.StyleField.StyleMaterial
             rules.items[i].style.font_size = 15.0; rules.items[i].style.radius = 6.0; rules.items[i].style.focus = palette.selected
             rules.items[i].style.material = ifx material then Controls.MaterialKind.MaterialLightfield else Controls.MaterialKind.MaterialFlat

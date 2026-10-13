@@ -1,0 +1,583 @@
+// Submit the standard widget contract from a portable composition.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "time_picker_props"
+    host_api :: #system_library "host_api";
+    TimePickerHostedHost :: (session: Session, props: TimePickerProps) -> TimePickerResult #foreign host_api;
+    #program_export
+    TimePicker :: (session: Session, props: TimePickerProps) -> TimePickerResult {
+        return TimePickerHostedHost(session, props)
+    }
+} else {
+#import "session"
+#import "button_props"
+#import "button_widget"
+#import "control_props"
+#import "drawing_props"
+#import "dropdown"
+#import "dropdown_widget"
+#import "font_metrics"
+#import "geometry"
+#import "overlay_props"
+#import "overlay_widget"
+#import "paint_queue"
+#import "scroll"
+#import "scroll_props"
+#import "scroll_widget"
+#import "semantic"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "time_picker"
+#import "time_picker_props"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+using SemanticKind;
+using WidgetKind;
+using ButtonTone;
+using ButtonEmphasis;
+using ControlSize;
+using ButtonState;
+using StyleField;
+
+// A time picker is a field like a dropdown's, so it takes the dropdown's
+// faces from every style sheet: its field, its popup panel and its rows.
+#program_export
+TimePickerFaceFor :: (props: TimePickerProps, role: s32, state: s32,
+    selected: bool) -> StyleFrame {
+    tone: s32 = cast(s32)ButtonToneNeutral
+    if selected { tone = cast(s32)ButtonToneAccent }
+    facts: StyleFacts = StyleControlRoleFacts(StyleKindDropdown(), props.id,
+        props.class_name, role, tone, cast(s32)ButtonEmphasisSoft,
+        cast(s32)ControlSizeMedium, state)
+    frame: StyleFrame
+    frame.value = ResolveInstalledStyleRules(
+        DropdownDefaultFace(role, state, selected), facts, state)
+    return frame
+}
+
+#program_export
+TimePickerKey :: (session: Session, props: TimePickerProps) -> u64 {
+    if props.key != cast(u64)0 { return props.key }
+    if props.id > 0 { return cast(u64)cast(u32)props.id }
+    return TreeNextKey(session)
+}
+
+#program_export
+TimePickerOverlayKey :: (key: u64) -> u64 {
+    return key * cast(u64)65599 + cast(u64)13
+}
+
+// Children of the popup panel, and the rows within each column.
+#program_export
+TimePickerColumnKey :: (column: s32) -> u64 {
+    return cast(u64)cast(u32)(column + 1)
+}
+
+TIME_PICKER_NOW_KEY :: 3
+TIME_PICKER_DONE_KEY :: 4
+
+#program_export
+TimePickerRowKey :: (row: s32) -> u64 {
+    return cast(u64)cast(u32)(row + 1)
+}
+
+TimePickerFocusColor :: (face: StyleData) -> Color {
+    if (face.fields & cast(u32)StyleFocus) != cast(u32)0 &&
+    face.focus != cast(u32)0 {
+        return ColorFromPacked(face.focus)
+    }
+    return ColorFromPacked(cast(u32)0x2563ebff)
+}
+
+// A rectangle shrunk by inset on every side, never below zero size.
+TimePickerInset :: (bounds: Rectangle, x: float32, y: float32) -> Rectangle {
+    result: Rectangle = bounds
+    if x * 2.0 > result.width { x = result.width * 0.5 }
+    if y * 2.0 > result.height { y = result.height * 0.5 }
+    result.x += x
+    result.y += y
+    result.width -= x * 2.0
+    result.height -= y * 2.0
+    return result
+}
+
+// A filled, outlined rounded rectangle whose border stays inside bounds.
+TimePickerPaintSurface :: (session: Session, node: s32, bounds: Rectangle,
+    face: StyleData) {
+    opacity: float32 = StyleOpacityValue(face.fields, face.opacity)
+    PaintRoundedFill(session, node, bounds, face.radius, 12,
+        ColorFromPacked(Opacity(face.background, opacity)))
+    if face.border_width > 0.0 {
+        edge: Rectangle = TimePickerInset(bounds, face.border_width * 0.5,
+            face.border_width * 0.5)
+        PaintRoundedOutline(session, node, edge, face.radius, 12,
+            face.border_width,
+            ColorFromPacked(Opacity(face.border, opacity)))
+    }
+}
+
+// The largest font up to the face's own at which value fits width.
+TimePickerFitFont :: (value: string, face: StyleData, width: float32) -> s32 {
+    font: s32 = ResolveFont(0, StyleFontValue(face.fields, face.font_size), 14)
+    while font > 8 && cast(float32)GlyphWidth(value, font, face.typeface) > width {
+        font -= 1
+    }
+    return font
+}
+
+// A small clock, so the field reads as a time at a glance.
+TimePickerPaintClock :: (session: Session, node: s32, bounds: Rectangle,
+    center_x: float32, center_y: float32, size: float32, scale: float32,
+    color: Color) {
+    room: float32 = bounds.height - 4.0 * scale
+    if size > room { size = room }
+    radius: float32 = size * 0.5
+    if radius < 4.0 || center_x - radius < bounds.x ||
+    center_x + radius > bounds.x + bounds.width { return }
+    line: float32 = 1.5 * scale
+    circle: Rectangle = Rectangle.{center_x - radius + line * 0.5,
+        center_y - radius + line * 0.5, size - line, size - line}
+    PaintRoundedOutline(session, node, circle, circle.width * 0.5, 16, line,
+        color)
+    PaintLine(session, node, Rectangle.{center_x, center_y, 0.0,
+            -radius * 0.55}, color)
+    PaintLine(session, node, Rectangle.{center_x, center_y, radius * 0.4,
+            0.0}, color)
+}
+
+#program_export
+TimePickerPaintField :: (session: Session, node: s32, bounds: Rectangle,
+    props: TimePickerProps, face: StyleFrame, value: s32, scale: float32,
+    focus_visible: bool) {
+    TimePickerPaintSurface(session, node, bounds, face.value)
+    opacity: float32 = StyleOpacityValue(face.value.fields, face.value.opacity)
+    metrics: DropdownTriggerMetrics = DropdownTriggerMetricsFor(scale, face)
+    content: DropdownTriggerContent = DropdownTriggerContentFor(bounds,
+        Content(face.value, scale), metrics, false)
+    color: Color = ColorFromPacked(Opacity(face.value.foreground, opacity))
+    digits: [8]u8
+    text: string = TimePickerText(value, digits[:])
+    text_color: Color = color
+    if text == "" {
+        text = props.placeholder
+        if text == "" { text = "--:--" }
+        text_color = ColorFromPacked(Opacity(face.value.foreground,
+            opacity * 0.6))
+    }
+    font: s32 = TimePickerFitFont(text, face.value, content.text_bounds.width)
+    height: s32 = GlyphLineHeight(font, face.value.typeface)
+    y: s32 = cast(s32)(bounds.y + (bounds.height - cast(float32)height) * 0.5)
+    PaintClippedLabel(session, node, text, cast(s32)content.text_bounds.x, y,
+        font, text_color, RectangleIntersection(content.clip_bounds, bounds))
+    TimePickerPaintClock(session, node, bounds,
+        cast(float32)content.indicator_center_x,
+        cast(float32)content.indicator_center_y,
+        cast(float32)metrics.indicator_size, scale, color)
+    if focus_visible {
+        ring: float32 = 2.0 * scale
+        PaintRoundedOutline(session, node,
+            TimePickerInset(bounds, ring * 0.5, ring * 0.5),
+            face.value.radius, 12, ring, TimePickerFocusColor(face.value))
+    }
+}
+
+TimePickerRowPaint :: struct {
+    row: Rectangle
+    visible: Rectangle
+    text: string
+    selected: bool
+    hovered: bool
+    pressed: bool
+    keyboard: bool
+}
+
+#program_export
+TimePickerPaintRow :: (session: Session, node: s32, paint: TimePickerRowPaint,
+    option: StyleFrame, chosen: StyleFrame, metrics: DropdownMenuMetrics) {
+    highlight: Rectangle = RectangleIntersection(TimePickerInset(paint.row,
+        cast(float32)metrics.highlight_inset_x,
+        cast(float32)metrics.highlight_inset_y), paint.visible)
+    opacity: float32 = StyleOpacityValue(option.value.fields,
+        option.value.opacity)
+    ink: u32 = option.value.foreground
+    if highlight.width > 0.0 && highlight.height > 0.0 {
+        if paint.selected {
+            chosen_opacity: float32 = StyleOpacityValue(chosen.value.fields,
+                chosen.value.opacity)
+            PaintRoundedFill(session, node, highlight, chosen.value.radius, 8,
+                ColorFromPacked(Opacity(chosen.value.background,
+                    chosen_opacity)))
+            ink = chosen.value.foreground
+            opacity = chosen_opacity
+        } else if paint.pressed || paint.hovered {
+            // A light wash of the text color, so a hovered row never looks
+            // chosen in a theme whose hover and selection share a color.
+            wash: float32 = 0.08
+            if paint.pressed { wash = 0.16 }
+            PaintRoundedFill(session, node, highlight, option.value.radius, 8,
+                ColorFromPacked(Opacity(option.value.foreground,
+                    opacity * wash)))
+        }
+        if paint.keyboard {
+            ring: Rectangle = RectangleIntersection(TimePickerInset(paint.row,
+                1.0, 1.0), paint.visible)
+            PaintRoundedOutline(session, node, TimePickerInset(ring, 1.0, 1.0),
+                option.value.radius, 8, 2.0,
+                TimePickerFocusColor(option.value))
+        }
+    }
+    font: s32 = ResolveFont(0, StyleFontValue(option.value.fields,
+        option.value.font_size), 14)
+    width: s32 = GlyphWidth(paint.text, font, option.value.typeface)
+    height: s32 = GlyphLineHeight(font, option.value.typeface)
+    x: s32 = cast(s32)(paint.row.x + (paint.row.width - cast(float32)width) * 0.5)
+    y: s32 = cast(s32)(paint.row.y + (paint.row.height - cast(float32)height) * 0.5)
+    PaintClippedLabel(session, node, paint.text, x, y, font,
+        ColorFromPacked(Opacity(ink, opacity)), paint.visible)
+}
+
+// What the picker keeps on its retained nodes between frames: on its field,
+// whether it is open, the column the arrow keys step and whether the
+// keyboard is in use; on each column, its scroll offset.
+TimePickerRetained :: struct {
+    open: bool
+    column: s32
+    keyboard: bool
+    scroll: [2]s32
+}
+
+// The previous frame's nodes of an open popup.
+TimePickerPrevious :: struct {
+    field: s32
+    panel: s32
+    columns: [2]s32
+}
+
+// A row as tall as the field, within reach of a finger and not taller.
+#program_export
+TimePickerRowHeight :: (bounds: Rectangle, scale: float32) -> float32 {
+    row: float32 = bounds.height
+    if row < 32.0 * scale { row = 32.0 * scale }
+    if row > 56.0 * scale { row = 56.0 * scale }
+    return row
+}
+
+// A field showing "HH:MM", or its placeholder, that opens a popup with an
+// hour and a minute column. Choosing a row, stepping with the arrow keys or
+// Now changes the time at once, and the popup stays open until Done, Enter,
+// Escape, the field or a press outside it closes it. The picker keeps its
+// open state, keyboard column and scroll offsets on its retained nodes, so
+// a caller passes only the value and reads value and changed.
+#program_export
+TimePicker :: (session: Session, props: TimePickerProps) -> TimePickerResult {
+    result: TimePickerResult
+    result.node = -1
+    result.value = TimePickerClamp(props.value)
+    bounds: Rectangle = props.bounds
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
+    scale: float32 = props.scale
+    if scale <= 0.0 { scale = 1.0 }
+    key: u64 = TimePickerKey(session, props)
+    anchor: s32 = TimePickerClamp(props.now)
+    if result.value >= 0 { anchor = result.value }
+    if anchor < 0 { anchor = 0 }
+
+    retained: TimePickerRetained
+    previous: TimePickerPrevious
+    previous.field = -1
+    previous.panel = -1
+    previous.columns[0] = -1
+    previous.columns[1] = -1
+    if TreeIsBuilding(session) {
+        parent: s32 = TreeCurrentParent(session)
+        previous.field = TreePrevious(session, parent, key, WidgetKindDropdown)
+        saved: WidgetState = TreePreviousWidgetState(session, previous.field)
+        retained.open = saved.open
+        retained.column = saved.index & 1
+        retained.keyboard = (saved.index & 2) != 0
+        overlay: s32 = TreePrevious(session, parent, TimePickerOverlayKey(key),
+            WidgetKindCustom)
+        previous.panel = TreePreviousCommitted(session, overlay,
+            OverlayPanelKey(), WidgetKindCustom)
+        for column: cast(s32)0..1 {
+            previous.columns[column] = TreePreviousCommitted(session,
+                previous.panel, TimePickerColumnKey(column), WidgetKindScroll)
+            retained.scroll[column] = TreePreviousWidgetState(session,
+                previous.columns[column]).offset
+        }
+    }
+    was_open: bool = retained.open && !props.disabled
+    state: TimePickerKeyState
+    state.open = was_open
+    state.column = retained.column
+    state.keyboard = retained.keyboard
+    state.value = result.value
+    // Scroll the columns to the value: 1 shows its rows, 2 centers them.
+    reveal: s32 = 0
+
+    if TreeTakeActivationAt(session, previous.field) && !props.disabled {
+        // A tap opens at the hours; Enter after Tab shows the keyboard's
+        // column as well.
+        state.open = !state.open
+        state.column = TimePickerHourColumn()
+        state.keyboard = TreeFocusVisibleAt(session, previous.field)
+    }
+    if was_open && state.open {
+        for column: cast(s32)0..1 {
+            for row: cast(s32)0..TimePickerRows(column) - 1 {
+                node: s32 = TreePreviousCommitted(session,
+                    previous.columns[column], TimePickerRowKey(row),
+                    WidgetKindSelectable)
+                if TreeTakeActivationAt(session, node) {
+                    state.value = TimePickerPick(state.value, column, row)
+                    // An hour leads on to its minutes.
+                    state.column = TimePickerMinuteColumn()
+                    state.keyboard = false
+                }
+            }
+        }
+        if TreeTakeActivationAt(session, TreePreviousCommitted(session,
+            previous.panel, cast(u64)TIME_PICKER_NOW_KEY, WidgetKindButton)) {
+            state.value = TimePickerClamp(props.now)
+            if state.value < 0 { state.value = 0 }
+            reveal = 2
+        }
+        if TreeTakeActivationAt(session, TreePreviousCommitted(session,
+            previous.panel, cast(u64)TIME_PICKER_DONE_KEY, WidgetKindButton)) {
+            state.open = false
+        }
+    }
+    if !props.disabled && (state.open ||
+        TreeFocusedAt(session, previous.field)) {
+        pressed_key: s32 = KeyboardTake(session)
+        stepped: TimePickerKeyState = TimePickerKeyFor(state, anchor,
+            pressed_key)
+        if stepped.handled {
+            state = stepped
+            if state.moved && reveal == 0 { reveal = 1 }
+        } else if pressed_key != 0 {
+            unused KeyboardSend(session, pressed_key)
+        }
+    }
+    if state.open && !was_open { reveal = 2 }
+    result.value = state.value
+    result.changed = result.value != TimePickerClamp(props.value)
+    result.open = state.open
+
+    focus_visible: bool = !props.disabled &&
+        TreeFocusVisibleAt(session, previous.field)
+    field_state: s32 = cast(s32)ButtonStateNormal
+    if props.disabled {
+        field_state = cast(s32)ButtonStateDisabled
+    } else if TreePressedAt(session, previous.field) {
+        field_state = cast(s32)ButtonStatePressed
+    } else if state.open {
+        field_state = cast(s32)ButtonStateSelected
+    } else if TreeHoveredAt(session, previous.field) {
+        field_state = cast(s32)ButtonStateHover
+    } else if focus_visible {
+        field_state = cast(s32)ButtonStateFocus
+    }
+    face: StyleFrame = TimePickerFaceFor(props, 0, field_state, state.open)
+    if TreeIsBuilding(session) {
+        result.node = TreeSubmitCurrent(session, key, WidgetKindDropdown,
+            bounds)
+        if result.node < 0 { return result }
+        TreeSetInteractive(session, result.node, props.disabled, false,
+            props.id)
+        TreeSetSemantic(session, result.node,
+            cast(SemanticKind)SemanticComboBox, 0)
+        TreeSetSelected(session, result.node, state.open)
+        digits: [8]u8
+        shown: string = TimePickerText(result.value, digits[:])
+        if shown == "" { shown = props.placeholder }
+        label: string = props.label
+        if label == "" { label = shown }
+        TreeSetLabel(session, result.node, label)
+        TreeSetSemanticDetail(session, result.node, shown)
+        bounds = TreeSubmittedNodeAt(session, result.node).bounds
+    }
+    TimePickerPaintField(session, result.node, bounds, props, face,
+        result.value, scale, focus_visible)
+    if state.open && TreeIsBuilding(session) {
+        state.open = TimePickerPopupFrame(session, props, key, bounds, scale,
+            state, retained, reveal, anchor)
+        result.open = state.open
+    }
+    if result.node >= 0 {
+        flags: s32 = state.column & 1
+        if state.keyboard { flags |= 2 }
+        TreeSetWidgetState(session, result.node,
+            WidgetState.{result.open, flags, 0})
+    }
+    return result
+}
+
+// Submits the open popup above the page. Returns whether it is still open:
+// a press outside it, or a window too small to show it, closes it.
+TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
+    field: Rectangle, scale: float32, state: TimePickerKeyState,
+    retained: TimePickerRetained, reveal: s32, anchor: s32) -> bool {
+    panel_face: StyleFrame = TimePickerFaceFor(props, DropdownPanelRole(),
+        cast(s32)ButtonStateNormal, false)
+    option_face: StyleFrame = TimePickerFaceFor(props, DropdownOptionRole(),
+        cast(s32)ButtonStateNormal, false)
+    chosen_face: StyleFrame = TimePickerFaceFor(props, DropdownOptionRole(),
+        cast(s32)ButtonStateSelected, true)
+    scrollbar_face: StyleFrame = TimePickerFaceFor(props,
+        DropdownScrollbarRole(), cast(s32)ButtonStateNormal, false)
+    menu: DropdownMenuMetrics = DropdownMenuMetricsFor(scale, panel_face,
+        option_face, scrollbar_face)
+    font: s32 = ResolveFont(0, StyleFontValue(option_face.value.fields,
+        option_face.value.font_size), 14)
+    typeface: string = option_face.value.typeface
+    padding: float32 = 8.0 * scale
+    // Each column shows a slim scroll indicator, so it never reads as a
+    // divider beside the colon, and a wheel step moves it by one row.
+    row_height: s32 = cast(s32)TimePickerRowHeight(field, scale)
+    bar: ScrollMetrics = ScrollMetricsFor(scale,
+        ScrollFace(StyleKindScroll(), props.class_name, false,
+            cast(s32)ButtonStateNormal, 10.0),
+        ScrollFace(StyleKindScrollThumb(), props.class_name, false,
+            cast(s32)ButtonStateNormal, 10.0))
+    bar.scrollbar_width = cast(s32)(4.0 * scale)
+    if bar.scrollbar_width < 2 { bar.scrollbar_width = 2 }
+    bar.reserved_width = bar.scrollbar_width + menu.scrollbar_gap
+    bar.thumb_inset = 0
+    bar.default_wheel_step = row_height
+    // Room for two digits, the row's highlight inset and the scrollbar.
+    column: float32 = cast(float32)(GlyphWidth("00", font, typeface) +
+        menu.highlight_inset_x * 2 + bar.reserved_width) + 16.0 * scale
+    if column < 64.0 * scale { column = 64.0 * scale }
+    metrics: TimePickerPopupMetrics
+    metrics.column_width = column
+    metrics.colon_width = cast(float32)GlyphWidth(":", font, typeface) +
+        padding * 2.0
+    metrics.row_height = cast(float32)row_height
+    metrics.padding = padding
+    metrics.gap = cast(float32)DropdownMetric(panel_face.value.fields,
+        cast(u32)StyleGap, panel_face.value.gap, 4.0, scale, true)
+    metrics.has_now = props.now_label != ""
+    metrics.has_done = props.done_label != ""
+    // The popup fits the part of the window its scope shows, as a
+    // dropdown's menu does.
+    view: Rectangle = TreeRootBounds(session)
+    scope: NodeGeometry = TreeCurrentPaintGeometry(session)
+    if scope.clipped { view = RectangleIntersection(view, scope.clip) }
+    popup: TimePickerPopup = TimePickerPopupFor(field, view, metrics)
+    if popup.hours.width <= 0.0 || popup.hours.height <= 0.0 { return false }
+
+    overlay: PopupResult = Popup(session,
+        PopupProps.{TimePickerOverlayKey(key), popup.panel, field})
+    if overlay.closed { return false }
+    panel: s32 = overlay.panel_node
+    if panel < 0 { return true }
+    TimePickerPaintSurface(session, panel, popup.panel, panel_face.value)
+    // The colon sits midway between the two columns' digits, which centre
+    // beside each column's scroll indicator.
+    colon_height: s32 = GlyphLineHeight(font, typeface)
+    colon_width: s32 = GlyphWidth(":", font, typeface)
+    PaintClippedLabel(session, panel, ":",
+        cast(s32)(popup.colon.x + (popup.colon.width -
+            cast(float32)(colon_width + bar.scrollbar_width)) * 0.5),
+        cast(s32)(popup.colon.y + (popup.colon.height -
+            cast(float32)colon_height) * 0.5), font,
+        ColorFromPacked(Opacity(option_face.value.foreground,
+            StyleOpacityValue(option_face.value.fields,
+                option_face.value.opacity))), popup.colon)
+    if !TreePushScope(session, panel) { return true }
+    for index: cast(s32)0..1 {
+        area: Rectangle = popup.hours
+        if index == TimePickerMinuteColumn() { area = popup.minutes }
+        rows: s32 = TimePickerRows(index)
+        chosen: s32 = TimePickerPart(state.value, index)
+        offset: s32 = retained.scroll[index]
+        target: s32 = chosen
+        if target < 0 { target = TimePickerPart(anchor, index) }
+        if reveal == 2 {
+            offset = TimePickerCenterOffset(target, row_height,
+                cast(s32)area.height, rows)
+        } else if reveal == 1 && chosen >= 0 {
+            offset = RevealRow(offset, chosen, cast(float32)row_height,
+                area.height, rows * row_height - cast(s32)area.height)
+        }
+        scroll: ScrollProps
+        scroll.key = TimePickerColumnKey(index)
+        scroll.class_name = props.class_name
+        scroll.scale = scale
+        scroll.bounds = area
+        scroll.content_height = rows * row_height
+        scroll.scroll_offset = offset
+        scroll.metrics = bar
+        scrolled: ScrollResult = Scroll(session, scroll)
+        if scrolled.node >= 0 {
+            TreeSetWidgetState(session, scrolled.node,
+                WidgetState.{true, 0, scrolled.scroll_offset})
+        }
+        if scrolled.opened {
+            visible: VisibleRows = Rows(rows, scrolled.scroll_offset,
+                scrolled.viewport.height, cast(float32)row_height)
+            row: s32 = visible.first
+            while row < visible.end {
+                paint: TimePickerRowPaint
+                paint.row = Rectangle.{scrolled.content.x,
+                    scrolled.content.y + cast(float32)(row * row_height),
+                    scrolled.content.width, cast(float32)row_height}
+                paint.visible = RectangleIntersection(paint.row,
+                    scrolled.viewport)
+                paint.text = TimePickerRowText(row)
+                paint.selected = row == chosen
+                if paint.visible.width > 0.0 && paint.visible.height > 0.0 {
+                    node: s32 = TreeSubmitCurrent(session,
+                        TimePickerRowKey(row), WidgetKindSelectable,
+                        paint.visible)
+                    if node >= 0 {
+                        TreeSetInteractive(session, node, false, false, 0)
+                        TreeSetSemantic(session, node,
+                            cast(SemanticKind)SemanticOption, 0)
+                        TreeSetLabel(session, node, paint.text)
+                        TreeSetSelected(session, node, paint.selected)
+                        before: s32 = TreePrevious(session, scrolled.node,
+                            TimePickerRowKey(row), WidgetKindSelectable)
+                        paint.hovered = TreeHoveredAt(session, before)
+                        paint.pressed = TreePressedAt(session, before)
+                        paint.keyboard = paint.selected && state.keyboard &&
+                            state.column == index
+                        TimePickerPaintRow(session, node, paint, option_face,
+                            chosen_face, menu)
+                    }
+                }
+                row += 1
+            }
+            End(session)
+        }
+    }
+    if metrics.has_now && popup.now.width > 0.0 {
+        now: ButtonProps
+        now.key = cast(u64)TIME_PICKER_NOW_KEY
+        now.bounds = popup.now
+        now.label = props.now_label
+        now.class_name = props.class_name
+        now.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
+        now.fit_content = true
+        unused Button(session, now)
+    }
+    if metrics.has_done && popup.done.width > 0.0 {
+        done: ButtonProps
+        done.key = cast(u64)TIME_PICKER_DONE_KEY
+        done.bounds = popup.done
+        done.label = props.done_label
+        done.class_name = props.class_name
+        done.tone = cast(ButtonTone)ButtonToneAccent
+        done.emphasis = cast(ButtonEmphasis)ButtonEmphasisFilled
+        done.fit_content = true
+        unused Button(session, done)
+    }
+    End(session)
+    return true
+}
+
+}

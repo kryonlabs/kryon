@@ -22,3 +22,10 @@ PublicTextAlignment :: (session: Session, props: TextProps) {
     props.wrap = TextWrap.TextWrapNone
     Text(session, props)
 }
+
+// A time picker takes and returns minutes after midnight, -1 for no time,
+// from the same import as the other widgets.
+PublicTimePicker :: (session: Session, props: TimePickerProps) -> s32 {
+    result: TimePickerResult = TimePicker(session, props)
+    return result.value
+}

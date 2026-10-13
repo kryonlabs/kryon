@@ -1,0 +1,175 @@
+// Kryon's TimePicker in each of its states: without a time, with one,
+// disabled, and in a small form, in light and dark palettes. The picker
+// keeps its popup, columns and keyboard column itself; this app keeps only
+// the times. desktop_time_picker.zi runs it in a window.
+using UI :: #import "Widgets";
+#import "system_theme"
+#import "time_picker"
+#import "std/number_text"
+
+// The current time in minutes after midnight, which the host sets each
+// frame for the Now action.
+now_minutes: s32 = -1;
+dark: bool;
+installed: s32 = -1;
+
+// The application's times: minutes after midnight, -1 for none.
+empty_time: s32 = -1;
+chosen_time: s32 = 450;
+disabled_time: s32 = 720;
+stopped_eating: s32 = 1200;
+started_eating: s32 = 735;
+first_meal: s32 = -1;
+
+last_change: [64]u8;
+last_change_length: s32;
+
+#program_export
+DemoSetNow :: (minutes: s32) {
+    now_minutes = minutes
+}
+
+Label :: (session: Session, key: s32, text: string, bounds: Rectangle,
+    font: s32, muted: bool) {
+    props: TextProps
+    props.key = cast(u64)key
+    props.bounds = bounds
+    props.text = text
+    props.font = font
+    props.disabled = muted
+    props.wrap = TextWrap.TextWrapNone
+    props.vertical_align = TextAlign.TextAlignCenter
+    Text(session, props)
+}
+
+Card :: (session: Session, key: s32, bounds: Rectangle) {
+    props: BoxProps
+    props.key = cast(u64)key
+    props.bounds = bounds
+    props.fill = StyleTokenColor("surface")
+    props.border = StyleTokenColor("border")
+    props.radius = 10.0
+    Box(session, props)
+}
+
+// Appends text to the buffer at length and returns the new length.
+Append :: (output: []u8, length: s32, text: string) -> s32 {
+    for index: cast(s32)0..cast(s32)text.count - 1 {
+        if length >= cast(s32)output.count { return length }
+        output[length] = text[index]
+        length += 1
+    }
+    return length
+}
+
+// A labelled picker on one row. Its time changes only when the user picks
+// one, which the app records as the last change.
+Picker :: (session: Session, key: s32, label: string, row: Rectangle,
+    value: *s32, actions: bool, disabled: bool) {
+    Label(session, key + 1, label, Rectangle.{row.x, row.y, 200.0, row.height},
+        15, false)
+    props: TimePickerProps
+    props.key = cast(u64)key
+    props.id = key
+    props.label = label
+    props.bounds = Rectangle.{row.x + 210.0, row.y, 180.0, row.height}
+    props.value = value.*
+    props.now = now_minutes
+    if actions {
+        props.now_label = "Now"
+        props.done_label = "Done"
+    }
+    props.disabled = disabled
+    result: TimePickerResult = TimePicker(session, props)
+    if result.changed {
+        value.* = result.value
+        digits: [8]u8
+        length: s32 = Append(last_change[:], 0, "Last change: ")
+        length = Append(last_change[:], length, label)
+        length = Append(last_change[:], length, ", ")
+        length = Append(last_change[:], length, TimePickerText(result.value, digits[:]))
+        last_change_length = length
+    }
+}
+
+// How long the fast between two times lasted, across midnight if needed.
+FastText :: (output: []u8) -> string {
+    if stopped_eating < 0 || started_eating < 0 { return "Pick both times to see the fast." }
+    minutes: s32 = (started_eating - stopped_eating + 1440) % 1440
+    number: [16]u8
+    length: s32 = Append(output, 0, "Fasted for ")
+    length = Append(output, length, FormatInteger(cast(s64)(minutes / 60), number[:]))
+    length = Append(output, length, " h ")
+    length = Append(output, length, FormatInteger(cast(s64)(minutes % 60), number[:]))
+    length = Append(output, length, " min")
+    return TextView(output[0:length])
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    want: s32 = ifx dark then 1 else 0
+    if installed != want {
+        unused SystemPaletteInstall(SystemPaletteFallback(dark))
+        installed = want
+    }
+    background: BoxProps
+    background.key = cast(u64)1
+    background.bounds = viewport
+    background.fill = StyleTokenColor("canvas")
+    Box(session, background)
+
+    width: float32 = viewport.width - 48.0
+    if width > 560.0 { width = 560.0 }
+    x: float32 = viewport.x + (viewport.width - width) * 0.5
+    y: float32 = viewport.y + 24.0
+    Label(session, 2, "Time picker", Rectangle.{x, y, 260.0, 36.0}, 26, false)
+    options: [2]SegmentOption
+    options[0].key = cast(u64)1
+    options[0].label = "Light"
+    options[1].key = cast(u64)2
+    options[1].label = "Dark"
+    theme: SegmentedControlProps
+    theme.key = cast(u64)3
+    theme.id = 3
+    theme.bounds = Rectangle.{x + width - 170.0, y + 2.0, 170.0, 0.0}
+    theme.has_selection = true
+    theme.selected_index = want
+    switched: SegmentedControlResult = SegmentedControl(session, theme,
+        options[:])
+    if switched.changed { dark = switched.selected_index == 1 }
+    y += 48.0
+    Label(session, 4, "Tap a field, then an hour and a minute; the time changes as you pick.",
+        Rectangle.{x, y, width, 20.0}, 14, false)
+    y += 22.0
+    Label(session, 5, "Keys: Down opens, arrows step, Left and Right switch columns, Enter or Escape closes.",
+        Rectangle.{x, y, width, 20.0}, 14, false)
+    y += 36.0
+
+    Card(session, 10, Rectangle.{x, y, width, 212.0})
+    Label(session, 11, "States", Rectangle.{x + 20.0, y + 14.0, 200.0, 24.0}, 17, false)
+    row: Rectangle = Rectangle.{x + 20.0, y + 52.0, width - 40.0, 40.0}
+    Picker(session, 20, "No time yet", row, *empty_time, true, false)
+    row.y += 52.0
+    Picker(session, 30, "A chosen time", row, *chosen_time, false, false)
+    row.y += 52.0
+    Picker(session, 40, "Disabled", row, *disabled_time, false, true)
+    y += 228.0
+
+    Card(session, 50, Rectangle.{x, y, width, 252.0})
+    Label(session, 51, "Fasting window", Rectangle.{x + 20.0, y + 14.0, 300.0, 24.0}, 17, false)
+    row = Rectangle.{x + 20.0, y + 52.0, width - 40.0, 40.0}
+    Picker(session, 60, "Stopped eating", row, *stopped_eating, true, false)
+    row.y += 52.0
+    Picker(session, 70, "Started eating", row, *started_eating, true, false)
+    row.y += 50.0
+    fast: [48]u8
+    Label(session, 80, FastText(fast[:]), Rectangle.{row.x + 210.0, row.y, 300.0, 22.0}, 14, false)
+    row.y += 32.0
+    Picker(session, 90, "When did I start eating?", row, *first_meal, true, false)
+    y += 268.0
+    if last_change_length > 0 {
+        Label(session, 100, TextView(last_change[0:last_change_length]),
+            Rectangle.{x, y, width, 20.0}, 14, false)
+    }
+    return 0
+}

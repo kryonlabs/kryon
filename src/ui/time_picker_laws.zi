@@ -1,0 +1,91 @@
+#import "time_picker"
+#import "geometry"
+
+// Laws for a time picker's value and popup. Each states the expected
+// behavior independently of the implementation; `ziran check` proves it over
+// every listed input. An implementation edit may not change this file.
+
+Between :: (value: s32, low: s32, high: s32) -> bool {
+    return value >= low && value <= high
+}
+
+// A time is -1, no time chosen, or a minute of the day.
+Time :: (value: s32) -> bool {
+    return value == -1 || Between(value, 0, 1439)
+}
+
+// The value is always a time: below the day is no time, past its end is
+// its last minute, and a time is kept.
+#law ClampIsTime forall value: -3000..3000 => Time(TimePickerClamp(value));
+#law ClampKeepsTimes forall value: -1..1439 => TimePickerClamp(value) == value;
+#law BelowIsNone forall value: -3000..-1 => TimePickerClamp(value) == -1;
+#law PastEndIsLast forall value: 1440..3000 => TimePickerClamp(value) == 1439;
+
+// Choosing a row gives a time and changes only its own column's part; a
+// row outside the column changes nothing.
+#law PickIsTime forall value: -3..1442, column: 0..1, row: 0..1 => Time(TimePickerPick(value, column, row * 59));
+#law PickHourKeepsMinute forall value: 0..1439, hour: 0..23 => TimePickerPick(value, 0, hour) == hour * 60 + value % 60;
+#law PickMinuteKeepsHour forall value: 0..1439, minute: 0..59 => TimePickerPick(value, 1, minute) == value - value % 60 + minute;
+#law FirstPickStartsAtMidnight forall column: 0..1, row: 0..23 => TimePickerPick(-1, column, row) == ifx column == 0 then row * 60 else row;
+#law PickOutsideKeeps forall value: -1..1439, column: 0..1 => TimePickerPick(value, column, -1) == value && TimePickerPick(value, column, TimePickerRows(column)) == value;
+
+// An arrow key steps one part and wraps within its column, never carrying
+// into the other part; stepping back undoes it.
+#law StepIsTime forall value: -1..1439, column: 0..1, delta: -1..1 => Between(TimePickerStep(value, 0, column, delta), 0, 1439);
+#law StepHourWraps forall value: 0..1439 => TimePickerStep(value, 0, 0, 1) == ((value / 60 + 1) % 24) * 60 + value % 60;
+#law StepMinuteWraps forall value: 0..1439 => TimePickerStep(value, 0, 1, 1) == value - value % 60 + (value % 60 + 1) % 60;
+#law HourBackWraps forall minute: 0..59 => TimePickerStep(minute, 0, 0, -1) == 23 * 60 + minute;
+#law MinuteBackWraps forall hour: 0..23 => TimePickerStep(hour * 60, 0, 1, -1) == hour * 60 + 59;
+#law StepBackUndoes forall value: 0..1439, column: 0..1 => TimePickerStep(TimePickerStep(value, 0, column, 1), 0, column, -1) == value;
+
+// Without a time, a step chooses the anchor the picker opened at.
+#law StepFromNoneTakesAnchor forall anchor: -1..1439, column: 0..1, delta: -1..1 => TimePickerStep(-1, anchor, column, delta) == ifx anchor < 0 then 0 else anchor;
+
+Inside :: (inner: Rectangle, outer: Rectangle) -> bool {
+    return inner.width >= 0.0 && inner.height >= 0.0 &&
+        inner.x >= outer.x && inner.y >= outer.y &&
+        inner.x + inner.width <= outer.x + outer.width &&
+        inner.y + inner.height <= outer.y + outer.height
+}
+
+// A part the popup leaves out, such as Now without a label, has no size.
+Shown :: (part: Rectangle, panel: Rectangle) -> bool {
+    return (part.width == 0.0 && part.height == 0.0) || Inside(part, panel)
+}
+
+Placed :: (popup: TimePickerPopup, view: Rectangle) -> bool {
+    return Inside(popup.panel, view) && Inside(popup.hours, popup.panel) &&
+        Inside(popup.colon, popup.panel) && Inside(popup.minutes, popup.panel) &&
+        Shown(popup.now, popup.panel) && Shown(popup.done, popup.panel)
+}
+
+Metrics :: (actions: s32) -> TimePickerPopupMetrics {
+    return TimePickerPopupMetrics.{.column_width = 64.0, .colon_width = 24.0,
+        .row_height = 32.0, .padding = 8.0, .gap = 4.0,
+        .has_now = actions >= 1, .has_done = actions >= 2}
+}
+
+// Wherever its field is, even partly off the window, the popup and all its
+// parts stay on screen, in a large window or a small one.
+#law PopupStaysOnScreen forall x: 0..12, y: 0..12, width: 0..6, actions: 0..2 => Placed(TimePickerPopupFor(Rectangle.{cast(float32)(x * 30 - 60), cast(float32)(y * 30 - 40), cast(float32)(width * 50), 32.0}, Rectangle.{0.0, 0.0, 320.0, 300.0}, Metrics(actions)), Rectangle.{0.0, 0.0, 320.0, 300.0});
+#law SmallViewStaysOnScreen forall width: 0..8, height: 0..8, actions: 0..2 => Placed(TimePickerPopupFor(Rectangle.{20.0, 30.0, 120.0, 32.0}, Rectangle.{0.0, 0.0, cast(float32)(width * 25), cast(float32)(height * 30)}, Metrics(actions)), Rectangle.{0.0, 0.0, cast(float32)(width * 25), cast(float32)(height * 30)});
+
+Key :: (open: s32, column: s32, key: s32) -> TimePickerKeyState {
+    state: TimePickerKeyState
+    state.open = open != 0
+    state.column = column
+    state.value = 90
+    return TimePickerKeyFor(state, 0, key)
+}
+
+// A closed picker opens only for Down or Up and keeps every other key for
+// the application.
+#law ClosedOpensOnlyOnArrows forall key: 0..300 => Key(0, 0, key).open == (key == 264 || key == 265) && Key(0, 0, key).handled == Key(0, 0, key).open;
+
+// An open picker closes on Enter or Escape and stays open for the arrows,
+// which step its column without closing; it keeps no other key.
+#law EnterAndEscapeClose forall key: 256..257, column: 0..1 => !Key(1, column, key).open && Key(1, column, key).handled && Key(1, column, key).value == 90;
+#law ArrowsKeepOpen forall key: 262..265, column: 0..1 => Key(1, column, key).open && Key(1, column, key).handled;
+#law UpDownStepTheColumn forall column: 0..1 => Key(1, column, 264).value == TimePickerStep(90, 0, column, 1) && Key(1, column, 265).value == TimePickerStep(90, 0, column, -1);
+#law LeftRightChooseTheColumn forall column: 0..1 => Key(1, column, 263).column == 0 && Key(1, column, 262).column == 1 && Key(1, column, 263).value == 90;
+#law OtherKeysPass forall key: 0..300 => (key >= 256 && key <= 257) || (key >= 262 && key <= 265) || (!Key(1, 0, key).handled && Key(1, 0, key).open && Key(1, 0, key).value == 90);

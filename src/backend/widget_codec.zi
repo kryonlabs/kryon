@@ -21,6 +21,7 @@
 #import "box_props"
 #import "press_props"
 #import "spinbox_props"
+#import "time_picker_props"
 using HostValueKind;
 
 WidgetRectangleCodec :: struct {
@@ -6750,6 +6751,281 @@ WidgetValidSpinboxStepResult :: (value: HostValue) -> bool {
     }
     {
         field_at := HostFieldAt(value, 1, "changed")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetTimePickerPropsCodec :: struct {
+    fields: [12]HostField
+    bounds: WidgetRectangleCodec
+}
+
+WidgetEncodeTimePickerProps :: (data: TimePickerProps, codec: *WidgetTimePickerPropsCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("TimePickerProps")
+    value.fields = *codec.fields[0]
+    value.field_count = 12
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("bounds")
+    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
+    codec.fields[2].name = HostTextData("id")
+    codec.fields[2].value = HostScalar("s32", cast(s64)data.id)
+    codec.fields[3].name = HostTextData("class_name")
+    codec.fields[3].value = HostScalar("s32", cast(s64)data.class_name)
+    codec.fields[4].name = HostTextData("label")
+    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
+    codec.fields[5].name = HostTextData("placeholder")
+    codec.fields[5].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.placeholder), .length = cast(usize)data.placeholder.count}
+    codec.fields[6].name = HostTextData("value")
+    codec.fields[6].value = HostScalar("s32", cast(s64)data.value)
+    codec.fields[7].name = HostTextData("now")
+    codec.fields[7].value = HostScalar("s32", cast(s64)data.now)
+    codec.fields[8].name = HostTextData("now_label")
+    codec.fields[8].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.now_label), .length = cast(usize)data.now_label.count}
+    codec.fields[9].name = HostTextData("done_label")
+    codec.fields[9].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.done_label), .length = cast(usize)data.done_label.count}
+    codec.fields[10].name = HostTextData("scale")
+    codec.fields[10].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
+    codec.fields[11].name = HostTextData("disabled")
+    codec.fields[11].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    return value
+}
+
+WidgetDecodeTimePickerProps :: (value: HostValue, codec: *WidgetTimePickerPropsCodec) -> TimePickerProps {
+    data: TimePickerProps
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "bounds")
+        if field_at >= 0 {
+            data.bounds = WidgetDecodeRectangle(value.fields[field_at].value, *codec.bounds)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "id")
+        if field_at >= 0 {
+            data.id = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "class_name")
+        if field_at >= 0 {
+            data.class_name = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "label")
+        if field_at >= 0 {
+            data.label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "placeholder")
+        if field_at >= 0 {
+            data.placeholder = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "value")
+        if field_at >= 0 {
+            data.value = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "now")
+        if field_at >= 0 {
+            data.now = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "now_label")
+        if field_at >= 0 {
+            data.now_label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "done_label")
+        if field_at >= 0 {
+            data.done_label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "scale")
+        if field_at >= 0 {
+            data.scale = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "disabled")
+        if field_at >= 0 {
+            data.disabled = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidTimePickerProps :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "TimePickerProps" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "bounds")
+        if field_at >= 0 {
+            if !WidgetValidRectangle(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "id")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "class_name")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "placeholder")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "value")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "now")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "now_label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "done_label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "scale")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "disabled")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetTimePickerResultCodec :: struct {
+    fields: [4]HostField
+}
+
+WidgetEncodeTimePickerResult :: (data: TimePickerResult, codec: *WidgetTimePickerResultCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("TimePickerResult")
+    value.fields = *codec.fields[0]
+    value.field_count = 4
+    codec.fields[0].name = HostTextData("node")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.node)
+    codec.fields[1].name = HostTextData("value")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.value)
+    codec.fields[2].name = HostTextData("changed")
+    codec.fields[2].value = HostScalar("bool", ifx data.changed then 1 else 0)
+    codec.fields[3].name = HostTextData("open")
+    codec.fields[3].value = HostScalar("bool", ifx data.open then 1 else 0)
+    return value
+}
+
+WidgetDecodeTimePickerResult :: (value: HostValue, codec: *WidgetTimePickerResultCodec) -> TimePickerResult {
+    data: TimePickerResult
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            data.node = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "value")
+        if field_at >= 0 {
+            data.value = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "changed")
+        if field_at >= 0 {
+            data.changed = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "open")
+        if field_at >= 0 {
+            data.open = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidTimePickerResult :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "TimePickerResult" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "value")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "changed")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "open")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }

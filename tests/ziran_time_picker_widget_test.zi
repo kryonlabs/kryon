@@ -1,0 +1,426 @@
+#import "session"
+test_session: Session;
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+#import "control_props"
+#import "geometry"
+#import "paint_queue"
+#import "scroll_device"
+#import "semantic"
+#import "style"
+#import "style_sheet"
+#import "time_picker"
+#import "time_picker_props"
+#import "time_picker_widget"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+#import "ziran_time_picker_widget_host"
+
+using SemanticKind;
+using WidgetKind;
+using PaintKind;
+using FrameStatus;
+
+Window :: () -> Rectangle { return Rectangle.{0.0, 0.0, 240.0, 320.0} }
+
+// The application's state: the time it keeps and how it draws the picker.
+value: s32;
+field: Rectangle;
+now: s32;
+now_label: string;
+done_label: string;
+disabled: bool;
+// What the last frame showed in the field, and whether every one of the
+// field's paints stayed inside its bounds.
+field_text: [16]u8;
+field_text_length: s32;
+field_inside: bool = true;
+
+Props :: () -> TimePickerProps {
+    props: TimePickerProps
+    props.key = cast(u64)21
+    props.id = 21
+    props.label = "Start time"
+    props.bounds = field
+    props.value = value
+    props.now = now
+    props.now_label = now_label
+    props.done_label = done_label
+    props.disabled = disabled
+    return props
+}
+
+Inside :: (inner: Rectangle, outer: Rectangle) -> bool {
+    return inner.x >= outer.x && inner.y >= outer.y &&
+        inner.x + inner.width <= outer.x + outer.width &&
+        inner.y + inner.height <= outer.y + outer.height
+}
+
+Frame :: () -> TimePickerResult {
+    props: TimePickerProps = Props()
+    unused BeginFrame(TestSession(), cast(u64)1, Window())
+    result: TimePickerResult = TimePicker(TestSession(), props)
+    field_text_length = 0
+    for index: cast(s32)0..PendingPaintCount(TestSession()) - 1 {
+        paint := PendingPaintAt(TestSession(), index)
+        if paint.node != result.node { continue }
+        if paint.kind == PaintKindClippedText {
+            if !Inside(paint.clip, props.bounds) { field_inside = false }
+            for byte: cast(s32)0..cast(s32)paint.value.count - 1 {
+                if byte < 16 { field_text[byte] = paint.value[byte] }
+            }
+            field_text_length = cast(s32)paint.value.count
+        } else if paint.kind == PaintKindRoundedOutline {
+            edge: Rectangle = Rectangle.{paint.bounds.x - paint.line_width * 0.5,
+                paint.bounds.y - paint.line_width * 0.5,
+                paint.bounds.width + paint.line_width,
+                paint.bounds.height + paint.line_width}
+            if !Inside(edge, props.bounds) { field_inside = false }
+        } else if paint.kind == PaintKindRoundedFill {
+            if !Inside(paint.bounds, props.bounds) { field_inside = false }
+        } else if paint.kind == PaintKindLine {
+            if !Inside(Rectangle.{paint.bounds.x, paint.bounds.y, 0.0, 0.0}, props.bounds) ||
+                !Inside(Rectangle.{paint.bounds.x + paint.bounds.width,
+                    paint.bounds.y + paint.bounds.height, 0.0, 0.0}, props.bounds) {
+                field_inside = false
+            }
+        }
+    }
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { result.node = -2 }
+    if result.changed { value = result.value }
+    return result
+}
+
+FieldText :: () -> string { return TextView(field_text[0:field_text_length]) }
+
+Tap :: (x: float32, y: float32) {
+    unused TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+    unused TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
+}
+
+TapAt :: (bounds: Rectangle) {
+    Tap(bounds.x + bounds.width * 0.5, bounds.y + bounds.height * 0.5)
+}
+
+Key :: (key: s32) {
+    unused KeyboardSend(TestSession(), key)
+}
+
+// The visible row of a column, or an empty rectangle.
+Row :: (column: s32, text: string) -> Rectangle {
+    for node: cast(s32)0..TreeCount(TestSession()) - 1 {
+        entry := TreeNodeAt(TestSession(), node)
+        if entry.kind == WidgetKindSelectable && entry.semantic_label == text &&
+            entry.parent_key == TimePickerColumnKey(column) &&
+            entry.bounds.height >= 16.0 { return entry.bounds }
+    }
+    return Rectangle.{}
+}
+
+Action :: (label: string) -> Rectangle {
+    for node: cast(s32)0..TreeCount(TestSession()) - 1 {
+        entry := TreeNodeAt(TestSession(), node)
+        if entry.kind == WidgetKindButton && entry.semantic_label == label {
+            return entry.bounds
+        }
+    }
+    return Rectangle.{}
+}
+
+Shown :: (bounds: Rectangle) -> bool { return bounds.height > 0.0 }
+
+Field :: () -> s32 {
+    for node: cast(s32)0..TreeCount(TestSession()) - 1 {
+        if TreeNodeAt(TestSession(), node).key == cast(u64)21 &&
+            TreeNodeAt(TestSession(), node).kind == WidgetKindDropdown { return node }
+    }
+    return -1
+}
+
+Reset :: (time: s32) {
+    value = time
+    field = Rectangle.{20.0, 20.0, 140.0, 32.0}
+    now = -1
+    now_label = ""
+    done_label = ""
+    disabled = false
+}
+
+// A picker without a time shows its placeholder, opens at a tap and takes
+// an hour, then a minute, from its columns, staying open between them.
+PointerPicking :: () -> s32 {
+    Reset(-1)
+    result: TimePickerResult = Frame()
+    node: s32 = Field()
+    if result.value != -1 || result.changed || result.open || node < 0 ||
+        FieldText() != "--:--" { return 1 }
+    entry := TreeNodeAt(TestSession(), node)
+    if entry.semantic_kind != cast(SemanticKind)SemanticComboBox ||
+        entry.semantic_label != "Start time" || entry.semantic_detail != "" { return 2 }
+    TapAt(field)
+    result = Frame()
+    if !result.open || result.changed || result.value != -1 { return 3 }
+    // Without a time or a current time, both columns open at their start.
+    if !Shown(Row(0, "00")) || !Shown(Row(1, "00")) || Shown(Row(0, "12")) { return 4 }
+    TapAt(Row(0, "03"))
+    result = Frame()
+    if !result.open || !result.changed || result.value != 180 ||
+        FieldText() != "03:00" { return 5 }
+    TapAt(Row(1, "02"))
+    result = Frame()
+    if !result.open || !result.changed || result.value != 182 { return 6 }
+    result = Frame()
+    if !result.open || result.changed || value != 182 { return 7 }
+    entry = TreeNodeAt(TestSession(), Field())
+    if entry.semantic_detail != "03:02" || !entry.selected { return 8 }
+    // The chosen rows are marked for assistive technology.
+    for index: cast(s32)0..TreeCount(TestSession()) - 1 {
+        row := TreeNodeAt(TestSession(), index)
+        if row.kind == WidgetKindSelectable {
+            if row.semantic_kind != cast(SemanticKind)SemanticOption { return 9 }
+            chosen: bool = (row.parent_key == TimePickerColumnKey(0) && row.semantic_label == "03") ||
+                (row.parent_key == TimePickerColumnKey(1) && row.semantic_label == "02")
+            if row.selected != chosen { return 10 }
+        }
+    }
+    // A press outside the popup closes it and keeps the time.
+    Tap(230.0, 310.0)
+    result = Frame()
+    if result.open || result.changed || value != 182 || Shown(Row(0, "03")) { return 11 }
+    return 0
+}
+
+// Arrow keys step the column, wrapping within it; Left and Right choose
+// the column; Enter and Escape close; other keys stay with the application.
+KeyboardStepping :: () -> s32 {
+    Reset(1439)
+    unused Frame()
+    // Tapping the field focuses it; a second tap closes it again.
+    TapAt(field)
+    result: TimePickerResult = Frame()
+    if !result.open { return 1 }
+    TapAt(field)
+    result = Frame()
+    if result.open { return 2 }
+    Key(KeyDown)
+    result = Frame()
+    if !result.open || result.changed { return 3 }
+    // Opened by the keyboard, the arrows step the hour first.
+    Key(KeyDown)
+    result = Frame()
+    if !result.open || !result.changed || result.value != 59 { return 4 }
+    Key(KeyUp)
+    result = Frame()
+    if result.value != 1439 { return 5 }
+    Key(KeyRight)
+    result = Frame()
+    Key(KeyDown)
+    result = Frame()
+    if !result.changed || result.value != 1380 || FieldText() != "23:00" { return 6 }
+    Key(KeyUp)
+    result = Frame()
+    if result.value != 1439 { return 7 }
+    Key(KeyLeft)
+    result = Frame()
+    Key(KeyUp)
+    result = Frame()
+    if result.value != 1379 { return 8 }
+    // A key the picker does not use stays for the application.
+    Key(65)
+    result = Frame()
+    if !result.open || KeyboardTake(TestSession()) != 65 { return 9 }
+    Key(KeyEnter)
+    result = Frame()
+    if result.open || result.changed || value != 1379 { return 10 }
+    Key(KeyUp)
+    result = Frame()
+    if !result.open { return 11 }
+    Key(KeyEscape)
+    result = Frame()
+    if result.open || value != 1379 { return 12 }
+    // Without a time, the first step takes the current time.
+    Reset(-1)
+    now = 605
+    result = Frame()
+    TapAt(field)
+    result = Frame()
+    TapAt(field)
+    result = Frame()
+    Key(KeyDown)
+    result = Frame()
+    Key(KeyDown)
+    result = Frame()
+    if !result.changed || result.value != 605 { return 13 }
+    Key(KeyEscape)
+    result = Frame()
+    return 0
+}
+
+// Values outside the day are clamped and not reported as a change.
+Clamping :: () -> s32 {
+    Reset(5000)
+    result: TimePickerResult = Frame()
+    if result.value != 1439 || result.changed || FieldText() != "23:59" { return 1 }
+    Reset(-9)
+    result = Frame()
+    if result.value != -1 || result.changed || FieldText() != "--:--" { return 2 }
+    return 0
+}
+
+// A disabled picker shows its time but never opens or takes a key.
+Disabled :: () -> s32 {
+    Reset(600)
+    disabled = true
+    result: TimePickerResult = Frame()
+    TapAt(field)
+    result = Frame()
+    if result.open || result.changed || result.value != 600 ||
+        FieldText() != "10:00" { return 1 }
+    if TreeHitAt(TestSession(), 30.0, 30.0) != -1 { return 2 }
+    Key(KeyDown)
+    result = Frame()
+    if result.open || KeyboardTake(TestSession()) != KeyDown { return 3 }
+    return 0
+}
+
+// Now sets the current time and Done closes. A picker without a time
+// opens at the current time.
+NowAndDone :: () -> s32 {
+    Reset(-1)
+    now = 765
+    now_label = "Now"
+    done_label = "Done"
+    result: TimePickerResult = Frame()
+    TapAt(field)
+    result = Frame()
+    if !result.open || !Shown(Action("Now")) || !Shown(Action("Done")) { return 1 }
+    if !Shown(Row(0, "12")) || Shown(Row(0, "00")) ||
+        !Shown(Row(1, "45")) || Shown(Row(1, "00")) { return 2 }
+    TapAt(Action("Now"))
+    result = Frame()
+    if !result.open || !result.changed || result.value != 765 { return 3 }
+    TapAt(Row(1, "43"))
+    result = Frame()
+    if result.value != 763 { return 4 }
+    TapAt(Action("Done"))
+    result = Frame()
+    if result.open || result.changed || value != 763 || Shown(Action("Done")) { return 5 }
+    // Reopening shows the chosen time in both columns.
+    TapAt(field)
+    result = Frame()
+    if !result.open || !Shown(Row(0, "12")) || !Shown(Row(1, "43")) { return 6 }
+    Key(KeyEscape)
+    result = Frame()
+    return 0
+}
+
+// Near the bottom of the window the popup opens above the field, and every
+// paint stays inside the window.
+Placement :: () -> s32 {
+    Reset(1120)
+    field = Rectangle.{100.0, 270.0, 130.0, 32.0}
+    now_label = "Now"
+    done_label = "Done"
+    result: TimePickerResult = Frame()
+    TapAt(field)
+    result = Frame()
+    hour: Rectangle = Row(0, "18")
+    minute: Rectangle = Row(1, "40")
+    if !result.open || !Shown(hour) || !Shown(minute) || Shown(Row(0, "00")) { return 1 }
+    done: Rectangle = Action("Done")
+    if hour.y + hour.height > 266.0 || done.y + done.height > 266.0 ||
+        done.x + done.width > 240.0 { return 2 }
+    Key(KeyEscape)
+    result = Frame()
+    // A field too narrow for its time keeps every paint inside it.
+    Reset(754)
+    field = Rectangle.{20.0, 20.0, 30.0, 14.0}
+    result = Frame()
+    if !field_inside { return 3 }
+    return 0
+}
+
+// With the host's scroll device, a column scrolls by wheel and by a finger
+// drag without choosing a row, and a tap still chooses one.
+device_time: float64;
+
+DeviceFrame :: (x: float32, y: float32, pressed: bool, down: bool,
+    released: bool, wheel: float32) -> TimePickerResult {
+    device_time += 0.016
+    BeginScrollFrame(TestSession(), Vector2.{x, y}, pressed, down, released,
+        wheel, device_time)
+    unused TreePointerUpdate(TestSession(), PointerFrame.{x, y, down, pressed, released})
+    return Frame()
+}
+
+DeviceScrolling :: () -> s32 {
+    Reset(600)
+    result: TimePickerResult = DeviceFrame(230.0, 310.0, false, false, false, 0.0)
+    unused DeviceFrame(30.0, 30.0, true, true, false, 0.0)
+    result = DeviceFrame(30.0, 30.0, false, false, true, 0.0)
+    result = DeviceFrame(230.0, 310.0, false, false, false, 0.0)
+    before: Rectangle = Row(1, "02")
+    if !result.open || !Shown(before) { return 1 }
+    // The wheel over the minute column scrolls it.
+    x: float32 = before.x + before.width * 0.5
+    y: float32 = before.y + before.height * 0.5
+    result = DeviceFrame(x, y, false, false, false, -1.0)
+    settle: s32 = 0
+    while settle < 30 {
+        result = DeviceFrame(x, y, false, false, false, 0.0)
+        settle += 1
+    }
+    wheeled: Rectangle = Row(1, "02")
+    if !result.open || result.changed || (Shown(wheeled) && wheeled.y >= before.y) { return 2 }
+    // A finger drag on the column scrolls it back and chooses nothing.
+    start: Rectangle = Row(1, "05")
+    if !Shown(start) || Shown(Row(1, "00")) { return 3 }
+    y = start.y + start.height * 0.5
+    result = DeviceFrame(x, y, true, true, false, 0.0)
+    step: s32 = 1
+    while step <= 8 {
+        result = DeviceFrame(x, y + cast(float32)step * 10.0, false, true, false, 0.0)
+        step += 1
+    }
+    result = DeviceFrame(x, y + 80.0, false, false, true, 0.0)
+    settle = 0
+    while settle < 60 {
+        result = DeviceFrame(230.0, 310.0, false, false, false, 0.0)
+        settle += 1
+    }
+    if !result.open || result.changed || value != 600 || !Shown(Row(1, "00")) { return 4 }
+    // A tap on a row still chooses it.
+    row: Rectangle = Row(1, "03")
+    if !Shown(row) { return 5 }
+    unused DeviceFrame(row.x + 10.0, row.y + row.height * 0.5, true, true, false, 0.0)
+    result = DeviceFrame(row.x + 10.0, row.y + row.height * 0.5, false, false, true, 0.0)
+    if !result.changed || result.value != 603 || !result.open { return 6 }
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    picking: s32 = PointerPicking()
+    if picking != 0 { return 10 + picking }
+    keyboard: s32 = KeyboardStepping()
+    if keyboard != 0 { return 30 + keyboard }
+    clamping: s32 = Clamping()
+    if clamping != 0 { return 50 + clamping }
+    off: s32 = Disabled()
+    if off != 0 { return 60 + off }
+    actions: s32 = NowAndDone()
+    if actions != 0 { return 70 + actions }
+    placed: s32 = Placement()
+    if placed != 0 { return 80 + placed }
+    device: s32 = DeviceScrolling()
+    if device != 0 { return 90 + device }
+    if !field_inside { return 100 }
+    if TimePickerHostFailed() { return 101 }
+    if TimePickerShapes() == 0 || TimePickerLabels() == 0 { return 102 }
+    return 0
+}

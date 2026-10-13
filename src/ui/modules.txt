@@ -183,6 +183,9 @@ text_rows.zi
 text_style.zi
 text_widget.zi
 theme.zi
+time_picker.zi
+time_picker_props.zi
+time_picker_widget.zi
 title_bar.zi
 title_bar_props.zi
 title_bar_widget.zi
