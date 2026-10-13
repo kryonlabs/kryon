@@ -30,6 +30,7 @@ JniDeleteGlobalRefFn :: #type (*JniEnv, *void) -> void #c_call;
 JniDeleteLocalRefFn :: #type (*JniEnv, *void) -> void #c_call;
 JniNewObjectAFn :: #type (*JniEnv, *void, *void, *JniValue) -> *void #c_call;
 JniGetObjectClassFn :: #type (*JniEnv, *void) -> *void #c_call;
+JniIsInstanceOfFn :: #type (*JniEnv, *void, *void) -> u8 #c_call;
 JniGetMethodIDFn :: #type (*JniEnv, *void, *u8, *u8) -> *void #c_call;
 JniCallObjectMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> *void #c_call;
 JniCallBooleanMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> u8 #c_call;
@@ -73,7 +74,7 @@ JniFunctions :: struct {
     reserved_24: [6]*void
     NewObjectA: JniNewObjectAFn
     GetObjectClass: JniGetObjectClassFn
-    reserved_32: [1]*void
+    IsInstanceOf: JniIsInstanceOfFn
     GetMethodID: JniGetMethodIDFn
     reserved_34: [2]*void
     CallObjectMethodA: JniCallObjectMethodAFn
