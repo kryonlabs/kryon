@@ -46,3 +46,10 @@ example under a private display and saves
 `.zir` produce the same portable `text.zib`. Run
 `../build/examples/ziran/text-desktop` from `examples/` to open the interactive
 window, or open `examples/text_hello.zi` in an editor to see its Ziran source.
+
+`make -C examples time-picker` builds `time_picker_demo.zi`, Kryon's
+`TimePicker` without a time, with one, disabled and in a small form, with a
+Light and Dark switch. Run `../build/examples/ziran/time-picker-desktop` from
+`examples/` to try it with the mouse, touch and keyboard.
+`make -C examples time-picker-shots` plays scripted scenes on a private
+display and saves them in `build/time-picker-shots/`.

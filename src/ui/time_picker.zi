@@ -1,0 +1,273 @@
+#import "geometry"
+#import "tree_input"
+
+// A time of day is minutes after midnight, 0 to 1439, or -1 while no time
+// is chosen. Its hour and its minute each scroll in their own column.
+TIME_PICKER_LAST :: 1439
+
+#program_export
+TimePickerHourColumn :: () -> s32 {
+    return 0
+}
+
+#program_export
+TimePickerMinuteColumn :: () -> s32 {
+    return 1
+}
+
+// The rows of a column: 24 hours or 60 minutes.
+#program_export
+TimePickerRows :: (column: s32) -> s32 {
+    if column == TimePickerHourColumn() { return 24 }
+    return 60
+}
+
+// A value outside the day: negative means no time, past the end is the
+// last minute of the day.
+#program_export
+TimePickerClamp :: (value: s32) -> s32 {
+    if value < 0 { return -1 }
+    if value > TIME_PICKER_LAST { return TIME_PICKER_LAST }
+    return value
+}
+
+// The row a time has in a column, or -1 without a time.
+#program_export
+TimePickerPart :: (value: s32, column: s32) -> s32 {
+    value = TimePickerClamp(value)
+    if value < 0 { return -1 }
+    if column == TimePickerHourColumn() { return value / 60 }
+    return value % 60
+}
+
+// A count wrapped into 0 up to count - 1, so 24 hours is 0 and -1 is 23.
+TimePickerWrap :: (value: s32, count: s32) -> s32 {
+    if count <= 0 { return 0 }
+    wrapped: s32 = value % count
+    if wrapped < 0 { wrapped += count }
+    return wrapped
+}
+
+// Choosing a row of a column keeps the other column's part. The first
+// choice, made before any time, takes 0 for the other part.
+#program_export
+TimePickerPick :: (value: s32, column: s32, row: s32) -> s32 {
+    value = TimePickerClamp(value)
+    if row < 0 || row >= TimePickerRows(column) { return value }
+    if value < 0 { value = 0 }
+    if column == TimePickerHourColumn() { return row * 60 + value % 60 }
+    return (value / 60) * 60 + row
+}
+
+// An arrow key steps one column's part by delta and wraps within that
+// column: one after 23 hours is 0 hours, and minutes never carry into the
+// hour. Without a time, a step chooses the anchor, the time the picker
+// opened at.
+#program_export
+TimePickerStep :: (value: s32, anchor: s32, column: s32, delta: s32) -> s32 {
+    value = TimePickerClamp(value)
+    if value < 0 {
+        anchor = TimePickerClamp(anchor)
+        if anchor < 0 { return 0 }
+        return anchor
+    }
+    part: s32 = TimePickerPart(value, column)
+    return TimePickerPick(value, column,
+        TimePickerWrap(part + delta, TimePickerRows(column)))
+}
+
+TimePickerTwoDigits: [60]string = .["00", "01", "02", "03", "04", "05", "06",
+    "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18",
+    "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30",
+    "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42",
+    "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54",
+    "55", "56", "57", "58", "59"];
+
+// A column row as two digits, such as "07".
+#program_export
+TimePickerRowText :: (row: s32) -> string {
+    if row < 0 || row >= 60 { return "" }
+    return TimePickerTwoDigits[row]
+}
+
+// A time as 24-hour "HH:MM" in output, which holds at least five bytes, or
+// "" without a time.
+#program_export
+TimePickerText :: (value: s32, output: []u8) -> string {
+    value = TimePickerClamp(value)
+    if value < 0 || output.count < 5 { return "" }
+    hour: string = TimePickerTwoDigits[value / 60]
+    minute: string = TimePickerTwoDigits[value % 60]
+    output[0] = hour[0]
+    output[1] = hour[1]
+    output[2] = cast(u8)58
+    output[3] = minute[0]
+    output[4] = minute[1]
+    return TextView(output[0:5])
+}
+
+// The open picker's state between frames: which column the arrow keys
+// step, and whether the keyboard is in use, which shows that column.
+TimePickerKeyState :: struct {
+    open: bool
+    column: s32
+    keyboard: bool
+    value: s32
+    // The key was the picker's; others stay with the application.
+    handled: bool
+    // The value moved, so its row is scrolled into view.
+    moved: bool
+}
+
+// A key for a focused or open picker. Down or Up opens a closed picker;
+// once open, Up and Down step the column's part, Left and Right choose the
+// column, and Enter or Escape closes it. The value changes as it is
+// stepped, so closing never loses a choice.
+#program_export
+TimePickerKeyFor :: (state: TimePickerKeyState, anchor: s32,
+    key: s32) -> TimePickerKeyState {
+    state.handled = false
+    state.moved = false
+    if key == 0 { return state }
+    if !state.open {
+        if key == KeyDown || key == KeyUp {
+            state.open = true
+            state.keyboard = true
+            state.column = TimePickerHourColumn()
+            state.handled = true
+        }
+        return state
+    }
+    if key == KeyUp || key == KeyDown {
+        delta: s32 = 1
+        if key == KeyUp { delta = -1 }
+        state.value = TimePickerStep(state.value, anchor, state.column, delta)
+        state.moved = true
+    } else if key == KeyLeft {
+        state.column = TimePickerHourColumn()
+    } else if key == KeyRight {
+        state.column = TimePickerMinuteColumn()
+    } else if key == KeyEnter || key == KeyEscape {
+        state.open = false
+    } else {
+        return state
+    }
+    state.keyboard = true
+    state.handled = true
+    return state
+}
+
+// The offset that shows a row in the middle of a column, within its
+// scroll range.
+#program_export
+TimePickerCenterOffset :: (row: s32, row_height: s32, viewport: s32,
+    rows: s32) -> s32 {
+    maximum: s32 = rows * row_height - viewport
+    if maximum < 0 { maximum = 0 }
+    if row < 0 { row = 0 }
+    offset: s32 = row * row_height - (viewport - row_height) / 2
+    if offset > maximum { offset = maximum }
+    if offset < 0 { offset = 0 }
+    return offset
+}
+
+// The rows the popup shows when the window has room.
+TIME_PICKER_VISIBLE_ROWS :: 5
+
+TimePickerPopup :: struct {
+    panel: Rectangle
+    hours: Rectangle
+    colon: Rectangle
+    minutes: Rectangle
+    now: Rectangle
+    done: Rectangle
+}
+
+TimePickerPopupMetrics :: struct {
+    column_width: float32
+    colon_width: float32
+    row_height: float32
+    padding: float32
+    // Space between the field and the popup.
+    gap: float32
+    has_now: bool
+    has_done: bool
+}
+
+// The popup for a field, inside view. It opens below the field when it fits
+// there, otherwise on the side with more room, and shows fewer rows when the
+// window is short. It is never wider or taller than the view; a narrow view
+// narrows its columns and a short one drops the Now and Done row first.
+#program_export
+TimePickerPopupFor :: (field: Rectangle, view: Rectangle,
+    metrics: TimePickerPopupMetrics) -> TimePickerPopup {
+    popup: TimePickerPopup
+    if view.width <= 0.0 || view.height <= 0.0 { return popup }
+    padding: float32 = metrics.padding
+    if padding < 0.0 { padding = 0.0 }
+    row: float32 = metrics.row_height
+    if row < 1.0 { row = 1.0 }
+    gap: float32 = metrics.gap
+    if gap < 0.0 { gap = 0.0 }
+    width: float32 = padding * 2.0 + metrics.column_width * 2.0 +
+        metrics.colon_width
+    if field.width > width { width = field.width }
+    if width > view.width { width = view.width }
+    if padding * 2.0 > width { padding = width * 0.5 }
+    footer: float32 = 0.0
+    if metrics.has_now || metrics.has_done { footer = row + padding }
+
+    bottom: float32 = view.y + view.height
+    below: float32 = bottom - (field.y + field.height + gap)
+    above: float32 = field.y - gap - view.y
+    room: float32 = below
+    if above > room { room = above }
+    rows: s32 = TIME_PICKER_VISIBLE_ROWS
+    while rows > 1 && padding * 2.0 + footer + cast(float32)rows * row > room {
+        rows -= 1
+    }
+    height: float32 = padding * 2.0 + footer + cast(float32)rows * row
+    if height > view.height && footer > 0.0 {
+        footer = 0.0
+        height = padding * 2.0 + cast(float32)rows * row
+    }
+    if height > view.height { height = view.height }
+    if padding * 2.0 > height { padding = height * 0.5 }
+
+    y: float32 = field.y + field.height + gap
+    if height > below && above > below { y = field.y - gap - height }
+    if y > bottom - height { y = bottom - height }
+    if y < view.y { y = view.y }
+    x: float32 = field.x
+    if x > view.x + view.width - width { x = view.x + view.width - width }
+    if x < view.x { x = view.x }
+    popup.panel = Rectangle.{x, y, width, height}
+
+    inner_width: float32 = width - padding * 2.0
+    if inner_width < 0.0 { inner_width = 0.0 }
+    colon: float32 = metrics.colon_width
+    if colon > inner_width { colon = inner_width }
+    column: float32 = (inner_width - colon) * 0.5
+    area: float32 = height - padding * 2.0 - footer
+    if area < 0.0 { area = 0.0 }
+    top: float32 = y + padding
+    popup.hours = Rectangle.{x + padding, top, column, area}
+    popup.colon = Rectangle.{x + padding + column, top, colon, area}
+    popup.minutes = Rectangle.{x + padding + column + colon, top, column, area}
+    if footer > 0.0 {
+        actions: Rectangle = Rectangle.{x + padding, top + area + padding,
+            inner_width, row}
+        if metrics.has_now && metrics.has_done {
+            half: float32 = (inner_width - padding) * 0.5
+            if half < 0.0 { half = 0.0 }
+            popup.now = Rectangle.{actions.x, actions.y, half, row}
+            popup.done = Rectangle.{actions.x + inner_width - half, actions.y,
+                half, row}
+        } else if metrics.has_now {
+            popup.now = actions
+        } else {
+            popup.done = actions
+        }
+    }
+    return popup
+}

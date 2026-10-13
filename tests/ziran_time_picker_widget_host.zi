@@ -1,0 +1,118 @@
+#import "drawing_props"
+#import "geometry"
+
+// Every shape and label must land inside the 240 by 320 window.
+failed: bool;
+shapes: s32;
+labels: s32;
+
+InsideWindow :: (bounds: Rectangle) -> bool {
+    return bounds.width >= 0.0 && bounds.height >= 0.0 &&
+        bounds.x >= 0.0 && bounds.y >= 0.0 &&
+        bounds.x + bounds.width <= 240.0 && bounds.y + bounds.height <= 320.0
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    if font < 8 || font > 14 || typeface.count != 0 { failed = true }
+    return (cast(s32)value.count) * 8 * font / 14
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if font < 8 || font > 14 || typeface.count != 0 { failed = true }
+    return font
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    failed = true
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    failed = true
+    return 0
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused radius
+    unused segments
+    unused color
+    if !InsideWindow(bounds) { failed = true }
+    shapes += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused radius
+    unused segments
+    unused color
+    // An outline's stroke is centred on its edge.
+    if !InsideWindow(Rectangle.{bounds.x - width * 0.5, bounds.y - width * 0.5,
+            bounds.width + width, bounds.height + width}) { failed = true }
+    shapes += 1
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused color
+    if !InsideWindow(Rectangle.{line.x, line.y, 0.0, 0.0}) ||
+        !InsideWindow(Rectangle.{line.x + line.width, line.y + line.height,
+            0.0, 0.0}) { failed = true }
+    shapes += 1
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    failed = true
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    if !InsideWindow(clip) { failed = true }
+    labels += 1
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+    failed = true
+}
+
+#program_export
+TimePickerHostFailed :: () -> bool { return failed }
+
+#program_export
+TimePickerShapes :: () -> s32 { return shapes }
+
+#program_export
+TimePickerLabels :: () -> s32 { return labels }

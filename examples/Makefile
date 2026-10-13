@@ -10,7 +10,7 @@ ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
 BUILD_DIR ?= ../build/examples/ziran
 NATIVE_LIB := ../build/ziran/libkryon.a
 
-.PHONY: all test desktop desktop-test desktop-image-test desktop-text-test clean
+.PHONY: all test desktop desktop-test desktop-image-test desktop-text-test time-picker time-picker-shots clean
 all: $(BUILD_DIR)/hello.svg $(BUILD_DIR)/hello.zib
 
 $(ZI2ZIB_BIN):
@@ -100,6 +100,13 @@ $(BUILD_DIR)/desktop-text-native/desktop_text.c: desktop_text.zi ../src/backend/
 		--module-path $(ZIRAN_DIR)/std \
 		--entry desktop_text:main -o $(BUILD_DIR)/desktop-text-native desktop_text.zi
 
+$(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c: desktop_time_picker.zi time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(wildcard ../src/ui/*.zi ../src/ui/Widgets/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
+	mkdir -p $(BUILD_DIR)/desktop-time-picker-native
+	$(RM) $(BUILD_DIR)/desktop-time-picker-native/*.c $(BUILD_DIR)/desktop-time-picker-native/*.h
+	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
+		--module-path $(ZIRAN_DIR)/std \
+		--entry desktop_time_picker:main -o $(BUILD_DIR)/desktop-time-picker-native desktop_time_picker.zi
+
 # The desktop host draws with Cairo and Pango and finds fonts with Fontconfig.
 DESKTOP_LIBS = $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11) -lm -lpthread
 
@@ -121,6 +128,12 @@ $(BUILD_DIR)/text-desktop: $(BUILD_DIR)/desktop-text-native/desktop_text.c Makef
 		$(BUILD_DIR)/desktop-text-native/*.c \
 		$(DESKTOP_LIBS) -o $@
 
+$(BUILD_DIR)/time-picker-desktop: $(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c Makefile
+	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
+		-I$(BUILD_DIR)/desktop-time-picker-native \
+		$(BUILD_DIR)/desktop-time-picker-native/*.c \
+		$(DESKTOP_LIBS) -o $@
+
 desktop: $(BUILD_DIR)/hello-desktop
 
 desktop-test: desktop
@@ -137,6 +150,23 @@ desktop-text-test: $(BUILD_DIR)/text-saved.zib $(BUILD_DIR)/text-desktop
 	env -u DISPLAY -u WAYLAND_DISPLAY \
 		KRYON_CAPTURE_PATH=$(BUILD_DIR)/text-desktop.png \
 		xvfb-run -a $(BUILD_DIR)/text-desktop
+
+# The TimePicker example. `make -C examples time-picker` builds it; run
+# ../build/examples/ziran/time-picker-desktop from examples/ to open it.
+time-picker: $(BUILD_DIR)/time-picker-desktop
+
+# Screenshots of its scenes, each played on a private display and bus.
+TIME_PICKER_SCENES := light light-open light-keyboard light-empty dark dark-open dark-empty
+TIME_PICKER_SHOTS ?= ../build/time-picker-shots
+time-picker-shots: $(BUILD_DIR)/time-picker-desktop
+	mkdir -p $(TIME_PICKER_SHOTS)
+	for scene in $(TIME_PICKER_SCENES); do \
+		env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+			KRYON_FONT_PATH=$(abspath ../assets/fonts/LiberationSans-Regular.ttf) \
+			TIME_PICKER_SCENE=$$scene KRYON_CAPTURE_PATH=$(abspath $(TIME_PICKER_SHOTS))/$$scene.png \
+			xvfb-run -a -s '-screen 0 1024x768x24' \
+			dbus-run-session -- $(BUILD_DIR)/time-picker-desktop || exit 1; \
+	done
 
 clean:
 	$(RM) -r $(BUILD_DIR)

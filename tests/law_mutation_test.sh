@@ -119,4 +119,12 @@ mutate slider.zi slider_laws.zi 's/    decision.update_ratio = effective_active 
 mutate slider.zi slider_laws.zi 's/        if shift { step = step \* 10 }/        if shift { step = step * 5 }/' ShiftStepsTen
 # A paned view divider that keeps dragging after the release.
 mutate paned_view.zi paned_view_laws.zi 's/    if has_active && !mouse_down {/    if has_active \&\& mouse_down {/' ReleaseEnds
+# A time past the end of the day kept instead of clamped to its last minute.
+mutate time_picker.zi time_picker_laws.zi 's/    if value > TIME_PICKER_LAST { return TIME_PICKER_LAST }/    if value > TIME_PICKER_LAST + 1 { return TIME_PICKER_LAST }/' ClampIsTime
+# Stepping back from midnight stopping at 0 instead of wrapping to 23.
+mutate time_picker.zi time_picker_laws.zi 's/    if wrapped < 0 { wrapped += count }/    if wrapped < 0 { wrapped = 0 }/' HourBackWraps
+# Up stepping forward like Down.
+mutate time_picker.zi time_picker_laws.zi 's/        if key == KeyUp { delta = -1 }//' UpDownStepTheColumn
+# A popup taller than a short window.
+mutate time_picker.zi time_picker_laws.zi 's/    if height > view.height { height = view.height }//' SmallViewStaysOnScreen
 echo "Kryon laws reject all mutations"

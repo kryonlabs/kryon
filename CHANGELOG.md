@@ -29,9 +29,22 @@
   native worker drives the system's `HttpURLConnection` through JNI, so TLS
   and certificate checks stay the platform's. Redirects and caches are
   refused, and a request that outlives its timeout fails.
+- `TimePicker` picks a time of day: a field showing 24-hour "HH:MM", or a
+  placeholder while no time is chosen, opens an hour and a minute column at
+  the current value. A tap, a finger drag or fling, or the mouse wheel
+  chooses and scrolls; Down opens it, the arrow keys step a column and wrap,
+  Left and Right switch columns, and Enter or Escape closes it. Optional Now
+  and Done buttons set the current time and close the popup. The time
+  changes as it is picked, so closing never loses a choice; the popup stays
+  on screen, opening above the field when there is no room below. The
+  picker takes the dropdown's look from every style, light or dark, and
+  portable apps can draw it through the widget host. `examples/` has a
+  window showing it in each state.
 
 ### Fixed
 
+- Dropdowns follow Kryon's light and dark system palettes; a dark palette
+  left their field and menu light before.
 - Android apps without Java code keep their content clear of the
   navigation bar, the keyboard and display cutouts:
   `PollAndroidWindowInsets` reads the window insets through JNI. On

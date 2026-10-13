@@ -1,0 +1,31 @@
+#import "geometry"
+
+TimePickerProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    // The accessible name, such as "Start time".
+    label: string
+    // Shown while no time is chosen; "--:--" when empty.
+    placeholder: string
+    // Minutes after midnight, 0 to 1439, or -1 while no time is chosen.
+    value: s32
+    // The current time in minutes after midnight. Now sets it, and a picker
+    // without a time opens at it.
+    now: s32
+    // The popup's Now and Done actions show only with a label.
+    now_label: string
+    done_label: string
+    scale: float32
+    disabled: bool
+}
+
+TimePickerResult :: struct {
+    node: s32
+    // The time after this frame's input: -1 or 0 to 1439.
+    value: s32
+    // The user chose another time in this frame.
+    changed: bool
+    open: bool
+}

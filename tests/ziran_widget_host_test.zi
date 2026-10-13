@@ -13,6 +13,7 @@
 #import "tab_bar_props"
 #import "press_props"
 #import "spinbox_props"
+#import "time_picker_props"
 #import "font_metrics"
 #import "hosted_values"
 #import "widget_codec"
@@ -57,6 +58,8 @@ tab_bar_codec: WidgetTabBarPropsCodec;
 press_codec: WidgetPressPropsCodec;
 spinbox_codec: WidgetSpinboxPropsCodec;
 spinbox_result: WidgetSpinboxStepResultCodec;
+time_picker_codec: WidgetTimePickerPropsCodec;
+time_picker_result: WidgetTimePickerResultCodec;
 tab_codecs: [40]WidgetTabCodec;
 tab_values: [40]HostValue;
 
@@ -73,6 +76,7 @@ main :: () -> s32 {
     if !WidgetHostSupports("toggle_widget", "ToggleHostedHost") ||
     !WidgetHostSupports("press_widget", "PressHostedHost") ||
     !WidgetHostSupports("spinbox_widget", "SpinboxHostedHost") ||
+    !WidgetHostSupports("time_picker_widget", "TimePickerHostedHost") ||
     !WidgetHostSupports("tree", "EndHostedHost") ||
     WidgetHostSupports("text_widget", "TextNativeHost") {
         return 1
@@ -151,6 +155,15 @@ main :: () -> s32 {
     TextFromCString(result.type_name) != "SpinboxStepResult" ||
     WidgetDecodeSpinboxStepResult(result, *spinbox_result).value != 16 {
         return 31
+    }
+    // A time picker answers with its time, clamped to the day.
+    arguments[1] = WidgetEncodeTimePickerProps(TimePickerProps.{.id = 14, .label = "Start",
+            .bounds = Rectangle.{0.0, 180.0, 150.0, 36.0}, .value = 2000, .now = -1}, *time_picker_codec)
+    if Call("time_picker_widget", "TimePickerHostedHost", arguments[:2], *result) != 1 ||
+    TextFromCString(result.type_name) != "TimePickerResult" ||
+    WidgetDecodeTimePickerResult(result, *time_picker_result).value != 1439 ||
+    WidgetDecodeTimePickerResult(result, *time_picker_result).changed {
+        return 32
     }
     // Slices decode into the codec and are attached by name.
     hidden: [2]TextRange = .[TextRange.{.start = 0, .end = 2}, TextRange.{.start = 6, .end = 8}]

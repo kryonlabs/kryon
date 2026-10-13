@@ -5,6 +5,7 @@
 #import "style"
 #import "control_props"
 #import "scroll"
+#import "dropdown"
 using ButtonTone;
 using ButtonEmphasis;
 using ButtonState;
@@ -24,6 +25,11 @@ Base :: () -> StyleData {
 }
 Face :: (kind: s32, tone: s32, emphasis: s32, state: s32) -> StyleData {
     facts := StyleControlRoleFacts(kind, 0, 0, StyleAny(), tone, emphasis, 0, state)
+    return ResolveInstalledStyleRules(Base(), facts, state)
+}
+
+DropdownFace :: (role: s32, state: s32) -> StyleData {
+    facts := StyleControlRoleFacts(StyleKindDropdown(), 0, 0, role, 0, 0, 0, state)
     return ResolveInstalledStyleRules(Base(), facts, state)
 }
 
@@ -74,6 +80,14 @@ main :: () -> s32 {
     Check(SystemPaletteInstall(dark), "dark palette installs without a platform host")
     dark_value := Face(StyleKindSpinboxValue(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
     Check(dark_value.background == dark.base && dark_value.foreground == dark.text, "numeric values remain readable with a dark palette")
+    // A dropdown's field, panel and chosen row, which a time picker shares.
+    trigger := DropdownFace(0, 0)
+    panel := DropdownFace(DropdownPanelRole(), 0)
+    chosen_row := DropdownFace(DropdownOptionRole(), cast(s32)ButtonStateSelected)
+    Check(trigger.background == CssMix(dark.background, dark.text, 0.10) && trigger.foreground == dark.text &&
+        trigger.border == dark.border && trigger.focus == dark.selected, "dark dropdown fields follow the palette")
+    Check(panel.background == dark.base && panel.border == dark.border, "dark dropdown menus take the palette's base")
+    Check(chosen_row.background == dark.selected && chosen_row.foreground == dark.selected_text, "a dropdown's chosen row takes the selection color")
     dark_thumb := ScrollFace(StyleKindScrollThumb(), 0, false, cast(s32)ButtonStateNormal, 10.0)
     dark_track := ScrollFace(StyleKindScroll(), 0, false, cast(s32)ButtonStateNormal, 10.0)
     Check(dark_track.value.background == cast(u32)0 && CssLuminance(dark_thumb.value.background) > CssLuminance(dark.background), "dark scrollbar follows its palette instead of a light track")

@@ -71,6 +71,8 @@ using TextInputModule :: #import "text_input";
 using TextAreaWidgetModule :: #import "text_area_widget";
 using TextFieldWidgetModule :: #import "text_field_widget";
 using KeyInputModule :: #import "key_input";
+using TimePickerPropsModule :: #import "time_picker_props";
+using TimePickerWidgetModule :: #import "time_picker_widget";
 using TitleBarPropsModule :: #import "title_bar_props";
 using TitleBarWidgetModule :: #import "title_bar_widget";
 using ToastPropsModule :: #import "toast_props";
