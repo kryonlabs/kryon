@@ -78,6 +78,7 @@ TimePickerColumnKey :: (column: s32) -> u64 {
 
 TIME_PICKER_NOW_KEY :: 3
 TIME_PICKER_DONE_KEY :: 4
+TIME_PICKER_CLEAR_KEY :: 5
 
 #program_export
 TimePickerRowKey :: (row: s32) -> u64 {
@@ -349,6 +350,11 @@ TimePicker :: (session: Session, props: TimePickerProps) -> TimePickerResult {
             previous.panel, cast(u64)TIME_PICKER_DONE_KEY, WidgetKindButton)) {
             state.open = false
         }
+        if TreeTakeActivationAt(session, TreePreviousCommitted(session,
+            previous.panel, cast(u64)TIME_PICKER_CLEAR_KEY, WidgetKindButton)) {
+            state.value = -1
+            state.open = false
+        }
     }
     if !props.disabled && (state.open ||
         TreeFocusedAt(session, previous.field)) {
@@ -462,6 +468,7 @@ TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
         cast(u32)StyleGap, panel_face.value.gap, 4.0, scale, true)
     metrics.has_now = props.now_label != ""
     metrics.has_done = props.done_label != ""
+    metrics.has_clear = props.clear_label != ""
     // The popup fits the part of the window its scope shows, as a
     // dropdown's menu does.
     view: Rectangle = TreeRootBounds(session)
@@ -554,6 +561,16 @@ TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
             }
             End(session)
         }
+    }
+    if metrics.has_clear && popup.clear.width > 0.0 {
+        clear: ButtonProps
+        clear.key = cast(u64)TIME_PICKER_CLEAR_KEY
+        clear.bounds = popup.clear
+        clear.label = props.clear_label
+        clear.class_name = props.class_name
+        clear.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
+        clear.fit_content = true
+        unused Button(session, clear)
     }
     if metrics.has_now && popup.now.width > 0.0 {
         now: ButtonProps

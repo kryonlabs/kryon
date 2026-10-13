@@ -34,7 +34,8 @@
   the current value. A tap, a finger drag or fling, or the mouse wheel
   chooses and scrolls; Down opens it, the arrow keys step a column and wrap,
   Left and Right switch columns, and Enter or Escape closes it. Optional Now
-  and Done buttons set the current time and close the popup. The time
+  and Done buttons set the current time and close the popup, and an optional
+  Clear button takes the time away so the placeholder shows again. The time
   changes as it is picked, so closing never loses a choice; the popup stays
   on screen, opening above the field when there is no room below. The
   picker takes the dropdown's look from every style, light or dark, and

@@ -34,6 +34,7 @@ field: Rectangle;
 now: s32;
 now_label: string;
 done_label: string;
+clear_label: string;
 disabled: bool;
 // What the last frame showed in the field, and whether every one of the
 // field's paints stayed inside its bounds.
@@ -51,6 +52,7 @@ Props :: () -> TimePickerProps {
     props.now = now
     props.now_label = now_label
     props.done_label = done_label
+    props.clear_label = clear_label
     props.disabled = disabled
     return props
 }
@@ -148,6 +150,7 @@ Reset :: (time: s32) {
     now = -1
     now_label = ""
     done_label = ""
+    clear_label = ""
     disabled = false
 }
 
@@ -319,6 +322,30 @@ NowAndDone :: () -> s32 {
     return 0
 }
 
+// Clear takes the time away and closes; the field shows its placeholder
+// again. The actions share their row without overlapping.
+Clearing :: () -> s32 {
+    Reset(763)
+    now = 765
+    now_label = "Now"
+    done_label = "Done"
+    clear_label = "Clear"
+    result: TimePickerResult = Frame()
+    TapAt(field)
+    result = Frame()
+    clear: Rectangle = Action("Clear")
+    now_button: Rectangle = Action("Now")
+    done: Rectangle = Action("Done")
+    if !result.open || !Shown(clear) || !Shown(now_button) || !Shown(done) { return 1 }
+    if clear.x + clear.width > now_button.x || now_button.x + now_button.width > done.x { return 2 }
+    TapAt(clear)
+    result = Frame()
+    if result.open || !result.changed || result.value != -1 || value != -1 { return 3 }
+    result = Frame()
+    if result.changed || FieldText() != "--:--" { return 4 }
+    return 0
+}
+
 // Near the bottom of the window the popup opens above the field, and every
 // paint stays inside the window.
 Placement :: () -> s32 {
@@ -415,6 +442,8 @@ main :: () -> s32 {
     if off != 0 { return 60 + off }
     actions: s32 = NowAndDone()
     if actions != 0 { return 70 + actions }
+    cleared: s32 = Clearing()
+    if cleared != 0 { return 110 + cleared }
     placed: s32 = Placement()
     if placed != 0 { return 80 + placed }
     device: s32 = DeviceScrolling()

@@ -6759,7 +6759,7 @@ WidgetValidSpinboxStepResult :: (value: HostValue) -> bool {
 }
 
 WidgetTimePickerPropsCodec :: struct {
-    fields: [12]HostField
+    fields: [13]HostField
     bounds: WidgetRectangleCodec
 }
 
@@ -6768,7 +6768,7 @@ WidgetEncodeTimePickerProps :: (data: TimePickerProps, codec: *WidgetTimePickerP
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("TimePickerProps")
     value.fields = *codec.fields[0]
-    value.field_count = 12
+    value.field_count = 13
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("bounds")
@@ -6789,10 +6789,12 @@ WidgetEncodeTimePickerProps :: (data: TimePickerProps, codec: *WidgetTimePickerP
     codec.fields[8].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.now_label), .length = cast(usize)data.now_label.count}
     codec.fields[9].name = HostTextData("done_label")
     codec.fields[9].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.done_label), .length = cast(usize)data.done_label.count}
-    codec.fields[10].name = HostTextData("scale")
-    codec.fields[10].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[11].name = HostTextData("disabled")
-    codec.fields[11].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    codec.fields[10].name = HostTextData("clear_label")
+    codec.fields[10].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.clear_label), .length = cast(usize)data.clear_label.count}
+    codec.fields[11].name = HostTextData("scale")
+    codec.fields[11].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
+    codec.fields[12].name = HostTextData("disabled")
+    codec.fields[12].value = HostScalar("bool", ifx data.disabled then 1 else 0)
     return value
 }
 
@@ -6859,13 +6861,19 @@ WidgetDecodeTimePickerProps :: (value: HostValue, codec: *WidgetTimePickerPropsC
         }
     }
     {
-        field_at := HostFieldAt(value, 10, "scale")
+        field_at := HostFieldAt(value, 10, "clear_label")
+        if field_at >= 0 {
+            data.clear_label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "scale")
         if field_at >= 0 {
             data.scale = cast(float32)value.fields[field_at].value.real
         }
     }
     {
-        field_at := HostFieldAt(value, 11, "disabled")
+        field_at := HostFieldAt(value, 12, "disabled")
         if field_at >= 0 {
             data.disabled = value.fields[field_at].value.integer != 0
         }
@@ -6938,13 +6946,19 @@ WidgetValidTimePickerProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 10, "scale")
+        field_at := HostFieldAt(value, 10, "clear_label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "scale")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 11, "disabled")
+        field_at := HostFieldAt(value, 12, "disabled")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
