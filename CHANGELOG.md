@@ -44,6 +44,11 @@
 - `TitleBar` and `ModalFrame` can draw their title strong, with the same
   emphasis as Text's strong ranges, and a `ModalFrame` can start its title
   at its content's edge, or after its left action, instead of centring it.
+- `Text` can type its text out: while `typing` is set it paints only the
+  first `typed` characters, never part of an accented letter, emoji or
+  multibyte character, and keeps the whole text's layout and accessible
+  label, so no word moves while it appears and screen readers read it all.
+  `TextCharactersEnd` gives where those characters end.
 
 ### Fixed
 

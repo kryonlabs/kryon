@@ -81,5 +81,50 @@ main :: () -> s32 {
     TreeNodeAt(TestSession(), 1).semantic_label != props.text {
         return 3
     }
+    // Typed text keeps the whole text's layout and label and paints only
+    // its typed characters, never part of one.
+    TextHostTyping()
+    typed := TextProps.{.key = cast(u64)9, .bounds = Rectangle.{0.0, 0.0, 60.0, 28.0},
+        .text = "ab cd\né水", .class_name = 7, .align = cast(TextAlign)TextAlignCenter,
+        .typing = true, .typed = 4}
+    if TypedFrame(typed, 3) != 1 || TextHostTypedValue(0) != "ab c" ||
+    TextHostTypedX(0) != 5 ||
+    TreeNodeAt(TestSession(), 1).semantic_label != typed.text {
+        return 4
+    }
+    TextHostTyping()
+    typed.typed = 7
+    if TypedFrame(typed, 4) != 2 || TextHostTypedValue(0) != "ab cd" ||
+    TextHostTypedValue(1) != "é" || TextHostTypedX(1) != 5 {
+        return 5
+    }
+    TextHostTyping()
+    typed.typed = 0
+    if TypedFrame(typed, 5) != 0 {
+        return 6
+    }
+    TextHostTyping()
+    typed.text = "éx"
+    typed.typed = 1
+    if TypedFrame(typed, 6) != 1 || TextHostTypedValue(0) != "é" ||
+    TextHostTypedX(0) != 10 {
+        return 7
+    }
+    TextHostTyping()
+    typed.typing = false
+    if TypedFrame(typed, 7) != 1 || TextHostTypedValue(0) != typed.text {
+        return 8
+    }
     return 0
+}
+
+// Paints one frame of typed text and returns how many lines it painted, or
+// -1 when the frame failed.
+TypedFrame :: (props: TextProps, frame: u64) -> s32 {
+    BeginFrame(TestSession(), frame, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    Text(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TextHostFailed() {
+        return -1
+    }
+    return TextHostLabels()
 }

@@ -2,6 +2,7 @@
 #import "text_align"
 #import "text_props"
 #import "utf8"
+Grapheme :: #import "std/grapheme";
 
 using TextAlign;
 using TextWrap;
@@ -163,6 +164,20 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
     // token boundaries and trailing-space policy as wrapped text.
     if !wrapped && line.end > line.start { line.width = GlyphWidth(value[line.start:line.end], font, typeface) }
     return line
+}
+
+// The byte offset just after the first count characters of value. A
+// character is a grapheme cluster, so typed text never splits an accent, an
+// emoji or a multibyte letter. No characters end at 0; a count past the
+// last character ends at the whole text.
+#program_export
+TextCharactersEnd :: (value: string, count: s32) -> s32 {
+    end: s32 = 0
+    while count > 0 && end < cast(s32)value.count {
+        end = Grapheme.Next(value, end)
+        count -= 1
+    }
+    return end
 }
 
 #program_export
