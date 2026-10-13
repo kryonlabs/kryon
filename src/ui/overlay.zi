@@ -3,6 +3,9 @@ DismissibleOverlayPolicy :: struct {
     closed: bool
     outside_released: bool
     release_consumed: bool
+    // A press on the backdrop or the panel's own background ended, whether
+    // or not that closes the overlay.
+    tapped: bool
 }
 
 #program_export
@@ -16,6 +19,7 @@ OverlayViewExtent :: (requested: s32, fallback: s32) -> s32 {
 DismissibleOverlayPolicyFor :: (released: bool, release_consumed: bool,
     dismiss_disabled: bool, pointer_inside: bool) -> DismissibleOverlayPolicy {
     policy: DismissibleOverlayPolicy
+    policy.tapped = released && !release_consumed
     if released && !release_consumed && !dismiss_disabled && !pointer_inside {
         policy.closed = true
         policy.outside_released = true

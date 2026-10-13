@@ -34,4 +34,8 @@ DismissibleOverlayResult :: struct {
     closed: bool
     outside_released: bool
     release_consumed: bool
+    // The backdrop or the panel's own background, not a control on it, was
+    // pressed and released this frame. An overlay that may not be dismissed
+    // can treat this tap as its own action, such as going on.
+    tapped: bool
 }

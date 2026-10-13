@@ -87,6 +87,8 @@ mutate menu.zi menu_laws.zi 's/    return (start + direction + item_count) % ite
 mutate modal.zi modal_laws.zi 's/    if released && !release_consumed && !pointer_inside {/    if released \&\& !pointer_inside {/' OtherwiseStays
 # An overlay that forbids dismissing closing anyway.
 mutate overlay.zi overlay_laws.zi 's/ && !dismiss_disabled//' OtherwiseStays
+# An overlay that reports a release someone else already took as a tap.
+mutate overlay.zi overlay_laws.zi 's/policy.tapped = released && !release_consumed/policy.tapped = released/' ReleasesAreTaps
 # An ownerless popup under another popup keeping the input.
 mutate popup_ownership.zi popup_ownership_laws.zi 's/    return has_top && (!has_owner || !same_top)/    return has_top \&\& !same_top/' OwnerlessTopCaptures
 # A reorder committed by a release that ended no drag.
