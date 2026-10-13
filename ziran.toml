@@ -30,6 +30,12 @@ AndroidDevice = "src/backend/android_device.zi"
 android_run = "src/backend/android_run.zi"
 android_touch = "src/backend/android_touch.zi"
 bundle_player = "src/backend/bundle_player.zi"
+# Run portable app bundles inside a host app and draw their widgets.
+hosted_app = "src/backend/hosted_app.zi"
+hosted_values = "src/backend/hosted_values.zi"
+widget_codec = "src/backend/widget_codec.zi"
+widget_host = "src/backend/widget_host.zi"
+key_input = "src/ui/key_input.zi"
 # Headless frames: paints into a pixel buffer on every target.
 pixmap = "src/backend/pixmap.zi"
 pixmap_frame = "src/backend/pixmap_frame.zi"
