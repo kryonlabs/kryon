@@ -45,6 +45,8 @@ using NavigationBarConfigPropsModule :: #import "navigation_bar_config_props";
 using NavigationBarConfigWidgetModule :: #import "navigation_bar_config_widget";
 using OverlayPropsModule :: #import "overlay_props";
 using OverlayWidgetModule :: #import "overlay_widget";
+using PressPropsModule :: #import "press_props";
+using PressWidgetModule :: #import "press_widget";
 using ProgressPropsModule :: #import "progress_props";
 using ProgressWidgetModule :: #import "progress_widget";
 using RadioPropsModule :: #import "radio_props";
