@@ -52,6 +52,8 @@ Frame :: () -> s32 {
     props.bounds = Rectangle.{0.0, 0.0, 240.0, 48.0}
     props.title = "Voyager"
     if phase == 4 { props.title = "Interstellar Navigation" }
+    // A strong title is drawn again with its small extra stroke.
+    props.strong_title = phase == 0
     props.leading_label = "Return"
     props.has_leading_action = true
     props.has_dropdown = phase > 0 && phase < 4
@@ -116,6 +118,7 @@ main :: () -> s32 {
         index += 1
     }
     if TitleFills() < 12 || TitleStrokes() < 16 ||
-        TitleLabels() < 5 || TitleTitles() != 1 { return 2 }
+        TitleLabels() < 6 || TitleTitles() != 2 ||
+        TitleStrongOffset() != 1 { return 2 }
     return 0
 }

@@ -21,6 +21,10 @@ ModalFrameProps :: struct {
     has_left_action: bool
     has_right_action: bool
     dismiss_disabled: bool
+    // The title drawn with emphasis, as Text's strong ranges, and at the
+    // content's start instead of centred.
+    strong_title: bool
+    title_at_start: bool
 }
 
 ModalFrameResult :: struct {

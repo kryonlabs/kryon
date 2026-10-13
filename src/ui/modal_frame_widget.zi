@@ -70,6 +70,17 @@ ModalFrameKey :: (session: Session, props: ModalFrameProps) -> u64 {
     return TreeNextKey(session)
 }
 
+// Where a title at the start begins: at the content's edge, or after the
+// left action.
+ModalFrameTitleStart :: (layout: ModalFrameLayout, metrics: ModalMetrics,
+    has_left_action: bool) -> s32 {
+    if has_left_action {
+        return cast(s32)(layout.left_button.x + layout.left_button.width) +
+            metrics.frame_icon_edge_gap
+    }
+    return cast(s32)layout.content.x
+}
+
 // Returns the checked panel and content rectangles. Overlays paint above
 // page content, so content belongs inside the panel: while the panel stays
 // open, the frame opens the panel's scope and reports `opened`; the caller
@@ -150,15 +161,26 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
         }
         title_x: s32 = cast(s32)result.layout.panel.x +
             (cast(s32)result.layout.panel.width - width) / 2
+        if props.title_at_start {
+            title_x = ModalFrameTitleStart(result.layout, metrics,
+                props.has_left_action)
+        }
         title_clip: Rectangle = result.layout.panel
         title_clip.x += cast(float32)metrics.frame_title_side_padding
         title_clip.width -= cast(float32)(metrics.frame_title_side_padding * 2)
+        if props.title_at_start {
+            title_clip.x = cast(float32)title_x
+            title_clip.width = cast(float32)result.layout.title_max_width
+        }
         if title_clip.width < 0.0 { title_clip.width = 0.0 }
+        title_color: Color = ColorFromPacked(Opacity(title.value.foreground,
+            StyleOpacityValue(title.value.fields, title.value.opacity)))
         PaintClippedLabel(session, result.panel_node, props.title,
-            title_x, result.layout.title_y, font,
-            ColorFromPacked(Opacity(title.value.foreground,
-                StyleOpacityValue(title.value.fields,
-                    title.value.opacity))), title_clip)
+            title_x, result.layout.title_y, font, title_color, title_clip)
+        if props.strong_title {
+            PaintClippedEmphasis(session, result.panel_node, props.title,
+                title_x, result.layout.title_y, font, title_color, title_clip)
+        }
     }
     if props.has_left_action {
         button: ButtonProps

@@ -5,6 +5,8 @@ fills: s32;
 strokes: s32;
 labels: s32;
 titles: s32;
+first_title_x: s32;
+strong_offset: s32;
 failed: bool;
 
 #program_export
@@ -105,7 +107,11 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
         clip.x + clip.width > 240.0 || color.a == cast(u8)0 {
         failed = true
     }
-    if value == "Voyager" { titles += 1 }
+    if value == "Voyager" {
+        if titles == 0 { first_title_x = x }
+        if titles == 1 { strong_offset = x - first_title_x }
+        titles += 1
+    }
     if value == "Interstellar Navigation" && font != 12 { failed = true }
     labels += 1
 }
@@ -124,3 +130,6 @@ TitleLabels :: () -> s32 { return labels }
 
 #program_export
 TitleTitles :: () -> s32 { return titles }
+
+#program_export
+TitleStrongOffset :: () -> s32 { return strong_offset }
