@@ -42,6 +42,7 @@ FnGetWindowProperty :: #type (*void, u64, u64, s64, s64, s32, u64, *u64,
 FnDeleteProperty :: #type (*void, u64, u64) -> s32 #c_call;
 FnFlush :: #type (*void) -> s32 #c_call;
 FnFree :: #type (*void) -> s32 #c_call;
+FnQueryTree :: #type (*void, u64, *u64, *u64, **u64, *u32) -> s32 #c_call;
 // libXRes: XResQueryClientIds, XResGetClientPid, XResClientIdsDestroy.
 FnQueryClientIds :: #type (*void, s64, *void, *s64, **void) -> s32 #c_call;
 FnClientPid :: #type (*void) -> s32 #c_call;
@@ -60,6 +61,7 @@ x_get_window_property: FnGetWindowProperty;
 x_delete_property: FnDeleteProperty;
 x_flush: FnFlush;
 x_free: FnFree;
+x_query_tree: FnQueryTree;
 res_query_client_ids: FnQueryClientIds;
 res_client_pid: FnClientPid;
 res_client_ids_destroy: FnClientIdsDestroy;
@@ -83,6 +85,8 @@ clipboard_atom: u64;
 png_atom: u64;
 incr_atom: u64;
 property_atom: u64;
+pid_atom: u64;
+client_list_atom: u64;
 
 Resolve :: (handle: *void, slot: *void, name: string) -> bool {
     bytes: [64]u8
@@ -119,6 +123,7 @@ LoadLibrary :: () -> bool {
     ok = ok && Resolve(handle, cast(*void)*x_delete_property, "XDeleteProperty")
     ok = ok && Resolve(handle, cast(*void)*x_flush, "XFlush")
     ok = ok && Resolve(handle, cast(*void)*x_free, "XFree")
+    ok = ok && Resolve(handle, cast(*void)*x_query_tree, "XQueryTree")
     library_ready = ok
     return ok
 }
@@ -130,7 +135,7 @@ Atom :: (name: string) -> u64 {
 }
 
 // The X-Resource extension names the process behind a window. Without it,
-// every owner is treated as another application.
+// OwnedByWindow compares the owner with this process's own windows.
 LoadResources :: () -> bool {
     if res_tried { return res_ready }
     res_tried = true
@@ -149,7 +154,7 @@ LoadResources :: () -> bool {
 // copied text through its own window. That window can only answer from the
 // event loop this read is blocking, so a conversion would wait out its limit.
 OwnedHere :: (owner: u64) -> bool {
-    if !LoadResources() { return false }
+    if !LoadResources() { return OwnedByWindow(owner) }
     // XResClientIdSpec: the owner window, asking only for its client's PID.
     spec: [2]u64 = .{owner, 2}
     count: s64 = 0
@@ -157,6 +162,75 @@ OwnedHere :: (owner: u64) -> bool {
     if res_query_client_ids(display, 1, cast(*void)*spec[0], *count, *values) != 0 { return false }
     owned: bool = count > 0 && values != null && res_client_pid(values) == ProcessId()
     if values != null { res_client_ids_destroy(count, values) }
+    return owned
+}
+
+// The process a window names in _NET_WM_PID, or 0.
+WindowPid :: (target: u64) -> s32 {
+    actual_type: u64
+    format: s32
+    items: u64
+    after: u64
+    data: *u8
+    if x_get_window_property(display, target, pid_atom, 0, 1, 0, 0,
+        *actual_type, *format, *items, *after, *data) != 0 {
+        return 0
+    }
+    pid: s32 = 0
+    // Format 32 items arrive as C longs.
+    if data != null && format == 32 && items >= 1 {
+        pid = cast(s32)(cast(*s64)data).*
+    }
+    if data != null { unused x_free(cast(*void)data) }
+    return pid
+}
+
+// Whether one of windows, `count` window ids, belongs to this process and to
+// the owner's X client. A client's ids share their bits above the server's
+// resource mask, which is at least 18 bits wide (2048 clients at most), so
+// ids that differ above bit 18 come from different clients.
+OwnWindowAmong :: (windows: *u64, count: u64, owner: u64) -> bool {
+    index: u64 = 0
+    while index < count {
+        candidate: u64 = windows[index]
+        if (candidate >> 18) == (owner >> 18) && WindowPid(candidate) == ProcessId() {
+            return true
+        }
+        index += 1
+    }
+    return false
+}
+
+// Without X-Resource: whether the owner shares its X client with one of this
+// process's windows, as the hidden window a toolkit copies through shares it
+// with the application's window. Window managers list their clients' windows
+// on the root, which otherwise holds them directly.
+OwnedByWindow :: (owner: u64) -> bool {
+    root: u64 = x_default_root_window(display)
+    actual_type: u64
+    format: s32
+    items: u64
+    after: u64
+    data: *u8
+    owned: bool = false
+    if x_get_window_property(display, root, client_list_atom, 0, 65536, 0, 0,
+        *actual_type, *format, *items, *after, *data) == 0 && data != null {
+        if format == 32 {
+            owned = OwnWindowAmong(cast(*u64)data, items, owner)
+        }
+        unused x_free(cast(*void)data)
+    }
+    if owned { return true }
+    root_return: u64
+    parent_return: u64
+    children: *u64 = null
+    count: u32 = 0
+    if x_query_tree(display, root, *root_return, *parent_return, *children,
+        *count) == 0 {
+        return false
+    }
+    owned = children != null && OwnWindowAmong(children, cast(u64)count, owner)
+    if children != null { unused x_free(cast(*void)children) }
     return owned
 }
 
@@ -174,6 +248,8 @@ Connect :: () -> bool {
     png_atom = Atom("image/png")
     incr_atom = Atom("INCR")
     property_atom = Atom("KRYON_CLIPBOARD")
+    pid_atom = Atom("_NET_WM_PID")
+    client_list_atom = Atom("_NET_CLIENT_LIST")
     return window != 0
 }
 

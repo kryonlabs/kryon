@@ -60,6 +60,9 @@
 
 ### Fixed
 
+- Reading a clipboard image no longer waits two seconds when the application
+  itself copied text, also on systems without the X-Resource library.
+
 - A popup, such as a dropdown's menu or a time picker's hours and minutes,
   shows whole over the edge of the scroll area or dialog it opens from; a
   time picker in a dialog no longer squeezes its popup into the dialog.
