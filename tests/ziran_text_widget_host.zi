@@ -5,6 +5,30 @@ texts: s32;
 fills: s32;
 failed: bool;
 emphasis: bool;
+typing: bool;
+typed_values: [4]string;
+typed_x: [4]s32;
+
+// Typed text records what each painted line shows and where it starts.
+#program_export
+TextHostTyping :: () {
+    typing = true
+    emphasis = false
+    texts = 0
+    fills = 0
+}
+
+#program_export
+TextHostTypedValue :: (index: s32) -> string {
+    if index < 0 || index >= 4 { return "" }
+    return typed_values[index]
+}
+
+#program_export
+TextHostTypedX :: (index: s32) -> s32 {
+    if index < 0 || index >= 4 { return -1 }
+    return typed_x[index]
+}
 
 #program_export
 TextHostEmphasis :: () {
@@ -45,6 +69,14 @@ RasterText :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
+    if typing {
+        if texts < 4 {
+            typed_values[texts] = value
+            typed_x[texts] = x
+        }
+        texts += 1
+        return
+    }
     if emphasis {
         values: [5]string = .["ab cd", "b cd", "é水", "é", "水"]
         positions: [5]s32 = .[0, 11, 0, 1, 21]

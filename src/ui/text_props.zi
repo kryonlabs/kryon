@@ -46,4 +46,9 @@ TextProps :: struct {
     selectable: bool
     strikethrough: bool
     strong: []TextRange
+    // While typing, only the first typed characters are painted, as if they
+    // were being typed. A character is a grapheme cluster. The layout, the
+    // size and the accessible label always keep the whole text.
+    typing: bool
+    typed: s32
 }

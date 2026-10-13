@@ -169,11 +169,20 @@
         y: s32 = cast(s32)prepared.bounds.y +
         cast(s32)TextAlignmentOffset(prepared.bounds.height,
             cast(float32)total_height, cast(s32)props.vertical_align)
+        // Text being typed is laid out whole and painted up to the end of
+        // its typed characters, so no word moves while it is typed.
+        typed_end: s32 = cast(s32)props.text.count
+        if props.typing {
+            typed_end = TextCharactersEnd(props.text, props.typed)
+        }
         start: s32 = 0
         while start <= (cast(s32)props.text.count) {
             line: TextLinePlan = NextTextLine(props.text, start,
                 prepared.bounds.width, prepared.wrap, prepared.font,
                 prepared.typeface)
+            if line.start >= typed_end && typed_end < cast(s32)props.text.count {
+                break
+            }
             value: string = TextSpan(props.text, line.start,
                 line.end - line.start)
             // A line too wide for its bounds keeps the start that fits and
@@ -193,6 +202,14 @@
             }
             x: s32 = TextLineXFor(cast(s32)prepared.bounds.x,
                 cast(s32)prepared.bounds.width, line.width, cast(s32)props.align)
+            // A line typed partway keeps its place and shows its typed start;
+            // an ellipsis appears once its line is typed to the end.
+            if line.end > typed_end {
+                value = TextSpan(props.text, line.start, typed_end - line.start)
+                line.end = typed_end
+                line.width = GlyphWidth(value, prepared.font, prepared.typeface)
+                ellipsis = false
+            }
             // A line that starts inside the box is drawn whole: a box a little
             // shorter than the line must not cut off the bottoms of its glyphs.
             // Lines that start below the box are still clipped away.
