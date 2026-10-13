@@ -17,6 +17,8 @@ TitleBarProps :: struct {
     has_dropdown: bool
     dropdown_min_width: s32
     dropdown_height: s32
+    // The title drawn with emphasis, as Text's strong ranges.
+    strong_title: bool
 }
 
 TitleBarResult :: struct {

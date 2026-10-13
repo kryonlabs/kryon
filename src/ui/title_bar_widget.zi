@@ -204,11 +204,15 @@ TitleBar :: (session: Session, props: TitleBarProps,
             title.value.typeface)
         paint: TitleBarTitlePaint = TitleBarTitlePaintFor(
             layout, width, line_height)
+        title_color: Color = ColorFromPacked(Opacity(
+            title.value.foreground,
+            StyleOpacityValue(title.value.fields, title.value.opacity)))
         PaintClippedLabel(session, result.node, props.title, paint.x,
-            paint.y, font, ColorFromPacked(Opacity(
-                title.value.foreground,
-                StyleOpacityValue(title.value.fields,
-                    title.value.opacity))), layout.title_bounds)
+            paint.y, font, title_color, layout.title_bounds)
+        if props.strong_title {
+            PaintClippedEmphasis(session, result.node, props.title, paint.x,
+                paint.y, font, title_color, layout.title_bounds)
+        }
     }
     return result
 }

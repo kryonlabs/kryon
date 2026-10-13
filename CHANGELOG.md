@@ -40,6 +40,9 @@
   picker takes the dropdown's look from every style, light or dark, and
   portable apps can draw it through the widget host. `examples/` has a
   window showing it in each state.
+- `TitleBar` and `ModalFrame` can draw their title strong, with the same
+  emphasis as Text's strong ranges, and a `ModalFrame` can start its title
+  at its content's edge, or after its left action, instead of centring it.
 
 ### Fixed
 

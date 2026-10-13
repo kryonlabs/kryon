@@ -5,6 +5,10 @@ panels: s32;
 scrims: s32;
 labels: s32;
 strokes: s32;
+settings_titles: s32;
+centred_title_x: s32;
+start_title_x: s32;
+strong_title_x: s32;
 failed: bool;
 
 #program_export
@@ -114,6 +118,15 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     }
     if value == "Settings" {
         if font != 18 { failed = true }
+        // Phases 0 and 1 centre it; phase 3 starts it, then strengthens it.
+        if settings_titles == 0 {
+            centred_title_x = x
+        } else if settings_titles == 2 {
+            start_title_x = x
+        } else if settings_titles == 3 {
+            strong_title_x = x
+        }
+        settings_titles += 1
     } else if value == "Interstellar Navigation" {
         if font != 12 { failed = true }
     } else {
@@ -136,3 +149,12 @@ ModalLabels :: () -> s32 { return labels }
 
 #program_export
 ModalStrokes :: () -> s32 { return strokes }
+
+#program_export
+ModalCentredTitleX :: () -> s32 { return centred_title_x }
+
+#program_export
+ModalStartTitleX :: () -> s32 { return start_title_x }
+
+#program_export
+ModalStrongTitleX :: () -> s32 { return strong_title_x }

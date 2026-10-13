@@ -53,6 +53,10 @@ Frame :: () -> s32 {
         props.has_left_action = true
         props.left_label = "Back"
     }
+    // A strong title at the start follows the left action and is drawn
+    // again with its small extra stroke.
+    props.strong_title = phase == 3
+    props.title_at_start = phase == 3
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 220.0})
     result: ModalFrameResult = ModalFrame(TestSession(), props)
     clicked: bool = result.left_clicked || result.right_clicked
@@ -128,6 +132,10 @@ main :: () -> s32 {
         index += 1
     }
     if ModalPanels() != 4 || ModalScrims() != 5 ||
-        ModalLabels() != 4 || ModalStrokes() != 8 { return 2 }
+        ModalLabels() != 5 || ModalStrokes() != 8 { return 2 }
+    // Centred, "Settings" (72 wide) starts at 50 + (200 - 72) / 2; at the
+    // start it follows the left action, 60 + 6 + 36 + 6.
+    if ModalCentredTitleX() != 114 || ModalStartTitleX() != 108 ||
+        ModalStrongTitleX() != 109 { return 3 }
     return 0
 }
