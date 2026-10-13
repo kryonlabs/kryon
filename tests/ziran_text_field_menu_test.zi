@@ -21,6 +21,7 @@ using WidgetKind;
 
 phase: s32;
 buffer: [64]u8;
+secure_field: bool;
 
 // A selected "hello" in "hello world"; the field is at (10, 10), 200 by 30.
 Field :: (copy: bool, paste: bool) -> TextFieldResult {
@@ -31,6 +32,7 @@ Field :: (copy: bool, paste: bool) -> TextFieldResult {
     props.anchor = 0
     props.cursor = 5
     props.focused = true
+    props.secure = secure_field
     props.input.copy = copy
     props.input.paste = paste
     return TextField(TestSession(), props)
@@ -113,5 +115,22 @@ main :: () -> s32 {
     SystemClipboardSet("")
     result = Frame(false, true)
     if result.edit.changed || !result.paste_without_text { return 11 }
+
+    // A secure field, such as an API key, takes a paste from its menu but
+    // never copies its text out.
+    secure_field = true
+    SystemClipboardSet("KEY")
+    Secondary(30.0, 20.0)
+    result = Frame(false, false)
+    Click(60.0, 63.0)
+    result = Frame(false, false)
+    result = Frame(false, false)
+    if result.clipboard_write { return 12 }
+    Secondary(30.0, 20.0)
+    result = Frame(false, false)
+    Click(60.0, 89.0)
+    result = Frame(false, false)
+    result = Frame(false, false)
+    if !result.edit.changed || result.edit.replacement != "KEY" { return 13 }
     return 0
 }
