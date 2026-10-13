@@ -21,6 +21,8 @@
 #import "box_props"
 #import "press_widget"
 #import "press_props"
+#import "spinbox_widget"
+#import "spinbox_props"
 #import "text_input_props"
 #import "scroll_widget"
 #import "hosted_values"
@@ -60,6 +62,8 @@ widget_tab_bar_result_codec: WidgetTabBarResultCodec;
 widget_box_codec: WidgetBoxPropsCodec;
 widget_press_codec: WidgetPressPropsCodec;
 widget_press_result_codec: WidgetPressResultCodec;
+widget_spinbox_codec: WidgetSpinboxPropsCodec;
+widget_spinbox_result_codec: WidgetSpinboxStepResultCodec;
 
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
@@ -75,7 +79,8 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (module == "checkbox_widget" && function == "CheckboxHostedHost") ||
     (module == "toggle_widget" && function == "ToggleHostedHost") ||
     (module == "box_widget" && function == "BoxHostedHost") ||
-    (module == "press_widget" && function == "PressHostedHost")
+    (module == "press_widget" && function == "PressHostedHost") ||
+    (module == "spinbox_widget" && function == "SpinboxHostedHost")
 }
 
 WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed) {
@@ -193,6 +198,11 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     if owner == "toggle_widget" && name == "ToggleHostedHost" && WidgetValidToggleProps(props) {
         toggled := Toggle(session, WidgetDecodeToggleProps(props, *widget_toggle_codec))
         result.* = WidgetEncodeToggleValueResult(toggled, *widget_toggle_result_codec)
+        return 1
+    }
+    if owner == "spinbox_widget" && name == "SpinboxHostedHost" && WidgetValidSpinboxProps(props) {
+        stepped := Spinbox(session, WidgetDecodeSpinboxProps(props, *widget_spinbox_codec))
+        result.* = WidgetEncodeSpinboxStepResult(stepped, *widget_spinbox_result_codec)
         return 1
     }
     return 0
