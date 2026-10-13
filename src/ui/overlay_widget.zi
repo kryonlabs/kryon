@@ -59,6 +59,7 @@ DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> Dism
             result.closed = policy.closed
             result.outside_released = policy.outside_released
             result.release_consumed = policy.release_consumed
+            result.tapped = policy.tapped
         }
         result.node = TreeSubmitCurrent(session, key, kind, viewport)
         if result.node < 0 { return result }

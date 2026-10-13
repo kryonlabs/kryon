@@ -10,4 +10,7 @@ B :: (value: s32) -> bool { return value != 0 }
 // took, closes it and takes the release; otherwise the overlay stays and
 // the release is left as it was.
 #law OutsideReleaseCloses custom DismissibleOverlayPolicyFor(true, false, false, false).closed && DismissibleOverlayPolicyFor(true, false, false, false).outside_released && DismissibleOverlayPolicyFor(true, false, false, false).release_consumed;
+// Every release the overlay receives is reported as a tap, inside or
+// outside its panel and whether or not it closes the overlay.
+#law ReleasesAreTaps forall released: 0..1, consumed: 0..1, locked: 0..1, inside: 0..1 => DismissibleOverlayPolicyFor(B(released), B(consumed), B(locked), B(inside)).tapped == (B(released) && !B(consumed));
 #law OtherwiseStays forall released: 0..1, consumed: 0..1, locked: 0..1, inside: 0..1 => (B(released) && !B(consumed) && !B(locked) && !B(inside)) || (!DismissibleOverlayPolicyFor(B(released), B(consumed), B(locked), B(inside)).closed && DismissibleOverlayPolicyFor(B(released), B(consumed), B(locked), B(inside)).release_consumed == B(consumed));

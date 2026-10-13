@@ -120,32 +120,35 @@ Frame :: () -> s32 {
         TreeHitAt(TestSession(), 220.0, 110.0) != 3 ||
         beneath_activation { return -2 }
     if phase == 0 {
-        if overlay.closed || overlay.release_consumed ||
+        if overlay.closed || overlay.release_consumed || overlay.tapped ||
             child_activation { return -3 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, false, false, true})
     } else if phase == 1 {
         if !overlay.closed || !overlay.outside_released ||
-            !overlay.release_consumed || child_activation { return -4 }
+            !overlay.release_consumed || !overlay.tapped ||
+            child_activation { return -4 }
         TreePointerUpdate(TestSession(), PointerFrame.{135.0, 35.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{135.0, 35.0, false, false, true})
     } else if phase == 2 {
-        if overlay.closed || overlay.release_consumed ||
+        if overlay.closed || overlay.release_consumed || overlay.tapped ||
             !child_activation { return -5 }
         TreePointerUpdate(TestSession(), PointerFrame.{190.0, 80.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{190.0, 80.0, false, false, true})
     } else if phase == 3 {
-        if overlay.closed || overlay.release_consumed ||
+        // A tap on the panel's own background stays open and is reported.
+        if overlay.closed || overlay.release_consumed || !overlay.tapped ||
             child_activation { return -6 }
         TreePointerUpdate(TestSession(), PointerFrame.{190.0, 80.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{250.0, 130.0, false, false, true})
     } else if phase == 4 {
         if !overlay.closed || !overlay.outside_released ||
-            !overlay.release_consumed { return -7 }
+            !overlay.release_consumed || !overlay.tapped { return -7 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, false, false, true})
     } else {
-        if overlay.closed || overlay.release_consumed ||
+        // An overlay that may not be dismissed still reports the tap.
+        if overlay.closed || overlay.release_consumed || !overlay.tapped ||
             child_activation { return -8 }
     }
     PaintFlush(TestSession())

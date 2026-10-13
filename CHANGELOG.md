@@ -54,6 +54,9 @@
   browsers use their image smoothing, so a detailed picture drawn smaller or
   larger than its pixels stays clean instead of turning jagged. Images
   without it keep their sharp pixels.
+- `DismissibleOverlay` reports a tap on its backdrop or on its panel's own
+  background as `tapped`, whether or not the tap closes it, so an overlay
+  that may not be dismissed, such as a guide, can make a tap go on.
 
 ### Fixed
 
