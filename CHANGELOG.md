@@ -34,7 +34,10 @@
 
 - Android apps without Java code keep their content clear of the
   navigation bar, the keyboard and display cutouts:
-  `PollAndroidWindowInsets` reads the window insets through JNI.
+  `PollAndroidWindowInsets` reads the window insets through JNI. On
+  Android 10 and older it also reads the window's visible frame, where those
+  versions may report only the keyboard, so content stays above it there
+  too.
 - Fonts packed in an Android app's APK load by their relative path, so
   phones older than Android 10, which cannot name a system font, use the
   app's own font.

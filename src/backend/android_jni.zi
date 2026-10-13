@@ -52,6 +52,8 @@ JniGetArrayLengthFn :: #type (*JniEnv, *void) -> s32 #c_call;
 JniGetObjectArrayElementFn :: #type (*JniEnv, *void, s32) -> *void #c_call;
 JniNewByteArrayFn :: #type (*JniEnv, s32) -> *void #c_call;
 JniGetByteArrayRegionFn :: #type (*JniEnv, *void, s32, s32, *u8) -> void #c_call;
+JniNewIntArrayFn :: #type (*JniEnv, s32) -> *void #c_call;
+JniGetIntArrayRegionFn :: #type (*JniEnv, *void, s32, s32, *s32) -> void #c_call;
 JniSetByteArrayRegionFn :: #type (*JniEnv, *void, s32, s32, *u8) -> void #c_call;
 JniRegisterNativesFn :: #type (*JniEnv, *void, *void, s32) -> s32 #c_call;
 JniGetJavaVMFn :: #type (*JniEnv, **JniVm) -> s32 #c_call;
@@ -110,9 +112,13 @@ JniFunctions :: struct {
     GetObjectArrayElement: JniGetObjectArrayElementFn
     reserved_174: [2]*void
     NewByteArray: JniNewByteArrayFn
-    reserved_177: [23]*void
+    reserved_177: [2]*void
+    NewIntArray: JniNewIntArrayFn
+    reserved_180: [20]*void
     GetByteArrayRegion: JniGetByteArrayRegionFn
-    reserved_201: [7]*void
+    reserved_201: [2]*void
+    GetIntArrayRegion: JniGetIntArrayRegionFn
+    reserved_204: [4]*void
     SetByteArrayRegion: JniSetByteArrayRegionFn
     reserved_209: [6]*void
     RegisterNatives: JniRegisterNativesFn

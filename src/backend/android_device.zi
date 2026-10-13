@@ -186,6 +186,63 @@ device_insets_wait: s32;
         return value
     }
 
+    // How far the keyboard reaches up from the bottom of the decor view's
+    // window, from the window's visible frame. Before Android 11 a resizing
+    // window may report the keyboard only there, not in its insets.
+    InsetsVisibleBottom :: (env: *JniEnv, decor: *void) -> s32 {
+        class_bytes: [24]u8
+        name: [40]u8
+        signature: [32]u8
+        if decor == null {
+            return 0
+        }
+        rect_class := env.functions.FindClass(env, InsetsCString("android/graphics/Rect", class_bytes[:]))
+        if rect_class == null || InsetsFailed(env) {
+            return 0
+        }
+        create := env.functions.GetMethodID(env, rect_class, InsetsCString("<init>", name[:]),
+            InsetsCString("()V", signature[:]))
+        if create == null || InsetsFailed(env) {
+            return 0
+        }
+        arguments: [1]JniValue
+        frame := env.functions.NewObjectA(env, rect_class, create, *arguments[0])
+        location := env.functions.NewIntArray(env, 2)
+        if frame == null || location == null || InsetsFailed(env) {
+            return 0
+        }
+        klass := env.functions.GetObjectClass(env, decor)
+        visible := env.functions.GetMethodID(env, klass,
+            InsetsCString("getWindowVisibleDisplayFrame", name[:]),
+            InsetsCString("(Landroid/graphics/Rect;)V", signature[:]))
+        if visible == null || InsetsFailed(env) {
+            return 0
+        }
+        arguments[0].reference = frame
+        env.functions.CallVoidMethodA(env, decor, visible, *arguments[0])
+        if InsetsFailed(env) {
+            return 0
+        }
+        on_screen := env.functions.GetMethodID(env, klass, InsetsCString("getLocationOnScreen", name[:]),
+            InsetsCString("([I)V", signature[:]))
+        if on_screen == null || InsetsFailed(env) {
+            return 0
+        }
+        arguments[0].reference = location
+        env.functions.CallVoidMethodA(env, decor, on_screen, *arguments[0])
+        position: [2]s32
+        env.functions.GetIntArrayRegion(env, location, 0, 2, *position[0])
+        if InsetsFailed(env) {
+            return 0
+        }
+        visible_bottom := InsetsField(env, frame, "bottom")
+        height := InsetsInteger(env, decor, "getHeight")
+        if visible_bottom <= position[1] || height <= 0 {
+            return 0
+        }
+        return position[1] + height - visible_bottom
+    }
+
     // Reads the decor view's root insets; false until the view is attached.
     InsetsRead :: (session: *AndroidJniSession) -> bool {
         env := session.env
@@ -220,6 +277,10 @@ device_insets_wait: s32;
             right = InsetsInteger(env, insets, "getStableInsetRight")
             bottom = InsetsInteger(env, insets, "getStableInsetBottom")
             ime = InsetsInteger(env, insets, "getSystemWindowInsetBottom") - bottom
+            visible := InsetsVisibleBottom(env, decor)
+            if visible > ime {
+                ime = visible
+            }
         }
         cutout_left: s32
         cutout_top: s32
