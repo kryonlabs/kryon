@@ -14,18 +14,19 @@ bind_line=raster:RasterLine=paned_view_host:RasterLine
 bind_text=raster_text:RasterText=paned_view_host:RasterText
 bind_clipped=raster_text:RasterTextClipped=paned_view_host:RasterTextClipped
 bind_image=paint_queue:RasterImage=paned_view_host:RasterImage
+bind_mesh=paint_queue:RasterImageMesh=paned_view_host:RasterImageMesh
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$portable"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     --bind "$bind_fill" --bind "$bind_outline" \
     --bind "$bind_line" --bind "$bind_text" --bind "$bind_clipped" \
-    --bind "$bind_image" --entry paned_view_portable_test:main \
+    --bind "$bind_image" --bind "$bind_mesh" --entry paned_view_portable_test:main \
     -o "$work/source.zib" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --bind "$bind_fill" --bind "$bind_outline" \
     --bind "$bind_line" --bind "$bind_text" --bind "$bind_clipped" \
-    --bind "$bind_image" --entry paned_view_portable_test:main \
+    --bind "$bind_image" --bind "$bind_mesh" --entry paned_view_portable_test:main \
     -o "$work/saved.zib" "$work/ir/paned_view_portable_test.zir"
 cmp "$work/source.zib" "$work/saved.zib"
 test "$("$ziran" run "$work/source.zib")" = 0
@@ -64,7 +65,7 @@ for input in source saved; do
         --module-path "$module_dir" --module-path "$ziran_root/std" \
         --bind "$bind_fill" --bind "$bind_outline" \
         --bind "$bind_line" --bind "$bind_text" \
-        --bind "$bind_clipped" --bind "$bind_image" \
+        --bind "$bind_clipped" --bind "$bind_image" --bind "$bind_mesh" \
         -o "$output" "$module"
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
 done

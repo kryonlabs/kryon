@@ -104,13 +104,26 @@ addToLibrary({
       [25,15,[0,0,255,255]], [35,11,[255,255,0,255]],
       [45,11,[255,0,0,255]], [81,11,[255,0,255,255]],
       [91,11,[128,0,255,255]], [101,11,[0,255,255,255]],
-      [81,31,[255,128,0,255]], [81,38,[0,0,0,255]]
+      [81,31,[255,128,0,255]], [81,38,[0,0,0,255]],
+      [99,33,[0,255,0,255]], [108,33,[255,0,0,255]],
+      [99,42,[255,255,255,255]], [108,42,[0,0,255,255]]
     ];
     for(var item of cases) {
       var got=Array.from(ctx.getImageData(Math.round(item[0]*dpi),Math.round(item[1]*dpi),1,1).data);
       if(got.some(function(value,index){return value!==item[2][index];})) {
         globalThis.canvasTestError='pixel '+item[0]+','+item[1]+' '+got+' expected '+item[2];
         return 20;
+      }
+    }
+    // The warped image's two triangles share the cell's diagonal; no seam
+    // lets the background through along it.
+    for(var k=1;k<15;k++) {
+      if(k===7||k===8) continue;
+      var expected=k<7?[0,255,0,255]:[0,0,255,255];
+      var seam=Array.from(ctx.getImageData(Math.round((96+k)*dpi),Math.round((30+k)*dpi),1,1).data);
+      if(seam.some(function(value,index){return value!==expected[index];})) {
+        globalThis.canvasTestError='warped image seam at '+(96+k)+','+(30+k)+' '+seam+' expected '+expected;
+        return 37;
       }
     }
     var textPixels=ctx.getImageData(0,70*dpi,160*dpi,35*dpi).data;

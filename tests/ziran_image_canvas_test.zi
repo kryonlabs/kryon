@@ -84,5 +84,51 @@ main :: () -> s32 {
     if RasterImageRGBA(short[:], 4, 4, 16, asset[:], 2, 2, 8,
         source, destination, full, Vector2.{0.0, 0.0}, 0.0, 0.0,
         white) { return 11 }
+    return MeshCases(canvas[:], asset[:], source, full, white)
+}
+
+DrawMesh :: (canvas: []u8, asset: []u8, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle,
+    smooth: bool) -> bool {
+    Clear(canvas)
+    return RasterImageMeshRGBA(canvas, 4, 4, 16, asset, 2, 2, 8, source,
+        points, columns, rows, Vector2.{0.0, 0.0}, clip,
+        Color.{255, 255, 255, 255}, smooth)
+}
+
+// A warped image: a plain grid matches the stretched image, a mirrored
+// grid draws mirrored, and a strip bent into an L carries the image round
+// its corner.
+MeshCases :: (canvas: []u8, asset: []u8, source: Rectangle,
+    full: Rectangle, white: Color) -> s32 {
+    red: Color = Color.{255, 0, 0, 255}
+    green: Color = Color.{0, 255, 0, 255}
+    blue: Color = Color.{0, 0, 255, 255}
+    transparent: Color = Color.{0, 0, 0, 0}
+    plain: [4]Vector2 = .[Vector2.{0.0, 0.0}, Vector2.{4.0, 0.0},
+        Vector2.{0.0, 4.0}, Vector2.{4.0, 4.0}]
+    if !DrawMesh(canvas, asset, source, plain[:], 2, 2, full, false) { return 20 }
+    if !PixelIs(canvas, 0, 0, red) || !PixelIs(canvas, 3, 0, green) ||
+        !PixelIs(canvas, 0, 3, blue) || !PixelIs(canvas, 3, 3, white) { return 21 }
+    mirrored: [4]Vector2 = .[Vector2.{4.0, 0.0}, Vector2.{0.0, 0.0},
+        Vector2.{4.0, 4.0}, Vector2.{0.0, 4.0}]
+    if !DrawMesh(canvas, asset, source, mirrored[:], 2, 2, full, false) { return 22 }
+    if !PixelIs(canvas, 0, 0, green) || !PixelIs(canvas, 3, 0, red) ||
+        !PixelIs(canvas, 0, 3, white) || !PixelIs(canvas, 3, 3, blue) { return 23 }
+    bent: [6]Vector2 = .[Vector2.{0.0, 0.0}, Vector2.{2.0, 0.0},
+        Vector2.{0.0, 4.0}, Vector2.{2.0, 2.0},
+        Vector2.{4.0, 4.0}, Vector2.{4.0, 2.0}]
+    if !DrawMesh(canvas, asset, source, bent[:], 2, 3, full, false) { return 24 }
+    if !PixelIs(canvas, 0, 0, red) || !PixelIs(canvas, 3, 0, transparent) ||
+        !PixelIs(canvas, 3, 3, blue) { return 25 }
+    clip: Rectangle = Rectangle.{0.0, 0.0, 2.0, 4.0}
+    if !DrawMesh(canvas, asset, source, plain[:], 2, 2, clip, false) { return 26 }
+    if !PixelIs(canvas, 0, 0, red) || !PixelIs(canvas, 3, 0, transparent) { return 27 }
+    if !DrawMesh(canvas, asset, source, plain[:], 2, 2, full, true) { return 28 }
+    if !PixelIs(canvas, 0, 0, red) ||
+        !PixelIs(canvas, 1, 0, Color.{191, 64, 0, 255}) { return 29 }
+    // Too few points for the grid draw nothing.
+    if DrawMesh(canvas, asset, source, plain[:3], 2, 2, full, false) { return 30 }
+    if !PixelIs(canvas, 0, 0, transparent) { return 31 }
     return 0
 }

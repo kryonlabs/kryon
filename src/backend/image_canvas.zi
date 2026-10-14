@@ -1,5 +1,6 @@
 #import "drawing_props"
 #import "geometry"
+#import "image_props"
 #import "math"
 
 // A portable RGBA8 raster primitive. The host resolves asset paths and texture
@@ -128,6 +129,282 @@ RasterImageRGBA :: (canvas: []u8, canvas_width: s32,
             x += 1
         }
         y += 1
+    }
+    return true
+}
+
+// --- Warped images ----------------------------------------------------------
+
+// The source point at a share (fx, fy) of the source rectangle. A negative
+// width or height mirrors that rectangle, as for RasterImage.
+#program_export
+MeshSourcePoint :: (source: Rectangle, fx: float32, fy: float32) -> Vector2 {
+    x: float32 = source.x + source.width * fx
+    if source.width < 0.0 { x = source.x - source.width + source.width * fx }
+    y: float32 = source.y + source.height * fy
+    if source.height < 0.0 { y = source.y - source.height + source.height * fy }
+    return Vector2.{x, y}
+}
+
+// Whether a grid of `columns` × `rows` points is a mesh this many points
+// can draw.
+#program_export
+MeshGridValid :: (points: []Vector2, columns: s32, rows: s32) -> bool {
+    if columns < 2 || rows < 2 || columns > IMAGE_MESH_POINT_LIMIT ||
+        rows > IMAGE_MESH_POINT_LIMIT { return false }
+    count: s64 = cast(s64)columns * cast(s64)rows
+    return count <= cast(s64)IMAGE_MESH_POINT_LIMIT && points.count >= count
+}
+
+// One textured triangle, wound so that every inside point is on the
+// positive side of its three edges, with the source point of each corner.
+MeshTriangle :: struct {
+    valid: bool
+    a: Vector2
+    b: Vector2
+    c: Vector2
+    a_source: Vector2
+    b_source: Vector2
+    c_source: Vector2
+    area: float32
+    // Pixel rows and columns its centers can cover, before clipping.
+    left: s32
+    top: s32
+    right: s32
+    bottom: s32
+}
+
+MeshEdge :: (from: Vector2, to: Vector2, x: float32, y: float32) -> float32 {
+    return (to.x - from.x) * (y - from.y) - (to.y - from.y) * (x - from.x)
+}
+
+// A shared edge is walked one way by each of its two triangles; a pixel
+// center exactly on it belongs to the triangle that walks it down (or to
+// the left along a level edge), so neither drops nor draws it twice.
+MeshEdgeOwnsLine :: (from: Vector2, to: Vector2) -> bool {
+    return to.y > from.y || (to.y == from.y && to.x < from.x)
+}
+
+#program_export
+MeshTriangleFor :: (a: Vector2, a_source: Vector2, b: Vector2,
+    b_source: Vector2, c: Vector2, c_source: Vector2) -> MeshTriangle {
+    triangle: MeshTriangle
+    if !Finite32(a.x) || !Finite32(a.y) || !Finite32(b.x) || !Finite32(b.y) ||
+        !Finite32(c.x) || !Finite32(c.y) { return triangle }
+    area: float32 = MeshEdge(a, b, c.x, c.y)
+    if !Finite32(area) || area == 0.0 { return triangle }
+    triangle.a = a
+    triangle.a_source = a_source
+    if area > 0.0 {
+        triangle.b = b
+        triangle.b_source = b_source
+        triangle.c = c
+        triangle.c_source = c_source
+    } else {
+        triangle.b = c
+        triangle.b_source = c_source
+        triangle.c = b
+        triangle.c_source = b_source
+        area = -area
+    }
+    triangle.area = area
+    min_x: float32 = a.x
+    max_x: float32 = a.x
+    min_y: float32 = a.y
+    max_y: float32 = a.y
+    if b.x < min_x { min_x = b.x }
+    if c.x < min_x { min_x = c.x }
+    if b.x > max_x { max_x = b.x }
+    if c.x > max_x { max_x = c.x }
+    if b.y < min_y { min_y = b.y }
+    if c.y < min_y { min_y = c.y }
+    if b.y > max_y { max_y = b.y }
+    if c.y > max_y { max_y = c.y }
+    if min_x < -16384.0 { min_x = -16384.0 }
+    if min_y < -16384.0 { min_y = -16384.0 }
+    if max_x > 32768.0 { max_x = 32768.0 }
+    if max_y > 32768.0 { max_y = 32768.0 }
+    triangle.left = FloorInteger(min_x - 0.5)
+    triangle.top = FloorInteger(min_y - 0.5)
+    triangle.right = CeilInteger(max_x + 0.5)
+    triangle.bottom = CeilInteger(max_y + 0.5)
+    triangle.valid = true
+    return triangle
+}
+
+MeshSample :: struct {
+    inside: bool
+    source: Vector2
+}
+
+// Whether the point (x, y) is inside the triangle, and its source point.
+#program_export
+MeshTriangleSample :: (triangle: MeshTriangle, x: float32,
+    y: float32) -> MeshSample {
+    sample: MeshSample
+    weight_a: float32 = MeshEdge(triangle.b, triangle.c, x, y)
+    weight_b: float32 = MeshEdge(triangle.c, triangle.a, x, y)
+    weight_c: float32 = MeshEdge(triangle.a, triangle.b, x, y)
+    if weight_a < 0.0 || weight_b < 0.0 || weight_c < 0.0 { return sample }
+    if weight_a == 0.0 && !MeshEdgeOwnsLine(triangle.b, triangle.c) { return sample }
+    if weight_b == 0.0 && !MeshEdgeOwnsLine(triangle.c, triangle.a) { return sample }
+    if weight_c == 0.0 && !MeshEdgeOwnsLine(triangle.a, triangle.b) { return sample }
+    sample.inside = true
+    sample.source.x = (weight_a * triangle.a_source.x + weight_b * triangle.b_source.x +
+        weight_c * triangle.c_source.x) / triangle.area
+    sample.source.y = (weight_a * triangle.a_source.y + weight_b * triangle.b_source.y +
+        weight_c * triangle.c_source.y) / triangle.area
+    return sample
+}
+
+// The two triangles of grid cell (column, row): its top left, top right
+// and bottom left corners, then its top right, bottom right and bottom
+// left. A grid point p lands on ((p.x - offset.x) * scale_x,
+// (p.y - offset.y) * scale_y) in device pixels.
+#program_export
+MeshCellTriangle :: (points: []Vector2, columns: s32, rows: s32,
+    source: Rectangle, column: s32, row: s32, second: bool,
+    offset: Vector2, scale_x: float32, scale_y: float32) -> MeshTriangle {
+    top_left: s32 = row * columns + column
+    top_right: s32 = top_left + 1
+    bottom_left: s32 = top_left + columns
+    bottom_right: s32 = bottom_left + 1
+    left_share: float32 = cast(float32)column / cast(float32)(columns - 1)
+    right_share: float32 = cast(float32)(column + 1) / cast(float32)(columns - 1)
+    top_share: float32 = cast(float32)row / cast(float32)(rows - 1)
+    bottom_share: float32 = cast(float32)(row + 1) / cast(float32)(rows - 1)
+    if !second {
+        return MeshTriangleFor(
+            MeshScaled(points[top_left], offset, scale_x, scale_y), MeshSourcePoint(source, left_share, top_share),
+            MeshScaled(points[top_right], offset, scale_x, scale_y), MeshSourcePoint(source, right_share, top_share),
+            MeshScaled(points[bottom_left], offset, scale_x, scale_y), MeshSourcePoint(source, left_share, bottom_share))
+    }
+    return MeshTriangleFor(
+        MeshScaled(points[top_right], offset, scale_x, scale_y), MeshSourcePoint(source, right_share, top_share),
+        MeshScaled(points[bottom_right], offset, scale_x, scale_y), MeshSourcePoint(source, right_share, bottom_share),
+        MeshScaled(points[bottom_left], offset, scale_x, scale_y), MeshSourcePoint(source, left_share, bottom_share))
+}
+
+MeshScaled :: (point: Vector2, offset: Vector2, scale_x: float32,
+    scale_y: float32) -> Vector2 {
+    return Vector2.{(point.x - offset.x) * scale_x, (point.y - offset.y) * scale_y}
+}
+
+// One RGBA texel channel set, straight alpha.
+MeshTexel :: struct { r: float32; g: float32; b: float32; a: float32 }
+
+MeshTexelRGBA :: (asset: []u8, stride: s32, x: s32, y: s32) -> MeshTexel {
+    at: s64 = cast(s64)y * cast(s64)stride + cast(s64)x * 4
+    return MeshTexel.{cast(float32)asset[at], cast(float32)asset[at + 1],
+        cast(float32)asset[at + 2], cast(float32)asset[at + 3]}
+}
+
+// The asset's color at a source point: the nearest texel, or with `smooth`
+// the four nearest blended by premultiplied alpha, so transparent texels
+// add no dark fringe. Points outside the asset take its edge.
+MeshSampleRGBA :: (asset: []u8, width: s32, height: s32, stride: s32,
+    source: Vector2, smooth: bool) -> Color {
+    if !smooth {
+        x: s32 = FloorInteger(source.x)
+        y: s32 = FloorInteger(source.y)
+        if x < 0 { x = 0 }
+        if y < 0 { y = 0 }
+        if x >= width { x = width - 1 }
+        if y >= height { y = height - 1 }
+        texel := MeshTexelRGBA(asset, stride, x, y)
+        return Color.{cast(u8)texel.r, cast(u8)texel.g, cast(u8)texel.b, cast(u8)texel.a}
+    }
+    fx: float32 = source.x - 0.5
+    fy: float32 = source.y - 0.5
+    x0: s32 = FloorInteger(fx)
+    y0: s32 = FloorInteger(fy)
+    tx: float32 = fx - cast(float32)x0
+    ty: float32 = fy - cast(float32)y0
+    red: float32 = 0.0
+    green: float32 = 0.0
+    blue: float32 = 0.0
+    alpha: float32 = 0.0
+    for corner: cast(s32)0..3 {
+        x: s32 = x0 + (corner & 1)
+        y: s32 = y0 + corner / 2
+        weight_x: float32 = ifx (corner & 1) == 0 then 1.0 - tx else tx
+        weight_y: float32 = ifx corner < 2 then 1.0 - ty else ty
+        if x < 0 { x = 0 }
+        if y < 0 { y = 0 }
+        if x >= width { x = width - 1 }
+        if y >= height { y = height - 1 }
+        texel := MeshTexelRGBA(asset, stride, x, y)
+        weight: float32 = weight_x * weight_y * texel.a
+        red += texel.r * weight
+        green += texel.g * weight
+        blue += texel.b * weight
+        alpha += weight
+    }
+    if alpha <= 0.0 { return Color.{0, 0, 0, 0} }
+    return Color.{cast(u8)(red / alpha + 0.5), cast(u8)(green / alpha + 0.5),
+        cast(u8)(blue / alpha + 0.5), cast(u8)(alpha + 0.5)}
+}
+
+// Draws an RGBA8 asset warped over a grid of points (see ImageMesh), less
+// `offset` in canvas pixels, inside clip (in canvas pixels), one pixel
+// center at a time.
+#program_export
+RasterImageMeshRGBA :: (canvas: []u8, canvas_width: s32,
+    canvas_height: s32, canvas_stride: s32, asset: []u8,
+    asset_width: s32, asset_height: s32, asset_stride: s32,
+    source: Rectangle, points: []Vector2, columns: s32, rows: s32,
+    offset: Vector2, clip: Rectangle, tint: Color, smooth: bool) -> bool {
+    if !ValidRGBA(canvas, canvas_width, canvas_height, canvas_stride) ||
+        !ValidRGBA(asset, asset_width, asset_height, asset_stride) ||
+        tint.a == cast(u8)0 || !MeshGridValid(points, columns, rows) ||
+        !Finite32(clip.x) || !Finite32(clip.y) || !Finite32(clip.width) ||
+        !Finite32(clip.height) || clip.width <= 0.0 || clip.height <= 0.0 { return false }
+    clip_left: s32 = FloorInteger(clip.x)
+    clip_top: s32 = FloorInteger(clip.y)
+    clip_right: s32 = CeilInteger(clip.x + clip.width)
+    clip_bottom: s32 = CeilInteger(clip.y + clip.height)
+    if clip_left < 0 { clip_left = 0 }
+    if clip_top < 0 { clip_top = 0 }
+    if clip_right > canvas_width { clip_right = canvas_width }
+    if clip_bottom > canvas_height { clip_bottom = canvas_height }
+    if clip_right <= clip_left || clip_bottom <= clip_top { return true }
+    for row: cast(s32)0..rows - 2 {
+        for column: cast(s32)0..columns - 2 {
+            for half: cast(s32)0..1 {
+                triangle := MeshCellTriangle(points, columns, rows, source,
+                    column, row, half == 1, offset, 1.0, 1.0)
+                if !triangle.valid { continue }
+                left: s32 = triangle.left
+                top: s32 = triangle.top
+                right: s32 = triangle.right
+                bottom: s32 = triangle.bottom
+                if left < clip_left { left = clip_left }
+                if top < clip_top { top = clip_top }
+                if right > clip_right { right = clip_right }
+                if bottom > clip_bottom { bottom = clip_bottom }
+                y: s32 = top
+                while y < bottom {
+                    x: s32 = left
+                    while x < right {
+                        center_x: float32 = cast(float32)x + 0.5
+                        center_y: float32 = cast(float32)y + 0.5
+                        if center_x >= clip.x && center_y >= clip.y &&
+                            center_x < clip.x + clip.width && center_y < clip.y + clip.height {
+                            sample := MeshTriangleSample(triangle, center_x, center_y)
+                            if sample.inside {
+                                color := MeshSampleRGBA(asset, asset_width, asset_height,
+                                    asset_stride, sample.source, smooth)
+                                texel: [4]u8 = .[color.r, color.g, color.b, color.a]
+                                BlendRGBA(canvas, cast(s64)y * cast(s64)canvas_stride + cast(s64)x * 4,
+                                    texel[:], 0, tint)
+                            }
+                        }
+                        x += 1
+                    }
+                    y += 1
+                }
+            }
+        }
     }
     return true
 }

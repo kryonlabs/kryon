@@ -39,6 +39,11 @@ RasterImage :: (path: string, texture_id: u32, source: Rectangle,
     rotation: float32, radius: float32, tint: Color) { failed = true }
 
 #program_export
+RasterImageMesh :: (path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle,
+    tint: Color) { failed = true }
+
+#program_export
 OverlayFillCount :: () -> s32 { return fills }
 
 #program_export

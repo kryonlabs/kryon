@@ -62,8 +62,8 @@ ReplayState :: struct {
     failed: bool
     pointer_fields: [5]HostField
     labels: [12]Name
-    bindings: [20]HostBinding
-    binding_names: [40]Name
+    bindings: [21]HostBinding
+    binding_names: [42]Name
     samples: [1024]ReplaySample
     current_sample: s32
     input_names: [20]Name
@@ -417,7 +417,8 @@ ReplayCall :: (context: *void, module_name: *u8, function_name: *u8,
          function == "RasterRoundedRectangleOutline")) ||
        (module == "raster_text" &&
         (function == "RasterText" || function == "RasterTextClipped")) ||
-       (module == "paint_queue" && function == "RasterImage") {
+       (module == "paint_queue" &&
+        (function == "RasterImage" || function == "RasterImageMesh")) {
         state.effects += 1
         return 1
     }
@@ -746,7 +747,8 @@ InitializeBindings :: (state: *ReplayState, pointer_module: string) -> bool {
         SetBinding(state, 16, "system_clipboard", "SystemClipboardOpenHost", callback) &&
         SetBinding(state, 17, "system_clipboard", "SystemClipboardByteHost", callback) &&
         SetBinding(state, 18, "system_clipboard", "SystemClipboardWriteHost", callback) &&
-        SetBinding(state, 19, "frame_capture", "RecordFrameFailure", callback)
+        SetBinding(state, 19, "frame_capture", "RecordFrameFailure", callback) &&
+        SetBinding(state, 20, "paint_queue", "RasterImageMesh", callback)
 }
 
 Replay :: (state: *ReplayState, bundle_path: string,
@@ -756,7 +758,7 @@ Replay :: (state: *ReplayState, bundle_path: string,
     bundle: *void = OpenBundle(*bundle_name[0])
     if bundle == null { return false }
     instance: *void = InstantiateBundle(bundle, *state.bindings[0],
-                                        cast(u64)20)
+                                        cast(u64)21)
     if instance == null { CloseBundle(bundle); return false }
     state.output = OpenReplace(output_path)
     if !state.output.valid {

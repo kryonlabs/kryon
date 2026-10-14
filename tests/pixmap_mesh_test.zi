@@ -1,0 +1,148 @@
+#import "geometry"
+#import "drawing_props"
+#import "image_props"
+#import "image_widget"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#import "pixmap"
+#import "pixmap_frame"
+using FrameStatus;
+using ImageFit;
+
+surface: [256]u32;
+image: [4]u32;
+points: [6]Vector2;
+
+RED: u32 = cast(u32)0xffff0000;
+GREEN: u32 = cast(u32)0xff00ff00;
+BLUE: u32 = cast(u32)0xff0000ff;
+WHITE: u32 = cast(u32)0xffffffff;
+BACKGROUND: u32 = cast(u32)0x102030;
+
+Pixel :: (x: s32, y: s32) -> u32 { return surface[y * 16 + x] & cast(u32)0xffffff }
+Is :: (x: s32, y: s32, color: u32) -> bool {
+    if Pixel(x, y) == (color & cast(u32)0xffffff) { return true }
+    print("pixel % % is % expected %\n", x, y, Pixel(x, y), color & cast(u32)0xffffff)
+    return false
+}
+
+Plain :: () {
+    points[0] = .{0.0, 0.0}; points[1] = .{16.0, 0.0}
+    points[2] = .{0.0, 16.0}; points[3] = .{16.0, 16.0}
+}
+
+Mirrored :: () {
+    points[0] = .{16.0, 0.0}; points[1] = .{0.0, 0.0}
+    points[2] = .{16.0, 16.0}; points[3] = .{0.0, 16.0}
+}
+
+// A two-column strip bent into an L: down the left side, then along the
+// bottom to the right.
+Bent :: () {
+    points[0] = .{0.0, 0.0}; points[1] = .{8.0, 0.0}
+    points[2] = .{0.0, 16.0}; points[3] = .{8.0, 8.0}
+    points[4] = .{16.0, 16.0}; points[5] = .{16.0, 8.0}
+}
+
+Raster :: (columns: s32, rows: s32) {
+    unused PixmapBeginInto(BACKGROUND, 16, 16, surface[:])
+    RasterImageMesh("mesh.png", 0, .{0.0, 0.0, 2.0, 2.0}, points[:], columns, rows,
+        .{0.0, 0.0, 16.0, 16.0}, .{255, 255, 255, 255})
+    PixmapEndInto()
+}
+
+// The raster effect itself: a plain grid stretches the image, a mirrored
+// grid mirrors it, and a bent strip carries it round its corner.
+RasterCases :: () -> s32 {
+    Plain(); Raster(2, 2)
+    if !Is(2, 2, RED) || !Is(13, 2, GREEN) || !Is(2, 13, BLUE) || !Is(13, 13, WHITE) { return 10 }
+    Mirrored(); Raster(2, 2)
+    if !Is(2, 2, GREEN) || !Is(13, 2, RED) || !Is(2, 13, WHITE) || !Is(13, 13, BLUE) { return 11 }
+    // The cell's two triangles share its diagonal: no seam and no gap.
+    for at: cast(s32)0..15 {
+        if at == 7 || at == 8 { continue }
+        if !Is(at, at, ifx at < 7 then GREEN else BLUE) { return 15 }
+    }
+    Bent(); Raster(2, 3)
+    if !Is(1, 1, RED) || !Is(13, 2, BACKGROUND) || !Is(14, 15, BLUE) { return 12 }
+    // Too few points for the grid draw nothing.
+    unused PixmapBeginInto(BACKGROUND, 16, 16, surface[:])
+    RasterImageMesh("mesh.png", 0, .{0.0, 0.0, 2.0, 2.0}, points[:3], 2, 2,
+        .{0.0, 0.0, 16.0, 16.0}, .{255, 255, 255, 255})
+    PixmapEndInto()
+    if !Is(2, 2, BACKGROUND) { return 13 }
+    // The clip bounds the warped image as it bounds any other.
+    Plain()
+    unused PixmapBeginInto(BACKGROUND, 16, 16, surface[:])
+    RasterImageMesh("mesh.png", 0, .{0.0, 0.0, 2.0, 2.0}, points[:], 2, 2,
+        .{0.0, 0.0, 8.0, 16.0}, .{255, 255, 255, 255})
+    PixmapEndInto()
+    if !Is(2, 2, RED) || !Is(13, 2, BACKGROUND) { return 14 }
+    return 0
+}
+
+ImageFrame :: (session: Session, buffer: []Vector2, columns: s32, rows: s32,
+    reuse: bool) -> PixmapFrameResult {
+    unused PixmapResumeInto(16, 16, surface[:])
+    unused BeginFrame(session, cast(u64)1, .{0.0, 0.0, 16.0, 16.0})
+    PaintRoundedFill(session, -1, .{0.0, 0.0, 16.0, 16.0}, 0.0, 0, .{16, 32, 48, 255})
+    props: ImageProps
+    props.asset_path = "mesh.png"
+    props.bounds = .{0.0, 0.0, 16.0, 16.0}
+    // A mesh ignores rotation, origin and fit.
+    props.rotation = 45.0
+    props.origin = .{3.0, 3.0}
+    props.fit = cast(ImageFit)ImageFitContain
+    props.mesh.columns = columns
+    props.mesh.rows = rows
+    props.mesh.points = buffer
+    Image(session, props)
+    // The caller may reuse its buffer at once: the queue kept a copy.
+    for at: cast(s64)0..buffer.count - 1 { buffer[at] = .{-100.0, -100.0} }
+    result := EndPixmapFrame(session, reuse, BACKGROUND, true)
+    PixmapEndInto()
+    return result
+}
+
+// The Image widget queues the grid, keeps its own copy of the points and
+// reuses the retained frame only while every point is unchanged.
+WidgetCases :: () -> s32 {
+    session := SessionOpen()
+    Plain()
+    result := ImageFrame(session, points[:4], 2, 2, false)
+    if result.status != cast(FrameStatus)FrameOk { return 20 }
+    if !Is(2, 2, RED) || !Is(13, 2, GREEN) || !Is(2, 13, BLUE) || !Is(13, 13, WHITE) { return 21 }
+    Plain()
+    result = ImageFrame(session, points[:4], 2, 2, true)
+    if result.status != cast(FrameStatus)FrameOk || !result.paint_unchanged { return 22 }
+    Plain()
+    points[3] = .{15.0, 16.0}
+    result = ImageFrame(session, points[:4], 2, 2, true)
+    if result.status != cast(FrameStatus)FrameOk || result.paint_unchanged { return 23 }
+    Mirrored()
+    result = ImageFrame(session, points[:4], 2, 2, true)
+    if result.status != cast(FrameStatus)FrameOk || result.paint_unchanged { return 24 }
+    if !Is(2, 2, GREEN) || !Is(13, 2, RED) { return 25 }
+    // Too few points: nothing, not even a placeholder.
+    Plain()
+    result = ImageFrame(session, points[:3], 2, 2, false)
+    if result.status != cast(FrameStatus)FrameOk { return 26 }
+    if !Is(2, 2, BACKGROUND) { return 27 }
+    unused SessionClose(session)
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    image[0] = RED; image[1] = GREEN; image[2] = BLUE; image[3] = WHITE
+    unused PixmapSetImage(0, "mesh.png", 2, 2, image[:])
+    raster := RasterCases()
+    if raster != 0 { print("%\n", raster); return raster }
+    widget := WidgetCases()
+    if widget != 0 { print("%\n", widget); return widget }
+    PixmapClearImage(0)
+    print("0\n")
+    return 0
+}

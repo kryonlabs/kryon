@@ -2,6 +2,8 @@
 #import "drawing_props"
 #import "geometry"
 #import "font_metrics"
+#import "image_props"
+#import "paint_texture"
 Utf8 :: #import "std/utf8";
 Video :: #import "video_linux";
 video_surface: *void;
@@ -111,6 +113,21 @@ ShowText :: (paint: *void, value: *u8) #foreign cairo_library "cairo_show_text";
 Translate :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_translate";
 Rotate :: (paint: *void, radians: float64) #foreign cairo_library "cairo_rotate";
 Scale :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_scale";
+// cairo_matrix_t: x' = xx·x + xy·y + x0 and y' = yx·x + yy·y + y0.
+CairoMatrix :: struct {
+    xx: float64
+    yx: float64
+    xy: float64
+    yy: float64
+    x0: float64
+    y0: float64
+}
+TransformBy :: (paint: *void, matrix: *CairoMatrix) #foreign cairo_library "cairo_transform";
+PatternForSurface :: (surface: *void) -> *void #foreign cairo_library "cairo_pattern_create_for_surface";
+PatternDestroy :: (pattern: *void) #foreign cairo_library "cairo_pattern_destroy";
+SetSource :: (paint: *void, pattern: *void) #foreign cairo_library "cairo_set_source";
+MaskPattern :: (paint: *void, pattern: *void) #foreign cairo_library "cairo_mask";
+SetAntialias :: (paint: *void, antialias: s32) #foreign cairo_library "cairo_set_antialias";
 
 pango :: #system_library "pangocairo-1.0";
 objects :: #system_library "gobject-2.0";
@@ -586,5 +603,114 @@ RasterImage :: (asset_path: string, texture_id: u32,
         SetColor(tint)
         MaskSurface(paint, image, 0.0, 0.0)
     }
+    Restore(paint)
+}
+
+// A warped image (see ImageMesh): each triangle of each grid cell is the
+// image drawn through the source-to-surface transform of its corners,
+// clipped to the triangle. Runtime textures are not available to this host.
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
+    PrepareRasterPaint()
+    if columns < 2 || rows < 2 || clip.width <= 0.0 || clip.height <= 0.0 { return }
+    count: s64 = cast(s64)columns * cast(s64)rows
+    if count > cast(s64)IMAGE_MESH_POINT_LIMIT || points.count < count { return }
+    if texture_id != cast(u32)0 || asset_path.count == 0 {
+        image_error = true
+        return
+    }
+    image: *void = LoadPNG(asset_path)
+    if image == null {
+        image_error = true
+        return
+    }
+    Save(paint)
+    CanvasRectangle(paint, cast(float64)clip.x, cast(float64)clip.y,
+        cast(float64)clip.width, cast(float64)clip.height)
+    Clip(paint)
+    for row: cast(s32)0..rows - 2 {
+        for column: cast(s32)0..columns - 2 {
+            top_left: s32 = row * columns + column
+            bottom_left: s32 = top_left + columns
+            left_share: float32 = cast(float32)column / cast(float32)(columns - 1)
+            right_share: float32 = cast(float32)(column + 1) / cast(float32)(columns - 1)
+            top_share: float32 = cast(float32)row / cast(float32)(rows - 1)
+            bottom_share: float32 = cast(float32)(row + 1) / cast(float32)(rows - 1)
+            a := CairoMeshSource(source, left_share, top_share)
+            b := CairoMeshSource(source, right_share, top_share)
+            c := CairoMeshSource(source, left_share, bottom_share)
+            d := CairoMeshSource(source, right_share, bottom_share)
+            CairoMeshTriangle(image, points[top_left], a, points[top_left + 1], b,
+                points[bottom_left], c, tint)
+            CairoMeshTriangle(image, points[top_left + 1], b, points[bottom_left + 1], d,
+                points[bottom_left], c, tint)
+        }
+    }
+    Restore(paint)
+}
+
+// The source point at a share of the source rectangle; a negative width or
+// height mirrors it, as for RasterImage.
+CairoMeshSource :: (source: Rectangle, fx: float32, fy: float32) -> Vector2 {
+    x: float32 = source.x + source.width * fx
+    if source.width < 0.0 { x = source.x - source.width + source.width * fx }
+    y: float32 = source.y + source.height * fy
+    if source.height < 0.0 { y = source.y - source.height + source.height * fy }
+    return Vector2.{x, y}
+}
+
+CairoMeshTriangle :: (image: *void, a: Vector2, a_source: Vector2,
+    b: Vector2, b_source: Vector2, c: Vector2, c_source: Vector2, tint: Color) {
+    u0: float64 = cast(float64)a_source.x
+    v0: float64 = cast(float64)a_source.y
+    u1: float64 = cast(float64)b_source.x
+    v1: float64 = cast(float64)b_source.y
+    u2: float64 = cast(float64)c_source.x
+    v2: float64 = cast(float64)c_source.y
+    x0: float64 = cast(float64)a.x
+    y0: float64 = cast(float64)a.y
+    x1: float64 = cast(float64)b.x
+    y1: float64 = cast(float64)b.y
+    x2: float64 = cast(float64)c.x
+    y2: float64 = cast(float64)c.y
+    determinant: float64 = (u1 - u0) * (v2 - v0) - (u2 - u0) * (v1 - v0)
+    area: float64 = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
+    if determinant == 0.0 || area == 0.0 || determinant != determinant || area != area { return }
+    Save(paint)
+    // An aliased clip gives each pixel to exactly one of two triangles that
+    // share an edge, so neighbors leave no seam and never paint twice.
+    SetAntialias(paint, 1)
+    NewPath(paint)
+    MoveTo(paint, x0, y0)
+    LineTo(paint, x1, y1)
+    LineTo(paint, x2, y2)
+    ClosePath(paint)
+    Clip(paint)
+    matrix: CairoMatrix
+    matrix.xx = ((x1 - x0) * (v2 - v0) - (x2 - x0) * (v1 - v0)) / determinant
+    matrix.yx = ((y1 - y0) * (v2 - v0) - (y2 - y0) * (v1 - v0)) / determinant
+    matrix.xy = ((x2 - x0) * (u1 - u0) - (x1 - x0) * (u2 - u0)) / determinant
+    matrix.yy = ((y2 - y0) * (u1 - u0) - (y1 - y0) * (u2 - u0)) / determinant
+    matrix.x0 = x0 - matrix.xx * u0 - matrix.xy * v0
+    matrix.y0 = y0 - matrix.yx * u0 - matrix.yy * v0
+    TransformBy(paint, *matrix)
+    // Sharp pixels unless the image asks to be scaled smoothly.
+    pattern: *void = PatternForSurface(image)
+    if pattern == null {
+        Restore(paint)
+        image_error = true
+        return
+    }
+    PatternFilter(pattern, ifx CurrentPaintSmooth() then 4 else 3)
+    if tint.r == cast(u8)255 && tint.g == cast(u8)255 &&
+        tint.b == cast(u8)255 && tint.a == cast(u8)255 {
+        SetSource(paint, pattern)
+        Paint(paint)
+    } else {
+        SetColor(tint)
+        MaskPattern(paint, pattern)
+    }
+    PatternDestroy(pattern)
     Restore(paint)
 }

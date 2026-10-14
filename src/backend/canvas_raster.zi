@@ -7,7 +7,9 @@
 #import "canvas_draw"
 #import "canvas_texture"
 #import "canvas_text"
+#import "image_props"
 #import "page_font"
+#import "page_texture"
 #import "raylib_clip"
 
 libm :: #system_library "m";
@@ -181,4 +183,78 @@ RasterImage :: (asset_path: string, texture_id: u32,
     }
     CanvasDrawImageClipped(texture, source, destination, clip, origin,
         rotation, radius, tint)
+}
+
+// A warped image (see ImageMesh): the canvas draws each triangle of each
+// grid cell through its own transform, clipped to the image's clip.
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
+    if columns < 2 || rows < 2 || clip.width <= 0.0 || clip.height <= 0.0 { return }
+    count: s64 = cast(s64)columns * cast(s64)rows
+    if count > cast(s64)IMAGE_MESH_POINT_LIMIT || points.count < count { return }
+    texture: Texture2D
+    if texture_id != cast(u32)0 {
+        texture = CurrentPaintTexture()
+        if texture.id != texture_id {
+            // Keep direct calls to the low-level raster effect usable.
+            texture.id = texture_id
+        }
+    } else if asset_path.count > 0 {
+        index: s32 = CanvasAssetIndex(asset_path)
+        if index < 0 {
+            canvas_image_error = true
+            return
+        }
+        texture = canvas_assets[index].texture
+        if CurrentPaintSmooth() && !canvas_assets[index].smooth {
+            SetTextureFilter(texture, 1)
+            canvas_assets[index].smooth = true
+        }
+    } else {
+        canvas_image_error = true
+        return
+    }
+    id: s32 = cast(s32)texture.id
+    filter: s32 = PageTextureFilterFor(id)
+    saved := BeginRasterClip(clip)
+    for row: cast(s32)0..rows - 2 {
+        for column: cast(s32)0..columns - 2 {
+            top_left: s32 = row * columns + column
+            bottom_left: s32 = top_left + columns
+            left_share: float32 = cast(float32)column / cast(float32)(columns - 1)
+            right_share: float32 = cast(float32)(column + 1) / cast(float32)(columns - 1)
+            top_share: float32 = cast(float32)row / cast(float32)(rows - 1)
+            bottom_share: float32 = cast(float32)(row + 1) / cast(float32)(rows - 1)
+            a := CanvasMeshSource(source, left_share, top_share)
+            b := CanvasMeshSource(source, right_share, top_share)
+            c := CanvasMeshSource(source, left_share, bottom_share)
+            d := CanvasMeshSource(source, right_share, bottom_share)
+            CanvasMeshTriangle(id, points[top_left], a, points[top_left + 1], b,
+                points[bottom_left], c, tint, filter)
+            CanvasMeshTriangle(id, points[top_left + 1], b, points[bottom_left + 1], d,
+                points[bottom_left], c, tint, filter)
+        }
+    }
+    EndRasterClip(saved)
+}
+
+// The source point at a share of the source rectangle; a negative width or
+// height mirrors it, as for RasterImage.
+CanvasMeshSource :: (source: Rectangle, fx: float32, fy: float32) -> Vector2 {
+    x: float32 = source.x + source.width * fx
+    if source.width < 0.0 { x = source.x - source.width + source.width * fx }
+    y: float32 = source.y + source.height * fy
+    if source.height < 0.0 { y = source.y - source.height + source.height * fy }
+    return Vector2.{x, y}
+}
+
+CanvasMeshTriangle :: (id: s32, a: Vector2, a_source: Vector2, b: Vector2,
+    b_source: Vector2, c: Vector2, c_source: Vector2, tint: Color, filter: s32) {
+    PageDrawTextureTriangle(id, cast(float64)a.x, cast(float64)a.y,
+        cast(float64)b.x, cast(float64)b.y, cast(float64)c.x, cast(float64)c.y,
+        cast(float64)a_source.x, cast(float64)a_source.y,
+        cast(float64)b_source.x, cast(float64)b_source.y,
+        cast(float64)c_source.x, cast(float64)c_source.y,
+        cast(s32)tint.r, cast(s32)tint.g, cast(s32)tint.b, cast(s32)tint.a, filter)
 }

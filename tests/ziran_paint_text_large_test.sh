@@ -13,7 +13,8 @@ set -- \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_paint_text_large_test:RasterRoundedRectangleOutline \
     --bind raster_text:RasterText=ziran_paint_text_large_test:RasterText \
     --bind raster_text:RasterTextClipped=ziran_paint_text_large_test:RasterTextClipped \
-    --bind paint_queue:RasterImage=ziran_paint_text_large_test:RasterImage
+    --bind paint_queue:RasterImage=ziran_paint_text_large_test:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_paint_text_large_test:RasterImageMesh
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for form in source saved; do

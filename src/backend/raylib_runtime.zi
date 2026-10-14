@@ -1,6 +1,7 @@
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
+#import "image_props"
 #import "paint_texture"
 #import "tree_input"
 #import "raylib_clip"
@@ -128,6 +129,9 @@ HostRaylibBeginTextureMode :: (target: HostRaylibRenderTexture) #foreign raylib 
 HostRaylibEndTextureMode :: () #foreign raylib "EndTextureMode";
 HostRaylibDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle, origin: Vector2, rotation: float32, tint: Color) #foreign raylib "DrawTexturePro";
 HostRaylibFlushBatch :: () #foreign raylib "rlDrawRenderBatchActive";
+HostRaylibSetTexture :: (id: u32) #foreign raylib "rlSetTexture";
+HostRaylibTexCoord :: (x: float32, y: float32) #foreign raylib "rlTexCoord2f";
+HostRaylibNormal :: (x: float32, y: float32, z: float32) #foreign raylib "rlNormal3f";
 HostRaylibScale :: (x: float32, y: float32, z: float32) #foreign raylib "rlScalef";
 HostRaylibParseFloat :: (value: *u8) -> float64 #foreign c "atof";
 HostRaylibTakeScreenshot :: (path: *u8) #foreign raylib "TakeScreenshot";
@@ -1892,6 +1896,110 @@ RasterImage :: (asset_path: string, texture_id: u32,
     }
     RaylibDrawImageClipped(texture, source, destination, clip, origin,
         rotation, radius, tint)
+}
+
+// A warped image (see ImageMesh): each grid cell as two textured triangles
+// in one batch, sent front-facing because raylib culls the others. A
+// scissor is set only when a point leaves the clip.
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
+    if columns < 2 || rows < 2 || clip.width <= 0.0 || clip.height <= 0.0 { return }
+    count: s64 = cast(s64)columns * cast(s64)rows
+    if count > cast(s64)IMAGE_MESH_POINT_LIMIT || points.count < count { return }
+    texture: Texture2D
+    if texture_id != cast(u32)0 {
+        texture = CurrentPaintTexture()
+        if texture.id != texture_id {
+            // Keep direct calls to the low-level raster effect usable.
+            texture.id = texture_id
+            texture.width = cast(s32)(source.x + source.width)
+            texture.height = cast(s32)(source.y + source.height)
+        }
+    } else if asset_path.count > 0 {
+        index: s32 = RaylibAssetIndex(asset_path)
+        if index == RaylibAssetLoading { return }
+        if index < 0 {
+            raylib_image_error = true
+            return
+        }
+        if CurrentPaintSmooth() && !raylib_assets[index].smooth {
+            RaylibSmoothAsset(index)
+        }
+        texture = raylib_assets[index].texture
+    } else {
+        raylib_image_error = true
+        return
+    }
+    if texture.width <= 0 || texture.height <= 0 { return }
+    inside: bool = true
+    for at: cast(s64)0..count - 1 {
+        point := points[at]
+        if point.x < clip.x || point.y < clip.y ||
+            point.x > clip.x + clip.width || point.y > clip.y + clip.height {
+            inside = false
+            break
+        }
+    }
+    saved: RasterClipState
+    if !inside { saved = BeginRasterClip(clip) }
+    HostRaylibSetTexture(texture.id)
+    HostRaylibBegin(RaylibTriangles)
+    HostRaylibVertexColor(tint.r, tint.g, tint.b, tint.a)
+    HostRaylibNormal(0.0, 0.0, 1.0)
+    width: float32 = cast(float32)texture.width
+    height: float32 = cast(float32)texture.height
+    for row: cast(s32)0..rows - 2 {
+        for column: cast(s32)0..columns - 2 {
+            top_left: s32 = row * columns + column
+            bottom_left: s32 = top_left + columns
+            left_share: float32 = cast(float32)column / cast(float32)(columns - 1)
+            right_share: float32 = cast(float32)(column + 1) / cast(float32)(columns - 1)
+            top_share: float32 = cast(float32)row / cast(float32)(rows - 1)
+            bottom_share: float32 = cast(float32)(row + 1) / cast(float32)(rows - 1)
+            a := RaylibMeshSource(source, left_share, top_share, width, height)
+            b := RaylibMeshSource(source, right_share, top_share, width, height)
+            c := RaylibMeshSource(source, left_share, bottom_share, width, height)
+            d := RaylibMeshSource(source, right_share, bottom_share, width, height)
+            RaylibTexturedTriangle(points[top_left], a, points[top_left + 1], b,
+                points[bottom_left], c)
+            RaylibTexturedTriangle(points[top_left + 1], b, points[bottom_left + 1], d,
+                points[bottom_left], c)
+        }
+    }
+    HostRaylibEnd()
+    HostRaylibSetTexture(cast(u32)0)
+    if !inside { EndRasterClip(saved) }
+}
+
+// The texture coordinate of a share of the source rectangle; a negative
+// width or height mirrors it, as for RasterImage.
+RaylibMeshSource :: (source: Rectangle, fx: float32, fy: float32,
+    width: float32, height: float32) -> Vector2 {
+    x: float32 = source.x + source.width * fx
+    if source.width < 0.0 { x = source.x - source.width + source.width * fx }
+    y: float32 = source.y + source.height * fy
+    if source.height < 0.0 { y = source.y - source.height + source.height * fy }
+    return Vector2.{x / width, y / height}
+}
+
+RaylibTexturedVertex :: (point: Vector2, texture: Vector2) {
+    HostRaylibTexCoord(texture.x, texture.y)
+    HostRaylibVertex(point.x, point.y)
+}
+
+RaylibTexturedTriangle :: (a: Vector2, a_texture: Vector2, b: Vector2,
+    b_texture: Vector2, c: Vector2, c_texture: Vector2) {
+    turn: float32 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+    if turn == 0.0 || turn != turn { return }
+    RaylibTexturedVertex(a, a_texture)
+    if turn < 0.0 {
+        RaylibTexturedVertex(b, b_texture)
+        RaylibTexturedVertex(c, c_texture)
+    } else {
+        RaylibTexturedVertex(c, c_texture)
+        RaylibTexturedVertex(b, b_texture)
+    }
 }
 
 retained_frame_targets: [2]HostRaylibRenderTexture;

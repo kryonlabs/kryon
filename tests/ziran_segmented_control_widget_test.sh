@@ -16,6 +16,7 @@ set -- \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_clip_bounds_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_clip_bounds_host:RasterLine \
     --bind paint_queue:RasterImage=ziran_clip_bounds_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_clip_bounds_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_clip_bounds_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_clip_bounds_host:ImageHeight
 

@@ -224,6 +224,12 @@ RasterImage :: (asset_path: string, texture_id: u32,
 }
 
 #program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
+    image_error = true
+}
+
+#program_export
 main :: () -> s32 {
     Write("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1280\" ")
     Write("height=\"160\" viewBox=\"0 0 1280 160\">\n")

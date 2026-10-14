@@ -18,6 +18,7 @@ set -- \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_dropdown_widget_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_dropdown_widget_host:RasterLine \
     --bind paint_queue:RasterImage=ziran_dropdown_widget_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_dropdown_widget_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_dropdown_widget_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_dropdown_widget_host:ImageHeight
 

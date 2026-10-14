@@ -264,6 +264,11 @@ HOST void RasterImage(String path, uint32_t id, Rectangle source,
     (void)path; (void)id; (void)source; (void)destination;
     (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
 }
+HOST void RasterImageMesh(String path, uint32_t id, Rectangle source,
+    Slice points, int32_t columns, int32_t rows, Rectangle clip, Color tint) {
+    (void)path; (void)id; (void)source; (void)points;
+    (void)columns; (void)rows; (void)clip; (void)tint;
+}
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
 
@@ -324,7 +329,8 @@ set -- \
     --bind raster:RasterLine=ziran_widget_noop_host:RasterLine \
     --bind raster_text:RasterText=ziran_widget_noop_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_widget_noop_host:RasterTextClipped \
-    --bind paint_queue:RasterImage=ziran_widget_noop_host:RasterImage
+    --bind paint_queue:RasterImage=ziran_widget_noop_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_widget_noop_host:RasterImageMesh
 "$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \
     --module-path "$standard" -o "$work/portable-ir" "$work/portable.zi"
 "$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \

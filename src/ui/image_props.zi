@@ -7,6 +7,22 @@ ImageFit :: enum {
     ImageFitCover :: 2
 }
 
+// A warp grid: `columns` × `rows` screen points, row by row from the top
+// left of the image's source rectangle (the whole texture when `source` is
+// empty). Grid point (column, row) shows the source point at
+// (column / (columns - 1), row / (rows - 1)) of the source; each cell is
+// drawn as two textured triangles. Fewer than 2 columns or rows draws the
+// image normally. A grid with fewer points than columns × rows draws
+// nothing. Mirrored grids draw as well; nothing is culled.
+ImageMesh :: struct {
+    columns: s32
+    rows: s32
+    points: []Vector2
+}
+
+// The most grid points one warped image draws, such as 64 × 64.
+IMAGE_MESH_POINT_LIMIT :: 4096
+
 ImageProps :: struct {
     asset_path: string
     alt_text: string
@@ -25,4 +41,8 @@ ImageProps :: struct {
     // where it can, smaller copies of the image, so a detailed picture drawn
     // larger or smaller than its pixels stays clean. Off keeps sharp pixels.
     smooth: bool
+    // Draws the texture warped over these points, as for a cut-out puppet
+    // whose painted limbs bend. `bounds` stays the node's bounds and clip;
+    // `fit`, `origin`, `rotation` and the style radius do not apply.
+    mesh: ImageMesh
 }

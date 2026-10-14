@@ -15,7 +15,8 @@ set -- \
     --bind raster_text:RasterTextClipped=ziran_mixed_tree_host:RasterTextClipped \
     --bind font_metrics:MeasureGlyphWidth=ziran_mixed_tree_host:MeasureGlyphWidth \
     --bind font_metrics:MeasureGlyphLineHeight=ziran_mixed_tree_host:MeasureGlyphLineHeight \
-    --bind paint_queue:RasterImage=ziran_mixed_tree_host:RasterImage
+    --bind paint_queue:RasterImage=ziran_mixed_tree_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_mixed_tree_host:RasterImageMesh
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$source"
@@ -86,6 +87,9 @@ func (mixedHost) RasterImage(path string, textureID uint32,
     rotation, radius float32, tint Color) {
     ZiranMixedTreeHost_RasterImage(path, textureID, source, destination,
         clip, origin, rotation, radius, tint)
+}
+func (mixedHost) RasterImageMesh(path string, textureID uint32, source Rectangle,
+    points []Vector2, columns, rows int32, clip Rectangle, tint Color) {
 }
 
 func main() {

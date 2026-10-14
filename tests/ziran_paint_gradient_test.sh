@@ -74,6 +74,11 @@ void RasterImage(String path, uint32_t id, Rectangle source,
     (void)path; (void)id; (void)source; (void)destination;
     (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
 }
+void RasterImageMesh(String path, uint32_t id, Rectangle source,
+    Slice points, int32_t columns, int32_t rows, Rectangle clip, Color tint) {
+    (void)path; (void)id; (void)source; (void)points;
+    (void)columns; (void)rows; (void)clip; (void)tint;
+}
 int main(void) {
     if (Answer() != 42) return 1;
     /* Four one-pixel rows sampled at 1/8, 3/8, 5/8, and 7/8. */

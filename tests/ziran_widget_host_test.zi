@@ -5,6 +5,7 @@
 #import "geometry"
 #import "tree"
 #import "tree_draw"
+#import "paint_queue"
 #import "text_props"
 #import "image_props"
 #import "button_props"
@@ -129,6 +130,25 @@ main :: () -> s32 {
             .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}, *image_codec)
     if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 {
         return 6
+    }
+    // A warped image's grid crosses with it.
+    meshed := ImageProps.{.asset_path = "assets/photo.png",
+        .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}
+    mesh_points: [4]Vector2 = .[Vector2.{0.0, 20.0}, Vector2.{30.0, 20.0},
+        Vector2.{0.0, 60.0}, Vector2.{30.0, 55.0}]
+    meshed.mesh.columns = 2
+    meshed.mesh.rows = 2
+    meshed.mesh.points = mesh_points[:]
+    before := PendingPaintCount(session)
+    arguments[1] = WidgetEncodeImageProps(meshed, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 {
+        return 40
+    }
+    queued := PendingPaintAt(session, PendingPaintCount(session) - 1)
+    if PendingPaintCount(session) != before + 1 || queued.mesh_columns != 2 ||
+    queued.mesh_rows != 2 || queued.mesh_points.count != 4 ||
+    queued.mesh_points[3].x != 30.0 || queued.mesh_points[3].y != 55.0 {
+        return 41
     }
     arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "private/key.png"}, *image_codec)
     if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 {

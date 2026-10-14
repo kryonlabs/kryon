@@ -1,0 +1,106 @@
+#import "raylib_runtime"
+#import "geometry"
+#import "drawing_props"
+#import "c_string"
+
+test_raylib :: #system_library "raylib";
+TestInitWindow :: (width: s32, height: s32, title: *u8) #foreign test_raylib "InitWindow";
+TestIsWindowReady :: () -> bool #foreign test_raylib "IsWindowReady";
+TestBeginDrawing :: () #foreign test_raylib "BeginDrawing";
+TestEndDrawing :: () #foreign test_raylib "EndDrawing";
+TestClearBackground :: (color: Color) #foreign test_raylib "ClearBackground";
+TestTexture :: (image: RaylibGlyphImage) -> Texture2D #foreign test_raylib "LoadTextureFromImage";
+TestTextureFree :: (texture: Texture2D) #foreign test_raylib "UnloadTexture";
+TestCapture :: () -> RaylibGlyphImage #foreign test_raylib "LoadImageFromScreen";
+TestImageFree :: (image: RaylibGlyphImage) #foreign test_raylib "UnloadImage";
+
+texels: [16]u8;
+points: [6]Vector2;
+texture: Texture2D;
+probe_x: [4]s32;
+probe_y: [4]s32;
+probe_color: [4]u32;
+
+Probe :: (index: s32, x: s32, y: s32, color: u32) {
+    probe_x[index] = x
+    probe_y[index] = y
+    probe_color[index] = color
+}
+
+// Draws the 2 × 2 texture over the grid on black and checks four pixels:
+// each is the expected texel color, or black.
+Check :: (columns: s32, rows: s32, clip: Rectangle) -> bool {
+    TestBeginDrawing()
+    TestClearBackground(Color.{0, 0, 0, 255})
+    RasterImageMesh("", texture.id, .{0.0, 0.0, 2.0, 2.0}, points[:], columns, rows,
+        clip, .{255, 255, 255, 255})
+    TestEndDrawing()
+    image := TestCapture()
+    defer TestImageFree(image)
+    if image.data == null || image.format != 7 { return false }
+    bytes := cast(*u8)image.data
+    for index: 0..3 {
+        at := (probe_y[index] * image.width + probe_x[index]) * 4
+        color: u32 = (cast(u32)bytes[at] << cast(u32)16) |
+            (cast(u32)bytes[at + 1] << cast(u32)8) | cast(u32)bytes[at + 2]
+        if color != probe_color[index] {
+            print("pixel % % is % expected %\n", probe_x[index], probe_y[index], color, probe_color[index])
+            return false
+        }
+    }
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    title: [64]u8
+    CopyCString("Kryon mesh pixels test", title[:])
+    TestInitWindow(256, 256, *title[0])
+    if !TestIsWindowReady() { return 1 }
+    defer CloseRaylib()
+    // Red, green / blue, white.
+    texels[0] = cast(u8)255; texels[3] = cast(u8)255
+    texels[5] = cast(u8)255; texels[7] = cast(u8)255
+    texels[10] = cast(u8)255; texels[11] = cast(u8)255
+    for at: 12..15 { texels[at] = cast(u8)255 }
+    image: RaylibGlyphImage
+    image.data = cast(*void)*texels[0]
+    image.width = 2
+    image.height = 2
+    image.mipmaps = 1
+    image.format = 7
+    texture = TestTexture(image)
+    if texture.id == cast(u32)0 { return 2 }
+    defer TestTextureFree(texture)
+    full: Rectangle = .{0.0, 0.0, 256.0, 256.0}
+    red: u32 = cast(u32)0xff0000
+    green: u32 = cast(u32)0x00ff00
+    blue: u32 = cast(u32)0x0000ff
+    white: u32 = cast(u32)0xffffff
+    black: u32 = cast(u32)0
+    points[0] = .{32.0, 32.0}; points[1] = .{160.0, 32.0}
+    points[2] = .{32.0, 160.0}; points[3] = .{160.0, 160.0}
+    Probe(0, 40, 40, red); Probe(1, 150, 40, green)
+    Probe(2, 40, 150, blue); Probe(3, 150, 150, white)
+    if !Check(2, 2, full) { return 3 }
+    // A mirrored grid is wound the other way and must not be culled.
+    points[0] = .{160.0, 32.0}; points[1] = .{32.0, 32.0}
+    points[2] = .{160.0, 160.0}; points[3] = .{32.0, 160.0}
+    Probe(0, 40, 40, green); Probe(1, 150, 40, red)
+    Probe(2, 40, 150, white); Probe(3, 150, 150, blue)
+    if !Check(2, 2, full) { return 4 }
+    // A strip bent into an L: down the left, then along the bottom.
+    points[0] = .{32.0, 32.0}; points[1] = .{96.0, 32.0}
+    points[2] = .{32.0, 160.0}; points[3] = .{96.0, 96.0}
+    points[4] = .{160.0, 160.0}; points[5] = .{160.0, 96.0}
+    Probe(0, 40, 40, red); Probe(1, 150, 40, black)
+    Probe(2, 150, 156, blue); Probe(3, 200, 200, black)
+    if !Check(2, 3, full) { return 5 }
+    // Points beyond the clip are cut by it.
+    points[0] = .{32.0, 32.0}; points[1] = .{160.0, 32.0}
+    points[2] = .{32.0, 160.0}; points[3] = .{160.0, 160.0}
+    Probe(0, 40, 40, red); Probe(1, 150, 40, black)
+    Probe(2, 40, 150, blue); Probe(3, 150, 150, black)
+    if !Check(2, 2, .{0.0, 0.0, 96.0, 256.0}) { return 6 }
+    return 0
+}

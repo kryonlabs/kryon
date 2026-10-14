@@ -15,7 +15,8 @@ set -- \
     --bind raster_shape:RasterRoundedRectangle=ziran_link_widget_host:RasterRoundedRectangle \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_link_widget_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_link_widget_host:RasterLine \
-    --bind paint_queue:RasterImage=ziran_link_widget_host:RasterImage
+    --bind paint_queue:RasterImage=ziran_link_widget_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_link_widget_host:RasterImageMesh
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$source"
@@ -87,6 +88,9 @@ func (linkHost) RasterImage(path string, textureID uint32,
     rotation, radius float32, tint Color) {
     ZiranLinkWidgetHost_RasterImage(path, textureID, source, destination,
         clip, origin, rotation, radius, tint)
+}
+func (linkHost) RasterImageMesh(path string, textureID uint32, source Rectangle,
+    points []Vector2, columns, rows int32, clip Rectangle, tint Color) {
 }
 
 func main() {

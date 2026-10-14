@@ -16,6 +16,7 @@ set -- \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_keyboard_navigation_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_keyboard_navigation_host:RasterLine \
     --bind paint_queue:RasterImage=ziran_keyboard_navigation_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_keyboard_navigation_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_keyboard_navigation_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_keyboard_navigation_host:ImageHeight
 
