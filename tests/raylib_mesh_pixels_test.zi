@@ -15,6 +15,9 @@ TestCapture :: () -> RaylibGlyphImage #foreign test_raylib "LoadImageFromScreen"
 TestImageFree :: (image: RaylibGlyphImage) #foreign test_raylib "UnloadImage";
 
 texels: [16]u8;
+// Draws a plain triangle after the mesh, as widgets drawn after a warped
+// image do.
+triangle_after: bool;
 points: [6]Vector2;
 texture: Texture2D;
 probe_x: [4]s32;
@@ -34,6 +37,11 @@ Check :: (columns: s32, rows: s32, clip: Rectangle) -> bool {
     TestClearBackground(Color.{0, 0, 0, 255})
     RasterImageMesh("", texture.id, .{0.0, 0.0, 2.0, 2.0}, points[:], columns, rows,
         clip, .{255, 255, 255, 255})
+    if triangle_after {
+        // A rounded fill, which Kryon draws as plain triangles.
+        RasterRoundedRectangle(.{192.0, 192.0, 56.0, 56.0}, 12.0, 8,
+            .{255, 255, 0, 255})
+    }
     TestEndDrawing()
     image := TestCapture()
     defer TestImageFree(image)
@@ -102,5 +110,11 @@ main :: () -> s32 {
     Probe(0, 40, 40, red); Probe(1, 150, 40, black)
     Probe(2, 40, 150, blue); Probe(3, 150, 150, black)
     if !Check(2, 2, .{0.0, 0.0, 96.0, 256.0}) { return 6 }
+    // An untextured shape drawn next keeps its own color: the mesh's
+    // texture must not stay bound to the triangles that follow.
+    triangle_after = true
+    Probe(0, 40, 40, red); Probe(1, 150, 40, green)
+    Probe(2, 40, 150, blue); Probe(3, 200, 200, cast(u32)0xffff00)
+    if !Check(2, 2, full) { return 7 }
     return 0
 }
