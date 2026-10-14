@@ -15,6 +15,9 @@ ButtonProps :: struct {
     key: u64
     bounds: Rectangle
     label: string
+    // A second, muted line under the label, such as what a choice does or
+    // which app it uses. Screen readers announce it as the description.
+    detail: string
     id: s32
     class_name: s32
     style_kind: s32

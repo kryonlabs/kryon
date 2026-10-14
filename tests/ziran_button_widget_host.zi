@@ -9,6 +9,13 @@ icon_phase: bool;
 swatch_phase: bool;
 swatch_fills: s32;
 swatch_rings: s32;
+detail_phase: bool;
+detail_texts: s32;
+detail_label_y: s32;
+detail_line_y: s32;
+detail_line_font: s32;
+detail_label_alpha: u8;
+detail_line_alpha: u8;
 failed: bool;
 
 #program_export
@@ -29,6 +36,9 @@ ImageHeight :: (asset_path: string) -> s32 {
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
     if swatch_phase && value.count == 0 { return 0 }
+    if detail_phase && value == "Uses Sunup" && font == 11 && typeface.count == 0 {
+        return 50
+    }
     if value != "Run" || font != 14 || typeface.count != 0 {
         failed = true
     }
@@ -37,6 +47,9 @@ MeasureGlyphWidth :: (value: string, font: s32,
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    if detail_phase && font == 11 && typeface.count == 0 {
+        return 10
+    }
     if font != 14 || typeface.count != 0 { failed = true }
     return 12
 }
@@ -44,6 +57,9 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
+    if detail_phase {
+        return
+    }
     // A swatch fills with its own colour, never the style's background.
     if swatch_phase {
         if color.r != cast(u8)0xd8 || color.g != cast(u8)0x74 ||
@@ -102,6 +118,22 @@ RasterText :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
+    if detail_phase {
+        if value == "Run" && font == 14 {
+            detail_label_y = y
+            detail_label_alpha = color.a
+        } else if value == "Uses Sunup" {
+            detail_line_y = y
+            detail_line_font = font
+            detail_line_alpha = color.a
+        } else {
+            failed = true
+        }
+        unused x
+        unused clip
+        detail_texts += 1
+        return
+    }
     expected_x: s32 = 39
     if images > 0 { expected_x = 26 }
     if value != "Run" || x != expected_x || y != 29 || font != 14 ||
@@ -176,6 +208,23 @@ ExpectSwatch :: () {
 
 #program_export
 SwatchFills :: () -> s32 { return swatch_fills }
+
+#program_export
+ExpectDetail :: () {
+    detail_phase = true
+    swatch_phase = false
+    failed = false
+}
+
+// 0 when the label and its detail line were drawn as expected.
+#program_export
+DetailProblem :: () -> s32 {
+    if detail_texts != 2 { return 1 }
+    if detail_label_y != 34 || detail_line_y != 46 { return 2 }
+    if detail_line_font != 11 { return 3 }
+    if detail_line_alpha >= detail_label_alpha { return 4 }
+    return 0
+}
 
 #program_export
 SwatchRings :: () -> s32 { return swatch_rings }

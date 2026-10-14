@@ -895,7 +895,7 @@ WidgetValidColor :: (value: HostValue) -> bool {
 }
 
 WidgetButtonPropsCodec :: struct {
-    fields: [35]HostField
+    fields: [36]HostField
     bounds: WidgetRectangleCodec
     icon: WidgetTexture2DCodec
     image: WidgetImagePropsCodec
@@ -907,77 +907,79 @@ WidgetEncodeButtonProps :: (data: ButtonProps, codec: *WidgetButtonPropsCodec) -
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("ButtonProps")
     value.fields = *codec.fields[0]
-    value.field_count = 35
+    value.field_count = 36
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("bounds")
     codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
     codec.fields[2].name = HostTextData("label")
     codec.fields[2].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[3].name = HostTextData("id")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[4].name = HostTextData("class_name")
-    codec.fields[4].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[5].name = HostTextData("style_kind")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.style_kind)
-    codec.fields[6].name = HostTextData("style_role")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.style_role)
-    codec.fields[7].name = HostTextData("tone")
-    codec.fields[7].value = HostScalar("ButtonTone", cast(s64)data.tone)
-    codec.fields[8].name = HostTextData("emphasis")
-    codec.fields[8].value = HostScalar("ButtonEmphasis", cast(s64)data.emphasis)
-    codec.fields[9].name = HostTextData("size")
-    codec.fields[9].value = HostScalar("ControlSize", cast(s64)data.size)
-    codec.fields[10].name = HostTextData("disabled")
-    codec.fields[10].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[11].name = HostTextData("loading")
-    codec.fields[11].value = HostScalar("bool", ifx data.loading then 1 else 0)
-    codec.fields[12].name = HostTextData("selected")
-    codec.fields[12].value = HostScalar("bool", ifx data.selected then 1 else 0)
-    codec.fields[13].name = HostTextData("invisible")
-    codec.fields[13].value = HostScalar("bool", ifx data.invisible then 1 else 0)
-    codec.fields[14].name = HostTextData("full_width")
-    codec.fields[14].value = HostScalar("bool", ifx data.full_width then 1 else 0)
-    codec.fields[15].name = HostTextData("pill")
-    codec.fields[15].value = HostScalar("bool", ifx data.pill then 1 else 0)
-    codec.fields[16].name = HostTextData("circle")
-    codec.fields[16].value = HostScalar("bool", ifx data.circle then 1 else 0)
-    codec.fields[17].name = HostTextData("icon")
-    codec.fields[17].value = WidgetEncodeTexture2D(data.icon, *codec.icon)
-    codec.fields[18].name = HostTextData("icon_type")
-    codec.fields[18].value = HostScalar("s32", cast(s64)data.icon_type)
-    codec.fields[19].name = HostTextData("icon_shape")
-    codec.fields[19].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.icon_shape), .length = cast(usize)data.icon_shape.count}
-    codec.fields[20].name = HostTextData("icon_placement")
-    codec.fields[20].value = HostScalar("IconPlacement", cast(s64)data.icon_placement)
-    codec.fields[21].name = HostTextData("content_alignment")
-    codec.fields[21].value = HostScalar("ContentAlignment", cast(s64)data.content_alignment)
-    codec.fields[22].name = HostTextData("icon_only")
-    codec.fields[22].value = HostScalar("bool", ifx data.icon_only then 1 else 0)
-    codec.fields[23].name = HostTextData("fit_content")
-    codec.fields[23].value = HostScalar("bool", ifx data.fit_content then 1 else 0)
-    codec.fields[24].name = HostTextData("square")
-    codec.fields[24].value = HostScalar("bool", ifx data.square then 1 else 0)
-    codec.fields[25].name = HostTextData("image")
-    codec.fields[25].value = WidgetEncodeImageProps(data.image, *codec.image)
-    codec.fields[26].name = HostTextData("swatch")
-    codec.fields[26].value = HostScalar("bool", ifx data.swatch then 1 else 0)
-    codec.fields[27].name = HostTextData("swatch_color")
-    codec.fields[27].value = WidgetEncodeColor(data.swatch_color, *codec.swatch_color)
-    codec.fields[28].name = HostTextData("menu_id")
-    codec.fields[28].value = HostScalar("s32", cast(s64)data.menu_id)
-    codec.fields[29].name = HostTextData("menu")
-    codec.fields[29].value = HostScalar("bool", ifx data.menu then 1 else 0)
-    codec.fields[30].name = HostTextData("split")
-    codec.fields[30].value = HostScalar("bool", ifx data.split then 1 else 0)
-    codec.fields[31].name = HostTextData("arrow")
-    codec.fields[31].value = HostScalar("bool", ifx data.arrow then 1 else 0)
-    codec.fields[32].name = HostTextData("info")
-    codec.fields[32].value = HostScalar("bool", ifx data.info then 1 else 0)
-    codec.fields[33].name = HostTextData("direction")
-    codec.fields[33].value = HostScalar("ArrowDirection", cast(s64)data.direction)
-    codec.fields[34].name = HostTextData("state")
-    codec.fields[34].value = HostScalar("ButtonState", cast(s64)data.state)
+    codec.fields[3].name = HostTextData("detail")
+    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.detail), .length = cast(usize)data.detail.count}
+    codec.fields[4].name = HostTextData("id")
+    codec.fields[4].value = HostScalar("s32", cast(s64)data.id)
+    codec.fields[5].name = HostTextData("class_name")
+    codec.fields[5].value = HostScalar("s32", cast(s64)data.class_name)
+    codec.fields[6].name = HostTextData("style_kind")
+    codec.fields[6].value = HostScalar("s32", cast(s64)data.style_kind)
+    codec.fields[7].name = HostTextData("style_role")
+    codec.fields[7].value = HostScalar("s32", cast(s64)data.style_role)
+    codec.fields[8].name = HostTextData("tone")
+    codec.fields[8].value = HostScalar("ButtonTone", cast(s64)data.tone)
+    codec.fields[9].name = HostTextData("emphasis")
+    codec.fields[9].value = HostScalar("ButtonEmphasis", cast(s64)data.emphasis)
+    codec.fields[10].name = HostTextData("size")
+    codec.fields[10].value = HostScalar("ControlSize", cast(s64)data.size)
+    codec.fields[11].name = HostTextData("disabled")
+    codec.fields[11].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    codec.fields[12].name = HostTextData("loading")
+    codec.fields[12].value = HostScalar("bool", ifx data.loading then 1 else 0)
+    codec.fields[13].name = HostTextData("selected")
+    codec.fields[13].value = HostScalar("bool", ifx data.selected then 1 else 0)
+    codec.fields[14].name = HostTextData("invisible")
+    codec.fields[14].value = HostScalar("bool", ifx data.invisible then 1 else 0)
+    codec.fields[15].name = HostTextData("full_width")
+    codec.fields[15].value = HostScalar("bool", ifx data.full_width then 1 else 0)
+    codec.fields[16].name = HostTextData("pill")
+    codec.fields[16].value = HostScalar("bool", ifx data.pill then 1 else 0)
+    codec.fields[17].name = HostTextData("circle")
+    codec.fields[17].value = HostScalar("bool", ifx data.circle then 1 else 0)
+    codec.fields[18].name = HostTextData("icon")
+    codec.fields[18].value = WidgetEncodeTexture2D(data.icon, *codec.icon)
+    codec.fields[19].name = HostTextData("icon_type")
+    codec.fields[19].value = HostScalar("s32", cast(s64)data.icon_type)
+    codec.fields[20].name = HostTextData("icon_shape")
+    codec.fields[20].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.icon_shape), .length = cast(usize)data.icon_shape.count}
+    codec.fields[21].name = HostTextData("icon_placement")
+    codec.fields[21].value = HostScalar("IconPlacement", cast(s64)data.icon_placement)
+    codec.fields[22].name = HostTextData("content_alignment")
+    codec.fields[22].value = HostScalar("ContentAlignment", cast(s64)data.content_alignment)
+    codec.fields[23].name = HostTextData("icon_only")
+    codec.fields[23].value = HostScalar("bool", ifx data.icon_only then 1 else 0)
+    codec.fields[24].name = HostTextData("fit_content")
+    codec.fields[24].value = HostScalar("bool", ifx data.fit_content then 1 else 0)
+    codec.fields[25].name = HostTextData("square")
+    codec.fields[25].value = HostScalar("bool", ifx data.square then 1 else 0)
+    codec.fields[26].name = HostTextData("image")
+    codec.fields[26].value = WidgetEncodeImageProps(data.image, *codec.image)
+    codec.fields[27].name = HostTextData("swatch")
+    codec.fields[27].value = HostScalar("bool", ifx data.swatch then 1 else 0)
+    codec.fields[28].name = HostTextData("swatch_color")
+    codec.fields[28].value = WidgetEncodeColor(data.swatch_color, *codec.swatch_color)
+    codec.fields[29].name = HostTextData("menu_id")
+    codec.fields[29].value = HostScalar("s32", cast(s64)data.menu_id)
+    codec.fields[30].name = HostTextData("menu")
+    codec.fields[30].value = HostScalar("bool", ifx data.menu then 1 else 0)
+    codec.fields[31].name = HostTextData("split")
+    codec.fields[31].value = HostScalar("bool", ifx data.split then 1 else 0)
+    codec.fields[32].name = HostTextData("arrow")
+    codec.fields[32].value = HostScalar("bool", ifx data.arrow then 1 else 0)
+    codec.fields[33].name = HostTextData("info")
+    codec.fields[33].value = HostScalar("bool", ifx data.info then 1 else 0)
+    codec.fields[34].name = HostTextData("direction")
+    codec.fields[34].value = HostScalar("ArrowDirection", cast(s64)data.direction)
+    codec.fields[35].name = HostTextData("state")
+    codec.fields[35].value = HostScalar("ButtonState", cast(s64)data.state)
     return value
 }
 
@@ -1002,193 +1004,199 @@ WidgetDecodeButtonProps :: (value: HostValue, codec: *WidgetButtonPropsCodec) ->
         }
     }
     {
-        field_at := HostFieldAt(value, 3, "id")
+        field_at := HostFieldAt(value, 3, "detail")
+        if field_at >= 0 {
+            data.detail = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "id")
         if field_at >= 0 {
             data.id = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 4, "class_name")
+        field_at := HostFieldAt(value, 5, "class_name")
         if field_at >= 0 {
             data.class_name = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 5, "style_kind")
+        field_at := HostFieldAt(value, 6, "style_kind")
         if field_at >= 0 {
             data.style_kind = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 6, "style_role")
+        field_at := HostFieldAt(value, 7, "style_role")
         if field_at >= 0 {
             data.style_role = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 7, "tone")
+        field_at := HostFieldAt(value, 8, "tone")
         if field_at >= 0 {
             data.tone = cast(ButtonTone)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 8, "emphasis")
+        field_at := HostFieldAt(value, 9, "emphasis")
         if field_at >= 0 {
             data.emphasis = cast(ButtonEmphasis)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 9, "size")
+        field_at := HostFieldAt(value, 10, "size")
         if field_at >= 0 {
             data.size = cast(ControlSize)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 10, "disabled")
+        field_at := HostFieldAt(value, 11, "disabled")
         if field_at >= 0 {
             data.disabled = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 11, "loading")
+        field_at := HostFieldAt(value, 12, "loading")
         if field_at >= 0 {
             data.loading = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 12, "selected")
+        field_at := HostFieldAt(value, 13, "selected")
         if field_at >= 0 {
             data.selected = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 13, "invisible")
+        field_at := HostFieldAt(value, 14, "invisible")
         if field_at >= 0 {
             data.invisible = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 14, "full_width")
+        field_at := HostFieldAt(value, 15, "full_width")
         if field_at >= 0 {
             data.full_width = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 15, "pill")
+        field_at := HostFieldAt(value, 16, "pill")
         if field_at >= 0 {
             data.pill = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 16, "circle")
+        field_at := HostFieldAt(value, 17, "circle")
         if field_at >= 0 {
             data.circle = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 17, "icon")
+        field_at := HostFieldAt(value, 18, "icon")
         if field_at >= 0 {
             data.icon = WidgetDecodeTexture2D(value.fields[field_at].value, *codec.icon)
         }
     }
     {
-        field_at := HostFieldAt(value, 18, "icon_type")
+        field_at := HostFieldAt(value, 19, "icon_type")
         if field_at >= 0 {
             data.icon_type = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 19, "icon_shape")
+        field_at := HostFieldAt(value, 20, "icon_shape")
         if field_at >= 0 {
             data.icon_shape = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
         }
     }
     {
-        field_at := HostFieldAt(value, 20, "icon_placement")
+        field_at := HostFieldAt(value, 21, "icon_placement")
         if field_at >= 0 {
             data.icon_placement = cast(IconPlacement)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 21, "content_alignment")
+        field_at := HostFieldAt(value, 22, "content_alignment")
         if field_at >= 0 {
             data.content_alignment = cast(ContentAlignment)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 22, "icon_only")
+        field_at := HostFieldAt(value, 23, "icon_only")
         if field_at >= 0 {
             data.icon_only = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 23, "fit_content")
+        field_at := HostFieldAt(value, 24, "fit_content")
         if field_at >= 0 {
             data.fit_content = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 24, "square")
+        field_at := HostFieldAt(value, 25, "square")
         if field_at >= 0 {
             data.square = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 25, "image")
+        field_at := HostFieldAt(value, 26, "image")
         if field_at >= 0 {
             data.image = WidgetDecodeImageProps(value.fields[field_at].value, *codec.image)
         }
     }
     {
-        field_at := HostFieldAt(value, 26, "swatch")
+        field_at := HostFieldAt(value, 27, "swatch")
         if field_at >= 0 {
             data.swatch = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 27, "swatch_color")
+        field_at := HostFieldAt(value, 28, "swatch_color")
         if field_at >= 0 {
             data.swatch_color = WidgetDecodeColor(value.fields[field_at].value, *codec.swatch_color)
         }
     }
     {
-        field_at := HostFieldAt(value, 28, "menu_id")
+        field_at := HostFieldAt(value, 29, "menu_id")
         if field_at >= 0 {
             data.menu_id = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 29, "menu")
+        field_at := HostFieldAt(value, 30, "menu")
         if field_at >= 0 {
             data.menu = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 30, "split")
+        field_at := HostFieldAt(value, 31, "split")
         if field_at >= 0 {
             data.split = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 31, "arrow")
+        field_at := HostFieldAt(value, 32, "arrow")
         if field_at >= 0 {
             data.arrow = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 32, "info")
+        field_at := HostFieldAt(value, 33, "info")
         if field_at >= 0 {
             data.info = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 33, "direction")
+        field_at := HostFieldAt(value, 34, "direction")
         if field_at >= 0 {
             data.direction = cast(ArrowDirection)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 34, "state")
+        field_at := HostFieldAt(value, 35, "state")
         if field_at >= 0 {
             data.state = cast(ButtonState)value.fields[field_at].value.integer
         }
@@ -1219,193 +1227,199 @@ WidgetValidButtonProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 3, "id")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 4, "class_name")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 5, "style_kind")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 6, "style_role")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 7, "tone")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "ButtonTone", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 8, "emphasis")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "ButtonEmphasis", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 9, "size")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "ControlSize", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 10, "disabled")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 11, "loading")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 12, "selected")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 13, "invisible")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 14, "full_width")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 15, "pill")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 16, "circle")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 17, "icon")
-        if field_at >= 0 {
-            if !WidgetValidTexture2D(value.fields[field_at].value) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 18, "icon_type")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 19, "icon_shape")
+        field_at := HostFieldAt(value, 3, "detail")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 20, "icon_placement")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "IconPlacement", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 21, "content_alignment")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "ContentAlignment", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 22, "icon_only")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 23, "fit_content")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 24, "square")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 25, "image")
-        if field_at >= 0 {
-            if !WidgetValidImageProps(value.fields[field_at].value) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 26, "swatch")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 27, "swatch_color")
-        if field_at >= 0 {
-            if !WidgetValidColor(value.fields[field_at].value) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 28, "menu_id")
+        field_at := HostFieldAt(value, 4, "id")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 29, "menu")
+        field_at := HostFieldAt(value, 5, "class_name")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "style_kind")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "style_role")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "tone")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "ButtonTone", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "emphasis")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "ButtonEmphasis", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "size")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "ControlSize", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "disabled")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 30, "split")
+        field_at := HostFieldAt(value, 12, "loading")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 31, "arrow")
+        field_at := HostFieldAt(value, 13, "selected")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 32, "info")
+        field_at := HostFieldAt(value, 14, "invisible")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 33, "direction")
+        field_at := HostFieldAt(value, 15, "full_width")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 16, "pill")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 17, "circle")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 18, "icon")
+        if field_at >= 0 {
+            if !WidgetValidTexture2D(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 19, "icon_type")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 20, "icon_shape")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 21, "icon_placement")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "IconPlacement", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 22, "content_alignment")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "ContentAlignment", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 23, "icon_only")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 24, "fit_content")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 25, "square")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 26, "image")
+        if field_at >= 0 {
+            if !WidgetValidImageProps(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 27, "swatch")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 28, "swatch_color")
+        if field_at >= 0 {
+            if !WidgetValidColor(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 29, "menu_id")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 30, "menu")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 31, "split")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 32, "arrow")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 33, "info")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 34, "direction")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "ArrowDirection", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 34, "state")
+        field_at := HostFieldAt(value, 35, "state")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "ButtonState", cast(s32)HostInteger) { return false }
         }
