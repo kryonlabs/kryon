@@ -141,6 +141,20 @@ main :: () -> s32 {
     meshed.mesh.points = mesh_points[:]
     before := PendingPaintCount(session)
     arguments[1] = WidgetEncodeImageProps(meshed, *image_codec)
+    // A bundle sends the points; image codecs keep no room for them, so
+    // they are attached here as the bundle's values would be.
+    point_values: [4]HostValue
+    point_codecs: [4]WidgetVector2Codec
+    for index: cast(s32)0..3 {
+        point_values[index] = WidgetEncodeVector2(mesh_points[index], *point_codecs[index])
+    }
+    mesh_at := HostFieldAt(arguments[1], 12, "mesh")
+    points_at := HostFieldAt(arguments[1].fields[mesh_at].value, 2, "points")
+    if mesh_at < 0 || points_at < 0 || arguments[1].fields[mesh_at].value.fields[points_at].value.length != cast(usize)0 {
+        return 42
+    }
+    arguments[1].fields[mesh_at].value.fields[points_at].value.length = cast(usize)4
+    arguments[1].fields[mesh_at].value.fields[points_at].value.elements = *point_values[0]
     if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 {
         return 40
     }

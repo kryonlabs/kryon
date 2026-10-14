@@ -4,9 +4,10 @@
 Each root struct, and every struct it contains, gets a codec record plus
 WidgetEncodeT, WidgetDecodeT and WidgetValidT. Fields match by name (see
 src/backend/hosted_values.zi), so a bundle and its host may be built against
-different layouts. Slices hold at most 1024 elements (fewer where
-SLICE_LIMITS says so); the decoded elements stay in the codec, and the
-caller attaches them after decoding.
+different layouts. Slices hold at most 1024 elements; the decoded elements
+stay in the codec, and the caller attaches them after decoding. Slices in
+HOST_DECODED_SLICES keep no room in the codec: their host decodes them into
+its own storage, and an encoder sends them empty.
 
 Run without arguments, it writes src/backend/widget_codec.zi for Kryon's own
 hosted widgets; --check only verifies that file. An application generates
@@ -19,14 +20,19 @@ import re
 import sys
 
 SLICE_LIMIT = 1024
-# Smaller bounds for slices whose codec is repeated in many records: every
-# ImageProps codec (in buttons, title bars and each dropdown option) holds
-# room for a warped image's grid.
-SLICE_LIMITS = {('ImageMesh', 'points'): 256}
+# Slices whose codec is repeated in many records, with the constant that
+# bounds them: every ImageProps codec (in buttons, title bars and each
+# dropdown option) would otherwise hold room for a warped image's grid. The
+# host decodes a grid's points for the Image effect alone.
+HOST_DECODED_SLICES = {('ImageMesh', 'points'): 'IMAGE_MESH_POINT_LIMIT'}
 
 
 def slice_limit(kind, name):
-    return SLICE_LIMITS.get((kind, name), SLICE_LIMIT)
+    return HOST_DECODED_SLICES.get((kind, name), SLICE_LIMIT)
+
+
+def host_decoded(kind, name):
+    return (kind, name) in HOST_DECODED_SLICES
 
 KRYON_ROOT = Path(__file__).resolve().parent.parent
 KRYON_MODULES = ['session', 'geometry', 'drawing_props', 'text_props', 'image_props',
@@ -104,7 +110,7 @@ def generate(schema, needed, provided, header, imports):
         for name, field_kind in fields:
             if field_kind in records:
                 lines += [f'    {name}: Widget{field_kind}Codec']
-            if field_kind.startswith('[]'):
+            if field_kind.startswith('[]') and not host_decoded(kind, name):
                 element = field_kind[2:]
                 limit = slice_limit(kind, name)
                 lines += [f'    {name}_values: [{limit}]HostValue',
@@ -127,6 +133,10 @@ def encoder(kind, fields, records):
         lines += [f'    codec.fields[{index}].name = HostTextData("{name}")']
         if field_kind in records:
             lines += [f'    {target} = WidgetEncode{field_kind}(data.{name}, *codec.{name})']
+        elif field_kind.startswith('[]') and host_decoded(kind, name):
+            lines += [f'    {target}.kind = cast(s32)HostSlice',
+                      f'    {target}.type_name = HostTextData("{field_kind}")',
+                      f'    {target}.length = cast(usize)0']
         elif field_kind.startswith('[]'):
             element = field_kind[2:]
             limit = slice_limit(kind, name)
@@ -164,6 +174,8 @@ def decoder(kind, fields, records):
         source = 'value.fields[field_at].value'
         if field_kind in records:
             body = [f'    data.{name} = WidgetDecode{field_kind}({source}, *codec.{name})']
+        elif field_kind.startswith('[]') and host_decoded(kind, name):
+            body = ['    // The host decodes these elements into its own storage.']
         elif field_kind.startswith('[]'):
             element = field_kind[2:]
             body = ['    {', '        index: usize = 0', f'        while index < {source}.length {{',

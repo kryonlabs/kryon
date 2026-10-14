@@ -618,9 +618,6 @@ WidgetValidTexture2D :: (value: HostValue) -> bool {
 
 WidgetImageMeshCodec :: struct {
     fields: [3]HostField
-    points_values: [256]HostValue
-    points_codecs: [256]WidgetVector2Codec
-    points_decoded: [256]Vector2
 }
 
 WidgetEncodeImageMesh :: (data: ImageMesh, codec: *WidgetImageMeshCodec) -> HostValue {
@@ -636,16 +633,7 @@ WidgetEncodeImageMesh :: (data: ImageMesh, codec: *WidgetImageMeshCodec) -> Host
     codec.fields[2].name = HostTextData("points")
     codec.fields[2].value.kind = cast(s32)HostSlice
     codec.fields[2].value.type_name = HostTextData("[]Vector2")
-    codec.fields[2].value.length = cast(usize)data.points.count
-    if codec.fields[2].value.length > cast(usize)256 { codec.fields[2].value.length = cast(usize)256 }
-    codec.fields[2].value.elements = *codec.points_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[2].value.length {
-            codec.points_values[index] = WidgetEncodeVector2(data.points[index], *codec.points_codecs[index])
-            index += cast(usize)1
-        }
-    }
+    codec.fields[2].value.length = cast(usize)0
     return value
 }
 
@@ -666,14 +654,7 @@ WidgetDecodeImageMesh :: (value: HostValue, codec: *WidgetImageMeshCodec) -> Ima
     {
         field_at := HostFieldAt(value, 2, "points")
         if field_at >= 0 {
-            {
-                index: usize = 0
-                while index < value.fields[field_at].value.length {
-                    codec.points_decoded[index] = WidgetDecodeVector2(value.fields[field_at].value.elements[index], *codec.points_codecs[index])
-                    index += cast(usize)1
-                }
-            }
-            // Slice storage is attached by the rendering effect after decoding.
+            // The host decodes these elements into its own storage.
         }
     }
     return data
@@ -699,7 +680,7 @@ WidgetValidImageMesh :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 2, "points")
         if field_at >= 0 {
             if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]Vector2" ||
-                value.fields[field_at].value.length > cast(usize)256 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+                value.fields[field_at].value.length > cast(usize)IMAGE_MESH_POINT_LIMIT || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
             {
                 index: usize = 0
                 while index < value.fields[field_at].value.length {

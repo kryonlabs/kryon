@@ -10,6 +10,8 @@
 #import "text_widget"
 #import "text_props"
 #import "image_widget"
+#import "image_props"
+#import "geometry"
 #import "button_widget"
 #import "checkbox_widget"
 #import "toggle_widget"
@@ -49,6 +51,10 @@ widget_host_depth: s32;
 widget_host_asset_allowed: WidgetAssetAllowed;
 widget_text_codec: WidgetTextPropsCodec;
 widget_image_codec: WidgetImagePropsCodec;
+// The points of the warped image being drawn: the hosted Image effect
+// decodes a grid here, so image codecs elsewhere keep no room for one.
+widget_image_mesh_points: [IMAGE_MESH_POINT_LIMIT]Vector2;
+widget_image_mesh_point_codec: WidgetVector2Codec;
 widget_button_codec: WidgetButtonPropsCodec;
 widget_area_codec: WidgetTextAreaPropsCodec;
 widget_area_result_codec: WidgetTextAreaResultCodec;
@@ -117,6 +123,22 @@ WidgetHostAssetAllowed :: (path: string) -> bool {
     return widget_host_asset_allowed(path)
 }
 
+// A warped image's points, validated with its props, decoded into the
+// host's own buffer.
+WidgetHostMeshPoints :: (mesh: HostValue) -> []Vector2 {
+    count: usize = 0
+    points_at := HostFieldAt(mesh, 2, "points")
+    if points_at >= 0 {
+        points := mesh.fields[points_at].value
+        while count < points.length && count < cast(usize)IMAGE_MESH_POINT_LIMIT {
+            widget_image_mesh_points[count] = WidgetDecodeVector2(points.elements[count],
+                *widget_image_mesh_point_codec)
+            count += cast(usize)1
+        }
+    }
+    return widget_image_mesh_points[:cast(s64)count]
+}
+
 // A HostCall for the hosted widget functions. Returns 0 for a call it does
 // not answer or refuses.
 WidgetHostCall :: (context: *void, module: *u8, function: *u8,
@@ -174,8 +196,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         // dropdown options are drawn without one.
         mesh_at := HostFieldAt(props, 12, "mesh")
         if mesh_at >= 0 {
-            image.mesh.points = widget_image_codec.mesh.points_decoded[:HostSliceLength(
-                props.fields[mesh_at].value, 2, "points")]
+            image.mesh.points = WidgetHostMeshPoints(props.fields[mesh_at].value)
         }
         Image(session, image)
         return 1
