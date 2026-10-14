@@ -196,5 +196,21 @@ main :: () -> s32 {
     unused Button(TestSession(), swatch)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || ButtonHostFailed() ||
     SwatchFills() != 2 || SwatchRings() != 2 { return 48 }
+    // A detail line sits under the label in a smaller, muted font. The
+    // button measures the wider line, and both lines are centred together.
+    ExpectDetail()
+    detail: ButtonProps
+    detail.class_name = 9
+    detail.label = "Run"
+    detail.detail = "Uses Sunup"
+    sized := ButtonMeasure(detail)
+    if sized.width != 74.0 || sized.height < 24.0 || ButtonHostFailed() { return 49 }
+    detail.key = cast(u64)91
+    detail.id = 91
+    detail.bounds = Rectangle.{10.0, 20.0, 200.0, 50.0}
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    unused Button(TestSession(), detail)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || ButtonHostFailed() { return 50 }
+    if DetailProblem() != 0 { return 50 + DetailProblem() }
     return 0
 }

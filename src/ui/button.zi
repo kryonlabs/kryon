@@ -405,11 +405,13 @@ MeasureButton :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
 #program_export
 MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
     font: s32, label_width: float32, available_width: float32,
-    scale: float32, disclosure: bool) -> Rectangle {
+    scale: float32, disclosure: bool, detail_height: float32 = 0.0) -> Rectangle {
     if scale <= 0.0 { scale = 1.0 }
     bounds: Rectangle = props.bounds
     text_height: float32 = 0.0
-    if props.label != "" && !props.icon_only { text_height = cast(float32)font / scale }
+    if props.label != "" && !props.icon_only {
+        text_height = (cast(float32)font + detail_height) / scale
+    }
     height: float32 = FitHeight(bounds.height / scale, minimum_height / scale,
         text_height, paint.padding_y)
     has_icon: bool = disclosure || props.icon.id != cast(u32)0 ||
