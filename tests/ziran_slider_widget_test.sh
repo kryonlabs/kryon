@@ -17,7 +17,8 @@ set -- \
     --bind raster_shape:RasterRoundedRectangle=ziran_slider_widget_host:RasterRoundedRectangle \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_slider_widget_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_slider_widget_host:RasterLine \
-    --bind paint_queue:RasterImage=ziran_slider_widget_host:RasterImage
+    --bind paint_queue:RasterImage=ziran_slider_widget_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_slider_widget_host:RasterImageMesh
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"

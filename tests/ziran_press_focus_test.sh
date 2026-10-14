@@ -16,6 +16,7 @@ set -- \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_composition_widget_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_composition_widget_host:RasterLine \
     --bind paint_queue:RasterImage=ziran_composition_widget_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_composition_widget_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_button_widget_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_button_widget_host:ImageHeight \
     --bind system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost \

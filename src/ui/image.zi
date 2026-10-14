@@ -20,6 +20,21 @@ ImageFitRect :: (image: ImageProps, texture: Texture2D) -> Rectangle {
         texture.width, texture.height, cast(s32)image.fit)
 }
 
+// A mesh replaces the fitted rectangle once it has 2 columns and 2 rows.
+#program_export
+ImageMeshActive :: (mesh: ImageMesh) -> bool {
+    return mesh.columns >= 2 && mesh.rows >= 2
+}
+
+// Whether a mesh has a point for every grid position and a grid small
+// enough to draw (IMAGE_MESH_POINT_LIMIT points).
+#program_export
+ImageMeshComplete :: (mesh: ImageMesh) -> bool {
+    if !ImageMeshActive(mesh) { return false }
+    needed: s64 = cast(s64)mesh.columns * cast(s64)mesh.rows
+    return needed <= cast(s64)IMAGE_MESH_POINT_LIMIT && mesh.points.count >= needed
+}
+
 ImageDrawPlan :: struct {
     draw: bool
     source: Rectangle

@@ -154,6 +154,21 @@ main :: () -> s32 {
     DrawTexturePro(target.texture, Rectangle.{0.0, 0.0, 10.0, -10.0}, Rectangle.{80.0, 30.0, 10.0, 10.0}, Vector2.{}, 0.0, Color.{255, 255, 255, 255})
     UnloadRenderTexture(target)
     UnloadTexture(texture)
+    // A warped image: a mirrored grid, drawn triangle by triangle through
+    // the canvas's transforms, keeps each texel in its mirrored place.
+    mesh_pixels: [16]u8
+    mesh_pixels[0] = cast(u8)255; mesh_pixels[3] = cast(u8)255
+    mesh_pixels[5] = cast(u8)255; mesh_pixels[7] = cast(u8)255
+    mesh_pixels[10] = cast(u8)255; mesh_pixels[11] = cast(u8)255
+    for at: 12..15 { mesh_pixels[at] = cast(u8)255 }
+    mesh_texture := LoadTextureFromImage(CanvasImageFromRgba(*mesh_pixels[0], 2, 2))
+    if !IsTextureValid(mesh_texture) { return 17 }
+    mesh: [4]Vector2
+    mesh[0] = .{112.0, 30.0}; mesh[1] = .{96.0, 30.0}
+    mesh[2] = .{112.0, 46.0}; mesh[3] = .{96.0, 46.0}
+    RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
+        .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
+    UnloadTexture(mesh_texture)
     CopyCString("/test-font.ttf", path[:])
     font := LoadFontEx(*path[0], 20, null, 0)
     if !IsFontValid(font) { return 13 }

@@ -4,6 +4,14 @@
 
 ### Added
 
+- Images can be drawn warped over a grid of points: set `ImageProps.mesh`
+  to a columns × rows grid of screen points and `Image` stretches the
+  picture across it, two triangles per cell, so a painted arm or leg can
+  bend at its joint like a paper puppet. Mirrored grids draw too, the
+  image's bounds still clip it, and the caller may reuse its point buffer
+  right after the call. Desktop, Android, web, Cairo, the pixmap host and
+  Plan 9 draw it; a portable bundle can send a grid of up to 256 points
+  with a plain `Image`.
 - Add a first-class Android target: an `android` profile builds an
   installable APK from the same application sources as the desktop. The
   first `kryon build --profile android` generates the Android project beside

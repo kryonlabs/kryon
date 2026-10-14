@@ -16,6 +16,7 @@ set -- \
     --bind raster_text:RasterText=ziran_context_menu_widget_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_context_menu_widget_host:RasterTextClipped \
     --bind paint_queue:RasterImage=ziran_context_menu_widget_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_context_menu_widget_host:RasterImageMesh \
     --bind system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost \
     --bind system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
     --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost

@@ -234,6 +234,11 @@ HOST void RasterImage(String path, uint32_t id, Rectangle source,
     (void)path; (void)id; (void)source; (void)destination;
     (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
 }
+HOST void RasterImageMesh(String path, uint32_t id, Rectangle source,
+    Slice points, int32_t columns, int32_t rows, Rectangle clip, Color tint) {
+    (void)path; (void)id; (void)source; (void)points;
+    (void)columns; (void)rows; (void)clip; (void)tint;
+}
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
 

@@ -277,6 +277,11 @@ raylib-text-pixels-test: $(ZI2C_BIN)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" \
 		sh tests/raylib_text_pixels_test.sh
 
+.PHONY: raylib-mesh-pixels-test
+raylib-mesh-pixels-test: $(ZI2C_BIN)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" \
+		sh tests/raylib_mesh_pixels_test.sh
+
 .PHONY: raylib-secondary-window-test
 raylib-secondary-window-test: $(ZI2C_BIN)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_secondary_window_test.sh
@@ -406,6 +411,11 @@ pixmap-frame-test: project-toolchain
 event-wake-sdl-test: project-toolchain
 	sh tests/event_wake_sdl_test.sh
 test: pixmap-frame-test event-wake-sdl-test
+
+.PHONY: pixmap-mesh-test
+pixmap-mesh-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_mesh_test.sh
+test: pixmap-mesh-test
 
 .PHONY: pixmap-parallel-test
 pixmap-parallel-test: project-toolchain

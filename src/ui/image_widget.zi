@@ -130,7 +130,16 @@ Image :: (session: Session, image: ImageProps) {
             StyleOpacityValue(faces.surface.fields, faces.surface.opacity)))
     }
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
-    if plan.draw && tint.a > cast(u8)0 {
+    if ImageMeshActive(image.mesh) {
+        // A warped image draws its grid or nothing: no placeholder covers
+        // its bounds, which may be a whole stage of pieces.
+        if plan.draw && tint.a > cast(u8)0 && ImageMeshComplete(image.mesh) {
+            PaintImageMesh(session, node, image.asset_path, image.texture.id,
+                plan.source, image.mesh.columns, image.mesh.rows,
+                image.mesh.points, image.bounds, plan.tint, image.texture,
+                image.smooth)
+        }
+    } else if plan.draw && tint.a > cast(u8)0 {
         PaintImage(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, image.bounds,
             image.origin, image.rotation, radius, plan.tint, image.texture,

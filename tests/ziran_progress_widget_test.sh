@@ -97,6 +97,11 @@ HOST void RasterImage(String path, uint32_t texture_id,
     (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
     assert(0 && "Progress should not draw images");
 }
+HOST void RasterImageMesh(String path, uint32_t id, Rectangle source,
+    Slice points, int32_t columns, int32_t rows, Rectangle clip, Color tint) {
+    (void)path; (void)id; (void)source; (void)points;
+    (void)columns; (void)rows; (void)clip; (void)tint;
+}
 int main(void) {
     assert(Answer() == 42 && measures == 2 && draws == 5);
     return 0;
@@ -173,6 +178,9 @@ func (host *widgetHost) RasterImage(path string, textureID uint32,
     source, destination, clip Rectangle, origin Vector2,
     rotation, radius float32, tint Color) {
     host.t.Fatal("Progress should not draw images")
+}
+func (host *widgetHost) RasterImageMesh(path string, textureID uint32, source Rectangle,
+    points []Vector2, columns, rows int32, clip Rectangle, tint Color) {
 }
 func TestProgressWidget(t *testing.T) {
     host := &widgetHost{t: t}

@@ -15,7 +15,8 @@ set -- \
     --bind raster:RasterLine=ziran_overlay_widget_host:RasterLine \
     --bind raster_text:RasterText=ziran_overlay_widget_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_overlay_widget_host:RasterTextClipped \
-    --bind paint_queue:RasterImage=ziran_overlay_widget_host:RasterImage
+    --bind paint_queue:RasterImage=ziran_overlay_widget_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_overlay_widget_host:RasterImageMesh
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$std" \
     -o "$work/ir" "$source"
@@ -78,6 +79,9 @@ func (testOverlayHost) RasterImage(path string, textureID uint32,
     rotation, radius float32, tint Color) {
     ZiranOverlayWidgetHost_RasterImage(path, textureID, source, destination,
         clip, origin, rotation, radius, tint)
+}
+func (testOverlayHost) RasterImageMesh(path string, textureID uint32, source Rectangle,
+    points []Vector2, columns, rows int32, clip Rectangle, tint Color) {
 }
 
 func main() {

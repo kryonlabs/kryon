@@ -99,6 +99,11 @@ HOST void RasterImage(String path, uint32_t texture_id,
     (void)clip; (void)origin; (void)rotation; (void)radius; (void)tint;
     assert(0 && "Separator should not draw images");
 }
+HOST void RasterImageMesh(String path, uint32_t id, Rectangle source,
+    Slice points, int32_t columns, int32_t rows, Rectangle clip, Color tint) {
+    (void)path; (void)id; (void)source; (void)points;
+    (void)columns; (void)rows; (void)clip; (void)tint;
+}
 int main(void) {
     assert(Answer() == 42 && lines == 2 && texts == 1 &&
            measures == 1 && bullets == 1);
@@ -171,6 +176,9 @@ func (h *separatorHost) RasterImage(path string, textureID uint32,
     source, destination, clip Rectangle, origin Vector2,
     rotation, radius float32, tint Color) {
     h.t.Fatal("Separator should not draw images")
+}
+func (h *separatorHost) RasterImageMesh(path string, textureID uint32, source Rectangle,
+    points []Vector2, columns, rows int32, clip Rectangle, tint Color) {
 }
 func TestSeparatorWidget(t *testing.T) {
     host := &separatorHost{t: t}

@@ -54,6 +54,14 @@ Use `Image(ImageProps)` for UI images. Its asset path, bounds, fit, and alt
 text describe the image at the widget boundary. Backend texture calls are
 renderer primitives, not alternate widget APIs.
 
+`ImageProps.mesh` warps the same image over a grid of `columns` × `rows`
+screen points, row by row from the source's top left, each cell drawn as two
+textured triangles: a cut-out puppet's painted arm can bend at its elbow, or
+a picture can follow a curve. The bounds still clip it; fit, origin,
+rotation and the style radius do not apply, and a grid with too few points
+draws nothing. Points are copied when the image is queued, at most 4096 per
+image (256 through a portable bundle's hosted `Image`).
+
 An application using a Kryon host exports a Ziran function with this shape:
 
 ```zi

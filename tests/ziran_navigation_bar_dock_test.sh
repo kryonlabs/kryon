@@ -14,6 +14,7 @@ set -- \
     --bind raster_shape:RasterRoundedRectangle=ziran_navigation_bar_widget_host:RasterRoundedRectangle \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_navigation_bar_widget_host:RasterRoundedRectangleOutline \
     --bind paint_queue:RasterImage=ziran_navigation_bar_widget_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_navigation_bar_widget_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_navigation_bar_dock_test:DockImageWidth \
     --bind image_raster:ImageHeight=ziran_navigation_bar_dock_test:DockImageHeight \
     --bind font_metrics:MeasureGlyphWidth=ziran_navigation_bar_dock_test:DockMeasureWidth \

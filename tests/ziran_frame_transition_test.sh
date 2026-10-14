@@ -17,6 +17,7 @@ set -- \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_frame_transition_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_frame_transition_host:RasterLine \
     --bind paint_queue:RasterImage=ziran_frame_transition_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_frame_transition_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_frame_transition_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_frame_transition_host:ImageHeight
 

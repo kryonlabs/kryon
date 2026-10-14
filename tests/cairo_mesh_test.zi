@@ -1,0 +1,72 @@
+Raster :: #import "cairo_raster";
+#import "geometry"
+#import "drawing_props"
+#import "std/byte_text_linux"
+#import "std/format"
+#import "std/vec"
+
+points: [6]Vector2;
+
+// The surface color at a pixel as 0xRRGGBB (Cairo keeps ARGB32 words).
+Pixel :: (x: s32, y: s32) -> u32 {
+    data := Raster.RasterSurfaceData()
+    stride := Raster.RasterSurfaceStride()
+    word := cast(*u32)*data[y * stride + x * 4]
+    return word.* & cast(u32)0xffffff
+}
+
+Is :: (x: s32, y: s32, color: u32) -> bool {
+    if Pixel(x, y) == color { return true }
+    print("pixel % % is % expected %\n", x, y, Pixel(x, y), color)
+    return false
+}
+
+Draw :: (path: string, columns: s32, rows: s32, clip: Rectangle) -> bool {
+    Raster.BeginRasterFrame()
+    Raster.RasterImageMesh(path, 0, .{0.0, 0.0, 2.0, 2.0}, points[:], columns, rows,
+        clip, .{255, 255, 255, 255})
+    return Raster.FinishRasterFrame()
+}
+
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    root := TextFromCString(argv[1])
+    text: Vec(u8)
+    BuilderPrint(*text, "%/mesh.png", root)
+    path := BuilderFinish(text)
+    if !Raster.OpenRaster(64, 64) { return 2 }
+    defer Raster.CloseRaster()
+    full: Rectangle = .{0.0, 0.0, 64.0, 64.0}
+    background: u32 = cast(u32)0xf8fafc
+    red: u32 = cast(u32)0xff0000
+    green: u32 = cast(u32)0x00ff00
+    blue: u32 = cast(u32)0x0000ff
+    white: u32 = cast(u32)0xffffff
+    points[0] = .{0.0, 0.0}; points[1] = .{64.0, 0.0}
+    points[2] = .{0.0, 64.0}; points[3] = .{64.0, 64.0}
+    if !Draw(path, 2, 2, full) { return 3 }
+    if !Is(16, 16, red) || !Is(48, 16, green) || !Is(16, 48, blue) || !Is(48, 48, white) { return 4 }
+    // Mirrored.
+    points[0] = .{64.0, 0.0}; points[1] = .{0.0, 0.0}
+    points[2] = .{64.0, 64.0}; points[3] = .{0.0, 64.0}
+    if !Draw(path, 2, 2, full) { return 5 }
+    if !Is(16, 16, green) || !Is(48, 16, red) || !Is(16, 48, white) || !Is(48, 48, blue) { return 6 }
+    // The cell's two triangles share its diagonal: no seam and no gap.
+    for at: cast(s32)1..62 {
+        if at == 31 || at == 32 { continue }
+        if !Is(at, at, ifx at < 31 then green else blue) { return 11 }
+    }
+    // A strip bent into an L: down the left, then along the bottom.
+    points[0] = .{0.0, 0.0}; points[1] = .{32.0, 0.0}
+    points[2] = .{0.0, 64.0}; points[3] = .{32.0, 32.0}
+    points[4] = .{64.0, 64.0}; points[5] = .{64.0, 32.0}
+    if !Draw(path, 2, 3, full) { return 7 }
+    if !Is(6, 6, red) || !Is(52, 8, background) || !Is(58, 62, blue) { return 8 }
+    // The clip bounds the image.
+    points[0] = .{0.0, 0.0}; points[1] = .{64.0, 0.0}
+    points[2] = .{0.0, 64.0}; points[3] = .{64.0, 64.0}
+    if !Draw(path, 2, 2, .{0.0, 0.0, 32.0, 64.0}) { return 9 }
+    if !Is(16, 16, red) || !Is(48, 16, background) { return 10 }
+    print("Cairo draws plain, mirrored, bent and clipped warped images\n")
+    return 0
+}

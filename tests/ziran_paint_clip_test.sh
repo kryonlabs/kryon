@@ -111,6 +111,11 @@ HOST void RasterImage(String path, uint32_t id, Rectangle source,
            clip.width == 40 && clip.height == 40);
     image_draws++;
 }
+HOST void RasterImageMesh(String path, uint32_t id, Rectangle source,
+    Slice points, int32_t columns, int32_t rows, Rectangle clip, Color tint) {
+    (void)path; (void)id; (void)source; (void)points;
+    (void)columns; (void)rows; (void)clip; (void)tint;
+}
 int main(void) {
     assert(Frame() == 42);
     assert(text_draws == 2 && image_draws == 1 && shape_draws == 18);
@@ -171,6 +176,9 @@ func (h *clipHost) RasterImage(path string, id uint32,
        clip.Width != 40 || clip.Height != 40 ||
        tint.A != 255 { h.t.Fatal("image clip") }
     h.images++
+}
+func (h *clipHost) RasterImageMesh(path string, textureID uint32, source Rectangle,
+    points []Vector2, columns, rows int32, clip Rectangle, tint Color) {
 }
 func TestClip(t *testing.T) {
     h := &clipHost{t: t}

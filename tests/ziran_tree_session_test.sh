@@ -46,6 +46,10 @@ RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
     tint: Color) {}
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32,
+    source: Rectangle, points: []Vector2, columns: s32, rows: s32,
+    clip: Rectangle, tint: Color) {}
 
 Check :: () -> s32 {
     first: Session = SessionOpen()

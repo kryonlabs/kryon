@@ -16,7 +16,8 @@ set -- \
     --bind raster:RasterLine=color_picker_widget_host:RasterLine \
     --bind raster_text:RasterText=color_picker_widget_host:RasterText \
     --bind raster_text:RasterTextClipped=color_picker_widget_host:RasterTextClipped \
-    --bind paint_queue:RasterImage=color_picker_widget_host:RasterImage
+    --bind paint_queue:RasterImage=color_picker_widget_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=color_picker_widget_host:RasterImageMesh
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$portable"

@@ -17,6 +17,7 @@ set -- \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_widget_noop_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_widget_noop_host:RasterLine \
     --bind paint_queue:RasterImage=ziran_widget_noop_host:RasterImage \
+    --bind paint_queue:RasterImageMesh=ziran_widget_noop_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_widget_noop_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_widget_noop_host:ImageHeight
 

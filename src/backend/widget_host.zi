@@ -170,6 +170,13 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         if image.texture.id != cast(u32)0 || !WidgetHostAssetAllowed(image.asset_path) {
             return 0
         }
+        // A warped image's grid; images inside buttons, title bars and
+        // dropdown options are drawn without one.
+        mesh_at := HostFieldAt(props, 12, "mesh")
+        if mesh_at >= 0 {
+            image.mesh.points = widget_image_codec.mesh.points_decoded[:HostSliceLength(
+                props.fields[mesh_at].value, 2, "points")]
+        }
         Image(session, image)
         return 1
     }

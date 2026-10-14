@@ -616,12 +616,109 @@ WidgetValidTexture2D :: (value: HostValue) -> bool {
     return true
 }
 
+WidgetImageMeshCodec :: struct {
+    fields: [3]HostField
+    points_values: [256]HostValue
+    points_codecs: [256]WidgetVector2Codec
+    points_decoded: [256]Vector2
+}
+
+WidgetEncodeImageMesh :: (data: ImageMesh, codec: *WidgetImageMeshCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("ImageMesh")
+    value.fields = *codec.fields[0]
+    value.field_count = 3
+    codec.fields[0].name = HostTextData("columns")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.columns)
+    codec.fields[1].name = HostTextData("rows")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.rows)
+    codec.fields[2].name = HostTextData("points")
+    codec.fields[2].value.kind = cast(s32)HostSlice
+    codec.fields[2].value.type_name = HostTextData("[]Vector2")
+    codec.fields[2].value.length = cast(usize)data.points.count
+    if codec.fields[2].value.length > cast(usize)256 { codec.fields[2].value.length = cast(usize)256 }
+    codec.fields[2].value.elements = *codec.points_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[2].value.length {
+            codec.points_values[index] = WidgetEncodeVector2(data.points[index], *codec.points_codecs[index])
+            index += cast(usize)1
+        }
+    }
+    return value
+}
+
+WidgetDecodeImageMesh :: (value: HostValue, codec: *WidgetImageMeshCodec) -> ImageMesh {
+    data: ImageMesh
+    {
+        field_at := HostFieldAt(value, 0, "columns")
+        if field_at >= 0 {
+            data.columns = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "rows")
+        if field_at >= 0 {
+            data.rows = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "points")
+        if field_at >= 0 {
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    codec.points_decoded[index] = WidgetDecodeVector2(value.fields[field_at].value.elements[index], *codec.points_codecs[index])
+                    index += cast(usize)1
+                }
+            }
+            // Slice storage is attached by the rendering effect after decoding.
+        }
+    }
+    return data
+}
+
+WidgetValidImageMesh :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "ImageMesh" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "columns")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "rows")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "points")
+        if field_at >= 0 {
+            if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]Vector2" ||
+                value.fields[field_at].value.length > cast(usize)256 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    if !WidgetValidVector2(value.fields[field_at].value.elements[index]) { return false }
+                    index += cast(usize)1
+                }
+            }
+        }
+    }
+    return true
+}
+
 WidgetImagePropsCodec :: struct {
-    fields: [12]HostField
+    fields: [13]HostField
     bounds: WidgetRectangleCodec
     source: WidgetRectangleCodec
     origin: WidgetVector2Codec
     texture: WidgetTexture2DCodec
+    mesh: WidgetImageMeshCodec
 }
 
 WidgetEncodeImageProps :: (data: ImageProps, codec: *WidgetImagePropsCodec) -> HostValue {
@@ -629,7 +726,7 @@ WidgetEncodeImageProps :: (data: ImageProps, codec: *WidgetImagePropsCodec) -> H
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("ImageProps")
     value.fields = *codec.fields[0]
-    value.field_count = 12
+    value.field_count = 13
     codec.fields[0].name = HostTextData("asset_path")
     codec.fields[0].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.asset_path), .length = cast(usize)data.asset_path.count}
     codec.fields[1].name = HostTextData("alt_text")
@@ -654,6 +751,8 @@ WidgetEncodeImageProps :: (data: ImageProps, codec: *WidgetImagePropsCodec) -> H
     codec.fields[10].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[11].name = HostTextData("smooth")
     codec.fields[11].value = HostScalar("bool", ifx data.smooth then 1 else 0)
+    codec.fields[12].name = HostTextData("mesh")
+    codec.fields[12].value = WidgetEncodeImageMesh(data.mesh, *codec.mesh)
     return value
 }
 
@@ -729,6 +828,12 @@ WidgetDecodeImageProps :: (value: HostValue, codec: *WidgetImagePropsCodec) -> I
         field_at := HostFieldAt(value, 11, "smooth")
         if field_at >= 0 {
             data.smooth = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 12, "mesh")
+        if field_at >= 0 {
+            data.mesh = WidgetDecodeImageMesh(value.fields[field_at].value, *codec.mesh)
         }
     }
     return data
@@ -808,6 +913,12 @@ WidgetValidImageProps :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 11, "smooth")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 12, "mesh")
+        if field_at >= 0 {
+            if !WidgetValidImageMesh(value.fields[field_at].value) { return false }
         }
     }
     return true

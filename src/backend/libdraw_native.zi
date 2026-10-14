@@ -1003,6 +1003,68 @@ RasterImage :: (asset_path: string, texture_id: u32,
     Release(cast(*void)pixels)
 }
 
+// A warped image (see ImageMesh): rasterized in RGBA over the grid's
+// bounds inside the clip, then drawn like any other image.
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
+    if texture_id != cast(u32)0 || !Pixels.MeshGridValid(points, columns, rows) { return }
+    slot := FindAsset(asset_path)
+    if slot < 0 { return }
+    if !Finite32(clip.x) || !Finite32(clip.y) || !Finite32(clip.width) ||
+        !Finite32(clip.height) || clip.width <= 0.0 || clip.height <= 0.0 { return }
+    count: s64 = cast(s64)columns * cast(s64)rows
+    minimum_x: float32 = 3.402823e38; minimum_y: float32 = 3.402823e38
+    maximum_x: float32 = -3.402823e38; maximum_y: float32 = -3.402823e38
+    for at: cast(s64)0..count - 1 {
+        point := points[at]
+        if !Finite32(point.x) || !Finite32(point.y) { return }
+        if point.x < minimum_x { minimum_x = point.x }; if point.x > maximum_x { maximum_x = point.x }
+        if point.y < minimum_y { minimum_y = point.y }; if point.y > maximum_y { maximum_y = point.y }
+    }
+    if minimum_x < clip.x { minimum_x = clip.x }
+    if minimum_y < clip.y { minimum_y = clip.y }
+    if maximum_x > clip.x + clip.width { maximum_x = clip.x + clip.width }
+    if maximum_y > clip.y + clip.height { maximum_y = clip.y + clip.height }
+    if minimum_x < 0.0 { minimum_x = 0.0 }; if minimum_y < 0.0 { minimum_y = 0.0 }
+    if maximum_x > cast(float32)native_width { maximum_x = cast(float32)native_width }
+    if maximum_y > cast(float32)native_height { maximum_y = cast(float32)native_height }
+    if maximum_x <= minimum_x || maximum_y <= minimum_y { return }
+    x0 := FloorInteger(minimum_x); y0 := FloorInteger(minimum_y)
+    x1 := CeilInteger(maximum_x); y1 := CeilInteger(maximum_y)
+    width := x1 - x0; height := y1 - y0
+    if width <= 0 || height <= 0 { return }
+    bytes := width * height * 4
+    pixels := cast(*u8)Allocate(cast(usize)bytes)
+    if pixels == null { return }
+    for at: 0..cast(s64)(bytes - 1) { pixels[at] = cast(u8)0 }
+    asset := native_assets[slot]
+    local_clip: Rectangle = .{clip.x - cast(float32)x0, clip.y - cast(float32)y0, clip.width, clip.height}
+    ok := Pixels.RasterImageMeshRGBA(BytesFromPointer(pixels, cast(u64)bytes), width, height, width * 4,
+        BytesFromPointer(asset.pixels, cast(u64)(asset.width * asset.height * 4)),
+        asset.width, asset.height, asset.width * 4, source, points, columns, rows,
+        Vector2.{cast(float32)x0, cast(float32)y0}, local_clip, tint, false)
+    at: s32 = 0
+    while at < bytes {
+        alpha := cast(u32)pixels[at + 3]
+        red := cast(u8)(cast(u32)pixels[at] * alpha / cast(u32)255)
+        green := cast(u8)(cast(u32)pixels[at + 1] * alpha / cast(u32)255)
+        blue := cast(u8)(cast(u32)pixels[at + 2] * alpha / cast(u32)255)
+        pixels[at] = cast(u8)alpha; pixels[at + 1] = blue
+        pixels[at + 2] = green; pixels[at + 3] = red
+        at += 4
+    }
+    image := AllocateImage(native_display, DrawBounds(width, height), cast(usize)0x08182848, 0, cast(usize)0)
+    if image != null {
+        if ok && LoadImage(image, image.bounds, pixels, bytes) == bytes {
+            DrawImageRectangle(native_window, DrawBoundsAt(x0 + native_window.bounds.min.x,
+                y0 + native_window.bounds.min.y, width, height), image, null, DrawPoint.{0, 0})
+        }
+        ReleaseImage(image)
+    }
+    Release(cast(*void)pixels)
+}
+
 #program_export
 WindowVisibleHost :: () -> bool {
     return native_display != null

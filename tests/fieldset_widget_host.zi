@@ -59,3 +59,18 @@ RasterImage :: (path: string, texture_id: u32, source: Rectangle,
 HostValid :: () -> bool {
     return !failed && fills == 3 && outlines == 2 && labels == 1
 }
+
+// This host never draws warped images.
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32,
+    source: Rectangle, points: []Vector2, columns: s32, rows: s32,
+    clip: Rectangle, tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused points
+    unused columns
+    unused rows
+    unused clip
+    unused tint
+}
