@@ -5761,7 +5761,7 @@ WidgetValidTabBarInput :: (value: HostValue) -> bool {
 }
 
 WidgetTabBarPropsCodec :: struct {
-    fields: [19]HostField
+    fields: [20]HostField
     bounds: WidgetRectangleCodec
     input: WidgetTabBarInputCodec
 }
@@ -5771,7 +5771,7 @@ WidgetEncodeTabBarProps :: (data: TabBarProps, codec: *WidgetTabBarPropsCodec) -
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("TabBarProps")
     value.fields = *codec.fields[0]
-    value.field_count = 19
+    value.field_count = 20
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("bounds")
@@ -5788,28 +5788,30 @@ WidgetEncodeTabBarProps :: (data: TabBarProps, codec: *WidgetTabBarPropsCodec) -
     codec.fields[6].value = HostScalar("s32", cast(s64)data.max_tab_width)
     codec.fields[7].name = HostTextData("scroll_offset")
     codec.fields[7].value = HostScalar("s32", cast(s64)data.scroll_offset)
-    codec.fields[8].name = HostTextData("focus_selected")
-    codec.fields[8].value = HostScalar("bool", ifx data.focus_selected then 1 else 0)
-    codec.fields[9].name = HostTextData("drag_from")
-    codec.fields[9].value = HostScalar("s32", cast(s64)data.drag_from)
-    codec.fields[10].name = HostTextData("dragging")
-    codec.fields[10].value = HostScalar("bool", ifx data.dragging then 1 else 0)
-    codec.fields[11].name = HostTextData("last_clicked_index")
-    codec.fields[11].value = HostScalar("s32", cast(s64)data.last_clicked_index)
-    codec.fields[12].name = HostTextData("last_clicked_at")
-    codec.fields[12].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.last_clicked_at}
-    codec.fields[13].name = HostTextData("last_click_valid")
-    codec.fields[13].value = HostScalar("bool", ifx data.last_click_valid then 1 else 0)
-    codec.fields[14].name = HostTextData("scale")
-    codec.fields[14].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[15].name = HostTextData("id")
-    codec.fields[15].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[16].name = HostTextData("disabled")
-    codec.fields[16].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[17].name = HostTextData("reorder_enabled")
-    codec.fields[17].value = HostScalar("bool", ifx data.reorder_enabled then 1 else 0)
-    codec.fields[18].name = HostTextData("input")
-    codec.fields[18].value = WidgetEncodeTabBarInput(data.input, *codec.input)
+    codec.fields[8].name = HostTextData("content_sized")
+    codec.fields[8].value = HostScalar("bool", ifx data.content_sized then 1 else 0)
+    codec.fields[9].name = HostTextData("focus_selected")
+    codec.fields[9].value = HostScalar("bool", ifx data.focus_selected then 1 else 0)
+    codec.fields[10].name = HostTextData("drag_from")
+    codec.fields[10].value = HostScalar("s32", cast(s64)data.drag_from)
+    codec.fields[11].name = HostTextData("dragging")
+    codec.fields[11].value = HostScalar("bool", ifx data.dragging then 1 else 0)
+    codec.fields[12].name = HostTextData("last_clicked_index")
+    codec.fields[12].value = HostScalar("s32", cast(s64)data.last_clicked_index)
+    codec.fields[13].name = HostTextData("last_clicked_at")
+    codec.fields[13].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.last_clicked_at}
+    codec.fields[14].name = HostTextData("last_click_valid")
+    codec.fields[14].value = HostScalar("bool", ifx data.last_click_valid then 1 else 0)
+    codec.fields[15].name = HostTextData("scale")
+    codec.fields[15].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
+    codec.fields[16].name = HostTextData("id")
+    codec.fields[16].value = HostScalar("s32", cast(s64)data.id)
+    codec.fields[17].name = HostTextData("disabled")
+    codec.fields[17].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    codec.fields[18].name = HostTextData("reorder_enabled")
+    codec.fields[18].value = HostScalar("bool", ifx data.reorder_enabled then 1 else 0)
+    codec.fields[19].name = HostTextData("input")
+    codec.fields[19].value = WidgetEncodeTabBarInput(data.input, *codec.input)
     return value
 }
 
@@ -5864,67 +5866,73 @@ WidgetDecodeTabBarProps :: (value: HostValue, codec: *WidgetTabBarPropsCodec) ->
         }
     }
     {
-        field_at := HostFieldAt(value, 8, "focus_selected")
+        field_at := HostFieldAt(value, 8, "content_sized")
+        if field_at >= 0 {
+            data.content_sized = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "focus_selected")
         if field_at >= 0 {
             data.focus_selected = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 9, "drag_from")
+        field_at := HostFieldAt(value, 10, "drag_from")
         if field_at >= 0 {
             data.drag_from = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 10, "dragging")
+        field_at := HostFieldAt(value, 11, "dragging")
         if field_at >= 0 {
             data.dragging = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 11, "last_clicked_index")
+        field_at := HostFieldAt(value, 12, "last_clicked_index")
         if field_at >= 0 {
             data.last_clicked_index = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 12, "last_clicked_at")
+        field_at := HostFieldAt(value, 13, "last_clicked_at")
         if field_at >= 0 {
             data.last_clicked_at = cast(float32)value.fields[field_at].value.real
         }
     }
     {
-        field_at := HostFieldAt(value, 13, "last_click_valid")
+        field_at := HostFieldAt(value, 14, "last_click_valid")
         if field_at >= 0 {
             data.last_click_valid = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 14, "scale")
+        field_at := HostFieldAt(value, 15, "scale")
         if field_at >= 0 {
             data.scale = cast(float32)value.fields[field_at].value.real
         }
     }
     {
-        field_at := HostFieldAt(value, 15, "id")
+        field_at := HostFieldAt(value, 16, "id")
         if field_at >= 0 {
             data.id = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 16, "disabled")
+        field_at := HostFieldAt(value, 17, "disabled")
         if field_at >= 0 {
             data.disabled = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 17, "reorder_enabled")
+        field_at := HostFieldAt(value, 18, "reorder_enabled")
         if field_at >= 0 {
             data.reorder_enabled = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 18, "input")
+        field_at := HostFieldAt(value, 19, "input")
         if field_at >= 0 {
             data.input = WidgetDecodeTabBarInput(value.fields[field_at].value, *codec.input)
         }
@@ -5985,67 +5993,73 @@ WidgetValidTabBarProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 8, "focus_selected")
+        field_at := HostFieldAt(value, 8, "content_sized")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 9, "drag_from")
-        if field_at >= 0 {
-            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
-        }
-    }
-    {
-        field_at := HostFieldAt(value, 10, "dragging")
+        field_at := HostFieldAt(value, 9, "focus_selected")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 11, "last_clicked_index")
+        field_at := HostFieldAt(value, 10, "drag_from")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 12, "last_clicked_at")
+        field_at := HostFieldAt(value, 11, "dragging")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 12, "last_clicked_index")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 13, "last_clicked_at")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 13, "last_click_valid")
+        field_at := HostFieldAt(value, 14, "last_click_valid")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 14, "scale")
+        field_at := HostFieldAt(value, 15, "scale")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 15, "id")
+        field_at := HostFieldAt(value, 16, "id")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 16, "disabled")
+        field_at := HostFieldAt(value, 17, "disabled")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 17, "reorder_enabled")
+        field_at := HostFieldAt(value, 18, "reorder_enabled")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 18, "input")
+        field_at := HostFieldAt(value, 19, "input")
         if field_at >= 0 {
             if !WidgetValidTabBarInput(value.fields[field_at].value) { return false }
         }
