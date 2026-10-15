@@ -101,8 +101,10 @@ ResolveState :: (explicit_state: s32, disabled: bool, loading: bool,
     if explicit_state != ButtonStateAuto { return explicit_state }
     if pressed { return ButtonStatePressed }
     if hovered { return ButtonStateHover }
-    if focused { return ButtonStateFocus }
+    // A clicked segment or tab keeps focus; it must still look selected.
+    // Keyboard focus is drawn as its own ring over the face.
     if selected { return ButtonStateSelected }
+    if focused { return ButtonStateFocus }
     return ButtonStateNormal
 }
 

@@ -24,6 +24,10 @@ Answer :: () -> s32 {
         true, false, false) != ButtonStateHover { return 0 }
     if ResolveState(ButtonStateHover, true, false, false,
         true, false, false) != ButtonStateDisabled { return 0 }
+    if ResolveState(ButtonStateAuto, false, false, false,
+        false, true, true) != ButtonStateSelected { return 0 }
+    if ResolveState(ButtonStateAuto, false, false, false,
+        false, true, false) != ButtonStateFocus { return 0 }
     base: StyleData
     base.background = cast(u32)99
     base.foreground = cast(u32)11
