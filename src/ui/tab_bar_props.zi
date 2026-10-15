@@ -42,6 +42,8 @@ TabBarProps :: struct {
     min_tab_width: s32
     max_tab_width: s32
     scroll_offset: s32
+    // Keep each tab at its label width instead of stretching short rows.
+    content_sized: bool
     focus_selected: bool
     drag_from: s32
     dragging: bool

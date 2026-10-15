@@ -315,11 +315,19 @@
                 (cast(s32)tabs.count), (cast(s32)tabs.count), metrics.gap)
         }
         requested_scroll: s32 = props.scroll_offset
-        if !props.disabled { requested_scroll += props.input.scroll_delta }
+        if !props.disabled {
+            requested_scroll += props.input.scroll_delta
+            if TreeInputAllowedAt(session, 0) {
+                requested_scroll -= cast(s32)(PointerWheelTake(session, bounds) * 40.0 * scale)
+            }
+        }
         extent: float32 = bounds.width
         if vertical { extent = bounds.height }
         scroll: TabBarScroll = TabBarScrollFor(extent,
             total_width, requested_scroll)
+        if props.content_sized {
+            scroll.equal_tabs = false
+        }
         if !props.disabled && props.input.focused && (cast(s32)tabs.count) > 0 {
             key_input: TabBarKeyboardInput = TabBarKeyboardInputFor(
                 result.selected_index, (cast(s32)tabs.count),
