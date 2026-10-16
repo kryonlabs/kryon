@@ -176,9 +176,11 @@ TabBarTabWidth :: (label_width: s32, has_label: bool,
     return width
 }
 
+// A centered label sits in the middle of its tab when it fits there; it is
+// otherwise placed after the tab's padding, as close buttons need.
 #program_export
 TabBarContentLayoutFor :: (tab_bounds: Rectangle, label_width: s32,
-    has_label: bool, closeable: bool,
+    has_label: bool, closeable: bool, centered: bool,
     paint: TabBarPaint) -> TabBarContentLayout {
     layout: TabBarContentLayout
     tab_x: s32 = cast(s32)tab_bounds.x
@@ -192,6 +194,12 @@ TabBarContentLayoutFor :: (tab_bounds: Rectangle, label_width: s32,
     if content_h < 0 { content_h = 0 }
     content_y: s32 = tab_y + (tab_h - content_h) / 2
     text_x: s32 = tab_x + text_pad
+    if centered && has_label && !closeable {
+        centered_x: s32 = tab_x + (tab_w - label_width) / 2
+        if centered_x > text_x {
+            text_x = centered_x
+        }
+    }
 
     layout.close_bounds.x = cast(float32)(tab_x + tab_w - text_pad - close_size)
     layout.close_bounds.y = cast(float32)(tab_y + (tab_h - close_size) / 2)
