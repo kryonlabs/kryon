@@ -56,12 +56,19 @@
         face.icon_size = 32.0
         face.gap = 4.0
         face.offset_x = 240.0
-        if kind == StyleKindTab() {
+        if kind == StyleKindTabBar() {
             face.background = cast(u32)0x00000000
-            face.border_width = 0.0
+            face.border = cast(u32)0xcbd5e1ff
+            face.border_width = 1.0
+        } else if kind == StyleKindTab() {
+            face.background = cast(u32)0x00000000
+            face.foreground = cast(u32)0x64748bff
+            face.border = cast(u32)0x00000000
+            face.border_width = 3.0
             face.padding_x = 12.0
             if selected {
-                face.background = cast(u32)0xffffffff
+                face.foreground = cast(u32)0x0f172aff
+                face.border = cast(u32)0x2563ebff
             }
         } else if kind == StyleKindTabClose() {
             face.background = cast(u32)0x00000000
@@ -78,8 +85,8 @@
         selected: bool, disabled: bool,
         hovered: bool) -> StyleFrame {
         state: s32 = cast(s32)ButtonStateNormal
-        if selected { state = cast(s32)ButtonStateSelected }
         if hovered { state = cast(s32)ButtonStateHover }
+        if selected { state = cast(s32)ButtonStateSelected }
         if disabled { state = cast(s32)ButtonStateDisabled }
         tone: s32 = cast(s32)ButtonToneNeutral
         if selected { tone = cast(s32)ButtonToneAccent }
@@ -208,6 +215,72 @@
             cursor += 1
         }
         return rect
+    }
+
+    // The bar's border is the line between its tabs and their content, on
+    // the side facing that content.
+    #program_export
+    TabBarDividerBounds :: (bounds: Rectangle, placement: TabBarPlacement,
+        thickness: float32) -> Rectangle {
+        if placement == cast(TabBarPlacement)TabBarBottom {
+            return Rectangle.{bounds.x, bounds.y, bounds.width, thickness}
+        }
+        if placement == cast(TabBarPlacement)TabBarLeft {
+            return Rectangle.{bounds.x + bounds.width - thickness, bounds.y,
+                thickness, bounds.height}
+        }
+        if placement == cast(TabBarPlacement)TabBarRight {
+            return Rectangle.{bounds.x, bounds.y, thickness, bounds.height}
+        }
+        return Rectangle.{bounds.x, bounds.y + bounds.height - thickness,
+            bounds.width, thickness}
+    }
+
+    // A tab's border is its indicator: a bar on the edge facing the content,
+    // as long as a centered label or else across the tab's padded content.
+    #program_export
+    TabBarIndicatorBounds :: (tab_bounds: Rectangle, text_bounds: Rectangle,
+        label_width: s32, centered: bool, placement: TabBarPlacement,
+        thickness: float32, scale: float32) -> Rectangle {
+        if placement == cast(TabBarPlacement)TabBarLeft ||
+        placement == cast(TabBarPlacement)TabBarRight {
+            x: float32 = tab_bounds.x + tab_bounds.width - thickness
+            if placement == cast(TabBarPlacement)TabBarRight {
+                x = tab_bounds.x
+            }
+            return Rectangle.{x, text_bounds.y, thickness, text_bounds.height}
+        }
+        padding: float32 = text_bounds.x - tab_bounds.x
+        start: float32 = text_bounds.x
+        width: float32 = tab_bounds.width - padding * 2.0
+        if centered {
+            width = cast(float32)label_width
+            if width > text_bounds.width {
+                width = text_bounds.width
+            }
+            minimum: float32 = 24.0 * scale
+            if width < minimum {
+                start -= (minimum - width) * 0.5
+                width = minimum
+            }
+        }
+        y: float32 = tab_bounds.y + tab_bounds.height - thickness
+        if placement == cast(TabBarPlacement)TabBarBottom {
+            y = tab_bounds.y
+        }
+        return Rectangle.{start, y, width, thickness}
+    }
+
+    // Hover and press fills keep clear of the divider and the indicator.
+    #program_export
+    TabBarFillBounds :: (tab_bounds: Rectangle, vertical: bool,
+        inset: float32) -> Rectangle {
+        if vertical {
+            return Rectangle.{tab_bounds.x + inset, tab_bounds.y,
+                tab_bounds.width - inset * 2.0, tab_bounds.height}
+        }
+        return Rectangle.{tab_bounds.x, tab_bounds.y + inset,
+            tab_bounds.width, tab_bounds.height - inset * 2.0}
     }
 
     #program_export
@@ -471,16 +544,22 @@
         }
         bar_opacity: float32 = StyleOpacityValue(bar_face.value.fields,
             bar_face.value.opacity)
-        PaintRoundedFill(session, result.node, bounds,
-            bar_face.value.radius, 12,
-            ColorFromPacked(Opacity(bar_face.value.background,
-            bar_opacity)))
-        if bar_face.value.border_width > 0.0 {
-            PaintRoundedOutline(session, result.node, bounds,
-                bar_face.value.radius, 12,
-                bar_face.value.border_width,
-                ColorFromPacked(Opacity(bar_face.value.border,
-                bar_opacity)))
+        bar_fill: Color = ColorFromPacked(Opacity(bar_face.value.background,
+            bar_opacity))
+        if bar_fill.a > cast(u8)0 {
+            PaintRoundedFill(session, result.node, bounds,
+                bar_face.value.radius * scale, 12, bar_fill)
+        }
+        divider_color: Color = ColorFromPacked(Opacity(bar_face.value.border,
+            bar_opacity))
+        divider_width: float32 = bar_face.value.border_width * scale
+        if divider_width > 0.0 && divider_width < 1.0 {
+            divider_width = 1.0
+        }
+        if divider_width > 0.0 && divider_color.a > cast(u8)0 {
+            PaintRoundedFill(session, result.node,
+                TabBarDividerBounds(bounds, props.placement, divider_width),
+                0.0, 1, divider_color)
         }
         index: s32 = 0
         while index < (cast(s32)tabs.count) {
@@ -514,17 +593,6 @@
                     TreeSetLabel(session, node, tab.label)
                     TreeSetSelected(session, node, selected)
                 }
-                radius: float32 = face.value.radius
-                if visible.width < rect.width { radius = 0.0 }
-                PaintRoundedFill(session, node, visible, radius, 12,
-                    ColorFromPacked(Opacity(face.value.background,
-                    opacity)))
-                if face.value.border_width > 0.0 {
-                    PaintRoundedOutline(session, node, visible, radius, 12,
-                        face.value.border_width,
-                        ColorFromPacked(Opacity(face.value.border,
-                        opacity)))
-                }
                 label_width: s32 = 0
                 if tab.label != "" {
                     label_width = GlyphWidth(tab.label, font,
@@ -540,9 +608,38 @@
                     TreeHoveredAt(session, close_previous))
                 paint: TabBarPaint = TabBarPaintFor(bar_face,
                     face, close_face, scale)
+                fill_color: Color = ColorFromPacked(Opacity(
+                    face.value.background, opacity))
+                if fill_color.a > cast(u8)0 {
+                    fill: Rectangle = RectangleIntersection(
+                        TabBarFillBounds(rect, vertical,
+                        cast(float32)paint.content_inset_y * 0.5),
+                        visible)
+                    radius: float32 = face.value.radius * scale
+                    if visible.width < rect.width { radius = 0.0 }
+                    if fill.width > 0.0 && fill.height > 0.0 {
+                        PaintRoundedFill(session, node, fill, radius, 12,
+                            fill_color)
+                    }
+                }
+                centered: bool = !vertical && !tab.closeable
                 content: TabBarContentLayout =
                 TabBarContentLayoutFor(rect, label_width,
-                    tab.label != "", tab.closeable, paint)
+                    tab.label != "", tab.closeable, centered, paint)
+                indicator_width: float32 = face.value.border_width * scale
+                indicator_color: Color = ColorFromPacked(Opacity(
+                    face.value.border, opacity))
+                if indicator_width > 0.0 &&
+                indicator_color.a > cast(u8)0 {
+                    indicator: Rectangle = RectangleIntersection(
+                        TabBarIndicatorBounds(rect, content.text_bounds,
+                        label_width, centered, props.placement,
+                        indicator_width, scale), visible)
+                    if indicator.width > 0.0 && indicator.height > 0.0 {
+                        PaintRoundedFill(session, node, indicator,
+                            indicator_width * 0.5, 8, indicator_color)
+                    }
+                }
                 if tab.label != "" {
                     text_clip: Rectangle = RectangleIntersection(
                         content.text_bounds, visible)
