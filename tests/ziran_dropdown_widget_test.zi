@@ -561,6 +561,8 @@ ActionMenu :: () -> s32 {
     action_selected != 0 { return 5 }
     result = ActionFrame()
     if !result.open || result.action_index != -1 { return 6 }
+    // The pressed row is not highlighted as if it were chosen.
+    if TreePreviousWidgetState(TestSession(), result.node).index != 0 { return 8 }
     Tap(two.x + 20.0, two.y + two.height / 2.0)
     result = ActionFrame()
     if result.open || !result.changed || result.selected_index != 2 ||
