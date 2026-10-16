@@ -7865,7 +7865,7 @@ WidgetValidTitleBarProps :: (value: HostValue) -> bool {
 }
 
 WidgetDropdownResultCodec :: struct {
-    fields: [6]HostField
+    fields: [7]HostField
 }
 
 WidgetEncodeDropdownResult :: (data: DropdownResult, codec: *WidgetDropdownResultCodec) -> HostValue {
@@ -7873,7 +7873,7 @@ WidgetEncodeDropdownResult :: (data: DropdownResult, codec: *WidgetDropdownResul
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("DropdownResult")
     value.fields = *codec.fields[0]
-    value.field_count = 6
+    value.field_count = 7
     codec.fields[0].name = HostTextData("node")
     codec.fields[0].value = HostScalar("s32", cast(s64)data.node)
     codec.fields[1].name = HostTextData("selected_index")
@@ -7886,6 +7886,8 @@ WidgetEncodeDropdownResult :: (data: DropdownResult, codec: *WidgetDropdownResul
     codec.fields[4].value = HostScalar("bool", ifx data.opened then 1 else 0)
     codec.fields[5].name = HostTextData("closed")
     codec.fields[5].value = HostScalar("bool", ifx data.closed then 1 else 0)
+    codec.fields[6].name = HostTextData("action_index")
+    codec.fields[6].value = HostScalar("s32", cast(s64)data.action_index)
     return value
 }
 
@@ -7925,6 +7927,12 @@ WidgetDecodeDropdownResult :: (value: HostValue, codec: *WidgetDropdownResultCod
         field_at := HostFieldAt(value, 5, "closed")
         if field_at >= 0 {
             data.closed = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "action_index")
+        if field_at >= 0 {
+            data.action_index = cast(s32)value.fields[field_at].value.integer
         }
     }
     return data
@@ -7968,6 +7976,12 @@ WidgetValidDropdownResult :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 5, "closed")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "action_index")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     return true
@@ -8071,7 +8085,7 @@ WidgetValidTitleBarResult :: (value: HostValue) -> bool {
 }
 
 WidgetDropdownOptionCodec :: struct {
-    fields: [5]HostField
+    fields: [7]HostField
     image: WidgetImagePropsCodec
 }
 
@@ -8080,7 +8094,7 @@ WidgetEncodeDropdownOption :: (data: DropdownOption, codec: *WidgetDropdownOptio
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("DropdownOption")
     value.fields = *codec.fields[0]
-    value.field_count = 5
+    value.field_count = 7
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("label")
@@ -8091,6 +8105,10 @@ WidgetEncodeDropdownOption :: (data: DropdownOption, codec: *WidgetDropdownOptio
     codec.fields[3].value = HostScalar("bool", ifx data.disabled then 1 else 0)
     codec.fields[4].name = HostTextData("separator_before")
     codec.fields[4].value = HostScalar("bool", ifx data.separator_before then 1 else 0)
+    codec.fields[5].name = HostTextData("action_shape")
+    codec.fields[5].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.action_shape), .length = cast(usize)data.action_shape.count}
+    codec.fields[6].name = HostTextData("action_label")
+    codec.fields[6].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.action_label), .length = cast(usize)data.action_label.count}
     return value
 }
 
@@ -8124,6 +8142,18 @@ WidgetDecodeDropdownOption :: (value: HostValue, codec: *WidgetDropdownOptionCod
         field_at := HostFieldAt(value, 4, "separator_before")
         if field_at >= 0 {
             data.separator_before = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "action_shape")
+        if field_at >= 0 {
+            data.action_shape = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "action_label")
+        if field_at >= 0 {
+            data.action_label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
         }
     }
     return data
@@ -8161,6 +8191,18 @@ WidgetValidDropdownOption :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 4, "separator_before")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "action_shape")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "action_label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
         }
     }
     return true
