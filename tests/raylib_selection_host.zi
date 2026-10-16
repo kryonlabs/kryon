@@ -1,0 +1,202 @@
+// Opening a window registers selection without drawing or reading the clipboard.
+#import "raylib_runtime"
+#import "raylib_clip"
+#import "drawing_props"
+#import "geometry"
+
+selection_effects: s32;
+
+#program_export
+BeginScissorMode :: (x: s32, y: s32, width: s32,
+    height: s32) {
+    selection_effects += 1
+    unused x
+    unused y
+    unused width
+    unused height
+}
+
+#program_export
+DrawLineEx :: (start: Vector2, end: Vector2, width: float32,
+    color: Color) {
+    selection_effects += 1
+    unused start
+    unused end
+    unused width
+    unused color
+}
+
+#program_export
+DrawRectangleRounded :: (bounds: Rectangle, roundness: float32,
+    segments: s32, color: Color) {
+    selection_effects += 1
+    unused bounds
+    unused roundness
+    unused segments
+    unused color
+}
+
+#program_export
+DrawRectangleRoundedLinesEx :: (bounds: Rectangle, roundness: float32, segments: s32, width: float32, color: Color) {
+    selection_effects += 1
+    unused bounds
+    unused roundness
+    unused segments
+    unused width
+    unused color
+}
+
+#program_export
+DrawText :: (value: *u8, x: s32, y: s32, font: s32,
+    color: Color) {
+    selection_effects += 1
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+}
+
+#program_export
+DrawTextEx :: (font: RaylibFont, value: *u8, position: Vector2,
+    size: float32, spacing: float32, tint: Color) {
+    selection_effects += 1
+    unused font
+    unused value
+    unused position
+    unused size
+    unused spacing
+    unused tint
+}
+
+#program_export
+EndScissorMode :: () {
+    selection_effects += 1
+}
+
+#program_export
+GetClipboardText :: () -> *u8 {
+    selection_effects += 1
+    return null
+}
+
+#program_export
+GetCodepointNext :: (value: *u8, length: *s32) -> s32 {
+    selection_effects += 1
+    unused value
+    unused length
+    length.* = 1
+    return 0
+}
+
+#program_export
+GetGlyphIndex :: (font: RaylibFont, codepoint: s32) -> s32 {
+    selection_effects += 1
+    unused font
+    unused codepoint
+    return 0
+}
+
+#program_export
+MeasureText :: (value: *u8, font: s32) -> s32 {
+    selection_effects += 1
+    unused value
+    unused font
+    return 0
+}
+
+#program_export
+MeasureTextEx :: (font: RaylibFont, value: *u8, size: float32,
+    spacing: float32) -> Vector2 {
+    selection_effects += 1
+    unused font
+    unused value
+    unused size
+    unused spacing
+    return .{}
+}
+
+#program_export
+SetClipboardText :: (text: *u8) {
+    selection_effects += 1
+    unused text
+}
+
+#program_export
+glGetIntegerv :: (parameter: u32, values: *s32) {
+    selection_effects += 1
+    unused parameter
+    unused values
+}
+
+#program_export
+glIsEnabled :: (capability: u32) -> u8 {
+    selection_effects += 1
+    unused capability
+    return 0
+}
+
+#program_export
+rlBegin :: (mode: s32) {
+    selection_effects += 1
+    unused mode
+}
+
+#program_export
+rlColor4ub :: (r: u8, g: u8, b: u8, a: u8) {
+    selection_effects += 1
+    unused r
+    unused g
+    unused b
+    unused a
+}
+
+#program_export
+rlDrawRenderBatchActive :: () {
+    selection_effects += 1
+}
+
+#program_export
+rlEnableScissorTest :: () {
+    selection_effects += 1
+}
+
+#program_export
+rlEnd :: () {
+    selection_effects += 1
+}
+
+#program_export
+rlGetMatrixModelview :: () -> RaylibMatrix {
+    selection_effects += 1
+    return .{}
+}
+
+#program_export
+rlGetTextureIdDefault :: () -> u32 {
+    selection_effects += 1
+    return 0
+}
+
+#program_export
+rlScissor :: (x: s32, y: s32, width: s32,
+    height: s32) {
+    selection_effects += 1
+    unused x
+    unused y
+    unused width
+    unused height
+}
+
+#program_export
+rlSetTexture :: (id: u32) {
+    selection_effects += 1
+    unused id
+}
+
+#program_export
+rlVertex2f :: (x: float32, y: float32) {
+    selection_effects += 1
+    unused x
+    unused y
+}

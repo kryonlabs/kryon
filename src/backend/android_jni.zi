@@ -11,6 +11,7 @@ JniValue :: union {
     long_integer: s64
     boolean: u8
     floating: float64
+    single: float32
 }
 
 JniEnv :: struct {

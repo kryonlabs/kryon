@@ -5,6 +5,7 @@
 #import "tree_input"
 #import "text_request"
 #import "text_input_platform"
+#import "text_selection_host"
 Scroll :: #import "scroll_device";
 
 using FrameStatus;
@@ -57,7 +58,7 @@ BeginFrame :: (session: Session, screen_key: u64,
 RetainFrame :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
     slot := SessionIndex(session)
-    if frame_input_changed[slot] || !paint_snapshots_valid[slot] || TextInputFocused(session) || Scroll.ScrollDeviceMoving(session) ||
+    if frame_input_changed[slot] || !paint_snapshots_valid[slot] || TextInputFocused(session) || TextSelectionBusy(session) || Scroll.ScrollDeviceMoving(session) ||
         !trees[slot].building || trees[slot].error != cast(FrameStatus)FrameOk ||
         trees[slot].submitted_count != 1 || trees[slot].committed_count < 1 ||
         trees[slot].scope_depth != 1 || PendingPaintCount(session) != 0 { return false }

@@ -170,6 +170,7 @@ text_align.zi
 text_area_widget.zi
 text_behavior.zi
 text_context_menu.zi
+text_touch.zi
 text_emphasis.zi
 text_field_widget.zi
 text_host.zi
@@ -178,6 +179,8 @@ text_input_platform.zi
 text_input_props.zi
 text_layout.zi
 text_props.zi
+text_selection_host.zi
+text_selection_widget.zi
 text_request.zi
 text_rows.zi
 text_style.zi

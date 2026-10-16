@@ -1,3 +1,5 @@
+#import, file "ziran_context_menu_widget_host.zi";
+#import, file "ziran_system_clipboard_host.zi";
 // Host stubs for the Android device behavior test: the raylib JNI surface
 // stays absent and the platform keyboard effect records calls instead of
 // reaching Java.

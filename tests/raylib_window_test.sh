@@ -5,7 +5,7 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 mkdir -p "$repo/build/scratch"
 work=$(mktemp -d "$repo/build/scratch/raylib-window.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-unset DISPLAY WAYLAND_DISPLAY XAUTHORITY
+unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 source=$repo/tests/raylib_window_test.zi
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$repo/src/backend" --module-path "$ziran_root/std" -o "$work/ir" "$source"

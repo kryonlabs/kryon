@@ -661,7 +661,7 @@
         selection: TextSelectionRange = TextSelectionRangeForLength(props.anchor,
             props.cursor, (cast(s32)props.value.count))
         // A command chosen in the menu last frame runs as if its key was pressed.
-        command: s32 = TextMenuTakeCommand(key)
+        command: s32 = TextMenuTakeCommand(session, key)
         if command == TEXT_MENU_CUT { props.input.cut = true }
         if command == TEXT_MENU_COPY { props.input.copy = true }
         if command == TEXT_MENU_PASTE { props.input.paste = true }
@@ -679,7 +679,7 @@
         }
         // A secure field never gives its text away, but takes a pasted
         // password or key like Ctrl+V does.
-        if TextMenuIsOpenFor(key) {
+        if TextMenuIsOpenFor(session, key) {
             TextMenuShow(session, editable && selection.has_selection,
                 !props.secure && selection.has_selection, !props.read_only,
                 props.value.count > 0, props.input.escape)

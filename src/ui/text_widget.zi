@@ -24,7 +24,9 @@
     #import "text_props"
     #import "text_style"
     #import "tree"
+    #import "text_selection_host"
     #import "widget_kind"
+    Grapheme :: #import "std/grapheme";
 
     using WidgetKind;
     using StyleField;
@@ -57,17 +59,6 @@
         request.disabled = props.disabled
         face.value = TextStyleFor(request, defaults.value)
         return face
-    }
-
-    PreparedText :: struct {
-        bounds: Rectangle
-        font: s32
-        color: Color
-        typeface: string
-        line_height: s32
-        line_gap: s32
-        line_count: s32
-        wrap: TextWrap
     }
 
     TextRangeValid :: (text: string, range: TextRange, previous_end: s32) -> bool {
@@ -265,7 +256,87 @@
             TreeSetStyleClass(session, node, props.class_name)
             TreeSetSemantic(session, node, props.semantic_kind, props.heading_level)
         }
+        if props.selectable && node >= 0 && TextSelectionPresent(session, node, props, prepared) {
+            return
+        }
         PaintTextLines(session, node, props, prepared)
+    }
+
+    TextFirstLineY :: (props: TextProps, prepared: PreparedText) -> s32 {
+        height := TextLayoutTotalHeight(prepared.line_count, prepared.line_height, prepared.line_gap)
+        return cast(s32)prepared.bounds.y + cast(s32)TextAlignmentOffset(
+            prepared.bounds.height, cast(float32)height, cast(s32)props.vertical_align)
+    }
+
+    TextByteAtPoint :: (props: TextProps, prepared: PreparedText, x: float32, y: float32) -> s32 {
+        top := TextFirstLineY(props, prepared)
+        start: s32 = 0
+        while start <= props.text.count {
+            line := NextTextLine(props.text, start, prepared.bounds.width,
+                prepared.wrap, prepared.font, prepared.typeface)
+            if y < cast(float32)(top + prepared.line_height + prepared.line_gap) || line.next > props.text.count {
+                left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
+                    line.width, cast(s32)props.align)
+                at := line.start
+                while at < line.end {
+                    next := Grapheme.Next(props.text, at)
+                    before := GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
+                    after := GlyphWidth(props.text[line.start:next], prepared.font, prepared.typeface)
+                    if x < cast(float32)left + cast(float32)(before + after) / 2.0 {
+                        return at
+                    }
+                    at = next
+                }
+                return line.end
+            }
+            start = line.next
+            top += prepared.line_height + prepared.line_gap
+        }
+        return cast(s32)props.text.count
+    }
+
+    TextCaretBounds :: (props: TextProps, prepared: PreparedText, at: s32) -> Rectangle {
+        top := TextFirstLineY(props, prepared)
+        start: s32 = 0
+        while start <= props.text.count {
+            line := NextTextLine(props.text, start, prepared.bounds.width,
+                prepared.wrap, prepared.font, prepared.typeface)
+            if at <= line.end || line.next > props.text.count {
+                left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
+                    line.width, cast(s32)props.align)
+                width := GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
+                return Rectangle.{cast(float32)(left + width), cast(float32)top,
+                    1.0, cast(float32)prepared.line_height}
+            }
+            start = line.next
+            top += prepared.line_height + prepared.line_gap
+        }
+        return .{}
+    }
+
+    PaintTextSelection :: (session: Session, node: s32, props: TextProps, prepared: PreparedText,
+        anchor: s32, cursor: s32, color: Color) {
+        first := ifx anchor < cursor then anchor else cursor
+        last := ifx anchor < cursor then cursor else anchor
+        top := TextFirstLineY(props, prepared)
+        start: s32 = 0
+        while start <= props.text.count {
+            line := NextTextLine(props.text, start, prepared.bounds.width,
+                prepared.wrap, prepared.font, prepared.typeface)
+            from := ifx first > line.start then first else line.start
+            to := ifx last < line.end then last else line.end
+            if from < to {
+                left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
+                    line.width, cast(s32)props.align)
+                before := GlyphWidth(props.text[line.start:from], prepared.font, prepared.typeface)
+                after := GlyphWidth(props.text[line.start:to], prepared.font, prepared.typeface)
+                PaintRoundedFill(session, node, RectangleIntersection(prepared.bounds,
+                    Rectangle.{cast(float32)(left + before), cast(float32)top,
+                        cast(float32)(after - before), cast(float32)prepared.line_height}), 0.0, 1, color)
+            }
+            start = line.next
+            top += prepared.line_height + prepared.line_gap
+        }
     }
 
 }

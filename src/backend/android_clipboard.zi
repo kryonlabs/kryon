@@ -1,0 +1,91 @@
+// Android's raylib backend has no clipboard. Use the activity's byte-array
+// bridge so arbitrary UTF-8 (including supplementary characters) survives JNI.
+#import "android_jni"
+
+// Like the native desktop clipboard API, this snapshot stays valid until the
+// next read. The platform owns its storage; callers borrow its C string.
+android_clipboard_snapshot: [65537]u8;
+AndroidClipboardText :: () -> *u8 {
+    count := AndroidClipboardRead(android_clipboard_snapshot[:65536])
+    if count < 0 {
+        return null
+    }
+    android_clipboard_snapshot[count] = cast(u8)0
+    return *android_clipboard_snapshot[0]
+}
+
+AndroidClipboardRead :: (buffer: []u8) -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return -1
+        }
+        defer AndroidJniDetachCurrent(*session)
+        method := AndroidJniMethod(*session, "readClipboardText", "()[B")
+        if method == null {
+            return -1
+        }
+        env := session.env
+        bytes := env.functions.CallObjectMethodA(env, session.activity, method, null)
+        if bytes == null || env.functions.ExceptionCheck(env) != 0 {
+            return -1
+        }
+        count := env.functions.GetArrayLength(env, bytes)
+        if count < 0 || count > buffer.count {
+            return -1
+        }
+        if count > 0 {
+            env.functions.GetByteArrayRegion(env, bytes, 0, count, *buffer[0])
+        }
+        if env.functions.ExceptionCheck(env) != 0 {
+            return -1
+        }
+        return count
+    }
+    unused buffer
+    return -1
+}
+
+AndroidClipboardWrite :: (text: string) -> bool {
+    #if #defined(ANDROID_BUILD) {
+        if text.count > 2147483647 {
+            return false
+        }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return false
+        }
+        defer AndroidJniDetachCurrent(*session)
+        method := AndroidJniMethod(*session, "writeClipboardText", "([B)Z")
+        if method == null {
+            return false
+        }
+        env := session.env
+        bytes := env.functions.NewByteArray(env, cast(s32)text.count)
+        if bytes == null {
+            return false
+        }
+        buffer: [4096]u8
+        offset: s32 = 0
+        while offset < text.count {
+            count := cast(s32)text.count - offset
+            if count > buffer.count {
+                count = cast(s32)buffer.count
+            }
+            for index: cast(s32)0..count - 1 {
+                buffer[index] = text[offset + index]
+            }
+            env.functions.SetByteArrayRegion(env, bytes, offset, count, *buffer[0])
+            if env.functions.ExceptionCheck(env) != 0 {
+                return false
+            }
+            offset += count
+        }
+        arguments: [1]JniValue
+        arguments[0].reference = bytes
+        accepted := env.functions.CallBooleanMethodA(env, session.activity, method, *arguments[0])
+        return env.functions.ExceptionCheck(env) == 0 && accepted != 0
+    }
+    unused text
+    return false
+}

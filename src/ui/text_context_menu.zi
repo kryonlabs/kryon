@@ -9,6 +9,7 @@
 #import "system_clipboard"
 #import "tree"
 #import "tree_input"
+#import "text_selection_host"
 
 TEXT_MENU_CUT :: 1;
 TEXT_MENU_COPY :: 2;
@@ -27,15 +28,89 @@ text_menu_paste_enabled: bool;
 text_menu_select_enabled: bool;
 text_menu_escape: bool;
 text_menu_paste: [16384]u8;
+text_menu_session: Session;
+text_menu_generation: u64;
+text_menu_owner_generation: u64;
+text_menu_scale: float32 = 1.0;
+text_menu_offset_x: float32;
+text_menu_offset_y: float32;
+
+// Native toolbars use window pixels; widget hit testing uses layout units.
+TextMenuSetTransform :: (scale: float32, offset_x: float32, offset_y: float32) {
+    text_menu_scale = scale
+    text_menu_offset_x = offset_x
+    text_menu_offset_y = offset_y
+}
+
+// A platform toolbar returns a command, -1 when dismissed, or -2 when it
+// has no native toolbar. Widget policy and clipboard edits stay here.
+TextMenuPlatform :: #type (session: Session, token: u64, x: float32,
+    y: float32, cut: bool, copy: bool, paste: bool, select_all: bool,
+    escape: bool) -> s32;
+text_menu_platform: TextMenuPlatform;
+text_menu_platform_ready: bool;
+
+TextMenuInstall :: (platform: TextMenuPlatform) {
+    text_menu_platform = platform
+    text_menu_platform_ready = true
+    TextSelectionInstallActivity(TextMenuActive)
+}
+
+TextMenuOpenAt :: (session: Session, key: u64, x: float32, y: float32) {
+    text_menu_generation += cast(u64)1
+    text_menu_command = 0
+    text_menu_session = session
+    text_menu_open = true
+    text_menu_key = key
+    text_menu_x = x
+    text_menu_y = y
+    text_menu_owner_generation = 0
+    for index: cast(s32)1..TreeCount(session) - 1 {
+        node := TreeNodeAt(session, index)
+        if node.key == key && node.interactive {
+            text_menu_owner_generation = node.identity_generation
+            unused TreeFocusAt(session, index)
+            break
+        }
+    }
+}
+
+TextMenuCloseFor :: (session: Session, key: u64) {
+    if text_menu_session.slot == session.slot && text_menu_session.epoch == session.epoch &&
+    text_menu_key == key && text_menu_open {
+        text_menu_open = false
+        if text_menu_platform_ready {
+            unused text_menu_platform(session, text_menu_generation,
+                text_menu_x * text_menu_scale + text_menu_offset_x,
+                text_menu_y * text_menu_scale + text_menu_offset_y,
+                false, false, false, false, true)
+        }
+    }
+}
 
 // The command chosen in the menu last frame for the field with this key, or 0.
 #program_export
-TextMenuTakeCommand :: (key: u64) -> s32 {
+TextMenuTakeCommand :: (session: Session, key: u64) -> s32 {
     if key == cast(u64)0 || text_menu_command == 0 || text_menu_command_key != key {
         return 0
     }
+    if text_menu_session.slot != session.slot || text_menu_session.epoch != session.epoch {
+        return 0
+    }
+    valid := false
+    for index: cast(s32)1..TreeCount(session) - 1 {
+        node := TreeNodeAt(session, index)
+        if node.identity_generation == text_menu_owner_generation &&
+        !node.disabled && TreeInputAllowedAt(session, index) {
+            valid = true
+            break
+        }
+    }
     command: s32 = text_menu_command
     text_menu_command = 0
+    if !valid {
+        return 0
+    }
     return command
 }
 
@@ -56,20 +131,58 @@ TextMenuOpenRequested :: (session: Session, key: u64, bounds: Rectangle,
     if !secondary.released || !PointInBounds(pointer.x, pointer.y, bounds) {
         return false
     }
-    text_menu_open = true
-    text_menu_key = key
-    text_menu_x = pointer.x
-    text_menu_y = pointer.y
+    TextMenuOpenAt(session, key, pointer.x, pointer.y)
     return true
 }
 
 #program_export
-TextMenuIsOpenFor :: (key: u64) -> bool {
-    return key != cast(u64)0 && text_menu_open && text_menu_key == key
+TextMenuIsOpenFor :: (session: Session, key: u64) -> bool {
+    return key != cast(u64)0 && text_menu_open && text_menu_key == key &&
+    text_menu_session.slot == session.slot && text_menu_session.epoch == session.epoch
+}
+
+// A toolbar cannot outlive its text widget, focus, modal scope or session.
+TextMenuValidate :: (session: Session) {
+    if !text_menu_platform_ready || !text_menu_open {
+        return
+    }
+    if text_menu_session.slot == session.slot && text_menu_session.epoch == session.epoch {
+        for index: cast(s32)1..TreeCount(session) - 1 {
+            node := TreeNodeAt(session, index)
+            if node.identity_generation == text_menu_owner_generation &&
+            !node.disabled && TreeInputAllowedAt(session, index) && TreeFocusedAt(session, index) {
+                return
+            }
+        }
+    }
+    TextMenuCloseFor(text_menu_session, text_menu_key)
+}
+
+TextMenuActive :: (session: Session) -> bool {
+    return (text_menu_open || text_menu_command != 0) &&
+    text_menu_session.slot == session.slot && text_menu_session.epoch == session.epoch
 }
 
 TextMenuDraw :: (session: Session) {
     if !text_menu_open { return }
+    if text_menu_platform_ready {
+        command := text_menu_platform(session, text_menu_generation,
+            text_menu_x * text_menu_scale + text_menu_offset_x,
+            text_menu_y * text_menu_scale + text_menu_offset_y,
+            text_menu_cut_enabled, text_menu_copy_enabled,
+            text_menu_paste_enabled && SystemClipboardHasText(),
+            text_menu_select_enabled, text_menu_escape)
+        if command != -2 {
+            if command > 0 {
+                text_menu_command = command
+                text_menu_command_key = text_menu_key
+            }
+            if command != 0 {
+                text_menu_open = false
+            }
+            return
+        }
+    }
     items: [5]ContextMenuItem
     items[0].id = TEXT_MENU_CUT
     items[0].label = "Cut"

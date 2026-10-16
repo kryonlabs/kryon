@@ -6,6 +6,8 @@
 #import "android_jni"
 #import "android_surface"
 #import "android_text_editor"
+#import "android_text_menu"
+#import "text_context_menu"
 #import "c_string"
 #import "session"
 #import "text_input_platform"
@@ -659,6 +661,7 @@ AndroidTextInputOpen :: (session: Session) {
         DeviceUnlock()
         TextKeyboardBind(session)
         AndroidTextEditorOpen(session)
+        AndroidTextMenuInstall()
     }
     unused session
 }
@@ -729,6 +732,7 @@ AndroidTextInputFrame :: (session: Session, requested: bool) {
         }
         DeviceUnlock()
         if owned {
+            TextMenuValidate(session)
             AndroidTextEditorFrame(session, active)
             TextKeyboardSetVisible(session, active)
             // A tap on the field the input method edits shows the keyboard.

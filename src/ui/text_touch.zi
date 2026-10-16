@@ -1,0 +1,272 @@
+// Touch selection is shared by editable areas and explicitly selectable text.
+// Hosts provide only a monotonic clock and the platform toolbar effect.
+#import "session"
+#import "geometry"
+#import "tree"
+#import "tree_input"
+#import "text_context_menu"
+#import "text_input"
+#import "paint_queue"
+#import "drawing_props"
+Grapheme :: #import "std/grapheme";
+Utf8 :: #import "std/utf8";
+
+TextTouchClock :: #type () -> s64;
+touch_clock: TextTouchClock;
+touch_ready: bool;
+
+TextTouchInstall :: (clock: TextTouchClock) {
+    touch_clock = clock
+    touch_ready = true
+}
+
+TextTouchEnabled :: () -> bool {
+    return touch_ready
+}
+
+TouchSelection :: struct {
+    anchor: s32
+    cursor: s32
+    handled: bool
+}
+
+TouchState :: struct {
+    epoch: u64
+    generation: u64
+    started: s64
+    cancelled: bool
+    held: bool
+    handle: s32
+    anchor: s32
+    cursor: s32
+    word_anchor: s32
+    word_cursor: s32
+    anchor_bounds: Rectangle
+    cursor_bounds: Rectangle
+    anchor_caret: Rectangle
+    cursor_caret: Rectangle
+    grab_x: float32
+    grab_y: float32
+    handles: bool
+}
+touch_states: [9]TouchState;
+
+TextTouchCancel :: (session: Session, key: u64) {
+    if !SessionValid(session) {
+        return
+    }
+    state := *touch_states[session.slot]
+    state.held = false
+    state.handle = 0
+    state.handles = false
+    state.cancelled = true
+    TextMenuCloseFor(session, key)
+}
+
+HandleHit :: (x: float32, y: float32, bounds: Rectangle) -> bool {
+    return PointInBounds(x, y, Rectangle.{bounds.x - 10.0, bounds.y - 10.0,
+            bounds.width + 20.0, bounds.height + 20.0})
+}
+
+// A finger grabs a handle below its caret. Keep that offset while dragging,
+// so pressing the handle never jumps the endpoint down to another line.
+TextTouchHitPoint :: (session: Session, previous: s32, drag: PointerDrag) -> Vector2 {
+    point := Vector2.{drag.x, drag.y}
+    if !touch_ready || !SessionValid(session) || previous < 0 {
+        return point
+    }
+    state := *touch_states[session.slot]
+    if state.epoch != session.epoch ||
+    state.generation != TreeNodeAt(session, previous).identity_generation || !state.handles {
+        return point
+    }
+    if drag.started {
+        caret: Rectangle
+        grabbed := false
+        if HandleHit(drag.x, drag.y, state.anchor_bounds) {
+            caret = state.anchor_caret
+            grabbed = true
+        } else if HandleHit(drag.x, drag.y, state.cursor_bounds) {
+            caret = state.cursor_caret
+            grabbed = true
+        }
+        if !grabbed {
+            return point
+        }
+        state.grab_x = drag.x - caret.x
+        state.grab_y = drag.y - caret.y - caret.height * 0.5
+    } else if state.handle == 0 {
+        return point
+    }
+    return Vector2.{point.x - state.grab_x, point.y - state.grab_y}
+}
+
+WordKind :: (value: string, at: s32) -> s32 {
+    point := cast(s32)Utf8.Decode(value, at).value
+    if TextWordBlank(point) || point == 10 || point == 13 {
+        return 0
+    }
+    if TextWordSeparator(point) {
+        return 1
+    }
+    return 2
+}
+
+TextTouchWord :: (value: string, at: s32) -> TouchSelection {
+    result: TouchSelection
+    result.handled = true
+    if value.count == 0 {
+        return result
+    }
+    at = Grapheme.Boundary(value, at)
+    if at == value.count {
+        at = Grapheme.Previous(value, at)
+    }
+    kind := WordKind(value, at)
+    result.anchor = at
+    result.cursor = Grapheme.Next(value, at)
+    while result.anchor > 0 {
+        before := Grapheme.Previous(value, result.anchor)
+        if WordKind(value, before) != kind {
+            break
+        }
+        result.anchor = before
+    }
+    while result.cursor < value.count && WordKind(value, result.cursor) == kind {
+        result.cursor = Grapheme.Next(value, result.cursor)
+    }
+    return result
+}
+
+TextTouchUpdate :: (session: Session, previous: s32, key: u64, value: string,
+    drag: PointerDrag, hit: s32, anchor: s32, cursor: s32) -> TouchSelection {
+    result := TouchSelection.{anchor, cursor, false}
+    if !touch_ready || !SessionValid(session) || previous < 0 {
+        return result
+    }
+    state := *touch_states[session.slot]
+    generation := TreeNodeAt(session, previous).identity_generation
+    if state.epoch != session.epoch || state.generation != generation {
+        if !drag.started {
+            return result
+        }
+        state.* = .{}
+        state.epoch = session.epoch
+        state.generation = generation
+    }
+    now := touch_clock()
+    if drag.started {
+        state.started = now
+        state.cancelled = now < 0
+        state.held = false
+        state.handle = 0
+        if state.handles && HandleHit(drag.x, drag.y, state.anchor_bounds) {
+            state.handle = 1
+        } else if state.handles && HandleHit(drag.x, drag.y, state.cursor_bounds) {
+            state.handle = 2
+        }
+        TextMenuCloseFor(session, key)
+        if state.handle == 0 {
+            state.handles = false
+        }
+    }
+    if drag.active && state.handle == 0 && !state.held {
+        prior := TreeNodeAt(session, previous).bounds
+        dx := drag.x - prior.x - drag.grab_x
+        dy := drag.y - prior.y - drag.grab_y
+        if dx * dx + dy * dy > 64.0 {
+            state.cancelled = true
+        }
+        if !state.cancelled && now >= state.started && now - state.started >= 500 {
+            result = TextTouchWord(value, hit)
+            state.anchor = result.anchor
+            state.cursor = result.cursor
+            state.word_anchor = result.anchor
+            state.word_cursor = result.cursor
+            state.held = true
+            state.handles = result.anchor != result.cursor
+            TreeCapturePressAt(session, previous)
+            TextMenuOpenAt(session, key, drag.x, drag.y)
+        }
+    }
+    if (drag.active || drag.ended) && (state.held || state.handle != 0) {
+        TreeCapturePressAt(session, previous)
+        if state.handle == 1 {
+            state.anchor = hit
+        } else if state.handle == 2 {
+            state.cursor = hit
+        } else if hit < state.word_anchor {
+            state.anchor = state.word_cursor
+            state.cursor = hit
+        } else if hit > state.word_cursor {
+            state.anchor = state.word_anchor
+            state.cursor = hit
+        }
+        result = TouchSelection.{state.anchor, state.cursor, true}
+        if drag.ended {
+            TextMenuOpenAt(session, key, drag.x, drag.y)
+            state.held = false
+            state.handle = 0
+        }
+    } else if drag.ended && anchor != cursor {
+        state.handles = true
+        TextMenuOpenAt(session, key, drag.x, drag.y)
+    }
+    return result
+}
+
+HandleBounds :: (caret: Rectangle, bounds: Rectangle, radius: float32) -> Rectangle {
+    x := caret.x - radius
+    y := caret.y + caret.height - radius
+    if x < bounds.x {
+        x = bounds.x
+    }
+    if x + radius * 2.0 > bounds.x + bounds.width {
+        x = bounds.x + bounds.width - radius * 2.0
+    }
+    if y + radius * 2.0 > bounds.y + bounds.height {
+        y = bounds.y + bounds.height - radius * 2.0
+    }
+    return .{x, y, radius * 2.0, radius * 2.0}
+}
+
+TextTouchPaint :: (session: Session, node: s32, key: u64, focused: bool,
+    edited: bool, anchor: s32, cursor: s32, anchor_caret: Rectangle,
+    cursor_caret: Rectangle, bounds: Rectangle, color: Color, scale: float32) {
+    if !touch_ready || !SessionValid(session) || node < 0 {
+        return
+    }
+    state := *touch_states[session.slot]
+    if state.epoch != session.epoch ||
+    state.generation != TreeSubmittedNodeAt(session, node).identity_generation {
+        return
+    }
+    if !focused || edited {
+        TextTouchCancel(session, key)
+    }
+    if anchor == cursor {
+        state.handles = false
+        if state.anchor != state.cursor && !state.held && state.handle == 0 {
+            TextMenuCloseFor(session, key)
+        }
+    }
+    state.anchor = anchor
+    state.cursor = cursor
+    if !state.handles || anchor == cursor || !focused {
+        return
+    }
+    radius := 7.0 * scale
+    if radius < 7.0 {
+        radius = 7.0
+    }
+    state.anchor_bounds = HandleBounds(anchor_caret, bounds, radius)
+    state.cursor_bounds = HandleBounds(cursor_caret, bounds, radius)
+    state.anchor_caret = anchor_caret
+    state.cursor_caret = cursor_caret
+    if anchor_caret.y + anchor_caret.height >= bounds.y && anchor_caret.y < bounds.y + bounds.height {
+        PaintRoundedFill(session, node, state.anchor_bounds, radius, 12, color)
+    }
+    if cursor_caret.y + cursor_caret.height >= bounds.y && cursor_caret.y < bounds.y + bounds.height {
+        PaintRoundedFill(session, node, state.cursor_bounds, radius, 12, color)
+    }
+}
