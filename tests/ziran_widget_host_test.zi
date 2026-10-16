@@ -16,6 +16,7 @@
 #import "spinbox_props"
 #import "time_picker_props"
 #import "title_bar_props"
+#import "modal_props"
 #import "dropdown_props"
 #import "font_metrics"
 #import "hosted_values"
@@ -67,6 +68,8 @@ tab_codecs: [40]WidgetTabCodec;
 tab_values: [40]HostValue;
 title_bar_codec: WidgetTitleBarPropsCodec;
 title_bar_result: WidgetTitleBarResultCodec;
+modal_codec: WidgetModalFramePropsCodec;
+modal_result: WidgetModalFrameResultCodec;
 option_codecs: [40]WidgetDropdownOptionCodec;
 option_values: [40]HostValue;
 
@@ -85,6 +88,7 @@ main :: () -> s32 {
     !WidgetHostSupports("spinbox_widget", "SpinboxHostedHost") ||
     !WidgetHostSupports("time_picker_widget", "TimePickerHostedHost") ||
     !WidgetHostSupports("title_bar_widget", "TitleBarHostedHost") ||
+    !WidgetHostSupports("modal_frame_widget", "ModalFrameHostedHost") ||
     !WidgetHostSupports("tree", "EndHostedHost") ||
     WidgetHostSupports("text_widget", "TextNativeHost") {
         return 1
@@ -256,6 +260,25 @@ main :: () -> s32 {
     arguments[2].length = cast(usize)0
     if Call("title_bar_widget", "TitleBarHostedHost", arguments[:], *result) != 0 {
         return 35
+    }
+    // A dialog opens its panel for the bundle's content, which the bundle
+    // Ends; a runtime texture on its actions is refused.
+    arguments[1] = WidgetEncodeModalFrameProps(ModalFrameProps.{.key = cast(u64)16,
+            .title = "Share", .width = 200, .height = 120, .has_right_action = true}, *modal_codec)
+    if Call("modal_frame_widget", "ModalFrameHostedHost", arguments[:2], *result) != 1 ||
+    TextFromCString(result.type_name) != "ModalFrameResult" ||
+    !WidgetDecodeModalFrameResult(result, *modal_result).opened ||
+    WidgetDecodeModalFrameResult(result, *modal_result).layout.panel.width != 200.0 {
+        return 36
+    }
+    if Call("tree", "EndHostedHost", arguments[:1], *result) != 1 {
+        return 37
+    }
+    dialog := ModalFrameProps.{.title = "Share", .has_right_action = true}
+    dialog.right_image.texture.id = cast(u32)4
+    arguments[1] = WidgetEncodeModalFrameProps(dialog, *modal_codec)
+    if Call("modal_frame_widget", "ModalFrameHostedHost", arguments[:2], *result) != 0 {
+        return 38
     }
     // Nothing is open to end yet; a scroll the bundle leaves open is closed
     // by the host, so the frame still balances.
