@@ -406,9 +406,10 @@ DropdownFrame :: (session: Session, props: DropdownProps,
                             previous_scroll, DropdownActionKey(key,
                             options[option_index], option_index),
                             WidgetKindButton)
+                        // The highlight stays put, so only the chosen
+                        // row looks chosen.
                         if TreeTakeActivationAt(session, action) {
                             result.action_index = option_index
-                            retained.highlight = option_index
                             break
                         }
                     }
