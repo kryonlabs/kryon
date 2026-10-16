@@ -18,6 +18,7 @@
 #import "style"
 #import "style_sheet"
 #import "surface"
+#import "svg_icon"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -117,6 +118,12 @@ DropdownOptionKey :: (key: u64, option: DropdownOption,
     item: u64 = option.key
     if item == cast(u64)0 { item = cast(u64)cast(u32)(index + 1) }
     return key * cast(u64)131071 + item * cast(u64)17 + cast(u64)11
+}
+
+#program_export
+DropdownActionKey :: (key: u64, option: DropdownOption,
+    index: s32) -> u64 {
+    return DropdownOptionKey(key, option, index) * cast(u64)31 + cast(u64)5
 }
 
 // The menu's options scroll in a standard Scroll, which follows the wheel,
@@ -226,8 +233,10 @@ DropdownPaintRow :: (session: Session, node: s32, props: DropdownProps,
     content: ContentMetrics = Content(face.value, props.scale)
     has_image: bool = option.image.asset_path != "" ||
     option.image.texture.id != cast(u32)0
+    action_width: float32 = 0.0
+    if option.action_shape != "" { action_width = row.height }
     layout: DropdownOptionContent = DropdownOptionContentFor(
-        row, visible, content, metrics, has_image)
+        row, visible, content, metrics, has_image, action_width)
     if option.separator_before {
         separator: Rectangle = layout.separator_bounds
         PaintLine(session, node, separator,
@@ -257,6 +266,36 @@ DropdownPaintRow :: (session: Session, node: s32, props: DropdownProps,
                 check.y + check.height * 0.85,
                 check.width * 0.6, -check.height * 0.7}, color)
     }
+}
+
+// An option's action icon, in its row's text color, on a round tint while
+// the pointer is over it. As a touch target it fills half its square, and
+// never less than the style's icon size. It is drawn only while its whole
+// square shows in the menu.
+#program_export
+DropdownPaintAction :: (session: Session, node: s32, props: DropdownProps,
+    option: DropdownOption, bounds: Rectangle, state: s32, selected: bool) {
+    face: StyleFrame = DropdownFaceFor(props, DropdownOptionRole(), state,
+        selected)
+    opacity: float32 = StyleOpacityValue(face.value.fields,
+        face.value.opacity)
+    if state == cast(s32)ButtonStateHover ||
+    state == cast(s32)ButtonStatePressed {
+        // The tint keeps inside the row's own highlight.
+        inset: float32 = bounds.height * 0.125
+        PaintRoundedFill(session, node, Rectangle.{bounds.x + inset,
+                bounds.y + inset, bounds.width - inset * 2.0,
+                bounds.height - inset * 2.0},
+            bounds.height * 0.5 - inset, 12,
+            ColorFromPacked(Opacity(face.value.background, opacity)))
+    }
+    content: ContentMetrics = Content(face.value, props.scale)
+    icon: float32 = bounds.height * 0.5
+    if icon < content.icon { icon = content.icon }
+    PaintSvgIcon(session, node, option.action_shape,
+        Rectangle.{bounds.x + (bounds.width - icon) * 0.5,
+            bounds.y + (bounds.height - icon) * 0.5, icon, icon},
+        ColorFromPacked(Opacity(face.value.foreground, opacity)))
 }
 
 // The dropdown keeps whether its menu is open, the highlighted row and the
@@ -302,6 +341,7 @@ DropdownFrame :: (session: Session, props: DropdownProps,
     result: DropdownResult
     result.node = -1
     result.selected_index = props.selected_index
+    result.action_index = -1
     result.open = retained.open
     bounds: Rectangle = props.bounds
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
@@ -360,6 +400,18 @@ DropdownFrame :: (session: Session, props: DropdownProps,
             if result.open {
                 option_index: s32 = 0
                 while option_index < (cast(s32)options.count) {
+                    if !options[option_index].disabled &&
+                    options[option_index].action_shape != "" {
+                        action: s32 = TreePreviousCommitted(session,
+                            previous_scroll, DropdownActionKey(key,
+                            options[option_index], option_index),
+                            WidgetKindButton)
+                        if TreeTakeActivationAt(session, action) {
+                            result.action_index = option_index
+                            retained.highlight = option_index
+                            break
+                        }
+                    }
                     if !options[option_index].disabled {
                         old: s32 = TreePreviousCommitted(session,
                             previous_scroll, DropdownOptionKey(key,
@@ -529,6 +581,42 @@ DropdownFrame :: (session: Session, props: DropdownProps,
                     visible, result.selected_index == index,
                     hovered || retained.highlight == index,
                     metrics, face)
+            }
+            // The action is submitted after its row, so a press on it
+            // reaches the action rather than choosing the row.
+            if item_node >= 0 && item.action_shape != "" {
+                action_bounds: Rectangle = Rectangle.{row.x + row.width -
+                    row.height, row.y, row.height, row.height}
+                action_visible: Rectangle = RectangleIntersection(
+                    action_bounds, visible)
+                action_key: u64 = DropdownActionKey(key, item, index)
+                action_node: s32 = -1
+                if action_visible.width > 0.0 && action_visible.height > 0.0 {
+                    action_node = TreeSubmitCurrent(session, action_key,
+                        WidgetKindButton, action_visible)
+                }
+                if action_node >= 0 {
+                    TreeSetInteractive(session, action_node, item.disabled,
+                        false, 0)
+                    TreeSetSemantic(session, action_node,
+                        cast(SemanticKind)SemanticButton, 0)
+                    TreeSetLabel(session, action_node, item.action_label)
+                    previous_action: s32 = TreePrevious(session,
+                        scrolled.node, action_key, WidgetKindButton)
+                    action_state: s32 = cast(s32)ButtonStateNormal
+                    if item.disabled {
+                        action_state = cast(s32)ButtonStateDisabled
+                    } else if TreePressedAt(session, previous_action) {
+                        action_state = cast(s32)ButtonStatePressed
+                    } else if TreeHoveredAt(session, previous_action) {
+                        action_state = cast(s32)ButtonStateHover
+                    }
+                    if action_visible.height >= action_bounds.height {
+                        DropdownPaintAction(session, action_node, props, item,
+                            action_bounds, action_state,
+                            result.selected_index == index)
+                    }
+                }
             }
         }
         index += 1

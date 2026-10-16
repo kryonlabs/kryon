@@ -504,6 +504,70 @@ PageMenu :: () -> s32 {
     return 0
 }
 
+// A row's action icon, such as download or remove, reports its option and
+// keeps the menu open without choosing the row; the rest of the row still
+// chooses it.
+action_selected: s32;
+
+ActionFrame :: () -> DropdownResult {
+    options: [4]DropdownOption
+    for index: cast(s32)0..3 {
+        options[index].key = cast(u64)cast(u32)(500 + index)
+        options[index].label = DeviceLabels[index]
+        options[index].action_shape = "F:M4 4H20V20H4Z"
+        options[index].action_label = "Download"
+    }
+    options[3].action_shape = ""
+    props: DropdownProps
+    props.key = cast(u64)41
+    props.bounds = Rectangle.{10.0, 10.0, 160.0, 28.0}
+    props.selected_index = action_selected
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
+    result: DropdownResult = Dropdown(TestSession(), props, options[:])
+    unused TreeFinish(TestSession())
+    PaintClear(TestSession())
+    if result.changed { action_selected = result.selected_index }
+    return result
+}
+
+// The action button in this row, or an empty rectangle.
+ActionButton :: (row: Rectangle) -> Rectangle {
+    for node: cast(s32)0..TreeCount(TestSession()) - 1 {
+        entry := TreeNodeAt(TestSession(), node)
+        if entry.kind == WidgetKindButton && entry.semantic_label == "Download" &&
+        entry.bounds.y == row.y {
+            return entry.bounds
+        }
+    }
+    return Rectangle.{}
+}
+
+ActionMenu :: () -> s32 {
+    action_selected = 0
+    result: DropdownResult = ActionFrame()
+    if result.open || result.action_index != -1 { return 1 }
+    Tap(20.0, 20.0)
+    result = ActionFrame()
+    if !result.open { return 2 }
+    two: Rectangle = SidebarOption("Two")
+    action: Rectangle = ActionButton(two)
+    if two.height < 20.0 || action.height < 20.0 || action.width != two.height ||
+    action.x + action.width != two.x + two.width { return 3 }
+    // The row without an action has no action button.
+    if ActionButton(SidebarOption("Three")).height > 0.0 { return 4 }
+    Tap(action.x + action.width / 2.0, action.y + action.height / 2.0)
+    result = ActionFrame()
+    if !result.open || result.changed || result.action_index != 2 ||
+    action_selected != 0 { return 5 }
+    result = ActionFrame()
+    if !result.open || result.action_index != -1 { return 6 }
+    Tap(two.x + 20.0, two.y + two.height / 2.0)
+    result = ActionFrame()
+    if result.open || !result.changed || result.selected_index != 2 ||
+    result.action_index != -1 { return 7 }
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     fill_steps: [14]s32 = .[1, 3, 3, 1, 3, 4, 1, 3, 1, 1, 3, 3, 3, 1]
@@ -561,5 +625,7 @@ main :: () -> s32 {
     if sidebar != 0 { return 50 + sidebar }
     paged: s32 = PageMenu()
     if paged != 0 { return 70 + paged }
+    acted: s32 = ActionMenu()
+    if acted != 0 { return 90 + acted }
     return 0
 }

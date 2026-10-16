@@ -8,6 +8,11 @@ DropdownOption :: struct {
     image: ImageProps
     disabled: bool
     separator_before: bool
+    // An icon button at the end of the row, such as download or remove, and
+    // the name a screen reader gives it. Pressing it reports the option in
+    // action_index and leaves the menu open without choosing the option.
+    action_shape: string
+    action_label: string
 }
 
 DropdownProps :: struct {
@@ -36,4 +41,6 @@ DropdownResult :: struct {
     changed: bool
     opened: bool
     closed: bool
+    // The option whose action icon was pressed this frame, or -1.
+    action_index: s32
 }
