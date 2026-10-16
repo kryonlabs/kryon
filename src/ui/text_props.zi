@@ -1,4 +1,5 @@
 #import "geometry"
+#import "drawing_props"
 #import "semantic"
 #import "text_align"
 
@@ -51,4 +52,15 @@ TextProps :: struct {
     // size and the accessible label always keep the whole text.
     typing: bool
     typed: s32
+}
+
+PreparedText :: struct {
+    bounds: Rectangle
+    font: s32
+    color: Color
+    typeface: string
+    line_height: s32
+    line_gap: s32
+    line_count: s32
+    wrap: TextWrap
 }

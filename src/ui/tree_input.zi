@@ -347,6 +347,7 @@ TreeHitAt :: (session: Session, x: float32, y: float32,
                 entry.kind == WidgetKindCollapsible ||
                 entry.kind == WidgetKindDropdown ||
                 entry.kind == WidgetKindTextField ||
+                entry.kind == WidgetKindText ||
                 entry.kind == WidgetKindTextArea) &&
             PointInBounds(x, y, entry.bounds) &&
             (!interaction.circle_hit || PointInCircleBounds(x, y, entry.bounds)) &&
@@ -408,7 +409,7 @@ TreeScrollAt :: (session: Session, x: float32, y: float32) -> u64 {
 }
 
 TreeTextKind :: (kind: s32) -> bool {
-    return kind == WidgetKindTextField || kind == WidgetKindTextArea
+    return kind == WidgetKindTextField || kind == WidgetKindTextArea || kind == WidgetKindText
 }
 
 TreeTextFocused :: (session: Session) -> bool {

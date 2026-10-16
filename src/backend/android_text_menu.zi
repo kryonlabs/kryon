@@ -1,0 +1,60 @@
+// The Android activity presents the system floating toolbar. Commands return
+// through a thread-safe poll; only the owning widget applies them.
+#import "android_jni"
+#import "session"
+#import "text_context_menu"
+#import "text_touch"
+#import "text_selection_widget"
+Clock :: #import "std/timer_linux";
+
+AndroidTextMenu :: (owner: Session, token: u64, x: float32, y: float32,
+    cut: bool, copy: bool, paste: bool, select_all: bool, escape: bool) -> s32 {
+    unused owner
+    #if #defined(ANDROID_BUILD) {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return -2
+        }
+        defer AndroidJniDetachCurrent(*session)
+        show := AndroidJniMethod(*session, "setTextSelectionMenu", "(JFFI)V")
+        take := AndroidJniMethod(*session, "takeTextSelectionMenuAction", "(J)I")
+        if show == null || take == null {
+            return -2
+        }
+        flags: s32 = 0
+        if cut { flags |= 1 }
+        if copy { flags |= 2 }
+        if paste { flags |= 4 }
+        if select_all { flags |= 8 }
+        if escape { flags = 0 }
+        arguments: [4]JniValue
+        arguments[0].long_integer = cast(s64)token
+        arguments[1].single = x
+        arguments[2].single = y
+        arguments[3].integer = flags
+        env := session.env
+        env.functions.CallVoidMethodA(env, session.activity, show, *arguments[0])
+        result := env.functions.CallIntMethodA(env, session.activity, take, *arguments[0])
+        if env.functions.ExceptionCheck(env) != 0 {
+            return -2
+        }
+        return result
+    }
+    unused token
+    unused x
+    unused y
+    unused cut
+    unused copy
+    unused paste
+    unused select_all
+    unused escape
+    return -2
+}
+
+AndroidTextMenuInstall :: () {
+    #if #defined(ANDROID_BUILD) {
+        TextTouchInstall(Clock.MonotonicMilliseconds)
+        TextSelectionEnable()
+        TextMenuInstall(AndroidTextMenu)
+    }
+}

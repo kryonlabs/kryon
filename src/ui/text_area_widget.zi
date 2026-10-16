@@ -12,6 +12,7 @@
 } else {
 #import "system_clipboard"
 #import "text_context_menu"
+#import "text_touch"
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -962,6 +963,20 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         }
         result.preferred_x_valid = false
     }
+    if !props.disabled && TextTouchEnabled() {
+        point := TextTouchHitPoint(session, previous, drag)
+        touch_hit := TextAreaCursorAtPointWith(props.value,
+            cast(s32)point.x - (cast(s32)bounds.x + padding_x),
+            cast(s32)point.y - (cast(s32)bounds.y + padding_y) + result.scroll_y,
+            wrap_width, font, face.value.typeface, advance, hidden)
+        touch := TextTouchUpdate(session, previous, key, props.value, drag,
+            touch_hit, result.anchor, result.cursor)
+        if touch.handled {
+            result.anchor = touch.anchor
+            result.cursor = touch.cursor
+            result.selecting = drag.active
+        }
+    }
     composition_state: CompositionState = props.composition
     if activated || drag.started || drag.active || drag.ended {
         if composition_state.active {
@@ -1377,6 +1392,17 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                     face.value.foreground, opacity)))
         }
     }
+    anchor_caret := TextAreaCaretForWith(props.value, result.anchor, wrap_width,
+        font, face.value.typeface, advance, hidden)
+    TextTouchPaint(session, result.node, key, result.focused, result.edit.changed,
+        result.anchor, result.cursor,
+        Rectangle.{paint.clip_bounds.x + cast(float32)anchor_caret.x,
+            paint.clip_bounds.y + cast(float32)(anchor_caret.y - result.scroll_y),
+            1.0, cast(float32)line_height},
+        Rectangle.{paint.clip_bounds.x + cast(float32)display_caret.x,
+            paint.clip_bounds.y + cast(float32)(display_caret.y - result.scroll_y),
+            1.0, cast(float32)line_height},
+        paint.clip_bounds, ColorFromPacked(face.value.focus), scale)
     return result
 }
 
@@ -1387,9 +1413,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
 TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     key: u64 = TextAreaKey(session, props)
     editable: bool = !props.read_only
-    selection: TextSelectionRange = TextSelectionRangeForLength(props.anchor,
-        props.cursor, (cast(s32)props.value.count))
-    command: s32 = TextMenuTakeCommand(key)
+    command: s32 = TextMenuTakeCommand(session, key)
     if command == TEXT_MENU_CUT { props.input.cut = true }
     if command == TEXT_MENU_COPY { props.input.copy = true }
     if command == TEXT_MENU_PASTE { props.input.paste = true }
@@ -1405,7 +1429,9 @@ TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     if result.focused && !props.read_only && !props.disabled {
         TextInputNoteFocused(session)
     }
-    if TextMenuIsOpenFor(key) {
+    if TextMenuIsOpenFor(session, key) {
+        selection := TextSelectionRangeForLength(result.anchor, result.cursor,
+            cast(s32)props.value.count)
         TextMenuShow(session, editable && selection.has_selection,
             selection.has_selection, editable, props.value.count > 0,
             props.input.escape)

@@ -19,7 +19,7 @@ for header in $(find "$work/c" -name '*.h' | xargs -n1 dirname | sort -u); do
     includes="$includes -I$header"
 done
 # shellcheck disable=SC2086
-"${CC:-cc}" -std=c11 $includes $(find "$work/c" -name '*.c') \
-    -o "$work/test" -pthread -ldl
+"${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections $includes $(find "$work/c" -name '*.c') \
+    -Wl,--gc-sections -o "$work/test" -pthread -ldl
 env -u DISPLAY -u WAYLAND_DISPLAY "$work/test"
 printf '%s\n' 'Android input method snapshots, revisions, field identity and blur passed'

@@ -1,0 +1,33 @@
+#import "session"
+#import "text_props"
+
+TextSelectionPainter :: #type (session: Session, node: s32,
+    props: TextProps, prepared: PreparedText) -> void;
+selection_painter: TextSelectionPainter;
+selection_painter_ready: bool;
+TextSelectionActivity :: #type (session: Session) -> bool;
+selection_activity: TextSelectionActivity;
+selection_activity_ready: bool;
+
+TextSelectionInstall :: (painter: TextSelectionPainter) {
+    selection_painter = painter
+    selection_painter_ready = true
+}
+
+TextSelectionPresent :: (session: Session, node: s32, props: TextProps,
+    prepared: PreparedText) -> bool {
+    if !selection_painter_ready {
+        return false
+    }
+    selection_painter(session, node, props, prepared)
+    return true
+}
+
+TextSelectionInstallActivity :: (activity: TextSelectionActivity) {
+    selection_activity = activity
+    selection_activity_ready = true
+}
+
+TextSelectionBusy :: (session: Session) -> bool {
+    return selection_activity_ready && selection_activity(session)
+}

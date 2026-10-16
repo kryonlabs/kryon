@@ -1,5 +1,6 @@
 Runtime :: #import "raylib_runtime";
 Probe :: #import "raylib_window_host";
+SelectionProbe :: #import "raylib_selection_host";
 Text :: #import "byte_text_linux";
 
 #program_export
@@ -45,5 +46,6 @@ main :: () -> s32 {
         Runtime.PollMiddlePointer().down || !Runtime.PollRaylib() { return 11 }
     Runtime.CloseRaylib()
     if Probe.closes != 2 { return 12 }
+    if SelectionProbe.selection_effects != 0 { return 14 }
     return 0
 }

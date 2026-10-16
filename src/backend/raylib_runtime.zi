@@ -1,3 +1,7 @@
+#if #defined(ANDROID_BUILD) {
+    #import "android_clipboard"
+}
+#import "text_selection_widget"
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
@@ -1052,6 +1056,7 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
     HostRaylibSetConfigFlags(flags)
     HostRaylibInitWindow(width, height, *label[0])
     if !HostRaylibIsWindowReady() { return false }
+    TextSelectionEnable()
     HostRaylibSetTargetFPS(60)
     name: [32]u8
     if CopyCString("KRYON_FONT_PATH", name[:]) {
@@ -2061,6 +2066,10 @@ raylib_clipboard_length: s32;
 // Snapshots the text, cut on a whole character to fit.
 #program_export
 SystemClipboardOpenHost :: () -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        raylib_clipboard_length = AndroidClipboardRead(raylib_clipboard[:])
+        return raylib_clipboard_length
+    }
     raylib_clipboard_length = 0
     text: *u8 = HostRaylibGetClipboardText()
     if text == null { return -1 }
@@ -2085,6 +2094,9 @@ SystemClipboardByteHost :: (index: s32) -> s32 {
 
 #program_export
 SystemClipboardWriteHost :: (text: string) -> bool {
+    #if #defined(ANDROID_BUILD) {
+        return AndroidClipboardWrite(text)
+    }
     length: s32 = cast(s32)text.count
     if length > 65535 { length = 65535 }
     index: s32 = 0

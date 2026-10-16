@@ -1,0 +1,108 @@
+// Optional selection for Text. Hosts with a clipboard install this ordinary
+// Ziran widget painter; a host that draws labels needs no clipboard effects.
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+#import "text_props"
+#import "text_widget"
+#import "text_touch"
+#import "text_context_menu"
+#import "text_selection_host"
+#import "system_clipboard"
+#import "drawing_props"
+Grapheme :: #import "std/grapheme";
+using WidgetKind;
+
+// A reused row can show another message after history loads. Its old selection
+// must never copy a range from the replacement text.
+TextSelectionSameValue :: (session: Session, previous: s32, value: string) -> bool {
+    if previous < 0 {
+        return true
+    }
+    if TreeNodeAt(session, previous).text_bytes != value.count {
+        return false
+    }
+    bytes: [4096]u8
+    at: s32 = 0
+    while at < value.count {
+        end := at + cast(s32)bytes.count
+        if end > value.count {
+            end = cast(s32)value.count
+        }
+        if TreeTextRange(session, previous, at, end, bytes[:]) != value[at:end] {
+            return false
+        }
+        at = end
+    }
+    return true
+}
+
+TextSelectionDraw :: (session: Session, node: s32, props: TextProps, prepared: PreparedText) {
+    props.key = TreeSubmittedNodeAt(session, node).key
+    anchor: s32 = 0
+    cursor: s32 = 0
+    focused: bool = false
+    if props.selectable && !props.disabled {
+        previous := TreePrevious(session, TreeCurrentParent(session), props.key, WidgetKindText)
+        selection := TreePreviousWidgetState(session, previous)
+        anchor = Grapheme.Boundary(props.text, selection.offset)
+        cursor = Grapheme.Boundary(props.text, selection.index)
+        focused = TreeFocusedAt(session, previous)
+        drag := TreeTakeDragAt(session, previous)
+        if !TextSelectionSameValue(session, previous, props.text) {
+            TextTouchCancel(session, props.key)
+            anchor = 0
+            cursor = 0
+            focused = false
+            drag = .{}
+        }
+        if drag.started || drag.active || drag.ended {
+            focused = true
+            point := TextTouchHitPoint(session, previous, drag)
+            hit := TextByteAtPoint(props, prepared, point.x, point.y)
+            if drag.started {
+                anchor = hit
+            }
+            cursor = hit
+            touch := TextTouchUpdate(session, previous, props.key, props.text,
+                drag, hit, anchor, cursor)
+            if touch.handled {
+                anchor = touch.anchor
+                cursor = touch.cursor
+            }
+        }
+        unused TextMenuOpenRequested(session, props.key, props.bounds, false)
+        command := TextMenuTakeCommand(session, props.key)
+        if focused && command == TEXT_MENU_SELECT_ALL {
+            anchor = 0
+            cursor = cast(s32)props.text.count
+        }
+        if focused && command == TEXT_MENU_COPY && anchor != cursor {
+            start := ifx anchor < cursor then anchor else cursor
+            end := ifx anchor < cursor then cursor else anchor
+            unused SystemClipboardSet(props.text[start:end])
+        }
+        if TextMenuIsOpenFor(session, props.key) {
+            TextMenuShow(session, false, anchor != cursor, false, props.text.count > 0, false)
+        }
+    }
+
+    TreeSetInteractive(session, node, props.disabled, false, 1)
+    TreeSetWidgetState(session, node, WidgetState.{focused, anchor, cursor})
+    TreeSetTextValue(session, node, props.text, cursor, anchor, true, false)
+    if focused && anchor != cursor {
+        PaintTextSelection(session, node, props, prepared, anchor, cursor,
+            Color.{80, 140, 180, 72})
+    }
+    PaintTextLines(session, node, props, prepared)
+    if props.selectable {
+        TextTouchPaint(session, node, props.key, focused, false, anchor, cursor,
+            TextCaretBounds(props, prepared, anchor), TextCaretBounds(props, prepared, cursor),
+            prepared.bounds, Color.{80, 140, 180, 255}, 1.0)
+    }
+}
+
+TextSelectionEnable :: () {
+    TextSelectionInstall(TextSelectionDraw)
+}

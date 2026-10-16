@@ -1,0 +1,184 @@
+#import "session"
+#import "geometry"
+#import "tree"
+#import "tree_input"
+#import "text_input_props"
+#import "text_area_widget"
+#import "text_widget"
+#import "text_props"
+#import "text_touch"
+#import "text_selection_widget"
+#import "text_context_menu"
+#import "system_clipboard"
+#import "paint_queue"
+#import "ziran_context_menu_widget_host"
+#import "ziran_system_clipboard_host"
+
+owner: Session;
+now: s64 = 1000;
+command: s32;
+flags: s32;
+menu_x: float32;
+menu_y: float32;
+cursor: s32;
+anchor: s32;
+clipboard: [128]u8;
+
+Clock :: () -> s64 {
+    return now
+}
+
+Menu :: (session: Session, token: u64, x: float32, y: float32,
+    cut: bool, copy: bool, paste: bool, select_all: bool, escape: bool) -> s32 {
+    unused session
+    unused token
+    menu_x = x
+    menu_y = y
+    flags = (ifx cut then 1 else 0) | (ifx copy then 2 else 0) |
+    (ifx paste then 4 else 0) | (ifx select_all then 8 else 0)
+    if escape {
+        flags = 0
+        return -1
+    }
+    result := command
+    command = 0
+    return result
+}
+
+Area :: (read_only: bool = false, disabled: bool = false, paste: bool = false) -> TextAreaResult {
+    TreeStart(owner, 1, .{0.0, 0.0, 400.0, 300.0})
+    result := TextArea(owner, TextAreaProps.{.key = cast(u64)4,
+            .bounds = .{10.0, 10.0, 240.0, 100.0}, .value = "hello calm world",
+            .anchor = anchor, .cursor = cursor, .focused = true,
+            .read_only = read_only, .disabled = disabled,
+            .input = TextAreaInput.{.paste = paste}})
+    anchor = result.anchor
+    cursor = result.cursor
+    unused TreeFinish(owner)
+    PaintClear(owner)
+    return result
+}
+
+Pointer :: (x: float32, y: float32, down: bool, pressed: bool, released: bool) {
+    TreePointerUpdate(owner, .{x, y, down, pressed, released})
+}
+
+Chat :: (selectable: bool, value: string = "hello calm world") {
+    TreeStart(owner, 2, .{0.0, 0.0, 400.0, 300.0})
+    Text(owner, TextProps.{.key = cast(u64)20, .bounds = .{10.0, 10.0, 240.0, 100.0},
+            .text = value, .font = 14, .selectable = selectable})
+    unused TreeFinish(owner)
+    PaintClear(owner)
+}
+
+#program_export
+main :: () -> s32 {
+    owner = SessionOpen()
+    TextTouchInstall(Clock)
+    TextSelectionEnable()
+    TextMenuInstall(Menu)
+    TextMenuSetTransform(2.0, 5.0, 7.0)
+    word := TextTouchWord("hello 水😀 é world", 15)
+    if word.anchor != 14 || word.cursor != 17 {
+        return 1
+    }
+    word = TextTouchWord("hello 水😀", 8)
+    if word.anchor != 6 || word.cursor != 13 {
+        return 2
+    }
+    unused Area()
+    Pointer(28.0, 24.0, true, true, false)
+    unused Area()
+    now = 1600
+    Pointer(28.0, 24.0, true, false, false)
+    result := Area()
+    if result.anchor != 0 || result.cursor != 5 || flags != 11 || menu_x != 61.0 || menu_y != 55.0 {
+        return 3
+    }
+    Pointer(29.0, 24.0, true, false, false)
+    result = Area()
+    if result.anchor != 0 || result.cursor != 5 {
+        return 13
+    }
+    Pointer(28.0, 24.0, false, false, true)
+    result = Area()
+    if result.anchor != 0 || result.cursor != 5 {
+        return 4
+    }
+    command = TEXT_MENU_COPY
+    unused Area()
+    result = Area()
+    if !result.clipboard_write || SystemClipboardText(clipboard[:]) != "hello" {
+        return 5
+    }
+    // The endpoint handle extends the existing selection, keeping its anchor.
+    Pointer(55.0, 32.0, true, true, false)
+    result = Area()
+    if result.anchor != 0 || result.cursor != 5 {
+        return 6
+    }
+    Pointer(132.0, 24.0, true, false, false)
+    unused Area()
+    Pointer(132.0, 24.0, false, false, true)
+    result = Area()
+    if result.anchor != 0 || result.cursor != 16 {
+        return 7
+    }
+    unused SystemClipboardSet("fresh 水😀")
+    result = Area(false, false, true)
+    if !result.edit.changed || result.edit.start != 0 || result.edit.end != 16 ||
+    result.edit.replacement != "fresh 水😀" {
+        return 8
+    }
+    // An empty selection still offers paste after a hold; disabled text never does.
+    flags = 0
+    Pointer(28.0, 24.0, true, true, false)
+    unused Area(false, true)
+    now = 2300
+    Pointer(28.0, 24.0, true, false, false)
+    unused Area(false, true)
+    if flags != 0 {
+        return 9
+    }
+    Pointer(28.0, 24.0, false, false, true)
+    unused Area(false, true)
+    // Explicitly selectable chat text gets copy/select-all, never cut/paste.
+    flags = 0
+    Chat(true)
+    Pointer(24.0, 16.0, true, true, false)
+    Chat(true)
+    now = 3000
+    Pointer(24.0, 16.0, true, false, false)
+    Chat(true)
+    if flags != 10 {
+        return 10
+    }
+    Pointer(24.0, 16.0, false, false, true)
+    Chat(true)
+    command = TEXT_MENU_COPY
+    Chat(true)
+    Chat(true)
+    if SystemClipboardText(clipboard[:]) != "hello" {
+        return 11
+    }
+    // Loading another message into a retained row discards its pending copy.
+    unused SystemClipboardSet("unchanged")
+    TextMenuOpenAt(owner, cast(u64)20, 24.0, 16.0)
+    command = TEXT_MENU_COPY
+    Chat(true)
+    Chat(true, "different calm world")
+    if SystemClipboardText(clipboard[:]) != "unchanged" {
+        return 14
+    }
+    flags = 0
+    Chat(false)
+    Pointer(24.0, 16.0, true, true, false)
+    Chat(false)
+    now = 3700
+    Pointer(24.0, 16.0, true, false, false)
+    Chat(false)
+    if flags != 0 {
+        return 12
+    }
+    return 0
+}
