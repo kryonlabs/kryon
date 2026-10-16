@@ -32,6 +32,8 @@
 #import "dropdown_props"
 #import "text_input_props"
 #import "scroll_widget"
+#import "modal_frame_widget"
+#import "modal_props"
 #import "hosted_values"
 #import "widget_codec"
 
@@ -43,7 +45,8 @@ WidgetAssetAllowed :: #type (path: string) -> bool;
 
 WIDGET_HOST_TAB_LIMIT :: 32
 WIDGET_HOST_OPTION_LIMIT :: 32
-WIDGET_HOST_SCROLL_DEPTH :: 16
+// Scrolls and dialog panels a bundle may hold open at once.
+WIDGET_HOST_SCOPE_DEPTH :: 16
 
 widget_host_session: Session;
 widget_host_active: bool;
@@ -81,6 +84,8 @@ widget_time_picker_result_codec: WidgetTimePickerResultCodec;
 widget_title_bar_codec: WidgetTitleBarPropsCodec;
 widget_title_bar_result_codec: WidgetTitleBarResultCodec;
 widget_options: [WIDGET_HOST_OPTION_LIMIT]DropdownOption;
+widget_modal_frame_codec: WidgetModalFramePropsCodec;
+widget_modal_frame_result_codec: WidgetModalFrameResultCodec;
 widget_option_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetDropdownOptionCodec;
 
 // The widget calls WidgetHostCall answers, for checking a bundle's
@@ -100,7 +105,8 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (module == "press_widget" && function == "PressHostedHost") ||
     (module == "spinbox_widget" && function == "SpinboxHostedHost") ||
     (module == "time_picker_widget" && function == "TimePickerHostedHost") ||
-    (module == "title_bar_widget" && function == "TitleBarHostedHost")
+    (module == "title_bar_widget" && function == "TitleBarHostedHost") ||
+    (module == "modal_frame_widget" && function == "ModalFrameHostedHost")
 }
 
 WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed) {
@@ -172,6 +178,9 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         return 0
     }
     props := arguments[1]
+    if owner == "modal_frame_widget" && name == "ModalFrameHostedHost" && WidgetValidModalFrameProps(props) {
+        return WidgetHostModalFrame(session, props, result)
+    }
     if owner == "box_widget" && name == "BoxHostedHost" && WidgetValidBoxProps(props) {
         result.* = HostScalar("s32", cast(s64)Box(session, WidgetDecodeBoxProps(props, *widget_box_codec)))
         return 1
@@ -220,7 +229,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         return 1
     }
     if owner == "scroll_widget" && name == "ScrollHostedHost" && WidgetValidScrollProps(props) {
-        if widget_host_depth >= WIDGET_HOST_SCROLL_DEPTH {
+        if widget_host_depth >= WIDGET_HOST_SCOPE_DEPTH {
             return 0
         }
         frame := Scroll(session, WidgetDecodeScrollProps(props, *widget_scroll_codec))
@@ -311,5 +320,25 @@ WidgetHostTitleBar :: (session: Session, arguments: *HostValue, result: *HostVal
     }
     drawn := TitleBar(session, props, widget_options[:cast(s32)values.length])
     result.* = WidgetEncodeTitleBarResult(drawn, *widget_title_bar_result_codec)
+    return 1
+}
+
+// A dialog over the page. Its action images pass the host's asset policy,
+// and its open panel is a scope the bundle Ends, like a scroll's content.
+WidgetHostModalFrame :: (session: Session, props: HostValue, result: *HostValue) -> s32 {
+    if widget_host_depth >= WIDGET_HOST_SCOPE_DEPTH {
+        return 0
+    }
+    modal := WidgetDecodeModalFrameProps(props, *widget_modal_frame_codec)
+    if modal.left_image.texture.id != cast(u32)0 || modal.right_image.texture.id != cast(u32)0 ||
+    !WidgetHostAssetAllowed(modal.left_image.asset_path) ||
+    !WidgetHostAssetAllowed(modal.right_image.asset_path) {
+        return 0
+    }
+    frame := ModalFrame(session, modal)
+    if frame.opened {
+        widget_host_depth += 1
+    }
+    result.* = WidgetEncodeModalFrameResult(frame, *widget_modal_frame_result_codec)
     return 1
 }

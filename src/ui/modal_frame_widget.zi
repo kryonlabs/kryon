@@ -1,3 +1,15 @@
+// Portable compositions submit the same dialog to a retained UI host; the
+// host draws it with this implementation and owns the panel's scope.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "modal_props"
+    host_api :: #system_library "host_api";
+    ModalFrameHostedHost :: (session: Session, props: ModalFrameProps) -> ModalFrameResult #foreign host_api;
+    #program_export
+    ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
+        return ModalFrameHostedHost(session, props)
+    }
+} else {
 #import "session"
 #import "button_props"
 #import "button_widget"
@@ -237,4 +249,5 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
         result.opened = TreePushScope(session, result.panel_node)
     }
     return result
+}
 }
