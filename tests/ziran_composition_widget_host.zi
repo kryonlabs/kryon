@@ -11,6 +11,10 @@ area_underline: s32;
 // A text area's photo box and the source of the line it covers.
 area_photo: s32;
 area_covered_source: s32;
+// The carets a text area paints while typing, from phase 50: how many in
+// the current phase and the last one's top.
+area_carets: s32;
+area_caret_y: float32;
 
 #program_export
 SetCompositionPhase :: (phase: s32) { active_phase = phase }
@@ -53,8 +57,11 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
-    unused line
     unused color
+    if active_phase >= 50 {
+        area_carets += 1
+        area_caret_y = line.y
+    }
 }
 
 #program_export
@@ -114,6 +121,15 @@ FieldPreeditPaints :: () -> s32 { return field_preedit }
 
 #program_export
 AreaPhotoPaints :: () -> s32 { return area_photo }
+
+#program_export
+AreaCarets :: () -> s32 { return area_carets }
+
+#program_export
+AreaCaretY :: () -> float32 { return area_caret_y }
+
+#program_export
+ResetAreaCarets :: () { area_carets = 0 }
 
 #program_export
 AreaCoveredSourcePaints :: () -> s32 { return area_covered_source }

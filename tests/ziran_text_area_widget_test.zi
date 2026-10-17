@@ -107,6 +107,14 @@ Frame :: () -> s32 {
         scroll_y = 0
         focused = false
     }
+    // Typing at the end of a line that another follows.
+    if phase == 50 || phase == 51 {
+        value = "ab\ncd"
+        cursor = 2
+        anchor = 2
+        scroll_y = 0
+        focused = true
+    }
     ime_state: CompositionState
     ime_state.active = ime_active
     ime_state.cursor = ime_cursor
@@ -281,6 +289,17 @@ Frame :: () -> s32 {
         props.italic = slanted[:]
         props.blocks = photo[:]
         props.lines = larger[:]
+    }
+    // The frame that takes a keystroke still paints its old value; its one
+    // caret stays on the typed line, never at the next line's start, also
+    // with a box under the line and a larger line after it.
+    below: [1]TextAreaBlock = .[TextAreaBlock.{.start = 0, .height = 6}]
+    next_larger: [1]TextAreaLine = .[TextAreaLine.{.start = 3, .scale = 1.5}]
+    if phase == 50 { props.input.text = "Z" }
+    if phase == 51 {
+        props.input.text = "XY"
+        props.blocks = below[:]
+        props.lines = next_larger[:]
     }
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 140.0})
     result: TextAreaResult = TextArea(TestSession(), props)
@@ -570,9 +589,11 @@ main :: () -> s32 {
     // cursor, clipboard, syntax colors and IME with retained row layouts.
     GlyphMetricsChanged()
     index: s32 = 0
-    while index < 50 {
+    while index < 52 {
         SetCompositionPhase(index)
+        ResetAreaCarets()
         if Frame() != index { return 1 }
+        if index >= 50 && (AreaCarets() != 1 || AreaCaretY() != 28.0) { return 6 }
         index += 1
     }
     if AreaKeywordPaints() <= 0 || AreaCompositionPaints() <= 0 ||
