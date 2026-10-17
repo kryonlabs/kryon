@@ -10,6 +10,7 @@
 #import "tree_input"
 #import "raylib_clip"
 #import "text_emphasis"
+#import "image_orientation"
 #if !#defined(_WIN32) {
     #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
         SystemTypeface :: #import "system_typeface_android";
@@ -908,6 +909,78 @@ RaylibAssetHash :: (path: string) -> u64 {
     return hash
 }
 
+HostRaylibTextureFromImage :: (image: RaylibGlyphImage) -> Texture2D #foreign raylib "LoadTextureFromImage";
+HostRaylibUnloadImage :: (image: RaylibGlyphImage) #foreign raylib "UnloadImage";
+HostRaylibImageRotateCW :: (image: *RaylibGlyphImage) #foreign raylib "ImageRotateCW";
+HostRaylibImageRotateCCW :: (image: *RaylibGlyphImage) #foreign raylib "ImageRotateCCW";
+HostRaylibImageFlipHorizontal :: (image: *RaylibGlyphImage) #foreign raylib "ImageFlipHorizontal";
+HostRaylibImageFlipVertical :: (image: *RaylibGlyphImage) #foreign raylib "ImageFlipVertical";
+
+RaylibJpegPath :: (path: string) -> bool {
+    if path.count >= 4 {
+        extension := path[path.count - 4:]
+        if extension == ".jpg" || extension == ".JPG" {
+            return true
+        }
+    }
+    if path.count >= 5 {
+        extension := path[path.count - 5:]
+        return extension == ".jpeg" || extension == ".JPEG"
+    }
+    return false
+}
+
+// Turns decoded pixels upright by Exif orientation 2 to 8.
+RaylibTurnUpright :: (image: *RaylibGlyphImage, orientation: s32) {
+    if orientation == 2 {
+        HostRaylibImageFlipHorizontal(image)
+    } else if orientation == 3 {
+        HostRaylibImageFlipHorizontal(image)
+        HostRaylibImageFlipVertical(image)
+    } else if orientation == 4 {
+        HostRaylibImageFlipVertical(image)
+    } else if orientation == 5 {
+        HostRaylibImageRotateCW(image)
+        HostRaylibImageFlipHorizontal(image)
+    } else if orientation == 6 {
+        HostRaylibImageRotateCW(image)
+    } else if orientation == 7 {
+        HostRaylibImageRotateCW(image)
+        HostRaylibImageFlipVertical(image)
+    } else if orientation == 8 {
+        HostRaylibImageRotateCCW(image)
+    }
+}
+
+// A JPEG photo stands upright by its Exif orientation, as browsers and
+// GdkPixbuf draw it, since raylib's decoder leaves the pixels as stored.
+// Every other asset loads as stored.
+RaylibLoadAssetTexture :: (path: *u8, text: string) -> Texture2D {
+    if !RaylibJpegPath(text) {
+        return HostRaylibLoadTexture(path)
+    }
+    size: s32 = 0
+    data := HostTypefaceFileData(path, *size)
+    if data == null || size <= 0 {
+        if data != null {
+            HostTypefaceFileDataFree(data)
+        }
+        return Texture2D.{}
+    }
+    orientation := ImageExifOrientation(TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(data, cast(u64)size)))
+    extension: [8]u8
+    unused CopyCString(".jpg", extension[:])
+    image := HostRaylibLoadImageFromMemory(*extension[0], data, size)
+    HostTypefaceFileDataFree(data)
+    if image.data == null {
+        return Texture2D.{}
+    }
+    RaylibTurnUpright(*image, orientation)
+    texture := HostRaylibTextureFromImage(image)
+    HostRaylibUnloadImage(image)
+    return texture
+}
+
 RaylibAssetIndex :: (path: string) -> s32 {
     if path.count == 0 || path.count >= 1024 { return -1 }
     hash := RaylibAssetHash(path)
@@ -956,8 +1029,7 @@ RaylibAssetIndex :: (path: string) -> s32 {
     }
     raylib_assets[index].length = cast(s32)path.count
     raylib_assets[index].hash = hash
-    raylib_assets[index].texture =
-    HostRaylibLoadTexture(*raylib_assets[index].path[0])
+    raylib_assets[index].texture = RaylibLoadAssetTexture(*raylib_assets[index].path[0], path)
     raylib_assets[index].smooth = false
     if raylib_assets[index].texture.id == cast(u32)0 {
         raylib_assets[index].length = 0
@@ -1839,6 +1911,64 @@ RetainedPreviousFrameTexture :: () -> Texture2D {
 #program_export
 DisposeFrameTexture :: (texture: Texture2D) {
     if texture.id != cast(u32)0 { HostRaylibUnloadTexture(texture) }
+}
+
+HostRaylibLoadImageFromMemory :: (file_type: *u8, data: *u8,
+    size: s32) -> RaylibGlyphImage #foreign raylib "LoadImageFromMemory";
+HostRaylibImageFormat :: (image: *RaylibGlyphImage, format: s32) #foreign raylib "ImageFormat";
+
+// Decodes an image file for image_preview.zi with raylib's codecs, which
+// leave Exif orientation to the caller. Gray, gray with alpha, RGB and RGBA
+// pixels are kept as decoded; any other format becomes RGBA.
+#program_export
+ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
+    channels: *s32, upright: *bool) -> *u8 {
+    width.* = 0
+    height.* = 0
+    channels.* = 0
+    upright.* = false
+    extension: [16]u8
+    if data.count == 0 || data.count > 2147483647 || !CopyCString(file_type, extension[:]) {
+        return null
+    }
+    bytes := cast(*TypefaceText.TextDescriptor)(*data)
+    image := HostRaylibLoadImageFromMemory(*extension[0], bytes.data, cast(s32)data.count)
+    if image.data == null || image.width <= 0 || image.height <= 0 {
+        if image.data != null {
+            HostTypefaceFree(cast(*u8)image.data)
+        }
+        return null
+    }
+    count: s32 = 0
+    if image.format == 1 {
+        count = 1
+    } else if image.format == 2 {
+        count = 2
+    } else if image.format == 4 {
+        count = 3
+    } else if image.format == 7 {
+        count = 4
+    } else {
+        HostRaylibImageFormat(*image, 7)
+        if image.data == null || image.format != 7 {
+            if image.data != null {
+                HostTypefaceFree(cast(*u8)image.data)
+            }
+            return null
+        }
+        count = 4
+    }
+    width.* = image.width
+    height.* = image.height
+    channels.* = count
+    return cast(*u8)image.data
+}
+
+#program_export
+ImagePreviewRelease :: (pixels: *u8) {
+    if pixels != null {
+        HostTypefaceFree(pixels)
+    }
 }
 
 #program_export

@@ -449,6 +449,11 @@ image-decode-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_image_decode_linux_test.sh
 test: image-decode-test
 
+.PHONY: image-preview-test
+image-preview-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/image_preview_zi_test.sh
+test: image-preview-test
+
 .PHONY: android-surface-test android-rotation-pixels-test
 android-surface-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/android_surface_test.py
