@@ -37,6 +37,10 @@ hosted_app = "src/backend/hosted_app.zi"
 hosted_values = "src/backend/hosted_values.zi"
 widget_codec = "src/backend/widget_codec.zi"
 widget_host = "src/backend/widget_host.zi"
+# Lets a test process read the widget tree and press, type and drag in a
+# running app; inactive unless KRYON_TEST_DRIVER names a directory.
+TestDriver = "src/backend/test_driver.zi"
+test_driver = "src/backend/test_driver.zi"
 key_input = "src/ui/key_input.zi"
 # Headless frames: paints into a pixel buffer on every target.
 pixmap = "src/backend/pixmap.zi"

@@ -1,0 +1,1046 @@
+// A test process drives a running app through files in the directory named
+// by KRYON_TEST_DRIVER. It reads the committed widget tree, presses widgets
+// with the app's own pointer path, types text and presses keys. Without that
+// variable nothing here reads files or changes input.
+//
+// An app supports it by calling these where it samples input, and once after
+// each frame:
+//
+//     pointer = TestDriverPointer(session, pointer)  // before TreePointerUpdate
+//     wheel = TestDriverWheel(wheel)
+//     codepoint := TestDriverCodepoint()             // before the platform's typed text
+//     pressed := TestDriverKeyPressed(key) || PlatformKeyPressed(key)
+//     down := TestDriverKeyDown(key) || PlatformKeyDown(key)
+//     TestDriverFrame(session)                       // after the frame ends
+//
+// The test writes one command at a time to DIR/command (written elsewhere in
+// DIR and renamed into place), then waits for DIR/reply, a JSON object, and
+// removes it. A command is one line of tab-separated fields: a serial number,
+// a verb, then name=value fields. In values, \t, \n and \\ stand for a tab,
+// a newline and a backslash.
+//
+//     status                    no widgets, for waiting until frames settle
+//     tree                      every widget of the last committed frame
+//     find SELECTOR             the widgets that match
+//     press SELECTOR            moves the pointer to the first match's visible
+//                               centre, presses and releases it, one frame each
+//     pointer x= y= down= wheel=
+//                               holds the pointer there for following frames,
+//                               for drags; `pointer real=1` returns it
+//     type text=                typed text, at most 8 codepoints a frame
+//     key code= control= shift= one key press, raylib's key codes
+//
+// A selector has any of label= (exact), contains= (ASCII case-insensitive),
+// role= (a widget kind such as button or text_field, or a semantic role such
+// as heading or tab), key=, focus_id=, value= (an editor's exact text),
+// visible=1, enabled=1 and index= (which match, from 0).
+//
+// Every reply has serial, ok, error, frame and stable_frames: how many
+// frames in a row ended with the same widgets, bounds, labels and states, so
+// a test can wait until animations and loading settle. The reply to a
+// command that sends input is written after the frame that received its last
+// input has ended.
+#import "session"
+#import "geometry"
+#import "semantic"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+#import "c_string"
+#import "byte_text_linux"
+
+using WidgetKind;
+using SemanticKind;
+
+test_driver_c :: #system_library "c";
+TestDriverEnvironment :: (name: *u8) -> *u8 #foreign test_driver_c "getenv";
+TestDriverOpen :: (path: *u8, mode: *u8) -> *void #foreign test_driver_c "fopen";
+TestDriverRead :: (data: *u8, size: usize, count: usize,
+    file: *void) -> usize #foreign test_driver_c "fread";
+TestDriverWrite :: (data: *u8, size: usize, count: usize,
+    file: *void) -> usize #foreign test_driver_c "fwrite";
+TestDriverClose :: (file: *void) -> s32 #foreign test_driver_c "fclose";
+TestDriverRename :: (source: *u8, destination: *u8) -> s32 #foreign test_driver_c "rename";
+TestDriverRemove :: (path: *u8) -> s32 #foreign test_driver_c "remove";
+
+TEST_DRIVER_PATH_LIMIT :: 4096
+TEST_DRIVER_COMMAND_LIMIT :: 16384
+TEST_DRIVER_TYPED_LIMIT :: 8192
+TEST_DRIVER_CODEPOINTS_PER_FRAME :: 8
+// Frames typed text may wait for a focused editor before the command fails.
+TEST_DRIVER_TYPED_PATIENCE :: 120
+
+TestDriverSelector :: struct {
+    label: string
+    has_label: bool
+    contains: string
+    has_contains: bool
+    role: string
+    has_role: bool
+    value: string
+    has_value: bool
+    key: u64
+    has_key: bool
+    focus_id: s32
+    has_focus_id: bool
+    index: s32
+    visible_only: bool
+    enabled_only: bool
+}
+
+TestDriverCommand :: struct {
+    serial: s64
+    verb: string
+    selector: TestDriverSelector
+    text: string
+    x: float32
+    y: float32
+    has_x: bool
+    has_y: bool
+    down: bool
+    wheel: float32
+    code: s32
+    control: bool
+    shift: bool
+    real: bool
+    error: string
+}
+
+// A node as a test sees it: where it shows and what it says.
+TestDriverNode :: struct {
+    index: s32
+    entry: TreeEntry
+    visible: Rectangle
+    is_visible: bool
+    focused: bool
+}
+
+TestDriverState :: struct {
+    checked: bool
+    active: bool
+    command_path: [TEST_DRIVER_PATH_LIMIT]u8
+    reply_path: [TEST_DRIVER_PATH_LIMIT]u8
+    reply_temporary_path: [TEST_DRIVER_PATH_LIMIT]u8
+    frames_done: s64
+    signature: u64
+    stable_frames: s64
+    // The command being carried out, waiting for its input to be delivered.
+    waiting: bool
+    serial: s64
+    verb: [32]u8
+    verb_count: s32
+    pressed_index: s32
+    pressed_x: float32
+    pressed_y: float32
+    hit_index: s32
+    // Pointer frames still to deliver, one each frame, then the pointer
+    // stays parked at the last one until the platform pointer moves.
+    queue: [4]PointerFrame
+    queue_head: s32
+    queue_count: s32
+    queue_frame: s64
+    current: PointerFrame
+    parked: bool
+    parked_real_x: float32
+    parked_real_y: float32
+    synthetic_down: bool
+    wheel: float32
+    wheel_frame: s64
+    key: s32
+    key_control: bool
+    key_shift: bool
+    key_frame: s64
+    typed: [TEST_DRIVER_TYPED_LIMIT]u8
+    typed_count: s32
+    typed_offset: s32
+    typed_frame: s64
+    typed_taken_frame: s64
+    typed_taken_this_frame: s32
+    typed_idle_frames: s32
+    command: [TEST_DRIVER_COMMAND_LIMIT]u8
+    read_mode: [4]u8
+    write_mode: [4]u8
+}
+
+test_driver: TestDriverState;
+
+TestDriverJoinPath :: (directory: string, name: string, output: []u8) -> bool {
+    if directory.count + name.count + 2 > output.count { return false }
+    used: s64 = 0
+    while used < directory.count {
+        if directory[used] == cast(u8)0 { return false }
+        output[used] = directory[used]
+        used += 1
+    }
+    if used > 0 && output[used - 1] != #char "/" {
+        output[used] = #char "/"
+        used += 1
+    }
+    cursor: s64 = 0
+    while cursor < name.count {
+        output[used] = name[cursor]
+        used += 1
+        cursor += 1
+    }
+    output[used] = cast(u8)0
+    return true
+}
+
+// Whether a test drives this process: KRYON_TEST_DRIVER names its directory.
+#program_export
+TestDriverActive :: () -> bool {
+    if test_driver.checked { return test_driver.active }
+    test_driver.checked = true
+    name: [32]u8
+    if !CopyCString("KRYON_TEST_DRIVER", name[:]) { return false }
+    value: *u8 = TestDriverEnvironment(*name[0])
+    if value == null { return false }
+    directory: string = TextFromCString(value)
+    if directory.count == 0 { return false }
+    if !TestDriverJoinPath(directory, "command", test_driver.command_path[:]) ||
+    !TestDriverJoinPath(directory, "reply", test_driver.reply_path[:]) ||
+    !TestDriverJoinPath(directory, "reply.tmp", test_driver.reply_temporary_path[:]) ||
+    !CopyCString("rb", test_driver.read_mode[:]) ||
+    !CopyCString("wb", test_driver.write_mode[:]) {
+        return false
+    }
+    test_driver.active = true
+    test_driver.pressed_index = -1
+    test_driver.hit_index = -1
+    return true
+}
+
+// The frame now being composed, counting from 1.
+TestDriverCurrentFrame :: () -> s64 {
+    return test_driver.frames_done + 1
+}
+
+// The pointer this frame: the platform's, or the test's while it drives one.
+#program_export
+TestDriverPointer :: (session: Session, real: PointerFrame) -> PointerFrame {
+    if !TestDriverActive() { return real }
+    current := TestDriverCurrentFrame()
+    if test_driver.queue_count > 0 && test_driver.queue_frame < current {
+        test_driver.current = test_driver.queue[test_driver.queue_head]
+        test_driver.queue_head = (test_driver.queue_head + 1) % 4
+        test_driver.queue_count -= 1
+        test_driver.queue_frame = current
+        if !test_driver.parked {
+            test_driver.parked = true
+            test_driver.parked_real_x = real.x
+            test_driver.parked_real_y = real.y
+        }
+        return test_driver.current
+    }
+    if test_driver.queue_frame == current { return test_driver.current }
+    if !test_driver.parked { return real }
+    // The platform pointer takes over again as soon as it moves or presses.
+    if real.down || real.pressed || real.released ||
+    real.x != test_driver.parked_real_x || real.y != test_driver.parked_real_y {
+        test_driver.parked = false
+        test_driver.synthetic_down = false
+        return real
+    }
+    held: PointerFrame
+    held.x = test_driver.current.x
+    held.y = test_driver.current.y
+    held.down = test_driver.synthetic_down
+    return held
+}
+
+// The wheel this frame: a test's `pointer wheel=` once, else the platform's.
+#program_export
+TestDriverWheel :: (real: float32) -> float32 {
+    if !TestDriverActive() { return real }
+    if test_driver.wheel_frame == TestDriverCurrentFrame() { return test_driver.wheel }
+    return real
+}
+
+// The next codepoint a test typed, or 0. Hosts read it before the platform's
+// typed text, the way a text field reads the platform's queue.
+#program_export
+TestDriverCodepoint :: () -> s32 {
+    if !TestDriverActive() { return 0 }
+    current := TestDriverCurrentFrame()
+    if test_driver.typed_offset >= test_driver.typed_count ||
+    test_driver.typed_frame > current { return 0 }
+    if test_driver.typed_taken_frame != current {
+        test_driver.typed_taken_frame = current
+        test_driver.typed_taken_this_frame = 0
+    }
+    if test_driver.typed_taken_this_frame >= TEST_DRIVER_CODEPOINTS_PER_FRAME { return 0 }
+    codepoint := TestDriverDecode(test_driver.typed[:], *test_driver.typed_offset,
+        test_driver.typed_count)
+    test_driver.typed_taken_this_frame += 1
+    return codepoint
+}
+
+// Whether a test presses this key in this frame.
+#program_export
+TestDriverKeyPressed :: (key: s32) -> bool {
+    if !TestDriverActive() { return false }
+    return key != 0 && test_driver.key == key &&
+    test_driver.key_frame == TestDriverCurrentFrame()
+}
+
+// Whether a test holds this key in this frame: its pressed key and the
+// Control or Shift keys held with it (raylib's left and right codes).
+#program_export
+TestDriverKeyDown :: (key: s32) -> bool {
+    if !TestDriverActive() || test_driver.key_frame != TestDriverCurrentFrame() {
+        return false
+    }
+    if key == test_driver.key && key != 0 { return true }
+    if test_driver.key_control && (key == 341 || key == 345) { return true }
+    if test_driver.key_shift && (key == 340 || key == 344) { return true }
+    return false
+}
+
+// One UTF-8 codepoint at offset, which moves past it. Invalid bytes read as
+// U+FFFD so typed text never stalls.
+#program_export
+TestDriverDecode :: (bytes: []u8, offset: *s32, count: s32) -> s32 {
+    at: s32 = offset.*
+    if at >= count { return 0 }
+    first: s32 = cast(s32)bytes[at]
+    size: s32 = 1
+    codepoint: s32 = first
+    if first >= 0xF0 && first < 0xF8 {
+        size = 4
+        codepoint = first & 0x07
+    } else if first >= 0xE0 {
+        size = 3
+        codepoint = first & 0x0F
+    } else if first >= 0xC0 {
+        size = 2
+        codepoint = first & 0x1F
+    } else if first >= 0x80 {
+        offset.* = at + 1
+        return 0xFFFD
+    }
+    if at + size > count {
+        offset.* = count
+        return 0xFFFD
+    }
+    next: s32 = 1
+    while next < size {
+        byte: s32 = cast(s32)bytes[at + next]
+        if (byte & 0xC0) != 0x80 {
+            offset.* = at + next
+            return 0xFFFD
+        }
+        codepoint = (codepoint << 6) | (byte & 0x3F)
+        next += 1
+    }
+    offset.* = at + size
+    return codepoint
+}
+
+#program_export
+TestDriverKindName :: (kind: s32) -> string {
+    names: [56]string = .{"screen", "background", "text", "box", "circle",
+        "ring", "line", "triangle", "button", "text_field", "text_area",
+        "dropdown", "slider", "toggle", "checkbox", "paragraph",
+        "navigation_bar", "tab_bar", "title_bar", "group", "column", "row",
+        "stack", "grid", "image", "custom", "drag", "router", "card", "icon",
+        "input", "separator", "drag_drop", "radio", "progress", "plot",
+        "focus", "spinbox", "fieldset", "list_box", "tree_view", "table_view",
+        "canvas_grid", "paned_view", "collapsible", "color_picker", "modal",
+        "toolbar", "menu", "selectable", "bullet", "page", "section", "link",
+        "segmented_control", "scroll"}
+    if kind < 0 || kind >= 56 { return "unknown" }
+    return names[kind]
+}
+
+#program_export
+TestDriverRoleName :: (kind: SemanticKind) -> string {
+    names: [16]string = .{"", "page", "section", "heading", "paragraph",
+        "link", "image", "button", "tree", "tree_item", "combo_box", "option",
+        "text_field", "tab_list", "tab", "text_area"}
+    value := cast(s32)kind
+    if value < 0 || value >= 16 { return "" }
+    return names[value]
+}
+
+TestDriverLower :: (value: u8) -> u8 {
+    if value >= #char "A" && value <= #char "Z" { return value + cast(u8)32 }
+    return value
+}
+
+#program_export
+TestDriverContains :: (value: string, needle: string) -> bool {
+    if needle.count == 0 { return true }
+    if needle.count > value.count { return false }
+    start: s64 = 0
+    while start + needle.count <= value.count {
+        index: s64 = 0
+        while index < needle.count &&
+        TestDriverLower(value[start + index]) == TestDriverLower(needle[index]) {
+            index += 1
+        }
+        if index == needle.count { return true }
+        start += 1
+    }
+    return false
+}
+
+TestDriverIntersect :: (first: Rectangle, second: Rectangle) -> Rectangle {
+    left := first.x
+    if second.x > left { left = second.x }
+    top := first.y
+    if second.y > top { top = second.y }
+    right := first.x + first.width
+    if second.x + second.width < right { right = second.x + second.width }
+    bottom := first.y + first.height
+    if second.y + second.height < bottom { bottom = second.y + second.height }
+    result: Rectangle
+    result.x = left
+    result.y = top
+    if right > left { result.width = right - left }
+    if bottom > top { result.height = bottom - top }
+    return result
+}
+
+TestDriverNodeAt :: (session: Session, index: s32) -> TestDriverNode {
+    node: TestDriverNode
+    node.index = index
+    node.entry = TreeNodeAt(session, index)
+    node.visible = node.entry.bounds
+    if index > 0 {
+        node.visible = TestDriverIntersect(node.visible, TreeNodeAt(session, 0).bounds)
+    }
+    if node.entry.clipped {
+        node.visible = TestDriverIntersect(node.visible, node.entry.clip)
+    }
+    node.is_visible = node.visible.width > 0.0 && node.visible.height > 0.0
+    node.focused = TreeFocusedAt(session, index) ||
+    (node.entry.has_text && node.entry.selected)
+    return node
+}
+
+// An editor's text, or "" for others and for secure fields.
+TestDriverValue :: (session: Session, node: TestDriverNode, output: []u8) -> string {
+    if !node.entry.has_text || node.entry.secure { return "" }
+    count := node.entry.text_bytes
+    if count > cast(s32)output.count { count = cast(s32)output.count }
+    return TreeTextRange(session, node.index, 0, count, output)
+}
+
+#program_export
+TestDriverMatches :: (session: Session, node: TestDriverNode,
+    selector: TestDriverSelector) -> bool {
+    entry := node.entry
+    if selector.has_key && entry.key != selector.key { return false }
+    if selector.has_focus_id && entry.focus_id != selector.focus_id { return false }
+    if selector.has_label && entry.semantic_label != selector.label { return false }
+    if selector.has_contains &&
+    !TestDriverContains(entry.semantic_label, selector.contains) { return false }
+    if selector.has_role && selector.role != TestDriverKindName(entry.kind) &&
+    selector.role != TestDriverRoleName(entry.semantic_kind) { return false }
+    if selector.visible_only && !node.is_visible { return false }
+    if selector.enabled_only && (entry.disabled || entry.loading) { return false }
+    if selector.has_value {
+        bytes: [8192]u8
+        if TestDriverValue(session, node, bytes[:]) != selector.value { return false }
+    }
+    return true
+}
+
+// The index of the selector's match, or -1.
+#program_export
+TestDriverFind :: (session: Session, selector: TestDriverSelector) -> s32 {
+    count := TreeCount(session)
+    wanted := selector.index
+    index: s32 = 0
+    while index < count {
+        if TestDriverMatches(session, TestDriverNodeAt(session, index), selector) {
+            if wanted == 0 { return index }
+            wanted -= 1
+        }
+        index += 1
+    }
+    return -1
+}
+
+TestDriverHash :: (hash: u64, value: u64) -> u64 {
+    return (hash ^ value) * cast(u64)1099511628211
+}
+
+TestDriverHashText :: (hash: u64, value: string) -> u64 {
+    result := TestDriverHash(hash, cast(u64)value.count)
+    index: s64 = 0
+    while index < value.count {
+        result = TestDriverHash(result, cast(u64)value[index])
+        index += 1
+    }
+    return result
+}
+
+// What a test can observe of the committed tree, as one number.
+#program_export
+TestDriverSignature :: (session: Session) -> u64 {
+    hash: u64 = cast(u64)1469598103934665603
+    count := TreeCount(session)
+    hash = TestDriverHash(hash, cast(u64)count)
+    index: s32 = 0
+    while index < count {
+        entry := TreeNodeAt(session, index)
+        hash = TestDriverHash(hash, entry.key)
+        hash = TestDriverHash(hash, cast(u64)entry.kind)
+        hash = TestDriverHash(hash, cast(u64)cast(s64)entry.bounds.x)
+        hash = TestDriverHash(hash, cast(u64)cast(s64)entry.bounds.y)
+        hash = TestDriverHash(hash, cast(u64)cast(s64)entry.bounds.width)
+        hash = TestDriverHash(hash, cast(u64)cast(s64)entry.bounds.height)
+        hash = TestDriverHashText(hash, entry.semantic_label)
+        hash = TestDriverHash(hash, cast(u64)entry.text_bytes)
+        hash = TestDriverHash(hash, cast(u64)entry.text_cursor)
+        flags: u64 = 0
+        if entry.disabled { flags |= cast(u64)1 }
+        if entry.loading { flags |= cast(u64)2 }
+        if entry.selected { flags |= cast(u64)4 }
+        if TreeFocusedAt(session, index) { flags |= cast(u64)8 }
+        hash = TestDriverHash(hash, flags)
+        index += 1
+    }
+    return hash
+}
+
+TestDriverDigit :: (byte: u8) -> bool {
+    return byte >= #char "0" && byte <= #char "9"
+}
+
+TestDriverParseUnsigned :: (value: string) -> u64 {
+    result: u64 = 0
+    index: s64 = 0
+    while index < value.count && TestDriverDigit(value[index]) {
+        result = result * cast(u64)10 + cast(u64)(value[index] - #char "0")
+        index += 1
+    }
+    return result
+}
+
+TestDriverParseInteger :: (value: string) -> s64 {
+    if value.count > 0 && value[0] == #char "-" {
+        return cast(s64)0 - cast(s64)TestDriverParseUnsigned(value[1:value.count])
+    }
+    return cast(s64)TestDriverParseUnsigned(value)
+}
+
+// A decimal such as 12, -3.5 or 0.25.
+TestDriverParseNumber :: (value: string) -> float32 {
+    negative := value.count > 0 && value[0] == #char "-"
+    index: s64 = 0
+    if negative { index = 1 }
+    whole: float64 = 0.0
+    while index < value.count && TestDriverDigit(value[index]) {
+        whole = whole * 10.0 + cast(float64)(value[index] - #char "0")
+        index += 1
+    }
+    if index < value.count && value[index] == #char "." {
+        index += 1
+        scale: float64 = 0.1
+        while index < value.count && TestDriverDigit(value[index]) {
+            whole += cast(float64)(value[index] - #char "0") * scale
+            scale = scale * 0.1
+            index += 1
+        }
+    }
+    if negative { whole = 0.0 - whole }
+    return cast(float32)whole
+}
+
+// Replaces \t, \n and \\ in place and returns where the value now ends.
+TestDriverUnescape :: (bytes: []u8, start: s64, end: s64) -> s64 {
+    read: s64 = start
+    write: s64 = start
+    while read < end {
+        byte := bytes[read]
+        if byte == #char "\\" && read + 1 < end {
+            next := bytes[read + 1]
+            if next == #char "t" {
+                byte = #char "\t"
+                read += 1
+            } else if next == #char "n" {
+                byte = #char "\n"
+                read += 1
+            } else if next == #char "\\" {
+                read += 1
+            }
+        }
+        bytes[write] = byte
+        write += 1
+        read += 1
+    }
+    return write
+}
+
+TestDriverFieldRange :: struct {
+    start: s64
+    equals: s64
+    stop: s64
+}
+
+TestDriverField :: (command: *TestDriverCommand, name: string, value: string) {
+    if name == "label" {
+        command.selector.label = value
+        command.selector.has_label = true
+    } else if name == "contains" {
+        command.selector.contains = value
+        command.selector.has_contains = true
+    } else if name == "role" {
+        command.selector.role = value
+        command.selector.has_role = true
+    } else if name == "value" {
+        command.selector.value = value
+        command.selector.has_value = true
+    } else if name == "key" {
+        command.selector.key = TestDriverParseUnsigned(value)
+        command.selector.has_key = true
+    } else if name == "focus_id" {
+        command.selector.focus_id = cast(s32)TestDriverParseInteger(value)
+        command.selector.has_focus_id = true
+    } else if name == "index" {
+        command.selector.index = cast(s32)TestDriverParseInteger(value)
+    } else if name == "visible" {
+        command.selector.visible_only = value == "1"
+    } else if name == "enabled" {
+        command.selector.enabled_only = value == "1"
+    } else if name == "text" {
+        command.text = value
+    } else if name == "x" {
+        command.x = TestDriverParseNumber(value)
+        command.has_x = true
+    } else if name == "y" {
+        command.y = TestDriverParseNumber(value)
+        command.has_y = true
+    } else if name == "down" {
+        command.down = value == "1"
+    } else if name == "wheel" {
+        command.wheel = TestDriverParseNumber(value)
+    } else if name == "code" {
+        command.code = cast(s32)TestDriverParseInteger(value)
+    } else if name == "control" {
+        command.control = value == "1"
+    } else if name == "shift" {
+        command.shift = value == "1"
+    } else if name == "real" {
+        command.real = value == "1"
+    } else {
+        command.error = "unknown field"
+    }
+}
+
+// Parses the first line of bytes[0:count]; its strings borrow bytes. Every
+// value is unescaped in place before any string borrows the bytes.
+#program_export
+TestDriverParse :: (bytes: []u8, count: s64) -> TestDriverCommand {
+    command: TestDriverCommand
+    end: s64 = 0
+    while end < count && bytes[end] != #char "\n" && bytes[end] != #char "\r" {
+        end += 1
+    }
+    ranges: [64]TestDriverFieldRange
+    fields: s32 = 0
+    start: s64 = 0
+    while start <= end && fields < 64 {
+        stop := start
+        while stop < end && bytes[stop] != #char "\t" { stop += 1 }
+        ranges[fields].start = start
+        ranges[fields].stop = stop
+        equals := start
+        while equals < stop && bytes[equals] != #char "=" { equals += 1 }
+        ranges[fields].equals = equals
+        if fields >= 2 && equals < stop {
+            ranges[fields].stop = TestDriverUnescape(bytes, equals + 1, stop)
+        }
+        fields += 1
+        start = stop + 1
+    }
+    if fields < 2 || ranges[1].stop == ranges[1].start {
+        command.error = "missing verb"
+        return command
+    }
+    command.serial = cast(s64)TestDriverParseUnsigned(
+        TextView(bytes[ranges[0].start:ranges[0].stop]))
+    command.verb = TextView(bytes[ranges[1].start:ranges[1].stop])
+    field: s32 = 2
+    while field < fields {
+        range := ranges[field]
+        if range.stop > range.start {
+            if range.equals >= range.stop {
+                command.error = "field without ="
+            } else {
+                TestDriverField(*command, TextView(bytes[range.start:range.equals]),
+                    TextView(bytes[range.equals + 1:range.stop]))
+            }
+        }
+        field += 1
+    }
+    return command
+}
+
+// Writing a reply. Text goes straight to the file, so a large tree needs no
+// buffer and leaves nothing allocated.
+TestDriverPut :: (file: *void, text: string) {
+    if text.count == 0 { return }
+    descriptor := cast(*TextDescriptor)(*text)
+    unused TestDriverWrite(descriptor.data, cast(usize)1, cast(usize)text.count, file)
+}
+
+TestDriverPutUnsigned :: (file: *void, value: u64) {
+    digits: [24]u8
+    at: s64 = 24
+    remaining := value
+    if remaining == cast(u64)0 {
+        at -= 1
+        digits[at] = #char "0"
+    }
+    while remaining > cast(u64)0 {
+        at -= 1
+        digits[at] = cast(u8)(cast(u64)#char "0" + remaining % cast(u64)10)
+        remaining = remaining / cast(u64)10
+    }
+    TestDriverPut(file, TextView(digits[at:24]))
+}
+
+TestDriverPutInteger :: (file: *void, value: s64) {
+    if value < cast(s64)0 {
+        TestDriverPut(file, "-")
+        TestDriverPutUnsigned(file, cast(u64)(cast(s64)0 - value))
+        return
+    }
+    TestDriverPutUnsigned(file, cast(u64)value)
+}
+
+// Whole and tenth parts are enough to aim at a widget.
+TestDriverPutNumber :: (file: *void, value: float32) {
+    tenths := cast(s64)(value * 10.0)
+    if value < 0.0 {
+        TestDriverPut(file, "-")
+        tenths = cast(s64)0 - tenths
+    }
+    TestDriverPutUnsigned(file, cast(u64)(tenths / cast(s64)10))
+    remainder := tenths % cast(s64)10
+    if remainder != cast(s64)0 {
+        TestDriverPut(file, ".")
+        TestDriverPutUnsigned(file, cast(u64)remainder)
+    }
+}
+
+TestDriverPutBool :: (file: *void, value: bool) {
+    if value {
+        TestDriverPut(file, "true")
+    } else {
+        TestDriverPut(file, "false")
+    }
+}
+
+TestDriverPutString :: (file: *void, value: string) {
+    hex: string = "0123456789abcdef"
+    TestDriverPut(file, "\"")
+    start: s64 = 0
+    index: s64 = 0
+    while index < value.count {
+        byte := value[index]
+        if byte == #char "\"" || byte == #char "\\" || byte < cast(u8)32 {
+            TestDriverPut(file, value[start:index])
+            if byte == #char "\"" {
+                TestDriverPut(file, "\\\"")
+            } else if byte == #char "\\" {
+                TestDriverPut(file, "\\\\")
+            } else if byte == #char "\n" {
+                TestDriverPut(file, "\\n")
+            } else if byte == #char "\t" {
+                TestDriverPut(file, "\\t")
+            } else {
+                TestDriverPut(file, "\\u00")
+                TestDriverPut(file, hex[cast(s64)(byte >> cast(u8)4):cast(s64)(byte >> cast(u8)4) + 1])
+                TestDriverPut(file, hex[cast(s64)(byte & cast(u8)15):cast(s64)(byte & cast(u8)15) + 1])
+            }
+            start = index + 1
+        }
+        index += 1
+    }
+    TestDriverPut(file, value[start:value.count])
+    TestDriverPut(file, "\"")
+}
+
+TestDriverPutField :: (file: *void, name: string) {
+    TestDriverPut(file, ",\"")
+    TestDriverPut(file, name)
+    TestDriverPut(file, "\":")
+}
+
+TestDriverPutNode :: (file: *void, session: Session, node: TestDriverNode) {
+    entry := node.entry
+    TestDriverPut(file, "{\"index\":")
+    TestDriverPutInteger(file, cast(s64)node.index)
+    TestDriverPutField(file, "parent")
+    TestDriverPutInteger(file, cast(s64)entry.parent)
+    TestDriverPutField(file, "key")
+    TestDriverPutUnsigned(file, entry.key)
+    TestDriverPutField(file, "kind")
+    TestDriverPutString(file, TestDriverKindName(entry.kind))
+    TestDriverPutField(file, "role")
+    TestDriverPutString(file, TestDriverRoleName(entry.semantic_kind))
+    TestDriverPutField(file, "label")
+    TestDriverPutString(file, entry.semantic_label)
+    TestDriverPutField(file, "detail")
+    TestDriverPutString(file, entry.semantic_detail)
+    bytes: [8192]u8
+    TestDriverPutField(file, "value")
+    TestDriverPutString(file, TestDriverValue(session, node, bytes[:]))
+    TestDriverPutField(file, "x")
+    TestDriverPutNumber(file, entry.bounds.x)
+    TestDriverPutField(file, "y")
+    TestDriverPutNumber(file, entry.bounds.y)
+    TestDriverPutField(file, "width")
+    TestDriverPutNumber(file, entry.bounds.width)
+    TestDriverPutField(file, "height")
+    TestDriverPutNumber(file, entry.bounds.height)
+    TestDriverPutField(file, "visible")
+    TestDriverPutBool(file, node.is_visible)
+    TestDriverPutField(file, "visible_x")
+    TestDriverPutNumber(file, node.visible.x)
+    TestDriverPutField(file, "visible_y")
+    TestDriverPutNumber(file, node.visible.y)
+    TestDriverPutField(file, "visible_width")
+    TestDriverPutNumber(file, node.visible.width)
+    TestDriverPutField(file, "visible_height")
+    TestDriverPutNumber(file, node.visible.height)
+    TestDriverPutField(file, "interactive")
+    TestDriverPutBool(file, entry.interactive)
+    TestDriverPutField(file, "enabled")
+    TestDriverPutBool(file, !entry.disabled)
+    TestDriverPutField(file, "loading")
+    TestDriverPutBool(file, entry.loading)
+    TestDriverPutField(file, "selected")
+    TestDriverPutBool(file, entry.selected)
+    TestDriverPutField(file, "focused")
+    TestDriverPutBool(file, node.focused)
+    TestDriverPutField(file, "focus_id")
+    TestDriverPutInteger(file, cast(s64)entry.focus_id)
+    TestDriverPutField(file, "heading_level")
+    TestDriverPutInteger(file, cast(s64)entry.heading_level)
+    TestDriverPutField(file, "read_only")
+    TestDriverPutBool(file, entry.read_only)
+    TestDriverPutField(file, "secure")
+    TestDriverPutBool(file, entry.secure)
+    TestDriverPutField(file, "cursor")
+    TestDriverPutInteger(file, cast(s64)entry.text_cursor)
+    TestDriverPut(file, "}")
+}
+
+// Writes the reply and its nodes: none, one (only >= 0), every match of
+// selector (all), or the whole tree (all without selector).
+TestDriverReply :: (session: Session, error: string, only: s32,
+    all: bool, selector: TestDriverSelector) {
+    file := TestDriverOpen(*test_driver.reply_temporary_path[0],
+        *test_driver.write_mode[0])
+    if file == null { return }
+    TestDriverPut(file, "{\"serial\":")
+    TestDriverPutInteger(file, test_driver.serial)
+    TestDriverPutField(file, "ok")
+    TestDriverPutBool(file, error.count == 0)
+    TestDriverPutField(file, "error")
+    TestDriverPutString(file, error)
+    TestDriverPutField(file, "verb")
+    TestDriverPutString(file, TextView(test_driver.verb[0:test_driver.verb_count]))
+    TestDriverPutField(file, "frame")
+    TestDriverPutInteger(file, test_driver.frames_done)
+    TestDriverPutField(file, "stable_frames")
+    TestDriverPutInteger(file, test_driver.stable_frames)
+    TestDriverPutField(file, "x")
+    TestDriverPutNumber(file, test_driver.pressed_x)
+    TestDriverPutField(file, "y")
+    TestDriverPutNumber(file, test_driver.pressed_y)
+    TestDriverPutField(file, "hit")
+    TestDriverPutInteger(file, cast(s64)test_driver.hit_index)
+    TestDriverPutField(file, "nodes")
+    TestDriverPut(file, "[")
+    written: s32 = 0
+    if only >= 0 && only < TreeCount(session) {
+        TestDriverPutNode(file, session, TestDriverNodeAt(session, only))
+    } else if all {
+        count := TreeCount(session)
+        index: s32 = 0
+        while index < count {
+            node := TestDriverNodeAt(session, index)
+            if TestDriverMatches(session, node, selector) {
+                if written > 0 { TestDriverPut(file, ",") }
+                TestDriverPutNode(file, session, node)
+                written += 1
+            }
+            index += 1
+        }
+    }
+    TestDriverPut(file, "]}\n")
+    unused TestDriverClose(file)
+    unused TestDriverRename(*test_driver.reply_temporary_path[0], *test_driver.reply_path[0])
+}
+
+TestDriverQueue :: (frame: PointerFrame) {
+    if test_driver.queue_count >= 4 { return }
+    tail := (test_driver.queue_head + test_driver.queue_count) % 4
+    test_driver.queue[tail] = frame
+    test_driver.queue_count += 1
+}
+
+TestDriverPointerAt :: (x: float32, y: float32, down: bool) -> PointerFrame {
+    frame: PointerFrame
+    frame.x = x
+    frame.y = y
+    frame.down = down
+    frame.pressed = down && !test_driver.synthetic_down
+    frame.released = !down && test_driver.synthetic_down
+    test_driver.synthetic_down = down
+    return frame
+}
+
+// Starts a command read at the end of a frame; one without input replies now.
+TestDriverStart :: (session: Session, command: TestDriverCommand) {
+    test_driver.serial = command.serial
+    test_driver.verb_count = 0
+    while test_driver.verb_count < 32 && test_driver.verb_count < cast(s32)command.verb.count {
+        test_driver.verb[test_driver.verb_count] = command.verb[test_driver.verb_count]
+        test_driver.verb_count += 1
+    }
+    test_driver.pressed_index = -1
+    test_driver.hit_index = -1
+    test_driver.pressed_x = 0.0
+    test_driver.pressed_y = 0.0
+    empty: TestDriverSelector
+    if command.error.count > 0 {
+        TestDriverReply(session, command.error, -1, false, empty)
+        return
+    }
+    next := test_driver.frames_done + 1
+    if command.verb == "status" {
+        TestDriverReply(session, "", -1, false, empty)
+    } else if command.verb == "tree" {
+        TestDriverReply(session, "", -1, true, empty)
+    } else if command.verb == "find" {
+        TestDriverReply(session, "", -1, true, command.selector)
+    } else if command.verb == "press" {
+        index := TestDriverFind(session, command.selector)
+        if index < 0 {
+            TestDriverReply(session, "no widget matches", -1, false, empty)
+            return
+        }
+        node := TestDriverNodeAt(session, index)
+        if !node.is_visible {
+            TestDriverReply(session, "the widget is not visible", index, false, empty)
+            return
+        }
+        x := node.visible.x + node.visible.width / 2.0
+        y := node.visible.y + node.visible.height / 2.0
+        test_driver.pressed_index = index
+        test_driver.pressed_x = x
+        test_driver.pressed_y = y
+        test_driver.hit_index = TreeHitAt(session, x, y)
+        TestDriverQueue(TestDriverPointerAt(x, y, false))
+        TestDriverQueue(TestDriverPointerAt(x, y, true))
+        TestDriverQueue(TestDriverPointerAt(x, y, false))
+        test_driver.waiting = true
+    } else if command.verb == "pointer" {
+        if command.real {
+            test_driver.parked = false
+            test_driver.synthetic_down = false
+            test_driver.queue_count = 0
+            TestDriverReply(session, "", -1, false, empty)
+            return
+        }
+        if !command.has_x || !command.has_y {
+            TestDriverReply(session, "pointer needs x and y", -1, false, empty)
+            return
+        }
+        test_driver.pressed_x = command.x
+        test_driver.pressed_y = command.y
+        test_driver.hit_index = TreeHitAt(session, command.x, command.y)
+        TestDriverQueue(TestDriverPointerAt(command.x, command.y, command.down))
+        test_driver.wheel = command.wheel
+        test_driver.wheel_frame = next
+        test_driver.waiting = true
+    } else if command.verb == "type" {
+        if command.text.count > TEST_DRIVER_TYPED_LIMIT {
+            TestDriverReply(session, "text is too long", -1, false, empty)
+            return
+        }
+        count: s32 = 0
+        while count < cast(s32)command.text.count {
+            test_driver.typed[count] = command.text[count]
+            count += 1
+        }
+        test_driver.typed_count = count
+        test_driver.typed_offset = 0
+        test_driver.typed_frame = next
+        test_driver.typed_idle_frames = 0
+        test_driver.waiting = true
+    } else if command.verb == "key" {
+        if command.code <= 0 {
+            TestDriverReply(session, "key needs a code", -1, false, empty)
+            return
+        }
+        test_driver.key = command.code
+        test_driver.key_control = command.control
+        test_driver.key_shift = command.shift
+        test_driver.key_frame = next
+        test_driver.waiting = true
+    } else {
+        TestDriverReply(session, "unknown verb", -1, false, empty)
+    }
+}
+
+// Replies to the command in progress once its input has been delivered and
+// the frame that received it has ended.
+TestDriverFinish :: (session: Session) {
+    empty: TestDriverSelector
+    done := test_driver.frames_done
+    if test_driver.queue_count > 0 || test_driver.queue_frame > done { return }
+    if test_driver.key_frame > done || test_driver.wheel_frame > done { return }
+    if test_driver.typed_offset < test_driver.typed_count {
+        if test_driver.typed_frame > done { return }
+        if test_driver.typed_taken_frame == done {
+            test_driver.typed_idle_frames = 0
+            return
+        }
+        test_driver.typed_idle_frames += 1
+        if test_driver.typed_idle_frames < TEST_DRIVER_TYPED_PATIENCE { return }
+        test_driver.typed_count = 0
+        test_driver.typed_offset = 0
+        test_driver.waiting = false
+        TestDriverReply(session, "no text input read the typed text", -1, false, empty)
+        return
+    }
+    test_driver.key = 0
+    test_driver.waiting = false
+    TestDriverReply(session, "", test_driver.pressed_index, false, empty)
+}
+
+// Call once after each frame ends. It tracks whether the tree has settled,
+// finishes the command in progress, and starts the next one.
+#program_export
+TestDriverFrame :: (session: Session) {
+    if !TestDriverActive() || !SessionValid(session) { return }
+    test_driver.frames_done += 1
+    signature := TestDriverSignature(session)
+    if test_driver.frames_done > cast(s64)1 && signature == test_driver.signature {
+        test_driver.stable_frames += 1
+    } else {
+        test_driver.stable_frames = 0
+    }
+    test_driver.signature = signature
+    if test_driver.waiting {
+        TestDriverFinish(session)
+        if test_driver.waiting { return }
+    }
+    file := TestDriverOpen(*test_driver.command_path[0],
+        *test_driver.read_mode[0])
+    if file == null { return }
+    count := TestDriverRead(*test_driver.command[0], cast(usize)1,
+        cast(usize)(TEST_DRIVER_COMMAND_LIMIT - 1), file)
+    unused TestDriverClose(file)
+    unused TestDriverRemove(*test_driver.command_path[0])
+    command := TestDriverParse(test_driver.command[:], cast(s64)count)
+    TestDriverStart(session, command)
+}

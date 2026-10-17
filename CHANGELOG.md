@@ -4,6 +4,15 @@
 
 ### Added
 
+- UI tests can drive a running app without reading screenshots: with
+  `KRYON_TEST_DRIVER` naming a directory, an app that calls the `TestDriver`
+  functions where it samples input answers a test's commands after each
+  frame. A test lists the committed widgets with their kind, role, label,
+  editor text, bounds, visibility, focus and enabled state, finds them by
+  label, role, key or focus id, presses one through the app's own pointer
+  path, types text and presses keys without dropping any on a slow machine,
+  drags with a held pointer, and waits until frames settle. Without the
+  variable nothing changes.
 - Images can be drawn warped over a grid of points: set `ImageProps.mesh`
   to a columns × rows grid of screen points and `Image` stretches the
   picture across it, two triangles per cell, so a painted arm or leg can

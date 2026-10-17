@@ -1,0 +1,47 @@
+// Text measures and quiet rasterizers for the test driver test, which
+// commits frames without drawing them.
+#import "drawing_props"
+#import "geometry"
+#import "text_input_platform_host"
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 { return 0 }
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 { return 0 }
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    return (cast(s32)value.count) * 8
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 { return 16 }
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) {}
+
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle,
+    tint: Color) {}

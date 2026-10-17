@@ -1,0 +1,220 @@
+// A test drives an app through the test driver's files: it finds widgets in
+// the committed tree, presses a button with the app's own pointer path,
+// types text, presses a key, holds the pointer for a drag and waits for the
+// tree to settle. KRYON_TEST_DRIVER names an empty directory.
+#import "session"
+#import "geometry"
+#import "button_props"
+#import "button_widget"
+#import "text_props"
+#import "text_widget"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "test_driver"
+#import "ziran_test_driver_host"
+#import "c_string"
+#import "byte_text_linux"
+
+using FrameStatus;
+
+test_c :: #system_library "c";
+TestEnvironment :: (name: *u8) -> *u8 #foreign test_c "getenv";
+TestOpen :: (path: *u8, mode: *u8) -> *void #foreign test_c "fopen";
+TestRead :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign test_c "fread";
+TestWrite :: (data: *u8, size: usize, count: usize, file: *void) -> usize #foreign test_c "fwrite";
+TestClose :: (file: *void) -> s32 #foreign test_c "fclose";
+TestRename :: (source: *u8, destination: *u8) -> s32 #foreign test_c "rename";
+TestRemove :: (path: *u8) -> s32 #foreign test_c "remove";
+
+session: Session;
+clicks: s32;
+enter_presses: s32;
+control_held: bool;
+pointer_seen: PointerFrame;
+typed: [256]u8;
+typed_count: s32;
+label: string = "Hello";
+directory: string;
+reply: [65536]u8;
+reply_count: s64;
+
+Path :: (name: string, output: []u8) -> bool {
+    joined: [1024]u8
+    used: s64 = 0
+    while used < directory.count {
+        joined[used] = directory[used]
+        used += 1
+    }
+    joined[used] = #char "/"
+    used += 1
+    index: s64 = 0
+    while index < name.count {
+        joined[used] = name[index]
+        used += 1
+        index += 1
+    }
+    return CopyCString(TextView(joined[0:used]), output)
+}
+
+// Writes a command the way a test process does: elsewhere, then renamed.
+Send :: (command: string) -> bool {
+    temporary: [1024]u8
+    final: [1024]u8
+    mode: [4]u8
+    if !Path("command.tmp", temporary[:]) || !Path("command", final[:]) ||
+    !CopyCString("wb", mode[:]) { return false }
+    file := TestOpen(*temporary[0], *mode[0])
+    if file == null { return false }
+    descriptor := cast(*TextDescriptor)(*command)
+    unused TestWrite(descriptor.data, cast(usize)1, cast(usize)command.count, file)
+    unused TestClose(file)
+    return TestRename(*temporary[0], *final[0]) == 0
+}
+
+// The reply, if one has been written, which is then removed.
+Receive :: () -> bool {
+    path: [1024]u8
+    mode: [4]u8
+    if !Path("reply", path[:]) || !CopyCString("rb", mode[:]) { return false }
+    file := TestOpen(*path[0], *mode[0])
+    if file == null { return false }
+    reply_count = cast(s64)TestRead(*reply[0], cast(usize)1, cast(usize)65535, file)
+    unused TestClose(file)
+    unused TestRemove(*path[0])
+    return true
+}
+
+Has :: (text: string) -> bool {
+    value := TextView(reply[0:reply_count])
+    if text.count > value.count { return false }
+    start: s64 = 0
+    while start + text.count <= value.count {
+        if value[start:start + text.count] == text { return true }
+        start += 1
+    }
+    return false
+}
+
+// One app frame, sampling input where a host does.
+Frame :: () -> bool {
+    real: PointerFrame
+    pointer_seen = TestDriverPointer(session, real)
+    unused TreePointerUpdate(session, pointer_seen)
+    if BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0}) !=
+    cast(FrameStatus)FrameOk { return false }
+    if Button(session, ButtonProps.{.id = 7, .label = "Save",
+            .bounds = Rectangle.{20.0, 20.0, 100.0, 40.0}}) != 0 {
+        clicks += 1
+    }
+    Text(session, TextProps.{.text = label, .font = 14,
+            .bounds = Rectangle.{20.0, 80.0, 200.0, 20.0}})
+    // Hidden below the frame.
+    Text(session, TextProps.{.text = "Below", .font = 14,
+            .bounds = Rectangle.{20.0, 900.0, 200.0, 20.0}})
+    codepoint := TestDriverCodepoint()
+    while codepoint != 0 {
+        if codepoint < 128 && typed_count < 255 {
+            typed[typed_count] = cast(u8)codepoint
+            typed_count += 1
+        }
+        codepoint = TestDriverCodepoint()
+    }
+    if TestDriverKeyPressed(257) { enter_presses += 1 }
+    if TestDriverKeyDown(341) { control_held = true }
+    if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
+    TestDriverFrame(session)
+    return true
+}
+
+// Sends a command and runs frames until its reply arrives.
+Run :: (command: string) -> s32 {
+    if !Send(command) { return -1 }
+    frames: s32 = 0
+    while frames < 400 {
+        if !Frame() { return -1 }
+        frames += 1
+        if Receive() { return frames }
+    }
+    return -1
+}
+
+#program_export
+main :: () -> s32 {
+    name: [32]u8
+    if !CopyCString("KRYON_TEST_DRIVER", name[:]) { return 1 }
+    value := TestEnvironment(*name[0])
+    session = SessionOpen()
+    if value == null {
+        // Without the variable nothing changes the app's input or reads files.
+        real: PointerFrame
+        real.x = 5.0
+        real.down = true
+        driven := TestDriverPointer(session, real)
+        if TestDriverActive() || driven.x != 5.0 || !driven.down ||
+        TestDriverCodepoint() != 0 || TestDriverKeyPressed(257) ||
+        TestDriverWheel(2.0) != 2.0 { return 2 }
+        if !Frame() { return 3 }
+        return 100
+    }
+    directory = TextFromCString(value)
+    if !TestDriverActive() { return 3 }
+    if !Frame() { return 4 }
+
+    // The tree lists every widget with its kind, label and bounds.
+    if Run("1\ttree") != 1 { return 10 }
+    if !Has("\"serial\":1,\"ok\":true") || !Has("\"label\":\"Save\"") ||
+    !Has("\"kind\":\"button\"") || !Has("\"label\":\"Hello\"") ||
+    !Has("\"focus_id\":7") { return 11 }
+
+    // A selector narrows it; a label hidden below the frame is not visible.
+    if Run("2\tfind\trole=button") != 1 { return 12 }
+    if !Has("\"label\":\"Save\"") || Has("\"label\":\"Hello\"") { return 13 }
+    if Run("3\tfind\tcontains=hel") != 1 || !Has("\"label\":\"Hello\"") { return 14 }
+    if Run("4\tfind\tlabel=Below\tvisible=1") != 1 || Has("Below") { return 15 }
+    if Run("5\tfind\tlabel=Below") != 1 || !Has("\"visible\":false") { return 16 }
+
+    // The command is read after a frame; pressing then moves, presses and
+    // releases over the next three frames before the reply.
+    if Run("6\tpress\tlabel=Save") != 4 { return 20 }
+    if clicks != 1 || !Has("\"ok\":true") || !Has("\"x\":70,\"y\":40") { return 21 }
+    if Run("7\tpress\tlabel=Missing") != 1 || !Has("\"ok\":false") ||
+    !Has("no widget matches") { return 22 }
+    if Run("8\tpress\tlabel=Below") != 1 || !Has("not visible") { return 23 }
+
+    // The pointer stays parked where the press left it, without buttons.
+    if !Frame() || pointer_seen.x != 70.0 || pointer_seen.down { return 24 }
+
+    // Typed text arrives a few codepoints a frame, without losing any.
+    if Run("9\ttype\ttext=one two\\tthree") != 3 { return 30 }
+    if TextView(typed[0:typed_count]) != "one two\tthree" { return 31 }
+
+    // A key is pressed for one frame, with Control held.
+    if Run("10\tkey\tcode=257\tcontrol=1") != 2 { return 40 }
+    if enter_presses != 1 || !control_held { return 41 }
+    if !Frame() || enter_presses != 1 { return 42 }
+
+    // A held pointer drags until it is released, then the platform's returns.
+    if Run("11\tpointer\tx=30\ty=30\tdown=1") != 2 { return 50 }
+    if !pointer_seen.pressed || !pointer_seen.down { return 51 }
+    if !Frame() || !pointer_seen.down || pointer_seen.pressed { return 52 }
+    if Run("12\tpointer\tx=60\ty=35\tdown=0") != 2 { return 53 }
+    if !pointer_seen.released || pointer_seen.x != 60.0 { return 54 }
+    if Run("13\tpointer\treal=1") != 1 || clicks != 2 { return 55 }
+    if !Frame() || pointer_seen.x != 0.0 { return 56 }
+
+    // Stable frames count frames that end with the same tree.
+    if !Frame() || !Frame() { return 60 }
+    if Run("14\tstatus") != 1 || Has("\"stable_frames\":0,") ||
+    !Has("\"nodes\":[]") { return 61 }
+    label = "Changed"
+    if Run("15\tfind\tlabel=Changed") != 1 || !Has("\"stable_frames\":0,") { return 62 }
+
+    // Unknown verbs and fields fail with a reason; escapes reach JSON.
+    if Run("16\tjump") != 1 || !Has("unknown verb") { return 70 }
+    if Run("17\tfind\tcolour=red") != 1 || !Has("unknown field") { return 71 }
+    label = "Say \"hi\"\\now"
+    if Run("18\tfind\tlabel=Say \"hi\"\\\\now") != 1 ||
+    !Has("\"label\":\"Say \\\"hi\\\"\\\\now\"") { return 72 }
+    return 0
+}
