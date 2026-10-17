@@ -220,9 +220,10 @@ TestDriverCurrentFrame :: () -> s64 {
 }
 
 // The pointer this frame: the platform's, or the test's while it drives one.
+// Only a valid session's pointer is driven.
 #program_export
 TestDriverPointer :: (session: Session, real: PointerFrame) -> PointerFrame {
-    if !TestDriverActive() { return real }
+    if !TestDriverActive() || !SessionValid(session) { return real }
     current := TestDriverCurrentFrame()
     if test_driver.queue_count > 0 && test_driver.queue_frame < current {
         test_driver.current = test_driver.queue[test_driver.queue_head]

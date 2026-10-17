@@ -191,6 +191,11 @@ main :: () -> s32 {
 
     // The pointer stays parked where the press left it, without buttons.
     if !Frame() || pointer_seen.x != 70.0 || pointer_seen.down { return 24 }
+    // A pointer sampled for no valid session is left as the platform's.
+    stranger: Session
+    probe: PointerFrame
+    probe.x = 3.0
+    if TestDriverPointer(stranger, probe).x != 3.0 { return 25 }
 
     // Typed text arrives a few codepoints a frame, without losing any.
     if Run("9\ttype\ttext=one two\\tthree") != 3 { return 30 }
