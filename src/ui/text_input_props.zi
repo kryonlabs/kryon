@@ -100,6 +100,9 @@ TextAreaInput :: struct {
     focus: bool
     blur: bool
     wheel: float32
+    // The host's monotonic clock in seconds. A second press on the same text
+    // soon after the first selects the word under it; zero turns that off.
+    now_seconds: float64
 }
 
 TextAreaColorSpan :: struct {

@@ -1751,7 +1751,7 @@ WidgetValidCompositionEvent :: (value: HostValue) -> bool {
 }
 
 WidgetTextAreaInputCodec :: struct {
-    fields: [26]HostField
+    fields: [27]HostField
     composition_event: WidgetCompositionEventCodec
 }
 
@@ -1760,7 +1760,7 @@ WidgetEncodeTextAreaInput :: (data: TextAreaInput, codec: *WidgetTextAreaInputCo
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("TextAreaInput")
     value.fields = *codec.fields[0]
-    value.field_count = 26
+    value.field_count = 27
     codec.fields[0].name = HostTextData("text")
     codec.fields[0].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.text), .length = cast(usize)data.text.count}
     codec.fields[1].name = HostTextData("paste_text")
@@ -1813,6 +1813,8 @@ WidgetEncodeTextAreaInput :: (data: TextAreaInput, codec: *WidgetTextAreaInputCo
     codec.fields[24].value = HostScalar("bool", ifx data.blur then 1 else 0)
     codec.fields[25].name = HostTextData("wheel")
     codec.fields[25].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.wheel}
+    codec.fields[26].name = HostTextData("now_seconds")
+    codec.fields[26].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float64"), .real = cast(float64)data.now_seconds}
     return value
 }
 
@@ -1972,6 +1974,12 @@ WidgetDecodeTextAreaInput :: (value: HostValue, codec: *WidgetTextAreaInputCodec
         field_at := HostFieldAt(value, 25, "wheel")
         if field_at >= 0 {
             data.wheel = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 26, "now_seconds")
+        if field_at >= 0 {
+            data.now_seconds = cast(float64)value.fields[field_at].value.real
         }
     }
     return data
@@ -2135,6 +2143,12 @@ WidgetValidTextAreaInput :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 25, "wheel")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 26, "now_seconds")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float64", cast(s32)HostReal) { return false }
         }
     }
     return true

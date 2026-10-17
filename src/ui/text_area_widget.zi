@@ -216,6 +216,26 @@ TextAreaNextRowUncached :: (value: string, start: s32,
 // Hosts without a published metrics revision keep the original measurement
 // path, as do larger values/typeface names. Full slots leave new rows uncached.
 text_area_cache_bytes: [8][4096]u8;
+// The last press on a text area, for a double click, and the press whose
+// word or Shift extension a release must keep.
+text_area_press_key: u64;
+text_area_press_seconds: float64;
+text_area_press_x: float32;
+text_area_press_y: float32;
+text_area_word_key: u64;
+text_area_extend_key: u64;
+
+// A second press within the double-click time and slop of the first.
+TextAreaDoubleClick :: (key: u64, now: float64, x: float32, y: float32, scale: float32) -> bool {
+    if now <= 0.0 || key != text_area_press_key || text_area_press_seconds <= 0.0 {
+        return false
+    }
+    elapsed := cast(float32)(now - text_area_press_seconds)
+    decision := TextInputDoubleClickDecisionFor(true, true, elapsed,
+        cast(s32)(x - text_area_press_x), cast(s32)(y - text_area_press_y),
+        TextInputDoubleClickSlopFor(scale))
+    return elapsed >= 0.0 && decision.double_click
+}
 text_area_cache_faces: [8][128]u8;
 text_area_cache_lengths: [8]s32;
 text_area_cache_face_lengths: [8]s32;
@@ -818,6 +838,22 @@ TextAreaCaretPlaced :: (layout: TextAreaLayout, view: TextAreaView,
     return caret
 }
 
+// Where an offset after this frame's edit stands in the value the frame
+// still paints. The edit shows from the next frame; until then a caret that
+// follows the edit's new bytes stays where the bytes it replaces end, so it
+// is never painted past them, on a line the edit has not reached.
+#program_export
+TextAreaPaintedOffset :: (edit: TextAreaEdit, offset: s32) -> s32 {
+    if !edit.changed || offset <= edit.start {
+        return offset
+    }
+    inserted := edit.start + cast(s32)edit.replacement.count
+    if offset < inserted {
+        return edit.end
+    }
+    return offset - inserted + edit.end
+}
+
 // The byte offset a press at a point of the content places the caret at:
 // in the row under it, or at the end of the line whose boxes are under it.
 #program_export
@@ -1276,15 +1312,50 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         if dx < 0.0 { dx = -dx }
         if dy < 0.0 { dy = -dy }
         if drag.started {
-            result.anchor = initial
-            result.cursor = initial
+            twice := TextAreaDoubleClick(key, props.input.now_seconds, origin_x, origin_y, scale)
+            text_area_word_key = 0
+            text_area_extend_key = 0
+            if twice {
+                // A double click selects the word under the press; a third
+                // press starts over.
+                word := TextTouchWord(props.value, initial)
+                result.anchor = word.anchor
+                result.cursor = word.cursor
+                text_area_word_key = key
+                text_area_press_key = 0
+            } else if props.input.shift && props.focused {
+                // Shift extends the selection from its anchor to the press.
+                result.cursor = initial
+                text_area_extend_key = key
+            } else {
+                result.anchor = initial
+                result.cursor = initial
+            }
+            if !twice {
+                text_area_press_key = key
+                text_area_press_seconds = props.input.now_seconds
+                text_area_press_x = origin_x
+                text_area_press_y = origin_y
+            }
             result.selecting = false
         }
         pointer_moved = dx > 2.0 || dy > 2.0 ||
             result.scroll_y != props.scroll_y ||
             (!drag.started && (props.selecting ||
                 result.anchor != result.cursor))
-        if drag.active || drag.ended || activated {
+        held_word := text_area_word_key == key && dx <= 2.0 && dy <= 2.0
+        held_extension := text_area_extend_key == key
+        if drag.ended {
+            text_area_word_key = 0
+            text_area_extend_key = 0
+        }
+        if (drag.active || drag.ended || activated) && held_word {
+            // The released double click keeps its word.
+            result.selecting = false
+        } else if (drag.active || drag.ended || activated) && held_extension {
+            result.cursor = selected
+            result.selecting = drag.active
+        } else if drag.active || drag.ended || activated {
             if pointer_moved {
                 // The press owns the byte anchor. Wheel scrolling, caret
                 // reveal and a moving parent change only the current hit.
@@ -1525,8 +1596,11 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             TextAreaMinWrapWidth(scale))
         result.scroll_y = paint.scroll_y
     }
+    // The caret and selection are painted on this frame's value.
+    painted_cursor := TextAreaPaintedOffset(result.edit, result.cursor)
+    painted_anchor := TextAreaPaintedOffset(result.edit, result.anchor)
     display_caret: TextAreaCaret = TextAreaCaretPlaced(layout, plain,
-        result.cursor)
+        painted_cursor)
     if view.composing {
         display_caret = TextAreaCaretPlaced(layout, view, display_cursor)
     }
@@ -1585,7 +1659,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             paint.clip_bounds)
     }
     selection: TextSelectionRange = TextSelectionRangeForLength(
-        result.anchor, result.cursor, (cast(s32)props.value.count))
+        painted_anchor, painted_cursor, (cast(s32)props.value.count))
     paint_selection_start: s32 = selection.start
     paint_selection_end: s32 = selection.end
     paint_has_selection: bool = selection.has_selection
@@ -1726,7 +1800,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                     face.value.foreground, opacity)))
         }
     }
-    anchor_caret := TextAreaCaretPlaced(layout, plain, result.anchor)
+    anchor_caret := TextAreaCaretPlaced(layout, plain, painted_anchor)
     TextTouchPaint(session, result.node, key, result.focused, result.edit.changed,
         result.anchor, result.cursor,
         Rectangle.{paint.clip_bounds.x + cast(float32)anchor_caret.x,

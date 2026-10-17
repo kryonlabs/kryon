@@ -1,0 +1,98 @@
+#import "session"
+#import "geometry"
+#import "text_area_widget"
+#import "text_input_props"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_composition_widget_host"
+#import "ziran_system_clipboard_host"
+
+using FrameStatus;
+
+Selection :: struct {
+    anchor: s32
+    cursor: s32
+    selecting: bool
+}
+
+// One frame; the caller keeps the returned selection, as an app does.
+Frame :: (session: Session, props: *TextAreaProps) -> Selection {
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    result := TextArea(session, props.*)
+    unused EndFrame(session)
+    props.anchor = result.anchor
+    props.cursor = result.cursor
+    props.focused = result.focused
+    props.selecting = result.selecting
+    return Selection.{result.anchor, result.cursor, result.selecting}
+}
+
+// A click at `x` on the text's row at `now` seconds: press, then release.
+Click :: (session: Session, props: *TextAreaProps, x: float32, now: float64) -> Selection {
+    props.input.now_seconds = now
+    TreePointerUpdate(session, PointerFrame.{x, 30.0, true, true, false})
+    unused Frame(session, props)
+    TreePointerUpdate(session, PointerFrame.{x, 30.0, false, false, true})
+    return Frame(session, props)
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    props: TextAreaProps
+    props.key = cast(u64)78
+    props.focus_id = 78
+    props.bounds = Rectangle.{20.0, 20.0, 260.0, 40.0}
+    props.value = "one two three"
+    props.read_only = true
+    unused Frame(session, *props)
+    // A single click places a caret inside "two".
+    result := Click(session, *props, 66.0, 1.0)
+    if result.anchor != result.cursor || result.anchor < 4 || result.anchor > 7 { return 1 }
+    // A second click soon after, on the same place, selects the word.
+    result = Click(session, *props, 66.0, 1.2)
+    if result.anchor != 4 || result.cursor != 7 || result.selecting { return 2 }
+    // The selection stays after the release frame is drawn again.
+    result = Frame(session, *props)
+    if result.anchor != 4 || result.cursor != 7 { return 3 }
+    // A third click starts over with a caret.
+    result = Click(session, *props, 66.0, 1.3)
+    if result.anchor != result.cursor { return 4 }
+    // Clicks further apart than the double-click time stay carets.
+    result = Click(session, *props, 66.0, 5.0)
+    result = Click(session, *props, 66.0, 6.0)
+    if result.anchor != result.cursor { return 5 }
+    // Without the host's clock a double click is only two clicks.
+    result = Click(session, *props, 66.0, 0.0)
+    result = Click(session, *props, 66.0, 0.0)
+    if result.anchor != result.cursor { return 6 }
+    // Shift and a click extend the selection from its anchor.
+    result = Click(session, *props, 38.0, 9.0)
+    caret := result.cursor
+    if result.anchor != caret || caret > 3 { return 7 }
+    props.input.shift = true
+    result = Click(session, *props, 101.0, 11.0)
+    props.input.shift = false
+    if result.anchor != caret || result.cursor <= 7 { return 8 }
+    result = Frame(session, *props)
+    if result.anchor != caret || result.cursor <= 7 { return 9 }
+    // Without Shift a click collapses it again.
+    result = Click(session, *props, 101.0, 13.0)
+    if result.anchor != result.cursor { return 10 }
+    unused SessionClose(session)
+    return 0
+}
+
+// No asset loads here: a text area's boxes would show their labels.
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
