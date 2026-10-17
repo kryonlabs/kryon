@@ -838,22 +838,6 @@ TextAreaCaretPlaced :: (layout: TextAreaLayout, view: TextAreaView,
     return caret
 }
 
-// Where an offset after this frame's edit stands in the value the frame
-// still paints. The edit shows from the next frame; until then a caret that
-// follows the edit's new bytes stays where the bytes it replaces end, so it
-// is never painted past them, on a line the edit has not reached.
-#program_export
-TextAreaPaintedOffset :: (edit: TextAreaEdit, offset: s32) -> s32 {
-    if !edit.changed || offset <= edit.start {
-        return offset
-    }
-    inserted := edit.start + cast(s32)edit.replacement.count
-    if offset < inserted {
-        return edit.end
-    }
-    return offset - inserted + edit.end
-}
-
 // The byte offset a press at a point of the content places the caret at:
 // in the row under it, or at the end of the line whose boxes are under it.
 #program_export
@@ -1596,11 +1580,8 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             TextAreaMinWrapWidth(scale))
         result.scroll_y = paint.scroll_y
     }
-    // The caret and selection are painted on this frame's value.
-    painted_cursor := TextAreaPaintedOffset(result.edit, result.cursor)
-    painted_anchor := TextAreaPaintedOffset(result.edit, result.anchor)
     display_caret: TextAreaCaret = TextAreaCaretPlaced(layout, plain,
-        painted_cursor)
+        result.cursor)
     if view.composing {
         display_caret = TextAreaCaretPlaced(layout, view, display_cursor)
     }
@@ -1659,7 +1640,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             paint.clip_bounds)
     }
     selection: TextSelectionRange = TextSelectionRangeForLength(
-        painted_anchor, painted_cursor, (cast(s32)props.value.count))
+        result.anchor, result.cursor, (cast(s32)props.value.count))
     paint_selection_start: s32 = selection.start
     paint_selection_end: s32 = selection.end
     paint_has_selection: bool = selection.has_selection
@@ -1800,7 +1781,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                     face.value.foreground, opacity)))
         }
     }
-    anchor_caret := TextAreaCaretPlaced(layout, plain, painted_anchor)
+    anchor_caret := TextAreaCaretPlaced(layout, plain, result.anchor)
     TextTouchPaint(session, result.node, key, result.focused, result.edit.changed,
         result.anchor, result.cursor,
         Rectangle.{paint.clip_bounds.x + cast(float32)anchor_caret.x,
