@@ -40,4 +40,4 @@ with tempfile.TemporaryDirectory(prefix='http-transfer-browser-', dir=ROOT / 'bu
     finally:
         server.kill()
         server.wait()
-print('HTTP transfer in the browser: GET, POST with headers, oversized and slow answers, and cancelling passed')
+print('HTTP transfer in the browser: GET, POST with headers, binary answers with their length, oversized and slow answers, and cancelling passed')

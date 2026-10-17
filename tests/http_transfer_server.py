@@ -24,6 +24,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/hello':
             self.answer(200, b'hello world')
+        elif self.path == '/binary':
+            self.answer(200, b'\x00\x01\xff\x00z')
         elif self.path == '/big':
             self.answer(200, b'x' * 100000)
         elif self.path == '/slow':
