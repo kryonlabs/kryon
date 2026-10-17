@@ -29,4 +29,4 @@ for define in _WIN32 PLATFORM_WEB ANDROID_BUILD; do
     "$ziran_root/build/bin/zi2c" --no-main --define "$define" --root "$repo/src/backend" \
         --module-path "$ziran_root/std" -o "$work/$define" "$repo/src/backend/http_transfer.zi"
 done
-echo 'HTTP transfer: GET, POST with headers, oversized and slow answers, and cancelling passed'
+echo 'HTTP transfer: GET, POST with headers, binary answers with their length, oversized and slow answers, and cancelling passed'

@@ -28,7 +28,8 @@
 //
 // Only http and https URLs are accepted. The answer is NUL-terminated text
 // in the caller's output, which must stay valid until the transfer is polled
-// to completion or cancelled. Answers that do not fit fail rather than
+// to completion or cancelled; HttpTransferPollLength also gives its length,
+// so binary answers arrive whole. Answers that do not fit fail rather than
 // arriving cut, and a transfer that outlives its timeout fails.
 #import "net_http"
 #import "c_string"
@@ -52,18 +53,26 @@ HttpTransfer :: struct {
 // 1 when an answer arrived (status holds its HTTP status), 0 when the
 // transfer failed, -1 while it is still running.
 HttpTransferPoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
-    if transfer == null || status == null {
+    length: s64
+    return HttpTransferPollLength(transfer, status, *length)
+}
+
+// HttpTransferPoll that also gives the answer's length in bytes, for
+// answers that are not text.
+HttpTransferPollLength :: (transfer: *HttpTransfer, status: *s32, length: *s64) -> s32 {
+    if transfer == null || status == null || length == null {
         return 0
     }
     status.* = 0
+    length.* = 0
     #if HTTP_TRANSFER_NATIVE {
-        return NativePoll(transfer, status)
+        return NativePoll(transfer, status, length)
     }
     #if HTTP_TRANSFER_ANDROID {
-        return AndroidPoll(transfer, status)
+        return AndroidPoll(transfer, status, length)
     }
     #if HTTP_TRANSFER_WEB {
-        return BrowserPoll(transfer, status)
+        return BrowserPoll(transfer, status, length)
     }
 }
 
@@ -286,7 +295,7 @@ TransferBytes :: (text: string) -> *u8 {
         return true
     }
 
-    NativePoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+    NativePoll :: (transfer: *HttpTransfer, status: *s32, length: *s64) -> s32 {
         if transfer.job == null {
             return 0
         }
@@ -304,6 +313,7 @@ TransferBytes :: (text: string) -> *u8 {
                 cast(usize)job.result.length)
             transfer.output[job.result.length] = 0
             status.* = job.result.status
+            length.* = job.result.length
         } else {
             transfer.output[0] = 0
         }
@@ -501,9 +511,9 @@ TransferBytes :: (text: string) -> *u8 {
         return true
     }
 
-    AndroidPoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+    AndroidPoll :: (transfer: *HttpTransfer, status: *s32, length: *s64) -> s32 {
         if transfer.job != null {
-            return ConnectionPoll(transfer, status)
+            return ConnectionPoll(transfer, status, length)
         }
         if transfer.handle == 0 {
             return 0
@@ -536,12 +546,13 @@ TransferBytes :: (text: string) -> *u8 {
             if method != null {
                 bytes := env.functions.CallObjectMethodA(env, session.activity, method, *arguments[0])
                 if bytes != null && env.functions.ExceptionCheck(env) == 0 {
-                    length := env.functions.GetArrayLength(env, bytes)
-                    if length >= 0 && cast(s64)length < transfer.output.count {
-                        env.functions.GetByteArrayRegion(env, bytes, 0, length, *transfer.output[0])
+                    size := env.functions.GetArrayLength(env, bytes)
+                    if size >= 0 && cast(s64)size < transfer.output.count {
+                        env.functions.GetByteArrayRegion(env, bytes, 0, size, *transfer.output[0])
                         if env.functions.ExceptionCheck(env) == 0 {
-                            transfer.output[length] = 0
+                            transfer.output[size] = 0
                             status.* = state
+                            length.* = cast(s64)size
                             result = 1
                         }
                     }
@@ -1000,7 +1011,7 @@ TransferBytes :: (text: string) -> *u8 {
         return true
     }
 
-    ConnectionPoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+    ConnectionPoll :: (transfer: *HttpTransfer, status: *s32, length: *s64) -> s32 {
         job := cast(*ConnectionJob)transfer.job
         now := MonotonicMilliseconds()
         TransferLock()
@@ -1023,6 +1034,7 @@ TransferBytes :: (text: string) -> *u8 {
             }
             transfer.output[job.length] = 0
             status.* = job.status
+            length.* = job.length
         } else {
             transfer.output[0] = 0
         }
@@ -1307,7 +1319,7 @@ TransferBytes :: (text: string) -> *u8 {
         return true
     }
 
-    BrowserPoll :: (transfer: *HttpTransfer, status: *s32) -> s32 {
+    BrowserPoll :: (transfer: *HttpTransfer, status: *s32, length: *s64) -> s32 {
         task := BrowserTaskFor(transfer.handle)
         if task == null {
             transfer.* = HttpTransfer.{}
@@ -1318,6 +1330,9 @@ TransferBytes :: (text: string) -> *u8 {
         }
         status.* = task.status
         result: s32 = ifx task.success then 1 else 0
+        if task.success {
+            length.* = cast(s64)task.length
+        }
         BrowserRelease(task)
         task.* = BrowserTask.{}
         transfer.* = HttpTransfer.{}

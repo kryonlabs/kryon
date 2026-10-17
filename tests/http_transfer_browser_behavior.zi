@@ -76,6 +76,24 @@ Check :: () -> string {
     status != 201 || TextFromCString(*output[0]) != "Bearer secret|kept|text/plain|ping" {
         return "FAIL post"
     }
+    // A binary answer arrives whole, NUL bytes included, with its length.
+    binary := HttpRequest.{.method = "GET", .url = Url("/binary", url[:])}
+    if !HttpTransferStart(*transfer, binary, output[:], 5000) {
+        return "FAIL binary start"
+    }
+    length: s64 = -1
+    result: s32 = -1
+    for attempt: 0..499 {
+        result = HttpTransferPollLength(*transfer, *status, *length)
+        if result >= 0 {
+            break
+        }
+        WebSleep(10)
+    }
+    if result != 1 || status != 200 || length != 5 || output[0] != 0 || output[1] != 1 ||
+    output[2] != 255 || output[3] != 0 || output[4] != #char "z" {
+        return "FAIL binary"
+    }
     big := HttpRequest.{.method = "GET", .url = Url("/big", url[:])}
     if !HttpTransferStart(*transfer, big, output[:], 5000) || Finish(*transfer, *status) != 0 || output[0] != 0 {
         return "FAIL big"
