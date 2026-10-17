@@ -1,0 +1,157 @@
+#import "text_area_widget"
+#import "text_input"
+#import "text_input_props"
+#import "text_props"
+#import "font_metrics"
+Host :: #import "ziran_text_area_cache_host";
+
+// Boxes under or over lines and lines at their own size change only where
+// rows are placed; without them the layout is the plain area's. The test
+// font is 5 px a byte at size 10 and as tall as its size.
+LayoutFor :: (wrap_width: s32, hidden: []TextRange, blocks: []TextAreaBlock,
+    lines: []TextAreaLine) -> TextAreaLayout {
+    layout: TextAreaLayout
+    layout.font = 10
+    layout.gap = 0
+    layout.wrap_width = wrap_width
+    layout.hidden = hidden
+    layout.blocks = blocks
+    layout.lines = lines
+    return layout
+}
+
+Plain :: (value: string) -> TextAreaView {
+    return TextAreaViewFor(value, 0, 0, CompositionState.{})
+}
+
+// Every caret and press of a plain area matches the row-count layout.
+CheckPlain :: (value: string, wrap_width: s32, hidden: []TextRange) -> bool {
+    none_blocks: []TextAreaBlock
+    none_lines: []TextAreaLine
+    layout := LayoutFor(wrap_width, hidden, none_blocks, none_lines)
+    view := Plain(value)
+    view.hidden = hidden
+    if TextAreaContentHeight(layout, view) !=
+        TextAreaRowCountWith(value, wrap_width, 10, "", hidden) * 10 {
+        return false
+    }
+    for cursor: cast(s32)0..cast(s32)value.count {
+        placed := TextAreaCaretPlaced(layout, view, cursor)
+        plain := TextAreaCaretForWith(value, cursor, wrap_width, 10, "", 10, hidden)
+        if placed.x != plain.x || placed.y != plain.y || placed.row_index != plain.row_index ||
+            placed.row_start != plain.row_start || placed.row_end != plain.row_end ||
+            placed.height != 10 {
+            return false
+        }
+    }
+    for y: cast(s32)-5..cast(s32)60 {
+        for x: cast(s32)0..cast(s32)8 {
+            if TextAreaCursorAtPlace(layout, value, x * 6, y) !=
+                TextAreaCursorAtPointWith(value, x * 6, y, wrap_width, 10, "", 10, hidden) {
+                return false
+            }
+        }
+    }
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    GlyphMetricsChanged()
+    none_hidden: []TextRange
+    none_blocks: []TextAreaBlock
+    none_lines: []TextAreaLine
+    if !CheckPlain("ab\ncd ef gh\n\nij", 0, none_hidden) { return 1 }
+    if !CheckPlain("ab\ncd ef gh\n\nij", 22, none_hidden) { return 2 }
+    marked := "**bold** end\nnext"
+    hidden: [2]TextRange = .[TextRange.{.start = 0, .end = 2}, TextRange.{.start = 6, .end = 8}]
+    if !CheckPlain(marked, 22, hidden[:]) { return 3 }
+
+    // A box under the middle line: the line keeps its row, the box follows
+    // it, and the next line moves down by the box.
+    value := "ab\n![p](x)\ncd"
+    under: [1]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 40}]
+    layout := LayoutFor(0, none_hidden, under[:], none_lines)
+    view := Plain(value)
+    if TextAreaContentHeight(layout, view) != 70 { return 10 }
+    place := TextAreaPlacementFor(layout, view)
+    first := TextAreaPlaceRow(*place)
+    second := TextAreaPlaceRow(*place)
+    third := TextAreaPlaceRow(*place)
+    if first.block != -1 || second.block != 0 || second.y != 10 || second.block_y != 20 ||
+        second.covered || third.y != 60 || !place.done { return 11 }
+    caret := TextAreaCaretPlaced(layout, view, 12)
+    if caret.y != 60 || caret.x != 5 || caret.row_index != 2 { return 12 }
+    // A press on the box is the end of its line; below it, the next line.
+    if TextAreaCursorAtPlace(layout, value, 0, 30) != 10 { return 13 }
+    if TextAreaCursorAtPlace(layout, value, 5, 65) != 12 { return 14 }
+    if TextAreaCursorAtPlace(layout, value, 5, 15) != 4 { return 15 }
+
+    // A box over a hidden line takes the place of its row.
+    over: [1]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 40, .cover = true}]
+    line: [1]TextRange = .[TextRange.{.start = 3, .end = 10}]
+    layout = LayoutFor(0, line[:], over[:], none_lines)
+    view.hidden = line[:]
+    if TextAreaContentHeight(layout, view) != 60 { return 20 }
+    caret = TextAreaCaretPlaced(layout, view, 10)
+    if caret.y != 10 || caret.row_index != 1 { return 21 }
+    if TextAreaCaretPlaced(layout, view, 12).y != 50 { return 22 }
+    if TextAreaCursorAtPlace(layout, value, 0, 20) != 10 { return 23 }
+    // The arrow keys stop on the covered line at its end.
+    if TextAreaCursorAtRow(layout, value, 1, 0) != 10 { return 24 }
+    if TextAreaCursorAtRow(layout, value, 9, 5) != 12 { return 25 }
+    if TextAreaCursorAtRow(layout, value, -3, 5) != 1 { return 26 }
+
+    // A heading line at twice the size: taller, wider and wrapping sooner.
+    heading: [1]TextAreaLine = .[TextAreaLine.{.start = 0, .scale = 2.0}]
+    layout = LayoutFor(0, none_hidden, none_blocks, heading[:])
+    view = Plain(value)
+    if TextAreaContentHeight(layout, view) != 40 { return 30 }
+    caret = TextAreaCaretPlaced(layout, view, 1)
+    if caret.x != 10 || caret.height != 20 || caret.y != 0 { return 31 }
+    if TextAreaCaretPlaced(layout, view, 4).y != 20 { return 32 }
+    if TextAreaCursorAtPlace(layout, value, 10, 5) != 1 { return 33 }
+    if TextAreaCursorAtPlace(layout, value, 0, 25) != 3 { return 34 }
+    wrapped := "aaaa bbbb\nc"
+    layout = LayoutFor(30, none_hidden, none_blocks, heading[:])
+    place = TextAreaPlacementFor(layout, Plain(wrapped))
+    first = TextAreaPlaceRow(*place)
+    second = TextAreaPlaceRow(*place)
+    if first.row.end != 3 || first.font != 20 || second.y != 20 || second.font != 20 { return 35 }
+    plain_rows := TextAreaNextRowWith(wrapped, 0, 30, 10, "", none_hidden)
+    if plain_rows.end != 5 { return 36 }
+
+    // Invalid lists are ignored as a whole.
+    unsorted: [2]TextAreaBlock = .[TextAreaBlock.{.start = 11, .height = 4},
+    TextAreaBlock.{.start = 3, .height = 4}]
+    if TextAreaBlocksFor(value, unsorted[:]).count != 0 { return 40 }
+    inside: [1]TextAreaBlock = .[TextAreaBlock.{.start = 1, .height = 4}]
+    if TextAreaBlocksFor(value, inside[:]).count != 0 { return 41 }
+    flat: [1]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 0}]
+    if TextAreaBlocksFor(value, flat[:]).count != 0 { return 42 }
+    if TextAreaBlocksFor(value, under[:]).count != 1 { return 43 }
+    twice: [2]TextAreaLine = .[TextAreaLine.{.start = 3, .scale = 1.5},
+    TextAreaLine.{.start = 3, .scale = 1.5}]
+    if TextAreaLinesFor(value, twice[:]).count != 0 { return 44 }
+    nothing: [1]TextAreaLine = .[TextAreaLine.{.start = 0, .scale = 0.0}]
+    if TextAreaLinesFor(value, nothing[:]).count != 0 { return 45 }
+    if TextAreaLinesFor(value, heading[:]).count != 1 { return 46 }
+    // The empty line after a final break is a line start too.
+    ending: [1]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 4}]
+    if TextAreaBlocksFor("ab\n", ending[:]).count != 1 { return 47 }
+
+    // While a composition grows its preedit, boxes after it move with it.
+    composing := TextAreaViewFor(value, 1, 1, CompositionState.{.active = true, .text = "xyz"})
+    if TextAreaViewOffset(composing, 3) != 6 || TextAreaViewOffset(composing, 1) != 1 { return 50 }
+    layout = LayoutFor(0, none_hidden, under[:], none_lines)
+    if TextAreaContentHeight(layout, composing) != 70 { return 51 }
+    place = TextAreaPlacementFor(layout, composing)
+    unused TextAreaPlaceRow(*place)
+    second = TextAreaPlaceRow(*place)
+    if second.row.start != 6 || second.block != 0 || second.block_y != 20 { return 52 }
+    // A box on a line the composition replaces is left out.
+    replacing := TextAreaViewFor(value, 1, 5, CompositionState.{.active = true, .text = "q"})
+    if TextAreaViewOffset(replacing, 3) != -1 { return 53 }
+    if TextAreaContentHeight(layout, replacing) != 20 { return 54 }
+    return 0
+}

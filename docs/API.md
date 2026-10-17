@@ -43,6 +43,19 @@ font outlines. Hosts that have not published a metrics revision keep measuring
 rows on each call; they do not acquire an invalidation requirement implicitly.
 Font size, typeface, wrap width and content changes always select a new layout.
 
+A `TextArea` can preview a markup language over its value without changing
+it. `hidden` bytes take no width or caret stop, `strong` bytes are bold and
+`italic` bytes slanted (backends that register a slant raster, as Raylib
+does, draw them leaning; others upright), and `colors` tint spans.
+`lines` draws a logical line at its own size (`TextAreaLine.scale`), such as
+a heading: its rows wrap, take caret stops and take height at that size.
+`blocks` adds a box under a line, or in place of its last row with `cover`,
+drawing `image` fitted inside it or a soft frame with `label` while the
+image is missing; a press inside a box is the end of its line. Every list is
+sorted, one entry per line at line starts, or ignored as a whole; without
+them the layout is the plain area's. During an IME composition, lines and
+boxes after it move with the preedit.
+
 ## Style rules
 
 `InstallStyleRules` copies typeface text into Kryon-owned storage and returns

@@ -8,6 +8,9 @@ area_keyword: s32;
 area_composition: s32;
 area_preedit: s32;
 area_underline: s32;
+// A text area's photo box and the source of the line it covers.
+area_photo: s32;
+area_covered_source: s32;
 
 #program_export
 SetCompositionPhase :: (phase: s32) { active_phase = phase }
@@ -71,6 +74,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     if color.r == cast(u8)36 && color.g == cast(u8)72 &&
         color.b == cast(u8)172 { area_keyword += 1 }
     if active_phase == 37 && value == "é" { area_preedit += 1 }
+    if active_phase == 49 && value == "![p](x)" { area_covered_source += 1 }
     RasterText(value, x, y, font, color)
 }
 
@@ -79,7 +83,6 @@ RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
     tint: Color) {
-    unused asset_path
     unused texture_id
     unused source
     unused destination
@@ -88,6 +91,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     unused rotation
     unused radius
     unused tint
+    if active_phase == 49 && asset_path == "photo.png" { area_photo += 1 }
 }
 
 // This host never draws warped images.
@@ -107,6 +111,12 @@ RasterImageMesh :: (asset_path: string, texture_id: u32,
 
 #program_export
 FieldPreeditPaints :: () -> s32 { return field_preedit }
+
+#program_export
+AreaPhotoPaints :: () -> s32 { return area_photo }
+
+#program_export
+AreaCoveredSourcePaints :: () -> s32 { return area_covered_source }
 
 #program_export
 FieldUnderlinePaints :: () -> s32 { return field_underline }

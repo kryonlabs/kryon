@@ -2140,8 +2140,156 @@ WidgetValidTextAreaInput :: (value: HostValue) -> bool {
     return true
 }
 
+WidgetTextAreaBlockCodec :: struct {
+    fields: [5]HostField
+}
+
+WidgetEncodeTextAreaBlock :: (data: TextAreaBlock, codec: *WidgetTextAreaBlockCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("TextAreaBlock")
+    value.fields = *codec.fields[0]
+    value.field_count = 5
+    codec.fields[0].name = HostTextData("start")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.start)
+    codec.fields[1].name = HostTextData("height")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.height)
+    codec.fields[2].name = HostTextData("cover")
+    codec.fields[2].value = HostScalar("bool", ifx data.cover then 1 else 0)
+    codec.fields[3].name = HostTextData("image")
+    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.image), .length = cast(usize)data.image.count}
+    codec.fields[4].name = HostTextData("label")
+    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
+    return value
+}
+
+WidgetDecodeTextAreaBlock :: (value: HostValue, codec: *WidgetTextAreaBlockCodec) -> TextAreaBlock {
+    data: TextAreaBlock
+    {
+        field_at := HostFieldAt(value, 0, "start")
+        if field_at >= 0 {
+            data.start = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "height")
+        if field_at >= 0 {
+            data.height = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "cover")
+        if field_at >= 0 {
+            data.cover = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "image")
+        if field_at >= 0 {
+            data.image = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "label")
+        if field_at >= 0 {
+            data.label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    return data
+}
+
+WidgetValidTextAreaBlock :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "TextAreaBlock" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "start")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "height")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "cover")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "image")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    return true
+}
+
+WidgetTextAreaLineCodec :: struct {
+    fields: [2]HostField
+}
+
+WidgetEncodeTextAreaLine :: (data: TextAreaLine, codec: *WidgetTextAreaLineCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("TextAreaLine")
+    value.fields = *codec.fields[0]
+    value.field_count = 2
+    codec.fields[0].name = HostTextData("start")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.start)
+    codec.fields[1].name = HostTextData("scale")
+    codec.fields[1].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
+    return value
+}
+
+WidgetDecodeTextAreaLine :: (value: HostValue, codec: *WidgetTextAreaLineCodec) -> TextAreaLine {
+    data: TextAreaLine
+    {
+        field_at := HostFieldAt(value, 0, "start")
+        if field_at >= 0 {
+            data.start = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "scale")
+        if field_at >= 0 {
+            data.scale = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    return data
+}
+
+WidgetValidTextAreaLine :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "TextAreaLine" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "start")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "scale")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    return true
+}
+
 WidgetTextAreaPropsCodec :: struct {
-    fields: [27]HostField
+    fields: [30]HostField
     bounds: WidgetRectangleCodec
     composition: WidgetCompositionStateCodec
     colors_values: [1024]HostValue
@@ -2154,6 +2302,15 @@ WidgetTextAreaPropsCodec :: struct {
     strong_values: [1024]HostValue
     strong_codecs: [1024]WidgetTextRangeCodec
     strong_decoded: [1024]TextRange
+    italic_values: [1024]HostValue
+    italic_codecs: [1024]WidgetTextRangeCodec
+    italic_decoded: [1024]TextRange
+    blocks_values: [1024]HostValue
+    blocks_codecs: [1024]WidgetTextAreaBlockCodec
+    blocks_decoded: [1024]TextAreaBlock
+    lines_values: [1024]HostValue
+    lines_codecs: [1024]WidgetTextAreaLineCodec
+    lines_decoded: [1024]TextAreaLine
 }
 
 WidgetEncodeTextAreaProps :: (data: TextAreaProps, codec: *WidgetTextAreaPropsCodec) -> HostValue {
@@ -2161,7 +2318,7 @@ WidgetEncodeTextAreaProps :: (data: TextAreaProps, codec: *WidgetTextAreaPropsCo
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("TextAreaProps")
     value.fields = *codec.fields[0]
-    value.field_count = 27
+    value.field_count = 30
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("bounds")
@@ -2246,6 +2403,45 @@ WidgetEncodeTextAreaProps :: (data: TextAreaProps, codec: *WidgetTextAreaPropsCo
         index: usize = 0
         while index < codec.fields[26].value.length {
             codec.strong_values[index] = WidgetEncodeTextRange(data.strong[index], *codec.strong_codecs[index])
+            index += cast(usize)1
+        }
+    }
+    codec.fields[27].name = HostTextData("italic")
+    codec.fields[27].value.kind = cast(s32)HostSlice
+    codec.fields[27].value.type_name = HostTextData("[]TextRange")
+    codec.fields[27].value.length = cast(usize)data.italic.count
+    if codec.fields[27].value.length > cast(usize)1024 { codec.fields[27].value.length = cast(usize)1024 }
+    codec.fields[27].value.elements = *codec.italic_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[27].value.length {
+            codec.italic_values[index] = WidgetEncodeTextRange(data.italic[index], *codec.italic_codecs[index])
+            index += cast(usize)1
+        }
+    }
+    codec.fields[28].name = HostTextData("blocks")
+    codec.fields[28].value.kind = cast(s32)HostSlice
+    codec.fields[28].value.type_name = HostTextData("[]TextAreaBlock")
+    codec.fields[28].value.length = cast(usize)data.blocks.count
+    if codec.fields[28].value.length > cast(usize)1024 { codec.fields[28].value.length = cast(usize)1024 }
+    codec.fields[28].value.elements = *codec.blocks_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[28].value.length {
+            codec.blocks_values[index] = WidgetEncodeTextAreaBlock(data.blocks[index], *codec.blocks_codecs[index])
+            index += cast(usize)1
+        }
+    }
+    codec.fields[29].name = HostTextData("lines")
+    codec.fields[29].value.kind = cast(s32)HostSlice
+    codec.fields[29].value.type_name = HostTextData("[]TextAreaLine")
+    codec.fields[29].value.length = cast(usize)data.lines.count
+    if codec.fields[29].value.length > cast(usize)1024 { codec.fields[29].value.length = cast(usize)1024 }
+    codec.fields[29].value.elements = *codec.lines_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[29].value.length {
+            codec.lines_values[index] = WidgetEncodeTextAreaLine(data.lines[index], *codec.lines_codecs[index])
             index += cast(usize)1
         }
     }
@@ -2431,6 +2627,45 @@ WidgetDecodeTextAreaProps :: (value: HostValue, codec: *WidgetTextAreaPropsCodec
                 index: usize = 0
                 while index < value.fields[field_at].value.length {
                     codec.strong_decoded[index] = WidgetDecodeTextRange(value.fields[field_at].value.elements[index], *codec.strong_codecs[index])
+                    index += cast(usize)1
+                }
+            }
+            // Slice storage is attached by the rendering effect after decoding.
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 27, "italic")
+        if field_at >= 0 {
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    codec.italic_decoded[index] = WidgetDecodeTextRange(value.fields[field_at].value.elements[index], *codec.italic_codecs[index])
+                    index += cast(usize)1
+                }
+            }
+            // Slice storage is attached by the rendering effect after decoding.
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 28, "blocks")
+        if field_at >= 0 {
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    codec.blocks_decoded[index] = WidgetDecodeTextAreaBlock(value.fields[field_at].value.elements[index], *codec.blocks_codecs[index])
+                    index += cast(usize)1
+                }
+            }
+            // Slice storage is attached by the rendering effect after decoding.
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 29, "lines")
+        if field_at >= 0 {
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    codec.lines_decoded[index] = WidgetDecodeTextAreaLine(value.fields[field_at].value.elements[index], *codec.lines_codecs[index])
                     index += cast(usize)1
                 }
             }
@@ -2625,6 +2860,48 @@ WidgetValidTextAreaProps :: (value: HostValue) -> bool {
                 index: usize = 0
                 while index < value.fields[field_at].value.length {
                     if !WidgetValidTextRange(value.fields[field_at].value.elements[index]) { return false }
+                    index += cast(usize)1
+                }
+            }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 27, "italic")
+        if field_at >= 0 {
+            if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]TextRange" ||
+                value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    if !WidgetValidTextRange(value.fields[field_at].value.elements[index]) { return false }
+                    index += cast(usize)1
+                }
+            }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 28, "blocks")
+        if field_at >= 0 {
+            if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]TextAreaBlock" ||
+                value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    if !WidgetValidTextAreaBlock(value.fields[field_at].value.elements[index]) { return false }
+                    index += cast(usize)1
+                }
+            }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 29, "lines")
+        if field_at >= 0 {
+            if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]TextAreaLine" ||
+                value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    if !WidgetValidTextAreaLine(value.fields[field_at].value.elements[index]) { return false }
                     index += cast(usize)1
                 }
             }

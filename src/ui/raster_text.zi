@@ -35,3 +35,17 @@ PaintTextEmphasisClipped :: (value: string, x: s32, y: s32, font: s32,
     }
     RasterTextClipped(value, x + stroke, y, font, color, clip)
 }
+
+// Paints a slanted label, or with `emphasis` the extra stroke of slanted
+// emphasized text. Without a backend raster it is painted upright.
+#program_export
+PaintTextItalicClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, emphasis: bool) {
+    if clip.width <= 0.0 || clip.height <= 0.0 { return }
+    if RunTextItalicRaster(value, x, y, font, color, clip, emphasis) { return }
+    if emphasis {
+        PaintTextEmphasisClipped(value, x, y, font, color, clip)
+        return
+    }
+    RasterTextClipped(value, x, y, font, color, clip)
+}

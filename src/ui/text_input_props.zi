@@ -108,6 +108,31 @@ TextAreaColorSpan :: struct {
     color: u32
 }
 
+// A box under a logical line of the value, such as a picture in a note, or
+// in place of the line's last row when `cover` is set, for a line whose
+// bytes are all hidden. Rows, wrapping and caret stops stay those of the
+// text; only vertical positions, hit testing and painting make room for
+// the box. A point inside it is the end of its line.
+TextAreaBlock :: struct {
+    // The byte offset where the line starts.
+    start: s32
+    height: s32
+    cover: bool
+    // An asset drawn fitted inside the box, or "".
+    image: string
+    // Shown in a soft frame while the image is empty or unavailable.
+    label: string
+}
+
+// A logical line drawn at its own size, such as a heading. Its rows wrap,
+// take caret stops and take height at that size.
+TextAreaLine :: struct {
+    // The byte offset where the line starts.
+    start: s32
+    // The line's font size as a multiple of the area's.
+    scale: float32
+}
+
 TextAreaProps :: struct {
     key: u64
     bounds: Rectangle
@@ -140,6 +165,15 @@ TextAreaProps :: struct {
     hidden: []TextRange
     // Bytes drawn with emphasis, as Text's strong ranges.
     strong: []TextRange
+    // Bytes drawn slanted where the backend can, with unchanged advances;
+    // sorted and disjoint like `strong`.
+    italic: []TextRange
+    // Boxes under or in place of lines, and lines drawn at their own size.
+    // Each list is sorted by start with at most one entry per line, every
+    // start at a line start; any other list is ignored as a whole. Without
+    // them the layout is exactly the one of a plain area.
+    blocks: []TextAreaBlock
+    lines: []TextAreaLine
 }
 
 TextAreaEdit :: struct {

@@ -224,6 +224,16 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         area.colors = widget_area_codec.colors_decoded[:HostSliceLength(props, 16, "colors")]
         area.hidden = widget_area_codec.hidden_decoded[:HostSliceLength(props, 25, "hidden")]
         area.strong = widget_area_codec.strong_decoded[:HostSliceLength(props, 26, "strong")]
+        area.italic = widget_area_codec.italic_decoded[:HostSliceLength(props, 27, "italic")]
+        area.blocks = widget_area_codec.blocks_decoded[:HostSliceLength(props, 28, "blocks")]
+        area.lines = widget_area_codec.lines_decoded[:HostSliceLength(props, 29, "lines")]
+        // A box's picture passes the asset policy as an Image's does; one the
+        // bundle may not draw shows its label instead.
+        for index: 0..cast(s32)area.blocks.count - 1 {
+            if !WidgetHostAssetAllowed(area.blocks[index].image) {
+                area.blocks[index].image = ""
+            }
+        }
         edited := TextArea(session, area)
         result.* = WidgetEncodeTextAreaResult(edited, *widget_area_result_codec)
         return 1

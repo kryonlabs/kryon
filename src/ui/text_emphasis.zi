@@ -26,3 +26,29 @@ RunTextEmphasisRaster :: (value: string, x: s32, y: s32, font: s32,
     text_emphasis_raster(value, x, y, font, color, clip)
     return true
 }
+
+// Slanted text, such as Markdown's italic, is the same label drawn leaning
+// right, with the same advances. A backend that can transform its glyph
+// quads registers a raster that draws it slanted, and with `emphasis` its
+// extra stroke slanted the same way. Others draw it upright.
+TextItalicRaster :: #type (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, emphasis: bool) -> ();
+
+text_italic_raster: TextItalicRaster;
+text_italic_raster_set: bool;
+
+#program_export
+SetTextItalicRaster :: (raster: TextItalicRaster) {
+    text_italic_raster = raster
+    text_italic_raster_set = true
+}
+
+// Returns false when no backend raster is registered.
+RunTextItalicRaster :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, emphasis: bool) -> bool {
+    if !text_italic_raster_set {
+        return false
+    }
+    text_italic_raster(value, x, y, font, color, clip, emphasis)
+    return true
+}

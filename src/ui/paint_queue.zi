@@ -57,6 +57,8 @@ PaintCommand :: struct {
     owns_asset: bool
     // A clipped label drawn as the extra stroke of emphasized text.
     emphasis: bool
+    // A clipped label drawn slanted, as italic text.
+    italic: bool
     // An image scaled smoothly.
     smooth: bool
     // A warped image's grid (see ImageMesh). Its points are copied into the
@@ -499,7 +501,10 @@ EmitRoundedOutline :: (command: PaintCommand) {
 }
 
 EmitLabel :: (command: PaintCommand) {
-    if command.emphasis {
+    if command.italic {
+        PaintTextItalicClipped(command.value, command.x, command.y,
+            command.font, command.color, command.clip, command.emphasis)
+    } else if command.emphasis {
         PaintTextEmphasisClipped(command.value, command.x, command.y,
             command.font, command.color, command.clip)
     } else if command.kind == PaintKindClippedText {
@@ -785,6 +790,32 @@ PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: 
     QueuePaint(session, *command)
 }
 
+// A slanted label, or with `emphasis` the extra stroke of slanted emphasized
+// text, at the position of its painted label.
+#program_export
+PaintClippedSlanted :: (session: Session, node: s32, value: string, x: s32, y: s32,
+    font: s32, color: Color, clip: Rectangle, emphasis: bool) {
+    command: QueuedPaint
+    command.data.kind = PaintKindClippedText
+    command.data.node = node
+    command.data.value = value
+    command.data.x = x
+    command.data.y = y
+    command.data.font = font
+    command.data.color = color
+    command.data.clip = clip
+    command.data.emphasis = emphasis
+    command.data.italic = true
+    emit: PaintEmitter = EmitLabel
+    clip_for: PaintClipper = ClipLabel
+    command.emit = emit
+    command.clip_for = clip_for
+    command.has_emitter = true
+    command.builtin_emitter = true
+    command.clips = true
+    QueuePaint(session, *command)
+}
+
 #program_export
 PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
@@ -1016,7 +1047,8 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     if !SnapshotValueEqual(slot, current.value, previous.value_start,
         previous.value_count) { return false }
     if current.x != previous.data.x || current.y != previous.data.y ||
-    current.font != previous.data.font || current.emphasis != previous.data.emphasis { return false }
+    current.font != previous.data.font || current.emphasis != previous.data.emphasis ||
+    current.italic != previous.data.italic { return false }
     if !SnapshotAssetEqual(slot, current.asset_path, previous.asset_start,
         previous.asset_count) { return false }
     if current.texture_id != previous.data.texture_id ||

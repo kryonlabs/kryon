@@ -179,6 +179,22 @@ rlGetTextureIdDefault :: () -> u32 {
 }
 
 #program_export
+rlMultMatrixf :: (matrix: *float32) {
+    selection_effects += 1
+    unused matrix
+}
+
+#program_export
+rlPopMatrix :: () {
+    selection_effects += 1
+}
+
+#program_export
+rlPushMatrix :: () {
+    selection_effects += 1
+}
+
+#program_export
 rlScissor :: (x: s32, y: s32, width: s32,
     height: s32) {
     selection_effects += 1

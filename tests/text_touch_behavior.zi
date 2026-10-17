@@ -182,3 +182,16 @@ main :: () -> s32 {
     }
     return 0
 }
+
+// No asset loads here: a text area's boxes would show their labels.
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}

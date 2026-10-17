@@ -139,6 +139,9 @@ HostRaylibDefaultTexture :: () -> u32 #foreign raylib "rlGetTextureIdDefault";
 HostRaylibTexCoord :: (x: float32, y: float32) #foreign raylib "rlTexCoord2f";
 HostRaylibNormal :: (x: float32, y: float32, z: float32) #foreign raylib "rlNormal3f";
 HostRaylibScale :: (x: float32, y: float32, z: float32) #foreign raylib "rlScalef";
+HostRaylibPushMatrix :: () #foreign raylib "rlPushMatrix";
+HostRaylibPopMatrix :: () #foreign raylib "rlPopMatrix";
+HostRaylibMultMatrix :: (matrix: *float32) #foreign raylib "rlMultMatrixf";
 HostRaylibParseFloat :: (value: *u8) -> float64 #foreign c "atof";
 HostRaylibTakeScreenshot :: (path: *u8) #foreign raylib "TakeScreenshot";
 HostRaylibFileExists :: (path: *u8) -> bool #foreign raylib "FileExists";
@@ -188,6 +191,8 @@ raylib_image_error: bool;
 raylib_font: RaylibFont;
 // Set while drawing the extra stroke of emphasized text.
 raylib_text_emphasis: bool;
+// Set while drawing slanted text.
+raylib_text_italic: bool;
 raylib_text_emphasis_registered: bool;
 raylib_font_loaded: bool;
 raylib_font_registered: bool;
@@ -1442,16 +1447,22 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
             if draw {
                 if typeface != null {
                     selected = RaylibTypefaceFontForPixels(typeface, pixels,
-                        !RaylibTextAligned(matrix))
+                        !RaylibTextAligned(matrix) || raylib_text_italic)
                 }
                 glyph_position := RaylibTextPosition(
                     .{position.x + dx, position.y + dy}, matrix)
+                if raylib_text_italic {
+                    RaylibBeginSlant(glyph_position.y + text_size * 0.8)
+                }
                 if raylib_text_emphasis {
                     RaylibDrawEmphasis(selected, *glyph[0], glyph_position,
                         text_size, color, pixels, matrix)
                 } else {
                     HostRaylibDrawFontText(selected, *glyph[0], glyph_position,
                         text_size, 0.0, color)
+                }
+                if raylib_text_italic {
+                    HostRaylibPopMatrix()
                 }
             }
             dx += advance
@@ -1496,6 +1507,40 @@ RaylibTextEmphasisClipped :: (value: string, x: s32, y: s32, font: s32,
     raylib_text_emphasis = true
     RasterTextClipped(value, x, y, font, color, clip)
     raylib_text_emphasis = false
+}
+
+// Leans what is drawn until the matching pop to the right by about 11
+// degrees, around `base`, the baseline in logical units, as italic type
+// leans. The shear transforms the glyph quads' vertices; scissors and pixel
+// alignment still read the unchanged modelview.
+RaylibBeginSlant :: (base: float32) {
+    slant: float32 = 0.2
+    // Column-major, as rlMultMatrixf takes it: x' = x - slant * (y - base).
+    matrix: [16]float32 = .[1.0, 0.0, 0.0, 0.0,
+    -slant, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    slant * base, 0.0, 0.0, 1.0]
+    HostRaylibPushMatrix()
+    HostRaylibMultMatrix(*matrix[0])
+}
+
+// Slanted text, or with `emphasis` its extra stroke, drawn leaning by
+// RaylibBeginSlant. Without a loaded font it is drawn upright.
+RaylibTextItalicClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, emphasis: bool) {
+    if !raylib_font_loaded {
+        if emphasis {
+            RaylibTextEmphasisClipped(value, x, y, font, color, clip)
+        } else {
+            RasterTextClipped(value, x, y, font, color, clip)
+        }
+        return
+    }
+    raylib_text_italic = true
+    raylib_text_emphasis = emphasis
+    RasterTextClipped(value, x, y, font, color, clip)
+    raylib_text_emphasis = false
+    raylib_text_italic = false
 }
 
 RaylibTextExtent :: (value: string, font: s32) -> Vector2 {
@@ -1790,10 +1835,13 @@ RasterLine :: (line: Rectangle, color: Color) {
 RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
     // An emphasis stroke always follows its label, so the first label
-    // registers this backend's emphasis before any stroke is painted.
+    // registers this backend's emphasis before any stroke is painted, and
+    // its slanted text with it.
     if !raylib_text_emphasis_registered {
         raster: TextEmphasisRaster = RaylibTextEmphasisClipped
         SetTextEmphasisRaster(raster)
+        italic: TextItalicRaster = RaylibTextItalicClipped
+        SetTextItalicRaster(italic)
         raylib_text_emphasis_registered = true
     }
     bytes: [4096]u8
