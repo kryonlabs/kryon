@@ -151,6 +151,8 @@
         read_only: bool
         secure: bool
         heading_level: s32
+        // Wrapped lines of the node's text that its box leaves out.
+        hidden_lines: s32
         parent: s32
         first_child: s32
         last_child: s32
@@ -208,6 +210,7 @@
         has_text: bool
         read_only: bool
         secure: bool
+        hidden_lines: s32
     }
 
     InteractionData :: struct {
@@ -569,6 +572,7 @@
             entry.semantic_kind = semantic.kind
             entry.heading_level = semantic.heading_level
             entry.selected = semantic.selected
+            entry.hidden_lines = semantic.hidden_lines
         }
         if node.interaction_index >= 0 {
             interaction: InteractionData
@@ -1444,6 +1448,18 @@
         semantic: s32 = TreeEnsureSemantic(session, index)
         if semantic < 0 { return }
         trees[slot].submitted_semantics[semantic].selected = selected
+    }
+
+    // Text that wraps to more lines than its box shows reports how many are
+    // left out, such as a label cut off below a fixed height.
+    #program_export
+    TreeSetHiddenLines :: (session: Session, index: s32, hidden_lines: s32) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+        semantic: s32 = TreeEnsureSemantic(session, index)
+        if semantic < 0 { return }
+        trees[slot].submitted_semantics[semantic].hidden_lines = hidden_lines
     }
 
     #program_export

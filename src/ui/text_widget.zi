@@ -152,6 +152,29 @@
         return ""
     }
 
+    // How many wrapped lines start at or below the bottom of a fixed-height
+    // box; PaintTextLines leaves those out.
+    #program_export
+    TextHiddenLines :: (props: TextProps, prepared: PreparedText) -> s32 {
+        if props.bounds.height <= 0.0 { return 0 }
+        total_height: s32 = TextLayoutTotalHeight(prepared.line_count,
+            prepared.line_height, prepared.line_gap)
+        y: s32 = cast(s32)prepared.bounds.y +
+        cast(s32)TextAlignmentOffset(prepared.bounds.height,
+            cast(float32)total_height, cast(s32)props.vertical_align)
+        bottom: float32 = prepared.bounds.y + prepared.bounds.height
+        hidden: s32 = 0
+        line: s32 = 0
+        while line < prepared.line_count {
+            if cast(float32)y >= bottom {
+                hidden += 1
+            }
+            y += prepared.line_height + prepared.line_gap
+            line += 1
+        }
+        return hidden
+    }
+
     #program_export
     PaintTextLines :: (session: Session, node: s32, props: TextProps,
         prepared: PreparedText) {
@@ -255,6 +278,10 @@
             TreeSetLabel(session, node, props.text)
             TreeSetStyleClass(session, node, props.class_name)
             TreeSetSemantic(session, node, props.semantic_kind, props.heading_level)
+            hidden: s32 = TextHiddenLines(props, prepared)
+            if hidden > 0 {
+                TreeSetHiddenLines(session, node, hidden)
+            }
         }
         if props.selectable && node >= 0 && TextSelectionPresent(session, node, props, prepared) {
             return

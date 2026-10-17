@@ -19,7 +19,8 @@
   label, role, key or focus id, presses one through the app's own pointer
   path, types text and presses keys without dropping any on a slow machine,
   drags with a held pointer, and waits until frames settle. Without the
-  variable nothing changes.
+  variable nothing changes. A `Text` whose box cuts off some of its wrapped
+  lines records how many in the widget tree, and the driver reports them.
 - Images can be drawn warped over a grid of points: set `ImageProps.mesh`
   to a columns × rows grid of screen points and `Image` stretches the
   picture across it, two triangles per cell, so a painted arm or leg can

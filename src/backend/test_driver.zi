@@ -35,6 +35,10 @@
 // as heading or tab), key=, focus_id=, value= (an editor's exact text),
 // visible=1, enabled=1 and index= (which match, from 0).
 //
+// A node reports its kind, role, label, detail, an editor's value, bounds,
+// the part of them that shows (visible_*), enabled, focused, selected and
+// hidden_lines: wrapped lines of its text that its box leaves out.
+//
 // Every reply has serial, ok, error, frame and stable_frames: how many
 // frames in a row ended with the same widgets, bounds, labels and states, so
 // a test can wait until animations and loading settle. The reply to a
@@ -828,6 +832,8 @@ TestDriverPutNode :: (file: *void, session: Session, node: TestDriverNode) {
     TestDriverPutBool(file, entry.secure)
     TestDriverPutField(file, "cursor")
     TestDriverPutInteger(file, cast(s64)entry.text_cursor)
+    TestDriverPutField(file, "hidden_lines")
+    TestDriverPutInteger(file, cast(s64)entry.hidden_lines)
     TestDriverPut(file, "}")
 }
 

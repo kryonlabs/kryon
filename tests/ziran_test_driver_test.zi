@@ -109,6 +109,9 @@ Frame :: () -> bool {
     }
     Text(session, TextProps.{.text = label, .font = 14,
             .bounds = Rectangle.{20.0, 80.0, 200.0, 20.0}})
+    // Wraps to six lines in a box that shows two.
+    Text(session, TextProps.{.text = "one two three four five six", .font = 14,
+            .bounds = Rectangle.{250.0, 80.0, 48.0, 20.0}})
     // Hidden below the frame.
     Text(session, TextProps.{.text = "Below", .font = 14,
             .bounds = Rectangle.{20.0, 900.0, 200.0, 20.0}})
@@ -173,6 +176,10 @@ main :: () -> s32 {
     if Run("3\tfind\tcontains=hel") != 1 || !Has("\"label\":\"Hello\"") { return 14 }
     if Run("4\tfind\tlabel=Below\tvisible=1") != 1 || Has("Below") { return 15 }
     if Run("5\tfind\tlabel=Below") != 1 || !Has("\"visible\":false") { return 16 }
+    // Wrapped lines a box leaves out are reported; a label that fits has none.
+    if Run("5\tfind\tcontains=one two") != 1 || !Has("\"hidden_lines\":") ||
+    Has("\"hidden_lines\":0}") { return 17 }
+    if Run("5\tfind\tlabel=Hello") != 1 || !Has("\"hidden_lines\":0}") { return 18 }
 
     // The command is read after a frame; pressing then moves, presses and
     // releases over the next three frames before the reply.
