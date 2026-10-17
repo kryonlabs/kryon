@@ -1,0 +1,107 @@
+#import "drawing_props"
+#import "geometry"
+#import "math"
+#import "session"
+#import "shape_paint"
+#import "shape_props"
+#import "tree"
+#import "widget_kind"
+
+using WidgetKind;
+
+// Shapes are decorative surfaces like Box: they capture no pointer or
+// keyboard input. Each submits a node covering what it draws; outside a
+// frame there is no node and the shape paints at once.
+ShapeNode :: (session: Session, key: u64, kind: s32, bounds: Rectangle,
+    node: *s32) -> bool {
+    node.* = -1
+    if !TreeIsBuilding(session) { return true }
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    node.* = TreeSubmitCurrent(session, key, kind, bounds)
+    return node.* >= 0
+}
+
+#program_export
+Line :: (session: Session, props: LineProps) -> s32 {
+    thickness: float32 = props.thickness
+    if thickness <= 0.0 { thickness = 1.0 }
+    bounds: Rectangle = LineCovered(props.start, props.end, thickness)
+    node: s32 = -1
+    if !ShapeNode(session, props.key, WidgetKindLine, bounds, *node) {
+        return node
+    }
+    if props.color.a != cast(u8)0 {
+        PaintLineShape(session, node, bounds, props.start, props.end,
+            thickness, props.color)
+    }
+    return node
+}
+
+#program_export
+Circle :: (session: Session, props: CircleProps) -> s32 {
+    radius: float32 = props.radius
+    if !Finite32(radius) || radius < 0.0 { radius = 0.0 }
+    bounds: Rectangle = Rectangle.{props.center.x - radius,
+        props.center.y - radius, radius * 2.0, radius * 2.0}
+    node: s32 = -1
+    if !ShapeNode(session, props.key, WidgetKindCircle, bounds, *node) {
+        return node
+    }
+    edge: Color = props.fill
+    if props.has_edge { edge = props.edge }
+    if radius > 0.0 && (props.fill.a != cast(u8)0 || edge.a != cast(u8)0) {
+        PaintCircleShape(session, node, bounds, radius, props.fill, edge)
+    }
+    return node
+}
+
+// Like raylib's DrawRing, swapped radii or angles mean the same ring, and a
+// sweep beyond a whole turn draws one turn.
+#program_export
+Ring :: (session: Session, props: RingProps) -> s32 {
+    inner: float32 = props.inner_radius
+    outer: float32 = props.outer_radius
+    if inner > outer {
+        inner = props.outer_radius
+        outer = props.inner_radius
+    }
+    if !Finite32(outer) || outer < 0.0 { outer = 0.0 }
+    if !Finite32(inner) || inner < 0.0 { inner = 0.0 }
+    start: float32 = props.start_angle
+    sweep: float32 = props.end_angle - props.start_angle
+    if sweep < 0.0 {
+        start = props.end_angle
+        sweep = -sweep
+    }
+    if sweep > 360.0 { sweep = 360.0 }
+    bounds: Rectangle = Rectangle.{props.center.x - outer,
+        props.center.y - outer, outer * 2.0, outer * 2.0}
+    node: s32 = -1
+    if !ShapeNode(session, props.key, WidgetKindRing, bounds, *node) {
+        return node
+    }
+    if outer > 0.0 && Finite32(start) && Finite32(sweep) && sweep > 0.0 &&
+    props.color.a != cast(u8)0 {
+        PaintRingShape(session, node, bounds, inner, outer, start, sweep,
+            props.color)
+    }
+    return node
+}
+
+#program_export
+Triangle :: (session: Session, props: TriangleProps) -> s32 {
+    points: [3]Vector2
+    points[0] = props.first
+    points[1] = props.second
+    points[2] = props.third
+    bounds: Rectangle = PointsBounds(points[:])
+    node: s32 = -1
+    if !ShapeNode(session, props.key, WidgetKindTriangle, bounds, *node) {
+        return node
+    }
+    if props.color.a != cast(u8)0 {
+        PaintTriangleShape(session, node, bounds, props.first, props.second,
+            props.third, props.color)
+    }
+    return node
+}

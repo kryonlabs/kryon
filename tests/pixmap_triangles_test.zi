@@ -1,0 +1,137 @@
+#import "geometry"
+#import "drawing_props"
+#import "session"
+#import "shape_props"
+#import "shape_widget"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#import "pixmap"
+#import "pixmap_frame"
+using FrameStatus;
+
+SIZE :: 64
+surface: [4096]u32;
+points: [6]Vector2;
+
+BACKGROUND: u32 = cast(u32)0x102030;
+
+Pixel :: (x: s32, y: s32) -> u32 { return surface[y * SIZE + x] & cast(u32)0xffffff }
+
+Is :: (x: s32, y: s32, color: u32) -> bool {
+    if Pixel(x, y) == (color & cast(u32)0xffffff) { return true }
+    print("pixel % % is % expected %\n", x, y, Pixel(x, y), color & cast(u32)0xffffff)
+    return false
+}
+
+// The square [2, 14) cut along its diagonal, in the given winding.
+Square :: (clockwise: bool) {
+    points[0] = .{2.0, 2.0}
+    points[1] = .{14.0, 2.0}
+    points[2] = .{14.0, 14.0}
+    points[3] = .{2.0, 2.0}
+    points[4] = .{14.0, 14.0}
+    points[5] = .{2.0, 14.0}
+    if !clockwise {
+        points[1] = .{14.0, 14.0}
+        points[2] = .{14.0, 2.0}
+        points[4] = .{2.0, 14.0}
+        points[5] = .{14.0, 14.0}
+    }
+}
+
+Fill :: (count: s32, color: Color) {
+    unused PixmapBeginInto(BACKGROUND, SIZE, SIZE, surface[:])
+    RasterTriangles(points[:count], color)
+    PixmapEndInto()
+}
+
+// The raster effect: two triangles sharing an edge blend a translucent
+// colour exactly once on every covered pixel centre, in either winding.
+RasterCases :: () -> s32 {
+    half: Color = .{255, 255, 255, 128}
+    for clockwise: cast(s32)0..1 {
+        Square(clockwise == 1)
+        Fill(6, half)
+        once: u32 = Pixel(2, 2)
+        if once == BACKGROUND { return 1 }
+        for at: cast(s32)2..13 {
+            if !Is(at, at, once) || !Is(at, 15 - at, once) { return 2 }
+            if !Is(at, 2, once) || !Is(13, at, once) { return 3 }
+        }
+        if !Is(1, 1, BACKGROUND) || !Is(14, 14, BACKGROUND) ||
+        !Is(14, 2, BACKGROUND) || !Is(2, 14, BACKGROUND) { return 4 }
+    }
+    // A one-pixel line's quad straddles two rows and fills exactly one.
+    points[0] = .{2.0, 7.5}
+    points[1] = .{14.0, 7.5}
+    points[2] = .{14.0, 8.5}
+    points[3] = .{2.0, 7.5}
+    points[4] = .{14.0, 8.5}
+    points[5] = .{2.0, 8.5}
+    Fill(6, .{255, 0, 0, 255})
+    if !Is(5, 8, cast(u32)0xff0000) || !Is(5, 7, BACKGROUND) ||
+    !Is(5, 9, BACKGROUND) { return 5 }
+    // Extra points beyond whole triangles are ignored.
+    Square(true)
+    Fill(5, .{255, 0, 0, 255})
+    if !Is(13, 3, cast(u32)0xff0000) || !Is(3, 13, BACKGROUND) { return 6 }
+    // The pixmap clip bounds the fill.
+    unused PixmapBeginInto(BACKGROUND, SIZE, SIZE, surface[:])
+    PixmapClipTo(.{0.0, 0.0, 8.0, 64.0})
+    RasterTriangles(points[:6], .{0, 255, 0, 255})
+    PixmapClipAll()
+    PixmapEndInto()
+    if !Is(7, 7, cast(u32)0x00ff00) || !Is(8, 8, BACKGROUND) { return 7 }
+    // Device scale: logical points land on scaled pixels.
+    unused PixmapBeginInto(BACKGROUND, SIZE, SIZE, surface[:])
+    unused PixmapScale(2.0, 2.0)
+    RasterTriangles(points[:6], .{0, 0, 255, 255})
+    PixmapEndInto()
+    if !Is(5, 5, cast(u32)0x0000ff) || !Is(26, 26, cast(u32)0x0000ff) ||
+    !Is(28, 28, BACKGROUND) || !Is(3, 3, BACKGROUND) { return 8 }
+    return 0
+}
+
+ShapeFrame :: (session: Session, color: Color, reuse: bool) -> PixmapFrameResult {
+    unused PixmapResumeInto(SIZE, SIZE, surface[:])
+    unused BeginFrame(session, cast(u64)1, .{0.0, 0.0, 64.0, 64.0})
+    PaintRoundedFill(session, -1, .{0.0, 0.0, 64.0, 64.0}, 0.0, 0, .{16, 32, 48, 255})
+    unused Circle(session, CircleProps.{.key = cast(u64)2,
+            .center = Vector2.{16.0, 16.0}, .radius = 6.0, .fill = color})
+    unused Triangle(session, TriangleProps.{.key = cast(u64)3,
+            .first = Vector2.{40.0, 40.0}, .second = Vector2.{60.0, 40.0},
+            .third = Vector2.{40.0, 60.0}, .color = .{0, 255, 0, 255}})
+    result := EndPixmapFrame(session, reuse, BACKGROUND, true)
+    PixmapEndInto()
+    return result
+}
+
+// The widgets through a retained pixmap frame: an unchanged frame is
+// reused, and a changed circle repaints only around itself.
+WidgetCases :: () -> s32 {
+    session := SessionOpen()
+    result := ShapeFrame(session, .{255, 0, 0, 255}, false)
+    if result.status != cast(FrameStatus)FrameOk { return 20 }
+    if !Is(16, 16, cast(u32)0xff0000) || !Is(9, 9, BACKGROUND) ||
+    !Is(42, 42, cast(u32)0x00ff00) || !Is(58, 58, BACKGROUND) { return 21 }
+    result = ShapeFrame(session, .{255, 0, 0, 255}, true)
+    if !result.paint_unchanged || result.emitted_count != 0 { return 22 }
+    result = ShapeFrame(session, .{0, 0, 255, 255}, true)
+    if result.paint_unchanged || !Is(16, 16, cast(u32)0x0000ff) { return 23 }
+    if result.damage.x < 7.0 || result.damage.y < 7.0 ||
+    result.damage.width > 18.0 || result.damage.height > 18.0 { return 24 }
+    if !Is(42, 42, cast(u32)0x00ff00) { return 25 }
+    unused SessionClose(session)
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    raster := RasterCases()
+    if raster != 0 { print("%\n", raster); return raster }
+    widget := WidgetCases()
+    if widget != 0 { print("%\n", widget); return widget }
+    print("0\n")
+    return 0
+}

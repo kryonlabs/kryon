@@ -38,7 +38,12 @@
         if radius < 0.0 {
             radius = 0.0
         }
-        if props.fill.a != cast(u8)0 {
+        if props.has_fill_bottom {
+            if props.fill.a != cast(u8)0 || props.fill_bottom.a != cast(u8)0 {
+                PaintVerticalGradient(session, node, props.bounds, props.fill,
+                    props.fill_bottom)
+            }
+        } else if props.fill.a != cast(u8)0 {
             PaintRoundedFill(session, node, props.bounds, radius, 8,
                 props.fill)
         }

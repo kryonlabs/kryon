@@ -1,6 +1,7 @@
 #!/bin/sh
 # Warped images through raylib: a plain, a mirrored and a bent grid drawn
-# into a private Xvfb window and read back.
+# into a private Xvfb window and read back, then solid triangles in both
+# windings.
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
@@ -24,4 +25,4 @@ env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
     -u GDK_DISPLAY YUE_DESKTOP_RECOVERY=0 \
     timeout --kill-after=2s 45s xvfb-run -a -n 301 \
     -s '-screen 0 640x480x24' dbus-run-session -- "$work/test"
-echo 'Warped images draw plain, mirrored and bent grids through raylib'
+echo 'Warped images and solid triangles draw through raylib'

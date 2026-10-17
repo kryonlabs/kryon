@@ -67,6 +67,27 @@ main :: (argc: s32, argv: **u8) -> s32 {
     points[2] = .{0.0, 64.0}; points[3] = .{64.0, 64.0}
     if !Draw(path, 2, 2, .{0.0, 0.0, 32.0, 64.0}) { return 9 }
     if !Is(16, 16, red) || !Is(48, 16, background) { return 10 }
+    // A shape's triangles fill as one path, so antialiasing leaves no seam
+    // along the diagonals its four triangles share.
+    fan: [12]Vector2
+    fan[0] = .{0.0, 0.0}
+    fan[1] = .{64.0, 0.0}
+    fan[2] = .{32.0, 32.0}
+    fan[3] = .{64.0, 0.0}
+    fan[4] = .{64.0, 64.0}
+    fan[5] = .{32.0, 32.0}
+    fan[6] = .{64.0, 64.0}
+    fan[7] = .{0.0, 64.0}
+    fan[8] = .{32.0, 32.0}
+    fan[9] = .{0.0, 64.0}
+    fan[10] = .{0.0, 0.0}
+    fan[11] = .{32.0, 32.0}
+    Raster.BeginRasterFrame()
+    Raster.RasterTriangles(fan[:], .{0, 160, 0, 255})
+    if !Raster.FinishRasterFrame() { return 12 }
+    for at: cast(s32)1..62 {
+        if !Is(at, at, cast(u32)0x00a000) || !Is(63 - at, at, cast(u32)0x00a000) { return 13 }
+    }
     print("Cairo draws plain, mirrored, bent and clipped warped images\n")
     return 0
 }

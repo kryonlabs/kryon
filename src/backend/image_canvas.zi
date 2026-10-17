@@ -237,6 +237,18 @@ MeshSample :: struct {
     source: Vector2
 }
 
+// Whether a point with these edge weights (see MeshTriangleSample) is
+// inside the triangle: none is negative, and an edge the point lies on is
+// one the triangle owns.
+MeshWeightsInside :: (triangle: MeshTriangle, weight_a: float32,
+    weight_b: float32, weight_c: float32) -> bool {
+    if weight_a < 0.0 || weight_b < 0.0 || weight_c < 0.0 { return false }
+    if weight_a == 0.0 && !MeshEdgeOwnsLine(triangle.b, triangle.c) { return false }
+    if weight_b == 0.0 && !MeshEdgeOwnsLine(triangle.c, triangle.a) { return false }
+    if weight_c == 0.0 && !MeshEdgeOwnsLine(triangle.a, triangle.b) { return false }
+    return true
+}
+
 // Whether the point (x, y) is inside the triangle, and its source point.
 #program_export
 MeshTriangleSample :: (triangle: MeshTriangle, x: float32,
@@ -245,16 +257,72 @@ MeshTriangleSample :: (triangle: MeshTriangle, x: float32,
     weight_a: float32 = MeshEdge(triangle.b, triangle.c, x, y)
     weight_b: float32 = MeshEdge(triangle.c, triangle.a, x, y)
     weight_c: float32 = MeshEdge(triangle.a, triangle.b, x, y)
-    if weight_a < 0.0 || weight_b < 0.0 || weight_c < 0.0 { return sample }
-    if weight_a == 0.0 && !MeshEdgeOwnsLine(triangle.b, triangle.c) { return sample }
-    if weight_b == 0.0 && !MeshEdgeOwnsLine(triangle.c, triangle.a) { return sample }
-    if weight_c == 0.0 && !MeshEdgeOwnsLine(triangle.a, triangle.b) { return sample }
+    if !MeshWeightsInside(triangle, weight_a, weight_b, weight_c) { return sample }
     sample.inside = true
     sample.source.x = (weight_a * triangle.a_source.x + weight_b * triangle.b_source.x +
         weight_c * triangle.c_source.x) / triangle.area
     sample.source.y = (weight_a * triangle.a_source.y + weight_b * triangle.b_source.y +
         weight_c * triangle.c_source.y) / triangle.area
     return sample
+}
+
+MeshTriangleCovers :: (triangle: MeshTriangle, x: float32, y: float32) -> bool {
+    return MeshWeightsInside(triangle, MeshEdge(triangle.b, triangle.c, x, y),
+        MeshEdge(triangle.c, triangle.a, x, y),
+        MeshEdge(triangle.a, triangle.b, x, y))
+}
+
+// The pixel columns first to end - 1 of row y whose centres a triangle
+// covers, by MeshTriangleSample's rule; none when end <= first. Solid
+// triangles fill these spans, so triangles sharing an edge neither overlap
+// nor leave a gap.
+MeshRowSpan :: struct {
+    first: s32
+    end: s32
+}
+
+// An edge that is not level crosses the row's centre line once; the inside
+// lies left of that crossing when the edge runs down, right of it otherwise.
+MeshRowLimit :: (from: Vector2, to: Vector2, center_y: float32,
+    left: *float32, right: *float32) {
+    rise: float32 = to.y - from.y
+    if rise == 0.0 { return }
+    x: float32 = from.x + (to.x - from.x) * (center_y - from.y) / rise
+    if rise > 0.0 {
+        if x < right.* { right.* = x }
+    } else {
+        if x > left.* { left.* = x }
+    }
+}
+
+#program_export
+MeshTriangleRow :: (triangle: MeshTriangle, y: s32) -> MeshRowSpan {
+    span: MeshRowSpan
+    if !triangle.valid { return span }
+    center_y: float32 = cast(float32)y + 0.5
+    left: float32 = cast(float32)triangle.left
+    right: float32 = cast(float32)triangle.right
+    MeshRowLimit(triangle.a, triangle.b, center_y, *left, *right)
+    MeshRowLimit(triangle.b, triangle.c, center_y, *left, *right)
+    MeshRowLimit(triangle.c, triangle.a, center_y, *left, *right)
+    // The crossings estimate the span to within rounding; one column more
+    // on each side, settled by the exact rule, gives the covered centres,
+    // which are contiguous in a triangle.
+    first: s32 = CeilInteger(left - 0.5) - 1
+    last: s32 = FloorInteger(right - 0.5) + 1
+    if first < triangle.left { first = triangle.left }
+    if last > triangle.right - 1 { last = triangle.right - 1 }
+    while first <= last &&
+        !MeshTriangleCovers(triangle, cast(float32)first + 0.5, center_y) {
+        first += 1
+    }
+    while last >= first &&
+        !MeshTriangleCovers(triangle, cast(float32)last + 0.5, center_y) {
+        last -= 1
+    }
+    span.first = first
+    span.end = last + 1
+    return span
 }
 
 // The two triangles of grid cell (column, row): its top left, top right

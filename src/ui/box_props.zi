@@ -7,4 +7,9 @@ BoxProps :: struct {
     fill: Color
     border: Color
     radius: float32
+    // With has_fill_bottom, the fill fades from `fill` at the top to this
+    // colour at the bottom, like raylib's DrawRectangleGradientV. The faded
+    // fill covers the whole rectangle; `radius` rounds the border only.
+    fill_bottom: Color
+    has_fill_bottom: bool
 }

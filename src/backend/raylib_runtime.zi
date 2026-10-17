@@ -1825,6 +1825,26 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
         color)
 }
 
+// Each three points are one triangle, in either winding: RaylibTriangle
+// sends it front facing. raylib fills them without antialiasing, so
+// triangles sharing an edge meet without a seam.
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    count: s64 = points.count - points.count % 3
+    if count == 0 || color.a == cast(u8)0 { return }
+    // Untextured triangles: raylib keeps the last texture of a triangle
+    // batch, such as a warped image's, until another is set.
+    HostRaylibSetTexture(HostRaylibDefaultTexture())
+    HostRaylibBegin(RaylibTriangles)
+    at: s64 = 0
+    while at < count {
+        RaylibTriangle(points[at], color, points[at + 1], color,
+            points[at + 2], color)
+        at += 3
+    }
+    HostRaylibEnd()
+}
+
 #program_export
 RasterLine :: (line: Rectangle, color: Color) {
     HostRaylibDrawLine(Vector2.{line.x, line.y},

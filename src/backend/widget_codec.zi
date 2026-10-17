@@ -6611,10 +6611,11 @@ WidgetValidTabBarResult :: (value: HostValue) -> bool {
 }
 
 WidgetBoxPropsCodec :: struct {
-    fields: [5]HostField
+    fields: [7]HostField
     bounds: WidgetRectangleCodec
     fill: WidgetColorCodec
     border: WidgetColorCodec
+    fill_bottom: WidgetColorCodec
 }
 
 WidgetEncodeBoxProps :: (data: BoxProps, codec: *WidgetBoxPropsCodec) -> HostValue {
@@ -6622,7 +6623,7 @@ WidgetEncodeBoxProps :: (data: BoxProps, codec: *WidgetBoxPropsCodec) -> HostVal
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("BoxProps")
     value.fields = *codec.fields[0]
-    value.field_count = 5
+    value.field_count = 7
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("bounds")
@@ -6633,6 +6634,10 @@ WidgetEncodeBoxProps :: (data: BoxProps, codec: *WidgetBoxPropsCodec) -> HostVal
     codec.fields[3].value = WidgetEncodeColor(data.border, *codec.border)
     codec.fields[4].name = HostTextData("radius")
     codec.fields[4].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.radius}
+    codec.fields[5].name = HostTextData("fill_bottom")
+    codec.fields[5].value = WidgetEncodeColor(data.fill_bottom, *codec.fill_bottom)
+    codec.fields[6].name = HostTextData("has_fill_bottom")
+    codec.fields[6].value = HostScalar("bool", ifx data.has_fill_bottom then 1 else 0)
     return value
 }
 
@@ -6666,6 +6671,18 @@ WidgetDecodeBoxProps :: (value: HostValue, codec: *WidgetBoxPropsCodec) -> BoxPr
         field_at := HostFieldAt(value, 4, "radius")
         if field_at >= 0 {
             data.radius = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "fill_bottom")
+        if field_at >= 0 {
+            data.fill_bottom = WidgetDecodeColor(value.fields[field_at].value, *codec.fill_bottom)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "has_fill_bottom")
+        if field_at >= 0 {
+            data.has_fill_bottom = value.fields[field_at].value.integer != 0
         }
     }
     return data
@@ -6703,6 +6720,18 @@ WidgetValidBoxProps :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 4, "radius")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "fill_bottom")
+        if field_at >= 0 {
+            if !WidgetValidColor(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "has_fill_bottom")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     return true

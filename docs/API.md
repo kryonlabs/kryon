@@ -76,6 +76,17 @@ rotation and the style radius do not apply, and a grid with too few points
 draws nothing. Points are copied when the image is queued, at most 4096 per
 image (256 through a portable bundle's hosted `Image`).
 
+`Line(LineProps)`, `Circle(CircleProps)`, `Ring(RingProps)` and
+`Triangle(TriangleProps)` draw shapes as raylib's `DrawLineEx`, `DrawCircle`
+and `DrawCircleGradient`, `DrawRing` and `DrawTriangle` do. Like `Box`, each
+is decorative: it submits a node covering what it draws and queues one paint
+command. Kryon cuts the shape into triangles, clips them to its parent's clip
+and sends each colour's triangles to the host in one `RasterTriangles` call;
+a radial fade is drawn as rings of one colour each. `BoxProps.fill_bottom`
+with `has_fill_bottom` fades a box's fill from top to bottom, as
+`DrawRectangleGradientV` does. The shapes have no `KRYON_HOSTED_UI` variant
+yet.
+
 An application using a Kryon host exports a Ziran function with this shape:
 
 ```zi

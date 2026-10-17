@@ -759,6 +759,51 @@ RasterLine :: (line: Rectangle, color: Color) {
     }
 }
 
+// Solid triangles, filled pixel centre by pixel centre with a warped
+// image's edge rule: triangles sharing an edge neither overlap nor leave a
+// gap, so a translucent shape blends once everywhere. Spans blend as a
+// rounded rectangle's interior does.
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    if color.a == cast(u8)0 { return }
+    count: s64 = points.count - points.count % 3
+    // A solid triangle samples no image.
+    no_source: Vector2 = Vector2.{0.0, 0.0}
+    at: s64 = 0
+    while at < count {
+        a: Vector2 = Vector2.{points[at].x * pixmap_scale_x,
+            points[at].y * pixmap_scale_y}
+        b: Vector2 = Vector2.{points[at + 1].x * pixmap_scale_x,
+            points[at + 1].y * pixmap_scale_y}
+        c: Vector2 = Vector2.{points[at + 2].x * pixmap_scale_x,
+            points[at + 2].y * pixmap_scale_y}
+        triangle := ImageCanvas.MeshTriangleFor(a, no_source, b,
+            no_source, c, no_source)
+        if triangle.valid { PixmapFillTriangle(triangle, color) }
+        at += 3
+    }
+}
+
+PixmapFillTriangle :: (triangle: ImageCanvas.MeshTriangle, color: Color) {
+    top: s32 = triangle.top
+    if top < pixmap_clip_top { top = pixmap_clip_top }
+    bottom: s32 = triangle.bottom
+    if bottom > pixmap_clip_bottom { bottom = pixmap_clip_bottom }
+    y: s32 = top
+    while y < bottom {
+        span := ImageCanvas.MeshTriangleRow(triangle, y)
+        first: s32 = span.first
+        if first < pixmap_clip_left { first = pixmap_clip_left }
+        end: s32 = span.end
+        if end > pixmap_clip_right { end = pixmap_clip_right }
+        if first < end {
+            row: s32 = y * pixmap_width
+            PixmapFillSpan(pixmap_surface[row + first:row + end], color)
+        }
+        y += 1
+    }
+}
+
 // Hosts supply decoded assets; absent assets retain the screenshot placeholder.
 #program_export
 RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,

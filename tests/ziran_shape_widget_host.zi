@@ -1,0 +1,140 @@
+#import "drawing_props"
+#import "geometry"
+#import "text_input_platform_host"
+
+// Records what the shape widgets ask the host to fill.
+SHAPE_HOST_CALLS :: 128
+
+calls: s32;
+triangles: s32;
+area: float32;
+extent_left: float32;
+extent_top: float32;
+extent_right: float32;
+extent_bottom: float32;
+call_colors: [SHAPE_HOST_CALLS]Color;
+call_triangles: [SHAPE_HOST_CALLS]s32;
+rows: s32;
+first_row: Color;
+last_row: Color;
+rounded_radius: float32;
+failed: bool;
+
+#program_export
+ShapeHostReset :: () {
+    calls = 0
+    triangles = 0
+    area = 0.0
+    extent_left = 100000.0
+    extent_top = 100000.0
+    extent_right = -100000.0
+    extent_bottom = -100000.0
+    rows = 0
+    rounded_radius = -1.0
+}
+
+ShapeHostExtend :: (point: Vector2) {
+    if point.x < extent_left { extent_left = point.x }
+    if point.y < extent_top { extent_top = point.y }
+    if point.x > extent_right { extent_right = point.x }
+    if point.y > extent_bottom { extent_bottom = point.y }
+}
+
+// Every triangle must arrive wound clockwise on screen with some area.
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    if points.count == 0 || points.count % 3 != 0 { failed = true }
+    if calls < SHAPE_HOST_CALLS {
+        call_colors[calls] = color
+        call_triangles[calls] = cast(s32)(points.count / 3)
+    }
+    calls += 1
+    at: s64 = 0
+    while at + 2 < points.count {
+        a: Vector2 = points[at]
+        b: Vector2 = points[at + 1]
+        c: Vector2 = points[at + 2]
+        turn: float32 = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+        if turn <= 0.0 { failed = true }
+        area += turn * 0.5
+        triangles += 1
+        ShapeHostExtend(a)
+        ShapeHostExtend(b)
+        ShapeHostExtend(c)
+        at += 3
+    }
+}
+
+// A Box's flat fill, or the one-pixel rows of its vertical gradient.
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused segments
+    if rows == 0 { first_row = color }
+    last_row = color
+    rounded_radius = radius
+    if bounds.width <= 0.0 || bounds.height <= 0.0 { failed = true }
+    rows += 1
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) { failed = true }
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) { failed = true }
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) { failed = true }
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) { failed = true }
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) { failed = true }
+
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32,
+    source: Rectangle, points: []Vector2, columns: s32, rows: s32,
+    clip: Rectangle, tint: Color) { failed = true }
+
+#program_export
+ShapeHostCalls :: () -> s32 { return calls }
+
+#program_export
+ShapeHostTriangles :: () -> s32 { return triangles }
+
+#program_export
+ShapeHostArea :: () -> float32 { return area }
+
+#program_export
+ShapeHostExtent :: () -> Rectangle {
+    return Rectangle.{extent_left, extent_top, extent_right - extent_left,
+        extent_bottom - extent_top}
+}
+
+#program_export
+ShapeHostCallColor :: (index: s32) -> Color { return call_colors[index] }
+
+#program_export
+ShapeHostCallTriangles :: (index: s32) -> s32 { return call_triangles[index] }
+
+#program_export
+ShapeHostRows :: () -> s32 { return rows }
+
+#program_export
+ShapeHostFirstRow :: () -> Color { return first_row }
+
+#program_export
+ShapeHostLastRow :: () -> Color { return last_row }
+
+#program_export
+ShapeHostRoundedRadius :: () -> float32 { return rounded_radius }
+
+#program_export
+ShapeHostFailed :: () -> bool { return failed }

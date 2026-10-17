@@ -18,6 +18,11 @@ PaintKind :: enum {
     PaintKindImage :: 5
     PaintKindClippedText :: 6
     PaintKindVerticalGradient :: 7
+    // The shape widgets' paint, tessellated into triangles by shape_paint.
+    PaintKindShapeLine :: 8
+    PaintKindShapeCircle :: 9
+    PaintKindShapeRing :: 10
+    PaintKindShapeTriangle :: 11
 }
 using PaintKind;
 

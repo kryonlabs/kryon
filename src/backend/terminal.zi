@@ -2,6 +2,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "utf8"
+Pixels :: #import "image_canvas";
 
 // The Text widget uses cell coordinates on this host: one glyph is one cell.
 // This first terminal surface supports up to 80 columns and 24 rows.
@@ -154,6 +155,34 @@ RasterLine :: (line: Rectangle, color: Color) {
         CellPut(terminal_buffer[0:1920], terminal_columns, terminal_rows,
             x, y, marker)
         step += 1
+    }
+}
+
+// A shape's triangles clear the cells whose centres they cover, as a filled
+// rectangle does.
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    if color.a == cast(u8)0 { return }
+    fill: Cell
+    fill.glyph = cast(u32)32
+    count: s64 = points.count - points.count % 3
+    no_source: Vector2 = Vector2.{0.0, 0.0}
+    at: s64 = 0
+    while at < count {
+        triangle := Pixels.MeshTriangleFor(points[at], no_source,
+            points[at + 1], no_source, points[at + 2], no_source)
+        top: s32 = triangle.top
+        if top < 0 { top = 0 }
+        bottom: s32 = triangle.bottom
+        if bottom > terminal_rows { bottom = terminal_rows }
+        y: s32 = top
+        while triangle.valid && y < bottom {
+            span := Pixels.MeshTriangleRow(triangle, y)
+            CellFill(terminal_buffer[0:1920], terminal_columns, terminal_rows,
+                span.first, y, span.end - span.first, 1, fill)
+            y += 1
+        }
+        at += 3
     }
 }
 

@@ -1,0 +1,526 @@
+#import "drawing_props"
+#import "geometry"
+#import "math"
+#import "paint_queue"
+#import "raster_triangles"
+#import "session"
+
+using PaintKind;
+
+// The shape widgets queue one paint command each and draw it as triangles.
+// Every input the triangles depend on is kept in a command field that the
+// paint queue compares, so an unchanged shape keeps its retained frame:
+//
+//   bounds    the rectangle the shape covers. It moves with the shape's node,
+//             so its points are kept relative to its top left corner.
+//   Line      origin = start; source.x and source.y = end;
+//             line_width = thickness.
+//   Circle    radius; segments; color at the centre and end_color at the rim
+//             (the same colour for a flat circle). The centre lies one
+//             radius right of and below the corner.
+//   Ring      radius = outer radius; line_width = outer minus inner radius;
+//             rotation = start angle and source.x = sweep, in degrees;
+//             segments. The centre is placed as a circle's.
+//   Triangle  origin, source.x and source.y, source.width and source.height
+//             = its three points.
+
+// A whole turn takes 36 segments, as raylib's DrawCircle draws it, or more
+// on a large radius; one segment per degree at most.
+SHAPE_TURN_SEGMENTS :: 36
+SHAPE_MAX_SEGMENTS :: 360
+SHAPE_DIRECTION_COUNT :: 361
+// A radial fade is drawn as rings of one colour, at most this many.
+SHAPE_FADE_BANDS :: 64
+// Points sent to the host in one call: 1024 triangles.
+SHAPE_BATCH_POINTS :: 3072
+// A triangle cut by a rectangle has at most seven corners.
+SHAPE_POLYGON_POINTS :: 8
+
+// The triangles being emitted for one shape in one colour.
+ShapeBatch :: struct {
+    points: [SHAPE_BATCH_POINTS]Vector2
+    count: s32
+    color: Color
+    clip: Rectangle
+    clipped: bool
+}
+shape_batch: ShapeBatch;
+// Unit directions at the segment boundaries of the arc being emitted.
+shape_directions: [SHAPE_DIRECTION_COUNT]Vector2;
+
+ShapePolygon :: struct {
+    points: [SHAPE_POLYGON_POINTS]Vector2
+    count: s32
+}
+
+LineCorners :: struct {
+    points: [4]Vector2
+    valid: bool
+}
+
+// The corners of a line `thickness` wide, as raylib's DrawLineEx makes them:
+// the two at its start, then the two at its end, each pair across the line.
+LineCornersFor :: (start: Vector2, end: Vector2,
+    thickness: float32) -> LineCorners {
+    corners: LineCorners
+    dx: float32 = end.x - start.x
+    dy: float32 = end.y - start.y
+    length: float32 = cast(float32)Sqrt(cast(float64)(dx * dx + dy * dy))
+    if !Finite32(length) || length <= 0.0 { return corners }
+    if !Finite32(thickness) || thickness <= 0.0 { return corners }
+    scale: float32 = thickness / (length * 2.0)
+    across_x: float32 = -dy * scale
+    across_y: float32 = dx * scale
+    corners.points[0] = Vector2.{start.x - across_x, start.y - across_y}
+    corners.points[1] = Vector2.{start.x + across_x, start.y + across_y}
+    corners.points[2] = Vector2.{end.x - across_x, end.y - across_y}
+    corners.points[3] = Vector2.{end.x + across_x, end.y + across_y}
+    corners.valid = true
+    return corners
+}
+
+PointsBounds :: (points: []Vector2) -> Rectangle {
+    if points.count == 0 { return Rectangle.{0.0, 0.0, 0.0, 0.0} }
+    left: float32 = points[0].x
+    top: float32 = points[0].y
+    right: float32 = left
+    bottom: float32 = top
+    index: s64 = 1
+    while index < points.count {
+        point: Vector2 = points[index]
+        if point.x < left { left = point.x }
+        if point.y < top { top = point.y }
+        if point.x > right { right = point.x }
+        if point.y > bottom { bottom = point.y }
+        index += 1
+    }
+    return Rectangle.{left, top, right - left, bottom - top}
+}
+
+// The rectangle a line covers; a line too short or thin to draw covers the
+// rectangle between its ends.
+LineCovered :: (start: Vector2, end: Vector2, thickness: float32) -> Rectangle {
+    corners: LineCorners = LineCornersFor(start, end, thickness)
+    if corners.valid { return PointsBounds(corners.points[:]) }
+    ends: [2]Vector2
+    ends[0] = start
+    ends[1] = end
+    return PointsBounds(ends[:])
+}
+
+// Segments for an arc of `sweep` degrees: 36 to a whole turn, or on a large
+// radius enough that no chord strays more than half a pixel inside the arc,
+// as raylib's automatic DrawRing count.
+ShapeArcSegments :: (radius: float32, sweep: float32) -> s32 {
+    if !Finite32(sweep) || sweep <= 0.0 { return 0 }
+    if sweep > 360.0 { sweep = 360.0 }
+    segments: s32 = CeilInteger(sweep * cast(float32)SHAPE_TURN_SEGMENTS / 360.0)
+    if Finite32(radius) && radius > 1.0 {
+        // The angle of the chord whose middle lies half a pixel inside.
+        ratio: float64 = 1.0 - 0.5 / cast(float64)radius
+        step: float64 = Acos(ratio * ratio * 2.0 - 1.0)
+        if step > 0.0 {
+            step_degrees: float64 = step * 180.0 / 3.14159265358979
+            smooth: s32 = CeilInteger(cast(float32)(cast(float64)sweep / step_degrees))
+            if smooth > segments { segments = smooth }
+        }
+    }
+    most: s32 = CeilInteger(sweep * cast(float32)SHAPE_MAX_SEGMENTS / 360.0)
+    if segments > most { segments = most }
+    if segments < 1 { segments = 1 }
+    return segments
+}
+
+ShapeChannelChange :: (first: u8, second: u8) -> s32 {
+    change: s32 = cast(s32)first - cast(s32)second
+    if change < 0 { return -change }
+    return change
+}
+
+// Rings of a radial fade: enough that neighbouring rings differ by about two
+// levels as the colour shows over any background, at most one ring per two
+// pixels of radius, and at most SHAPE_FADE_BANDS.
+ShapeFadeBands :: (center: Color, edge: Color, radius: float32) -> s32 {
+    color_change: s32 = ShapeChannelChange(center.r, edge.r)
+    green_change: s32 = ShapeChannelChange(center.g, edge.g)
+    if green_change > color_change { color_change = green_change }
+    blue_change: s32 = ShapeChannelChange(center.b, edge.b)
+    if blue_change > color_change { color_change = blue_change }
+    alpha: s32 = cast(s32)center.a
+    if cast(s32)edge.a > alpha { alpha = cast(s32)edge.a }
+    change: s32 = ShapeChannelChange(center.a, edge.a) +
+    color_change * alpha / 255
+    bands: s32 = (change + 1) / 2
+    if Finite32(radius) {
+        by_radius: s32 = CeilInteger(radius * 0.5)
+        if bands > by_radius { bands = by_radius }
+    }
+    if bands > SHAPE_FADE_BANDS { bands = SHAPE_FADE_BANDS }
+    if bands < 1 { bands = 1 }
+    return bands
+}
+
+ShapeAt :: (command: PaintCommand, x: float32, y: float32) -> Vector2 {
+    return Vector2.{command.bounds.x + x, command.bounds.y + y}
+}
+
+ShapeOffset :: (bounds: Rectangle, point: Vector2) -> Vector2 {
+    return Vector2.{point.x - bounds.x, point.y - bounds.y}
+}
+
+// Positive when a, b, c turn clockwise on screen, negative when they turn
+// the other way, and zero when they lie on one line.
+ShapeTurn :: (a: Vector2, b: Vector2, c: Vector2) -> float32 {
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+}
+
+ShapeBatchBegin :: (command: PaintCommand, color: Color) {
+    shape_batch.count = 0
+    shape_batch.color = color
+    shape_batch.clip = command.clip
+    shape_batch.clipped = command.clip_set
+}
+
+ShapeBatchFlush :: () {
+    if shape_batch.count > 0 && shape_batch.color.a != cast(u8)0 {
+        FillTriangles(shape_batch.points[0:shape_batch.count],
+            shape_batch.color)
+    }
+    shape_batch.count = 0
+}
+
+// Keeps one triangle wound clockwise; one without area draws nothing.
+ShapeBatchAdd :: (a: Vector2, b: Vector2, c: Vector2) {
+    turn: float32 = ShapeTurn(a, b, c)
+    if !Finite32(turn) || turn == 0.0 { return }
+    if shape_batch.count + 3 > SHAPE_BATCH_POINTS { ShapeBatchFlush() }
+    at: s32 = shape_batch.count
+    shape_batch.points[at] = a
+    if turn > 0.0 {
+        shape_batch.points[at + 1] = b
+        shape_batch.points[at + 2] = c
+    } else {
+        shape_batch.points[at + 1] = c
+        shape_batch.points[at + 2] = b
+    }
+    shape_batch.count = at + 3
+}
+
+// Whether a rectangle the shape covers lies wholly outside its clip.
+ShapeHidden :: (extent: Rectangle) -> bool {
+    if !shape_batch.clipped { return false }
+    clip: Rectangle = shape_batch.clip
+    return extent.x > clip.x + clip.width || extent.y > clip.y + clip.height ||
+    extent.x + extent.width < clip.x || extent.y + extent.height < clip.y
+}
+
+// The side of a clip rectangle an edge keeps: 0 is its left, 1 its right,
+// 2 its top and 3 its bottom.
+ShapeInside :: (point: Vector2, side: s32, limit: float32) -> bool {
+    if side == 0 { return point.x >= limit }
+    if side == 1 { return point.x <= limit }
+    if side == 2 { return point.y >= limit }
+    return point.y <= limit
+}
+
+// Where the segment between two points crosses a clip side. The points are
+// taken in one fixed order, so two triangles sharing an edge cut it at the
+// same point and stay joined.
+ShapeCrossing :: (first: Vector2, second: Vector2, side: s32,
+    limit: float32) -> Vector2 {
+    from: Vector2 = first
+    to: Vector2 = second
+    if to.x < from.x || (to.x == from.x && to.y < from.y) {
+        from = second
+        to = first
+    }
+    if side < 2 {
+        share: float32 = (limit - from.x) / (to.x - from.x)
+        return Vector2.{limit, from.y + (to.y - from.y) * share}
+    }
+    share: float32 = (limit - from.y) / (to.y - from.y)
+    return Vector2.{from.x + (to.x - from.x) * share, limit}
+}
+
+// One step of Sutherland-Hodgman clipping: the part of a convex polygon on
+// the kept side of one clip side.
+ShapeClipSide :: (polygon: ShapePolygon, side: s32,
+    limit: float32) -> ShapePolygon {
+    result: ShapePolygon
+    if polygon.count == 0 { return result }
+    previous: Vector2 = polygon.points[polygon.count - 1]
+    previous_inside: bool = ShapeInside(previous, side, limit)
+    index: s32 = 0
+    while index < polygon.count {
+        current: Vector2 = polygon.points[index]
+        current_inside: bool = ShapeInside(current, side, limit)
+        if current_inside != previous_inside &&
+        result.count < SHAPE_POLYGON_POINTS {
+            result.points[result.count] = ShapeCrossing(previous, current,
+                side, limit)
+            result.count += 1
+        }
+        if current_inside && result.count < SHAPE_POLYGON_POINTS {
+            result.points[result.count] = current
+            result.count += 1
+        }
+        previous = current
+        previous_inside = current_inside
+        index += 1
+    }
+    return result
+}
+
+// Adds one triangle of the shape, cut to the shape's clip when it has one:
+// the part inside is fanned back into triangles.
+ShapeBatchTriangle :: (a: Vector2, b: Vector2, c: Vector2) {
+    if !shape_batch.clipped {
+        ShapeBatchAdd(a, b, c)
+        return
+    }
+    if !Finite32(a.x) || !Finite32(a.y) || !Finite32(b.x) ||
+    !Finite32(b.y) || !Finite32(c.x) || !Finite32(c.y) { return }
+    corners: [3]Vector2
+    corners[0] = a
+    corners[1] = b
+    corners[2] = c
+    extent: Rectangle = PointsBounds(corners[:])
+    clip: Rectangle = shape_batch.clip
+    if ShapeHidden(extent) { return }
+    if extent.x >= clip.x && extent.y >= clip.y &&
+    extent.x + extent.width <= clip.x + clip.width &&
+    extent.y + extent.height <= clip.y + clip.height {
+        ShapeBatchAdd(a, b, c)
+        return
+    }
+    polygon: ShapePolygon
+    polygon.points[0] = a
+    polygon.points[1] = b
+    polygon.points[2] = c
+    polygon.count = 3
+    polygon = ShapeClipSide(polygon, 0, clip.x)
+    polygon = ShapeClipSide(polygon, 1, clip.x + clip.width)
+    polygon = ShapeClipSide(polygon, 2, clip.y)
+    polygon = ShapeClipSide(polygon, 3, clip.y + clip.height)
+    index: s32 = 1
+    while index + 1 < polygon.count {
+        ShapeBatchAdd(polygon.points[0], polygon.points[index],
+            polygon.points[index + 1])
+        index += 1
+    }
+}
+
+// Fills shape_directions with the unit directions at an arc's segment
+// boundaries. A whole turn ends exactly on its first direction, so its last
+// segment meets its first without a crack.
+ShapeArcDirections :: (start: float32, sweep: float32, segments: s32) {
+    step: float32 = sweep / cast(float32)segments
+    index: s32 = 0
+    while index <= segments {
+        angle: float32 = start + step * cast(float32)index
+        shape_directions[index] = Vector2.{CosineDegrees(angle),
+            SineDegrees(angle)}
+        index += 1
+    }
+    if sweep >= 360.0 { shape_directions[segments] = shape_directions[0] }
+}
+
+ShapeArcPoint :: (center: Vector2, index: s32, radius: float32) -> Vector2 {
+    direction: Vector2 = shape_directions[index]
+    return Vector2.{center.x + direction.x * radius,
+        center.y + direction.y * radius}
+}
+
+// The arc's sector: a fan of triangles from the centre.
+ShapeBatchSector :: (center: Vector2, radius: float32, segments: s32) {
+    index: s32 = 0
+    while index < segments {
+        ShapeBatchTriangle(center, ShapeArcPoint(center, index, radius),
+            ShapeArcPoint(center, index + 1, radius))
+        index += 1
+    }
+}
+
+// The arc's band between two radii, two triangles per segment.
+ShapeBatchBand :: (center: Vector2, inner: float32, outer: float32,
+    segments: s32) {
+    index: s32 = 0
+    while index < segments {
+        inner_first: Vector2 = ShapeArcPoint(center, index, inner)
+        inner_next: Vector2 = ShapeArcPoint(center, index + 1, inner)
+        outer_first: Vector2 = ShapeArcPoint(center, index, outer)
+        outer_next: Vector2 = ShapeArcPoint(center, index + 1, outer)
+        ShapeBatchTriangle(inner_first, outer_first, outer_next)
+        ShapeBatchTriangle(inner_first, outer_next, inner_next)
+        index += 1
+    }
+}
+
+EmitLineShape :: (command: PaintCommand) {
+    start: Vector2 = ShapeAt(command, command.origin.x, command.origin.y)
+    end: Vector2 = ShapeAt(command, command.source.x, command.source.y)
+    corners: LineCorners = LineCornersFor(start, end, command.line_width)
+    if !corners.valid { return }
+    ShapeBatchBegin(command, command.color)
+    if ShapeHidden(PointsBounds(corners.points[:])) { return }
+    ShapeBatchTriangle(corners.points[0], corners.points[1],
+        corners.points[2])
+    ShapeBatchTriangle(corners.points[2], corners.points[1],
+        corners.points[3])
+    ShapeBatchFlush()
+}
+
+// A flat circle is one fan. A fading one is a fan and rings around it, each
+// in the fade's colour at the middle of its radii.
+EmitCircleShape :: (command: PaintCommand) {
+    radius: float32 = command.radius
+    segments: s32 = command.segments
+    if !Finite32(radius) || radius <= 0.0 { return }
+    if segments < 3 || segments > SHAPE_MAX_SEGMENTS { return }
+    center: Vector2 = ShapeAt(command, radius, radius)
+    ShapeBatchBegin(command, command.color)
+    if ShapeHidden(Rectangle.{center.x - radius, center.y - radius,
+            radius * 2.0, radius * 2.0}) { return }
+    ShapeArcDirections(0.0, 360.0, segments)
+    bands: s32 = ShapeFadeBands(command.color, command.end_color, radius)
+    band: s32 = 0
+    while band < bands {
+        color: Color = command.color
+        if bands > 1 {
+            share: float32 = (cast(float32)band + 0.5) / cast(float32)bands
+            color = GradientColorAt(command.color, command.end_color, share)
+        }
+        inner: float32 = radius * cast(float32)band / cast(float32)bands
+        outer: float32 = radius * cast(float32)(band + 1) / cast(float32)bands
+        if color.a != cast(u8)0 {
+            ShapeBatchBegin(command, color)
+            if band == 0 {
+                ShapeBatchSector(center, outer, segments)
+            } else {
+                ShapeBatchBand(center, inner, outer, segments)
+            }
+            ShapeBatchFlush()
+        }
+        band += 1
+    }
+}
+
+EmitRingShape :: (command: PaintCommand) {
+    outer: float32 = command.radius
+    inner: float32 = outer - command.line_width
+    sweep: float32 = command.source.x
+    segments: s32 = command.segments
+    if !Finite32(outer) || outer <= 0.0 || !Finite32(inner) { return }
+    if !Finite32(sweep) || sweep <= 0.0 || sweep > 360.0 { return }
+    if segments < 1 || segments > SHAPE_MAX_SEGMENTS { return }
+    center: Vector2 = ShapeAt(command, outer, outer)
+    ShapeBatchBegin(command, command.color)
+    if ShapeHidden(Rectangle.{center.x - outer, center.y - outer,
+            outer * 2.0, outer * 2.0}) { return }
+    ShapeArcDirections(command.rotation, sweep, segments)
+    if inner <= 0.0 {
+        ShapeBatchSector(center, outer, segments)
+    } else {
+        ShapeBatchBand(center, inner, outer, segments)
+    }
+    ShapeBatchFlush()
+}
+
+EmitTriangleShape :: (command: PaintCommand) {
+    first: Vector2 = ShapeAt(command, command.origin.x, command.origin.y)
+    second: Vector2 = ShapeAt(command, command.source.x, command.source.y)
+    third: Vector2 = ShapeAt(command, command.source.width,
+        command.source.height)
+    ShapeBatchBegin(command, command.color)
+    ShapeBatchTriangle(first, second, third)
+    ShapeBatchFlush()
+}
+
+EmitShape :: (command: PaintCommand) {
+    if command.clip_set &&
+    (command.clip.width <= 0.0 || command.clip.height <= 0.0) { return }
+    if command.kind == PaintKindShapeLine {
+        EmitLineShape(command)
+    } else if command.kind == PaintKindShapeCircle {
+        EmitCircleShape(command)
+    } else if command.kind == PaintKindShapeRing {
+        EmitRingShape(command)
+    } else if command.kind == PaintKindShapeTriangle {
+        EmitTriangleShape(command)
+    }
+}
+
+// The kind fixes the emitter and every raster input is in the command, so
+// the paint queue may reuse an unchanged shape's frame.
+SubmitShape :: (session: Session, data: PaintCommand) {
+    command: QueuedPaint
+    command.data = data
+    emit: PaintEmitter = EmitShape
+    command.emit = emit
+    command.has_emitter = true
+    command.builtin_emitter = true
+    clip_for: PaintClipper = ClipShape
+    command.clip_for = clip_for
+    command.clips = true
+    SubmitPaint(session, command)
+}
+
+PaintLineShape :: (session: Session, node: s32, bounds: Rectangle,
+    start: Vector2, end: Vector2, thickness: float32, color: Color) {
+    data: PaintCommand
+    data.kind = PaintKindShapeLine
+    data.node = node
+    data.bounds = bounds
+    data.origin = ShapeOffset(bounds, start)
+    end_offset: Vector2 = ShapeOffset(bounds, end)
+    data.source = Rectangle.{end_offset.x, end_offset.y, 0.0, 0.0}
+    data.line_width = thickness
+    data.color = color
+    SubmitShape(session, data)
+}
+
+// `bounds` is the circle's square; `edge` equals `center` for a flat circle.
+PaintCircleShape :: (session: Session, node: s32, bounds: Rectangle,
+    radius: float32, center: Color, edge: Color) {
+    data: PaintCommand
+    data.kind = PaintKindShapeCircle
+    data.node = node
+    data.bounds = bounds
+    data.radius = radius
+    data.segments = ShapeArcSegments(radius, 360.0)
+    data.color = center
+    data.end_color = edge
+    SubmitShape(session, data)
+}
+
+// `bounds` is the outer circle's square; 0 < sweep <= 360.
+PaintRingShape :: (session: Session, node: s32, bounds: Rectangle,
+    inner: float32, outer: float32, start: float32, sweep: float32,
+    color: Color) {
+    data: PaintCommand
+    data.kind = PaintKindShapeRing
+    data.node = node
+    data.bounds = bounds
+    data.radius = outer
+    data.line_width = outer - inner
+    data.rotation = start
+    data.source = Rectangle.{sweep, 0.0, 0.0, 0.0}
+    data.segments = ShapeArcSegments(outer, sweep)
+    data.color = color
+    SubmitShape(session, data)
+}
+
+PaintTriangleShape :: (session: Session, node: s32, bounds: Rectangle,
+    first: Vector2, second: Vector2, third: Vector2, color: Color) {
+    data: PaintCommand
+    data.kind = PaintKindShapeTriangle
+    data.node = node
+    data.bounds = bounds
+    data.origin = ShapeOffset(bounds, first)
+    second_offset: Vector2 = ShapeOffset(bounds, second)
+    third_offset: Vector2 = ShapeOffset(bounds, third)
+    data.source = Rectangle.{second_offset.x, second_offset.y,
+        third_offset.x, third_offset.y}
+    data.color = color
+    SubmitShape(session, data)
+}

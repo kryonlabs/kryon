@@ -51,7 +51,9 @@ PixmapPaintBounds :: (command: PaintCommand, viewport: Rectangle) -> Rectangle {
     } else if command.kind == PaintKindImage {
         bounds = command.clip
     } else if command.kind == PaintKindLine || command.kind == PaintKindRoundedFill ||
-        command.kind == PaintKindRoundedOutline || command.kind == PaintKindVerticalGradient {
+        command.kind == PaintKindRoundedOutline || command.kind == PaintKindVerticalGradient ||
+        command.kind == PaintKindShapeLine || command.kind == PaintKindShapeCircle ||
+        command.kind == PaintKindShapeRing || command.kind == PaintKindShapeTriangle {
         bounds = command.bounds
         if bounds.width < 0.0 { bounds.x += bounds.width; bounds.width = -bounds.width }
         if bounds.height < 0.0 { bounds.y += bounds.height; bounds.height = -bounds.height }

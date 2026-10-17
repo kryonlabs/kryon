@@ -1,0 +1,45 @@
+#import "drawing_props"
+#import "geometry"
+
+// A straight line at any angle, with square ends like raylib's DrawLineEx.
+LineProps :: struct {
+    key: u64
+    start: Vector2
+    end: Vector2
+    // Width across the line in pixels; 0 or less draws a one-pixel line.
+    thickness: float32
+    color: Color
+}
+
+// A filled circle. With has_edge, its colour fades linearly from `fill` at
+// the centre to `edge` at the rim, like raylib's DrawCircleGradient.
+CircleProps :: struct {
+    key: u64
+    center: Vector2
+    radius: float32
+    fill: Color
+    edge: Color
+    has_edge: bool
+}
+
+// The band between two radii, whole or as an arc. Angles are in degrees
+// from the right, turning clockwise on screen, as in raylib's DrawRing: -90
+// is the top. An inner radius of 0 fills a circle sector.
+RingProps :: struct {
+    key: u64
+    center: Vector2
+    inner_radius: float32
+    outer_radius: float32
+    start_angle: float32
+    end_angle: float32
+    color: Color
+}
+
+// A filled triangle; its points may come in either order.
+TriangleProps :: struct {
+    key: u64
+    first: Vector2
+    second: Vector2
+    third: Vector2
+    color: Color
+}

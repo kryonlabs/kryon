@@ -169,6 +169,22 @@ main :: () -> s32 {
     RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
         .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
     UnloadTexture(mesh_texture)
+    // A shape's triangles are filled as one path: no seam along the edges
+    // they share lets the background through.
+    fan: [12]Vector2
+    fan[0] = .{64.0, 52.0}
+    fan[1] = .{76.0, 52.0}
+    fan[2] = .{70.0, 58.0}
+    fan[3] = .{76.0, 52.0}
+    fan[4] = .{76.0, 64.0}
+    fan[5] = .{70.0, 58.0}
+    fan[6] = .{76.0, 64.0}
+    fan[7] = .{64.0, 64.0}
+    fan[8] = .{70.0, 58.0}
+    fan[9] = .{64.0, 64.0}
+    fan[10] = .{64.0, 52.0}
+    fan[11] = .{70.0, 58.0}
+    RasterTriangles(fan[:], Color.{0, 160, 0, 255})
     CopyCString("/test-font.ttf", path[:])
     font := LoadFontEx(*path[0], 20, null, 0)
     if !IsFontValid(font) { return 13 }

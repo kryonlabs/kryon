@@ -126,6 +126,18 @@ addToLibrary({
         return 37;
       }
     }
+    // A shape's four triangles meet along both diagonals of their square
+    // without a seam.
+    for(var j=1;j<11;j++) {
+      var points=[[64+j,52+j],[75-j,52+j]];
+      for(var point of points) {
+        var fill=Array.from(ctx.getImageData(Math.round(point[0]*dpi),Math.round(point[1]*dpi),1,1).data);
+        if(fill[0]!==0 || fill[1]!==160 || fill[2]!==0 || fill[3]!==255) {
+          globalThis.canvasTestError='triangle seam at '+point+' '+fill;
+          return 38;
+        }
+      }
+    }
     var textPixels=ctx.getImageData(0,70*dpi,160*dpi,35*dpi).data;
     var ink=0; for(var pixel=0;pixel<textPixels.length;pixel+=4) if(textPixels[pixel]<100) ink++;
     if(ink<40) {globalThis.canvasTestError='font atlas produced no text';return 22;}

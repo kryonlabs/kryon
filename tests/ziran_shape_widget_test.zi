@@ -1,0 +1,329 @@
+#import "drawing_props"
+#import "geometry"
+#import "box_props"
+#import "box_widget"
+#import "layout_props"
+#import "layout_widget"
+#import "paint_queue"
+#import "session"
+#import "shape_paint"
+#import "shape_props"
+#import "shape_widget"
+#import "tree"
+#import "tree_draw"
+#import "widget_kind"
+#import "ziran_shape_widget_host"
+
+using FrameStatus;
+using PaintKind;
+using WidgetKind;
+
+test_session: Session;
+RED: Color;
+BLUE: Color;
+
+// A 36-segment polygon of radius 20, as raylib's DrawCircle draws it.
+CIRCLE_AREA: float32 = 1250.267;
+
+TestSession :: () -> Session {
+    if !SessionValid(test_session) { test_session = SessionOpen() }
+    return test_session
+}
+
+Near :: (value: float32, expected: float32, tolerance: float32) -> bool {
+    return value >= expected - tolerance && value <= expected + tolerance
+}
+
+SameBounds :: (bounds: Rectangle, x: float32, y: float32, width: float32,
+    height: float32) -> bool {
+    return Near(bounds.x, x, 0.001) && Near(bounds.y, y, 0.001) &&
+    Near(bounds.width, width, 0.001) && Near(bounds.height, height, 0.001)
+}
+
+Begin :: () {
+    ShapeHostReset()
+    unused BeginFrame(TestSession(), cast(u64)7,
+        Rectangle.{0.0, 0.0, 200.0, 200.0})
+}
+
+// The host repaints every frame, so a frame equal to the last still paints.
+Finish :: () -> FrameEndResult {
+    return EndFrameRetained(TestSession(), false)
+}
+
+NodeIs :: (node: s32, kind: s32, x: float32, y: float32, width: float32,
+    height: float32) -> bool {
+    if node < 0 { return false }
+    entry: TreeEntry = TreeNodeAt(TestSession(), node)
+    return entry.kind == kind && SameBounds(entry.bounds, x, y, width, height)
+}
+
+// Lines are quads as wide as their thickness, at any angle.
+LineTest :: () -> s32 {
+    Begin()
+    node: s32 = Line(TestSession(), LineProps.{.key = cast(u64)11,
+            .start = Vector2.{10.0, 20.0}, .end = Vector2.{110.0, 20.0},
+            .thickness = 4.0, .color = RED})
+    if Finish().status != cast(FrameStatus)FrameOk { return 1 }
+    if !NodeIs(node, WidgetKindLine, 10.0, 18.0, 100.0, 4.0) { return 2 }
+    if ShapeHostCalls() != 1 || ShapeHostTriangles() != 2 ||
+    !Near(ShapeHostArea(), 400.0, 0.01) { return 3 }
+    if !SameBounds(ShapeHostExtent(), 10.0, 18.0, 100.0, 4.0) { return 4 }
+    color: Color = ShapeHostCallColor(0)
+    if color.r != RED.r || color.a != RED.a { return 5 }
+
+    // A diagonal 50 long and 2 wide; 0 thickness is one pixel.
+    Begin()
+    node = Line(TestSession(), LineProps.{.key = cast(u64)12,
+            .end = Vector2.{30.0, 40.0}, .thickness = 2.0, .color = RED})
+    hairline: s32 = Line(TestSession(), LineProps.{.key = cast(u64)13,
+            .start = Vector2.{0.0, 100.0}, .end = Vector2.{60.0, 100.0},
+            .color = BLUE})
+    unused Finish()
+    if !NodeIs(node, WidgetKindLine, -0.8, -0.6, 31.6, 41.2) { return 6 }
+    if !NodeIs(hairline, WidgetKindLine, 0.0, 99.5, 60.0, 1.0) { return 7 }
+    if ShapeHostCalls() != 2 || !Near(ShapeHostArea(), 160.0, 0.01) { return 8 }
+    return 0
+}
+
+CircleTest :: () -> s32 {
+    Begin()
+    node: s32 = Circle(TestSession(), CircleProps.{.key = cast(u64)21,
+            .center = Vector2.{50.0, 60.0}, .radius = 20.0, .fill = BLUE})
+    unused Finish()
+    if !NodeIs(node, WidgetKindCircle, 30.0, 40.0, 40.0, 40.0) { return 11 }
+    if ShapeHostCalls() != 1 || ShapeHostTriangles() != 36 ||
+    !Near(ShapeHostArea(), CIRCLE_AREA, 0.5) { return 12 }
+    if !SameBounds(ShapeHostExtent(), 30.0, 40.0, 40.0, 40.0) { return 13 }
+
+    // A large circle gets more segments so its edge stays round.
+    segments: s32 = ShapeArcSegments(300.0, 360.0)
+    if segments <= 36 || segments > 64 { return 14 }
+    Begin()
+    unused Circle(TestSession(), CircleProps.{.center = Vector2.{100.0, 100.0},
+            .radius = 300.0, .fill = BLUE})
+    unused Finish()
+    if ShapeHostTriangles() != segments { return 15 }
+
+    // A fade from the centre to a clear rim: ten rings of falling alpha,
+    // together covering the circle once.
+    Begin()
+    unused Circle(TestSession(), CircleProps.{.key = cast(u64)22,
+            .center = Vector2.{50.0, 60.0}, .radius = 20.0,
+            .fill = Color.{255, 0, 0, 200}, .edge = Color.{255, 0, 0, 0},
+            .has_edge = true})
+    unused Finish()
+    if ShapeHostCalls() != 10 || ShapeHostTriangles() != 36 + 9 * 72 { return 16 }
+    if !Near(ShapeHostArea(), CIRCLE_AREA, 1.0) { return 17 }
+    if ShapeHostCallColor(0).a != cast(u8)190 ||
+    ShapeHostCallColor(9).a != cast(u8)10 ||
+    ShapeHostCallColor(0).r != cast(u8)255 { return 18 }
+    if ShapeHostCallTriangles(0) != 36 || ShapeHostCallTriangles(1) != 72 { return 19 }
+    index: s32 = 1
+    while index < 10 {
+        if ShapeHostCallColor(index).a >= ShapeHostCallColor(index - 1).a { return 20 }
+        index += 1
+    }
+    return 0
+}
+
+RingTest :: () -> s32 {
+    // A quarter from the top (-90 degrees) clockwise to the right (0).
+    Begin()
+    node: s32 = Ring(TestSession(), RingProps.{.key = cast(u64)31,
+            .center = Vector2.{100.0, 100.0}, .inner_radius = 30.0,
+            .outer_radius = 40.0, .start_angle = -90.0, .end_angle = 0.0,
+            .color = RED})
+    unused Finish()
+    if !NodeIs(node, WidgetKindRing, 60.0, 60.0, 80.0, 80.0) { return 31 }
+    if ShapeHostCalls() != 1 || ShapeHostTriangles() != 18 ||
+    !Near(ShapeHostArea(), 546.99, 0.5) { return 32 }
+    if !SameBounds(ShapeHostExtent(), 100.0, 60.0, 40.0, 40.0) { return 33 }
+
+    // Swapped radii and angles draw the same ring, as in raylib.
+    Begin()
+    unused Ring(TestSession(), RingProps.{.center = Vector2.{100.0, 100.0},
+            .inner_radius = 40.0, .outer_radius = 30.0, .start_angle = 0.0,
+            .end_angle = -90.0, .color = RED})
+    unused Finish()
+    if ShapeHostTriangles() != 18 || !Near(ShapeHostArea(), 546.99, 0.5) ||
+    !SameBounds(ShapeHostExtent(), 100.0, 60.0, 40.0, 40.0) { return 34 }
+
+    // No inner radius fills a sector; more than a turn draws one turn.
+    Begin()
+    unused Ring(TestSession(), RingProps.{.center = Vector2.{50.0, 60.0},
+            .outer_radius = 20.0, .start_angle = 0.0, .end_angle = 720.0,
+            .color = RED})
+    unused Finish()
+    if ShapeHostTriangles() != 36 || !Near(ShapeHostArea(), CIRCLE_AREA, 0.5) { return 35 }
+
+    // Equal angles draw nothing.
+    Begin()
+    node = Ring(TestSession(), RingProps.{.center = Vector2.{50.0, 60.0},
+            .inner_radius = 10.0, .outer_radius = 20.0, .start_angle = 45.0,
+            .end_angle = 45.0, .color = RED})
+    unused Finish()
+    if node < 0 || ShapeHostCalls() != 0 { return 36 }
+    return 0
+}
+
+TriangleTest :: () -> s32 {
+    Begin()
+    node: s32 = Triangle(TestSession(), TriangleProps.{.key = cast(u64)41,
+            .first = Vector2.{10.0, 10.0}, .second = Vector2.{50.0, 10.0},
+            .third = Vector2.{10.0, 40.0}, .color = BLUE})
+    reversed: s32 = Triangle(TestSession(), TriangleProps.{.key = cast(u64)42,
+            .first = Vector2.{10.0, 40.0}, .second = Vector2.{50.0, 10.0},
+            .third = Vector2.{10.0, 10.0}, .color = BLUE})
+    unused Finish()
+    if !NodeIs(node, WidgetKindTriangle, 10.0, 10.0, 40.0, 30.0) ||
+    !NodeIs(reversed, WidgetKindTriangle, 10.0, 10.0, 40.0, 30.0) { return 41 }
+    // The host checks that both arrive wound clockwise.
+    if ShapeHostCalls() != 2 || ShapeHostTriangles() != 2 ||
+    !Near(ShapeHostArea(), 1200.0, 0.01) { return 42 }
+    return 0
+}
+
+// Inside a clipping parent only the visible part reaches the host, and a
+// shape wholly outside it is not drawn.
+ClipTest :: () -> s32 {
+    Begin()
+    viewport: s32 = TreeSubmit(TestSession(), cast(u64)50, 0, WidgetKindCard,
+        Rectangle.{0.0, 0.0, 200.0, 200.0})
+    TreeSetChildClip(TestSession(), viewport, Rectangle.{50.0, 0.0, 150.0, 200.0})
+    if !TreePushScope(TestSession(), viewport) { return 51 }
+    unused Circle(TestSession(), CircleProps.{.key = cast(u64)51,
+            .center = Vector2.{50.0, 60.0}, .radius = 20.0, .fill = BLUE})
+    unused Line(TestSession(), LineProps.{.key = cast(u64)52,
+            .start = Vector2.{0.0, 150.0}, .end = Vector2.{40.0, 150.0},
+            .thickness = 2.0, .color = RED})
+    unused Ring(TestSession(), RingProps.{.key = cast(u64)53,
+            .center = Vector2.{50.0, 150.0}, .inner_radius = 10.0,
+            .outer_radius = 20.0, .start_angle = 0.0, .end_angle = 360.0,
+            .color = RED})
+    TreePopScope(TestSession())
+    unused Finish()
+    if ShapeHostCalls() != 2 { return 52 }
+    extent: Rectangle = ShapeHostExtent()
+    if extent.x < 50.0 || extent.x + extent.width > 70.001 { return 53 }
+    // Half of the circle and half of the ring.
+    if !Near(ShapeHostArea(), CIRCLE_AREA * 0.5 + 0.5 * 36.0 * 300.0 * 0.17364818 * 0.5, 0.5) { return 54 }
+    return 0
+}
+
+// A shape a layout places moves there with its paint.
+LayoutTest :: () -> s32 {
+    Begin()
+    props: ColumnProps
+    props.key = cast(u64)60
+    props.bounds = Rectangle.{0.0, 0.0, 200.0, 200.0}
+    props.padding = 10
+    column: LayoutContainer = Column(TestSession(), props)
+    node: s32 = Triangle(TestSession(), TriangleProps.{.key = cast(u64)61,
+            .second = Vector2.{20.0, 0.0}, .third = Vector2.{0.0, 20.0},
+            .color = BLUE})
+    if !column.opened || !End(TestSession()) { return 61 }
+    unused Finish()
+    if !NodeIs(node, WidgetKindTriangle, 10.0, 10.0, 20.0, 20.0) { return 62 }
+    if !SameBounds(ShapeHostExtent(), 10.0, 10.0, 20.0, 20.0) ||
+    !Near(ShapeHostArea(), 200.0, 0.01) { return 63 }
+    return 0
+}
+
+ShapesFrame :: (ring_end: float32) -> FrameEndResult {
+    Begin()
+    unused Line(TestSession(), LineProps.{.key = cast(u64)71,
+            .start = Vector2.{10.0, 20.0}, .end = Vector2.{110.0, 60.0},
+            .thickness = 3.0, .color = RED})
+    unused Circle(TestSession(), CircleProps.{.key = cast(u64)72,
+            .center = Vector2.{50.0, 60.0}, .radius = 20.0, .fill = BLUE,
+            .edge = RED, .has_edge = true})
+    unused Ring(TestSession(), RingProps.{.key = cast(u64)73,
+            .center = Vector2.{100.0, 100.0}, .inner_radius = 30.0,
+            .outer_radius = 40.0, .start_angle = -90.0, .end_angle = ring_end,
+            .color = RED})
+    unused Triangle(TestSession(), TriangleProps.{.key = cast(u64)74,
+            .first = Vector2.{10.0, 10.0}, .second = Vector2.{50.0, 10.0},
+            .third = Vector2.{10.0, 40.0}, .color = BLUE})
+    return EndFrameRetained(TestSession(), true)
+}
+
+// Each shape is one builtin paint command of its own kind, and an unchanged
+// frame of shapes is recognised and not painted again.
+RetainedTest :: () -> s32 {
+    TreeStart(TestSession(), cast(u64)8, Rectangle.{0.0, 0.0, 200.0, 200.0})
+    unused Line(TestSession(), LineProps.{.end = Vector2.{10.0, 10.0},
+            .color = RED})
+    unused Circle(TestSession(), CircleProps.{.radius = 5.0, .fill = RED})
+    unused Ring(TestSession(), RingProps.{.outer_radius = 5.0,
+            .end_angle = 90.0, .color = RED})
+    unused Triangle(TestSession(), TriangleProps.{.second = Vector2.{5.0, 0.0},
+            .third = Vector2.{0.0, 5.0}, .color = RED})
+    if !TreeFinish(TestSession()) || PendingPaintCount(TestSession()) != 4 { return 71 }
+    if PendingPaintAt(TestSession(), 0).kind != PaintKindShapeLine ||
+    PendingPaintAt(TestSession(), 1).kind != PaintKindShapeCircle ||
+    PendingPaintAt(TestSession(), 2).kind != PaintKindShapeRing ||
+    PendingPaintAt(TestSession(), 3).kind != PaintKindShapeTriangle { return 72 }
+    PaintClear(TestSession())
+
+    result: FrameEndResult = ShapesFrame(0.0)
+    calls: s32 = ShapeHostCalls()
+    if result.status != cast(FrameStatus)FrameOk || result.paint_count != 4 ||
+    calls == 0 { return 73 }
+    result = ShapesFrame(0.0)
+    if !result.paint_unchanged || !FramePaintUnchanged(TestSession()) ||
+    ShapeHostCalls() != 0 { return 74 }
+    result = ShapesFrame(90.0)
+    if result.paint_unchanged || ShapeHostCalls() != calls { return 75 }
+    return 0
+}
+
+// A Box fades vertically from its fill to fill_bottom; otherwise its fill
+// stays one rounded rectangle.
+BoxTest :: () -> s32 {
+    Begin()
+    unused Box(TestSession(), BoxProps.{.key = cast(u64)81,
+            .bounds = Rectangle.{10.0, 20.0, 30.0, 4.0},
+            .fill = Color.{0, 0, 0, 0}, .fill_bottom = Color.{200, 100, 50, 255},
+            .has_fill_bottom = true})
+    unused Finish()
+    // Four one-pixel rows sampled at 1/8, 3/8, 5/8 and 7/8.
+    if ShapeHostRows() != 4 || ShapeHostFirstRow().a != cast(u8)32 ||
+    ShapeHostLastRow().a != cast(u8)223 ||
+    ShapeHostLastRow().r != cast(u8)175 { return 81 }
+    Begin()
+    unused Box(TestSession(), BoxProps.{.key = cast(u64)82,
+            .bounds = Rectangle.{10.0, 20.0, 30.0, 40.0},
+            .fill = BLUE, .radius = 6.0})
+    unused Finish()
+    if ShapeHostRows() != 1 || ShapeHostRoundedRadius() != 6.0 { return 82 }
+    return 0
+}
+
+// Outside a frame a shape has no node and paints at once.
+ImmediateTest :: () -> s32 {
+    ShapeHostReset()
+    node: s32 = Circle(TestSession(), CircleProps.{.center = Vector2.{20.0, 20.0},
+            .radius = 20.0, .fill = RED})
+    if node != -1 || ShapeHostCalls() != 1 ||
+    !Near(ShapeHostArea(), CIRCLE_AREA, 0.5) { return 91 }
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    RED = Color.{200, 10, 10, 255}
+    BLUE = Color.{10, 20, 200, 255}
+    status: s32 = LineTest()
+    if status == 0 { status = CircleTest() }
+    if status == 0 { status = RingTest() }
+    if status == 0 { status = TriangleTest() }
+    if status == 0 { status = ClipTest() }
+    if status == 0 { status = LayoutTest() }
+    if status == 0 { status = RetainedTest() }
+    if status == 0 { status = BoxTest() }
+    if status == 0 { status = ImmediateTest() }
+    if status == 0 && ShapeHostFailed() { status = 99 }
+    print("%\n", status)
+    return status
+}

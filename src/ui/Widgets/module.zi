@@ -59,6 +59,8 @@ using SegmentedControlPropsModule :: #import "segmented_control_props";
 using SegmentedControlWidgetModule :: #import "segmented_control_widget";
 using SelectablePropsModule :: #import "selectable_props";
 using SelectableWidgetModule :: #import "selectable_widget";
+using ShapePropsModule :: #import "shape_props";
+using ShapeWidgetModule :: #import "shape_widget";
 using SeparatorPropsModule :: #import "separator_props";
 using SeparatorWidgetModule :: #import "separator_widget";
 using SliderPropsModule :: #import "slider_props";

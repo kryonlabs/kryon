@@ -28,6 +28,7 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module,"raster_text") { return function=="RasterText" || function=="RasterTextClipped" }
     if ModuleName(module,"raster_shape") { return function=="RasterRoundedRectangle" || function=="RasterRoundedRectangleOutline" }
     if ModuleName(module,"raster") { return function=="RasterLine" }
+    if ModuleName(module,"raster_triangles") { return function=="RasterTriangles" }
     if ModuleName(module,"paint_queue") { return function=="RasterImage" || function=="RasterImageMesh" }
     if ModuleName(module,"image_raster") { return function=="ImageWidth" || function=="ImageHeight" }
     if ModuleName(module,"system_clipboard") { return function=="SystemClipboardOpenHost" || function=="SystemClipboardByteHost" || function=="SystemClipboardWriteHost" }
@@ -86,7 +87,8 @@ VectorFrom :: (value: HostValue) -> Vector2 {
     return Vector2.{cast(float32)value.fields[0].value.real,
         cast(float32)value.fields[1].value.real}
 }
-// A bundle's warped-image grid, copied out of its slice of Vector2 records.
+// A bundle's warped-image grid or shape triangles, copied out of its slice
+// of Vector2 records.
 mesh_points: [4096]Vector2;
 MeshPointsFrom :: (value: HostValue) -> s64 {
     if value.kind != HostSlice || value.length > cast(usize)4096 ||
@@ -236,6 +238,12 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
             RectangleFrom(args[2]), RectangleFrom(args[3]), RectangleFrom(args[4]),
             VectorFrom(args[5]), cast(float32)args[6].real, cast(float32)args[7].real,
             ColorFrom(args[8]))
+        return 1
+    }
+    if function == "RasterTriangles" && count == 2 && ColorValue(args[1]) {
+        points := MeshPointsFrom(args[0])
+        if points < 0 { return 0 }
+        RasterTriangles(mesh_points[0:points], ColorFrom(args[1]))
         return 1
     }
     if function == "RasterImageMesh" && count == 8 &&

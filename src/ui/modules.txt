@@ -121,6 +121,7 @@ radio_widget.zi
 raster.zi
 raster_shape.zi
 raster_text.zi
+raster_triangles.zi
 reorder.zi
 reorder_props.zi
 reorder_widget.zi
@@ -145,6 +146,9 @@ separator.zi
 separator_props.zi
 separator_widget.zi
 session.zi
+shape_paint.zi
+shape_props.zi
+shape_widget.zi
 slider.zi
 slider_props.zi
 slider_widget.zi

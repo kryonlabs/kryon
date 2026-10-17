@@ -4,6 +4,13 @@
 
 ### Added
 
+- Shapes beyond rectangles: `Line` draws a line of any thickness at any
+  angle, `Circle` a filled circle that can fade from its centre to its rim,
+  `Ring` a full ring or an arc between two radii, and `Triangle` a filled
+  triangle, and `Box` can fade its fill from top to bottom. Like `Box` they
+  take no input, sit in the widget tree, show only their visible part inside
+  a scroll area, and keep an unchanged frame reusable. Desktop, Android, web,
+  Cairo, the pixmap host, Plan 9 and the terminal draw them.
 - UI tests can drive a running app without reading screenshots: with
   `KRYON_TEST_DRIVER` naming a directory, an app that calls the `TestDriver`
   functions where it samples input answers a test's commands after each

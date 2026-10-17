@@ -1,6 +1,7 @@
 // Canvas 2D drawing for the application's shapes, gradients, transforms, and
 // clips. The operations mirror raylib's 2D drawing; each turns into calls on
 // the page's 2D context, which page_core.zi holds.
+#import "geometry"
 #import "page_core"
 #import "web"
 
@@ -258,6 +259,34 @@ PageDrawCircleGradient :: (x: float64, y: float64, radius: float64,
     PageGradient(ctx, gradient, ir, ig, ib, ia, outer_r, og, ob, oa)
     unused WebCall0(ctx, page_names.begin_path)
     PageArc(ctx, x, y, radius, 0.0, PAGE_TAU, false)
+    unused WebCall0(ctx, page_names.fill)
+    WebEnd(scope)
+}
+
+// Every three points are one triangle; all of them are filled as one path,
+// so the canvas's antialiasing shows no seam where two of them meet.
+PageFillTriangles :: (points: []Vector2, r: s32, g: s32, b: s32, a: s32) {
+    ctx: s32 = PageContext()
+    if !PageIsOpen() || ctx == 0 { return }
+    count: s64 = points.count - points.count % 3
+    if count == 0 { return }
+    scope: s32 = WebScope()
+    PageSetFill(ctx, r, g, b, a)
+    unused WebCall0(ctx, page_names.begin_path)
+    at: s64 = 0
+    while at < count {
+        unused WebCall2(ctx, page_names.move_to,
+            WebNumber(cast(float64)points[at].x),
+            WebNumber(cast(float64)points[at].y))
+        unused WebCall2(ctx, page_names.line_to,
+            WebNumber(cast(float64)points[at + 1].x),
+            WebNumber(cast(float64)points[at + 1].y))
+        unused WebCall2(ctx, page_names.line_to,
+            WebNumber(cast(float64)points[at + 2].x),
+            WebNumber(cast(float64)points[at + 2].y))
+        unused WebCall0(ctx, page_names.close_path)
+        at += 3
+    }
     unused WebCall0(ctx, page_names.fill)
     WebEnd(scope)
 }

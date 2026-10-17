@@ -18,6 +18,8 @@ texels: [16]u8;
 // Draws a plain triangle after the mesh, as widgets drawn after a warped
 // image do.
 triangle_after: bool;
+// Draws solid triangles in both windings after the mesh, as shape widgets do.
+solid_after: bool;
 points: [6]Vector2;
 texture: Texture2D;
 probe_x: [4]s32;
@@ -41,6 +43,16 @@ Check :: (columns: s32, rows: s32, clip: Rectangle) -> bool {
         // A rounded fill, which Kryon draws as plain triangles.
         RasterRoundedRectangle(.{192.0, 192.0, 56.0, 56.0}, 12.0, 8,
             .{255, 255, 0, 255})
+    }
+    if solid_after {
+        solid: [6]Vector2
+        solid[0] = .{192.0, 192.0}
+        solid[1] = .{248.0, 192.0}
+        solid[2] = .{248.0, 248.0}
+        solid[3] = .{192.0, 192.0}
+        solid[4] = .{192.0, 248.0}
+        solid[5] = .{248.0, 248.0}
+        RasterTriangles(solid[:], .{0, 255, 255, 255})
     }
     TestEndDrawing()
     image := TestCapture()
@@ -116,5 +128,13 @@ main :: () -> s32 {
     Probe(0, 40, 40, red); Probe(1, 150, 40, green)
     Probe(2, 40, 150, blue); Probe(3, 200, 200, cast(u32)0xffff00)
     if !Check(2, 2, full) { return 7 }
+    // Solid triangles fill in either winding, in their own colour.
+    triangle_after = false
+    solid_after = true
+    Probe(0, 40, 40, red)
+    Probe(1, 240, 200, cast(u32)0x00ffff)
+    Probe(2, 200, 240, cast(u32)0x00ffff)
+    Probe(3, 180, 180, black)
+    if !Check(2, 2, full) { return 8 }
     return 0
 }

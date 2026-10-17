@@ -1,0 +1,17 @@
+#import "drawing_props"
+#import "geometry"
+host_api :: #system_library "host_api";
+
+// The platform fills the triangles of a shape chosen by a Kryon widget.
+// Every three consecutive points are one triangle; extra points are ignored.
+// One call holds triangles of one shape in one colour. They never overlap
+// and Kryon winds them all clockwise on screen, so a host may fill them as
+// one path: an antialiasing host then shows no seam where two meet. A host
+// filling them one at a time must give a pixel centre on a shared edge to
+// exactly one of the two triangles.
+RasterTriangles :: (points: []Vector2, color: Color) #foreign host_api;
+
+#program_export
+FillTriangles :: (points: []Vector2, color: Color) {
+    RasterTriangles(points, color)
+}

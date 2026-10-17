@@ -717,6 +717,40 @@ RasterLine :: (line: Rectangle, color: Color) {
     ReleaseImage(brush)
 }
 
+// Solid triangles fill the rows of pixel centres they cover, by the same
+// edge rule as the pixmap host, so a translucent shape blends once.
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    count: s64 = points.count - points.count % 3
+    if count == 0 || color.a == cast(u8)0 || native_window == null { return }
+    brush := AllocateImage(native_display, DrawBounds(1, 1), cast(usize)0x08182848, 1, ColorValue(color))
+    if brush == null { return }
+    height: s32 = native_window.bounds.max.y - native_window.bounds.min.y
+    width: s32 = native_window.bounds.max.x - native_window.bounds.min.x
+    no_source: Vector2 = Vector2.{0.0, 0.0}
+    at: s64 = 0
+    while at < count {
+        triangle := Pixels.MeshTriangleFor(points[at], no_source,
+            points[at + 1], no_source, points[at + 2], no_source)
+        top: s32 = triangle.top
+        if top < 0 { top = 0 }
+        bottom: s32 = triangle.bottom
+        if bottom > height { bottom = height }
+        y: s32 = top
+        while triangle.valid && y < bottom {
+            span := Pixels.MeshTriangleRow(triangle, y)
+            first: s32 = span.first
+            if first < 0 { first = 0 }
+            end: s32 = span.end
+            if end > width { end = width }
+            PaintRow(brush, first, end, y)
+            y += 1
+        }
+        at += 3
+    }
+    ReleaseImage(brush)
+}
+
 DrawBoundsAt :: (x: s32, y: s32, width: s32, height: s32) -> DrawRectangle {
     return DrawRectangle.{
         DrawPoint.{x, y},

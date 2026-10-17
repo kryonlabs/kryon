@@ -9,6 +9,7 @@
 #import "canvas_text"
 #import "image_props"
 #import "page_font"
+#import "page_paint"
 #import "page_texture"
 #import "raylib_clip"
 
@@ -115,6 +116,14 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
 RasterLine :: (line: Rectangle, color: Color) {
     DrawLineEx(Vector2.{line.x, line.y},
         Vector2.{line.x + line.width, line.y + line.height}, 1.0, color)
+}
+
+// One call's triangles are one shape: the page fills them as one path.
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    if color.a == cast(u8)0 { return }
+    PageFillTriangles(points, cast(s32)color.r, cast(s32)color.g,
+        cast(s32)color.b, cast(s32)color.a)
 }
 
 #program_export

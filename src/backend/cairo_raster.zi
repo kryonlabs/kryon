@@ -459,6 +459,26 @@ RasterLine :: (line: Rectangle, color: Color) {
     Stroke(paint)
 }
 
+// The triangles of one call are one shape, filled as one path so that
+// antialiasing shows no seam where two of them meet.
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    PrepareRasterPaint()
+    count: s64 = points.count - points.count % 3
+    if count == 0 || color.a == cast(u8)0 { return }
+    NewPath(paint)
+    at: s64 = 0
+    while at < count {
+        MoveTo(paint, points[at].x, points[at].y)
+        LineTo(paint, points[at + 1].x, points[at + 1].y)
+        LineTo(paint, points[at + 2].x, points[at + 2].y)
+        ClosePath(paint)
+        at += 3
+    }
+    SetColor(color)
+    Fill(paint)
+}
+
 #program_export
 RasterText :: (value: string, x: s32, y: s32,
     font: s32, color: Color) {
