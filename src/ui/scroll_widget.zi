@@ -84,6 +84,7 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
         input.content_height = props.content_height
         input.content_width = props.content_width
         input.horizontal = props.horizontal
+        input.keep_scrollbar = props.keep_scrollbar
         input.has_offset = true
         input.offset = result.scroll_offset
         input.pointer_allowed = props.input.pointer_allowed

@@ -65,6 +65,11 @@
 - `DismissibleOverlay` reports a tap on its backdrop or on its panel's own
   background as `tapped`, whether or not the tap closes it, so an overlay
   that may not be dismissed, such as a guide, can make a tap go on.
+- A `Scroll` can keep its scrollbar while its content still fits: with
+  `ScrollProps.keep_scrollbar` set, the scrollbar shows and takes its width
+  from the content from the start, so a list whose rows open keeps its
+  columns when it starts to scroll. With nothing to scroll, the scrollbar
+  takes no press, drag or hover.
 
 ### Fixed
 

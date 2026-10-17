@@ -492,6 +492,8 @@ ScrollFrameInput :: struct {
     content_height: s32
     content_width: s32
     horizontal: bool
+    // The scrollbar shows even while the content fits.
+    keep_scrollbar: bool
     has_offset: bool
     offset: s32
     pointer_allowed: bool
@@ -668,10 +670,13 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
             frame = ScrollGlideStep(frame, input,
                 ScrollClamp(input.glide_target, maximum), ScrollElapsed(input))
         }
-        frame.scrollbar = maximum > 0 &&
+        frame.scrollbar = (maximum > 0 || input.keep_scrollbar) &&
         input.bounds.width > cast(float32)metrics.scrollbar_width && input.bounds.height > 0.0
     }
-    if !frame.scrollbar || input.disabled || input.owner_captured {
+    // A scrollbar kept while the content fits has nothing to scroll: it
+    // takes no press, drag, fling or hover.
+    scrolls: bool = frame.scrollbar && maximum > 0
+    if !scrolls || input.disabled || input.owner_captured {
         frame.clear_drag = active || content_active
         frame.consume_release = (active || content_active) && input.released
         active = false
@@ -682,8 +687,9 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
         x: s32 = cast(s32)(input.bounds.x + input.bounds.width) - metrics.scrollbar_width
         frame.paint = ScrollBarPaintFor(x, cast(s32)input.bounds.y, cast(s32)input.bounds.height,
         input.content_height, frame.offset, maximum, metrics)
-        if !input.disabled && !input.owner_captured && input.pointer_allowed &&
-        input.pressed && ScrollPointInside(input.mouse, frame.paint.track_bounds) {
+        if scrolls && !input.disabled && !input.owner_captured &&
+        input.pointer_allowed && input.pressed &&
+        ScrollPointInside(input.mouse, frame.paint.track_bounds) {
             frame.start_drag = true
             frame.clear_drag = false
             active = true
@@ -695,7 +701,7 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
         // Touch scrolls by dragging the content. A press anywhere in the
         // content arms the drag; it moves the content once the pointer has
         // travelled past the threshold, and a shorter press stays a tap.
-        if !active && !content_active && !input.disabled &&
+        if scrolls && !active && !content_active && !input.disabled &&
             !input.owner_captured && input.pointer_allowed && input.pressed &&
             ScrollPointInside(input.mouse, input.bounds) {
             frame.start_drag = true
@@ -769,8 +775,8 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
                 frame.content_drag = false
                 content_active = false
             }
-        } else if input.flinging && !active && !frame.consume_wheel &&
-            !input.disabled {
+        } else if scrolls && input.flinging && !active &&
+            !frame.consume_wheel && !input.disabled {
             frame = ScrollFlingStep(frame, input, maximum)
         }
         if active {
@@ -788,7 +794,7 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
         input.content_height, frame.offset, maximum, metrics)
         if active {
             frame.thumb_state = cast(s32)ButtonStatePressed
-        } else if !input.disabled && input.pointer_allowed &&
+        } else if scrolls && !input.disabled && input.pointer_allowed &&
         ScrollPointInside(input.mouse, frame.paint.thumb_bounds) {
             frame.thumb_state = cast(s32)ButtonStateHover
         }
