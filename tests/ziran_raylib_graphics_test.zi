@@ -130,5 +130,13 @@ main :: () -> s32 {
     clock_seconds += 0.02
     if ImageWidth("own-b.png") != 200 { return 20 }
     load_seconds = 0.0
+    // A sideways camera photo is turned upright once, and its file and
+    // decoded image are released after the texture is made.
+    clock_seconds += 0.02
+    if ImageWidth("camera.jpg") != 200 || ImageHeight("camera.jpg") != 100 ||
+    clockwise_turns != 1 || other_turns != 0 || file_frees != 1 ||
+    image_unloads != 1 || graphics_failed {
+        return 21
+    }
     return 0
 }

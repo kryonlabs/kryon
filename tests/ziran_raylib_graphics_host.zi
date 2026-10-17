@@ -36,6 +36,67 @@ LoadTexture :: (path: *u8) -> Texture2D {
         200, 100, 1, 7}
 }
 
+// A sideways camera JPEG: Exif orientation 6, stored turned left.
+sideways_jpeg: [40]u8 = .[255, 216, 255, 225, 0, 34, 69, 120, 105, 102, 0, 0,
+    77, 77, 0, 42, 0, 0, 0, 8, 0, 1, 1, 18, 0, 3, 0, 0, 0, 1, 0, 6,
+    0, 0, 0, 0, 0, 0, 255, 217];
+photo_pixels: [4]u8;
+file_frees: s32;
+image_unloads: s32;
+clockwise_turns: s32;
+// Turns and flips other than one clockwise turn.
+other_turns: s32;
+
+#program_export
+LoadFileData :: (path: *u8, size: *s32) -> *u8 {
+    unused path
+    size.* = 40
+    return *sideways_jpeg[0]
+}
+
+#program_export
+UnloadFileData :: (data: *u8) {
+    if data != *sideways_jpeg[0] { graphics_failed = true }
+    file_frees += 1
+}
+
+#program_export
+LoadImageFromMemory :: (file_type: *u8, data: *u8, size: s32) -> RaylibGlyphImage {
+    unused file_type
+    if data != *sideways_jpeg[0] || size != 40 { graphics_failed = true }
+    return RaylibGlyphImage.{cast(*void)*photo_pixels[0], 100, 200, 1, 7}
+}
+
+#program_export
+ImageRotateCW :: (image: *RaylibGlyphImage) {
+    width := image.width
+    image.width = image.height
+    image.height = width
+    clockwise_turns += 1
+}
+
+#program_export
+ImageRotateCCW :: (image: *RaylibGlyphImage) { unused image; other_turns += 1 }
+
+#program_export
+ImageFlipHorizontal :: (image: *RaylibGlyphImage) { unused image; other_turns += 1 }
+
+#program_export
+ImageFlipVertical :: (image: *RaylibGlyphImage) { unused image; other_turns += 1 }
+
+#program_export
+LoadTextureFromImage :: (image: RaylibGlyphImage) -> Texture2D {
+    texture_loads += 1
+    return Texture2D.{cast(u32)(context_epoch * 1000 + texture_loads),
+        image.width, image.height, 1, image.format}
+}
+
+#program_export
+UnloadImage :: (image: RaylibGlyphImage) {
+    if image.data != cast(*void)*photo_pixels[0] { graphics_failed = true }
+    image_unloads += 1
+}
+
 #program_export
 UnloadTexture :: (texture: Texture2D) {
     if lost_context || texture.id == 0 || flushes == 0 {
