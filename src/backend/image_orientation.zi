@@ -1,0 +1,98 @@
+// The Exif orientation of a JPEG file: how its stored pixels turn to stand
+// upright (1 to 8, 1 when the file does not say). Cameras store a portrait
+// photo sideways and say so here; browsers and GdkPixbuf apply it when they
+// decode, and the raylib host does the same with this reader. Only bounded
+// reads of the file's own bytes.
+
+#scope_file
+ExifNumber :: (data: string, at: s64, size: s64, little: bool) -> s64 {
+    if at < 0 || size < 1 || at + size > data.count {
+        return -1
+    }
+    value: s64 = 0
+    index: s64 = 0
+    while index < size {
+        byte := cast(s64)data[ifx little then at + size - 1 - index else at + index]
+        value = value * 256 + byte
+        index += 1
+    }
+    return value
+}
+
+// The orientation in the TIFF block data[start:end].
+TiffOrientation :: (data: string, start: s64, end: s64) -> s32 {
+    if end - start < 8 || end > data.count {
+        return 1
+    }
+    little := data[start] == cast(u8)73 && data[start + 1] == cast(u8)73
+    big := data[start] == cast(u8)77 && data[start + 1] == cast(u8)77
+    if !little && !big {
+        return 1
+    }
+    tiff := data[start:end]
+    if ExifNumber(tiff, 2, 2, little) != 42 {
+        return 1
+    }
+    directory := ExifNumber(tiff, 4, 4, little)
+    entries := ExifNumber(tiff, directory, 2, little)
+    if directory < 8 || entries < 0 || entries > 1024 {
+        return 1
+    }
+    index: s64 = 0
+    while index < entries {
+        entry := directory + 2 + index * 12
+        if entry + 12 > tiff.count {
+            return 1
+        }
+        if ExifNumber(tiff, entry, 2, little) == 274 && ExifNumber(tiff, entry + 2, 2, little) == 3 &&
+        ExifNumber(tiff, entry + 4, 4, little) == 1 {
+            value := ExifNumber(tiff, entry + 8, 2, little)
+            if value < 1 || value > 8 {
+                return 1
+            }
+            return cast(s32)value
+        }
+        index += 1
+    }
+    return 1
+}
+
+#scope_export
+#program_export
+ImageExifOrientation :: (data: string) -> s32 {
+    if data.count < 4 || data[0] != cast(u8)255 || data[1] != cast(u8)216 {
+        return 1
+    }
+    at: s64 = 2
+    while at + 4 <= data.count {
+        if data[at] != cast(u8)255 {
+            return 1
+        }
+        marker := cast(s32)data[at + 1]
+        // Fill bytes, and markers without a length.
+        if marker == 255 {
+            at += 1
+            continue
+        }
+        if marker == 216 || (marker >= 208 && marker <= 215) || marker == 1 {
+            at += 2
+            continue
+        }
+        // The image data starts; no Exif comes after it.
+        if marker == 218 || marker == 217 {
+            return 1
+        }
+        length := ExifNumber(data, at + 2, 2, false)
+        if length < 2 || at + 2 + length > data.count {
+            return 1
+        }
+        body := at + 4
+        if marker == 225 && length >= 16 && data[body] == cast(u8)69 && data[body + 1] == cast(u8)120 &&
+        data[body + 2] == cast(u8)105 && data[body + 3] == cast(u8)102 && data[body + 4] == cast(u8)0 &&
+        data[body + 5] == cast(u8)0 {
+            return TiffOrientation(data, body + 6, at + 2 + length)
+        }
+        at += 2 + length
+    }
+    return 1
+}

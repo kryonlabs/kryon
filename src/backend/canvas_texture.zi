@@ -35,6 +35,28 @@
         return CanvasImageFromRgba(pixels, width, height)
     }
 
+    // Decodes an image file for image_preview.zi with the browser's codecs,
+    // which turn a photo upright by its Exif orientation.
+    #program_export
+    ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
+        channels: *s32, upright: *bool) -> *u8 {
+        unused file_type
+        width.* = 0
+        height.* = 0
+        channels.* = 0
+        upright.* = true
+        if data.count == 0 || data.count > 2147483647 { return null }
+        bytes := cast(*TextDescriptor)(*data)
+        pixels := PageImageDecode(bytes.data, cast(s32)data.count, width, height)
+        if pixels != null { channels.* = 4 }
+        return pixels
+    }
+
+    #program_export
+    ImagePreviewRelease :: (pixels: *u8) {
+        CanvasRelease(cast(*void)pixels)
+    }
+
     #program_export
     LoadImage :: (path: *u8) -> CanvasImage {
         size: s32

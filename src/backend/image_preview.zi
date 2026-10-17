@@ -1,0 +1,696 @@
+// A small, upright JPEG copy of an image file, for galleries. The host only
+// decodes the file into pixels; portable code then scales them down by
+// averaging areas, turns them by the file's Exif orientation and writes a
+// baseline JPEG, so every platform makes the same preview of a photo.
+#import "vec"
+#import "byte_text_linux"
+
+host_api :: #system_library "host_api";
+// The file's pixels, row after row, with 1 (gray), 2 (gray and alpha), 3
+// (RGB) or 4 (RGBA) bytes each, or null when the host cannot decode the
+// file. They stay valid until ImagePreviewRelease. `upright` says whether
+// the host's decoder already applied the file's Exif orientation.
+ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
+    channels: *s32, upright: *bool) -> *u8 #foreign host_api;
+ImagePreviewRelease :: (pixels: *u8) #foreign host_api;
+
+image_preview_c :: #system_library "c";
+PreviewAllocate :: (size: usize) -> *void #foreign image_preview_c "malloc";
+PreviewFree :: (pointer: *void) #foreign image_preview_c "free";
+
+// Larger images are refused rather than averaged.
+IMAGE_PREVIEW_PIXELS_MAX :: 134217728
+IMAGE_PREVIEW_EDGE_MAX :: 4096
+
+// The preview of an image file: at most max_edge pixels on its longest side,
+// turned upright by orientation (Exif 1 to 8), as a JPEG of the given
+// quality (1 to 100). Empty when the file cannot be decoded. The caller
+// frees the result.
+ImagePreview :: (data: string, file_type: string, max_edge: s32, orientation: s32,
+    quality: s32) -> string {
+    if data.count == 0 || data.count > 2147483647 {
+        return ""
+    }
+    width: s32 = 0
+    height: s32 = 0
+    channels: s32 = 0
+    upright := false
+    pixels := ImagePreviewDecode(data, file_type, *width, *height, *channels, *upright)
+    if pixels == null {
+        return ""
+    }
+    if upright {
+        orientation = 1
+    }
+    preview := ImagePreviewPixels(pixels, width, height, channels, max_edge, orientation, quality)
+    ImagePreviewRelease(pixels)
+    return preview
+}
+
+// The size of an image after its Exif orientation: 5 to 8 swap the sides.
+ImagePreviewSwapsSides :: (orientation: s32) -> bool {
+    return orientation >= 5 && orientation <= 8
+}
+
+// The same preview from decoded pixels.
+ImagePreviewPixels :: (pixels: *u8, width: s32, height: s32, channels: s32, max_edge: s32,
+    orientation: s32, quality: s32) -> string {
+    if pixels == null || width <= 0 || height <= 0 || channels < 1 || channels > 4 ||
+    max_edge <= 0 || max_edge > IMAGE_PREVIEW_EDGE_MAX ||
+    cast(s64)width * cast(s64)height > IMAGE_PREVIEW_PIXELS_MAX {
+        return ""
+    }
+    if orientation < 1 || orientation > 8 {
+        orientation = 1
+    }
+    upright_width := width
+    upright_height := height
+    if ImagePreviewSwapsSides(orientation) {
+        upright_width = height
+        upright_height = width
+    }
+    longest := ifx upright_width > upright_height then upright_width else upright_height
+    preview_width := upright_width
+    preview_height := upright_height
+    if longest > max_edge {
+        preview_width = cast(s32)((cast(s64)upright_width * max_edge + longest / 2) / longest)
+        preview_height = cast(s32)((cast(s64)upright_height * max_edge + longest / 2) / longest)
+    }
+    if preview_width < 1 {
+        preview_width = 1
+    }
+    if preview_height < 1 {
+        preview_height = 1
+    }
+    // The scaled image keeps the stored orientation until it is small.
+    scaled_width := preview_width
+    scaled_height := preview_height
+    if ImagePreviewSwapsSides(orientation) {
+        scaled_width = preview_height
+        scaled_height = preview_width
+    }
+    scaled := cast(*u8)PreviewAllocate(cast(usize)scaled_width * cast(usize)scaled_height * 3)
+    if scaled == null {
+        return ""
+    }
+    if !ImagePreviewAverage(pixels, width, height, channels, scaled, scaled_width, scaled_height) {
+        PreviewFree(cast(*void)scaled)
+        return ""
+    }
+    upright := cast(*u8)PreviewAllocate(cast(usize)preview_width * cast(usize)preview_height * 3)
+    if upright == null {
+        PreviewFree(cast(*void)scaled)
+        return ""
+    }
+    ImagePreviewTurn(scaled, scaled_width, scaled_height, orientation, upright)
+    PreviewFree(cast(*void)scaled)
+    jpeg := JpegEncode(upright, preview_width, preview_height, quality)
+    PreviewFree(cast(*void)upright)
+    return jpeg
+}
+
+// Scales the pixels down to output_width by output_height RGB pixels, each
+// the average of the source pixels it covers. Transparent pixels are laid
+// over white, since a JPEG has no transparency.
+ImagePreviewAverage :: (pixels: *u8, width: s32, height: s32, channels: s32, output: *u8,
+    output_width: s32, output_height: s32) -> bool {
+    if output_width > width || output_height > height {
+        return false
+    }
+    columns := cast(*s32)PreviewAllocate(cast(usize)width * 4)
+    widths := cast(*s64)PreviewAllocate(cast(usize)output_width * 8)
+    sums := cast(*s64)PreviewAllocate(cast(usize)output_width * 3 * 8)
+    if columns == null || widths == null || sums == null {
+        PreviewFree(cast(*void)columns)
+        PreviewFree(cast(*void)widths)
+        PreviewFree(cast(*void)sums)
+        return false
+    }
+    column: s32 = 0
+    while column < output_width {
+        widths[column] = 0
+        column += 1
+    }
+    x: s32 = 0
+    while x < width {
+        columns[x] = cast(s32)(cast(s64)x * output_width / width)
+        widths[columns[x]] += 1
+        x += 1
+    }
+    row_stride := cast(s64)width * channels
+    output_row: s32 = 0
+    y: s32 = 0
+    while output_row < output_height {
+        index: s32 = 0
+        while index < output_width * 3 {
+            sums[index] = 0
+            index += 1
+        }
+        rows: s64 = 0
+        while y < height && cast(s32)(cast(s64)y * output_height / height) == output_row {
+            row := cast(s64)y * row_stride
+            x = 0
+            while x < width {
+                at := row + cast(s64)x * channels
+                red := cast(s32)pixels[at]
+                green := red
+                blue := red
+                alpha: s32 = 255
+                if channels >= 3 {
+                    green = cast(s32)pixels[at + 1]
+                    blue = cast(s32)pixels[at + 2]
+                }
+                if channels == 2 {
+                    alpha = cast(s32)pixels[at + 1]
+                } else if channels == 4 {
+                    alpha = cast(s32)pixels[at + 3]
+                }
+                if alpha < 255 {
+                    red = (red * alpha + 255 * (255 - alpha) + 127) / 255
+                    green = (green * alpha + 255 * (255 - alpha) + 127) / 255
+                    blue = (blue * alpha + 255 * (255 - alpha) + 127) / 255
+                }
+                bucket := columns[x] * 3
+                sums[bucket] += red
+                sums[bucket + 1] += green
+                sums[bucket + 2] += blue
+                x += 1
+            }
+            rows += 1
+            y += 1
+        }
+        target := cast(s64)output_row * output_width * 3
+        column = 0
+        while column < output_width {
+            count := widths[column] * rows
+            if count <= 0 {
+                count = 1
+            }
+            bucket := column * 3
+            output[target + bucket] = cast(u8)((sums[bucket] + count / 2) / count)
+            output[target + bucket + 1] = cast(u8)((sums[bucket + 1] + count / 2) / count)
+            output[target + bucket + 2] = cast(u8)((sums[bucket + 2] + count / 2) / count)
+            column += 1
+        }
+        output_row += 1
+    }
+    PreviewFree(cast(*void)columns)
+    PreviewFree(cast(*void)widths)
+    PreviewFree(cast(*void)sums)
+    return true
+}
+
+// Writes the RGB image upright: each upright pixel takes the stored pixel
+// that Exif orientation 1 to 8 places there.
+ImagePreviewTurn :: (pixels: *u8, width: s32, height: s32, orientation: s32, output: *u8) {
+    upright_width := width
+    upright_height := height
+    if ImagePreviewSwapsSides(orientation) {
+        upright_width = height
+        upright_height = width
+    }
+    y: s32 = 0
+    while y < upright_height {
+        x: s32 = 0
+        while x < upright_width {
+            source_x := x
+            source_y := y
+            if orientation == 2 {
+                source_x = width - 1 - x
+            } else if orientation == 3 {
+                source_x = width - 1 - x
+                source_y = height - 1 - y
+            } else if orientation == 4 {
+                source_y = height - 1 - y
+            } else if orientation == 5 {
+                source_x = y
+                source_y = x
+            } else if orientation == 6 {
+                source_x = y
+                source_y = height - 1 - x
+            } else if orientation == 7 {
+                source_x = width - 1 - y
+                source_y = height - 1 - x
+            } else if orientation == 8 {
+                source_x = width - 1 - y
+                source_y = x
+            }
+            from := (cast(s64)source_y * width + source_x) * 3
+            to := (cast(s64)y * upright_width + x) * 3
+            output[to] = pixels[from]
+            output[to + 1] = pixels[from + 1]
+            output[to + 2] = pixels[from + 2]
+            x += 1
+        }
+        y += 1
+    }
+}
+
+// Baseline JPEG: YCbCr with chroma halved both ways, the standard tables
+// of ITU T.81 Annex K scaled for quality, and Huffman coding.
+
+// Where each coefficient of a block in row order goes in zigzag order.
+jpeg_zigzag: [64]s32 = .[0, 1, 5, 6, 14, 15, 27, 28, 2, 4, 7, 13, 16, 26, 29, 42, 3, 8, 12, 17,
+    25, 30, 41, 43, 9, 11, 18, 24, 31, 40, 44, 53, 10, 19, 23, 32, 39, 45, 52, 54, 20, 22, 33, 38,
+    46, 51, 55, 60, 21, 34, 37, 47, 50, 56, 59, 61, 35, 36, 48, 49, 57, 58, 62, 63];
+
+jpeg_luma_quantization: [64]s32 = .[16, 11, 10, 16, 24, 40, 51, 61, 12, 12, 14, 19, 26, 58, 60,
+    55, 14, 13, 16, 24, 40, 57, 69, 56, 14, 17, 22, 29, 51, 87, 80, 62, 18, 22, 37, 56, 68, 109,
+    103, 77, 24, 35, 55, 64, 81, 104, 113, 92, 49, 64, 78, 87, 103, 121, 120, 101, 72, 92, 95, 98,
+    112, 100, 103, 99];
+
+jpeg_chroma_quantization: [64]s32 = .[17, 18, 24, 47, 99, 99, 99, 99, 18, 21, 26, 66, 99, 99,
+    99, 99, 24, 26, 56, 99, 99, 99, 99, 99, 47, 66, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+    99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99,
+    99, 99];
+
+// The scale factors of the AAN forward DCT, times the square root of 8.
+jpeg_dct_scale: [8]float32 = .[2.828427125, 3.923585746, 3.695518130, 3.325878450, 2.828427125,
+    2.222280932, 1.530733729, 0.780361288];
+
+// How many Huffman codes have each length from 1 to 16, then the symbols.
+jpeg_luma_dc_counts: [16]s32 = .[0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0];
+jpeg_chroma_dc_counts: [16]s32 = .[0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0];
+jpeg_dc_symbols: [12]s32 = .[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+
+jpeg_luma_ac_counts: [16]s32 = .[0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 125];
+jpeg_luma_ac_symbols: [162]s32 = .[1, 2, 3, 0, 4, 17, 5, 18, 33, 49, 65, 6, 19, 81, 97, 7, 34,
+    113, 20, 50, 129, 145, 161, 8, 35, 66, 177, 193, 21, 82, 209, 240, 36, 51, 98, 114, 130, 9, 10,
+    22, 23, 24, 25, 26, 37, 38, 39, 40, 41, 42, 52, 53, 54, 55, 56, 57, 58, 67, 68, 69, 70, 71, 72,
+    73, 74, 83, 84, 85, 86, 87, 88, 89, 90, 99, 100, 101, 102, 103, 104, 105, 106, 115, 116, 117,
+    118, 119, 120, 121, 122, 131, 132, 133, 134, 135, 136, 137, 138, 146, 147, 148, 149, 150, 151,
+    152, 153, 154, 162, 163, 164, 165, 166, 167, 168, 169, 170, 178, 179, 180, 181, 182, 183, 184,
+    185, 186, 194, 195, 196, 197, 198, 199, 200, 201, 202, 210, 211, 212, 213, 214, 215, 216, 217,
+    218, 225, 226, 227, 228, 229, 230, 231, 232, 233, 234, 241, 242, 243, 244, 245, 246, 247, 248,
+    249, 250];
+
+jpeg_chroma_ac_counts: [16]s32 = .[0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 119];
+jpeg_chroma_ac_symbols: [162]s32 = .[0, 1, 2, 3, 17, 4, 5, 33, 49, 6, 18, 65, 81, 7, 97, 113,
+    19, 34, 50, 129, 8, 20, 66, 145, 161, 177, 193, 9, 35, 51, 82, 240, 21, 98, 114, 209, 10, 22,
+    36, 52, 225, 37, 241, 23, 24, 25, 26, 38, 39, 40, 41, 42, 53, 54, 55, 56, 57, 58, 67, 68, 69,
+    70, 71, 72, 73, 74, 83, 84, 85, 86, 87, 88, 89, 90, 99, 100, 101, 102, 103, 104, 105, 106, 115,
+    116, 117, 118, 119, 120, 121, 122, 130, 131, 132, 133, 134, 135, 136, 137, 138, 146, 147, 148,
+    149, 150, 151, 152, 153, 154, 162, 163, 164, 165, 166, 167, 168, 169, 170, 178, 179, 180, 181,
+    182, 183, 184, 185, 186, 194, 195, 196, 197, 198, 199, 200, 201, 202, 210, 211, 212, 213, 214,
+    215, 216, 217, 218, 226, 227, 228, 229, 230, 231, 232, 233, 234, 242, 243, 244, 245, 246, 247,
+    248, 249, 250];
+
+JpegHuffman :: struct {
+    code: [256]s32
+    size: [256]s32
+}
+
+JpegWriter :: struct {
+    out: *Vec(u8)
+    bits: s32
+    count: s32
+}
+
+JpegTables :: struct {
+    luma: [64]s32
+    chroma: [64]s32
+    luma_scale: [64]float32
+    chroma_scale: [64]float32
+    luma_dc: JpegHuffman
+    luma_ac: JpegHuffman
+    chroma_dc: JpegHuffman
+    chroma_ac: JpegHuffman
+}
+
+// Canonical codes: each length's codes count up from the previous length's
+// next code, doubled.
+JpegBuildHuffman :: (counts: []s32, symbols: []s32, table: *JpegHuffman) {
+    code: s32 = 0
+    at: s32 = 0
+    length: s32 = 1
+    while length <= 16 {
+        index: s32 = 0
+        while index < counts[length - 1] {
+            symbol := symbols[at]
+            table.code[symbol] = code
+            table.size[symbol] = length
+            code += 1
+            at += 1
+            index += 1
+        }
+        code = code << 1
+        length += 1
+    }
+}
+
+JpegQuantization :: (base: []s32, factor: s32, zigzag_table: []s32, scale: []float32) {
+    index: s32 = 0
+    while index < 64 {
+        value := (base[index] * factor + 50) / 100
+        if value < 1 {
+            value = 1
+        }
+        if value > 255 {
+            value = 255
+        }
+        zigzag_table[jpeg_zigzag[index]] = value
+        index += 1
+    }
+    row: s32 = 0
+    at: s32 = 0
+    while row < 8 {
+        column: s32 = 0
+        while column < 8 {
+            divisor := cast(float32)zigzag_table[jpeg_zigzag[at]] * jpeg_dct_scale[row] *
+            jpeg_dct_scale[column]
+            scale[at] = 1.0 / divisor
+            column += 1
+            at += 1
+        }
+        row += 1
+    }
+}
+
+JpegPrepare :: (tables: *JpegTables, quality: s32) {
+    if quality < 1 {
+        quality = 1
+    }
+    if quality > 100 {
+        quality = 100
+    }
+    factor := ifx quality < 50 then 5000 / quality else 200 - quality * 2
+    JpegQuantization(jpeg_luma_quantization[:], factor, tables.luma[:], tables.luma_scale[:])
+    JpegQuantization(jpeg_chroma_quantization[:], factor, tables.chroma[:], tables.chroma_scale[:])
+    JpegBuildHuffman(jpeg_luma_dc_counts[:], jpeg_dc_symbols[:], *tables.luma_dc)
+    JpegBuildHuffman(jpeg_luma_ac_counts[:], jpeg_luma_ac_symbols[:], *tables.luma_ac)
+    JpegBuildHuffman(jpeg_chroma_dc_counts[:], jpeg_dc_symbols[:], *tables.chroma_dc)
+    JpegBuildHuffman(jpeg_chroma_ac_counts[:], jpeg_chroma_ac_symbols[:], *tables.chroma_ac)
+}
+
+JpegByte :: (writer: *JpegWriter, value: s32) {
+    unused VecPush(writer.out.*, cast(u8)(value & 255))
+}
+
+JpegWord :: (writer: *JpegWriter, value: s32) {
+    JpegByte(writer, value >> 8)
+    JpegByte(writer, value)
+}
+
+// Appends a code of `size` bits. A byte of all ones in the coded data is
+// followed by a zero byte, so it is never read as a marker.
+JpegBits :: (writer: *JpegWriter, code: s32, size: s32) {
+    writer.count += size
+    writer.bits = writer.bits | (code << (24 - writer.count))
+    while writer.count >= 8 {
+        byte := (writer.bits >> 16) & 255
+        JpegByte(writer, byte)
+        if byte == 255 {
+            JpegByte(writer, 0)
+        }
+        writer.bits = (writer.bits << 8) & 16777215
+        writer.count -= 8
+    }
+}
+
+JpegSymbol :: (writer: *JpegWriter, table: *JpegHuffman, symbol: s32) {
+    JpegBits(writer, table.code[symbol], table.size[symbol])
+}
+
+// A coefficient's size category and its bits: negative values are written
+// as their ones' complement.
+JpegMagnitude :: (value: s32, code: *s32, size: *s32) {
+    magnitude := ifx value < 0 then -value else value
+    adjusted := ifx value < 0 then value - 1 else value
+    bits: s32 = 1
+    magnitude = magnitude >> 1
+    while magnitude > 0 {
+        bits += 1
+        magnitude = magnitude >> 1
+    }
+    size.* = bits
+    code.* = adjusted & ((1 << bits) - 1)
+}
+
+// The AAN forward DCT of eight values `stride` apart, in place.
+JpegDct :: (data: []float32, at: s64, stride: s64) {
+    d0 := data[at]
+    d1 := data[at + stride]
+    d2 := data[at + stride * 2]
+    d3 := data[at + stride * 3]
+    d4 := data[at + stride * 4]
+    d5 := data[at + stride * 5]
+    d6 := data[at + stride * 6]
+    d7 := data[at + stride * 7]
+    tmp0 := d0 + d7
+    tmp7 := d0 - d7
+    tmp1 := d1 + d6
+    tmp6 := d1 - d6
+    tmp2 := d2 + d5
+    tmp5 := d2 - d5
+    tmp3 := d3 + d4
+    tmp4 := d3 - d4
+    tmp10 := tmp0 + tmp3
+    tmp13 := tmp0 - tmp3
+    tmp11 := tmp1 + tmp2
+    tmp12 := tmp1 - tmp2
+    data[at] = tmp10 + tmp11
+    data[at + stride * 4] = tmp10 - tmp11
+    z1 := (tmp12 + tmp13) * 0.707106781
+    data[at + stride * 2] = tmp13 + z1
+    data[at + stride * 6] = tmp13 - z1
+    tmp10 = tmp4 + tmp5
+    tmp11 = tmp5 + tmp6
+    tmp12 = tmp6 + tmp7
+    z5 := (tmp10 - tmp12) * 0.382683433
+    z2 := tmp10 * 0.541196100 + z5
+    z4 := tmp12 * 1.306562965 + z5
+    z3 := tmp11 * 0.707106781
+    z11 := tmp7 + z3
+    z13 := tmp7 - z3
+    data[at + stride * 5] = z13 + z2
+    data[at + stride * 3] = z13 - z2
+    data[at + stride] = z11 + z4
+    data[at + stride * 7] = z11 - z4
+}
+
+// Transforms, quantizes and writes one 8 by 8 block that starts at `start`
+// in rows `stride` apart. Returns its DC value for the next block.
+JpegBlock :: (writer: *JpegWriter, data: []float32, start: s64, stride: s64, scale: []float32,
+    previous: s32, dc: *JpegHuffman, ac: *JpegHuffman) -> s32 {
+    line: s64 = 0
+    while line < 8 {
+        JpegDct(data, start + line * stride, 1)
+        line += 1
+    }
+    line = 0
+    while line < 8 {
+        JpegDct(data, start + line, stride)
+        line += 1
+    }
+    coefficients: [64]s32
+    at: s32 = 0
+    y: s64 = 0
+    while y < 8 {
+        x: s64 = 0
+        while x < 8 {
+            value := data[start + y * stride + x] * scale[at]
+            rounded := ifx value < 0.0 then value - 0.5 else value + 0.5
+            coefficients[jpeg_zigzag[at]] = cast(s32)rounded
+            at += 1
+            x += 1
+        }
+        y += 1
+    }
+    code: s32 = 0
+    size: s32 = 0
+    difference := coefficients[0] - previous
+    if difference == 0 {
+        JpegSymbol(writer, dc, 0)
+    } else {
+        JpegMagnitude(difference, *code, *size)
+        JpegSymbol(writer, dc, size)
+        JpegBits(writer, code, size)
+    }
+    last: s32 = 63
+    while last > 0 && coefficients[last] == 0 {
+        last -= 1
+    }
+    if last == 0 {
+        JpegSymbol(writer, ac, 0)
+        return coefficients[0]
+    }
+    index: s32 = 1
+    while index <= last {
+        first := index
+        while coefficients[index] == 0 && index <= last {
+            index += 1
+        }
+        zeros := index - first
+        if zeros >= 16 {
+            runs := zeros >> 4
+            run: s32 = 0
+            while run < runs {
+                JpegSymbol(writer, ac, 240)
+                run += 1
+            }
+            zeros = zeros & 15
+        }
+        JpegMagnitude(coefficients[index], *code, *size)
+        JpegSymbol(writer, ac, (zeros << 4) + size)
+        JpegBits(writer, code, size)
+        index += 1
+    }
+    if last != 63 {
+        JpegSymbol(writer, ac, 0)
+    }
+    return coefficients[0]
+}
+
+JpegHuffmanSegment :: (writer: *JpegWriter, class: s32, counts: []s32, symbols: []s32) {
+    JpegByte(writer, class)
+    for count: counts {
+        JpegByte(writer, count)
+    }
+    for symbol: symbols {
+        JpegByte(writer, symbol)
+    }
+}
+
+JpegHeaders :: (writer: *JpegWriter, tables: *JpegTables, width: s32, height: s32) {
+    // Start of image, then JFIF 1.1 without density or thumbnail.
+    JpegWord(writer, 65496)
+    JpegWord(writer, 65504)
+    JpegWord(writer, 16)
+    for byte: "JFIF" {
+        JpegByte(writer, cast(s32)byte)
+    }
+    JpegByte(writer, 0)
+    JpegByte(writer, 1)
+    JpegByte(writer, 1)
+    JpegByte(writer, 0)
+    JpegWord(writer, 1)
+    JpegWord(writer, 1)
+    JpegByte(writer, 0)
+    JpegByte(writer, 0)
+    // Both quantization tables, in zigzag order.
+    JpegWord(writer, 65499)
+    JpegWord(writer, 132)
+    JpegByte(writer, 0)
+    for value: tables.luma {
+        JpegByte(writer, value)
+    }
+    JpegByte(writer, 1)
+    for value: tables.chroma {
+        JpegByte(writer, value)
+    }
+    // A baseline frame: Y sampled 2 by 2, Cb and Cr once per 16 by 16.
+    JpegWord(writer, 65472)
+    JpegWord(writer, 17)
+    JpegByte(writer, 8)
+    JpegWord(writer, height)
+    JpegWord(writer, width)
+    JpegByte(writer, 3)
+    JpegByte(writer, 1)
+    JpegByte(writer, 34)
+    JpegByte(writer, 0)
+    JpegByte(writer, 2)
+    JpegByte(writer, 17)
+    JpegByte(writer, 1)
+    JpegByte(writer, 3)
+    JpegByte(writer, 17)
+    JpegByte(writer, 1)
+    // The four Huffman tables.
+    JpegWord(writer, 65476)
+    JpegWord(writer, 418)
+    JpegHuffmanSegment(writer, 0, jpeg_luma_dc_counts[:], jpeg_dc_symbols[:])
+    JpegHuffmanSegment(writer, 16, jpeg_luma_ac_counts[:], jpeg_luma_ac_symbols[:])
+    JpegHuffmanSegment(writer, 1, jpeg_chroma_dc_counts[:], jpeg_dc_symbols[:])
+    JpegHuffmanSegment(writer, 17, jpeg_chroma_ac_counts[:], jpeg_chroma_ac_symbols[:])
+    // One scan of all three components.
+    JpegWord(writer, 65498)
+    JpegWord(writer, 12)
+    JpegByte(writer, 3)
+    JpegByte(writer, 1)
+    JpegByte(writer, 0)
+    JpegByte(writer, 2)
+    JpegByte(writer, 17)
+    JpegByte(writer, 3)
+    JpegByte(writer, 17)
+    JpegByte(writer, 0)
+    JpegByte(writer, 63)
+    JpegByte(writer, 0)
+}
+
+// The JPEG of width by height RGB pixels, or empty when it cannot be made.
+JpegEncode :: (pixels: *u8, width: s32, height: s32, quality: s32) -> string {
+    if pixels == null || width <= 0 || height <= 0 || width > 65535 || height > 65535 {
+        return ""
+    }
+    tables: JpegTables
+    JpegPrepare(*tables, quality)
+    out: Vec(u8)
+    writer := JpegWriter.{.out = *out}
+    JpegHeaders(*writer, *tables, width, height)
+    luma: [256]float32
+    blue: [256]float32
+    red: [256]float32
+    blue_half: [64]float32
+    red_half: [64]float32
+    previous_luma: s32 = 0
+    previous_blue: s32 = 0
+    previous_red: s32 = 0
+    top: s32 = 0
+    while top < height {
+        left: s32 = 0
+        while left < width {
+            at: s32 = 0
+            row: s32 = top
+            while row < top + 16 {
+                // Past the image's edge, the last row and column repeat.
+                source_row := ifx row < height then row else height - 1
+                column: s32 = left
+                while column < left + 16 {
+                    source_column := ifx column < width then column else width - 1
+                    pixel := (cast(s64)source_row * width + source_column) * 3
+                    r := cast(float32)pixels[pixel]
+                    g := cast(float32)pixels[pixel + 1]
+                    b := cast(float32)pixels[pixel + 2]
+                    luma[at] = 0.29900 * r + 0.58700 * g + 0.11400 * b - 128.0
+                    blue[at] = -0.16874 * r - 0.33126 * g + 0.50000 * b
+                    red[at] = 0.50000 * r - 0.41869 * g - 0.08131 * b
+                    at += 1
+                    column += 1
+                }
+                row += 1
+            }
+            previous_luma = JpegBlock(*writer, luma[:], 0, 16, tables.luma_scale[:], previous_luma,
+                *tables.luma_dc, *tables.luma_ac)
+            previous_luma = JpegBlock(*writer, luma[:], 8, 16, tables.luma_scale[:], previous_luma,
+                *tables.luma_dc, *tables.luma_ac)
+            previous_luma = JpegBlock(*writer, luma[:], 128, 16, tables.luma_scale[:], previous_luma,
+                *tables.luma_dc, *tables.luma_ac)
+            previous_luma = JpegBlock(*writer, luma[:], 136, 16, tables.luma_scale[:], previous_luma,
+                *tables.luma_dc, *tables.luma_ac)
+            half: s32 = 0
+            y: s32 = 0
+            while y < 8 {
+                x: s32 = 0
+                while x < 8 {
+                    first := y * 32 + x * 2
+                    blue_half[half] = (blue[first] + blue[first + 1] + blue[first + 16] +
+                        blue[first + 17]) * 0.25
+                    red_half[half] = (red[first] + red[first + 1] + red[first + 16] +
+                        red[first + 17]) * 0.25
+                    half += 1
+                    x += 1
+                }
+                y += 1
+            }
+            previous_blue = JpegBlock(*writer, blue_half[:], 0, 8, tables.chroma_scale[:],
+                previous_blue, *tables.chroma_dc, *tables.chroma_ac)
+            previous_red = JpegBlock(*writer, red_half[:], 0, 8, tables.chroma_scale[:],
+                previous_red, *tables.chroma_dc, *tables.chroma_ac)
+            left += 16
+        }
+        top += 16
+    }
+    // Fill the last byte with ones, then end the image.
+    JpegBits(*writer, 127, 7)
+    JpegWord(*writer, 65497)
+    return BuilderFinish(out)
+}

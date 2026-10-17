@@ -1,0 +1,229 @@
+// Previews from known pixels: every Exif orientation, scaling down by
+// averaging, transparency over white and gray images. The runner decodes
+// the JPEG files this writes with an independent decoder and compares them.
+#import "image_preview"
+#import "image_orientation"
+#import "std/file"
+#import "std/byte_text_linux"
+#import "vec"
+#import "text"
+
+test_c :: #system_library "c";
+TestAllocate :: (size: usize) -> *void #foreign test_c "malloc";
+TestFree :: (pointer: *void) #foreign test_c "free";
+
+// The test's host decodes one raw format: "RAW" and a channel count, the
+// width and height as two bytes each, then the pixels. A file named
+// "upright" comes back upright, as from a browser.
+#program_export
+ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
+    channels: *s32, upright: *bool) -> *u8 {
+    upright.* = file_type == ".upright"
+    if data.count < 8 || data[:3] != "RAW" {
+        return null
+    }
+    count := cast(s32)data[3]
+    w := cast(s32)data[4] * 256 + cast(s32)data[5]
+    h := cast(s32)data[6] * 256 + cast(s32)data[7]
+    size := cast(s64)w * h * count
+    if data.count != size + 8 {
+        return null
+    }
+    pixels := cast(*u8)TestAllocate(cast(usize)size)
+    index: s64 = 0
+    while index < size {
+        pixels[index] = data[8 + index]
+        index += 1
+    }
+    width.* = w
+    height.* = h
+    channels.* = count
+    return pixels
+}
+
+#program_export
+ImagePreviewRelease :: (pixels: *u8) {
+    TestFree(cast(*void)pixels)
+}
+
+Raw :: (width: s32, height: s32, channels: s32) -> Vec(u8) {
+    out: Vec(u8)
+    unused VecPush(out, cast(u8)82)
+    unused VecPush(out, cast(u8)65)
+    unused VecPush(out, cast(u8)87)
+    unused VecPush(out, cast(u8)channels)
+    unused VecPush(out, cast(u8)(width / 256))
+    unused VecPush(out, cast(u8)(width % 256))
+    unused VecPush(out, cast(u8)(height / 256))
+    unused VecPush(out, cast(u8)(height % 256))
+    return out
+}
+
+Pixel :: (out: *Vec(u8), red: s32, green: s32, blue: s32, alpha: s32) {
+    unused VecPush(out.*, cast(u8)red)
+    unused VecPush(out.*, cast(u8)green)
+    unused VecPush(out.*, cast(u8)blue)
+    unused VecPush(out.*, cast(u8)alpha)
+}
+
+// Four colored quarters: red, green / blue, white, so every turn and
+// mirror is visible.
+Quarters :: (width: s32, height: s32) -> string {
+    out := Raw(width, height, 4)
+    y: s32 = 0
+    while y < height {
+        x: s32 = 0
+        while x < width {
+            left := x < width / 2
+            above := y < height / 2
+            if above && left {
+                Pixel(*out, 220, 30, 30, 255)
+            } else if above {
+                Pixel(*out, 30, 200, 40, 255)
+            } else if left {
+                Pixel(*out, 30, 40, 210, 255)
+            } else {
+                Pixel(*out, 250, 250, 250, 255)
+            }
+            x += 1
+        }
+        y += 1
+    }
+    return BuilderFinish(out)
+}
+
+Write :: (directory: string, name: string, preview: string) -> bool {
+    if preview.count < 4 {
+        return false
+    }
+    path: Vec(u8)
+    BuilderPrint(*path, "%/%", directory, name)
+    text := BuilderFinish(path)
+    return WriteEntireFile(text, preview)
+}
+
+// A JPEG starts with SOI and ends with EOI.
+LooksLikeJpeg :: (preview: string) -> bool {
+    return preview.count > 4 && preview[0] == cast(u8)255 && preview[1] == cast(u8)216 &&
+    preview[preview.count - 2] == cast(u8)255 && preview[preview.count - 1] == cast(u8)217
+}
+
+// A JPEG's head with an Exif block saying `orientation`, after a JFIF
+// segment as cameras write it.
+ExifJpeg :: (orientation: s32, little: bool) -> string {
+    out: Vec(u8)
+    header: [6]s32 = .[255, 216, 255, 224, 0, 4]
+    for byte: header {
+        unused VecPush(out, cast(u8)byte)
+    }
+    unused VecPush(out, cast(u8)0)
+    unused VecPush(out, cast(u8)0)
+    // APP1: "Exif\0\0", then TIFF with one IFD0 entry.
+    big_tiff: [26]s32 = .[77, 77, 0, 42, 0, 0, 0, 8, 0, 1, 1, 18, 0, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+    little_tiff: [26]s32 = .[73, 73, 42, 0, 8, 0, 0, 0, 1, 0, 18, 1, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    big_tiff[19] = orientation
+    little_tiff[18] = orientation
+    tiff := ifx little then little_tiff else big_tiff
+    length: s32 = 2 + 6 + 26
+    marker: [4]s32 = .[255, 225, 0, 0]
+    marker[2] = length / 256
+    marker[3] = length % 256
+    for byte: marker {
+        unused VecPush(out, cast(u8)byte)
+    }
+    for byte: "Exif" {
+        unused VecPush(out, byte)
+    }
+    unused VecPush(out, cast(u8)0)
+    unused VecPush(out, cast(u8)0)
+    for byte: tiff {
+        unused VecPush(out, cast(u8)byte)
+    }
+    unused VecPush(out, cast(u8)255)
+    unused VecPush(out, cast(u8)217)
+    return BuilderFinish(out)
+}
+
+OrientationChecks :: () -> s32 {
+    orientation: s32 = 1
+    while orientation <= 8 {
+        if ImageExifOrientation(ExifJpeg(orientation, false)) != orientation ||
+        ImageExifOrientation(ExifJpeg(orientation, true)) != orientation {
+            return 30 + orientation
+        }
+        orientation += 1
+    }
+    whole := ExifJpeg(6, false)
+    length: s64 = 0
+    while length < whole.count {
+        unused ImageExifOrientation(whole[:length])
+        length += 1
+    }
+    if ImageExifOrientation(ExifJpeg(9, false)) != 1 || ImageExifOrientation("not a jpeg") != 1 {
+        return 40
+    }
+    return 0
+}
+
+#program_export
+Check :: () -> s32 {
+    orientation_failure := OrientationChecks()
+    if orientation_failure != 0 {
+        return orientation_failure
+    }
+    directory := "."
+    quarters := Quarters(48, 32)
+    orientation: s32 = 1
+    while orientation <= 8 {
+        preview := ImagePreview(quarters, ".raw", 512, orientation, 90)
+        if !LooksLikeJpeg(preview) {
+            return orientation
+        }
+        name: Vec(u8)
+        BuilderPrint(*name, "orientation-%.jpg", orientation)
+        if !Write(directory, BuilderFinish(name), preview) {
+            return 10 + orientation
+        }
+        orientation += 1
+    }
+    // A browser's decoder already turned the pixels.
+    if !Write(directory, "upright.jpg", ImagePreview(quarters, ".upright", 512, 6, 90)) {
+        return 20
+    }
+    // Scaled down: the longest side becomes 64.
+    large := Quarters(640, 400)
+    if !Write(directory, "scaled.jpg", ImagePreview(large, ".raw", 64, 1, 85)) {
+        return 21
+    }
+    if !Write(directory, "scaled-turned.jpg", ImagePreview(large, ".raw", 64, 8, 85)) {
+        return 22
+    }
+    // Transparent pixels become white; half transparent black is gray.
+    clear := Raw(32, 16, 4)
+    index: s32 = 0
+    while index < 32 * 16 {
+        if index % 32 < 16 {
+            Pixel(*clear, 0, 0, 0, 0)
+        } else {
+            Pixel(*clear, 0, 0, 0, 128)
+        }
+        index += 1
+    }
+    if !Write(directory, "alpha.jpg", ImagePreview(BuilderFinish(clear), ".raw", 512, 1, 90)) {
+        return 23
+    }
+    gray := Raw(17, 9, 1)
+    index = 0
+    while index < 17 * 9 {
+        unused VecPush(gray, cast(u8)((index % 17) * 15))
+        index += 1
+    }
+    if !Write(directory, "gray.jpg", ImagePreview(BuilderFinish(gray), ".raw", 512, 1, 90)) {
+        return 24
+    }
+    // A file the host cannot decode has no preview.
+    if ImagePreview("not an image", ".raw", 512, 1, 90).count != 0 {
+        return 25
+    }
+    return 0
+}
