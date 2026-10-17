@@ -110,9 +110,10 @@ TextAreaColorSpan :: struct {
 
 // A box under a logical line of the value, such as a picture in a note, or
 // in place of the line's last row when `cover` is set, for a line whose
-// bytes are all hidden. Rows, wrapping and caret stops stay those of the
-// text; only vertical positions, hit testing and painting make room for
-// the box. A point inside it is the end of its line.
+// bytes are all hidden. A line's boxes follow it one under another, in
+// order; only its first may cover the row. Rows, wrapping and caret stops
+// stay those of the text; only vertical positions, hit testing and painting
+// make room for boxes. A point inside one is the end of its line.
 TextAreaBlock :: struct {
     // The byte offset where the line starts.
     start: s32
@@ -169,8 +170,8 @@ TextAreaProps :: struct {
     // sorted and disjoint like `strong`.
     italic: []TextRange
     // Boxes under or in place of lines, and lines drawn at their own size.
-    // Each list is sorted by start with at most one entry per line, every
-    // start at a line start; any other list is ignored as a whole. Without
+    // Each list is sorted by start, every start at a line start, with at
+    // most one size per line; any other list is ignored as a whole. Without
     // them the layout is exactly the one of a plain area.
     blocks: []TextAreaBlock
     lines: []TextAreaLine

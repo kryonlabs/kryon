@@ -102,6 +102,29 @@ main :: () -> s32 {
     if TextAreaCursorAtRow(layout, value, 9, 5) != 12 { return 25 }
     if TextAreaCursorAtRow(layout, value, -3, 5) != 1 { return 26 }
 
+    // Several boxes of one line follow it in order; a covering first box
+    // takes the row's place and the next one follows it.
+    pair: [2]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 40, .cover = true},
+    TextAreaBlock.{.start = 3, .height = 20}]
+    layout = LayoutFor(0, line[:], pair[:], none_lines)
+    view.hidden = line[:]
+    if TextAreaContentHeight(layout, view) != 80 { return 27 }
+    place = TextAreaPlacementFor(layout, view)
+    unused TextAreaPlaceRow(*place)
+    second = TextAreaPlaceRow(*place)
+    third = TextAreaPlaceRow(*place)
+    if second.block != 0 || second.block_count != 2 || second.block_y != 10 ||
+        !second.covered || third.y != 70 || third.block != -1 { return 28 }
+    // A press on the second box is the end of the line too.
+    if TextAreaCursorAtPlace(layout, value, 0, 55) != 10 { return 29 }
+    under_pair: [2]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 40},
+    TextAreaBlock.{.start = 3, .height = 20}]
+    layout = LayoutFor(0, none_hidden, under_pair[:], none_lines)
+    view.hidden = none_hidden
+    if TextAreaContentHeight(layout, view) != 90 { return 37 }
+    if TextAreaCaretPlaced(layout, view, 12).y != 80 { return 38 }
+    if TextAreaCursorAtPlace(layout, value, 5, 15) != 4 { return 39 }
+
     // A heading line at twice the size: taller, wider and wrapping sooner.
     heading: [1]TextAreaLine = .[TextAreaLine.{.start = 0, .scale = 2.0}]
     layout = LayoutFor(0, none_hidden, none_blocks, heading[:])
@@ -130,6 +153,10 @@ main :: () -> s32 {
     flat: [1]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 0}]
     if TextAreaBlocksFor(value, flat[:]).count != 0 { return 42 }
     if TextAreaBlocksFor(value, under[:]).count != 1 { return 43 }
+    if TextAreaBlocksFor(value, pair[:]).count != 2 { return 48 }
+    second_covers: [2]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 4},
+    TextAreaBlock.{.start = 3, .height = 4, .cover = true}]
+    if TextAreaBlocksFor(value, second_covers[:]).count != 0 { return 49 }
     twice: [2]TextAreaLine = .[TextAreaLine.{.start = 3, .scale = 1.5},
     TextAreaLine.{.start = 3, .scale = 1.5}]
     if TextAreaLinesFor(value, twice[:]).count != 0 { return 44 }

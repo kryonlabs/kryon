@@ -272,8 +272,9 @@ Frame :: () -> s32 {
     // line: the box paints its picture, never the bytes it covers.
     covered: [1]TextRange = .[TextRange.{.start = 3, .end = 10}]
     slanted: [1]TextRange = .[TextRange.{.start = 0, .end = 1}]
-    photo: [1]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 10, .cover = true,
-        .image = "photo.png", .label = "Not here"}]
+    photo: [2]TextAreaBlock = .[TextAreaBlock.{.start = 3, .height = 10, .cover = true,
+        .image = "photo.png", .label = "Not here"},
+    TextAreaBlock.{.start = 3, .height = 6, .image = "photo.png", .label = "Not here"}]
     larger: [1]TextAreaLine = .[TextAreaLine.{.start = 11, .scale = 1.5}]
     if phase == 49 {
         props.hidden = covered[:]
@@ -578,7 +579,8 @@ main :: () -> s32 {
         AreaPreeditPaints() <= 0 || AreaUnderlinePaints() <= 0 {
         return 2
     }
-    if AreaPhotoPaints() <= 0 || AreaCoveredSourcePaints() != 0 {
+    // Both boxes of the line paint their picture.
+    if AreaPhotoPaints() < 2 || AreaCoveredSourcePaints() != 0 {
         return 5
     }
     return 0

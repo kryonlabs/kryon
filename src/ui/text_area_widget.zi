@@ -589,9 +589,10 @@ TextAreaViewCaretFor :: (view: TextAreaView,
     return caret
 }
 
-// Blocks and line sizes are sorted by start, at most one per line, each at
-// a line start, with a positive height or size. Any other list is ignored as
-// a whole, as invalid hidden ranges are.
+// Blocks and line sizes are sorted by start, each at a line start, with a
+// positive height or size. A line has at most one size, and only its first
+// block may cover it. Any other list is ignored as a whole, as invalid hidden
+// ranges are.
 TextAreaAtLineStart :: (value: string, start: s32) -> bool {
     if start < 0 || start > cast(s32)value.count {
         return false
@@ -603,8 +604,8 @@ TextAreaAtLineStart :: (value: string, start: s32) -> bool {
 TextAreaBlocksFor :: (value: string, blocks: []TextAreaBlock) -> []TextAreaBlock {
     previous: s32 = -1
     for block: blocks {
-        if block.start <= previous || block.height <= 0 ||
-            !TextAreaAtLineStart(value, block.start) {
+        if block.start < previous || (block.start == previous && block.cover) ||
+            block.height <= 0 || !TextAreaAtLineStart(value, block.start) {
             none: []TextAreaBlock
             return none
         }
@@ -641,7 +642,7 @@ TextAreaLayout :: struct {
 }
 
 // A row and its place: its top, font and line height, and the room it takes
-// before the next row, including a box after it or over it.
+// before the next row, including the boxes after it or over it.
 TextAreaPlacedRow :: struct {
     row: TextAreaRow
     index: s32
@@ -649,8 +650,10 @@ TextAreaPlacedRow :: struct {
     y: s32
     line_height: s32
     advance: s32
-    // The box after this row, or over it when covered, or -1.
+    // The first of the boxes after this row, or over it when covered, or -1;
+    // the others follow it in the list and under it on screen.
     block: s32
+    block_count: s32
     block_y: s32
     covered: bool
 }
@@ -732,7 +735,8 @@ TextAreaPlaceRow :: (place: *TextAreaPlacement) -> TextAreaPlacedRow {
     if placed.advance < 1 {
         placed.advance = 1
     }
-    // A line's box follows its last row.
+    // A line's boxes follow its last row, the first one in its place when
+    // it covers it.
     if !placed.row.soft_wrap {
         while place.next_block < cast(s32)blocks.count &&
             TextAreaViewOffset(place.view, blocks[place.next_block].start) < place.line_start {
@@ -740,15 +744,18 @@ TextAreaPlaceRow :: (place: *TextAreaPlacement) -> TextAreaPlacedRow {
         }
         if place.next_block < cast(s32)blocks.count &&
             TextAreaViewOffset(place.view, blocks[place.next_block].start) == place.line_start {
-            block := blocks[place.next_block]
             placed.block = place.next_block
-            if block.cover {
+            placed.block_y = place.y + placed.advance
+            if blocks[place.next_block].cover {
                 placed.covered = true
                 placed.block_y = place.y
-                placed.advance = block.height + layout.gap
-            } else {
-                placed.block_y = place.y + placed.advance
-                placed.advance += block.height + layout.gap
+                placed.advance = 0
+            }
+            while place.next_block < cast(s32)blocks.count &&
+                TextAreaViewOffset(place.view, blocks[place.next_block].start) == place.line_start {
+                placed.advance += blocks[place.next_block].height + layout.gap
+                placed.block_count += 1
+                place.next_block += 1
             }
         }
         place.line_start = placed.row.next
@@ -812,7 +819,7 @@ TextAreaCaretPlaced :: (layout: TextAreaLayout, view: TextAreaView,
 }
 
 // The byte offset a press at a point of the content places the caret at:
-// in the row under it, or at the end of the line whose box is under it.
+// in the row under it, or at the end of the line whose boxes are under it.
 #program_export
 TextAreaCursorAtPlace :: (layout: TextAreaLayout, value: string,
     x: s32, y: s32) -> s32 {
@@ -1690,14 +1697,16 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                 }
             }
         }
-        if placed.block >= 0 {
-            block := layout.blocks[placed.block]
+        block_y := placed.block_y
+        for index: placed.block..placed.block + placed.block_count - 1 {
+            block := layout.blocks[index]
             TextAreaPaintBlock(session, result.node, block,
                 Rectangle.{paint.clip_bounds.x,
-                    paint.clip_bounds.y + cast(float32)(placed.block_y - result.scroll_y),
+                    paint.clip_bounds.y + cast(float32)(block_y - result.scroll_y),
                     paint.clip_bounds.width, cast(float32)block.height},
                 paint.clip_bounds, font, face.value.typeface,
                 face.value.foreground, opacity, scale)
+            block_y += block.height + gap
         }
     }
     if result.focused && !props.disabled {

@@ -49,11 +49,12 @@ it. `hidden` bytes take no width or caret stop, `strong` bytes are bold and
 does, draw them leaning; others upright), and `colors` tint spans.
 `lines` draws a logical line at its own size (`TextAreaLine.scale`), such as
 a heading: its rows wrap, take caret stops and take height at that size.
-`blocks` adds a box under a line, or in place of its last row with `cover`,
-drawing `image` fitted inside it or a soft frame with `label` while the
-image is missing; a press inside a box is the end of its line. Every list is
-sorted, one entry per line at line starts, or ignored as a whole; without
-them the layout is the plain area's. During an IME composition, lines and
+`blocks` adds boxes under a line, one under another in order, the first in
+place of its last row with `cover`, each drawing `image` fitted inside it or
+a soft frame with `label` while the image is missing; a press inside a box
+is the end of its line. Every list is sorted, with starts at line starts and
+at most one size per line, or ignored as a whole; without them the layout is
+the plain area's. During an IME composition, lines and
 boxes after it move with the preedit.
 
 ## Style rules
