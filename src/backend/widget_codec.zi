@@ -3437,7 +3437,7 @@ WidgetValidScrollMetrics :: (value: HostValue) -> bool {
 }
 
 WidgetScrollPropsCodec :: struct {
-    fields: [11]HostField
+    fields: [12]HostField
     bounds: WidgetRectangleCodec
     input: WidgetScrollInputCodec
     metrics: WidgetScrollMetricsCodec
@@ -3448,7 +3448,7 @@ WidgetEncodeScrollProps :: (data: ScrollProps, codec: *WidgetScrollPropsCodec) -
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("ScrollProps")
     value.fields = *codec.fields[0]
-    value.field_count = 11
+    value.field_count = 12
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("class_name")
@@ -3463,14 +3463,16 @@ WidgetEncodeScrollProps :: (data: ScrollProps, codec: *WidgetScrollPropsCodec) -
     codec.fields[5].value = HostScalar("s32", cast(s64)data.content_width)
     codec.fields[6].name = HostTextData("horizontal")
     codec.fields[6].value = HostScalar("bool", ifx data.horizontal then 1 else 0)
-    codec.fields[7].name = HostTextData("scroll_offset")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.scroll_offset)
-    codec.fields[8].name = HostTextData("scroll_delta")
-    codec.fields[8].value = HostScalar("s32", cast(s64)data.scroll_delta)
-    codec.fields[9].name = HostTextData("input")
-    codec.fields[9].value = WidgetEncodeScrollInput(data.input, *codec.input)
-    codec.fields[10].name = HostTextData("metrics")
-    codec.fields[10].value = WidgetEncodeScrollMetrics(data.metrics, *codec.metrics)
+    codec.fields[7].name = HostTextData("keep_scrollbar")
+    codec.fields[7].value = HostScalar("bool", ifx data.keep_scrollbar then 1 else 0)
+    codec.fields[8].name = HostTextData("scroll_offset")
+    codec.fields[8].value = HostScalar("s32", cast(s64)data.scroll_offset)
+    codec.fields[9].name = HostTextData("scroll_delta")
+    codec.fields[9].value = HostScalar("s32", cast(s64)data.scroll_delta)
+    codec.fields[10].name = HostTextData("input")
+    codec.fields[10].value = WidgetEncodeScrollInput(data.input, *codec.input)
+    codec.fields[11].name = HostTextData("metrics")
+    codec.fields[11].value = WidgetEncodeScrollMetrics(data.metrics, *codec.metrics)
     return value
 }
 
@@ -3519,25 +3521,31 @@ WidgetDecodeScrollProps :: (value: HostValue, codec: *WidgetScrollPropsCodec) ->
         }
     }
     {
-        field_at := HostFieldAt(value, 7, "scroll_offset")
+        field_at := HostFieldAt(value, 7, "keep_scrollbar")
+        if field_at >= 0 {
+            data.keep_scrollbar = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "scroll_offset")
         if field_at >= 0 {
             data.scroll_offset = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 8, "scroll_delta")
+        field_at := HostFieldAt(value, 9, "scroll_delta")
         if field_at >= 0 {
             data.scroll_delta = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 9, "input")
+        field_at := HostFieldAt(value, 10, "input")
         if field_at >= 0 {
             data.input = WidgetDecodeScrollInput(value.fields[field_at].value, *codec.input)
         }
     }
     {
-        field_at := HostFieldAt(value, 10, "metrics")
+        field_at := HostFieldAt(value, 11, "metrics")
         if field_at >= 0 {
             data.metrics = WidgetDecodeScrollMetrics(value.fields[field_at].value, *codec.metrics)
         }
@@ -3592,25 +3600,31 @@ WidgetValidScrollProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 7, "scroll_offset")
+        field_at := HostFieldAt(value, 7, "keep_scrollbar")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "scroll_offset")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 8, "scroll_delta")
+        field_at := HostFieldAt(value, 9, "scroll_delta")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 9, "input")
+        field_at := HostFieldAt(value, 10, "input")
         if field_at >= 0 {
             if !WidgetValidScrollInput(value.fields[field_at].value) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 10, "metrics")
+        field_at := HostFieldAt(value, 11, "metrics")
         if field_at >= 0 {
             if !WidgetValidScrollMetrics(value.fields[field_at].value) { return false }
         }

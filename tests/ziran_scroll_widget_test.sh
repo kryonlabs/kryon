@@ -173,7 +173,72 @@ Answer :: () -> s32 {
         TreeScrollAt(TestSession(), 150.0, 20.0) != cast(u64)0 { return -10 }
     // Horizontal scrolls retain the same clamping and drag policy, but move
     // content on X and reserve a bottom scrollbar instead of a right one.
-    return HorizontalScrollTest()
+    horizontal: s32 = HorizontalScrollTest()
+    if horizontal != 42 { return horizontal }
+    return KeptScrollbarTest()
+}
+
+// A kept scrollbar shows, and narrows the content, while the content still
+// fits, so content that grows keeps its width; with nothing to scroll it
+// takes no press.
+KeptScrollbarTest :: () -> s32 {
+    root: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
+    TreeStart(TestSession(), cast(u64)1, root)
+    kept: ScrollProps
+    kept.key = cast(u64)9
+    kept.bounds = Rectangle.{20.0, 10.0, 80.0, 40.0}
+    kept.content_height = 30
+    kept.keep_scrollbar = true
+    kept.input.enabled = true
+    kept.input.pointer_allowed = true
+    PaintClear(TestSession())
+    result: ScrollResult = Scroll(TestSession(), kept)
+    if result.max_scroll != 0 || result.scroll_offset != 0 ||
+        !result.frame.scrollbar || result.frame.clip.width != 70.0 ||
+        result.content.width != 70.0 ||
+        result.frame.paint.thumb_bounds.height != 40.0 ||
+        PendingPaintCount(TestSession()) != 2 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -21 }
+
+    // Neither the bar nor the content starts a drag, and the thumb does not
+    // light up under the pointer.
+    TreeStart(TestSession(), cast(u64)1, root)
+    kept.input.pressed = true
+    kept.input.down = true
+    kept.input.mouse = Vector2.{95.0, 20.0}
+    result = Scroll(TestSession(), kept)
+    if result.frame.start_drag || result.frame.content_drag ||
+        result.frame.thumb_state != 1 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -22 }
+    TreeStart(TestSession(), cast(u64)1, root)
+    kept.input.mouse = Vector2.{50.0, 20.0}
+    result = Scroll(TestSession(), kept)
+    if result.frame.start_drag || result.frame.content_drag ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -23 }
+
+    // Once the content grows past the view, the same bar scrolls it, and
+    // the content keeps the width it had.
+    TreeStart(TestSession(), cast(u64)1, root)
+    kept.content_height = 140
+    kept.input.mouse = Vector2.{95.0, 20.0}
+    result = Scroll(TestSession(), kept)
+    if result.max_scroll != 100 || !result.frame.start_drag ||
+        result.frame.clip.width != 70.0 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -24 }
+
+    // Without it, content that fits has no scrollbar and its full width.
+    TreeStart(TestSession(), cast(u64)1, root)
+    kept.content_height = 30
+    kept.keep_scrollbar = false
+    kept.input.pressed = false
+    kept.input.down = false
+    PaintClear(TestSession())
+    result = Scroll(TestSession(), kept)
+    if result.frame.scrollbar || result.frame.clip.width != 80.0 ||
+        PendingPaintCount(TestSession()) != 0 ||
+        !End(TestSession()) || !TreeFinish(TestSession()) { return -25 }
+    PaintClear(TestSession())
+    return 42
 }
 
 HorizontalScrollTest :: () -> s32 {

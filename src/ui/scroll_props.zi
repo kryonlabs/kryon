@@ -39,6 +39,11 @@ ScrollProps :: struct {
     content_height: s32
     content_width: s32
     horizontal: bool
+    // The scrollbar shows, and keeps its width out of the content, even
+    // while the content fits. Content that can grow, such as a list whose
+    // rows open, keeps its width when it starts to scroll. With nothing to
+    // scroll, the scrollbar takes no input.
+    keep_scrollbar: bool
     scroll_offset: s32
     scroll_delta: s32
     input: ScrollInput
