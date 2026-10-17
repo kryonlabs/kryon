@@ -5,7 +5,11 @@
 #import "text_context_menu"
 #import "text_touch"
 #import "text_selection_widget"
-Clock :: #import "std/timer_linux";
+// Apps import android_device on every platform; only Android reads this
+// POSIX clock, which MinGW cannot link.
+#if #defined(ANDROID_BUILD) {
+    Clock :: #import "std/timer_linux";
+}
 
 AndroidTextMenu :: (owner: Session, token: u64, x: float32, y: float32,
     cut: bool, copy: bool, paste: bool, select_all: bool, escape: bool) -> s32 {
