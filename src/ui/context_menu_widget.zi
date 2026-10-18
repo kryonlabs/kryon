@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // A context menu: a small list of commands that opens where the pointer was
 // when the secondary button was released. Like Dropdown, the caller retains
 // `open` and the position; the menu reports the command chosen and when it
@@ -165,11 +166,11 @@ ContextMenu :: (session: Session, props: ContextMenuProps,
     panel_node: s32 = overlay.panel_node
     if panel_node < 0 { return result }
 
-    fill: Color = StyleTokenColorOr("card", Color.{255, 255, 255, 255})
-    border: Color = StyleTokenColorOr("border", Color.{200, 204, 208, 255})
-    ink: Color = StyleTokenColorOr("text", Color.{30, 30, 30, 255})
-    muted: Color = StyleTokenColorOr("muted", Color.{154, 160, 166, 255})
-    highlight: Color = StyleTokenColorOr("accent-soft", Color.{219, 232, 255, 255})
+    fill: Color = StyleTokenColorOr("card", ColorFromPacked(Theme.LightSurface()))
+    border: Color = StyleTokenColorOr("border", ColorFromPacked(Theme.LightBorder()))
+    ink: Color = StyleTokenColorOr("text", ColorFromPacked(Theme.LightText()))
+    muted: Color = StyleTokenColorOr("muted", ColorFromPacked(Theme.LightDisabled()))
+    highlight: Color = StyleTokenColorOr("accent-soft", ColorFromPacked(Theme.LightSelection()))
     PaintRoundedFill(session, panel_node, panel, 6.0, 8, fill)
     PaintRoundedOutline(session, panel_node, panel, 6.0, 8, 1.0, border)
     if !TreePushScope(session, panel_node) { return result }

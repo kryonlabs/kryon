@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -113,9 +114,9 @@ ScrollFace :: (kind: s32, class_name: s32, disabled: bool,
     face.icon_size = track_width
     face.padding_x = 2.0
     if kind == StyleKindScrollThumb() {
-        face.background = cast(u32)0x6b7280ff
-        if state == cast(s32)ButtonStateHover { face.background = cast(u32)0x4b5563ff }
-        if state == cast(s32)ButtonStatePressed { face.background = cast(u32)0x374151ff }
+        face.background = Theme.LightBorderStrong()
+        if state == cast(s32)ButtonStateHover { face.background = Theme.LightMuted() }
+        if state == cast(s32)ButtonStatePressed { face.background = Theme.LightText() }
         face.icon_size = 16.0
     }
     if disabled { state = cast(s32)ButtonStateDisabled }

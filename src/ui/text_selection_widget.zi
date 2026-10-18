@@ -1,3 +1,5 @@
+#import "surface"
+Theme :: #import "theme";
 // Optional selection for Text. Hosts with a clipboard install this ordinary
 // Ziran widget painter; a host that draws labels needs no clipboard effects.
 #import "session"
@@ -93,13 +95,13 @@ TextSelectionDraw :: (session: Session, node: s32, props: TextProps, prepared: P
     TreeSetTextValue(session, node, props.text, cursor, anchor, true, false)
     if focused && anchor != cursor {
         PaintTextSelection(session, node, props, prepared, anchor, cursor,
-            Color.{80, 140, 180, 72})
+            ColorFromPacked(Opacity(Theme.LightAccent(), 72.0 / 255.0)))
     }
     PaintTextLines(session, node, props, prepared)
     if props.selectable {
         TextTouchPaint(session, node, props.key, focused, false, anchor, cursor,
             TextCaretBounds(props, prepared, anchor), TextCaretBounds(props, prepared, cursor),
-            prepared.bounds, Color.{80, 140, 180, 255}, 1.0)
+            prepared.bounds, ColorFromPacked(Theme.LightAccent()), 1.0)
     }
 }
 

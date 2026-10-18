@@ -1715,7 +1715,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                         PaintRoundedFill(session, result.node,
                             highlight, 0.0, 1,
                             ColorFromPacked(Opacity(
-                                cast(u32)0x93c5fd88, opacity)))
+                                ((Theme.LightAccent() & ~cast(u32)255) | cast(u32)136), opacity)))
                     }
                 }
             }

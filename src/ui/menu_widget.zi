@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Submit the menu after the page content so its panels own pointer input.
 // Groups and nested items are borrowed only for this frame. Paint and semantic
 // labels are copied into the session; navigation stores indices, not pointers.
@@ -236,13 +237,13 @@ Menu :: (session: Session, props: MenuProps, groups: []MenuGroup, state: *MenuSt
     root := TreeSubmitCurrent(session, key, WidgetKindMenu, root_bounds)
     if root < 0 { return result }
     fill := ColorFor(panel_face, cast(u32)StyleBackground, panel_face.value.background,
-        StyleTokenColorOr("card", Color.{255, 255, 255, 255}))
+        StyleTokenColorOr("card", ColorFromPacked(Theme.LightSurface())))
     ink := ColorFor(item_face, cast(u32)StyleForeground, item_face.value.foreground,
-        StyleTokenColorOr("text", Color.{30, 30, 30, 255}))
-    muted := StyleTokenColorOr("muted", Color.{154, 160, 166, 255})
-    highlight := StyleTokenColorOr("accent-soft", Color.{219, 232, 255, 255})
+        StyleTokenColorOr("text", ColorFromPacked(Theme.LightText())))
+    muted := StyleTokenColorOr("muted", ColorFromPacked(Theme.LightDisabled()))
+    highlight := StyleTokenColorOr("accent-soft", ColorFromPacked(Theme.LightSelection()))
     border := ColorFor(panel_face, cast(u32)StyleBorder, panel_face.value.border,
-        StyleTokenColorOr("border", Color.{200, 204, 208, 255}))
+        StyleTokenColorOr("border", ColorFromPacked(Theme.LightBorder())))
     if state.open_index >= 0 {
         scrim := TreeSubmit(session, ScrimKey(), root, WidgetKindButton, view)
         TreeSetInteractive(session, scrim, false, false, 0)

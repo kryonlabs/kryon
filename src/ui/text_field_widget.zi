@@ -589,7 +589,7 @@ Theme :: #import "theme";
                     Rectangle.{cast(float32)left, cast(float32)text_y,
                         cast(float32)(right - left), cast(float32)line_height},
                     0.0, 1,
-                    ColorFromPacked(Opacity(cast(u32)0x93c5fd88,
+                    ColorFromPacked(Opacity(((Theme.LightAccent() & ~cast(u32)255) | cast(u32)136),
                     opacity)))
             }
         }
