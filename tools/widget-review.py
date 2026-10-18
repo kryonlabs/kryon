@@ -51,6 +51,9 @@ def build(label, env):
     toolchain = Path(env.get('ZIRAN_ROOT') or subprocess.check_output(
         ['ziran', 'pkg', 'path', 'ziran'], cwd=ROOT, env=env, text=True).strip())
     generated = BUILD / f'{label}-c'
+    for pattern in ('*.c', '*.h'):
+        for path in generated.glob(pattern):
+            path.unlink()
     defines = ['--define', 'REVIEW_INLINE_TEXT'] if 'pending_text_first:' in (ROOT / 'src/ui/paint_queue.zi').read_text() else []
     subprocess.run([str(toolchain / 'build/bin/ziran'), 'build', '--project', '--root', 'tools',
                     '--target=c', '--no-main', '--define', 'POSIX_THREADS',

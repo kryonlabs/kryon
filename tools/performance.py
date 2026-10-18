@@ -63,6 +63,11 @@ def main():
     # Keep stable build output exclusive for the entire build and run.
     with (build / 'lock').open('w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # The lock excludes another build; a running executable does not
+        # depend on the generated sources. Remove stale modules between runs.
+        for pattern in ('*.c', '*.h'):
+            for path in (build / 'c').glob(pattern):
+                path.unlink()
         subprocess.run([ziran, 'build', '--project', '--root', str(ROOT / 'tools'), '--target=c',
                         '--no-main', '--define', 'POSIX_THREADS', '--entry', 'performance:Run',
                         '-o', str(build / 'c'), str(ROOT / 'tools/performance.zi')], cwd=ROOT, env=env, check=True)
