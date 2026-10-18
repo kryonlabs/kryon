@@ -110,46 +110,46 @@ Frame :: () -> s32 {
     TreeSetInteractive(TestSession(), child, false, false, 3)
     child_activation: bool = TreeTakeActivationAt(TestSession(),
         TreeChild(TestSession(), overlay.panel_node, cast(u64)3,
-            WidgetKindButton))
+        WidgetKindButton))
     beneath_activation: bool = TreeTakeActivationAt(TestSession(),
         TreeChild(TestSession(), 0, cast(u64)10, WidgetKindButton))
     if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 6 ||
-        overlay.node != 2 || overlay.panel_node != 4 ||
-        TreeHitAt(TestSession(), 20.0, 20.0) != 3 ||
-        TreeHitAt(TestSession(), 135.0, 35.0) != 5 ||
-        TreeHitAt(TestSession(), 220.0, 110.0) != 3 ||
-        beneath_activation { return -2 }
+    overlay.node != 2 || overlay.panel_node != 4 ||
+    TreeHitAt(TestSession(), 20.0, 20.0) != 3 ||
+    TreeHitAt(TestSession(), 135.0, 35.0) != 5 ||
+    TreeHitAt(TestSession(), 220.0, 110.0) != 3 ||
+    beneath_activation { return -2 }
     if phase == 0 {
         if overlay.closed || overlay.release_consumed || overlay.tapped ||
-            child_activation { return -3 }
+        child_activation { return -3 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, false, false, true})
     } else if phase == 1 {
         if !overlay.closed || !overlay.outside_released ||
-            !overlay.release_consumed || !overlay.tapped ||
-            child_activation { return -4 }
+        !overlay.release_consumed || !overlay.tapped ||
+        child_activation { return -4 }
         TreePointerUpdate(TestSession(), PointerFrame.{135.0, 35.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{135.0, 35.0, false, false, true})
     } else if phase == 2 {
         if overlay.closed || overlay.release_consumed || overlay.tapped ||
-            !child_activation { return -5 }
+        !child_activation { return -5 }
         TreePointerUpdate(TestSession(), PointerFrame.{190.0, 80.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{190.0, 80.0, false, false, true})
     } else if phase == 3 {
         // A tap on the panel's own background stays open and is reported.
         if overlay.closed || overlay.release_consumed || !overlay.tapped ||
-            child_activation { return -6 }
+        child_activation { return -6 }
         TreePointerUpdate(TestSession(), PointerFrame.{190.0, 80.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{250.0, 130.0, false, false, true})
     } else if phase == 4 {
         if !overlay.closed || !overlay.outside_released ||
-            !overlay.release_consumed || !overlay.tapped { return -7 }
+        !overlay.release_consumed || !overlay.tapped { return -7 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, false, false, true})
     } else {
         // An overlay that may not be dismissed still reports the tap.
         if overlay.closed || overlay.release_consumed || !overlay.tapped ||
-            child_activation { return -8 }
+        child_activation { return -8 }
     }
     PaintFlush(TestSession())
     old: s32 = phase
@@ -208,13 +208,15 @@ main :: () -> s32 {
     expected: s32 = 0
     while expected < 6 {
         if Frame() != expected || OverlayFillCount() != expected + 1 ||
-            OverlayHostFailed() { return expected + 1 }
+        OverlayHostFailed() { return expected + 1 }
         expected += 1
     }
     ordered := CheckOverlayOrder()
     if ordered != 0 { return ordered }
     floating := CheckFloatingOverlay()
     if floating != 0 { return floating }
+    clipped := CheckClippedOverlay()
+    if clipped != 0 { return clipped }
     return CheckModalInput()
 }
 
@@ -237,12 +239,33 @@ CheckFloatingOverlay :: () -> s32 {
     TreeSetInteractive(session, rail, false, false, 30)
     if !TreeFinish(session) { return 30 }
     if TreeHitAt(session, 110.0, 40.0) != child ||
-        TreeHitAt(session, 210.0, 40.0) != rail ||
-        TreeHitAt(session, 10.0, 40.0) == beneath { return 31 }
+    TreeHitAt(session, 210.0, 40.0) != rail ||
+    TreeHitAt(session, 10.0, 40.0) == beneath { return 31 }
     TreePointerUpdate(session, PointerFrame.{10.0, 40.0, true, true, false})
     TreePointerUpdate(session, PointerFrame.{10.0, 40.0, false, false, true})
     TreeStart(session, cast(u64)1, viewport)
     overlay = DismissibleOverlay(session, props)
     if !overlay.closed || !overlay.release_consumed { return 32 }
+    return 0
+}
+
+// A modal opened by a card in a native scroll group uses the viewport, not
+// the group's clip, for its scrim, panel, paint and hit targets.
+CheckClippedOverlay :: () -> s32 {
+    session := SessionOpen(); defer { CloseSession(session) }
+    viewport := Rectangle.{0.0, 0.0, 240.0, 160.0}
+    BeginFrame(session, cast(u64)90, viewport)
+    group := TreeSubmitCurrent(session, cast(u64)91, WidgetKindScroll, Rectangle.{0.0, 0.0, 240.0, 40.0})
+    TreeSetChildClip(session, group, Rectangle.{0.0, 0.0, 240.0, 40.0})
+    if !TreePushScope(session, group) { return 40 }
+    overlay := DismissibleOverlay(session, DismissibleOverlayProps.{.key = cast(u64)92,
+            .bounds = Rectangle.{40.0, 60.0, 160.0, 80.0}})
+    child := TreeSubmit(session, cast(u64)93, overlay.panel_node, WidgetKindButton, Rectangle.{60.0, 80.0, 120.0, 40.0})
+    TreeSetInteractive(session, child, false, false, 93)
+    if TreeSubmittedNodeAt(session, overlay.node).clipped || TreeSubmittedNodeAt(session, child).clipped { return 41 }
+    PaintMark(session, child, 7)
+    End(session)
+    if CommitFrame(session) != cast(FrameStatus)FrameOk || TreeHitAt(session, 80.0, 100.0) != child ||
+    !TreeActivateAt(session, child) { return 42 }
     return 0
 }

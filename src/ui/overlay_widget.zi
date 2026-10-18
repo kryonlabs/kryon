@@ -53,9 +53,9 @@ DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> Dism
         release: PointerDrag = TreeTakeDragAt(session, previous)
         if release.ended {
             policy: DismissibleOverlayPolicy =
-                DismissibleOverlayPolicyFor(true, false,
-                    props.dismiss_disabled,
-                    PointInBounds(release.x, release.y, props.bounds))
+            DismissibleOverlayPolicyFor(true, false,
+                props.dismiss_disabled,
+                PointInBounds(release.x, release.y, props.bounds))
             result.closed = policy.closed
             result.outside_released = policy.outside_released
             result.release_consumed = policy.release_consumed
@@ -63,6 +63,9 @@ DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> Dism
         }
         result.node = TreeSubmitCurrent(session, key, kind, viewport)
         if result.node < 0 { return result }
+        // A modal covers the viewport even when its trigger is in a clipped
+        // scroll group. Its modal kind still blocks input to the page below.
+        if !props.non_modal { TreeSetPopup(session, result.node) }
         scrim_node = TreeSubmit(session, OverlayScrimKey(), result.node,
             WidgetKindButton, viewport)
         if scrim_node < 0 { return result }
@@ -93,7 +96,7 @@ Popup :: (session: Session, props: PopupProps) -> PopupResult {
     seen: s32 = press.serial
     if previous >= 0 { seen = TreePreviousWidgetState(session, previous).index }
     if press.serial != seen && !PointInBounds(press.x, press.y, props.bounds) &&
-        !PointInBounds(press.x, press.y, props.keep_bounds) {
+    !PointInBounds(press.x, press.y, props.keep_bounds) {
         result.closed = true
         return result
     }
