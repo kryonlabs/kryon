@@ -89,6 +89,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential python3 ripgrep xvfb \
             pkg-config libsdl2-dev libcairo2-dev libfreetype-dev libfontconfig1-dev libcurl4-openssl-dev \
+            libdrm-dev libgbm-dev libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri \
             xclip xdotool x11-xserver-utils python3-gi python3-pil ffmpeg gir1.2-gtk-3.0 gir1.2-atspi-2.0 \
             libglib2.0-dev libpango1.0-dev at-spi2-core dbus-x11 \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav
@@ -122,6 +123,13 @@ jobs:
           git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
           ~/emsdk/emsdk install 6.0.6
           ~/emsdk/emsdk activate 6.0.6
+
+      # Platform builds resolve locked source packages while make reads its
+      # files, so the compiler and package cache must exist first.
+      - name: Build the locked compiler and fetch locked source packages
+        run: |
+          make -C "$ZIRAN_ROOT" all
+          "$ZIRAN_ROOT/build/bin/ziran" fetch --locked
 
       - name: Build and test
         env:
