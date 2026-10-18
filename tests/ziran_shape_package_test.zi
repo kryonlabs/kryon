@@ -1,0 +1,38 @@
+// Exercise the public aggregate through an external package, including the
+// imported Shape PaintClipper thunk and its clipping behavior.
+#import "kryon/Widgets"
+#import "kryon/Frame"
+#import "kryon/tree"
+#import "kryon/widget_kind"
+#import "ziran_shape_widget_host"
+
+using WidgetKind;
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    ShapeHostReset()
+    unused BeginFrame(session, cast(u64)1,
+        Rectangle.{0.0, 0.0, 200.0, 200.0})
+    viewport := TreeSubmit(session, cast(u64)2, 0, WidgetKindCard,
+        Rectangle.{0.0, 0.0, 200.0, 200.0})
+    TreeSetChildClip(session, viewport,
+        Rectangle.{50.0, 0.0, 150.0, 200.0})
+    if !TreePushScope(session, viewport) { return 1 }
+    unused Circle(session, CircleProps.{.key = cast(u64)3,
+        .center = Vector2.{50.0, 60.0}, .radius = 20.0,
+        .fill = Color.{10, 20, 200, 255}})
+    // The second shape is wholly clipped and must never reach the host.
+    unused Line(session, LineProps.{.key = cast(u64)4,
+        .start = Vector2.{0.0, 150.0}, .end = Vector2.{40.0, 150.0},
+        .thickness = 2.0, .color = Color.{200, 10, 10, 255}})
+    TreePopScope(session)
+    unused EndFrameRetained(session, false)
+    if ShapeHostCalls() != 1 || ShapeHostFailed() { return 2 }
+    bounds := ShapeHostExtent()
+    if bounds.x < 50.0 || bounds.x + bounds.width > 70.001 { return 3 }
+    // Half the 36-segment circle reaches the raster host.
+    if ShapeHostArea() < 625.0 || ShapeHostArea() > 625.3 { return 4 }
+    print("Shape package clipping passed\n")
+    return 0
+}

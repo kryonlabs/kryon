@@ -7,7 +7,6 @@
 #import "raster_text"
 #import "session"
 #import "tree"
-Tree :: #import "tree";
 #import "vec"
 host_api :: #system_library "host_api";
 
@@ -78,8 +77,10 @@ PaintCommand :: struct {
 }
 
 PaintEmitter :: #type (command: PaintCommand) -> ();
+// Keep the parameter distinct from the imported geometry module so the
+// concrete tree type resolves both in aggregate imports and native thunks.
 PaintClipper :: #type (command: PaintCommand,
-    geometry: Tree.NodeGeometry) -> PaintCommand;
+    node_geometry: NodeGeometry) -> PaintCommand;
 
 QueuedPaint :: struct {
     data: PaintCommand
