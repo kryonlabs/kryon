@@ -1,0 +1,60 @@
+#import "pixmap"
+#import "geometry"
+
+first: [3076]u32;
+second: [3076]u32;
+asset: [256]u32;
+
+// Compare the optimized rows with the retained general transform, over the
+// complete surface, including pixels outside the rounded clip and guard words.
+Check :: (variant: s32, alias: bool, opaque: bool) -> bool {
+    source: Rectangle = .{-1.25, 0.5, 17.5, 15.25}
+    if variant % 3 == 1 { source.x = 15.25; source.width = -16.5 }
+    if variant % 3 == 2 { source.y = 15.75; source.height = -17.25 }
+    data: PixmapImageRowsData
+    data.slot = 0; data.left = 0; data.right = 64
+    data.source = source
+    data.destination = .{2.25, 3.75, 57.5, 40.25}
+    data.clip = .{4.25, 2.5, 54.75, 42.25}
+    data.origin = .{cast(float32)(variant % 4), cast(float32)(variant % 5)}
+    data.cosine = 1.0
+    data.radius = cast(float32)(variant % 4) * 7.25
+    data.tint = .{255, 255, 255, 255}
+    if alias { data.source = .{0.0, 0.0, 64.0, 47.0} }
+    for pass: 0..1 {
+        if pass == 0 { unused PixmapBeginInto(cast(u32)0x315779, 64, 48, first[:], opaque) }
+        else { unused PixmapBeginInto(cast(u32)0x315779, 64, 48, second[:], opaque) }
+        for guard: 3072..3075 {
+            if pass == 0 { first[guard] = cast(u32)0xdeadbeef }
+            else { second[guard] = cast(u32)0xdeadbeef }
+        }
+        if alias {
+            if pass == 0 { unused PixmapSetImage(0, "alias", 64, 48, first[:3072]) }
+            else { unused PixmapSetImage(0, "alias", 64, 48, second[:3072]) }
+        } else { unused PixmapSetImage(0, "fixture", 16, 16, asset[:]) }
+        if pass == 0 { PixmapImageRange(0, 48, data) }
+        else { PixmapImageTransformedRange(0, 48, data) }
+        PixmapClearImage(0); PixmapEndInto()
+    }
+    for index: 0..3075 {
+        if first[index] != second[index] {
+            print("Image mismatch variant %, alias %, opaque %, pixel %\n", variant, alias, opaque, index)
+            return false
+        }
+    }
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    for i: 0..255 {
+        alpha := ifx i % 4 == 0 then cast(u32)255 else cast(u32)(i % 256)
+        asset[i] = (alpha << cast(u32)24) | cast(u32)(i * 44137)
+    }
+    for variant: cast(s32)0..11 {
+        if !Check(variant, false, false) || !Check(variant, false, true) ||
+            !Check(variant, true, false) || !Check(variant, true, true) { return 1 }
+    }
+    print("Exact image rows passed\n")
+    return 0
+}

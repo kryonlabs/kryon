@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "text_host"
 // Portable compositions use the same widgets as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
@@ -58,10 +59,10 @@
         cast(u32)StyleOpacity | cast(u32)StylePaddingX |
         cast(u32)StyleFontSize
         face.background = cast(u32)0xffffffff
-        face.foreground = cast(u32)0x111827ff
-        face.border = cast(u32)0x94a3b8ff
-        face.focus = cast(u32)0x3b82f6ff
-        face.radius = 4.0
+        face.foreground = Theme.LightText()
+        face.border = Theme.LightBorderStrong()
+        face.focus = Theme.LightAccent()
+        face.radius = 8.0
         face.border_width = 1.0
         face.opacity = 1.0
         face.padding_x = 10.0
@@ -81,8 +82,14 @@
             cast(s32)ButtonEmphasisSoft,
             cast(s32)ControlSizeMedium, state)
         frame: StyleFrame
+        defaults := TextFieldDefaultFace()
+        if props.disabled {
+            defaults.background = Opacity(defaults.background, 0.45)
+            defaults.foreground = Opacity(defaults.foreground, 0.45)
+            defaults.border = Opacity(defaults.border, 0.45)
+        }
         frame.value = ResolveInstalledStyleRules(
-            TextFieldDefaultFace(), facts, state)
+            defaults, facts, state)
         return frame
     }
 
@@ -545,7 +552,7 @@
         foreground: u32 = face.value.foreground
         if value_to_paint == "" && !composing {
             value_to_paint = props.placeholder
-            foreground = cast(u32)0x64748bff
+            foreground = Theme.LightMuted()
         }
         text_y: s32 = cast(s32)bounds.y +
         (cast(s32)bounds.height - line_height) / 2

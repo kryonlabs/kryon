@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
@@ -42,7 +43,7 @@ DefaultImageFaces :: () -> ImageFaces {
     faces.surface.opacity = 1.0
     faces.label.fields = cast(u32)StyleForeground |
         cast(u32)StyleFontSize
-    faces.label.foreground = cast(u32)0x171717ff
+    faces.label.foreground = Theme.LightText()
     faces.label.font_size = 14.0
     return faces
 }

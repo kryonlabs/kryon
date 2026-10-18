@@ -47,7 +47,7 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
     if radius != PillRadiusOf(bounds) || segments != 16 || width != 1.0 ||
         bounds.width != 22.0 || bounds.height != 22.0 ||
-        color.r != cast(u8)0x94 { failed = true }
+        color.r != cast(u8)0x88 { failed = true }
     outlines += 1
 }
 

@@ -57,9 +57,9 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     if radius != cast(float32)0.2 { failure = 206 }
     if segments != 12 { failure = 207 }
     if width != 1.0 { failure = 208 }
-    if color.r != cast(u8)0x66 { failure = 209 }
-    if color.g != cast(u8)0x64 { failure = 210 }
-    if color.b != cast(u8)0x5f { failure = 211 }
+    if color.r != cast(u8)0x88 { failure = 209 }
+    if color.g != cast(u8)0x9f { failure = 210 }
+    if color.b != cast(u8)0xaa { failure = 211 }
     if color.a != cast(u8)0xff { failure = 212 }
     draws += 1
 }

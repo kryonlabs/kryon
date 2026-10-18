@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "button"
 #import "control_props"
@@ -41,7 +42,7 @@ DropdownDefaultFace :: (role: s32, state: s32,
     cast(u32)StylePaddingX | cast(u32)StylePaddingY |
     cast(u32)StyleGap | cast(u32)StyleFontSize |
     cast(u32)StyleIconSize | cast(u32)StyleContentOffset
-    face.foreground = cast(u32)0x111827ff
+    face.foreground = Theme.LightText()
     face.opacity = 1.0
     face.font_size = 14.0
     face.icon_size = 16.0
@@ -50,35 +51,35 @@ DropdownDefaultFace :: (role: s32, state: s32,
     face.gap = 4.0
     face.offset_x = 14.0
     face.offset_y = 16.0
-    face.radius = 5.0
+    face.radius = 8.0
     if role == DropdownPanelRole() {
         face.background = cast(u32)0xffffffff
-        face.border = cast(u32)0x9ca3afff
+        face.border = Theme.LightBorderStrong()
         face.border_width = 1.0
     } else if role == DropdownOptionRole() {
         face.background = cast(u32)0x00000000
         if selected {
-            face.background = cast(u32)0xdbeafeff
-            face.foreground = cast(u32)0x1d4ed8ff
+            face.background = Theme.LightSelection()
+            face.foreground = Theme.LightSelectionText()
         } else if state == ButtonStateHover {
-            face.background = cast(u32)0xe5e7ebff
+            face.background = Theme.LightRaised()
         }
         if state == ButtonStateDisabled { face.opacity = 0.45 }
     } else if role == DropdownScrollbarRole() {
-        face.background = cast(u32)0x94a3b8ff
+        face.background = Theme.LightBorderStrong()
         face.border = cast(u32)0x00000000
         face.icon_size = 8.0
         face.padding_y = 2.0
         face.radius = 4.0
     } else {
-        face.background = cast(u32)0xf3f4f6ff
-        face.border = cast(u32)0x9ca3afff
+        face.background = Theme.LightSunken()
+        face.border = Theme.LightBorderStrong()
         face.border_width = 1.0
         if state == ButtonStateHover {
-            face.background = cast(u32)0xe5e7ebff
+            face.background = Theme.LightRaised()
         } else if state == ButtonStatePressed ||
         state == ButtonStateSelected {
-            face.background = cast(u32)0xdbeafeff
+            face.background = Theme.LightSelection()
         }
         if state == ButtonStateDisabled { face.opacity = 0.45 }
     }

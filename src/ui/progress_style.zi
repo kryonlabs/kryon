@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "control_props"
 #import "progress"
 #import "style"
@@ -23,15 +24,15 @@ DefaultProgressFaces :: () -> ProgressFaces {
     faces: ProgressFaces
     faces.track.value.fields = cast(u32)StyleBackground | cast(u32)StyleBorder |
         cast(u32)StyleRadius | cast(u32)StyleBorderWidth
-    faces.track.value.background = cast(u32)0xd4d0c8ff
-    faces.track.value.border = cast(u32)0x66645fff
+    faces.track.value.background = Theme.LightRaised()
+    faces.track.value.border = Theme.LightBorderStrong()
     faces.track.value.radius = 4.0
     faces.track.value.border_width = 1.0
     faces.fill.value.fields = cast(u32)StyleBackground | cast(u32)StyleForeground
-    faces.fill.value.background = cast(u32)0x3b609bff
+    faces.fill.value.background = Theme.LightAccent()
     faces.fill.value.foreground = cast(u32)0xffffffff
     faces.label.value.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize
-    faces.label.value.foreground = cast(u32)0x171717ff
+    faces.label.value.foreground = Theme.LightText()
     faces.label.value.font_size = 14.0
     faces.scale = 1.0
     faces.fallback_font = 16

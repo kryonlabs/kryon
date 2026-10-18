@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Portable compositions submit the same dialog to a retained UI host; the
 // host draws it with this implementation and owns the panel's scope.
 #if #defined(KRYON_HOSTED_UI) {
@@ -43,8 +44,8 @@ ModalFrameDefaultFace :: (role: s32) -> StyleData {
         cast(u32)StyleRadius | cast(u32)StyleOpacity |
         cast(u32)StyleFontSize
     face.background = cast(u32)0xffffffff
-    face.foreground = cast(u32)0x111827ff
-    face.border = cast(u32)0x94a3b8ff
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorderStrong()
     face.border_width = 1.0
     face.radius = 8.0
     face.opacity = 1.0

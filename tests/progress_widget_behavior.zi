@@ -23,6 +23,11 @@ using FrameStatus;
 
 #program_export
 Answer :: () -> s32 {
+    track_bounds: Rectangle = .{10.0, 20.0, 100.0, 20.0}
+    empty_label := ProgressLayoutFor(track_bounds, 0, 100, 64, 20.0, 14.0, 6.0)
+    filled_label := ProgressLayoutFor(track_bounds, 0, 100, 90, 20.0, 14.0, 6.0)
+    if empty_label.label_on_fill || empty_label.label_x < 74.0 ||
+        !filled_label.label_on_fill || filled_label.label_x + 20.0 > 100.0 { return -20 }
     props: ProgressProps
     props.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
     props.min = 0

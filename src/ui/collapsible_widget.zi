@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "collapsible"
 #import "collapsible_props"
@@ -31,11 +32,11 @@ CollapsibleDefaultFace :: (role: s32, state: s32) -> StyleData {
         cast(u32)StyleOpacity | cast(u32)StyleFontSize |
         cast(u32)StylePaddingX | cast(u32)StylePaddingY |
         cast(u32)StyleIconSize
-    face.background = cast(u32)0xf8fafcff
-    face.foreground = cast(u32)0x171717ff
-    face.border = cast(u32)0xd1d5dbff
+    face.background = Theme.LightBackground()
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorder()
     face.border_width = 1.0
-    face.focus = cast(u32)0x2563ebff
+    face.focus = Theme.LightAccent()
     face.radius = 4.0
     face.opacity = 1.0
     face.font_size = 16.0
@@ -55,10 +56,10 @@ CollapsibleDefaultFace :: (role: s32, state: s32) -> StyleData {
         face.icon_size = 28.0
     }
     if state == ButtonStateSelected {
-        face.background = cast(u32)0xdbeafeff
-        face.foreground = cast(u32)0x1d4ed8ff
+        face.background = Theme.LightSelection()
+        face.foreground = Theme.LightSelectionText()
     } else if state == ButtonStateHover {
-        face.background = cast(u32)0xe5e7ebff
+        face.background = Theme.LightRaised()
     } else if state == ButtonStateDisabled {
         face.foreground = Opacity(face.foreground, 0.45)
         face.background = Opacity(face.background, 0.45)

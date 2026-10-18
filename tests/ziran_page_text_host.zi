@@ -6,8 +6,8 @@ images: s32;
 failed: bool;
 
 InkIsExpected :: (color: Color) -> bool {
-    return color.r == cast(u8)0x17 && color.g == cast(u8)0x17 &&
-        color.b == cast(u8)0x17 && color.a == cast(u8)255
+    return color.r == cast(u8)0x20 && color.g == cast(u8)0x3b &&
+        color.b == cast(u8)0x4b && color.a == cast(u8)255
 }
 
 #program_export

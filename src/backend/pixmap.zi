@@ -997,6 +997,52 @@ PixmapImageRowsData :: struct {
 PixmapImageRange :: (start: s32, end: s32, data: PixmapImageRowsData) {
     slot := data.slot; source := data.source; destination := data.destination
     clip := data.clip; origin := data.origin; cosine := data.cosine; sine := data.sine; radius := data.radius; tint := data.tint
+    // Most UI images are unrotated and untinted. Their source row is constant
+    // across a destination row. Keep the exact sampling arithmetic, including
+    // negative source sizes, but resolve the row and borrowed storage once.
+    if cosine == 1.0 && sine == 0.0 && tint.r == cast(u8)255 &&
+        tint.g == cast(u8)255 && tint.b == cast(u8)255 && tint.a == cast(u8)255 {
+        image_width := pixmap_image_widths[slot]
+        image_height := pixmap_image_heights[slot]
+        image := pixmap_image_pixels[slot].value
+        surface := pixmap_surface
+        stride := pixmap_width
+        alpha := pixmap_alpha
+        for y: cast(s32)start..cast(s32)end - 1 {
+            py := cast(float32)y + 0.5
+            local_y := py - destination.y + origin.y
+            if local_y < 0.0 || local_y >= destination.height { continue }
+            sy := source.y + local_y * source.height / destination.height
+            if !Finite32(sy) || sy < 0.0 || sy >= cast(float32)image_height { continue }
+            source_row := FloorInteger(sy) * image_width
+            target_row := y * stride
+            for x: data.left..data.right - 1 {
+                px := cast(float32)x + 0.5
+                if !ImageCanvas.InsideRoundedClip(px, py, clip, radius) { continue }
+                local_x := px - destination.x + origin.x
+                if local_x < 0.0 || local_x >= destination.width { continue }
+                sx := source.x + local_x * source.width / destination.width
+                if !Finite32(sx) || sx < 0.0 || sx >= cast(float32)image_width { continue }
+                packed := image[source_row + FloorInteger(sx)]
+                if packed >> cast(u32)24 == cast(u32)255 {
+                    surface[target_row + x] = (packed & cast(u32)0x00ffffff) | alpha
+                } else {
+                    PixmapBlend(x, y, Color.{cast(u8)((packed >> cast(u32)16) & cast(u32)255),
+                        cast(u8)((packed >> cast(u32)8) & cast(u32)255),
+                        cast(u8)(packed & cast(u32)255), cast(u8)(packed >> cast(u32)24)}, 255)
+                }
+            }
+        }
+        return
+    }
+    PixmapImageTransformedRange(start, end, data)
+}
+
+// The general transform also provides an independent pixel-equivalence path
+// for tests of the row optimization above.
+PixmapImageTransformedRange :: (start: s32, end: s32, data: PixmapImageRowsData) {
+    slot := data.slot; source := data.source; destination := data.destination
+    clip := data.clip; origin := data.origin; cosine := data.cosine; sine := data.sine; radius := data.radius; tint := data.tint
     for y: cast(s32)start..cast(s32)end - 1 {
         for x: data.left..data.right - 1 {
             px := cast(float32)x + 0.5; py := cast(float32)y + 0.5

@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -30,10 +31,10 @@ SeparatorFaces :: struct {
 DefaultSeparatorFaces :: () -> SeparatorFaces {
     faces: SeparatorFaces
     faces.line.value.fields = cast(u32)StyleBackground
-    faces.line.value.background = cast(u32)0x66645fff
+    faces.line.value.background = Theme.LightBorderStrong()
     faces.label.value.fields = cast(u32)StyleForeground |
         cast(u32)StyleFontSize | cast(u32)StyleGap
-    faces.label.value.foreground = cast(u32)0x171717ff
+    faces.label.value.foreground = Theme.LightText()
     faces.label.value.font_size = 14.0
     faces.label.value.gap = 12.0
     faces.scale = 1.0
@@ -138,7 +139,7 @@ Separator :: (session: Session, props: SeparatorProps) {
 Bullet :: (session: Session, bounds: Rectangle) {
     defaults: StyleData
     defaults.fields = cast(u32)StyleForeground
-    defaults.foreground = cast(u32)0x171717ff
+    defaults.foreground = Theme.LightText()
     facts: StyleFacts = StyleControlRoleFacts(StyleKindSeparator(),
         0, 0, SeparatorBulletRole(), cast(s32)ButtonToneNeutral,
         cast(s32)ButtonEmphasisFilled, cast(s32)ControlSizeMedium,

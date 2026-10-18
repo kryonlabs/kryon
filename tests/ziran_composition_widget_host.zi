@@ -36,8 +36,8 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
     unused segments
-    if color.r == cast(u8)59 && color.g == cast(u8)130 &&
-        color.b == cast(u8)246 {
+    if color.r == cast(u8)23 && color.g == cast(u8)107 &&
+        color.b == cast(u8)131 {
         if radius == 0.0 && bounds.height == 2.0 {
             field_underline += 1
         }

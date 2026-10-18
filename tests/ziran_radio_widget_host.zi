@@ -47,7 +47,7 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     even: bool = outlines % 2 == 0
     expected_y: float32 = 65.0
     if even { expected_y = 25.0 }
-    red: u8 = cast(u8)0x73
+    red: u8 = cast(u8)0x88
     alpha: u8 = cast(u8)255
     if (outlines < 4 && even) || (outlines >= 4 && !even) {
         red = cast(u8)0x12

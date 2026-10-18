@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "control_props";
 #import "drawing_props";
 #import "geometry";
@@ -28,7 +29,7 @@ ReorderHandleFace :: () -> StyleFrame {
     fallback.fields = cast(u32)StyleForeground |
         cast(u32)StyleIconSize | cast(u32)StyleGap |
         cast(u32)StylePaddingX
-    fallback.foreground = cast(u32)0x64748bff
+    fallback.foreground = Theme.LightMuted()
     fallback.icon_size = 3.0
     fallback.gap = 4.0
     fallback.padding_x = 8.0

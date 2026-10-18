@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -72,8 +73,8 @@ ListBoxDefaultFace :: (state: s32,
         cast(u32)StyleFontSize | cast(u32)StylePaddingX |
         cast(u32)StyleIconSize
     face.background = cast(u32)0xffffffff
-    face.foreground = cast(u32)0x171717ff
-    face.border = cast(u32)0xd1d5dbff
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorder()
     face.border_width = 1.0
     face.radius = 4.0
     face.opacity = 1.0
@@ -85,12 +86,12 @@ ListBoxDefaultFace :: (state: s32,
         face.border = cast(u32)0x00000000
         face.border_width = 0.0
         if state == ButtonStateHover {
-            face.background = cast(u32)0xe5e7ebff
+            face.background = Theme.LightRaised()
         } else if state == ButtonStatePressed {
-            face.background = cast(u32)0xd1d5dbff
+            face.background = Theme.LightBorder()
         } else if state == ButtonStateSelected {
-            face.background = cast(u32)0xdbeafeff
-            face.foreground = cast(u32)0x1d4ed8ff
+            face.background = Theme.LightSelection()
+            face.foreground = Theme.LightSelectionText()
         }
     }
     if state == ButtonStateDisabled { face.opacity = 0.45 }

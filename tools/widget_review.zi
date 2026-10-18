@@ -1,0 +1,301 @@
+// Actual public widgets for the before/after contact sheets. No mock drawing
+// substitutes for a control. Nonvisual containers contain ordinary children.
+using UI :: #import "Widgets";
+#import "pixmap"
+#import "pixmap_frame"
+#import "tree_draw"
+#import "page_text"
+#import "flow"
+#import "paned_view"
+#import "paned_view_props"
+#import "transition"
+#import "std/file"
+
+// Linux resets this high-water mark at exec. wait4's ru_maxrss can include
+// the Python launcher's pre-exec memory, even for an empty native process.
+PeakResidentKib :: () -> s64 {
+    status, ok := ReadEntireFile("/proc/self/status")
+    if !ok { return -1 }
+    for at: cast(s64)0..status.count - 7 {
+        if (at == 0 || status[at - 1] == 10) && status[at:at + 6] == "VmHWM:" {
+            value: s64 = 0
+            index := at + 6
+            while index < status.count && status[index] != 10 {
+                digit := status[index]
+                if digit >= 48 && digit <= 57 { value = value * 10 + cast(s64)digit - 48 }
+                index += 1
+            }
+            return value
+        }
+    }
+    return -1
+}
+
+#import "std/byte_text_linux";
+#import "std/c_string";
+libc :: #system_library "c";
+ReviewEnvironment :: (name: *u8) -> *u8 #foreign libc "getenv";
+Clock :: #import "std/timer_linux";
+
+pixels: [153600]u32;
+image: [4096]u32;
+
+EnvNumber :: (name: string) -> s32 {
+    buffer: [128]u8
+    if !CopyCString(name, buffer[:]) { return 0 }
+    value := TextFromCString(ReviewEnvironment(*buffer[0]))
+    number: s32 = 0
+    for digit: value { if digit >= 48 && digit <= 57 { number = number * 10 + cast(s32)digit - 48 } }
+    return number
+}
+
+Label :: (session: Session, value: string, y: float32 = 76.0) {
+    Text(session, TextProps.{.bounds = .{28.0, y, 420.0, 38.0}, .text = value})
+}
+
+Compose :: (session: Session, scene: s32, disabled: bool) {
+    no_headers: []CollapsibleHeader
+    no_options: []DropdownOption
+    b: Rectangle = .{24.0, 64.0, 432.0, 44.0}
+    if scene == 0 {
+        for index: 0..3 {
+            props: ButtonProps
+            props.key = cast(u64)(10 + index)
+            props.bounds = .{24.0 + cast(float32)(index % 2) * 220.0, 64.0 + cast(float32)(index / 2) * 64.0, 208.0, 44.0}
+            props.label = "Continue"
+            props.tone = cast(ButtonTone)index
+            props.disabled = disabled
+            unused Button(session, props)
+        }
+    } else if scene == 1 {
+        unused TextField(session, TextFieldProps.{.key = 10, .bounds = b, .value = "A quiet place to think", .disabled = disabled})
+        b.y += 64.0
+        unused TextField(session, TextFieldProps.{.key = 11, .bounds = b, .placeholder = "Write something...", .disabled = disabled})
+    } else if scene == 2 {
+        b.height = 188.0
+        unused TextArea(session, TextAreaProps.{.bounds = b, .value = "A small note\n\nClear typography and careful spacing make everyday work feel calm. Café, Ω and é.", .wrap = true, .disabled = disabled})
+    } else if scene == 3 {
+        options: [3]DropdownOption
+        options[0].label = "Morning"; options[1].label = "Afternoon"; options[2].label = "Evening"
+        unused Dropdown(session, DropdownProps.{.bounds = b, .selected_index = 1, .disabled = disabled}, options[:])
+    } else if scene == 4 {
+        unused Slider(session, SliderProps.{.bounds = .{24.0, 64.0, 432.0, 64.0}, .label = "Volume", .value_text = "65%", .value = 65.0, .max = 100.0, .disabled = disabled})
+    } else if scene == 5 {
+        unused Toggle(session, ToggleProps.{.key = 10, .bounds = b, .label = "Notifications", .value = true, .disabled = disabled})
+        b.y += 64.0
+        unused Toggle(session, ToggleProps.{.key = 11, .bounds = b, .label = "Quiet mode", .disabled = disabled})
+    } else if scene == 6 {
+        unused Checkbox(session, CheckboxProps.{.key = 10, .bounds = b, .label = "Remember my choice", .checked = true, .disabled = disabled})
+        b.y += 64.0
+        unused Checkbox(session, CheckboxProps.{.key = 11, .bounds = b, .label = "Use a gentle reminder", .disabled = disabled})
+    } else if scene == 7 {
+        unused Radio(session, RadioProps.{.key = 10, .bounds = b, .label = "Balanced", .checked = true, .disabled = disabled})
+        b.y += 64.0
+        unused Radio(session, RadioProps.{.key = 11, .bounds = b, .label = "Compact", .disabled = disabled})
+    } else if scene == 8 {
+        Progress(session, ProgressProps.{.bounds = b, .value = 64, .max = 100, .label = "64%"})
+    } else if scene == 9 {
+        unused Spinbox(session, SpinboxProps.{.bounds = b, .label = "Minutes", .value = 25, .min = 0, .max = 60, .value_text = "25", .disabled = disabled})
+    } else if scene == 10 || scene == 11 {
+        items: [5]ListBoxItem
+        items[0].label = "Morning walk"; items[1].label = "Read a chapter"; items[2].label = "Make something"; items[3].label = "Take a break"; items[4].label = "Reflect"
+        b.height = 184.0
+        if scene == 10 { unused ListBox(session, ListBoxProps.{.bounds = b, .row_height = 34, .selected_index = 2, .disabled = disabled}, items[:]) }
+        else {
+            selected: [5]bool
+            selected[0] = true; selected[2] = true
+            unused ListBoxMulti(session, ListBoxMultiProps.{.bounds = b, .row_height = 34, .disabled = disabled}, items[:], selected[:])
+        }
+    } else if scene == 12 {
+        options: [3]SegmentOption
+        options[0].label = "Day"; options[1].label = "Week"; options[2].label = "Month"
+        unused SegmentedControl(session, SegmentedControlProps.{.bounds = b, .selected_index = 1, .has_selection = true, .disabled = disabled}, options[:])
+    } else if scene == 13 {
+        tabs: [3]Tab
+        tabs[0].label = "Overview"; tabs[1].label = "Notes"; tabs[2].label = "Files"; tabs[1].closeable = true
+        unused TabBar(session, TabBarProps.{.bounds = b, .selected_index = 1, .disabled = disabled}, tabs[:])
+    } else if scene == 14 {
+        unused Selectable(session, SelectableProps.{.key = 10, .bounds = b, .label = "Selected item", .selected = true, .disabled = disabled})
+        b.y += 64.0
+        unused Selectable(session, SelectableProps.{.key = 11, .bounds = b, .label = "Another item", .disabled = disabled})
+    } else if scene == 15 {
+        Separator(session, SeparatorProps.{.bounds = b, .label = "or continue", .disabled = disabled})
+        Bullet(session, .{28.0, 142.0, 16.0, 16.0})
+        Label(session, "A clear dividing line", 168.0)
+    } else if scene == 16 {
+        b.height = 188.0
+        Fieldset(session, FieldsetProps.{.bounds = b, .title = "Preferences"})
+        Label(session, "Keep related choices together", 118.0)
+    } else if scene == 17 {
+        b.height = 188.0
+        unused Collapsible(session, CollapsibleProps.{.bounds = b, .label = "More details", .open = true, .has_open = true, .disabled = disabled}, no_headers)
+    } else if scene == 18 {
+        unused TimePicker(session, TimePickerProps.{.bounds = b, .label = "Start time", .value = 570, .disabled = disabled})
+    } else if scene == 19 {
+        b.height = 208.0
+        props: ColorPickerProps
+        props.bounds = b; props.label = "Accent"; props.channels = 4; props.disabled = disabled
+        props.values[0] = 0.18; props.values[1] = 0.52; props.values[2] = 0.68; props.values[3] = 1.0
+        unused ColorPicker(session, props)
+    } else if scene == 20 {
+        items: [3]NavigationBarItem
+        items[0].label = "Home"; items[0].active = true; items[1].label = "Library"; items[2].label = "Settings"; items[2].disabled = disabled
+        unused NavigationBar(session, NavigationBarProps.{.bounds = b, .view_width = 480, .view_height = 320, .height = 64}, items[:])
+    } else if scene == 21 {
+        actions: [2]ToolbarAction
+        actions[0].label = "New note"; actions[1].label = "Share"; actions[1].disabled = disabled
+        unused Toolbar(session, ToolbarProps.{.x = 24, .y = 64, .width = 432, .height = 48}, no_options, actions[:])
+    } else if scene == 22 {
+        unused TitleBar(session, TitleBarProps.{.bounds = b, .title = "Library", .leading_label = "Back", .has_leading_action = true}, no_options)
+    } else if scene == 23 {
+        unused Toast(session, ToastProps.{.viewport = .{0.0, 0.0, 480.0, 280.0}, .message = "Your changes have been saved", .seconds = 4.0, .now_seconds = 1.0})
+    } else if scene == 24 {
+        items: [3]ContextMenuItem
+        items[0].label = "Open"; items[0].id = 1; items[1].label = "Rename"; items[1].id = 2; items[2].label = "Remove"; items[2].id = 3; items[2].disabled = disabled
+        unused ContextMenu(session, ContextMenuProps.{.open = true, .x = 24.0, .y = 64.0}, items[:])
+    } else if scene == 25 {
+        items: [2]MenuItem; groups: [1]MenuGroup; state: MenuState
+        items[0].label = "New note"; items[1].label = "Open..."; items[1].disabled = disabled
+        groups[0].label = "File"; groups[0].items = items[:]
+        MenuStateInit(*state); state.open_index = 0
+        unused Menu(session, MenuProps.{.bounds = b}, groups[:], *state)
+    } else if scene == 26 {
+        unused Link(session, LinkProps.{.bounds = b, .text = "Read the documentation", .link = "https://kryon.org", .disabled = disabled})
+    } else if scene == 27 {
+        Text(session, TextProps.{.bounds = .{24.0, 64.0, 432.0, 44.0}, .text = "Make room for good ideas", .font = 24, .disabled = disabled})
+        Text(session, TextProps.{.bounds = .{24.0, 128.0, 410.0, 132.0}, .text = "Readable text, natural wrapping and familiar Unicode: café, Ω, é. Every little detail adds up.", .font = 16, .disabled = disabled})
+    } else if scene == 28 {
+        Image(session, ImageProps.{.asset_path = "review-image", .alt_text = "Blue and green woven squares", .bounds = .{24.0, 64.0, 192.0, 192.0}, .smooth = true})
+    } else if scene == 29 {
+        unused Box(session, BoxProps.{.bounds = .{24.0, 64.0, 432.0, 164.0}, .fill = .{235, 244, 245, 255}, .border = .{135, 164, 170, 255}, .radius = 12.0})
+        Label(session, "A surface with rounded edges", 118.0)
+    } else if scene == 30 {
+        unused Circle(session, CircleProps.{.center = .{88.0, 128.0}, .radius = 38.0, .fill = .{30, 115, 138, 255}})
+        unused Ring(session, RingProps.{.center = .{202.0, 128.0}, .inner_radius = 27.0, .outer_radius = 38.0, .start_angle = -90.0, .end_angle = 200.0, .color = .{30, 115, 138, 255}})
+        unused Triangle(session, TriangleProps.{.first = .{292.0, 166.0}, .second = .{330.0, 90.0}, .third = .{368.0, 166.0}, .color = .{30, 115, 138, 255}})
+        unused Line(session, LineProps.{.start = .{28.0, 220.0}, .end = .{432.0, 220.0}, .thickness = 2.0, .color = .{30, 115, 138, 255}})
+    } else if scene == 31 {
+        b.height = 188.0
+        result := Scroll(session, ScrollProps.{.bounds = b, .content_height = 420, .scroll_offset = 38})
+        if result.opened { Label(session, "Content in a scrolling viewport", 104.0); unused End(session) }
+    } else if scene == 32 {
+        b.height = 188.0
+        modal := ModalFrame(session, ModalFrameProps.{.bounds = b, .title = "A focused moment", .right_label = "Done", .has_right_action = true})
+        if modal.opened { Label(session, "Keep the next step clear", 140.0); unused End(session) }
+    } else if scene == 33 {
+        actions: [2]ActionModalAction
+        actions[0].label = "Cancel"; actions[1].label = "Save"; actions[1].tone = ButtonTone.ButtonToneAccent; actions[1].disabled = disabled
+        unused ActionModal(session, ActionModalProps.{.title = "Save changes?", .message = "Keep your latest ideas for next time.", .max_width = 420}, actions[:])
+    } else if scene == 34 {
+        popup := Popup(session, PopupProps.{.bounds = .{24.0, 64.0, 432.0, 188.0}})
+        if popup.panel_node >= 0 { Label(session, "A floating panel", 120.0) }
+    } else if scene == 35 {
+        unused Press(session, PressProps.{.bounds = b, .label = "Press and hold", .disabled = disabled})
+        Label(session, "Press is an invisible interaction area", 128.0)
+    } else if scene >= 36 && scene <= 40 || scene == 48 {
+        props: ColumnProps = .{.bounds = .{24.0, 64.0, 432.0, 208.0}, .gap = 12, .padding = 8}
+        container: LayoutContainer
+        if scene == 36 { container = Column(session, props) }
+        else if scene == 37 { container = Row(session, props) }
+        else if scene == 38 { container = Stack(session, props) }
+        else if scene == 39 { container = Group(session, props) }
+        else if scene == 48 { container = Screen(session, props) }
+        else { grid := Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = 12, .padding = 8}); container = grid.container }
+        if container.opened {
+            first: Rectangle = .{0.0, 0.0, 164.0, 44.0}
+            second: Rectangle = first
+            if scene == 39 || scene == 48 {
+                first.x = container.content.x; first.y = container.content.y
+                second.x = first.x; second.y = first.y + 60.0
+            } else if scene == 38 { second.x = 104.0; second.y = 112.0 }
+            unused Button(session, ButtonProps.{.label = "First item", .bounds = first, .disabled = disabled})
+            unused Button(session, ButtonProps.{.label = "Second item", .bounds = second, .tone = ButtonTone.ButtonToneAccent, .disabled = disabled})
+            unused End(session)
+        }
+    } else if scene == 41 {
+        page := Page(session, PageProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .title = "A quiet workspace"})
+        if page.opened {
+            section := Section(session, SectionProps.{.label = "Reading", .bounds = .{24.0, 64.0, 432.0, 188.0}})
+            if section.opened {
+                Heading(session, HeadingProps.{.text = "Small, thoughtful details", .level = 2, .bounds = .{24.0, 76.0, 420.0, 38.0}})
+                ParagraphText(session, ParagraphTextProps.{.text = "A page groups content, a section gives it meaning, and the type stays easy to read.", .bounds = .{24.0, 136.0, 410.0, 112.0}})
+                unused End(session)
+            }
+            unused End(session)
+        }
+    } else if scene == 42 {
+        routes: [2]s32 = .{1, 2}; labels: [2]string = .{"First", "Second"}; options: [2]NavigationBarOption
+        options[0].route = 1; options[0].label = "Home"; options[1].route = 2; options[1].label = "Library"
+        unused NavigationBarConfig(session, NavigationBarConfigProps.{.bounds = .{24.0, 48.0, 432.0, 256.0}, .title = "Navigation", .route_count = 2, .max_route_count = 2, .close_label = "Close", .remove_label = "Remove", .save_label = "Save", .cancel_label = "Cancel"}, routes[:], labels[:], options[:])
+    } else if scene == 43 {
+        items: [3]ReorderItem
+        for index: 0..2 {
+            items[index].id = cast(s32)index + 10
+            items[index].bounds = .{24.0, 64.0 + cast(float32)index * 56.0, 432.0, 44.0}
+            Text(session, TextProps.{.bounds = .{64.0, 76.0 + cast(float32)index * 56.0, 360.0, 36.0}, .text = "Drag the handle to reorder"})
+        }
+        unused Reorder(session, ReorderList.{.id = 10, .bounds = .{24.0, 64.0, 432.0, 200.0}, .handle_width = 28}, items[:])
+    } else if scene == 44 {
+        panes := PanedView(session, PanedViewProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .split = 210, .has_split = true, .vertical = true, .disabled = disabled})
+        unused Box(session, BoxProps.{.bounds = panes.first, .fill = .{230, 239, 242, 255}, .radius = 8.0})
+        unused Box(session, BoxProps.{.bounds = panes.second, .fill = .{222, 237, 235, 255}, .radius = 8.0})
+    } else if scene == 45 {
+        overlay := DismissibleOverlay(session, DismissibleOverlayProps.{.bounds = .{24.0, 64.0, 432.0, 188.0}, .view_width = 480, .view_height = 320, .scrim = .{16, 34, 45, 120}})
+        if overlay.panel_node >= 0 { Label(session, "A calm place for a decision", 128.0) }
+    } else if scene == 46 {
+        for index: 0..4 {
+            props: ButtonProps
+            props.bounds = .{24.0, 40.0 + cast(float32)index * 52.0, 208.0, 40.0}; props.label = "Neutral action"
+            props.emphasis = cast(ButtonEmphasis)index; props.disabled = disabled
+            unused Button(session, props)
+            props.bounds.x = 248.0; props.label = "Accent action"; props.tone = ButtonTone.ButtonToneAccent
+            unused Button(session, props)
+        }
+    } else if scene == 47 {
+        options: [3]DropdownOption
+        options[0].label = "Morning"; options[1].label = "Afternoon"; options[2].label = "Evening"
+        unused Dropdown(session, DropdownProps.{.bounds = b, .selected_index = 1, .open = true}, options[:])
+    } else if scene == 49 {
+        flow := Flow(session, FlowProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .gap = 12, .padding = 8})
+        if flow.opened {
+            unused Button(session, ButtonProps.{.bounds = .{0.0, 0.0, 164.0, 44.0}, .label = "First item", .disabled = disabled})
+            unused Button(session, ButtonProps.{.bounds = .{0.0, 0.0, 164.0, 44.0}, .label = "Second item", .disabled = disabled})
+            unused End(session)
+        }
+    }
+}
+
+#program_export
+Run :: () -> s32 {
+    scene := EnvNumber("KRYON_REVIEW_SCENE")
+    state := EnvNumber("KRYON_REVIEW_STATE")
+    metrics := EnvNumber("KRYON_REVIEW_METRICS") > 0
+    for index: 0..4095 { image[index] = ifx (index / 512 + index % 64 / 8) % 2 == 0 then cast(u32)0xff287d91 else cast(u32)0xff83b5a0 }
+    if !PixmapSetImage(0, "review-image", 64, 64, image[:]) { return 1 }
+    session := SessionOpen()
+    defer { PixmapCloseWorkers(); CloseSession(session); PixmapClearImage(0) }
+    if !SessionValid(session) { return 2 }
+    count := ifx metrics then 70 else 3
+    if metrics { print("frame,total_ns,nodes,paint,emitted,damage_pixels,frame_text_reserve_bytes\n") }
+    for frame: 0..count - 1 {
+        if !PixmapResumeInto(480, 320, pixels[:]) { return 3 }
+        if state == 2 { TreePointerUpdate(session, PointerFrame.{48.0, 86.0, false, false, false}) }
+        if state == 3 && frame == 1 { unused KeyboardSend(session, KeyTab) }
+        start := Clock.MonotonicNanoseconds()
+        if BeginFrame(session, 1, .{0.0, 0.0, 480.0, 320.0}) != FrameStatus.FrameOk { return 4 }
+        unused Box(session, BoxProps.{.key = 2, .bounds = .{0.0, 0.0, 480.0, 320.0}, .fill = .{247, 250, 252, 255}})
+        Compose(session, scene, state == 1)
+        result := EndPixmapFrame(session, true, cast(u32)0xf7fafcff, true)
+        elapsed := Clock.MonotonicNanoseconds() - start
+        if result.status != FrameStatus.FrameOk { return 5 }
+        reserved: s64 = pending_text[session.slot].capacity * cast(s64)(PAINT_TEXT_CAPACITY + 4)
+        #if #defined(REVIEW_INLINE_TEXT) {
+            reserved += cast(s64)(PAINT_TEXT_CAPACITY + 4)
+        }
+        if metrics && frame >= 10 { print("%,%,%,%,%,%,%\n", frame - 10, elapsed, TreeCount(session), result.paint_count, result.emitted_count, cast(s64)(result.damage.width * result.damage.height), reserved) }
+    }
+    if !metrics { PixmapPresent() }
+    else { print("# runner_peak_rss_kib,%\n", PeakResidentKib()) }
+    PixmapEndInto()
+    return 0
+}

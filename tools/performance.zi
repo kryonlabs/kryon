@@ -13,6 +13,28 @@
 #import "text_input_props"
 #import "button_widget"
 #import "button_props"
+#import "std/file"
+
+// Linux resets this high-water mark at exec. wait4's ru_maxrss can include
+// the Python launcher's pre-exec memory, even for an empty native process.
+PeakResidentKib :: () -> s64 {
+    status, ok := ReadEntireFile("/proc/self/status")
+    if !ok { return -1 }
+    for at: cast(s64)0..status.count - 7 {
+        if (at == 0 || status[at - 1] == 10) && status[at:at + 6] == "VmHWM:" {
+            value: s64 = 0
+            index := at + 6
+            while index < status.count && status[index] != 10 {
+                digit := status[index]
+                if digit >= 48 && digit <= 57 { value = value * 10 + cast(s64)digit - 48 }
+                index += 1
+            }
+            return value
+        }
+    }
+    return -1
+}
+
 Clock :: #import "std/timer_linux";
 using FrameStatus;
 
@@ -98,5 +120,6 @@ Run :: () -> s32 {
         }
         if !CloseSession(session) { return 7 }
     }
+    print("# runner_peak_rss_kib,%\n", PeakResidentKib())
     return 0
 }

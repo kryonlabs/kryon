@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Portable compositions use the same title bar as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
@@ -48,9 +49,9 @@ TitleBarDefaultFace :: (role: s32) -> StyleData {
         cast(u32)StylePaddingX | cast(u32)StyleGap |
         cast(u32)StyleIconSize | cast(u32)StyleContentOffset |
         cast(u32)StyleFontSize
-    face.background = cast(u32)0xf8fafcff
-    face.foreground = cast(u32)0x111827ff
-    face.border = cast(u32)0xcbd5e1ff
+    face.background = Theme.LightBackground()
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorder()
     face.opacity = 1.0
     face.padding_x = 12.0
     face.gap = 4.0

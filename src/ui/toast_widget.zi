@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -64,8 +65,8 @@ ToastSurfaceFace :: (class_name: s32) -> StyleFrame {
         cast(u32)StyleBorderWidth | cast(u32)StyleRadius |
         cast(u32)StyleOpacity | cast(u32)StylePaddingX |
         cast(u32)StylePaddingY | cast(u32)StyleGap
-    defaults.background = cast(u32)0x27272aff
-    defaults.border = cast(u32)0x52525bff
+    defaults.background = Theme.LightText()
+    defaults.border = Theme.LightMuted()
     defaults.border_width = 1.0
     defaults.radius = 8.0
     defaults.opacity = 1.0

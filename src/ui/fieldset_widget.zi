@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -28,10 +29,10 @@ FieldsetDefaultFace :: () -> StyleData {
         cast(u32)StyleFontSize | cast(u32)StylePaddingX |
         cast(u32)StylePaddingY | cast(u32)StyleGap
     face.background = cast(u32)0xffffffff
-    face.foreground = cast(u32)0x171717ff
-    face.border = cast(u32)0xd1d5dbff
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorder()
     face.border_width = 1.0
-    face.radius = 6.0
+    face.radius = 8.0
     face.opacity = 1.0
     face.font_size = 18.0
     face.padding_x = 8.0

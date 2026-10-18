@@ -104,6 +104,14 @@ Frame :: () -> s32 {
 
 #program_export
 main :: () -> s32 {
+    // Neutral soft/outline/ghost/link actions retain readable ink; their
+    // pale filled surface is not their text color.
+    for emphasis: cast(s32)1..4 {
+        neutral: ButtonProps
+        neutral.emphasis = cast(ButtonEmphasis)emphasis
+        face := ButtonDefaultFace(neutral, cast(s32)ButtonState.ButtonStateNormal)
+        if face.foreground != cast(u32)0x203b4bff { return 61 }
+    }
     expected: [4]s32 = .[0, 42, 43, 44]
     index: s32 = 0
     while index < 4 {

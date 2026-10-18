@@ -13,6 +13,43 @@ ResolveDark :: (policy: ThemePolicy, system_dark: bool) -> bool {
     return system_dark
 }
 
+// Shared fallback roles. Widgets use these same colors before a style sheet
+// is installed; a sheet still overrides each declared field normally.
+#program_export
+LightBackground :: () -> u32 { return cast(u32)0xf7fafcff }
+#program_export
+LightSurface :: () -> u32 { return cast(u32)0xffffffff }
+#program_export
+LightRaised :: () -> u32 { return cast(u32)0xe6eef2ff }
+#program_export
+LightSunken :: () -> u32 { return cast(u32)0xf1f6f8ff }
+#program_export
+LightText :: () -> u32 { return cast(u32)0x203b4bff }
+#program_export
+LightMuted :: () -> u32 { return cast(u32)0x546d7aff }
+#program_export
+LightDisabled :: () -> u32 { return cast(u32)0x8ca8b5ff }
+#program_export
+LightBorder :: () -> u32 { return cast(u32)0xb4c8d2ff }
+#program_export
+LightBorderStrong :: () -> u32 { return cast(u32)0x889faaff }
+#program_export
+LightAccent :: () -> u32 { return cast(u32)0x176b83ff }
+#program_export
+LightAccentHover :: () -> u32 { return cast(u32)0x1b7c92ff }
+#program_export
+LightAccentPressed :: () -> u32 { return cast(u32)0x10546aff }
+#program_export
+LightSelection :: () -> u32 { return cast(u32)0xd8edf2ff }
+#program_export
+LightSelectionText :: () -> u32 { return cast(u32)0x145d72ff }
+#program_export
+LightSuccess :: () -> u32 { return cast(u32)0x23735cff }
+#program_export
+LightWarning :: () -> u32 { return cast(u32)0x98621cff }
+#program_export
+LightDanger :: () -> u32 { return cast(u32)0xb94143ff }
+
 // Canonical light/dark palette. Hosts only unpack these RGBA values.
 Palette :: struct {
     background: u32
@@ -161,38 +198,36 @@ DefaultPalette :: (dark: bool) -> Palette {
         palette.link_hover = PackedColor(cast(u32)0x8AC2FF, cast(u32)255)
         palette.shadow = PackedColor(cast(u32)0x000000, cast(u32)128)
     } else {
-        palette.background = PackedColor(cast(u32)0xF8FBFF, cast(u32)255)
-        palette.surface = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.surface_raised = PackedColor(cast(u32)0xEDF4FC, cast(u32)255)
-        palette.surface_sunken = PackedColor(cast(u32)0xEAF2FC, cast(u32)255)
+        palette.background = LightBackground()
+        palette.surface = LightSurface()
+        palette.surface_raised = LightRaised()
+        palette.surface_sunken = LightSunken()
         palette.overlay = PackedColor(cast(u32)0x000000, cast(u32)102)
-        palette.text = PackedColor(cast(u32)0x002553, cast(u32)255)
-        palette.text_muted = PackedColor(cast(u32)0x536A83, cast(u32)255)
-        palette.text_disabled = PackedColor(cast(u32)0x809BBB, cast(u32)255)
-        palette.icon = PackedColor(cast(u32)0x183C63, cast(u32)255)
-        palette.icon_muted = PackedColor(cast(u32)0x536A83, cast(u32)255)
-        palette.border = PackedColor(cast(u32)0xC5DDF6, cast(u32)255)
-        palette.border_strong = PackedColor(cast(u32)0xC5DDF6, cast(u32)255)
-        palette.divider = PackedColor(cast(u32)0xC5DDF6, cast(u32)255)
-        // A restrained violet-blue edge on pale material. Explicit focus
-        // overrides retain their own alpha in the shared surface policy.
-        palette.focus = PackedColor(cast(u32)0x064CFF, cast(u32)179)
-        palette.selection = PackedColor(cast(u32)0xD8E9FF, cast(u32)255)
-        palette.accent = PackedColor(cast(u32)0x006CFF, cast(u32)255)
+        palette.text = LightText()
+        palette.text_muted = LightMuted()
+        palette.text_disabled = LightDisabled()
+        palette.icon = LightText()
+        palette.icon_muted = LightMuted()
+        palette.border = LightBorder()
+        palette.border_strong = LightBorderStrong()
+        palette.divider = LightBorder()
+        palette.focus = LightAccent()
+        palette.selection = LightSelection()
+        palette.accent = LightAccent()
         palette.on_accent = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.accent_hover = PackedColor(cast(u32)0x2184FF, cast(u32)255)
-        palette.accent_pressed = PackedColor(cast(u32)0x0A4DB8, cast(u32)255)
-        palette.success = PackedColor(cast(u32)0x00856A, cast(u32)255)
+        palette.accent_hover = LightAccentHover()
+        palette.accent_pressed = LightAccentPressed()
+        palette.success = LightSuccess()
         palette.on_success = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.warning = PackedColor(cast(u32)0xB57800, cast(u32)255)
-        palette.on_warning = PackedColor(cast(u32)0x211400, cast(u32)255)
-        palette.danger = PackedColor(cast(u32)0xDC1524, cast(u32)255)
+        palette.warning = LightWarning()
+        palette.on_warning = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
+        palette.danger = LightDanger()
         palette.on_danger = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
         palette.info = PackedColor(cast(u32)0x087CBF, cast(u32)255)
         palette.on_info = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
         // Link ink is a deeper blue than the luminous accent material.
-        palette.link = PackedColor(cast(u32)0x0033FF, cast(u32)255)
-        palette.link_hover = PackedColor(cast(u32)0x034BA9, cast(u32)255)
+        palette.link = LightAccent()
+        palette.link_hover = LightAccentPressed()
         palette.shadow = PackedColor(cast(u32)0x17324D, cast(u32)36)
     }
     return palette

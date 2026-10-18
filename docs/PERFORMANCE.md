@@ -23,6 +23,22 @@ catch large regressions across shared runners. Local baselines give a tighter
 check on fixed hardware. The JSON retains check results and failures.
 
 The build directory is stable and locked for the whole run. Desktop variables
-are scrubbed. RSS measures the runner, excluding compilation. The timings
+are scrubbed. RSS comes from the native runner's `/proc/self/status` VmHWM
+after the measured frames. Unlike a launcher's `wait4` high-water mark, it
+excludes the Python process's memory before exec. Schema 2 baselines use this
+measurement; capture a new baseline when migrating from schema 1. The timings
 cover the pixmap pipeline, not native window presentation, asset decoding,
 screen-reader overhead, process idle wakeups or GPU/browser rendering.
+
+`python3 tools/widget-review.py before` captures actual core widgets and their
+resting, disabled, pointer-hover and keyboard-focus states where applicable.
+Run it before changing the library, then run `after` and `compare`. Each build
+preserves its own executable under `build/scratch/widget-review/`; captures,
+per-widget CSV/JSON measurements and labeled comparison PNGs go to
+`backup/widget-improvement/`. Open that folder's `comparison/` in Gwenview.
+Capture uses private Xvfb displays with inherited desktop variables scrubbed.
+The per-widget timings cover 10 warmup and 60 measured idle frames at 480 × 320;
+they complement the active workloads above rather than measuring input latency.
+The text-pool reservation counter covers frame-owned label/path storage only,
+not total application memory. Containers and nonvisual helpers are shown with
+children; image and shape pixels are preserved by the renderer optimization.

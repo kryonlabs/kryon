@@ -8,7 +8,8 @@ Answer :: () -> s32 {
     if !ResolveDark(cast(ThemePolicy)ThemePolicySystem, true) { return 2 }
     light: Palette = DefaultPalette(false)
     dark: Palette = DefaultPalette(true)
-    if light.background != PackedColor(cast(u32)0xF8FBFF, cast(u32)255) {
+    if light.background != LightBackground() || light.text != LightText() ||
+        light.accent != LightAccent() || light.border != LightBorder() {
         return 3
     }
     if dark.background != PackedColor(cast(u32)0x001D38, cast(u32)255) {

@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "button_props"
 #import "button_widget"
@@ -36,7 +37,7 @@ NavigationBarConfigDefaultFace :: (role: s32) -> StyleData {
     face: StyleData
     face.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize |
         cast(u32)StyleOpacity
-    face.foreground = cast(u32)0x334155ff
+    face.foreground = Theme.LightText()
     face.font_size = 12.0
     face.opacity = 1.0
     if role == NavigationBarActionRole() {
@@ -196,9 +197,9 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
         if thumb_node >= 0 {
             TreeSetInteractive(session, thumb_node, false, false, 0)
             PaintRoundedFill(session, thumb_node, bar.track_bounds,
-                4.0, 8, ColorFromPacked(cast(u32)0xe2e8f0ff))
+                4.0, 8, ColorFromPacked(Theme.LightRaised()))
             PaintRoundedFill(session, thumb_node, bar.thumb_bounds,
-                4.0, 8, ColorFromPacked(cast(u32)0x94a3b8ff))
+                4.0, 8, ColorFromPacked(Theme.LightBorderStrong()))
         }
     }
     row_content: Rectangle = layout.route_bounds
@@ -250,7 +251,7 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
                 row.remove_bounds.height * 0.5
             PaintLine(session, frame.panel_node,
                 Rectangle.{cx - 5.0, cy, 10.0, 0.0},
-                ColorFromPacked(cast(u32)0x334155ff))
+                ColorFromPacked(Theme.LightText()))
         }
         index += 1
     }

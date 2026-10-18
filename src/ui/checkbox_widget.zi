@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Submit the standard widget contract from a portable composition.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
@@ -40,16 +41,16 @@ CheckboxDefaultFace :: (role: s32, disabled: bool) -> StyleData {
         cast(u32)StyleBorderWidth | cast(u32)StyleOpacity |
         cast(u32)StyleFontSize
     face.background = cast(u32)0x00000000
-    face.foreground = cast(u32)0x171717ff
-    face.border = cast(u32)0x737373ff
-    face.focus = cast(u32)0x2563ebff
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorderStrong()
+    face.focus = Theme.LightAccent()
     face.border_width = 1.0
     face.opacity = 1.0
     face.font_size = 14.0
     if role == CheckboxBoxRoleForTone(cast(ButtonTone)ButtonToneAccent) {
-        face.background = cast(u32)0x2563ebff
+        face.background = Theme.LightAccent()
         face.foreground = cast(u32)0xffffffff
-        face.border = cast(u32)0x2563ebff
+        face.border = Theme.LightAccent()
     }
     if disabled {
         face.background = Opacity(face.background, 0.45)

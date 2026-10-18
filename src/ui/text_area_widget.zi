@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "text_host"
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
@@ -84,10 +85,10 @@ TextAreaDefaultFace :: () -> StyleData {
         cast(u32)StylePaddingY | cast(u32)StyleFontSize |
         cast(u32)StyleGap
     face.background = cast(u32)0xffffffff
-    face.foreground = cast(u32)0x111827ff
-    face.border = cast(u32)0x94a3b8ff
-    face.focus = cast(u32)0x3b82f6ff
-    face.radius = 4.0
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorderStrong()
+    face.focus = Theme.LightAccent()
+    face.radius = 8.0
     face.border_width = 1.0
     face.opacity = 1.0
     face.padding_x = 10.0
@@ -104,8 +105,14 @@ TextAreaFaceFor :: (props: TextAreaProps,
     if focused { state = cast(s32)ButtonStateFocus }
     if props.disabled { state = cast(s32)ButtonStateDisabled }
     frame: StyleFrame
+    defaults := TextAreaDefaultFace()
+    if props.disabled {
+        defaults.background = Opacity(defaults.background, 0.45)
+        defaults.foreground = Opacity(defaults.foreground, 0.45)
+        defaults.border = Opacity(defaults.border, 0.45)
+    }
     frame.value = ResolveInstalledStyleRules(
-        TextAreaDefaultFace(),
+        defaults,
         StyleControlRoleFacts(StyleKindTextArea(),
             props.focus_id, props.class_name, 0,
             cast(s32)ButtonToneNeutral,
@@ -1655,7 +1662,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         PaintClippedLabel(session, result.node, props.placeholder,
             paint.placeholder_x, paint.placeholder_y,
             font, ColorFromPacked(Opacity(
-                cast(u32)0x64748bff, opacity)),
+                Theme.LightMuted(), opacity)),
             paint.clip_bounds)
     }
     selection: TextSelectionRange = TextSelectionRangeForLength(

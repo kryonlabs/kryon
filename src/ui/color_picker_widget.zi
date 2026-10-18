@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "color_picker"
 #import "color_picker_props"
@@ -33,7 +34,7 @@ ColorPickerDefaultFace :: (swatch: bool,
         cast(u32)StylePaddingY | cast(u32)StyleGap |
         cast(u32)StyleIconSize | cast(u32)StyleContentOffset
     face.background = cast(u32)0x00000000
-    face.foreground = cast(u32)0x171717ff
+    face.foreground = Theme.LightText()
     face.border = cast(u32)0x00000000
     face.opacity = 1.0
     face.radius = 4.0
@@ -45,7 +46,7 @@ ColorPickerDefaultFace :: (swatch: bool,
     face.offset_x = 20.0
     face.offset_y = 28.0
     if swatch {
-        face.border = cast(u32)0x737373ff
+        face.border = Theme.LightBorderStrong()
         face.border_width = 1.0
     }
     if disabled { face.opacity = 0.45 }

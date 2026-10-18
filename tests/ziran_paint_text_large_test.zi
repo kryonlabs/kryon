@@ -164,6 +164,14 @@ RasterImageMesh :: (asset_path: string, texture_id: u32,
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
+    // A page's first label and image path need no overflow block allocation.
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    PaintLabel(session, -1, "12345678", 0, 0, 14, Color.{})
+    QueueAsset(session)
+    if pending_text[session.slot].capacity != 0 ||
+        PendingPaintAt(session, 0).value != "12345678" ||
+        PendingPaintAt(session, 1).asset_path != "asset.png" { return 20 }
+    TreeCancel(session)
     for frame: 0..1 {
         BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
         QueueLabels(session)

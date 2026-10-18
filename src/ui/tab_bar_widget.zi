@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Portable compositions use the same widgets as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
@@ -44,9 +45,9 @@
         cast(u32)StylePaddingX | cast(u32)StylePaddingY |
         cast(u32)StyleFontSize | cast(u32)StyleIconSize |
         cast(u32)StyleGap | cast(u32)StyleContentOffset
-        face.background = cast(u32)0xe2e8f0ff
-        face.foreground = cast(u32)0x334155ff
-        face.border = cast(u32)0x94a3b8ff
+        face.background = Theme.LightRaised()
+        face.foreground = Theme.LightText()
+        face.border = Theme.LightBorderStrong()
         face.border_width = 0.0
         face.radius = 6.0
         face.opacity = 1.0
@@ -58,17 +59,17 @@
         face.offset_x = 240.0
         if kind == StyleKindTabBar() {
             face.background = cast(u32)0x00000000
-            face.border = cast(u32)0xcbd5e1ff
+            face.border = Theme.LightBorder()
             face.border_width = 1.0
         } else if kind == StyleKindTab() {
             face.background = cast(u32)0x00000000
-            face.foreground = cast(u32)0x64748bff
+            face.foreground = Theme.LightMuted()
             face.border = cast(u32)0x00000000
             face.border_width = 3.0
             face.padding_x = 12.0
             if selected {
-                face.foreground = cast(u32)0x0f172aff
-                face.border = cast(u32)0x2563ebff
+                face.foreground = Theme.LightText()
+                face.border = Theme.LightAccent()
             }
         } else if kind == StyleKindTabClose() {
             face.background = cast(u32)0x00000000
@@ -735,7 +736,7 @@
             marker = RectangleIntersection(marker, bounds)
             if marker.width > 0.0 && marker.height > 0.0 {
                 PaintRoundedFill(session, result.node, marker, 0.0, 1,
-                    ColorFromPacked(cast(u32)0x2563ebff))
+                    ColorFromPacked(Theme.LightAccent()))
             }
         }
         return result

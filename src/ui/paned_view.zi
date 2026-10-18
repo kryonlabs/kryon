@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -218,7 +219,7 @@ PanedViewFace :: (class_name: s32, disabled: bool) -> StyleFrame {
     defaults.fields = cast(u32)StyleBackground | cast(u32)StyleRadius |
         cast(u32)StyleOpacity | cast(u32)StyleIconSize |
         cast(u32)StylePaddingX
-    defaults.background = cast(u32)0x9ca3afff
+    defaults.background = Theme.LightBorderStrong()
     defaults.radius = 4.0
     defaults.opacity = 1.0
     defaults.icon_size = 8.0

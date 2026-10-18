@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -24,7 +25,7 @@ LinkFaceFor :: (props: LinkProps, state: s32) -> StyleFrame {
     base: StyleData
     base.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize |
         cast(u32)StyleOpacity
-    base.foreground = cast(u32)0x2563ebff
+    base.foreground = Theme.LightAccent()
     base.font_size = 16.0
     base.opacity = 1.0
     if props.disabled { base.foreground = Opacity(base.foreground, 0.45) }

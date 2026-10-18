@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
@@ -47,32 +48,35 @@
         cast(u32)StyleBorderWidth | cast(u32)StyleOpacity |
         cast(u32)StylePaddingX | cast(u32)StylePaddingY |
         cast(u32)StyleFontSize | cast(u32)StyleIconSize | cast(u32)StyleGap
-        face.background = cast(u32)0xe5e7ebff
-        face.foreground = cast(u32)0x111827ff
+        face.background = Theme.LightRaised()
+        face.foreground = Theme.LightText()
         face.border = cast(u32)0x00000000
         if props.tone == cast(ButtonTone)ButtonToneAccent {
-            face.background = cast(u32)0x2563ebff
+            face.background = Theme.LightAccent()
             face.foreground = cast(u32)0xffffffff
         } else if props.tone == cast(ButtonTone)ButtonToneDanger {
-            face.background = cast(u32)0xdc2626ff
+            face.background = Theme.LightDanger()
             face.foreground = cast(u32)0xffffffff
         } else if props.tone == cast(ButtonTone)ButtonToneSuccess {
-            face.background = cast(u32)0x15803dff
+            face.background = Theme.LightSuccess()
             face.foreground = cast(u32)0xffffffff
         } else if props.tone == cast(ButtonTone)ButtonToneWarning {
-            face.background = cast(u32)0xf59e0bff
+            face.background = Theme.LightWarning()
+            face.foreground = cast(u32)0xffffffff
         }
+        ink := face.background
+        if props.tone == cast(ButtonTone)ButtonToneNeutral { ink = face.foreground }
         if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisSoft {
-            face.foreground = face.background
+            face.foreground = ink
             face.background = Opacity(face.background, 0.16)
         } else if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisOutline {
-            face.foreground = face.background
-            face.border = face.background
+            face.foreground = ink
+            face.border = ink
             face.background = cast(u32)0x00000000
             face.border_width = 1.0
         } else if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisGhost ||
         props.emphasis == cast(ButtonEmphasis)ButtonEmphasisLink {
-            face.foreground = face.background
+            face.foreground = ink
             face.background = cast(u32)0x00000000
         }
         if state == ButtonStateHover {
@@ -87,7 +91,7 @@
             face.foreground = Opacity(face.foreground, 0.45)
             face.border = Opacity(face.border, 0.45)
         }
-        face.radius = 6.0
+        face.radius = 8.0
         face.opacity = 1.0
         face.padding_x = 12.0
         face.padding_y = 6.0
@@ -273,7 +277,7 @@
         if focus_visible {
             focus: u32 = face.focus
             if (focus & cast(u32)0xff) == cast(u32)0 {
-                focus = cast(u32)0x2563ebff
+                focus = Theme.LightAccent()
             }
             PaintRoundedOutline(session, node, FocusDefaultOutlineBounds(bounds, 1.0),
                 radius + 2.0, 12, 2.0, ColorFromPacked(focus))

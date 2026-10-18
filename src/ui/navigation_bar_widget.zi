@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -39,9 +40,9 @@ NavigationBarDefaultFace :: (item: bool, active: bool,
     cast(u32)StyleRadius | cast(u32)StyleOpacity |
     cast(u32)StyleIconSize | cast(u32)StyleFontSize |
     cast(u32)StyleGap
-    face.background = cast(u32)0xf1f5f9ff
-    face.foreground = cast(u32)0x334155ff
-    face.border = cast(u32)0xcbd5e1ff
+    face.background = Theme.LightSunken()
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorder()
     face.border_width = 1.0
     face.radius = 20.0
     face.opacity = 1.0
@@ -53,10 +54,10 @@ NavigationBarDefaultFace :: (item: bool, active: bool,
         face.border_width = 0.0
         face.radius = 29.0
         if active {
-            face.background = cast(u32)0x2563ebff
+            face.background = Theme.LightAccent()
             face.foreground = cast(u32)0xffffffff
         } else if hovered {
-            face.background = cast(u32)0xe2e8f0ff
+            face.background = Theme.LightRaised()
         }
         if disabled { face.opacity = 0.45 }
     }

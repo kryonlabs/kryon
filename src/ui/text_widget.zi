@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
@@ -44,7 +45,7 @@
     DefaultTextFace :: () -> TextFace {
         face: TextFace
         face.value.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize
-        face.value.foreground = cast(u32)0x171717ff
+        face.value.foreground = Theme.LightText()
         face.value.font_size = 16.0
         face.fallback_font = 16
         return face
@@ -105,7 +106,7 @@
         appearance: TextAppearance = ResolveTextStyle(props.font, 0,
             ResolveFont(0, StyleFontValue(face.value.fields,
             face.value.font_size), face.fallback_font),
-            face.value.foreground, cast(u32)0, cast(u32)0x171717ff,
+            face.value.foreground, cast(u32)0, Theme.LightText(),
             false, (face.value.fields & cast(u32)StyleForeground) != cast(u32)0,
             props.disabled, false, 0)
         prepared.font = appearance.font

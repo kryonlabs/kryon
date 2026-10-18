@@ -134,8 +134,10 @@ ProgressLayoutFor :: (bounds: Rectangle, min: s32, max: s32, value: s32,
     layout.label_x = ProgressLabelX(bounds, layout.fill_bounds.width,
         label_width, padding)
     layout.label_y = ProgressLabelY(bounds, label_line_height)
-    layout.label_on_fill = ProgressLabelOnFill(layout.fill_bounds.width,
-        label_width, padding)
+    // LabelX prefers the empty track while it has room. The fill can also
+    // have room at the same time; its width alone cannot choose the ink.
+    layout.label_on_fill = layout.label_x + label_width * 0.5 <
+        layout.fill_bounds.x + layout.fill_bounds.width
     return layout
 }
 

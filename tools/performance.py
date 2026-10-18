@@ -71,7 +71,8 @@ def main():
         compiler = env.get('CC', 'cc')
         subprocess.run([compiler, '-std=c11', '-O2', '-I' + str(toolchain / 'include'),
                         '-I' + str(build / 'c'), *sources, '-lm', '-lpthread', '-o', str(build / 'run')], env=env, check=True)
-        # wait4 measures this runner only, excluding the compiler's peak RSS.
+        # The native process reports VmHWM after its measured frames. wait4's
+        # RSS can include the Python launcher's footprint before exec.
         raw = build / 'frames.csv'
         with raw.open('w') as stream:
             pid = os.posix_spawn(str(build / 'run'), [str(build / 'run')], env,
@@ -80,14 +81,19 @@ def main():
         if os.waitstatus_to_exitcode(status) != 0:
             raise RuntimeError('performance runner failed')
         output = raw.read_text()
-        rows = list(csv.DictReader(output.splitlines()))
+        lines = output.splitlines()
+        rows = list(csv.DictReader(line for line in lines if not line.startswith('#')))
+        peak_rss = int(next(line.split(',')[1] for line in lines if line.startswith('# runner_peak_rss_kib,')))
+        if peak_rss <= 0:
+            raise RuntimeError('native runner did not report its peak RSS')
         hardware = {'machine': platform.machine(), 'system': platform.system(),
                     'cpu': next((line.split(':', 1)[1].strip() for line in Path('/proc/cpuinfo').read_text().splitlines()
                                  if line.startswith('model name')), platform.processor()),
                     'threads_requested': env.get('ZIRAN_PAR_THREADS', '4')}
-        report = {'schema': 1, 'hardware': hardware, 'compiler': compiler, 'optimization': '-O2',
+        report = {'schema': 2, 'hardware': hardware, 'compiler': compiler, 'optimization': '-O2',
                   'viewport_pixels': [960, 600], 'warmup_frames': 10,
-                  'runner_peak_rss_kib': usage.ru_maxrss, 'scenarios': summarize(rows)}
+                  'runner_peak_rss_kib': peak_rss, 'runner_peak_rss_source': '/proc/self/status VmHWM',
+                  'scenarios': summarize(rows)}
     failures = []
     if args.baseline:
         baseline = json.loads(args.baseline.read_text())

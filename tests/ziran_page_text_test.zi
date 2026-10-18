@@ -84,7 +84,7 @@ Answer :: () -> s32 {
         Rectangle.{20.0, 20.0, 40.0, 40.0})
     child: s32 = TreeSubmit(TestSession(), cast(u64)32, viewport, WidgetKindText,
         Rectangle.{10.0, 10.0, 70.0, 70.0})
-    ink: Color = ColorFromPacked(cast(u32)0x171717ff)
+    ink: Color = ColorFromPacked(cast(u32)0x203b4bff)
     PaintLabel(TestSession(), child, "Plain", 10, 10, 16, ink)
     PaintClippedLabel(TestSession(), child, "Clipped", 30, 30, 16, ink,
         Rectangle.{30.0, 30.0, 50.0, 50.0})

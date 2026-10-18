@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "button_props"
 #import "button_widget"
@@ -31,9 +32,9 @@ ToolbarDefaultFace :: (role: s32) -> StyleData {
         cast(u32)StyleRadius | cast(u32)StyleOpacity |
         cast(u32)StylePaddingX | cast(u32)StyleIconSize |
         cast(u32)StyleGap
-    face.background = cast(u32)0xf8fafcff
-    face.foreground = cast(u32)0x334155ff
-    face.border = cast(u32)0xcbd5e1ff
+    face.background = Theme.LightBackground()
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorder()
     face.border_width = 0.0
     face.radius = 0.0
     face.opacity = 1.0
@@ -41,7 +42,7 @@ ToolbarDefaultFace :: (role: s32) -> StyleData {
     face.icon_size = 18.0
     face.gap = 6.0
     if role == ToolbarDividerRole() {
-        face.foreground = cast(u32)0xcbd5e1ff
+        face.foreground = Theme.LightBorder()
     } else if role == ToolbarActionRole() {
         face.padding_x = 8.0
     }

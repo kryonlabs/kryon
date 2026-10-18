@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Submit the standard widget contract from a portable composition.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
@@ -90,7 +91,7 @@ TimePickerFocusColor :: (face: StyleData) -> Color {
     face.focus != cast(u32)0 {
         return ColorFromPacked(face.focus)
     }
-    return ColorFromPacked(cast(u32)0x2563ebff)
+    return ColorFromPacked(Theme.LightAccent())
 }
 
 // A rectangle shrunk by inset on every side, never below zero size.
