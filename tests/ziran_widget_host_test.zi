@@ -110,7 +110,7 @@ main :: () -> s32 {
     }
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
     WidgetHostBegin(session, AllowPhoto)
-    if Call("text_widget", "TextHostedHost", arguments[:2], *result) != 1 {
+    if Call("p0123456789abcdef_text_widget", "TextHostedHost", arguments[:2], *result) != 1 {
         return 3
     }
     // Another frame's session, a missing argument or the wrong record is refused.
@@ -121,7 +121,9 @@ main :: () -> s32 {
     if Call("text_widget", "TextHostedHost", stale_arguments[:], *result) != 0 ||
     Call("text_widget", "TextHostedHost", arguments[:1], *result) != 0 ||
     Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 ||
-    Call("text_widget", "TextUnknownHost", arguments[:2], *result) != 0 {
+    Call("text_widget", "TextUnknownHost", arguments[:2], *result) != 0 ||
+    Call("unrelated_text_widget", "TextHostedHost", arguments[:2], *result) != 0 ||
+    Call("p0123456789abcdeg_text_widget", "TextHostedHost", arguments[:2], *result) != 0 {
         return 4
     }
     // Fields match by name: a record from an older layout that lists only
@@ -136,7 +138,7 @@ main :: () -> s32 {
     // Assets pass the host's policy; texture handles never cross.
     arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "assets/photo.png",
             .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}, *image_codec)
-    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 {
+    if Call("kryon_image_widget", "ImageHostedHost", arguments[:2], *result) != 1 {
         return 6
     }
     // A warped image's grid crosses with it.
