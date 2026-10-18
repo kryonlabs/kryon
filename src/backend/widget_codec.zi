@@ -5168,7 +5168,7 @@ WidgetValidTextFieldInput :: (value: HostValue) -> bool {
 }
 
 WidgetTextFieldPropsCodec :: struct {
-    fields: [21]HostField
+    fields: [22]HostField
     bounds: WidgetRectangleCodec
     composition: WidgetCompositionStateCodec
     input: WidgetTextFieldInputCodec
@@ -5179,7 +5179,7 @@ WidgetEncodeTextFieldProps :: (data: TextFieldProps, codec: *WidgetTextFieldProp
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("TextFieldProps")
     value.fields = *codec.fields[0]
-    value.field_count = 21
+    value.field_count = 22
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("bounds")
@@ -5192,36 +5192,38 @@ WidgetEncodeTextFieldProps :: (data: TextFieldProps, codec: *WidgetTextFieldProp
     codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
     codec.fields[5].name = HostTextData("placeholder")
     codec.fields[5].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.placeholder), .length = cast(usize)data.placeholder.count}
-    codec.fields[6].name = HostTextData("cursor")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.cursor)
-    codec.fields[7].name = HostTextData("anchor")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.anchor)
-    codec.fields[8].name = HostTextData("scroll_x")
-    codec.fields[8].value = HostScalar("s32", cast(s64)data.scroll_x)
-    codec.fields[9].name = HostTextData("focused")
-    codec.fields[9].value = HostScalar("bool", ifx data.focused then 1 else 0)
-    codec.fields[10].name = HostTextData("composition")
-    codec.fields[10].value = WidgetEncodeCompositionState(data.composition, *codec.composition)
-    codec.fields[11].name = HostTextData("focus_id")
-    codec.fields[11].value = HostScalar("s32", cast(s64)data.focus_id)
-    codec.fields[12].name = HostTextData("class_name")
-    codec.fields[12].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[13].name = HostTextData("scale")
-    codec.fields[13].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[14].name = HostTextData("max_bytes")
-    codec.fields[14].value = HostScalar("s32", cast(s64)data.max_bytes)
-    codec.fields[15].name = HostTextData("max_codepoints")
-    codec.fields[15].value = HostScalar("s32", cast(s64)data.max_codepoints)
-    codec.fields[16].name = HostTextData("secure")
-    codec.fields[16].value = HostScalar("bool", ifx data.secure then 1 else 0)
-    codec.fields[17].name = HostTextData("numeric")
-    codec.fields[17].value = HostScalar("bool", ifx data.numeric then 1 else 0)
-    codec.fields[18].name = HostTextData("read_only")
-    codec.fields[18].value = HostScalar("bool", ifx data.read_only then 1 else 0)
-    codec.fields[19].name = HostTextData("disabled")
-    codec.fields[19].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[20].name = HostTextData("input")
-    codec.fields[20].value = WidgetEncodeTextFieldInput(data.input, *codec.input)
+    codec.fields[6].name = HostTextData("clear_label")
+    codec.fields[6].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.clear_label), .length = cast(usize)data.clear_label.count}
+    codec.fields[7].name = HostTextData("cursor")
+    codec.fields[7].value = HostScalar("s32", cast(s64)data.cursor)
+    codec.fields[8].name = HostTextData("anchor")
+    codec.fields[8].value = HostScalar("s32", cast(s64)data.anchor)
+    codec.fields[9].name = HostTextData("scroll_x")
+    codec.fields[9].value = HostScalar("s32", cast(s64)data.scroll_x)
+    codec.fields[10].name = HostTextData("focused")
+    codec.fields[10].value = HostScalar("bool", ifx data.focused then 1 else 0)
+    codec.fields[11].name = HostTextData("composition")
+    codec.fields[11].value = WidgetEncodeCompositionState(data.composition, *codec.composition)
+    codec.fields[12].name = HostTextData("focus_id")
+    codec.fields[12].value = HostScalar("s32", cast(s64)data.focus_id)
+    codec.fields[13].name = HostTextData("class_name")
+    codec.fields[13].value = HostScalar("s32", cast(s64)data.class_name)
+    codec.fields[14].name = HostTextData("scale")
+    codec.fields[14].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
+    codec.fields[15].name = HostTextData("max_bytes")
+    codec.fields[15].value = HostScalar("s32", cast(s64)data.max_bytes)
+    codec.fields[16].name = HostTextData("max_codepoints")
+    codec.fields[16].value = HostScalar("s32", cast(s64)data.max_codepoints)
+    codec.fields[17].name = HostTextData("secure")
+    codec.fields[17].value = HostScalar("bool", ifx data.secure then 1 else 0)
+    codec.fields[18].name = HostTextData("numeric")
+    codec.fields[18].value = HostScalar("bool", ifx data.numeric then 1 else 0)
+    codec.fields[19].name = HostTextData("read_only")
+    codec.fields[19].value = HostScalar("bool", ifx data.read_only then 1 else 0)
+    codec.fields[20].name = HostTextData("disabled")
+    codec.fields[20].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    codec.fields[21].name = HostTextData("input")
+    codec.fields[21].value = WidgetEncodeTextFieldInput(data.input, *codec.input)
     return value
 }
 
@@ -5264,91 +5266,97 @@ WidgetDecodeTextFieldProps :: (value: HostValue, codec: *WidgetTextFieldPropsCod
         }
     }
     {
-        field_at := HostFieldAt(value, 6, "cursor")
+        field_at := HostFieldAt(value, 6, "clear_label")
+        if field_at >= 0 {
+            data.clear_label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "cursor")
         if field_at >= 0 {
             data.cursor = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 7, "anchor")
+        field_at := HostFieldAt(value, 8, "anchor")
         if field_at >= 0 {
             data.anchor = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 8, "scroll_x")
+        field_at := HostFieldAt(value, 9, "scroll_x")
         if field_at >= 0 {
             data.scroll_x = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 9, "focused")
+        field_at := HostFieldAt(value, 10, "focused")
         if field_at >= 0 {
             data.focused = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 10, "composition")
+        field_at := HostFieldAt(value, 11, "composition")
         if field_at >= 0 {
             data.composition = WidgetDecodeCompositionState(value.fields[field_at].value, *codec.composition)
         }
     }
     {
-        field_at := HostFieldAt(value, 11, "focus_id")
+        field_at := HostFieldAt(value, 12, "focus_id")
         if field_at >= 0 {
             data.focus_id = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 12, "class_name")
+        field_at := HostFieldAt(value, 13, "class_name")
         if field_at >= 0 {
             data.class_name = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 13, "scale")
+        field_at := HostFieldAt(value, 14, "scale")
         if field_at >= 0 {
             data.scale = cast(float32)value.fields[field_at].value.real
         }
     }
     {
-        field_at := HostFieldAt(value, 14, "max_bytes")
+        field_at := HostFieldAt(value, 15, "max_bytes")
         if field_at >= 0 {
             data.max_bytes = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 15, "max_codepoints")
+        field_at := HostFieldAt(value, 16, "max_codepoints")
         if field_at >= 0 {
             data.max_codepoints = cast(s32)value.fields[field_at].value.integer
         }
     }
     {
-        field_at := HostFieldAt(value, 16, "secure")
+        field_at := HostFieldAt(value, 17, "secure")
         if field_at >= 0 {
             data.secure = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 17, "numeric")
+        field_at := HostFieldAt(value, 18, "numeric")
         if field_at >= 0 {
             data.numeric = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 18, "read_only")
+        field_at := HostFieldAt(value, 19, "read_only")
         if field_at >= 0 {
             data.read_only = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 19, "disabled")
+        field_at := HostFieldAt(value, 20, "disabled")
         if field_at >= 0 {
             data.disabled = value.fields[field_at].value.integer != 0
         }
     }
     {
-        field_at := HostFieldAt(value, 20, "input")
+        field_at := HostFieldAt(value, 21, "input")
         if field_at >= 0 {
             data.input = WidgetDecodeTextFieldInput(value.fields[field_at].value, *codec.input)
         }
@@ -5397,91 +5405,97 @@ WidgetValidTextFieldProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 6, "cursor")
+        field_at := HostFieldAt(value, 6, "clear_label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "cursor")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 7, "anchor")
+        field_at := HostFieldAt(value, 8, "anchor")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 8, "scroll_x")
+        field_at := HostFieldAt(value, 9, "scroll_x")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 9, "focused")
+        field_at := HostFieldAt(value, 10, "focused")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 10, "composition")
+        field_at := HostFieldAt(value, 11, "composition")
         if field_at >= 0 {
             if !WidgetValidCompositionState(value.fields[field_at].value) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 11, "focus_id")
+        field_at := HostFieldAt(value, 12, "focus_id")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 12, "class_name")
+        field_at := HostFieldAt(value, 13, "class_name")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 13, "scale")
+        field_at := HostFieldAt(value, 14, "scale")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 14, "max_bytes")
+        field_at := HostFieldAt(value, 15, "max_bytes")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 15, "max_codepoints")
+        field_at := HostFieldAt(value, 16, "max_codepoints")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 16, "secure")
+        field_at := HostFieldAt(value, 17, "secure")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 17, "numeric")
+        field_at := HostFieldAt(value, 18, "numeric")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 18, "read_only")
+        field_at := HostFieldAt(value, 19, "read_only")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 19, "disabled")
+        field_at := HostFieldAt(value, 20, "disabled")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     {
-        field_at := HostFieldAt(value, 20, "input")
+        field_at := HostFieldAt(value, 21, "input")
         if field_at >= 0 {
             if !WidgetValidTextFieldInput(value.fields[field_at].value) { return false }
         }

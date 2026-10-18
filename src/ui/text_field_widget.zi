@@ -12,6 +12,8 @@ Theme :: #import "theme";
     }
 } else {
     #import "session"
+    #import "button_props"
+    #import "button_widget"
     #import "control_props"
     #import "drawing_props"
     #import "font_metrics"
@@ -266,12 +268,18 @@ Theme :: #import "theme";
         padding_x: s32 = TextInputScaledMetric(
             face.value.padding_x, scale)
         if padding_x < 0 { padding_x = 0 }
+        clear_size: float32 = 0.0
+        if props.clear_label != "" && props.value != "" && !props.read_only {
+            clear_size = cast(float32)TextInputScaledMetric(44.0, scale)
+            if clear_size > props.bounds.height { clear_size = props.bounds.height }
+            if clear_size > props.bounds.width { clear_size = props.bounds.width }
+        }
         display: string = props.value
         if props.secure { display = props.display_value }
         text_width: s32 = GlyphWidth(display, font,
             face.value.typeface)
         scroll: TextFieldScroll = TextFieldScrollFor(
-            props.bounds.x, props.bounds.width,
+            props.bounds.x, props.bounds.width - clear_size,
             padding_x, text_width, result.scroll_x)
         result.scroll_x = scroll.scroll
         if !props.disabled &&
@@ -452,7 +460,7 @@ Theme :: #import "theme";
                 result.cursor = Grapheme.Boundary(props.value, request.cursor)
                 result.anchor = Grapheme.Boundary(props.value, request.anchor)
             } else if !props.read_only && (request.value.count == 0 || TextFieldInputTextAllowed(request.value)) &&
-                TextFieldReplacementAllowed(props, 0, cast(s32)props.value.count, request.value) {
+            TextFieldReplacementAllowed(props, 0, cast(s32)props.value.count, request.value) {
                 result.edit.start = 0
                 result.edit.end = cast(s32)props.value.count
                 result.edit.replacement = request.value
@@ -485,7 +493,7 @@ Theme :: #import "theme";
             GlyphWidth(composition_suffix, font,
                 face.value.typeface)
             scroll = TextFieldScrollFor(props.bounds.x,
-                props.bounds.width, padding_x, text_width,
+                props.bounds.width - clear_size, padding_x, text_width,
                 result.scroll_x)
             result.scroll_x = scroll.scroll
         }
@@ -543,7 +551,9 @@ Theme :: #import "theme";
         }
         line_height: s32 = GlyphLineHeight(font,
             face.value.typeface)
-        paint: TextFieldPaint = TextFieldPaintFor(bounds,
+        text_bounds := bounds
+        text_bounds.width -= clear_size
+        paint: TextFieldPaint = TextFieldPaintFor(text_bounds,
             padding_x, result.scroll_x, font, line_height,
             TextFieldMinCursorHeight(scale),
             TextFieldCursorVerticalPadding(scale),
@@ -651,6 +661,33 @@ Theme :: #import "theme";
                         0.0, cast(float32)paint.cursor_height},
                     ColorFromPacked(Opacity(face.value.foreground,
                     opacity)))
+            }
+        }
+        if clear_size > 0.0 {
+            clear: ButtonProps
+            field_key := key
+            if result.node >= 0 { field_key = TreeSubmittedNodeAt(session, result.node).key }
+            clear.key = field_key * cast(u64)65599 + cast(u64)41
+            clear.bounds = Rectangle.{bounds.x + bounds.width - clear_size, bounds.y,
+                clear_size, bounds.height}
+            clear.label = props.clear_label
+            clear.icon_shape = "S1.8rr:M6 6L18 18M18 6L6 18"
+            clear.icon_only = true
+            clear.fit_content = true
+            clear.emphasis = cast(ButtonEmphasis)ButtonEmphasisGhost
+            clear.disabled = props.disabled
+            if Button(session, clear) != 0 {
+                result.edit = TextFieldEdit.{.start = 0, .end = cast(s32)props.value.count,
+                    .replacement = "", .changed = true}
+                result.cursor = 0
+                result.anchor = 0
+                result.scroll_x = 0
+                result.composition_changed = result.composition.active
+                result.composition = CompositionState.{}
+                result.focused = true
+                unused TreeFocusAt(session, previous)
+                TextHostPresent(session, result.node, props.value, 0, 0, props.secure,
+                    props.numeric, props.read_only, true)
             }
         }
         return result

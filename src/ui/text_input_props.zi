@@ -30,6 +30,8 @@ TextFieldProps :: struct {
     display_value: string
     label: string
     placeholder: string
+    // An accessible clear action at the right, shown only for nonempty text.
+    clear_label: string
     cursor: s32
     anchor: s32
     scroll_x: s32

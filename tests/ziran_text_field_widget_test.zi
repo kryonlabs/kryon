@@ -13,10 +13,13 @@ TestSession :: () -> Session {
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "widget_kind"
 #import "ziran_composition_widget_host"
 #import "ziran_system_clipboard_host"
+#import "ziran_widget_noop_host"
 
 using SemanticKind;
+using WidgetKind;
 using CompositionPhase;
 using FrameStatus;
 
@@ -138,7 +141,7 @@ Frame :: () -> s32 {
     }
     if phase == 18 {
         props.input.composition_event.phase =
-            cast(CompositionPhase)CompositionStart
+        cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "é"
         props.input.composition_event.cursor = 1
         props.input.composition_event.selection_length = 99
@@ -146,103 +149,103 @@ Frame :: () -> s32 {
     }
     if phase == 19 {
         props.input.composition_event.phase =
-            cast(CompositionPhase)CompositionUpdate
+        cast(CompositionPhase)CompositionUpdate
         props.input.composition_event.text = "éx"
         props.input.composition_event.cursor = 3
     }
     if phase == 20 {
         props.input.composition_event.phase =
-            cast(CompositionPhase)CompositionCommit
+        cast(CompositionPhase)CompositionCommit
         props.input.composition_event.text = "Q"
         props.input.text = "X"
     }
     if phase == 21 {
         props.read_only = true
         props.input.composition_event.phase =
-            cast(CompositionPhase)CompositionStart
+        cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "A"
     }
     if phase == 22 || phase == 24 {
         props.input.composition_event.phase =
-            cast(CompositionPhase)CompositionStart
+        cast(CompositionPhase)CompositionStart
         props.input.composition_event.text = "B"
     }
     if phase == 23 {
         props.input.composition_event.phase =
-            cast(CompositionPhase)CompositionCancel
+        cast(CompositionPhase)CompositionCancel
     }
     if phase == 25 || phase == 26 { props.input.escape = true }
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
     result: TextFieldResult = TextField(TestSession(), props)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || result.node != 1 ||
-        TreeNodeAt(TestSession(), result.node).semantic_label != "Name" ||
-        TreeNodeAt(TestSession(), result.node).semantic_kind !=
-            cast(SemanticKind)SemanticTextField { return -20 }
+    TreeNodeAt(TestSession(), result.node).semantic_label != "Name" ||
+    TreeNodeAt(TestSession(), result.node).semantic_kind !=
+    cast(SemanticKind)SemanticTextField { return -20 }
     if phase == 0 {
         if result.focused || result.edit.changed { return -1 }
         TreePointerUpdate(TestSession(), PointerFrame.{220.0, 38.0,
-            true, true, false})
+                true, true, false})
         TreePointerUpdate(TestSession(), PointerFrame.{220.0, 38.0,
-            false, false, true})
+                false, false, true})
     } else if phase == 1 {
         if !result.focused || !result.edit.changed ||
-            result.edit.start != 4 || result.edit.end != 4 ||
-            result.edit.replacement != "Z" || result.cursor != 5 {
+        result.edit.start != 4 || result.edit.end != 4 ||
+        result.edit.replacement != "Z" || result.cursor != 5 {
             return -2
         }
         value = "AéBZ"
     } else if phase == 2 {
         if result.cursor != 4 || result.anchor != 4 ||
-            result.edit.changed { return -3 }
+        result.edit.changed { return -3 }
     } else if phase == 3 {
         if !result.edit.changed || result.edit.start != 3 ||
-            result.edit.end != 4 || result.cursor != 3 {
+        result.edit.end != 4 || result.cursor != 3 {
             return -4
         }
         value = "AéZ"
     } else if phase == 4 {
         if result.cursor != 4 || result.anchor != 0 ||
-            result.edit.changed { return -5 }
+        result.edit.changed { return -5 }
     } else if phase == 5 {
         if !result.edit.changed || result.edit.start != 0 ||
-            result.edit.end != 4 || result.edit.replacement != "Q" ||
-            result.cursor != 1 { return -6 }
+        result.edit.end != 4 || result.edit.replacement != "Q" ||
+        result.cursor != 1 { return -6 }
         value = "Q"
     } else if phase == 6 {
         if !result.focused || result.cursor != 1 ||
-            result.edit.changed { return -7 }
+        result.edit.changed { return -7 }
     } else if phase == 7 {
         if result.focused || result.edit.changed { return -8 }
     } else if phase == 8 {
         if !result.clipboard_write ||
-            result.clipboard_text != "éB" ||
-            result.edit.changed { return -9 }
+        result.clipboard_text != "éB" ||
+        result.edit.changed { return -9 }
     } else if phase == 9 {
         if !result.clipboard_write ||
-            result.clipboard_text != "éB" ||
-            !result.edit.changed || result.edit.start != 1 ||
-            result.edit.end != 4 || result.cursor != 1 {
+        result.clipboard_text != "éB" ||
+        !result.edit.changed || result.edit.start != 1 ||
+        result.edit.end != 4 || result.cursor != 1 {
             return -10
         }
         value = "A"
     } else if phase == 10 {
         if result.clipboard_write || !result.edit.changed ||
-            result.edit.start != 1 || result.edit.end != 1 ||
-            result.edit.replacement != "éB" ||
-            result.cursor != 4 { return -11 }
+        result.edit.start != 1 || result.edit.end != 1 ||
+        result.edit.replacement != "éB" ||
+        result.cursor != 4 { return -11 }
         value = "AéB"
     } else if phase == 11 {
         if !result.clipboard_write ||
-            result.clipboard_text != "AéB" ||
-            result.edit.changed { return -12 }
+        result.clipboard_text != "AéB" ||
+        result.edit.changed { return -12 }
     } else if phase == 12 {
         if result.clipboard_write || result.edit.changed {
             return -13
         }
     } else if phase == 13 {
         if !result.clipboard_write ||
-            result.clipboard_text != "éB" ||
-            result.edit.changed { return -14 }
+        result.clipboard_text != "éB" ||
+        result.edit.changed { return -14 }
     } else if phase == 14 {
         if result.clipboard_write || result.edit.changed {
             return -15
@@ -253,13 +256,13 @@ Frame :: () -> s32 {
         }
     } else if phase == 16 {
         if result.clipboard_write || !result.edit.changed ||
-            result.edit.start != 1 || result.edit.end != 4 ||
-            result.edit.replacement != "Q" ||
-            result.cursor != 2 { return -17 }
+        result.edit.start != 1 || result.edit.end != 4 ||
+        result.edit.replacement != "Q" ||
+        result.cursor != 2 { return -17 }
         value = "AQ"
     } else if phase == 17 {
         if result.clipboard_write || result.edit.changed ||
-            result.cursor != 2 { return -18 }
+        result.cursor != 2 { return -18 }
     } else if phase == 18 {
         sample: CompositionEvent
         sample.phase = cast(CompositionPhase)CompositionUpdate
@@ -269,27 +272,27 @@ Frame :: () -> s32 {
         boundary: CompositionTransition = CompositionTransitionFor(
             CompositionState.{}, sample, true, false)
         if boundary.state.cursor != 0 ||
-            boundary.state.selection_length != 3 {
+        boundary.state.selection_length != 3 {
             return -28
         }
         if !result.composition.active ||
-            result.composition.text != "é" ||
-            result.composition.cursor != 0 ||
-            result.composition.selection_length != 2 ||
-            !result.composition_changed ||
-            result.edit.changed { return -19 }
+        result.composition.text != "é" ||
+        result.composition.cursor != 0 ||
+        result.composition.selection_length != 2 ||
+        !result.composition_changed ||
+        result.edit.changed { return -19 }
     } else if phase == 19 {
         if !result.composition.active ||
-            result.composition.text != "éx" ||
-            result.composition.cursor != 3 ||
-            result.edit.changed { return -20 }
+        result.composition.text != "éx" ||
+        result.composition.cursor != 3 ||
+        result.edit.changed { return -20 }
     } else if phase == 20 {
         if result.composition.active ||
-            !result.composition_changed ||
-            !result.edit.changed || result.edit.start != 0 ||
-            result.edit.end != 2 ||
-            result.edit.replacement != "Q" ||
-            result.cursor != 1 { return -21 }
+        !result.composition_changed ||
+        !result.edit.changed || result.edit.start != 0 ||
+        result.edit.end != 2 ||
+        result.edit.replacement != "Q" ||
+        result.cursor != 1 { return -21 }
         value = "Q"
     } else if phase == 21 {
         if result.composition.active || result.edit.changed {
@@ -297,19 +300,19 @@ Frame :: () -> s32 {
         }
     } else if phase == 22 {
         if !result.composition.active ||
-            result.composition.text != "B" {
+        result.composition.text != "B" {
             return -23
         }
     } else if phase == 23 {
         if result.composition.active ||
-            !result.composition_changed ||
-            result.edit.changed { return -24 }
+        !result.composition_changed ||
+        result.edit.changed { return -24 }
     } else if phase == 24 {
         if !result.composition.active { return -25 }
     } else if phase == 25 {
         if result.composition.active ||
-            !result.composition_changed ||
-            result.escaped || !result.focused { return -26 }
+        !result.composition_changed ||
+        result.escaped || !result.focused { return -26 }
     } else if phase == 26 {
         if !result.escaped || result.focused {
             return -27
@@ -381,7 +384,7 @@ NumberTap :: () -> s32 {
     TreePointerUpdate(number_session, PointerFrame.{30.0, 38.0, true, true, false})
     TreePointerUpdate(number_session, PointerFrame.{30.0, 38.0, false, false, true})
     if !NumberFrame() || !number_focused || number_anchor != number_cursor ||
-       number_cursor == 4 { return 24 }
+    number_cursor == 4 { return 24 }
     number_blur = true
     if !NumberFrame() || number_focused { return 25 }
     number_blur = false
@@ -399,7 +402,7 @@ main :: () -> s32 {
     // Editing moves by user-perceived characters; byte ranges remain public.
     complex := "é👨‍👩‍👧‍👦👍🏽🇵🇾"
     if TextFieldNext(complex, 0) != 3 || TextFieldNext(complex, 3) != 28 ||
-       TextFieldPrevious(complex, 36) != 28 || TextFieldPrevious(complex, 44) != 36 {
+    TextFieldPrevious(complex, 36) != 28 || TextFieldPrevious(complex, 44) != 36 {
         return 3
     }
     // max_codepoints and secure-display mapping retain scalar semantics.
@@ -419,10 +422,10 @@ main :: () -> s32 {
     number_props.value = "12"
     number_props.max_codepoints = 4
     if !TextFieldReplacementAllowed(number_props, 2, 2, "34") ||
-       TextFieldReplacementAllowed(number_props, 2, 2, "3a") ||
-       TextFieldReplacementAllowed(number_props, 0, 2, "-5") ||
-       TextFieldReplacementAllowed(number_props, 2, 2, "345") ||
-       !TextFieldReplacementAllowed(number_props, 0, 2, "") { return 7 }
+    TextFieldReplacementAllowed(number_props, 2, 2, "3a") ||
+    TextFieldReplacementAllowed(number_props, 0, 2, "-5") ||
+    TextFieldReplacementAllowed(number_props, 2, 2, "345") ||
+    !TextFieldReplacementAllowed(number_props, 0, 2, "") { return 7 }
     number_props.input.text = "x"
     if TextFieldEditFor(number_props, 2, 2).changed { return 8 }
     number_props.input.text = "7"
@@ -436,5 +439,34 @@ main :: () -> s32 {
     if FieldPreeditPaints() <= 0 || FieldUnderlinePaints() <= 0 {
         return 2
     }
-    return NumberTap()
+    number_result := NumberTap()
+    if number_result != 0 { return number_result }
+    // An opt-in clear button appears for text, returns one complete edit and
+    // disappears when the caller applies it. The field keeps keyboard focus.
+    clear_session := SessionOpen()
+    clear_props: TextFieldProps
+    clear_props.key = 90
+    clear_props.bounds = Rectangle.{10.0, 10.0, 240.0, 48.0}
+    clear_props.value = "Find me"
+    clear_props.clear_label = "Clear search"
+    TreeStart(clear_session, 1, Rectangle.{0.0, 0.0, 300.0, 160.0})
+    unused TextField(clear_session, clear_props)
+    if !TreeFinish(clear_session) { return 40 }
+    clear_node := TreeHitAt(clear_session, 225.0, 34.0)
+    if TreeNodeAt(clear_session, clear_node).kind != WidgetKindButton { return 41 }
+    TreePointerUpdate(clear_session, PointerFrame.{225.0, 34.0, true, true, true})
+    TreeStart(clear_session, 1, Rectangle.{0.0, 0.0, 300.0, 160.0})
+    cleared := TextField(clear_session, clear_props)
+    if !TreeFinish(clear_session) { return 42 }
+    if !cleared.edit.changed || cleared.edit.start != 0 || cleared.edit.end != 7 ||
+    cleared.edit.replacement != "" || !cleared.focused || cleared.cursor != 0 ||
+    cleared.anchor != 0 || cleared.scroll_x != 0 { return 43 }
+    clear_props.value = ""
+    TreeStart(clear_session, 1, Rectangle.{0.0, 0.0, 300.0, 160.0})
+    unused TextField(clear_session, clear_props)
+    if !TreeFinish(clear_session) { return 44 }
+    if TreeNodeAt(clear_session, TreeHitAt(clear_session, 225.0, 34.0)).kind !=
+    WidgetKindTextField { return 45 }
+    unused SessionClose(clear_session)
+    return 0
 }

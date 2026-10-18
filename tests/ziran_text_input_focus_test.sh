@@ -8,6 +8,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_text_input_focus_test.zi
 
 set -- \
+    --bind image_raster:ImageWidth=ziran_widget_noop_host:ImageWidth \
+    --bind image_raster:ImageHeight=ziran_widget_noop_host:ImageHeight \
     --bind font_metrics:MeasureGlyphWidth=ziran_composition_widget_host:MeasureGlyphWidth \
     --bind font_metrics:MeasureGlyphLineHeight=ziran_composition_widget_host:MeasureGlyphLineHeight \
     --bind raster_text:RasterText=ziran_composition_widget_host:RasterText \

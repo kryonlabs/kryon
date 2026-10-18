@@ -55,7 +55,7 @@ Frame :: () -> s32 {
         if !result.open || result.activated_id != 0 { return -3 }
         if TreeCount(TestSession()) != 7 { return -4 }
         if TreeNodeAt(TestSession(), TreeHitAt(TestSession(), 40.0, 37.0)).kind !=
-            WidgetKindSelectable { return -5 }
+        WidgetKindSelectable { return -5 }
         Click(40.0, 37.0)
     } else if phase == 2 {
         // Cut was chosen; the menu closes.
@@ -169,5 +169,11 @@ main :: () -> s32 {
     bounds: Rectangle = ContextMenuBounds(wide[0:6], 0.0, 0.0,
         Rectangle.{0.0, 0.0, 640.0, 480.0})
     if bounds.width != 318.0 || bounds.height != 42.0 { return 300 }
+    // A phone-scale menu keeps its rows, text insets and panel together,
+    // including the clamped origin at the edge of the view.
+    scaled := ContextMenuBounds(wide[0:6], 600.0, 400.0,
+        Rectangle.{0.0, 0.0, 640.0, 480.0}, 2.0)
+    if scaled.width != 636.0 || scaled.height != 84.0 { return 301 }
+    if scaled.x != 4.0 || scaled.y != 396.0 { return 302 }
     return 0
 }

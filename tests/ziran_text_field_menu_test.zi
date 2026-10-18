@@ -1,3 +1,4 @@
+#import "ziran_widget_noop_host"
 #import "session"
 test_session: Session;
 TestSession :: () -> Session {
