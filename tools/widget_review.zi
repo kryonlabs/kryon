@@ -266,7 +266,7 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
     } else if scene == 50 {
         TextSelectionEnable()
         Text(session, TextProps.{.key = 10, .bounds = .{24.0, 64.0, 432.0, 148.0}, .text = "Select a little text.\nKeep reading in comfort.", .selectable = true, .disabled = disabled})
-        if !disabled { TreeSetWidgetState(session, 2, WidgetState.{.active = true, .index = 18, .offset = 2}) }
+        if !disabled { TreeSetWidgetState(session, 2, WidgetState.{.open = true, .index = 18, .offset = 2}) }
     } else if scene == 51 {
         Label(session, "A transition over this content", 104.0)
     }
