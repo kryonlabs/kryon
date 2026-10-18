@@ -30,6 +30,8 @@ IsX11 :: (window: *void, type: u64) -> s32 #foreign gobject "g_type_check_instan
 X11Type :: () -> u64 #foreign gdk "gdk_x11_window_get_type";
 Xid :: (window: *void) -> u64 #foreign gdk "gdk_x11_window_get_xid";
 Display :: () -> *void #foreign gdk "gdk_x11_get_default_xdisplay";
+GdkDisplay :: () -> *void #foreign gdk "gdk_display_get_default";
+FlushDisplay :: (display: *void) #foreign gdk "gdk_display_flush";
 Transient :: (display: *void, window: u64, parent: u64) -> s32 #foreign x11 "XSetTransientForHint";
 
 FileDialogProps :: struct {
@@ -56,7 +58,13 @@ FileDialog :: (props: FileDialogProps, output: []u8) -> FileDialogResult {
     if !CopyCString(label, accept[:]) || !CopyCString("_Cancel", cancel[:]) { return result }
     action: s32 = ifx props.save then 1 else 0
     dialog := New(*title[0], null, action, null); if dialog == null { return result }
-    defer { Destroy(dialog) }
+    defer {
+        Destroy(dialog)
+        // A native host may return to SDL without another GTK iteration.
+        // Flush destruction before returning so the chooser leaves the screen.
+        closing_display := GdkDisplay()
+        if closing_display != null { FlushDisplay(closing_display) }
+    }
     Local(dialog, 1); Overwrite(dialog, ifx props.save then 1 else 0)
     unused AddButton(dialog, *cancel[0], -6); unused AddButton(dialog, *accept[0], -3)
     Default(dialog, -3)
