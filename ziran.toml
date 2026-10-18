@@ -50,6 +50,7 @@ widget_host = "src/backend/widget_host.zi"
 # Direct widget modules let portable hosts select only their required effects.
 text_widget = "src/ui/text_widget.zi"
 text_props = "src/ui/text_props.zi"
+text_align = "src/ui/text_align.zi"
 image_widget = "src/ui/image_widget.zi"
 image_props = "src/ui/image_props.zi"
 button_widget = "src/ui/button_widget.zi"
