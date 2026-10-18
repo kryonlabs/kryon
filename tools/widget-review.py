@@ -29,8 +29,8 @@ SCENES = ['Button', 'TextField', 'TextArea', 'Dropdown', 'Slider', 'Toggle',
           'ActionModal', 'Popup', 'Press', 'Column', 'Row', 'Stack', 'Group',
           'Grid', 'Page Section Heading ParagraphText', 'NavigationBarConfig',
           'Reorder', 'PanedView', 'DismissibleOverlay', 'Button emphasis',
-          'Dropdown open', 'Screen', 'Flow']
-INTERACTIVE = set(range(8)) | {9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 24, 26, 35, 44, 46}
+          'Dropdown open', 'Screen', 'Flow', 'Text selection', 'Transition fade']
+INTERACTIVE = set(range(8)) | {9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 24, 26, 35, 44, 46, 50}
 DISABLED = INTERACTIVE | {21, 27, 33, 36, 37, 38, 39, 40, 48, 49}
 STATE_NAMES = ['Resting', 'Disabled', 'Pointer hover', 'Keyboard focus']
 

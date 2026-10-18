@@ -9,6 +9,7 @@ using UI :: #import "Widgets";
 #import "paned_view"
 #import "paned_view_props"
 #import "transition"
+#import "text_selection_widget"
 #import "std/file"
 
 // Linux resets this high-water mark at exec. wait4's ru_maxrss can include
@@ -262,6 +263,12 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
             unused Button(session, ButtonProps.{.bounds = .{0.0, 0.0, 164.0, 44.0}, .label = "Second item", .disabled = disabled})
             unused End(session)
         }
+    } else if scene == 50 {
+        TextSelectionEnable()
+        Text(session, TextProps.{.key = 10, .bounds = .{24.0, 64.0, 432.0, 148.0}, .text = "Select a little text.\nKeep reading in comfort.", .selectable = true, .disabled = disabled})
+        if !disabled { TreeSetWidgetState(session, 2, WidgetState.{.active = true, .index = 18, .offset = 2}) }
+    } else if scene == 51 {
+        Label(session, "A transition over this content", 104.0)
     }
 }
 
@@ -285,7 +292,11 @@ Run :: () -> s32 {
         if BeginFrame(session, 1, .{0.0, 0.0, 480.0, 320.0}) != FrameStatus.FrameOk { return 4 }
         unused Box(session, BoxProps.{.key = 2, .bounds = .{0.0, 0.0, 480.0, 320.0}, .fill = .{247, 250, 252, 255}})
         Compose(session, scene, state == 1)
-        result := EndPixmapFrame(session, true, cast(u32)0xf7fafcff, true)
+        result := EndPixmapFrame(session, scene != 51, cast(u32)0xf7fafcff, true)
+        if scene == 51 {
+            PaintTransitionFade(TransitionState.{.active = true, .phase = cast(s32)TransitionPhase.TransitionOut, .elapsed_seconds = 0.4, .duration_seconds = 1.0}, .{0.0, 0.0, 480.0, 320.0}, .{16, 34, 45, 160})
+        }
+        if scene == 50 && frame == 0 && state != 1 { unused TreeFocusAt(session, 2) }
         elapsed := Clock.MonotonicNanoseconds() - start
         if result.status != FrameStatus.FrameOk { return 5 }
         reserved: s64 = pending_text[session.slot].capacity * cast(s64)(PAINT_TEXT_CAPACITY + 4)
