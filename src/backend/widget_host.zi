@@ -33,6 +33,7 @@
 #import "text_input_props"
 #import "scroll_widget"
 #import "modal_frame_widget"
+#import "modal_widget"
 #import "modal_props"
 #import "hosted_values"
 #import "widget_codec"
@@ -86,6 +87,10 @@ widget_title_bar_result_codec: WidgetTitleBarResultCodec;
 widget_options: [WIDGET_HOST_OPTION_LIMIT]DropdownOption;
 widget_modal_frame_codec: WidgetModalFramePropsCodec;
 widget_modal_frame_result_codec: WidgetModalFrameResultCodec;
+widget_action_modal_codec: WidgetActionModalPropsCodec;
+widget_action_modal_result_codec: WidgetActionModalResultCodec;
+widget_modal_actions: [16]ActionModalAction;
+widget_modal_action_codecs: [16]WidgetActionModalActionCodec;
 widget_option_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetDropdownOptionCodec;
 
 // The widget calls WidgetHostCall answers, for checking a bundle's
@@ -106,7 +111,8 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (module == "spinbox_widget" && function == "SpinboxHostedHost") ||
     (module == "time_picker_widget" && function == "TimePickerHostedHost") ||
     (module == "title_bar_widget" && function == "TitleBarHostedHost") ||
-    (module == "modal_frame_widget" && function == "ModalFrameHostedHost")
+    (module == "modal_frame_widget" && function == "ModalFrameHostedHost") ||
+    (module == "modal_widget" && function == "ActionModalHostedHost")
 }
 
 WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed) {
@@ -173,6 +179,9 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if owner == "title_bar_widget" && name == "TitleBarHostedHost" && count == 3 {
         return WidgetHostTitleBar(session, arguments, result)
+    }
+    if owner == "modal_widget" && name == "ActionModalHostedHost" && count == 3 {
+        return WidgetHostActionModal(session, arguments, result)
     }
     if count != 2 {
         return 0
@@ -350,5 +359,31 @@ WidgetHostModalFrame :: (session: Session, props: HostValue, result: *HostValue)
         widget_host_depth += 1
     }
     result.* = WidgetEncodeModalFrameResult(frame, *widget_modal_frame_result_codec)
+    return 1
+}
+
+WidgetHostActionModal :: (session: Session, arguments: *HostValue, result: *HostValue) -> s32 {
+    if !WidgetValidActionModalProps(arguments[1]) {
+        return 0
+    }
+    values := arguments[2]
+    if values.kind != cast(s32)HostSlice ||
+    TextFromCString(values.type_name) != "[]ActionModalAction" ||
+    values.length > cast(usize)16 ||
+    (values.length > cast(usize)0 && values.elements == null) {
+        return 0
+    }
+    index: usize = 0
+    while index < values.length {
+        if !WidgetValidActionModalAction(values.elements[index]) {
+            return 0
+        }
+        widget_modal_actions[index] = WidgetDecodeActionModalAction(values.elements[index],
+            *widget_modal_action_codecs[index])
+        index += cast(usize)1
+    }
+    drawn := ActionModal(session, WidgetDecodeActionModalProps(arguments[1], *widget_action_modal_codec),
+        widget_modal_actions[:cast(s32)values.length])
+    result.* = WidgetEncodeActionModalResult(drawn, *widget_action_modal_result_codec)
     return 1
 }

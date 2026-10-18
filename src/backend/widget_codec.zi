@@ -9088,3 +9088,302 @@ WidgetValidModalFrameResult :: (value: HostValue) -> bool {
     }
     return true
 }
+
+WidgetActionModalPropsCodec :: struct {
+    fields: [9]HostField
+}
+
+WidgetEncodeActionModalProps :: (data: ActionModalProps, codec: *WidgetActionModalPropsCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("ActionModalProps")
+    value.fields = *codec.fields[0]
+    value.field_count = 9
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("id")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.id)
+    codec.fields[2].name = HostTextData("class_name")
+    codec.fields[2].value = HostScalar("s32", cast(s64)data.class_name)
+    codec.fields[3].name = HostTextData("title")
+    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.title), .length = cast(usize)data.title.count}
+    codec.fields[4].name = HostTextData("message")
+    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.message), .length = cast(usize)data.message.count}
+    codec.fields[5].name = HostTextData("max_width")
+    codec.fields[5].value = HostScalar("s32", cast(s64)data.max_width)
+    codec.fields[6].name = HostTextData("scale")
+    codec.fields[6].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
+    codec.fields[7].name = HostTextData("show_close")
+    codec.fields[7].value = HostScalar("bool", ifx data.show_close then 1 else 0)
+    codec.fields[8].name = HostTextData("close_label")
+    codec.fields[8].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.close_label), .length = cast(usize)data.close_label.count}
+    return value
+}
+
+WidgetDecodeActionModalProps :: (value: HostValue, codec: *WidgetActionModalPropsCodec) -> ActionModalProps {
+    data: ActionModalProps
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "id")
+        if field_at >= 0 {
+            data.id = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "class_name")
+        if field_at >= 0 {
+            data.class_name = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "title")
+        if field_at >= 0 {
+            data.title = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "message")
+        if field_at >= 0 {
+            data.message = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "max_width")
+        if field_at >= 0 {
+            data.max_width = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "scale")
+        if field_at >= 0 {
+            data.scale = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "show_close")
+        if field_at >= 0 {
+            data.show_close = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "close_label")
+        if field_at >= 0 {
+            data.close_label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    return data
+}
+
+WidgetValidActionModalProps :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "ActionModalProps" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "id")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "class_name")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "title")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "message")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "max_width")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "scale")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "show_close")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "close_label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    return true
+}
+
+WidgetActionModalActionCodec :: struct {
+    fields: [5]HostField
+}
+
+WidgetEncodeActionModalAction :: (data: ActionModalAction, codec: *WidgetActionModalActionCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("ActionModalAction")
+    value.fields = *codec.fields[0]
+    value.field_count = 5
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("label")
+    codec.fields[1].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
+    codec.fields[2].name = HostTextData("tone")
+    codec.fields[2].value = HostScalar("ButtonTone", cast(s64)data.tone)
+    codec.fields[3].name = HostTextData("emphasis")
+    codec.fields[3].value = HostScalar("ButtonEmphasis", cast(s64)data.emphasis)
+    codec.fields[4].name = HostTextData("disabled")
+    codec.fields[4].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    return value
+}
+
+WidgetDecodeActionModalAction :: (value: HostValue, codec: *WidgetActionModalActionCodec) -> ActionModalAction {
+    data: ActionModalAction
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "label")
+        if field_at >= 0 {
+            data.label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "tone")
+        if field_at >= 0 {
+            data.tone = cast(ButtonTone)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "emphasis")
+        if field_at >= 0 {
+            data.emphasis = cast(ButtonEmphasis)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "disabled")
+        if field_at >= 0 {
+            data.disabled = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidActionModalAction :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "ActionModalAction" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "tone")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "ButtonTone", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "emphasis")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "ButtonEmphasis", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "disabled")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetActionModalResultCodec :: struct {
+    fields: [2]HostField
+}
+
+WidgetEncodeActionModalResult :: (data: ActionModalResult, codec: *WidgetActionModalResultCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("ActionModalResult")
+    value.fields = *codec.fields[0]
+    value.field_count = 2
+    codec.fields[0].name = HostTextData("node")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.node)
+    codec.fields[1].name = HostTextData("action")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.action)
+    return value
+}
+
+WidgetDecodeActionModalResult :: (value: HostValue, codec: *WidgetActionModalResultCodec) -> ActionModalResult {
+    data: ActionModalResult
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            data.node = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "action")
+        if field_at >= 0 {
+            data.action = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    return data
+}
+
+WidgetValidActionModalResult :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "ActionModalResult" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "node")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "action")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}

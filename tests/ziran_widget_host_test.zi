@@ -70,6 +70,9 @@ title_bar_codec: WidgetTitleBarPropsCodec;
 title_bar_result: WidgetTitleBarResultCodec;
 modal_codec: WidgetModalFramePropsCodec;
 modal_result: WidgetModalFrameResultCodec;
+action_modal_codec: WidgetActionModalPropsCodec;
+action_modal_result: WidgetActionModalResultCodec;
+action_codec: WidgetActionModalActionCodec;
 option_codecs: [40]WidgetDropdownOptionCodec;
 option_values: [40]HostValue;
 
@@ -83,6 +86,7 @@ Call :: (module: string, function: string, arguments: []HostValue, result: *Host
 
 #program_export
 main :: () -> s32 {
+    if !WidgetHostSupports("modal_widget", "ActionModalHostedHost") { return 40 }
     if !WidgetHostSupports("toggle_widget", "ToggleHostedHost") ||
     !WidgetHostSupports("press_widget", "PressHostedHost") ||
     !WidgetHostSupports("spinbox_widget", "SpinboxHostedHost") ||
@@ -139,7 +143,7 @@ main :: () -> s32 {
     meshed := ImageProps.{.asset_path = "assets/photo.png",
         .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}
     mesh_points: [4]Vector2 = .[Vector2.{0.0, 20.0}, Vector2.{30.0, 20.0},
-        Vector2.{0.0, 60.0}, Vector2.{30.0, 55.0}]
+    Vector2.{0.0, 60.0}, Vector2.{30.0, 55.0}]
     meshed.mesh.columns = 2
     meshed.mesh.rows = 2
     meshed.mesh.points = mesh_points[:]
@@ -290,6 +294,28 @@ main :: () -> s32 {
     if Call("scroll_widget", "ScrollHostedHost", arguments[:2], *result) != 1 ||
     TextFromCString(result.type_name) != "ScrollResult" {
         return 13
+    }
+    // Action dialogs validate the entire action list before drawing it.
+    arguments[1] = WidgetEncodeActionModalProps(ActionModalProps.{.key = cast(u64)17,
+            .title = "Keep changes?", .message = "Your draft stays here."}, *action_modal_codec)
+    action_values: [1]HostValue
+    action_values[0] = WidgetEncodeActionModalAction(ActionModalAction.{.label = "Keep editing"}, *action_codec)
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice,
+        .type_name = HostTextData("[]ActionModalAction"), .length = cast(usize)1,
+        .elements = *action_values[0]}
+    if Call("modal_widget", "ActionModalHostedHost", arguments[:], *result) != 1 ||
+    !WidgetValidActionModalResult(result) ||
+    WidgetDecodeActionModalResult(result, *action_modal_result).action != 0 {
+        return 41
+    }
+    arguments[2].length = cast(usize)17
+    if Call("modal_widget", "ActionModalHostedHost", arguments[:], *result) != 0 {
+        return 42
+    }
+    arguments[2].length = cast(usize)1
+    action_values[0] = HostScalar("s32", 1)
+    if Call("modal_widget", "ActionModalHostedHost", arguments[:], *result) != 0 {
+        return 43
     }
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk {

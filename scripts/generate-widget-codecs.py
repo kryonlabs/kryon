@@ -47,7 +47,7 @@ KRYON_ROOTS = ['TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextA
                'TabBarProps', 'TabBarResult', 'BoxProps', 'PressProps', 'PressResult',
                'SpinboxProps', 'SpinboxStepResult', 'TimePickerProps', 'TimePickerResult',
                'TitleBarProps', 'TitleBarResult', 'DropdownOption', 'ModalFrameProps',
-               'ModalFrameResult']
+               'ModalFrameResult', 'ActionModalProps', 'ActionModalAction', 'ActionModalResult']
 
 
 def read_schema(paths):

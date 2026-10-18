@@ -79,3 +79,12 @@ TitleBar :: (session: Session, props: TitleBarProps, options: []DropdownOption) 
     }
     return TitleBarResult.{.trailing_bounds = Rectangle.{.width = cast(float32)props.trailing_width}}
 }
+#import "modal_props"
+
+#program_export "ActionModalHostedHost"
+ActionModal :: (session: Session, props: ActionModalProps,
+    actions: []ActionModalAction) -> ActionModalResult {
+    unused session
+    unused props
+    return ActionModalResult.{.action = ifx actions.count == 1 then 1 else 0}
+}

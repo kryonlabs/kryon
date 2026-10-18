@@ -23,6 +23,8 @@
 #import "title_bar_widget"
 #import "title_bar_props"
 #import "dropdown_props"
+#import "modal_widget"
+#import "modal_props"
 #program_export
 main :: () -> s32 {
     session := Session.{.slot = 4, .epoch = cast(u64)12}
@@ -47,5 +49,8 @@ main :: () -> s32 {
     options: [1]DropdownOption
     bar := TitleBar(session, TitleBarProps.{.title = "Lumi", .trailing_width = 90}, options[0:0])
     if bar.trailing_bounds.width != 90.0 { return 10 }
+    actions: [1]ActionModalAction = .[ActionModalAction.{.label = "Keep editing"}]
+    decision := ActionModal(session, ActionModalProps.{.title = "Unsaved changes"}, actions[:])
+    if decision.action != 1 { return 11 }
     return 42
 }

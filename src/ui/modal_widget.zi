@@ -1,237 +1,253 @@
-#import "session"
-#import "button_props"
-#import "button_widget"
-#import "control_props"
-#import "font_metrics"
-#import "geometry"
-#import "modal"
-#import "modal_frame_widget"
-#import "modal_props"
-#import "paint_queue"
-#import "semantic"
-#import "style"
-#import "style_sheet"
-#import "surface"
-#import "text_props"
-#import "text_widget"
-#import "tree"
-#import "widget_kind"
-
-using SemanticKind;
-using TextWrap;
-using WidgetKind;
-
-#program_export
-ActionModalKey :: (session: Session, props: ActionModalProps) -> u64 {
-    if props.key != cast(u64)0 { return props.key }
-    if props.id > 0 { return cast(u64)cast(u32)props.id }
-    return TreeNextKey(session)
-}
-
-#program_export
-ActionModalWidth :: (action: ActionModalAction,
-    font: s32, typeface: string, content_width: s32,
-    metrics: ModalMetrics) -> s32 {
-    width: s32 = ModalActionWidth(GlyphWidth(action.label,
-        font, typeface), metrics)
-    if width > content_width { width = content_width }
-    if width < 1 { width = 1 }
-    return width
-}
-
-#program_export
-ActionModalRows :: (actions: []ActionModalAction,
-    content_width: s32, font: s32, typeface: string,
-    metrics: ModalMetrics) -> s32 {
-    if (cast(s32)actions.count) == 0 { return 0 }
-    rows: s32 = 1
-    row_width: s32 = 0
-    index: s32 = 0
-    while index < (cast(s32)actions.count) {
-        width: s32 = ActionModalWidth(actions[index], font,
-            typeface, content_width, metrics)
-        rows = ModalActionRowsStep(row_width, rows, width,
-            content_width, metrics.button_gap)
-        row_width = ModalActionRowWidthStep(row_width, width,
-            content_width, metrics.button_gap)
-        index += 1
+// Portable apps use the host's ordinary action dialog, including its layout,
+// styles and input routing.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "modal_props"
+    host_api :: #system_library "host_api";
+    ActionModalHostedHost :: (session: Session, props: ActionModalProps,
+        actions: []ActionModalAction) -> ActionModalResult #foreign host_api;
+    #program_export
+    ActionModal :: (session: Session, props: ActionModalProps,
+        actions: []ActionModalAction) -> ActionModalResult {
+        return ActionModalHostedHost(session, props, actions)
     }
-    return rows
-}
+} else {
+    #import "session"
+    #import "button_props"
+    #import "button_widget"
+    #import "control_props"
+    #import "font_metrics"
+    #import "geometry"
+    #import "modal"
+    #import "modal_frame_widget"
+    #import "modal_props"
+    #import "paint_queue"
+    #import "semantic"
+    #import "style"
+    #import "style_sheet"
+    #import "surface"
+    #import "text_props"
+    #import "text_widget"
+    #import "tree"
+    #import "widget_kind"
 
-#program_export
-ActionModalDrawRow :: (session: Session, props: ActionModalProps, modal_key: u64,
-    actions: []ActionModalAction, first: s32, end: s32,
-    row_width: s32, content_x: s32, content_width: s32,
-    y: s32, font: s32, typeface: string,
-    metrics: ModalMetrics) -> s32 {
-    x: s32 = content_x + (content_width - row_width) / 2
-    result: s32 = 0
-    index: s32 = first
-    while index < end {
-        item: ActionModalAction = actions[index]
-        width: s32 = ActionModalWidth(item, font,
-            typeface, content_width, metrics)
-        button: ButtonProps
-        button.key = item.key
-        if button.key == cast(u64)0 {
-            button.key = modal_key *
+    using SemanticKind;
+    using TextWrap;
+    using WidgetKind;
+
+    #program_export
+    ActionModalKey :: (session: Session, props: ActionModalProps) -> u64 {
+        if props.key != cast(u64)0 { return props.key }
+        if props.id > 0 { return cast(u64)cast(u32)props.id }
+        return TreeNextKey(session)
+    }
+
+    #program_export
+    ActionModalWidth :: (action: ActionModalAction,
+        font: s32, typeface: string, content_width: s32,
+        metrics: ModalMetrics) -> s32 {
+        width: s32 = ModalActionWidth(GlyphWidth(action.label,
+            font, typeface), metrics)
+        if width > content_width { width = content_width }
+        if width < 1 { width = 1 }
+        return width
+    }
+
+    #program_export
+    ActionModalRows :: (actions: []ActionModalAction,
+        content_width: s32, font: s32, typeface: string,
+        metrics: ModalMetrics) -> s32 {
+        if (cast(s32)actions.count) == 0 { return 0 }
+        rows: s32 = 1
+        row_width: s32 = 0
+        index: s32 = 0
+        while index < (cast(s32)actions.count) {
+            width: s32 = ActionModalWidth(actions[index], font,
+                typeface, content_width, metrics)
+            rows = ModalActionRowsStep(row_width, rows, width,
+                content_width, metrics.button_gap)
+            row_width = ModalActionRowWidthStep(row_width, width,
+                content_width, metrics.button_gap)
+            index += 1
+        }
+        return rows
+    }
+
+    #program_export
+    ActionModalDrawRow :: (session: Session, props: ActionModalProps, modal_key: u64,
+        actions: []ActionModalAction, first: s32, end: s32,
+        row_width: s32, content_x: s32, content_width: s32,
+        y: s32, font: s32, typeface: string,
+        metrics: ModalMetrics) -> s32 {
+        x: s32 = content_x + (content_width - row_width) / 2
+        result: s32 = 0
+        index: s32 = first
+        while index < end {
+            item: ActionModalAction = actions[index]
+            width: s32 = ActionModalWidth(item, font,
+                typeface, content_width, metrics)
+            button: ButtonProps
+            button.key = item.key
+            if button.key == cast(u64)0 {
+                button.key = modal_key *
                 cast(u64)131071 + cast(u64)cast(u32)(index + 1)
-        }
-        button.id = props.id + index + 1
-        button.class_name = props.class_name
-        button.bounds = Rectangle.{cast(float32)x, cast(float32)y,
-            cast(float32)width, cast(float32)metrics.button_height}
-        button.label = item.label
-        button.tone = item.tone
-        button.emphasis = item.emphasis
-        button.disabled = item.disabled
-        button.style_kind = StyleKindModal()
-        button.style_role = ModalActionRole()
-        if Button(session, button) != 0 { result = index + 1 }
-        x += width + metrics.button_gap
-        index += 1
-    }
-    return result
-}
-
-// A checked message/action dialog. The caller receives a one-based action
-// index, or -1 for backdrop/close dismissal. Prompt editing is a separate
-// composition because it requires retained text-input state.
-#program_export
-ActionModal :: (session: Session, props: ActionModalProps,
-    actions: []ActionModalAction) -> ActionModalResult {
-    result: ActionModalResult
-    result.node = -1
-    viewport: Rectangle = TreeRootBounds(session)
-    if viewport.width <= 0.0 || viewport.height <= 0.0 {
-        return result
-    }
-    frame_props: ModalFrameProps
-    frame_props.key = ActionModalKey(session, props)
-    frame_props.id = props.id
-    frame_props.class_name = props.class_name
-    frame_props.title = props.title
-    frame_props.scale = props.scale
-    frame_props.has_right_action = props.show_close
-    frame_props.right_label = props.close_label
-    panel: StyleFrame = ModalFrameFaceFor(frame_props,
-        ModalPanelRole())
-    title: StyleFrame = ModalFrameFaceFor(frame_props,
-        ModalTitleRole())
-    message: StyleFrame = ModalFrameFaceFor(frame_props,
-        ModalMessageRole())
-    action: StyleFrame = ModalFrameFaceFor(frame_props,
-        ModalActionRole())
-    close: StyleFrame = ModalFrameFaceFor(frame_props,
-        ModalCloseRole())
-    scale: float32 = props.scale
-    if scale <= 0.0 { scale = 1.0 }
-    metrics: ModalMetrics = ModalMetricsFor(scale,
-        panel, title, message, action, close)
-    max_width: s32 = props.max_width
-    if max_width > 0 { max_width = cast(s32)(cast(float32)max_width * scale) }
-    width: s32 = ModalClampWidth(cast(s32)viewport.width,
-        max_width, metrics)
-    content_width: s32 = ModalContentWidth(width, metrics)
-    message_props: TextProps
-    message_props.text = props.message
-    message_props.bounds.width = cast(float32)content_width
-    message_props.wrap = cast(TextWrap)TextWrapAuto
-    face: TextFace = DefaultTextFace()
-    face.value = message.value
-    face.fallback_font = 14
-    prepared: PreparedText = PrepareText(message_props, face)
-    message_height: s32 = cast(s32)prepared.bounds.height
-    if props.message == "" { message_height = 0 }
-    font: s32 = ResolveFont(0,
-        StyleFontValue(action.value.fields,
-            action.value.font_size), 14)
-    rows: s32 = ActionModalRows(actions, content_width,
-        font, action.value.typeface, metrics)
-    top_gap: s32 = metrics.frame_content_y - metrics.title_height
-    if top_gap < 0 { top_gap = 0 }
-    layout: ModalLayout = ModalLayoutFor(cast(s32)viewport.width,
-        cast(s32)viewport.height, max_width,
-        message_height + top_gap, rows, false, metrics)
-    layout.panel.x += viewport.x
-    layout.panel.y += viewport.y
-    layout.message_x += cast(s32)viewport.x
-    layout.message_y += cast(s32)viewport.y
-    layout.button_y += cast(s32)viewport.y
-    frame_props.bounds = layout.panel
-    frame_props.width = cast(s32)layout.panel.width
-    frame_props.height = cast(s32)layout.panel.height
-    frame: ModalFrameResult = ModalFrame(session, frame_props)
-    result.node = frame.node
-    if frame.dismissed || frame.right_clicked {
-        result.action = -1
-        return result
-    }
-    if !frame.opened { return result }
-    if props.message != "" {
-        message_props.key = frame_props.key * cast(u64)65599 + cast(u64)3
-        message_props.bounds.x = cast(float32)layout.message_x
-        message_props.bounds.y = cast(float32)(layout.message_y + top_gap)
-        message_props.bounds.height = cast(float32)message_height
-        available: s32 = layout.button_y -
-            metrics.message_gap - cast(s32)message_props.bounds.y
-        if rows == 0 {
-            available = cast(s32)(layout.panel.y +
-                layout.panel.height) - metrics.padding_bottom -
-                cast(s32)message_props.bounds.y
-        }
-        if available < 0 { available = 0 }
-        if message_props.bounds.height > cast(float32)available {
-            message_props.bounds.height = cast(float32)available
-        }
-        prepared.bounds = message_props.bounds
-        message_node: s32 = TreeSubmitCurrent(session, message_props.key,
-            WidgetKindText, prepared.bounds)
-        if message_node >= 0 {
-            TreeSetLabel(session, message_node, props.message)
-            TreeSetSemantic(session, message_node,
-                cast(SemanticKind)SemanticParagraph, 0)
-            PaintTextLines(session, message_node, message_props, prepared)
-        }
-    }
-    row_start: s32 = 0
-    row_width: s32 = 0
-    row_y: s32 = layout.button_y
-    index: s32 = 0
-    while index <= (cast(s32)actions.count) {
-        at_end: bool = index == (cast(s32)actions.count)
-        next_width: s32 = 0
-        if !at_end {
-            width = ActionModalWidth(actions[index], font,
-                action.value.typeface, content_width, metrics)
-            next_width = ModalActionRowWidthStep(row_width,
-                width, content_width, metrics.button_gap)
-        }
-        if at_end || (row_width > 0 &&
-            next_width == width &&
-            row_width + metrics.button_gap + width > content_width) {
-            if index > row_start {
-                chosen: s32 = ActionModalDrawRow(session, props,
-                    frame_props.key, actions,
-                    row_start, index, row_width, layout.message_x,
-                    content_width, row_y, font,
-                    action.value.typeface, metrics)
-                if chosen > 0 { result.action = chosen }
-                row_y = ModalActionNextY(row_y,
-                    metrics.button_height, metrics.button_gap)
             }
-            row_start = index
-            row_width = 0
+            button.id = props.id + index + 1
+            button.class_name = props.class_name
+            button.bounds = Rectangle.{cast(float32)x, cast(float32)y,
+                cast(float32)width, cast(float32)metrics.button_height}
+            button.label = item.label
+            button.tone = item.tone
+            button.emphasis = item.emphasis
+            button.disabled = item.disabled
+            button.style_kind = StyleKindModal()
+            button.style_role = ModalActionRole()
+            if Button(session, button) != 0 { result = index + 1 }
+            x += width + metrics.button_gap
+            index += 1
         }
-        if !at_end {
-            width = ActionModalWidth(actions[index], font,
-                action.value.typeface, content_width, metrics)
-            row_width = ModalActionRowWidthStep(row_width,
-                width, content_width, metrics.button_gap)
-        }
-        index += 1
+        return result
     }
-    End(session)
-    return result
+
+    // A checked message/action dialog. The caller receives a one-based action
+    // index, or -1 for backdrop/close dismissal. Prompt editing is a separate
+    // composition because it requires retained text-input state.
+    #program_export
+    ActionModal :: (session: Session, props: ActionModalProps,
+        actions: []ActionModalAction) -> ActionModalResult {
+        result: ActionModalResult
+        result.node = -1
+        viewport: Rectangle = TreeRootBounds(session)
+        if viewport.width <= 0.0 || viewport.height <= 0.0 {
+            return result
+        }
+        frame_props: ModalFrameProps
+        frame_props.key = ActionModalKey(session, props)
+        frame_props.id = props.id
+        frame_props.class_name = props.class_name
+        frame_props.title = props.title
+        frame_props.scale = props.scale
+        frame_props.has_right_action = props.show_close
+        frame_props.right_label = props.close_label
+        panel: StyleFrame = ModalFrameFaceFor(frame_props,
+            ModalPanelRole())
+        title: StyleFrame = ModalFrameFaceFor(frame_props,
+            ModalTitleRole())
+        message: StyleFrame = ModalFrameFaceFor(frame_props,
+            ModalMessageRole())
+        action: StyleFrame = ModalFrameFaceFor(frame_props,
+            ModalActionRole())
+        close: StyleFrame = ModalFrameFaceFor(frame_props,
+            ModalCloseRole())
+        scale: float32 = props.scale
+        if scale <= 0.0 { scale = 1.0 }
+        metrics: ModalMetrics = ModalMetricsFor(scale,
+            panel, title, message, action, close)
+        max_width: s32 = props.max_width
+        if max_width > 0 { max_width = cast(s32)(cast(float32)max_width * scale) }
+        width: s32 = ModalClampWidth(cast(s32)viewport.width,
+            max_width, metrics)
+        content_width: s32 = ModalContentWidth(width, metrics)
+        message_props: TextProps
+        message_props.text = props.message
+        message_props.bounds.width = cast(float32)content_width
+        message_props.wrap = cast(TextWrap)TextWrapAuto
+        face: TextFace = DefaultTextFace()
+        face.value = message.value
+        face.fallback_font = 14
+        prepared: PreparedText = PrepareText(message_props, face)
+        message_height: s32 = cast(s32)prepared.bounds.height
+        if props.message == "" { message_height = 0 }
+        font: s32 = ResolveFont(0,
+            StyleFontValue(action.value.fields,
+            action.value.font_size), 14)
+        rows: s32 = ActionModalRows(actions, content_width,
+            font, action.value.typeface, metrics)
+        top_gap: s32 = metrics.frame_content_y - metrics.title_height
+        if top_gap < 0 { top_gap = 0 }
+        layout: ModalLayout = ModalLayoutFor(cast(s32)viewport.width,
+            cast(s32)viewport.height, max_width,
+            message_height + top_gap, rows, false, metrics)
+        layout.panel.x += viewport.x
+        layout.panel.y += viewport.y
+        layout.message_x += cast(s32)viewport.x
+        layout.message_y += cast(s32)viewport.y
+        layout.button_y += cast(s32)viewport.y
+        frame_props.bounds = layout.panel
+        frame_props.width = cast(s32)layout.panel.width
+        frame_props.height = cast(s32)layout.panel.height
+        frame: ModalFrameResult = ModalFrame(session, frame_props)
+        result.node = frame.node
+        if frame.dismissed || frame.right_clicked {
+            result.action = -1
+            return result
+        }
+        if !frame.opened { return result }
+        if props.message != "" {
+            message_props.key = frame_props.key * cast(u64)65599 + cast(u64)3
+            message_props.bounds.x = cast(float32)layout.message_x
+            message_props.bounds.y = cast(float32)(layout.message_y + top_gap)
+            message_props.bounds.height = cast(float32)message_height
+            available: s32 = layout.button_y -
+            metrics.message_gap - cast(s32)message_props.bounds.y
+            if rows == 0 {
+                available = cast(s32)(layout.panel.y +
+                    layout.panel.height) - metrics.padding_bottom -
+                cast(s32)message_props.bounds.y
+            }
+            if available < 0 { available = 0 }
+            if message_props.bounds.height > cast(float32)available {
+                message_props.bounds.height = cast(float32)available
+            }
+            prepared.bounds = message_props.bounds
+            message_node: s32 = TreeSubmitCurrent(session, message_props.key,
+                WidgetKindText, prepared.bounds)
+            if message_node >= 0 {
+                TreeSetLabel(session, message_node, props.message)
+                TreeSetSemantic(session, message_node,
+                    cast(SemanticKind)SemanticParagraph, 0)
+                PaintTextLines(session, message_node, message_props, prepared)
+            }
+        }
+        row_start: s32 = 0
+        row_width: s32 = 0
+        row_y: s32 = layout.button_y
+        index: s32 = 0
+        while index <= (cast(s32)actions.count) {
+            at_end: bool = index == (cast(s32)actions.count)
+            next_width: s32 = 0
+            if !at_end {
+                width = ActionModalWidth(actions[index], font,
+                    action.value.typeface, content_width, metrics)
+                next_width = ModalActionRowWidthStep(row_width,
+                    width, content_width, metrics.button_gap)
+            }
+            if at_end || (row_width > 0 &&
+                next_width == width &&
+                row_width + metrics.button_gap + width > content_width) {
+                if index > row_start {
+                    chosen: s32 = ActionModalDrawRow(session, props,
+                        frame_props.key, actions,
+                        row_start, index, row_width, layout.message_x,
+                        content_width, row_y, font,
+                        action.value.typeface, metrics)
+                    if chosen > 0 { result.action = chosen }
+                    row_y = ModalActionNextY(row_y,
+                        metrics.button_height, metrics.button_gap)
+                }
+                row_start = index
+                row_width = 0
+            }
+            if !at_end {
+                width = ActionModalWidth(actions[index], font,
+                    action.value.typeface, content_width, metrics)
+                row_width = ModalActionRowWidthStep(row_width,
+                    width, content_width, metrics.button_gap)
+            }
+            index += 1
+        }
+        End(session)
+        return result
+    }
+
 }
