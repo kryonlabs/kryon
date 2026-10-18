@@ -734,7 +734,11 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if player.bindings.count > 0 { bindings = *player.bindings[0] }
     instance := InstantiateBundle(bundle, bindings, cast(u64)player.bindings.count)
     VecFree(player.bindings)
-    if instance == null { CloseBundle(bundle); return 1 }
+    if instance == null {
+        print("zib: could not initialize app instance\n")
+        CloseBundle(bundle)
+        return 1
+    }
     LimitBundleSteps(instance, 5000000)
     temporary: [64]u8
     assets_root: string = ""

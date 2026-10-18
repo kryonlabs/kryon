@@ -71,10 +71,12 @@ AssetAllowed :: (path: string) -> bool {
 }
 
 HostedBundle :: (bundle: *void) -> bool {
-    for index: cast(u64)0..BundleCapabilities(bundle) - 1 {
+    index: u64 = 0
+    while index < BundleCapabilities(bundle) {
         if AppModule(TextFromCString(BundleCapabilityModuleName(bundle, index))) {
             return true
         }
+        index += 1
     }
     return false
 }
@@ -167,6 +169,7 @@ Run :: (bundle: *void, check: bool) -> s32 {
         ready = OpenDesktop()
         if ready {
             SetTitle(window, *app.name[0])
+            ready = WindowInterceptCloseHost(true)
         }
     }
     app.session = SessionOpen()
@@ -177,6 +180,9 @@ Run :: (bundle: *void, check: bool) -> s32 {
         } else {
             while ready && PollDesktop() {
                 ready = Draw(*app)
+                if WindowTakeCloseRequestHost() {
+                    break
+                }
                 if ready {
                     PauseDesktop()
                 }
