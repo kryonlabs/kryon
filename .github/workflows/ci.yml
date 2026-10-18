@@ -17,6 +17,43 @@ env:
   ZIRAN_ROOT: ${{ github.workspace }}/ziran
 
 jobs:
+  test-macos-zib:
+    name: macOS native ZIB build and display-free execution
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: kryon
+    steps:
+      - name: Checkout Kryon
+        uses: actions/checkout@v7
+        with:
+          path: kryon
+
+      - name: Read locked toolchain
+        id: toolchain
+        run: python3 -c 'import json; print("commit=" + json.load(open("ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Ziran
+        uses: actions/checkout@v7
+        with:
+          repository: ziranlang/ziran
+          ref: ${{ steps.toolchain.outputs.commit }}
+          path: ziran
+
+      - name: Build the locked compiler and fetch locked source packages
+        run: |
+          make -C "$ZIRAN_ROOT" all
+          export PATH="$ZIRAN_ROOT/build/bin:$PATH"
+          ziran fetch --locked
+
+      # No GUI launch or screenshot can reach a runner's inherited display.
+      - name: Build native player and execute the portable VM with CPU pixels
+        run: |
+          export PATH="$ZIRAN_ROOT/build/bin:$PATH"
+          env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+            make zib-headless-test
+          build/zib-raylib/zib --check build/scratch/zib-headless/app.zib
+
   test-linux:
     name: Ziran library and host tests
     runs-on: ubuntu-latest
