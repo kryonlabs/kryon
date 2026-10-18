@@ -191,6 +191,9 @@
         // Drawn and hit above the page like a modal, without blocking input
         // to the rest of it; see TreeSetPopup.
         popup: bool
+        // A widget other than a scroll that scrolls its own content, such as
+        // a text area, has more content than shows; see TreeSetWheelScrolls.
+        wheel_scrolls: bool
     }
 
     SemanticData :: struct {
@@ -1253,6 +1256,17 @@
         index >= trees[slot].submitted_count { return }
         trees[slot].submitted[index].popup = true
         trees[slot].submitted[index].clipped = false
+    }
+
+    // A widget that scrolls its own content, as a text area does, says when
+    // more of it is out of view. The wheel over it then scrolls it rather
+    // than a scroll around it; see TreeScrollAt.
+    #program_export
+    TreeSetWheelScrolls :: (session: Session, index: s32, scrolls: bool) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+        trees[slot].submitted[index].wheel_scrolls = scrolls
     }
 
     // Read a bounded UTF-8 byte range without exposing the tree's owned buffer.

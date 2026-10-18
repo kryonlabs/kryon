@@ -1,0 +1,95 @@
+#import "session"
+#import "geometry"
+#import "scroll_device"
+#import "scroll_props"
+#import "scroll_widget"
+#import "text_area_widget"
+#import "text_input_props"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_composition_widget_host"
+#import "ziran_system_clipboard_host"
+
+// A text area on a page that scrolls, as Diary's entry is: the host samples
+// only the shared scroll device, and the area's caller gives it no wheel.
+WheelFrame :: struct {
+    page: s32
+    area: s32
+}
+
+PAGE :: Rectangle.{0.0, 0.0, 300.0, 200.0}
+
+Frame :: (session: Session, props: *TextAreaProps, page: s32, mouse: Vector2,
+    wheel: float32) -> WheelFrame {
+    result: WheelFrame
+    unused BeginFrame(session, cast(u64)1, PAGE)
+    BeginScrollFrame(session, mouse, false, false, false, wheel, 0.0)
+    scroll := Scroll(session, ScrollProps.{.key = cast(u64)5, .bounds = PAGE,
+            .content_height = 400, .scroll_offset = page})
+    result.page = scroll.scroll_offset
+    if scroll.opened {
+        bounds := props.bounds
+        props.bounds.y = scroll.content.y + bounds.y
+        edited := TextArea(session, props.*)
+        props.bounds = bounds
+        props.scroll_y = edited.scroll_y
+        result.area = edited.scroll_y
+        unused End(session)
+    }
+    unused EndFrame(session)
+    return result
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    props: TextAreaProps
+    props.key = cast(u64)77
+    props.focus_id = 77
+    props.bounds = Rectangle.{20.0, 20.0, 200.0, 100.0}
+    props.value = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np\nq\nr\ns\nt"
+    over_area := Vector2.{60.0, 60.0}
+    over_page := Vector2.{260.0, 160.0}
+    first := Frame(session, *props, 0, over_area, 0.0)
+    if first.area != 0 || first.page != 0 { return 1 }
+    // The wheel over text that does not all show scrolls the text, and the
+    // page around it stays.
+    down := Frame(session, *props, 0, over_area, -1.0)
+    if down.area <= 0 { return 2 }
+    if down.page != 0 { return 3 }
+    // Beside the area the wheel scrolls the page, and the text stays.
+    beside := Frame(session, *props, 0, over_page, -1.0)
+    if beside.page <= 0 { return 4 }
+    if beside.area != down.area { return 5 }
+    // Back up to the start of the text, which then stops there.
+    up := Frame(session, *props, 0, over_area, 8.0)
+    if up.area != 0 || up.page != 0 { return 6 }
+    // Text that all shows leaves the wheel to the page.
+    props.value = "short"
+    props.scroll_y = 0
+    unused Frame(session, *props, 0, over_area, 0.0)
+    fits := Frame(session, *props, 0, over_area, -1.0)
+    if fits.area != 0 || fits.page <= 0 { return 7 }
+    // A caller's own wheel still scrolls the area.
+    props.value = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np\nq\nr\ns\nt"
+    unused Frame(session, *props, 0, over_page, 0.0)
+    props.input.wheel = -1.0
+    own := Frame(session, *props, 0, over_page, 0.0)
+    if own.area <= 0 || own.page != 0 { return 8 }
+    unused SessionClose(session)
+    return 0
+}
+
+// No asset loads here: a text area's boxes would show their labels.
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}

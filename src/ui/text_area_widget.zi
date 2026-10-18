@@ -14,6 +14,7 @@ Theme :: #import "theme";
 #import "system_clipboard"
 #import "text_context_menu"
 #import "text_touch"
+#import "scroll_device"
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -1288,10 +1289,16 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         content_height, result.scroll_y, line_height,
         TextAreaMinWrapWidth(scale))
     result.scroll_y = paint.scroll_y
-    if !props.disabled && props.input.wheel != 0.0 {
+    // Without a wheel of its caller's, the area takes the host's while the
+    // pointer is over it and it has text out of view.
+    wheel: float32 = props.input.wheel
+    if !props.disabled && wheel == 0.0 {
+        wheel = ScrollWheelTake(session, key, bounds, paint.max_scroll > 0)
+    }
+    if !props.disabled && wheel != 0.0 {
         result.scroll_y = TextAreaScrollFor(
             TextAreaWheelScrollFor(result.scroll_y,
-                props.input.wheel, advance),
+                wheel, advance),
             paint.max_scroll)
     }
     pointer_moved: bool = false
@@ -1634,6 +1641,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         TreeSetLabel(session, result.node, props.label)
             TreeSetStyleClass(session, result.node, props.class_name)
         TreeSetSelected(session, result.node, result.focused)
+        TreeSetWheelScrolls(session, result.node, paint.max_scroll > 0)
         TreeSetTextValue(session, result.node, props.value,
             Grapheme.Boundary(props.value, result.cursor),
             Grapheme.Boundary(props.value, result.anchor), props.read_only, false)

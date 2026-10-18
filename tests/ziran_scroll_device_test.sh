@@ -110,6 +110,22 @@ Answer :: () -> s32 {
     other = ScrollObservationFor(cast(u64)8, inner_bounds)
     if first.pointer_allowed || first.wheel != 0.0 ||
         !other.pointer_allowed || other.wheel != -1.0 { return -7 }
+
+    // A sideways wheel moves a sideways scroll, toward its end when it moves
+    // right, and leaves an upright one alone. A sideways scroll moves with
+    // the upright wheel too.
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    unused TreeSubmit(session, cast(u64)7, 0, WidgetKindScroll, bounds)
+    if !TreeFinish(session) { return -18 }
+    BeginScrollFrame(session, Vector2.{40.0, 20.0}, false, false, false, 0.0, 0.0)
+    ScrollDeviceSideways(session, 1.0)
+    upright: ScrollInput = ScrollObservationFor(cast(u64)7, bounds)
+    sideways: ScrollInput = ScrollObservationFor(cast(u64)7, bounds, true)
+    if upright.wheel != 0.0 || sideways.wheel != -1.0 { return -19 }
+    BeginScrollFrame(session, Vector2.{40.0, 20.0}, false, false, false, -1.0, 0.0)
+    sideways = ScrollObservationFor(cast(u64)7, bounds, true)
+    upright = ScrollObservationFor(cast(u64)7, bounds)
+    if sideways.wheel != -1.0 || upright.wheel != -1.0 { return -20 }
     if !SessionClose(session) { return -9 }
     return 42
 }

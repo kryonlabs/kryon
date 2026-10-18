@@ -16,6 +16,9 @@ ScrollDevice :: struct {
     down: bool
     released: bool
     wheel: float32
+    // The sideways wheel, positive to the right, as touchpads and tilting
+    // wheels send it; see ScrollDeviceSideways.
+    wheel_x: float32
     wheel_consumed: bool
     owner: u64
     grab: float32
@@ -78,14 +81,39 @@ BeginScrollFrame :: (session: Session, mouse: Vector2, pressed: bool, down: bool
     scroll_device.down = down
     scroll_device.released = released
     scroll_device.wheel = wheel
+    scroll_device.wheel_x = 0.0
     scroll_device.wheel_consumed = false
     if !down && !released {
         ScrollDeviceRelease()
     }
 }
 
+// The host's sideways wheel for this frame, positive to the right, after
+// BeginScrollFrame. The wheel BeginScrollFrame took is then the vertical
+// one only: sideways movement scrolls a sideways scroll and nothing else.
 #program_export
-ScrollObservationFor :: (key: u64, bounds: Rectangle) -> ScrollInput {
+ScrollDeviceSideways :: (session: Session, wheel_x: float32) {
+    if !ScrollDeviceSampled(session) { return }
+    scroll_device.wheel_x = wheel_x
+    if wheel_x != 0.0 { scroll_device.fling_owner = cast(u64)0 }
+}
+
+ScrollWheelSize :: (wheel: float32) -> float32 {
+    if wheel < 0.0 { return 0.0 - wheel }
+    return wheel
+}
+
+// The wheel a scroll moves by, positive toward its start. A sideways scroll
+// moves with the vertical wheel too, unless the wheel moved more sideways.
+ScrollDeviceWheelFor :: (horizontal: bool) -> float32 {
+    if horizontal && ScrollWheelSize(scroll_device.wheel_x) > ScrollWheelSize(scroll_device.wheel) {
+        return 0.0 - scroll_device.wheel_x
+    }
+    return scroll_device.wheel
+}
+
+#program_export
+ScrollObservationFor :: (key: u64, bounds: Rectangle, horizontal: bool = false) -> ScrollInput {
     input: ScrollInput
     input.enabled = true
     input.device = true
@@ -126,10 +154,36 @@ ScrollObservationFor :: (key: u64, bounds: Rectangle) -> ScrollInput {
     targeted: bool = target == cast(u64)0 || target == key
     input.pointer_allowed = ((inside && targeted) || input.owns_drag) &&
         !input.owner_captured && !TreePointerCapturesDrag(scroll_device.session)
-    if inside && targeted && !scroll_device.wheel_consumed && !input.owner_captured {
-        input.wheel = scroll_device.wheel
+    wheel_target: u64 = TreeScrollAt(scroll_device.session,
+        input.mouse.x, input.mouse.y, true)
+    wheel_targeted: bool = wheel_target == cast(u64)0 || wheel_target == key
+    if inside && wheel_targeted && !scroll_device.wheel_consumed && !input.owner_captured {
+        input.wheel = ScrollDeviceWheelFor(horizontal)
     }
     return input
+}
+
+// The wheel for a widget that scrolls its own content, such as a text area,
+// while it has content out of view: the host's wheel when the pointer is
+// over the widget, no scroll inside it is under the pointer, no drag owns
+// the pointer and nothing took the wheel yet. The widget takes it, so a
+// scroll submitted after it does not move too.
+#program_export
+ScrollWheelTake :: (session: Session, key: u64, bounds: Rectangle,
+    scrolls: bool) -> float32 {
+    if !scrolls || !ScrollDeviceSampled(session) || scroll_device.wheel == 0.0 ||
+        scroll_device.wheel_consumed || scroll_device.owner != cast(u64)0 {
+        return 0.0
+    }
+    if !TreeScrollAllowed(session, key) || !ScrollPointInside(scroll_device.mouse, bounds) {
+        return 0.0
+    }
+    target: u64 = TreeScrollAt(session, scroll_device.mouse.x, scroll_device.mouse.y, true)
+    if target != cast(u64)0 && target != key {
+        return 0.0
+    }
+    scroll_device.wheel_consumed = true
+    return scroll_device.wheel
 }
 
 // Scroll commits its own frame when its input came from ScrollObservationFor.

@@ -8,6 +8,7 @@
 //
 //     pointer = TestDriverPointer(session, pointer)  // before TreePointerUpdate
 //     wheel = TestDriverWheel(wheel)
+//     wheel_x = TestDriverWheelX(wheel_x)          // a sideways wheel, if sampled
 //     codepoint := TestDriverCodepoint()             // before the platform's typed text
 //     pressed := TestDriverKeyPressed(key) || PlatformKeyPressed(key)
 //     down := TestDriverKeyDown(key) || PlatformKeyDown(key)
@@ -24,9 +25,11 @@
 //     find SELECTOR             the widgets that match
 //     press SELECTOR            moves the pointer to the first match's visible
 //                               centre, presses and releases it, one frame each
-//     pointer x= y= down= wheel=
+//     pointer x= y= down= wheel= wheel_x=
 //                               holds the pointer there for following frames,
-//                               for drags; `pointer real=1` returns it
+//                               for drags; `pointer real=1` returns it.
+//                               wheel_x is a sideways wheel, positive to the
+//                               right
 //     type text=                typed text, at most 8 codepoints a frame
 //     key code= control= shift= one key press, raylib's key codes
 //
@@ -103,6 +106,7 @@ TestDriverCommand :: struct {
     has_y: bool
     down: bool
     wheel: float32
+    wheel_x: float32
     code: s32
     control: bool
     shift: bool
@@ -149,6 +153,7 @@ TestDriverState :: struct {
     parked_real_y: float32
     synthetic_down: bool
     wheel: float32
+    wheel_x: float32
     wheel_frame: s64
     key: s32
     key_control: bool
@@ -258,6 +263,15 @@ TestDriverPointer :: (session: Session, real: PointerFrame) -> PointerFrame {
 TestDriverWheel :: (real: float32) -> float32 {
     if !TestDriverActive() { return real }
     if test_driver.wheel_frame == TestDriverCurrentFrame() { return test_driver.wheel }
+    return real
+}
+
+// The sideways wheel this frame: a test's `pointer wheel_x=` once, else the
+// platform's.
+#program_export
+TestDriverWheelX :: (real: float32) -> float32 {
+    if !TestDriverActive() { return real }
+    if test_driver.wheel_frame == TestDriverCurrentFrame() { return test_driver.wheel_x }
     return real
 }
 
@@ -622,6 +636,8 @@ TestDriverField :: (command: *TestDriverCommand, name: string, value: string) {
         command.down = value == "1"
     } else if name == "wheel" {
         command.wheel = TestDriverParseNumber(value)
+    } else if name == "wheel_x" {
+        command.wheel_x = TestDriverParseNumber(value)
     } else if name == "code" {
         command.code = cast(s32)TestDriverParseInteger(value)
     } else if name == "control" {
@@ -966,6 +982,7 @@ TestDriverStart :: (session: Session, command: TestDriverCommand) {
         test_driver.hit_index = TreeHitAt(session, command.x, command.y)
         TestDriverQueue(TestDriverPointerAt(command.x, command.y, command.down))
         test_driver.wheel = command.wheel
+        test_driver.wheel_x = command.wheel_x
         test_driver.wheel_frame = next
         test_driver.waiting = true
     } else if command.verb == "type" {
