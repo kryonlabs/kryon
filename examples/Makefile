@@ -110,6 +110,22 @@ $(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c: desktop_time_pick
 # The desktop host draws with Cairo and Pango and finds fonts with Fontconfig.
 DESKTOP_LIBS = $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11) -lm -lpthread
 
+.PHONY: widget-catalog
+widget-catalog: $(BUILD_DIR)/widget-catalog-desktop
+
+$(BUILD_DIR)/desktop-widget-catalog-native/.generated: desktop_widget_catalog.zi widget_catalog.zi $(wildcard ../src/ui/*.zi ../src/ui/Widgets/*.zi ../src/ui/Kryon/*.zi ../src/backend/*.zi) $(ZI2C_BIN) Makefile
+	mkdir -p $(BUILD_DIR)/desktop-widget-catalog-native
+	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
+		$(ZIRAN_STD_PATH) --entry desktop_widget_catalog:main \
+		-o $(BUILD_DIR)/desktop-widget-catalog-native desktop_widget_catalog.zi
+	touch $@
+
+$(BUILD_DIR)/widget-catalog-desktop: $(BUILD_DIR)/desktop-widget-catalog-native/.generated Makefile
+	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
+		-I$(BUILD_DIR)/desktop-widget-catalog-native \
+		$(BUILD_DIR)/desktop-widget-catalog-native/*.c \
+		$(DESKTOP_LIBS) -o $@
+
 $(BUILD_DIR)/hello-desktop: $(BUILD_DIR)/desktop-hello-native/desktop_hello.c Makefile
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/desktop-hello-native \

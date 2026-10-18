@@ -1,0 +1,534 @@
+// A live catalog of Kryon's current Ziran widget surface.
+// Uses the same public controls as tools/widget_review.zi; all state is local.
+using UI :: #import "Widgets";
+#import "page_text"
+#import "flow"
+#import "paned_view"
+#import "paned_view_props"
+#import "transition"
+#import "text_selection_widget"
+#import "style_picker"
+#import "style_picker_props"
+#import "system_theme"
+#import "std/number_text"
+
+scene: s32;
+catalog_scroll: s32;
+disabled_controls: bool;
+dark: bool;
+installed: s32 = -1;
+clicks: s32;
+amount: float32 = 65.0;
+choice: s32 = 1;
+toggled: bool = true;
+quiet: bool;
+checked: bool = true;
+reminder: bool;
+balanced: bool = true;
+selected: bool = true;
+another: bool;
+minutes: s32 = 25;
+list_choice: s32 = 2;
+multi: [5]bool;
+segment: s32 = 1;
+tab: s32 = 1;
+details: bool = true;
+time_value: s32 = 570;
+color: [4]float32 = .{0.18, 0.52, 0.68, 1.0};
+nav: s32;
+menu_state: MenuState;
+menu_initialized: bool;
+order: [3]s32 = .{0, 1, 2};
+config_routes: [4]s32 = .{1, 2, 0, 0};
+config_count: s32 = 2;
+config_scroll: s32;
+config_open: bool;
+config_row: s32;
+scroll: s32;
+split: s32 = 210;
+dismissed: bool;
+discrete: s32 = 4;
+field_bytes: [1024]u8;
+field_next: [1024]u8;
+field_length: s32;
+empty_bytes: [1024]u8;
+empty_next: [1024]u8;
+empty_length: s32;
+area_bytes: [4096]u8;
+area_next: [4096]u8;
+area_length: s32;
+initialized: bool;
+demo_field_cursor: [2]s32;
+demo_field_anchor: [2]s32;
+demo_field_scroll: [2]s32;
+demo_area_cursor: s32;
+demo_area_anchor: s32;
+demo_area_scroll: s32;
+
+Copy :: (target: []u8, value: string) -> s32 {
+    count := cast(s32)value.count
+    if count > cast(s32)target.count { count = cast(s32)target.count }
+    for index: 0..count - 1 { target[index] = value[index] }
+    return count
+}
+
+Apply :: (target: []u8, length: s32, edit: TextFieldEdit) -> s32 {
+    if !edit.changed { return length }
+    if edit.start < 0 || edit.end < edit.start || edit.end > length { return length }
+    new_length := length - (edit.end - edit.start) + cast(s32)edit.replacement.count
+    if new_length > cast(s32)target.count { return length }
+    scratch: [4096]u8
+    at := 0
+    for index: 0..edit.start - 1 { scratch[at] = target[index]; at += 1 }
+    for byte: edit.replacement { scratch[at] = byte; at += 1 }
+    for index: edit.end..length - 1 { scratch[at] = target[index]; at += 1 }
+    for index: 0..new_length - 1 { target[index] = scratch[index] }
+    return new_length
+}
+
+EditField :: (session: Session, key: u64, bounds: Rectangle, disabled: bool, empty: bool, input: TextFieldInput) {
+    index: s32 = ifx empty then 1 else 0
+    value := TextView(field_bytes[0:field_length])
+    if empty { value = TextView(empty_bytes[0:empty_length]) }
+    result := TextField(session, TextFieldProps.{.key = key, .bounds = bounds, .value = value, .placeholder = "Write something...", .max_bytes = 1024, .disabled = disabled, .cursor = demo_field_cursor[index], .anchor = demo_field_anchor[index], .scroll_x = demo_field_scroll[index], .input = input})
+    if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
+    demo_field_cursor[index] = result.cursor; demo_field_anchor[index] = result.anchor; demo_field_scroll[index] = result.scroll_x
+    if empty { empty_length = Apply(empty_next[:], empty_length, result.edit) }
+    else { field_length = Apply(field_next[:], field_length, result.edit) }
+}
+
+EditArea :: (session: Session, bounds: Rectangle, disabled: bool, input: TextAreaInput) {
+    result := TextArea(session, TextAreaProps.{.bounds = bounds, .value = TextView(area_bytes[0:area_length]), .max_bytes = 4096, .wrap = true, .disabled = disabled, .cursor = demo_area_cursor, .anchor = demo_area_anchor, .scroll_y = demo_area_scroll, .input = input})
+    if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
+    demo_area_cursor = result.cursor; demo_area_anchor = result.anchor; demo_area_scroll = result.scroll_y
+    edit: TextFieldEdit = .{.start = result.edit.start, .end = result.edit.end, .replacement = result.edit.replacement, .changed = result.edit.changed}
+    area_length = Apply(area_next[:], area_length, edit)
+}
+
+Label :: (session: Session, value: string, y: float32 = 76.0) {
+    Text(session, TextProps.{.bounds = .{28.0, y, 420.0, 38.0}, .text = value})
+}
+
+Compose :: (session: Session, scene: s32, disabled: bool) {
+    typed: [128]u8
+    input_key: s32 = 0
+    if scene == 1 || scene == 2 { input_key = KeyboardTake(session) }
+    input_text := TypedTextTake(session, typed[:])
+    field_input := TextFieldInputFor(input_key, KeyboardModifiers(session), input_text)
+    area_input: TextAreaInput
+    area_input.text = field_input.text
+    area_input.left = field_input.left; area_input.right = field_input.right
+    area_input.home = field_input.home; area_input.end = field_input.end
+    area_input.shift = field_input.shift
+    area_input.backspace = field_input.backspace
+    area_input.delete_forward = field_input.delete_forward
+    area_input.select_all = field_input.select_all
+    area_input.copy = field_input.copy; area_input.cut = field_input.cut
+    area_input.paste = field_input.paste
+    area_input.escape = field_input.escape
+    area_input.enter = input_key == KeyEnter
+    area_input.up = input_key == KeyUp; area_input.down = input_key == KeyDown
+    area_input.page_up = input_key == KeyPageUp; area_input.page_down = input_key == KeyPageDown
+    no_headers: []CollapsibleHeader
+    no_options: []DropdownOption
+    b: Rectangle = .{24.0, 64.0, 432.0, 44.0}
+    if scene == 0 {
+        for index: 0..3 {
+            props: ButtonProps
+            props.key = cast(u64)(10 + index)
+            props.bounds = .{24.0 + cast(float32)(index % 2) * 220.0, 64.0 + cast(float32)(index / 2) * 64.0, 208.0, 44.0}
+            props.label = "Continue"
+            props.tone = cast(ButtonTone)index
+            props.disabled = disabled
+            if Button(session, props) == 1 { clicks += 1 }
+        }
+    } else if scene == 1 {
+        EditField(session, 10, b, disabled, false, field_input)
+        b.y += 64.0
+        EditField(session, 11, b, disabled, true, field_input)
+    } else if scene == 2 {
+        b.height = 188.0
+        EditArea(session, b, disabled, area_input)
+    } else if scene == 3 {
+        options: [3]DropdownOption
+        options[0].label = "Morning"; options[1].label = "Afternoon"; options[2].label = "Evening"
+        choice = Dropdown(session, DropdownProps.{.bounds = b, .selected_index = choice, .disabled = disabled}, options[:]).selected_index
+    } else if scene == 4 {
+        amount = Slider(session, SliderProps.{.bounds = .{24.0, 64.0, 432.0, 80.0}, .label = "Volume", .value = amount, .max = 100.0, .disabled = disabled}).value
+        Progress(session, ProgressProps.{.bounds = .{24.0, 180.0, 432.0, 16.0}, .value = cast(s32)amount, .max = 100})
+    } else if scene == 5 {
+        toggled = Toggle(session, ToggleProps.{.key = 10, .bounds = b, .label = "Notifications", .value = toggled, .disabled = disabled}).value
+        b.y += 64.0
+        quiet = Toggle(session, ToggleProps.{.key = 11, .bounds = b, .label = "Quiet mode", .disabled = disabled, .value = quiet}).value
+    } else if scene == 6 {
+        checked = Checkbox(session, CheckboxProps.{.key = 10, .bounds = b, .label = "Remember my choice", .checked = checked, .disabled = disabled}).checked
+        b.y += 64.0
+        reminder = Checkbox(session, CheckboxProps.{.key = 11, .bounds = b, .label = "Use a gentle reminder", .disabled = disabled, .checked = reminder}).checked
+    } else if scene == 7 {
+        if Radio(session, RadioProps.{.key = 10, .bounds = b, .label = "Balanced", .checked = balanced, .disabled = disabled}) == 1 { balanced = true }
+        b.y += 64.0
+        if Radio(session, RadioProps.{.key = 11, .bounds = b, .label = "Compact", .disabled = disabled, .checked = !balanced}) == 1 { balanced = false }
+    } else if scene == 8 {
+        Progress(session, ProgressProps.{.bounds = b, .value = 64, .max = 100, .label = "64%"})
+    } else if scene == 9 {
+        digits: [16]u8
+        minutes = Spinbox(session, SpinboxProps.{.bounds = b, .label = "Minutes", .value = minutes, .min = 0, .max = 60, .value_text = FormatInteger(cast(s64)minutes, digits[:]), .disabled = disabled}).value
+    } else if scene == 10 || scene == 11 {
+        items: [5]ListBoxItem
+        items[0].label = "Morning walk"; items[1].label = "Read a chapter"; items[2].label = "Make something"; items[3].label = "Take a break"; items[4].label = "Reflect"
+        b.height = 184.0
+        if scene == 10 { list_choice = ListBox(session, ListBoxProps.{.bounds = b, .row_height = 34, .selected_index = list_choice, .disabled = disabled}, items[:]).selected_index }
+        else {
+            unused ListBoxMulti(session, ListBoxMultiProps.{.bounds = b, .row_height = 34, .disabled = disabled}, items[:], multi[:])
+        }
+    } else if scene == 12 {
+        options: [3]SegmentOption
+        options[0].label = "Day"; options[1].label = "Week"; options[2].label = "Month"
+        segment = SegmentedControl(session, SegmentedControlProps.{.bounds = b, .selected_index = segment, .has_selection = true, .disabled = disabled}, options[:]).selected_index
+    } else if scene == 13 {
+        tabs: [3]Tab
+        tabs[0].label = "Overview"; tabs[1].label = "Notes"; tabs[2].label = "Files"
+        tab = TabBar(session, TabBarProps.{.bounds = b, .selected_index = tab, .disabled = disabled}, tabs[:]).selected_index
+    } else if scene == 14 {
+        selected = Selectable(session, SelectableProps.{.key = 10, .bounds = b, .label = "Selected item", .selected = selected, .disabled = disabled}).selected
+        b.y += 64.0
+        another = Selectable(session, SelectableProps.{.key = 11, .bounds = b, .label = "Another item", .disabled = disabled, .selected = another}).selected
+    } else if scene == 15 {
+        Separator(session, SeparatorProps.{.bounds = b, .label = "or continue", .disabled = disabled})
+        Bullet(session, .{28.0, 142.0, 16.0, 16.0})
+        Label(session, "A clear dividing line", 168.0)
+    } else if scene == 16 {
+        b.height = 188.0
+        Fieldset(session, FieldsetProps.{.bounds = b, .title = "Preferences"})
+        Label(session, "Keep related choices together", 118.0)
+    } else if scene == 17 {
+        b.height = 188.0
+        details = Collapsible(session, CollapsibleProps.{.bounds = b, .label = "More details", .open = details, .has_open = true, .disabled = disabled}, no_headers).open
+        if details { Label(session, "The section is open. Click its header to fold it.", 124.0) }
+    } else if scene == 18 {
+        time_value = TimePicker(session, TimePickerProps.{.bounds = b, .label = "Start time", .value = time_value, .now = 570, .disabled = disabled}).value
+    } else if scene == 19 {
+        b.height = 208.0
+        props: ColorPickerProps
+        props.bounds = b; props.label = "Accent"; props.channels = 4; props.disabled = disabled
+        props.values = color
+        color = ColorPicker(session, props).values
+    } else if scene == 20 {
+        items: [3]NavigationBarItem
+        items[0].label = "Home"; items[0].active = nav == 0; items[1].label = "Library"; items[1].active = nav == 1; items[2].label = "Settings"; items[2].active = nav == 2; items[2].disabled = disabled
+        moved := NavigationBar(session, NavigationBarProps.{.bounds = b, .view_width = 480, .view_height = 320, .height = 64}, items[:])
+        if moved.clicked_index >= 0 { nav = moved.clicked_index }
+    } else if scene == 21 {
+        actions: [2]ToolbarAction
+        actions[0].label = "New note"; actions[1].label = "Share"; actions[1].disabled = disabled
+        if Toolbar(session, ToolbarProps.{.x = 24, .y = 64, .width = 432, .height = 48}, no_options, actions[:]).clicked_action >= 0 { clicks += 1 }
+    } else if scene == 22 {
+        if TitleBar(session, TitleBarProps.{.bounds = b, .title = "Library", .leading_label = "Back", .has_leading_action = true}, no_options).clicked_leading { clicks += 1 }
+    } else if scene == 23 {
+        unused Toast(session, ToastProps.{.viewport = .{0.0, 0.0, 480.0, 280.0}, .message = "Your changes have been saved", .seconds = 4.0, .now_seconds = 1.0})
+    } else if scene == 24 {
+        items: [3]ContextMenuItem
+        items[0].label = "Open"; items[0].id = 1; items[1].label = "Rename"; items[1].id = 2; items[2].label = "Remove"; items[2].id = 3; items[2].disabled = disabled
+        if dismissed {
+            if Button(session, ButtonProps.{.bounds = b, .label = "Open context menu"}) == 1 { dismissed = false }
+        } else {
+            result := ContextMenu(session, ContextMenuProps.{.open = true, .x = 24.0, .y = 64.0}, items[:])
+            if result.closed { dismissed = true }
+            if result.activated_id > 0 { clicks += 1 }
+        }
+    } else if scene == 25 {
+        items: [2]MenuItem; groups: [1]MenuGroup
+        items[0].id = 1; items[0].label = "New note"; items[1].id = 2; items[1].label = "Open..."; items[1].disabled = disabled
+        groups[0].label = "File"; groups[0].items = items[:]
+        if !menu_initialized { MenuStateInit(*menu_state); menu_state.open_index = 0; menu_initialized = true }
+        if Menu(session, MenuProps.{.bounds = b}, groups[:], *menu_state).activated_id > 0 { clicks += 1 }
+    } else if scene == 26 {
+        if Link(session, LinkProps.{.bounds = b, .text = "Read the documentation", .link = "https://kryonlabs.com/docs.html", .disabled = disabled}).activated { clicks += 1 }
+    } else if scene == 27 {
+        Text(session, TextProps.{.bounds = .{24.0, 64.0, 432.0, 44.0}, .text = "Make room for good ideas", .font = 24, .disabled = disabled})
+        Text(session, TextProps.{.bounds = .{24.0, 128.0, 410.0, 132.0}, .text = "Readable text, natural wrapping and familiar Unicode: café, Ω, é. Every little detail adds up.", .font = 16, .disabled = disabled})
+    } else if scene == 28 {
+        Image(session, ImageProps.{.asset_path = "../icons/pfp.png", .alt_text = "Kryon profile image atlas", .bounds = .{24.0, 64.0, 192.0, 192.0}, .smooth = true})
+    } else if scene == 29 {
+        unused Box(session, BoxProps.{.bounds = .{24.0, 64.0, 432.0, 164.0}, .fill = .{235, 244, 245, 255}, .border = .{135, 164, 170, 255}, .radius = 12.0})
+        Label(session, "A surface with rounded edges", 118.0)
+    } else if scene == 30 {
+        unused Circle(session, CircleProps.{.center = .{88.0, 128.0}, .radius = 38.0, .fill = .{30, 115, 138, 255}})
+        unused Ring(session, RingProps.{.center = .{202.0, 128.0}, .inner_radius = 27.0, .outer_radius = 38.0, .start_angle = -90.0, .end_angle = 200.0, .color = .{30, 115, 138, 255}})
+        unused Triangle(session, TriangleProps.{.first = .{292.0, 166.0}, .second = .{330.0, 90.0}, .third = .{368.0, 166.0}, .color = .{30, 115, 138, 255}})
+        unused Line(session, LineProps.{.start = .{28.0, 220.0}, .end = .{432.0, 220.0}, .thickness = 2.0, .color = .{30, 115, 138, 255}})
+    } else if scene == 31 {
+        b.height = 188.0
+        result := Scroll(session, ScrollProps.{.bounds = b, .content_height = 420, .scroll_offset = scroll})
+        scroll = result.scroll_offset
+        if result.opened {
+            for row: 0..9 {
+                Text(session, TextProps.{.bounds = .{result.content.x + 12.0, result.content.y + cast(float32)row * 40.0, 390.0, 32.0}, .text = "Scroll to see the next row"})
+            }
+            unused End(session)
+        }
+    } else if scene == 32 {
+        b.height = 188.0
+        if dismissed {
+            if Button(session, ButtonProps.{.bounds = b, .label = "Open modal again"}) == 1 { dismissed = false }
+        } else {
+            modal := ModalFrame(session, ModalFrameProps.{.bounds = b, .title = "A focused moment", .right_label = "Done", .has_right_action = true})
+            if modal.opened { Label(session, "Keep the next step clear", 140.0); unused End(session) }
+            if modal.dismissed || modal.right_clicked { dismissed = true; clicks += 1 }
+        }
+    } else if scene == 33 {
+        actions: [2]ActionModalAction
+        actions[0].label = "Cancel"; actions[1].label = "Save"; actions[1].tone = ButtonTone.ButtonToneAccent; actions[1].disabled = disabled
+        if !dismissed {
+            answer := ActionModal(session, ActionModalProps.{.title = "Save changes?", .message = "Keep your latest ideas for next time.", .max_width = 420}, actions[:])
+            if answer.action != 0 { dismissed = true; clicks += 1 }
+        } else {
+            if Button(session, ButtonProps.{.bounds = b, .label = "Open dialog again"}) == 1 { dismissed = false }
+        }
+    } else if scene == 34 {
+        popup := Popup(session, PopupProps.{.bounds = .{24.0, 64.0, 432.0, 188.0}})
+        if popup.panel_node >= 0 {
+            Box(session, BoxProps.{.bounds = .{24.0, 64.0, 432.0, 188.0}, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 8.0})
+            Label(session, "A floating panel", 120.0)
+        }
+    } else if scene == 35 {
+        Box(session, BoxProps.{.bounds = b, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 6.0})
+        Text(session, TextProps.{.bounds = b, .text = "Press this area", .align = TextAlign.TextAlignCenter})
+        if Press(session, PressProps.{.bounds = b, .label = "Press and hold", .disabled = disabled}).clicked { clicks += 1 }
+        Label(session, "Press is an invisible interaction area", 128.0)
+    } else if scene >= 36 && scene <= 40 || scene == 48 {
+        props: ColumnProps = .{.bounds = .{24.0, 64.0, 432.0, 208.0}, .gap = 12, .padding = 8}
+        container: LayoutContainer
+        if scene == 36 { container = Column(session, props) }
+        else if scene == 37 { container = Row(session, props) }
+        else if scene == 38 { container = Stack(session, props) }
+        else if scene == 39 { container = Group(session, props) }
+        else if scene == 48 { container = Screen(session, props) }
+        else { grid := Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = 12, .padding = 8}); container = grid.container }
+        if container.opened {
+            first: Rectangle = .{0.0, 0.0, 164.0, 44.0}
+            second: Rectangle = first
+            if scene == 39 || scene == 48 {
+                first.x = container.content.x; first.y = container.content.y
+                second.x = first.x; second.y = first.y + 60.0
+            } else if scene == 38 { second.x = 104.0; second.y = 112.0 }
+            if Button(session, ButtonProps.{.label = "First item", .bounds = first, .disabled = disabled}) == 1 { clicks += 1 }
+            if Button(session, ButtonProps.{.label = "Second item", .bounds = second, .tone = ButtonTone.ButtonToneAccent, .disabled = disabled}) == 1 { clicks += 1 }
+            unused End(session)
+        }
+    } else if scene == 41 {
+        page := Page(session, PageProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .title = "A quiet workspace"})
+        if page.opened {
+            section := Section(session, SectionProps.{.label = "Reading", .bounds = .{24.0, 64.0, 432.0, 188.0}})
+            if section.opened {
+                Heading(session, HeadingProps.{.text = "Small, thoughtful details", .level = 2, .bounds = .{24.0, 76.0, 420.0, 38.0}})
+                ParagraphText(session, ParagraphTextProps.{.text = "A page groups content, a section gives it meaning, and the type stays easy to read.", .bounds = .{24.0, 136.0, 410.0, 112.0}})
+                unused End(session)
+            }
+            unused End(session)
+        }
+    } else if scene == 42 {
+        labels: [4]string = .{"First", "Second", "Third", "Fourth"}; options: [2]NavigationBarOption
+        options[0].route = 1; options[0].label = "Home"; options[1].route = 2; options[1].label = "Library"
+        if dismissed {
+            if Button(session, ButtonProps.{.bounds = b, .label = "Configure navigation"}) == 1 { dismissed = false }
+        } else {
+            config := NavigationBarConfig(session, NavigationBarConfigProps.{.bounds = .{24.0, 48.0, 432.0, 256.0}, .title = "Navigation", .route_count = config_count, .max_route_count = 4, .scroll_offset = config_scroll, .dropdown_open = config_open, .dropdown_row = config_row, .close_label = "Close", .remove_label = "Remove", .add_label = "Add", .save_label = "Save", .cancel_label = "Cancel"}, config_routes[:], labels[:], options[:])
+            config_count = config.route_count
+            config_scroll = config.scroll_offset
+            config_open = config.dropdown_open
+            config_row = config.dropdown_row
+            if config.action != 0 { dismissed = true; clicks += 1 }
+        }
+    } else if scene == 43 {
+        items: [3]ReorderItem
+        for index: 0..2 {
+            items[index].id = order[index] + 10
+            items[index].bounds = .{24.0, 64.0 + cast(float32)index * 56.0, 432.0, 44.0}
+            Text(session, TextProps.{.bounds = .{64.0, 76.0 + cast(float32)index * 56.0, 360.0, 36.0}, .text = ifx order[index] == 0 then "Morning walk" else ifx order[index] == 1 then "Read a chapter" else "Take a break"})
+        }
+        moved := Reorder(session, ReorderList.{.id = 10, .bounds = .{24.0, 64.0, 432.0, 200.0}, .handle_width = 28}, items[:])
+        if moved.committed != 0 && moved.from_index >= 0 && moved.to_index >= 0 && moved.from_index < 3 && moved.to_index < 3 {
+            saved := order[moved.from_index]
+            at := moved.from_index
+            while at < moved.to_index { order[at] = order[at + 1]; at += 1 }
+            while at > moved.to_index { order[at] = order[at - 1]; at -= 1 }
+            order[moved.to_index] = saved
+        }
+    } else if scene == 44 {
+        panes := PanedView(session, PanedViewProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .split = split, .has_split = true, .vertical = true, .disabled = disabled})
+        split = panes.split
+        unused Box(session, BoxProps.{.bounds = panes.first, .fill = .{230, 239, 242, 255}, .radius = 8.0})
+        unused Box(session, BoxProps.{.bounds = panes.second, .fill = .{222, 237, 235, 255}, .radius = 8.0})
+    } else if scene == 45 {
+        if dismissed {
+            if Button(session, ButtonProps.{.bounds = b, .label = "Show overlay again"}) == 1 { dismissed = false }
+        } else {
+            overlay := DismissibleOverlay(session, DismissibleOverlayProps.{.bounds = .{24.0, 64.0, 432.0, 188.0}, .view_width = 480, .view_height = 320, .scrim = .{16, 34, 45, 120}})
+            if overlay.panel_node >= 0 { Label(session, "Click outside the panel to dismiss it.", 128.0) }
+            if overlay.closed { dismissed = true }
+        }
+    } else if scene == 46 {
+        for index: 0..4 {
+            props: ButtonProps
+            props.bounds = .{24.0, 40.0 + cast(float32)index * 52.0, 208.0, 40.0}; props.label = "Neutral action"
+            props.emphasis = cast(ButtonEmphasis)index; props.disabled = disabled
+            if Button(session, props) == 1 { clicks += 1 }
+            props.bounds.x = 248.0; props.label = "Accent action"; props.tone = ButtonTone.ButtonToneAccent
+            if Button(session, props) == 1 { clicks += 1 }
+        }
+    } else if scene == 47 {
+        options: [3]DropdownOption
+        options[0].label = "Morning"; options[1].label = "Afternoon"; options[2].label = "Evening"
+        unused Dropdown(session, DropdownProps.{.bounds = b, .selected_index = 1, .open = true}, options[:])
+    } else if scene == 49 {
+        flow := Flow(session, FlowProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .gap = 12, .padding = 8})
+        if flow.opened {
+            unused Button(session, ButtonProps.{.bounds = .{0.0, 0.0, 164.0, 44.0}, .label = "First item", .disabled = disabled})
+            unused Button(session, ButtonProps.{.bounds = .{0.0, 0.0, 164.0, 44.0}, .label = "Second item", .disabled = disabled})
+            unused End(session)
+        }
+    } else if scene == 50 {
+        TextSelectionEnable()
+        Text(session, TextProps.{.key = 10, .bounds = .{24.0, 64.0, 432.0, 148.0}, .text = "Select a little text.\nKeep reading in comfort.", .selectable = true, .disabled = disabled})
+    } else if scene == 51 {
+        Label(session, "A transition over this content", 104.0)
+    } else if scene == 52 {
+        discrete = DiscreteSlider(session, DiscreteSliderProps.{.bounds = .{24.0, 64.0, 432.0, 80.0}, .label = "Step size", .value = discrete, .min = 1, .max = 10, .disabled = disabled}).value
+        digits: [16]u8
+        Label(session, FormatInteger(cast(s64)discrete, digits[:]), 180.0)
+    } else if scene == 53 {
+        packs: [2]StylePackOption
+        packs[0].id = "light"; packs[0].label = "Light"; packs[0].active = !dark
+        packs[1].id = "dark"; packs[1].label = "Dark"; packs[1].active = dark
+        picked := StylePicker(session, StylePickerProps.{.dropdown = .{.bounds = b, .disabled = disabled}}, packs[:])
+        if picked.changed { dark = picked.selected_id == "dark" }
+        Label(session, "The caller applies the chosen palette.", 150.0)
+    }
+}
+
+// Extend the palette with the catalog's list surfaces and selection colors.
+InstallCatalogPalette :: () {
+    palette := SystemPaletteFallback(dark)
+    unused SystemPaletteInstall(palette)
+    rules := ActiveStyleRules()
+    kinds: [4]s32 = .{StyleKindListBox(), StyleKindListBoxMulti(), StyleKindListBoxItem(), StyleKindListBoxMultiItem()}
+    for index: 0..3 {
+        rule: StyleRule
+        rule.selector = StyleDefaultSelector()
+        rule.selector.kind = kinds[index]
+        rule.style.fields = cast(u32)StyleField.StyleForeground
+        rule.style.foreground = palette.text
+        if index < 2 {
+            rule.style.fields |= cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleBorder
+            rule.style.background = palette.base
+            rule.style.border = palette.border
+        }
+        rule.order = rules.count
+        rules.items[rules.count] = rule; rules.count += 1
+        if index >= 2 {
+            rule.style.fields |= cast(u32)StyleField.StyleBackground
+            rule.style.background = palette.selected
+            rule.style.foreground = palette.selected_text
+            rule.state = cast(s32)ButtonState.ButtonStateHover
+            rule.order = rules.count
+            rules.items[rules.count] = rule; rules.count += 1
+            rule.state = cast(s32)ButtonState.ButtonStateSelected
+            rule.order = rules.count
+            rules.items[rules.count] = rule; rules.count += 1
+        }
+    }
+    unused InstallStyleRules(rules)
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    if !initialized {
+        field_length = Copy(field_bytes[:], "A quiet place to think")
+        area_length = Copy(area_bytes[:], "A small note\n\nClear typography and careful spacing make everyday work feel calm. Café, Ω and é.")
+        multi[0] = true; multi[2] = true
+        unused Copy(field_next[:], TextView(field_bytes[0:field_length]))
+        unused Copy(area_next[:], TextView(area_bytes[0:area_length]))
+        initialized = true
+    }
+    for index: 0..field_length - 1 { field_bytes[index] = field_next[index] }
+    for index: 0..empty_length - 1 { empty_bytes[index] = empty_next[index] }
+    for index: 0..area_length - 1 { area_bytes[index] = area_next[index] }
+    wanted: s32 = ifx dark then 1 else 0
+    if wanted != installed {
+        InstallCatalogPalette()
+        installed = wanted
+    }
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 16.0, 440.0, 36.0}, .text = "Kryon widget catalog", .font = 26})
+    Text(session, TextProps.{.key = 9002, .bounds = .{500.0, 20.0, 450.0, 28.0}, .text = "Choose a widget to try", .font = 20})
+    items: [54]ListBoxItem
+    items[0].key = 1; items[0].label = "Button";
+    items[1].key = 2; items[1].label = "TextField";
+    items[2].key = 3; items[2].label = "TextArea";
+    items[3].key = 4; items[3].label = "Dropdown";
+    items[4].key = 5; items[4].label = "Slider";
+    items[5].key = 6; items[5].label = "Toggle";
+    items[6].key = 7; items[6].label = "Checkbox";
+    items[7].key = 8; items[7].label = "Radio";
+    items[8].key = 9; items[8].label = "Progress";
+    items[9].key = 10; items[9].label = "Spinbox";
+    items[10].key = 11; items[10].label = "ListBox";
+    items[11].key = 12; items[11].label = "ListBoxMulti";
+    items[12].key = 13; items[12].label = "SegmentedControl";
+    items[13].key = 14; items[13].label = "TabBar";
+    items[14].key = 15; items[14].label = "Selectable";
+    items[15].key = 16; items[15].label = "Separator and Bullet";
+    items[16].key = 17; items[16].label = "Fieldset";
+    items[17].key = 18; items[17].label = "Collapsible";
+    items[18].key = 19; items[18].label = "TimePicker";
+    items[19].key = 20; items[19].label = "ColorPicker";
+    items[20].key = 21; items[20].label = "NavigationBar";
+    items[21].key = 22; items[21].label = "Toolbar";
+    items[22].key = 23; items[22].label = "TitleBar";
+    items[23].key = 24; items[23].label = "Toast";
+    items[24].key = 25; items[24].label = "ContextMenu";
+    items[25].key = 26; items[25].label = "Menu";
+    items[26].key = 27; items[26].label = "Link";
+    items[27].key = 28; items[27].label = "Text";
+    items[28].key = 29; items[28].label = "Image";
+    items[29].key = 30; items[29].label = "Box";
+    items[30].key = 31; items[30].label = "Circle Ring Triangle Line";
+    items[31].key = 32; items[31].label = "Scroll";
+    items[32].key = 33; items[32].label = "ModalFrame";
+    items[33].key = 34; items[33].label = "ActionModal";
+    items[34].key = 35; items[34].label = "Popup";
+    items[35].key = 36; items[35].label = "Press";
+    items[36].key = 37; items[36].label = "Column";
+    items[37].key = 38; items[37].label = "Row";
+    items[38].key = 39; items[38].label = "Stack";
+    items[39].key = 40; items[39].label = "Group";
+    items[40].key = 41; items[40].label = "Grid";
+    items[41].key = 42; items[41].label = "Page Section Heading ParagraphText";
+    items[42].key = 43; items[42].label = "NavigationBarConfig";
+    items[43].key = 44; items[43].label = "Reorder";
+    items[44].key = 45; items[44].label = "PanedView";
+    items[45].key = 46; items[45].label = "DismissibleOverlay";
+    items[46].key = 47; items[46].label = "Button emphasis";
+    items[47].key = 48; items[47].label = "Dropdown open";
+    items[48].key = 49; items[48].label = "Screen";
+    items[49].key = 50; items[49].label = "Flow";
+    items[50].key = 51; items[50].label = "Text selection";
+    items[51].key = 52; items[51].label = "Transition fade";
+    items[52].key = 53; items[52].label = "DiscreteSlider";
+    items[53].key = 54; items[53].label = "StylePicker";
+    picked := ListBox(session, ListBoxProps.{.key = 9003, .bounds = .{500.0, 64.0, viewport.width - 524.0, viewport.height - 88.0}, .selected_index = scene, .scroll_offset = catalog_scroll, .row_height = 30}, items[:])
+    catalog_scroll = picked.scroll_offset
+    if picked.changed { scene = picked.selected_index; dismissed = false }
+    Compose(session, scene, disabled_controls)
+    Text(session, TextProps.{.key = 9004, .bounds = .{24.0, 330.0, 432.0, 40.0}, .text = items[scene].label, .font = 21})
+    disabled_controls = Checkbox(session, CheckboxProps.{.key = 9005, .bounds = .{24.0, 382.0, 208.0, 36.0}, .label = "Disabled state", .checked = disabled_controls}).checked
+    dark = Toggle(session, ToggleProps.{.key = 9006, .bounds = .{248.0, 382.0, 60.0, 36.0}, .label = "Dark palette", .value = dark}).value
+    Text(session, TextProps.{.key = 9011, .bounds = .{320.0, 382.0, 136.0, 36.0}, .text = "Dark palette", .font = 14, .vertical_align = TextAlign.TextAlignCenter})
+    Text(session, TextProps.{.key = 9007, .bounds = .{24.0, 442.0, 432.0, 72.0}, .text = "Click and type in the controls. Scroll the list for more. Tab moves keyboard focus.", .font = 16})
+    digits: [16]u8
+    Text(session, TextProps.{.key = 9008, .bounds = .{24.0, 534.0, 200.0, 24.0}, .text = "Button clicks / decisions", .font = 14})
+    Text(session, TextProps.{.key = 9009, .bounds = .{248.0, 534.0, 208.0, 24.0}, .text = FormatInteger(cast(s64)clicks, digits[:]), .font = 18})
+    Text(session, TextProps.{.key = 9010, .bounds = .{24.0, 594.0, 432.0, 52.0}, .text = "54 previews of the core widgets. Plot and DataViews are separate packages.", .font = 14, .disabled = true})
+    return 0
+}

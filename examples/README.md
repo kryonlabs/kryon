@@ -1,5 +1,30 @@
 # Ziran example
 
+## Interactive widget catalog
+
+Build the catalog from the Kryon repository root, then run it from `examples/`:
+
+```sh
+make -C examples widget-catalog
+cd examples
+../build/examples/ziran/widget-catalog-desktop
+```
+
+`widget_catalog.zi` has 54 previews of the current core widget surface:
+editable text, buttons, selection controls, lists, navigation, menus, dialogs,
+time and color pickers, images, shapes, and layout containers. Choose a preview
+from the scrolling list. Controls retain their values; the check and switch
+below the preview show disabled controls and a dark palette. Plot charts and
+DataViews tables and trees belong to their separate packages.
+
+`desktop_widget_catalog.zi` runs the example with the SDL/Cairo host. For a
+repeatable capture, choose a zero-based `KRYON_CATALOG_SCENE` from 0 to 53
+and set `KRYON_CAPTURE_PATH`. Always scrub `DISPLAY`, `WAYLAND_DISPLAY`,
+`XAUTHORITY`, and `DBUS_SESSION_BUS_ADDRESS` before running captures on a
+private `xvfb-run -a` display.
+
+## Small examples
+
 `hello.zi` is a small Ziran application that imports Kryon's ordinary
 `Button` and pointer modules. It builds a retained tree, handles a press and
 release, and changes the button label after the click. `hello_host.zi` supplies

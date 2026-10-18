@@ -1,0 +1,78 @@
+// Interactive desktop host. Captures run only on a private display.
+#import "widget_catalog"
+#import "desktop_runtime"
+#import "cairo_raster"
+#import "tree_draw"
+#import "scroll_device"
+#import "secondary_pointer"
+#import "transition"
+#import "std/c_string"
+#import "std/byte_text_linux"
+Timer :: #import "std/timer_linux";
+Clock :: #import "frame_clock";
+
+activity: Clock.FrameActivity;
+
+Draw :: (session: Session, pointer: PointerFrame, wheel: float32) -> bool {
+    BeginDesktopFrame()
+    unused TreePointerUpdate(session, pointer)
+    unused TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+    PointerWheelSend(session, pointer.x, pointer.y, wheel)
+    BeginScrollFrame(session, .{pointer.x, pointer.y}, pointer.pressed,
+        pointer.down, pointer.released, wheel,
+        cast(float64)Timer.MonotonicMilliseconds() / 1000.0)
+    viewport := DesktopViewport()
+    if BeginFrame(session, 1, viewport) != FrameStatus.FrameOk { return false }
+    if Frame(session, viewport) != 0 { TreeCancel(session); return false }
+    result := EndFrameRetained(session, DesktopFrameReusable(),
+        Clock.Observe(*activity, true))
+    if result.status != FrameStatus.FrameOk { return false }
+    if scene == 51 {
+        PaintTransitionFade(TransitionState.{.active = true,
+            .phase = cast(s32)TransitionPhase.TransitionOut,
+            .elapsed_seconds = 0.4, .duration_seconds = 1.0},
+            .{24.0, 64.0, 432.0, 208.0}, .{16, 34, 45, 160})
+    }
+    unused DesktopCursor(session)
+    DesktopFrameUnchanged(false)
+    return EndDesktopFrame()
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenDesktopSized(1000, 700) { CloseDesktop(); return 1 }
+    session := SessionOpen()
+    ok := SessionValid(session)
+    if ok && CaptureRequested() {
+        name: [32]u8
+        if CopyCString("KRYON_CATALOG_SCENE", name[:]) {
+            text := TextFromCString(RasterGetEnvironment(*name[0]))
+            for byte: text {
+                if byte >= 48 && byte <= 57 { scene = scene * 10 + cast(s32)byte - 48 }
+            }
+            if scene < 0 || scene > 53 { scene = 0 }
+            catalog_scroll = scene * 30
+        }
+        for frame: 0..2 {
+            if ok { ok = Draw(session, .{980.0, 680.0, false, false, false}, 0.0) }
+        }
+        if ok { ok = CaptureConfigured() }
+    } else {
+        while ok && PollDesktop() {
+            KeyboardModifiersSend(session, DesktopModifiers())
+            key := DesktopPressedKey()
+            if key != 0 { unused KeyboardSend(session, key) }
+            codepoint := DesktopTypedCodepoint()
+            while codepoint != 0 {
+                unused TypedCodepointSend(session, codepoint)
+                codepoint = DesktopTypedCodepoint()
+            }
+            ok = Draw(session, PollPointer(), DesktopWheelMove())
+            if ok { PauseDesktop() }
+        }
+    }
+    CloseSession(session)
+    CloseDesktop()
+    if ok { return 0 }
+    return 1
+}
