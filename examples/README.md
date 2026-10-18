@@ -1,4 +1,4 @@
-# Ziran example
+# Kryon examples
 
 ## Interactive widget catalog
 
@@ -7,7 +7,7 @@ Build the catalog from the Kryon repository root, then run it from `examples/`:
 ```sh
 make -C examples widget-catalog
 cd examples
-../build/examples/ziran/widget-catalog-desktop
+../build/examples/widget-catalog-desktop
 ```
 
 `widget_catalog.zi` has 54 previews of the current core widget surface:
@@ -39,9 +39,9 @@ make -C examples
 make -C examples test
 ```
 
-The first command builds `build/examples/ziran/hello.zib`, generates and links
+The first command builds `build/examples/hello.zib`, generates and links
 a native program from the two `.zi` sources, and writes
-`build/examples/ziran/hello.svg`. Open the SVG in an image viewer to see the
+`build/examples/hello.svg`. Open the SVG in an image viewer to see the
 idle, pressed, released, and clicked frames side by side. The test also bundles
 the saved `.zir`, verifies that both `.zib` files match, and checks the native
 host's four-frame click result and SVG content. The portable bundle is built
@@ -55,26 +55,26 @@ window use one of the hosts in [BACKENDS.md](../docs/BACKENDS.md) instead.
 
 An optional Ziran desktop host links the application with SDL2 and Cairo
 through declared foreign calls. Build it with `make -C examples desktop`.
-Run `build/examples/ziran/hello-desktop` from `examples/` to interact with its
+Run `build/examples/hello-desktop` from `examples/` to interact with its
 button. Its repeatable four-frame check runs on a private display with
 `make -C examples desktop-test` and writes
-`build/examples/ziran/hello-desktop.png` without contacting the current
+`build/examples/hello-desktop.png` without contacting the current
 desktop display. `make -C examples desktop-image-test` renders the canonical
 `Image(ImageProps)` with a path-backed PNG and red tint, then writes
-`build/examples/ziran/image-desktop.png`. The host imports Ziran's generic
+`build/examples/image-desktop.png`. The host imports Ziran's generic
 `c_string` module for safe C string arguments. It handles shapes, text, and
 path-backed PNG images. Texture handles and other image formats remain open.
 
 `make -C examples desktop-text-test` renders the plain `Text(TextProps)`
 example under a private display and saves
-`build/examples/ziran/text-desktop.png`. It also checks that source and saved
+`build/examples/text-desktop.png`. It also checks that source and saved
 `.zir` produce the same portable `text.zib`. Run
-`../build/examples/ziran/text-desktop` from `examples/` to open the interactive
+`../build/examples/text-desktop` from `examples/` to open the interactive
 window, or open `examples/text_hello.zi` in an editor to see its Ziran source.
 
 `make -C examples time-picker` builds `time_picker_demo.zi`, Kryon's
 `TimePicker` without a time, with one, disabled and in a small form, with a
-Light and Dark switch. Run `../build/examples/ziran/time-picker-desktop` from
+Light and Dark switch. Run `../build/examples/time-picker-desktop` from
 `examples/` to try it with the mouse, touch and keyboard.
 `make -C examples time-picker-shots` plays scripted scenes on a private
 display and saves them in `build/time-picker-shots/`.

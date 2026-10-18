@@ -7,7 +7,7 @@ ZI2ZIB_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zib)
 ZI2C_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2c)
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
-BUILD_DIR ?= ../build/examples/ziran
+BUILD_DIR ?= ../build/examples
 NATIVE_LIB := ../build/ziran/libkryon.a
 
 .PHONY: all test desktop desktop-test desktop-image-test desktop-text-test time-picker time-picker-shots clean
@@ -61,15 +61,15 @@ $(BUILD_DIR)/text-saved.zib: $(BUILD_DIR)/text.zib
 		-o $@ $(BUILD_DIR)/text-ir/text_hello.zir
 	cmp $(BUILD_DIR)/text.zib $@
 
-$(BUILD_DIR)/native/hello_host.c: hello_host.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZI2C_BIN)
-	mkdir -p $(BUILD_DIR)/native
+$(BUILD_DIR)/hello-native/hello_host.c: hello_host.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZI2C_BIN)
+	mkdir -p $(BUILD_DIR)/hello-native
 	$(ZI2C_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
-		-o $(BUILD_DIR)/native hello_host.zi
+		-o $(BUILD_DIR)/hello-native hello_host.zi
 
-$(BUILD_DIR)/hello-host: $(BUILD_DIR)/native/hello_host.c $(NATIVE_LIB) Makefile
+$(BUILD_DIR)/hello-host: $(BUILD_DIR)/hello-native/hello_host.c $(NATIVE_LIB) Makefile
 	$(CC) -std=c11 -Wall -I$(ZIRAN_INCLUDE) \
-		-I$(BUILD_DIR)/native $(BUILD_DIR)/native/hello_host.c \
-		$(BUILD_DIR)/native/hello.c $(BUILD_DIR)/native/math.c \
+		-I$(BUILD_DIR)/hello-native $(BUILD_DIR)/hello-native/hello_host.c \
+		$(BUILD_DIR)/hello-native/hello.c $(BUILD_DIR)/hello-native/math.c \
 		$(NATIVE_LIB) -lm -o $@
 
 $(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host
@@ -168,7 +168,7 @@ desktop-text-test: $(BUILD_DIR)/text-saved.zib $(BUILD_DIR)/text-desktop
 		xvfb-run -a $(BUILD_DIR)/text-desktop
 
 # The TimePicker example. `make -C examples time-picker` builds it; run
-# ../build/examples/ziran/time-picker-desktop from examples/ to open it.
+# ../build/examples/time-picker-desktop from examples/ to open it.
 time-picker: $(BUILD_DIR)/time-picker-desktop
 
 # Screenshots of its scenes, each played on a private display and bus.
