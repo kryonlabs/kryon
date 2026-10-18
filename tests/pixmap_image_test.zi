@@ -1,5 +1,6 @@
 #import "pixmap"
 #import "geometry"
+#import "paint_texture"
 
 first: [3076]u32;
 second: [3076]u32;
@@ -20,6 +21,7 @@ Check :: (variant: s32, alias: bool, opaque: bool) -> bool {
     data.cosine = 1.0
     data.radius = cast(float32)(variant % 4) * 7.25
     data.tint = .{255, 255, 255, 255}
+    data.smooth = variant % 2 == 1
     if alias { data.source = .{0.0, 0.0, 64.0, 47.0} }
     for pass: 0..1 {
         if pass == 0 { unused PixmapBeginInto(cast(u32)0x315779, 64, 48, first[:], opaque) }
@@ -55,6 +57,18 @@ main :: () -> s32 {
         if !Check(variant, false, false) || !Check(variant, false, true) ||
             !Check(variant, true, false) || !Check(variant, true, true) { return 1 }
     }
+    // A red/green/transparent-blue/white square at 2x scale. The mixed texel
+    // at (1,1) has 81.25% alpha; the transparent blue must add no blue fringe.
+    asset[0] = cast(u32)0xffff0000; asset[1] = cast(u32)0xff00ff00
+    asset[2] = cast(u32)0x000000ff; asset[3] = cast(u32)0xffffffff
+    unused PixmapSetImage(0, "linear", 2, 2, asset[:4])
+    unused PixmapBeginInto(cast(u32)0, 4, 4, first[:])
+    emitting_smooth = true
+    RasterImage("linear", 0, .{0.0, 0.0, 2.0, 2.0}, .{0.0, 0.0, 4.0, 4.0},
+        .{0.0, 0.0, 4.0, 4.0}, .{}, 0.0, 0.0, .{255, 255, 255, 255})
+    emitting_smooth = false
+    PixmapClearImage(0); PixmapEndInto()
+    if first[5] != cast(u32)0x009f3f10 || first[0] != cast(u32)0x00ff0000 { return 2 }
     print("Exact image rows passed\n")
     return 0
 }
