@@ -1,0 +1,17 @@
+#import "app_context_host"
+#import "widget_host"
+
+#program_export
+Check :: () -> s32 {
+    if !AppModule("app_context") || !AppModule("kryon_app_context") || !AppModule("p0123456789abcdef_app_context") { return 1 }
+    if AppModule("other_app_context") || AppModule("p0123456789abcdeg_app_context") || AppModule("p0123456789abcde_app_context") { return 2 }
+    if !WidgetHostSupports("text_widget", "TextHostedHost") ||
+    !WidgetHostSupports("kryon_text_widget", "TextHostedHost") ||
+    !WidgetHostSupports("p0123456789abcdef_text_widget", "TextHostedHost") { return 3 }
+    if WidgetHostSupports("other_text_widget", "TextHostedHost") ||
+    WidgetHostSupports("p0123456789abcdef_text_widget", "ImageHostedHost") ||
+    WidgetHostSupports("p0123456789abcdef_text_widget", "ReadStoreHost") { return 4 }
+    if !WidgetHostSupports("p0123456789abcdef_tree", "EndHostedHost") ||
+    WidgetHostSupports("p0123456789abcdef_other_tree", "EndHostedHost") { return 5 }
+    return 0
+}

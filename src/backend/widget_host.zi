@@ -37,6 +37,7 @@
 #import "modal_props"
 #import "hosted_values"
 #import "widget_codec"
+#import "bundle_names"
 
 using HostValueKind;
 
@@ -96,23 +97,23 @@ widget_option_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetDropdownOptionCodec;
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
 WidgetHostSupports :: (module: string, function: string) -> bool {
-    return (module == "text_widget" && function == "TextHostedHost") ||
-    (module == "image_widget" && function == "ImageHostedHost") ||
-    (module == "button_widget" && function == "ButtonHostedHost") ||
-    (module == "text_area_widget" && function == "TextAreaHostedHost") ||
-    (module == "scroll_widget" && function == "ScrollHostedHost") ||
-    (module == "tree" && function == "EndHostedHost") ||
-    (module == "text_field_widget" && function == "TextFieldHostedHost") ||
-    (module == "tab_bar_widget" && function == "TabBarHostedHost") ||
-    (module == "checkbox_widget" && function == "CheckboxHostedHost") ||
-    (module == "toggle_widget" && function == "ToggleHostedHost") ||
-    (module == "box_widget" && function == "BoxHostedHost") ||
-    (module == "press_widget" && function == "PressHostedHost") ||
-    (module == "spinbox_widget" && function == "SpinboxHostedHost") ||
-    (module == "time_picker_widget" && function == "TimePickerHostedHost") ||
-    (module == "title_bar_widget" && function == "TitleBarHostedHost") ||
-    (module == "modal_frame_widget" && function == "ModalFrameHostedHost") ||
-    (module == "modal_widget" && function == "ActionModalHostedHost")
+    return (ModuleName(module, "text_widget") && function == "TextHostedHost") ||
+    (ModuleName(module, "image_widget") && function == "ImageHostedHost") ||
+    (ModuleName(module, "button_widget") && function == "ButtonHostedHost") ||
+    (ModuleName(module, "text_area_widget") && function == "TextAreaHostedHost") ||
+    (ModuleName(module, "scroll_widget") && function == "ScrollHostedHost") ||
+    (ModuleName(module, "tree") && function == "EndHostedHost") ||
+    (ModuleName(module, "text_field_widget") && function == "TextFieldHostedHost") ||
+    (ModuleName(module, "tab_bar_widget") && function == "TabBarHostedHost") ||
+    (ModuleName(module, "checkbox_widget") && function == "CheckboxHostedHost") ||
+    (ModuleName(module, "toggle_widget") && function == "ToggleHostedHost") ||
+    (ModuleName(module, "box_widget") && function == "BoxHostedHost") ||
+    (ModuleName(module, "press_widget") && function == "PressHostedHost") ||
+    (ModuleName(module, "spinbox_widget") && function == "SpinboxHostedHost") ||
+    (ModuleName(module, "time_picker_widget") && function == "TimePickerHostedHost") ||
+    (ModuleName(module, "title_bar_widget") && function == "TitleBarHostedHost") ||
+    (ModuleName(module, "modal_frame_widget") && function == "ModalFrameHostedHost") ||
+    (ModuleName(module, "modal_widget") && function == "ActionModalHostedHost")
 }
 
 WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed) {

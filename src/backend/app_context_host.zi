@@ -11,6 +11,7 @@
 #import "hosted_values"
 #import "widget_codec"
 #import "widget_host"
+#import "bundle_names"
 
 using HostValueKind;
 
@@ -55,7 +56,7 @@ AppContextRuntime :: (app: *AppContext) -> *HostedApp {
 }
 
 AppModule :: (module: string) -> bool {
-    return module == "app_context" || module == "kryon_app_context"
+    return ModuleName(module, "app_context")
 }
 
 AppIdValid :: (id: string) -> bool {
