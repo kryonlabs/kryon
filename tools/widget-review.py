@@ -54,7 +54,12 @@ def build(label, env):
     for pattern in ('*.c', '*.h'):
         for path in generated.glob(pattern):
             path.unlink()
-    defines = ['--define', 'REVIEW_INLINE_TEXT'] if 'pending_text_first:' in (ROOT / 'src/ui/paint_queue.zi').read_text() else []
+    storage = (ROOT / 'src/ui/paint_queue.zi').read_text()
+    defines = []
+    if 'pending_short_text:' in storage:
+        defines = ['--define', 'REVIEW_SIZED_TEXT']
+    elif 'pending_text_first:' in storage:
+        defines = ['--define', 'REVIEW_INLINE_TEXT']
     subprocess.run([str(toolchain / 'build/bin/ziran'), 'build', '--project', '--root', 'tools',
                     '--target=c', '--no-main', '--define', 'POSIX_THREADS',
                     *defines,
@@ -115,6 +120,10 @@ def compare():
     directory = OUTPUT / 'comparison'
     directory.mkdir(parents=True, exist_ok=True)
     thumbs = []
+    overview = Image.new('RGB', (1968, 64 + math.ceil(len(SCENES) / 4) * 220), '#edf3f4')
+    overview_draw = ImageDraw.Draw(overview)
+    overview_draw.text((16, 10), 'Kryon: every review scene, before and after', font=font, fill='#17313e')
+    overview_draw.text((16, 36), 'Resting states | detailed state comparisons: grid-01 through grid-09 | zoom for labels and metrics', font=small, fill='#42616d')
     for scene, name in enumerate(SCENES):
         scene_states = states(scene)
         height = 76 + len(scene_states) * 372 + 24
@@ -137,7 +146,10 @@ def compare():
                           font=small, fill='#42616d')
         draw.text((20, height - 24), 'Actual Kryon pixmap renders | same machine, -O2 | 10 warmup + 60 frames | ms/frame | RSS varies per run', font=small, fill='#42616d')
         sheet.save(directory / f'{scene:02d}-{name.replace(" ", "-")}.png')
+        resting = sheet.crop((0, 0, 984, 440)).resize((492, 220), Image.Resampling.LANCZOS)
+        overview.paste(resting, ((scene % 4) * 492, 64 + (scene // 4) * 220))
         thumb = sheet.copy(); thumb.thumbnail((492, 794)); thumbs.append(thumb)
+    overview.save(directory / 'grid-overview.png')
     for page in range(math.ceil(len(thumbs) / 6)):
         grid = Image.new('RGB', (1476, 1588), '#edf3f4')
         for index, thumb in enumerate(thumbs[page * 6:page * 6 + 6]):

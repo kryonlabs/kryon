@@ -97,7 +97,7 @@ CheckMixedOwnership :: (session: Session) -> bool {
     if retained.value != "12345678" || retained.asset_path.count != PAINT_TEXT_CAPACITY ||
         retained.asset_path[0] != 65 || retained.asset_path[PAINT_TEXT_CAPACITY - 1] != 90 ||
         !retained.owns_text || !retained.owns_asset ||
-        retained.text_block == retained.asset_block ||
+        (retained.text_block == retained.asset_block && retained.text_start == retained.asset_start) ||
         retained.bounds.width != 3.0 || retained.color.a != 4 { return false }
     blocks := pending_text[session.slot].count
     empty: QueuedPaint
@@ -161,14 +161,46 @@ RasterImageMesh :: (asset_path: string, texture_id: u32,
     unused tint
 }
 
+// A retained label can be queued again while its pool grows. The source
+// bytes must be copied before VecPush can move the owning allocation.
+CheckPoolGrowth :: (session: Session, value: string) -> bool {
+    PaintDispose(session)
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    for index: 0..7 { PaintLabel(session, -1, value, 0, 0, 14, Color.{}) }
+    PaintLabel(session, -1, PendingPaintAt(session, 0).value, 0, 0, 14, Color.{})
+    intact := !PaintOverflow(session) && PendingPaintAt(session, 0).value == value &&
+        PendingPaintAt(session, 8).value == value
+    TreeCancel(session)
+    PaintDispose(session)
+    return intact
+}
+
+CheckSizedPools :: (session: Session) -> bool {
+    short: [PAINT_SHORT_TEXT_CAPACITY]u8
+    short[0] = 65
+    short[PAINT_SHORT_TEXT_CAPACITY - 1] = 90
+    if !CheckPoolGrowth(session, TextView(short[:])) { return false }
+    medium: [PAINT_MEDIUM_TEXT_CAPACITY]u8
+    medium[0] = 66
+    medium[PAINT_MEDIUM_TEXT_CAPACITY - 1] = 89
+    if !CheckPoolGrowth(session, TextView(medium[:])) { return false }
+    large: [PAINT_TEXT_CAPACITY]u8
+    large[0] = 67
+    large[PAINT_TEXT_CAPACITY - 1] = 88
+    return CheckPoolGrowth(session, TextView(large[:]))
+}
+
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
-    // A page's first label and image path need no overflow block allocation.
+    if !CheckSizedPools(session) { return 21 }
+    // A page's short labels and paths reserve only a small reusable pool.
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
     PaintLabel(session, -1, "12345678", 0, 0, 14, Color.{})
     QueueAsset(session)
     if pending_text[session.slot].capacity != 0 ||
+        pending_medium_text[session.slot].capacity != 0 ||
+        pending_short_text[session.slot].capacity * (PAINT_SHORT_TEXT_CAPACITY + 4) > 4096 ||
         PendingPaintAt(session, 0).value != "12345678" ||
         PendingPaintAt(session, 1).asset_path != "asset.png" { return 20 }
     TreeCancel(session)
@@ -203,7 +235,7 @@ main :: () -> s32 {
         if cast(s32)result.status != 0 || result.paint_unchanged != (frame == 1) { return 10 }
     }
     if images != 1 || bad { return 11 }
-    // Image paths own a separate byte pool and may exceed the same old
+    // Image paths retain their own ranges and may exceed the same old
     // total limit while each caller's temporary path remains short.
     for frame: 0..1 {
         BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})

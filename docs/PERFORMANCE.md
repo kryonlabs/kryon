@@ -38,9 +38,15 @@ Run it before changing the library, then run `after` and `compare`. Each build
 preserves its own executable under `build/scratch/widget-review/`; captures,
 per-widget CSV/JSON measurements and labeled comparison PNGs go to
 `backup/widget-improvement/`. Open that folder's `comparison/` in Gwenview.
+`grid-overview.png` shows every resting scene; `grid-01.png` through
+`grid-09.png` include all captured interaction states.
 Capture uses private Xvfb displays with inherited desktop variables scrubbed.
 The per-widget timings cover 10 warmup and 60 measured idle frames at 480 × 320;
 they complement the active workloads above rather than measuring input latency.
 The text-pool reservation counter covers frame-owned label/path storage only,
-not total application memory. Containers and nonvisual helpers are shown with
-children; image and shape pixels are preserved by the renderer optimization.
+not total application memory. Frame text uses reusable 256-byte, 4 KiB and
+32 KiB blocks according to label/path length; a short label no longer reserves
+eight 32 KiB blocks. The per-label 32 KiB limit and frame ownership are unchanged.
+Containers and nonvisual helpers are shown with children. The image fast path
+preserves nearest-neighbor pixels; images requesting smooth scaling use bilinear
+filtering.

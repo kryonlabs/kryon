@@ -303,6 +303,10 @@ Run :: () -> s32 {
         #if #defined(REVIEW_INLINE_TEXT) {
             reserved += cast(s64)(PAINT_TEXT_CAPACITY + 4)
         }
+        #if #defined(REVIEW_SIZED_TEXT) {
+            reserved += pending_short_text[session.slot].capacity * cast(s64)(PAINT_SHORT_TEXT_CAPACITY + 4)
+            reserved += pending_medium_text[session.slot].capacity * cast(s64)(PAINT_MEDIUM_TEXT_CAPACITY + 4)
+        }
         if metrics && frame >= 10 { print("%,%,%,%,%,%,%\n", frame - 10, elapsed, TreeCount(session), result.paint_count, result.emitted_count, cast(s64)(result.damage.width * result.damage.height), reserved) }
     }
     if !metrics { PixmapPresent() }

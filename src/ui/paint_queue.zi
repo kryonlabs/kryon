@@ -101,12 +101,16 @@ PaintCommands :: struct {
 pending_paint: [9]PaintCommands;
 ordered_paint: [9]Vec(QueuedPaint);
 PAINT_TEXT_CAPACITY :: 32768
+PAINT_SHORT_TEXT_CAPACITY :: 256
+PAINT_MEDIUM_TEXT_CAPACITY :: 4096
 PaintTextBlock :: struct { length: s32; bytes: [PAINT_TEXT_CAPACITY]u8; }
-// Ordinary control pages fit in one block. Keep it in the session's lazy
-// static storage instead of reserving Vec's eight 32 KiB elements on its
-// first label. Large frames still grow without reducing the label limit.
-pending_text_first: [9]PaintTextBlock;
+PaintShortTextBlock :: struct { length: s32; bytes: [PAINT_SHORT_TEXT_CAPACITY]u8; }
+PaintMediumTextBlock :: struct { length: s32; bytes: [PAINT_MEDIUM_TEXT_CAPACITY]u8; }
+// Short labels should not reserve eight full 32 KiB blocks. Allocate only
+// the sizes the frame uses; retain their capacity for subsequent frames.
 pending_text: [9]Vec(PaintTextBlock);
+pending_short_text: [9]Vec(PaintShortTextBlock);
+pending_medium_text: [9]Vec(PaintMediumTextBlock);
 // The grid points of the frame's warped images. One image's grid stays in
 // one block.
 PaintMeshBlock :: struct { count: s32; points: [IMAGE_MESH_POINT_LIMIT]Vector2; }
@@ -151,39 +155,111 @@ PaintTextRange :: struct {
     valid: bool
 }
 
-PendingTextBlockAt :: (slot: s32, index: s32) -> *PaintTextBlock {
-    if index == 0 { return *pending_text_first[slot] }
-    return *pending_text[slot][index - 1]
+KeepShortPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
+    result: PaintTextRange
+    block_index: s32 = cast(s32)pending_short_text[slot].count - 1
+    start: s32 = 0
+    if block_index >= 0 { start = pending_short_text[slot][block_index].length }
+    if block_index < 0 || value.count > cast(s64)(PAINT_SHORT_TEXT_CAPACITY - start) {
+        // Copy before growing: value may refer to another block in this Vec.
+        extra: PaintShortTextBlock
+        for at: cast(s64)0..value.count - 1 { extra.bytes[at] = value[at] }
+        extra.length = cast(s32)value.count
+        if !VecPush(pending_short_text[slot], extra) {
+            pending_paint[slot].overflow = true
+            return result
+        }
+        block_index += 1
+        start = 0
+    } else {
+        for at: cast(s64)0..value.count - 1 {
+            pending_short_text[slot][block_index].bytes[cast(s64)start + at] = value[at]
+        }
+        pending_short_text[slot][block_index].length = start + cast(s32)value.count
+    }
+    result.start = -start - 1
+    result.block = block_index
+    result.valid = true
+    return result
 }
 
-KeepPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
+KeepMediumPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
     result: PaintTextRange
-    if value.count > cast(s64)PAINT_TEXT_CAPACITY {
-        pending_paint[slot].overflow = true
-        return result
+    block_index: s32 = cast(s32)pending_medium_text[slot].count - 1
+    start: s32 = 0
+    if block_index >= 0 { start = pending_medium_text[slot][block_index].length }
+    if block_index < 0 || value.count > cast(s64)(PAINT_MEDIUM_TEXT_CAPACITY - start) {
+        // Copy before growing: value may refer to another block in this Vec.
+        extra: PaintMediumTextBlock
+        for at: cast(s64)0..value.count - 1 { extra.bytes[at] = value[at] }
+        extra.length = cast(s32)value.count
+        if !VecPush(pending_medium_text[slot], extra) {
+            pending_paint[slot].overflow = true
+            return result
+        }
+        block_index += 1
+        start = 0
+    } else {
+        for at: cast(s64)0..value.count - 1 {
+            pending_medium_text[slot][block_index].bytes[cast(s64)start + at] = value[at]
+        }
+        pending_medium_text[slot][block_index].length = start + cast(s32)value.count
     }
-    block_index: s32 = cast(s32)pending_text[slot].count
-    block := PendingTextBlockAt(slot, block_index)
-    if value.count > cast(s64)(PAINT_TEXT_CAPACITY - block.length) {
+    result.start = -start - PAINT_SHORT_TEXT_CAPACITY - 1
+    result.block = block_index
+    result.valid = true
+    return result
+}
+
+KeepLongPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
+    result: PaintTextRange
+    block_index: s32 = cast(s32)pending_text[slot].count - 1
+    start: s32 = 0
+    if block_index >= 0 { start = pending_text[slot][block_index].length }
+    if block_index < 0 || value.count > cast(s64)(PAINT_TEXT_CAPACITY - start) {
+        // Copy before growing: value may refer to another block in this Vec.
         extra: PaintTextBlock
+        for at: cast(s64)0..value.count - 1 { extra.bytes[at] = value[at] }
+        extra.length = cast(s32)value.count
         if !VecPush(pending_text[slot], extra) {
             pending_paint[slot].overflow = true
             return result
         }
         block_index += 1
-        block = PendingTextBlockAt(slot, block_index)
+        start = 0
+    } else {
+        for at: cast(s64)0..value.count - 1 {
+            pending_text[slot][block_index].bytes[cast(s64)start + at] = value[at]
+        }
+        pending_text[slot][block_index].length = start + cast(s32)value.count
     }
-    start: s32 = block.length
-    at: s32 = 0
-    while at < cast(s32)value.count {
-        block.bytes[start + at] = value[at]
-        at += 1
-    }
-    block.length = start + at
     result.start = start
     result.block = block_index
     result.valid = true
     return result
+}
+
+// The signed offset also records the pool, without enlarging every paint
+// command: nonnegative is long, -1..-256 is short, and lower is medium.
+KeepPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
+    if value.count <= PAINT_SHORT_TEXT_CAPACITY { return KeepShortPaintBytes(slot, value) }
+    if value.count <= PAINT_MEDIUM_TEXT_CAPACITY { return KeepMediumPaintBytes(slot, value) }
+    if value.count <= PAINT_TEXT_CAPACITY { return KeepLongPaintBytes(slot, value) }
+    pending_paint[slot].overflow = true
+    invalid: PaintTextRange
+    return invalid
+}
+
+PendingTextValue :: (slot: s32, block: s32, offset: s64, count: s64) -> string {
+    if offset >= 0 {
+        return TextView(pending_text[slot][block].bytes[offset:offset + count])
+    }
+    if offset >= -PAINT_SHORT_TEXT_CAPACITY {
+        start := -offset - 1
+        return TextView(pending_short_text[slot][block].bytes[start:start + count])
+    }
+    start := -offset - PAINT_SHORT_TEXT_CAPACITY - 1
+    return TextView(pending_medium_text[slot][block].bytes[start:start + count])
 }
 
 // Only the ownership fields change; avoid copying the drawing record and
@@ -896,7 +972,8 @@ PaintImageMesh :: (session: Session, node: s32, asset_path: string,
 PaintClear :: (session: Session) {
     slot := SessionIndex(session)
     VecClear(pending_paint[slot].items)
-    pending_text_first[slot].length = 0
+    VecClear(pending_short_text[slot])
+    VecClear(pending_medium_text[slot])
     VecClear(pending_text[slot])
     VecClear(pending_mesh[slot])
     pending_paint[slot].overflow = false
@@ -956,22 +1033,10 @@ PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
     }
     data: PaintCommand = pending_paint[slot].items[index].data
     if data.owns_text {
-        if data.text_block == 0 {
-            data.value = TextView(pending_text_first[slot].bytes[data.text_start:
-                data.text_start + data.text_count])
-        } else {
-            data.value = TextView(pending_text[slot][data.text_block - 1].bytes[data.text_start:
-                data.text_start + data.text_count])
-        }
+        data.value = PendingTextValue(slot, data.text_block, data.text_start, data.text_count)
     }
     if data.owns_asset {
-        if data.asset_block == 0 {
-            data.asset_path = TextView(pending_text_first[slot].bytes[data.asset_start:
-                data.asset_start + data.asset_count])
-        } else {
-            data.asset_path = TextView(pending_text[slot][data.asset_block - 1].bytes[data.asset_start:
-                data.asset_start + data.asset_count])
-        }
+        data.asset_path = PendingTextValue(slot, data.asset_block, data.asset_start, data.asset_count)
     }
     if data.owns_mesh {
         count: s32 = cast(s32)PaintMeshPointCount(data.mesh_columns, data.mesh_rows)
@@ -1302,7 +1367,8 @@ PaintDispose :: (session: Session) {
     VecFree(paint_snapshot_values[session.slot])
     VecFree(paint_snapshot_assets[session.slot])
     VecFree(paint_snapshot_meshes[session.slot])
-    pending_text_first[session.slot].length = 0
+    VecFree(pending_short_text[session.slot])
+    VecFree(pending_medium_text[session.slot])
     VecFree(pending_text[session.slot])
     VecFree(pending_mesh[session.slot])
     pending_paint[session.slot].overflow = false
