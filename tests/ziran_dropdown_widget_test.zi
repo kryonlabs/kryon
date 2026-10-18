@@ -30,6 +30,7 @@ using SemanticKind;
 using WidgetKind;
 using StyleField;
 using PaintKind;
+using ButtonState;
 
 phase: s32;
 open_state: bool;
@@ -572,6 +573,31 @@ ActionMenu :: () -> s32 {
 
 #program_export
 main :: () -> s32 {
+    // Padding inside the colored option is independent of the menu gutter.
+    // Check both edges, optional leading artwork and the row's action target.
+    for scale_index: cast(s32)1..2 {
+        scale := cast(float32)scale_index
+        panel: StyleFrame
+        panel.value = DropdownDefaultFace(DropdownPanelRole(), cast(s32)ButtonStateNormal, false)
+        option: StyleFrame
+        option.value = DropdownDefaultFace(DropdownOptionRole(), cast(s32)ButtonStateNormal, false)
+        scrollbar: StyleFrame
+        scrollbar.value = DropdownDefaultFace(DropdownScrollbarRole(), cast(s32)ButtonStateNormal, false)
+        metrics := DropdownMenuMetricsFor(scale, panel, option, scrollbar)
+        row: Rectangle = .{20.0, 40.0, 432.0 * scale, 44.0 * scale}
+        content := Content(option.value, scale)
+        inside_left := row.x + cast(float32)metrics.highlight_inset_x
+        inside_right := row.x + row.width - cast(float32)metrics.highlight_inset_x
+        plain := DropdownOptionContentFor(row, row, content, metrics, false, 0.0)
+        if plain.text_bounds.x < inside_left + content.padding ||
+            plain.check_bounds.x + plain.check_bounds.width > inside_right - content.padding { return 90 }
+        artwork := DropdownOptionContentFor(row, row, content, metrics, true, 0.0)
+        if artwork.icon_bounds.x < inside_left + content.padding ||
+            artwork.text_bounds.x < artwork.icon_bounds.x + artwork.icon_bounds.width + content.gap { return 91 }
+        action := DropdownOptionContentFor(row, row, content, metrics, false, row.height)
+        if action.action_bounds.x + action.action_bounds.width != row.x + row.width ||
+            action.check_bounds.x + action.check_bounds.width > action.action_bounds.x - content.padding { return 92 }
+    }
     fill_steps: [14]s32 = .[1, 3, 3, 1, 3, 4, 1, 3, 1, 1, 3, 3, 3, 1]
     outline_steps: [14]s32 = .[1, 2, 2, 1, 2, 2, 1, 2, 1, 1, 2, 2, 2, 1]
     stroke_steps: [14]s32 = .[2, 4, 4, 2, 4, 4, 2, 4, 2, 2, 4, 4, 2, 2]

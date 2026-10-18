@@ -414,8 +414,8 @@ DropdownMenuMetricsFor :: (scale: float32, panel: StyleFrame,
         cast(u32)StyleGap, scrollbar.value.gap, 2.0, scale, true)
     metrics.scrollbar_track_inset = DropdownMetric(scrollbar.value.fields,
         cast(u32)StylePaddingY, scrollbar.value.padding_y, 2.0, scale, true)
-    metrics.highlight_inset_x = DropdownMetric(option.value.fields,
-        cast(u32)StylePaddingX, option.value.padding_x, 4.0, scale, true)
+    metrics.highlight_inset_x = DropdownMetric(panel.value.fields,
+        cast(u32)StylePaddingX, panel.value.padding_x, 4.0, scale, true)
     metrics.highlight_inset_y = DropdownMetric(option.value.fields,
         cast(u32)StylePaddingY, option.value.padding_y, 2.0, scale, true)
     metrics.separator_inset = DropdownMetric(option.value.fields,
@@ -500,12 +500,12 @@ DropdownOptionContentFor :: (row: Rectangle, visible: Rectangle,
     content: ContentMetrics, metrics: DropdownMenuMetrics,
     has_icon: bool, action_width: float32) -> DropdownOptionContent {
     layout: DropdownOptionContent
-    text_x: float32 = row.x + content.padding
+    text_x: float32 = row.x + cast(float32)metrics.highlight_inset_x + content.padding
     // An action icon takes the row's end; the check sits just before it.
-    end: float32 = row.x + row.width - content.padding
+    end: float32 = row.x + row.width - cast(float32)metrics.highlight_inset_x - content.padding
     if action_width > 0.0 {
-        end = row.x + row.width - action_width
-        layout.action_bounds.x = end
+        layout.action_bounds.x = row.x + row.width - action_width
+        end = layout.action_bounds.x - content.padding
         layout.action_bounds.y = row.y
         layout.action_bounds.width = action_width
         layout.action_bounds.height = row.height

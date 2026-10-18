@@ -53,6 +53,8 @@ DropdownDefaultFace :: (role: s32, state: s32,
     face.offset_y = 16.0
     face.radius = 8.0
     if role == DropdownPanelRole() {
+        // The menu gutter is separate from padding inside each option.
+        face.padding_x = 4.0
         face.background = cast(u32)0xffffffff
         face.border = Theme.LightBorderStrong()
         face.border_width = 1.0
