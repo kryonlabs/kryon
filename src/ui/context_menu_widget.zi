@@ -2,6 +2,9 @@
 // when the secondary button was released. Like Dropdown, the caller retains
 // `open` and the position; the menu reports the command chosen and when it
 // closed. Call it after the page's other controls so it sits above them.
+// Items can hold submenus: resting the pointer on a row with one, or choosing
+// it on a touch screen, opens it beside the row, and the menu keeps track of
+// which one is open.
 #import "session"
 ContextMenuItem :: struct {
     // A positive number the menu reports when this command is chosen.
@@ -13,6 +16,10 @@ ContextMenuItem :: struct {
     // A compact cell sharing one row with the inline items next to it, such
     // as a row of quick reactions above the commands.
     inline: bool
+    // The id of the item whose submenu holds this one; 0 for the menu itself.
+    // An item that others name here shows › and opens their submenu instead
+    // of reporting a command.
+    parent: s32
 }
 
 ContextMenuProps :: struct {
@@ -71,6 +78,10 @@ ContextMenuResult :: struct {
     CONTEXT_MENU_INLINE_FONT :: 18;
     CONTEXT_MENU_INLINE_MINIMUM :: 32;
     CONTEXT_MENU_INLINE_GAP :: 2;
+    // Room after a submenu row's label for its ›.
+    CONTEXT_MENU_ARROW :: 16;
+    // Nested submenus shown at once.
+    CONTEXT_MENU_DEPTH :: 8;
 
     #program_export
     ContextMenuOverlayKey :: (key: u64) -> u64 {
@@ -82,6 +93,31 @@ ContextMenuResult :: struct {
         return key * cast(u64)131071 + cast(u64)cast(u32)(index + 1) * cast(u64)19 + cast(u64)5
     }
 
+    // A submenu's panel beside the menu's own, which overlays submit as key 2.
+    ContextMenuPanelKey :: (parent: s32) -> u64 {
+        return cast(u64)3 + cast(u64)cast(u32)parent
+    }
+
+    // Whether the item with this id opens a submenu: other items name it.
+    ContextMenuOpens :: (items: []ContextMenuItem, id: s32) -> bool {
+        if id <= 0 { return false }
+        index: s32 = 0
+        while index < cast(s32)items.count {
+            if items[index].parent == id && !items[index].separator { return true }
+            index += 1
+        }
+        return false
+    }
+
+    ContextMenuFind :: (items: []ContextMenuItem, id: s32) -> s32 {
+        index: s32 = 0
+        while index < cast(s32)items.count {
+            if items[index].id == id && !items[index].separator { return index }
+            index += 1
+        }
+        return -1
+    }
+
     // The width of one inline cell: its label with an inset, never narrower
     // than a square touch target.
     ContextMenuInlineWidth :: (item: ContextMenuItem, scale: float32 = 1.0) -> s32 {
@@ -90,20 +126,24 @@ ContextMenuResult :: struct {
         return width
     }
 
-    // The menu's panel: as wide as its longest label or inline row, kept inside
-    // the view.
-    #program_export
-    ContextMenuBounds :: (items: []ContextMenuItem, x: float32, y: float32,
-        view: Rectangle, scale: float32 = 1.0) -> Rectangle {
+    // The panel holding the items under parent: as wide as its longest label
+    // or inline row, kept inside the view.
+    ContextMenuLevelBounds :: (items: []ContextMenuItem, parent: s32, x: float32, y: float32,
+        view: Rectangle, scale: float32) -> Rectangle {
         width: s32 = ScalePixels(CONTEXT_MENU_MINIMUM_WIDTH, scale)
         height: s32 = ScalePixels(CONTEXT_MENU_PADDING, scale) * 2
         index: s32 = 0
         while index < cast(s32)items.count {
+            if items[index].parent != parent {
+                index += 1
+                continue
+            }
             if items[index].separator {
                 height += ScalePixels(CONTEXT_MENU_SEPARATOR, scale)
             } else if items[index].inline {
                 row: s32 = ScalePixels(6, scale)
-                while index < cast(s32)items.count && items[index].inline && !items[index].separator {
+                while index < cast(s32)items.count && items[index].inline && !items[index].separator &&
+                items[index].parent == parent {
                     row += ContextMenuInlineWidth(items[index], scale) + ScalePixels(CONTEXT_MENU_INLINE_GAP, scale)
                     index += 1
                 }
@@ -114,6 +154,7 @@ ContextMenuResult :: struct {
                 height += ScalePixels(CONTEXT_MENU_ROW, scale)
                 label: s32 = GlyphWidth(items[index].label, ScalePixels(CONTEXT_MENU_FONT, scale), "") +
                 ScalePixels(CONTEXT_MENU_TEXT_INSET, scale) * 2
+                if ContextMenuOpens(items, items[index].id) { label += ScalePixels(CONTEXT_MENU_ARROW, scale) }
                 if label > width { width = label }
             }
             index += 1
@@ -131,54 +172,59 @@ ContextMenuResult :: struct {
         return Rectangle.{left, top, cast(float32)width, cast(float32)height}
     }
 
+    // The menu's panel: as wide as its longest label or inline row, kept inside
+    // the view.
     #program_export
-    ContextMenu :: (session: Session, props: ContextMenuProps,
-        items: []ContextMenuItem) -> ContextMenuResult {
-        result: ContextMenuResult
-        result.open = props.open
-        if !props.open || items.count == 0 { return result }
-        key: u64 = props.key
-        if key == cast(u64)0 { key = TreeNextKey(session) }
-        if props.escape {
-            result.open = false
-            result.closed = true
-            return result
-        }
-        // The command a row's click chose comes from last frame's tree.
-        if TreeIsBuilding(session) {
-            previous_overlay: s32 = TreePrevious(session, TreeCurrentParent(session),
-                ContextMenuOverlayKey(key), WidgetKindModal)
-            previous_panel: s32 = TreePreviousCommitted(session, previous_overlay,
-                OverlayPanelKey(), WidgetKindCustom)
-            index: s32 = 0
-            while index < cast(s32)items.count {
-                if !items[index].separator && !items[index].disabled && items[index].id > 0 {
-                    row: s32 = TreePreviousCommitted(session, previous_panel,
-                        ContextMenuRowKey(key, index), WidgetKindSelectable)
-                    if TreeTakeActivationAt(session, row) {
-                        result.activated_id = items[index].id
-                        result.open = false
-                        result.closed = true
-                        return result
-                    }
+    ContextMenuBounds :: (items: []ContextMenuItem, x: float32, y: float32,
+        view: Rectangle, scale: float32 = 1.0) -> Rectangle {
+        return ContextMenuLevelBounds(items, 0, x, y, view, scale)
+    }
+
+    // Whether the item at index ends its inline row.
+    ContextMenuInlineEnds :: (items: []ContextMenuItem, index: s32) -> bool {
+        return index + 1 >= cast(s32)items.count || !items[index + 1].inline ||
+        items[index + 1].separator || items[index + 1].parent != items[index].parent
+    }
+
+    // The top of the item at index in its panel.
+    ContextMenuRowTop :: (items: []ContextMenuItem, at: s32, panel: Rectangle,
+        scale: float32) -> float32 {
+        top: float32 = panel.y + cast(float32)ScalePixels(CONTEXT_MENU_PADDING, scale)
+        index: s32 = 0
+        while index < at {
+            if items[index].parent == items[at].parent {
+                if items[index].separator {
+                    top += cast(float32)ScalePixels(CONTEXT_MENU_SEPARATOR, scale)
+                } else if items[index].inline {
+                    if ContextMenuInlineEnds(items, index) { top += cast(float32)ScalePixels(CONTEXT_MENU_INLINE_ROW, scale) }
+                } else {
+                    top += cast(float32)ScalePixels(CONTEXT_MENU_ROW, scale)
                 }
-                index += 1
             }
+            index += 1
         }
+        return top
+    }
 
-        panel: Rectangle = ContextMenuBounds(items, props.x, props.y, TreeRootBounds(session), props.scale)
-        overlay_props: DismissibleOverlayProps
-        overlay_props.key = ContextMenuOverlayKey(key)
-        overlay_props.bounds = panel
-        overlay: DismissibleOverlayResult = DismissibleOverlay(session, overlay_props)
-        if overlay.closed {
-            result.open = false
-            result.closed = true
-            return result
-        }
-        panel_node: s32 = overlay.panel_node
-        if panel_node < 0 { return result }
+    // A submenu opens to the right of its row, or to the left where the view
+    // ends, with its first row level with the row that opened it.
+    ContextMenuSubmenuBounds :: (items: []ContextMenuItem, at: s32, parent_panel: Rectangle,
+        view: Rectangle, scale: float32) -> Rectangle {
+        id: s32 = items[at].id
+        size: Rectangle = ContextMenuLevelBounds(items, id, 0.0, 0.0,
+            Rectangle.{0.0, 0.0, 1000000.0, 1000000.0}, scale)
+        overlap: float32 = cast(float32)ScalePixels(2, scale)
+        left: float32 = parent_panel.x + parent_panel.width - overlap
+        if left + size.width > view.x + view.width { left = parent_panel.x - size.width + overlap }
+        top: float32 = ContextMenuRowTop(items, at, parent_panel, scale) -
+        cast(float32)ScalePixels(CONTEXT_MENU_PADDING, scale)
+        return ContextMenuLevelBounds(items, id, left, top, view, scale)
+    }
 
+    // Draws the panel holding the items under parent. The rows whose
+    // submenus are open, listed in open, stay highlighted.
+    ContextMenuLevel :: (session: Session, props: ContextMenuProps, items: []ContextMenuItem,
+        key: u64, parent: s32, panel: Rectangle, panel_node: s32, open: []s32) {
         fill: Color = StyleTokenColorOr("card", ColorFromPacked(Theme.LightSurface()))
         border: Color = StyleTokenColorOr("border", ColorFromPacked(Theme.LightBorder()))
         ink: Color = StyleTokenColorOr("text", ColorFromPacked(Theme.LightText()))
@@ -186,7 +232,7 @@ ContextMenuResult :: struct {
         highlight: Color = StyleTokenColorOr("accent-soft", ColorFromPacked(Theme.LightSelection()))
         PaintRoundedFill(session, panel_node, panel, cast(float32)ScalePixels(6, props.scale), 8, fill)
         PaintRoundedOutline(session, panel_node, panel, cast(float32)ScalePixels(6, props.scale), 8, cast(float32)ScalePixels(1, props.scale), border)
-        if !TreePushScope(session, panel_node) { return result }
+        if !TreePushScope(session, panel_node) { return }
         line_height: s32 = GlyphLineHeight(ScalePixels(CONTEXT_MENU_FONT, props.scale), "")
         inline_height: s32 = GlyphLineHeight(ScalePixels(CONTEXT_MENU_INLINE_FONT, props.scale), "")
         top: float32 = panel.y + cast(float32)ScalePixels(CONTEXT_MENU_PADDING, props.scale)
@@ -194,6 +240,10 @@ ContextMenuResult :: struct {
         index: s32 = 0
         while index < cast(s32)items.count {
             item: ContextMenuItem = items[index]
+            if item.parent != parent {
+                index += 1
+                continue
+            }
             if item.inline && !item.separator {
                 // Lay out this cell, and end the row after the last inline item.
                 width: float32 = cast(float32)ContextMenuInlineWidth(item, props.scale)
@@ -219,9 +269,7 @@ ContextMenuResult :: struct {
                         ScalePixels(CONTEXT_MENU_INLINE_FONT, props.scale), color, cell)
                 }
                 left += width + cast(float32)ScalePixels(CONTEXT_MENU_INLINE_GAP, props.scale)
-                last: bool = index + 1 >= cast(s32)items.count || !items[index + 1].inline ||
-                items[index + 1].separator
-                if last {
+                if ContextMenuInlineEnds(items, index) {
                     top += cast(float32)ScalePixels(CONTEXT_MENU_INLINE_ROW, props.scale)
                     left = panel.x + cast(float32)ScalePixels(3, props.scale)
                 }
@@ -241,21 +289,153 @@ ContextMenuResult :: struct {
                     TreeSetLabel(session, node, item.label)
                     hovered: bool = TreeHoveredAt(session, TreePrevious(session, panel_node,
                         ContextMenuRowKey(key, index), WidgetKindSelectable))
-                    if hovered && !item.disabled {
+                    opens: bool = ContextMenuOpens(items, item.id)
+                    expanded: bool = false
+                    for id: open { if id == item.id { expanded = opens } }
+                    if (hovered || expanded) && !item.disabled {
                         PaintRoundedFill(session, node, row, cast(float32)ScalePixels(4, props.scale), 8, highlight)
                     }
                     color: Color = ink
                     if item.disabled { color = muted }
+                    text_top: s32 = cast(s32)(top + (cast(float32)ScalePixels(CONTEXT_MENU_ROW, props.scale) - cast(float32)line_height) * 0.5)
                     PaintClippedLabel(session, node, item.label,
                         cast(s32)(panel.x + cast(float32)ScalePixels(CONTEXT_MENU_TEXT_INSET, props.scale)),
-                        cast(s32)(top + (cast(float32)ScalePixels(CONTEXT_MENU_ROW, props.scale) - cast(float32)line_height) * 0.5),
-                        ScalePixels(CONTEXT_MENU_FONT, props.scale), color, row)
+                        text_top, ScalePixels(CONTEXT_MENU_FONT, props.scale), color, row)
+                    if opens {
+                        arrow: s32 = GlyphWidth("›", ScalePixels(CONTEXT_MENU_FONT, props.scale), "")
+                        PaintClippedLabel(session, node, "›",
+                            cast(s32)(panel.x + panel.width) - ScalePixels(CONTEXT_MENU_TEXT_INSET, props.scale) - arrow,
+                            text_top, ScalePixels(CONTEXT_MENU_FONT, props.scale), color, row)
+                    }
                 }
                 top += cast(float32)ScalePixels(CONTEXT_MENU_ROW, props.scale)
             }
             index += 1
         }
         End(session)
+    }
+
+    #program_export
+    ContextMenu :: (session: Session, props: ContextMenuProps,
+        items: []ContextMenuItem) -> ContextMenuResult {
+        result: ContextMenuResult
+        result.open = props.open
+        if !props.open || items.count == 0 { return result }
+        key: u64 = props.key
+        if key == cast(u64)0 { key = TreeNextKey(session) }
+        if props.escape {
+            result.open = false
+            result.closed = true
+            return result
+        }
+        // The innermost open submenu, saved on the menu between frames. The
+        // command a row's click chose, and the row the pointer rests on, come
+        // from last frame's tree: resting on a row opens its submenu, or
+        // closes the submenus below the one holding it.
+        open: s32 = 0
+        if TreeIsBuilding(session) {
+            previous_overlay: s32 = TreePrevious(session, TreeCurrentParent(session),
+                ContextMenuOverlayKey(key), WidgetKindModal)
+            open = TreePreviousWidgetState(session, previous_overlay).index
+            rested: s32 = -1
+            index: s32 = 0
+            while index < cast(s32)items.count {
+                item: ContextMenuItem = items[index]
+                if !item.separator {
+                    panel_key: u64 = OverlayPanelKey()
+                    if item.parent != 0 { panel_key = ContextMenuPanelKey(item.parent) }
+                    previous_panel: s32 = TreePreviousCommitted(session, previous_overlay,
+                        panel_key, WidgetKindCustom)
+                    row: s32 = TreePreviousCommitted(session, previous_panel,
+                        ContextMenuRowKey(key, index), WidgetKindSelectable)
+                    if !item.disabled && item.id > 0 && TreeTakeActivationAt(session, row) {
+                        // Choosing a row with a submenu opens it, as on a touch screen.
+                        if !ContextMenuOpens(items, item.id) {
+                            result.activated_id = item.id
+                            result.open = false
+                            result.closed = true
+                            return result
+                        }
+                        rested = index
+                    } else if rested < 0 && TreeHoveredAt(session, row) {
+                        rested = index
+                    }
+                }
+                index += 1
+            }
+            if rested >= 0 {
+                open = items[rested].parent
+                if !items[rested].disabled && ContextMenuOpens(items, items[rested].id) { open = items[rested].id }
+            }
+        }
+        // The open submenus, outermost first: walk up from the innermost one.
+        // A submenu whose items are gone closes.
+        walk: [CONTEXT_MENU_DEPTH]s32
+        depth: s32 = 0
+        at: s32 = ContextMenuFind(items, open)
+        while at >= 0 && depth < CONTEXT_MENU_DEPTH && ContextMenuOpens(items, items[at].id) {
+            walk[depth] = at
+            depth += 1
+            if items[at].parent == 0 { break }
+            at = ContextMenuFind(items, items[at].parent)
+        }
+        if depth == 0 || items[walk[depth - 1]].parent != 0 {
+            depth = 0
+            open = 0
+        }
+        chain: [CONTEXT_MENU_DEPTH]s32
+        ids: [CONTEXT_MENU_DEPTH]s32
+        level: s32 = 0
+        while level < depth {
+            chain[level] = walk[depth - 1 - level]
+            ids[level] = items[chain[level]].id
+            level += 1
+        }
+
+        view: Rectangle = TreeRootBounds(session)
+        panels: [CONTEXT_MENU_DEPTH + 1]Rectangle
+        panels[0] = ContextMenuBounds(items, props.x, props.y, view, props.scale)
+        // A release inside an open submenu keeps the menu open.
+        keep: Rectangle
+        level = 0
+        while level < depth {
+            panels[level + 1] = ContextMenuSubmenuBounds(items, chain[level], panels[level], view, props.scale)
+            next: Rectangle = panels[level + 1]
+            if level > 0 {
+                right: float32 = keep.x + keep.width
+                bottom: float32 = keep.y + keep.height
+                if next.x + next.width > right { right = next.x + next.width }
+                if next.y + next.height > bottom { bottom = next.y + next.height }
+                if keep.x < next.x { next.x = keep.x }
+                if keep.y < next.y { next.y = keep.y }
+                next.width = right - next.x
+                next.height = bottom - next.y
+            }
+            keep = next
+            level += 1
+        }
+        overlay_props: DismissibleOverlayProps
+        overlay_props.key = ContextMenuOverlayKey(key)
+        overlay_props.bounds = panels[0]
+        overlay_props.keep_bounds = keep
+        overlay: DismissibleOverlayResult = DismissibleOverlay(session, overlay_props)
+        if overlay.closed {
+            result.open = false
+            result.closed = true
+            return result
+        }
+        if overlay.panel_node < 0 { return result }
+        TreeSetWidgetState(session, overlay.node, WidgetState.{true, open, 0})
+        ContextMenuLevel(session, props, items, key, 0, panels[0], overlay.panel_node, ids[0:depth])
+        level = 0
+        while level < depth {
+            node: s32 = TreeSubmit(session, ContextMenuPanelKey(ids[level]), overlay.node,
+                WidgetKindCustom, panels[level + 1])
+            if node >= 0 {
+                ContextMenuLevel(session, props, items, key, ids[level], panels[level + 1], node, ids[0:depth])
+            }
+            level += 1
+        }
         return result
     }
 

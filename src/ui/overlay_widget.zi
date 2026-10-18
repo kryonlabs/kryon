@@ -55,7 +55,8 @@ DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> Dism
             policy: DismissibleOverlayPolicy =
             DismissibleOverlayPolicyFor(true, false,
                 props.dismiss_disabled,
-                PointInBounds(release.x, release.y, props.bounds))
+                PointInBounds(release.x, release.y, props.bounds) ||
+                PointInBounds(release.x, release.y, props.keep_bounds))
             result.closed = policy.closed
             result.outside_released = policy.outside_released
             result.release_consumed = policy.release_consumed

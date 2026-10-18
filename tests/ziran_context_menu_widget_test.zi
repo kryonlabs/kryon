@@ -143,6 +143,88 @@ InlineFrame :: () -> s32 {
     return old
 }
 
+submenu_phase: s32;
+submenu_open: bool;
+
+Hover :: (x: float32, y: float32) {
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, false})
+}
+
+Selectable :: (x: float32, y: float32) -> bool {
+    return TreeNodeAt(TestSession(), TreeHitAt(TestSession(), x, y)).kind == WidgetKindSelectable
+}
+
+// Open, Reopen in with Codex and Claude in its submenu, and Close, at
+// (20, 20) in a 480 wide view: rows at y 24, 50 and 76. The submenu opens
+// at x 186 with Codex level with Reopen in, at y 50, and Claude at y 76.
+#program_export
+SubmenuFrame :: () -> s32 {
+    items: [5]ContextMenuItem
+    items[0].id = 1
+    items[0].label = "Open"
+    items[1].id = 2
+    items[1].label = "Reopen in"
+    items[2].id = 3
+    items[2].label = "Codex"
+    items[2].parent = 2
+    items[3].id = 4
+    items[3].label = "Claude"
+    items[3].parent = 2
+    items[4].id = 5
+    items[4].label = "Close"
+    props: ContextMenuProps
+    props.key = cast(u64)32
+    props.open = submenu_open
+    props.x = 20.0
+    props.y = 20.0
+    props.escape = submenu_phase == 9
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 480.0, 200.0})
+    result: ContextMenuResult = ContextMenu(TestSession(), props, items[0:5])
+    if !TreeFinish(TestSession()) { return -1 }
+    if submenu_phase == 0 {
+        bounds: Rectangle = ContextMenuBounds(items[0:5], 20.0, 20.0,
+            Rectangle.{0.0, 0.0, 480.0, 200.0})
+        // Only the menu's own three rows count.
+        if bounds.height != 86.0 { return -2 }
+        submenu_open = true
+    } else if submenu_phase == 1 {
+        // Open with its submenu closed; the pointer rests on Reopen in.
+        if !result.open || Selectable(200.0, 63.0) { return -3 }
+        Hover(40.0, 63.0)
+    } else if submenu_phase == 2 {
+        // The submenu opened beside it without a click.
+        if !result.open || !Selectable(200.0, 63.0) { return -4 }
+        Hover(200.0, 89.0)
+    } else if submenu_phase == 3 {
+        // Moving into the submenu keeps it open; Claude is chosen.
+        if !Selectable(200.0, 89.0) { return -5 }
+        Click(200.0, 89.0)
+    } else if submenu_phase == 4 {
+        if result.activated_id != 4 || result.open || !result.closed { return -6 }
+        submenu_open = true
+    } else if submenu_phase == 5 {
+        // Reopened with no submenu; a tap on Reopen in opens it.
+        if !result.open || Selectable(200.0, 63.0) { return -7 }
+        Click(40.0, 63.0)
+    } else if submenu_phase == 6 {
+        if result.activated_id != 0 || !result.open || !Selectable(200.0, 63.0) { return -8 }
+        // A tap on the submenu's padding keeps the menu open.
+        Click(200.0, 47.0)
+    } else if submenu_phase == 7 {
+        if !result.open || !Selectable(200.0, 63.0) { return -9 }
+        // Resting on Close, which has no submenu, closes the submenu.
+        Hover(40.0, 89.0)
+    } else if submenu_phase == 8 {
+        if !result.open || Selectable(200.0, 63.0) { return -10 }
+    } else if submenu_phase == 9 {
+        if result.open || !result.closed { return -11 }
+    }
+    PaintFlush(TestSession())
+    old: s32 = submenu_phase
+    submenu_phase += 1
+    return old
+}
+
 #program_export
 main :: () -> s32 {
     expected: s32 = 0
@@ -175,5 +257,10 @@ main :: () -> s32 {
         Rectangle.{0.0, 0.0, 640.0, 480.0}, 2.0)
     if scaled.width != 636.0 || scaled.height != 84.0 { return 301 }
     if scaled.x != 4.0 || scaled.y != 396.0 { return 302 }
+    expected = 0
+    while expected < 10 {
+        if SubmenuFrame() != expected { return 400 + expected }
+        expected += 1
+    }
     return 0
 }

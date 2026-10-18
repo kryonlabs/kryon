@@ -4,6 +4,9 @@
 DismissibleOverlayProps :: struct {
     key: u64
     bounds: Rectangle
+    // A release here, as well as inside bounds, keeps the overlay open: a
+    // context menu's open submenus.
+    keep_bounds: Rectangle
     view_width: s32
     view_height: s32
     scrim: Color

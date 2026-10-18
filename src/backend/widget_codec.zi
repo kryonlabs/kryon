@@ -9499,7 +9499,7 @@ WidgetValidContextMenuProps :: (value: HostValue) -> bool {
 }
 
 WidgetContextMenuItemCodec :: struct {
-    fields: [5]HostField
+    fields: [6]HostField
 }
 
 WidgetEncodeContextMenuItem :: (data: ContextMenuItem, codec: *WidgetContextMenuItemCodec) -> HostValue {
@@ -9507,7 +9507,7 @@ WidgetEncodeContextMenuItem :: (data: ContextMenuItem, codec: *WidgetContextMenu
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("ContextMenuItem")
     value.fields = *codec.fields[0]
-    value.field_count = 5
+    value.field_count = 6
     codec.fields[0].name = HostTextData("id")
     codec.fields[0].value = HostScalar("s32", cast(s64)data.id)
     codec.fields[1].name = HostTextData("label")
@@ -9518,6 +9518,8 @@ WidgetEncodeContextMenuItem :: (data: ContextMenuItem, codec: *WidgetContextMenu
     codec.fields[3].value = HostScalar("bool", ifx data.separator then 1 else 0)
     codec.fields[4].name = HostTextData("inline")
     codec.fields[4].value = HostScalar("bool", ifx data.inline then 1 else 0)
+    codec.fields[5].name = HostTextData("parent")
+    codec.fields[5].value = HostScalar("s32", cast(s64)data.parent)
     return value
 }
 
@@ -9551,6 +9553,12 @@ WidgetDecodeContextMenuItem :: (value: HostValue, codec: *WidgetContextMenuItemC
         field_at := HostFieldAt(value, 4, "inline")
         if field_at >= 0 {
             data.inline = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "parent")
+        if field_at >= 0 {
+            data.parent = cast(s32)value.fields[field_at].value.integer
         }
     }
     return data
@@ -9588,6 +9596,12 @@ WidgetValidContextMenuItem :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 4, "inline")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "parent")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     return true
