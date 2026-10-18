@@ -27,6 +27,8 @@ are scrubbed. RSS comes from the native runner's `/proc/self/status` VmHWM
 after the measured frames. Unlike a launcher's `wait4` high-water mark, it
 excludes the Python process's memory before exec. Schema 2 baselines use this
 measurement; capture a new baseline when migrating from schema 1. The timings
+exclude warmup; the runner CPU-seconds counter includes initialization and all
+warmup/measured frames, and excludes compilation and the Python launcher. Timings
 cover the pixmap pipeline, not native window presentation, asset decoding,
 screen-reader overhead, process idle wakeups or GPU/browser rendering.
 

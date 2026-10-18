@@ -98,6 +98,8 @@ def main():
         report = {'schema': 2, 'hardware': hardware, 'compiler': compiler, 'optimization': '-O2',
                   'viewport_pixels': [960, 600], 'warmup_frames': 10,
                   'runner_peak_rss_kib': peak_rss, 'runner_peak_rss_source': '/proc/self/status VmHWM',
+                  'runner_cpu_seconds': usage.ru_utime + usage.ru_stime,
+                  'runner_cpu_scope': 'Complete native runner, including initialization and warmup; compilation excluded',
                   'scenarios': summarize(rows)}
     failures = []
     if args.baseline:
