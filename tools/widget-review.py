@@ -133,9 +133,9 @@ def compare():
                           f'{STATE_NAMES[state]} | median {metrics["median_ms"]:.3f} ms | p95 {metrics["p95_ms"]:.3f} ms',
                           font=small, fill='#42616d')
                 draw.text((x + 12, y + 348),
-                          f'Text pool {metrics["frame_text_reserve_bytes"] / 1024:.0f} KiB | RSS {metrics["peak_rss_kib"] / 1024:.2f} MiB | max raster {metrics["idle_emissions"]}',
+                          f'Text pool {metrics["frame_text_reserve_bytes"] / 1024:.0f} KiB | peak RSS {metrics["peak_rss_kib"] / 1024:.2f} MiB | max raster {metrics["idle_emissions"]}',
                           font=small, fill='#42616d')
-        draw.text((20, height - 24), 'Actual Kryon pixmap renders | same machine, -O2 | 10 warmup + 60 frames | ms/frame', font=small, fill='#42616d')
+        draw.text((20, height - 24), 'Actual Kryon pixmap renders | same machine, -O2 | 10 warmup + 60 frames | ms/frame | RSS varies per run', font=small, fill='#42616d')
         sheet.save(directory / f'{scene:02d}-{name.replace(" ", "-")}.png')
         thumb = sheet.copy(); thumb.thumbnail((492, 794)); thumbs.append(thumb)
     for page in range(math.ceil(len(thumbs) / 6)):
