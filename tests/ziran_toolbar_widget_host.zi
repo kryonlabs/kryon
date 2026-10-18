@@ -74,8 +74,8 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
         bounds.y + bounds.height > 130.0 || color.a == cast(u8)0 {
         failed = true
     }
-    if bounds.x == 224.0 && bounds.y == 13.0 &&
-        bounds.width == 34.0 && bounds.height == 34.0 {
+    if bounds.x == 196.0 && bounds.y == 13.0 &&
+        bounds.width == 48.0 && bounds.height == 34.0 {
         if color.r != cast(u8)18 || color.g != cast(u8)52 ||
             color.b != cast(u8)86 { failed = true }
         action_fills += 1

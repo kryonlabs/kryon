@@ -73,6 +73,11 @@ Frame :: () -> s32 {
         TreeNodeAt(TestSession(), 3).kind != WidgetKindButton ||
         result.dropdown.node != 4 ||
         TreeNodeAt(TestSession(), 4).kind != WidgetKindDropdown { return -20 }
+    // Three eight-pixel glyphs need 24 pixels of content plus the button's
+    // two 12-pixel insets. Text actions must not be clipped to icon slots.
+    if TreeNodeAt(TestSession(), 2).bounds.width < 48.0 ||
+        TreeNodeAt(TestSession(), 3).bounds.x < TreeNodeAt(TestSession(), 2).bounds.x +
+            TreeNodeAt(TestSession(), 2).bounds.width { return -21 }
     if phase == 0 {
         if TreeCount(TestSession()) != 5 || result.clicked_action != -1 ||
             result.selected_menu_item != -1 ||

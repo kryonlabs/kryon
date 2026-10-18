@@ -77,6 +77,27 @@ ToolbarActionKey :: (toolbar_key: u64,
     return toolbar_key * cast(u64)131071 + cast(u64)cast(u32)(index + 1)
 }
 
+// Image actions use square slots. A text action needs the width of the same
+// resolved Button face that will paint it, including its font and padding.
+ToolbarActionWidth :: (props: ToolbarProps, item: ToolbarAction,
+    index: s32, minimum: s32, limit: s32) -> s32 {
+    if item.image.asset_path != "" || item.image.texture.id != cast(u32)0 { return minimum }
+    button: ButtonProps
+    button.id = ToolbarActionIdFor(props.id, index)
+    button.class_name = props.class_name
+    button.style_kind = StyleKindToolbar()
+    button.style_role = ToolbarActionRole()
+    button.tone = cast(ButtonTone)ButtonToneNeutral
+    button.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
+    button.label = item.label
+    button.disabled = item.disabled
+    width := cast(s32)(ButtonMeasure(button).width + 0.5)
+    if width < minimum { width = minimum }
+    if limit < 1 { limit = 1 }
+    if width > limit { width = limit }
+    return width
+}
+
 // Toolbar composes checked Button and Dropdown widgets. The caller owns the
 // returned dropdown state, and passes it back in props.dropdown next frame.
 #program_export
@@ -147,13 +168,29 @@ Toolbar :: (session: Session, props: ToolbarProps, options: []DropdownOption,
             StyleOpacityValue(divider.value.fields,
                 divider.value.opacity))))
 
+    action_count := cast(s32)actions.count
+    limit := spec.width - layout.side_padding * 2
+    if action_count > 0 { limit = (limit - (action_count - 1) * layout.action_gap) / action_count }
+    total_width: s32 = 0
+    for action_index: cast(s32)0..action_count - 1 {
+        total_width += ToolbarActionWidth(props, actions[action_index], action_index, layout.action_width, limit)
+        if action_index > 0 { total_width += layout.action_gap }
+    }
+    action_x := layout.controls_x - total_width
+    if action_count > 0 {
+        available := action_x - spec.x - layout.side_padding
+        if available < 0 { available = 0 }
+        if layout.dropdown_bounds.width > cast(float32)available { layout.dropdown_bounds.width = cast(float32)available }
+    }
     index: s32 = 0
     while index < (cast(s32)actions.count) {
         item: ToolbarAction = actions[index]
         button: ButtonProps
         button.key = ToolbarActionKey(key, item, index)
-        button.bounds = ToolbarActionBoundsFor(layout, index,
-            (cast(s32)actions.count))
+        width := ToolbarActionWidth(props, item, index, layout.action_width, limit)
+        button.bounds = .{cast(float32)action_x, cast(float32)layout.action_y,
+            cast(float32)width, cast(float32)layout.action_width}
+        action_x += width + layout.action_gap
         button.id = ToolbarActionIdFor(props.id, index)
         button.class_name = props.class_name
         button.style_kind = StyleKindToolbar()
@@ -165,6 +202,7 @@ Toolbar :: (session: Session, props: ToolbarProps, options: []DropdownOption,
         button.icon_only = item.image.asset_path != "" ||
             item.image.texture.id != cast(u32)0
         button.disabled = item.disabled
+        button.fit_content = !button.icon_only
         if SubmitButton(session, button, result.node) != 0 {
             result.clicked_action = index
         }
