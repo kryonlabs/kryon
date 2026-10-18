@@ -62,6 +62,9 @@ scroll_props = "src/ui/scroll_props.zi"
 title_bar_widget = "src/ui/title_bar_widget.zi"
 title_bar_props = "src/ui/title_bar_props.zi"
 dropdown_props = "src/ui/dropdown_props.zi"
+context_menu_widget = "src/ui/context_menu_widget.zi"
+modal_widget = "src/ui/modal_widget.zi"
+modal_props = "src/ui/modal_props.zi"
 # Lets a test process read the widget tree and press, type and drag in a
 # running app; inactive unless KRYON_TEST_DRIVER names a directory.
 TestDriver = "src/backend/test_driver.zi"

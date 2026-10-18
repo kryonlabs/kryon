@@ -27,6 +27,7 @@
 #import "title_bar_props"
 #import "modal"
 #import "modal_props"
+#import "context_menu_widget"
 using HostValueKind;
 
 WidgetRectangleCodec :: struct {
@@ -9383,6 +9384,277 @@ WidgetValidActionModalResult :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 1, "action")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetContextMenuPropsCodec :: struct {
+    fields: [6]HostField
+}
+
+WidgetEncodeContextMenuProps :: (data: ContextMenuProps, codec: *WidgetContextMenuPropsCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("ContextMenuProps")
+    value.fields = *codec.fields[0]
+    value.field_count = 6
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("open")
+    codec.fields[1].value = HostScalar("bool", ifx data.open then 1 else 0)
+    codec.fields[2].name = HostTextData("x")
+    codec.fields[2].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.x}
+    codec.fields[3].name = HostTextData("y")
+    codec.fields[3].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.y}
+    codec.fields[4].name = HostTextData("escape")
+    codec.fields[4].value = HostScalar("bool", ifx data.escape then 1 else 0)
+    codec.fields[5].name = HostTextData("scale")
+    codec.fields[5].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
+    return value
+}
+
+WidgetDecodeContextMenuProps :: (value: HostValue, codec: *WidgetContextMenuPropsCodec) -> ContextMenuProps {
+    data: ContextMenuProps
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "open")
+        if field_at >= 0 {
+            data.open = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "x")
+        if field_at >= 0 {
+            data.x = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "y")
+        if field_at >= 0 {
+            data.y = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "escape")
+        if field_at >= 0 {
+            data.escape = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "scale")
+        if field_at >= 0 {
+            data.scale = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    return data
+}
+
+WidgetValidContextMenuProps :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "ContextMenuProps" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "open")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "x")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "y")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "escape")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "scale")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    return true
+}
+
+WidgetContextMenuItemCodec :: struct {
+    fields: [5]HostField
+}
+
+WidgetEncodeContextMenuItem :: (data: ContextMenuItem, codec: *WidgetContextMenuItemCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("ContextMenuItem")
+    value.fields = *codec.fields[0]
+    value.field_count = 5
+    codec.fields[0].name = HostTextData("id")
+    codec.fields[0].value = HostScalar("s32", cast(s64)data.id)
+    codec.fields[1].name = HostTextData("label")
+    codec.fields[1].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
+    codec.fields[2].name = HostTextData("disabled")
+    codec.fields[2].value = HostScalar("bool", ifx data.disabled then 1 else 0)
+    codec.fields[3].name = HostTextData("separator")
+    codec.fields[3].value = HostScalar("bool", ifx data.separator then 1 else 0)
+    codec.fields[4].name = HostTextData("inline")
+    codec.fields[4].value = HostScalar("bool", ifx data.inline then 1 else 0)
+    return value
+}
+
+WidgetDecodeContextMenuItem :: (value: HostValue, codec: *WidgetContextMenuItemCodec) -> ContextMenuItem {
+    data: ContextMenuItem
+    {
+        field_at := HostFieldAt(value, 0, "id")
+        if field_at >= 0 {
+            data.id = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "label")
+        if field_at >= 0 {
+            data.label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "disabled")
+        if field_at >= 0 {
+            data.disabled = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "separator")
+        if field_at >= 0 {
+            data.separator = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "inline")
+        if field_at >= 0 {
+            data.inline = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidContextMenuItem :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "ContextMenuItem" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "id")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "disabled")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "separator")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "inline")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetContextMenuResultCodec :: struct {
+    fields: [3]HostField
+}
+
+WidgetEncodeContextMenuResult :: (data: ContextMenuResult, codec: *WidgetContextMenuResultCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("ContextMenuResult")
+    value.fields = *codec.fields[0]
+    value.field_count = 3
+    codec.fields[0].name = HostTextData("open")
+    codec.fields[0].value = HostScalar("bool", ifx data.open then 1 else 0)
+    codec.fields[1].name = HostTextData("activated_id")
+    codec.fields[1].value = HostScalar("s32", cast(s64)data.activated_id)
+    codec.fields[2].name = HostTextData("closed")
+    codec.fields[2].value = HostScalar("bool", ifx data.closed then 1 else 0)
+    return value
+}
+
+WidgetDecodeContextMenuResult :: (value: HostValue, codec: *WidgetContextMenuResultCodec) -> ContextMenuResult {
+    data: ContextMenuResult
+    {
+        field_at := HostFieldAt(value, 0, "open")
+        if field_at >= 0 {
+            data.open = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "activated_id")
+        if field_at >= 0 {
+            data.activated_id = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "closed")
+        if field_at >= 0 {
+            data.closed = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidContextMenuResult :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "ContextMenuResult" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "open")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "activated_id")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "closed")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     return true

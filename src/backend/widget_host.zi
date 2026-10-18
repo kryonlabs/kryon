@@ -35,6 +35,7 @@
 #import "modal_frame_widget"
 #import "modal_widget"
 #import "modal_props"
+#import "context_menu_widget"
 #import "hosted_values"
 #import "widget_codec"
 #import "bundle_names"
@@ -97,6 +98,10 @@ widget_action_modal_result_codec: WidgetActionModalResultCodec;
 widget_modal_actions: [16]ActionModalAction;
 widget_modal_action_codecs: [16]WidgetActionModalActionCodec;
 widget_option_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetDropdownOptionCodec;
+widget_context_menu_codec: WidgetContextMenuPropsCodec;
+widget_context_menu_result_codec: WidgetContextMenuResultCodec;
+widget_menu_items: [WIDGET_HOST_OPTION_LIMIT]ContextMenuItem;
+widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
@@ -117,7 +122,8 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "time_picker_widget") && function == "TimePickerHostedHost") ||
     (ModuleName(module, "title_bar_widget") && function == "TitleBarHostedHost") ||
     (ModuleName(module, "modal_frame_widget") && function == "ModalFrameHostedHost") ||
-    (ModuleName(module, "modal_widget") && function == "ActionModalHostedHost")
+    (ModuleName(module, "modal_widget") && function == "ActionModalHostedHost") ||
+    (ModuleName(module, "context_menu_widget") && function == "ContextMenuHostedHost")
 }
 
 WidgetHostPackedPath :: (path: string) -> string { return path }
@@ -206,6 +212,9 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if ModuleName(owner, "modal_widget") && name == "ActionModalHostedHost" && count == 3 {
         return WidgetHostActionModal(session, arguments, result)
+    }
+    if ModuleName(owner, "context_menu_widget") && name == "ContextMenuHostedHost" && count == 3 {
+        return WidgetHostContextMenu(session, arguments, result)
     }
     if count != 2 {
         return 0
@@ -403,5 +412,25 @@ WidgetHostActionModal :: (session: Session, arguments: *HostValue, result: *Host
     drawn := ActionModal(session, WidgetDecodeActionModalProps(arguments[1], *widget_action_modal_codec),
         widget_modal_actions[:cast(s32)values.length])
     result.* = WidgetEncodeActionModalResult(drawn, *widget_action_modal_result_codec)
+    return 1
+}
+
+// The ordinary context menu owns its overlay, hit testing and dismissal.
+// Validate the whole bounded command list before submitting any widget.
+WidgetHostContextMenu :: (session: Session, arguments: *HostValue, result: *HostValue) -> s32 {
+    if !WidgetValidContextMenuProps(arguments[1]) { return 0 }
+    values := arguments[2]
+    if values.kind != cast(s32)HostSlice || TextFromCString(values.type_name) != "[]ContextMenuItem" ||
+    values.length > cast(usize)WIDGET_HOST_OPTION_LIMIT ||
+    (values.length > cast(usize)0 && values.elements == null) { return 0 }
+    index: usize = 0
+    while index < values.length {
+        if !WidgetValidContextMenuItem(values.elements[index]) { return 0 }
+        widget_menu_items[index] = WidgetDecodeContextMenuItem(values.elements[index], *widget_menu_item_codecs[index])
+        index += cast(usize)1
+    }
+    drawn := ContextMenu(session, WidgetDecodeContextMenuProps(arguments[1], *widget_context_menu_codec),
+        widget_menu_items[:cast(s32)values.length])
+    result.* = WidgetEncodeContextMenuResult(drawn, *widget_context_menu_result_codec)
     return 1
 }

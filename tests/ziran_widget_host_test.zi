@@ -4,6 +4,7 @@
 #import "session"
 #import "geometry"
 #import "tree"
+#import "tree_input"
 #import "tree_draw"
 #import "paint_queue"
 #import "text_props"
@@ -18,6 +19,7 @@
 #import "title_bar_props"
 #import "modal_props"
 #import "dropdown_props"
+#import "context_menu_widget"
 #import "font_metrics"
 #import "hosted_values"
 #import "widget_codec"
@@ -92,6 +94,10 @@ action_modal_result: WidgetActionModalResultCodec;
 action_codec: WidgetActionModalActionCodec;
 option_codecs: [40]WidgetDropdownOptionCodec;
 option_values: [40]HostValue;
+menu_codec: WidgetContextMenuPropsCodec;
+menu_item_codecs: [3]WidgetContextMenuItemCodec;
+menu_values: [3]HostValue;
+menu_result_codec: WidgetContextMenuResultCodec;
 
 // Calls the host as a bundle does: arguments as values, names as C text.
 Call :: (module: string, function: string, arguments: []HostValue, result: *HostValue) -> s32 {
@@ -401,5 +407,42 @@ main :: () -> s32 {
     !PaintHasAsset(session, "assets/photo.png") { return 54 }
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 55 }
+    // The hosted binding renders the canonical menu, accepts exact packaged
+    // module names, and validates every item before submitting its overlay.
+    if !WidgetHostSupports("p0123456789abcdef_context_menu_widget", "ContextMenuHostedHost") ||
+    WidgetHostSupports("other_context_menu_widget", "ContextMenuHostedHost") { return 56 }
+    BeginFrame(session, cast(u64)5, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto)
+    arguments[1] = WidgetEncodeContextMenuProps(ContextMenuProps.{.key = cast(u64)201,
+            .open = true, .x = 20.0, .y = 20.0, .scale = 1.0}, *menu_codec)
+    menu_values[0] = WidgetEncodeContextMenuItem(ContextMenuItem.{.id = 1, .label = "Open"}, *menu_item_codecs[0])
+    menu_values[1] = WidgetEncodeContextMenuItem(ContextMenuItem.{.id = 2, .label = "Disabled", .disabled = true}, *menu_item_codecs[1])
+    menu_values[2] = WidgetEncodeContextMenuItem(ContextMenuItem.{.id = 3, .label = "Update"}, *menu_item_codecs[2])
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]ContextMenuItem"),
+        .length = cast(usize)3, .elements = *menu_values[0]}
+    before = PendingPaintCount(session)
+    arguments[2].length = cast(usize)33
+    if Call("context_menu_widget", "ContextMenuHostedHost", arguments[:], *result) != 0 || PendingPaintCount(session) != before { return 57 }
+    arguments[2].length = cast(usize)3
+    bad_item := menu_values[2]
+    menu_values[2] = HostScalar("s32", 1)
+    if Call("context_menu_widget", "ContextMenuHostedHost", arguments[:], *result) != 0 || PendingPaintCount(session) != before { return 58 }
+    menu_values[2] = bad_item
+    if Call("p0123456789abcdef_context_menu_widget", "ContextMenuHostedHost", arguments[:], *result) != 1 ||
+    !WidgetValidContextMenuResult(result) || !WidgetDecodeContextMenuResult(result, *menu_result_codec).open { return 59 }
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 60 }
+    target := TreeHitAt(session, 40.0, 37.0)
+    if !TreeActivateAt(session, target) { return 61 }
+    BeginFrame(session, cast(u64)5, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto)
+    if Call("context_menu_widget", "ContextMenuHostedHost", arguments[:], *result) != 1 { return 62 }
+    chosen := WidgetDecodeContextMenuResult(result, *menu_result_codec)
+    if chosen.open || !chosen.closed || chosen.activated_id != 1 { return 63 }
+    // An empty list is valid and bounded; it never underflows the decoder.
+    arguments[2].length = cast(usize)0
+    if Call("context_menu_widget", "ContextMenuHostedHost", arguments[:], *result) != 1 { return 64 }
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 65 }
     return 0
 }
