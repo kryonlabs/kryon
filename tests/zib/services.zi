@@ -1,0 +1,76 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/Media"
+#import "kryon/Clock"
+#import "service_urls"
+
+stage: s32;
+started: s64;
+
+Failure :: (code: s32) -> s32 {
+    print("ZIB service failure %\n", code)
+    if ServiceKeepOpen() {
+        stage = -code
+        return 0
+    }
+    return 1
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    label: TextProps
+    label.bounds = Rectangle.{20.0, 20.0, 800.0, 50.0}
+    label.text = "Portable audio and asynchronous HTTP"
+    Text(session, label)
+    if ServiceKeepOpen() {
+        if stage < 0 || stage == 4 {
+            unused Circle(session, CircleProps.{.center = Vector2.{160.0, 160.0},
+                .radius = 60.0, .fill = ifx stage == 4 then Color.{20, 180, 80, 255} else Color.{220, 30, 40, 255}})
+            return 0
+        }
+    }
+    if stage == 0 {
+        started = Milliseconds()
+        if started < 0 { return Failure(1) }
+        if !MediaOpen("assets/tone.wav") || MediaState() != 2 { return Failure(2) }
+        MediaPause()
+        if MediaState() != 3 { return Failure(3) }
+        MediaPause()
+        if MediaState() != 2 { return Failure(4) }
+        if !FetchText(TEXT_URL) { return Failure(5) }
+        stage = 1
+    } else if stage == 1 {
+        if FetchTextState() < 0 { return Failure(6) }
+        if FetchTextState() == 2 {
+            if FetchTextResult() != "portable response" { return Failure(7) }
+            if Milliseconds() <= started { return Failure(8) }
+            MediaStop()
+            if MediaState() != 0 { return Failure(9) }
+            if MediaOpen("../private.wav") { return Failure(10) }
+            if FetchText("file:///etc/passwd") { return Failure(11) }
+            if !MediaOpen(AUDIO_URL) || MediaState() != 1 { return Failure(12) }
+            stage = 2
+        }
+    } else if stage == 2 {
+        if MediaState() < 0 { return Failure(13) }
+        if MediaState() == 2 {
+            MediaPause()
+            if MediaState() != 3 { return Failure(14) }
+            MediaStop()
+            if !FetchText(MISSING_URL) { return Failure(15) }
+            stage = 3
+        }
+    } else if stage == 3 {
+        if FetchTextState() == 2 { return Failure(16) }
+        if FetchTextState() == -1 {
+            print("ZIB media, HTTP and clock passed\n")
+            if ServiceKeepOpen() {
+                stage = 4
+                return 0
+            }
+            return 1
+        }
+    }
+    if Milliseconds() - started > 15000 { return Failure(17) }
+    unused viewport
+    return 0
+}

@@ -44,7 +44,7 @@ $(ZIB_CANVAS_PROGRAM): $(ZIB_CANVAS_GENERATED)/.complete $(ZIB_CANVAS_RUNTIME) $
 	@mkdir -p $(dir $(ZIB_CANVAS_PROGRAM))
 	EM_CACHE=$(ZIB_CANVAS_CACHE) $(ZIB_CANVAS_CC) -O2 -I$(ZIRAN_DIR)/include \
 		-iquote $(ZIB_CANVAS_GENERATED)/c $(ZIB_CANVAS_GENERATED)/c/*.c $(ZIB_CANVAS_RUNTIME) \
-		--js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_METHODS=FS \
+		--js-library $(ZIRAN_DIR)/web/ziran_web.js -lidbfs.js -sEXPORTED_RUNTIME_METHODS=FS \
 		--embed-file $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf \
 		$(if $(ZIB_CANVAS_BUNDLE),--embed-file "$(ZIB_CANVAS_BUNDLE)@/app.zib") \
 		-sASYNCIFY -sALLOW_MEMORY_GROWTH=1 -sSTACK_SIZE=16777216 -sASYNCIFY_STACK_SIZE=1048576 \

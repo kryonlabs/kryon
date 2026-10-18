@@ -6,10 +6,11 @@ RAYLIB_A ?= $(RAYLIB_BUILD)/libraylib.a
 RAYLIB_INPUTS := $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)
 RAYLIB_HOST_OS := $(shell uname -s)
 ifeq ($(RAYLIB_HOST_OS),Darwin)
+RAYLIB_HOST_DEFINES := __APPLE__ $(if $(filter x86_64,$(shell uname -m)),__x86_64__,__aarch64__)
 RAYLIB_PLATFORM ?= PLATFORM_DESKTOP_GLFW
 RAYLIB_GRAPHICS ?= GRAPHICS_API_OPENGL_33
 RAYLIB_CFLAGS ?=
-RAYLIB_LIBS ?= -framework Cocoa -framework OpenGL -framework IOKit -framework CoreVideo
+RAYLIB_LIBS ?= -framework OpenGL -framework Cocoa -framework IOKit -framework CoreAudio -framework CoreVideo -framework QuartzCore
 RAYLIB_PLATFORM_LIBS := $(RAYLIB_LIBS)
 else ifneq ($(filter MINGW% MSYS% CYGWIN%,$(RAYLIB_HOST_OS)),)
 RAYLIB_PLATFORM ?= PLATFORM_DESKTOP_GLFW

@@ -1,0 +1,248 @@
+// Per-player media and asynchronous HTTP. Only packed resources and explicit
+// HTTP requests are accepted; a guest never supplies a host filesystem path.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/net_http"
+#import "http_transfer"
+#import "bundle_resources"
+#import "bundle_names"
+#import "hosted_values"
+#if #defined(_WIN32) {
+    #import "std/net_http_curl_linux"
+    // The Windows executable retains public functions of imported modules.
+    // Bind net_http's synchronous effect as well as the async player API.
+    native_http_bytes: [MEDIA_TEXT_LIMIT]u8;
+    #program_export
+    SendHost :: (request: HttpRequest) -> HttpResponse {
+        answer := SendCurl(request, native_http_bytes[:])
+        return HttpResponse.{.status = answer.status,
+            .body = TextFromBytes(native_http_bytes[:answer.length]),
+            .error = ifx answer.code == 0 && !answer.truncated then "" else "HTTP request failed"}
+    }
+}
+BundleAudioStream :: struct {
+    buffer: *void; processor: *void
+    sample_rate: u32; sample_size: u32; channels: u32
+}
+BundleMusic :: struct {
+    stream: BundleAudioStream; frame_count: u32; looping: bool
+    context_type: s32; context: *void
+}
+#if #defined(PLATFORM_WEB) {
+    #import "canvas_audio_engine"
+} else {
+    raylib :: #system_library "raylib";
+    MediaDeviceOpen :: () #foreign raylib "InitAudioDevice";
+    MediaDeviceReady :: () -> bool #foreign raylib "IsAudioDeviceReady";
+    MediaLoad :: (extension: *u8, bytes: *u8, count: s32) -> BundleMusic #foreign raylib "LoadMusicStreamFromMemory";
+    MediaValid :: (music: BundleMusic) -> bool #foreign raylib "IsMusicValid";
+    MediaPlay :: (music: BundleMusic) #foreign raylib "PlayMusicStream";
+    MediaPause :: (music: BundleMusic) #foreign raylib "PauseMusicStream";
+    MediaResume :: (music: BundleMusic) #foreign raylib "ResumeMusicStream";
+    MediaStop :: (music: BundleMusic) #foreign raylib "StopMusicStream";
+    MediaUpdate :: (music: BundleMusic) #foreign raylib "UpdateMusicStream";
+    MediaPlaying :: (music: BundleMusic) -> bool #foreign raylib "IsMusicStreamPlaying";
+    MediaUnload :: (music: BundleMusic) #foreign raylib "UnloadMusicStream";
+}
+
+media_c :: #system_library "c";
+MediaAllocate :: (count: usize, size: usize) -> *u8 #foreign media_c "calloc";
+MediaFree :: (bytes: *u8) #foreign media_c "free";
+MEDIA_AUDIO_LIMIT :: 8388608
+MEDIA_TEXT_LIMIT :: 1048576
+
+BundleMedia :: struct {
+    bundle: *void
+    state: s32
+    message: string
+    loaded: bool
+    source: [2048]u8
+    fetch: HttpTransfer
+    fetch_bytes: *u8
+    fetch_state: s32
+    fetch_length: s64
+    download: HttpTransfer
+    audio_bytes: *u8
+    audio: s32
+    music: BundleMusic
+}
+
+#if #defined(PLATFORM_WEB) {
+    BundleMediaPausePlayback :: (media: *BundleMedia) {
+        if media.state == 2 { AudioEngineMusicPause(media.audio) } else {
+            AudioEngineMusicResume(media.audio)
+        }
+    }
+} else {
+    BundleMediaPausePlayback :: (media: *BundleMedia) {
+        if media.state == 2 { MediaPause(media.music) } else {
+            MediaResume(media.music)
+        }
+    }
+}
+
+BundleMediaStop :: (media: *BundleMedia) {
+    HttpTransferCancel(*media.download)
+    if media.loaded {
+        #if #defined(PLATFORM_WEB) {
+            AudioEngineMusicStop(media.audio)
+            AudioEngineRelease(media.audio)
+            media.audio = 0
+        } else {
+            MediaStop(media.music)
+            MediaUnload(media.music)
+            media.music = BundleMusic.{}
+        }
+    }
+    media.loaded = false
+    media.state = 0
+    media.message = "Stopped"
+}
+
+BundleMediaClose :: (media: *BundleMedia) {
+    BundleMediaStop(media)
+    HttpTransferCancel(*media.fetch)
+    MediaFree(media.fetch_bytes)
+    MediaFree(media.audio_bytes)
+    media.* = BundleMedia.{}
+}
+
+BundleMediaDecode :: (media: *BundleMedia, bytes: string) -> bool {
+    if bytes.count <= 0 || bytes.count > MEDIA_AUDIO_LIMIT { return false }
+    data := cast(*TextDescriptor)(*bytes)
+    #if #defined(PLATFORM_WEB) {
+        AudioEngineInit()
+        media.audio = AudioEngineLoadMemory(data.data, cast(s32)bytes.count)
+        if media.audio == 0 { return false }
+        AudioEngineMusicPlay(media.audio, 0)
+    } else {
+        if !MediaDeviceReady() { MediaDeviceOpen() }
+        if !MediaDeviceReady() { return false }
+        name := TextFromCString(*media.source[0])
+        end := name.count
+        for at: 0..name.count - 1 {
+            if name[at] == cast(u8)63 || name[at] == cast(u8)35 { end = at; break }
+        }
+        start := end
+        while start > 0 && name[start - 1] != cast(u8)46 &&
+        name[start - 1] != cast(u8)47 { start -= 1 }
+        if start <= 0 || name[start - 1] != cast(u8)46 { return false }
+        extension: [16]u8
+        if !CopyCString(name[start - 1:end], extension[:]) { return false }
+        media.music = MediaLoad(*extension[0], data.data, cast(s32)bytes.count)
+        if !MediaValid(media.music) { return false }
+        media.music.looping = false
+        MediaPlay(media.music)
+    }
+    media.loaded = true
+    media.state = 2
+    media.message = "Playing"
+    return true
+}
+
+BundleMediaOpen :: (media: *BundleMedia, source: string) -> bool {
+    BundleMediaStop(media)
+    if !CopyCString(source, media.source[:]) { return false }
+    media.state = -1
+    media.message = "Could not decode the audio resource"
+    if TransferIsHttp(source) {
+        if media.audio_bytes == null {
+            media.audio_bytes = MediaAllocate(MEDIA_AUDIO_LIMIT, 1)
+        }
+        if media.audio_bytes == null { return false }
+        if !HttpTransferStart(*media.download,
+            HttpRequest.{.method = "GET", .url = source},
+            BytesFromPointer(media.audio_bytes, MEDIA_AUDIO_LIMIT), 20000) { return false }
+        media.state = 1
+        media.message = "Opening"
+        return true
+    }
+    return BundleMediaDecode(media, BundleReadAsset(media.bundle, source))
+}
+
+BundleMediaTick :: (media: *BundleMedia) {
+    if media.state == 1 {
+        status: s32; length: s64
+        ready := HttpTransferPollLength(*media.download, *status, *length)
+        if ready >= 0 {
+            HttpTransferCancel(*media.download)
+            media.state = -1
+            media.message = "Could not load the audio resource"
+            if ready == 1 && status >= 200 && status < 300 {
+                unused BundleMediaDecode(media,
+                    TextFromBytes(BytesFromPointer(media.audio_bytes, cast(u64)length)))
+            }
+        }
+    }
+    if media.loaded && media.state == 2 {
+        playing: bool
+        #if #defined(PLATFORM_WEB) {
+            playing = AudioEngineMusicPlaying(media.audio) != 0
+        } else {
+            MediaUpdate(media.music)
+            playing = MediaPlaying(media.music)
+        }
+        if !playing { media.state = 0; media.message = "Finished" }
+    }
+    if media.fetch_state == 1 {
+        status: s32; length: s64
+        ready := HttpTransferPollLength(*media.fetch, *status, *length)
+        if ready >= 0 {
+            HttpTransferCancel(*media.fetch)
+            media.fetch_state = ifx ready == 1 && status >= 200 && status < 300 then 2 else -1
+            media.fetch_length = ifx media.fetch_state == 2 then length else 0
+        }
+    }
+}
+
+BundleMediaCall :: (media: *BundleMedia, module: string, function: string,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    if !ModuleName(module, "media") { return 0 }
+    if count == 1 && (function == "MediaOpenHost" || function == "FetchTextHost") &&
+    HostScalarValid(args[0], "string", cast(s32)HostValueKind.HostString) {
+        source := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
+        ready: bool
+        if function == "MediaOpenHost" { ready = BundleMediaOpen(media, source) } else {
+            HttpTransferCancel(*media.fetch)
+            media.fetch_state = -1; media.fetch_length = 0
+            if media.fetch_bytes == null { media.fetch_bytes = MediaAllocate(MEDIA_TEXT_LIMIT, 1) }
+            if media.fetch_bytes != null {
+                ready = HttpTransferStart(*media.fetch,
+                    HttpRequest.{.method = "GET", .url = source},
+                    BytesFromPointer(media.fetch_bytes, MEDIA_TEXT_LIMIT), 20000)
+            }
+            if ready { media.fetch_state = 1 }
+        }
+        result.* = HostScalar("bool", ifx ready then 1 else 0)
+        return 1
+    }
+    if count != 0 { return 0 }
+    if function == "MediaStopHost" { BundleMediaStop(media); return 1 }
+    if function == "MediaPauseHost" {
+        if media.loaded && (media.state == 2 || media.state == 3) {
+            BundleMediaPausePlayback(media)
+            media.state = ifx media.state == 2 then 3 else 2
+            media.message = ifx media.state == 3 then "Paused" else "Playing"
+        }
+        return 1
+    }
+    if function == "MediaStateHost" || function == "FetchTextStateHost" {
+        result.* = HostScalar("s32", ifx function == "MediaStateHost" then media.state else media.fetch_state)
+        return 1
+    }
+    if function == "MediaMessageHost" || function == "FetchTextResultHost" {
+        value := media.message
+        if function == "FetchTextResultHost" {
+            value = ""
+            if media.fetch_state == 2 {
+                value = TextFromBytes(BytesFromPointer(media.fetch_bytes, cast(u64)media.fetch_length))
+            }
+        }
+        result.* = HostValue.{.kind = cast(s32)HostValueKind.HostString,
+            .type_name = HostTextData("string"), .data = HostTextData(value),
+            .length = cast(usize)value.count}
+        return 1
+    }
+    return 0
+}

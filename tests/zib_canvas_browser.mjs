@@ -12,13 +12,13 @@ const server=createServer(async(req,res)=>{
   try {
     const name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
     if(name.includes('..'))throw Error('invalid path');
-    const data=await readFile(mode==='url'&&name==='/'+basename(downloaded)?downloaded:join(root,name));
+    const data=await readFile((mode==='url'||mode==='hosted')&&name==='/'+basename(downloaded)?downloaded:join(root,name));
     res.setHeader('Content-Type',extname(name)==='.wasm'?'application/wasm':extname(name)==='.js'?'text/javascript':'text/html');
     res.end(data);
   }catch{res.writeHead(404).end();}
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const query=mode==='url'?'?bundle='+encodeURIComponent(basename(downloaded)):'';
+const query=mode==='url'||mode==='hosted'?'?bundle='+encodeURIComponent(basename(downloaded)):'';
 const browser=spawn(process.env.CHROMIUM||'chromium',['--headless','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'http://127.0.0.1:'+server.address().port+'/'+basename(html)+query],{detached:true,stdio:['ignore','ignore','pipe']});
 let errors='',socket,diagnostics='';browser.stderr.on('data',v=>errors=(errors+v).slice(-2000));
 try {
@@ -48,7 +48,52 @@ try {
   async function evaluate(expression){const r=await call('Runtime.evaluate',{expression,returnByValue:true});assert(!r.exceptionDetails,JSON.stringify(r));return r.result.value;}
   await call('Runtime.enable');
   await call('Emulation.setDeviceMetricsOverride',{width:960,height:600,deviceScaleFactor:1,mobile:false});
-  if(mode==='gallery') {
+  if(mode==='services') {
+    while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zib-open")'))await delay(100);
+    const document=await call('DOM.getDocument');
+    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});
+    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[resolve(bundleFile)]});
+    while(Date.now()<deadline&&!diagnostics.includes('ZIB media, HTTP and clock passed')) {
+      assert(!/ZIB service failure|portable execution failed|ABORT|RuntimeError/.test(diagnostics),diagnostics);
+      await delay(100);
+    }
+    assert(diagnostics.includes('ZIB media, HTTP and clock passed'),diagnostics+' '+errors);
+    console.log('Browser ZIB audio, asynchronous HTTP and clock passed');
+  } else if(mode==='hosted') {
+    const imageReady='(()=>{const c=document.querySelector("canvas");if(!c)return false;const p=c.getContext("2d").getImageData(550,130,1,1).data;return p[0]===230&&p[1]===30&&p[2]===40;})()';
+    const textPixels='Array.from(document.querySelector("canvas").getContext("2d").getImageData(40,128,300,40).data).join(",")';
+    async function ready(){const end=Date.now()+30000;while(Date.now()<end){if(await evaluate(imageReady))return;await delay(100);}throw Error('Hosted app did not render: '+diagnostics+' '+await evaluate('document.querySelector("#zib-controls span").textContent'));}
+    await ready();
+    const original=await evaluate(textPixels);
+    const position=await evaluate('(()=>{const r=document.querySelector("canvas").getBoundingClientRect();return {x:r.x+100,y:r.y+70};})()');
+    await call('Input.dispatchMouseEvent',{type:'mouseMoved',...position});
+    await call('Input.dispatchMouseEvent',{type:'mousePressed',...position,button:'left',buttons:1,clickCount:1});
+    await delay(150);
+    await call('Input.dispatchMouseEvent',{type:'mouseReleased',...position,button:'left',buttons:0,clickCount:1});
+    await delay(1600);
+    const clicked=await evaluate(textPixels);
+    assert.notEqual(clicked,original,'Hosted button did not update app state');
+    await call('Page.reload');
+    await delay(500);
+    await ready();
+    assert.equal(await evaluate(textPixels),clicked,'Browser reload discarded the app document');
+    const document=await call('DOM.getDocument');
+    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});
+    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[resolve(downloaded)]});
+    await delay(700);
+    assert.equal(await evaluate(textPixels),clicked,'Replacing the same hosted app lost its document');
+    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'invalid.zib')]});
+    await delay(400);
+    assert.equal(await evaluate(textPixels),clicked,'Invalid replacement discarded the running hosted app');
+    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'hosted_other.zib')]});
+    await delay(700);
+    assert.equal(await evaluate(textPixels),original,'A different app read the first app document');
+    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[resolve(downloaded)]});
+    await delay(700);
+    assert.equal(await evaluate(textPixels),clicked,'Switching back lost the first app document');
+    assert(!/ABORT|RuntimeError/.test(diagnostics),diagnostics);
+    console.log('Browser hosted ZIB images, widgets, persistence, app isolation and invalid replacement passed');
+  } else if(mode==='gallery') {
     while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zib-open")'))await delay(100);
     const document=await call('DOM.getDocument');
     const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});

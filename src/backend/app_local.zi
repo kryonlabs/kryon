@@ -6,7 +6,7 @@
 #import "std/text"
 #import "std/vec"
 #import "std/date_parse"
-Time :: #import "std/date_time_linux";
+#import "bundle_time"
 #import "app_context_host"
 #import "app_files"
 #import "app_media_files"
@@ -99,15 +99,11 @@ AppLocalCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "AppNowHost" && count == 0 {
         result.* = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float64"),
-            .real = cast(float64)Time.UnixMilliseconds() / 1000.0}
+            .real = cast(float64)BundleUnixMilliseconds() / 1000.0}
         return 1
     }
     if name == "AppLocalOffsetHost" && count == 0 {
-        now := Time.UnixNow()
-        date := Time.LocalAt(now)
-        seconds := DaysFromCivil(date.year, date.month, date.day) * 86400 +
-        cast(s64)(date.hour * 3600 + date.minute * 60 + date.second)
-        result.* = HostScalar("s32", cast(s64)(seconds - now))
+        result.* = HostScalar("s32", cast(s64)BundleLocalOffset())
         return 1
     }
     if name == "DocumentStatusHost" && count == 0 {

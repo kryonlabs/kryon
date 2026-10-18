@@ -149,10 +149,10 @@ Run :: (bundle: *void, check: bool) -> s32 {
     // --check performs capability validation without executing any module.
     if check {
         accepted := true
-        for index: cast(u64)0..BundleCapabilities(bundle) - 1 {
+        for index: 0..cast(s64)BundleCapabilities(bundle) - 1 {
             accepted = accepted && AppContextAllows(cast(*void)(*app),
-                TextFromCString(BundleCapabilityModuleName(bundle, index)),
-                TextFromCString(BundleCapabilityFunctionName(bundle, index)))
+                TextFromCString(BundleCapabilityModuleName(bundle, cast(u64)index)),
+                TextFromCString(BundleCapabilityFunctionName(bundle, cast(u64)index)))
         }
         HostedAppClose(*app.app)
         return ifx accepted then 0 else 1

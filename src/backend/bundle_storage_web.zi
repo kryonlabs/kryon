@@ -1,0 +1,45 @@
+// Persistent private files for browser-hosted apps. The filesystem API stays
+// identical to native AppFiles, with IndexedDB providing the backing store.
+#import "std/web"
+#import "page_files"
+
+storage_started: bool;
+storage_ready: bool;
+storage_failed: bool;
+storage_busy: bool;
+storage_callback: s32;
+
+BundleStorageSynced :: (context: s32, error: s32, second: s32, third: s32) {
+    storage_busy = false
+    if WebTypeOf(error) != WebTypeNull && WebTypeOf(error) != WebTypeUndefined {
+        storage_failed = true
+        return
+    }
+    storage_ready = true
+}
+
+BundleStorageSync :: (populate: bool) -> bool {
+    if storage_busy || storage_failed { return false }
+    if storage_callback == 0 { storage_callback = WebFunction(BundleStorageSynced, 0) }
+    storage_busy = true
+    unused WebCall2(PageFileSystem(), WebName("syncfs"), WebBool(populate),
+        WebObject(storage_callback))
+    if WebFailed() { storage_busy = false; storage_failed = true; return false }
+    return true
+}
+
+BundleStorageOpen :: () -> bool {
+    if storage_started { return !storage_failed }
+    storage_started = true
+    files := PageFileSystem()
+    backend := WebGetObject(WebGetObject(files, WebName("filesystems")), WebName("IDBFS"))
+    if backend == 0 { storage_failed = true; return false }
+    unused WebCall1(files, WebName("mkdirTree"), WebText("/kryon-apps"))
+    unused WebCall3(files, WebName("mount"), WebObject(backend),
+        WebObject(WebNewObject()), WebText("/kryon-apps"))
+    if WebFailed() { storage_failed = true; return false }
+    return BundleStorageSync(true)
+}
+
+BundleStorageReady :: () -> bool { return storage_ready && !storage_failed }
+BundleStorageFailed :: () -> bool { return storage_failed }

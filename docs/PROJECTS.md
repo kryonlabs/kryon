@@ -188,7 +188,9 @@ beside the bundle. `make zib-raylib` builds that player directly; pass a ZIB
 path to it or use `--check FILE.zib` to validate without opening a window.
 Images are decoded directly from the bundle, with no resource extraction.
 The native player carries its host font beside the executable. Linux uses
-SDL/GLES; Windows and macOS use GLFW/OpenGL. Cross builds can supply
+SDL/GLES; Windows and macOS use GLFW/OpenGL. HTTP uses libcurl; install its
+development package or supply `ZIB_RAYLIB_HTTP_LIBS` for your target.
+Cross builds can supply
 `ZIB_RAYLIB_CC`, `ZIB_RAYLIB_AR`, `ZIB_RAYLIB_OBJCOPY`,
 `ZIB_RAYLIB_ARCHIVE`, `ZIB_RAYLIB_DEFINES` and `ZIB_RAYLIB_LIBS`.
 Use a separate `ZIB_RAYLIB_DIR` for each target. macOS uses the same renderer
@@ -210,10 +212,22 @@ only an explicitly selected disposable emulator.
 `make zib-canvas` builds a generic browser player with no embedded app.
 `ZIB_CANVAS_BUNDLE=/absolute/path/app.zib` optionally embeds a default app.
 A same-origin relative `?bundle=path/app.zib` opens a hosted download.
-The browser player currently supports ordinary `Frame` bundles, drawing,
-input, fonts, embedded images and the browser clipboard. Hosted-app services
-and media playback are separate providers; the browser player does not yet
-implement them.
+The browser player supports ordinary `Frame` bundles and standalone
+`AppContext` apps, drawing, input, fonts, embedded images and the browser
+clipboard. Native, Android and browser players provide packed audio,
+asynchronous HTTP audio/text and a monotonic clock. Requests accept only
+HTTP/HTTPS; guest paths cannot read host files. Android ZIB scaffolds include
+a network manifest overlay; ordinary native builds do not use that overlay.
+
+Standalone `AppContext` apps use the existing lifecycle and hosted widget
+contracts. They receive a private document directory per declared app ID,
+wall time, local time offset, locale, embedded assets and clipboard services.
+Native apps save on close; browser apps save periodically to IndexedDB and
+restore on reload. Native documents live under `$XDG_DATA_HOME/kryon/apps`
+(or `$HOME/.local/share/kryon/apps`), `%LOCALAPPDATA%/kryon/apps` on Windows,
+and Android's private application storage. `KRYON_APP_DATA` can select a
+different native parent directory. Account/device services that the host
+does not provide return the existing explicit unavailable response.
 
 `make gallery-zib` exports every enabled gallery example with its full source
 behavior and embedded assets under `build/gallery-zib/`; `index.json` maps
@@ -227,6 +241,12 @@ the installed compiler on `PATH` can use a different format.
 private X server. `make zib-canvas-test` checks that the desktop and browser
 bundles are identical and exercises browser startup, images, clicks, Unicode,
 resizing, file replacement and rejection of invalid files.
+`make zib-services-test` exercises real media and HTTP on native and browser
+players. `make zib-hosted-test` checks hosted widgets, packed images and
+document persistence. `make zib-headless-test` runs VM drawing, packed PNG,
+retained input and Unicode without a display. The Android service and hosted
+tests require `--android-serial emulator-NNNN` and `--serial emulator-NNNN`
+respectively and verify the disposable `KryonZib` AVD before installing.
 
 Custom native hosts can load `kryon/bundle_player`, prepare embedded assets,
 attach `kryon/bundle_raster` callbacks and then start the instance. This lets

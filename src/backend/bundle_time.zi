@@ -1,0 +1,53 @@
+// Local wall time for portable app services on the host's platform.
+#if #defined(PLATFORM_WEB) {
+    #import "std/web"
+    BundleUnixMilliseconds :: () -> s64 {
+        scope := WebScope()
+        value := WebCall0(WebGetObject(WebGlobal, WebName("Date")), WebName("now"))
+        result := cast(s64)WebAsNumber(value)
+        WebEnd(scope)
+        return result
+    }
+    BundleLocalOffset :: () -> s32 {
+        scope := WebScope()
+        date := WebNew0(WebGetObject(WebGlobal, WebName("Date")))
+        minutes := WebAsNumber(WebCall0(date, WebName("getTimezoneOffset")))
+        WebEnd(scope)
+        return -cast(s32)minutes * 60
+    }
+} else #if #defined(_WIN32) {
+    kernel32 :: #system_library "kernel32";
+    BundleFileTime :: struct { low: u32; high: u32; }
+    BundleTimeZone :: struct {
+        bias: s32; standard_name: [32]u16; standard_date: [8]u16
+        standard_bias: s32; daylight_name: [32]u16; daylight_date: [8]u16
+        daylight_bias: s32
+    }
+    BundleSystemTime :: (time: *BundleFileTime) #foreign kernel32 "GetSystemTimeAsFileTime";
+    BundleSystemZone :: (zone: *BundleTimeZone) -> u32 #foreign kernel32 "GetTimeZoneInformation";
+    BundleUnixMilliseconds :: () -> s64 {
+        time: BundleFileTime
+        BundleSystemTime(*time)
+        ticks := (cast(u64)time.high << 32) | cast(u64)time.low
+        return cast(s64)(ticks / cast(u64)10000) - 11644473600000
+    }
+    BundleLocalOffset :: () -> s32 {
+        zone: BundleTimeZone
+        state := BundleSystemZone(*zone)
+        bias := zone.bias
+        if state == cast(u32)1 { bias += zone.standard_bias }
+        if state == cast(u32)2 { bias += zone.daylight_bias }
+        return -bias * 60
+    }
+} else {
+    Time :: #import "std/date_time_linux";
+    #import "std/date_parse"
+    BundleUnixMilliseconds :: () -> s64 { return Time.UnixMilliseconds() }
+    BundleLocalOffset :: () -> s32 {
+        now := Time.UnixNow()
+        date := Time.LocalAt(now)
+        seconds := DaysFromCivil(date.year, date.month, date.day) * 86400 +
+            cast(s64)(date.hour * 3600 + date.minute * 60 + date.second)
+        return cast(s32)(seconds - now)
+    }
+}

@@ -155,6 +155,23 @@ zib-test: build/bin/kryon zib-player
 
 test: zib-test zib-reload-test
 
+.PHONY: zib-services-test zib-hosted-test zib-headless-test
+zib-headless-test: zib-raylib
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
+		python3 tests/zib_headless_test.py
+zib-services-test: zib-raylib zib-canvas
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
+		python3 tests/zib_services_test.py
+
+zib-hosted-test: zib-raylib zib-canvas
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
+		python3 tests/zib_hosted_test.py
+
+test: zib-services-test zib-hosted-test zib-headless-test
+
 .PHONY: zib-canvas-test zib-raylib-test zib-android-test gallery-zib gallery-zib-test
 gallery-zib: project-toolchain
 	python3 scripts/export-gallery-zib.py --ziran $(ZIRAN_BIN)

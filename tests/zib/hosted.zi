@@ -1,0 +1,53 @@
+#import "kryon/app_context"
+#import "kryon/app_protocol"
+#import "kryon/geometry"
+#import "kryon/button_widget"
+#import "kryon/button_props"
+#import "kryon/text_widget"
+#import "kryon/text_props"
+#import "kryon/image_widget"
+#import "kryon/image_props"
+
+loaded: bool;
+clicked: bool;
+
+#program_export
+main :: () -> s32 {
+    mode := AppMode()
+    if mode == APP_IDENTIFY {
+        #if #defined(HOSTED_OTHER) {
+            AppIdentity("portable.other")
+        } else {
+            AppIdentity("portable.probe")
+        }
+        AppDescribe("Portable hosted app", "")
+        return APP_PROTOCOL
+    }
+    if mode == APP_SAVE {
+        return ifx DocumentWrite("state.txt", ifx clicked then "clicked" else "new") then 0 else 1
+    }
+    if mode != APP_FRAME { return 0 }
+    if !loaded {
+        loaded = true
+        clicked = DocumentRead("state.txt") == "clicked"
+        if clicked { print("Hosted document restored\n") }
+        if AppNow() < 1700000000.0 || AppLocalOffset() < -43200 || AppLocalOffset() > 50400 { return 1 }
+        if AppSupports("unavailable.service") { return 2 }
+        if AppService("unavailable.service", "") != "{\"status\":\"unavailable\"}" { return 3 }
+    }
+    button: ButtonProps
+    button.key = cast(u64)1
+    button.bounds = Rectangle.{40.0, 40.0, 240.0, 64.0}
+    button.label = "Save a portable document"
+    if Button(AppSession(), button) > 0 { clicked = true; print("Hosted document clicked\n") }
+    label: TextProps
+    label.bounds = Rectangle.{40.0, 128.0, 400.0, 40.0}
+    label.text = ifx clicked then "Saved document" else "New document"
+    label.font = 24
+    Text(AppSession(), label)
+    image: ImageProps
+    image.bounds = Rectangle.{500.0, 80.0, 200.0, 200.0}
+    image.asset_path = AppAssetPath("assets/red.png")
+    Image(AppSession(), image)
+    return 0
+}

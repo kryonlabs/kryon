@@ -13,7 +13,9 @@ from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
 from raylib_project_test import png_pixels, rgb, solid_png
 
 p = argparse.ArgumentParser()
-p.add_argument('--serial', help='An explicitly selected, disposable emulator-* device')
+target = p.add_mutually_exclusive_group()
+target.add_argument('--serial', help='An explicitly selected, disposable emulator-* device')
+target.add_argument('--build-only', action='store_true', help='Build and inspect the APK; never invoke adb')
 p.add_argument('--skip-build', action='store_true')
 p.add_argument('--gallery-index', type=Path)
 a = p.parse_args()
@@ -86,9 +88,11 @@ with zipfile.ZipFile(apk) as archive:
     for abi in ('arm64-v8a', 'armeabi-v7a', 'x86_64'):
         assert f'lib/{abi}/libmain.so' in archive.namelist(), abi
 generated = list((project / 'droid/app/.cxx').rglob('ziran/generated/*_app.c'))
-assert not generated, 'The APK compiled the guest app natively'
+# The generic BundleApp host is native; the selected product app is not.
+assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
+           for path in generated), 'The APK compiled the guest app natively'
 print('Android three-ABI generic APK, embedded assets and identical desktop ZIB passed', flush=True)
-if not a.serial:
+if a.build_only or not a.serial:
     raise SystemExit(0)
 assert a.serial.startswith('emulator-'), 'This test operates only a disposable emulator'
 adb = Path(env['ANDROID_HOME']) / 'platform-tools/adb'

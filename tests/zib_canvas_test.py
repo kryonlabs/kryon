@@ -1,5 +1,6 @@
 """The same app.zib runs on desktop and through the browser VM renderer."""
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -67,10 +68,13 @@ assert portable.read_bytes() == native.read_bytes(), 'Native renderer changed th
 native_player = project / 'build/generated/native/player/zib'
 run([native_player, '--check', native])
 assert (native_player.parent / 'kryon-font.ttf').is_file()
-assert not list((native_player.parent / 'generated/c').glob('*_app.c'))
+assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
+           for path in (native_player.parent / 'generated/c').glob('*_app.c'))
 # The web shell contains the renderer and VM, never native app/widget output.
 generated = project / 'build/generated/web/player/generated/c'
-assert not list(generated.glob('*_app.c')) and not list(generated.glob('*_zib_run.c'))
+assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
+           for path in generated.glob('*_app.c'))
+assert not list(generated.glob('*_zib_run.c'))
 for mode in ('keyboard', 'unicode'):
     run(['node', ROOT / 'tests/zib_canvas_browser.mjs',
          project / 'build/zib_canvas_probe-web.html', mode])

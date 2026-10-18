@@ -1,0 +1,239 @@
+// A platform-neutral standalone host for AppContext applications. The same
+// lifecycle, widget implementation and private document provider serve every
+// renderer; products never need to carry another harness's app bundle.
+#import "app_context_host"
+#import "app_protocol"
+#import "app_local"
+#import "app_files"
+#import "hosted_app"
+#import "hosted_values"
+#import "widget_host"
+#import "bundle_resources"
+#import "bundle_names"
+#import "session"
+#import "geometry"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "key_input"
+#import "text_input_props"
+#import "system_clipboard"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/text"
+#import "std/vec"
+
+BundleApp :: struct {
+    app: AppContext
+    local: AppLocal
+    directory: string
+    extracted_assets: bool
+    ready: bool
+    failed: bool
+    error: string
+}
+app_c :: #system_library "c";
+BundleEnvironment :: (name: *u8) -> *u8 #foreign app_c "getenv";
+
+BundleAppEnvironment :: (name: string) -> string {
+    key: [64]u8
+    if !CopyCString(name, key[:]) { return "" }
+    value := BundleEnvironment(*key[0])
+    return ifx value == null then "" else TextFromCString(value)
+}
+
+BundleAppDataRoot :: () -> string {
+    value := BundleAppEnvironment("KRYON_APP_DATA")
+    suffix := ""
+    if value == "" {
+        value = BundleAppEnvironment("XDG_DATA_HOME")
+        suffix = "/kryon/apps"
+    }
+    if value == "" {
+        #if #defined(_WIN32) {
+            value = BundleAppEnvironment("LOCALAPPDATA")
+        } else {
+            value = BundleAppEnvironment("HOME")
+            suffix = "/.local/share/kryon/apps"
+        }
+    }
+    if value == "" { return "" }
+    bytes: Vec(u8)
+    for byte: value {
+        unused VecPush(bytes, ifx byte == cast(u8)92 then cast(u8)47 else byte)
+    }
+    BuilderPrint(*bytes, "%", suffix)
+    return BuilderFinish(bytes)
+}
+
+// Widget callbacks are scoped by Begin/End around one synchronous frame.
+bundle_drawing_app: *BundleApp;
+bundle_asset_path: [4096]u8;
+
+BundleIsApp :: (bundle: *void) -> bool {
+    for index: 0..cast(s64)BundleCapabilities(bundle) - 1 {
+        if AppModule(TextFromCString(BundleCapabilityModuleName(bundle, cast(u64)index))) { return true }
+    }
+    return false
+}
+
+BundleAppAllows :: (context: *void, name: string) -> bool {
+    host := cast(*BundleApp)context
+    return name == "AppAssetPathHost" || AppLocalAllows(cast(*void)(*host.local), name)
+}
+
+BundleAppServices :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    host := cast(*BundleApp)context
+    if TextFromCString(function) == "AppAssetPathHost" && count == 1 &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostValueKind.HostString) {
+        path := AppArgumentText(arguments[0])
+        value := ""
+        if BundleReadAsset(host.app.app.bundle, path).count > 0 { value = path }
+        result.* = AppLocalText(value)
+        return 1
+    }
+    return AppLocalCall(cast(*void)(*host.local), module, function, arguments, count, result)
+}
+
+BundleAppWidgets :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    unused context
+    return WidgetHostCall(null, module, function, arguments, count, result)
+}
+
+BundleAppAssetAllowed :: (path: string) -> bool {
+    if bundle_drawing_app == null || !AppFileNameValid(path) { return path == "" }
+    return BundleReadAsset(bundle_drawing_app.app.app.bundle, path).count > 0
+}
+
+BundleAppAssetResolve :: (path: string) -> string {
+    host := bundle_drawing_app
+    if host == null || !host.extracted_assets || path == "" { return path }
+    root := host.directory
+    length := root.count + path.count + 1
+    if length >= bundle_asset_path.count { return "" }
+    for index: 0..root.count - 1 { bundle_asset_path[index] = root[index] }
+    bundle_asset_path[root.count] = cast(u8)47
+    for index: 0..path.count - 1 { bundle_asset_path[root.count + 1 + index] = path[index] }
+    bundle_asset_path[length] = 0
+    return TextFromBytes(bundle_asset_path[:length])
+}
+
+BundleAppSave :: (host: *BundleApp) -> bool {
+    if host.failed || host.app.app.failed { return false }
+    return !host.ready || AppContextRun(*host.app, APP_SAVE)
+}
+
+BundleAppReadAsset :: (host: *BundleApp, path: string) -> string {
+    return BundleReadAsset(host.app.app.bundle, path)
+}
+
+BundleAppClose :: (host: *BundleApp) {
+    unused BundleAppSave(host)
+    if SessionValid(host.app.session) { unused SessionClose(host.app.session) }
+    AppFilesClose(*host.local.files)
+    AppFileFree(host.local.read_value)
+    AppFileFree(host.directory)
+    HostedAppClose(*host.app.app)
+    host.* = BundleApp.{}
+}
+
+BundleAppPrepare :: (host: *BundleApp, bytes: string, root: string) -> bool {
+    BundleAppClose(host)
+    if root == "" { host.error = "The app private document directory is unavailable"; return false }
+    host.local.locale = "en"
+    host.app.services = BundleAppServices
+    host.app.widgets = BundleAppWidgets
+    host.app.allows = BundleAppAllows
+    host.app.context = cast(*void)host
+    if !AppContextOpen(*host.app, bytes) {
+        host.error = "The app identity or required capabilities could not initialize"
+        return false
+    }
+    host.local.bundle = host.app.app.bundle
+    path: Vec(u8)
+    BuilderPrint(*path, "%/%", root, TextFromCString(*host.app.id[0]))
+    host.directory = BuilderFinish(path)
+    host.app.session = SessionOpen()
+    if !SessionValid(host.app.session) {
+        BundleAppClose(host)
+        host.error = "The app UI session could not open"
+        return false
+    }
+    return true
+}
+
+BundleAppOpen :: (host: *BundleApp, bytes: string, root: string,
+    previous: *BundleApp = null) -> bool {
+    if !BundleAppPrepare(host, bytes, root) { return false }
+    if previous != null && previous.ready && host.directory == previous.directory {
+        // Prepare and identify the replacement before changing the current
+        // app. Move its already-owned lock only after a successful save.
+        if !BundleAppSave(previous) {
+            BundleAppClose(host)
+            host.error = "The current app document could not save"
+            return false
+        }
+        host.local.files = previous.local.files
+        host.local.files.root = host.directory
+        previous.local.files = AppFiles.{}
+        previous.ready = false
+        host.ready = true
+        return true
+    }
+    if !AppFilesOpen(*host.local.files, host.directory) {
+        BundleAppClose(host)
+        host.error = "The app private document directory could not open"
+        return false
+    }
+    host.ready = true
+    return true
+}
+
+BundleAppCheck :: (bundle: *void) -> bool {
+    host: BundleApp
+    host.app.allows = BundleAppAllows
+    host.app.context = cast(*void)(*host)
+    for index: 0..cast(s64)BundleCapabilities(bundle) - 1 {
+        if !AppContextAllows(cast(*void)(*host.app),
+            TextFromCString(BundleCapabilityModuleName(bundle, cast(u64)index)),
+            TextFromCString(BundleCapabilityFunctionName(bundle, cast(u64)index))) { return false }
+    }
+    return true
+}
+
+BundleAppFrame :: (host: *BundleApp, bounds: Rectangle, pointer: PointerFrame,
+    secondary: SecondaryPointerFrame, key: s32, modifiers: s32, wheel: float32,
+    typed: string, seconds: float64) -> bool {
+    if !host.ready { return false }
+    app := *host.app
+    TreePointerUpdate(app.session, pointer)
+    TreeSecondaryPointerUpdate(app.session, secondary)
+    PointerWheelSend(app.session, pointer.x, pointer.y, wheel)
+    KeyboardModifiersSend(app.session, modifiers)
+    if key != 0 { KeyboardSend(app.session, key) }
+    app.bounds = bounds
+    app.scale = 1.0
+    app.font = 18
+    app.key = key
+    app.modifiers = modifiers
+    app.input = TextFieldInputFor(key, modifiers, typed)
+    app.area_input = TextAreaInputFor(key, modifiers, typed)
+    app.area_input.now_seconds = seconds
+    clipboard: [16384]u8
+    if app.input.paste {
+        pasted := SystemClipboardText(clipboard[:])
+        app.input.paste_text = pasted
+        app.area_input.paste_text = pasted
+    }
+    if BeginFrame(app.session, cast(u64)1, bounds) != FrameStatus.FrameOk { return false }
+    bundle_drawing_app = host
+    WidgetHostBegin(app.session, BundleAppAssetAllowed, BundleAppAssetResolve)
+    ok := AppContextRun(app, APP_FRAME)
+    WidgetHostEnd()
+    bundle_drawing_app = null
+    if !ok { TreeCancel(app.session); host.failed = true; return false }
+    return EndFrame(app.session) == FrameStatus.FrameOk
+}

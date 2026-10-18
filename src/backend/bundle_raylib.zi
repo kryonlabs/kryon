@@ -3,6 +3,17 @@
 Player :: #import "bundle_player";
 #import "bundle_raster"
 #import "bundle_resources"
+#import "bundle_media"
+#import "bundle_app"
+#import "app_files"
+#import "tree_input"
+#import "key_input"
+#import "session"
+#if #defined(ANDROID_BUILD) {
+    #import "android_jni"
+    bundle_path_c :: #system_library "c";
+    BundleCanonicalPath :: (path: *u8, output: *u8) -> *u8 #foreign bundle_path_c "realpath";
+}
 #import "raylib_runtime"
 #import "geometry"
 #import "hosted_values"
@@ -10,15 +21,29 @@ Player :: #import "bundle_player";
 #import "std/bundle_host"
 #import "std/byte_text_linux"
 
+#if !#defined(ANDROID_BUILD) {
+    // Desktop hosts have physical keyboards. Touch keyboard ownership stays
+    // with the Android shell's frame/input adapter.
+    #program_export
+    SetPlatformTextKeyboardVisible :: (session: Session, visible: bool) {
+        unused session
+        unused visible
+    }
+}
+
 RaylibBundle :: struct {
     player: Player.Player
     raster: RasterHost
+    media: BundleMedia
+    app: BundleApp
+    hosted: bool
 }
 
 raylib :: #system_library "raylib";
 ReadFileBytes :: (path: *u8, count: *s32) -> *u8 #foreign raylib "LoadFileData";
 FreeFileBytes :: (bytes: *u8) #foreign raylib "UnloadFileData";
 ApplicationDirectory :: () -> *u8 #foreign raylib "GetApplicationDirectory";
+BundleClockSeconds :: () -> float64 #foreign raylib "GetTime";
 
 RaylibBundleRead :: (path: string) -> string {
     name: [4096]u8
@@ -53,12 +78,21 @@ RaylibBundleTypeface :: () -> bool {
 
 RaylibBundleAsset :: (context: *void, path: string) -> string {
     host := cast(*RaylibBundle)context
+    if host.hosted { return BundleAppReadAsset(*host.app, path) }
     return BundleReadAsset(host.player.bundle, path)
 }
 
 RaylibBundlePlatform :: (context: *void, module: *u8, function: *u8,
     args: *HostValue, count: s32, result: *HostValue) -> s32 {
     name := TextFromCString(function)
+    host := cast(*RaylibBundle)context
+    if BundleMediaCall(*host.media, TextFromCString(module), name, args, count, result) == 1 {
+        return 1
+    }
+    if Player.ModuleName(TextFromCString(module), "clock") && name == "ClockMillisecondsHost" && count == 0 {
+        result.* = HostScalar("s64", cast(s64)(BundleClockSeconds() * 1000.0))
+        return 1
+    }
     if name == "WindowFocusedHost" && count == 0 {
         result.* = HostScalar("bool", ifx RaylibFocused() then 1 else 0)
         return 1
@@ -78,20 +112,43 @@ RaylibBundlePlatform :: (context: *void, module: *u8, function: *u8,
     return 0
 }
 
-RaylibBundleOpen :: (host: *RaylibBundle, data: string) -> bool {
+RaylibBundleOpen :: (host: *RaylibBundle, data: string, previous: *RaylibBundle = null) -> bool {
+    RaylibBundleClose(host)
     bytes := cast(*TextDescriptor)(*data)
-    if !Player.PlayerLoad(*host.player, BytesFromPointer(bytes.data, cast(u64)data.count),
-        RaylibBundlePlatform, null) { return false }
-    // Media services require an explicit platform provider, never a silent
-    // no-op implementation in an otherwise successful player.
-    index: u64
-    while index < BundleCapabilities(host.player.bundle) {
-        if Player.ModuleName(TextFromCString(BundleCapabilityModuleName(host.player.bundle, index)), "media") {
-            Player.PlayerClose(*host.player)
+    checked := OpenBundleBytes(bytes.data, cast(u64)data.count)
+    if checked == null { return false }
+    host.hosted = BundleIsApp(checked)
+    CloseBundle(checked)
+    if host.hosted {
+        directory := ""
+        canonical: [4096]u8
+        #if #defined(ANDROID_BUILD) {
+            value := AndroidInternalDataPath()
+            if value != null && BundleCanonicalPath(value, *canonical[0]) != null {
+                directory = TextFromCString(*canonical[0])
+            }
+        } else {
+            directory = BundleAppDataRoot()
+        }
+        previous_app: *BundleApp
+        if previous != null && previous.hosted { previous_app = *previous.app }
+        ready := BundleAppOpen(*host.app, data, directory, previous_app)
+        #if !#defined(ANDROID_BUILD) {
+            AppFileFree(directory)
+        }
+        if !ready {
+            print("kryon: %\n", host.app.error)
+            RaylibBundleClose(host)
             return false
         }
-        index += 1
+        host.player.closed = false
+        host.player.failed = false
+        RaylibSetAssetReader(RaylibBundleAsset, cast(*void)host)
+        return true
     }
+    if !Player.PlayerLoad(*host.player, BytesFromPointer(bytes.data, cast(u64)data.count),
+        RaylibBundlePlatform, cast(*void)host) { return false }
+    host.media.bundle = host.player.bundle
     host.raster = RasterHost.{
         .asset_bundle = host.player.bundle,
         .measure_width = MeasureGlyphWidth, .measure_height = MeasureGlyphLineHeight,
@@ -109,8 +166,11 @@ RaylibBundleOpen :: (host: *RaylibBundle, data: string) -> bool {
 }
 
 RaylibBundleClose :: (host: *RaylibBundle) {
+    BundleMediaClose(*host.media)
+    BundleAppClose(*host.app)
     RaylibClearAssetReader()
     Player.PlayerClose(*host.player)
+    host.hosted = false
 }
 
 RaylibBundleUseAssets :: (host: *RaylibBundle) {
@@ -118,14 +178,25 @@ RaylibBundleUseAssets :: (host: *RaylibBundle) {
 }
 
 RaylibBundleFrame :: (host: *RaylibBundle, bounds: Rectangle, key: s32) -> bool {
+    BundleMediaTick(*host.media)
     host.raster.x = bounds.x
     host.raster.y = bounds.y
     pointer := PollPointer()
     secondary := PollSecondaryPointer()
     point := RaylibTypedCodepoint()
     while point != 0 {
-        Player.PlayerTyped(*host.player, point)
+        RaylibBundleTyped(host, point)
         point = RaylibTypedCodepoint()
+    }
+    if host.hosted {
+        typed: [1024]u8
+        text := TypedTextTake(host.app.app.session, typed[:])
+        ok := BundleAppFrame(*host.app, bounds, pointer, secondary, key,
+            RaylibModifiers(), RaylibWheelMove(), text, BundleClockSeconds())
+        host.player.keyboard = host.app.app.keyboard
+        host.player.failed = host.app.failed
+        if !ok { host.player.closed = true }
+        return ok
     }
     return Player.PlayerFrameNative(*host.player, Player.Input.{
             .width = cast(s32)bounds.width, .height = cast(s32)bounds.height,
@@ -134,4 +205,20 @@ RaylibBundleFrame :: (host: *RaylibBundle, bounds: Rectangle, key: s32) -> bool 
             .secondary_down = secondary.down, .secondary_pressed = secondary.pressed,
             .secondary_released = secondary.released, .modifiers = RaylibModifiers(),
             .key = key, .wheel = RaylibWheelMove()})
+}
+
+RaylibBundleTyped :: (host: *RaylibBundle, codepoint: s32) {
+    if host.hosted { unused TypedCodepointSend(host.app.app.session, codepoint) } else {
+        Player.PlayerTyped(*host.player, codepoint)
+    }
+}
+
+RaylibBundleCheck :: (data: string) -> bool {
+    bytes := cast(*TextDescriptor)(*data)
+    checked := OpenBundleBytes(bytes.data, cast(u64)data.count)
+    if checked == null { return false }
+    hosted := BundleIsApp(checked)
+    accepted := !hosted || BundleAppCheck(checked)
+    CloseBundle(checked)
+    return accepted && (hosted || Player.PlayerCheck(BytesFromPointer(bytes.data, cast(u64)data.count)))
 }

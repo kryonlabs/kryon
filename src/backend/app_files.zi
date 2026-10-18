@@ -30,6 +30,8 @@ AppFileFree :: (value: string) {
     FileError :: () -> *s32 #foreign libc "_errno";
 } else #if #defined(ANDROID_BUILD) {
     FileError :: () -> *s32 #foreign libc "__errno";
+} else #if #defined(__APPLE__) {
+    FileError :: () -> *s32 #foreign libc "__error";
 } else {
     FileError :: () -> *s32 #foreign libc "__errno_location";
 }
@@ -55,10 +57,20 @@ AppFileNameValid :: (name: string) -> bool {
 }
 
 AppPrivateDirectory :: (path: string) -> bool {
-    if path.count == 0 || path[0] != cast(u8)47 || path.count >= 3072 {
+    start: s64 = 1
+    absolute := path.count > 0 && path[0] == cast(u8)47
+    #if #defined(_WIN32) {
+        if path.count >= 3 && path[1] == cast(u8)58 && path[2] == cast(u8)47 &&
+        ((path[0] >= cast(u8)65 && path[0] <= cast(u8)90) ||
+        (path[0] >= cast(u8)97 && path[0] <= cast(u8)122)) {
+            absolute = true
+            start = 3
+        }
+    }
+    if !absolute || path.count >= 3072 {
         return false
     }
-    for index: 1..path.count {
+    for index: start..path.count {
         if index == path.count || path[index] == cast(u8)47 {
             prefix := path[:index]
             if PathIsLink(prefix) || !CreatePrivateDirectory(prefix) {

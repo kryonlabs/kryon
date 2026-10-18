@@ -40,6 +40,7 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module,"system_clipboard") { return function=="SystemClipboardOpenHost" || function=="SystemClipboardByteHost" || function=="SystemClipboardWriteHost" }
     if ModuleName(module,"window") { return function=="WindowSetVisibleHost" || function=="WindowVisibleHost" || function=="WindowFocusedHost" || function=="WindowInterceptCloseHost" || function=="WindowTakeCloseRequestHost" || function=="WindowQuitHost" || function=="WindowCompactHost" || function=="WindowBackgroundHost" || function=="WindowBackgroundDragHost" }
     if ModuleName(module,"media") { return function=="MediaOpenHost" || function=="MediaPauseHost" || function=="MediaStopHost" || function=="MediaStateHost" || function=="MediaMessageHost" || function=="FetchTextHost" || function=="FetchTextStateHost" || function=="FetchTextResultHost" }
+    if ModuleName(module,"clock") { return function == "ClockMillisecondsHost" }
     return false
 }
 Names :: #import "bundle_names";
@@ -168,7 +169,7 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.integer = ifx function=="WindowTakeCloseRequestHost" then cast(s64)0 else cast(s64)1
         return 1
     }
-    if player.renderer_active && !ModuleName(module,"media") &&
+    if player.renderer_active && !ModuleName(module,"media") && !ModuleName(module,"clock") &&
     !ModuleName(module,"system_clipboard") {
         return player.renderer(player.renderer_context, module_name, function_name, args, count, result)
     }

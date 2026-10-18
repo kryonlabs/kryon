@@ -2,6 +2,17 @@
 using Host :: #import "Canvas";
 using Render :: #import "canvas_raster";
 Player :: #import "bundle_player";
+#import "bundle_media"
+#import "page_core"
+#import "bundle_app"
+#import "bundle_storage_web"
+#import "key_input"
+#import "tree_input"
+media: BundleMedia;
+apps: [2]BundleApp;
+active_app: s32;
+hosted: bool;
+last_saved: float64;
 #import "bundle_raster"
 #import "bundle_assets"
 #import "drawing_props"
@@ -116,6 +127,13 @@ ClosePicker :: () {
 PlatformCall :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     name := TextFromCString(function)
+    if BundleMediaCall(*media, TextFromCString(module), name, arguments, count, result) == 1 {
+        return 1
+    }
+    if Player.ModuleName(TextFromCString(module), "clock") && name == "ClockMillisecondsHost" && count == 0 {
+        result.* = HostScalar("s64", cast(s64)PageNow())
+        return 1
+    }
     if name == "WindowFocusedHost" && count == 0 {
         result.* = HostScalar("bool", ifx WindowFocusedHost() then 1 else 0)
         return 1
@@ -141,30 +159,48 @@ LoadSelected :: (player: *Player.Player, assets: *AppFiles, raster: *RasterHost)
     defer { AppFileFree(bytes) }
     descriptor := cast(*TextDescriptor)(*bytes)
     data := BytesFromPointer(descriptor.data, cast(u64)bytes.count)
+    checked := OpenBundleBytes(descriptor.data, cast(u64)bytes.count)
+    if checked == null { ShowStatus("This file is not a valid ZIB."); return false }
+    is_app := BundleIsApp(checked)
+    accepted := !is_app || BundleAppCheck(checked)
+    CloseBundle(checked)
+    if is_app {
+        if !accepted { ShowStatus("This app needs an unavailable host capability."); return false }
+        if !BundleStorageReady() { ShowStatus("Browser app storage is not available."); return false }
+        candidate := 1 - active_app
+        if !BundleAppOpen(*apps[candidate], bytes, "/kryon-apps") {
+            ShowStatus("The app could not start; the current app is still running.")
+            return false
+        }
+        apps[candidate].extracted_assets = true
+        if !BundleWriteAssets(apps[candidate].app.app.bundle, *apps[candidate].local.files) {
+            BundleAppClose(*apps[candidate]); ShowStatus("The app resources could not load."); return false
+        }
+        BundleAppClose(*apps[active_app])
+        Player.PlayerClose(player)
+        BundleMediaClose(*media)
+        active_app = candidate
+        hosted = true
+        last_saved = PageNow()
+        InvalidateCanvasAssets()
+        ShowStatus("")
+        return true
+    }
     // Validate without disturbing the current instance or running startup.
     if !Player.PlayerCheck(data) {
         ShowStatus("This file is invalid or needs a capability this player does not provide.")
         return false
     }
-    checked := OpenBundleBytes(descriptor.data, cast(u64)bytes.count)
-    if checked == null { return false }
-    index: u64
-    while index < BundleCapabilities(checked) {
-        module := TextFromCString(BundleCapabilityModuleName(checked, index))
-        if Player.ModuleName(module, "media") {
-            CloseBundle(checked)
-            ShowStatus("This ZIB needs media services that this browser player does not provide.")
-            return false
-        }
-        index += 1
-    }
-    CloseBundle(checked)
+    BundleMediaClose(*media)
+    BundleAppClose(*apps[active_app])
+    hosted = false
     InvalidateCanvasAssets()
     if !Player.PlayerLoad(player, data, PlatformCall, null) {
         ShowStatus("The ZIB could not load.")
         return false
     }
     raster.asset_bundle = player.bundle
+    media.bundle = player.bundle
     if !BundleWriteAssets(player.bundle, assets) ||
     !Player.PlayerUseRenderer(player, RasterHostCall, cast(*void)raster) ||
     !Player.PlayerStart(player) {
@@ -178,10 +214,17 @@ LoadSelected :: (player: *Player.Player, assets: *AppFiles, raster: *RasterHost)
 
 #program_export
 main :: () -> s32 {
+    defer { BundleMediaClose(*media) }
     if !OpenPicker() { return 1 }
     defer { ClosePicker() }
     if !OpenCanvas() { return 1 }
     defer { CloseCanvas() }
+    unused BundleStorageOpen()
+    defer {
+        BundleAppClose(*apps[0])
+        BundleAppClose(*apps[1])
+        unused BundleStorageSync(false)
+    }
     assets: AppFiles
     if !AppFilesOpen(*assets, "/tmp/kryon-zib") { return 1 }
     defer { AppFilesClose(*assets) }
@@ -202,13 +245,32 @@ main :: () -> s32 {
     file_ready = found
     OpenRequested()
     while PollCanvas() {
+        BundleMediaTick(*media)
         scope := WebScope()
-        if requested_bundle && file_ready {
+        if requested_bundle && file_ready && (BundleStorageReady() || BundleStorageFailed()) {
             requested_bundle = false
             unused LoadSelected(*player, *assets, *raster)
         }
         BeginCanvasFrame()
-        if player.instance != null && !player.closed {
+        if hosted {
+            app := *apps[active_app]
+            point := CanvasTypedCodepoint()
+            while point != 0 {
+                unused TypedCodepointSend(app.app.session, point)
+                point = CanvasTypedCodepoint()
+            }
+            typed: [1024]u8
+            text := TypedTextTake(app.app.session, typed[:])
+            if !BundleAppFrame(app, CanvasViewport(), PollPointer(), PollSecondaryPointer(),
+                CanvasPressedKey(), CanvasModifiers(), CanvasWheelMove(), text, PageNow() / 1000.0) {
+                ShowStatus("The app frame failed.")
+            }
+            CanvasCursor(app.app.session)
+            if PageNow() - last_saved >= 1000.0 {
+                if BundleAppSave(app) { unused BundleStorageSync(false) }
+                last_saved = PageNow()
+            }
+        } else if player.instance != null && !player.closed {
             viewport := CanvasViewport()
             pointer := PollPointer()
             secondary := PollSecondaryPointer()

@@ -1,14 +1,16 @@
 // A host's local image library, scoped to the same app/account directory as
 // its documents. A bundle can request the picker, never choose an OS path.
 #import "app_files"
-#import "file_picker"
 #import "std/file"
 #import "std/byte_text_linux"
 #import "std/c_string"
 #import "std/text"
 #import "std/vec"
 #import "std/date_parse"
-Time :: #import "std/date_time_linux";
+#if #defined(PLATFORM_DESKTOP) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD) && !#defined(_WIN32) {
+    #import "file_picker"
+    Time :: #import "std/date_time_linux";
+}
 Json :: #import "std/json_scan";
 
 AppMediaAvailable :: () -> bool {

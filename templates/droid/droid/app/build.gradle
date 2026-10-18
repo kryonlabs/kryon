@@ -54,6 +54,8 @@ android {
 
     if (appCodegen == 'zib') {
         sourceSets.main.assets.srcDir "${rootProject.projectDir}/../build/android/zib-assets"
+        sourceSets.debug.manifest.srcFile 'src/zib/AndroidManifest.xml'
+        sourceSets.release.manifest.srcFile 'src/zib/AndroidManifest.xml'
     }
 
     buildTypes {

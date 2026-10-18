@@ -42,7 +42,7 @@ AndroidBundleRunMain :: () -> s32 {
         if path.count > 0 {
             incoming := RaylibBundleRead(path)
             candidate := 1 - active
-            if incoming.count > 0 && RaylibBundleOpen(*hosts[candidate], incoming) {
+            if incoming.count > 0 && RaylibBundleOpen(*hosts[candidate], incoming, *hosts[active]) {
                 // Binding contexts point to stable slots. A failed candidate
                 // never destroys the running app or its retained state.
                 RaylibBundleClose(*hosts[active])
@@ -87,7 +87,7 @@ AndroidBundleRunMain :: () -> s32 {
         if AndroidTextInputKeyPressed(257) { key = 257 }
         point := AndroidTextInputCharacter()
         while point != 0 {
-            Player.PlayerTyped(*host.player, point)
+            RaylibBundleTyped(host, point)
             point = AndroidTextInputCharacter()
         }
         BeginRaylibFrame()

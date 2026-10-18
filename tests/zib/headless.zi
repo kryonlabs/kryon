@@ -1,0 +1,106 @@
+// Execute the real VM and CPU raster without opening a display on any OS.
+Player :: #import "bundle_player";
+#import "bundle_resources"
+#import "pixmap"
+#import "std/file"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+PNG :: #import "png";
+
+memory :: #system_library "c";
+Allocate :: (count: usize, size: usize) -> *u8 #foreign memory "calloc";
+Release :: (value: *u8) #foreign memory "free";
+zlib :: #system_library "z";
+Uncompress :: (output: *u8, size: *usize, input: *u8, count: usize) -> s32 #foreign zlib "uncompress";
+ImageMemory :: struct { pixels: *u32 }
+PixelDescriptor :: struct { data: *u32; count: s64 }
+images: [128]ImageMemory;
+pixels: [576000]u32;
+
+CloseImages :: () {
+    for image: images { Release(cast(*u8)image.pixels) }
+}
+
+LoadImages :: (bundle: *void) -> bool {
+    for index: cast(u64)0..BundleAssets(bundle) - 1 {
+        path := TextFromCString(BundleAssetPath(bundle, index))
+        data := BytesFromPointer(BundleAssetBytes(bundle, index), BundleAssetLength(bundle, index))
+        if !PNG.PNGSignature(data) { continue }
+        info := PNG.InspectPNG(data)
+        if !info.valid || cast(s64)info.width * info.height > 16777216 { return false }
+        packed := Allocate(cast(usize)info.compressed, 1)
+        raw := Allocate(cast(usize)info.scanlines, 1)
+        rgba := Allocate(cast(usize)(cast(s64)info.width * info.height), 4)
+        converted := cast(*u32)Allocate(cast(usize)(cast(s64)info.width * info.height), 4)
+        defer { Release(packed); Release(raw); Release(rgba) }
+        images[index].pixels = converted
+        if packed == null || raw == null || rgba == null || converted == null { return false }
+        scanlines := BytesFromPointer(raw, cast(u64)info.scanlines)
+        output := BytesFromPointer(rgba, cast(u64)(cast(s64)info.width * info.height * 4))
+        compressed := BytesFromPointer(packed, cast(u64)info.compressed)
+        inflated := cast(usize)info.scanlines
+        if !PNG.CollectPNGData(data, compressed) ||
+        Uncompress(raw, *inflated, packed, cast(usize)info.compressed) != 0 ||
+        inflated != cast(usize)info.scanlines || !PNG.DecodePNGScanlines(data, scanlines, output) {
+            return false
+        }
+        for at: cast(s64)0..cast(s64)info.width * info.height - 1 {
+            converted[at] = (cast(u32)rgba[at * 4 + 3] << 24) |
+                (cast(u32)rgba[at * 4] << 16) | (cast(u32)rgba[at * 4 + 1] << 8) |
+                cast(u32)rgba[at * 4 + 2]
+        }
+        words: []u32
+        descriptor := cast(*PixelDescriptor)(*words)
+        descriptor.data = converted
+        descriptor.count = cast(s64)info.width * info.height
+        if !PixmapSetImage(cast(s32)(384 + index), path, info.width, info.height, words) { return false }
+    }
+    return true
+}
+
+TextFingerprint :: () -> u64 {
+    result: u64
+    for y: 128..167 {
+        for x: 40..339 { result += cast(u64)pixels[y * 960 + x] * cast(u64)(x + 1) }
+    }
+    return result
+}
+
+NoPlatform :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    return 0
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc < 2 { return 1 }
+    data, found := ReadEntireFile(TextFromCString(argv[1]))
+    if !found { return 2 }
+    descriptor := cast(*TextDescriptor)(*data)
+    defer { Release(descriptor.data) }
+    player: Player.Player
+    defer {
+        Player.PlayerClose(*player)
+        CloseImages()
+    }
+    if !Player.PlayerLoad(*player, BytesFromPointer(descriptor.data, cast(u64)data.count), NoPlatform, null) ||
+    !LoadImages(player.bundle) || !Player.PlayerStart(*player) { return 3 }
+    input := Player.Input.{.width = 960, .height = 600}
+    if !Player.PlayerFrame(*player, input, 960, 600, pixels[:]) { return 4 }
+    ink: s32
+    for pixel: pixels { if (pixel & cast(u32)0xffffff) != cast(u32)0x101010 { ink += 1 } }
+    if ink < 20 { return 5 }
+    if argc == 2 { print("Headless ZIB rendered\n"); return 0 }
+    if pixels[130 * 960 + 550] != cast(u32)0xffe61e28 { return 6 }
+    original := TextFingerprint()
+    input.x = 100.0; input.y = 70.0; input.pressed = true; input.down = true
+    if !Player.PlayerFrame(*player, input, 960, 600, pixels[:]) { return 7 }
+    input.pressed = false; input.down = false; input.released = true
+    if !Player.PlayerFrame(*player, input, 960, 600, pixels[:]) { return 8 }
+    if TextFingerprint() == original { return 9 }
+    input.released = false
+    Player.PlayerTyped(*player, 233)
+    if Player.PlayerFrame(*player, input, 960, 600, pixels[:]) || !player.closed { return 10 }
+    print("Headless ZIB pixels, packed PNG, retained clicks and Unicode passed\n")
+    return 0
+}
