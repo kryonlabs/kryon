@@ -7,6 +7,7 @@
 #import "raster_text"
 #import "session"
 #import "tree"
+Tree :: #import "tree";
 #import "vec"
 host_api :: #system_library "host_api";
 
@@ -78,7 +79,7 @@ PaintCommand :: struct {
 
 PaintEmitter :: #type (command: PaintCommand) -> ();
 PaintClipper :: #type (command: PaintCommand,
-    geometry: NodeGeometry) -> PaintCommand;
+    geometry: Tree.NodeGeometry) -> PaintCommand;
 
 QueuedPaint :: struct {
     data: PaintCommand
