@@ -117,7 +117,7 @@ def compare():
     thumbs = []
     for scene, name in enumerate(SCENES):
         scene_states = states(scene)
-        height = 76 + len(scene_states) * 342 + 24
+        height = 76 + len(scene_states) * 372 + 24
         sheet = Image.new('RGB', (984, height), '#edf3f4')
         draw = ImageDraw.Draw(sheet)
         draw.text((16, 10), name, font=font, fill='#17313e')
@@ -125,20 +125,23 @@ def compare():
             x = 8 + column * 488
             draw.text((x + 12, 42), label.upper(), font=small, fill='#42616d')
             for row, state in enumerate(scene_states):
-                y = 68 + row * 342
+                y = 68 + row * 372
                 shot = Image.open(OUTPUT / label / f'{scene:02d}-{state}.png')
                 sheet.paste(shot, (x, y))
                 metrics = reports[label]['widgets'][name][str(state)]
-                draw.text((x + 12, y + 298),
+                draw.text((x + 12, y + 326),
                           f'{STATE_NAMES[state]} | median {metrics["median_ms"]:.3f} ms | p95 {metrics["p95_ms"]:.3f} ms',
+                          font=small, fill='#42616d')
+                draw.text((x + 12, y + 348),
+                          f'Text pool {metrics["frame_text_reserve_bytes"] / 1024:.0f} KiB | RSS {metrics["peak_rss_kib"] / 1024:.2f} MiB | max raster {metrics["idle_emissions"]}',
                           font=small, fill='#42616d')
         draw.text((20, height - 24), 'Actual Kryon pixmap renders | same machine, -O2 | 10 warmup + 60 frames | ms/frame', font=small, fill='#42616d')
         sheet.save(directory / f'{scene:02d}-{name.replace(" ", "-")}.png')
-        thumb = sheet.copy(); thumb.thumbnail((492, 734)); thumbs.append(thumb)
+        thumb = sheet.copy(); thumb.thumbnail((492, 794)); thumbs.append(thumb)
     for page in range(math.ceil(len(thumbs) / 6)):
-        grid = Image.new('RGB', (1476, 1468), '#edf3f4')
+        grid = Image.new('RGB', (1476, 1588), '#edf3f4')
         for index, thumb in enumerate(thumbs[page * 6:page * 6 + 6]):
-            grid.paste(thumb, ((index % 3) * 492, (index // 3) * 734))
+            grid.paste(thumb, ((index % 3) * 492, (index // 3) * 794))
         grid.save(directory / f'grid-{page + 1:02d}.png')
 
 
