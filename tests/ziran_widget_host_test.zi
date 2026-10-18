@@ -49,6 +49,23 @@ AllowPhoto :: (path: string) -> bool {
     return path == "" || path == "assets/photo.png"
 }
 
+resolved_owner: s32;
+resolve_checks: s32;
+ResolvePhoto :: (path: string) -> string {
+    resolve_checks += 1
+    if path != "assets/photo.png" { return "" }
+    if resolved_owner == 1 { return "apps/owner-a/assets/photo.png" }
+    if resolved_owner == 2 { return "apps/owner-b/assets/photo.png" }
+    return ""
+}
+
+PaintHasAsset :: (session: Session, path: string) -> bool {
+    for index: cast(s32)0..PendingPaintCount(session) - 1 {
+        if PendingPaintAt(session, index).asset_path == path { return true }
+    }
+    return false
+}
+
 module_name: [64]u8;
 function_name: [64]u8;
 session_codec: WidgetSessionCodec;
@@ -327,5 +344,62 @@ main :: () -> s32 {
     if Call("text_widget", "TextHostedHost", arguments[:2], *result) != 0 {
         return 15
     }
+    // The allowlist sees the guest's original name. Images in every widget
+    // then use the current owner's resolved namespace in queued paint.
+    resolved_owner = 1
+    BeginFrame(session, cast(u64)2, Rectangle.{0.0, 0.0, 600.0, 400.0})
+    WidgetHostBegin(session, AllowPhoto, ResolvePhoto)
+    arguments[1] = WidgetEncodeImageProps(ImageProps.{.key = cast(u64)100,
+            .asset_path = "assets/photo.png", .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 ||
+    !PaintHasAsset(session, "apps/owner-a/assets/photo.png") || PaintHasAsset(session, "assets/photo.png") { return 44 }
+    checks = resolve_checks
+    arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "private/key.png"}, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 || resolve_checks != checks { return 45 }
+    texture.texture.id = cast(u32)1
+    arguments[1] = WidgetEncodeImageProps(texture, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 || resolve_checks != checks { return 46 }
+    button := ButtonProps.{.key = cast(u64)101, .label = "Photo", .bounds = Rectangle.{50.0, 0.0, 100.0, 50.0}}
+    button.image.asset_path = "assets/photo.png"
+    arguments[1] = WidgetEncodeButtonProps(button, *button_codec)
+    if Call("button_widget", "ButtonHostedHost", arguments[:2], *result) != 1 ||
+    resolve_checks != checks + 1 { return 47 }
+    pictured := TitleBarProps.{.key = cast(u64)102, .title = "Images",
+        .bounds = Rectangle.{0.0, 60.0, 600.0, 50.0}, .has_leading_action = true, .has_dropdown = true}
+    pictured.leading_image.asset_path = "assets/photo.png"
+    options[0].image.asset_path = "assets/photo.png"
+    option_values[0] = WidgetEncodeDropdownOption(options[0], *option_codecs[0])
+    arguments[1] = WidgetEncodeTitleBarProps(pictured, *title_bar_codec)
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),
+        .length = cast(usize)1, .elements = *option_values[0]}
+    if Call("title_bar_widget", "TitleBarHostedHost", arguments[:], *result) != 1 ||
+    widget_options[0].image.asset_path != "apps/owner-a/assets/photo.png" || resolve_checks != checks + 3 { return 48 }
+    dialog = ModalFrameProps.{.key = cast(u64)103, .title = "Images", .width = 200, .height = 120,
+        .has_left_action = true, .has_right_action = true}
+    dialog.left_image.asset_path = "assets/photo.png"
+    dialog.right_image.asset_path = "assets/photo.png"
+    arguments[1] = WidgetEncodeModalFrameProps(dialog, *modal_codec)
+    if Call("modal_frame_widget", "ModalFrameHostedHost", arguments[:2], *result) != 1 ||
+    resolve_checks != checks + 5 { return 49 }
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 50 }
+    resolved_owner = 2
+    BeginFrame(session, cast(u64)3, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto, ResolvePhoto)
+    arguments[1] = WidgetEncodeImageProps(ImageProps.{.key = cast(u64)100,
+            .asset_path = "assets/photo.png", .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 ||
+    !PaintHasAsset(session, "apps/owner-b/assets/photo.png") || PaintHasAsset(session, "apps/owner-a/assets/photo.png") { return 51 }
+    resolved_owner = 0
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 { return 52 }
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 53 }
+    // Old callers retain the packed path and cannot inherit a prior resolver.
+    BeginFrame(session, cast(u64)4, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 ||
+    !PaintHasAsset(session, "assets/photo.png") { return 54 }
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 55 }
     return 0
 }

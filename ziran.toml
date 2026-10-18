@@ -47,6 +47,17 @@ app_local = "src/backend/app_local.zi"
 hosted_values = "src/backend/hosted_values.zi"
 widget_codec = "src/backend/widget_codec.zi"
 widget_host = "src/backend/widget_host.zi"
+# Direct widget modules let portable hosts select only their required effects.
+text_widget = "src/ui/text_widget.zi"
+text_props = "src/ui/text_props.zi"
+image_widget = "src/ui/image_widget.zi"
+image_props = "src/ui/image_props.zi"
+button_widget = "src/ui/button_widget.zi"
+button_props = "src/ui/button_props.zi"
+box_widget = "src/ui/box_widget.zi"
+box_props = "src/ui/box_props.zi"
+scroll_widget = "src/ui/scroll_widget.zi"
+scroll_props = "src/ui/scroll_props.zi"
 # Lets a test process read the widget tree and press, type and drag in a
 # running app; inactive unless KRYON_TEST_DRIVER names a directory.
 TestDriver = "src/backend/test_driver.zi"
