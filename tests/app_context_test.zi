@@ -1,0 +1,49 @@
+#import "app_context_host"
+#import "app_protocol"
+#import "hosted_app"
+#import "hosted_values"
+#import "bundle_host"
+#import "file"
+#import "c_string"
+#import "byte_text_linux"
+
+writes: s32;
+
+Allows :: (context: *void, name: string) -> bool {
+    return name == "DocumentWriteHost"
+}
+
+Call :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    if TextFromCString(function) != "DocumentWriteHost" || count != 2 { return 0 }
+    if AppArgumentText(arguments[0]) != "entry.json" || AppArgumentText(arguments[1]) != "a saved entry" {
+        return 0
+    }
+    writes += 1
+    result.* = HostScalar("bool", 1)
+    return 1
+}
+
+Open :: (app: *AppContext, path: string, expected: string) -> bool {
+    bytes, ok := ReadEntireFile(path)
+    if !ok { return false }
+    app.expected_id = expected
+    app.allows = Allows
+    app.services = Call
+    return AppContextOpen(app, bytes)
+}
+
+#program_export
+main :: () -> s32 {
+    app: AppContext
+    if !Open(*app, "good.zib", "diary") || writes != 0 { return 1 }
+    if !AppContextRun(*app, APP_FRAME) || writes != 1 { return 2 }
+    if !AppContextRestart(*app) || writes != 1 { return 3 }
+    if !AppContextRun(*app, APP_FRAME) || writes != 2 { return 4 }
+    HostedAppClose(*app.app)
+    if Open(*app, "good.zib", "other") || writes != 2 { return 5 }
+    if Open(*app, "future.zib", "diary") || writes != 2 { return 6 }
+    if Open(*app, "identify-write.zib", "diary") || writes != 2 { return 7 }
+    if AppIdValid("../pass") || AppIdValid("auth/secret") || !AppIdValid("inbe.diary") { return 8 }
+    return 0
+}

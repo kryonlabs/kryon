@@ -1,0 +1,167 @@
+// Local platform services for a portable app. Harnesses may provide their
+// account-aware storage and sync services instead of this local provider.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/text"
+#import "std/vec"
+#import "std/date_parse"
+Time :: #import "std/date_time_linux";
+#import "app_context_host"
+#import "app_files"
+#import "app_media_files"
+#import "app_protocol"
+#import "hosted_app"
+#import "hosted_values"
+#import "system_clipboard"
+
+using HostValueKind;
+
+AppLocal :: struct {
+    files: AppFiles
+    bundle: *void
+    locale: string
+    read_value: string
+}
+
+AppLocalAllows :: (context: *void, name: string) -> bool {
+    if AppMediaAvailable() && (name == "media.asset" || name == "media.query" || name == "media.pick") {
+        return true
+    }
+    return name == "AppNowHost" || name == "AppLocalOffsetHost" ||
+    name == "AppLocaleHost" || name == "DocumentReadHost" ||
+    name == "DocumentStatusHost" || name == "DocumentWriteHost" ||
+    name == "ReadStoreHost" || name == "WriteStoreHost" ||
+    name == "ClipboardCopyHost"
+}
+
+AppLocalText :: (value: string) -> HostValue {
+    return HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"),
+        .data = HostTextData(value), .length = cast(usize)value.count}
+}
+
+// Locale files use [key], translated lines, then ---.
+AppLocalLocale :: (local: *AppLocal, key: string) -> string {
+    path: Vec(u8)
+    BuilderPrint(*path, "locales/%.txt", local.locale)
+    name := BuilderFinish(path)
+    defer { AppFileFree(name) }
+    app := HostedApp.{.bundle = local.bundle}
+    resource := HostedAppAsset(*app, name)
+    if !resource.found {
+        resource = HostedAppAsset(*app, "locales/en.txt")
+    }
+    text := resource.data
+    start: s64 = 0
+    while start < text.count {
+        end := start
+        while end < text.count && text[end] != cast(u8)10 {
+            end += 1
+        }
+        line := text[start:end]
+        if line.count == key.count + 2 && line[0] == cast(u8)91 &&
+        line[line.count - 1] == cast(u8)93 && line[1:line.count - 1] == key {
+            first := end + 1
+            last := first
+            while last < text.count {
+                next := last
+                while next < text.count && text[next] != cast(u8)10 {
+                    next += 1
+                }
+                if text[last:next] == "---" {
+                    return text[first:ifx last > first then last - 1 else last]
+                }
+                last = next + 1
+            }
+        }
+        start = end + 1
+    }
+    return key
+}
+
+AppLocalCall :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    local := cast(*AppLocal)context
+    name := TextFromCString(function)
+    if name == "AppServiceHost" && count == 2 &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
+    HostScalarValid(arguments[1], "string", cast(s32)HostString) {
+        service := AppArgumentText(arguments[0])
+        request := AppArgumentText(arguments[1])
+        AppFileFree(local.read_value)
+        local.read_value = ""
+        if service == "media.query" { local.read_value = AppMediaQuery(*local.files, request) }
+        else if service == "media.asset" { local.read_value = AppMediaAsset(*local.files, request) }
+        else if service == "media.pick" { local.read_value = AppMediaPick(*local.files, request) }
+        else { return 0 }
+        result.* = AppLocalText(local.read_value)
+        return 1
+    }
+    if name == "AppNowHost" && count == 0 {
+        result.* = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float64"),
+            .real = cast(float64)Time.UnixMilliseconds() / 1000.0}
+        return 1
+    }
+    if name == "AppLocalOffsetHost" && count == 0 {
+        now := Time.UnixNow()
+        date := Time.LocalAt(now)
+        seconds := DaysFromCivil(date.year, date.month, date.day) * 86400 +
+        cast(s64)(date.hour * 3600 + date.minute * 60 + date.second)
+        result.* = HostScalar("s32", cast(s64)(seconds - now))
+        return 1
+    }
+    if name == "DocumentStatusHost" && count == 0 {
+        result.* = HostScalar("s32", cast(s64)local.files.status)
+        return 1
+    }
+    if (name == "AppLocaleHost" || name == "DocumentReadHost") && count == 1 &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) {
+        key := AppArgumentText(arguments[0])
+        if name == "AppLocaleHost" {
+            result.* = AppLocalText(AppLocalLocale(local, key))
+        } else {
+            AppFileFree(local.read_value)
+            local.read_value = AppFileRead(*local.files, key)
+            result.* = AppLocalText(local.read_value)
+        }
+        return 1
+    }
+    if (name == "DocumentWriteHost" || name == "WriteStoreHost") && count == 2 &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
+    HostScalarValid(arguments[1], "string", cast(s32)HostString) {
+        saved := AppFileWrite(*local.files, AppArgumentText(arguments[0]), AppArgumentText(arguments[1]))
+        result.* = HostScalar("bool", ifx saved then 1 else 0)
+        return 1
+    }
+    if name == "ReadStoreHost" && count == 2 &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
+    arguments[1].kind == cast(s32)HostSlice &&
+    (arguments[1].length == 0 || arguments[1].elements != null) {
+        value := AppFileRead(*local.files, AppArgumentText(arguments[0]))
+        defer { AppFileFree(value) }
+        output := arguments[1]
+        used: s64 = -1
+        if local.files.status == DOCUMENT_READY && cast(usize)value.count < output.length {
+            for index: 0..value.count {
+                byte := ifx index < value.count then value[index] else cast(u8)0
+                output.elements[index].bits = cast(u64)byte
+                output.elements[index].integer = cast(s64)byte
+            }
+            used = value.count
+        }
+        result.* = HostScalar("s32", used)
+        return 1
+    }
+    if name == "ClipboardCopyHost" && count == 2 &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
+    HostScalarValid(arguments[1], "s32", cast(s32)HostInteger) {
+        // Timed clipboard ownership belongs to a harness that supplies it.
+        if arguments[1].integer != 0 {
+            result.* = HostScalar("bool", 0)
+        } else {
+            result.* = HostScalar("bool", ifx SystemClipboardSet(AppArgumentText(arguments[0])) then 1 else 0)
+        }
+        return 1
+    }
+    return 0
+}

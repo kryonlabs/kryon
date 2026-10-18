@@ -1,0 +1,22 @@
+#import "app_context"
+#import "app_protocol"
+
+#program_export
+main :: () -> s32 {
+    if AppMode() == APP_IDENTIFY {
+        #if #defined(APP_BAD_API) {
+            AppIdentity("diary", 2)
+        } else {
+            AppIdentity("diary")
+        }
+        AppDescribe("Diary", "")
+        #if #defined(APP_IDENTIFY_WRITE) {
+            unused DocumentWrite("entry.json", "wrong")
+        }
+        return APP_PROTOCOL
+    }
+    if AppSupports("missing.service") { return 1 }
+    if AppService("missing.service", "") != "{\"status\":\"unavailable\"}" { return 2 }
+    if !DocumentWrite("entry.json", "a saved entry") { return 3 }
+    return 0
+}

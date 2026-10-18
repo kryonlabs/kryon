@@ -15,6 +15,7 @@ Service :: #import "service_linux";
 Theme :: #import "system_theme_host_linux";
 Background :: #import "background_window_linux";
 Watch :: #import "bundle_watch";
+AppPlayer :: #import "app_player";
 #import "timer_linux"
 
 using HostValueKind;
@@ -657,6 +658,32 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     bundle := OpenBundle(bundle_name)
     if bundle == null { return 1 }
+    if AppPlayer.HostedBundle(bundle) {
+        if check { return AppPlayer.Run(bundle, true) }
+        if watch {
+            CloseBundle(bundle)
+            print("zib: hosted app release watching is not available yet\n")
+            return 1
+        }
+        resource_bytes: [64]u8
+        resource_root: string
+        if BundleAssets(bundle) > cast(u64)0 {
+            if !CopyCString("/tmp/zib-XXXXXX", resource_bytes[:]) ||
+            TemporaryDirectory(*resource_bytes[0]) == null {
+                CloseBundle(bundle)
+                return 1
+            }
+            resource_root = TextFromCString(*resource_bytes[0])
+            if !ExtractAssets(bundle, resource_root) || ChangeDirectory(*resource_bytes[0]) != 0 {
+                CloseBundle(bundle)
+                unused RemoveAssetDirectory(resource_root)
+                return 1
+            }
+        }
+        status := AppPlayer.Run(bundle, false)
+        if resource_root != "" && !RemoveAssetDirectory(resource_root) { return 1 }
+        return status
+    }
     // A downloaded app's relative assets live beside its bundle, independent
     // of where the owner launches it. Open the bundle before changing cwd.
     slash := bundle_path.count - 1

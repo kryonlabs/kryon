@@ -1,0 +1,39 @@
+#import "app_files"
+#import "app_protocol"
+#import "file"
+#import "c_string"
+#import "byte_text_linux"
+#import "text"
+#import "vec"
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    files: AppFiles
+    if !AppFilesOpen(*files, TextFromCString(argv[1])) { return 2 }
+    other: AppFiles
+    if AppFilesOpen(*other, TextFromCString(argv[1])) { return 3 }
+    value := AppFileRead(*files, "missing.json")
+    if value != "" || files.status != DOCUMENT_MISSING { return 4 }
+    AppFileFree(value)
+    if !AppFileWrite(*files, "empty.json", "") { return 5 }
+    value = AppFileRead(*files, "empty.json")
+    if value != "" || files.status != DOCUMENT_READY { return 6 }
+    AppFileFree(value)
+    large: Vec(u8)
+    for index: 0..131071 { unused VecPush(large, cast(u8)97) }
+    text := BuilderFinish(large)
+    if !AppFileWrite(*files, "documents/day.json", text) { return 7 }
+    value = AppFileRead(*files, "documents/day.json")
+    if value != text || files.status != DOCUMENT_READY { return 8 }
+    AppFileFree(value)
+    AppFileFree(text)
+    if AppFileWrite(*files, "../outside", "wrong") ||
+    AppFileWrite(*files, "escape", "wrong") || AppFileWrite(*files, ".lock", "wrong") { return 9 }
+    value = AppFileRead(*files, "escape")
+    if value != "" || files.status != DOCUMENT_ERROR { return 10 }
+    AppFilesClose(*files)
+    if !AppFilesOpen(*other, TextFromCString(argv[1])) { return 11 }
+    AppFilesClose(*other)
+    return 0
+}

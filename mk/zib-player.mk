@@ -3,14 +3,14 @@ CC ?= cc
 ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
 PLAYER_DIR := $(KRYON_DIR)/build/zib-player
 PLAYER := $(KRYON_DIR)/build/bin/zib
-PLAYER_SOURCES := $(KRYON_DIR)/tools/zib.zi $(KRYON_DIR)/tools/bundle_watch.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi) $(wildcard $(KRYON_DIR)/src/ui/*.zi) $(wildcard $(ZIRAN_DIR)/std/*.zi)
+PLAYER_SOURCES := $(KRYON_DIR)/tools/zib.zi $(KRYON_DIR)/tools/bundle_watch.zi $(KRYON_DIR)/tools/app_player.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi) $(wildcard $(KRYON_DIR)/src/ui/*.zi) $(wildcard $(ZIRAN_DIR)/std/*.zi)
 
 .PHONY: zib-player
 zib-player: $(PLAYER)
 
 $(PLAYER): $(PLAYER_SOURCES) $(KRYON_DIR)/mk/zib-player.mk $(ZIRAN_DIR)/build/libziran.a $(ZIRAN)
 	mkdir -p $(PLAYER_DIR) $(KRYON_DIR)/build/bin
-	$(ZIRAN) build --target=c --root $(KRYON_DIR)/tools \
+	$(ZIRAN) build --target=c --define PLATFORM_DESKTOP --root $(KRYON_DIR)/tools \
 		--module-path $(KRYON_DIR)/src/backend --module-path $(KRYON_DIR)/src/ui \
 		--module-path $(ZIRAN_DIR)/std -o $(PLAYER_DIR) $(KRYON_DIR)/tools/zib.zi
 	@temporary=$$(mktemp $(KRYON_DIR)/build/bin/zib.XXXXXX); \

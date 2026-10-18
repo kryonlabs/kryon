@@ -1,0 +1,290 @@
+// Portable app services shared by harnesses and the standalone player.
+// The host grants every imported capability before running the app. Files,
+// records, assets and device secrets are scoped to the app and account.
+#import "session"
+#import "geometry"
+#import "text_input_props"
+#import "app_protocol"
+
+host_api :: #system_library "host_api";
+
+AppIdentityHost :: (id: string, minimum_api: s32) #foreign host_api;
+AppSupportsHost :: (capability: string) -> bool #foreign host_api;
+AppLocaleHost :: (key: string) -> string #foreign host_api;
+AppAreaInputHost :: () -> TextAreaInput #foreign host_api;
+AppCommandHost :: () -> string #foreign host_api;
+AppReplyHost :: (value: string) #foreign host_api;
+// Optional services use a versioned app-owned document. A missing grant
+// answers explicitly; importing this call never grants the named service.
+AppServiceHost :: (name: string, request: string) -> string #foreign host_api;
+// Documents distinguish missing files from failed reads; they are not sync records.
+DocumentReadHost :: (name: string) -> string #foreign host_api;
+DocumentStatusHost :: () -> s32 #foreign host_api;
+DocumentWriteHost :: (name: string, value: string) -> bool #foreign host_api;
+
+AppModeHost :: () -> s32 #foreign host_api;
+// The app's name and its icon, a vector Shape from an icon package.
+AppDescribeHost :: (name: string, icon_shape: string) #foreign host_api;
+
+// The session and the area the app draws into this frame.
+AppSessionHost :: () -> Session #foreign host_api;
+AppBoundsHost :: () -> Rectangle #foreign host_api;
+AppDarkHost :: () -> bool #foreign host_api;
+AppScaleHost :: () -> float32 #foreign host_api;
+AppFontHost :: () -> s32 #foreign host_api;
+// The key pressed this frame and the held modifiers (1 shift, 2 control).
+AppKeyHost :: () -> s32 #foreign host_api;
+AppModifiersHost :: () -> s32 #foreign host_api;
+// Typing for the text field that has focus.
+AppFieldInputHost :: () -> TextFieldInput #foreign host_api;
+// Shows the touch keyboard while a field has focus.
+AppKeyboardHost :: (visible: bool) #foreign host_api;
+
+// Seconds since the Unix epoch, and the local offset from UTC in seconds.
+AppNowHost :: () -> float64 #foreign host_api;
+AppLocalOffsetHost :: () -> s32 #foreign host_api;
+
+// The file path of an asset packed in the app's bundle, for Image.
+AppAssetPathHost :: (name: string) -> string #foreign host_api;
+
+// PBKDF2 with HMAC-SHA-256 into 32 bytes, computed natively by the host.
+AppPbkdf2Sha256Host :: (password: string, salt: string, iterations: s32) -> string #foreign host_api;
+
+// The app's private files. ReadStore returns the byte count, or -1.
+ReadStoreHost :: (name: string, output: []u8) -> s32 #foreign host_api;
+WriteStoreHost :: (name: string, value: string) -> bool #foreign host_api;
+
+// Synced records: small values that follow the owner's account to their
+// other devices. An id holds letters, digits, '-', '.' and '_'; a value is
+// one line of at most 1024 bytes. RecordList writes the ids, one per line;
+// RecordList and RecordRead return the byte count, or -1.
+RecordListHost :: (output: []u8) -> s32 #foreign host_api;
+RecordReadHost :: (id: string, output: []u8) -> s32 #foreign host_api;
+RecordWriteHost :: (id: string, value: string) -> bool #foreign host_api;
+RecordRemoveHost :: (id: string) -> bool #foreign host_api;
+// Changes whenever records arrived from another device.
+RecordsVersionHost :: () -> s32 #foreign host_api;
+
+// Copies text. After clear_seconds the host clears it again, unless
+// another application replaced it.
+ClipboardCopyHost :: (value: string, clear_seconds: s32) -> bool #foreign host_api;
+
+// Lets the owner choose a file and gives its text, or the QR codes of a
+// picture of one, on the desktop only. FileImport returns the byte count, 0
+// when the owner cancelled and -1 when the file could not be read.
+FileImportAvailableHost :: () -> bool #foreign host_api;
+FileImportHost :: (output: []u8) -> s32 #foreign host_api;
+
+// One secret kept behind device authentication, where the device has it.
+// SecurePoll returns 2 with the result, 3 on failure and 0 otherwise.
+SecureAvailableHost :: () -> bool #foreign host_api;
+SecureSavedHost :: () -> bool #foreign host_api;
+SecureRequestHost :: (secret: string, save: bool) -> bool #foreign host_api;
+SecureForgetHost :: () -> bool #foreign host_api;
+SecurePollHost :: (output: []u8) -> s32 #foreign host_api;
+
+// Each call is exported from this module so every app reaches the host
+// through the same capability names.
+#program_export
+AppMode :: () -> s32 {
+    return AppModeHost()
+}
+
+#program_export
+AppDescribe :: (name: string, icon_shape: string) {
+    AppDescribeHost(name, icon_shape)
+}
+
+#program_export
+AppSession :: () -> Session {
+    return AppSessionHost()
+}
+
+#program_export
+AppBounds :: () -> Rectangle {
+    return AppBoundsHost()
+}
+
+#program_export
+AppDark :: () -> bool {
+    return AppDarkHost()
+}
+
+#program_export
+AppScale :: () -> float32 { return AppScaleHost() }
+
+#program_export
+AppFont :: () -> s32 { return AppFontHost() }
+
+#program_export
+AppKey :: () -> s32 {
+    return AppKeyHost()
+}
+
+#program_export
+AppModifiers :: () -> s32 {
+    return AppModifiersHost()
+}
+
+#program_export
+AppFieldInput :: () -> TextFieldInput {
+    return AppFieldInputHost()
+}
+
+#program_export
+AppKeyboard :: (visible: bool) {
+    AppKeyboardHost(visible)
+}
+
+#program_export
+AppNow :: () -> float64 {
+    return AppNowHost()
+}
+
+#program_export
+AppLocalOffset :: () -> s32 {
+    return AppLocalOffsetHost()
+}
+
+#program_export
+AppAssetPath :: (name: string) -> string {
+    return AppAssetPathHost(name)
+}
+
+// Writes the 32-byte key into output; false when the host refused.
+#program_export
+AppPbkdf2Sha256 :: (password: string, salt: string, iterations: s32, output: []u8) -> bool {
+    derived := AppPbkdf2Sha256Host(password, salt, iterations)
+    if derived.count != 32 || output.count < 32 {
+        return false
+    }
+    for index: 0..31 {
+        output[index] = derived[index]
+    }
+    return true
+}
+
+#program_export
+ReadStore :: (name: string, output: []u8) -> s32 {
+    return ReadStoreHost(name, output)
+}
+
+#program_export
+WriteStore :: (name: string, value: string) -> bool {
+    return WriteStoreHost(name, value)
+}
+
+#program_export
+RecordList :: (output: []u8) -> s32 {
+    return RecordListHost(output)
+}
+
+#program_export
+RecordRead :: (id: string, output: []u8) -> s32 {
+    return RecordReadHost(id, output)
+}
+
+#program_export
+RecordWrite :: (id: string, value: string) -> bool {
+    return RecordWriteHost(id, value)
+}
+
+#program_export
+RecordRemove :: (id: string) -> bool {
+    return RecordRemoveHost(id)
+}
+
+#program_export
+RecordsVersion :: () -> s32 {
+    return RecordsVersionHost()
+}
+
+#program_export
+ClipboardCopy :: (value: string, clear_seconds: s32) -> bool {
+    return ClipboardCopyHost(value, clear_seconds)
+}
+
+#program_export
+FileImportAvailable :: () -> bool {
+    return FileImportAvailableHost()
+}
+
+#program_export
+FileImport :: (output: []u8) -> s32 {
+    return FileImportHost(output)
+}
+
+#program_export
+SecureAvailable :: () -> bool {
+    return SecureAvailableHost()
+}
+
+#program_export
+SecureSaved :: () -> bool {
+    return SecureSavedHost()
+}
+
+#program_export
+SecureRequest :: (secret: string, save: bool) -> bool {
+    return SecureRequestHost(secret, save)
+}
+
+#program_export
+SecureForget :: () -> bool {
+    return SecureForgetHost()
+}
+
+#program_export
+SecurePoll :: (output: []u8) -> s32 {
+    return SecurePollHost(output)
+}
+
+#program_export
+AppIdentity :: (id: string, minimum_api: s32 = APP_API) {
+    AppIdentityHost(id, minimum_api)
+}
+
+#program_export
+AppSupports :: (capability: string) -> bool {
+    return AppSupportsHost(capability)
+}
+
+#program_export
+AppLocale :: (key: string) -> string {
+    return AppLocaleHost(key)
+}
+
+#program_export
+AppAreaInput :: () -> TextAreaInput {
+    return AppAreaInputHost()
+}
+
+#program_export
+AppCommand :: () -> string {
+    return AppCommandHost()
+}
+
+#program_export
+AppReply :: (value: string) {
+    AppReplyHost(value)
+}
+
+#program_export
+AppService :: (name: string, request: string) -> string {
+    return AppServiceHost(name, request)
+}
+
+#program_export
+DocumentRead :: (name: string) -> string {
+    return DocumentReadHost(name)
+}
+
+#program_export
+DocumentStatus :: () -> s32 {
+    return DocumentStatusHost()
+}
+
+#program_export
+DocumentWrite :: (name: string, value: string) -> bool {
+    return DocumentWriteHost(name, value)
+}

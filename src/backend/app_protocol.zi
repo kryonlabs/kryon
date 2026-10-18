@@ -1,0 +1,11 @@
+// A portable app identifies itself before it receives input or storage.
+APP_API :: 1
+APP_IDENTIFY :: 1
+APP_FRAME :: 2
+APP_COMMAND :: 3
+APP_SAVE :: 4
+APP_BACK :: 5
+APP_PROTOCOL :: 0x41505031
+DOCUMENT_ERROR :: -1
+DOCUMENT_MISSING :: 0
+DOCUMENT_READY :: 1

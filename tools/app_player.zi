@@ -1,0 +1,193 @@
+// The generic desktop shell for hosted apps. Product screens execute in
+// their bundle and local documents live under the bundle's stable app id.
+#import "app_context_host"
+#import "app_protocol"
+#import "app_local"
+#import "app_files"
+#import "hosted_app"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/text"
+#import "std/vec"
+#import "std/timer_linux"
+#import "desktop_runtime"
+#import "cairo_raster"
+#import "session"
+#import "geometry"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "key_input"
+#import "system_clipboard"
+#import "widget_host"
+
+libc :: #system_library "libc";
+Environment :: (name: *u8) -> *u8 #foreign libc "getenv";
+sdl :: #system_library "SDL2";
+SetTitle :: (window: *void, title: *u8) #foreign sdl "SDL_SetWindowTitle";
+
+EnvironmentText :: (name: string) -> string {
+    bytes: [64]u8
+    if !CopyCString(name, bytes[:]) {
+        return ""
+    }
+    value := Environment(*bytes[0])
+    return ifx value != null then TextFromCString(value) else ""
+}
+
+DataDirectory :: (id: string) -> string {
+    exact := EnvironmentText("KRYON_APP_DATA")
+    if exact != "" {
+        return exact
+    }
+    root := EnvironmentText("XDG_DATA_HOME")
+    path: Vec(u8)
+    if root == "" {
+        home := EnvironmentText("HOME")
+        if home == "" {
+            return ""
+        }
+        BuilderPrint(*path, "%/.local/share/kryon/apps/%", home, id)
+    } else {
+        BuilderPrint(*path, "%/kryon/apps/%", root, id)
+    }
+    return BuilderFinish(path)
+}
+
+asset_bundle: *void;
+asset_data_root: string;
+
+// Asset paths accepted by widgets are relative validated bundle resources.
+AssetAllowed :: (path: string) -> bool {
+    if path == "" { return true }
+    if asset_data_root != "" && path.count > asset_data_root.count + 1 &&
+    path[:asset_data_root.count] == asset_data_root && path[asset_data_root.count] == cast(u8)47 {
+        return AppFileNameValid(path[asset_data_root.count + 1:])
+    }
+    if !AppFileNameValid(path) { return false }
+    app := HostedApp.{.bundle = asset_bundle}
+    return HostedAppAsset(*app, path).found
+}
+
+HostedBundle :: (bundle: *void) -> bool {
+    for index: cast(u64)0..BundleCapabilities(bundle) - 1 {
+        if AppModule(TextFromCString(BundleCapabilityModuleName(bundle, index))) {
+            return true
+        }
+    }
+    return false
+}
+
+Draw :: (app: *AppContext) -> bool {
+    BeginDesktopFrame()
+    viewport := DesktopViewport()
+    pointer := PollPointer()
+    TreePointerUpdate(app.session, pointer)
+    TreeSecondaryPointerUpdate(app.session, PollSecondaryPointer())
+    PointerWheelSend(app.session, pointer.x, pointer.y, DesktopWheelMove())
+    modifiers := DesktopModifiers()
+    KeyboardModifiersSend(app.session, modifiers)
+    key := DesktopPressedKey()
+    if key != 0 {
+        KeyboardSend(app.session, key)
+    }
+    point := DesktopTypedCodepoint()
+    while point != 0 {
+        TypedCodepointSend(app.session, point)
+        point = DesktopTypedCodepoint()
+    }
+    typed: [1024]u8
+    paste: [65536]u8
+    text := TypedTextTake(app.session, typed[:])
+    app.bounds = viewport
+    app.key = key
+    app.modifiers = modifiers
+    app.input = TextFieldInputFor(key, modifiers, text)
+    app.area_input = TextAreaInputFor(key, modifiers, text)
+    if app.input.paste {
+        clipboard := SystemClipboardText(paste[:])
+        app.input.paste_text = clipboard
+        app.area_input.paste_text = clipboard
+    }
+    app.area_input.now_seconds = cast(float64)MonotonicMilliseconds() / 1000.0
+    if BeginFrame(app.session, cast(u64)1, viewport) != FrameStatus.FrameOk {
+        return false
+    }
+    WidgetHostBegin(app.session, AssetAllowed)
+    ok := AppContextRun(app, APP_FRAME)
+    WidgetHostEnd()
+    if !ok {
+        TreeCancel(app.session)
+        return false
+    }
+    if EndFrame(app.session) != FrameStatus.FrameOk {
+        return false
+    }
+    unused DesktopCursor(app.session)
+    return EndDesktopFrame()
+}
+
+// The caller retains the validated resource directory for this whole call.
+Run :: (bundle: *void, check: bool) -> s32 {
+    local: AppLocal
+    local.bundle = bundle
+    asset_bundle = bundle
+    local.locale = "en"
+    language := EnvironmentText("LANG")
+    if language.count >= 2 {
+        local.locale = language[:2]
+    }
+    app: AppContext
+    app.app.bundle = bundle
+    app.services = AppLocalCall
+    app.widgets = WidgetHostCall
+    app.allows = AppLocalAllows
+    app.context = cast(*void)(*local)
+    // --check performs capability validation without executing any module.
+    if check {
+        accepted := true
+        for index: cast(u64)0..BundleCapabilities(bundle) - 1 {
+            accepted = accepted && AppContextAllows(cast(*void)(*app),
+                TextFromCString(BundleCapabilityModuleName(bundle, index)),
+                TextFromCString(BundleCapabilityFunctionName(bundle, index)))
+        }
+        HostedAppClose(*app.app)
+        return ifx accepted then 0 else 1
+    }
+    ready := HostedAppStart(*app.app, AppContextAllows, AppContextCall, cast(*void)(*app))
+    if !ready || !AppContextIdentify(cast(*void)(*app)) {
+        HostedAppClose(*app.app)
+        return 1
+    }
+    root := DataDirectory(TextFromCString(*app.id[0]))
+    asset_data_root = root
+    ready = AppFilesOpen(*local.files, root)
+    if ready {
+        ready = OpenDesktop()
+        if ready {
+            SetTitle(window, *app.name[0])
+        }
+    }
+    app.session = SessionOpen()
+    ready = ready && SessionValid(app.session)
+    if ready {
+        if CaptureRequested() {
+            ready = Draw(*app) && Draw(*app) && CaptureConfigured()
+        } else {
+            while ready && PollDesktop() {
+                ready = Draw(*app)
+                if ready {
+                    PauseDesktop()
+                }
+            }
+        }
+        ready = AppContextRun(*app, APP_SAVE) && ready
+    }
+    SessionClose(app.session)
+    CloseDesktop()
+    AppFilesClose(*local.files)
+    AppFileFree(local.read_value)
+    HostedAppClose(*app.app)
+    return ifx ready then 0 else 1
+}

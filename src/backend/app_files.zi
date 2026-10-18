@@ -1,0 +1,199 @@
+// Private document storage for hosts. The harness supplies an app/account
+// directory; bundles only name relative files inside that directory.
+#import "std/file"
+#import "std/vec"
+#import "std/text"
+#import "std/byte_text_linux"
+#import "app_protocol"
+
+APP_DOCUMENT_LIMIT :: 16777216
+
+AppFiles :: struct {
+    root: string
+    status: s32
+    lock: FileHandle
+}
+
+libc :: #system_library "libc";
+AppFreeBytes :: (bytes: *u8) #foreign libc "free";
+
+AppFileFree :: (value: string) {
+    if value.count > 0 {
+        descriptor := cast(*TextDescriptor)(*value)
+        AppFreeBytes(descriptor.data)
+    }
+}
+#if !#defined(_WIN32) && !#defined(PLATFORM_WEB) {
+    FileLock :: (fd: s32, operation: s32) -> s32 #foreign libc "flock";
+}
+#if #defined(_WIN32) {
+    FileError :: () -> *s32 #foreign libc "_errno";
+} else #if #defined(ANDROID_BUILD) {
+    FileError :: () -> *s32 #foreign libc "__errno";
+} else {
+    FileError :: () -> *s32 #foreign libc "__errno_location";
+}
+
+AppFileNameValid :: (name: string) -> bool {
+    if name.count == 0 || name.count > 1024 || name[0] == cast(u8)47 {
+        return false
+    }
+    start: s64 = 0
+    for index: 0..name.count {
+        if index == name.count || name[index] == cast(u8)47 {
+            part := name[start:index]
+            if part == "" || part == "." || part == ".." {
+                return false
+            }
+            start = index + 1
+        } else if name[index] < cast(u8)32 || name[index] == cast(u8)127 ||
+        name[index] == cast(u8)92 || name[index] == cast(u8)58 {
+            return false
+        }
+    }
+    return true
+}
+
+AppPrivateDirectory :: (path: string) -> bool {
+    if path.count == 0 || path[0] != cast(u8)47 || path.count >= 3072 {
+        return false
+    }
+    for index: 1..path.count {
+        if index == path.count || path[index] == cast(u8)47 {
+            prefix := path[:index]
+            if PathIsLink(prefix) || !CreatePrivateDirectory(prefix) {
+                return false
+            }
+        }
+    }
+    return true
+}
+
+AppFilePath :: (files: *AppFiles, name: string, create: bool) -> string {
+    if !AppFileNameValid(name) || files.root == "" {
+        return ""
+    }
+    path: Vec(u8)
+    BuilderPrint(*path, "%/%", files.root, name)
+    result := BuilderFinish(path)
+    for index: 1..result.count {
+        if index == result.count || result[index] == cast(u8)47 {
+            prefix := result[:index]
+            if PathIsLink(prefix) {
+                AppFileFree(result)
+                return ""
+            }
+            if create && index < result.count && !CreatePrivateDirectory(prefix) {
+                AppFileFree(result)
+                return ""
+            }
+        }
+    }
+    return result
+}
+
+AppFilesOpen :: (files: *AppFiles, root: string) -> bool {
+    if !AppPrivateDirectory(root) {
+        return false
+    }
+    files.root = root
+    path := AppFilePath(files, ".lock", false)
+    defer { AppFileFree(path) }
+    files.lock = OpenExclusivePrivate(path)
+    if !files.lock.valid {
+        files.lock = OpenRead(path)
+    }
+    if !files.lock.valid {
+        return false
+    }
+    #if !#defined(_WIN32) && !#defined(PLATFORM_WEB) {
+        if FileLock(files.lock.fd, 6) != 0 {
+            unused CloseFile(files.lock)
+            files.lock = FileHandle.{}
+            return false
+        }
+    }
+    return true
+}
+
+AppFilesClose :: (files: *AppFiles) {
+    if files.lock.valid {
+        unused CloseFile(files.lock)
+    }
+    files.root = ""
+    files.lock = FileHandle.{}
+    files.status = DOCUMENT_ERROR
+}
+
+AppFileRead :: (files: *AppFiles, name: string) -> string {
+    files.status = DOCUMENT_ERROR
+    if !files.lock.valid {
+        return ""
+    }
+    path := AppFilePath(files, name, false)
+    defer { AppFileFree(path) }
+    if path == "" {
+        return ""
+    }
+    file := OpenRead(path)
+    if !file.valid {
+        if FileError().* == 2 {
+            files.status = DOCUMENT_MISSING
+        }
+        return ""
+    }
+    defer { unused CloseFile(file) }
+    size := FileSize(file)
+    if size < 0 || size > APP_DOCUMENT_LIMIT {
+        return ""
+    }
+    bytes: Vec(u8)
+    for index: 0..size - 1 {
+        if !VecPush(bytes, cast(u8)0) {
+            return ""
+        }
+    }
+    read: s64
+    {
+        output := VecSlice(bytes, 0, bytes.count)
+        read = ReadAt(file, output, 0)
+    }
+    if read != size {
+        VecFree(bytes)
+        return ""
+    }
+    files.status = DOCUMENT_READY
+    return BuilderFinish(bytes)
+}
+
+AppFileWrite :: (files: *AppFiles, name: string, value: string) -> bool {
+    if !files.lock.valid || value.count > APP_DOCUMENT_LIMIT || name == ".lock" {
+        return false
+    }
+    path := AppFilePath(files, name, true)
+    defer { AppFileFree(path) }
+    if path == "" {
+        return false
+    }
+    temporary: Vec(u8)
+    BuilderPrint(*temporary, "%.new", path)
+    next := BuilderFinish(temporary)
+    defer { AppFileFree(next) }
+    if PathIsLink(next) {
+        return false
+    }
+    unused RemoveFile(next)
+    file := OpenExclusivePrivate(next)
+    if !file.valid {
+        return false
+    }
+    ok := WriteTextAt(file, value, 0) == value.count && SyncFile(file)
+    if !CloseFile(file) {
+        ok = false
+    }
+    if !ok || !RenamePath(next, path) {
+        unused RemoveFile(next)
+        return false
+    }
+    return true
+}

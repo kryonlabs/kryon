@@ -1,0 +1,269 @@
+// Lifecycle and UI bindings for portable apps. A harness supplies services
+// through its own allowlist and callback; this module owns no app policy.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "app_protocol"
+#import "session"
+#import "geometry"
+#import "text_input_props"
+#import "hosted_app"
+#import "hosted_values"
+#import "widget_codec"
+#import "widget_host"
+
+using HostValueKind;
+
+AppServiceAllows :: #type (context: *void, function: string) -> bool;
+
+AppContext :: struct {
+    app: HostedApp
+    // A harness may keep the runtime in its existing package slot.
+    borrowed: *HostedApp
+    id: [128]u8
+    name: [128]u8
+    icon: [16384]u8
+    expected_id: string
+    identified: bool
+    described: bool
+    mode: s32
+    session: Session
+    bounds: Rectangle
+    dark: bool
+    scale: float32
+    font: s32
+    key: s32
+    modifiers: s32
+    input: TextFieldInput
+    area_input: TextAreaInput
+    keyboard: bool
+    command: string
+    reply: string
+    // The service callback's returned strings must outlive the bundle run.
+    services: HostCall
+    widgets: HostCall
+    allows: AppServiceAllows
+    context: *void
+    session_codec: WidgetSessionCodec
+    bounds_codec: WidgetRectangleCodec
+    input_codec: WidgetTextFieldInputCodec
+    area_codec: WidgetTextAreaInputCodec
+}
+
+AppContextRuntime :: (app: *AppContext) -> *HostedApp {
+    return ifx app.borrowed != null then app.borrowed else *app.app
+}
+
+AppModule :: (module: string) -> bool {
+    return module == "app_context" || module == "kryon_app_context"
+}
+
+AppIdValid :: (id: string) -> bool {
+    if id.count == 0 || id.count >= 128 || id == "." || id == ".." {
+        return false
+    }
+    for index: 0..id.count - 1 {
+        byte := id[index]
+        if !((byte >= cast(u8)97 && byte <= cast(u8)122) ||
+            (byte >= cast(u8)48 && byte <= cast(u8)57) ||
+            byte == cast(u8)46 || byte == cast(u8)45 || byte == cast(u8)95) {
+            return false
+        }
+    }
+    return true
+}
+
+AppCoreFunction :: (name: string) -> bool {
+    return name == "AppModeHost" || name == "AppIdentityHost" ||
+    name == "AppDescribeHost" || name == "AppSupportsHost" ||
+    name == "AppSessionHost" || name == "AppBoundsHost" ||
+    name == "AppDarkHost" || name == "AppScaleHost" || name == "AppFontHost" || name == "AppKeyHost" ||
+    name == "AppModifiersHost" || name == "AppFieldInputHost" ||
+    name == "AppAreaInputHost" || name == "AppKeyboardHost" ||
+    name == "AppCommandHost" || name == "AppReplyHost" || name == "AppServiceHost"
+}
+
+AppContextAllows :: (context: *void, module: string, name: string) -> bool {
+    app := cast(*AppContext)context
+    if AppModule(module) {
+        return AppCoreFunction(name) ||
+        (app.allows != null && app.allows(app.context, name))
+    }
+    return WidgetHostSupports(module, name)
+}
+
+AppArgumentText :: (value: HostValue) -> string {
+    if value.length == 0 {
+        return ""
+    }
+    return TextFromBytes(BytesFromPointer(value.data, cast(u64)value.length))
+}
+
+AppContextCall :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    app := cast(*AppContext)context
+    name := TextFromCString(function)
+    if !AppModule(TextFromCString(module)) {
+        if app.mode != APP_FRAME || !app.identified || !app.described {
+            return 0
+        }
+        if app.widgets == null { return 0 }
+        return app.widgets(app.context, module, function, arguments, count, result)
+    }
+    result.* = HostValue.{.kind = cast(s32)HostVoid, .type_name = HostTextData("void")}
+    if name == "AppModeHost" && count == 0 {
+        result.* = HostScalar("s32", cast(s64)app.mode)
+        return 1
+    }
+    if name == "AppIdentityHost" && count == 2 && app.mode == APP_IDENTIFY &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
+    HostScalarValid(arguments[1], "s32", cast(s32)HostInteger) {
+        id := AppArgumentText(arguments[0])
+        api := arguments[1].integer
+        if app.identified || !AppIdValid(id) || api < 1 || api > APP_API ||
+        (app.expected_id != "" && id != app.expected_id) || !CopyCString(id, app.id[:]) {
+            return 0
+        }
+        app.identified = true
+        return 1
+    }
+    if name == "AppDescribeHost" && count == 2 && app.mode == APP_IDENTIFY &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
+    HostScalarValid(arguments[1], "string", cast(s32)HostString) {
+        title := AppArgumentText(arguments[0])
+        if app.described || title == "" || !CopyCString(title, app.name[:]) ||
+        !CopyCString(AppArgumentText(arguments[1]), app.icon[:]) {
+            return 0
+        }
+        app.described = true
+        return 1
+    }
+    if name == "AppSupportsHost" && count == 1 &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) {
+        available := app.allows != null && app.allows(app.context, AppArgumentText(arguments[0]))
+        result.* = HostScalar("bool", ifx available then 1 else 0)
+        return 1
+    }
+    // Identification is deliberately free of storage, network and secrets.
+    if app.mode == APP_IDENTIFY || !app.identified || !app.described {
+        return 0
+    }
+    if name == "AppServiceHost" && count == 2 &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) &&
+    HostScalarValid(arguments[1], "string", cast(s32)HostString) {
+        service := AppArgumentText(arguments[0])
+        if app.services != null && app.allows != null && app.allows(app.context, service) {
+            return app.services(app.context, module, function, arguments, count, result)
+        }
+        unavailable := "{\"status\":\"unavailable\"}"
+        result.* = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"),
+            .data = HostTextData(unavailable), .length = cast(usize)unavailable.count}
+        return 1
+    }
+    if name == "AppCommandHost" && count == 0 && app.mode == APP_COMMAND {
+        result.* = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"),
+            .data = HostTextData(app.command), .length = cast(usize)app.command.count}
+        return 1
+    }
+    if name == "AppReplyHost" && count == 1 &&
+    HostScalarValid(arguments[0], "string", cast(s32)HostString) {
+        // The caller copies this while the bundle's run is still retained.
+        app.reply = AppArgumentText(arguments[0])
+        return 1
+    }
+    if app.mode == APP_FRAME {
+        if name == "AppScaleHost" && count == 0 {
+            result.* = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"),
+                .real = ifx app.scale > 0.0 then cast(float64)app.scale else 1.0}
+            return 1
+        }
+        if name == "AppFontHost" && count == 0 {
+            result.* = HostScalar("s32", ifx app.font > 0 then cast(s64)app.font else 18)
+            return 1
+        }
+        if name == "AppSessionHost" && count == 0 {
+            result.* = WidgetEncodeSession(app.session, *app.session_codec)
+            return 1
+        }
+        if name == "AppBoundsHost" && count == 0 {
+            result.* = WidgetEncodeRectangle(app.bounds, *app.bounds_codec)
+            return 1
+        }
+        if name == "AppDarkHost" && count == 0 {
+            result.* = HostScalar("bool", ifx app.dark then 1 else 0)
+            return 1
+        }
+        if name == "AppKeyHost" && count == 0 {
+            result.* = HostScalar("s32", cast(s64)app.key)
+            return 1
+        }
+        if name == "AppModifiersHost" && count == 0 {
+            result.* = HostScalar("s32", cast(s64)app.modifiers)
+            return 1
+        }
+        if name == "AppFieldInputHost" && count == 0 {
+            result.* = WidgetEncodeTextFieldInput(app.input, *app.input_codec)
+            return 1
+        }
+        if name == "AppAreaInputHost" && count == 0 {
+            result.* = WidgetEncodeTextAreaInput(app.area_input, *app.area_codec)
+            return 1
+        }
+        if name == "AppKeyboardHost" && count == 1 &&
+        HostScalarValid(arguments[0], "bool", cast(s32)HostInteger) {
+            app.keyboard = arguments[0].integer != 0
+            return 1
+        }
+    }
+    if app.services != null && app.allows != null && app.allows(app.context, name) {
+        return app.services(app.context, module, function, arguments, count, result)
+    }
+    return 0
+}
+
+AppContextIdentify :: (context: *void) -> bool {
+    app := cast(*AppContext)context
+    app.mode = APP_IDENTIFY
+    app.identified = false
+    app.described = false
+    answer: s64
+    return HostedAppRun(AppContextRuntime(app), *answer) && answer == APP_PROTOCOL &&
+    app.identified && app.described
+}
+
+AppContextOpen :: (app: *AppContext, bytes: string) -> bool {
+    ready := HostedAppOpen(AppContextRuntime(app), bytes) &&
+    HostedAppStart(AppContextRuntime(app), AppContextAllows, AppContextCall, cast(*void)app) &&
+    AppContextIdentify(cast(*void)app)
+    if !ready { HostedAppClose(AppContextRuntime(app)) }
+    return ready
+}
+
+AppContextRestart :: (app: *AppContext) -> bool {
+    id := app.id
+    name := app.name
+    icon := app.icon
+    identified := app.identified
+    described := app.described
+    mode := app.mode
+    ready := HostedAppRestart(AppContextRuntime(app), AppContextAllows, AppContextCall,
+        cast(*void)app, AppContextIdentify)
+    if !ready {
+        app.id = id
+        app.name = name
+        app.icon = icon
+        app.identified = identified
+        app.described = described
+        app.mode = mode
+    }
+    return ready
+}
+
+// The supervising harness brackets this call with WidgetHostBegin/End.
+AppContextRun :: (app: *AppContext, mode: s32) -> bool {
+    app.mode = mode
+    app.keyboard = false
+    app.reply = ""
+    answer: s64
+    return app.identified && app.described && HostedAppRun(AppContextRuntime(app), *answer) && answer == 0
+}

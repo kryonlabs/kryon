@@ -209,6 +209,39 @@ pixels compared with native output.
 it. The usual desktop menu and autostart settings apply. Embedded files need
 no source checkout after installation.
 
+### Apps shared between harnesses
+
+An app can import `kryon/app_context` and `kryon/app_protocol` instead of a
+product's host API. On `APP_IDENTIFY` it calls `AppIdentity(id, minimum_api)`
+and `AppDescribe(name, icon)`, then returns `APP_PROTOCOL`. It draws hosted
+Kryon widgets on `APP_FRAME`, handles its own state, and saves pending changes
+on `APP_SAVE`. A supervising harness supplies `AppContext`, its service
+allowlist and callbacks from `kryon/app_context_host`. Identification cannot
+read or write user data. A bundle requiring a newer interface is rejected
+before its first frame.
+
+`AppSupports(name)` queries optional services; `AppService(name, request)`
+returns `{"status":"unavailable"}` when the harness does not grant one.
+Imports alone do not grant storage, network, clipboard or secret access.
+Hosts keep those permissions and account boundaries. `DocumentRead`,
+`DocumentStatus` and `DocumentWrite` distinguish missing files from read
+errors; an app must preserve a document it cannot read.
+
+The desktop player runs this contract directly. Its local provider uses
+private documents under `$XDG_DATA_HOME/kryon/apps/<id>` (or
+`~/.local/share/kryon/apps/<id>`), exclusive app-directory locking, atomic
+writes, the clipboard, embedded locales and a desktop image picker. Set
+`KRYON_APP_DATA` to choose another private app directory. Harnesses can
+provide their own account-scoped storage and sync through the same calls.
+Local documents do not automatically sync between different harnesses.
+
+For example, Inner Breeze's `diary.zib` runs in its original harness,
+Werkzeug's `werk --bundle diary.zib`, or `kryon run diary.zib`; it does not
+load `inbe.zib`. Werkzeug's Calculator uses the same interface. Apps that
+need device secrets or timed clipboard ownership still require a harness
+that supplies those capabilities. The common player currently has a Linux
+desktop provider; hosted app release watching is not supported yet.
+
 ## Installing
 
 `kryon install` (or `ziran install`) builds one profile and installs it for

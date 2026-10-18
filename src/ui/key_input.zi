@@ -14,19 +14,19 @@ TypedTextAppend :: (output: []u8, length: s32, codepoint: s32) -> s32 {
     if length < 0 || length + size > cast(s32)output.count { return length }
     if size == {
         case 1;
-            output[length] = cast(u8)codepoint
+        output[length] = cast(u8)codepoint
         case 2;
-            output[length] = cast(u8)(0xC0 | (codepoint >> 6))
-            output[length + 1] = cast(u8)(0x80 | (codepoint & 0x3F))
+        output[length] = cast(u8)(0xC0 | (codepoint >> 6))
+        output[length + 1] = cast(u8)(0x80 | (codepoint & 0x3F))
         case 3;
-            output[length] = cast(u8)(0xE0 | (codepoint >> 12))
-            output[length + 1] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
-            output[length + 2] = cast(u8)(0x80 | (codepoint & 0x3F))
+        output[length] = cast(u8)(0xE0 | (codepoint >> 12))
+        output[length + 1] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
+        output[length + 2] = cast(u8)(0x80 | (codepoint & 0x3F))
         case;
-            output[length] = cast(u8)(0xF0 | (codepoint >> 18))
-            output[length + 1] = cast(u8)(0x80 | ((codepoint >> 12) & 0x3F))
-            output[length + 2] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
-            output[length + 3] = cast(u8)(0x80 | (codepoint & 0x3F))
+        output[length] = cast(u8)(0xF0 | (codepoint >> 18))
+        output[length + 1] = cast(u8)(0x80 | ((codepoint >> 12) & 0x3F))
+        output[length + 2] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
+        output[length + 3] = cast(u8)(0x80 | (codepoint & 0x3F))
     }
     return length + size
 }
@@ -65,4 +65,20 @@ TextFieldInputFor :: (key: s32, modifiers: s32, text: string) -> TextFieldInput 
     input.paste = control && key == 86
     if !control { input.text = text }
     return input
+}
+
+// Multiline editing uses the same keys as a field, with vertical movement
+// and document navigation kept distinct from line navigation.
+#program_export
+TextAreaInputFor :: (key: s32, modifiers: s32, text: string) -> TextAreaInput {
+    field := TextFieldInputFor(key, modifiers, text)
+    control := (modifiers & KeyModifierControl) != 0
+    return TextAreaInput.{.text = field.text, .left = field.left, .right = field.right,
+        .up = key == KeyUp, .down = key == KeyDown,
+        .home = field.home && !control, .end = field.end && !control,
+        .document_home = field.home && control, .document_end = field.end && control,
+        .page_up = key == KeyPageUp, .page_down = key == KeyPageDown,
+        .shift = field.shift, .backspace = field.backspace, .delete_forward = field.delete_forward,
+        .select_all = field.select_all, .copy = field.copy, .cut = field.cut, .paste = field.paste,
+        .enter = field.commit, .escape = field.escape}
 }

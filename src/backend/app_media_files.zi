@@ -1,0 +1,174 @@
+// A host's local image library, scoped to the same app/account directory as
+// its documents. A bundle can request the picker, never choose an OS path.
+#import "app_files"
+#import "file_picker"
+#import "std/file"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/text"
+#import "std/vec"
+#import "std/date_parse"
+Time :: #import "std/date_time_linux";
+Json :: #import "std/json_scan";
+
+AppMediaAvailable :: () -> bool {
+    #if #defined(PLATFORM_DESKTOP) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD) && !#defined(_WIN32) {
+        return true
+    } else {
+        return false
+    }
+}
+
+AppMediaResult :: (status: string) -> string {
+    out: Vec(u8)
+    BuilderPrint(*out, "{\"status\":\"%\"}", status)
+    return BuilderFinish(out)
+}
+
+AppMediaQuote :: (out: *Vec(u8), value: string) {
+    BuilderPrint(out, "\"")
+    for byte: value {
+        if byte == cast(u8)34 { BuilderPrint(out, "\\\"") }
+        else if byte == cast(u8)92 { BuilderPrint(out, "\\\\") }
+        else if byte == cast(u8)10 { BuilderPrint(out, "\\n") }
+        else if byte == cast(u8)13 { BuilderPrint(out, "\\r") }
+        else if byte == cast(u8)9 { BuilderPrint(out, "\\t") }
+        else if byte >= cast(u8)32 { unused VecPush(out.*, byte) }
+    }
+    BuilderPrint(out, "\"")
+}
+
+AppMediaDayPath :: (day: string) -> string {
+    if day.count != 10 || day[4] != cast(u8)45 || day[7] != cast(u8)45 ||
+    !DateValid(DateNumber(day, 0, 4), DateNumber(day, 5, 2), DateNumber(day, 8, 2)) {
+        return ""
+    }
+    out: Vec(u8)
+    BuilderPrint(*out, "photos/%/%/%", day[:4], day[5:7], day[8:])
+    return BuilderFinish(out)
+}
+
+AppMediaQuery :: (files: *AppFiles, day: string) -> string {
+    relative := AppMediaDayPath(day)
+    defer { AppFileFree(relative) }
+    output: Vec(u8)
+    BuilderPrint(*output, "[")
+    count: s32 = 0
+    if relative != "" {
+        path := AppFilePath(files, relative, false)
+        defer { AppFileFree(path) }
+        cursor := OpenDirectory(path)
+        if cursor.valid {
+            while count < 128 {
+                entry := NextDirectoryEntry(*cursor)
+                if !entry.valid { break }
+                name := TextFromCString(*entry.name[0])
+                if name.count != 69 || name[64:] != ".json" { continue }
+                item: Vec(u8)
+                BuilderPrint(*item, "%/%", relative, name)
+                file := BuilderFinish(item)
+                value := AppFileRead(files, file)
+                AppFileFree(file)
+                if value.count > 0 && value.count <= 4096 && value[0] == cast(u8)123 &&
+                Json.Space(value, Json.ValueEnd(value, 0, 0)) == value.count {
+                    if count > 0 { BuilderPrint(*output, ",") }
+                    BuilderPrint(*output, "%", value)
+                    count += 1
+                }
+                AppFileFree(value)
+            }
+            unused CloseDirectory(*cursor)
+        }
+    }
+    BuilderPrint(*output, "]")
+    return BuilderFinish(output)
+}
+
+AppMediaAsset :: (files: *AppFiles, destination: string) -> string {
+    if destination.count < 8 || destination[:7] != "photos/" { return "" }
+    path := AppFilePath(files, destination, false)
+    if path != "" && PathExists(path) { return path }
+    AppFileFree(path)
+    return ""
+}
+
+AppMediaPick :: (files: *AppFiles, title: string) -> string {
+    #if #defined(PLATFORM_DESKTOP) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD) && !#defined(_WIN32) {
+        return AppMediaPickDesktop(files, title)
+    } else {
+        return AppMediaResult("unavailable")
+    }
+}
+
+#if #defined(PLATFORM_DESKTOP) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD) && !#defined(_WIN32) {
+    glib :: #system_library "glib-2.0";
+    ChecksumData :: (kind: s32, data: *u8, length: usize) -> *u8 #foreign glib "g_compute_checksum_for_data";
+    ChecksumFree :: (bytes: *u8) #foreign glib "g_free";
+
+    AppMediaPickDesktop :: (files: *AppFiles, title: string) -> string {
+        chosen: [4096]u8
+        picked := PickFile(FilePickerProps.{.title = title}, chosen[:])
+        if picked == 0 { return AppMediaResult("cancelled") }
+        if picked != 1 { return AppMediaResult("failed") }
+        path := TextFromCString(*chosen[0])
+        file := OpenRead(path)
+        if !file.valid { return AppMediaResult("failed") }
+        size := FileSize(file)
+        if size < 8 || size > APP_DOCUMENT_LIMIT {
+            unused CloseFile(file)
+            return AppMediaResult("failed")
+        }
+        unused CloseFile(file)
+        data, ok := ReadEntireFile(path)
+        defer { AppFileFree(data) }
+        if !ok || data.count != size { return AppMediaResult("failed") }
+        format: string
+        if data[0] == cast(u8)137 && data[1:4] == "PNG" { format = "png" }
+        else if data[0] == cast(u8)255 && data[1] == cast(u8)216 { format = "jpg" }
+        else if data[:3] == "GIF" { format = "gif" }
+        else if data.count >= 12 && data[:4] == "RIFF" && data[8:12] == "WEBP" { format = "webp" }
+        if format == "" { return AppMediaResult("failed") }
+        descriptor := cast(*TextDescriptor)(*data)
+        checksum := ChecksumData(2, descriptor.data, cast(usize)data.count)
+        if checksum == null { return AppMediaResult("failed") }
+        defer { ChecksumFree(checksum) }
+        hash := TextFromCString(checksum)
+        date := Time.LocalNow()
+        day_bytes: [10]u8
+        unused WriteIsoDay(UtcSeconds(date.year, date.month, date.day, 0, 0, 0), day_bytes[:])
+        day := TextFromBytes(day_bytes[:])
+        folder := AppMediaDayPath(day)
+        defer { AppFileFree(folder) }
+        out: Vec(u8)
+        BuilderPrint(*out, "%/%.%", folder, hash, format)
+        destination := BuilderFinish(out)
+        defer { AppFileFree(destination) }
+        if !AppFileWrite(files, destination, data) { return AppMediaResult("failed") }
+        start := path.count
+        while start > 0 && path[start - 1] != cast(u8)47 { start -= 1 }
+        metadata: Vec(u8)
+        BuilderPrint(*metadata, "{\"hash\":")
+        AppMediaQuote(*metadata, hash)
+        BuilderPrint(*metadata, ",\"name\":")
+        AppMediaQuote(*metadata, path[start:])
+        BuilderPrint(*metadata, ",\"day\":")
+        AppMediaQuote(*metadata, day)
+        BuilderPrint(*metadata, ",\"format\":")
+        AppMediaQuote(*metadata, format)
+        BuilderPrint(*metadata, "}")
+        record := BuilderFinish(metadata)
+        defer { AppFileFree(record) }
+        name: Vec(u8)
+        BuilderPrint(*name, "%/%.json", folder, hash)
+        record_name := BuilderFinish(name)
+        defer { AppFileFree(record_name) }
+        if !AppFileWrite(files, record_name, record) { return AppMediaResult("failed") }
+        result: Vec(u8)
+        BuilderPrint(*result, "{\"status\":\"done\",\"destination\":")
+        AppMediaQuote(*result, destination)
+        BuilderPrint(*result, ",\"name\":")
+        AppMediaQuote(*result, path[start:])
+        BuilderPrint(*result, "}")
+        return BuilderFinish(result)
+    }
+}
