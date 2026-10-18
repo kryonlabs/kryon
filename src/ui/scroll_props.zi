@@ -60,6 +60,34 @@ ScrollResult :: struct {
     frame: ScrollFrame
 }
 
+// The pointer, drag and motion a frame of scrolling starts from. The caller
+// adds its bounds, content and offset.
+#program_export
+ScrollFrameInputFor :: (input: ScrollInput) -> ScrollFrameInput {
+    frame: ScrollFrameInput
+    frame.pointer_allowed = input.pointer_allowed
+    frame.disabled = input.disabled
+    frame.mouse = input.mouse
+    frame.pressed = input.pressed
+    frame.down = input.down
+    frame.released = input.released
+    frame.wheel = input.wheel
+    frame.owns_drag = input.owns_drag
+    frame.owner_captured = input.owner_captured
+    frame.grab = input.grab
+    frame.content_drag = input.content_drag
+    frame.drag_origin_y = input.drag_origin_y
+    frame.drag_origin_offset = input.drag_origin_offset
+    frame.drag_moving = input.drag_moving
+    frame.now_seconds = input.now_seconds
+    frame.sample_seconds = input.sample_seconds
+    frame.velocity = input.velocity
+    frame.flinging = input.flinging
+    frame.gliding = input.gliding
+    frame.glide_target = input.glide_target
+    return frame
+}
+
 // Retain the complete drag and momentum state between caller-supplied
 // frames. A content press must remain a content drag while held; retaining
 // only ownership and grab would reinterpret it as a scrollbar drag.

@@ -194,6 +194,9 @@
         // A widget other than a scroll that scrolls its own content, such as
         // a text area, has more content than shows; see TreeSetWheelScrolls.
         wheel_scrolls: bool
+        // Such a widget's content also follows a drag, as a finger drags it
+        // on a touch screen; see TreeSetDragScrolls.
+        drag_scrolls: bool
     }
 
     SemanticData :: struct {
@@ -1267,6 +1270,17 @@
         if !trees[slot].building || index < 0 ||
         index >= trees[slot].submitted_count { return }
         trees[slot].submitted[index].wheel_scrolls = scrolls
+    }
+
+    // A widget that scrolls its own content says when a drag of it moves
+    // that content, as a finger's does on a text area with more text than
+    // shows. A drag on it then scrolls it rather than a scroll around it.
+    #program_export
+    TreeSetDragScrolls :: (session: Session, index: s32, scrolls: bool) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+        trees[slot].submitted[index].drag_scrolls = scrolls
     }
 
     // Read a bounded UTF-8 byte range without exposing the tree's owned buffer.

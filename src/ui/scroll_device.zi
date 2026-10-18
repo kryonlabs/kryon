@@ -1,9 +1,14 @@
+#import "control_props"
 #import "geometry"
 #import "scroll"
 #import "scroll_props"
 #import "session"
+#import "style"
+#import "style_sheet"
 #import "tree_input"
 #import "drawing_props"
+
+using ButtonState;
 
 // One pointer can own a scroll drag, of a scrollbar thumb or of content, and
 // one scroll can coast after a flicked content drag. The host samples the
@@ -184,6 +189,39 @@ ScrollWheelTake :: (session: Session, key: u64, bounds: Rectangle,
     }
     scroll_device.wheel_consumed = true
     return scroll_device.wheel
+}
+
+// A widget that scrolls its own content, such as a text area on a touch
+// screen, lets a drag of that content move it as Scroll does: the same slop
+// before it moves, then the flick and coasting, with one drag per pointer.
+// It gives its key, its bounds, how far its content scrolls and the offset
+// it has, and keeps the returned frame's offset. The wheel stays the
+// widget's own; see ScrollWheelTake. A frame that starts moving the content
+// cancels the press it began with, so the widget no longer gets it.
+#program_export
+ScrollDeviceContentDrag :: (session: Session, key: u64, bounds: Rectangle,
+    max_scroll: s32, offset: s32, scale: float32) -> ScrollFrame {
+    frame: ScrollFrame
+    frame.offset = offset
+    if key == cast(u64)0 || !ScrollDeviceSampled(session) { return frame }
+    if max_scroll < 0 { max_scroll = 0 }
+    input: ScrollFrameInput = ScrollFrameInputFor(ScrollObservationFor(key, bounds))
+    input.bounds = bounds
+    input.content_height = cast(s32)bounds.height + max_scroll
+    input.has_offset = true
+    input.offset = offset
+    input.wheel = 0.0
+    input.gliding = false
+    track: StyleFrame = ScrollFace(StyleKindScroll(), 0, false,
+        cast(s32)ButtonStateNormal, 10.0)
+    thumb: StyleFrame = ScrollFace(StyleKindScrollThumb(), 0, false,
+        cast(s32)ButtonStateNormal, 10.0)
+    metrics: ScrollMetrics = ScrollMetricsFor(scale, track, thumb)
+    // The content has no scrollbar of its own to press.
+    metrics.scrollbar_width = 0
+    frame = ScrollFrameFor(input, metrics)
+    CommitScroll(key, frame)
+    return frame
 }
 
 // Scroll commits its own frame when its input came from ScrollObservationFor.

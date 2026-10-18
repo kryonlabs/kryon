@@ -382,7 +382,7 @@ TreeCursor :: (session: Session) -> s32 {
 
 // A scroll viewport, or a widget that scrolls content it has out of view.
 TreeScrollsAt :: (entry: *NodeCore) -> bool {
-    return entry.kind == WidgetKindScroll || entry.wheel_scrolls
+    return entry.kind == WidgetKindScroll || entry.wheel_scrolls || entry.drag_scrolls
 }
 
 // The scroll viewport under the pointer in the highest overlay layer wins,
@@ -390,7 +390,8 @@ TreeScrollsAt :: (entry: *NodeCore) -> bool {
 // to its parent, so an outer page cannot consume its wheel, and a popup's
 // scroll stays above page scrolls submitted after it. For the wheel, a text
 // area with more text than shows counts as a scroll too, so the page it is
-// on leaves the wheel to it; a drag on it still moves the page.
+// on leaves the wheel to it. A drag on it still moves the page, except on a
+// touch screen, where a finger drags the text itself.
 #program_export
 TreeScrollAt :: (session: Session, x: float32, y: float32,
     wheel: bool = false) -> u64 {
@@ -401,7 +402,8 @@ TreeScrollAt :: (session: Session, x: float32, y: float32,
     index: s32 = trees[slot].committed_count - 1
     while index > 0 {
         entry: *NodeCore = *trees[slot].committed[index]
-        if (entry.kind == WidgetKindScroll || (wheel && entry.wheel_scrolls)) &&
+        if (entry.kind == WidgetKindScroll || (wheel && entry.wheel_scrolls) ||
+            (!wheel && entry.drag_scrolls)) &&
         (top == 0 || TreeModalLayerAt(session, index) == top) &&
         PointInBounds(x, y, entry.bounds) &&
         (!entry.clipped || PointInBounds(x, y, entry.clip)) {

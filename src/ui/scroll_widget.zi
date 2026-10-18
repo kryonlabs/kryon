@@ -79,7 +79,7 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
         if metrics.scrollbar_width <= 0 {
             metrics = ScrollMetricsFor(props.scale, track, thumb)
         }
-        input: ScrollFrameInput
+        input: ScrollFrameInput = ScrollFrameInputFor(props.input)
         input.bounds = result.viewport
         input.content_height = props.content_height
         input.content_width = props.content_width
@@ -87,26 +87,6 @@ Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
         input.keep_scrollbar = props.keep_scrollbar
         input.has_offset = true
         input.offset = result.scroll_offset
-        input.pointer_allowed = props.input.pointer_allowed
-        input.disabled = props.input.disabled
-        input.mouse = props.input.mouse
-        input.pressed = props.input.pressed
-        input.down = props.input.down
-        input.released = props.input.released
-        input.wheel = props.input.wheel
-        input.owns_drag = props.input.owns_drag
-        input.owner_captured = props.input.owner_captured
-        input.grab = props.input.grab
-        input.content_drag = props.input.content_drag
-        input.drag_origin_y = props.input.drag_origin_y
-        input.drag_origin_offset = props.input.drag_origin_offset
-        input.drag_moving = props.input.drag_moving
-        input.now_seconds = props.input.now_seconds
-        input.sample_seconds = props.input.sample_seconds
-        input.velocity = props.input.velocity
-        input.flinging = props.input.flinging
-        input.gliding = props.input.gliding
-        input.glide_target = props.input.glide_target
         result.frame = ScrollFrameFor(input, metrics)
         if props.input.device { CommitScroll(key, result.frame) }
         result.scroll_offset = result.frame.offset

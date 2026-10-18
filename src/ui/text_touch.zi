@@ -24,6 +24,14 @@ TextTouchEnabled :: () -> bool {
     return touch_ready
 }
 
+// How far a finger may move from where it pressed and still tap or hold.
+TEXT_TOUCH_SLOP :: 8.0
+
+TextTouchStill :: (dx: float32, dy: float32) -> bool {
+    slop: float32 = cast(float32)TEXT_TOUCH_SLOP
+    return dx * dx + dy * dy <= slop * slop
+}
+
 TouchSelection :: struct {
     anchor: s32
     cursor: s32
@@ -174,7 +182,7 @@ TextTouchUpdate :: (session: Session, previous: s32, key: u64, value: string,
         prior := TreeNodeAt(session, previous).bounds
         dx := drag.x - prior.x - drag.grab_x
         dy := drag.y - prior.y - drag.grab_y
-        if dx * dx + dy * dy > 64.0 {
+        if !TextTouchStill(dx, dy) {
             state.cancelled = true
         }
         if !state.cancelled && now >= state.started && now - state.started >= 500 {

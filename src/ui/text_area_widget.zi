@@ -1301,6 +1301,25 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                 wheel, advance),
             paint.max_scroll)
     }
+    // On a touch screen a finger drags text that does not all show as it
+    // drags a scroll's content: past the scroll's slop it moves the text,
+    // and a flick coasts. Its press places the caret only when it lifts as
+    // a tap, so a drag leaves the caret and selection where they were. A
+    // mouse still selects by dragging.
+    touch_drags: bool = !props.disabled && TextTouchEnabled() &&
+        ScrollDeviceSampled(session)
+    touch_scrolls: bool = touch_drags && paint.max_scroll > 0
+    content_scrolled: bool = false
+    if touch_scrolls {
+        content := ScrollDeviceContentDrag(session, key, bounds,
+            paint.max_scroll, result.scroll_y, scale)
+        result.scroll_y = TextAreaScrollFor(content.offset, paint.max_scroll)
+        content_scrolled = content.drag_moving
+    }
+    // Whether the pointer moves the caret or selection in this frame; it
+    // then ends a composition.
+    pointer_caret: bool = activated || drag.started || drag.active || drag.ended
+    if touch_scrolls { pointer_caret = false }
     pointer_moved: bool = false
     if !props.disabled && previous >= 0 &&
         (drag.started || drag.active || drag.ended || activated) {
@@ -1337,11 +1356,13 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                 result.cursor = word.cursor
                 text_area_word_key = key
                 text_area_press_key = 0
+                pointer_caret = true
             } else if props.input.shift && props.focused {
                 // Shift extends the selection from its anchor to the press.
                 result.cursor = initial
                 text_area_extend_key = key
-            } else {
+                pointer_caret = true
+            } else if !touch_scrolls {
                 result.anchor = initial
                 result.cursor = initial
             }
@@ -1353,10 +1374,15 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             }
             result.selecting = false
         }
+        // A press that scrolled the text is not the first of a double tap.
+        if content_scrolled && text_area_press_key == key {
+            text_area_press_key = 0
+        }
         pointer_moved = dx > 2.0 || dy > 2.0 ||
             result.scroll_y != props.scroll_y ||
             (!drag.started && (props.selecting ||
                 result.anchor != result.cursor))
+        if touch_scrolls { pointer_moved = false }
         held_word := text_area_word_key == key && dx <= 2.0 && dy <= 2.0
         held_extension := text_area_extend_key == key
         if drag.ended {
@@ -1369,6 +1395,17 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         } else if (drag.active || drag.ended || activated) && held_extension {
             result.cursor = selected
             result.selecting = drag.active
+        } else if touch_scrolls {
+            // A finger that lifts where it pressed places the caret there.
+            // One that scrolled the text or slid away leaves it; a hold
+            // selects through the touch selection below.
+            if (drag.ended || activated) && !content_scrolled &&
+                TextTouchStill(dx, dy) {
+                result.anchor = selected
+                result.cursor = selected
+                result.selecting = false
+                pointer_caret = true
+            }
         } else if drag.active || drag.ended || activated {
             if pointer_moved {
                 // The press owns the byte anchor. Wheel scrolling, caret
@@ -1387,20 +1424,24 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         result.preferred_x_valid = false
     }
     if !props.disabled && TextTouchEnabled() {
-        point := TextTouchHitPoint(session, previous, drag)
+        // A press that became a scroll neither holds nor drags a handle.
+        touch_drag: PointerDrag = drag
+        if content_scrolled { touch_drag = PointerDrag.{} }
+        point := TextTouchHitPoint(session, previous, touch_drag)
         touch_hit := TextAreaCursorAtPlace(layout, props.value,
             cast(s32)point.x - (cast(s32)bounds.x + padding_x),
             cast(s32)point.y - (cast(s32)bounds.y + padding_y) + result.scroll_y)
-        touch := TextTouchUpdate(session, previous, key, props.value, drag,
+        touch := TextTouchUpdate(session, previous, key, props.value, touch_drag,
             touch_hit, result.anchor, result.cursor)
         if touch.handled {
             result.anchor = touch.anchor
             result.cursor = touch.cursor
-            result.selecting = drag.active
+            result.selecting = touch_drag.active
+            pointer_caret = true
         }
     }
     composition_state: CompositionState = props.composition
-    if activated || drag.started || drag.active || drag.ended {
+    if pointer_caret {
         if composition_state.active {
             composition_state = CompositionState.{}
             result.composition_changed = true
@@ -1642,6 +1683,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             TreeSetStyleClass(session, result.node, props.class_name)
         TreeSetSelected(session, result.node, result.focused)
         TreeSetWheelScrolls(session, result.node, paint.max_scroll > 0)
+        TreeSetDragScrolls(session, result.node, touch_drags && paint.max_scroll > 0)
         TreeSetTextValue(session, result.node, props.value,
             Grapheme.Boundary(props.value, result.cursor),
             Grapheme.Boundary(props.value, result.anchor), props.read_only, false)

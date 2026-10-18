@@ -1,0 +1,191 @@
+#import "session"
+#import "geometry"
+#import "scroll_device"
+#import "scroll_props"
+#import "scroll_widget"
+#import "text_area_widget"
+#import "text_context_menu"
+#import "text_input_props"
+#import "text_touch"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_composition_widget_host"
+#import "ziran_system_clipboard_host"
+
+// A text area on a page that scrolls, as Diary's entry is, driven the way
+// a host drives it: the pointer goes to the tree before each frame and the
+// shared scroll device samples it with the clock.
+TouchFrame :: struct {
+    page: s32
+    area: TouchArea
+}
+
+TouchArea :: struct {
+    scroll_y: s32
+    cursor: s32
+    anchor: s32
+    selecting: bool
+}
+
+PAGE :: Rectangle.{0.0, 0.0, 300.0, 200.0}
+LONG :: "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np\nq\nr\ns\nt"
+
+now_ms: s64 = 1000;
+
+Clock :: () -> s64 {
+    return now_ms
+}
+
+// The platform's own menu, as on Android: it stays open and draws nothing.
+Menu :: (session: Session, token: u64, x: float32, y: float32,
+    cut: bool, copy: bool, paste: bool, select_all: bool, escape: bool) -> s32 {
+    unused session
+    unused token
+    unused x
+    unused y
+    unused cut
+    unused copy
+    unused paste
+    unused select_all
+    if escape { return -1 }
+    return 0
+}
+
+Frame :: (session: Session, props: *TextAreaProps, page: *s32, page_height: s32,
+    x: float32, y: float32, down: bool, pressed: bool, released: bool) -> TouchFrame {
+    result: TouchFrame
+    TreePointerUpdate(session, PointerFrame.{x, y, down, pressed, released})
+    unused BeginFrame(session, cast(u64)1, PAGE)
+    BeginScrollFrame(session, Vector2.{x, y}, pressed, down, released, 0.0,
+        cast(float64)now_ms / 1000.0)
+    scroll := Scroll(session, ScrollProps.{.key = cast(u64)5, .bounds = PAGE,
+            .content_height = page_height, .scroll_offset = page.*})
+    page.* = scroll.scroll_offset
+    result.page = scroll.scroll_offset
+    if scroll.opened {
+        bounds := props.bounds
+        props.bounds.y = scroll.content.y + bounds.y
+        edited := TextArea(session, props.*)
+        props.bounds = bounds
+        props.scroll_y = edited.scroll_y
+        props.cursor = edited.cursor
+        props.anchor = edited.anchor
+        props.focused = edited.focused
+        props.selecting = edited.selecting
+        props.composition = edited.composition
+        result.area = TouchArea.{edited.scroll_y, edited.cursor, edited.anchor, edited.selecting}
+        unused End(session)
+    }
+    unused EndFrame(session)
+    now_ms += 16
+    return result
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    props: TextAreaProps
+    props.key = cast(u64)77
+    props.focus_id = 77
+    props.bounds = Rectangle.{20.0, 20.0, 200.0, 100.0}
+    props.value = LONG
+    page: s32 = 0
+
+    // With a mouse, on a page that fits as Diary's does, a drag selects the
+    // text it passes over and scrolls nothing.
+    unused Frame(session, *props, *page, 200, 60.0, 40.0, false, false, false)
+    pressed := Frame(session, *props, *page, 200, 60.0, 40.0, true, true, false)
+    if pressed.area.anchor != pressed.area.cursor { return 1 }
+    press_cursor := pressed.area.cursor
+    unused Frame(session, *props, *page, 200, 60.0, 55.0, true, false, false)
+    unused Frame(session, *props, *page, 200, 60.0, 75.0, true, false, false)
+    mouse := Frame(session, *props, *page, 200, 60.0, 75.0, false, false, true)
+    if mouse.area.anchor != press_cursor || mouse.area.cursor <= press_cursor { return 2 }
+    if mouse.area.scroll_y != 0 || mouse.page != 0 { return 3 }
+
+    // A touch screen: from here on presses are a finger's.
+    TextTouchInstall(Clock)
+    TextMenuInstall(Menu)
+    props.anchor = 0
+    props.cursor = 0
+    props.scroll_y = 0
+    now_ms += 1000
+    unused Frame(session, *props, *page, 400, 60.0, 60.0, false, false, false)
+    // A tap places the caret where it lifts; the press alone does not move it.
+    tap_down := Frame(session, *props, *page, 400, 60.0, 60.0, true, true, false)
+    if tap_down.area.cursor != 0 || tap_down.area.anchor != 0 { return 4 }
+    tap := Frame(session, *props, *page, 400, 60.0, 60.0, false, false, true)
+    if tap.area.cursor <= 0 || tap.area.anchor != tap.area.cursor { return 5 }
+    if tap.area.scroll_y != 0 || tap.page != 0 { return 6 }
+    caret := tap.area.cursor
+
+    // A finger drag past the slop scrolls the text that does not all show,
+    // keeps the caret where it was, selects nothing, and the page around it,
+    // which could scroll too, stays.
+    now_ms += 1000
+    unused Frame(session, *props, *page, 400, 60.0, 110.0, false, false, false)
+    unused Frame(session, *props, *page, 400, 60.0, 110.0, true, true, false)
+    unused Frame(session, *props, *page, 400, 60.0, 100.0, true, false, false)
+    unused Frame(session, *props, *page, 400, 60.0, 80.0, true, false, false)
+    held := Frame(session, *props, *page, 400, 60.0, 60.0, true, false, false)
+    if held.area.scroll_y < 40 { return 7 }
+    if held.area.cursor != caret || held.area.anchor != caret || held.area.selecting { return 8 }
+    if held.page != 0 { return 9 }
+    // A flick keeps the text moving after the finger lifts, as a scroll's
+    // content does, and the lift places no caret.
+    lifted := Frame(session, *props, *page, 400, 60.0, 40.0, false, false, true)
+    if lifted.area.cursor != caret || lifted.area.anchor != caret { return 10 }
+    coasting := Frame(session, *props, *page, 400, 60.0, 40.0, false, false, false)
+    if coasting.area.scroll_y <= lifted.area.scroll_y { return 11 }
+    if coasting.page != 0 || coasting.area.cursor != caret { return 12 }
+    rest: s32 = 0
+    while ScrollDeviceMoving(session) && rest < 400 {
+        unused Frame(session, *props, *page, 400, 60.0, 40.0, false, false, false)
+        rest += 1
+    }
+    if ScrollDeviceMoving(session) || props.cursor != caret { return 13 }
+
+    // A hold still selects the word under the finger, and the content
+    // drag lets go of it: moving on extends the selection.
+    now_ms += 1000
+    props.scroll_y = 0
+    unused Frame(session, *props, *page, 400, 30.0, 32.0, false, false, false)
+    unused Frame(session, *props, *page, 400, 30.0, 32.0, true, true, false)
+    now_ms += 600
+    hold := Frame(session, *props, *page, 400, 30.0, 32.0, true, false, false)
+    if hold.area.anchor == hold.area.cursor { return 14 }
+    unused Frame(session, *props, *page, 400, 30.0, 70.0, true, false, false)
+    extended := Frame(session, *props, *page, 400, 30.0, 90.0, true, false, false)
+    if extended.area.scroll_y != 0 || extended.page != 0 { return 15 }
+    if extended.area.cursor <= hold.area.cursor { return 16 }
+    unused Frame(session, *props, *page, 400, 30.0, 90.0, false, false, true)
+
+    // Text that all shows leaves a finger drag to the page around it.
+    props.value = "short"
+    props.anchor = 0
+    props.cursor = 0
+    props.scroll_y = 0
+    now_ms += 1000
+    unused Frame(session, *props, *page, 400, 60.0, 110.0, false, false, false)
+    unused Frame(session, *props, *page, 400, 60.0, 110.0, true, true, false)
+    unused Frame(session, *props, *page, 400, 60.0, 90.0, true, false, false)
+    fits := Frame(session, *props, *page, 400, 60.0, 60.0, true, false, false)
+    if fits.page < 40 || fits.area.scroll_y != 0 { return 17 }
+    unused Frame(session, *props, *page, 400, 60.0, 60.0, false, false, true)
+    unused SessionClose(session)
+    return 0
+}
+
+// No asset loads here: a text area's boxes would show their labels.
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
