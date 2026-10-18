@@ -102,6 +102,13 @@ jobs:
           CHROMIUM: google-chrome
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY node tests/demo_browser.mjs
 
+      - name: Build and test the widget gallery
+        env:
+          CHROMIUM: google-chrome
+        run: |
+          make site-gallery
+          make site-gallery-test
+
   test-sanitizers:
     name: Behavior tests under AddressSanitizer and UndefinedBehaviorSanitizer
     runs-on: ubuntu-latest

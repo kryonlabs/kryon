@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Explore Kryon's real widgets in your browser: text inputs, menus, layouts, charts, trees and Kanban, compiled from shared Ziran examples.">
+  <title>Widget gallery — Kryon Labs</title>
+  <link rel="canonical" href="https://kryonlabs.com/widgets.html">
+  <link rel="icon" href="favicon.svg">
+  <link rel="stylesheet" href="current.css">
+  <link rel="stylesheet" href="gallery.css">
+  <script defer src="current.js"></script>
+  <script defer src="gallery-data.js"></script>
+  <script defer src="gallery.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#preview-heading">Skip to widget preview</a>
+  <header class="site-header"><div class="site-header-inner"><a class="brand" href="index.html"><img class="brand-icon" src="assets/brand/mark.svg" alt="" width="42" height="42"><span>Kryon Labs</span></a><button class="menu-button" type="button" aria-expanded="false" aria-controls="primary-nav">Menu</button><nav class="header-nav" id="primary-nav" aria-label="Primary"><a href="getting-started.html">Get started</a><a href="widgets.html" aria-current="page">Gallery</a><a href="docs.html">Docs</a><a href="demo.html">Live editor</a><button class="theme-toggle" type="button" aria-label="Switch color theme"></button></nav></div></header>
+  <main class="gallery-page">
+    <div class="gallery-intro"><p class="eyebrow">Kryon / Widget gallery</p><h1>Explore the <em>widgets.</em></h1><p>Real controls you can click, type in and move. The same Ziran examples run here and on the desktop.</p></div>
+    <div class="gallery-layout">
+      <nav class="widget-navigation" aria-label="Widget examples"><p id="inventory">Loading examples…</p><div id="widget-list"></div></nav>
+      <section class="widget-detail" aria-labelledby="preview-heading">
+        <div class="widget-heading"><div><p class="eyebrow" id="widget-package">Kryon</p><h2 id="preview-heading">Button</h2></div><a id="widget-source" href="https://github.com/kryonlabs/kryon/tree/master/examples/gallery">Ziran source ↗</a></div>
+        <div class="preview-options"><label><input id="disabled-state" type="checkbox"> Disabled state</label><span id="preview-status" role="status" aria-live="polite">Loading the web build…</span></div>
+        <div class="widget-stage" id="widget-stage"><iframe id="widget-preview" src="assets/widget-gallery.html" title="Interactive Kryon widget preview"></iframe></div>
+        <p class="widget-note" id="widget-note">Click a control to try it. Tab moves keyboard focus.</p>
+        <p class="gallery-boundary">Core widgets come from Kryon. Charts come from Plot; TreeView and Kanban come from DataViews. The TableView entry explains the current renderer gap.</p>
+      </section>
+    </div>
+    <noscript><p>Enable JavaScript to explore the compiled widgets, or <a href="https://github.com/kryonlabs/kryon/tree/master/examples/gallery">read the Ziran source</a>.</p></noscript>
+  </main>
+</body>
+</html>

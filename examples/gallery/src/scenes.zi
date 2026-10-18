@@ -1,22 +1,9 @@
-// A live catalog of Kryon's current Ziran widget surface.
-// Uses the same public controls as tools/widget_review.zi; all state is local.
-using UI :: #import "Widgets";
-#import "page_text"
-#import "flow"
-#import "paned_view"
-#import "paned_view_props"
-#import "transition"
-#import "text_selection_widget"
-#import "style_picker"
-#import "style_picker_props"
-#import "system_theme"
+// Shared, interactive core widget scenes for the gallery and review renderer.
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
 #import "std/number_text"
 
-scene: s32;
-catalog_scroll: s32;
-disabled_controls: bool;
 dark: bool;
-installed: s32 = -1;
 clicks: s32;
 amount: float32 = 65.0;
 choice: s32 = 1;
@@ -58,6 +45,7 @@ area_bytes: [4096]u8;
 area_next: [4096]u8;
 area_length: s32;
 initialized: bool;
+scene_image: string = "../icons/pfp.png";
 demo_field_cursor: [2]s32;
 demo_field_anchor: [2]s32;
 demo_field_scroll: [2]s32;
@@ -110,6 +98,17 @@ Label :: (session: Session, value: string, y: float32 = 76.0) {
 }
 
 Compose :: (session: Session, scene: s32, disabled: bool) {
+    if !initialized {
+        field_length = Copy(field_bytes[:], "A quiet place to think")
+        area_length = Copy(area_bytes[:], "A small note\n\nClear typography and careful spacing make everyday work feel calm. Café, Ω and é.")
+        multi[0] = true; multi[2] = true
+        unused Copy(field_next[:], TextView(field_bytes[0:field_length]))
+        unused Copy(area_next[:], TextView(area_bytes[0:area_length]))
+        initialized = true
+    }
+    for index: 0..field_length - 1 { field_bytes[index] = field_next[index] }
+    for index: 0..empty_length - 1 { empty_bytes[index] = empty_next[index] }
+    for index: 0..area_length - 1 { area_bytes[index] = area_next[index] }
     typed: [128]u8
     input_key: s32 = 0
     if scene == 1 || scene == 2 { input_key = KeyboardTake(session) }
@@ -142,6 +141,11 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
             props.disabled = disabled
             if Button(session, props) == 1 { clicks += 1 }
         }
+        digits: [16]u8
+        counter: [48]u8
+        length := Copy(counter[:], "Clicks: ")
+        length += Copy(counter[length:], FormatInteger(cast(s64)clicks, digits[:]))
+        Label(session, TextView(counter[0:length]), 224.0)
     } else if scene == 1 {
         EditField(session, 10, b, disabled, false, field_input)
         b.y += 64.0
@@ -248,7 +252,7 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         Text(session, TextProps.{.bounds = .{24.0, 64.0, 432.0, 44.0}, .text = "Make room for good ideas", .font = 24, .disabled = disabled})
         Text(session, TextProps.{.bounds = .{24.0, 128.0, 410.0, 132.0}, .text = "Readable text, natural wrapping and familiar Unicode: café, Ω, é. Every little detail adds up.", .font = 16, .disabled = disabled})
     } else if scene == 28 {
-        Image(session, ImageProps.{.asset_path = "../icons/pfp.png", .alt_text = "Kryon profile image atlas", .bounds = .{24.0, 64.0, 192.0, 192.0}, .smooth = true})
+        Image(session, ImageProps.{.asset_path = scene_image, .alt_text = "Kryon profile image atlas", .bounds = .{24.0, 64.0, 192.0, 192.0}, .smooth = true})
     } else if scene == 29 {
         unused Box(session, BoxProps.{.bounds = .{24.0, 64.0, 432.0, 164.0}, .fill = .{235, 244, 245, 255}, .border = .{135, 164, 170, 255}, .radius = 12.0})
         Label(session, "A surface with rounded edges", 118.0)
@@ -407,128 +411,63 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
     }
 }
 
-// Extend the palette with the catalog's list surfaces and selection colors.
-InstallCatalogPalette :: () {
-    palette := SystemPaletteFallback(dark)
-    unused SystemPaletteInstall(palette)
-    rules := ActiveStyleRules()
-    kinds: [4]s32 = .{StyleKindListBox(), StyleKindListBoxMulti(), StyleKindListBoxItem(), StyleKindListBoxMultiItem()}
-    for index: 0..3 {
-        rule: StyleRule
-        rule.selector = StyleDefaultSelector()
-        rule.selector.kind = kinds[index]
-        rule.style.fields = cast(u32)StyleField.StyleForeground
-        rule.style.foreground = palette.text
-        if index < 2 {
-            rule.style.fields |= cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleBorder
-            rule.style.background = palette.base
-            rule.style.border = palette.border
-        }
-        rule.order = rules.count
-        rules.items[rules.count] = rule; rules.count += 1
-        if index >= 2 {
-            rule.style.fields |= cast(u32)StyleField.StyleBackground
-            rule.style.background = palette.selected
-            rule.style.foreground = palette.selected_text
-            rule.state = cast(s32)ButtonState.ButtonStateHover
-            rule.order = rules.count
-            rules.items[rules.count] = rule; rules.count += 1
-            rule.state = cast(s32)ButtonState.ButtonStateSelected
-            rule.order = rules.count
-            rules.items[rules.count] = rule; rules.count += 1
-        }
-    }
-    unused InstallStyleRules(rules)
-}
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    if !initialized {
-        field_length = Copy(field_bytes[:], "A quiet place to think")
-        area_length = Copy(area_bytes[:], "A small note\n\nClear typography and careful spacing make everyday work feel calm. Café, Ω and é.")
-        multi[0] = true; multi[2] = true
-        unused Copy(field_next[:], TextView(field_bytes[0:field_length]))
-        unused Copy(area_next[:], TextView(area_bytes[0:area_length]))
-        initialized = true
-    }
-    for index: 0..field_length - 1 { field_bytes[index] = field_next[index] }
-    for index: 0..empty_length - 1 { empty_bytes[index] = empty_next[index] }
-    for index: 0..area_length - 1 { area_bytes[index] = area_next[index] }
-    wanted: s32 = ifx dark then 1 else 0
-    if wanted != installed {
-        InstallCatalogPalette()
-        installed = wanted
-    }
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 16.0, 440.0, 36.0}, .text = "Kryon widget catalog", .font = 26})
-    Text(session, TextProps.{.key = 9002, .bounds = .{500.0, 20.0, 450.0, 28.0}, .text = "Choose a widget to try", .font = 20})
-    items: [54]ListBoxItem
-    items[0].key = 1; items[0].label = "Button";
-    items[1].key = 2; items[1].label = "TextField";
-    items[2].key = 3; items[2].label = "TextArea";
-    items[3].key = 4; items[3].label = "Dropdown";
-    items[4].key = 5; items[4].label = "Slider";
-    items[5].key = 6; items[5].label = "Toggle";
-    items[6].key = 7; items[6].label = "Checkbox";
-    items[7].key = 8; items[7].label = "Radio";
-    items[8].key = 9; items[8].label = "Progress";
-    items[9].key = 10; items[9].label = "Spinbox";
-    items[10].key = 11; items[10].label = "ListBox";
-    items[11].key = 12; items[11].label = "ListBoxMulti";
-    items[12].key = 13; items[12].label = "SegmentedControl";
-    items[13].key = 14; items[13].label = "TabBar";
-    items[14].key = 15; items[14].label = "Selectable";
-    items[15].key = 16; items[15].label = "Separator and Bullet";
-    items[16].key = 17; items[16].label = "Fieldset";
-    items[17].key = 18; items[17].label = "Collapsible";
-    items[18].key = 19; items[18].label = "TimePicker";
-    items[19].key = 20; items[19].label = "ColorPicker";
-    items[20].key = 21; items[20].label = "NavigationBar";
-    items[21].key = 22; items[21].label = "Toolbar";
-    items[22].key = 23; items[22].label = "TitleBar";
-    items[23].key = 24; items[23].label = "Toast";
-    items[24].key = 25; items[24].label = "ContextMenu";
-    items[25].key = 26; items[25].label = "Menu";
-    items[26].key = 27; items[26].label = "Link";
-    items[27].key = 28; items[27].label = "Text";
-    items[28].key = 29; items[28].label = "Image";
-    items[29].key = 30; items[29].label = "Box";
-    items[30].key = 31; items[30].label = "Circle Ring Triangle Line";
-    items[31].key = 32; items[31].label = "Scroll";
-    items[32].key = 33; items[32].label = "ModalFrame";
-    items[33].key = 34; items[33].label = "ActionModal";
-    items[34].key = 35; items[34].label = "Popup";
-    items[35].key = 36; items[35].label = "Press";
-    items[36].key = 37; items[36].label = "Column";
-    items[37].key = 38; items[37].label = "Row";
-    items[38].key = 39; items[38].label = "Stack";
-    items[39].key = 40; items[39].label = "Group";
-    items[40].key = 41; items[40].label = "Grid";
-    items[41].key = 42; items[41].label = "Page Section Heading ParagraphText";
-    items[42].key = 43; items[42].label = "NavigationBarConfig";
-    items[43].key = 44; items[43].label = "Reorder";
-    items[44].key = 45; items[44].label = "PanedView";
-    items[45].key = 46; items[45].label = "DismissibleOverlay";
-    items[46].key = 47; items[46].label = "Button emphasis";
-    items[47].key = 48; items[47].label = "Dropdown open";
-    items[48].key = 49; items[48].label = "Screen";
-    items[49].key = 50; items[49].label = "Flow";
-    items[50].key = 51; items[50].label = "Text selection";
-    items[51].key = 52; items[51].label = "Transition fade";
-    items[52].key = 53; items[52].label = "DiscreteSlider";
-    items[53].key = 54; items[53].label = "StylePicker";
-    picked := ListBox(session, ListBoxProps.{.key = 9003, .bounds = .{500.0, 64.0, viewport.width - 524.0, viewport.height - 88.0}, .selected_index = scene, .scroll_offset = catalog_scroll, .row_height = 30}, items[:])
-    catalog_scroll = picked.scroll_offset
-    if picked.changed { scene = picked.selected_index; dismissed = false }
-    Compose(session, scene, disabled_controls)
-    Text(session, TextProps.{.key = 9004, .bounds = .{24.0, 330.0, 432.0, 40.0}, .text = items[scene].label, .font = 21})
-    disabled_controls = Checkbox(session, CheckboxProps.{.key = 9005, .bounds = .{24.0, 382.0, 208.0, 36.0}, .label = "Disabled state", .checked = disabled_controls}).checked
-    dark = Toggle(session, ToggleProps.{.key = 9006, .bounds = .{248.0, 382.0, 60.0, 36.0}, .label = "Dark palette", .value = dark}).value
-    Text(session, TextProps.{.key = 9011, .bounds = .{320.0, 382.0, 136.0, 36.0}, .text = "Dark palette", .font = 14, .vertical_align = TextAlign.TextAlignCenter})
-    Text(session, TextProps.{.key = 9007, .bounds = .{24.0, 442.0, 432.0, 72.0}, .text = "Click and type in the controls. Scroll the list for more. Tab moves keyboard focus.", .font = 16})
-    digits: [16]u8
-    Text(session, TextProps.{.key = 9008, .bounds = .{24.0, 534.0, 200.0, 24.0}, .text = "Button clicks / decisions", .font = 14})
-    Text(session, TextProps.{.key = 9009, .bounds = .{248.0, 534.0, 208.0, 24.0}, .text = FormatInteger(cast(s64)clicks, digits[:]), .font = 18})
-    Text(session, TextProps.{.key = 9010, .bounds = .{24.0, 594.0, 432.0, 52.0}, .text = "54 previews of the core widgets. Plot and DataViews are separate packages.", .font = 14, .disabled = true})
-    return 0
+CoreSceneCount :: 54;
+
+SceneName :: (index: s32) -> string {
+    if index == 0 { return "Button" }
+    if index == 1 { return "TextField" }
+    if index == 2 { return "TextArea" }
+    if index == 3 { return "Dropdown" }
+    if index == 4 { return "Slider" }
+    if index == 5 { return "Toggle" }
+    if index == 6 { return "Checkbox" }
+    if index == 7 { return "Radio" }
+    if index == 8 { return "Progress" }
+    if index == 9 { return "Spinbox" }
+    if index == 10 { return "ListBox" }
+    if index == 11 { return "ListBoxMulti" }
+    if index == 12 { return "SegmentedControl" }
+    if index == 13 { return "TabBar" }
+    if index == 14 { return "Selectable" }
+    if index == 15 { return "Separator and Bullet" }
+    if index == 16 { return "Fieldset" }
+    if index == 17 { return "Collapsible" }
+    if index == 18 { return "TimePicker" }
+    if index == 19 { return "ColorPicker" }
+    if index == 20 { return "NavigationBar" }
+    if index == 21 { return "Toolbar" }
+    if index == 22 { return "TitleBar" }
+    if index == 23 { return "Toast" }
+    if index == 24 { return "ContextMenu" }
+    if index == 25 { return "Menu" }
+    if index == 26 { return "Link" }
+    if index == 27 { return "Text" }
+    if index == 28 { return "Image" }
+    if index == 29 { return "Box" }
+    if index == 30 { return "Circle Ring Triangle Line" }
+    if index == 31 { return "Scroll" }
+    if index == 32 { return "ModalFrame" }
+    if index == 33 { return "ActionModal" }
+    if index == 34 { return "Popup" }
+    if index == 35 { return "Press" }
+    if index == 36 { return "Column" }
+    if index == 37 { return "Row" }
+    if index == 38 { return "Stack" }
+    if index == 39 { return "Group" }
+    if index == 40 { return "Grid" }
+    if index == 41 { return "Page Section Heading ParagraphText" }
+    if index == 42 { return "NavigationBarConfig" }
+    if index == 43 { return "Reorder" }
+    if index == 44 { return "PanedView" }
+    if index == 45 { return "DismissibleOverlay" }
+    if index == 46 { return "Button emphasis" }
+    if index == 47 { return "Dropdown open" }
+    if index == 48 { return "Screen" }
+    if index == 49 { return "Flow" }
+    if index == 50 { return "Text selection" }
+    if index == 51 { return "Transition fade" }
+    if index == 52 { return "DiscreteSlider" }
+    if index == 53 { return "StylePicker" }
+    return ""
 }

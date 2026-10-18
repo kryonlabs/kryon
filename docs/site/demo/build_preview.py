@@ -18,7 +18,7 @@ args = parser.parse_args()
 if not args.emcc:
     parser.error('emcc is required; activate the Emscripten SDK first')
 env = dict(os.environ)
-for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY'):
+for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS'):
     env.pop(name, None)
 
 def package(name):
@@ -34,12 +34,13 @@ build = kryon / 'build/scratch/web-preview'
 generated = build / 'host'
 build.mkdir(parents=True, exist_ok=True)
 env.setdefault('EM_CACHE', str(ziran / 'build/emscripten-cache'))
-run(['python3', ziran / 'scripts/build_playground.py', '--emcc', args.emcc,
+script_env = {**env, 'XDG_CACHE_HOME': str(build / 'cache')}
+subprocess.run(list(map(str, [ziran / 'build/bin/ziran', 'run', '--target=py', ziran / 'scripts/build_playground.zi', '--emcc', args.emcc,
      '--output-dir', assets,
      '--embed-file', f'{kryon / "src/ui"}@/kryon/ui',
      '--embed-file', f'{project / "src/preview_entry.zi"}@/preview_entry.zi',
      '--embed-file', f'{project / "src/preview_style.zi"}@/preview_style.zi',
-     '--embed-file', f'{project / "src/preview_protocol.zi"}@/preview_protocol.zi'])
+     '--embed-file', f'{project / "src/preview_protocol.zi"}@/preview_protocol.zi'])), cwd=ziran, env=script_env, check=True)
 run([ziran / 'build/bin/zi2c', '--prune-stale', '--define', 'PLATFORM_WEB', '--root', project / 'src',
      '--module-path', kryon / 'src/ui', '--module-path', kryon / 'src/backend',
      '--module-path', f'kryon={kryon / "src/ui"}',

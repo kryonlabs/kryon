@@ -1,17 +1,19 @@
 // Interactive desktop host. Captures run only on a private display.
-#import "widget_catalog"
-#import "desktop_runtime"
-#import "cairo_raster"
-#import "tree_draw"
-#import "scroll_device"
-#import "secondary_pointer"
-#import "transition"
+using App :: #import "app";
+using Scenes :: #import "scenes";
+#import "packages"
+#import "kryon/Desktop"
+#import "kryon/Cairo"
+#import "kryon/Frame"
+#import "kryon/ScrollDevice"
+#import "kryon/Widgets"
+
 #import "std/c_string"
 #import "std/byte_text_linux"
 Timer :: #import "std/timer_linux";
-Clock :: #import "frame_clock";
 
-activity: Clock.FrameActivity;
+
+
 
 Draw :: (session: Session, pointer: PointerFrame, wheel: float32) -> bool {
     BeginDesktopFrame()
@@ -24,9 +26,7 @@ Draw :: (session: Session, pointer: PointerFrame, wheel: float32) -> bool {
     viewport := DesktopViewport()
     if BeginFrame(session, 1, viewport) != FrameStatus.FrameOk { return false }
     if Frame(session, viewport) != 0 { TreeCancel(session); return false }
-    result := EndFrameRetained(session, DesktopFrameReusable(),
-        Clock.Observe(*activity, true))
-    if result.status != FrameStatus.FrameOk { return false }
+    if EndFrame(session) != FrameStatus.FrameOk { return false }
     if scene == 51 {
         PaintTransitionFade(TransitionState.{.active = true,
             .phase = cast(s32)TransitionPhase.TransitionOut,
@@ -40,6 +40,7 @@ Draw :: (session: Session, pointer: PointerFrame, wheel: float32) -> bool {
 
 #program_export
 main :: () -> s32 {
+    scene_image = "../../icons/pfp.png"
     if !OpenDesktopSized(1000, 700) { CloseDesktop(); return 1 }
     session := SessionOpen()
     ok := SessionValid(session)
@@ -50,7 +51,7 @@ main :: () -> s32 {
             for byte: text {
                 if byte >= 48 && byte <= 57 { scene = scene * 10 + cast(s32)byte - 48 }
             }
-            if scene < 0 || scene > 53 { scene = 0 }
+            if scene < 0 || scene >= GallerySceneCount { scene = 0 }
             catalog_scroll = scene * 30
         }
         for frame: 0..2 {

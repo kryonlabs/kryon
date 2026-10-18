@@ -1,0 +1,47 @@
+{
+  "format": 1,
+  "packages": [
+    {
+      "commit": "e5f5d2835cfa49353c2df5da0f871c8a61c1bff8",
+      "dependencies": {"raylib": "p5a77c9c35110e925"},
+      "id": "p0b8891edcfff2759",
+      "name": "kryon",
+      "ref": "master",
+      "url": "https://github.com/kryonlabs/kryon.git"
+    },
+    {
+      "commit": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
+      "dependencies": {},
+      "id": "p5a77c9c35110e925",
+      "name": "raylib",
+      "ref": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
+      "source": true,
+      "url": "https://github.com/raysan5/raylib.git"
+    },
+    {
+      "commit": "2ee29338c9b93fb4f4a56a49c7be09e9d2c2418f",
+      "dependencies": {"kryon": "p0b8891edcfff2759"},
+      "id": "pa5dd7b8b83307b18",
+      "name": "plot",
+      "ref": "master",
+      "url": "https://github.com/kryonlabs/plot.git"
+    },
+    {
+      "commit": "0dfede17a27f272b78abd6013b7a2719aa2f1849",
+      "dependencies": {"kryon": "p0b8891edcfff2759"},
+      "id": "pb2b0e9aefa62c894",
+      "name": "DataViews",
+      "ref": "master",
+      "url": "https://github.com/kryonlabs/data-views.git"
+    }
+  ],
+  "root": {
+    "dependencies": {"data_views": "pb2b0e9aefa62c894", "kryon": "p0b8891edcfff2759", "plot": "pa5dd7b8b83307b18"},
+    "name": "gallery"
+  },
+  "toolchain": {
+    "commit": "281b26647ef6e29634b78f386b128527855240e6",
+    "ref": "master",
+    "url": "https://github.com/ziranlang/ziran.git"
+  }
+}

@@ -19,9 +19,14 @@ jobs:
   deploy-production:
     name: Deploy Kryon Labs
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kryonlabs/kryon
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          path: kryonlabs/kryon
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -31,7 +36,40 @@ jobs:
       - name: Install private display tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb
+          sudo apt-get install -y build-essential python3 xvfb
+
+      - name: Read pinned Ziran toolchain
+        id: toolchain
+        run: python3 -c 'import json; print("commit=" + json.load(open("examples/gallery/ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
+
+      - name: Checkout pinned Ziran
+        uses: actions/checkout@v7
+        with:
+          repository: ziranlang/ziran
+          ref: ${{ steps.toolchain.outputs.commit }}
+          path: ziranlang/ziran
+
+      - name: Build the Ziran tools
+        run: |
+          make -C "$GITHUB_WORKSPACE/ziranlang/ziran" all
+          echo "$GITHUB_WORKSPACE/ziranlang/ziran/build/bin" >> "$GITHUB_PATH"
+
+      - name: Restore Emscripten
+        id: emsdk
+        uses: actions/cache@v6
+        with:
+          path: ~/emsdk
+          key: emsdk-${{ runner.os }}-6.0.6
+
+      - name: Install Emscripten
+        if: steps.emsdk.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
+          ~/emsdk/emsdk install 6.0.6
+          ~/emsdk/emsdk activate 6.0.6
+
+      - name: Build the full website from source
+        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS make site
 
       - name: Check static site assets
         run: |
@@ -50,6 +88,15 @@ jobs:
           test -f docs/site/favicon-32.png
           test -f docs/site/og.png
           test -f docs/site/assets/brand/mark.svg
+          test -f docs/site/widgets.html
+          test -f docs/site/assets/widget-gallery.html
+          test -f docs/site/assets/catalog-image.png
+          test -f docs/site/gallery-data.js
+
+      - name: Test the compiled widget gallery
+        env:
+          CHROMIUM: google-chrome
+        run: make site-gallery-test
 
       - name: Test live preview and rendered themes
         env:
@@ -61,4 +108,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy docs/site --project-name=kryon --branch=master
+          command: pages deploy kryonlabs/kryon/docs/site --project-name=kryon --branch=master

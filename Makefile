@@ -1,5 +1,15 @@
 .DEFAULT_GOAL := all
 
+.PHONY: site site-gallery site-gallery-test
+site:
+	python3 scripts/build-site.py
+
+site-gallery:
+	python3 scripts/build-gallery.py
+
+site-gallery-test:
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 node tests/gallery_browser.mjs
+
 CC ?= cc
 CXX ?= c++
 AR ?= ar

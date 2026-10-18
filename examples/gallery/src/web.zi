@@ -1,0 +1,76 @@
+using UI :: #import "kryon/Widgets";
+using App :: #import "app";
+using Scenes :: #import "scenes";
+#import "packages"
+using Host :: #import "kryon/Canvas";
+#import "kryon/Frame"
+#import "kryon/ScrollDevice"
+#import "std/web"
+
+last_theme: s32 = -1;
+
+ReadOptions :: () {
+    mark := WebScope()
+    chosen := cast(s32)WebGetNumber(WebModule, WebName("galleryScene"))
+    if chosen >= 0 && chosen < GallerySceneCount && chosen != scene {
+        scene = chosen
+        dismissed = false
+    }
+    theme := cast(s32)WebGetNumber(WebModule, WebName("galleryDark"))
+    if theme != last_theme { dark = theme == 1; last_theme = theme }
+    disabled_controls = WebGetNumber(WebModule, WebName("galleryDisabled")) == 1.0
+    WebEnd(mark)
+}
+
+#program_export
+main :: () -> s32 {
+    embedded = true
+    scene_image = "catalog-image.png"
+    if !OpenCanvas() { return 1 }
+    session := SessionOpen()
+    if !SessionValid(session) { CloseCanvas(); return 1 }
+    ok: bool = true
+    while ok && PollCanvas() {
+        ReadOptions()
+        KeyboardModifiersSend(session, CanvasModifiers())
+        key := CanvasPressedKey()
+        if key != 0 { unused KeyboardSend(session, key) }
+        codepoint := CanvasTypedCodepoint()
+        while codepoint != 0 {
+            unused TypedCodepointSend(session, codepoint)
+            codepoint = CanvasTypedCodepoint()
+        }
+        BeginCanvasFrame()
+        pointer := PollPointer()
+        unused TreePointerUpdate(session, pointer)
+        unused TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+        wheel := CanvasWheelMove()
+        PointerWheelSend(session, pointer.x, pointer.y, wheel)
+        mark := WebScope()
+        performance := WebGetObject(WebGlobal, WebName("performance"))
+        now := WebAsNumber(WebCall0(performance, WebName("now"))) / 1000.0
+        WebEnd(mark)
+        BeginScrollFrame(session, .{pointer.x, pointer.y}, pointer.pressed,
+            pointer.down, pointer.released, wheel, now)
+        viewport := CanvasViewport()
+        if BeginFrame(session, 1, viewport) != FrameStatus.FrameOk { ok = false }
+        else {
+            if Frame(session, viewport) != 0 { TreeCancel(session); ok = false }
+            else { ok = EndFrame(session) == FrameStatus.FrameOk }
+        }
+        if scene == 51 {
+            PaintTransitionFade(TransitionState.{.active = true, .phase = cast(s32)TransitionPhase.TransitionOut, .elapsed_seconds = 0.4, .duration_seconds = 1.0}, .{24.0, 64.0, 432.0, 208.0}, .{16, 34, 45, 160})
+        }
+        CanvasCursor(session)
+        if !EndCanvasFrame() { ok = false }
+        if ok {
+            mark = WebScope()
+            WebSet(WebModule, WebName("galleryReady"), WebNumber(1.0))
+            WebSet(WebModule, WebName("galleryCount"), WebNumber(cast(float64)GallerySceneCount))
+            WebSet(WebModule, WebName("gallerySceneRendered"), WebNumber(cast(float64)scene))
+            WebEnd(mark)
+        }
+    }
+    CloseSession(session); CloseCanvas()
+    return ifx ok then 0 else 1
+}

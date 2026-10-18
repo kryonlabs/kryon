@@ -93,6 +93,19 @@ For Ziran app manifests, the terminal backend, and `kryon run`, see
 Portable desktop profiles build a `.zib` with embedded assets; a downloaded
 file launches with `kryon run app.zib`. See [Zib applications](docs/PROJECTS.md#zib-applications).
 
+## Website and widget gallery
+
+`make site` rebuilds the initial Canvas demo, the browser compiler and preview
+host, and the widget gallery into `docs/site/`. Emscripten is required; activate
+emsdk or set `EMCC`. `make site-gallery` builds only the gallery, and
+`make site-gallery-test` exercises it in a private Chromium/Xvfb session.
+
+The gallery at `widgets.html` uses the example package in `examples/gallery/`.
+Its core scenes are shared by the desktop, web and review hosts. Plot and
+DataViews supply the additional charts, tree and Kanban; TableView's entry
+identifies its current API-only status. The existing Pages workflow rebuilds
+and checks the site before deployment.
+
 ## Current status
 
 The [feature matrix](docs/FEATURE_MATRIX.md) records package and host coverage.

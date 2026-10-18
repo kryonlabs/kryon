@@ -1,27 +1,31 @@
 # Kryon examples
 
-## Interactive widget catalog
+## Widget gallery
 
-Build the catalog from the Kryon repository root, then run it from `examples/`:
+The maintained gallery is the ordinary Ziran package in `gallery/`. Its
+`src/scenes.zi` supplies the same core scenes to the native application,
+Canvas/Wasm build, and widget review tool. `src/packages.zi` adds the actual
+Plot charts, DataViews tree and Kanban. TableView's entry records its current
+API-only status; it does not draw a substitute renderer.
+
+From the Kryon root:
 
 ```sh
-make -C examples widget-catalog
-cd examples
-../build/examples/widget-catalog-desktop
+make -C examples widget-catalog      # desktop
+make -C examples widget-catalog-web  # Canvas/Wasm
+make site-gallery                   # stage the gallery for the existing site
+make site                           # rebuild the gallery, editor and initial demo
 ```
 
-`widget_catalog.zi` has 54 previews of the current core widget surface:
-editable text, buttons, selection controls, lists, navigation, menus, dialogs,
-time and color pickers, images, shapes, and layout containers. Choose a preview
-from the scrolling list. Controls retain their values; the check and switch
-below the preview show disabled controls and a dark palette. Plot charts and
-DataViews tables and trees belong to their separate packages.
+Run `./build/gallery-desktop` from `examples/gallery/`. The web output is
+`examples/gallery/build/gallery-web.html`; the website entry is
+`docs/site/widgets.html`. Emscripten is required for the web profile. Package
+and toolchain commits are pinned in `gallery/ziran.lock`. Canonical local
+sources can be selected in its ignored `ziran.local.toml`.
 
-`desktop_widget_catalog.zi` runs the example with the SDL/Cairo host. For a
-repeatable capture, choose a zero-based `KRYON_CATALOG_SCENE` from 0 to 53
-and set `KRYON_CAPTURE_PATH`. Always scrub `DISPLAY`, `WAYLAND_DISPLAY`,
-`XAUTHORITY`, and `DBUS_SESSION_BUS_ADDRESS` before running captures on a
-private `xvfb-run -a` display.
+The desktop host supports `KRYON_CATALOG_SCENE` and `KRYON_CAPTURE_PATH` for
+repeatable captures. Scrub the inherited display and session environment and
+use a private `xvfb-run -a` display for all captures and browser checks.
 
 ## Small examples
 

@@ -20,17 +20,12 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / 'build/scratch/widget-review'
 OUTPUT = ROOT / 'backup/widget-improvement'
-SCENES = ['Button', 'TextField', 'TextArea', 'Dropdown', 'Slider', 'Toggle',
-          'Checkbox', 'Radio', 'Progress', 'Spinbox', 'ListBox', 'ListBoxMulti',
-          'SegmentedControl', 'TabBar', 'Selectable', 'Separator and Bullet',
-          'Fieldset', 'Collapsible', 'TimePicker', 'ColorPicker', 'NavigationBar',
-          'Toolbar', 'TitleBar', 'Toast', 'ContextMenu', 'Menu', 'Link', 'Text',
-          'Image', 'Box', 'Circle Ring Triangle Line', 'Scroll', 'ModalFrame',
-          'ActionModal', 'Popup', 'Press', 'Column', 'Row', 'Stack', 'Group',
-          'Grid', 'Page Section Heading ParagraphText', 'NavigationBarConfig',
-          'Reorder', 'PanedView', 'DismissibleOverlay', 'Button emphasis',
-          'Dropdown open', 'Screen', 'Flow', 'Text selection', 'Transition fade']
-INTERACTIVE = set(range(8)) | {9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 24, 26, 35, 44, 46, 50}
+# Scene labels and implementations have one source for desktop, web and review.
+import re
+SCENES = re.findall(r'if index == \d+ \{ return "([^"]+)" \}',
+                    (ROOT / 'examples/gallery/src/scenes.zi').read_text())
+
+INTERACTIVE = set(range(8)) | {9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 24, 26, 35, 44, 46, 50, 52, 53}
 DISABLED = INTERACTIVE | {21, 27, 33, 36, 37, 38, 39, 40, 48, 49}
 STATE_NAMES = ['Resting', 'Disabled', 'Pointer hover', 'Keyboard focus']
 
@@ -60,8 +55,14 @@ def build(label, env):
         defines = ['--define', 'REVIEW_SIZED_TEXT']
     elif 'pending_text_first:' in storage:
         defines = ['--define', 'REVIEW_INLINE_TEXT']
-    subprocess.run([str(toolchain / 'build/bin/ziran'), 'build', '--project', '--root', 'tools',
+    subprocess.run([str(toolchain / 'build/bin/ziran'), 'build', '--root', 'tools',
                     '--target=c', '--no-main', '--define', 'POSIX_THREADS',
+                    '--module-path', 'examples/gallery/src',
+                    '--module-path', str(ROOT / 'src/ui'),
+                    '--module-path', str(ROOT / 'src/backend'),
+                    '--module-path', 'kryon=' + str(ROOT / 'src/ui'),
+                    '--module-path', 'kryon=' + str(ROOT / 'src/backend'),
+                    '--module-path', str(toolchain / 'std'),
                     *defines,
                     '--entry', 'widget_review:Run', '-o', str(generated),
                     'tools/widget_review.zi'], cwd=ROOT, env=env, check=True)

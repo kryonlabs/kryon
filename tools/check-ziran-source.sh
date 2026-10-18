@@ -14,7 +14,7 @@ actual_src=$(cd "$repo" && rg --files -uu src -g '!*.zi' -g '!modules.txt' |
 actual_programs=$(cd "$repo" &&
     rg --files -uu src examples tests tools \
         -g '*.c' -g '*.cc' -g '*.cpp' -g '*.go' -g '*.java' \
-        -g '*.kry' -g '*.kir' -g '*.krb' |
+        -g '*.kry' -g '*.kir' -g '*.krb' -g '!**/build/**' |
     LC_ALL=C sort)
 
 # Search from the repository with relative paths: when the checkout is reached

@@ -4,17 +4,13 @@ using Canvas :: #import "kryon/Canvas";
 using Geometry :: #import "kryon/geometry";
 using Drawing :: #import "kryon/drawing_props";
 #import "kryon/canvas_window"
+#import "kryon/image_props"
 #import "std/bundle_host"
 #import "std/byte_text_linux"
 #import "std/c_string"
 #import "std/web"
 
 using HostValueKind;
-
-runtime :: #system_library "ziran";
-CapabilityCount :: (bundle: *void) -> u64 #foreign runtime "BundleCapabilityCount";
-CapabilityModule :: (bundle: *void, index: u64) -> *u8 #foreign runtime "BundleCapabilityModule";
-CapabilityFunction :: (bundle: *void, index: u64) -> *u8 #foreign runtime "BundleCapabilityFunction";
 
 preview_bundle: *void;
 preview_instance: *void;
@@ -35,7 +31,7 @@ HostNumber :: (value: HostValue) -> float32 {
 }
 
 HostText :: (value: HostValue) -> string {
-    return TextView(BytesFromPointer(value.data, value.length))
+    return TextView(BytesFromPointer(value.data, cast(u64)value.length))
 }
 
 HostRectangle :: (value: HostValue) -> Rectangle {
@@ -57,7 +53,7 @@ SupportedCapability :: (function: string) -> bool {
         function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight" ||
         function == "RasterRoundedRectangle" || function == "RasterRoundedRectangleOutline" ||
         function == "RasterLine" || function == "RasterText" || function == "RasterTextClipped" ||
-        function == "RasterImage" || function == "ImageWidth" || function == "ImageHeight" ||
+        function == "RasterImage" || function == "RasterImageMesh" || function == "ImageWidth" || function == "ImageHeight" ||
         function == "SystemClipboardOpenHost" || function == "SystemClipboardByteHost" ||
         function == "SystemClipboardWriteHost"
 }
@@ -70,7 +66,7 @@ PreviewCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.kind = HostRecord
         result.type_name = *preview_input_type[0]
         result.fields = *preview_fields[0]
-        result.field_count = cast(u64)14
+        result.field_count = cast(usize)14
         return 1
     }
     if function == "ReadPreviewCodepoint" && count == 0 {
@@ -111,6 +107,20 @@ PreviewCall :: (context: *void, module_name: *u8, function_name: *u8,
     if function == "RasterImage" && count == 9 {
         RasterImage(HostText(args[0]), cast(u32)args[1].bits, HostRectangle(args[2]), HostRectangle(args[3]),
             HostRectangle(args[4]), HostVector(args[5]), HostNumber(args[6]), HostNumber(args[7]), HostColor(args[8]))
+        return 1
+    }
+    if function == "RasterImageMesh" && count == 8 {
+        mesh := args[3]
+        if mesh.kind != HostSlice && mesh.kind != HostArray { return 0 }
+        if mesh.length > cast(usize)IMAGE_MESH_POINT_LIMIT { return 0 }
+        length := cast(s32)mesh.length
+        if length > 0 && mesh.elements == null { return 0 }
+        points: [IMAGE_MESH_POINT_LIMIT]Vector2
+        for index: cast(s32)0..length - 1 { points[index] = HostVector(mesh.elements[index]) }
+        RasterImageMesh(HostText(args[0]), cast(u32)args[1].bits,
+            HostRectangle(args[2]), points[0:length],
+            cast(s32)HostNumber(args[4]), cast(s32)HostNumber(args[5]),
+            HostRectangle(args[6]), HostColor(args[7]))
         return 1
     }
     if (function == "ImageWidth" || function == "ImageHeight") && count == 1 {
@@ -155,13 +165,13 @@ LoadPreview :: () -> bool {
     if !CopyCString("/preview.zib", path[:]) { return false }
     bundle := OpenBundle(*path[0])
     if bundle == null { return false }
-    count := CapabilityCount(bundle)
+    count := BundleCapabilities(bundle)
     bindings: [128]HostBinding
     if count > cast(u64)128 { CloseBundle(bundle); return false }
     index: u64 = 0
     while index < count {
-        bindings[index].module = CapabilityModule(bundle, index)
-        bindings[index].function = CapabilityFunction(bundle, index)
+        bindings[index].module = BundleCapabilityModuleName(bundle, index)
+        bindings[index].function = BundleCapabilityFunctionName(bundle, index)
         if !SupportedCapability(TextFromCString(bindings[index].function)) {
             prefix := "Unavailable preview capability: "
             preview_load_error = "Unavailable preview capability."

@@ -1,0 +1,33 @@
+[package]
+name = "gallery"
+entry = "src/app.zi"
+module_roots = ["src"]
+bridge_modules = ["app"]
+tool = "kryon"
+
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "master"
+
+[tool.kryon]
+default_profile = "desktop"
+
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+host = "src/desktop.zi"
+
+[tool.kryon.profiles.web]
+backend = "canvas"
+host = "src/web.zi"
+
+[dependencies.kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"
+
+[dependencies.plot]
+git = "https://github.com/kryonlabs/plot.git"
+ref = "master"
+
+[dependencies.data_views]
+git = "https://github.com/kryonlabs/data-views.git"
+ref = "master"
