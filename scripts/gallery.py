@@ -85,14 +85,24 @@ def compiler_embeds(ziran='ziran', core=ROOT):
         source = package / manifest['package']['module_roots'][0]
         virtual = '/kryon/ui' if module['dependency'] == 'kryon' else '/packages/' + module['dependency']
         if module['dependency'] != 'kryon': embeds.append(str(source) + '@' + virtual)
-        for name, target in manifest.get('exports', {}).items():
-            if (source / (name + '.zi')).is_file() or (source / name / 'module.zi').is_file(): continue
-            try: local = Path(target).relative_to(source.relative_to(package)).with_suffix('').as_posix()
-            except ValueError: continue
-            alias = PROJECT / 'build/catalog/exports' / module['dependency'] / (name + '.zi')
-            write(alias, 'using Export :: #import "' + local + '";\n')
+        for name, alias in export_aliases(module['dependency'], package):
             embeds.append(str(alias) + '@' + virtual + '/' + name + '.zi')
     return embeds
+
+
+def export_aliases(dependency, package):
+    """Write module-path aliases for exports whose names differ from their files."""
+    manifest = tomllib.loads((package / 'ziran.toml').read_text())
+    source = package / manifest['package']['module_roots'][0]
+    aliases = []
+    for name, target in manifest.get('exports', {}).items():
+        if (source / (name + '.zi')).is_file() or (source / name / 'module.zi').is_file(): continue
+        try: local = Path(target).relative_to(source.relative_to(package)).with_suffix('').as_posix()
+        except ValueError: continue
+        alias = PROJECT / 'build/catalog/exports' / dependency / (name + '.zi')
+        write(alias, 'using Export :: #import "' + local + '";\n')
+        aliases.append((name, alias))
+    return aliases
 
 
 def prepare(only=None, *, catalog=None, site=SITE):

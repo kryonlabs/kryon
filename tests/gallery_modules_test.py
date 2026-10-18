@@ -42,8 +42,8 @@ for label, selected in [('core-only', {'kryon'}), ('without-plot', {'kryon', 'da
         manifest = tomllib.loads((path / 'ziran.toml').read_text())
         source = path / manifest['package']['module_roots'][0]
         roots.extend([source, name + '=' + str(source)])
-        aliases = PROJECT / 'build/catalog/exports' / name
-        if aliases.is_dir(): roots.append(name + '=' + str(aliases))
+        if gallery.export_aliases(name, path):
+            roots.append(name + '=' + str(PROJECT / 'build/catalog/exports' / name))
     command = [str(ziran / 'build/bin/zi2zir'), '--root', str(PROJECT / 'tests')]
     for root in roots: command.extend(['--module-path', str(root)])
     command.extend(['--entry', 'modules:main', '-o', str(target / 'ir'), str(PROJECT / 'tests/modules.zi')])
