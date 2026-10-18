@@ -2,14 +2,6 @@
   "format": 1,
   "packages": [
     {
-      "commit": "e5f5d2835cfa49353c2df5da0f871c8a61c1bff8",
-      "dependencies": {"raylib": "p5a77c9c35110e925"},
-      "id": "p0b8891edcfff2759",
-      "name": "kryon",
-      "ref": "master",
-      "url": "https://github.com/kryonlabs/kryon.git"
-    },
-    {
       "commit": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
       "dependencies": {},
       "id": "p5a77c9c35110e925",
@@ -17,10 +9,18 @@
       "ref": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
       "source": true,
       "url": "https://github.com/raysan5/raylib.git"
+    },
+    {
+      "commit": "7e0be6017c0fc7718f3640adcc5a6e4db72108c2",
+      "dependencies": {"raylib": "p5a77c9c35110e925"},
+      "id": "pafc72c80e7aad5f2",
+      "name": "kryon",
+      "ref": "master",
+      "url": "https://github.com/kryonlabs/kryon.git"
     }
   ],
   "root": {
-    "dependencies": {"kryon": "p0b8891edcfff2759"},
+    "dependencies": {"kryon": "pafc72c80e7aad5f2"},
     "name": "widgets"
   },
   "toolchain": {
