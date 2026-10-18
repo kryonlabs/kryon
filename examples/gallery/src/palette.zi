@@ -1,0 +1,62 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+Theme :: #import "kryon/theme";
+
+installed: s32 = -1;
+
+// Show Kryon's standard palette in both hosts. Accent fills and soft
+// selections have separate roles; the desktop fallback conflates them.
+InstallCatalogPalette :: (dark: bool) {
+    wanted: s32 = ifx dark then 1 else 0
+    if wanted == installed { return }
+    installed = wanted
+    palette := Theme.DefaultPalette(dark)
+    system := SystemPalette.{.dark = dark, .background = palette.background,
+        .base = palette.surface, .text = palette.text, .border = palette.border,
+        .selected = palette.accent, .selected_text = palette.on_accent,
+        .danger = palette.danger, .warning = palette.warning, .success = palette.success}
+    unused SystemPaletteInstall(system)
+    rules := ActiveStyleRules()
+    selection_text := ifx dark then Theme.OnColor(palette.selection) else Theme.LightSelectionText()
+    // Dropdowns and time pickers share these semantic style facts.
+    dropdown: StyleRule
+    dropdown.selector = StyleDefaultSelector()
+    dropdown.selector.kind = StyleKindDropdown()
+    dropdown.selector.state = cast(s32)ButtonState.ButtonStateHover
+    dropdown.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground
+    dropdown.style.background = palette.surface_raised
+    dropdown.style.foreground = palette.text
+    dropdown.order = rules.count; rules.items[rules.count] = dropdown; rules.count += 1
+    dropdown.selector.state = StyleAny()
+    dropdown.selector.tone = cast(s32)ButtonTone.ButtonToneAccent
+    dropdown.style.background = palette.selection
+    dropdown.style.foreground = selection_text
+    dropdown.order = rules.count; rules.items[rules.count] = dropdown; rules.count += 1
+    kinds: [4]s32 = .{StyleKindListBox(), StyleKindListBoxMulti(), StyleKindListBoxItem(), StyleKindListBoxMultiItem()}
+    for index: 0..3 {
+        rule: StyleRule
+        rule.selector = StyleDefaultSelector()
+        rule.selector.kind = kinds[index]
+        rule.style.fields = cast(u32)StyleField.StyleForeground
+        rule.style.foreground = palette.text
+        if index < 2 {
+            rule.style.fields |= cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleBorder
+            rule.style.background = palette.surface
+            rule.style.border = palette.border
+        }
+        rule.order = rules.count
+        rules.items[rules.count] = rule; rules.count += 1
+        if index >= 2 {
+            rule.style.fields |= cast(u32)StyleField.StyleBackground
+            rule.style.background = palette.selection
+            rule.style.foreground = selection_text
+            rule.state = cast(s32)ButtonState.ButtonStateHover
+            rule.order = rules.count
+            rules.items[rules.count] = rule; rules.count += 1
+            rule.state = cast(s32)ButtonState.ButtonStateSelected
+            rule.order = rules.count
+            rules.items[rules.count] = rule; rules.count += 1
+        }
+    }
+    unused InstallStyleRules(rules)
+}

@@ -1,0 +1,23 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Toast", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 23
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    unused Toast(session, ToastProps.{.viewport = .{0.0, 0.0, 480.0, 280.0}, .message = "Your changes have been saved", .seconds = 4.0, .now_seconds = 1.0})
+
+    return 0
+}

@@ -1,0 +1,32 @@
+# Only declared dependencies contribute imports, examples and editor modules.
+[[modules]]
+id = "kryon"
+label = "Kryon"
+dependency = "kryon"
+source = "src/scenes.zi"
+module = "scenes"
+category = "UI"
+[modules.categories]
+"2D" = [30]
+
+[[modules]]
+id = "plot"
+label = "Plot"
+dependency = "plot"
+source = "src/plot_examples.zi"
+module = "plot_examples"
+styles = "InstallStyles"
+category = "Charts"
+
+[[modules]]
+id = "data_views"
+label = "DataViews"
+dependency = "data_views"
+source = "src/data_views_examples.zi"
+module = "data_views_examples"
+styles = "InstallStyles"
+category = "UI"
+unavailable = [2]
+[modules.notes]
+"1" = "Drag a card to another column. The board keeps the new position."
+"2" = "TableView exports layout and selection APIs, but this revision has no maintained table renderer."

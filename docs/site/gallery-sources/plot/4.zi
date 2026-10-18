@@ -1,0 +1,26 @@
+using UI :: #import "kryon/Widgets";
+Plot :: #import "plot/PlotWidget";
+Charts :: #import "plot/Plot";
+Theme :: #import "kryon/theme";
+using Example :: #import "plot_examples";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "CandleChart", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 4
+    InstallStyles(example_input.theme == 2)
+    Prepare(session, scene)
+    bars: [8]Charts.PriceBar
+    for index: cast(s32)0..7 {
+        bars[index] = Charts.PriceBar.{.open = previous[index], .close = values[index], .high = values[index] + 1.0, .low = previous[index] - 1.0, .volume = cast(float32)(index + 1) * 20.0}
+    }
+    Charts.CandleChart(session, Charts.CandleChartProps.{.key = 600, .bounds = bounds, .visible_count = 8, .semantic_label = "Example candles and volume", .up_color = .{35, 115, 92, 255}, .down_color = .{185, 65, 67, 255}, .grid_color = .{180, 200, 210, 150}}, bars[:], Charts.CandleRangeFor(bars[:], 8))
+
+    return 0
+}

@@ -1,0 +1,48 @@
+using UI :: #import "kryon/Widgets";
+Trees :: #import "data_views/TreeView";
+Board :: #import "data_views/Kanban";
+Theme :: #import "kryon/theme";
+using Example :: #import "data_views_examples";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Kanban", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 1
+    InstallStyles(example_input.theme == 2)
+    Prepare(session, scene)
+    config := Board.KanbanDefaults(600, 3)
+    config.min_width = 130.0; config.gap = 10.0
+    config.background = StyleTokenColor("surface")
+    config.card_background = StyleTokenColor("button")
+    frame := Board.BeginKanban(session, *board_cell, config, bounds, Board.KanbanInput.{.disabled = disabled})
+    titles: [3]string = .{"To do", "Doing", "Done"}
+    labels: [3]string = .{"Explore", "Try widgets", "Build"}
+    for lane: cast(s32)0..2 {
+        count: s32
+        for index: cast(s32)0..2 { if card_lanes[index] == lane { count += 1 } }
+        column := Board.KanbanColumn(session, *board_cell, frame, lane, titles[lane], count, count * 64)
+        if column.visible {
+            for index: cast(s32)0..2 {
+                if card_lanes[index] == lane {
+                    card := Board.KanbanCard(session, *board_cell, frame, *column, index, cast(u64)(700 + index), 64.0)
+                    Text(session, TextProps.{.bounds = .{card.x + 8.0, card.y + 8.0, card.width - 16.0, card.height - 16.0}, .text = labels[index], .font = 14})
+                }
+            }
+        }
+        Board.EndKanbanColumn(session, column)
+    }
+    Board.EndKanban(session, frame)
+    pointer := PointerSample(session)
+    if !disabled {
+        gesture := Board.PointerKanban(*board_cell, bounds, 3, .{pointer.x, pointer.y}, pointer.down, pointer.pressed, pointer.released)
+        if gesture.moved && gesture.lane >= 0 && gesture.identity >= 700 && gesture.identity < 703 { card_lanes[cast(s32)gesture.identity - 700] = gesture.lane }
+    }
+
+    return 0
+}

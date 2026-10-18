@@ -1,0 +1,26 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "PanedView", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 44
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    panes := PanedView(session, PanedViewProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .split = split, .has_split = true, .vertical = true, .disabled = disabled})
+    split = panes.split
+    unused Box(session, BoxProps.{.bounds = panes.first, .fill = .{230, 239, 242, 255}, .radius = 8.0})
+    unused Box(session, BoxProps.{.bounds = panes.second, .fill = .{222, 237, 235, 255}, .radius = 8.0})
+
+    return 0
+}

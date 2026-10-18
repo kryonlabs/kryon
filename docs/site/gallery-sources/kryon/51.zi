@@ -1,0 +1,25 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Transition fade", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 51
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    Label(session, "A transition over this content", 104.0)
+    color := TransitionFadeColor(TransitionState.{.active = true, .phase = cast(s32)TransitionPhase.TransitionOut, .elapsed_seconds = 0.4, .duration_seconds = 1.0}, .{16, 34, 45, 160})
+    Box(session, BoxProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .fill = color})
+
+    return 0
+}

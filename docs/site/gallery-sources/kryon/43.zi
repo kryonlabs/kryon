@@ -1,0 +1,36 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Reorder", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 43
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    items: [3]ReorderItem
+    for index: 0..2 {
+        items[index].id = order[index] + 10
+        items[index].bounds = .{24.0, 64.0 + cast(float32)index * 56.0, 432.0, 44.0}
+        Text(session, TextProps.{.bounds = .{64.0, 76.0 + cast(float32)index * 56.0, 360.0, 36.0}, .text = ifx order[index] == 0 then "Morning walk" else ifx order[index] == 1 then "Read a chapter" else "Take a break"})
+    }
+    moved := Reorder(session, ReorderList.{.id = 10, .bounds = .{24.0, 64.0, 432.0, 200.0}, .handle_width = 28}, items[:])
+    if moved.committed != 0 && moved.from_index >= 0 && moved.to_index >= 0 && moved.from_index < 3 && moved.to_index < 3 {
+        saved := order[moved.from_index]
+        at := moved.from_index
+        while at < moved.to_index { order[at] = order[at + 1]; at += 1 }
+        while at > moved.to_index { order[at] = order[at - 1]; at -= 1 }
+        order[moved.to_index] = saved
+    }
+
+    return 0
+}

@@ -6,6 +6,7 @@ let diagnosticSize = 0;
 
 self.onmessage = async function ({data}) {
   const {source, revision} = data;
+  const search = data.search || "/std\n/kryon/ui\nkryon=/kryon/ui";
   diagnostics = [];
   diagnosticSize = 0;
   try {
@@ -25,7 +26,7 @@ self.onmessage = async function ({data}) {
     self.postMessage({type: 'stage', stage: 'Compiling…', revision});
     runtime.FS.writeFile('/app.zi', source);
     const status = runtime.ccall('BuildBundle', 'number', Array(6).fill('string'),
-      ['/', '/std\n/kryon/ui\nkryon=/kryon/ui', '/preview_entry.zi', 'preview_entry', 'Tick', '/preview.zib']);
+      ['/', search, '/preview_entry.zi', 'preview_entry', 'Tick', '/preview.zib']);
     if (status !== 0) throw new Error(diagnostics.join('\n') || 'Unable to compile this source.');
     const bytes = runtime.FS.readFile('/preview.zib');
     self.postMessage({type: 'result', ok: true, revision, bundle: bytes.buffer}, [bytes.buffer]);

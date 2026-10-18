@@ -1,0 +1,31 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Scroll", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 31
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    b.height = 188.0
+    result := Scroll(session, ScrollProps.{.bounds = b, .content_height = 420, .scroll_offset = scroll})
+    scroll = result.scroll_offset
+    if result.opened {
+        for row: 0..9 {
+            Text(session, TextProps.{.bounds = .{result.content.x + 12.0, result.content.y + cast(float32)row * 40.0, 390.0, 32.0}, .text = "Scroll to see the next row"})
+        }
+        unused End(session)
+    }
+
+    return 0
+}

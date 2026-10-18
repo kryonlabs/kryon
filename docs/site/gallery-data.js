@@ -1,380 +1,760 @@
+window.galleryModules = [{"id": "kryon", "label": "Kryon"}, {"id": "plot", "label": "Plot"}, {"id": "data_views", "label": "DataViews"}];
+window.galleryCompilerPaths = ["/std", "/kryon/ui", "kryon=/kryon/ui", "/packages/plot", "plot=/packages/plot", "/packages/data_views", "data_views=/packages/data_views"];
 window.galleryScenes = [
   {
     "index": 0,
+    "id": "kryon/0",
     "name": "Button",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L134",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L144",
+    "code": "gallery-sources/kryon/0.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 1,
+    "id": "kryon/1",
     "name": "TextField",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L114",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L159",
+    "code": "gallery-sources/kryon/1.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 2,
+    "id": "kryon/2",
     "name": "TextArea",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L153",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L163",
+    "code": "gallery-sources/kryon/2.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 3,
+    "id": "kryon/3",
     "name": "Dropdown",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L156",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L166",
+    "code": "gallery-sources/kryon/3.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 4,
+    "id": "kryon/4",
     "name": "Slider",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L160",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L170",
+    "code": "gallery-sources/kryon/4.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 5,
+    "id": "kryon/5",
     "name": "Toggle",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L163",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L173",
+    "code": "gallery-sources/kryon/5.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 6,
+    "id": "kryon/6",
     "name": "Checkbox",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L167",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L177",
+    "code": "gallery-sources/kryon/6.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 7,
+    "id": "kryon/7",
     "name": "Radio",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L171",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L181",
+    "code": "gallery-sources/kryon/7.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 8,
+    "id": "kryon/8",
     "name": "Progress",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L175",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L185",
+    "code": "gallery-sources/kryon/8.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 9,
+    "id": "kryon/9",
     "name": "Spinbox",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L177",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L187",
+    "code": "gallery-sources/kryon/9.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 10,
+    "id": "kryon/10",
     "name": "ListBox",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L180",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L190",
+    "code": "gallery-sources/kryon/10.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 11,
+    "id": "kryon/11",
     "name": "ListBoxMulti",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L100",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L190",
+    "code": "gallery-sources/kryon/11.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 12,
+    "id": "kryon/12",
     "name": "SegmentedControl",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L188",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L198",
+    "code": "gallery-sources/kryon/12.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 13,
+    "id": "kryon/13",
     "name": "TabBar",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L192",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L202",
+    "code": "gallery-sources/kryon/13.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 14,
+    "id": "kryon/14",
     "name": "Selectable",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L196",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L206",
+    "code": "gallery-sources/kryon/14.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 15,
+    "id": "kryon/15",
     "name": "Separator and Bullet",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L200",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L210",
+    "code": "gallery-sources/kryon/15.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 16,
+    "id": "kryon/16",
     "name": "Fieldset",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L204",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L214",
+    "code": "gallery-sources/kryon/16.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 17,
+    "id": "kryon/17",
     "name": "Collapsible",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L208",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L218",
+    "code": "gallery-sources/kryon/17.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 18,
+    "id": "kryon/18",
     "name": "TimePicker",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L212",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L222",
+    "code": "gallery-sources/kryon/18.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 19,
+    "id": "kryon/19",
     "name": "ColorPicker",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L214",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L224",
+    "code": "gallery-sources/kryon/19.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 20,
+    "id": "kryon/20",
     "name": "NavigationBar",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L220",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L230",
+    "code": "gallery-sources/kryon/20.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 21,
+    "id": "kryon/21",
     "name": "Toolbar",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L225",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L235",
+    "code": "gallery-sources/kryon/21.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 22,
+    "id": "kryon/22",
     "name": "TitleBar",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L229",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L239",
+    "code": "gallery-sources/kryon/22.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 23,
+    "id": "kryon/23",
     "name": "Toast",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L231",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L241",
+    "code": "gallery-sources/kryon/23.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 24,
+    "id": "kryon/24",
     "name": "ContextMenu",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L233",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L243",
+    "code": "gallery-sources/kryon/24.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 25,
+    "id": "kryon/25",
     "name": "Menu",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L243",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L253",
+    "code": "gallery-sources/kryon/25.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 26,
+    "id": "kryon/26",
     "name": "Link",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L249",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L259",
+    "code": "gallery-sources/kryon/26.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 27,
+    "id": "kryon/27",
     "name": "Text",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L251",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L261",
+    "code": "gallery-sources/kryon/27.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 28,
+    "id": "kryon/28",
     "name": "Image",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L254",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L264",
+    "code": "gallery-sources/kryon/28.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 29,
+    "id": "kryon/29",
     "name": "Box",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L256",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L266",
+    "code": "gallery-sources/kryon/29.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 30,
+    "id": "kryon/30",
     "name": "Circle Ring Triangle Line",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L259",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "2D",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L269",
+    "code": "gallery-sources/kryon/30.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 31,
+    "id": "kryon/31",
     "name": "Scroll",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L264",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L274",
+    "code": "gallery-sources/kryon/31.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 32,
+    "id": "kryon/32",
     "name": "ModalFrame",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L274",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L284",
+    "code": "gallery-sources/kryon/32.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 33,
+    "id": "kryon/33",
     "name": "ActionModal",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L283",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L293",
+    "code": "gallery-sources/kryon/33.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 34,
+    "id": "kryon/34",
     "name": "Popup",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L292",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L302",
+    "code": "gallery-sources/kryon/34.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 35,
+    "id": "kryon/35",
     "name": "Press",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L298",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L308",
+    "code": "gallery-sources/kryon/35.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 36,
+    "id": "kryon/36",
     "name": "Column",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L306",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L313",
+    "code": "gallery-sources/kryon/36.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 37,
+    "id": "kryon/37",
     "name": "Row",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L307",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L313",
+    "code": "gallery-sources/kryon/37.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 38,
+    "id": "kryon/38",
     "name": "Stack",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L308",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L313",
+    "code": "gallery-sources/kryon/38.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 39,
+    "id": "kryon/39",
     "name": "Group",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L309",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L313",
+    "code": "gallery-sources/kryon/39.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 40,
+    "id": "kryon/40",
     "name": "Grid",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L100",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L313",
+    "code": "gallery-sources/kryon/40.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 41,
+    "id": "kryon/41",
     "name": "Page Section Heading ParagraphText",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L323",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L333",
+    "code": "gallery-sources/kryon/41.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 42,
+    "id": "kryon/42",
     "name": "NavigationBarConfig",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L334",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L344",
+    "code": "gallery-sources/kryon/42.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 43,
+    "id": "kryon/43",
     "name": "Reorder",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L347",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L357",
+    "code": "gallery-sources/kryon/43.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 44,
+    "id": "kryon/44",
     "name": "PanedView",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L362",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L372",
+    "code": "gallery-sources/kryon/44.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 45,
+    "id": "kryon/45",
     "name": "DismissibleOverlay",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L367",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L377",
+    "code": "gallery-sources/kryon/45.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 46,
+    "id": "kryon/46",
     "name": "Button emphasis",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L375",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L385",
+    "code": "gallery-sources/kryon/46.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 47,
+    "id": "kryon/47",
     "name": "Dropdown open",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L384",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L394",
+    "code": "gallery-sources/kryon/47.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 48,
+    "id": "kryon/48",
     "name": "Screen",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L310",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L313",
+    "code": "gallery-sources/kryon/48.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 49,
+    "id": "kryon/49",
     "name": "Flow",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L388",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L398",
+    "code": "gallery-sources/kryon/49.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 50,
+    "id": "kryon/50",
     "name": "Text selection",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L395",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L405",
+    "code": "gallery-sources/kryon/50.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 51,
+    "id": "kryon/51",
     "name": "Transition fade",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L398",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L408",
+    "code": "gallery-sources/kryon/51.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 52,
+    "id": "kryon/52",
     "name": "DiscreteSlider",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L400",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L412",
+    "code": "gallery-sources/kryon/52.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 53,
+    "id": "kryon/53",
     "name": "StylePicker",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L404",
-    "available": true
+    "module": "Kryon",
+    "moduleId": "kryon",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/scenes.zi#L416",
+    "code": "gallery-sources/kryon/53.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 54,
+    "id": "plot/0",
     "name": "Plot · lines",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/packages.zi#L31",
-    "available": true
+    "module": "Plot",
+    "moduleId": "plot",
+    "category": "Charts",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/plot_examples.zi#L41",
+    "code": "gallery-sources/plot/0.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 55,
+    "id": "plot/1",
     "name": "Plot · bars",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/packages.zi#L31",
-    "available": true
+    "module": "Plot",
+    "moduleId": "plot",
+    "category": "Charts",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/plot_examples.zi#L41",
+    "code": "gallery-sources/plot/1.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 56,
+    "id": "plot/2",
     "name": "LineChart",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/packages.zi#L37",
-    "available": true
+    "module": "Plot",
+    "moduleId": "plot",
+    "category": "Charts",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/plot_examples.zi#L43",
+    "code": "gallery-sources/plot/2.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 57,
+    "id": "plot/3",
     "name": "LineChartCompare",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/packages.zi#L31",
-    "available": true
+    "module": "Plot",
+    "moduleId": "plot",
+    "category": "Charts",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/plot_examples.zi#L43",
+    "code": "gallery-sources/plot/3.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 58,
+    "id": "plot/4",
     "name": "CandleChart",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/packages.zi#L41",
-    "available": true
+    "module": "Plot",
+    "moduleId": "plot",
+    "category": "Charts",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/plot_examples.zi#L47",
+    "code": "gallery-sources/plot/4.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 59,
+    "id": "plot/5",
     "name": "BandChart",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/packages.zi#L47",
-    "available": true
+    "module": "Plot",
+    "moduleId": "plot",
+    "category": "Charts",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/plot_examples.zi#L53",
+    "code": "gallery-sources/plot/5.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 60,
+    "id": "data_views/0",
     "name": "TreeView",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/packages.zi#L53",
-    "available": true
+    "module": "DataViews",
+    "moduleId": "data_views",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/data_views_examples.zi#L54",
+    "code": "gallery-sources/data_views/0.zi",
+    "available": true,
+    "note": "Click a control to try it. Tab moves keyboard focus."
   },
   {
     "index": 61,
+    "id": "data_views/1",
     "name": "Kanban",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/packages.zi#L64",
-    "available": true
+    "module": "DataViews",
+    "moduleId": "data_views",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/data_views_examples.zi#L65",
+    "code": "gallery-sources/data_views/1.zi",
+    "available": true,
+    "note": "Drag a card to another column. The board keeps the new position."
   },
   {
     "index": 62,
-    "name": "TableView · API status",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/packages.zi#L31",
-    "available": false
+    "id": "data_views/2",
+    "name": "TableView",
+    "module": "DataViews",
+    "moduleId": "data_views",
+    "category": "UI",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/data_views_examples.zi#L93",
+    "code": "gallery-sources/data_views/2.zi",
+    "available": false,
+    "note": "TableView exports layout and selection APIs, but this revision has no maintained table renderer."
   }
 ];

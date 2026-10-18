@@ -1,82 +1,17 @@
 using UI :: #import "kryon/Widgets";
 using Scenes :: #import "scenes";
-#import "packages"
-#import "kryon/SystemTheme"
-Theme :: #import "kryon/Theme";
+#import "catalog"
+#import "palette"
 #import "std/number_text"
 
 embedded: bool;
 scene: s32;
 catalog_scroll: s32;
 disabled_controls: bool;
-installed: s32 = -1;
-
-// Show Kryon's standard palette in both hosts. Accent fills and soft
-// selections have separate roles; the desktop fallback conflates them.
-InstallCatalogPalette :: () {
-    palette := Theme.DefaultPalette(dark)
-    system := SystemPalette.{.dark = dark, .background = palette.background,
-        .base = palette.surface, .text = palette.text, .border = palette.border,
-        .selected = palette.accent, .selected_text = palette.on_accent,
-        .danger = palette.danger, .warning = palette.warning, .success = palette.success}
-    unused SystemPaletteInstall(system)
-    rules := ActiveStyleRules()
-    selection_text := ifx dark then Theme.OnColor(palette.selection) else Theme.LightSelectionText()
-    // Dropdowns and time pickers share these semantic style facts.
-    dropdown: StyleRule
-    dropdown.selector = StyleDefaultSelector()
-    dropdown.selector.kind = StyleKindDropdown()
-    dropdown.selector.state = cast(s32)ButtonState.ButtonStateHover
-    dropdown.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground
-    dropdown.style.background = palette.surface_raised
-    dropdown.style.foreground = palette.text
-    dropdown.order = rules.count; rules.items[rules.count] = dropdown; rules.count += 1
-    dropdown.selector.state = StyleAny()
-    dropdown.selector.tone = cast(s32)ButtonTone.ButtonToneAccent
-    dropdown.style.background = palette.selection
-    dropdown.style.foreground = selection_text
-    dropdown.order = rules.count; rules.items[rules.count] = dropdown; rules.count += 1
-    kinds: [6]s32 = .{StyleKindListBox(), StyleKindListBoxMulti(), StyleKindTreeView(), StyleKindListBoxItem(), StyleKindListBoxMultiItem(), StyleKindTreeViewItem()}
-    for index: 0..5 {
-        rule: StyleRule
-        rule.selector = StyleDefaultSelector()
-        rule.selector.kind = kinds[index]
-        rule.style.fields = cast(u32)StyleField.StyleForeground
-        rule.style.foreground = palette.text
-        if index < 3 {
-            rule.style.fields |= cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleBorder
-            rule.style.background = palette.surface
-            rule.style.border = palette.border
-        }
-        rule.order = rules.count
-        rules.items[rules.count] = rule; rules.count += 1
-        if index >= 3 {
-            rule.style.fields |= cast(u32)StyleField.StyleBackground
-            rule.style.background = palette.selection
-            rule.style.foreground = selection_text
-            rule.state = cast(s32)ButtonState.ButtonStateHover
-            rule.order = rules.count
-            rules.items[rules.count] = rule; rules.count += 1
-            rule.state = cast(s32)ButtonState.ButtonStateSelected
-            rule.order = rules.count
-            rules.items[rules.count] = rule; rules.count += 1
-        }
-    }
-    chart: StyleRule
-    chart.selector = StyleDefaultSelector(); chart.selector.kind = StyleKindPlot()
-    chart.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
-    chart.style.background = palette.surface; chart.style.foreground = palette.accent; chart.style.border = palette.border
-    chart.order = rules.count; rules.items[rules.count] = chart; rules.count += 1
-    unused InstallStyleRules(rules)
-}
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    wanted: s32 = ifx dark then 1 else 0
-    if wanted != installed {
-        InstallCatalogPalette()
-        installed = wanted
-    }
+    InstallGalleryPalette(dark)
     Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
     if embedded {
         Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = GallerySceneName(scene), .font = 23})
@@ -88,7 +23,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     items: [GallerySceneCount]ListBoxItem
     for index: cast(s32)0..GallerySceneCount - 1 {
         items[index].key = cast(u64)(index + 1)
-        items[index].label = GallerySceneName(index)
+        items[index].label = GallerySceneLabel(index)
     }
     picked := ListBox(session, ListBoxProps.{.key = 9003, .bounds = .{500.0, 64.0, viewport.width - 524.0, viewport.height - 88.0}, .selected_index = scene, .scroll_offset = catalog_scroll, .row_height = 30}, items[:])
     catalog_scroll = picked.scroll_offset
@@ -102,11 +37,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     digits: [16]u8
     Text(session, TextProps.{.key = 9008, .bounds = .{24.0, 534.0, 200.0, 24.0}, .text = "Button clicks / decisions", .font = 14})
     Text(session, TextProps.{.key = 9009, .bounds = .{248.0, 534.0, 208.0, 24.0}, .text = FormatInteger(cast(s64)clicks, digits[:]), .font = 18})
-    Text(session, TextProps.{.key = 9010, .bounds = .{24.0, 594.0, 432.0, 52.0}, .text = "Core widgets, Plot charts and DataViews. The same Ziran source runs on desktop and web.", .font = 14, .disabled = true})
+    Text(session, TextProps.{.key = 9010, .bounds = .{24.0, 594.0, 432.0, 52.0}, .text = "Examples from the enabled modules. The same Ziran source runs on desktop and web.", .font = 14, .disabled = true})
     return 0
 }
 
 DrawScene :: (session: Session) {
-    if scene < CoreSceneCount { Compose(session, scene, disabled_controls) }
-    else { ComposePackage(session, scene - CoreSceneCount, disabled_controls) }
+    ComposeGallery(session, scene, disabled_controls)
 }

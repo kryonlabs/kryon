@@ -73,10 +73,7 @@ Run :: () -> s32 {
         if BeginFrame(session, 1, .{0.0, 0.0, 480.0, 320.0}) != FrameStatus.FrameOk { return 4 }
         unused Box(session, BoxProps.{.key = 2, .bounds = .{0.0, 0.0, 480.0, 320.0}, .fill = .{247, 250, 252, 255}})
         Compose(session, scene, state == 1)
-        result := EndPixmapFrame(session, scene != 51, cast(u32)0xf7fafcff, true)
-        if scene == 51 {
-            PaintTransitionFade(TransitionState.{.active = true, .phase = cast(s32)TransitionPhase.TransitionOut, .elapsed_seconds = 0.4, .duration_seconds = 1.0}, .{0.0, 0.0, 480.0, 320.0}, .{16, 34, 45, 160})
-        }
+        result := EndPixmapFrame(session, true, cast(u32)0xf7fafcff, true)
         if scene == 50 && frame == 0 && state != 1 { unused TreeFocusAt(session, 2) }
         elapsed := Clock.MonotonicNanoseconds() - start
         if result.status != FrameStatus.FrameOk { return 5 }

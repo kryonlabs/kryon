@@ -1,7 +1,7 @@
 // Interactive desktop host. Captures run only on a private display.
 using App :: #import "app";
 using Scenes :: #import "scenes";
-#import "packages"
+#import "catalog"
 #import "kryon/Desktop"
 #import "kryon/Cairo"
 #import "kryon/Frame"
@@ -27,12 +27,6 @@ Draw :: (session: Session, pointer: PointerFrame, wheel: float32) -> bool {
     if BeginFrame(session, 1, viewport) != FrameStatus.FrameOk { return false }
     if Frame(session, viewport) != 0 { TreeCancel(session); return false }
     if EndFrame(session) != FrameStatus.FrameOk { return false }
-    if scene == 51 {
-        PaintTransitionFade(TransitionState.{.active = true,
-            .phase = cast(s32)TransitionPhase.TransitionOut,
-            .elapsed_seconds = 0.4, .duration_seconds = 1.0},
-            .{24.0, 64.0, 432.0, 208.0}, .{16, 34, 45, 160})
-    }
     unused DesktopCursor(session)
     DesktopFrameUnchanged(false)
     return EndDesktopFrame()

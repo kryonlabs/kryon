@@ -1,0 +1,27 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Menu", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 25
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    items: [2]MenuItem; groups: [1]MenuGroup
+    items[0].id = 1; items[0].label = "New note"; items[1].id = 2; items[1].label = "Open..."; items[1].disabled = disabled
+    groups[0].label = "File"; groups[0].items = items[:]
+    if !menu_initialized { MenuStateInit(*menu_state); menu_state.open_index = 0; menu_initialized = true }
+    if Menu(session, MenuProps.{.bounds = b}, groups[:], *menu_state).activated_id > 0 { clicks += 1 }
+
+    return 0
+}

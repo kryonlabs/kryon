@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 
 project = Path(__file__).resolve().parent
 parser = argparse.ArgumentParser(description=__doc__)
@@ -29,6 +30,11 @@ def run(command):
 
 ziran = package('ziran')
 kryon = package('kryon')
+sys.path.insert(0, str(project.parents[2] / 'scripts'))
+from gallery import compiler_embeds
+extra_embeds = []
+for embed in compiler_embeds(args.ziran, core=kryon):
+    extra_embeds.extend(['--embed-file', embed])
 assets = project.parent / 'assets'
 build = kryon / 'build/scratch/web-preview'
 generated = build / 'host'
@@ -40,7 +46,7 @@ subprocess.run(list(map(str, [ziran / 'build/bin/ziran', 'run', '--target=py', z
      '--embed-file', f'{kryon / "src/ui"}@/kryon/ui',
      '--embed-file', f'{project / "src/preview_entry.zi"}@/preview_entry.zi',
      '--embed-file', f'{project / "src/preview_style.zi"}@/preview_style.zi',
-     '--embed-file', f'{project / "src/preview_protocol.zi"}@/preview_protocol.zi'])), cwd=ziran, env=script_env, check=True)
+     '--embed-file', f'{project / "src/preview_protocol.zi"}@/preview_protocol.zi', *extra_embeds])), cwd=ziran, env=script_env, check=True)
 run([ziran / 'build/bin/zi2c', '--prune-stale', '--define', 'PLATFORM_WEB', '--root', project / 'src',
      '--module-path', kryon / 'src/ui', '--module-path', kryon / 'src/backend',
      '--module-path', f'kryon={kryon / "src/ui"}',

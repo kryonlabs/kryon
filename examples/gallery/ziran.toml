@@ -1,7 +1,7 @@
 [package]
 name = "gallery"
 entry = "src/app.zi"
-module_roots = ["src"]
+module_roots = ["src", "build/catalog"]
 bridge_modules = ["app"]
 tool = "kryon"
 

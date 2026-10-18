@@ -1,0 +1,41 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Column", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 36
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    props: ColumnProps = .{.bounds = .{24.0, 64.0, 432.0, 208.0}, .gap = 12, .padding = 8}
+    container: LayoutContainer
+    if scene == 36 { container = Column(session, props) }
+    else if scene == 37 { container = Row(session, props) }
+    else if scene == 38 { container = Stack(session, props) }
+    else if scene == 39 { container = Group(session, props) }
+    else if scene == 48 { container = Screen(session, props) }
+    else { grid := Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = 12, .padding = 8}); container = grid.container }
+    if container.opened {
+        first: Rectangle = .{0.0, 0.0, 164.0, 44.0}
+        second: Rectangle = first
+        if scene == 39 || scene == 48 {
+            first.x = container.content.x; first.y = container.content.y
+            second.x = first.x; second.y = first.y + 60.0
+        } else if scene == 38 { second.x = 104.0; second.y = 112.0 }
+        if Button(session, ButtonProps.{.label = "First item", .bounds = first, .disabled = disabled}) == 1 { clicks += 1 }
+        if Button(session, ButtonProps.{.label = "Second item", .bounds = second, .tone = ButtonTone.ButtonToneAccent, .disabled = disabled}) == 1 { clicks += 1 }
+        unused End(session)
+    }
+
+    return 0
+}

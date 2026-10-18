@@ -1,0 +1,96 @@
+using UI :: #import "kryon/Widgets";
+Trees :: #import "data_views/TreeView";
+Board :: #import "data_views/Kanban";
+
+Theme :: #import "kryon/theme";
+installed_style: s32 = -1;
+InstallStyles :: (dark: bool) {
+    wanted: s32 = ifx dark then 1 else 0
+    if wanted == installed_style { return }
+    installed_style = wanted
+    palette := Theme.DefaultPalette(dark)
+    rules := ActiveStyleRules()
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector(); rule.selector.kind = StyleKindTreeView()
+    rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
+    rule.style.background = palette.surface; rule.style.foreground = palette.text; rule.style.border = palette.border
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.selector.kind = StyleKindTreeViewItem()
+    rule.style.fields = cast(u32)StyleField.StyleForeground
+    rule.style.foreground = palette.text
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.style.fields |= cast(u32)StyleField.StyleBackground
+    rule.style.background = palette.selection
+    rule.style.foreground = ifx dark then Theme.OnColor(palette.selection) else Theme.LightSelectionText()
+    rule.state = cast(s32)ButtonState.ButtonStateHover
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.state = cast(s32)ButtonState.ButtonStateSelected
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    unused InstallStyleRules(rules)
+}
+
+SceneName :: (index: s32) -> string {
+    if index == 0 { return "TreeView" }
+    if index == 1 { return "Kanban" }
+    if index == 2 { return "TableView" }
+    return ""
+}
+
+tree_selection: s32 = 1;
+tree_scroll: s32;
+tree_items: [5]Trees.TreeItem;
+tree_ready: bool;
+board_cell: Board.KanbanCell;
+card_lanes: [3]s32 = .{0, 1, 2};
+
+bounds: Rectangle;
+
+Prepare :: (session: Session, scene: s32) {
+    bounds = Rectangle.{24.0, 64.0, 432.0, 208.0}
+}
+
+Compose :: (session: Session, scene: s32, disabled: bool) {
+    Prepare(session, scene)
+    if scene == 0 {
+        if !tree_ready {
+            tree_items[0] = .{.label = "Project", .id = 1, .expanded = true, .selectable = true}
+            tree_items[1] = .{.label = "Source", .id = 2, .depth = 1, .expanded = true, .selectable = true}
+            tree_items[2] = .{.label = "app.zi", .id = 3, .depth = 2, .selectable = true}
+            tree_items[3] = .{.label = "Assets", .id = 4, .depth = 1, .selectable = true}
+            tree_items[4] = .{.label = "README", .id = 5, .depth = 1, .selectable = true}
+            tree_ready = true
+        }
+        result := Trees.TreeView(session, Trees.TreeViewProps.{.key = 600, .bounds = bounds, .selected_id = tree_selection, .scroll_offset = tree_scroll, .row_height = 36, .disabled = disabled}, tree_items[:])
+        tree_selection = result.selected_id; tree_scroll = result.scroll_offset
+    } else if scene == 1 {
+        config := Board.KanbanDefaults(600, 3)
+        config.min_width = 130.0; config.gap = 10.0
+        config.background = StyleTokenColor("surface")
+        config.card_background = StyleTokenColor("button")
+        frame := Board.BeginKanban(session, *board_cell, config, bounds, Board.KanbanInput.{.disabled = disabled})
+        titles: [3]string = .{"To do", "Doing", "Done"}
+        labels: [3]string = .{"Explore", "Try widgets", "Build"}
+        for lane: cast(s32)0..2 {
+            count: s32
+            for index: cast(s32)0..2 { if card_lanes[index] == lane { count += 1 } }
+            column := Board.KanbanColumn(session, *board_cell, frame, lane, titles[lane], count, count * 64)
+            if column.visible {
+                for index: cast(s32)0..2 {
+                    if card_lanes[index] == lane {
+                        card := Board.KanbanCard(session, *board_cell, frame, *column, index, cast(u64)(700 + index), 64.0)
+                        Text(session, TextProps.{.bounds = .{card.x + 8.0, card.y + 8.0, card.width - 16.0, card.height - 16.0}, .text = labels[index], .font = 14})
+                    }
+                }
+            }
+            Board.EndKanbanColumn(session, column)
+        }
+        Board.EndKanban(session, frame)
+        pointer := PointerSample(session)
+        if !disabled {
+            gesture := Board.PointerKanban(*board_cell, bounds, 3, .{pointer.x, pointer.y}, pointer.down, pointer.pressed, pointer.released)
+            if gesture.moved && gesture.lane >= 0 && gesture.identity >= 700 && gesture.identity < 703 { card_lanes[cast(s32)gesture.identity - 700] = gesture.lane }
+        }
+    } else {
+        Text(session, TextProps.{.bounds = bounds, .text = "TableView currently exports layout and selection APIs. This package revision has no maintained table renderer.\n\nThis entry records that gap; it does not substitute a mock table.", .font = 17})
+    }
+}

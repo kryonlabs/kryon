@@ -1,0 +1,29 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "ListBoxMulti", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 11
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    items: [5]ListBoxItem
+    items[0].label = "Morning walk"; items[1].label = "Read a chapter"; items[2].label = "Make something"; items[3].label = "Take a break"; items[4].label = "Reflect"
+    b.height = 184.0
+    if scene == 10 { list_choice = ListBox(session, ListBoxProps.{.bounds = b, .row_height = 34, .selected_index = list_choice, .disabled = disabled}, items[:]).selected_index }
+    else {
+        unused ListBoxMulti(session, ListBoxMultiProps.{.bounds = b, .row_height = 34, .disabled = disabled}, items[:], multi[:])
+    }
+
+    return 0
+}

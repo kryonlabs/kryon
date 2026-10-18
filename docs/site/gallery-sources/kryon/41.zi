@@ -1,0 +1,32 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Page Section Heading ParagraphText", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 41
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    page := Page(session, PageProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .title = "A quiet workspace"})
+    if page.opened {
+        section := Section(session, SectionProps.{.label = "Reading", .bounds = .{24.0, 64.0, 432.0, 188.0}})
+        if section.opened {
+            Heading(session, HeadingProps.{.text = "Small, thoughtful details", .level = 2, .bounds = .{24.0, 76.0, 420.0, 38.0}})
+            ParagraphText(session, ParagraphTextProps.{.text = "A page groups content, a section gives it meaning, and the type stays easy to read.", .bounds = .{24.0, 136.0, 410.0, 112.0}})
+            unused End(session)
+        }
+        unused End(session)
+    }
+
+    return 0
+}

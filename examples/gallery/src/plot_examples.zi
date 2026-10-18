@@ -1,0 +1,60 @@
+using UI :: #import "kryon/Widgets";
+Plot :: #import "plot/PlotWidget";
+Charts :: #import "plot/Plot";
+
+Theme :: #import "kryon/theme";
+installed_style: s32 = -1;
+InstallStyles :: (dark: bool) {
+    wanted: s32 = ifx dark then 1 else 0
+    if wanted == installed_style { return }
+    installed_style = wanted
+    palette := Theme.DefaultPalette(dark)
+    rules := ActiveStyleRules()
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector(); rule.selector.kind = StyleKindPlot()
+    rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
+    rule.style.background = palette.surface; rule.style.foreground = palette.accent; rule.style.border = palette.border
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    unused InstallStyleRules(rules)
+}
+
+SceneName :: (index: s32) -> string {
+    if index == 0 { return "Plot · lines" }
+    if index == 1 { return "Plot · bars" }
+    if index == 2 { return "LineChart" }
+    if index == 3 { return "LineChartCompare" }
+    if index == 4 { return "CandleChart" }
+    if index == 5 { return "BandChart" }
+    return ""
+}
+
+bounds: Rectangle;
+values: [8]float32 = .{3.0, 5.0, 4.0, 8.0, 6.0, 9.0, 8.0, 11.0};
+previous: [8]float32 = .{2.0, 3.0, 4.0, 5.0, 4.0, 7.0, 6.0, 8.0};
+
+Prepare :: (session: Session, scene: s32) {
+    bounds = Rectangle.{24.0, 64.0, 432.0, 208.0}
+}
+
+Compose :: (session: Session, scene: s32, disabled: bool) {
+    Prepare(session, scene)
+    if scene < 2 {
+        unused Plot.Plot(session, Plot.PlotProps.{.key = 600, .bounds = bounds, .semantic_label = "Eight example values", .scale_min = 0.0, .scale_max = 12.0, .mode = cast(Plot.PlotMode)scene}, values[:])
+    } else if scene == 2 || scene == 3 {
+        props: Charts.LineChartProps = .{.key = 600, .bounds = bounds, .semantic_label = "Example line chart", .line_color = .{23, 107, 131, 255}, .grid_color = .{180, 200, 210, 150}, .compare_color = .{180, 125, 70, 255}}
+        if scene == 2 { Charts.LineChart(session, props, values[:], Charts.ChartRangeFor(values[:])) }
+        else { Charts.LineChartCompare(session, props, values[:], previous[:], Charts.ChartRangeForBoth(values[:], previous[:])) }
+    } else if scene == 4 {
+        bars: [8]Charts.PriceBar
+        for index: cast(s32)0..7 {
+            bars[index] = Charts.PriceBar.{.open = previous[index], .close = values[index], .high = values[index] + 1.0, .low = previous[index] - 1.0, .volume = cast(float32)(index + 1) * 20.0}
+        }
+        Charts.CandleChart(session, Charts.CandleChartProps.{.key = 600, .bounds = bounds, .visible_count = 8, .semantic_label = "Example candles and volume", .up_color = .{35, 115, 92, 255}, .down_color = .{185, 65, 67, 255}, .grid_color = .{180, 200, 210, 150}}, bars[:], Charts.CandleRangeFor(bars[:], 8))
+    } else if scene == 5 {
+        points: [8]Charts.BandChartPoint
+        for index: cast(s32)0..7 { points[index] = Charts.BandChartPoint.{.slot = index, .value = values[index], .good = ifx values[index] >= 4.0 && values[index] <= 9.0 then 1 else 0, .label = "Hover or tap a point"} }
+        bands: [1]Charts.BandChartBand
+        bands[0] = .{.low = 4.0, .high = 9.0, .has_low = true, .has_high = true}
+        unused Charts.BandChart(session, Charts.BandChartProps.{.key = 600, .bounds = bounds, .semantic_label = "Values and a target band", .slots = 8, .min_value = 0.0, .max_value = 12.0, .top_label = "12", .bottom_label = "0", .font = 14, .good_color = .{35, 115, 92, 255}, .other_color = .{180, 125, 70, 255}, .band_color = .{131, 181, 160, 80}, .grid_color = .{180, 200, 210, 150}, .text_color = StyleTokenColor("text"), .label_fill = StyleTokenColor("surface")}, points[:], bands[:])
+    }
+}

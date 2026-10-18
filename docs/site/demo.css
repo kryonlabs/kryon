@@ -1,12 +1,13 @@
-.demo-page{width:min(1400px,calc(100% - 64px));margin:0 auto;padding:32px 0;--syntax-comment:#69796c;--syntax-string:#8a4931;--syntax-keyword:#315e48;--selection:#315e4830;--diagnostic-bg:#f8ede5;--diagnostic-ink:#803c2a}
-:root[data-theme=dark] .demo-page{--syntax-comment:#a0bda5;--syntax-string:#e9b28d;--syntax-keyword:#b5d4a9;--selection:#b5d4a930;--diagnostic-bg:#402b25;--diagnostic-ink:#e9bda7}
+.demo-page{width:min(1400px,calc(100% - 64px));margin:0 auto;padding:32px 0}
+.demo-page,.gallery-page{--syntax-comment:#69796c;--syntax-string:#8a4931;--syntax-keyword:#315e48;--selection:#315e4830;--diagnostic-bg:#f8ede5;--diagnostic-ink:#803c2a}
+:root[data-theme=dark] :is(.demo-page,.gallery-page){--syntax-comment:#a0bda5;--syntax-string:#e9b28d;--syntax-keyword:#b5d4a9;--selection:#b5d4a930;--diagnostic-bg:#402b25;--diagnostic-ink:#e9bda7}
 .demo-navigation{display:flex;align-items:center;gap:18px}
 .demo-header{display:flex;justify-content:space-between;gap:20px;align-items:center;font-size:14px}
 .demo-intro{margin:44px 0 26px}
 .demo-intro .eyebrow{margin-bottom:12px}
 .demo-intro h1{font-size:clamp(32px,4vw,56px);margin-bottom:14px}
 .demo-intro>p:last-child{color:var(--muted);margin-bottom:0}
-main>section.playground{padding:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface)}
+.playground{padding:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface)}
 .playground-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:56px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--surface)}
 .view-controls{display:flex;padding:3px;border:1px solid var(--line);border-radius:9px;background:var(--surface-muted)}
 .view-controls button,.editor-actions button{border:0;border-radius:6px;background:transparent;font-size:12px;line-height:1.5;padding:6px 12px}
@@ -48,7 +49,7 @@ main>section.playground{padding:0;border:1px solid var(--line);border-radius:16p
 [hidden]{display:none!important}
 html[data-mini] .demo-page{width:100%;padding:0}
 html[data-mini] .demo-header,html[data-mini] .demo-intro,html[data-mini] .demo-links a:first-child,html[data-mini] #editor-help{display:none}
-html[data-mini] main>section.playground{border:0;border-radius:0}
+html[data-mini] .playground{border:0;border-radius:0}
 html[data-mini] .playground-toolbar{min-height:45px;padding:5px 10px}
 html[data-mini] .view-controls button,html[data-mini] .editor-actions button{padding-block:4px}
 html[data-mini] .workspace{height:max(460px,calc(100dvh - 91px))}

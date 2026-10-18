@@ -1,7 +1,7 @@
 using UI :: #import "kryon/Widgets";
 using App :: #import "app";
 using Scenes :: #import "scenes";
-#import "packages"
+#import "catalog"
 using Host :: #import "kryon/Canvas";
 #import "kryon/Frame"
 #import "kryon/ScrollDevice"
@@ -57,9 +57,6 @@ main :: () -> s32 {
         else {
             if Frame(session, viewport) != 0 { TreeCancel(session); ok = false }
             else { ok = EndFrame(session) == FrameStatus.FrameOk }
-        }
-        if scene == 51 {
-            PaintTransitionFade(TransitionState.{.active = true, .phase = cast(s32)TransitionPhase.TransitionOut, .elapsed_seconds = 0.4, .duration_seconds = 1.0}, .{24.0, 64.0, 432.0, 208.0}, .{16, 34, 45, 160})
         }
         CanvasCursor(session)
         if !EndCanvasFrame() { ok = false }

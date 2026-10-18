@@ -112,10 +112,11 @@ DESKTOP_LIBS = $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontcon
 
 .PHONY: widget-catalog widget-catalog-web
 widget-catalog:
-	cd gallery && ziran tool kryon build --profile desktop $(if $(wildcard gallery/ziran.local.toml),,--locked)
+	python3 ../scripts/gallery.py
+	cd gallery && PROJECT_EXTRA_SOURCES=build/catalog/catalog.zi ziran tool kryon build --profile desktop $(if $(wildcard gallery/ziran.local.toml),,--locked)
 
 widget-catalog-web:
-	cd gallery && ziran tool kryon build --profile web $(if $(wildcard gallery/ziran.local.toml),,--locked)
+	python3 ../scripts/build-gallery.py
 
 $(BUILD_DIR)/hello-desktop: $(BUILD_DIR)/desktop-hello-native/desktop_hello.c Makefile
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \

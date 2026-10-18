@@ -15,6 +15,7 @@ PreviewInput :: struct {
     modifiers: s32
     wheel: float32
     theme: s32
+    disabled: bool
 }
 
 host_api :: #system_library "host_api";

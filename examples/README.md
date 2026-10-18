@@ -4,9 +4,18 @@
 
 The maintained gallery is the ordinary Ziran package in `gallery/`. Its
 `src/scenes.zi` supplies the same core scenes to the native application,
-Canvas/Wasm build, and widget review tool. `src/packages.zi` adds the actual
-Plot charts, DataViews tree and Kanban. TableView's entry records its current
-API-only status; it does not draw a substitute renderer.
+Canvas/Wasm build, and widget review tool. Each optional package has its own
+integration (`src/plot_examples.zi`, `src/data_views_examples.zi`). The module
+list in `modules.toml` registers only dependencies declared in `ziran.toml`;
+an omitted dependency contributes no imports, renderer or browser compiler
+sources. Core UI and 2D drawing are separate categories. TableView's entry
+records its current API-only status; it does not draw a substitute renderer.
+
+The build generates `build/catalog/catalog.zi` and the website's module data
+and editable sources from those maintained Ziran compositions. Use the Make
+targets below so registration is prepared before either host compiles. The
+website integrates each example's source with the existing live editor:
+edits compile in the browser and run in the same Canvas preview host.
 
 From the Kryon root:
 

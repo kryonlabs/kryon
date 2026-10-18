@@ -97,7 +97,13 @@ Label :: (session: Session, value: string, y: float32 = 76.0) {
     Text(session, TextProps.{.bounds = .{28.0, y, 420.0, 38.0}, .text = value})
 }
 
-Compose :: (session: Session, scene: s32, disabled: bool) {
+SceneInput :: struct { field: TextFieldInput; area: TextAreaInput }
+no_headers: []CollapsibleHeader;
+no_options: []DropdownOption;
+b: Rectangle;
+typed: [128]u8;
+
+Prepare :: (session: Session, scene: s32) -> SceneInput {
     if !initialized {
         field_length = Copy(field_bytes[:], "A quiet place to think")
         area_length = Copy(area_bytes[:], "A small note\n\nClear typography and careful spacing make everyday work feel calm. Café, Ω and é.")
@@ -109,7 +115,6 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
     for index: 0..field_length - 1 { field_bytes[index] = field_next[index] }
     for index: 0..empty_length - 1 { empty_bytes[index] = empty_next[index] }
     for index: 0..area_length - 1 { area_bytes[index] = area_next[index] }
-    typed: [128]u8
     input_key: s32 = 0
     if scene == 1 || scene == 2 { input_key = KeyboardTake(session) }
     input_text := TypedTextTake(session, typed[:])
@@ -128,9 +133,14 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
     area_input.enter = input_key == KeyEnter
     area_input.up = input_key == KeyUp; area_input.down = input_key == KeyDown
     area_input.page_up = input_key == KeyPageUp; area_input.page_down = input_key == KeyPageDown
-    no_headers: []CollapsibleHeader
-    no_options: []DropdownOption
-    b: Rectangle = .{24.0, 64.0, 432.0, 44.0}
+    b = Rectangle.{24.0, 64.0, 432.0, 44.0}
+    return SceneInput.{field_input, area_input}
+}
+
+Compose :: (session: Session, scene: s32, disabled: bool) {
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
     if scene == 0 {
         for index: 0..3 {
             props: ButtonProps
@@ -397,6 +407,8 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         Text(session, TextProps.{.key = 10, .bounds = .{24.0, 64.0, 432.0, 148.0}, .text = "Select a little text.\nKeep reading in comfort.", .selectable = true, .disabled = disabled})
     } else if scene == 51 {
         Label(session, "A transition over this content", 104.0)
+        color := TransitionFadeColor(TransitionState.{.active = true, .phase = cast(s32)TransitionPhase.TransitionOut, .elapsed_seconds = 0.4, .duration_seconds = 1.0}, .{16, 34, 45, 160})
+        Box(session, BoxProps.{.bounds = .{24.0, 64.0, 432.0, 208.0}, .fill = color})
     } else if scene == 52 {
         discrete = DiscreteSlider(session, DiscreteSliderProps.{.bounds = .{24.0, 64.0, 432.0, 80.0}, .label = "Step size", .value = discrete, .min = 1, .max = 10, .disabled = disabled}).value
         digits: [16]u8

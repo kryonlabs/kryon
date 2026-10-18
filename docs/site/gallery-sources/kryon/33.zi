@@ -1,0 +1,30 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "ActionModal", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 33
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    actions: [2]ActionModalAction
+    actions[0].label = "Cancel"; actions[1].label = "Save"; actions[1].tone = ButtonTone.ButtonToneAccent; actions[1].disabled = disabled
+    if !dismissed {
+        answer := ActionModal(session, ActionModalProps.{.title = "Save changes?", .message = "Keep your latest ideas for next time.", .max_width = 420}, actions[:])
+        if answer.action != 0 { dismissed = true; clicks += 1 }
+    } else {
+        if Button(session, ButtonProps.{.bounds = b, .label = "Open dialog again"}) == 1 { dismissed = false }
+    }
+
+    return 0
+}

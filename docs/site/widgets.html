@@ -8,10 +8,11 @@
   <link rel="canonical" href="https://kryonlabs.com/widgets.html">
   <link rel="icon" href="favicon.svg">
   <link rel="stylesheet" href="current.css">
+  <link rel="stylesheet" href="demo.css">
   <link rel="stylesheet" href="gallery.css">
   <script defer src="current.js"></script>
   <script defer src="gallery-data.js"></script>
-  <script defer src="gallery.js"></script>
+  <script type="module" src="gallery.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#preview-heading">Skip to widget preview</a>
@@ -19,13 +20,42 @@
   <main class="gallery-page">
     <div class="gallery-intro"><p class="eyebrow">Kryon / Widget gallery</p><h1>Explore the <em>widgets.</em></h1><p>Real controls you can click, type in and move. The same Ziran examples run here and on the desktop.</p></div>
     <div class="gallery-layout">
-      <nav class="widget-navigation" aria-label="Widget examples"><p id="inventory">Loading examples…</p><div id="widget-list"></div></nav>
+      <nav class="widget-navigation" aria-label="Widget examples"><div id="widget-list"></div></nav>
       <section class="widget-detail" aria-labelledby="preview-heading">
         <div class="widget-heading"><div><p class="eyebrow" id="widget-package">Kryon</p><h2 id="preview-heading">Button</h2></div><a id="widget-source" href="https://github.com/kryonlabs/kryon/tree/master/examples/gallery">Ziran source ↗</a></div>
         <div class="preview-options"><label><input id="disabled-state" type="checkbox"> Disabled state</label><span id="preview-status" role="status" aria-live="polite">Loading the web build…</span></div>
-        <div class="widget-stage" id="widget-stage"><iframe id="widget-preview" src="assets/widget-gallery.html" title="Interactive Kryon widget preview"></iframe></div>
+    <section class="playground" aria-label="Widget source and live preview">
+      <div class="playground-toolbar">
+        <div class="view-controls" role="group" aria-label="Editor view">
+          <button type="button" data-view="source" aria-pressed="false">Source</button>
+          <button type="button" data-view="preview" aria-pressed="true">Preview</button>
+          <button type="button" data-view="split" aria-pressed="false">Both</button>
+        </div>
+        <div class="editor-actions"><button id="compile" type="button" title="Compile now (Ctrl or ⌘ + Enter)" disabled>Compile</button><button id="stop" type="button" hidden>Stop</button><button id="reset" type="button" disabled>Reset</button></div>
+      </div>
+      <div id="workspace" class="workspace" data-view="preview">
+        <div id="source-panel" class="source-panel" hidden>
+          <div class="panel-heading"><label for="source-editor">example.zi</label><span>Edits compile automatically</span></div>
+          <div class="code-area"><pre id="highlight" aria-hidden="true"><code></code></pre><textarea id="source-editor" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" maxlength="65536" aria-describedby="editor-help" disabled></textarea></div>
+        </div>
+        <div id="preview-panel" class="preview-panel" aria-busy="true">
+          <div class="panel-heading"><span>Live preview</span><span>Interactive widgets</span></div>
+          <div id="widget-stage" class="preview-stage widget-stage">
+            <iframe id="widget-preview" title="Selected widget preview"></iframe>
+            <iframe id="live-preview" title="Your compiled Kryon preview" sandbox="allow-scripts" aria-hidden="true" hidden></iframe>
+            <div id="preview-loading" class="preview-loading" aria-hidden="true">
+              <span class="preview-spinner"></span>
+              <strong id="preview-loading-message">Loading preview…</strong>
+              <span>This may take a moment.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="playground-status"><span id="status" role="status" aria-live="polite" data-state="busy">Loading preview…</span><span id="editor-help">Compiled in your browser · Ctrl / ⌘ + Enter to run</span></div>
+      <pre id="diagnostics" class="diagnostics" tabindex="0" aria-label="Compiler diagnostics" hidden></pre>
+    </section>
         <p class="widget-note" id="widget-note">Click a control to try it. Tab moves keyboard focus.</p>
-        <p class="gallery-boundary">Core widgets come from Kryon. Charts come from Plot; TreeView and Kanban come from DataViews. The TableView entry explains the current renderer gap.</p>
+        <p class="gallery-boundary">Examples are grouped by the modules enabled in this build. Each preview includes editable Ziran source.</p>
       </section>
     </div>
     <noscript><p>Enable JavaScript to explore the compiled widgets, or <a href="https://github.com/kryonlabs/kryon/tree/master/examples/gallery">read the Ziran source</a>.</p></noscript>

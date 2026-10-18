@@ -1,0 +1,10 @@
+// Compile with only the selected module roots; optional packages may be absent.
+using UI :: #import "kryon/Widgets";
+#import "catalog"
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    InstallGalleryPalette(false)
+    ComposeGallery(session, GallerySceneCount - 1, false)
+    return 0
+}

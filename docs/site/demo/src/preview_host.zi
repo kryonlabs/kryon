@@ -14,8 +14,8 @@ using HostValueKind;
 
 preview_bundle: *void;
 preview_instance: *void;
-preview_fields: [14]HostField;
-preview_names: [14][32]u8;
+preview_fields: [15]HostField;
+preview_names: [15][32]u8;
 preview_real: [16]u8;
 preview_bool: [16]u8;
 preview_integer: [16]u8;
@@ -52,7 +52,7 @@ SupportedCapability :: (function: string) -> bool {
     return function == "ReadPreviewInput" || function == "ReadPreviewCodepoint" ||
         function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight" ||
         function == "RasterRoundedRectangle" || function == "RasterRoundedRectangleOutline" ||
-        function == "RasterLine" || function == "RasterText" || function == "RasterTextClipped" ||
+        function == "RasterLine" || function == "RasterTriangles" || function == "RasterText" || function == "RasterTextClipped" ||
         function == "RasterImage" || function == "RasterImageMesh" || function == "ImageWidth" || function == "ImageHeight" ||
         function == "SystemClipboardOpenHost" || function == "SystemClipboardByteHost" ||
         function == "SystemClipboardWriteHost"
@@ -66,7 +66,7 @@ PreviewCall :: (context: *void, module_name: *u8, function_name: *u8,
         result.kind = HostRecord
         result.type_name = *preview_input_type[0]
         result.fields = *preview_fields[0]
-        result.field_count = cast(usize)14
+        result.field_count = cast(usize)15
         return 1
     }
     if function == "ReadPreviewCodepoint" && count == 0 {
@@ -94,6 +94,17 @@ PreviewCall :: (context: *void, module_name: *u8, function_name: *u8,
     }
     if function == "RasterLine" && count == 2 {
         RasterLine(HostRectangle(args[0]), HostColor(args[1]))
+        return 1
+    }
+    if function == "RasterTriangles" && count == 2 {
+        mesh := args[0]
+        if mesh.kind != HostSlice && mesh.kind != HostArray { return 0 }
+        if mesh.length > cast(usize)IMAGE_MESH_POINT_LIMIT { return 0 }
+        length := cast(s32)mesh.length
+        if length > 0 && mesh.elements == null { return 0 }
+        points: [IMAGE_MESH_POINT_LIMIT]Vector2
+        for index: cast(s32)0..length - 1 { points[index] = HostVector(mesh.elements[index]) }
+        RasterTriangles(points[0:length], HostColor(args[1]))
         return 1
     }
     if function == "RasterText" && count == 5 {
@@ -222,6 +233,7 @@ PrepareInput :: () {
     InputField(11, "modifiers", *preview_integer[0], HostInteger)
     InputField(12, "wheel", *preview_real[0], HostReal)
     InputField(13, "theme", *preview_integer[0], HostInteger)
+    InputField(14, "disabled", *preview_bool[0], HostInteger)
 }
 
 SampleInput :: () {
@@ -243,6 +255,7 @@ SampleInput :: () {
     preview_fields[12].value.real = cast(float64)CanvasWheelMove()
     scope := WebScope()
     preview_fields[13].value.integer = cast(s64)WebGetNumber(WebModule, WebName("previewTheme"))
+    preview_fields[14].value.integer = cast(s64)WebGetNumber(WebModule, WebName("previewDisabled"))
     WebEnd(scope)
 }
 

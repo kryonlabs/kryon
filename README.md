@@ -101,10 +101,14 @@ emsdk or set `EMCC`. `make site-gallery` builds only the gallery, and
 `make site-gallery-test` exercises it in a private Chromium/Xvfb session.
 
 The gallery at `widgets.html` uses the example package in `examples/gallery/`.
-Its core scenes are shared by the desktop, web and review hosts. Plot and
-DataViews supply the additional charts, tree and Kanban; TableView's entry
-identifies its current API-only status. The existing Pages workflow rebuilds
-and checks the site before deployment.
+Its core scenes are shared by the desktop, web and review hosts. Examples are
+grouped by installed module and category, including core UI and 2D drawing.
+Optional package integrations are registered only while their dependencies
+are declared. Each selected example includes editable Ziran source and a live
+preview, using the same compiler and editor as `demo.html`. Plot and DataViews
+supply the additional charts, tree and Kanban; TableView's entry identifies its
+current API-only status. `make site` produces the committed website assets;
+the Pages workflow tests those reviewed assets before publishing them.
 
 ## Current status
 

@@ -1,0 +1,22 @@
+using UI :: #import "kryon/Widgets";
+Trees :: #import "data_views/TreeView";
+Board :: #import "data_views/Kanban";
+Theme :: #import "kryon/theme";
+using Example :: #import "data_views_examples";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "TableView", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 2
+    InstallStyles(example_input.theme == 2)
+    Prepare(session, scene)
+    Text(session, TextProps.{.bounds = bounds, .text = "TableView currently exports layout and selection APIs. This package revision has no maintained table renderer.\n\nThis entry records that gap; it does not substitute a mock table.", .font = 17})
+
+    return 0
+}

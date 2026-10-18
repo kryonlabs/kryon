@@ -62,6 +62,8 @@ jobs:
           test -f docs/site/assets/widget-gallery.html
           test -f docs/site/assets/catalog-image.png
           test -f docs/site/gallery-data.js
+          test -f docs/site/live-editor.js
+          test -f docs/site/gallery-sources/kryon/0.zi
 
       - name: Test the compiled widget gallery
         env:

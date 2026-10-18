@@ -1,0 +1,30 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Button emphasis", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 46
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    for index: 0..4 {
+        props: ButtonProps
+        props.bounds = .{24.0, 40.0 + cast(float32)index * 52.0, 208.0, 40.0}; props.label = "Neutral action"
+        props.emphasis = cast(ButtonEmphasis)index; props.disabled = disabled
+        if Button(session, props) == 1 { clicks += 1 }
+        props.bounds.x = 248.0; props.label = "Accent action"; props.tone = ButtonTone.ButtonToneAccent
+        if Button(session, props) == 1 { clicks += 1 }
+    }
+
+    return 0
+}

@@ -20,7 +20,7 @@ const server = http.createServer(async (request, response) => {
   if (!filename.startsWith(site + path.sep)) { response.writeHead(403).end(); return; }
   try {
     const bytes = await fs.readFile(filename);
-    const type = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2'}[path.extname(filename)];
+    const type = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.wasm': 'application/wasm', '.zi': 'text/plain', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2'}[path.extname(filename)];
     response.writeHead(200, {'Content-Type': type || 'application/octet-stream'}).end(bytes);
   } catch { response.writeHead(404).end(); }
 });
@@ -55,14 +55,14 @@ async function choose(index) {
 }
 async function capture(name, clipped = false) {
   const params = {format: 'png'};
-  if (clipped) params.clip = await evaluate(`(() => {const r=document.getElementById('widget-preview').getBoundingClientRect();return {x:r.x+scrollX,y:r.y+scrollY,width:r.width,height:r.height,scale:1};})()`);
+  if (clipped) params.clip = await evaluate(`(() => {const r=(document.querySelector('#live-preview.is-active') || document.getElementById('widget-preview')).getBoundingClientRect();return {x:r.x+scrollX,y:r.y+scrollY,width:r.width,height:r.height,scale:1};})()`);
   const {data} = await cdp('Page.captureScreenshot', params);
   const bytes = Buffer.from(data, 'base64');
   if (name) await fs.writeFile(path.join(output, name + '.png'), bytes);
   return createHash('sha256').update(bytes).digest('hex');
 }
 async function clickWidget(x, y) {
-  const point = await evaluate(`(() => {const r=document.getElementById('widget-preview').getBoundingClientRect();return {x:r.x+${x}*r.width/480,y:r.y+${y}*r.height/320};})()`);
+  const point = await evaluate(`(() => {const r=(document.querySelector('#live-preview.is-active') || document.getElementById('widget-preview')).getBoundingClientRect();return {x:r.x+${x}*r.width/480,y:r.y+${y}*r.height/320};})()`);
   await cdp('Input.dispatchMouseEvent', {type: 'mouseMoved', ...point});
   await cdp('Input.dispatchMouseEvent', {type: 'mousePressed', ...point, button: 'left', clickCount: 1});
   await delay(45);
@@ -87,13 +87,18 @@ try {
   await cdp('Page.navigate', {url: 'http://127.0.0.1:' + server.address().port + '/widgets.html'});
   await until(() => evaluate(`document.getElementById('preview-status')?.textContent.startsWith('Live')`), 'Wasm gallery did not become ready');
   const entries = await evaluate('window.galleryScenes');
-  assert.equal(entries.length, 63);
-  for (const name of ['Button', 'TextArea', 'TimePicker', 'CandleChart', 'TreeView', 'Kanban']) assert.ok(entries.some(entry => entry.name === name), name);
+  const named = name => entries.find(entry => entry.name === name)?.index;
+  assert.ok(entries.length > 0);
+  assert.equal(await evaluate('Boolean(document.getElementById("inventory"))'), false);
+  assert.deepEqual(await evaluate('[...document.querySelectorAll(".widget-module")].map(node=>node.dataset.module)'), await evaluate('window.galleryModules.map(module=>module.id)'));
+  assert.ok(await evaluate(`Boolean(document.querySelector('[data-category="2D"]'))`));
+  checks.push('examples are grouped by enabled module and category, without count text');
+  for (const name of ['Button', 'TextArea', 'TimePicker']) assert.ok(entries.some(entry => entry.name === name), name);
   const images = new Set();
   for (const entry of entries) { await choose(entry.index); images.add(await capture(null, true)); }
-  assert.ok(images.size > 55, 'Scenes must paint distinct real previews');
-  checks.push('all 63 entries render, including real optional package widgets');
-  await choose(0);
+  assert.ok(images.size > entries.length * 0.85, 'Scenes must paint distinct real previews');
+  checks.push('all configured entries render with their installed module APIs');
+  await choose(named("Button"));
   const idle = await capture(null, true);
   await clickWidget(120, 85);
   assert.notEqual(await capture('button-clicked', true), idle, 'Button click must update visible feedback');
@@ -104,13 +109,13 @@ try {
   assert.equal(await capture(null, true), disabled, 'Disabled button must not activate');
   await evaluate('document.getElementById("disabled-state").click()');
   checks.push('disabled state prevents activation');
-  await choose(1); await clickWidget(120, 85);
+  await choose(named("TextField")); await clickWidget(120, 85);
   const beforeText = await capture(null, true);
   for (const letter of 'Hello gallery') await cdp('Input.dispatchKeyEvent', {type: 'char', key: letter, text: letter});
   await delay(200);
   assert.notEqual(await capture('text-edited', true), beforeText, 'Typing must change painted text');
   checks.push('text field accepts browser keyboard input');
-  await choose(3); await clickWidget(200, 85);
+  await choose(named("Dropdown")); await clickWidget(200, 85);
   await capture('dropdown-padding', true);
   checks.push('dropdown menu opens in the Canvas host');
   await evaluate('document.querySelector(".theme-toggle").click()'); await delay(200);
@@ -118,17 +123,22 @@ try {
   assert.equal(await evaluate('document.documentElement.dataset.theme'), 'dark');
   await until(() => evaluate(`${runtime}.galleryDark === 1 && (()=>{const c=document.getElementById('widget-preview').contentDocument.querySelector('canvas');const p=c.getContext('2d').getImageData(10,10,1,1).data;return p[0]+p[1]+p[2]<200})()`), 'Compiled preview did not receive the dark palette');
   checks.push('site palette reaches the compiled preview');
-  await choose(60); await capture('dark-tree', true);
+  if (named("TreeView") !== undefined) {
+  await choose(named("TreeView")); await capture('dark-tree', true);
   await clickWidget(40, 80);
   await capture('tree-collapsed', true);
-  await choose(54); await capture('dark-plot', true);
+  }
+  if (entries.some(entry=>entry.moduleId==='plot')) { await choose(entries.find(entry=>entry.moduleId==='plot').index); await capture('dark-plot', true); }
 
-  await choose(62);
+  if (named("TableView") !== undefined) {
+  await choose(named("TableView"));
   assert.match(await evaluate('document.getElementById("widget-note").textContent'), /no maintained table renderer/);
   checks.push('TableView renderer gap is visible');
-  await choose(61); await capture('kanban', true);
+  }
+  if (named("Kanban") !== undefined) {
+  await choose(named("Kanban")); await capture('kanban', true);
   const boardBefore = await capture(null, true);
-  const boardPoints = await evaluate(`(() => {const r=document.getElementById('widget-preview').getBoundingClientRect();return [90,235].map(x=>({x:r.x+x*r.width/480,y:r.y+140*r.height/320}));})()`);
+  const boardPoints = await evaluate(`(() => {const r=(document.querySelector('#live-preview.is-active') || document.getElementById('widget-preview')).getBoundingClientRect();return [90,235].map(x=>({x:r.x+x*r.width/480,y:r.y+140*r.height/320}));})()`);
   await cdp('Input.dispatchMouseEvent', {type:'mouseMoved', ...boardPoints[0]});
   await cdp('Input.dispatchMouseEvent', {type:'mousePressed', ...boardPoints[0], button:'left', clickCount:1});
   await delay(80);
@@ -138,12 +148,33 @@ try {
   await delay(120);
   assert.notEqual(await capture('kanban-moved', true), boardBefore, 'Dragging a Kanban card must change the board');
   checks.push('Kanban card can move between columns');
+  }
   await cdp('Emulation.setDeviceMetricsOverride', {width: 390, height: 844, deviceScaleFactor: 1, mobile: true});
-  await choose(18); await delay(200);
+  await choose(named("TimePicker")); await delay(200);
   assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'Mobile page must not overflow horizontally');
   await evaluate('document.getElementById("preview-heading").scrollIntoView({block:"start"})');
   await capture('mobile');
   checks.push('mobile gallery fits the viewport');
+  await cdp('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false});
+  for (const entry of entries) {
+    await choose(entry.index);
+    await until(() => evaluate('!document.getElementById("source-editor").disabled'), 'Source did not load: ' + entry.id);
+    const source = await evaluate('document.getElementById("source-editor").value');
+    assert.match(source, /Frame ::/);
+    await evaluate('document.getElementById("compile").click()');
+    await until(() => evaluate('document.getElementById("status").dataset.state !== "busy"'), 'Example did not compile: ' + entry.id, 30000);
+    const state = await evaluate('({status:document.getElementById("status").textContent,diagnostics:document.getElementById("diagnostics").textContent,active:document.getElementById("live-preview").classList.contains("is-active")})');
+    assert.ok(state.active, entry.id + ': ' + JSON.stringify(state));
+  }
+  checks.push('every displayed source compiles and paints in the integrated live editor');
+  await choose(named('Button'));
+  await until(() => evaluate('!document.getElementById("source-editor").disabled'), 'Button source did not load');
+  await evaluate(`{const e=document.getElementById('source-editor'); e.value=e.value.replace('Continue','Edited button'); e.dispatchEvent(new Event('input'));}`);
+  await until(() => evaluate('document.getElementById("status").textContent === "Live · changes compiled"'), 'Edited button did not render', 30000);
+  const edited = await capture('integrated-editor');
+  await clickWidget(120, 85);
+  assert.notEqual(await capture('edited-button-clicked'), edited, 'The edited widget must remain interactive');
+  checks.push('editing widget source updates a working preview');
   assert.deepEqual(errors, []); assert.deepEqual(failed, []);
   await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({entries: entries.length, distinctPreviews: images.size, checks}, null, 2) + '\n');
   console.log(JSON.stringify({entries: entries.length, checks}));

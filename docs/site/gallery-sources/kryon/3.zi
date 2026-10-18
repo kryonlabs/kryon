@@ -1,0 +1,25 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Dropdown", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 3
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    options: [3]DropdownOption
+    options[0].label = "Morning"; options[1].label = "Afternoon"; options[2].label = "Evening"
+    choice = Dropdown(session, DropdownProps.{.bounds = b, .selected_index = choice, .disabled = disabled}, options[:]).selected_index
+
+    return 0
+}

@@ -1,0 +1,26 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+using Example :: #import "scenes";
+#import "palette"
+#import "preview_protocol"
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := PreviewInputRead()
+    InstallCatalogPalette(example_input.theme == 2)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "Circle Ring Triangle Line", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 30
+    scene_image = "catalog-image.png"
+    input := Prepare(session, scene)
+    field_input := input.field
+    area_input := input.area
+    unused Circle(session, CircleProps.{.center = .{88.0, 128.0}, .radius = 38.0, .fill = .{30, 115, 138, 255}})
+    unused Ring(session, RingProps.{.center = .{202.0, 128.0}, .inner_radius = 27.0, .outer_radius = 38.0, .start_angle = -90.0, .end_angle = 200.0, .color = .{30, 115, 138, 255}})
+    unused Triangle(session, TriangleProps.{.first = .{292.0, 166.0}, .second = .{330.0, 90.0}, .third = .{368.0, 166.0}, .color = .{30, 115, 138, 255}})
+    unused Line(session, LineProps.{.start = .{28.0, 220.0}, .end = .{432.0, 220.0}, .thickness = 2.0, .color = .{30, 115, 138, 255}})
+
+    return 0
+}

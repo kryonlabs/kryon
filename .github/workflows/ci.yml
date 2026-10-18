@@ -106,7 +106,9 @@ jobs:
         env:
           CHROMIUM: google-chrome
         run: |
+          export PATH="$ZIRAN_ROOT/build/bin:$PATH"
           make site-gallery
+          python3 tests/gallery_modules_test.py
           make site-gallery-test
 
   test-sanitizers:
