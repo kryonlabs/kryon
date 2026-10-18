@@ -14,6 +14,7 @@ if not Path(emcc).is_file():
     raise SystemExit('Emscripten is required. Activate emsdk or set EMCC.')
 env['EMCC'] = emcc
 for command, directory in [
+    (['python3', 'scripts/site-metadata.py'], ROOT),
     (['sh', 'build.sh'], ROOT / 'docs/site/demo'),
     (['python3', 'build_preview.py', '--emcc', emcc], ROOT / 'docs/site/demo'),
     (['python3', 'scripts/build-gallery.py'], ROOT),

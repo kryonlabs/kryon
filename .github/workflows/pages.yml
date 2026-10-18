@@ -16,9 +16,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy-production:
-    name: Deploy Kryon Labs
+  verify:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Gallery 1/3
+            mode: gallery
+            shard: 0
+          - name: Gallery 2/3
+            mode: gallery
+            shard: 1
+          - name: Gallery 3/3
+            mode: gallery
+            shard: 2
+          - name: Live editor
+            mode: editor
+            shard: 0
     defaults:
       run:
         working-directory: kryonlabs/kryon
@@ -66,14 +82,33 @@ jobs:
           test -f docs/site/gallery-sources/kryon/0.zi
 
       - name: Test the compiled widget gallery
+        if: matrix.mode == 'gallery'
         env:
           CHROMIUM: google-chrome
+          GALLERY_SHARDS: '3'
+          GALLERY_SHARD: ${{ matrix.shard }}
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 node tests/gallery_browser.mjs
 
       - name: Test live preview and rendered themes
+        if: matrix.mode == 'editor'
         env:
           CHROMIUM: google-chrome
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY node tests/demo_browser.mjs
+
+  deploy-production:
+    name: Deploy Kryon Labs
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          path: kryonlabs/kryon
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

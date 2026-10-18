@@ -8,6 +8,7 @@ using Host :: #import "kryon/Canvas";
 #import "std/web"
 
 last_theme: s32 = -1;
+paused: bool;
 
 ReadOptions :: () {
     mark := WebScope()
@@ -19,6 +20,7 @@ ReadOptions :: () {
     theme := cast(s32)WebGetNumber(WebModule, WebName("galleryDark"))
     if theme != last_theme { dark = theme == 1; last_theme = theme }
     disabled_controls = WebGetNumber(WebModule, WebName("galleryDisabled")) == 1.0
+    paused = WebGetNumber(WebModule, WebName("previewPaused")) == 1.0
     WebEnd(mark)
 }
 
@@ -32,6 +34,7 @@ main :: () -> s32 {
     ok: bool = true
     while ok && PollCanvas() {
         ReadOptions()
+        if paused { WebSleep(16); continue }
         KeyboardModifiersSend(session, CanvasModifiers())
         key := CanvasPressedKey()
         if key != 0 { unused KeyboardSend(session, key) }

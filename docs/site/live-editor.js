@@ -34,6 +34,18 @@ export function createEditor(options) {
   let rendererDiagnostics = [];
   let successfulRevision = -1;
   let compiledRevision = -1;
+  let staticReady = false;
+
+  function showStatic(visible) {
+    staticPreview.hidden = !visible;
+    staticPreview.contentWindow?.postMessage({type: 'preview:pause', paused: !visible}, location.origin);
+    if (!visible && !options.keepStatic) {
+      staticPreview.src = 'about:blank'; staticReady = false;
+    } else if (visible && (!staticPreview.hasAttribute('src') || staticPreview.getAttribute('src') === 'about:blank')) {
+      staticReady = false;
+      staticPreview.src = previewURL(options.staticURL);
+    }
+  }
 
   function selectedTheme() {
     return document.documentElement.dataset.theme === 'dark' ? 2 : previewQuery.get('theme') === 'waozi' ? 1 : 0;
@@ -52,8 +64,10 @@ export function createEditor(options) {
     if (rendererReady) livePreview.contentWindow?.postMessage(message, '*');
   }
   staticPreview.addEventListener('load', () => {
+    staticReady = staticPreview.getAttribute('src') !== 'about:blank';
     sendTheme();
     if (status.textContent === 'Loading preview…') setStatus('Ready to explore');
+    else setStatus(status.textContent, status.dataset.state);
   });
   addEventListener('themechange', sendTheme);
   staticPreview.src = previewURL(options.staticURL);
@@ -62,7 +76,8 @@ export function createEditor(options) {
     status.dataset.state = state;
     const busy = state === 'busy';
     previewPanel.setAttribute('aria-busy', String(busy));
-    previewLoading.hidden = !busy;
+    const visiblePreview = (!staticPreview.hidden && staticReady) || (!livePreview.hidden && livePreview.classList.contains('is-active'));
+    previewLoading.hidden = !busy || visiblePreview;
     if (busy) previewLoadingMessage.textContent = message === 'Updating preview…' || message === 'Loading preview…' ? message : 'Compiling preview…';
   }
   function error(message) {
@@ -147,8 +162,7 @@ export function createEditor(options) {
       livePreview.removeAttribute('src');
       livePreview.classList.remove('is-active');
       rendererReady = false;
-      staticPreview.hidden = false;
-      staticPreview.src = previewURL(options.staticURL);
+      showStatic(true);
     }, 15000);
   }
   function postBundle() {
@@ -156,6 +170,7 @@ export function createEditor(options) {
     const bundle = pendingBundle;
     pendingBundle = undefined;
     rendererDiagnostics = [];
+    livePreview.contentWindow.postMessage({type: 'preview:pause', paused: false}, '*');
     livePreview.contentWindow.postMessage({type: 'preview:bundle', revision: bundle.revision, bundle: bundle.bytes}, '*', [bundle.bytes]);
     if (!previewPanel.hidden) watchRenderer(bundle.revision);
   }
@@ -169,8 +184,8 @@ export function createEditor(options) {
       watchRenderer(builtRevision);
     }
     pendingBundle = {bytes, revision: builtRevision};
+    livePreview.hidden = false;
     if (!livePreview.hasAttribute('src')) {
-      livePreview.hidden = false;
       livePreview.src = previewURL('assets/preview.html');
     }
     postBundle();
@@ -233,7 +248,7 @@ export function createEditor(options) {
   });
   compileButton.addEventListener('click', compile);
   stopButton.addEventListener('click', () => stop());
-  resetButton.addEventListener('click', () => { editor.value = original; changed(); });
+  resetButton.addEventListener('click', () => { editor.value = original; revision++; paintSource(); compile(); });
   addEventListener('message', ({source, data}) => {
     if (source !== livePreview.contentWindow || !data || typeof data !== 'object') return;
     if (data.type === 'preview:status' && data.state === 'ready') {
@@ -248,8 +263,7 @@ export function createEditor(options) {
         successfulRevision = revision;
         livePreview.classList.add('is-active');
         livePreview.removeAttribute('aria-hidden');
-        staticPreview.hidden = true;
-        staticPreview.src = 'about:blank';
+        showStatic(false);
         setStatus('Live · changes compiled');
       } else if (data.state === 'error') error(rendererDiagnostics.join('\n') || data.message);
     }
@@ -267,11 +281,11 @@ export function createEditor(options) {
       stop('Loading source…', workerBusy);
       original = undefined; sourcePromise = undefined; pendingBundle = undefined;
       successfulRevision = compiledRevision = -1;
-      rendererReady = false;
       clearTimeout(renderWatchdog);
-      livePreview.removeAttribute('src'); livePreview.classList.remove('is-active'); livePreview.hidden = true;
-      staticPreview.hidden = false;
-      if (staticPreview.src.endsWith('about:blank') || !staticPreview.hasAttribute('src')) staticPreview.src = previewURL(options.staticURL);
+      if (rendererReady) livePreview.contentWindow.postMessage({type: 'preview:pause', paused: true}, '*');
+      else livePreview.removeAttribute('src');
+      livePreview.classList.remove('is-active'); livePreview.hidden = true;
+      showStatic(true);
       editor.value = ''; paintSource();
       editor.disabled = compileButton.disabled = resetButton.disabled = true;
       await applyView();

@@ -15,6 +15,7 @@
       previewRevision: 0,
       previewTheme: 0,
       previewDisabled: 0,
+      previewPaused: 0,
       printErr: function (message) {
         parent.postMessage({type: 'preview:diagnostic', revision: Module.previewRevision, message: String(message)}, '*');
       },
@@ -24,6 +25,7 @@
     };
     addEventListener('message', function (event) {
       if (event.source !== parent || !event.data) return;
+      if (event.data.type === 'preview:pause') { Module.previewPaused = event.data.paused ? 1 : 0; return; }
       if (event.data.type === 'preview:options') { Module.previewDisabled = event.data.disabled === true ? 1 : 0; return; }
       if (event.data.type === 'preview:theme' && [0, 1, 2].includes(event.data.theme)) {
         Module.previewTheme = event.data.theme;

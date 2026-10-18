@@ -10,16 +10,23 @@ import {fileURLToPath} from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const site = path.join(root, 'docs/site');
-const output = path.join(root, 'build/scratch/widget-gallery');
+const shardCount = Number(process.env.GALLERY_SHARDS || 1);
+const shardIndex = Number(process.env.GALLERY_SHARD || 0);
+assert.ok(Number.isInteger(shardCount) && shardCount > 0 && Number.isInteger(shardIndex) && shardIndex >= 0 && shardIndex < shardCount);
+const output = path.join(root, 'build/scratch/widget-gallery', shardCount > 1 ? 'shard-' + shardIndex : '');
 await fs.mkdir(output, {recursive: true});
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'kryon-gallery-browser-'));
 const env = {...process.env, YUE_DESKTOP_RECOVERY: '0'};
 for (const name of ['DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'GDK_DISPLAY']) delete env[name];
 const server = http.createServer(async (request, response) => {
-  const filename = path.resolve(site, '.' + new URL(request.url, 'http://localhost').pathname);
+  const url = new URL(request.url, 'http://localhost');
+  const filename = path.resolve(site, '.' + url.pathname);
   if (!filename.startsWith(site + path.sep)) { response.writeHead(403).end(); return; }
   try {
-    const bytes = await fs.readFile(filename);
+    let bytes = await fs.readFile(filename);
+    if (url.pathname === '/widgets.html' && url.searchParams.has('classic-loader')) {
+      bytes = Buffer.from(bytes.toString().replace('<script type="module" src="gallery.js">', '<script defer src="gallery.js">'));
+    }
     const type = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.wasm': 'application/wasm', '.zi': 'text/plain', '.png': 'image/png', '.svg': 'image/svg+xml', '.woff2': 'font/woff2'}[path.extname(filename)];
     response.writeHead(200, {'Content-Type': type || 'application/octet-stream'}).end(bytes);
   } catch { response.writeHead(404).end(); }
@@ -84,6 +91,9 @@ try {
   });
   await cdp('Page.enable'); await cdp('Runtime.enable'); await cdp('Network.enable');
   await cdp('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false});
+  await cdp('Page.navigate', {url: 'http://127.0.0.1:' + server.address().port + '/widgets.html?classic-loader'});
+  await until(() => evaluate(`document.getElementById('preview-status')?.textContent.startsWith('Live')`), 'Classic-script page did not load its preview');
+  checks.push('the gallery loader works with cached classic-script HTML');
   await cdp('Page.navigate', {url: 'http://127.0.0.1:' + server.address().port + '/widgets.html'});
   await until(() => evaluate(`document.getElementById('preview-status')?.textContent.startsWith('Live')`), 'Wasm gallery did not become ready');
   const entries = await evaluate('window.galleryScenes');
@@ -156,17 +166,19 @@ try {
   await capture('mobile');
   checks.push('mobile gallery fits the viewport');
   await cdp('Emulation.setDeviceMetricsOverride', {width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false});
-  for (const entry of entries) {
+  const sourceEntries = entries.filter(entry => entry.index % shardCount === shardIndex);
+  assert.ok(sourceEntries.length > 0);
+  for (const entry of sourceEntries) {
     await choose(entry.index);
     await until(() => evaluate('!document.getElementById("source-editor").disabled'), 'Source did not load: ' + entry.id);
     const source = await evaluate('document.getElementById("source-editor").value');
     assert.match(source, /Frame ::/);
     await evaluate('document.getElementById("compile").click()');
     await until(() => evaluate('document.getElementById("status").dataset.state !== "busy"'), 'Example did not compile: ' + entry.id, 30000);
-    const state = await evaluate('({status:document.getElementById("status").textContent,diagnostics:document.getElementById("diagnostics").textContent,active:document.getElementById("live-preview").classList.contains("is-active")})');
-    assert.ok(state.active, entry.id + ': ' + JSON.stringify(state));
+    const state = await evaluate('({status:document.getElementById("status").textContent,diagnostics:document.getElementById("diagnostics").textContent,active:document.getElementById("live-preview").classList.contains("is-active"),visible:!document.getElementById("live-preview").hidden && document.getElementById("live-preview").getBoundingClientRect().width > 0})');
+    assert.ok(state.active && state.visible, entry.id + ': ' + JSON.stringify(state));
   }
-  checks.push('every displayed source compiles and paints in the integrated live editor');
+  checks.push(shardCount === 1 ? 'every displayed source compiles and paints in the integrated live editor' : `source shard ${shardIndex + 1}/${shardCount} compiles and paints in the integrated live editor`);
   await choose(named('Button'));
   await until(() => evaluate('!document.getElementById("source-editor").disabled'), 'Button source did not load');
   await evaluate(`{const e=document.getElementById('source-editor'); e.value=e.value.replace('Continue','Edited button'); e.dispatchEvent(new Event('input'));}`);
@@ -176,8 +188,8 @@ try {
   assert.notEqual(await capture('edited-button-clicked'), edited, 'The edited widget must remain interactive');
   checks.push('editing widget source updates a working preview');
   assert.deepEqual(errors, []); assert.deepEqual(failed, []);
-  await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({entries: entries.length, distinctPreviews: images.size, checks}, null, 2) + '\n');
-  console.log(JSON.stringify({entries: entries.length, checks}));
+  await fs.writeFile(path.join(output, 'results.json'), JSON.stringify({entries: entries.length, sourceExamples: sourceEntries.map(entry => entry.id), distinctPreviews: images.size, checks}, null, 2) + '\n');
+  console.log(JSON.stringify({entries: entries.length, sourceExamples: sourceEntries.length, checks}));
 } finally {
   if (socket) socket.close();
   server.close();
