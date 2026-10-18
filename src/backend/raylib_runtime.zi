@@ -957,10 +957,50 @@ RaylibTurnUpright :: (image: *RaylibGlyphImage, orientation: s32) {
     }
 }
 
+// A host can supply borrowed image bytes, for example from a downloaded
+// ZIB. When installed, unavailable resources never fall through to disk.
+RaylibAssetReadCall :: #type (context: *void, path: string) -> string;
+raylib_asset_reader: RaylibAssetReadCall;
+raylib_asset_context: *void;
+raylib_asset_reader_active: bool;
+
+#program_export
+RaylibSetAssetReader :: (reader: RaylibAssetReadCall, context: *void) {
+    InvalidateRaylibAssets()
+    raylib_asset_reader = reader
+    raylib_asset_context = context
+    raylib_asset_reader_active = reader != null
+}
+
+#program_export
+RaylibClearAssetReader :: () {
+    InvalidateRaylibAssets()
+    raylib_asset_reader_active = false
+    raylib_asset_context = null
+}
+
+RaylibMemoryTexture :: (path: string, data: string) -> Texture2D {
+    if data.count == 0 || data.count > 2147483647 { return Texture2D.{} }
+    dot: s64 = path.count - 1
+    while dot >= 0 && path[dot] != cast(u8)46 { dot -= 1 }
+    extension: [16]u8
+    if dot < 0 || !CopyCString(path[dot:], extension[:]) { return Texture2D.{} }
+    bytes := cast(*TypefaceText.TextDescriptor)(*data)
+    image := HostRaylibLoadImageFromMemory(*extension[0], bytes.data, cast(s32)data.count)
+    if image.data == null { return Texture2D.{} }
+    if RaylibJpegPath(path) { RaylibTurnUpright(*image, ImageExifOrientation(data)) }
+    texture := HostRaylibTextureFromImage(image)
+    HostRaylibUnloadImage(image)
+    return texture
+}
+
 // A JPEG photo stands upright by its Exif orientation, as browsers and
 // GdkPixbuf draw it, since raylib's decoder leaves the pixels as stored.
 // Every other asset loads as stored.
 RaylibLoadAssetTexture :: (path: *u8, text: string) -> Texture2D {
+    if raylib_asset_reader_active {
+        return RaylibMemoryTexture(text, raylib_asset_reader(raylib_asset_context, text))
+    }
     if !RaylibJpegPath(text) {
         return HostRaylibLoadTexture(path)
     }

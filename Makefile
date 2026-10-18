@@ -141,6 +141,10 @@ project-test: project-toolchain build/bin/kryon
 	@$(MAKE) --no-print-directory templates-test
 
 .PHONY: zib-test zib-reload-test
+include mk/zib-canvas.mk
+include mk/raylib-library.mk
+include mk/zib-raylib.mk
+$(ZIB_CANVAS_GENERATED)/.complete $(ZIB_RAYLIB_GENERATED)/.complete: | project-toolchain
 zib-reload-test: zib-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_reload_test.py
@@ -150,6 +154,26 @@ zib-test: build/bin/kryon zib-player
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_project_test.py
 
 test: zib-test zib-reload-test
+
+.PHONY: zib-canvas-test zib-raylib-test zib-android-test gallery-zib gallery-zib-test
+gallery-zib: project-toolchain
+	python3 scripts/export-gallery-zib.py --ziran $(ZIRAN_BIN)
+
+gallery-zib-test: gallery-zib zib-player
+	python3 tests/gallery_zib_test.py
+
+zib-canvas-test: build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_canvas_test.py
+
+zib-raylib-test: zib-test zib-raylib
+	@python3 tests/zib_native_test.py --player $(ZIB_RAYLIB_PROGRAM) \
+		--bundle build/zib-test/download\ with\ spaces/app.zib
+
+# This gate builds only; a device test requires an explicit disposable emulator.
+zib-android-test: build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_android_test.py
 
 # `kryon new` for every template, built and rendered on the terminal host.
 templates-test: build/bin/kryon
@@ -358,8 +382,8 @@ sanitize-test: project-toolchain
 # removes every other entry that nothing has written to for a day, so a build
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
-BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran zib-reload-test \
-	emscripten-cache android-surface-check text-input-platform-test zib-player zib-test \
+BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran zib-reload-test zib-raylib zib-native-test zib-android-test \
+	emscripten-cache android-surface-check text-input-platform-test zib-player zib-test zib-canvas zib-canvas-test gallery-zib \
 	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay dom-project
 .PHONY: clean-scratch
 clean-scratch:
@@ -400,7 +424,7 @@ pixmap-emoji: project-toolchain
 pixmap-surface-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_surface_test.sh
 
-test: check canvas-test canvas-project-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test raylib-window-test system-clipboard-linux-test
+test: check canvas-test canvas-project-test zib-canvas-test zib-raylib-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test raylib-window-test system-clipboard-linux-test
 
 clean:
 	rm -rf $(BUILD_DIR)

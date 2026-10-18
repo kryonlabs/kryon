@@ -8,8 +8,8 @@ Canvas/Wasm build, and widget review tool. Each optional package has its own
 integration (`src/plot_examples.zi`, `src/data_views_examples.zi`). The module
 list in `modules.toml` registers only dependencies declared in `ziran.toml`;
 an omitted dependency contributes no imports, renderer or browser compiler
-sources. Core UI and 2D drawing are separate categories. TableView's entry
-records its current API-only status; it does not draw a substitute renderer.
+sources. Core UI and 2D drawing are separate categories. TableView renders
+real headers and cells, with selection, sorting, column resizing and scrolling.
 
 The build generates `build/catalog/catalog.zi` and the website's module data
 and editable sources from those maintained Ziran compositions. Use the Make
@@ -22,6 +22,7 @@ From the Kryon root:
 ```sh
 make -C examples widget-catalog      # desktop
 make -C examples widget-catalog-web  # Canvas/Wasm
+make gallery-zib                    # one complete portable ZIB per example
 make site-gallery                   # stage the gallery for the existing site
 make site                           # rebuild the gallery, editor and initial demo
 ```
@@ -32,11 +33,22 @@ Run `./build/gallery-desktop` from `examples/gallery/`. The web output is
 and toolchain commits are pinned in `gallery/ziran.lock`. Canonical local
 sources can be selected in its ignored `ziran.local.toml`.
 
+`build/gallery-zib/index.json` lists the exported bundles. Each includes the
+example's behavior and assets and opens in the generic desktop, browser or
+Android ZIB player. The gallery's `portable` profile also builds the complete
+catalog as one ZIB. See [ZIB applications](../docs/PROJECTS.md#zib-applications)
+for player and platform build commands. The website build stages a download
+and a browser-player link for every example; a local build does not publish it.
+
 The desktop host supports `KRYON_CATALOG_SCENE` and `KRYON_CAPTURE_PATH` for
 repeatable captures. Scrub the inherited display and session environment and
 use a private `xvfb-run -a` display for all captures and browser checks.
 
-## Small examples
+## Small host probes
+
+The files below exercise custom host contracts and native/portable parity.
+Their small probe bundles use those test hosts. Use the gallery exports above
+for complete applications that open in the generic ZIB players.
 
 `hello.zi` is a small Ziran application that imports Kryon's ordinary
 `Button` and pointer modules. It builds a retained tree, handles a press and

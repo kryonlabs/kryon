@@ -1,0 +1,15 @@
+// Inject an actual Windows Unicode character event into the test player.
+// Run only in the test's private Wine prefix/display, never the owner desktop.
+user32 :: #system_library "user32";
+FindWindow :: (class_name: *u8, title: *u8) -> *void #foreign user32 "FindWindowA";
+PostMessage :: (window: *void, message: u32, value: u64, extra: s64) -> s32 #foreign user32 "PostMessageW";
+
+#program_export
+main :: () -> s32 {
+    title: [10]u8
+    title[0] = 75; title[1] = 114; title[2] = 121; title[3] = 111
+    title[4] = 110; title[5] = 32; title[6] = 90; title[7] = 73; title[8] = 66
+    window := FindWindow(null, *title[0])
+    if window == null { return 1 }
+    return ifx PostMessage(window, cast(u32)258, cast(u64)233, cast(s64)0) != 0 then 0 else 1
+}

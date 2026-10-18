@@ -31,15 +31,8 @@ Player :: struct {
     bindings: Vec(HostBinding)
 }
 
-ModuleName :: (value: string, name: string) -> bool {
-    if value == name { return true }
-    separator: s64 = 0
-    while separator < value.count && value[separator] != cast(u8)95 {
-        separator += 1
-    }
-    return separator + 1 < value.count &&
-    value[separator + 1:value.count] == name
-}
+Names :: #import "bundle_names";
+ModuleName :: (value: string, name: string) -> bool { return Names.ModuleName(value, name) }
 
 Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "clock") { return function == "ClockMillisecondsHost" }

@@ -17,6 +17,7 @@ if (kryonDir == null || ziranDir == null || raylibDir == null) {
 }
 def androidAbis = (project.findProperty('app.abis') ?:
     System.getenv('KRYON_ANDROID_ABIS') ?: 'arm64-v8a').split(',').toList()
+def appCodegen = envOrProp('KRYON_PROJECT_CODEGEN', 'app.codegen') ?: 'c99'
 
 android {
     namespace '__PACKAGE__'
@@ -29,6 +30,8 @@ android {
         targetSdk 36
         versionCode 1
         versionName '0.1.0'
+        manifestPlaceholders = [zibPlayer: (appCodegen == 'zib').toString(),
+            nativeLaunchMode: appCodegen == 'zib' ? 'singleTask' : 'standard']
         ndk {
             abiFilters += androidAbis
         }
@@ -36,7 +39,8 @@ android {
             cmake {
                 arguments '-DKRYON_DIR=' + kryonDir,
                     '-DZIRAN_DIR=' + ziranDir,
-                    '-DRAYLIB_DIR=' + raylibDir
+                    '-DRAYLIB_DIR=' + raylibDir,
+                    '-DAPP_CODEGEN=' + appCodegen
             }
         }
     }
@@ -46,6 +50,10 @@ android {
             path 'src/main/cpp/CMakeLists.txt'
             version '3.22.1'
         }
+    }
+
+    if (appCodegen == 'zib') {
+        sourceSets.main.assets.srcDir "${rootProject.projectDir}/../build/android/zib-assets"
     }
 
     buildTypes {

@@ -1,0 +1,49 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/image_raster"
+
+startup_width: s32 = AssetWidth("assets/red.png");
+outside_width: s32 = AssetWidth("private.png");
+clicks: s32;
+bytes: [256]u8;
+length: s32;
+cursor: s32;
+anchor: s32;
+scroll: s32;
+typed: [256]u8;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    if startup_width != 32 || outside_width != 0 { return 1 }
+    current: [256]u8
+    for index: 0..length - 1 { current[index] = bytes[index] }
+    accepted := TextView(current[:length]) == "portable"
+    clicks += Button(session, ButtonProps.{.key = cast(u64)1,
+            .bounds = .{40.0, 40.0, 240.0, 64.0}, .label = "Click the portable app"})
+    Text(session, TextProps.{.key = cast(u64)2, .bounds = .{40.0, 120.0, 250.0, 40.0},
+            .text = ifx clicks > 0 then "Clicked!" else "ZIB state persists", .font = 24})
+    Image(session, ImageProps.{.key = cast(u64)3, .bounds = .{200.0, 180.0, 100.0, 100.0},
+            .asset_path = "assets/red.png", .alt_text = "Embedded red square"})
+    input := TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session),
+        TypedTextTake(session, typed[:]))
+    result := TextField(session, TextFieldProps.{.key = cast(u64)4,
+            .bounds = .{40.0, 300.0, 240.0, 44.0}, .value = TextView(current[:length]),
+            .placeholder = "Type portable", .cursor = cursor, .anchor = anchor,
+            .scroll_x = scroll, .max_bytes = 256, .input = input})
+    cursor = result.cursor
+    anchor = result.anchor
+    scroll = result.scroll_x
+    if result.edit.changed {
+        edit := result.edit
+        next: [256]u8
+        at: s32
+        for index: 0..edit.start - 1 { next[at] = bytes[index]; at += 1 }
+        for byte: edit.replacement { next[at] = byte; at += 1 }
+        for index: edit.end..length - 1 { next[at] = bytes[index]; at += 1 }
+        length = at
+        for index: 0..length - 1 { bytes[index] = next[index] }
+    }
+    Progress(session, ProgressProps.{.key = cast(u64)5, .bounds = .{40.0, 240.0, 120.0, 24.0},
+            .min = 0, .max = 100, .value = ifx accepted && clicks == 1 then 100 else 0})
+    unused viewport
+    return 0
+}

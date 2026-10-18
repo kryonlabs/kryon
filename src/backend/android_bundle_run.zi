@@ -1,0 +1,102 @@
+// Android's native activity renders the same ordinary Frame ZIB as desktop
+// and web. The APK contains a generic interpreter, renderer and app.zib.
+#import "android_device"
+#import "android_jni"
+#import "android_surface"
+#import "android_bundle_file"
+#import "bundle_raylib"
+#import "raylib_runtime"
+#import "session"
+#import "geometry"
+#import "tree_draw"
+Player :: #import "bundle_player";
+
+AndroidBundleRunMain :: () -> s32 {
+    AndroidJniKeepHostThread()
+    defer { AndroidJniReleaseHostThread() }
+    if !OpenRaylib() { return 1 }
+    defer { CloseRaylib() }
+    if !LoadTypefaceFile("default", "kryon-font.ttf", null, 0) || !SelectTypeface("default") { return 1 }
+    hosts: [2]RaylibBundle
+    data: [2]string
+    active: s32
+    data[0] = RaylibBundleRead("app.zib")
+    if data[0].count == 0 { return 1 }
+    defer {
+        RaylibBundleClose(*hosts[0])
+        RaylibBundleClose(*hosts[1])
+        RaylibBundleFree(data[0])
+        RaylibBundleFree(data[1])
+    }
+    if !RaylibBundleOpen(*hosts[0], data[0]) { return 1 }
+    input_session := SessionOpen()
+    if !SessionValid(input_session) { return 1 }
+    defer { CloseSession(input_session) }
+    AndroidTextInputOpen(input_session)
+    defer { AndroidTextInputClose(input_session) }
+    RaylibExitKey(0)
+    first: bool = true
+    while PollRaylib() && !hosts[active].player.closed {
+        selected: [4096]u8
+        path := AndroidBundleTakeFile(selected[:])
+        if path.count > 0 {
+            incoming := RaylibBundleRead(path)
+            candidate := 1 - active
+            if incoming.count > 0 && RaylibBundleOpen(*hosts[candidate], incoming) {
+                // Binding contexts point to stable slots. A failed candidate
+                // never destroys the running app or its retained state.
+                RaylibBundleClose(*hosts[active])
+                RaylibBundleFree(data[active])
+                data[active] = ""
+                data[candidate] = incoming
+                active = candidate
+                AndroidTextInputFrame(input_session, false)
+                AndroidBundleResult(true)
+            } else {
+                RaylibBundleFree(incoming)
+                print("kryon: selected ZIB is invalid or needs unavailable services\n")
+                AndroidBundleResult(false)
+            }
+            RaylibBundleUseAssets(*hosts[active])
+        }
+        host := *hosts[active]
+        if AndroidTakeGraphicsInvalidate() != 0 {
+            ResetRaylibGraphics(true)
+            if !LoadTypefaceFile("default", "kryon-font.ttf", null, 0) || !SelectTypeface("default") { return 1 }
+        }
+        viewport: AndroidViewport
+        SyncAndroidViewport(*viewport)
+        if viewport.ready == 0 || viewport.width <= 0 || viewport.height <= 0 {
+            width: s32
+            height: s32
+            GetAndroidSurfaceSize(*width, *height)
+            viewport.x = 0
+            viewport.y = 0
+            viewport.width = width
+            viewport.height = height
+        }
+        zoom := AndroidLayoutZoom()
+        RaylibSetZoom(zoom)
+        bounds := Rectangle.{cast(float32)viewport.x / zoom,
+            cast(float32)viewport.y / zoom, cast(float32)viewport.width / zoom,
+            cast(float32)viewport.height / zoom}
+        AndroidTextInputBeginFrame(input_session)
+        key := RaylibPressedKey()
+        if key == 0 { key = RaylibRepeatedKey() }
+        if AndroidTextInputKeyPressed(259) { key = 259 }
+        if AndroidTextInputKeyPressed(257) { key = 257 }
+        point := AndroidTextInputCharacter()
+        while point != 0 {
+            Player.PlayerTyped(*host.player, point)
+            point = AndroidTextInputCharacter()
+        }
+        BeginRaylibFrame()
+        ClearAndroidFrame(viewport, cast(u32)0xf8fafcff, zoom)
+        ok := RaylibBundleFrame(host, bounds, key)
+        unused EndRaylibFrame()
+        AndroidTextInputFrame(input_session, host.player.keyboard)
+        if !ok || key == 4 { AndroidJniFinishActivity(); break }
+        if first { first = false; AndroidNotifyFirstFrame() }
+    }
+    return ifx hosts[active].player.failed then 1 else 0
+}

@@ -1,3 +1,8 @@
+#if #defined(KRYON_ZIB_APP) {
+    #import "android_bundle_run"
+    #program_export
+    AndroidRunMain :: () -> s32 { return AndroidBundleRunMain() }
+} else {
 // Canonical Android host. raylib's NativeActivity backend owns the window
 // and calls the application's C main; the application's generated main
 // delegates to AndroidRunMain. Java reports insets, density, dark mode and
@@ -152,4 +157,6 @@ AndroidRunMain :: () -> s32 {
     CloseRaylib()
     if ok { return 0 }
     return AndroidError("kryon: android frame rendering failed")
+}
+
 }

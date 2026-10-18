@@ -211,7 +211,7 @@ BackendDescription :: (backend: string) -> string {
 // The android profile builds through its own Gradle project under droid/;
 // the shared make route cannot link a NativeActivity payload. Everything the
 // build script needs travels as environment variables, never as shell text.
-AndroidCommand :: (config: ProjectConfig, kryon_root: string,
+AndroidCommand :: (config: ProjectConfig, profile: ProjectProfile, kryon_root: string,
     ziran_root: string, verb: string) -> s32 {
     project_root_bytes: [4096]u8
     project_root: string = Environment("ZIRAN_PROJECT_ROOT",
@@ -221,6 +221,10 @@ AndroidCommand :: (config: ProjectConfig, kryon_root: string,
     !SetEnvironment("ZIRAN_DIR", ziran_root) ||
     !SetEnvironment("KRYON_PROJECT_ROOT", project_root) ||
     !SetEnvironment("KRYON_PROJECT_NAME", config.name) ||
+    !SetEnvironment("KRYON_PROJECT_ENTRY", config.entry) ||
+    !SetEnvironment("KRYON_PROJECT_PROFILE", profile.name) ||
+    !SetEnvironment("KRYON_PROJECT_CODEGEN", profile.codegen) ||
+    !SetEnvironment("KRYON_PROJECT_ASSETS", profile.assets) ||
     !SetEnvironment("KRYON_ANDROID_PACKAGE", config.android.package) ||
     !SetEnvironment("KRYON_ANDROID_MIN_SDK", config.android.min_sdk) ||
     !SetEnvironment("KRYON_ANDROID_ABIS", config.android.abis) ||
@@ -513,7 +517,10 @@ main :: () -> s32 {
         if verb == "install" {
             return Error("android profiles ship as packages; use kryon build --profile android")
         }
-        return AndroidCommand(config, installed_kryon, installed_ziran, verb)
+        if profile.codegen != "c99" && profile.codegen != "zib" {
+            return Error("android supports c99 and zib code generation")
+        }
+        return AndroidCommand(config, profile, installed_kryon, installed_ziran, verb)
     }
     if (profile.backend != "terminal" && profile.backend != "desktop" &&
         profile.backend != "libdraw" && profile.backend != "raylib" &&
@@ -521,7 +528,8 @@ main :: () -> s32 {
         profile.backend != "pixmap") ||
     (profile.codegen != "c99" &&
         !(profile.codegen == "zib" &&
-        (profile.backend == "desktop" || profile.backend == "pixmap"))) {
+        (profile.backend == "desktop" || profile.backend == "pixmap" ||
+        profile.backend == "canvas" || profile.backend == "raylib"))) {
         return Error("this backend/codegen pair is not available yet")
     }
     makefile_bytes: [4096]u8

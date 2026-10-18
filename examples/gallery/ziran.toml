@@ -20,6 +20,16 @@ host = "src/desktop.zi"
 backend = "canvas"
 host = "src/web.zi"
 
+[tool.kryon.profiles.portable]
+backend = "desktop"
+codegen = "zib"
+assets = "assets"
+
+[tool.kryon.profiles.portable_web]
+backend = "canvas"
+codegen = "zib"
+assets = "assets"
+
 [dependencies.kryon]
 git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"

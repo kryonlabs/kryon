@@ -1,0 +1,17 @@
+// Extract only the resources carried by the opened bundle, into a private
+// host-owned directory. The same paths work in native and browser filesystems.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "app_files"
+
+BundleWriteAssets :: (bundle: *void, files: *AppFiles) -> bool {
+    index: u64 = 0
+    while index < BundleAssets(bundle) {
+        name := TextFromCString(BundleAssetPath(bundle, index))
+        data := TextFromBytes(BytesFromPointer(BundleAssetBytes(bundle, index),
+            BundleAssetLength(bundle, index)))
+        if !AppFileWrite(files, name, data) { return false }
+        index += 1
+    }
+    return true
+}

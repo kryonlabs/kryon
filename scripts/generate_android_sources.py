@@ -21,6 +21,7 @@ parser.add_argument("--ir", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--manifest", type=Path, required=True)
 parser.add_argument("--define", action="append", default=[])
+parser.add_argument("--codegen", choices=("c99", "zib"), default="c99")
 args = parser.parse_args()
 root = args.root.resolve()
 kryon = args.kryon.resolve()
@@ -38,7 +39,9 @@ for path in host_roots:
     if not path.is_file():
         raise SystemExit(f"Missing host source {path}; run scripts/android_scaffold.py")
 
-defines = []
+defines = ["--define", "KRYON_ANDROID_HOST"]
+if args.codegen == "zib":
+    defines.extend(["--define", "KRYON_ZIB_APP", "--define", "BUNDLE_NATIVE_RENDERER"])
 for name in args.define:
     defines.extend(["--define", name])
 

@@ -18,7 +18,7 @@ ifndef ZIRAN_PACKAGE_ID
 $(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zib pixmap/zib),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zib pixmap/zib canvas/zib raylib/zib),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -40,10 +40,12 @@ $(error a Zib profile cannot link a native library or static archive)
 endif
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
+ifeq ($(PROJECT_CODEGEN),c99)
 PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
 endif
+endif
 HOST_MODULE := $(PROJECT_BACKEND)_run
-ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zib)
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zib canvas/zib raylib/zib),)
 HOST_MODULE := zib_run
 endif
 BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas dom)
@@ -66,7 +68,16 @@ APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
 HOST_ROOT_SOURCES := $(HOST)
-ifneq ($(BROWSER_BACKEND),)
+ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zib/canvas)
+# Portable app IR is identical on desktop and web. Only the renderer shell
+# is compiled for the browser.
+ZIB_CANVAS_DIR := $(abspath $(GEN_DIR)/player)
+ZIB_CANVAS_PROGRAM := $(abspath build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html)
+ZIB_CANVAS_BUNDLE := $(abspath $(PROGRAM))
+include $(KRYON_DIR)/mk/zib-canvas.mk
+BROWSER_PROGRAM := $(ZIB_CANVAS_PROGRAM)
+endif
+ifneq ($(if $(filter c99,$(PROJECT_CODEGEN)),$(BROWSER_BACKEND)),)
 HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
 # Browser hosts resolve the app's packages like native ones; every saved
 # module is lowered because the browser runtime calls into the page.
@@ -90,7 +101,7 @@ CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_MET
 EMCC ?= $(HOME)/emsdk/upstream/emscripten/emcc
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
-PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(PROJECT_EXTRA_SOURCES) $(UI_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
+PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(PROJECT_EXTRA_SOURCES) $(UI_SOURCES) $(HOST) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
 ifneq ($(PROJECT_ASSETS),)
 ASSET_PATH := $(realpath $(PROJECT_ASSETS))
 ifeq ($(filter $(CURDIR)/%,$(ASSET_PATH)),)
@@ -121,32 +132,18 @@ RUN_ENV := PLAN9=$(PLAN9PORT_DIR) PATH=$(PLAN9PORT_DIR)/bin:$(PATH) DEVDRAW=$(PL
 	KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
 ifeq ($(PROJECT_BACKEND),raylib)
-# raylib keeps its library sources and Makefile in src/ of the package.
-RAYLIB_PACKAGE := $(shell $(ZIRAN) pkg path raylib)
-RAYLIB_SOURCE := $(if $(RAYLIB_PACKAGE),$(RAYLIB_PACKAGE)/src)
-RAYLIB_BUILD := $(KRYON_DIR)/build/raylib-ziran
-RAYLIB_A := $(RAYLIB_BUILD)/libraylib.a
-RAYLIB_INPUTS := $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)
-RAYLIB_SDL_INCLUDE := $(shell pkg-config --variable=includedir sdl2)
-RAYLIB_CFLAGS := $(shell pkg-config --cflags sdl2 libdrm gbm egl glesv2)
-RAYLIB_LIBS := $(shell pkg-config --libs sdl2 libdrm gbm egl glesv2)
+include $(KRYON_DIR)/mk/raylib-library.mk
 HOST_DEPS := $(RAYLIB_A)
-HOST_LIBS := $(RAYLIB_A) $(RAYLIB_LIBS) -ldl -lpthread
+HOST_LIBS := $(RAYLIB_A) $(RAYLIB_PLATFORM_LIBS)
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 
-$(RAYLIB_A): $(RAYLIB_INPUTS)
-	@test -n "$(RAYLIB_SOURCE)" || { echo "Run ziran lock; Kryon needs the locked raylib source package" >&2; exit 1; }
-	@test -f $(RAYLIB_SOURCE)/raylib.h || { echo "The locked raylib source package is incomplete; run ziran fetch" >&2; exit 1; }
-	mkdir -p $(RAYLIB_BUILD)/source
-	cp -R $(RAYLIB_SOURCE)/. $(RAYLIB_BUILD)/source/
-	$(MAKE) -j4 -C $(RAYLIB_BUILD)/source \
-		RAYLIB_SRC_PATH=. RAYLIB_RELEASE_PATH=.. \
-		PLATFORM=PLATFORM_DESKTOP_SDL GRAPHICS=GRAPHICS_API_OPENGL_ES2 \
-		RAYLIB_LIBTYPE=STATIC RAYLIB_MODULE_AUDIO=TRUE \
-		RAYLIB_MODULE_MODELS=TRUE \
-		SDL_INCLUDE_PATH=$(RAYLIB_SDL_INCLUDE) \
-		CUSTOM_CFLAGS="-DUSING_SDL2_PROJECT $(RAYLIB_CFLAGS) -O2 -ffunction-sections -fdata-sections"
-	@test -f $@
+endif
+ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),raylib/zib)
+ZIB_RAYLIB_DIR := $(abspath $(GEN_DIR)/player)
+ZIB_RAYLIB_PROGRAM := $(ZIB_RAYLIB_DIR)/zib
+ZIB_RAYLIB_ARCHIVE := $(RAYLIB_A)
+include $(KRYON_DIR)/mk/zib-raylib.mk
+NATIVE_PLAYER := $(ZIB_RAYLIB_PROGRAM)
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 EM_CACHE ?= $(KRYON_DIR)/build/emscripten-cache
@@ -203,7 +200,7 @@ $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bi
 		build/bin/ziran build/bin/zi2zir build/bin/zi2c
 
 build: toolchain
-	$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(PROGRAM) \
+	$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(PROGRAM) $(BROWSER_PROGRAM) $(NATIVE_PLAYER) \
 		PROJECT_NAME=$(PROJECT_NAME) PROJECT_ENTRY=$(PROJECT_ENTRY) \
 		PROJECT_BACKEND=$(PROJECT_BACKEND) PROJECT_CODEGEN=$(PROJECT_CODEGEN) \
 		PROJECT_PROFILE=$(PROJECT_PROFILE) KRYON_DIR=$(KRYON_DIR) ZIRAN_DIR=$(ZIRAN_DIR)
@@ -268,6 +265,11 @@ ifeq ($(PROJECT_CODEGEN),zib)
 ifeq ($(PROJECT_BACKEND),desktop)
 run: zib-player
 	$(RUN_ENV) $(PLAYER) $(PROGRAM)
+else ifeq ($(PROJECT_BACKEND),raylib)
+run: zib-raylib
+	$(RUN_ENV) $(ZIB_RAYLIB_PROGRAM) $(PROGRAM)
+else ifeq ($(PROJECT_BACKEND),canvas)
+	@echo "Kryon ZIB browser app: $(BROWSER_PROGRAM)"
 else
 	$(ZIRAN) run $(PROGRAM)
 endif
@@ -281,7 +283,7 @@ endif
 
 # Browser hosts are checked as they are built, for the web platform.
 check: toolchain
-	$(ZIRAN) check $(ZIRAN_MODULE_ARGS) $(if $(BROWSER_BACKEND),--define PLATFORM_WEB) $(HOST)
+	$(ZIRAN) check $(ZIRAN_MODULE_ARGS) $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND),--define PLATFORM_WEB)) $(HOST)
 
 # `ziran install` copies the built program to PREFIX/bin and describes it to
 # the desktop. The KRYON_INSTALL_* values come from [tool.kryon.install] and

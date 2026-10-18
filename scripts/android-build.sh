@@ -14,6 +14,7 @@ package="${KRYON_ANDROID_PACKAGE:?kryon: set [tool.kryon.android] package in zir
 activity="${KRYON_ANDROID_ACTIVITY:-MainActivity}"
 abis="${KRYON_ANDROID_ABIS:-arm64-v8a}"
 min_sdk="${KRYON_ANDROID_MIN_SDK:-21}"
+codegen="${KRYON_PROJECT_CODEGEN:-c99}"
 
 cd "$root"
 if [ ! -f ziran.toml ]; then
@@ -42,6 +43,26 @@ if [ -z "$raylib_dir" ] || [ ! -f "$raylib_dir/raylib.h" ]; then
     exit 2
 fi
 
+if [ "$codegen" = "zib" ]; then
+    python3 "$kryon_dir/scripts/android_scaffold.py" \
+        --root "$root" --name "${KRYON_PROJECT_NAME:-app}" \
+        --package "$package" --activity "$activity" --kryon "$kryon_dir"
+    make --silent --no-print-directory -f "$kryon_dir/mk/ziran-project.mk" build \
+        "PROJECT_NAME=$KRYON_PROJECT_NAME" "PROJECT_ENTRY=$KRYON_PROJECT_ENTRY" \
+        PROJECT_BACKEND=desktop PROJECT_CODEGEN=zib \
+        "PROJECT_PROFILE=$KRYON_PROJECT_PROFILE" \
+        "PROJECT_ASSETS=${KRYON_PROJECT_ASSETS:-}" \
+        "KRYON_DIR=$kryon_dir" "ZIRAN_DIR=$ziran_dir"
+    mkdir -p "$root/build/android/zib-assets"
+    cp "$root/build/$KRYON_PROJECT_NAME-$KRYON_PROJECT_PROFILE.zib" \
+        "$root/build/android/zib-assets/app.zib"
+    cp "$kryon_dir/assets/fonts/LiberationSans-Regular.ttf" \
+        "$root/build/android/zib-assets/kryon-font.ttf"
+elif [ "$codegen" != "c99" ]; then
+    echo "kryon: unsupported Android codegen $codegen" >&2
+    exit 2
+fi
+
 if [ "$verb" = "check" ]; then
     # The generator parses, checks and lowers the whole Zi graph; the arch
     # define matches a phone build without needing the NDK.
@@ -52,6 +73,7 @@ if [ "$verb" = "check" ]; then
         --ir "$root/build/android/check/ir" \
         --output "$root/build/android/check/generated" \
         --manifest "$root/build/android/check/generated-sources.cmake" \
+        --codegen "$codegen" \
         --define ANDROID_BUILD --define __aarch64__
     echo "kryon: android profile checked"
     exit 0
@@ -80,7 +102,7 @@ run_gradle() {
 
 run_gradle -p droid assembleDebug \
     -Pkryon.dir="$kryon_dir" -Pziran.dir="$ziran_dir" -Praylib.dir="$raylib_dir" \
-    -Papp.minSdk="$min_sdk" -Papp.abis="$abis"
+    -Papp.minSdk="$min_sdk" -Papp.abis="$abis" -Papp.codegen="$codegen"
 
 apk="droid/app/build/outputs/apk/debug/app-debug.apk"
 if [ ! -f "$apk" ]; then

@@ -45,7 +45,7 @@ area_bytes: [4096]u8;
 area_next: [4096]u8;
 area_length: s32;
 initialized: bool;
-scene_image: string = "../icons/pfp.png";
+scene_image: string = "assets/pfp.png";
 demo_field_cursor: [2]s32;
 demo_field_anchor: [2]s32;
 demo_field_scroll: [2]s32;

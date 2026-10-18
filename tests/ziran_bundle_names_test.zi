@@ -1,0 +1,13 @@
+#import "bundle_names"
+#program_export
+main :: () -> s32 {
+    if !ModuleName("image_raster", "image_raster") { return 1 }
+    if ModuleName("image_raster", "raster") { return 2 }
+    if !ModuleName("p0123456789abcdef_image_raster", "image_raster") { return 3 }
+    if ModuleName("p0123456789abcdef_image_raster", "raster") { return 4 }
+    if !ModuleName("kryon_image_raster", "image_raster") { return 5 }
+    if ModuleName("some_image_raster", "image_raster") { return 6 }
+    if ModuleName("p0123456789abcdeg_image_raster", "image_raster") { return 7 }
+    if ModuleName("", "raster") { return 8 }
+    return 0
+}

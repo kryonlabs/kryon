@@ -1,0 +1,16 @@
+// Match a framework module in a plain build, a named-module build, or a
+// package build. An underscore in a module's own name is not a namespace.
+ModuleName :: (value: string, name: string) -> bool {
+    if value == name { return true }
+    if value.count == name.count + 6 && value[:6] == "kryon_" {
+        return value[6:] == name
+    }
+    if value.count != name.count + 18 || value[0] != cast(u8)112 ||
+    value[17] != cast(u8)95 { return false }
+    for index: 1..16 {
+        byte := value[index]
+        if !((byte >= cast(u8)48 && byte <= cast(u8)57) ||
+            (byte >= cast(u8)97 && byte <= cast(u8)102)) { return false }
+    }
+    return value[18:] == name
+}

@@ -1,0 +1,27 @@
+// Resources are borrowed from the opened bundle. A guest can name only its
+// embedded resources; the host filesystem is never consulted here.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+
+BundleHasAsset :: (bundle: *void, path: string) -> bool {
+    if bundle == null || path.count == 0 { return false }
+    index: u64
+    while index < BundleAssets(bundle) {
+        if TextFromCString(BundleAssetPath(bundle, index)) == path { return true }
+        index += 1
+    }
+    return false
+}
+
+BundleReadAsset :: (bundle: *void, path: string) -> string {
+    if bundle == null || path.count == 0 { return "" }
+    index: u64
+    while index < BundleAssets(bundle) {
+        if TextFromCString(BundleAssetPath(bundle, index)) == path {
+            return TextFromBytes(BytesFromPointer(BundleAssetBytes(bundle, index),
+                BundleAssetLength(bundle, index)))
+        }
+        index += 1
+    }
+    return ""
+}

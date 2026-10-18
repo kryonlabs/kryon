@@ -166,7 +166,8 @@ default_profile = "tui"
 
 ## Zib applications
 
-A desktop profile can produce a portable program with its resources:
+Desktop, raylib, Canvas and Android profiles can package an ordinary `Frame`
+application as the same portable program with its resources:
 
 ```toml
 [tool.kryon.profiles.portable]
@@ -174,6 +175,64 @@ backend = "desktop"
 codegen = "zib"
 assets = "assets"
 ```
+
+Use `backend = "canvas"` with `codegen = "zib"` for the same portable app
+and a browser player. The build writes both `.zib` and `.html` files; serve
+the HTML with its generated JavaScript and WebAssembly files. The browser
+shell interprets the bundle and uses Canvas2D for rendering. It includes a
+file picker for opening another downloaded ZIB without recompiling its UI.
+Unsupported required services are reported before replacing the running app.
+
+`backend = "raylib"` with `codegen = "zib"` builds a generic native player
+beside the bundle. `make zib-raylib` builds that player directly; pass a ZIB
+path to it or use `--check FILE.zib` to validate without opening a window.
+Images are decoded directly from the bundle, with no resource extraction.
+The native player carries its host font beside the executable. Linux uses
+SDL/GLES; Windows and macOS use GLFW/OpenGL. Cross builds can supply
+`ZIB_RAYLIB_CC`, `ZIB_RAYLIB_AR`, `ZIB_RAYLIB_OBJCOPY`,
+`ZIB_RAYLIB_ARCHIVE`, `ZIB_RAYLIB_DEFINES` and `ZIB_RAYLIB_LIBS`.
+Use a separate `ZIB_RAYLIB_DIR` for each target. macOS uses the same renderer
+and has platform build settings, but has not been executed in this checkout.
+
+An Android profile with `codegen = "zib"` builds its portable guest first,
+then packages `app.zib`, the VM and the native renderer into the APK. Its
+`Frame` is not compiled into native application code. The canonical scaffold
+handles display density, safe-area insets, touch, hardware/soft-keyboard input
+and graphics restoration without resetting bundle state. It also registers a
+ZIB file opener: Android document URIs are copied into private cache and
+validated before replacing the running app. Invalid files retain the current
+instance. Existing customized Android scaffolds must adopt the updated
+Gradle/CMake and activity/manifest glue to use this profile.
+`make zib-android-test` builds ARM64, ARMv7 and x86-64 shells. Runtime testing
+uses `python3 tests/zib_android_test.py --serial emulator-NNNN` and accepts
+only an explicitly selected disposable emulator.
+
+`make zib-canvas` builds a generic browser player with no embedded app.
+`ZIB_CANVAS_BUNDLE=/absolute/path/app.zib` optionally embeds a default app.
+A same-origin relative `?bundle=path/app.zib` opens a hosted download.
+The browser player currently supports ordinary `Frame` bundles, drawing,
+input, fonts, embedded images and the browser clipboard. Hosted-app services
+and media playback are separate providers; the browser player does not yet
+implement them.
+
+`make gallery-zib` exports every enabled gallery example with its full source
+behavior and embedded assets under `build/gallery-zib/`; `index.json` maps
+example IDs to their bundle paths. The entire gallery also has a `portable`
+profile. The website build stages both these downloads and the generic
+browser player; generating them does not publish the website.
+The exporter and player use the gallery's configured Ziran toolchain, including
+its lock or local override. A ZIB's embedded IR format must match its player;
+the installed compiler on `PATH` can use a different format.
+`make gallery-zib-test` validates and renders all exported examples on a
+private X server. `make zib-canvas-test` checks that the desktop and browser
+bundles are identical and exercises browser startup, images, clicks, Unicode,
+resizing, file replacement and rejection of invalid files.
+
+Custom native hosts can load `kryon/bundle_player`, prepare embedded assets,
+attach `kryon/bundle_raster` callbacks and then start the instance. This lets
+initializers use the selected renderer and assets. `PlayerFrameNative` runs
+inside the caller's ordinary frame. `PlayerFrame` retains the CPU-surface
+route for hosts that supply pixel buffers.
 
 `kryon build portable` writes `build/<package-name>-portable.zib`.
 All four project templates include this profile.

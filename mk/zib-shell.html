@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kryon ZIB</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; background: #f8fafc; overflow: hidden; }
+    #zib-controls { box-sizing: border-box; height: 32px; display: flex; gap: 12px; align-items: center; padding: 4px 8px; font: 13px sans-serif; }
+    #zib-controls input { max-width: 240px; }
+    #canvas-frame { width: 100%; height: calc(100% - 32px); }
+    #result { display: none; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="zib-controls"></div>
+  <div id="canvas-frame"><canvas id="canvas"></canvas></div>
+  <pre id="result">pending</pre>
+  <script>
+    var Module = {
+      onExit: function(code) {
+        document.getElementById("result").textContent = code === 0 ? "PASS" : "FAIL " + code;
+      },
+      onAbort: function(reason) {
+        document.getElementById("result").textContent = "ABORT " + reason;
+      }
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>

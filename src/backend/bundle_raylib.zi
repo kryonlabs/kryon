@@ -1,0 +1,137 @@
+// The native renderer for ordinary Frame ZIBs. Android and desktop shells
+// provide their viewport and input; app state and widgets stay in the VM.
+Player :: #import "bundle_player";
+#import "bundle_raster"
+#import "bundle_resources"
+#import "raylib_runtime"
+#import "geometry"
+#import "hosted_values"
+#import "std/c_string"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+
+RaylibBundle :: struct {
+    player: Player.Player
+    raster: RasterHost
+}
+
+raylib :: #system_library "raylib";
+ReadFileBytes :: (path: *u8, count: *s32) -> *u8 #foreign raylib "LoadFileData";
+FreeFileBytes :: (bytes: *u8) #foreign raylib "UnloadFileData";
+ApplicationDirectory :: () -> *u8 #foreign raylib "GetApplicationDirectory";
+
+RaylibBundleRead :: (path: string) -> string {
+    name: [4096]u8
+    if !CopyCString(path, name[:]) { return "" }
+    count: s32
+    bytes := ReadFileBytes(*name[0], *count)
+    if bytes == null { return "" }
+    if count <= 0 { FreeFileBytes(bytes); return "" }
+    return TextFromBytes(BytesFromPointer(bytes, cast(u64)count))
+}
+
+RaylibBundleFree :: (data: string) {
+    if data.count > 0 {
+        bytes := cast(*TextDescriptor)(*data)
+        FreeFileBytes(bytes.data)
+    }
+}
+
+RaylibBundleTypeface :: () -> bool {
+    // Native distributions carry the host font beside their generic player.
+    // The guest remains a single portable file with its own app resources.
+    directory := TextFromCString(ApplicationDirectory())
+    name: [4096]u8
+    suffix := "kryon-font.ttf"
+    length := directory.count + suffix.count
+    if length >= name.count { return false }
+    for index: 0..directory.count - 1 { name[index] = directory[index] }
+    for index: 0..suffix.count - 1 { name[directory.count + index] = suffix[index] }
+    path := TextFromBytes(BytesFromPointer(*name[0], cast(u64)length))
+    return LoadTypefaceFile("default", path, null, 0) && SelectTypeface("default")
+}
+
+RaylibBundleAsset :: (context: *void, path: string) -> string {
+    host := cast(*RaylibBundle)context
+    return BundleReadAsset(host.player.bundle, path)
+}
+
+RaylibBundlePlatform :: (context: *void, module: *u8, function: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    name := TextFromCString(function)
+    if name == "WindowFocusedHost" && count == 0 {
+        result.* = HostScalar("bool", ifx RaylibFocused() then 1 else 0)
+        return 1
+    }
+    if name == "SystemClipboardOpenHost" && count == 0 {
+        result.* = HostScalar("s32", cast(s64)SystemClipboardOpenHost())
+        return 1
+    }
+    if name == "SystemClipboardByteHost" && count == 1 {
+        result.* = HostScalar("s32", cast(s64)SystemClipboardByteHost(cast(s32)args[0].integer))
+        return 1
+    }
+    if name == "SystemClipboardWriteHost" && count == 1 {
+        result.* = HostScalar("bool", ifx SystemClipboardWriteHost(Player.TextValue(args[0])) then 1 else 0)
+        return 1
+    }
+    return 0
+}
+
+RaylibBundleOpen :: (host: *RaylibBundle, data: string) -> bool {
+    bytes := cast(*TextDescriptor)(*data)
+    if !Player.PlayerLoad(*host.player, BytesFromPointer(bytes.data, cast(u64)data.count),
+        RaylibBundlePlatform, null) { return false }
+    // Media services require an explicit platform provider, never a silent
+    // no-op implementation in an otherwise successful player.
+    index: u64
+    while index < BundleCapabilities(host.player.bundle) {
+        if Player.ModuleName(TextFromCString(BundleCapabilityModuleName(host.player.bundle, index)), "media") {
+            Player.PlayerClose(*host.player)
+            return false
+        }
+        index += 1
+    }
+    host.raster = RasterHost.{
+        .asset_bundle = host.player.bundle,
+        .measure_width = MeasureGlyphWidth, .measure_height = MeasureGlyphLineHeight,
+        .image_width = ImageWidth, .image_height = ImageHeight,
+        .line = RasterLine, .rectangle = RasterRoundedRectangle, .outline = RasterRoundedRectangleOutline,
+        .text = RasterText, .clipped_text = RasterTextClipped,
+        .image = RasterImage, .triangles = RasterTriangles, .mesh = RasterImageMesh}
+    RaylibSetAssetReader(RaylibBundleAsset, cast(*void)host)
+    if !Player.PlayerUseRenderer(*host.player, RasterHostCall, cast(*void)(*host.raster)) ||
+    !Player.PlayerStart(*host.player) {
+        RaylibBundleClose(host)
+        return false
+    }
+    return true
+}
+
+RaylibBundleClose :: (host: *RaylibBundle) {
+    RaylibClearAssetReader()
+    Player.PlayerClose(*host.player)
+}
+
+RaylibBundleUseAssets :: (host: *RaylibBundle) {
+    RaylibSetAssetReader(RaylibBundleAsset, cast(*void)host)
+}
+
+RaylibBundleFrame :: (host: *RaylibBundle, bounds: Rectangle, key: s32) -> bool {
+    host.raster.x = bounds.x
+    host.raster.y = bounds.y
+    pointer := PollPointer()
+    secondary := PollSecondaryPointer()
+    point := RaylibTypedCodepoint()
+    while point != 0 {
+        Player.PlayerTyped(*host.player, point)
+        point = RaylibTypedCodepoint()
+    }
+    return Player.PlayerFrameNative(*host.player, Player.Input.{
+            .width = cast(s32)bounds.width, .height = cast(s32)bounds.height,
+            .x = pointer.x - bounds.x, .y = pointer.y - bounds.y,
+            .down = pointer.down, .pressed = pointer.pressed, .released = pointer.released,
+            .secondary_down = secondary.down, .secondary_pressed = secondary.pressed,
+            .secondary_released = secondary.released, .modifiers = RaylibModifiers(),
+            .key = key, .wheel = RaylibWheelMove()})
+}

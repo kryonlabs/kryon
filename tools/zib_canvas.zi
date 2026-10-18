@@ -1,0 +1,236 @@
+// A browser renderer for ordinary ZIB files. No application UI is linked here.
+using Host :: #import "Canvas";
+using Render :: #import "canvas_raster";
+Player :: #import "bundle_player";
+#import "bundle_raster"
+#import "bundle_assets"
+#import "drawing_props"
+#import "app_files"
+#import "hosted_values"
+#import "page_files"
+#import "std/bundle_host"
+#import "std/file"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/web"
+
+using HostValueKind;
+libc :: #system_library "libc";
+ChangeDirectory :: (path: *u8) -> s32 #foreign libc "chdir";
+picker: s32;
+picker_callback: s32;
+picker_reader: s32;
+picker_failure: s32;
+picker_fetch: s32;
+requested_bundle: bool;
+file_ready: bool;
+status: s32;
+
+ShowStatus :: (message: string) {
+    if status != 0 { WebSet(status, WebName("textContent"), WebText(message)) }
+}
+
+FileFailed :: (context: s32, first: s32, second: s32, third: s32) {
+    ShowStatus("Could not read the ZIB file.")
+}
+
+FileRead :: (context: s32, buffer: s32, second: s32, third: s32) {
+    size := WebGetNumber(buffer, WebName("byteLength"))
+    if size <= 0.0 || size > 67108864.0 { ShowStatus("Choose a ZIB file under 64 MiB."); return }
+    view := WebNew1(WebGetObject(WebGlobal, WebName("Uint8Array")), WebObject(buffer))
+    files := PageFileSystem()
+    if view != 0 && files != 0 {
+        unused WebCall2(files, WebName("writeFile"), WebText("/app.zib"), WebObject(view))
+        if !WebFailed() { requested_bundle = true; file_ready = true; return }
+    }
+    ShowStatus("Could not read the ZIB file.")
+}
+
+FileFetched :: (context: s32, response: s32, second: s32, third: s32) {
+    if !WebAsBool(WebGet(response, WebName("ok"))) { FileFailed(0, 0, 0, 0); return }
+    promise := WebAsObject(WebCall0(response, WebName("arrayBuffer")))
+    if promise == 0 { FileFailed(0, 0, 0, 0); return }
+    unused WebCall2(promise, WebName("then"), WebObject(picker_reader), WebObject(picker_failure))
+}
+
+OpenRequested :: () {
+    location := WebGetObject(WebGlobal, WebName("location"))
+    params := WebNew1(WebGetObject(WebGlobal, WebName("URLSearchParams")), WebGet(location, WebName("search")))
+    value := WebCall1(params, WebName("get"), WebText("bundle"))
+    if WebIsUndefined(value) { return }
+    bytes: [4096]u8
+    count := WebCopyString(WebAsObject(value), bytes[:])
+    if count <= 0 || count >= 4096 { ShowStatus("The requested ZIB path is invalid."); return }
+    path := TextView(bytes[:count])
+    if !AppFileNameValid(path) || count < 4 || path[count - 4:] != ".zib" {
+        ShowStatus("The requested ZIB path is invalid.")
+        return
+    }
+    promise := WebAsObject(WebCall1(WebGlobal, WebName("fetch"), WebText(path)))
+    if promise == 0 { FileFailed(0, 0, 0, 0); return }
+    ShowStatus("Loading ZIB…")
+    unused WebCall2(promise, WebName("then"), WebObject(picker_fetch), WebObject(picker_failure))
+}
+
+FileChosen :: (context: s32, event: s32, second: s32, third: s32) {
+    target := WebGetObject(event, WebName("target"))
+    files := WebGetObject(target, WebName("files"))
+    if WebGetNumber(files, WebName("length")) < 1.0 { return }
+    file := WebAsObject(WebAt(files, 0))
+    promise := WebAsObject(WebCall0(file, WebName("arrayBuffer")))
+    if promise == 0 { ShowStatus("Could not read the ZIB file."); return }
+    unused WebCall2(promise, WebName("then"), WebObject(picker_reader), WebObject(picker_failure))
+    // Choosing the same file after editing it is a new request too.
+    WebSet(target, WebName("value"), WebText(""))
+}
+
+OpenPicker :: () -> bool {
+    document := WebGetObject(WebGlobal, WebName("document"))
+    controls := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("zib-controls")))
+    picker = WebKeep(WebAsObject(WebCall1(document, WebName("createElement"), WebText("input"))))
+    status = WebKeep(WebAsObject(WebCall1(document, WebName("createElement"), WebText("span"))))
+    if picker == 0 || status == 0 || controls == 0 { return false }
+    WebSet(picker, WebName("type"), WebText("file"))
+    WebSet(picker, WebName("accept"), WebText(".zib"))
+    WebSet(picker, WebName("id"), WebText("zib-open"))
+    unused WebCall2(picker, WebName("setAttribute"), WebText("aria-label"), WebText("Open a ZIB file"))
+    picker_callback = WebFunction(FileChosen, 0)
+    picker_reader = WebFunction(FileRead, 0)
+    picker_failure = WebFunction(FileFailed, 0)
+    picker_fetch = WebFunction(FileFetched, 0)
+    unused WebCall2(picker, WebName("addEventListener"), WebText("change"), WebObject(picker_callback))
+    unused WebCall1(controls, WebName("appendChild"), WebObject(picker))
+    unused WebCall1(controls, WebName("appendChild"), WebObject(status))
+    return !WebFailed()
+}
+
+ClosePicker :: () {
+    if picker != 0 { unused WebCall0(picker, WebName("remove")); WebRelease(picker) }
+    if status != 0 { unused WebCall0(status, WebName("remove")); WebRelease(status) }
+    if picker_callback != 0 { WebRelease(picker_callback) }
+    if picker_reader != 0 { WebRelease(picker_reader) }
+    if picker_failure != 0 { WebRelease(picker_failure) }
+    if picker_fetch != 0 { WebRelease(picker_fetch) }
+}
+
+PlatformCall :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    name := TextFromCString(function)
+    if name == "WindowFocusedHost" && count == 0 {
+        result.* = HostScalar("bool", ifx WindowFocusedHost() then 1 else 0)
+        return 1
+    }
+    if name == "SystemClipboardOpenHost" && count == 0 {
+        result.* = HostScalar("s32", cast(s64)SystemClipboardOpenHost())
+        return 1
+    }
+    if name == "SystemClipboardByteHost" && count == 1 {
+        result.* = HostScalar("s32", cast(s64)SystemClipboardByteHost(cast(s32)arguments[0].integer))
+        return 1
+    }
+    if name == "SystemClipboardWriteHost" && count == 1 {
+        result.* = HostScalar("bool", ifx SystemClipboardWriteHost(Player.TextValue(arguments[0])) then 1 else 0)
+        return 1
+    }
+    return 0
+}
+
+LoadSelected :: (player: *Player.Player, assets: *AppFiles, raster: *RasterHost) -> bool {
+    bytes, found := ReadEntireFile("/app.zib")
+    if !found { return false }
+    defer { AppFileFree(bytes) }
+    descriptor := cast(*TextDescriptor)(*bytes)
+    data := BytesFromPointer(descriptor.data, cast(u64)bytes.count)
+    // Validate without disturbing the current instance or running startup.
+    if !Player.PlayerCheck(data) {
+        ShowStatus("This file is invalid or needs a capability this player does not provide.")
+        return false
+    }
+    checked := OpenBundleBytes(descriptor.data, cast(u64)bytes.count)
+    if checked == null { return false }
+    index: u64
+    while index < BundleCapabilities(checked) {
+        module := TextFromCString(BundleCapabilityModuleName(checked, index))
+        if Player.ModuleName(module, "media") {
+            CloseBundle(checked)
+            ShowStatus("This ZIB needs media services that this browser player does not provide.")
+            return false
+        }
+        index += 1
+    }
+    CloseBundle(checked)
+    InvalidateCanvasAssets()
+    if !Player.PlayerLoad(player, data, PlatformCall, null) {
+        ShowStatus("The ZIB could not load.")
+        return false
+    }
+    raster.asset_bundle = player.bundle
+    if !BundleWriteAssets(player.bundle, assets) ||
+    !Player.PlayerUseRenderer(player, RasterHostCall, cast(*void)raster) ||
+    !Player.PlayerStart(player) {
+        Player.PlayerClose(player)
+        ShowStatus("The ZIB could not start.")
+        return false
+    }
+    ShowStatus("")
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenPicker() { return 1 }
+    defer { ClosePicker() }
+    if !OpenCanvas() { return 1 }
+    defer { CloseCanvas() }
+    assets: AppFiles
+    if !AppFilesOpen(*assets, "/tmp/kryon-zib") { return 1 }
+    defer { AppFilesClose(*assets) }
+    path: [64]u8
+    if !CopyCString("/tmp/kryon-zib", path[:]) || ChangeDirectory(*path[0]) != 0 { return 1 }
+    raster := RasterHost.{
+        .measure_width = MeasureGlyphWidth, .measure_height = MeasureGlyphLineHeight,
+        .image_width = ImageWidth, .image_height = ImageHeight,
+        .line = RasterLine, .rectangle = RasterRoundedRectangle, .outline = RasterRoundedRectangleOutline,
+        .text = RasterText, .clipped_text = RasterTextClipped,
+        .image = RasterImage, .triangles = RasterTriangles, .mesh = RasterImageMesh}
+    if !RasterHostValid(raster) { return 1 }
+    player: Player.Player
+    defer { Player.PlayerClose(*player) }
+    initial, found := ReadEntireFile("/app.zib")
+    AppFileFree(initial)
+    requested_bundle = found
+    file_ready = found
+    OpenRequested()
+    while PollCanvas() {
+        scope := WebScope()
+        if requested_bundle && file_ready {
+            requested_bundle = false
+            unused LoadSelected(*player, *assets, *raster)
+        }
+        BeginCanvasFrame()
+        if player.instance != null && !player.closed {
+            viewport := CanvasViewport()
+            pointer := PollPointer()
+            secondary := PollSecondaryPointer()
+            point := CanvasTypedCodepoint()
+            while point != 0 {
+                Player.PlayerTyped(*player, point)
+                point = CanvasTypedCodepoint()
+            }
+            if !Player.PlayerFrameNative(*player, Player.Input.{
+                    .width = cast(s32)viewport.width, .height = cast(s32)viewport.height,
+                    .x = pointer.x, .y = pointer.y, .down = pointer.down,
+                    .pressed = pointer.pressed, .released = pointer.released,
+                    .secondary_down = secondary.down, .secondary_pressed = secondary.pressed,
+                    .secondary_released = secondary.released, .modifiers = CanvasModifiers(),
+                    .key = CanvasPressedKey(), .wheel = CanvasWheelMove()}) {
+                ShowStatus("The ZIB finished or its frame failed. Choose a file to open another app.")
+            }
+        } else {
+            RasterText("Open a ZIB file to run it.", 24, 48, 22, Color.{30, 41, 59, 255})
+        }
+        unused EndCanvasFrame()
+        WebEnd(scope)
+    }
+    return 0
+}

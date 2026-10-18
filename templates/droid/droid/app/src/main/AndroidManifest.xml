@@ -8,6 +8,7 @@
 
         <activity
             android:name=".__ACTIVITY__"
+            android:launchMode="${nativeLaunchMode}"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
             android:windowSoftInputMode="stateAlwaysHidden|adjustNothing">
@@ -21,6 +22,23 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity-alias
+            android:name=".Zib"
+            android:targetActivity=".__ACTIVITY__"
+            android:label="ZIB"
+            android:enabled="${zibPlayer}"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/vnd.ziran.bundle" />
+                <data android:mimeType="application/x-ziran-bundle" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+        </activity-alias>
     </application>
 
 </manifest>

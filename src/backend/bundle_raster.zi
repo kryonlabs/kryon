@@ -1,0 +1,183 @@
+// Typed raster effects for a ZIB instance. The selected platform supplies
+// its normal renderer; application widgets and state stay inside the bundle.
+#import "geometry"
+#import "drawing_props"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "bundle_resources"
+Values :: #import "bundle_player";
+using HostValueKind;
+
+MeasureGlyphWidthCall :: #type (text: string, font: s32, typeface: string) -> s32;
+MeasureGlyphLineHeightCall :: #type (font: s32, typeface: string) -> s32;
+ImageWidthCall :: #type (asset: string) -> s32;
+ImageHeightCall :: #type (asset: string) -> s32;
+RasterLineCall :: #type (line: Rectangle, color: Color) -> void;
+RasterRoundedRectangleCall :: #type (bounds: Rectangle, radius: float32, segments: s32, color: Color) -> void;
+RasterRoundedRectangleOutlineCall :: #type (bounds: Rectangle, radius: float32, segments: s32, width: float32, color: Color) -> void;
+RasterTextClippedCall :: #type (text: string, x: s32, y: s32, font: s32, color: Color, clip: Rectangle) -> void;
+RasterTextCall :: #type (text: string, x: s32, y: s32, font: s32, color: Color) -> void;
+RasterImageCall :: #type (asset: string, generation: u32, source: Rectangle, destination: Rectangle, clip: Rectangle, origin: Vector2, rotation: float32, radius: float32, tint: Color) -> void;
+RasterTrianglesCall :: #type (points: []Vector2, color: Color) -> void;
+RasterImageMeshCall :: #type (asset: string, generation: u32, source: Rectangle, points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) -> void;
+
+RasterHost :: struct {
+    asset_bundle: *void
+    x: float32
+    y: float32
+    measure_width: MeasureGlyphWidthCall
+    measure_height: MeasureGlyphLineHeightCall
+    image_width: ImageWidthCall
+    image_height: ImageHeightCall
+    line: RasterLineCall
+    rectangle: RasterRoundedRectangleCall
+    outline: RasterRoundedRectangleOutlineCall
+    clipped_text: RasterTextClippedCall
+    text: RasterTextCall
+    image: RasterImageCall
+    triangles: RasterTrianglesCall
+    mesh: RasterImageMeshCall
+}
+
+RasterHostValid :: (host: RasterHost) -> bool {
+    return host.measure_width != null &&
+    host.measure_height != null &&
+    host.image_width != null &&
+    host.image_height != null &&
+    host.line != null &&
+    host.rectangle != null &&
+    host.outline != null &&
+    host.clipped_text != null &&
+    host.text != null &&
+    host.image != null &&
+    host.triangles != null &&
+    host.mesh != null
+}
+
+RasterHostBounds :: (host: *RasterHost, value: HostValue) -> Rectangle {
+    bounds := Values.RectangleFrom(value)
+    bounds.x += host.x
+    bounds.y += host.y
+    return bounds
+}
+
+RasterHostPoints :: (host: *RasterHost, count: s64) {
+    index: s64
+    while index < count {
+        Values.mesh_points[index].x += host.x
+        Values.mesh_points[index].y += host.y
+        index += 1
+    }
+}
+
+RasterHostCall :: (context: *void, module: *u8, function_name: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    host := cast(*RasterHost)context
+    if host == null || !RasterHostValid(host.*) { return 0 }
+    function := TextFromCString(function_name)
+    // The runtime supplies the exact return type, including package names.
+    result.kind = HostVoid
+    if count > 0 && args[0].kind == HostString &&
+    (function == "ImageWidth" || function == "ImageHeight" ||
+        function == "RasterImage" || function == "RasterImageMesh") &&
+    !BundleHasAsset(host.asset_bundle, Values.TextValue(args[0])) {
+        // Missing or external resources behave like unavailable images. A
+        // downloaded bundle cannot read a previous app's extracted files.
+        if function == "ImageWidth" || function == "ImageHeight" {
+            result.kind = HostInteger
+            result.integer = 0
+        }
+        return 1
+    }
+    if function == "MeasureGlyphWidth" && count == 3 &&
+    args[0].kind == HostString && args[1].kind == HostInteger &&
+    args[2].kind == HostString {
+        result.kind = HostInteger
+        result.integer = cast(s64)host.measure_width(Values.TextValue(args[0]),
+            cast(s32)args[1].integer, Values.TextValue(args[2]))
+        return 1
+    }
+    if function == "MeasureGlyphLineHeight" && count == 2 &&
+    args[0].kind == HostInteger && args[1].kind == HostString {
+        result.kind = HostInteger
+        result.integer = cast(s64)host.measure_height(
+            cast(s32)args[0].integer, Values.TextValue(args[1]))
+        return 1
+    }
+    if (function == "ImageWidth" || function == "ImageHeight") && count == 1 &&
+    args[0].kind == HostString {
+        result.kind = HostInteger
+        if function == "ImageWidth" {
+            result.integer = cast(s64)host.image_width(Values.TextValue(args[0]))
+        } else {
+            result.integer = cast(s64)host.image_height(Values.TextValue(args[0]))
+        }
+        return 1
+    }
+    if function == "RasterLine" && count == 2 &&
+    Values.RectangleValue(args[0]) && Values.ColorValue(args[1]) {
+        host.line(RasterHostBounds(host, args[0]), Values.ColorFrom(args[1]))
+        return 1
+    }
+    if function == "RasterRoundedRectangle" && count == 4 &&
+    Values.RectangleValue(args[0]) && args[1].kind == HostReal &&
+    args[2].kind == HostInteger && Values.ColorValue(args[3]) {
+        host.rectangle(RasterHostBounds(host, args[0]), cast(float32)args[1].real,
+            cast(s32)args[2].integer, Values.ColorFrom(args[3]))
+        return 1
+    }
+    if function == "RasterRoundedRectangleOutline" && count == 5 &&
+    Values.RectangleValue(args[0]) && args[1].kind == HostReal &&
+    args[2].kind == HostInteger && args[3].kind == HostReal && Values.ColorValue(args[4]) {
+        host.outline(RasterHostBounds(host, args[0]), cast(float32)args[1].real,
+            cast(s32)args[2].integer, cast(float32)args[3].real, Values.ColorFrom(args[4]))
+        return 1
+    }
+    if (function == "RasterText" && count == 5) ||
+    (function == "RasterTextClipped" && count == 6) {
+        if args[0].kind != HostString || args[1].kind != HostInteger ||
+        args[2].kind != HostInteger || args[3].kind != HostInteger ||
+        !Values.ColorValue(args[4]) { return 0 }
+        if count == 6 {
+            if !Values.RectangleValue(args[5]) { return 0 }
+            host.clipped_text(Values.TextValue(args[0]), cast(s32)args[1].integer + cast(s32)host.x,
+                cast(s32)args[2].integer + cast(s32)host.y, cast(s32)args[3].integer,
+                Values.ColorFrom(args[4]), RasterHostBounds(host, args[5]))
+        } else {
+            host.text(Values.TextValue(args[0]), cast(s32)args[1].integer + cast(s32)host.x,
+                cast(s32)args[2].integer + cast(s32)host.y, cast(s32)args[3].integer, Values.ColorFrom(args[4]))
+        }
+        return 1
+    }
+    if function == "RasterImage" && count == 9 &&
+    args[0].kind == HostString && args[1].kind == HostUnsigned &&
+    Values.RectangleValue(args[2]) && Values.RectangleValue(args[3]) &&
+    Values.RectangleValue(args[4]) && Values.VectorValue(args[5]) &&
+    args[6].kind == HostReal && args[7].kind == HostReal && Values.ColorValue(args[8]) {
+        host.image(Values.TextValue(args[0]), cast(u32)args[1].bits,
+            Values.RectangleFrom(args[2]), RasterHostBounds(host, args[3]), RasterHostBounds(host, args[4]),
+            Values.VectorFrom(args[5]), cast(float32)args[6].real, cast(float32)args[7].real,
+            Values.ColorFrom(args[8]))
+        return 1
+    }
+    if function == "RasterTriangles" && count == 2 && Values.ColorValue(args[1]) {
+        points := Values.MeshPointsFrom(args[0])
+        if points < 0 { return 0 }
+        RasterHostPoints(host, points)
+        host.triangles(Values.mesh_points[0:points], Values.ColorFrom(args[1]))
+        return 1
+    }
+    if function == "RasterImageMesh" && count == 8 &&
+    args[0].kind == HostString && args[1].kind == HostUnsigned &&
+    Values.RectangleValue(args[2]) && args[4].kind == HostInteger &&
+    args[5].kind == HostInteger && Values.RectangleValue(args[6]) && Values.ColorValue(args[7]) {
+        points := Values.MeshPointsFrom(args[3])
+        if points < 0 { return 0 }
+        RasterHostPoints(host, points)
+        host.mesh(Values.TextValue(args[0]), cast(u32)args[1].bits,
+            Values.RectangleFrom(args[2]), Values.mesh_points[0:points], cast(s32)args[4].integer,
+            cast(s32)args[5].integer, RasterHostBounds(host, args[6]), Values.ColorFrom(args[7]))
+        return 1
+    }
+    return 0
+}

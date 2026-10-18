@@ -1,0 +1,30 @@
+// Consume Android's granted document URI after its activity copied the bytes
+// into private cache. Widgets and bundle loading remain in the Ziran host.
+#import "android_jni"
+#import "std/c_string"
+#import "std/byte_text_linux"
+
+AndroidBundleTakeFile :: (output: []u8) -> string {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return "" }
+    defer { AndroidJniDetachCurrent(*session) }
+    method := AndroidJniMethod(*session, "takeBundleFile", "()Ljava/lang/String;")
+    if method == null { return "" }
+    env := session.env
+    value := env.functions.CallObjectMethodA(env, session.activity, method, null)
+    if env.functions.ExceptionCheck(env) != 0 || value == null { return "" }
+    defer { env.functions.DeleteLocalRef(env, value) }
+    bytes := env.functions.GetStringUTFChars(env, value, null)
+    if bytes == null { return "" }
+    defer { env.functions.ReleaseStringUTFChars(env, value, bytes) }
+    path := TextFromCString(bytes)
+    if !CopyCString(path, output) { return "" }
+    return TextView(output[:path.count])
+}
+
+AndroidBundleResult :: (accepted: bool) {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return }
+    unused AndroidJniCallVoidInteger(*session, "bundleResult", "(I)V", ifx accepted then 1 else 0)
+    AndroidJniDetachCurrent(*session)
+}

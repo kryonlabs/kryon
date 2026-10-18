@@ -1,6 +1,10 @@
 package __PACKAGE__;
 
 import android.app.NativeActivity;
+import android.content.Intent;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import android.content.res.Configuration;
 import android.graphics.Insets;
 import android.graphics.Rect;
@@ -37,6 +41,7 @@ public class __ACTIVITY__ extends NativeActivity {
     private boolean windowFocused = true;
     private boolean firstFrameReady = false;
     private long startupStarted;
+    private String pendingBundle;
     private int lastDeleteRepeatCount = -1;
 
     private native void nativeSetInsets(int left, int top, int right, int bottom, int imeBottom,
@@ -120,12 +125,60 @@ public class __ACTIVITY__ extends NativeActivity {
         return super.dispatchKeyEvent(event);
     }
 
+    private synchronized void stageBundle(Intent intent) {
+        if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || intent.getData() == null) return;
+        File incoming = new File(getCacheDir(), "zib-incoming");
+        File selected = new File(getCacheDir(), "zib-selected");
+        try (InputStream source = getContentResolver().openInputStream(intent.getData());
+             FileOutputStream output = new FileOutputStream(incoming)) {
+            if (source == null) throw new java.io.IOException("Unavailable document");
+            byte[] bytes = new byte[65536];
+            long size = 0;
+            int count;
+            while ((count = source.read(bytes)) != -1) {
+                size += count;
+                if (size > 64L * 1024 * 1024) throw new java.io.IOException("Bundle exceeds 64 MiB");
+                output.write(bytes, 0, count);
+            }
+            output.getFD().sync();
+            if (!incoming.renameTo(selected)) throw new java.io.IOException("Could not retain document");
+            pendingBundle = selected.getAbsolutePath();
+        } catch (Exception error) {
+            incoming.delete();
+            Log.w("ZIB", "Could not read the selected bundle", error);
+        }
+    }
+
+    public synchronized String takeBundleFile() {
+        String path = pendingBundle;
+        pendingBundle = null;
+        return path;
+    }
+
+    public void bundleResult(int accepted) {
+        if (accepted != 0) {
+            Log.i("ZIB", "Bundle loaded");
+        } else {
+            Log.w("ZIB", "Bundle rejected");
+            runOnUiThread(() -> android.widget.Toast.makeText(this,
+                "Could not open this ZIB file", android.widget.Toast.LENGTH_LONG).show());
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        stageBundle(intent);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         startupStarted = SystemClock.elapsedRealtime();
         // Only window attribute calls run before the decor view exists.
         configureWindowFlags();
         super.onCreate(savedInstanceState);
+        stageBundle(getIntent());
         configureSystemBars();
 
         synchronized (cachedInsets) {

@@ -1,0 +1,38 @@
+// Cross-platform native ZIB shell. Only the renderer and interpreter are
+// native; the selected file carries the complete application.
+#import "bundle_raylib"
+#import "raylib_runtime"
+#import "std/byte_text_linux"
+Player :: #import "bundle_player";
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    check: bool = argc == 3 && TextFromCString(argv[1]) == "--check"
+    if argc != 2 && !check { print("usage: zib [--check] FILE.zib\n"); return 2 }
+    data := RaylibBundleRead(TextFromCString(argv[ifx check then 2 else 1]))
+    if data.count == 0 { print("kryon: could not read the ZIB file\n"); return 2 }
+    defer { RaylibBundleFree(data) }
+    if check {
+        bytes := cast(*TextDescriptor)(*data)
+        return ifx Player.PlayerCheck(BytesFromPointer(bytes.data, cast(u64)data.count)) then 0 else 1
+    }
+    if !OpenRaylib(960, 600, "Kryon ZIB") { return 1 }
+    defer { CloseRaylib() }
+    unused RaylibBundleTypeface()
+    host: RaylibBundle
+    if !RaylibBundleOpen(*host, data) { print("kryon: ZIB is invalid or requires unavailable services\n"); return 1 }
+    defer { RaylibBundleClose(*host) }
+    RaylibExitKey(0)
+    while PollRaylib() && !host.player.closed {
+        key := RaylibPressedKey()
+        if key == 0 { key = RaylibRepeatedKey() }
+        BeginRaylibFrame()
+        ok := RaylibBundleFrame(*host, RaylibViewport(), key)
+        captured: bool
+        if ok && CaptureRequested() { captured = CaptureConfigured() }
+        unused EndRaylibFrame()
+        if !ok && host.player.failed { return 1 }
+        if captured { return 0 }
+    }
+    return 0
+}
