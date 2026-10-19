@@ -148,7 +148,7 @@ try {
     assert(picker.nodeId,'The generic player has no ZIB file picker');
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'invalid.zib')]});
     await delay(400);
-    assert.match(await evaluate('document.querySelector("#zib-controls span").textContent'),/invalid|capability/);
+    assert.match(await evaluate('document.querySelector("#zib-controls span").textContent'),/not a valid ZIB|invalid|capability/);
     assert.equal(await evaluate(textPixels),clicked,'Invalid file disturbed the running app');
     await evaluate('Module.FS.writeFile("/tmp/kryon-zib/private.png",Module.FS.readFile("/tmp/kryon-zib/assets/red.png"))');
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[downloaded]});
