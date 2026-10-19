@@ -33,4 +33,7 @@ PressResult :: struct {
     // Where the pointer is while the press continues or where it ended.
     x: float32
     y: float32
+    // The secondary (right) button was released on the area this frame, to
+    // open the item's context menu; x and y say where.
+    right_clicked: bool
 }

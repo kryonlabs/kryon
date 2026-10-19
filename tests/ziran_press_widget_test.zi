@@ -1,5 +1,6 @@
 // A press clicks, becomes a hold after its time, reports the pointer while
 // it lasts and, with capture, keeps it off the area; Enter and Space click it.
+// Releasing the secondary button on it reports a right click there.
 #import "session"
 #import "geometry"
 #import "press_props"
@@ -29,6 +30,12 @@ Frame :: (now: float64) -> bool {
 
 Pointer :: (x: float32, y: float32, down: bool, pressed: bool, released: bool) {
     unused TreePointerUpdate(session, PointerFrame.{x, y, down, pressed, released})
+}
+
+// The secondary button, released this frame or not, with the pointer at x, y.
+Secondary :: (x: float32, y: float32, released: bool) {
+    Pointer(x, y, false, false, false)
+    TreeSecondaryPointerUpdate(session, SecondaryPointerFrame.{false, false, released})
 }
 
 #program_export
@@ -75,6 +82,16 @@ Answer :: () -> s32 {
     if !Frame(4.1) || !result.clicked { return 14 }
     unused KeyboardSend(session, 0)
 
+    // Releasing the secondary button on the area is a right click there,
+    // never a click; off the area it is nothing.
+    Secondary(40.0, 30.0, true)
+    if !Frame(4.5) || !result.right_clicked || result.clicked || result.x != 40.0 || result.y != 30.0 { return 28 }
+    Secondary(40.0, 30.0, false)
+    if !Frame(4.6) || result.right_clicked { return 29 }
+    Secondary(300.0, 200.0, true)
+    if !Frame(4.7) || result.right_clicked { return 30 }
+    Secondary(300.0, 200.0, false)
+
     // A disabled area neither clicks nor holds.
     disabled = true
     if !Frame(5.0) { return 15 }
@@ -82,6 +99,9 @@ Answer :: () -> s32 {
     if !Frame(5.1) || result.down { return 16 }
     Pointer(20.0, 20.0, false, false, true)
     if !Frame(5.2) || result.clicked { return 17 }
+    Secondary(20.0, 20.0, true)
+    if !Frame(5.3) || result.right_clicked { return 31 }
+    Secondary(20.0, 20.0, false)
     disabled = false
 
     // In a scrollable list a press arms the list's drag; once the press is

@@ -79,6 +79,14 @@ Press :: (session: Session, props: PressProps) -> PressResult {
     // Lifting the pointer after a hold is not also a click.
     held_before: bool = state.open && state.index == 1
     result.clicked = activated && !props.disabled && !held_before
+    secondary: SecondaryPointerFrame = SecondaryPointerSample(session)
+    pointer: PointerFrame = PointerSample(session)
+    if secondary.released && !props.disabled && previous >= 0 && TreeInputAllowedAt(session, previous) &&
+    PointInBounds(pointer.x, pointer.y, props.bounds) {
+        result.right_clicked = true
+        result.x = pointer.x
+        result.y = pointer.y
+    }
     if !drag.active {
         state.open = false
         state.index = 0

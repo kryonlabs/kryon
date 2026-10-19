@@ -6905,7 +6905,7 @@ WidgetValidPressProps :: (value: HostValue) -> bool {
 }
 
 WidgetPressResultCodec :: struct {
-    fields: [7]HostField
+    fields: [8]HostField
 }
 
 WidgetEncodePressResult :: (data: PressResult, codec: *WidgetPressResultCodec) -> HostValue {
@@ -6913,7 +6913,7 @@ WidgetEncodePressResult :: (data: PressResult, codec: *WidgetPressResultCodec) -
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("PressResult")
     value.fields = *codec.fields[0]
-    value.field_count = 7
+    value.field_count = 8
     codec.fields[0].name = HostTextData("node")
     codec.fields[0].value = HostScalar("s32", cast(s64)data.node)
     codec.fields[1].name = HostTextData("clicked")
@@ -6928,6 +6928,8 @@ WidgetEncodePressResult :: (data: PressResult, codec: *WidgetPressResultCodec) -
     codec.fields[5].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.x}
     codec.fields[6].name = HostTextData("y")
     codec.fields[6].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.y}
+    codec.fields[7].name = HostTextData("right_clicked")
+    codec.fields[7].value = HostScalar("bool", ifx data.right_clicked then 1 else 0)
     return value
 }
 
@@ -6973,6 +6975,12 @@ WidgetDecodePressResult :: (value: HostValue, codec: *WidgetPressResultCodec) ->
         field_at := HostFieldAt(value, 6, "y")
         if field_at >= 0 {
             data.y = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "right_clicked")
+        if field_at >= 0 {
+            data.right_clicked = value.fields[field_at].value.integer != 0
         }
     }
     return data
@@ -7022,6 +7030,12 @@ WidgetValidPressResult :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 6, "y")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "right_clicked")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
         }
     }
     return true
