@@ -142,8 +142,11 @@ try {
 
   if (named("TableView") !== undefined) {
   await choose(named("TableView"));
-  assert.match(await evaluate('document.getElementById("widget-note").textContent'), /no maintained table renderer/);
-  checks.push('TableView renderer gap is visible');
+  assert.match(await evaluate('document.getElementById("widget-note").textContent'), /Select a cell/);
+  const tableBefore = await capture('table', true);
+  await clickWidget(90, 116);
+  assert.notEqual(await capture('table-selection', true), tableBefore);
+  checks.push('TableView renders data and changes cell selection');
   }
   if (named("Kanban") !== undefined) {
   await choose(named("Kanban")); await capture('kanban', true);
