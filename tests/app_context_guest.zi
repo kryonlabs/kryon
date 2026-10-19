@@ -1,5 +1,6 @@
 #import "app_context"
 #import "app_protocol"
+#import "vec"
 
 #program_export
 main :: () -> s32 {
@@ -14,6 +15,13 @@ main :: () -> s32 {
             unused DocumentWrite("entry.json", "wrong")
         }
         return APP_PROTOCOL
+    }
+    if AppMode() == APP_SAVE {
+        // Built during the run, so the bundle reclaims it when the run returns.
+        reply: Vec(u8)
+        BuilderPrint(*reply, "{\"saved\":%,\"day\":%}", true, 18)
+        AppReply(BuilderFinish(reply))
+        return 0
     }
     if AppSupports("missing.service") { return 1 }
     if AppService("missing.service", "") != "{\"status\":\"unavailable\"}" { return 2 }

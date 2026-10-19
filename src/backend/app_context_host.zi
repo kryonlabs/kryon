@@ -3,6 +3,7 @@
 #import "std/bundle_host"
 #import "std/byte_text_linux"
 #import "std/c_string"
+#import "std/vec"
 #import "app_protocol"
 #import "session"
 #import "geometry"
@@ -39,6 +40,7 @@ AppContext :: struct {
     area_input: TextAreaInput
     keyboard: bool
     command: string
+    // The context's own copy of the last reply, kept until the next run.
     reply: string
     // The service callback's returned strings must outlive the bundle run.
     services: HostCall
@@ -98,6 +100,17 @@ AppArgumentText :: (value: HostValue) -> string {
         return ""
     }
     return TextFromBytes(BytesFromPointer(value.data, cast(u64)value.length))
+}
+
+libc :: #system_library "libc";
+AppReplyFreeBytes :: (bytes: *u8) #foreign libc "free";
+
+AppContextDropReply :: (app: *AppContext) {
+    if app.reply.count > 0 {
+        descriptor := cast(*TextDescriptor)(*app.reply)
+        AppReplyFreeBytes(descriptor.data)
+    }
+    app.reply = ""
 }
 
 AppContextCall :: (context: *void, module: *u8, function: *u8,
@@ -168,8 +181,12 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "AppReplyHost" && count == 1 &&
     HostScalarValid(arguments[0], "string", cast(s32)HostString) {
-        // The caller copies this while the bundle's run is still retained.
-        app.reply = AppArgumentText(arguments[0])
+        // The argument is the bundle's own string, which it reclaims when its
+        // run returns, so the reply keeps a copy.
+        AppContextDropReply(app)
+        copy: Vec(u8)
+        BuilderPrint(*copy, "%", AppArgumentText(arguments[0]))
+        app.reply = BuilderFinish(copy)
         return 1
     }
     if app.mode == APP_FRAME {
@@ -264,7 +281,7 @@ AppContextRestart :: (app: *AppContext) -> bool {
 AppContextRun :: (app: *AppContext, mode: s32) -> bool {
     app.mode = mode
     app.keyboard = false
-    app.reply = ""
+    AppContextDropReply(app)
     answer: s64
     return app.identified && app.described && HostedAppRun(AppContextRuntime(app), *answer) && answer == 0
 }

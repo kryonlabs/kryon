@@ -40,10 +40,14 @@ main :: () -> s32 {
     if !AppContextRun(*app, APP_FRAME) || writes != 1 { return 2 }
     if !AppContextRestart(*app) || writes != 1 { return 3 }
     if !AppContextRun(*app, APP_FRAME) || writes != 2 { return 4 }
+    // The reply stays readable after the bundle reclaims its run's strings,
+    // until the next run replaces it.
+    if !AppContextRun(*app, APP_SAVE) || app.reply != "{\"saved\":true,\"day\":18}" { return 9 }
+    if !AppContextRun(*app, APP_FRAME) || app.reply != "" || writes != 3 { return 10 }
     HostedAppClose(*app.app)
-    if Open(*app, "good.zib", "other") || writes != 2 { return 5 }
-    if Open(*app, "future.zib", "diary") || writes != 2 { return 6 }
-    if Open(*app, "identify-write.zib", "diary") || writes != 2 { return 7 }
+    if Open(*app, "good.zib", "other") || writes != 3 { return 5 }
+    if Open(*app, "future.zib", "diary") || writes != 3 { return 6 }
+    if Open(*app, "identify-write.zib", "diary") || writes != 3 { return 7 }
     if AppIdValid("../pass") || AppIdValid("auth/secret") || !AppIdValid("inbe.diary") { return 8 }
     return 0
 }

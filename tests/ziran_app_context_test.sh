@@ -18,5 +18,7 @@ done
     -o "$work/c" "$repo/tests/app_context_test.zi"
 "${CC:-cc}" -O2 -std=c11 -ffunction-sections -fdata-sections -I"$work/c" -I"$ziran_root/include" \
     "$work"/c/*.c "${ZIRAN_LIB:-$ziran_root/build/libziran.a}" -Wl,--gc-sections -lm -lpthread -o "$work/run"
-(cd "$work" && ./run)
-echo 'Portable app identity, API compatibility, optional services, restart and identification isolation passed'
+# glibc overwrites freed memory here, so reading a reply the bundle has
+# already reclaimed fails instead of passing by luck.
+(cd "$work" && GLIBC_TUNABLES=glibc.malloc.tcache_count=0 MALLOC_PERTURB_=165 ./run)
+echo 'Portable app identity, API compatibility, optional services, replies, restart and identification isolation passed'
