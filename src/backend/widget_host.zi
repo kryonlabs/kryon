@@ -107,6 +107,7 @@ widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 // capabilities before it runs.
 WidgetHostSupports :: (module: string, function: string) -> bool {
     return (ModuleName(module, "text_widget") && function == "TextHostedHost") ||
+    (ModuleName(module, "text_widget") && function == "TextLinkAtHostedHost") ||
     (ModuleName(module, "image_widget") && function == "ImageHostedHost") ||
     (ModuleName(module, "button_widget") && function == "ButtonHostedHost") ||
     (ModuleName(module, "text_area_widget") && function == "TextAreaHostedHost") ||
@@ -127,6 +128,28 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
 }
 
 WidgetHostPackedPath :: (path: string) -> string { return path }
+
+// A portable Text's props with its strong and link ranges attached.
+WidgetHostTextProps :: (props: HostValue) -> TextProps {
+    text: TextProps = WidgetDecodeTextProps(props, *widget_text_codec)
+    text.strong = widget_text_codec.strong_decoded[:HostSliceLength(props, 15, "strong")]
+    text.links = widget_text_codec.links_decoded[:HostSliceLength(props, 18, "links")]
+    return text
+}
+
+// Which of a portable Text's links is under a point, as TextLinkAt.
+WidgetHostTextLinkAt :: (session: Session, arguments: *HostValue, result: *HostValue) -> s32 {
+    props := arguments[1]
+    if !WidgetValidTextProps(props) ||
+    !HostScalarValid(arguments[2], "float32", cast(s32)HostReal) ||
+    !HostScalarValid(arguments[3], "float32", cast(s32)HostReal) {
+        return 0
+    }
+    hit := TextLinkAt(session, WidgetHostTextProps(props),
+        cast(float32)arguments[2].real, cast(float32)arguments[3].real)
+    result.* = HostScalar("s32", cast(s64)hit)
+    return 1
+}
 
 WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed, resolve: WidgetAssetResolve = WidgetHostPackedPath) {
     widget_host_session = session
@@ -216,6 +239,9 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     if ModuleName(owner, "context_menu_widget") && name == "ContextMenuHostedHost" && count == 3 {
         return WidgetHostContextMenu(session, arguments, result)
     }
+    if ModuleName(owner, "text_widget") && name == "TextLinkAtHostedHost" && count == 4 {
+        return WidgetHostTextLinkAt(session, arguments, result)
+    }
     if count != 2 {
         return 0
     }
@@ -233,9 +259,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         return 1
     }
     if ModuleName(owner, "text_widget") && name == "TextHostedHost" && WidgetValidTextProps(props) {
-        text: TextProps = WidgetDecodeTextProps(props, *widget_text_codec)
-        text.strong = widget_text_codec.strong_decoded[:HostSliceLength(props, 15, "strong")]
-        Text(session, text)
+        Text(session, WidgetHostTextProps(props))
         return 1
     }
     if ModuleName(owner, "image_widget") && name == "ImageHostedHost" && WidgetValidImageProps(props) {

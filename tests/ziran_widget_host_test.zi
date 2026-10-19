@@ -158,6 +158,30 @@ main :: () -> s32 {
     if HostFieldAt(older, 0, "text") != 0 || Call("text_widget", "TextHostedHost", older_arguments[:], *result) != 1 {
         return 5
     }
+    // A portable Text's links cross with it, and the host answers which one
+    // is under a point; a point that is not a pair of float32 is refused.
+    if !WidgetHostSupports("p0123456789abcdef_text_widget", "TextLinkAtHostedHost") { return 90 }
+    link_ranges: [1]TextRange = .[TextRange.{0, 6}]
+    link_codec: WidgetTextPropsCodec
+    link_arguments: [4]HostValue
+    link_arguments[0] = arguments[0]
+    link_arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted",
+            .bounds = Rectangle.{0.0, 0.0, 200.0, 20.0}, .links = link_ranges[:]}, *link_codec)
+    link_arguments[2] = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = 2.0}
+    link_arguments[3] = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = 90.0}
+    linked_props := WidgetHostTextProps(link_arguments[1])
+    if linked_props.links.count != 1 || linked_props.links[0].start != 0 || linked_props.links[0].end != 6 {
+        return 91
+    }
+    if Call("text_widget", "TextLinkAtHostedHost", link_arguments[:], *result) != 1 ||
+    result.integer != -1 || TextFromCString(result.type_name) != "s32" {
+        return 92
+    }
+    link_arguments[3] = HostScalar("s32", 5)
+    if Call("text_widget", "TextLinkAtHostedHost", link_arguments[:], *result) != 0 ||
+    Call("text_widget", "TextLinkAtHostedHost", link_arguments[:3], *result) != 0 {
+        return 93
+    }
     // Assets pass the host's policy; texture handles never cross.
     arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "assets/photo.png",
             .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}, *image_codec)

@@ -4,6 +4,10 @@
 
 ### Added
 
+- Inline links in `Text`: `TextProps.links` marks web links in the text,
+  which are painted inside the words in the theme's `link` color with an
+  underline, and `TextLinkAt` tells which link is under a pointer so an app
+  can open it. Portable apps can use both through their host.
 - Shapes beyond rectangles: `Line` draws a line of any thickness at any
   angle, `Circle` a filled circle that can fade from its centre to its rim,
   `Ring` a full ring or an arc between two radii, and `Triangle` a filled

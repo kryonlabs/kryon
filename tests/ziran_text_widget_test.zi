@@ -6,6 +6,7 @@ TestSession :: () -> Session {
 }
 
 #import "control_props"
+#import "drawing_props"
 #import "geometry"
 #import "style"
 #import "style_sheet"
@@ -115,6 +116,60 @@ main :: () -> s32 {
     if TypedFrame(typed, 7) != 1 || TextHostTypedValue(0) != typed.text {
         return 8
     }
+    return LinkChecks()
+}
+
+SameColor :: (color: Color, r: s32, g: s32, b: s32, a: s32) -> bool {
+    return cast(s32)color.r == r && cast(s32)color.g == g && cast(s32)color.b == b &&
+    cast(s32)color.a == a
+}
+
+// A link is painted inside the ordinary text in the theme's link color,
+// with the text's opacity, and underlined on each line it reaches.
+// TextLinkAt finds it under a point on any of those lines.
+LinkChecks :: () -> s32 {
+    name: [4]u8 = .[cast(u8)108, cast(u8)105, cast(u8)110, cast(u8)107]
+    if !SetStyleTokenColorBytes(name[:], cast(u32)0x80a0ffff) { return 9 }
+    TextHostLinks()
+    ranges: [1]TextRange = .[TextRange.{3, 10}]
+    linked := TextProps.{.key = cast(u64)10, .bounds = Rectangle.{0.0, 0.0, 80.0, 28.0},
+        .text = "ab cdef gh", .class_name = 7, .links = ranges[:]}
+    BeginFrame(TestSession(), cast(u64)8, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    Text(TestSession(), linked)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TextHostFailed() ||
+    TextHostLabels() != 3 || TextHostFills() != 2 {
+        return 10
+    }
+    if TextHostLinkValue(0) != "ab " || TextHostLinkX(0) != 0 ||
+    !SameColor(TextHostLinkColor(0), 0x11, 0x22, 0x33, 127) {
+        return 11
+    }
+    if TextHostLinkValue(1) != "cdef" || TextHostLinkX(1) != 30 || TextHostLinkY(1) != 0 ||
+    !SameColor(TextHostLinkColor(1), 0x80, 0xa0, 0xff, 127) {
+        return 12
+    }
+    if TextHostLinkValue(2) != "gh" || TextHostLinkX(2) != 0 || TextHostLinkY(2) != 16 ||
+    !SameColor(TextHostLinkColor(2), 0x80, 0xa0, 0xff, 127) {
+        return 13
+    }
+    first := TextHostLinkFill(0)
+    second := TextHostLinkFill(1)
+    if first.x != 30.0 || first.y != 11.0 || first.width != 40.0 || first.height != 1.0 ||
+    second.x != 0.0 || second.y != 27.0 || second.width != 20.0 ||
+    !SameColor(TextHostLinkFillColor(0), 0x80, 0xa0, 0xff, 127) {
+        return 14
+    }
+    if TextLinkAt(TestSession(), linked, 35.0, 5.0) != 0 ||
+    TextLinkAt(TestSession(), linked, 15.0, 5.0) != -1 ||
+    TextLinkAt(TestSession(), linked, 5.0, 20.0) != 0 ||
+    TextLinkAt(TestSession(), linked, 45.0, 20.0) != -1 ||
+    TextLinkAt(TestSession(), linked, 35.0, 40.0) != -1 {
+        return 15
+    }
+    plain := linked
+    plain.links = ranges[:0]
+    if TextLinkAt(TestSession(), plain, 35.0, 5.0) != -1 { return 16 }
+    ClearStyleTokenColors()
     return 0
 }
 

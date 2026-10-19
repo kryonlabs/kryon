@@ -8,6 +8,59 @@ emphasis: bool;
 typing: bool;
 typed_values: [4]string;
 typed_x: [4]s32;
+linking: bool;
+link_values: [8]string;
+link_x: [8]s32;
+link_y: [8]s32;
+link_colors: [8]Color;
+link_fills: [4]Rectangle;
+link_fill_colors: [4]Color;
+
+// Linked text records each painted piece and each underline.
+#program_export
+TextHostLinks :: () {
+    linking = true
+    typing = false
+    emphasis = false
+    texts = 0
+    fills = 0
+}
+
+#program_export
+TextHostLinkValue :: (index: s32) -> string {
+    if index < 0 || index >= 8 { return "" }
+    return link_values[index]
+}
+
+#program_export
+TextHostLinkX :: (index: s32) -> s32 {
+    if index < 0 || index >= 8 { return -1 }
+    return link_x[index]
+}
+
+#program_export
+TextHostLinkY :: (index: s32) -> s32 {
+    if index < 0 || index >= 8 { return -1 }
+    return link_y[index]
+}
+
+#program_export
+TextHostLinkColor :: (index: s32) -> Color {
+    if index < 0 || index >= 8 { return Color.{} }
+    return link_colors[index]
+}
+
+#program_export
+TextHostLinkFill :: (index: s32) -> Rectangle {
+    if index < 0 || index >= 4 { return Rectangle.{} }
+    return link_fills[index]
+}
+
+#program_export
+TextHostLinkFillColor :: (index: s32) -> Color {
+    if index < 0 || index >= 4 { return Color.{} }
+    return link_fill_colors[index]
+}
 
 // Typed text records what each painted line shows and where it starts.
 #program_export
@@ -69,6 +122,16 @@ RasterText :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
+    if linking {
+        if texts < 8 {
+            link_values[texts] = value
+            link_x[texts] = x
+            link_y[texts] = y
+            link_colors[texts] = color
+        }
+        texts += 1
+        return
+    }
     if typing {
         if texts < 4 {
             typed_values[texts] = value
@@ -125,6 +188,15 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
+    if linking {
+        if fills < 4 {
+            link_fills[fills] = bounds
+            link_fill_colors[fills] = color
+        }
+        if radius != 0.0 || segments != 1 { failed = true }
+        fills += 1
+        return
+    }
     if fills >= 2 || texts != fills + 1 { failed = true }
     expected_x: float32 = 10.0
     expected_y: float32 = 26.0

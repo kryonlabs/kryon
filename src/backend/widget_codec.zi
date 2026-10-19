@@ -165,11 +165,14 @@ WidgetValidTextRange :: (value: HostValue) -> bool {
 }
 
 WidgetTextPropsCodec :: struct {
-    fields: [18]HostField
+    fields: [19]HostField
     bounds: WidgetRectangleCodec
     strong_values: [1024]HostValue
     strong_codecs: [1024]WidgetTextRangeCodec
     strong_decoded: [1024]TextRange
+    links_values: [1024]HostValue
+    links_codecs: [1024]WidgetTextRangeCodec
+    links_decoded: [1024]TextRange
 }
 
 WidgetEncodeTextProps :: (data: TextProps, codec: *WidgetTextPropsCodec) -> HostValue {
@@ -177,7 +180,7 @@ WidgetEncodeTextProps :: (data: TextProps, codec: *WidgetTextPropsCodec) -> Host
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("TextProps")
     value.fields = *codec.fields[0]
-    value.field_count = 18
+    value.field_count = 19
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("bounds")
@@ -225,6 +228,19 @@ WidgetEncodeTextProps :: (data: TextProps, codec: *WidgetTextPropsCodec) -> Host
     codec.fields[16].value = HostScalar("bool", ifx data.typing then 1 else 0)
     codec.fields[17].name = HostTextData("typed")
     codec.fields[17].value = HostScalar("s32", cast(s64)data.typed)
+    codec.fields[18].name = HostTextData("links")
+    codec.fields[18].value.kind = cast(s32)HostSlice
+    codec.fields[18].value.type_name = HostTextData("[]TextRange")
+    codec.fields[18].value.length = cast(usize)data.links.count
+    if codec.fields[18].value.length > cast(usize)1024 { codec.fields[18].value.length = cast(usize)1024 }
+    codec.fields[18].value.elements = *codec.links_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[18].value.length {
+            codec.links_values[index] = WidgetEncodeTextRange(data.links[index], *codec.links_codecs[index])
+            index += cast(usize)1
+        }
+    }
     return value
 }
 
@@ -343,6 +359,19 @@ WidgetDecodeTextProps :: (value: HostValue, codec: *WidgetTextPropsCodec) -> Tex
         field_at := HostFieldAt(value, 17, "typed")
         if field_at >= 0 {
             data.typed = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 18, "links")
+        if field_at >= 0 {
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    codec.links_decoded[index] = WidgetDecodeTextRange(value.fields[field_at].value.elements[index], *codec.links_codecs[index])
+                    index += cast(usize)1
+                }
+            }
+            // Slice storage is attached by the rendering effect after decoding.
         }
     }
     return data
@@ -466,6 +495,20 @@ WidgetValidTextProps :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 17, "typed")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 18, "links")
+        if field_at >= 0 {
+            if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]TextRange" ||
+                value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    if !WidgetValidTextRange(value.fields[field_at].value.elements[index]) { return false }
+                    index += cast(usize)1
+                }
+            }
         }
     }
     return true

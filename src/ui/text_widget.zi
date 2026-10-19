@@ -7,8 +7,13 @@ Theme :: #import "theme";
     #import "text_props"
     host_api :: #system_library "host_api";
     TextHostedHost :: (session: Session, props: TextProps) #foreign host_api;
+    TextLinkAtHostedHost :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 #foreign host_api;
     #program_export
     Text :: (session: Session, props: TextProps) { TextHostedHost(session, props) }
+    #program_export
+    TextLinkAt :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 {
+        return TextLinkAtHostedHost(session, props, x, y)
+    }
 } else {
     #import "session"
     #import "control_props"
@@ -92,9 +97,84 @@ Theme :: #import "theme";
             if start >= end {
                 continue
             }
-            left := x + GlyphWidth(props.text[line.start:start], prepared.font, prepared.typeface)
-            PaintClippedEmphasis(session, node, props.text[start:end], left, y,
-                prepared.font, prepared.color, clip)
+            at := start
+            while at < end {
+                run := TextLinkRunAt(props, at, end)
+                left := x + GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
+                color := ifx run.link then TextLinkColor(prepared.color) else prepared.color
+                PaintClippedEmphasis(session, node, props.text[at:run.end], left, y,
+                    prepared.font, color, clip)
+                at = run.end
+            }
+        }
+    }
+
+    // The theme's link color, as see-through as the text around it; a theme
+    // without one uses the light accent.
+    TextLinkColor :: (text: Color) -> Color {
+        link := StyleTokenColorOr("link", ColorFromPacked(Theme.LightAccent()))
+        link.a = cast(u8)((cast(s32)link.a * cast(s32)text.a) / 255)
+        return link
+    }
+
+    // A run of characters that are all inside one link or all outside links.
+    TextLinkRun :: struct {
+        end: s32
+        link: bool
+    }
+
+    // The run that starts at `at` and ends at most at `limit`.
+    TextLinkRunAt :: (props: TextProps, at: s32, limit: s32) -> TextLinkRun {
+        run := TextLinkRun.{.end = limit, .link = false}
+        previous_end: s32 = 0
+        for range: props.links {
+            if !TextRangeValid(props.text, range, previous_end) {
+                continue
+            }
+            previous_end = range.end
+            if range.end <= at {
+                continue
+            }
+            if range.start <= at {
+                run.link = true
+                if range.end < limit {
+                    run.end = range.end
+                }
+                return run
+            }
+            if range.start < limit {
+                run.end = range.start
+            }
+            return run
+        }
+        return run
+    }
+
+    // Paints a line's characters, from line_start for value's length: link
+    // characters in the link color and underlined, the others in the text's
+    // color.
+    PaintTextLineRuns :: (session: Session, node: s32, props: TextProps,
+        prepared: PreparedText, line_start: s32, value: string, x: s32, y: s32, clip: Rectangle) {
+        line_end := line_start + cast(s32)value.count
+        at := line_start
+        while at < line_end {
+            run := TextLinkRunAt(props, at, line_end)
+            left := x + GlyphWidth(props.text[line_start:at], prepared.font, prepared.typeface)
+            if !run.link {
+                PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
+                    prepared.color, clip)
+            } else {
+                color := TextLinkColor(prepared.color)
+                PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
+                    color, clip)
+                width := GlyphWidth(props.text[at:run.end], prepared.font, prepared.typeface)
+                underline := RectangleIntersection(Rectangle.{cast(float32)left,
+                        cast(float32)(y + prepared.line_height - 1), cast(float32)width, 1.0}, clip)
+                if underline.width > 0.0 && underline.height > 0.0 {
+                    PaintRoundedFill(session, node, underline, 0.0, 1, color)
+                }
+            }
+            at = run.end
         }
     }
 
@@ -240,8 +320,7 @@ Theme :: #import "theme";
                 }
             }
             if value != "" {
-                PaintClippedLabel(session, node, value, x, y, prepared.font,
-                    prepared.color, clip)
+                PaintTextLineRuns(session, node, props, prepared, line.start, value, x, y, clip)
                 if ellipsis {
                     PaintClippedLabel(session, node, "...",
                         x + line.width - dots_width, y, prepared.font,
@@ -263,14 +342,19 @@ Theme :: #import "theme";
         }
     }
 
-    #program_export
-    Text :: (session: Session, props: TextProps) {
+    // The face Text paints props with.
+    TextFaceOf :: (props: TextProps) -> TextFace {
         defaults: TextFace = DefaultTextFace()
         if props.fallback_font > 0 {
             defaults.fallback_font = props.fallback_font
             defaults.value.font_size = cast(float32)props.fallback_font
         }
-        face: TextFace = TextFaceFor(props, defaults)
+        return TextFaceFor(props, defaults)
+    }
+
+    #program_export
+    Text :: (session: Session, props: TextProps) {
+        face: TextFace = TextFaceOf(props)
         prepared: PreparedText = PrepareText(props, face)
         node: s32 = -1
         if TreeIsBuilding(session) {
@@ -288,6 +372,51 @@ Theme :: #import "theme";
             return
         }
         PaintTextLines(session, node, props, prepared)
+    }
+
+    // The index in props.links of the link whose characters Text paints
+    // under (x, y), on any of its lines, or -1.
+    #program_export
+    TextLinkAt :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 {
+        if props.links.count == 0 {
+            return -1
+        }
+        prepared := PrepareText(props, TextFaceOf(props))
+        top := TextFirstLineY(props, prepared)
+        start: s32 = 0
+        while start <= cast(s32)props.text.count {
+            line := NextTextLine(props.text, start, prepared.bounds.width,
+                prepared.wrap, prepared.font, prepared.typeface)
+            bottom := top + prepared.line_height + prepared.line_gap
+            if y >= cast(float32)top && y < cast(float32)bottom {
+                left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
+                    line.width, cast(s32)props.align)
+                previous_end: s32 = 0
+                for range, index: props.links {
+                    if !TextRangeValid(props.text, range, previous_end) {
+                        continue
+                    }
+                    previous_end = range.end
+                    first := ifx range.start > line.start then range.start else line.start
+                    last := ifx range.end < line.end then range.end else line.end
+                    if first >= last {
+                        continue
+                    }
+                    from := left + GlyphWidth(props.text[line.start:first], prepared.font, prepared.typeface)
+                    to := left + GlyphWidth(props.text[line.start:last], prepared.font, prepared.typeface)
+                    if x >= cast(float32)from && x < cast(float32)to {
+                        return cast(s32)index
+                    }
+                }
+                return -1
+            }
+            if line.next <= start {
+                break
+            }
+            start = line.next
+            top = bottom
+        }
+        return -1
     }
 
     TextFirstLineY :: (props: TextProps, prepared: PreparedText) -> s32 {

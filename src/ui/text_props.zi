@@ -52,6 +52,10 @@ TextProps :: struct {
     // size and the accessible label always keep the whole text.
     typing: bool
     typed: s32
+    // Web links in the visible text, as for strong. Each is painted in the
+    // theme's link color and underlined, inside the ordinary text; TextLinkAt
+    // finds the one under a pointer so the caller can open it.
+    links: []TextRange
 }
 
 PreparedText :: struct {

@@ -7,7 +7,8 @@ Check :: () -> s32 {
     if AppModule("other_app_context") || AppModule("p0123456789abcdeg_app_context") || AppModule("p0123456789abcde_app_context") { return 2 }
     if !WidgetHostSupports("text_widget", "TextHostedHost") ||
     !WidgetHostSupports("kryon_text_widget", "TextHostedHost") ||
-    !WidgetHostSupports("p0123456789abcdef_text_widget", "TextHostedHost") { return 3 }
+    !WidgetHostSupports("p0123456789abcdef_text_widget", "TextHostedHost") ||
+    !WidgetHostSupports("p0123456789abcdef_text_widget", "TextLinkAtHostedHost") { return 3 }
     if WidgetHostSupports("other_text_widget", "TextHostedHost") ||
     WidgetHostSupports("p0123456789abcdef_text_widget", "ImageHostedHost") ||
     WidgetHostSupports("p0123456789abcdef_text_widget", "ReadStoreHost") { return 4 }
