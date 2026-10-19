@@ -7,7 +7,10 @@ glib :: #system_library "glib-2.0";
 gdk :: #system_library "gdk-3";
 gobject :: #system_library "gobject-2.0";
 x11 :: #system_library "X11";
+libc :: #system_library "libc";
 FileDialogInit :: (argc: *s32, argv: ***u8) -> s32 #foreign gtk "gtk_init_check";
+SetLocale :: (category: s32, locale: *u8) -> *u8 #foreign libc "setlocale";
+LC_ALL :: 6
 New :: (title: *u8, parent: *void, action: s32, first_button: *u8) -> *void #foreign gtk "gtk_file_chooser_dialog_new";
 AddButton :: (dialog: *void, label: *u8, response: s32) -> *void #foreign gtk "gtk_dialog_add_button";
 Default :: (dialog: *void, response: s32) #foreign gtk "gtk_dialog_set_default_response";
@@ -49,11 +52,23 @@ FileDialogProps :: struct {
 }
 FileDialogResult :: struct { available: bool; accepted: bool; bytes: s32 }
 
+// GTK's first initialization adopts the user's locale for the whole process.
+// Restore the host's: a decimal comma breaks every portable app program's
+// float literals, as the tray notes.
+InitKeepingLocale :: () -> bool {
+    saved: [256]u8
+    current := SetLocale(LC_ALL, null)
+    kept := current != null && CopyCString(TextFromCString(current), saved[:])
+    ready := FileDialogInit(null, null) != 0
+    if kept { unused SetLocale(LC_ALL, *saved[0]) }
+    return ready
+}
+
 #program_export
 FileDialog :: (props: FileDialogProps, output: []u8) -> FileDialogResult {
     result: FileDialogResult
     title: [1024]u8; accept: [128]u8; cancel: [16]u8; name: [4096]u8
-    if output.count < 2 || !CopyCString(props.title, title[:]) || FileDialogInit(null, null) == 0 { return result }
+    if output.count < 2 || !CopyCString(props.title, title[:]) || !InitKeepingLocale() { return result }
     label := props.accept_label; if label == "" { label = ifx props.save then "_Save" else "_Open" }
     if !CopyCString(label, accept[:]) || !CopyCString("_Cancel", cancel[:]) { return result }
     action: s32 = ifx props.save then 1 else 0
