@@ -8,8 +8,11 @@ Theme :: #import "theme";
     host_api :: #system_library "host_api";
     TextHostedHost :: (session: Session, props: TextProps) #foreign host_api;
     TextLinkAtHostedHost :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 #foreign host_api;
+    TextWidthHostedHost :: (session: Session, props: TextProps) -> s32 #foreign host_api;
     #program_export
     Text :: (session: Session, props: TextProps) { TextHostedHost(session, props) }
+    #program_export
+    TextWidth :: (session: Session, props: TextProps) -> s32 { return TextWidthHostedHost(session, props) }
     #program_export
     TextLinkAt :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 {
         return TextLinkAtHostedHost(session, props, x, y)
@@ -350,6 +353,15 @@ Theme :: #import "theme";
             defaults.value.font_size = cast(float32)props.fallback_font
         }
         return TextFaceFor(props, defaults)
+    }
+
+    // The width props.text takes on one line, in the font and typeface Text
+    // draws it with, so a caller can place controls right beside it.
+    #program_export
+    TextWidth :: (session: Session, props: TextProps) -> s32 {
+        unused session
+        prepared: PreparedText = PrepareText(props, TextFaceOf(props))
+        return GlyphWidth(props.text, prepared.font, prepared.typeface)
     }
 
     #program_export

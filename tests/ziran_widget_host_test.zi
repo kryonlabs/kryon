@@ -182,6 +182,23 @@ main :: () -> s32 {
     Call("text_widget", "TextLinkAtHostedHost", link_arguments[:3], *result) != 0 {
         return 93
     }
+    // A portable app measures a line of text with the host's own fonts, to
+    // place controls beside it.
+    if !WidgetHostSupports("p0123456789abcdef_text_widget", "TextWidthHostedHost") { return 94 }
+    width_codec: WidgetTextPropsCodec
+    width_arguments: [2]HostValue = .[arguments[0], WidgetEncodeTextProps(TextProps.{.text = "Hosted",
+            .bounds = Rectangle.{0.0, 0.0, 200.0, 20.0}}, *width_codec)]
+    if Call("text_widget", "TextWidthHostedHost", width_arguments[:], *result) != 1 ||
+    TextFromCString(result.type_name) != "s32" || result.integer <= 0 {
+        return 95
+    }
+    short_width := result.integer
+    width_arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted and longer",
+            .bounds = Rectangle.{0.0, 0.0, 200.0, 20.0}}, *width_codec)
+    if Call("text_widget", "TextWidthHostedHost", width_arguments[:], *result) != 1 ||
+    result.integer <= short_width {
+        return 96
+    }
     // Assets pass the host's policy; texture handles never cross.
     arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "assets/photo.png",
             .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}, *image_codec)
