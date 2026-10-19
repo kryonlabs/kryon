@@ -2,9 +2,17 @@
   "format": 1,
   "packages": [
     {
-      "commit": "aa1281eba2ed3adc93308e0a80196e32683e7a0b",
-      "dependencies": {"kryon": "p7ae5fbb4f3ddc252"},
-      "id": "p0a9cefe423582025",
+      "commit": "a5b47e5a3d94507a2eb935238a5cae2a6b1960a6",
+      "dependencies": {"kryon": "p94b008abd1cfa2bc"},
+      "id": "p3298346fff363bab",
+      "name": "DataViews",
+      "ref": "master",
+      "url": "https://github.com/kryonlabs/data-views.git"
+    },
+    {
+      "commit": "0d8ddc29ed60f2ff336892e05967a5b5d41ffecc",
+      "dependencies": {"kryon": "p94b008abd1cfa2bc"},
+      "id": "p50e012a6abad92ff",
       "name": "plot",
       "ref": "master",
       "url": "https://github.com/kryonlabs/plot.git"
@@ -19,28 +27,20 @@
       "url": "https://github.com/raysan5/raylib.git"
     },
     {
-      "commit": "967133689da900eae71462eb8a748821a94c83f5",
-      "dependencies": {"kryon": "p7ae5fbb4f3ddc252"},
-      "id": "p6f5566c6ded7039e",
-      "name": "DataViews",
-      "ref": "master",
-      "url": "https://github.com/kryonlabs/data-views.git"
-    },
-    {
-      "commit": "3288f4faa006ce10f8574453cb8dd7e1d65e43fe",
+      "commit": "197c26625c083cdb8b3779eb82bca105b993c8ed",
       "dependencies": {"raylib": "p5a77c9c35110e925"},
-      "id": "p7ae5fbb4f3ddc252",
+      "id": "p94b008abd1cfa2bc",
       "name": "kryon",
       "ref": "master",
       "url": "https://github.com/kryonlabs/kryon.git"
     }
   ],
   "root": {
-    "dependencies": {"data_views": "p6f5566c6ded7039e", "kryon": "p7ae5fbb4f3ddc252", "plot": "p0a9cefe423582025"},
+    "dependencies": {"data_views": "p3298346fff363bab", "kryon": "p94b008abd1cfa2bc", "plot": "p50e012a6abad92ff"},
     "name": "gallery"
   },
   "toolchain": {
-    "commit": "5a0a29ce0dc83bc347148316286813d2910905d7",
+    "commit": "4f3dc0544aad373d3e0311ce9b9a15fd7c3f2e6e",
     "ref": "master",
     "url": "https://github.com/ziranlang/ziran.git"
   }
