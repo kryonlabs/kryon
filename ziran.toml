@@ -46,6 +46,8 @@ app_context_host = "src/backend/app_context_host.zi"
 app_files = "src/backend/app_files.zi"
 app_local = "src/backend/app_local.zi"
 hosted_values = "src/backend/hosted_values.zi"
+# Hosts that intercept widget calls match module names as widget_host does.
+bundle_names = "src/backend/bundle_names.zi"
 widget_codec = "src/backend/widget_codec.zi"
 widget_host = "src/backend/widget_host.zi"
 # Direct widget modules let portable hosts select only their required effects.
