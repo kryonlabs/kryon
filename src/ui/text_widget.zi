@@ -378,6 +378,7 @@ Theme :: #import "theme";
     // under (x, y), on any of its lines, or -1.
     #program_export
     TextLinkAt :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 {
+        unused session
         if props.links.count == 0 {
             return -1
         }
