@@ -1,0 +1,41 @@
+// A screen can show more icons than fit a small cache, as a grid of symbols
+// to choose from does. Each icon is rasterized once and painted from the
+// cache on later frames, and a cached icon paints the same cells as the
+// first time.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "paint_queue"
+#import "svg_icon"
+#import "ziran_navigation_bar_widget_host"
+
+ICONS :: 90
+
+// One frame of ICONS icons, each a size of its own, and how many cells it
+// queued.
+Frame :: () -> s32 {
+    shape := "F:M4 4H20L12 20Z"
+    session := SessionOpen()
+    edge: s32 = 1
+    while edge <= ICONS {
+        PaintSvgIcon(session, 0, shape, Rectangle.{0.0, 0.0,
+                cast(float32)edge, cast(float32)edge}, Color.{0, 0, 0, 255})
+        edge += 1
+    }
+    count := PendingPaintCount(session)
+    PaintClear(session)
+    unused SessionClose(session)
+    return count
+}
+
+#program_export
+main :: () -> s32 {
+    before := SvgIconRasterCount()
+    first := Frame()
+    if first == 0 { return 1 }
+    if SvgIconRasterCount() - before != cast(s64)ICONS { return 2 }
+    second := Frame()
+    if SvgIconRasterCount() - before != cast(s64)ICONS { return 3 }
+    if second != first { return 4 }
+    return 0
+}
