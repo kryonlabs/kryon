@@ -40,7 +40,7 @@ KRYON_MODULES = ['session', 'geometry', 'drawing_props', 'text_props', 'image_pr
                  'scroll', 'scroll_props', 'semantic', 'text_align', 'checkbox_props',
                  'toggle_props', 'tab_bar_props', 'box_props', 'press_props', 'spinbox_props',
                  'time_picker_props', 'dropdown', 'dropdown_props', 'title_bar_props',
-                 'modal', 'modal_props', 'context_menu_widget']
+                 'modal', 'modal_props', 'context_menu_widget', 'svg_icon_props']
 KRYON_ROOTS = ['TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
                'ScrollProps', 'ScrollResult', 'Session', 'CheckboxProps', 'CheckboxValueResult',
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
@@ -48,7 +48,7 @@ KRYON_ROOTS = ['TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextA
                'SpinboxProps', 'SpinboxStepResult', 'TimePickerProps', 'TimePickerResult',
                'TitleBarProps', 'TitleBarResult', 'DropdownOption', 'ModalFrameProps',
                'ModalFrameResult', 'ActionModalProps', 'ActionModalAction', 'ActionModalResult',
-               'ContextMenuProps', 'ContextMenuItem', 'ContextMenuResult']
+               'ContextMenuProps', 'ContextMenuItem', 'ContextMenuResult', 'SvgIconProps']
 
 
 def read_schema(paths):

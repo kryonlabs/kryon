@@ -1,0 +1,21 @@
+// A vector icon on its own, such as a symbol beside a name or a coin beside
+// an amount, in a color of the caller's. It takes no input; an icon that
+// does something is a Button with an icon_shape. Portable compositions
+// submit it to their host like the other widgets.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "svg_icon_props"
+    host_api :: #system_library "host_api";
+    SvgIconHostedHost :: (session: Session, props: SvgIconProps) #foreign host_api;
+    #program_export
+    SvgIcon :: (session: Session, props: SvgIconProps) { SvgIconHostedHost(session, props) }
+} else {
+    #import "session"
+    #import "svg_icon"
+    #import "svg_icon_props"
+
+    #program_export
+    SvgIcon :: (session: Session, props: SvgIconProps) {
+        PaintSvgIcon(session, -1, props.shape, props.bounds, props.color)
+    }
+}

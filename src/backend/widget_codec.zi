@@ -28,6 +28,7 @@
 #import "modal"
 #import "modal_props"
 #import "context_menu_widget"
+#import "svg_icon_props"
 using HostValueKind;
 
 WidgetRectangleCodec :: struct {
@@ -9726,6 +9727,75 @@ WidgetValidContextMenuResult :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 2, "closed")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
+
+WidgetSvgIconPropsCodec :: struct {
+    fields: [3]HostField
+    bounds: WidgetRectangleCodec
+    color: WidgetColorCodec
+}
+
+WidgetEncodeSvgIconProps :: (data: SvgIconProps, codec: *WidgetSvgIconPropsCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("SvgIconProps")
+    value.fields = *codec.fields[0]
+    value.field_count = 3
+    codec.fields[0].name = HostTextData("bounds")
+    codec.fields[0].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
+    codec.fields[1].name = HostTextData("shape")
+    codec.fields[1].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.shape), .length = cast(usize)data.shape.count}
+    codec.fields[2].name = HostTextData("color")
+    codec.fields[2].value = WidgetEncodeColor(data.color, *codec.color)
+    return value
+}
+
+WidgetDecodeSvgIconProps :: (value: HostValue, codec: *WidgetSvgIconPropsCodec) -> SvgIconProps {
+    data: SvgIconProps
+    {
+        field_at := HostFieldAt(value, 0, "bounds")
+        if field_at >= 0 {
+            data.bounds = WidgetDecodeRectangle(value.fields[field_at].value, *codec.bounds)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "shape")
+        if field_at >= 0 {
+            data.shape = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "color")
+        if field_at >= 0 {
+            data.color = WidgetDecodeColor(value.fields[field_at].value, *codec.color)
+        }
+    }
+    return data
+}
+
+WidgetValidSvgIconProps :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "SvgIconProps" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "bounds")
+        if field_at >= 0 {
+            if !WidgetValidRectangle(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "shape")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "color")
+        if field_at >= 0 {
+            if !WidgetValidColor(value.fields[field_at].value) { return false }
         }
     }
     return true

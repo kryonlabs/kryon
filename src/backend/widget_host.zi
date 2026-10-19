@@ -22,6 +22,8 @@
 #import "tab_bar_props"
 #import "box_widget"
 #import "box_props"
+#import "svg_icon_widget"
+#import "svg_icon_props"
 #import "press_widget"
 #import "press_props"
 #import "spinbox_widget"
@@ -83,6 +85,7 @@ widget_tab_codecs: [WIDGET_HOST_TAB_LIMIT]WidgetTabCodec;
 widget_tab_bar_codec: WidgetTabBarPropsCodec;
 widget_tab_bar_result_codec: WidgetTabBarResultCodec;
 widget_box_codec: WidgetBoxPropsCodec;
+widget_svg_icon_codec: WidgetSvgIconPropsCodec;
 widget_press_codec: WidgetPressPropsCodec;
 widget_press_result_codec: WidgetPressResultCodec;
 widget_spinbox_codec: WidgetSpinboxPropsCodec;
@@ -120,6 +123,7 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "checkbox_widget") && function == "CheckboxHostedHost") ||
     (ModuleName(module, "toggle_widget") && function == "ToggleHostedHost") ||
     (ModuleName(module, "box_widget") && function == "BoxHostedHost") ||
+    (ModuleName(module, "svg_icon_widget") && function == "SvgIconHostedHost") ||
     (ModuleName(module, "press_widget") && function == "PressHostedHost") ||
     (ModuleName(module, "spinbox_widget") && function == "SpinboxHostedHost") ||
     (ModuleName(module, "time_picker_widget") && function == "TimePickerHostedHost") ||
@@ -253,6 +257,10 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if ModuleName(owner, "box_widget") && name == "BoxHostedHost" && WidgetValidBoxProps(props) {
         result.* = HostScalar("s32", cast(s64)Box(session, WidgetDecodeBoxProps(props, *widget_box_codec)))
+        return 1
+    }
+    if ModuleName(owner, "svg_icon_widget") && name == "SvgIconHostedHost" && WidgetValidSvgIconProps(props) {
+        SvgIcon(session, WidgetDecodeSvgIconProps(props, *widget_svg_icon_codec))
         return 1
     }
     if ModuleName(owner, "text_field_widget") && name == "TextFieldHostedHost" && WidgetValidTextFieldProps(props) {

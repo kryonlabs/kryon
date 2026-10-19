@@ -20,6 +20,8 @@
 #import "modal_props"
 #import "dropdown_props"
 #import "context_menu_widget"
+#import "svg_icon_props"
+#import "drawing_props"
 #import "font_metrics"
 #import "hosted_values"
 #import "widget_codec"
@@ -82,6 +84,7 @@ press_codec: WidgetPressPropsCodec;
 spinbox_codec: WidgetSpinboxPropsCodec;
 spinbox_result: WidgetSpinboxStepResultCodec;
 time_picker_codec: WidgetTimePickerPropsCodec;
+svg_icon_codec: WidgetSvgIconPropsCodec;
 time_picker_result: WidgetTimePickerResultCodec;
 tab_codecs: [40]WidgetTabCodec;
 tab_values: [40]HostValue;
@@ -117,6 +120,7 @@ main :: () -> s32 {
     !WidgetHostSupports("title_bar_widget", "TitleBarHostedHost") ||
     !WidgetHostSupports("modal_frame_widget", "ModalFrameHostedHost") ||
     !WidgetHostSupports("tree", "EndHostedHost") ||
+    !WidgetHostSupports("svg_icon_widget", "SvgIconHostedHost") ||
     WidgetHostSupports("text_widget", "TextNativeHost") {
         return 1
     }
@@ -279,6 +283,17 @@ main :: () -> s32 {
     WidgetDecodeTimePickerResult(result, *time_picker_result).value != 1439 ||
     WidgetDecodeTimePickerResult(result, *time_picker_result).changed {
         return 32
+    }
+    // A vector icon on its own paints its cells and answers nothing.
+    icon_before := PendingPaintCount(session)
+    icon: SvgIconProps
+    icon.bounds = Rectangle.{160.0, 180.0, 24.0, 24.0}
+    icon.shape = "F:M4 4H20L12 20Z"
+    icon.color = Color.{0, 0, 0, 255}
+    arguments[1] = WidgetEncodeSvgIconProps(icon, *svg_icon_codec)
+    if Call("svg_icon_widget", "SvgIconHostedHost", arguments[:2], *result) != 1 ||
+    PendingPaintCount(session) <= icon_before {
+        return 66
     }
     // Slices decode into the codec and are attached by name.
     hidden: [2]TextRange = .[TextRange.{.start = 0, .end = 2}, TextRange.{.start = 6, .end = 8}]

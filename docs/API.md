@@ -133,6 +133,14 @@ and its host may be built against different Kryon layouts.
 generates the codecs for Kryon's widget records and, with `--uses`, for an
 application's own records.
 
+A vector icon that is not a button, such as a symbol beside a name or a coin
+beside an amount, is `SvgIcon(session, SvgIconProps.{bounds, shape, color})`
+from [`svg_icon_widget`](../src/ui/svg_icon_widget.zi); a bundle submits it
+to its host like the other widgets. An icon is rasterized once at the
+screen's pixels and kept, with the 255 others painted most recently, as the
+rectangles it paints, so a screen with many icons does not rasterize them
+again every frame.
+
 [`open_uri`](../src/backend/open_uri.zi) opens a link with the platform's
 handler: `OpenUri(uri)` passes it unchanged to the desktop opener, Windows'
 shell, Plan 9's plumber, an Android `ACTION_VIEW` intent or a new browser tab,
