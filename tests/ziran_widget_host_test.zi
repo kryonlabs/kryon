@@ -203,6 +203,22 @@ main :: () -> s32 {
     result.integer <= short_width {
         return 96
     }
+    // And the height a paragraph takes, wrapped as Text wraps it by
+    // default: a narrow one takes more lines.
+    if !WidgetHostSupports("text_measure", "TextHeightHostedHost") { return 97 }
+    width_arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted and longer",
+            .bounds = Rectangle.{0.0, 0.0, 400.0, 0.0}}, *width_codec)
+    if Call("text_measure", "TextHeightHostedHost", width_arguments[:], *result) != 1 ||
+    TextFromCString(result.type_name) != "s32" || result.integer <= 0 {
+        return 98
+    }
+    one_line := result.integer
+    width_arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted and longer",
+            .bounds = Rectangle.{0.0, 0.0, cast(float32)short_width, 0.0}}, *width_codec)
+    if Call("text_measure", "TextHeightHostedHost", width_arguments[:], *result) != 1 ||
+    result.integer <= one_line {
+        return 99
+    }
     // Assets pass the host's policy; texture handles never cross.
     arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "assets/photo.png",
             .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}, *image_codec)

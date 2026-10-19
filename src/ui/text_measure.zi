@@ -1,6 +1,8 @@
 // The width a line of text takes, so a caller can place controls right
-// beside a label. It stays apart from text_widget, so portable bundles that
-// never measure, such as the Apps controller, keep their reviewed bytes.
+// beside a label, and the height a wrapped paragraph takes, so it can place
+// what follows below it. It stays apart from text_widget, so portable
+// bundles that never measure, such as the Apps controller, keep their
+// reviewed bytes.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
     #import "text_props"
@@ -9,11 +11,15 @@
     // A portable app asks its host, which measures as Text draws.
     #program_export
     TextWidth :: (session: Session, props: TextProps) -> s32 { return TextWidthHostedHost(session, props) }
+    TextHeightHostedHost :: (session: Session, props: TextProps) -> s32 #foreign host_api;
+    #program_export
+    TextHeight :: (session: Session, props: TextProps) -> s32 { return TextHeightHostedHost(session, props) }
 } else {
     #import "session"
     #import "font_metrics"
     #import "text_props"
     #import "text_widget"
+    #import "text_layout"
     // The width props.text takes on one line, in the font and typeface Text
     // draws it with.
     #program_export
@@ -21,5 +27,15 @@
         unused session
         prepared: PreparedText = PrepareText(props, TextFaceOf(props))
         return GlyphWidth(props.text, prepared.font, prepared.typeface)
+    }
+    // The height Text takes to draw props.text in props.bounds.width, its
+    // lines wrapped as props.wrap says, so a caller can place what follows
+    // a paragraph right below it.
+    #program_export
+    TextHeight :: (session: Session, props: TextProps) -> s32 {
+        unused session
+        prepared: PreparedText = PrepareText(props, TextFaceOf(props))
+        return TextLayoutTotalHeight(prepared.line_count, prepared.line_height,
+            prepared.line_gap)
     }
 }

@@ -133,6 +133,11 @@ and its host may be built against different Kryon layouts.
 generates the codecs for Kryon's widget records and, with `--uses`, for an
 application's own records.
 
+A bundle measures text with its host's fonts through
+[`text_measure`](../src/ui/text_measure.zi): `TextWidth(session, props)` is
+the width a line takes and `TextHeight(session, props)` the height Text
+takes to draw a paragraph wrapped in `props.bounds.width`.
+
 A vector icon that is not a button, such as a symbol beside a name or a coin
 beside an amount, is `SvgIcon(session, SvgIconProps.{bounds, shape, color})`
 from [`svg_icon_widget`](../src/ui/svg_icon_widget.zi); a bundle submits it
