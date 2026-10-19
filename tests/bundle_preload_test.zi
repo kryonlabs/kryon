@@ -1,0 +1,57 @@
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "hosted_app"
+#import "bundle_preload"
+
+#program_export
+Check :: (data: *u8, size: s64) -> s32 {
+    bytes := TextFromBytes(BytesFromPointer(data, cast(u64)size))
+    direct: HostedApp
+    if !HostedAppOpen(*direct, bytes) { return 1 }
+    assets := BundleAssets(direct.bundle)
+    // Several preloads of the same bytes open at once, each into its own app.
+    apps: [4]HostedApp
+    handles: [4]s32
+    for index: 0..3 {
+        handles[index] = BundlePreloadStart(bytes)
+        if handles[index] < 0 { return 2 }
+    }
+    for index: 0..3 {
+        if !HostedAppOpenPreloaded(*apps[index], bytes, handles[index]) ||
+        BundleAssets(apps[index].bundle) != assets { return 3 }
+        // A taken handle is free; taking it again opens nothing.
+        if BundlePreloadTake(handles[index], bytes) != null { return 4 }
+    }
+    for index: 0..3 { HostedAppClose(*apps[index]) }
+    // Taking with other bytes closes the preload and opens those bytes: a
+    // truncated copy fails as it would without a preload.
+    other: [1]u8
+    handle := BundlePreloadStart(bytes)
+    if handle < 0 || BundlePreloadTake(handle, TextFromBytes(other[:])) != null { return 5 }
+    handle = BundlePreloadStart(bytes)
+    mismatch: HostedApp
+    if handle < 0 || HostedAppOpenPreloaded(*mismatch, bytes[0:size - 1], handle) { return 6 }
+    // Invalid bytes fail exactly as an ordinary open does.
+    invalid := bytes[0:size / 2]
+    handle = BundlePreloadStart(invalid)
+    broken: HostedApp
+    if handle < 0 || HostedAppOpenPreloaded(*broken, invalid, handle) || broken.bundle != null { return 7 }
+    // A preload that is not taken is discarded before its bytes go away.
+    handle = BundlePreloadStart(bytes)
+    if handle < 0 { return 8 }
+    BundlePreloadDiscard(handle)
+    if !BundlePreloadReady(handle) { return 9 }
+    // At most sixteen run at once; the next opens when it is taken.
+    many: [17]s32
+    for index: 0..16 { many[index] = BundlePreloadStart(bytes) }
+    if many[16] != -1 { return 10 }
+    for index: 0..15 {
+        if many[index] < 0 { return 11 }
+        BundlePreloadDiscard(many[index])
+    }
+    late: HostedApp
+    if !HostedAppOpenPreloaded(*late, bytes, many[16]) || BundleAssets(late.bundle) != assets { return 12 }
+    HostedAppClose(*late)
+    HostedAppClose(*direct)
+    return 0
+}

@@ -1,0 +1,95 @@
+// Opening a bundle reads and checks its whole program: most of a second on
+// a phone for a large app, and a host often opens several before its first
+// frame. A host that knows which bundles it opens next starts them here.
+// Each opens on its own thread, and HostedAppOpenPreloaded takes the result
+// instead of opening the bytes again. The bytes must stay alive and
+// unchanged until the preload is taken or discarded. Where threads are not
+// available, nothing starts and the bundle opens when it is taken.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+
+BUNDLE_PRELOAD_SLOTS :: 16
+
+BUNDLE_PRELOAD_THREADS :: !#defined(PLATFORM_WEB) && !#defined(_WIN32)
+
+#if BUNDLE_PRELOAD_THREADS {
+    #import "std/thread_linux"
+
+    BundlePreload :: struct {
+        data: *u8
+        size: u64
+        bundle: *void
+        thread: Thread
+        used: bool
+    }
+
+    bundle_preloads: [BUNDLE_PRELOAD_SLOTS]BundlePreload;
+
+    BundlePreloadOpen :: (argument: *void) {
+        preload := cast(*BundlePreload)argument
+        preload.bundle = OpenBundleBytes(preload.data, preload.size)
+    }
+}
+
+// Starts opening bytes on another thread. Returns the preload's handle, or
+// -1 when none started; HostedAppOpenPreloaded then opens the bytes itself.
+BundlePreloadStart :: (bytes: string) -> s32 {
+    #if BUNDLE_PRELOAD_THREADS {
+        if bytes.count == 0 { return -1 }
+        for index: cast(s32)0..BUNDLE_PRELOAD_SLOTS - 1 {
+            preload := *bundle_preloads[index]
+            if preload.used { continue }
+            descriptor := cast(*TextDescriptor)(*bytes)
+            preload.data = descriptor.data
+            preload.size = cast(u64)bytes.count
+            preload.bundle = null
+            procedure: ThreadProcedure = BundlePreloadOpen
+            if !ThreadStart(*preload.thread, procedure, cast(*void)preload) { return -1 }
+            preload.used = true
+            return index
+        }
+    }
+    return -1
+}
+
+// Waits for the preload of exactly these bytes and returns its bundle, or
+// null when it failed to open. The handle is free afterwards.
+BundlePreloadTake :: (handle: s32, bytes: string) -> *void {
+    #if BUNDLE_PRELOAD_THREADS {
+        if handle < 0 || handle >= BUNDLE_PRELOAD_SLOTS || !bundle_preloads[handle].used { return null }
+        preload := *bundle_preloads[handle]
+        ThreadWait(*preload.thread)
+        bundle := preload.bundle
+        descriptor := cast(*TextDescriptor)(*bytes)
+        same := preload.data == descriptor.data && preload.size == cast(u64)bytes.count
+        preload.* = BundlePreload.{}
+        if !same {
+            CloseBundle(bundle)
+            return null
+        }
+        return bundle
+    }
+    return null
+}
+
+// Whether the preload has finished, without waiting.
+BundlePreloadReady :: (handle: s32) -> bool {
+    #if BUNDLE_PRELOAD_THREADS {
+        if handle < 0 || handle >= BUNDLE_PRELOAD_SLOTS || !bundle_preloads[handle].used { return true }
+        preload := *bundle_preloads[handle]
+        return !ThreadRunning(*preload.thread) || ThreadFinished(*preload.thread)
+    }
+    return true
+}
+
+// Waits for a preload that will not be taken and closes its bundle, before
+// its bytes are released.
+BundlePreloadDiscard :: (handle: s32) {
+    #if BUNDLE_PRELOAD_THREADS {
+        if handle < 0 || handle >= BUNDLE_PRELOAD_SLOTS || !bundle_preloads[handle].used { return }
+        preload := *bundle_preloads[handle]
+        ThreadWait(*preload.thread)
+        CloseBundle(preload.bundle)
+        preload.* = BundlePreload.{}
+    }
+}

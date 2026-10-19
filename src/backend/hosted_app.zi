@@ -5,6 +5,7 @@
 // different record layouts, so fields match by name.
 #import "std/bundle_host"
 #import "std/byte_text_linux"
+#import "bundle_preload"
 
 HOSTED_APP_CAPABILITY_LIMIT :: 64
 // Instructions a single run may execute before it traps.
@@ -34,6 +35,20 @@ HostedAppOpen :: (app: *HostedApp, bytes: string) -> bool {
     descriptor := cast(*TextDescriptor)(*bytes)
     app.bundle = OpenBundleBytes(descriptor.data, cast(u64)bytes.count)
     return app.bundle != null
+}
+
+// Takes the bundle BundlePreloadStart opened from bytes, waiting for it if
+// it is still opening. Without a preload, or when it failed, opens bytes.
+HostedAppOpenPreloaded :: (app: *HostedApp, bytes: string, preload: s32) -> bool {
+    if preload < 0 {
+        return HostedAppOpen(app, bytes)
+    }
+    HostedAppClose(app)
+    app.bundle = BundlePreloadTake(preload, bytes)
+    if app.bundle == null {
+        return HostedAppOpen(app, bytes)
+    }
+    return true
 }
 
 // Checks every capability with allows, binds them all to call and creates an

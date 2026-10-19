@@ -298,12 +298,14 @@ dom-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		YUE_DESKTOP_RECOVERY=0 KRYON_DOM_INTERACTION=1 python3 tests/dom_project_test.py
 
-.PHONY: native-text-test native-accessibility-test
+.PHONY: native-text-test native-accessibility-test bundle-preload-test
 native-text-test:
 	@sh tests/native_text_test.sh
 native-accessibility-test:
 	@sh tests/native_accessibility_test.sh
-test: native-text-test native-accessibility-test
+bundle-preload-test:
+	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran sh tests/ziran_bundle_preload_test.sh
+test: native-text-test native-accessibility-test bundle-preload-test
 
 .PHONY: typeface-source-test
 typeface-source-test: $(ZI2C_BIN)
