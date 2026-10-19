@@ -104,14 +104,93 @@ HostedAppRestart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall,
 }
 
 HostedAppClose :: (app: *HostedApp) {
+    HostedAssetIndexDrop(app.bundle)
     CloseBundleInstance(app.instance)
     CloseBundle(app.bundle)
     app.* = HostedApp.{}
 }
 
+hosted_c :: #system_library "c";
+HostedAllocateZeroed :: (count: usize, size: usize) -> *void #foreign hosted_c "calloc";
+HostedRelease :: (memory: *void) #foreign hosted_c "free";
+
+// A game draws each tile of its board as an image, and each image named its
+// asset by scanning every asset of the bundle: tens of thousands of name
+// comparisons a frame. Each open bundle gets a table that finds an asset by
+// a hash of its name; a bundle's assets never change while it is open.
+HostedAssetIndex :: struct {
+    bundle: *void
+    // Asset number plus one, or zero for an empty slot.
+    slots: *u32
+    mask: u64
+}
+
+HOSTED_ASSET_INDEXES :: 32
+
+hosted_asset_indexes: [32]HostedAssetIndex;
+hosted_asset_next: s32;
+
+HostedAssetHash :: (name: *u8, count: s64) -> u64 {
+    hash: u64 = cast(u64)14695981039346656037
+    for index: cast(s64)0..count - 1 { hash = (hash ^ cast(u64)name[index]) * cast(u64)1099511628211 }
+    return hash
+}
+
+HostedAssetIndexDrop :: (bundle: *void) {
+    if bundle == null { return }
+    for index: cast(s32)0..HOSTED_ASSET_INDEXES - 1 {
+        if hosted_asset_indexes[index].bundle == bundle {
+            HostedRelease(cast(*void)hosted_asset_indexes[index].slots)
+            hosted_asset_indexes[index] = .{}
+        }
+    }
+}
+
+HostedAssetIndexFor :: (bundle: *void) -> *HostedAssetIndex {
+    for index: cast(s32)0..HOSTED_ASSET_INDEXES - 1 {
+        if hosted_asset_indexes[index].bundle == bundle { return *hosted_asset_indexes[index] }
+    }
+    count := BundleAssets(bundle)
+    size: u64 = 64
+    while size < count * 2 { size *= 2 }
+    slots := cast(*u32)HostedAllocateZeroed(cast(usize)size, 4)
+    if slots == null { return null }
+    asset: u64 = 0
+    while asset < count {
+        name := BundleAssetPath(bundle, asset)
+        if name != null {
+            length: s64 = 0
+            while name[length] != cast(u8)0 { length += 1 }
+            slot := HostedAssetHash(name, length) & (size - 1)
+            while slots[slot] != cast(u32)0 { slot = (slot + 1) & (size - 1) }
+            slots[slot] = cast(u32)(asset + 1)
+        }
+        asset += 1
+    }
+    entry := *hosted_asset_indexes[hosted_asset_next]
+    HostedRelease(cast(*void)entry.slots)
+    entry.* = .{.bundle = bundle, .slots = slots, .mask = size - 1}
+    hosted_asset_next = (hosted_asset_next + 1) % HOSTED_ASSET_INDEXES
+    return entry
+}
+
 // The bytes of an asset packed in the bundle, borrowed while it is open.
 HostedAppAsset :: (app: *HostedApp, path: string) -> HostedAsset {
     if app.bundle == null {
+        return HostedAsset.{}
+    }
+    table := HostedAssetIndexFor(app.bundle)
+    if table != null {
+        descriptor := cast(*TextDescriptor)(*path)
+        slot := HostedAssetHash(descriptor.data, path.count) & table.mask
+        while table.slots[slot] != cast(u32)0 {
+            index := cast(u64)(table.slots[slot] - 1)
+            if HostedAssetNamed(BundleAssetPath(app.bundle, index), path) {
+                return HostedAsset.{.found = true, .data = TextFromBytes(BytesFromPointer(
+                            BundleAssetBytes(app.bundle, index), BundleAssetLength(app.bundle, index)))}
+            }
+            slot = (slot + 1) & table.mask
+        }
         return HostedAsset.{}
     }
     count := BundleAssets(app.bundle)
