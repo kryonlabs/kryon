@@ -260,5 +260,59 @@ main :: () -> s32 {
             PaintClear(session)
         }
     }
+    // A closeable item has an X in its corner: a tap on the X closes it
+    // without clicking it, and a tap elsewhere on the item still clicks.
+    props.vertical = false
+    props.scale = 1.0
+    props.bounds = Rectangle.{0.0, 0.0, 390.0, 84.0}
+    closing: [3]NavigationBarItem
+    closing[0] = NavigationBarItem.{.key = cast(u64)200, .route = 0, .label = "Pinned"}
+    closing[1] = NavigationBarItem.{.key = cast(u64)201, .route = 1, .label = "Opened",
+        .active = true, .closeable = true, .close_label = "Close"}
+    closing[2] = NavigationBarItem.{.key = cast(u64)202, .route = 2, .label = "Apps"}
+    for phase: cast(s32)0..cast(s32)2 {
+        TreeStart(session, cast(u64)1, props.bounds)
+        result := NavigationBar(session, props, closing[:])
+        if !TreeFinish(session) {
+            return 23
+        }
+        if phase == 1 && (result.closed_route != 1 || result.closed_index != 1 ||
+            result.clicked_route != -1) {
+            return 24
+        }
+        if phase == 2 && (result.clicked_route != 1 || result.closed_route != -1) {
+            return 25
+        }
+        opened: s32 = -1
+        closes: s32 = 0
+        close: s32 = -1
+        for index: cast(s32)0..TreeCount(session) - 1 {
+            node := TreeNodeAt(session, index)
+            if node.semantic_label == "Opened" { opened = index }
+            if node.semantic_label == "Close" {
+                close = index
+                closes += 1
+            }
+        }
+        if opened < 0 || closes != 1 {
+            return 26
+        }
+        item := TreeNodeAt(session, opened).bounds
+        x := TreeNodeAt(session, close).bounds
+        if x.x < item.x || x.y < item.y || x.x + x.width > item.x + item.width ||
+        x.y + x.height > item.y + item.height || x.x + x.width / 2.0 < item.x + item.width / 2.0 ||
+        x.y + x.height / 2.0 > item.y + item.height / 2.0 {
+            return 27
+        }
+        point := Vector2.{x.x + x.width / 2.0, x.y + x.height / 2.0}
+        if phase == 1 {
+            point = Vector2.{item.x + item.width / 4.0, item.y + item.height / 2.0}
+        }
+        if phase < 2 {
+            TreePointerUpdate(session, PointerFrame.{point.x, point.y, true, true, false})
+            TreePointerUpdate(session, PointerFrame.{point.x, point.y, false, false, true})
+        }
+        PaintClear(session)
+    }
     return 0
 }

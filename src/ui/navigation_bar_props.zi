@@ -10,6 +10,10 @@ NavigationBarItem :: struct {
     icon_shape: string
     active: bool
     disabled: bool
+    // A compact item can offer to close: an X in its corner, named
+    // close_label. The result reports it as closed_route, never as a click.
+    closeable: bool
+    close_label: string
 }
 
 NavigationBarProps :: struct {
@@ -39,6 +43,8 @@ NavigationBarResult :: struct {
     node: s32
     clicked_index: s32
     clicked_route: s32
+    closed_index: s32
+    closed_route: s32
     y: s32
     height: s32
     scroll_offset: s32

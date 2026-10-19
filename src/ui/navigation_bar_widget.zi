@@ -195,6 +195,31 @@ DrawNavigationDockItem :: (session: Session, props: NavigationBarProps,
         result.clicked_index = index
         result.clicked_route = item.route
     }
+    if !item.closeable {
+        return
+    }
+    // Submitted after the item, so a tap on the X reaches only the close.
+    size := 22.0 * props.scale
+    if props.scale <= 0.0 { size = 22.0 }
+    inset := size / 11.0
+    close: ButtonProps
+    close.key = button.key * cast(u64)65599 + cast(u64)43
+    close.id = props.id
+    close.bounds = Rectangle.{bounds.x + bounds.width - size - inset, bounds.y + inset,
+        size, size}
+    close.label = item.close_label
+    close.icon_shape = "S1.8rr:M6 6L18 18M18 6L6 18"
+    close.icon_only = true
+    close.fit_content = true
+    close.class_name = props.item_class_name
+    close.style_kind = StyleKindNavigationBarItem()
+    close.emphasis = cast(ButtonEmphasis)ButtonEmphasisGhost
+    if item.active { close.tone = cast(ButtonTone)ButtonToneAccent }
+    close.disabled = item.disabled || props.dragging
+    if Button(session, close) != 0 && !close.disabled {
+        result.closed_index = index
+        result.closed_route = item.route
+    }
 }
 
 DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
@@ -300,6 +325,8 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
     result.node = -1
     result.clicked_index = -1
     result.clicked_route = -1
+    result.closed_index = -1
+    result.closed_route = -1
     result.drop_index = -1
     result.drag_route = -1
     if props.compact { return DrawCompactNavigation(session, props, items, result) }
