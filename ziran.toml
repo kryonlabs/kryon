@@ -65,6 +65,8 @@ dropdown_props = "src/ui/dropdown_props.zi"
 context_menu_widget = "src/ui/context_menu_widget.zi"
 modal_widget = "src/ui/modal_widget.zi"
 modal_props = "src/ui/modal_props.zi"
+modal_frame_widget = "src/ui/modal_frame_widget.zi"
+text_field_widget = "src/ui/text_field_widget.zi"
 # Lets a test process read the widget tree and press, type and drag in a
 # running app; inactive unless KRYON_TEST_DRIVER names a directory.
 TestDriver = "src/backend/test_driver.zi"
