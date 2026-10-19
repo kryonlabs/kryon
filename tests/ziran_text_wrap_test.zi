@@ -1,6 +1,7 @@
 #import "text_layout"
 #import "text_props"
 #import "ziran_text_wrap_host"
+#import "font_metrics"
 
 using TextWrap;
 
@@ -53,5 +54,18 @@ main :: () -> s32 {
     // An explicit line break still ends a line.
     if Wrap("あい\nうえ", 100.0) != 2 || wrapped[0] != "あい" ||
         wrapped[1] != "うえ" { return 10 }
+    // A host that reports its glyph metrics gets lines laid out once while
+    // they hold; changed text, width or metrics are laid out again.
+    GlyphMetricsChanged()
+    if Wrap("aa bb cc dd", 50.0) != 2 { return 11 }
+    before := MeasureCalls()
+    if Wrap("aa bb cc dd", 50.0) != 2 || wrapped[0] != "aa bb" ||
+        wrapped[1] != "cc dd" || MeasureCalls() != before { return 12 }
+    if Wrap("aa bb cc ee", 50.0) != 2 || wrapped[1] != "cc ee" ||
+        Wrap("aa bb cc dd", 30.0) != 4 || wrapped[3] != "dd" { return 13 }
+    before = MeasureCalls()
+    GlyphMetricsChanged()
+    if Wrap("aa bb cc dd", 50.0) != 2 || wrapped[0] != "aa bb" ||
+        MeasureCalls() == before { return 14 }
     return 0
 }

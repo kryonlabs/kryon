@@ -128,10 +128,97 @@ TextTokenNext :: (value: string, offset: s32, icons: bool) -> TextToken {
     return token
 }
 
+// A text laid out every frame measured each line again for every word in
+// it, twice a frame: most of a phone frame of chat. While the host's glyph
+// metrics hold (see GlyphMetricsRevision), the lines of recent texts are
+// kept, found by a hash of the text and its layout inputs.
+TEXT_LINE_SLOTS :: 128
+TEXT_LINE_ROWS :: 32
+TextLineCache :: struct {
+    revision: u64
+    hash: u64
+    count: s64
+    face: u64
+    font: s32
+    width: float32
+    wrap: s32
+    used: u64
+    rows: s32
+    lines: [TEXT_LINE_ROWS]TextLinePlan
+}
+text_line_cache: [TEXT_LINE_SLOTS]TextLineCache;
+text_line_clock: u64;
+text_line_last: s32;
+
+TextLineHash :: (value: string) -> u64 {
+    hash: u64 = cast(u64)14695981039346656037
+    for byte: value { hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211 }
+    return hash
+}
+
+TextLineCacheMatches :: (entry: *TextLineCache, revision: u64, hash: u64, count: s64, face: u64,
+    font: s32, width: float32, wrap: s32) -> bool {
+    return entry.revision == revision && entry.hash == hash && entry.count == count && entry.face == face &&
+        entry.font == font && entry.width == width && entry.wrap == wrap
+}
+
 // A word wider than the available width stays intact on its own line; text
 // written without spaces wraps between characters as TextTokenNext allows.
 #program_export
 NextTextLine :: (value: string, start: s32, max_width: float32,
+    wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
+    revision := GlyphMetricsRevision()
+    if revision == cast(u64)0 || start < 0 || start > cast(s32)value.count {
+        return NextTextLineUncached(value, start, max_width, wrap, font, typeface)
+    }
+    hash := TextLineHash(value)
+    face := TextLineHash(typeface)
+    slot := text_line_last
+    if !TextLineCacheMatches(*text_line_cache[slot], revision, hash, value.count, face, font, max_width, cast(s32)wrap) {
+        found: bool
+        for index: cast(s32)0..TEXT_LINE_SLOTS - 1 {
+            if TextLineCacheMatches(*text_line_cache[index], revision, hash, value.count, face, font, max_width, cast(s32)wrap) {
+                slot = index
+                found = true
+                break
+            }
+        }
+        if !found {
+            slot = 0
+            for index: cast(s32)1..TEXT_LINE_SLOTS - 1 {
+                if text_line_cache[index].used < text_line_cache[slot].used { slot = index }
+            }
+            text_line_cache[slot] = .{.revision = revision, .hash = hash, .count = value.count, .face = face,
+                .font = font, .width = max_width, .wrap = cast(s32)wrap}
+        }
+        text_line_last = slot
+    }
+    entry := *text_line_cache[slot]
+    text_line_clock += cast(u64)1
+    entry.used = text_line_clock
+    low: s32
+    high := entry.rows
+    while low < high {
+        middle := (low + high) / 2
+        if entry.lines[middle].start < start { low = middle + 1 }
+        else { high = middle }
+    }
+    if low < entry.rows && entry.lines[low].start == start { return entry.lines[low] }
+    line := NextTextLineUncached(value, start, max_width, wrap, font, typeface)
+    // Measuring can load a fallback font, which moves the revision.
+    if entry.rows < TEXT_LINE_ROWS && GlyphMetricsRevision() == revision {
+        row := entry.rows
+        while row > low {
+            entry.lines[row] = entry.lines[row - 1]
+            row -= 1
+        }
+        entry.lines[low] = line
+        entry.rows += 1
+    }
+    return line
+}
+
+NextTextLineUncached :: (value: string, start: s32, max_width: float32,
     wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
     line: TextLinePlan
     line.start = start

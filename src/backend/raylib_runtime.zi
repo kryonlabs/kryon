@@ -23,6 +23,7 @@
     AndroidTouch :: #import "android_touch";
 }
 TypefaceText :: #import "std/byte_text_linux";
+Metrics :: #import "font_metrics";
 TypefaceCollection :: #import "typeface_collection";
 
 raylib :: #system_library "raylib";
@@ -674,6 +675,7 @@ RaylibFindFallback :: (codepoint: s32) -> s32 {
                     face = raylib_fallback_face_count
                     raylib_fallback_faces[face] = staged
                     raylib_fallback_face_count += 1
+                    Metrics.GlyphMetricsChanged()
                 } else {
                     if staged.font.texture.id != cast(u32)0 { RaylibUnloadFont(staged.font) }
                     RaylibFreeTypefaceSource(*staged)
@@ -725,6 +727,8 @@ RaylibStoreTypeface :: (name: string, staged: *RaylibTypeface) -> bool {
         raylib_font_loaded = true
         raylib_font_registered = true
     }
+    // Text layout kept for the earlier fonts no longer holds.
+    Metrics.GlyphMetricsChanged()
     return true
 }
 
@@ -831,6 +835,7 @@ SelectTypeface :: (name: string) -> bool {
     raylib_font_loaded = true
     raylib_font_registered = true
     raylib_active_typeface_index = index
+    Metrics.GlyphMetricsChanged()
     return true
 }
 
@@ -861,6 +866,7 @@ ReleaseTypefaces :: () {
     raylib_font = RaylibFont.{}
     raylib_font_loaded = false
     raylib_font_registered = false
+    Metrics.GlyphMetricsChanged()
 }
 
 #program_export
@@ -873,6 +879,7 @@ RaylibTryFont :: (path: *u8) -> bool {
     raylib_font = HostRaylibLoadFont(path, 32, null, 0)
     raylib_font_loaded = raylib_font.texture.id != cast(u32)0
     raylib_font_registered = false
+    Metrics.GlyphMetricsChanged()
     return raylib_font_loaded
 }
 

@@ -1,8 +1,14 @@
 // Every character is ten pixels wide, whatever its script, so a test can say
 // exactly where a line must break.
+measure_calls: s32;
+
+#program_export
+MeasureCalls :: () -> s32 { return measure_calls }
+
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
+    measure_calls += 1
     count: s32 = 0
     index: s32 = 0
     while index < cast(s32)value.count {
