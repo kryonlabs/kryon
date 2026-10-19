@@ -147,12 +147,14 @@ jobs:
           CHROMIUM: google-chrome
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY node tests/demo_browser.mjs
 
+      # The whole site is rebuilt from this checkout, so the live editor's
+      # embedded examples match the gallery under test. Nothing is deployed.
       - name: Build and test the widget gallery
         env:
           CHROMIUM: google-chrome
         run: |
           export PATH="$ZIRAN_ROOT/build/bin:$PATH"
-          make site-gallery
+          make site
           python3 tests/gallery_modules_test.py
           make site-gallery-test
 
