@@ -101,6 +101,8 @@ AndroidRunMain :: () -> s32 {
         CloseRaylib()
         return AndroidError("kryon: could not open a UI session")
     }
+    // Android's own interface font when the application loaded none.
+    system_font := !raylib_font_registered && LoadSystemTypeface("ui") && SelectTypeface("ui")
     ok: bool = true
     first_frame: bool = true
     while ok && PollRaylib() {
@@ -108,6 +110,8 @@ AndroidRunMain :: () -> s32 {
             // The surface was recreated; stale texture names may belong to
             // the new context, so forget them without deleting.
             ResetRaylibGraphics(true)
+            // The system font's texture went with the old context.
+            if system_font { system_font = LoadSystemTypeface("ui") && SelectTypeface("ui") }
         }
         key := RaylibPressedKey()
         if key == 0 {

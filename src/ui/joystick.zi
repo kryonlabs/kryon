@@ -1,0 +1,160 @@
+// Touch controls for games, composed from Press and Box so they also work
+// inside hosted games:
+//
+// - Joystick: hold it and lean towards a direction. It steps that way at
+//   once, then again at a steady rate while held, like a held arrow key.
+// - SwipeArea: an invisible area, usually over a game board. A short swipe
+//   steps once in its main direction; a tap reports where it landed.
+//
+// Directions are 0 left, 1 up, 2 right and 3 down, as in arrow-key games;
+// -1 means none.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "press_props"
+#import "press_widget"
+#import "box_props"
+#import "box_widget"
+
+JoystickProps :: struct {
+    key: u64
+    id: s32
+    bounds: Rectangle
+    // Names the control for accessibility.
+    label: string
+    // The app's clock in seconds.
+    now: float64
+    // Seconds between steps while held; 0 means 0.18.
+    repeat_seconds: float32
+    disabled: bool
+}
+
+JoystickResult :: struct {
+    // Where the stick leans, or -1.
+    direction: s32
+    // Step now: on the first lean, after each repeat interval, and when the
+    // lean changes direction.
+    step: bool
+}
+
+SwipeAreaProps :: struct {
+    key: u64
+    id: s32
+    bounds: Rectangle
+    label: string
+    now: float64
+    // Shortest swipe in the area's units; 0 means 24.
+    min_distance: float32
+    disabled: bool
+}
+
+SwipeAreaResult :: struct {
+    // The swipe's direction on release, or -1.
+    swiped: s32
+    // A press released without a swipe; x and y say where.
+    tapped: bool
+    x: float32
+    y: float32
+    // A press is in progress.
+    down: bool
+}
+
+TOUCH_SLOTS :: 8
+
+TouchSlot :: struct {
+    key: u64
+    active: bool
+    direction: s32
+    next: float64
+    start_x: float32
+    start_y: float32
+}
+
+touch_slots: [TOUCH_SLOTS]TouchSlot;
+
+// The slot for a control's key, reusing an idle one for a new key.
+TouchSlotFor :: (key: u64) -> *TouchSlot {
+    free: s32 = -1
+    for index: cast(s32)0..TOUCH_SLOTS - 1 {
+        if touch_slots[index].key == key { return *touch_slots[index] }
+        if free < 0 && !touch_slots[index].active { free = index }
+    }
+    if free < 0 { free = 0 }
+    touch_slots[free] = TouchSlot.{.key = key, .direction = -1}
+    return *touch_slots[free]
+}
+
+// The main direction of a movement, or -1 when it is shorter than reach.
+TouchDirection :: (dx: float32, dy: float32, reach: float32) -> s32 {
+    across := ifx dx < 0.0 then -dx else dx
+    along := ifx dy < 0.0 then -dy else dy
+    if across < reach && along < reach { return -1 }
+    if across >= along { return ifx dx < 0.0 then 0 else 2 }
+    return ifx dy < 0.0 then 1 else 3
+}
+
+Joystick :: (session: Session, props: JoystickProps) -> JoystickResult {
+    result := JoystickResult.{.direction = -1}
+    slot := TouchSlotFor(props.key)
+    bounds := props.bounds
+    radius := ifx bounds.width < bounds.height then bounds.width / 2.0 else bounds.height / 2.0
+    cx := bounds.x + bounds.width / 2.0
+    cy := bounds.y + bounds.height / 2.0
+    press := Press(session, PressProps.{.key = props.key, .id = props.id, .bounds = bounds,
+            .label = props.label, .now = props.now, .capture = true, .disabled = props.disabled,
+            .hold_seconds = 3600.0})
+    repeat := ifx props.repeat_seconds > 0.0 then cast(float64)props.repeat_seconds else 0.18
+    if press.down && !props.disabled {
+        direction := TouchDirection(press.x - cx, press.y - cy, radius * 0.25)
+        if direction >= 0 && (!slot.active || direction != slot.direction || props.now >= slot.next) {
+            result.step = true
+            slot.next = props.now + ifx slot.active && direction == slot.direction then repeat else repeat * 2.0
+        }
+        slot.active = direction >= 0
+        slot.direction = direction
+        result.direction = direction
+    } else {
+        slot.active = false
+        slot.direction = -1
+    }
+    // A translucent base and knob read on light and dark themes alike.
+    base := Color.{128, 140, 136, 64}
+    knob := Color.{128, 140, 136, ifx result.direction >= 0 then cast(u8)170 else cast(u8)120}
+    unused Box(session, BoxProps.{.key = props.key + 1, .bounds = Rectangle.{cx - radius, cy - radius,
+            radius * 2.0, radius * 2.0}, .fill = base, .radius = radius})
+    lean := radius * 0.45
+    kx := cx; ky := cy
+    if result.direction == 0 { kx -= lean }
+    if result.direction == 1 { ky -= lean }
+    if result.direction == 2 { kx += lean }
+    if result.direction == 3 { ky += lean }
+    size := radius * 0.8
+    unused Box(session, BoxProps.{.key = props.key + 2, .bounds = Rectangle.{kx - size / 2.0, ky - size / 2.0,
+            size, size}, .fill = knob, .radius = size / 2.0})
+    return result
+}
+
+SwipeArea :: (session: Session, props: SwipeAreaProps) -> SwipeAreaResult {
+    result := SwipeAreaResult.{.swiped = -1}
+    slot := TouchSlotFor(props.key)
+    press := Press(session, PressProps.{.key = props.key, .id = props.id, .bounds = props.bounds,
+            .label = props.label, .now = props.now, .capture = true, .disabled = props.disabled,
+            .hold_seconds = 3600.0})
+    if press.down && !slot.active {
+        slot.active = true
+        slot.start_x = press.x
+        slot.start_y = press.y
+    }
+    result.down = press.down
+    if press.released && slot.active {
+        slot.active = false
+        reach := ifx props.min_distance > 0.0 then props.min_distance else 24.0
+        result.swiped = TouchDirection(press.x - slot.start_x, press.y - slot.start_y, reach)
+        if result.swiped < 0 {
+            result.tapped = true
+            result.x = press.x
+            result.y = press.y
+        }
+    }
+    return result
+}

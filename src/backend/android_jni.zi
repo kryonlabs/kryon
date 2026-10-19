@@ -4,6 +4,7 @@
 // raylib's GetAndroidApp; applications keep their own JNI_OnLoad and register
 // the canonical natives through android_device's registrar.
 #import "c_string"
+#import "std/byte_text_linux"
 
 JniValue :: union {
     reference: *void
@@ -199,6 +200,7 @@ JNI_ANDROID :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined
 
     libc :: #system_library "libc";
     JniThreadSelf :: () -> *void #foreign libc "pthread_self";
+    JniRealPath :: (path: *u8, output: *u8) -> *u8 #foreign libc "realpath";
 }
 
 // The host's frame thread stays attached to the VM between JNI calls:
@@ -411,4 +413,17 @@ AndroidInternalDataPath :: () -> *u8 {
         }
     }
     return null
+}
+
+// The private files folder with symbolic links resolved, written into
+// output (PATH_MAX bytes), or "" off Android. Android reports it under
+// /data/user/0, a link to /data/data, and private-file checks refuse links.
+AndroidPrivateDataPath :: (output: []u8) -> string {
+    #if JNI_ANDROID {
+        path := AndroidInternalDataPath()
+        if path != null && output.count >= 4096 && JniRealPath(path, *output[0]) != null {
+            return TextFromCString(*output[0])
+        }
+    }
+    return ""
 }

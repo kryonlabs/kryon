@@ -11,10 +11,9 @@ Player :: #import "bundle_player";
 #import "session"
 #if #defined(ANDROID_BUILD) {
     #import "android_jni"
-    bundle_path_c :: #system_library "c";
-    BundleCanonicalPath :: (path: *u8, output: *u8) -> *u8 #foreign bundle_path_c "realpath";
 }
 #import "raylib_runtime"
+#import "app_asset"
 #import "geometry"
 #import "hosted_values"
 #import "std/c_string"
@@ -40,27 +39,12 @@ RaylibBundle :: struct {
 }
 
 raylib :: #system_library "raylib";
-ReadFileBytes :: (path: *u8, count: *s32) -> *u8 #foreign raylib "LoadFileData";
-FreeFileBytes :: (bytes: *u8) #foreign raylib "UnloadFileData";
 ApplicationDirectory :: () -> *u8 #foreign raylib "GetApplicationDirectory";
 BundleClockSeconds :: () -> float64 #foreign raylib "GetTime";
 
-RaylibBundleRead :: (path: string) -> string {
-    name: [4096]u8
-    if !CopyCString(path, name[:]) { return "" }
-    count: s32
-    bytes := ReadFileBytes(*name[0], *count)
-    if bytes == null { return "" }
-    if count <= 0 { FreeFileBytes(bytes); return "" }
-    return TextFromBytes(BytesFromPointer(bytes, cast(u64)count))
-}
+RaylibBundleRead :: (path: string) -> string { return ReadAppAsset(path) }
 
-RaylibBundleFree :: (data: string) {
-    if data.count > 0 {
-        bytes := cast(*TextDescriptor)(*data)
-        FreeFileBytes(bytes.data)
-    }
-}
+RaylibBundleFree :: (data: string) { FreeAppAsset(data) }
 
 RaylibBundleTypeface :: () -> bool {
     // Native distributions carry the host font beside their generic player.
@@ -123,10 +107,7 @@ RaylibBundleOpen :: (host: *RaylibBundle, data: string, previous: *RaylibBundle 
         directory := ""
         canonical: [4096]u8
         #if #defined(ANDROID_BUILD) {
-            value := AndroidInternalDataPath()
-            if value != null && BundleCanonicalPath(value, *canonical[0]) != null {
-                directory = TextFromCString(*canonical[0])
-            }
+            directory = AndroidPrivateDataPath(canonical[:])
         } else {
             directory = BundleAppDataRoot()
         }
