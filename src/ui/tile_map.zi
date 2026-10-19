@@ -1,0 +1,94 @@
+// TileMap: the 2D node for board and tile games. It draws a grid of square
+// cells as layers of pictures, fitted and centred in its bounds, and reports
+// where the grid landed so a game can place overlays or find the cell under
+// a pointer. It is composed from Box and Image, so it also works inside
+// hosted games.
+//
+// `layers` holds `layer_count` layers one after another, each one tile
+// number per cell, row by row; -1 leaves a cell of that layer empty. A tile
+// number picks a picture from `tiles` (asset paths) and its description from
+// `names` when one is given. Both must stay valid until the frame ends.
+//
+// Keys: the background uses `key`; the cell of layer L at index C uses
+// key + 1 + L * columns * rows + C.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "image_props"
+#import "image_widget"
+#import "box_props"
+#import "box_widget"
+
+TileMapProps :: struct {
+    key: u64
+    bounds: Rectangle
+    columns: s32
+    rows: s32
+    tiles: []string
+    names: []string
+    layers: []s32
+    layer_count: s32
+    // Painted behind the cells unless fully transparent.
+    fill: Color
+    // Names the whole grid for accessibility.
+    label: string
+}
+
+TileMapResult :: struct {
+    // The grid's area inside the bounds, and the side of one cell.
+    board: Rectangle
+    cell: float32
+    columns: s32
+    rows: s32
+}
+
+// The rectangle of one cell, by its index row by row.
+TileMapCell :: (grid: TileMapResult, at: s32) -> Rectangle {
+    if grid.columns <= 0 { return Rectangle.{grid.board.x, grid.board.y, 0.0, 0.0} }
+    return Rectangle.{grid.board.x + cast(float32)(at % grid.columns) * grid.cell,
+        grid.board.y + cast(float32)(at / grid.columns) * grid.cell, grid.cell, grid.cell}
+}
+
+// The index of the cell under a point, or -1 outside the grid.
+TileMapCellAt :: (grid: TileMapResult, x: float32, y: float32) -> s32 {
+    if grid.cell <= 0.0 || x < grid.board.x || y < grid.board.y { return -1 }
+    column := cast(s32)((x - grid.board.x) / grid.cell)
+    row := cast(s32)((y - grid.board.y) / grid.cell)
+    if column >= grid.columns || row >= grid.rows { return -1 }
+    return row * grid.columns + column
+}
+
+// The largest square cells that fit the bounds, with the grid centred.
+TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32) -> TileMapResult {
+    result := TileMapResult.{.columns = columns, .rows = rows}
+    if columns <= 0 || rows <= 0 { return result }
+    cell := bounds.width / cast(float32)columns
+    if cell > bounds.height / cast(float32)rows { cell = bounds.height / cast(float32)rows }
+    if cell < 0.0 { cell = 0.0 }
+    width := cell * cast(float32)columns
+    height := cell * cast(float32)rows
+    result.board = Rectangle.{bounds.x + (bounds.width - width) / 2.0, bounds.y + (bounds.height - height) / 2.0, width, height}
+    result.cell = cell
+    return result
+}
+
+TileMap :: (session: Session, props: TileMapProps) -> TileMapResult {
+    grid := TileMapFit(props.bounds, props.columns, props.rows)
+    if grid.cell <= 0.0 { return grid }
+    if props.fill.a != cast(u8)0 {
+        unused Box(session, BoxProps.{.key = props.key, .bounds = grid.board, .fill = props.fill})
+    }
+    cells := props.columns * props.rows
+    for layer: cast(s32)0..props.layer_count - 1 {
+        for at: cast(s32)0..cells - 1 {
+            index := layer * cells + at
+            if cast(s64)index >= props.layers.count { return grid }
+            tile := props.layers[index]
+            if tile < 0 || cast(s64)tile >= props.tiles.count { continue }
+            Image(session, ImageProps.{.key = props.key + cast(u64)(1 + index), .asset_path = props.tiles[tile],
+                    .alt_text = ifx cast(s64)tile < props.names.count then props.names[tile] else props.label,
+                    .bounds = TileMapCell(grid, at), .fit = ImageFit.ImageFitContain, .smooth = true})
+        }
+    }
+    return grid
+}

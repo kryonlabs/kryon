@@ -1,0 +1,33 @@
+// TileMap's geometry off any host: square cells fitted and centred in the
+// bounds, each cell's rectangle, and the cell under a point.
+#import "geometry"
+#import "tile_map"
+
+c :: #system_library "c";
+TestExit :: (status: s32) #foreign c "exit";
+
+Require :: (condition: bool, code: s32) {
+    if !condition {
+        TestExit(code)
+    }
+}
+
+#program_export
+main :: () -> s32 {
+    // A wide area: the height limits the cells and the grid is centred across.
+    grid := TileMapFit(Rectangle.{10.0, 20.0, 1000.0, 240.0}, 20, 12)
+    Require(grid.cell == 20.0 && grid.columns == 20 && grid.rows == 12, 1)
+    Require(grid.board.x == 310.0 && grid.board.y == 20.0 && grid.board.width == 400.0 && grid.board.height == 240.0, 2)
+    // A tall area: the width limits the cells and the grid is centred down.
+    tall := TileMapFit(Rectangle.{0.0, 0.0, 200.0, 500.0}, 20, 12)
+    Require(tall.cell == 10.0 && tall.board.y == 190.0, 3)
+    cell := TileMapCell(grid, 21)
+    Require(cell.x == 330.0 && cell.y == 40.0 && cell.width == 20.0 && cell.height == 20.0, 4)
+    Require(TileMapCellAt(grid, 335.0, 45.0) == 21, 5)
+    Require(TileMapCellAt(grid, 709.0, 259.0) == 239, 6)
+    Require(TileMapCellAt(grid, 309.0, 45.0) == -1 && TileMapCellAt(grid, 710.0, 45.0) == -1, 7)
+    Require(TileMapCellAt(grid, 335.0, 260.0) == -1, 8)
+    // An empty grid has no cells.
+    Require(TileMapFit(Rectangle.{0.0, 0.0, 100.0, 100.0}, 0, 12).cell == 0.0, 9)
+    return 0
+}
