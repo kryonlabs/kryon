@@ -42,9 +42,15 @@ function(kryon_android_raylib raylib_dir)
         "${raylib_dir}/rtextures.c"
         "${raylib_dir}/rtext.c"
         "${raylib_dir}/raudio.c")
+    # rlgl's GLES2 batch holds 2048 quads, a few dozen anti-aliased rounded
+    # shapes, so a phone frame flushed it many times, each upload into the
+    # one vertex buffer the tiling GPU had not drawn yet. A larger batch in
+    # two alternating buffers flushes far less often and waits on neither.
     target_compile_definitions(raylib PRIVATE
         PLATFORM_ANDROID
         GRAPHICS_API_OPENGL_ES2
+        RL_DEFAULT_BATCH_BUFFER_ELEMENTS=8192
+        RL_DEFAULT_BATCH_BUFFERS=2
         SUPPORT_SCREEN_CAPTURE=0
         SUPPORT_COMPRESSION_API=0
         SUPPORT_AUTOMATION_EVENTS=0
