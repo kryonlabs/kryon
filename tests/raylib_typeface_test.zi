@@ -17,6 +17,7 @@ DecodeFont :: (bytes: *u8, size: s32, pixels: s32, codepoints: *s32,
     count: s32, kind: s32, actual: *s32) -> *RaylibGlyphInfo #foreign raylib "LoadFontData";
 FreeGlyphs :: (glyphs: *RaylibGlyphInfo, count: s32) #foreign raylib "UnloadFontData";
 NextCodepoint :: (text: *u8, length: *s32) -> s32 #foreign raylib "GetCodepointNext";
+GlyphIndex :: (font: RaylibFont, codepoint: s32) -> s32 #foreign raylib "GetGlyphIndex";
 MeasureFont :: (font: RaylibFont, text: *u8, size: float32,
     spacing: float32) -> Geometry.Vector2 #foreign raylib "MeasureTextEx";
 Allocate :: (bytes: usize) -> *void #foreign c "malloc";
@@ -147,6 +148,28 @@ __wrap_DrawTextEx :: (font: RaylibFont, text: *u8,
     }
 }
 
+Utf8 :: (codepoint: s32, bytes: []u8) {
+    if codepoint < 0x80 {
+        bytes[0] = cast(u8)codepoint
+        bytes[1] = 0
+    } else if codepoint < 0x800 {
+        bytes[0] = cast(u8)(0xC0 | (codepoint >> 6))
+        bytes[1] = cast(u8)(0x80 | (codepoint & 0x3F))
+        bytes[2] = 0
+    } else if codepoint < 0x10000 {
+        bytes[0] = cast(u8)(0xE0 | (codepoint >> 12))
+        bytes[1] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
+        bytes[2] = cast(u8)(0x80 | (codepoint & 0x3F))
+        bytes[3] = 0
+    } else {
+        bytes[0] = cast(u8)(0xF0 | (codepoint >> 18))
+        bytes[1] = cast(u8)(0x80 | ((codepoint >> 12) & 0x3F))
+        bytes[2] = cast(u8)(0x80 | ((codepoint >> 6) & 0x3F))
+        bytes[3] = cast(u8)(0x80 | (codepoint & 0x3F))
+        bytes[4] = 0
+    }
+}
+
 // Compare measured logical prefixes with the actual submitted screen origins.
 // Pixel alignment may move an origin by half a pixel, without accumulating
 // rounding error across the run.
@@ -203,6 +226,18 @@ main :: () -> s32 {
     defer ReleaseTypefaces()
     RaylibEnsureGlyphs("中")
     if RaylibFontHasCodepoint(raylib_font, 0x4E2D) { return 5 }
+    // The glyph table finds what raylib's scan finds, and the one-glyph view
+    // measures each character exactly as the whole font does, missing ones too.
+    latin := raylib_font
+    latin_glyphs := cast(*RaylibGlyphInfo)latin.glyphs
+    for index: cast(s32)0..latin.glyph_count + 1 {
+        codepoint := ifx index < latin.glyph_count then latin_glyphs[index].value else 0x4E2D + index
+        if RaylibGlyphIndex(latin, codepoint) != GlyphIndex(latin, codepoint) { return 30 }
+        utf8: [5]u8
+        Utf8(codepoint, utf8[:])
+        if MeasureFont(RaylibGlyphFont(latin, codepoint), *utf8[0], 20.0, 0.0).x !=
+        MeasureFont(latin, *utf8[0], 20.0, 0.0).x { return 31 }
+    }
 
     width := MeasureGlyphWidth("A中B", 20, "Latin")
     RasterText("A中B", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})

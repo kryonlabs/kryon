@@ -339,10 +339,10 @@ RaylibBakeTypeface :: (typeface: *RaylibTypeface,
 }
 
 RaylibUnloadTypefaceFonts :: (typeface: *RaylibTypeface) {
-    HostRaylibUnloadFont(typeface.font)
+    RaylibUnloadFont(typeface.font)
     slot: s32 = 0
     while slot < typeface.sized_count {
-        HostRaylibUnloadFont(typeface.sized_fonts[slot])
+        RaylibUnloadFont(typeface.sized_fonts[slot])
         slot += 1
     }
     typeface.sized_count = 0
@@ -380,7 +380,7 @@ RaylibTypefaceFontForPixels :: (typeface: *RaylibTypeface,
         slot = oldest
         // Queued text can still refer to the atlas being replaced.
         HostRaylibFlushBatch()
-        HostRaylibUnloadFont(typeface.sized_fonts[slot])
+        RaylibUnloadFont(typeface.sized_fonts[slot])
     } else {
         slot = typeface.sized_count
         typeface.sized_count += 1
@@ -427,7 +427,7 @@ RaylibRebakeTypeface :: (typeface: *RaylibTypeface) -> bool {
     if font.texture.id == cast(u32)0 { return false }
     // Earlier text in this frame can still be queued with the old atlas.
     HostRaylibFlushBatch()
-    HostRaylibUnloadFont(typeface.font)
+    RaylibUnloadFont(typeface.font)
     typeface.font = font
     slot: s32 = 0
     while slot < typeface.sized_count {
@@ -436,7 +436,7 @@ RaylibRebakeTypeface :: (typeface: *RaylibTypeface) -> bool {
             if !typeface.sized_smooth[slot] {
                 HostRaylibTextureFilter(font.texture, 0)
             }
-            HostRaylibUnloadFont(typeface.sized_fonts[slot])
+            RaylibUnloadFont(typeface.sized_fonts[slot])
             typeface.sized_fonts[slot] = font
         }
         slot += 1
@@ -444,12 +444,120 @@ RaylibRebakeTypeface :: (typeface: *RaylibTypeface) -> bool {
     return true
 }
 
-RaylibFontHasCodepoint :: (font: RaylibFont, codepoint: s32) -> bool {
-    if font.glyphs == null || font.glyph_count <= 0 { return false }
-    index := HostRaylibGlyphIndex(font, codepoint)
-    if index < 0 || index >= font.glyph_count { return false }
+// raylib finds a glyph by scanning every glyph of the font, and text looked
+// each character up three or four times to measure and draw it: on a phone
+// that was most of a frame of chat. Each baked font gets a table that finds
+// a glyph by hashing its codepoint.
+RaylibGlyphTable :: struct {
+    glyphs: *void
+    count: s32
+    mask: s32
+    // raylib draws '?' for a codepoint the font lacks.
+    fallback: s32
+    // Each slot holds a glyph index plus one, or zero when empty.
+    slots: *s32
+}
+
+RAYLIB_GLYPH_TABLES :: 32
+
+raylib_glyph_tables: [32]RaylibGlyphTable;
+raylib_glyph_table_next: s32;
+raylib_glyph_table_last: s32;
+
+RaylibGlyphSlot :: (codepoint: s32, mask: s32) -> s32 {
+    return (codepoint ^ (codepoint >> 9)) & mask
+}
+
+RaylibForgetGlyphTable :: (table: *RaylibGlyphTable) {
+    if table.slots != null { HostTypefaceFree(cast(*u8)table.slots) }
+    table.* = .{}
+}
+
+RaylibUnloadFont :: (font: RaylibFont) {
+    for index: cast(s32)0..RAYLIB_GLYPH_TABLES - 1 {
+        if raylib_glyph_tables[index].glyphs == font.glyphs { RaylibForgetGlyphTable(*raylib_glyph_tables[index]) }
+    }
+    HostRaylibUnloadFont(font)
+}
+
+RaylibGlyphTableFor :: (font: RaylibFont) -> *RaylibGlyphTable {
+    if font.glyphs == null || font.glyph_count <= 0 || font.recs == null || font.base_size <= 0 { return null }
+    last := *raylib_glyph_tables[raylib_glyph_table_last]
+    if last.glyphs == font.glyphs && last.count == font.glyph_count { return last }
+    for index: cast(s32)0..RAYLIB_GLYPH_TABLES - 1 {
+        table := *raylib_glyph_tables[index]
+        if table.glyphs == font.glyphs && table.count == font.glyph_count {
+            raylib_glyph_table_last = index
+            return table
+        }
+    }
+    index := raylib_glyph_table_next
+    raylib_glyph_table_next = (index + 1) % RAYLIB_GLYPH_TABLES
+    table := *raylib_glyph_tables[index]
+    RaylibForgetGlyphTable(table)
+    size: s32 = 64
+    while size < font.glyph_count * 2 { size *= 2 }
+    slots := cast(*s32)HostTypefaceAllocate(cast(usize)size * 4)
+    if slots == null { return null }
+    for slot: cast(s32)0..size - 1 { slots[slot] = 0 }
     glyphs := cast(*RaylibGlyphInfo)font.glyphs
-    return glyphs[index].value == codepoint
+    fallback: s32 = 0
+    for glyph: cast(s32)0..font.glyph_count - 1 {
+        value := glyphs[glyph].value
+        if value == 63 { fallback = glyph }
+        slot := RaylibGlyphSlot(value, size - 1)
+        // Like raylib's scan, the first glyph with a codepoint wins.
+        while slots[slot] != 0 && glyphs[slots[slot] - 1].value != value { slot = (slot + 1) & (size - 1) }
+        if slots[slot] == 0 { slots[slot] = glyph + 1 }
+    }
+    table.* = .{.glyphs = font.glyphs, .count = font.glyph_count, .mask = size - 1, .fallback = fallback, .slots = slots}
+    raylib_glyph_table_last = index
+    return table
+}
+
+// The index of the font's glyph for a codepoint, or -1 when it has none.
+RaylibGlyphFind :: (font: RaylibFont, codepoint: s32) -> s32 {
+    if font.glyphs == null || font.glyph_count <= 0 { return -1 }
+    glyphs := cast(*RaylibGlyphInfo)font.glyphs
+    table := RaylibGlyphTableFor(font)
+    if table == null {
+        index := HostRaylibGlyphIndex(font, codepoint)
+        if index < 0 || index >= font.glyph_count || glyphs[index].value != codepoint { return -1 }
+        return index
+    }
+    slot := RaylibGlyphSlot(codepoint, table.mask)
+    while table.slots[slot] != 0 {
+        if glyphs[table.slots[slot] - 1].value == codepoint { return table.slots[slot] - 1 }
+        slot = (slot + 1) & table.mask
+    }
+    return -1
+}
+
+// The glyph raylib draws for a codepoint: its own, else the font's '?'.
+RaylibGlyphIndex :: (font: RaylibFont, codepoint: s32) -> s32 {
+    index := RaylibGlyphFind(font, codepoint)
+    if index >= 0 { return index }
+    table := RaylibGlyphTableFor(font)
+    if table != null { return table.fallback }
+    return HostRaylibGlyphIndex(font, codepoint)
+}
+
+RaylibFontHasCodepoint :: (font: RaylibFont, codepoint: s32) -> bool {
+    return RaylibGlyphFind(font, codepoint) >= 0
+}
+
+// The font narrowed to the one glyph raylib would use for a codepoint, so
+// raylib measures and draws that character with its own arithmetic without
+// scanning the whole font.
+RaylibGlyphFont :: (font: RaylibFont, codepoint: s32) -> RaylibFont {
+    if RaylibGlyphTableFor(font) == null { return font }
+    index := RaylibGlyphIndex(font, codepoint)
+    glyphs := cast(*RaylibGlyphInfo)font.glyphs
+    view := font
+    view.glyph_count = 1
+    view.glyphs = cast(*void)*glyphs[index]
+    view.recs = *font.recs[index]
+    return view
 }
 
 // Registered fonts are available on every host, including hosts without
@@ -567,7 +675,7 @@ RaylibFindFallback :: (codepoint: s32) -> s32 {
                     raylib_fallback_faces[face] = staged
                     raylib_fallback_face_count += 1
                 } else {
-                    if staged.font.texture.id != cast(u32)0 { HostRaylibUnloadFont(staged.font) }
+                    if staged.font.texture.id != cast(u32)0 { RaylibUnloadFont(staged.font) }
                     RaylibFreeTypefaceSource(*staged)
                 }
             } else { RaylibFreeTypefaceSource(*staged) }
@@ -656,7 +764,7 @@ LoadTypefaceData :: (name: string, extension: string, data: string,
         return false
     }
     if !RaylibStoreTypeface(name, *staged) {
-        HostRaylibUnloadFont(staged.font)
+        RaylibUnloadFont(staged.font)
         RaylibFreeTypefaceSource(*staged)
         return false
     }
@@ -689,7 +797,7 @@ RaylibLoadTypefaceFile :: (name: string, path: string,
         return false
     }
     if !RaylibStoreTypeface(name, *staged) {
-        HostRaylibUnloadFont(staged.font)
+        RaylibUnloadFont(staged.font)
         RaylibFreeTypefaceSource(*staged)
         return false
     }
@@ -717,7 +825,7 @@ SelectTypeface :: (name: string) -> bool {
         return false
     }
     if raylib_font_loaded && !raylib_font_registered {
-        HostRaylibUnloadFont(raylib_font)
+        RaylibUnloadFont(raylib_font)
     }
     raylib_font = raylib_typefaces[index].font
     raylib_font_loaded = true
@@ -729,7 +837,7 @@ SelectTypeface :: (name: string) -> bool {
 #program_export
 ReleaseTypefaces :: () {
     if raylib_font_loaded && !raylib_font_registered {
-        HostRaylibUnloadFont(raylib_font)
+        RaylibUnloadFont(raylib_font)
     }
     index: s32 = 0
     while index < raylib_typeface_count {
@@ -1482,8 +1590,8 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
             glyph: [5]u8
             for index: 0..length - 1 { glyph[index] = bytes[at + index] }
             glyph[length] = 0
-            advance := HostRaylibMeasureFontText(selected, *glyph[0],
-                logical_size, 0.0).x
+            advance := HostRaylibMeasureFontText(RaylibGlyphFont(selected, codepoint),
+                *glyph[0], logical_size, 0.0).x
             if draw {
                 if typeface != null {
                     selected = RaylibTypefaceFontForPixels(typeface, pixels,
@@ -1495,11 +1603,11 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
                     RaylibBeginSlant(glyph_position.y + text_size * 0.8)
                 }
                 if raylib_text_emphasis {
-                    RaylibDrawEmphasis(selected, *glyph[0], glyph_position,
+                    RaylibDrawEmphasis(RaylibGlyphFont(selected, codepoint), *glyph[0], glyph_position,
                         text_size, color, pixels, matrix)
                 } else {
-                    HostRaylibDrawFontText(selected, *glyph[0], glyph_position,
-                        text_size, 0.0, color)
+                    HostRaylibDrawFontText(RaylibGlyphFont(selected, codepoint), *glyph[0],
+                        glyph_position, text_size, 0.0, color)
                 }
                 if raylib_text_italic {
                     HostRaylibPopMatrix()
