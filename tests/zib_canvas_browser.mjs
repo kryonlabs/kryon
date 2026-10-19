@@ -46,6 +46,8 @@ try {
     const result=await response;assert(!result.error,JSON.stringify(result));return result.result;
   }
   async function evaluate(expression){const r=await call('Runtime.evaluate',{expression,returnByValue:true});assert(!r.exceptionDetails,JSON.stringify(r));return r.result.value;}
+  // Slow runners may take longer than any fixed delay to swap an app.
+  async function settle(expression,accept){const end=Date.now()+15000;for(;;){const value=await evaluate(expression);if(accept(value)||Date.now()>end)return value;await delay(100);}}
   await call('Runtime.enable');
   await call('Emulation.setDeviceMetricsOverride',{width:960,height:600,deviceScaleFactor:1,mobile:false});
   if(mode==='services') {
@@ -147,13 +149,12 @@ try {
     const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});
     assert(picker.nodeId,'The generic player has no ZIB file picker');
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'invalid.zib')]});
-    await delay(400);
-    assert.match(await evaluate('document.querySelector("#zib-controls span").textContent'),/not a valid ZIB|invalid|capability/);
+    const rejected=/not a valid ZIB|invalid|capability/;
+    assert.match(await settle('document.querySelector("#zib-controls span").textContent',v=>rejected.test(v)),rejected);
     assert.equal(await evaluate(textPixels),clicked,'Invalid file disturbed the running app');
     await evaluate('Module.FS.writeFile("/tmp/kryon-zib/private.png",Module.FS.readFile("/tmp/kryon-zib/assets/red.png"))');
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[downloaded]});
-    await delay(600);
-    assert.equal(await evaluate(textPixels),before,'Opening the downloaded ZIB did not create a fresh instance');
+    assert.equal(await settle(textPixels,v=>v===before),before,'Opening the downloaded ZIB did not create a fresh instance');
     await call('Input.dispatchMouseEvent',{type:'mousePressed',...position,button:'left',buttons:1,clickCount:1});
     await delay(150);
     await call('Input.dispatchMouseEvent',{type:'mouseReleased',...position,button:'left',buttons:0,clickCount:1});
