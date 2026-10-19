@@ -1,5 +1,8 @@
 // Paints an icon Shape (see svg_shape) as queued rectangles, so every host
-// draws it the same way at any size, tinted with the caller's color.
+// draws it the same way at any size, tinted with the caller's color. A host
+// that draws textures can take each icon's raster as one texture instead
+// (SvgIconUseTextures): a screen of icons is then one image each, not
+// hundreds of rectangles, and looks the same.
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
@@ -35,7 +38,24 @@ SvgIconEntry :: struct {
     // When it was last painted; 0 for a slot never filled.
     stamp: u64
     cells: Vec(SvgIconCell)
+    // The host's texture of the raster, made on first paint while the host
+    // takes textures; id 0 when there is none.
+    texture: Texture2D
 }
+
+// Makes a texture of a raster: size by size pixels, each a white byte and
+// its alpha byte (raylib's gray-alpha format). Returns id 0 on failure.
+SvgIconTextureMake :: #type (pixels: []u8, size: s32) -> Texture2D;
+SvgIconTextureFree :: #type (texture: Texture2D) -> ();
+svg_icon_texture_make: SvgIconTextureMake;
+svg_icon_texture_free: SvgIconTextureFree;
+svg_icon_textures: bool = false;
+svg_icon_pixels: [SVG_ICON_MAX * SVG_ICON_MAX * 2]u8;
+// Textures of icons that left the cache. A frame may still have queued one,
+// so each is freed only after SVG_ICON_RETIRED more have left.
+SVG_ICON_RETIRED :: 64;
+svg_icon_retired: [SVG_ICON_RETIRED]Texture2D;
+svg_icon_retired_next: s32 = 0;
 
 svg_icon_cache: [SVG_ICON_CACHE]SvgIconEntry;
 svg_icon_clock: u64 = 0;
@@ -47,6 +67,86 @@ svg_icon_levels: [SVG_ICON_MAX * SVG_ICON_MAX]u8;
 #program_export
 SvgIconRasterCount :: () -> s64 {
     return svg_icon_rasters
+}
+
+SvgIconRetire :: (texture: Texture2D) {
+    if texture.id == cast(u32)0 { return }
+    oldest: Texture2D = svg_icon_retired[svg_icon_retired_next]
+    if oldest.id != cast(u32)0 && svg_icon_textures { svg_icon_texture_free(oldest) }
+    svg_icon_retired[svg_icon_retired_next] = texture
+    svg_icon_retired_next = (svg_icon_retired_next + 1) % SVG_ICON_RETIRED
+}
+
+// Drops every icon texture. With release they are freed; without, as after
+// a lost graphics context whose names mean nothing any more, only forgotten.
+#program_export
+SvgIconForgetTextures :: (release: bool) {
+    slot: s32 = 0
+    while slot < SVG_ICON_CACHE {
+        texture: Texture2D = svg_icon_cache[slot].texture
+        if release && svg_icon_textures && texture.id != cast(u32)0 { svg_icon_texture_free(texture) }
+        svg_icon_cache[slot].texture = Texture2D.{}
+        slot += 1
+    }
+    index: s32 = 0
+    while index < SVG_ICON_RETIRED {
+        texture: Texture2D = svg_icon_retired[index]
+        if release && svg_icon_textures && texture.id != cast(u32)0 { svg_icon_texture_free(texture) }
+        svg_icon_retired[index] = Texture2D.{}
+        index += 1
+    }
+}
+
+// Has icons drawn from textures the host makes and frees, on the thread
+// that draws; icons already cached get theirs when next painted.
+#program_export
+SvgIconUseTextures :: (make: SvgIconTextureMake, release: SvgIconTextureFree) {
+    SvgIconForgetTextures(true)
+    svg_icon_texture_make = make
+    svg_icon_texture_free = release
+    svg_icon_textures = true
+}
+
+// How many cached icons have a texture.
+#program_export
+SvgIconTextureCount :: () -> s32 {
+    count: s32 = 0
+    slot: s32 = 0
+    while slot < SVG_ICON_CACHE {
+        if svg_icon_cache[slot].texture.id != cast(u32)0 { count += 1 }
+        slot += 1
+    }
+    return count
+}
+
+// The slot's texture, made from its cells at the levels they paint with,
+// so it looks as the rectangles would.
+SvgIconTexture :: (slot: s32) -> Texture2D {
+    if svg_icon_cache[slot].texture.id != cast(u32)0 { return svg_icon_cache[slot].texture }
+    size: s32 = svg_icon_cache[slot].size
+    index: s32 = 0
+    while index < size * size {
+        svg_icon_pixels[index * 2] = cast(u8)255
+        svg_icon_pixels[index * 2 + 1] = cast(u8)0
+        index += 1
+    }
+    part_index: s64 = 0
+    while part_index < svg_icon_cache[slot].cells.count {
+        part: SvgIconCell = svg_icon_cache[slot].cells[part_index]
+        alpha: u8 = cast(u8)((255 * cast(s32)part.level) / SVG_ICON_LEVELS)
+        row: s32 = cast(s32)part.y
+        while row < cast(s32)part.y + cast(s32)part.height {
+            column: s32 = cast(s32)part.x
+            while column < cast(s32)part.x + cast(s32)part.width {
+                svg_icon_pixels[(row * size + column) * 2 + 1] = alpha
+                column += 1
+            }
+            row += 1
+        }
+        part_index += 1
+    }
+    svg_icon_cache[slot].texture = svg_icon_texture_make(svg_icon_pixels[0:size * size * 2], size)
+    return svg_icon_cache[slot].texture
 }
 
 // FNV-1a over the shape's bytes, so the cache is keyed by its drawing.
@@ -134,6 +234,8 @@ SvgIconSlot :: (shape: string, size: s32) -> s32 {
         slot += 1
     }
     slot = oldest
+    SvgIconRetire(svg_icon_cache[slot].texture)
+    svg_icon_cache[slot].texture = Texture2D.{}
     svg_icon_cache[slot].used = false
     svg_icon_cache[slot].stamp = cast(u64)0
     if !ShapeRaster(shape, size, svg_icon_coverage[:]) || !SvgIconCells(slot, size) {
@@ -182,6 +284,17 @@ PaintSvgIcon :: (session: Session, node: s32, shape: string, bounds: Rectangle,
     extent: float32 = cast(float32)size * cell
     left: float32 = SvgIconSnap(bounds.x + (bounds.width - extent) * 0.5, scale)
     top: float32 = SvgIconSnap(bounds.y + (bounds.height - extent) * 0.5, scale)
+    if svg_icon_textures {
+        texture: Texture2D = SvgIconTexture(slot)
+        if texture.id != cast(u32)0 {
+            // One raster pixel per screen pixel, sampled without blending.
+            area: Rectangle = Rectangle.{left, top, extent, extent}
+            PaintImage(session, node, "", texture.id,
+                Rectangle.{0.0, 0.0, cast(float32)size, cast(float32)size}, area, area,
+                Vector2.{0.0, 0.0}, 0.0, 0.0, color, texture)
+            return
+        }
+    }
     index: s64 = 0
     while index < svg_icon_cache[slot].cells.count {
         part: SvgIconCell = svg_icon_cache[slot].cells[index]

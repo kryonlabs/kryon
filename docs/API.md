@@ -144,7 +144,10 @@ from [`svg_icon_widget`](../src/ui/svg_icon_widget.zi); a bundle submits it
 to its host like the other widgets. An icon is rasterized once at the
 screen's pixels and kept, with the 255 others painted most recently, as the
 rectangles it paints, so a screen with many icons does not rasterize them
-again every frame.
+again every frame. A host that draws textures registers
+`SvgIconUseTextures(make, free)` and then paints each icon as one image of
+the same pixels; raylib's `OpenRaylib` does, and a raylib host that opens its
+own window calls `RaylibUseIconTextures()` after `InitWindow`.
 
 [`open_uri`](../src/backend/open_uri.zi) opens a link with the platform's
 handler: `OpenUri(uri)` passes it unchanged to the desktop opener, Windows'

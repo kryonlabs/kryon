@@ -1,7 +1,8 @@
 // A screen can show more icons than fit a small cache, as a grid of symbols
 // to choose from does. Each icon is rasterized once and painted from the
 // cache on later frames, and a cached icon paints the same cells as the
-// first time.
+// first time. A host that takes textures gets one image per icon instead,
+// with the pixels the cells would paint.
 #import "session"
 #import "geometry"
 #import "drawing_props"
@@ -9,12 +10,36 @@
 #import "svg_icon"
 #import "ziran_navigation_bar_widget_host"
 
+using PaintKind;
+
 ICONS :: 90
 
-// One frame of ICONS icons, each a size of its own, and how many cells it
-// queued.
-Frame :: () -> s32 {
-    shape := "F:M4 4H20L12 20Z"
+made: s32 = 0;
+freed: s32 = 0;
+// Pixels of the last texture made that are covered at all.
+made_covered: s32 = 0;
+
+FakeMake :: (pixels: []u8, size: s32) -> Texture2D {
+    made += 1
+    made_covered = 0
+    index: s32 = 0
+    while index < size * size {
+        if pixels[index * 2] != cast(u8)255 { return Texture2D.{} }
+        if pixels[index * 2 + 1] != cast(u8)0 { made_covered += 1 }
+        index += 1
+    }
+    return Texture2D.{.id = cast(u32)made, .width = size, .height = size,
+        .mipmaps = 1, .format = 2}
+}
+
+FakeFree :: (texture: Texture2D) {
+    unused texture
+    freed += 1
+}
+
+// One frame of ICONS icons of one shape, each a size of its own, and how
+// many commands it queued.
+Frame :: (shape: string) -> s32 {
     session := SessionOpen()
     edge: s32 = 1
     while edge <= ICONS {
@@ -28,14 +53,64 @@ Frame :: () -> s32 {
     return count
 }
 
+// The covered pixels of the cells one icon queues.
+CoveredCells :: (edge: s32) -> s32 {
+    session := SessionOpen()
+    PaintSvgIcon(session, 0, "F:M4 4H20L12 20Z", Rectangle.{0.0, 0.0,
+            cast(float32)edge, cast(float32)edge}, Color.{0, 0, 0, 255})
+    covered: s32 = 0
+    for index: cast(s32)0..PendingPaintCount(session) - 1 {
+        cell := PendingPaintAt(session, index).bounds
+        covered += cast(s32)cell.width * cast(s32)cell.height
+    }
+    PaintClear(session)
+    unused SessionClose(session)
+    return covered
+}
+
 #program_export
 main :: () -> s32 {
     before := SvgIconRasterCount()
-    first := Frame()
+    first := Frame("F:M4 4H20L12 20Z")
     if first == 0 { return 1 }
     if SvgIconRasterCount() - before != cast(s64)ICONS { return 2 }
-    second := Frame()
+    second := Frame("F:M4 4H20L12 20Z")
     if SvgIconRasterCount() - before != cast(s64)ICONS { return 3 }
     if second != first { return 4 }
+    cells := CoveredCells(40)
+    // With textures every icon is one image, made once and kept.
+    SvgIconUseTextures(FakeMake, FakeFree)
+    if Frame("F:M4 4H20L12 20Z") != ICONS || made != ICONS { return 5 }
+    if Frame("F:M4 4H20L12 20Z") != ICONS || made != ICONS || SvgIconTextureCount() != ICONS { return 6 }
+    session := SessionOpen()
+    PaintSvgIcon(session, 0, "F:M4 4H20L12 20Z", Rectangle.{0.0, 0.0, 40.0, 40.0},
+        Color.{0, 0, 0, 255})
+    image := PendingPaintAt(session, 0)
+    if PendingPaintCount(session) != 1 || image.kind != cast(s32)PaintKindImage ||
+    image.texture.id == cast(u32)0 || image.bounds.width != 40.0 { return 7 }
+    PaintClear(session)
+    unused SessionClose(session)
+    // The texture covers the pixels its cells did.
+    SvgIconForgetTextures(true)
+    if SvgIconTextureCount() != 0 { return 8 }
+    session = SessionOpen()
+    PaintSvgIcon(session, 0, "F:M4 4H20L12 20Z", Rectangle.{0.0, 0.0, 40.0, 40.0},
+        Color.{0, 0, 0, 255})
+    PaintClear(session)
+    unused SessionClose(session)
+    if made_covered != cells { return 9 }
+    // Icons leaving the cache free their textures only after more have left.
+    // Three more shapes make 360 icons for 256 places: 104 leave, and all but
+    // the last SVG_ICON_RETIRED of their textures are freed.
+    unused Frame("F:M4 4H20L12 20Z")
+    freed = 0
+    unused Frame("F:M2 2H22L12 22Z")
+    unused Frame("F:M3 5H21L12 19Z")
+    unused Frame("F:M5 3H19L12 21Z")
+    if freed != 4 * ICONS - SVG_ICON_CACHE - SVG_ICON_RETIRED { return 10 }
+    // A lost context's textures are forgotten, never freed.
+    freed = 0
+    SvgIconForgetTextures(false)
+    if freed != 0 || SvgIconTextureCount() != 0 { return 11 }
     return 0
 }

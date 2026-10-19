@@ -7,6 +7,7 @@
 #import "geometry"
 #import "image_props"
 #import "paint_texture"
+#import "svg_icon"
 #import "tree_input"
 #import "raylib_clip"
 #import "text_emphasis"
@@ -1201,6 +1202,30 @@ RaylibAssetIndex :: (path: string) -> s32 {
     return index
 }
 
+// An icon's raster as a texture: white, with the coverage as alpha. Point
+// sampling keeps one raster pixel on one screen pixel.
+RaylibIconTexture :: (pixels: []u8, size: s32) -> Texture2D {
+    if size <= 0 || cast(s64)size * cast(s64)size * 2 > pixels.count { return Texture2D.{} }
+    // PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA
+    image := RaylibGlyphImage.{.data = cast(*void)*pixels[0], .width = size,
+        .height = size, .mipmaps = 1, .format = 2}
+    return HostRaylibTextureFromImage(image)
+}
+
+// Flushes first: the batch may still draw with the texture.
+RaylibIconTextureFree :: (texture: Texture2D) {
+    HostRaylibFlushBatch()
+    HostRaylibUnloadTexture(texture)
+}
+
+// Draws Kryon's icons from textures, one image each instead of their many
+// rectangles. Call once the window's graphics context exists; OpenRaylib
+// does, and a host that opens its own window calls it after InitWindow.
+#program_export
+RaylibUseIconTextures :: () {
+    SvgIconUseTextures(RaylibIconTexture, RaylibIconTextureFree)
+}
+
 // Resource updates keep the window, fonts and retained targets alive. Flush
 // queued draws before releasing image names that the batch may still use.
 #program_export
@@ -1252,6 +1277,8 @@ ResetRaylibGraphics :: (context_lost: bool = false) {
     retained_frame_height = 0
     retained_frame_active = false
     raylib_image_error = false
+    // Icons make their textures again when next painted.
+    SvgIconForgetTextures(!context_lost)
     if context_lost {
         // UnloadFont still releases its CPU glyphs and rectangles with id 0.
         raylib_font.texture.id = 0
@@ -1291,6 +1318,7 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
     HostRaylibSetConfigFlags(flags)
     HostRaylibInitWindow(width, height, *label[0])
     if !HostRaylibIsWindowReady() { return false }
+    RaylibUseIconTextures()
     TextSelectionEnable()
     HostRaylibSetTargetFPS(60)
     name: [32]u8
