@@ -55,6 +55,7 @@ WidgetEncodeRectangle :: (data: Rectangle, codec: *WidgetRectangleCodec) -> Host
 
 WidgetDecodeRectangle :: (value: HostValue, codec: *WidgetRectangleCodec) -> Rectangle {
     data: Rectangle
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "x")
         if field_at >= 0 {
@@ -132,6 +133,7 @@ WidgetEncodeTextRange :: (data: TextRange, codec: *WidgetTextRangeCodec) -> Host
 
 WidgetDecodeTextRange :: (value: HostValue, codec: *WidgetTextRangeCodec) -> TextRange {
     data: TextRange
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "start")
         if field_at >= 0 {
@@ -535,6 +537,7 @@ WidgetEncodeVector2 :: (data: Vector2, codec: *WidgetVector2Codec) -> HostValue 
 
 WidgetDecodeVector2 :: (value: HostValue, codec: *WidgetVector2Codec) -> Vector2 {
     data: Vector2
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "x")
         if field_at >= 0 {
@@ -594,6 +597,7 @@ WidgetEncodeTexture2D :: (data: Texture2D, codec: *WidgetTexture2DCodec) -> Host
 
 WidgetDecodeTexture2D :: (value: HostValue, codec: *WidgetTexture2DCodec) -> Texture2D {
     data: Texture2D
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "id")
         if field_at >= 0 {
@@ -687,6 +691,7 @@ WidgetEncodeImageMesh :: (data: ImageMesh, codec: *WidgetImageMeshCodec) -> Host
 
 WidgetDecodeImageMesh :: (value: HostValue, codec: *WidgetImageMeshCodec) -> ImageMesh {
     data: ImageMesh
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "columns")
         if field_at >= 0 {
@@ -976,6 +981,7 @@ WidgetEncodeColor :: (data: Color, codec: *WidgetColorCodec) -> HostValue {
 
 WidgetDecodeColor :: (value: HostValue, codec: *WidgetColorCodec) -> Color {
     data: Color
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "r")
         if field_at >= 0 {
@@ -1590,6 +1596,7 @@ WidgetEncodeCompositionState :: (data: CompositionState, codec: *WidgetCompositi
 
 WidgetDecodeCompositionState :: (value: HostValue, codec: *WidgetCompositionStateCodec) -> CompositionState {
     data: CompositionState
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "active")
         if field_at >= 0 {
@@ -1669,6 +1676,7 @@ WidgetEncodeTextAreaColorSpan :: (data: TextAreaColorSpan, codec: *WidgetTextAre
 
 WidgetDecodeTextAreaColorSpan :: (value: HostValue, codec: *WidgetTextAreaColorSpanCodec) -> TextAreaColorSpan {
     data: TextAreaColorSpan
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "start")
         if field_at >= 0 {
@@ -1738,6 +1746,7 @@ WidgetEncodeCompositionEvent :: (data: CompositionEvent, codec: *WidgetCompositi
 
 WidgetDecodeCompositionEvent :: (value: HostValue, codec: *WidgetCompositionEventCodec) -> CompositionEvent {
     data: CompositionEvent
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "phase")
         if field_at >= 0 {
@@ -2225,6 +2234,7 @@ WidgetEncodeTextAreaBlock :: (data: TextAreaBlock, codec: *WidgetTextAreaBlockCo
 
 WidgetDecodeTextAreaBlock :: (value: HostValue, codec: *WidgetTextAreaBlockCodec) -> TextAreaBlock {
     data: TextAreaBlock
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "start")
         if field_at >= 0 {
@@ -2314,6 +2324,7 @@ WidgetEncodeTextAreaLine :: (data: TextAreaLine, codec: *WidgetTextAreaLineCodec
 
 WidgetDecodeTextAreaLine :: (value: HostValue, codec: *WidgetTextAreaLineCodec) -> TextAreaLine {
     data: TextAreaLine
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "start")
         if field_at >= 0 {
@@ -2993,6 +3004,7 @@ WidgetEncodeTextAreaEdit :: (data: TextAreaEdit, codec: *WidgetTextAreaEditCodec
 
 WidgetDecodeTextAreaEdit :: (value: HostValue, codec: *WidgetTextAreaEditCodec) -> TextAreaEdit {
     data: TextAreaEdit
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "start")
         if field_at >= 0 {
@@ -3667,6 +3679,7 @@ WidgetEncodeScrollMetrics :: (data: ScrollMetrics, codec: *WidgetScrollMetricsCo
 
 WidgetDecodeScrollMetrics :: (value: HostValue, codec: *WidgetScrollMetricsCodec) -> ScrollMetrics {
     data: ScrollMetrics
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "scrollbar_width")
         if field_at >= 0 {
@@ -4519,6 +4532,7 @@ WidgetEncodeSession :: (data: Session, codec: *WidgetSessionCodec) -> HostValue 
 
 WidgetDecodeSession :: (value: HostValue, codec: *WidgetSessionCodec) -> Session {
     data: Session
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "slot")
         if field_at >= 0 {
@@ -4696,6 +4710,7 @@ WidgetEncodeCheckboxValueResult :: (data: CheckboxValueResult, codec: *WidgetChe
 
 WidgetDecodeCheckboxValueResult :: (value: HostValue, codec: *WidgetCheckboxValueResultCodec) -> CheckboxValueResult {
     data: CheckboxValueResult
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "checked")
         if field_at >= 0 {
@@ -4901,6 +4916,7 @@ WidgetEncodeToggleValueResult :: (data: ToggleValueResult, codec: *WidgetToggleV
 
 WidgetDecodeToggleValueResult :: (value: HostValue, codec: *WidgetToggleValueResultCodec) -> ToggleValueResult {
     data: ToggleValueResult
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "value")
         if field_at >= 0 {
@@ -5572,6 +5588,7 @@ WidgetEncodeTextFieldEdit :: (data: TextFieldEdit, codec: *WidgetTextFieldEditCo
 
 WidgetDecodeTextFieldEdit :: (value: HostValue, codec: *WidgetTextFieldEditCodec) -> TextFieldEdit {
     data: TextFieldEdit
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "start")
         if field_at >= 0 {
@@ -5862,6 +5879,7 @@ WidgetEncodeTab :: (data: Tab, codec: *WidgetTabCodec) -> HostValue {
 
 WidgetDecodeTab :: (value: HostValue, codec: *WidgetTabCodec) -> Tab {
     data: Tab
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "key")
         if field_at >= 0 {
@@ -5961,6 +5979,7 @@ WidgetEncodeTabBarInput :: (data: TabBarInput, codec: *WidgetTabBarInputCodec) -
 
 WidgetDecodeTabBarInput :: (value: HostValue, codec: *WidgetTabBarInputCodec) -> TabBarInput {
     data: TabBarInput
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "focused")
         if field_at >= 0 {
@@ -6980,6 +6999,7 @@ WidgetEncodePressResult :: (data: PressResult, codec: *WidgetPressResultCodec) -
 
 WidgetDecodePressResult :: (value: HostValue, codec: *WidgetPressResultCodec) -> PressResult {
     data: PressResult
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "node")
         if field_at >= 0 {
@@ -7299,6 +7319,7 @@ WidgetEncodeSpinboxStepResult :: (data: SpinboxStepResult, codec: *WidgetSpinbox
 
 WidgetDecodeSpinboxStepResult :: (value: HostValue, codec: *WidgetSpinboxStepResultCodec) -> SpinboxStepResult {
     data: SpinboxStepResult
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "value")
         if field_at >= 0 {
@@ -7564,6 +7585,7 @@ WidgetEncodeTimePickerResult :: (data: TimePickerResult, codec: *WidgetTimePicke
 
 WidgetDecodeTimePickerResult :: (value: HostValue, codec: *WidgetTimePickerResultCodec) -> TimePickerResult {
     data: TimePickerResult
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "node")
         if field_at >= 0 {
@@ -7643,6 +7665,7 @@ WidgetEncodeDropdownTriggerInput :: (data: DropdownTriggerInput, codec: *WidgetD
 
 WidgetDecodeDropdownTriggerInput :: (value: HostValue, codec: *WidgetDropdownTriggerInputCodec) -> DropdownTriggerInput {
     data: DropdownTriggerInput
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "enter")
         if field_at >= 0 {
@@ -7718,6 +7741,7 @@ WidgetEncodeDropdownMenuInput :: (data: DropdownMenuInput, codec: *WidgetDropdow
 
 WidgetDecodeDropdownMenuInput :: (value: HostValue, codec: *WidgetDropdownMenuInputCodec) -> DropdownMenuInput {
     data: DropdownMenuInput
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "navigating")
         if field_at >= 0 {
@@ -8303,6 +8327,7 @@ WidgetEncodeDropdownResult :: (data: DropdownResult, codec: *WidgetDropdownResul
 
 WidgetDecodeDropdownResult :: (value: HostValue, codec: *WidgetDropdownResultCodec) -> DropdownResult {
     data: DropdownResult
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "node")
         if field_at >= 0 {
@@ -9182,6 +9207,7 @@ WidgetEncodeActionModalProps :: (data: ActionModalProps, codec: *WidgetActionMod
 
 WidgetDecodeActionModalProps :: (value: HostValue, codec: *WidgetActionModalPropsCodec) -> ActionModalProps {
     data: ActionModalProps
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "key")
         if field_at >= 0 {
@@ -9325,6 +9351,7 @@ WidgetEncodeActionModalAction :: (data: ActionModalAction, codec: *WidgetActionM
 
 WidgetDecodeActionModalAction :: (value: HostValue, codec: *WidgetActionModalActionCodec) -> ActionModalAction {
     data: ActionModalAction
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "key")
         if field_at >= 0 {
@@ -9414,6 +9441,7 @@ WidgetEncodeActionModalResult :: (data: ActionModalResult, codec: *WidgetActionM
 
 WidgetDecodeActionModalResult :: (value: HostValue, codec: *WidgetActionModalResultCodec) -> ActionModalResult {
     data: ActionModalResult
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "node")
         if field_at >= 0 {
@@ -9475,6 +9503,7 @@ WidgetEncodeContextMenuProps :: (data: ContextMenuProps, codec: *WidgetContextMe
 
 WidgetDecodeContextMenuProps :: (value: HostValue, codec: *WidgetContextMenuPropsCodec) -> ContextMenuProps {
     data: ContextMenuProps
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "key")
         if field_at >= 0 {
@@ -9584,6 +9613,7 @@ WidgetEncodeContextMenuItem :: (data: ContextMenuItem, codec: *WidgetContextMenu
 
 WidgetDecodeContextMenuItem :: (value: HostValue, codec: *WidgetContextMenuItemCodec) -> ContextMenuItem {
     data: ContextMenuItem
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "id")
         if field_at >= 0 {
@@ -9687,6 +9717,7 @@ WidgetEncodeContextMenuResult :: (data: ContextMenuResult, codec: *WidgetContext
 
 WidgetDecodeContextMenuResult :: (value: HostValue, codec: *WidgetContextMenuResultCodec) -> ContextMenuResult {
     data: ContextMenuResult
+    unused codec
     {
         field_at := HostFieldAt(value, 0, "open")
         if field_at >= 0 {

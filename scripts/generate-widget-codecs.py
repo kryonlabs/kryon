@@ -222,6 +222,10 @@ def decoder(kind, fields, records):
             member = 'real' if field_kind.startswith('float') else 'bits' if field_kind.startswith('u') else 'integer'
             body = [f'    data.{name} = cast({field_kind}){source}.{member}']
         lines += matched(index, name, body)
+    # A record of scalars and strings decodes without its codec; strict
+    # hosts reject an unused parameter.
+    if not any('codec.' in line for line in lines):
+        lines.insert(2, '    unused codec')
     return lines + ['    return data', '}', '']
 
 
