@@ -197,17 +197,20 @@ ScrollWheelTake :: (session: Session, key: u64, bounds: Rectangle,
 // It gives its key, its bounds, how far its content scrolls and the offset
 // it has, and keeps the returned frame's offset. The wheel stays the
 // widget's own; see ScrollWheelTake. A frame that starts moving the content
-// cancels the press it began with, so the widget no longer gets it.
+// cancels the press it began with, so the widget no longer gets it. Content
+// that scrolls sideways, as a row of tabs does, sets horizontal.
 #program_export
 ScrollDeviceContentDrag :: (session: Session, key: u64, bounds: Rectangle,
-    max_scroll: s32, offset: s32, scale: float32) -> ScrollFrame {
+    max_scroll: s32, offset: s32, scale: float32, horizontal: bool = false) -> ScrollFrame {
     frame: ScrollFrame
     frame.offset = offset
     if key == cast(u64)0 || !ScrollDeviceSampled(session) { return frame }
     if max_scroll < 0 { max_scroll = 0 }
-    input: ScrollFrameInput = ScrollFrameInputFor(ScrollObservationFor(key, bounds))
+    input: ScrollFrameInput = ScrollFrameInputFor(ScrollObservationFor(key, bounds, horizontal))
     input.bounds = bounds
+    input.horizontal = horizontal
     input.content_height = cast(s32)bounds.height + max_scroll
+    input.content_width = cast(s32)bounds.width + max_scroll
     input.has_offset = true
     input.offset = offset
     input.wheel = 0.0

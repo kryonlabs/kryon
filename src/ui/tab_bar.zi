@@ -344,6 +344,25 @@ TabBarRevealScroll :: (tab_x: float32, tab_width: float32, bounds: Rectangle,
     return scroll
 }
 
+// How much of a revealed tab's neighbour stays in view, so a row that
+// scrolls shows there is another tab to swipe to: up to 32 units, and never
+// so much that the tab itself is pushed out of view.
+#program_export
+TabBarRevealPeek :: (bar_extent: float32, tab_extent: float32, scale: float32) -> float32 {
+    if scale <= 0.0 {
+        scale = 1.0
+    }
+    peek: float32 = 32.0 * scale
+    room: float32 = (bar_extent - tab_extent) * 0.5
+    if room < peek {
+        peek = room
+    }
+    if peek < 0.0 {
+        return 0.0
+    }
+    return peek
+}
+
 #program_export
 TabBarDragMarkerBounds :: (tab_x: s32, tab_width: s32, bar_y: s32,
     bar_height: s32, after_tab: bool, scale: float32) -> Rectangle {

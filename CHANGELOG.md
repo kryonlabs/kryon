@@ -91,6 +91,13 @@
   from the content from the start, so a list whose rows open keeps its
   columns when it starts to scroll. With nothing to scroll, the scrollbar
   takes no press, drag or hover.
+- Tabs that do not all fit in a `TabBar` follow a swipe, as a `Scroll`'s
+  content follows a finger, so every tab can be reached on a phone: a drag
+  that moves them selects no tab, a tap still selects one, and the wheel
+  still scrolls them. Tabs that reorder keep their own drag. A tab revealed
+  on selection keeps a peek of the tab before and after it in view.
+  `ScrollDeviceContentDrag` takes `horizontal` for content that scrolls
+  sideways.
 
 ### Fixed
 

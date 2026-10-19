@@ -16,6 +16,8 @@ Theme :: #import "theme";
     #import "font_metrics"
     #import "geometry"
     #import "paint_queue"
+    #import "scroll"
+    #import "scroll_device"
     #import "semantic"
     #import "style"
     #import "style_sheet"
@@ -402,6 +404,16 @@ Theme :: #import "theme";
         if props.content_sized {
             scroll.equal_tabs = false
         }
+        // Tabs that do not all fit follow a swipe, as a Scroll's content
+        // follows a finger: a tap still selects a tab, and a drag that moves
+        // them selects none. Tabs that reorder keep their own drag.
+        swipes: bool = !props.disabled && !props.reorder_enabled &&
+        scroll.max_scroll > 0
+        if swipes {
+            swipe: ScrollFrame = ScrollDeviceContentDrag(session, key, bounds,
+                scroll.max_scroll, scroll.scroll, scale, !vertical)
+            scroll.scroll = swipe.offset
+        }
         if !props.disabled && props.input.focused && (cast(s32)tabs.count) > 0 {
             key_input: TabBarKeyboardInput = TabBarKeyboardInputFor(
                 result.selected_index, (cast(s32)tabs.count),
@@ -523,8 +535,19 @@ Theme :: #import "theme";
                 axis_position = selected_bounds.y
                 axis_extent = selected_bounds.height
             }
+            // A peek of the tab before and after it stays in view.
+            peek: float32 = TabBarRevealPeek(axis_bounds.width,
+                axis_extent, scale)
+            before: float32 = 0.0
+            after: float32 = 0.0
+            if result.selected_index > 0 {
+                before = peek
+            }
+            if result.selected_index < (cast(s32)tabs.count) - 1 {
+                after = peek
+            }
             result.scroll_offset = TabBarRevealScroll(
-                axis_position, axis_extent,
+                axis_position - before, axis_extent + before + after,
                 axis_bounds, scroll.scroll, scroll.max_scroll)
         } else {
             result.scroll_offset = scroll.scroll
@@ -541,6 +564,8 @@ Theme :: #import "theme";
             if result.node < 0 { return result }
             TreeSetSemantic(session, result.node,
                 cast(SemanticKind)SemanticTabList, 0)
+            // A drag over the tabs scrolls them, not a scroll around them.
+            TreeSetDragScrolls(session, result.node, swipes)
             bounds = TreeSubmittedNodeAt(session, result.node).bounds
         }
         bar_opacity: float32 = StyleOpacityValue(bar_face.value.fields,

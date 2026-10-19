@@ -6,7 +6,9 @@ TestSession :: () -> Session {
 }
 
 #import "geometry"
+#import "scroll_device"
 #import "semantic"
+#import "tab_bar"
 #import "tab_bar_props"
 #import "tab_bar_widget"
 #import "tree"
@@ -176,6 +178,112 @@ Frame :: () -> s32 {
     return old
 }
 
+swipe_seconds: float64 = 10.0;
+
+// One frame of a host that gives the pointer to the tree and the scroll
+// device before it draws, as a phone's does.
+SwipeFrame :: (props: *TabBarProps, tabs: []Tab, x: float32, down: bool,
+    pressed: bool, released: bool) -> TabBarResult {
+    TreePointerUpdate(TestSession(), PointerFrame.{x, 38.0, down, pressed, released})
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 600.0, 100.0})
+    BeginScrollFrame(TestSession(), Vector2.{x, 38.0}, pressed, down, released, 0.0,
+        swipe_seconds)
+    result: TabBarResult = TabBar(TestSession(), props.*, tabs)
+    unused TreeFinish(TestSession())
+    swipe_seconds += 0.016
+    props.selected_index = result.selected_index
+    props.scroll_offset = result.scroll_offset
+    return result
+}
+
+// The middle of a tab's part in view, or -1 while none of it shows.
+TabCenter :: (label: string) -> float32 {
+    index: s32 = 0
+    while index < TreeCount(TestSession()) {
+        node := TreeNodeAt(TestSession(), index)
+        if node.semantic_label == label {
+            return node.bounds.x + node.bounds.width * 0.5
+        }
+        index += 1
+    }
+    return -1.0
+}
+
+// Tabs that do not all fit follow a swipe: the drag scrolls them and
+// selects none. A tap still selects the tab under it, which then shows
+// with a peek of the tab after it.
+Swipe :: () -> s32 {
+    if TabBarRevealPeek(200.0, 120.0, 1.0) != 32.0 ||
+    TabBarRevealPeek(140.0, 120.0, 1.0) != 10.0 ||
+    TabBarRevealPeek(100.0, 120.0, 1.0) != 0.0 ||
+    TabBarRevealPeek(400.0, 100.0, 2.0) != 64.0 {
+        return 11
+    }
+    row: [5]Tab = .[Tab.{.label = "Installed"}, Tab.{.label = "Meditation"},
+        Tab.{.label = "Yoga"}, Tab.{.label = "Martial arts"}, Tab.{.label = "Breathing"}]
+    props: TabBarProps
+    props.key = cast(u64)900
+    // Clear of the disabled bar's wheel above, which nothing took.
+    props.bounds = Rectangle.{100.0, 20.0, 200.0, 40.0}
+    props.content_sized = true
+    rest := SwipeFrame(*props, row[:], 280.0, false, false, false)
+    if rest.scroll_offset != 0 || rest.selected_index != 0 {
+        return 5
+    }
+    unused SwipeFrame(*props, row[:], 280.0, true, true, false)
+    x: float32 = 280.0
+    while x > 160.0 {
+        x -= 20.0
+        moved := SwipeFrame(*props, row[:], x, true, false, false)
+        if moved.activated_index != -1 || moved.selected_index != 0 {
+            return 6
+        }
+    }
+    // The finger rests before it lifts, so the tabs do not coast.
+    still: s32 = 0
+    while still < 20 {
+        unused SwipeFrame(*props, row[:], x, true, false, false)
+        still += 1
+    }
+    lifted := SwipeFrame(*props, row[:], x, false, false, true)
+    if lifted.activated_index != -1 || lifted.selected_index != 0 ||
+    lifted.scroll_offset < 60 {
+        return 7
+    }
+    swiped: s32 = lifted.scroll_offset
+    after := SwipeFrame(*props, row[:], x, false, false, false)
+    if after.scroll_offset != swiped || after.activated_index != -1 {
+        return 12
+    }
+    // The tab cut off at the right edge, which has another after it.
+    edge: s32 = -1
+    index: s32 = 0
+    while index < 5 {
+        if TabCenter(row[index].label) >= 0.0 {
+            edge = index
+        }
+        index += 1
+    }
+    if edge < 1 || edge > 3 {
+        return 8
+    }
+    tap_x: float32 = TabCenter(row[edge].label)
+    unused SwipeFrame(*props, row[:], tap_x, true, true, false)
+    tapped := SwipeFrame(*props, row[:], tap_x, false, false, true)
+    if tapped.activated_index != edge || tapped.selected_index != edge {
+        return 9
+    }
+    right: float32 = tapped.selected_tab_bounds.x + tapped.selected_tab_bounds.width
+    if tapped.selected_tab_bounds.x < 100.0 || right > 300.0 - 31.0 {
+        return 10
+    }
+    unused SwipeFrame(*props, row[:], tap_x, false, false, false)
+    if TabCenter(row[edge + 1].label) < 0.0 {
+        return 13
+    }
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     index: s32 = 0
@@ -207,5 +315,5 @@ main :: () -> s32 {
     if !TreeFinish(TestSession()) || disabled.scroll_offset != 0 {
         return 4
     }
-    return 0
+    return Swipe()
 }
