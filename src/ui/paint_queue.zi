@@ -1335,6 +1335,128 @@ PaintPlanUnchanged :: (session: Session) -> bool {
     return true
 }
 
+// The area a builtin command may cover, in layout units and widened for
+// anti-aliased edges, or false when only repainting everything is safe.
+// Text is bounded without measuring: no glyph is wider than its font size
+// per byte, nor a line taller than twice the font size.
+PaintCommandArea :: (command: PaintCommand, area: *Rectangle) -> bool {
+    margin: float32 = 2.0 + command.line_width
+    kind := command.kind
+    if kind == PaintKindClippedText || kind == PaintKindImage ||
+        (kind == PaintKindText && (command.italic || command.emphasis)) {
+        // These draw only inside their clip.
+        area.* = Rectangle.{command.clip.x - margin, command.clip.y - margin,
+            command.clip.width + margin * 2.0, command.clip.height + margin * 2.0}
+        return command.clip.width > 0.0 && command.clip.height > 0.0
+    }
+    if kind == PaintKindText {
+        lines: s32 = 1
+        for byte: command.value { if byte == #char "\n" { lines += 1 } }
+        font := cast(float32)command.font
+        area.* = Rectangle.{cast(float32)command.x - font, cast(float32)command.y - font,
+            cast(float32)command.value.count * font + font * 2.0, cast(float32)lines * font * 2.0 + font * 2.0}
+        return true
+    }
+    if kind < PaintKindLine || kind > PaintKindShapeTriangle { return false }
+    bounds := command.bounds
+    if bounds.width < 0.0 { bounds.x += bounds.width; bounds.width = -bounds.width }
+    if bounds.height < 0.0 { bounds.y += bounds.height; bounds.height = -bounds.height }
+    area.* = Rectangle.{bounds.x - margin, bounds.y - margin,
+        bounds.width + margin * 2.0, bounds.height + margin * 2.0}
+    if command.clip_set {
+        area.* = RectangleIntersection(area.*, Rectangle.{command.clip.x - margin, command.clip.y - margin,
+            command.clip.width + margin * 2.0, command.clip.height + margin * 2.0})
+    }
+    return true
+}
+
+PaintAreaJoin :: (area: *Rectangle, joined: *bool, next: Rectangle) {
+    if next.width <= 0.0 || next.height <= 0.0 { return }
+    if !joined.* {
+        area.* = next
+        joined.* = true
+        return
+    }
+    left := ifx next.x < area.x then next.x else area.x
+    top := ifx next.y < area.y then next.y else area.y
+    right := ifx next.x + next.width > area.x + area.width then next.x + next.width else area.x + area.width
+    bottom := ifx next.y + next.height > area.y + area.height then next.y + next.height else area.y + area.height
+    area.* = Rectangle.{left, top, right - left, bottom - top}
+}
+
+PaintFrameDamage :: struct {
+    unchanged: bool
+    // Only `area` differs from the previous frame's paint.
+    partial: bool
+    area: Rectangle
+}
+
+// Compares this frame's paint with the previous frame's, command by command,
+// and joins the areas of the commands that differ, as they were and as they
+// are now. A command painted by its own emitter makes the whole frame differ.
+PaintDamage :: (session: Session) -> PaintFrameDamage {
+    result: PaintFrameDamage
+    if !SessionValid(session) { return result }
+    slot: s32 = SessionIndex(session)
+    if !paint_snapshots_valid[slot] { return result }
+    count := pending_paint[slot].items.count
+    previous := paint_snapshots[slot].count
+    total := ifx count > previous then count else previous
+    joined: bool
+    area: Rectangle
+    for index: cast(s64)0..total - 1 {
+        if index < count && !pending_paint[slot].items[index].builtin_emitter { return result }
+        if index < previous && !paint_snapshots[slot][index].builtin_emitter { return result }
+        current: PaintCommand
+        if index < count { current = PendingPaintAt(session, cast(s32)index) }
+        if index < count && index < previous &&
+            pending_paint[slot].items[index].has_emitter == paint_snapshots[slot][index].has_emitter &&
+            PaintCommandEqual(slot, current, paint_snapshots[slot][index]) { continue }
+        box: Rectangle
+        if index < count {
+            if !PaintCommandArea(current, *box) { return result }
+            PaintAreaJoin(*area, *joined, box)
+        }
+        if index < previous {
+            kept := paint_snapshots[slot][index]
+            before := kept.data
+            before.value = SnapshotTextRead(slot, true, kept.value_start, kept.value_count)
+            if before.value.count != kept.value_count || !PaintCommandArea(before, *box) { return result }
+            PaintAreaJoin(*area, *joined, box)
+        }
+        if !joined { return result }
+    }
+    result.unchanged = !joined
+    result.partial = joined
+    result.area = area
+    return result
+}
+
+// Emits only the commands that may touch `area`, for a host that kept the
+// previous frame's pixels everywhere else and clips this paint to the area.
+#program_export
+PaintFlushArea :: (session: Session, area: Rectangle) {
+    if PaintOverflow(session) || !PaintOrder(session) { PaintClear(session); return }
+    index: s32 = 0
+    while cast(s64)index < pending_paint[SessionIndex(session)].items.count {
+        slot := SessionIndex(session)
+        queued := *pending_paint[slot].items[index]
+        if queued.has_emitter {
+            emit: PaintEmitter = queued.emit
+            data := PendingPaintAt(session, index)
+            box: Rectangle
+            touched := !queued.builtin_emitter || !PaintCommandArea(data, *box)
+            if !touched {
+                overlap := RectangleIntersection(box, area)
+                touched = overlap.width > 0.0 && overlap.height > 0.0
+            }
+            if touched { emit(data) }
+        }
+        index += 1
+    }
+    PaintClear(session)
+}
+
 #program_export
 FramePaintUnchanged :: (session: Session) -> bool {
     if !SessionValid(session) { return false }

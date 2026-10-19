@@ -103,6 +103,9 @@ FrameEndResult :: struct {
     status: FrameStatus
     paint_unchanged: bool
     paint_count: s32
+    // EndFrameDamaged: only `damage` changed and its paint waits for the host.
+    damage_partial: bool
+    damage: Rectangle
 }
 
 #program_export
@@ -167,6 +170,40 @@ EndFrameRetained :: (session: Session, reuse: bool,
         PaintFlush(session)
     }
     result.status = cast(FrameStatus)FrameOk
+    return result
+}
+
+// Ends a frame for a host that keeps its previous frame's pixels and can
+// repaint part of them. An unchanged frame emits nothing, as with
+// EndFrameRetained. When only some paint differs, damage_partial is set,
+// damage is the area it covers in layout units, and nothing is emitted yet:
+// the host keeps its previous pixels outside that area and calls
+// PaintFlushArea, or PaintFlush to repaint everything. Any other frame is
+// emitted whole.
+#program_export
+EndFrameDamaged :: (session: Session) -> FrameEndResult {
+    if SessionValid(session) && frame_retained[SessionIndex(session)] { return EndFrameRetained(session, true) }
+    result: FrameEndResult
+    result.status = CommitFrame(session)
+    if result.status != cast(FrameStatus)FrameOk {
+        PaintSnapshotInvalidate(session)
+        return result
+    }
+    slot: s32 = SessionIndex(session)
+    result.paint_count = PendingPaintCount(session)
+    damage := PaintDamage(session)
+    stored: bool = damage.unchanged
+    if !damage.unchanged { stored = PaintSnapshotStore(session) }
+    result.paint_unchanged = damage.unchanged && stored
+    frame_paint_unchanged[slot] = result.paint_unchanged
+    if result.paint_unchanged {
+        PaintClear(session)
+    } else if damage.partial && stored {
+        result.damage_partial = true
+        result.damage = damage.area
+    } else {
+        PaintFlush(session)
+    }
     return result
 }
 

@@ -142,6 +142,9 @@ HostRaylibNormal :: (x: float32, y: float32, z: float32) #foreign raylib "rlNorm
 HostRaylibScale :: (x: float32, y: float32, z: float32) #foreign raylib "rlScalef";
 HostRaylibPushMatrix :: () #foreign raylib "rlPushMatrix";
 HostRaylibPopMatrix :: () #foreign raylib "rlPopMatrix";
+HostRaylibLoadIdentity :: () #foreign raylib "rlLoadIdentity";
+HostRaylibDisableBlend :: () #foreign raylib "rlDisableColorBlend";
+HostRaylibEnableBlend :: () #foreign raylib "rlEnableColorBlend";
 HostRaylibMultMatrix :: (matrix: *float32) #foreign raylib "rlMultMatrixf";
 HostRaylibParseFloat :: (value: *u8) -> float64 #foreign c "atof";
 HostRaylibTakeScreenshot :: (path: *u8) #foreign raylib "TakeScreenshot";
@@ -2088,6 +2091,9 @@ BeginRetainedFrame :: (width: s32, height: s32) -> bool {
 }
 
 RaylibPresentTexture :: (texture: Texture2D) {
+    // The texture covers the screen. Clearing first spares a tiling GPU
+    // from loading the old screen contents before drawing over them.
+    HostRaylibClearBackground(Color.{0, 0, 0, 255})
     source := Rectangle.{0.0, 0.0, cast(float32)texture.width,
         -cast(float32)texture.height}
     destination := Rectangle.{0.0, 0.0,
@@ -2123,6 +2129,63 @@ EndRetainedFrameReusePrevious :: () -> bool {
     HostRaylibEndDrawing()
     retained_frame_active = false
     return true
+}
+
+retained_damage_clip: RasterClipState;
+retained_damage_active: bool;
+
+// Copies part of the previous complete frame, in screen pixels, to the same
+// place in the frame being rendered. Render targets are stored bottom up.
+RaylibKeepPrevious :: (texture: Texture2D, x: float32, y: float32, width: float32, height: float32) {
+    if width <= 0.0 || height <= 0.0 { return }
+    source := Rectangle.{x, cast(float32)texture.height - y - height, width, -height}
+    HostRaylibDrawTexture(texture, source, Rectangle.{x, y, width, height}, Vector2.{}, 0.0,
+        Color.{255, 255, 255, 255})
+}
+
+// Repaints only `area`, in layout units, of the frame being rendered: the
+// rest is copied unchanged from the previous complete frame, and paint is
+// clipped to the area until EndRetainedDamage. False when there is no
+// previous frame to keep; the host then repaints everything.
+#program_export
+BeginRetainedDamage :: (area: Rectangle) -> bool {
+    if !retained_frame_active || retained_damage_active || retained_frame_previous_index < 0 ||
+    retained_frame_previous_index == retained_frame_render_index { return false }
+    previous := retained_frame_targets[retained_frame_previous_index].texture
+    width := cast(float32)retained_frame_width
+    height := cast(float32)retained_frame_height
+    screen := ClipScreenBounds(area)
+    left := screen.x
+    top := screen.y
+    right := screen.x + screen.width
+    bottom := screen.y + screen.height
+    if left < 0.0 { left = 0.0 }
+    if top < 0.0 { top = 0.0 }
+    if right > width { right = width }
+    if bottom > height { bottom = height }
+    if right < left { right = left }
+    if bottom < top { bottom = top }
+    HostRaylibFlushBatch()
+    HostRaylibDisableBlend()
+    HostRaylibPushMatrix()
+    HostRaylibLoadIdentity()
+    RaylibKeepPrevious(previous, 0.0, 0.0, width, top)
+    RaylibKeepPrevious(previous, 0.0, bottom, width, height - bottom)
+    RaylibKeepPrevious(previous, 0.0, top, left, bottom - top)
+    RaylibKeepPrevious(previous, right, top, width - right, bottom - top)
+    HostRaylibPopMatrix()
+    HostRaylibFlushBatch()
+    HostRaylibEnableBlend()
+    retained_damage_clip = BeginRasterClip(area)
+    retained_damage_active = true
+    return true
+}
+
+#program_export
+EndRetainedDamage :: () {
+    if !retained_damage_active { return }
+    EndRasterClip(retained_damage_clip)
+    retained_damage_active = false
 }
 
 #program_export

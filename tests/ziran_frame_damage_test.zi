@@ -1,0 +1,67 @@
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "ziran_frame_retained_host"
+using FrameStatus;
+
+custom_calls: s32;
+
+Custom :: (command: PaintCommand) {
+    unused command
+    custom_calls += 1
+}
+
+// Two still lines, one that moves and a label, as a page with a playing
+// practice window over it.
+Frame :: (session: Session, moving: float32, label: string, custom: bool = false) -> FrameEndResult {
+    unused BeginFrame(session, cast(u64)23, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    PaintLine(session, -1, Rectangle.{10.0, 10.0, 100.0, 1.0}, Color.{0, 0, 0, 255})
+    PaintLine(session, -1, Rectangle.{10.0, 200.0, 100.0, 1.0}, Color.{0, 0, 0, 255})
+    PaintLine(session, -1, Rectangle.{moving, 100.0, 20.0, 1.0}, Color.{0, 0, 0, 255})
+    PaintLabel(session, -1, label, 300, 50, 12, Color.{0, 0, 0, 255})
+    if custom {
+        command: QueuedPaint
+        command.emit = Custom
+        command.has_emitter = true
+        SubmitPaint(session, command)
+    }
+    return EndFrameDamaged(session)
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    if !SessionValid(session) { return 1 }
+    // The first frame has nothing to keep and is painted whole.
+    result := Frame(session, 50.0, "a")
+    if result.status != cast(FrameStatus)FrameOk || result.damage_partial || line_draws != 3 || text_draws != 1 { return 2 }
+    // An identical frame paints nothing.
+    result = Frame(session, 50.0, "a")
+    if !result.paint_unchanged || result.damage_partial || line_draws != 3 || text_draws != 1 { return 3 }
+    // A moved line damages where it was and where it is, and nothing else.
+    result = Frame(session, 60.0, "a")
+    damage := result.damage
+    if !result.damage_partial || result.paint_unchanged || line_draws != 3 ||
+        damage.x > 50.0 || damage.x + damage.width < 80.0 || damage.y > 100.0 || damage.y + damage.height < 101.0 ||
+        damage.y < 90.0 || damage.y + damage.height > 110.0 || damage.x < 40.0 || damage.x + damage.width > 90.0 { return 4 }
+    PaintFlushArea(session, damage)
+    if line_draws != 4 || text_draws != 1 || failed { return 5 }
+    // A changed label repaints only around itself.
+    result = Frame(session, 60.0, "bb")
+    if !result.damage_partial || result.damage.x > 300.0 || result.damage.y > 50.0 { return 6 }
+    PaintFlushArea(session, result.damage)
+    if line_draws != 4 || text_draws != 2 { return 7 }
+    // A host that cannot keep its pixels repaints everything instead.
+    result = Frame(session, 70.0, "bb")
+    if !result.damage_partial { return 8 }
+    PaintFlush(session)
+    if line_draws != 7 || text_draws != 3 { return 9 }
+    // Paint with its own emitter may draw anywhere: the frame is painted whole.
+    result = Frame(session, 70.0, "bb", true)
+    if result.damage_partial || result.paint_unchanged || line_draws != 10 || text_draws != 4 || custom_calls != 1 { return 10 }
+    unused CloseSession(session)
+    return 0
+}
