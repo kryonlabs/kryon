@@ -1,0 +1,25 @@
+// The width a line of text takes, so a caller can place controls right
+// beside a label. It stays apart from text_widget, so portable bundles that
+// never measure, such as the Apps controller, keep their reviewed bytes.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "text_props"
+    host_api :: #system_library "host_api";
+    TextWidthHostedHost :: (session: Session, props: TextProps) -> s32 #foreign host_api;
+    // A portable app asks its host, which measures as Text draws.
+    #program_export
+    TextWidth :: (session: Session, props: TextProps) -> s32 { return TextWidthHostedHost(session, props) }
+} else {
+    #import "session"
+    #import "font_metrics"
+    #import "text_props"
+    #import "text_widget"
+    // The width props.text takes on one line, in the font and typeface Text
+    // draws it with.
+    #program_export
+    TextWidth :: (session: Session, props: TextProps) -> s32 {
+        unused session
+        prepared: PreparedText = PrepareText(props, TextFaceOf(props))
+        return GlyphWidth(props.text, prepared.font, prepared.typeface)
+    }
+}

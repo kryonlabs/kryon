@@ -8,6 +8,7 @@
 #import "session"
 #import "tree"
 #import "text_widget"
+#import "text_measure"
 #import "text_props"
 #import "image_widget"
 #import "image_props"
@@ -108,7 +109,7 @@ widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 WidgetHostSupports :: (module: string, function: string) -> bool {
     return (ModuleName(module, "text_widget") && function == "TextHostedHost") ||
     (ModuleName(module, "text_widget") && function == "TextLinkAtHostedHost") ||
-    (ModuleName(module, "text_widget") && function == "TextWidthHostedHost") ||
+    (ModuleName(module, "text_measure") && function == "TextWidthHostedHost") ||
     (ModuleName(module, "image_widget") && function == "ImageHostedHost") ||
     (ModuleName(module, "button_widget") && function == "ButtonHostedHost") ||
     (ModuleName(module, "text_area_widget") && function == "TextAreaHostedHost") ||
@@ -259,7 +260,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         result.* = WidgetEncodeTextFieldResult(edited, *widget_field_result_codec)
         return 1
     }
-    if ModuleName(owner, "text_widget") && name == "TextWidthHostedHost" && WidgetValidTextProps(props) {
+    if ModuleName(owner, "text_measure") && name == "TextWidthHostedHost" && WidgetValidTextProps(props) {
         result.* = HostScalar("s32", cast(s64)TextWidth(session, WidgetHostTextProps(props)))
         return 1
     }
