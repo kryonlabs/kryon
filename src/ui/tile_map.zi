@@ -72,7 +72,24 @@ TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32) -> TileMapResult {
     return result
 }
 
+#if #defined(KRYON_HOSTED_UI) {
+    host_api :: #system_library "host_api";
+    TileMapHostedHost :: (session: Session, props: TileMapProps) -> TileMapResult #foreign host_api;
+}
+
+// The host decodes at most this many pictures, names and tile numbers in one
+// call. A larger map is drawn cell by cell.
+TILE_MAP_HOSTED_LIMIT :: 1024
+
 TileMap :: (session: Session, props: TileMapProps) -> TileMapResult {
+    #if #defined(KRYON_HOSTED_UI) {
+        // A hosted game's board was one host call per cell, the larger part
+        // of its frame on a phone. The host now draws the whole map in one.
+        if props.layers.count <= TILE_MAP_HOSTED_LIMIT && props.tiles.count <= TILE_MAP_HOSTED_LIMIT &&
+        props.names.count <= TILE_MAP_HOSTED_LIMIT {
+            return TileMapHostedHost(session, props)
+        }
+    }
     grid := TileMapFit(props.bounds, props.columns, props.rows)
     if grid.cell <= 0.0 { return grid }
     if props.fill.a != cast(u8)0 {

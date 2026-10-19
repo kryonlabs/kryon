@@ -21,6 +21,7 @@
 #import "tab_bar_widget"
 #import "tab_bar_props"
 #import "box_widget"
+#import "tile_map"
 #import "box_props"
 #import "svg_icon_widget"
 #import "svg_icon_props"
@@ -71,6 +72,9 @@ widget_image_mesh_point_codec: WidgetVector2Codec;
 widget_button_codec: WidgetButtonPropsCodec;
 widget_area_codec: WidgetTextAreaPropsCodec;
 widget_area_result_codec: WidgetTextAreaResultCodec;
+widget_tile_map_codec: WidgetTileMapPropsCodec;
+widget_tile_map_result_codec: WidgetTileMapResultCodec;
+widget_tile_map_used: [TILE_MAP_HOSTED_LIMIT]bool;
 widget_scroll_codec: WidgetScrollPropsCodec;
 widget_scroll_result_codec: WidgetScrollResultCodec;
 widget_session_codec: WidgetSessionCodec;
@@ -115,6 +119,7 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "text_measure") && function == "TextWidthHostedHost") ||
     (ModuleName(module, "text_measure") && function == "TextHeightHostedHost") ||
     (ModuleName(module, "image_widget") && function == "ImageHostedHost") ||
+    (ModuleName(module, "tile_map") && function == "TileMapHostedHost") ||
     (ModuleName(module, "button_widget") && function == "ButtonHostedHost") ||
     (ModuleName(module, "text_area_widget") && function == "TextAreaHostedHost") ||
     (ModuleName(module, "scroll_widget") && function == "ScrollHostedHost") ||
@@ -293,6 +298,34 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             image.mesh.points = WidgetHostMeshPoints(props.fields[mesh_at].value)
         }
         Image(session, image)
+        return 1
+    }
+    if ModuleName(owner, "tile_map") && name == "TileMapHostedHost" && WidgetValidTileMapProps(props) {
+        map := WidgetDecodeTileMapProps(props, *widget_tile_map_codec)
+        map.tiles = widget_tile_map_codec.tiles_decoded[:HostSliceLength(props, 4, "tiles")]
+        map.names = widget_tile_map_codec.names_decoded[:HostSliceLength(props, 5, "names")]
+        map.layers = widget_tile_map_codec.layers_decoded[:HostSliceLength(props, 6, "layers")]
+        // Each picture a cell shows passes the asset policy once, as each of
+        // those cells' Images did; a map showing one the bundle may not draw
+        // is refused as that Image was.
+        for index: 0..cast(s32)map.tiles.count - 1 { widget_tile_map_used[index] = false }
+        cells := map.columns * map.rows
+        for at: 0..cast(s32)map.layers.count - 1 {
+            tile := map.layers[at]
+            if at < map.layer_count * cells && tile >= 0 && cast(s64)tile < map.tiles.count { widget_tile_map_used[tile] = true }
+        }
+        for index: 0..cast(s32)map.tiles.count - 1 {
+            if !widget_tile_map_used[index] { continue }
+            packed := map.tiles[index]
+            if packed == "" {
+                if !WidgetHostAssetAllowed(packed) { return 0 }
+                continue
+            }
+            resolved := WidgetHostAssetPath(packed)
+            if resolved == "" { return 0 }
+            map.tiles[index] = resolved
+        }
+        result.* = WidgetEncodeTileMapResult(TileMap(session, map), *widget_tile_map_result_codec)
         return 1
     }
     if ModuleName(owner, "button_widget") && name == "ButtonHostedHost" && WidgetValidButtonProps(props) {

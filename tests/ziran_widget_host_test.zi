@@ -9,6 +9,7 @@
 #import "paint_queue"
 #import "text_props"
 #import "image_props"
+#import "tile_map"
 #import "button_props"
 #import "scroll_props"
 #import "text_input_props"
@@ -101,6 +102,36 @@ menu_codec: WidgetContextMenuPropsCodec;
 menu_item_codecs: [3]WidgetContextMenuItemCodec;
 menu_values: [3]HostValue;
 menu_result_codec: WidgetContextMenuResultCodec;
+tile_map_codec: WidgetTileMapPropsCodec;
+tile_map_result_codec: WidgetTileMapResultCodec;
+
+// The paint a frame queued, to compare a hosted map with one drawn directly.
+TileMapPaint :: struct { kind: s32; bounds: Rectangle; color: Color; asset: [64]u8 }
+tile_map_paint: [32]TileMapPaint;
+
+TileMapPaintTake :: (session: Session) -> s32 {
+    count := PendingPaintCount(session)
+    if count > 32 { return -1 }
+    for index: cast(s32)0..count - 1 {
+        paint := PendingPaintAt(session, index)
+        tile_map_paint[index] = .{.kind = paint.kind, .bounds = paint.bounds, .color = paint.color}
+        unused CopyCString(paint.asset_path, tile_map_paint[index].asset[:])
+    }
+    return count
+}
+
+TileMapPaintSame :: (session: Session, count: s32) -> bool {
+    if PendingPaintCount(session) != count { return false }
+    for index: cast(s32)0..count - 1 {
+        paint := PendingPaintAt(session, index)
+        kept := tile_map_paint[index]
+        if paint.kind != kept.kind || paint.bounds.x != kept.bounds.x || paint.bounds.y != kept.bounds.y ||
+        paint.bounds.width != kept.bounds.width || paint.bounds.height != kept.bounds.height ||
+        paint.color.r != kept.color.r || paint.color.g != kept.color.g || paint.color.b != kept.color.b ||
+        paint.color.a != kept.color.a || paint.asset_path != TextFromCString(*tile_map_paint[index].asset[0]) { return false }
+    }
+    return true
+}
 
 // Calls the host as a bundle does: arguments as values, names as C text.
 Call :: (module: string, function: string, arguments: []HostValue, result: *HostValue) -> s32 {
@@ -516,5 +547,38 @@ main :: () -> s32 {
     if Call("context_menu_widget", "ContextMenuHostedHost", arguments[:], *result) != 1 { return 64 }
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 65 }
+    // A hosted TileMap queues exactly the paint its cells did one by one,
+    // after each picture it shows passes the asset policy.
+    if !WidgetHostSupports("p0123456789abcdef_tile_map", "TileMapHostedHost") { return 66 }
+    tiles: [2]string = .["assets/photo.png", "assets/other.png"]
+    layers: [6]s32 = .[0, -1, 0, 0, -1, 0]
+    map := TileMapProps.{.key = cast(u64)900, .bounds = Rectangle.{10.0, 10.0, 90.0, 40.0}, .columns = 3,
+        .rows = 2, .tiles = tiles[:], .layers = layers[:], .layer_count = 1, .fill = Color.{10, 20, 30, 255},
+        .label = "board"}
+    BeginFrame(session, cast(u64)6, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto)
+    arguments[1] = WidgetEncodeTileMapProps(map, *tile_map_codec)
+    if Call("tile_map", "TileMapHostedHost", arguments[:2], *result) != 1 || !WidgetValidTileMapResult(result) { return 67 }
+    grid := WidgetDecodeTileMapResult(result, *tile_map_result_codec)
+    hosted := TileMapPaintTake(session)
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk || hosted != 5 || grid.cell != 20.0 || grid.columns != 3 { return 68 }
+    BeginFrame(session, cast(u64)6, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    direct := TileMap(session, map)
+    if !TileMapPaintSame(session, hosted) || direct.cell != grid.cell || direct.board.x != grid.board.x { return 69 }
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 70 }
+    // A map that shows a picture the bundle may not draw is refused, as that
+    // cell's Image was; one it only lists is not.
+    BeginFrame(session, cast(u64)6, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto)
+    showing: [6]s32 = .[0, 1, 0, 0, -1, 0]
+    shown := map
+    shown.layers = showing[:]
+    arguments[1] = WidgetEncodeTileMapProps(shown, *tile_map_codec)
+    if Call("tile_map", "TileMapHostedHost", arguments[:2], *result) != 0 { return 71 }
+    arguments[1] = WidgetEncodeTileMapProps(map, *tile_map_codec)
+    if Call("tile_map", "TileMapHostedHost", arguments[:2], *result) != 1 { return 72 }
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 73 }
     return 0
 }

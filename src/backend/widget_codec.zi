@@ -29,6 +29,7 @@
 #import "modal_props"
 #import "context_menu_widget"
 #import "svg_icon_props"
+#import "tile_map"
 using HostValueKind;
 
 WidgetRectangleCodec :: struct {
@@ -9796,6 +9797,339 @@ WidgetValidSvgIconProps :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 2, "color")
         if field_at >= 0 {
             if !WidgetValidColor(value.fields[field_at].value) { return false }
+        }
+    }
+    return true
+}
+
+WidgetTileMapPropsCodec :: struct {
+    fields: [10]HostField
+    bounds: WidgetRectangleCodec
+    tiles_values: [1024]HostValue
+    tiles_decoded: [1024]string
+    names_values: [1024]HostValue
+    names_decoded: [1024]string
+    layers_values: [1024]HostValue
+    layers_decoded: [1024]s32
+    fill: WidgetColorCodec
+}
+
+WidgetEncodeTileMapProps :: (data: TileMapProps, codec: *WidgetTileMapPropsCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("TileMapProps")
+    value.fields = *codec.fields[0]
+    value.field_count = 10
+    codec.fields[0].name = HostTextData("key")
+    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
+    codec.fields[1].name = HostTextData("bounds")
+    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
+    codec.fields[2].name = HostTextData("columns")
+    codec.fields[2].value = HostScalar("s32", cast(s64)data.columns)
+    codec.fields[3].name = HostTextData("rows")
+    codec.fields[3].value = HostScalar("s32", cast(s64)data.rows)
+    codec.fields[4].name = HostTextData("tiles")
+    codec.fields[4].value.kind = cast(s32)HostSlice
+    codec.fields[4].value.type_name = HostTextData("[]string")
+    codec.fields[4].value.length = cast(usize)data.tiles.count
+    if codec.fields[4].value.length > cast(usize)1024 { codec.fields[4].value.length = cast(usize)1024 }
+    codec.fields[4].value.elements = *codec.tiles_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[4].value.length {
+            codec.tiles_values[index] = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.tiles[index]), .length = cast(usize)data.tiles[index].count}
+            index += cast(usize)1
+        }
+    }
+    codec.fields[5].name = HostTextData("names")
+    codec.fields[5].value.kind = cast(s32)HostSlice
+    codec.fields[5].value.type_name = HostTextData("[]string")
+    codec.fields[5].value.length = cast(usize)data.names.count
+    if codec.fields[5].value.length > cast(usize)1024 { codec.fields[5].value.length = cast(usize)1024 }
+    codec.fields[5].value.elements = *codec.names_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[5].value.length {
+            codec.names_values[index] = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.names[index]), .length = cast(usize)data.names[index].count}
+            index += cast(usize)1
+        }
+    }
+    codec.fields[6].name = HostTextData("layers")
+    codec.fields[6].value.kind = cast(s32)HostSlice
+    codec.fields[6].value.type_name = HostTextData("[]s32")
+    codec.fields[6].value.length = cast(usize)data.layers.count
+    if codec.fields[6].value.length > cast(usize)1024 { codec.fields[6].value.length = cast(usize)1024 }
+    codec.fields[6].value.elements = *codec.layers_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[6].value.length {
+            codec.layers_values[index] = HostScalar("s32", cast(s64)data.layers[index])
+            index += cast(usize)1
+        }
+    }
+    codec.fields[7].name = HostTextData("layer_count")
+    codec.fields[7].value = HostScalar("s32", cast(s64)data.layer_count)
+    codec.fields[8].name = HostTextData("fill")
+    codec.fields[8].value = WidgetEncodeColor(data.fill, *codec.fill)
+    codec.fields[9].name = HostTextData("label")
+    codec.fields[9].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
+    return value
+}
+
+WidgetDecodeTileMapProps :: (value: HostValue, codec: *WidgetTileMapPropsCodec) -> TileMapProps {
+    data: TileMapProps
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            data.key = cast(u64)value.fields[field_at].value.bits
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "bounds")
+        if field_at >= 0 {
+            data.bounds = WidgetDecodeRectangle(value.fields[field_at].value, *codec.bounds)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "columns")
+        if field_at >= 0 {
+            data.columns = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "rows")
+        if field_at >= 0 {
+            data.rows = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "tiles")
+        if field_at >= 0 {
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    codec.tiles_decoded[index] = TextFromBytes(BytesFromPointer(value.fields[field_at].value.elements[index].data, cast(u64)value.fields[field_at].value.elements[index].length))
+                    index += cast(usize)1
+                }
+            }
+            // Slice storage is attached by the rendering effect after decoding.
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "names")
+        if field_at >= 0 {
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    codec.names_decoded[index] = TextFromBytes(BytesFromPointer(value.fields[field_at].value.elements[index].data, cast(u64)value.fields[field_at].value.elements[index].length))
+                    index += cast(usize)1
+                }
+            }
+            // Slice storage is attached by the rendering effect after decoding.
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "layers")
+        if field_at >= 0 {
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    codec.layers_decoded[index] = cast(s32)value.fields[field_at].value.elements[index].integer
+                    index += cast(usize)1
+                }
+            }
+            // Slice storage is attached by the rendering effect after decoding.
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "layer_count")
+        if field_at >= 0 {
+            data.layer_count = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "fill")
+        if field_at >= 0 {
+            data.fill = WidgetDecodeColor(value.fields[field_at].value, *codec.fill)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "label")
+        if field_at >= 0 {
+            data.label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    return data
+}
+
+WidgetValidTileMapProps :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "TileMapProps" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "key")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "u64", cast(s32)HostUnsigned) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "bounds")
+        if field_at >= 0 {
+            if !WidgetValidRectangle(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "columns")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "rows")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "tiles")
+        if field_at >= 0 {
+            if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]string" ||
+                value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    if !HostScalarValid(value.fields[field_at].value.elements[index], "string", cast(s32)HostString) { return false }
+                    index += cast(usize)1
+                }
+            }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 5, "names")
+        if field_at >= 0 {
+            if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]string" ||
+                value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    if !HostScalarValid(value.fields[field_at].value.elements[index], "string", cast(s32)HostString) { return false }
+                    index += cast(usize)1
+                }
+            }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 6, "layers")
+        if field_at >= 0 {
+            if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]s32" ||
+                value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    if !HostScalarValid(value.fields[field_at].value.elements[index], "s32", cast(s32)HostInteger) { return false }
+                    index += cast(usize)1
+                }
+            }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 7, "layer_count")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 8, "fill")
+        if field_at >= 0 {
+            if !WidgetValidColor(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 9, "label")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    return true
+}
+
+WidgetTileMapResultCodec :: struct {
+    fields: [4]HostField
+    board: WidgetRectangleCodec
+}
+
+WidgetEncodeTileMapResult :: (data: TileMapResult, codec: *WidgetTileMapResultCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("TileMapResult")
+    value.fields = *codec.fields[0]
+    value.field_count = 4
+    codec.fields[0].name = HostTextData("board")
+    codec.fields[0].value = WidgetEncodeRectangle(data.board, *codec.board)
+    codec.fields[1].name = HostTextData("cell")
+    codec.fields[1].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.cell}
+    codec.fields[2].name = HostTextData("columns")
+    codec.fields[2].value = HostScalar("s32", cast(s64)data.columns)
+    codec.fields[3].name = HostTextData("rows")
+    codec.fields[3].value = HostScalar("s32", cast(s64)data.rows)
+    return value
+}
+
+WidgetDecodeTileMapResult :: (value: HostValue, codec: *WidgetTileMapResultCodec) -> TileMapResult {
+    data: TileMapResult
+    {
+        field_at := HostFieldAt(value, 0, "board")
+        if field_at >= 0 {
+            data.board = WidgetDecodeRectangle(value.fields[field_at].value, *codec.board)
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "cell")
+        if field_at >= 0 {
+            data.cell = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "columns")
+        if field_at >= 0 {
+            data.columns = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "rows")
+        if field_at >= 0 {
+            data.rows = cast(s32)value.fields[field_at].value.integer
+        }
+    }
+    return data
+}
+
+WidgetValidTileMapResult :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "TileMapResult" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "board")
+        if field_at >= 0 {
+            if !WidgetValidRectangle(value.fields[field_at].value) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "cell")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "columns")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "rows")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "s32", cast(s32)HostInteger) { return false }
         }
     }
     return true

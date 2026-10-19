@@ -40,7 +40,7 @@ KRYON_MODULES = ['session', 'geometry', 'drawing_props', 'text_props', 'image_pr
                  'scroll', 'scroll_props', 'semantic', 'text_align', 'checkbox_props',
                  'toggle_props', 'tab_bar_props', 'box_props', 'press_props', 'spinbox_props',
                  'time_picker_props', 'dropdown', 'dropdown_props', 'title_bar_props',
-                 'modal', 'modal_props', 'context_menu_widget', 'svg_icon_props']
+                 'modal', 'modal_props', 'context_menu_widget', 'svg_icon_props', 'tile_map']
 KRYON_ROOTS = ['TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
                'ScrollProps', 'ScrollResult', 'Session', 'CheckboxProps', 'CheckboxValueResult',
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
@@ -48,7 +48,8 @@ KRYON_ROOTS = ['TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextA
                'SpinboxProps', 'SpinboxStepResult', 'TimePickerProps', 'TimePickerResult',
                'TitleBarProps', 'TitleBarResult', 'DropdownOption', 'ModalFrameProps',
                'ModalFrameResult', 'ActionModalProps', 'ActionModalAction', 'ActionModalResult',
-               'ContextMenuProps', 'ContextMenuItem', 'ContextMenuResult', 'SvgIconProps']
+               'ContextMenuProps', 'ContextMenuItem', 'ContextMenuResult', 'SvgIconProps',
+               'TileMapProps', 'TileMapResult']
 
 
 def read_schema(paths):
@@ -102,6 +103,29 @@ def scalar_kind(kind):
     return 'HostInteger'
 
 
+def scalar_encode(value, kind):
+    """A HostValue expression for a plain value of the given kind."""
+    if kind == 'string':
+        return (f'HostValue.{{.kind = cast(s32)HostString, .type_name = HostTextData("string"), '
+                f'.data = HostTextData({value}), .length = cast(usize){value}.count}}')
+    if kind.startswith('float'):
+        return (f'HostValue.{{.kind = cast(s32)HostReal, .type_name = HostTextData("{kind}"), '
+                f'.real = cast(float64){value}}}')
+    if kind == 'bool':
+        return f'HostScalar("bool", ifx {value} then 1 else 0)'
+    return f'HostScalar("{kind}", cast(s64){value})'
+
+
+def scalar_decode(source, kind):
+    """The plain value a HostValue expression holds."""
+    if kind == 'string':
+        return f'TextFromBytes(BytesFromPointer({source}.data, cast(u64){source}.length))'
+    if kind == 'bool':
+        return f'{source}.integer != 0'
+    member = 'real' if kind.startswith('float') else 'bits' if kind.startswith('u') else 'integer'
+    return f'cast({kind}){source}.{member}'
+
+
 def generate(schema, needed, provided, header, imports):
     records = set(needed) | provided
     # A file import is written `#import, file "name.zi";`.
@@ -116,9 +140,10 @@ def generate(schema, needed, provided, header, imports):
             if field_kind.startswith('[]') and not host_decoded(kind, name):
                 element = field_kind[2:]
                 limit = slice_limit(kind, name)
-                lines += [f'    {name}_values: [{limit}]HostValue',
-                          f'    {name}_codecs: [{limit}]Widget{element}Codec',
-                          f'    {name}_decoded: [{limit}]{element}']
+                lines += [f'    {name}_values: [{limit}]HostValue']
+                if element in records:
+                    lines += [f'    {name}_codecs: [{limit}]Widget{element}Codec']
+                lines += [f'    {name}_decoded: [{limit}]{element}']
         lines += ['}', '']
         lines += encoder(kind, fields, records)
         lines += decoder(kind, fields, records)
@@ -150,7 +175,9 @@ def encoder(kind, fields, records):
                       f'    {target}.elements = *codec.{name}_values[0]',
                       '    {', '        index: usize = 0',
                       f'        while index < {target}.length {{',
-                      f'            codec.{name}_values[index] = WidgetEncode{element}(data.{name}[index], *codec.{name}_codecs[index])',
+                      f'            codec.{name}_values[index] = ' + (
+                          f'WidgetEncode{element}(data.{name}[index], *codec.{name}_codecs[index])'
+                          if element in records else scalar_encode(f'data.{name}[index]', element)),
                       '            index += cast(usize)1', '        }', '    }']
         elif field_kind == 'string':
             lines += [f'    {target} = HostValue.{{.kind = cast(s32)HostString, .type_name = HostTextData("string"), '
@@ -182,7 +209,9 @@ def decoder(kind, fields, records):
         elif field_kind.startswith('[]'):
             element = field_kind[2:]
             body = ['    {', '        index: usize = 0', f'        while index < {source}.length {{',
-                    f'            codec.{name}_decoded[index] = WidgetDecode{element}({source}.elements[index], *codec.{name}_codecs[index])',
+                    f'            codec.{name}_decoded[index] = ' + (
+                        f'WidgetDecode{element}({source}.elements[index], *codec.{name}_codecs[index])'
+                        if element in records else scalar_decode(f'{source}.elements[index]', element)),
                     '            index += cast(usize)1', '        }', '    }',
                     '    // Slice storage is attached by the rendering effect after decoding.']
         elif field_kind == 'string':
@@ -211,7 +240,8 @@ def validator(kind, fields, records):
             body = [f'    if {source}.kind != cast(s32)HostSlice || TextFromCString({source}.type_name) != "{field_kind}" ||',
                     f'        {source}.length > cast(usize){limit} || ({source}.length > cast(usize)0 && {source}.elements == null) {{ return false }}',
                     '    {', '        index: usize = 0', f'        while index < {source}.length {{',
-                    f'            if !WidgetValid{element}({source}.elements[index]) {{ return false }}',
+                    f'            if !WidgetValid{element}({source}.elements[index]) {{ return false }}' if element in records else
+                    f'            if !HostScalarValid({source}.elements[index], "{element}", cast(s32){scalar_kind(element)}) {{ return false }}',
                     '            index += cast(usize)1', '        }', '    }']
         else:
             body = [f'    if !HostScalarValid({source}, "{field_kind}", cast(s32){scalar_kind(field_kind)}) {{ return false }}']
