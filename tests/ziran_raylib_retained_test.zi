@@ -1,5 +1,11 @@
 #import "raylib_runtime"
 #import "ziran_raylib_retained_host"
+#import "drawing_props"
+
+// Presenting a retained frame clears the window behind it first. The
+// graphics test, which shares the retained host, has its own.
+#program_export
+ClearBackground :: (color: Color) { unused color }
 
 #program_export
 main :: () -> s32 {
