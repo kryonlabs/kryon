@@ -1,3 +1,4 @@
+using InputProtocol :: #import "input_protocol";
 #import "geometry"
 #import "session"
 #import "tree"
@@ -8,22 +9,6 @@ using WidgetKind;
 
 // Raw device observations are supplied by the platform. Kryon owns hit order,
 // capture, eligibility, and activation across retained frames.
-// The secondary (right) button, which opens context menus. It travels beside
-// PointerFrame so existing hosts and code keep their layout.
-SecondaryPointerFrame :: struct {
-    down: bool
-    pressed: bool
-    released: bool
-}
-
-PointerFrame :: struct {
-    x: float32
-    y: float32
-    down: bool
-    pressed: bool
-    released: bool
-}
-
 PointerState :: struct {
     hovered_generation: u64
     held_generation: u64
@@ -71,28 +56,6 @@ active_focus: [9]u64;
 // Keyboard navigation shows the focus: Tab turns it on, a pointer press turns
 // it off. While it is on, Enter and Space press the focused control.
 active_focus_visible: [9]bool;
-
-// Keyboard modifier bits reported by KeyboardModifiers.
-KeyModifierShift :: 1;
-KeyModifierControl :: 2;
-KeyModifierAlt :: 4;
-
-// The key codes every host reports through KeyboardTake. Letters are their
-// uppercase ASCII codes, and digits and punctuation their ASCII codes.
-KeyEscape :: 256;
-KeyEnter :: 257;
-KeyTab :: 258;
-KeyBackspace :: 259;
-KeyInsert :: 260;
-KeyDelete :: 261;
-KeyRight :: 262;
-KeyLeft :: 263;
-KeyDown :: 264;
-KeyUp :: 265;
-KeyPageUp :: 266;
-KeyPageDown :: 267;
-KeyHome :: 268;
-KeyEnd :: 269;
 
 TypedInputQueue :: struct {
     values: [32]s32
@@ -155,7 +118,7 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
 #program_export
 TreeInputResume :: (session: Session, snapshot: InputSnapshot) -> bool {
     if !SessionValid(session) || session.slot != snapshot.session.slot ||
-        session.epoch != snapshot.session.epoch { return false }
+    session.epoch != snapshot.session.epoch { return false }
     slot := SessionIndex(session)
     active_pointer[slot] = snapshot.pointer
     active_sample[slot] = snapshot.sample
@@ -207,7 +170,7 @@ KeyboardModifiers :: (session: Session) -> s32 {
 #program_export
 TypedCodepointSend :: (session: Session, codepoint: s32) -> bool {
     if !SessionValid(session) || codepoint <= 0 || codepoint > 1114111 ||
-       (codepoint >= 55296 && codepoint <= 57343) { return false }
+    (codepoint >= 55296 && codepoint <= 57343) { return false }
     index: s32 = SessionIndex(session)
     if active_codepoints[index].count >= 32 { return false }
     tail: s32 = (active_codepoints[index].head +
@@ -248,13 +211,6 @@ PointerSample :: (session: Session) -> PointerFrame {
     empty: PointerFrame
     if !SessionValid(session) { return empty }
     return active_sample[SessionIndex(session)]
-}
-
-#program_export
-PointInBounds :: (x: float32, y: float32, bounds: Rectangle) -> bool {
-    return bounds.width > 0.0 && bounds.height > 0.0 &&
-        x >= bounds.x && y >= bounds.y &&
-        x < bounds.x + bounds.width && y < bounds.y + bounds.height
 }
 
 // Hosts submit one wheel sample per frame. A viewport under the pointer
@@ -326,7 +282,7 @@ TreeHitAt :: (session: Session, x: float32, y: float32,
     if !SessionValid(session) { return -1 }
     slot := SessionIndex(session)
     if trees[slot].committed_count == 0 ||
-        !PointInBounds(x, y, trees[slot].committed[0].bounds) { return -1 }
+    !PointInBounds(x, y, trees[slot].committed[0].bounds) { return -1 }
     index: s32 = trees[slot].committed_count - 1
     hit: s32 = -1
     layer: s32 = -1
@@ -335,7 +291,7 @@ TreeHitAt :: (session: Session, x: float32, y: float32,
         entry: *NodeCore = *trees[slot].committed[index]
         if entry.interaction_index >= 0 {
             interaction: *InteractionData =
-                *trees[slot].committed_interactions[entry.interaction_index]
+            *trees[slot].committed_interactions[entry.interaction_index]
             if (top == 0 || TreeModalLayerAt(session, index) == top) &&
             (TreeButtonLike(entry.kind) ||
                 entry.kind == WidgetKindCheckbox ||
@@ -449,9 +405,9 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
             active_pointer[input_slot].press.serial + 1, frame.x, frame.y}
         active_pointer[input_slot].focus_generation = 0
         if hit >= 0 && TreeTextFocused(session) &&
-            !TreeTextKind(trees[input_slot].committed[hit].kind) {
+        !TreeTextKind(trees[input_slot].committed[hit].kind) {
             active_pointer[input_slot].focus_generation =
-                trees[input_slot].committed[hit].identity_generation
+            trees[input_slot].committed[hit].identity_generation
         } else {
             unused TreeFocusAt(session, hit)
         }
@@ -459,7 +415,7 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     active_pointer[input_slot].hovered_generation = 0
     if hit >= 0 {
         active_pointer[input_slot].hovered_generation =
-            trees[input_slot].committed[hit].identity_generation
+        trees[input_slot].committed[hit].identity_generation
     }
     if frame.pressed {
         active_pointer[input_slot].captures_drag = false
@@ -471,13 +427,13 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
         if (frame.down || frame.released) && hit >= 0 {
             entry := TreeInputAt(session, hit)
             active_pointer[input_slot].held_generation =
-                entry.identity_generation
+            entry.identity_generation
             active_pointer[input_slot].pressed_generation =
-                active_pointer[input_slot].held_generation
+            active_pointer[input_slot].held_generation
             active_pointer[input_slot].grab_x = frame.x - entry.bounds.x
             active_pointer[input_slot].grab_y = frame.y - entry.bounds.y
             active_pointer[input_slot].captures_drag =
-                entry.captures_drag
+            entry.captures_drag
         }
     }
     if frame.down && active_pointer[input_slot].held_generation != 0 {
@@ -487,15 +443,15 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
     if frame.released {
         if active_pointer[input_slot].held_generation != 0 {
             active_pointer[input_slot].released_generation =
-                active_pointer[input_slot].held_generation
+            active_pointer[input_slot].held_generation
             active_pointer[input_slot].released_x = frame.x
             active_pointer[input_slot].released_y = frame.y
             if hit >= 0 && active_pointer[input_slot].held_generation ==
-                trees[input_slot].committed[hit].identity_generation {
+            trees[input_slot].committed[hit].identity_generation {
                 active_pointer[input_slot].activation_generation =
-                    active_pointer[input_slot].held_generation
+                active_pointer[input_slot].held_generation
                 if active_pointer[input_slot].focus_generation ==
-                    active_pointer[input_slot].held_generation {
+                active_pointer[input_slot].held_generation {
                     unused TreeFocusAt(session, hit)
                 }
             }
@@ -524,7 +480,7 @@ TreePointerCapturesDrag :: (session: Session) -> bool {
     input_slot := SessionIndex(session)
     if !SessionValid(session) { return false }
     return active_pointer[input_slot].held_generation != 0 &&
-        active_pointer[input_slot].captures_drag
+    active_pointer[input_slot].captures_drag
 }
 
 // A press that has become something of its own, such as a hold that
@@ -552,8 +508,8 @@ TreeTakeDragAt :: (session: Session, index: s32) -> PointerDrag {
     entry: NodeInput = TreeInputAt(session, index)
     generation: u64 = entry.identity_generation
     if !entry.interactive || !TreeInputAllowedAt(session, index) ||
-        !TreePointerActivatable(entry.kind, entry.focus_id,
-            entry.disabled, entry.loading) {
+    !TreePointerActivatable(entry.kind, entry.focus_id,
+        entry.disabled, entry.loading) {
         if active_pointer[input_slot].held_generation == generation {
             active_pointer[input_slot].held_generation = 0
         }
@@ -569,11 +525,11 @@ TreeTakeDragAt :: (session: Session, index: s32) -> PointerDrag {
         return drag
     }
     drag.active = generation != 0 &&
-        active_pointer[input_slot].held_generation == generation
+    active_pointer[input_slot].held_generation == generation
     drag.started = generation != 0 &&
-        active_pointer[input_slot].pressed_generation == generation
+    active_pointer[input_slot].pressed_generation == generation
     drag.ended = generation != 0 &&
-        active_pointer[input_slot].released_generation == generation
+    active_pointer[input_slot].released_generation == generation
     if drag.active || drag.ended {
         drag.grab_x = active_pointer[input_slot].grab_x
         drag.grab_y = active_pointer[input_slot].grab_y
@@ -611,7 +567,7 @@ TreePointerCancel :: (session: Session) {
 TreeHoveredAt :: (session: Session, index: s32) -> bool {
     input_slot := SessionIndex(session)
     if input_slot == 0 || index < 0 ||
-        index >= trees[input_slot].committed_count { return false }
+    index >= trees[input_slot].committed_count { return false }
     return TreeInputAllowedAt(session, index) &&
     active_pointer[input_slot].hovered_generation != 0 &&
     trees[input_slot].committed[index].identity_generation ==
@@ -623,7 +579,7 @@ TreePressedAt :: (session: Session, index: s32) -> bool {
     if !TreeHoveredAt(session, index) { return false }
     input_slot := SessionIndex(session)
     return active_pointer[input_slot].held_generation ==
-        trees[input_slot].committed[index].identity_generation
+    trees[input_slot].committed[index].identity_generation
 }
 
 // Platform actions enter the same retained identity and modal routing as
@@ -635,7 +591,7 @@ TreeFocusAt :: (session: Session, index: s32) -> bool {
     }
     node: NodeInput = TreeInputAt(session, index)
     if !node.interactive || node.disabled || node.loading ||
-        !TreeInputAllowedAt(session, index) { return false }
+    !TreeInputAllowedAt(session, index) { return false }
     active_focus[session.slot] = node.identity_generation
     return true
 }
@@ -646,7 +602,7 @@ TreeHasFocus :: (session: Session) -> bool {
     if input_slot == 0 || active_focus[input_slot] == 0 { return false }
     for index: 0..trees[input_slot].committed_count - 1 {
         if trees[input_slot].committed[index].identity_generation == active_focus[input_slot] &&
-            TreeInputAllowedAt(session, index) { return true }
+        TreeInputAllowedAt(session, index) { return true }
     }
     active_focus[input_slot] = 0
     return false
@@ -656,7 +612,7 @@ TreeHasFocus :: (session: Session) -> bool {
 TreeBlurAt :: (session: Session, index: s32) {
     input_slot := SessionIndex(session)
     if input_slot != 0 && index >= 0 && index < trees[input_slot].committed_count &&
-        active_focus[input_slot] == trees[input_slot].committed[index].identity_generation {
+    active_focus[input_slot] == trees[input_slot].committed[index].identity_generation {
         active_focus[input_slot] = 0
     }
 }
@@ -675,8 +631,8 @@ TreeFocusedAt :: (session: Session, index: s32) -> bool {
         return false
     }
     return active_focus[input_slot] != 0 &&
-        active_focus[input_slot] == trees[input_slot].committed[index].identity_generation &&
-        TreeInputAllowedAt(session, index)
+    active_focus[input_slot] == trees[input_slot].committed[index].identity_generation &&
+    TreeInputAllowedAt(session, index)
 }
 
 #program_export
@@ -695,10 +651,10 @@ TreeTakeActivationAt :: (session: Session, index: s32) -> bool {
     if index < 0 || index >= TreeCount(session) { return false }
     entry: NodeInput = TreeInputAt(session, index)
     if !entry.interactive || !TreeInputAllowedAt(session, index) ||
-        !TreePointerActivatable(entry.kind, entry.focus_id,
+    !TreePointerActivatable(entry.kind, entry.focus_id,
         entry.disabled, entry.loading) ||
-        active_pointer[input_slot].activation_generation == 0 ||
-        active_pointer[input_slot].activation_generation != entry.identity_generation {
+    active_pointer[input_slot].activation_generation == 0 ||
+    active_pointer[input_slot].activation_generation != entry.identity_generation {
         return false
     }
     active_pointer[input_slot].activation_generation = 0
@@ -726,7 +682,7 @@ TreeKeyboardRoute :: (session: Session) -> bool {
             if current >= count { current = 0 }
             node: NodeInput = TreeInputAt(session, current)
             if TreePointerActivatable(node.kind, node.focus_id, node.disabled, node.loading) &&
-                TreeFocusAt(session, current) {
+            TreeFocusAt(session, current) {
                 active_focus_visible[slot] = true
                 active_key[slot] = 0
                 return true
@@ -739,8 +695,8 @@ TreeKeyboardRoute :: (session: Session) -> bool {
         for index: 0..TreeCount(session) - 1 {
             node: NodeInput = TreeInputAt(session, index)
             if TreeFocusedAt(session, index) && node.kind != WidgetKindTextField &&
-                node.kind != WidgetKindTextArea && node.kind != WidgetKindSlider &&
-                TreeActivateAt(session, index) {
+            node.kind != WidgetKindTextArea && node.kind != WidgetKindSlider &&
+            TreeActivateAt(session, index) {
                 active_key[slot] = 0
                 if key == 32 { active_codepoints[slot] = TypedInputQueue.{} }
                 return true

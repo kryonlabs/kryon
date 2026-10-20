@@ -1,0 +1,45 @@
+// Input observations and key codes shared by native and portable apps.
+#import "geometry"
+
+SecondaryPointerFrame :: struct {
+    down: bool
+    pressed: bool
+    released: bool
+}
+
+PointerFrame :: struct {
+    x: float32
+    y: float32
+    down: bool
+    pressed: bool
+    released: bool
+}
+
+// Keyboard modifier bits reported by KeyboardModifiers.
+KeyModifierShift :: 1;
+KeyModifierControl :: 2;
+KeyModifierAlt :: 4;
+
+// The key codes every host reports through KeyboardTake. Letters are their
+// uppercase ASCII codes, and digits and punctuation their ASCII codes.
+KeyEscape :: 256;
+KeyEnter :: 257;
+KeyTab :: 258;
+KeyBackspace :: 259;
+KeyInsert :: 260;
+KeyDelete :: 261;
+KeyRight :: 262;
+KeyLeft :: 263;
+KeyDown :: 264;
+KeyUp :: 265;
+KeyPageUp :: 266;
+KeyPageDown :: 267;
+KeyHome :: 268;
+KeyEnd :: 269;
+
+#program_export
+PointInBounds :: (x: float32, y: float32, bounds: Rectangle) -> bool {
+    return bounds.width > 0.0 && bounds.height > 0.0 &&
+    x >= bounds.x && y >= bounds.y &&
+    x < bounds.x + bounds.width && y < bounds.y + bounds.height
+}

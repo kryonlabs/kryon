@@ -176,3 +176,9 @@ Other platform services an application may import:
 [`src/ui/modules.txt`](../src/ui/modules.txt) is the core build inventory.
 `make test` checks source, saved `.zir`, `.zib`, and generated C/C++/Go behavior.
 See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for package and host verification.
+
+Portable apps can import `kryon/input_protocol` for pointer observations,
+key codes, modifier bits and `PointInBounds` without loading the native tree
+implementation. Existing `tree_input` imports retain that surface.
+`kryon/file_picker` exposes the native file chooser; `kryon/app_theme` reads
+optional host theme colours from a portable app.
