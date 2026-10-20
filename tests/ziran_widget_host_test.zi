@@ -93,6 +93,8 @@ time_picker_result: WidgetTimePickerResultCodec;
 tab_codecs: [40]WidgetTabCodec;
 tab_values: [40]HostValue;
 title_bar_codec: WidgetTitleBarPropsCodec;
+dropdown_codec: WidgetDropdownPropsCodec;
+dropdown_result: WidgetDropdownResultCodec;
 title_bar_result: WidgetTitleBarResultCodec;
 modal_codec: WidgetModalFramePropsCodec;
 modal_result: WidgetModalFrameResultCodec;
@@ -152,6 +154,7 @@ main :: () -> s32 {
     !WidgetHostSupports("spinbox_widget", "SpinboxHostedHost") ||
     !WidgetHostSupports("time_picker_widget", "TimePickerHostedHost") ||
     !WidgetHostSupports("title_bar_widget", "TitleBarHostedHost") ||
+    !WidgetHostSupports("dropdown_widget", "DropdownHostedHost") ||
     !WidgetHostSupports("modal_frame_widget", "ModalFrameHostedHost") ||
     !WidgetHostSupports("tree", "EndHostedHost") ||
     !WidgetHostSupports("svg_icon_widget", "SvgIconHostedHost") ||
@@ -375,6 +378,25 @@ main :: () -> s32 {
         option_values[index] = WidgetEncodeDropdownOption(options[index], *option_codecs[index])
         index += 1
     }
+    arguments[1] = WidgetEncodeDropdownProps(DropdownProps.{.key = cast(u64)315,
+            .bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}, .selected_index = 1}, *dropdown_codec)
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),
+        .length = cast(usize)2, .elements = *option_values[0]}
+    if Call("dropdown_widget", "DropdownHostedHost", arguments[:], *result) != 1 ||
+    !WidgetValidDropdownResult(result) || WidgetDecodeDropdownResult(result, *dropdown_result).selected_index != 1 {
+        return 72
+    }
+    arguments[2].length = cast(usize)33
+    if Call("dropdown_widget", "DropdownHostedHost", arguments[:], *result) != 0 { return 73 }
+    arguments[2].length = cast(usize)1
+    arguments[2].elements = null
+    if Call("dropdown_widget", "DropdownHostedHost", arguments[:], *result) != 0 { return 74 }
+    options[0].image.texture.id = cast(u32)4
+    option_values[0] = WidgetEncodeDropdownOption(options[0], *option_codecs[0])
+    arguments[2].elements = *option_values[0]
+    if Call("dropdown_widget", "DropdownHostedHost", arguments[:], *result) != 0 { return 75 }
+    options[0].image.texture.id = cast(u32)0
+    option_values[0] = WidgetEncodeDropdownOption(options[0], *option_codecs[0])
     arguments[1] = WidgetEncodeTitleBarProps(TitleBarProps.{.key = cast(u64)15, .title = "Lumi",
             .bounds = Rectangle.{0.0, 0.0, 300.0, 40.0}, .trailing_width = 100}, *title_bar_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),
@@ -589,7 +611,7 @@ main :: () -> s32 {
     !WidgetHostSupports("widget_palette", "WidgetPaletteRestoreHostedHost") { return 74 }
     host_rules := ActiveStyleRules().count
     packed: [9]u32 = .[cast(u32)0x262a29ff, cast(u32)0x3a3e3dff, cast(u32)0xe0e4e3ff, cast(u32)0x34b930ff,
-        cast(u32)0x00210cff, cast(u32)0x505352ff, cast(u32)0xe60000ff, cast(u32)0xf2b632ff, cast(u32)0x34b930ff]
+    cast(u32)0x00210cff, cast(u32)0x505352ff, cast(u32)0xe60000ff, cast(u32)0xf2b632ff, cast(u32)0x34b930ff]
     colors: [11]HostValue
     colors[0] = arguments[0]
     for index: cast(s32)0..8 { colors[index + 1] = HostScalar("u32", cast(s64)packed[index]) }

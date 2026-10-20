@@ -23,6 +23,7 @@
 #import "title_bar_widget"
 #import "title_bar_props"
 #import "dropdown_props"
+#import "dropdown_widget"
 #import "modal_widget"
 #import "modal_props"
 #program_export
@@ -52,5 +53,8 @@ main :: () -> s32 {
     actions: [1]ActionModalAction = .[ActionModalAction.{.label = "Keep editing"}]
     decision := ActionModal(session, ActionModalProps.{.title = "Unsaved changes"}, actions[:])
     if decision.action != 1 { return 11 }
+    options[0].label = "Practice"
+    selected_app := Dropdown(session, DropdownProps.{.selected_index = 0}, options[:])
+    if !selected_app.changed || selected_app.selected_index != 1 { return 12 }
     return 42
 }

@@ -72,6 +72,14 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
 #import "title_bar_props"
 #import "dropdown_props"
 
+#program_export "DropdownHostedHost"
+Dropdown :: (session: Session, props: DropdownProps, options: []DropdownOption) -> DropdownResult {
+    if session.slot != 4 || options.count != 1 || options[0].label != "Practice" {
+        return DropdownResult.{}
+    }
+    return DropdownResult.{.changed = true, .selected_index = props.selected_index + 1}
+}
+
 #program_export "TitleBarHostedHost"
 TitleBar :: (session: Session, props: TitleBarProps, options: []DropdownOption) -> TitleBarResult {
     if session.slot != 4 || props.title != "Lumi" || options.count != 0 {

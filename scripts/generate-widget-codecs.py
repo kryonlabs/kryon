@@ -46,7 +46,7 @@ KRYON_ROOTS = ['TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextA
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
                'TabBarProps', 'TabBarResult', 'BoxProps', 'PressProps', 'PressResult',
                'SpinboxProps', 'SpinboxStepResult', 'TimePickerProps', 'TimePickerResult',
-               'TitleBarProps', 'TitleBarResult', 'DropdownOption', 'ModalFrameProps',
+               'TitleBarProps', 'TitleBarResult', 'DropdownProps', 'DropdownResult', 'DropdownOption', 'ModalFrameProps',
                'ModalFrameResult', 'ActionModalProps', 'ActionModalAction', 'ActionModalResult',
                'ContextMenuProps', 'ContextMenuItem', 'ContextMenuResult', 'SvgIconProps',
                'TileMapProps', 'TileMapResult']

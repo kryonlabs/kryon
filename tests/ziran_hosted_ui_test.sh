@@ -17,6 +17,7 @@ set -- --bind text_widget:TextHostedHost=hosted_ui_provider:Text \
     --bind text_field_widget:TextFieldHostedHost=hosted_ui_provider:TextField \
     --bind tab_bar_widget:TabBarHostedHost=hosted_ui_provider:TabBar \
     --bind title_bar_widget:TitleBarHostedHost=hosted_ui_provider:TitleBar \
+    --bind dropdown_widget:DropdownHostedHost=hosted_ui_provider:Dropdown \
     --bind modal_widget:ActionModalHostedHost=hosted_ui_provider:ActionModal
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" --define KRYON_HOSTED_UI "$@" \
