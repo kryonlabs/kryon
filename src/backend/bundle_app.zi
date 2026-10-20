@@ -23,6 +23,7 @@
 #import "std/c_string"
 #import "std/text"
 #import "std/vec"
+#import "std/option"
 
 BundleApp :: struct {
     app: AppContext
@@ -69,7 +70,7 @@ BundleAppDataRoot :: () -> string {
 
 // Widget callbacks are scoped by Begin/End around one synchronous frame.
 bundle_drawing_app: *BundleApp;
-bundle_asset_path: [4096]u8;
+bundle_frame_paths: Vec(string);
 
 BundleIsApp :: (bundle: *void) -> bool {
     for index: 0..cast(s64)BundleCapabilities(bundle) - 1 {
@@ -113,12 +114,17 @@ BundleAppAssetResolve :: (path: string) -> string {
     if host == null || !host.extracted_assets || path == "" { return path }
     root := host.directory
     length := root.count + path.count + 1
-    if length >= bundle_asset_path.count { return "" }
-    for index: 0..root.count - 1 { bundle_asset_path[index] = root[index] }
-    bundle_asset_path[root.count] = cast(u8)47
-    for index: 0..path.count - 1 { bundle_asset_path[root.count + 1 + index] = path[index] }
-    bundle_asset_path[length] = 0
-    return TextFromBytes(bundle_asset_path[:length])
+    if length >= 4096 { return "" }
+    bytes: Vec(u8)
+    BuilderPrint(*bytes, "%/%", root, path)
+    absolute := BuilderFinish(bytes)
+    if !VecPush(bundle_frame_paths, absolute) { AppFileFree(absolute); return "" }
+    return absolute
+}
+
+BundleAppFrameAssetsClear :: () {
+    for path: bundle_frame_paths { AppFileFree(path) }
+    while bundle_frame_paths.count > 0 { unused VecPop(bundle_frame_paths) }
 }
 
 BundleAppSave :: (host: *BundleApp) -> bool {
@@ -135,6 +141,8 @@ BundleAppClose :: (host: *BundleApp) {
     if SessionValid(host.app.session) { unused SessionClose(host.app.session) }
     AppFilesClose(*host.local.files)
     AppFileFree(host.local.read_value)
+    BundleAppFrameAssetsClear()
+    VecFree(bundle_frame_paths)
     AppFileFree(host.directory)
     HostedAppClose(*host.app.app)
     host.* = BundleApp.{}
@@ -208,6 +216,9 @@ BundleAppFrame :: (host: *BundleApp, bounds: Rectangle, pointer: PointerFrame,
     secondary: SecondaryPointerFrame, key: s32, modifiers: s32, wheel: float32,
     typed: string, seconds: float64) -> bool {
     if !host.ready { return false }
+    // A batched widget resolves several image paths before it paints any.
+    // Own each path through EndFrame, when queued image paint is complete.
+    defer { BundleAppFrameAssetsClear() }
     app := *host.app
     TreePointerUpdate(app.session, pointer)
     TreeSecondaryPointerUpdate(app.session, secondary)

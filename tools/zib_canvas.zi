@@ -241,6 +241,8 @@ main :: () -> s32 {
     defer { Player.PlayerClose(*player) }
     initial, found := ReadEntireFile("/app.zib")
     AppFileFree(initial)
+    embedded := found
+    load_failed := false
     requested_bundle = found
     file_ready = found
     OpenRequested()
@@ -249,7 +251,7 @@ main :: () -> s32 {
         scope := WebScope()
         if requested_bundle && file_ready && (BundleStorageReady() || BundleStorageFailed()) {
             requested_bundle = false
-            unused LoadSelected(*player, *assets, *raster)
+            load_failed = !LoadSelected(*player, *assets, *raster)
         }
         BeginCanvasFrame()
         if hosted {
@@ -289,7 +291,11 @@ main :: () -> s32 {
                 ShowStatus("The ZIB finished or its frame failed. Choose a file to open another app.")
             }
         } else {
-            RasterText("Open a ZIB file to run it.", 24, 48, 22, Color.{30, 41, 59, 255})
+            if embedded {
+                RasterText(ifx load_failed then "Could not start this app." else "Loading…", 24, 48, 22, Color.{30, 41, 59, 255})
+            } else {
+                RasterText("Open a ZIB file to run it.", 24, 48, 22, Color.{30, 41, 59, 255})
+            }
         }
         unused EndCanvasFrame()
         WebEnd(scope)

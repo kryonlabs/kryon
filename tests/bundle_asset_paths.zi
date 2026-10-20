@@ -1,0 +1,18 @@
+#import "bundle_app"
+
+#program_export
+main :: () -> s32 {
+    host: BundleApp
+    host.directory = "/test/shovey"
+    host.extracted_assets = true
+    bundle_drawing_app = *host
+    first := BundleAppAssetResolve("assets/shovey/wall.png")
+    second := BundleAppAssetResolve("assets/shovey/player.png")
+    if first != "/test/shovey/assets/shovey/wall.png" ||
+    second != "/test/shovey/assets/shovey/player.png" { return 1 }
+    if BundleAppAssetResolve("assets/shovey/wall.png") != first || bundle_frame_paths.count != 3 { return 2 }
+    bundle_drawing_app = null
+    BundleAppFrameAssetsClear()
+    if bundle_frame_paths.count != 0 { return 3 }
+    return 0
+}
