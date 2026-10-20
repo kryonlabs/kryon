@@ -338,11 +338,12 @@ ButtonColors :: (rules: *Sheet.StyleRules, tone: s32, emphasis: s32, fields: u32
     item.style.fields = fields; item.style.background = background; item.style.foreground = foreground; item.style.border = border
     rules.count += 1
 }
-// Installing plain palette roles avoids parsing an entire style sheet in the
-// portable frame. The same rules and tokens are used on native targets.
+// Plain palette roles avoid parsing an entire style sheet in the portable
+// frame. The same rules and tokens are used on native targets.
 #scope_export
+// The style rules a palette gives every widget, without installing them.
 #program_export
-SystemPaletteInstall :: (palette: SystemPalette, material: bool = false) -> bool {
+SystemPaletteRules :: (palette: SystemPalette, material: bool = false) -> Sheet.StyleRules {
     rules: Sheet.StyleRules; bg := palette.background; fg := palette.text
     button := CssMix(bg, fg, 0.10); hover := CssMix(bg, fg, 0.16)
     // A palette supplies colors while widgets keep their standard geometry.
@@ -412,8 +413,14 @@ SystemPaletteInstall :: (palette: SystemPalette, material: bool = false) -> bool
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisGhost, ink, 0, mark, 0)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisLink, ink, 0, mark, 0)
     }
-    if !Sheet.InstallStyleRules(rules) { return false }
+    return rules
+}
+
+#program_export
+SystemPaletteInstall :: (palette: SystemPalette, material: bool = false) -> bool {
+    if !Sheet.InstallStyleRules(SystemPaletteRules(palette, material)) { return false }
+    bg := palette.background; fg := palette.text
     Token("canvas", bg); Token("surface", palette.base); Token("card", palette.base); Token("text", fg)
-    Token("muted", CssMix(fg, bg, 0.4)); Token("button", button); Token("border", palette.border); Token("focus-ring", palette.selected)
+    Token("muted", CssMix(fg, bg, 0.4)); Token("button", CssMix(bg, fg, 0.10)); Token("border", palette.border); Token("focus-ring", palette.selected)
     return true
 }

@@ -40,6 +40,7 @@
 #import "modal_widget"
 #import "modal_props"
 #import "context_menu_widget"
+#import "widget_palette"
 #import "hosted_values"
 #import "widget_codec"
 #import "bundle_names"
@@ -63,6 +64,8 @@ widget_host_active: bool;
 widget_host_depth: s32;
 widget_host_asset_allowed: WidgetAssetAllowed;
 widget_host_asset_resolve: WidgetAssetResolve;
+// A bundle drew this frame in its own palette, which ends with the frame.
+widget_host_palette_used: bool;
 widget_text_codec: WidgetTextPropsCodec;
 widget_image_codec: WidgetImagePropsCodec;
 // The points of the warped image being drawn: the hosted Image effect
@@ -136,7 +139,9 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "title_bar_widget") && function == "TitleBarHostedHost") ||
     (ModuleName(module, "modal_frame_widget") && function == "ModalFrameHostedHost") ||
     (ModuleName(module, "modal_widget") && function == "ActionModalHostedHost") ||
-    (ModuleName(module, "context_menu_widget") && function == "ContextMenuHostedHost")
+    (ModuleName(module, "context_menu_widget") && function == "ContextMenuHostedHost") ||
+    (ModuleName(module, "widget_palette") && function == "WidgetPaletteHostedHost") ||
+    (ModuleName(module, "widget_palette") && function == "WidgetPaletteRestoreHostedHost")
 }
 
 WidgetHostPackedPath :: (path: string) -> string { return path }
@@ -168,14 +173,20 @@ WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed, resolve
     widget_host_asset_allowed = asset_allowed
     widget_host_asset_resolve = resolve
     widget_host_depth = 0
+    widget_host_palette_used = false
     widget_host_active = true
 }
 
-// Closes any scroll the bundle left open, so the host's tree stays balanced.
+// Closes any scroll the bundle left open, so the host's tree stays balanced,
+// and draws in the host's own style again.
 WidgetHostEnd :: () {
     while widget_host_depth > 0 {
         End(widget_host_session)
         widget_host_depth -= 1
+    }
+    if widget_host_palette_used {
+        unused WidgetPaletteRestore(widget_host_session)
+        widget_host_palette_used = false
     }
     widget_host_active = false
 }
@@ -216,6 +227,25 @@ WidgetHostMeshPoints :: (mesh: HostValue) -> []Vector2 {
     return widget_image_mesh_points[:cast(s64)count]
 }
 
+// A bundle's own colours for the widgets it draws after this call, until
+// its frame ends: nine packed colours and whether buttons are raised.
+WidgetHostPalette :: (session: Session, arguments: *HostValue, result: *HostValue) -> s32 {
+    colors: [9]u32
+    for index: cast(s32)0..8 {
+        if !HostScalarValid(arguments[index + 1], "u32", cast(s32)HostUnsigned) { return 0 }
+        colors[index] = cast(u32)arguments[index + 1].bits
+    }
+    if !HostScalarValid(arguments[10], "bool", cast(s32)HostInteger) { return 0 }
+    palette := WidgetPalette.{.background = colors[0], .base = colors[1], .text = colors[2],
+        .selected = colors[3], .selected_text = colors[4], .border = colors[5],
+        .danger = colors[6], .warning = colors[7], .success = colors[8],
+        .material = arguments[10].integer != 0}
+    used := WidgetPaletteUse(session, palette)
+    if used { widget_host_palette_used = true }
+    result.* = HostScalar("bool", ifx used then 1 else 0)
+    return 1
+}
+
 // A HostCall for the hosted widget functions. Returns 0 for a call it does
 // not answer or refuses.
 WidgetHostCall :: (context: *void, module: *u8, function: *u8,
@@ -253,6 +283,15 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if ModuleName(owner, "text_widget") && name == "TextLinkAtHostedHost" && count == 4 {
         return WidgetHostTextLinkAt(session, arguments, result)
+    }
+    if ModuleName(owner, "widget_palette") && name == "WidgetPaletteHostedHost" && count == 11 {
+        return WidgetHostPalette(session, arguments, result)
+    }
+    if ModuleName(owner, "widget_palette") && name == "WidgetPaletteRestoreHostedHost" && count == 1 {
+        restored := !widget_host_palette_used || WidgetPaletteRestore(session)
+        widget_host_palette_used = false
+        result.* = HostScalar("bool", ifx restored then 1 else 0)
+        return 1
     }
     if count != 2 {
         return 0

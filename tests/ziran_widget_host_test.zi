@@ -27,6 +27,9 @@
 #import "hosted_values"
 #import "widget_codec"
 #import "widget_host"
+#import "style"
+#import "style_sheet"
+#import "text_style"
 // The fixed 5 px test font and raster calls for native builds.
 #import "ziran_composition_widget_host"
 #import "ziran_system_clipboard_host"
@@ -580,5 +583,33 @@ main :: () -> s32 {
     if Call("tile_map", "TileMapHostedHost", arguments[:2], *result) != 1 { return 72 }
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 73 }
+    // A bundle's palette colours the widgets it draws after asking for it,
+    // and the end of its frame gives the host its own style back.
+    if !WidgetHostSupports("p0123456789abcdef_widget_palette", "WidgetPaletteHostedHost") ||
+    !WidgetHostSupports("widget_palette", "WidgetPaletteRestoreHostedHost") { return 74 }
+    host_rules := ActiveStyleRules().count
+    packed: [9]u32 = .[cast(u32)0x262a29ff, cast(u32)0x3a3e3dff, cast(u32)0xe0e4e3ff, cast(u32)0x34b930ff,
+        cast(u32)0x00210cff, cast(u32)0x505352ff, cast(u32)0xe60000ff, cast(u32)0xf2b632ff, cast(u32)0x34b930ff]
+    colors: [11]HostValue
+    colors[0] = arguments[0]
+    for index: cast(s32)0..8 { colors[index + 1] = HostScalar("u32", cast(s64)packed[index]) }
+    colors[10] = HostScalar("bool", 1)
+    restore: [1]HostValue = .[arguments[0]]
+    if Call("widget_palette", "WidgetPaletteHostedHost", colors[:], *result) != 0 { return 75 }
+    BeginFrame(session, cast(u64)7, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto)
+    wrong := colors
+    wrong[3] = HostScalar("s32", 5)
+    if Call("widget_palette", "WidgetPaletteHostedHost", wrong[:], *result) != 0 ||
+    Call("widget_palette", "WidgetPaletteHostedHost", colors[:10], *result) != 0 { return 76 }
+    if Call("widget_palette", "WidgetPaletteHostedHost", colors[:], *result) != 1 || result.integer != 1 { return 77 }
+    themed := TextStyleFor(TextStyleRequest.{}, StyleData.{})
+    if themed.foreground != cast(u32)0xe0e4e3ff || ActiveStyleRules().count == host_rules { return 78 }
+    if Call("widget_palette", "WidgetPaletteRestoreHostedHost", restore[:], *result) != 1 ||
+    ActiveStyleRules().count != host_rules { return 79 }
+    if Call("widget_palette", "WidgetPaletteHostedHost", colors[:], *result) != 1 { return 80 }
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk || ActiveStyleRules().count != host_rules ||
+    TextStyleFor(TextStyleRequest.{}, StyleData.{}).foreground == cast(u32)0xe0e4e3ff { return 81 }
     return 0
 }

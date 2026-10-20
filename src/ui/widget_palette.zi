@@ -1,0 +1,108 @@
+// An app can draw its widgets in its own colours, whatever host draws them,
+// so a game keeps its look inside an app collection. The palette lasts until
+// the host's frame for the app ends; a host that is itself a portable bundle
+// passes it on to the host that draws. It stays apart from the widget
+// modules, so bundles that never use it keep their reviewed bytes.
+#import "session"
+
+// The colours of system_theme's SystemPalette, packed 0xRRGGBBAA. material
+// gives buttons the raised lightfield face instead of a flat one.
+WidgetPalette :: struct {
+    background: u32
+    base: u32
+    text: u32
+    selected: u32
+    selected_text: u32
+    border: u32
+    danger: u32
+    warning: u32
+    success: u32
+    material: bool
+}
+
+#if #defined(KRYON_HOSTED_UI) {
+    host_api :: #system_library "host_api";
+    WidgetPaletteHostedHost :: (session: Session, background: u32, base: u32, text: u32,
+        selected: u32, selected_text: u32, border: u32, danger: u32, warning: u32,
+        success: u32, material: bool) -> bool #foreign host_api;
+    WidgetPaletteRestoreHostedHost :: (session: Session) -> bool #foreign host_api;
+    // Asks the host to draw this frame's following widgets in palette.
+    #program_export
+    WidgetPaletteUse :: (session: Session, palette: WidgetPalette) -> bool {
+        return WidgetPaletteHostedHost(session, palette.background, palette.base, palette.text,
+            palette.selected, palette.selected_text, palette.border, palette.danger,
+            palette.warning, palette.success, palette.material)
+    }
+    // Draws the following widgets in the host's own style again.
+    #program_export
+    WidgetPaletteRestore :: (session: Session) -> bool {
+        return WidgetPaletteRestoreHostedHost(session)
+    }
+} else {
+    #import "style_sheet"
+    #import "text_style"
+    #import "system_theme"
+
+    // The style the host had before a palette was used, and the rules built
+    // for the last palette, so a palette used every frame is built once.
+    widget_palette_saved: StyleRules;
+    widget_palette_saved_resolver: TextStyleResolver;
+    widget_palette_saved_has_resolver: bool;
+    widget_palette_active: bool;
+    widget_palette_rules: StyleRules;
+    widget_palette_built: WidgetPalette;
+    widget_palette_ready: bool;
+
+    WidgetPaletteSame :: (a: WidgetPalette, b: WidgetPalette) -> bool {
+        return a.background == b.background && a.base == b.base && a.text == b.text &&
+        a.selected == b.selected && a.selected_text == b.selected_text && a.border == b.border &&
+        a.danger == b.danger && a.warning == b.warning && a.success == b.success &&
+        a.material == b.material
+    }
+
+    #program_export
+    WidgetPaletteUse :: (session: Session, palette: WidgetPalette) -> bool {
+        unused session
+        if !widget_palette_ready || !WidgetPaletteSame(palette, widget_palette_built) {
+            colors: SystemPalette
+            colors.found = true
+            colors.background = palette.background
+            colors.base = palette.base
+            colors.text = palette.text
+            colors.selected = palette.selected
+            colors.selected_text = palette.selected_text
+            colors.border = palette.border
+            colors.danger = palette.danger
+            colors.warning = palette.warning
+            colors.success = palette.success
+            widget_palette_rules = SystemPaletteRules(colors, palette.material)
+            widget_palette_built = palette
+            widget_palette_ready = true
+        }
+        if !widget_palette_active {
+            // The host's rules keep their typeface bytes, so its snapshot
+            // can be put back without copying them again.
+            widget_palette_saved = installed_rules
+            widget_palette_saved_resolver = active_text_style_callback
+            widget_palette_saved_has_resolver = has_text_style_resolver
+            widget_palette_active = true
+        }
+        installed_rules = widget_palette_rules
+        StyleCacheInstall()
+        resolver: TextStyleResolver = ResolveInstalledTextStyle
+        SetTextStyleResolver(resolver)
+        return true
+    }
+
+    #program_export
+    WidgetPaletteRestore :: (session: Session) -> bool {
+        unused session
+        if !widget_palette_active { return true }
+        installed_rules = widget_palette_saved
+        StyleCacheInstall()
+        active_text_style_callback = widget_palette_saved_resolver
+        has_text_style_resolver = widget_palette_saved_has_resolver
+        widget_palette_active = false
+        return true
+    }
+}

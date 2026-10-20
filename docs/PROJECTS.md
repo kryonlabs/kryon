@@ -305,6 +305,11 @@ An app that imports `kryon/app_theme` follows the host's theme:
 `AppThemeColor(token, fallback)` returns the host stylesheet's colour for
 `canvas`, `surface`, `border`, `text`, `accent` or `link`, and `fallback` for
 a token the host lacks or on a host older than the module.
+An app with a look of its own, such as a game, imports `kryon/widget_palette`
+instead: `WidgetPaletteUse(session, palette)` asks the host to draw the
+widgets that follow in that palette's colours (as `SystemPalette`), until the
+host's frame for the app ends. A host that is itself a bundle passes the
+palette on to the host that draws, so it needs a host with the call.
 Imports alone do not grant storage, network, clipboard or secret access.
 Hosts keep those permissions and account boundaries. `DocumentRead`,
 `DocumentStatus` and `DocumentWrite` distinguish missing files from read
