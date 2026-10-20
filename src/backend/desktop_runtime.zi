@@ -33,6 +33,7 @@ Quit :: () #foreign sdl_library "SDL_Quit";
 CreateWindow :: (title: *u8, x: s32, y: s32, width: s32,
     height: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateWindow";
 DestroyWindow :: (window: *void) #foreign sdl_library "SDL_DestroyWindow";
+SetWindowTitle :: (window: *void, title: *u8) #foreign sdl_library "SDL_SetWindowTitle";
 SetWindowSize :: (window: *void, width: s32, height: s32) #foreign sdl_library "SDL_SetWindowSize";
 SetWindowPosition :: (window: *void, x: s32, y: s32) #foreign sdl_library "SDL_SetWindowPosition";
 GetWindowID :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowID";
@@ -87,6 +88,17 @@ pointer: PointerFrame;
 secondary: SecondaryPointerFrame;
 desktop_wheel: float32;
 desktop_key: s32;
+// File drops are copied before SDL releases its event-owned path. Applications
+// consume them on the UI thread; unrelated windows and drop text stay separate.
+desktop_dropped_files: [16][4096]u8;
+desktop_drop_first: s32;
+desktop_drop_count: s32;
+DropEvent :: struct {
+    kind: u32
+    timestamp: u32
+    path: *u8
+    window_id: u32
+}
 // SDL modifier state recorded with the last key press, or -1 without one.
 desktop_key_modifiers: s32 = -1;
 desktop_codepoints: [32]s32;
@@ -199,6 +211,46 @@ CenterDesktop :: () -> bool {
     return true
 }
 
+// Sets only the window created by this host. Reject paths/titles that cannot
+// be represented completely rather than silently shortening their bytes.
+#program_export
+DesktopSetTitle :: (title: string) -> bool {
+    if window == null { return false }
+    bytes: [4096]u8
+    if !CopyCString(title, bytes[:]) { return false }
+    SetWindowTitle(window, *bytes[0])
+    return true
+}
+
+// Takes the oldest pending file. A small output leaves it queued for a caller
+// with enough room. Paths are UTF-8, NUL terminated, and never truncated.
+#program_export
+DesktopTakeDroppedFile :: (output: []u8) -> bool {
+    if desktop_drop_count == 0 { return false }
+    path := TextFromCString(*desktop_dropped_files[desktop_drop_first][0])
+    if !CopyCString(path, output) { return false }
+    desktop_drop_first = (desktop_drop_first + 1) % 16
+    desktop_drop_count -= 1
+    return true
+}
+
+DesktopDropEvent :: (event: *Event) {
+    drop := cast(*DropEvent)event
+    if drop.path == null { return }
+    // SDL_DROPFILE / SDL_DROPTEXT own their path even when ignored.
+    if drop.kind == cast(u32)0x1000 && window != null &&
+        drop.window_id == GetWindowID(window) && desktop_drop_count < 16 {
+        length: s32 = 0
+        while length < 4096 && drop.path[length] != 0 { length += 1 }
+        if length > 0 && length < 4096 {
+            at := (desktop_drop_first + desktop_drop_count) % 16
+            for index: 0..length { desktop_dropped_files[at][index] = drop.path[index] }
+            desktop_drop_count += 1
+        }
+    }
+    FreeSdlMemory(cast(*void)drop.path)
+}
+
 // Open an absolute URL with the desktop's configured handler. No shell text
 // is evaluated, and embedded NULs must never truncate the destination.
 #program_export
@@ -259,6 +311,9 @@ CloseDesktop :: () {
     if renderer != null { DestroyRenderer(renderer) }
     if window != null { DestroyWindow(window) }
     Quit()
+    window = null
+    desktop_drop_first = 0
+    desktop_drop_count = 0
 }
 
 #program_export
@@ -293,6 +348,10 @@ PollDesktop :: () -> bool {
     while taken < 4096 &&
         PeepEvents(*event, 1, 2, cast(u32)0, cast(u32)0xFFFF) > 0 {
         taken += 1
+        if event.kind == cast(u32)0x1000 || event.kind == cast(u32)0x1001 {
+            DesktopDropEvent(*event)
+            continue
+        }
         if event.kind == cast(u32)0x200 && window != null &&
             event.window_id == GetWindowID(window) {
             detail := event.which & cast(u32)255

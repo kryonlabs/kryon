@@ -19,10 +19,41 @@ ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
 APP = '''Desktop :: #import "Desktop";
 #import "geometry"
+#import "byte_text_linux"
+#import "c_string"
+sdl :: #system_library "SDL2";
+NativeTitle :: (window: *void) -> *u8 #foreign sdl "SDL_GetWindowTitle";
+WindowId :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+Duplicate :: (text: *u8) -> *u8 #foreign sdl "SDL_strdup";
+Push :: (event: *void) -> s32 #foreign sdl "SDL_PushEvent";
+Drop :: struct { kind: u32; time: u32; path: *u8; window: u32; padding: [36]u8; }
+SendDrop :: (window: u32, path: *u8, kind: u32 = 0x1000) -> bool {
+    event: Drop
+    event.kind = kind
+    event.path = Duplicate(path)
+    event.window = window
+    return Push(cast(*void)*event) == 1
+}
 
 #program_export
 main :: () -> s32 {
     if !Desktop.OpenDesktopSized(320, 200) { return 2 }
+    if !Desktop.DesktopSetTitle("Time Sheet.gnumeric") { return 10 }
+    if TextFromCString(NativeTitle(Desktop.DesktopWindow())) != "Time Sheet.gnumeric" { return 11 }
+    own := WindowId(Desktop.DesktopWindow())
+    first: [64]u8
+    second: [64]u8
+    if !CopyCString("/tmp/Time Sheet.gnumeric", first[:]) ||
+       !CopyCString("/tmp/two", second[:]) { return 12 }
+    if !SendDrop(own + 1, *second[0]) || !SendDrop(own, *second[0], 0x1001) ||
+       !SendDrop(own, *first[0]) || !SendDrop(own, *second[0]) { return 12 }
+    if !Desktop.PollDesktop() { return 13 }
+    small: [2]u8
+    path: [4096]u8
+    if Desktop.DesktopTakeDroppedFile(small[:]) { return 14 }
+    if !Desktop.DesktopTakeDroppedFile(path[:]) || TextFromCString(*path[0]) != "/tmp/Time Sheet.gnumeric" { return 15 }
+    if !Desktop.DesktopTakeDroppedFile(path[:]) || TextFromCString(*path[0]) != "/tmp/two" { return 16 }
+    if Desktop.DesktopTakeDroppedFile(path[:]) { return 17 }
     viewport: Rectangle = Desktop.DesktopViewport()
     if viewport.width != 320.0 || viewport.height != 200.0 { return 3 }
     if !Desktop.ResizeDesktop(200, 120) { return 4 }
@@ -43,7 +74,7 @@ main :: () -> s32 {
 
 def private_environment():
     env = os.environ.copy()
-    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY"):
+    for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS"):
         env.pop(name, None)
     return env
 
@@ -89,7 +120,7 @@ def main():
         run(["xvfb-run", "-a", "./probe"], project, env)
         width, height = png_pixels(capture)[:2]
         assert (width, height) == (200, 120), (width, height)
-    print("desktop Ziran host: sized window and deferred resize passed")
+    print("desktop Ziran host: title, queued file drops, window scoping, sized window and deferred resize passed")
 
 
 if __name__ == "__main__":

@@ -150,3 +150,9 @@ displays. Run `make test` for the library, browser, and typeface gates, plus
 `make desktop-project-test`, `make raylib-project-test`, and
 `make libdraw-project-test` for graphical capture and input.
 Never run graphical tests against the developer's live display.
+
+The SDL/Cairo desktop host also exposes `DesktopSetTitle(title)` and
+`DesktopTakeDroppedFile(output)` through `Desktop`. A file-manager drop queues
+up to sixteen complete UTF-8 paths (4095 bytes each), only for the host's own
+window. The application consumes and opens them during `Frame`; an output
+buffer that is too small leaves the next path queued. Text drops are ignored.
