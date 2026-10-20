@@ -132,7 +132,7 @@ MenuKindSubmenu :: () -> s32 {
 MenuMetric :: (fields: u32, field: u32, value: float32,
     fallback: float32, scale: float32, allow_zero: bool) -> s32 {
     if !MenuHas(fields, field) || value < 0.0 ||
-       (!allow_zero && value <= 0.0) {
+    (!allow_zero && value <= 0.0) {
         value = fallback
     }
     return cast(s32)(value * scale)
@@ -271,7 +271,7 @@ MenuBarKeyboardDecisionFor :: (input: MenuKeyboardInput, open: bool,
 #program_export
 MenuItemPointerActivates :: (kind: s32, disabled: bool) -> bool {
     return kind != MenuKindSeparator() && kind != MenuKindSubmenu() &&
-        !disabled
+    !disabled
 }
 
 #program_export
@@ -374,7 +374,7 @@ MenuOutsideCloseDecisionFor :: (open_id: s32, mouse_released: bool,
     decision: MenuOutsideCloseDecision
     decision.open_index = -1
     if open_id != 0 && mouse_released && !contains_bar &&
-       (!panel_valid || !contains_panel) {
+    (!panel_valid || !contains_panel) {
         decision.close_open = true
         decision.clear_submenu = true
         decision.consume_release = true
@@ -388,7 +388,7 @@ MenuContextOutsideCloseDecisionFor :: (open_id: s32, menu_id: s32,
     contains_panel: bool) -> MenuContextOutsideCloseDecision {
     decision: MenuContextOutsideCloseDecision
     if open_id == menu_id && !suppress_close && mouse_released &&
-       (!panel_valid || !contains_panel) {
+    (!panel_valid || !contains_panel) {
         decision.close_open = true
         decision.consume_release = true
     }
@@ -432,7 +432,7 @@ MenuMetricsFor :: (scale: float32, panel: StyleFrame, item: StyleFrame,
     metrics: MenuMetrics
     row_height: float32 = 30.0
     if MenuHas(item.value.fields, cast(u32)StyleFontSize) &&
-       MenuHas(item.value.fields, cast(u32)StylePaddingY) {
+    MenuHas(item.value.fields, cast(u32)StylePaddingY) {
         row_height = item.value.font_size + item.value.padding_y * 2.0
     }
     metrics.row_height = MenuMetric(item.value.fields,
@@ -466,7 +466,11 @@ MenuMetricsFor :: (scale: float32, panel: StyleFrame, item: StyleFrame,
 
 #program_export
 MenuGroupItemWidth :: (label_width: s32, metrics: MenuMetrics) -> s32 {
-    width: s32 = label_width + metrics.bar_item_padding
+    padding := metrics.bar_item_padding
+    // The label inset must fit on both sides even when a system style
+    // supplies smaller generic menu padding.
+    if padding < metrics.bar_label_inset * 2 { padding = metrics.bar_label_inset * 2 }
+    width: s32 = label_width + padding
     if width < metrics.bar_item_min_width {
         width = metrics.bar_item_min_width
     }

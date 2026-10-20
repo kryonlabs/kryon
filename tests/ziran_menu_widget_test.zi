@@ -52,7 +52,7 @@ ClickKey :: (key: u64) -> bool {
         node := TreeNodeAt(session, index)
         if node.key == key {
             TreePointerUpdate(session, PointerFrame.{node.bounds.x + node.bounds.width * 0.5,
-                node.bounds.y + node.bounds.height * 0.5, true, true, true})
+                    node.bounds.y + node.bounds.height * 0.5, true, true, true})
             return true
         }
     }
@@ -65,6 +65,10 @@ Failure :: (message: string) -> s32 { print("%\n", message); return 1 }
 
 #program_export
 main :: () -> s32 {
+    compact: MenuMetrics
+    compact.bar_item_padding = 4
+    compact.bar_label_inset = 12
+    if MenuGroupItemWidth(28, compact) < 52 { return Failure("System menu labels must fit their insets") }
     session = SessionOpen()
     if !SessionValid(session) { return 100 }
     defer SessionClose(session)
