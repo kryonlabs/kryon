@@ -55,6 +55,7 @@ image_raster.zi
 image_widget.zi
 input.zi
 input_props.zi
+input_protocol.zi
 inspect.zi
 instance.zi
 key_input.zi

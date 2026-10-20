@@ -6,6 +6,7 @@
 #import "control_props"
 #import "scroll"
 #import "dropdown"
+#import "image"
 using ButtonTone;
 using ButtonEmphasis;
 using ButtonState;
@@ -78,6 +79,12 @@ main :: () -> s32 {
     Check(thumb.value.background != thumb_hover.value.background && thumb_hover.value.background != thumb_pressed.value.background, "scrollbar shows hover and drag feedback")
     dark := SystemPaletteFallback(true)
     Check(SystemPaletteInstall(dark), "dark palette installs without a platform host")
+    picture := Face(StyleKindImage(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
+    Check(picture.foreground == cast(u32)0xffffffff, "palette preserves bitmap and sprite colours")
+    picture_facts := StyleDefaultFacts(StyleKindImage())
+    picture_facts.role = ImageLabelRole()
+    picture_label := ResolveInstalledStyleRules(Base(), picture_facts, 0)
+    Check(picture_label.foreground == dark.text, "missing-picture labels remain readable")
     dark_value := Face(StyleKindSpinboxValue(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
     Check(dark_value.background == dark.base && dark_value.foreground == dark.text, "numeric values remain readable with a dark palette")
     // A dropdown's field, panel and chosen row, which a time picker shares.
