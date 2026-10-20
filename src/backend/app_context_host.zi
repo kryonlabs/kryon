@@ -13,6 +13,7 @@
 #import "widget_codec"
 #import "widget_host"
 #import "bundle_names"
+#import "drawing_props"
 
 using HostValueKind;
 
@@ -86,8 +87,16 @@ AppCoreFunction :: (name: string) -> bool {
     name == "AppCommandHost" || name == "AppReplyHost" || name == "AppServiceHost"
 }
 
+// app_theme.zi: a hosted app asks for the host's theme colours.
+AppThemeCall :: (module: string, name: string) -> bool {
+    return ModuleName(module, "app_theme") && name == "AppThemeColorHost"
+}
+
 AppContextAllows :: (context: *void, module: string, name: string) -> bool {
     app := cast(*AppContext)context
+    if AppThemeCall(module, name) {
+        return true
+    }
     if AppModule(module) {
         return AppCoreFunction(name) ||
         (app.allows != null && app.allows(app.context, name))
@@ -117,6 +126,17 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     app := cast(*AppContext)context
     name := TextFromCString(function)
+    if AppThemeCall(TextFromCString(module), name) {
+        if count != 1 || !HostScalarValid(arguments[0], "string", cast(s32)HostString) {
+            return 0
+        }
+        // The host's own stylesheet answers; 0 for a token it lacks.
+        color := StyleTokenColorOr(AppArgumentText(arguments[0]), Color.{0, 0, 0, 0})
+        packed := (cast(u64)color.r << cast(u64)24) | (cast(u64)color.g << cast(u64)16) |
+        (cast(u64)color.b << cast(u64)8) | cast(u64)color.a
+        result.* = HostScalar("u32", cast(s64)packed)
+        return 1
+    }
     if !AppModule(TextFromCString(module)) {
         if app.mode != APP_FRAME || !app.identified || !app.described {
             return 0
@@ -154,7 +174,9 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "AppSupportsHost" && count == 1 &&
     HostScalarValid(arguments[0], "string", cast(s32)HostString) {
-        available := app.allows != null && app.allows(app.context, AppArgumentText(arguments[0]))
+        capability := AppArgumentText(arguments[0])
+        available := capability == "AppThemeColorHost" ||
+        (app.allows != null && app.allows(app.context, capability))
         result.* = HostScalar("bool", ifx available then 1 else 0)
         return 1
     }

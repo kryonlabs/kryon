@@ -21,4 +21,4 @@ done
 # glibc overwrites freed memory here, so reading a reply the bundle has
 # already reclaimed fails instead of passing by luck.
 (cd "$work" && GLIBC_TUNABLES=glibc.malloc.tcache_count=0 MALLOC_PERTURB_=165 ./run)
-echo 'Portable app identity, API compatibility, optional services, replies, restart and identification isolation passed'
+echo 'Portable app identity, API compatibility, optional services, theme colours, replies, restart and identification isolation passed'

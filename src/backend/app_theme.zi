@@ -1,0 +1,30 @@
+// A hosted app's colours can follow its host's theme. The host answers a
+// theme token (canvas, surface, border, text, accent, link) with its colour
+// packed as 0xRRGGBBAA, or 0 for a token it does not have. Hosts older than
+// this module do not answer, so AppThemeColor asks AppSupports first and
+// keeps the app's own colour there.
+#import "app_context"
+#import "drawing_props"
+
+app_theme_api :: #system_library "host_api";
+AppThemeColorHost :: (token: string) -> u32 #foreign app_theme_api;
+
+app_theme_checked: bool;
+app_theme_supported: bool;
+
+// The host's colour for `token`, or `fallback` when the host has none.
+#program_export
+AppThemeColor :: (token: string, fallback: Color) -> Color {
+    if !app_theme_checked {
+        app_theme_supported = AppSupports("AppThemeColorHost")
+        app_theme_checked = true
+    }
+    if !app_theme_supported {
+        return fallback
+    }
+    packed := AppThemeColorHost(token)
+    if packed == 0 {
+        return fallback
+    }
+    return ColorFromPacked(packed)
+}

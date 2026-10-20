@@ -301,6 +301,10 @@ before its first frame.
 
 `AppSupports(name)` queries optional services; `AppService(name, request)`
 returns `{"status":"unavailable"}` when the harness does not grant one.
+An app that imports `kryon/app_theme` follows the host's theme:
+`AppThemeColor(token, fallback)` returns the host stylesheet's colour for
+`canvas`, `surface`, `border`, `text`, `accent` or `link`, and `fallback` for
+a token the host lacks or on a host older than the module.
 Imports alone do not grant storage, network, clipboard or secret access.
 Hosts keep those permissions and account boundaries. `DocumentRead`,
 `DocumentStatus` and `DocumentWrite` distinguish missing files from read

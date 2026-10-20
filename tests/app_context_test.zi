@@ -6,6 +6,7 @@
 #import "file"
 #import "c_string"
 #import "byte_text_linux"
+#import "drawing_props"
 
 writes: s32;
 
@@ -36,6 +37,8 @@ Open :: (app: *AppContext, path: string, expected: string) -> bool {
 #program_export
 main :: () -> s32 {
     app: AppContext
+    accent: [6]u8 = .[cast(u8)97, cast(u8)99, cast(u8)99, cast(u8)101, cast(u8)110, cast(u8)116]
+    if !SetStyleTokenColorBytes(accent[:], cast(u32)0x2e7d68ff) { return 11 }
     if !Open(*app, "good.zib", "diary") || writes != 0 { return 1 }
     if !AppContextRun(*app, APP_FRAME) || writes != 1 { return 2 }
     if !AppContextRestart(*app) || writes != 1 { return 3 }
