@@ -2,7 +2,6 @@ accelerator.zi
 accessibility_node.zi
 accessibility_policy.zi
 accessibility_props.zi
-app_shell_layout.zi
 bevel.zi
 box_props.zi
 box_widget.zi
@@ -12,7 +11,6 @@ button_widget.zi
 canvas.zi
 canvas_grid.zi
 canvas_props.zi
-capability_layout.zi
 card.zi
 card_props.zi
 cell.zi
@@ -32,10 +30,6 @@ control_props.zi
 cursor.zi
 dialog.zi
 dpi.zi
-drag.zi
-drag_drop.zi
-drag_drop_props.zi
-drag_props.zi
 drawing_props.zi
 dropdown.zi
 dropdown_props.zi
@@ -74,7 +68,6 @@ list_box.zi
 list_box_multi.zi
 list_box_props.zi
 list_box_widget.zi
-locale_defaults.zi
 material.zi
 menu.zi
 menu_props.zi
@@ -100,16 +93,10 @@ paint_queue.zi
 paint_texture.zi
 paned_view.zi
 paned_view_props.zi
-paragraph.zi
 pointer_input.zi
-popup_ownership.zi
-popup_policy.zi
 popup_props.zi
-preference_policy.zi
 press_props.zi
 press_widget.zi
-primitive.zi
-profile_header.zi
 progress.zi
 progress_props.zi
 progress_raster.zi
@@ -125,10 +112,8 @@ raster_triangles.zi
 reorder.zi
 reorder_props.zi
 reorder_widget.zi
-route.zi
 router.zi
 router_props.zi
-rows.zi
 scene_tree_props.zi
 scroll.zi
 scroll_device.zi
@@ -216,5 +201,4 @@ tree_input.zi
 typeface_source.zi
 widget_kind.zi
 window_flags.zi
-window_policy.zi
 zoom.zi

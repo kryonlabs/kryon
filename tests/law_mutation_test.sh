@@ -63,14 +63,10 @@ mutate checkbox.zi checkbox_laws.zi 's/        result.checked = !checked/       
 mutate focus.zi focus_laws.zi 's/    (enter_pressed || (!text_input_active && space_pressed))/    (enter_pressed || space_pressed)/' TypingBlocksSpace
 # Shift+Tab moving focus forward.
 mutate focus.zi focus_laws.zi 's/    if shift_down { return -1 }/    if shift_down { return 1 }/' ShiftTabMovesBackward
-# A keyboard drag running under a popup that holds the keyboard.
-mutate drag.zi drag_laws.zi 's/    return focus_active && keyboard_enabled && !popup_captures/    return focus_active \&\& keyboard_enabled/' PopupBlocks
 # A dropdown still marked as just opened after the pointer is released.
 mutate dropdown.zi dropdown_laws.zi 's/    return just_opened && pointer_pressed/    return just_opened/' ReleaseClearsMark
 # A disabled radio button reporting its id.
 mutate radio.zi radio_laws.zi 's/    if activated && !disabled {/    if activated {/' DisabledReportsNothing
-# A drop copying the larger of the data and the output.
-mutate drag_drop.zi drag_drop_laws.zi 's/    if data_size < output_size { return data_size }/    if data_size > output_size { return data_size }/' CopyTakesSmaller
 # An input taking a release it did not act on.
 mutate input.zi input_laws.zi 's/    interaction.consume_release = interaction.activated/    interaction.consume_release = interaction.active/' ConsumesOnlyWhenActivated
 # An inspector move or resize ending without a release.
@@ -89,8 +85,6 @@ mutate modal.zi modal_laws.zi 's/    if released && !release_consumed && !pointe
 mutate overlay.zi overlay_laws.zi 's/ && !dismiss_disabled//' OtherwiseStays
 # An overlay that reports a release someone else already took as a tap.
 mutate overlay.zi overlay_laws.zi 's/policy.tapped = released && !release_consumed/policy.tapped = released/' ReleasesAreTaps
-# An ownerless popup under another popup keeping the input.
-mutate popup_ownership.zi popup_ownership_laws.zi 's/    return has_top && (!has_owner || !same_top)/    return has_top \&\& !same_top/' OwnerlessTopCaptures
 # A reorder committed by a release that ended no drag.
 mutate reorder.zi reorder_laws.zi 's/    decision.commit = mouse_released && was_dragging/    decision.commit = was_dragging/' ReleaseRule
 # An empty row of segments wrapping.
