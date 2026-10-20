@@ -6,6 +6,7 @@
 #import "std/bundle_host"
 #import "std/byte_text_linux"
 #import "bundle_preload"
+#import "frame_replay"
 
 HOSTED_APP_CAPABILITY_LIMIT :: 64
 // Instructions a single run may execute before it traps.
@@ -16,6 +17,8 @@ HostedApp :: struct {
     instance: *void
     // The last run trapped or returned no answer.
     failed: bool
+    // The host's call, and a quiet frame to show again; see HostedAppRunFrame.
+    replay: *FrameReplay
 }
 
 // Whether the bundle may call module.function. context is the one given to
@@ -62,6 +65,13 @@ HostedAppStart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall, con
     if count > cast(u64)HOSTED_APP_CAPABILITY_LIMIT {
         return false
     }
+    if app.replay == null {
+        app.replay = cast(*FrameReplay)HostedAllocateZeroed(cast(usize)1, size_of(FrameReplay))
+        if app.replay == null { return false }
+    }
+    FrameReplayClear(app.replay)
+    app.replay.call = call
+    app.replay.context = context
     bindings: [HOSTED_APP_CAPABILITY_LIMIT]HostBinding
     index: u64 = 0
     while index < count {
@@ -73,8 +83,9 @@ HostedAppStart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall, con
         }
         bindings[index].module = module
         bindings[index].function = function
-        bindings[index].call = call
-        bindings[index].context = context
+        bindings[index].call = HostedAppCall
+        // The replay state stays where it was made, wherever the host keeps app.
+        bindings[index].context = cast(*void)app.replay
         index += 1
     }
     app.instance = InstantiateBundle(app.bundle, *bindings[0], count)
@@ -100,6 +111,41 @@ HostedAppRun :: (app: *HostedApp, answer: *s64) -> bool {
     return true
 }
 
+// Every call of the bundle passes here on its way to the host's call, and
+// is recorded while a quiet frame runs.
+HostedAppCall :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    replay := cast(*FrameReplay)context
+    returned := replay.call(replay.context, module, function, arguments, count, result)
+    if replay.recording {
+        FrameReplayRecord(replay, module, function, arguments, count, result.*, returned)
+    }
+    return returned
+}
+
+// Runs a frame of the app, or, when quiet says nothing reached it since its
+// last quiet frame and it does not animate, shows that frame again if its
+// reads still answer the same. A quiet frame that runs is recorded.
+HostedAppRunFrame :: (app: *HostedApp, answer: *s64, quiet: bool) -> bool {
+    if app.replay == null {
+        return HostedAppRun(app, answer)
+    }
+    if !quiet {
+        app.replay.ready = false
+    } else if FrameReplayRun(app.replay, answer) {
+        return true
+    }
+    FrameReplayClear(app.replay)
+    record := quiet && app.replay.settle <= 0
+    if app.replay.settle > 0 { app.replay.settle -= 1 }
+    app.replay.recording = record
+    ran := HostedAppRun(app, answer)
+    app.replay.recording = false
+    app.replay.ready = record && ran
+    app.replay.answer = answer.*
+    return ran
+}
+
 // Starts a new instance of the open bundle. The current instance is closed
 // only once the new one passes accepts; otherwise the app keeps running it.
 HostedAppRestart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall,
@@ -119,6 +165,10 @@ HostedAppRestart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall,
 }
 
 HostedAppClose :: (app: *HostedApp) {
+    if app.replay != null {
+        FrameReplayClose(app.replay)
+        HostedRelease(cast(*void)app.replay)
+    }
     HostedAssetIndexDrop(app.bundle)
     CloseBundleInstance(app.instance)
     CloseBundle(app.bundle)

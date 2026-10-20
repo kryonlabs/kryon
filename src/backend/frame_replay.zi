@@ -1,0 +1,224 @@
+// A hosted app's frame shown again without running the app. While a frame
+// is quiet (no touch, key or typing reaches the app, and it does not
+// animate), its first run is recorded call by call. Later quiet frames ask
+// the recorded reads again; when every one answers as it did, the recorded
+// widget calls are made again as they were, so the page, its hover and its
+// tree stay live while the app's program does not run.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+
+using HostValueKind;
+
+replay_c :: #system_library "c";
+ReplayAllocate :: (count: usize, size: usize) -> *void #foreign replay_c "calloc";
+ReplayRelease :: (memory: *void) #foreign replay_c "free";
+ReplayResize :: (memory: *void, size: usize) -> *void #foreign replay_c "realloc";
+ReplayCopyBytes :: (destination: *void, source: *void, size: usize) -> *void #foreign replay_c "memcpy";
+ReplayCompareBytes :: (first: *void, second: *void, size: usize) -> s32 #foreign replay_c "memcmp";
+ReplayCompareText :: (first: *u8, second: *u8) -> s32 #foreign replay_c "strcmp";
+ReplayTextLength :: (text: *u8) -> usize #foreign replay_c "strlen";
+
+// The names a call passes live only for that call.
+ReplayCopyText :: (text: *u8) -> *u8 {
+    if text == null { return null }
+    length := ReplayTextLength(text) + cast(usize)1
+    copy := cast(*u8)ReplayAllocate(length, cast(usize)1)
+    if copy != null { unused ReplayCopyBytes(cast(*void)copy, cast(*void)text, length) }
+    return copy
+}
+
+// Frames that run in full after a replayed widget answered differently, as
+// a scroll still settling does, before quiet frames are recorded again.
+FRAME_REPLAY_SETTLE :: 30
+
+ReplayCall :: struct {
+    module: *u8
+    function: *u8
+    arguments: *HostValue
+    count: s32
+    result: HostValue
+    returned: s32
+}
+
+FrameReplay :: struct {
+    call: HostCall
+    context: *void
+    calls: *ReplayCall
+    count: s32
+    capacity: s32
+    recording: bool
+    // A recorded quiet frame waits to be shown again.
+    ready: bool
+    answer: s64
+    settle: s32
+}
+
+ReplayCopy :: (value: HostValue) -> HostValue {
+    copy := value
+    copy.data = null
+    copy.fields = null
+    copy.elements = null
+    if value.kind == cast(s32)HostString && value.length > cast(usize)0 && value.data != null {
+        copy.data = cast(*u8)ReplayAllocate(value.length, cast(usize)1)
+        unused ReplayCopyBytes(cast(*void)copy.data, cast(*void)value.data, value.length)
+    }
+    if value.field_count > cast(usize)0 && value.fields != null {
+        copy.fields = cast(*HostField)ReplayAllocate(value.field_count, size_of(HostField))
+        for index: cast(usize)0..value.field_count - cast(usize)1 {
+            copy.fields[index].name = value.fields[index].name
+            copy.fields[index].value = ReplayCopy(value.fields[index].value)
+        }
+    }
+    if (value.kind == cast(s32)HostSlice || value.kind == cast(s32)HostArray) &&
+    value.length > cast(usize)0 && value.elements != null {
+        copy.elements = cast(*HostValue)ReplayAllocate(value.length, size_of(HostValue))
+        for index: cast(usize)0..value.length - cast(usize)1 {
+            copy.elements[index] = ReplayCopy(value.elements[index])
+        }
+    }
+    return copy
+}
+
+ReplayFree :: (value: *HostValue) {
+    if value.fields != null {
+        for index: cast(usize)0..value.field_count - cast(usize)1 { ReplayFree(*value.fields[index].value) }
+        ReplayRelease(cast(*void)value.fields)
+    }
+    if value.elements != null {
+        for index: cast(usize)0..value.length - cast(usize)1 { ReplayFree(*value.elements[index]) }
+        ReplayRelease(cast(*void)value.elements)
+    }
+    if value.data != null && value.kind == cast(s32)HostString {
+        ReplayRelease(cast(*void)value.data)
+    }
+    value.* = HostValue.{}
+}
+
+ReplaySameText :: (first: *u8, second: *u8) -> bool {
+    if first == second { return true }
+    if first == null || second == null { return false }
+    return ReplayCompareText(first, second) == 0
+}
+
+ReplaySame :: (first: HostValue, second: HostValue) -> bool {
+    if first.kind != second.kind || first.integer != second.integer || first.bits != second.bits ||
+    first.real != second.real || first.length != second.length ||
+    first.field_count != second.field_count || first.pointer != second.pointer ||
+    !ReplaySameText(first.type_name, second.type_name) {
+        return false
+    }
+    if first.kind == cast(s32)HostString && first.length > cast(usize)0 &&
+    (first.data == null || second.data == null ||
+        ReplayCompareBytes(cast(*void)first.data, cast(*void)second.data, first.length) != 0) {
+        return false
+    }
+    if first.field_count > cast(usize)0 {
+        if first.fields == null || second.fields == null { return first.fields == second.fields }
+        for index: cast(usize)0..first.field_count - cast(usize)1 {
+            if !ReplaySameText(first.fields[index].name, second.fields[index].name) ||
+            !ReplaySame(first.fields[index].value, second.fields[index].value) {
+                return false
+            }
+        }
+    }
+    if (first.kind == cast(s32)HostSlice || first.kind == cast(s32)HostArray) && first.length > cast(usize)0 {
+        if first.elements == null || second.elements == null { return first.elements == second.elements }
+        for index: cast(usize)0..first.length - cast(usize)1 {
+            if !ReplaySame(first.elements[index], second.elements[index]) { return false }
+        }
+    }
+    return true
+}
+
+// Widget calls submit the page; every other call reads or tells the host.
+ReplayWidgetCall :: (function: *u8) -> bool {
+    name := TextFromCString(function)
+    suffix := "HostedHost"
+    return name.count > suffix.count && name[name.count - suffix.count:] == suffix
+}
+
+FrameReplayClear :: (replay: *FrameReplay) {
+    for index: 0..replay.count - 1 {
+        call := *replay.calls[index]
+        for argument: 0..call.count - 1 { ReplayFree(*call.arguments[argument]) }
+        if call.arguments != null { ReplayRelease(cast(*void)call.arguments) }
+        ReplayFree(*call.result)
+        ReplayRelease(cast(*void)call.module)
+        ReplayRelease(cast(*void)call.function)
+    }
+    replay.count = 0
+    replay.ready = false
+}
+
+FrameReplayClose :: (replay: *FrameReplay) {
+    FrameReplayClear(replay)
+    if replay.calls != null { ReplayRelease(cast(*void)replay.calls) }
+    replay.* = FrameReplay.{}
+}
+
+// Called for each host call of a recording run.
+FrameReplayRecord :: (replay: *FrameReplay, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: HostValue, returned: s32) {
+    call: ReplayCall
+    call.module = ReplayCopyText(module)
+    call.function = ReplayCopyText(function)
+    call.count = count
+    if count > 0 {
+        call.arguments = cast(*HostValue)ReplayAllocate(cast(usize)count, size_of(HostValue))
+        for index: 0..count - 1 { call.arguments[index] = ReplayCopy(arguments[index]) }
+    }
+    call.result = ReplayCopy(result)
+    call.returned = returned
+    if replay.count == replay.capacity {
+        capacity := ifx replay.capacity > 0 then replay.capacity * 2 else 256
+        grown := cast(*ReplayCall)ReplayResize(cast(*void)replay.calls,
+            cast(usize)capacity * size_of(ReplayCall))
+        if grown == null {
+            for index: 0..count - 1 { ReplayFree(*call.arguments[index]) }
+            if call.arguments != null { ReplayRelease(cast(*void)call.arguments) }
+            ReplayFree(*call.result)
+            ReplayRelease(cast(*void)call.module)
+            ReplayRelease(cast(*void)call.function)
+            replay.recording = false
+            return
+        }
+        replay.calls = grown
+        replay.capacity = capacity
+    }
+    replay.calls[replay.count] = call
+    replay.count += 1
+}
+
+// Shows the recorded frame again: false, with nothing shown, when a read
+// answers differently, and the app must run.
+FrameReplayRun :: (replay: *FrameReplay, answer: *s64) -> bool {
+    if !replay.ready { return false }
+    for index: 0..replay.count - 1 {
+        call := replay.calls[index]
+        if ReplayWidgetCall(call.function) { continue }
+        // As the VM does: a host that answers nothing leaves the result as
+        // it came, naming the return type.
+        fresh: HostValue
+        fresh.type_name = call.result.type_name
+        returned := replay.call(replay.context, call.module, call.function, call.arguments, call.count, *fresh)
+        if returned != call.returned || !ReplaySame(fresh, call.result) {
+            replay.ready = false
+            return false
+        }
+    }
+    for index: 0..replay.count - 1 {
+        call := replay.calls[index]
+        if !ReplayWidgetCall(call.function) { continue }
+        fresh: HostValue
+        fresh.type_name = call.result.type_name
+        returned := replay.call(replay.context, call.module, call.function, call.arguments, call.count, *fresh)
+        // A widget that answers differently, such as a scroll still moving,
+        // needs the app again: this frame is shown, and the app runs next.
+        if returned != call.returned || !ReplaySame(fresh, call.result) {
+            replay.ready = false
+            replay.settle = FRAME_REPLAY_SETTLE
+        }
+    }
+    answer.* = replay.answer
+    return true
+}

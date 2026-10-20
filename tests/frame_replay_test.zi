@@ -1,0 +1,108 @@
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/text_buffer"
+#import "hosted_values"
+#import "frame_replay"
+
+using HostValueKind;
+
+// A host with one read, one widget and one write. The read answers rows,
+// and the widget answers its own count of draws.
+rows: s64;
+widget_answer: s64;
+reads: s32;
+draws: s32;
+writes: s32;
+labels: [8][8]u8;
+
+FakeHost :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    unused context
+    unused module
+    name := TextFromCString(function)
+    if name == "ReadRowsHost" {
+        reads += 1
+        result.* = HostValue.{.kind = cast(s32)HostInteger, .type_name = result.type_name, .integer = rows}
+        return 1
+    }
+    if name == "BoxHostedHost" && count == 1 {
+        label := TextFromBytes(BytesFromPointer(arguments[0].data, cast(u64)arguments[0].length))
+        if draws < 8 { unused CopyCString(label, labels[draws][:]) }
+        draws += 1
+        result.* = HostValue.{.kind = cast(s32)HostInteger, .type_name = result.type_name, .integer = widget_answer}
+        return 1
+    }
+    if name == "WriteStateHost" {
+        writes += 1
+        // Answers nothing: the result stays as the caller made it.
+        return 1
+    }
+    return 0
+}
+
+// One frame of an app: as the hosted app's call does, each call goes to the
+// host and is recorded while recording.
+Call :: (replay: *FrameReplay, function: string, arguments: *HostValue, count: s32,
+    type_name: string) -> HostValue {
+    module := "app\0"
+    result: HostValue
+    result.type_name = HostTextData(type_name)
+    returned := replay.call(replay.context, HostTextData(module), HostTextData(function), arguments, count, *result)
+    if replay.recording {
+        FrameReplayRecord(replay, HostTextData(module), HostTextData(function), arguments, count, result, returned)
+    }
+    return result
+}
+
+Frame :: (replay: *FrameReplay) {
+    unused Call(replay, "ReadRowsHost\0", null, 0, "s64\0")
+    // The label lives in a buffer the app reuses, as VM text does.
+    buffer: [8]u8
+    unused CopyCString("hello", buffer[:])
+    argument := HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string\0"),
+        .data = *buffer[0], .length = cast(usize)5}
+    unused Call(replay, "BoxHostedHost\0", *argument, 1, "s64\0")
+    unused CopyCString("XXXXX", buffer[:])
+    unused Call(replay, "BoxHostedHost\0", *argument, 1, "s64\0")
+    unused Call(replay, "WriteStateHost\0", null, 0, "void\0")
+}
+
+#program_export
+Check :: () -> s32 {
+    replay: FrameReplay
+    replay.call = FakeHost
+    rows = 3
+    replay.recording = true
+    Frame(*replay)
+    replay.recording = false
+    replay.ready = true
+    replay.answer = 7
+    if replay.count != 4 || reads != 1 || draws != 2 || writes != 1 { return 1 }
+
+    // Unchanged reads: the read and write are asked again and the widgets
+    // drawn again with the arguments they had, not the reused buffer's.
+    answer: s64
+    if !FrameReplayRun(*replay, *answer) || answer != 7 { return 2 }
+    if reads != 2 || draws != 4 || writes != 2 || !replay.ready { return 3 }
+    if TextUntilNul(labels[2][:]) != "hello" || TextUntilNul(labels[3][:]) != "XXXXX" { return 4 }
+
+    // A read answering differently draws nothing and needs the app.
+    rows = 4
+    if FrameReplayRun(*replay, *answer) || replay.ready { return 5 }
+    if draws != 4 { return 6 }
+
+    // A widget answering differently still shows the frame, then the app
+    // runs for a while before frames are recorded again.
+    FrameReplayClear(*replay)
+    replay.recording = true
+    Frame(*replay)
+    replay.recording = false
+    replay.ready = true
+    widget_answer = 1
+    if !FrameReplayRun(*replay, *answer) || replay.ready || replay.settle != FRAME_REPLAY_SETTLE { return 7 }
+
+    FrameReplayClose(*replay)
+    if replay.count != 0 || replay.calls != null { return 8 }
+    return 0
+}
