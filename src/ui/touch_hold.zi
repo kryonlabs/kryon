@@ -1,0 +1,36 @@
+// What a press held on a game's touch area does each frame, so holding
+// keeps walking like a held arrow key. Directions are 0 left, 1 up, 2 right
+// and 3 down; -1 means none.
+
+TouchHold :: struct {
+    // Step this way now, or -1.
+    direction: s32
+    // Step towards the press itself now.
+    toward: bool
+    // When the next step is due.
+    next: float64
+    // The direction last stepped while this press stayed down, or -1.
+    last: s32
+}
+
+// direction is where the press has moved from where it began, or -1 while
+// it stays within reach. Moving out steps that way at once, again after
+// twice the repeat, then at each repeat; a press held in place steps
+// towards itself whenever a step is due. A repeat of 0 never steps.
+#program_export
+TouchHoldStep :: (direction: s32, last: s32, now: float64, next: float64,
+    repeat: float64) -> TouchHold {
+    hold := TouchHold.{.direction = -1, .next = next, .last = last}
+    if repeat <= 0.0 { return hold }
+    if direction >= 0 {
+        if direction != last || now >= next {
+            hold.direction = direction
+            hold.next = now + ifx direction == last then repeat else repeat * 2.0
+            hold.last = direction
+        }
+    } else if last < 0 && now >= next {
+        hold.toward = true
+        hold.next = now + repeat
+    }
+    return hold
+}

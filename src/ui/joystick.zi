@@ -4,7 +4,10 @@
 // - Joystick: hold it and lean towards a direction. It steps that way at
 //   once, then again at a steady rate while held, like a held arrow key.
 // - SwipeArea: an invisible area, usually over a game board. A short swipe
-//   steps once in its main direction; a tap reports where it landed.
+//   steps once in its main direction; a tap reports where it landed. With
+//   repeat_seconds, holding keeps stepping: a swipe that stays down steps
+//   its way at once and then repeats, and a press held in place repeats
+//   `held` steps towards where it is.
 //
 // Directions are 0 left, 1 up, 2 right and 3 down, as in arrow-key games;
 // -1 means none.
@@ -15,6 +18,7 @@
 #import "press_widget"
 #import "box_props"
 #import "box_widget"
+#import "touch_hold"
 
 JoystickProps :: struct {
     key: u64
@@ -45,14 +49,19 @@ SwipeAreaProps :: struct {
     now: float64
     // Shortest swipe in the area's units; 0 means 24.
     min_distance: float32
+    // Seconds between steps while a press is held; 0 steps only on release.
+    repeat_seconds: float32
     disabled: bool
 }
 
 SwipeAreaResult :: struct {
-    // The swipe's direction on release, or -1.
+    // The swipe's direction on release, or while held with repeat_seconds;
+    // -1 when there is none this frame.
     swiped: s32
     // A press released without a swipe; x and y say where.
     tapped: bool
+    // A press held in place is due to step towards x and y.
+    held: bool
     x: float32
     y: float32
     // A press is in progress.
@@ -68,6 +77,8 @@ TouchSlot :: struct {
     next: float64
     start_x: float32
     start_y: float32
+    // A held press already stepped, so its release does not step again.
+    stepped: bool
 }
 
 touch_slots: [TOUCH_SLOTS]TouchSlot;
@@ -140,20 +151,39 @@ SwipeArea :: (session: Session, props: SwipeAreaProps) -> SwipeAreaResult {
     press := Press(session, PressProps.{.key = props.key, .id = props.id, .bounds = props.bounds,
             .label = props.label, .now = props.now, .capture = true, .disabled = props.disabled,
             .hold_seconds = 3600.0})
+    reach := ifx props.min_distance > 0.0 then props.min_distance else 24.0
+    repeat := cast(float64)props.repeat_seconds
     if press.down && !slot.active {
         slot.active = true
         slot.start_x = press.x
         slot.start_y = press.y
+        slot.direction = -1
+        slot.stepped = false
+        slot.next = props.now + repeat * 2.0
     }
     result.down = press.down
-    if press.released && slot.active {
-        slot.active = false
-        reach := ifx props.min_distance > 0.0 then props.min_distance else 24.0
-        result.swiped = TouchDirection(press.x - slot.start_x, press.y - slot.start_y, reach)
-        if result.swiped < 0 {
-            result.tapped = true
+    if press.down && slot.active && !props.disabled {
+        hold := TouchHoldStep(TouchDirection(press.x - slot.start_x, press.y - slot.start_y, reach),
+            slot.direction, props.now, slot.next, repeat)
+        slot.direction = hold.last
+        slot.next = hold.next
+        if hold.direction >= 0 || hold.toward {
+            slot.stepped = true
+            result.swiped = hold.direction
+            result.held = hold.toward
             result.x = press.x
             result.y = press.y
+        }
+    }
+    if press.released && slot.active {
+        slot.active = false
+        if !slot.stepped {
+            result.swiped = TouchDirection(press.x - slot.start_x, press.y - slot.start_y, reach)
+            if result.swiped < 0 {
+                result.tapped = true
+                result.x = press.x
+                result.y = press.y
+            }
         }
     }
     return result
