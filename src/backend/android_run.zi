@@ -20,11 +20,14 @@
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "std/number_text"
+#import "std/text_buffer"
 
 using FrameStatus;
 
-libc :: #system_library "libc";
-AndroidWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
+android_log :: #system_library "log";
+// Android discards standard error; errors go to the system log (adb logcat).
+AndroidLogWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign android_log "__android_log_write";
 
 AndroidError :: (message: string) -> s32 {
     output: [256]u8
@@ -35,8 +38,9 @@ AndroidError :: (message: string) -> s32 {
         output[index] = message[index]
         index += 1
     }
-    output[index] = cast(u8)10
-    AndroidWrite(2, *output[0], cast(u64)(length + 1))
+    output[index] = 0
+    tag: [8]u8 = .[cast(u8)107, cast(u8)114, cast(u8)121, cast(u8)111, cast(u8)110, 0, 0, 0]
+    unused AndroidLogWrite(6, *tag[0], *output[0])
     return 1
 }
 
@@ -46,6 +50,21 @@ AndroidCanvas :: () -> u32 {
     canvas := StyleTokenColorOr("canvas", Color.{248, 250, 252, 255})
     return (cast(u32)canvas.r << 24) | (cast(u32)canvas.g << 16) |
         (cast(u32)canvas.b << 8) | cast(u32)canvas.a
+}
+
+// Why the session refused a frame, with the key and kind it stopped at.
+AndroidFrameFailure :: (session: Session, step: string) {
+    failure := FrameFailureAt(session)
+    message: [240]u8
+    length: s64 = 0
+    digits: [24]u8
+    parts: [7]string = .["kryon: ", step, ": ", failure.message, " (key ", FormatInteger(cast(s64)failure.key, digits[:]), ")"]
+    for part: parts {
+        for byte: part {
+            if length < 239 { message[length] = byte; length += 1 }
+        }
+    }
+    unused AndroidError(TextView(message[0:length]))
 }
 
 DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
@@ -67,15 +86,18 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
         codepoint = AndroidTextInputCharacter()
     }
     if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk {
+        AndroidFrameFailure(session, "the frame could not begin")
         EndRaylibFrame()
         return false
     }
     if Frame(session, bounds) != 0 {
+        unused AndroidError("kryon: the application's frame failed")
         TreeCancel(session)
         EndRaylibFrame()
         return false
     }
     if EndFrame(session) != cast(FrameStatus)FrameOk {
+        AndroidFrameFailure(session, "the frame could not finish")
         EndRaylibFrame()
         return false
     }

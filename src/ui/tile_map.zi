@@ -102,7 +102,7 @@ TileMap :: (session: Session, props: TileMapProps) -> TileMapResult {
             if cast(s64)index >= props.layers.count { return grid }
             tile := props.layers[index]
             if tile < 0 || cast(s64)tile >= props.tiles.count { continue }
-            Image(session, ImageProps.{.key = props.key + cast(u64)(1 + index), .asset_path = props.tiles[tile],
+            Image(session, ImageProps.{.key = WidgetPartKey(props.key, index), .asset_path = props.tiles[tile],
                     .alt_text = ifx cast(s64)tile < props.names.count then props.names[tile] else props.label,
                     .bounds = TileMapCell(grid, at), .fit = ImageFit.ImageFitContain, .smooth = true})
         }

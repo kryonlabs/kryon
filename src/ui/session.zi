@@ -47,3 +47,12 @@ SessionClose :: (session: Session) -> bool {
     session_active[session.slot] = false
     return true
 }
+
+// The key of one part of a widget made of several nodes. Parts live in their
+// own key space, the top bit set, so no key an application passes can match
+// one, and a widget never takes the keys next to its own.
+WidgetPartKey :: (key: u64, part: s32) -> u64 {
+    mixed := (key + cast(u64)1) * cast(u64)0x9e3779b97f4a7c15 + cast(u64)(part + 1) * cast(u64)0xbf58476d1ce4e5b9
+    mixed = (mixed ^ (mixed >> 31)) * cast(u64)0x94d049bb133111eb
+    return (mixed ^ (mixed >> 29)) | (cast(u64)1 << 63)
+}
