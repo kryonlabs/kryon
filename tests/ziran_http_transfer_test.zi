@@ -87,13 +87,14 @@ main :: () -> s32 {
     // An answer larger than the output fails rather than arriving cut.
     big := HttpRequest.{.method = "GET", .url = Url("/big", url[:])}
     if !HttpTransferStart(*transfer, big, output[:], 5000) || Finish(*transfer, *status) != 0 ||
-    output[0] != 0 {
+    output[0] != 0 || transfer.failure != HTTP_TRANSFER_FAILURE_CAPACITY {
         return 3
     }
     slow := HttpRequest.{.method = "GET", .url = Url("/slow", url[:])}
     if !HttpTransferStart(*transfer, slow, output[:], 300) || Finish(*transfer, *status) != 0 {
         return 4
     }
+    if transfer.failure != HTTP_TRANSFER_FAILURE_TRANSPORT { return 11 }
     // A cancelled transfer never writes into the caller's buffer.
     late: [256]u8
     late[0] = #char "-"

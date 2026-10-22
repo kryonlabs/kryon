@@ -95,7 +95,8 @@ Check :: () -> string {
         return "FAIL binary"
     }
     big := HttpRequest.{.method = "GET", .url = Url("/big", url[:])}
-    if !HttpTransferStart(*transfer, big, output[:], 5000) || Finish(*transfer, *status) != 0 || output[0] != 0 {
+    if !HttpTransferStart(*transfer, big, output[:], 5000) || Finish(*transfer, *status) != 0 ||
+    output[0] != 0 || transfer.failure != HTTP_TRANSFER_FAILURE_CAPACITY {
         return "FAIL big"
     }
     slow := HttpRequest.{.method = "GET", .url = Url("/slow", url[:])}

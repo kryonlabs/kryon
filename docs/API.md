@@ -190,6 +190,12 @@ Other platform services an application may import:
 | [`raylib_secondary_window`](../src/backend/raylib_secondary_window.zi) | Up to three extra SDL windows for a raylib application, such as a floating timer, each drawing its own Kryon tree |
 | [`raylib_trace`](../src/backend/raylib_trace.zi) | Where raylib's log goes: `RaylibTraceToConsole`, `RaylibTraceToFile` for Windows applications without a console, and `TraceLog(level, text)` |
 
+After a completed HTTP poll, `transfer.failure` distinguishes a response that
+exceeded the caller's buffer (`HTTP_TRANSFER_FAILURE_CAPACITY`) from a transport
+failure. Failed responses never publish partial bytes. A new start or cancel
+clears the failure. Large logical transfers can use this result to switch to
+the service's paged API and preserve progress without enlarging frame memory.
+
 [`src/ui/modules.txt`](../src/ui/modules.txt) is the core build inventory.
 `make test` checks source, saved `.zir`, `.zib`, and generated C/C++/Go behavior.
 See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for package and host verification.

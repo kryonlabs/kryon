@@ -11,6 +11,7 @@
 //     boolean httpHeader(int handle, byte[] name, byte[] value)
 //     boolean httpSend(int handle, byte[] body)
 //     int httpPoll(int handle)        // -1 pending, 0 failed, else the status
+//     int httpFailure(int handle)     // HTTP_TRANSFER_FAILURE_*, when failed
 //     byte[] httpResponse(int handle)
 //     void httpCancel(int handle)
 //
@@ -41,6 +42,9 @@ HTTP_TRANSFER_NATIVE :: !#defined(ANDROID_BUILD) && !#defined(PLATFORM_WEB)
 
 HTTP_TRANSFER_MAXIMUM :: 16777216
 HTTP_TRANSFER_HEADERS :: 32
+HTTP_TRANSFER_FAILURE_NONE :: 0
+HTTP_TRANSFER_FAILURE_TRANSPORT :: 1
+HTTP_TRANSFER_FAILURE_CAPACITY :: 2
 
 HttpTransfer :: struct {
     // The Android activity's and the browser's transfer handle.
@@ -48,6 +52,8 @@ HttpTransfer :: struct {
     // The desktop or Android worker's job.
     job: *void
     output: []u8
+    // Retained after a completed poll; a new start or cancel clears it.
+    failure: s32
 }
 
 // 1 when an answer arrived (status holds its HTTP status), 0 when the
@@ -105,6 +111,7 @@ HttpTransferStart :: (transfer: *HttpTransfer, request: HttpRequest,
         return false
     }
     output[0] = 0
+    transfer.failure = HTTP_TRANSFER_FAILURE_NONE
     #if HTTP_TRANSFER_NATIVE {
         return NativeStart(transfer, request, output, timeout_ms)
     }
@@ -317,8 +324,14 @@ TransferBytes :: (text: string) -> *u8 {
         } else {
             transfer.output[0] = 0
         }
+        failure: s32 = HTTP_TRANSFER_FAILURE_NONE
+        if !success {
+            failure = ifx job.result.truncated then HTTP_TRANSFER_FAILURE_CAPACITY else HTTP_TRANSFER_FAILURE_TRANSPORT
+        }
+        status.* = job.result.status
         NativeFreeJob(job)
         transfer.* = HttpTransfer.{}
+        transfer.failure = failure
         return ifx success then 1 else 0
     }
 
@@ -541,7 +554,9 @@ TransferBytes :: (text: string) -> *u8 {
             return -1
         }
         result: s32 = 0
+        failure: s32 = HTTP_TRANSFER_FAILURE_TRANSPORT
         if state > 0 {
+            status.* = state
             method = AndroidJniMethod(*session, "httpResponse", "(I)[B")
             if method != null {
                 bytes := env.functions.CallObjectMethodA(env, session.activity, method, *arguments[0])
@@ -555,7 +570,17 @@ TransferBytes :: (text: string) -> *u8 {
                             length.* = cast(s64)size
                             result = 1
                         }
+                    } else if cast(s64)size >= transfer.output.count {
+                        failure = HTTP_TRANSFER_FAILURE_CAPACITY
                     }
+                }
+            }
+        } else {
+            method = AndroidJniMethod(*session, "httpFailure", "(I)I")
+            if method != null {
+                reported := env.functions.CallIntMethodA(env, session.activity, method, *arguments[0])
+                if env.functions.ExceptionCheck(env) == 0 && reported == HTTP_TRANSFER_FAILURE_CAPACITY {
+                    failure = reported
                 }
             }
         }
@@ -567,6 +592,7 @@ TransferBytes :: (text: string) -> *u8 {
         }
         AndroidCancelHandle(*session, transfer.handle)
         transfer.* = HttpTransfer.{}
+        transfer.failure = ifx result == 1 then HTTP_TRANSFER_FAILURE_NONE else failure
         return result
     }
 
@@ -611,6 +637,7 @@ TransferBytes :: (text: string) -> *u8 {
         success: bool
         done: bool
         abandoned: bool
+        capacity_failed: bool
     }
 
     // Running workers, cancelled ones included, under the transfer lock.
@@ -818,6 +845,7 @@ TransferBytes :: (text: string) -> *u8 {
                 break
             }
             if cast(s64)count > job.capacity - job.length - 1 {
+                job.capacity_failed = true
                 break
             }
             if count > 0 {
@@ -878,7 +906,12 @@ TransferBytes :: (text: string) -> *u8 {
         declared: s32
         if !ConnectionInteger(env, connection, klass, "getResponseCode", "()I", *arguments[0], *status) ||
         status < 100 || !ConnectionInteger(env, connection, klass, "getContentLength", "()I",
-            *arguments[0], *declared) || cast(s64)declared >= job.capacity {
+            *arguments[0], *declared) {
+            return false
+        }
+        job.status = status
+        if cast(s64)declared >= job.capacity {
+            job.capacity_failed = true
             return false
         }
         // Error answers arrive on the error stream, which may be absent.
@@ -1038,10 +1071,16 @@ TransferBytes :: (text: string) -> *u8 {
         } else {
             transfer.output[0] = 0
         }
+        failure: s32 = HTTP_TRANSFER_FAILURE_NONE
+        if !success {
+            failure = ifx done && job.capacity_failed then HTTP_TRANSFER_FAILURE_CAPACITY else HTTP_TRANSFER_FAILURE_TRANSPORT
+        }
         if done {
+            status.* = job.status
             ConnectionFreeJob(job)
         }
         transfer.* = HttpTransfer.{}
+        transfer.failure = failure
         return ifx success then 1 else 0
     }
 
@@ -1073,6 +1112,7 @@ TransferBytes :: (text: string) -> *u8 {
         output: *u8
         capacity: s32
         length: s32
+        failure: s32
         controller: s32
         timer: s32
         reader: s32
@@ -1176,6 +1216,7 @@ TransferBytes :: (text: string) -> *u8 {
         if declared.tag == WebStringTag {
             length := WebAsNumber(WebCall1(WebGlobal, WebName("Number"), declared))
             if length >= cast(float64)task.capacity {
+                task.failure = HTTP_TRANSFER_FAILURE_CAPACITY
                 BrowserFinish(task, false, 0)
                 return
             }
@@ -1209,6 +1250,9 @@ TransferBytes :: (text: string) -> *u8 {
         value := WebGetObject(chunk, WebName("value"))
         count := cast(s32)WebGetNumber(value, WebName("length"))
         if value == 0 || count < 0 || count > task.capacity - task.length - 1 {
+            if count > task.capacity - task.length - 1 {
+                task.failure = HTTP_TRANSFER_FAILURE_CAPACITY
+            }
             BrowserFinish(task, false, 0)
             return
         }
@@ -1333,9 +1377,14 @@ TransferBytes :: (text: string) -> *u8 {
         if task.success {
             length.* = cast(s64)task.length
         }
+        failure: s32 = HTTP_TRANSFER_FAILURE_NONE
+        if !task.success {
+            failure = ifx task.failure == HTTP_TRANSFER_FAILURE_CAPACITY then HTTP_TRANSFER_FAILURE_CAPACITY else HTTP_TRANSFER_FAILURE_TRANSPORT
+        }
         BrowserRelease(task)
         task.* = BrowserTask.{}
         transfer.* = HttpTransfer.{}
+        transfer.failure = failure
         return result
     }
 
