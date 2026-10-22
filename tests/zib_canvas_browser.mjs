@@ -94,6 +94,25 @@ try {
     await delay(700);
     assert.equal(await evaluate(textPixels),clicked,'Switching back lost the first app document');
     assert(!/ABORT|RuntimeError/.test(diagnostics),diagnostics);
+    for (const [x, marker, minimum] of [[100, 'Hosted swipe step', 3], [580, 'Hosted joystick step', 3]]) {
+      const count = () => diagnostics.split(marker).length - 1;
+      const before = count();
+      await call('Input.dispatchMouseEvent', {type: 'mousePressed', x, y: 360, button: 'left', buttons: 1, clickCount: 1});
+      await delay(1200);
+      const during = count();
+      await call('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y: 360, button: 'left', buttons: 0, clickCount: 1});
+      assert(during - before >= minimum, marker + ' did not hold/repeat: ' + diagnostics);
+      await delay(250);
+      assert.equal(count(), during, marker + ' continued after release');
+    }
+    const beforeTouch = diagnostics.split('Hosted swipe step').length;
+    await call('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [{x: 100, y: 360, id: 1}]});
+    await delay(1000);
+    const duringTouch = diagnostics.split('Hosted swipe step').length;
+    await call('Input.dispatchTouchEvent', {type: 'touchCancel', touchPoints: []});
+    assert(duringTouch - beforeTouch >= 3, 'Touch hold did not repeat: ' + diagnostics);
+    await delay(300);
+    assert.equal(diagnostics.split('Hosted swipe step').length, duringTouch, 'Touch cancellation left movement held');
     console.log('Browser hosted ZIB images, widgets, persistence, app isolation and invalid replacement passed');
   } else if(mode==='gallery') {
     while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zib-open")'))await delay(100);
