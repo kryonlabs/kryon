@@ -102,6 +102,7 @@
 ### Fixed
 
 - Keep warped-image animations smooth on slower browsers and refresh views when their images change.
+- Preserve final accessibility replies when an app exits and use the requested screen or window coordinates.
 - Reading a clipboard image no longer waits two seconds when the application
   itself copied text, also on systems without the X-Resource library.
 

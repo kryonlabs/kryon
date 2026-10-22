@@ -16,8 +16,11 @@ Kryon contains no JavaScript or C. The browser hosts (`page_core.zi`,
 written in Ziran and reach the page through `std/web.zi`; the one JavaScript
 file is the generic, Kryon-agnostic bridge in the Ziran repository.
 
-The page uses a Canvas2D context. When WebGL is available, `Image` meshes share
-a private surface and adjacent meshes transfer to the page together. Other
+The page uses a Canvas2D context with a drawing preference that survives
+occasional pixel reads. When WebGL is available, `Image` meshes share
+a private surface around their visible bounds and transfer to the page together.
+Indexed grids reuse shared vertices, and small size changes reuse the drawing
+buffer. Texture changes retain their painter order within the batch. Other
 paint, clipping, target changes, readback and presentation flush that batch
 in order. Without WebGL, the same API uses the Canvas2D triangle painter.
 The dedicated `canvas_raster.zi` provider

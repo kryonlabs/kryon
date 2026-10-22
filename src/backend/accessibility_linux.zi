@@ -34,6 +34,7 @@ FreeNodeInfo :: (info: *void) #foreign gio "g_dbus_node_info_unref";
 Register :: (connection: *void, path: *u8, info: *void, table: *InterfaceVTable,
     context: *void, destroy: *void, error: **void) -> u32 #foreign gio "g_dbus_connection_register_object";
 Unregister :: (connection: *void, id: u32) -> s32 #foreign gio "g_dbus_connection_unregister_object";
+Flush :: (connection: *void, cancel: *void, error: **void) -> s32 #foreign gio "g_dbus_connection_flush_sync";
 Reply :: (invocation: *void, value: *void) #foreign gio "g_dbus_method_invocation_return_value";
 ReplyError :: (invocation: *void, name: *u8, message: *u8) #foreign gio "g_dbus_method_invocation_return_dbus_error";
 NewBusError :: (name: *u8, message: *u8) -> *void #foreign gio "g_dbus_error_new_for_dbus_error";
@@ -55,6 +56,7 @@ VType :: (value: *u8) -> *void #foreign glib "g_variant_type_new";
 VTypeFree :: (type: *void) #foreign glib "g_variant_type_free";
 VChild :: (value: *void, index: usize) -> *void #foreign glib "g_variant_get_child_value";
 VGetInt :: (value: *void) -> s32 #foreign glib "g_variant_get_int32";
+VGetUInt :: (value: *void) -> u32 #foreign glib "g_variant_get_uint32";
 VGetString :: (value: *void, length: *usize) -> *u8 #foreign glib "g_variant_get_string";
 VVariant :: (value: *void) -> *void #foreign glib "g_variant_new_variant";
 VUnref :: (value: *void) #foreign glib "g_variant_unref";
@@ -200,6 +202,14 @@ ArgumentInt :: (params: *void, at: usize) -> s32 {
     result: s32 = VGetInt(child)
     VUnref(child)
     return result
+}
+
+ArgumentCoordinates :: (params: *void, at: usize) -> s32 {
+    child: *void = VChild(params, at)
+    result: u32 = VGetUInt(child)
+    VUnref(child)
+    if result > 2 { return -1 }
+    return cast(s32)result
 }
 
 ChildCount :: (index: s32) -> s32 {
@@ -522,7 +532,7 @@ Method :: (bus: *void, sender: *u8, path: *u8, iface: *u8,
     else if name == "GetLayer" { result = TupleOne(VUInt(3)) }
     else if name == "GetSize" || name == "GetPosition" || name == "GetExtents" {
         coordinates: s32 = 1
-        if name != "GetSize" { coordinates = ArgumentInt(params, 0) }
+        if name != "GetSize" { coordinates = ArgumentCoordinates(params, 0) }
         bounds: Rectangle = AccessibleBounds(index, coordinates)
         fields: [4]*void
         fields[0] = VInt(cast(s32)bounds.x); fields[1] = VInt(cast(s32)bounds.y)
@@ -532,11 +542,11 @@ Method :: (bus: *void, sender: *u8, path: *u8, iface: *u8,
         else { result = TupleOne(VTuple(*fields[0], 4)) }
     } else if name == "Contains" {
         x: s32 = ArgumentInt(params, 0); y: s32 = ArgumentInt(params, 1)
-        bounds: Rectangle = AccessibleBounds(index, ArgumentInt(params, 2))
+        bounds: Rectangle = AccessibleBounds(index, ArgumentCoordinates(params, 2))
         result = TupleOne(VBool(cast(s32)(cast(float32)x >= bounds.x && cast(float32)y >= bounds.y &&
             cast(float32)x < bounds.x + bounds.width && cast(float32)y < bounds.y + bounds.height)))
     } else if name == "GetAccessibleAtPoint" {
-        bounds: Rectangle = AccessibleBounds(index, ArgumentInt(params, 2))
+        bounds: Rectangle = AccessibleBounds(index, ArgumentCoordinates(params, 2))
         x: float32 = cast(float32)ArgumentInt(params, 0) + node.bounds.x - bounds.x
         y: float32 = cast(float32)ArgumentInt(params, 1) + node.bounds.y - bounds.y
         hit: s32 = TreeHitAt(ui, x, y)
@@ -633,6 +643,11 @@ AccessibilityClose :: () {
         cache_registration = 0
         i: s32 = 0
         while i < 8193 { if objects[i].used { RemoveObject(i) }; i += 1 }
+        // A final accessibility edit can finish the application. Deliver its
+        // queued reply before releasing the connection and exiting.
+        error: *void = null
+        unused Flush(connection, null, *error)
+        if error != null { FreeError(error) }
         UnrefObject(connection)
     }
     connection = null

@@ -66,6 +66,11 @@ def main():
             password = named(window, "Password")
             readonly = named(window, "Read only")
             assert Atspi.Component.get_accessible_at_point(window, 20, 60, Atspi.CoordType.WINDOW).get_name() == "Editor"
+            assert Atspi.Component.get_accessible_at_point(window, 120, 260, Atspi.CoordType.SCREEN).get_name() == "Editor"
+            position = Atspi.Component.get_position(editor, Atspi.CoordType.WINDOW)
+            assert (position.x, position.y) == (10, 50)
+            position = Atspi.Component.get_position(editor, Atspi.CoordType.SCREEN)
+            assert (position.x, position.y) == (110, 250)
             assert Atspi.Text.get_text(editor, 0, -1) == "Ae\u0301Z"
             assert Atspi.Text.get_character_count(editor) == 4
             assert Atspi.Text.get_text(password, 0, -1) == ""
@@ -100,6 +105,14 @@ def main():
         assert process.wait(timeout=5) == 0
         print("libatspi list selection: PASS" if list_mode else
               "libatspi identity, focus, selection, modal routing, Unicode edits and secure redaction: PASS")
+    except Exception:
+        try:
+            status = process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            status = None
+        output = process.stdout.read() if status is not None else ""
+        print(f"accessibility fixture exit={status}, remaining output={output!r}", file=sys.stderr)
+        raise
     finally:
         if process.poll() is None:
             process.terminate()

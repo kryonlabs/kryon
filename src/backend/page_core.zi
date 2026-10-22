@@ -487,7 +487,12 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
         WebSet(canvas, page_names.width, WebNumber(cast(float64)page_render_width))
         WebSet(canvas, page_names.height, WebNumber(cast(float64)page_render_height))
     }
-    front: s32 = PageContext2D(canvas)
+    // Page surfaces draw continuously. Occasional screenshots must not
+    // switch them permanently to the browser's readback-oriented raster.
+    drawing := WebNewObject()
+    WebSet(drawing, WebName("willReadFrequently"), WebBool(false))
+    front: s32 = WebAsObject(WebCall2(canvas, page_names.get_context,
+        WebText("2d"), WebObject(drawing)))
     if front != 0 {
         if page_front_ctx != 0 { WebRelease(page_front_ctx) }
         page_front_ctx = WebKeep(front)
@@ -501,7 +506,10 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
         WebSet(page_back_canvas, page_names.height, WebNumber(cast(float64)page_render_height))
     }
     context: s32 = front
-    if page_back_canvas != 0 { context = PageContext2D(page_back_canvas) }
+    if page_back_canvas != 0 {
+        context = WebAsObject(WebCall2(page_back_canvas, page_names.get_context,
+            WebText("2d"), WebObject(drawing)))
+    }
     if context != 0 {
         if page_ctx != 0 { WebRelease(page_ctx) }
         page_ctx = WebKeep(context)

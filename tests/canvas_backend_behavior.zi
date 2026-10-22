@@ -13,6 +13,7 @@
 #import "c_string"
 #import "page_texture"
 #import "page_mesh"
+#import "page_core"
 #import "tree_draw"
 #import "session"
 #import "paint_queue"
@@ -203,6 +204,8 @@ main :: () -> s32 {
         mesh_pixels[15] = cast(u8)0
         UpdateTexture(mesh_texture, cast(*void)(*mesh_pixels[0]))
         if page_mesh_draws != before_mesh_draws + 1 { CanvasTestFail(46) }
+        if WebGetNumber(page_mesh_canvas, page_names.width) * WebGetNumber(page_mesh_canvas, page_names.height) >
+        9600.0 * PageSurfaceScale() * PageSurfaceScale() { CanvasTestFail(47) }
     }
     SetTextureFilter(mesh_texture, 1)
     for index: cast(s32)0..3 {
@@ -222,6 +225,54 @@ main :: () -> s32 {
     UpdateTexture(mesh_texture, cast(*void)(*mesh_pixels[0]))
     RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
         .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 128})
+    // Cached textures can alternate within one crop without changing their
+    // painter order, including a translucent image above another texture.
+    accent_pixels: [16]u8
+    for index: cast(s32)0..3 {
+        accent_pixels[index * 4] = cast(u8)255
+        accent_pixels[index * 4 + 2] = cast(u8)255
+        accent_pixels[index * 4 + 3] = cast(u8)255
+    }
+    accent := LoadTextureFromImage(CanvasImageFromRgba(*accent_pixels[0], 2, 2))
+    mixed: [4]Vector2 = .{.{20.0, 52.0}, .{36.0, 52.0}, .{20.0, 68.0}, .{36.0, 68.0}}
+    RasterImageMesh("", accent.id, .{0.0, 0.0, 2.0, 2.0}, mixed[:], 2, 2,
+        .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
+    DrawRectangle(18, 50, 20, 20, Color.{255, 255, 255, 255})
+    for index: cast(s32)0..3 { mixed[index].x -= 8.0 }
+    RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mixed[:], 2, 2,
+        .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
+    for index: cast(s32)0..3 { mixed[index].x += 8.0 }
+    RasterImageMesh("", accent.id, .{0.0, 0.0, 2.0, 2.0}, mixed[:], 2, 2,
+        .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
+    for index: cast(s32)0..3 { mixed[index].x += 8.0 }
+    RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mixed[:], 2, 2,
+        .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 128})
+    // More texture runs than fit in one batch still preserve the last image.
+    for index: cast(s32)0..3 { mixed[index].x += 120.0; mixed[index].y += 24.0 }
+    for index: cast(s32)0..69 {
+        id := ifx index % 2 == 0 then mesh_texture.id else accent.id
+        RasterImageMesh("", id, .{0.0, 0.0, 2.0, 2.0}, mixed[:], 2, 2,
+            .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
+    }
+    if page_mesh_gl != 0 {
+        // Three large grids cross the index-buffer capacity. Shared vertices
+        // and the next batch's indices must still refer to the right colours.
+        large: [64 * 32]Vector2
+        for row: cast(s32)0..31 {
+            for column: cast(s32)0..63 {
+                large[row * 64 + column] = Vector2.{148.0 + cast(float32)column * 8.0 / 63.0,
+                    90.0 + cast(float32)row * 8.0 / 31.0}
+            }
+        }
+        for index: cast(s32)0..2 {
+            color := Color.{255, 255, 255, 255}
+            if index == 1 { color.b = cast(u8)0 }
+            if index == 2 { color = Color.{255, 128, 0, 255} }
+            RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, large[:], 64, 32,
+                .{0.0, 0.0, 160.0, 120.0}, color)
+        }
+    }
+    UnloadTexture(accent)
     // A collapsed grid column must not erase its visible neighbour.
     folded: [6]Vector2 = .{.{120.0, 76.0}, .{120.0, 76.0}, .{140.0, 76.0},
         .{120.0, 88.0}, .{120.0, 88.0}, .{140.0, 88.0}}

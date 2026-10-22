@@ -90,6 +90,7 @@ Run :: () -> s32 {
         if finished.status != cast(FrameStatus)FrameOk { return 5 }
         PixmapEndInto()
         if !opened {
+            AccessibilityOrigin(100, 200)
             if !AccessibilityOpen(session, "Kryon Accessibility Test") { return 7 }
             opened = true
             line: [6]u8 = .{82, 69, 65, 68, 89, 10}

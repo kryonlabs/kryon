@@ -10,6 +10,8 @@
 #import "web"
 
 PAGE_MESH_TEXTURES :: 32
+PAGE_MESH_RUNS :: 64
+PAGE_MESH_BUCKET :: 32
 
 PageMeshTexture :: struct {
     id: s32
@@ -27,12 +29,21 @@ PageMeshVertex :: struct {
     color: Color
 }
 
+PageMeshRun :: struct {
+    id: s32
+    filter: s32
+    first: s32
+    count: s32
+}
+
 page_mesh_attempted: bool;
 page_mesh_canvas: s32;
 page_mesh_gl: s32;
 page_mesh_program: s32;
 page_mesh_buffer: s32;
+page_mesh_element_buffer: s32;
 page_mesh_color: s32;
+page_mesh_view: s32;
 page_mesh_lost_handler: s32;
 page_mesh_position: s32;
 page_mesh_uv: s32;
@@ -46,12 +57,20 @@ page_mesh_x: s32;
 page_mesh_y: s32;
 page_mesh_width: s32;
 page_mesh_height: s32;
+page_mesh_pixels_w: s32;
+page_mesh_pixels_h: s32;
+page_mesh_left: float32;
+page_mesh_top: float32;
+page_mesh_right: float32;
+page_mesh_bottom: float32;
 page_mesh_textures: [PAGE_MESH_TEXTURES]PageMeshTexture;
+// This bounded vertex stream fits WebGL's core 16-bit index range.
 page_mesh_vertices: [IMAGE_MESH_POINT_LIMIT * 6]PageMeshVertex;
-page_mesh_points: [IMAGE_MESH_POINT_LIMIT]PageMeshVertex;
+page_mesh_indices: [IMAGE_MESH_POINT_LIMIT * 6]u16;
 page_mesh_vertex_count: s32;
-page_mesh_source: s32;
-page_mesh_sampling: s32;
+page_mesh_index_count: s32;
+page_mesh_runs: [PAGE_MESH_RUNS]PageMeshRun;
+page_mesh_run_count: s32;
 
 PageMeshReset :: () {
     PageMeshFlush()
@@ -72,9 +91,12 @@ PageMeshReset :: () {
             page_mesh_textures[index] = PageMeshTexture.{}
         }
         unused WebCall1(page_mesh_gl, WebName("deleteBuffer"), WebObject(page_mesh_buffer))
+        unused WebCall1(page_mesh_gl, WebName("deleteBuffer"), WebObject(page_mesh_element_buffer))
         unused WebCall1(page_mesh_gl, WebName("deleteProgram"), WebObject(page_mesh_program))
         WebRelease(page_mesh_buffer)
+        WebRelease(page_mesh_element_buffer)
         WebRelease(page_mesh_program)
+        WebRelease(page_mesh_view)
         WebRelease(page_mesh_gl)
         WebRelease(page_mesh_canvas)
     }
@@ -83,7 +105,8 @@ PageMeshReset :: () {
     page_mesh_attempted = false
     page_mesh_draws = 0
     page_mesh_vertex_count = 0
-    page_mesh_source = 0
+    page_mesh_index_count = 0
+    page_mesh_run_count = 0
 }
 
 PageMeshLost :: (context: s32, event: s32, second: s32, third: s32) {
@@ -93,6 +116,8 @@ PageMeshLost :: (context: s32, event: s32, second: s32, third: s32) {
     unused third
     page_mesh_pending = false
     page_mesh_vertex_count = 0
+    page_mesh_index_count = 0
+    page_mesh_run_count = 0
     PaintResourcesChanged()
     PageMeshReset()
 }
@@ -127,7 +152,7 @@ PageMeshOpen :: () -> bool {
         WebText("webgl"), WebObject(options)))
     if gl == 0 { WebEnd(scope); return false }
     vertex := PageMeshShader(gl, 35633,
-        "attribute vec2 position; attribute vec2 uv; attribute vec4 color; varying vec2 texel; varying vec4 paint; void main(){gl_Position=vec4(position,0.0,1.0);texel=uv;paint=color;}")
+        "attribute vec2 position; attribute vec2 uv; attribute vec4 color; uniform vec4 view; varying vec2 texel; varying vec4 paint; void main(){gl_Position=vec4((position-view.xy)*view.zw+vec2(-1.0,1.0),0.0,1.0);texel=uv;paint=color;}")
     fragment := PageMeshShader(gl, 35632,
         "precision highp float; varying vec2 texel; varying vec4 paint; uniform sampler2D image; void main(){vec4 c=texture2D(image,texel);gl_FragColor=vec4(c.rgb*paint.rgb*paint.a,c.a*paint.a);}")
     if vertex == 0 || fragment == 0 {
@@ -155,7 +180,12 @@ PageMeshOpen :: () -> bool {
         return false
     }
     buffer := WebAsObject(WebCall0(gl, WebName("createBuffer")))
-    if buffer == 0 {
+    elements := WebAsObject(WebCall0(gl, WebName("createBuffer")))
+    view := WebAsObject(WebCall2(gl, WebName("getUniformLocation"),
+        WebObject(program), WebText("view")))
+    if buffer == 0 || elements == 0 || view == 0 {
+        if buffer != 0 { unused WebCall1(gl, WebName("deleteBuffer"), WebObject(buffer)) }
+        if elements != 0 { unused WebCall1(gl, WebName("deleteBuffer"), WebObject(elements)) }
         unused WebCall1(gl, WebName("deleteProgram"), WebObject(program))
         WebEnd(scope)
         return false
@@ -164,6 +194,8 @@ PageMeshOpen :: () -> bool {
     page_mesh_gl = WebKeep(gl)
     page_mesh_program = WebKeep(program)
     page_mesh_buffer = WebKeep(buffer)
+    page_mesh_element_buffer = WebKeep(elements)
+    page_mesh_view = WebKeep(view)
     page_mesh_color = cast(s32)WebAsNumber(WebCall2(gl, WebName("getAttribLocation"),
         WebObject(program), WebText("color")))
     page_mesh_position = cast(s32)WebAsNumber(WebCall2(gl, WebName("getAttribLocation"),
@@ -253,40 +285,110 @@ PageMeshUpload :: (slot: s32, filter: s32) -> bool {
     return true
 }
 
-// Different tints stay in one ordered draw: each vertex carries its colour.
-// A texture or sampling change, or the bounded buffer filling, submits it.
-PageMeshSubmit :: () {
-    if page_mesh_vertex_count == 0 { return }
-    scope := WebScope()
-    stride := cast(s32)size_of(type_of(page_mesh_vertices[0]))
-    vertices := WebBytes(WebBytesUint8, cast(*void)(*page_mesh_vertices[0]),
-        page_mesh_vertex_count * stride)
-    unused WebCall3(page_mesh_gl, WebName("bufferData"), WebNumber(34962),
-        WebObject(vertices), WebNumber(35040))
-    unused WebCall3(page_mesh_gl, WebName("drawArrays"), WebNumber(4),
-        WebNumber(0), WebNumber(cast(float64)page_mesh_vertex_count))
-    page_mesh_vertex_count = 0
-    page_mesh_draws += 1
-    WebEnd(scope)
-}
-
 // Flush before another painter, transform, target, readback or presentation.
-// Adjacent meshes share a clip and one transfer to the Canvas2D page.
+// The GPU surface covers the visible meshes, aligned to the original pixel
+// grid. Texture runs keep their order and share one copy to the page.
 PageMeshFlush :: () {
     if !page_mesh_pending { return }
     page_mesh_pending = false
-    PageMeshSubmit()
+    if page_mesh_index_count == 0 {
+        page_mesh_vertex_count = 0
+        return
+    }
     scope := WebScope()
+    sx := cast(float64)page_mesh_pixels_w / cast(float64)page_mesh_width
+    sy := cast(float64)page_mesh_pixels_h / cast(float64)page_mesh_height
+    left := cast(s32)((cast(float64)page_mesh_left - cast(float64)page_mesh_x) * sx) - 1
+    top := cast(s32)((cast(float64)page_mesh_top - cast(float64)page_mesh_y) * sy) - 1
+    right := cast(s32)((cast(float64)page_mesh_right - cast(float64)page_mesh_x) * sx) + 2
+    bottom := cast(s32)((cast(float64)page_mesh_bottom - cast(float64)page_mesh_y) * sy) + 2
+    if left < 0 { left = 0 }
+    if top < 0 { top = 0 }
+    if right > page_mesh_pixels_w { right = page_mesh_pixels_w }
+    if bottom > page_mesh_pixels_h { bottom = page_mesh_pixels_h }
+    pixels_w := right - left
+    pixels_h := bottom - top
+    // Small motion must not reallocate the multisample drawing buffer on
+    // every frame. Keep one 32-pixel bucket of slack before shrinking.
+    pixels_w = (pixels_w + PAGE_MESH_BUCKET - 1) / PAGE_MESH_BUCKET * PAGE_MESH_BUCKET
+    pixels_h = (pixels_h + PAGE_MESH_BUCKET - 1) / PAGE_MESH_BUCKET * PAGE_MESH_BUCKET
+    if pixels_w > page_mesh_pixels_w { pixels_w = page_mesh_pixels_w }
+    if pixels_h > page_mesh_pixels_h { pixels_h = page_mesh_pixels_h }
+    current_w := cast(s32)WebGetNumber(page_mesh_canvas, page_names.width)
+    current_h := cast(s32)WebGetNumber(page_mesh_canvas, page_names.height)
+    if current_w >= pixels_w && current_w <= pixels_w + PAGE_MESH_BUCKET && current_w <= page_mesh_pixels_w {
+        pixels_w = current_w
+    }
+    if current_h >= pixels_h && current_h <= pixels_h + PAGE_MESH_BUCKET && current_h <= page_mesh_pixels_h {
+        pixels_h = current_h
+    }
+    if left + pixels_w > page_mesh_pixels_w { left = page_mesh_pixels_w - pixels_w }
+    if top + pixels_h > page_mesh_pixels_h { top = page_mesh_pixels_h - pixels_h }
+    x := cast(float64)page_mesh_x + cast(float64)left / sx
+    y := cast(float64)page_mesh_y + cast(float64)top / sy
+    width := cast(float64)pixels_w / sx
+    height := cast(float64)pixels_h / sy
+    gl := page_mesh_gl
+    if current_w != pixels_w {
+        WebSet(page_mesh_canvas, page_names.width, WebNumber(cast(float64)pixels_w))
+    }
+    if current_h != pixels_h {
+        WebSet(page_mesh_canvas, page_names.height, WebNumber(cast(float64)pixels_h))
+    }
+    unused WebCall4(gl, WebName("viewport"), WebNumber(0), WebNumber(0),
+        WebNumber(cast(float64)pixels_w), WebNumber(cast(float64)pixels_h))
+    unused WebCall4(gl, WebName("clearColor"), WebNumber(0), WebNumber(0), WebNumber(0), WebNumber(0))
+    unused WebCall1(gl, WebName("clear"), WebNumber(16384))
+    unused WebCall1(gl, WebName("useProgram"), WebObject(page_mesh_program))
+    unused WebCall2(gl, WebName("bindBuffer"), WebNumber(34962), WebObject(page_mesh_buffer))
+    stride := cast(s32)size_of(type_of(page_mesh_vertices[0]))
+    attributes: [6]WebValue
+    attributes[4] = WebNumber(cast(float64)stride)
+    for attribute: cast(s32)0..2 {
+        location := page_mesh_position
+        if attribute == 1 { location = page_mesh_uv }
+        if attribute == 2 { location = page_mesh_color }
+        attributes[0] = WebNumber(cast(float64)location)
+        attributes[1] = WebNumber(ifx attribute == 2 then 4.0 else 2.0)
+        attributes[2] = WebNumber(ifx attribute == 2 then 5121.0 else 5126.0)
+        attributes[3] = WebBool(attribute == 2)
+        attributes[5] = WebNumber(cast(float64)(attribute * 8))
+        unused WebCall1(gl, WebName("enableVertexAttribArray"), WebNumber(cast(float64)location))
+        unused WebCall(gl, WebName("vertexAttribPointer"), *attributes[0], 6)
+    }
+    view: [5]WebValue = .{WebObject(page_mesh_view), WebNumber(x), WebNumber(y),
+        WebNumber(2.0 / width), WebNumber(-2.0 / height)}
+    unused WebCall(gl, WebName("uniform4f"), *view[0], 5)
+    unused WebCall1(gl, WebName("enable"), WebNumber(3042))
+    unused WebCall2(gl, WebName("blendFunc"), WebNumber(1), WebNumber(771))
+    vertices := WebBytes(WebBytesUint8, cast(*void)(*page_mesh_vertices[0]),
+        page_mesh_vertex_count * stride)
+    unused WebCall3(gl, WebName("bufferData"), WebNumber(34962), WebObject(vertices), WebNumber(35040))
+    unused WebCall2(gl, WebName("bindBuffer"), WebNumber(34963), WebObject(page_mesh_element_buffer))
+    indices := WebBytes(WebBytesInt16, cast(*void)(*page_mesh_indices[0]), page_mesh_index_count)
+    unused WebCall3(gl, WebName("bufferData"), WebNumber(34963), WebObject(indices), WebNumber(35040))
+    for index: cast(s32)0..page_mesh_run_count - 1 {
+        run := page_mesh_runs[index]
+        slot := PageTextureFind(run.id)
+        if slot >= 0 && PageMeshUpload(slot, run.filter) {
+            unused WebCall4(gl, WebName("drawElements"), WebNumber(4),
+                WebNumber(cast(float64)run.count), WebNumber(5123), WebNumber(cast(float64)(run.first * 2)))
+            page_mesh_draws += 1
+        }
+    }
+    page_mesh_vertex_count = 0
+    page_mesh_index_count = 0
+    page_mesh_run_count = 0
     saved := BeginRasterClip(page_mesh_clip)
     ctx := page_mesh_context
     unused WebCall0(ctx, page_names.save)
     WebSet(ctx, WebName("globalAlpha"), WebNumber(1.0))
     args: [5]WebValue
     args[0] = WebObject(page_mesh_canvas)
-    args[1] = WebNumber(cast(float64)page_mesh_x)
-    args[2] = WebNumber(cast(float64)page_mesh_y)
-    args[3] = WebNumber(cast(float64)page_mesh_width)
-    args[4] = WebNumber(cast(float64)page_mesh_height)
+    args[1] = WebNumber(x)
+    args[2] = WebNumber(y)
+    args[3] = WebNumber(width)
+    args[4] = WebNumber(height)
     unused WebCall(ctx, WebName("drawImage"), *args[0], 5)
     unused WebCall0(ctx, page_names.restore)
     EndRasterClip(saved)
@@ -321,6 +423,10 @@ PageMeshDraw :: (id: s32, source: Rectangle, points: []Vector2,
         PageMeshLost(0, 0, 0, 0)
         return false
     }
+    mesh_left := points[0].x
+    mesh_top := points[0].y
+    mesh_right := mesh_left
+    mesh_bottom := mesh_top
     for point: points {
         if point.x != point.x || point.y != point.y ||
         point.x < -10000000.0 || point.x > 10000000.0 ||
@@ -328,11 +434,23 @@ PageMeshDraw :: (id: s32, source: Rectangle, points: []Vector2,
             WebEnd(scope)
             return false
         }
+        if point.x < mesh_left { mesh_left = point.x }
+        if point.y < mesh_top { mesh_top = point.y }
+        if point.x > mesh_right { mesh_right = point.x }
+        if point.y > mesh_bottom { mesh_bottom = point.y }
     }
     left := clip.x
     top := clip.y
     right := clip.x + clip.width
     bottom := clip.y + clip.height
+    if mesh_left < left { mesh_left = left }
+    if mesh_top < top { mesh_top = top }
+    if mesh_right > right { mesh_right = right }
+    if mesh_bottom > bottom { mesh_bottom = bottom }
+    if mesh_right <= mesh_left || mesh_bottom <= mesh_top {
+        WebEnd(scope)
+        return true
+    }
     x := cast(s32)left
     y := cast(s32)top
     if cast(float32)x > left { x -= 1 }
@@ -360,97 +478,98 @@ PageMeshDraw :: (id: s32, source: Rectangle, points: []Vector2,
         return false
     }
     ctx := PageDrawingContext()
+    needed := (columns - 1) * (rows - 1) * 6
+    point_count := columns * rows
+    new_run := page_mesh_run_count == 0
+    if page_mesh_run_count > 0 {
+        last := page_mesh_runs[page_mesh_run_count - 1]
+        new_run = last.id != id || last.filter != filter
+    }
+    // A cache replacement must not mutate pixels needed by queued runs.
+    cache_missing := cached.id != id || cached.revision != page_textures[slot].revision
     if page_mesh_pending && (ctx != page_mesh_context ||
         clip.x != page_mesh_clip.x || clip.y != page_mesh_clip.y ||
-        clip.width != page_mesh_clip.width || clip.height != page_mesh_clip.height) {
+        clip.width != page_mesh_clip.width || clip.height != page_mesh_clip.height ||
+        page_mesh_vertex_count + point_count > cast(s32)page_mesh_vertices.count ||
+        page_mesh_index_count + needed > cast(s32)page_mesh_indices.count ||
+        (new_run && page_mesh_run_count == PAGE_MESH_RUNS) || cache_missing) {
         PageMeshFlush()
     }
+    if !page_mesh_pending || new_run {
+        if !PageMeshUpload(slot, filter) { WebEnd(scope); return false }
+    }
     if !page_mesh_pending {
-        if WebGetNumber(page_mesh_canvas, page_names.width) != cast(float64)pixels_w {
-            WebSet(page_mesh_canvas, page_names.width, WebNumber(cast(float64)(pixels_w)))
-        }
-        if WebGetNumber(page_mesh_canvas, page_names.height) != cast(float64)pixels_h {
-            WebSet(page_mesh_canvas, page_names.height, WebNumber(cast(float64)(pixels_h)))
-        }
-        unused WebCall4(gl, WebName("viewport"), WebNumber(0), WebNumber(0),
-            WebNumber(cast(float64)(pixels_w)), WebNumber(cast(float64)(pixels_h)))
-        unused WebCall4(gl, WebName("clearColor"), WebNumber(0), WebNumber(0), WebNumber(0), WebNumber(0))
-        unused WebCall1(gl, WebName("clear"), WebNumber(16384))
-        unused WebCall1(gl, WebName("useProgram"), WebObject(page_mesh_program))
-        unused WebCall2(gl, WebName("bindBuffer"), WebNumber(34962), WebObject(page_mesh_buffer))
-        stride := cast(s32)size_of(type_of(page_mesh_vertices[0]))
-        args: [6]WebValue
-        args[4] = WebNumber(cast(float64)stride)
-        for attribute: cast(s32)0..2 {
-            location := page_mesh_position
-            if attribute == 1 { location = page_mesh_uv }
-            if attribute == 2 { location = page_mesh_color }
-            args[0] = WebNumber(cast(float64)location)
-            args[1] = WebNumber(ifx attribute == 2 then 4.0 else 2.0)
-            args[2] = WebNumber(ifx attribute == 2 then 5121.0 else 5126.0)
-            args[3] = WebBool(attribute == 2)
-            args[5] = WebNumber(cast(float64)(attribute * 8))
-            unused WebCall1(gl, WebName("enableVertexAttribArray"), WebNumber(cast(float64)location))
-            unused WebCall(gl, WebName("vertexAttribPointer"), *args[0], 6)
-        }
-        unused WebCall1(gl, WebName("enable"), WebNumber(3042))
-        unused WebCall2(gl, WebName("blendFunc"), WebNumber(1), WebNumber(771))
         page_mesh_context = ctx
         page_mesh_clip = clip
         page_mesh_x = x
         page_mesh_y = y
         page_mesh_width = width
         page_mesh_height = height
+        page_mesh_pixels_w = pixels_w
+        page_mesh_pixels_h = pixels_h
+        page_mesh_left = mesh_left
+        page_mesh_top = mesh_top
+        page_mesh_right = mesh_right
+        page_mesh_bottom = mesh_bottom
         page_mesh_pending = true
+    } else {
+        if mesh_left < page_mesh_left { page_mesh_left = mesh_left }
+        if mesh_top < page_mesh_top { page_mesh_top = mesh_top }
+        if mesh_right > page_mesh_right { page_mesh_right = mesh_right }
+        if mesh_bottom > page_mesh_bottom { page_mesh_bottom = mesh_bottom }
     }
-    needed := (columns - 1) * (rows - 1) * 6
-    if page_mesh_vertex_count > 0 && (page_mesh_source != id || page_mesh_sampling != filter ||
-        page_mesh_vertex_count + needed > cast(s32)page_mesh_vertices.count) {
-        PageMeshSubmit()
-    }
-    if page_mesh_vertex_count == 0 {
-        if !PageMeshUpload(slot, filter) { WebEnd(scope); return false }
-        page_mesh_source = id
-        page_mesh_sampling = filter
-    }
-    // A grid point belongs to several triangles. Project and sample it
-    // once, then copy it into the ordered triangle stream.
+    // Keep each grid point once. The index stream reuses shared vertices
+    // on the GPU, while preserving the triangles' exact painter order.
+    first_vertex := page_mesh_vertex_count
     for row: cast(s32)0..rows - 1 {
         for column: cast(s32)0..columns - 1 {
             index := row * columns + column
             point := points[index]
             uv := PageMeshSource(source, cast(float32)column / cast(float32)(columns - 1),
                 cast(float32)row / cast(float32)(rows - 1))
-            page_mesh_points[index] = PageMeshVertex.{
-                Vector2.{(point.x - cast(float32)x) / cast(float32)width * 2.0 - 1.0,
-                    1.0 - (point.y - cast(float32)y) / cast(float32)height * 2.0},
+            page_mesh_vertices[first_vertex + index] = PageMeshVertex.{point,
                 Vector2.{uv.x / texture_w, uv.y / texture_h}, tint}
         }
     }
-    count := page_mesh_vertex_count
+    first_index := page_mesh_index_count
+    count := first_index
     for row: cast(s32)0..rows - 2 {
         for column: cast(s32)0..columns - 2 {
             tl := row * columns + column
             indices: [6]s32 = .{tl, tl + 1, tl + columns, tl + 1, tl + columns + 1, tl + columns}
             for triangle: cast(s32)0..1 {
                 first := triangle * 3
-                a := page_mesh_points[indices[first]]
-                b := page_mesh_points[indices[first + 1]]
-                c := page_mesh_points[indices[first + 2]]
+                a := points[indices[first]]
+                b := points[indices[first + 1]]
+                c := points[indices[first + 2]]
                 // A folded grid can have repeated or collinear points.
                 // Such triangles cover no pixels and need no GPU work.
-                area := (b.position.x - a.position.x) * (c.position.y - a.position.y) -
-                    (b.position.y - a.position.y) * (c.position.x - a.position.x)
+                area := (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
                 if area != 0.0 {
-                    page_mesh_vertices[count] = a
-                    page_mesh_vertices[count + 1] = b
-                    page_mesh_vertices[count + 2] = c
+                    page_mesh_indices[count] = cast(u16)(first_vertex + indices[first])
+                    page_mesh_indices[count + 1] = cast(u16)(first_vertex + indices[first + 1])
+                    page_mesh_indices[count + 2] = cast(u16)(first_vertex + indices[first + 2])
                     count += 3
                 }
             }
         }
     }
-    page_mesh_vertex_count = count
+    page_mesh_index_count = count
+    if count > first_index {
+        page_mesh_vertex_count = first_vertex + point_count
+        append := true
+        if page_mesh_run_count > 0 {
+            last := *page_mesh_runs[page_mesh_run_count - 1]
+            if last.id == id && last.filter == filter {
+                last.count += count - first_index
+                append = false
+            }
+        }
+        if append {
+            page_mesh_runs[page_mesh_run_count] = PageMeshRun.{id, filter, first_index, count - first_index}
+            page_mesh_run_count += 1
+        }
+    }
     WebEnd(scope)
     return true
 }
