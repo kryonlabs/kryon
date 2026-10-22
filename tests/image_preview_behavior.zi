@@ -11,6 +11,7 @@
 test_c :: #system_library "c";
 TestAllocate :: (size: usize) -> *void #foreign test_c "malloc";
 TestFree :: (pointer: *void) #foreign test_c "free";
+decode_calls: s32;
 
 // The test's host decodes one raw format: "RAW" and a channel count, the
 // width and height as two bytes each, then the pixels. A file named
@@ -18,6 +19,7 @@ TestFree :: (pointer: *void) #foreign test_c "free";
 #program_export
 ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
     channels: *s32, upright: *bool) -> *u8 {
+    decode_calls += 1
     upright.* = file_type == ".upright"
     if data.count < 8 || data[:3] != "RAW" {
         return null
@@ -198,6 +200,19 @@ Check :: () -> s32 {
     if !Write(directory, "scaled-turned.jpg", ImagePreview(large, ".raw", 64, 8, 85)) {
         return 22
     }
+    compressed := ImageCompress(large, ".jpg", 384, 6, 88)
+    if compressed.count == 0 || compressed.count >= large.count ||
+    !Write(directory, "compressed.jpg", compressed) {
+        return 41
+    }
+    // Animation is retained without invoking a decoder for one frame.
+    calls := decode_calls
+    if ImageCompress("GIF89a", ".gif", 384, 1, 88).count != 0 ||
+    ImageCompress("RIFF0000WEBPANIM0000", ".webp", 384, 1, 88).count != 0 ||
+    ImageCompress("123456780000acTL0000", ".png", 384, 1, 88).count != 0 ||
+    decode_calls != calls {
+        return 42
+    }
     // Transparent pixels become white; half transparent black is gray.
     clear := Raw(32, 16, 4)
     index: s32 = 0
@@ -209,8 +224,16 @@ Check :: () -> s32 {
         }
         index += 1
     }
-    if !Write(directory, "alpha.jpg", ImagePreview(BuilderFinish(clear), ".raw", 512, 1, 90)) {
+    clear_data := BuilderFinish(clear)
+    if !Write(directory, "alpha.jpg", ImagePreview(clear_data, ".raw", 512, 1, 90)) {
         return 23
+    }
+    if ImageCompress(clear_data, ".jpg", 384, 1, 88).count != 0 {
+        return 43
+    }
+    tiny := Quarters(1, 1)
+    if ImageCompress(tiny, ".jpg", 384, 1, 88).count != 0 {
+        return 44
     }
     gray := Raw(17, 9, 1)
     index = 0

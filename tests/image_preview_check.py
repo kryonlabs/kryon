@@ -54,6 +54,7 @@ compare('upright.jpg', source, 6)
 large = quarters(640, 400)
 compare('scaled.jpg', large.resize((64, 40), Image.Resampling.BOX), 8)
 compare('scaled-turned.jpg', large.resize((64, 40), Image.Resampling.BOX).transpose(TURNS[8]), 8)
+compare('compressed.jpg', large.resize((384, 240), Image.Resampling.BOX).transpose(TURNS[6]), 8)
 alpha = Image.new('RGB', (32, 16))
 for y in range(16):
     for x in range(32):

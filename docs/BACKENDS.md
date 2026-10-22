@@ -43,6 +43,10 @@ text, font metrics, image presentation, flush, and RGBA capture. Its native
 application host submits keyboard and pointer input; held modifier state and
 a selectable `_run` profile remain pending.
 
+The `image_preview` module also supplies `ImageCompress` for smaller upright
+JPEG copies. It keeps transparent and animated originals intact and returns
+no replacement when encoding would increase file size.
+
 Asset-backed `Image` accepts PNG and native Plan 9 image files. The PNG byte
 and pixel rules are Ziran in `png.zi`; native decompression uses Ziran's
 bounded `std/inflate_plan9` adapter to `libflate`. PNG supports all standard

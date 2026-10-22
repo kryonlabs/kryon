@@ -28,6 +28,72 @@ IMAGE_PREVIEW_EDGE_MAX :: 4096
 // frees the result.
 ImagePreview :: (data: string, file_type: string, max_edge: s32, orientation: s32,
     quality: s32) -> string {
+    return ImagePreviewFile(data, file_type, max_edge, orientation, quality, false)
+}
+
+// A smaller upright JPEG for an opaque, still image. Empty means keep the
+// original: transparent and animated files are never flattened, and a copy
+// that would use more bytes is discarded. The caller frees a returned copy.
+ImageCompress :: (data: string, file_type: string, max_edge: s32, orientation: s32,
+    quality: s32) -> string {
+    if ImageFileAnimated(data, file_type) {
+        return ""
+    }
+    copy := ImagePreviewFile(data, file_type, max_edge, orientation, quality, true)
+    if copy.count == 0 {
+        return ""
+    }
+    if copy.count >= data.count {
+        descriptor := cast(*TextDescriptor)(*copy)
+        PreviewFree(cast(*void)descriptor.data)
+        return ""
+    }
+    return copy
+}
+
+// Containers with multiple frames retain their complete original file.
+ImageFileAnimated :: (data: string, file_type: string) -> bool {
+    if file_type == ".gif" {
+        return true
+    }
+    png := file_type == ".png"
+    webp := file_type == ".webp"
+    if !png && !webp {
+        return false
+    }
+    at: s64 = ifx png then 8 else 12
+    while at <= data.count - 8 {
+        kind := data[at:at + 4]
+        if png {
+            kind = data[at + 4:at + 8]
+        }
+        if (png && kind == "acTL") || (webp && (kind == "ANIM" || kind == "ANMF")) {
+            return true
+        }
+        size: s64 = 0
+        for index: cast(s64)0..3 {
+            position := ifx png then at + index else at + 4 + index
+            byte := cast(s64)data[position]
+            if png {
+                size = size * 256 + byte
+            } else {
+                size = size | (byte << (index * 8))
+            }
+        }
+        overhead: s64 = ifx png then 12 else 8
+        if size > data.count - at - overhead {
+            return true
+        }
+        at += overhead + size
+        if webp && size % 2 != 0 {
+            at += 1
+        }
+    }
+    return false
+}
+
+ImagePreviewFile :: (data: string, file_type: string, max_edge: s32, orientation: s32,
+    quality: s32, opaque_only: bool) -> string {
     if data.count == 0 || data.count > 2147483647 {
         return ""
     }
@@ -38,6 +104,16 @@ ImagePreview :: (data: string, file_type: string, max_edge: s32, orientation: s3
     pixels := ImagePreviewDecode(data, file_type, *width, *height, *channels, *upright)
     if pixels == null {
         return ""
+    }
+    if opaque_only && (channels == 2 || channels == 4) && width > 0 && height > 0 &&
+    cast(s64)width * height <= IMAGE_PREVIEW_PIXELS_MAX {
+        alpha := channels - 1
+        for index: cast(s64)0..cast(s64)width * height - 1 {
+            if pixels[index * channels + alpha] != cast(u8)255 {
+                ImagePreviewRelease(pixels)
+                return ""
+            }
+        }
     }
     if upright {
         orientation = 1
