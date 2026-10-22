@@ -150,6 +150,9 @@
         if items == *canvas_keys_pressed[0] && canvas_frame_input.keys_pressed > 0 {
             canvas_frame_input.keys_pressed -= 1
         }
+        if items == *canvas_keys_repeated[0] && canvas_frame_input.keys_repeated > 0 {
+            canvas_frame_input.keys_repeated -= 1
+        }
         return first
     }
 

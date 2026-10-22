@@ -11,6 +11,7 @@
 
 loaded: bool;
 clicked: bool;
+swipe_was_down: bool;
 
 #program_export
 main :: () -> s32 {
@@ -50,9 +51,12 @@ main :: () -> s32 {
     image.bounds = Rectangle.{500.0, 80.0, 200.0, 200.0}
     image.asset_path = AppAssetPath("assets/red.png")
     Image(AppSession(), image)
+    if AppKey() == 263 { print("Hosted key step\n") }
     swipe := SwipeArea(AppSession(), SwipeAreaProps.{.key = cast(u64)31000, .id = 31000,
         .bounds = Rectangle.{40.0, 320.0, 300.0, 120.0}, .now = AppNow(), .repeat_seconds = 0.1})
     if swipe.held { print("Hosted swipe step\n") }
+    if swipe_was_down && !swipe.down { print("Hosted swipe released\n") }
+    swipe_was_down = swipe.down
     stick := Joystick(AppSession(), JoystickProps.{.key = cast(u64)32000, .id = 32000,
         .bounds = Rectangle.{400.0, 320.0, 200.0, 120.0}, .now = AppNow(), .repeat_seconds = 0.1})
     if stick.step { print("Hosted joystick step\n") }

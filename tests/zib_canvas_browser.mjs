@@ -105,14 +105,27 @@ try {
       await delay(250);
       assert.equal(count(), during, marker + ' continued after release');
     }
+    const beforeKey = diagnostics.split('Hosted key step').length;
+    for (let at = 0; at < 5; at++) {
+      await call('Input.dispatchKeyEvent', {type: 'keyDown', key: 'ArrowLeft', code: 'ArrowLeft', windowsVirtualKeyCode: 37, autoRepeat: at > 0});
+      await delay(100);
+    }
+    await call('Input.dispatchKeyEvent', {type: 'keyUp', key: 'ArrowLeft', code: 'ArrowLeft', windowsVirtualKeyCode: 37});
+    assert.equal(diagnostics.split('Hosted key step').length - beforeKey, 5, 'Hosted key repeats were dropped: ' + diagnostics);
+    await delay(200);
+    assert.equal(diagnostics.split('Hosted key step').length - beforeKey, 5, 'Keys repeated after release');
     const beforeTouch = diagnostics.split('Hosted swipe step').length;
     await call('Input.dispatchTouchEvent', {type: 'touchStart', touchPoints: [{x: 100, y: 360, id: 1}]});
     await delay(1000);
     const duringTouch = diagnostics.split('Hosted swipe step').length;
+    const beforeCancel = diagnostics.split('Hosted swipe released').length;
     await call('Input.dispatchTouchEvent', {type: 'touchCancel', touchPoints: []});
+    for (let end = Date.now() + 5000; diagnostics.split('Hosted swipe released').length === beforeCancel && Date.now() < end;) await delay(20);
+    assert(diagnostics.split('Hosted swipe released').length > beforeCancel, 'Touch cancellation did not release the control');
+    const afterCancel = diagnostics.split('Hosted swipe step').length;
     assert(duringTouch - beforeTouch >= 3, 'Touch hold did not repeat: ' + diagnostics);
     await delay(300);
-    assert.equal(diagnostics.split('Hosted swipe step').length, duringTouch, 'Touch cancellation left movement held');
+    assert.equal(diagnostics.split('Hosted swipe step').length, afterCancel, 'Touch cancellation left movement held');
     console.log('Browser hosted ZIB images, widgets, persistence, app isolation and invalid replacement passed');
   } else if(mode==='gallery') {
     while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zib-open")'))await delay(100);

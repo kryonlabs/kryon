@@ -79,6 +79,16 @@ KeyChecks :: () -> s32 {
     if CanvasQueuePop(*canvas_keys_pressed[0], *canvas_keys_pressed_count) != 66 { return 16 }
     if CanvasQueuePop(*canvas_keys_pressed[0], *canvas_keys_pressed_count) != 68 { return 17 }
     if CanvasQueuePop(*canvas_keys_pressed[0], *canvas_keys_pressed_count) != 0 { return 18 }
+    // A repeat consumed before an asynchronous paint must not discard a later repeat.
+    CanvasEventsReset()
+    unused Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyA", "a")
+    unused Send(CanvasEventKeyDown, 1, 0, 0.0, 0.0, "KeyA", "a")
+    CanvasEventsBeginFrame()
+    if CanvasQueuePop(*canvas_keys_repeated[0], *canvas_keys_repeated_count) != 65 { return 21 }
+    unused Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyB", "b")
+    unused Send(CanvasEventKeyDown, 1, 0, 0.0, 0.0, "KeyB", "b")
+    CanvasEventsEndFrame()
+    if CanvasQueuePop(*canvas_keys_repeated[0], *canvas_keys_repeated_count) != 66 { return 22 }
     return 0
 }
 

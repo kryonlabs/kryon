@@ -101,6 +101,8 @@
 
 ### Fixed
 
+- Holding arrow keys keeps moving in browser apps and games.
+
 - Keep warped-image animations smooth on slower browsers and refresh views when their images change.
 - Preserve final accessibility replies when an app exits and use the requested screen or window coordinates.
 - Reading a clipboard image no longer waits two seconds when the application

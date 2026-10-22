@@ -132,7 +132,10 @@ CanvasViewport :: () -> Rectangle {
 
 #program_export
 CanvasPressedKey :: () -> s32 {
-    return GetKeyPressed()
+    key := GetKeyPressed()
+    if key != 0 { return key }
+    // Hosted apps receive key events, including the browser's held-key repeats.
+    return CanvasQueuePop(*canvas_keys_repeated[0], *canvas_keys_repeated_count)
 }
 
 #program_export
