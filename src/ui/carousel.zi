@@ -109,7 +109,7 @@ Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
         offset := (cast(float32)page - state.position) * bounds.width
         if offset <= -bounds.width || offset >= bounds.width { continue }
         item := items[page]
-        key := props.key + cast(u64)(32 + page * 8)
+        key := WidgetPartKey(WidgetPartKey(props.key, 5), page)
         cover := Rectangle.{bounds.x + offset, bounds.y, bounds.width, bounds.height}
         art := ifx bounds.height > bounds.width || item.landscape == "" then item.portrait else item.landscape
         logo := CarouselArtwork(session, cover, key, art, item.logo, item.label)
@@ -131,20 +131,20 @@ Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
     if action_width > bounds.width - 64.0 * scale { action_width = bounds.width - 64.0 * scale }
     action_y := bounds.y + bounds.height - 196.0 * scale
     if action_y < bounds.y + bounds.height * 0.5 { action_y = bounds.y + bounds.height * 0.5 }
-    if Button(session, ButtonProps.{.key = props.key + 1,
+    if Button(session, ButtonProps.{.key = WidgetPartKey(props.key, 1),
             .bounds = Rectangle.{bounds.x + (bounds.width - action_width) / 2.0, action_y, action_width, 64.0 * scale},
             .label = item.action, .disabled = item.disabled,
             .tone = ButtonTone.ButtonToneSuccess, .emphasis = ButtonEmphasis.ButtonEmphasisFilled}) != 0 {
         activated = state.selected
     }
     middle := bounds.y + bounds.height * 0.5 - 22.0 * scale
-    if state.selected > 0 && Button(session, ButtonProps.{.key = props.key + 2,
+    if state.selected > 0 && Button(session, ButtonProps.{.key = WidgetPartKey(props.key, 2),
             .bounds = Rectangle.{bounds.x + 12.0 * scale, middle, 44.0 * scale, 44.0 * scale},
             .label = props.previous_label, .icon_shape = "S2rr:M15 5L8 12L15 19", .icon_only = true,
             .tone = ButtonTone.ButtonToneNeutral, .emphasis = ButtonEmphasis.ButtonEmphasisSoft}) != 0 {
         state.selected -= 1
     }
-    if state.selected < count - 1 && Button(session, ButtonProps.{.key = props.key + 3,
+    if state.selected < count - 1 && Button(session, ButtonProps.{.key = WidgetPartKey(props.key, 3),
             .bounds = Rectangle.{bounds.x + bounds.width - 56.0 * scale, middle, 44.0 * scale, 44.0 * scale},
             .label = props.next_label, .icon_shape = "S2rr:M9 5L16 12L9 19", .icon_only = true,
             .tone = ButtonTone.ButtonToneNeutral, .emphasis = ButtonEmphasis.ButtonEmphasisSoft}) != 0 {
@@ -154,7 +154,7 @@ Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
         for page: cast(s32)0..count - 1 {
             dot := Rectangle.{bounds.x + bounds.width / 2.0 - cast(float32)count * 12.0 * scale + cast(float32)page * 24.0 * scale + 4.0 * scale,
                 bounds.y + bounds.height - 88.0 * scale, 16.0 * scale, 16.0 * scale}
-            unused Box(session, BoxProps.{.key = props.key + cast(u64)(8 + page), .bounds = dot,
+            unused Box(session, BoxProps.{.key = WidgetPartKey(WidgetPartKey(props.key, 4), page), .bounds = dot,
                     .fill = ifx page == state.selected then Color.{46, 125, 74, 235} else Color.{255, 255, 255, 210}, .radius = 8.0 * scale})
         }
     }
