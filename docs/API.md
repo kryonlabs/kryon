@@ -63,6 +63,11 @@ an inactive frame cannot read input, and another session's sample is not exposed
 The pointer value schema lives in `input_protocol`, independently of the native
 retained input implementation.
 
+`Scroll` reveals a newly focused text input and adjusts when the viewport
+resizes, such as when a phone keyboard opens. It retains that focus transition
+on the scroll node. Keeping an input focused never recenters it after manual
+scrolling; applications should not repeat their own focused-field reveal loop.
+
 ## Style rules
 
 `InstallStyleRules` copies typeface text into Kryon-owned storage and returns

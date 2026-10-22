@@ -233,6 +233,7 @@
         open: bool
         index: s32
         offset: s32
+        focus_generation: u64
     }
 
     LayoutProgress :: struct {
@@ -1046,23 +1047,34 @@
         return TreeRead(session, index, false)
     }
 
-    // Hosts need only the committed editing state, rather than a copy of
-    // every node's geometry, text, semantics and widget state each frame.
+    // The active editor in a retained subtree, including editors which the
+    // viewport clips. Focus can reveal one without copying every node.
     #program_export
-    TreeTextInputActive :: (session: Session) -> bool {
-        if !SessionValid(session) { return false }
+    TreeTextInputNode :: (session: Session, parent: s32 = -1) -> s32 {
+        if !SessionValid(session) { return -1 }
         slot := session.slot
         for index: 0..trees[slot].committed_count - 1 {
-            kind := trees[slot].committed[index].kind
-            if kind != WidgetKindTextField && kind != WidgetKindTextArea { continue }
-            semantic := trees[slot].committed[index].semantic_index
+            node := trees[slot].committed[index]
+            if node.kind != WidgetKindTextField && node.kind != WidgetKindTextArea { continue }
+            semantic := node.semantic_index
             if semantic < 0 || !trees[slot].committed_semantics[semantic].selected { continue }
-            interaction := trees[slot].committed[index].interaction_index
-            if interaction < 0 || !trees[slot].committed_interactions[interaction].disabled {
-                return true
+            interaction := node.interaction_index
+            if interaction >= 0 && trees[slot].committed_interactions[interaction].disabled { continue }
+            if parent >= 0 {
+                ancestor := node.parent
+                while ancestor >= 0 && ancestor != parent {
+                    ancestor = trees[slot].committed[ancestor].parent
+                }
+                if ancestor != parent { continue }
             }
+            return cast(s32)index
         }
-        return false
+        return -1
+    }
+
+    #program_export
+    TreeTextInputActive :: (session: Session) -> bool {
+        return TreeTextInputNode(session) >= 0
     }
 
     // A widget that must sit above everything else the frame draws, such as a
@@ -1128,8 +1140,8 @@
         // Reuse the lookup only for an accepted frame with identical identity
         // ordering. Failed and cancelled submissions leave its owner intact.
         trees[slot].identity_index_valid = trees[slot].identity_index_valid &&
-            trees[slot].identity_order_unchanged &&
-            trees[slot].submitted_count == trees[slot].committed_count
+        trees[slot].identity_order_unchanged &&
+        trees[slot].submitted_count == trees[slot].committed_count
         VecSwap(trees[slot].committed, trees[slot].submitted)
         VecSwap(trees[slot].committed_semantics, trees[slot].submitted_semantics)
         VecSwap(trees[slot].committed_text, trees[slot].submitted_text)
@@ -1357,7 +1369,7 @@
         for at: cast(s32)0..trees[slot].label_memo_count - 1 {
             memo := trees[slot].label_memo[at]
             if memo.length == value.count &&
-                TextView(trees[slot].labels[buffer][memo.offset:memo.offset + memo.length]) == value {
+            TextView(trees[slot].labels[buffer][memo.offset:memo.offset + memo.length]) == value {
                 return memo.offset
             }
         }

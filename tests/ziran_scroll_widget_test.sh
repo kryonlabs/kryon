@@ -238,6 +238,7 @@ KeptScrollbarTest :: () -> s32 {
         PendingPaintCount(TestSession()) != 0 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -25 }
     PaintClear(TestSession())
+    if FocusScrollTest() != 42 { return -30 }
     return 42
 }
 
@@ -294,6 +295,43 @@ HorizontalScrollTest :: () -> s32 {
         !End(TestSession()) || !TreeFinish(TestSession()) { return -19 }
     return 42
 }
+// The same selected input survives keyboard resizing and manual scrolling.
+FocusScrollTest :: () -> s32 {
+    session := SessionOpen()
+    viewport := Rectangle.{0.0, 0.0, 240.0, 300.0}
+    offset: s32 = 0
+    for step: cast(s32)0..5 {
+        if step == 1 { viewport.height = 160.0 }
+        if step == 2 { offset = 300 }
+        TreeStart(session, cast(u64)900, Rectangle.{0.0, 0.0, 240.0, 700.0})
+        props := ScrollProps.{.key = cast(u64)901, .bounds = viewport,
+            .content_height = 1000, .scroll_offset = offset,
+            .input = ScrollInput.{.enabled = true}}
+        result := Scroll(session, props)
+        if step == 1 && result.scroll_offset != 50 { return -1 }
+        if (step == 2 || step == 3) && result.scroll_offset != 300 { return -2 }
+        if step == 4 && result.scroll_offset != 600 { return -3 }
+        if step == 5 && result.scroll_offset != 600 { return -4 }
+        offset = result.scroll_offset
+        first := TreeSubmitCurrent(session, cast(u64)902, WidgetKindTextField,
+            Rectangle.{16.0, 150.0 - cast(float32)offset, 180.0, 44.0})
+        TreeSetInteractive(session, first, false, false, 902)
+        TreeSetSelected(session, first, step < 3)
+        second := TreeSubmitCurrent(session, cast(u64)903, WidgetKindTextField,
+            Rectangle.{16.0, 700.0 - cast(float32)offset, 180.0, 44.0})
+        TreeSetInteractive(session, second, false, false, 903)
+        TreeSetSelected(session, second, step >= 3 && step < 4)
+        if !End(session) { return -5 }
+        outside := TreeSubmitCurrent(session, cast(u64)904, WidgetKindTextField,
+            Rectangle.{16.0, 600.0, 180.0, 44.0})
+        TreeSetInteractive(session, outside, false, false, 904)
+        TreeSetSelected(session, outside, step >= 4)
+        if !TreeFinish(session) { return -6 }
+        PaintClear(session)
+    }
+    return 42
+}
+
 ZI
 
 cat > "$work/native_main.h" <<'C'
