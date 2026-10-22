@@ -20,9 +20,12 @@ exception_pending: u8;
 method_name: [96]u8;
 method_signature: [192]u8;
 java_text: [256]u8;
+java_strings: [32][256]u8;
+java_string_count: s32;
 calls: s32;
 last_request: s32;
 java_throws: bool;
+commit_succeeds: bool = true;
 
 Require :: (condition: bool, code: s32) {
     if !condition {
@@ -95,17 +98,35 @@ FakeMethod :: (env: *JniEnv, klass: *void, name: *u8, signature: *u8) -> *void {
 FakeString :: (env: *JniEnv, text: *u8) -> *void {
     unused env
     CopyText(text, java_text[:])
-    return cast(*void)*java_text[0]
+    java_string_count += 1
+    CopyText(text, java_strings[java_string_count][:])
+    return cast(*void)*java_strings[java_string_count][0]
 }
 FakeVoid :: (env: *JniEnv, object: *void, method: *void, arguments: *JniValue) {
     unused env
     unused object
     unused method
     calls += 1
-    last_request = arguments[1].integer
+    if CStringEquals(*method_name[0], "openSavePicker") {
+        last_request = arguments[2].integer
+        Require(CStringEquals(cast(*u8)arguments[0].reference, "account.key"), 20)
+        Require(CStringEquals(cast(*u8)arguments[1].reference, "application/octet-stream"), 21)
+    } else {
+        last_request = arguments[1].integer
+    }
     if java_throws {
         exception_pending = 1
     }
+}
+FakeBoolean :: (env: *JniEnv, object: *void, method: *void, arguments: *JniValue) -> u8 {
+    unused env
+    unused object
+    unused method
+    Require(CStringEquals(*method_name[0], "savePickedFile") &&
+        CStringEquals(*method_signature[0], "(Ljava/lang/String;)Z"), 22)
+    Require(CStringEquals(cast(*u8)arguments[0].reference, "/data/cache/save.tmp"), 23)
+    if java_throws { exception_pending = 1 }
+    return ifx commit_succeeds then 1 else 0
 }
 FakeReadText :: (env: *JniEnv, text: *void, copied: *u8) -> *u8 {
     unused env
@@ -145,6 +166,7 @@ main :: () -> s32 {
     api.GetMethodID = FakeMethod
     api.NewStringUTF = FakeString
     api.CallVoidMethodA = FakeVoid
+    api.CallBooleanMethodA = FakeBoolean
     api.GetStringUTFChars = FakeReadText
     api.ReleaseStringUTFChars = FakeReleaseText
 
@@ -192,5 +214,22 @@ main :: () -> s32 {
     java_throws = true
     Require(!AndroidPickerOpen(1, "*/*") && !AndroidScannerOpen(5, "Scan"), 15)
     Require(exception_pending == 0 && frames == 0 && calls == 7, 16)
+    java_throws = false
+    Require(AndroidSavePickerOpen(7, "account.key", "application/octet-stream"), 24)
+    Require(last_request == 7 && CStringEquals(*method_signature[0],
+        "(Ljava/lang/String;Ljava/lang/String;I)V"), 25)
+    unused CopyCString("/data/cache/save.tmp", path[:])
+    AndroidNativePickerSelected(*environment, null, 7, cast(*void)*path[0])
+    Require(AndroidPickerPoll(7, output[:]) == .AndroidPickerSelected &&
+        CStringEquals(*output[0], "/data/cache/save.tmp"), 26)
+    Require(AndroidSavePickerCommit("/data/cache/save.tmp"), 27)
+    commit_succeeds = false
+    Require(!AndroidSavePickerCommit("/data/cache/save.tmp"), 28)
+    commit_succeeds = true
+    java_throws = true
+    Require(!AndroidSavePickerCommit("/data/cache/save.tmp"), 29)
+    Require(exception_pending == 0 && frames == 0, 30)
+    Require(!AndroidSavePickerOpen(7, "", "application/octet-stream") &&
+        !AndroidSavePickerCommit(""), 31)
     return 0
 }

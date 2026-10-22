@@ -7,6 +7,8 @@
 //
 //     void openImportPicker(String mimeTypes, int request)
 //     void openQrScanner(String prompt, int request)
+//     void openSavePicker(String filename, String mime, int request)
+//     boolean savePickedFile(String stagedPath)
 //
 // and reports back through natives the application's JNI_OnLoad binds:
 //
@@ -98,6 +100,70 @@ PickerCall :: (name: string, text: string, request: s32) -> bool {
 AndroidPickerOpen :: (request: s32, mime_types: string) -> bool {
     PickerStore(request, cast(s32)AndroidPickerResult.AndroidPickerNone, null)
     return PickerCall("openImportPicker", mime_types, request)
+}
+
+// Choose a new document. Its answer is a private staging path: write the
+// finished bytes there, then commit them to the selected document URI.
+AndroidSavePickerOpen :: (request: s32, filename: string, mime: string) -> bool {
+    PickerStore(request, cast(s32)AndroidPickerResult.AndroidPickerNone, null)
+    #if #defined(ANDROID_BUILD) {
+        name: [256]u8
+        kind: [128]u8
+        if filename.count == 0 || !CopyCString(filename, name[:]) || !CopyCString(mime, kind[:]) {
+            return false
+        }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return false
+        }
+        defer AndroidJniDetachCurrent(*session)
+        method := AndroidJniMethod(*session, "openSavePicker", "(Ljava/lang/String;Ljava/lang/String;I)V")
+        if method == null {
+            return false
+        }
+        env := session.env
+        arguments: [3]JniValue
+        arguments[0].reference = AndroidJniString(env, *name[0])
+        arguments[1].reference = AndroidJniString(env, *kind[0])
+        arguments[2].integer = request
+        if arguments[0].reference == null || arguments[1].reference == null {
+            return false
+        }
+        env.functions.CallVoidMethodA(env, session.activity, method, *arguments[0])
+        return env.functions.ExceptionCheck(env) == 0
+    }
+    unused filename
+    unused mime
+    return false
+}
+
+// True only when the activity has written and closed the selected document.
+AndroidSavePickerCommit :: (path: string) -> bool {
+    #if #defined(ANDROID_BUILD) {
+        name: [ANDROID_PICKER_TEXT]u8
+        if path.count == 0 || !CopyCString(path, name[:]) {
+            return false
+        }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 {
+            return false
+        }
+        defer AndroidJniDetachCurrent(*session)
+        method := AndroidJniMethod(*session, "savePickedFile", "(Ljava/lang/String;)Z")
+        if method == null {
+            return false
+        }
+        env := session.env
+        arguments: [1]JniValue
+        arguments[0].reference = AndroidJniString(env, *name[0])
+        if arguments[0].reference == null {
+            return false
+        }
+        committed := env.functions.CallBooleanMethodA(env, session.activity, method, *arguments[0])
+        return committed != 0 && env.functions.ExceptionCheck(env) == 0
+    }
+    unused path
+    return false
 }
 
 // Opens the camera to scan a QR code, showing prompt.
