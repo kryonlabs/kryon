@@ -224,8 +224,9 @@ main :: () -> s32 {
     if !LoadTypefaceFile("Latin", "assets/fonts/LiberationSans-Regular.ttf", null, 0) ||
     !SelectTypeface("Latin") { return 4 }
     defer ReleaseTypefaces()
+    before_missing := loaded
     RaylibEnsureGlyphs("中")
-    if RaylibFontHasCodepoint(raylib_font, 0x4E2D) { return 5 }
+    if RaylibFontHasCodepoint(raylib_font, 0x4E2D) || loaded != before_missing { return 5 }
     // The glyph table finds what raylib's scan finds, and the one-glyph view
     // measures each character exactly as the whole font does, missing ones too.
     latin := raylib_font
@@ -371,6 +372,21 @@ main :: () -> s32 {
     draw_count = 0
     RasterText("A中B", 7, 11, 120, Drawing.Color.{255, 255, 255, 255})
     if loaded != before || bad_size { return 31 }
+    // A newly encountered character during layout refreshes only the base
+    // metrics atlas, even after all sixteen drawing sizes have been cached.
+    before = loaded
+    RaylibEnsureGlyphs("Z")
+    if loaded != before + 1 || latin_face.sized_count != RAYLIB_SIZED_FONT_MAX {
+        return 34
+    }
+    before = loaded
+    draw_count = 0
+    RasterText("Z", 7, 11, 120, Drawing.Color.{255, 255, 255, 255})
+    if loaded != before + 1 || bad_size || bad_glyph { return 35 }
+    before = loaded
+    draw_count = 0
+    RasterText("Z", 7, 11, 120, Drawing.Color.{255, 255, 255, 255})
+    if loaded != before { return 36 }
     // Rotation and shear keep their geometry and interpolated masks while
     // still choosing enough atlas pixels for the transform's largest stretch.
     text_matrix.m0 = 0.78

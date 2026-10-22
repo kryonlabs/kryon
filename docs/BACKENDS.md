@@ -70,6 +70,9 @@ OpenType collections are extracted into owned standalone font bytes following
 the [OpenType table and checksum rules](https://learn.microsoft.com/en-us/typography/opentype/spec/otff).
 Glyph atlases remain available for later frames, and queued text is flushed
 before replacing an atlas.
+Missing characters are checked against the source before rebuilding an atlas.
+Text measurement refreshes the base atlas; cached drawing sizes refresh only
+when used, so a new character cannot rebuild every cached zoom at once.
 
 `make raylib-typeface-test` decodes real fonts and checks mixed Latin/CJK text,
 supplementary characters, collection bounds and checksums, retained sources,

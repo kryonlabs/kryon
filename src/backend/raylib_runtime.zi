@@ -103,6 +103,9 @@ HostRaylibTextureFilter :: (texture: Texture2D, filter: s32) #foreign raylib "Se
 HostRaylibGenTextureMipmaps :: (texture: *Texture2D) #foreign raylib "GenTextureMipmaps";
 HostTypefaceAllocate :: (size: usize) -> *u8 #foreign c "malloc";
 HostTypefaceFree :: (bytes: *u8) #foreign c "free";
+HostTypefaceGlyphs :: (bytes: *u8, count: s32, pixels: s32, codepoints: *s32,
+    codepoint_count: s32, kind: s32, actual: *s32) -> *RaylibGlyphInfo #foreign raylib "LoadFontData";
+HostTypefaceGlyphsFree :: (glyphs: *RaylibGlyphInfo, count: s32) #foreign raylib "UnloadFontData";
 HostTypefaceReallocate :: (bytes: *u8, size: usize) -> *u8 #foreign c "realloc";
 HostRaylibDrawFontText :: (font: RaylibFont, value: *u8, position: Vector2,
     size: float32, spacing: float32, tint: Color) #foreign raylib "DrawTextEx";
@@ -215,6 +218,8 @@ RaylibTypeface :: struct {
     sized_sizes: [RAYLIB_SIZED_FONT_MAX]s32
     sized_smooth: [RAYLIB_SIZED_FONT_MAX]bool
     sized_uses: [RAYLIB_SIZED_FONT_MAX]u64
+    sized_generations: [RAYLIB_SIZED_FONT_MAX]u64
+    generation: u64
     sized_clock: u64
     sized_count: s32
     data: *u8
@@ -361,11 +366,16 @@ RaylibTypefaceFontForPixels :: (typeface: *RaylibTypeface,
     typeface.sized_clock += cast(u64)1
     slot: s32 = 0
     oldest: s32 = 0
+    existing: s32 = -1
     while slot < typeface.sized_count {
         if typeface.sized_sizes[slot] == pixels &&
         typeface.sized_smooth[slot] == smooth {
-            typeface.sized_uses[slot] = typeface.sized_clock
-            return typeface.sized_fonts[slot]
+            if typeface.sized_generations[slot] == typeface.generation {
+                typeface.sized_uses[slot] = typeface.sized_clock
+                return typeface.sized_fonts[slot]
+            }
+            existing = slot
+            break
         }
         if typeface.sized_uses[slot] < typeface.sized_uses[oldest] {
             oldest = slot
@@ -381,8 +391,8 @@ RaylibTypefaceFontForPixels :: (typeface: *RaylibTypeface,
         // it directly preserves that coverage despite GPU transform rounding.
         HostRaylibTextureFilter(font.texture, 0)
     }
-    if typeface.sized_count == RAYLIB_SIZED_FONT_MAX {
-        slot = oldest
+    if existing >= 0 || typeface.sized_count == RAYLIB_SIZED_FONT_MAX {
+        slot = ifx existing >= 0 then existing else oldest
         // Queued text can still refer to the atlas being replaced.
         HostRaylibFlushBatch()
         RaylibUnloadFont(typeface.sized_fonts[slot])
@@ -394,6 +404,7 @@ RaylibTypefaceFontForPixels :: (typeface: *RaylibTypeface,
     typeface.sized_sizes[slot] = pixels
     typeface.sized_smooth[slot] = smooth
     typeface.sized_uses[slot] = typeface.sized_clock
+    typeface.sized_generations[slot] = typeface.generation
     return font
 }
 
@@ -402,6 +413,36 @@ RaylibFreeTypefaceSource :: (typeface: *RaylibTypeface) {
     if typeface.codepoints != null { HostTypefaceFree(typeface.codepoints) }
     typeface.data = null
     typeface.codepoints = null
+}
+
+// A missing character usually belongs to another face. Probe only that
+// character's CPU bitmap before rebuilding a primary atlas and its thousands
+// of seeded glyphs. No graphics work is needed to discover a source miss.
+RaylibSourceHasGlyph :: (typeface: *RaylibTypeface, codepoint: s32) -> bool {
+    data := typeface.data
+    count := typeface.data_count
+    owned: *u8
+    if typeface.from_file {
+        owned = HostTypefaceFileData(*typeface.path[0], *count)
+        data = owned
+    }
+    defer {
+        if owned != null {
+            HostTypefaceFileDataFree(owned)
+        }
+    }
+    if data == null || count <= 0 {
+        return false
+    }
+    actual: s32
+    requested: [1]s32 = .[codepoint]
+    glyphs := HostTypefaceGlyphs(data, count, 8, *requested[0], 1, 0, *actual)
+    if glyphs == null {
+        return false
+    }
+    present := actual > 0 && glyphs[0].value == codepoint
+    HostTypefaceGlyphsFree(glyphs, actual)
+    return present
 }
 
 // Adds every codepoint of the text the active font has not baked yet and
@@ -421,7 +462,9 @@ RaylibEnsureGlyphs :: (value: string) {
         at += length
         if codepoint >= 0x20 && !RaylibHasGlyph(typeface, codepoint) {
             if !RaylibAddGlyph(typeface, codepoint) { return }
-            missing = true
+            if RaylibSourceHasGlyph(typeface, codepoint) {
+                missing = true
+            }
         }
     }
     if missing && RaylibRebakeTypeface(typeface) { raylib_font = typeface.font }
@@ -434,18 +477,9 @@ RaylibRebakeTypeface :: (typeface: *RaylibTypeface) -> bool {
     HostRaylibFlushBatch()
     RaylibUnloadFont(typeface.font)
     typeface.font = font
-    slot: s32 = 0
-    while slot < typeface.sized_count {
-        font = RaylibBakeTypeface(typeface, typeface.sized_sizes[slot])
-        if font.texture.id != cast(u32)0 {
-            if !typeface.sized_smooth[slot] {
-                HostRaylibTextureFilter(font.texture, 0)
-            }
-            RaylibUnloadFont(typeface.sized_fonts[slot])
-            typeface.sized_fonts[slot] = font
-        }
-        slot += 1
-    }
+    // Measurement must not rebuild every cached zoom/size. An atlas is
+    // refreshed only when drawing actually asks for that size again.
+    typeface.generation += cast(u64)1
     return true
 }
 
@@ -575,7 +609,8 @@ RaylibRegisteredFallback :: (codepoint: s32) -> s32 {
         }
         typeface := *raylib_typefaces[index]
         if !RaylibHasGlyph(typeface, codepoint) {
-            if !RaylibAddGlyph(typeface, codepoint) || !RaylibRebakeTypeface(typeface) {
+            if !RaylibAddGlyph(typeface, codepoint) || !RaylibSourceHasGlyph(typeface, codepoint) ||
+            !RaylibRebakeTypeface(typeface) {
                 continue
             }
         }
@@ -688,7 +723,8 @@ RaylibFindFallback :: (codepoint: s32) -> s32 {
         } else if face >= 0 {
             typeface := *raylib_fallback_faces[face]
             if !RaylibHasGlyph(typeface, codepoint) {
-                if !RaylibAddGlyph(typeface, codepoint) || !RaylibRebakeTypeface(typeface) { face = -1 }
+                if !RaylibAddGlyph(typeface, codepoint) || !RaylibSourceHasGlyph(typeface, codepoint) ||
+                !RaylibRebakeTypeface(typeface) { face = -1 }
             }
             if face >= 0 && !RaylibFontHasCodepoint(typeface.font, codepoint) { face = -1 }
         }
@@ -2389,7 +2425,7 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     for at: cast(s64)0..count - 1 {
         point := points[at]
         if point.x < clip.x || point.y < clip.y ||
-            point.x > clip.x + clip.width || point.y > clip.y + clip.height {
+        point.x > clip.x + clip.width || point.y > clip.y + clip.height {
             inside = false
             break
         }
