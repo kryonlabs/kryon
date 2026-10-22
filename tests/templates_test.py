@@ -25,7 +25,6 @@ def environment(work):
         env.pop(name, None)
     # The front door runs `ziran` from PATH: the one beside this checkout.
     env["PATH"] = f"{ZIRAN_ROOT / 'build/bin'}:{env['PATH']}"
-    env["XDG_CACHE_HOME"] = str(work / "cache")
     env["KRYON_TEMPLATES"] = str(ROOT)
     env["ASAN_OPTIONS"] = "detect_leaks=0"
     # Exercise the template commands against the canonical source checkouts,
@@ -35,6 +34,9 @@ def environment(work):
     raylib = subprocess.check_output(
         [str(ziran), "pkg", "path", "raylib"], cwd=ROOT, env=env, text=True,
     ).strip()
+    # Resolve existing sources before isolating the new template projects.
+    # A fresh template cache must not redownload Raylib's entire history.
+    env["XDG_CACHE_HOME"] = str(work / "cache")
     overrides = (f'[overrides]\nziran = "{ZIRAN_ROOT}"\n'
                  f'Kryon = "{ROOT}"\nraylib = "{raylib}"\n')
     (work / "overrides.toml").write_text(overrides)

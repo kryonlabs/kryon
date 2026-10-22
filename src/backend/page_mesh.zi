@@ -309,19 +309,21 @@ PageMeshFlush :: () {
     if bottom > page_mesh_pixels_h { bottom = page_mesh_pixels_h }
     pixels_w := right - left
     pixels_h := bottom - top
-    // Small motion must not reallocate the multisample drawing buffer on
-    // every frame. Keep one 32-pixel bucket of slack before shrinking.
+    // Round the active crop, but retain its backing surface while it still
+    // fits the target. Pose motion must not repeatedly allocate GPU buffers.
     pixels_w = (pixels_w + PAGE_MESH_BUCKET - 1) / PAGE_MESH_BUCKET * PAGE_MESH_BUCKET
     pixels_h = (pixels_h + PAGE_MESH_BUCKET - 1) / PAGE_MESH_BUCKET * PAGE_MESH_BUCKET
     if pixels_w > page_mesh_pixels_w { pixels_w = page_mesh_pixels_w }
     if pixels_h > page_mesh_pixels_h { pixels_h = page_mesh_pixels_h }
     current_w := cast(s32)WebGetNumber(page_mesh_canvas, page_names.width)
     current_h := cast(s32)WebGetNumber(page_mesh_canvas, page_names.height)
-    if current_w >= pixels_w && current_w <= pixels_w + PAGE_MESH_BUCKET && current_w <= page_mesh_pixels_w {
-        pixels_w = current_w
+    surface_w := pixels_w
+    surface_h := pixels_h
+    if current_w >= pixels_w && current_w <= page_mesh_pixels_w {
+        surface_w = current_w
     }
-    if current_h >= pixels_h && current_h <= pixels_h + PAGE_MESH_BUCKET && current_h <= page_mesh_pixels_h {
-        pixels_h = current_h
+    if current_h >= pixels_h && current_h <= page_mesh_pixels_h {
+        surface_h = current_h
     }
     if left + pixels_w > page_mesh_pixels_w { left = page_mesh_pixels_w - pixels_w }
     if top + pixels_h > page_mesh_pixels_h { top = page_mesh_pixels_h - pixels_h }
@@ -330,13 +332,15 @@ PageMeshFlush :: () {
     width := cast(float64)pixels_w / sx
     height := cast(float64)pixels_h / sy
     gl := page_mesh_gl
-    if current_w != pixels_w {
-        WebSet(page_mesh_canvas, page_names.width, WebNumber(cast(float64)pixels_w))
+    if current_w != surface_w {
+        WebSet(page_mesh_canvas, page_names.width, WebNumber(cast(float64)surface_w))
     }
-    if current_h != pixels_h {
-        WebSet(page_mesh_canvas, page_names.height, WebNumber(cast(float64)pixels_h))
+    if current_h != surface_h {
+        WebSet(page_mesh_canvas, page_names.height, WebNumber(cast(float64)surface_h))
     }
-    unused WebCall4(gl, WebName("viewport"), WebNumber(0), WebNumber(0),
+    // WebGL's origin is at the bottom. Put the active crop at the surface's
+    // top so Canvas can copy the same pixels even when capacity is larger.
+    unused WebCall4(gl, WebName("viewport"), WebNumber(0), WebNumber(cast(float64)(surface_h - pixels_h)),
         WebNumber(cast(float64)pixels_w), WebNumber(cast(float64)pixels_h))
     unused WebCall4(gl, WebName("clearColor"), WebNumber(0), WebNumber(0), WebNumber(0), WebNumber(0))
     unused WebCall1(gl, WebName("clear"), WebNumber(16384))
@@ -384,13 +388,17 @@ PageMeshFlush :: () {
     ctx := page_mesh_context
     unused WebCall0(ctx, page_names.save)
     WebSet(ctx, WebName("globalAlpha"), WebNumber(1.0))
-    args: [5]WebValue
+    args: [9]WebValue
     args[0] = WebObject(page_mesh_canvas)
-    args[1] = WebNumber(x)
-    args[2] = WebNumber(y)
-    args[3] = WebNumber(width)
-    args[4] = WebNumber(height)
-    unused WebCall(ctx, WebName("drawImage"), *args[0], 5)
+    args[1] = WebNumber(0)
+    args[2] = WebNumber(0)
+    args[3] = WebNumber(cast(float64)pixels_w)
+    args[4] = WebNumber(cast(float64)pixels_h)
+    args[5] = WebNumber(x)
+    args[6] = WebNumber(y)
+    args[7] = WebNumber(width)
+    args[8] = WebNumber(height)
+    unused WebCall(ctx, WebName("drawImage"), *args[0], 9)
     unused WebCall0(ctx, page_names.restore)
     EndRasterClip(saved)
     WebEnd(scope)

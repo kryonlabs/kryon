@@ -352,6 +352,29 @@ main :: () -> s32 {
         if page_mesh_gl == 0 || page_mesh_draws == 0 || CanvasTestFront(0, 255, 255) == 0 {
             CanvasTestFail(43)
         }
+        // A shrinking animation keeps its allocation, but copies only the
+        // active crop from the top of the larger WebGL backing surface.
+        mesh[1].x = 100.0
+        mesh[2].y = 80.0
+        mesh[3] = .{100.0, 80.0}
+        BeginDrawing()
+        ClearBackground(Color.{0, 0, 0, 255})
+        RasterImageMesh("", restored.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
+            .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
+        EndDrawing()
+        capacity_w := WebGetNumber(page_mesh_canvas, page_names.width)
+        capacity_h := WebGetNumber(page_mesh_canvas, page_names.height)
+        mesh[1].x = 10.0
+        mesh[2].y = 10.0
+        mesh[3] = .{10.0, 10.0}
+        BeginDrawing()
+        ClearBackground(Color.{0, 0, 0, 255})
+        RasterImageMesh("", restored.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
+            .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
+        EndDrawing()
+        if WebGetNumber(page_mesh_canvas, page_names.width) != capacity_w ||
+        WebGetNumber(page_mesh_canvas, page_names.height) != capacity_h ||
+        CanvasTestFront(0, 255, 255) == 0 { CanvasTestFail(48) }
         UnloadTexture(restored)
         BeginDrawing()
         ClearBackground(Color.{255, 255, 255, 255})
