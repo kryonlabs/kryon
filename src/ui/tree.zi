@@ -287,6 +287,11 @@
         max_columns: s32
     }
 
+    LabelMemo :: struct {
+        offset: s64
+        length: s64
+    }
+
     TreeStore :: struct {
         committed: Vec(NodeCore)
         submitted: Vec(NodeCore)
@@ -299,6 +304,12 @@
         labels: [2][65536]u8
         committed_label_buffer: s32
         submitted_label_count: s64
+        // Repeated image paths and names share their owned frame bytes.
+        // A bounded recent-value cache keeps lookup work independent of the
+        // number of nodes, and the fixed buffers keep borrowed views stable.
+        label_memo: [64]LabelMemo
+        label_memo_count: s32
+        label_memo_next: s32
         committed_interactions: Vec(InteractionData)
         submitted_interactions: Vec(InteractionData)
         committed_states: Vec(WidgetState)
@@ -745,6 +756,8 @@
         VecClear(trees[slot].submitted_semantics)
         VecClear(trees[slot].submitted_text)
         trees[slot].submitted_label_count = 0
+        trees[slot].label_memo_count = 0
+        trees[slot].label_memo_next = 0
         VecClear(trees[slot].submitted_interactions)
         VecClear(trees[slot].submitted_states)
         VecClear(trees[slot].layouts)
@@ -1338,6 +1351,33 @@
         trees[slot].submitted_semantics[semantic].secure = secure
     }
 
+    TreeStoreLabel :: (slot: s32, value: string) -> s64 {
+        if value.count == 0 { return 0 }
+        buffer: s32 = 1 - trees[slot].committed_label_buffer
+        for at: cast(s32)0..trees[slot].label_memo_count - 1 {
+            memo := trees[slot].label_memo[at]
+            if memo.length == value.count &&
+                TextView(trees[slot].labels[buffer][memo.offset:memo.offset + memo.length]) == value {
+                return memo.offset
+            }
+        }
+        start: s64 = trees[slot].submitted_label_count
+        if value.count > 65536 - start {
+            trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+            return -1
+        }
+        byte: s64 = 0
+        while byte < value.count {
+            trees[slot].labels[buffer][start + byte] = value[byte]
+            byte += 1
+        }
+        trees[slot].submitted_label_count = start + byte
+        trees[slot].label_memo[trees[slot].label_memo_next] = LabelMemo.{start, value.count}
+        trees[slot].label_memo_next = (trees[slot].label_memo_next + 1) % 64
+        if trees[slot].label_memo_count < 64 { trees[slot].label_memo_count += 1 }
+        return start
+    }
+
     #program_export
     TreeSetLabel :: (session: Session, index: s32, label: string) {
         slot: s32 = SessionIndex(session)
@@ -1345,18 +1385,8 @@
         index >= trees[slot].submitted_count { return }
         semantic: s32 = TreeEnsureSemantic(session, index)
         if semantic < 0 { return }
-        start: s64 = trees[slot].submitted_label_count
-        if label.count > 65536 - start {
-            trees[slot].error = cast(FrameStatus)FrameAllocationFailed
-            return
-        }
-        byte: s64 = 0
-        buffer: s32 = 1 - trees[slot].committed_label_buffer
-        while byte < label.count {
-            trees[slot].labels[buffer][start + byte] = label[byte]
-            byte += 1
-        }
-        trees[slot].submitted_label_count = start + byte
+        start := TreeStoreLabel(slot, label)
+        if start < 0 { return }
         trees[slot].submitted_semantics[semantic].label_offset = start
         trees[slot].submitted_semantics[semantic].label_length =
         label.count
@@ -1369,18 +1399,8 @@
         index >= trees[slot].submitted_count { return }
         semantic: s32 = TreeEnsureSemantic(session, index)
         if semantic < 0 { return }
-        start: s64 = trees[slot].submitted_label_count
-        if detail.count > 65536 - start {
-            trees[slot].error = cast(FrameStatus)FrameAllocationFailed
-            return
-        }
-        byte: s64 = 0
-        buffer: s32 = 1 - trees[slot].committed_label_buffer
-        while byte < detail.count {
-            trees[slot].labels[buffer][start + byte] = detail[byte]
-            byte += 1
-        }
-        trees[slot].submitted_label_count = start + byte
+        start := TreeStoreLabel(slot, detail)
+        if start < 0 { return }
         trees[slot].submitted_semantics[semantic].detail_offset = start
         trees[slot].submitted_semantics[semantic].detail_length =
         detail.count

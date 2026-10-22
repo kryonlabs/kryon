@@ -80,6 +80,20 @@ main :: () -> s32 {
     if TreeFinish(session) || TreeNodeAt(session, 1).semantic_label.count != 32768 { return 12 }
     Start(session); unused Add(session, cast(u64)7, "", "")
     if !TreeFinish(session) || !Same(session, "", "") { return 13 }
+    // A board repeats a few names and long resolved image paths hundreds of
+    // times. Their total text exceeds the frame budget but unique values do
+    // not; every node must retain its full, stable semantic text.
+    Start(session)
+    for at: cast(s32)0..599 {
+        unused Add(session, cast(u64)(at + 7), "Floor", TextView(bytes[:256]))
+    }
+    if !TreeFinish(session) || TreeCount(session) != 601 ||
+        TreeNodeAt(session, 600).semantic_detail != TextView(bytes[:256]) { return 16 }
+    // Starting a replacement clears the recent-value cache; canceling it
+    // leaves the accepted board's semantic values untouched.
+    Start(session); unused Add(session, cast(u64)7, "changed", "different")
+    TreeCancel(session)
+    if TreeNodeAt(session, 600).semantic_detail != TextView(bytes[:256]) { return 17 }
     TreeDispose(session); unused SessionClose(session)
     reopened := SessionOpen()
     if reopened.slot != session.slot || reopened.epoch == session.epoch { return 14 }
