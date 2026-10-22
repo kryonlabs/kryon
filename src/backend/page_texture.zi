@@ -414,6 +414,7 @@ PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
 }
 
 PageTextureFree :: (id: s32) {
+    PageFlushPaint()
     slot: s32 = PageTextureFind(id)
     if slot >= 0 {
         WebRelease(page_textures[slot].canvas)
@@ -423,6 +424,7 @@ PageTextureFree :: (id: s32) {
 }
 
 PageTextureUpdateRgba :: (id: s32, pixels: *u8, x: s32, y: s32, width: s32, height: s32) {
+    PageFlushPaint()
     slot: s32 = PageTextureFind(id)
     if slot < 0 || pixels == null || width <= 0 || height <= 0 { return }
     scope: s32 = WebScope()

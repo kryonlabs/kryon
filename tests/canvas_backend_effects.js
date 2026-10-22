@@ -108,8 +108,11 @@ addToLibrary({
       [81,31,[255,128,0,255]], [81,38,[0,0,0,255]],
       [99,33,[0,255,0,255]], [108,33,[255,0,0,255]],
       [99,42,[255,255,255,255]], [108,42,[0,0,255,255]],
-      [110,55,[127,255,255,255]]
+      [110,55,[127,255,255,255]], [130,80,[0,255,255,255]]
     ];
+    if (meshDraws) {
+      cases.push([129,33,[127,255,127,255]], [138,33,[191,127,127,255]]);
+    }
     for(var item of cases) {
       var got=Array.from(ctx.getImageData(Math.round(item[0]*dpi),Math.round(item[1]*dpi),1,1).data);
       if(got.some(function(value,index){return value!==item[2][index];})) {

@@ -17,6 +17,14 @@ PageMeshTexture :: struct {
     texture: s32
     bytes: s64
     sampling: s32
+    width: s32
+    height: s32
+}
+
+PageMeshVertex :: struct {
+    position: Vector2
+    uv: Vector2
+    color: Color
 }
 
 page_mesh_attempted: bool;
@@ -39,7 +47,11 @@ page_mesh_y: s32;
 page_mesh_width: s32;
 page_mesh_height: s32;
 page_mesh_textures: [PAGE_MESH_TEXTURES]PageMeshTexture;
-page_mesh_vertices: [IMAGE_MESH_POINT_LIMIT * 24]float32;
+page_mesh_vertices: [IMAGE_MESH_POINT_LIMIT * 6]PageMeshVertex;
+page_mesh_points: [IMAGE_MESH_POINT_LIMIT]PageMeshVertex;
+page_mesh_vertex_count: s32;
+page_mesh_source: s32;
+page_mesh_sampling: s32;
 
 PageMeshReset :: () {
     PageMeshFlush()
@@ -61,7 +73,6 @@ PageMeshReset :: () {
         }
         unused WebCall1(page_mesh_gl, WebName("deleteBuffer"), WebObject(page_mesh_buffer))
         unused WebCall1(page_mesh_gl, WebName("deleteProgram"), WebObject(page_mesh_program))
-        WebRelease(page_mesh_color)
         WebRelease(page_mesh_buffer)
         WebRelease(page_mesh_program)
         WebRelease(page_mesh_gl)
@@ -71,6 +82,8 @@ PageMeshReset :: () {
     page_mesh_canvas = 0
     page_mesh_attempted = false
     page_mesh_draws = 0
+    page_mesh_vertex_count = 0
+    page_mesh_source = 0
 }
 
 PageMeshLost :: (context: s32, event: s32, second: s32, third: s32) {
@@ -79,6 +92,7 @@ PageMeshLost :: (context: s32, event: s32, second: s32, third: s32) {
     unused second
     unused third
     page_mesh_pending = false
+    page_mesh_vertex_count = 0
     PaintResourcesChanged()
     PageMeshReset()
 }
@@ -106,14 +120,16 @@ PageMeshOpen :: () -> bool {
     WebSet(options, WebName("alpha"), WebBool(true))
     WebSet(options, WebName("antialias"), WebBool(true))
     WebSet(options, WebName("premultipliedAlpha"), WebBool(true))
-    WebSet(options, WebName("preserveDrawingBuffer"), WebBool(true))
+    // Each batch is cleared, drawn and copied in one turn. Keeping a second
+    // preserved drawing buffer between frames is unnecessary.
+    WebSet(options, WebName("preserveDrawingBuffer"), WebBool(false))
     gl := WebAsObject(WebCall2(canvas, page_names.get_context,
         WebText("webgl"), WebObject(options)))
     if gl == 0 { WebEnd(scope); return false }
     vertex := PageMeshShader(gl, 35633,
-        "attribute vec2 position; attribute vec2 uv; varying vec2 texel; void main(){gl_Position=vec4(position,0.0,1.0);texel=uv;}")
+        "attribute vec2 position; attribute vec2 uv; attribute vec4 color; varying vec2 texel; varying vec4 paint; void main(){gl_Position=vec4(position,0.0,1.0);texel=uv;paint=color;}")
     fragment := PageMeshShader(gl, 35632,
-        "precision highp float; varying vec2 texel; uniform sampler2D image; uniform vec4 tint; void main(){vec4 c=texture2D(image,texel);gl_FragColor=vec4(c.rgb*tint.rgb*tint.a,c.a*tint.a);}")
+        "precision highp float; varying vec2 texel; varying vec4 paint; uniform sampler2D image; void main(){vec4 c=texture2D(image,texel);gl_FragColor=vec4(c.rgb*paint.rgb*paint.a,c.a*paint.a);}")
     if vertex == 0 || fragment == 0 {
         if vertex != 0 { unused WebCall1(gl, WebName("deleteShader"), WebObject(vertex)) }
         if fragment != 0 { unused WebCall1(gl, WebName("deleteShader"), WebObject(fragment)) }
@@ -139,10 +155,7 @@ PageMeshOpen :: () -> bool {
         return false
     }
     buffer := WebAsObject(WebCall0(gl, WebName("createBuffer")))
-    color := WebAsObject(WebCall2(gl, WebName("getUniformLocation"),
-        WebObject(program), WebText("tint")))
-    if buffer == 0 || color == 0 {
-        if buffer != 0 { unused WebCall1(gl, WebName("deleteBuffer"), WebObject(buffer)) }
+    if buffer == 0 {
         unused WebCall1(gl, WebName("deleteProgram"), WebObject(program))
         WebEnd(scope)
         return false
@@ -151,7 +164,8 @@ PageMeshOpen :: () -> bool {
     page_mesh_gl = WebKeep(gl)
     page_mesh_program = WebKeep(program)
     page_mesh_buffer = WebKeep(buffer)
-    page_mesh_color = WebKeep(color)
+    page_mesh_color = cast(s32)WebAsNumber(WebCall2(gl, WebName("getAttribLocation"),
+        WebObject(program), WebText("color")))
     page_mesh_position = cast(s32)WebAsNumber(WebCall2(gl, WebName("getAttribLocation"),
         WebObject(program), WebText("position")))
     page_mesh_uv = cast(s32)WebAsNumber(WebCall2(gl, WebName("getAttribLocation"),
@@ -225,6 +239,8 @@ PageMeshUpload :: (slot: s32, filter: s32) -> bool {
         cached.id = id
         cached.revision = page_textures[slot].revision
         cached.bytes = bytes
+        cached.width = cast(s32)width
+        cached.height = cast(s32)height
     }
     sampling: s32 = ifx filter == 0 then 9728 else 9729
     if cached.sampling != sampling {
@@ -237,11 +253,29 @@ PageMeshUpload :: (slot: s32, filter: s32) -> bool {
     return true
 }
 
+// Different tints stay in one ordered draw: each vertex carries its colour.
+// A texture or sampling change, or the bounded buffer filling, submits it.
+PageMeshSubmit :: () {
+    if page_mesh_vertex_count == 0 { return }
+    scope := WebScope()
+    stride := cast(s32)size_of(type_of(page_mesh_vertices[0]))
+    vertices := WebBytes(WebBytesUint8, cast(*void)(*page_mesh_vertices[0]),
+        page_mesh_vertex_count * stride)
+    unused WebCall3(page_mesh_gl, WebName("bufferData"), WebNumber(34962),
+        WebObject(vertices), WebNumber(35040))
+    unused WebCall3(page_mesh_gl, WebName("drawArrays"), WebNumber(4),
+        WebNumber(0), WebNumber(cast(float64)page_mesh_vertex_count))
+    page_mesh_vertex_count = 0
+    page_mesh_draws += 1
+    WebEnd(scope)
+}
+
 // Flush before another painter, transform, target, readback or presentation.
 // Adjacent meshes share a clip and one transfer to the Canvas2D page.
 PageMeshFlush :: () {
     if !page_mesh_pending { return }
     page_mesh_pending = false
+    PageMeshSubmit()
     scope := WebScope()
     saved := BeginRasterClip(page_mesh_clip)
     ctx := page_mesh_context
@@ -264,8 +298,13 @@ PageMeshDraw :: (id: s32, source: Rectangle, points: []Vector2,
     slot := PageTextureFind(id)
     if slot < 0 || !PageMeshOpen() { return false }
     scope := WebScope()
-    texture_w := cast(float32)WebGetNumber(page_textures[slot].canvas, page_names.width)
-    texture_h := cast(float32)WebGetNumber(page_textures[slot].canvas, page_names.height)
+    cached := *page_mesh_textures[id % PAGE_MESH_TEXTURES]
+    texture_w := cast(float32)cached.width
+    texture_h := cast(float32)cached.height
+    if cached.id != id || cached.revision != page_textures[slot].revision {
+        texture_w = cast(float32)WebGetNumber(page_textures[slot].canvas, page_names.width)
+        texture_h = cast(float32)WebGetNumber(page_textures[slot].canvas, page_names.height)
+    }
     // Canvas clips an out-of-bounds source; clamping its UVs would instead
     // stretch edge pixels into that empty area. Preserve the Canvas painter.
     corners: [2]Vector2 = .{PageMeshSource(source, 0.0, 0.0), PageMeshSource(source, 1.0, 1.0)}
@@ -277,7 +316,7 @@ PageMeshDraw :: (id: s32, source: Rectangle, points: []Vector2,
         }
     }
     gl := page_mesh_gl
-    if WebAsBool(WebCall0(gl, WebName("isContextLost"))) {
+    if !page_mesh_pending && WebAsBool(WebCall0(gl, WebName("isContextLost"))) {
         WebEnd(scope)
         PageMeshLost(0, 0, 0, 0)
         return false
@@ -339,6 +378,23 @@ PageMeshDraw :: (id: s32, source: Rectangle, points: []Vector2,
         unused WebCall1(gl, WebName("clear"), WebNumber(16384))
         unused WebCall1(gl, WebName("useProgram"), WebObject(page_mesh_program))
         unused WebCall2(gl, WebName("bindBuffer"), WebNumber(34962), WebObject(page_mesh_buffer))
+        stride := cast(s32)size_of(type_of(page_mesh_vertices[0]))
+        args: [6]WebValue
+        args[4] = WebNumber(cast(float64)stride)
+        for attribute: cast(s32)0..2 {
+            location := page_mesh_position
+            if attribute == 1 { location = page_mesh_uv }
+            if attribute == 2 { location = page_mesh_color }
+            args[0] = WebNumber(cast(float64)location)
+            args[1] = WebNumber(ifx attribute == 2 then 4.0 else 2.0)
+            args[2] = WebNumber(ifx attribute == 2 then 5121.0 else 5126.0)
+            args[3] = WebBool(attribute == 2)
+            args[5] = WebNumber(cast(float64)(attribute * 8))
+            unused WebCall1(gl, WebName("enableVertexAttribArray"), WebNumber(cast(float64)location))
+            unused WebCall(gl, WebName("vertexAttribPointer"), *args[0], 6)
+        }
+        unused WebCall1(gl, WebName("enable"), WebNumber(3042))
+        unused WebCall2(gl, WebName("blendFunc"), WebNumber(1), WebNumber(771))
         page_mesh_context = ctx
         page_mesh_clip = clip
         page_mesh_x = x
@@ -347,48 +403,54 @@ PageMeshDraw :: (id: s32, source: Rectangle, points: []Vector2,
         page_mesh_height = height
         page_mesh_pending = true
     }
-    if !PageMeshUpload(slot, filter) { WebEnd(scope); return false }
-    count: s32 = 0
+    needed := (columns - 1) * (rows - 1) * 6
+    if page_mesh_vertex_count > 0 && (page_mesh_source != id || page_mesh_sampling != filter ||
+        page_mesh_vertex_count + needed > cast(s32)page_mesh_vertices.count) {
+        PageMeshSubmit()
+    }
+    if page_mesh_vertex_count == 0 {
+        if !PageMeshUpload(slot, filter) { WebEnd(scope); return false }
+        page_mesh_source = id
+        page_mesh_sampling = filter
+    }
+    // A grid point belongs to several triangles. Project and sample it
+    // once, then copy it into the ordered triangle stream.
+    for row: cast(s32)0..rows - 1 {
+        for column: cast(s32)0..columns - 1 {
+            index := row * columns + column
+            point := points[index]
+            uv := PageMeshSource(source, cast(float32)column / cast(float32)(columns - 1),
+                cast(float32)row / cast(float32)(rows - 1))
+            page_mesh_points[index] = PageMeshVertex.{
+                Vector2.{(point.x - cast(float32)x) / cast(float32)width * 2.0 - 1.0,
+                    1.0 - (point.y - cast(float32)y) / cast(float32)height * 2.0},
+                Vector2.{uv.x / texture_w, uv.y / texture_h}, tint}
+        }
+    }
+    count := page_mesh_vertex_count
     for row: cast(s32)0..rows - 2 {
         for column: cast(s32)0..columns - 2 {
             tl := row * columns + column
             indices: [6]s32 = .{tl, tl + 1, tl + columns, tl + 1, tl + columns + 1, tl + columns}
-            for index: indices {
-                point := points[index]
-                uv := PageMeshSource(source, cast(float32)(index % columns) / cast(float32)(columns - 1),
-                    cast(float32)(index / columns) / cast(float32)(rows - 1))
-                page_mesh_vertices[count] = (point.x - cast(float32)x) / cast(float32)width * 2.0 - 1.0
-                page_mesh_vertices[count + 1] = 1.0 - (point.y - cast(float32)y) / cast(float32)height * 2.0
-                page_mesh_vertices[count + 2] = uv.x / texture_w
-                page_mesh_vertices[count + 3] = uv.y / texture_h
-                count += 4
+            for triangle: cast(s32)0..1 {
+                first := triangle * 3
+                a := page_mesh_points[indices[first]]
+                b := page_mesh_points[indices[first + 1]]
+                c := page_mesh_points[indices[first + 2]]
+                // A folded grid can have repeated or collinear points.
+                // Such triangles cover no pixels and need no GPU work.
+                area := (b.position.x - a.position.x) * (c.position.y - a.position.y) -
+                    (b.position.y - a.position.y) * (c.position.x - a.position.x)
+                if area != 0.0 {
+                    page_mesh_vertices[count] = a
+                    page_mesh_vertices[count + 1] = b
+                    page_mesh_vertices[count + 2] = c
+                    count += 3
+                }
             }
         }
     }
-    vertices := WebBytes(WebBytesFloat32, cast(*void)(*page_mesh_vertices[0]), count)
-    unused WebCall3(gl, WebName("bufferData"), WebNumber(34962), WebObject(vertices), WebNumber(35040))
-    args: [6]WebValue
-    args[1] = WebNumber(2)
-    args[2] = WebNumber(5126)
-    args[3] = WebBool(false)
-    args[4] = WebNumber(16)
-    for attribute: cast(s32)0..1 {
-        location := ifx attribute == 0 then page_mesh_position else page_mesh_uv
-        args[0] = WebNumber(cast(float64)(location))
-        args[5] = WebNumber(cast(float64)(attribute * 8))
-        unused WebCall1(gl, WebName("enableVertexAttribArray"), WebNumber(cast(float64)(location)))
-        unused WebCall(gl, WebName("vertexAttribPointer"), *args[0], 6)
-    }
-    args[0] = WebObject(page_mesh_color)
-    args[1] = WebNumber(cast(float64)tint.r / 255.0)
-    args[2] = WebNumber(cast(float64)tint.g / 255.0)
-    args[3] = WebNumber(cast(float64)tint.b / 255.0)
-    args[4] = WebNumber(cast(float64)tint.a / 255.0)
-    unused WebCall(gl, WebName("uniform4f"), *args[0], 5)
-    unused WebCall1(gl, WebName("enable"), WebNumber(3042))
-    unused WebCall2(gl, WebName("blendFunc"), WebNumber(1), WebNumber(771))
-    unused WebCall3(gl, WebName("drawArrays"), WebNumber(4), WebNumber(0), WebNumber(cast(float64)(count / 4)))
-    page_mesh_draws += 1
+    page_mesh_vertex_count = count
     WebEnd(scope)
     return true
 }
