@@ -26,8 +26,13 @@
 #import "dropdown_widget"
 #import "modal_widget"
 #import "modal_props"
+#import "pointer_input"
 #program_export
 main :: () -> s32 {
+    pointer := SamplePointer()
+    if pointer.x != 13.0 || pointer.y != 21.0 || !pointer.pressed {
+        return 15
+    }
     session := Session.{.slot = 4, .epoch = cast(u64)12}
     Text(session, TextProps.{.text = "Portable composition"})
     Image(session, ImageProps.{.asset_path = "assets/photo.png"})

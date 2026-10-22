@@ -1,4 +1,4 @@
-#import "tree_input"
+#import "input_protocol"
 host_api :: #system_library "host_api";
 
 // The host reports raw pointer state. Retained hit testing and capture stay

@@ -5,7 +5,8 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-set -- --bind text_widget:TextHostedHost=hosted_ui_provider:Text \
+set -- --bind pointer_input:PollPointer=hosted_ui_provider:Pointer \
+    --bind text_widget:TextHostedHost=hosted_ui_provider:Text \
     --bind image_widget:ImageHostedHost=hosted_ui_provider:Image \
     --bind button_widget:ButtonHostedHost=hosted_ui_provider:Button \
     --bind text_area_widget:TextAreaHostedHost=hosted_ui_provider:TextArea \

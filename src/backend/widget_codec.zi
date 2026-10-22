@@ -3,6 +3,7 @@
 #import "std/byte_text_linux"
 #import "hosted_values"
 #import "session"
+#import "input_protocol"
 #import "geometry"
 #import "drawing_props"
 #import "text_props"
@@ -31,6 +32,102 @@
 #import "svg_icon_props"
 #import "tile_map"
 using HostValueKind;
+
+WidgetPointerFrameCodec :: struct {
+    fields: [5]HostField
+}
+
+WidgetEncodePointerFrame :: (data: PointerFrame, codec: *WidgetPointerFrameCodec) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("PointerFrame")
+    value.fields = *codec.fields[0]
+    value.field_count = 5
+    codec.fields[0].name = HostTextData("x")
+    codec.fields[0].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.x}
+    codec.fields[1].name = HostTextData("y")
+    codec.fields[1].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.y}
+    codec.fields[2].name = HostTextData("down")
+    codec.fields[2].value = HostScalar("bool", ifx data.down then 1 else 0)
+    codec.fields[3].name = HostTextData("pressed")
+    codec.fields[3].value = HostScalar("bool", ifx data.pressed then 1 else 0)
+    codec.fields[4].name = HostTextData("released")
+    codec.fields[4].value = HostScalar("bool", ifx data.released then 1 else 0)
+    return value
+}
+
+WidgetDecodePointerFrame :: (value: HostValue, codec: *WidgetPointerFrameCodec) -> PointerFrame {
+    data: PointerFrame
+    unused codec
+    {
+        field_at := HostFieldAt(value, 0, "x")
+        if field_at >= 0 {
+            data.x = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "y")
+        if field_at >= 0 {
+            data.y = cast(float32)value.fields[field_at].value.real
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "down")
+        if field_at >= 0 {
+            data.down = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "pressed")
+        if field_at >= 0 {
+            data.pressed = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "released")
+        if field_at >= 0 {
+            data.released = value.fields[field_at].value.integer != 0
+        }
+    }
+    return data
+}
+
+WidgetValidPointerFrame :: (value: HostValue) -> bool {
+    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "PointerFrame" ||
+    value.field_count > cast(usize)HOST_FIELD_LIMIT ||
+    (value.field_count > cast(usize)0 && value.fields == null) { return false }
+    {
+        field_at := HostFieldAt(value, 0, "x")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 1, "y")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "float32", cast(s32)HostReal) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 2, "down")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 3, "pressed")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 4, "released")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    return true
+}
 
 WidgetRectangleCodec :: struct {
     fields: [4]HostField

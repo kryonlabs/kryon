@@ -57,6 +57,12 @@ at most one size per line, or ignored as a whole; without them the layout is
 the plain area's. During an IME composition, lines and
 boxes after it move with the preedit.
 
+`pointer_input.SamplePointer()` also works inside a hosted widget frame. The
+host returns the pointer sample for the session passed to `WidgetHostBegin`;
+an inactive frame cannot read input, and another session's sample is not exposed.
+The pointer value schema lives in `input_protocol`, independently of the native
+retained input implementation.
+
 ## Style rules
 
 `InstallStyleRules` copies typeface text into Kryon-owned storage and returns

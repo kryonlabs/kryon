@@ -6,6 +6,8 @@
 #import "std/bundle_host"
 #import "std/byte_text_linux"
 #import "session"
+#import "input_protocol"
+#import "tree_input"
 #import "tree"
 #import "text_widget"
 #import "text_measure"
@@ -82,6 +84,7 @@ widget_tile_map_used: [TILE_MAP_HOSTED_LIMIT]bool;
 widget_scroll_codec: WidgetScrollPropsCodec;
 widget_scroll_result_codec: WidgetScrollResultCodec;
 widget_session_codec: WidgetSessionCodec;
+widget_pointer_codec: WidgetPointerFrameCodec;
 widget_checkbox_codec: WidgetCheckboxPropsCodec;
 widget_checkbox_result_codec: WidgetCheckboxValueResultCodec;
 widget_toggle_codec: WidgetTogglePropsCodec;
@@ -120,7 +123,8 @@ widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
 WidgetHostSupports :: (module: string, function: string) -> bool {
-    return (ModuleName(module, "text_widget") && function == "TextHostedHost") ||
+    return (ModuleName(module, "pointer_input") && function == "PollPointer") ||
+    (ModuleName(module, "text_widget") && function == "TextHostedHost") ||
     (ModuleName(module, "text_widget") && function == "TextLinkAtHostedHost") ||
     (ModuleName(module, "text_measure") && function == "TextWidthHostedHost") ||
     (ModuleName(module, "text_measure") && function == "TextHeightHostedHost") ||
@@ -255,7 +259,15 @@ WidgetHostPalette :: (session: Session, arguments: *HostValue, result: *HostValu
 WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     unused context
-    if !widget_host_active || count < 1 || !WidgetValidSession(arguments[0]) {
+    if !widget_host_active {
+        return 0
+    }
+    if ModuleName(TextFromCString(module), "pointer_input") &&
+    TextFromCString(function) == "PollPointer" && count == 0 {
+        result.* = WidgetEncodePointerFrame(PointerSample(widget_host_session), *widget_pointer_codec)
+        return 1
+    }
+    if count < 1 || !WidgetValidSession(arguments[0]) {
         return 0
     }
     session := WidgetDecodeSession(arguments[0], *widget_session_codec)

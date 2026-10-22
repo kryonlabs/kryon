@@ -5,6 +5,7 @@
 #import "geometry"
 #import "tree"
 #import "tree_input"
+#import "input_protocol"
 #import "tree_draw"
 #import "paint_queue"
 #import "text_props"
@@ -142,7 +143,11 @@ TileMapPaintSame :: (session: Session, count: s32) -> bool {
 Call :: (module: string, function: string, arguments: []HostValue, result: *HostValue) -> s32 {
     unused CopyCString(module, module_name[:])
     unused CopyCString(function, function_name[:])
-    return WidgetHostCall(null, *module_name[0], *function_name[0], *arguments[0],
+    data: *HostValue = null
+    if arguments.count > 0 {
+        data = *arguments[0]
+    }
+    return WidgetHostCall(null, *module_name[0], *function_name[0], data,
         cast(s32)arguments.count, result)
 }
 
@@ -169,11 +174,29 @@ main :: () -> s32 {
     arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted",
             .bounds = Rectangle.{0.0, 0.0, 200.0, 20.0}}, *text_codec)
     // Outside a bundle frame nothing draws.
+    if Call("pointer_input", "PollPointer", arguments[:0], *result) != 0 {
+        return 101
+    }
     if Call("text_widget", "TextHostedHost", arguments[:2], *result) != 0 {
         return 2
     }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 13.0, .y = 21.0, .pressed = true})
+    other_pointer_session := SessionOpen()
+    unused TreePointerUpdate(other_pointer_session, PointerFrame.{.x = 99.0, .y = 100.0})
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
     WidgetHostBegin(session, AllowPhoto)
+    if !WidgetHostSupports("pointer_input", "PollPointer") ||
+    Call("pointer_input", "PollPointer", arguments[:0], *result) != 1 ||
+    !WidgetValidPointerFrame(result) {
+        return 102
+    }
+    pointer_codec: WidgetPointerFrameCodec
+    pointer := WidgetDecodePointerFrame(result, *pointer_codec)
+    if pointer.x != 13.0 || pointer.y != 21.0 || !pointer.pressed ||
+    Call("pointer_input", "PollPointer", arguments[:1], *result) != 0 {
+        return 103
+    }
+    unused SessionClose(other_pointer_session)
     if Call("p0123456789abcdef_text_widget", "TextHostedHost", arguments[:2], *result) != 1 {
         return 3
     }

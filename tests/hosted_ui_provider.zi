@@ -5,6 +5,13 @@
 #import "text_input_props"
 #import "scroll_props"
 #import "geometry"
+#import "input_protocol"
+
+#program_export "PollPointer"
+Pointer :: () -> PointerFrame {
+    return PointerFrame.{.x = 13.0, .y = 21.0, .pressed = true}
+}
+
 count: s32;
 #program_export "TextHostedHost"
 Text :: (session: Session, props: TextProps) {
