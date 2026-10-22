@@ -67,7 +67,11 @@ def screen(text):
             continue
         out.append(text[index])
         index += 1
-    return "".join(out)
+    # Dependency materialization can emit a Git checkout receipt before the
+    # first screen. Compare the rendered terminal content, not that one-time
+    # provisioning message (the second, cached launcher does not emit it).
+    lines = "".join(out).splitlines(keepends=True)
+    return "".join(line for line in lines if not line.startswith("HEAD is now at ")).lstrip("\n")
 
 
 def main():
