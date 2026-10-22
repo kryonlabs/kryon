@@ -217,7 +217,9 @@ main :: () -> s32 {
     if floating != 0 { return floating }
     clipped := CheckClippedOverlay()
     if clipped != 0 { return clipped }
-    return CheckModalInput()
+    modal_input := CheckModalInput()
+    if modal_input != 0 { return modal_input }
+    return CheckEscapeDismissal()
 }
 
 // A floating panel owns its own backdrop, while a later rail remains usable.
@@ -267,5 +269,58 @@ CheckClippedOverlay :: () -> s32 {
     End(session)
     if CommitFrame(session) != cast(FrameStatus)FrameOk || TreeHitAt(session, 80.0, 100.0) != child ||
     !TreeActivateAt(session, child) { return 42 }
+    return 0
+}
+
+// Escape closes only the top layer, even with a focused editor, and never
+// leaks to page shortcuts or through a modal that disallows dismissal.
+CheckEscapeDismissal :: () -> s32 {
+    session := SessionOpen()
+    defer { CloseSession(session) }
+    viewport := Rectangle.{0.0, 0.0, 240.0, 160.0}
+    for stage: 0..4 {
+        KeyboardSend(session, ifx stage == 0 then 0 else KeyEscape)
+        BeginFrame(session, cast(u64)100, viewport)
+        if TreeEscapeCaptured(session) != (stage > 0) || KeyboardTake(session) != 0 { return 50 }
+        outer_props: DismissibleOverlayProps
+        outer_props.key = cast(u64)101
+        outer_props.bounds = viewport
+        outer_props.dismiss_disabled = stage == 3
+        outer := DismissibleOverlay(session, outer_props)
+        if outer.closed != (stage == 4) || outer.outside_released { return 51 }
+        if !TreePushScope(session, outer.panel_node) { return 52 }
+        if stage <= 2 {
+            nested := DismissibleOverlay(session, DismissibleOverlayProps.{
+                    .key = cast(u64)102, .bounds = viewport})
+            if nested.closed != (stage == 2) { return 53 }
+            if !TreePushScope(session, nested.panel_node) { return 54 }
+            editor := TreeSubmitCurrent(session, cast(u64)103, WidgetKindTextField, viewport)
+            TreeSetInteractive(session, editor, false, false, 103)
+            if stage <= 1 {
+                popup := Popup(session, PopupProps.{.key = cast(u64)104, .bounds = viewport})
+                if popup.closed != (stage == 1) { return 55 }
+            }
+            End(session)
+        }
+        End(session)
+        if !TreeEscapeCaptured(session) && stage > 0 { return 56 }
+        if CommitFrame(session) != cast(FrameStatus)FrameOk { return 57 }
+        if stage == 0 {
+            editor := TreeChild(session, 0, cast(u64)101, WidgetKindModal)
+            panel := TreeChild(session, editor, OverlayPanelKey(), WidgetKindCustom)
+            nested := TreeChild(session, panel, cast(u64)102, WidgetKindModal)
+            nested_panel := TreeChild(session, nested, OverlayPanelKey(), WidgetKindCustom)
+            editor = TreeChild(session, nested_panel, cast(u64)103, WidgetKindTextField)
+            if !TreeFocusAt(session, editor) { return 58 }
+        }
+    }
+    KeyboardSend(session, 0)
+    BeginFrame(session, cast(u64)100, viewport)
+    if TreeEscapeCaptured(session) { return 59 }
+    if CommitFrame(session) != cast(FrameStatus)FrameOk { return 60 }
+    KeyboardSend(session, KeyEscape)
+    BeginFrame(session, cast(u64)100, viewport)
+    if TreeEscapeCaptured(session) || KeyboardTake(session) != KeyEscape { return 61 }
+    if CommitFrame(session) != cast(FrameStatus)FrameOk { return 62 }
     return 0
 }

@@ -62,6 +62,9 @@ DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> Dism
             result.release_consumed = policy.release_consumed
             result.tapped = policy.tapped
         }
+        if TreeTakeDismissalAt(session, previous_overlay) && !props.dismiss_disabled {
+            result.closed = true
+        }
         result.node = TreeSubmitCurrent(session, key, kind, viewport)
         if result.node < 0 { return result }
         // A modal covers the viewport even when its trigger is in a clipped
@@ -94,6 +97,10 @@ Popup :: (session: Session, props: PopupProps) -> PopupResult {
     if !TreeIsBuilding(session) { return result }
     press: PointerPress = TreeLastPress(session)
     previous: s32 = TreePrevious(session, TreeCurrentParent(session), props.key, WidgetKindCustom)
+    if TreeTakeDismissalAt(session, previous) {
+        result.closed = true
+        return result
+    }
     seen: s32 = press.serial
     if previous >= 0 { seen = TreePreviousWidgetState(session, previous).index }
     if press.serial != seen && !PointInBounds(press.x, press.y, props.bounds) &&

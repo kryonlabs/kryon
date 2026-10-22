@@ -68,6 +68,12 @@ resizes, such as when a phone keyboard opens. It retains that focus transition
 on the scroll node. Keeping an input focused never recenters it after manual
 scrolling; applications should not repeat their own focused-field reveal loop.
 
+`BeginFrame` routes Escape to the topmost retained modal or popup, even
+while a field has focus. `DismissibleOverlay` and `Popup` report it through
+`closed`; a non-dismissible modal consumes Escape without closing. Hosts
+send `KeyEscape` with `KeyboardSend`, and application shortcuts check
+`TreeEscapeCaptured(session)` before handling that same Escape.
+
 ## Style rules
 
 `InstallStyleRules` copies typeface text into Kryon-owned storage and returns

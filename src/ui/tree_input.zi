@@ -51,6 +51,8 @@ active_pointer: [9]PointerState;
 active_sample: [9]PointerFrame;
 active_secondary: [9]SecondaryPointerFrame;
 active_key: [9]s32;
+active_dismissal: [9]u64;
+active_escape_captured: [9]bool;
 active_modifiers: [9]s32;
 active_focus: [9]u64;
 // Keyboard navigation shows the focus: Tab turns it on, a pointer press turns
@@ -81,6 +83,8 @@ InputSnapshot :: struct {
     sample: PointerFrame
     secondary: SecondaryPointerFrame
     key: s32
+    dismissal: u64
+    escape_captured: bool
     modifiers: s32
     focus: u64
     focus_visible: bool
@@ -98,6 +102,8 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
     snapshot.sample = active_sample[slot]
     snapshot.secondary = active_secondary[slot]
     snapshot.key = active_key[slot]
+    snapshot.dismissal = active_dismissal[slot]
+    snapshot.escape_captured = active_escape_captured[slot]
     snapshot.modifiers = active_modifiers[slot]
     snapshot.focus = active_focus[slot]
     snapshot.focus_visible = active_focus_visible[slot]
@@ -107,6 +113,8 @@ TreeInputSuspend :: (session: Session) -> InputSnapshot {
     active_sample[slot] = PointerFrame.{-1.0, -1.0, false, false, false}
     active_secondary[slot] = SecondaryPointerFrame.{}
     active_key[slot] = 0
+    active_dismissal[slot] = 0
+    active_escape_captured[slot] = false
     active_modifiers[slot] = 0
     active_focus[slot] = 0
     active_focus_visible[slot] = false
@@ -124,6 +132,8 @@ TreeInputResume :: (session: Session, snapshot: InputSnapshot) -> bool {
     active_sample[slot] = snapshot.sample
     active_secondary[slot] = snapshot.secondary
     active_key[slot] = snapshot.key
+    active_dismissal[slot] = snapshot.dismissal
+    active_escape_captured[slot] = snapshot.escape_captured
     active_modifiers[slot] = snapshot.modifiers
     active_focus[slot] = snapshot.focus
     active_focus_visible[slot] = snapshot.focus_visible
@@ -661,6 +671,24 @@ TreeTakeActivationAt :: (session: Session, index: s32) -> bool {
     return true
 }
 
+// Escape belongs to the uppermost retained overlay, including a popup in
+// a modal. Keep this observation for the whole frame, so app navigation
+// cannot also handle the same key after the overlay takes its dismissal.
+#program_export
+TreeEscapeCaptured :: (session: Session) -> bool {
+    return SessionValid(session) && active_escape_captured[SessionIndex(session)]
+}
+
+#program_export
+TreeTakeDismissalAt :: (session: Session, index: s32) -> bool {
+    if !SessionValid(session) || index < 0 || index >= TreeCount(session) { return false }
+    slot := SessionIndex(session)
+    if active_dismissal[slot] == 0 ||
+    active_dismissal[slot] != TreeInputAt(session, index).identity_generation { return false }
+    active_dismissal[slot] = 0
+    return true
+}
+
 // Tab traverses eligible retained nodes in document order. Button-like
 // controls activate through their existing queue; editors keep Enter/Space.
 #program_export
@@ -668,7 +696,21 @@ TreeKeyboardRoute :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
     slot: s32 = session.slot
     key: s32 = active_key[slot]
-    if key == KeyTab {
+    active_dismissal[slot] = 0
+    active_escape_captured[slot] = false
+    if key == KeyEscape {
+        index := TreeCount(session) - 1
+        while index > 0 {
+            entry := trees[slot].committed[index]
+            if (entry.kind == WidgetKindModal || entry.popup) && TreeInputAllowedAt(session, index) {
+                active_dismissal[slot] = entry.identity_generation
+                active_escape_captured[slot] = true
+                active_key[slot] = 0
+                return true
+            }
+            index -= 1
+        }
+    } else if key == KeyTab {
         direction: s32 = 1
         if (active_modifiers[slot] & KeyModifierShift) != 0 { direction = -1 }
         current: s32 = -1
@@ -718,6 +760,8 @@ TreeInputReset :: (session: Session) {
     active_secondary[session.slot] = secondary
     active_wheel[session.slot] = wheel
     active_key[session.slot] = 0
+    active_dismissal[session.slot] = 0
+    active_escape_captured[session.slot] = false
     active_modifiers[session.slot] = 0
     active_focus[session.slot] = 0
     active_focus_visible[session.slot] = false
