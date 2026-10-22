@@ -41,7 +41,17 @@ main :: () -> s32 {
     button.key = cast(u64)1
     button.bounds = Rectangle.{40.0, 40.0, 240.0, 64.0}
     button.label = "Save a portable document"
-    if Button(AppSession(), button) > 0 { clicked = true; print("Hosted document clicked\n") }
+    if Button(AppSession(), button) > 0 {
+        // Several documents in one interaction must share the browser host's
+        // flush, rather than synchronizing the whole mount for each file.
+        names: [8]string = .["batch/1", "batch/2", "batch/3", "batch/4",
+            "batch/5", "batch/6", "batch/7", "batch/8"]
+        for name: names {
+            if !DocumentWrite(name, "saved") { return 4 }
+        }
+        clicked = true
+        print("Hosted document clicked\n")
+    }
     label: TextProps
     label.bounds = Rectangle.{40.0, 128.0, 400.0, 40.0}
     label.text = ifx clicked then "Saved document" else "New document"

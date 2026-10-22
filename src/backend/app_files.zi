@@ -199,7 +199,13 @@ AppFileWrite :: (files: *AppFiles, name: string, value: string) -> bool {
     if !file.valid {
         return false
     }
-    ok := WriteTextAt(file, value, 0) == value.count && SyncFile(file)
+    ok := WriteTextAt(file, value, 0) == value.count
+    #if !#defined(PLATFORM_WEB) {
+        ok = ok && SyncFile(file)
+    }
+    // Browser hosts flush their mounted filesystem as a batch. Emscripten's
+    // fsync synchronizes the entire IndexedDB mount, so doing it for each
+    // document or extracted asset stalls input and startup.
     if !CloseFile(file) {
         ok = false
     }

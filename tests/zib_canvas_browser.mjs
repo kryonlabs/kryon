@@ -67,6 +67,15 @@ try {
     async function ready(){const end=Date.now()+30000;while(Date.now()<end){if(await evaluate(imageReady))return;await delay(100);}throw Error('Hosted app did not render: '+diagnostics+' '+await evaluate('document.querySelector("#zib-controls span").textContent'));}
     await ready();
     const original=await evaluate(textPixels);
+    await evaluate(`(() => {
+      window.documentFlushes = 0;
+      const backend = Module.FS.filesystems.IDBFS;
+      const sync = backend.syncfs;
+      backend.syncfs = function(mount, populate, callback) {
+        if (!populate) documentFlushes++;
+        return sync.call(this, mount, populate, callback);
+      };
+    })()`);
     const position=await evaluate('(()=>{const r=document.querySelector("canvas").getBoundingClientRect();return {x:r.x+100,y:r.y+70};})()');
     await call('Input.dispatchMouseEvent',{type:'mouseMoved',...position});
     await call('Input.dispatchMouseEvent',{type:'mousePressed',...position,button:'left',buttons:1,clickCount:1});
@@ -75,10 +84,14 @@ try {
     await delay(1600);
     const clicked=await evaluate(textPixels);
     assert.notEqual(clicked,original,'Hosted button did not update app state');
+    const flushes=await evaluate('documentFlushes');
+    assert(flushes>0&&flushes<=3,'One interaction flushed the whole browser database for individual documents: '+flushes);
+    assert(await evaluate(`Array.from({length:8},(_,index)=>Module.FS.readFile('/kryon-apps/portable.probe/batch/'+(index+1),{encoding:'utf8'})).every(value=>value==='saved')`),'A batched document was not written');
     await call('Page.reload');
     await delay(500);
     await ready();
     assert.equal(await evaluate(textPixels),clicked,'Browser reload discarded the app document');
+    assert(await evaluate(`Array.from({length:8},(_,index)=>Module.FS.readFile('/kryon-apps/portable.probe/batch/'+(index+1),{encoding:'utf8'})).every(value=>value==='saved')`),'Reload discarded a batched document');
     const document=await call('DOM.getDocument');
     const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[resolve(downloaded)]});
