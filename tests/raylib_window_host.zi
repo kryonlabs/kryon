@@ -69,6 +69,23 @@ LoadFileData :: (path: *u8, count: *s32) -> *u8 {
 #program_export
 UnloadFileData :: (bytes: *u8) { unused bytes }
 #program_export
+LoadFontData :: (bytes: *u8, byte_count: s32, pixels: s32,
+    codepoints: *s32, count: s32, kind: s32, actual: *s32) -> *RaylibGlyphInfo {
+    unused bytes
+    unused byte_count
+    unused pixels
+    unused codepoints
+    unused count
+    unused kind
+    actual.* = 0
+    return null
+}
+#program_export
+UnloadFontData :: (glyphs: *RaylibGlyphInfo, count: s32) {
+    unused glyphs
+    unused count
+}
+#program_export
 LoadFontEx :: (path: *u8, size: s32, codepoints: *s32, count: s32) -> RaylibFont {
     unused path; unused size; unused codepoints; unused count
     font_loads += 1

@@ -93,6 +93,10 @@ rotation and the style radius do not apply, and a grid with too few points
 draws nothing. Points are copied when the image is queued, at most 4096 per
 image (256 through a portable bundle's hosted `Image`).
 
+Hosts call `PaintResourcesChanged()` when replacing raster resources without
+changing widget props. Retained frames then compose and paint again, including
+when a browser graphics context resets or an app updates its image assets.
+
 `Line(LineProps)`, `Circle(CircleProps)`, `Ring(RingProps)` and
 `Triangle(TriangleProps)` draw shapes as raylib's `DrawLineEx`, `DrawCircle`
 and `DrawCircleGradient`, `DrawRing` and `DrawTriangle` do. Like `Box`, each

@@ -1,0 +1,394 @@
+// Batched textured triangles for the Canvas host. The page remains Canvas2D;
+// a private WebGL surface paints each mesh before the page composites it.
+#import "geometry"
+#import "drawing_props"
+#import "image_props"
+#import "page_core"
+#import "page_texture"
+#import "paint_queue"
+#import "raylib_clip"
+#import "web"
+
+PAGE_MESH_TEXTURES :: 32
+
+PageMeshTexture :: struct {
+    id: s32
+    revision: u64
+    texture: s32
+    bytes: s64
+    sampling: s32
+}
+
+page_mesh_attempted: bool;
+page_mesh_canvas: s32;
+page_mesh_gl: s32;
+page_mesh_program: s32;
+page_mesh_buffer: s32;
+page_mesh_color: s32;
+page_mesh_lost_handler: s32;
+page_mesh_position: s32;
+page_mesh_uv: s32;
+page_mesh_draws: s32;
+page_mesh_size_limit: s32;
+page_mesh_texture_limit: s32;
+page_mesh_pending: bool;
+page_mesh_context: s32;
+page_mesh_clip: Rectangle;
+page_mesh_x: s32;
+page_mesh_y: s32;
+page_mesh_width: s32;
+page_mesh_height: s32;
+page_mesh_textures: [PAGE_MESH_TEXTURES]PageMeshTexture;
+page_mesh_vertices: [IMAGE_MESH_POINT_LIMIT * 24]float32;
+
+PageMeshReset :: () {
+    PageMeshFlush()
+    page_paint_hooks = PagePaintHooks.{}
+    if page_mesh_gl != 0 {
+        if page_mesh_lost_handler != 0 {
+            unused WebCall2(page_mesh_canvas, page_names.remove_event_listener,
+                WebText("webglcontextlost"), WebObject(page_mesh_lost_handler))
+            WebRelease(page_mesh_lost_handler)
+            page_mesh_lost_handler = 0
+        }
+        for index: cast(s32)0..PAGE_MESH_TEXTURES - 1 {
+            texture := page_mesh_textures[index].texture
+            if texture != 0 {
+                unused WebCall1(page_mesh_gl, WebName("deleteTexture"), WebObject(texture))
+                WebRelease(texture)
+            }
+            page_mesh_textures[index] = PageMeshTexture.{}
+        }
+        unused WebCall1(page_mesh_gl, WebName("deleteBuffer"), WebObject(page_mesh_buffer))
+        unused WebCall1(page_mesh_gl, WebName("deleteProgram"), WebObject(page_mesh_program))
+        WebRelease(page_mesh_color)
+        WebRelease(page_mesh_buffer)
+        WebRelease(page_mesh_program)
+        WebRelease(page_mesh_gl)
+        WebRelease(page_mesh_canvas)
+    }
+    page_mesh_gl = 0
+    page_mesh_canvas = 0
+    page_mesh_attempted = false
+    page_mesh_draws = 0
+}
+
+PageMeshLost :: (context: s32, event: s32, second: s32, third: s32) {
+    unused context
+    unused event
+    unused second
+    unused third
+    page_mesh_pending = false
+    PaintResourcesChanged()
+    PageMeshReset()
+}
+
+PageMeshShader :: (gl: s32, kind: s32, text: string) -> s32 {
+    shader := WebAsObject(WebCall1(gl, WebName("createShader"), WebNumber(cast(float64)(kind))))
+    if shader == 0 { return 0 }
+    unused WebCall2(gl, WebName("shaderSource"), WebObject(shader), WebText(text))
+    unused WebCall1(gl, WebName("compileShader"), WebObject(shader))
+    if !WebAsBool(WebCall2(gl, WebName("getShaderParameter"),
+        WebObject(shader), WebNumber(35713))) {
+        unused WebCall1(gl, WebName("deleteShader"), WebObject(shader))
+        return 0
+    }
+    return shader
+}
+
+PageMeshOpen :: () -> bool {
+    if page_mesh_attempted { return page_mesh_gl != 0 }
+    page_mesh_attempted = true
+    scope := WebScope()
+    canvas := PageMakeCanvas(1, 1)
+    if canvas == 0 { WebEnd(scope); return false }
+    options := WebNewObject()
+    WebSet(options, WebName("alpha"), WebBool(true))
+    WebSet(options, WebName("antialias"), WebBool(true))
+    WebSet(options, WebName("premultipliedAlpha"), WebBool(true))
+    WebSet(options, WebName("preserveDrawingBuffer"), WebBool(true))
+    gl := WebAsObject(WebCall2(canvas, page_names.get_context,
+        WebText("webgl"), WebObject(options)))
+    if gl == 0 { WebEnd(scope); return false }
+    vertex := PageMeshShader(gl, 35633,
+        "attribute vec2 position; attribute vec2 uv; varying vec2 texel; void main(){gl_Position=vec4(position,0.0,1.0);texel=uv;}")
+    fragment := PageMeshShader(gl, 35632,
+        "precision highp float; varying vec2 texel; uniform sampler2D image; uniform vec4 tint; void main(){vec4 c=texture2D(image,texel);gl_FragColor=vec4(c.rgb*tint.rgb*tint.a,c.a*tint.a);}")
+    if vertex == 0 || fragment == 0 {
+        if vertex != 0 { unused WebCall1(gl, WebName("deleteShader"), WebObject(vertex)) }
+        if fragment != 0 { unused WebCall1(gl, WebName("deleteShader"), WebObject(fragment)) }
+        WebEnd(scope)
+        return false
+    }
+    program := WebAsObject(WebCall0(gl, WebName("createProgram")))
+    if program == 0 {
+        unused WebCall1(gl, WebName("deleteShader"), WebObject(vertex))
+        unused WebCall1(gl, WebName("deleteShader"), WebObject(fragment))
+        WebEnd(scope)
+        return false
+    }
+    unused WebCall2(gl, WebName("attachShader"), WebObject(program), WebObject(vertex))
+    unused WebCall2(gl, WebName("attachShader"), WebObject(program), WebObject(fragment))
+    unused WebCall1(gl, WebName("linkProgram"), WebObject(program))
+    unused WebCall1(gl, WebName("deleteShader"), WebObject(vertex))
+    unused WebCall1(gl, WebName("deleteShader"), WebObject(fragment))
+    if !WebAsBool(WebCall2(gl, WebName("getProgramParameter"),
+        WebObject(program), WebNumber(35714))) {
+        unused WebCall1(gl, WebName("deleteProgram"), WebObject(program))
+        WebEnd(scope)
+        return false
+    }
+    buffer := WebAsObject(WebCall0(gl, WebName("createBuffer")))
+    color := WebAsObject(WebCall2(gl, WebName("getUniformLocation"),
+        WebObject(program), WebText("tint")))
+    if buffer == 0 || color == 0 {
+        if buffer != 0 { unused WebCall1(gl, WebName("deleteBuffer"), WebObject(buffer)) }
+        unused WebCall1(gl, WebName("deleteProgram"), WebObject(program))
+        WebEnd(scope)
+        return false
+    }
+    page_mesh_canvas = WebKeep(canvas)
+    page_mesh_gl = WebKeep(gl)
+    page_mesh_program = WebKeep(program)
+    page_mesh_buffer = WebKeep(buffer)
+    page_mesh_color = WebKeep(color)
+    page_mesh_position = cast(s32)WebAsNumber(WebCall2(gl, WebName("getAttribLocation"),
+        WebObject(program), WebText("position")))
+    page_mesh_uv = cast(s32)WebAsNumber(WebCall2(gl, WebName("getAttribLocation"),
+        WebObject(program), WebText("uv")))
+    page_mesh_size_limit = cast(s32)WebAsNumber(WebCall1(gl, WebName("getParameter"), WebNumber(34024)))
+    page_mesh_texture_limit = cast(s32)WebAsNumber(WebCall1(gl, WebName("getParameter"), WebNumber(3379)))
+    page_mesh_lost_handler = WebFunction(PageMeshLost, 0)
+    unused WebCall2(canvas, page_names.add_event_listener,
+        WebText("webglcontextlost"), WebObject(page_mesh_lost_handler))
+    page_paint_hooks.flush = PageMeshFlush
+    WebEnd(scope)
+    return true
+}
+
+PageMeshSource :: (source: Rectangle, fx: float32, fy: float32) -> Vector2 {
+    x := source.x + source.width * fx
+    if source.width < 0.0 { x = source.x - source.width + source.width * fx }
+    y := source.y + source.height * fy
+    if source.height < 0.0 { y = source.y - source.height + source.height * fy }
+    return Vector2.{x, y}
+}
+
+PageMeshUpload :: (slot: s32, filter: s32) -> bool {
+    id := page_textures[slot].id
+    index := id % PAGE_MESH_TEXTURES
+    cached := *page_mesh_textures[index]
+    gl := page_mesh_gl
+    if cached.texture == 0 {
+        cached.texture = WebKeep(WebAsObject(WebCall0(gl, WebName("createTexture"))))
+    }
+    if cached.texture == 0 { return false }
+    unused WebCall2(gl, WebName("bindTexture"), WebNumber(3553), WebObject(cached.texture))
+    if cached.id != id || cached.revision != page_textures[slot].revision {
+        width := WebGetNumber(page_textures[slot].canvas, page_names.width)
+        height := WebGetNumber(page_textures[slot].canvas, page_names.height)
+        bytes := cast(s64)(width * height * 4.0)
+        if width > cast(float64)page_mesh_texture_limit ||
+        height > cast(float64)page_mesh_texture_limit || bytes > 16777216 {
+            return false
+        }
+        total: s64 = 0
+        for entry: page_mesh_textures { total += entry.bytes }
+        for other: cast(s32)0..PAGE_MESH_TEXTURES - 1 {
+            if total - cached.bytes + bytes <= 16777216 { break }
+            entry := *page_mesh_textures[other]
+            if other != index && entry.texture != 0 {
+                unused WebCall1(gl, WebName("deleteTexture"), WebObject(entry.texture))
+                WebRelease(entry.texture)
+                total -= entry.bytes
+                entry.* = PageMeshTexture.{}
+            }
+        }
+        args: [6]WebValue
+        args[0] = WebNumber(3553)
+        args[1] = WebNumber(0)
+        args[2] = WebNumber(6408)
+        args[3] = WebNumber(6408)
+        args[4] = WebNumber(5121)
+        args[5] = WebObject(page_textures[slot].canvas)
+        // Interpolate premultiplied pixels so transparent source colours
+        // cannot bleed into the visible edge of a smoothly sampled image.
+        unused WebCall2(gl, WebName("pixelStorei"),
+            WebNumber(WebGetNumber(gl, WebName("UNPACK_PREMULTIPLY_ALPHA_WEBGL"))), WebBool(true))
+        unused WebCall(gl, WebName("texImage2D"), *args[0], 6)
+        if WebFailed() { return false }
+        if WebAsNumber(WebCall0(gl, WebName("getError"))) != 0.0 { return false }
+        for parameter: cast(s32)10242..10243 {
+            unused WebCall3(gl, WebName("texParameteri"), WebNumber(3553),
+                WebNumber(cast(float64)(parameter)), WebNumber(33071))
+        }
+        cached.id = id
+        cached.revision = page_textures[slot].revision
+        cached.bytes = bytes
+    }
+    sampling: s32 = ifx filter == 0 then 9728 else 9729
+    if cached.sampling != sampling {
+        for parameter: cast(s32)10240..10241 {
+            unused WebCall3(gl, WebName("texParameteri"), WebNumber(3553),
+                WebNumber(cast(float64)parameter), WebNumber(cast(float64)sampling))
+        }
+        cached.sampling = sampling
+    }
+    return true
+}
+
+// Flush before another painter, transform, target, readback or presentation.
+// Adjacent meshes share a clip and one transfer to the Canvas2D page.
+PageMeshFlush :: () {
+    if !page_mesh_pending { return }
+    page_mesh_pending = false
+    scope := WebScope()
+    saved := BeginRasterClip(page_mesh_clip)
+    ctx := page_mesh_context
+    unused WebCall0(ctx, page_names.save)
+    WebSet(ctx, WebName("globalAlpha"), WebNumber(1.0))
+    args: [5]WebValue
+    args[0] = WebObject(page_mesh_canvas)
+    args[1] = WebNumber(cast(float64)page_mesh_x)
+    args[2] = WebNumber(cast(float64)page_mesh_y)
+    args[3] = WebNumber(cast(float64)page_mesh_width)
+    args[4] = WebNumber(cast(float64)page_mesh_height)
+    unused WebCall(ctx, WebName("drawImage"), *args[0], 5)
+    unused WebCall0(ctx, page_names.restore)
+    EndRasterClip(saved)
+    WebEnd(scope)
+}
+
+PageMeshDraw :: (id: s32, source: Rectangle, points: []Vector2,
+    columns: s32, rows: s32, clip: Rectangle, tint: Color, filter: s32) -> bool {
+    slot := PageTextureFind(id)
+    if slot < 0 || !PageMeshOpen() { return false }
+    scope := WebScope()
+    texture_w := cast(float32)WebGetNumber(page_textures[slot].canvas, page_names.width)
+    texture_h := cast(float32)WebGetNumber(page_textures[slot].canvas, page_names.height)
+    // Canvas clips an out-of-bounds source; clamping its UVs would instead
+    // stretch edge pixels into that empty area. Preserve the Canvas painter.
+    corners: [2]Vector2 = .{PageMeshSource(source, 0.0, 0.0), PageMeshSource(source, 1.0, 1.0)}
+    for corner: corners {
+        if corner.x != corner.x || corner.y != corner.y ||
+        corner.x < 0.0 || corner.y < 0.0 || corner.x > texture_w || corner.y > texture_h {
+            WebEnd(scope)
+            return false
+        }
+    }
+    gl := page_mesh_gl
+    if WebAsBool(WebCall0(gl, WebName("isContextLost"))) {
+        WebEnd(scope)
+        PageMeshLost(0, 0, 0, 0)
+        return false
+    }
+    for point: points {
+        if point.x != point.x || point.y != point.y ||
+        point.x < -10000000.0 || point.x > 10000000.0 ||
+        point.y < -10000000.0 || point.y > 10000000.0 {
+            WebEnd(scope)
+            return false
+        }
+    }
+    left := clip.x
+    top := clip.y
+    right := clip.x + clip.width
+    bottom := clip.y + clip.height
+    x := cast(s32)left
+    y := cast(s32)top
+    if cast(float32)x > left { x -= 1 }
+    if cast(float32)y > top { y -= 1 }
+    width := cast(s32)(right - cast(float32)x)
+    height := cast(s32)(bottom - cast(float32)y)
+    if cast(float32)(x + width) < right { width += 1 }
+    if cast(float32)(y + height) < bottom { height += 1 }
+    scale := PageSurfaceScale()
+    if page_mode.active {
+        zoom := page_mode.zoom_x
+        if zoom < 0.0 { zoom = -zoom }
+        zy := page_mode.zoom_y
+        if zy < 0.0 { zy = -zy }
+        if zy > zoom { zoom = zy }
+        scale *= zoom
+    }
+    pixels_w := cast(s32)(cast(float64)width * scale + 0.999)
+    pixels_h := cast(s32)(cast(float64)height * scale + 0.999)
+    if width <= 0 || height <= 0 || pixels_w <= 0 || pixels_h <= 0 ||
+    pixels_w > 4096 || pixels_h > 4096 ||
+    pixels_w > page_mesh_size_limit || pixels_h > page_mesh_size_limit ||
+    cast(s64)pixels_w * cast(s64)pixels_h > 4194304 {
+        WebEnd(scope)
+        return false
+    }
+    ctx := PageDrawingContext()
+    if page_mesh_pending && (ctx != page_mesh_context ||
+        clip.x != page_mesh_clip.x || clip.y != page_mesh_clip.y ||
+        clip.width != page_mesh_clip.width || clip.height != page_mesh_clip.height) {
+        PageMeshFlush()
+    }
+    if !page_mesh_pending {
+        if WebGetNumber(page_mesh_canvas, page_names.width) != cast(float64)pixels_w {
+            WebSet(page_mesh_canvas, page_names.width, WebNumber(cast(float64)(pixels_w)))
+        }
+        if WebGetNumber(page_mesh_canvas, page_names.height) != cast(float64)pixels_h {
+            WebSet(page_mesh_canvas, page_names.height, WebNumber(cast(float64)(pixels_h)))
+        }
+        unused WebCall4(gl, WebName("viewport"), WebNumber(0), WebNumber(0),
+            WebNumber(cast(float64)(pixels_w)), WebNumber(cast(float64)(pixels_h)))
+        unused WebCall4(gl, WebName("clearColor"), WebNumber(0), WebNumber(0), WebNumber(0), WebNumber(0))
+        unused WebCall1(gl, WebName("clear"), WebNumber(16384))
+        unused WebCall1(gl, WebName("useProgram"), WebObject(page_mesh_program))
+        unused WebCall2(gl, WebName("bindBuffer"), WebNumber(34962), WebObject(page_mesh_buffer))
+        page_mesh_context = ctx
+        page_mesh_clip = clip
+        page_mesh_x = x
+        page_mesh_y = y
+        page_mesh_width = width
+        page_mesh_height = height
+        page_mesh_pending = true
+    }
+    if !PageMeshUpload(slot, filter) { WebEnd(scope); return false }
+    count: s32 = 0
+    for row: cast(s32)0..rows - 2 {
+        for column: cast(s32)0..columns - 2 {
+            tl := row * columns + column
+            indices: [6]s32 = .{tl, tl + 1, tl + columns, tl + 1, tl + columns + 1, tl + columns}
+            for index: indices {
+                point := points[index]
+                uv := PageMeshSource(source, cast(float32)(index % columns) / cast(float32)(columns - 1),
+                    cast(float32)(index / columns) / cast(float32)(rows - 1))
+                page_mesh_vertices[count] = (point.x - cast(float32)x) / cast(float32)width * 2.0 - 1.0
+                page_mesh_vertices[count + 1] = 1.0 - (point.y - cast(float32)y) / cast(float32)height * 2.0
+                page_mesh_vertices[count + 2] = uv.x / texture_w
+                page_mesh_vertices[count + 3] = uv.y / texture_h
+                count += 4
+            }
+        }
+    }
+    vertices := WebBytes(WebBytesFloat32, cast(*void)(*page_mesh_vertices[0]), count)
+    unused WebCall3(gl, WebName("bufferData"), WebNumber(34962), WebObject(vertices), WebNumber(35040))
+    args: [6]WebValue
+    args[1] = WebNumber(2)
+    args[2] = WebNumber(5126)
+    args[3] = WebBool(false)
+    args[4] = WebNumber(16)
+    for attribute: cast(s32)0..1 {
+        location := ifx attribute == 0 then page_mesh_position else page_mesh_uv
+        args[0] = WebNumber(cast(float64)(location))
+        args[5] = WebNumber(cast(float64)(attribute * 8))
+        unused WebCall1(gl, WebName("enableVertexAttribArray"), WebNumber(cast(float64)(location)))
+        unused WebCall(gl, WebName("vertexAttribPointer"), *args[0], 6)
+    }
+    args[0] = WebObject(page_mesh_color)
+    args[1] = WebNumber(cast(float64)tint.r / 255.0)
+    args[2] = WebNumber(cast(float64)tint.g / 255.0)
+    args[3] = WebNumber(cast(float64)tint.b / 255.0)
+    args[4] = WebNumber(cast(float64)tint.a / 255.0)
+    unused WebCall(gl, WebName("uniform4f"), *args[0], 5)
+    unused WebCall1(gl, WebName("enable"), WebNumber(3042))
+    unused WebCall2(gl, WebName("blendFunc"), WebNumber(1), WebNumber(771))
+    unused WebCall3(gl, WebName("drawArrays"), WebNumber(4), WebNumber(0), WebNumber(cast(float64)(count / 4)))
+    page_mesh_draws += 1
+    WebEnd(scope)
+    return true
+}

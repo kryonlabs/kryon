@@ -148,6 +148,17 @@ paint_snapshot_asset_counts: [9]s64;
 paint_snapshots_valid: [9]bool;
 frame_paint_unchanged: [9]bool;
 
+// A host replaced raster resources while the widget props stayed the same.
+// Keep the buffers alive for an emission already in progress, but require
+// composition and painting again on the next frame.
+#program_export
+PaintResourcesChanged :: () {
+    for slot: cast(s32)0..cast(s32)paint_snapshots_valid.count - 1 {
+        paint_snapshots_valid[slot] = false
+        frame_paint_unchanged[slot] = false
+    }
+}
+
 // Every queued label owns its text, including large grids of short-lived
 // glyph buffers. Blocks grow with the frame's actual text. A label larger
 // than one block or an allocation failure cancels the frame before drawing.
@@ -530,6 +541,7 @@ EmitLine :: (command: PaintCommand) {
 }
 
 EmitRoundedFill :: (command: PaintCommand) {
+    if command.color.a == cast(u8)0 { return }
     visible: Rectangle = ShapeVisible(command)
     if visible.width <= 0.0 { return }
     if ShapeWhole(command, visible) {

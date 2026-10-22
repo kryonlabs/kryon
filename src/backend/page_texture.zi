@@ -18,6 +18,7 @@ PageTexture :: struct {
     canvas: s32
     target: bool
     filter: s32
+    revision: u64
 }
 
 // A copy of a texture multiplied by a colour. `order` is when it was made,
@@ -55,7 +56,7 @@ PageTextureRegister :: (canvas: s32, target: bool) -> s32 {
         if page_next_texture >= 2147483000 { page_next_texture = 1 }
         slot: s32 = id % PAGE_TEXTURE_MAX
         if page_textures[slot].id == 0 {
-            page_textures[slot] = PageTexture.{id, WebKeep(canvas), target, 0}
+            page_textures[slot] = PageTexture.{id, WebKeep(canvas), target, 0, 1}
             return id
         }
         tries += 1
@@ -123,7 +124,7 @@ PageTexturesReset :: () {
     while index < PAGE_TEXTURE_MAX {
         if page_textures[index].id != 0 {
             WebRelease(page_textures[index].canvas)
-            page_textures[index] = PageTexture.{0, 0, false, 0}
+            page_textures[index] = PageTexture.{}
         }
         index += 1
     }
@@ -416,7 +417,7 @@ PageTextureFree :: (id: s32) {
     slot: s32 = PageTextureFind(id)
     if slot >= 0 {
         WebRelease(page_textures[slot].canvas)
-        page_textures[slot] = PageTexture.{0, 0, false, 0}
+        page_textures[slot] = PageTexture.{}
     }
     PageTintsClearFor(id)
 }
@@ -426,6 +427,7 @@ PageTextureUpdateRgba :: (id: s32, pixels: *u8, x: s32, y: s32, width: s32, heig
     if slot < 0 || pixels == null || width <= 0 || height <= 0 { return }
     scope: s32 = WebScope()
     PageWritePixels(page_textures[slot].canvas, pixels, x, y, width, height)
+    page_textures[slot].revision += 1
     // Tinted copies of this texture hold its previous pixels.
     PageTintsClearFor(id)
     WebEnd(scope)
@@ -455,6 +457,7 @@ PageRenderTarget :: (width: s32, height: s32) -> s32 {
 // Draws into a texture until PageTargetDeselect, keeping the camera and clip
 // state of what was being drawn to.
 PageTargetSelect :: (id: s32) {
+    PageFlushPaint()
     slot: s32 = PageTextureFind(id)
     if slot < 0 || page_target_count >= PAGE_TARGET_MAX { return }
     scope: s32 = WebScope()
@@ -468,12 +471,14 @@ PageTargetSelect :: (id: s32) {
         page_saved = 0
         page_raster_clips = 0
         // Cached tints go stale as soon as a target is written.
+        page_textures[slot].revision += 1
         PageTintsClearFor(id)
     }
     WebEnd(scope)
 }
 
 PageTargetDeselect :: () {
+    PageFlushPaint()
     if page_target_count <= 0 { return }
     page_target_count -= 1
     state: PageTarget = page_targets[page_target_count]
@@ -487,6 +492,7 @@ PageTargetDeselect :: () {
 // Copies a texture's pixels (0 is the page's canvas) into `pixels`. Returns
 // 1 when they all fit.
 PageTextureRead :: (id: s32, pixels: *u8, capacity: u32) -> s32 {
+    PageFlushPaint()
     canvas: s32 = 0
     if id == 0 {
         canvas = page_canvas

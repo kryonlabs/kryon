@@ -11,6 +11,7 @@
 #import "page_core"
 #import "page_files"
 #import "session"
+#import "paint_queue"
 
 canvas_cursor_shape: s32 = -1;
 
@@ -76,6 +77,8 @@ OpenCanvas :: () -> bool {
 // Existing fonts and the canvas remain usable during package activation.
 #program_export
 InvalidateCanvasAssets :: () {
+    PageFlushPaint()
+    PaintResourcesChanged()
     index: s32 = 0
     while index < canvas_assets_count {
         if canvas_assets[index].texture.id != cast(u32)0 {

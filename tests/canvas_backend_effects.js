@@ -93,8 +93,9 @@ addToLibrary({
     var got=document.getElementById('canvas').getContext('2d').getImageData(Math.round(dpi),Math.round(dpi),1,1).data;
     return got[0]===r && got[1]===g && got[2]===b ? 1 : 0;
   },
-  canvas_test_finish__sig: 'i',
-  canvas_test_finish: function() {
+  canvas_test_finish__sig: 'ii',
+  canvas_test_finish: function(meshDraws) {
+    globalThis.canvasTestMeshDraws = meshDraws;
     // main's exit code is lost once Asyncify has suspended it (font loading
     // awaits), so a failure is also recorded for the page's onExit.
     var code=(function() {
@@ -106,12 +107,34 @@ addToLibrary({
       [91,11,[128,0,255,255]], [101,11,[0,255,255,255]],
       [81,31,[255,128,0,255]], [81,38,[0,0,0,255]],
       [99,33,[0,255,0,255]], [108,33,[255,0,0,255]],
-      [99,42,[255,255,255,255]], [108,42,[0,0,255,255]]
+      [99,42,[255,255,255,255]], [108,42,[0,0,255,255]],
+      [110,55,[127,255,255,255]]
     ];
     for(var item of cases) {
       var got=Array.from(ctx.getImageData(Math.round(item[0]*dpi),Math.round(item[1]*dpi),1,1).data);
       if(got.some(function(value,index){return value!==item[2][index];})) {
         globalThis.canvasTestError='pixel '+item[0]+','+item[1]+' '+got+' expected '+item[2];
+        return 20;
+      }
+    }
+    var source = new OffscreenCanvas(2, 2), sourceContext = source.getContext('2d');
+    sourceContext.putImageData(new ImageData(new Uint8ClampedArray([
+      192,0,0,255, 0,192,0,meshDraws ? 128 : 255,
+      0,0,192,meshDraws ? 64 : 255, 192,192,192,meshDraws ? 0 : 255
+    ]), 2, 2), 0, 0);
+    var reference = new OffscreenCanvas(ctx.canvas.width, ctx.canvas.height);
+    var referenceContext = reference.getContext('2d');
+    referenceContext.scale(dpi, dpi);
+    referenceContext.fillStyle = 'white';
+    referenceContext.fillRect(0, 0, 160, 120);
+    referenceContext.translate(96, 52);
+    referenceContext.scale(-1, 1);
+    referenceContext.drawImage(source, 0, 0, 16, 16);
+    for (var y = 53; y < 67; y++) for (var x = 81; x < 95; x++) {
+      var actual = ctx.getImageData(Math.round(x*dpi), Math.round(y*dpi), 1, 1).data;
+      var expected = referenceContext.getImageData(Math.round(x*dpi), Math.round(y*dpi), 1, 1).data;
+      if (actual.some((value, channel) => Math.abs(value-expected[channel]) > 2)) {
+        globalThis.canvasTestError = 'smooth warped image differs at '+x+','+y+' '+actual+' expected '+expected;
         return 20;
       }
     }

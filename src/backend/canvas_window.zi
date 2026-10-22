@@ -8,6 +8,7 @@
 #import "page_input"
 #import "page_paint"
 #import "page_texture"
+#import "page_mesh"
 #import "c_string"
 #import "geometry"
 #import "drawing_props"
@@ -34,6 +35,7 @@
         canvas_width = width
         canvas_height = height
         canvas_external_frame_pacing = false
+        PageMeshReset()
         PageTexturesReset()
         PageBoot(width, height, TextFromCString(title))
         PageEventsBind()
@@ -45,6 +47,7 @@
     #program_export
     CloseWindow :: () {
         CloseCanvasText()
+        PageMeshReset()
         PageClose()
         PageTexturesReset()
         canvas_ready = false

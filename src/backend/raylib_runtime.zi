@@ -7,6 +7,7 @@
 #import "geometry"
 #import "image_props"
 #import "paint_texture"
+#import "paint_queue"
 #import "svg_icon"
 #import "tree_input"
 #import "raylib_clip"
@@ -1267,6 +1268,7 @@ RaylibUseIconTextures :: () {
 #program_export
 InvalidateRaylibAssets :: () {
     HostRaylibFlushBatch()
+    PaintResourcesChanged()
     index: s32 = 0
     while index < raylib_assets_count {
         if raylib_assets[index].texture.id != 0 {
@@ -1285,6 +1287,7 @@ InvalidateRaylibAssets :: () {
 // forget them without sending deletion requests there.
 #program_export
 ResetRaylibGraphics :: (context_lost: bool = false) {
+    PaintResourcesChanged()
     if !context_lost {
         HostRaylibFlushBatch()
     }

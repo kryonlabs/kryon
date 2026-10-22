@@ -12,6 +12,10 @@
 #import "drawing_props"
 #import "c_string"
 #import "page_texture"
+#import "page_mesh"
+#import "tree_draw"
+#import "session"
+#import "paint_queue"
 #import "web"
 
 scheduled_frames: s32;
@@ -43,10 +47,19 @@ TestExternalFramePacing :: () -> bool {
 }
 
 browser :: #system_library "env";
-CanvasTestFinish :: () -> s32 #foreign browser "canvas_test_finish";
+CanvasTestFinish :: (mesh_draws: s32) -> s32 #foreign browser "canvas_test_finish";
 CanvasTestInput :: (phase: s32) -> s32 #foreign browser "canvas_test_input";
 CanvasTestFail :: (code: s32) #foreign browser "canvas_test_fail";
 CanvasTestFront :: (r: s32, g: s32, b: s32) -> s32 #foreign browser "canvas_test_front";
+
+MeshLossFrame :: (session: Session) -> bool {
+    BeginDrawing()
+    BeginFrame(session, cast(u64)991, Rectangle.{0.0, 0.0, 160.0, 120.0})
+    PaintLine(session, -1, Rectangle.{4.0, 4.0, 10.0, 0.0}, Color.{255, 0, 0, 255})
+    result := EndFrameRetained(session, true)
+    EndDrawing()
+    return result.paint_unchanged
+}
 CanvasTestText :: (face: s32, size: s32, zoom: float32, width: s32,
     dark: bool) -> s32 #foreign browser "canvas_test_text";
 
@@ -166,8 +179,39 @@ main :: () -> s32 {
     mesh: [4]Vector2
     mesh[0] = .{112.0, 30.0}; mesh[1] = .{96.0, 30.0}
     mesh[2] = .{112.0, 46.0}; mesh[3] = .{96.0, 46.0}
+    if PageMeshDraw(cast(s32)mesh_texture.id, .{-1.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
+        .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255}, 0) { CanvasTestFail(45) }
     RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
         .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
+    PaintRoundedFill(Session.{}, -1, .{0.0, 0.0, 160.0, 120.0}, 0.0, 4,
+        Color.{0, 0, 0, 0})
+    if page_mesh_gl != 0 && !page_mesh_pending { CanvasTestFail(44) }
+    // The accelerated sampler must interpolate transparent texels before
+    // applying tint. Keep the software painter's existing opaque baseline.
+    if page_mesh_gl != 0 {
+        mesh_pixels[7] = cast(u8)128
+        mesh_pixels[11] = cast(u8)64
+        mesh_pixels[15] = cast(u8)0
+        UpdateTexture(mesh_texture, cast(*void)(*mesh_pixels[0]))
+    }
+    SetTextureFilter(mesh_texture, 1)
+    for index: cast(s32)0..3 {
+        mesh[index].x -= 16.0
+        mesh[index].y += 22.0
+    }
+    RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
+        .{0.0, 0.0, 160.0, 120.0}, .{192, 192, 192, 255})
+    // A cached mesh sees updated pixels, and its opacity composites once.
+    for index: cast(s32)0..3 {
+        mesh_pixels[index * 4] = cast(u8)0
+        mesh_pixels[index * 4 + 1] = cast(u8)255
+        mesh_pixels[index * 4 + 2] = cast(u8)255
+        mesh_pixels[index * 4 + 3] = cast(u8)255
+        mesh[index].x += 18.0
+    }
+    UpdateTexture(mesh_texture, cast(*void)(*mesh_pixels[0]))
+    RasterImageMesh("", mesh_texture.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
+        .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 128})
     UnloadTexture(mesh_texture)
     // A shape's triangles are filled as one path: no seam along the edges
     // they share lets the background through.
@@ -212,7 +256,41 @@ main :: () -> s32 {
     SetTargetFPS(120)
     // The page shows a frame once it ends, so its pixels are read after.
     EndDrawing()
-    result := CanvasTestFinish()
+    result := CanvasTestFinish(page_mesh_draws)
+    if page_mesh_gl != 0 {
+        retained := SessionOpen()
+        unused MeshLossFrame(retained)
+        if !MeshLossFrame(retained) { CanvasTestFail(40) }
+        scope := WebScope()
+        extension := WebAsObject(WebCall1(page_mesh_gl, WebName("getExtension"),
+            WebText("WEBGL_lose_context")))
+        if extension == 0 { CanvasTestFail(41) }
+        else {
+            unused WebCall0(extension, WebName("loseContext"))
+            for attempt: cast(s32)0..49 {
+                if page_mesh_gl == 0 { break }
+                WebSleep(10)
+            }
+            if page_mesh_gl != 0 || MeshLossFrame(retained) { CanvasTestFail(42) }
+        }
+        WebEnd(scope)
+        SessionClose(retained)
+        restored := LoadTextureFromImage(CanvasImageFromRgba(*mesh_pixels[0], 2, 2))
+        mesh[0] = .{0.0, 0.0}; mesh[1] = .{10.0, 0.0}
+        mesh[2] = .{0.0, 10.0}; mesh[3] = .{10.0, 10.0}
+        BeginDrawing()
+        ClearBackground(Color.{0, 0, 0, 255})
+        RasterImageMesh("", restored.id, .{0.0, 0.0, 2.0, 2.0}, mesh[:], 2, 2,
+            .{0.0, 0.0, 160.0, 120.0}, .{255, 255, 255, 255})
+        EndDrawing()
+        if page_mesh_gl == 0 || page_mesh_draws == 0 || CanvasTestFront(0, 255, 255) == 0 {
+            CanvasTestFail(43)
+        }
+        UnloadTexture(restored)
+        BeginDrawing()
+        ClearBackground(Color.{255, 255, 255, 255})
+        EndDrawing()
+    }
     if IsKeyPressed(65) || IsKeyReleased(65) { CanvasTestFail(12) }
     // A frame in progress stays off the page until it ends.
     BeginDrawing()

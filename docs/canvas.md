@@ -12,12 +12,15 @@ them with Emscripten, and Ziran's Web bridge:
 
 Kryon contains no JavaScript or C. The browser hosts (`page_core.zi`,
 `page_paint.zi`, `page_texture.zi`, `page_font.zi`, `page_events.zi`,
-`page_files.zi`, `page_input.zi`, `canvas_audio_host.zi`, `dom_host.zi`) are
+`page_files.zi`, `page_input.zi`, `page_mesh.zi`, `canvas_audio_host.zi`, `dom_host.zi`) are
 written in Ziran and reach the page through `std/web.zi`; the one JavaScript
 file is the generic, Kryon-agnostic bridge in the Ziran repository.
 
-The backend uses a visible Canvas2D context directly. It does not use WebGL or
-a separate presentation canvas. The dedicated `canvas_raster.zi` provider
+The page uses a Canvas2D context. When WebGL is available, `Image` meshes share
+a private surface and adjacent meshes transfer to the page together. Other
+paint, clipping, target changes, readback and presentation flush that batch
+in order. Without WebGL, the same API uses the Canvas2D triangle painter.
+The dedicated `canvas_raster.zi` provider
 calls the Canvas modules directly, so retained widgets use the same paint
 queue, font selection, and clipping path as the native host. Project builds do
 not pass an entry to IR or C generation: the selected `_run` module owns
@@ -53,6 +56,11 @@ and 16 MiB of pixels; releasing or updating a texture invalidates its cached
 copies. Frame input queues hold at most 1024 events. Audio streams enqueue at
 most two pending buffers and report their actual readiness.
 
+Mesh acceleration retains at most 32 source textures and 16 MiB of source
+pixels; its drawing surface is limited to four million pixels and the device's
+own limits. Texture updates refresh cached pixels. A lost context releases
+its resources and invalidates retained paint before the next frame.
+
 Browser window position, monitor selection, and native window icons have no
 corresponding operation on the embedded canvas. Fullscreen and pointer lock
 requests remain subject to browser gesture permissions.
@@ -69,7 +77,10 @@ python3 tests/canvas_project_test.py
 The first command compiles the complete host and checks real pixels in a new
 headless Chromium process. It covers camera and nested clipping, UTF-8 input,
 texture updates and render targets, asynchronous PNG round trips, a real TTF
-font, frame yielding, and close/reopen ownership. It scrubs desktop display
+font, frame yielding, and close/reopen ownership. Mesh pixels, sampling,
+opacity and texture updates run at three display densities with acceleration
+both available and unavailable; the accelerated runs also lose and recreate
+their graphics context. It scrubs desktop display
 variables and controls only its own browser process. The other tests verify
 WebAudio and text/file behavior with deterministic browser-effect fixtures. The
 project test builds a real application manifest through Ziran, loads the

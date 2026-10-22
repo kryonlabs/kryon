@@ -289,9 +289,24 @@ PageNow :: () -> float64 {
     return result
 }
 
-PageContext :: () -> s32 {
+PagePaintFlush :: #type () -> void;
+PagePaintHooks :: struct {
+    flush: PagePaintFlush
+}
+page_paint_hooks: PagePaintHooks;
+
+PageFlushPaint :: () {
+    if page_paint_hooks.flush != null { page_paint_hooks.flush() }
+}
+
+PageDrawingContext :: () -> s32 {
     if page_target_count > 0 { return page_targets[page_target_count - 1].ctx }
     return page_ctx
+}
+
+PageContext :: () -> s32 {
+    PageFlushPaint()
+    return PageDrawingContext()
 }
 
 // The scale between the application's coordinates and the drawing surface.
@@ -408,6 +423,7 @@ PageMaxOne :: (value: s32) -> s32 {
 }
 
 PageResizeMain :: (requested_width: s32, requested_height: s32) {
+    PageFlushPaint()
     if page_closed || page_canvas == 0 { return }
     scope: s32 = WebScope()
     ratio: float64 = WebGetNumber(WebGlobal, page_names.device_pixel_ratio)
@@ -505,6 +521,7 @@ PageRefreshPixelRatio :: () {
 
 // Shows the frame drawn so far by copying the back canvas to the page.
 PagePresent :: () {
+    PageFlushPaint()
     if !PageIsOpen() || page_back_canvas == 0 || page_front_ctx == 0 { return }
     scope: s32 = WebScope()
     unused WebCall0(page_front_ctx, page_names.save)
@@ -726,6 +743,7 @@ PageFrame :: () {
 }
 
 PageClose :: () {
+    PageFlushPaint()
     if !page_open || page_closed { return }
     scope: s32 = WebScope()
     page_closed = true

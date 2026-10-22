@@ -11,6 +11,7 @@
 #import "page_font"
 #import "page_paint"
 #import "page_texture"
+#import "page_mesh"
 #import "raylib_clip"
 
 libm :: #system_library "m";
@@ -226,6 +227,9 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     }
     id: s32 = cast(s32)texture.id
     filter: s32 = PageTextureFilterFor(id)
+    if PageMeshDraw(id, source, points[:count], columns, rows, clip, tint, filter) {
+        return
+    }
     saved := BeginRasterClip(clip)
     for row: cast(s32)0..rows - 2 {
         for column: cast(s32)0..columns - 2 {
@@ -235,10 +239,10 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
             right_share: float32 = cast(float32)(column + 1) / cast(float32)(columns - 1)
             top_share: float32 = cast(float32)row / cast(float32)(rows - 1)
             bottom_share: float32 = cast(float32)(row + 1) / cast(float32)(rows - 1)
-            a := CanvasMeshSource(source, left_share, top_share)
-            b := CanvasMeshSource(source, right_share, top_share)
-            c := CanvasMeshSource(source, left_share, bottom_share)
-            d := CanvasMeshSource(source, right_share, bottom_share)
+            a := PageMeshSource(source, left_share, top_share)
+            b := PageMeshSource(source, right_share, top_share)
+            c := PageMeshSource(source, left_share, bottom_share)
+            d := PageMeshSource(source, right_share, bottom_share)
             CanvasMeshTriangle(id, points[top_left], a, points[top_left + 1], b,
                 points[bottom_left], c, tint, filter)
             CanvasMeshTriangle(id, points[top_left + 1], b, points[bottom_left + 1], d,
@@ -246,16 +250,6 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
         }
     }
     EndRasterClip(saved)
-}
-
-// The source point at a share of the source rectangle; a negative width or
-// height mirrors it, as for RasterImage.
-CanvasMeshSource :: (source: Rectangle, fx: float32, fy: float32) -> Vector2 {
-    x: float32 = source.x + source.width * fx
-    if source.width < 0.0 { x = source.x - source.width + source.width * fx }
-    y: float32 = source.y + source.height * fy
-    if source.height < 0.0 { y = source.y - source.height + source.height * fy }
-    return Vector2.{x, y}
 }
 
 CanvasMeshTriangle :: (id: s32, a: Vector2, a_source: Vector2, b: Vector2,

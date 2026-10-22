@@ -37,8 +37,9 @@ ReuseFrame :: (label: string, line_color: Color, image: bool,
     return EndFrameRetained(TestSession(), reuse, compare)
 }
 
-ImageFrame :: (asset_path: string, texture_id: u32) -> FrameEndResult {
+ImageFrame :: (asset_path: string, texture_id: u32, retain: bool = false) -> FrameEndResult {
     BeginFrame(TestSession(), cast(u64)23, Rectangle.{0.0, 0.0, 100.0, 80.0})
+    if retain && RetainFrame(TestSession()) { return EndFrameRetained(TestSession(), true) }
     PaintImage(TestSession(), -1, asset_path, texture_id,
         Rectangle.{0.0, 0.0, 20.0, 10.0},
         Rectangle.{10.0, 30.0, 20.0, 10.0},
@@ -134,6 +135,15 @@ main :: () -> s32 {
     if result.paint_unchanged || RetainedLineDraws() != lines + 1 { return 22 }
     result = Frame(changed_text, Color.{9, 2, 3, 255}, false)
     if !result.paint_unchanged || RetainedLineDraws() != lines + 1 { return 23 }
+    unused ImageFrame("ready.png", cast(u32)9)
+    result = ImageFrame("ready.png", cast(u32)9, true)
+    if !result.paint_unchanged { return 24 }
+    images := RetainedImageDraws()
+    PaintResourcesChanged()
+    result = ImageFrame("ready.png", cast(u32)9, true)
+    if result.paint_unchanged || RetainedImageDraws() != images + 1 { return 25 }
+    result = ImageFrame("ready.png", cast(u32)9, true)
+    if !result.paint_unchanged || RetainedImageDraws() != images + 1 { return 26 }
     if RetainedHostFailed() { return 15 }
     return 0
 }

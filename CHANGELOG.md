@@ -101,6 +101,7 @@
 
 ### Fixed
 
+- Keep warped-image animations smooth in browsers and refresh views when their images change.
 - Reading a clipboard image no longer waits two seconds when the application
   itself copied text, also on systems without the X-Resource library.
 
