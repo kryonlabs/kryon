@@ -10,7 +10,7 @@ for variant in good future identify-write; do
     if [ "$variant" = future ]; then define='--define APP_BAD_API'; fi
     if [ "$variant" = identify-write ]; then define='--define APP_IDENTIFY_WRITE'; fi
     "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/backend" \
-        --module-path "$repo/src/ui" --module-path "$ziran_root/std" $define \
+        --module-path "$repo/src/ui" --module-path "$ziran_root/std" --define KRYON_HOSTED_UI $define \
         --entry app_context_guest:main -o "$work/$variant.zib" "$repo/tests/app_context_guest.zi"
 done
 "$ziran" build --target=c --no-main --root "$repo/tests" --module-path "$repo/src/backend" \

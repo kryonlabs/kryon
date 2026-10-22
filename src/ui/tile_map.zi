@@ -87,7 +87,7 @@ TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32, pixel_snap: bool = fa
 #if #defined(KRYON_HOSTED_UI) {
     host_api :: #system_library "host_api";
     TileMapHostedHost :: (session: Session, props: TileMapProps) -> TileMapResult #foreign host_api;
-    AppSupportsHost :: (capability: string) -> bool #foreign host_api;
+    AppHost :: #import "app_context";
 }
 
 // The host decodes at most this many pictures, names and tile numbers in one
@@ -101,7 +101,7 @@ TileMap :: (session: Session, props: TileMapProps) -> TileMapResult {
         // A hosted game's board was one host call per cell, the larger part
         // of its frame on a phone. The host now draws the whole map in one.
         sampling := !props.nearest && props.nearest_tiles.count == 0
-        if !sampling { sampling = AppSupportsHost("tile_map.sampling") }
+        if !sampling { sampling = AppHost.AppSupports("tile_map.sampling") }
         if sampling && props.layers.count <= TILE_MAP_HOSTED_LIMIT && props.tiles.count <= TILE_MAP_HOSTED_LIMIT &&
         props.names.count <= TILE_MAP_HOSTED_LIMIT && props.nearest_tiles.count <= TILE_MAP_HOSTED_LIMIT {
             // Baking the fitted bounds also preserves pixel snapping on

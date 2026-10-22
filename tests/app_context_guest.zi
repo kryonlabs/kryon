@@ -2,6 +2,8 @@
 #import "app_protocol"
 #import "app_theme"
 #import "drawing_props"
+#import "tile_map"
+#import "geometry"
 #import "vec"
 
 #program_export
@@ -25,6 +27,11 @@ main :: () -> s32 {
         AppReply(BuilderFinish(reply))
         return 0
     }
+    // The map asks for optional sampling through the app service module.
+    // A duplicated declaration in tile_map would reject the whole bundle.
+    props := TileMapProps.{.bounds = Rectangle.{0.0, 0.0, 20.0, 10.0}, .columns = 2, .rows = 1, .nearest = true}
+    grid: TileMapResult = TileMap(AppSession(), props)
+    if grid.cell != 10.0 || grid.columns != 2 || grid.rows != 1 { return 6 }
     if AppSupports("missing.service") { return 1 }
     if AppService("missing.service", "") != "{\"status\":\"unavailable\"}" { return 2 }
     if !DocumentWrite("entry.json", "a saved entry") { return 3 }

@@ -7,8 +7,20 @@
 #import "c_string"
 #import "byte_text_linux"
 #import "drawing_props"
+#import "tile_map"
+#import "widget_codec"
 
 writes: s32;
+tile_calls: s32;
+tile_reply: WidgetTileMapResultCodec;
+
+Widgets :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    if TextFromCString(module) != "tile_map" || TextFromCString(function) != "TileMapHostedHost" || count != 2 { return 0 }
+    tile_calls += 1
+    result.* = WidgetEncodeTileMapResult(TileMapResult.{.cell = 10.0, .columns = 2, .rows = 1}, *tile_reply)
+    return 1
+}
 
 Allows :: (context: *void, name: string) -> bool {
     return name == "DocumentWriteHost"
@@ -31,6 +43,7 @@ Open :: (app: *AppContext, path: string, expected: string) -> bool {
     app.expected_id = expected
     app.allows = Allows
     app.services = Call
+    app.widgets = Widgets
     return AppContextOpen(app, bytes)
 }
 
@@ -40,7 +53,7 @@ main :: () -> s32 {
     accent: [6]u8 = .[cast(u8)97, cast(u8)99, cast(u8)99, cast(u8)101, cast(u8)110, cast(u8)116]
     if !SetStyleTokenColorBytes(accent[:], cast(u32)0x2e7d68ff) { return 11 }
     if !Open(*app, "good.zib", "diary") || writes != 0 { return 1 }
-    if !AppContextRun(*app, APP_FRAME) || writes != 1 { return 2 }
+    if !AppContextRun(*app, APP_FRAME) || writes != 1 || tile_calls != 1 { return 2 }
     if !AppContextRestart(*app) || writes != 1 { return 3 }
     if !AppContextRun(*app, APP_FRAME) || writes != 2 { return 4 }
     // The reply stays readable after the bundle reclaims its run's strings,
