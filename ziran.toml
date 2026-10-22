@@ -53,6 +53,7 @@ hosted_values = "src/backend/hosted_values.zi"
 bundle_names = "src/backend/bundle_names.zi"
 widget_codec = "src/backend/widget_codec.zi"
 widget_host = "src/backend/widget_host.zi"
+widget_palette = "src/ui/widget_palette.zi"
 # Direct widget modules let portable hosts select only their required effects.
 text_widget = "src/ui/text_widget.zi"
 text_props = "src/ui/text_props.zi"
