@@ -42,12 +42,14 @@ WidgetPalette :: struct {
     #import "style_sheet"
     #import "text_style"
     #import "system_theme"
+    #import "drawing_props"
 
     // The style the host had before a palette was used, and the rules built
     // for the last palette, so a palette used every frame is built once.
     widget_palette_saved: StyleRules;
     widget_palette_saved_resolver: TextStyleResolver;
     widget_palette_saved_has_resolver: bool;
+    widget_palette_saved_tokens: StyleTokenColors;
     widget_palette_active: bool;
     widget_palette_rules: StyleRules;
     widget_palette_built: WidgetPalette;
@@ -63,18 +65,11 @@ WidgetPalette :: struct {
     #program_export
     WidgetPaletteUse :: (session: Session, palette: WidgetPalette) -> bool {
         unused session
+        colors := SystemPalette.{.found = true, .background = palette.background,
+            .base = palette.base, .text = palette.text, .selected = palette.selected,
+            .selected_text = palette.selected_text, .border = palette.border,
+            .danger = palette.danger, .warning = palette.warning, .success = palette.success}
         if !widget_palette_ready || !WidgetPaletteSame(palette, widget_palette_built) {
-            colors: SystemPalette
-            colors.found = true
-            colors.background = palette.background
-            colors.base = palette.base
-            colors.text = palette.text
-            colors.selected = palette.selected
-            colors.selected_text = palette.selected_text
-            colors.border = palette.border
-            colors.danger = palette.danger
-            colors.warning = palette.warning
-            colors.success = palette.success
             widget_palette_rules = SystemPaletteRules(colors, palette.material)
             widget_palette_built = palette
             widget_palette_ready = true
@@ -85,9 +80,11 @@ WidgetPalette :: struct {
             widget_palette_saved = installed_rules
             widget_palette_saved_resolver = active_text_style_callback
             widget_palette_saved_has_resolver = has_text_style_resolver
+            widget_palette_saved_tokens = CaptureStyleTokenColors()
             widget_palette_active = true
         }
         installed_rules = widget_palette_rules
+        SystemPaletteTokens(colors)
         StyleCacheInstall()
         resolver: TextStyleResolver = ResolveInstalledTextStyle
         SetTextStyleResolver(resolver)
@@ -102,6 +99,7 @@ WidgetPalette :: struct {
         StyleCacheInstall()
         active_text_style_callback = widget_palette_saved_resolver
         has_text_style_resolver = widget_palette_saved_has_resolver
+        unused RestoreStyleTokenColors(widget_palette_saved_tokens)
         widget_palette_active = false
         return true
     }

@@ -112,7 +112,7 @@ tile_map_codec: WidgetTileMapPropsCodec;
 tile_map_result_codec: WidgetTileMapResultCodec;
 
 // The paint a frame queued, to compare a hosted map with one drawn directly.
-TileMapPaint :: struct { kind: s32; bounds: Rectangle; color: Color; asset: [64]u8 }
+TileMapPaint :: struct { kind: s32; bounds: Rectangle; color: Color; asset: [64]u8; smooth: bool }
 tile_map_paint: [32]TileMapPaint;
 
 TileMapPaintTake :: (session: Session) -> s32 {
@@ -120,7 +120,7 @@ TileMapPaintTake :: (session: Session) -> s32 {
     if count > 32 { return -1 }
     for index: cast(s32)0..count - 1 {
         paint := PendingPaintAt(session, index)
-        tile_map_paint[index] = .{.kind = paint.kind, .bounds = paint.bounds, .color = paint.color}
+        tile_map_paint[index] = .{.kind = paint.kind, .bounds = paint.bounds, .color = paint.color, .smooth = paint.smooth}
         unused CopyCString(paint.asset_path, tile_map_paint[index].asset[:])
     }
     return count
@@ -134,7 +134,7 @@ TileMapPaintSame :: (session: Session, count: s32) -> bool {
         if paint.kind != kept.kind || paint.bounds.x != kept.bounds.x || paint.bounds.y != kept.bounds.y ||
         paint.bounds.width != kept.bounds.width || paint.bounds.height != kept.bounds.height ||
         paint.color.r != kept.color.r || paint.color.g != kept.color.g || paint.color.b != kept.color.b ||
-        paint.color.a != kept.color.a || paint.asset_path != TextFromCString(*tile_map_paint[index].asset[0]) { return false }
+        paint.color.a != kept.color.a || paint.smooth != kept.smooth || paint.asset_path != TextFromCString(*tile_map_paint[index].asset[0]) { return false }
     }
     return true
 }
@@ -633,6 +633,9 @@ main :: () -> s32 {
     if !WidgetHostSupports("p0123456789abcdef_widget_palette", "WidgetPaletteHostedHost") ||
     !WidgetHostSupports("widget_palette", "WidgetPaletteRestoreHostedHost") { return 74 }
     host_rules := ActiveStyleRules().count
+    host_tokens := CaptureStyleTokenColors()
+    original_canvas := StyleTokenColorOr("canvas", Color.{1, 2, 3, 4})
+    original_accent := StyleTokenColorOr("accent", Color.{5, 6, 7, 8})
     packed: [9]u32 = .[cast(u32)0x262a29ff, cast(u32)0x3a3e3dff, cast(u32)0xe0e4e3ff, cast(u32)0x34b930ff,
     cast(u32)0x00210cff, cast(u32)0x505352ff, cast(u32)0xe60000ff, cast(u32)0xf2b632ff, cast(u32)0x34b930ff]
     colors: [11]HostValue
@@ -648,6 +651,8 @@ main :: () -> s32 {
     if Call("widget_palette", "WidgetPaletteHostedHost", wrong[:], *result) != 0 ||
     Call("widget_palette", "WidgetPaletteHostedHost", colors[:10], *result) != 0 { return 76 }
     if Call("widget_palette", "WidgetPaletteHostedHost", colors[:], *result) != 1 || result.integer != 1 { return 77 }
+    if StyleTokenColor("canvas").r != cast(u8)0x26 || StyleTokenColor("surface").r != cast(u8)0x3a ||
+    StyleTokenColor("text").r != cast(u8)0xe0 || StyleTokenColor("accent").g != cast(u8)0xb9 { return 82 }
     themed := TextStyleFor(TextStyleRequest.{}, StyleData.{})
     if themed.foreground != cast(u32)0xe0e4e3ff || ActiveStyleRules().count == host_rules { return 78 }
     if Call("widget_palette", "WidgetPaletteRestoreHostedHost", restore[:], *result) != 1 ||
@@ -656,5 +661,33 @@ main :: () -> s32 {
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk || ActiveStyleRules().count != host_rules ||
     TextStyleFor(TextStyleRequest.{}, StyleData.{}).foreground == cast(u32)0xe0e4e3ff { return 81 }
+    restored_canvas := StyleTokenColorOr("canvas", Color.{1, 2, 3, 4})
+    restored_accent := StyleTokenColorOr("accent", Color.{5, 6, 7, 8})
+    if CaptureStyleTokenColors().count != host_tokens.count || restored_canvas.r != original_canvas.r ||
+    restored_canvas.a != original_canvas.a || restored_accent.g != original_accent.g || restored_accent.a != original_accent.a { return 83 }
+    // Sampling overrides survive the bounded host codec with exact paint parity.
+    paths: [2]string = .["assets/photo.png", "assets/photo.png"]
+    mixed_layers: [6]s32 = .[0, 1, 0, 1, -1, 0]
+    nearest: [1]s32 = .[0]
+    filtered := map
+    filtered.bounds.width = 91.0
+    filtered.bounds.height = 43.0
+    filtered.pixel_snap = true
+    filtered.tiles = paths[:]
+    filtered.layers = mixed_layers[:]
+    filtered.nearest_tiles = nearest[:]
+    BeginFrame(session, cast(u64)8, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto)
+    arguments[1] = WidgetEncodeTileMapProps(filtered, *tile_map_codec)
+    if Call("tile_map", "TileMapHostedHost", arguments[:2], *result) != 1 { return 84 }
+    filtered_grid := WidgetDecodeTileMapResult(result, *tile_map_result_codec)
+    filtered_count := TileMapPaintTake(session)
+    if filtered_grid.cell != 21.0 || filtered_count != 6 || tile_map_paint[1].smooth || !tile_map_paint[2].smooth { return 85 }
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 86 }
+    BeginFrame(session, cast(u64)8, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    unused TileMap(session, filtered)
+    if !TileMapPaintSame(session, filtered_count) { return 87 }
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 88 }
     return 0
 }

@@ -9931,7 +9931,7 @@ WidgetValidSvgIconProps :: (value: HostValue) -> bool {
 }
 
 WidgetTileMapPropsCodec :: struct {
-    fields: [10]HostField
+    fields: [13]HostField
     bounds: WidgetRectangleCodec
     tiles_values: [1024]HostValue
     tiles_decoded: [1024]string
@@ -9940,6 +9940,8 @@ WidgetTileMapPropsCodec :: struct {
     layers_values: [1024]HostValue
     layers_decoded: [1024]s32
     fill: WidgetColorCodec
+    nearest_tiles_values: [1024]HostValue
+    nearest_tiles_decoded: [1024]s32
 }
 
 WidgetEncodeTileMapProps :: (data: TileMapProps, codec: *WidgetTileMapPropsCodec) -> HostValue {
@@ -9947,7 +9949,7 @@ WidgetEncodeTileMapProps :: (data: TileMapProps, codec: *WidgetTileMapPropsCodec
     value.kind = cast(s32)HostRecord
     value.type_name = HostTextData("TileMapProps")
     value.fields = *codec.fields[0]
-    value.field_count = 10
+    value.field_count = 13
     codec.fields[0].name = HostTextData("key")
     codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
     codec.fields[1].name = HostTextData("bounds")
@@ -10001,6 +10003,23 @@ WidgetEncodeTileMapProps :: (data: TileMapProps, codec: *WidgetTileMapPropsCodec
     codec.fields[8].value = WidgetEncodeColor(data.fill, *codec.fill)
     codec.fields[9].name = HostTextData("label")
     codec.fields[9].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
+    codec.fields[10].name = HostTextData("pixel_snap")
+    codec.fields[10].value = HostScalar("bool", ifx data.pixel_snap then 1 else 0)
+    codec.fields[11].name = HostTextData("nearest")
+    codec.fields[11].value = HostScalar("bool", ifx data.nearest then 1 else 0)
+    codec.fields[12].name = HostTextData("nearest_tiles")
+    codec.fields[12].value.kind = cast(s32)HostSlice
+    codec.fields[12].value.type_name = HostTextData("[]s32")
+    codec.fields[12].value.length = cast(usize)data.nearest_tiles.count
+    if codec.fields[12].value.length > cast(usize)1024 { codec.fields[12].value.length = cast(usize)1024 }
+    codec.fields[12].value.elements = *codec.nearest_tiles_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[12].value.length {
+            codec.nearest_tiles_values[index] = HostScalar("s32", cast(s64)data.nearest_tiles[index])
+            index += cast(usize)1
+        }
+    }
     return value
 }
 
@@ -10085,6 +10104,31 @@ WidgetDecodeTileMapProps :: (value: HostValue, codec: *WidgetTileMapPropsCodec) 
         field_at := HostFieldAt(value, 9, "label")
         if field_at >= 0 {
             data.label = TextFromBytes(BytesFromPointer(value.fields[field_at].value.data, cast(u64)value.fields[field_at].value.length))
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "pixel_snap")
+        if field_at >= 0 {
+            data.pixel_snap = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "nearest")
+        if field_at >= 0 {
+            data.nearest = value.fields[field_at].value.integer != 0
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 12, "nearest_tiles")
+        if field_at >= 0 {
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    codec.nearest_tiles_decoded[index] = cast(s32)value.fields[field_at].value.elements[index].integer
+                    index += cast(usize)1
+                }
+            }
+            // Slice storage is attached by the rendering effect after decoding.
         }
     }
     return data
@@ -10176,6 +10220,32 @@ WidgetValidTileMapProps :: (value: HostValue) -> bool {
         field_at := HostFieldAt(value, 9, "label")
         if field_at >= 0 {
             if !HostScalarValid(value.fields[field_at].value, "string", cast(s32)HostString) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 10, "pixel_snap")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 11, "nearest")
+        if field_at >= 0 {
+            if !HostScalarValid(value.fields[field_at].value, "bool", cast(s32)HostInteger) { return false }
+        }
+    }
+    {
+        field_at := HostFieldAt(value, 12, "nearest_tiles")
+        if field_at >= 0 {
+            if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]s32" ||
+                value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
+            {
+                index: usize = 0
+                while index < value.fields[field_at].value.length {
+                    if !HostScalarValid(value.fields[field_at].value.elements[index], "s32", cast(s32)HostInteger) { return false }
+                    index += cast(usize)1
+                }
+            }
         }
     }
     return true

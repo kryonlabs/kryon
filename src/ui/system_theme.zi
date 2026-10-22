@@ -431,8 +431,17 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = false) -> Sheet.
 #program_export
 SystemPaletteInstall :: (palette: SystemPalette, material: bool = false) -> bool {
     if !Sheet.InstallStyleRules(SystemPaletteRules(palette, material)) { return false }
+    SystemPaletteTokens(palette)
+    return true
+}
+
+// Semantic compositions and standard widgets receive the same palette.
+#program_export
+SystemPaletteTokens :: (palette: SystemPalette) {
     bg := palette.background; fg := palette.text
     Token("canvas", bg); Token("surface", palette.base); Token("card", palette.base); Token("text", fg)
     Token("muted", CssMix(fg, bg, 0.4)); Token("button", CssMix(bg, fg, 0.10)); Token("border", palette.border); Token("focus-ring", palette.selected)
-    return true
+    Token("accent", palette.selected); Token("link", palette.selected)
+    Token("accent-soft", CssMix(bg, palette.selected, 0.18))
+    Token("danger", palette.danger); Token("warning", palette.warning); Token("success", palette.success)
 }

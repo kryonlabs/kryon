@@ -363,6 +363,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         map.tiles = widget_tile_map_codec.tiles_decoded[:HostSliceLength(props, 4, "tiles")]
         map.names = widget_tile_map_codec.names_decoded[:HostSliceLength(props, 5, "names")]
         map.layers = widget_tile_map_codec.layers_decoded[:HostSliceLength(props, 6, "layers")]
+        map.nearest_tiles = widget_tile_map_codec.nearest_tiles_decoded[:HostSliceLength(props, 12, "nearest_tiles")]
         // Each picture a cell shows passes the asset policy once, as each of
         // those cells' Images did; a map showing one the bundle may not draw
         // is refused as that Image was.

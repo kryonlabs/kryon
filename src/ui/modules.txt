@@ -50,6 +50,7 @@ grid_props.zi
 group.zi
 icon.zi
 image.zi
+image_mesh.zi
 image_props.zi
 image_raster.zi
 image_widget.zi

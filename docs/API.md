@@ -93,6 +93,23 @@ rotation and the style radius do not apply, and a grid with too few points
 draws nothing. Points are copied when the image is queued, at most 4096 per
 image (256 through a portable bundle's hosted `Image`).
 
+`image_mesh.ImageMeshQuad(bounds, camera, points)` constructs a four-corner
+mesh for the standard `ImageProps.mesh`. It uses the same 2D `Camera` as
+`WorldToScreen`, with caller-owned space for four points; too little space
+produces an empty mesh. Rotation and scale stay on the standard image surface.
+
+`TileMapProps.pixel_snap` fits and positions whole-pixel cells. `nearest` selects
+nearest-neighbour sampling for the whole map; `nearest_tiles` selects individual
+tile indices while the rest remain smooth. Sampling survives the hosted codec.
+A hosted map uses batched sampling only when its host advertises
+`tile_map.sampling`; older hosts draw the same standard Images individually.
+Pixel snapping also works on older hosts because the bundle fits the bounds.
+
+`WidgetPaletteUse` scopes semantic colors along with widget rules. Hosted
+`AppThemeColor` calls and compositions using canvas, surface, text, border and
+accent see the same palette. `WidgetPaletteRestore` restores the complete prior
+token set, including host-specific colors and the absence of unset tokens.
+
 Hosts call `PaintResourcesChanged()` when replacing raster resources without
 changing widget props. Retained frames then compose and paint again, including
 when a browser graphics context resets or an app updates its image assets.

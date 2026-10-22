@@ -54,7 +54,7 @@ color_max :: (a: float32, b: float32) -> float32 {
 }
 
 color_clamp :: (value: float32, minimum: float32,
-                maximum: float32) -> float32 {
+    maximum: float32) -> float32 {
     if value < minimum { return minimum }
     if value > maximum { return maximum }
     return value
@@ -77,7 +77,7 @@ color_hue_to_rgb :: (p: float32, q: float32, t: float32) -> float32 {
 }
 
 color_from_hsl :: (hue: float32, saturation: float32, lightness: float32,
-                   alpha: u8) -> Color {
+    alpha: u8) -> Color {
     hue = color_clamp(hue, 0.0, 1.0)
     saturation = color_clamp(saturation, 0.0, 1.0)
     lightness = color_clamp(lightness, 0.0, 1.0)
@@ -138,13 +138,19 @@ DarkenColor :: (color: Color, amount: s32) -> Color {
     return AdjustedColorLightness(color, -amount)
 }
 
-#scope_file
+#scope_export
 StyleColorToken :: struct {
     name: [64]u8
     length: s32
     color: u32
 }
 
+StyleTokenColors :: struct {
+    items: [128]StyleColorToken
+    count: s32
+}
+
+#scope_file
 style_color_tokens: [128]StyleColorToken;
 style_color_token_count: s32;
 
@@ -159,6 +165,22 @@ StyleTokenNameMatches :: (stored: StyleColorToken, name: []u8) -> bool {
 }
 
 #scope_export
+#program_export
+CaptureStyleTokenColors :: () -> StyleTokenColors {
+    return StyleTokenColors.{.items = style_color_tokens, .count = style_color_token_count}
+}
+
+#program_export
+RestoreStyleTokenColors :: (snapshot: StyleTokenColors) -> bool {
+    if snapshot.count < 0 || snapshot.count > 128 { return false }
+    for index: cast(s32)0..snapshot.count - 1 {
+        if snapshot.items[index].length <= 0 || snapshot.items[index].length > 64 { return false }
+    }
+    style_color_tokens = snapshot.items
+    style_color_token_count = snapshot.count
+    return true
+}
+
 #program_export
 ClearStyleTokenColors :: () {
     style_color_token_count = 0

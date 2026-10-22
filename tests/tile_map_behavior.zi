@@ -2,14 +2,12 @@
 // bounds, each cell's rectangle, and the cell under a point.
 #import "geometry"
 #import "tile_map"
+#import "image_mesh"
+#import "image_props"
 
-c :: #system_library "c";
-TestExit :: (status: s32) #foreign c "exit";
-
+failure: s32;
 Require :: (condition: bool, code: s32) {
-    if !condition {
-        TestExit(code)
-    }
+    if !condition && failure == 0 { failure = code }
 }
 
 #program_export
@@ -29,5 +27,17 @@ main :: () -> s32 {
     Require(TileMapCellAt(grid, 335.0, 260.0) == -1, 8)
     // An empty grid has no cells.
     Require(TileMapFit(Rectangle.{0.0, 0.0, 100.0, 100.0}, 0, 12).cell == 0.0, 9)
-    return 0
+    snapped := TileMapFit(Rectangle.{1.75, 2.75, 101.0, 80.0}, 3, 2, true)
+    Require(snapped.cell == 33.0 && snapped.board.x == 2.0 && snapped.board.y == 9.0, 10)
+    Require(TileMapCell(snapped, 1).x == TileMapCell(snapped, 0).x + snapped.cell, 11)
+    Require(TileMapFit(Rectangle.{0.0, 0.0, 1.0, 1.0}, 3, 3, true).cell == 0.0, 12)
+    points: [4]Vector2
+    mesh := ImageMeshQuad(Rectangle.{10.0, 20.0, 20.0, 10.0},
+        Camera.{.target = Vector2.{20.0, 25.0}, .offset = Vector2.{100.0, 200.0}, .zoom = 2.0, .rotation = 90.0}, points[:])
+    Require(mesh.columns == 2 && mesh.rows == 2 && mesh.points.count == 4, 13)
+    Require(points[0].x > 109.99 && points[0].x < 110.01 && points[0].y > 179.99 && points[0].y < 180.01, 14)
+    Require(points[3].x > 89.99 && points[3].x < 90.01 && points[3].y > 219.99 && points[3].y < 220.01, 15)
+    short: [3]Vector2
+    Require(ImageMeshQuad(Rectangle.{}, Camera.{}, short[:]).points.count == 0, 16)
+    return failure
 }

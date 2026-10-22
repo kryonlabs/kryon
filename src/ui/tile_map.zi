@@ -32,6 +32,13 @@ TileMapProps :: struct {
     fill: Color
     // Names the whole grid for accessibility.
     label: string
+    // Whole logical pixels for adjoining tile edges; fractional cells remain
+    // the default for illustrations and maps that need continuous scaling.
+    pixel_snap: bool
+    // Nearest-neighbour sampling for pixel art. Individual tile indices may
+    // opt in while the rest keep smooth scaling.
+    nearest: bool
+    nearest_tiles: []s32
 }
 
 TileMapResult :: struct {
@@ -59,15 +66,20 @@ TileMapCellAt :: (grid: TileMapResult, x: float32, y: float32) -> s32 {
 }
 
 // The largest square cells that fit the bounds, with the grid centred.
-TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32) -> TileMapResult {
+TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32, pixel_snap: bool = false) -> TileMapResult {
     result := TileMapResult.{.columns = columns, .rows = rows}
     if columns <= 0 || rows <= 0 { return result }
     cell := bounds.width / cast(float32)columns
     if cell > bounds.height / cast(float32)rows { cell = bounds.height / cast(float32)rows }
     if cell < 0.0 { cell = 0.0 }
+    if pixel_snap { cell = cast(float32)cast(s32)cell }
     width := cell * cast(float32)columns
     height := cell * cast(float32)rows
     result.board = Rectangle.{bounds.x + (bounds.width - width) / 2.0, bounds.y + (bounds.height - height) / 2.0, width, height}
+    if pixel_snap {
+        result.board.x = cast(float32)cast(s32)result.board.x
+        result.board.y = cast(float32)cast(s32)result.board.y
+    }
     result.cell = cell
     return result
 }
@@ -75,6 +87,7 @@ TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32) -> TileMapResult {
 #if #defined(KRYON_HOSTED_UI) {
     host_api :: #system_library "host_api";
     TileMapHostedHost :: (session: Session, props: TileMapProps) -> TileMapResult #foreign host_api;
+    AppSupportsHost :: (capability: string) -> bool #foreign host_api;
 }
 
 // The host decodes at most this many pictures, names and tile numbers in one
@@ -82,16 +95,21 @@ TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32) -> TileMapResult {
 TILE_MAP_HOSTED_LIMIT :: 1024
 
 TileMap :: (session: Session, props: TileMapProps) -> TileMapResult {
+    grid := TileMapFit(props.bounds, props.columns, props.rows, props.pixel_snap)
+    if grid.cell <= 0.0 { return grid }
     #if #defined(KRYON_HOSTED_UI) {
         // A hosted game's board was one host call per cell, the larger part
         // of its frame on a phone. The host now draws the whole map in one.
-        if props.layers.count <= TILE_MAP_HOSTED_LIMIT && props.tiles.count <= TILE_MAP_HOSTED_LIMIT &&
-        props.names.count <= TILE_MAP_HOSTED_LIMIT {
+        sampling := !props.nearest && props.nearest_tiles.count == 0
+        if !sampling { sampling = AppSupportsHost("tile_map.sampling") }
+        if sampling && props.layers.count <= TILE_MAP_HOSTED_LIMIT && props.tiles.count <= TILE_MAP_HOSTED_LIMIT &&
+        props.names.count <= TILE_MAP_HOSTED_LIMIT && props.nearest_tiles.count <= TILE_MAP_HOSTED_LIMIT {
+            // Baking the fitted bounds also preserves pixel snapping on
+            // older hosts that predate the optional TileMap properties.
+            props.bounds = grid.board
             return TileMapHostedHost(session, props)
         }
     }
-    grid := TileMapFit(props.bounds, props.columns, props.rows)
-    if grid.cell <= 0.0 { return grid }
     if props.fill.a != cast(u8)0 {
         unused Box(session, BoxProps.{.key = props.key, .bounds = grid.board, .fill = props.fill})
     }
@@ -102,9 +120,13 @@ TileMap :: (session: Session, props: TileMapProps) -> TileMapResult {
             if cast(s64)index >= props.layers.count { return grid }
             tile := props.layers[index]
             if tile < 0 || cast(s64)tile >= props.tiles.count { continue }
+            nearest := props.nearest
+            for sharp: props.nearest_tiles {
+                if tile == sharp { nearest = true; break }
+            }
             Image(session, ImageProps.{.key = WidgetPartKey(props.key, index), .asset_path = props.tiles[tile],
                     .alt_text = ifx cast(s64)tile < props.names.count then props.names[tile] else props.label,
-                    .bounds = TileMapCell(grid, at), .fit = ImageFit.ImageFitContain, .smooth = true})
+                    .bounds = TileMapCell(grid, at), .fit = ImageFit.ImageFitContain, .smooth = !nearest})
         }
     }
     return grid

@@ -1,0 +1,16 @@
+// A transformed image remains Image(ImageProps). This helper constructs its
+// four screen-space corners using the same Camera as other 2D geometry.
+#import "geometry"
+#import "image_props"
+
+ImageMeshQuad :: (bounds: Rectangle, camera: Camera, points: []Vector2) -> ImageMesh {
+    mesh := ImageMesh.{.columns = 2, .rows = 2}
+    if points.count < 4 { return mesh }
+    for corner: cast(s32)0..3 {
+        point := Vector2.{bounds.x + (ifx corner % 2 == 0 then 0.0 else bounds.width),
+            bounds.y + (ifx corner < 2 then 0.0 else bounds.height)}
+        points[corner] = WorldToScreen(point, camera)
+    }
+    mesh.points = points[:4]
+    return mesh
+}
