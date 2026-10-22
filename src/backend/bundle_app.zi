@@ -15,6 +15,7 @@
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "scroll_device"
 #import "key_input"
 #import "text_input_props"
 #import "system_clipboard"
@@ -223,6 +224,8 @@ BundleAppFrame :: (host: *BundleApp, bounds: Rectangle, pointer: PointerFrame,
     TreePointerUpdate(app.session, pointer)
     TreeSecondaryPointerUpdate(app.session, secondary)
     PointerWheelSend(app.session, pointer.x, pointer.y, wheel)
+    BeginScrollFrame(app.session, Vector2.{pointer.x, pointer.y}, pointer.pressed,
+        pointer.down, pointer.released, wheel, seconds)
     KeyboardModifiersSend(app.session, modifiers)
     if key != 0 { KeyboardSend(app.session, key) }
     app.bounds = bounds

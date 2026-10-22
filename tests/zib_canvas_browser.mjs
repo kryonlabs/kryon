@@ -139,7 +139,27 @@ try {
     assert(duringTouch - beforeTouch >= 3, 'Touch hold did not repeat: ' + diagnostics);
     await delay(300);
     assert.equal(diagnostics.split('Hosted swipe step').length, afterCancel, 'Touch cancellation left movement held');
-    console.log('Browser hosted ZIB images, widgets, persistence, app isolation and invalid replacement passed');
+    await call('Emulation.setDeviceMetricsOverride', {width: 1000, height: 800, deviceScaleFactor: 1, mobile: false});
+    await delay(500);
+    const endCount = () => diagnostics.split('Hosted scroll reached end').length;
+    const scrollOrigin = await evaluate('(()=>{const r=document.querySelector("canvas").getBoundingClientRect();return {x:r.x,y:r.y};})()');
+    const beforeWheel = endCount();
+    await call('Input.dispatchMouseEvent', {type: 'mouseMoved', x: scrollOrigin.x + 180, y: scrollOrigin.y + 510});
+    await delay(100);
+    await call('Input.dispatchMouseEvent', {type: 'mouseWheel', x: scrollOrigin.x + 180, y: scrollOrigin.y + 510, deltaX: 0, deltaY: 1200});
+    for (let end = Date.now() + 5000; endCount() === beforeWheel && Date.now() < end;) await delay(20);
+    assert(endCount() > beforeWheel, 'Hosted scroll wheel could not reach the last row: ' + diagnostics);
+    await call('Input.dispatchMouseEvent', {type: 'mouseWheel', x: scrollOrigin.x + 180, y: scrollOrigin.y + 510, deltaX: 0, deltaY: -1200});
+    await delay(600);
+    const beforeDrag = endCount();
+    await call('Input.dispatchMouseEvent', {type: 'mousePressed', x: scrollOrigin.x + 335, y: scrollOrigin.y + 470, button: 'left', buttons: 1, clickCount: 1});
+    await delay(100);
+    await call('Input.dispatchMouseEvent', {type: 'mouseMoved', x: scrollOrigin.x + 335, y: scrollOrigin.y + 574, buttons: 1});
+    await delay(100);
+    await call('Input.dispatchMouseEvent', {type: 'mouseReleased', x: scrollOrigin.x + 335, y: scrollOrigin.y + 574, button: 'left', buttons: 0, clickCount: 1});
+    for (let end = Date.now() + 5000; endCount() === beforeDrag && Date.now() < end;) await delay(20);
+    assert(endCount() > beforeDrag, 'Hosted scrollbar could not reach the last row: ' + diagnostics);
+    console.log('Browser hosted ZIB images, widgets, persistence, isolation, replacement and scrolling passed');
   } else if(mode==='gallery') {
     while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zib-open")'))await delay(100);
     const document=await call('DOM.getDocument');
