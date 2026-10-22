@@ -226,3 +226,13 @@ key codes, modifier bits and `PointInBounds` without loading the native tree
 implementation. Existing `tree_input` imports retain that surface.
 `kryon/file_picker` exposes the native file chooser; `kryon/app_theme` reads
 optional host theme colours from a portable app.
+
+## Cover carousels
+
+`kryon/carousel` provides `Carousel(session, props, items, state)` for a
+full-cover browser. Keep a `CarouselState`, pass `CarouselItem` values with
+portrait and landscape art, an optional logo and caption, and an action
+label. It returns the activated item index, or -1. Swipe, wheel, arrows and
+Enter/Space share one selection; only that selection exposes an action.
+The caller keeps game launching and any footer controls. `CarouselArtwork`
+paints the same cover composition for a native loading screen.

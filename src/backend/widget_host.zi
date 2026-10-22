@@ -124,6 +124,7 @@ widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 // capabilities before it runs.
 WidgetHostSupports :: (module: string, function: string) -> bool {
     return (ModuleName(module, "pointer_input") && function == "PollPointer") ||
+    (ModuleName(module, "carousel") && function == "CarouselWheelHostedHost") ||
     (ModuleName(module, "text_widget") && function == "TextHostedHost") ||
     (ModuleName(module, "text_widget") && function == "TextLinkAtHostedHost") ||
     (ModuleName(module, "text_measure") && function == "TextWidthHostedHost") ||
@@ -316,6 +317,13 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         return 0
     }
     props := arguments[1]
+    if ModuleName(owner, "carousel") && name == "CarouselWheelHostedHost" && WidgetValidRectangle(props) {
+        rectangle_codec: WidgetRectangleCodec
+        result.* = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"),
+            .real = cast(float64)PointerWheelTake(session, WidgetDecodeRectangle(props, *rectangle_codec))}
+        return 1
+    }
+
     if ModuleName(owner, "modal_frame_widget") && name == "ModalFrameHostedHost" && WidgetValidModalFrameProps(props) {
         return WidgetHostModalFrame(session, props, result)
     }

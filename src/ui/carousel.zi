@@ -1,0 +1,162 @@
+// A cover browser shared by game launchers and title screens. The caller
+// owns the selected page; assets and actions remain application data.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "image_widget"
+#import "image_props"
+#import "button_widget"
+#import "button_props"
+#import "control_props"
+#import "box_widget"
+#import "box_props"
+#import "text_widget"
+#import "text_props"
+#import "text_align"
+#if #defined(KRYON_HOSTED_UI) {
+    host_api :: #system_library "host_api";
+    CarouselWheelHostedHost :: (session: Session, bounds: Rectangle) -> float32 #foreign host_api;
+    CarouselWheel :: (session: Session, bounds: Rectangle) -> float32 { return CarouselWheelHostedHost(session, bounds) }
+} else {
+    #import "tree_input"
+    CarouselWheel :: (session: Session, bounds: Rectangle) -> float32 { return PointerWheelTake(session, bounds) }
+}
+#import "joystick"
+
+CarouselItem :: struct {
+    label: string
+    portrait: string
+    landscape: string
+    logo: string
+    caption: string
+    action: string
+    disabled: bool
+}
+
+CarouselState :: struct {
+    selected: s32
+    position: float32
+    time: float64
+    wheel_time: float64
+}
+
+CarouselProps :: struct {
+    key: u64
+    bounds: Rectangle
+    now: float64
+    key_pressed: s32
+    label: string
+    previous_label: string
+    next_label: string
+    scale: float32
+    dark: bool
+}
+
+// A whole cover, also usable while a native game is loading.
+CarouselArtwork :: (session: Session, bounds: Rectangle, key: u64,
+    art: string, logo: string, label: string) -> Rectangle {
+    Image(session, ImageProps.{.key = key, .asset_path = art, .alt_text = label,
+            .bounds = bounds, .fit = ImageFit.ImageFitCover, .smooth = true})
+    width := ifx bounds.height > bounds.width then bounds.width * 0.88 else bounds.height * 0.95
+    if width > 760.0 { width = 760.0 }
+    area := Rectangle.{bounds.x + (bounds.width - width) / 2.0,
+        bounds.y + bounds.height * 0.05, width, width * 0.36}
+    if logo != "" {
+        Image(session, ImageProps.{.key = key + 1, .asset_path = logo, .alt_text = label,
+                .bounds = area, .fit = ImageFit.ImageFitContain, .smooth = true})
+    }
+    return area
+}
+
+CarouselSelect :: (state: *CarouselState, count: s32, delta: s32, now: float64) {
+    state.selected += delta
+    if state.selected >= count { state.selected = count - 1 }
+    if state.selected < 0 { state.selected = 0 }
+    elapsed := cast(float32)(now - state.time)
+    state.time = now
+    if elapsed < 0.0 || elapsed > 0.2 { elapsed = 0.016 }
+    rate := elapsed * 10.0
+    if rate > 1.0 { rate = 1.0 }
+    state.position += (cast(float32)state.selected - state.position) * rate
+    distance := state.position - cast(float32)state.selected
+    if distance < 0.002 && distance > -0.002 { state.position = cast(float32)state.selected }
+}
+
+// Returns the activated item, or -1. Pointer, swipe, wheel and keyboard
+// select the same page; only the selected page exposes an action.
+Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
+    state: *CarouselState) -> s32 {
+    if items.count == 0 || props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return -1 }
+    bounds := props.bounds
+    scale := ifx props.scale > 0.0 then props.scale else 1.0
+    count := cast(s32)items.count
+    delta: s32
+    gesture := SwipeArea(session, SwipeAreaProps.{.key = props.key, .bounds = bounds,
+            .label = props.label, .now = props.now, .min_distance = 48.0 * scale})
+    if gesture.swiped == 0 || props.key_pressed == 262 { delta = 1 }
+    if gesture.swiped == 2 || props.key_pressed == 263 { delta = -1 }
+    wheel := CarouselWheel(session, bounds)
+    if wheel != 0.0 && props.now - state.wheel_time > 0.18 {
+        delta = ifx wheel < 0.0 then 1 else -1
+        state.wheel_time = props.now
+    }
+    CarouselSelect(state, count, delta, props.now)
+    activated: s32 = -1
+    if (props.key_pressed == 257 || props.key_pressed == 32) && !items[state.selected].disabled {
+        activated = state.selected
+    }
+    for page: cast(s32)0..count - 1 {
+        offset := (cast(float32)page - state.position) * bounds.width
+        if offset <= -bounds.width || offset >= bounds.width { continue }
+        item := items[page]
+        key := props.key + cast(u64)(32 + page * 8)
+        cover := Rectangle.{bounds.x + offset, bounds.y, bounds.width, bounds.height}
+        art := ifx bounds.height > bounds.width || item.landscape == "" then item.portrait else item.landscape
+        logo := CarouselArtwork(session, cover, key, art, item.logo, item.label)
+        if item.caption != "" {
+            tag_width := ifx item.logo != "" then 200.0 * scale else bounds.width - 120.0 * scale
+            tag := Rectangle.{cover.x + (cover.width - tag_width) / 2.0,
+                ifx item.logo != "" then logo.y + logo.height + 4.0 * scale else bounds.y + 40.0 * scale,
+                tag_width, 44.0 * scale}
+            unused Box(session, BoxProps.{.key = key + 2, .bounds = tag,
+                    .fill = ifx props.dark then Color.{28, 75, 53, 240} else Color.{229, 241, 231, 245}, .radius = 22.0 * scale})
+            Text(session, TextProps.{.key = key + 3, .bounds = tag, .text = item.caption,
+                    .font = cast(s32)(22.0 * scale),
+                    .align = TextAlign.TextAlignCenter, .vertical_align = TextAlign.TextAlignCenter})
+        }
+    }
+    // Keep the one action still while covers slide underneath it.
+    item := items[state.selected]
+    action_width := 260.0 * scale
+    if action_width > bounds.width - 64.0 * scale { action_width = bounds.width - 64.0 * scale }
+    action_y := bounds.y + bounds.height - 196.0 * scale
+    if action_y < bounds.y + bounds.height * 0.5 { action_y = bounds.y + bounds.height * 0.5 }
+    if Button(session, ButtonProps.{.key = props.key + 1,
+            .bounds = Rectangle.{bounds.x + (bounds.width - action_width) / 2.0, action_y, action_width, 64.0 * scale},
+            .label = item.action, .disabled = item.disabled,
+            .tone = ButtonTone.ButtonToneSuccess, .emphasis = ButtonEmphasis.ButtonEmphasisFilled}) != 0 {
+        activated = state.selected
+    }
+    middle := bounds.y + bounds.height * 0.5 - 22.0 * scale
+    if state.selected > 0 && Button(session, ButtonProps.{.key = props.key + 2,
+            .bounds = Rectangle.{bounds.x + 12.0 * scale, middle, 44.0 * scale, 44.0 * scale},
+            .label = props.previous_label, .icon_shape = "S2rr:M15 5L8 12L15 19", .icon_only = true,
+            .tone = ButtonTone.ButtonToneNeutral, .emphasis = ButtonEmphasis.ButtonEmphasisSoft}) != 0 {
+        state.selected -= 1
+    }
+    if state.selected < count - 1 && Button(session, ButtonProps.{.key = props.key + 3,
+            .bounds = Rectangle.{bounds.x + bounds.width - 56.0 * scale, middle, 44.0 * scale, 44.0 * scale},
+            .label = props.next_label, .icon_shape = "S2rr:M9 5L16 12L9 19", .icon_only = true,
+            .tone = ButtonTone.ButtonToneNeutral, .emphasis = ButtonEmphasis.ButtonEmphasisSoft}) != 0 {
+        state.selected += 1
+    }
+    if count > 1 {
+        for page: cast(s32)0..count - 1 {
+            dot := Rectangle.{bounds.x + bounds.width / 2.0 - cast(float32)count * 12.0 * scale + cast(float32)page * 24.0 * scale + 4.0 * scale,
+                bounds.y + bounds.height - 88.0 * scale, 16.0 * scale, 16.0 * scale}
+            unused Box(session, BoxProps.{.key = props.key + cast(u64)(8 + page), .bounds = dot,
+                    .fill = ifx page == state.selected then Color.{46, 125, 74, 235} else Color.{255, 255, 255, 210}, .radius = 8.0 * scale})
+        }
+    }
+    return activated
+}

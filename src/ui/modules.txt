@@ -8,6 +8,9 @@ box_widget.zi
 button.zi
 button_props.zi
 button_widget.zi
+carousel.zi
+joystick.zi
+touch_hold.zi
 canvas.zi
 canvas_grid.zi
 canvas_props.zi

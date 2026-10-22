@@ -1,0 +1,23 @@
+#import "carousel"
+
+#program_export
+main :: () -> s32 {
+    state: CarouselState
+    CarouselSelect(*state, 3, -1, 1.0)
+    if state.selected != 0 || state.position != 0.0 { return 1 }
+    CarouselSelect(*state, 3, 1, 1.016)
+    if state.selected != 1 || state.position <= 0.0 || state.position >= 1.0 { return 2 }
+    CarouselSelect(*state, 3, 10, 1.032)
+    if state.selected != 2 { return 3 }
+    // A catalog that shrinks while selected must restore a valid page.
+    CarouselSelect(*state, 1, 0, 1.048)
+    if state.selected != 0 { return 4 }
+    for index: cast(s32)0..100 { CarouselSelect(*state, 1, 0, 1.064 + cast(float64)index * 0.016) }
+    if state.position != 0.0 { return 5 }
+    // A paused or replaced clock must never fling the cover off screen.
+    CarouselSelect(*state, 2, 1, 1000.0)
+    if state.position <= 0.0 || state.position >= 1.0 { return 6 }
+    CarouselSelect(*state, 2, -1, 0.0)
+    if state.selected != 0 || state.position < 0.0 || state.position >= 1.0 { return 7 }
+    return 0
+}
