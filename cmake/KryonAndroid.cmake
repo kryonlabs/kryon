@@ -23,15 +23,10 @@ set(KRYON_ANDROID_NATIVE_APP_GLUE_DIR
 # Keep debug information and build IDs so retained crash symbols still match.
 function(kryon_android_reproducible_paths source_root)
     get_filename_component(source_root "${source_root}" ABSOLUTE)
-    # Ninja names a source outside the project, such as the NDK's
-    # native_app_glue, relative to the build directory. That spelling carries
-    # both install locations, so it is mapped as well as the absolute one.
-    file(RELATIVE_PATH ndk_from_build "${CMAKE_BINARY_DIR}" "${ANDROID_NDK}")
     add_compile_options(
         "-fdebug-compilation-dir=."
         "-ffile-prefix-map=${source_root}=."
         "-ffile-prefix-map=${ANDROID_NDK}=./ndk"
-        "-ffile-prefix-map=${ndk_from_build}=./ndk"
         "-ffile-prefix-map=${CMAKE_BINARY_DIR}=./build/android")
 endfunction()
 
@@ -93,13 +88,19 @@ function(kryon_android_app target)
             -o "${thread_generated}" "${thread_source}"
         DEPENDS "${thread_source}" "${ZI2C_BIN}"
         VERBATIM)
+    # The NDK's glue is compiled from a copy in the build tree. Its own path
+    # carries the NDK's install location into the object and module names,
+    # which ThinLTO hashes into symbols, so builds on other machines differ.
+    set(glue_source "${CMAKE_CURRENT_BINARY_DIR}/kryon-native-app-glue/android_native_app_glue.c")
+    configure_file("${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}/android_native_app_glue.c"
+        "${glue_source}" COPYONLY)
     target_sources(${target} PRIVATE
         "${thread_generated}/android_thread.c"
-        "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}/android_native_app_glue.c")
+        "${glue_source}")
     # Only the NativeActivity-owned app thread receives this stack policy.
     # The generated configurator calls libc normally; other thread creators retain
     # their own attributes and defaults.
-    set_property(SOURCE "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}/android_native_app_glue.c"
+    set_property(SOURCE "${glue_source}"
         APPEND PROPERTY COMPILE_DEFINITIONS pthread_attr_setdetachstate=ConfigureNativeThread)
     target_include_directories(${target} PRIVATE
         "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}")
