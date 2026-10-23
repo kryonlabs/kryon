@@ -4,11 +4,6 @@ using MaterialKind;
 
 // Shared visual primitives returned as data. Hosts execute these instructions;
 // material geometry, layer order, colors and motion are defined here.
-#program_export
-DefaultMotionEnabled :: () -> bool {
-    return true
-}
-
 MotionTrack :: struct {
     value: float32
     origin: float32
@@ -30,161 +25,12 @@ LoadingRingSpec :: struct {
     glow_blur: float32
 }
 
-#program_export
-LoadingRing :: (width: float32, height: float32, icon_size: float32,
-                elapsed_ms: float64, color: u32, ambient: u32) -> LoadingRingSpec {
-    ring: LoadingRingSpec
-    ring.x = width * 0.5
-    ring.y = height * 0.5
-    if icon_size <= 0.0 { return ring }
-    brightness: u32 = ((ambient >> cast(u32)24) & cast(u32)255) +
-        ((ambient >> cast(u32)16) & cast(u32)255) + ((ambient >> cast(u32)8) & cast(u32)255)
-    light_surroundings: bool = brightness > cast(u32)450
-    ring.outer_radius = icon_size * 0.5
-    if !light_surroundings { ring.outer_radius += 1.0 }
-    if ring.outer_radius < 3.0 { ring.outer_radius = 3.0 }
-    ring.inner_radius = ring.outer_radius - 2.5
-    if light_surroundings { ring.inner_radius = ring.outer_radius - 2.0 }
-    // Keep the long-running clock wide until it has been reduced to one cycle.
-    // Geometry only needs a float; the original elapsed time must not lose its
-    // fractional milliseconds before this reduction.
-    phase_ms: float32 = cast(float32)(elapsed_ms - cast(float64)(cast(s64)(elapsed_ms / 1500.0)) * 1500.0)
-    angle: float32 = phase_ms * 0.24
-    if !light_surroundings { angle += 110.0 }
-    angle -= cast(float32)(cast(s32)(angle / 360.0)) * 360.0
-    ring.start_angle = angle
-    ring.end_angle = angle + 315.0
-    if light_surroundings { ring.end_angle = angle + 270.0 }
-    ring.color = color
-    ring.track_color = Opacity(color, 0.22)
-    white: u32 = (cast(u32)16777215 << cast(u32)8) | (color & cast(u32)255)
-    ring.tip_color = white
-    if light_surroundings { ring.tip_color = GradientColor(color, white, 0.88) }
-    ring.trail_opacity = 0.55
-    if !light_surroundings {
-        // Chromatic light stays visible around the dark ring. Neutral and
-        // pale-surface indicators retain a quieter trail beneath the bright tip.
-        ring.trail_opacity += 0.25 * Unit((cast(float32)ColorChroma(color) - 64.0) / 64.0)
-        ring.glow_blur = 6.0 * Unit((cast(float32)ColorChroma(color) - 64.0) / 64.0)
-    }
-    return ring
-}
-
 // Light gathers at the leading end of the rotating arc. Distance-based
 // falloff is continuous across angle wrapping and needs no host trigonometry.
-#program_export
-LoadingArcColor :: (ring: LoadingRingSpec, x: float32, y: float32) -> u32 {
-    radius: float32 = (ring.inner_radius + ring.outer_radius) * 0.5
-    tip_x: float32 = radius * SinDegrees(ring.end_angle + 90.0)
-    tip_y: float32 = radius * SinDegrees(ring.end_angle)
-    dx: float32 = x - tip_x
-    dy: float32 = y - tip_y
-    near_tip: float32 = 0.0
-    if radius > 0.0 { near_tip = Unit(1.0 - (dx * dx + dy * dy) / (radius * radius * 3.5)) }
-    near_tip *= near_tip
-    // Bring the trail close to the specular cap before it reaches the tip.
-    // Color brightening and coverage remain separate, preserving source alpha.
-    return Opacity(GradientColor(ring.color, ring.tip_color, near_tip * 0.75),
-        ring.trail_opacity + (1.0 - ring.trail_opacity) * near_tip)
-}
-
-#program_export
-LoadingTipCoverage :: (ring: LoadingRingSpec, x: float32, y: float32) -> float32 {
-    radius: float32 = (ring.inner_radius + ring.outer_radius) * 0.5
-    tip_radius: float32 = (ring.outer_radius - ring.inner_radius) * 0.625
-    tip_x: float32 = radius * SinDegrees(ring.end_angle + 90.0)
-    tip_y: float32 = radius * SinDegrees(ring.end_angle)
-    return RoundedCoverage(x - tip_x + tip_radius, y - tip_y + tip_radius,
-        tip_radius * 2.0, tip_radius * 2.0, tip_radius)
-}
-
-#program_export
-LoadingPaintRadius :: (ring: LoadingRingSpec) -> float32 {
-    // Include the small specular cap beyond the nominal ring radius.
-    extension: float32 = (ring.outer_radius - ring.inner_radius) * 0.125
-    if ring.glow_blur > extension { extension = ring.glow_blur }
-    return ring.outer_radius + extension
-}
-
 // Preserve separate source-over samples: combining them before the backend
 // blends would change rounding and partially transparent spinner colors.
-RingSample :: struct {
-    glow: u32
-    track: u32
-    arc: u32
-    tip: u32
-}
-
-#program_export
-LoadingSample :: (ring: LoadingRingSpec, x: float32, y: float32) -> RingSample {
-    sample: RingSample
-    if ring.glow_blur > 0.0 {
-        // Only the rotating arc emits light; keep the unlit gap and central
-        // opening clear. Both hosts blend this before the crisp ring samples.
-        glow: float32 = BlurStrokeCoverage(x + ring.outer_radius, y + ring.outer_radius,
-            ring.outer_radius * 2.0, ring.outer_radius * 2.0, ring.outer_radius,
-            ring.outer_radius - ring.inner_radius, ring.glow_blur)
-        glow *= ArcCoverage(x, y, ring.inner_radius, ring.outer_radius + ring.glow_blur,
-            ring.start_angle, ring.end_angle)
-        sample.glow = Opacity(LoadingArcColor(ring, x + 0.5, y + 0.5), glow * 0.35)
-    }
-    track: float32 = ArcCoverage(x, y, ring.inner_radius, ring.outer_radius, 0.0, 360.0)
-    arc: float32 = ArcCoverage(x, y, ring.inner_radius, ring.outer_radius,
-        ring.start_angle, ring.end_angle)
-    tip: float32 = LoadingTipCoverage(ring, x, y)
-    sample.track = Opacity(ring.track_color, track)
-    sample.arc = Opacity(LoadingArcColor(ring, x + 0.5, y + 0.5), arc)
-    sample.tip = Opacity(ring.tip_color, tip)
-    return sample
-}
-
 // Portable sine for arc endpoints. Reduce to [-pi/2, pi/2] before the
 // Taylor polynomial so its error stays well below subpixel coverage.
-#program_export
-SinDegrees :: (degrees: float32) -> float32 {
-    degrees -= cast(float32)(cast(s32)(degrees / 360.0)) * 360.0
-    if degrees > 180.0 { degrees -= 360.0 }
-    if degrees < -180.0 { degrees += 360.0 }
-    if degrees > 90.0 { degrees = 180.0 - degrees }
-    if degrees < -90.0 { degrees = -180.0 - degrees }
-    x: float32 = degrees * 0.01745329252
-    square: float32 = x * x
-    return x * (1.0 - square * (0.1666666667 - square *
-        (0.0083333333 - square * (0.0001984127 - square * 0.0000027557))))
-}
-
-#program_export
-ArcCoverage :: (x: float32, y: float32, inner: float32, outer: float32,
-                start: float32, end: float32) -> float32 {
-    if outer <= 0.0 || inner >= outer || end <= start { return 0.0 }
-    if inner < 0.0 { inner = 0.0 }
-    sx: float32 = SinDegrees(start + 90.0)
-    sy: float32 = SinDegrees(start)
-    ex: float32 = SinDegrees(end + 90.0)
-    ey: float32 = SinDegrees(end)
-    coverage: float32 = 0.0
-    row: s32 = 0
-    while row < 4 {
-        column: s32 = 0
-        while column < 4 {
-            px: float32 = x + (cast(float32)column + 0.5) * 0.25
-            py: float32 = y + (cast(float32)row + 0.5) * 0.25
-            distance: float32 = px * px + py * py
-            after_start: bool = sx * py - sy * px >= 0.0
-            before_end: bool = px * ey - py * ex >= 0.0
-            in_arc: bool = after_start && before_end
-            if end - start > 180.0 { in_arc = after_start || before_end }
-            if end - start >= 360.0 { in_arc = true }
-            if distance >= inner * inner && distance <= outer * outer && in_arc {
-                coverage += 0.0625
-            }
-            column += 1
-        }
-        row += 1
-    }
-    return coverage
-}
-
 // Each host stores this value by node identity and supplies elapsed frame time.
 // Retargeting starts at the currently displayed value, including mid-flight.
 #program_export
@@ -278,18 +124,6 @@ SurfaceLayer :: struct {
 // Hosts supply normalized vertical position at the pixel center. Material
 // sampling, including transparent endpoints and clamping, belongs here.
 // Coverage is separate so the same color policy works with any rasterizer.
-#program_export
-SampleColor :: (layer: SurfaceLayer, position: float32) -> u32 {
-    if !layer.gradient { return layer.color }
-    // Zero is linear. One concentrates the endpoint near the lower edge.
-    // This monotonic quadratic keeps both endpoints exact throughout motion.
-    if layer.gradient_bias > 0.0 {
-        position = Unit(position)
-        position += Unit(layer.gradient_bias) * position * (position - 1.0)
-    }
-    return GradientColor(layer.color, layer.end_color, position)
-}
-
 // Missing custom endpoints mean the live material, not transparent black.
 // Keep every state's presence through the fade, including when leaving it.
 FillStates :: struct {
@@ -308,11 +142,6 @@ FillStates :: struct {
     hover_amount: float32
     press_amount: float32
     focus_amount: float32
-}
-
-FillEndpoint :: (material: u32, enabled: bool, custom: u32, opacity: float32) -> u32 {
-    if enabled { return Opacity(custom, opacity) }
-    return material
 }
 
 #program_export
@@ -340,38 +169,6 @@ FillTransition :: (normal: FillStates, hover: FillStates, press: FillStates,
     normal.press_amount = p
     normal.focus_amount = f
     return normal
-}
-
-FillBias :: (material: float32, custom: bool) -> float32 {
-    if custom { return 0.0 }
-    return material
-}
-
-#program_export
-ApplyFillStates :: (layer: SurfaceLayer, states: FillStates, opacity: float32) -> SurfaceLayer {
-    if !states.normal && !states.hover && !states.press && !states.focus { return layer }
-    end: u32 = layer.color
-    if layer.gradient { end = layer.end_color }
-    layer.end_color = InteractionColor(
-        FillEndpoint(end, states.normal, states.normal_end, opacity),
-        FillEndpoint(end, states.hover, states.hover_end, opacity),
-        FillEndpoint(end, states.press, states.press_end, opacity),
-        FillEndpoint(end, states.focus, states.focus_end, opacity),
-        states.hover_amount, states.press_amount, states.focus_amount)
-    layer.color = InteractionColor(
-        FillEndpoint(layer.color, states.normal, states.normal_start, opacity),
-        FillEndpoint(layer.color, states.hover, states.hover_start, opacity),
-        FillEndpoint(layer.color, states.press, states.press_start, opacity),
-        FillEndpoint(layer.color, states.focus, states.focus_start, opacity),
-        states.hover_amount, states.press_amount, states.focus_amount)
-    layer.gradient = true
-    layer.gradient_bias = InteractionValue(
-        FillBias(layer.gradient_bias, states.normal),
-        FillBias(layer.gradient_bias, states.hover),
-        FillBias(layer.gradient_bias, states.press),
-        FillBias(layer.gradient_bias, states.focus),
-        states.hover_amount, states.press_amount, states.focus_amount)
-    return layer
 }
 
 // A plain styled surface uses the same geometry as controls, without their
@@ -407,151 +204,15 @@ FillGradient :: (layer: SurfaceLayer, enabled: bool, start: u32, end: u32,
 
 // Coordinates are in physical pixels. Coverage is shared by every renderer,
 // including fractional bounds and an inset stroke (never an outside stroke).
-#program_export
-RoundedContains :: (x: float32, y: float32, width: float32, height: float32, radius: float32) -> bool {
-    if width <= 0.0 || height <= 0.0 || x < 0.0 || y < 0.0 || x > width || y > height { return false }
-    if radius < 0.0 { radius = 0.0 }
-    if radius > width * 0.5 { radius = width * 0.5 }
-    if radius > height * 0.5 { radius = height * 0.5 }
-    dx: float32 = 0.0
-    dy: float32 = 0.0
-    if x < radius { dx = radius - x }
-    if x > width - radius { dx = x - width + radius }
-    if y < radius { dy = radius - y }
-    if y > height - radius { dy = y - height + radius }
-    return dx * dx + dy * dy <= radius * radius
-}
-
-#program_export
-RoundedCoverage :: (x: float32, y: float32, width: float32, height: float32, radius: float32) -> float32 {
-    if x + 1.0 <= 0.0 || y + 1.0 <= 0.0 || x >= width || y >= height { return 0.0 }
-    if RoundedContains(x, y, width, height, radius) &&
-       RoundedContains(x + 1.0, y, width, height, radius) &&
-       RoundedContains(x, y + 1.0, width, height, radius) &&
-       RoundedContains(x + 1.0, y + 1.0, width, height, radius) { return 1.0 }
-    covered: float32 = 0.0
-    row: s32 = 0
-    while row < 4 {
-        column: s32 = 0
-        while column < 4 {
-            if RoundedContains(x + (cast(float32)column + 0.5) * 0.25,
-                y + (cast(float32)row + 0.5) * 0.25, width, height, radius) { covered += 0.0625 }
-            column += 1
-        }
-        row += 1
-    }
-    return covered
-}
-
-#program_export
-LayerCoverage :: (x: float32, y: float32, width: float32, height: float32, radius: float32, stroke: float32) -> float32 {
-    coverage: float32 = RoundedCoverage(x, y, width, height, radius)
-    if stroke > 0.0 {
-        coverage -= RoundedCoverage(x - stroke, y - stroke,
-            width - 2.0 * stroke, height - 2.0 * stroke, radius - stroke)
-    }
-    return Unit(coverage)
-}
-
 // Compact smooth falloff: zero slope at the source edge and at the support
 // boundary. Unlike concentric filled contours, this has no visible steps.
-#program_export
-BlurFalloff :: (distance: float32, blur: float32) -> float32 {
-    if distance <= 0.0 { return 1.0 }
-    if blur <= 0.0 || distance >= blur { return 0.0 }
-    t: float32 = distance / blur
-    remaining: float32 = 1.0 - t
-    return remaining * remaining * remaining * remaining * (1.0 + 4.0 * t)
-}
-
-#program_export
-RoundedDistance :: (x: float32, y: float32, width: float32, height: float32, radius: float32) -> float32 {
-    if radius < 0.0 { radius = 0.0 }
-    if radius > width * 0.5 { radius = width * 0.5 }
-    if radius > height * 0.5 { radius = height * 0.5 }
-    dx: float32 = x + 0.5 - width * 0.5
-    dy: float32 = y + 0.5 - height * 0.5
-    if dx < 0.0 { dx = -dx }
-    if dy < 0.0 { dy = -dy }
-    dx -= width * 0.5 - radius
-    dy -= height * 0.5 - radius
-    inside: float32 = dx
-    if dy > inside { inside = dy }
-    if inside > 0.0 { inside = 0.0 }
-    if dx < 0.0 { dx = 0.0 }
-    if dy < 0.0 { dy = 0.0 }
-    largest: float32 = dx
-    if dy > largest { largest = dy }
-    if largest <= 0.0 { return inside - radius }
-    // Normalize before Newton iteration so every input lies in [1, 2].
-    // This keeps the distance calculation portable without a host math hook.
-    nx: float32 = dx / largest
-    ny: float32 = dy / largest
-    square: float32 = nx * nx + ny * ny
-    root: float32 = 1.0
-    iteration: s32 = 0
-    while iteration < 4 {
-        root = (root + square / root) * 0.5
-        iteration += 1
-    }
-    return largest * root + inside - radius
-}
-
-#program_export
-BlurCoverage :: (x: float32, y: float32, width: float32, height: float32, radius: float32, blur: float32) -> float32 {
-    if width <= 0.0 || height <= 0.0 { return 0.0 }
-    if blur <= 0.0 { return RoundedCoverage(x, y, width, height, radius) }
-    return BlurFalloff(RoundedDistance(x, y, width, height, radius), blur)
-}
-
 // Light fades inward from the rounded boundary. Coverage clips every sample
 // to the face, including partially covered corner pixels; nothing spills out.
-#program_export
-InnerBlurCoverage :: (x: float32, y: float32, width: float32, height: float32, radius: float32, blur: float32) -> float32 {
-    if width <= 0.0 || height <= 0.0 || blur <= 0.0 { return 0.0 }
-    coverage: float32 = RoundedCoverage(x, y, width, height, radius)
-    if coverage <= 0.0 { return 0.0 }
-    return coverage * BlurFalloff(-RoundedDistance(x, y, width, height, radius), blur)
-}
-
 // A blurred stroke is a light band around the boundary, never a blurred fill.
 // Signed distance keeps the center clear and provides the same compact
 // falloff on either side of the stroke for every native renderer.
-#program_export
-BlurStrokeCoverage :: (x: float32, y: float32, width: float32, height: float32,
-                       radius: float32, stroke: float32, blur: float32) -> float32 {
-    if width <= 0.0 || height <= 0.0 || stroke <= 0.0 { return 0.0 }
-    if blur <= 0.0 { return LayerCoverage(x, y, width, height, radius, stroke) }
-    distance: float32 = RoundedDistance(x, y, width, height, radius) + stroke * 0.5
-    if distance < 0.0 { distance = -distance }
-    return BlurFalloff(distance - stroke * 0.5, blur)
-}
-
 // Hosts provide sample coordinates relative to the layer in physical pixels.
 // Selecting the mask (especially inward vs outward blur) is surface policy.
-#program_export
-SampleCoverage :: (layer: SurfaceLayer, x: float32, y: float32, scale: float32) -> float32 {
-    width: float32 = layer.width * scale
-    height: float32 = layer.height * scale
-    radius: float32 = layer.radius * scale
-    stroke: float32 = layer.stroke * scale
-    blur: float32 = layer.blur * scale
-    coverage: float32 = 0.0
-    if blur > 0.0 && stroke > 0.0 {
-        coverage = BlurStrokeCoverage(x, y, width, height, radius, stroke, blur)
-    } else if blur > 0.0 {
-        coverage = BlurCoverage(x, y, width, height, radius, blur)
-    } else if layer.inner_blur > 0.0 {
-        coverage = InnerBlurCoverage(x, y, width, height, radius, layer.inner_blur * scale)
-    } else {
-        coverage = LayerCoverage(x, y, width, height, radius, stroke)
-    }
-    if layer.outside_only {
-        coverage *= 1.0 - RoundedCoverage(x, y, width, height, radius)
-    }
-    return coverage
-}
-
 #program_export
 GradientColor :: (top: u32, bottom: u32, position: float32) -> u32 {
     t: float32 = Unit(position)
@@ -566,120 +227,12 @@ GradientColor :: (top: u32, bottom: u32, position: float32) -> u32 {
     return result
 }
 
-#program_export
-StrokeContains :: (x: float32, y: float32, ax: float32, ay: float32, bx: float32, by: float32, radius: float32) -> bool {
-    dx: float32 = bx - ax
-    dy: float32 = by - ay
-    length_squared: float32 = dx * dx + dy * dy
-    position: float32 = 0.0
-    if length_squared > 0.0 { position = Unit(((x - ax) * dx + (y - ay) * dy) / length_squared) }
-    dx = x - ax - position * dx
-    dy = y - ay - position * dy
-    return dx * dx + dy * dy <= radius * radius
-}
-
-#program_export
-ChevronCoverage :: (x: float32, y: float32, size: float32) -> float32 {
-    if size <= 0.0 { return 0.0 }
-    radius: float32 = size / 24.0
-    if radius < 0.5 { radius = 0.5 }
-    coverage: float32 = 0.0
-    row: s32 = 0
-    while row < 4 {
-        column: s32 = 0
-        while column < 4 {
-            px: float32 = x + (cast(float32)column + 0.5) * 0.25
-            py: float32 = y + (cast(float32)row + 0.5) * 0.25
-            if StrokeContains(px, py, size * 0.22, size * 0.36, size * 0.5, size * 0.64, radius) ||
-               StrokeContains(px, py, size * 0.5, size * 0.64, size * 0.78, size * 0.36, radius) { coverage += 0.0625 }
-            column += 1
-        }
-        row += 1
-    }
-    return coverage
-}
-
 // Focus establishes the resting material; hover and press take precedence as
 // their motion tracks advance. Releasing the pointer reveals focused material.
-MixValue :: (from: float32, to: float32, amount: float32) -> float32 {
-    if amount <= 0.0 { return from }
-    if amount >= 1.0 { return to }
-    return from + (to - from) * amount
-}
-
 // Paint geometry follows the same precedence as color. Return exact endpoints
 // so a completed transition does not leave a fractional radius or opacity.
-#program_export
-InteractionValue :: (normal: float32, hover: float32, press: float32, focus: float32,
-                     hover_amount: float32, press_amount: float32, focus_amount: float32) -> float32 {
-    resting: float32 = MixValue(normal, focus, focus_amount)
-    return MixValue(MixValue(resting, hover, hover_amount), press, press_amount)
-}
-
-#program_export
-InteractionColor :: (normal: u32, hover: u32, press: u32, focus: u32,
-                     hover_amount: float32, press_amount: float32, focus_amount: float32) -> u32 {
-    resting: u32 = GradientColor(normal, focus, focus_amount)
-    return GradientColor(GradientColor(resting, hover, hover_amount), press, press_amount)
-}
-
 // Common control symbols on a 24-unit grid: plus, play, trash, save.
 // Hosts map their catalog identifiers to these shapes; geometry stays here.
-#program_export
-IconContains :: (kind: s32, x: float32, y: float32) -> bool {
-    if kind == 1 {
-        return StrokeContains(x, y, 12.0, 3.0, 12.0, 21.0, 1.0) ||
-               StrokeContains(x, y, 3.0, 12.0, 21.0, 12.0, 1.0)
-    }
-    if kind == 2 {
-        return x >= 5.0 && x <= 21.0 && y >= 3.0 + (x - 5.0) * 0.5625 &&
-               y <= 21.0 - (x - 5.0) * 0.5625
-    }
-    if kind == 3 {
-        return StrokeContains(x, y, 3.0, 6.0, 21.0, 6.0, 1.0) ||
-               StrokeContains(x, y, 9.0, 3.0, 15.0, 3.0, 1.0) ||
-               StrokeContains(x, y, 9.0, 3.0, 9.0, 6.0, 1.0) ||
-               StrokeContains(x, y, 15.0, 3.0, 15.0, 6.0, 1.0) ||
-               StrokeContains(x, y, 5.0, 6.0, 6.0, 21.0, 1.0) ||
-               StrokeContains(x, y, 19.0, 6.0, 18.0, 21.0, 1.0) ||
-               StrokeContains(x, y, 6.0, 21.0, 18.0, 21.0, 1.0) ||
-               StrokeContains(x, y, 10.0, 10.0, 10.0, 17.0, 0.8) ||
-               StrokeContains(x, y, 14.0, 10.0, 14.0, 17.0, 0.8)
-    }
-    if kind == 4 {
-        return StrokeContains(x, y, 3.0, 3.0, 17.0, 3.0, 1.0) ||
-               StrokeContains(x, y, 17.0, 3.0, 21.0, 7.0, 1.0) ||
-               StrokeContains(x, y, 21.0, 7.0, 21.0, 21.0, 1.0) ||
-               StrokeContains(x, y, 21.0, 21.0, 3.0, 21.0, 1.0) ||
-               StrokeContains(x, y, 3.0, 21.0, 3.0, 3.0, 1.0) ||
-               StrokeContains(x, y, 7.0, 3.0, 7.0, 9.0, 1.0) ||
-               StrokeContains(x, y, 7.0, 9.0, 16.0, 9.0, 1.0) ||
-               StrokeContains(x, y, 16.0, 9.0, 16.0, 3.0, 1.0) ||
-               StrokeContains(x, y, 7.0, 21.0, 7.0, 14.0, 1.0) ||
-               StrokeContains(x, y, 7.0, 14.0, 17.0, 14.0, 1.0) ||
-               StrokeContains(x, y, 17.0, 14.0, 17.0, 21.0, 1.0)
-    }
-    return false
-}
-
-#program_export
-IconCoverage :: (kind: s32, x: float32, y: float32, width: float32, height: float32) -> float32 {
-    if width <= 0.0 || height <= 0.0 { return 0.0 }
-    coverage: float32 = 0.0
-    row: s32 = 0
-    while row < 4 {
-        column: s32 = 0
-        while column < 4 {
-            px: float32 = (x + (cast(float32)column + 0.5) * 0.25) * 24.0 / width
-            py: float32 = (y + (cast(float32)row + 0.5) * 0.25) * 24.0 / height
-            if IconContains(kind, px, py) { coverage += 0.0625 }
-            column += 1
-        }
-        row += 1
-    }
-    return coverage
-}
-
 // Absorption reduces secondary channels while retaining the strongest color
 // channel. Multiplying every channel by black makes luminous colors muddy.
 // Recover the hue for a luminous face tint without brightening label colors.
@@ -791,31 +344,8 @@ FaceOffset :: (hover: float32, press: float32, disabled: bool) -> float32 {
     return 2.0 * Unit(press) - Unit(hover)
 }
 
-#program_export
-MaterialLayerCount :: (material: MaterialKind) -> s32 {
-    if material == cast(MaterialKind)MaterialFlat { return 3 }
-    if material == cast(MaterialKind)MaterialGlass { return 8 }
-    return 12
-}
-
 // Joined segments share one outer surface. Only interior seams clip the
 // paint; the outermost edges retain their complete external glow.
-#program_export
-SegmentCoverage :: (pixel_x: float32, segment_x: float32, segment_width: float32, surface_width: float32) -> float32 {
-    coverage: float32 = 1.0
-    if segment_x > 0.0 { coverage = Unit(pixel_x + 1.0 - segment_x) }
-    if segment_x + segment_width < surface_width {
-        coverage *= Unit(segment_x + segment_width - pixel_x)
-    }
-    return coverage
-}
-
-#program_export
-MaterialOffset :: (material: MaterialKind, hover: float32, press: float32, disabled: bool) -> float32 {
-    if material == cast(MaterialKind)MaterialFlat || material == cast(MaterialKind)MaterialGlass { return 0.0 }
-    return FaceOffset(hover, press, disabled)
-}
-
 #program_export
 MaterialLayer :: (
     material: MaterialKind, index: s32, width: float32, height: float32, radius: float32,
