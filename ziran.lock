@@ -16,7 +16,7 @@
     "name": "kryon"
   },
   "toolchain": {
-    "commit": "786f6249ec6a1d8de530e709980d85916281e526",
+    "commit": "e79092d2f6c3d95c773cfc1a202832dbf06cd799",
     "ref": "master",
     "url": "https://github.com/ziranlang/ziran.git"
   }
