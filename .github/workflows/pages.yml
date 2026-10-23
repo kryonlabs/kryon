@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   browser-runtime:
-    name: Build ZX browser runtime
+    name: Build ZX website
     runs-on: ubuntu-latest
     env:
       MAKEFLAGS: -j2
@@ -52,22 +52,34 @@ jobs:
           import os
           root = Path(os.environ['GITHUB_WORKSPACE'])
           settings = '[overrides]\nkryon = "' + str(root / 'kryonlabs/kryon') + '"\nziran = "' + str(root / 'ziranlang/ziran') + '"\n'
-          for project in ('docs/site/demo', 'examples/gallery'):
+          for project in ('.', 'docs/site/demo', 'examples/gallery'):
               (Path(project) / 'ziran.local.toml').write_text(settings)
           PY
       - name: Build and verify portable browser assets
         run: |
           export PATH="$GITHUB_WORKSPACE/ziranlang/ziran/build/bin:$PATH"
-          python3 docs/site/demo/build_preview.py --ziran "$GITHUB_WORKSPACE/ziranlang/ziran/build/bin/ziran" --emcc "$(command -v emcc)"
+          export ZIRAN_ROOT="$GITHUB_WORKSPACE/ziranlang/ziran"
+          python3 scripts/build-site.py
           node tests/portable_format_runtime.cjs
           ZIRAN_PLAYGROUND_RUNTIME="$PWD/docs/site/assets/playground-runtime.js" node "$GITHUB_WORKSPACE/ziranlang/ziran/tests/web_bundle_runtime.cjs"
+      - name: Stage public website files
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil, subprocess
+          site = Path('docs/site')
+          output = Path('build/scratch/website-deploy')
+          paths = {Path(p) for p in subprocess.check_output(['git', 'ls-files', '-z', '--', str(site)]).decode().split('\0') if p}
+          paths.update((site / 'gallery-sources').rglob('*.zi'))
+          for source in paths:
+              destination = output / source.relative_to(site)
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(source, destination)
+          PY
       - uses: actions/upload-artifact@v6
         with:
-          name: zx-browser-runtime
-          path: |
-            kryonlabs/kryon/docs/site/assets/playground-runtime.js
-            kryonlabs/kryon/docs/site/assets/playground-runtime.wasm
-            kryonlabs/kryon/docs/site/assets/preview.html
+          name: kryon-website
+          path: kryonlabs/kryon/build/scratch/website-deploy/
           if-no-files-found: error
 
   verify:
@@ -101,8 +113,8 @@ jobs:
 
       - uses: actions/download-artifact@v6
         with:
-          name: zx-browser-runtime
-          path: kryonlabs/kryon/docs/site/assets
+          name: kryon-website
+          path: kryonlabs/kryon/docs/site
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -165,8 +177,8 @@ jobs:
 
       - uses: actions/download-artifact@v6
         with:
-          name: zx-browser-runtime
-          path: kryonlabs/kryon/docs/site/assets
+          name: kryon-website
+          path: kryonlabs/kryon/docs/site
 
       - name: Set up Node
         uses: actions/setup-node@v6
