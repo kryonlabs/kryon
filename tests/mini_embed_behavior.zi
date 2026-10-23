@@ -1,4 +1,4 @@
-#import "mini_mode"
+#import "mini_embed"
 
 SameText :: (bytes: []u8, length: s64, expected: string) -> bool {
     if length != expected.count {

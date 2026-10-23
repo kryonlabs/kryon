@@ -2,6 +2,9 @@
 // address, and a desktop app starts it with --mini. Each app decides what its
 // mini view keeps; this module only reads the request and builds the full
 // app's address. It has no dependencies, so hosts and hosted bundles share it.
+// Its file name differs from apps' own mini_mode modules: an app module
+// importing a package module of the same base name resolves to itself while
+// the package directory is also a plain --module-path.
 
 MINI_MODE_ARGUMENT :: "--mini"
 MINI_MODE_PARAMETER :: "mini"

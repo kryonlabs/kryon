@@ -269,7 +269,7 @@ canvas-events-test:
 
 .PHONY: mini-mode-test
 mini-mode-test:
-	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/mini_mode_zi_test.sh
+	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/mini_embed_zi_test.sh
 
 .PHONY: web-js-boundary-test
 web-js-boundary-test:

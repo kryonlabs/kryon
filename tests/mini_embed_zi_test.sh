@@ -11,10 +11,10 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 "$bin/zi2c" --no-main --root "$repo/tests" --module-path "$repo/src/backend" \
-    --module-path "$ziran_dir/std" -o "$work/c" "$repo/tests/mini_mode_behavior.zi"
+    --module-path "$ziran_dir/std" -o "$work/c" "$repo/tests/mini_embed_behavior.zi"
 cat > "$work/c/main.c" <<'C'
 #include <stdio.h>
-#include "mini_mode_behavior.h"
+#include "mini_embed_behavior.h"
 int main(void)
 {
     int result = Answer();
