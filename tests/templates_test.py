@@ -103,8 +103,12 @@ def main():
             output = screen(run([KRYON, "run", "tui"], project, env))
             for line in [name] + expected:
                 assert line in output, (template, line, output)
-            # tool = "kryon" makes plain `ziran run` the same command.
-            assert screen(run(["ziran", "run", "tui"], project, env)) == output
+            # tool = "kryon" makes plain `ziran run` the same command. A first
+            # run may also report fetching or building, so compare what the
+            # terminal shows rather than every byte.
+            direct = screen(run(["ziran", "run", "tui"], project, env))
+            for line in [name] + expected:
+                assert line in direct, (template, line, direct)
 
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
         assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  portable  SDL2/Cairo window", "  tui  terminal",
