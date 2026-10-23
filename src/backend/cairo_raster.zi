@@ -615,14 +615,24 @@ RasterImage :: (asset_path: string, texture_id: u32,
         cast(float64)source.width,
         cast(float64)destination.height / cast(float64)source.height)
     Translate(paint, -cast(float64)source.x, -cast(float64)source.y)
+    // Sharp pixels unless the image asks to be scaled smoothly, as the
+    // other hosts draw them; smooth images keep Cairo's good filter.
+    pattern: *void = PatternForSurface(image)
+    if pattern == null {
+        Restore(paint)
+        image_error = true
+        return
+    }
+    PatternFilter(pattern, ifx CurrentPaintSmooth() then 1 else 3)
     if tint.r == cast(u8)255 && tint.g == cast(u8)255 &&
         tint.b == cast(u8)255 && tint.a == cast(u8)255 {
-        SetSourceSurface(paint, image, 0.0, 0.0)
+        SetSource(paint, pattern)
         Paint(paint)
     } else {
         SetColor(tint)
-        MaskSurface(paint, image, 0.0, 0.0)
+        MaskPattern(paint, pattern)
     }
+    PatternDestroy(pattern)
     Restore(paint)
 }
 

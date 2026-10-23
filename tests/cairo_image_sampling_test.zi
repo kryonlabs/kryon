@@ -1,0 +1,55 @@
+Raster :: #import "cairo_raster";
+Texture :: #import "paint_texture";
+#import "geometry"
+#import "drawing_props"
+#import "std/byte_text_linux"
+#import "std/format"
+#import "std/vec"
+
+// The surface color at a pixel as 0xRRGGBB (Cairo keeps ARGB32 words).
+Pixel :: (x: s32, y: s32) -> u32 {
+    data := Raster.RasterSurfaceData()
+    stride := Raster.RasterSurfaceStride()
+    word := cast(*u32)*data[y * stride + x * 4]
+    return word.* & cast(u32)0xffffff
+}
+
+Is :: (x: s32, y: s32, color: u32) -> bool {
+    if Pixel(x, y) == color { return true }
+    print("pixel % % is % expected %\n", x, y, Pixel(x, y), color)
+    return false
+}
+
+// A 2 by 2 image drawn over the whole 64 by 64 surface.
+Draw :: (path: string, smooth: bool, tint: Color) -> bool {
+    Raster.BeginRasterFrame()
+    Texture.emitting_smooth = smooth
+    full: Rectangle = .{0.0, 0.0, 64.0, 64.0}
+    Raster.RasterImage(path, 0, .{0.0, 0.0, 2.0, 2.0}, full, full, .{0.0, 0.0}, 0.0, 0.0, tint)
+    Texture.emitting_smooth = false
+    return Raster.FinishRasterFrame()
+}
+
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    root := TextFromCString(argv[1])
+    text: Vec(u8)
+    BuilderPrint(*text, "%/pixels.png", root)
+    path := BuilderFinish(text)
+    if !Raster.OpenRaster(64, 64) { return 2 }
+    defer Raster.CloseRaster()
+    white: Color = .{255, 255, 255, 255}
+    red: u32 = cast(u32)0xff0000
+    green: u32 = cast(u32)0x00ff00
+    // Without smooth, each image pixel stays one solid square up to its edge.
+    if !Draw(path, false, white) { return 3 }
+    if !Is(1, 1, red) || !Is(31, 16, red) || !Is(32, 16, green) || !Is(62, 1, green) { return 4 }
+    // A tinted image keeps the same sharp edge.
+    if !Draw(path, false, .{0, 0, 255, 255}) { return 5 }
+    if !Is(31, 16, cast(u32)0x0000ff) { return 6 }
+    // Smooth blends neighbouring pixels across the middle.
+    if !Draw(path, true, white) { return 7 }
+    if Pixel(31, 16) == red || Pixel(32, 16) == green { print("smooth image kept a hard edge\n"); return 8 }
+    print("Cairo scales images with sharp pixels unless they ask to be smooth\n")
+    return 0
+}
