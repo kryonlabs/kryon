@@ -5,6 +5,13 @@ on:
     branches: [master]
     paths:
       - docs/site/**
+      - examples/gallery/**
+      - src/**
+      - mk/**
+      - ziran.toml
+      - scripts/gallery.py
+      - scripts/build-gallery.py
+      - scripts/build-site.py
       - ziran.lock
       - tests/portable_format_runtime.cjs
       - .github/workflows/pages.yml

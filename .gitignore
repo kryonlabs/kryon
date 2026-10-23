@@ -30,3 +30,6 @@ tools/otfchop/otfchop
 src/**/*.i
 src/**/*.8
 .wrangler/
+
+# Editable gallery snippets are generated from examples/gallery by make site.
+/docs/site/gallery-sources/

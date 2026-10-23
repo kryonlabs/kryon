@@ -107,8 +107,9 @@ Optional package integrations are registered only while their dependencies
 are declared. Each selected example includes editable Ziran source and a live
 preview, using the same compiler and editor as `demo.html`. Plot and DataViews
 supply the additional charts, tree and Kanban; TableView's entry identifies its
-current API-only status. `make site` produces the committed website assets;
-the Pages workflow tests those reviewed assets before publishing them.
+current API-only status. `make site` generates editable snippets directly from
+these examples. The Pages workflow builds and tests the full website from fixed
+source revisions before publishing.
 
 ## Current status
 
