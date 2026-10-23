@@ -21,31 +21,5 @@ set -- \
     --bind image_raster:ImageWidth=ziran_widget_noop_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_widget_noop_host:ImageHeight
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$ziran_root/std" -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$ziran_root/std" "$@" \
-    --entry ziran_segment_label_style_test:main -o "$work/source.zib" "$source"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
-    --entry ziran_segment_label_style_test:main -o "$work/saved.zib" \
-    "$work/ir/ziran_segment_label_style_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
-
-for input in source saved; do
-    if test "$input" = source; then
-        module=$source
-        module_root=$repo/tests
-        module_dir=$repo/src/ui
-    else
-        module=$work/ir/ziran_segment_label_style_test.zir
-        module_root=$work/ir
-        module_dir=$work/ir
-    fi
-    output=$work/go-$input
-    "$ziran" build --target=go --pkg main --exe \
-        --entry ziran_segment_label_style_test:main "$@" \
-        --root "$module_root" --module-path "$module_dir" \
-        --module-path "$ziran_root/std" -o "$output" "$module"
-    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
-done
+widget_std="$ziran_root/std"
+. "$repo/tests/widget_matrix.sh"
