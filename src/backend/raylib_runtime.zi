@@ -21,6 +21,7 @@
     }
 }
 #import "touch_replay"
+#import "window_visible"
 #if #defined(ANDROID_BUILD) {
     AndroidTouch :: #import "android_touch";
 }
@@ -1357,6 +1358,10 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
     HostRaylibSetConfigFlags(flags)
     HostRaylibInitWindow(width, height, *label[0])
     if !HostRaylibIsWindowReady() { return false }
+    if !WindowVisible() {
+        HostRaylibCloseWindow()
+        return false
+    }
     RaylibUseIconTextures()
     TextSelectionEnable()
     HostRaylibSetTargetFPS(60)

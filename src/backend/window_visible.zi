@@ -1,0 +1,24 @@
+// Whether the application's window can be seen. When no display is
+// reachable, SDL falls back to its offscreen or dummy video driver and the
+// window then draws where nobody sees it; a host refuses to run that way.
+// Other window systems fail to open instead.
+WINDOW_VISIBLE_SDL :: #defined(NATIVE_WINDOW_HAVE_SDL) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD)
+
+#if WINDOW_VISIBLE_SDL {
+    #import "byte_text_linux"
+    window_visible_sdl :: #system_library "SDL2";
+    WindowVideoDriver :: () -> *u8 #foreign window_visible_sdl "SDL_GetCurrentVideoDriver";
+}
+
+#program_export
+WindowVisible :: () -> bool {
+    #if WINDOW_VISIBLE_SDL {
+        driver := WindowVideoDriver()
+        if driver == null {
+            return false
+        }
+        name := TextFromCString(driver)
+        return name != "offscreen" && name != "dummy"
+    }
+    return true
+}

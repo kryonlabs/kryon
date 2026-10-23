@@ -1,0 +1,31 @@
+// A window SDL opens on a reachable display is visible; the offscreen
+// driver SDL falls back to without one is not.
+#import "window_visible"
+#import "byte_text_linux"
+#import "c_string"
+
+c :: #system_library "c";
+sdl :: #system_library "SDL2";
+GetEnv :: (name: *u8) -> *u8 #foreign c "getenv";
+SdlInit :: (flags: u32) -> s32 #foreign sdl "SDL_Init";
+SdlQuit :: () #foreign sdl "SDL_Quit";
+
+#program_export
+main :: () -> s32 {
+    name: [32]u8
+    if !CopyCString("WINDOW_VISIBLE_EXPECTED", name[:]) {
+        return 2
+    }
+    expected := GetEnv(*name[0])
+    if expected == null {
+        return 2
+    }
+    // SDL_INIT_VIDEO picks the video driver, as a window would.
+    unused SdlInit(cast(u32)0x20)
+    visible := WindowVisible()
+    SdlQuit()
+    if visible != (TextFromCString(expected) == "1") {
+        return 1
+    }
+    return 0
+}
