@@ -9,12 +9,18 @@
 // skip the taskbar, place from the top right, or center. Resizable gives a
 // 160x196 minimum, and a left click then reports on release instead of
 // dragging the window. Sticky is not applied here.
+//
+// Each window keeps its own pointer. SecondaryWindowInput gives it to the
+// window's session before BeginSecondaryFrame, so buttons, sliders and menus
+// drawn there answer that window's pointer, never the main window's.
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
+#import "input_protocol"
 #import "session"
 #import "tree"
 #import "tree_draw"
+#import "tree_input"
 
 SecondaryWindow :: struct {
     handle: *void
@@ -104,6 +110,24 @@ GetSecondaryWindowClickPosition :: (window: SecondaryWindow,
     SecondaryWindowClickPositionHost(window.handle, x, y)
 }
 
+// Gives the session this window's pointer for its next frame, in window
+// pixels: position, left button and wheel. Outside the window the pointer
+// is at -1, -1, so nothing in the window stays hovered.
+#program_export
+SecondaryWindowInput :: (window: SecondaryWindow, session: Session) -> bool {
+    if window.handle == null {
+        return false
+    }
+    pointer: PointerFrame
+    wheel: float32
+    if !SecondaryWindowPointerHost(window.handle, *pointer, *wheel) {
+        return false
+    }
+    unused TreePointerUpdate(session, pointer)
+    PointerWheelSend(session, pointer.x, pointer.y, wheel)
+    return true
+}
+
 #program_export
 BeginSecondaryFrame :: (session: Session, width: s32, height: s32) -> bool {
     bounds := Rectangle.{0.0, 0.0, cast(float32)width, cast(float32)height}
@@ -178,6 +202,13 @@ SecondaryWindowState :: struct {
     right_clicked: bool
     close_requested: bool
     resizable: bool
+    pointer_x: s32
+    pointer_y: s32
+    pointer_inside: bool
+    pointer_down: bool
+    pointer_pressed: bool
+    pointer_released: bool
+    wheel: float32
 }
 
 SecondaryWindowSlot :: struct {
@@ -220,6 +251,16 @@ SecondaryMotionEvent :: struct {
     y: s32
     relative_x: s32
     relative_y: s32
+}
+
+SecondaryWheelEvent :: struct {
+    event_type: u32
+    timestamp: u32
+    window_id: u32
+    device: u32
+    x: s32
+    y: s32
+    direction: u32
 }
 
 secondary_windows: [3]SecondaryWindowSlot;
@@ -305,11 +346,39 @@ secondary_render_context: *void;
             if bytes[12] == cast(u8)14 {
                 window.close_requested = true
             }
+            // SDL_WINDOWEVENT_ENTER and LEAVE.
+            if bytes[12] == cast(u8)10 {
+                window.pointer_inside = true
+            }
+            if bytes[12] == cast(u8)11 {
+                window.pointer_inside = false
+            }
             return 0
+        }
+        if event.event_type == 0x403 {
+            wheel := cast(*SecondaryWheelEvent)event_data
+            steps := cast(float32)wheel.y
+            // SDL_MOUSEWHEEL_FLIPPED reports natural scrolling inverted.
+            if wheel.direction == cast(u32)1 {
+                steps = -steps
+            }
+            window.wheel += steps
+            return 0
+        }
+        if event.event_type == 0x400 {
+            motion := cast(*SecondaryMotionEvent)event_data
+            window.pointer_x = motion.x
+            window.pointer_y = motion.y
+            window.pointer_inside = true
         }
         if event.event_type == 0x401 {
             button := cast(*SecondaryButtonEvent)event_data
             if button.button == cast(u8)1 {
+                window.pointer_x = button.x
+                window.pointer_y = button.y
+                window.pointer_inside = true
+                window.pointer_down = true
+                window.pointer_pressed = true
                 window.drag_active = !window.resizable
                 window.release_seen = false
                 window.dragged = false
@@ -341,6 +410,10 @@ secondary_render_context: *void;
                 window.right_clicked = true
             }
             if button.button == cast(u8)1 {
+                window.pointer_x = button.x
+                window.pointer_y = button.y
+                window.pointer_down = false
+                window.pointer_released = true
                 if window.resizable {
                     window.clicked = true
                 } else {
@@ -750,6 +823,33 @@ SecondaryWindowPositionHost :: (handle: *void, x: *s32, y: *s32) {
     if y != null {
         y[0] = ifx (window != null) then (window.y) else (0)
     }
+}
+
+// This window's pointer since the last call: a press or release is reported
+// once, and the wheel steps collected since then are taken.
+#program_export
+SecondaryWindowPointerHost :: (handle: *void, frame: *PointerFrame,
+    wheel: *float32) -> bool {
+    window := OwnedSecondaryWindow(handle)
+    if window == null || frame == null || wheel == null {
+        return false
+    }
+    frame.x = -1.0
+    frame.y = -1.0
+    // A held button keeps reporting where it is, so a drag that leaves the
+    // window still ends where it was released.
+    if window.pointer_inside || window.pointer_down || window.pointer_released {
+        frame.x = cast(float32)window.pointer_x
+        frame.y = cast(float32)window.pointer_y
+    }
+    frame.down = window.pointer_down
+    frame.pressed = window.pointer_pressed
+    frame.released = window.pointer_released
+    wheel[0] = window.wheel
+    window.pointer_pressed = false
+    window.pointer_released = false
+    window.wheel = 0.0
+    return true
 }
 
 #program_export

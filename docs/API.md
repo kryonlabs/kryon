@@ -208,7 +208,7 @@ Other platform services an application may import:
 | [`http_transfer`](../src/backend/http_transfer.zi) | `HttpTransferStart`, `HttpTransferPoll` and `HttpTransferCancel`: HTTP requests that run while the application draws, through curl on a worker thread, the Android activity's transport, or the browser's `fetch` |
 | [`page_socket`](../src/backend/page_socket.zi) | `PageSocketOpen`, `PageSocketPoll` and `PageSocketClose`: a browser WebSocket for text events, polled each frame, with bounded messages and a token carried as a subprotocol |
 | [`browser_viewport`](../src/backend/browser_viewport.zi) | `BrowserViewportMeasure` and `BrowserResizeSettled`: the room a canvas application has in the browser, and when a new size has settled enough to resize to, for applications such as raylib web builds that size their own canvas |
-| [`raylib_secondary_window`](../src/backend/raylib_secondary_window.zi) | Up to three extra SDL windows for a raylib application, such as a floating timer, each drawing its own Kryon tree |
+| [`raylib_secondary_window`](../src/backend/raylib_secondary_window.zi) | Up to three extra SDL windows for a raylib application, such as a floating timer, each drawing its own Kryon tree with its own pointer (`SecondaryWindowInput`) |
 | [`raylib_trace`](../src/backend/raylib_trace.zi) | Where raylib's log goes: `RaylibTraceToConsole`, `RaylibTraceToFile` for Windows applications without a console, and `TraceLog(level, text)` |
 
 After a completed HTTP poll, `transfer.failure` distinguishes a response that

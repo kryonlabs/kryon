@@ -20,4 +20,4 @@ done
     $(find "$work/c" -name '*.c') "$raylib" $(pkg-config --libs sdl2) -lGL -lm -ldl -lpthread -o "$work/test"
 env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_DISPLAY -u DBUS_SESSION_BUS_ADDRESS \
     YUE_DESKTOP_RECOVERY=0 xvfb-run -a -n 200 -e /dev/stderr -s '-screen 0 800x600x24' "$work/test"
-echo 'raylib secondary windows: pixels, events, clicks, dragging and the main context passed'
+echo 'raylib secondary windows: pixels, events, clicks, dragging, own pointer and the main context passed'
