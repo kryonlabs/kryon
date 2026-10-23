@@ -1,10 +1,5 @@
 #!/bin/sh
-set -eu
-
-repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-. "$repo/tests/toolchain.sh"
-work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT HUP INT TERM
+. "$(dirname -- "$0")/test_context.sh"
 
 source=$repo/tests/system_theme_linux_behavior.zi
 "$ziran" build --target=c --root "$repo/tests" \

@@ -1,9 +1,5 @@
 #!/bin/sh
-set -eu
-repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-. "$repo/tests/toolchain.sh"
-work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT HUP INT TERM
+. "$(dirname -- "$0")/test_context.sh"
 gio_define=
 gio_libraries=
 if pkg-config --exists gio-2.0; then

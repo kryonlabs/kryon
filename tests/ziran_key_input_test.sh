@@ -1,9 +1,5 @@
 #!/bin/sh
-set -eu
-repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-. "$repo/tests/toolchain.sh"
-work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT HUP INT TERM
+. "$(dirname -- "$0")/test_context.sh"
 paths="--root $repo/tests --module-path $repo/src/ui --module-path $ziran_root/std"
 source=$repo/tests/ziran_key_input_test.zi
 "$ziran" bundle $paths --entry ziran_key_input_test:main -o "$work/keys.zx" "$source"

@@ -1,9 +1,5 @@
 #!/bin/sh
-set -eu
-repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-. "$repo/tests/toolchain.sh"
-work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT HUP INT TERM
+. "$(dirname -- "$0")/test_context.sh"
 source=$repo/tests/ziran_android_thread_test.zi
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" \
     -o "$work/ir" "$source"
