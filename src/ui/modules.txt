@@ -156,6 +156,8 @@ svg_icon_widget.zi
 svg_shape.zi
 swipe.zi
 swipe_props.zi
+swipe_row.zi
+swipe_row_props.zi
 system_clipboard.zi
 system_theme.zi
 tab_bar.zi

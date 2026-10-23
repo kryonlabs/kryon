@@ -31,6 +31,8 @@ ScrollDevice :: struct {
     drag_origin_y: float32
     drag_origin_offset: s32
     drag_moving: bool
+    // Where the pointer went down, for a drag that goes across a scroll.
+    press_origin: Vector2
     sampled: bool
     now_seconds: float64
     // The owner's content velocity while dragging.
@@ -79,7 +81,10 @@ BeginScrollFrame :: (session: Session, mouse: Vector2, pressed: bool, down: bool
     scroll_device.now_seconds = now_seconds
     // A new touch or wheel stops a coasting scroll.
     if pressed || wheel != 0.0 { scroll_device.fling_owner = cast(u64)0 }
-    if pressed { scroll_device.glide_owner = cast(u64)0 }
+    if pressed {
+        scroll_device.glide_owner = cast(u64)0
+        scroll_device.press_origin = mouse
+    }
     scroll_device.session = session
     scroll_device.mouse = mouse
     scroll_device.pressed = pressed
@@ -103,6 +108,21 @@ ScrollDeviceSideways :: (session: Session, wheel_x: float32) {
     if wheel_x != 0.0 { scroll_device.fling_owner = cast(u64)0 }
 }
 
+// The pointer has moved across a scroll's axis by more than along it, far
+// enough to tell.
+ScrollDeviceAcross :: (horizontal: bool, scale: float32) -> bool {
+    dx: float32 = ScrollWheelSize(scroll_device.mouse.x - scroll_device.press_origin.x)
+    dy: float32 = ScrollWheelSize(scroll_device.mouse.y - scroll_device.press_origin.y)
+    along: float32 = dy
+    across: float32 = dx
+    if horizontal {
+        along = dx
+        across = dy
+    }
+    if scale <= 0.0 { scale = 1.0 }
+    return across >= 8.0 * scale && across >= along * 1.25
+}
+
 ScrollWheelSize :: (wheel: float32) -> float32 {
     if wheel < 0.0 { return 0.0 - wheel }
     return wheel
@@ -118,7 +138,8 @@ ScrollDeviceWheelFor :: (horizontal: bool) -> float32 {
 }
 
 #program_export
-ScrollObservationFor :: (key: u64, bounds: Rectangle, horizontal: bool = false) -> ScrollInput {
+ScrollObservationFor :: (key: u64, bounds: Rectangle, horizontal: bool = false,
+    scale: float32 = 1.0) -> ScrollInput {
     input: ScrollInput
     input.enabled = true
     input.device = true
@@ -159,6 +180,13 @@ ScrollObservationFor :: (key: u64, bounds: Rectangle, horizontal: bool = false) 
     targeted: bool = target == cast(u64)0 || target == key
     input.pointer_allowed = ((inside && targeted) || input.owns_drag) &&
         !input.owner_captured && !TreePointerCapturesDrag(scroll_device.session)
+    // A content drag that has not moved the content lets go once the pointer
+    // goes across this scroll's axis: the gesture belongs to what moves that
+    // way, such as a row swiped sideways in a list. The press stays with it.
+    if input.owns_drag && scroll_device.content_drag && !scroll_device.drag_moving &&
+    ScrollDeviceAcross(horizontal, scale) {
+        input.pointer_allowed = false
+    }
     wheel_target: u64 = TreeScrollAt(scroll_device.session,
         input.mouse.x, input.mouse.y, true)
     wheel_targeted: bool = wheel_target == cast(u64)0 || wheel_target == key
@@ -206,7 +234,7 @@ ScrollDeviceContentDrag :: (session: Session, key: u64, bounds: Rectangle,
     frame.offset = offset
     if key == cast(u64)0 || !ScrollDeviceSampled(session) { return frame }
     if max_scroll < 0 { max_scroll = 0 }
-    input: ScrollFrameInput = ScrollFrameInputFor(ScrollObservationFor(key, bounds, horizontal))
+    input: ScrollFrameInput = ScrollFrameInputFor(ScrollObservationFor(key, bounds, horizontal, scale))
     input.bounds = bounds
     input.horizontal = horizontal
     input.content_height = cast(s32)bounds.height + max_scroll

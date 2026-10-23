@@ -1,0 +1,156 @@
+// A list row that a tap or a sideways swipe acts on. It is composed of
+// Press, Box and SvgIcon, so portable compositions use it as it is.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "box_props"
+#import "box_widget"
+#import "svg_icon_props"
+#import "svg_icon_widget"
+#import "press_props"
+#import "press_widget"
+#import "swipe_row_props"
+
+SWIPE_ROW_SETTLE_SECONDS :: 0.18
+// How far the pointer moves, in layout units at scale 1, before the press
+// is a swipe or a scroll.
+SWIPE_ROW_DECISION :: 8.0
+// A swipe moves this much more sideways than up or down.
+SWIPE_ROW_AXIS_BIAS :: 1.25
+SWIPE_ROW_THRESHOLD :: 0.35
+SWIPE_ROW_STRIP_KEY :: 0x5357495045524f57
+
+SwipeRowAbs :: (value: float32) -> float32 {
+    if value < 0.0 { return -value }
+    return value
+}
+
+// How far the row follows the finger: never past its own width, and not
+// at all towards a side without an action.
+#program_export
+SwipeRowOffsetFor :: (delta: float32, width: float32, has_start: bool,
+    has_end: bool) -> float32 {
+    offset: float32 = delta
+    if offset > 0.0 && !has_start { offset = 0.0 }
+    if offset < 0.0 && !has_end { offset = 0.0 }
+    if offset > width { offset = width }
+    if offset < -width { offset = -width }
+    return offset
+}
+
+// The action a lifted swipe takes: 1 for start, 2 for end, 0 for none.
+#program_export
+SwipeRowActionFor :: (offset: float32, width: float32, threshold: float32) -> s32 {
+    share: float32 = SWIPE_ROW_THRESHOLD
+    if threshold > 0.0 { share = threshold }
+    needed: float32 = width * share
+    if needed <= 0.0 { return 0 }
+    if offset >= needed { return 1 }
+    if offset <= -needed { return 2 }
+    return 0
+}
+
+// The slide back eases out over a short time and is 0 once done.
+#program_export
+SwipeRowSettleOffset :: (from: float32, elapsed: float64) -> float32 {
+    if elapsed < 0.0 || elapsed >= SWIPE_ROW_SETTLE_SECONDS { return 0.0 }
+    remaining: float32 = 1.0 - cast(float32)(elapsed / SWIPE_ROW_SETTLE_SECONDS)
+    return from * remaining * remaining
+}
+
+// The strip a swipe reveals, with its icon once there is room for it.
+SwipeRowStrip :: (session: Session, props: SwipeRowProps, offset: float32,
+    scale: float32) {
+    if SwipeRowAbs(offset) < 0.5 { return }
+    action: SwipeRowAction = props.end
+    strip: Rectangle = props.bounds
+    if offset > 0.0 {
+        action = props.start
+        strip.width = offset
+    } else {
+        strip.x = props.bounds.x + props.bounds.width + offset
+        strip.width = -offset
+    }
+    unused Box(session, BoxProps.{.key = props.key ^ cast(u64)SWIPE_ROW_STRIP_KEY,
+            .bounds = strip, .fill = action.fill})
+    icon: float32 = 24.0 * scale
+    pad: float32 = 20.0 * scale
+    if strip.width < icon + pad * 2.0 { return }
+    x: float32 = strip.x + strip.width - pad - icon
+    if offset > 0.0 { x = strip.x + pad }
+    SvgIcon(session, SvgIconProps.{.shape = action.icon_shape, .color = action.icon_color,
+            .bounds = Rectangle.{x, strip.y + (strip.height - icon) / 2.0, icon, icon}})
+}
+
+// Submits the row's pressable area and the strip a swipe reveals. The app
+// draws the row's content afterwards, shifted by the result's offset, and
+// keeps the result's state for the next frame.
+#program_export
+SwipeRow :: (session: Session, props: SwipeRowProps, state: SwipeRowState) -> SwipeRowResult {
+    result: SwipeRowResult
+    mine: bool = props.key != cast(u64)0 && state.key == props.key
+    pressing: bool = mine && state.pressing
+    press: PressResult = Press(session, PressProps.{.key = props.key,
+            .bounds = props.bounds, .label = props.label, .now = props.now,
+            // A row is tapped however long it is held.
+            .hold_seconds = 3600.0, .disabled = props.disabled})
+    scale: float32 = 1.0
+    if props.scale > 0.0 { scale = props.scale }
+    width: float32 = props.bounds.width
+    has_start: bool = props.start.icon_shape.count > 0
+    has_end: bool = props.end.icon_shape.count > 0
+    next: SwipeRowState = state
+    if press.down && !pressing {
+        // A new press on this row ends another row's slide back.
+        next = SwipeRowState.{.key = props.key, .pressing = true,
+            .start_x = press.x, .start_y = press.y}
+    } else if pressing && (press.down || press.released) {
+        // A quick swipe on a slow frame arrives with its release, so the
+        // release still moves the row.
+        dx: float32 = press.x - state.start_x
+        dy: float32 = press.y - state.start_y
+        if !next.decided {
+            across: float32 = SwipeRowAbs(dx)
+            vertical: float32 = SwipeRowAbs(dy)
+            decision: float32 = SWIPE_ROW_DECISION * scale
+            if across >= decision && across >= vertical * SWIPE_ROW_AXIS_BIAS {
+                next.decided = true
+                next.sideways = true
+            } else if vertical >= decision {
+                next.decided = true
+            }
+        }
+        if next.sideways {
+            next.offset = SwipeRowOffsetFor(dx, width, has_start, has_end)
+        }
+    }
+    result.clicked = press.clicked && !(next.key == props.key && next.sideways) && !props.disabled
+    if pressing && !press.down {
+        // The finger lifted, or an enclosing scroll took the press.
+        action: s32 = 0
+        if next.sideways && press.released && !props.disabled {
+            action = SwipeRowActionFor(next.offset, width, props.threshold)
+        }
+        result.swiped_start = action == 1
+        result.swiped_end = action == 2
+        removed: bool = (action == 1 && props.start.removes) ||
+        (action == 2 && props.end.removes)
+        moved: float32 = next.offset
+        next = SwipeRowState.{}
+        if !removed && SwipeRowAbs(moved) >= 0.5 {
+            next.key = props.key
+            next.offset = moved
+            next.settle_from = moved
+            next.settle_at = props.now
+        }
+    } else if mine && !state.pressing && state.settle_at > 0.0 {
+        next.offset = SwipeRowSettleOffset(state.settle_from, props.now - state.settle_at)
+        if SwipeRowAbs(next.offset) < 0.5 { next = SwipeRowState.{} }
+    }
+    if next.key == props.key {
+        result.offset = next.offset
+    }
+    result.state = next
+    SwipeRowStrip(session, props, result.offset, scale)
+    return result
+}

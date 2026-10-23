@@ -1,0 +1,158 @@
+// A swipe row clicks on a tap, follows a sideways drag, acts once the drag
+// has travelled far enough and slides back otherwise. Inside a scrolling
+// list a sideways swipe keeps the press while an up or down drag scrolls.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "swipe_row_props"
+#import "swipe_row"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_keyboard_navigation_host"
+#import "scroll_props"
+#import "scroll_widget"
+Motion :: #import "scroll_device";
+
+using FrameStatus;
+
+TRASH :: "S1.6rr:M3 6H21M9 6V3H15V6M5 6L6 21H18L19 6M10 10V17M14 10V17"
+
+session: Session;
+result: SwipeRowResult;
+row: SwipeRowState;
+with_start: bool = true;
+
+Props :: (now: float64, bounds: Rectangle) -> SwipeRowProps {
+    props := SwipeRowProps.{.key = cast(u64)90, .bounds = bounds, .label = "Tea", .now = now,
+        .scale = 1.0, .end = SwipeRowAction.{.icon_shape = TRASH, .fill = Color.{200, 40, 40, 255},
+            .removes = true}}
+    // The icon color stays clear so the test paints no raster.
+    if with_start {
+        props.start = SwipeRowAction.{.icon_shape = TRASH, .fill = Color.{40, 80, 200, 255}}
+    }
+    return props
+}
+
+Frame :: (now: float64) -> bool {
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    result = SwipeRow(session, Props(now, Rectangle.{10.0, 10.0, 200.0, 40.0}), row)
+    row = result.state
+    return EndFrame(session) == cast(FrameStatus)FrameOk
+}
+
+Pointer :: (x: float32, y: float32, down: bool, pressed: bool, released: bool) {
+    unused TreePointerUpdate(session, PointerFrame.{x, y, down, pressed, released})
+}
+
+#program_export
+Answer :: () -> s32 {
+    session = SessionOpen()
+    if !Frame(0.0) || result.clicked || result.offset != 0.0 { return 1 }
+
+    // A tap clicks and moves nothing.
+    Pointer(100.0, 20.0, true, true, false)
+    if !Frame(0.1) || result.offset != 0.0 { return 2 }
+    Pointer(102.0, 21.0, true, false, false)
+    if !Frame(0.15) || result.offset != 0.0 { return 3 }
+    Pointer(102.0, 21.0, false, false, true)
+    if !Frame(0.2) || !result.clicked || result.swiped_start || result.swiped_end { return 4 }
+
+    // Swiping left far enough follows the finger and removes the row on
+    // release, without a click; the row does not slide back.
+    Pointer(150.0, 20.0, true, true, false)
+    if !Frame(1.0) { return 5 }
+    Pointer(138.0, 21.0, true, false, false)
+    if !Frame(1.05) || result.offset != -12.0 { return 6 }
+    Pointer(60.0, 22.0, true, false, false)
+    if !Frame(1.1) || result.offset != -90.0 { return 7 }
+    Pointer(60.0, 22.0, false, false, true)
+    if !Frame(1.15) || !result.swiped_end || result.swiped_start || result.clicked { return 8 }
+    if result.offset != 0.0 || row.key != cast(u64)0 { return 9 }
+
+    // A short swipe right does nothing and slides back over a moment.
+    Pointer(50.0, 20.0, true, true, false)
+    if !Frame(2.0) { return 10 }
+    Pointer(80.0, 20.0, true, false, false)
+    if !Frame(2.05) || result.offset != 30.0 { return 11 }
+    Pointer(80.0, 20.0, false, false, true)
+    if !Frame(2.1) || result.swiped_start || result.clicked || result.offset != 30.0 { return 12 }
+    if !Frame(2.19) || result.offset <= 0.0 || result.offset >= 30.0 { return 13 }
+    if !Frame(2.4) || result.offset != 0.0 || row.key != cast(u64)0 { return 14 }
+
+    // Swiping right far enough acts on release and, as the action keeps
+    // the row, it slides back.
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(3.0) { return 15 }
+    Pointer(30.0, 20.0, true, false, false)
+    if !Frame(3.05) { return 16 }
+    Pointer(120.0, 20.0, true, false, false)
+    if !Frame(3.1) || result.offset != 100.0 { return 17 }
+    Pointer(120.0, 20.0, false, false, true)
+    if !Frame(3.15) || !result.swiped_start || result.swiped_end || result.offset != 100.0 { return 18 }
+    if !Frame(3.5) || result.offset != 0.0 { return 19 }
+
+    // A side without an action does not move.
+    with_start = false
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(4.0) { return 20 }
+    Pointer(150.0, 20.0, true, false, false)
+    if !Frame(4.05) || result.offset != 0.0 { return 21 }
+    Pointer(150.0, 20.0, false, false, true)
+    if !Frame(4.1) || result.swiped_start || result.clicked { return 22 }
+    with_start = true
+
+    // A whole flick on one slow frame still acts.
+    Pointer(200.0, 20.0, true, true, false)
+    if !Frame(5.0) { return 23 }
+    Pointer(40.0, 20.0, false, false, true)
+    if !Frame(5.05) || !result.swiped_end || result.clicked { return 24 }
+
+    // After Tab, Space taps it.
+    unused KeyboardSend(session, KeyTab)
+    if !Frame(6.0) { return 25 }
+    unused KeyboardSend(session, 32)
+    if !Frame(6.1) || !result.clicked { return 26 }
+    unused KeyboardSend(session, 0)
+
+    // In a list, a sideways swipe keeps its press although the finger also
+    // drifts down past the list's scroll distance, and the list stays put.
+    if !ListFrame(10.0, 150.0, 50.0, false, false, false) || list_offset != 0 { return 30 }
+    if !ListFrame(10.1, 150.0, 50.0, true, true, false) { return 31 }
+    if !ListFrame(10.15, 130.0, 52.0, true, false, false) || result.offset != -20.0 { return 32 }
+    if !ListFrame(10.2, 60.0, 80.0, true, false, false) || result.offset != -90.0 || list_offset != 0 { return 33 }
+    if !ListFrame(10.25, 40.0, 90.0, false, false, true) || !result.swiped_end || list_offset != 0 { return 34 }
+    // An up or down drag scrolls the list and swipes nothing.
+    if !ListFrame(11.0, 150.0, 250.0, true, true, false) { return 35 }
+    if !ListFrame(11.05, 151.0, 200.0, true, false, false) || result.offset != 0.0 { return 36 }
+    if !ListFrame(11.1, 152.0, 120.0, true, false, false) || list_offset == 0 || result.offset != 0.0 { return 37 }
+    if !ListFrame(11.15, 152.0, 120.0, false, false, true) || result.clicked || result.swiped_end { return 38 }
+    SessionClose(session)
+    return 42
+}
+
+list_offset: s32;
+
+ListFrame :: (now: float64, x: float32, y: float32, down: bool, pressed: bool, released: bool) -> bool {
+    Pointer(x, y, down, pressed, released)
+    Motion.BeginScrollFrame(session, Vector2.{x, y}, pressed, down, released, 0.0, now)
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    list := Scroll(session, ScrollProps.{.key = cast(u64)80, .bounds = Rectangle.{0.0, 0.0, 300.0, 300.0},
+            .content_height = 2000, .scroll_offset = list_offset})
+    list_offset = list.scroll_offset
+    if list.opened {
+        result = SwipeRow(session, Props(now, Rectangle.{0.0, list.content.y, 280.0, 2000.0}), row)
+        row = result.state
+        End(session)
+    }
+    return EndFrame(session) == cast(FrameStatus)FrameOk
+}
+
+#program_export
+main :: () -> s32 {
+    answer := Answer()
+    if answer != 42 {
+        return answer
+    }
+    return 0
+}

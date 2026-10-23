@@ -53,7 +53,7 @@
             result.viewport = TreeSubmittedNodeAt(session, result.node).bounds
         }
         if !props.input.enabled && ScrollDeviceSampled(session) {
-            props.input = ScrollObservationFor(key, result.viewport, props.horizontal)
+            props.input = ScrollObservationFor(key, result.viewport, props.horizontal, props.scale)
         }
         extent: s32 = props.content_height
         viewport_extent: s32 = cast(s32)result.viewport.height
