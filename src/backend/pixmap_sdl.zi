@@ -17,11 +17,19 @@ CreatePixmapRenderer :: (window: *void) -> *void {
     if !CopyCString("SDL_FRAMEBUFFER_ACCELERATION", surface_hint[:]) ||
         !CopyCString("0", disabled[:]) ||
         !CopyCString("SDL_RENDER_DRIVER", driver_hint[:]) { return null }
-    // SDL's software renderer can otherwise allocate an accelerated window
-    // surface, including a graphics context and driver worker threads.
+    // This hint controls software window surfaces, not renderer textures.
+    // Preserve the cheap software path even with an explicit software driver.
     unused SetHintPriority(*surface_hint[0], *disabled[0], 0)
-    flags: u32 = 1 // SDL_RENDERER_SOFTWARE
     preferred := GetHint(*driver_hint[0])
-    if preferred != null && preferred[0] != cast(u8)0 { flags = 0 }
-    return CreateRenderer(window, -1, flags)
+    if preferred != null && preferred[0] != cast(u8)0 {
+        // Explicit driver preferences, including software, remain authoritative.
+        return CreateRenderer(window, -1, cast(u32)0)
+    }
+    // Upload retained pixel damage to a GPU texture by default. Do not request
+    // present-vsync: waiting for a refresh here would stall the input owner.
+    renderer := CreateRenderer(window, -1, cast(u32)2) // SDL_RENDERER_ACCELERATED
+    if renderer != null { return renderer }
+    // Headless/remote hosts may have no accelerated driver. Avoid asking SDL
+    // to create another GL context merely to present their software surface.
+    return CreateRenderer(window, -1, cast(u32)1)
 }

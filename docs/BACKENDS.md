@@ -34,6 +34,10 @@ See [Ziran projects](PROJECTS.md) for the complete package manifest.
 
 The desktop and libdraw hosts share `cairo_raster.zi`. The DOM host reuses
 the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
+SDL pixel hosts prefer accelerated texture presentation without blocking on
+vertical refresh. `SDL_RENDER_DRIVER` retains explicit driver selection,
+including `software`; hosts without an accelerated driver use software
+presentation automatically. Pixel rasterization remains on CPU workers.
 `libdraw_native.zi` is a separate experimental native Plan 9 provider: it
 uses `initdisplay`, `openfont`, `gengetwindow`, `allocimage`, and `string`
 directly without plan9port, Cairo, or `dlsym`. Fonts are selected with the

@@ -9,6 +9,7 @@ DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
 WindowFlags :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowFlags";
 Resize :: (window: *void, width: s32, height: s32) #foreign sdl "SDL_SetWindowSize";
 Pump :: () #foreign sdl "SDL_PumpEvents";
+OutputSize :: (renderer: *void, width: *s32, height: *s32) -> s32 #foreign sdl "SDL_GetRendererOutputSize";
 Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
 DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
 RendererInfo :: struct {
@@ -62,14 +63,15 @@ main :: () -> s32 {
     defer DestroyRenderer(renderer)
     info: RendererInfo
     if Info(renderer, *info) != 0 { return 8 }
-    accelerated := Matches(mode, "env-driver") || Matches(mode, "hint-driver")
+    accelerated := !Matches(mode, "env-software") && !Matches(mode, "fallback")
     if accelerated {
         if !Matches(info.name, "opengl") || (info.flags & cast(u32)2) == cast(u32)0 { return 9 }
     } else {
         if !Matches(info.name, "software") || (info.flags & cast(u32)1) == cast(u32)0 { return 10 }
     }
     explicit_surface := Matches(mode, "env-surface") || Matches(mode, "hint-surface")
-    if !Matches(GetHint(*surface[0]), ifx explicit_surface then "1" else "0") { return 11 }
+    if explicit_surface && !Matches(GetHint(*surface[0]), "1") { return 11 }
+    if Matches(mode, "fallback") && !Matches(GetHint(*surface[0]), "0") { return 11 }
     if Matches(mode, "default") && GetHint(*driver[0]) != null { return 12 }
     if !accelerated && !explicit_surface && (WindowFlags(window) & cast(u32)2) != cast(u32)0 { return 13 }
 
@@ -86,9 +88,14 @@ main :: () -> s32 {
     for scale: 1..2 {
         if scale == 2 { Resize(window, 64, 48); Delay(cast(u32)50); Pump() }
         if LogicalSize(renderer, 32, 24) != 0 || Copy(renderer, texture, null, null) != 0 { return 16 }
+        width: s32; height: s32; unused OutputSize(renderer,*width,*height)
+        if width != 32*scale || height != 24*scale { print("Unexpected drawable: % % scale=%\n",width,height,scale); return 19 }
         if Read(renderer, null, format, *output[0], cast(s32)(128 * scale)) != 0 { return 17 }
         for y: 0..24 * scale - 1 { for x: 0..32 * scale - 1 {
-            if output[y * 32 * scale + x] != pixels[(y / scale) * 32 + x / scale] { return 18 }
+            if output[y * 32 * scale + x] != pixels[(y / scale) * 32 + x / scale] {
+                print("Pixel mismatch: scale=% x=% y=% actual=% expected=%\n", scale, x, y,
+                    output[y * 32 * scale + x], pixels[(y / scale) * 32 + x / scale]); return 18
+            }
         } }
         Present(renderer)
     }

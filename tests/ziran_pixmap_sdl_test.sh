@@ -34,5 +34,6 @@ for input in source saved; do
                     xvfb-run -a "$work/$input-$target/pixmap_sdl_test"
             fi
         done
+        env PIXMAP_SDL_TEST=fallback SDL_VIDEODRIVER=dummy "$work/$input-$target/pixmap_sdl_test"
     done
 done
