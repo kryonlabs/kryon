@@ -23,10 +23,15 @@ set(KRYON_ANDROID_NATIVE_APP_GLUE_DIR
 # Keep debug information and build IDs so retained crash symbols still match.
 function(kryon_android_reproducible_paths source_root)
     get_filename_component(source_root "${source_root}" ABSOLUTE)
+    # Ninja names a source outside the project, such as the NDK's
+    # native_app_glue, relative to the build directory. That spelling carries
+    # both install locations, so it is mapped as well as the absolute one.
+    file(RELATIVE_PATH ndk_from_build "${CMAKE_BINARY_DIR}" "${ANDROID_NDK}")
     add_compile_options(
         "-fdebug-compilation-dir=."
         "-ffile-prefix-map=${source_root}=."
         "-ffile-prefix-map=${ANDROID_NDK}=./ndk"
+        "-ffile-prefix-map=${ndk_from_build}=./ndk"
         "-ffile-prefix-map=${CMAKE_BINARY_DIR}=./build/android")
 endfunction()
 
