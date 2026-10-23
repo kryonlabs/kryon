@@ -1,3 +1,4 @@
+#import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
 
@@ -246,21 +247,6 @@ RasterImage :: (asset_path: string, texture_id: u32,
     unused radius
     unused tint
     failed = true
-}
-
-// This host never draws warped images.
-#program_export
-RasterImageMesh :: (asset_path: string, texture_id: u32,
-    source: Rectangle, points: []Vector2, columns: s32, rows: s32,
-    clip: Rectangle, tint: Color) {
-    unused asset_path
-    unused texture_id
-    unused source
-    unused points
-    unused columns
-    unused rows
-    unused clip
-    unused tint
 }
 
 #program_export

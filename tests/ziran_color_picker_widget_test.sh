@@ -8,16 +8,10 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 source=$repo/tests/color_picker_widget_behavior.zi
 portable=$repo/tests/color_picker_widget_portable_test.zi
-set -- \
-    --bind font_metrics:MeasureGlyphWidth=color_picker_widget_host:MeasureGlyphWidth \
-    --bind font_metrics:MeasureGlyphLineHeight=color_picker_widget_host:MeasureGlyphLineHeight \
-    --bind raster_shape:RasterRoundedRectangle=color_picker_widget_host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=color_picker_widget_host:RasterRoundedRectangleOutline \
-    --bind raster:RasterLine=color_picker_widget_host:RasterLine \
-    --bind raster_text:RasterText=color_picker_widget_host:RasterText \
-    --bind raster_text:RasterTextClipped=color_picker_widget_host:RasterTextClipped \
-    --bind paint_queue:RasterImage=color_picker_widget_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=color_picker_widget_host:RasterImageMesh
+widget_host=color_picker_widget_host
+widget_mesh_host=ziran_mesh_noop_host
+set --
+. "$repo/tests/widget_raster_bindings.sh"
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$portable"

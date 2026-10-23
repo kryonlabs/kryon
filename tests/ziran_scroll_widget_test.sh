@@ -433,7 +433,7 @@ set -- \
     --bind raster_text:RasterText=ziran_widget_noop_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_widget_noop_host:RasterTextClipped \
     --bind paint_queue:RasterImage=ziran_widget_noop_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_widget_noop_host:RasterImageMesh
+    --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 "$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \
     --module-path "$standard" -o "$work/portable-ir" "$work/portable.zi"
 "$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \

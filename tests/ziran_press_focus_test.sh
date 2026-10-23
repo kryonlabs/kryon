@@ -7,21 +7,15 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_press_focus_test.zi
 
+widget_host=ziran_composition_widget_host
+widget_mesh_host=ziran_mesh_noop_host
 set -- \
-    --bind font_metrics:MeasureGlyphWidth=ziran_composition_widget_host:MeasureGlyphWidth \
-    --bind font_metrics:MeasureGlyphLineHeight=ziran_composition_widget_host:MeasureGlyphLineHeight \
-    --bind raster_text:RasterText=ziran_composition_widget_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_composition_widget_host:RasterTextClipped \
-    --bind raster_shape:RasterRoundedRectangle=ziran_composition_widget_host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=ziran_composition_widget_host:RasterRoundedRectangleOutline \
-    --bind raster:RasterLine=ziran_composition_widget_host:RasterLine \
-    --bind paint_queue:RasterImage=ziran_composition_widget_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_composition_widget_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_button_widget_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_button_widget_host:ImageHeight \
     --bind system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost \
     --bind system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
     --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
+. "$repo/tests/widget_raster_bindings.sh"
 
 widget_std="$ziran_root/std"
 . "$repo/tests/widget_matrix.sh"

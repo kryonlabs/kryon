@@ -9,18 +9,12 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_time_picker_widget_test.zi
 
+widget_host=ziran_time_picker_widget_host
+widget_mesh_host=ziran_mesh_noop_host
 set -- \
-    --bind font_metrics:MeasureGlyphWidth=ziran_time_picker_widget_host:MeasureGlyphWidth \
-    --bind font_metrics:MeasureGlyphLineHeight=ziran_time_picker_widget_host:MeasureGlyphLineHeight \
-    --bind raster_text:RasterText=ziran_time_picker_widget_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_time_picker_widget_host:RasterTextClipped \
-    --bind raster_shape:RasterRoundedRectangle=ziran_time_picker_widget_host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=ziran_time_picker_widget_host:RasterRoundedRectangleOutline \
-    --bind raster:RasterLine=ziran_time_picker_widget_host:RasterLine \
-    --bind paint_queue:RasterImage=ziran_time_picker_widget_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_time_picker_widget_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_time_picker_widget_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_time_picker_widget_host:ImageHeight
+. "$repo/tests/widget_raster_bindings.sh"
 
 widget_std="$std"
 . "$repo/tests/widget_matrix.sh"

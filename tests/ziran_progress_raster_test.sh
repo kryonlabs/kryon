@@ -14,7 +14,7 @@ set -- \
     --bind raster_text:RasterTextClipped=ziran_progress_raster_host:RasterTextClipped \
     --bind raster:RasterLine=ziran_progress_raster_host:RasterLine \
     --bind paint_queue:RasterImage=ziran_progress_raster_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_progress_raster_host:RasterImageMesh
+    --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$source"

@@ -7,19 +7,13 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_frame_transition_test.zi
 
+widget_host=ziran_frame_transition_host
+widget_mesh_host=ziran_mesh_noop_host
 set -- \
     --bind frame_transition:DisposeFrameTexture=ziran_frame_transition_host:DisposeFrameTexture \
-    --bind font_metrics:MeasureGlyphWidth=ziran_frame_transition_host:MeasureGlyphWidth \
-    --bind font_metrics:MeasureGlyphLineHeight=ziran_frame_transition_host:MeasureGlyphLineHeight \
-    --bind raster_text:RasterText=ziran_frame_transition_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_frame_transition_host:RasterTextClipped \
-    --bind raster_shape:RasterRoundedRectangle=ziran_frame_transition_host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=ziran_frame_transition_host:RasterRoundedRectangleOutline \
-    --bind raster:RasterLine=ziran_frame_transition_host:RasterLine \
-    --bind paint_queue:RasterImage=ziran_frame_transition_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_frame_transition_host:RasterImageMesh \
     --bind image_raster:ImageWidth=ziran_frame_transition_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_frame_transition_host:ImageHeight
+. "$repo/tests/widget_raster_bindings.sh"
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"

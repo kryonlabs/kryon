@@ -1,0 +1,17 @@
+// Mesh painting is irrelevant to these state-focused tests.
+#import "drawing_props"
+#import "geometry"
+
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32,
+    source: Rectangle, points: []Vector2, columns: s32, rows: s32,
+    clip: Rectangle, tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused points
+    unused columns
+    unused rows
+    unused clip
+    unused tint
+}

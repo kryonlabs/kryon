@@ -15,7 +15,7 @@ set -- \
     --bind raster_shape:RasterRoundedRectangle=ziran_navigation_bar_widget_host:RasterRoundedRectangle \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_navigation_bar_widget_host:RasterRoundedRectangleOutline \
     --bind paint_queue:RasterImage=ziran_navigation_bar_widget_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_navigation_bar_widget_host:RasterImageMesh
+    --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$@" \
     --entry svg_icon_scale_behavior:main -o "$work/icon.zib" "$source"
 test "$("$ziran" run "$work/icon.zib")" = 0

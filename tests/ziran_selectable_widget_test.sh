@@ -16,7 +16,7 @@ set -- \
     --bind raster_text:RasterText=selectable_widget_host:RasterText \
     --bind raster_text:RasterTextClipped=selectable_widget_host:RasterTextClipped \
     --bind paint_queue:RasterImage=selectable_widget_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=selectable_widget_host:RasterImageMesh
+    --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$portable"

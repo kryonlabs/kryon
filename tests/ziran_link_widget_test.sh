@@ -7,16 +7,10 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_link_widget_test.zi
 
-set -- \
-    --bind font_metrics:MeasureGlyphWidth=ziran_link_widget_host:MeasureGlyphWidth \
-    --bind font_metrics:MeasureGlyphLineHeight=ziran_link_widget_host:MeasureGlyphLineHeight \
-    --bind raster_text:RasterText=ziran_link_widget_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_link_widget_host:RasterTextClipped \
-    --bind raster_shape:RasterRoundedRectangle=ziran_link_widget_host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=ziran_link_widget_host:RasterRoundedRectangleOutline \
-    --bind raster:RasterLine=ziran_link_widget_host:RasterLine \
-    --bind paint_queue:RasterImage=ziran_link_widget_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_link_widget_host:RasterImageMesh
+widget_host=ziran_link_widget_host
+widget_mesh_host=ziran_link_widget_host
+set --
+. "$repo/tests/widget_raster_bindings.sh"
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$source"

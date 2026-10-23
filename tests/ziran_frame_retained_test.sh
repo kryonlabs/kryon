@@ -16,7 +16,7 @@ set -- \
     --bind raster_text:RasterText=ziran_frame_retained_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_frame_retained_host:RasterTextClipped \
     --bind paint_queue:RasterImage=ziran_frame_retained_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_frame_retained_host:RasterImageMesh
+    --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$std" -o "$work/ir" "$source"
