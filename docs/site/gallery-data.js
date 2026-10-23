@@ -728,7 +728,7 @@ window.galleryScenes = [
     "module": "DataViews",
     "moduleId": "data_views",
     "category": "UI",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/data_views_examples.zi#L54",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/data_views_examples.zi#L88",
     "code": "gallery-sources/data_views/0.zi",
     "available": true,
     "note": "Click a control to try it. Tab moves keyboard focus."
@@ -740,7 +740,7 @@ window.galleryScenes = [
     "module": "DataViews",
     "moduleId": "data_views",
     "category": "UI",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/data_views_examples.zi#L65",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/data_views_examples.zi#L99",
     "code": "gallery-sources/data_views/1.zi",
     "available": true,
     "note": "Drag a card to another column. The board keeps the new position."
@@ -752,9 +752,9 @@ window.galleryScenes = [
     "module": "DataViews",
     "moduleId": "data_views",
     "category": "UI",
-    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/data_views_examples.zi#L93",
+    "source": "https://github.com/kryonlabs/kryon/blob/master/examples/gallery/src/data_views_examples.zi#L127",
     "code": "gallery-sources/data_views/2.zi",
-    "available": false,
-    "note": "TableView exports layout and selection APIs, but this revision has no maintained table renderer."
+    "available": true,
+    "note": "Select a cell, sort by a header, drag a column divider, or scroll the rows. Arrow keys move the selected cell."
   }
 ];
