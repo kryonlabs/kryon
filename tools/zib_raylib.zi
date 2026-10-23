@@ -1,5 +1,8 @@
 // Cross-platform native ZIB shell. Only the renderer and interpreter are
-// native; the selected file carries the complete application.
+// native; the selected file carries the complete application. Started
+// without a file, it plays app.zib from its own folder and titles its window
+// with app.title from there, so an application ships as this player, its
+// bundle and the font in one folder.
 #import "bundle_raylib"
 #import "raylib_runtime"
 #import "std/byte_text_linux"
@@ -8,14 +11,30 @@ Player :: #import "bundle_player";
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
     check: bool = argc == 3 && TextFromCString(argv[1]) == "--check"
-    if argc != 2 && !check { print("usage: zib [--check] FILE.zib\n"); return 2 }
-    data := RaylibBundleRead(TextFromCString(argv[ifx check then 2 else 1]))
+    if argc > 2 && !check { print("usage: zib [--check] [FILE.zib]\n"); return 2 }
+    beside := argc == 1
+    path: [4096]u8
+    title_path: [4096]u8
+    title: [256]u8
+    title_text := "Kryon ZIB"
+    file := ifx beside then RaylibBundleBeside("app.zib", path[:]) else TextFromCString(argv[ifx check then 2 else 1])
+    data := RaylibBundleRead(file)
     if data.count == 0 { print("kryon: could not read the ZIB file\n"); return 2 }
     defer { RaylibBundleFree(data) }
     if check {
         return ifx RaylibBundleCheck(data) then 0 else 1
     }
-    if !OpenRaylib(960, 600, "Kryon ZIB") { return 1 }
+    if beside {
+        named := RaylibBundleRead(RaylibBundleBeside("app.title", title_path[:]))
+        length: s64 = 0
+        for byte: named {
+            if byte == 10 || byte == 13 || length >= title.count - 1 { break }
+            title[length] = byte; length += 1
+        }
+        if length > 0 { title_text = TextView(title[0:length]) }
+        if named.count > 0 { RaylibBundleFree(named) }
+    }
+    if !OpenRaylib(960, 600, title_text) { return 1 }
     defer { CloseRaylib() }
     unused RaylibBundleTypeface()
     host: RaylibBundle
@@ -35,3 +54,4 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     return 0
 }
+

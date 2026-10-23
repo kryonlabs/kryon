@@ -44,6 +44,17 @@ BundleClockSeconds :: () -> float64 #foreign raylib "GetTime";
 
 RaylibBundleRead :: (path: string) -> string { return ReadAppAsset(path) }
 
+// A file in the player's own folder, written into path; "" when it does not
+// fit. Native distributions keep their bundle and title beside the player.
+RaylibBundleBeside :: (name: string, path: []u8) -> string {
+    directory := TextFromCString(ApplicationDirectory())
+    if directory.count + name.count >= path.count { return "" }
+    length: s64 = 0
+    for byte: directory { path[length] = byte; length += 1 }
+    for byte: name { path[length] = byte; length += 1 }
+    return TextView(path[0:length])
+}
+
 RaylibBundleFree :: (data: string) { FreeAppAsset(data) }
 
 RaylibBundleTypeface :: () -> bool {
