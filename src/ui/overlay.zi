@@ -7,14 +7,6 @@ DismissibleOverlayPolicy :: struct {
     // or not that closes the overlay.
     tapped: bool
 }
-
-#program_export
-OverlayViewExtent :: (requested: s32, fallback: s32) -> s32 {
-    if requested > 0 { return requested }
-    if fallback > 0 { return fallback }
-    return 0
-}
-
 #program_export
 DismissibleOverlayPolicyFor :: (released: bool, release_consumed: bool,
     dismiss_disabled: bool, pointer_inside: bool) -> DismissibleOverlayPolicy {

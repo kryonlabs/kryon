@@ -55,13 +55,6 @@ CheckboxLayout :: struct {
     label_x: float32
     label_y: float32
 }
-
-CheckboxFlagResult :: struct {
-    flags: u32
-    checked: bool
-    changed: bool
-}
-
 CheckboxMetric :: (fields: u32, field: u32, value: float32,
     fallback: float32, scale: float32, allow_zero: bool) -> float32 {
     if scale <= 0.0 { scale = 1.0 }
@@ -119,32 +112,6 @@ CheckboxLayoutForText :: (x: float32, y: float32, label_width: float32,
     layout.label_y = CheckboxLabelYFor(layout.bounds, text_line_height)
     return layout
 }
-
-#program_export
-CheckboxLayoutFor :: (x: float32, y: float32, label_width: float32,
-    scale: float32, box: StyleFrame, label: StyleFrame) -> CheckboxLayout {
-    return CheckboxLayoutForText(x, y, label_width,
-        cast(float32)CheckboxSlotSize(scale, box), scale, box, label)
-}
-
-#program_export
-CheckboxFlagApply :: (flags: u32, flag_value: u32, pressed: bool) -> CheckboxFlagResult {
-    result: CheckboxFlagResult
-    result.flags = flags
-    result.checked = (flags & flag_value) == flag_value
-    result.changed = false
-    if pressed {
-        if result.checked {
-            result.flags = flags & ~flag_value
-        } else {
-            result.flags = flags | flag_value
-        }
-        result.checked = !result.checked
-        result.changed = true
-    }
-    return result
-}
-
 #program_export
 CheckboxValueApply :: (checked: bool, pressed: bool, has_value: bool) -> CheckboxValueResult {
     result: CheckboxValueResult

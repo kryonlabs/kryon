@@ -55,27 +55,10 @@ ModalFrameLayout :: struct {
     icon_size: s32
     icon_padding: s32
 }
-
-ModalActionPlacement :: struct {
-    start_x: s32
-    action_width: s32
-    total_width: s32
-}
-
 ModalDismissal :: struct {
     dismissed: bool
     release_consumed: bool
 }
-
-ModalResultDecision :: struct {
-    result: s32
-}
-
-ModalPromptInput :: struct {
-    commit: bool
-    escape: bool
-}
-
 #program_export
 ModalPanelRole :: () -> s32 {
     return 2
@@ -222,24 +205,6 @@ ModalActionRowWidthStep :: (row_width: s32, action_width: s32,
     if row_width > 0 && next_width > content_width { return action_width }
     return next_width
 }
-
-#program_export
-ModalActionPlacementFor :: (x: s32, content_width: s32, row_count: s32,
-    gap: s32) -> ModalActionPlacement {
-    placement: ModalActionPlacement
-    if row_count <= 0 || content_width <= 0 {
-        placement.start_x = x
-        return placement
-    }
-    usable: s32 = content_width - gap * (row_count - 1)
-    placement.action_width = usable / row_count
-    if placement.action_width < 0 { placement.action_width = 0 }
-    placement.total_width = placement.action_width * row_count +
-        gap * (row_count - 1)
-    placement.start_x = x + (content_width - placement.total_width) / 2
-    return placement
-}
-
 #program_export
 ModalButtonsHeight :: (rows: s32, metrics: ModalMetrics) -> s32 {
     if rows <= 0 { return 0 }
@@ -252,76 +217,6 @@ ModalActionNextY :: (y: s32, button_height: s32, gap: s32) -> s32 {
     if gap < 0 { gap = 0 }
     return y + button_height + gap
 }
-
-#program_export
-ModalFontFor :: (default_font: s32, style_font: s32) -> s32 {
-    if style_font > 0 { return style_font }
-    return default_font
-}
-
-#program_export
-ModalMessageLineGap :: (scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    return cast(s32)(4.0 * scale)
-}
-
-#program_export
-ModalHasPromptFor :: (has_text: bool, text_size: s32, has_cursor: bool,
-    has_focus: bool) -> bool {
-    return has_text && text_size > 0 && has_cursor && has_focus
-}
-
-#program_export
-ModalPromptFallbackFocusId :: () -> s32 {
-    return 7301
-}
-
-#program_export
-ModalPromptFocusIdFor :: (requested_focus_id: s32) -> s32 {
-    if requested_focus_id > 0 { return requested_focus_id }
-    return ModalPromptFallbackFocusId()
-}
-
-#program_export
-ModalPromptCommitResult :: (action_count: s32) -> s32 {
-    if action_count > 1 { return 2 }
-    return 1
-}
-
-#program_export
-ModalPromptInputFor :: (commit_pressed: bool, escape_pressed: bool) -> ModalPromptInput {
-    input: ModalPromptInput
-    input.commit = commit_pressed
-    input.escape = escape_pressed
-    return input
-}
-
-#program_export
-ModalPromptResultFor :: (current_result: s32, has_prompt: bool,
-    commit_pressed: bool, escape_pressed: bool,
-    action_count: s32) -> ModalResultDecision {
-    decision: ModalResultDecision
-    decision.result = current_result
-    if current_result != 0 || !has_prompt {
-        return decision
-    }
-    if commit_pressed {
-        decision.result = ModalPromptCommitResult(action_count)
-        return decision
-    }
-    if escape_pressed {
-        decision.result = 1
-    }
-    return decision
-}
-
-#program_export
-ModalPromptResultDecisionFor :: (current_result: s32, has_prompt: bool,
-    input: ModalPromptInput, action_count: s32) -> ModalResultDecision {
-    return ModalPromptResultFor(current_result, has_prompt, input.commit,
-        input.escape, action_count)
-}
-
 #program_export
 ModalOutsideDismissalFor :: (released: bool, release_consumed: bool,
     pointer_inside: bool) -> ModalDismissal {

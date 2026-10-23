@@ -528,20 +528,6 @@ StyleCascade :: struct {
     typeface_priority: StylePriority
     letter_spacing_priority: StylePriority
 }
-
-StyleFieldDecision :: struct {
-    matched: bool
-    field_present: bool
-    wins: bool
-    layer: s32
-    specificity: s32
-    order: s32
-    current_present: bool
-    current_layer: s32
-    current_specificity: s32
-    current_order: s32
-}
-
 #program_export
 StyleDefaultFacts :: (kind: s32) -> StyleFacts {
     facts: StyleFacts
@@ -699,22 +685,6 @@ StyleSelectorSpecificity :: (selector: StyleSelector) -> s32 {
     }
     return StyleSpecificity(kinds, attributes, classes, names)
 }
-
-#program_export
-StylePriorityScore :: (layer: s32, specificity: s32, order: s32) -> s32 {
-    return layer * 1000000 + specificity * 1000 + order
-}
-
-#program_export
-StyleRulePriority :: (rule: StyleRule) -> StylePriority {
-    priority: StylePriority
-    priority.present = true
-    priority.layer = rule.layer
-    priority.specificity = StyleSelectorSpecificity(rule.selector)
-    priority.order = rule.order
-    return priority
-}
-
 #program_export
 StyleRuleMatchesState :: (rule_state: s32, active_state: s32) -> bool {
     if rule_state == StyleStateAny() { return true }
@@ -734,54 +704,6 @@ StyleRuleMatches :: (rule: StyleRule, facts: StyleFacts, active_state: s32) -> b
 StyleHasField :: (style: StyleData, field: u32) -> bool {
     return (style.fields & field) != cast(u32)0
 }
-
-#program_export
-StyleCascadeFieldPriority :: (cascade: StyleCascade, field: u32) -> StylePriority {
-    if field == cast(u32)StyleBackground { return cascade.background_priority }
-    if field == cast(u32)StyleForeground { return cascade.foreground_priority }
-    if field == cast(u32)StyleBorder { return cascade.border_priority }
-    if field == cast(u32)StyleFocus { return cascade.focus_priority }
-    if field == cast(u32)StyleRadius { return cascade.radius_priority }
-    if field == cast(u32)StyleBorderWidth { return cascade.border_width_priority }
-    if field == cast(u32)StyleOpacity { return cascade.opacity_priority }
-    if field == cast(u32)StylePaddingX { return cascade.padding_x_priority }
-    if field == cast(u32)StylePaddingY { return cascade.padding_y_priority }
-    if field == cast(u32)StyleGap { return cascade.gap_priority }
-    if field == cast(u32)StyleFontSize { return cascade.font_size_priority }
-    if field == cast(u32)StyleLetterSpacing { return cascade.letter_spacing_priority }
-    if field == cast(u32)StyleIconSize { return cascade.icon_size_priority }
-    if field == cast(u32)StyleContentOffset { return cascade.content_offset_priority }
-    if field == cast(u32)StyleBackgroundEnd { return cascade.background_end_priority }
-    if field == cast(u32)StyleMaterial { return cascade.material_priority }
-    if field == cast(u32)StyleTypeface { return cascade.typeface_priority }
-    priority: StylePriority
-    return priority
-}
-
-#program_export
-StyleRuleFieldDecision :: (current: StylePriority, rule: StyleRule,
-    facts: StyleFacts, active_state: s32, field: u32) -> StyleFieldDecision {
-    decision: StyleFieldDecision
-    decision.current_present = current.present
-    decision.current_layer = current.layer
-    decision.current_specificity = current.specificity
-    decision.current_order = current.order
-    if !StyleRuleMatches(rule, facts, active_state) {
-        return decision
-    }
-    decision.matched = true
-    if !StyleHasField(rule.style, field) {
-        return decision
-    }
-    decision.field_present = true
-    priority: StylePriority = StyleRulePriority(rule)
-    decision.layer = priority.layer
-    decision.specificity = priority.specificity
-    decision.order = priority.order
-    decision.wins = StylePriorityWins(priority, current)
-    return decision
-}
-
 // A scalar score is useful for display but cannot order arbitrary selector
 // counts or source positions without collisions. Compare each tier directly.
 #program_export
@@ -931,12 +853,6 @@ ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
     }
     return cascade
 }
-
-#program_export
-FinishStyleCascade :: (cascade: StyleCascade) -> StyleData {
-    return cascade.result
-}
-
 // Caller-owned tables resolve from this copy; the installed table resolves
 // in place through ResolveInstalledStyleRules.
 resolve_rules: StyleRules;

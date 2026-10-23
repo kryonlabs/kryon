@@ -4,17 +4,3 @@
 #import "geometry"
 
 using ControlSize;
-
-#program_export
-CardButtonProps :: (card: CardProps) -> ButtonProps {
-    button: ButtonProps
-
-    button.bounds = card.bounds
-    if card.clickable { button.id = card.id }
-    button.class_name = card.class_name
-    button.size = cast(ControlSize)ControlSizeLarge
-    button.disabled = card.disabled
-    button.selected = card.selected
-    button.state = card.state
-    return button
-}

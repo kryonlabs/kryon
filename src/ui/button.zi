@@ -94,28 +94,6 @@ ContentSize :: struct {
     icon_size: float32
     gap: float32
 }
-
-SwatchPaint :: struct {
-    bounds: Rectangle
-    checker_base: Rectangle
-    checker_a: Rectangle
-    checker_b: Rectangle
-    swatch: Rectangle
-    focus_bounds: Rectangle
-    checker_base_color: u32
-    checker_alt_color: u32
-    swatch_color: Color
-    border_color: u32
-    focus_color: u32
-    text_color: u32
-    label_x: float32
-    radius: float32
-    swatch_roundness: float32
-    border_width: float32
-    focus_width: float32
-    show_focus: bool
-}
-
 #program_export
 ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool {
     if clicked { return !open }

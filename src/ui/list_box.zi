@@ -20,14 +20,6 @@ ListBoxNavigation :: struct {
     scroll: s32
     changed: bool
 }
-
-ListBoxRowDecision :: struct {
-    select: bool
-    consume_release: bool
-    selected: s32
-    changed: bool
-}
-
 ListBoxItemPaint :: struct {
     text_x: s32
     text_y: s32
@@ -141,16 +133,6 @@ ListBoxKeyUp :: () -> s32 {
 ListBoxKeyDown :: () -> s32 {
     return 4
 }
-
-#program_export
-ListBoxKeyFor :: (home: bool, end: bool, up: bool, down: bool) -> s32 {
-    if home { return ListBoxKeyHome() }
-    if end { return ListBoxKeyEnd() }
-    if up { return ListBoxKeyUp() }
-    if down { return ListBoxKeyDown() }
-    return ListBoxKeyNone()
-}
-
 #program_export
 ListBoxNavigate :: (selected: s32, item_count: s32, key: s32,
     scroll: s32, row_height: s32, viewport_height: float32,
@@ -193,22 +175,6 @@ ListBoxNavigate :: (selected: s32, item_count: s32, key: s32,
         viewport_height, max_scroll, scale, item)
     return nav
 }
-
-#program_export
-ListBoxRowDecisionFor :: (hot: bool, released: bool, has_selection: bool,
-    current_selected: s32, row: s32) -> ListBoxRowDecision {
-    decision: ListBoxRowDecision
-    decision.selected = current_selected
-    if !hot || !released || !has_selection {
-        return decision
-    }
-    decision.consume_release = true
-    decision.select = true
-    decision.selected = row
-    decision.changed = row != current_selected
-    return decision
-}
-
 #program_export
 ListBoxLayoutFor :: (bounds: Rectangle, item_count: s32, row_height: s32,
     content_height: s32, scroll: s32, scale: float32, item: StyleFrame) -> ListBoxLayout {
@@ -252,17 +218,4 @@ ListBoxItemLabelInset :: (scale: float32, item: StyleFrame) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
     return ListBoxMetric(item.value.fields, cast(u32)StylePaddingX,
         item.value.padding_x, 8.0, scale, true)
-}
-
-#program_export
-ListBoxScrollbarBoundsFor :: (bounds: Rectangle, scale: float32,
-    list: StyleFrame) -> Rectangle {
-    bar: Rectangle
-    scrollbar_width: s32 = ListBoxMetric(list.value.fields,
-        cast(u32)StyleContentOffset, list.value.offset_y, 8.0, scale, true)
-    bar.x = bounds.x + bounds.width - cast(float32)scrollbar_width
-    bar.y = bounds.y
-    bar.width = cast(float32)scrollbar_width
-    bar.height = bounds.height
-    return bar
 }

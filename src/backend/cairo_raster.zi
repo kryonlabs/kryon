@@ -70,14 +70,9 @@ Save :: (paint: *void) #foreign cairo_library "cairo_save";
 Restore :: (paint: *void) #foreign cairo_library "cairo_restore";
 SetSourceRGBA :: (paint: *void, red: float64, green: float64,
     blue: float64, alpha: float64) #foreign cairo_library "cairo_set_source_rgba";
-SetSourceSurface :: (paint: *void, surface: *void, x: float64,
-    y: float64) #foreign cairo_library "cairo_set_source_surface";
 GetSource :: (paint: *void) -> *void #foreign cairo_library "cairo_get_source";
-PatternExtend :: (pattern: *void, extend: s32) #foreign cairo_library "cairo_pattern_set_extend";
 PatternFilter :: (pattern: *void, filter: s32) #foreign cairo_library "cairo_pattern_set_filter";
 Paint :: (paint: *void) #foreign cairo_library "cairo_paint";
-MaskSurface :: (paint: *void, surface: *void, x: float64,
-    y: float64) #foreign cairo_library "cairo_mask_surface";
 NewPath :: (paint: *void) #foreign cairo_library "cairo_new_path";
 CanvasRectangle :: (paint: *void, x: float64, y: float64,
     width: float64, height: float64) #foreign cairo_library "cairo_rectangle";
@@ -108,7 +103,6 @@ TextExtents :: struct {
     y_advance: float64
 }
 FontExtentsOf :: (paint: *void, extents: *FontExtents) #foreign cairo_library "cairo_font_extents";
-TextExtentsOf :: (paint: *void, value: *u8, extents: *TextExtents) #foreign cairo_library "cairo_text_extents";
 ShowText :: (paint: *void, value: *u8) #foreign cairo_library "cairo_show_text";
 Translate :: (paint: *void, x: float64, y: float64) #foreign cairo_library "cairo_translate";
 Rotate :: (paint: *void, radians: float64) #foreign cairo_library "cairo_rotate";
@@ -396,22 +390,6 @@ CaptureConfigured :: () -> bool {
     if path == null { return false }
     return SurfaceWritePNG(surface, path) == 0
 }
-
-// Kryon's line box is `font` pixels from the top of the ascent to the bottom
-// of the descent, as the raylib and canvas hosts lay text out, while Cairo
-// sizes a font by its em. Selects the size whose ascent and descent fill the
-// line box and returns the baseline's offset from the top of the box.
-SelectLineFont :: (font: s32) -> float64 {
-    SetFontSize(paint, cast(float64)font)
-    extents: FontExtents
-    FontExtentsOf(paint, *extents)
-    total: float64 = extents.ascent + extents.descent
-    if total <= 0.0 { return cast(float64)font }
-    scale: float64 = cast(float64)font / total
-    SetFontSize(paint, cast(float64)font * scale)
-    return extents.ascent * scale
-}
-
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {

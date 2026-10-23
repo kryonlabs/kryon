@@ -31,9 +31,6 @@
     OsFileLength :: (path: *u8) -> s32 {
         return PageFileLength(TextFromCString(path))
     }
-    OsFileModTime :: (path: *u8) -> float64 {
-        return PageFileModTime(TextFromCString(path))
-    }
     OsClipboardPush :: (text: *u8, gesture: s32) {
         PageClipboardPush(TextFromCString(text), gesture != 0)
     }
@@ -187,22 +184,6 @@
     SetLoadFileDataCallback :: (callback: CanvasLoadDataCallback) {
         canvas_load_data_callback = callback
     }
-
-    #program_export
-    SetSaveFileDataCallback :: (callback: CanvasSaveDataCallback) {
-        canvas_save_data_callback = callback
-    }
-
-    #program_export
-    SetLoadFileTextCallback :: (callback: CanvasLoadTextCallback) {
-        canvas_load_text_callback = callback
-    }
-
-    #program_export
-    SetSaveFileTextCallback :: (callback: CanvasSaveTextCallback) {
-        canvas_save_text_callback = callback
-    }
-
     #program_export
     SaveFileData :: (path: *u8, data: *void, size: s32) -> bool {
         if path == null || data == null || size < 0 {
@@ -327,12 +308,6 @@
         }
         return *canvas_working_directory[0]
     }
-
-    #program_export
-    GetFileModTime :: (path: *u8) -> isize {
-        return cast(isize)OsFileModTime(path)
-    }
-
     #program_export
     GetFileLength :: (path: *u8) -> s32 {
         return OsFileLength(path)
@@ -433,17 +408,6 @@
     IsPathFile :: (path: *u8) -> bool {
         return FileExists(path)
     }
-
-    #program_export
-    IsPathDirectory :: (path: *u8) -> bool {
-        return DirectoryExists(path)
-    }
-
-    #program_export
-    IsFileNameValid :: (name: *u8) -> bool {
-        return name != null && name[0] != cast(u8)0
-    }
-
     FreeCanvasPaths :: (files: CanvasFilePathList) {
         index: u32 = 0
         while index < files.count {
@@ -557,20 +521,6 @@
     UnloadDirectoryFiles :: (files: CanvasFilePathList) {
         FreeCanvasPaths(files)
     }
-
-    #program_export
-    GetDirectoryFileCountEx :: (path: *u8, filter: *u8, subdirs: bool) -> u32 {
-        files := LoadDirectoryFilesEx(path, filter, subdirs)
-        count := files.count
-        FreeCanvasPaths(files)
-        return count
-    }
-
-    #program_export
-    GetDirectoryFileCount :: (path: *u8) -> u32 {
-        return GetDirectoryFileCountEx(path, null, false)
-    }
-
     #program_export
     SetShapesTexture :: (texture: Texture2D, rectangle: Rectangle) {
         unused texture

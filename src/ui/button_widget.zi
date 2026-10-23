@@ -100,14 +100,6 @@ Theme :: #import "theme";
         face.gap = 8.0
         return face
     }
-
-    #program_export
-    ButtonFaceFor :: (rules: StyleRules, props: ButtonProps,
-        state: s32) -> StyleData {
-        return ButtonFaceFinish(props, ResolveStyleRules(rules,
-            ButtonDefaultFace(props, state), ButtonFaceFacts(props, state), state))
-    }
-
     // The face under the installed style, without copying its rule table.
     #program_export
     ButtonInstalledFaceFor :: (props: ButtonProps, state: s32) -> StyleData {

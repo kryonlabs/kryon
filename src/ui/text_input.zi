@@ -160,13 +160,6 @@ TextContextCommandDecision :: struct {
 TextInputDoubleClickDecision :: struct {
     double_click: bool
 }
-
-TextCompositionPhaseDecision :: struct {
-    store_preedit: bool
-    commit: bool
-    cancel: bool
-}
-
 TextCompositionPaintSpan :: struct {
     visible: bool
     start: s32
@@ -179,16 +172,6 @@ TextSelectionPaintSpan :: struct {
     end: s32
     continues_past_line: bool
 }
-
-#program_export
-TextCompositionPhaseDecisionFor :: (phase: s32) -> TextCompositionPhaseDecision {
-    decision: TextCompositionPhaseDecision
-    decision.store_preedit = phase == 1 || phase == 2
-    decision.commit = phase == 3
-    decision.cancel = phase == 4
-    return decision
-}
-
 #program_export
 TextCompositionPaintSpanForLine :: (composition_start: s32,
     composition_end: s32, line_start: s32,
@@ -350,112 +333,12 @@ TextAreaScrollFor :: (scroll: s32, max_scroll: s32) -> s32 {
     }
     return scroll
 }
-
-#program_export
-TextNavNone :: () -> s32 {
-    return 0
-}
-
-#program_export
-TextNavLeft :: () -> s32 {
-    return 1
-}
-
-#program_export
-TextNavRight :: () -> s32 {
-    return 2
-}
-
-#program_export
-TextNavHome :: () -> s32 {
-    return 3
-}
-
-#program_export
-TextNavEnd :: () -> s32 {
-    return 4
-}
-
-#program_export
-TextNavUp :: () -> s32 {
-    return 5
-}
-
-#program_export
-TextNavDown :: () -> s32 {
-    return 6
-}
-
-#program_export
-TextNavPageUp :: () -> s32 {
-    return 7
-}
-
-#program_export
-TextNavPageDown :: () -> s32 {
-    return 8
-}
-
-#program_export
-TextDeleteBackspace :: () -> s32 {
-    return 1
-}
-
-#program_export
-TextDeleteForward :: () -> s32 {
-    return 2
-}
-
-TextInputMetric :: (fields: u32, field: u32, value: s32,
-    fallback: s32) -> s32 {
-    if (fields & field) == cast(u32)0 || value < 0 {
-        return fallback
-    }
-    return value
-}
-
 TextInputScaledMetric :: (value: float32, scale: float32) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
     metric: s32 = cast(s32)(value * scale)
     if metric < 0 { return 0 }
     return metric
 }
-
-TextInputRoundScaledMetric :: (value: float32, scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    metric: s32 = cast(s32)((cast(float32)(cast(s32)(value + 0.5))) * scale + 0.5)
-    if metric < 0 { return 0 }
-    return metric
-}
-
-TextInputRequestedFieldsFor :: (fields: u32, padding_x: s32,
-    padding_y: s32, line_gap: s32) -> u32 {
-    requested: u32 = fields
-    if padding_x > 0 {
-        requested = requested | cast(u32)StylePaddingX
-    }
-    if padding_y > 0 {
-        requested = requested | cast(u32)StylePaddingY
-    }
-    if line_gap >= 0 {
-        requested = requested | cast(u32)StyleGap
-    }
-    return requested
-}
-
-TextInputResolvedMetric :: (requested_fields: u32, field: u32,
-    requested_value: s32, resolved_fields: u32, resolved_value: float32,
-    scale: float32, unset_value: s32) -> s32 {
-    if (requested_fields & field) != cast(u32)0 {
-        if requested_value < 0 { return 0 }
-        return requested_value
-    }
-    if (resolved_fields & field) != cast(u32)0 && resolved_value >= 0.0 {
-        return TextInputRoundScaledMetric(resolved_value, scale)
-    }
-    return unset_value
-}
-
 #program_export
 TextAreaMinWrapWidth :: (scale: float32) -> s32 {
     return TextInputScaledMetric(24.0, scale)

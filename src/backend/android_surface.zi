@@ -312,14 +312,6 @@ GetAndroidWindowInsets :: (output: *AndroidWindowInsets) -> s32 {
     }
     return ready
 }
-
-#program_export
-GetAndroidSafeAreaInsets :: () -> AndroidSafeArea {
-    insets: AndroidWindowInsets
-    GetAndroidWindowInsets(*insets)
-    return SafeAreaForPolicy(insets, AndroidViewportPolicySafeArea())
-}
-
 #program_export
 SetAndroidViewportPolicy :: (policy: AndroidViewportPolicy) {
     viewport_policy = policy

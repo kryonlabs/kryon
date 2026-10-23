@@ -113,8 +113,6 @@ HostRaylibDrawFontText :: (font: RaylibFont, value: *u8, position: Vector2,
     size: float32, spacing: float32, tint: Color) #foreign raylib "DrawTextEx";
 HostRaylibMeasureFontText :: (font: RaylibFont, value: *u8, size: float32,
     spacing: float32) -> Vector2 #foreign raylib "MeasureTextEx";
-HostRaylibBeginScissor :: (x: s32, y: s32, width: s32, height: s32) #foreign raylib "BeginScissorMode";
-HostRaylibEndScissor :: () #foreign raylib "EndScissorMode";
 HostRaylibMouseX :: () -> s32 #foreign raylib "GetMouseX";
 HostRaylibMouseY :: () -> s32 #foreign raylib "GetMouseY";
 HostRaylibMousePressed :: (button: s32) -> bool #foreign raylib "IsMouseButtonPressed";
@@ -2205,54 +2203,6 @@ EndRetainedFrameReusePrevious :: () -> bool {
 
 retained_damage_clip: RasterClipState;
 retained_damage_active: bool;
-
-// Copies part of the previous complete frame, in screen pixels, to the same
-// place in the frame being rendered. Render targets are stored bottom up.
-RaylibKeepPrevious :: (texture: Texture2D, x: float32, y: float32, width: float32, height: float32) {
-    if width <= 0.0 || height <= 0.0 { return }
-    source := Rectangle.{x, cast(float32)texture.height - y - height, width, -height}
-    HostRaylibDrawTexture(texture, source, Rectangle.{x, y, width, height}, Vector2.{}, 0.0,
-        Color.{255, 255, 255, 255})
-}
-
-// Repaints only `area`, in layout units, of the frame being rendered: the
-// rest is copied unchanged from the previous complete frame, and paint is
-// clipped to the area until EndRetainedDamage. False when there is no
-// previous frame to keep; the host then repaints everything.
-#program_export
-BeginRetainedDamage :: (area: Rectangle) -> bool {
-    if !retained_frame_active || retained_damage_active || retained_frame_previous_index < 0 ||
-    retained_frame_previous_index == retained_frame_render_index { return false }
-    previous := retained_frame_targets[retained_frame_previous_index].texture
-    width := cast(float32)retained_frame_width
-    height := cast(float32)retained_frame_height
-    screen := ClipScreenBounds(area)
-    left := screen.x
-    top := screen.y
-    right := screen.x + screen.width
-    bottom := screen.y + screen.height
-    if left < 0.0 { left = 0.0 }
-    if top < 0.0 { top = 0.0 }
-    if right > width { right = width }
-    if bottom > height { bottom = height }
-    if right < left { right = left }
-    if bottom < top { bottom = top }
-    HostRaylibFlushBatch()
-    HostRaylibDisableBlend()
-    HostRaylibPushMatrix()
-    HostRaylibLoadIdentity()
-    RaylibKeepPrevious(previous, 0.0, 0.0, width, top)
-    RaylibKeepPrevious(previous, 0.0, bottom, width, height - bottom)
-    RaylibKeepPrevious(previous, 0.0, top, left, bottom - top)
-    RaylibKeepPrevious(previous, right, top, width - right, bottom - top)
-    HostRaylibPopMatrix()
-    HostRaylibFlushBatch()
-    HostRaylibEnableBlend()
-    retained_damage_clip = BeginRasterClip(area)
-    retained_damage_active = true
-    return true
-}
-
 #program_export
 EndRetainedDamage :: () {
     if !retained_damage_active { return }

@@ -38,22 +38,6 @@ MenuGroupPointerDecision :: struct {
     reset_navigation: bool
     navigation_top: s32
 }
-
-MenuItemPointerDecision :: struct {
-    consume_release: bool
-    set_focus: bool
-    reset_navigation: bool
-    set_navigation_path: bool
-    navigation_depth: s32
-    navigation_index: s32
-    clear_child_navigation: bool
-    set_submenu: bool
-    submenu_id: s32
-    activate: bool
-    activated_id: s32
-    close_open: bool
-}
-
 MenuKeyboardInput :: struct {
     up: bool
     down: bool
@@ -101,22 +85,6 @@ MenuContextOpenResult :: struct {
     open: bool
     changed: bool
 }
-
-#program_export
-MenuBarRole :: () -> s32 {
-    return 1
-}
-
-#program_export
-MenuPopupRole :: () -> s32 {
-    return 2
-}
-
-#program_export
-MenuContextRole :: () -> s32 {
-    return 3
-}
-
 MenuHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != cast(u32)0
 }
@@ -173,24 +141,6 @@ MenuItemKeyboardActivates :: (kind: s32, disabled: bool,
     opens_submenu: bool) -> bool {
     return kind != MenuKindSeparator() && !disabled && !opens_submenu
 }
-
-#program_export
-MenuKeyboardInputFor :: (up: bool, down: bool, home: bool, end: bool,
-    left: bool, right: bool, enter: bool, space: bool,
-    escape: bool) -> MenuKeyboardInput {
-    input: MenuKeyboardInput
-    input.up = up
-    input.down = down
-    input.home = home
-    input.end = end
-    input.left = left
-    input.right = right
-    input.enter = enter
-    input.space = space
-    input.escape = escape
-    return input
-}
-
 #program_export
 MenuKeyboardDecisionFor :: (input: MenuKeyboardInput, depth: s32,
     selected: s32) -> MenuKeyboardDecision {
@@ -273,22 +223,6 @@ MenuItemPointerActivates :: (kind: s32, disabled: bool) -> bool {
     return kind != MenuKindSeparator() && kind != MenuKindSubmenu() &&
     !disabled
 }
-
-#program_export
-MenuBarCountFor :: (count: s32, limit: s32) -> s32 {
-    if count < 0 { return 0 }
-    if limit >= 0 && count > limit { return limit }
-    return count
-}
-
-#program_export
-MenuBarOpenIndexFor :: (bar_id: s32, open_id: s32, menu_count: s32) -> s32 {
-    if bar_id <= 0 || menu_count <= 0 { return -1 }
-    index: s32 = open_id - bar_id - 1
-    if index < 0 || index >= menu_count { return -1 }
-    return index
-}
-
 #program_export
 MenuBarOpenIdFor :: (bar_id: s32, index: s32, menu_count: s32) -> s32 {
     if bar_id <= 0 || index < 0 || index >= menu_count { return 0 }
@@ -338,35 +272,6 @@ MenuGroupPointerDecisionFor :: (menu_id: s32, index: s32,
     }
     return decision
 }
-
-#program_export
-MenuItemPointerDecisionFor :: (hot: bool, mouse_released: bool,
-    same_focus: bool, kind: s32, disabled: bool, item_id: s32,
-    index: s32, depth: s32, max_depth: s32) -> MenuItemPointerDecision {
-    decision: MenuItemPointerDecision
-    decision.navigation_depth = depth
-    decision.navigation_index = index
-    if !hot || !mouse_released {
-        return decision
-    }
-    decision.consume_release = true
-    decision.set_focus = true
-    decision.reset_navigation = !same_focus
-    if depth < max_depth {
-        decision.set_navigation_path = true
-        decision.clear_child_navigation = true
-    }
-    if MenuItemShowsSubmenu(kind) {
-        decision.set_submenu = true
-        decision.submenu_id = item_id
-    } else if MenuItemPointerActivates(kind, disabled) {
-        decision.activate = true
-        decision.activated_id = item_id
-        decision.close_open = true
-    }
-    return decision
-}
-
 #program_export
 MenuOutsideCloseDecisionFor :: (open_id: s32, mouse_released: bool,
     contains_bar: bool, panel_valid: bool,
@@ -519,12 +424,6 @@ MenuRowBounds :: (panel: Rectangle, index: s32,
     if row.width < 0.0 { row.width = 0.0 }
     return row
 }
-
-#program_export
-MenuSubmenuX :: (row: Rectangle) -> s32 {
-    return cast(s32)(row.x + row.width)
-}
-
 #program_export
 MenuSubmenuOrigin :: (row: Rectangle) -> Vector2 {
     origin: Vector2

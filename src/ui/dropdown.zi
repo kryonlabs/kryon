@@ -189,20 +189,6 @@ ClampIndex :: (value: s32, count: s32) -> s32 {
     }
     return value
 }
-
-#program_export
-DropdownOptionCountFor :: (count: s32) -> s32 {
-    if count < 0 { return 0 }
-    return count
-}
-
-#program_export
-DropdownCurrentIndexFor :: (selected: s32, count: s32) -> s32 {
-    index: s32 = ClampIndex(selected, count)
-    if index < 0 { return 0 }
-    return index
-}
-
 #program_export
 Trigger :: (open: bool, disabled: bool, count: s32, focused: bool,
     keyboard: bool, activated: bool, enter: bool, space: bool, down: bool) -> bool {
@@ -217,38 +203,6 @@ Trigger :: (open: bool, disabled: bool, count: s32, focused: bool,
     }
     return open
 }
-
-#program_export
-DropdownTriggerInputFor :: (enter_pressed: bool, keypad_enter_pressed: bool,
-    space_pressed: bool, down_pressed: bool) -> DropdownTriggerInput {
-    input: DropdownTriggerInput
-    input.enter = enter_pressed || keypad_enter_pressed
-    input.space = space_pressed
-    input.down = down_pressed
-    return input
-}
-
-#program_export
-DropdownMenuInputFor :: (keyboard_available: bool, opening: bool,
-    up_pressed: bool, down_pressed: bool, home_pressed: bool,
-    end_pressed: bool, enter_pressed: bool, keypad_enter_pressed: bool,
-    escape_pressed: bool) -> DropdownMenuInput {
-    input: DropdownMenuInput
-    if !keyboard_available {
-        return input
-    }
-    input.escape = escape_pressed
-    if !opening {
-        input.up = up_pressed
-        input.down = down_pressed
-        input.home = home_pressed
-        input.end = end_pressed
-        input.navigating = input.up || input.down || input.home || input.end
-        input.commit = enter_pressed || keypad_enter_pressed
-    }
-    return input
-}
-
 #program_export
 Dismiss :: (open: bool, opening: bool, count: s32, height: float32,
     escape: bool, lost_focus: bool, outside: bool) -> bool {
@@ -273,20 +227,6 @@ DropdownOpenDecisionFor :: (open: bool, disabled: bool, count: s32,
     decision.closed = decision.changed && !next
     return decision
 }
-
-#program_export
-DropdownOpenAfterCommit :: (open: bool, committed: bool) -> DropdownOpenDecision {
-    decision: DropdownOpenDecision
-    decision.open = open
-    if committed {
-        decision.open = false
-    }
-    decision.changed = decision.open != open
-    decision.opened = decision.changed && decision.open
-    decision.closed = decision.changed && !decision.open
-    return decision
-}
-
 Navigation :: struct {
     index: s32
     previous: s32
@@ -345,14 +285,6 @@ ScanNavigation :: (nav: Navigation, enabled: bool) -> Navigation {
     }
     return nav
 }
-
-#program_export
-CanCommit :: (enabled: bool, opening: bool, keyboard: bool, enter: bool,
-    pointer: bool, scrollbar: bool, dragging: bool, returned: bool) -> bool {
-    return enabled && !opening && ((keyboard && enter) ||
-        (pointer && !scrollbar && (!dragging || returned)))
-}
-
 #program_export
 ContentHeight :: (count: s32, row: float32, padding: float32) -> s32 {
     height: float64 = cast(float64)count * cast(float64)row + cast(float64)padding
@@ -452,16 +384,6 @@ MenuLayoutFor :: (bounds: Rectangle, count: s32, row_height: s32,
     if layout.scrollbar_bounds.height < 0.0 { layout.scrollbar_bounds.height = 0.0 }
     return layout
 }
-
-#program_export
-ScrollbarTrackBounds :: (scrollbar: Rectangle, inset: s32) -> Rectangle {
-    track: Rectangle = scrollbar
-    track.y += cast(float32)inset
-    track.height -= cast(float32)(inset * 2)
-    if track.height < 0.0 { track.height = 0.0 }
-    return track
-}
-
 #program_export
 OptionPaintFor :: (menu: Rectangle, option_width: s32, index: s32,
     row_height: s32, scroll_offset: s32, padding_top: s32,
@@ -687,51 +609,7 @@ Rows :: (count: s32, offset: s32, viewport: float32, row: float32) -> VisibleRow
     }
     return result
 }
-
-PopupGesture :: struct {
-    pressed: bool
-    dragging: bool
-    origin_y: float32
-    origin_offset: s32
-    offset: s32
-}
-
-#program_export
-PopupDragGesture :: (gesture: PopupGesture, offset: s32, down: bool, inside: bool,
-    scrollbar: bool, y: float32, maximum: s32, threshold: float32) -> PopupGesture {
-    gesture.offset = ScrollOffset(cast(float64)offset, maximum)
-    if down && !scrollbar {
-        if !gesture.pressed && inside {
-            gesture.pressed = true
-            gesture.origin_y = y
-            gesture.origin_offset = gesture.offset
-            gesture.dragging = false
-        } else if gesture.pressed && !gesture.dragging {
-            delta: float32 = y - gesture.origin_y
-            if maximum > 0 && (delta > threshold || delta < -threshold) {
-                gesture.dragging = true
-            }
-        }
-        if gesture.dragging && maximum > 0 {
-            gesture.offset = ScrollOffset(cast(float64)gesture.offset - cast(float64)(y - gesture.origin_y), maximum)
-            gesture.origin_y = y
-        }
-    } else {
-        gesture.pressed = false
-    }
-    return gesture
-}
-
 #program_export
 DropdownJustOpenedNext :: (just_opened: bool, pointer_pressed: bool) -> bool {
     return just_opened && pointer_pressed
-}
-
-#program_export
-DropdownScrollbarPressedNext :: (pressed: bool, pointer_down: bool,
-    pointer_pressed: bool, max_scroll: s32, pointer_over_scrollbar: bool) -> bool {
-    if !pointer_down {
-        return false
-    }
-    return pressed || (max_scroll > 0 && pointer_pressed && pointer_over_scrollbar)
 }

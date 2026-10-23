@@ -7,8 +7,6 @@
 
 page_texture_c :: #system_library "c";
 PageTextureAllocate :: (size: usize) -> *void #foreign page_texture_c "malloc";
-PageTextureRelease :: (memory: *void) #foreign page_texture_c "free";
-
 PAGE_TEXTURE_MAX :: 4096
 PAGE_TINT_MAX :: 32
 PAGE_TINT_BYTES :: 16777216

@@ -25,12 +25,6 @@ TitleBarLayout :: struct {
     trailing_bounds: Rectangle
     side_reserved: s32
 }
-
-TitleBarPaint :: struct {
-    bounds: Rectangle
-    divider: Rectangle
-}
-
 TitleBarTitlePaint :: struct {
     x: s32
     y: s32
@@ -62,12 +56,6 @@ TitleBarTitleRole :: () -> s32 {
 TitleBarActionRole :: () -> s32 {
     return 17
 }
-
-#program_export
-TitleBarActionRadius :: () -> float32 {
-    return 0.50
-}
-
 #program_export
 TitleBarMetricsFor :: (scale: float32, bar: StyleFrame, title: StyleFrame,
     action: StyleFrame) -> TitleBarMetrics {
@@ -188,25 +176,6 @@ TitleBarLayoutFor :: (view_width: s32, height: s32, has_leading: bool,
     }
     return layout
 }
-
-#program_export
-TitleBarReservedHasLeading :: (side_reserved: s32,
-    metrics: TitleBarMetrics) -> bool {
-    return side_reserved > metrics.side_margin
-}
-
-#program_export
-TitleBarPaintFor :: (view_width: s32, height: s32) -> TitleBarPaint {
-    paint: TitleBarPaint
-    paint.bounds.width = cast(float32)view_width
-    paint.bounds.height = cast(float32)height
-    paint.divider.x = 0.0
-    paint.divider.y = cast(float32)(height - 1)
-    paint.divider.width = cast(float32)view_width
-    paint.divider.height = 1.0
-    return paint
-}
-
 #program_export
 TitleBarTitlePaintFor :: (layout: TitleBarLayout, title_width: s32,
     title_line_height: s32) -> TitleBarTitlePaint {

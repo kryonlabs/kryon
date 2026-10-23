@@ -228,20 +228,6 @@ PageDrawGradientVertical :: (x: float64, y: float64, w: float64, h: float64,
         WebNumber(w), WebNumber(h))
     WebEnd(scope)
 }
-
-PageDrawGradientHorizontal :: (x: float64, y: float64, w: float64, h: float64,
-    lr: s32, lg: s32, lb: s32, la: s32, rr: s32, rg: s32, rb: s32, ra: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
-    gradient: s32 = WebAsObject(WebCall4(ctx, WebName("createLinearGradient"),
-        WebNumber(x), WebNumber(0.0), WebNumber(x + w), WebNumber(0.0)))
-    PageGradient(ctx, gradient, lr, lg, lb, la, rr, rg, rb, ra)
-    unused WebCall4(ctx, page_names.fill_rect, WebNumber(x), WebNumber(y),
-        WebNumber(w), WebNumber(h))
-    WebEnd(scope)
-}
-
 PageDrawCircleGradient :: (x: float64, y: float64, radius: float64,
     ir: s32, ig: s32, ib: s32, ia: s32, outer_r: s32, og: s32, ob: s32, oa: s32) {
     ctx: s32 = PageContext()
@@ -311,81 +297,6 @@ PageBlendMode :: (mode: s32, begin: bool) {
     }
     WebEnd(scope)
 }
-
-PageClampByte :: (value: float64) -> u8 {
-    if value <= 0.0 { return cast(u8)0 }
-    if value >= 255.0 { return cast(u8)255 }
-    return cast(u8)(value + 0.5)
-}
-
-// A rectangle blended between four corner colours, drawn as an image.
-PageDrawGradientCorners :: (x: float64, y: float64, w: float64, h: float64,
-    c1r: s32, c1g: s32, c1b: s32, c1a: s32, c2r: s32, c2g: s32, c2b: s32, c2a: s32,
-    c3r: s32, c3g: s32, c3b: s32, c3a: s32, c4r: s32, c4g: s32, c4b: s32, c4a: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 || w <= 0.0 || h <= 0.0 { return }
-    width: s32 = cast(s32)w
-    if cast(float64)width < w { width += 1 }
-    height: s32 = cast(s32)h
-    if cast(float64)height < h { height += 1 }
-    if width < 1 { width = 1 }
-    if height < 1 { height = 1 }
-    if width > 8192 || height > 8192 { return }
-    scope: s32 = WebScope()
-    canvas: s32 = PageMakeCanvas(width, height)
-    if canvas == 0 {
-        WebEnd(scope)
-        return
-    }
-    context: s32 = PageContext2D(canvas)
-    image: s32 = WebAsObject(WebCall2(context, WebName("createImageData"),
-        WebNumber(cast(float64)width), WebNumber(cast(float64)height)))
-    bytes: usize = cast(usize)width * cast(usize)height * cast(usize)4
-    pixels: *u8 = cast(*u8)PagePaintAllocate(bytes)
-    if pixels == null {
-        WebEnd(scope)
-        return
-    }
-    row: s32 = 0
-    while row < height {
-        ty: float64 = 0.0
-        if height > 1 { ty = cast(float64)row / cast(float64)(height - 1) }
-        column: s32 = 0
-        while column < width {
-            tx: float64 = 0.0
-            if width > 1 { tx = cast(float64)column / cast(float64)(width - 1) }
-            index: usize = (cast(usize)row * cast(usize)width + cast(usize)column) * cast(usize)4
-            top_r: float64 = cast(float64)c1r + cast(float64)(c2r - c1r) * tx
-            top_g: float64 = cast(float64)c1g + cast(float64)(c2g - c1g) * tx
-            top_b: float64 = cast(float64)c1b + cast(float64)(c2b - c1b) * tx
-            top_a: float64 = cast(float64)c1a + cast(float64)(c2a - c1a) * tx
-            bottom_r: float64 = cast(float64)c4r + cast(float64)(c3r - c4r) * tx
-            bottom_g: float64 = cast(float64)c4g + cast(float64)(c3g - c4g) * tx
-            bottom_b: float64 = cast(float64)c4b + cast(float64)(c3b - c4b) * tx
-            bottom_a: float64 = cast(float64)c4a + cast(float64)(c3a - c4a) * tx
-            pixels[index] = PageClampByte(top_r + (bottom_r - top_r) * ty)
-            pixels[index + cast(usize)1] = PageClampByte(top_g + (bottom_g - top_g) * ty)
-            pixels[index + cast(usize)2] = PageClampByte(top_b + (bottom_b - top_b) * ty)
-            pixels[index + cast(usize)3] = PageClampByte(top_a + (bottom_a - top_a) * ty)
-            column += 1
-        }
-        row += 1
-    }
-    unused WebCopyIn(WebGetObject(image, WebName("data")), cast(*void)pixels,
-        cast(s32)bytes)
-    PagePaintRelease(cast(*void)pixels)
-    unused WebCall3(context, WebName("putImageData"), WebObject(image),
-        WebNumber(0.0), WebNumber(0.0))
-    args: [5]WebValue
-    args[0] = WebObject(canvas)
-    args[1] = WebNumber(x)
-    args[2] = WebNumber(y)
-    args[3] = WebNumber(w)
-    args[4] = WebNumber(h)
-    unused WebCall(ctx, WebName("drawImage"), *args[0], 5)
-    WebEnd(scope)
-}
-
 // A filled (0) or outlined (1) rectangle with rounded corners.
 PageDrawRounded :: (op: s32, x: float64, y: float64, w: float64, h: float64,
     radius: float64, r: s32, g: s32, b: s32, a: s32) {
@@ -448,42 +359,6 @@ PageDrawRectLinesEx :: (x: float64, y: float64, w: float64, h: float64,
     unused WebCall0(ctx, page_names.restore)
     WebEnd(scope)
 }
-
-PageDrawRectPro :: (x: float64, y: float64, w: float64, h: float64,
-    origin_x: float64, origin_y: float64, rotation: float64,
-    r: s32, g: s32, b: s32, a: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
-    unused WebCall0(ctx, page_names.save)
-    PageSetFill(ctx, r, g, b, a)
-    unused WebCall2(ctx, page_names.translate, WebNumber(x), WebNumber(y))
-    if rotation != 0.0 {
-        unused WebCall1(ctx, page_names.rotate, WebNumber(rotation * PAGE_PI / 180.0))
-    }
-    unused WebCall4(ctx, page_names.fill_rect, WebNumber(-origin_x),
-        WebNumber(-origin_y), WebNumber(w), WebNumber(h))
-    unused WebCall0(ctx, page_names.restore)
-    WebEnd(scope)
-}
-
-PageDrawCircleLinesEx :: (cx: float64, cy: float64, radius: float64,
-    thickness: float64, r: s32, g: s32, b: s32, a: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 || radius <= 0.0 { return }
-    scope: s32 = WebScope()
-    line: float64 = thickness
-    if line < 1.0 { line = 1.0 }
-    unused WebCall0(ctx, page_names.save)
-    PageSetStroke(ctx, r, g, b, a)
-    WebSet(ctx, page_names.line_width, WebNumber(line))
-    unused WebCall0(ctx, page_names.begin_path)
-    PageArc(ctx, cx, cy, radius, 0.0, PAGE_TAU, false)
-    unused WebCall0(ctx, page_names.stroke)
-    unused WebCall0(ctx, page_names.restore)
-    WebEnd(scope)
-}
-
 PageAbs :: (value: float64) -> float64 {
     if value < 0.0 { return 0.0 - value }
     return value
@@ -511,40 +386,6 @@ PageDrawRing :: (cx: float64, cy: float64, inner: float64, outer: float64,
     unused WebCall1(ctx, page_names.fill, WebText("evenodd"))
     WebEnd(scope)
 }
-
-PageDrawRingLines :: (cx: float64, cy: float64, inner: float64, outer: float64,
-    start: float64, end: float64, r: s32, g: s32, b: s32, a: s32) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
-    from: float64 = start * PAGE_PI / 180.0
-    to: float64 = end * PAGE_PI / 180.0
-    full: bool = PageAbs(end - start) >= 359.999
-    unused WebCall0(ctx, page_names.save)
-    PageSetStroke(ctx, r, g, b, a)
-    WebSet(ctx, page_names.line_width, WebNumber(1.0))
-    unused WebCall0(ctx, page_names.begin_path)
-    PageArc(ctx, cx, cy, outer, from, to, false)
-    unused WebCall0(ctx, page_names.stroke)
-    unused WebCall0(ctx, page_names.begin_path)
-    PageArc(ctx, cx, cy, inner, from, to, false)
-    unused WebCall0(ctx, page_names.stroke)
-    if !full {
-        unused WebCall0(ctx, page_names.begin_path)
-        unused WebCall2(ctx, page_names.move_to,
-            WebNumber(cx + PageCosine(from) * inner), WebNumber(cy + PageSine(from) * inner))
-        unused WebCall2(ctx, page_names.line_to,
-            WebNumber(cx + PageCosine(from) * outer), WebNumber(cy + PageSine(from) * outer))
-        unused WebCall2(ctx, page_names.move_to,
-            WebNumber(cx + PageCosine(to) * inner), WebNumber(cy + PageSine(to) * inner))
-        unused WebCall2(ctx, page_names.line_to,
-            WebNumber(cx + PageCosine(to) * outer), WebNumber(cy + PageSine(to) * outer))
-        unused WebCall0(ctx, page_names.stroke)
-    }
-    unused WebCall0(ctx, page_names.restore)
-    WebEnd(scope)
-}
-
 page_math_c :: #system_library "m";
 PageSine :: (value: float64) -> float64 #foreign page_math_c "sin";
 PageCosine :: (value: float64) -> float64 #foreign page_math_c "cos";
@@ -564,24 +405,6 @@ PageGetModelview :: (values: *float32) {
     values[5] = cast(float32)(WebGetNumber(matrix, page_names.f) / scale)
     WebEnd(scope)
 }
-
-PageSetModelview :: (a: float64, b: float64, c: float64, d: float64,
-    e: float64, f: float64) {
-    ctx: s32 = PageContext()
-    if !PageIsOpen() || ctx == 0 { return }
-    scope: s32 = WebScope()
-    scale: float64 = PageSurfaceScale()
-    args: [6]WebValue
-    args[0] = WebNumber(a * scale)
-    args[1] = WebNumber(b * scale)
-    args[2] = WebNumber(c * scale)
-    args[3] = WebNumber(d * scale)
-    args[4] = WebNumber(e * scale)
-    args[5] = WebNumber(f * scale)
-    unused WebCall(ctx, page_names.set_transform, *args[0], 6)
-    WebEnd(scope)
-}
-
 // Clips later drawing to a rectangle in the application's coordinates,
 // keeping the current transform for what follows.
 PageClipPush :: (x: s32, y: s32, width: s32, height: s32) {
@@ -619,26 +442,5 @@ PageClipPop :: () {
     scope: s32 = WebScope()
     unused WebCall0(ctx, page_names.restore)
     page_raster_clips -= 1
-    WebEnd(scope)
-}
-
-// Applies (begin) or removes a translation, rotation, and origin shift for
-// the drawing between the two calls.
-PageTextTransform :: (begin: bool, x: float64, y: float64, origin_x: float64,
-    origin_y: float64, rotation: float64) {
-    ctx: s32 = PageContext()
-    if ctx == 0 { return }
-    scope: s32 = WebScope()
-    if begin {
-        unused WebCall0(ctx, page_names.save)
-        unused WebCall2(ctx, page_names.translate, WebNumber(x), WebNumber(y))
-        if rotation != 0.0 {
-            unused WebCall1(ctx, page_names.rotate, WebNumber(rotation * PAGE_PI / 180.0))
-        }
-        unused WebCall2(ctx, page_names.translate, WebNumber(-origin_x),
-            WebNumber(-origin_y))
-    } else {
-        unused WebCall0(ctx, page_names.restore)
-    }
     WebEnd(scope)
 }

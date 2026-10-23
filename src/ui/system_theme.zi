@@ -61,11 +61,6 @@ CssTrim :: (text: string) -> string {
     while end > start && CssIsSpace(text[end - 1]) { end -= 1 }
     return text[start:end]
 }
-
-CssStartsWith :: (text: string, prefix: string) -> bool {
-    return text.count >= prefix.count && text[0:prefix.count] == prefix
-}
-
 CssHexDigit :: (byte: u8) -> s32 {
     if byte >= 48 && byte <= 57 { return cast(s32)byte - 48 }
     if byte >= 97 && byte <= 102 { return cast(s32)byte - 87 }

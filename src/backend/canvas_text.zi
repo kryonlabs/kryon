@@ -492,16 +492,6 @@
         }
         return CanvasGlyphFor(font, codepoint).glyph
     }
-
-    #program_export
-    GetGlyphAtlasRec :: (font: CanvasFont, codepoint: s32) -> Rectangle {
-        empty: Rectangle
-        if !IsFontValid(font) {
-            return empty
-        }
-        return font.recs[GetGlyphIndex(font, codepoint)]
-    }
-
     #program_export
     LoadFontData :: (data: *u8, data_size: s32, size: s32, codepoints: *s32,
         count: s32, raster_type: s32, glyph_count: *s32) -> *CanvasGlyphInfo {
@@ -553,31 +543,6 @@
             source.height * scale}
         FontDrawTexture(ref.texture, source, destination, Vector2.{0.0, 0.0}, 0.0, tint)
     }
-
-    #program_export
-    DrawTextCodepoints :: (font: CanvasFont, codepoints: *s32, count: s32,
-        position: Vector2, size: float32, spacing: float32, tint: Color) {
-        selected := font
-        if !IsFontValid(selected) {
-            selected = GetFontDefault()
-        }
-        if !IsFontValid(selected) || codepoints == null || count <= 0 {
-            return
-        }
-        scale: float32 = 1.0
-        if size > 0.0 {
-            scale = size / cast(float32)selected.base_size
-        }
-        pen := position
-        index: s32 = 0
-        while index < count {
-            glyph := GetGlyphInfo(selected, codepoints[index])
-            DrawTextCodepoint(selected, codepoints[index], pen, size, tint)
-            pen.x += cast(float32)glyph.advance_x * scale + spacing
-            index += 1
-        }
-    }
-
     #program_export
     DrawTextEx :: (font: CanvasFont, text: *u8, position: Vector2,
         size: float32, spacing: float32, tint: Color) {
@@ -611,16 +576,6 @@
             at += bytes
         }
     }
-
-    #program_export
-    DrawTextPro :: (font: CanvasFont, text: *u8, position: Vector2,
-        origin: Vector2, rotation: float32, size: float32, spacing: float32, tint: Color) {
-        PageTextTransform(true, cast(float64)position.x, cast(float64)position.y,
-            cast(float64)origin.x, cast(float64)origin.y, cast(float64)rotation)
-        DrawTextEx(font, text, Vector2.{0.0, 0.0}, size, spacing, tint)
-        PageTextTransform(false, 0.0, 0.0, 0.0, 0.0, 0.0)
-    }
-
     #program_export
     DrawText :: (text: *u8, x: s32, y: s32, size: s32, tint: Color) {
         DrawTextEx(GetFontDefault(), text, Vector2.{cast(float32)x, cast(float32)y},
@@ -673,29 +628,5 @@
     MeasureText :: (text: *u8, size: s32) -> s32 {
         measured := MeasureTextEx(GetFontDefault(), text, cast(float32)size, 0.0)
         return cast(s32)(measured.x + 0.5)
-    }
-
-    #program_export
-    MeasureTextCodepoints :: (font: CanvasFont, codepoints: *s32, count: s32,
-        size: float32, spacing: float32) -> Vector2 {
-        selected := font
-        if !IsFontValid(selected) {
-            selected = GetFontDefault()
-        }
-        if !IsFontValid(selected) || codepoints == null || count <= 0 {
-            return Vector2.{0.0, size}
-        }
-        scale: float32 = 1.0
-        if size > 0.0 {
-            scale = size / cast(float32)selected.base_size
-        }
-        width: float32 = 0.0
-        index: s32 = 0
-        while index < count {
-            glyph := GetGlyphInfo(selected, codepoints[index])
-            width += cast(float32)glyph.advance_x * scale + spacing
-            index += 1
-        }
-        return Vector2.{width, size}
     }
 }

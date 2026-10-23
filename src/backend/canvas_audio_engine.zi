@@ -787,14 +787,6 @@
         audio_streams[index].pitch = AudioClampRate(pitch)
         AudioApplyStream(index)
     }
-
-    AudioEngineStreamPan :: (id: s32, pan: float32) {
-        index: s32 = AudioFindStream(id)
-        if index < 0 { return }
-        audio_streams[index].pan = AudioClampPan(pan)
-        AudioApplyStream(index)
-    }
-
     AudioEngineStreamCallback :: (id: s32, callback: CanvasAudioCallback,
         frames: s32) {
         index: s32 = AudioFindStream(id)

@@ -1,68 +1,8 @@
 #import "geometry"
-
-InspectEdit :: struct {
-    bounds: Rectangle
-    screen_bounds: Rectangle
-}
-
 InspectReleaseDecision :: struct {
     end_edit: bool
     consume_release: bool
 }
-
-#program_export
-InspectClampBounds :: (bounds: Rectangle, min_size: float32) -> Rectangle {
-    if min_size <= 0.0 { min_size = 4.0 }
-    if bounds.width < min_size { bounds.width = min_size }
-    if bounds.height < min_size { bounds.height = min_size }
-    return bounds
-}
-
-#program_export
-InspectResizeHandleBounds :: (bounds: Rectangle, handle_size: s32) -> Rectangle {
-    if handle_size <= 0 { handle_size = 12 }
-    return Rectangle.{
-        bounds.x + bounds.width - cast(float32)handle_size,
-        bounds.y + bounds.height - cast(float32)handle_size,
-        cast(float32)handle_size,
-        cast(float32)handle_size}
-}
-
-#program_export
-InspectResizeHitHandleSize :: (scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    return cast(s32)(12.0 * scale)
-}
-
-#program_export
-InspectResizePaintHandleSize :: (scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    return cast(s32)(10.0 * scale)
-}
-
-#program_export
-InspectEditForDelta :: (start: Rectangle, screen_start: Rectangle,
-    dx: float32, dy: float32, zoom: float32, resizing: bool,
-    min_size: float32) -> InspectEdit {
-    edit: InspectEdit
-    if zoom <= 0.0 { zoom = 1.0 }
-    edit.bounds = start
-    edit.screen_bounds = screen_start
-    if resizing {
-        edit.bounds.width += dx / zoom
-        edit.bounds.height += dy / zoom
-        edit.screen_bounds.width += dx
-        edit.screen_bounds.height += dy
-    } else {
-        edit.bounds.x += dx / zoom
-        edit.bounds.y += dy / zoom
-        edit.screen_bounds.x += dx
-        edit.screen_bounds.y += dy
-    }
-    edit.bounds = InspectClampBounds(edit.bounds, min_size)
-    return edit
-}
-
 #program_export
 InspectReleaseDecisionFor :: (released: bool, dragging: bool,
     resizing: bool) -> InspectReleaseDecision {
@@ -70,10 +10,4 @@ InspectReleaseDecisionFor :: (released: bool, dragging: bool,
     decision.end_edit = released && (dragging || resizing)
     decision.consume_release = decision.end_edit
     return decision
-}
-
-#program_export
-InspectKeyboardStep :: (shift: bool) -> float32 {
-    if shift { return 8.0 }
-    return 1.0
 }

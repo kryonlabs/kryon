@@ -60,16 +60,6 @@ NavigationBarItemPaint :: struct {
     text_color: u32
     icon_alpha: s32
 }
-
-NavigationBarItemInteraction :: struct {
-    active: bool
-    hovered: bool
-    disabled_marker: bool
-    activated: bool
-    consume_release: bool
-    state: ButtonState
-}
-
 NavigationBarDockLayout :: struct {
     scroll_bounds: Rectangle
     footer_bounds: Rectangle
@@ -334,51 +324,6 @@ NavigationBarActionRole :: () -> s32 {
 NavigationBarRouteRole :: () -> s32 {
     return 18
 }
-
-#program_export
-NavigationBarFactsFor :: (class_name: s32, state: s32) -> StyleFacts {
-    return StyleControlRoleFacts(StyleKindNavigationBar(), 0, class_name,
-        StyleAny(), ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
-        state)
-}
-
-#program_export
-NavigationBarRoleFactsFor :: (class_name: s32, role: s32, state: s32) -> StyleFacts {
-    return StyleControlRoleFacts(StyleKindNavigationBar(), 0, class_name, role,
-        ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium, state)
-}
-
-#program_export
-NavigationBarItemFactsFor :: (class_name: s32, tone: s32, emphasis: s32,
-    state: s32) -> StyleFacts {
-    return StyleControlRoleFacts(StyleKindNavigationBarItem(), 0, class_name,
-        StyleAny(), tone, emphasis, ControlSizeMedium, state)
-}
-
-#program_export
-NavigationBarDefaultHeight :: (scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    return cast(s32)(86.0 * scale)
-}
-
-#program_export
-NavigationBarDefaultHeightFor :: (classic: bool, scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    if classic { return cast(s32)(40.0 * scale) }
-    return NavigationBarDefaultHeight(scale)
-}
-
-#program_export
-NavigationBarFontFor :: (default_font: s32, style_font: s32) -> s32 {
-    if style_font > 0 { return style_font }
-    return default_font
-}
-
-#program_export
-NavigationBarTintAlpha :: (color_alpha: u8, tint_alpha: u8) -> u8 {
-    return cast(u8)((cast(s32)color_alpha * cast(s32)tint_alpha) / 255)
-}
-
 #program_export
 NavigationBarItemStateFor :: (active: bool, disabled: bool,
     hovered: bool) -> ButtonState {
@@ -387,24 +332,6 @@ NavigationBarItemStateFor :: (active: bool, disabled: bool,
     if hovered { return cast(ButtonState)ButtonStateHover }
     return cast(ButtonState)ButtonStateNormal
 }
-
-#program_export
-NavigationBarItemInteractionFor :: (disabled: bool, pointer_inside: bool,
-    captured: bool, hover_effects: bool, released: bool,
-    release_consumed: bool, press_started_inside: bool,
-    selected: bool) -> NavigationBarItemInteraction {
-    interaction: NavigationBarItemInteraction
-    interaction.active = pointer_inside && !disabled && !captured
-    interaction.hovered = interaction.active && hover_effects
-    interaction.disabled_marker = pointer_inside && disabled && !captured
-    interaction.activated = interaction.active && released &&
-    !release_consumed && press_started_inside
-    interaction.consume_release = interaction.activated
-    interaction.state = NavigationBarItemStateFor(selected, disabled,
-        interaction.hovered)
-    return interaction
-}
-
 #program_export
 NavigationBarConfigCountsFor :: (route_count: s32, max_route_count: s32,
     option_count: s32, slot_limit: s32) -> NavigationBarConfigCounts {
@@ -422,15 +349,6 @@ NavigationBarConfigCountsFor :: (route_count: s32, max_route_count: s32,
     counts.option_count = option_count
     return counts
 }
-
-#program_export
-NavigationBarConfigNextRowY :: (row_y: s32,
-    metrics: NavigationBarConfigMetrics) -> s32 {
-    row_height: s32 = metrics.row_height
-    if row_height < 0 { row_height = 0 }
-    return row_y + row_height
-}
-
 #program_export
 NavigationBarConfigDefaultRoute :: (option_count: s32, first_route: s32) -> s32 {
     if option_count > 0 { return first_route }

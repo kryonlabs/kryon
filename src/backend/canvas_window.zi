@@ -89,22 +89,6 @@
     IsWindowMinimized :: () -> bool {
         return (canvas_window_state & cast(u32)512) != cast(u32)0
     }
-
-    #program_export
-    IsWindowMaximized :: () -> bool {
-        return (canvas_window_state & cast(u32)1024) != cast(u32)0
-    }
-
-    #program_export
-    IsWindowResized :: () -> bool {
-        return PageDimension(4) != 0
-    }
-
-    #program_export
-    IsWindowState :: (flag: u32) -> bool {
-        return (canvas_window_state & flag) != cast(u32)0
-    }
-
     #program_export
     SetConfigFlags :: (flags: u32) {
         canvas_window_state |= flags
@@ -130,12 +114,6 @@
         }
         SetWindowState(cast(u32)2)
     }
-
-    #program_export
-    ToggleBorderlessWindowed :: () {
-        canvas_window_state ^= cast(u32)32768
-    }
-
     #program_export
     MaximizeWindow :: () {
         canvas_window_state |= cast(u32)1024
@@ -267,54 +245,18 @@
     SetWindowFocused :: () {
         PageFocus()
     }
-
-    #program_export
-    SetWindowOpacity :: (opacity: float32) {
-        PageStyle(0, cast(float64)opacity)
-    }
-
-    #program_export
-    SetWindowMinSize :: (width: s32, height: s32) {
-        PageStyle(1, cast(float64)width)
-        PageStyle(2, cast(float64)height)
-    }
-
-    #program_export
-    SetWindowMaxSize :: (width: s32, height: s32) {
-        PageStyle(3, cast(float64)width)
-        PageStyle(4, cast(float64)height)
-    }
-
     #program_export
     SetWindowIcon :: (image: CanvasImage) {
         // This embedded canvas does not own browser window placement or chrome.
     }
-
-    #program_export
-    SetWindowIcons :: (images: *CanvasImage, count: s32) {
-        // This embedded canvas does not own browser window placement or chrome.
-    }
-
     #program_export
     SetWindowPosition :: (x: s32, y: s32) {
         // This embedded canvas does not own browser window placement or chrome.
     }
-
-    #program_export
-    SetWindowMonitor :: (monitor: s32) {
-        // This embedded canvas does not own browser window placement or chrome.
-    }
-
     #program_export
     GetWindowHandle :: () -> *void {
         return null
     }
-
-    #program_export
-    GetMonitorCount :: () -> s32 {
-        return 1
-    }
-
     #program_export
     GetCurrentMonitor :: () -> s32 {
         return 0
@@ -334,17 +276,6 @@
     GetMonitorHeight :: (monitor: s32) -> s32 {
         return GetScreenHeight()
     }
-
-    #program_export
-    GetMonitorPhysicalWidth :: (monitor: s32) -> s32 {
-        return 0
-    }
-
-    #program_export
-    GetMonitorPhysicalHeight :: (monitor: s32) -> s32 {
-        return 0
-    }
-
     #program_export
     GetMonitorRefreshRate :: (monitor: s32) -> s32 {
         return 60
@@ -354,13 +285,6 @@
     GetWindowPosition :: () -> Vector2 {
         return Vector2.{}
     }
-
-    #program_export
-    GetMonitorName :: (monitor: s32) -> *u8 {
-        CopyCString("HTML5 Canvas", canvas_monitor_name[:])
-        return *canvas_monitor_name[0]
-    }
-
     #program_export
     SetExitKey :: (key: s32) {
         canvas_exit_key = key

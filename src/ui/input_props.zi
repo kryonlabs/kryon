@@ -12,18 +12,3 @@ Activation :: struct {
     hovered: bool
     focused: bool
 }
-
-InputProps :: struct {
-    bounds: Rectangle
-    id: s32
-    label: string
-    kind: NumericValueKind
-    float_values: *float32
-    int_values: *s32
-    double_values: *float64
-    value_count: s32
-    step: float64
-    step_fast: float64
-    format: string
-    disabled: bool
-}

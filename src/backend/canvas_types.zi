@@ -88,7 +88,5 @@ HostCanvasStringLength :: (text: *u8) -> usize #foreign canvas_c "strlen";
 CanvasAllocate :: (size: u32) -> *u8 { return HostCanvasAllocate(cast(usize)size) }
 CanvasRelease :: (data: *void) { HostCanvasRelease(data) }
 CanvasCopy :: (destination: *void, source: *void, size: u32) -> *void { return HostCanvasCopy(destination, source, cast(usize)size) }
-CanvasStringLength :: (text: *u8) -> u32 { return cast(u32)HostCanvasStringLength(text) }
-
 CanvasGlyphInfoSize :: () -> usize { return size_of(CanvasGlyphInfo) }
 CanvasRectangleSize :: () -> usize { return cast(usize)4 * size_of(float32) }

@@ -45,17 +45,6 @@ InputScaledMetric :: (value: float32, scale: float32) -> s32 {
 InputDefaultStepButtonWidth :: (scale: float32) -> s32 {
     return InputScaledMetric(24.0, scale)
 }
-
-#program_export
-InputDoubleClickSlopFor :: (scale: float32) -> s32 {
-    return InputScaledMetric(6.0, scale)
-}
-
-#program_export
-InputPointerDragThresholdFor :: (scale: float32) -> s32 {
-    return InputScaledMetric(5.0, scale)
-}
-
 #program_export
 InputPointerDragShouldStart :: (dx: s32, dy: s32, threshold: s32) -> bool {
     if threshold < 0 { threshold = 0 }

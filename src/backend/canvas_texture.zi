@@ -136,13 +136,6 @@
         if !IsTextureValid(texture) || pixels == null { return }
         PageTextureUpdateRgba(cast(s32)texture.id, cast(*u8)pixels, 0, 0, texture.width, texture.height)
     }
-
-    #program_export
-    UpdateTextureRec :: (texture: Texture2D, rec: Rectangle, pixels: *void) {
-        if texture.id == cast(u32)0 || pixels == null || rec.width <= 0.0 || rec.height <= 0.0 { return }
-        PageTextureUpdateRgba(cast(s32)texture.id, cast(*u8)pixels, cast(s32)rec.x, cast(s32)rec.y, cast(s32)rec.width, cast(s32)rec.height)
-    }
-
     #program_export
     SetTextureFilter :: (texture: Texture2D, filter: s32) {
         if texture.id != cast(u32)0 { PageTextureFilter(cast(s32)texture.id, filter) }
@@ -191,17 +184,6 @@
     DrawTexture :: (texture: Texture2D, x: s32, y: s32, tint: Color) {
         DrawTexturePro(texture, Rectangle.{0.0, 0.0, cast(float32)texture.width, cast(float32)texture.height}, Rectangle.{cast(float32)x, cast(float32)y, cast(float32)texture.width, cast(float32)texture.height}, Vector2.{}, 0.0, tint)
     }
-
-    #program_export
-    DrawTextureV :: (texture: Texture2D, position: Vector2, tint: Color) {
-        DrawTexture(texture, cast(s32)position.x, cast(s32)position.y, tint)
-    }
-
-    #program_export
-    DrawTextureEx :: (texture: Texture2D, position: Vector2, rotation: float32, scale: float32, tint: Color) {
-        DrawTexturePro(texture, Rectangle.{0.0, 0.0, cast(float32)texture.width, cast(float32)texture.height}, Rectangle.{position.x, position.y, cast(float32)texture.width * scale, cast(float32)texture.height * scale}, Vector2.{}, rotation, tint)
-    }
-
     #program_export
     DrawTextureRec :: (texture: Texture2D, rec: Rectangle, position: Vector2, tint: Color) {
         width := rec.width

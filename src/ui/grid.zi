@@ -84,20 +84,6 @@ GridStep :: (cursor: GridCursor, height: s32, column_span: s32) -> GridCursor {
     }
     return cursor
 }
-
-
-#program_export
-GridCursorHeight :: (cursor: GridCursor) -> s32 {
-    height: s32 = cursor.used_height
-    if cursor.row_height > 0 {
-        height += cursor.row_height
-    } else if height > 0 {
-        height -= cursor.metrics.gap
-    }
-    if height < 0 { height = 0 }
-    return height
-}
-
 // Equal cells: a grid of tiles that share one height, laid out across the
 // columns MeasureGrid chose for the width, such as an app launcher.
 

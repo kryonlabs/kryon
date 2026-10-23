@@ -157,21 +157,6 @@ ContentBounds :: (width: float32, height: float32, padding_x: float32,
     if box.height < 0.0 { box.height = 0.0 }
     return box
 }
-
-#program_export
-InsetBounds :: (bounds: Rectangle, padding_x: float32, padding_y: float32,
-    scale: float32) -> Rectangle {
-    if scale <= 0.0 { scale = 1.0 }
-    content: Rectangle = ContentBounds(bounds.width / scale,
-        bounds.height / scale, padding_x, padding_y)
-    result: Rectangle
-    result.x = bounds.x + content.x * scale
-    result.y = bounds.y + content.y * scale
-    result.width = content.width * scale
-    result.height = content.height * scale
-    return result
-}
-
 #program_export
 MergeValues :: (base: StyleData, override: StyleData) -> StyleData {
     if (override.fields & cast(u32)StyleBackground) != cast(u32)0 { base.background = override.background }

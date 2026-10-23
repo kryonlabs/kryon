@@ -308,27 +308,6 @@ PixmapBlend :: (x: s32, y: s32, color: Color, coverage: s32) {
     pixmap_surface[index] = (cast(u32)red << cast(u32)16) | (cast(u32)green << cast(u32)8) |
         cast(u32)blue | pixmap_alpha
 }
-
-// Whether a point in eighths of a pixel lies in the rounded rectangle
-// [x0, x1) x [y0, y1) with corner radius r, all in whole pixels.
-PixmapInside :: (px: s32, py: s32, x0: s32, y0: s32, x1: s32, y1: s32, r: s32) -> bool {
-    left: s32 = x0 * 8
-    top: s32 = y0 * 8
-    right: s32 = x1 * 8
-    bottom: s32 = y1 * 8
-    if px < left || py < top || px >= right || py >= bottom { return false }
-    reach: s32 = r * 8
-    dx: s32 = 0
-    if px < left + reach { dx = left + reach - px }
-    else if px > right - reach { dx = px - (right - reach) }
-    dy: s32 = 0
-    if py < top + reach { dy = top + reach - py }
-    else if py > bottom - reach { dy = py - (bottom - reach) }
-    // A supported 16384-pixel surface can have an 8192-pixel radius;
-    // its squared distance in eighths exceeds signed 32-bit storage.
-    return cast(s64)dx * dx + cast(s64)dy * dy <= cast(s64)reach * reach
-}
-
 // How many of a pixel's 16 sample points lie in the rounded rectangle.
 PixmapSamples :: (x: s32, y: s32, x0: s32, y0: s32, x1: s32, y1: s32, r: s32) -> s32 {
     // Bounds are whole pixels, so all sixteen samples are either inside

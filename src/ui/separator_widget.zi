@@ -117,13 +117,6 @@ PaintSeparatorForNode :: (session: Session, node: s32, props: SeparatorProps,
             ColorFromPacked(prepared.line_color))
     }
 }
-
-#program_export
-PaintSeparatorProps :: (session: Session, props: SeparatorProps,
-    faces: SeparatorFaces) {
-    PaintSeparatorForNode(session, -1, props, faces)
-}
-
 #program_export
 Separator :: (session: Session, props: SeparatorProps) {
     node: s32 = -1

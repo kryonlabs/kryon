@@ -199,25 +199,6 @@ CollapsibleCloseDecisionFor :: (enabled: bool, has_visible: bool,
     decision.changed = decision.hide
     return decision
 }
-
-#program_export
-CollapsibleKeyFor :: (down: bool, up: bool, right: bool,
-    left: bool) -> s32 {
-    if down {
-        return CollapsibleKeyDown()
-    }
-    if up {
-        return CollapsibleKeyUp()
-    }
-    if right {
-        return CollapsibleKeyRight()
-    }
-    if left {
-        return CollapsibleKeyLeft()
-    }
-    return CollapsibleKeyNone()
-}
-
 #program_export
 CollapsibleKeyboardDecisionFor :: (focused: bool, focus_captured: bool,
     key_already_handled: bool, tree: bool, key: s32, open: bool, leaf: bool,

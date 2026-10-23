@@ -1202,15 +1202,6 @@
         return TreeIdentityHash(trees[slot].submitted[parent].identity_generation,
             cast(u64)ordinal, 2147483647)
     }
-
-    #program_export
-    TreeRootKey :: (session: Session) -> u64 {
-        if !trees[SessionIndex(session)].building || trees[SessionIndex(session)].submitted_count == 0 {
-            return cast(u64)0
-        }
-        return trees[SessionIndex(session)].submitted[0].key
-    }
-
     #program_export
     TreeRootBounds :: (session: Session) -> Rectangle {
         empty: Rectangle

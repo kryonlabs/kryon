@@ -275,11 +275,6 @@ PageCanvas :: () -> s32 {
 PageIsOpen :: () -> bool {
     return page_open && !page_closed
 }
-
-PageDevicePixels :: () -> float64 {
-    return page_dpi
-}
-
 PageNow :: () -> float64 {
     PageInitNames()
     scope: s32 = WebScope()
@@ -933,31 +928,4 @@ PageFullscreenState :: () -> bool {
     PageSame(WebGetObject(document, page_names.fullscreen_element), page_canvas)
     WebEnd(scope)
     return state
-}
-
-// Canvas CSS: 0 opacity, 1 to 4 the minimum and maximum width and height.
-PageStyle :: (property: s32, value: float64) {
-    if !page_open || page_canvas == 0 { return }
-    scope: s32 = WebScope()
-    style: s32 = WebGetObject(page_canvas, page_names.style)
-    if style == 0 {
-        WebEnd(scope)
-        return
-    }
-    if property == 0 {
-        opacity: float64 = value
-        if opacity < 0.0 { opacity = 0.0 }
-        if opacity > 1.0 { opacity = 1.0 }
-        WebSet(style, page_names.opacity, WebNumber(opacity))
-    } else {
-        length: float64 = value
-        if length < 0.0 { length = 0.0 }
-        lengths: [32]u8
-        text: string = PageLength(length, lengths[:])
-        if property == 1 { WebSet(style, page_names.min_width, WebText(text)) }
-        if property == 2 { WebSet(style, page_names.min_height, WebText(text)) }
-        if property == 3 { WebSet(style, page_names.max_width, WebText(text)) }
-        if property == 4 { WebSet(style, page_names.max_height, WebText(text)) }
-    }
-    WebEnd(scope)
 }

@@ -60,22 +60,6 @@ PageFileLength :: (path: string) -> s32 {
     WebEnd(scope)
     return length
 }
-
-// Seconds since the epoch, or 0.
-PageFileModTime :: (path: string) -> float64 {
-    if path.count == 0 { return 0.0 }
-    scope: s32 = WebScope()
-    seconds: float64 = 0.0
-    stat: s32 = WebAsObject(WebCall1(PageFileSystem(), WebName("stat"), WebText(path)))
-    if stat != 0 && !WebFailed() {
-        milliseconds: float64 = WebAsNumber(WebCall0(WebGetObject(stat,
-            WebName("mtime")), WebName("getTime")))
-        seconds = cast(float64)cast(s64)(milliseconds / 1000.0)
-    }
-    WebEnd(scope)
-    return seconds
-}
-
 PageDirectoryOpen :: (path: string) -> s32 {
     slot: s32 = -1
     index: s32 = 0

@@ -98,17 +98,6 @@ PanedViewClampSplit :: (split: s32, min_first: s32, limit: s32) -> s32 {
 PanedViewDefaultSplit :: (limit: s32) -> s32 {
     return limit / 2
 }
-
-#program_export
-PanedViewSplitFor :: (current_split: s32, has_split: bool,
-    size: s32, min_first: s32, min_second: s32) -> s32 {
-    if min_first > size { min_first = size }
-    limit: s32 = PanedViewLimit(size, min_first, min_second)
-    split: s32 = current_split
-    if !has_split { split = PanedViewDefaultSplit(limit) }
-    return PanedViewClampSplit(split, min_first, limit)
-}
-
 #program_export
 PanedViewPointerSplit :: (bounds: Rectangle, vertical: bool,
     pointer_x: float32, pointer_y: float32) -> s32 {

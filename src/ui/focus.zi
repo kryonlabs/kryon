@@ -3,41 +3,6 @@
 #import "style"
 
 using StyleField;
-
-FocusPaint :: struct {
-    bounds: Rectangle
-    stroke_width: s32
-}
-
-FocusDebugOverlayPaint :: struct {
-    outline: Rectangle
-    label_position: Vector2
-    stroke_width: s32
-    label_visible: bool
-}
-
-#program_export
-FocusBoxRole :: () -> s32 {
-    return 9
-}
-
-#program_export
-FocusLabelRole :: () -> s32 {
-    return 6
-}
-
-FocusMetric :: (fields: u32, field: u32, value: float32,
-fallback: float32, scale: float32) -> s32 {
-    if (fields & field) == cast(u32)0 || value < 0.0 { value = fallback }
-    return cast(s32)(value * scale)
-}
-
-#program_export
-FocusStrokeWidthFor :: (scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    return cast(s32)(2.0 * scale)
-}
-
 #program_export
 FocusActivationFor :: (active: bool, keyboard_enabled: bool,
 content_disabled: bool, captured: bool, enter_pressed: bool,
@@ -64,67 +29,6 @@ FocusDefaultOutlineBounds :: (bounds: Rectangle, scale: float32) -> Rectangle {
     out.height = bounds.height + cast(float32)(pad * 2)
     return out
 }
-
-#program_export
-FocusPaintFor :: (bounds: Rectangle, scale: float32, frame: StyleFrame) -> FocusPaint {
-    if scale <= 0.0 { scale = 1.0 }
-    pad: s32 = FocusMetric(frame.value.fields, cast(u32)StylePaddingX,
-    frame.value.padding_x, 3.0, scale)
-    stroke: s32 = FocusMetric(frame.value.fields, cast(u32)StyleBorderWidth,
-    frame.value.border_width, 2.0, scale)
-    paint: FocusPaint
-    paint.bounds.x = bounds.x - cast(float32)pad
-    paint.bounds.y = bounds.y - cast(float32)pad
-    paint.bounds.width = bounds.width + cast(float32)(pad * 2)
-    paint.bounds.height = bounds.height + cast(float32)(pad * 2)
-    paint.stroke_width = stroke
-    return paint
-}
-
-#program_export
-FocusDebugOverlayPaintFor :: (bounds: Rectangle, font_height: s32, has_label: bool) -> FocusDebugOverlayPaint {
-    if font_height < 0 { font_height = 0 }
-    paint: FocusDebugOverlayPaint
-    paint.outline = bounds
-    paint.label_position.x = bounds.x
-    paint.label_position.y = bounds.y - cast(float32)font_height
-    paint.stroke_width = 1
-    paint.label_visible = has_label
-    return paint
-}
-
-FocusTraversal :: struct {
-    index: s32
-    move: bool
-    clear: bool
-}
-
-#program_export
-FocusTraversalFor :: (current: s32, count: s32, direction: s32) -> FocusTraversal {
-    result: FocusTraversal
-    result.index = current
-    if count <= 0 {
-        result.index = -1
-        result.clear = true
-        return result
-    }
-    if direction == 0 { return result }
-    result.move = true
-    if current < 0 || current >= count {
-        result.index = 0
-        if direction < 0 { result.index = count - 1 }
-        return result
-    }
-    if direction < 0 {
-        result.index = current - 1
-        if result.index < 0 { result.index = count - 1 }
-    } else {
-        result.index = current + 1
-        if result.index == count { result.index = 0 }
-    }
-    return result
-}
-
 TreeFocusScan :: struct {
     index: s32
     origin: s32

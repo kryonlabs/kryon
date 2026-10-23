@@ -50,17 +50,6 @@ ListBoxMultiRowHeight :: (row_height: s32, scale: float32,
     return ListBoxMultiMetric(item.value.fields, cast(u32)StyleContentOffset,
         item.value.offset_y, fallback, scale, false)
 }
-
-#program_export
-ListBoxMultiRowBounds :: (bounds: Rectangle, index: s32, row_height: s32) -> Rectangle {
-    row: Rectangle
-    row.x = bounds.x
-    row.y = bounds.y + cast(float32)(index * row_height)
-    row.width = bounds.width
-    row.height = cast(float32)row_height
-    return row
-}
-
 #program_export
 ListBoxMultiItemLabelInset :: (scale: float32, item: StyleFrame) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
@@ -75,20 +64,6 @@ ListBoxMultiFocusedRow :: (anchor: s32, selected_first: s32, item_count: s32) ->
     if selected_first >= 0 && selected_first < item_count { return selected_first }
     return 0
 }
-
-#program_export
-ListBoxMultiInputFor :: (home: bool, end: bool, up: bool, down: bool,
-    space: bool, enter: bool) -> ListBoxMultiInput {
-    input: ListBoxMultiInput
-    input.home = home
-    input.end = end
-    input.up = up
-    input.down = down
-    input.space = space
-    input.enter = enter
-    return input
-}
-
 #program_export
 ListBoxMultiRowDecisionFor :: (hot: bool, disabled: bool,
     released: bool) -> ListBoxMultiRowDecision {

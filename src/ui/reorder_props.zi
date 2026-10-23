@@ -19,17 +19,6 @@ ReorderList :: struct {
     auto_scroll_margin: s32
     auto_scroll_step: s32
 }
-
-ReorderState :: struct {
-    list_id: s32
-    item_id: s32
-    from_index: s32
-    press_y: s32
-    press_offset_y: s32
-    scroll_start: s32
-    dragging: s32
-}
-
 ReorderMetrics :: struct {
     handle_width: s32
     drag_threshold: s32
@@ -46,17 +35,6 @@ ReorderHandlePaint :: struct {
     dot5: Rectangle
     dot_count: s32
 }
-
-ReorderPlaceholderPaint :: struct {
-    slot_bounds: Rectangle
-    line_bounds: Rectangle
-    stroke_width: float32
-    radius: float32
-    segments: s32
-    fill_alpha: float32
-    use_slot: s32
-}
-
 ReorderListResult :: struct {
     active: s32
     dragging: s32

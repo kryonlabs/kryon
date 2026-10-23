@@ -118,13 +118,6 @@ ProgressLabelX :: (bounds: Rectangle, fill_width: float32,
 ProgressLabelY :: (bounds: Rectangle, label_line_height: float32) -> float32 {
     return bounds.y + (bounds.height - label_line_height) * 0.5
 }
-
-#program_export
-ProgressLabelOnFill :: (fill_width: float32, label_width: float32,
-    padding: float32) -> bool {
-    return fill_width >= label_width + padding * 2.0
-}
-
 #program_export
 ProgressLayoutFor :: (bounds: Rectangle, min: s32, max: s32, value: s32,
     label_width: float32, label_line_height: float32, padding: float32) -> ProgressLayout {

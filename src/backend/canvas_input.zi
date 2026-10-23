@@ -45,17 +45,6 @@
     IsMouseButtonReleased :: (code: s32) -> bool {
         return CanvasQueueHas(*canvas_buttons_released[0], canvas_buttons_released_count, code)
     }
-
-    #program_export
-    IsKeyUp :: (key: s32) -> bool {
-        return !IsKeyDown(key)
-    }
-
-    #program_export
-    IsMouseButtonUp :: (button: s32) -> bool {
-        return !IsMouseButtonDown(button)
-    }
-
     #program_export
     GetKeyPressed :: () -> s32 {
         return CanvasQueuePop(*canvas_keys_pressed[0], *canvas_keys_pressed_count)
@@ -95,24 +84,11 @@
     GetMouseWheelMoveV :: () -> Vector2 {
         return Vector2.{cast(float32)canvas_wheel_x, cast(float32)canvas_wheel_y}
     }
-
-    #program_export
-    SetMousePosition :: (x: s32, y: s32) {
-        CanvasSetMouse(cast(float64)x, cast(float64)y)
-    }
-
     #program_export
     SetMouseOffset :: (x: s32, y: s32) {
         canvas_mouse_offset_x = cast(float64)x
         canvas_mouse_offset_y = cast(float64)y
     }
-
-    #program_export
-    SetMouseScale :: (x: float32, y: float32) {
-        canvas_mouse_scale_x = cast(float64)x
-        canvas_mouse_scale_y = cast(float64)y
-    }
-
     #program_export
     ShowCursor :: () {
         canvas_cursor_hidden = false
@@ -141,34 +117,10 @@
     IsCursorHidden :: () -> bool {
         return canvas_cursor_hidden
     }
-
-    #program_export
-    IsCursorOnScreen :: () -> bool {
-        return canvas_mouse_x >= 0.0 && canvas_mouse_y >= 0.0 &&
-            canvas_mouse_x < cast(float64)CanvasPageWidth() &&
-            canvas_mouse_y < cast(float64)CanvasPageHeight()
-    }
-
-    #program_export
-    GetTouchX :: () -> s32 {
-        return CanvasTouchField(0, 0)
-    }
-
-    #program_export
-    GetTouchY :: () -> s32 {
-        return CanvasTouchField(0, 1)
-    }
-
     #program_export
     GetTouchPosition :: (index: s32) -> Vector2 {
         return Vector2.{cast(float32)CanvasTouchField(index, 0), cast(float32)CanvasTouchField(index, 1)}
     }
-
-    #program_export
-    GetTouchPointId :: (index: s32) -> s32 {
-        return CanvasTouchField(index, 2)
-    }
-
     #program_export
     GetTouchPointCount :: () -> s32 {
         return canvas_touch_count
@@ -178,24 +130,6 @@
     IsGamepadAvailable :: (gamepad: s32) -> bool {
         return PageGamepadQuery(gamepad, 0, 0) != 0
     }
-
-    #program_export
-    GetGamepadName :: (gamepad: s32) -> *u8 {
-        temporary := PageGamepadName(gamepad)
-        offset := canvas_gamepad_next * 128
-        canvas_gamepad_next = (canvas_gamepad_next + 1) % 4
-        i: s32 = 0
-        if temporary != null {
-            while i < 127 && temporary[i] != cast(u8)0 {
-                canvas_gamepad_names[offset + i] = temporary[i]
-                i += 1
-            }
-            CanvasRelease(cast(*void)temporary)
-        }
-        canvas_gamepad_names[offset + i] = 0
-        return *canvas_gamepad_names[offset]
-    }
-
     #program_export
     IsGamepadButtonPressed :: (gamepad: s32, button: s32) -> bool {
         return PageGamepadQuery(gamepad, 1, button) != 0
@@ -205,83 +139,8 @@
     IsGamepadButtonDown :: (gamepad: s32, button: s32) -> bool {
         return PageGamepadQuery(gamepad, 2, button) != 0
     }
-
-    #program_export
-    IsGamepadButtonReleased :: (gamepad: s32, button: s32) -> bool {
-        return PageGamepadQuery(gamepad, 3, button) != 0
-    }
-
-    #program_export
-    IsGamepadButtonUp :: (gamepad: s32, button: s32) -> bool {
-        return !IsGamepadButtonDown(gamepad, button)
-    }
-
-    #program_export
-    GetGamepadButtonPressed :: () -> s32 {
-        return PageGamepadQuery(0, 4, 0)
-    }
-
-    #program_export
-    GetGamepadAxisCount :: (gamepad: s32) -> s32 {
-        return PageGamepadQuery(gamepad, 5, 0)
-    }
-
     #program_export
     GetGamepadAxisMovement :: (gamepad: s32, axis: s32) -> float32 {
         return cast(float32)PageGamepadAxis(gamepad, axis)
-    }
-
-    #program_export
-    SetGamepadMappings :: (mappings: *u8) -> s32 {
-        // Browsers expose their own normalized gamepad mapping.
-        return 0
-    }
-
-    #program_export
-    SetGamepadVibration :: (gamepad: s32, left: float32, right: float32, duration: float32) {
-        PageGamepadVibration(gamepad, cast(float64)left, cast(float64)right, cast(float64)duration)
-    }
-
-    #program_export
-    GetKeyName :: (key: s32) -> *u8 {
-        if key >= 32 && key <= 126 {
-            canvas_key_name[0] = cast(u8)key
-            canvas_key_name[1] = 0
-            return *canvas_key_name[0]
-        }
-        if key == 256 { return CanvasKeyName("escape") }
-        if key == 257 { return CanvasKeyName("enter") }
-        if key == 258 { return CanvasKeyName("tab") }
-        if key == 259 { return CanvasKeyName("backspace") }
-        if key == 260 { return CanvasKeyName("insert") }
-        if key == 261 { return CanvasKeyName("delete") }
-        if key == 262 { return CanvasKeyName("right") }
-        if key == 263 { return CanvasKeyName("left") }
-        if key == 264 { return CanvasKeyName("down") }
-        if key == 265 { return CanvasKeyName("up") }
-        if key == 266 { return CanvasKeyName("page up") }
-        if key == 267 { return CanvasKeyName("page down") }
-        if key == 268 { return CanvasKeyName("home") }
-        if key == 269 { return CanvasKeyName("end") }
-        if key >= 290 && key <= 301 {
-            number := key - 289
-            canvas_key_name[0] = 102
-            if number < 10 {
-                canvas_key_name[1] = cast(u8)(48 + number)
-                canvas_key_name[2] = 0
-            }
-            if number >= 10 {
-                canvas_key_name[1] = 49
-                canvas_key_name[2] = cast(u8)(48 + number % 10)
-                canvas_key_name[3] = 0
-            }
-            return *canvas_key_name[0]
-        }
-        return CanvasKeyName("")
-    }
-
-    CanvasKeyName :: (name: string) -> *u8 {
-        CopyCString(name, canvas_key_name[:])
-        return *canvas_key_name[0]
     }
 }

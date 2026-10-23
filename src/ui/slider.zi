@@ -45,36 +45,12 @@ SliderPaint :: struct {
     active_track: StyleFrame
     thumb: StyleFrame
 }
-
-SliderPointerDecision :: struct {
-    hovered: bool
-    clear_active: bool
-    start_active: bool
-    set_pointer_owner: bool
-    cancel_active: bool
-    take_horizontal_owner: bool
-    update_value: bool
-    finish_active: bool
-}
-
 SliderRatioDecision :: struct {
     clear_active: bool
     start_active: bool
     update_ratio: bool
     finish_active: bool
 }
-
-SliderEditorLayout :: struct {
-    editor_bounds: Rectangle
-    hit_bounds: Rectangle
-    paint_bounds: Rectangle
-}
-
-SliderTextPaint :: struct {
-    text_x: float32
-    text_y: float32
-}
-
 // The header belongs to the widget. Only the interaction row is inset for
 // optional step buttons; labels always start at the outer bounds.
 SliderLayout :: struct {
@@ -157,66 +133,11 @@ SliderLayoutFor :: (bounds: Rectangle, line_height: float32, label_height: float
     layout.limits.height = line_height
     return layout
 }
-
-#program_export
-SliderCellTextPaintFor :: (bounds: Rectangle, inset: float32,
-    text_line_height: float32) -> SliderTextPaint {
-    paint: SliderTextPaint
-    paint.text_x = bounds.x + inset
-    paint.text_y = bounds.y + (bounds.height - text_line_height) / 2.0
-    return paint
-}
-
-#program_export
-SliderLabelTextPaintFor :: (bounds: Rectangle, inset: float32, font_size: s32,
-    gap: float32) -> SliderTextPaint {
-    paint: SliderTextPaint
-    paint.text_x = bounds.x + inset
-    paint.text_y = bounds.y - cast(float32)font_size - gap
-    return paint
-}
-
-#program_export
-SliderEditorCenterX :: (bounds: Rectangle) -> s32 {
-    return cast(s32)(bounds.x + bounds.width * 0.5)
-}
-
 #program_export
 SliderLabelInsetForStyle :: (label: StyleFrame, scale: float32) -> float32 {
     return SliderMetricFloat(label.value.fields, cast(u32)StylePaddingX,
         label.value.padding_x, 6.0, scale, true)
 }
-
-#program_export
-SliderLabelGapForStyle :: (label: StyleFrame, scale: float32) -> float32 {
-    return SliderMetricFloat(label.value.fields, cast(u32)StyleGap,
-        label.value.gap, 2.0, scale, true)
-}
-
-#program_export
-SliderComponentTokenFor :: (control_id: s32, component: s32) -> s32 {
-    if control_id <= 0 || component < 0 {
-        return 0
-    }
-    return control_id * 16 + component + 1
-}
-
-#program_export
-SliderFocusIdFor :: (control_id: s32, component: s32, integer: bool) -> s32 {
-    if control_id <= 0 {
-        return 0
-    }
-    if component <= 0 {
-        return control_id
-    }
-    prefix: s32 = 0x40000000
-    if integer {
-        prefix = 0x50000000
-    }
-    token: s32 = prefix ^ SliderComponentTokenFor(control_id, component)
-    return token & 0x7fffffff
-}
-
 #program_export
 SliderTrackRole :: () -> s32 {
     return 4
@@ -231,76 +152,6 @@ SliderFillRole :: () -> s32 {
 SliderLabelRole :: () -> s32 {
     return 6
 }
-
-#program_export
-SliderCenteredHitBounds :: (x: s32, y: s32, width: s32, height: s32,
-    min_width: s32, min_height: s32) -> Rectangle {
-    hit: Rectangle
-    hit_width: s32 = width
-    hit_height: s32 = height
-    if hit_width < min_width { hit_width = min_width }
-    if hit_height < min_height { hit_height = min_height }
-    hit.x = cast(float32)(x + width / 2 - hit_width / 2)
-    hit.y = cast(float32)(y + height / 2 - hit_height / 2)
-    hit.width = cast(float32)hit_width
-    hit.height = cast(float32)hit_height
-    return hit
-}
-
-#program_export
-SliderHorizontalEditorLayoutFor :: (x: s32, y: s32, width: s32,
-    min_touch_height: s32, scale: float32, track: StyleFrame,
-    thumb: StyleFrame) -> SliderEditorLayout {
-    layout: SliderEditorLayout
-    if scale <= 0.0 { scale = 1.0 }
-    if width < SliderMinimumLengthForStyle(track, scale) {
-        width = SliderMinimumLengthForStyle(track, scale)
-    }
-    center_offset: s32 = SliderTrackCenterOffsetForStyle(track, scale)
-    editor_height: s32 = center_offset * 2
-    track_y: s32 = y + center_offset
-    thumb_height: s32 = SliderThumbSizeForStyle(thumb, scale)
-    track_height: s32 = SliderTrackSizeForStyle(false, track, scale)
-    thumb_y: s32 = track_y - (thumb_height - track_height) / 2
-    layout.editor_bounds.x = cast(float32)x
-    layout.editor_bounds.y = cast(float32)y
-    layout.editor_bounds.width = cast(float32)width
-    layout.editor_bounds.height = cast(float32)editor_height
-    layout.hit_bounds = SliderCenteredHitBounds(x, thumb_y, width,
-        thumb_height, width, min_touch_height)
-    layout.paint_bounds.x = cast(float32)x
-    layout.paint_bounds.y = cast(float32)thumb_y
-    layout.paint_bounds.width = cast(float32)width
-    layout.paint_bounds.height = cast(float32)thumb_height
-    return layout
-}
-
-#program_export
-SliderVerticalEditorLayoutFor :: (center_x: s32, y: s32, height: s32,
-    min_touch_width: s32, scale: float32, track: StyleFrame,
-    thumb: StyleFrame) -> SliderEditorLayout {
-    layout: SliderEditorLayout
-    if scale <= 0.0 { scale = 1.0 }
-    if height < SliderMinimumLengthForStyle(track, scale) {
-        height = SliderMinimumLengthForStyle(track, scale)
-    }
-    editor_width: s32 = SliderVerticalEditorWidthForStyle(track, thumb, scale)
-    track_width: s32 = SliderTrackSizeForStyle(true, track, scale)
-    thumb_width: s32 = SliderThumbSizeForStyle(thumb, scale)
-    track_x: s32 = center_x - track_width / 2
-    layout.editor_bounds.x = cast(float32)(center_x - editor_width / 2)
-    layout.editor_bounds.y = cast(float32)y
-    layout.editor_bounds.width = cast(float32)editor_width
-    layout.editor_bounds.height = cast(float32)height
-    layout.hit_bounds = SliderCenteredHitBounds(track_x, y, track_width,
-        height, min_touch_width, height)
-    layout.paint_bounds.x = cast(float32)(center_x - thumb_width / 2)
-    layout.paint_bounds.y = cast(float32)y
-    layout.paint_bounds.width = cast(float32)thumb_width
-    layout.paint_bounds.height = cast(float32)height
-    return layout
-}
-
 #program_export
 SliderCellBoundsFor :: (bounds: Rectangle, count: s32, index: s32) -> Rectangle {
     cell: Rectangle
@@ -356,31 +207,6 @@ SliderTrackSizeForStyle :: (vertical: bool, track: StyleFrame,
     return SliderMetric(track.value.fields, cast(u32)StylePaddingY,
         track.value.padding_y, 6.0, scale, false)
 }
-
-#program_export
-SliderTrackCenterOffsetForStyle :: (track: StyleFrame,
-    scale: float32) -> s32 {
-    return SliderMetric(track.value.fields, cast(u32)StyleContentOffset,
-        track.value.offset_y, 28.0, scale, false)
-}
-
-#program_export
-SliderVerticalEditorWidthForStyle :: (track: StyleFrame, thumb: StyleFrame,
-    scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    width: float32 = track.value.offset_x
-    if (track.value.fields & cast(u32)StyleContentOffset) != cast(u32)0 &&
-       width >= 0.0 {
-        return cast(s32)(width * scale)
-    }
-    thumb_size: s32 = SliderThumbSizeForStyle(thumb, scale)
-    track_size: s32 = SliderTrackSizeForStyle(true, track, scale)
-    content: s32 = thumb_size
-    if track_size > content { content = track_size }
-    return content + SliderMetric(track.value.fields, cast(u32)StyleGap,
-        track.value.gap, 14.0, scale, true)
-}
-
 #program_export
 SliderGlowExpansionForStyle :: (thumb: StyleFrame, scale: float32) -> float32 {
     return SliderMetricFloat(thumb.value.fields, cast(u32)StyleGap,
@@ -448,52 +274,6 @@ SliderValue :: (minimum: float32, maximum: float32, ratio: float32) -> float32 {
     if span <= 0.0 { return minimum }
     return minimum + SliderClampRatio(ratio) * span
 }
-
-#program_export
-SliderKeyboardShouldRun :: (focus_active: bool, keyboard_enabled: bool,
-    popup_captures: bool) -> bool {
-    return focus_active && keyboard_enabled && !popup_captures
-}
-
-#program_export
-SliderKeyboardDirectionFor :: (vertical: bool, up: bool, down: bool,
-    right: bool, left: bool) -> s32 {
-    if vertical {
-        if up { return 1 }
-        if down { return -1 }
-    } else {
-        if right { return 1 }
-        if left { return -1 }
-    }
-    return 0
-}
-
-#program_export
-SliderKeyboardValue :: (value: float32, minimum: float32, maximum: float32,
-    direction: s32, home: bool, end: bool, alt: bool, shift: bool) -> SliderStep {
-    result: SliderStep
-    result.value = value
-    result.changed = false
-    span: float32 = maximum - minimum
-    if span <= 0.0 { return result }
-    next: float32 = value
-    if home {
-        next = minimum
-    } else if end {
-        next = maximum
-    } else if direction != 0 {
-        step: float32 = span * 0.01
-        if alt { step = step * 0.1 }
-        if shift { step = step * 10.0 }
-        next = next + cast(float32)direction * step
-        if next < minimum { next = minimum }
-        if next > maximum { next = maximum }
-    }
-    result.value = next
-    result.changed = next != value
-    return result
-}
-
 #program_export
 SliderDiscreteRatio :: (value: s32, minimum: s32, maximum: s32) -> float32 {
     span: s64 = cast(s64)maximum - cast(s64)minimum
@@ -507,48 +287,6 @@ SliderDiscreteValue :: (minimum: s32, maximum: s32, ratio: float32) -> s32 {
     if span <= 0 { return minimum }
     return cast(s32)(cast(s64)minimum + cast(s64)(SliderClampRatio(ratio) * cast(float32)span + 0.5))
 }
-
-#program_export
-SliderDiscretePointerValue :: (pointer: float32, origin: float32, length: float32,
-    minimum: s32, maximum: s32, inverted: bool) -> s32 {
-    return SliderDiscreteValue(minimum, maximum,
-        SliderPointerRatio(pointer, origin, length, inverted))
-}
-
-#program_export
-SliderPointerDecisionFor :: (active: bool, inside: bool, captured: bool,
-    internal_captured: bool, pressed: bool, down: bool, released: bool,
-    vertical: bool, pointer_owner_none: bool, pointer_owner_matches: bool,
-    dragging: bool, drag_horizontal: bool) -> SliderPointerDecision {
-    decision: SliderPointerDecision
-    decision.hovered = inside && !captured
-    decision.clear_active = active && !down && !released
-    decision.start_active = decision.hovered && pressed
-    decision.set_pointer_owner = decision.start_active && vertical
-
-    effective_active: bool = active || decision.start_active
-
-    if effective_active && !vertical && pointer_owner_none && dragging {
-        if drag_horizontal {
-            decision.take_horizontal_owner = true
-        } else {
-            decision.cancel_active = true
-        }
-    }
-
-    can_update: bool = effective_active && !internal_captured
-    if vertical {
-        decision.update_value = can_update && (down || released)
-    } else {
-        effective_owner_matches: bool = pointer_owner_matches ||
-            decision.take_horizontal_owner
-        decision.update_value = can_update &&
-            ((down && effective_owner_matches) || released)
-    }
-    decision.finish_active = effective_active && released
-    return decision
-}
-
 #program_export
 SliderRatioDecisionFor :: (any_active: bool, active: bool, hot: bool, disabled: bool,
     owner_captured: bool, pressed: bool, down: bool,

@@ -501,18 +501,6 @@
     IsSoundValid :: (sound: CanvasSound) -> bool {
         return AudioId(sound.stream) > 0 && sound.frame_count > 0
     }
-
-    #program_export
-    UpdateSound :: (sound: CanvasSound, data: *void, frames: s32) {
-        AudioEnsure()
-        id := AudioId(sound.stream)
-        if id <= 0 || data == null || frames <= 0 { return }
-        rate := ifx sound.stream.sample_rate > 0 then cast(s32)sound.stream.sample_rate else 44100
-        size := ifx sound.stream.sample_size > 0 then cast(s32)sound.stream.sample_size else 32
-        channels := ifx sound.stream.channels > 0 then cast(s32)sound.stream.channels else 2
-        unused AudioEngineUpdateBufferFromPcm(id, data, frames, rate, size, channels)
-    }
-
     #program_export
     UnloadSoundAlias :: (alias: CanvasSound) {
         UnloadSound(alias)
@@ -565,13 +553,6 @@
         id := AudioId(sound.stream)
         if id > 0 { AudioEngineBufferPitch(id, value) }
     }
-
-    #program_export
-    SetSoundPan :: (sound: CanvasSound, value: float32) {
-        id := AudioId(sound.stream)
-        if id > 0 { AudioEngineBufferPan(id, value) }
-    }
-
     #program_export
     LoadMusicStream :: (path: *u8) -> CanvasMusic {
         AudioEnsure()
@@ -644,19 +625,6 @@
         id := AudioId(music.stream)
         if id > 0 { AudioEngineBufferVolume(id, value) }
     }
-
-    #program_export
-    SetMusicPitch :: (music: CanvasMusic, value: float32) {
-        id := AudioId(music.stream)
-        if id > 0 { AudioEngineBufferPitch(id, value) }
-    }
-
-    #program_export
-    SetMusicPan :: (music: CanvasMusic, value: float32) {
-        id := AudioId(music.stream)
-        if id > 0 { AudioEngineBufferPan(id, value) }
-    }
-
     #program_export
     GetMusicTimeLength :: (music: CanvasMusic) -> float32 {
         id := AudioId(music.stream)
@@ -742,19 +710,6 @@
         id := AudioId(stream)
         if id > 0 { AudioEngineStreamVolume(id, value) }
     }
-
-    #program_export
-    SetAudioStreamPitch :: (stream: CanvasAudioStream, value: float32) {
-        id := AudioId(stream)
-        if id > 0 { AudioEngineStreamPitch(id, value) }
-    }
-
-    #program_export
-    SetAudioStreamPan :: (stream: CanvasAudioStream, value: float32) {
-        id := AudioId(stream)
-        if id > 0 { AudioEngineStreamPan(id, value) }
-    }
-
     #program_export
     SetAudioStreamBufferSizeDefault :: (frames: s32) {
         if frames > 0 { audio_stream_frames = frames }

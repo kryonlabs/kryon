@@ -44,14 +44,6 @@ ToolbarDividerLine :: struct {
     x2: s32
     y2: s32
 }
-
-ToolbarMetric :: (fields: u32, field: u32, value: s32, fallback: float32,
-    scale: float32) -> s32 {
-    if scale <= 0.0 { scale = 1.0 }
-    if (fields & field) != cast(u32)0 && value >= 0 { return value }
-    return cast(s32)(fallback * scale)
-}
-
 ToolbarPropMetric :: (value: s32, fallback: float32, scale: float32) -> s32 {
     if value > 0 { return value }
     if scale <= 0.0 { scale = 1.0 }
@@ -82,17 +74,6 @@ ToolbarDividerRole :: () -> s32 {
 ToolbarActionRole :: () -> s32 {
     return 17
 }
-
-#program_export
-ToolbarBottomBarRole :: () -> s32 {
-    return 28
-}
-
-#program_export
-ToolbarBottomActionRole :: () -> s32 {
-    return 29
-}
-
 #program_export
 ToolbarActionIdFor :: (toolbar_id: s32, index: s32) -> s32 {
     if toolbar_id <= 0 || index < 0 {
@@ -111,13 +92,6 @@ ToolbarDividerLineFor :: (x: s32, y: s32, width: s32, height: s32) -> ToolbarDiv
     line.y2 = line.y1
     return line
 }
-
-#program_export
-ToolbarSidePadding :: (value: s32, fields: u32, scale: float32) -> s32 {
-    if value < 0 { return 0 }
-    return ToolbarMetric(fields, cast(u32)StylePaddingX, value, 12.0, scale)
-}
-
 ToolbarSpecMetric :: (value: s32, fields: u32, field: u32,
     frame: StyleFrame, frame_value: float32, fallback: float32,
     scale: float32) -> s32 {
@@ -186,30 +160,6 @@ ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout {
     layout.dropdown_bounds.height = cast(float32)ToolbarPropMetric(spec.dropdown_height, 36.0, scale)
     return layout
 }
-
-#program_export
-ToolbarActionBoundsFor :: (layout: ToolbarLayout, index: s32,
-    action_count: s32) -> Rectangle {
-    bounds: Rectangle
-    if action_count <= 0 { return bounds }
-    if index < 0 { index = 0 }
-    if index >= action_count { index = action_count - 1 }
-    from_right: s32 = action_count - 1 - index
-    bounds.x = cast(float32)(layout.controls_x - layout.action_width -
-        from_right * (layout.action_width + layout.action_gap))
-    bounds.y = cast(float32)layout.action_y
-    bounds.width = cast(float32)layout.action_width
-    bounds.height = cast(float32)layout.action_width
-    return bounds
-}
-
-#program_export
-ToolbarActionStyleIconSize :: (icon_size: s32, scale: float32) -> float32 {
-    if icon_size < 0 { icon_size = 0 }
-    if scale <= 0.0 { scale = 1.0 }
-    return cast(float32)icon_size / scale
-}
-
 BottomIconRowLayout :: struct {
     y: s32
     button_width: s32
@@ -303,81 +253,4 @@ BottomIconRowButtonBoundsFor :: (layout: BottomIconRowLayout,
     bounds.width = cast(float32)layout.button_width
     bounds.height = cast(float32)layout.button_width
     return bounds
-}
-
-IconSliderPopupLayout :: struct {
-    button_bounds: Rectangle
-    popup_bounds: Rectangle
-    slider_x: s32
-    slider_y: s32
-    slider_height: s32
-    icon_size: s32
-}
-
-IconSliderPopupCloseDecision :: struct {
-    close: bool
-}
-
-IconSliderPopupOpenResult :: struct {
-    open: bool
-    changed: bool
-}
-
-#program_export
-IconSliderPopupLayoutFor :: (x: s32, y: s32, icon_size: s32,
-    icon_padding: s32, popup_width: s32, popup_height: s32,
-    scale: float32) -> IconSliderPopupLayout {
-    layout: IconSliderPopupLayout
-    if scale <= 0.0 { scale = 1.0 }
-    if icon_size < 0 { icon_size = 0 }
-    if icon_padding < 0 { icon_padding = 0 }
-
-    button_w: s32 = icon_size + icon_padding * 2
-    popup_w: s32 = popup_width
-    if popup_w <= 0 { popup_w = button_w }
-    if popup_w < button_w { popup_w = button_w }
-    popup_h: s32 = popup_height
-    if popup_h <= 0 { popup_h = cast(s32)(200.0 * scale) }
-
-    layout.button_bounds.x = cast(float32)x
-    layout.button_bounds.y = cast(float32)y
-    layout.button_bounds.width = cast(float32)button_w
-    layout.button_bounds.height = cast(float32)button_w
-    layout.popup_bounds.x = cast(float32)(x + button_w / 2 - popup_w / 2)
-    layout.popup_bounds.y = cast(float32)(y + button_w + cast(s32)(4.0 * scale))
-    layout.popup_bounds.width = cast(float32)popup_w
-    layout.popup_bounds.height = cast(float32)popup_h
-    layout.slider_x = cast(s32)layout.popup_bounds.x + popup_w / 2
-    layout.slider_y = cast(s32)layout.popup_bounds.y + cast(s32)(14.0 * scale)
-    layout.slider_height = popup_h - cast(s32)(24.0 * scale)
-    if layout.slider_height < 0 { layout.slider_height = 0 }
-    layout.icon_size = icon_size
-    return layout
-}
-
-#program_export
-IconSliderPopupCloseDecisionFor :: (icon_clicked: bool, released: bool,
-    pointer_inside_popup: bool) -> IconSliderPopupCloseDecision {
-    decision: IconSliderPopupCloseDecision
-    decision.close = !icon_clicked && released && !pointer_inside_popup
-    return decision
-}
-
-#program_export
-IconSliderPopupOpenFor :: (open: bool, icon_clicked: bool,
-    close_requested: bool, has_open: bool) -> IconSliderPopupOpenResult {
-    result: IconSliderPopupOpenResult
-    result.open = open
-    result.changed = false
-    if !has_open {
-        return result
-    }
-    if icon_clicked {
-        result.open = !open
-    }
-    if close_requested {
-        result.open = false
-    }
-    result.changed = result.open != open
-    return result
 }

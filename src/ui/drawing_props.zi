@@ -235,13 +235,6 @@ StyleTokenColorOr :: (name: string, fallback: Color) -> Color {
 StyleTokenColor :: (name: string) -> Color {
     return StyleTokenColorOr(name, Color.{0, 0, 0, 255})
 }
-
-// Clip calculations are values; paint commands carry explicit clip rectangles.
-#program_export
-GetClipIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
-    return RectangleIntersection(a, b)
-}
-
 // Screen pixels per layout unit. Paint rasterized before it reaches the
 // host, such as icons, uses it to stay sharp. A host that scales the whole
 // frame sets the scale (density or zoom); a host whose framebuffer has more

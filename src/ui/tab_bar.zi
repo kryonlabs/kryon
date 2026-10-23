@@ -24,23 +24,6 @@ TabBarReorderDragDecision :: struct {
     dragging: bool
     capture_input: bool
 }
-
-TabBarReorderReleaseDecision :: struct {
-    finish: bool
-    consume_release: bool
-}
-
-TabBarTabPointerDecision :: struct {
-    close: bool
-    activate: bool
-    consume_release: bool
-}
-
-TabBarPressCleanupDecision :: struct {
-    clear_press: bool
-    clear_pointer_owner: bool
-}
-
 TabBarKeyboardInput :: struct {
     direction: s32
     from_index: s32
@@ -72,12 +55,6 @@ TabBarContentLayout :: struct {
     text_bounds: Rectangle
     close_bounds: Rectangle
 }
-
-TabBarCloseLabelPaint :: struct {
-    x: s32
-    y: s32
-}
-
 #program_export
 TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     close: StyleFrame, scale: float32) -> TabBarPaint {
@@ -215,16 +192,6 @@ TabBarContentLayoutFor :: (tab_bounds: Rectangle, label_width: s32,
     layout.text_bounds.height = cast(float32)content_h
     return layout
 }
-
-#program_export
-TabBarCloseLabelPaintFor :: (close_bounds: Rectangle, label_width: s32,
-    label_line_height: s32) -> TabBarCloseLabelPaint {
-    paint: TabBarCloseLabelPaint
-    paint.x = cast(s32)(close_bounds.x + (close_bounds.width - cast(float32)label_width) * 0.5)
-    paint.y = cast(s32)(close_bounds.y + (close_bounds.height - cast(float32)label_line_height) * 0.5)
-    return paint
-}
-
 #program_export
 TabBarTotalWidth :: (tab_width_sum: s32, count: s32, gap: s32) -> s32 {
     if count <= 0 {
@@ -402,46 +369,6 @@ TabBarReorderDragDecisionFor :: (disabled: bool, reorder_enabled: bool,
     decision.capture_input = decision.dragging
     return decision
 }
-
-#program_export
-TabBarReorderReleaseDecisionFor :: (disabled: bool, reorder_enabled: bool,
-    owns_drag: bool, released: bool, press_index: s32,
-    count: s32) -> TabBarReorderReleaseDecision {
-    decision: TabBarReorderReleaseDecision
-    decision.finish = !disabled && reorder_enabled && owns_drag && released &&
-        press_index >= 0 && press_index < count
-    decision.consume_release = decision.finish
-    return decision
-}
-
-#program_export
-TabBarTabPointerDecisionFor :: (close_active: bool, released: bool,
-    owns_drag: bool, press_matches: bool) -> TabBarTabPointerDecision {
-    decision: TabBarTabPointerDecision
-    if !released || owns_drag {
-        return decision
-    }
-    if close_active {
-        decision.close = true
-        decision.consume_release = true
-        return decision
-    }
-    if press_matches {
-        decision.activate = true
-        decision.consume_release = true
-    }
-    return decision
-}
-
-#program_export
-TabBarPressCleanupDecisionFor :: (released: bool, pointer_down: bool,
-    owns_press: bool, pointer_owner_is_reorder: bool) -> TabBarPressCleanupDecision {
-    decision: TabBarPressCleanupDecision
-    decision.clear_press = owns_press && (released || !pointer_down)
-    decision.clear_pointer_owner = decision.clear_press && pointer_owner_is_reorder
-    return decision
-}
-
 #program_export
 TabBarEqualTabBounds :: (bounds: Rectangle, count: s32, index: s32) -> Rectangle {
     rect: Rectangle

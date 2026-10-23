@@ -22,23 +22,11 @@ ToastLayout :: struct {
     text_bounds: Rectangle
     content_width: s32
 }
-
-ToastTruncation :: struct {
-    prefix_len: s32
-    ellipsis: bool
-}
-
 ToastRequestDecision :: struct {
     show: bool
     clear: bool
     seconds: float32
 }
-
-ToastRenderDecision :: struct {
-    render: bool
-    clear: bool
-}
-
 #program_export
 ToastLabelRole :: () -> s32 {
     return 6
@@ -101,44 +89,6 @@ ToastRequestDecisionFor :: (has_message: bool, seconds: float32,
     decision.seconds = ToastDuration(seconds, metrics)
     return decision
 }
-
-#program_export
-ToastRenderDecisionFor :: (has_message: bool, now_seconds: float32,
-    until_seconds: float32) -> ToastRenderDecision {
-    decision: ToastRenderDecision
-    if !has_message || now_seconds >= until_seconds {
-        decision.clear = true
-        return decision
-    }
-    decision.render = true
-    return decision
-}
-
-#program_export
-ToastTruncationFor :: (text_len: s32, fits: bool) -> ToastTruncation {
-    truncation: ToastTruncation
-    if text_len < 0 { text_len = 0 }
-    truncation.prefix_len = text_len
-    if fits || text_len <= 3 {
-        return truncation
-    }
-    truncation.prefix_len = text_len - 3
-    truncation.ellipsis = true
-    return truncation
-}
-
-#program_export
-ToastTruncationNext :: (truncation: ToastTruncation,
-    fits: bool) -> ToastTruncation {
-    if fits || !truncation.ellipsis {
-        return truncation
-    }
-    if truncation.prefix_len > 0 {
-        truncation.prefix_len = truncation.prefix_len - 1
-    }
-    return truncation
-}
-
 #program_export
 ToastMaxWidth :: (view_width: s32, metrics: ToastMetrics) -> s32 {
     width: s32 = view_width - metrics.margin * 2

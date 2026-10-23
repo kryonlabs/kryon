@@ -491,15 +491,6 @@
         canvas_wheel_y -= canvas_frame_input.wheel_y
         canvas_frame_input = CanvasFrameInput.{}
     }
-
-    CanvasPageWidth :: () -> s32 {
-        return PageDimension(0)
-    }
-
-    CanvasPageHeight :: () -> s32 {
-        return PageDimension(1)
-    }
-
     // One field of touch point `index`: 0 x, 1 y, 2 id; 0 when it is absent.
     CanvasTouchField :: (index: s32, field: s32) -> s32 {
         if index < 0 || index >= canvas_touch_count { return 0 }
