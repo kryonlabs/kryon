@@ -46,6 +46,8 @@ Font size, typeface, wrap width and content changes always select a new layout.
 `TextAreaProps.manual_scroll` keeps a reader's scroll position independent of
 caret and selection changes. Wheel, scrollbar and touch scrolling remain
 available. Editors keep the normal caret reveal unless they enable this flag.
+`ScrollProps.manual_scroll` similarly suppresses automatic focused-field
+reveal for a reader that owns its viewport.
 
 A `TextArea` can preview a markup language over its value without changing
 it. `hidden` bytes take no width or caret stop, `strong` bytes are bold and

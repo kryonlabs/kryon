@@ -73,7 +73,7 @@
                 stored := TreePreviousWidgetState(session, previous)
                 old_bounds := TreeNodeAt(session, previous).bounds
                 resized := old_bounds.width != result.viewport.width || old_bounds.height != result.viewport.height
-                if !props.input.disabled && (stored.focus_generation != focus_generation || resized) {
+                if !props.manual_scroll && !props.input.disabled && (stored.focus_generation != focus_generation || resized) {
                     margin := cast(s32)(16.0 * ifx props.scale > 0.0 then props.scale else 1.0)
                     offset = cast(s64)ScrollFocusOffset(cast(s32)offset, result.max_scroll,
                         result.viewport, old_bounds, stored.offset, editor.bounds, margin, props.horizontal)

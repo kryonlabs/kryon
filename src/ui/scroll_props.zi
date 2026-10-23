@@ -44,6 +44,8 @@ ScrollProps :: struct {
     // rows open, keeps its width when it starts to scroll. With nothing to
     // scroll, the scrollbar takes no input.
     keep_scrollbar: bool
+    // Readers may suppress automatic focused-field reveal while keeping input.
+    manual_scroll: bool
     scroll_offset: s32
     scroll_delta: s32
     input: ScrollInput
