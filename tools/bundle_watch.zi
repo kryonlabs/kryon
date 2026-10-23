@@ -53,14 +53,12 @@ Read :: (pointer: string) -> Release {
     if separator < 0 { return result }
     name: [4096]u8
     parent := pointer[:separator + 1]
-    count := parent.count + 68
+    extension := ".zx"
+    count := parent.count + 64 + extension.count
     if count >= result.path.count { return result }
     for i: 0..parent.count - 1 { name[i] = parent[i] }
     for i: 0..63 { name[parent.count + i] = result.hash[i] }
-    name[parent.count + 64] = cast(u8)46
-    name[parent.count + 65] = cast(u8)122
-    name[parent.count + 66] = cast(u8)105
-    name[parent.count + 67] = cast(u8)98
+    for i: 0..extension.count - 1 { name[parent.count + 64 + i] = extension[i] }
     result.valid = CopyCString(TextFromBytes(name[:count]), result.path[:])
     return result
 }

@@ -409,6 +409,9 @@ sanitize-test: project-toolchain
 BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
 	emscripten-cache android-surface-check text-input-platform-test zx-player zx-test zx-canvas zx-canvas-test gallery-zx \
 	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay dom-project
+# Keep prior generated output while an installed or running app may use it.
+BUILD_OUTPUTS += zib-reload-test zib-raylib zib-native-test zib-android-test \
+	zib-player zib-test zib-canvas zib-canvas-test gallery-zib
 .PHONY: clean-scratch
 clean-scratch:
 	@for entry in build/* build/.[!.]*; do \
