@@ -4,6 +4,13 @@
 
 ### Added
 
+- `DirectionPad`: a four-way pad for touch games, like a D-pad. Pressing an
+  arm steps at once, holding repeats like an arrow key, sliding onto another
+  arm turns and a quick tap steps once; hosted games can use it.
+- Android UI tests: the test driver also runs on Android. In a debuggable
+  build, `adb shell run-as PACKAGE mkdir files/kryon-test-driver` before the
+  app starts turns it on in that folder, so a test can read the widgets and
+  press them on a real phone.
 - Inline links in `Text`: `TextProps.links` marks web links in the text,
   which are painted inside the words in the theme's `link` color with an
   underline, and `TextLinkAt` tells which link is under a pointer so an app

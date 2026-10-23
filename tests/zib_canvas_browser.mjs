@@ -118,6 +118,35 @@ try {
       await delay(250);
       assert.equal(count(), during, marker + ' continued after release');
     }
+    {
+      // The direction pad at 640,300 (160 square): its up arm is above the
+      // centre 720,380, the right arm beside it, the hub in the middle.
+      const origin = await evaluate('(()=>{const r=document.querySelector("canvas").getBoundingClientRect();return {x:r.x,y:r.y};})()');
+      const at = (x, y) => ({x: origin.x + x, y: origin.y + y});
+      const count = marker => diagnostics.split(marker).length - 1;
+      const pads = () => ['left', 'up', 'right', 'down'].reduce((sum, arm) => sum + count('Hosted pad step ' + arm), 0);
+      const up = count('Hosted pad step up'), right = count('Hosted pad step right');
+      await call('Input.dispatchMouseEvent', {type: 'mousePressed', ...at(720, 325), button: 'left', buttons: 1, clickCount: 1});
+      await delay(1200);
+      assert(count('Hosted pad step up') - up >= 3, 'Hosted pad did not hold/repeat up: ' + diagnostics);
+      await call('Input.dispatchMouseEvent', {type: 'mouseMoved', ...at(775, 380), button: 'left', buttons: 1});
+      await delay(400);
+      assert(count('Hosted pad step right') > right, 'Hosted pad did not turn when the press slid onto the right arm');
+      await call('Input.dispatchMouseEvent', {type: 'mouseMoved', ...at(722, 378), button: 'left', buttons: 1});
+      await delay(150);
+      const onHub = pads();
+      await delay(400);
+      assert.equal(pads(), onHub, 'Hosted pad stepped while the press rested on its hub');
+      await call('Input.dispatchMouseEvent', {type: 'mouseReleased', ...at(722, 378), button: 'left', buttons: 0, clickCount: 1});
+      const released = pads();
+      await delay(250);
+      assert.equal(pads(), released, 'Hosted pad continued after release');
+      const down = count('Hosted pad step down');
+      await call('Input.dispatchMouseEvent', {type: 'mousePressed', ...at(720, 440), button: 'left', buttons: 1, clickCount: 1});
+      await call('Input.dispatchMouseEvent', {type: 'mouseReleased', ...at(720, 440), button: 'left', buttons: 0, clickCount: 1});
+      for (let end = Date.now() + 2000; count('Hosted pad step down') === down && Date.now() < end;) await delay(20);
+      assert.equal(count('Hosted pad step down'), down + 1, 'A tap on the down arm did not step exactly once: ' + diagnostics);
+    }
     const beforeKey = diagnostics.split('Hosted key step').length;
     for (let at = 0; at < 5; at++) {
       await call('Input.dispatchKeyEvent', {type: 'keyDown', key: 'ArrowLeft', code: 'ArrowLeft', windowsVirtualKeyCode: 37, autoRepeat: at > 0});

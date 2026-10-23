@@ -123,4 +123,14 @@ mutate time_picker.zi time_picker_laws.zi 's/    if wrapped < 0 { wrapped += cou
 mutate time_picker.zi time_picker_laws.zi 's/        if key == KeyUp { delta = -1 }//' UpDownStepTheColumn
 # A popup taller than a short window.
 mutate time_picker.zi time_picker_laws.zi 's/    if height > view.height { height = view.height }//' SmallViewStaysOnScreen
+# A direction pad whose hub swallows half of every arm.
+mutate direction_pad.zi direction_pad_laws.zi 's/    hub := half \/ 5.0/    hub := half \/ 2.0/' OutsideHubPressesAnArm
+# Ties going up or down instead of left or right.
+mutate direction_pad.zi direction_pad_laws.zi 's/    if across >= along { return ifx dx < 0.0 then 0 else 2 }/    if across > along { return ifx dx < 0.0 then 0 else 2 }/' LeftArm
+# Sliding onto another arm waiting for the repeat instead of turning at once.
+mutate direction_pad.zi direction_pad_laws.zi 's/    if arm != last {/    if arm != last \&\& last < 0 {/' PressStepsAtOnce
+# A held arm repeating every frame.
+mutate direction_pad.zi direction_pad_laws.zi 's/    } else if repeat > 0.0 \&\& now >= next {/    } else if repeat > 0.0 {/' HeldArmRepeats
+# Letting go remembering the arm, so pressing it again waits.
+mutate direction_pad.zi direction_pad_laws.zi 's/        hold.last = -1$/        hold.last = last/' PressAgainStepsAtOnce
 echo "Kryon laws reject all mutations"

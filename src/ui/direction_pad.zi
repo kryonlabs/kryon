@@ -1,0 +1,154 @@
+// A four-way direction pad for games, like a game controller's D-pad: an
+// arm for left, up, right and down around a small hub. Pressing an arm steps
+// that way at once; holding it keeps stepping, first after twice the repeat
+// and then at each repeat, like a held arrow key. Sliding the thumb onto
+// another arm turns at once, and the hub in the middle stops. Composed from
+// Press, Box and SvgIcon, so it also works inside hosted games.
+//
+// Directions are 0 left, 1 up, 2 right and 3 down, as in arrow-key games;
+// -1 means none.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "press_props"
+#import "press_widget"
+#import "box_props"
+#import "box_widget"
+#import "svg_icon_props"
+#import "svg_icon_widget"
+#import "joystick"
+
+DirectionPadProps :: struct {
+    key: u64
+    id: s32
+    // The pad fills the largest square centred in bounds.
+    bounds: Rectangle
+    // Names the control for accessibility.
+    label: string
+    // The app's clock in seconds.
+    now: float64
+    // Seconds between steps while an arm is held; 0 means 0.18.
+    repeat_seconds: float32
+    disabled: bool
+}
+
+DirectionPadResult :: struct {
+    // The arm held down, or on a step the arm stepped towards; -1 for none.
+    direction: s32
+    // Step now: when an arm is pressed or the thumb slides onto another
+    // arm, and again while it is held, after twice the repeat and then at
+    // each repeat. A quick tap steps once.
+    step: bool
+}
+
+// One frame of a held pad: what to do now and what to remember.
+DirectionPadHold :: struct {
+    // Step this way now, or -1.
+    direction: s32
+    // The arm to remember as held, or -1.
+    last: s32
+    // When the next repeat step is due.
+    next: float64
+}
+
+// The arm a press presses, from where it is relative to the pad's centre
+// (dx, dy) and half the pad's side: the longer offset decides, a tie going
+// to left or right, and the hub, a fifth of the half side around the
+// centre, presses none. A press dragged off the pad keeps its arm by the
+// same rule.
+#program_export
+DirectionPadArm :: (dx: float32, dy: float32, half: float32) -> s32 {
+    across := ifx dx < 0.0 then -dx else dx
+    along := ifx dy < 0.0 then -dy else dy
+    hub := half / 5.0
+    if across <= hub && along <= hub { return -1 }
+    if across >= along { return ifx dx < 0.0 then 0 else 2 }
+    return ifx dy < 0.0 then 1 else 3
+}
+
+// arm is pressed now (-1 for none), last the arm held on the frame before.
+// A newly pressed arm steps at once and waits twice the repeat; the same arm
+// held steps again whenever the next step is due, then waits one repeat.
+// Letting go or resting on the hub forgets the arm, so pressing it again
+// steps at once. A repeat of 0 or less steps only when an arm is pressed.
+#program_export
+DirectionPadStep :: (arm: s32, last: s32, now: float64, next: float64, repeat: float64) -> DirectionPadHold {
+    hold := DirectionPadHold.{.direction = -1, .last = arm, .next = next}
+    if arm < 0 {
+        hold.last = -1
+        return hold
+    }
+    if arm != last {
+        hold.direction = arm
+        hold.next = now + repeat * 2.0
+    } else if repeat > 0.0 && now >= next {
+        hold.direction = arm
+        hold.next = now + repeat
+    }
+    return hold
+}
+
+// Filled arrows for left, up, right and down in the icon's 24 by 24 box.
+DIRECTION_PAD_ARROWS: [4]string = .["F:M6 12L15 5V19Z|S2rr:M6 12L15 5V19Z", "F:M12 6L19 15H5Z|S2rr:M12 6L19 15H5Z",
+    "F:M18 12L9 5V19Z|S2rr:M18 12L9 5V19Z", "F:M12 18L5 9H19Z|S2rr:M12 18L5 9H19Z"];
+
+// Where an arm's button sits on the pad's 3 by 3 grid, inset by the gap
+// between the buttons.
+DirectionPadCell :: (x: float32, y: float32, third: float32, arm: s32) -> Rectangle {
+    column: float32 = ifx arm == 0 then 0.0 else ifx arm == 2 then 2.0 else 1.0
+    row: float32 = ifx arm == 1 then 0.0 else ifx arm == 3 then 2.0 else 1.0
+    gap := third * 0.06
+    return Rectangle.{x + column * third + gap, y + row * third + gap, third - gap * 2.0, third - gap * 2.0}
+}
+
+DirectionPad :: (session: Session, props: DirectionPadProps) -> DirectionPadResult {
+    result := DirectionPadResult.{.direction = -1}
+    slot := TouchSlotFor(props.key)
+    bounds := props.bounds
+    side := ifx bounds.width < bounds.height then bounds.width else bounds.height
+    x := bounds.x + (bounds.width - side) / 2.0
+    y := bounds.y + (bounds.height - side) / 2.0
+    half := side / 2.0
+    third := side / 3.0
+    press := Press(session, PressProps.{.key = props.key, .id = props.id, .bounds = Rectangle.{x, y, side, side},
+            .label = props.label, .now = props.now, .capture = true, .disabled = props.disabled,
+            .hold_seconds = 3600.0})
+    repeat := ifx props.repeat_seconds > 0.0 then cast(float64)props.repeat_seconds else 0.18
+    arm: s32 = -1
+    if press.down && !props.disabled { arm = DirectionPadArm(press.x - x - half, press.y - y - half, half) }
+    was_active := slot.active
+    hold := DirectionPadStep(arm, ifx slot.active then slot.direction else -1, props.now, slot.next, repeat)
+    slot.active = hold.last >= 0
+    slot.direction = hold.last
+    slot.next = hold.next
+    result.direction = arm
+    result.step = hold.direction >= 0
+    // A tap pressed and lifted between two frames was never seen down:
+    // it steps once towards the arm where it lifted.
+    if press.released && !press.down && !was_active && !props.disabled {
+        tapped := DirectionPadArm(press.x - x - half, press.y - y - half, half)
+        if tapped >= 0 {
+            result.direction = tapped
+            result.step = true
+        }
+    }
+    // Translucent dark buttons with light arrows read on light and dark
+    // boards alike; the held arm darkens, and a disabled pad fades.
+    fade: s32 = ifx props.disabled then 2 else 1
+    for part: cast(s32)0..3 {
+        cell := DirectionPadCell(x, y, third, part)
+        held := part == arm
+        unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 1 + part), .bounds = cell,
+                .fill = Color.{24, 30, 29, cast(u8)((ifx held then 190 else 110) / fade)},
+                .border = Color.{255, 255, 255, cast(u8)(70 / fade)}, .radius = third * 0.26})
+        // The arrow points out from the hub; a round stroke softens its corners.
+        arrow := DIRECTION_PAD_ARROWS[part]
+        inset := cell.width * 0.2
+        SvgIcon(session, SvgIconProps.{.bounds = Rectangle.{cell.x + inset, cell.y + inset, cell.width - inset * 2.0,
+                cell.height - inset * 2.0}, .shape = arrow, .color = Color.{255, 255, 255, cast(u8)((ifx held then 250 else 215) / fade)}})
+    }
+    hub := third * 0.44
+    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 5), .bounds = Rectangle.{x + half - hub / 2.0, y + half - hub / 2.0, hub, hub},
+            .fill = Color.{24, 30, 29, cast(u8)(80 / fade)}, .radius = hub / 2.0})
+    return result
+}

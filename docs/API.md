@@ -236,3 +236,15 @@ label. It returns the activated item index, or -1. Swipe, wheel, arrows and
 Enter/Space share one selection; only that selection exposes an action.
 The caller keeps game launching and any footer controls. `CarouselArtwork`
 paints the same cover composition for a native loading screen.
+
+## Game touch controls
+
+`kryon/joystick` provides `SwipeArea` (swipes and taps over a board) and
+`Joystick` (a stick to lean). `kryon/direction_pad` provides
+`DirectionPad(session, DirectionPadProps)`, a four-way pad like a game
+controller's D-pad, drawn in the largest square of its bounds. Directions are
+0 left, 1 up, 2 right and 3 down. It returns the arm held (`direction`) and
+`step`: true when an arm is pressed or the thumb slides onto another arm,
+then while held after twice `repeat_seconds` and at each repeat, like a held
+arrow key. The hub stops, and a quick tap steps once. It is composed from
+`Press`, `Box` and `SvgIcon`, so hosted games can use it.
