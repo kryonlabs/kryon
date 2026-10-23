@@ -66,6 +66,14 @@ SwipeAreaResult :: struct {
     y: float32
     // A press is in progress.
     down: bool
+    // While a press is down: where it began, where it is now, and the
+    // direction it leans from where it began (-1 while within reach), so a
+    // game can show which way a swipe is going.
+    start_x: float32
+    start_y: float32
+    at_x: float32
+    at_y: float32
+    lean: s32
 }
 
 TOUCH_SLOTS :: 8
@@ -146,7 +154,7 @@ Joystick :: (session: Session, props: JoystickProps) -> JoystickResult {
 }
 
 SwipeArea :: (session: Session, props: SwipeAreaProps) -> SwipeAreaResult {
-    result := SwipeAreaResult.{.swiped = -1}
+    result := SwipeAreaResult.{.swiped = -1, .lean = -1}
     slot := TouchSlotFor(props.key)
     press := Press(session, PressProps.{.key = props.key, .id = props.id, .bounds = props.bounds,
             .label = props.label, .now = props.now, .capture = true, .disabled = props.disabled,
@@ -162,6 +170,13 @@ SwipeArea :: (session: Session, props: SwipeAreaProps) -> SwipeAreaResult {
         slot.next = props.now + repeat * 2.0
     }
     result.down = press.down
+    if press.down && slot.active {
+        result.start_x = slot.start_x
+        result.start_y = slot.start_y
+        result.at_x = press.x
+        result.at_y = press.y
+        if !props.disabled { result.lean = TouchDirection(press.x - slot.start_x, press.y - slot.start_y, reach) }
+    }
     if press.down && slot.active && !props.disabled {
         hold := TouchHoldStep(TouchDirection(press.x - slot.start_x, press.y - slot.start_y, reach),
             slot.direction, props.now, slot.next, repeat)

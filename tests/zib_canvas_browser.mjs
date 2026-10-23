@@ -147,6 +147,21 @@ try {
       for (let end = Date.now() + 2000; count('Hosted pad step down') === down && Date.now() < end;) await delay(20);
       assert.equal(count('Hosted pad step down'), down + 1, 'A tap on the down arm did not step exactly once: ' + diagnostics);
     }
+    {
+      // Dragging on the swipe area reports which way it leans while held.
+      const origin = await evaluate('(()=>{const r=document.querySelector("canvas").getBoundingClientRect();return {x:r.x,y:r.y};})()');
+      const leans = () => diagnostics.split('Hosted swipe leans right').length - 1;
+      const before = leans();
+      await call('Input.dispatchMouseEvent', {type: 'mousePressed', x: origin.x + 80, y: origin.y + 380, button: 'left', buttons: 1, clickCount: 1});
+      for (const dx of [20, 40, 60, 90]) {
+        await call('Input.dispatchMouseEvent', {type: 'mouseMoved', x: origin.x + 80 + dx, y: origin.y + 380, button: 'left', buttons: 1});
+        await delay(60);
+      }
+      for (let end = Date.now() + 2000; leans() === before && Date.now() < end;) await delay(20);
+      await call('Input.dispatchMouseEvent', {type: 'mouseReleased', x: origin.x + 170, y: origin.y + 380, button: 'left', buttons: 0, clickCount: 1});
+      assert(leans() > before, 'A drag to the right did not report its lean: ' + diagnostics);
+      await delay(300);
+    }
     const beforeKey = diagnostics.split('Hosted key step').length;
     for (let at = 0; at < 5; at++) {
       await call('Input.dispatchKeyEvent', {type: 'keyDown', key: 'ArrowLeft', code: 'ArrowLeft', windowsVirtualKeyCode: 37, autoRepeat: at > 0});
