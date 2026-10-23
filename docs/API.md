@@ -43,6 +43,10 @@ font outlines. Hosts that have not published a metrics revision keep measuring
 rows on each call; they do not acquire an invalidation requirement implicitly.
 Font size, typeface, wrap width and content changes always select a new layout.
 
+`TextAreaProps.manual_scroll` keeps a reader's scroll position independent of
+caret and selection changes. Wheel, scrollbar and touch scrolling remain
+available. Editors keep the normal caret reveal unless they enable this flag.
+
 A `TextArea` can preview a markup language over its value without changing
 it. `hidden` bytes take no width or caret stop, `strong` bytes are bold and
 `italic` bytes slanted (backends that register a slant raster, as Raylib

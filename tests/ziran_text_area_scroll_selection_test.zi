@@ -77,6 +77,19 @@ main :: () -> s32 {
     props.input.wheel = -1.0
     result = Frame(session, props)
     if result.anchor != 0 || result.cursor != 15 || !result.selecting { return 10 }
+    TreePointerUpdate(session, PointerFrame.{0.0, 0.0, false, false, true})
+    props.input = .{}; props.selecting = false; props.focused = true
+    props.cursor = 0; props.anchor = 0; props.scroll_y = 54
+    props.input.focus = true; props.manual_scroll = true
+    result = Frame(session, props)
+    if result.scroll_y != 54 { return 11 }
+    // The default editor still reveals a newly focused caret.
+    props.manual_scroll = false
+    result = Frame(session, props)
+    if result.scroll_y != 0 { return 12 }
+    props.manual_scroll = true; props.input.focus = false; props.input.wheel = -1.0
+    result = Frame(session, props)
+    if result.scroll_y != 108 { return 13 }
     unused SessionClose(session)
     return 0
 }

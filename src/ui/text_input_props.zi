@@ -165,6 +165,8 @@ TextAreaProps :: struct {
     scale: float32
     disabled: bool
     input: TextAreaInput
+    // A reader may keep its viewport independent of caret/selection changes.
+    manual_scroll: bool
     // Bytes kept in the value but not shown: no width, paint or caret stop,
     // such as Markdown markers away from the line being edited. Sorted and
     // disjoint on character boundaries; any other list is ignored.

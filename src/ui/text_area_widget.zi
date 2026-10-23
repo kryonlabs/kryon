@@ -1659,7 +1659,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     if view.composing {
         display_caret = TextAreaCaretPlaced(layout, view, display_cursor)
     }
-    if TextAreaRevealCursorShouldRun(result.focused,
+    if !props.manual_scroll && TextAreaRevealCursorShouldRun(result.focused,
         result.edit.changed, navigation || pointer_moved ||
         props.input.focus || result.composition_changed) {
         viewport: s32 = cast(s32)bounds.height - padding_y * 2
