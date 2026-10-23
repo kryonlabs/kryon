@@ -267,12 +267,16 @@ dom-spec-test:
 canvas-events-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_events_zi_test.sh
 
+.PHONY: mini-mode-test
+mini-mode-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/mini_mode_zi_test.sh
+
 .PHONY: web-js-boundary-test
 web-js-boundary-test:
 	@python3 tests/web_js_boundary_test.py
 
 .PHONY: canvas-test
-canvas-test: web-js-boundary-test canvas-events-test dom-spec-test canvas-audio-engine-test
+canvas-test: web-js-boundary-test canvas-events-test mini-mode-test dom-spec-test canvas-audio-engine-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_backend_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/file_picker_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/http_transfer_browser_test.py

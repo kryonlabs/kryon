@@ -1,0 +1,10 @@
+// A hosted app shows its mini view while its host runs in mini mode; see
+// mini_mode.zi. Hosts that are not mini, or older than this module, answer
+// false, so the app keeps its full view there.
+#import "app_context"
+#import "mini_mode"
+
+#program_export
+AppMini :: () -> bool {
+    return AppSupports(MINI_MODE_CAPABILITY)
+}

@@ -296,7 +296,10 @@ PageEventsHook :: (target: s32) {
     PageListen(target, "mousemove", PageEventHandle, PageEventMouseMove, false)
     PageListen(target, "mousedown", PageEventHandle, PageEventMouseDown, false)
     PageListen(target, "mouseup", PageEventHandle, PageEventMouseUp, false)
-    PageListen(target, "wheel", PageEventHandle, PageEventWheel, false)
+    // Browsers treat window and document wheel listeners as passive unless
+    // told otherwise, which ignores preventDefault and lets an embedding
+    // page scroll while the wheel moves the app's own lists.
+    PageListen(target, "wheel", PageEventHandle, PageEventWheel, true)
     PageListen(target, "keydown", PageEventHandle, PageEventKeyDown, false)
     PageListen(target, "keyup", PageEventHandle, PageEventKeyUp, false)
     PageListen(target, "keypress", PageEventHandle, PageEventKeyPress, false)
