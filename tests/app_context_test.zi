@@ -12,12 +12,17 @@
 
 writes: s32;
 tile_calls: s32;
+// Whether the last tile call came after this frame's write: a replayed
+// frame asks its reads and writes again before its widgets.
+tile_after_write: bool;
+frame_writes: s32;
 tile_reply: WidgetTileMapResultCodec;
 
 Widgets :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     if TextFromCString(module) != "tile_map" || TextFromCString(function) != "TileMapHostedHost" || count != 2 { return 0 }
     tile_calls += 1
+    tile_after_write = frame_writes > 0
     result.* = WidgetEncodeTileMapResult(TileMapResult.{.cell = 10.0, .columns = 2, .rows = 1}, *tile_reply)
     return 1
 }
@@ -33,6 +38,7 @@ Call :: (context: *void, module: *u8, function: *u8,
         return 0
     }
     writes += 1
+    frame_writes += 1
     result.* = HostScalar("bool", 1)
     return 1
 }
@@ -60,10 +66,19 @@ main :: () -> s32 {
     // until the next run replaces it.
     if !AppContextRun(*app, APP_SAVE) || app.reply != "{\"saved\":true,\"day\":18}" { return 9 }
     if !AppContextRun(*app, APP_FRAME) || app.reply != "" || writes != 3 { return 10 }
+    // A quiet frame runs and is recorded; the next quiet frame asks the
+    // same reads and the write again, then shows the recorded tile map
+    // without running the app. A frame that is not quiet runs the app.
+    frame_writes = 0
+    if !AppContextRunFrame(*app, true) || writes != 4 || tile_calls != 4 || tile_after_write { return 12 }
+    frame_writes = 0
+    if !AppContextRunFrame(*app, true) || writes != 5 || tile_calls != 5 || !tile_after_write { return 13 }
+    frame_writes = 0
+    if !AppContextRunFrame(*app, false) || writes != 6 || tile_calls != 6 || tile_after_write { return 14 }
     HostedAppClose(*app.app)
-    if Open(*app, "good.zib", "other") || writes != 3 { return 5 }
-    if Open(*app, "future.zib", "diary") || writes != 3 { return 6 }
-    if Open(*app, "identify-write.zib", "diary") || writes != 3 { return 7 }
+    if Open(*app, "good.zib", "other") || writes != 6 { return 5 }
+    if Open(*app, "future.zib", "diary") || writes != 6 { return 6 }
+    if Open(*app, "identify-write.zib", "diary") || writes != 6 { return 7 }
     if AppIdValid("../pass") || AppIdValid("auth/secret") || !AppIdValid("inbe.diary") { return 8 }
     return 0
 }

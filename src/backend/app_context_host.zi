@@ -307,3 +307,16 @@ AppContextRun :: (app: *AppContext, mode: s32) -> bool {
     answer: s64
     return app.identified && app.described && HostedAppRun(AppContextRuntime(app), *answer) && answer == 0
 }
+
+// A frame that, when quiet says nothing reached the app since its last
+// quiet frame and it does not animate, shows that frame again without
+// running the app, as long as its reads answer as before; see
+// HostedAppRunFrame. The harness brackets it with WidgetHostBegin/End.
+AppContextRunFrame :: (app: *AppContext, quiet: bool) -> bool {
+    app.mode = APP_FRAME
+    app.keyboard = false
+    AppContextDropReply(app)
+    answer: s64
+    return app.identified && app.described &&
+    HostedAppRunFrame(AppContextRuntime(app), *answer, quiet) && answer == 0
+}
