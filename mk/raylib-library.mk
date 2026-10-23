@@ -1,9 +1,9 @@
 # raylib keeps its library sources and Makefile in src/ of the package.
-RAYLIB_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path raylib $(if $(wildcard ziran.local.toml),,--locked))
-RAYLIB_SOURCE := $(if $(RAYLIB_PACKAGE),$(RAYLIB_PACKAGE)/src)
+RAYLIB_PACKAGE = $(eval RAYLIB_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path raylib $(if $(wildcard ziran.local.toml),,--locked)))$(RAYLIB_PACKAGE)
+RAYLIB_SOURCE = $(addsuffix /src,$(RAYLIB_PACKAGE))
 RAYLIB_BUILD ?= $(KRYON_DIR)/build/raylib-ziran
 RAYLIB_A ?= $(RAYLIB_BUILD)/libraylib.a
-RAYLIB_INPUTS := $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)
+RAYLIB_INPUTS = $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)
 RAYLIB_HOST_OS := $(shell uname -s)
 ifeq ($(RAYLIB_HOST_OS),Darwin)
 RAYLIB_HOST_DEFINES := __APPLE__ $(if $(filter x86_64,$(shell uname -m)),__x86_64__,__aarch64__)
@@ -30,7 +30,9 @@ endif
 RAYLIB_CC ?= $(CC)
 RAYLIB_AR ?= $(AR)
 
-$(RAYLIB_A): $(RAYLIB_INPUTS)
+# Resolve the optional source package once, only when its archive is needed.
+.SECONDEXPANSION:
+$(RAYLIB_A): $$(RAYLIB_INPUTS)
 	@test -n "$(RAYLIB_SOURCE)" || { echo "Run ziran lock; Kryon needs the locked raylib source package" >&2; exit 1; }
 	@test -f $(RAYLIB_SOURCE)/raylib.h || { echo "The locked raylib source package is incomplete; run ziran fetch" >&2; exit 1; }
 	mkdir -p $(RAYLIB_BUILD)/source
