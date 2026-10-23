@@ -1,0 +1,62 @@
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/file"
+#import "hosted_app"
+#import "hosted_values"
+
+using HostValueKind;
+
+text_buffer: [64]u8;
+row_fields: [2]HostField;
+
+Allows :: (context: *void, module: string, function: string) -> bool {
+    unused context
+    return module == "hosted_strings_guest" &&
+        (function == "ReadRowHost" || function == "ReadTextHost")
+}
+
+ReplyText :: (text: string, offset: s32) -> HostValue {
+    unused CopyCString(text, text_buffer[offset:offset + 16])
+    return HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"),
+        .data = *text_buffer[offset], .length = cast(usize)text.count}
+}
+
+Call :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    unused context
+    unused module
+    if count != 1 || !HostScalarValid(arguments[0], "s32", cast(s32)HostInteger) { return 0 }
+    first := arguments[0].integer == 0
+    if TextFromCString(function) == "ReadTextHost" {
+        result.* = ReplyText(ifx first then "first" else "other", 0)
+        return 1
+    }
+    if TextFromCString(function) != "ReadRowHost" { return 0 }
+    row_fields[0].name = HostTextData("name")
+    row_fields[0].value = ReplyText(ifx first then "first" else "second", 0)
+    row_fields[1].name = HostTextData("detail")
+    row_fields[1].value = ReplyText(ifx first then "alpha" else "beta", 16)
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData("HostedRow")
+    value.fields = *row_fields[0]
+    value.field_count = 2
+    result.* = value
+    return 1
+}
+
+#program_export
+main :: () -> s32 {
+    bytes, ok := ReadEntireFile("hosted-strings.zib")
+    app: HostedApp
+    if !ok || !HostedAppOpen(*app, bytes) || !HostedAppStart(*app, Allows, Call, null) { return 1 }
+    answer: s64
+    if !HostedAppRun(*app, *answer) || answer != 3 { return 2 }
+    for run: 0..1 {
+        unused run
+        if !HostedAppRun(*app, *answer) || answer != 7 { return 3 }
+    }
+    HostedAppClose(*app)
+    return 0
+}

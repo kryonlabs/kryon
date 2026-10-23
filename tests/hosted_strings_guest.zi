@@ -1,0 +1,35 @@
+host_api :: #system_library "host_api";
+
+HostedRow :: struct {
+    name: string
+    detail: string
+}
+
+ReadRowHost :: (index: s32) -> HostedRow #foreign host_api;
+ReadTextHost :: (index: s32) -> string #foreign host_api;
+
+phase: s32;
+saved_row: HostedRow;
+saved_text: string;
+
+#program_export
+main :: () -> s32 {
+    if phase == 0 {
+        saved_row = ReadRowHost(0)
+        saved_text = ReadTextHost(0)
+        phase = 1
+        return 3
+    }
+    // Every reply points into the same host buffer. Earlier replies must
+    // survive both subsequent calls and the end of the previous run.
+    first := ReadRowHost(0)
+    second := ReadRowHost(1)
+    before := ReadTextHost(0)
+    after := ReadTextHost(1)
+    if first.name != "first" || first.detail != "alpha" ||
+        second.name != "second" || second.detail != "beta" { return 1 }
+    if before != "first" || after != "other" { return 2 }
+    if saved_row.name != "first" || saved_row.detail != "alpha" ||
+        saved_text != "first" { return 4 }
+    return 7
+}

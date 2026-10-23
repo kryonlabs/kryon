@@ -167,6 +167,9 @@ bundle frame in `WidgetHostBegin(session, asset_allowed)` and
 `WidgetHostEnd()`. The callback decides which asset paths the bundle may
 draw; texture handles never cross. Records match fields by name, so a bundle
 and its host may be built against different Kryon layouts.
+Host replies copy returned strings into the bundle's memory, including text
+inside records and collections. A host may reuse its reply buffers on its
+next call; the bundle can retain those strings across calls and instance runs.
 [`scripts/generate-widget-codecs.py`](../scripts/generate-widget-codecs.py)
 generates the codecs for Kryon's widget records and, with `--uses`, for an
 application's own records.
