@@ -13,6 +13,7 @@ ziran.local.toml
 # Build output
 build/
 dist/
+backup/
 assets/fonts/*
 !assets/fonts/LiberationSans-Regular.ttf
 !assets/fonts/LiberationMono-Regular.ttf
