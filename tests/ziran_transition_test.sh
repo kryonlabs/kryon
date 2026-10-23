@@ -66,14 +66,14 @@ EOF
 "$ziran" ir --root "$work" -o "$work/ir" \
     "$work/transition.zi" "$work/use_transition.zi"
 "$ziran" bundle --root "$work" --entry use_transition:Answer \
-    -o "$work/source.zib" "$work/transition.zi" \
+    -o "$work/source.zx" "$work/transition.zi" \
     "$work/use_transition.zi"
 "$ziran" bundle --root "$work" --entry use_transition:Answer \
-    -o "$work/ir.zib" "$work/ir/transition.zir" \
+    -o "$work/ir.zx" "$work/ir/transition.zir" \
     "$work/ir/use_transition.zir"
-cmp "$work/source.zib" "$work/ir.zib"
-test "$("$ziran" run "$work/source.zib")" = 42
-test "$("$ziran" run "$work/ir.zib")" = 42
+cmp "$work/source.zx" "$work/ir.zx"
+test "$("$ziran" run "$work/source.zx")" = 42
+test "$("$ziran" run "$work/ir.zx")" = 42
 
 for input in source ir; do
     if test "$input" = source; then

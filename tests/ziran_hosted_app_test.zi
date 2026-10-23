@@ -40,8 +40,8 @@ Accepts :: (context: *void) -> bool {
 
 #program_export
 main :: () -> s32 {
-    bytes, read := ReadEntireFile("hosted_app_guest.zib")
-    loop_bytes, loop_read := ReadEntireFile("hosted_app_loop.zib")
+    bytes, read := ReadEntireFile("hosted_app_guest.zx")
+    loop_bytes, loop_read := ReadEntireFile("hosted_app_loop.zx")
     if !read || !loop_read || !HostedAppOpen(*guest, bytes) || !HostedAppOpen(*looping, loop_bytes) {
         return 1
     }

@@ -17,8 +17,8 @@ for form in source saved; do
         module_args=""
     fi
     "$ziran" bundle --root "$root" $module_args --entry session_validation_test:main \
-        -o "$work/$form.zib" "$input"
-    test "$("$ziran" run "$work/$form.zib")" = 0
+        -o "$work/$form.zx" "$input"
+    test "$("$ziran" run "$work/$form.zx")" = 0
     for target in c cpp go; do
         output=$work/$form-$target
         if test "$target" = c; then
@@ -34,5 +34,5 @@ for form in source saved; do
         fi
     done
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 echo 'Session validation preserves invalid slots, close/reopen generations, capacity and exhausted epochs'

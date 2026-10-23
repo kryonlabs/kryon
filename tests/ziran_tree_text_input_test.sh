@@ -15,8 +15,8 @@ for form in source saved; do
     fi
     "$ziran" bundle --root "$root" --module-path "$modules" \
         --module-path "$ziran_root/std" --entry tree_text_input_test:main \
-        -o "$work/$form.zib" "$module"
-    test "$("$ziran" run "$work/$form.zib")" = 0
+        -o "$work/$form.zx" "$module"
+    test "$("$ziran" run "$work/$form.zx")" = 0
     "$ziran" build --root "$root" --module-path "$modules" \
         --module-path "$ziran_root/std" --entry tree_text_input_test:main \
         --target=c --exe -o "$work/$form-c" "$module"

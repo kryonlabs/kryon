@@ -26,7 +26,7 @@ ZIRAN_BIN ?= $(ZIRAN_BUILD_DIR)/bin/ziran
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
 KRYON_DIR := $(CURDIR)
-include mk/zib-player.mk
+include mk/zx-player.mk
 ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
     $(ZIRAN_DIR)/cmd/zir*/*.h $(ZIRAN_DIR)/include/*.h \
     $(ZIRAN_DIR)/scripts/* $(ZIRAN_DIR)/std/*.zi $(ZIRAN_DIR)/Makefile)
@@ -125,8 +125,8 @@ project-test: project-toolchain build/bin/kryon
 	mkdir -p build/project
 	$(ZIRAN_DIR)/build/bin/ziran bundle --root tests --module-path src/project \
 		--entry project_options_test:ProjectOptionsTest \
-		-o build/project/options-test.zib tests/project_options_test.zi
-	test "$$($(ZIRAN_DIR)/build/bin/ziran run build/project/options-test.zib)" = 42
+		-o build/project/options-test.zx tests/project_options_test.zi
+	test "$$($(ZIRAN_DIR)/build/bin/ziran run build/project/options-test.zx)" = 42
 	$(ZIRAN_DIR)/build/bin/ziran build --target=cpp --root tests \
 		--module-path src/project -o build/project/cpp tests/project_options_test.zi
 	$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -Ibuild/project/cpp \
@@ -140,57 +140,57 @@ project-test: project-toolchain build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_host_test.py
 	@$(MAKE) --no-print-directory templates-test
 
-.PHONY: zib-test zib-reload-test
-include mk/zib-canvas.mk
+.PHONY: zx-test zx-reload-test
+include mk/zx-canvas.mk
 include mk/raylib-library.mk
-include mk/zib-raylib.mk
-$(ZIB_CANVAS_GENERATED)/.complete $(ZIB_RAYLIB_GENERATED)/.complete: | project-toolchain
-zib-reload-test: zib-player
+include mk/zx-raylib.mk
+$(ZX_CANVAS_GENERATED)/.complete $(ZX_RAYLIB_GENERATED)/.complete: | project-toolchain
+zx-reload-test: zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_reload_test.py
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_reload_test.py
 
-zib-test: build/bin/kryon zib-player
+zx-test: build/bin/kryon zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_project_test.py
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_project_test.py
 
-test: zib-test zib-reload-test
+test: zx-test zx-reload-test
 
-.PHONY: zib-services-test zib-hosted-test zib-headless-test
-zib-headless-test: zib-raylib
-	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
-		python3 tests/zib_headless_test.py
-zib-services-test: zib-raylib zib-canvas
+.PHONY: zx-services-test zx-hosted-test zx-headless-test
+zx-headless-test: zx-raylib
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
-		python3 tests/zib_services_test.py
-
-zib-hosted-test: zib-raylib zib-canvas
+		python3 tests/zx_headless_test.py
+zx-services-test: zx-raylib zx-canvas
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
-		python3 tests/zib_hosted_test.py
+		python3 tests/zx_services_test.py
 
-test: zib-services-test zib-hosted-test zib-headless-test
-
-.PHONY: zib-canvas-test zib-raylib-test zib-android-test gallery-zib gallery-zib-test
-gallery-zib: project-toolchain
-	python3 scripts/export-gallery-zib.py --ziran $(ZIRAN_BIN)
-
-gallery-zib-test: gallery-zib zib-player
-	python3 tests/gallery_zib_test.py
-
-zib-canvas-test: build/bin/kryon
+zx-hosted-test: zx-raylib zx-canvas
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_canvas_test.py
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran \
+		python3 tests/zx_hosted_test.py
 
-zib-raylib-test: zib-test zib-raylib
-	@python3 tests/zib_native_test.py --player $(ZIB_RAYLIB_PROGRAM) \
-		--bundle build/zib-test/download\ with\ spaces/app.zib
+test: zx-services-test zx-hosted-test zx-headless-test
+
+.PHONY: zx-canvas-test zx-raylib-test zx-android-test gallery-zx gallery-zx-test
+gallery-zx: project-toolchain
+	python3 scripts/export-gallery-zx.py --ziran $(ZIRAN_BIN)
+
+gallery-zx-test: gallery-zx zx-player
+	python3 tests/gallery_zx_test.py
+
+zx-canvas-test: build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_canvas_test.py
+
+zx-raylib-test: zx-test zx-raylib
+	@python3 tests/zx_native_test.py --player $(ZX_RAYLIB_PROGRAM) \
+		--bundle build/zx-test/download\ with\ spaces/app.zx
 
 # This gate builds only; a device test requires an explicit disposable emulator.
-zib-android-test: build/bin/kryon
+zx-android-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zib_android_test.py
+		ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) python3 tests/zx_android_test.py
 
 # `kryon new` for every template, built and rendered on the terminal host.
 templates-test: build/bin/kryon
@@ -225,12 +225,13 @@ pixmap-mono-font:
 
 # commands to ziran, which runs the Kryon each project's lock pins.
 PREFIX ?= $(HOME)/.local
-install-user: build/bin/kryon zib-player
+install-user: build/bin/kryon zx-player
 	mkdir -p $(PREFIX)/bin
 	cp build/bin/kryon $(PREFIX)/bin/kryon.new
 	mv -f $(PREFIX)/bin/kryon.new $(PREFIX)/bin/kryon
-	cp build/bin/zib $(PREFIX)/bin/zib.new
-	mv -f $(PREFIX)/bin/zib.new $(PREFIX)/bin/zib
+	cp build/bin/zx $(PREFIX)/bin/zx.new
+	mv -f $(PREFIX)/bin/zx.new $(PREFIX)/bin/zx
+	$(RM) $(PREFIX)/bin/zib
 
 # Laws state policy independently of its implementation; `ziran check`
 # proves each over its whole listed domain.
@@ -405,8 +406,8 @@ sanitize-test: project-toolchain
 # removes every other entry that nothing has written to for a day, so a build
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
-BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran zib-reload-test zib-raylib zib-native-test zib-android-test \
-	emscripten-cache android-surface-check text-input-platform-test zib-player zib-test zib-canvas zib-canvas-test gallery-zib \
+BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
+	emscripten-cache android-surface-check text-input-platform-test zx-player zx-test zx-canvas zx-canvas-test gallery-zx \
 	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay dom-project
 .PHONY: clean-scratch
 clean-scratch:
@@ -447,7 +448,7 @@ pixmap-emoji: project-toolchain
 pixmap-surface-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_surface_test.sh
 
-test: check canvas-test canvas-project-test zib-canvas-test zib-raylib-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test raylib-window-test system-clipboard-linux-test
+test: check canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test raylib-window-test system-clipboard-linux-test
 
 clean:
 	rm -rf $(BUILD_DIR)

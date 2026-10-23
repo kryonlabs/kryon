@@ -14,5 +14,5 @@ set -- \
 
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" "$@" \
-    --entry ziran_system_clipboard_test:main -o "$work/clipboard.zib" "$source" "$repo/tests/ziran_system_clipboard_host.zi"
-test "$("$ziran" run "$work/clipboard.zib")" = 0
+    --entry ziran_system_clipboard_test:main -o "$work/clipboard.zx" "$source" "$repo/tests/ziran_system_clipboard_host.zi"
+test "$("$ziran" run "$work/clipboard.zx")" = 0

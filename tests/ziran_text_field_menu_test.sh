@@ -19,5 +19,5 @@ set -- \
 
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" "$@" \
-    --entry ziran_text_field_menu_test:main -o "$work/field.zib" "$source"
-test "$("$ziran" run "$work/field.zib")" = 0
+    --entry ziran_text_field_menu_test:main -o "$work/field.zx" "$source"
+test "$("$ziran" run "$work/field.zx")" = 0

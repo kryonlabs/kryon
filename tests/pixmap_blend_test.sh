@@ -31,9 +31,9 @@ for target in ${PIXMAP_BLEND_TARGETS:-c cpp go rust py}; do
 done
 for input in source saved; do
     if test "$input" = source; then
-        "$ziran" bundle --project --root "$repo/tests" --entry pixmap_blend_test:main -o "$work/$input.zib" "$source"
+        "$ziran" bundle --project --root "$repo/tests" --entry pixmap_blend_test:main -o "$work/$input.zx" "$source"
     else
-        "$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_blend_test:main -o "$work/$input.zib" "$work/ir/pixmap_blend_test.zir"
+        "$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_blend_test:main -o "$work/$input.zx" "$work/ir/pixmap_blend_test.zir"
     fi
-    test "$("$ziran" run "$work/$input.zib" | tail -1)" = 0
+    test "$("$ziran" run "$work/$input.zx" | tail -1)" = 0
 done

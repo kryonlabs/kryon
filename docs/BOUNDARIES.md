@@ -2,7 +2,7 @@
 
 | Owner | Code and data |
 | --- | --- |
-| Ziran | Language, compiler, standard library, `.zir`, `.zib`, and generic host capabilities |
+| Ziran | Language, compiler, standard library, `.zir`, `.zx`, and generic host capabilities |
 | Kryon | Reusable Ziran UI modules, widget decisions, and UI hosts |
 | Game2D | Optional game API and game behavior using Kryon's selected raylib backend |
 | Applications | Screens, copy, translations, assets, data storage, migrations, and product workflows |

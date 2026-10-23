@@ -11,13 +11,13 @@ source=$repo/tests/canvas_props_test.zi
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" --entry canvas_props_test:Answer \
-    -o "$work/source.zib" "$source"
+    -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry canvas_props_test:Answer -o "$work/saved.zib" \
+    --entry canvas_props_test:Answer -o "$work/saved.zx" \
     "$work/ir/canvas_props_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 42
-test "$("$ziran" run "$work/saved.zib")" = 42
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 42
+test "$("$ziran" run "$work/saved.zx")" = 42
 
 for input in source saved; do
     if test "$input" = source; then

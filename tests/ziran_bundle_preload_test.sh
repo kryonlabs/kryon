@@ -9,7 +9,7 @@ mkdir -p "$work/c"
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" \
     -o "$work/ir" "$repo/tests/ziran_bundle_names_test.zi"
 "$ziran" bundle --root "$work/ir" --entry ziran_bundle_names_test:main \
-    -o "$work/fixture.zib" "$work/ir/ziran_bundle_names_test.zir"
+    -o "$work/fixture.zx" "$work/ir/ziran_bundle_names_test.zir"
 "$ziran" build --target=c --no-main --entry bundle_preload_test:Check --root "$repo/tests" \
     --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
     -o "$work/c" "$repo/tests/bundle_preload_test.zi"
@@ -34,5 +34,5 @@ includes=$(find "$work/c" -type d -printf ' -iquote %p')
 # shellcheck disable=SC2046,SC2086
 "${CC:-cc}" -std=c11 -O2 -I"$ziran_root/include" $includes $(find "$work/c" -name '*.c') \
     "$ziran_root/build/libziran.a" -lm -lpthread -o "$work/test"
-"$work/test" "$work/fixture.zib"
+"$work/test" "$work/fixture.zx"
 echo 'Bundle preloads: concurrent opens match a direct open; mismatched, invalid and discarded preloads stay safe'

@@ -48,7 +48,7 @@ Call :: (context: *void, module: *u8, function: *u8,
 
 #program_export
 main :: () -> s32 {
-    bytes, ok := ReadEntireFile("hosted-strings.zib")
+    bytes, ok := ReadEntireFile("hosted-strings.zx")
     app: HostedApp
     if !ok || !HostedAppOpen(*app, bytes) || !HostedAppStart(*app, Allows, Call, null) { return 1 }
     answer: s64

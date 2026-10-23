@@ -22,9 +22,9 @@ set -- --bind pointer_input:PollPointer=hosted_ui_provider:Pointer \
     --bind modal_widget:ActionModalHostedHost=hosted_ui_provider:ActionModal
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" --define KRYON_HOSTED_UI "$@" \
-    --entry hosted_ui:main -o "$work/ui.zib" \
+    --entry hosted_ui:main -o "$work/ui.zx" \
     "$repo/tests/hosted_ui.zi" "$repo/tests/hosted_ui_provider.zi"
-test "$("$ziran" run "$work/ui.zib")" = 42
+test "$("$ziran" run "$work/ui.zx")" = 42
 printf '%s\n' 'Hosted portable Text, Image, Button, TextArea, Scroll and TitleBar contracts passed'
 for target in c cpp; do
     executable=

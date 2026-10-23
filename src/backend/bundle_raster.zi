@@ -1,4 +1,4 @@
-// Typed raster effects for a ZIB instance. The selected platform supplies
+// Typed raster effects for a ZX instance. The selected platform supplies
 // its normal renderer; application widgets and state stay inside the bundle.
 #import "geometry"
 #import "drawing_props"

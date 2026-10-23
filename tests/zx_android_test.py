@@ -19,7 +19,7 @@ target.add_argument('--build-only', action='store_true', help='Build and inspect
 p.add_argument('--skip-build', action='store_true')
 p.add_argument('--gallery-index', type=Path)
 a = p.parse_args()
-project = ROOT / 'build/zib-android-test'
+project = ROOT / 'build/zx-android-test'
 project.mkdir(parents=True, exist_ok=True)
 env = os.environ.copy()
 for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
@@ -38,14 +38,14 @@ if not a.skip_build:
     # objects stay in place and no application source checkout is touched.
     for relative in ('droid/app/build.gradle', 'droid/app/src/main/AndroidManifest.xml',
                      'droid/app/src/main/cpp/CMakeLists.txt',
-                     'droid/app/src/main/java/com/kryon/zibtest/MainActivity.java'):
+                     'droid/app/src/main/java/com/kryon/zxtest/MainActivity.java'):
         (project / relative).unlink(missing_ok=True)
     (project / 'src').mkdir(exist_ok=True)
     (project / 'assets').mkdir(exist_ok=True)
-    (project / 'src/app.zi').write_bytes((ROOT / 'tests/zib/mobile_app.zi').read_bytes())
+    (project / 'src/app.zi').write_bytes((ROOT / 'tests/zx/mobile_app.zi').read_bytes())
     solid_png(project / 'assets/red.png', 32, 32, (230, 30, 40, 255))
     (project / 'ziran.toml').write_text('''[package]
-name = "zib_android_probe"
+name = "zx_android_probe"
 entry = "src/app.zi"
 module_roots = ["src"]
 bridge_modules = ["app"]
@@ -59,14 +59,14 @@ ref = "master"
 default_profile = "android"
 [tool.kryon.profiles.portable]
 backend = "desktop"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 [tool.kryon.profiles.android]
 backend = "android"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 [tool.kryon.android]
-package = "com.kryon.zibtest"
+package = "com.kryon.zxtest"
 abis = "x86_64,arm64-v8a,armeabi-v7a"
 min_sdk = "21"
 ''')
@@ -76,14 +76,14 @@ min_sdk = "21"
     for profile in ('portable', 'android'):
         run([ZIRAN, 'tool', 'kryon', 'build', '--profile', profile])
 
-portable = project / 'build/zib_android_probe-portable.zib'
-android = project / 'build/zib_android_probe-android.zib'
+portable = project / 'build/zx_android_probe-portable.zx'
+android = project / 'build/zx_android_probe-android.zx'
 if not portable.exists():
     run([ZIRAN, 'tool', 'kryon', 'build', '--profile', 'portable'])
 assert portable.read_bytes() == android.read_bytes(), 'Android changed the guest bundle'
 apk = project / 'droid/app/build/outputs/apk/debug/app-debug.apk'
 with zipfile.ZipFile(apk) as archive:
-    assert archive.read('assets/app.zib') == portable.read_bytes()
+    assert archive.read('assets/app.zx') == portable.read_bytes()
     assert archive.read('assets/kryon-font.ttf')
     for abi in ('arm64-v8a', 'armeabi-v7a', 'x86_64'):
         assert f'lib/{abi}/libmain.so' in archive.namelist(), abi
@@ -91,14 +91,14 @@ generated = list((project / 'droid/app/.cxx').rglob('ziran/generated/*_app.c'))
 # The generic BundleApp host is native; the selected product app is not.
 assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
            for path in generated), 'The APK compiled the guest app natively'
-print('Android three-ABI generic APK, embedded assets and identical desktop ZIB passed', flush=True)
+print('Android three-ABI generic APK, embedded assets and identical desktop ZX passed', flush=True)
 if a.build_only or not a.serial:
     raise SystemExit(0)
 assert a.serial.startswith('emulator-'), 'This test operates only a disposable emulator'
 adb = Path(env['ANDROID_HOME']) / 'platform-tools/adb'
 command = [adb, '-s', a.serial]
 assert run([*command, 'shell', 'getprop', 'ro.kernel.qemu'], capture_output=True).stdout.strip() == b'1'
-package = 'com.kryon.zibtest'
+package = 'com.kryon.zxtest'
 run([*command, 'install', '-r', apk], capture_output=True)
 run([*command, 'shell', 'am', 'start', '-W', '-n', package + '/.MainActivity'], capture_output=True)
 try:
@@ -148,22 +148,22 @@ try:
             assert time.monotonic() < deadline, 'App frame did not return after pause/resume'
             time.sleep(.2)
         assert rgb(resumed_again, x, y) == expected, 'Pause/resume lost exact guest state: ' + name
-    print('Android emulator ZIB image, density, touch, exact text and pause/resume passed')
+    print('Android emulator ZX image, density, touch, exact text and pause/resume passed')
     def results():
-        log = run([*command, 'logcat', '-d', '-v', 'brief', '-s', 'ZIB:I'], capture_output=True).stdout
+        log = run([*command, 'logcat', '-d', '-v', 'brief', '-s', 'ZX:I'], capture_output=True).stdout
         return log.count(b'Bundle loaded'), log.count(b'Bundle rejected')
 
     run([*command, 'shell', 'run-as', package, 'mkdir', '-p', 'files'])
     private = run([*command, 'shell', 'run-as', package, 'pwd'], capture_output=True).stdout.decode().strip()
-    transport = '/data/local/tmp/kryon-zib-test.zib'
+    transport = '/data/local/tmp/kryon-zx-test.zx'
     def open_file(bundle, accepted=True):
         previous = results()[0 if accepted else 1]
         run([*command, 'push', bundle, transport], capture_output=True)
         run([*command, 'shell', shlex.join(['run-as', package, 'sh', '-c',
-             'cat /data/local/tmp/kryon-zib-test.zib > files/selected.zib'])])
+             'cat /data/local/tmp/kryon-zx-test.zx > files/selected.zx'])])
         run([*command, 'shell', 'am', 'start', '-W', '-a', 'android.intent.action.VIEW',
-             '-d', 'file://' + private + '/files/selected.zib', '-t', 'application/vnd.ziran.bundle',
-             '-n', package + '/.Zib'], capture_output=True)
+             '-d', 'file://' + private + '/files/selected.zx', '-t', 'application/vnd.ziran.bundle',
+             '-n', package + '/.Zx'], capture_output=True)
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
             if results()[0 if accepted else 1] > previous:
@@ -172,8 +172,8 @@ try:
             time.sleep(.2)
         raise AssertionError('Android did not accept/reject the selected bundle as expected')
 
-    invalid = project / 'invalid.zib'
-    invalid.write_bytes(b'invalid ZIB')
+    invalid = project / 'invalid.zx'
+    invalid.write_bytes(b'invalid ZX')
     open_file(invalid, False)
     rejected = capture('invalid-file')
     assert rgb(rejected, x, y) == rgb(resumed_again, x, y), 'Invalid file destroyed app state'
@@ -192,11 +192,11 @@ try:
                        for py in range(48, min(280, pixels[1]), 4)
                        for px in range(24, min(280, pixels[0]), 4)), 'Empty Android example: ' + entry['id']
             print('Android rendered ' + entry['id'] + ': ' + entry['name'], flush=True)
-        print(f'All {len(entries)} full gallery ZIBs rendered through the Android VM', flush=True)
+        print(f'All {len(entries)} full gallery ZXs rendered through the Android VM', flush=True)
 finally:
     # A stopped emulator must not replace the original test failure with a
     # cleanup exception. Every command remains scoped to this test device.
-    for arguments in (['shell', 'rm', '-f', '/data/local/tmp/kryon-zib-test.zib'],
+    for arguments in (['shell', 'rm', '-f', '/data/local/tmp/kryon-zx-test.zx'],
                       ['shell', 'am', 'force-stop', package], ['uninstall', package]):
         try:
             subprocess.run([*command, *arguments], env=env, capture_output=True,

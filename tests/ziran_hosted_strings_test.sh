@@ -8,10 +8,10 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 guest=$repo/tests/hosted_strings_guest.zi
 "$ziran" ir --root "$repo/tests" -o "$work/ir" "$guest"
 "$ziran" bundle --root "$repo/tests" --entry hosted_strings_guest:main \
-    -o "$work/hosted-strings.zib" "$guest"
+    -o "$work/hosted-strings.zx" "$guest"
 "$ziran" bundle --root "$work/ir" --entry hosted_strings_guest:main \
-    -o "$work/saved.zib" "$work/ir/hosted_strings_guest.zir"
-cmp "$work/hosted-strings.zib" "$work/saved.zib"
+    -o "$work/saved.zx" "$work/ir/hosted_strings_guest.zir"
+cmp "$work/hosted-strings.zx" "$work/saved.zx"
 for target in c cpp; do
     output=$work/$target
     "$ziran" build --target="$target" --no-main --entry ziran_hosted_strings_test:main \

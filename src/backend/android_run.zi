@@ -1,4 +1,4 @@
-#if #defined(KRYON_ZIB_APP) {
+#if #defined(KRYON_ZX_APP) {
     #import "android_bundle_run"
     #program_export
     AndroidRunMain :: () -> s32 { return AndroidBundleRunMain() }

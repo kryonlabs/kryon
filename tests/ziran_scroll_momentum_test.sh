@@ -257,7 +257,7 @@ for input in source saved; do
         module_path=$work/ir
     fi
     "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$ziran_root/std" \
-        --entry app:Answer -o "$work/$input.zib" "$source"
+        --entry app:Answer -o "$work/$input.zx" "$source"
     output=$work/c-$input
     "$ziran" build --target=c \
         --root "$root" --module-path "$module_path" --module-path "$ziran_root/std" \
@@ -270,4 +270,4 @@ for input in source saved; do
         exit 1
     fi
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"

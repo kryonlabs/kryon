@@ -1118,7 +1118,7 @@ RaylibTurnUpright :: (image: *RaylibGlyphImage, orientation: s32) {
 }
 
 // A host can supply borrowed image bytes, for example from a downloaded
-// ZIB. When installed, unavailable resources never fall through to disk.
+// ZX. When installed, unavailable resources never fall through to disk.
 RaylibAssetReadCall :: #type (context: *void, path: string) -> string;
 raylib_asset_reader: RaylibAssetReadCall;
 raylib_asset_context: *void;

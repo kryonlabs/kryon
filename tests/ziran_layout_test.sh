@@ -168,39 +168,39 @@ EOF
     "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" \
     "$work/use_layout.zi" "$work/scalar_layout.zi"
 "$ziran" bundle --root "$work" --entry scalar_layout:Answer \
-    -o "$work/scalar-layout.zib" "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" \
+    -o "$work/scalar-layout.zx" "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" \
     "$work/group.zi" "$work/scalar_layout.zi"
-test "$("$ziran" run "$work/scalar-layout.zib")" = 42
+test "$("$ziran" run "$work/scalar-layout.zx")" = 42
 "$ziran" bundle --root "$work" --entry scalar_layout:Answer \
-    -o "$work/scalar-layout-ir.zib" "$work/ir/geometry.zir" \
+    -o "$work/scalar-layout-ir.zx" "$work/ir/geometry.zir" \
     "$work/ir/layout.zir" "$work/ir/group.zir" \
     "$work/ir/scalar_layout.zir"
-cmp "$work/scalar-layout.zib" "$work/scalar-layout-ir.zib"
-test "$("$ziran" run "$work/scalar-layout-ir.zib")" = 42
+cmp "$work/scalar-layout.zx" "$work/scalar-layout-ir.zx"
+test "$("$ziran" run "$work/scalar-layout-ir.zx")" = 42
 "$ziran" bundle --root "$work" --entry portable_layout:Answer \
-    -o "$work/portable-layout.zib" "$work/geometry.zi" \
+    -o "$work/portable-layout.zx" "$work/geometry.zi" \
     "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" "$work/portable_layout.zi"
-test "$("$ziran" run "$work/portable-layout.zib")" = 42
+test "$("$ziran" run "$work/portable-layout.zx")" = 42
 "$ziran" ir --root "$work" -o "$work/portable-ir" \
     "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" \
     "$work/portable_layout.zi"
 "$ziran" bundle --root "$work" --entry portable_layout:Answer \
-    -o "$work/portable-layout-ir.zib" "$work/portable-ir/geometry.zir" \
+    -o "$work/portable-layout-ir.zx" "$work/portable-ir/geometry.zir" \
     "$work/portable-ir/layout.zir" "$work/portable-ir/group.zir" \
     "$work/portable-ir/portable_layout.zir"
-cmp "$work/portable-layout.zib" "$work/portable-layout-ir.zib"
-test "$("$ziran" run "$work/portable-layout-ir.zib")" = 42
+cmp "$work/portable-layout.zx" "$work/portable-layout-ir.zx"
+test "$("$ziran" run "$work/portable-layout-ir.zx")" = 42
 "$ziran" bundle --root "$work" --entry use_layout:Answer \
-    -o "$work/full-layout.zib" "$work/geometry.zi" \
+    -o "$work/full-layout.zx" "$work/geometry.zi" \
     "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" "$work/use_layout.zi"
-test "$("$ziran" run "$work/full-layout.zib")" = 42
+test "$("$ziran" run "$work/full-layout.zx")" = 42
 "$ziran" bundle --root "$work" --entry use_layout:Answer \
-    -o "$work/full-layout-ir.zib" "$work/ir/geometry.zir" \
+    -o "$work/full-layout-ir.zx" "$work/ir/geometry.zir" \
     "$work/ir/layout.zir" "$work/ir/group.zir" \
     "$work/ir/use_layout.zir"
-cmp "$work/full-layout.zib" "$work/full-layout-ir.zib"
-test "$("$ziran" run "$work/full-layout-ir.zib")" = 42
-python3 - "$work/scalar-layout.zib" <<'PY'
+cmp "$work/full-layout.zx" "$work/full-layout-ir.zx"
+test "$("$ziran" run "$work/full-layout-ir.zx")" = 42
+python3 - "$work/scalar-layout.zx" <<'PY'
 from pathlib import Path
 import sys
 data = Path(sys.argv[1]).read_bytes()

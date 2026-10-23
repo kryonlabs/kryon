@@ -1,4 +1,4 @@
-"""The same app.zib runs on desktop and through the browser VM renderer."""
+"""The same app.zx runs on desktop and through the browser VM renderer."""
 import os
 import re
 from pathlib import Path
@@ -8,11 +8,11 @@ import subprocess
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
 from raylib_project_test import solid_png
 
-project = ROOT / 'build/zib-canvas-test'
+project = ROOT / 'build/zx-canvas-test'
 project.mkdir(parents=True, exist_ok=True)
 (project / 'src').mkdir(exist_ok=True)
 (project / 'assets').mkdir(exist_ok=True)
-source = (ROOT / 'tests/zib/app.zi').read_text()
+source = (ROOT / 'tests/zx/app.zi').read_text()
 source = ('#import "kryon/image_raster"\n'
           'startup_width: s32 = AssetWidth("assets/red.png");\n'
           'outside_width: s32 = AssetWidth("private.png");\n') + source
@@ -20,7 +20,7 @@ source = source.replace('    frames += 1', '    if startup_width != 32 || outsid
 (project / 'src/app.zi').write_text(source)
 solid_png(project / 'assets/red.png', 32, 32, (230, 30, 40, 255))
 (project / 'ziran.toml').write_text('''[package]
-name = "zib_canvas_probe"
+name = "zx_canvas_probe"
 entry = "src/app.zi"
 module_roots = ["src"]
 bridge_modules = ["app"]
@@ -34,15 +34,15 @@ ref = "master"
 default_profile = "portable"
 [tool.kryon.profiles.portable]
 backend = "desktop"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 [tool.kryon.profiles.web]
 backend = "canvas"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 [tool.kryon.profiles.native]
 backend = "raylib"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 ''')
 (project / 'ziran.local.toml').write_text(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
@@ -59,13 +59,13 @@ def run(command):
 run([ZIRAN, 'lock'])
 for profile in ('portable', 'web', 'native'):
     run([ZIRAN, 'tool', 'kryon', 'build', '--profile', profile])
-portable = project / 'build/zib_canvas_probe-portable.zib'
-web = project / 'build/zib_canvas_probe-web.zib'
-native = project / 'build/zib_canvas_probe-native.zib'
-(project / 'build/invalid.zib').write_bytes(b'invalid ZIB')
+portable = project / 'build/zx_canvas_probe-portable.zx'
+web = project / 'build/zx_canvas_probe-web.zx'
+native = project / 'build/zx_canvas_probe-native.zx'
+(project / 'build/invalid.zx').write_bytes(b'invalid ZX')
 assert portable.read_bytes() == web.read_bytes(), 'Backend changed the portable app bundle'
 assert portable.read_bytes() == native.read_bytes(), 'Native renderer changed the portable app bundle'
-native_player = project / 'build/generated/native/player/zib'
+native_player = project / 'build/generated/native/player/zx'
 run([native_player, '--check', native])
 assert (native_player.parent / 'kryon-font.ttf').is_file()
 assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
@@ -74,13 +74,13 @@ assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path
 generated = project / 'build/generated/web/player/generated/c'
 assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path.name)
            for path in generated.glob('*_app.c'))
-assert not list(generated.glob('*_zib_run.c'))
+assert not list(generated.glob('*_zx_run.c'))
 for mode in ('keyboard', 'unicode'):
-    run(['node', ROOT / 'tests/zib_canvas_browser.mjs',
-         project / 'build/zib_canvas_probe-web.html', mode])
-run(['make', '-C', ROOT, 'zib-canvas', 'ZIB_CANVAS_BUNDLE='])
-run(['node', ROOT / 'tests/zib_canvas_browser.mjs', ROOT / 'build/zib-canvas/player.html',
+    run(['node', ROOT / 'tests/zx_canvas_browser.mjs',
+         project / 'build/zx_canvas_probe-web.html', mode])
+run(['make', '-C', ROOT, 'zx-canvas', 'ZX_CANVAS_BUNDLE='])
+run(['node', ROOT / 'tests/zx_canvas_browser.mjs', ROOT / 'build/zx-canvas/player.html',
      'file', web])
-run(['node', ROOT / 'tests/zib_canvas_browser.mjs', ROOT / 'build/zib-canvas/player.html',
+run(['node', ROOT / 'tests/zx_canvas_browser.mjs', ROOT / 'build/zx-canvas/player.html',
      'url', web])
-print('Desktop/native/web identical ZIB, complete browser rendering and input passed')
+print('Desktop/native/web identical ZX, complete browser rendering and input passed')

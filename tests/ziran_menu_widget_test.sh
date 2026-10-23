@@ -34,7 +34,7 @@ for form in source saved; do
         --root "$module_root" --module-path "$repo/src/ui" -o "$work/$form-go" "$input"
     timeout --kill-after=2s 45s env GO111MODULE=off go run "$work/$form-go"/*.go
     "$ziran" bundle --entry "$entry" "$@" --root "$module_root" --module-path "$repo/src/ui" \
-        -o "$work/$form.zib" "$input"
-    test "$("$ziran" run "$work/$form.zib")" = 0
+        -o "$work/$form.zx" "$input"
+    test "$("$ziran" run "$work/$form.zx")" = 0
 done
 echo 'Menu source and saved IR passed C/C++/Go and portable behavior checks'

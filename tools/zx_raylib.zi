@@ -1,6 +1,6 @@
-// Cross-platform native ZIB shell. Only the renderer and interpreter are
+// Cross-platform native ZX shell. Only the renderer and interpreter are
 // native; the selected file carries the complete application. Started
-// without a file, it plays app.zib from its own folder and titles its window
+// without a file, it plays app.zx from its own folder and titles its window
 // with app.title from there, so an application ships as this player, its
 // bundle and the font in one folder.
 #import "bundle_raylib"
@@ -11,15 +11,15 @@ Player :: #import "bundle_player";
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
     check: bool = argc == 3 && TextFromCString(argv[1]) == "--check"
-    if argc > 2 && !check { print("usage: zib [--check] [FILE.zib]\n"); return 2 }
+    if argc > 2 && !check { print("usage: zx [--check] [FILE.zx]\n"); return 2 }
     beside := argc == 1
     path: [4096]u8
     title_path: [4096]u8
     title: [256]u8
-    title_text := "Kryon ZIB"
-    file := ifx beside then RaylibBundleBeside("app.zib", path[:]) else TextFromCString(argv[ifx check then 2 else 1])
+    title_text := "Kryon ZX"
+    file := ifx beside then RaylibBundleBeside("app.zx", path[:]) else TextFromCString(argv[ifx check then 2 else 1])
     data := RaylibBundleRead(file)
-    if data.count == 0 { print("kryon: could not read the ZIB file\n"); return 2 }
+    if data.count == 0 { print("kryon: could not read the ZX file\n"); return 2 }
     defer { RaylibBundleFree(data) }
     if check {
         return ifx RaylibBundleCheck(data) then 0 else 1
@@ -38,7 +38,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     defer { CloseRaylib() }
     unused RaylibBundleTypeface()
     host: RaylibBundle
-    if !RaylibBundleOpen(*host, data) { print("kryon: ZIB is invalid or requires unavailable services\n"); return 1 }
+    if !RaylibBundleOpen(*host, data) { print("kryon: ZX is invalid or requires unavailable services\n"); return 1 }
     defer { RaylibBundleClose(*host) }
     RaylibExitKey(0)
     while PollRaylib() && !host.player.closed {

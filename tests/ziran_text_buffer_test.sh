@@ -10,13 +10,13 @@ source=$repo/tests/ziran_text_buffer_test.zi
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
-    --entry ziran_text_buffer_test:main -o "$work/source.zib" "$source"
+    --entry ziran_text_buffer_test:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry ziran_text_buffer_test:main -o "$work/saved.zib" \
+    --entry ziran_text_buffer_test:main -o "$work/saved.zx" \
     "$work/ir/ziran_text_buffer_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
-test "$("$ziran" run "$work/saved.zib")" = 0
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
+test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"

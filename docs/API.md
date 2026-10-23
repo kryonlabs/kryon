@@ -1,7 +1,7 @@
 # Kryon API
 
 Kryon is an ordinary Ziran package. An application imports the modules it
-uses; no widget names are recognized by the Ziran compiler or `.zib` loader.
+uses; no widget names are recognized by the Ziran compiler or `.zx` loader.
 The public package imports are declared in [`ziran.toml`](../ziran.toml).
 
 Rendering hosts that retain pixels can call `CommitFrameDamaged(session)` to
@@ -164,10 +164,10 @@ The complete manifest and build commands are in [PROJECTS.md](PROJECTS.md).
 
 Individual `.zi` modules under [`src/ui`](../src/ui) can also be imported by
 non-graphical Ziran programs. A program that does not import Kryon uses no
-Kryon code. A portable `.zib` links only imported modules and needs a host
+Kryon code. A portable `.zx` links only imported modules and needs a host
 binding for any platform effect they call.
 
-An application runs another `.zib` inside its own window with
+An application runs another `.zx` inside its own window with
 [`hosted_app`](../src/backend/hosted_app.zi): `HostedAppOpen` takes the
 bundle's bytes, `HostedAppStart` asks the host about every capability the
 bundle requests and binds them to one `HostCall`, and `HostedAppRun` runs it
@@ -234,7 +234,7 @@ clears the failure. Large logical transfers can use this result to switch to
 the service's paged API and preserve progress without enlarging frame memory.
 
 [`src/ui/modules.txt`](../src/ui/modules.txt) is the core build inventory.
-`make test` checks source, saved `.zir`, `.zib`, and generated C/C++/Go behavior.
+`make test` checks source, saved `.zir`, `.zx`, and generated C/C++/Go behavior.
 See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for package and host verification.
 
 Portable apps can import `kryon/input_protocol` for pointer observations,

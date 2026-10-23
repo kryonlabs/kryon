@@ -7,12 +7,12 @@ widget_test=${widget_test%.zi}
     --module-path "$widget_std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$widget_std" "$@" \
-    --entry "$widget_test:main" -o "$work/source.zib" "$source"
+    --entry "$widget_test:main" -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
-    --entry "$widget_test:main" -o "$work/saved.zib" \
+    --entry "$widget_test:main" -o "$work/saved.zx" \
     "$work/ir/$widget_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
 
 for input in source saved; do
     if test "$input" = source; then

@@ -90,7 +90,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     ink: s32
     for pixel: pixels { if (pixel & cast(u32)0xffffff) != cast(u32)0x101010 { ink += 1 } }
     if ink < 20 { return 5 }
-    if argc == 2 { print("Headless ZIB rendered\n"); return 0 }
+    if argc == 2 { print("Headless ZX rendered\n"); return 0 }
     if pixels[130 * 960 + 550] != cast(u32)0xffe61e28 { return 6 }
     original := TextFingerprint()
     input.x = 100.0; input.y = 70.0; input.pressed = true; input.down = true
@@ -101,6 +101,6 @@ main :: (argc: s32, argv: **u8) -> s32 {
     input.released = false
     Player.PlayerTyped(*player, 233)
     if Player.PlayerFrame(*player, input, 960, 600, pixels[:]) || !player.closed { return 10 }
-    print("Headless ZIB pixels, packed PNG, retained clicks and Unicode passed\n")
+    print("Headless ZX pixels, packed PNG, retained clicks and Unicode passed\n")
     return 0
 }

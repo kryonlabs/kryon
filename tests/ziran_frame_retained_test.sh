@@ -22,13 +22,13 @@ set -- \
     --module-path "$std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$std" "$@" \
-    --entry ziran_frame_retained_test:main -o "$work/source.zib" "$source"
+    --entry ziran_frame_retained_test:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
-    --entry ziran_frame_retained_test:main -o "$work/saved.zib" \
+    --entry ziran_frame_retained_test:main -o "$work/saved.zx" \
     "$work/ir/ziran_frame_retained_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
-test "$("$ziran" run "$work/saved.zib")" = 0
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
+test "$("$ziran" run "$work/saved.zx")" = 0
 
 for input in source saved; do
     if test "$input" = source; then

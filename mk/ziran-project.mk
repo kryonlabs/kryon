@@ -18,7 +18,7 @@ ifndef ZIRAN_PACKAGE_ID
 $(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zib pixmap/zib canvas/zib raylib/zib),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx raylib/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -33,10 +33,10 @@ IR_STAMP := $(IR_DIR)/.complete
 C_DIR := $(GEN_DIR)/c
 C_STAMP := $(C_DIR)/.complete
 PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE)
-ifeq ($(PROJECT_CODEGEN),zib)
-PROGRAM := $(PROGRAM).zib
+ifeq ($(PROJECT_CODEGEN),zx)
+PROGRAM := $(PROGRAM).zx
 ifneq ($(strip $(PROJECT_LIBRARY)$(PROJECT_STATIC_ARCHIVE)),)
-$(error a Zib profile cannot link a native library or static archive)
+$(error a Zx profile cannot link a native library or static archive)
 endif
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
@@ -45,8 +45,8 @@ PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
 endif
 endif
 HOST_MODULE := $(PROJECT_BACKEND)_run
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zib canvas/zib raylib/zib),)
-HOST_MODULE := zib_run
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zx canvas/zx raylib/zx),)
+HOST_MODULE := zx_run
 endif
 BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas dom)
 HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
@@ -68,14 +68,14 @@ APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
 HOST_ROOT_SOURCES := $(HOST)
-ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zib/canvas)
+ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zx/canvas)
 # Portable app IR is identical on desktop and web. Only the renderer shell
 # is compiled for the browser.
-ZIB_CANVAS_DIR := $(abspath $(GEN_DIR)/player)
-ZIB_CANVAS_PROGRAM := $(abspath build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html)
-ZIB_CANVAS_BUNDLE := $(abspath $(PROGRAM))
-include $(KRYON_DIR)/mk/zib-canvas.mk
-BROWSER_PROGRAM := $(ZIB_CANVAS_PROGRAM)
+ZX_CANVAS_DIR := $(abspath $(GEN_DIR)/player)
+ZX_CANVAS_PROGRAM := $(abspath build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html)
+ZX_CANVAS_BUNDLE := $(abspath $(PROGRAM))
+include $(KRYON_DIR)/mk/zx-canvas.mk
+BROWSER_PROGRAM := $(ZX_CANVAS_PROGRAM)
 endif
 ifneq ($(if $(filter c99,$(PROJECT_CODEGEN)),$(BROWSER_BACKEND)),)
 HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
@@ -138,12 +138,12 @@ HOST_LIBS := $(RAYLIB_A) $(RAYLIB_PLATFORM_LIBS)
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 
 endif
-ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),raylib/zib)
-ZIB_RAYLIB_DIR := $(abspath $(GEN_DIR)/player)
-ZIB_RAYLIB_PROGRAM := $(ZIB_RAYLIB_DIR)/zib
-ZIB_RAYLIB_ARCHIVE := $(RAYLIB_A)
-include $(KRYON_DIR)/mk/zib-raylib.mk
-NATIVE_PLAYER := $(ZIB_RAYLIB_PROGRAM)
+ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),raylib/zx)
+ZX_RAYLIB_DIR := $(abspath $(GEN_DIR)/player)
+ZX_RAYLIB_PROGRAM := $(ZX_RAYLIB_DIR)/zx
+ZX_RAYLIB_ARCHIVE := $(RAYLIB_A)
+include $(KRYON_DIR)/mk/zx-raylib.mk
+NATIVE_PLAYER := $(ZX_RAYLIB_PROGRAM)
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 EM_CACHE ?= $(KRYON_DIR)/build/emscripten-cache
@@ -205,13 +205,13 @@ build: toolchain
 		PROJECT_BACKEND=$(PROJECT_BACKEND) PROJECT_CODEGEN=$(PROJECT_CODEGEN) \
 		PROJECT_PROFILE=$(PROJECT_PROFILE) KRYON_DIR=$(KRYON_DIR) ZIRAN_DIR=$(ZIRAN_DIR)
 
-ifeq ($(PROJECT_CODEGEN),zib)
-include $(KRYON_DIR)/mk/zib-player.mk
+ifeq ($(PROJECT_CODEGEN),zx)
+include $(KRYON_DIR)/mk/zx-player.mk
 
-$(ZIRAN_DIR)/build/bin/zi2zib $(ZIRAN_DIR)/build/libziran.a:
+$(ZIRAN_DIR)/build/bin/zi2zx $(ZIRAN_DIR)/build/libziran.a:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
-$(PROGRAM): $(IR_STAMP) $(ASSET_DEPENDENCY) $(ZIRAN_DIR)/build/bin/zi2zib
+$(PROGRAM): $(IR_STAMP) $(ASSET_DEPENDENCY) $(ZIRAN_DIR)/build/bin/zi2zx
 	$(ZIRAN) bundle --root $(IR_DIR) --entry $(HOST_ID):main \
 		$(if $(filter pixmap,$(PROJECT_BACKEND)),--bind-host $(ZIRAN_PACKAGE_ID)_pixmap) \
 		$(if $(PROJECT_ASSETS),--asset-dir $(PROJECT_ASSETS)=$(PROJECT_ASSETS)) \
@@ -261,15 +261,15 @@ endif
 endif
 
 run: build
-ifeq ($(PROJECT_CODEGEN),zib)
+ifeq ($(PROJECT_CODEGEN),zx)
 ifeq ($(PROJECT_BACKEND),desktop)
-run: zib-player
+run: zx-player
 	$(RUN_ENV) $(PLAYER) $(PROGRAM)
 else ifeq ($(PROJECT_BACKEND),raylib)
-run: zib-raylib
-	$(RUN_ENV) $(ZIB_RAYLIB_PROGRAM) $(PROGRAM)
+run: zx-raylib
+	$(RUN_ENV) $(ZX_RAYLIB_PROGRAM) $(PROGRAM)
 else ifeq ($(PROJECT_BACKEND),canvas)
-	@echo "Kryon ZIB browser app: $(BROWSER_PROGRAM)"
+	@echo "Kryon ZX browser app: $(BROWSER_PROGRAM)"
 else
 	$(ZIRAN) run $(PROGRAM)
 endif
@@ -295,8 +295,8 @@ TERMINAL_APP := true
 endif
 
 install: build
-ifeq ($(PROJECT_CODEGEN),zib)
-install: zib-player
+ifeq ($(PROJECT_CODEGEN),zx)
+install: zx-player
 endif
 ifneq ($(BROWSER_BACKEND),)
 	@echo "kryon: browser profiles cannot be installed" >&2; exit 2
@@ -307,10 +307,10 @@ else
 	prefix="$$ZIRAN_INSTALL_PREFIX"; bin="$$ZIRAN_INSTALL_BIN"; \
 	program="$$prefix/bin/$$bin"; \
 	mkdir -p "$$prefix/bin" "$$prefix/share/applications"; \
-	if [ "$(PROJECT_CODEGEN)" = zib ]; then \
+	if [ "$(PROJECT_CODEGEN)" = zx ]; then \
 		app="$$prefix/share/kryon/$$bin"; mkdir -p "$$app"; \
-		cp $(PROGRAM) "$$app/app.zib.new"; \
-		mv -f "$$app/app.zib.new" "$$app/app.zib"; \
+		cp $(PROGRAM) "$$app/app.zx.new"; \
+		mv -f "$$app/app.zx.new" "$$app/app.zx"; \
 		cp $(PLAYER) "$$program.new"; \
 	else \
 		cp $(PROGRAM) "$$program.new"; \

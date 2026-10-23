@@ -20,7 +20,7 @@ Its pointer parameters are not yet supported by the portable VM.
 
 Portable applications bind `composition_input:PollComposition` to an ordinary
 Ziran provider with `ziran bundle --bind`; the checked test uses this route for
-source and saved `.zib` execution. A native platform host may implement the
+source and saved `.zx` execution. A native platform host may implement the
 same `PollComposition() -> CompositionSample` function directly. The returned
 text must stay alive while the caller uses it. A caller that retains
 `CompositionState.text` must copy the bytes into its own storage before the

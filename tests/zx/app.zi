@@ -14,7 +14,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     label: TextProps
     label.key = cast(u64)2
     label.bounds = Rectangle.{40.0, 128.0, 400.0, 40.0}
-    label.text = "Zib state persists"
+    label.text = "Zx state persists"
     if clicks > 0 { label.text = "Clicked!" }
     label.font = 24
     Text(session, label)
@@ -28,9 +28,9 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     typed := TypedCodepointTake(session)
     if key == 65 || typed == 233 {
         if clicks == 1 && frames > 2 {
-            print("zib interaction passed\n")
+            print("zx interaction passed\n")
         } else {
-            print("zib interaction failed: clicks=% frames=%\n", clicks, frames)
+            print("zx interaction failed: clicks=% frames=%\n", clicks, frames)
         }
         return 1
     }

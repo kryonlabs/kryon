@@ -10,8 +10,8 @@ source=$repo/tests/style_snapshot_behavior.zi
 for input in "$source" "$work/ir/style_snapshot_behavior.zir"; do
     "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
         --module-path "$ziran_root/std" --entry style_snapshot_behavior:Answer \
-        -o "$work/style.zib" "$input"
-    test "$("$ziran" run "$work/style.zib")" = 42
+        -o "$work/style.zx" "$input"
+    test "$("$ziran" run "$work/style.zx")" = 42
     for target in c cpp go; do
         output=$work/$target
         "$ziran" build "--target=$target" --root "$repo/tests" \

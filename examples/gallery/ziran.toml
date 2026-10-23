@@ -22,12 +22,12 @@ host = "src/web.zi"
 
 [tool.kryon.profiles.portable]
 backend = "desktop"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 
 [tool.kryon.profiles.portable_web]
 backend = "canvas"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 
 [dependencies.kryon]

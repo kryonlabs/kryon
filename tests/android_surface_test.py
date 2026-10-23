@@ -47,8 +47,8 @@ run([os.environ.get("CXX", "c++"), "-std=c++17", "-I" + str(ZIRAN / "include"),
 run([WORK / "cpp-test"])
 run([BIN / "ziran", "bundle", "--root", ROOT / "tests", "--module-path", ROOT / "src/backend",
      "--module-path", ZIRAN / "std", "--entry", "android_viewport_policy:PolicyCheck",
-     "-o", WORK / "policy.zib", ROOT / "tests/android_viewport_policy.zi"])
-result = run([BIN / "ziran", "run", WORK / "policy.zib"], capture_output=True, text=True)
+     "-o", WORK / "policy.zx", ROOT / "tests/android_viewport_policy.zi"])
+result = run([BIN / "ziran", "run", WORK / "policy.zx"], capture_output=True, text=True)
 assert result.stdout.strip() == "42", result.stdout
 
 # Compare the accessed raylib prefix to the actual package definition on all

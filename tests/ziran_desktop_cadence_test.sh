@@ -36,7 +36,7 @@ for form in source saved; do
     done
     "$ziran" bundle --root "$source_root" --module-path "$repo/src/backend" \
         --module-path "$work/ir" --entry desktop_cadence_test:main \
-        -o "$work/$form.zib" "$source"
-    test "$("$ziran" run "$work/$form.zib")" = 0
+        -o "$work/$form.zx" "$source"
+    test "$("$ziran" run "$work/$form.zx")" = 0
 done
 printf '%s\n' 'Desktop cadence includes drawing cost, preserves deadlines and resets hidden windows'

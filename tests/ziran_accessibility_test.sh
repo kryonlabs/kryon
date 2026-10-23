@@ -12,12 +12,12 @@ entry=ziran_accessibility_behavior:main
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
     -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --entry "$entry" -o "$work/source.zib" "$source"
+    --entry "$entry" -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry "$entry" -o "$work/saved.zib" \
+    --entry "$entry" -o "$work/saved.zx" \
     "$work/ir/ziran_accessibility_behavior.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
 
 for input in source saved; do
     if test "$input" = source; then

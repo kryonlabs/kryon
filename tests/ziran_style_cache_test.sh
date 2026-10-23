@@ -16,8 +16,8 @@ for input in source saved; do
     module="$source"; roots="--module-path $repo/src/ui --module-path $ziran_root/std"
     if test "$input" = saved; then module="$work/ir/style_cache_behavior.zir"; roots="--module-path $work/ir"; fi
     "$ziran" bundle --root "$repo/tests" $roots --entry style_cache_behavior:main \
-        -o "$work/$input.zib" "$module"
-    test "$("$ziran" run "$work/$input.zib" | tail -1)" = 0
+        -o "$work/$input.zx" "$module"
+    test "$("$ziran" run "$work/$input.zx" | tail -1)" = 0
     for target in c cpp go rust py; do
         output="$work/$target-$input"
         executable=--exe; if test "$target" = cpp; then executable=; fi

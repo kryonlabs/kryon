@@ -388,7 +388,7 @@ for input in source saved; do
         module_path=$work/ir
     fi
     "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$standard" \
-        --entry app:Answer -o "$work/$input.zib" "$source"
+        --entry app:Answer -o "$work/$input.zx" "$source"
     for target in c cpp go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
@@ -416,7 +416,7 @@ GO
         fi
     done
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 
 # Execute the same widget checks in the portable VM with the maintained
 # Ziran no-op raster host, including saved IR; a device is never opened.
@@ -438,9 +438,9 @@ set -- \
     --module-path "$standard" -o "$work/portable-ir" "$work/portable.zi"
 "$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \
     --module-path "$standard" "$@" --entry portable:PortableCheck \
-    -o "$work/portable-source.zib" "$work/portable.zi"
+    -o "$work/portable-source.zx" "$work/portable.zi"
 "$ziran" bundle --root "$work/portable-ir" --module-path "$work/portable-ir" \
-    "$@" --entry portable:PortableCheck -o "$work/portable-saved.zib" "$work/portable-ir/portable.zir"
-cmp "$work/portable-source.zib" "$work/portable-saved.zib"
-test "$("$ziran" run "$work/portable-source.zib")" = 42
-test "$("$ziran" run "$work/portable-saved.zib")" = 42
+    "$@" --entry portable:PortableCheck -o "$work/portable-saved.zx" "$work/portable-ir/portable.zir"
+cmp "$work/portable-source.zx" "$work/portable-saved.zx"
+test "$("$ziran" run "$work/portable-source.zx")" = 42
+test "$("$ziran" run "$work/portable-saved.zx")" = 42

@@ -22,13 +22,13 @@ set -- \
     -o "$work/ir" "$portable"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     "$@" --entry fieldset_widget_portable_test:main \
-    -o "$work/source.zib" "$portable"
+    -o "$work/source.zx" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     "$@" --entry fieldset_widget_portable_test:main \
-    -o "$work/saved.zib" "$work/ir/fieldset_widget_portable_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
-test "$("$ziran" run "$work/saved.zib")" = 0
+    -o "$work/saved.zx" "$work/ir/fieldset_widget_portable_test.zir"
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
+test "$("$ziran" run "$work/saved.zx")" = 0
 
 for target in c cpp; do
     output=$work/native-$target

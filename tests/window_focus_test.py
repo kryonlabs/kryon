@@ -34,7 +34,7 @@ def wait(check, message):
 def drive(mode):
     assert os.environ.get('KRYON_PRIVATE_XVFB') == '1'
     commands = {'native': [OUTPUT/'build/window_focus-desktop'],
-                'portable': [ROOT/'build/bin/zib', OUTPUT/'build/window_focus-portable.zib']}
+                'portable': [ROOT/'build/bin/zx', OUTPUT/'build/window_focus-portable.zx']}
     child = subprocess.Popen(list(map(str, commands[mode])), cwd=OUTPUT,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     x = c.CDLL('libX11.so.6')
@@ -112,13 +112,13 @@ backend = "desktop"
 
 [tool.kryon.profiles.portable]
 backend = "desktop"
-codegen = "zib"
+codegen = "zx"
 ''')
     (OUTPUT/'ziran.local.toml').write_text(f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
     env = dict(os.environ)
     for key in ['DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','SESSION_MANAGER']: env.pop(key,None)
     env['YUE_DESKTOP_RECOVERY'] = '0'
-    subprocess.run(['make','zib-player'],cwd=ROOT,env=env,check=True)
+    subprocess.run(['make','zx-player'],cwd=ROOT,env=env,check=True)
     subprocess.run([str(ZIRAN),'lock'],cwd=OUTPUT,env=env,check=True)
     for mode, profile in [('native','desktop'),('portable','portable')]:
         subprocess.run([str(ZIRAN),'tool','kryon','build','--profile',profile],cwd=OUTPUT,env=env,check=True)

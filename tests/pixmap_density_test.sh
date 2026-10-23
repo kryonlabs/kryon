@@ -23,7 +23,7 @@ for target in c cpp go; do
         fi
     done
 done
-"$ziran" bundle --project --root "$repo/tests" --entry pixmap_density_test:main -o "$work/source.zib" "$source"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_density_test:main -o "$work/saved.zib" "$work/ir/pixmap_density_test.zir"
-test "$(env -u DISPLAY -u WAYLAND_DISPLAY "$ziran" run "$work/source.zib" | tail -1)" = 0
-test "$(env -u DISPLAY -u WAYLAND_DISPLAY "$ziran" run "$work/saved.zib" | tail -1)" = 0
+"$ziran" bundle --project --root "$repo/tests" --entry pixmap_density_test:main -o "$work/source.zx" "$source"
+"$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_density_test:main -o "$work/saved.zx" "$work/ir/pixmap_density_test.zir"
+test "$(env -u DISPLAY -u WAYLAND_DISPLAY "$ziran" run "$work/source.zx" | tail -1)" = 0
+test "$(env -u DISPLAY -u WAYLAND_DISPLAY "$ziran" run "$work/saved.zx" | tail -1)" = 0

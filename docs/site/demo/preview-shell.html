@@ -33,7 +33,7 @@
       }
       if (event.data.type !== 'preview:bundle') return;
       if (!(event.data.bundle instanceof ArrayBuffer) || event.data.bundle.byteLength > 16777216) return;
-      Module.FS.writeFile('/preview.zib', new Uint8Array(event.data.bundle));
+      Module.FS.writeFile('/preview.zx', new Uint8Array(event.data.bundle));
       Module.previewRevision = event.data.revision;
       Module.previewPending = true;
     });

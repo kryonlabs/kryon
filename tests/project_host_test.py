@@ -80,7 +80,7 @@ def main():
         with (project / "ziran.toml").open('a') as manifest:
             manifest.write(
                 '\n[tool.kryon.profiles.raster]\nbackend = "pixmap"\nhost = "src/raster.zi"\n'
-                '\n[tool.kryon.profiles.portable]\nbackend = "pixmap"\ncodegen = "zib"\nhost = "src/raster.zi"\n'
+                '\n[tool.kryon.profiles.portable]\nbackend = "pixmap"\ncodegen = "zx"\nhost = "src/raster.zi"\n'
             )
         run([str(ZIRAN), "tool", "kryon", "build", "raster"], project)
         for count in (1, None, 8):
@@ -88,7 +88,7 @@ def main():
                          env_updates={'ZIRAN_PAR_THREADS': str(count)} if count else None)
             assert result.stdout == f"workers {count or 4}\n", result.stdout
         run([str(ZIRAN), "tool", "kryon", "build", "portable"], project)
-        result = run([str(ZIRAN), "run", str(project / "build/host_probe-portable.zib")], project)
+        result = run([str(ZIRAN), "run", str(project / "build/host_probe-portable.zx")], project)
         assert result.stdout.splitlines()[0] == "workers 1", result.stdout
 
         outside = Path(temporary) / "outside.zi"

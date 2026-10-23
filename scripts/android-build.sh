@@ -43,21 +43,21 @@ if [ -z "$raylib_dir" ] || [ ! -f "$raylib_dir/raylib.h" ]; then
     exit 2
 fi
 
-if [ "$codegen" = "zib" ]; then
+if [ "$codegen" = "zx" ]; then
     python3 "$kryon_dir/scripts/android_scaffold.py" \
         --root "$root" --name "${KRYON_PROJECT_NAME:-app}" \
         --package "$package" --activity "$activity" --kryon "$kryon_dir"
     make --silent --no-print-directory -f "$kryon_dir/mk/ziran-project.mk" build \
         "PROJECT_NAME=$KRYON_PROJECT_NAME" "PROJECT_ENTRY=$KRYON_PROJECT_ENTRY" \
-        PROJECT_BACKEND=desktop PROJECT_CODEGEN=zib \
+        PROJECT_BACKEND=desktop PROJECT_CODEGEN=zx \
         "PROJECT_PROFILE=$KRYON_PROJECT_PROFILE" \
         "PROJECT_ASSETS=${KRYON_PROJECT_ASSETS:-}" \
         "KRYON_DIR=$kryon_dir" "ZIRAN_DIR=$ziran_dir"
-    mkdir -p "$root/build/android/zib-assets"
-    cp "$root/build/$KRYON_PROJECT_NAME-$KRYON_PROJECT_PROFILE.zib" \
-        "$root/build/android/zib-assets/app.zib"
+    mkdir -p "$root/build/android/zx-assets"
+    cp "$root/build/$KRYON_PROJECT_NAME-$KRYON_PROJECT_PROFILE.zx" \
+        "$root/build/android/zx-assets/app.zx"
     cp "$kryon_dir/assets/fonts/LiberationSans-Regular.ttf" \
-        "$root/build/android/zib-assets/kryon-font.ttf"
+        "$root/build/android/zx-assets/kryon-font.ttf"
 elif [ "$codegen" != "c99" ]; then
     echo "kryon: unsupported Android codegen $codegen" >&2
     exit 2

@@ -18,13 +18,13 @@ set -- \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" "$@" --entry ziran_text_area_word_selection_test:main \
-    -o "$work/source.zib" "$source"
+    -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
-    --entry ziran_text_area_word_selection_test:main -o "$work/saved.zib" \
+    --entry ziran_text_area_word_selection_test:main -o "$work/saved.zx" \
     "$work/ir/ziran_text_area_word_selection_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 for bundle in source saved; do
-    result=$("$ziran" run "$work/$bundle.zib")
+    result=$("$ziran" run "$work/$bundle.zx")
     printf '%s bundle: %s\n' "$bundle" "$result"
     test "$result" = 0
 done

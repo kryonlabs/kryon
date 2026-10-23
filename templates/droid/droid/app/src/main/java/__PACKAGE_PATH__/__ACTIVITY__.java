@@ -127,8 +127,8 @@ public class __ACTIVITY__ extends NativeActivity {
 
     private synchronized void stageBundle(Intent intent) {
         if (intent == null || !Intent.ACTION_VIEW.equals(intent.getAction()) || intent.getData() == null) return;
-        File incoming = new File(getCacheDir(), "zib-incoming");
-        File selected = new File(getCacheDir(), "zib-selected");
+        File incoming = new File(getCacheDir(), "zx-incoming");
+        File selected = new File(getCacheDir(), "zx-selected");
         try (InputStream source = getContentResolver().openInputStream(intent.getData());
              FileOutputStream output = new FileOutputStream(incoming)) {
             if (source == null) throw new java.io.IOException("Unavailable document");
@@ -145,7 +145,7 @@ public class __ACTIVITY__ extends NativeActivity {
             pendingBundle = selected.getAbsolutePath();
         } catch (Exception error) {
             incoming.delete();
-            Log.w("ZIB", "Could not read the selected bundle", error);
+            Log.w("ZX", "Could not read the selected bundle", error);
         }
     }
 
@@ -157,11 +157,11 @@ public class __ACTIVITY__ extends NativeActivity {
 
     public void bundleResult(int accepted) {
         if (accepted != 0) {
-            Log.i("ZIB", "Bundle loaded");
+            Log.i("ZX", "Bundle loaded");
         } else {
-            Log.w("ZIB", "Bundle rejected");
+            Log.w("ZX", "Bundle rejected");
             runOnUiThread(() -> android.widget.Toast.makeText(this,
-                "Could not open this ZIB file", android.widget.Toast.LENGTH_LONG).show());
+                "Could not open this ZX file", android.widget.Toast.LENGTH_LONG).show());
         }
     }
 

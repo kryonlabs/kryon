@@ -1,4 +1,4 @@
-// A reusable desktop host for checked Zib programs. No app source or
+// A reusable desktop host for checked Zx programs. No app source or
 // generated app code is linked into this player.
 #import "bundle_host"
 #import "byte_text_linux"
@@ -42,7 +42,7 @@ Supported :: (module: string, function: string) -> bool {
             function == "VideoSeekHost" || function == "VideoSpeedHost" || function == "VideoVolumeHost" ||
             function == "VideoLeaseHost" || function == "VideoFrameHost" || function == "VideoMessageHost"
     }
-    if ModuleName(module, "zib_run") {
+    if ModuleName(module, "zx_run") {
         return function == "ReadBundleInput" || function == "TakeBundleCodepoint" ||
             function == "BundleTextInputHost" || function == "BundleFrameFinishedHost" ||
             function == "BundleFrameReusableHost"
@@ -557,7 +557,7 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
     temporary: [64]u8
     replacement_assets: string
     if BundleAssets(replacement) > cast(u64)0 {
-        if !CopyCString("/tmp/zib-XXXXXX", temporary[:]) || TemporaryDirectory(*temporary[0]) == null {
+        if !CopyCString("/tmp/zx-XXXXXX", temporary[:]) || TemporaryDirectory(*temporary[0]) == null {
             CloseBundle(replacement)
             return
         }
@@ -605,7 +605,7 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
     bundle.* = replacement
     instance.* = prepared
     current.* = candidate
-    print("zib: reloaded release %\n", candidate.sequence)
+    print("zx: reloaded release %\n", candidate.sequence)
 }
 
 #program_export
@@ -613,7 +613,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     check := argc == 3 && TextFromCString(argv[1]) == "--check"
     watch := argc == 3 && TextFromCString(argv[1]) == "--watch-current"
     if argc < 1 || argc > 3 || (argc == 3 && !check && !watch) {
-        print("usage: zib [--check] FILE.zib | zib --watch-current CURRENT.json\n")
+        print("usage: zx [--check] FILE.zx | zx --watch-current CURRENT.json\n")
         return 2
     }
     executable_bytes: [4096]u8
@@ -645,7 +645,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         if separator < 0 { return 1 }
         prefix := AssetPath(location[0:separator], "../share/kryon", prefix_bytes[:])
         app := AssetPath(prefix, location[separator + 1:location.count], app_bytes[:])
-        bundle_path = AssetPath(app, "app.zib", installed_bytes[:])
+        bundle_path = AssetPath(app, "app.zx", installed_bytes[:])
         if bundle_path == "" { return 1 }
         bundle_name = *installed_bytes[0]
     }
@@ -655,13 +655,13 @@ main :: (argc: s32, argv: **u8) -> s32 {
         if check { return AppPlayer.Run(bundle, true) }
         if watch {
             CloseBundle(bundle)
-            print("zib: hosted app release watching is not available yet\n")
+            print("zx: hosted app release watching is not available yet\n")
             return 1
         }
         resource_bytes: [64]u8
         resource_root: string
         if BundleAssets(bundle) > cast(u64)0 {
-            if !CopyCString("/tmp/zib-XXXXXX", resource_bytes[:]) ||
+            if !CopyCString("/tmp/zx-XXXXXX", resource_bytes[:]) ||
             TemporaryDirectory(*resource_bytes[0]) == null {
                 CloseBundle(bundle)
                 return 1
@@ -697,7 +697,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         module := BundleCapabilityModuleName(bundle, index)
         function := BundleCapabilityFunctionName(bundle, index)
         if !Supported(TextFromCString(module), TextFromCString(function)) {
-            print("zib: unsupported host capability %:%\n",
+            print("zx: unsupported host capability %:%\n",
                 TextFromCString(module), TextFromCString(function))
             ok = false
         } else {
@@ -728,7 +728,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     instance := InstantiateBundle(bundle, bindings, cast(u64)player.bindings.count)
     VecFree(player.bindings)
     if instance == null {
-        print("zib: could not initialize app instance\n")
+        print("zx: could not initialize app instance\n")
         CloseBundle(bundle)
         return 1
     }
@@ -736,7 +736,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     temporary: [64]u8
     assets_root: string = ""
     if BundleAssets(bundle) > cast(u64)0 {
-        ok = CopyCString("/tmp/zib-XXXXXX", temporary[:]) &&
+        ok = CopyCString("/tmp/zx-XXXXXX", temporary[:]) &&
         TemporaryDirectory(*temporary[0]) != null
         if ok {
             assets_root = TextFromCString(*temporary[0])
@@ -769,6 +769,6 @@ main :: (argc: s32, argv: **u8) -> s32 {
     CloseBundleInstance(instance)
     CloseBundle(bundle)
     if assets_root != "" && !RemoveAssetDirectory(assets_root) { ok = false }
-    if !ok { print("zib: app execution or rendering failed\n"); return 1 }
+    if !ok { print("zx: app execution or rendering failed\n"); return 1 }
     return 0
 }

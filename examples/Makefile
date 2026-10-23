@@ -3,7 +3,7 @@
 CC ?= cc
 ZIRAN_DIR ?= $(if $(ZIRAN_ROOT),$(ZIRAN_ROOT),$(shell ziran pkg path ziran))
 ZI2ZIR_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zir)
-ZI2ZIB_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zib)
+ZI2ZX_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zx)
 ZI2C_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2c)
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
@@ -11,9 +11,9 @@ BUILD_DIR ?= ../build/examples
 NATIVE_LIB := ../build/ziran/libkryon.a
 
 .PHONY: all test desktop desktop-test desktop-image-test desktop-text-test time-picker time-picker-shots clean
-all: $(BUILD_DIR)/hello.svg $(BUILD_DIR)/hello.zib
+all: $(BUILD_DIR)/hello.svg $(BUILD_DIR)/hello.zx
 
-$(ZI2ZIB_BIN):
+$(ZI2ZX_BIN):
 	$(MAKE) -C $(ZIRAN_DIR) all
 
 $(ZI2C_BIN):
@@ -22,44 +22,44 @@ $(ZI2C_BIN):
 $(NATIVE_LIB): ../Makefile ../src/ui/modules.txt $(wildcard ../src/ui/*.zi)
 	$(MAKE) -C .. all
 
-$(BUILD_DIR)/hello.zib: hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
+$(BUILD_DIR)/hello.zx: hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZX_BIN)
 	mkdir -p $(BUILD_DIR)
-	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZX_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		--entry hello:Frame -o $@ hello.zi
 
-$(BUILD_DIR)/hello-saved.zib: $(BUILD_DIR)/hello.zib
+$(BUILD_DIR)/hello-saved.zx: $(BUILD_DIR)/hello.zx
 	$(ZI2ZIR_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/ir hello.zi
-	$(ZI2ZIB_BIN) bundle --root $(BUILD_DIR)/ir \
+	$(ZI2ZX_BIN) bundle --root $(BUILD_DIR)/ir \
 		--module-path $(BUILD_DIR)/ir --entry hello:Frame \
 		-o $@ $(BUILD_DIR)/ir/hello.zir
-	cmp $(BUILD_DIR)/hello.zib $@
+	cmp $(BUILD_DIR)/hello.zx $@
 
-$(BUILD_DIR)/image.zib: image_demo.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
+$(BUILD_DIR)/image.zx: image_demo.zi $(wildcard ../src/ui/*.zi) $(ZI2ZX_BIN)
 	mkdir -p $(BUILD_DIR)
-	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZX_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		--entry image_demo:Frame -o $@ image_demo.zi
 
-$(BUILD_DIR)/image-saved.zib: $(BUILD_DIR)/image.zib
+$(BUILD_DIR)/image-saved.zx: $(BUILD_DIR)/image.zx
 	$(ZI2ZIR_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/image-ir image_demo.zi
-	$(ZI2ZIB_BIN) bundle --root $(BUILD_DIR)/image-ir \
+	$(ZI2ZX_BIN) bundle --root $(BUILD_DIR)/image-ir \
 		--module-path $(BUILD_DIR)/image-ir --entry image_demo:Frame \
 		-o $@ $(BUILD_DIR)/image-ir/image_demo.zir
-	cmp $(BUILD_DIR)/image.zib $@
+	cmp $(BUILD_DIR)/image.zx $@
 
-$(BUILD_DIR)/text.zib: text_hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZIB_BIN)
+$(BUILD_DIR)/text.zx: text_hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZX_BIN)
 	mkdir -p $(BUILD_DIR)
-	$(ZI2ZIB_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZX_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		--entry text_hello:Frame -o $@ text_hello.zi
 
-$(BUILD_DIR)/text-saved.zib: $(BUILD_DIR)/text.zib
+$(BUILD_DIR)/text-saved.zx: $(BUILD_DIR)/text.zx
 	$(ZI2ZIR_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/text-ir text_hello.zi
-	$(ZI2ZIB_BIN) bundle --root $(BUILD_DIR)/text-ir \
+	$(ZI2ZX_BIN) bundle --root $(BUILD_DIR)/text-ir \
 		--module-path $(BUILD_DIR)/text-ir --entry text_hello:Frame \
 		-o $@ $(BUILD_DIR)/text-ir/text_hello.zir
-	cmp $(BUILD_DIR)/text.zib $@
+	cmp $(BUILD_DIR)/text.zx $@
 
 $(BUILD_DIR)/hello-native/hello_host.c: hello_host.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZI2C_BIN)
 	mkdir -p $(BUILD_DIR)/hello-native
@@ -76,7 +76,7 @@ $(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host
 	env -u DISPLAY -u WAYLAND_DISPLAY \
 		$(BUILD_DIR)/hello-host > $@
 
-test: all $(BUILD_DIR)/hello-saved.zib
+test: all $(BUILD_DIR)/hello-saved.zx
 	python3 -c 'import xml.etree.ElementTree as ET; root=ET.parse("$(BUILD_DIR)/hello.svg").getroot(); ns="{http://www.w3.org/2000/svg}"; assert root.tag==ns+"svg"; assert [node.text for node in root.iter(ns+"text")]==["Hello, Ziran"]*3+["Clicked!"]; assert len(list(root.iter(ns+"rect")))>=4'
 
 $(BUILD_DIR)/desktop-hello-native/desktop_hello.c: desktop_hello.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
@@ -149,12 +149,12 @@ desktop-test: desktop
 		KRYON_CAPTURE_PATH=$(BUILD_DIR)/hello-desktop.png \
 		xvfb-run -a $(BUILD_DIR)/hello-desktop
 
-desktop-image-test: $(BUILD_DIR)/image-saved.zib $(BUILD_DIR)/image-desktop
+desktop-image-test: $(BUILD_DIR)/image-saved.zx $(BUILD_DIR)/image-desktop
 	env -u DISPLAY -u WAYLAND_DISPLAY \
 		KRYON_CAPTURE_PATH=$(BUILD_DIR)/image-desktop.png \
 		xvfb-run -a $(BUILD_DIR)/image-desktop
 
-desktop-text-test: $(BUILD_DIR)/text-saved.zib $(BUILD_DIR)/text-desktop
+desktop-text-test: $(BUILD_DIR)/text-saved.zx $(BUILD_DIR)/text-desktop
 	env -u DISPLAY -u WAYLAND_DISPLAY \
 		KRYON_CAPTURE_PATH=$(BUILD_DIR)/text-desktop.png \
 		xvfb-run -a $(BUILD_DIR)/text-desktop

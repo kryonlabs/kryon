@@ -16,8 +16,8 @@ for input in source saved; do
     fi
     "$ziran" bundle --root "$module_root" --module-path "$module_dir" \
         --module-path "$ziran_root/std" --entry tree_labels_test:main \
-        -o "$work/$input.zib" "$module"
-    result=$("$ziran" run "$work/$input.zib")
+        -o "$work/$input.zx" "$module"
+    result=$("$ziran" run "$work/$input.zx")
     if test "$(printf '%s\n' "$result" | tail -1)" != 0; then
         printf '%s portable tree label check returned %s\n' "$input" "$result" >&2
         exit 1
@@ -43,5 +43,5 @@ for input in source saved; do
         esac
     done
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 printf 'Tree label buffer source and saved checks passed\n'

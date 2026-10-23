@@ -26,7 +26,7 @@ for target in c cpp go; do
     esac
 done
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/backend" \
-    --entry $test_module:main -o "$work/keys.zib" "$repo/tests/$test_module.zi"
-test "$("$ziran" run "$work/keys.zib")" = 0
+    --entry $test_module:main -o "$work/keys.zx" "$repo/tests/$test_module.zi"
+test "$("$ziran" run "$work/keys.zx")" = 0
 done
 echo 'Libdraw, desktop, and terminal keyboard: C, C++, Go and portable key codes passed'

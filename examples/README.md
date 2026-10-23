@@ -22,7 +22,7 @@ From the Kryon root:
 ```sh
 make -C examples widget-catalog      # desktop
 make -C examples widget-catalog-web  # Canvas/Wasm
-make gallery-zib                    # one complete portable ZIB per example
+make gallery-zx                    # one complete portable ZX per example
 make site-gallery                   # stage the gallery for the existing site
 make site                           # rebuild the gallery, editor and initial demo
 ```
@@ -33,10 +33,10 @@ Run `./build/gallery-desktop` from `examples/gallery/`. The web output is
 and toolchain commits are pinned in `gallery/ziran.lock`. Canonical local
 sources can be selected in its ignored `ziran.local.toml`.
 
-`build/gallery-zib/index.json` lists the exported bundles. Each includes the
+`build/gallery-zx/index.json` lists the exported bundles. Each includes the
 example's behavior and assets and opens in the generic desktop, browser or
-Android ZIB player. The gallery's `portable` profile also builds the complete
-catalog as one ZIB. See [ZIB applications](../docs/PROJECTS.md#zib-applications)
+Android ZX player. The gallery's `portable` profile also builds the complete
+catalog as one ZX. See [ZX applications](../docs/PROJECTS.md#zx-applications)
 for player and platform build commands. The website build stages a download
 and a browser-player link for every example; a local build does not publish it.
 
@@ -48,7 +48,7 @@ use a private `xvfb-run -a` display for all captures and browser checks.
 
 The files below exercise custom host contracts and native/portable parity.
 Their small probe bundles use those test hosts. Use the gallery exports above
-for complete applications that open in the generic ZIB players.
+for complete applications that open in the generic ZX players.
 
 `hello.zi` is a small Ziran application that imports Kryon's ordinary
 `Button` and pointer modules. It builds a retained tree, handles a press and
@@ -64,11 +64,11 @@ make -C examples
 make -C examples test
 ```
 
-The first command builds `build/examples/hello.zib`, generates and links
+The first command builds `build/examples/hello.zx`, generates and links
 a native program from the two `.zi` sources, and writes
 `build/examples/hello.svg`. Open the SVG in an image viewer to see the
 idle, pressed, released, and clicked frames side by side. The test also bundles
-the saved `.zir`, verifies that both `.zib` files match, and checks the native
+the saved `.zir`, verifies that both `.zx` files match, and checks the native
 host's four-frame click result and SVG content. The portable bundle is built
 and compared here; its execution is covered by the separate portable runtime
 tests.
@@ -93,7 +93,7 @@ path-backed PNG images. Texture handles and other image formats remain open.
 `make -C examples desktop-text-test` renders the plain `Text(TextProps)`
 example under a private display and saves
 `build/examples/text-desktop.png`. It also checks that source and saved
-`.zir` produce the same portable `text.zib`. Run
+`.zir` produce the same portable `text.zx`. Run
 `../build/examples/text-desktop` from `examples/` to open the interactive
 window, or open `examples/text_hello.zi` in an editor to see its Ziran source.
 

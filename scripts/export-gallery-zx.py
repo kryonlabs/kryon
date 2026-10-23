@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export complete interactive gallery examples as self-contained ZIB files."""
+"""Export complete interactive gallery examples as self-contained ZX files."""
 import argparse
 import json
 import os
@@ -12,7 +12,7 @@ import gallery
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path, default=gallery.ROOT / 'build/gallery-zib')
+    parser.add_argument('--output', type=Path, default=gallery.ROOT / 'build/gallery-zx')
     parser.add_argument('--example', action='append', help='Example ID, for example kryon/0')
     parser.add_argument('--ziran', default=os.environ.get('ZIRAN', 'ziran'))
     args = parser.parse_args()
@@ -30,7 +30,7 @@ def main():
     toolchain = package('ziran')
     compiler = toolchain / 'build/bin/ziran'
     if not compiler.is_file():
-        parser.error('Build the gallery portable profile before exporting its ZIBs')
+        parser.error('Build the gallery portable profile before exporting its ZXs')
     compile_env = {**os.environ, 'ZIRAN_ROOT': str(toolchain)}
     paths = ['--root', str(output / 'app'), '--module-path', str(gallery.PROJECT / 'src'),
              '--module-path', str(gallery.ROOT / 'src/ui'),
@@ -76,16 +76,16 @@ def main():
         source = source.replace('scene_image = "catalog-image.png"', 'scene_image = "assets/pfp.png"')
         app = output / 'app/app.zi'
         app.write_text(source)
-        bundle = output / (entry['id'] + '.zib')
+        bundle = output / (entry['id'] + '.zx')
         bundle.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run([compiler, 'bundle', *paths, '--entry', 'zib_run:main',
+        subprocess.run([compiler, 'bundle', *paths, '--entry', 'zx_run:main',
                         '--asset-dir', 'assets=' + str(gallery.PROJECT / 'assets'),
-                        '-o', str(bundle), str(gallery.ROOT / 'src/backend/zib_run.zi')],
+                        '-o', str(bundle), str(gallery.ROOT / 'src/backend/zx_run.zi')],
                        cwd=gallery.PROJECT, env=compile_env, check=True)
         index.append({**entry, 'bundle': bundle.relative_to(output).as_posix()})
         print('Exported ' + entry['id'] + ': ' + entry['name'], flush=True)
     (output / 'index.json').write_text(json.dumps(index, ensure_ascii=False, indent=2) + '\n')
-    print(f'Exported {len(index)} complete ZIB examples to {output}')
+    print(f'Exported {len(index)} complete ZX examples to {output}')
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ decisions. Tests that only verify code generation do not prove behavior.
 
 The current `make test` gate builds the core and optional packages and runs
 the `tests/ziran_*` behavior suite through the relevant source, saved `.zir`,
-portable `.zib`, and native targets. Package project tests verify imports and
+portable `.zx`, and native targets. Package project tests verify imports and
 terminal host behavior. `make desktop-project-test`,
 `make raylib-project-test`, and `make libdraw-project-test` verify graphical
 capture and input on private Xvfb displays.

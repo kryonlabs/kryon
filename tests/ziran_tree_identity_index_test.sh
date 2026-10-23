@@ -22,8 +22,8 @@ for input in source saved; do
     fi
     "$ziran" bundle --root "$root" --module-path "$modules" \
         --module-path "$ziran_root/std" --entry tree_identity_index_test:main \
-        -o "$work/$input.zib" "$module"
-    "$ziran" run "$work/$input.zib" > "$work/$input-vm.log"
+        -o "$work/$input.zx" "$module"
+    "$ziran" run "$work/$input.zx" > "$work/$input-vm.log"
     test "$(tail -1 "$work/$input-vm.log")" = 0
     for target in ${TREE_IDENTITY_INDEX_TARGETS:-c cpp go rust py}; do
         output="$work/$input-$target"
@@ -47,5 +47,5 @@ for input in source saved; do
         esac
     done
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 echo 'Tree identity source and saved checks passed on all selected targets'

@@ -17,8 +17,8 @@ set -- \
     --bind paint_queue:RasterImage=ziran_navigation_bar_widget_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$@" \
-    --entry svg_icon_scale_behavior:main -o "$work/icon.zib" "$source"
-test "$("$ziran" run "$work/icon.zib")" = 0
+    --entry svg_icon_scale_behavior:main -o "$work/icon.zx" "$source"
+test "$("$ziran" run "$work/icon.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"

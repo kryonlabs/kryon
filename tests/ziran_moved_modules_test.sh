@@ -140,9 +140,9 @@ EOF
 "$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/use_moved.zi"
 "$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
-    --entry use_moved:Answer -o "$work/source.zib" "$work/use_moved.zi"
+    --entry use_moved:Answer -o "$work/source.zx" "$work/use_moved.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry use_moved:Answer -o "$work/ir.zib" "$work/ir/use_moved.zir"
-cmp "$work/source.zib" "$work/ir.zib"
-test "$("$ziran" run "$work/source.zib")" = 42
-test "$("$ziran" run "$work/ir.zib")" = 42
+    --entry use_moved:Answer -o "$work/ir.zx" "$work/ir/use_moved.zir"
+cmp "$work/source.zx" "$work/ir.zx"
+test "$("$ziran" run "$work/source.zx")" = 42
+test "$("$ziran" run "$work/ir.zx")" = 42

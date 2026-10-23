@@ -8,8 +8,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 source=$repo/tests/icon_catalog_behavior.zi
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
-    --entry icon_catalog_behavior:main -o "$work/icons.zib" "$source"
-test "$("$ziran" run "$work/icons.zib")" = 0
+    --entry icon_catalog_behavior:main -o "$work/icons.zx" "$source"
+test "$("$ziran" run "$work/icons.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"

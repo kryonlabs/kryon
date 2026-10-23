@@ -1,5 +1,5 @@
-// Android's native activity renders the same ordinary Frame ZIB as desktop
-// and web. The APK contains a generic interpreter, renderer and app.zib.
+// Android's native activity renders the same ordinary Frame ZX as desktop
+// and web. The APK contains a generic interpreter, renderer and app.zx.
 #import "android_device"
 #import "android_jni"
 #import "android_surface"
@@ -20,7 +20,7 @@ AndroidBundleRunMain :: () -> s32 {
     hosts: [2]RaylibBundle
     data: [2]string
     active: s32
-    data[0] = RaylibBundleRead("app.zib")
+    data[0] = RaylibBundleRead("app.zx")
     if data[0].count == 0 { return 1 }
     defer {
         RaylibBundleClose(*hosts[0])
@@ -54,7 +54,7 @@ AndroidBundleRunMain :: () -> s32 {
                 AndroidBundleResult(true)
             } else {
                 RaylibBundleFree(incoming)
-                print("kryon: selected ZIB is invalid or needs unavailable services\n")
+                print("kryon: selected ZX is invalid or needs unavailable services\n")
                 AndroidBundleResult(false)
             }
             RaylibBundleUseAssets(*hosts[active])

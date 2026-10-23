@@ -36,8 +36,8 @@ for form in source saved; do
         fi
     done
     "$ziran" bundle --root "$root" --module-path "$modules" --module-path "$ziran_root/std" "$@" \
-        --entry ziran_modal_layer_test:main -o "$work/$form.zib" "$module"
-    test "$("$ziran" run "$work/$form.zib")" = 0
+        --entry ziran_modal_layer_test:main -o "$work/$form.zx" "$module"
+    test "$("$ziran" run "$work/$form.zx")" = 0
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 echo 'Modal input transactions passed native and portable execution'

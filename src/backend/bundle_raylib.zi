@@ -1,4 +1,4 @@
-// The native renderer for ordinary Frame ZIBs. Android and desktop shells
+// The native renderer for ordinary Frame ZXs. Android and desktop shells
 // provide their viewport and input; app state and widgets stay in the VM.
 Player :: #import "bundle_player";
 #import "bundle_raster"

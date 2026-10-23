@@ -75,8 +75,8 @@ for input in source ir; do
         module_dir=$work/ir
     fi
     "$ziran" bundle --root "$work" --module-path "$module_dir" --module-path "$ziran_root/std" \
-        --entry use_reorder:Answer -o "$work/$input.zib" "$module"
-    test "$("$ziran" run "$work/$input.zib")" = 42
+        --entry use_reorder:Answer -o "$work/$input.zx" "$module"
+    test "$("$ziran" run "$work/$input.zx")" = 42
     for target in c cpp go; do
         output="$work/$target-$input"
         "$ziran" build --target="$target" --root "$work" \
@@ -107,4 +107,4 @@ CPP
         fi
     done
 done
-cmp "$work/source.zib" "$work/ir.zib"
+cmp "$work/source.zx" "$work/ir.zx"

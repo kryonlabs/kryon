@@ -42,8 +42,8 @@ for form in source saved; do
     timeout 30 env GO111MODULE=off go run "$work/$form-go"/*.go
     "$ziran" bundle --entry "$entry" "$@" --root "$module_root" \
         --module-path "$module_path" --module-path "$ziran_root/std" \
-        -o "$work/$form.zib" "$input"
-    test "$(timeout 30 "$ziran" run "$work/$form.zib")" = 0
+        -o "$work/$form.zx" "$input"
+    test "$(timeout 30 "$ziran" run "$work/$form.zx")" = 0
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 echo 'Kryon paint labels and image paths retain their bytes across source, saved IR and native/portable targets'

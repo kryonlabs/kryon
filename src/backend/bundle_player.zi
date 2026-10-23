@@ -29,7 +29,7 @@ Player :: struct {
     renderer_active: bool
 }
 Supported :: (module: string, function: string) -> bool {
-    if ModuleName(module,"zib_run") { return function=="ReadBundleInput" || function=="TakeBundleCodepoint" || function=="BundleTextInputHost" || function=="BundleFrameFinishedHost" || function=="BundleFrameReusableHost" }
+    if ModuleName(module,"zx_run") { return function=="ReadBundleInput" || function=="TakeBundleCodepoint" || function=="BundleTextInputHost" || function=="BundleFrameFinishedHost" || function=="BundleFrameReusableHost" }
     if ModuleName(module,"font_metrics") { return function=="MeasureGlyphWidth" || function=="MeasureGlyphLineHeight" }
     if ModuleName(module,"raster_text") { return function=="RasterText" || function=="RasterTextClipped" }
     if ModuleName(module,"raster_shape") { return function=="RasterRoundedRectangle" || function=="RasterRoundedRectangleOutline" }

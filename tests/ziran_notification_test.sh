@@ -100,7 +100,7 @@ for source in source saved; do
         --bind notification:NotificationWindowFocusedHost=provider:Focused \
         --bind notification:NotificationSetAppNameHost=provider:SetName \
         --bind notification:NotificationSendHost=provider:Send \
-        -o "$work/$source.zib" "$app" "$provider"
-    test "$("$ziran" run "$work/$source.zib")" = 42
+        -o "$work/$source.zx" "$app" "$provider"
+    test "$("$ziran" run "$work/$source.zx")" = 42
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"

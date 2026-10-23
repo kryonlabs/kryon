@@ -10,9 +10,9 @@ kryon run tui        # the same pages in a terminal
 kryon run web        # Canvas2D browser page (Emscripten)
 ```
 
-`kryon build portable` exports `build/{{name}}-portable.zib`. Copy or download
-that file and open it with `kryon run {{name}}-portable.zib` using the shared
-Zib player; no app source is needed.
+`kryon build portable` exports `build/{{name}}-portable.zx`. Copy or download
+that file and open it with `kryon run {{name}}-portable.zx` using the shared
+Zx player; no app source is needed.
 
 Add a page by writing a procedure like `Library` and a `Tab` for it in
 `Frame`.

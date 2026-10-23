@@ -20,7 +20,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     clicks += Button(session, ButtonProps.{.key = cast(u64)1,
             .bounds = .{40.0, 40.0, 240.0, 64.0}, .label = "Click the portable app"})
     Text(session, TextProps.{.key = cast(u64)2, .bounds = .{40.0, 120.0, 250.0, 40.0},
-            .text = ifx clicks > 0 then "Clicked!" else "ZIB state persists", .font = 24})
+            .text = ifx clicks > 0 then "Clicked!" else "ZX state persists", .font = 24})
     Image(session, ImageProps.{.key = cast(u64)3, .bounds = .{200.0, 180.0, 100.0, 100.0},
             .asset_path = "assets/red.png", .alt_text = "Embedded red square"})
     input := TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session),

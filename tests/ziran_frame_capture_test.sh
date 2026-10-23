@@ -11,15 +11,15 @@ trap 'rm -rf "$output"' EXIT HUP INT TERM
     "$repo/tests/fixtures/frame_replay.zi"
 "$ziran" bundle --root "$repo/tests/fixtures" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" --entry frame_replay:Frame \
-    -o "$output/source.zib" "$repo/tests/fixtures/frame_replay.zi"
+    -o "$output/source.zx" "$repo/tests/fixtures/frame_replay.zi"
 "$ziran" bundle --root "$output/ir" --module-path "$output/ir" \
-    --entry frame_replay:Frame -o "$output/saved.zib" \
+    --entry frame_replay:Frame -o "$output/saved.zx" \
     "$output/ir/frame_replay.zir"
-cmp "$output/source.zib" "$output/saved.zib"
+cmp "$output/source.zx" "$output/saved.zx"
 
-"$repo/tools/frame-replay.sh" "$output/source.zib" frame_replay \
+"$repo/tools/frame-replay.sh" "$output/source.zx" frame_replay \
     "$repo/tests/fixtures/frame_replay.trace" "$output/source.json"
-"$repo/tools/frame-replay.sh" "$output/saved.zib" frame_replay \
+"$repo/tools/frame-replay.sh" "$output/saved.zx" frame_replay \
     "$repo/tests/fixtures/frame_replay.trace" "$output/saved.json"
 cmp "$output/source.json" "$output/saved.json"
 

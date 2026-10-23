@@ -10,11 +10,11 @@ unset DISPLAY WAYLAND_DISPLAY
 python3 "$repo/tests/png_fixtures.py" --zi "$work/png_cases.zi"
 set -- --root "$work" --module-path "$repo/src/backend" --module-path "$ziran_root/std"
 "$ziran" ir "$@" -o "$work/ir" "$work/png_cases.zi"
-"$ziran" bundle "$@" --entry png_cases:main -o "$work/source.zib" "$work/png_cases.zi"
-"$ziran" bundle --root "$work/ir" --entry png_cases:main -o "$work/saved.zib" "$work/ir/png_cases.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
-test "$("$ziran" run "$work/saved.zib")" = 0
+"$ziran" bundle "$@" --entry png_cases:main -o "$work/source.zx" "$work/png_cases.zi"
+"$ziran" bundle --root "$work/ir" --entry png_cases:main -o "$work/saved.zx" "$work/ir/png_cases.zir"
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
+test "$("$ziran" run "$work/saved.zx")" = 0
 for target in c cpp; do
     "$ziran" build --target="$target" "$@" -o "$work/$target-source" "$work/png_cases.zi"
     "$ziran" build --target="$target" --root "$work/ir" -o "$work/$target-saved" "$work/ir/png_cases.zir"

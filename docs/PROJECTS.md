@@ -164,7 +164,7 @@ should be avoided by reproducible applications.
 default_profile = "tui"
 ```
 
-## Zib applications
+## Zx applications
 
 Desktop, raylib, Canvas and Android profiles can package an ordinary `Frame`
 application as the same portable program with its resources:
@@ -172,51 +172,51 @@ application as the same portable program with its resources:
 ```toml
 [tool.kryon.profiles.portable]
 backend = "desktop"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 ```
 
-Use `backend = "canvas"` with `codegen = "zib"` for the same portable app
-and a browser player. The build writes both `.zib` and `.html` files; serve
+Use `backend = "canvas"` with `codegen = "zx"` for the same portable app
+and a browser player. The build writes both `.zx` and `.html` files; serve
 the HTML with its generated JavaScript and WebAssembly files. The browser
 shell interprets the bundle and uses Canvas2D for rendering. It includes a
-file picker for opening another downloaded ZIB without recompiling its UI.
+file picker for opening another downloaded ZX without recompiling its UI.
 Unsupported required services are reported before replacing the running app.
 
-`backend = "raylib"` with `codegen = "zib"` builds a generic native player
-beside the bundle. `make zib-raylib` builds that player directly; pass a ZIB
-path to it or use `--check FILE.zib` to validate without opening a window.
+`backend = "raylib"` with `codegen = "zx"` builds a generic native player
+beside the bundle. `make zx-raylib` builds that player directly; pass a ZX
+path to it or use `--check FILE.zx` to validate without opening a window.
 Images are decoded directly from the bundle, with no resource extraction.
 The native player carries its host font beside the executable. Linux uses
 SDL/GLES; Windows and macOS use GLFW/OpenGL. HTTP uses libcurl; install its
-development package or supply `ZIB_RAYLIB_HTTP_LIBS` for your target.
+development package or supply `ZX_RAYLIB_HTTP_LIBS` for your target.
 Cross builds can supply
-`ZIB_RAYLIB_CC`, `ZIB_RAYLIB_AR`, `ZIB_RAYLIB_OBJCOPY`,
-`ZIB_RAYLIB_ARCHIVE`, `ZIB_RAYLIB_DEFINES` and `ZIB_RAYLIB_LIBS`.
-Use a separate `ZIB_RAYLIB_DIR` for each target. macOS uses the same renderer
+`ZX_RAYLIB_CC`, `ZX_RAYLIB_AR`, `ZX_RAYLIB_OBJCOPY`,
+`ZX_RAYLIB_ARCHIVE`, `ZX_RAYLIB_DEFINES` and `ZX_RAYLIB_LIBS`.
+Use a separate `ZX_RAYLIB_DIR` for each target. macOS uses the same renderer
 and has platform build settings, but has not been executed in this checkout.
 
-An Android profile with `codegen = "zib"` builds its portable guest first,
-then packages `app.zib`, the VM and the native renderer into the APK. Its
+An Android profile with `codegen = "zx"` builds its portable guest first,
+then packages `app.zx`, the VM and the native renderer into the APK. Its
 `Frame` is not compiled into native application code. The canonical scaffold
 handles display density, safe-area insets, touch, hardware/soft-keyboard input
 and graphics restoration without resetting bundle state. It also registers a
-ZIB file opener: Android document URIs are copied into private cache and
+ZX file opener: Android document URIs are copied into private cache and
 validated before replacing the running app. Invalid files retain the current
 instance. Existing customized Android scaffolds must adopt the updated
 Gradle/CMake and activity/manifest glue to use this profile.
-`make zib-android-test` builds ARM64, ARMv7 and x86-64 shells. Runtime testing
-uses `python3 tests/zib_android_test.py --serial emulator-NNNN` and accepts
+`make zx-android-test` builds ARM64, ARMv7 and x86-64 shells. Runtime testing
+uses `python3 tests/zx_android_test.py --serial emulator-NNNN` and accepts
 only an explicitly selected disposable emulator.
 
-`make zib-canvas` builds a generic browser player with no embedded app.
-`ZIB_CANVAS_BUNDLE=/absolute/path/app.zib` optionally embeds a default app.
-A same-origin relative `?bundle=path/app.zib` opens a hosted download.
+`make zx-canvas` builds a generic browser player with no embedded app.
+`ZX_CANVAS_BUNDLE=/absolute/path/app.zx` optionally embeds a default app.
+A same-origin relative `?bundle=path/app.zx` opens a hosted download.
 The browser player supports ordinary `Frame` bundles and standalone
 `AppContext` apps, drawing, input, fonts, embedded images and the browser
 clipboard. Native, Android and browser players provide packed audio,
 asynchronous HTTP audio/text and a monotonic clock. Requests accept only
-HTTP/HTTPS; guest paths cannot read host files. Android ZIB scaffolds include
+HTTP/HTTPS; guest paths cannot read host files. Android ZX scaffolds include
 a network manifest overlay; ordinary native builds do not use that overlay.
 
 Standalone `AppContext` apps use the existing lifecycle and hosted widget
@@ -229,24 +229,24 @@ and Android's private application storage. `KRYON_APP_DATA` can select a
 different native parent directory. Account/device services that the host
 does not provide return the existing explicit unavailable response.
 
-`make gallery-zib` exports every enabled gallery example with its full source
-behavior and embedded assets under `build/gallery-zib/`; `index.json` maps
+`make gallery-zx` exports every enabled gallery example with its full source
+behavior and embedded assets under `build/gallery-zx/`; `index.json` maps
 example IDs to their bundle paths. The entire gallery also has a `portable`
 profile. The website build stages both these downloads and the generic
 browser player; generating them does not publish the website.
 The exporter and player use the gallery's configured Ziran toolchain, including
-its lock or local override. A ZIB's embedded IR format must match its player;
+its lock or local override. A ZX's embedded IR format must match its player;
 the installed compiler on `PATH` can use a different format.
-`make gallery-zib-test` validates and renders all exported examples on a
-private X server. `make zib-canvas-test` checks that the desktop and browser
+`make gallery-zx-test` validates and renders all exported examples on a
+private X server. `make zx-canvas-test` checks that the desktop and browser
 bundles are identical and exercises browser startup, images, clicks, Unicode,
 resizing, file replacement and rejection of invalid files.
-`make zib-services-test` exercises real media and HTTP on native and browser
-players. `make zib-hosted-test` checks hosted widgets, packed images and
-document persistence. `make zib-headless-test` runs VM drawing, packed PNG,
+`make zx-services-test` exercises real media and HTTP on native and browser
+players. `make zx-hosted-test` checks hosted widgets, packed images and
+document persistence. `make zx-headless-test` runs VM drawing, packed PNG,
 retained input and Unicode without a display. The Android service and hosted
 tests require `--android-serial emulator-NNNN` and `--serial emulator-NNNN`
-respectively and verify the disposable `KryonZib` AVD before installing.
+respectively and verify the disposable `KryonZx` AVD before installing.
 
 Custom native hosts can load `kryon/bundle_player`, prepare embedded assets,
 attach `kryon/bundle_raster` callbacks and then start the instance. This lets
@@ -254,10 +254,10 @@ initializers use the selected renderer and assets. `PlayerFrameNative` runs
 inside the caller's ordinary frame. `PlayerFrame` retains the CPU-surface
 route for hosts that supply pixel buffers.
 
-`kryon build portable` writes `build/<package-name>-portable.zib`.
+`kryon build portable` writes `build/<package-name>-portable.zx`.
 All four project templates include this profile.
 `kryon run portable` builds it and launches the reusable desktop player.
-After downloading that file, `kryon run app.zib` works without the app's source,
+After downloading that file, `kryon run app.zx` works without the app's source,
 manifest, lock, or compiler-generated native code. Install the player with
 `make install-user` in Kryon. The player needs SDL2, Cairo and FreeType.
 
@@ -265,7 +265,7 @@ manifest, lock, or compiler-generated native code. Install the player with
 same path. Images retain their ordinary `ImageProps.asset_path` values. The
 player extracts validated resources into a private temporary directory and
 removes it when the app exits. Exports rebuild resource content on every build,
-including file removals. A `pixmap` profile also accepts `codegen = "zib"` and
+including file removals. A `pixmap` profile also accepts `codegen = "zx"` and
 runs through the display-free Ziran interpreter.
 
 The desktop player supplies shapes, text, path-backed PNG images, window
@@ -277,14 +277,14 @@ Applications with custom native storage, audio, pointer casts or C callbacks
 must first give those effects portable host interfaces. The desktop player
 does not yet replace these application-specific hosts.
 
-`make zib-test` exports a package-qualified app, copies only its Zib file to a
+`make zx-test` exports a package-qualified app, copies only its Zx file to a
 download folder, and checks embedded images, installation, native pixel parity,
 persistent click state, keyboard/Unicode input, malformed files and missing
-capabilities on private displays. All four starter apps also have their Zib
+capabilities on private displays. All four starter apps also have their Zx
 pixels compared with native output.
 
-`kryon install` also installs a Zib profile: its portable program goes to
-`share/kryon/<bin>/app.zib`, and a reusable native player at `bin/<bin>` launches
+`kryon install` also installs a Zx profile: its portable program goes to
+`share/kryon/<bin>/app.zx`, and a reusable native player at `bin/<bin>` launches
 it. The usual desktop menu and autostart settings apply. Embedded files need
 no source checkout after installation.
 
@@ -323,9 +323,9 @@ writes, the clipboard, embedded locales and a desktop image picker. Set
 provide their own account-scoped storage and sync through the same calls.
 Local documents do not automatically sync between different harnesses.
 
-For example, Inner Breeze's `diary.zib` runs in its original harness,
-Werkzeug's `werk --bundle diary.zib`, or `kryon run diary.zib`; it does not
-load `inbe.zib`. Werkzeug's Calculator uses the same interface. Apps that
+For example, Inner Breeze's `diary.zx` runs in its original harness,
+Werkzeug's `werk --bundle diary.zx`, or `kryon run diary.zx`; it does not
+load `inbe.zx`. Werkzeug's Calculator uses the same interface. Apps that
 need device secrets or timed clipboard ownership still require a harness
 that supplies those capabilities. The common player currently has a Linux
 desktop provider; hosted app release watching is not supported yet.

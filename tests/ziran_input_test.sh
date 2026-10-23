@@ -74,14 +74,14 @@ sources="$work/geometry.zi $work/input_props.zi $work/input.zi $work/use_input.z
 "$ziran" check --root "$work" $sources
 "$ziran" ir --root "$work" -o "$work/ir" $sources
 "$ziran" bundle --root "$work" --entry use_input:Answer \
-    -o "$work/source.zib" $sources
+    -o "$work/source.zx" $sources
 "$ziran" bundle --root "$work" --entry use_input:Answer \
-    -o "$work/ir.zib" "$work/ir/geometry.zir" \
+    -o "$work/ir.zx" "$work/ir/geometry.zir" \
     "$work/ir/input_props.zir" "$work/ir/input.zir" \
     "$work/ir/use_input.zir"
-cmp "$work/source.zib" "$work/ir.zib"
-test "$("$ziran" run "$work/source.zib")" = 42
-test "$("$ziran" run "$work/ir.zib")" = 42
+cmp "$work/source.zx" "$work/ir.zx"
+test "$("$ziran" run "$work/source.zx")" = 42
+test "$("$ziran" run "$work/ir.zx")" = 42
 
 for input in source ir; do
     if test "$input" = source; then

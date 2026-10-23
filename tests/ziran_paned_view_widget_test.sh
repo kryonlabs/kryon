@@ -22,15 +22,15 @@ bind_mesh=paint_queue:RasterImageMesh=paned_view_host:RasterImageMesh
     --bind "$bind_fill" --bind "$bind_outline" \
     --bind "$bind_line" --bind "$bind_text" --bind "$bind_clipped" \
     --bind "$bind_image" --bind "$bind_mesh" --entry paned_view_portable_test:main \
-    -o "$work/source.zib" "$portable"
+    -o "$work/source.zx" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --bind "$bind_fill" --bind "$bind_outline" \
     --bind "$bind_line" --bind "$bind_text" --bind "$bind_clipped" \
     --bind "$bind_image" --bind "$bind_mesh" --entry paned_view_portable_test:main \
-    -o "$work/saved.zib" "$work/ir/paned_view_portable_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
-test "$("$ziran" run "$work/saved.zib")" = 0
+    -o "$work/saved.zx" "$work/ir/paned_view_portable_test.zir"
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
+test "$("$ziran" run "$work/saved.zx")" = 0
 
 for target in c cpp; do
     output=$work/native-$target

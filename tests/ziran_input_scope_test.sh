@@ -21,8 +21,8 @@ for form in source saved; do
     fi
     "$ziran" bundle --root "$root" --module-path "$modules" \
         --module-path "$ziran_root/std" --entry input_scope_test:Answer \
-        -o "$work/$form.zib" "$input"
-    test "$("$ziran" run "$work/$form.zib")" = 42
+        -o "$work/$form.zx" "$input"
+    test "$("$ziran" run "$work/$form.zx")" = 42
     for target in c cpp go; do
         out=$work/$form-$target
         target_flags=
@@ -45,4 +45,4 @@ GO
         timeout --kill-after=2s 15s "$out/run"
     done
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"

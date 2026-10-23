@@ -1,4 +1,4 @@
-"""Run one service-bearing ZIB on native and browser players, with local HTTP."""
+"""Run one service-bearing ZX on native and browser players, with local HTTP."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import argparse
 import json
@@ -16,18 +16,18 @@ from raylib_project_test import png_pixels, rgb
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--runner', choices=['wine'])
-parser.add_argument('--player', type=Path, default=ROOT / 'build/zib-raylib/zib')
+parser.add_argument('--player', type=Path, default=ROOT / 'build/zx-raylib/zx')
 parser.add_argument('--skip-browser', action='store_true')
-parser.add_argument('--android-serial', help='Only the disposable KryonZib emulator; never a physical device')
+parser.add_argument('--android-serial', help='Only the disposable KryonZx emulator; never a physical device')
 args = parser.parse_args()
 if args.android_serial and (args.runner or args.skip_browser):
     parser.error('--android-serial selects Android instead of native/browser execution')
 
-output = ROOT / 'build/scratch/zib-services'
+output = ROOT / 'build/scratch/zx-services'
 project = output / 'project'
 (project / 'src').mkdir(parents=True, exist_ok=True)
 (project / 'assets').mkdir(exist_ok=True)
-(project / 'src/app.zi').write_text((ROOT / 'tests/zib/services.zi').read_text())
+(project / 'src/app.zi').write_text((ROOT / 'tests/zx/services.zi').read_text())
 tone = project / 'assets/tone.wav'
 with wave.open(str(tone), 'wb') as sound:
     sound.setnchannels(1)
@@ -68,7 +68,7 @@ git = "https://github.com/kryonlabs/kryon.git"
 ref = "master"
 [tool.kryon.profiles.portable]
 backend = "desktop"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 ''')
 (project / 'ziran.local.toml').write_text(
@@ -96,11 +96,11 @@ def android_services(bundle):
                               capture_output=True, timeout=40)
 
     assert run('shell', 'getprop', 'ro.kernel.qemu').stdout.strip() == b'1'
-    assert run('emu', 'avd', 'name').stdout.splitlines()[0].strip() == b'KryonZib'
-    package = 'com.kryon.zibtest'
-    transport = '/data/local/tmp/kryon-services.zib'
+    assert run('emu', 'avd', 'name').stdout.splitlines()[0].strip() == b'KryonZx'
+    package = 'com.kryon.zxtest'
+    transport = '/data/local/tmp/kryon-services.zx'
     port = f'tcp:{server.server_port}'
-    apk = ROOT / 'build/zib-android-test/droid/app/build/outputs/apk/debug/app-debug.apk'
+    apk = ROOT / 'build/zx-android-test/droid/app/build/outputs/apk/debug/app-debug.apk'
     run('install', '-r', apk)
     try:
         run('shell', 'wm', 'size', '960x600')
@@ -109,7 +109,7 @@ def android_services(bundle):
         run('push', bundle, transport)
         run('shell', 'am', 'start', '-W', '-n', package + '/.MainActivity')
         pid = run('shell', 'pidof', package).stdout.decode().strip()
-        run('shell', 'am', 'start', '-W', '-n', package + '/.Zib',
+        run('shell', 'am', 'start', '-W', '-n', package + '/.Zx',
             '-a', 'android.intent.action.VIEW', '-t', 'application/vnd.ziran.bundle',
             '-d', 'file://' + transport)
         deadline = time.monotonic() + 25
@@ -139,7 +139,7 @@ try:
     for command in ([ZIRAN, 'lock', '--offline'],
                     [ZIRAN, 'tool', 'kryon', 'build', '--profile', 'portable']):
         subprocess.run(list(map(str, command)), cwd=project, env=env, check=True, timeout=300)
-    bundle = project / 'build/service_probe-portable.zib'
+    bundle = project / 'build/service_probe-portable.zx'
     if args.android_serial:
         android_services(bundle)
     else:
@@ -148,10 +148,10 @@ try:
         result = subprocess.run(['xvfb-run', '-a', *native],
                                 env=env, text=True, capture_output=True, timeout=60)
         (output / 'native.log').write_text(result.stdout + result.stderr)
-        assert result.returncode == 0 and 'ZIB media, HTTP and clock passed' in result.stdout, result.stdout + result.stderr
+        assert result.returncode == 0 and 'ZX media, HTTP and clock passed' in result.stdout, result.stdout + result.stderr
     if not args.skip_browser and not args.android_serial:
-        subprocess.run(['node', str(ROOT / 'tests/zib_canvas_browser.mjs'),
-                        str(ROOT / 'build/zib-canvas/player.html'), 'services', str(bundle)],
+        subprocess.run(['node', str(ROOT / 'tests/zx_canvas_browser.mjs'),
+                        str(ROOT / 'build/zx-canvas/player.html'), 'services', str(bundle)],
                        env=env, check=True, timeout=90)
 finally:
     server.shutdown()

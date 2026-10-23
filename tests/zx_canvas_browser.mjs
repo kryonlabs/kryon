@@ -6,7 +6,7 @@ import {createServer} from 'node:http';
 import {join,resolve,extname,basename,dirname} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 const [html,mode='keyboard',bundleFile]=process.argv.slice(2);
-const downloaded=bundleFile||join(dirname(html),'zib_canvas_probe-web.zib');
+const downloaded=bundleFile||join(dirname(html),'zx_canvas_probe-web.zx');
 const root=dirname(html),profile=await mkdtemp(join(root,'browser-profile-'));
 const server=createServer(async(req,res)=>{
   try {
@@ -51,20 +51,20 @@ try {
   await call('Runtime.enable');
   await call('Emulation.setDeviceMetricsOverride',{width:960,height:600,deviceScaleFactor:1,mobile:false});
   if(mode==='services') {
-    while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zib-open")'))await delay(100);
+    while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zx-open")'))await delay(100);
     const document=await call('DOM.getDocument');
-    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});
+    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zx-open'});
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[resolve(bundleFile)]});
-    while(Date.now()<deadline&&!diagnostics.includes('ZIB media, HTTP and clock passed')) {
-      assert(!/ZIB service failure|portable execution failed|ABORT|RuntimeError/.test(diagnostics),diagnostics);
+    while(Date.now()<deadline&&!diagnostics.includes('ZX media, HTTP and clock passed')) {
+      assert(!/ZX service failure|portable execution failed|ABORT|RuntimeError/.test(diagnostics),diagnostics);
       await delay(100);
     }
-    assert(diagnostics.includes('ZIB media, HTTP and clock passed'),diagnostics+' '+errors);
-    console.log('Browser ZIB audio, asynchronous HTTP and clock passed');
+    assert(diagnostics.includes('ZX media, HTTP and clock passed'),diagnostics+' '+errors);
+    console.log('Browser ZX audio, asynchronous HTTP and clock passed');
   } else if(mode==='hosted') {
     const imageReady='(()=>{const c=document.querySelector("canvas");if(!c)return false;const p=c.getContext("2d").getImageData(550,130,1,1).data;return p[0]===230&&p[1]===30&&p[2]===40;})()';
     const textPixels='Array.from(document.querySelector("canvas").getContext("2d").getImageData(40,128,300,40).data).join(",")';
-    async function ready(){const end=Date.now()+30000;while(Date.now()<end){if(await evaluate(imageReady))return;await delay(100);}throw Error('Hosted app did not render: '+diagnostics+' '+await evaluate('document.querySelector("#zib-controls span").textContent'));}
+    async function ready(){const end=Date.now()+30000;while(Date.now()<end){if(await evaluate(imageReady))return;await delay(100);}throw Error('Hosted app did not render: '+diagnostics+' '+await evaluate('document.querySelector("#zx-controls span").textContent'));}
     await ready();
     const original=await evaluate(textPixels);
     await evaluate(`(() => {
@@ -93,14 +93,14 @@ try {
     assert.equal(await evaluate(textPixels),clicked,'Browser reload discarded the app document');
     assert(await evaluate(`Array.from({length:8},(_,index)=>Module.FS.readFile('/kryon-apps/portable.probe/batch/'+(index+1),{encoding:'utf8'})).every(value=>value==='saved')`),'Reload discarded a batched document');
     const document=await call('DOM.getDocument');
-    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});
+    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zx-open'});
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[resolve(downloaded)]});
     await delay(700);
     assert.equal(await evaluate(textPixels),clicked,'Replacing the same hosted app lost its document');
-    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'invalid.zib')]});
+    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'invalid.zx')]});
     await delay(400);
     assert.equal(await evaluate(textPixels),clicked,'Invalid replacement discarded the running hosted app');
-    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'hosted_other.zib')]});
+    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'hosted_other.zx')]});
     await delay(700);
     assert.equal(await evaluate(textPixels),original,'A different app read the first app document');
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[resolve(downloaded)]});
@@ -203,18 +203,18 @@ try {
     await call('Input.dispatchMouseEvent', {type: 'mouseReleased', x: scrollOrigin.x + 335, y: scrollOrigin.y + 574, button: 'left', buttons: 0, clickCount: 1});
     for (let end = Date.now() + 5000; endCount() === beforeDrag && Date.now() < end;) await delay(20);
     assert(endCount() > beforeDrag, 'Hosted scrollbar could not reach the last row: ' + diagnostics);
-    console.log('Browser hosted ZIB images, widgets, persistence, isolation, replacement and scrolling passed');
+    console.log('Browser hosted ZX images, widgets, persistence, isolation, replacement and scrolling passed');
   } else if(mode==='gallery') {
-    while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zib-open")'))await delay(100);
+    while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zx-open")'))await delay(100);
     const document=await call('DOM.getDocument');
-    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});
+    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zx-open'});
     const entries=JSON.parse(await readFile(bundleFile,'utf8'));
     const shots=join(dirname(bundleFile),'screenshots-browser');
     await mkdir(shots,{recursive:true});
     for(const entry of entries) {
       await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[resolve(dirname(bundleFile),entry.bundle)]});
       await delay(600);
-      const state=await evaluate(`(()=>{const c=document.querySelector('canvas');const p=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let ink=0;for(let i=0;i<p.length;i+=4)if(p[i]+p[i+1]+p[i+2]<500)ink++;return {status:document.querySelector('#zib-controls span').textContent,ink};})()`);
+      const state=await evaluate(`(()=>{const c=document.querySelector('canvas');const p=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let ink=0;for(let i=0;i<p.length;i+=4)if(p[i]+p[i+1]+p[i+2]<500)ink++;return {status:document.querySelector('#zx-controls span').textContent,ink};})()`);
       assert.equal(state.status,'',entry.id+': '+state.status+' '+diagnostics);
       assert(state.ink>10,'Empty browser example: '+entry.id);
       assert(!/portable execution failed|ABORT|RuntimeError/.test(diagnostics),entry.id+': '+diagnostics);
@@ -222,12 +222,12 @@ try {
       await writeFile(join(shots,entry.id.replaceAll('/','-')+'.png'),Buffer.from(screenshot.data,'base64'));
       console.log('Browser rendered '+entry.id+': '+entry.name);
     }
-    console.log('All '+entries.length+' full gallery ZIBs rendered through the browser VM');
+    console.log('All '+entries.length+' full gallery ZXs rendered through the browser VM');
   } else {
   if(mode==='file') {
-    while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zib-open")'))await delay(100);
+    while(Date.now()<deadline&&!await evaluate('!!document.querySelector("#zx-open")'))await delay(100);
     const document=await call('DOM.getDocument');
-    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});
+    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zx-open'});
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[downloaded]});
   }
   let ready=false;
@@ -237,8 +237,8 @@ try {
     assert(!/portable execution failed|ABORT|FAIL/.test(diagnostics),diagnostics);
     await delay(100);
   }
-  assert(ready,'ZIB image asset did not render: '+diagnostics+' '+errors);
-  assert(await evaluate('(()=>{const c=document.querySelector("canvas").getContext("2d");const p=c.getImageData(10,10,1,1).data;if(p[0]!==248||p[1]!==250||p[2]!==252)return false;return [...c.getImageData(40,128,300,40).data].filter((v,i)=>i%4!==3&&v<100).length>30;})()'),'ZIB background or text did not render');
+  assert(ready,'ZX image asset did not render: '+diagnostics+' '+errors);
+  assert(await evaluate('(()=>{const c=document.querySelector("canvas").getContext("2d");const p=c.getImageData(10,10,1,1).data;if(p[0]!==248||p[1]!==250||p[2]!==252)return false;return [...c.getImageData(40,128,300,40).data].filter((v,i)=>i%4!==3&&v<100).length>30;})()'),'ZX background or text did not render');
   const textPixels='Array.from(document.querySelector("canvas").getContext("2d").getImageData(40,128,300,40).data).join(",")';
   const before=await evaluate(textPixels);
   const position=await evaluate('(()=>{const r=document.querySelector("canvas").getBoundingClientRect();return {x:r.x+100,y:r.y+70};})()');
@@ -248,22 +248,22 @@ try {
   await call('Input.dispatchMouseEvent',{type:'mouseReleased',...position,button:'left',buttons:0,clickCount:1});
   await delay(400);
   const clicked=await evaluate(textPixels);
-  assert.notEqual(clicked,before,'ZIB click did not update retained app state');
+  assert.notEqual(clicked,before,'ZX click did not update retained app state');
   // Resize the same instance; its click state must survive.
   await call('Emulation.setDeviceMetricsOverride',{width:1000,height:660,deviceScaleFactor:1,mobile:false});
   await delay(300);
-  assert.equal(await evaluate(textPixels),clicked,'Resize discarded the ZIB app state');
+  assert.equal(await evaluate(textPixels),clicked,'Resize discarded the ZX app state');
   if(mode==='keyboard') {
     const document=await call('DOM.getDocument');
-    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zib-open'});
-    assert(picker.nodeId,'The generic player has no ZIB file picker');
-    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'invalid.zib')]});
-    const rejected=/not a valid ZIB|invalid|capability/;
-    assert.match(await settle('document.querySelector("#zib-controls span").textContent',v=>rejected.test(v)),rejected);
+    const picker=await call('DOM.querySelector',{nodeId:document.root.nodeId,selector:'#zx-open'});
+    assert(picker.nodeId,'The generic player has no ZX file picker');
+    await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[join(dirname(downloaded),'invalid.zx')]});
+    const rejected=/not a valid ZX|invalid|capability/;
+    assert.match(await settle('document.querySelector("#zx-controls span").textContent',v=>rejected.test(v)),rejected);
     assert.equal(await evaluate(textPixels),clicked,'Invalid file disturbed the running app');
-    await evaluate('Module.FS.writeFile("/tmp/kryon-zib/private.png",Module.FS.readFile("/tmp/kryon-zib/assets/red.png"))');
+    await evaluate('Module.FS.writeFile("/tmp/kryon-zx/private.png",Module.FS.readFile("/tmp/kryon-zx/assets/red.png"))');
     await call('DOM.setFileInputFiles',{nodeId:picker.nodeId,files:[downloaded]});
-    assert.equal(await settle(textPixels,v=>v===before),before,'Opening the downloaded ZIB did not create a fresh instance');
+    assert.equal(await settle(textPixels,v=>v===before),before,'Opening the downloaded ZX did not create a fresh instance');
     await call('Input.dispatchMouseEvent',{type:'mousePressed',...position,button:'left',buttons:1,clickCount:1});
     await delay(150);
     await call('Input.dispatchMouseEvent',{type:'mouseReleased',...position,button:'left',buttons:0,clickCount:1});
@@ -271,10 +271,10 @@ try {
   }
   if(mode==='unicode')await call('Input.dispatchKeyEvent',{type:'char',key:'é',text:'é',unmodifiedText:'é'});
   else await call('Input.dispatchKeyEvent',{type:'keyDown',key:'a',code:'KeyA',windowsVirtualKeyCode:65,nativeVirtualKeyCode:65,text:'a'});
-  while(Date.now()<deadline&&!diagnostics.includes('zib interaction passed'))await delay(100);
-  assert(diagnostics.includes('zib interaction passed'),diagnostics);
+  while(Date.now()<deadline&&!diagnostics.includes('zx interaction passed'))await delay(100);
+  assert(diagnostics.includes('zx interaction passed'),diagnostics);
   assert(!/interaction failed|portable execution failed|ABORT/.test(diagnostics),diagnostics);
-  console.log('ZIB Canvas '+mode+': image, text, click state, resize and input passed');
+  console.log('ZX Canvas '+mode+': image, text, click state, resize and input passed');
   }
 } finally {
   socket?.close();try {process.kill(-browser.pid,'SIGTERM');}catch {}

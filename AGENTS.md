@@ -1,7 +1,7 @@
 # Kryon repository rules
 
 Kryon is a reusable UI library authored in Ziran. The Ziran language,
-compiler, `.zir` representation, `.zib` format, and portable runtime live in
+compiler, `.zir` representation, `.zx` format, and portable runtime live in
 the separate Ziran repository (`~/Projects/ziranlang/ziran`). Kryon's widget
 modules live in `src/ui/*.zi`, its hosts in `src/backend/*.zi`, and the
 `kryon` project tool in `src/project/*.zi`.

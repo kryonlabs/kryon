@@ -29,10 +29,10 @@ backend = "canvas"
 [tool.kryon.profiles.desktop]
 backend = "desktop"
 
-# Downloadable app, rendered by the shared Zib player.
+# Downloadable app, rendered by the shared Zx player.
 [tool.kryon.profiles.portable]
 backend = "desktop"
-codegen = "zib"
+codegen = "zx"
 
 # `kryon run shot > screen.ppm` renders one frame without a display.
 [tool.kryon.profiles.shot]

@@ -10,13 +10,13 @@ binding=text_input_platform:SetPlatformTextKeyboardVisible=text_input_platform_h
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
     -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --bind "$binding" --entry text_input_platform_behavior:main -o "$work/source.zib" "$source"
+    --bind "$binding" --entry text_input_platform_behavior:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --bind "$binding" --entry text_input_platform_behavior:main -o "$work/saved.zib" \
+    --bind "$binding" --entry text_input_platform_behavior:main -o "$work/saved.zx" \
     "$work/ir/text_input_platform_behavior.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
-test "$("$ziran" run "$work/saved.zib")" = 0
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
+test "$("$ziran" run "$work/saved.zx")" = 0
 
 for target in c cpp; do
     "$ziran" build --target="$target" --root "$repo/tests" \

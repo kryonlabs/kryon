@@ -7,7 +7,7 @@ stage: s32;
 started: s64;
 
 Failure :: (code: s32) -> s32 {
-    print("ZIB service failure %\n", code)
+    print("ZX service failure %\n", code)
     if ServiceKeepOpen() {
         stage = -code
         return 0
@@ -62,7 +62,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     } else if stage == 3 {
         if FetchTextState() == 2 { return Failure(16) }
         if FetchTextState() == -1 {
-            print("ZIB media, HTTP and clock passed\n")
+            print("ZX media, HTTP and clock passed\n")
             if ServiceKeepOpen() {
                 stage = 4
                 return 0

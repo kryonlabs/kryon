@@ -1,4 +1,4 @@
-"""Export, download and interact with a real Zib app on a private display."""
+"""Export, download and interact with a real Zx app on a private display."""
 import json
 import os
 from pathlib import Path
@@ -11,7 +11,7 @@ import time
 from toolchain import ROOT, ZIRAN_ROOT, ZIRAN
 from raylib_project_test import png_pixels, rgb, solid_png
 
-OUTPUT = ROOT / "build/zib-test"
+OUTPUT = ROOT / "build/zx-test"
 
 
 def environment():
@@ -39,7 +39,7 @@ def run(args, cwd, env, ok=True):
 
 def input_probe(bundle, mode):
     # This process inherits only the private display created by xvfb-run.
-    process = subprocess.Popen([str(ROOT / "build/bin/zib"), bundle],
+    process = subprocess.Popen([str(ROOT / "build/bin/zx"), bundle],
                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         deadline = time.monotonic() + 40
@@ -53,7 +53,7 @@ def input_probe(bundle, mode):
             time.sleep(0.1)
         assert window is not None, "player did not open its window"
         asset_directory = Path(os.readlink(f"/proc/{process.pid}/cwd"))
-        assert asset_directory.name.startswith("zib-")
+        assert asset_directory.name.startswith("zx-")
         assert (asset_directory / "assets/red.png").is_file()
         subprocess.run(["xdotool", "windowfocus", "--sync", window], check=True)
         # Two event loops must see press and release separately.
@@ -76,7 +76,7 @@ def input_probe(bundle, mode):
             process.terminate()
             out, err = process.communicate(timeout=10)
             raise AssertionError(f"{mode} input did not finish: {out!r} {err!r}")
-        assert b"zib interaction passed" in out, (out, err)
+        assert b"zx interaction passed" in out, (out, err)
         assert b"interaction failed" not in out, out
         assert not asset_directory.exists(), "player left extracted resources behind"
     finally:
@@ -91,15 +91,15 @@ def main():
     project = OUTPUT / "project"
     project.mkdir(exist_ok=True)
     (project / "src").mkdir(exist_ok=True)
-    shutil.copyfile(ROOT / "tests/zib/app.zi", project / "src/app.zi")
+    shutil.copyfile(ROOT / "tests/zx/app.zi", project / "src/app.zi")
     (project / "ziran.toml").write_text('''[package]
-name = "zib_probe"
+name = "zx_probe"
 tool = "kryon"
 entry = "src/app.zi"
 module_roots = ["src"]
 bridge_modules = ["app"]
 [install]
-bin = "zib_probe"
+bin = "zx_probe"
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
 ref = "master"
@@ -110,7 +110,7 @@ ref = "master"
 default_profile = "portable"
 [tool.kryon.profiles.portable]
 backend = "desktop"
-codegen = "zib"
+codegen = "zx"
 assets = "assets"
 [tool.kryon.profiles.desktop]
 backend = "desktop"
@@ -121,11 +121,11 @@ backend = "desktop"
     solid_png(project / "assets/red.png", 32, 32, (230, 30, 40, 255))
     run([ZIRAN, "lock"], project, env)
     run([ZIRAN, "tool", "kryon", "build", "portable"], project, env)
-    bundle = project / "build/zib_probe-portable.zib"
+    bundle = project / "build/zx_probe-portable.zx"
     assert bundle.is_file()
     ir = project / "build/generated/portable/ir"
-    module = next(ir.glob("*_zib_run.zir")).stem
-    saved = OUTPUT / "saved.zib"
+    module = next(ir.glob("*_zx_run.zir")).stem
+    saved = OUTPUT / "saved.zx"
     run([ZIRAN, "bundle", "--root", ir, "--entry", module + ":main",
          "--asset-dir", "assets=" + str(project / "assets"),
          "-o", saved, ir / (module + ".zir")], project, env)
@@ -134,13 +134,13 @@ backend = "desktop"
     # A download contains no source, lock, project manifest or generated code.
     download = OUTPUT / "download with spaces"
     download.mkdir(exist_ok=True)
-    downloaded = download / "app.zib"
+    downloaded = download / "app.zx"
     shutil.copyfile(bundle, downloaded)
     for extra in download.iterdir():
         if extra != downloaded and extra.is_file():
             extra.unlink()
     assert list(download.iterdir()) == [downloaded]
-    checked = run([ROOT / "build/bin/zib", "--check", downloaded], ROOT,
+    checked = run([ROOT / "build/bin/zx", "--check", downloaded], ROOT,
                   {**env, "DISPLAY": "unreachable-display", "SDL_VIDEODRIVER": "invalid"})
     assert checked.stdout == b"", "checking must not execute application code"
     shot = OUTPUT / "portable.png"
@@ -156,38 +156,38 @@ backend = "desktop"
 
     run([ZIRAN, "tool", "kryon", "build", "desktop"], project, env)
     native = OUTPUT / "native.png"
-    run(["xvfb-run", "-a", project / "build/zib_probe-desktop"], project,
+    run(["xvfb-run", "-a", project / "build/zx_probe-desktop"], project,
         {**env, "KRYON_CAPTURE_PATH": str(native)})
-    assert png_pixels(native) == png, "Zib pixels diverged from native app"
+    assert png_pixels(native) == png, "Zx pixels diverged from native app"
     prefix = OUTPUT / "install with spaces"
     run([ZIRAN, "install", "--prefix", prefix], project, env)
-    desktop = prefix / "share/applications/zib_probe.desktop"
+    desktop = prefix / "share/applications/zx_probe.desktop"
     executable = next(line[5:] for line in desktop.read_text().splitlines()
                       if line.startswith("Exec="))
-    assert shlex.split(executable) == [str(prefix / "bin/zib_probe")]
+    assert shlex.split(executable) == [str(prefix / "bin/zx_probe")]
     installed = OUTPUT / "installed.png"
     run(["xvfb-run", "-a", *shlex.split(executable)], ROOT,
         {**env, "KRYON_CAPTURE_PATH": str(installed)})
-    assert png_pixels(installed) == png, "installed Zib app diverged"
+    assert png_pixels(installed) == png, "installed Zx app diverged"
     for mode in ("keyboard", "unicode"):
         run(["xvfb-run", "-a", sys.executable, __file__, "--input", downloaded, mode],
             ROOT, env)
 
     # Malformed files and unknown capabilities fail before opening a display.
-    broken = OUTPUT / "broken.zib"
+    broken = OUTPUT / "broken.zx"
     broken.write_bytes(downloaded.read_bytes()[:24])
-    run([ROOT / "build/bin/zib", broken], ROOT, env, ok=False)
-    run([ROOT / "build/bin/zib", "--check", broken], ROOT, env, ok=False)
+    run([ROOT / "build/bin/zx", broken], ROOT, env, ok=False)
+    run([ROOT / "build/bin/zx", "--check", broken], ROOT, env, ok=False)
     unknown = OUTPUT / "unknown.zi"
     unknown.write_text('host_api :: #system_library "host_api";\n'
                        'DangerousHost :: () -> s32 #foreign host_api;\n'
                        '#program_export\nmain :: () -> s32 { return DangerousHost() }\n')
-    bad_bundle = OUTPUT / "unknown.zib"
+    bad_bundle = OUTPUT / "unknown.zx"
     run([ZIRAN, "bundle", "--root", OUTPUT, "--entry", "unknown:main",
          "-o", bad_bundle, unknown], ROOT, env)
-    rejected = run([ROOT / "build/bin/zib", bad_bundle], ROOT, env, ok=False)
+    rejected = run([ROOT / "build/bin/zx", bad_bundle], ROOT, env, ok=False)
     assert b"unsupported host capability unknown:DangerousHost" in rejected.stdout
-    rejected = run([ROOT / "build/bin/zib", "--check", bad_bundle], ROOT, env, ok=False)
+    rejected = run([ROOT / "build/bin/zx", "--check", bad_bundle], ROOT, env, ok=False)
     assert b"unsupported host capability unknown:DangerousHost" in rejected.stdout
 
     startup = OUTPUT / "startup.zi"
@@ -195,12 +195,12 @@ backend = "desktop"
                        'initialized: s32 = Initialize();\n'
                        '#program_export\n'
                        'main :: () -> s32 { print("ran entry\\n"); return initialized }\n')
-    startup_bundle = OUTPUT / "startup.zib"
+    startup_bundle = OUTPUT / "startup.zx"
     run([ZIRAN, "bundle", "--root", OUTPUT, "--entry", "startup:main",
          "-o", startup_bundle, startup], ROOT, env)
     executed = run([ZIRAN, "run", startup_bundle], ROOT, env)
     assert b"ran startup" in executed.stdout and b"ran entry" in executed.stdout
-    checked = run([ROOT / "build/bin/zib", "--check", startup_bundle], ROOT, env)
+    checked = run([ROOT / "build/bin/zx", "--check", startup_bundle], ROOT, env)
     assert checked.stdout == b"", "checking executed application startup or entry"
 
     # Every maintained starter can be exported through its ordinary front door.
@@ -218,14 +218,14 @@ backend = "desktop"
         run([ROOT / "build/bin/kryon", "build", "portable"], app, env)
         portable_shot = OUTPUT / (template + "-portable.png")
         run(["xvfb-run", "-a", ROOT / "build/bin/kryon", "run",
-             app / ("build/" + name + "-portable.zib")], ROOT,
+             app / ("build/" + name + "-portable.zx")], ROOT,
             {**env, "KRYON_CAPTURE_PATH": str(portable_shot)})
         run([ROOT / "build/bin/kryon", "build", "desktop"], app, env)
         native_shot = OUTPUT / (template + "-native.png")
         run(["xvfb-run", "-a", app / ("build/" + name + "-desktop")], app,
             {**env, "KRYON_CAPTURE_PATH": str(native_shot)})
         assert png_pixels(portable_shot) == png_pixels(native_shot), template
-    print("Zib export, saved IR, downloaded rendering, installation, native pixel parity, "
+    print("Zx export, saved IR, downloaded rendering, installation, native pixel parity, "
           "persistent click state, keyboard, Unicode, malformed and unavailable host checks "
           "and all four starter apps passed")
 

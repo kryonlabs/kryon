@@ -1,4 +1,4 @@
-"""Exercise the native renderer with a downloaded ZIB on its own display."""
+"""Exercise the native renderer with a downloaded ZX on its own display."""
 import argparse
 import os
 from pathlib import Path
@@ -16,7 +16,7 @@ p.add_argument('--runner', default='')
 p.add_argument('--unicode-helper', type=Path)
 p.add_argument('--private', action='store_true')
 a = p.parse_args()
-output = ROOT / 'build/zib-native-test'
+output = ROOT / 'build/zx-native-test'
 output.mkdir(parents=True, exist_ok=True)
 if not a.private:
     env = os.environ.copy()
@@ -46,7 +46,7 @@ for mode in ('keyboard', 'unicode'):
             while time.monotonic() < deadline and process.poll() is None:
                 # This server belongs only to this player and its Wine process
                 # family. It cannot see or target the owner's desktop.
-                found = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', '^Kryon ZIB$'],
+                found = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', '^Kryon ZX$'],
                                        capture_output=True, text=True)
                 if found.returncode == 0 and found.stdout.strip():
                     window = found.stdout.splitlines()[0]
@@ -79,6 +79,6 @@ for mode in ('keyboard', 'unicode'):
                 process.terminate()
                 process.wait(timeout=10)
     contents = (output / f'{a.runner or "native"}-{mode}.log').read_text(errors='replace')
-    assert 'zib interaction passed' in contents, contents[-3000:]
+    assert 'zx interaction passed' in contents, contents[-3000:]
     assert 'interaction failed' not in contents, contents[-3000:]
-print('Native ZIB image, text, resize, click, keyboard and Unicode passed')
+print('Native ZX image, text, resize, click, keyboard and Unicode passed')

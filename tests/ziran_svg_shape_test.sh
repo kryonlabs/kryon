@@ -8,8 +8,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 source=$repo/tests/svg_shape_behavior.zi
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
-    --entry svg_shape_behavior:main -o "$work/shape.zib" "$source"
-test "$("$ziran" run "$work/shape.zib")" = 0
+    --entry svg_shape_behavior:main -o "$work/shape.zx" "$source"
+test "$("$ziran" run "$work/shape.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"

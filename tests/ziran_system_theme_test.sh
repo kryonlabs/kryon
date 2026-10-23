@@ -8,8 +8,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 source=$repo/tests/system_theme_behavior.zi
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
-    --entry system_theme_behavior:main -o "$work/theme.zib" "$source"
-test "$("$ziran" run "$work/theme.zib")" = 0
+    --entry system_theme_behavior:main -o "$work/theme.zx" "$source"
+test "$("$ziran" run "$work/theme.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"

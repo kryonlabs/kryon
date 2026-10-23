@@ -97,12 +97,12 @@ EOF
 "$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" \
     "$work/use_image.zi"
 "$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
-    --entry use_image:Answer -o "$work/source.zib" "$work/use_image.zi"
+    --entry use_image:Answer -o "$work/source.zx" "$work/use_image.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry use_image:Answer -o "$work/ir.zib" "$work/ir/use_image.zir"
-cmp "$work/source.zib" "$work/ir.zib"
-test "$("$ziran" run "$work/source.zib")" = 42
-test "$("$ziran" run "$work/ir.zib")" = 42
+    --entry use_image:Answer -o "$work/ir.zx" "$work/ir/use_image.zir"
+cmp "$work/source.zx" "$work/ir.zx"
+test "$("$ziran" run "$work/source.zx")" = 42
+test "$("$ziran" run "$work/ir.zx")" = 42
 
 for input in source ir; do
     if test "$input" = source; then

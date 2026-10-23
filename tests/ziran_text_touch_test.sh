@@ -18,13 +18,13 @@ set -- \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" "$@" --entry text_touch_behavior:main \
-    -o "$work/source.zib" "$source"
+    -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
-    --entry text_touch_behavior:main -o "$work/saved.zib" \
+    --entry text_touch_behavior:main -o "$work/saved.zx" \
     "$work/ir/text_touch_behavior.zir"
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 for bundle in source saved; do
-    result=$("$ziran" run "$work/$bundle.zib")
+    result=$("$ziran" run "$work/$bundle.zx")
     printf '%s bundle: %s\n' "$bundle" "$result"
     test "$result" = 0
 done

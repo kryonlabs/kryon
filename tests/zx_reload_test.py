@@ -9,7 +9,7 @@ import time
 
 from toolchain import ROOT, ZIRAN
 
-OUTPUT = ROOT / 'build/zib-reload-test'
+OUTPUT = ROOT / 'build/zx-reload-test'
 
 
 def run(args, **kwargs):
@@ -26,9 +26,9 @@ def wait_for(predicate):
 
 
 def publish(name, sequence):
-    data = (OUTPUT / (name + '.zib')).read_bytes()
+    data = (OUTPUT / (name + '.zx')).read_bytes()
     digest = hashlib.sha256(data).hexdigest()
-    (OUTPUT / (digest + '.zib')).write_bytes(data)
+    (OUTPUT / (digest + '.zx')).write_bytes(data)
     pointer = OUTPUT / 'current.json'
     temporary = pointer.with_suffix('.next')
     temporary.write_text(json.dumps(dict(sequence=sequence, sha256=digest)))
@@ -38,7 +38,7 @@ def publish(name, sequence):
 def private_probe():
     log_path = OUTPUT / 'player.log'
     with log_path.open('w') as log:
-        player = subprocess.Popen(['stdbuf', '-oL', str(ROOT / 'build/bin/zib'),
+        player = subprocess.Popen(['stdbuf', '-oL', str(ROOT / 'build/bin/zx'),
                                    '--watch-current', str(OUTPUT / 'current.json')],
                                   stdout=log, stderr=log)
         try:
@@ -65,7 +65,7 @@ def private_probe():
             (OUTPUT / 'current.json').write_text('{"sequence":5,"sha256":"../../escape"}')
             time.sleep(1.3)
             assert player.poll() is None and second_assets.exists()
-            print('ZIB reload retains process/window, replaces assets and rejects malformed, unsupported and rollback releases')
+            print('ZX reload retains process/window, replaces assets and rejects malformed, unsupported and rollback releases')
         finally:
             player.terminate()
             player.wait(timeout=10)
@@ -84,14 +84,14 @@ def main():
         assets.mkdir(exist_ok=True)
         (assets / 'version.txt').write_text(name)
         run([ZIRAN, 'bundle', '--root', OUTPUT, '--entry', name + ':main',
-             '--asset-dir', 'assets=' + str(assets), '-o', OUTPUT / (name + '.zib'), source], env=environment)
-    (OUTPUT / 'broken.zib').write_bytes(b'ZIB\0')
+             '--asset-dir', 'assets=' + str(assets), '-o', OUTPUT / (name + '.zx'), source], env=environment)
+    (OUTPUT / 'broken.zx').write_bytes(b'ZX\0\0')
     unsupported = OUTPUT / 'unsupported.zi'
     unsupported.write_text('host_api :: #system_library "host_api";\n'
                            'Missing :: () -> s32 #foreign host_api;\n'
                            '#program_export\nmain :: () -> s32 { return Missing() }\n')
     run([ZIRAN, 'bundle', '--root', OUTPUT, '--entry', 'unsupported:main',
-         '-o', OUTPUT / 'unsupported.zib', unsupported], env=environment)
+         '-o', OUTPUT / 'unsupported.zx', unsupported], env=environment)
     publish('one', 1)
     run(['xvfb-run', '-a', sys.executable, __file__, '--private-probe'], env=environment, cwd=ROOT)
 

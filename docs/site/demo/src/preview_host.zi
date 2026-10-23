@@ -173,7 +173,7 @@ PreviewStatus :: (state: string, message: string) {
 LoadPreview :: () -> bool {
     preview_load_error = "Unable to load the compiled preview. Check the program and try again."
     path: [32]u8
-    if !CopyCString("/preview.zib", path[:]) { return false }
+    if !CopyCString("/preview.zx", path[:]) { return false }
     bundle := OpenBundle(*path[0])
     if bundle == null { return false }
     count := BundleCapabilities(bundle)

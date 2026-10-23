@@ -39,14 +39,14 @@ EOF
 "$ziran" ir --root "$work" -o "$work/ir" \
     "$work/text_rows.zi" "$work/use_text_rows.zi"
 "$ziran" bundle --root "$work" --entry use_text_rows:Answer \
-    -o "$work/source.zib" "$work/text_rows.zi" \
+    -o "$work/source.zx" "$work/text_rows.zi" \
     "$work/use_text_rows.zi"
 "$ziran" bundle --root "$work" --entry use_text_rows:Answer \
-    -o "$work/ir.zib" "$work/ir/text_rows.zir" \
+    -o "$work/ir.zx" "$work/ir/text_rows.zir" \
     "$work/ir/use_text_rows.zir"
-cmp "$work/source.zib" "$work/ir.zib"
-test "$("$ziran" run "$work/source.zib")" = 42
-test "$("$ziran" run "$work/ir.zib")" = 42
+cmp "$work/source.zx" "$work/ir.zx"
+test "$("$ziran" run "$work/source.zx")" = 42
+test "$("$ziran" run "$work/ir.zx")" = 42
 
 for input in source ir; do
     if test "$input" = source; then

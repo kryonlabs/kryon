@@ -20,12 +20,12 @@ set -- \
     -o "$work/ir" "$portable"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     "$@" --entry progress_widget_portable_test:main \
-    -o "$work/source.zib" "$portable"
+    -o "$work/source.zx" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     "$@" --entry progress_widget_portable_test:main \
-    -o "$work/saved.zib" "$work/ir/progress_widget_portable_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
+    -o "$work/saved.zx" "$work/ir/progress_widget_portable_test.zir"
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
 
 # A bundle with one missing declared capability must fail before UI effects.
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
@@ -34,8 +34,8 @@ test "$("$ziran" run "$work/source.zib")" = 0
     --bind raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_progress_raster_host:RasterRoundedRectangleOutline \
     --bind raster_text:RasterText=ziran_progress_raster_host:RasterText \
-    --entry progress_widget_portable_test:main -o "$work/missing.zib" "$portable"
-if "$ziran" run "$work/missing.zib" > "$work/missing.log" 2>&1; then
+    --entry progress_widget_portable_test:main -o "$work/missing.zx" "$portable"
+if "$ziran" run "$work/missing.zx" > "$work/missing.log" 2>&1; then
     echo 'progress bundle ran without its clipped-text capability' >&2
     exit 1
 fi

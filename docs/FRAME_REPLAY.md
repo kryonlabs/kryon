@@ -10,7 +10,7 @@ raster effects. Ordinary `EndFrame()` needs no capture bindings.
 Run a portable bundle with:
 
 ```sh
-tools/frame-replay.sh app.zib app trace.txt capture.json
+tools/frame-replay.sh app.zx app trace.txt capture.json
 tools/frame-inspect.sh capture.json 3 1
 tools/frame-inspect.sh --diff baseline.json candidate.json
 ```

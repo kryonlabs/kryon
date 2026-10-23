@@ -12,6 +12,6 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" \
     -o "$work/ir" "$repo/tests/ziran_bundle_names_test.zi"
 "$ziran" bundle --root "$work/ir" --entry ziran_bundle_names_test:main \
-    -o "$work/names.zib" "$work/ir/ziran_bundle_names_test.zir"
-test "$("$ziran" run "$work/names.zib")" = 0
+    -o "$work/names.zx" "$work/ir/ziran_bundle_names_test.zir"
+test "$("$ziran" run "$work/names.zx")" = 0
 echo 'Bundle module names: plain, package and named imports remain distinct'

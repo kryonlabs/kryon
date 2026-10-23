@@ -104,9 +104,9 @@ ZI
 "$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
 "$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
-    --entry app:Answer -o "$work/source.zib" "$work/app.zi"
+    --entry app:Answer -o "$work/source.zx" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry app:Answer -o "$work/saved.zib" "$work/ir/app.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 7
-test "$("$ziran" run "$work/saved.zib")" = 7
+    --entry app:Answer -o "$work/saved.zx" "$work/ir/app.zir"
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 7
+test "$("$ziran" run "$work/saved.zx")" = 7

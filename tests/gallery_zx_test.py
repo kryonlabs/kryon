@@ -10,8 +10,8 @@ from toolchain import ROOT
 from raylib_project_test import png_pixels, rgb
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--player', type=Path, default=ROOT / 'build/bin/zib')
-parser.add_argument('--output', type=Path, default=ROOT / 'build/gallery-zib')
+parser.add_argument('--player', type=Path, default=ROOT / 'build/bin/zx')
+parser.add_argument('--output', type=Path, default=ROOT / 'build/gallery-zx')
 parser.add_argument('--screenshots', default='screenshots')
 parser.add_argument('--runner', default='')
 parser.add_argument('--private-display', action='store_true')
@@ -32,7 +32,7 @@ if not args.private_display:
     raise SystemExit(0)
 
 entries = json.loads((args.output / 'index.json').read_text())
-assert entries, 'Export examples first with make gallery-zib'
+assert entries, 'Export examples first with make gallery-zx'
 shots = args.output / args.screenshots
 shots.mkdir(exist_ok=True)
 player = ([args.runner] if args.runner else []) + [str(args.player.resolve())]
@@ -51,4 +51,4 @@ for entry in entries:
     assert any(sum(rgb(pixels, x, y)) < 500 for y in range(12, 280, 4)
                for x in range(24, 456, 4)), 'Empty example: ' + entry['id']
     print('Rendered ' + entry['id'] + ': ' + entry['name'], flush=True)
-print(f'All {len(entries)} exported gallery ZIBs validated and rendered on a private display')
+print(f'All {len(entries)} exported gallery ZXs validated and rendered on a private display')

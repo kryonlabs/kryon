@@ -49,9 +49,9 @@ self.onmessage = async function ({data}) {
     self.postMessage({type: 'stage', stage: 'Compiling…', revision});
     runtime.FS.writeFile('/app.zi', source);
     const status = runtime.ccall('BuildBundle', 'number', Array(6).fill('string'),
-      ['/', search, '/preview_entry.zi', 'preview_entry', 'Tick', '/preview.zib']);
+      ['/', search, '/preview_entry.zi', 'preview_entry', 'Tick', '/preview.zx']);
     if (status !== 0) throw new Error(diagnostics.join('\n') || 'Unable to compile this source.');
-    const bytes = runtime.FS.readFile('/preview.zib');
+    const bytes = runtime.FS.readFile('/preview.zx');
     remember(key, bytes);
     self.postMessage({type: 'result', ok: true, revision, bundle: bytes.buffer}, [bytes.buffer]);
   } catch (error) {

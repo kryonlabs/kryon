@@ -10,7 +10,7 @@ replay and lease revocation with a silent audio sink and no display access.
 
 Kryon is a UI library written in Ziran. Its source lives under `src/ui/` and
 imports Ziran modules normally. The Ziran compiler, `.zir` representation, and
-`.zib` bundle format belong to the separate
+`.zx` bundle format belong to the separate
 [Ziran](https://github.com/ziranlang/ziran) repository. Kryon has no
 `.kry` runtime or language compiler.
 
@@ -83,15 +83,15 @@ See [clipboard state](docs/CLIPBOARD.md) for the portable clipboard value and
 host effect contract.
 See [frame replay](docs/FRAME_REPLAY.md) for committed UI and paint capture
 with scripted input on a headless host.
-The [Ziran example](examples/README.md) builds a `.zib` that imports Kryon and
+The [Ziran example](examples/README.md) builds a `.zx` that imports Kryon and
 runs a retained `Button` press and release through a separate Ziran SVG host
 without a display.
 The same directory also has a plain `Text(TextProps)` hello world desktop
 example; `make -C examples desktop-text-test` renders it on a private display.
 For Ziran app manifests, the terminal backend, and `kryon run`, see
 [Ziran projects](docs/PROJECTS.md).
-Portable desktop profiles build a `.zib` with embedded assets; a downloaded
-file launches with `kryon run app.zib`. See [Zib applications](docs/PROJECTS.md#zib-applications).
+Portable desktop profiles build a `.zx` with embedded assets; a downloaded
+file launches with `kryon run app.zx`. See [Zx applications](docs/PROJECTS.md#zx-applications).
 
 ## Website and widget gallery
 

@@ -14,11 +14,11 @@ from raylib_project_test import png_pixels, rgb
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--runner', choices=['wine'])
-parser.add_argument('--player', type=Path, default=ROOT / 'build/zib-raylib/zib')
+parser.add_argument('--player', type=Path, default=ROOT / 'build/zx-raylib/zx')
 parser.add_argument('--private', action='store_true')
 args = parser.parse_args()
 
-output = ROOT / 'build/scratch/zib-hosted'
+output = ROOT / 'build/scratch/zx-hosted'
 if not args.private:
     env = os.environ.copy()
     for key in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
@@ -71,7 +71,7 @@ with tempfile.TemporaryDirectory(prefix='native-data-', dir=output) as data:
     for attempt in range(2):
         log_path = output / f'native-{attempt}.log'
         with log_path.open('w') as log:
-            bundle = str(output / 'hosted.zib')
+            bundle = str(output / 'hosted.zx')
             if args.runner: bundle = 'Z:' + bundle.replace('/', '\\')
             command = ([args.runner] if args.runner else []) + [str(args.player), bundle]
             app = subprocess.Popen(command,
@@ -80,7 +80,7 @@ with tempfile.TemporaryDirectory(prefix='native-data-', dir=output) as data:
                 window = None
                 deadline = time.monotonic() + 30
                 while time.monotonic() < deadline and app.poll() is None:
-                    selector = ['--name', '^Kryon ZIB$'] if args.runner else ['--pid', str(app.pid)]
+                    selector = ['--name', '^Kryon ZX$'] if args.runner else ['--pid', str(app.pid)]
                     found = subprocess.run(['xdotool', 'search', '--onlyvisible', *selector],
                                            capture_output=True, text=True)
                     if found.returncode == 0 and found.stdout.strip():
@@ -110,4 +110,4 @@ with tempfile.TemporaryDirectory(prefix='native-data-', dir=output) as data:
             assert 'Hosted document restored' in log_path.read_text(), log_path.read_text()
     if args.runner:
         shutil.rmtree(storage)
-print('Native hosted ZIB images, widgets, close/save and restart restoration passed')
+print('Native hosted ZX images, widgets, close/save and restart restoration passed')

@@ -41,10 +41,10 @@ for target in ${PIXMAP_TRIANGLE_TARGETS:-c cpp go}; do
     fi
 done
 "$ziran" bundle --project --root "$repo/tests" --entry pixmap_triangles_test:main \
-    "$@" -o "$work/source.zib" "$source"
+    "$@" -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry pixmap_triangles_test:main "$@" -o "$work/saved.zib" \
+    --entry pixmap_triangles_test:main "$@" -o "$work/saved.zx" \
     "$work/ir/pixmap_triangles_test.zir"
-test "$("$ziran" run "$work/source.zib" | tail -1)" = 0
-test "$("$ziran" run "$work/saved.zib" | tail -1)" = 0
+test "$("$ziran" run "$work/source.zx" | tail -1)" = 0
+test "$("$ziran" run "$work/saved.zx" | tail -1)" = 0
 printf 'Pixmap triangles match on every target and in bundles.\n'

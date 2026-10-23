@@ -2,7 +2,7 @@
 
 This table describes the maintained Ziran library and hosts. Kryon is
 imported by a Ziran application; it is not a language or a built-in Ziran
-runtime. Ziran owns compilation and portable `.zib` execution. See
+runtime. Ziran owns compilation and portable `.zx` execution. See
 [ARCHITECTURE.md](ARCHITECTURE.md) and [BACKENDS.md](BACKENDS.md) for the
 module and host boundaries.
 
@@ -10,7 +10,7 @@ module and host boundaries.
 
 | Package | Ziran source | Native code generation | Package verification |
 | --- | --- | --- | --- |
-| Core UI (`src/ui`) | ✅ `.zi` modules listed in `modules.txt` and two public import modules | ✅ C, C++, and Go generation in `make` | ✅ `make test` builds the library and runs source, saved `.zir`, and `.zib` behavior tests |
+| Core UI (`src/ui`) | ✅ `.zi` modules listed in `modules.txt` and two public import modules | ✅ C, C++, and Go generation in `make` | ✅ `make test` builds the library and runs source, saved `.zir`, and `.zx` behavior tests |
 
 The generated C archive is a build output of Ziran source. Behavior tests use
 Ziran hosts in `tests/*_host.zi`. Code generation verifies that a module lowers

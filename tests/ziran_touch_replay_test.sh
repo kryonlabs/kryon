@@ -91,10 +91,10 @@ for source in source saved; do
     # shellcheck disable=SC2086
     "$ziran" bundle --root "$root" --module-path $modules \
         --module-path "$ziran_root/std" \
-        --entry app:Answer -o "$work/$source.zib" "$app"
-    test "$("$ziran" run "$work/$source.zib")" = 42
+        --entry app:Answer -o "$work/$source.zx" "$app"
+    test "$("$ziran" run "$work/$source.zx")" = 42
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 
 # The Android hook compiles for Android, where it wraps raylib's handler.
 cat > "$work/android.zi" <<'ZI'

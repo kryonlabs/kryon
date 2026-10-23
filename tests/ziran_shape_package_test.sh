@@ -55,6 +55,6 @@ for effect in raster_triangles:RasterTriangles \
     set -- "$@" --bind "kryon/$effect=ziran_shape_widget_host:${effect#*:}"
 done
 "$ziran" bundle --project --offline "$@" --entry app:main \
-    -o "$work/app.zib" src/app.zi
-test "$("$ziran" run "$work/app.zib" | tail -1)" = 0
+    -o "$work/app.zx" src/app.zi
+test "$("$ziran" run "$work/app.zx" | tail -1)" = 0
 printf 'External package Shape C execution and portable clipping passed.\n'

@@ -8,9 +8,9 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 mkdir -p "$work/notes"
 printf 'hello\n' > "$work/notes/hello.txt"
 "$ziran" bundle --root "$repo/tests" --module-path "$ziran_root/std" --asset-dir "notes=$work/notes" \
-    --entry hosted_app_guest:main -o "$work/hosted_app_guest.zib" "$repo/tests/hosted_app_guest.zi"
+    --entry hosted_app_guest:main -o "$work/hosted_app_guest.zx" "$repo/tests/hosted_app_guest.zi"
 "$ziran" bundle --root "$repo/tests" --module-path "$ziran_root/std" \
-    --entry hosted_app_loop:main -o "$work/hosted_app_loop.zib" "$repo/tests/hosted_app_loop.zi"
+    --entry hosted_app_loop:main -o "$work/hosted_app_loop.zx" "$repo/tests/hosted_app_loop.zi"
 "$ziran" build --target=c --no-main --entry ziran_hosted_app_test:main --root "$repo/tests" \
     --module-path "$repo/src/backend" --module-path "$ziran_root/std" -o "$work/c" \
     "$repo/tests/ziran_hosted_app_test.zi"

@@ -17,8 +17,8 @@ env:
   ZIRAN_ROOT: ${{ github.workspace }}/ziran
 
 jobs:
-  test-macos-zib:
-    name: macOS native ZIB build and display-free execution
+  test-macos-zx:
+    name: macOS native ZX build and display-free execution
     runs-on: macos-latest
     defaults:
       run:
@@ -51,8 +51,8 @@ jobs:
         run: |
           export PATH="$ZIRAN_ROOT/build/bin:$PATH"
           env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-            make zib-headless-test
-          build/zib-raylib/zib --check build/scratch/zib-headless/app.zib
+            make zx-headless-test
+          build/zx-raylib/zx --check build/scratch/zx-headless/app.zx
 
   test-linux:
     name: Ziran library and host tests

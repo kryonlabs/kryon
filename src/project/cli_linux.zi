@@ -298,7 +298,7 @@ Usage :: () -> s32 {
     PrintFd(1, "usage: kryon new DIR [--template NAME|SOURCE[:NAME]] [--name NAME] [--overrides FILE]\n")
     PrintFd(1, "       kryon init [--template NAME|SOURCE[:NAME]] [--overrides FILE]\n")
     PrintFd(1, "       kryon run|build|check [PROFILE | --profile NAME]\n")
-    PrintFd(1, "       kryon run FILE.zib\n")
+    PrintFd(1, "       kryon run FILE.zx\n")
     PrintFd(1, "       kryon install [--prefix DIR]\n")
     PrintFd(1, "       kryon profiles\n")
     PrintFd(1, "Kryon templates: app (window), tui (terminal), pages (navigation), web (browser page)\n")
@@ -394,14 +394,14 @@ RunDownloadedBundle :: (command_line: string) -> s32 {
     path: [32]u8
     if !CString("/proc/self/exe", path[:]) { return 1 }
     count := RawReadlink(*path[0], *executable[0], cast(u64)4096)
-    if count <= 0 || count >= 4096 { return Error("cannot locate the Zib player") }
+    if count <= 0 || count >= 4096 { return Error("cannot locate the Zx player") }
     location := TextFromBuffer(executable[:], cast(s32)count)
     slash := count - 1
     while slash >= 0 && location[slash] != cast(u8)47 { slash -= 1 }
-    if slash < 0 { return Error("cannot locate the Zib player") }
+    if slash < 0 { return Error("cannot locate the Zx player") }
     player_bytes: [4096]u8
-    player := Join(location[0:cast(s32)slash], "/zib", player_bytes[:])
-    if !Exists(player) { return Error("install the Zib player with make install-user") }
+    player := Join(location[0:cast(s32)slash], "/zx", player_bytes[:])
+    if !Exists(player) { return Error("install the Zx player with make install-user") }
     args: [2]string
     args[0] = player
     args[1] = ArgumentAt(command_line, 2)
@@ -418,9 +418,9 @@ main :: () -> s32 {
         return Usage()
     }
     bundle_path := ArgumentAt(command_line.text, 2)
-    if verb == "run" && bundle_path.count >= 4 &&
-    bundle_path[bundle_path.count - 4:bundle_path.count] == ".zib" {
-        if ArgumentCount(command_line.text) != 3 { return Error("usage: kryon run FILE.zib") }
+    if verb == "run" && bundle_path.count >= 3 &&
+    bundle_path[bundle_path.count - 3:bundle_path.count] == ".zx" {
+        if ArgumentCount(command_line.text) != 3 { return Error("usage: kryon run FILE.zx") }
         return RunDownloadedBundle(command_line.text)
     }
     if verb != "run" && verb != "build" && verb != "check" && verb != "install" &&
@@ -517,8 +517,8 @@ main :: () -> s32 {
         if verb == "install" {
             return Error("android profiles ship as packages; use kryon build --profile android")
         }
-        if profile.codegen != "c99" && profile.codegen != "zib" {
-            return Error("android supports c99 and zib code generation")
+        if profile.codegen != "c99" && profile.codegen != "zx" {
+            return Error("android supports c99 and zx code generation")
         }
         return AndroidCommand(config, profile, installed_kryon, installed_ziran, verb)
     }
@@ -527,7 +527,7 @@ main :: () -> s32 {
         profile.backend != "canvas" && profile.backend != "dom" &&
         profile.backend != "pixmap") ||
     (profile.codegen != "c99" &&
-        !(profile.codegen == "zib" &&
+        !(profile.codegen == "zx" &&
         (profile.backend == "desktop" || profile.backend == "pixmap" ||
         profile.backend == "canvas" || profile.backend == "raylib"))) {
         return Error("this backend/codegen pair is not available yet")

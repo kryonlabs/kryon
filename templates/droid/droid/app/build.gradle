@@ -30,8 +30,8 @@ android {
         targetSdk 36
         versionCode 1
         versionName '0.1.0'
-        manifestPlaceholders = [zibPlayer: (appCodegen == 'zib').toString(),
-            nativeLaunchMode: appCodegen == 'zib' ? 'singleTask' : 'standard']
+        manifestPlaceholders = [zxPlayer: (appCodegen == 'zx').toString(),
+            nativeLaunchMode: appCodegen == 'zx' ? 'singleTask' : 'standard']
         ndk {
             abiFilters += androidAbis
         }
@@ -52,10 +52,10 @@ android {
         }
     }
 
-    if (appCodegen == 'zib') {
-        sourceSets.main.assets.srcDir "${rootProject.projectDir}/../build/android/zib-assets"
-        sourceSets.debug.manifest.srcFile 'src/zib/AndroidManifest.xml'
-        sourceSets.release.manifest.srcFile 'src/zib/AndroidManifest.xml'
+    if (appCodegen == 'zx') {
+        sourceSets.main.assets.srcDir "${rootProject.projectDir}/../build/android/zx-assets"
+        sourceSets.debug.manifest.srcFile 'src/zx/AndroidManifest.xml'
+        sourceSets.release.manifest.srcFile 'src/zx/AndroidManifest.xml'
     }
 
     buildTypes {

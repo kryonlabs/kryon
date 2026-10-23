@@ -16,13 +16,13 @@ set --
     -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     "$@" --entry ziran_mixed_tree_test:main \
-    -o "$work/source.zib" "$source"
+    -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     "$@" --entry ziran_mixed_tree_test:main \
-    -o "$work/saved.zib" "$work/ir/ziran_mixed_tree_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
-test "$("$ziran" run "$work/saved.zib")" = 0
+    -o "$work/saved.zx" "$work/ir/ziran_mixed_tree_test.zir"
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
+test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"

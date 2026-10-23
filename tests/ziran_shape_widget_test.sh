@@ -28,13 +28,13 @@ set -- \
     --module-path "$std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$std" "$@" \
-    --entry ziran_shape_widget_test:main -o "$work/source.zib" "$source"
+    --entry ziran_shape_widget_test:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
-    --entry ziran_shape_widget_test:main -o "$work/saved.zib" \
+    --entry ziran_shape_widget_test:main -o "$work/saved.zx" \
     "$work/ir/ziran_shape_widget_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib" | tail -1)" = 0
-test "$("$ziran" run "$work/saved.zib" | tail -1)" = 0
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx" | tail -1)" = 0
+test "$("$ziran" run "$work/saved.zx" | tail -1)" = 0
 
 for target in c cpp; do
     output=$work/$target

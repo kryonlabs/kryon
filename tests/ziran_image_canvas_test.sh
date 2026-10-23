@@ -13,13 +13,13 @@ set -- --module-path "$repo/src/backend" --module-path "$repo/src/ui" --module-p
 "$ziran" ir --root "$repo/tests" "$@" \
     -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" "$@" \
-    --entry ziran_image_canvas_test:main -o "$work/source.zib" "$source"
+    --entry ziran_image_canvas_test:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
-    --entry ziran_image_canvas_test:main -o "$work/saved.zib" \
+    --entry ziran_image_canvas_test:main -o "$work/saved.zx" \
     "$work/ir/ziran_image_canvas_test.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
-test "$("$ziran" run "$work/saved.zib")" = 0
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
+test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
     "$@" -o "$work/c" "$source"

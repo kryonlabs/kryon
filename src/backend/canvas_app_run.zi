@@ -1,9 +1,9 @@
 // Runs one portable app compiled into the browser page on the canvas host,
-// for an app whose interpreted ZIB is too slow on a phone. It is the same
-// AppContext app a ZIB player runs: the build binds CanvasAppMain to the
+// for an app whose interpreted ZX is too slow on a phone. It is the same
+// AppContext app a ZX player runs: the build binds CanvasAppMain to the
 // app's Main (--bind canvas_app_run:CanvasAppMain=MODULE:Main), and this
 // runner answers the app's context calls itself. Its private documents live
-// where a ZIB player keeps them, /kryon-apps/<app id> on IndexedDB, so
+// where a ZX player keeps them, /kryon-apps/<app id> on IndexedDB, so
 // saves carry over between the two.
 #import "secondary_pointer"
 using Host :: #import "Canvas";

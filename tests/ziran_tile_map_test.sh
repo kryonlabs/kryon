@@ -16,6 +16,6 @@ done
     -Wl,--gc-sections -lm -o "$work/test"
 "$work/test"
 "$ziran" bundle --root "$repo/tests" --module-path "$ziran_root/std" --module-path "$repo/src/ui" \
-    --entry tile_map_behavior:main -o "$work/geometry.zib" "$repo/tests/tile_map_behavior.zi"
-test "$("$ziran" run "$work/geometry.zib" | tail -n 1)" = 0
+    --entry tile_map_behavior:main -o "$work/geometry.zx" "$repo/tests/tile_map_behavior.zi"
+test "$("$ziran" run "$work/geometry.zx" | tail -n 1)" = 0
 printf '%s\n' 'TileMap pixel fitting, cell lookup and transformed image mesh passed natively and portably'

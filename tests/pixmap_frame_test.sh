@@ -30,7 +30,7 @@ for target in c cpp go; do
     if test "$target" = go; then GO111MODULE=off go run "$work/$target"/*.go
     else "$work/$target/pixmap_frame_test"; fi
 done
-"$ziran" bundle --project --root "$repo/tests" --entry pixmap_frame_test:main "$@" -o "$work/source.zib" "$source"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_frame_test:main "$@" -o "$work/saved.zib" "$work/ir/pixmap_frame_test.zir"
-test "$("$ziran" run "$work/source.zib" | tail -1)" = 0
-test "$("$ziran" run "$work/saved.zib" | tail -1)" = 0
+"$ziran" bundle --project --root "$repo/tests" --entry pixmap_frame_test:main "$@" -o "$work/source.zx" "$source"
+"$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_frame_test:main "$@" -o "$work/saved.zx" "$work/ir/pixmap_frame_test.zir"
+test "$("$ziran" run "$work/source.zx" | tail -1)" = 0
+test "$("$ziran" run "$work/saved.zx" | tail -1)" = 0

@@ -1,4 +1,4 @@
-// A browser renderer for ordinary ZIB files. No application UI is linked here.
+// A browser renderer for ordinary ZX files. No application UI is linked here.
 using Host :: #import "Canvas";
 using Render :: #import "canvas_raster";
 Player :: #import "bundle_player";
@@ -42,19 +42,19 @@ ShowStatus :: (message: string) {
 }
 
 FileFailed :: (context: s32, first: s32, second: s32, third: s32) {
-    ShowStatus("Could not read the ZIB file.")
+    ShowStatus("Could not read the ZX file.")
 }
 
 FileRead :: (context: s32, buffer: s32, second: s32, third: s32) {
     size := WebGetNumber(buffer, WebName("byteLength"))
-    if size <= 0.0 || size > 67108864.0 { ShowStatus("Choose a ZIB file under 64 MiB."); return }
+    if size <= 0.0 || size > 67108864.0 { ShowStatus("Choose a ZX file under 64 MiB."); return }
     view := WebNew1(WebGetObject(WebGlobal, WebName("Uint8Array")), WebObject(buffer))
     files := PageFileSystem()
     if view != 0 && files != 0 {
-        unused WebCall2(files, WebName("writeFile"), WebText("/app.zib"), WebObject(view))
+        unused WebCall2(files, WebName("writeFile"), WebText("/app.zx"), WebObject(view))
         if !WebFailed() { requested_bundle = true; file_ready = true; return }
     }
-    ShowStatus("Could not read the ZIB file.")
+    ShowStatus("Could not read the ZX file.")
 }
 
 FileFetched :: (context: s32, response: s32, second: s32, third: s32) {
@@ -71,15 +71,15 @@ OpenRequested :: () {
     if WebIsUndefined(value) { return }
     bytes: [4096]u8
     count := WebCopyString(WebAsObject(value), bytes[:])
-    if count <= 0 || count >= 4096 { ShowStatus("The requested ZIB path is invalid."); return }
+    if count <= 0 || count >= 4096 { ShowStatus("The requested ZX path is invalid."); return }
     path := TextView(bytes[:count])
-    if !AppFileNameValid(path) || count < 4 || path[count - 4:] != ".zib" {
-        ShowStatus("The requested ZIB path is invalid.")
+    if !AppFileNameValid(path) || count < 3 || path[count - 3:] != ".zx" {
+        ShowStatus("The requested ZX path is invalid.")
         return
     }
     promise := WebAsObject(WebCall1(WebGlobal, WebName("fetch"), WebText(path)))
     if promise == 0 { FileFailed(0, 0, 0, 0); return }
-    ShowStatus("Loading ZIB…")
+    ShowStatus("Loading ZX…")
     unused WebCall2(promise, WebName("then"), WebObject(picker_fetch), WebObject(picker_failure))
 }
 
@@ -89,7 +89,7 @@ FileChosen :: (context: s32, event: s32, second: s32, third: s32) {
     if WebGetNumber(files, WebName("length")) < 1.0 { return }
     file := WebAsObject(WebAt(files, 0))
     promise := WebAsObject(WebCall0(file, WebName("arrayBuffer")))
-    if promise == 0 { ShowStatus("Could not read the ZIB file."); return }
+    if promise == 0 { ShowStatus("Could not read the ZX file."); return }
     unused WebCall2(promise, WebName("then"), WebObject(picker_reader), WebObject(picker_failure))
     // Choosing the same file after editing it is a new request too.
     WebSet(target, WebName("value"), WebText(""))
@@ -97,14 +97,14 @@ FileChosen :: (context: s32, event: s32, second: s32, third: s32) {
 
 OpenPicker :: () -> bool {
     document := WebGetObject(WebGlobal, WebName("document"))
-    controls := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("zib-controls")))
+    controls := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("zx-controls")))
     picker = WebKeep(WebAsObject(WebCall1(document, WebName("createElement"), WebText("input"))))
     status = WebKeep(WebAsObject(WebCall1(document, WebName("createElement"), WebText("span"))))
     if picker == 0 || status == 0 || controls == 0 { return false }
     WebSet(picker, WebName("type"), WebText("file"))
-    WebSet(picker, WebName("accept"), WebText(".zib"))
-    WebSet(picker, WebName("id"), WebText("zib-open"))
-    unused WebCall2(picker, WebName("setAttribute"), WebText("aria-label"), WebText("Open a ZIB file"))
+    WebSet(picker, WebName("accept"), WebText(".zx"))
+    WebSet(picker, WebName("id"), WebText("zx-open"))
+    unused WebCall2(picker, WebName("setAttribute"), WebText("aria-label"), WebText("Open a ZX file"))
     picker_callback = WebFunction(FileChosen, 0)
     picker_reader = WebFunction(FileRead, 0)
     picker_failure = WebFunction(FileFailed, 0)
@@ -154,13 +154,13 @@ PlatformCall :: (context: *void, module: *u8, function: *u8,
 }
 
 LoadSelected :: (player: *Player.Player, assets: *AppFiles, raster: *RasterHost) -> bool {
-    bytes, found := ReadEntireFile("/app.zib")
+    bytes, found := ReadEntireFile("/app.zx")
     if !found { return false }
     defer { AppFileFree(bytes) }
     descriptor := cast(*TextDescriptor)(*bytes)
     data := BytesFromPointer(descriptor.data, cast(u64)bytes.count)
     checked := OpenBundleBytes(descriptor.data, cast(u64)bytes.count)
-    if checked == null { ShowStatus("This file is not a valid ZIB."); return false }
+    if checked == null { ShowStatus("This file is not a valid ZX."); return false }
     is_app := BundleIsApp(checked)
     accepted := !is_app || BundleAppCheck(checked)
     CloseBundle(checked)
@@ -196,7 +196,7 @@ LoadSelected :: (player: *Player.Player, assets: *AppFiles, raster: *RasterHost)
     hosted = false
     InvalidateCanvasAssets()
     if !Player.PlayerLoad(player, data, PlatformCall, null) {
-        ShowStatus("The ZIB could not load.")
+        ShowStatus("The ZX could not load.")
         return false
     }
     raster.asset_bundle = player.bundle
@@ -205,7 +205,7 @@ LoadSelected :: (player: *Player.Player, assets: *AppFiles, raster: *RasterHost)
     !Player.PlayerUseRenderer(player, RasterHostCall, cast(*void)raster) ||
     !Player.PlayerStart(player) {
         Player.PlayerClose(player)
-        ShowStatus("The ZIB could not start.")
+        ShowStatus("The ZX could not start.")
         return false
     }
     ShowStatus("")
@@ -226,10 +226,10 @@ main :: () -> s32 {
         unused BundleStorageSync(false)
     }
     assets: AppFiles
-    if !AppFilesOpen(*assets, "/tmp/kryon-zib") { return 1 }
+    if !AppFilesOpen(*assets, "/tmp/kryon-zx") { return 1 }
     defer { AppFilesClose(*assets) }
     path: [64]u8
-    if !CopyCString("/tmp/kryon-zib", path[:]) || ChangeDirectory(*path[0]) != 0 { return 1 }
+    if !CopyCString("/tmp/kryon-zx", path[:]) || ChangeDirectory(*path[0]) != 0 { return 1 }
     raster := RasterHost.{
         .measure_width = MeasureGlyphWidth, .measure_height = MeasureGlyphLineHeight,
         .image_width = ImageWidth, .image_height = ImageHeight,
@@ -239,7 +239,7 @@ main :: () -> s32 {
     if !RasterHostValid(raster) { return 1 }
     player: Player.Player
     defer { Player.PlayerClose(*player) }
-    initial, found := ReadEntireFile("/app.zib")
+    initial, found := ReadEntireFile("/app.zx")
     AppFileFree(initial)
     embedded := found
     load_failed := false
@@ -288,13 +288,13 @@ main :: () -> s32 {
                     .secondary_down = secondary.down, .secondary_pressed = secondary.pressed,
                     .secondary_released = secondary.released, .modifiers = CanvasModifiers(),
                     .key = CanvasPressedKey(), .wheel = CanvasWheelMove()}) {
-                ShowStatus("The ZIB finished or its frame failed. Choose a file to open another app.")
+                ShowStatus("The ZX finished or its frame failed. Choose a file to open another app.")
             }
         } else {
             if embedded {
                 RasterText(ifx load_failed then "Could not start this app." else "Loading…", 24, 48, 22, Color.{30, 41, 59, 255})
             } else {
-                RasterText("Open a ZIB file to run it.", 24, 48, 22, Color.{30, 41, 59, 255})
+                RasterText("Open a ZX file to run it.", 24, 48, 22, Color.{30, 41, 59, 255})
             }
         }
         unused EndCanvasFrame()

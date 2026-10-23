@@ -145,7 +145,7 @@ for source in source saved; do
     fi
     "$ziran" bundle --root "$root" --module-path "$modules" \
         --module-path "$ziran_root/std" \
-        --entry app:Answer -o "$work/$source.zib" "$app"
-    test "$("$ziran" run "$work/$source.zib")" = 42
+        --entry app:Answer -o "$work/$source.zx" "$app"
+    test "$("$ziran" run "$work/$source.zx")" = 42
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"

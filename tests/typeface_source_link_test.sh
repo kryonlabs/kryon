@@ -18,12 +18,12 @@ set -- \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
     --module-path "$ziran_root/std" "$@" \
-    --entry typeface_source_behavior:main -o "$work/source.zib" "$source"
+    --entry typeface_source_behavior:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
-    --entry typeface_source_behavior:main -o "$work/saved.zib" \
+    --entry typeface_source_behavior:main -o "$work/saved.zx" \
     "$work/ir/typeface_source_behavior.zir"
-cmp "$work/source.zib" "$work/saved.zib"
-test "$("$ziran" run "$work/source.zib")" = 0
+cmp "$work/source.zx" "$work/saved.zx"
+test "$("$ziran" run "$work/source.zx")" = 0
 
 for input in source saved; do
     if test "$input" = source; then

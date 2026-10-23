@@ -22,8 +22,8 @@ for input in source saved; do
     fi
     "$ziran" bundle --root "$root" --module-path "$modules" \
         --module-path "$ziran_root/std" --entry tree_reads_test:main \
-        -o "$work/$input.zib" "$module"
-    test "$("$ziran" run "$work/$input.zib")" = 0
+        -o "$work/$input.zx" "$module"
+    test "$("$ziran" run "$work/$input.zx")" = 0
     for target in ${TREE_READS_TARGETS:-c cpp go rust py}; do
         output="$work/$input-$target"
         executable=--exe
@@ -46,5 +46,5 @@ for input in source saved; do
         esac
     done
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"
 echo 'Tree snapshots, modal layers and lifecycle passed on source and saved targets'

@@ -17,11 +17,11 @@ pre{background:#222;color:#ddd;padding:1rem;border-radius:6px;overflow-x:auto}
 li{margin:.25rem 0}
 </style></head><body>
 <h1>Kryon feature matrix</h1>
-<p>This table describes the maintained Ziran library and hosts. Kryon is imported by a Ziran application; it is not a language or a built-in Ziran runtime. Ziran owns compilation and portable <code>.zib</code> execution. See <a href="ARCHITECTURE.md">ARCHITECTURE.md</a> and <a href="BACKENDS.md">BACKENDS.md</a> for the module and host boundaries.</p>
+<p>This table describes the maintained Ziran library and hosts. Kryon is imported by a Ziran application; it is not a language or a built-in Ziran runtime. Ziran owns compilation and portable <code>.zx</code> execution. See <a href="ARCHITECTURE.md">ARCHITECTURE.md</a> and <a href="BACKENDS.md">BACKENDS.md</a> for the module and host boundaries.</p>
 <h2>Library packages</h2>
 <table>
 <tr><th>Package</th><th>Ziran source</th><th>Native code generation</th><th>Package verification</th></tr>
-<tr><td class="">Core UI (<code>src/ui</code>)</td><td class="ok">✅ <code>.zi</code> modules listed in <code>modules.txt</code> and two public import modules</td><td class="ok">✅ C, C++, and Go generation in <code>make</code></td><td class="ok">✅ <code>make test</code> builds the library and runs source, saved <code>.zir</code>, and <code>.zib</code> behavior tests</td></tr>
+<tr><td class="">Core UI (<code>src/ui</code>)</td><td class="ok">✅ <code>.zi</code> modules listed in <code>modules.txt</code> and two public import modules</td><td class="ok">✅ C, C++, and Go generation in <code>make</code></td><td class="ok">✅ <code>make test</code> builds the library and runs source, saved <code>.zir</code>, and <code>.zx</code> behavior tests</td></tr>
 </table>
 <p>The generated C archive is a build output of Ziran source. Behavior tests use Ziran hosts in <code>tests/*_host.zi</code>. Code generation verifies that a module lowers for a target; it does not prove that every native host runs on that target.</p>
 <h2>Application hosts</h2>

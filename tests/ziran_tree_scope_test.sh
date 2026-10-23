@@ -92,8 +92,8 @@ for input in source saved; do
         module_path=$work/ir
     fi
     "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$ziran_root/std" \
-        --entry app:Answer -o "$work/$input.zib" "$source"
-    test "$("$ziran" run "$work/$input.zib")" = 42
+        --entry app:Answer -o "$work/$input.zx" "$source"
+    test "$("$ziran" run "$work/$input.zx")" = 42
     for target in c cpp go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
@@ -127,4 +127,4 @@ GO
         fi
     done
 done
-cmp "$work/source.zib" "$work/saved.zib"
+cmp "$work/source.zx" "$work/saved.zx"

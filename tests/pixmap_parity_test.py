@@ -4,7 +4,7 @@ Each program -- the project templates, created with `kryon new` as a user
 would, and the examples in examples/ -- runs on the headless pixmap host,
 which rasterizes with integer arithmetic and prints a PPM image. It is
 built from one saved IR for C, C++, Go, Rust, Python, and the portable
-runner (zib), and every target's image must equal C's. On a mismatch the
+runner (zx), and every target's image must equal C's. On a mismatch the
 image tools in tools/image_tools.zi, built for Python, report where pixels
 differ and write a red diff.
 
@@ -30,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from templates_test import KRYON, ROOT, ZIRAN_ROOT, environment, local  # noqa: E402
 
 ZIRAN = os.environ.get("ZIRAN_BIN") or str(ZIRAN_ROOT / "build/bin/ziran")
-TARGETS = ["c", "cpp", "go", "rust", "py", "zib"]
+TARGETS = ["c", "cpp", "go", "rust", "py", "zx"]
 TEMPLATES = ["app", "tui", "pages", "web"]
 EXAMPLES = ["hello", "text_hello", "image_demo"]
 # Test-only programs in tests/pixmap_parity, built like the examples.
@@ -157,8 +157,8 @@ def render(program, target, work, env):
         run([ZIRAN, "build", "--target=py", "--exe", *binds, *common, "-o", out,
              program.source()], work, env)
         image = run(["python3", out], work, env)
-    elif target == "zib":
-        bundle = work / f"{program.name}.zib"
+    elif target == "zx":
+        bundle = work / f"{program.name}.zx"
         run([ZIRAN, "bundle", *binds, *common, "-o", bundle, program.source()], work, env)
         image = run([ZIRAN, "run", bundle], work, env)
         # The runner prints the entry's result after the program's output.

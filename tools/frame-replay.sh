@@ -5,7 +5,7 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
 ziran_lib=${ZIRAN_LIB:-"$ziran_root/build/libziran.a"}
 if test "$#" -ne 4; then
-    echo "usage: $0 app.zib pointer-module input.trace output.json" >&2
+    echo "usage: $0 app.zx pointer-module input.trace output.json" >&2
     exit 2
 fi
 

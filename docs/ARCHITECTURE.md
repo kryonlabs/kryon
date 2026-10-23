@@ -1,7 +1,7 @@
 # Kryon architecture
 
 Kryon supplies reusable UI behavior as Ziran modules. Ziran owns the source
-language, checker, standard library, `.zir`, `.zib`, code generation, and
+language, checker, standard library, `.zir`, `.zx`, code generation, and
 portable execution. Applications import Kryon only when they need its UI
 library. The compiler and bundle loader have no Kryon-specific branches.
 
@@ -40,7 +40,7 @@ import a Kryon policy module without selecting any of these hosts.
 `make` checks the Ziran modules, writes `.zir`, generates C, C++, and Go,
 compiles native objects, and creates a C archive from generated source.
 `make test` exercises the checked library through source, saved `.zir`, and
-portable `.zib` behavior, Canvas2D Wasm effects, and packaged Canvas2D and
+portable `.zx` behavior, Canvas2D Wasm effects, and packaged Canvas2D and
 semantic DOM browser applications in private headless Chromium. Desktop,
 raylib, and libdraw package tests run separately on private Xvfb displays;
 CI runs them too. `make sanitize-test` repeats the behavior tests with AddressSanitizer and UndefinedBehaviorSanitizer.

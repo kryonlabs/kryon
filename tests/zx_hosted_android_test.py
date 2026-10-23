@@ -13,8 +13,8 @@ parser.add_argument('--serial', required=True)
 args = parser.parse_args()
 assert args.serial.startswith('emulator-'), 'Physical devices are never test targets'
 adb = Path(os.environ.get('ANDROID_HOME', str(Path.home() / 'Android/Sdk'))) / 'platform-tools/adb'
-output = ROOT / 'build/scratch/zib-hosted'
-package = 'com.kryon.zibtest'
+output = ROOT / 'build/scratch/zx-hosted'
+package = 'com.kryon.zxtest'
 
 
 def run(*arguments, **kwargs):
@@ -23,20 +23,20 @@ def run(*arguments, **kwargs):
 
 
 assert run('shell', 'getprop', 'ro.kernel.qemu').stdout.strip() == b'1'
-assert run('emu', 'avd', 'name').stdout.splitlines()[0].strip() == b'KryonZib'
-apk = ROOT / 'build/zib-android-test/droid/app/build/outputs/apk/debug/app-debug.apk'
+assert run('emu', 'avd', 'name').stdout.splitlines()[0].strip() == b'KryonZx'
+apk = ROOT / 'build/zx-android-test/droid/app/build/outputs/apk/debug/app-debug.apk'
 run('install', '-r', apk)
 try:
     run('shell', 'wm', 'size', '960x600')
     run('shell', 'wm', 'density', '160')
     run('shell', 'am', 'start', '-W', '-n', package + '/.MainActivity')
     for name in ('hosted', 'hosted_other'):
-        run('push', output / f'{name}.zib', f'/data/local/tmp/{name}.zib')
+        run('push', output / f'{name}.zx', f'/data/local/tmp/{name}.zx')
 
     def open_app(name):
-        run('shell', 'am', 'start', '-W', '-n', package + '/.Zib',
-            '-a', 'android.intent.action.VIEW', '-t', 'application/x-zib',
-            '-d', f'file:///data/local/tmp/{name}.zib')
+        run('shell', 'am', 'start', '-W', '-n', package + '/.Zx',
+            '-a', 'android.intent.action.VIEW', '-t', 'application/x-zx',
+            '-d', f'file:///data/local/tmp/{name}.zx')
         time.sleep(1)
 
     def capture(name):
@@ -74,4 +74,4 @@ finally:
     run('shell', 'wm', 'density', 'reset')
     run('shell', 'am', 'force-stop', package)
     run('uninstall', package)
-print('Android hosted ZIB images, widgets, same-app replacement, close/save, cold restoration and app isolation passed')
+print('Android hosted ZX images, widgets, same-app replacement, close/save, cold restoration and app isolation passed')
