@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Generate bounded codecs for records that cross the portable bundle boundary.
 
-Each root struct, and every struct it contains, gets a codec record plus
-WidgetEncodeT, WidgetDecodeT and WidgetValidT. Fields match by name (see
+Each application root and its nested structs get codec storage and
+WidgetEncodeT, WidgetDecodeT and WidgetValidT operations. Fields match by name (see
 src/backend/hosted_values.zi), so a bundle and its host may be built against
 different layouts. Slices hold at most 1024 elements; the decoded elements
 stay in the codec, and the caller attaches them after decoding. Slices in
@@ -12,9 +12,13 @@ its own storage, and an encoder sends them empty.
 Run without arguments, it writes src/backend/widget_codec.zi for Kryon's own
 hosted widgets; --check only verifies that file. An application generates
 codecs for its own records with --uses src/backend/widget_codec.zi, so types
-Kryon already encodes are reused instead of generated again.
+Kryon already supplies are reused. Partial modules carry their field schemas;
+missing operations are generated in the consumer without duplicating storage.
+--complete supplies every operation for the imported codec records, which also
+lets native host tests exercise operations absent from the library itself.
 """
 import argparse
+import json
 from pathlib import Path
 import re
 import sys
@@ -52,6 +56,86 @@ KRYON_ROOTS = ['PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAr
                'TileMapProps', 'TileMapResult']
 
 
+# Operations used only by generated consumers and test fixtures. Their schemas
+# remain available so --uses can generate each missing operation when needed.
+KRYON_BUILD_TIME_METHODS = {
+    'WidgetDecodeActionModalResult',
+    'WidgetDecodeCheckboxValueResult',
+    'WidgetDecodeContextMenuResult',
+    'WidgetDecodeDropdownResult',
+    'WidgetDecodeModalFrameLayout',
+    'WidgetDecodeModalFrameResult',
+    'WidgetDecodePointerFrame',
+    'WidgetDecodePressResult',
+    'WidgetDecodeScrollBarPaint',
+    'WidgetDecodeScrollFrame',
+    'WidgetDecodeScrollResult',
+    'WidgetDecodeSpinboxStepResult',
+    'WidgetDecodeTabBarResult',
+    'WidgetDecodeTextAreaEdit',
+    'WidgetDecodeTextAreaResult',
+    'WidgetDecodeTileMapResult',
+    'WidgetDecodeTimePickerResult',
+    'WidgetDecodeTitleBarResult',
+    'WidgetDecodeToggleValueResult',
+    'WidgetEncodeActionModalAction',
+    'WidgetEncodeActionModalProps',
+    'WidgetEncodeBoxProps',
+    'WidgetEncodeButtonProps',
+    'WidgetEncodeCheckboxProps',
+    'WidgetEncodeContextMenuItem',
+    'WidgetEncodeContextMenuProps',
+    'WidgetEncodeDropdownMenuInput',
+    'WidgetEncodeDropdownOption',
+    'WidgetEncodeDropdownProps',
+    'WidgetEncodeDropdownTriggerInput',
+    'WidgetEncodeImageMesh',
+    'WidgetEncodeImageProps',
+    'WidgetEncodeModalFrameProps',
+    'WidgetEncodePressProps',
+    'WidgetEncodeScrollInput',
+    'WidgetEncodeScrollMetrics',
+    'WidgetEncodeScrollProps',
+    'WidgetEncodeSpinboxProps',
+    'WidgetEncodeSvgIconProps',
+    'WidgetEncodeTabBarInput',
+    'WidgetEncodeTabBarProps',
+    'WidgetEncodeTextAreaBlock',
+    'WidgetEncodeTextAreaColorSpan',
+    'WidgetEncodeTextAreaLine',
+    'WidgetEncodeTextAreaProps',
+    'WidgetEncodeTextProps',
+    'WidgetEncodeTextRange',
+    'WidgetEncodeTexture2D',
+    'WidgetEncodeTileMapProps',
+    'WidgetEncodeTimePickerProps',
+    'WidgetEncodeTitleBarProps',
+    'WidgetEncodeToggleProps',
+    'WidgetEncodeVector2',
+    'WidgetValidActionModalResult',
+    'WidgetValidCheckboxValueResult',
+    'WidgetValidContextMenuResult',
+    'WidgetValidDropdownResult',
+    'WidgetValidModalFrameLayout',
+    'WidgetValidModalFrameResult',
+    'WidgetValidPointerFrame',
+    'WidgetValidPressResult',
+    'WidgetValidScrollBarPaint',
+    'WidgetValidScrollFrame',
+    'WidgetValidScrollResult',
+    'WidgetValidSpinboxStepResult',
+    'WidgetValidTabBarResult',
+    'WidgetValidTextAreaEdit',
+    'WidgetValidTextAreaResult',
+    'WidgetValidTextFieldEdit',
+    'WidgetValidTextFieldResult',
+    'WidgetValidTileMapResult',
+    'WidgetValidTimePickerResult',
+    'WidgetValidTitleBarResult',
+    'WidgetValidToggleValueResult',
+}
+
+
 def read_schema(paths):
     schema = {}
     for path in paths:
@@ -66,12 +150,55 @@ def read_schema(paths):
     return schema
 
 
-def provided_types(paths):
-    """Types an imported codec module already encodes."""
-    names = set()
+def provided_info(paths):
+    """Storage, operations and field schemas supplied by generated modules."""
+    types, methods, schema = set(), set(), {}
     for path in paths:
-        names.update(re.findall(r'^Widget(\w+)Codec :: struct', Path(path).read_text(), re.M))
-    return names
+        text = Path(path).read_text()
+        storage = dict(re.findall(r'^Widget(\w+)Codec :: struct\s*\{\s*fields:\s*\[(\d+)\]HostField', text, re.M))
+        types.update(re.findall(r'^Widget(\w+)Codec :: struct', text, re.M))
+        methods.update(re.findall(r'^(Widget(?:Encode|Decode|Valid)\w+)\s*::\s*\(', text, re.M))
+        for line in text.splitlines():
+            if line.startswith('// Widget codec schema: '):
+                try:
+                    kind, fields = json.loads(line.removeprefix('// Widget codec schema: '))
+                    valid = isinstance(kind, str) and kind in storage and isinstance(fields, list)
+                    valid = valid and len(fields) == int(storage[kind])
+                    valid = valid and all(isinstance(pair, list) and len(pair) == 2 and
+                                          all(isinstance(value, str) for value in pair) for pair in fields)
+                except (ValueError, TypeError, KeyError):
+                    valid = False
+                if not valid:
+                    sys.exit(f'{path}: codec schema metadata does not match its storage')
+                schema[kind] = fields
+    return types, methods, schema
+
+
+def provided_types(paths):
+    """Types whose storage is already declared in imported codec modules."""
+    return provided_info(paths)[0]
+
+
+def required_methods(schema, seeds, available, records):
+    """Close over actual generated calls, including validator callbacks."""
+    selected = set()
+    emitters = {'Encode': encoder, 'Decode': decoder, 'Valid': validator}
+
+    def require(name):
+        if name in available or name in selected:
+            return
+        operation, kind = re.fullmatch(r'Widget(Encode|Decode|Valid)(\w+)', name).groups()
+        if kind not in schema:
+            sys.exit(f'{name} needs its record declaration in --source or codec schema metadata')
+        selected.add(name)
+        body = '\n'.join(emitters[operation](kind, schema[kind], records))
+        body = re.sub(r'"(?:\\.|[^"\\])*"|//[^\n]*', '', body)
+        for dependency in re.findall(r'\bWidget(?:Encode|Decode|Valid)\w+\b', body):
+            require(dependency)
+
+    for name in sorted(seeds):
+        require(name)
+    return selected
 
 
 def order(schema, roots, provided):
@@ -126,28 +253,34 @@ def scalar_decode(source, kind):
     return f'cast({kind}){source}.{member}'
 
 
-def generate(schema, needed, provided, header, imports):
+def generate(schema, needed, provided, header, imports, methods=None):
     records = set(needed) | provided
+    emitters = {'Encode': encoder, 'Decode': decoder, 'Valid': validator}
+    extra = sorted({re.fullmatch(r'Widget(?:Encode|Decode|Valid)(\w+)', name)[1]
+                    for name in methods or ()} & provided)
     # A file import is written `#import, file "name.zi";`.
     lines = [header, *('#import' + ('' if line.startswith(',') else ' ') + line for line in imports),
              'using HostValueKind;', '']
-    for kind in needed:
+    for kind in [*needed, *extra]:
         fields = schema[kind]
-        lines += [f'Widget{kind}Codec :: struct {{', f'    fields: [{len(fields)}]HostField']
-        for name, field_kind in fields:
-            if field_kind in records:
-                lines += [f'    {name}: Widget{field_kind}Codec']
-            if field_kind.startswith('[]') and not host_decoded(kind, name):
-                element = field_kind[2:]
-                limit = slice_limit(kind, name)
-                lines += [f'    {name}_values: [{limit}]HostValue']
-                if element in records:
-                    lines += [f'    {name}_codecs: [{limit}]Widget{element}Codec']
-                lines += [f'    {name}_decoded: [{limit}]{element}']
-        lines += ['}', '']
-        lines += encoder(kind, fields, records)
-        lines += decoder(kind, fields, records)
-        lines += validator(kind, fields, records)
+        if kind not in provided:
+            if methods is not None and any('Widget' + op + kind not in methods for op in emitters):
+                lines += ['// Widget codec schema: ' + json.dumps([kind, fields], separators=(',', ':'))]
+            lines += [f'Widget{kind}Codec :: struct {{', f'    fields: [{len(fields)}]HostField']
+            for name, field_kind in fields:
+                if field_kind in records:
+                    lines += [f'    {name}: Widget{field_kind}Codec']
+                if field_kind.startswith('[]') and not host_decoded(kind, name):
+                    element = field_kind[2:]
+                    limit = slice_limit(kind, name)
+                    lines += [f'    {name}_values: [{limit}]HostValue']
+                    if element in records:
+                        lines += [f'    {name}_codecs: [{limit}]Widget{element}Codec']
+                    lines += [f'    {name}_decoded: [{limit}]{element}']
+            lines += ['}', '']
+        for operation, emit in emitters.items():
+            if methods is None or 'Widget' + operation + kind in methods:
+                lines += emit(kind, fields, records)
     return '\n'.join(lines)
 
 
@@ -252,6 +385,10 @@ def main():
     parser.add_argument('--import', dest='imports', action='append', default=[],
                         help='import line for the output, such as \'"std/vec"\' or \', file "types.zi";\'')
     parser.add_argument('--output', type=Path, help='file to write')
+    parser.add_argument('--defer-method', action='append', default=[],
+                        help='generate this operation only when another operation requires it')
+    parser.add_argument('--complete', action='store_true',
+                        help='include all operations for Kryon and imported codec storage')
     parser.add_argument('--check', action='store_true', help='fail unless the output is current')
     parser.add_argument('--generated-by', default='scripts/generate-widget-codecs.py',
                         help='command named in the generated header')
@@ -259,20 +396,36 @@ def main():
 
     sources, roots, imports = args.source, args.root, args.imports
     output = args.output
+    omitted = set(args.defer_method)
     if not sources:
         # Kryon's own hosted widgets.
         sources = [KRYON_ROOT / 'src/ui' / (module + '.zi') for module in KRYON_MODULES]
         roots = KRYON_ROOTS
         imports = ['"std/bundle_host"', '"std/byte_text_linux"', '"hosted_values"',
                    *(f'"{module}"' for module in KRYON_MODULES)]
+        if args.complete:
+            imports += args.imports
+        else:
+            omitted |= KRYON_BUILD_TIME_METHODS
         output = output or KRYON_ROOT / 'src/backend/widget_codec.zi'
     if output is None or not roots:
         parser.error('an application codec needs --source, --root and --output')
-    schema = read_schema(sources)
-    provided = provided_types(args.uses)
+    if any(output.resolve() == Path(path).resolve() for path in args.uses):
+        parser.error('output must differ from imported --uses modules')
+    provided, available, schema = provided_info(args.uses)
+    schema.update(read_schema(sources))
     needed = order(schema, roots, provided)
+    records = set(needed) | provided
+    all_methods = {'Widget' + op + kind for kind in records for op in ('Encode', 'Decode', 'Valid')}
+    if omitted - all_methods:
+        parser.error('unknown deferred methods: ' + ', '.join(sorted(omitted - all_methods)))
+    seed_types = set(needed) | set(roots)
+    if args.complete:
+        seed_types |= provided
+    seeds = {'Widget' + op + kind for kind in seed_types for op in ('Encode', 'Decode', 'Valid')} - omitted
+    methods = required_methods(schema, seeds, available, records)
     header = f'// Generated by {args.generated_by}; bounded public widget values.'
-    text = generate(schema, needed, provided, header, imports)
+    text = generate(schema, needed, provided, header, imports, methods)
     if args.check:
         if not output.exists() or output.read_text() != text:
             sys.exit(f'{output} is out of date; run {args.generated_by}')

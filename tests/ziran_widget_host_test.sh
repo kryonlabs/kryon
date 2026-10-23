@@ -7,8 +7,11 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 # The generated codec must match Kryon's widget records.
 python3 "$repo/scripts/generate-widget-codecs.py" --check
+python3 "$repo/scripts/generate-widget-codecs.py" --complete \
+    --uses "$repo/src/backend/widget_codec.zi" --import '"widget_codec"' \
+    --output "$work/widget_test_codecs.zi"
 "$ziran" build --target=c --no-main --entry ziran_widget_host_test:main --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/src/backend" --module-path "$ziran_root/std" -o "$work/c" "$repo/tests/ziran_widget_host_test.zi"
+    --module-path "$repo/src/ui" --module-path "$repo/src/backend" --module-path "$work" --module-path "$ziran_root/std" -o "$work/c" "$repo/tests/ziran_widget_host_test.zi"
 "${CC:-cc}" -O2 -std=c11 -ffunction-sections -fdata-sections -I"$work/c" "$work"/c/*.c \
     -Wl,--gc-sections -lm -o "$work/run"
 "$work/run"

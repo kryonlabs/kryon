@@ -1,0 +1,32 @@
+#import "std/bundle_host"
+#import "widget_codec_leaf"
+#import "widget_codec_envelope"
+#import "partial_leaf_codec"
+#import "partial_envelope_codec"
+using HostValueKind;
+encoded: WidgetCodecEnvelopeCodec;
+decoded: WidgetCodecEnvelopeCodec;
+#program_export
+main :: () -> s32 {
+    children: [2]CodecLeaf
+    children[0] = .{11, "first"}
+    children[1] = .{-12, "second β"}
+    data: CodecEnvelope
+    data.leaf = .{-2147483647, "retained"}
+    data.children = children[:]
+    value := WidgetEncodeCodecEnvelope(data, *encoded)
+    if !WidgetValidCodecEnvelope(value) { return 1 }
+    result := WidgetDecodeCodecEnvelope(value, *decoded)
+    if result.leaf.number != data.leaf.number || result.leaf.name != data.leaf.name ||
+        decoded.children_decoded[0].number != 11 || decoded.children_decoded[0].name != "first" ||
+        decoded.children_decoded[1].number != -12 || decoded.children_decoded[1].name != "second β" { return 2 }
+    saved := value.fields[0]
+    value.fields[0] = value.fields[1]
+    value.fields[1] = saved
+    if !WidgetValidCodecEnvelope(value) { return 3 }
+    result = WidgetDecodeCodecEnvelope(value, *decoded)
+    if result.leaf.name != "retained" || decoded.children_decoded[1].name != "second β" { return 4 }
+    value.fields[1].value.fields[0].value.kind = -1
+    if WidgetValidCodecEnvelope(value) { return 5 }
+    return 0
+}

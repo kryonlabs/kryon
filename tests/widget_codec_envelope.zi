@@ -1,0 +1,6 @@
+#import "widget_codec_leaf"
+#scope_export
+CodecEnvelope :: struct {
+    leaf: CodecLeaf
+    children: []CodecLeaf
+}

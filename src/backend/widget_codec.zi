@@ -33,6 +33,7 @@
 #import "tile_map"
 using HostValueKind;
 
+// Widget codec schema: ["PointerFrame",[["x","float32"],["y","float32"],["down","bool"],["pressed","bool"],["released","bool"]]]
 WidgetPointerFrameCodec :: struct {
     fields: [5]HostField
 }
@@ -50,28 +51,6 @@ WidgetEncodePointerFrame :: (data: PointerFrame, codec: *WidgetPointerFrameCodec
     codec.fields[4].name = HostTextData("released")
     codec.fields[4].value = HostScalar("bool", ifx data.released then 1 else 0)
     return value
-}
-
-WidgetDecodePointerFrame :: (value: HostValue, codec: *WidgetPointerFrameCodec) -> PointerFrame {
-    data: PointerFrame
-    unused codec
-    zero: HostValue
-    data.x = cast(float32)HostFieldValue(*value, 0, "x", *zero).real
-    data.y = cast(float32)HostFieldValue(*value, 1, "y", *zero).real
-    data.down = HostFieldValue(*value, 2, "down", *zero).integer != 0
-    data.pressed = HostFieldValue(*value, 3, "pressed", *zero).integer != 0
-    data.released = HostFieldValue(*value, 4, "released", *zero).integer != 0
-    return data
-}
-
-WidgetValidPointerFrame :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "PointerFrame") { return false }
-    if !HostFieldScalarValid(*value, 0, "x", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 1, "y", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 2, "down", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 3, "pressed", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 4, "released", "bool", cast(s32)HostInteger) { return false }
-    return true
 }
 
 WidgetRectangleCodec :: struct {
@@ -111,17 +90,9 @@ WidgetValidRectangle :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TextRange",[["start","s32"],["end","s32"]]]
 WidgetTextRangeCodec :: struct {
     fields: [2]HostField
-}
-
-WidgetEncodeTextRange :: (data: TextRange, codec: *WidgetTextRangeCodec) -> HostValue {
-    value := HostRecordValue("TextRange", codec.fields[:])
-    codec.fields[0].name = HostTextData("start")
-    codec.fields[0].value = HostScalar("s32", cast(s64)data.start)
-    codec.fields[1].name = HostTextData("end")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.end)
-    return value
 }
 
 WidgetDecodeTextRange :: (value: HostValue, codec: *WidgetTextRangeCodec) -> TextRange {
@@ -140,6 +111,7 @@ WidgetValidTextRange :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TextProps",[["key","u64"],["bounds","Rectangle"],["text","string"],["font","s32"],["fallback_font","s32"],["style_kind","s32"],["semantic_kind","SemanticKind"],["heading_level","s32"],["class_name","s32"],["wrap","TextWrap"],["align","TextAlign"],["vertical_align","TextAlign"],["disabled","bool"],["selectable","bool"],["strikethrough","bool"],["strong","[]TextRange"],["typing","bool"],["typed","s32"],["links","[]TextRange"]]]
 WidgetTextPropsCodec :: struct {
     fields: [19]HostField
     bounds: WidgetRectangleCodec
@@ -149,71 +121,6 @@ WidgetTextPropsCodec :: struct {
     links_values: [1024]HostValue
     links_codecs: [1024]WidgetTextRangeCodec
     links_decoded: [1024]TextRange
-}
-
-WidgetEncodeTextProps :: (data: TextProps, codec: *WidgetTextPropsCodec) -> HostValue {
-    value := HostRecordValue("TextProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("text")
-    codec.fields[2].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.text), .length = cast(usize)data.text.count}
-    codec.fields[3].name = HostTextData("font")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.font)
-    codec.fields[4].name = HostTextData("fallback_font")
-    codec.fields[4].value = HostScalar("s32", cast(s64)data.fallback_font)
-    codec.fields[5].name = HostTextData("style_kind")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.style_kind)
-    codec.fields[6].name = HostTextData("semantic_kind")
-    codec.fields[6].value = HostScalar("SemanticKind", cast(s64)data.semantic_kind)
-    codec.fields[7].name = HostTextData("heading_level")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.heading_level)
-    codec.fields[8].name = HostTextData("class_name")
-    codec.fields[8].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[9].name = HostTextData("wrap")
-    codec.fields[9].value = HostScalar("TextWrap", cast(s64)data.wrap)
-    codec.fields[10].name = HostTextData("align")
-    codec.fields[10].value = HostScalar("TextAlign", cast(s64)data.align)
-    codec.fields[11].name = HostTextData("vertical_align")
-    codec.fields[11].value = HostScalar("TextAlign", cast(s64)data.vertical_align)
-    codec.fields[12].name = HostTextData("disabled")
-    codec.fields[12].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[13].name = HostTextData("selectable")
-    codec.fields[13].value = HostScalar("bool", ifx data.selectable then 1 else 0)
-    codec.fields[14].name = HostTextData("strikethrough")
-    codec.fields[14].value = HostScalar("bool", ifx data.strikethrough then 1 else 0)
-    codec.fields[15].name = HostTextData("strong")
-    codec.fields[15].value.kind = cast(s32)HostSlice
-    codec.fields[15].value.type_name = HostTextData("[]TextRange")
-    codec.fields[15].value.length = cast(usize)data.strong.count
-    if codec.fields[15].value.length > cast(usize)1024 { codec.fields[15].value.length = cast(usize)1024 }
-    codec.fields[15].value.elements = *codec.strong_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[15].value.length {
-            codec.strong_values[index] = WidgetEncodeTextRange(data.strong[index], *codec.strong_codecs[index])
-            index += cast(usize)1
-        }
-    }
-    codec.fields[16].name = HostTextData("typing")
-    codec.fields[16].value = HostScalar("bool", ifx data.typing then 1 else 0)
-    codec.fields[17].name = HostTextData("typed")
-    codec.fields[17].value = HostScalar("s32", cast(s64)data.typed)
-    codec.fields[18].name = HostTextData("links")
-    codec.fields[18].value.kind = cast(s32)HostSlice
-    codec.fields[18].value.type_name = HostTextData("[]TextRange")
-    codec.fields[18].value.length = cast(usize)data.links.count
-    if codec.fields[18].value.length > cast(usize)1024 { codec.fields[18].value.length = cast(usize)1024 }
-    codec.fields[18].value.elements = *codec.links_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[18].value.length {
-            codec.links_values[index] = WidgetEncodeTextRange(data.links[index], *codec.links_codecs[index])
-            index += cast(usize)1
-        }
-    }
-    return value
 }
 
 WidgetDecodeTextProps :: (value: HostValue, codec: *WidgetTextPropsCodec) -> TextProps {
@@ -315,17 +222,9 @@ WidgetValidTextProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["Vector2",[["x","float32"],["y","float32"]]]
 WidgetVector2Codec :: struct {
     fields: [2]HostField
-}
-
-WidgetEncodeVector2 :: (data: Vector2, codec: *WidgetVector2Codec) -> HostValue {
-    value := HostRecordValue("Vector2", codec.fields[:])
-    codec.fields[0].name = HostTextData("x")
-    codec.fields[0].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.x}
-    codec.fields[1].name = HostTextData("y")
-    codec.fields[1].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.y}
-    return value
 }
 
 WidgetDecodeVector2 :: (value: HostValue, codec: *WidgetVector2Codec) -> Vector2 {
@@ -344,23 +243,9 @@ WidgetValidVector2 :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["Texture2D",[["id","u32"],["width","s32"],["height","s32"],["mipmaps","s32"],["format","s32"]]]
 WidgetTexture2DCodec :: struct {
     fields: [5]HostField
-}
-
-WidgetEncodeTexture2D :: (data: Texture2D, codec: *WidgetTexture2DCodec) -> HostValue {
-    value := HostRecordValue("Texture2D", codec.fields[:])
-    codec.fields[0].name = HostTextData("id")
-    codec.fields[0].value = HostScalar("u32", cast(s64)data.id)
-    codec.fields[1].name = HostTextData("width")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.width)
-    codec.fields[2].name = HostTextData("height")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.height)
-    codec.fields[3].name = HostTextData("mipmaps")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.mipmaps)
-    codec.fields[4].name = HostTextData("format")
-    codec.fields[4].value = HostScalar("s32", cast(s64)data.format)
-    return value
 }
 
 WidgetDecodeTexture2D :: (value: HostValue, codec: *WidgetTexture2DCodec) -> Texture2D {
@@ -385,21 +270,9 @@ WidgetValidTexture2D :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ImageMesh",[["columns","s32"],["rows","s32"],["points","[]Vector2"]]]
 WidgetImageMeshCodec :: struct {
     fields: [3]HostField
-}
-
-WidgetEncodeImageMesh :: (data: ImageMesh, codec: *WidgetImageMeshCodec) -> HostValue {
-    value := HostRecordValue("ImageMesh", codec.fields[:])
-    codec.fields[0].name = HostTextData("columns")
-    codec.fields[0].value = HostScalar("s32", cast(s64)data.columns)
-    codec.fields[1].name = HostTextData("rows")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.rows)
-    codec.fields[2].name = HostTextData("points")
-    codec.fields[2].value.kind = cast(s32)HostSlice
-    codec.fields[2].value.type_name = HostTextData("[]Vector2")
-    codec.fields[2].value.length = cast(usize)0
-    return value
 }
 
 WidgetDecodeImageMesh :: (value: HostValue, codec: *WidgetImageMeshCodec) -> ImageMesh {
@@ -432,6 +305,7 @@ WidgetValidImageMesh :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ImageProps",[["asset_path","string"],["alt_text","string"],["bounds","Rectangle"],["source","Rectangle"],["origin","Vector2"],["rotation","float32"],["fit","ImageFit"],["class_name","s32"],["texture","Texture2D"],["tint","u32"],["key","u64"],["smooth","bool"],["mesh","ImageMesh"]]]
 WidgetImagePropsCodec :: struct {
     fields: [13]HostField
     bounds: WidgetRectangleCodec
@@ -439,37 +313,6 @@ WidgetImagePropsCodec :: struct {
     origin: WidgetVector2Codec
     texture: WidgetTexture2DCodec
     mesh: WidgetImageMeshCodec
-}
-
-WidgetEncodeImageProps :: (data: ImageProps, codec: *WidgetImagePropsCodec) -> HostValue {
-    value := HostRecordValue("ImageProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("asset_path")
-    codec.fields[0].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.asset_path), .length = cast(usize)data.asset_path.count}
-    codec.fields[1].name = HostTextData("alt_text")
-    codec.fields[1].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.alt_text), .length = cast(usize)data.alt_text.count}
-    codec.fields[2].name = HostTextData("bounds")
-    codec.fields[2].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[3].name = HostTextData("source")
-    codec.fields[3].value = WidgetEncodeRectangle(data.source, *codec.source)
-    codec.fields[4].name = HostTextData("origin")
-    codec.fields[4].value = WidgetEncodeVector2(data.origin, *codec.origin)
-    codec.fields[5].name = HostTextData("rotation")
-    codec.fields[5].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.rotation}
-    codec.fields[6].name = HostTextData("fit")
-    codec.fields[6].value = HostScalar("ImageFit", cast(s64)data.fit)
-    codec.fields[7].name = HostTextData("class_name")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[8].name = HostTextData("texture")
-    codec.fields[8].value = WidgetEncodeTexture2D(data.texture, *codec.texture)
-    codec.fields[9].name = HostTextData("tint")
-    codec.fields[9].value = HostScalar("u32", cast(s64)data.tint)
-    codec.fields[10].name = HostTextData("key")
-    codec.fields[10].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[11].name = HostTextData("smooth")
-    codec.fields[11].value = HostScalar("bool", ifx data.smooth then 1 else 0)
-    codec.fields[12].name = HostTextData("mesh")
-    codec.fields[12].value = WidgetEncodeImageMesh(data.mesh, *codec.mesh)
-    return value
 }
 
 WidgetDecodeImageProps :: (value: HostValue, codec: *WidgetImagePropsCodec) -> ImageProps {
@@ -546,89 +389,13 @@ WidgetValidColor :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ButtonProps",[["key","u64"],["bounds","Rectangle"],["label","string"],["detail","string"],["id","s32"],["class_name","s32"],["style_kind","s32"],["style_role","s32"],["tone","ButtonTone"],["emphasis","ButtonEmphasis"],["size","ControlSize"],["disabled","bool"],["loading","bool"],["selected","bool"],["invisible","bool"],["full_width","bool"],["pill","bool"],["circle","bool"],["icon","Texture2D"],["icon_type","s32"],["icon_shape","string"],["icon_placement","IconPlacement"],["content_alignment","ContentAlignment"],["icon_only","bool"],["fit_content","bool"],["square","bool"],["image","ImageProps"],["swatch","bool"],["swatch_color","Color"],["menu_id","s32"],["menu","bool"],["split","bool"],["arrow","bool"],["info","bool"],["direction","ArrowDirection"],["state","ButtonState"]]]
 WidgetButtonPropsCodec :: struct {
     fields: [36]HostField
     bounds: WidgetRectangleCodec
     icon: WidgetTexture2DCodec
     image: WidgetImagePropsCodec
     swatch_color: WidgetColorCodec
-}
-
-WidgetEncodeButtonProps :: (data: ButtonProps, codec: *WidgetButtonPropsCodec) -> HostValue {
-    value := HostRecordValue("ButtonProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("label")
-    codec.fields[2].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[3].name = HostTextData("detail")
-    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.detail), .length = cast(usize)data.detail.count}
-    codec.fields[4].name = HostTextData("id")
-    codec.fields[4].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[5].name = HostTextData("class_name")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[6].name = HostTextData("style_kind")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.style_kind)
-    codec.fields[7].name = HostTextData("style_role")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.style_role)
-    codec.fields[8].name = HostTextData("tone")
-    codec.fields[8].value = HostScalar("ButtonTone", cast(s64)data.tone)
-    codec.fields[9].name = HostTextData("emphasis")
-    codec.fields[9].value = HostScalar("ButtonEmphasis", cast(s64)data.emphasis)
-    codec.fields[10].name = HostTextData("size")
-    codec.fields[10].value = HostScalar("ControlSize", cast(s64)data.size)
-    codec.fields[11].name = HostTextData("disabled")
-    codec.fields[11].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[12].name = HostTextData("loading")
-    codec.fields[12].value = HostScalar("bool", ifx data.loading then 1 else 0)
-    codec.fields[13].name = HostTextData("selected")
-    codec.fields[13].value = HostScalar("bool", ifx data.selected then 1 else 0)
-    codec.fields[14].name = HostTextData("invisible")
-    codec.fields[14].value = HostScalar("bool", ifx data.invisible then 1 else 0)
-    codec.fields[15].name = HostTextData("full_width")
-    codec.fields[15].value = HostScalar("bool", ifx data.full_width then 1 else 0)
-    codec.fields[16].name = HostTextData("pill")
-    codec.fields[16].value = HostScalar("bool", ifx data.pill then 1 else 0)
-    codec.fields[17].name = HostTextData("circle")
-    codec.fields[17].value = HostScalar("bool", ifx data.circle then 1 else 0)
-    codec.fields[18].name = HostTextData("icon")
-    codec.fields[18].value = WidgetEncodeTexture2D(data.icon, *codec.icon)
-    codec.fields[19].name = HostTextData("icon_type")
-    codec.fields[19].value = HostScalar("s32", cast(s64)data.icon_type)
-    codec.fields[20].name = HostTextData("icon_shape")
-    codec.fields[20].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.icon_shape), .length = cast(usize)data.icon_shape.count}
-    codec.fields[21].name = HostTextData("icon_placement")
-    codec.fields[21].value = HostScalar("IconPlacement", cast(s64)data.icon_placement)
-    codec.fields[22].name = HostTextData("content_alignment")
-    codec.fields[22].value = HostScalar("ContentAlignment", cast(s64)data.content_alignment)
-    codec.fields[23].name = HostTextData("icon_only")
-    codec.fields[23].value = HostScalar("bool", ifx data.icon_only then 1 else 0)
-    codec.fields[24].name = HostTextData("fit_content")
-    codec.fields[24].value = HostScalar("bool", ifx data.fit_content then 1 else 0)
-    codec.fields[25].name = HostTextData("square")
-    codec.fields[25].value = HostScalar("bool", ifx data.square then 1 else 0)
-    codec.fields[26].name = HostTextData("image")
-    codec.fields[26].value = WidgetEncodeImageProps(data.image, *codec.image)
-    codec.fields[27].name = HostTextData("swatch")
-    codec.fields[27].value = HostScalar("bool", ifx data.swatch then 1 else 0)
-    codec.fields[28].name = HostTextData("swatch_color")
-    codec.fields[28].value = WidgetEncodeColor(data.swatch_color, *codec.swatch_color)
-    codec.fields[29].name = HostTextData("menu_id")
-    codec.fields[29].value = HostScalar("s32", cast(s64)data.menu_id)
-    codec.fields[30].name = HostTextData("menu")
-    codec.fields[30].value = HostScalar("bool", ifx data.menu then 1 else 0)
-    codec.fields[31].name = HostTextData("split")
-    codec.fields[31].value = HostScalar("bool", ifx data.split then 1 else 0)
-    codec.fields[32].name = HostTextData("arrow")
-    codec.fields[32].value = HostScalar("bool", ifx data.arrow then 1 else 0)
-    codec.fields[33].name = HostTextData("info")
-    codec.fields[33].value = HostScalar("bool", ifx data.info then 1 else 0)
-    codec.fields[34].name = HostTextData("direction")
-    codec.fields[34].value = HostScalar("ArrowDirection", cast(s64)data.direction)
-    codec.fields[35].name = HostTextData("state")
-    codec.fields[35].value = HostScalar("ButtonState", cast(s64)data.state)
-    return value
 }
 
 WidgetDecodeButtonProps :: (value: HostValue, codec: *WidgetButtonPropsCodec) -> ButtonProps {
@@ -751,19 +518,9 @@ WidgetValidCompositionState :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TextAreaColorSpan",[["start","s32"],["end","s32"],["color","u32"]]]
 WidgetTextAreaColorSpanCodec :: struct {
     fields: [3]HostField
-}
-
-WidgetEncodeTextAreaColorSpan :: (data: TextAreaColorSpan, codec: *WidgetTextAreaColorSpanCodec) -> HostValue {
-    value := HostRecordValue("TextAreaColorSpan", codec.fields[:])
-    codec.fields[0].name = HostTextData("start")
-    codec.fields[0].value = HostScalar("s32", cast(s64)data.start)
-    codec.fields[1].name = HostTextData("end")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.end)
-    codec.fields[2].name = HostTextData("color")
-    codec.fields[2].value = HostScalar("u32", cast(s64)data.color)
-    return value
 }
 
 WidgetDecodeTextAreaColorSpan :: (value: HostValue, codec: *WidgetTextAreaColorSpanCodec) -> TextAreaColorSpan {
@@ -950,23 +707,9 @@ WidgetValidTextAreaInput :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TextAreaBlock",[["start","s32"],["height","s32"],["cover","bool"],["image","string"],["label","string"]]]
 WidgetTextAreaBlockCodec :: struct {
     fields: [5]HostField
-}
-
-WidgetEncodeTextAreaBlock :: (data: TextAreaBlock, codec: *WidgetTextAreaBlockCodec) -> HostValue {
-    value := HostRecordValue("TextAreaBlock", codec.fields[:])
-    codec.fields[0].name = HostTextData("start")
-    codec.fields[0].value = HostScalar("s32", cast(s64)data.start)
-    codec.fields[1].name = HostTextData("height")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.height)
-    codec.fields[2].name = HostTextData("cover")
-    codec.fields[2].value = HostScalar("bool", ifx data.cover then 1 else 0)
-    codec.fields[3].name = HostTextData("image")
-    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.image), .length = cast(usize)data.image.count}
-    codec.fields[4].name = HostTextData("label")
-    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    return value
 }
 
 WidgetDecodeTextAreaBlock :: (value: HostValue, codec: *WidgetTextAreaBlockCodec) -> TextAreaBlock {
@@ -991,17 +734,9 @@ WidgetValidTextAreaBlock :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TextAreaLine",[["start","s32"],["scale","float32"]]]
 WidgetTextAreaLineCodec :: struct {
     fields: [2]HostField
-}
-
-WidgetEncodeTextAreaLine :: (data: TextAreaLine, codec: *WidgetTextAreaLineCodec) -> HostValue {
-    value := HostRecordValue("TextAreaLine", codec.fields[:])
-    codec.fields[0].name = HostTextData("start")
-    codec.fields[0].value = HostScalar("s32", cast(s64)data.start)
-    codec.fields[1].name = HostTextData("scale")
-    codec.fields[1].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    return value
 }
 
 WidgetDecodeTextAreaLine :: (value: HostValue, codec: *WidgetTextAreaLineCodec) -> TextAreaLine {
@@ -1020,8 +755,9 @@ WidgetValidTextAreaLine :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TextAreaProps",[["key","u64"],["bounds","Rectangle"],["value","string"],["label","string"],["placeholder","string"],["cursor","s32"],["anchor","s32"],["scroll_y","s32"],["focused","bool"],["composition","CompositionState"],["selecting","bool"],["preferred_x","s32"],["preferred_x_valid","bool"],["max_bytes","s32"],["max_codepoints","s32"],["focus_id","s32"],["colors","[]TextAreaColorSpan"],["composition_start","s32"],["composition_end","s32"],["read_only","bool"],["wrap","bool"],["class_name","s32"],["scale","float32"],["disabled","bool"],["input","TextAreaInput"],["manual_scroll","bool"],["hidden","[]TextRange"],["strong","[]TextRange"],["italic","[]TextRange"],["blocks","[]TextAreaBlock"],["lines","[]TextAreaLine"]]]
 WidgetTextAreaPropsCodec :: struct {
-    fields: [30]HostField
+    fields: [31]HostField
     bounds: WidgetRectangleCodec
     composition: WidgetCompositionStateCodec
     colors_values: [1024]HostValue
@@ -1043,137 +779,6 @@ WidgetTextAreaPropsCodec :: struct {
     lines_values: [1024]HostValue
     lines_codecs: [1024]WidgetTextAreaLineCodec
     lines_decoded: [1024]TextAreaLine
-}
-
-WidgetEncodeTextAreaProps :: (data: TextAreaProps, codec: *WidgetTextAreaPropsCodec) -> HostValue {
-    value := HostRecordValue("TextAreaProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("value")
-    codec.fields[2].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.value), .length = cast(usize)data.value.count}
-    codec.fields[3].name = HostTextData("label")
-    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[4].name = HostTextData("placeholder")
-    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.placeholder), .length = cast(usize)data.placeholder.count}
-    codec.fields[5].name = HostTextData("cursor")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.cursor)
-    codec.fields[6].name = HostTextData("anchor")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.anchor)
-    codec.fields[7].name = HostTextData("scroll_y")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.scroll_y)
-    codec.fields[8].name = HostTextData("focused")
-    codec.fields[8].value = HostScalar("bool", ifx data.focused then 1 else 0)
-    codec.fields[9].name = HostTextData("composition")
-    codec.fields[9].value = WidgetEncodeCompositionState(data.composition, *codec.composition)
-    codec.fields[10].name = HostTextData("selecting")
-    codec.fields[10].value = HostScalar("bool", ifx data.selecting then 1 else 0)
-    codec.fields[11].name = HostTextData("preferred_x")
-    codec.fields[11].value = HostScalar("s32", cast(s64)data.preferred_x)
-    codec.fields[12].name = HostTextData("preferred_x_valid")
-    codec.fields[12].value = HostScalar("bool", ifx data.preferred_x_valid then 1 else 0)
-    codec.fields[13].name = HostTextData("max_bytes")
-    codec.fields[13].value = HostScalar("s32", cast(s64)data.max_bytes)
-    codec.fields[14].name = HostTextData("max_codepoints")
-    codec.fields[14].value = HostScalar("s32", cast(s64)data.max_codepoints)
-    codec.fields[15].name = HostTextData("focus_id")
-    codec.fields[15].value = HostScalar("s32", cast(s64)data.focus_id)
-    codec.fields[16].name = HostTextData("colors")
-    codec.fields[16].value.kind = cast(s32)HostSlice
-    codec.fields[16].value.type_name = HostTextData("[]TextAreaColorSpan")
-    codec.fields[16].value.length = cast(usize)data.colors.count
-    if codec.fields[16].value.length > cast(usize)1024 { codec.fields[16].value.length = cast(usize)1024 }
-    codec.fields[16].value.elements = *codec.colors_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[16].value.length {
-            codec.colors_values[index] = WidgetEncodeTextAreaColorSpan(data.colors[index], *codec.colors_codecs[index])
-            index += cast(usize)1
-        }
-    }
-    codec.fields[17].name = HostTextData("composition_start")
-    codec.fields[17].value = HostScalar("s32", cast(s64)data.composition_start)
-    codec.fields[18].name = HostTextData("composition_end")
-    codec.fields[18].value = HostScalar("s32", cast(s64)data.composition_end)
-    codec.fields[19].name = HostTextData("read_only")
-    codec.fields[19].value = HostScalar("bool", ifx data.read_only then 1 else 0)
-    codec.fields[20].name = HostTextData("wrap")
-    codec.fields[20].value = HostScalar("bool", ifx data.wrap then 1 else 0)
-    codec.fields[21].name = HostTextData("class_name")
-    codec.fields[21].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[22].name = HostTextData("scale")
-    codec.fields[22].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[23].name = HostTextData("disabled")
-    codec.fields[23].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[24].name = HostTextData("input")
-    codec.fields[24].value = WidgetEncodeTextAreaInput(data.input, *codec.input)
-    codec.fields[25].name = HostTextData("hidden")
-    codec.fields[25].value.kind = cast(s32)HostSlice
-    codec.fields[25].value.type_name = HostTextData("[]TextRange")
-    codec.fields[25].value.length = cast(usize)data.hidden.count
-    if codec.fields[25].value.length > cast(usize)1024 { codec.fields[25].value.length = cast(usize)1024 }
-    codec.fields[25].value.elements = *codec.hidden_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[25].value.length {
-            codec.hidden_values[index] = WidgetEncodeTextRange(data.hidden[index], *codec.hidden_codecs[index])
-            index += cast(usize)1
-        }
-    }
-    codec.fields[26].name = HostTextData("strong")
-    codec.fields[26].value.kind = cast(s32)HostSlice
-    codec.fields[26].value.type_name = HostTextData("[]TextRange")
-    codec.fields[26].value.length = cast(usize)data.strong.count
-    if codec.fields[26].value.length > cast(usize)1024 { codec.fields[26].value.length = cast(usize)1024 }
-    codec.fields[26].value.elements = *codec.strong_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[26].value.length {
-            codec.strong_values[index] = WidgetEncodeTextRange(data.strong[index], *codec.strong_codecs[index])
-            index += cast(usize)1
-        }
-    }
-    codec.fields[27].name = HostTextData("italic")
-    codec.fields[27].value.kind = cast(s32)HostSlice
-    codec.fields[27].value.type_name = HostTextData("[]TextRange")
-    codec.fields[27].value.length = cast(usize)data.italic.count
-    if codec.fields[27].value.length > cast(usize)1024 { codec.fields[27].value.length = cast(usize)1024 }
-    codec.fields[27].value.elements = *codec.italic_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[27].value.length {
-            codec.italic_values[index] = WidgetEncodeTextRange(data.italic[index], *codec.italic_codecs[index])
-            index += cast(usize)1
-        }
-    }
-    codec.fields[28].name = HostTextData("blocks")
-    codec.fields[28].value.kind = cast(s32)HostSlice
-    codec.fields[28].value.type_name = HostTextData("[]TextAreaBlock")
-    codec.fields[28].value.length = cast(usize)data.blocks.count
-    if codec.fields[28].value.length > cast(usize)1024 { codec.fields[28].value.length = cast(usize)1024 }
-    codec.fields[28].value.elements = *codec.blocks_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[28].value.length {
-            codec.blocks_values[index] = WidgetEncodeTextAreaBlock(data.blocks[index], *codec.blocks_codecs[index])
-            index += cast(usize)1
-        }
-    }
-    codec.fields[29].name = HostTextData("lines")
-    codec.fields[29].value.kind = cast(s32)HostSlice
-    codec.fields[29].value.type_name = HostTextData("[]TextAreaLine")
-    codec.fields[29].value.length = cast(usize)data.lines.count
-    if codec.fields[29].value.length > cast(usize)1024 { codec.fields[29].value.length = cast(usize)1024 }
-    codec.fields[29].value.elements = *codec.lines_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[29].value.length {
-            codec.lines_values[index] = WidgetEncodeTextAreaLine(data.lines[index], *codec.lines_codecs[index])
-            index += cast(usize)1
-        }
-    }
-    return value
 }
 
 WidgetDecodeTextAreaProps :: (value: HostValue, codec: *WidgetTextAreaPropsCodec) -> TextAreaProps {
@@ -1216,8 +821,9 @@ WidgetDecodeTextAreaProps :: (value: HostValue, codec: *WidgetTextAreaPropsCodec
     data.scale = cast(float32)HostFieldValue(*value, 22, "scale", *zero).real
     data.disabled = HostFieldValue(*value, 23, "disabled", *zero).integer != 0
     data.input = WidgetDecodeTextAreaInput(HostFieldValue(*value, 24, "input", *zero).*, *codec.input)
+    data.manual_scroll = HostFieldValue(*value, 25, "manual_scroll", *zero).integer != 0
     {
-        field_at := HostFieldAt(value, 25, "hidden")
+        field_at := HostFieldAt(value, 26, "hidden")
         if field_at >= 0 {
             {
                 index: usize = 0
@@ -1230,7 +836,7 @@ WidgetDecodeTextAreaProps :: (value: HostValue, codec: *WidgetTextAreaPropsCodec
         }
     }
     {
-        field_at := HostFieldAt(value, 26, "strong")
+        field_at := HostFieldAt(value, 27, "strong")
         if field_at >= 0 {
             {
                 index: usize = 0
@@ -1243,7 +849,7 @@ WidgetDecodeTextAreaProps :: (value: HostValue, codec: *WidgetTextAreaPropsCodec
         }
     }
     {
-        field_at := HostFieldAt(value, 27, "italic")
+        field_at := HostFieldAt(value, 28, "italic")
         if field_at >= 0 {
             {
                 index: usize = 0
@@ -1256,7 +862,7 @@ WidgetDecodeTextAreaProps :: (value: HostValue, codec: *WidgetTextAreaPropsCodec
         }
     }
     {
-        field_at := HostFieldAt(value, 28, "blocks")
+        field_at := HostFieldAt(value, 29, "blocks")
         if field_at >= 0 {
             {
                 index: usize = 0
@@ -1269,7 +875,7 @@ WidgetDecodeTextAreaProps :: (value: HostValue, codec: *WidgetTextAreaPropsCodec
         }
     }
     {
-        field_at := HostFieldAt(value, 29, "lines")
+        field_at := HostFieldAt(value, 30, "lines")
         if field_at >= 0 {
             {
                 index: usize = 0
@@ -1324,8 +930,9 @@ WidgetValidTextAreaProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 22, "scale", "float32", cast(s32)HostReal) { return false }
     if !HostFieldScalarValid(*value, 23, "disabled", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldRecordValid(*value, 24, "input", WidgetValidTextAreaInput) { return false }
+    if !HostFieldScalarValid(*value, 25, "manual_scroll", "bool", cast(s32)HostInteger) { return false }
     {
-        field_at := HostFieldAt(value, 25, "hidden")
+        field_at := HostFieldAt(value, 26, "hidden")
         if field_at >= 0 {
             if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]TextRange" ||
                 value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
@@ -1339,7 +946,7 @@ WidgetValidTextAreaProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 26, "strong")
+        field_at := HostFieldAt(value, 27, "strong")
         if field_at >= 0 {
             if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]TextRange" ||
                 value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
@@ -1353,7 +960,7 @@ WidgetValidTextAreaProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 27, "italic")
+        field_at := HostFieldAt(value, 28, "italic")
         if field_at >= 0 {
             if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]TextRange" ||
                 value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
@@ -1367,7 +974,7 @@ WidgetValidTextAreaProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 28, "blocks")
+        field_at := HostFieldAt(value, 29, "blocks")
         if field_at >= 0 {
             if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]TextAreaBlock" ||
                 value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
@@ -1381,7 +988,7 @@ WidgetValidTextAreaProps :: (value: HostValue) -> bool {
         }
     }
     {
-        field_at := HostFieldAt(value, 29, "lines")
+        field_at := HostFieldAt(value, 30, "lines")
         if field_at >= 0 {
             if value.fields[field_at].value.kind != cast(s32)HostSlice || TextFromCString(value.fields[field_at].value.type_name) != "[]TextAreaLine" ||
                 value.fields[field_at].value.length > cast(usize)1024 || (value.fields[field_at].value.length > cast(usize)0 && value.fields[field_at].value.elements == null) { return false }
@@ -1397,6 +1004,7 @@ WidgetValidTextAreaProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TextAreaEdit",[["start","s32"],["end","s32"],["replacement","string"],["changed","bool"]]]
 WidgetTextAreaEditCodec :: struct {
     fields: [4]HostField
 }
@@ -1414,26 +1022,7 @@ WidgetEncodeTextAreaEdit :: (data: TextAreaEdit, codec: *WidgetTextAreaEditCodec
     return value
 }
 
-WidgetDecodeTextAreaEdit :: (value: HostValue, codec: *WidgetTextAreaEditCodec) -> TextAreaEdit {
-    data: TextAreaEdit
-    unused codec
-    zero: HostValue
-    data.start = cast(s32)HostFieldValue(*value, 0, "start", *zero).integer
-    data.end = cast(s32)HostFieldValue(*value, 1, "end", *zero).integer
-    data.replacement = HostValueText(HostFieldValue(*value, 2, "replacement", *zero).*)
-    data.changed = HostFieldValue(*value, 3, "changed", *zero).integer != 0
-    return data
-}
-
-WidgetValidTextAreaEdit :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "TextAreaEdit") { return false }
-    if !HostFieldScalarValid(*value, 0, "start", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "end", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "replacement", "string", cast(s32)HostString) { return false }
-    if !HostFieldScalarValid(*value, 3, "changed", "bool", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["TextAreaResult",[["node","s32"],["cursor","s32"],["anchor","s32"],["scroll_y","s32"],["focused","bool"],["selecting","bool"],["preferred_x","s32"],["preferred_x_valid","bool"],["committed","bool"],["escaped","bool"],["composition","CompositionState"],["composition_changed","bool"],["clipboard_write","bool"],["clipboard_text","string"],["paste_without_text","bool"],["edit","TextAreaEdit"]]]
 WidgetTextAreaResultCodec :: struct {
     fields: [16]HostField
     composition: WidgetCompositionStateCodec
@@ -1477,101 +1066,10 @@ WidgetEncodeTextAreaResult :: (data: TextAreaResult, codec: *WidgetTextAreaResul
     return value
 }
 
-WidgetDecodeTextAreaResult :: (value: HostValue, codec: *WidgetTextAreaResultCodec) -> TextAreaResult {
-    data: TextAreaResult
-    zero: HostValue
-    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
-    data.cursor = cast(s32)HostFieldValue(*value, 1, "cursor", *zero).integer
-    data.anchor = cast(s32)HostFieldValue(*value, 2, "anchor", *zero).integer
-    data.scroll_y = cast(s32)HostFieldValue(*value, 3, "scroll_y", *zero).integer
-    data.focused = HostFieldValue(*value, 4, "focused", *zero).integer != 0
-    data.selecting = HostFieldValue(*value, 5, "selecting", *zero).integer != 0
-    data.preferred_x = cast(s32)HostFieldValue(*value, 6, "preferred_x", *zero).integer
-    data.preferred_x_valid = HostFieldValue(*value, 7, "preferred_x_valid", *zero).integer != 0
-    data.committed = HostFieldValue(*value, 8, "committed", *zero).integer != 0
-    data.escaped = HostFieldValue(*value, 9, "escaped", *zero).integer != 0
-    data.composition = WidgetDecodeCompositionState(HostFieldValue(*value, 10, "composition", *zero).*, *codec.composition)
-    data.composition_changed = HostFieldValue(*value, 11, "composition_changed", *zero).integer != 0
-    data.clipboard_write = HostFieldValue(*value, 12, "clipboard_write", *zero).integer != 0
-    data.clipboard_text = HostValueText(HostFieldValue(*value, 13, "clipboard_text", *zero).*)
-    data.paste_without_text = HostFieldValue(*value, 14, "paste_without_text", *zero).integer != 0
-    data.edit = WidgetDecodeTextAreaEdit(HostFieldValue(*value, 15, "edit", *zero).*, *codec.edit)
-    return data
-}
-
-WidgetValidTextAreaResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "TextAreaResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "cursor", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "anchor", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 3, "scroll_y", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 4, "focused", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 5, "selecting", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 6, "preferred_x", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 7, "preferred_x_valid", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 8, "committed", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 9, "escaped", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 10, "composition", WidgetValidCompositionState) { return false }
-    if !HostFieldScalarValid(*value, 11, "composition_changed", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 12, "clipboard_write", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 13, "clipboard_text", "string", cast(s32)HostString) { return false }
-    if !HostFieldScalarValid(*value, 14, "paste_without_text", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 15, "edit", WidgetValidTextAreaEdit) { return false }
-    return true
-}
-
+// Widget codec schema: ["ScrollInput",[["enabled","bool"],["pointer_allowed","bool"],["disabled","bool"],["mouse","Vector2"],["pressed","bool"],["down","bool"],["released","bool"],["wheel","float32"],["owns_drag","bool"],["owner_captured","bool"],["grab","float32"],["content_drag","bool"],["drag_origin_y","float32"],["drag_origin_offset","s32"],["drag_moving","bool"],["device","bool"],["now_seconds","float64"],["sample_seconds","float64"],["velocity","float32"],["flinging","bool"],["gliding","bool"],["glide_target","s32"]]]
 WidgetScrollInputCodec :: struct {
     fields: [22]HostField
     mouse: WidgetVector2Codec
-}
-
-WidgetEncodeScrollInput :: (data: ScrollInput, codec: *WidgetScrollInputCodec) -> HostValue {
-    value := HostRecordValue("ScrollInput", codec.fields[:])
-    codec.fields[0].name = HostTextData("enabled")
-    codec.fields[0].value = HostScalar("bool", ifx data.enabled then 1 else 0)
-    codec.fields[1].name = HostTextData("pointer_allowed")
-    codec.fields[1].value = HostScalar("bool", ifx data.pointer_allowed then 1 else 0)
-    codec.fields[2].name = HostTextData("disabled")
-    codec.fields[2].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[3].name = HostTextData("mouse")
-    codec.fields[3].value = WidgetEncodeVector2(data.mouse, *codec.mouse)
-    codec.fields[4].name = HostTextData("pressed")
-    codec.fields[4].value = HostScalar("bool", ifx data.pressed then 1 else 0)
-    codec.fields[5].name = HostTextData("down")
-    codec.fields[5].value = HostScalar("bool", ifx data.down then 1 else 0)
-    codec.fields[6].name = HostTextData("released")
-    codec.fields[6].value = HostScalar("bool", ifx data.released then 1 else 0)
-    codec.fields[7].name = HostTextData("wheel")
-    codec.fields[7].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.wheel}
-    codec.fields[8].name = HostTextData("owns_drag")
-    codec.fields[8].value = HostScalar("bool", ifx data.owns_drag then 1 else 0)
-    codec.fields[9].name = HostTextData("owner_captured")
-    codec.fields[9].value = HostScalar("bool", ifx data.owner_captured then 1 else 0)
-    codec.fields[10].name = HostTextData("grab")
-    codec.fields[10].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.grab}
-    codec.fields[11].name = HostTextData("content_drag")
-    codec.fields[11].value = HostScalar("bool", ifx data.content_drag then 1 else 0)
-    codec.fields[12].name = HostTextData("drag_origin_y")
-    codec.fields[12].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.drag_origin_y}
-    codec.fields[13].name = HostTextData("drag_origin_offset")
-    codec.fields[13].value = HostScalar("s32", cast(s64)data.drag_origin_offset)
-    codec.fields[14].name = HostTextData("drag_moving")
-    codec.fields[14].value = HostScalar("bool", ifx data.drag_moving then 1 else 0)
-    codec.fields[15].name = HostTextData("device")
-    codec.fields[15].value = HostScalar("bool", ifx data.device then 1 else 0)
-    codec.fields[16].name = HostTextData("now_seconds")
-    codec.fields[16].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float64"), .real = cast(float64)data.now_seconds}
-    codec.fields[17].name = HostTextData("sample_seconds")
-    codec.fields[17].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float64"), .real = cast(float64)data.sample_seconds}
-    codec.fields[18].name = HostTextData("velocity")
-    codec.fields[18].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.velocity}
-    codec.fields[19].name = HostTextData("flinging")
-    codec.fields[19].value = HostScalar("bool", ifx data.flinging then 1 else 0)
-    codec.fields[20].name = HostTextData("gliding")
-    codec.fields[20].value = HostScalar("bool", ifx data.gliding then 1 else 0)
-    codec.fields[21].name = HostTextData("glide_target")
-    codec.fields[21].value = HostScalar("s32", cast(s64)data.glide_target)
-    return value
 }
 
 WidgetDecodeScrollInput :: (value: HostValue, codec: *WidgetScrollInputCodec) -> ScrollInput {
@@ -1629,29 +1127,9 @@ WidgetValidScrollInput :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ScrollMetrics",[["scrollbar_width","s32"],["reserved_width","s32"],["safe_gap","s32"],["default_wheel_step","s32"],["drag_threshold","s32"],["visual_bleed","s32"],["thumb_min_height","s32"],["thumb_inset","s32"]]]
 WidgetScrollMetricsCodec :: struct {
     fields: [8]HostField
-}
-
-WidgetEncodeScrollMetrics :: (data: ScrollMetrics, codec: *WidgetScrollMetricsCodec) -> HostValue {
-    value := HostRecordValue("ScrollMetrics", codec.fields[:])
-    codec.fields[0].name = HostTextData("scrollbar_width")
-    codec.fields[0].value = HostScalar("s32", cast(s64)data.scrollbar_width)
-    codec.fields[1].name = HostTextData("reserved_width")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.reserved_width)
-    codec.fields[2].name = HostTextData("safe_gap")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.safe_gap)
-    codec.fields[3].name = HostTextData("default_wheel_step")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.default_wheel_step)
-    codec.fields[4].name = HostTextData("drag_threshold")
-    codec.fields[4].value = HostScalar("s32", cast(s64)data.drag_threshold)
-    codec.fields[5].name = HostTextData("visual_bleed")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.visual_bleed)
-    codec.fields[6].name = HostTextData("thumb_min_height")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.thumb_min_height)
-    codec.fields[7].name = HostTextData("thumb_inset")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.thumb_inset)
-    return value
 }
 
 WidgetDecodeScrollMetrics :: (value: HostValue, codec: *WidgetScrollMetricsCodec) -> ScrollMetrics {
@@ -1682,40 +1160,12 @@ WidgetValidScrollMetrics :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ScrollProps",[["key","u64"],["class_name","s32"],["scale","float32"],["bounds","Rectangle"],["content_height","s32"],["content_width","s32"],["horizontal","bool"],["keep_scrollbar","bool"],["manual_scroll","bool"],["scroll_offset","s32"],["scroll_delta","s32"],["input","ScrollInput"],["metrics","ScrollMetrics"]]]
 WidgetScrollPropsCodec :: struct {
-    fields: [12]HostField
+    fields: [13]HostField
     bounds: WidgetRectangleCodec
     input: WidgetScrollInputCodec
     metrics: WidgetScrollMetricsCodec
-}
-
-WidgetEncodeScrollProps :: (data: ScrollProps, codec: *WidgetScrollPropsCodec) -> HostValue {
-    value := HostRecordValue("ScrollProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("class_name")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[2].name = HostTextData("scale")
-    codec.fields[2].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[3].name = HostTextData("bounds")
-    codec.fields[3].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[4].name = HostTextData("content_height")
-    codec.fields[4].value = HostScalar("s32", cast(s64)data.content_height)
-    codec.fields[5].name = HostTextData("content_width")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.content_width)
-    codec.fields[6].name = HostTextData("horizontal")
-    codec.fields[6].value = HostScalar("bool", ifx data.horizontal then 1 else 0)
-    codec.fields[7].name = HostTextData("keep_scrollbar")
-    codec.fields[7].value = HostScalar("bool", ifx data.keep_scrollbar then 1 else 0)
-    codec.fields[8].name = HostTextData("scroll_offset")
-    codec.fields[8].value = HostScalar("s32", cast(s64)data.scroll_offset)
-    codec.fields[9].name = HostTextData("scroll_delta")
-    codec.fields[9].value = HostScalar("s32", cast(s64)data.scroll_delta)
-    codec.fields[10].name = HostTextData("input")
-    codec.fields[10].value = WidgetEncodeScrollInput(data.input, *codec.input)
-    codec.fields[11].name = HostTextData("metrics")
-    codec.fields[11].value = WidgetEncodeScrollMetrics(data.metrics, *codec.metrics)
-    return value
 }
 
 WidgetDecodeScrollProps :: (value: HostValue, codec: *WidgetScrollPropsCodec) -> ScrollProps {
@@ -1729,10 +1179,11 @@ WidgetDecodeScrollProps :: (value: HostValue, codec: *WidgetScrollPropsCodec) ->
     data.content_width = cast(s32)HostFieldValue(*value, 5, "content_width", *zero).integer
     data.horizontal = HostFieldValue(*value, 6, "horizontal", *zero).integer != 0
     data.keep_scrollbar = HostFieldValue(*value, 7, "keep_scrollbar", *zero).integer != 0
-    data.scroll_offset = cast(s32)HostFieldValue(*value, 8, "scroll_offset", *zero).integer
-    data.scroll_delta = cast(s32)HostFieldValue(*value, 9, "scroll_delta", *zero).integer
-    data.input = WidgetDecodeScrollInput(HostFieldValue(*value, 10, "input", *zero).*, *codec.input)
-    data.metrics = WidgetDecodeScrollMetrics(HostFieldValue(*value, 11, "metrics", *zero).*, *codec.metrics)
+    data.manual_scroll = HostFieldValue(*value, 8, "manual_scroll", *zero).integer != 0
+    data.scroll_offset = cast(s32)HostFieldValue(*value, 9, "scroll_offset", *zero).integer
+    data.scroll_delta = cast(s32)HostFieldValue(*value, 10, "scroll_delta", *zero).integer
+    data.input = WidgetDecodeScrollInput(HostFieldValue(*value, 11, "input", *zero).*, *codec.input)
+    data.metrics = WidgetDecodeScrollMetrics(HostFieldValue(*value, 12, "metrics", *zero).*, *codec.metrics)
     return data
 }
 
@@ -1746,13 +1197,15 @@ WidgetValidScrollProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 5, "content_width", "s32", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 6, "horizontal", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 7, "keep_scrollbar", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 8, "scroll_offset", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 9, "scroll_delta", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 10, "input", WidgetValidScrollInput) { return false }
-    if !HostFieldRecordValid(*value, 11, "metrics", WidgetValidScrollMetrics) { return false }
+    if !HostFieldScalarValid(*value, 8, "manual_scroll", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 9, "scroll_offset", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 10, "scroll_delta", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldRecordValid(*value, 11, "input", WidgetValidScrollInput) { return false }
+    if !HostFieldRecordValid(*value, 12, "metrics", WidgetValidScrollMetrics) { return false }
     return true
 }
 
+// Widget codec schema: ["ScrollBarPaint",[["track_bounds","Rectangle"],["thumb_bounds","Rectangle"],["track_span","s32"],["scroll_per_pixel","float32"]]]
 WidgetScrollBarPaintCodec :: struct {
     fields: [4]HostField
     track_bounds: WidgetRectangleCodec
@@ -1772,25 +1225,7 @@ WidgetEncodeScrollBarPaint :: (data: ScrollBarPaint, codec: *WidgetScrollBarPain
     return value
 }
 
-WidgetDecodeScrollBarPaint :: (value: HostValue, codec: *WidgetScrollBarPaintCodec) -> ScrollBarPaint {
-    data: ScrollBarPaint
-    zero: HostValue
-    data.track_bounds = WidgetDecodeRectangle(HostFieldValue(*value, 0, "track_bounds", *zero).*, *codec.track_bounds)
-    data.thumb_bounds = WidgetDecodeRectangle(HostFieldValue(*value, 1, "thumb_bounds", *zero).*, *codec.thumb_bounds)
-    data.track_span = cast(s32)HostFieldValue(*value, 2, "track_span", *zero).integer
-    data.scroll_per_pixel = cast(float32)HostFieldValue(*value, 3, "scroll_per_pixel", *zero).real
-    return data
-}
-
-WidgetValidScrollBarPaint :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "ScrollBarPaint") { return false }
-    if !HostFieldRecordValid(*value, 0, "track_bounds", WidgetValidRectangle) { return false }
-    if !HostFieldRecordValid(*value, 1, "thumb_bounds", WidgetValidRectangle) { return false }
-    if !HostFieldScalarValid(*value, 2, "track_span", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 3, "scroll_per_pixel", "float32", cast(s32)HostReal) { return false }
-    return true
-}
-
+// Widget codec schema: ["ScrollFrame",[["clip","Rectangle"],["content","Rectangle"],["paint","ScrollBarPaint"],["offset","s32"],["grab","float32"],["scrollbar","bool"],["start_drag","bool"],["clear_drag","bool"],["consume_release","bool"],["consume_wheel","bool"],["thumb_state","s32"],["content_drag","bool"],["drag_origin_y","float32"],["drag_origin_offset","s32"],["drag_moving","bool"],["cancel_press","bool"],["sample_seconds","float64"],["velocity","float32"],["flinging","bool"],["gliding","bool"],["glide_target","s32"]]]
 WidgetScrollFrameCodec :: struct {
     fields: [21]HostField
     clip: WidgetRectangleCodec
@@ -1845,59 +1280,7 @@ WidgetEncodeScrollFrame :: (data: ScrollFrame, codec: *WidgetScrollFrameCodec) -
     return value
 }
 
-WidgetDecodeScrollFrame :: (value: HostValue, codec: *WidgetScrollFrameCodec) -> ScrollFrame {
-    data: ScrollFrame
-    zero: HostValue
-    data.clip = WidgetDecodeRectangle(HostFieldValue(*value, 0, "clip", *zero).*, *codec.clip)
-    data.content = WidgetDecodeRectangle(HostFieldValue(*value, 1, "content", *zero).*, *codec.content)
-    data.paint = WidgetDecodeScrollBarPaint(HostFieldValue(*value, 2, "paint", *zero).*, *codec.paint)
-    data.offset = cast(s32)HostFieldValue(*value, 3, "offset", *zero).integer
-    data.grab = cast(float32)HostFieldValue(*value, 4, "grab", *zero).real
-    data.scrollbar = HostFieldValue(*value, 5, "scrollbar", *zero).integer != 0
-    data.start_drag = HostFieldValue(*value, 6, "start_drag", *zero).integer != 0
-    data.clear_drag = HostFieldValue(*value, 7, "clear_drag", *zero).integer != 0
-    data.consume_release = HostFieldValue(*value, 8, "consume_release", *zero).integer != 0
-    data.consume_wheel = HostFieldValue(*value, 9, "consume_wheel", *zero).integer != 0
-    data.thumb_state = cast(s32)HostFieldValue(*value, 10, "thumb_state", *zero).integer
-    data.content_drag = HostFieldValue(*value, 11, "content_drag", *zero).integer != 0
-    data.drag_origin_y = cast(float32)HostFieldValue(*value, 12, "drag_origin_y", *zero).real
-    data.drag_origin_offset = cast(s32)HostFieldValue(*value, 13, "drag_origin_offset", *zero).integer
-    data.drag_moving = HostFieldValue(*value, 14, "drag_moving", *zero).integer != 0
-    data.cancel_press = HostFieldValue(*value, 15, "cancel_press", *zero).integer != 0
-    data.sample_seconds = cast(float64)HostFieldValue(*value, 16, "sample_seconds", *zero).real
-    data.velocity = cast(float32)HostFieldValue(*value, 17, "velocity", *zero).real
-    data.flinging = HostFieldValue(*value, 18, "flinging", *zero).integer != 0
-    data.gliding = HostFieldValue(*value, 19, "gliding", *zero).integer != 0
-    data.glide_target = cast(s32)HostFieldValue(*value, 20, "glide_target", *zero).integer
-    return data
-}
-
-WidgetValidScrollFrame :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "ScrollFrame") { return false }
-    if !HostFieldRecordValid(*value, 0, "clip", WidgetValidRectangle) { return false }
-    if !HostFieldRecordValid(*value, 1, "content", WidgetValidRectangle) { return false }
-    if !HostFieldRecordValid(*value, 2, "paint", WidgetValidScrollBarPaint) { return false }
-    if !HostFieldScalarValid(*value, 3, "offset", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 4, "grab", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 5, "scrollbar", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 6, "start_drag", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 7, "clear_drag", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 8, "consume_release", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 9, "consume_wheel", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 10, "thumb_state", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 11, "content_drag", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 12, "drag_origin_y", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 13, "drag_origin_offset", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 14, "drag_moving", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 15, "cancel_press", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 16, "sample_seconds", "float64", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 17, "velocity", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 18, "flinging", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 19, "gliding", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 20, "glide_target", "s32", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["ScrollResult",[["node","s32"],["opened","bool"],["viewport","Rectangle"],["content","Rectangle"],["scroll_offset","s32"],["max_scroll","s32"],["frame","ScrollFrame"]]]
 WidgetScrollResultCodec :: struct {
     fields: [7]HostField
     viewport: WidgetRectangleCodec
@@ -1922,31 +1305,6 @@ WidgetEncodeScrollResult :: (data: ScrollResult, codec: *WidgetScrollResultCodec
     codec.fields[6].name = HostTextData("frame")
     codec.fields[6].value = WidgetEncodeScrollFrame(data.frame, *codec.frame)
     return value
-}
-
-WidgetDecodeScrollResult :: (value: HostValue, codec: *WidgetScrollResultCodec) -> ScrollResult {
-    data: ScrollResult
-    zero: HostValue
-    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
-    data.opened = HostFieldValue(*value, 1, "opened", *zero).integer != 0
-    data.viewport = WidgetDecodeRectangle(HostFieldValue(*value, 2, "viewport", *zero).*, *codec.viewport)
-    data.content = WidgetDecodeRectangle(HostFieldValue(*value, 3, "content", *zero).*, *codec.content)
-    data.scroll_offset = cast(s32)HostFieldValue(*value, 4, "scroll_offset", *zero).integer
-    data.max_scroll = cast(s32)HostFieldValue(*value, 5, "max_scroll", *zero).integer
-    data.frame = WidgetDecodeScrollFrame(HostFieldValue(*value, 6, "frame", *zero).*, *codec.frame)
-    return data
-}
-
-WidgetValidScrollResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "ScrollResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "opened", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 2, "viewport", WidgetValidRectangle) { return false }
-    if !HostFieldRecordValid(*value, 3, "content", WidgetValidRectangle) { return false }
-    if !HostFieldScalarValid(*value, 4, "scroll_offset", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 5, "max_scroll", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 6, "frame", WidgetValidScrollFrame) { return false }
-    return true
 }
 
 WidgetSessionCodec :: struct {
@@ -1978,28 +1336,10 @@ WidgetValidSession :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["CheckboxProps",[["key","u64"],["bounds","Rectangle"],["id","s32"],["label","string"],["checked","bool"],["disabled","bool"],["class_name","s32"]]]
 WidgetCheckboxPropsCodec :: struct {
     fields: [7]HostField
     bounds: WidgetRectangleCodec
-}
-
-WidgetEncodeCheckboxProps :: (data: CheckboxProps, codec: *WidgetCheckboxPropsCodec) -> HostValue {
-    value := HostRecordValue("CheckboxProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("id")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[3].name = HostTextData("label")
-    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[4].name = HostTextData("checked")
-    codec.fields[4].value = HostScalar("bool", ifx data.checked then 1 else 0)
-    codec.fields[5].name = HostTextData("disabled")
-    codec.fields[5].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[6].name = HostTextData("class_name")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.class_name)
-    return value
 }
 
 WidgetDecodeCheckboxProps :: (value: HostValue, codec: *WidgetCheckboxPropsCodec) -> CheckboxProps {
@@ -2027,6 +1367,7 @@ WidgetValidCheckboxProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["CheckboxValueResult",[["checked","bool"],["changed","bool"]]]
 WidgetCheckboxValueResultCodec :: struct {
     fields: [2]HostField
 }
@@ -2040,48 +1381,10 @@ WidgetEncodeCheckboxValueResult :: (data: CheckboxValueResult, codec: *WidgetChe
     return value
 }
 
-WidgetDecodeCheckboxValueResult :: (value: HostValue, codec: *WidgetCheckboxValueResultCodec) -> CheckboxValueResult {
-    data: CheckboxValueResult
-    unused codec
-    zero: HostValue
-    data.checked = HostFieldValue(*value, 0, "checked", *zero).integer != 0
-    data.changed = HostFieldValue(*value, 1, "changed", *zero).integer != 0
-    return data
-}
-
-WidgetValidCheckboxValueResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "CheckboxValueResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "checked", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "changed", "bool", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["ToggleProps",[["key","u64"],["bounds","Rectangle"],["id","s32"],["class_name","s32"],["value","bool"],["label","string"],["off_label","string"],["on_label","string"],["disabled","bool"]]]
 WidgetTogglePropsCodec :: struct {
     fields: [9]HostField
     bounds: WidgetRectangleCodec
-}
-
-WidgetEncodeToggleProps :: (data: ToggleProps, codec: *WidgetTogglePropsCodec) -> HostValue {
-    value := HostRecordValue("ToggleProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("id")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[3].name = HostTextData("class_name")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[4].name = HostTextData("value")
-    codec.fields[4].value = HostScalar("bool", ifx data.value then 1 else 0)
-    codec.fields[5].name = HostTextData("label")
-    codec.fields[5].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[6].name = HostTextData("off_label")
-    codec.fields[6].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.off_label), .length = cast(usize)data.off_label.count}
-    codec.fields[7].name = HostTextData("on_label")
-    codec.fields[7].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.on_label), .length = cast(usize)data.on_label.count}
-    codec.fields[8].name = HostTextData("disabled")
-    codec.fields[8].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    return value
 }
 
 WidgetDecodeToggleProps :: (value: HostValue, codec: *WidgetTogglePropsCodec) -> ToggleProps {
@@ -2113,6 +1416,7 @@ WidgetValidToggleProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ToggleValueResult",[["value","bool"],["changed","bool"]]]
 WidgetToggleValueResultCodec :: struct {
     fields: [2]HostField
 }
@@ -2124,22 +1428,6 @@ WidgetEncodeToggleValueResult :: (data: ToggleValueResult, codec: *WidgetToggleV
     codec.fields[1].name = HostTextData("changed")
     codec.fields[1].value = HostScalar("bool", ifx data.changed then 1 else 0)
     return value
-}
-
-WidgetDecodeToggleValueResult :: (value: HostValue, codec: *WidgetToggleValueResultCodec) -> ToggleValueResult {
-    data: ToggleValueResult
-    unused codec
-    zero: HostValue
-    data.value = HostFieldValue(*value, 0, "value", *zero).integer != 0
-    data.changed = HostFieldValue(*value, 1, "changed", *zero).integer != 0
-    return data
-}
-
-WidgetValidToggleValueResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "ToggleValueResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "value", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "changed", "bool", cast(s32)HostInteger) { return false }
-    return true
 }
 
 WidgetTextFieldInputCodec :: struct {
@@ -2346,6 +1634,7 @@ WidgetValidTextFieldProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TextFieldEdit",[["start","s32"],["end","s32"],["replacement","string"],["changed","bool"]]]
 WidgetTextFieldEditCodec :: struct {
     fields: [4]HostField
 }
@@ -2374,15 +1663,7 @@ WidgetDecodeTextFieldEdit :: (value: HostValue, codec: *WidgetTextFieldEditCodec
     return data
 }
 
-WidgetValidTextFieldEdit :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "TextFieldEdit") { return false }
-    if !HostFieldScalarValid(*value, 0, "start", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "end", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "replacement", "string", cast(s32)HostString) { return false }
-    if !HostFieldScalarValid(*value, 3, "changed", "bool", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["TextFieldResult",[["node","s32"],["cursor","s32"],["anchor","s32"],["scroll_x","s32"],["focused","bool"],["committed","bool"],["escaped","bool"],["composition","CompositionState"],["composition_changed","bool"],["clipboard_write","bool"],["clipboard_text","string"],["paste_without_text","bool"],["edit","TextFieldEdit"]]]
 WidgetTextFieldResultCodec :: struct {
     fields: [13]HostField
     composition: WidgetCompositionStateCodec
@@ -2439,24 +1720,6 @@ WidgetDecodeTextFieldResult :: (value: HostValue, codec: *WidgetTextFieldResultC
     return data
 }
 
-WidgetValidTextFieldResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "TextFieldResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "cursor", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "anchor", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 3, "scroll_x", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 4, "focused", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 5, "committed", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 6, "escaped", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 7, "composition", WidgetValidCompositionState) { return false }
-    if !HostFieldScalarValid(*value, 8, "composition_changed", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 9, "clipboard_write", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 10, "clipboard_text", "string", cast(s32)HostString) { return false }
-    if !HostFieldScalarValid(*value, 11, "paste_without_text", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 12, "edit", WidgetValidTextFieldEdit) { return false }
-    return true
-}
-
 WidgetTabCodec :: struct {
     fields: [4]HostField
 }
@@ -2494,39 +1757,9 @@ WidgetValidTab :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TabBarInput",[["focused","bool"],["left","bool"],["right","bool"],["up","bool"],["down","bool"],["home","bool"],["end","bool"],["close","bool"],["middle_click","bool"],["middle_x","float32"],["middle_y","float32"],["scroll_delta","s32"],["now","float32"]]]
 WidgetTabBarInputCodec :: struct {
     fields: [13]HostField
-}
-
-WidgetEncodeTabBarInput :: (data: TabBarInput, codec: *WidgetTabBarInputCodec) -> HostValue {
-    value := HostRecordValue("TabBarInput", codec.fields[:])
-    codec.fields[0].name = HostTextData("focused")
-    codec.fields[0].value = HostScalar("bool", ifx data.focused then 1 else 0)
-    codec.fields[1].name = HostTextData("left")
-    codec.fields[1].value = HostScalar("bool", ifx data.left then 1 else 0)
-    codec.fields[2].name = HostTextData("right")
-    codec.fields[2].value = HostScalar("bool", ifx data.right then 1 else 0)
-    codec.fields[3].name = HostTextData("up")
-    codec.fields[3].value = HostScalar("bool", ifx data.up then 1 else 0)
-    codec.fields[4].name = HostTextData("down")
-    codec.fields[4].value = HostScalar("bool", ifx data.down then 1 else 0)
-    codec.fields[5].name = HostTextData("home")
-    codec.fields[5].value = HostScalar("bool", ifx data.home then 1 else 0)
-    codec.fields[6].name = HostTextData("end")
-    codec.fields[6].value = HostScalar("bool", ifx data.end then 1 else 0)
-    codec.fields[7].name = HostTextData("close")
-    codec.fields[7].value = HostScalar("bool", ifx data.close then 1 else 0)
-    codec.fields[8].name = HostTextData("middle_click")
-    codec.fields[8].value = HostScalar("bool", ifx data.middle_click then 1 else 0)
-    codec.fields[9].name = HostTextData("middle_x")
-    codec.fields[9].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.middle_x}
-    codec.fields[10].name = HostTextData("middle_y")
-    codec.fields[10].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.middle_y}
-    codec.fields[11].name = HostTextData("scroll_delta")
-    codec.fields[11].value = HostScalar("s32", cast(s64)data.scroll_delta)
-    codec.fields[12].name = HostTextData("now")
-    codec.fields[12].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.now}
-    return value
 }
 
 WidgetDecodeTabBarInput :: (value: HostValue, codec: *WidgetTabBarInputCodec) -> TabBarInput {
@@ -2567,55 +1800,11 @@ WidgetValidTabBarInput :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TabBarProps",[["key","u64"],["bounds","Rectangle"],["placement","TabBarPlacement"],["class_name","s32"],["selected_index","s32"],["min_tab_width","s32"],["max_tab_width","s32"],["scroll_offset","s32"],["content_sized","bool"],["focus_selected","bool"],["drag_from","s32"],["dragging","bool"],["last_clicked_index","s32"],["last_clicked_at","float32"],["last_click_valid","bool"],["scale","float32"],["id","s32"],["disabled","bool"],["reorder_enabled","bool"],["input","TabBarInput"]]]
 WidgetTabBarPropsCodec :: struct {
     fields: [20]HostField
     bounds: WidgetRectangleCodec
     input: WidgetTabBarInputCodec
-}
-
-WidgetEncodeTabBarProps :: (data: TabBarProps, codec: *WidgetTabBarPropsCodec) -> HostValue {
-    value := HostRecordValue("TabBarProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("placement")
-    codec.fields[2].value = HostScalar("TabBarPlacement", cast(s64)data.placement)
-    codec.fields[3].name = HostTextData("class_name")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[4].name = HostTextData("selected_index")
-    codec.fields[4].value = HostScalar("s32", cast(s64)data.selected_index)
-    codec.fields[5].name = HostTextData("min_tab_width")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.min_tab_width)
-    codec.fields[6].name = HostTextData("max_tab_width")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.max_tab_width)
-    codec.fields[7].name = HostTextData("scroll_offset")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.scroll_offset)
-    codec.fields[8].name = HostTextData("content_sized")
-    codec.fields[8].value = HostScalar("bool", ifx data.content_sized then 1 else 0)
-    codec.fields[9].name = HostTextData("focus_selected")
-    codec.fields[9].value = HostScalar("bool", ifx data.focus_selected then 1 else 0)
-    codec.fields[10].name = HostTextData("drag_from")
-    codec.fields[10].value = HostScalar("s32", cast(s64)data.drag_from)
-    codec.fields[11].name = HostTextData("dragging")
-    codec.fields[11].value = HostScalar("bool", ifx data.dragging then 1 else 0)
-    codec.fields[12].name = HostTextData("last_clicked_index")
-    codec.fields[12].value = HostScalar("s32", cast(s64)data.last_clicked_index)
-    codec.fields[13].name = HostTextData("last_clicked_at")
-    codec.fields[13].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.last_clicked_at}
-    codec.fields[14].name = HostTextData("last_click_valid")
-    codec.fields[14].value = HostScalar("bool", ifx data.last_click_valid then 1 else 0)
-    codec.fields[15].name = HostTextData("scale")
-    codec.fields[15].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[16].name = HostTextData("id")
-    codec.fields[16].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[17].name = HostTextData("disabled")
-    codec.fields[17].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[18].name = HostTextData("reorder_enabled")
-    codec.fields[18].value = HostScalar("bool", ifx data.reorder_enabled then 1 else 0)
-    codec.fields[19].name = HostTextData("input")
-    codec.fields[19].value = WidgetEncodeTabBarInput(data.input, *codec.input)
-    return value
 }
 
 WidgetDecodeTabBarProps :: (value: HostValue, codec: *WidgetTabBarPropsCodec) -> TabBarProps {
@@ -2669,6 +1858,7 @@ WidgetValidTabBarProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TabBarResult",[["node","s32"],["selected_index","s32"],["activated_index","s32"],["closed_index","s32"],["double_clicked_index","s32"],["middle_clicked_index","s32"],["reordered_from","s32"],["reordered_to","s32"],["scroll_offset","s32"],["drag_from","s32"],["drag_to","s32"],["dragging","bool"],["last_clicked_index","s32"],["last_clicked_at","float32"],["last_click_valid","bool"],["selected_tab_bounds","Rectangle"]]]
 WidgetTabBarResultCodec :: struct {
     fields: [16]HostField
     selected_tab_bounds: WidgetRectangleCodec
@@ -2711,74 +1901,13 @@ WidgetEncodeTabBarResult :: (data: TabBarResult, codec: *WidgetTabBarResultCodec
     return value
 }
 
-WidgetDecodeTabBarResult :: (value: HostValue, codec: *WidgetTabBarResultCodec) -> TabBarResult {
-    data: TabBarResult
-    zero: HostValue
-    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
-    data.selected_index = cast(s32)HostFieldValue(*value, 1, "selected_index", *zero).integer
-    data.activated_index = cast(s32)HostFieldValue(*value, 2, "activated_index", *zero).integer
-    data.closed_index = cast(s32)HostFieldValue(*value, 3, "closed_index", *zero).integer
-    data.double_clicked_index = cast(s32)HostFieldValue(*value, 4, "double_clicked_index", *zero).integer
-    data.middle_clicked_index = cast(s32)HostFieldValue(*value, 5, "middle_clicked_index", *zero).integer
-    data.reordered_from = cast(s32)HostFieldValue(*value, 6, "reordered_from", *zero).integer
-    data.reordered_to = cast(s32)HostFieldValue(*value, 7, "reordered_to", *zero).integer
-    data.scroll_offset = cast(s32)HostFieldValue(*value, 8, "scroll_offset", *zero).integer
-    data.drag_from = cast(s32)HostFieldValue(*value, 9, "drag_from", *zero).integer
-    data.drag_to = cast(s32)HostFieldValue(*value, 10, "drag_to", *zero).integer
-    data.dragging = HostFieldValue(*value, 11, "dragging", *zero).integer != 0
-    data.last_clicked_index = cast(s32)HostFieldValue(*value, 12, "last_clicked_index", *zero).integer
-    data.last_clicked_at = cast(float32)HostFieldValue(*value, 13, "last_clicked_at", *zero).real
-    data.last_click_valid = HostFieldValue(*value, 14, "last_click_valid", *zero).integer != 0
-    data.selected_tab_bounds = WidgetDecodeRectangle(HostFieldValue(*value, 15, "selected_tab_bounds", *zero).*, *codec.selected_tab_bounds)
-    return data
-}
-
-WidgetValidTabBarResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "TabBarResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "selected_index", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "activated_index", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 3, "closed_index", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 4, "double_clicked_index", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 5, "middle_clicked_index", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 6, "reordered_from", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 7, "reordered_to", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 8, "scroll_offset", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 9, "drag_from", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 10, "drag_to", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 11, "dragging", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 12, "last_clicked_index", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 13, "last_clicked_at", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 14, "last_click_valid", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 15, "selected_tab_bounds", WidgetValidRectangle) { return false }
-    return true
-}
-
+// Widget codec schema: ["BoxProps",[["key","u64"],["bounds","Rectangle"],["fill","Color"],["border","Color"],["radius","float32"],["fill_bottom","Color"],["has_fill_bottom","bool"]]]
 WidgetBoxPropsCodec :: struct {
     fields: [7]HostField
     bounds: WidgetRectangleCodec
     fill: WidgetColorCodec
     border: WidgetColorCodec
     fill_bottom: WidgetColorCodec
-}
-
-WidgetEncodeBoxProps :: (data: BoxProps, codec: *WidgetBoxPropsCodec) -> HostValue {
-    value := HostRecordValue("BoxProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("fill")
-    codec.fields[2].value = WidgetEncodeColor(data.fill, *codec.fill)
-    codec.fields[3].name = HostTextData("border")
-    codec.fields[3].value = WidgetEncodeColor(data.border, *codec.border)
-    codec.fields[4].name = HostTextData("radius")
-    codec.fields[4].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.radius}
-    codec.fields[5].name = HostTextData("fill_bottom")
-    codec.fields[5].value = WidgetEncodeColor(data.fill_bottom, *codec.fill_bottom)
-    codec.fields[6].name = HostTextData("has_fill_bottom")
-    codec.fields[6].value = HostScalar("bool", ifx data.has_fill_bottom then 1 else 0)
-    return value
 }
 
 WidgetDecodeBoxProps :: (value: HostValue, codec: *WidgetBoxPropsCodec) -> BoxProps {
@@ -2806,30 +1935,10 @@ WidgetValidBoxProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["PressProps",[["key","u64"],["id","s32"],["bounds","Rectangle"],["label","string"],["now","float64"],["hold_seconds","float32"],["capture","bool"],["disabled","bool"]]]
 WidgetPressPropsCodec :: struct {
     fields: [8]HostField
     bounds: WidgetRectangleCodec
-}
-
-WidgetEncodePressProps :: (data: PressProps, codec: *WidgetPressPropsCodec) -> HostValue {
-    value := HostRecordValue("PressProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("id")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[2].name = HostTextData("bounds")
-    codec.fields[2].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[3].name = HostTextData("label")
-    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[4].name = HostTextData("now")
-    codec.fields[4].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float64"), .real = cast(float64)data.now}
-    codec.fields[5].name = HostTextData("hold_seconds")
-    codec.fields[5].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.hold_seconds}
-    codec.fields[6].name = HostTextData("capture")
-    codec.fields[6].value = HostScalar("bool", ifx data.capture then 1 else 0)
-    codec.fields[7].name = HostTextData("disabled")
-    codec.fields[7].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    return value
 }
 
 WidgetDecodePressProps :: (value: HostValue, codec: *WidgetPressPropsCodec) -> PressProps {
@@ -2859,6 +1968,7 @@ WidgetValidPressProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["PressResult",[["node","s32"],["clicked","bool"],["held","bool"],["down","bool"],["released","bool"],["x","float32"],["y","float32"],["right_clicked","bool"]]]
 WidgetPressResultCodec :: struct {
     fields: [8]HostField
 }
@@ -2884,66 +1994,10 @@ WidgetEncodePressResult :: (data: PressResult, codec: *WidgetPressResultCodec) -
     return value
 }
 
-WidgetDecodePressResult :: (value: HostValue, codec: *WidgetPressResultCodec) -> PressResult {
-    data: PressResult
-    unused codec
-    zero: HostValue
-    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
-    data.clicked = HostFieldValue(*value, 1, "clicked", *zero).integer != 0
-    data.held = HostFieldValue(*value, 2, "held", *zero).integer != 0
-    data.down = HostFieldValue(*value, 3, "down", *zero).integer != 0
-    data.released = HostFieldValue(*value, 4, "released", *zero).integer != 0
-    data.x = cast(float32)HostFieldValue(*value, 5, "x", *zero).real
-    data.y = cast(float32)HostFieldValue(*value, 6, "y", *zero).real
-    data.right_clicked = HostFieldValue(*value, 7, "right_clicked", *zero).integer != 0
-    return data
-}
-
-WidgetValidPressResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "PressResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "clicked", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "held", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 3, "down", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 4, "released", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 5, "x", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 6, "y", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 7, "right_clicked", "bool", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["SpinboxProps",[["key","u64"],["bounds","Rectangle"],["id","s32"],["class_name","s32"],["label","string"],["min","s32"],["max","s32"],["step","s32"],["value","s32"],["disabled","bool"],["value_text","string"],["wrap","bool"]]]
 WidgetSpinboxPropsCodec :: struct {
     fields: [12]HostField
     bounds: WidgetRectangleCodec
-}
-
-WidgetEncodeSpinboxProps :: (data: SpinboxProps, codec: *WidgetSpinboxPropsCodec) -> HostValue {
-    value := HostRecordValue("SpinboxProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("id")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[3].name = HostTextData("class_name")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[4].name = HostTextData("label")
-    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[5].name = HostTextData("min")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.min)
-    codec.fields[6].name = HostTextData("max")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.max)
-    codec.fields[7].name = HostTextData("step")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.step)
-    codec.fields[8].name = HostTextData("value")
-    codec.fields[8].value = HostScalar("s32", cast(s64)data.value)
-    codec.fields[9].name = HostTextData("disabled")
-    codec.fields[9].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[10].name = HostTextData("value_text")
-    codec.fields[10].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.value_text), .length = cast(usize)data.value_text.count}
-    codec.fields[11].name = HostTextData("wrap")
-    codec.fields[11].value = HostScalar("bool", ifx data.wrap then 1 else 0)
-    return value
 }
 
 WidgetDecodeSpinboxProps :: (value: HostValue, codec: *WidgetSpinboxPropsCodec) -> SpinboxProps {
@@ -2981,6 +2035,7 @@ WidgetValidSpinboxProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["SpinboxStepResult",[["value","s32"],["changed","bool"]]]
 WidgetSpinboxStepResultCodec :: struct {
     fields: [2]HostField
 }
@@ -2994,56 +2049,10 @@ WidgetEncodeSpinboxStepResult :: (data: SpinboxStepResult, codec: *WidgetSpinbox
     return value
 }
 
-WidgetDecodeSpinboxStepResult :: (value: HostValue, codec: *WidgetSpinboxStepResultCodec) -> SpinboxStepResult {
-    data: SpinboxStepResult
-    unused codec
-    zero: HostValue
-    data.value = cast(s32)HostFieldValue(*value, 0, "value", *zero).integer
-    data.changed = HostFieldValue(*value, 1, "changed", *zero).integer != 0
-    return data
-}
-
-WidgetValidSpinboxStepResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "SpinboxStepResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "value", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "changed", "bool", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["TimePickerProps",[["key","u64"],["bounds","Rectangle"],["id","s32"],["class_name","s32"],["label","string"],["placeholder","string"],["value","s32"],["now","s32"],["now_label","string"],["done_label","string"],["clear_label","string"],["scale","float32"],["disabled","bool"]]]
 WidgetTimePickerPropsCodec :: struct {
     fields: [13]HostField
     bounds: WidgetRectangleCodec
-}
-
-WidgetEncodeTimePickerProps :: (data: TimePickerProps, codec: *WidgetTimePickerPropsCodec) -> HostValue {
-    value := HostRecordValue("TimePickerProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("id")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[3].name = HostTextData("class_name")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[4].name = HostTextData("label")
-    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[5].name = HostTextData("placeholder")
-    codec.fields[5].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.placeholder), .length = cast(usize)data.placeholder.count}
-    codec.fields[6].name = HostTextData("value")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.value)
-    codec.fields[7].name = HostTextData("now")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.now)
-    codec.fields[8].name = HostTextData("now_label")
-    codec.fields[8].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.now_label), .length = cast(usize)data.now_label.count}
-    codec.fields[9].name = HostTextData("done_label")
-    codec.fields[9].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.done_label), .length = cast(usize)data.done_label.count}
-    codec.fields[10].name = HostTextData("clear_label")
-    codec.fields[10].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.clear_label), .length = cast(usize)data.clear_label.count}
-    codec.fields[11].name = HostTextData("scale")
-    codec.fields[11].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[12].name = HostTextData("disabled")
-    codec.fields[12].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    return value
 }
 
 WidgetDecodeTimePickerProps :: (value: HostValue, codec: *WidgetTimePickerPropsCodec) -> TimePickerProps {
@@ -3083,6 +2092,7 @@ WidgetValidTimePickerProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TimePickerResult",[["node","s32"],["value","s32"],["changed","bool"],["open","bool"]]]
 WidgetTimePickerResultCodec :: struct {
     fields: [4]HostField
 }
@@ -3100,39 +2110,9 @@ WidgetEncodeTimePickerResult :: (data: TimePickerResult, codec: *WidgetTimePicke
     return value
 }
 
-WidgetDecodeTimePickerResult :: (value: HostValue, codec: *WidgetTimePickerResultCodec) -> TimePickerResult {
-    data: TimePickerResult
-    unused codec
-    zero: HostValue
-    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
-    data.value = cast(s32)HostFieldValue(*value, 1, "value", *zero).integer
-    data.changed = HostFieldValue(*value, 2, "changed", *zero).integer != 0
-    data.open = HostFieldValue(*value, 3, "open", *zero).integer != 0
-    return data
-}
-
-WidgetValidTimePickerResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "TimePickerResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "value", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "changed", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 3, "open", "bool", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["DropdownTriggerInput",[["enter","bool"],["space","bool"],["down","bool"]]]
 WidgetDropdownTriggerInputCodec :: struct {
     fields: [3]HostField
-}
-
-WidgetEncodeDropdownTriggerInput :: (data: DropdownTriggerInput, codec: *WidgetDropdownTriggerInputCodec) -> HostValue {
-    value := HostRecordValue("DropdownTriggerInput", codec.fields[:])
-    codec.fields[0].name = HostTextData("enter")
-    codec.fields[0].value = HostScalar("bool", ifx data.enter then 1 else 0)
-    codec.fields[1].name = HostTextData("space")
-    codec.fields[1].value = HostScalar("bool", ifx data.space then 1 else 0)
-    codec.fields[2].name = HostTextData("down")
-    codec.fields[2].value = HostScalar("bool", ifx data.down then 1 else 0)
-    return value
 }
 
 WidgetDecodeDropdownTriggerInput :: (value: HostValue, codec: *WidgetDropdownTriggerInputCodec) -> DropdownTriggerInput {
@@ -3153,27 +2133,9 @@ WidgetValidDropdownTriggerInput :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["DropdownMenuInput",[["navigating","bool"],["up","bool"],["down","bool"],["home","bool"],["end","bool"],["commit","bool"],["escape","bool"]]]
 WidgetDropdownMenuInputCodec :: struct {
     fields: [7]HostField
-}
-
-WidgetEncodeDropdownMenuInput :: (data: DropdownMenuInput, codec: *WidgetDropdownMenuInputCodec) -> HostValue {
-    value := HostRecordValue("DropdownMenuInput", codec.fields[:])
-    codec.fields[0].name = HostTextData("navigating")
-    codec.fields[0].value = HostScalar("bool", ifx data.navigating then 1 else 0)
-    codec.fields[1].name = HostTextData("up")
-    codec.fields[1].value = HostScalar("bool", ifx data.up then 1 else 0)
-    codec.fields[2].name = HostTextData("down")
-    codec.fields[2].value = HostScalar("bool", ifx data.down then 1 else 0)
-    codec.fields[3].name = HostTextData("home")
-    codec.fields[3].value = HostScalar("bool", ifx data.home then 1 else 0)
-    codec.fields[4].name = HostTextData("end")
-    codec.fields[4].value = HostScalar("bool", ifx data.end then 1 else 0)
-    codec.fields[5].name = HostTextData("commit")
-    codec.fields[5].value = HostScalar("bool", ifx data.commit then 1 else 0)
-    codec.fields[6].name = HostTextData("escape")
-    codec.fields[6].value = HostScalar("bool", ifx data.escape then 1 else 0)
-    return value
 }
 
 WidgetDecodeDropdownMenuInput :: (value: HostValue, codec: *WidgetDropdownMenuInputCodec) -> DropdownMenuInput {
@@ -3202,42 +2164,12 @@ WidgetValidDropdownMenuInput :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["DropdownProps",[["key","u64"],["bounds","Rectangle"],["id","s32"],["class_name","s32"],["placeholder","string"],["selected_index","s32"],["open","bool"],["close","bool"],["focused","bool"],["scale","float32"],["trigger_input","DropdownTriggerInput"],["menu_input","DropdownMenuInput"],["disabled","bool"]]]
 WidgetDropdownPropsCodec :: struct {
     fields: [13]HostField
     bounds: WidgetRectangleCodec
     trigger_input: WidgetDropdownTriggerInputCodec
     menu_input: WidgetDropdownMenuInputCodec
-}
-
-WidgetEncodeDropdownProps :: (data: DropdownProps, codec: *WidgetDropdownPropsCodec) -> HostValue {
-    value := HostRecordValue("DropdownProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("id")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[3].name = HostTextData("class_name")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[4].name = HostTextData("placeholder")
-    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.placeholder), .length = cast(usize)data.placeholder.count}
-    codec.fields[5].name = HostTextData("selected_index")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.selected_index)
-    codec.fields[6].name = HostTextData("open")
-    codec.fields[6].value = HostScalar("bool", ifx data.open then 1 else 0)
-    codec.fields[7].name = HostTextData("close")
-    codec.fields[7].value = HostScalar("bool", ifx data.close then 1 else 0)
-    codec.fields[8].name = HostTextData("focused")
-    codec.fields[8].value = HostScalar("bool", ifx data.focused then 1 else 0)
-    codec.fields[9].name = HostTextData("scale")
-    codec.fields[9].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[10].name = HostTextData("trigger_input")
-    codec.fields[10].value = WidgetEncodeDropdownTriggerInput(data.trigger_input, *codec.trigger_input)
-    codec.fields[11].name = HostTextData("menu_input")
-    codec.fields[11].value = WidgetEncodeDropdownMenuInput(data.menu_input, *codec.menu_input)
-    codec.fields[12].name = HostTextData("disabled")
-    codec.fields[12].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    return value
 }
 
 WidgetDecodeDropdownProps :: (value: HostValue, codec: *WidgetDropdownPropsCodec) -> DropdownProps {
@@ -3277,48 +2209,12 @@ WidgetValidDropdownProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TitleBarProps",[["key","u64"],["id","s32"],["class_name","s32"],["bounds","Rectangle"],["title","string"],["height","s32"],["scale","float32"],["leading_image","ImageProps"],["leading_label","string"],["has_leading_action","bool"],["dropdown","DropdownProps"],["has_dropdown","bool"],["dropdown_min_width","s32"],["dropdown_height","s32"],["strong_title","bool"],["trailing_width","s32"]]]
 WidgetTitleBarPropsCodec :: struct {
     fields: [16]HostField
     bounds: WidgetRectangleCodec
     leading_image: WidgetImagePropsCodec
     dropdown: WidgetDropdownPropsCodec
-}
-
-WidgetEncodeTitleBarProps :: (data: TitleBarProps, codec: *WidgetTitleBarPropsCodec) -> HostValue {
-    value := HostRecordValue("TitleBarProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("id")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[2].name = HostTextData("class_name")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[3].name = HostTextData("bounds")
-    codec.fields[3].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[4].name = HostTextData("title")
-    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.title), .length = cast(usize)data.title.count}
-    codec.fields[5].name = HostTextData("height")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.height)
-    codec.fields[6].name = HostTextData("scale")
-    codec.fields[6].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[7].name = HostTextData("leading_image")
-    codec.fields[7].value = WidgetEncodeImageProps(data.leading_image, *codec.leading_image)
-    codec.fields[8].name = HostTextData("leading_label")
-    codec.fields[8].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.leading_label), .length = cast(usize)data.leading_label.count}
-    codec.fields[9].name = HostTextData("has_leading_action")
-    codec.fields[9].value = HostScalar("bool", ifx data.has_leading_action then 1 else 0)
-    codec.fields[10].name = HostTextData("dropdown")
-    codec.fields[10].value = WidgetEncodeDropdownProps(data.dropdown, *codec.dropdown)
-    codec.fields[11].name = HostTextData("has_dropdown")
-    codec.fields[11].value = HostScalar("bool", ifx data.has_dropdown then 1 else 0)
-    codec.fields[12].name = HostTextData("dropdown_min_width")
-    codec.fields[12].value = HostScalar("s32", cast(s64)data.dropdown_min_width)
-    codec.fields[13].name = HostTextData("dropdown_height")
-    codec.fields[13].value = HostScalar("s32", cast(s64)data.dropdown_height)
-    codec.fields[14].name = HostTextData("strong_title")
-    codec.fields[14].value = HostScalar("bool", ifx data.strong_title then 1 else 0)
-    codec.fields[15].name = HostTextData("trailing_width")
-    codec.fields[15].value = HostScalar("s32", cast(s64)data.trailing_width)
-    return value
 }
 
 WidgetDecodeTitleBarProps :: (value: HostValue, codec: *WidgetTitleBarPropsCodec) -> TitleBarProps {
@@ -3364,6 +2260,7 @@ WidgetValidTitleBarProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["DropdownResult",[["node","s32"],["selected_index","s32"],["open","bool"],["changed","bool"],["opened","bool"],["closed","bool"],["action_index","s32"]]]
 WidgetDropdownResultCodec :: struct {
     fields: [7]HostField
 }
@@ -3387,32 +2284,7 @@ WidgetEncodeDropdownResult :: (data: DropdownResult, codec: *WidgetDropdownResul
     return value
 }
 
-WidgetDecodeDropdownResult :: (value: HostValue, codec: *WidgetDropdownResultCodec) -> DropdownResult {
-    data: DropdownResult
-    unused codec
-    zero: HostValue
-    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
-    data.selected_index = cast(s32)HostFieldValue(*value, 1, "selected_index", *zero).integer
-    data.open = HostFieldValue(*value, 2, "open", *zero).integer != 0
-    data.changed = HostFieldValue(*value, 3, "changed", *zero).integer != 0
-    data.opened = HostFieldValue(*value, 4, "opened", *zero).integer != 0
-    data.closed = HostFieldValue(*value, 5, "closed", *zero).integer != 0
-    data.action_index = cast(s32)HostFieldValue(*value, 6, "action_index", *zero).integer
-    return data
-}
-
-WidgetValidDropdownResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "DropdownResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "selected_index", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "open", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 3, "changed", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 4, "opened", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 5, "closed", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 6, "action_index", "s32", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["TitleBarResult",[["node","s32"],["height","s32"],["clicked_leading","bool"],["dropdown","DropdownResult"],["trailing_bounds","Rectangle"]]]
 WidgetTitleBarResultCodec :: struct {
     fields: [5]HostField
     dropdown: WidgetDropdownResultCodec
@@ -3434,49 +2306,10 @@ WidgetEncodeTitleBarResult :: (data: TitleBarResult, codec: *WidgetTitleBarResul
     return value
 }
 
-WidgetDecodeTitleBarResult :: (value: HostValue, codec: *WidgetTitleBarResultCodec) -> TitleBarResult {
-    data: TitleBarResult
-    zero: HostValue
-    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
-    data.height = cast(s32)HostFieldValue(*value, 1, "height", *zero).integer
-    data.clicked_leading = HostFieldValue(*value, 2, "clicked_leading", *zero).integer != 0
-    data.dropdown = WidgetDecodeDropdownResult(HostFieldValue(*value, 3, "dropdown", *zero).*, *codec.dropdown)
-    data.trailing_bounds = WidgetDecodeRectangle(HostFieldValue(*value, 4, "trailing_bounds", *zero).*, *codec.trailing_bounds)
-    return data
-}
-
-WidgetValidTitleBarResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "TitleBarResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "height", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "clicked_leading", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 3, "dropdown", WidgetValidDropdownResult) { return false }
-    if !HostFieldRecordValid(*value, 4, "trailing_bounds", WidgetValidRectangle) { return false }
-    return true
-}
-
+// Widget codec schema: ["DropdownOption",[["key","u64"],["label","string"],["image","ImageProps"],["disabled","bool"],["separator_before","bool"],["action_shape","string"],["action_label","string"]]]
 WidgetDropdownOptionCodec :: struct {
     fields: [7]HostField
     image: WidgetImagePropsCodec
-}
-
-WidgetEncodeDropdownOption :: (data: DropdownOption, codec: *WidgetDropdownOptionCodec) -> HostValue {
-    value := HostRecordValue("DropdownOption", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("label")
-    codec.fields[1].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[2].name = HostTextData("image")
-    codec.fields[2].value = WidgetEncodeImageProps(data.image, *codec.image)
-    codec.fields[3].name = HostTextData("disabled")
-    codec.fields[3].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[4].name = HostTextData("separator_before")
-    codec.fields[4].value = HostScalar("bool", ifx data.separator_before then 1 else 0)
-    codec.fields[5].name = HostTextData("action_shape")
-    codec.fields[5].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.action_shape), .length = cast(usize)data.action_shape.count}
-    codec.fields[6].name = HostTextData("action_label")
-    codec.fields[6].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.action_label), .length = cast(usize)data.action_label.count}
-    return value
 }
 
 WidgetDecodeDropdownOption :: (value: HostValue, codec: *WidgetDropdownOptionCodec) -> DropdownOption {
@@ -3504,50 +2337,12 @@ WidgetValidDropdownOption :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ModalFrameProps",[["key","u64"],["id","s32"],["class_name","s32"],["title","string"],["bounds","Rectangle"],["width","s32"],["height","s32"],["scale","float32"],["left_image","ImageProps"],["right_image","ImageProps"],["left_label","string"],["right_label","string"],["has_left_action","bool"],["has_right_action","bool"],["dismiss_disabled","bool"],["strong_title","bool"],["title_at_start","bool"]]]
 WidgetModalFramePropsCodec :: struct {
     fields: [17]HostField
     bounds: WidgetRectangleCodec
     left_image: WidgetImagePropsCodec
     right_image: WidgetImagePropsCodec
-}
-
-WidgetEncodeModalFrameProps :: (data: ModalFrameProps, codec: *WidgetModalFramePropsCodec) -> HostValue {
-    value := HostRecordValue("ModalFrameProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("id")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[2].name = HostTextData("class_name")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[3].name = HostTextData("title")
-    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.title), .length = cast(usize)data.title.count}
-    codec.fields[4].name = HostTextData("bounds")
-    codec.fields[4].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[5].name = HostTextData("width")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.width)
-    codec.fields[6].name = HostTextData("height")
-    codec.fields[6].value = HostScalar("s32", cast(s64)data.height)
-    codec.fields[7].name = HostTextData("scale")
-    codec.fields[7].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[8].name = HostTextData("left_image")
-    codec.fields[8].value = WidgetEncodeImageProps(data.left_image, *codec.left_image)
-    codec.fields[9].name = HostTextData("right_image")
-    codec.fields[9].value = WidgetEncodeImageProps(data.right_image, *codec.right_image)
-    codec.fields[10].name = HostTextData("left_label")
-    codec.fields[10].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.left_label), .length = cast(usize)data.left_label.count}
-    codec.fields[11].name = HostTextData("right_label")
-    codec.fields[11].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.right_label), .length = cast(usize)data.right_label.count}
-    codec.fields[12].name = HostTextData("has_left_action")
-    codec.fields[12].value = HostScalar("bool", ifx data.has_left_action then 1 else 0)
-    codec.fields[13].name = HostTextData("has_right_action")
-    codec.fields[13].value = HostScalar("bool", ifx data.has_right_action then 1 else 0)
-    codec.fields[14].name = HostTextData("dismiss_disabled")
-    codec.fields[14].value = HostScalar("bool", ifx data.dismiss_disabled then 1 else 0)
-    codec.fields[15].name = HostTextData("strong_title")
-    codec.fields[15].value = HostScalar("bool", ifx data.strong_title then 1 else 0)
-    codec.fields[16].name = HostTextData("title_at_start")
-    codec.fields[16].value = HostScalar("bool", ifx data.title_at_start then 1 else 0)
-    return value
 }
 
 WidgetDecodeModalFrameProps :: (value: HostValue, codec: *WidgetModalFramePropsCodec) -> ModalFrameProps {
@@ -3595,6 +2390,7 @@ WidgetValidModalFrameProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ModalFrameLayout",[["panel","Rectangle"],["content","Rectangle"],["left_button","Rectangle"],["right_button","Rectangle"],["title_y","s32"],["title_max_width","s32"],["icon_size","s32"],["icon_padding","s32"]]]
 WidgetModalFrameLayoutCodec :: struct {
     fields: [8]HostField
     panel: WidgetRectangleCodec
@@ -3624,33 +2420,7 @@ WidgetEncodeModalFrameLayout :: (data: ModalFrameLayout, codec: *WidgetModalFram
     return value
 }
 
-WidgetDecodeModalFrameLayout :: (value: HostValue, codec: *WidgetModalFrameLayoutCodec) -> ModalFrameLayout {
-    data: ModalFrameLayout
-    zero: HostValue
-    data.panel = WidgetDecodeRectangle(HostFieldValue(*value, 0, "panel", *zero).*, *codec.panel)
-    data.content = WidgetDecodeRectangle(HostFieldValue(*value, 1, "content", *zero).*, *codec.content)
-    data.left_button = WidgetDecodeRectangle(HostFieldValue(*value, 2, "left_button", *zero).*, *codec.left_button)
-    data.right_button = WidgetDecodeRectangle(HostFieldValue(*value, 3, "right_button", *zero).*, *codec.right_button)
-    data.title_y = cast(s32)HostFieldValue(*value, 4, "title_y", *zero).integer
-    data.title_max_width = cast(s32)HostFieldValue(*value, 5, "title_max_width", *zero).integer
-    data.icon_size = cast(s32)HostFieldValue(*value, 6, "icon_size", *zero).integer
-    data.icon_padding = cast(s32)HostFieldValue(*value, 7, "icon_padding", *zero).integer
-    return data
-}
-
-WidgetValidModalFrameLayout :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "ModalFrameLayout") { return false }
-    if !HostFieldRecordValid(*value, 0, "panel", WidgetValidRectangle) { return false }
-    if !HostFieldRecordValid(*value, 1, "content", WidgetValidRectangle) { return false }
-    if !HostFieldRecordValid(*value, 2, "left_button", WidgetValidRectangle) { return false }
-    if !HostFieldRecordValid(*value, 3, "right_button", WidgetValidRectangle) { return false }
-    if !HostFieldScalarValid(*value, 4, "title_y", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 5, "title_max_width", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 6, "icon_size", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 7, "icon_padding", "s32", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["ModalFrameResult",[["node","s32"],["panel_node","s32"],["layout","ModalFrameLayout"],["dismissed","bool"],["left_clicked","bool"],["right_clicked","bool"],["opened","bool"]]]
 WidgetModalFrameResultCodec :: struct {
     fields: [7]HostField
     layout: WidgetModalFrameLayoutCodec
@@ -3675,56 +2445,9 @@ WidgetEncodeModalFrameResult :: (data: ModalFrameResult, codec: *WidgetModalFram
     return value
 }
 
-WidgetDecodeModalFrameResult :: (value: HostValue, codec: *WidgetModalFrameResultCodec) -> ModalFrameResult {
-    data: ModalFrameResult
-    zero: HostValue
-    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
-    data.panel_node = cast(s32)HostFieldValue(*value, 1, "panel_node", *zero).integer
-    data.layout = WidgetDecodeModalFrameLayout(HostFieldValue(*value, 2, "layout", *zero).*, *codec.layout)
-    data.dismissed = HostFieldValue(*value, 3, "dismissed", *zero).integer != 0
-    data.left_clicked = HostFieldValue(*value, 4, "left_clicked", *zero).integer != 0
-    data.right_clicked = HostFieldValue(*value, 5, "right_clicked", *zero).integer != 0
-    data.opened = HostFieldValue(*value, 6, "opened", *zero).integer != 0
-    return data
-}
-
-WidgetValidModalFrameResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "ModalFrameResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "panel_node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 2, "layout", WidgetValidModalFrameLayout) { return false }
-    if !HostFieldScalarValid(*value, 3, "dismissed", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 4, "left_clicked", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 5, "right_clicked", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 6, "opened", "bool", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["ActionModalProps",[["key","u64"],["id","s32"],["class_name","s32"],["title","string"],["message","string"],["max_width","s32"],["scale","float32"],["show_close","bool"],["close_label","string"]]]
 WidgetActionModalPropsCodec :: struct {
     fields: [9]HostField
-}
-
-WidgetEncodeActionModalProps :: (data: ActionModalProps, codec: *WidgetActionModalPropsCodec) -> HostValue {
-    value := HostRecordValue("ActionModalProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("id")
-    codec.fields[1].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[2].name = HostTextData("class_name")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.class_name)
-    codec.fields[3].name = HostTextData("title")
-    codec.fields[3].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.title), .length = cast(usize)data.title.count}
-    codec.fields[4].name = HostTextData("message")
-    codec.fields[4].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.message), .length = cast(usize)data.message.count}
-    codec.fields[5].name = HostTextData("max_width")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.max_width)
-    codec.fields[6].name = HostTextData("scale")
-    codec.fields[6].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    codec.fields[7].name = HostTextData("show_close")
-    codec.fields[7].value = HostScalar("bool", ifx data.show_close then 1 else 0)
-    codec.fields[8].name = HostTextData("close_label")
-    codec.fields[8].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.close_label), .length = cast(usize)data.close_label.count}
-    return value
 }
 
 WidgetDecodeActionModalProps :: (value: HostValue, codec: *WidgetActionModalPropsCodec) -> ActionModalProps {
@@ -3757,23 +2480,9 @@ WidgetValidActionModalProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ActionModalAction",[["key","u64"],["label","string"],["tone","ButtonTone"],["emphasis","ButtonEmphasis"],["disabled","bool"]]]
 WidgetActionModalActionCodec :: struct {
     fields: [5]HostField
-}
-
-WidgetEncodeActionModalAction :: (data: ActionModalAction, codec: *WidgetActionModalActionCodec) -> HostValue {
-    value := HostRecordValue("ActionModalAction", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("label")
-    codec.fields[1].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[2].name = HostTextData("tone")
-    codec.fields[2].value = HostScalar("ButtonTone", cast(s64)data.tone)
-    codec.fields[3].name = HostTextData("emphasis")
-    codec.fields[3].value = HostScalar("ButtonEmphasis", cast(s64)data.emphasis)
-    codec.fields[4].name = HostTextData("disabled")
-    codec.fields[4].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    return value
 }
 
 WidgetDecodeActionModalAction :: (value: HostValue, codec: *WidgetActionModalActionCodec) -> ActionModalAction {
@@ -3798,6 +2507,7 @@ WidgetValidActionModalAction :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ActionModalResult",[["node","s32"],["action","s32"]]]
 WidgetActionModalResultCodec :: struct {
     fields: [2]HostField
 }
@@ -3811,41 +2521,9 @@ WidgetEncodeActionModalResult :: (data: ActionModalResult, codec: *WidgetActionM
     return value
 }
 
-WidgetDecodeActionModalResult :: (value: HostValue, codec: *WidgetActionModalResultCodec) -> ActionModalResult {
-    data: ActionModalResult
-    unused codec
-    zero: HostValue
-    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
-    data.action = cast(s32)HostFieldValue(*value, 1, "action", *zero).integer
-    return data
-}
-
-WidgetValidActionModalResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "ActionModalResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "action", "s32", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["ContextMenuProps",[["key","u64"],["open","bool"],["x","float32"],["y","float32"],["escape","bool"],["scale","float32"]]]
 WidgetContextMenuPropsCodec :: struct {
     fields: [6]HostField
-}
-
-WidgetEncodeContextMenuProps :: (data: ContextMenuProps, codec: *WidgetContextMenuPropsCodec) -> HostValue {
-    value := HostRecordValue("ContextMenuProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("open")
-    codec.fields[1].value = HostScalar("bool", ifx data.open then 1 else 0)
-    codec.fields[2].name = HostTextData("x")
-    codec.fields[2].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.x}
-    codec.fields[3].name = HostTextData("y")
-    codec.fields[3].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.y}
-    codec.fields[4].name = HostTextData("escape")
-    codec.fields[4].value = HostScalar("bool", ifx data.escape then 1 else 0)
-    codec.fields[5].name = HostTextData("scale")
-    codec.fields[5].value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.scale}
-    return value
 }
 
 WidgetDecodeContextMenuProps :: (value: HostValue, codec: *WidgetContextMenuPropsCodec) -> ContextMenuProps {
@@ -3872,25 +2550,9 @@ WidgetValidContextMenuProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ContextMenuItem",[["id","s32"],["label","string"],["disabled","bool"],["separator","bool"],["inline","bool"],["parent","s32"]]]
 WidgetContextMenuItemCodec :: struct {
     fields: [6]HostField
-}
-
-WidgetEncodeContextMenuItem :: (data: ContextMenuItem, codec: *WidgetContextMenuItemCodec) -> HostValue {
-    value := HostRecordValue("ContextMenuItem", codec.fields[:])
-    codec.fields[0].name = HostTextData("id")
-    codec.fields[0].value = HostScalar("s32", cast(s64)data.id)
-    codec.fields[1].name = HostTextData("label")
-    codec.fields[1].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[2].name = HostTextData("disabled")
-    codec.fields[2].value = HostScalar("bool", ifx data.disabled then 1 else 0)
-    codec.fields[3].name = HostTextData("separator")
-    codec.fields[3].value = HostScalar("bool", ifx data.separator then 1 else 0)
-    codec.fields[4].name = HostTextData("inline")
-    codec.fields[4].value = HostScalar("bool", ifx data.inline then 1 else 0)
-    codec.fields[5].name = HostTextData("parent")
-    codec.fields[5].value = HostScalar("s32", cast(s64)data.parent)
-    return value
 }
 
 WidgetDecodeContextMenuItem :: (value: HostValue, codec: *WidgetContextMenuItemCodec) -> ContextMenuItem {
@@ -3917,6 +2579,7 @@ WidgetValidContextMenuItem :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["ContextMenuResult",[["open","bool"],["activated_id","s32"],["closed","bool"]]]
 WidgetContextMenuResultCodec :: struct {
     fields: [3]HostField
 }
@@ -3932,39 +2595,11 @@ WidgetEncodeContextMenuResult :: (data: ContextMenuResult, codec: *WidgetContext
     return value
 }
 
-WidgetDecodeContextMenuResult :: (value: HostValue, codec: *WidgetContextMenuResultCodec) -> ContextMenuResult {
-    data: ContextMenuResult
-    unused codec
-    zero: HostValue
-    data.open = HostFieldValue(*value, 0, "open", *zero).integer != 0
-    data.activated_id = cast(s32)HostFieldValue(*value, 1, "activated_id", *zero).integer
-    data.closed = HostFieldValue(*value, 2, "closed", *zero).integer != 0
-    return data
-}
-
-WidgetValidContextMenuResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "ContextMenuResult") { return false }
-    if !HostFieldScalarValid(*value, 0, "open", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 1, "activated_id", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 2, "closed", "bool", cast(s32)HostInteger) { return false }
-    return true
-}
-
+// Widget codec schema: ["SvgIconProps",[["bounds","Rectangle"],["shape","string"],["color","Color"]]]
 WidgetSvgIconPropsCodec :: struct {
     fields: [3]HostField
     bounds: WidgetRectangleCodec
     color: WidgetColorCodec
-}
-
-WidgetEncodeSvgIconProps :: (data: SvgIconProps, codec: *WidgetSvgIconPropsCodec) -> HostValue {
-    value := HostRecordValue("SvgIconProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("bounds")
-    codec.fields[0].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[1].name = HostTextData("shape")
-    codec.fields[1].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.shape), .length = cast(usize)data.shape.count}
-    codec.fields[2].name = HostTextData("color")
-    codec.fields[2].value = WidgetEncodeColor(data.color, *codec.color)
-    return value
 }
 
 WidgetDecodeSvgIconProps :: (value: HostValue, codec: *WidgetSvgIconPropsCodec) -> SvgIconProps {
@@ -3984,6 +2619,7 @@ WidgetValidSvgIconProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TileMapProps",[["key","u64"],["bounds","Rectangle"],["columns","s32"],["rows","s32"],["tiles","[]string"],["names","[]string"],["layers","[]s32"],["layer_count","s32"],["fill","Color"],["label","string"],["pixel_snap","bool"],["nearest","bool"],["nearest_tiles","[]s32"]]]
 WidgetTileMapPropsCodec :: struct {
     fields: [13]HostField
     bounds: WidgetRectangleCodec
@@ -3996,81 +2632,6 @@ WidgetTileMapPropsCodec :: struct {
     fill: WidgetColorCodec
     nearest_tiles_values: [1024]HostValue
     nearest_tiles_decoded: [1024]s32
-}
-
-WidgetEncodeTileMapProps :: (data: TileMapProps, codec: *WidgetTileMapPropsCodec) -> HostValue {
-    value := HostRecordValue("TileMapProps", codec.fields[:])
-    codec.fields[0].name = HostTextData("key")
-    codec.fields[0].value = HostScalar("u64", cast(s64)data.key)
-    codec.fields[1].name = HostTextData("bounds")
-    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
-    codec.fields[2].name = HostTextData("columns")
-    codec.fields[2].value = HostScalar("s32", cast(s64)data.columns)
-    codec.fields[3].name = HostTextData("rows")
-    codec.fields[3].value = HostScalar("s32", cast(s64)data.rows)
-    codec.fields[4].name = HostTextData("tiles")
-    codec.fields[4].value.kind = cast(s32)HostSlice
-    codec.fields[4].value.type_name = HostTextData("[]string")
-    codec.fields[4].value.length = cast(usize)data.tiles.count
-    if codec.fields[4].value.length > cast(usize)1024 { codec.fields[4].value.length = cast(usize)1024 }
-    codec.fields[4].value.elements = *codec.tiles_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[4].value.length {
-            codec.tiles_values[index] = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.tiles[index]), .length = cast(usize)data.tiles[index].count}
-            index += cast(usize)1
-        }
-    }
-    codec.fields[5].name = HostTextData("names")
-    codec.fields[5].value.kind = cast(s32)HostSlice
-    codec.fields[5].value.type_name = HostTextData("[]string")
-    codec.fields[5].value.length = cast(usize)data.names.count
-    if codec.fields[5].value.length > cast(usize)1024 { codec.fields[5].value.length = cast(usize)1024 }
-    codec.fields[5].value.elements = *codec.names_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[5].value.length {
-            codec.names_values[index] = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.names[index]), .length = cast(usize)data.names[index].count}
-            index += cast(usize)1
-        }
-    }
-    codec.fields[6].name = HostTextData("layers")
-    codec.fields[6].value.kind = cast(s32)HostSlice
-    codec.fields[6].value.type_name = HostTextData("[]s32")
-    codec.fields[6].value.length = cast(usize)data.layers.count
-    if codec.fields[6].value.length > cast(usize)1024 { codec.fields[6].value.length = cast(usize)1024 }
-    codec.fields[6].value.elements = *codec.layers_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[6].value.length {
-            codec.layers_values[index] = HostScalar("s32", cast(s64)data.layers[index])
-            index += cast(usize)1
-        }
-    }
-    codec.fields[7].name = HostTextData("layer_count")
-    codec.fields[7].value = HostScalar("s32", cast(s64)data.layer_count)
-    codec.fields[8].name = HostTextData("fill")
-    codec.fields[8].value = WidgetEncodeColor(data.fill, *codec.fill)
-    codec.fields[9].name = HostTextData("label")
-    codec.fields[9].value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.label), .length = cast(usize)data.label.count}
-    codec.fields[10].name = HostTextData("pixel_snap")
-    codec.fields[10].value = HostScalar("bool", ifx data.pixel_snap then 1 else 0)
-    codec.fields[11].name = HostTextData("nearest")
-    codec.fields[11].value = HostScalar("bool", ifx data.nearest then 1 else 0)
-    codec.fields[12].name = HostTextData("nearest_tiles")
-    codec.fields[12].value.kind = cast(s32)HostSlice
-    codec.fields[12].value.type_name = HostTextData("[]s32")
-    codec.fields[12].value.length = cast(usize)data.nearest_tiles.count
-    if codec.fields[12].value.length > cast(usize)1024 { codec.fields[12].value.length = cast(usize)1024 }
-    codec.fields[12].value.elements = *codec.nearest_tiles_values[0]
-    {
-        index: usize = 0
-        while index < codec.fields[12].value.length {
-            codec.nearest_tiles_values[index] = HostScalar("s32", cast(s64)data.nearest_tiles[index])
-            index += cast(usize)1
-        }
-    }
-    return value
 }
 
 WidgetDecodeTileMapProps :: (value: HostValue, codec: *WidgetTileMapPropsCodec) -> TileMapProps {
@@ -4210,6 +2771,7 @@ WidgetValidTileMapProps :: (value: HostValue) -> bool {
     return true
 }
 
+// Widget codec schema: ["TileMapResult",[["board","Rectangle"],["cell","float32"],["columns","s32"],["rows","s32"]]]
 WidgetTileMapResultCodec :: struct {
     fields: [4]HostField
     board: WidgetRectangleCodec
@@ -4226,23 +2788,4 @@ WidgetEncodeTileMapResult :: (data: TileMapResult, codec: *WidgetTileMapResultCo
     codec.fields[3].name = HostTextData("rows")
     codec.fields[3].value = HostScalar("s32", cast(s64)data.rows)
     return value
-}
-
-WidgetDecodeTileMapResult :: (value: HostValue, codec: *WidgetTileMapResultCodec) -> TileMapResult {
-    data: TileMapResult
-    zero: HostValue
-    data.board = WidgetDecodeRectangle(HostFieldValue(*value, 0, "board", *zero).*, *codec.board)
-    data.cell = cast(float32)HostFieldValue(*value, 1, "cell", *zero).real
-    data.columns = cast(s32)HostFieldValue(*value, 2, "columns", *zero).integer
-    data.rows = cast(s32)HostFieldValue(*value, 3, "rows", *zero).integer
-    return data
-}
-
-WidgetValidTileMapResult :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "TileMapResult") { return false }
-    if !HostFieldRecordValid(*value, 0, "board", WidgetValidRectangle) { return false }
-    if !HostFieldScalarValid(*value, 1, "cell", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 2, "columns", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldScalarValid(*value, 3, "rows", "s32", cast(s32)HostInteger) { return false }
-    return true
 }

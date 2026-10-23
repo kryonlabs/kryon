@@ -27,6 +27,7 @@
 #import "font_metrics"
 #import "hosted_values"
 #import "widget_codec"
+#import "widget_test_codecs"
 #import "widget_host"
 #import "style"
 #import "style_sheet"
