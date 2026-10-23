@@ -5,6 +5,8 @@ on:
     branches: [master]
     paths:
       - docs/site/**
+      - ziran.lock
+      - tests/portable_format_runtime.cjs
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -16,8 +18,61 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  browser-runtime:
+    name: Build ZX browser runtime
+    runs-on: ubuntu-latest
+    env:
+      MAKEFLAGS: -j2
+    defaults:
+      run:
+        working-directory: kryonlabs/kryon
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: kryonlabs/kryon
+      - name: Read locked compiler
+        id: toolchain
+        run: python3 -c 'import json; print("commit=" + json.load(open("ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          repository: ziranlang/ziran
+          ref: ${{ steps.toolchain.outputs.commit }}
+          path: ziranlang/ziran
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: emscripten-core/setup-emsdk@v15
+        with:
+          version: '6.0.6'
+      - name: Build the locked compiler and select these source revisions
+        run: |
+          make -j2 -C "$GITHUB_WORKSPACE/ziranlang/ziran" all
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          root = Path(os.environ['GITHUB_WORKSPACE'])
+          settings = '[overrides]\nkryon = "' + str(root / 'kryonlabs/kryon') + '"\nziran = "' + str(root / 'ziranlang/ziran') + '"\n'
+          for project in ('docs/site/demo', 'examples/gallery'):
+              (Path(project) / 'ziran.local.toml').write_text(settings)
+          PY
+      - name: Build and verify portable browser assets
+        run: |
+          export PATH="$GITHUB_WORKSPACE/ziranlang/ziran/build/bin:$PATH"
+          python3 docs/site/demo/build_preview.py --ziran "$GITHUB_WORKSPACE/ziranlang/ziran/build/bin/ziran" --emcc "$(command -v emcc)"
+          node tests/portable_format_runtime.cjs
+          ZIRAN_PLAYGROUND_RUNTIME="$PWD/docs/site/assets/playground-runtime.js" node "$GITHUB_WORKSPACE/ziranlang/ziran/tests/web_bundle_runtime.cjs"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: zx-browser-runtime
+          path: |
+            kryonlabs/kryon/docs/site/assets/playground-runtime.js
+            kryonlabs/kryon/docs/site/assets/playground-runtime.wasm
+            kryonlabs/kryon/docs/site/assets/preview.html
+          if-no-files-found: error
+
   verify:
     name: ${{ matrix.name }}
+    needs: browser-runtime
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -44,6 +99,11 @@ jobs:
         with:
           path: kryonlabs/kryon
 
+      - uses: actions/download-artifact@v6
+        with:
+          name: zx-browser-runtime
+          path: kryonlabs/kryon/docs/site/assets
+
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
@@ -54,9 +114,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential python3 xvfb
 
-      # make site produces the committed Canvas/Wasm assets reviewed locally.
-      # Publish those exact files after testing them; source compilation stays
-      # in CI and does not change the approved website during deployment.
+      # Test and deploy the same runtime built from the locked compiler.
       - name: Check static site assets
         run: |
           test -f docs/site/index.html
@@ -104,6 +162,11 @@ jobs:
         uses: actions/checkout@v7
         with:
           path: kryonlabs/kryon
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: zx-browser-runtime
+          path: kryonlabs/kryon/docs/site/assets
 
       - name: Set up Node
         uses: actions/setup-node@v6
