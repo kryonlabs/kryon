@@ -119,7 +119,7 @@ def scalar_encode(value, kind):
 def scalar_decode(source, kind):
     """The plain value a HostValue expression holds."""
     if kind == 'string':
-        return f'TextFromBytes(BytesFromPointer({source}.data, cast(u64){source}.length))'
+        return f'HostValueText({source})'
     if kind == 'bool':
         return f'{source}.integer != 0'
     member = 'real' if kind.startswith('float') else 'bits' if kind.startswith('u') else 'integer'
@@ -153,9 +153,7 @@ def generate(schema, needed, provided, header, imports):
 
 def encoder(kind, fields, records):
     lines = [f'WidgetEncode{kind} :: (data: {kind}, codec: *Widget{kind}Codec) -> HostValue {{',
-             '    value: HostValue', '    value.kind = cast(s32)HostRecord',
-             f'    value.type_name = HostTextData("{kind}")',
-             '    value.fields = *codec.fields[0]', f'    value.field_count = {len(fields)}']
+             f'    value := HostRecordValue("{kind}", codec.fields[:])']
     for index, (name, field_kind) in enumerate(fields):
         target = f'codec.fields[{index}].value'
         lines += [f'    codec.fields[{index}].name = HostTextData("{name}")']
@@ -199,14 +197,16 @@ def matched(index, name, body):
 
 
 def decoder(kind, fields, records):
-    lines = [f'WidgetDecode{kind} :: (value: HostValue, codec: *Widget{kind}Codec) -> {kind} {{', f'    data: {kind}']
+    lines = [f'WidgetDecode{kind} :: (value: HostValue, codec: *Widget{kind}Codec) -> {kind} {{', f'    data: {kind}', '    zero: HostValue']
     for index, (name, field_kind) in enumerate(fields):
-        source = 'value.fields[field_at].value'
+        source = f'HostFieldValue(*value, {index}, "{name}", *zero)'
         if field_kind in records:
-            body = [f'    data.{name} = WidgetDecode{field_kind}({source}, *codec.{name})']
+            lines += [f'    data.{name} = WidgetDecode{field_kind}({source}.*, *codec.{name})']
         elif field_kind.startswith('[]') and host_decoded(kind, name):
-            body = ['    // The host decodes these elements into its own storage.']
+            # These slices are decoded into the rendering effect's storage.
+            continue
         elif field_kind.startswith('[]'):
+            source = 'value.fields[field_at].value'
             element = field_kind[2:]
             body = ['    {', '        index: usize = 0', f'        while index < {source}.length {{',
                     f'            codec.{name}_decoded[index] = ' + (
@@ -214,16 +214,9 @@ def decoder(kind, fields, records):
                         if element in records else scalar_decode(f'{source}.elements[index]', element)),
                     '            index += cast(usize)1', '        }', '    }',
                     '    // Slice storage is attached by the rendering effect after decoding.']
-        elif field_kind == 'string':
-            body = [f'    data.{name} = TextFromBytes(BytesFromPointer({source}.data, cast(u64){source}.length))']
-        elif field_kind == 'bool':
-            body = [f'    data.{name} = {source}.integer != 0']
+            lines += matched(index, name, body)
         else:
-            member = 'real' if field_kind.startswith('float') else 'bits' if field_kind.startswith('u') else 'integer'
-            body = [f'    data.{name} = cast({field_kind}){source}.{member}']
-        lines += matched(index, name, body)
-    # A record of scalars and strings decodes without its codec; strict
-    # hosts reject an unused parameter.
+            lines += [f'    data.{name} = ' + scalar_decode(source + ('.*' if field_kind == 'string' else ''), field_kind)]
     if not any('codec.' in line for line in lines):
         lines.insert(2, '    unused codec')
     return lines + ['    return data', '}', '']
@@ -231,13 +224,11 @@ def decoder(kind, fields, records):
 
 def validator(kind, fields, records):
     lines = [f'WidgetValid{kind} :: (value: HostValue) -> bool {{',
-             f'    if value.kind != cast(s32)HostRecord || TextFromCString(value.type_name) != "{kind}" ||',
-             '    value.field_count > cast(usize)HOST_FIELD_LIMIT ||',
-             '    (value.field_count > cast(usize)0 && value.fields == null) { return false }']
+             f'    if !HostRecordValid(*value, "{kind}") {{ return false }}']
     for index, (name, field_kind) in enumerate(fields):
         source = 'value.fields[field_at].value'
         if field_kind in records:
-            body = [f'    if !WidgetValid{field_kind}({source}) {{ return false }}']
+            lines += [f'    if !HostFieldRecordValid(*value, {index}, "{name}", WidgetValid{field_kind}) {{ return false }}']
         elif field_kind.startswith('[]'):
             element = field_kind[2:]
             limit = slice_limit(kind, name)
@@ -247,9 +238,9 @@ def validator(kind, fields, records):
                     f'            if !WidgetValid{element}({source}.elements[index]) {{ return false }}' if element in records else
                     f'            if !HostScalarValid({source}.elements[index], "{element}", cast(s32){scalar_kind(element)}) {{ return false }}',
                     '            index += cast(usize)1', '        }', '    }']
+            lines += matched(index, name, body)
         else:
-            body = [f'    if !HostScalarValid({source}, "{field_kind}", cast(s32){scalar_kind(field_kind)}) {{ return false }}']
-        lines += matched(index, name, body)
+            lines += [f'    if !HostFieldScalarValid(*value, {index}, "{name}", "{field_kind}", cast(s32){scalar_kind(field_kind)}) {{ return false }}']
     return lines + ['    return true', '}', '']
 
 

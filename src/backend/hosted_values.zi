@@ -63,3 +63,44 @@ HostSliceLength :: (value: HostValue, position: s32, name: string) -> s32 {
     }
     return cast(s32)value.fields[field_at].value.length
 }
+
+// Missing fields retain their zero value; records still match fields by name.
+HostFieldValue :: (value: *HostValue, position: s32, name: string,
+    zero: *HostValue) -> *HostValue {
+    field_at := HostFieldAt(value.*, position, name)
+    if field_at >= 0 { return *value.fields[field_at].value }
+    return zero
+}
+
+HostValueText :: (value: HostValue) -> string {
+    return TextFromBytes(BytesFromPointer(value.data, cast(u64)value.length))
+}
+
+HostRecordValue :: (type_name: string, fields: []HostField) -> HostValue {
+    value: HostValue
+    value.kind = cast(s32)HostRecord
+    value.type_name = HostTextData(type_name)
+    value.field_count = cast(usize)fields.count
+    if fields.count > 0 { value.fields = *fields[0] }
+    return value
+}
+
+HostRecordValid :: (value: *HostValue, type_name: string) -> bool {
+    return value.kind == cast(s32)HostRecord && TextFromCString(value.type_name) == type_name &&
+        value.field_count <= cast(usize)HOST_FIELD_LIMIT &&
+        (value.field_count == cast(usize)0 || value.fields != null)
+}
+
+HostFieldScalarValid :: (value: *HostValue, position: s32, name: string,
+    type_name: string, kind: s32) -> bool {
+    field_at := HostFieldAt(value.*, position, name)
+    return field_at < 0 || HostScalarValid(value.fields[field_at].value, type_name, kind)
+}
+
+HostRecordValidator :: #type (value: HostValue) -> bool;
+
+HostFieldRecordValid :: (value: *HostValue, position: s32, name: string,
+    valid: HostRecordValidator) -> bool {
+    field_at := HostFieldAt(value.*, position, name)
+    return field_at < 0 || valid(value.fields[field_at].value)
+}
