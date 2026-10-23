@@ -1,0 +1,227 @@
+// Runs one portable app compiled into the browser page on the canvas host,
+// for an app whose interpreted ZIB is too slow on a phone. It is the same
+// AppContext app a ZIB player runs: the build binds CanvasAppMain to the
+// app's Main (--bind canvas_app_run:CanvasAppMain=MODULE:Main), and this
+// runner answers the app's context calls itself. Its private documents live
+// where a ZIB player keeps them, /kryon-apps/<app id> on IndexedDB, so
+// saves carry over between the two.
+#import "secondary_pointer"
+using Host :: #import "Canvas";
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "key_input"
+#import "text_input_props"
+#import "app_protocol"
+#import "app_files"
+#import "bundle_storage_web"
+#import "bundle_time"
+#import "page_core"
+#import "test_driver"
+#import "std/vec"
+#import "std/web"
+#import "std/text_buffer"
+
+using FrameStatus;
+
+host_api :: #system_library "host_api";
+// The app's Main, bound when the page is built.
+CanvasAppMain :: () -> s64 #foreign host_api;
+
+canvas_app_mode: s32;
+canvas_app_session: Session;
+canvas_app_bounds: Rectangle;
+canvas_app_key: s32;
+canvas_app_modifiers: s32;
+canvas_app_typed: [1024]u8;
+canvas_app_typed_length: s64;
+canvas_app_id: [64]u8;
+canvas_app_id_length: s64;
+canvas_app_files: AppFiles;
+canvas_app_read: string;
+canvas_app_unsaved: bool;
+
+#program_export
+AppModeHost :: () -> s32 { return canvas_app_mode }
+
+#program_export
+AppIdentityHost :: (id: string, minimum_api: s32) {
+    unused minimum_api
+    if id.count >= canvas_app_id.count { return }
+    for index: cast(s64)0..id.count - 1 { canvas_app_id[index] = id[index] }
+    canvas_app_id_length = id.count
+}
+
+#program_export
+AppDescribeHost :: (name: string, icon_shape: string) {
+    unused name
+    unused icon_shape
+}
+
+#program_export
+AppSessionHost :: () -> Session { return canvas_app_session }
+#program_export
+AppBoundsHost :: () -> Rectangle { return canvas_app_bounds }
+#program_export
+AppDarkHost :: () -> bool { return false }
+#program_export
+AppScaleHost :: () -> float32 { return 1.0 }
+#program_export
+AppFontHost :: () -> s32 { return 18 }
+#program_export
+AppKeyHost :: () -> s32 { return canvas_app_key }
+#program_export
+AppModifiersHost :: () -> s32 { return canvas_app_modifiers }
+#program_export
+AppFieldInputHost :: () -> TextFieldInput {
+    return TextFieldInput.{.text = TextView(canvas_app_typed[:canvas_app_typed_length])}
+}
+#program_export
+AppKeyboardHost :: (visible: bool) { unused visible }
+#program_export
+AppNowHost :: () -> float64 { return cast(float64)BundleUnixMilliseconds() / 1000.0 }
+#program_export
+AppLocalOffsetHost :: () -> s32 { return BundleLocalOffset() }
+// The page offers no optional services: no account, sync or sharing.
+#program_export
+AppSupportsHost :: (capability: string) -> bool { unused capability; return false }
+#program_export
+AppServiceHost :: (name: string, request: string) -> string {
+    unused name
+    unused request
+    return "{\"status\":\"unavailable\"}"
+}
+// The app carries its own words; a page has no locale files of its own.
+#program_export
+AppLocaleHost :: (key: string) -> string { unused key; return "" }
+#program_export
+AppAssetPathHost :: (name: string) -> string { return name }
+
+#program_export
+DocumentStatusHost :: () -> s32 { return canvas_app_files.status }
+#program_export
+DocumentReadHost :: (name: string) -> string {
+    AppFileFree(canvas_app_read)
+    canvas_app_read = AppFileRead(*canvas_app_files, name)
+    return canvas_app_read
+}
+#program_export
+DocumentWriteHost :: (name: string, value: string) -> bool {
+    saved := AppFileWrite(*canvas_app_files, name, value)
+    if saved { canvas_app_unsaved = true }
+    return saved
+}
+
+libc :: #system_library "libc";
+CanvasAppWrite :: (fd: s32, input: *u8, count: usize) -> isize #foreign libc "write";
+
+CanvasAppError :: (message: string) -> s32 {
+    output: [256]u8
+    length: s64 = ifx message.count > 254 then 254 else message.count
+    for index: cast(s64)0..length - 1 { output[index] = message[index] }
+    output[length] = cast(u8)10
+    unused CanvasAppWrite(2, *output[0], cast(usize)(length + 1))
+    return 1
+}
+
+// The app's documents, once IndexedDB has filled the mounted folder.
+CanvasAppOpenFiles :: () -> bool {
+    root: Vec(u8)
+    BuilderPrint(*root, "/kryon-apps/%", TextView(canvas_app_id[:canvas_app_id_length]))
+    return AppFilesOpen(*canvas_app_files, BuilderFinish(root))
+}
+
+CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
+    BeginCanvasFrame()
+    // A test driver may stand in for the person (KRYON_TEST_DRIVER).
+    pointer: PointerFrame = TestDriverPointer(session, PollPointer())
+    TreePointerUpdate(session, pointer)
+    TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+    PointerWheelSend(session, pointer.x, pointer.y, TestDriverWheel(CanvasWheelMove()))
+    if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
+        EndCanvasFrame()
+        return false
+    }
+    canvas_app_mode = APP_FRAME
+    canvas_app_session = session
+    canvas_app_bounds = viewport
+    unused CanvasAppMain()
+    if EndFrame(session) != cast(FrameStatus)FrameOk {
+        EndCanvasFrame()
+        return false
+    }
+    CanvasCursor(session)
+    drawn := EndCanvasFrame()
+    TestDriverFrame(session)
+    return drawn
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenCanvas() {
+        CloseCanvas()
+        return CanvasAppError("kryon: could not open the browser canvas")
+    }
+    canvas_app_mode = APP_IDENTIFY
+    if CanvasAppMain() != APP_PROTOCOL || canvas_app_id_length == 0 {
+        CloseCanvas()
+        return CanvasAppError("kryon: the compiled app did not identify itself")
+    }
+    unused BundleStorageOpen()
+    session: Session = SessionOpen()
+    if !SessionValid(session) {
+        CloseCanvas()
+        return CanvasAppError("kryon: could not open a UI session")
+    }
+    files_open := false
+    last_saved: float64 = 0.0
+    ok: bool = true
+    while ok && PollCanvas() {
+        // Saves are read only once IndexedDB has filled their folder.
+        if !files_open {
+            // IndexedDB answers between frames, so the wait yields.
+            if !BundleStorageReady() && !BundleStorageFailed() {
+                WebSleep(16)
+                continue
+            }
+            if !CanvasAppOpenFiles() {
+                ok = false
+                break
+            }
+            files_open = true
+        }
+        canvas_app_key = CanvasPressedKey()
+        if canvas_app_key == 0 {
+            for candidate: cast(s32)0..349 {
+                if TestDriverKeyPressed(candidate) { canvas_app_key = candidate; break }
+            }
+        }
+        canvas_app_modifiers = CanvasModifiers()
+        if canvas_app_key != 0 { unused KeyboardSend(session, canvas_app_key) }
+        codepoint: s32 = CanvasTypedCodepoint()
+        while codepoint != 0 {
+            unused TypedCodepointSend(session, codepoint)
+            codepoint = CanvasTypedCodepoint()
+        }
+        codepoint = TestDriverCodepoint()
+        while codepoint != 0 {
+            unused TypedCodepointSend(session, codepoint)
+            codepoint = TestDriverCodepoint()
+        }
+        canvas_app_typed_length = TypedTextTake(session, canvas_app_typed[:]).count
+        ok = CanvasAppFrame(session, CanvasViewport())
+        // Written documents reach IndexedDB in one batch about each second.
+        if canvas_app_unsaved && PageNow() - last_saved >= 1000.0 {
+            if BundleStorageSync(false) { canvas_app_unsaved = false }
+            last_saved = PageNow()
+        }
+    }
+    unused BundleStorageSync(false)
+    AppFilesClose(*canvas_app_files)
+    CloseSession(session)
+    CloseCanvas()
+    if ok { return 0 }
+    return CanvasAppError("kryon: the compiled app's frame failed")
+}
