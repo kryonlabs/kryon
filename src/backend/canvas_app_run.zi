@@ -21,6 +21,8 @@ using Host :: #import "Canvas";
 #import "page_core"
 #import "test_driver"
 #import "std/vec"
+#import "page_route"
+#import "mini_embed"
 #import "std/web"
 #import "std/text_buffer"
 
@@ -43,6 +45,8 @@ canvas_app_files: AppFiles;
 canvas_app_read: string;
 canvas_app_unsaved: bool;
 
+// A page embedded with ?mini runs the app in mini mode.
+canvas_app_mini: bool;
 #program_export
 AppModeHost :: () -> s32 { return canvas_app_mode }
 
@@ -84,9 +88,10 @@ AppKeyboardHost :: (visible: bool) { unused visible }
 AppNowHost :: () -> float64 { return cast(float64)BundleUnixMilliseconds() / 1000.0 }
 #program_export
 AppLocalOffsetHost :: () -> s32 { return BundleLocalOffset() }
-// The page offers no optional services: no account, sync or sharing.
+// The page offers no optional services such as an account, sync or
+// sharing; only mini mode, when its address asks for it.
 #program_export
-AppSupportsHost :: (capability: string) -> bool { unused capability; return false }
+AppSupportsHost :: (capability: string) -> bool { return canvas_app_mini && capability == MINI_MODE_CAPABILITY }
 #program_export
 AppServiceHost :: (name: string, request: string) -> string {
     unused name
@@ -165,6 +170,9 @@ main :: () -> s32 {
         return CanvasAppError("kryon: could not open the browser canvas")
     }
     canvas_app_mode = APP_IDENTIFY
+    query: [512]u8
+    PageRouteReadQuery(query[:])
+    canvas_app_mini = MiniModeQuery(TextUntilNul(query[:]))
     if CanvasAppMain() != APP_PROTOCOL || canvas_app_id_length == 0 {
         CloseCanvas()
         return CanvasAppError("kryon: the compiled app did not identify itself")
