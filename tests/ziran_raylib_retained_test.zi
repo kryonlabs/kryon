@@ -55,5 +55,6 @@ main :: () -> s32 {
     RetainedPreviousFrameTexture().id != cast(u32)0 || EndRetainedFrame() {
         return 11
     }
+    if !retained_blend_valid || retained_blend_active { return 12 }
     return 0
 }

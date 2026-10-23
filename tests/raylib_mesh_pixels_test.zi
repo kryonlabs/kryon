@@ -71,6 +71,29 @@ Check :: (columns: s32, rows: s32, clip: Rectangle) -> bool {
     return true
 }
 
+// An antialiased edge over the same opaque colour changes no pixels.
+// Rendering into a texture and presenting it must match direct painting;
+// multiplying source alpha twice makes the overlap dark instead.
+CheckRetainedAlpha :: () -> bool {
+    if !BeginRetainedFrame(256, 256) { return false }
+    TestClearBackground(Color.{63, 143, 122, 255})
+    RasterRoundedRectangle(.{32.0, 32.0, 128.0, 128.0}, 0.0, 0,
+        Color.{63, 143, 122, 128})
+    if !EndRetainedFrame() { return false }
+    image := TestCapture()
+    defer TestImageFree(image)
+    if image.data == null || image.format != 7 { return false }
+    bytes := cast(*u8)image.data
+    at := (64 * image.width + 64) * 4
+    if bytes[at] != cast(u8)63 || bytes[at + 1] != cast(u8)143 ||
+    bytes[at + 2] != cast(u8)122 {
+        print("retained alpha overlap: % % % expected 63 143 122\n",
+            bytes[at], bytes[at + 1], bytes[at + 2])
+        return false
+    }
+    return true
+}
+
 #program_export
 main :: () -> s32 {
     title: [64]u8
@@ -136,5 +159,6 @@ main :: () -> s32 {
     Probe(2, 200, 240, cast(u32)0x00ffff)
     Probe(3, 180, 180, black)
     if !Check(2, 2, full) { return 8 }
+    if !CheckRetainedAlpha() { return 9 }
     return 0
 }

@@ -149,6 +149,11 @@ HostRaylibPopMatrix :: () #foreign raylib "rlPopMatrix";
 HostRaylibLoadIdentity :: () #foreign raylib "rlLoadIdentity";
 HostRaylibDisableBlend :: () #foreign raylib "rlDisableColorBlend";
 HostRaylibEnableBlend :: () #foreign raylib "rlEnableColorBlend";
+HostRaylibBlendFactorsSeparate :: (source_rgb: s32, destination_rgb: s32,
+    source_alpha: s32, destination_alpha: s32, rgb_equation: s32,
+    alpha_equation: s32) #foreign raylib "rlSetBlendFactorsSeparate";
+HostRaylibBeginBlendMode :: (mode: s32) #foreign raylib "BeginBlendMode";
+HostRaylibEndBlendMode :: () #foreign raylib "EndBlendMode";
 HostRaylibMultMatrix :: (matrix: *float32) #foreign raylib "rlMultMatrixf";
 HostRaylibParseFloat :: (value: *u8) -> float64 #foreign c "atof";
 HostRaylibTakeScreenshot :: (path: *u8) #foreign raylib "TakeScreenshot";
@@ -2156,6 +2161,13 @@ BeginRetainedFrame :: (width: s32, height: s32) -> bool {
     if !retained_frame_ready[retained_frame_render_index] { return false }
     HostRaylibBeginDrawing()
     HostRaylibBeginTextureMode(retained_frame_targets[retained_frame_render_index])
+    // Straight-alpha colours use source-over coverage. Alpha itself must
+    // not be multiplied by source alpha again: a soft edge over an opaque
+    // canvas stays opaque, including where same-colour shapes overlap.
+    // Otherwise presenting this texture darkens every translucent edge.
+    // GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_FUNC_ADD.
+    HostRaylibBlendFactorsSeparate(770, 771, 1, 771, 32774, 32774)
+    HostRaylibBeginBlendMode(7) // BLEND_CUSTOM_SEPARATE
     retained_frame_active = true
     return true
 }
@@ -2176,6 +2188,7 @@ RaylibPresentTexture :: (texture: Texture2D) {
 EndRetainedFrame :: () -> bool {
     if !retained_frame_active { return false }
     target := retained_frame_targets[retained_frame_render_index]
+    HostRaylibEndBlendMode()
     HostRaylibEndTextureMode()
     RaylibPresentTexture(target.texture)
     HostRaylibEndDrawing()
@@ -2194,6 +2207,7 @@ EndRetainedFrameReusePrevious :: () -> bool {
     if !retained_frame_active { return false }
     if retained_frame_previous_index < 0 { return EndRetainedFrame() }
     previous := retained_frame_targets[retained_frame_previous_index]
+    HostRaylibEndBlendMode()
     HostRaylibEndTextureMode()
     RaylibPresentTexture(previous.texture)
     HostRaylibEndDrawing()

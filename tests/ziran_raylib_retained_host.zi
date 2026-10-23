@@ -12,6 +12,29 @@ ends: s32;
 presented: u32;
 last_source: Rectangle;
 last_destination: Rectangle;
+retained_blend_valid: bool = true;
+retained_blend_active: bool;
+
+#program_export
+rlSetBlendFactorsSeparate :: (source_rgb: s32, destination_rgb: s32,
+    source_alpha: s32, destination_alpha: s32, rgb_equation: s32, alpha_equation: s32) {
+    if source_rgb != 770 || destination_rgb != 771 || source_alpha != 1 ||
+    destination_alpha != 771 || rgb_equation != 32774 || alpha_equation != 32774 {
+        retained_blend_valid = false
+    }
+}
+
+#program_export
+BeginBlendMode :: (mode: s32) {
+    if mode != 7 || retained_blend_active { retained_blend_valid = false }
+    retained_blend_active = true
+}
+
+#program_export
+EndBlendMode :: () {
+    if !retained_blend_active { retained_blend_valid = false }
+    retained_blend_active = false
+}
 
 #program_export
 LoadRenderTexture :: (width: s32, height: s32) -> HostRaylibRenderTexture {
