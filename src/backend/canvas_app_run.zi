@@ -11,6 +11,7 @@ using Host :: #import "Canvas";
 #import "session"
 #import "tree"
 #import "tree_draw"
+#import "canvas_frame"
 #import "tree_input"
 #import "key_input"
 #import "text_input_props"
@@ -153,7 +154,7 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
     canvas_app_session = session
     canvas_app_bounds = viewport
     unused CanvasAppMain()
-    if EndFrame(session) != cast(FrameStatus)FrameOk {
+    if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false
     }

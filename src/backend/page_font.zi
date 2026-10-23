@@ -209,7 +209,7 @@ PageTextSizeFor :: (context: s32, face_id: s32, size: s32) -> PageTextSize {
 }
 
 PageTextWidth :: (face_id: s32, text: string, size: s32) -> float64 {
-    context := PageContext()
+    context := PageMeasureContext()
     if context == 0 || size <= 0 || text.count == 0 { return 0.0 }
     scope := WebScope()
     style := PageTextSizeFor(context, face_id, size)

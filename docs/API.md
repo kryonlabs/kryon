@@ -4,6 +4,13 @@ Kryon is an ordinary Ziran package. An application imports the modules it
 uses; no widget names are recognized by the Ziran compiler or `.zib` loader.
 The public package imports are declared in [`ziran.toml`](../ziran.toml).
 
+Rendering hosts that retain pixels can call `CommitFrameDamaged(session)` to
+commit the tree and compare paint while leaving changed commands queued. An
+unchanged result needs no raster work; a partial result supplies its damage
+rectangle. The host clears and clips that area before `PaintFlushArea`, or
+clears its whole surface before `PaintFlush`. `EndFrameDamaged` keeps its
+existing behavior of emitting a full repaint immediately.
+
 | Import | Surface |
 | --- | --- |
 | `Kryon` | Geometry, drawing values, sessions, `Text(TextProps)`, and `Button(ButtonProps)` |

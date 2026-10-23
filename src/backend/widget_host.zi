@@ -263,8 +263,9 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     if !widget_host_active {
         return 0
     }
-    if ModuleName(TextFromCString(module), "pointer_input") &&
-    TextFromCString(function) == "PollPointer" && count == 0 {
+    owner := TextFromCString(module)
+    name := TextFromCString(function)
+    if name == "PollPointer" && ModuleName(owner, "pointer_input") && count == 0 {
         result.* = WidgetEncodePointerFrame(PointerSample(widget_host_session), *widget_pointer_codec)
         return 1
     }
@@ -275,9 +276,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     if session.slot != widget_host_session.slot || session.epoch != widget_host_session.epoch {
         return 0
     }
-    owner := TextFromCString(module)
-    name := TextFromCString(function)
-    if ModuleName(owner, "tree") && name == "EndHostedHost" && count == 1 {
+    if name == "EndHostedHost" && ModuleName(owner, "tree") && count == 1 {
         if widget_host_depth == 0 {
             return 0
         }
@@ -286,28 +285,28 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         result.* = HostScalar("bool", 1)
         return 1
     }
-    if ModuleName(owner, "tab_bar_widget") && name == "TabBarHostedHost" && count == 3 {
+    if name == "TabBarHostedHost" && ModuleName(owner, "tab_bar_widget") && count == 3 {
         return WidgetHostTabBar(session, arguments, result)
     }
-    if ModuleName(owner, "dropdown_widget") && name == "DropdownHostedHost" && count == 3 {
+    if name == "DropdownHostedHost" && ModuleName(owner, "dropdown_widget") && count == 3 {
         return WidgetHostDropdown(session, arguments, result)
     }
-    if ModuleName(owner, "title_bar_widget") && name == "TitleBarHostedHost" && count == 3 {
+    if name == "TitleBarHostedHost" && ModuleName(owner, "title_bar_widget") && count == 3 {
         return WidgetHostTitleBar(session, arguments, result)
     }
-    if ModuleName(owner, "modal_widget") && name == "ActionModalHostedHost" && count == 3 {
+    if name == "ActionModalHostedHost" && ModuleName(owner, "modal_widget") && count == 3 {
         return WidgetHostActionModal(session, arguments, result)
     }
-    if ModuleName(owner, "context_menu_widget") && name == "ContextMenuHostedHost" && count == 3 {
+    if name == "ContextMenuHostedHost" && ModuleName(owner, "context_menu_widget") && count == 3 {
         return WidgetHostContextMenu(session, arguments, result)
     }
-    if ModuleName(owner, "text_widget") && name == "TextLinkAtHostedHost" && count == 4 {
+    if name == "TextLinkAtHostedHost" && ModuleName(owner, "text_widget") && count == 4 {
         return WidgetHostTextLinkAt(session, arguments, result)
     }
-    if ModuleName(owner, "widget_palette") && name == "WidgetPaletteHostedHost" && count == 11 {
+    if name == "WidgetPaletteHostedHost" && ModuleName(owner, "widget_palette") && count == 11 {
         return WidgetHostPalette(session, arguments, result)
     }
-    if ModuleName(owner, "widget_palette") && name == "WidgetPaletteRestoreHostedHost" && count == 1 {
+    if name == "WidgetPaletteRestoreHostedHost" && ModuleName(owner, "widget_palette") && count == 1 {
         restored := !widget_host_palette_used || WidgetPaletteRestore(session)
         widget_host_palette_used = false
         result.* = HostScalar("bool", ifx restored then 1 else 0)
@@ -317,42 +316,42 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         return 0
     }
     props := arguments[1]
-    if ModuleName(owner, "carousel") && name == "CarouselWheelHostedHost" && WidgetValidRectangle(props) {
+    if name == "CarouselWheelHostedHost" && ModuleName(owner, "carousel") && WidgetValidRectangle(props) {
         rectangle_codec: WidgetRectangleCodec
         result.* = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"),
             .real = cast(float64)PointerWheelTake(session, WidgetDecodeRectangle(props, *rectangle_codec))}
         return 1
     }
 
-    if ModuleName(owner, "modal_frame_widget") && name == "ModalFrameHostedHost" && WidgetValidModalFrameProps(props) {
+    if name == "ModalFrameHostedHost" && ModuleName(owner, "modal_frame_widget") && WidgetValidModalFrameProps(props) {
         return WidgetHostModalFrame(session, props, result)
     }
-    if ModuleName(owner, "box_widget") && name == "BoxHostedHost" && WidgetValidBoxProps(props) {
+    if name == "BoxHostedHost" && ModuleName(owner, "box_widget") && WidgetValidBoxProps(props) {
         result.* = HostScalar("s32", cast(s64)Box(session, WidgetDecodeBoxProps(props, *widget_box_codec)))
         return 1
     }
-    if ModuleName(owner, "svg_icon_widget") && name == "SvgIconHostedHost" && WidgetValidSvgIconProps(props) {
+    if name == "SvgIconHostedHost" && ModuleName(owner, "svg_icon_widget") && WidgetValidSvgIconProps(props) {
         SvgIcon(session, WidgetDecodeSvgIconProps(props, *widget_svg_icon_codec))
         return 1
     }
-    if ModuleName(owner, "text_field_widget") && name == "TextFieldHostedHost" && WidgetValidTextFieldProps(props) {
+    if name == "TextFieldHostedHost" && ModuleName(owner, "text_field_widget") && WidgetValidTextFieldProps(props) {
         edited := TextField(session, WidgetDecodeTextFieldProps(props, *widget_field_codec))
         result.* = WidgetEncodeTextFieldResult(edited, *widget_field_result_codec)
         return 1
     }
-    if ModuleName(owner, "text_measure") && name == "TextWidthHostedHost" && WidgetValidTextProps(props) {
+    if name == "TextWidthHostedHost" && ModuleName(owner, "text_measure") && WidgetValidTextProps(props) {
         result.* = HostScalar("s32", cast(s64)TextWidth(session, WidgetHostTextProps(props)))
         return 1
     }
-    if ModuleName(owner, "text_measure") && name == "TextHeightHostedHost" && WidgetValidTextProps(props) {
+    if name == "TextHeightHostedHost" && ModuleName(owner, "text_measure") && WidgetValidTextProps(props) {
         result.* = HostScalar("s32", cast(s64)TextHeight(session, WidgetHostTextProps(props)))
         return 1
     }
-    if ModuleName(owner, "text_widget") && name == "TextHostedHost" && WidgetValidTextProps(props) {
+    if name == "TextHostedHost" && ModuleName(owner, "text_widget") && WidgetValidTextProps(props) {
         Text(session, WidgetHostTextProps(props))
         return 1
     }
-    if ModuleName(owner, "image_widget") && name == "ImageHostedHost" && WidgetValidImageProps(props) {
+    if name == "ImageHostedHost" && ModuleName(owner, "image_widget") && WidgetValidImageProps(props) {
         image := WidgetDecodeImageProps(props, *widget_image_codec)
         if !WidgetHostImage(*image) {
             return 0
@@ -366,7 +365,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         Image(session, image)
         return 1
     }
-    if ModuleName(owner, "tile_map") && name == "TileMapHostedHost" && WidgetValidTileMapProps(props) {
+    if name == "TileMapHostedHost" && ModuleName(owner, "tile_map") && WidgetValidTileMapProps(props) {
         map := WidgetDecodeTileMapProps(props, *widget_tile_map_codec)
         map.tiles = widget_tile_map_codec.tiles_decoded[:HostSliceLength(props, 4, "tiles")]
         map.names = widget_tile_map_codec.names_decoded[:HostSliceLength(props, 5, "names")]
@@ -395,7 +394,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         result.* = WidgetEncodeTileMapResult(TileMap(session, map), *widget_tile_map_result_codec)
         return 1
     }
-    if ModuleName(owner, "button_widget") && name == "ButtonHostedHost" && WidgetValidButtonProps(props) {
+    if name == "ButtonHostedHost" && ModuleName(owner, "button_widget") && WidgetValidButtonProps(props) {
         button := WidgetDecodeButtonProps(props, *widget_button_codec)
         if button.icon.id != cast(u32)0 || !WidgetHostImage(*button.image) {
             return 0
@@ -403,7 +402,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         result.* = HostScalar("s32", cast(s64)Button(session, button))
         return 1
     }
-    if ModuleName(owner, "text_area_widget") && name == "TextAreaHostedHost" && WidgetValidTextAreaProps(props) {
+    if name == "TextAreaHostedHost" && ModuleName(owner, "text_area_widget") && WidgetValidTextAreaProps(props) {
         area := WidgetDecodeTextAreaProps(props, *widget_area_codec)
         area.colors = widget_area_codec.colors_decoded[:HostSliceLength(props, 16, "colors")]
         area.hidden = widget_area_codec.hidden_decoded[:HostSliceLength(props, 25, "hidden")]
@@ -420,7 +419,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         result.* = WidgetEncodeTextAreaResult(edited, *widget_area_result_codec)
         return 1
     }
-    if ModuleName(owner, "scroll_widget") && name == "ScrollHostedHost" && WidgetValidScrollProps(props) {
+    if name == "ScrollHostedHost" && ModuleName(owner, "scroll_widget") && WidgetValidScrollProps(props) {
         if widget_host_depth >= WIDGET_HOST_SCOPE_DEPTH {
             return 0
         }
@@ -431,27 +430,27 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         result.* = WidgetEncodeScrollResult(frame, *widget_scroll_result_codec)
         return 1
     }
-    if ModuleName(owner, "checkbox_widget") && name == "CheckboxHostedHost" && WidgetValidCheckboxProps(props) {
+    if name == "CheckboxHostedHost" && ModuleName(owner, "checkbox_widget") && WidgetValidCheckboxProps(props) {
         checked := Checkbox(session, WidgetDecodeCheckboxProps(props, *widget_checkbox_codec))
         result.* = WidgetEncodeCheckboxValueResult(checked, *widget_checkbox_result_codec)
         return 1
     }
-    if ModuleName(owner, "press_widget") && name == "PressHostedHost" && WidgetValidPressProps(props) {
+    if name == "PressHostedHost" && ModuleName(owner, "press_widget") && WidgetValidPressProps(props) {
         pressed := Press(session, WidgetDecodePressProps(props, *widget_press_codec))
         result.* = WidgetEncodePressResult(pressed, *widget_press_result_codec)
         return 1
     }
-    if ModuleName(owner, "toggle_widget") && name == "ToggleHostedHost" && WidgetValidToggleProps(props) {
+    if name == "ToggleHostedHost" && ModuleName(owner, "toggle_widget") && WidgetValidToggleProps(props) {
         toggled := Toggle(session, WidgetDecodeToggleProps(props, *widget_toggle_codec))
         result.* = WidgetEncodeToggleValueResult(toggled, *widget_toggle_result_codec)
         return 1
     }
-    if ModuleName(owner, "spinbox_widget") && name == "SpinboxHostedHost" && WidgetValidSpinboxProps(props) {
+    if name == "SpinboxHostedHost" && ModuleName(owner, "spinbox_widget") && WidgetValidSpinboxProps(props) {
         stepped := Spinbox(session, WidgetDecodeSpinboxProps(props, *widget_spinbox_codec))
         result.* = WidgetEncodeSpinboxStepResult(stepped, *widget_spinbox_result_codec)
         return 1
     }
-    if ModuleName(owner, "time_picker_widget") && name == "TimePickerHostedHost" && WidgetValidTimePickerProps(props) {
+    if name == "TimePickerHostedHost" && ModuleName(owner, "time_picker_widget") && WidgetValidTimePickerProps(props) {
         picked := TimePicker(session, WidgetDecodeTimePickerProps(props, *widget_time_picker_codec))
         result.* = WidgetEncodeTimePickerResult(picked, *widget_time_picker_result_codec)
         return 1

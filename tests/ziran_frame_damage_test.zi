@@ -16,7 +16,8 @@ Custom :: (command: PaintCommand) {
 
 // Two still lines, one that moves and a label, as a page with a playing
 // practice window over it.
-Frame :: (session: Session, moving: float32, label: string, custom: bool = false) -> FrameEndResult {
+Frame :: (session: Session, moving: float32, label: string, custom: bool = false,
+    deferred: bool = false) -> FrameEndResult {
     unused BeginFrame(session, cast(u64)23, Rectangle.{0.0, 0.0, 400.0, 300.0})
     PaintLine(session, -1, Rectangle.{10.0, 10.0, 100.0, 1.0}, Color.{0, 0, 0, 255})
     PaintLine(session, -1, Rectangle.{10.0, 200.0, 100.0, 1.0}, Color.{0, 0, 0, 255})
@@ -28,6 +29,7 @@ Frame :: (session: Session, moving: float32, label: string, custom: bool = false
         command.has_emitter = true
         SubmitPaint(session, command)
     }
+    if deferred { return CommitFrameDamaged(session) }
     return EndFrameDamaged(session)
 }
 
@@ -62,6 +64,22 @@ main :: () -> s32 {
     // Paint with its own emitter may draw anywhere: the frame is painted whole.
     result = Frame(session, 70.0, "bb", true)
     if result.damage_partial || result.paint_unchanged || line_draws != 10 || text_draws != 4 || custom_calls != 1 { return 10 }
+    unused CloseSession(session)
+    // A retained surface must clear before even a first or custom repaint.
+    // Committing alone leaves every changed command queued for that host.
+    session = SessionOpen()
+    result = Frame(session, 50.0, "a", false, true)
+    if result.status != FrameStatus.FrameOk || result.damage_partial || result.paint_unchanged ||
+        line_draws != 10 || text_draws != 4 || PendingPaintCount(session) != 4 { return 11 }
+    PaintFlush(session)
+    if line_draws != 13 || text_draws != 5 { return 12 }
+    result = Frame(session, 50.0, "a", false, true)
+    if !result.paint_unchanged || PendingPaintCount(session) != 0 || line_draws != 13 { return 13 }
+    result = Frame(session, 50.0, "a", true, true)
+    if result.damage_partial || result.paint_unchanged || custom_calls != 1 ||
+        PendingPaintCount(session) != 5 { return 14 }
+    PaintFlush(session)
+    if custom_calls != 2 || line_draws != 16 || text_draws != 6 { return 15 }
     unused CloseSession(session)
     return 0
 }

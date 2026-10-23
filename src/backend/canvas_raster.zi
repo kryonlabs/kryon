@@ -48,6 +48,16 @@ CanvasDrawImageClipped :: (texture: Texture2D, source: Rectangle,
     height: s32 = cast(s32)clip.height
     if width <= 0 || height <= 0 { return }
     if radius <= 0.0 {
+        // A contained image cannot touch this clip's boundary. Keep any
+        // enclosing clip/camera, but avoid rebuilding an identical scissor
+        // and reading its modelview for every tile in a board.
+        if rotation == 0.0 && destination.width > 0.0 && destination.height > 0.0 &&
+            destination.x >= cast(float32)x && destination.y >= cast(float32)y &&
+            destination.x + destination.width <= cast(float32)(x + width) &&
+            destination.y + destination.height <= cast(float32)(y + height) {
+            DrawTexturePro(texture, source, destination, origin, rotation, tint)
+            return
+        }
         CanvasDrawImageStrip(texture, source, destination, origin,
             rotation, tint, x, y, width, height)
         return

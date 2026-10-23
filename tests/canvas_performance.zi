@@ -1,0 +1,39 @@
+// Deterministic tile-board workload for the real Canvas2D host.
+#import "page_core"
+#import "page_paint"
+#import "page_texture"
+
+performance_texture: s32;
+
+#program_export
+Setup :: () -> s32 {
+    PageBoot(512, 384, "Canvas performance")
+    pixels: [64 * 64 * 4]u8
+    for y: cast(s32)0..63 {
+        for x: cast(s32)0..63 {
+            at := (y * 64 + x) * 4
+            pixels[at] = cast(u8)(ifx x < 32 then 240 else 40)
+            pixels[at + 1] = cast(u8)(ifx y < 32 then 80 else 200)
+            pixels[at + 2] = cast(u8)120
+            pixels[at + 3] = cast(u8)255
+        }
+    }
+    performance_texture = PageTextureFromRgba(*pixels[0], 64, 64)
+    if performance_texture == 0 { return 1 }
+    return 0
+}
+
+#program_export
+Draw :: (frames: s32, transformed: s32) {
+    for frame: cast(s32)0..frames - 1 {
+        PageContextCall(PageOpClear, 0, 0, 0, 0, 0, 0, 0, 12, 24, 36, 255)
+        for tile: cast(s32)0..511 {
+            x := cast(float64)(tile % 32 * 16)
+            y := cast(float64)(tile / 32 * 16)
+            angle: float64 = ifx transformed == 0 then 0.0 else 17.0
+            PageDrawTexture(performance_texture, 0, 0, 64, 64,
+                x, y, 16, 16, 0, 0, angle, 255, 255, 255, 255, 0)
+        }
+    }
+    PagePresent()
+}

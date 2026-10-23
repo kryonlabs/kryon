@@ -1,5 +1,85 @@
 // Test-only browser effect bridge. Actual pixels come from the browser Canvas2D.
 addToLibrary({
+  canvas_test_density__sig: 'vd',
+  canvas_test_density: function(density) {
+    Object.defineProperty(globalThis, 'devicePixelRatio', {value:density, configurable:true});
+  },
+  canvas_test_retained__sig: 'ii',
+  canvas_test_retained: function(phase) {
+    var canvas = document.getElementById('canvas'), dpi = Math.max(1, globalThis.devicePixelRatio || 1);
+    var reference = new OffscreenCanvas(canvas.width, canvas.height), ctx = reference.getContext('2d');
+    ctx.fillStyle = phase >= 12 ? '#e8f0f8' : 'white'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.scale(dpi,dpi);
+    function box(x,y,w,h,color) {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.roundRect(x,y,w,h,0); ctx.fill();
+    }
+    if (phase !== 7 && phase !== 8) box(10,10,40,36,phase === 4 ? 'rgba(0,160,0,0.501961)' : 'rgba(240,0,0,0.501961)');
+    if (phase >= 17) {
+      ctx.globalAlpha = 0.5;
+      for (var round=0;round<phase-16;round++) {
+        ctx.fillStyle = '#e8f0f8'; ctx.fillRect(0,0,160,120);
+        box(10,10,40,36,'rgba(240,0,0,0.501961)');
+      }
+    }
+    if (phase <= 6 && phase !== 2) box(24 + (phase >= 5 ? 3 : phase)*6,12,7,9,'rgba(0,0,240,0.501961)');
+    if (phase === 9 || phase === 10 || phase === 15) {
+      ctx.fillStyle = '#0000f0';
+      ctx.fillRect(Math.round(80*dpi)/dpi,Math.round(10*dpi)/dpi,
+        (Math.round(100*dpi)-Math.round(80*dpi))/dpi,
+        (Math.round(30*dpi)-Math.round(10*dpi))/dpi);
+    }
+    var expected = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    var actual = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height).data;
+    for (var index=0;index<actual.length;index++) {
+      if (Math.abs(actual[index]-expected[index]) > 1) {
+        globalThis.canvasTestError = 'retained frame '+phase+' differs at byte '+index+': '+actual[index]+' expected '+expected[index];
+        return 0;
+      }
+    }
+    return 1;
+  },
+  canvas_test_sprite_state__sig: 'iiii',
+  canvas_test_sprite_state: function(context, source, phase) {
+    var W = globalThis.__ziranWeb, ctx = W.value(context);
+    function setup(c) {
+      c.fillStyle = '#123456'; c.fillRect(0, 0, 32, 32);
+      c.translate(5, 3); c.rotate(0.17); c.scale(1.1, 0.9);
+      c.beginPath(); c.rect(0, 0, 26, 20); c.clip();
+      c.globalAlpha = 0.25; c.imageSmoothingEnabled = true;
+    }
+    if (phase % 2 === 0) { setup(ctx); return 1; }
+    var expected = new OffscreenCanvas(32, 32), reference = expected.getContext('2d');
+    setup(reference);
+    for (var index = 0; index < 4; index++) {
+      reference.save();
+      if (phase === 3) {
+        var matrix = reference.getTransform();
+        var corners = [[0,0],[18,0],[0,16],[18,16]].map(([x,y]) => matrix.transformPoint({x,y}));
+        var left = Math.floor(Math.min(...corners.map(p => p.x)));
+        var top = Math.floor(Math.min(...corners.map(p => p.y)));
+        var right = Math.ceil(Math.max(...corners.map(p => p.x)));
+        var bottom = Math.ceil(Math.max(...corners.map(p => p.y)));
+        reference.setTransform(1,0,0,1,0,0);
+        reference.beginPath(); reference.rect(left,top,right-left,bottom-top); reference.clip();
+        reference.setTransform(matrix);
+      }
+      reference.imageSmoothingEnabled = !!(index % 2);
+      if (index % 2) reference.globalAlpha = 128 / 255;
+      reference.translate(index * 5 + 7, 4);
+      reference.drawImage(W.value(source), 0, 0, 2, 2, -7, -3, 5, 12);
+      reference.restore();
+    }
+    if (ctx.globalAlpha !== 0.25 || !ctx.imageSmoothingEnabled) return 0;
+    var actual = ctx.getImageData(0, 0, 32, 32).data;
+    var pixels = reference.getImageData(0, 0, 32, 32).data;
+    for (var byte = 0; byte < pixels.length; byte++) {
+      if (actual[byte] !== pixels[byte]) {
+        globalThis.canvasTestError = 'sprite state pixels differ at byte ' + byte;
+        return 0;
+      }
+    }
+    return 1;
+  },
   canvas_test_text__sig: 'iiifii',
   canvas_test_text: function(face, size, zoom, width, dark) {
     var canvas = document.getElementById('canvas');

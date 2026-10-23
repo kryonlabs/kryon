@@ -1,0 +1,182 @@
+// Retain the browser host's existing back buffer. The checked paint plan
+// decides damage; this module only clears and rasterises the affected pixels.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#import "page_core"
+#import "page_paint"
+#import "canvas_window"
+#import "web"
+
+canvas_frame_ready: bool;
+canvas_frame_owner: Session;
+canvas_frame_width: s32;
+canvas_frame_height: s32;
+canvas_frame_scale: float64;
+canvas_frame_color: Color;
+canvas_frame_background: Color;
+canvas_frame_clear_pending: bool;
+canvas_frame_rendering: bool;
+
+CanvasFrameReset :: () {
+    PageFlushPaint()
+    canvas_frame_ready = false
+    canvas_frame_owner = Session.{}
+    canvas_frame_clear_pending = false
+    canvas_frame_rendering = false
+    page_draw_hooks = PageDrawHooks.{}
+}
+
+// Clear the root back buffer even if the caller selected a render target.
+// A deferred clear is also completed for an empty or failed frame.
+CanvasFrameEnsureClear :: () {
+    if !canvas_frame_clear_pending { return }
+    canvas_frame_clear_pending = false
+    canvas_frame_ready = false
+    if page_ctx == 0 { return }
+    scope := WebScope()
+    ctx := page_ctx
+    unused WebCall0(ctx, page_names.save)
+    identity: [6]WebValue = .{WebNumber(1), WebNumber(0), WebNumber(0),
+        WebNumber(1), WebNumber(0), WebNumber(0)}
+    unused WebCall(ctx, page_names.set_transform, *identity[0], 6)
+    color := canvas_frame_background
+    PageSetFill(ctx, cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    unused WebCall4(ctx, page_names.fill_rect, WebNumber(0), WebNumber(0),
+        WebNumber(cast(float64)page_render_width), WebNumber(cast(float64)page_render_height))
+    unused WebCall0(ctx, page_names.restore)
+    WebEnd(scope)
+}
+
+// Ordinary host paint still starts with its background. Paint after the UI
+// invalidates reuse, so overlays cannot become part of the next UI snapshot.
+CanvasFrameBeforeDraw :: () {
+    if canvas_frame_rendering { return }
+    CanvasFrameEnsureClear()
+    canvas_frame_ready = false
+}
+
+CanvasFrameBegin :: (background: Color) {
+    // Resetting transforms/clips does not change the retained pixels.
+    canvas_frame_rendering = true
+    BeginDrawing()
+    canvas_frame_rendering = false
+    canvas_frame_background = background
+    canvas_frame_clear_pending = true
+    page_draw_hooks.before = CanvasFrameBeforeDraw
+}
+
+CanvasFrameFill :: (area: Rectangle) {
+    color := canvas_frame_background
+    ctx := page_ctx
+    PageSetFill(ctx, cast(s32)color.r, cast(s32)color.g, cast(s32)color.b, cast(s32)color.a)
+    unused WebCall4(ctx, page_names.fill_rect, WebNumber(cast(float64)area.x),
+        WebNumber(cast(float64)area.y), WebNumber(cast(float64)area.width), WebNumber(cast(float64)area.height))
+}
+
+CanvasFrameBuiltin :: (session: Session) -> bool {
+    if !SessionValid(session) { return false }
+    slot := SessionIndex(session)
+    if frame_retained[slot] {
+        for index: cast(s64)0..paint_snapshots[slot].count - 1 {
+            command := paint_snapshots[slot][index]
+            if command.has_emitter && !command.builtin_emitter { return false }
+        }
+    } else {
+        for index: cast(s64)0..pending_paint[slot].items.count - 1 {
+            command := pending_paint[slot].items[index]
+            if command.has_emitter && !command.builtin_emitter { return false }
+        }
+    }
+    return true
+}
+
+CanvasFrameOpaqueBlend :: () -> bool {
+    if WebGetNumber(page_ctx, page_names.global_alpha) != 1.0 { return false }
+    scope := WebScope()
+    value := WebGetObject(page_ctx, page_names.global_composite)
+    bytes: [32]u8
+    length := WebCopyString(value, bytes[:])
+    expected := "source-over"
+    same := length == cast(s32)expected.count
+    if same {
+        for index: cast(s32)0..length - 1 {
+            if bytes[index] != expected[index] { same = false; break }
+        }
+    }
+    WebEnd(scope)
+    return same
+}
+
+EndCanvasUiFrame :: (session: Session) -> FrameStatus {
+    if !PageIsOpen() || canvas_frame_background.a != cast(u8)255 ||
+        !canvas_frame_clear_pending || !CanvasFrameBuiltin(session) || !CanvasFrameOpaqueBlend() ||
+        page_target_count != 0 || page_mode.active || page_saved != 0 || page_raster_clips != 0 {
+        CanvasFrameEnsureClear()
+        canvas_frame_ready = false
+        return EndFrame(session)
+    }
+    scope := WebScope()
+    color := canvas_frame_background
+    same := canvas_frame_ready && canvas_frame_owner.slot == session.slot &&
+        canvas_frame_owner.epoch == session.epoch && canvas_frame_width == page_render_width &&
+        canvas_frame_height == page_render_height && canvas_frame_scale == page_dpi &&
+        color.r == canvas_frame_color.r && color.g == canvas_frame_color.g &&
+        color.b == canvas_frame_color.b && color.a == canvas_frame_color.a
+    status: FrameStatus
+    if !same {
+        CanvasFrameEnsureClear()
+        canvas_frame_rendering = true
+        // A retained composition still owns its paint when the viewport or
+        // selected session changed, even though these pixels are unavailable.
+        finished := EndFrameRetained(session, false)
+        status = finished.status
+    } else {
+        canvas_frame_clear_pending = false
+        canvas_frame_rendering = true
+        finished := CommitFrameDamaged(session)
+        status = finished.status
+        if status == FrameStatus.FrameOk && !finished.paint_unchanged {
+            if finished.damage_partial {
+                area := finished.damage
+                // One device-pixel-aligned clip covers both clearing and
+                // replay; translucent paint outside it must remain untouched.
+                left := cast(s32)(cast(float64)area.x * page_dpi) - 1
+                top := cast(s32)(cast(float64)area.y * page_dpi) - 1
+                right := cast(s32)(cast(float64)(area.x + area.width) * page_dpi) + 2
+                bottom := cast(s32)(cast(float64)(area.y + area.height) * page_dpi) + 2
+                area = Rectangle.{cast(float32)(cast(float64)left / page_dpi),
+                    cast(float32)(cast(float64)top / page_dpi),
+                    cast(float32)(cast(float64)(right - left) / page_dpi),
+                    cast(float32)(cast(float64)(bottom - top) / page_dpi)}
+                ctx := page_ctx
+                unused WebCall0(ctx, page_names.save)
+                unused WebCall0(ctx, page_names.begin_path)
+                unused WebCall4(ctx, page_names.rect, WebNumber(cast(float64)area.x),
+                    WebNumber(cast(float64)area.y), WebNumber(cast(float64)area.width),
+                    WebNumber(cast(float64)area.height))
+                unused WebCall0(ctx, page_names.clip)
+                CanvasFrameFill(area)
+                PaintFlushArea(session, area)
+                PageFlushPaint()
+                unused WebCall0(ctx, page_names.restore)
+            } else {
+                CanvasFrameFill(.{0.0, 0.0, cast(float32)page_width, cast(float32)page_height})
+                PaintFlush(session)
+            }
+        }
+    }
+    PageFlushPaint()
+    canvas_frame_rendering = false
+    canvas_frame_ready = status == FrameStatus.FrameOk
+    canvas_frame_owner = session
+    canvas_frame_width = page_render_width
+    canvas_frame_height = page_render_height
+    canvas_frame_scale = page_dpi
+    canvas_frame_color = color
+    WebEnd(scope)
+    return status
+}

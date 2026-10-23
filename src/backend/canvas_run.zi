@@ -1,6 +1,7 @@
 #import "secondary_pointer"
 #import "app"
 #import "canvas_host"
+#import "canvas_frame"
 #import "geometry"
 #import "session"
 #import "tree"
@@ -41,7 +42,7 @@ DrawCanvasFrame :: (session: Session, viewport: Rectangle) -> bool {
         EndCanvasFrame()
         return false
     }
-    if EndFrame(session) != cast(FrameStatus)FrameOk {
+    if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false
     }

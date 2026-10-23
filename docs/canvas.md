@@ -23,6 +23,15 @@ Indexed grids reuse shared vertices, and small size changes reuse the drawing
 buffer. Texture changes retain their painter order within the batch. Other
 paint, clipping, target changes, readback and presentation flush that batch
 in order. Without WebGL, the same API uses the Canvas2D triangle painter.
+Ordinary sprites without local rotation or mirroring draw directly in the
+current camera coordinates. They preserve the caller's opacity and sampling
+without copying the complete canvas state for each tile. Opacity alone does
+not allocate a tinted texture.
+The UI host retains its existing back buffer. It compares checked paint plans,
+keeps unchanged pixels and clears/replays only the damaged region. Session,
+viewport, display-density, background and raster-resource changes repaint as
+needed. Ordinary host paint and custom emitters use complete painting. Text
+measurement leaves retained pixels intact. This adds no extra full-size surface.
 The dedicated `canvas_raster.zi` provider
 calls the Canvas modules directly, so retained widgets use the same paint
 queue, font selection, and clipping path as the native host. Project builds do
@@ -92,3 +101,23 @@ resulting single-file page in private headless Chromium, and checks its exit.
 tools. `ZIRAN_RUNNER` optionally wraps focused compiler calls in a caller's
 serialization script; do not set it when that script already holds its lock
 around the entire test.
+
+## Canvas host performance
+
+Before changing the host or Ziran browser bridge, preserve a compiled baseline:
+
+```sh
+python3 tests/canvas_performance.py build/scratch/canvas-performance/before
+# Apply the change, then compile the same workload again.
+python3 tests/canvas_performance.py build/scratch/canvas-performance/after
+node tests/canvas_performance.mjs build/scratch/canvas-performance/before \
+  build/scratch/canvas-performance/after build/scratch/canvas-performance/result.json
+```
+
+The runner uses private headless Chromium profiles and interleaves nine samples
+per version after warmup. Each sample draws fifty frames of a 512-sprite tile
+board, followed by pixel readback. An independent pixel oracle checks the
+ordinary board; rotated sprites must match the baseline. Receipts preserve raw
+timings and artifact hashes. This measures warm Canvas host throughput on one
+shared machine; it does not establish a whole-game frame rate or a speedup on
+other devices. The builder refuses to replace an existing compiled artifact.

@@ -86,6 +86,9 @@ PageNames :: struct {
     line_to: s32
     close_path: s32
     get_transform: s32
+    draw_image: s32
+    image_smoothing: s32
+    global_alpha: s32
     a: s32
     b: s32
     c: s32
@@ -233,6 +236,9 @@ PageInitNames :: () {
     page_names.line_to = WebName("lineTo")
     page_names.close_path = WebName("closePath")
     page_names.get_transform = WebName("getTransform")
+    page_names.draw_image = WebName("drawImage")
+    page_names.image_smoothing = WebName("imageSmoothingEnabled")
+    page_names.global_alpha = WebName("globalAlpha")
     page_names.a = WebName("a")
     page_names.b = WebName("b")
     page_names.c = WebName("c")
@@ -289,12 +295,22 @@ PagePaintHooks :: struct {
     flush: PagePaintFlush
 }
 page_paint_hooks: PagePaintHooks;
+// The UI host can defer its frame clear until ordinary drawing starts.
+PageDrawHooks :: struct { before: PagePaintFlush }
+page_draw_hooks: PageDrawHooks;
 
 PageFlushPaint :: () {
     if page_paint_hooks.flush != null { page_paint_hooks.flush() }
 }
 
 PageDrawingContext :: () -> s32 {
+    if page_target_count > 0 { return page_targets[page_target_count - 1].ctx }
+    if page_draw_hooks.before != null { page_draw_hooks.before() }
+    return page_ctx
+}
+
+// Font measurement changes no pixels and must not start a deferred repaint.
+PageMeasureContext :: () -> s32 {
     if page_target_count > 0 { return page_targets[page_target_count - 1].ctx }
     return page_ctx
 }

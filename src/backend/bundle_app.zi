@@ -25,6 +25,9 @@
 #import "std/text"
 #import "std/vec"
 #import "std/option"
+#if #defined(PLATFORM_WEB) {
+    #import "canvas_frame"
+}
 
 BundleApp :: struct {
     app: AppContext
@@ -249,5 +252,9 @@ BundleAppFrame :: (host: *BundleApp, bounds: Rectangle, pointer: PointerFrame,
     WidgetHostEnd()
     bundle_drawing_app = null
     if !ok { TreeCancel(app.session); host.failed = true; return false }
-    return EndFrame(app.session) == FrameStatus.FrameOk
+    #if #defined(PLATFORM_WEB) {
+        return EndCanvasUiFrame(app.session) == FrameStatus.FrameOk
+    } else {
+        return EndFrame(app.session) == FrameStatus.FrameOk
+    }
 }

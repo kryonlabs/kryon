@@ -6,6 +6,7 @@
 #import "canvas_os"
 #import "canvas_text"
 #import "canvas_state"
+#import "canvas_frame"
 #import "raylib_clip"
 #import "canvas_raster"
 #import "geometry"
@@ -15,6 +16,7 @@
 #import "page_mesh"
 #import "page_core"
 #import "tree_draw"
+#import "tree"
 #import "session"
 #import "paint_queue"
 #import "web"
@@ -52,6 +54,113 @@ CanvasTestFinish :: (mesh_draws: s32) -> s32 #foreign browser "canvas_test_finis
 CanvasTestInput :: (phase: s32) -> s32 #foreign browser "canvas_test_input";
 CanvasTestFail :: (code: s32) #foreign browser "canvas_test_fail";
 CanvasTestFront :: (r: s32, g: s32, b: s32) -> s32 #foreign browser "canvas_test_front";
+CanvasTestSpriteState :: (context: s32, source: s32, phase: s32) -> s32 #foreign browser "canvas_test_sprite_state";
+CanvasTestRetained :: (phase: s32) -> s32 #foreign browser "canvas_test_retained";
+CanvasTestDensity :: (density: float64) #foreign browser "canvas_test_density";
+
+TestRetainedCustomPaint :: (command: PaintCommand) {
+    unused command
+    DrawRectangle(80, 10, 20, 20, .{0, 0, 240, 255})
+}
+
+TestRetainedCanvas :: () -> bool {
+    first := SessionOpen()
+    second := SessionOpen()
+    if !SessionValid(first) || !SessionValid(second) { return false }
+    good := true
+    density := PageDpi()
+    for phase: cast(s32)0..18 {
+        session := ifx phase == 4 then second else first
+        if phase == 17 { WebSet(page_ctx, page_names.global_alpha, WebNumber(0.5)) }
+        if phase == 13 { CanvasTestDensity(ifx density == 2.0 then 1.25 else 2.0) }
+        background := ifx phase >= 12 then Color.{232, 240, 248, 255} else Color.{255, 255, 255, 255}
+        CanvasFrameBegin(background)
+        if phase == 8 {
+            // No UI and no ordinary painter still completes its clear.
+            CanvasFrameEnsureClear()
+            EndDrawing()
+            if CanvasTestRetained(phase) == 0 { good = false; break }
+            continue
+        }
+        if phase == 9 { DrawRectangle(80, 10, 20, 20, .{0, 0, 240, 255}) }
+        if phase == 3 { PaintResourcesChanged() }
+        if BeginFrame(session, cast(u64)907, .{0.0, 0.0, 160.0, 120.0}) != FrameStatus.FrameOk {
+            good = false; break
+        }
+        if MeasureGlyphWidth("Retained", 13, "") <= 0 { good = false; break }
+        if phase == 5 || phase == 6 || phase == 14 {
+            // Selecting another session discarded this surface, while the
+            // first session still owns its accepted composition and paint.
+            if !RetainFrame(session) { good = false; break }
+        } else if phase != 7 {
+            color := ifx phase == 4 then Color.{0, 160, 0, 128} else Color.{240, 0, 0, 128}
+            PaintRoundedFill(session, -1, .{10.0, 10.0, 40.0, 36.0}, 0.0, 4, color)
+            if phase <= 4 && phase != 2 {
+                PaintRoundedFill(session, -1, .{24.0 + cast(float32)phase * 6.0, 12.0, 7.0, 9.0},
+                    0.0, 4, .{0, 0, 240, 128})
+            }
+        }
+        if phase == 15 {
+            custom: QueuedPaint
+            custom.data.kind = cast(s32)PaintKind.PaintKindLine
+            custom.data.node = -1
+            custom.data.bounds = .{80.0, 10.0, 20.0, 20.0}
+            custom.emit = TestRetainedCustomPaint
+            custom.has_emitter = true
+            QueuePaint(session, *custom)
+        }
+        if EndCanvasUiFrame(session) != FrameStatus.FrameOk { good = false; break }
+        if phase == 15 && canvas_frame_ready { good = false; break }
+        if (phase == 6 || phase == 14) && !FramePaintUnchanged(session) { good = false; break }
+        if phase == 10 { DrawRectangle(80, 10, 20, 20, .{0, 0, 240, 255}) }
+        EndDrawing()
+        if CanvasTestRetained(phase) == 0 { good = false; break }
+    }
+    WebSet(page_ctx, page_names.global_alpha, WebNumber(1.0))
+    CanvasFrameReset()
+    CanvasTestDensity(density)
+    BeginDrawing()
+    ClearBackground(.{255, 255, 255, 255})
+    EndDrawing()
+    unused CloseSession(first)
+    unused CloseSession(second)
+    return good
+}
+
+TestSpriteState :: (clipped: bool) -> bool {
+    pixels: [16]u8 = .{255, 0, 0, 255, 0, 255, 0, 128,
+        0, 0, 255, 64, 255, 255, 255, 0}
+    image := LoadTextureFromImage(CanvasImageFromRgba(*pixels[0], 2, 2))
+    target := LoadRenderTexture(32, 32)
+    if !IsTextureValid(image) || target.id == cast(u32)0 { return false }
+    BeginTextureMode(target)
+    ctx := PageContext()
+    source := page_textures[PageTextureFind(cast(s32)image.id)].canvas
+    unused CanvasTestSpriteState(ctx, source, ifx clipped then 2 else 0)
+    before := PageTextureCount()
+    // Nonzero origin cancels without a local rotation, even under an outer
+    // rotated camera and clip. Alternate sampling and opacity on this path.
+    for index: cast(s32)0..3 {
+        alpha: s32 = ifx index % 2 == 0 then 255 else 128
+        if clipped {
+            SetTextureFilter(image, index % 2)
+            CanvasDrawImageClipped(image, .{0.0, 0.0, 2.0, 2.0},
+                .{cast(float32)(index * 5), 1.0, 5.0, 12.0},
+                .{0.0, 0.0, 18.0, 16.0}, .{7.0, 3.0}, 0.0, 0.0,
+                .{255, 255, 255, cast(u8)alpha})
+        } else {
+            PageDrawTexture(cast(s32)image.id, 0, 0, 2, 2,
+                cast(float64)(index * 5), 1, 5, 12, 7, 3, 0,
+                255, 255, 255, alpha, index % 2)
+        }
+    }
+    unchanged := PageTextureCount() == before
+    matched := CanvasTestSpriteState(ctx, source, ifx clipped then 3 else 1) != 0
+    EndTextureMode()
+    UnloadRenderTexture(target)
+    UnloadTexture(image)
+    return unchanged && matched
+}
 
 MeshLossFrame :: (session: Session) -> bool {
     BeginDrawing()
@@ -105,6 +214,8 @@ main :: () -> s32 {
     InitWindow(160, 120, *title[0])
     if !IsWindowReady() || GetScreenWidth() != 160 { return 1 }
     if !TestExternalFramePacing() { return 31 }
+    if !TestSpriteState(false) || !TestSpriteState(true) { CanvasTestFail(46) }
+    if !TestRetainedCanvas() { CanvasTestFail(47) }
     SetRandomSeed(cast(u32)42)
     first := GetRandomValue(-100, 100)
     SetRandomSeed(cast(u32)42)

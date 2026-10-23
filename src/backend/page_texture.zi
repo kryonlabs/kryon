@@ -172,12 +172,11 @@ PageTintedSource :: struct {
     drop_after: s32
 }
 
-PageTintedSourceFor :: (slot: s32, id: s32, r: s32, g: s32, b: s32,
-    a: s32) -> PageTintedSource {
+PageTintedSourceFor :: (slot: s32, id: s32, r: s32, g: s32, b: s32) -> PageTintedSource {
     result: PageTintedSource
     texture: s32 = page_textures[slot].canvas
     drop_after: s32 = 0
-    if !(r == 255 && g == 255 && b == 255 && a == 255) {
+    if !(r == 255 && g == 255 && b == 255) {
         // Tinted copies are cached per (texture, tint): multiply the colour
         // channels, then restore the source alpha with destination-in.
         found: s32 = PageTintFind(id, r, g, b)
@@ -245,13 +244,40 @@ PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
         dest_h = 0.0 - dest_h
         flip_y = !flip_y
     }
-    tinted: PageTintedSource = PageTintedSourceFor(slot, id, r, g, b, a)
+    tinted: PageTintedSource = PageTintedSourceFor(slot, id, r, g, b)
     texture: s32 = tinted.canvas
     drop_after: s32 = tinted.drop_after
+    // The usual tile/sprite needs no local transform. Draw in the existing
+    // camera coordinates and preserve just the two properties we can change;
+    // save/translate/restore needlessly copies the entire context state.
+    if rotation == 0.0 && !flip_x && !flip_y {
+        smooth := WebAsBool(WebGet(ctx, page_names.image_smoothing))
+        if smooth != (filter != 0) {
+            WebSet(ctx, page_names.image_smoothing, WebBool(filter != 0))
+        }
+        previous_alpha: float64 = 1.0
+        if a < 255 {
+            previous_alpha = WebGetNumber(ctx, page_names.global_alpha)
+            WebSet(ctx, page_names.global_alpha, WebNumber(cast(float64)a / 255.0))
+        }
+        args: [9]WebValue = .{WebObject(texture), WebNumber(source_x),
+            WebNumber(source_y), WebNumber(source_w), WebNumber(source_h),
+            WebNumber(dx), WebNumber(dy), WebNumber(dest_w), WebNumber(dest_h)}
+        unused WebCall(ctx, page_names.draw_image, *args[0], 9)
+        if a < 255 {
+            WebSet(ctx, page_names.global_alpha, WebNumber(previous_alpha))
+        }
+        if smooth != (filter != 0) {
+            WebSet(ctx, page_names.image_smoothing, WebBool(smooth))
+        }
+        if drop_after != 0 { WebRelease(drop_after) }
+        WebEnd(scope)
+        return
+    }
     unused WebCall0(ctx, page_names.save)
-    WebSet(ctx, WebName("imageSmoothingEnabled"), WebBool(filter != 0))
+    WebSet(ctx, page_names.image_smoothing, WebBool(filter != 0))
     if a < 255 {
-        WebSet(ctx, WebName("globalAlpha"), WebNumber(cast(float64)a / 255.0))
+        WebSet(ctx, page_names.global_alpha, WebNumber(cast(float64)a / 255.0))
     }
     unused WebCall2(ctx, page_names.translate, WebNumber(dx + ox), WebNumber(dy + oy))
     if rotation != 0.0 {
@@ -278,7 +304,7 @@ PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
     args[6] = WebNumber(target_y)
     args[7] = WebNumber(dest_w)
     args[8] = WebNumber(dest_h)
-    unused WebCall(ctx, WebName("drawImage"), *args[0], 9)
+    unused WebCall(ctx, page_names.draw_image, *args[0], 9)
     unused WebCall0(ctx, page_names.restore)
     if drop_after != 0 { WebRelease(drop_after) }
     WebEnd(scope)
@@ -300,7 +326,7 @@ PageDrawTextureTriangle :: (id: s32, x0: float64, y0: float64, x1: float64,
     area: float64 = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
     if determinant == 0.0 || area == 0.0 || determinant != determinant || area != area { return }
     scope: s32 = WebScope()
-    tinted: PageTintedSource = PageTintedSourceFor(slot, id, r, g, b, a)
+    tinted: PageTintedSource = PageTintedSourceFor(slot, id, r, g, b)
     unused WebCall0(ctx, page_names.save)
     WebSet(ctx, WebName("imageSmoothingEnabled"), WebBool(filter != 0))
     if a < 255 {

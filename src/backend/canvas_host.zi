@@ -8,6 +8,7 @@
 #import "canvas_input"
 #import "canvas_texture"
 #import "canvas_events"
+#import "canvas_frame"
 #import "page_core"
 #import "page_files"
 #import "session"
@@ -58,6 +59,7 @@ WindowQuitHost :: () {
 
 #program_export
 OpenCanvas :: () -> bool {
+    CanvasFrameReset()
     title: [32]u8
     if !CopyCString("Kryon Ziran", title[:]) { return false }
     SetConfigFlags(cast(u32)4)
@@ -94,6 +96,7 @@ InvalidateCanvasAssets :: () {
 
 #program_export
 CloseCanvas :: () {
+    CanvasFrameReset()
     canvas_cursor_shape = -1
     index: s32 = 0
     while index < canvas_assets_count {
@@ -151,12 +154,12 @@ CanvasWheelMove :: () -> float32 {
 #program_export
 BeginCanvasFrame :: () {
     canvas_image_error = false
-    BeginDrawing()
-    ClearBackground(Color.{248, 250, 252, 255})
+    CanvasFrameBegin(Color.{248, 250, 252, 255})
 }
 
 #program_export
 EndCanvasFrame :: () -> bool {
+    CanvasFrameEnsureClear()
     EndDrawing()
     return !canvas_image_error
 }
