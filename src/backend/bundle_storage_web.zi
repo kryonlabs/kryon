@@ -2,6 +2,7 @@
 // identical to native AppFiles, with IndexedDB providing the backing store.
 #import "std/web"
 #import "page_files"
+#import "page_core"
 
 storage_started: bool;
 storage_ready: bool;
@@ -43,3 +44,20 @@ BundleStorageOpen :: () -> bool {
 
 BundleStorageReady :: () -> bool { return storage_ready && !storage_failed }
 BundleStorageFailed :: () -> bool { return storage_failed }
+
+// Account and other durable saves wait for IndexedDB to acknowledge the
+// complete filesystem snapshot before reporting success to the person.
+BundleStorageFlush :: () -> bool {
+    if !storage_started || storage_failed { return false }
+    deadline := PageNow() + 15000.0
+    while storage_busy && !storage_failed {
+        if PageNow() >= deadline { return false }
+        WebSleep(5)
+    }
+    if !BundleStorageSync(false) { return false }
+    while storage_busy && !storage_failed {
+        if PageNow() >= deadline { return false }
+        WebSleep(5)
+    }
+    return BundleStorageReady()
+}
