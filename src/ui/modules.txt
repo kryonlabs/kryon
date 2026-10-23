@@ -92,6 +92,7 @@ overlay.zi
 overlay_props.zi
 overlay_widget.zi
 page.zi
+page_layout.zi
 page_props.zi
 page_text.zi
 paint.zi
