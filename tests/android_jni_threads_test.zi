@@ -1,0 +1,102 @@
+#import "android_jni"
+#import "render_dispatch"
+
+test_libc :: #system_library "c";
+TestThread :: () -> usize #foreign test_libc "pthread_self";
+TestKeyCreate :: (key: *u32, destructor: *void) -> s32 #foreign test_libc "pthread_key_create";
+TestKeyGet :: (key: u32) -> *void #foreign test_libc "pthread_getspecific";
+TestKeySet :: (key: u32, value: *void) -> s32 #foreign test_libc "pthread_setspecific";
+TestKeyDelete :: (key: u32) -> s32 #foreign test_libc "pthread_key_delete";
+owner: usize;
+attached_key: u32;
+attachments: [2]s32;
+detachments: [2]s32;
+local_frames: [2]s32;
+vm_functions: JniVmFunctions;
+env_functions: JniFunctions;
+vm: JniVm;
+env: JniEnv;
+activity: NativeActivity;
+app: NativeAndroidApp;
+test_failure: s32;
+
+ThreadIndex :: () -> s32 { return ifx TestThread() == owner then 0 else 1 }
+
+#program_export
+GetAndroidApp :: () -> *NativeAndroidApp { return *app }
+
+GetEnv :: (input: *JniVm, output: **JniEnv, version: s32) -> s32 {
+    unused input; unused version
+    if TestKeyGet(attached_key) == null { return -2 }
+    output.* = *env
+    return 0
+}
+Attach :: (input: *JniVm, output: **JniEnv, args: *void) -> s32 {
+    unused input; unused args
+    unused TestKeySet(attached_key, cast(*void)cast(usize)1)
+    attachments[ThreadIndex()] += 1
+    output.* = *env
+    return 0
+}
+Detach :: (input: *JniVm) -> s32 {
+    unused input
+    unused TestKeySet(attached_key, null)
+    detachments[ThreadIndex()] += 1
+    return 0
+}
+Push :: (input: *JniEnv, capacity: s32) -> s32 {
+    unused input; unused capacity
+    local_frames[ThreadIndex()] += 1
+    return 0
+}
+Pop :: (input: *JniEnv, result: *void) -> *void {
+    unused input
+    local_frames[ThreadIndex()] -= 1
+    return result
+}
+Exception :: (input: *JniEnv) -> u8 { unused input; return 0 }
+Keep :: (argument: *void) { unused argument; AndroidJniKeepHostThread() }
+Release :: (argument: *void) { unused argument; AndroidJniReleaseHostThread() }
+CallJava :: (argument: *void) {
+    unused argument
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) != 1 { test_failure = 1; return }
+    AndroidJniDetachCurrent(*session)
+}
+
+#program_export
+Check :: () -> s32 {
+    owner = TestThread()
+    if TestKeyCreate(*attached_key, null) != 0 { return 2 }
+    vm_functions.AttachCurrentThread = Attach
+    vm_functions.DetachCurrentThread = Detach
+    vm_functions.GetEnv = GetEnv
+    env_functions.PushLocalFrame = Push
+    env_functions.PopLocalFrame = Pop
+    env_functions.ExceptionCheck = Exception
+    vm.functions = *vm_functions
+    env.functions = *env_functions
+    activity.vm = *vm
+    activity.activity = cast(*void)cast(usize)1
+    app.activity = *activity
+    AndroidJniKeepHostThread()
+    CallJava(null)
+    pipeline: RenderPipeline
+    if !RenderPipelineOpen(*pipeline, RenderLifecycle.{Keep, Release, null}) { return 3 }
+    for index: 0..3 {
+        if !RenderPipelineStep(*pipeline, CallJava, null) { return 4 }
+        CallJava(null)
+    }
+    RenderPipelineClose(*pipeline)
+    if attachments[0] != 1 || detachments[0] != 0 ||
+        attachments[1] != 1 || detachments[1] != 1 { return 5 }
+    AndroidJniReleaseHostThread()
+    if detachments[0] != 1 || local_frames[0] != 0 || local_frames[1] != 0 { return 6 }
+    // A forgotten explicit release is still collected on native thread exit.
+    if !RenderPipelineOpen(*pipeline, RenderLifecycle.{.start = Keep}) { return 7 }
+    if !RenderPipelineStep(*pipeline, CallJava, null) { return 8 }
+    RenderPipelineClose(*pipeline)
+    if attachments[1] != 2 || detachments[1] != 2 { return 9 }
+    unused TestKeyDelete(attached_key)
+    return test_failure
+}

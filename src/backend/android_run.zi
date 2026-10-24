@@ -119,6 +119,17 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
     return true
 }
 
+AndroidDrawJob :: struct {
+    session: Session
+    viewport: AndroidViewport
+    bounds: Rectangle
+    ok: bool
+}
+AndroidAppCompose :: (argument: *void) {
+    draw := cast(*AndroidDrawJob)argument
+    draw.ok = DrawAndroidFrame(draw.session, draw.viewport, draw.bounds)
+}
+
 #program_export
 AndroidRunMain :: () -> s32 {
     AndroidJniKeepHostThread()
@@ -139,6 +150,7 @@ AndroidRunMain :: () -> s32 {
     first_frame: bool = true
     while ok && PollRaylib() {
         if AndroidTakeGraphicsInvalidate() != 0 {
+            DiscardRaylibAppFrame()
             // The surface was recreated; stale texture names may belong to
             // the new context, so forget them without deleting.
             ResetRaylibGraphics(true)
@@ -183,7 +195,8 @@ AndroidRunMain :: () -> s32 {
         RaylibSetZoom(zoom)
         bounds = Rectangle.{bounds.x / zoom, bounds.y / zoom, bounds.width / zoom, bounds.height / zoom}
         AndroidTextInputBeginFrame(session)
-        ok = DrawAndroidFrame(session, viewport, bounds)
+        draw := AndroidDrawJob.{.session = session, .viewport = viewport, .bounds = bounds}
+        ok = RunRaylibAppFrame(AndroidAppCompose, cast(*void)*draw) && draw.ok
         if ok && first_frame {
             first_frame = false
             AndroidNotifyFirstFrame()
@@ -194,6 +207,7 @@ AndroidRunMain :: () -> s32 {
             AndroidJniFinishActivity()
         }
     }
+    CloseRaylibAppFrames()
     CloseSession(session)
     CloseRaylib()
     if ok { return 0 }

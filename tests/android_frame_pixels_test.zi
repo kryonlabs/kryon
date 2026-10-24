@@ -1,0 +1,321 @@
+// Offscreen GLES verification. No NativeActivity, window, screenshots or
+// application data: only private pbuffer/texture pixels reduced to hashes.
+Rly :: #import "raylib_runtime";
+#import "android_surface"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "tree_draw"
+#import "tree"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/number_text"
+
+egl :: #system_library "EGL";
+c :: #system_library "c";
+raylib :: #system_library "raylib";
+gles :: #system_library "GLESv2";
+dl :: #system_library "dl";
+GetDisplay :: (native: *void) -> *void #foreign egl "eglGetDisplay";
+Initialize :: (display: *void, major: *s32, minor: *s32) -> s32 #foreign egl "eglInitialize";
+Choose :: (display: *void, attributes: *s32, config: **void, capacity: s32, count: *s32) -> s32 #foreign egl "eglChooseConfig";
+CreateSurface :: (display: *void, config: *void, attributes: *s32) -> *void #foreign egl "eglCreatePbufferSurface";
+CreateContext :: (display: *void, config: *void, shared: *void, attributes: *s32) -> *void #foreign egl "eglCreateContext";
+MakeCurrent :: (display: *void, draw: *void, read: *void, context: *void) -> s32 #foreign egl "eglMakeCurrent";
+DestroyContext :: (display: *void, context: *void) -> s32 #foreign egl "eglDestroyContext";
+DestroySurface :: (display: *void, surface: *void) -> s32 #foreign egl "eglDestroySurface";
+Terminate :: (display: *void) -> s32 #foreign egl "eglTerminate";
+RealContext :: () -> *void #foreign egl "__real_eglGetCurrentContext";
+Loader :: #type (name: *u8) -> *void #c_call;
+GetProc :: (name: *u8) -> *void #foreign egl "eglGetProcAddress";
+LoadGlProc :: (name: *u8) -> *void { return GetProc(name) }
+LoadExtensions :: (loader: Loader) #foreign raylib "rlLoadExtensions";
+InitGl :: (width: s32, height: s32) #foreign raylib "rlglInit";
+CloseGl :: () #foreign raylib "rlglClose";
+LoadDefaultFont :: () #foreign raylib "LoadFontDefault";
+UnloadDefaultFont :: () #foreign raylib "UnloadFontDefault";
+DefaultFont :: () -> Rly.RaylibFont #foreign raylib "GetFontDefault";
+ShapesTexture :: (texture: Texture2D, source: Rectangle) #foreign raylib "SetShapesTexture";
+Viewport :: (x: s32, y: s32, width: s32, height: s32) #foreign raylib "rlViewport";
+MatrixMode :: (mode: s32) #foreign raylib "rlMatrixMode";
+Identity :: () #foreign raylib "rlLoadIdentity";
+Ortho :: (left: float64, right: float64, bottom: float64, top: float64, near: float64, far: float64) #foreign raylib "rlOrtho";
+ReadTexture :: (texture: Texture2D) -> Rly.RaylibGlyphImage #foreign raylib "LoadImageFromTexture";
+FormatImage :: (image: *Rly.RaylibGlyphImage, format: s32) #foreign raylib "ImageFormat";
+UnloadImage :: (image: Rly.RaylibGlyphImage) #foreign raylib "UnloadImage";
+Lookup :: (scope: *void, name: *u8) -> *RaylibWindowState #foreign dl "dlsym";
+Allocate :: (bytes: usize) -> *u8 #foreign c "malloc";
+Release :: (bytes: *u8) #foreign c "free";
+Open :: (path: *u8, flags: s32) -> s32 #foreign c "open";
+Read :: (fd: s32, bytes: *u8, count: usize) -> isize #foreign c "read";
+Close :: (fd: s32) -> s32 #foreign c "close";
+Self :: () -> usize #foreign c "pthread_self";
+
+owner: usize;
+graphics_error: bool;
+graphics_calls: s32;
+texture_feedback: bool;
+image_bytes: string;
+font_bytes: string;
+window_state: *RaylibWindowState;
+
+// The real platform poll/window accessor require a NativeActivity. The
+// pbuffer has neither input nor a native window; all rendering stays real.
+#program_export
+__wrap_PollInputEvents :: () { if Self() != owner { graphics_error = true } }
+#program_export
+__wrap_GetWindowHandle :: () -> *void { return null }
+
+GraphicsOwner :: () -> bool {
+    if Self() != owner || RealContext() == null { graphics_error = true; return false }
+    graphics_calls += 1
+    return true
+}
+
+RealTexture :: (image: Rly.RaylibGlyphImage) -> Texture2D #foreign raylib "__real_LoadTextureFromImage";
+RealTextureFree :: (texture: Texture2D) #foreign raylib "__real_UnloadTexture";
+RealFont :: (extension: *u8, bytes: *u8, count: s32, pixels: s32, glyphs: *s32, glyph_count: s32) -> Rly.RaylibFont #foreign raylib "__real_LoadFontFromMemory";
+RealFontFree :: (font: Rly.RaylibFont) #foreign raylib "__real_UnloadFont";
+RealDrawTexture :: (texture: Texture2D, source: Rectangle, destination: Rectangle,
+    origin: Vector2, rotation: float32, tint: Color) #foreign raylib "__real_DrawTexturePro";
+GlInteger :: (name: u32, value: *s32) #foreign gles "glGetIntegerv";
+GlAttachment :: (target: u32, attachment: u32, name: u32, value: *s32) #foreign gles "glGetFramebufferAttachmentParameteriv";
+GlTexture :: (texture: u32) -> u8 #foreign gles "glIsTexture";
+#program_export
+__wrap_LoadTextureFromImage :: (image: Rly.RaylibGlyphImage) -> Texture2D {
+    if !GraphicsOwner() { return Texture2D.{} }
+    return RealTexture(image)
+}
+#program_export
+__wrap_UnloadTexture :: (texture: Texture2D) { if GraphicsOwner() { RealTextureFree(texture) } }
+#program_export
+__wrap_LoadFontFromMemory :: (extension: *u8, bytes: *u8, count: s32, pixels: s32, glyphs: *s32, glyph_count: s32) -> Rly.RaylibFont {
+    if !GraphicsOwner() { return Rly.RaylibFont.{} }
+    return RealFont(extension, bytes, count, pixels, glyphs, glyph_count)
+}
+#program_export
+__wrap_UnloadFont :: (font: Rly.RaylibFont) { if GraphicsOwner() { RealFontFree(font) } }
+#program_export
+__wrap_DrawTexturePro :: (texture: Texture2D, source: Rectangle, destination: Rectangle,
+    origin: Vector2, rotation: float32, tint: Color) {
+    if !GraphicsOwner() { return }
+    if texture.id != 0 && GlTexture(texture.id) == 0 { graphics_error = true; return }
+    framebuffer: s32
+    GlInteger(cast(u32)0x8CA6, *framebuffer)
+    if framebuffer != 0 {
+        attachment: s32
+        GlAttachment(cast(u32)0x8D40, cast(u32)0x8CE0, cast(u32)0x8CD1, *attachment)
+        if attachment > 0 && cast(u32)attachment == texture.id { texture_feedback = true }
+    }
+    RealDrawTexture(texture, source, destination, origin, rotation, tint)
+}
+
+ReadFixture :: (path: string) -> string {
+    name: [256]u8
+    if !CopyCString(path, name[:]) { return "" }
+    fd := Open(*name[0], 0)
+    if fd < 0 { return "" }
+    defer { unused Close(fd) }
+    bytes := Allocate(cast(usize)2097152)
+    if bytes == null { return "" }
+    length: s64
+    while length < 2097152 {
+        count := Read(fd, *bytes[length], cast(usize)(2097152 - length))
+        if count < 0 { Release(bytes); return "" }
+        if count == 0 { return TextFromBytes(BytesFromPointer(bytes, cast(u64)length)) }
+        length += cast(s64)count
+    }
+    Release(bytes)
+    return ""
+}
+
+Asset :: (context: *void, path: string) -> string {
+    unused context
+    return ifx path == "fixture.png" then image_bytes else ""
+}
+
+TextureHash :: (texture: Texture2D) -> u64 {
+    if texture.id == 0 { return 0 }
+    pixels := ReadTexture(texture)
+    if pixels.data == null { return 0 }
+    defer { UnloadImage(pixels) }
+    FormatImage(*pixels, 7)
+    bytes := cast(*u8)pixels.data
+    hash := cast(u64)14695981039346656037
+    index: s64
+    count := cast(s64)pixels.width * cast(s64)pixels.height * 4
+    while index < count {
+        hash = (hash ^ cast(u64)bytes[index]) * cast(u64)1099511628211
+        index += 1
+    }
+    return hash
+}
+
+Fixture :: struct { session: Session; index: s32; transition: bool; ok: bool }
+
+Compose :: (argument: *void) {
+    frame := cast(*Fixture)argument
+    previous := Rly.RetainedPreviousFrameTexture()
+    frame.ok = false
+    if !Rly.BeginRetainedFrame(128, 128) { return }
+    Rly.RasterRoundedRectangle(Rectangle.{0.0, 0.0, 128.0, 128.0}, 0.0, 4, Color.{9, 15, 23, 255})
+    bounds := Rectangle.{0.0, 0.0, 128.0, 128.0}
+    if BeginFrame(frame.session, cast(u64)1, bounds) != FrameStatus.FrameOk { return }
+    PaintRoundedFill(frame.session, -1, Rectangle.{4.0, 4.0, 120.0, 28.0}, 6.0, 8,
+        Color.{cast(u8)(40 + frame.index * 7), 60, 130, 255})
+    // Measurement can discover glyphs/atlases; only the owner may do that.
+    unused Rly.MeasureGlyphWidth("Owned pixels", 12, "")
+    digits: [24]u8
+    PaintLabel(frame.session, -1, FormatInteger(cast(s64)frame.index, digits[:]),
+        8, 10, 12, Color.{255, 255, 255, 255})
+    width := Rly.ImageWidth("fixture.png")
+    height := Rly.ImageHeight("fixture.png")
+    if width <= 0 || height <= 0 { return }
+    source := Rectangle.{0.0, 0.0, cast(float32)width, cast(float32)height}
+    PaintImage(frame.session, -1, "fixture.png", cast(u32)0, source,
+        Rectangle.{4.0, 36.0, 44.0, 40.0}, bounds, Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 255})
+    points: [4]Vector2 = .[Vector2.{52.0, 36.0}, Vector2.{94.0, 38.0},
+        Vector2.{54.0, 74.0}, Vector2.{96.0, 78.0}]
+    PaintImageMesh(frame.session, -1, "fixture.png", cast(u32)0, source,
+        2, 2, points[:], bounds, Color.{255, 255, 255, 255})
+    pixels: [128]u8
+    for index: 0..63 { pixels[index * 2] = 255; pixels[index * 2 + 1] = cast(u8)(index * 4) }
+    icon := Rly.RaylibIconTexture(pixels[:], 8)
+    PaintImage(frame.session, -1, "", icon.id, Rectangle.{0.0, 0.0, 8.0, 8.0},
+        Rectangle.{100.0, 36.0, 24.0, 40.0}, bounds, Vector2.{}, 0.0, 0.0,
+        Color.{240, 100, 80, 255}, icon)
+    if frame.transition && previous.id != 0 {
+        PaintImage(frame.session, -1, "", previous.id,
+            Rectangle.{0.0, 0.0, 128.0, -128.0}, Rectangle.{4.0, 82.0, 120.0, 42.0},
+            bounds, Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 180}, previous)
+    }
+    result := EndFrameRetained(frame.session, true)
+    // An icon may leave its cache immediately after composition. Its GL
+    // deletion must follow its paint in the completed frame.
+    Rly.RaylibIconTextureFree(icon)
+    if result.status != FrameStatus.FrameOk { return }
+    frame.ok = ifx result.paint_unchanged then Rly.EndRetainedFrameReusePrevious() else Rly.EndRetainedFrame()
+}
+
+Prepare :: () -> bool {
+    Rly.ResetRaylibGraphics(false)
+    Rly.RaylibSetAssetReader(Asset, null)
+    ready := Rly.LoadTypefaceData("fixture", ".ttf", font_bytes, null, 0) && Rly.SelectTypeface("fixture") &&
+        Rly.ImageWidth("fixture.png") == 8 && Rly.ImageHeight("fixture.png") == 8
+    if !ready { return false }
+    index := Rly.RaylibAssetIndex("fixture.png")
+    actual := TextureHash(Rly.raylib_assets[index].texture)
+    if actual != ExpectedImageHash(false) && actual != ExpectedImageHash(true) {
+        print("asset texture hash mismatch actual=%\n", actual)
+        return false
+    }
+    return true
+}
+
+ExpectedImageHash :: (flipped: bool) -> u64 {
+    hash := cast(u64)14695981039346656037
+    for row: 0..7 {
+        y := ifx flipped then 7 - row else row
+        for x: 0..7 {
+            pixel: [4]u8 = .[cast(u8)(x * 29), cast(u8)(y * 31),
+                cast(u8)((x * 17 + y * 23) % 256), cast(u8)(100 + (x + y) * 10)]
+            for byte: pixel { hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211 }
+        }
+    }
+    return hash
+}
+
+Compare :: (transition: bool) -> s32 {
+    reference: [12]u64
+    if !Prepare() { return 20 }
+    frame := Fixture.{.session = SessionOpen(), .transition = transition}
+    for index: 0..11 {
+        frame.index = cast(s32)index
+        Compose(cast(*void)*frame)
+        if !frame.ok { return 21 }
+        reference[index] = TextureHash(Rly.RetainedPreviousFrameTexture())
+        if reference[index] == 0 { return 22 }
+    }
+    CloseSession(frame.session)
+    if !Prepare() { return 23 }
+    frame.session = SessionOpen()
+    for index: 0..11 {
+        frame.index = cast(s32)index
+        if !Rly.RunRaylibAppFrame(Compose, cast(*void)*frame) || !frame.ok { return 24 }
+        if index > 0 {
+            actual := TextureHash(Rly.RetainedPreviousFrameTexture())
+            if actual != reference[index - 1] {
+                print("frame mismatch transition=% frame=% reference=% actual=%\n", transition, index - 1, reference[index - 1], actual)
+                return 25
+            }
+        }
+    }
+    // Custom hosts can release fonts before CloseWindow. This must finish
+    // the last pending frame before destroying the atlases it references.
+    Rly.ReleaseTypefaces()
+    if !Rly.FlushRaylibAppFrames() { return 26 }
+    if TextureHash(Rly.RetainedPreviousFrameTexture()) != reference[11] { return 27 }
+    Rly.CloseRaylibAppFrames()
+    CloseSession(frame.session)
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    owner = Self()
+    image_bytes = ReadFixture("/data/local/tmp/kryon-frame-test/fixture.png")
+    font_bytes = ReadFixture("/data/local/tmp/kryon-frame-test/font.ttf")
+    if image_bytes.count == 0 || font_bytes.count == 0 { return 1 }
+    display := GetDisplay(null)
+    major: s32; minor: s32
+    if display == null || Initialize(display, *major, *minor) == 0 { return 2 }
+    config: *void; count: s32
+    attributes: [13]s32 = .[0x3033, 1, 0x3040, 4, 0x3024, 8, 0x3023, 8, 0x3022, 8, 0x3021, 8, 0x3038]
+    if Choose(display, *attributes[0], *config, 1, *count) == 0 || count != 1 { return 3 }
+    surface_attributes: [5]s32 = .[0x3057, 128, 0x3056, 128, 0x3038]
+    context_attributes: [3]s32 = .[0x3098, 2, 0x3038]
+    surface := CreateSurface(display, config, *surface_attributes[0])
+    context := CreateContext(display, config, null, *context_attributes[0])
+    if surface == null || context == null || MakeCurrent(display, surface, surface, context) == 0 { return 4 }
+    LoadExtensions(LoadGlProc)
+    InitGl(128, 128)
+    symbol: [5]u8 = .[67, 79, 82, 69, 0]
+    scope := cast(*void)cast(usize)4294967295
+    window_state = Lookup(scope, *symbol[0])
+    if window_state == null { return 5 }
+    window_state.ready = true
+    window_state.display = RaylibWindowSize.{128, 128}
+    window_state.screen = window_state.display
+    window_state.render = window_state.display
+    window_state.current_fbo = window_state.display
+    for index: 0..15 {
+        window_state.screen_scale[index] = ifx index == 0 || index == 5 || index == 10 || index == 15 then 1.0 else 0.0
+    }
+    Viewport(0, 0, 128, 128)
+    MatrixMode(0x1701); Identity(); Ortho(0.0, 128.0, 128.0, 0.0, 0.0, 1.0)
+    MatrixMode(0x1700); Identity()
+    LoadDefaultFont()
+    font := DefaultFont()
+    ShapesTexture(font.texture, font.recs[95])
+    Rly.RaylibFrameRate(0)
+    result := Compare(false)
+    if result == 0 { result = Compare(true) }
+    if graphics_error { result = 28 }
+    if texture_feedback { result = 29 }
+    Rly.CloseRaylibAppFrames()
+    window_state.ready = false
+    Rly.CloseRaylib()
+    UnloadDefaultFont()
+    CloseGl()
+    unused MakeCurrent(display, null, null, null)
+    unused DestroyContext(display, context)
+    unused DestroySurface(display, surface)
+    unused Terminate(display)
+    image_view := cast(*TextDescriptor)*image_bytes
+    font_view := cast(*TextDescriptor)*font_bytes
+    Release(image_view.data)
+    Release(font_view.data)
+    print("offscreen GLES frame hash result=% owner resource calls=%\n", result, graphics_calls)
+    return result
+}

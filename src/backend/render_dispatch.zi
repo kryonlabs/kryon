@@ -1,0 +1,238 @@
+// A persistent app worker builds one frame while its owner replays the
+// preceding frame. Only the owner executes resource calls and graphics.
+#import "paint_frame"
+#import "paint_queue"
+
+dispatch_c :: #system_library "c";
+RenderProcedure :: #type (argument: *void) #c_call;
+RenderLifecycle :: struct { start: RenderProcedure; stop: RenderProcedure; argument: *void }
+DispatchEntry :: #type (argument: *void) -> *void #c_call;
+DispatchThreadCreate :: (thread: *usize, attributes: *void, entry: DispatchEntry, argument: *void) -> s32 #foreign dispatch_c "pthread_create";
+DispatchThreadJoin :: (thread: usize, result: **void) -> s32 #foreign dispatch_c "pthread_join";
+DispatchAttributesInit :: (attributes: *void) -> s32 #foreign dispatch_c "pthread_attr_init";
+DispatchAttributesDestroy :: (attributes: *void) -> s32 #foreign dispatch_c "pthread_attr_destroy";
+DispatchStackSize :: (attributes: *void, bytes: usize) -> s32 #foreign dispatch_c "pthread_attr_setstacksize";
+DispatchName :: (thread: usize, name: *u8) -> s32 #foreign dispatch_c "pthread_setname_np";
+DispatchSelf :: () -> usize #foreign dispatch_c "pthread_self";
+DispatchMutexInit :: (mutex: *void, attributes: *void) -> s32 #foreign dispatch_c "pthread_mutex_init";
+DispatchMutexDestroy :: (mutex: *void) -> s32 #foreign dispatch_c "pthread_mutex_destroy";
+DispatchMutexLock :: (mutex: *void) -> s32 #foreign dispatch_c "pthread_mutex_lock";
+DispatchMutexUnlock :: (mutex: *void) -> s32 #foreign dispatch_c "pthread_mutex_unlock";
+DispatchConditionWait :: (condition: *void, mutex: *void) -> s32 #foreign dispatch_c "pthread_cond_wait";
+DispatchConditionSignal :: (condition: *void) -> s32 #foreign dispatch_c "pthread_cond_signal";
+DispatchConditionInit :: (condition: *void, attributes: *void) -> s32 #foreign dispatch_c "pthread_cond_init";
+DispatchConditionDestroy :: (condition: *void) -> s32 #foreign dispatch_c "pthread_cond_destroy";
+
+RenderPipeline :: struct {
+    worker: usize
+    mutex: [8]u64
+    changed: [8]u64
+    worker_id: usize
+    lifecycle: RenderLifecycle
+    procedure: RenderProcedure
+    argument: *void
+    resource: RenderProcedure
+    resource_argument: *void
+    resource_pending: bool
+    frames: [2]PaintFrame
+    writing: s32
+    pending: s32
+    requested: bool
+    complete: bool
+    stopping: bool
+    failed: bool
+    render_failed: bool
+    // Only the owner touches this flag. Resource callbacks inside a step
+    // must not recursively flush the frame they are helping to construct.
+    owner_step: bool
+}
+
+// A process has one graphical owner. Installation and removal happen only
+// while the worker is stopped, so the pointer never races its lifetime.
+render_pipeline: *RenderPipeline;
+
+DispatchLock :: (pipeline: *RenderPipeline) {
+    unused DispatchMutexLock(cast(*void)*pipeline.mutex[0])
+}
+DispatchUnlock :: (pipeline: *RenderPipeline) {
+    unused DispatchMutexUnlock(cast(*void)*pipeline.mutex[0])
+}
+DispatchWake :: (pipeline: *RenderPipeline) {
+    unused DispatchConditionSignal(cast(*void)*pipeline.changed[0])
+}
+DispatchWait :: (pipeline: *RenderPipeline) {
+    unused DispatchConditionWait(cast(*void)*pipeline.changed[0], cast(*void)*pipeline.mutex[0])
+}
+
+RenderOnAppThread :: () -> bool {
+    return render_pipeline != null && render_pipeline.worker_id == DispatchSelf()
+}
+
+RenderRecord :: (command: QueuedPaint) -> bool {
+    // Custom emitters may append paint or close their session. Keep those
+    // callbacks on the app thread; their raster effects are recorded by the
+    // backend. Builtin emitters are pure and carry the complete paint data.
+    if !command.builtin_emitter { return false }
+    return RenderRecordOperation(command)
+}
+
+RenderRecordOperation :: (command: QueuedPaint) -> bool {
+    if !RenderOnAppThread() { return false }
+    pipeline := render_pipeline
+    if !PaintFrameAppend(*pipeline.frames[pipeline.writing], command) {
+        pipeline.failed = true
+    }
+    return true
+}
+
+// The argument stays on the waiting caller's stack until the owner has
+// completed the call. No graphics function is ever run by the app worker.
+RenderCall :: (procedure: RenderProcedure, argument: *void) {
+    if !RenderOnAppThread() { procedure(argument); return }
+    pipeline := render_pipeline
+    DispatchLock(pipeline)
+    pipeline.resource = procedure
+    pipeline.resource_argument = argument
+    pipeline.resource_pending = true
+    DispatchWake(pipeline)
+    while pipeline.resource_pending { DispatchWait(pipeline) }
+    DispatchUnlock(pipeline)
+}
+
+RenderWorker :: (argument: *void) {
+    pipeline := cast(*RenderPipeline)argument
+    if pipeline.lifecycle.start != null { pipeline.lifecycle.start(pipeline.lifecycle.argument) }
+    DispatchLock(pipeline)
+    pipeline.worker_id = DispatchSelf()
+    DispatchWake(pipeline)
+    while !pipeline.stopping {
+        while !pipeline.requested && !pipeline.stopping { DispatchWait(pipeline) }
+        if pipeline.stopping { break }
+        pipeline.requested = false
+        DispatchUnlock(pipeline)
+        pipeline.procedure(pipeline.argument)
+        DispatchLock(pipeline)
+        pipeline.complete = true
+        DispatchWake(pipeline)
+    }
+    DispatchUnlock(pipeline)
+    if pipeline.lifecycle.stop != null { pipeline.lifecycle.stop(pipeline.lifecycle.argument) }
+}
+
+RenderWorkerEntry :: (argument: *void) -> *void {
+    name: [7]u8 = .[122, 120, 45, 97, 112, 112, 0]
+    unused DispatchName(DispatchSelf(), *name[0])
+    RenderWorker(argument)
+    return null
+}
+
+RenderPipelineOpen :: (pipeline: *RenderPipeline, lifecycle: RenderLifecycle = .{}) -> bool {
+    if pipeline == null || render_pipeline != null { return false }
+    pipeline.pending = -1
+    pipeline.lifecycle = lifecycle
+    pipeline.worker_id = 0
+    pipeline.requested = false
+    pipeline.stopping = false
+    pipeline.failed = false
+    pipeline.render_failed = false
+    pipeline.owner_step = false
+    pipeline.resource_pending = false
+    pipeline.complete = true
+    if DispatchMutexInit(cast(*void)*pipeline.mutex[0], null) != 0 { return false }
+    if DispatchConditionInit(cast(*void)*pipeline.changed[0], null) != 0 {
+        unused DispatchMutexDestroy(cast(*void)*pipeline.mutex[0])
+        return false
+    }
+    render_pipeline = pipeline
+    paint_recorder = RenderRecord
+    attributes: [16]u64
+    initialized := DispatchAttributesInit(cast(*void)*attributes[0]) == 0
+    started := false
+    if initialized {
+        // Value-based app frames need the same stack as the Android host.
+        if DispatchStackSize(cast(*void)*attributes[0], cast(usize)(8 * 1024 * 1024)) == 0 {
+            started = DispatchThreadCreate(*pipeline.worker, cast(*void)*attributes[0],
+                RenderWorkerEntry, cast(*void)pipeline) == 0
+        }
+        unused DispatchAttributesDestroy(cast(*void)*attributes[0])
+    }
+    if !started {
+        render_pipeline = null
+        unused DispatchConditionDestroy(cast(*void)*pipeline.changed[0])
+        unused DispatchMutexDestroy(cast(*void)*pipeline.mutex[0])
+        return false
+    }
+    DispatchLock(pipeline)
+    while pipeline.worker_id == 0 { DispatchWait(pipeline) }
+    DispatchUnlock(pipeline)
+    return true
+}
+
+RenderPipelineFlush :: (pipeline: *RenderPipeline) -> bool {
+    if pipeline == null || pipeline != render_pipeline { return false }
+    pipeline.owner_step = true
+    defer { pipeline.owner_step = false }
+    RenderPipelineBarrier()
+    if pipeline.pending < 0 { return !pipeline.failed && !pipeline.render_failed }
+    rendered := PaintFrameEmit(*pipeline.frames[pipeline.pending])
+    pipeline.pending = -1
+    return rendered && !pipeline.failed && !pipeline.render_failed
+}
+
+// Presentation can overlap app work. Poll platform input only after this
+// barrier, keeping the event snapshot stable for the whole app callback.
+RenderPipelineBarrier :: () {
+    pipeline := render_pipeline
+    if pipeline == null || RenderOnAppThread() { return }
+    DispatchLock(pipeline)
+    while !pipeline.complete {
+        if pipeline.resource_pending {
+            procedure := pipeline.resource
+            argument := pipeline.resource_argument
+            DispatchUnlock(pipeline)
+            procedure(argument)
+            DispatchLock(pipeline)
+            pipeline.resource_pending = false
+            DispatchWake(pipeline)
+        } else { DispatchWait(pipeline) }
+    }
+    DispatchUnlock(pipeline)
+}
+
+RenderPipelineStep :: (pipeline: *RenderPipeline,
+    procedure: RenderProcedure, argument: *void) -> bool {
+    if pipeline != render_pipeline || procedure == null { return false }
+    pipeline.owner_step = true
+    defer { pipeline.owner_step = false }
+    previous := pipeline.pending
+    writing := ifx previous < 0 then 0 else 1 - previous
+    PaintFrameClear(*pipeline.frames[writing])
+    DispatchLock(pipeline)
+    pipeline.writing = writing
+    pipeline.procedure = procedure
+    pipeline.argument = argument
+    pipeline.complete = false
+    pipeline.requested = true
+    DispatchWake(pipeline)
+    DispatchUnlock(pipeline)
+    rendered := previous < 0 || PaintFrameEmit(*pipeline.frames[previous])
+    RenderPipelineBarrier()
+    if !rendered { pipeline.failed = true }
+    pipeline.pending = writing
+    return !pipeline.failed && !pipeline.render_failed
+}
+
+RenderPipelineClose :: (pipeline: *RenderPipeline) {
+    if pipeline == null || pipeline != render_pipeline { return }
+    RenderPipelineBarrier()
+    DispatchLock(pipeline)
+    pipeline.stopping = true
+    DispatchWake(pipeline)
+    DispatchUnlock(pipeline)
+    unused DispatchThreadJoin(pipeline.worker, null)
+    render_pipeline = null
+    PaintFrameClose(*pipeline.frames[0])
+    PaintFrameClose(*pipeline.frames[1])
+    unused DispatchConditionDestroy(cast(*void)*pipeline.changed[0])
+    unused DispatchMutexDestroy(cast(*void)*pipeline.mutex[0])
+}

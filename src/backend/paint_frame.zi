@@ -1,0 +1,86 @@
+// A completed frame owns every byte and mesh point its emitters borrow.
+// One thread builds it; after publication another replays it unchanged.
+#import "paint_queue"
+#import "geometry"
+#import "std/vec"
+#import "std/byte_text_linux"
+
+RecordedPaint :: struct {
+    command: QueuedPaint
+    value_start: s64
+    value_count: s64
+    asset_start: s64
+    asset_count: s64
+    mesh_start: s64
+    mesh_count: s64
+}
+
+PaintFrame :: struct {
+    commands: Vec(RecordedPaint)
+    bytes: Vec(u8)
+    points: Vec(Vector2)
+    failed: bool
+}
+
+PaintFrameClear :: (frame: *PaintFrame) {
+    VecClear(frame.commands)
+    VecClear(frame.bytes)
+    VecClear(frame.points)
+    frame.failed = false
+}
+
+PaintFrameClose :: (frame: *PaintFrame) {
+    VecFree(frame.commands)
+    VecFree(frame.bytes)
+    VecFree(frame.points)
+    frame.failed = false
+}
+
+PaintFrameAppend :: (frame: *PaintFrame, command: QueuedPaint) -> bool {
+    if frame.failed { return false }
+    kept: RecordedPaint
+    kept.command = command
+    kept.value_start = frame.bytes.count
+    kept.value_count = command.data.value.count
+    if !BuilderAppend(frame.bytes, command.data.value) { frame.failed = true; return false }
+    kept.asset_start = frame.bytes.count
+    kept.asset_count = command.data.asset_path.count
+    if !BuilderAppend(frame.bytes, command.data.asset_path) { frame.failed = true; return false }
+    kept.mesh_start = frame.points.count
+    kept.mesh_count = command.data.mesh_points.count
+    for point: command.data.mesh_points {
+        if !VecPush(frame.points, point) { frame.failed = true; return false }
+    }
+    // Do not retain pointers into the producer's frame or stack.
+    kept.command.data.value = ""
+    kept.command.data.asset_path = ""
+    empty: []Vector2
+    kept.command.data.mesh_points = empty
+    if !VecPush(frame.commands, kept) { frame.failed = true; return false }
+    return true
+}
+
+PaintFrameEmit :: (frame: *PaintFrame) -> bool {
+    if frame.failed { return false }
+    for index: cast(s64)0..frame.commands.count - 1 {
+        kept := frame.commands[index]
+        command := kept.command
+        if kept.value_count > 0 {
+            command.data.value = TextFromBytes(BytesFromPointer(
+                *frame.bytes[kept.value_start], cast(u64)kept.value_count))
+        }
+        if kept.asset_count > 0 {
+            command.data.asset_path = TextFromBytes(BytesFromPointer(
+                *frame.bytes[kept.asset_start], cast(u64)kept.asset_count))
+        }
+        if kept.mesh_count > 0 {
+            descriptor := cast(*PaintFramePoints)(*command.data.mesh_points)
+            descriptor.data = *frame.points[kept.mesh_start]
+            descriptor.count = kept.mesh_count
+        }
+        EmitPaintDirect(command)
+    }
+    return true
+}
+
+PaintFramePoints :: struct { data: *Vector2; count: s64 }

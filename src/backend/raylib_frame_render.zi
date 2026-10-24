@@ -1,0 +1,133 @@
+// The window owner records ordinary frame setup alongside widget paint.
+// Only that owner executes graphics, presents and polls platform events.
+#import "render_dispatch"
+#import "paint_queue"
+#import "drawing_props"
+#import "geometry"
+
+frame_raylib :: #system_library "raylib";
+FrameBegin :: () #foreign frame_raylib "__real_BeginDrawing";
+FrameEnd :: () #foreign frame_raylib "__real_EndDrawing";
+FrameClear :: (color: Color) #foreign frame_raylib "__real_ClearBackground";
+FrameBeginCamera :: (camera: Camera) #foreign frame_raylib "__real_BeginMode2D";
+FrameEndCamera :: () #foreign frame_raylib "__real_EndMode2D";
+FrameBeginScissor :: (x: s32, y: s32, width: s32, height: s32) #foreign frame_raylib "__real_BeginScissorMode";
+FrameEndScissor :: () #foreign frame_raylib "__real_EndScissorMode";
+FrameSwap :: () #foreign frame_raylib "SwapScreenBuffer";
+FramePoll :: () #foreign frame_raylib "PollInputEvents";
+FrameTime :: () -> float64 #foreign frame_raylib "GetTime";
+FrameWait :: (seconds: float64) #foreign frame_raylib "WaitTime";
+FrameSetTarget :: (fps: s32) #foreign frame_raylib "__real_SetTargetFPS";
+FrameCloseWindow :: () #foreign frame_raylib "__real_CloseWindow";
+FrameBeforeClose :: #type () -> ();
+frame_before_close: FrameBeforeClose;
+frame_close_requested: bool;
+
+frame_presented_at: float64;
+frame_presentation_count: u64;
+frame_target_seconds: float64 = 1.0 / 60.0;
+frame_elapsed_seconds: float32 = 1.0 / 60.0;
+frame_app_elapsed_seconds: float32 = 1.0 / 60.0;
+
+PollRaylibFrameEvents :: () { FramePoll() }
+PrepareRaylibAppTiming :: () { frame_app_elapsed_seconds = frame_elapsed_seconds }
+
+RecordFrameOperation :: (command: PaintCommand, emit: PaintEmitter) -> bool {
+    if !RenderOnAppThread() { return false }
+    queued: QueuedPaint
+    queued.data = command
+    queued.emit = emit
+    queued.has_emitter = true
+    unused RenderRecordOperation(queued)
+    return true
+}
+
+ReplayFrameBegin :: (command: PaintCommand) { unused command; __wrap_BeginDrawing() }
+ReplayFrameEnd :: (command: PaintCommand) { unused command; __wrap_EndDrawing() }
+ReplayFrameClear :: (command: PaintCommand) { __wrap_ClearBackground(command.color) }
+ReplayFrameCamera :: (command: PaintCommand) {
+    __wrap_BeginMode2D(Camera.{command.origin,
+        Vector2.{command.bounds.x, command.bounds.y}, command.rotation, command.radius})
+}
+ReplayFrameEndCamera :: (command: PaintCommand) { unused command; __wrap_EndMode2D() }
+ReplayFrameScissor :: (command: PaintCommand) {
+    __wrap_BeginScissorMode(cast(s32)command.bounds.x, cast(s32)command.bounds.y,
+        cast(s32)command.bounds.width, cast(s32)command.bounds.height)
+}
+ReplayFrameEndScissor :: (command: PaintCommand) { unused command; __wrap_EndScissorMode() }
+ReplayFrameRate :: (command: PaintCommand) { __wrap_SetTargetFPS(command.font) }
+
+#program_export
+__wrap_SetTargetFPS :: (fps: s32) {
+    if RecordFrameOperation(PaintCommand.{.font = fps}, ReplayFrameRate) { return }
+    frame_target_seconds = ifx fps > 0 then 1.0 / cast(float64)fps else 0.0
+    FrameSetTarget(fps)
+}
+
+#program_export
+__wrap_GetFrameTime :: () -> float32 {
+    return ifx RenderOnAppThread() then frame_app_elapsed_seconds else frame_elapsed_seconds
+}
+
+#program_export
+__wrap_CloseWindow :: () {
+    if RenderOnAppThread() { frame_close_requested = true; return }
+    if frame_before_close != null { frame_before_close() }
+    FrameCloseWindow()
+}
+
+#program_export
+__wrap_BeginDrawing :: () {
+    if RecordFrameOperation(PaintCommand.{}, ReplayFrameBegin) { return }
+    FrameBegin()
+}
+
+#program_export
+__wrap_EndDrawing :: () {
+    if RecordFrameOperation(PaintCommand.{}, ReplayFrameEnd) { return }
+    FrameEnd()
+    FrameSwap()
+    // EGL's swap interval supplies vsync; also bound software/no-vsync
+    // surfaces to 60 Hz. Polling waits for the app's stable input snapshot.
+    now := FrameTime()
+    remaining := frame_presented_at + frame_target_seconds - now
+    if remaining > 0.0 && remaining <= frame_target_seconds { FrameWait(remaining) }
+    finished := FrameTime()
+    if frame_presented_at > 0.0 { frame_elapsed_seconds = cast(float32)(finished - frame_presented_at) }
+    frame_presented_at = finished
+    frame_presentation_count += cast(u64)1
+    if render_pipeline == null { FramePoll() }
+}
+
+#program_export
+__wrap_ClearBackground :: (color: Color) {
+    if RecordFrameOperation(PaintCommand.{.color = color}, ReplayFrameClear) { return }
+    FrameClear(color)
+}
+
+#program_export
+__wrap_BeginMode2D :: (camera: Camera) {
+    if RecordFrameOperation(PaintCommand.{.origin = camera.offset,
+        .bounds = Rectangle.{camera.target.x, camera.target.y, 0.0, 0.0},
+        .rotation = camera.rotation, .radius = camera.zoom}, ReplayFrameCamera) { return }
+    FrameBeginCamera(camera)
+}
+
+#program_export
+__wrap_EndMode2D :: () {
+    if RecordFrameOperation(PaintCommand.{}, ReplayFrameEndCamera) { return }
+    FrameEndCamera()
+}
+
+#program_export
+__wrap_BeginScissorMode :: (x: s32, y: s32, width: s32, height: s32) {
+    if RecordFrameOperation(PaintCommand.{.bounds = Rectangle.{cast(float32)x,
+        cast(float32)y, cast(float32)width, cast(float32)height}}, ReplayFrameScissor) { return }
+    FrameBeginScissor(x, y, width, height)
+}
+
+#program_export
+__wrap_EndScissorMode :: () {
+    if RecordFrameOperation(PaintCommand.{}, ReplayFrameEndScissor) { return }
+    FrameEndScissor()
+}

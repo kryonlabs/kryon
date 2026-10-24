@@ -11,6 +11,23 @@
 #import "tree_draw"
 Player :: #import "bundle_player";
 
+AndroidBundleDraw :: struct {
+    host: *RaylibBundle
+    viewport: AndroidViewport
+    bounds: Rectangle
+    zoom: float32
+    key: s32
+    ok: bool
+}
+
+AndroidBundleCompose :: (argument: *void) {
+    draw := cast(*AndroidBundleDraw)argument
+    BeginRaylibFrame()
+    ClearAndroidFrame(draw.viewport, cast(u32)0xf8fafcff, draw.zoom)
+    draw.ok = RaylibBundleFrame(draw.host, draw.bounds, draw.key)
+    unused EndRaylibFrame()
+}
+
 AndroidBundleRunMain :: () -> s32 {
     AndroidJniKeepHostThread()
     defer { AndroidJniReleaseHostThread() }
@@ -35,11 +52,15 @@ AndroidBundleRunMain :: () -> s32 {
     AndroidTextInputOpen(input_session)
     defer { AndroidTextInputClose(input_session) }
     RaylibExitKey(0)
+    defer { CloseRaylibAppFrames() }
     first: bool = true
     while PollRaylib() && !hosts[active].player.closed {
         selected: [4096]u8
         path := AndroidBundleTakeFile(selected[:])
         if path.count > 0 {
+            // Finish paint that may still borrow the old bundle's resources
+            // before replacing its asset reader or closing its app state.
+            if !FlushRaylibAppFrames() { return 1 }
             incoming := RaylibBundleRead(path)
             candidate := 1 - active
             if incoming.count > 0 && RaylibBundleOpen(*hosts[candidate], incoming, *hosts[active]) {
@@ -61,6 +82,7 @@ AndroidBundleRunMain :: () -> s32 {
         }
         host := *hosts[active]
         if AndroidTakeGraphicsInvalidate() != 0 {
+            DiscardRaylibAppFrame()
             ResetRaylibGraphics(true)
             if !LoadTypefaceFile("default", "kryon-font.ttf", null, 0) || !SelectTypeface("default") { return 1 }
         }
@@ -90,10 +112,9 @@ AndroidBundleRunMain :: () -> s32 {
             RaylibBundleTyped(host, point)
             point = AndroidTextInputCharacter()
         }
-        BeginRaylibFrame()
-        ClearAndroidFrame(viewport, cast(u32)0xf8fafcff, zoom)
-        ok := RaylibBundleFrame(host, bounds, key)
-        unused EndRaylibFrame()
+        draw := AndroidBundleDraw.{.host = host, .viewport = viewport,
+            .bounds = bounds, .zoom = zoom, .key = key}
+        ok := RunRaylibAppFrame(AndroidBundleCompose, cast(*void)*draw) && draw.ok
         AndroidTextInputFrame(input_session, host.player.keyboard)
         if !ok || key == 4 { AndroidJniFinishActivity(); break }
         if first { first = false; AndroidNotifyFirstFrame() }

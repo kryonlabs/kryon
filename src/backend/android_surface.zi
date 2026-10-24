@@ -362,6 +362,7 @@ GetAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
 
 #program_export
 SyncAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
+    if AndroidSurfaceOnWorker() { return GetAndroidSurfaceSize(width, height) }
     w := SurfaceScreenWidth()
     h := SurfaceScreenHeight()
     synced: s32 = 0
@@ -443,8 +444,10 @@ SyncAndroidViewport :: (output: *AndroidViewport) -> s32 {
     // Touches arrive in window frame coordinates; raylib's mouse offset
     // moves them to the surface, where the frame is drawn.
     #if ANDROID_SURFACE {
-        margin := GetAndroidSurfaceMargin(width, height)
-        SurfaceMouseOffset(margin.left, margin.top)
+        if !AndroidSurfaceOnWorker() {
+            margin := GetAndroidSurfaceMargin(width, height)
+            SurfaceMouseOffset(margin.left, margin.top)
+        }
     }
     return ResolveAndroidViewport(width, height, GetAndroidViewportPolicy(), output)
 }
@@ -453,6 +456,7 @@ SyncAndroidViewport :: (output: *AndroidViewport) -> s32 {
 // actual native-pixel transform without capturing private application pixels.
 #program_export
 ReadAndroidSurfaceTransform :: (output: *AndroidSurfaceTransform) -> bool {
+    if android_surface_read_transform != null && android_surface_read_transform(output) { return true }
     #if ANDROID_SURFACE {
         if output == null || raylib_window_state == null {
             return false
@@ -482,6 +486,8 @@ ReadAndroidSurfaceTransform :: (output: *AndroidSurfaceTransform) -> bool {
 #program_export
 // The frame is already scaled by the host zoom; the fill takes logical units.
 ClearAndroidFrame :: (viewport: AndroidViewport, canvas: u32, zoom: float32 = 1.0) {
+    if android_surface_clear != null && android_surface_clear(viewport, canvas, zoom) { return }
+
     fill := SurfaceColor.{cast(u8)(canvas >> 24), cast(u8)(canvas >> 16),
         cast(u8)(canvas >> 8), cast(u8)canvas}
     width: s32
@@ -496,4 +502,17 @@ ClearAndroidFrame :: (viewport: AndroidViewport, canvas: u32, zoom: float32 = 1.
     scale := ifx zoom > 0.0 then zoom else 1.0
     SurfaceFill(cast(s32)(cast(float32)viewport.x / scale), cast(s32)(cast(float32)viewport.y / scale),
         cast(s32)(cast(float32)viewport.width / scale + 0.999), cast(s32)(cast(float32)viewport.height / scale + 0.999), fill)
+}
+
+// Optional host recording hooks keep surface policy usable without a UI
+// renderer or a threading dependency (including headless surface tests).
+AndroidSurfaceWorker :: #type () -> bool;
+AndroidSurfaceClear :: #type (viewport: AndroidViewport, canvas: u32, zoom: float32) -> bool;
+AndroidSurfaceReadTransform :: #type (output: *AndroidSurfaceTransform) -> bool;
+android_surface_worker: AndroidSurfaceWorker;
+android_surface_clear: AndroidSurfaceClear;
+android_surface_read_transform: AndroidSurfaceReadTransform;
+
+AndroidSurfaceOnWorker :: () -> bool {
+    return android_surface_worker != null && android_surface_worker()
 }

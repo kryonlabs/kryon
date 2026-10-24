@@ -52,6 +52,7 @@ function(kryon_android_raylib raylib_dir)
         RL_DEFAULT_BATCH_BUFFER_ELEMENTS=8192
         RL_DEFAULT_BATCH_BUFFERS=2
         SUPPORT_SCREEN_CAPTURE=0
+        SUPPORT_CUSTOM_FRAME_CONTROL=1
         SUPPORT_COMPRESSION_API=0
         SUPPORT_AUTOMATION_EVENTS=0
         SUPPORT_CLIPBOARD_IMAGE=0
@@ -118,7 +119,14 @@ function(kryon_android_app target)
         -Wl,-z,common-page-size=16384
         # raylib's Android backend serves fopen() from APK assets through
         # __wrap_fopen; the linker must redirect every call site to it.
-        -Wl,--wrap=fopen)
+        -Wl,--wrap=fopen
+        -Wl,--wrap=BeginDrawing -Wl,--wrap=EndDrawing
+        -Wl,--wrap=ClearBackground
+        -Wl,--wrap=BeginMode2D -Wl,--wrap=EndMode2D
+        -Wl,--wrap=BeginScissorMode -Wl,--wrap=EndScissorMode)
+    target_link_options(${target} PRIVATE -Wl,--wrap=eglGetCurrentContext)
+    target_link_options(${target} PRIVATE -Wl,--wrap=SetTargetFPS -Wl,--wrap=GetFrameTime)
+    target_link_options(${target} PRIVATE -Wl,--wrap=CloseWindow)
     # Gradle strips the packaged library. Keep this original, with line
     # information, so native startup failures can be symbolicated.
     target_link_libraries(${target}

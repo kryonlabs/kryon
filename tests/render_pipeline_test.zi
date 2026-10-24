@@ -1,0 +1,149 @@
+#import "render_dispatch"
+#import "paint_queue"
+#import "geometry"
+#import "session"
+
+test_c :: #system_library "c";
+TestSelf :: () -> usize #foreign test_c "pthread_self";
+TestMutexInit :: (mutex: *void, attributes: *void) -> s32 #foreign test_c "pthread_mutex_init";
+TestMutexDestroy :: (mutex: *void) -> s32 #foreign test_c "pthread_mutex_destroy";
+TestMutexLock :: (mutex: *void) -> s32 #foreign test_c "pthread_mutex_lock";
+TestMutexUnlock :: (mutex: *void) -> s32 #foreign test_c "pthread_mutex_unlock";
+TestConditionWait :: (condition: *void, mutex: *void) -> s32 #foreign test_c "pthread_cond_wait";
+TestConditionSignal :: (condition: *void) -> s32 #foreign test_c "pthread_cond_signal";
+TestConditionInit :: (condition: *void, attributes: *void) -> s32 #foreign test_c "pthread_cond_init";
+TestConditionDestroy :: (condition: *void) -> s32 #foreign test_c "pthread_cond_destroy";
+
+owner_id: usize;
+test_frame: s32;
+emitted: s32;
+resource_calls: s32;
+failure: s32;
+overlap_mutex: [8]u64;
+overlap_condition: [8]u64;
+overlap_ready: bool;
+queued_session: Session;
+queued_emitted: s32;
+
+ReplayQueued :: (command: PaintCommand) {
+    if TestSelf() != owner_id { failure = 19 }
+    if command.value != "copied queue text" || command.asset_path != "queue.png" ||
+        command.texture.id != cast(u32)17 || !command.smooth { failure = 20 }
+    queued_emitted += 1
+}
+
+ComposeQueued :: (argument: *void) {
+    unused argument
+    command := QueuedPaint.{.has_emitter = true, .builtin_emitter = true, .emit = ReplayQueued}
+    command.data.kind = cast(s32)PaintKind.PaintKindRoundedFill
+    command.data.bounds = Rectangle.{2.0, 2.0, 20.0, 20.0}
+    command.data.value = "copied queue text"
+    command.data.asset_path = "queue.png"
+    command.data.texture.id = cast(u32)17
+    command.data.smooth = true
+    QueuePaint(queued_session, *command)
+    if !PaintSnapshotStore(queued_session) { failure = 21 }
+    PaintFlush(queued_session)
+    QueuePaint(queued_session, *command)
+    PaintFlushArea(queued_session, Rectangle.{0.0, 0.0, 30.0, 30.0})
+    if !PaintSnapshotEmit(queued_session) { failure = 22 }
+}
+
+Resource :: (argument: *void) {
+    if TestSelf() != owner_id { failure = 1 }
+    result := cast(*s32)argument
+    result.* = 42
+    resource_calls += 1
+}
+
+Replay :: (command: PaintCommand) {
+    if TestSelf() != owner_id { failure = 2 }
+    if command.value != "owned text" || command.asset_path != "asset.png" {
+        failure = 3
+    }
+    if command.mesh_points.count != 2 || command.mesh_points[0].x != 7.0 ||
+        command.mesh_points[1].y != 9.0 { failure = 4 }
+    emitted += 1
+    unused TestMutexLock(cast(*void)*overlap_mutex[0])
+    overlap_ready = true
+    unused TestConditionSignal(cast(*void)*overlap_condition[0])
+    unused TestMutexUnlock(cast(*void)*overlap_mutex[0])
+}
+
+Compose :: (argument: *void) {
+    unused argument
+    if !RenderOnAppThread() { failure = 5 }
+    if test_frame == 1 {
+        // Frame one cannot finish until frame zero is being replayed.
+        unused TestMutexLock(cast(*void)*overlap_mutex[0])
+        while !overlap_ready {
+            unused TestConditionWait(cast(*void)*overlap_condition[0],
+                cast(*void)*overlap_mutex[0])
+        }
+        unused TestMutexUnlock(cast(*void)*overlap_mutex[0])
+    }
+    result: s32
+    RenderCall(Resource, cast(*void)*result)
+    if result != 42 { failure = 6 }
+    text: [10]u8
+    source := "owned text"
+    for index: cast(s64)0..9 { text[index] = source[index] }
+    asset: [9]u8
+    source = "asset.png"
+    for index: cast(s64)0..8 { asset[index] = source[index] }
+    points: [2]Vector2 = .[Vector2.{7.0, 8.0}, Vector2.{8.0, 9.0}]
+    {
+        command: QueuedPaint
+        command.emit = Replay
+        command.has_emitter = true
+        command.data.value = TextView(text[:])
+        command.data.asset_path = TextView(asset[:])
+        command.data.mesh_points = points[:]
+        unused RenderRecordOperation(command)
+        // A frame may grow its storage after the first command. Replayed
+        // descriptors must be rebuilt from offsets, never saved Vec pointers.
+        for index: cast(s32)0..79 { unused RenderRecordOperation(command) }
+    }
+    text[0] = 0
+    asset[0] = 0
+    points[0].x = -1.0
+    test_frame += 1
+}
+
+#program_export
+Check :: () -> s32 {
+    owner_id = TestSelf()
+    if TestMutexInit(cast(*void)*overlap_mutex[0], null) != 0 { return 7 }
+    if TestConditionInit(cast(*void)*overlap_condition[0], null) != 0 { return 8 }
+    pipeline: RenderPipeline
+    if !RenderPipelineOpen(*pipeline) { return 9 }
+    if !RenderPipelineStep(*pipeline, Compose, null) { return 10 }
+    if emitted != 0 || test_frame != 1 || resource_calls != 1 { return 11 }
+    if !RenderPipelineStep(*pipeline, Compose, null) { return 12 }
+    if emitted != 81 || test_frame != 2 || resource_calls != 2 { return 13 }
+    for index: 0..199 {
+        if !RenderPipelineStep(*pipeline, Compose, null) { return 16 }
+    }
+    if emitted != 201 * 81 || test_frame != 202 || resource_calls != 202 { return 17 }
+    for index: 0..1 {
+        if pipeline.frames[index].commands.capacity > 256 ||
+            pipeline.frames[index].bytes.capacity > 4096 ||
+            pipeline.frames[index].points.capacity > 512 { return 18 }
+    }
+    RenderPipelineClose(*pipeline)
+    // Reopening must start a fresh worker and discard all pending frames.
+    if !RenderPipelineOpen(*pipeline) { return 14 }
+    if !RenderPipelineStep(*pipeline, Compose, null) { return 15 }
+    RenderPipelineClose(*pipeline)
+    // All queue exits must preserve the full command and defer its emitter.
+    // A direct emitter call here runs on the app thread and fails the test.
+    queued_session = SessionOpen()
+    if !SessionValid(queued_session) || !RenderPipelineOpen(*pipeline) { return 23 }
+    if !RenderPipelineStep(*pipeline, ComposeQueued, null) || queued_emitted != 0 { return 24 }
+    if !RenderPipelineFlush(*pipeline) || queued_emitted != 3 { return 25 }
+    RenderPipelineClose(*pipeline)
+    unused SessionClose(queued_session)
+    unused TestConditionDestroy(cast(*void)*overlap_condition[0])
+    unused TestMutexDestroy(cast(*void)*overlap_mutex[0])
+    return failure
+}

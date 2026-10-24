@@ -203,33 +203,57 @@ JNI_ANDROID :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined
     JniRealPath :: (path: *u8, output: *u8) -> *u8 #foreign libc "realpath";
 }
 
-// The host's frame thread stays attached to the VM between JNI calls:
-// attaching creates a Java thread each time, which cost milliseconds per
-// frame on a phone for an app that polls Java. The host detaches it once
-// when its loop ends, because a thread that exits attached aborts.
-android_jni_host_thread: *void;
-android_jni_host_attached: bool;
+// Each long-lived host thread keeps its own JNI attachment. The render
+// owner and app worker must never share an attachment flag or a JNIEnv.
+#if JNI_ANDROID {
+    JniThreadDestructor :: #type (value: *void) #c_call;
+    JniThreadInitialize :: #type () #c_call;
+    JniOnce :: (once: *void, initialize: JniThreadInitialize) -> s32 #foreign libc "pthread_once";
+    JniKeyCreate :: (key: *u32, destructor: JniThreadDestructor) -> s32 #foreign libc "pthread_key_create";
+    JniKeyGet :: (key: u32) -> *void #foreign libc "pthread_getspecific";
+    JniKeySet :: (key: u32, value: *void) -> s32 #foreign libc "pthread_setspecific";
+    jni_host_once: [4]u64;
+    jni_host_key: u32;
+    jni_host_key_ready: bool;
+
+    JniHostKeyInitialize :: () {
+        jni_host_key_ready = JniKeyCreate(*jni_host_key, JniHostThreadDestructor) == 0
+    }
+    JniHostToken :: () -> *void {
+        if JniOnce(cast(*void)*jni_host_once[0], JniHostKeyInitialize) != 0 || !jni_host_key_ready {
+            return null
+        }
+        return JniKeyGet(jni_host_key)
+    }
+    JniHostThreadDestructor :: (token: *void) {
+        // Token 1 means keep requested; 3 means this host attached it.
+        if token != cast(*void)cast(usize)3 { return }
+        app := JniGetAndroidApp()
+        if app != null && app.activity != null {
+            unused app.activity.vm.functions.DetachCurrentThread(app.activity.vm)
+        }
+    }
+}
 
 #program_export
 AndroidJniKeepHostThread :: () {
     #if JNI_ANDROID {
-        android_jni_host_thread = JniThreadSelf()
+        token := JniHostToken()
+        if jni_host_key_ready && token == null {
+            unused JniKeySet(jni_host_key, cast(*void)cast(usize)1)
+        }
     }
-    android_jni_host_attached = false
 }
 
 #program_export
 AndroidJniReleaseHostThread :: () {
     #if JNI_ANDROID {
-        if android_jni_host_attached && JniThreadSelf() == android_jni_host_thread {
-            app := JniGetAndroidApp()
-            if app != null && app.activity != null {
-                app.activity.vm.functions.DetachCurrentThread(app.activity.vm)
-            }
+        token := JniHostToken()
+        if jni_host_key_ready {
+            unused JniKeySet(jni_host_key, null)
+            JniHostThreadDestructor(token)
         }
     }
-    android_jni_host_thread = null
-    android_jni_host_attached = false
 }
 
 // Finish the activity from any thread; an unconsumed back key closes the
@@ -326,11 +350,10 @@ AndroidJniDetachCurrent :: (session: *AndroidJniSession) {
     if session.attached != 0 {
         host_thread := false
         #if JNI_ANDROID {
-            host_thread = android_jni_host_thread != null && JniThreadSelf() == android_jni_host_thread
+            host_thread = JniHostToken() != null
+            if host_thread { unused JniKeySet(jni_host_key, cast(*void)cast(usize)3) }
         }
-        if host_thread {
-            android_jni_host_attached = true
-        } else {
+        if !host_thread {
             session.vm.functions.DetachCurrentThread(session.vm)
         }
     }

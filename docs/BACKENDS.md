@@ -123,6 +123,25 @@ module names may repeat Kryon module names; every package is prefixed in the
 emitted C. `tests/ziran_android_device_test.sh` checks the device protocol
 headlessly with the Java side stubbed.
 
+Android frames use the shared two-stage pipeline by default. A persistent
+app thread handles input, application code, layout and paint recording.
+The NativeActivity thread keeps the EGL context, replays the previous
+completed frame and presents it while the app thread builds the next one.
+Each of the two frame buffers owns its text, asset paths and mesh points.
+Retained paint and partial repaint pass through the same recorder.
+
+Custom native hosts call `RunRaylibAppFrame(callback, argument)` once per
+frame. The shared host manages the worker and its JNI attachment. Texture
+and font resource requests run on the context owner; layout caches copied
+measurements instead of borrowing mutable atlas data. Platform input is
+polled after both stages finish, giving the next app callback a stable
+event snapshot. `FlushRaylibAppFrames` finishes pending paint before an app
+or bundle is replaced, and `DiscardRaylibAppFrame` drops paint from a lost
+graphics context. Window shutdown joins the worker before closing GL.
+
+The web path remains serial. Native Linux hosts can share the dispatcher
+when their window and input integration keeps all graphics on one owner.
+
 ## Frame and input ownership
 
 A host polls platform input and submits it to the session before calling the

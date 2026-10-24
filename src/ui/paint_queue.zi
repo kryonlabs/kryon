@@ -338,6 +338,16 @@ RasterImageMesh :: (asset_path: string, texture_id: u32,
 
 #program_export
 EmitPaint :: (command: QueuedPaint) {
+    if paint_recorder != null && paint_recorder(command) { return }
+    EmitPaintDirect(command)
+}
+
+// A native host may retain an owned frame for another thread to rasterize.
+// The recorder must copy borrowed text and mesh points before returning.
+PaintRecorder :: #type (command: QueuedPaint) -> bool;
+paint_recorder: PaintRecorder;
+
+EmitPaintDirect :: (command: QueuedPaint) {
     if command.has_emitter {
         emit: PaintEmitter = command.emit
         emit(command.data)
@@ -1289,6 +1299,7 @@ PaintSnapshotEmit :: (session: Session) -> bool {
         }
         command.emit = previous.emit
         command.has_emitter = previous.has_emitter
+        command.builtin_emitter = previous.builtin_emitter
         EmitPaint(command)
     }
     return true
@@ -1418,7 +1429,6 @@ PaintFlushArea :: (session: Session, area: Rectangle) {
         slot := SessionIndex(session)
         queued := *pending_paint[slot].items[index]
         if queued.has_emitter {
-            emit: PaintEmitter = queued.emit
             data := PendingPaintAt(session, index)
             box: Rectangle
             touched := !queued.builtin_emitter || !PaintCommandArea(data, *box)
@@ -1426,7 +1436,11 @@ PaintFlushArea :: (session: Session, area: Rectangle) {
                 overlap := RectangleIntersection(box, area)
                 touched = overlap.width > 0.0 && overlap.height > 0.0
             }
-            if touched { emit(data) }
+            if touched {
+                resolved := queued.*
+                resolved.data = data
+                EmitPaint(resolved)
+            }
         }
         index += 1
     }
@@ -1449,9 +1463,9 @@ PaintFlush :: (session: Session) {
         // the session. Only the command data crosses that call, by value.
         queued := *pending_paint[slot].items[index]
         if queued.has_emitter {
-            emit: PaintEmitter = queued.emit
-            data := PendingPaintAt(session, index)
-            emit(data)
+            resolved := queued.*
+            resolved.data = PendingPaintAt(session, index)
+            EmitPaint(resolved)
         }
         index += 1
     }
