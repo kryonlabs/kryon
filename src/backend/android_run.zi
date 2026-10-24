@@ -16,6 +16,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "raylib_runtime"
+#import "scroll_device"
 #import "secondary_pointer"
 #import "session"
 #import "test_driver"
@@ -24,6 +25,7 @@
 #import "tree_input"
 #import "std/number_text"
 #import "std/text_buffer"
+Clock :: #import "std/timer_linux";
 
 using FrameStatus;
 
@@ -104,6 +106,9 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
     pointer: PointerFrame = TestDriverPointer(session, PollPointer())
     TreePointerUpdate(session, pointer)
     TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+    // Touch drags move Scroll views, as BundleApp's host frames do.
+    BeginScrollFrame(session, Vector2.{pointer.x, pointer.y}, pointer.pressed, pointer.down,
+        pointer.released, 0.0, cast(float64)Clock.MonotonicMilliseconds() / 1000.0)
     if AndroidTextInputKeyPressed(259) {
         KeyboardSend(session, 259)
     }

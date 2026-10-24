@@ -1,6 +1,8 @@
 // Ask Android for installed fonts instead of guessing vendor-specific filenames.
-// Resolve API 29 entry points dynamically so older Android versions can use
-// the application's bundled fonts. Raylib checks actual glyph coverage.
+// Resolve API 29 entry points dynamically. Older Android versions have no font
+// lookup; their interface face is Roboto, found by its standard path, and
+// applications may still bundle their own fonts. Raylib checks actual glyph
+// coverage.
 #scope_module
 CString :: #import "std/c_string";
 Text :: #import "std/byte_text_linux";
@@ -9,6 +11,7 @@ c :: #system_library "c";
 Open :: (name: *u8, flags: s32) -> *void #foreign dl "dlopen";
 Symbol :: (library: *void, name: *u8) -> *void #foreign dl "dlsym";
 Copy :: (target: *void, source: *void, size: usize) -> *void #foreign c "memcpy";
+Access :: (path: *u8, mode: s32) -> s32 #foreign c "access";
 
 Create :: #type () -> *void #c_call;
 Destroy :: #type (*void) #c_call;
@@ -69,8 +72,11 @@ FileFor :: (family: string, codepoint: s32, output: []u8, face: *s32) -> string 
     if family == "" || family == "ui" {
         selected_family = "sans-serif"
     }
-    if !CString.CopyCString(selected_family, name[:]) || !Load() {
+    if !CString.CopyCString(selected_family, name[:]) {
         return ""
+    }
+    if !Load() {
+        return OlderFileFor(selected_family, output, face)
     }
     // Each lookup owns its matcher; Android matchers cannot cross threads.
     matcher := create_matcher()
@@ -107,4 +113,18 @@ FileFor :: (family: string, codepoint: s32, output: []u8, face: *s32) -> string 
         face.* = cast(s32)index
     }
     return Text.TextFromCString(*output[0])
+}
+
+// Android before 10: the standard interface faces, when this device has them.
+OlderFileFor :: (family: string, output: []u8, face: *s32) -> string {
+    candidates: [3]string = .["/system/fonts/Roboto-Regular.ttf", "/system/fonts/NotoSans-Regular.ttf", "/system/fonts/DroidSans.ttf"]
+    if family == "monospace" { candidates[0] = "/system/fonts/DroidSansMono.ttf" }
+    for candidate: candidates {
+        if CString.CopyCString(candidate, output) && Access(*output[0], 4) == 0 {
+            if face != null { face.* = 0 }
+            return Text.TextFromCString(*output[0])
+        }
+    }
+    if output.count > 0 { output[0] = 0 }
+    return ""
 }
