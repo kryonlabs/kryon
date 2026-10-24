@@ -1105,7 +1105,17 @@ RaylibDrawImageClipped :: (texture: Texture2D, source: Rectangle,
         // matching source: a scissor would flush the draw batch for every
         // clipped image, such as each cover-fit tile of a photo grid.
         if rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 {
-            RaylibDrawImagePart(texture, source, destination,
+            // The picture fills whole pixels too, its edges rounded down like
+            // the clip's: a fractional edge between two pictures then falls
+            // on one pixel column that the second one draws, where the
+            // fractional quad left a column neither covered.
+            left := RaylibFloor(destination.x)
+            top := RaylibFloor(destination.y)
+            snapped := Rectangle.{cast(float32)left, cast(float32)top,
+                cast(float32)(RaylibFloor(destination.x + destination.width) - left),
+                cast(float32)(RaylibFloor(destination.y + destination.height) - top)}
+            if snapped.width < 1.0 || snapped.height < 1.0 { snapped = destination }
+            RaylibDrawImagePart(texture, source, snapped,
                 Rectangle.{cast(float32)x, cast(float32)y,
                     cast(float32)width, cast(float32)height}, tint)
             return
