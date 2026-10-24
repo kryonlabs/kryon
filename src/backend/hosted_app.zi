@@ -8,7 +8,9 @@
 #import "bundle_preload"
 #import "frame_replay"
 
-HOSTED_APP_CAPABILITY_LIMIT :: 64
+// The most host calls one bundle may import. An app that draws every screen
+// itself calls a few dozen widgets and as many of its host's own functions.
+HOSTED_APP_CAPABILITY_LIMIT :: 256
 // Instructions a single run may execute before it traps.
 HOSTED_APP_STEP_LIMIT :: 10000000
 
