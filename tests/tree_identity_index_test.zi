@@ -1,6 +1,7 @@
 #import "session"
 #import "tree"
 #import "widget_kind"
+#import "widget_key"
 using Geometry :: #import "geometry";
 using WidgetKind;
 
@@ -77,6 +78,9 @@ main :: () -> s32 {
     bounds: Rectangle = .{0.0, 0.0, 100.0, 20.0}
     TreeStart(session, cast(u64)91, bounds)
     unused TreeSubmit(session, cast(u64)10, 0, WidgetKindGroup, bounds)
+    for attempt: 0..WIDGET_KEY_ATTEMPTS - 1 {
+        if TreeSubmit(session, cast(u64)10, 0, WidgetKindGroup, bounds) < 0 { return 7 }
+    }
     if TreeSubmit(session, cast(u64)10, 0, WidgetKindGroup, bounds) >= 0 ||
         TreeFinish(session) || TreeCount(session) != 5 { return 7 }
     if !Same(changed, Build(session, false, WidgetKindButton, true)) { return 8 }

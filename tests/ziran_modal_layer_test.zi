@@ -3,6 +3,7 @@
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
+#import "widget_key"
 
 using WidgetKind;
 
@@ -38,6 +39,10 @@ main :: () -> s32 {
     TreeStart(session, cast(u64)1, bounds)
     TreeSubmit(session, cast(u64)2, 0, WidgetKindButton, bounds)
     TreeSubmit(session, cast(u64)3, 0, WidgetKindModal, bounds)
+    // Ordinary repeats have derived keys. Exhaust them to reject this frame.
+    for attempt: 0..WIDGET_KEY_ATTEMPTS - 1 {
+        if TreeSubmit(session, cast(u64)3, 0, WidgetKindModal, bounds) < 0 { return 5 }
+    }
     TreeSubmit(session, cast(u64)3, 0, WidgetKindModal, bounds)
     if TreeFinish(session) || TreeTopModalLayer(session) != modal + 1 ||
         TreeHitAt(session, 10.0, 10.0) != first { return 5 }

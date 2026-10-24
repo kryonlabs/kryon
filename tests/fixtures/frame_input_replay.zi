@@ -8,6 +8,7 @@
 #import "text_input"
 #import "text_input_props"
 #import "widget_kind"
+#import "widget_key"
 
 using WidgetKind;
 host_api :: #system_library "host_api";
@@ -67,6 +68,11 @@ Frame :: () -> s32 {
     cursor = result.cursor; anchor = result.anchor; RememberComposition(result.composition)
     if input.width == 13.0 {
         TreeSubmitCurrent(session, 99, WidgetKindButton, .{})
+        // Ordinary repeats are accepted; exhaust their derived keys so this
+        // trace still exercises a rejected frame and its exact diagnostics.
+        for attempt: 0..WIDGET_KEY_ATTEMPTS - 1 {
+            TreeSubmitCurrent(session, 99, WidgetKindButton, .{})
+        }
         TreeSubmitCurrent(session, 99, WidgetKindButton, .{})
     }
     if !EndFrameCapture(session) { return -1 }

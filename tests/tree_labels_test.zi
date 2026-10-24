@@ -3,6 +3,7 @@
 #import "session"
 #import "tree"
 #import "widget_kind"
+#import "widget_key"
 using WidgetKind;
 using FrameStatus;
 
@@ -61,6 +62,14 @@ main :: () -> s32 {
         if !TreeFinish(session) || !Same(session, label, detail) ||
             !Same(other, "other", "other detail") { return 8 }
     }
+    // Exhausting the derived keys still rejects a replacement without
+    // changing the labels in the accepted frame.
+    Start(session); unused Add(session, cast(u64)7, "failed", "failed detail")
+    for attempt: 0..WIDGET_KEY_ATTEMPTS - 1 {
+        if Add(session, cast(u64)7, "duplicate", "") < 0 { return 9 }
+    }
+    unused Add(session, cast(u64)7, "duplicate", "")
+    if TreeFinish(session) || !Same(session, "a longer replacement label", "detail") { return 9 }
     // A repeated key keeps the frame: the first widget keeps the key, the
     // repeat is drawn under a derived key, and the frame reports the key.
     Start(session); unused Add(session, cast(u64)7, "first", "first detail")

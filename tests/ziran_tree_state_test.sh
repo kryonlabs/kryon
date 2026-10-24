@@ -10,6 +10,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "geometry"
 #import "tree"
 #import "widget_kind"
+#import "widget_key"
 
 using WidgetKind;
 
@@ -44,6 +45,9 @@ Check :: () -> s32 {
 
     TreeStart(TestSession(), cast(u64)10, bounds)
     TreeSubmit(TestSession(), cast(u64)17, 0, WidgetKindProgress, bounds)
+    for attempt: 0..WIDGET_KEY_ATTEMPTS - 1 {
+        if TreeSubmit(TestSession(), cast(u64)17, 0, WidgetKindProgress, bounds) < 0 { return 0 }
+    }
     if TreeSubmit(TestSession(), cast(u64)17, 0,
         WidgetKindProgress, bounds) >= 0 || TreeFinish(TestSession()) ||
         TreeCount(TestSession()) != 2 { return 0 }
