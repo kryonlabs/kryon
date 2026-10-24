@@ -1,0 +1,63 @@
+// Process setup every Android host runs before its first frame, whether it
+// uses Kryon's runner (android_run) or its own loop.
+#import "android_jni"
+#import "std/byte_text_linux"
+
+android_libc :: #system_library "c";
+AndroidSetEnvironment :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign android_libc "setenv";
+AndroidPathExists :: (path: *u8, mode: s32) -> s32 #foreign android_libc "access";
+AndroidGetEnvironment :: (name: *u8) -> *u8 #foreign android_libc "getenv";
+AndroidMakeDirectory :: (path: *u8, mode: u32) -> s32 #foreign android_libc "mkdir";
+
+AndroidProcessPrepare :: () {
+    AndroidTemporaryPrepare()
+    AndroidTestDriverPrepare()
+}
+
+// Android leaves TMPDIR unset, and native code that needs scratch files
+// (Ziran compiles portable apps to native code there) looks for it. Point
+// it at a folder in the app's private files.
+AndroidTemporaryPrepare :: () {
+    variable: [8]u8
+    key: string = "TMPDIR"
+    for index: cast(s64)0..key.count - 1 { variable[index] = key[index] }
+    variable[key.count] = 0
+    existing := AndroidGetEnvironment(*variable[0])
+    if existing != null && existing[0] != 0 { return }
+    base := AndroidInternalDataPath()
+    if base == null { return }
+    folder: string = TextFromCString(base)
+    name: string = "/tmp"
+    path: [4096]u8
+    if folder.count + name.count + 1 > path.count { return }
+    length: s64 = 0
+    for byte: folder { path[length] = byte; length += 1 }
+    for byte: name { path[length] = byte; length += 1 }
+    path[length] = 0
+    unused AndroidMakeDirectory(*path[0], 448)
+    unused AndroidSetEnvironment(*variable[0], *path[0], 1)
+}
+
+// A UI test can drive a debuggable build: creating the folder
+// kryon-test-driver in the app's private files before it starts, with
+// `adb shell run-as PACKAGE mkdir files/kryon-test-driver`, runs Kryon's test
+// driver there (see test_driver). Only the app, or run-as on a debuggable
+// build, can write its private files, so an installed release never is.
+AndroidTestDriverPrepare :: () {
+    base := AndroidInternalDataPath()
+    if base == null { return }
+    folder: string = TextFromCString(base)
+    name: string = "/kryon-test-driver"
+    path: [4096]u8
+    if folder.count + name.count + 1 > path.count { return }
+    length: s64 = 0
+    for byte: folder { path[length] = byte; length += 1 }
+    for byte: name { path[length] = byte; length += 1 }
+    path[length] = 0
+    if AndroidPathExists(*path[0], 0) != 0 { return }
+    variable: [24]u8
+    key: string = "KRYON_TEST_DRIVER"
+    for index: cast(s64)0..key.count - 1 { variable[index] = key[index] }
+    variable[key.count] = 0
+    unused AndroidSetEnvironment(*variable[0], *path[0], 1)
+}
