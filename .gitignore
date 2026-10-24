@@ -31,5 +31,6 @@ src/**/*.i
 src/**/*.8
 .wrangler/
 
-# Editable gallery snippets are generated from examples/gallery by make site.
+# Gallery metadata and editable snippets are generated from examples/gallery.
+/docs/site/gallery-data.js
 /docs/site/gallery-sources/

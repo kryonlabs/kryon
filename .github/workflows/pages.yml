@@ -77,6 +77,7 @@ jobs:
           site = Path('docs/site')
           output = Path('build/scratch/website-deploy')
           paths = {Path(p) for p in subprocess.check_output(['git', 'ls-files', '-z', '--', str(site)]).decode().split('\0') if p}
+          paths.add(site / 'gallery-data.js')
           paths.update((site / 'gallery-sources').rglob('*.zi'))
           for source in paths:
               destination = output / source.relative_to(site)

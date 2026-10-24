@@ -98,7 +98,8 @@ file launches with `kryon run app.zx`. See [Zx applications](docs/PROJECTS.md#zx
 `make site` rebuilds the initial Canvas demo, the browser compiler and preview
 host, and the widget gallery into `docs/site/`. Emscripten is required; activate
 emsdk or set `EMCC`. `make site-gallery` builds only the gallery, and
-`make site-gallery-test` exercises it in a private Chromium/Xvfb session.
+`make site-gallery-test` prepares editable examples and exercises the gallery in
+a private Chromium/Xvfb session.
 
 The gallery at `widgets.html` uses the example package in `examples/gallery/`.
 Its core scenes are shared by the desktop, web and review hosts. Examples are
@@ -107,9 +108,9 @@ Optional package integrations are registered only while their dependencies
 are declared. Each selected example includes editable Ziran source and a live
 preview, using the same compiler and editor as `demo.html`. Plot and DataViews
 supply the additional charts, tree and Kanban; TableView's entry identifies its
-current API-only status. `make site` generates editable snippets directly from
-these examples. The Pages workflow builds and tests the full website from fixed
-source revisions before publishing.
+current API-only status. `make site` generates the scene metadata and editable
+snippets directly from these examples. The Pages workflow builds and tests the
+full website from fixed source revisions before publishing.
 
 ## Current status
 

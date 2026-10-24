@@ -8,6 +8,7 @@ site-gallery:
 	python3 scripts/build-gallery.py
 
 site-gallery-test:
+	python3 scripts/gallery.py
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 node tests/gallery_browser.mjs
 
 CC ?= cc
