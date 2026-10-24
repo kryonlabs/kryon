@@ -1,0 +1,50 @@
+// Loaded into each font module: decoded values and chunk storage keep
+// their original module ownership. Data comes from outline_font.zi.
+pixmap_font_chunks: [PixmapFontChunks]string;
+pixmap_font_chunks_ready: bool;
+
+// The index-th value of the outline data; PixmapFontReady comes first.
+PixmapFontValue :: (index: s32) -> s32 {
+    return pixmap_font_values[index]
+}
+
+PixmapFontReady :: () {
+    if pixmap_font_decoded { return }
+    index: s32 = 0
+    for chunk: 0..PixmapFontChunks - 1 {
+        text: string = PixmapFontChunkText(cast(s32)chunk)
+        offset: s32 = 0
+        while offset + 2 < cast(s32)text.count {
+            value: s32 = PixmapFontSextet(text[offset]) * 4096 +
+                PixmapFontSextet(text[offset + 1]) * 64 + PixmapFontSextet(text[offset + 2])
+            if index < PixmapFontGlyphs { pixmap_font_codes[index] = value }
+            else if index < PixmapFontGlyphs * 2 { pixmap_font_advances[index - PixmapFontGlyphs] = value }
+            else { pixmap_font_values[index - PixmapFontGlyphs * 2] = value }
+            index += 1
+            offset += 3
+        }
+    }
+    at: s32 = 0
+    for glyph: 0..PixmapFontGlyphs - 1 {
+        pixmap_font_starts[glyph] = at
+        contours: s32 = pixmap_font_values[at]
+        at += 1 + contours
+        if contours > 0 { at += (pixmap_font_values[at - 1] + 1) * 2 }
+    }
+    pixmap_font_decoded = true
+}
+
+PixmapFontChunkText :: (chunk: s32) -> string {
+    PixmapFontChunksFill()
+    if chunk < 0 || chunk >= PixmapFontChunks { return pixmap_font_chunks[0] }
+    return pixmap_font_chunks[chunk]
+}
+
+PixmapFontSextet :: (character: u8) -> s32 {
+    code: s32 = cast(s32)character
+    if code >= 65 && code <= 90 { return code - 65 }
+    if code >= 97 && code <= 122 { return code - 71 }
+    if code >= 48 && code <= 57 { return code + 4 }
+    if code == 43 { return 62 }
+    return 63
+}

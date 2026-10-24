@@ -393,9 +393,14 @@ main :: () -> s32 {
     print("PixmapEmojiHeader :: %;\n", header_count)
     print("PixmapEmojiChunk :: %;\n", ChunkCharacters)
     print("PixmapEmojiChunks :: %;\n\n", chunks)
+    print("\npixmap_emoji_codes: [%]s32;\n", emoji_count)
+    print("pixmap_emoji_starts: [%]s32;\n", emoji_count)
+    print("\n// The module's chunks, filled on first use.\n")
+    print("pixmap_emoji_chunks: [%]string;\n\n", chunks)
+    print("PixmapEmojiChunksFill :: () {\n")
     one: [1]u8
     for chunk: 0..chunks - 1 {
-        print("PixmapEmojiData% :: \"", chunk)
+        print("    pixmap_emoji_chunks[%] = \"", chunk)
         at: s32 = cast(s32)chunk * ChunkCharacters
         while at < total && at < (cast(s32)chunk + 1) * ChunkCharacters {
             value: u8 = 0
@@ -404,14 +409,8 @@ main :: () -> s32 {
             print("%", TextView(one[:]))
             at += 1
         }
-        print("\";\n")
+        print("\"\n")
     }
-    print("\npixmap_emoji_codes: [%]s32;\n", emoji_count)
-    print("pixmap_emoji_starts: [%]s32;\n", emoji_count)
-    print("\n// The module's chunks, filled on first use.\n")
-    print("pixmap_emoji_chunks: [%]string;\n\n", chunks)
-    print("PixmapEmojiChunksFill :: () {\n")
-    for chunk: 0..chunks - 1 { print("    pixmap_emoji_chunks[%] = PixmapEmojiData%\n", chunk, chunk) }
     print("}\n")
     return 0
 }

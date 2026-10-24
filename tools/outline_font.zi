@@ -423,9 +423,11 @@ main :: () -> s32 {
     print("pixmap_font_starts: [%]s32;\n", count)
     print("pixmap_font_values: [%]s32;\n", stream_count - outline)
     print("pixmap_font_decoded: bool;\n\n")
+    print("#load \"pixmap_font_decode.zi\";\n\n")
+    print("PixmapFontChunksFill :: () {\n    if pixmap_font_chunks_ready { return }\n")
     one: [3]u8
     for chunk: 0..chunks - 1 {
-        print("PixmapFontData% :: \"", chunk)
+        print("    pixmap_font_chunks[%] = \"", chunk)
         at: s32 = chunk * ChunkCharacters / 3
         while at < stream_count && at < (chunk + 1) * ChunkCharacters / 3 {
             value: s32 = stream[at]
@@ -435,50 +437,8 @@ main :: () -> s32 {
             print("%", TextView(one[:]))
             at += 1
         }
-        print("\";\n")
+        print("\"\n")
     }
-    print("\n// The index-th value of the outline data; PixmapFontReady comes first.\n")
-    print("PixmapFontValue :: (index: s32) -> s32 {\n")
-    print("    return pixmap_font_values[index]\n")
-    print("}\n\n")
-    print("PixmapFontReady :: () {\n")
-    print("    if pixmap_font_decoded { return }\n")
-    print("    index: s32 = 0\n")
-    print("    for chunk: 0..PixmapFontChunks - 1 {\n")
-    print("        text: string = PixmapFontChunkText(cast(s32)chunk)\n")
-    print("        offset: s32 = 0\n")
-    print("        while offset + 2 < cast(s32)text.count {\n")
-    print("            value: s32 = PixmapFontSextet(text[offset]) * 4096 +\n")
-    print("                PixmapFontSextet(text[offset + 1]) * 64 + PixmapFontSextet(text[offset + 2])\n")
-    print("            if index < PixmapFontGlyphs { pixmap_font_codes[index] = value }\n")
-    print("            else if index < PixmapFontGlyphs * 2 { pixmap_font_advances[index - PixmapFontGlyphs] = value }\n")
-    print("            else { pixmap_font_values[index - PixmapFontGlyphs * 2] = value }\n")
-    print("            index += 1\n")
-    print("            offset += 3\n")
-    print("        }\n")
-    print("    }\n")
-    print("    at: s32 = 0\n")
-    print("    for glyph: 0..PixmapFontGlyphs - 1 {\n")
-    print("        pixmap_font_starts[glyph] = at\n")
-    print("        contours: s32 = pixmap_font_values[at]\n")
-    print("        at += 1 + contours\n")
-    print("        if contours > 0 { at += (pixmap_font_values[at - 1] + 1) * 2 }\n")
-    print("    }\n")
-    print("    pixmap_font_decoded = true\n")
-    print("}\n\n")
-    print("PixmapFontChunkText :: (chunk: s32) -> string {\n")
-    for chunk: 1..chunks - 1 {
-        print("    if chunk == % { return PixmapFontData% }\n", chunk, chunk)
-    }
-    print("    return PixmapFontData0\n")
-    print("}\n\n")
-    print("PixmapFontSextet :: (character: u8) -> s32 {\n")
-    print("    code: s32 = cast(s32)character\n")
-    print("    if code >= 65 && code <= 90 { return code - 65 }\n")
-    print("    if code >= 97 && code <= 122 { return code - 71 }\n")
-    print("    if code >= 48 && code <= 57 { return code + 4 }\n")
-    print("    if code == 43 { return 62 }\n")
-    print("    return 63\n")
-    print("}\n")
+    print("    pixmap_font_chunks_ready = true\n}\n")
     return 0
 }

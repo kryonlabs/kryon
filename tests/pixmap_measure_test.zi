@@ -3,7 +3,49 @@
 #import "drawing_props"
 #import "geometry"
 Font :: #import "pixmap_font";
+Mono :: #import "pixmap_mono_font";
+Emoji :: #import "pixmap_emoji";
 Unicode :: #import "std/utf8";
+
+// Full-data hashes independently decode the committed fonts. Keep every
+// glyph, advance, outline and emoji byte when changing their representation.
+FontValuesHash :: (values: []s32) -> u64 {
+    result: u64 = cast(u64)14695981039346656037
+    for value: values { result = (result ^ cast(u64)value) * cast(u64)1099511628211 }
+    return result
+}
+
+EmojiChunksHash :: () -> u64 {
+    result: u64 = cast(u64)14695981039346656037
+    for chunk: 0..Emoji.PixmapEmojiChunks - 1 {
+        text := Emoji.pixmap_emoji_chunks[chunk]
+        for character: text { result = (result ^ cast(u64)character) * cast(u64)1099511628211 }
+    }
+    return result
+}
+
+CheckFontData :: () -> bool {
+    Font.PixmapFontReady()
+    Mono.PixmapFontReady()
+    if FontValuesHash(Font.pixmap_font_codes[:]) != cast(u64)12602733704990162697 { return false }
+    if FontValuesHash(Font.pixmap_font_advances[:]) != cast(u64)12529183963998131644 { return false }
+    if FontValuesHash(Font.pixmap_font_starts[:]) != cast(u64)10840986763762325737 { return false }
+    if FontValuesHash(Font.pixmap_font_values[:]) != cast(u64)10119757204444269742 { return false }
+    if Font.PixmapFontChunkText(-1) != Font.PixmapFontChunkText(0) ||
+    Font.PixmapFontChunkText(Font.PixmapFontChunks) != Font.PixmapFontChunkText(0) { return false }
+    if FontValuesHash(Mono.pixmap_font_codes[:]) != cast(u64)5732972987134900865 { return false }
+    if FontValuesHash(Mono.pixmap_font_advances[:]) != cast(u64)10114608851791927891 { return false }
+    if FontValuesHash(Mono.pixmap_font_starts[:]) != cast(u64)18010155068184542637 { return false }
+    if FontValuesHash(Mono.pixmap_font_values[:]) != cast(u64)3306422644565218413 { return false }
+    if Mono.PixmapFontChunkText(-1) != Mono.PixmapFontChunkText(0) ||
+    Mono.PixmapFontChunkText(Mono.PixmapFontChunks) != Mono.PixmapFontChunkText(0) { return false }
+    Emoji.PixmapEmojiChunksFill()
+    if EmojiChunksHash() != cast(u64)7917583767741387270 { return false }
+    Emoji.pixmap_emoji_chunks[0] = ""
+    Emoji.pixmap_emoji_chunks[Emoji.PixmapEmojiChunks - 1] = ""
+    Emoji.PixmapEmojiChunksFill()
+    return EmojiChunksHash() == cast(u64)7917583767741387270
+}
 
 // The original sorted-font lookup and UTF-8 path remain the oracle for the
 // direct ASCII path, including controls, invalid bytes and variation selectors.
@@ -129,6 +171,7 @@ CheckFill :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Color) -> 
 
 #program_export
 main :: () -> s32 {
+    if !CheckFontData() { return 18 }
     if !CheckGlyphs() { return 17 }
     // Growing text can also replace its old tail. A new selector changes
     // the preceding emoji's advance, including before an ASCII tail.
