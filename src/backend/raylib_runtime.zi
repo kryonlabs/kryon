@@ -163,9 +163,6 @@ HostRaylibGetEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
 RaylibAsset :: struct {
     path: [1024]u8
     length: s32
-    // FNV-1a of the path: a lookup compares bytes only on a hash match,
-    // since cached thumbnail paths share long prefixes.
-    hash: u64
     texture: Texture2D
     // Filtered for smooth scaling, with mipmaps where the GPU allows them.
     smooth: bool
@@ -175,6 +172,10 @@ RaylibAsset :: struct {
 // frame; the cache must hold every visible image or each frame reloads them.
 RaylibAssetCapacity :: 128
 raylib_assets: [RaylibAssetCapacity]RaylibAsset;
+// FNV-1a of each entry's path, kept apart from the entries: a lookup scans
+// this 1 KB instead of stepping through every 1 KB path, and compares bytes
+// only on a hash match, since cached thumbnail paths share long prefixes.
+raylib_asset_hashes: [RaylibAssetCapacity]u64;
 raylib_assets_count: s32;
 raylib_assets_next: s32;
 // Decoding a texture takes milliseconds on a phone. A frame decodes images
@@ -1191,7 +1192,7 @@ RaylibAssetIndex :: (path: string) -> s32 {
     hash := RaylibAssetHash(path)
     index: s32 = 0
     while index < raylib_assets_count {
-        if raylib_assets[index].hash == hash &&
+        if raylib_asset_hashes[index] == hash &&
         raylib_assets[index].length == cast(s32)path.count {
             same: bool = true
             at: s32 = 0
@@ -1233,7 +1234,7 @@ RaylibAssetIndex :: (path: string) -> s32 {
         return -1
     }
     raylib_assets[index].length = cast(s32)path.count
-    raylib_assets[index].hash = hash
+    raylib_asset_hashes[index] = hash
     raylib_assets[index].texture = RaylibLoadAssetTexture(*raylib_assets[index].path[0], path)
     raylib_assets[index].smooth = false
     if raylib_assets[index].texture.id == cast(u32)0 {
