@@ -107,16 +107,27 @@ try {
     await delay(700);
     assert.equal(await evaluate(textPixels),clicked,'Switching back lost the first app document');
     assert(!/ABORT|RuntimeError/.test(diagnostics),diagnostics);
-    for (const [x, marker, minimum] of [[100, 'Hosted swipe step', 3], [580, 'Hosted joystick step', 3]]) {
+    for (const [x, marker, releaseMarker, minimum] of [
+      [100, 'Hosted swipe step', 'Hosted swipe released', 3],
+      [580, 'Hosted joystick step', 'Hosted joystick released', 3],
+    ]) {
       const count = () => diagnostics.split(marker).length - 1;
+      const releases = () => diagnostics.split(releaseMarker).length - 1;
       const before = count();
       await call('Input.dispatchMouseEvent', {type: 'mousePressed', x, y: 360, button: 'left', buttons: 1, clickCount: 1});
       await delay(1200);
       const during = count();
+      const beforeRelease = releases();
       await call('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y: 360, button: 'left', buttons: 0, clickCount: 1});
       assert(during - before >= minimum, marker + ' did not hold/repeat: ' + diagnostics);
+      // CDP can deliver another held frame before mouse-up is consumed. As
+      // for touch cancellation below, observe the app accepting the release
+      // before asserting that subsequent frames no longer repeat.
+      for (let end = Date.now() + 5000; releases() === beforeRelease && Date.now() < end;) await delay(20);
+      assert(releases() > beforeRelease, marker + ' did not release: ' + diagnostics);
+      const released = count();
       await delay(250);
-      assert.equal(count(), during, marker + ' continued after release');
+      assert.equal(count(), released, marker + ' continued after release');
     }
     {
       // The direction pad at 640,300 (160 square): its up arm is above the

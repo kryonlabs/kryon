@@ -16,6 +16,7 @@
 loaded: bool;
 clicked: bool;
 swipe_was_down: bool;
+joystick_was_active: bool;
 swipe_leaned: bool;
 scroll_offset: s32;
 scroll_at_end: bool;
@@ -79,6 +80,8 @@ main :: () -> s32 {
     stick := Joystick(AppSession(), JoystickProps.{.key = cast(u64)32000, .id = 32000,
             .bounds = Rectangle.{400.0, 320.0, 200.0, 120.0}, .now = AppNow(), .repeat_seconds = 0.1})
     if stick.step { print("Hosted joystick step\n") }
+    if joystick_was_active && stick.direction < 0 { print("Hosted joystick released\n") }
+    joystick_was_active = stick.direction >= 0
     pad := DirectionPad(AppSession(), DirectionPadProps.{.key = cast(u64)34000, .id = 34000,
             .bounds = Rectangle.{640.0, 300.0, 160.0, 160.0}, .now = AppNow(), .repeat_seconds = 0.1, .floating = true})
     if pad.step {
