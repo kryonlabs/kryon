@@ -10,40 +10,9 @@ set -- \
     --bind system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
     --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
 . "$repo/tests/widget_raster_bindings.sh"
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$ziran_root/std" -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$ziran_root/std" "$@" --entry ziran_text_area_touch_scroll_test:main \
-    -o "$work/source.zx" "$source"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
-    --entry ziran_text_area_touch_scroll_test:main -o "$work/saved.zx" \
-    "$work/ir/ziran_text_area_touch_scroll_test.zir"
-cmp "$work/source.zx" "$work/saved.zx"
-for bundle in source saved; do
-    result=$("$ziran" run "$work/$bundle.zx")
-    printf '%s bundle: %s\n' "$bundle" "$result"
-    test "$result" = 0
-done
-for target in c go; do
-    if test "$target" = go; then
-        "$ziran" build --target=go --pkg main --exe \
-            --entry ziran_text_area_touch_scroll_test:main "$@" \
-            --root "$repo/tests" --module-path "$repo/src/ui" \
-            --module-path "$ziran_root/std" -o "$work/$target" "$source"
-    else
-        "$ziran" build --target="$target" \
-            --root "$repo/tests" --module-path "$repo/src/ui" \
-            --module-path "$ziran_root/std" -o "$work/$target" "$source"
-            "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
-                -Wl,--gc-sections -I"$ziran_root/include" -I"$work/$target" \
-                "$work/$target"/*.c -o "$work/$target/ziran_text_area_touch_scroll_test"
-    fi
-    if test "$target" = go; then
-        env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-            GO111MODULE=off go run "$work/$target"/*.go
-    else
-        env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-            "$work/$target/ziran_text_area_touch_scroll_test"
-    fi
-    printf '%s text area touch scroll: passed\n' "$target"
-done
+matrix_bundles=before
+matrix_forms=source
+matrix_c=linked
+matrix_std="$ziran_root/std"
+matrix_report='text area touch scroll'
+. "$repo/tests/main_matrix.sh"

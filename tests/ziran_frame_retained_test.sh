@@ -18,49 +18,8 @@ set -- \
     --bind paint_queue:RasterImage=ziran_frame_retained_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$std" -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$std" "$@" \
-    --entry ziran_frame_retained_test:main -o "$work/source.zx" "$source"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
-    --entry ziran_frame_retained_test:main -o "$work/saved.zx" \
-    "$work/ir/ziran_frame_retained_test.zir"
-cmp "$work/source.zx" "$work/saved.zx"
-test "$("$ziran" run "$work/source.zx")" = 0
-test "$("$ziran" run "$work/saved.zx")" = 0
-
-for input in source saved; do
-    if test "$input" = source; then
-        module=$source
-        module_root=$repo/tests
-        module_dir=$repo/src/ui
-    else
-        module=$work/ir/ziran_frame_retained_test.zir
-        module_root=$work/ir
-        module_dir=$work/ir
-    fi
-    for target in c; do
-        output=$work/$target-$input
-        executable=--exe
-        build_target() {
-            "$ziran" build --target="$target" \
-                --entry ziran_frame_retained_test:main $executable "$@" \
-                --root "$module_root" --module-path "$module_dir" \
-                --module-path "$std" -o "$output" "$module"
-        }
-        case "$target" in
-            c) build_target;;
-            *) build_target "$@";;
-        esac
-        case "$target" in
-            *) "$output/ziran_frame_retained_test";;
-        esac
-    done
-    output=$work/go-$input
-    "$ziran" build --target=go --pkg main --exe \
-        --entry ziran_frame_retained_test:main "$@" \
-        --root "$module_root" --module-path "$module_dir" \
-        --module-path "$std" -o "$output" "$module"
-    env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
-done
+matrix_bundles=before
+matrix_forms=both
+matrix_c=driver
+matrix_std="$std"
+. "$repo/tests/main_matrix.sh"
