@@ -1,0 +1,11 @@
+// Loaded into each test host so its own failure flag and exports stay local.
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused width
+    unused color
+    failed = true
+}

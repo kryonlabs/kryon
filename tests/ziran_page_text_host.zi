@@ -28,16 +28,7 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
     return 12
 }
 
-#program_export
-RasterText :: (value: string, x: s32, y: s32, font: s32,
-    color: Color) {
-    unused value
-    unused x
-    unused y
-    unused font
-    unused color
-    failed = true
-}
+#load "unexpected_raster_text.zi";
 
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
@@ -99,23 +90,9 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     failed = true
 }
 
-#program_export
-RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
-    segments: s32, width: float32, color: Color) {
-    unused bounds
-    unused radius
-    unused segments
-    unused width
-    unused color
-    failed = true
-}
+#load "unexpected_raster_outline.zi";
 
-#program_export
-RasterLine :: (line: Rectangle, color: Color) {
-    unused line
-    unused color
-    failed = true
-}
+#load "unexpected_raster_line.zi";
 
 #program_export
 RasterImage :: (asset_path: string, texture_id: u32,

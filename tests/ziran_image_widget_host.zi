@@ -67,12 +67,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     images += 1
 }
 
-#program_export
-RasterLine :: (line: Rectangle, color: Color) {
-    unused line
-    unused color
-    failed = true
-}
+#load "unexpected_raster_line.zi";
 
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
@@ -84,16 +79,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     failed = true
 }
 
-#program_export
-RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
-    segments: s32, width: float32, color: Color) {
-    unused bounds
-    unused radius
-    unused segments
-    unused width
-    unused color
-    failed = true
-}
+#load "unexpected_raster_outline.zi";
 
 #program_export
 RasterText :: (value: string, x: s32, y: s32, font: s32,

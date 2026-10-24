@@ -98,23 +98,9 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     swatch_rings += 1
 }
 
-#program_export
-RasterLine :: (line: Rectangle, color: Color) {
-    unused line
-    unused color
-    failed = true
-}
+#load "unexpected_raster_line.zi";
 
-#program_export
-RasterText :: (value: string, x: s32, y: s32, font: s32,
-    color: Color) {
-    unused value
-    unused x
-    unused y
-    unused font
-    unused color
-    failed = true
-}
+#load "unexpected_raster_text.zi";
 
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,

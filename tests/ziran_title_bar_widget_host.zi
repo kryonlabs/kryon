@@ -89,16 +89,7 @@ RasterLine :: (line: Rectangle, color: Color) {
     strokes += 1
 }
 
-#program_export
-RasterText :: (value: string, x: s32, y: s32, font: s32,
-    color: Color) {
-    unused value
-    unused x
-    unused y
-    unused font
-    unused color
-    failed = true
-}
+#load "unexpected_raster_text.zi";
 
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,

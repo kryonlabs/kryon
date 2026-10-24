@@ -1,0 +1,7 @@
+// Loaded into each test host so its own failure flag and exports stay local.
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+    failed = true
+}

@@ -1,0 +1,17 @@
+// Loaded into each test host so its own failure flag and exports stay local.
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+    failed = true
+}
