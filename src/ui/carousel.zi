@@ -102,7 +102,7 @@ CarouselTitle :: (session: Session, props: CarouselProps, items: []CarouselItem,
     width := ifx bounds.height > bounds.width then bounds.width * 0.88 else bounds.height * 0.95
     if width > 760.0 { width = 760.0 }
     logo := Rectangle.{bounds.x + (bounds.width - width) / 2.0, bounds.y + bounds.height * 0.05, width, width * 0.36}
-    logo_alpha := ifx shared then 1.0 else fade
+    logo_alpha := ifx shared then 1.0 else cast(float64)fade
     if item.logo != "" && logo_alpha > 0.02 {
         Image(session, ImageProps.{.key = key, .asset_path = item.logo, .alt_text = item.label,
                 .bounds = logo, .fit = ImageFit.ImageFitContain, .smooth = true,
