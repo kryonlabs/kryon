@@ -82,6 +82,45 @@ CarouselSelect :: (state: *CarouselState, count: s32, delta: s32, now: float64) 
     if distance < 0.002 && distance > -0.002 { state.position = cast(float32)state.selected }
 }
 
+// The logo and caption of the page nearest the slide stay in place and fade
+// as the next one comes in; a logo both pages share stays solid.
+CarouselTitle :: (session: Session, props: CarouselProps, items: []CarouselItem,
+    state: *CarouselState, scale: float32) {
+    bounds := props.bounds
+    count := cast(s32)items.count
+    nearest := cast(s32)(state.position + 0.5)
+    if nearest < 0 { nearest = 0 }
+    if nearest >= count { nearest = count - 1 }
+    distance := state.position - cast(float32)nearest
+    if distance < 0.0 { distance = -distance }
+    other := ifx state.position > cast(float32)nearest then nearest + 1 else nearest - 1
+    item := items[nearest]
+    shared := other >= 0 && other < count && items[other].logo == item.logo
+    fade := 1.0 - distance * 2.0
+    if fade < 0.0 { fade = 0.0 }
+    key := WidgetPartKey(props.key, 6)
+    width := ifx bounds.height > bounds.width then bounds.width * 0.88 else bounds.height * 0.95
+    if width > 760.0 { width = 760.0 }
+    logo := Rectangle.{bounds.x + (bounds.width - width) / 2.0, bounds.y + bounds.height * 0.05, width, width * 0.36}
+    logo_alpha := ifx shared then 1.0 else fade
+    if item.logo != "" && logo_alpha > 0.02 {
+        Image(session, ImageProps.{.key = key, .asset_path = item.logo, .alt_text = item.label,
+                .bounds = logo, .fit = ImageFit.ImageFitContain, .smooth = true,
+                .tint = cast(u32)0xFFFFFF00 | cast(u32)(logo_alpha * 255.0)})
+    }
+    // Text cannot fade, so the caption shows once its page has settled.
+    if item.caption == "" || distance > 0.12 { return }
+    tag_width := ifx item.logo != "" then 200.0 * scale else bounds.width - 120.0 * scale
+    tag := Rectangle.{bounds.x + (bounds.width - tag_width) / 2.0,
+        ifx item.logo != "" then logo.y + logo.height + 4.0 * scale else bounds.y + 40.0 * scale,
+        tag_width, 44.0 * scale}
+    unused Box(session, BoxProps.{.key = key + 2, .bounds = tag,
+            .fill = ifx props.dark then Color.{28, 75, 53, 235} else Color.{255, 255, 255, 225}, .radius = 22.0 * scale})
+    Text(session, TextProps.{.key = key + 3, .bounds = tag, .text = item.caption,
+            .font = cast(s32)(22.0 * scale),
+            .align = TextAlign.TextAlignCenter, .vertical_align = TextAlign.TextAlignCenter})
+}
+
 // Returns the activated item, or -1. Pointer, swipe, wheel and keyboard
 // select the same page; only the selected page exposes an action.
 Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
@@ -105,26 +144,19 @@ Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
     if (props.key_pressed == 257 || props.key_pressed == 32) && !items[state.selected].disabled {
         activated = state.selected
     }
+    // A narrow gap separates the covers, so two pictures never meet in a seam.
+    stride := bounds.width + 16.0 * scale
     for page: cast(s32)0..count - 1 {
-        offset := (cast(float32)page - state.position) * bounds.width
-        if offset <= -bounds.width || offset >= bounds.width { continue }
+        offset := (cast(float32)page - state.position) * stride
+        if offset <= -stride || offset >= stride { continue }
         item := items[page]
         key := WidgetPartKey(WidgetPartKey(props.key, 5), page)
-        cover := Rectangle.{bounds.x + offset, bounds.y, bounds.width, bounds.height}
         art := ifx bounds.height > bounds.width || item.landscape == "" then item.portrait else item.landscape
-        logo := CarouselArtwork(session, cover, key, art, item.logo, item.label)
-        if item.caption != "" {
-            tag_width := ifx item.logo != "" then 200.0 * scale else bounds.width - 120.0 * scale
-            tag := Rectangle.{cover.x + (cover.width - tag_width) / 2.0,
-                ifx item.logo != "" then logo.y + logo.height + 4.0 * scale else bounds.y + 40.0 * scale,
-                tag_width, 44.0 * scale}
-            unused Box(session, BoxProps.{.key = key + 2, .bounds = tag,
-                    .fill = ifx props.dark then Color.{28, 75, 53, 240} else Color.{229, 241, 231, 245}, .radius = 22.0 * scale})
-            Text(session, TextProps.{.key = key + 3, .bounds = tag, .text = item.caption,
-                    .font = cast(s32)(22.0 * scale),
-                    .align = TextAlign.TextAlignCenter, .vertical_align = TextAlign.TextAlignCenter})
-        }
+        Image(session, ImageProps.{.key = key, .asset_path = art, .alt_text = item.label,
+                .bounds = Rectangle.{bounds.x + offset, bounds.y, bounds.width, bounds.height},
+                .fit = ImageFit.ImageFitCover, .smooth = true})
     }
+    CarouselTitle(session, props, items, state, scale)
     // Keep the one action still while covers slide underneath it.
     item := items[state.selected]
     action_width := 260.0 * scale
@@ -133,29 +165,43 @@ Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
     if action_y < bounds.y + bounds.height * 0.5 { action_y = bounds.y + bounds.height * 0.5 }
     if Button(session, ButtonProps.{.key = WidgetPartKey(props.key, 1),
             .bounds = Rectangle.{bounds.x + (bounds.width - action_width) / 2.0, action_y, action_width, 64.0 * scale},
-            .label = item.action, .disabled = item.disabled,
+            .label = item.action, .disabled = item.disabled, .pill = true, .size = ControlSize.ControlSizeLarge,
             .tone = ButtonTone.ButtonToneSuccess, .emphasis = ButtonEmphasis.ButtonEmphasisFilled}) != 0 {
         activated = state.selected
     }
-    middle := bounds.y + bounds.height * 0.5 - 22.0 * scale
+    // Round, solid arrows stay readable over any cover.
+    middle := bounds.y + bounds.height * 0.5 - 24.0 * scale
     if state.selected > 0 && Button(session, ButtonProps.{.key = WidgetPartKey(props.key, 2),
-            .bounds = Rectangle.{bounds.x + 12.0 * scale, middle, 44.0 * scale, 44.0 * scale},
-            .label = props.previous_label, .icon_shape = "S2rr:M15 5L8 12L15 19", .icon_only = true,
-            .tone = ButtonTone.ButtonToneNeutral, .emphasis = ButtonEmphasis.ButtonEmphasisSoft}) != 0 {
+            .bounds = Rectangle.{bounds.x + 12.0 * scale, middle, 48.0 * scale, 48.0 * scale},
+            .label = props.previous_label, .icon_shape = "S2rr:M15 5L8 12L15 19", .icon_only = true, .circle = true,
+            .tone = ButtonTone.ButtonToneNeutral, .emphasis = ButtonEmphasis.ButtonEmphasisFilled}) != 0 {
         state.selected -= 1
     }
     if state.selected < count - 1 && Button(session, ButtonProps.{.key = WidgetPartKey(props.key, 3),
-            .bounds = Rectangle.{bounds.x + bounds.width - 56.0 * scale, middle, 44.0 * scale, 44.0 * scale},
-            .label = props.next_label, .icon_shape = "S2rr:M9 5L16 12L9 19", .icon_only = true,
-            .tone = ButtonTone.ButtonToneNeutral, .emphasis = ButtonEmphasis.ButtonEmphasisSoft}) != 0 {
+            .bounds = Rectangle.{bounds.x + bounds.width - 60.0 * scale, middle, 48.0 * scale, 48.0 * scale},
+            .label = props.next_label, .icon_shape = "S2rr:M9 5L16 12L9 19", .icon_only = true, .circle = true,
+            .tone = ButtonTone.ButtonToneNeutral, .emphasis = ButtonEmphasis.ButtonEmphasisFilled}) != 0 {
         state.selected += 1
     }
     if count > 1 {
+        // Small dots on a dark pill, the current page drawn wider.
+        dot := 8.0 * scale
+        current := 22.0 * scale
+        spacing := 8.0 * scale
+        row_width := cast(float32)(count - 1) * (dot + spacing) + current
+        row_y := action_y + 64.0 * scale + 22.0 * scale
+        unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 7),
+                .bounds = Rectangle.{bounds.x + (bounds.width - row_width) / 2.0 - 10.0 * scale, row_y - 8.0 * scale,
+                    row_width + 20.0 * scale, dot + 16.0 * scale},
+                .fill = Color.{0, 0, 0, 90}, .radius = (dot + 16.0 * scale) * 0.5})
+        x := bounds.x + (bounds.width - row_width) / 2.0
         for page: cast(s32)0..count - 1 {
-            dot := Rectangle.{bounds.x + bounds.width / 2.0 - cast(float32)count * 12.0 * scale + cast(float32)page * 24.0 * scale + 4.0 * scale,
-                bounds.y + bounds.height - 88.0 * scale, 16.0 * scale, 16.0 * scale}
-            unused Box(session, BoxProps.{.key = WidgetPartKey(WidgetPartKey(props.key, 4), page), .bounds = dot,
-                    .fill = ifx page == state.selected then Color.{46, 125, 74, 235} else Color.{255, 255, 255, 210}, .radius = 8.0 * scale})
+            width := ifx page == state.selected then current else dot
+            unused Box(session, BoxProps.{.key = WidgetPartKey(WidgetPartKey(props.key, 4), page),
+                    .bounds = Rectangle.{x, row_y, width, dot},
+                    .fill = ifx page == state.selected then Color.{255, 255, 255, 255} else Color.{255, 255, 255, 140},
+                    .radius = dot * 0.5})
+            x += width + spacing
         }
     }
     return activated
