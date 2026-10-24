@@ -10,7 +10,8 @@ WINDOW_VISIBLE_SDL :: #defined(NATIVE_WINDOW_HAVE_SDL) && !#defined(PLATFORM_WEB
     WindowVideoDriver :: () -> *u8 #foreign window_visible_sdl "SDL_GetCurrentVideoDriver";
 }
 
-#program_export
+// Not a program export: Window's WindowVisible, whether the app shows its
+// window, owns that C name, and apps link both.
 WindowVisible :: () -> bool {
     #if WINDOW_VISIBLE_SDL {
         driver := WindowVideoDriver()
