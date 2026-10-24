@@ -1184,13 +1184,16 @@ SnapshotMeshEqual :: (slot: s32, current: PaintCommand,
     block: s32 = previous.mesh_block
     start: s32 = previous.mesh_start
     if current.mesh_points.count < count || block < 0 || start < 0 ||
-        cast(s64)block >= paint_snapshot_meshes[slot].count ||
-        cast(s64)start + count >
-        cast(s64)paint_snapshot_meshes[slot][block].count { return false }
+        cast(s64)block >= paint_snapshot_meshes[slot].count { return false }
+    // Read the kept block through its address. Indexing the block itself
+    // copies all of its points for every point compared, which made a still
+    // page of meshes (a chart of figures) take most of a second per frame.
+    kept_block := *paint_snapshot_meshes[slot][block]
+    if cast(s64)start + count > cast(s64)kept_block.count { return false }
     at: s32 = 0
     while cast(s64)at < count {
         point: Vector2 = current.mesh_points[at]
-        kept: Vector2 = paint_snapshot_meshes[slot][block].points[start + at]
+        kept: Vector2 = kept_block.points[start + at]
         if point.x != kept.x || point.y != kept.y { return false }
         at += 1
     }

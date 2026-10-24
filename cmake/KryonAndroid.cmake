@@ -64,14 +64,16 @@ function(kryon_android_raylib raylib_dir)
         SUPPORT_FILEFORMAT_PNG=1
         SUPPORT_FILEFORMAT_OGG=1
         SUPPORT_MODULE_RAUDIO=1)
-    target_compile_options(raylib PRIVATE -Oz -ffunction-sections -fdata-sections
+    # rlgl's per-vertex batching runs for every mesh point each frame; size
+    # optimization made it the hottest code on low-end phones.
+    target_compile_options(raylib PRIVATE -O2 -ffunction-sections -fdata-sections
         -fno-omit-frame-pointer $<$<NOT:$<CONFIG:Debug>>:-g1>)
     target_include_directories(raylib PUBLIC
         "${raylib_dir}" "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}")
 endfunction()
 
 # Turn a shared library into a Kryon NativeActivity payload: add the NDK's
-# native_app_glue, size-optimize, keep symbols hidden, garbage-collect unused
+# native_app_glue, optimize for speed, keep symbols hidden, garbage-collect unused
 # sections, align for 16 KB page devices, route fopen() through raylib's APK
 # asset reader, retain native crash symbols, and link raylib
 # with the Android system libraries it needs.
@@ -108,7 +110,7 @@ function(kryon_android_app target)
         PLATFORM_ANDROID ANDROID_BUILD=1 _DEFAULT_SOURCE _GNU_SOURCE
         _FILE_OFFSET_BITS=64)
     target_compile_options(${target} PRIVATE
-        -Oz -ffunction-sections -fdata-sections -fvisibility=hidden
+        -O2 -ffunction-sections -fdata-sections -fvisibility=hidden
         -fno-omit-frame-pointer $<$<NOT:$<CONFIG:Debug>>:-g1>)
     target_link_options(${target} PRIVATE
         -Wl,--gc-sections

@@ -10,6 +10,7 @@
 Motion :: #import "scroll_device";
 #import "text_input_platform_host"
 using FrameStatus;
+using PaintKind;
 
 draws: s32;
 failed: bool;
@@ -31,6 +32,33 @@ EmitterFrame :: (session: Session, emitter: PaintEmitter) -> FrameEndResult {
     command: QueuedPaint
     command.emit = emitter
     command.has_emitter = true
+    SubmitPaint(session, command)
+    return EndFrameRetained(session, true)
+}
+
+// A still warped image is unchanged however many points it has; one moved
+// point is a change. Comparing a full block of points must stay cheap. The
+// emitter stands in for the raster backend with a built-in's comparison.
+mesh_draws: s32;
+
+DrawMesh :: (command: PaintCommand) {
+    unused command
+    mesh_draws += 1
+}
+
+MeshFrame :: (session: Session, points: []Vector2) -> FrameEndResult {
+    Start(session)
+    command: QueuedPaint
+    command.data.kind = PaintKindImage
+    command.data.node = -1
+    command.data.asset_path = "mesh.png"
+    command.data.bounds = Rectangle.{0.0, 0.0, 100.0, 80.0}
+    command.data.mesh_columns = 2
+    command.data.mesh_rows = cast(s32)(points.count / 2)
+    command.data.mesh_points = points
+    command.emit = DrawMesh
+    command.has_emitter = true
+    command.builtin_emitter = true
     SubmitPaint(session, command)
     return EndFrameRetained(session, true)
 }
@@ -165,5 +193,16 @@ main :: () -> s32 {
     result = EmitterFrame(custom, second)
     if result.paint_unchanged || emitter_calls != 22 { return 30 }
     unused CloseSession(custom)
+    meshes := SessionOpen()
+    mesh: [4000]Vector2
+    for index: 0..3999 { mesh[index] = Vector2.{cast(float32)(index % 2), cast(float32)(index / 2)} }
+    result = MeshFrame(meshes, mesh[:])
+    if result.status != cast(FrameStatus)FrameOk || result.paint_unchanged || mesh_draws != 1 { return 31 }
+    result = MeshFrame(meshes, mesh[:])
+    if result.status != cast(FrameStatus)FrameOk || !result.paint_unchanged || mesh_draws != 1 { return 32 }
+    mesh[3999].x += 1.0
+    result = MeshFrame(meshes, mesh[:])
+    if result.status != cast(FrameStatus)FrameOk || result.paint_unchanged || mesh_draws != 2 { return 33 }
+    unused CloseSession(meshes)
     return 0
 }
