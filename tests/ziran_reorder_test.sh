@@ -77,7 +77,7 @@ for input in source ir; do
     "$ziran" bundle --root "$work" --module-path "$module_dir" --module-path "$ziran_root/std" \
         --entry use_reorder:Answer -o "$work/$input.zx" "$module"
     test "$("$ziran" run "$work/$input.zx")" = 42
-    for target in c cpp go; do
+    for target in c go; do
         output="$work/$target-$input"
         "$ziran" build --target="$target" --root "$work" \
             --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" "$module"
@@ -95,14 +95,6 @@ int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
                 "$output"/*.c -o "$output/app"
-            "$output/app"
-        else
-            cat > "$output/main.cpp" <<'CPP'
-#include "use_reorder.hpp"
-int main() { return Answer() == 42 ? 0 : 1; }
-CPP
-            ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output"/*.cpp -o "$output/app"
             "$output/app"
         fi
     done

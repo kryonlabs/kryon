@@ -24,7 +24,7 @@ for bundle in source saved; do
     printf '%s bundle: %s\n' "$bundle" "$result"
     test "$result" = 0
 done
-for target in c cpp go; do
+for target in c go; do
     if test "$target" = go; then
         "$ziran" build --target=go --pkg main --exe \
             --entry ziran_text_area_scroll_selection_test:main "$@" \
@@ -34,15 +34,9 @@ for target in c cpp go; do
         "$ziran" build --target="$target" \
             --root "$repo/tests" --module-path "$repo/src/ui" \
             --module-path "$ziran_root/std" -o "$work/$target" "$source"
-        if test "$target" = c; then
             "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
                 -Wl,--gc-sections -I"$ziran_root/include" -I"$work/$target" \
                 "$work/$target"/*.c -o "$work/$target/ziran_text_area_scroll_selection_test"
-        else
-            "${CXX:-c++}" -std=c++17 -ffunction-sections -fdata-sections \
-                -Wl,--gc-sections -I"$ziran_root/include" -I"$work/$target" \
-                "$work/$target"/*.cpp -o "$work/$target/ziran_text_area_scroll_selection_test"
-        fi
     fi
     if test "$target" = go; then
         env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \

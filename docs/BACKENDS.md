@@ -60,7 +60,7 @@ samples use their high byte; ancillary color profiles and gamma are ignored.
 The sixteen-entry asset cache evicts the least recently used image.
 
 `tests/ziran_png_test.sh` compares independent reference pixels for 33 fixtures
-through source and saved IR in bundles, C, C++, and Go. Taiji's private native
+through source and saved IR in bundles, C and Go. Taiji's private native
 gate compiles the decoder and canonical `Image` rendering tests with `8c`/`8l`,
 checks malformed streams, cache eviction, alpha composition, and native image
 compatibility, and checks Rill's real PNG desktop icons.
@@ -84,7 +84,7 @@ when used, so a new character cannot rebuild every cached zoom at once.
 
 `make raylib-typeface-test` decodes real fonts and checks mixed Latin/CJK text,
 supplementary characters, collection bounds and checksums, retained sources,
-and disposal in C/C++ from source and saved IR. It replaces only graphics
+and disposal in C from source and saved IR. It replaces only graphics
 submission and texture allocation, so it needs no display and does not verify
 rendered pixels. Supply `RAYLIB_A` for an existing Raylib archive (and
 `RAYLIB_LIBS` for its link flags); Fontconfig and an installed CJK outline font

@@ -15,17 +15,12 @@ set -- --root "$work" --module-path "$repo/src/backend" --module-path "$ziran_ro
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
 test "$("$ziran" run "$work/saved.zx")" = 0
-for target in c cpp; do
+for target in c; do
     "$ziran" build --target="$target" "$@" -o "$work/$target-source" "$work/png_cases.zi"
     "$ziran" build --target="$target" --root "$work/ir" -o "$work/$target-saved" "$work/ir/png_cases.zir"
     for form in source saved; do
-        if test "$target" = c; then
             "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/$target-$form" \
                 "$work/$target-$form"/*.c -o "$work/$target-$form/run"
-        else
-            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$work/$target-$form" \
-                "$work/$target-$form"/*.cpp -o "$work/$target-$form/run"
-        fi
         "$work/$target-$form/run"
     done
 done
@@ -44,4 +39,4 @@ func main() {
 GO
     GO111MODULE=off go run "$work/go-$form"/*.go
 done
-echo 'PNG: source/saved IR pixels match in portable bundles, C, C++, and Go'
+echo 'PNG: source/saved IR pixels match in portable bundles, C and Go'

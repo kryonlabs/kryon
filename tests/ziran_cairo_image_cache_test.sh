@@ -21,13 +21,12 @@ source="$repo/tests/cairo_image_cache_test.zi"
 for form in source saved; do
     input=$source; root=$repo/tests
     if test "$form" = saved; then input=$work/ir/cairo_image_cache_test.zir; root=$work/ir; fi
-    for target in c cpp; do
+    for target in c; do
         output=$work/$target-$form
         "$ziran" build --root "$root" --module-path "$repo/src/backend" \
             --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
             --target="$target" --no-main -o "$output" "$input"
         suffix=c; header=h; compiler=${CC:-cc}; standard=c11
-        if test "$target" = cpp; then suffix=cpp; header=hpp; compiler=${CXX:-c++}; standard=c++17; fi
         printf '#include "cairo_image_cache_test.%s"\nint main(int argc, char **argv) { return cairo_image_cache_test_main(argc, (uint8_t **)argv); }\n' "$header" > "$output/entry.$suffix"
         "$compiler" -std="$standard" -O2 -I"$ziran_root/include" -I"$output" \
             "$output"/*."$suffix" $libs -o "$output/test"

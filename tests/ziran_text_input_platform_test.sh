@@ -18,16 +18,11 @@ cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
 test "$("$ziran" run "$work/saved.zx")" = 0
 
-for target in c cpp; do
+for target in c; do
     "$ziran" build --target="$target" --root "$repo/tests" \
         --module-path "$repo/src/ui" -o "$work/$target" "$source"
-    if [ "$target" = c ]; then
         "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
             "$work/c"/*.c -o "$work/c/test"
-    else
-        "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$work/cpp" \
-            "$work/cpp"/*.cpp -o "$work/cpp/test"
-    fi
     env -u DISPLAY -u WAYLAND_DISPLAY "$work/$target/test"
 done
 "$ziran" build --target=go --root "$repo/tests" --module-path "$repo/src/ui" \

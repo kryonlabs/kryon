@@ -27,7 +27,7 @@ source=$repo/tests/raylib_typeface_windows_test.zi
 for form in source saved; do
     input=$source
     if test "$form" = saved; then input=$work/ir/raylib_typeface_windows_test.zir; fi
-    for target in c cpp; do
+    for target in c; do
         output=$work/$form-$target
         "$ziran" build --target="$target" --define _WIN32 --root "$repo/tests" \
             --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
@@ -39,8 +39,7 @@ for form in source saved; do
             echo 'Windows renderer imported a foreign OS font loader' >&2
             exit 1
         fi
-        if test "$target" = c; then compiler=${CC:-cc}; standard=c11; extension=c
-        else compiler=${CXX:-c++}; standard=c++17; extension=cpp; fi
+            compiler=${CC:-cc}; standard=c11; extension=c
         # This link has no Raylib: the optimizer must drop the Raylib calls
         # that Windows never reaches. Sanitizer instrumentation keeps them, so
         # the sanitizer job builds this boundary check uninstrumented.
@@ -69,4 +68,4 @@ for form in source saved; do
         fi
     done
 done
-echo 'Windows font discovery boundary passed C/C++ source and saved IR without POSIX dynamic loading'
+echo 'Windows font discovery boundary passed C source and saved IR without POSIX dynamic loading'

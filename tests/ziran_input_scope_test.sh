@@ -23,7 +23,7 @@ for form in source saved; do
         --module-path "$ziran_root/std" --entry input_scope_test:Answer \
         -o "$work/$form.zx" "$input"
     test "$("$ziran" run "$work/$form.zx")" = 42
-    for target in c cpp go; do
+    for target in c go; do
         out=$work/$form-$target
         target_flags=
         if test "$target" = go; then target_flags='--pkg main'; fi
@@ -32,7 +32,6 @@ for form in source saved; do
             --entry input_scope_test:main -o "$out" "$input"
         case "$target" in
             c) "${CC:-cc}" -std=c11 -O1 -I"$out" "$out"/*.c -o "$out/run" ;;
-            cpp) "${CXX:-c++}" -std=c++17 -O1 -I"$out" "$out"/*.cpp -o "$out/run" ;;
             go)
                 cat > "$out/main.go" <<'GO'
 package main

@@ -12,7 +12,6 @@ site-gallery-test:
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 node tests/gallery_browser.mjs
 
 CC ?= cc
-CXX ?= c++
 AR ?= ar
 BUILD_DIR ?= build/ziran
 # Resolve the configured package; CI supplies its already checked-out source.
@@ -21,7 +20,6 @@ export ZIRAN_ROOT := $(abspath $(ZIRAN_DIR))
 ZIRAN_BUILD_DIR ?= $(abspath $(ZIRAN_DIR)/build)
 ZI2ZIR_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2zir
 ZI2C_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2c
-ZI2CPP_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2cpp
 ZI2GO_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2go
 ZIRAN_BIN ?= $(ZIRAN_BUILD_DIR)/bin/ziran
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
@@ -35,10 +33,8 @@ ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
 MODULES := $(basename $(notdir $(SOURCE))) utf8 grapheme grapheme_data
 OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
-PLAN9_DIR := build/plan9
-PLAN9_FILE_LIST := $(PLAN9_DIR)/generated-c-files.txt
 
-.PHONY: all backends-check check laws plan9-c test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-parity-test pixmap-font pixmap-emoji install-user dom-project-test libdraw-native-plan9-test
+.PHONY: all backends-check check laws test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-parity-test pixmap-font pixmap-emoji install-user dom-project-test host-keys-test
 all: source-check $(BUILD_DIR)/libkryon.a backends-check
 
 # Project command. Its implementation and platform integration are Ziran.
@@ -68,7 +64,7 @@ build/bin/kryon: build/project/gen/cli_linux.c Makefile
 
 $(BUILD_DIR)/ziran-toolchain.stamp: $(ZIRAN_SOURCES)
 	$(MAKE) -C $(ZIRAN_DIR) BUILD_DIR=$(ZIRAN_BUILD_DIR) \
-		$(ZI2ZIR_BIN) $(ZI2C_BIN) $(ZI2CPP_BIN) $(ZI2GO_BIN)
+		$(ZI2ZIR_BIN) $(ZI2C_BIN) $(ZI2GO_BIN)
 	mkdir -p $(BUILD_DIR)
 	touch $@
 
@@ -83,17 +79,13 @@ $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/zira
 	rm -f $@
 	$(AR) rcs $@ $(OBJECTS)
 
-# The library also compiles as C++ and passes its Go tests. Apps that only
-# link the C library, and packaging builds without Go, skip this check.
+# Go compilation is checked alongside the C archive. Packaging builds that
+# only link the C library can request that archive directly.
 .PHONY: backends-check
 backends-check: $(BUILD_DIR)/libkryon.a
-	mkdir -p $(BUILD_DIR)/cpp $(BUILD_DIR)/go $(BUILD_DIR)/obj-cpp
-	$(ZI2CPP_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/cpp $(SOURCE)
+	mkdir -p $(BUILD_DIR)/go
 	rm -f $(BUILD_DIR)/go/*.go
 	$(ZI2GO_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/go $(SOURCE)
-	@for module in $(MODULES); do \
-		$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/cpp -c $(BUILD_DIR)/cpp/$$module.cpp -o $(BUILD_DIR)/obj-cpp/$$module.o || exit 1; \
-	done
 	cd $(BUILD_DIR)/go && GO111MODULE=off go test .
 
 TEST_JOBS ?= 4
@@ -128,10 +120,10 @@ project-test: project-toolchain build/bin/kryon
 		--entry project_options_test:ProjectOptionsTest \
 		-o build/project/options-test.zx tests/project_options_test.zi
 	test "$$($(ZIRAN_DIR)/build/bin/ziran run build/project/options-test.zx)" = 42
-	$(ZIRAN_DIR)/build/bin/ziran build --target=cpp --root tests \
-		--module-path src/project -o build/project/cpp tests/project_options_test.zi
-	$(CXX) -std=c++17 -I$(ZIRAN_INCLUDE) -Ibuild/project/cpp \
-		-c build/project/cpp/project_options_test.cpp \
+	$(ZIRAN_DIR)/build/bin/ziran build --target=c --root tests \
+		--module-path src/project -o build/project/c tests/project_options_test.zi
+	$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -Ibuild/project/c \
+		-c build/project/c/project_options_test.c \
 		-o build/project/options-test.o
 	$(ZIRAN_DIR)/build/bin/ziran build --target=go --root tests \
 		--module-path src/project -o build/project/go tests/project_options_test.zi
@@ -198,32 +190,35 @@ templates-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) \
 		python3 tests/templates_test.py
 
-# Every Ziran target -- C, C++, Go, Rust, Python, and the portable runner --
+# Every supported target -- C, Go, and the portable runner --
 # renders each template and example on the headless pixmap host, and every
-# image must equal C's byte for byte. It needs go, cargo, and python3, and
+# image must equal C's byte for byte. It needs go and python3, and
 # writes build/pixmap-parity/grid.png to look at.
 pixmap-parity-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) \
 		python3 tests/pixmap_parity_test.py
 
-# Rebuilds the pixmap host's glyph outlines from Kryon's font.
-pixmap-font: project-toolchain
-	mkdir -p build/tools
-	$(ZIRAN_DIR)/build/bin/ziran build --target=py --exe --root tools \
-		$(ZIRAN_STD_PATH) --entry outline_font:main -o build/tools/outline_font tools/outline_font.zi
+# Rebuild glyph outlines with the same Ziran tool for both font families.
+OUTLINE_FONT_DIR := build/tools/outline-font-c
+OUTLINE_FONT_PROGRAM := $(OUTLINE_FONT_DIR)/outline_font
+$(OUTLINE_FONT_PROGRAM): tools/outline_font.zi $(ZIRAN_SOURCES) | project-toolchain
+	mkdir -p $(OUTLINE_FONT_DIR)
+	$(ZIRAN_BIN) build --target=c --exe --root tools $(ZIRAN_STD_PATH) \
+		--entry outline_font:main -o $(OUTLINE_FONT_DIR) tools/outline_font.zi
+
+pixmap-font: $(OUTLINE_FONT_PROGRAM)
 	printf '%s\n' assets/fonts/LiberationSans-Regular.ttf assets/fonts/DejaVuSans.ttf \
 		assets/fonts/NotoSansSymbols-Regular.ttf assets/fonts/NotoSansSymbols2-Regular.ttf | \
-		python3 build/tools/outline_font > build/pixmap_font.zi
+		$(OUTLINE_FONT_PROGRAM) > build/pixmap_font.zi
 	mv build/pixmap_font.zi src/backend/pixmap_font.zi
 
-# Installs the kryon command. Outside `ziran tool kryon` it forwards project
 .PHONY: pixmap-mono-font
-pixmap-mono-font:
-	$(ZIRAN_BIN) build --target=py --exe --root tools $(ZIRAN_STD_PATH) --entry outline_font:main -o build/tools/outline_font tools/outline_font.zi
-	printf '%s\n' assets/fonts/LiberationMono-Regular.ttf | python3 build/tools/outline_font | sed '/^PixmapFontUnits/,$$!d' > build/pixmap_mono_font.zi
+pixmap-mono-font: $(OUTLINE_FONT_PROGRAM)
+	printf '%s\n' assets/fonts/LiberationMono-Regular.ttf | $(OUTLINE_FONT_PROGRAM) | sed '/^PixmapFontUnits/,$$!d' > build/pixmap_mono_font.zi
 	printf '%s\n' '// Generated from assets/fonts/LiberationMono-Regular.ttf by tools/outline_font.zi.' '// Liberation Mono Regular outlines and advances; license LICENSE-Liberation.' '// Rebuild with make pixmap-mono-font.' '' > src/backend/pixmap_mono_font.zi
 	cat build/pixmap_mono_font.zi >> src/backend/pixmap_mono_font.zi
 
+# Installs the kryon command. Outside `ziran tool kryon` it forwards project
 # commands to ziran, which runs the Kryon each project's lock pins.
 PREFIX ?= $(HOME)/.local
 install-user: build/bin/kryon zx-player
@@ -256,7 +251,7 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 	$(ZI2ZIR_BIN) --root tests --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
 
-check: all ziran-test header-check docs-check project-test public-surface-check libdraw-native-plan9-test laws
+check: all ziran-test header-check docs-check project-test public-surface-check host-keys-test laws
 .PHONY: canvas-audio-engine-test
 canvas-audio-engine-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_audio_engine_zi_test.sh
@@ -372,9 +367,6 @@ system-clipboard-linux-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		python3 tests/system_clipboard_linux_test.py
 
-.PHONY: libdraw-project-test
-libdraw-project-test: build/bin/kryon
-	@python3 tests/libdraw_project_test.py
 
 .PHONY: window-test
 window-test: build/bin/kryon
@@ -387,18 +379,16 @@ tray-test: $(ZI2C_BIN)
 $(ZIRAN_DIR)/build/bin/ziran:
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) all
 
-# The behavior tests again, with every C and C++ program they build compiled
-# under AddressSanitizer and UndefinedBehaviorSanitizer. The tests call
-# $$CC and $$CXX, so wrappers add the flags to each compile and link.
+# Repeat C behavior tests with AddressSanitizer and UndefinedBehaviorSanitizer.
+# The CC wrapper preserves the instrumentation for every compile and link.
 SANITIZE_FLAGS := -fsanitize=address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer
 .PHONY: sanitize-test
 sanitize-test: project-toolchain
 	@$(MAKE) --no-print-directory $(BUILD_DIR)/libkryon.a
 	mkdir -p build/sanitize
 	printf '#!/bin/sh\nexec %s %s "$$@"\n' '$(CC)' '$(SANITIZE_FLAGS)' > build/sanitize/cc
-	printf '#!/bin/sh\nexec %s %s "$$@"\n' '$(CXX)' '$(SANITIZE_FLAGS)' > build/sanitize/c++
-	chmod 755 build/sanitize/cc build/sanitize/c++
-	@CC="$(abspath build/sanitize/cc)" CXX="$(abspath build/sanitize/c++)" \
+	chmod 755 build/sanitize/cc
+	@CC="$(abspath build/sanitize/cc)" \
 		ASAN_OPTIONS=detect_leaks=0 UBSAN_OPTIONS=print_stacktrace=1 \
 		$(MAKE) --no-print-directory behavior-tests
 
@@ -407,11 +397,11 @@ sanitize-test: project-toolchain
 # removes every other entry that nothing has written to for a day, so a build
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
-BUILD_OUTPUTS := ziran project bin plan9 tools test examples sanitize raylib-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
+BUILD_OUTPUTS := ziran project bin tools test examples sanitize raylib-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
 	emscripten-cache android-surface-check text-input-platform-test zx-player zx-test zx-canvas zx-canvas-test gallery-zx \
 	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay dom-project
 # Keep prior generated output while an installed or running app may use it.
-BUILD_OUTPUTS += zib-reload-test zib-raylib zib-native-test zib-android-test \
+BUILD_OUTPUTS += plan9 zib-reload-test zib-raylib zib-native-test zib-android-test \
 	zib-player zib-test zib-canvas zib-canvas-test gallery-zib
 .PHONY: clean-scratch
 clean-scratch:
@@ -426,18 +416,9 @@ clean-scratch:
 		else echo "could not remove all of $$entry"; fi; \
 	done
 
-.PHONY: plan9-c
-plan9-c: source-check $(ZIRAN_DIR)/build/bin/ziran $(BUILD_DIR)/ziran-toolchain.stamp
-	rm -rf $(PLAN9_DIR)
-	mkdir -p $(PLAN9_DIR)
-	$(ZIRAN_BIN) build --target=plan9-c --root src/ui $(ZIRAN_STD_PATH) \
-		-o $(PLAN9_DIR) $(SOURCE)
-	find $(PLAN9_DIR) -type f -name '*.c' | LC_ALL=C sort > $(PLAN9_FILE_LIST)
-
-.PHONY: libdraw-native-plan9-test
-libdraw-native-plan9-test:
+.PHONY: host-keys-test
+host-keys-test:
 	sh tests/host_keys_test.sh
-	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/libdraw_native_plan9_test.sh
 
 # Rebuilds the pixmap host's color emoji from Noto Color Emoji
 # (Debian: fonts-noto-color-emoji).
@@ -485,14 +466,6 @@ pixmap-parallel-test: project-toolchain
 test: pixmap-parallel-test
 
 # Requires a canonical Taiji checkout and a private headless QEMU guest.
-.PHONY: pixmap-surface-plan9-test
-pixmap-surface-plan9-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_surface_plan9_test.sh
-
-.PHONY: pixmap-measure-plan9-test
-pixmap-measure-plan9-test: project-toolchain
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS PIXMAP_PLAN9_FIXTURE=pixmap_measure_test sh tests/pixmap_surface_plan9_test.sh
-
 .PHONY: style-cache-test
 style-cache-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_style_cache_test.sh

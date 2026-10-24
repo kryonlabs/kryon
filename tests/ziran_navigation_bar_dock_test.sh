@@ -36,20 +36,14 @@ for input in source saved; do
         module_root=$work/ir
         module_dir=$work/ir
     fi
-    for target in c cpp; do
+    for target in c; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --root "$module_root" \
             --module-path "$module_dir" --module-path "$ziran_root/std" \
             -o "$output" "$module"
-        if test "$target" = c; then
             "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
                 -I"$ziran_root/include" -I"$output" "$output"/*.c \
                 -Wl,--gc-sections -lm -o "$output/test"
-        else
-            "${CXX:-c++}" -std=c++17 -ffunction-sections -fdata-sections \
-                -I"$ziran_root/include" -I"$output" "$output"/*.cpp \
-                -Wl,--gc-sections -lm -o "$output/test"
-        fi
         env -u DISPLAY -u WAYLAND_DISPLAY "$output/test"
     done
     output=$work/go-$input

@@ -36,11 +36,6 @@ test "$("$ziran" run "$work/saved.zx")" = 0
     "$work/c"/*.c -o "$work/c/app"
 "$work/c/app"
 
-"$ziran" build --target=cpp --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$std" -o "$work/cpp" "$source"
-"${CXX:-c++}" -std=c++17 -I"$include" -I"$work/cpp" \
-    "$work/cpp"/*.cpp -o "$work/cpp/app"
-"$work/cpp/app"
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$std" -o "$work/go" "$source"

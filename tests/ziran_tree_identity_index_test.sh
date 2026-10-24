@@ -25,24 +25,16 @@ for input in source saved; do
         -o "$work/$input.zx" "$module"
     "$ziran" run "$work/$input.zx" > "$work/$input-vm.log"
     test "$(tail -1 "$work/$input-vm.log")" = 0
-    for target in ${TREE_IDENTITY_INDEX_TARGETS:-c cpp go rust py}; do
+    for target in ${TREE_IDENTITY_INDEX_TARGETS:-c go}; do
         output="$work/$input-$target"
         executable=--exe
         package=
-        if test "$target" = cpp; then executable=; fi
         if test "$target" = go; then package='--pkg main'; fi
         "$ziran" build --root "$root" --module-path "$modules" \
             --module-path "$ziran_root/std" --entry tree_identity_index_test:main \
             --target="$target" $executable $package -o "$output" "$module"
-        if test "$target" = cpp; then
-            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" "$output"/*.cpp \
-                -lm -o "$output/tree_identity_index_test"
-        fi
         case "$target" in
             go) GO111MODULE=off go run "$output"/*.go;;
-            py) python3 "$output/__main__.py";;
-            rust) CARGO_TARGET_DIR="$work/rust-$input" cargo run --offline --quiet \
-                --manifest-path "$output/Cargo.toml";;
             *) "$output/tree_identity_index_test";;
         esac
     done

@@ -11,12 +11,11 @@ for source in source saved; do
     input=$repo/tests/cairo_text.zi
     root=$repo/tests
     if [ "$source" = saved ]; then input=$build/ir/cairo_text.zir; root=$build/ir; fi
-    for target in c cpp; do
+    for target in c; do
         output=$build/$source-$target
         "$ziran" build --module-path "$repo/src/ui" --module-path "$repo/src/backend" --module-path "$ziran_root/std" --target="$target" --no-main --root "$root" \
             --module-path "$build/ir" --entry cairo_text:Run -o "$output" "$input"
         suffix=c; header=h; compiler=${CC:-cc}; standard=c11
-        if [ "$target" = cpp ]; then suffix=cpp; header=hpp; compiler=${CXX:-c++}; standard=c++17; fi
         printf '#include "cairo_text.%s"\nint main(void) { return Run(); }\n' "$header" >"$output/driver.$suffix"
         "$compiler" -std="$standard" -O2 -I"$ziran_root/include" -I"$output" \
             "$output"/*."$suffix" $(pkg-config --libs pangocairo fontconfig freetype2) \
@@ -25,4 +24,4 @@ for source in source saved; do
             YUE_DESKTOP_RECOVERY=0 "$output/run"
     done
 done
-echo 'Native shaping, RTL caret and long text: source/saved IR, C/C++ PASS'
+echo 'Native shaping, RTL caret and long text: source/saved IR, C PASS'

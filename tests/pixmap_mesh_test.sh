@@ -22,17 +22,13 @@ set -- --bind raster:RasterLine=pixmap:RasterLine \
     --bind font_metrics:MeasureGlyphWidth=pixmap:MeasureGlyphWidth \
     --bind font_metrics:MeasureGlyphLineHeight=pixmap:MeasureGlyphLineHeight
 "$ziran" ir --project --root "$repo/tests" -o "$work/ir" "$source"
-for target in c cpp go; do
-    executable=--exe; if test "$target" = cpp; then executable=; fi
+for target in c go; do
+    executable=--exe
     package=; if test "$target" = go; then package='--pkg main'; fi
     if test "$target" = go; then
         "$ziran" build --project --root "$repo/tests" --target="$target" --entry pixmap_mesh_test:main "$@" $package $executable -o "$work/$target" "$source"
     else
         "$ziran" build --project --root "$repo/tests" --target="$target" --entry pixmap_mesh_test:main $executable -o "$work/$target" "$source"
-    fi
-    if test "$target" = cpp; then
-        rm -f "$work/$target/entry.cpp"
-        "${CXX:-c++}" -std=c++17 -O2 -I"$ziran_root/include" "$work/$target"/*.cpp -lm -o "$work/$target/pixmap_mesh_test"
     fi
     if test "$target" = go; then
         test "$(GO111MODULE=off go run "$work/$target"/*.go | tail -1)" = 0

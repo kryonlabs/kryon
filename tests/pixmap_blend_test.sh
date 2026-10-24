@@ -11,9 +11,9 @@ source="$repo/tests/pixmap_blend_test.zi"
     --entry pixmap_blend_test:main --exe -o "$work/exhaustive" "$source"
 "$work/exhaustive/pixmap_blend_test"
 "$ziran" ir --project --root "$repo/tests" -o "$work/ir" "$source"
-for target in ${PIXMAP_BLEND_TARGETS:-c cpp go rust py}; do
+for target in ${PIXMAP_BLEND_TARGETS:-c go}; do
     for input in source saved; do
-        executable=--exe; if test "$target" = cpp; then executable=; fi
+        executable=--exe
         package=; if test "$target" = go; then package='--pkg main'; fi
         if test "$input" = source; then
             "$ziran" build --project --root "$repo/tests" --target="$target" --entry pixmap_blend_test:main $package $executable -o "$work/$target-$input" "$source"
@@ -21,10 +21,7 @@ for target in ${PIXMAP_BLEND_TARGETS:-c cpp go rust py}; do
             "$ziran" build --root "$work/ir" --module-path "$work/ir" --target="$target" --entry pixmap_blend_test:main $package $executable -o "$work/$target-$input" "$work/ir/pixmap_blend_test.zir"
         fi
         case $target in
-            cpp) "${CXX:-c++}" -std=c++17 -O2 -I"$ziran_root/include" "$work/$target-$input"/*.cpp -pthread -lm -o "$work/$target-$input/pixmap_blend_test"; "$work/$target-$input/pixmap_blend_test" ;;
             go) env GO111MODULE=off go run "$work/$target-$input"/*.go ;;
-            rust) CARGO_TARGET_DIR="$work/rust-target-$input" cargo run --offline --quiet --manifest-path "$work/$target-$input/Cargo.toml" ;;
-            py) python3 "$work/$target-$input/__main__.py" ;;
             c) "$work/$target-$input/pixmap_blend_test" ;;
         esac
     done

@@ -18,20 +18,15 @@ for input in source saved; do
     "$ziran" bundle --root "$repo/tests" $roots --entry style_cache_behavior:main \
         -o "$work/$input.zx" "$module"
     test "$("$ziran" run "$work/$input.zx" | tail -1)" = 0
-    for target in c cpp go rust py; do
+    for target in c go; do
         output="$work/$target-$input"
-        executable=--exe; if test "$target" = cpp; then executable=; fi
+        executable=--exe
         package=; if test "$target" = go; then package='--pkg main'; fi
         "$ziran" build --target="$target" --root "$repo/tests" $roots $executable $package \
             --entry style_cache_behavior:main -o "$output" "$module"
         case $target in
             c) "$output/style_cache_behavior" ;;
-            cpp)
-                "${CXX:-c++}" -std=c++17 -O2 -I"$ziran_root/include" -I"$output" "$output"/*.cpp -o "$work/run"
-                "$work/run" ;;
             go) GO111MODULE=off go run "$output"/*.go ;;
-            rust) CARGO_TARGET_DIR="$work/rust-target-$input" cargo run --offline --quiet --manifest-path "$output/Cargo.toml" ;;
-            py) python3 "$output/__main__.py" ;;
         esac
     done
 done

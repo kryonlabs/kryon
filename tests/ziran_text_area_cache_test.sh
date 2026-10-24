@@ -13,24 +13,17 @@ set -- --bind font_metrics:MeasureGlyphWidth=ziran_text_area_cache_host:MeasureG
 for form in source saved; do
     module=$source; root=$repo/tests; modules=$repo/src/ui
     if test "$form" = saved; then module=$work/ir/ziran_text_area_cache_test.zir; root=$work/ir; modules=$work/ir; fi
-    for target in c cpp go py rust; do
+    for target in c go; do
         output=$work/$form-$target
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --exe "$@" \
                 --entry ziran_text_area_cache_test:main --root "$root" --module-path "$modules" \
                 --module-path "$ziran_root/std" -o "$output" "$module"
             GO111MODULE=off go run "$output"/*.go
-        elif test "$target" = py || test "$target" = rust; then
-            "$ziran" build --target="$target" --exe "$@" \
-                --entry ziran_text_area_cache_test:main --root "$root" --module-path "$modules" \
-                --module-path "$ziran_root/std" -o "$output" "$module"
-            if test "$target" = py; then python3 "$output"
-            else cargo run --offline --quiet --manifest-path "$output/Cargo.toml"; fi
         else
             "$ziran" build --target="$target" --no-main --entry ziran_text_area_cache_test:main \
                 --root "$root" --module-path "$modules" --module-path "$ziran_root/std" -o "$output" "$module"
-            if test "$target" = cpp; then compiler=${CXX:-c++}; standard=c++17; suffix=cpp
-            else compiler=${CC:-cc}; standard=c11; suffix=c; fi
+                compiler=${CC:-cc}; standard=c11; suffix=c
             "$compiler" -O2 -std="$standard" -ffunction-sections -fdata-sections -I"$output" \
                 "$output"/*."$suffix" -Wl,--gc-sections -o "$output/run"
             "$output/run"

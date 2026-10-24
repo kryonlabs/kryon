@@ -139,7 +139,7 @@ for input in source ir; do
         module_dir=$work/ir
         extension=zir
     fi
-    for target in c cpp go; do
+    for target in c go; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
@@ -173,24 +173,6 @@ C
                 "$output/separator.c" "$output/progress.c" \
                 "$output/use_style.c" \
                 "$output/main.c" -o "$output/app"
-            "$output/app"
-        else
-            "$ziran" build --target=cpp --root "$work" \
-                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
-                "$input_dir/use_style.$extension"
-            cat > "$output/main.cpp" <<'CPP'
-#include "use_style.hpp"
-#include "raster.hpp"
-extern "C" void RasterLine(Rectangle line, Color color) { (void)line; (void)color; }
-int main() { return Answer() == 42 ? 0 : 1; }
-CPP
-            ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output/control_props.cpp" "$output/surface.cpp" \
-                "$output/style.cpp" "$output/geometry.cpp" "$output/math.cpp" \
-                "$output/drawing_props.cpp" "$output/raster.cpp" \
-                "$output/separator.cpp" "$output/progress.cpp" \
-                "$output/use_style.cpp" \
-                "$output/main.cpp" -o "$output/app"
             "$output/app"
         fi
     done

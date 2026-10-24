@@ -354,7 +354,7 @@ C
 "$work/portable" "$work/source.zx"
 "$work/portable" "$work/saved.zx"
 
-for target in c cpp go; do
+for target in c go; do
     output=$work/$target
     "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" --module-path "$std" -o "$output" "$work/app.zi"
@@ -366,15 +366,6 @@ int main(void) { assert(Answer() == 42); return 0; }
 C
         "${CC:-cc}" -std=c11 -I"$include" -I"$output" \
             "$output"/*.c -o "$output/app"
-        "$output/app"
-    elif test "$target" = cpp; then
-        cat > "$output/main.cpp" <<'CPP'
-#include "app.hpp"
-#include <cassert>
-int main() { assert(Answer() == 42); return 0; }
-CPP
-        "${CXX:-c++}" -std=c++17 -I"$include" -I"$output" \
-            "$output"/*.cpp -o "$output/app"
         "$output/app"
     else
         cat > "$output/tree_input_test.go" <<'GO'

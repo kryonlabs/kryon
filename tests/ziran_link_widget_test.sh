@@ -25,11 +25,6 @@ test "$("$ziran" run "$work/saved.zx")" = 0
     "$work/c"/*.c -lm -o "$work/c/app"
 env -u DISPLAY -u WAYLAND_DISPLAY "$work/c/app"
 
-"$ziran" build --target=cpp --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/cpp" "$source"
-"${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$work/cpp" \
-    "$work/cpp"/*.cpp -lm -o "$work/cpp/app"
-env -u DISPLAY -u WAYLAND_DISPLAY "$work/cpp/app"
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/go" "$source"

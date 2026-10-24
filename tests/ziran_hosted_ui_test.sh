@@ -26,7 +26,7 @@ set -- --bind pointer_input:PollPointer=hosted_ui_provider:Pointer \
     "$repo/tests/hosted_ui.zi" "$repo/tests/hosted_ui_provider.zi"
 test "$("$ziran" run "$work/ui.zx")" = 42
 printf '%s\n' 'Hosted portable Text, Image, Button, TextArea, Scroll and TitleBar contracts passed'
-for target in c cpp; do
+for target in c; do
     executable=
     if test "$target" = c; then executable=--exe; fi
     "$ziran" build --target="$target" $executable --root "$repo/tests" \
@@ -34,12 +34,8 @@ for target in c cpp; do
         --define KRYON_HOSTED_UI --entry hosted_ui:main \
         -o "$work/$target" "$repo/tests/hosted_ui.zi" "$repo/tests/hosted_ui_provider.zi"
     binary=$work/$target/hosted_ui
-    if test "$target" = cpp; then
-        binary=$work/cpp/test
-        "${CXX:-c++}" -std=c++17 -I"$work/cpp" "$work/cpp"/*.cpp -lm -o "$binary"
-    fi
     status=0
     "$binary" || status=$?
     test "$status" = 42
 done
-printf '%s\n' 'Hosted widget contracts also passed native C and C++'
+printf '%s\n' 'Hosted widget contracts also passed native C'

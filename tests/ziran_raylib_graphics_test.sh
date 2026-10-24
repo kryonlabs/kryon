@@ -18,24 +18,18 @@ for input in source saved; do
         root=$work/ir
         module=$root/ziran_raylib_graphics_test.zir
     fi
-    for target in c cpp; do
+    for target in c; do
         output=$work/$input-$target
         "$ziran" build --target="$target" --root "$root" \
             --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
             --module-path "$ziran_root/std" -o "$output" "$module"
-        if test "$target" = c; then
             compiler=${CC:-cc}
             standard=c11
             extension=c
-        else
-            compiler=${CXX:-c++}
-            standard=c++17
-            extension=cpp
-        fi
         "$compiler" -std="$standard" -O2 -ffunction-sections -fdata-sections \
             -Wl,--gc-sections -I"$output" "$output"/*."$extension" \
             -lm -o "$output/test"
         "$output/test"
     done
 done
-echo 'Raylib graphics recovery, texture identity, retained frames and eviction passed C/C++ source and saved IR'
+echo 'Raylib graphics recovery, texture identity, retained frames and eviction passed C source and saved IR'

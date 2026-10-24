@@ -393,7 +393,7 @@ the font's outlines with integer arithmetic, so every Ziran target prints the
 same bytes for the same frame, and its text matches the desktop window's. It
 renders two frames and prints the second, for screenshots in documentation and
 CI without a display. `make pixmap-parity-test` builds every template and
-example for C, C++, Go, Rust, Python, and the portable runner and checks that
+example for C, Go, and the portable runner and checks that
 all six images match; `build/pixmap-parity/grid.png` shows them side by side.
 `tools/image_tools.zi`, built for Python, compares two PPM images, converts
 them to PNG, and lays out such grids.

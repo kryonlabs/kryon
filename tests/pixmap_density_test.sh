@@ -6,16 +6,15 @@ work="$repo/build/scratch/pixmap-density"
 mkdir -p "$work"
 source="$repo/tests/pixmap_density_test.zi"
 "$ziran" ir --project --root "$repo/tests" -o "$work/ir" "$source"
-for target in c cpp go; do
+for target in c go; do
     for input in source saved; do
-        executable=--exe; if test "$target" = cpp; then executable=; fi
+        executable=--exe
         package=; if test "$target" = go; then package='--pkg main'; fi
         if test "$input" = source; then
             "$ziran" build --project --root "$repo/tests" --target="$target" --entry pixmap_density_test:main $package $executable -o "$work/$target-$input" "$source"
         else
             "$ziran" build --root "$work/ir" --module-path "$work/ir" --target="$target" --entry pixmap_density_test:main $package $executable -o "$work/$target-$input" "$work/ir/pixmap_density_test.zir"
         fi
-        if test "$target" = cpp; then printf '#include "pixmap_density_test.hpp"\nint main() { return pixmap_density_test_main(); }\n' > "$work/$target-$input/entry.cpp"; "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" "$work/$target-$input"/*.cpp -lm -o "$work/$target-$input/pixmap_density_test"; fi
         if test "$target" = go; then
             test "$(env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$work/$target-$input"/*.go)" = 'Device-density rasterization passed'
         else

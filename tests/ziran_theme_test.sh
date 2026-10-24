@@ -23,7 +23,7 @@ for input in source saved; do
         module_root=$work/ir
         module_dir=$work/ir
     fi
-    for target in c cpp go; do
+    for target in c go; do
         output=$work/$target-$input
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --exe \
@@ -39,13 +39,8 @@ for input in source saved; do
             "$ziran" build --target="$target" --root "$module_root" \
                 --module-path "$module_dir" \
                 --module-path "$ziran_root/std" -o "$output" "$module"
-            if test "$target" = c; then
                 "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
                     "$output"/*.c -o "$output/app"
-            else
-                "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" \
-                    -I"$output" "$output"/*.cpp -o "$output/app"
-            fi
             env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
         fi
     done

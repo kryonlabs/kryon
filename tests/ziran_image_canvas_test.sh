@@ -22,11 +22,6 @@ test "$("$ziran" run "$work/saved.zx")" = 0
     "$work/c"/*.c -lm -o "$work/c/app"
 "$work/c/app"
 
-"$ziran" build --target=cpp --root "$repo/tests" \
-    "$@" -o "$work/cpp" "$source"
-"${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$work/cpp" \
-    "$work/cpp"/*.cpp -lm -o "$work/cpp/app"
-"$work/cpp/app"
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
     "$@" -o "$work/go" "$source"

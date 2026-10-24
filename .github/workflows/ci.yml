@@ -198,11 +198,11 @@ jobs:
         with:
           go-version: '1.25.x'
 
-      - name: Run the behavior tests with sanitized C and C++
+      - name: Run the behavior tests with sanitized C
         run: env -u DISPLAY -u WAYLAND_DISPLAY make sanitize-test TEST_JOBS=4
 
   test-desktop-hosts:
-    name: Desktop, raylib, and libdraw hosts on private Xvfb
+    name: Desktop and raylib hosts on private Xvfb
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -244,21 +244,6 @@ jobs:
         with:
           go-version: '1.25.x'
 
-      - name: Restore plan9port
-        id: plan9port
-        uses: actions/cache@v6
-        with:
-          path: plan9port
-          key: plan9port-${{ runner.os }}-337c6acbfed51d8d9f08598c6cd398f53abcca7d
-
-      - name: Build plan9port for the libdraw host
-        if: steps.plan9port.outputs.cache-hit != 'true'
-        working-directory: .
-        run: |
-          git clone https://github.com/9fans/plan9port.git plan9port
-          git -C plan9port checkout 337c6acbfed51d8d9f08598c6cd398f53abcca7d
-          cd plan9port && ./INSTALL -b
-
       # Each test starts its own display with xvfb-run -a; none may reach a
       # real one.
       - name: Desktop host
@@ -272,6 +257,3 @@ jobs:
           RAYLIB_A="$PWD/build/raylib-ziran/libraylib.a" \
           RAYLIB_LIBS="$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm" \
           make raylib-typeface-test raylib-trace-test raylib-secondary-window-test
-
-      - name: Libdraw host
-        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make libdraw-project-test

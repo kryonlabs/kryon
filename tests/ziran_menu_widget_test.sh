@@ -25,11 +25,6 @@ for form in source saved; do
     "$ziran" build --target=c --exe --entry "$entry" \
         --root "$module_root" --module-path "$repo/src/ui" -o "$output" "$input"
     timeout --kill-after=2s 20s "$output/ziran_menu_widget_test"
-    output=$work/$form-cpp
-    "$ziran" build --target=cpp --entry "$entry" \
-        --root "$module_root" --module-path "$repo/src/ui" -o "$output" "$input"
-    "${CXX:-c++}" -std=c++17 -O1 -I"$output" "$output"/*.cpp -o "$output/run"
-    timeout --kill-after=2s 20s "$output/run"
     "$ziran" build --target=go --pkg main --exe --entry "$entry" "$@" \
         --root "$module_root" --module-path "$repo/src/ui" -o "$work/$form-go" "$input"
     timeout --kill-after=2s 45s env GO111MODULE=off go run "$work/$form-go"/*.go
@@ -37,4 +32,4 @@ for form in source saved; do
         -o "$work/$form.zx" "$input"
     test "$("$ziran" run "$work/$form.zx")" = 0
 done
-echo 'Menu source and saved IR passed C/C++/Go and portable behavior checks'
+echo 'Menu source and saved IR passed C/Go and portable behavior checks'

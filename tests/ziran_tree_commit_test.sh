@@ -51,7 +51,7 @@ for input in source saved; do
         module=$work/ir/app.zir
         module_dir=$work/ir
     fi
-    for target in c cpp go; do
+    for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --root "$work" \
             --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" "$module"
@@ -62,14 +62,6 @@ int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
-            "$output/app"
-        elif test "$target" = cpp; then
-            cat > "$output/main.cpp" <<'CPP'
-#include "app.hpp"
-int main() { return Answer() == 42 ? 0 : 1; }
-CPP
-            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$output" \
-                "$output"/*.cpp -o "$output/app"
             "$output/app"
         else
             cat > "$output/tree_test.go" <<'GO'

@@ -15,7 +15,7 @@ numbers as the platform input phases: start 1, update 2, commit 3, cancel 4.
 `src/backend/composition_queue.zi` implements a single-threaded queue for up
 to 16 pending events. `BeginCompositionFrame`, `SubmitComposition`, and
 `TakeComposition` manage ordering, owned byte copies, and UTF-8 truncation.
-The queue is tested from source and saved `.zir` on C, C++, and Go targets.
+The queue is tested from source and saved `.zir` on C and Go targets.
 Its pointer parameters are not yet supported by the portable VM.
 
 Portable applications bind `composition_input:PollComposition` to an ordinary
@@ -39,7 +39,7 @@ The native Cairo host uses Pango for shaping, bidirectional placement and
 font fallback. Caret measurement uses the full shaped line rather than a
 separately shaped prefix. `tests/native_text_test.sh` checks combining marks,
 Arabic joining, Hebrew caret/hit positions and text longer than the former
-1,024-byte draw limit through source/saved IR and C/C++.
+1,024-byte draw limit through source/saved IR and C.
 
 Logical Left/Right movement is still by grapheme order. Mixed bidirectional
 selection uses a single highlight rectangle, and separately styled preedit

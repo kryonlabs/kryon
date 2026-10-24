@@ -1,6 +1,6 @@
 #!/bin/sh
 # The test driver lets a test process read an app's widget tree and press,
-# type and drag through the app's own input path, natively in C and C++.
+# type and drag through the app's own input path, natively in C.
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -10,7 +10,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_test_driver_test.zi
 
-for target in c cpp; do
+for target in c; do
     "$ziran" build --target="$target" --no-main \
         --root "$repo/tests" --module-path "$repo/src/ui" \
         --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
@@ -18,11 +18,6 @@ for target in c cpp; do
     suffix=c
     compiler=${CC:-cc}
     standard=c11
-    if [ "$target" = cpp ]; then
-        suffix=cpp
-        compiler=${CXX:-c++}
-        standard=c++17
-    fi
     "$compiler" -std="$standard" -O1 -I"$ziran_root/include" -I"$work/$target" \
         "$work/$target"/*."$suffix" -lm -o "$work/$target/run"
     mkdir "$work/$target-files"

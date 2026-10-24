@@ -10,17 +10,12 @@ for input in source saved; do
         root=$work/ir
         module=$root/ziran_android_thread_test.zir
     fi
-    for target in c cpp; do
+    for target in c; do
         output=$work/$input-$target
         "$ziran" build --target="$target" --root "$root" \
             --module-path "$repo/src/backend" -o "$output" "$module"
-        if test "$target" = c; then
             "${CC:-cc}" -std=c11 -O2 -pthread -Wl,--export-dynamic \
                 -I"$output" "$output"/*.c -ldl -o "$output/test"
-        else
-            "${CXX:-c++}" -std=c++17 -O2 -pthread -Wl,--export-dynamic \
-                -I"$output" "$output"/*.cpp -ldl -o "$output/test"
-        fi
         env -u DISPLAY -u WAYLAND_DISPLAY "$output/test"
     done
 done

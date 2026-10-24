@@ -116,7 +116,7 @@ int main(void) {
 }
 C
 
-for target in c cpp go; do
+for target in c go; do
     output=$work/$target
     "$ziran" build --target="$target" --root "$work" \
         --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$output" "$work/app.zi"
@@ -124,11 +124,6 @@ for target in c cpp go; do
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
             "$output"/*.c -o "$output/app"
-        "$output/app"
-    elif test "$target" = cpp; then
-        cp "$work/native_main.h" "$output/main.cpp"
-        "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$output" \
-            "$output"/*.cpp -o "$output/app"
         "$output/app"
     else
         cat > "$output/paint_clip_test.go" <<'GO'

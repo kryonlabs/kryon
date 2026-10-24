@@ -14,18 +14,13 @@ for input in source saved; do
         root=$work/ir
         module=$root/ziran_raylib_retained_test.zir
     fi
-    for target in c cpp; do
+    for target in c; do
         output=$work/$input-$target
         "$ziran" build --target="$target" --root "$root" \
             --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
             --module-path "$ziran_root/std" -o "$output" "$module"
-        if test "$target" = c; then
             "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
                 -Wl,--gc-sections -I"$output" "$output"/*.c -lm -o "$output/test"
-        else
-            "${CXX:-c++}" -std=c++17 -O2 -ffunction-sections -fdata-sections \
-                -Wl,--gc-sections -I"$output" "$output"/*.cpp -lm -o "$output/test"
-        fi
         env -u DISPLAY -u WAYLAND_DISPLAY "$output/test"
     done
 done

@@ -19,20 +19,14 @@ if test "${widget_run_saved:-0}" = 1; then
 fi
 
 if test "${widget_native:-0}" = 1; then
-    for target in c cpp; do
+    for target in c; do
         output=$work/native-$target
         "$ziran" build --target="$target" --root "$repo/tests" \
             --module-path "$repo/src/ui" --module-path "$widget_std" \
             -o "$output" "$source"
-        if test "$target" = c; then
             "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
                 -Wl,--gc-sections -I"$ziran_root/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
-        else
-            "${CXX:-c++}" -std=c++17 -ffunction-sections -fdata-sections \
-                -Wl,--gc-sections -I"$ziran_root/include" -I"$output" \
-                "$output"/*.cpp -o "$output/app"
-        fi
         env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
     done
 fi

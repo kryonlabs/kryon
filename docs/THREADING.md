@@ -1,6 +1,6 @@
 # Native raster workers
 
-Native C and C++ source builds use Ziran's `POSIX_THREADS` capability to
+Native C source builds use Ziran's `POSIX_THREADS` capability to
 parallelize large pixel clears, rounded fills and decoded images by default.
 The renderer reuses `std/parallel_linux` workers; `ZIRAN_PAR_THREADS` selects
 1–64 lanes, with four by default. Small damaged regions stay on their owner to

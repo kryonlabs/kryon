@@ -37,7 +37,7 @@ import a Kryon policy module without selecting any of these hosts.
 
 ## Build and verification
 
-`make` checks the Ziran modules, writes `.zir`, generates C, C++, and Go,
+`make` checks the Ziran modules, writes `.zir`, generates C and Go,
 compiles native objects, and creates a C archive from generated source.
 `make test` exercises the checked library through source, saved `.zir`, and
 portable `.zx` behavior, Canvas2D Wasm effects, and packaged Canvas2D and

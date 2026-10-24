@@ -6,13 +6,10 @@ work="$repo/build/scratch/pixmap-parallel"
 mkdir -p "$work"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 sh "$repo/tests/pixmap_blend_test.sh"
-for target in c cpp; do
-    exe=--exe; if test "$target" = cpp; then exe=; fi
+for target in c; do
+    exe=--exe
     "$ziran" build --project --root "$repo/tests" --target="$target" \
         --entry pixmap_parallel_test:main $exe -o "$work/$target" "$repo/tests/pixmap_parallel_test.zi"
-    if test "$target" = cpp; then
-        "${CXX:-c++}" -std=c++17 -O2 -I"$ziran_root/include" "$work/$target"/*.cpp -pthread -lm -o "$work/$target/pixmap_parallel_test"
-    fi
     binary="$work/$target/pixmap_parallel_test"
     ZIRAN_PAR_THREADS=1 "$binary" > "$work/serial-$target.txt"
     env -u ZIRAN_PAR_THREADS "$binary" > "$work/default-$target.txt"
@@ -23,7 +20,6 @@ for target in c cpp; do
     test "$(tail -1 "$work/serial-$target.txt")" = "$(tail -1 "$work/default-$target.txt")"
     test "$(tail -1 "$work/serial-$target.txt")" = "$(tail -1 "$work/eight-$target.txt")"
 done
-test "$(tail -1 "$work/default-c.txt")" = "$(tail -1 "$work/default-cpp.txt")"
 # Saved portable IR has no native thread capability and keeps identical pixels.
 "$ziran" ir --project --root "$repo/tests" --entry pixmap_parallel_test:main \
     -o "$work/portable-ir" "$repo/tests/pixmap_parallel_test.zi"

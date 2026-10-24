@@ -19,15 +19,11 @@ for form in source saved; do
     "$ziran" bundle --root "$root" $module_args --entry session_validation_test:main \
         -o "$work/$form.zx" "$input"
     test "$("$ziran" run "$work/$form.zx")" = 0
-    for target in c cpp go; do
+    for target in c go; do
         output=$work/$form-$target
         if test "$target" = c; then
             "$ziran" build --target=c --root "$root" $module_args --entry session_validation_test:main --exe -o "$output" "$input"
             "$output/session_validation_test"
-        elif test "$target" = cpp; then
-            "$ziran" build --target=cpp --root "$root" $module_args --entry session_validation_test:main -o "$output" "$input"
-            "${CXX:-c++}" -std=c++17 -O1 -I"$output" -I"$ziran_root/include" "$output"/*.cpp -o "$output/run"
-            "$output/run"
         else
             "$ziran" build --target=go --pkg main --root "$root" $module_args --entry session_validation_test:main --exe -o "$output" "$input"
             env GO111MODULE=off go run "$output"/*.go

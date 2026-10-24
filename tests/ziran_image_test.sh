@@ -114,7 +114,7 @@ for input in source ir; do
         module_dir=$work/ir
         extension=zir
     fi
-    for target in c cpp go; do
+    for target in c go; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
@@ -141,20 +141,6 @@ C
                 "$output/drawing_props.c" "$output/image_props.c" \
                 "$output/image.c" \
                 "$output/use_image.c" "$output/main.c" -o "$output/app"
-            "$output/app"
-        else
-            "$ziran" build --target=cpp --root "$work" \
-                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
-                "$input_dir/use_image.$extension"
-            cat > "$output/main.cpp" <<'CPP'
-#include "use_image.hpp"
-int main() { return Answer() == 42 ? 0 : 1; }
-CPP
-            ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output/geometry.cpp" "$output/math.cpp" "$output/text_align.cpp" \
-                "$output/drawing_props.cpp" "$output/image_props.cpp" \
-                "$output/image.cpp" \
-                "$output/use_image.cpp" "$output/main.cpp" -o "$output/app"
             "$output/app"
         fi
     done

@@ -236,18 +236,6 @@ EOF
         -o "$work/c-$input/app"
     "$work/c-$input/app"
 
-    "$ziran" build --target=cpp --root "$work" \
-        -o "$work/cpp-$input" "$geometry" "$layout" "$layout_props" "$group" "$use_layout"
-    cat > "$work/cpp-$input/main.cpp" <<'EOF'
-#include "use_layout.hpp"
-int main() { return Answer() == 42 ? 0 : 1; }
-EOF
-    ${CXX:-c++} -I"$ziran_include" -I"$work/cpp-$input" \
-        "$work/cpp-$input/geometry.cpp" "$work/cpp-$input/math.cpp" "$work/cpp-$input/layout.cpp" \
-        "$work/cpp-$input/group.cpp" \
-        "$work/cpp-$input/use_layout.cpp" "$work/cpp-$input/main.cpp" \
-        -o "$work/cpp-$input/app"
-    "$work/cpp-$input/app"
 
     "$ziran" build --target=go --pkg main --root "$work" \
         -o "$work/go-$input" "$geometry" "$layout" "$layout_props" "$group" "$use_layout"

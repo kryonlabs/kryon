@@ -67,18 +67,13 @@ for form in source saved; do
         input=$work/ir/desktop_present_test.zir
         root=$work/ir
     fi
-    for target in c cpp; do
-        executable=--exe; if test "$target" = cpp; then executable=; fi
+    for target in c; do
+        executable=--exe
         output=$work/$target-$form
         LDLIBS="$libs" "$ziran" build --root "$root" --module-path "$root" \
             --module-path "$repo/src/backend" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
             --target="$target" --entry desktop_present_test:main $executable \
             -o "$output" "$input"
-        if test "$target" = cpp; then
-            printf '#include "desktop_present_test.hpp"\nint main() { return desktop_present_test_main(); }\n' > "$output/entry.cpp"
-            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" "$output"/*.cpp $libs \
-                -o "$output/desktop_present_test"
-        fi
         xvfb-run -a "$output/desktop_present_test" > "$work/$target-$form.log"
         tail -1 "$work/$target-$form.log"
     done

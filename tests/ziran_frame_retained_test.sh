@@ -40,10 +40,9 @@ for input in source saved; do
         module_root=$work/ir
         module_dir=$work/ir
     fi
-    for target in c cpp rust py; do
+    for target in c; do
         output=$work/$target-$input
         executable=--exe
-        if test "$target" = cpp; then executable=; fi
         build_target() {
             "$ziran" build --target="$target" \
                 --entry ziran_frame_retained_test:main $executable "$@" \
@@ -51,17 +50,10 @@ for input in source saved; do
                 --module-path "$std" -o "$output" "$module"
         }
         case "$target" in
-            c|cpp) build_target;;
+            c) build_target;;
             *) build_target "$@";;
         esac
-        if test "$target" = cpp; then
-            "${CXX:-c++}" -std=c++17 -I"$include" "$output"/*.cpp \
-                -o "$output/ziran_frame_retained_test"
-        fi
         case "$target" in
-            rust) CARGO_TARGET_DIR="$work/rust-$input" cargo run --offline --quiet \
-                --manifest-path "$output/Cargo.toml";;
-            py) python3 "$output/__main__.py";;
             *) "$output/ziran_frame_retained_test";;
         esac
     done

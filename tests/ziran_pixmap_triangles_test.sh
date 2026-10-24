@@ -19,8 +19,8 @@ set -- --bind raster_triangles:RasterTriangles=pixmap:RasterTriangles \
     --bind paint_queue:RasterImage=pixmap:RasterImage \
     --bind paint_queue:RasterImageMesh=pixmap:RasterImageMesh
 "$ziran" ir --project --root "$repo/tests" -o "$work/ir" "$source"
-for target in ${PIXMAP_TRIANGLE_TARGETS:-c cpp go}; do
-    executable=--exe; if test "$target" = cpp; then executable=; fi
+for target in ${PIXMAP_TRIANGLE_TARGETS:-c go}; do
+    executable=--exe
     if test "$target" = go; then
         "$ziran" build --project --root "$repo/tests" --target=go \
             --entry pixmap_triangles_test:main "$@" --pkg main --exe \
@@ -29,10 +29,6 @@ for target in ${PIXMAP_TRIANGLE_TARGETS:-c cpp go}; do
         "$ziran" build --project --root "$repo/tests" --target="$target" \
             --entry pixmap_triangles_test:main $executable \
             -o "$work/$target" "$source"
-    fi
-    if test "$target" = cpp; then
-        "${CXX:-c++}" -std=c++17 -O2 -I"$ziran_root/include" "$work/$target"/*.cpp \
-            -lm -o "$work/$target/pixmap_triangles_test"
     fi
     if test "$target" = go; then
         test "$(GO111MODULE=off go run "$work/$target"/*.go | tail -1)" = 0

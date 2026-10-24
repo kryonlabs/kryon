@@ -1,9 +1,8 @@
 #import "file"
 #import "pixmap_text"
 
-// Image checks for Kryon screenshots, written in Ziran and run as Python
-// (zi2py), so they need nothing beyond python3. Commands come one per line on
-// standard input, paths without spaces:
+// Image checks for Kryon screenshots, written in Ziran and compiled to C.
+// Commands come one per line on standard input, paths without spaces:
 //
 //   compare A.ppm B.ppm DIFF.ppm   same, or how many pixels differ and where;
 //                                  DIFF.ppm dims A and marks changes in red

@@ -30,12 +30,6 @@ for form in source saved; do
         --module-path "$module_path" --module-path "$ziran_root/std" \
         --exe -o "$work/$form-c" "$input"
     timeout 15 "$work/$form-c/ziran_paint_text_large_test"
-    "$ziran" build --target=cpp --entry "$entry" --root "$module_root" \
-        --module-path "$module_path" --module-path "$ziran_root/std" \
-        -o "$work/$form-cpp" "$input"
-    "${CXX:-c++}" -std=c++17 -O1 -I"$work/$form-cpp" "$work/$form-cpp"/*.cpp \
-        -o "$work/$form-cpp/run"
-    timeout 15 "$work/$form-cpp/run"
     "$ziran" build --target=go --pkg main --entry "$entry" "$@" \
         --root "$module_root" --module-path "$module_path" \
         --module-path "$ziran_root/std" --exe -o "$work/$form-go" "$input"

@@ -38,13 +38,6 @@ run([os.environ.get("CC", "cc"), "-std=c11", "-Wall", "-Wextra", "-Werror",
      "-Wno-unused-function", "-pthread", *includes, *files, "-o", WORK / "native-test"])
 run([WORK / "native-test"])
 
-cpp = WORK / "cpp"
-run([BIN / "zi2cpp", "--entry", "android_viewport_policy:main", "--root", ROOT / "tests",
-     "--module-path", ROOT / "src/backend", "--module-path", ZIRAN / "std",
-     "-o", cpp, ROOT / "tests/android_viewport_policy.zi"])
-run([os.environ.get("CXX", "c++"), "-std=c++17", "-I" + str(ZIRAN / "include"),
-     "-I" + str(cpp), *sorted(cpp.glob("*.cpp")), "-o", WORK / "cpp-test"])
-run([WORK / "cpp-test"])
 run([BIN / "ziran", "bundle", "--root", ROOT / "tests", "--module-path", ROOT / "src/backend",
      "--module-path", ZIRAN / "std", "--entry", "android_viewport_policy:PolicyCheck",
      "-o", WORK / "policy.zx", ROOT / "tests/android_viewport_policy.zi"])

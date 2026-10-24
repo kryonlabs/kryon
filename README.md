@@ -29,7 +29,7 @@ with `ziran pkg path ziran`. To build against a local Ziran checkout, name it
 in an ignored `ziran.local.toml` `[overrides]` table or set `ZIRAN_ROOT`.
 
 `make` checks the modules listed in [src/ui/modules.txt](src/ui/modules.txt),
-writes checked `.zir`, generates C, C++, and Go, and compiles the native outputs
+writes checked `.zir`, generates C and Go, and compiles the native outputs
 from Ziran source.
 The current C archive is `build/ziran/libkryon.a`; C headers are generated
 from Ziran declarations into `build/ziran/c/`. Kryon has no handwritten
@@ -68,7 +68,7 @@ headless guest. Its build uses 512 MiB and allows 900 seconds; override those
 with `KRYON_PLAN9_MEMORY` and `KRYON_PLAN9_TIMEOUT` when needed.
 `TAIJI_DIR=/path/to/taiji make pixmap-measure-plan9-test` runs the text-unit
 and width oracle through the same native guest. Both oracles also run from
-source and saved IR on C, C++, Go, Rust, Python and portable bundles.
+source and saved IR on C, Go and portable bundles.
 `make sanitize-test` runs the behavior tests with AddressSanitizer and
 UndefinedBehaviorSanitizer. Keep one-off experiments in `build/scratch/`;
 `make clean-scratch` removes that and any other `build/` entry that no target

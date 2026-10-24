@@ -8,7 +8,7 @@ for input in "$source" "$work/ir/style_snapshot_behavior.zir"; do
         --module-path "$ziran_root/std" --entry style_snapshot_behavior:Answer \
         -o "$work/style.zx" "$input"
     test "$("$ziran" run "$work/style.zx")" = 42
-    for target in c cpp go; do
+    for target in c go; do
         output=$work/$target
         "$ziran" build "--target=$target" --root "$repo/tests" \
             --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
@@ -20,14 +20,6 @@ for input in "$source" "$work/ir/style_snapshot_behavior.zir"; do
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
                 "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" "$output"/*.c -o "$work/run"
-                "$work/run"
-                ;;
-            cpp)
-                cat > "$output/main.cpp" <<'CPP'
-#include "style_snapshot_behavior.hpp"
-int main() { return Answer() == 42 ? 0 : 1; }
-CPP
-                "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" -I"$output" "$output"/*.cpp -o "$work/run"
                 "$work/run"
                 ;;
             go)

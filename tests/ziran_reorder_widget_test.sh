@@ -37,13 +37,3 @@ test "$("$tool_dir/ziran" run "$work/saved.zx")" = 0
     "$work/c"/*.c \
     -o "$work/test"
 env -u DISPLAY -u WAYLAND_DISPLAY "$work/test"
-
-"$tool_dir/ziran" build --target=cpp --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
-    -o "$work/cpp" \
-    "$repo/tests/reorder_widget_behavior.zi"
-"${CXX:-c++}" -std=c++17 -ffunction-sections -fdata-sections \
-    -Wl,--gc-sections -I"$ziran_root/include" -I"$work/cpp" \
-    "$work/cpp"/*.cpp \
-    -o "$work/test-cpp"
-env -u DISPLAY -u WAYLAND_DISPLAY "$work/test-cpp"

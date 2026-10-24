@@ -49,12 +49,12 @@ for label, provided in [('partial', partial), ('legacy', legacy)]:
     for mode in ['source', 'saved']:
         inputs = paths if mode == 'source' else ['--root', case / 'ir', '--module-path', case / 'ir']
         module = case / 'codec_case.zi' if mode == 'source' else case / 'ir/codec_case.zir'
-        for target, compiler, standard in [('c', 'CC', 'c11'), ('cpp', 'CXX', 'c++17')]:
+        for target, compiler, standard in [('c', 'CC', 'c11')]:
             native = case / (target + '-' + mode)
             run([ziran, 'build', '--target=' + target, '--entry', 'codec_case:main',
                  *inputs, '-o', native, module])
-            suffix = '.c' if target == 'c' else '.cpp'
-            command = shlex.split(os.environ.get(compiler, 'cc' if target == 'c' else 'c++'))
+            suffix = '.c'
+            command = shlex.split(os.environ.get(compiler, 'cc'))
             run([*command, '-O2', '-std=' + standard, '-ffunction-sections', '-fdata-sections',
                  '-I' + str(ziran_root / 'include'), '-I' + str(native),
                  *sorted(native.glob('*' + suffix)), '-Wl,--gc-sections', '-lm',
@@ -74,4 +74,4 @@ result = subprocess.run([sys.executable, str(generator), '--source',
                          str(repo / 'tests/widget_codec_leaf.zi'), '--root', 'CodecLeaf',
                          '--uses', str(partial), '--output', str(partial)], text=True, capture_output=True)
 assert result.returncode != 0 and partial.read_bytes() == before
-print('Partial and legacy codec providers: C/C++ source/saved IR, nested slices, UTF-8, reordered fields and invalid data passed')
+print('Partial and legacy codec providers: C source/saved IR, nested slices, UTF-8, reordered fields and invalid data passed')

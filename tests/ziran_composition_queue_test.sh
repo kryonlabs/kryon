@@ -15,7 +15,7 @@ for input in source saved; do
         root=$work/ir
         path=$work/ir
     fi
-    for target in c cpp go; do
+    for target in c go; do
         output=$work/$input-$target
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$root" \
@@ -27,10 +27,6 @@ for input in source saved; do
         if test "$target" = c; then
             "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
                 "$output"/*.c -o "$output/app"
-            "$output/app"
-        elif test "$target" = cpp; then
-            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" \
-                -I"$output" "$output"/*.cpp -o "$output/app"
             "$output/app"
         else
             cat > "$output/main.go" <<'GO'

@@ -15,20 +15,18 @@ set -- --bind raster:RasterLine=pixmap:RasterLine \
     --bind paint_queue:RasterImage=pixmap:RasterImage \
     --bind paint_queue:RasterImageMesh=pixmap:RasterImageMesh
 "$ziran" ir --project --root "$repo/tests" -o "$work/ir" "$source"
-for target in c cpp go; do
-    executable=--exe; if test "$target" = cpp; then executable=; fi
+for target in c go; do
+    executable=--exe
     package=; if test "$target" = go; then package='--pkg main'; fi
     if test "$target" = go; then
         "$ziran" build --project --root "$repo/tests" --target="$target" --entry pixmap_frame_test:main "$@" $package $executable -o "$work/$target" "$source"
     else
         "$ziran" build --project --root "$repo/tests" --target="$target" --entry pixmap_frame_test:main $executable -o "$work/$target" "$source"
     fi
-    if test "$target" = cpp; then
-        rm -f "$work/$target/entry.cpp"
-        "${CXX:-c++}" -std=c++17 -O2 -I"$ziran_root/include" "$work/$target"/*.cpp -lm -o "$work/$target/pixmap_frame_test"
-    fi
     if test "$target" = go; then GO111MODULE=off go run "$work/$target"/*.go
-    else "$work/$target/pixmap_frame_test"; fi
+    else
+        "$work/$target/pixmap_frame_test"
+    fi
 done
 "$ziran" bundle --project --root "$repo/tests" --entry pixmap_frame_test:main "$@" -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" --entry pixmap_frame_test:main "$@" -o "$work/saved.zx" "$work/ir/pixmap_frame_test.zir"

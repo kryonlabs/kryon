@@ -42,13 +42,12 @@ env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 for form in source saved; do
     input=$source
     if test "$form" = saved; then input=$work/ir/android_rotation_pixels.zir; fi
-    for target in c cpp; do
+    for target in c; do
         output=$work/$form-$target
         "$ziran" build --target="$target" --define ANDROID_BUILD --root "$repo/tests" \
             --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
             --module-path "$ziran_root/std" -o "$output" "$input"
-        if test "$target" = c; then compiler=${CC:-cc}; standard=c11; extension=c
-        else compiler=${CXX:-c++}; standard=c++17; extension=cpp; fi
+            compiler=${CC:-cc}; standard=c11; extension=c
         "$compiler" -std="$standard" -O1 -fPIC -rdynamic \
             -ffunction-sections -fdata-sections -Wl,--gc-sections \
             -Wl,--wrap=GetWindowHandle -Wl,--version-script="$repo/cmake/libmain.map.txt" \
@@ -59,4 +58,4 @@ for form in source saved; do
             -s '-screen 0 900x900x24' "$output/test"
     done
 done
-echo 'Android portrait/landscape/portrait: native pixels, projection, scale and exported CORE passed C/C++ source and saved IR'
+echo 'Android portrait/landscape/portrait: native pixels, projection, scale and exported CORE passed C source and saved IR'

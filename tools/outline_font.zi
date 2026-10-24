@@ -4,12 +4,11 @@
 // TrueType fonts, for the pixmap host to rasterize. Reads one .ttf path per
 // line on standard input and prints the module on standard output:
 //
-//   printf '%s\n' primary.ttf fallback.ttf | python3 build/tools/outline_font
+//   printf '%s\n' primary.ttf fallback.ttf | build/tools/outline-font-c/outline_font
 //
 // The first font supplies every character it maps. Later fonts fill in
 // symbols it lacks -- punctuation, arrows, math, shapes, dingbats -- scaled
-// to the first font's units. Built for Python with zi2py, like the other
-// image tools here.
+// to the first font's units. Compile the native C tool with make pixmap-font.
 
 MaxFonts :: 8;
 MaxGlyphs :: 8192;

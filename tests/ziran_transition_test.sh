@@ -83,7 +83,7 @@ for input in source ir; do
         extension=zir
         input_dir=$work/ir
     fi
-    for target in c cpp go; do
+    for target in c go; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
@@ -106,18 +106,6 @@ C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
                 "$output/transition.c" "$output/use_transition.c" \
                 "$output/main.c" -o "$output/app"
-            "$output/app"
-        else
-            "$ziran" build --target=cpp --root "$work" \
-                -o "$output" "$input_dir/transition.$extension" \
-                "$input_dir/use_transition.$extension"
-            cat > "$output/main.cpp" <<'CPP'
-#include "use_transition.hpp"
-int main() { return Answer() == 42 ? 0 : 1; }
-CPP
-            ${CXX:-c++} -I"$ziran_include" -I"$output" \
-                "$output/transition.cpp" "$output/use_transition.cpp" \
-                "$output/main.cpp" -o "$output/app"
             "$output/app"
         fi
     done

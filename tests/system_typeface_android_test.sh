@@ -10,14 +10,13 @@ source=$repo/tests/system_typeface_android_test.zi
 for form in source saved; do
     input=$source
     if test "$form" = saved; then input=$work/ir/system_typeface_android_test.zir; fi
-    for target in c cpp; do
+    for target in c; do
         output=$work/$form-$target
         "$ziran" build --target="$target" --root "$repo/tests" --module-path "$repo/src/backend" --module-path "$ziran_root/std" -o "$output" "$input"
-        if test "$target" = c; then compiler=${CC:-cc}; standard=c11; extension=c
-        else compiler=${CXX:-c++}; standard=c++17; extension=cpp; fi
+            compiler=${CC:-cc}; standard=c11; extension=c
         "$compiler" -std="$standard" -O1 -I"$output" "$output"/*."$extension" -Wl,--wrap=dlopen -Wl,--wrap=dlsym -ldl -o "$output/test"
         "$output/test"
         KRYON_TEST_OLD_ANDROID=1 "$output/test"
     done
 done
-echo 'Android font selection, UTF-16, collection faces, cleanup and older API fallback passed C/C++ source and saved IR'
+echo 'Android font selection, UTF-16, collection faces, cleanup and older API fallback passed C source and saved IR'

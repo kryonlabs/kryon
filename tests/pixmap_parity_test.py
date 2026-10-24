@@ -3,9 +3,9 @@
 Each program -- the project templates, created with `kryon new` as a user
 would, and the examples in examples/ -- runs on the headless pixmap host,
 which rasterizes with integer arithmetic and prints a PPM image. It is
-built from one saved IR for C, C++, Go, Rust, Python, and the portable
+built from one saved IR for C, Go, and the portable
 runner (zx), and every target's image must equal C's. On a mismatch the
-image tools in tools/image_tools.zi, built for Python, report where pixels
+image tools in tools/image_tools.zi, compiled to C, report where pixels
 differ and write a red diff.
 
 The contact sheet build/pixmap-parity/grid.png shows every program once,
@@ -27,10 +27,10 @@ import sys
 import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from templates_test import KRYON, ROOT, ZIRAN_ROOT, environment, local  # noqa: E402
+from templates_test import KRYON, ROOT, ZIRAN_ROOT, environment  # noqa: E402
 
 ZIRAN = os.environ.get("ZIRAN_BIN") or str(ZIRAN_ROOT / "build/bin/ziran")
-TARGETS = ["c", "cpp", "go", "rust", "py", "zx"]
+TARGETS = ["c", "go", "zx"]
 TEMPLATES = ["app", "tui", "pages", "web"]
 EXAMPLES = ["hello", "text_hello", "image_demo"]
 # Test-only programs in tests/pixmap_parity, built like the examples.
@@ -70,8 +70,8 @@ class Program:
 def template_program(work, name, env):
     """A template, created with kryon new, and its pixmap host's IR."""
     project = work / f"demo-{name}"
-    run([KRYON, "new", project.name, "--template", name], work, env)
-    local(project)
+    run([KRYON, "new", project.name, "--template", name,
+         "--overrides", work / "overrides.toml"], work, env)
     lock = (project / "ziran.lock").read_text()
     identity = next(package["id"] for package in json.loads(lock)["packages"]
                     if package["name"] == "kryon")
@@ -135,28 +135,11 @@ def render(program, target, work, env):
         run([ZIRAN, "build", "--target=c", "--exe", *common, "-o", out, program.source()],
             work, env)
         image = run([out / program.module], work, env)
-    elif target == "cpp":
-        run([ZIRAN, "build", "--target=cpp", *common, "-o", out, program.source()], work, env)
-        sources = sorted(out.glob("*.cpp"))
-        run([os.environ.get("CXX", "c++"), "-std=c++17", "-O1", f"-I{ZIRAN_ROOT / 'include'}",
-             f"-I{out}", *sources, "-o", out / "program"], work, env)
-        image = run([out / "program"], work, env)
     elif target == "go":
         run([ZIRAN, "build", "--target=go", "--pkg", "main", "--exe", *binds, *common,
              "-o", out, program.source()], work, env)
         run(["go", "build", "-o", "program", "."], out, {**env, "GO111MODULE": "off"})
         image = run([out / "program"], work, env)
-    elif target == "rust":
-        run([ZIRAN, "build", "--target=rust", "--exe", *binds, *common, "-o", out,
-             program.source()], work, env)
-        target_dir = work / f"rust-target-{program.name}"
-        run(["cargo", "build", "--quiet", "--release", "--manifest-path", out / "Cargo.toml"],
-            work, {**env, "CARGO_TARGET_DIR": str(target_dir)})
-        image = run([target_dir / "release/ziran_generated"], work, env)
-    elif target == "py":
-        run([ZIRAN, "build", "--target=py", "--exe", *binds, *common, "-o", out,
-             program.source()], work, env)
-        image = run(["python3", out], work, env)
     elif target == "zx":
         bundle = work / f"{program.name}.zx"
         run([ZIRAN, "bundle", *binds, *common, "-o", bundle, program.source()], work, env)
@@ -171,16 +154,16 @@ def render(program, target, work, env):
 
 
 def image_tools(work, env):
-    """tools/image_tools.zi built for Python."""
+    """tools/image_tools.zi compiled to C."""
     out = work / "image_tools"
-    run([ZIRAN, "build", "--target=py", "--exe", "--root", ROOT / "tools",
+    run([ZIRAN, "build", "--target=c", "--exe", "--root", ROOT / "tools",
          "--module-path", ROOT / "src/backend", "--module-path", ZIRAN_ROOT / "std",
          "--entry", "image_tools:main", "-o", out, ROOT / "tools/image_tools.zi"], work, env)
-    return out
+    return out / "image_tools"
 
 
 def tool_session(tools, commands, env):
-    result = subprocess.run(["python3", tools], input="\n".join(commands) + "\n",
+    result = subprocess.run([str(tools)], input="\n".join(commands) + "\n",
                             text=True, capture_output=True, env=env, timeout=3600)
     if result.returncode != 0:
         raise RuntimeError(result.stderr)

@@ -22,23 +22,15 @@ for input in source saved; do
         printf '%s portable tree label check returned %s\n' "$input" "$result" >&2
         exit 1
     fi
-    for target in ${TREE_LABELS_TARGETS:-c cpp go rust py}; do
+    for target in ${TREE_LABELS_TARGETS:-c go}; do
         output=$work/$input-$target
         executable=--exe; package=
-        if test "$target" = cpp; then executable=; fi
         if test "$target" = go; then package='--pkg main'; fi
         "$ziran" build --root "$module_root" --module-path "$module_dir" \
             --module-path "$ziran_root/std" --entry tree_labels_test:main \
             --target="$target" $executable $package -o "$output" "$module"
-        if test "$target" = cpp; then
-            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" "$output"/*.cpp -lm \
-                -o "$output/tree_labels_test"
-        fi
         case "$target" in
             go) GO111MODULE=off go run "$output"/*.go;;
-            py) python3 "$output/__main__.py";;
-            rust) CARGO_TARGET_DIR="$work/rust-$input" cargo run --offline --quiet \
-                --manifest-path "$output/Cargo.toml";;
             *) "$output/tree_labels_test";;
         esac
     done

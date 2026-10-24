@@ -15,19 +15,13 @@ for form in source saved; do
         source="$work/ir/desktop_cadence_test.zir"
         source_root="$work/ir"
     fi
-    for target in c cpp go; do
+    for target in c go; do
         executable=--exe
         package=
-        if test "$target" = cpp; then executable=; fi
         if test "$target" = go; then package='--pkg main'; fi
         "$ziran" build --root "$source_root" --module-path "$repo/src/backend" \
             --module-path "$work/ir" --target="$target" $executable $package \
             --entry desktop_cadence_test:main -o "$work/$form-$target" "$source"
-        if test "$target" = cpp; then
-            printf '#include "desktop_cadence_test.hpp"\nint main() { return desktop_cadence_test_main(); }\n' > "$work/$form-$target/entry.cpp"
-            "${CXX:-c++}" -std=c++17 -I"$ziran_root/include" "$work/$form-$target"/*.cpp \
-                -o "$work/$form-$target/desktop_cadence_test"
-        fi
         if test "$target" = go; then
             env GO111MODULE=off go run "$work/$form-$target"/*.go
         else

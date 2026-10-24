@@ -387,7 +387,7 @@ for input in source saved; do
     fi
     "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$standard" \
         --entry app:Answer -o "$work/$input.zx" "$source"
-    for target in c cpp go; do
+    for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
             --root "$root" --module-path "$module_path" --module-path "$standard" \
@@ -396,11 +396,6 @@ for input in source saved; do
             cp "$work/native_main.h" "$output/main.c"
             "${CC:-cc}" -std=c11 -I"$include" \
                 -I"$output" "$output"/*.c -o "$output/app"
-            "$output/app"
-        elif test "$target" = cpp; then
-            cp "$work/native_main.h" "$output/main.cpp"
-            "${CXX:-c++}" -std=c++17 -I"$include" \
-                -I"$output" "$output"/*.cpp -o "$output/app"
             "$output/app"
         else
             cat > "$output/scroll_test.go" <<'GO'
