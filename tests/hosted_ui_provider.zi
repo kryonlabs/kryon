@@ -76,6 +76,19 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
     return TabBarResult.{.selected_index = props.selected_index + 1}
 }
 
+#import "segmented_control_props"
+
+#program_export "SegmentedControlHostedHost"
+SegmentedControl :: (session: Session, props: SegmentedControlProps,
+    options: []SegmentOption) -> SegmentedControlResult {
+    if session.slot != 4 || options.count != 2 || options[1].label != "Calendar" ||
+    !props.has_selection {
+        return SegmentedControlResult.{}
+    }
+    return SegmentedControlResult.{.selected_index = props.selected_index + 1,
+        .clicked_index = props.selected_index + 1, .changed = true}
+}
+
 #import "title_bar_props"
 #import "dropdown_props"
 

@@ -44,7 +44,8 @@ KRYON_MODULES = ['session', 'input_protocol', 'geometry', 'drawing_props', 'text
                  'scroll', 'scroll_props', 'semantic', 'text_align', 'checkbox_props',
                  'toggle_props', 'tab_bar_props', 'box_props', 'press_props', 'spinbox_props',
                  'time_picker_props', 'dropdown', 'dropdown_props', 'title_bar_props',
-                 'modal', 'modal_props', 'context_menu_widget', 'svg_icon_props', 'tile_map']
+                 'modal', 'modal_props', 'context_menu_widget', 'svg_icon_props', 'tile_map',
+                 'segmented_control_props']
 KRYON_ROOTS = ['PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
                'ScrollProps', 'ScrollResult', 'Session', 'CheckboxProps', 'CheckboxValueResult',
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
@@ -53,7 +54,8 @@ KRYON_ROOTS = ['PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAr
                'TitleBarProps', 'TitleBarResult', 'DropdownProps', 'DropdownResult', 'DropdownOption', 'ModalFrameProps',
                'ModalFrameResult', 'ActionModalProps', 'ActionModalAction', 'ActionModalResult',
                'ContextMenuProps', 'ContextMenuItem', 'ContextMenuResult', 'SvgIconProps',
-               'TileMapProps', 'TileMapResult']
+               'TileMapProps', 'TileMapResult', 'SegmentedControlProps', 'SegmentedControlResult',
+               'SegmentOption']
 
 
 # Operations used only by generated consumers and test fixtures. Their schemas

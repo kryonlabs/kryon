@@ -15,6 +15,7 @@
 #import "scroll_props"
 #import "text_input_props"
 #import "tab_bar_props"
+#import "segmented_control_props"
 #import "press_props"
 #import "spinbox_props"
 #import "time_picker_props"
@@ -94,6 +95,10 @@ svg_icon_codec: WidgetSvgIconPropsCodec;
 time_picker_result: WidgetTimePickerResultCodec;
 tab_codecs: [40]WidgetTabCodec;
 tab_values: [40]HostValue;
+segmented_codec: WidgetSegmentedControlPropsCodec;
+segmented_result: WidgetSegmentedControlResultCodec;
+segment_codecs: [40]WidgetSegmentOptionCodec;
+segment_values: [40]HostValue;
 title_bar_codec: WidgetTitleBarPropsCodec;
 dropdown_codec: WidgetDropdownPropsCodec;
 dropdown_result: WidgetDropdownResultCodec;
@@ -430,6 +435,34 @@ main :: () -> s32 {
     if Call("dropdown_widget", "DropdownHostedHost", arguments[:], *result) != 0 { return 75 }
     options[0].image.texture.id = cast(u32)0
     option_values[0] = WidgetEncodeDropdownOption(options[0], *option_codecs[0])
+    // A segmented control answers with its selection and holds at most 32
+    // options.
+    segments: [40]SegmentOption
+    index = 0
+    while index < 40 {
+        segments[index].label = "Segment"
+        segment_values[index] = WidgetEncodeSegmentOption(segments[index], *segment_codecs[index])
+        index += 1
+    }
+    arguments[1] = WidgetEncodeSegmentedControlProps(SegmentedControlProps.{.key = cast(u64)316,
+            .bounds = Rectangle.{0.0, 0.0, 240.0, 40.0}, .height = 40, .selected_index = 1,
+            .has_selection = true}, *segmented_codec)
+    arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]SegmentOption"),
+        .length = cast(usize)2, .elements = *segment_values[0]}
+    if Call("segmented_control_widget", "SegmentedControlHostedHost", arguments[:], *result) != 1 ||
+    !WidgetValidSegmentedControlResult(result) ||
+    WidgetDecodeSegmentedControlResult(result, *segmented_result).selected_index != 1 {
+        return 104
+    }
+    arguments[2].length = cast(usize)33
+    if Call("segmented_control_widget", "SegmentedControlHostedHost", arguments[:], *result) != 0 {
+        return 105
+    }
+    arguments[2].type_name = HostTextData("[]DropdownOption")
+    arguments[2].length = cast(usize)2
+    if Call("segmented_control_widget", "SegmentedControlHostedHost", arguments[:], *result) != 0 {
+        return 106
+    }
     arguments[1] = WidgetEncodeTitleBarProps(TitleBarProps.{.key = cast(u64)15, .title = "Lumi",
             .bounds = Rectangle.{0.0, 0.0, 300.0, 40.0}, .trailing_width = 100}, *title_bar_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),

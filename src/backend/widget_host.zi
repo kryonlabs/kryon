@@ -22,6 +22,8 @@
 #import "text_field_widget"
 #import "tab_bar_widget"
 #import "tab_bar_props"
+#import "segmented_control_widget"
+#import "segmented_control_props"
 #import "box_widget"
 #import "tile_map"
 #import "box_props"
@@ -95,6 +97,10 @@ widget_tabs: [WIDGET_HOST_TAB_LIMIT]Tab;
 widget_tab_codecs: [WIDGET_HOST_TAB_LIMIT]WidgetTabCodec;
 widget_tab_bar_codec: WidgetTabBarPropsCodec;
 widget_tab_bar_result_codec: WidgetTabBarResultCodec;
+widget_segments: [WIDGET_HOST_OPTION_LIMIT]SegmentOption;
+widget_segment_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetSegmentOptionCodec;
+widget_segmented_codec: WidgetSegmentedControlPropsCodec;
+widget_segmented_result_codec: WidgetSegmentedControlResultCodec;
 widget_box_codec: WidgetBoxPropsCodec;
 widget_svg_icon_codec: WidgetSvgIconPropsCodec;
 widget_press_codec: WidgetPressPropsCodec;
@@ -137,6 +143,7 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "tree") && function == "EndHostedHost") ||
     (ModuleName(module, "text_field_widget") && function == "TextFieldHostedHost") ||
     (ModuleName(module, "tab_bar_widget") && function == "TabBarHostedHost") ||
+    (ModuleName(module, "segmented_control_widget") && function == "SegmentedControlHostedHost") ||
     (ModuleName(module, "checkbox_widget") && function == "CheckboxHostedHost") ||
     (ModuleName(module, "toggle_widget") && function == "ToggleHostedHost") ||
     (ModuleName(module, "box_widget") && function == "BoxHostedHost") ||
@@ -299,6 +306,9 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "TabBarHostedHost" && ModuleName(owner, "tab_bar_widget") && count == 3 {
         return WidgetHostTabBar(session, arguments, result)
+    }
+    if name == "SegmentedControlHostedHost" && ModuleName(owner, "segmented_control_widget") && count == 3 {
+        return WidgetHostSegmentedControl(session, arguments, result)
     }
     if name == "DropdownHostedHost" && ModuleName(owner, "dropdown_widget") && count == 3 {
         return WidgetHostDropdown(session, arguments, result)
@@ -490,6 +500,31 @@ WidgetHostTabBar :: (session: Session, arguments: *HostValue, result: *HostValue
     selected := TabBar(session, WidgetDecodeTabBarProps(arguments[1], *widget_tab_bar_codec),
         widget_tabs[:cast(s32)values.length])
     result.* = WidgetEncodeTabBarResult(selected, *widget_tab_bar_result_codec)
+    return 1
+}
+
+// A segmented control holds at most 32 options.
+WidgetHostSegmentedControl :: (session: Session, arguments: *HostValue, result: *HostValue) -> s32 {
+    if !WidgetValidSegmentedControlProps(arguments[1]) {
+        return 0
+    }
+    values := arguments[2]
+    if values.kind != cast(s32)HostSlice || TextFromCString(values.type_name) != "[]SegmentOption" ||
+    values.length > cast(usize)WIDGET_HOST_OPTION_LIMIT || (values.length > cast(usize)0 && values.elements == null) {
+        return 0
+    }
+    index: usize = 0
+    while index < values.length {
+        if !WidgetValidSegmentOption(values.elements[index]) {
+            return 0
+        }
+        widget_segments[index] = WidgetDecodeSegmentOption(values.elements[index],
+            *widget_segment_codecs[index])
+        index += cast(usize)1
+    }
+    chosen := SegmentedControl(session, WidgetDecodeSegmentedControlProps(arguments[1],
+        *widget_segmented_codec), widget_segments[:cast(s32)values.length])
+    result.* = WidgetEncodeSegmentedControlResult(chosen, *widget_segmented_result_codec)
     return 1
 }
 

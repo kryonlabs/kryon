@@ -17,6 +17,7 @@ set -- --bind pointer_input:PollPointer=hosted_ui_provider:Pointer \
     --bind box_widget:BoxHostedHost=hosted_ui_provider:Box \
     --bind text_field_widget:TextFieldHostedHost=hosted_ui_provider:TextField \
     --bind tab_bar_widget:TabBarHostedHost=hosted_ui_provider:TabBar \
+    --bind segmented_control_widget:SegmentedControlHostedHost=hosted_ui_provider:SegmentedControl \
     --bind title_bar_widget:TitleBarHostedHost=hosted_ui_provider:TitleBar \
     --bind dropdown_widget:DropdownHostedHost=hosted_ui_provider:Dropdown \
     --bind modal_widget:ActionModalHostedHost=hosted_ui_provider:ActionModal
@@ -25,7 +26,7 @@ set -- --bind pointer_input:PollPointer=hosted_ui_provider:Pointer \
     --entry hosted_ui:main -o "$work/ui.zx" \
     "$repo/tests/hosted_ui.zi" "$repo/tests/hosted_ui_provider.zi"
 test "$("$ziran" run "$work/ui.zx")" = 42
-printf '%s\n' 'Hosted portable Text, Image, Button, TextArea, Scroll and TitleBar contracts passed'
+printf '%s\n' 'Hosted portable Text, Image, Button, TextArea, Scroll, SegmentedControl and TitleBar contracts passed'
 for target in c; do
     executable=
     if test "$target" = c; then executable=--exe; fi

@@ -203,6 +203,11 @@ again every frame. A host that draws textures registers
 the same pixels; raylib's `OpenRaylib` does, and a raylib host that opens its
 own window calls `RaylibUseIconTextures()` after `InitWindow`.
 
+A bundle draws a row of choices, such as a week or calendar view, with
+`SegmentedControl(session, props, options)` from
+[`segmented_control_widget`](../src/ui/segmented_control_widget.zi); its host
+draws it as it draws its own, with up to 32 options.
+
 [`open_uri`](../src/backend/open_uri.zi) opens a link with the platform's
 handler: `OpenUri(uri)` passes it unchanged to the desktop opener, Windows'
 shell, an Android `ACTION_VIEW` intent or a new browser tab,
