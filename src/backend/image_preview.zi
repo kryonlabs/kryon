@@ -187,97 +187,74 @@ ImagePreviewPixels :: (pixels: *u8, width: s32, height: s32, channels: s32, max_
 
 // Scales the pixels down to output_width by output_height RGB pixels, each
 // the average of the source pixels it covers. Transparent pixels are laid
-// over white, since a JPEG has no transparency.
+// over white, since a JPEG has no transparency. Output rows are made in
+// parallel; each output pixel sums its own block of source pixels.
 ImagePreviewAverage :: (pixels: *u8, width: s32, height: s32, channels: s32, output: *u8,
     output_width: s32, output_height: s32) -> bool {
     if output_width > width || output_height > height {
         return false
     }
-    columns := cast(*s32)PreviewAllocate(cast(usize)width * 4)
-    widths := cast(*s64)PreviewAllocate(cast(usize)output_width * 8)
-    sums := cast(*s64)PreviewAllocate(cast(usize)output_width * 3 * 8)
-    if columns == null || widths == null || sums == null {
-        PreviewFree(cast(*void)columns)
-        PreviewFree(cast(*void)widths)
-        PreviewFree(cast(*void)sums)
-        return false
-    }
-    column: s32 = 0
-    while column < output_width {
-        widths[column] = 0
-        column += 1
-    }
-    x: s32 = 0
-    while x < width {
-        columns[x] = cast(s32)(cast(s64)x * output_width / width)
-        widths[columns[x]] += 1
-        x += 1
-    }
+    source := BytesFromPointer(pixels, cast(u64)width * cast(u64)height * cast(u64)channels)
+    scaled := BytesFromPointer(output, cast(u64)output_width * cast(u64)output_height * 3)
     row_stride := cast(s64)width * channels
-    output_row: s32 = 0
-    y: s32 = 0
-    while output_row < output_height {
-        index: s32 = 0
-        while index < output_width * 3 {
-            sums[index] = 0
-            index += 1
-        }
-        rows: s64 = 0
-        while y < height && cast(s32)(cast(s64)y * output_height / height) == output_row {
-            row := cast(s64)y * row_stride
-            x = 0
-            while x < width {
-                at := row + cast(s64)x * channels
-                red := cast(s32)pixels[at]
-                green := red
-                blue := red
-                alpha: s32 = 255
-                if channels >= 3 {
-                    green = cast(s32)pixels[at + 1]
-                    blue = cast(s32)pixels[at + 2]
-                }
-                if channels == 2 {
-                    alpha = cast(s32)pixels[at + 1]
-                } else if channels == 4 {
-                    alpha = cast(s32)pixels[at + 3]
-                }
-                if alpha < 255 {
-                    red = (red * alpha + 255 * (255 - alpha) + 127) / 255
-                    green = (green * alpha + 255 * (255 - alpha) + 127) / 255
-                    blue = (blue * alpha + 255 * (255 - alpha) + 127) / 255
-                }
-                bucket := columns[x] * 3
-                sums[bucket] += red
-                sums[bucket + 1] += green
-                sums[bucket + 2] += blue
-                x += 1
-            }
-            rows += 1
-            y += 1
-        }
-        target := cast(s64)output_row * output_width * 3
-        column = 0
+    stride := cast(s64)output_width * 3
+    #parallel for output_row: 0..cast(s64)output_height - 1 {
+        row := scaled[output_row * stride : output_row * stride + stride]
+        // Source rows y with y * output_height / height == output_row.
+        first_y := (output_row * height + output_height - 1) / output_height
+        end_y := ((output_row + 1) * height + output_height - 1) / output_height
+        column: s64 = 0
         while column < output_width {
-            count := widths[column] * rows
+            first_x := (column * width + output_width - 1) / output_width
+            end_x := ((column + 1) * width + output_width - 1) / output_width
+            red_sum: s64 = 0
+            green_sum: s64 = 0
+            blue_sum: s64 = 0
+            y := first_y
+            while y < end_y {
+                x := first_x
+                while x < end_x {
+                    at := y * row_stride + x * channels
+                    red := cast(s32)source[at]
+                    green := red
+                    blue := red
+                    alpha: s32 = 255
+                    if channels >= 3 {
+                        green = cast(s32)source[at + 1]
+                        blue = cast(s32)source[at + 2]
+                    }
+                    if channels == 2 {
+                        alpha = cast(s32)source[at + 1]
+                    } else if channels == 4 {
+                        alpha = cast(s32)source[at + 3]
+                    }
+                    if alpha < 255 {
+                        red = (red * alpha + 255 * (255 - alpha) + 127) / 255
+                        green = (green * alpha + 255 * (255 - alpha) + 127) / 255
+                        blue = (blue * alpha + 255 * (255 - alpha) + 127) / 255
+                    }
+                    red_sum += red
+                    green_sum += green
+                    blue_sum += blue
+                    x += 1
+                }
+                y += 1
+            }
+            count := (end_x - first_x) * (end_y - first_y)
             if count <= 0 {
                 count = 1
             }
-            bucket := column * 3
-            output[target + bucket] = cast(u8)((sums[bucket] + count / 2) / count)
-            output[target + bucket + 1] = cast(u8)((sums[bucket + 1] + count / 2) / count)
-            output[target + bucket + 2] = cast(u8)((sums[bucket + 2] + count / 2) / count)
+            row[column * 3] = cast(u8)((red_sum + count / 2) / count)
+            row[column * 3 + 1] = cast(u8)((green_sum + count / 2) / count)
+            row[column * 3 + 2] = cast(u8)((blue_sum + count / 2) / count)
             column += 1
         }
-        output_row += 1
     }
-    PreviewFree(cast(*void)columns)
-    PreviewFree(cast(*void)widths)
-    PreviewFree(cast(*void)sums)
     return true
 }
 
 // Writes the RGB image upright: each upright pixel takes the stored pixel
-// that Exif orientation 1 to 8 places there.
+// that Exif orientation 1 to 8 places there. Rows are written in parallel.
 ImagePreviewTurn :: (pixels: *u8, width: s32, height: s32, orientation: s32, output: *u8) {
     upright_width := width
     upright_height := height
@@ -285,9 +262,12 @@ ImagePreviewTurn :: (pixels: *u8, width: s32, height: s32, orientation: s32, out
         upright_width = height
         upright_height = width
     }
-    y: s32 = 0
-    while y < upright_height {
-        x: s32 = 0
+    source := BytesFromPointer(pixels, cast(u64)width * cast(u64)height * 3)
+    upright := BytesFromPointer(output, cast(u64)upright_width * cast(u64)upright_height * 3)
+    stride := cast(s64)upright_width * 3
+    #parallel for y: 0..cast(s64)upright_height - 1 {
+        row := upright[y * stride : y * stride + stride]
+        x: s64 = 0
         while x < upright_width {
             source_x := x
             source_y := y
@@ -311,14 +291,12 @@ ImagePreviewTurn :: (pixels: *u8, width: s32, height: s32, orientation: s32, out
                 source_x = width - 1 - y
                 source_y = x
             }
-            from := (cast(s64)source_y * width + source_x) * 3
-            to := (cast(s64)y * upright_width + x) * 3
-            output[to] = pixels[from]
-            output[to + 1] = pixels[from + 1]
-            output[to + 2] = pixels[from + 2]
+            from := (source_y * width + source_x) * 3
+            row[x * 3] = source[from]
+            row[x * 3 + 1] = source[from + 1]
+            row[x * 3 + 2] = source[from + 2]
             x += 1
         }
-        y += 1
     }
 }
 
