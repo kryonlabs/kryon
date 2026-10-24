@@ -1,36 +1,13 @@
 #!/usr/bin/env python3
 """Measure browser_viewport in private headless Chromium."""
-import os
 from pathlib import Path
-import subprocess
 import tempfile
 
-from toolchain import BIN, ZIRAN_ROOT as ZIRAN
-
-ROOT = Path(__file__).resolve().parents[1]
-EMCC = os.environ.get('EMCC', str(Path.home() / 'emsdk/upstream/emscripten/emcc'))
-environment = dict(os.environ)
-for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'GDK_DISPLAY'):
-    environment.pop(name, None)
-environment.setdefault('EM_CACHE', str(ROOT / 'build/emscripten-cache'))
-
-
-def run(args, **options):
-    return subprocess.run(list(map(str, args)), env=environment, check=True, **options)
-
+from browser_behavior import ROOT, build_behavior, run
 
 with tempfile.TemporaryDirectory(prefix='browser-viewport-browser-', dir=ROOT / 'build') as path:
     work = Path(path)
-    generated = work / 'generated'
-    run([BIN / 'zi2c', '--no-main', '--define', 'PLATFORM_WEB', '--root', ROOT / 'tests',
-         '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN / 'std',
-         '-o', generated, ROOT / 'tests/browser_viewport_browser_behavior.zi'])
-    shell = work / 'shell.html'
-    shell.write_text('<!doctype html><html><head><meta charset="utf-8"></head><body>'
-                     '<pre id="result">pending</pre>{{{ SCRIPT }}}</body></html>')
-    run([EMCC, '-O1', '-I' + str(ZIRAN / 'include'), '-iquote', generated, *sorted(generated.rglob('*.c')),
-         '--js-library', ZIRAN / 'web/ziran_web.js', '-sASYNCIFY', '-sSINGLE_FILE=1',
-         '-sENVIRONMENT=web', '--shell-file', shell, '-o', work / 'test.html'])
+    build_behavior(work, 'browser_viewport')
     run(['node', ROOT / 'tests/canvas_backend_browser.mjs', (work / 'test.html').as_uri(), work / 'profile'],
         timeout=45)
 print('Browser viewport: visual viewport, canvas frame, canvas parent and canvas measured')
