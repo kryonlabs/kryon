@@ -556,6 +556,9 @@ RaylibUnloadFont :: (font: RaylibFont) {
 
 RaylibGlyphTableFor :: (font: RaylibFont) -> *RaylibGlyphTable {
     if font.glyphs == null || font.glyph_count <= 0 || font.recs == null || font.base_size <= 0 { return null }
+    // A one-glyph view borrows an interior atlas pointer. Do not retain a
+    // table for it: unloading its parent cannot identify that borrowed key.
+    if font.glyph_count == 1 { return null }
     last := *raylib_glyph_tables[raylib_glyph_table_last]
     if last.glyphs == font.glyphs && last.count == font.glyph_count { return last }
     for index: cast(s32)0..RAYLIB_GLYPH_TABLES - 1 {

@@ -225,6 +225,17 @@ main :: () -> s32 {
     if !LoadTypefaceFile("Latin", "assets/fonts/LiberationSans-Regular.ttf", null, 0) ||
     !SelectTypeface("Latin") { return 4 }
     defer ReleaseTypefaces()
+    // Narrow views may reuse the same address after their atlas is replaced.
+    // A lookup must inspect their current glyph, without retaining an atlas
+    // table keyed by that borrowed interior address.
+    borrowed: [2]RaylibGlyphInfo
+    borrowed[1].value = 65
+    rectangles: [2]Geometry.Rectangle
+    view := RaylibFont.{.base_size = 20, .glyph_count = 1,
+        .glyphs = cast(*void)*borrowed[1], .recs = *rectangles[1]}
+    if !RaylibFontHasCodepoint(view, 65) { return 39 }
+    borrowed[1].value = 66
+    if RaylibFontHasCodepoint(view, 65) || !RaylibFontHasCodepoint(view, 66) { return 40 }
     before_missing := loaded
     RaylibEnsureGlyphs("中")
     if RaylibFontHasCodepoint(raylib_font, 0x4E2D) || loaded != before_missing { return 5 }
