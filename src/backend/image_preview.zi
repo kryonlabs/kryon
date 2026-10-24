@@ -522,10 +522,10 @@ JpegDct :: (data: []float32, at: s64, stride: s64) {
     data[at + stride * 7] = z11 - z4
 }
 
-// Transforms, quantizes and writes one 8 by 8 block that starts at `start`
-// in rows `stride` apart. Returns its DC value for the next block.
-JpegBlock :: (writer: *JpegWriter, data: []float32, start: s64, stride: s64, scale: []float32,
-    previous: s32, dc: *JpegHuffman, ac: *JpegHuffman) -> s32 {
+// Transforms and quantizes one 8 by 8 block that starts at `start` in rows
+// `stride` apart into its 64 coefficients in zigzag order.
+JpegTransform :: (data: []float32, start: s64, stride: s64, scale: []float32,
+    zigzag: []s32, coefficients: []s32) {
     line: s64 = 0
     while line < 8 {
         JpegDct(data, start + line * stride, 1)
@@ -536,7 +536,6 @@ JpegBlock :: (writer: *JpegWriter, data: []float32, start: s64, stride: s64, sca
         JpegDct(data, start + line, stride)
         line += 1
     }
-    coefficients: [64]s32
     at: s32 = 0
     y: s64 = 0
     while y < 8 {
@@ -544,12 +543,17 @@ JpegBlock :: (writer: *JpegWriter, data: []float32, start: s64, stride: s64, sca
         while x < 8 {
             value := data[start + y * stride + x] * scale[at]
             rounded := ifx value < 0.0 then value - 0.5 else value + 0.5
-            coefficients[jpeg_zigzag[at]] = cast(s32)rounded
+            coefficients[zigzag[at]] = cast(s32)rounded
             at += 1
             x += 1
         }
         y += 1
     }
+}
+
+// Writes one block's coefficients. Returns its DC value for the next block.
+JpegCode :: (writer: *JpegWriter, coefficients: []s32, previous: s32, dc: *JpegHuffman,
+    ac: *JpegHuffman) -> s32 {
     code: s32 = 0
     size: s32 = 0
     difference := coefficients[0] - previous
@@ -680,30 +684,47 @@ JpegEncode :: (pixels: *u8, width: s32, height: s32, quality: s32) -> string {
     out: Vec(u8)
     writer := JpegWriter.{.out = *out}
     JpegHeaders(*writer, *tables, width, height)
-    luma: [256]float32
-    blue: [256]float32
-    red: [256]float32
-    blue_half: [64]float32
-    red_half: [64]float32
-    previous_luma: s32 = 0
-    previous_blue: s32 = 0
-    previous_red: s32 = 0
-    top: s32 = 0
-    while top < height {
-        left: s32 = 0
-        while left < width {
-            at: s32 = 0
-            row: s32 = top
+    // Each row of 16 by 16 units is converted, transformed and quantized
+    // into its own band of coefficients in parallel; the Huffman coding,
+    // whose DC values chain from block to block, then runs in order. A unit
+    // holds four luma blocks, then one blue and one red block.
+    unit_columns := (cast(s64)width + 15) / 16
+    unit_rows := (cast(s64)height + 15) / 16
+    band := unit_columns * 384
+    coefficients: Vec(s32)
+    index: s64 = 0
+    while index < unit_rows * band {
+        VecPush(coefficients, 0)
+        index += 1
+    }
+    blocks := VecSlice(coefficients, 0, coefficients.count)
+    source := BytesFromPointer(pixels, cast(u64)width * cast(u64)height * 3)
+    zigzag := jpeg_zigzag
+    luma_scale := tables.luma_scale
+    chroma_scale := tables.chroma_scale
+    #parallel for unit_row: 0..unit_rows - 1 {
+        row_blocks := blocks[unit_row * band : unit_row * band + band]
+        luma: [256]float32
+        blue: [256]float32
+        red: [256]float32
+        blue_half: [64]float32
+        red_half: [64]float32
+        top := unit_row * 16
+        unit: s64 = 0
+        while unit < unit_columns {
+            left := unit * 16
+            at: s64 = 0
+            row := top
             while row < top + 16 {
                 // Past the image's edge, the last row and column repeat.
-                source_row := ifx row < height then row else height - 1
-                column: s32 = left
+                source_row := ifx row < height then row else cast(s64)height - 1
+                column := left
                 while column < left + 16 {
-                    source_column := ifx column < width then column else width - 1
-                    pixel := (cast(s64)source_row * width + source_column) * 3
-                    r := cast(float32)pixels[pixel]
-                    g := cast(float32)pixels[pixel + 1]
-                    b := cast(float32)pixels[pixel + 2]
+                    source_column := ifx column < width then column else cast(s64)width - 1
+                    pixel := (source_row * width + source_column) * 3
+                    r := cast(float32)source[pixel]
+                    g := cast(float32)source[pixel + 1]
+                    b := cast(float32)source[pixel + 2]
                     luma[at] = 0.29900 * r + 0.58700 * g + 0.11400 * b - 128.0
                     blue[at] = -0.16874 * r - 0.33126 * g + 0.50000 * b
                     red[at] = 0.50000 * r - 0.41869 * g - 0.08131 * b
@@ -712,18 +733,10 @@ JpegEncode :: (pixels: *u8, width: s32, height: s32, quality: s32) -> string {
                 }
                 row += 1
             }
-            previous_luma = JpegBlock(*writer, luma[:], 0, 16, tables.luma_scale[:], previous_luma,
-                *tables.luma_dc, *tables.luma_ac)
-            previous_luma = JpegBlock(*writer, luma[:], 8, 16, tables.luma_scale[:], previous_luma,
-                *tables.luma_dc, *tables.luma_ac)
-            previous_luma = JpegBlock(*writer, luma[:], 128, 16, tables.luma_scale[:], previous_luma,
-                *tables.luma_dc, *tables.luma_ac)
-            previous_luma = JpegBlock(*writer, luma[:], 136, 16, tables.luma_scale[:], previous_luma,
-                *tables.luma_dc, *tables.luma_ac)
-            half: s32 = 0
-            y: s32 = 0
+            half: s64 = 0
+            y: s64 = 0
             while y < 8 {
-                x: s32 = 0
+                x: s64 = 0
                 while x < 8 {
                     first := y * 32 + x * 2
                     blue_half[half] = (blue[first] + blue[first + 1] + blue[first + 16] +
@@ -735,13 +748,34 @@ JpegEncode :: (pixels: *u8, width: s32, height: s32, quality: s32) -> string {
                 }
                 y += 1
             }
-            previous_blue = JpegBlock(*writer, blue_half[:], 0, 8, tables.chroma_scale[:],
-                previous_blue, *tables.chroma_dc, *tables.chroma_ac)
-            previous_red = JpegBlock(*writer, red_half[:], 0, 8, tables.chroma_scale[:],
-                previous_red, *tables.chroma_dc, *tables.chroma_ac)
-            left += 16
+            base := unit * 384
+            JpegTransform(luma[:], 0, 16, luma_scale[:], zigzag[:], row_blocks[base : base + 64])
+            JpegTransform(luma[:], 8, 16, luma_scale[:], zigzag[:], row_blocks[base + 64 : base + 128])
+            JpegTransform(luma[:], 128, 16, luma_scale[:], zigzag[:], row_blocks[base + 128 : base + 192])
+            JpegTransform(luma[:], 136, 16, luma_scale[:], zigzag[:], row_blocks[base + 192 : base + 256])
+            JpegTransform(blue_half[:], 0, 8, chroma_scale[:], zigzag[:], row_blocks[base + 256 : base + 320])
+            JpegTransform(red_half[:], 0, 8, chroma_scale[:], zigzag[:], row_blocks[base + 320 : base + 384])
+            unit += 1
         }
-        top += 16
+    }
+    previous_luma: s32 = 0
+    previous_blue: s32 = 0
+    previous_red: s32 = 0
+    at: s64 = 0
+    while at < blocks.count {
+        block: s64 = 0
+        while block < 4 {
+            previous_luma = JpegCode(*writer, blocks[at : at + 64], previous_luma,
+                *tables.luma_dc, *tables.luma_ac)
+            at += 64
+            block += 1
+        }
+        previous_blue = JpegCode(*writer, blocks[at : at + 64], previous_blue,
+            *tables.chroma_dc, *tables.chroma_ac)
+        at += 64
+        previous_red = JpegCode(*writer, blocks[at : at + 64], previous_red,
+            *tables.chroma_dc, *tables.chroma_ac)
+        at += 64
     }
     // Fill the last byte with ones, then end the image.
     JpegBits(*writer, 127, 7)
