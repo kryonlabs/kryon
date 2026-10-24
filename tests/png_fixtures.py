@@ -96,10 +96,6 @@ def generate(directory=None, zi=None):
     if directory:
         directory.mkdir(parents=True, exist_ok=True)
         (directory / "cases.count").write_bytes(struct.pack(">I", len(cases)))
-        # The image host must retain native Plan 9 files after PNG sniffing.
-        header = f'{"r8g8b8a8":>11} {0:11} {0:11} {3:11} {2:11} '.encode("ascii")
-        assert len(header) == 60
-        (directory / "native.img").write_bytes(header + bytes([255, 60, 40, 220]) * 6)
         for i, (png, raw, rgba, width, height, packed) in enumerate(cases):
             (directory / f"case{i}.png").write_bytes(png)
             (directory / f"case{i}.rgba").write_bytes(struct.pack(">II", width, height) + rgba)

@@ -2,7 +2,7 @@
 
 #program_export
 main :: () -> s32 {
-    // The editing keys match the canvas, raylib, and libdraw hosts.
+    // The editing keys match the canvas and raylib hosts.
     if DesktopKey(27) != 256 || DesktopKey(13) != 257 ||
     DesktopKey(9) != 258 || DesktopKey(8) != 259 ||
     DesktopKey(127) != 261 { return 1 }

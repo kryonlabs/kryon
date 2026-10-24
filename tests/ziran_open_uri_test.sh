@@ -11,8 +11,8 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 "${CC:-cc}" -O2 -std=c11 -I"$work/c" -I"$ziran_root/include" "$work"/c/*.c \
     "${ZIRAN_LIB:-$ziran_root/build/libziran.a}" -lm -lpthread -o "$work/run"
 (cd "$work" && ./run)
-# Every platform's opener compiles: Windows, the browser, Plan 9, macOS and Android.
-for define in _WIN32 PLATFORM_WEB KRYON_BACKEND_LIBDRAW __APPLE__ ANDROID_BUILD; do
+# Every platform's opener compiles: Windows, the browser, macOS and Android.
+for define in _WIN32 PLATFORM_WEB __APPLE__ ANDROID_BUILD; do
     "$ziran_root/build/bin/zi2c" --no-main --define "$define" --root "$repo/src/backend" \
         --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
         -o "$work/$define" "$repo/src/backend/open_uri.zi"

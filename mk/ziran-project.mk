@@ -18,7 +18,7 @@ ifndef ZIRAN_PACKAGE_ID
 $(error ZIRAN_PACKAGE_ID is required; run this through ziran tool kryon)
 endif
 
-ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 libdraw/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx raylib/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
+ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),terminal/c99 desktop/c99 raylib/c99 canvas/c99 dom/c99 pixmap/c99 desktop/zx pixmap/zx canvas/zx raylib/zx),$(PROJECT_BACKEND)/$(PROJECT_CODEGEN))
 $(error backend $(PROJECT_BACKEND) with codegen $(PROJECT_CODEGEN) is not available)
 endif
 
@@ -90,11 +90,8 @@ IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(if $(filter c99,$(PROJECT_CODEG
 C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/$(HOST_ID).zir
 endif
-ifneq ($(filter $(PROJECT_BACKEND),desktop libdraw),)
-HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi
 ifeq ($(PROJECT_BACKEND),desktop)
-HOST_SOURCES += $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
-endif
+HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_METHODS=FS
@@ -114,22 +111,6 @@ HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_LIBS := $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0)
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
-endif
-ifeq ($(PROJECT_BACKEND),libdraw)
-# plan9port is optional; only libdraw profiles use it. A project that pins it
-# as a source package (ziran add https://github.com/9fans/plan9port.git
-# --source) gets it built once in Kryon's build directory; otherwise the
-# installed plan9port that $PLAN9 names serves, as its installer sets up.
-PLAN9PORT_PACKAGE := $(shell $(ZIRAN) pkg path plan9port 2>/dev/null)
-ifneq ($(PLAN9PORT_PACKAGE),)
-PLAN9PORT_DIR ?= $(KRYON_DIR)/build/plan9port-ziran
-else
-PLAN9PORT_DIR ?= $(PLAN9)
-endif
-HOST_DEPS := $(PLAN9PORT_DIR)/lib/libdraw.a
-HOST_LIBS := -Wl,-E -L$(PLAN9PORT_DIR)/lib -ldraw -lmemdraw -lmux -lthread -l9 -lpthread -ldl $(shell pkg-config --libs cairo freetype2 pangocairo fontconfig)
-RUN_ENV := PLAN9=$(PLAN9PORT_DIR) PATH=$(PLAN9PORT_DIR)/bin:$(PATH) DEVDRAW=$(PLAN9PORT_DIR)/bin/devdraw \
-	KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
 ifeq ($(PROJECT_BACKEND),raylib)
 include $(KRYON_DIR)/mk/raylib-library.mk
@@ -176,20 +157,6 @@ endif
 
 .PHONY: run build check install toolchain
 
-ifeq ($(PROJECT_BACKEND),libdraw)
-$(PLAN9PORT_DIR)/lib/libdraw.a:
-ifneq ($(PLAN9PORT_PACKAGE),)
-	rm -rf $(PLAN9PORT_DIR)
-	mkdir -p $(dir $(PLAN9PORT_DIR))
-	cp -R $(PLAN9PORT_PACKAGE) $(PLAN9PORT_DIR)
-	cd $(PLAN9PORT_DIR) && ./INSTALL
-	@test -f $@
-else
-	@echo "kryon: the libdraw backend needs plan9port. Install it and set PLAN9," >&2
-	@echo "or add it to this project: ziran add https://github.com/9fans/plan9port.git --source" >&2
-	@exit 1
-endif
-endif
 
 # Project builds run the driver, which shells out to zi2zir and zi2c.
 # The pinned toolchain is built once; see the kryon tool's rule.

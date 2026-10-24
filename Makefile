@@ -465,7 +465,6 @@ pixmap-parallel-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_pixmap_parallel_test.sh
 test: pixmap-parallel-test
 
-# Requires a canonical Taiji checkout and a private headless QEMU guest.
 .PHONY: style-cache-test
 style-cache-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_style_cache_test.sh

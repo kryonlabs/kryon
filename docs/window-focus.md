@@ -9,7 +9,7 @@ Raylib and browser canvas hosts use their existing window focus signals.
 An embedded pixel-surface player forwards `WindowFocusedHost` to its platform
 callback. The callback must return the focus of that child application, rather
 than the focus of the entire supervising window. A missing or unsupported focus
-signal returns false. Terminal, libdraw and bare pixel-surface hosts currently
+signal returns false. Terminal and bare pixel-surface hosts currently
 have no application focus signal and return false.
 
 Applications can use focus changes to start a local background timer. Keep the

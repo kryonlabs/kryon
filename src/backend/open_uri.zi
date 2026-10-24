@@ -7,7 +7,6 @@
 URI_ANDROID :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
 URI_WEB :: #defined(PLATFORM_WEB) || #defined(__EMSCRIPTEN__)
 URI_WINDOWS :: #defined(_WIN32)
-URI_PLAN9 :: #defined(KRYON_BACKEND_LIBDRAW)
 
 OPEN_URI_CAPACITY :: 4096
 
@@ -63,31 +62,18 @@ open_uri_c :: #system_library "c";
         end: *u8
     }
     UriExec :: (path: *u8, arguments: **u8) -> s32 #foreign open_uri_c "execvp";
-    #if URI_PLAN9 {
-        UriFork :: (flags: s32) -> s32 #foreign open_uri_c "rfork";
-        UriPlan9Exec :: (path: *u8, arguments: **u8) -> s32 #foreign open_uri_c "exec";
-        UriPlan9Exit :: (message: *u8) #foreign open_uri_c "exits";
-    }
-    #if !URI_PLAN9 {
-        UriFork :: () -> s32 #foreign open_uri_c "fork";
-        UriExit :: (status: s32) #foreign open_uri_c "_exit";
-    }
+    UriFork :: () -> s32 #foreign open_uri_c "fork";
+    UriExit :: (status: s32) #foreign open_uri_c "_exit";
 
-    // Starts the desktop's opener (plumb on Plan 9) as a child process.
+    // Starts the desktop's opener as a child process.
     UriSpawn :: (uri: *u8) -> bool {
         command: [16]u8
-        #if URI_PLAN9 {
-            CopyCString("/bin/plumb", command[:])
-            process := UriFork(94)
+        #if #defined(__APPLE__) {
+            CopyCString("open", command[:])
+        } else {
+            CopyCString("xdg-open", command[:])
         }
-        #if !URI_PLAN9 {
-            #if #defined(__APPLE__) {
-                CopyCString("open", command[:])
-            } else {
-                CopyCString("xdg-open", command[:])
-            }
-            process := UriFork()
-        }
+        process := UriFork()
         if process < 0 {
             return false
         }
@@ -95,16 +81,8 @@ open_uri_c :: #system_library "c";
             arguments: UriArguments
             arguments.command = *command[0]
             arguments.uri = uri
-            #if URI_PLAN9 {
-                UriPlan9Exec(*command[0], cast(**u8)*arguments)
-                error: [8]u8
-                CopyCString("exec", error[:])
-                UriPlan9Exit(*error[0])
-            }
-            #if !URI_PLAN9 {
-                UriExec(*command[0], cast(**u8)*arguments)
-                UriExit(127)
-            }
+            UriExec(*command[0], cast(**u8)*arguments)
+            UriExit(127)
         }
         return true
     }

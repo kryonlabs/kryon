@@ -205,7 +205,7 @@ own window calls `RaylibUseIconTextures()` after `InitWindow`.
 
 [`open_uri`](../src/backend/open_uri.zi) opens a link with the platform's
 handler: `OpenUri(uri)` passes it unchanged to the desktop opener, Windows'
-shell, Plan 9's plumber, an Android `ACTION_VIEW` intent or a new browser tab,
+shell, an Android `ACTION_VIEW` intent or a new browser tab,
 and `CanOpenUri(uri)` says whether that platform can open it. Android code
 reaches the activity through [`android_jni`](../src/backend/android_jni.zi).
 
@@ -234,7 +234,7 @@ clears the failure. Large logical transfers can use this result to switch to
 the service's paged API and preserve progress without enlarging frame memory.
 
 [`src/ui/modules.txt`](../src/ui/modules.txt) is the core build inventory.
-`make test` checks source, saved `.zir`, `.zx`, and generated C/C++/Go behavior.
+`make test` checks source, saved `.zir`, `.zx`, and generated C/Go behavior.
 See [FEATURE_MATRIX.md](FEATURE_MATRIX.md) for package and host verification.
 
 Portable apps can import `kryon/input_protocol` for pointer observations,

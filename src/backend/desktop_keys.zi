@@ -1,5 +1,5 @@
 // SDL reports its own keycodes. Every Kryon host sends the same codes as the
-// canvas, raylib, and libdraw hosts: letters as uppercase ASCII and named keys
+// canvas and raylib hosts: letters as uppercase ASCII and named keys
 // from 256 (Escape) upward, so an application reads keys the same way on any
 // host.
 #program_export

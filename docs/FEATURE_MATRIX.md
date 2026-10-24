@@ -27,8 +27,7 @@ for a target; it does not prove that every native host runs on that target.
 | Web DOM | `src/backend/dom_run.zi` | Headless Chromium checks incremental updates, native Unicode editing, reorder focus, KSS, responsive sizing and browser accessibility | 🧪 hybrid host with opt-in native CSS layout for document widgets |
 | Android | app `src/main.zi` + `src/backend/android_run.zi` | `tests/ziran_android_device_test.sh` checks the device text, lifecycle, and inset protocol with the Java side stubbed; a manual emulator run verifies install, rendering, touch, and back | ✅ supported through NativeActivity with raylib OpenGL ES 2 |
 
-The desktop, raylib, and libdraw project tests run separately with
-`make desktop-project-test`, `make raylib-project-test`, and
-`make libdraw-project-test`; they must use a private Xvfb display. CI runs
-all three on every push in their own job. The Canvas2D and semantic DOM
+The desktop and raylib project tests run separately with
+`make desktop-project-test` and `make raylib-project-test`; they must use a
+private Xvfb display. CI runs both on every push in their own job. The Canvas2D and semantic DOM
 project tests run in `make test` and launch only private headless Chromium.

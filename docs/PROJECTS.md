@@ -116,7 +116,7 @@ for lock, cache, and override details.
 
 Define each profile under `[tool.kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
-`libdraw`, `raylib`, `canvas`, `dom`, `pixmap`, and `android`. Set `default_profile` under `[tool.kryon]` when there
+`raylib`, `canvas`, `dom`, `pixmap`, and `android`. Set `default_profile` under `[tool.kryon]` when there
 are several profiles. `--profile NAME` selects another. `run` asks for a
 profile when there are several, none is specified, and it runs in a
 terminal; otherwise it uses the default.
@@ -125,7 +125,6 @@ terminal; otherwise it uses the default.
 | --- | --- | --- |
 | `terminal` | 80 × 24 terminal cells | TTY for interactive input; redirected output renders once |
 | `desktop` | SDL2 window with Cairo raster | SDL2, Cairo, and FreeType development libraries |
-| `libdraw` | plan9port devdraw with Cairo | Cairo and plan9port: the one `$PLAN9` names, or `ziran add https://github.com/9fans/plan9port.git --source`, which Kryon then builds |
 | `raylib` | raylib SDL2/OpenGL ES 2 window | the locked raylib source package and SDL2, DRM, EGL, GLESv2 |
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
@@ -361,13 +360,6 @@ with `autostart` the login entry to `~/.config/autostart/example.desktop`.
 Setting `autostart = false` removes an autostart entry that `ziran install`
 wrote earlier. Browser profiles cannot be installed.
 
-The native Plan 9 libdraw raster is not a project profile yet. Rill uses it
-through its Ziran application host and native `app/*.mk` recipes. The
-display-free `libdraw-native-plan9-test` gate checks its ABI, while Taiji's
-private native gate checks source/saved-IR screen rendering, PNG assets,
-native Plan 9 images, and the actual Rill executables. Held modifier input
-and selection through a project profile remain pending.
-
 The raylib profile builds its static raylib dependency in Kryon's `build/`
 directory. The Kryon host chooses and owns that backend. Game code belongs in
 the separate Game2D package; applications using both should rely on Kryon's
@@ -387,19 +379,18 @@ Native profiles keep the package-qualified entry-pruned route.
 Every host draws text in Kryon's font, Liberation Sans
 (`assets/fonts/LiberationSans-Regular.ttf`): a `font`-pixel line box from the
 top of the ascent to the bottom of the descent, glyphs at their unhinted
-widths. The desktop and libdraw hosts load it from `KRYON_FONT_PATH`, which
+widths. The desktop host loads it from `KRYON_FONT_PATH`, which
 `kryon run` sets, else from the system's copy. The `pixmap` host rasterizes
 the font's outlines with integer arithmetic, so every Ziran target prints the
 same bytes for the same frame, and its text matches the desktop window's. It
 renders two frames and prints the second, for screenshots in documentation and
 CI without a display. `make pixmap-parity-test` builds every template and
 example for C, Go, and the portable runner and checks that
-all six images match; `build/pixmap-parity/grid.png` shows them side by side.
-`tools/image_tools.zi`, built for Python, compares two PPM images, converts
+all three images match; `build/pixmap-parity/grid.png` shows them side by side.
+`tools/image_tools.zi`, compiled to C, compares two PPM images, converts
 them to PNG, and lays out such grids.
 
-Kryon's `make desktop-project-test`, `make raylib-project-test`, and
-`make libdraw-project-test` exercise the graphical hosts on private Xvfb
+Kryon's `make desktop-project-test` and `make raylib-project-test` exercise the graphical hosts on private Xvfb
 displays, including keyboard and Unicode text input. `make canvas-project-test`
 builds a real Canvas2D project and loads it in private headless Chromium.
 `make dom-project-test` builds a real semantic DOM project and checks its

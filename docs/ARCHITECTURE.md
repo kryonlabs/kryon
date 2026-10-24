@@ -31,7 +31,7 @@ second set of widget decisions.
 
 An application exports `Frame(session: Session, viewport: Rectangle) -> s32`.
 The selected host calls it between `BeginFrame` and `EndFrame`. Package
-profiles choose the terminal, desktop, libdraw, raylib, Canvas2D, or semantic
+profiles choose the terminal, desktop, raylib, Canvas2D, or semantic
 DOM host; see [BACKENDS.md](BACKENDS.md). A non-graphical Ziran program can
 import a Kryon policy module without selecting any of these hosts.
 
@@ -41,8 +41,8 @@ import a Kryon policy module without selecting any of these hosts.
 compiles native objects, and creates a C archive from generated source.
 `make test` exercises the checked library through source, saved `.zir`, and
 portable `.zx` behavior, Canvas2D Wasm effects, and packaged Canvas2D and
-semantic DOM browser applications in private headless Chromium. Desktop,
-raylib, and libdraw package tests run separately on private Xvfb displays;
+semantic DOM browser applications in private headless Chromium. Desktop and
+raylib package tests run separately on private Xvfb displays;
 CI runs them too. `make sanitize-test` repeats the behavior tests with AddressSanitizer and UndefinedBehaviorSanitizer.
 [FEATURE_MATRIX.md](FEATURE_MATRIX.md) states exactly what those checks cover.
 

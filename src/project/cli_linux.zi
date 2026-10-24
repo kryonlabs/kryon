@@ -199,7 +199,6 @@ ArgumentCount :: (command_line: string) -> s32 {
 BackendDescription :: (backend: string) -> string {
     if backend == "desktop" { return "SDL2/Cairo window" }
     if backend == "raylib" { return "raylib window" }
-    if backend == "libdraw" { return "libdraw window" }
     if backend == "canvas" { return "Canvas2D browser page" }
     if backend == "dom" { return "semantic DOM browser page" }
     if backend == "terminal" { return "terminal" }
@@ -523,7 +522,7 @@ main :: () -> s32 {
         return AndroidCommand(config, profile, installed_kryon, installed_ziran, verb)
     }
     if (profile.backend != "terminal" && profile.backend != "desktop" &&
-        profile.backend != "libdraw" && profile.backend != "raylib" &&
+        profile.backend != "raylib" &&
         profile.backend != "canvas" && profile.backend != "dom" &&
         profile.backend != "pixmap") ||
     (profile.codegen != "c99" &&

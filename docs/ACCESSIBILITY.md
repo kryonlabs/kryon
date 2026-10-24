@@ -39,5 +39,5 @@ an editor in Chromium's accessibility tree as well as editing and focus.
 These checks establish the implemented protocol paths, not complete Orca or
 other screen-reader usability. Text boundary/extents methods, list Selection,
 table interfaces, and Windows/macOS/mobile accessibility remain unverified
-or unsupported. Raylib, libdraw, Canvas2D and terminal hosts do not currently
+or unsupported. Raylib, Canvas2D and terminal hosts do not currently
 provide the Linux bridge automatically.

@@ -11,7 +11,7 @@
 
 PICKER_WINDOWS :: #defined(_WIN32)
 PICKER_WEB :: #defined(PLATFORM_WEB)
-PICKER_POSIX :: #defined(PLATFORM_DESKTOP) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD) && !#defined(_WIN32) && !#defined(KRYON_PLATFORM_PLAN9)
+PICKER_POSIX :: #defined(PLATFORM_DESKTOP) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD) && !#defined(_WIN32)
 
 FilePickerProps :: struct {
     title: string
