@@ -1,5 +1,6 @@
 // Offscreen GLES verification. No NativeActivity, window, screenshots or
 // application data: only private pbuffer/texture pixels reduced to hashes.
+ImagePixels :: #import "raylib_image_decode";
 Rly :: #import "raylib_runtime";
 #import "android_surface"
 #import "drawing_props"
@@ -27,6 +28,12 @@ DestroyContext :: (display: *void, context: *void) -> s32 #foreign egl "eglDestr
 DestroySurface :: (display: *void, surface: *void) -> s32 #foreign egl "eglDestroySurface";
 Terminate :: (display: *void) -> s32 #foreign egl "eglTerminate";
 RealContext :: () -> *void #foreign egl "__real_eglGetCurrentContext";
+#if !#defined(ANDROID_BUILD) {
+    #program_export
+    __wrap_eglGetCurrentContext :: () -> *void { return RealContext() }
+    #program_export
+    __wrap_SDL_GL_GetCurrentContext :: () -> *void { return RealContext() }
+}
 Loader :: #type (name: *u8) -> *void #c_call;
 GetProc :: (name: *u8) -> *void #foreign egl "eglGetProcAddress";
 LoadGlProc :: (name: *u8) -> *void { return GetProc(name) }
@@ -41,9 +48,9 @@ Viewport :: (x: s32, y: s32, width: s32, height: s32) #foreign raylib "rlViewpor
 MatrixMode :: (mode: s32) #foreign raylib "rlMatrixMode";
 Identity :: () #foreign raylib "rlLoadIdentity";
 Ortho :: (left: float64, right: float64, bottom: float64, top: float64, near: float64, far: float64) #foreign raylib "rlOrtho";
-ReadTexture :: (texture: Texture2D) -> Rly.RaylibGlyphImage #foreign raylib "LoadImageFromTexture";
-FormatImage :: (image: *Rly.RaylibGlyphImage, format: s32) #foreign raylib "ImageFormat";
-UnloadImage :: (image: Rly.RaylibGlyphImage) #foreign raylib "UnloadImage";
+ReadTexture :: (texture: Texture2D) -> ImagePixels.RaylibGlyphImage #foreign raylib "LoadImageFromTexture";
+FormatImage :: (image: *ImagePixels.RaylibGlyphImage, format: s32) #foreign raylib "ImageFormat";
+UnloadImage :: (image: ImagePixels.RaylibGlyphImage) #foreign raylib "UnloadImage";
 Lookup :: (scope: *void, name: *u8) -> *RaylibWindowState #foreign dl "dlsym";
 Allocate :: (bytes: usize) -> *u8 #foreign c "malloc";
 Release :: (bytes: *u8) #foreign c "free";
@@ -51,6 +58,189 @@ Open :: (path: *u8, flags: s32) -> s32 #foreign c "open";
 Read :: (fd: s32, bytes: *u8, count: usize) -> isize #foreign c "read";
 Close :: (fd: s32) -> s32 #foreign c "close";
 Self :: () -> usize #foreign c "pthread_self";
+
+MutexInit :: (value: *void, attributes: *void) -> s32 #foreign c "pthread_mutex_init";
+MutexDestroy :: (value: *void) -> s32 #foreign c "pthread_mutex_destroy";
+MutexLock :: (value: *void) -> s32 #foreign c "pthread_mutex_lock";
+MutexUnlock :: (value: *void) -> s32 #foreign c "pthread_mutex_unlock";
+ConditionInit :: (value: *void, attributes: *void) -> s32 #foreign c "pthread_cond_init";
+ConditionDestroy :: (value: *void) -> s32 #foreign c "pthread_cond_destroy";
+ConditionWait :: (value: *void, mutex: *void) -> s32 #foreign c "pthread_cond_wait";
+ConditionSignal :: (value: *void) -> s32 #foreign c "pthread_cond_signal";
+SleepMicros :: (microseconds: u32) -> s32 #foreign c "usleep";
+decode_mutex: [8]u64;
+decode_condition: [8]u64;
+decode_hold: bool;
+decode_started: bool;
+decode_released: bool;
+decode_wrong_thread: bool;
+decode_calls: s32;
+texture_creations: s32;
+text_measure_calls: s32;
+empty_measure_ok: bool;
+file_provider_wrong_thread: bool;
+frame_source_live: bool;
+frame_source_ready: bool;
+frame_source_wrong_phase: bool;
+
+RealFileData :: (path: *u8, count: *s32) -> *u8 #foreign raylib "__real_LoadFileData";
+#program_export
+__wrap_LoadFileData :: (path: *u8, count: *s32) -> *u8 {
+    name := TextFromCString(path)
+    scoped := name == "scoped-fixture.png"
+    if name != "owner-fixture.png" && !scoped { return RealFileData(path, count) }
+    count.* = 0
+    if scoped {
+        if !frame_source_live || Self() == owner { frame_source_wrong_phase = true; return null }
+    } else {
+        if Self() != owner { file_provider_wrong_thread = true; return null }
+    }
+    bytes := Allocate(cast(usize)image_bytes.count)
+    if bytes == null { return null }
+    for at: cast(s64)0..image_bytes.count - 1 { bytes[at] = image_bytes[at] }
+    count.* = cast(s32)image_bytes.count
+    return bytes
+}
+
+RealTextMeasure :: (value: *u8, font: s32) -> s32 #foreign raylib "__real_MeasureText";
+#program_export
+__wrap_MeasureText :: (value: *u8, font: s32) -> s32 {
+    text_measure_calls += 1
+    return RealTextMeasure(value, font)
+}
+
+EmptyMeasurement :: (argument: *void) {
+    unused argument
+    empty_measure_ok = Rly.MeasureGlyphWidth("", 12, "") == 0
+}
+
+FrameSourceMeasurement :: (argument: *void) {
+    unused argument
+    frame_source_live = true
+    frame_source_ready = Rly.ImageWidth("scoped-fixture.png") == 8
+    frame_source_live = false
+}
+
+FrameSource :: () -> bool {
+    for attempt: 0..1999 {
+        if !Rly.RunRaylibAppFrame(FrameSourceMeasurement, null) { return false }
+        if frame_source_ready { break }
+        unused SleepMicros(1000)
+    }
+    if !frame_source_ready || frame_source_wrong_phase { return false }
+    index := Rly.RaylibAssetIndex("scoped-fixture.png")
+    hash := TextureHash(Rly.raylib_assets[index].texture)
+    if hash != ExpectedImageHash(false) && hash != ExpectedImageHash(true) { return false }
+    Rly.CloseRaylibAppFrames()
+    Rly.InvalidateRaylibAssets()
+    return true
+}
+
+RealDecode :: (extension: *u8, bytes: *u8, count: s32) -> ImagePixels.RaylibGlyphImage #foreign raylib "__real_LoadImageFromMemory";
+#program_export
+__wrap_LoadImageFromMemory :: (extension: *u8, bytes: *u8, count: s32) -> ImagePixels.RaylibGlyphImage {
+    unused MutexLock(cast(*void)*decode_mutex[0])
+    decode_calls += 1
+    if Self() == owner || RealContext() != null { decode_wrong_thread = true }
+    if decode_hold {
+        decode_started = true
+        unused ConditionSignal(cast(*void)*decode_condition[0])
+        while !decode_released {
+            unused ConditionWait(cast(*void)*decode_condition[0], cast(*void)*decode_mutex[0])
+        }
+    }
+    unused MutexUnlock(cast(*void)*decode_mutex[0])
+    return RealDecode(extension, bytes, count)
+}
+
+ReleaseDecode :: () {
+    unused MutexLock(cast(*void)*decode_mutex[0])
+    decode_released = true
+    decode_hold = false
+    unused ConditionSignal(cast(*void)*decode_condition[0])
+    unused MutexUnlock(cast(*void)*decode_mutex[0])
+}
+
+HoldDecode :: () {
+    unused MutexLock(cast(*void)*decode_mutex[0])
+    decode_hold = true
+    decode_started = false
+    decode_released = false
+    unused MutexUnlock(cast(*void)*decode_mutex[0])
+}
+
+WaitDecodeStarted :: () {
+    unused MutexLock(cast(*void)*decode_mutex[0])
+    while !decode_started {
+        unused ConditionWait(cast(*void)*decode_condition[0], cast(*void)*decode_mutex[0])
+    }
+    unused MutexUnlock(cast(*void)*decode_mutex[0])
+}
+
+WaitForImage :: (path: string = "fixture.png") -> bool {
+    for attempt: 0..1999 {
+        Rly.RaylibPumpImages()
+        if Rly.ImageWidth(path) == 8 && Rly.ImageHeight(path) == 8 { return true }
+        unused SleepMicros(1000)
+    }
+    return false
+}
+
+// A deliberately blocked decoder must not block frames. Its input is an
+// owned copy, and results from an invalidated asset reader must be discarded.
+PendingFrames :: () -> s32 {
+    Rly.RaylibSetAssetReader(Asset, null)
+    HoldDecode()
+    defer { ReleaseDecode() }
+    if Rly.ImageWidth("fixture.png") != -1 { return 30 }
+    WaitDecodeStarted()
+    for index: 0..3 {
+        if !Rly.BeginRetainedFrame(128, 128) { return 31 }
+        box := Rectangle.{0.0, 0.0, 128.0, 128.0}
+        Rly.RasterImage("fixture.png", 0, Rectangle.{0.0, 0.0, 8.0, 8.0}, box,
+            box, Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 255})
+        if !Rly.EndRetainedFrame() || Rly.ImageWidth("fixture.png") != -1 { return 32 }
+    }
+    borrowed := cast(*TextDescriptor)*image_bytes
+    saved := borrowed.data[0]
+    borrowed.data[0] = 0
+    ReleaseDecode()
+    ready := WaitForImage()
+    borrowed.data[0] = saved
+    if !ready { return 33 }
+    index := Rly.RaylibAssetIndex("fixture.png")
+    hash := TextureHash(Rly.raylib_assets[index].texture)
+    if hash != ExpectedImageHash(false) && hash != ExpectedImageHash(true) { return 34 }
+    // A provider can publish bytes later under the same path, without an
+    // explicit invalidation. A retry must eventually make its texture ready.
+    if Rly.ImageWidth("later.png") != -1 { return 40 }
+    late_ready = true
+    if !WaitForImage("later.png") { return 41 }
+    later := Rly.RaylibAssetIndex("later.png")
+    if TextureHash(Rly.raylib_assets[later].texture) != hash { return 42 }
+    Rly.InvalidateRaylibAssets()
+    HoldDecode()
+    if Rly.ImageWidth("fixture.png") != -1 { return 35 }
+    WaitDecodeStarted()
+    if Rly.ImageWidth("queued-fixture.png") != -1 || !Rly.raylib_image_source_queued { return 47 }
+    before := texture_creations
+    Rly.RaylibClearAssetReader()
+    if Rly.raylib_image_source_queued { return 48 }
+    ReleaseDecode()
+    for attempt: 0..1999 {
+        Rly.RaylibPumpImages()
+        if Rly.raylib_image_job_index < 0 { break }
+        unused SleepMicros(1000)
+    }
+    if Rly.raylib_image_job_index >= 0 || Rly.raylib_assets_count != 0 || texture_creations != before { return 36 }
+    // A host file callback can depend on its owner thread and app state.
+    // The worker receives only copied bytes, never that callback or state.
+    if Rly.ImageWidth("owner-fixture.png") != -1 || !WaitForImage("owner-fixture.png") { return 44 }
+    file_image := Rly.RaylibAssetIndex("owner-fixture.png")
+    if TextureHash(Rly.raylib_assets[file_image].texture) != hash { return 45 }
+    Rly.InvalidateRaylibAssets()
+    return 0
+}
 
 owner: usize;
 graphics_error: bool;
@@ -73,7 +263,7 @@ GraphicsOwner :: () -> bool {
     return true
 }
 
-RealTexture :: (image: Rly.RaylibGlyphImage) -> Texture2D #foreign raylib "__real_LoadTextureFromImage";
+RealTexture :: (image: ImagePixels.RaylibGlyphImage) -> Texture2D #foreign raylib "__real_LoadTextureFromImage";
 RealTextureFree :: (texture: Texture2D) #foreign raylib "__real_UnloadTexture";
 RealFont :: (extension: *u8, bytes: *u8, count: s32, pixels: s32, glyphs: *s32, glyph_count: s32) -> Rly.RaylibFont #foreign raylib "__real_LoadFontFromMemory";
 RealFontFree :: (font: Rly.RaylibFont) #foreign raylib "__real_UnloadFont";
@@ -83,8 +273,9 @@ GlInteger :: (name: u32, value: *s32) #foreign gles "glGetIntegerv";
 GlAttachment :: (target: u32, attachment: u32, name: u32, value: *s32) #foreign gles "glGetFramebufferAttachmentParameteriv";
 GlTexture :: (texture: u32) -> u8 #foreign gles "glIsTexture";
 #program_export
-__wrap_LoadTextureFromImage :: (image: Rly.RaylibGlyphImage) -> Texture2D {
+__wrap_LoadTextureFromImage :: (image: ImagePixels.RaylibGlyphImage) -> Texture2D {
     if !GraphicsOwner() { return Texture2D.{} }
+    texture_creations += 1
     return RealTexture(image)
 }
 #program_export
@@ -130,9 +321,10 @@ ReadFixture :: (path: string) -> string {
     return ""
 }
 
+late_ready: bool;
 Asset :: (context: *void, path: string) -> string {
     unused context
-    return ifx path == "fixture.png" then image_bytes else ""
+    return ifx path == "fixture.png" || path == "queued-fixture.png" || (path == "later.png" && late_ready) then image_bytes else ""
 }
 
 TextureHash :: (texture: Texture2D) -> u64 {
@@ -176,7 +368,7 @@ Compose :: (argument: *void) {
     PaintImage(frame.session, -1, "fixture.png", cast(u32)0, source,
         Rectangle.{4.0, 36.0, 44.0, 40.0}, bounds, Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 255})
     points: [4]Vector2 = .[Vector2.{52.0, 36.0}, Vector2.{94.0, 38.0},
-        Vector2.{54.0, 74.0}, Vector2.{96.0, 78.0}]
+    Vector2.{54.0, 74.0}, Vector2.{96.0, 78.0}]
     PaintImageMesh(frame.session, -1, "fixture.png", cast(u32)0, source,
         2, 2, points[:], bounds, Color.{255, 255, 255, 255})
     pixels: [128]u8
@@ -201,8 +393,7 @@ Compose :: (argument: *void) {
 Prepare :: () -> bool {
     Rly.ResetRaylibGraphics(false)
     Rly.RaylibSetAssetReader(Asset, null)
-    ready := Rly.LoadTypefaceData("fixture", ".ttf", font_bytes, null, 0) && Rly.SelectTypeface("fixture") &&
-        Rly.ImageWidth("fixture.png") == 8 && Rly.ImageHeight("fixture.png") == 8
+    ready := Rly.LoadTypefaceData("fixture", ".ttf", font_bytes, null, 0) && Rly.SelectTypeface("fixture") && WaitForImage()
     if !ready { return false }
     index := Rly.RaylibAssetIndex("fixture.png")
     actual := TextureHash(Rly.raylib_assets[index].texture)
@@ -219,7 +410,7 @@ ExpectedImageHash :: (flipped: bool) -> u64 {
         y := ifx flipped then 7 - row else row
         for x: 0..7 {
             pixel: [4]u8 = .[cast(u8)(x * 29), cast(u8)(y * 31),
-                cast(u8)((x * 17 + y * 23) % 256), cast(u8)(100 + (x + y) * 10)]
+            cast(u8)((x * 17 + y * 23) % 256), cast(u8)(100 + (x + y) * 10)]
             for byte: pixel { hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211 }
         }
     }
@@ -261,11 +452,30 @@ Compare :: (transition: bool) -> s32 {
     return 0
 }
 
+reset_ok: bool;
+ResetFrame :: (argument: *void) {
+    unused argument
+    before := Rly.raylib_app_generation
+    Rly.ResetRaylibGraphics(false)
+    reset_ok = Rly.raylib_app_generation != before &&
+    Rly.RetainedPreviousFrameTexture().id == 0 && Rly.raylib_app_target_generation == 0
+    if !Rly.BeginRetainedFrame(128, 128) { reset_ok = false; return }
+    Rly.RasterRoundedRectangle(Rectangle.{0.0, 0.0, 128.0, 128.0}, 0.0, 1, Color.{20, 40, 60, 255})
+    reset_ok = reset_ok && Rly.raylib_app_target_generation == Rly.raylib_app_generation && Rly.EndRetainedFrame()
+}
+
 #program_export
 main :: () -> s32 {
     owner = Self()
-    image_bytes = ReadFixture("/data/local/tmp/kryon-frame-test/fixture.png")
-    font_bytes = ReadFixture("/data/local/tmp/kryon-frame-test/font.ttf")
+    if MutexInit(cast(*void)*decode_mutex[0], null) != 0 ||
+    ConditionInit(cast(*void)*decode_condition[0], null) != 0 { return 37 }
+    #if !#defined(KRYON_TEST_LINUX) {
+        image_bytes = ReadFixture("/data/local/tmp/kryon-frame-test/fixture.png")
+        font_bytes = ReadFixture("/data/local/tmp/kryon-frame-test/font.ttf")
+    } else {
+        image_bytes = ReadFixture("build/scratch/android-pipeline/pixels/fixture.png")
+        font_bytes = ReadFixture("assets/fonts/LiberationSans-Regular.ttf")
+    }
     if image_bytes.count == 0 || font_bytes.count == 0 { return 1 }
     display := GetDisplay(null)
     major: s32; minor: s32
@@ -281,7 +491,10 @@ main :: () -> s32 {
     LoadExtensions(LoadGlProc)
     InitGl(128, 128)
     symbol: [5]u8 = .[67, 79, 82, 69, 0]
-    scope := cast(*void)cast(usize)4294967295
+    scope: *void
+    #if !#defined(KRYON_TEST_LINUX) {
+        scope = cast(*void)cast(usize)4294967295
+    }
     window_state = Lookup(scope, *symbol[0])
     if window_state == null { return 5 }
     window_state.ready = true
@@ -299,10 +512,23 @@ main :: () -> s32 {
     font := DefaultFont()
     ShapesTexture(font.texture, font.recs[95])
     Rly.RaylibFrameRate(0)
-    result := Compare(false)
+    // Empty prefixes occur in rich text and caret layout. Measuring them
+    // must not wait for the graphics owner or touch its font service.
+    before_measure := text_measure_calls
+    if !Rly.RunRaylibAppFrame(EmptyMeasurement, null) || !empty_measure_ok ||
+    text_measure_calls != before_measure { return 43 }
+    Rly.CloseRaylibAppFrames()
+    result := PendingFrames()
+    if result == 0 && !FrameSource() { result = 46 }
+    if result == 0 { result = Compare(false) }
     if result == 0 { result = Compare(true) }
+    if result == 0 {
+        if !Rly.RunRaylibAppFrame(ResetFrame, null) || !reset_ok || !Rly.FlushRaylibAppFrames() { result = 39 }
+        Rly.CloseRaylibAppFrames()
+    }
     if graphics_error { result = 28 }
     if texture_feedback { result = 29 }
+    if decode_wrong_thread || decode_calls < 9 || file_provider_wrong_thread || frame_source_wrong_phase { result = 38 }
     Rly.CloseRaylibAppFrames()
     window_state.ready = false
     Rly.CloseRaylib()
@@ -316,6 +542,8 @@ main :: () -> s32 {
     font_view := cast(*TextDescriptor)*font_bytes
     Release(image_view.data)
     Release(font_view.data)
-    print("offscreen GLES frame hash result=% owner resource calls=%\n", result, graphics_calls)
+    unused ConditionDestroy(cast(*void)*decode_condition[0])
+    unused MutexDestroy(cast(*void)*decode_mutex[0])
+    print("offscreen GLES frame hash result=% owner resource calls=% background decodes=%\n", result, graphics_calls, decode_calls)
     return result
 }

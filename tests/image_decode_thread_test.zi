@@ -1,0 +1,116 @@
+// CPU job ownership and completion without a graphics library or display.
+Pixels :: #import "raylib_image_decode";
+#import "std/byte_text_linux"
+c :: #system_library "c";
+Self :: () -> usize #foreign c "pthread_self";
+Allocate :: (bytes: usize) -> *u8 #foreign c "malloc";
+Free :: (bytes: *u8) #foreign c "free";
+MutexInit :: (mutex: *void, attributes: *void) -> s32 #foreign c "pthread_mutex_init";
+MutexDestroy :: (mutex: *void) -> s32 #foreign c "pthread_mutex_destroy";
+Lock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_lock";
+Unlock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_unlock";
+ConditionInit :: (value: *void, attributes: *void) -> s32 #foreign c "pthread_cond_init";
+ConditionDestroy :: (value: *void) -> s32 #foreign c "pthread_cond_destroy";
+Wait :: (condition: *void, mutex: *void) -> s32 #foreign c "pthread_cond_wait";
+Signal :: (condition: *void) -> s32 #foreign c "pthread_cond_signal";
+Sleep :: (microseconds: u32) -> s32 #foreign c "usleep";
+mutex: [8]u64;
+condition: [8]u64;
+owner: usize;
+started: bool;
+released: bool;
+failed: bool;
+file_reads: s32;
+file_frees: s32;
+pixel_frees: s32;
+
+#program_export
+LoadImageFromMemory :: (extension: *u8, bytes: *u8, count: s32) -> Pixels.RaylibGlyphImage {
+    unused extension
+    if Self() == owner { failed = true }
+    unused Lock(cast(*void)*mutex[0])
+    started = true
+    unused Signal(cast(*void)*condition[0])
+    while !released { unused Wait(cast(*void)*condition[0], cast(*void)*mutex[0]) }
+    unused Unlock(cast(*void)*mutex[0])
+    if count != 4 || bytes[0] != 1 || bytes[1] != 2 || bytes[2] != 3 || bytes[3] != 4 { failed = true }
+    pixels := Allocate(4)
+    for index: 0..3 { pixels[index] = bytes[index] }
+    return Pixels.RaylibGlyphImage.{cast(*void)pixels, 1, 1, 1, 7}
+}
+#program_export
+UnloadImage :: (image: Pixels.RaylibGlyphImage) { Free(cast(*u8)image.data); pixel_frees += 1 }
+#program_export
+LoadFileData :: (path: *u8, count: *s32) -> *u8 {
+    unused path
+    if Self() != owner { failed = true }
+    file_reads += 1
+    bytes := Allocate(4)
+    for index: 0..3 { bytes[index] = cast(u8)(index + 1) }
+    count.* = 4
+    return bytes
+}
+#program_export
+UnloadFileData :: (bytes: *u8) { Free(bytes); file_frees += 1 }
+#program_export
+ImageFlipHorizontal :: (image: *Pixels.RaylibGlyphImage) { unused image }
+#program_export
+ImageFlipVertical :: (image: *Pixels.RaylibGlyphImage) { unused image }
+#program_export
+ImageRotateCW :: (image: *Pixels.RaylibGlyphImage) { unused image }
+#program_export
+ImageRotateCCW :: (image: *Pixels.RaylibGlyphImage) { unused image }
+
+AwaitStarted :: () {
+    unused Lock(cast(*void)*mutex[0])
+    while !started { unused Wait(cast(*void)*condition[0], cast(*void)*mutex[0]) }
+    unused Unlock(cast(*void)*mutex[0])
+}
+ReleaseWorker :: () {
+    unused Lock(cast(*void)*mutex[0])
+    released = true
+    unused Signal(cast(*void)*condition[0])
+    unused Unlock(cast(*void)*mutex[0])
+}
+
+#program_export
+Check :: () -> s32 {
+    owner = Self()
+    if MutexInit(cast(*void)*mutex[0], null) != 0 || ConditionInit(cast(*void)*condition[0], null) != 0 { return 1 }
+    job: Pixels.RaylibImageJob
+    bytes: [4]u8 = .[1, 2, 3, 4]
+    if !Pixels.RaylibImageStart(*job, "copy.png", TextFromBytes(bytes[:])) { return 2 }
+    AwaitStarted()
+    rejected := Pixels.RaylibImageBytesCopy(TextFromBytes(bytes[:]))
+    if Pixels.RaylibImageStartOwned(*job, "rejected.png", rejected) { return 10 }
+    Pixels.RaylibImageBytesRelease(rejected)
+    // A blocked codec does not block the caller, and borrows no caller bytes.
+    if Pixels.RaylibImageFinished(*job) || Pixels.RaylibImageStart(*job, "other.png", TextFromBytes(bytes[:])) { return 3 }
+    for index: 0..3 { bytes[index] = 0 }
+    ReleaseWorker()
+    finished: bool
+    for attempt: 0..1999 {
+        if Pixels.RaylibImageFinished(*job) { finished = true; break }
+        unused Sleep(1000)
+    }
+    if !finished { return 4 }
+    if Pixels.RaylibImageStart(*job, "unclaimed.png", TextFromBytes(bytes[:])) { return 9 }
+    image := Pixels.RaylibImageTake(*job)
+    if image.data == null || image.width != 1 || (cast(*u8)image.data)[0] != 1 { return 5 }
+    Pixels.RaylibImageRelease(image)
+    // Close joins an outstanding job and frees an unclaimed result exactly once.
+    filename: [9]u8 = .[102, 105, 108, 101, 46, 112, 110, 103, 0]
+    count: s32
+    file_bytes := LoadFileData(*filename[0], *count)
+    data := TextFromBytes(BytesFromPointer(file_bytes, cast(u64)count))
+    encoded := Pixels.RaylibImageBytesCopy(data)
+    if !Pixels.RaylibImageStartOwned(*job, "file.png", encoded) { return 6 }
+    UnloadFileData(file_bytes)
+    Pixels.RaylibImageClose(*job)
+    Pixels.RaylibImageClose(*job)
+    if failed || file_reads != 1 || file_frees != 1 || pixel_frees != 2 { return 7 }
+    if Pixels.RaylibImageStart(*job, "empty.png", "") { return 8 }
+    unused ConditionDestroy(cast(*void)*condition[0])
+    unused MutexDestroy(cast(*void)*mutex[0])
+    return 0
+}

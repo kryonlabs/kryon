@@ -20,6 +20,7 @@ NextCodepoint :: (text: *u8, length: *s32) -> s32 #foreign raylib "GetCodepointN
 GlyphIndex :: (font: RaylibFont, codepoint: s32) -> s32 #foreign raylib "GetGlyphIndex";
 MeasureFont :: (font: RaylibFont, text: *u8, size: float32,
     spacing: float32) -> Geometry.Vector2 #foreign raylib "MeasureTextEx";
+SetLineSpacing :: (spacing: s32) #foreign raylib "SetTextLineSpacing";
 Allocate :: (bytes: usize) -> *void #foreign c "malloc";
 Free :: (bytes: *void) #foreign c "free";
 
@@ -239,6 +240,21 @@ main :: () -> s32 {
         if MeasureFont(RaylibGlyphFont(latin, codepoint), *utf8[0], 20.0, 0.0).x !=
         MeasureFont(latin, *utf8[0], 20.0, 0.0).x { return 31 }
     }
+
+    // Reading line spacing must agree with raylib even when its font has
+    // no newline glyph, at every host-configured spacing.
+    line: [4]u8 = .[65, 10, 66, 0]
+    for spacing: cast(s32)0..12 {
+        SetLineSpacing(spacing)
+        expected := MeasureFont(latin, *line[0], 20.0, 0.0)
+        extent := RaylibTextWithFallback("A\nB", 7, 11, 20, Drawing.Color.{}, false)
+        draw_count = 0
+        RasterText("A\nB", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})
+        if extent.y != expected.y || draw_count != 2 ||
+        drawn[1].x != 7.0 || drawn[1].y != 11.0 + expected.y - 20.0 { return 32 }
+    }
+    SetLineSpacing(2)
+    draw_count = 0
 
     width := MeasureGlyphWidth("A中B", 20, "Latin")
     RasterText("A中B", 7, 11, 20, Drawing.Color.{255, 255, 255, 255})

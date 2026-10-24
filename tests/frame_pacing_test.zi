@@ -1,0 +1,103 @@
+// A deterministic clock and fake presentation test active/idle transitions.
+#import "render_dispatch"
+Frame :: #import "raylib_frame_render";
+c :: #system_library "c";
+Self :: () -> usize #foreign c "pthread_self";
+MutexInit :: (mutex: *void, attributes: *void) -> s32 #foreign c "pthread_mutex_init";
+MutexDestroy :: (mutex: *void) -> s32 #foreign c "pthread_mutex_destroy";
+Lock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_lock";
+Unlock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_unlock";
+CondInit :: (condition: *void, attributes: *void) -> s32 #foreign c "pthread_cond_init";
+CondDestroy :: (condition: *void) -> s32 #foreign c "pthread_cond_destroy";
+Wait :: (condition: *void, mutex: *void) -> s32 #foreign c "pthread_cond_wait";
+Signal :: (condition: *void) -> s32 #foreign c "pthread_cond_signal";
+VoidProc :: #type () -> ();
+ClockProc :: #type () -> float64;
+WaitProc :: #type (seconds: float64) -> ();
+RateProc :: #type (fps: s32) -> ();
+owner: usize;
+mutex: [8]u64;
+changed: [8]u64;
+clock: float64 = 100.0;
+phase: s32;
+wait_started: bool;
+end_started: bool;
+published: bool;
+failed: bool;
+
+Await :: (ending: bool) {
+    unused Lock(cast(*void)*mutex[0])
+    while !(ifx ending then end_started else wait_started) {
+        unused Wait(cast(*void)*changed[0], cast(*void)*mutex[0])
+    }
+    unused Unlock(cast(*void)*mutex[0])
+}
+Publish :: () {
+    unused Lock(cast(*void)*mutex[0])
+    published = true
+    unused Signal(cast(*void)*changed[0])
+    unused Unlock(cast(*void)*mutex[0])
+}
+OwnerWait :: (ending: bool) {
+    unused Lock(cast(*void)*mutex[0])
+    if ending { end_started = true } else { wait_started = true }
+    unused Signal(cast(*void)*changed[0])
+    while !published { unused Wait(cast(*void)*changed[0], cast(*void)*mutex[0]) }
+    unused Unlock(cast(*void)*mutex[0])
+}
+
+#program_export
+__real_EndDrawing :: () { if phase == 2 { OwnerWait(true) } }
+#program_export
+__real_SetTargetFPS :: (fps: s32) { unused fps; if Self() != owner { failed = true } }
+#program_export
+SwapScreenBuffer :: () {}
+#program_export
+PollInputEvents :: () {}
+#program_export
+GetTime :: () -> float64 { return clock }
+#program_export
+WaitTime :: (seconds: float64) {
+    if phase == 1 && !wait_started { OwnerWait(false) }
+    clock += seconds
+}
+
+Compose :: (argument: *void) {
+    unused argument
+    if phase == 0 { Frame.__wrap_SetTargetFPS(15) }
+    if phase == 1 { Await(false); Frame.__wrap_SetTargetFPS(60); Publish() }
+    if phase == 2 { Await(true); Frame.__wrap_SetTargetFPS(15); Publish() }
+    Frame.__wrap_EndDrawing()
+}
+
+#program_export
+Check :: () -> s32 {
+    // Keep the foreign providers reachable through source and saved IR.
+    voids: [3]VoidProc = .[__real_EndDrawing, SwapScreenBuffer, PollInputEvents]
+    get: ClockProc = GetTime
+    wait: WaitProc = WaitTime
+    rate: RateProc = __real_SetTargetFPS
+    unused voids; unused get; unused wait; unused rate
+    owner = Self()
+    if MutexInit(cast(*void)*mutex[0], null) != 0 || CondInit(cast(*void)*changed[0], null) != 0 { return 1 }
+    Frame.frame_presented_at = clock
+    pipeline: RenderPipeline
+    if !RenderPipelineOpen(*pipeline) || !RenderPipelineStep(*pipeline, Compose, null) { return 2 }
+    phase = 1
+    before := clock
+    if !RenderPipelineStep(*pipeline, Compose, null) { return 3 }
+    if clock - before < 0.016 || clock - before > 0.018 { return 4 }
+    phase = 2
+    published = false
+    before = clock
+    if !RenderPipelineStep(*pipeline, Compose, null) { return 5 }
+    if clock - before < 0.016 || clock - before > 0.018 { return 6 }
+    phase = 3
+    before = clock
+    if !RenderPipelineStep(*pipeline, Compose, null) { return 7 }
+    if clock - before < 0.065 || clock - before > 0.068 || failed { return 8 }
+    RenderPipelineClose(*pipeline)
+    unused CondDestroy(cast(*void)*changed[0])
+    unused MutexDestroy(cast(*void)*mutex[0])
+    return 0
+}

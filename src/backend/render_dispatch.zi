@@ -45,11 +45,24 @@ RenderPipeline :: struct {
     // Only the owner touches this flag. Resource callbacks inside a step
     // must not recursively flush the frame they are helping to construct.
     owner_step: bool
+    frame_rate: s32
+    has_frame_rate: bool
 }
 
 // A process has one graphical owner. Installation and removal happen only
 // while the worker is stopped, so the pointer never races its lifetime.
 render_pipeline: *RenderPipeline;
+#if #defined(ANDROID_DEBUG) {
+    RenderDiagnosticClock :: #type () -> float64;
+    render_diagnostic_clock: RenderDiagnosticClock;
+    render_compose_seconds: float64;
+    render_paint_seconds: float64;
+    render_barrier_seconds: float64;
+    RenderDiagnosticNow :: () -> float64 {
+        if render_diagnostic_clock != null { return render_diagnostic_clock() }
+        return 0.0
+    }
+}
 
 DispatchLock :: (pipeline: *RenderPipeline) {
     unused DispatchMutexLock(cast(*void)*pipeline.mutex[0])
@@ -66,6 +79,25 @@ DispatchWait :: (pipeline: *RenderPipeline) {
 
 RenderOnAppThread :: () -> bool {
     return render_pipeline != null && render_pipeline.worker_id == DispatchSelf()
+}
+
+RenderPublishFrameRate :: (fps: s32) {
+    pipeline := render_pipeline
+    if pipeline == null { return }
+    DispatchLock(pipeline)
+    pipeline.frame_rate = fps
+    pipeline.has_frame_rate = true
+    DispatchUnlock(pipeline)
+}
+
+RenderReadFrameRate :: (fps: *s32) -> bool {
+    pipeline := render_pipeline
+    if pipeline == null { return false }
+    DispatchLock(pipeline)
+    ready := pipeline.has_frame_rate
+    fps.* = pipeline.frame_rate
+    DispatchUnlock(pipeline)
+    return ready
 }
 
 RenderRecord :: (command: QueuedPaint) -> bool {
@@ -110,7 +142,13 @@ RenderWorker :: (argument: *void) {
         if pipeline.stopping { break }
         pipeline.requested = false
         DispatchUnlock(pipeline)
+        #if #defined(ANDROID_DEBUG) {
+            compose_started := RenderDiagnosticNow()
+        }
         pipeline.procedure(pipeline.argument)
+        #if #defined(ANDROID_DEBUG) {
+            render_compose_seconds = RenderDiagnosticNow() - compose_started
+        }
         DispatchLock(pipeline)
         pipeline.complete = true
         DispatchWake(pipeline)
@@ -138,6 +176,7 @@ RenderPipelineOpen :: (pipeline: *RenderPipeline, lifecycle: RenderLifecycle = .
     pipeline.owner_step = false
     pipeline.resource_pending = false
     pipeline.complete = true
+    pipeline.has_frame_rate = false
     if DispatchMutexInit(cast(*void)*pipeline.mutex[0], null) != 0 { return false }
     if DispatchConditionInit(cast(*void)*pipeline.changed[0], null) != 0 {
         unused DispatchMutexDestroy(cast(*void)*pipeline.mutex[0])
@@ -215,8 +254,18 @@ RenderPipelineStep :: (pipeline: *RenderPipeline,
     pipeline.requested = true
     DispatchWake(pipeline)
     DispatchUnlock(pipeline)
+    #if #defined(ANDROID_DEBUG) {
+        paint_started := RenderDiagnosticNow()
+    }
     rendered := previous < 0 || PaintFrameEmit(*pipeline.frames[previous])
+    #if #defined(ANDROID_DEBUG) {
+        render_paint_seconds = RenderDiagnosticNow() - paint_started
+        barrier_started := RenderDiagnosticNow()
+    }
     RenderPipelineBarrier()
+    #if #defined(ANDROID_DEBUG) {
+        render_barrier_seconds = RenderDiagnosticNow() - barrier_started
+    }
     if !rendered { pipeline.failed = true }
     pipeline.pending = writing
     return !pipeline.failed && !pipeline.render_failed

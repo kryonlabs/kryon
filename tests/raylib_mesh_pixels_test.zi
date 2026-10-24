@@ -1,3 +1,4 @@
+#import "raylib_image_decode"
 #import "raylib_runtime"
 #import "geometry"
 #import "drawing_props"

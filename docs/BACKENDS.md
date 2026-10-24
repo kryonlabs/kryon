@@ -138,6 +138,16 @@ polled after both stages finish, giving the next app callback a stable
 event snapshot. `FlushRaylibAppFrames` finishes pending paint before an app
 or bundle is replaced, and `DiscardRaylibAppFrame` drops paint from a lost
 graphics context. Window shutdown joins the worker before closing GL.
+An active frame-rate request can interrupt an older frame's idle pacing;
+lower rates take effect with their recorded frame.
+
+Image preparation captures encoded bytes on the app thread, before any
+frame-scoped resource views expire. At most one source is captured per frame,
+with one waiting source and one active decode job. The worker owns its bytes,
+applies orientation, and hands owned pixels to the render thread.
+Frames omit an image until its texture is ready;
+completion invalidates retained paint. Layout reads copied image sizes, and
+changing an asset reader discards results from its previous generation.
 
 The web path remains serial. Native Linux hosts can share the dispatcher
 when their window and input integration keeps all graphics on one owner.

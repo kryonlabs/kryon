@@ -1,0 +1,163 @@
+// CPU image ownership, independent of graphics contexts and UI state.
+#import "std/c_string"
+#import "std/byte_text_linux"
+#import "image_orientation"
+
+image_raylib :: #system_library "raylib";
+RaylibGlyphImage :: struct {
+    data: *void
+    width: s32
+    height: s32
+    mipmaps: s32
+    format: s32
+}
+HostRaylibLoadImageFromMemory :: (file_type: *u8, data: *u8,
+    size: s32) -> RaylibGlyphImage #foreign image_raylib "LoadImageFromMemory";
+HostRaylibUnloadImage :: (image: RaylibGlyphImage) #foreign image_raylib "UnloadImage";
+HostRaylibImageRotateCW :: (image: *RaylibGlyphImage) #foreign image_raylib "ImageRotateCW";
+HostRaylibImageRotateCCW :: (image: *RaylibGlyphImage) #foreign image_raylib "ImageRotateCCW";
+HostRaylibImageFlipHorizontal :: (image: *RaylibGlyphImage) #foreign image_raylib "ImageFlipHorizontal";
+HostRaylibImageFlipVertical :: (image: *RaylibGlyphImage) #foreign image_raylib "ImageFlipVertical";
+
+RaylibJpegPath :: (path: string) -> bool {
+    if path.count >= 4 {
+        extension := path[path.count - 4:]
+        if extension == ".jpg" || extension == ".JPG" {
+            return true
+        }
+    }
+    if path.count >= 5 {
+        extension := path[path.count - 5:]
+        return extension == ".jpeg" || extension == ".JPEG"
+    }
+    return false
+}
+
+// Turns decoded pixels upright by Exif orientation 2 to 8.
+RaylibTurnUpright :: (image: *RaylibGlyphImage, orientation: s32) {
+    if orientation == 2 {
+        HostRaylibImageFlipHorizontal(image)
+    } else if orientation == 3 {
+        HostRaylibImageFlipHorizontal(image)
+        HostRaylibImageFlipVertical(image)
+    } else if orientation == 4 {
+        HostRaylibImageFlipVertical(image)
+    } else if orientation == 5 {
+        HostRaylibImageRotateCW(image)
+        HostRaylibImageFlipHorizontal(image)
+    } else if orientation == 6 {
+        HostRaylibImageRotateCW(image)
+    } else if orientation == 7 {
+        HostRaylibImageRotateCW(image)
+        HostRaylibImageFlipVertical(image)
+    } else if orientation == 8 {
+        HostRaylibImageRotateCCW(image)
+    }
+}
+
+
+// The caller owns the returned pixels. Decoding by extension preserves the
+// stored orientation; decoding an asset path also applies JPEG Exif.
+RaylibDecodePixels :: (data: string, file_type: string) -> RaylibGlyphImage {
+    extension: [16]u8
+    if data.count == 0 || data.count > 2147483647 || !CopyCString(file_type, extension[:]) {
+        return RaylibGlyphImage.{}
+    }
+    bytes := cast(*TextDescriptor)(*data)
+    return HostRaylibLoadImageFromMemory(*extension[0], bytes.data, cast(s32)data.count)
+}
+
+RaylibDecodeImage :: (path: string, data: string) -> RaylibGlyphImage {
+    dot := path.count - 1
+    while dot >= 0 && path[dot] != cast(u8)46 { dot -= 1 }
+    if dot < 0 { return RaylibGlyphImage.{} }
+    image := RaylibDecodePixels(data, path[dot:])
+    if image.data != null && RaylibJpegPath(path) {
+        RaylibTurnUpright(*image, ImageExifOrientation(data))
+    }
+    return image
+}
+
+RaylibImageRelease :: (image: RaylibGlyphImage) {
+    if image.data != null { HostRaylibUnloadImage(image) }
+}
+
+#if #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS) {
+    #import "std/thread_linux"
+    image_c :: #system_library "c";
+    ImageDecodeAllocate :: (bytes: usize) -> *u8 #foreign image_c "malloc";
+    ImageDecodeFree :: (bytes: *u8) #foreign image_c "free";
+    ImageDecodeCopy :: (target: *u8, source: *u8, bytes: usize) -> *void #foreign image_c "memcpy";
+    ImageDecodeSelf :: () -> usize #foreign image_c "pthread_self";
+    ImageDecodeName :: (thread: usize, name: *u8) -> s32 #foreign image_c "pthread_setname_np";
+
+    // One outstanding decode bounds encoded and decoded memory. The worker
+    // owns its path/bytes; no bundle pointer or asset-reader context escapes.
+    RaylibImageJob :: struct {
+        thread: Thread
+        path: [1024]u8
+        encoded: []u8
+        image: RaylibGlyphImage
+    }
+
+    RaylibImageWorker :: (argument: *void) {
+        job := cast(*RaylibImageJob)argument
+        name: [10]u8 = .[122, 120, 45, 100, 101, 99, 111, 100, 101, 0]
+        unused ImageDecodeName(ImageDecodeSelf(), *name[0])
+        path := TextFromCString(*job.path[0])
+        job.image = RaylibDecodeImage(path, TextFromBytes(job.encoded))
+        if job.encoded.count > 0 { ImageDecodeFree(*job.encoded[0]) }
+        empty: []u8
+        job.encoded = empty
+    }
+
+    RaylibImageBytesCopy :: (data: string) -> []u8 {
+        empty: []u8
+        if data.count <= 0 || data.count > 2147483647 { return empty }
+        bytes := ImageDecodeAllocate(cast(usize)data.count)
+        if bytes == null { return empty }
+        view := cast(*TextDescriptor)(*data)
+        unused ImageDecodeCopy(bytes, view.data, cast(usize)data.count)
+        return BytesFromPointer(bytes, cast(u64)data.count)
+    }
+
+    RaylibImageBytesRelease :: (bytes: []u8) {
+        if bytes.count > 0 { ImageDecodeFree(*bytes[0]) }
+    }
+
+    // Ownership transfers only on success. A queued source can retry thread
+    // creation without copying its encoded bytes again.
+    RaylibImageStartOwned :: (job: *RaylibImageJob, path: string, encoded: []u8) -> bool {
+        if ThreadRunning(*job.thread) || job.image.data != null || encoded.count == 0 ||
+        !CopyCString(path, job.path[:]) { return false }
+        job.encoded = encoded
+        job.image = RaylibGlyphImage.{}
+        if ThreadStart(*job.thread, RaylibImageWorker, cast(*void)job) { return true }
+        empty: []u8
+        job.encoded = empty
+        return false
+    }
+
+    RaylibImageStart :: (job: *RaylibImageJob, path: string, data: string) -> bool {
+        encoded := RaylibImageBytesCopy(data)
+        if RaylibImageStartOwned(job, path, encoded) { return true }
+        RaylibImageBytesRelease(encoded)
+        return false
+    }
+
+    RaylibImageFinished :: (job: *RaylibImageJob) -> bool {
+        return ThreadFinished(*job.thread)
+    }
+
+    RaylibImageTake :: (job: *RaylibImageJob) -> RaylibGlyphImage {
+        image := job.image
+        job.image = RaylibGlyphImage.{}
+        return image
+    }
+
+    RaylibImageClose :: (job: *RaylibImageJob) {
+        ThreadWait(*job.thread)
+        if job.image.data != null { HostRaylibUnloadImage(job.image) }
+        job.image = RaylibGlyphImage.{}
+    }
+}

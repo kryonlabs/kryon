@@ -1,3 +1,4 @@
+#import "raylib_image_decode"
 #import "raylib_runtime"
 #import "ziran_raylib_retained_host"
 #import "drawing_props"

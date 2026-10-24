@@ -21,7 +21,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "raylib_clip"
 #import "text_emphasis"
 #import "text_typeface"
-#import "image_orientation"
+ImagePixels :: #import "raylib_image_decode";
 #if !#defined(_WIN32) {
     #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
         SystemTypeface :: #import "system_typeface_android";
@@ -100,19 +100,12 @@ RaylibFont :: struct {
     recs: *Rectangle
     glyphs: *void
 }
-RaylibGlyphImage :: struct {
-    data: *void
-    width: s32
-    height: s32
-    mipmaps: s32
-    format: s32
-}
 RaylibGlyphInfo :: struct {
     value: s32
     offset_x: s32
     offset_y: s32
     advance_x: s32
-    image: RaylibGlyphImage
+    image: ImagePixels.RaylibGlyphImage
 }
 HostRaylibGlyphIndex :: (font: RaylibFont, codepoint: s32) -> s32 #foreign raylib "GetGlyphIndex";
 HostRaylibCodepoint :: (value: *u8, length: *s32) -> s32 #foreign raylib "GetCodepointNext";
@@ -189,6 +182,10 @@ RaylibAsset :: struct {
     texture: Texture2D
     // Filtered for smooth scaling, with mipmaps where the GPU allows them.
     smooth: bool
+    state: s32
+    token: u64
+    retry_after: float64
+    encoded: []u8
 }
 
 // Image textures by asset path. A photo grid draws dozens of thumbnails per
@@ -201,6 +198,7 @@ raylib_assets: [RaylibAssetCapacity]RaylibAsset;
 raylib_asset_hashes: [RaylibAssetCapacity]u64;
 raylib_assets_count: s32;
 raylib_assets_next: s32;
+// Serial hosts budget decoding. Threaded hosts queue CPU work instead.
 // Decoding a texture takes milliseconds on a phone. A frame decodes images
 // until this many seconds are spent, always at least one, and reports the
 // rest as loading: a grid scrolled into view spreads its new thumbnails
@@ -626,7 +624,7 @@ RaylibFontHasCodepoint :: (font: RaylibFont, codepoint: s32) -> bool {
 // raylib measures and draws that character with its own arithmetic without
 // scanning the whole font.
 RaylibGlyphFont :: (font: RaylibFont, codepoint: s32) -> RaylibFont {
-    if RaylibGlyphTableFor(font) == null { return font }
+    if font.glyphs == null || font.glyph_count <= 0 || font.recs == null || font.base_size <= 0 { return font }
     index := RaylibGlyphIndex(font, codepoint)
     glyphs := cast(*RaylibGlyphInfo)font.glyphs
     view := font
@@ -814,7 +812,7 @@ LoadTypefaceData :: (name: string, extension: string, data: string,
     seed: *s32, seed_count: s32) -> bool {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
-            request := RaylibAppRequest.{.operation = 3, .name = name, .value = data, .extension = extension, .seed = seed, .count = seed_count}
+            request := RaylibAppRequest.{.operation = RaylibResource.TypefaceData, .name = name, .value = data, .extension = extension, .seed = seed, .count = seed_count}
             RenderCall(RaylibAppResource, cast(*void)*request)
             RaylibAppMetricsClear()
             return request.ok
@@ -865,7 +863,7 @@ LoadTypefaceFile :: (name: string, path: string,
     seed: *s32, seed_count: s32) -> bool {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
-            request := RaylibAppRequest.{.operation = 4, .name = name, .value = path, .seed = seed, .count = seed_count}
+            request := RaylibAppRequest.{.operation = RaylibResource.TypefaceFile, .name = name, .value = path, .seed = seed, .count = seed_count}
             RenderCall(RaylibAppResource, cast(*void)*request)
             RaylibAppMetricsClear()
             return request.ok
@@ -905,7 +903,7 @@ RaylibLoadTypefaceFile :: (name: string, path: string,
 LoadSystemTypeface :: (name: string) -> bool {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
-            request := RaylibAppRequest.{.operation = 5, .name = name}
+            request := RaylibAppRequest.{.operation = RaylibResource.SystemTypeface, .name = name}
             RenderCall(RaylibAppResource, cast(*void)*request)
             RaylibAppMetricsClear()
             return request.ok
@@ -976,7 +974,7 @@ RaylibTextTypeface :: (name: string) -> string {
 SelectTypeface :: (name: string) -> bool {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
-            request := RaylibAppRequest.{.operation = 6, .name = name}
+            request := RaylibAppRequest.{.operation = RaylibResource.SelectTypeface, .name = name}
             RenderCall(RaylibAppResource, cast(*void)*request)
             RaylibAppMetricsClear()
             return request.ok
@@ -1001,7 +999,7 @@ SelectTypeface :: (name: string) -> bool {
 ReleaseTypefaces :: () {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
-            request := RaylibAppRequest.{.operation = 9}
+            request := RaylibAppRequest.{.operation = RaylibResource.ReleaseTypefaces}
             RenderCall(RaylibAppResource, cast(*void)*request)
             RaylibAppMetricsClear()
             return
@@ -1196,49 +1194,7 @@ RaylibAssetHash :: (path: string) -> u64 {
     return hash
 }
 
-HostRaylibTextureFromImage :: (image: RaylibGlyphImage) -> Texture2D #foreign raylib "LoadTextureFromImage";
-HostRaylibUnloadImage :: (image: RaylibGlyphImage) #foreign raylib "UnloadImage";
-HostRaylibImageRotateCW :: (image: *RaylibGlyphImage) #foreign raylib "ImageRotateCW";
-HostRaylibImageRotateCCW :: (image: *RaylibGlyphImage) #foreign raylib "ImageRotateCCW";
-HostRaylibImageFlipHorizontal :: (image: *RaylibGlyphImage) #foreign raylib "ImageFlipHorizontal";
-HostRaylibImageFlipVertical :: (image: *RaylibGlyphImage) #foreign raylib "ImageFlipVertical";
-
-RaylibJpegPath :: (path: string) -> bool {
-    if path.count >= 4 {
-        extension := path[path.count - 4:]
-        if extension == ".jpg" || extension == ".JPG" {
-            return true
-        }
-    }
-    if path.count >= 5 {
-        extension := path[path.count - 5:]
-        return extension == ".jpeg" || extension == ".JPEG"
-    }
-    return false
-}
-
-// Turns decoded pixels upright by Exif orientation 2 to 8.
-RaylibTurnUpright :: (image: *RaylibGlyphImage, orientation: s32) {
-    if orientation == 2 {
-        HostRaylibImageFlipHorizontal(image)
-    } else if orientation == 3 {
-        HostRaylibImageFlipHorizontal(image)
-        HostRaylibImageFlipVertical(image)
-    } else if orientation == 4 {
-        HostRaylibImageFlipVertical(image)
-    } else if orientation == 5 {
-        HostRaylibImageRotateCW(image)
-        HostRaylibImageFlipHorizontal(image)
-    } else if orientation == 6 {
-        HostRaylibImageRotateCW(image)
-    } else if orientation == 7 {
-        HostRaylibImageRotateCW(image)
-        HostRaylibImageFlipVertical(image)
-    } else if orientation == 8 {
-        HostRaylibImageRotateCCW(image)
-    }
-}
-
+HostRaylibTextureFromImage :: (image: ImagePixels.RaylibGlyphImage) -> Texture2D #foreign raylib "LoadTextureFromImage";
 // A host can supply borrowed image bytes, for example from a downloaded
 // ZX. When installed, unavailable resources never fall through to disk.
 RaylibAssetReadCall :: #type (context: *void, path: string) -> string;
@@ -1262,17 +1218,10 @@ RaylibClearAssetReader :: () {
 }
 
 RaylibMemoryTexture :: (path: string, data: string) -> Texture2D {
-    if data.count == 0 || data.count > 2147483647 { return Texture2D.{} }
-    dot: s64 = path.count - 1
-    while dot >= 0 && path[dot] != cast(u8)46 { dot -= 1 }
-    extension: [16]u8
-    if dot < 0 || !CopyCString(path[dot:], extension[:]) { return Texture2D.{} }
-    bytes := cast(*TypefaceText.TextDescriptor)(*data)
-    image := HostRaylibLoadImageFromMemory(*extension[0], bytes.data, cast(s32)data.count)
+    image := ImagePixels.RaylibDecodeImage(path, data)
     if image.data == null { return Texture2D.{} }
-    if RaylibJpegPath(path) { RaylibTurnUpright(*image, ImageExifOrientation(data)) }
     texture := HostRaylibTextureFromImage(image)
-    HostRaylibUnloadImage(image)
+    ImagePixels.RaylibImageRelease(image)
     return texture
 }
 
@@ -1283,7 +1232,7 @@ RaylibLoadAssetTexture :: (path: *u8, text: string) -> Texture2D {
     if raylib_asset_reader_active {
         return RaylibMemoryTexture(text, raylib_asset_reader(raylib_asset_context, text))
     }
-    if !RaylibJpegPath(text) {
+    if !ImagePixels.RaylibJpegPath(text) {
         return HostRaylibLoadTexture(path)
     }
     size: s32 = 0
@@ -1294,21 +1243,16 @@ RaylibLoadAssetTexture :: (path: *u8, text: string) -> Texture2D {
         }
         return Texture2D.{}
     }
-    orientation := ImageExifOrientation(TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(data, cast(u64)size)))
-    extension: [8]u8
-    unused CopyCString(".jpg", extension[:])
-    image := HostRaylibLoadImageFromMemory(*extension[0], data, size)
+    image := ImagePixels.RaylibDecodeImage(text,
+        TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(data, cast(u64)size)))
     HostTypefaceFileDataFree(data)
-    if image.data == null {
-        return Texture2D.{}
-    }
-    RaylibTurnUpright(*image, orientation)
+    if image.data == null { return Texture2D.{} }
     texture := HostRaylibTextureFromImage(image)
-    HostRaylibUnloadImage(image)
+    ImagePixels.RaylibImageRelease(image)
     return texture
 }
 
-RaylibAssetIndex :: (path: string) -> s32 {
+RaylibAssetIndex :: (path: string, include_loading: bool = false) -> s32 {
     if path.count == 0 || path.count >= 1024 { return -1 }
     hash := RaylibAssetHash(path)
     index: s32 = 0
@@ -1324,9 +1268,24 @@ RaylibAssetIndex :: (path: string) -> s32 {
                 }
                 at += 1
             }
-            if same { return index }
+            if same {
+                #if RAYLIB_FRAME_THREADS {
+                    if render_pipeline == null { RaylibCaptureStandaloneImage(index) }
+                    if !include_loading && raylib_assets[index].texture.id == 0 {
+                        return ifx raylib_assets[index].state == RaylibImageFailed then -1 else RaylibAssetLoading
+                    }
+                }
+                return index
+            }
         }
         index += 1
+    }
+    #if RAYLIB_FRAME_THREADS {
+        index = RaylibReserveAsset(path, hash)
+        if index < 0 { return -1 }
+        raylib_assets[index].state = RaylibImageQueued
+        if render_pipeline == null { RaylibCaptureStandaloneImage(index) }
+        return ifx include_loading then index else RaylibAssetLoading
     }
     started := HostRaylibGetTime()
     if raylib_asset_load_window < 0.0 ||
@@ -1340,22 +1299,8 @@ RaylibAssetIndex :: (path: string) -> s32 {
     }
     raylib_asset_loads += 1
     defer { raylib_asset_load_spent += HostRaylibGetTime() - started }
-    if raylib_assets_count < RaylibAssetCapacity {
-        index = raylib_assets_count
-        raylib_assets_count += 1
-    } else {
-        index = raylib_assets_next
-        // The draw batch can still refer to the texture being evicted.
-        HostRaylibFlushBatch()
-        HostRaylibUnloadTexture(raylib_assets[index].texture)
-        raylib_assets_next = (raylib_assets_next + 1) % RaylibAssetCapacity
-    }
-    if !CopyCString(path, raylib_assets[index].path[:]) {
-        raylib_assets[index].length = 0
-        return -1
-    }
-    raylib_assets[index].length = cast(s32)path.count
-    raylib_asset_hashes[index] = hash
+    index = RaylibReserveAsset(path, hash)
+    if index < 0 { return -1 }
     raylib_assets[index].texture = RaylibLoadAssetTexture(*raylib_assets[index].path[0], path)
     raylib_assets[index].smooth = false
     if raylib_assets[index].texture.id == cast(u32)0 {
@@ -1365,19 +1310,50 @@ RaylibAssetIndex :: (path: string) -> s32 {
     return index
 }
 
+RaylibReserveAsset :: (path: string, hash: u64) -> s32 {
+    index: s32
+    if raylib_assets_count < RaylibAssetCapacity {
+        index = raylib_assets_count
+        raylib_assets_count += 1
+    } else {
+        index = raylib_assets_next
+        #if RAYLIB_FRAME_THREADS {
+            RaylibReleaseQueuedImage(*raylib_assets[index])
+        }
+        // The draw batch can still refer to the texture being evicted.
+        if raylib_assets[index].texture.id != 0 {
+            HostRaylibFlushBatch()
+            HostRaylibUnloadTexture(raylib_assets[index].texture)
+        }
+        raylib_assets_next = (raylib_assets_next + 1) % RaylibAssetCapacity
+    }
+    raylib_assets[index] = RaylibAsset.{}
+    #if RAYLIB_FRAME_THREADS {
+        raylib_asset_serial += cast(u64)1
+        raylib_assets[index].token = raylib_asset_serial
+    }
+    if !CopyCString(path, raylib_assets[index].path[:]) {
+        raylib_assets[index].length = 0
+        return -1
+    }
+    raylib_assets[index].length = cast(s32)path.count
+    raylib_asset_hashes[index] = hash
+    return index
+}
+
 // An icon's raster as a texture: white, with the coverage as alpha. Point
 // sampling keeps one raster pixel on one screen pixel.
 RaylibIconTexture :: (pixels: []u8, size: s32) -> Texture2D {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
-            request := RaylibAppRequest.{.operation = 11, .pixels = pixels, .count = size}
+            request := RaylibAppRequest.{.operation = RaylibResource.IconTexture, .pixels = pixels, .count = size}
             RenderCall(RaylibAppResource, cast(*void)*request)
             return request.texture
         }
     }
     if size <= 0 || cast(s64)size * cast(s64)size * 2 > pixels.count { return Texture2D.{} }
     // PIXELFORMAT_UNCOMPRESSED_GRAY_ALPHA
-    image := RaylibGlyphImage.{.data = cast(*void)*pixels[0], .width = size,
+    image := ImagePixels.RaylibGlyphImage.{.data = cast(*void)*pixels[0], .width = size,
         .height = size, .mipmaps = 1, .format = 2}
     return HostRaylibTextureFromImage(image)
 }
@@ -1406,8 +1382,9 @@ RaylibUseIconTextures :: () {
 InvalidateRaylibAssets :: () {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
-            request := RaylibAppRequest.{.operation = 8}
+            request := RaylibAppRequest.{.operation = RaylibResource.InvalidateAssets}
             RenderCall(RaylibAppResource, cast(*void)*request)
+            raylib_app_generation = request.generation
             RaylibAppMetricsClear()
             return
         }
@@ -1422,6 +1399,9 @@ InvalidateRaylibAssets :: () {
     while index < raylib_assets_count {
         if raylib_assets[index].texture.id != 0 {
             HostRaylibUnloadTexture(raylib_assets[index].texture)
+        }
+        #if RAYLIB_FRAME_THREADS {
+            RaylibReleaseQueuedImage(*raylib_assets[index])
         }
         raylib_assets[index] = RaylibAsset.{}
         index += 1
@@ -1438,8 +1418,11 @@ InvalidateRaylibAssets :: () {
 ResetRaylibGraphics :: (context_lost: bool = false) {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
-            request := RaylibAppRequest.{.operation = 7, .flag = context_lost}
+            request := RaylibAppRequest.{.operation = RaylibResource.ResetGraphics, .flag = context_lost}
             RenderCall(RaylibAppResource, cast(*void)*request)
+            raylib_app_generation = request.generation
+            raylib_app_previous_texture = Texture2D.{}
+            raylib_app_target_generation = 0
             RaylibAppMetricsClear()
             return
         }
@@ -1460,6 +1443,9 @@ ResetRaylibGraphics :: (context_lost: bool = false) {
     while index < raylib_assets_count {
         if !context_lost && raylib_assets[index].texture.id != 0 {
             HostRaylibUnloadTexture(raylib_assets[index].texture)
+        }
+        #if RAYLIB_FRAME_THREADS {
+            RaylibReleaseQueuedImage(*raylib_assets[index])
         }
         raylib_assets[index] = RaylibAsset.{}
         index += 1
@@ -1565,6 +1551,9 @@ CloseRaylib :: () {
     retained_frame_render_index = 0
     index = 0
     while index < raylib_assets_count {
+        #if RAYLIB_FRAME_THREADS {
+            RaylibReleaseQueuedImage(*raylib_assets[index])
+        }
         if raylib_assets[index].texture.id != cast(u32)0 {
             HostRaylibUnloadTexture(raylib_assets[index].texture)
         }
@@ -1584,6 +1573,9 @@ RaylibFrameProcedure :: #type (argument: *void) #c_call;
 RunRaylibAppFrame :: (procedure: RaylibFrameProcedure, argument: *void) -> bool {
     #if RAYLIB_FRAME_THREADS {
         if !raylib_frame_pipeline_open {
+            #if #defined(ANDROID_DEBUG) {
+                render_diagnostic_clock = RaylibDiagnosticClock
+            }
             raylib_frame_pipeline_open = RenderPipelineOpen(*raylib_frame_pipeline,
                 RenderLifecycle.{RaylibAppWorkerStart, RaylibAppWorkerStop, null})
             if !raylib_frame_pipeline_open { return false }
@@ -1617,11 +1609,13 @@ DiscardRaylibAppFrame :: () {
 #program_export
 CloseRaylibAppFrames :: () {
     #if RAYLIB_FRAME_THREADS {
-        if !raylib_frame_pipeline_open { return }
-        if RaylibCurrentContext() == null { raylib_frame_pipeline.pending = -1 }
-        unused RenderPipelineFlush(*raylib_frame_pipeline)
-        RenderPipelineClose(*raylib_frame_pipeline)
-        raylib_frame_pipeline_open = false
+        if raylib_frame_pipeline_open {
+            if RaylibCurrentContext() == null { raylib_frame_pipeline.pending = -1 }
+            unused RenderPipelineFlush(*raylib_frame_pipeline)
+            RenderPipelineClose(*raylib_frame_pipeline)
+            raylib_frame_pipeline_open = false
+        }
+        RaylibStopImages()
     }
 }
 
@@ -1661,9 +1655,10 @@ PollRaylib :: () -> bool {
 
 #program_export
 RaylibViewport :: () -> Rectangle {
+    zoom := RaylibZoom()
     return Rectangle.{0.0, 0.0,
-        cast(float32)HostRaylibGetScreenWidth() / raylib_zoom,
-        cast(float32)HostRaylibGetScreenHeight() / raylib_zoom}
+        cast(float32)HostRaylibGetScreenWidth() / zoom,
+        cast(float32)HostRaylibGetScreenHeight() / zoom}
 }
 
 // Draw the following frames at this zoom factor, 1.0 for 100%.
@@ -1777,6 +1772,9 @@ BeginRaylibFrame :: () {
     #if RAYLIB_FRAME_THREADS {
         if RecordFrameOperation(PaintCommand.{}, RaylibReplayBegin) { return }
     }
+    #if RAYLIB_FRAME_THREADS {
+        if render_pipeline == null { RaylibPumpImages() }
+    }
     raylib_image_error = false
     raylib_asset_load_spent = 0.0
     raylib_asset_loads = 0
@@ -1878,7 +1876,12 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
         text_size = cast(float32)pixels / scale
     }
     newline: [2]u8 = .[10, 0]
-    line_step := HostRaylibMeasureFontText(primary, *newline[0],
+    // Newlines have no horizontal advance, but raylib still searches the
+    // font for their glyph. Use one glyph to read its global line spacing
+    // without scanning a large Unicode atlas for every label.
+    line_font := primary
+    line_font.glyph_count = 1
+    line_step := HostRaylibMeasureFontText(line_font, *newline[0],
         logical_size, 0.0).y - logical_size
     result: Vector2 = .{0.0, logical_size}
     dx: float32
@@ -1913,8 +1916,14 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
             glyph: [5]u8
             for index: 0..length - 1 { glyph[index] = bytes[at + index] }
             glyph[length] = 0
-            advance := HostRaylibMeasureFontText(RaylibGlyphFont(selected, codepoint),
-                *glyph[0], logical_size, 0.0).x
+            // Match MeasureTextEx's single-glyph advance directly. Decoding
+            // the same UTF-8 bytes and searching the atlas again per glyph
+            // adds substantial work to both clipping and drawing.
+            measured := RaylibGlyphFont(selected, codepoint)
+            info := cast(*RaylibGlyphInfo)measured.glyphs
+            width := measured.recs[0].width + cast(float32)info[0].offset_x
+            if info[0].advance_x > 0 { width = cast(float32)info[0].advance_x }
+            advance := width * (logical_size / cast(float32)measured.base_size)
             if draw {
                 if typeface != null {
                     selected = RaylibTypefaceFontForPixels(typeface, pixels,
@@ -2033,6 +2042,7 @@ RaylibTextExtent :: (value: string, font: s32) -> Vector2 {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
+    if value.count == 0 { return 0 }
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() { return RaylibAppMetric(value, font, false, false, typeface) }
     }
@@ -2055,8 +2065,9 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 #program_export
 PollPointer :: () -> PointerFrame {
     pointer: PointerFrame = raylib_pointer
-    pointer.x = pointer.x / raylib_zoom
-    pointer.y = pointer.y / raylib_zoom
+    zoom := RaylibZoom()
+    pointer.x = pointer.x / zoom
+    pointer.y = pointer.y / zoom
     return pointer
 }
 
@@ -2428,8 +2439,8 @@ BeginRetainedFrame :: (width: s32, height: s32) -> bool {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
             if raylib_app_target_width != width || raylib_app_target_height != height ||
-                raylib_app_target_generation != raylib_app_generation {
-                request := RaylibAppRequest.{.operation = 12, .width = width, .height = height}
+            raylib_app_target_generation != raylib_app_generation {
+                request := RaylibAppRequest.{.operation = RaylibResource.RetainedTargets, .width = width, .height = height}
                 RenderCall(RaylibAppResource, cast(*void)*request)
                 if !request.ok { return false }
                 raylib_app_target_width = width
@@ -2437,7 +2448,7 @@ BeginRetainedFrame :: (width: s32, height: s32) -> bool {
                 raylib_app_target_generation = raylib_app_generation
             }
             unused RecordFrameOperation(PaintCommand.{.bounds = Rectangle.{0.0, 0.0,
-                cast(float32)width, cast(float32)height}}, RaylibReplayRetainedBegin)
+                        cast(float32)width, cast(float32)height}}, RaylibReplayRetainedBegin)
             raylib_app_retained_frame = true
             return true
         }
@@ -2531,15 +2542,10 @@ RetainedPreviousFrameTexture :: () -> Texture2D {
 
 #program_export
 DisposeFrameTexture :: (texture: Texture2D) {
-    #if RAYLIB_FRAME_THREADS {
-        if RecordFrameOperation(PaintCommand.{.texture = texture}, RaylibReplayTextureFree) { return }
-    }
-    if texture.id != cast(u32)0 { HostRaylibUnloadTexture(texture) }
+    if texture.id != cast(u32)0 { RaylibIconTextureFree(texture) }
 }
 
-HostRaylibLoadImageFromMemory :: (file_type: *u8, data: *u8,
-    size: s32) -> RaylibGlyphImage #foreign raylib "LoadImageFromMemory";
-HostRaylibImageFormat :: (image: *RaylibGlyphImage, format: s32) #foreign raylib "ImageFormat";
+HostRaylibImageFormat :: (image: *ImagePixels.RaylibGlyphImage, format: s32) #foreign raylib "ImageFormat";
 
 // Decodes an image file for image_preview.zi with raylib's codecs, which
 // leave Exif orientation to the caller. Gray, gray with alpha, RGB and RGBA
@@ -2551,12 +2557,7 @@ ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s3
     height.* = 0
     channels.* = 0
     upright.* = false
-    extension: [16]u8
-    if data.count == 0 || data.count > 2147483647 || !CopyCString(file_type, extension[:]) {
-        return null
-    }
-    bytes := cast(*TypefaceText.TextDescriptor)(*data)
-    image := HostRaylibLoadImageFromMemory(*extension[0], bytes.data, cast(s32)data.count)
+    image := ImagePixels.RaylibDecodePixels(data, file_type)
     if image.data == null || image.width <= 0 || image.height <= 0 {
         if image.data != null {
             HostTypefaceFree(cast(*u8)image.data)
@@ -2634,9 +2635,12 @@ RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {
     #if RAYLIB_FRAME_THREADS {
+        if RenderOnAppThread() && texture_id == 0 && asset_path.count > 0 {
+            unused RaylibAppMetric(asset_path, 0, false, true)
+        }
         if RecordFrameOperation(PaintCommand.{.asset_path = asset_path, .texture_id = texture_id,
-            .source = source, .bounds = destination, .clip = clip, .origin = origin,
-            .rotation = rotation, .radius = radius, .color = tint}, RaylibReplayRasterImage) { return }
+                .source = source, .bounds = destination, .clip = clip, .origin = origin,
+                .rotation = rotation, .radius = radius, .color = tint}, RaylibReplayRasterImage) { return }
     }
     // Negative source dimensions mirror images and orient render targets.
     if source.width == 0.0 || source.height == 0.0 ||
@@ -2679,9 +2683,12 @@ RasterImage :: (asset_path: string, texture_id: u32,
 RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
     #if RAYLIB_FRAME_THREADS {
+        if RenderOnAppThread() && texture_id == 0 && asset_path.count > 0 {
+            unused RaylibAppMetric(asset_path, 0, false, true)
+        }
         if RecordFrameOperation(PaintCommand.{.asset_path = asset_path, .texture_id = texture_id,
-            .source = source, .mesh_points = points, .mesh_columns = columns,
-            .mesh_rows = rows, .clip = clip, .color = tint}, RaylibReplayRasterMesh) { return }
+                .source = source, .mesh_points = points, .mesh_columns = columns,
+                .mesh_rows = rows, .clip = clip, .color = tint}, RaylibReplayRasterMesh) { return }
     }
     if columns < 2 || rows < 2 || clip.width <= 0.0 || clip.height <= 0.0 { return }
     count: s64 = cast(s64)columns * cast(s64)rows
@@ -2883,6 +2890,148 @@ SystemClipboardWriteHost :: (text: string) -> bool {
 PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
 
 #if RAYLIB_FRAME_THREADS {
+    RaylibImageQueued :: 1
+    RaylibImageDecoding :: 2
+    RaylibImageReady :: 3
+    RaylibImageFailed :: 4
+    RaylibImageSize :: struct { token: u64; width: s32; height: s32; needs_source: bool }
+    raylib_app_assets: [RaylibAssetCapacity]RaylibImageSize;
+    raylib_asset_serial: u64;
+    raylib_image_job: ImagePixels.RaylibImageJob;
+    raylib_image_job_index: s32 = -1;
+    raylib_image_job_generation: u64;
+    raylib_image_job_token: u64;
+    raylib_image_queue_next: s32;
+    raylib_image_source_queued: bool;
+    raylib_app_image_source_available: bool;
+    raylib_app_image_source_captured: bool;
+    raylib_app_image_reader: RaylibAssetReadCall;
+    raylib_app_image_context: *void;
+    raylib_app_image_reader_active: bool;
+    RaylibImageReadRetry :: 0.1
+    RaylibImageDecodeRetry :: 1.0
+
+    RaylibAssetSize :: (index: s32) -> RaylibImageSize {
+        if index < 0 || index >= raylib_assets_count { return RaylibImageSize.{} }
+        asset := *raylib_assets[index]
+        if asset.state == RaylibImageReady {
+            return RaylibImageSize.{asset.token, asset.texture.width, asset.texture.height, false}
+        }
+        dimension: s32 = ifx asset.state == RaylibImageFailed then 0 else -1
+        needs := asset.encoded.count == 0 && asset.state != RaylibImageDecoding &&
+        HostRaylibGetTime() >= asset.retry_after
+        return RaylibImageSize.{asset.token, dimension, dimension, needs}
+    }
+
+    RaylibImageSource :: struct { data: string; owned: *u8 }
+    RaylibReadImageSource :: (path: string, reader: RaylibAssetReadCall,
+        context: *void, active: bool) -> RaylibImageSource {
+        source: RaylibImageSource
+        if active {
+            source.data = reader(context, path)
+        } else {
+            name: [1024]u8
+            count: s32
+            if CopyCString(path, name[:]) { source.owned = HostTypefaceFileData(*name[0], *count) }
+            if source.owned != null && count > 0 {
+                source.data = TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(source.owned, cast(u64)count))
+            }
+        }
+        return source
+    }
+
+    RaylibReleaseImageSource :: (source: RaylibImageSource) {
+        if source.owned != null { HostTypefaceFileDataFree(source.owned) }
+    }
+
+    RaylibReleaseQueuedImage :: (asset: *RaylibAsset) {
+        if asset.encoded.count == 0 { return }
+        ImagePixels.RaylibImageBytesRelease(asset.encoded)
+        empty: []u8
+        asset.encoded = empty
+        raylib_image_source_queued = false
+    }
+
+    // One waiting source and one active decode bound memory. File callbacks
+    // never run here: the producer has already captured their bytes.
+    RaylibQueueImageSource :: (index: s32, token: u64, data: string) -> bool {
+        if index < 0 || index >= raylib_assets_count || raylib_image_source_queued { return false }
+        asset := *raylib_assets[index]
+        if asset.token != token || asset.state == RaylibImageReady || asset.state == RaylibImageDecoding { return false }
+        encoded := ImagePixels.RaylibImageBytesCopy(data)
+        if encoded.count == 0 {
+            asset.retry_after = HostRaylibGetTime() + RaylibImageReadRetry
+            return false
+        }
+        asset.encoded = encoded
+        asset.state = RaylibImageQueued
+        raylib_image_source_queued = true
+        RaylibStartQueuedImage()
+        return true
+    }
+
+    // Before the pipeline starts, the caller is both producer and renderer.
+    RaylibCaptureStandaloneImage :: (index: s32) {
+        size := RaylibAssetSize(index)
+        if !size.needs_source || raylib_image_source_queued { return }
+        path := TypefaceText.TextFromCString(*raylib_assets[index].path[0])
+        source := RaylibReadImageSource(path, raylib_asset_reader, raylib_asset_context, raylib_asset_reader_active)
+        unused RaylibQueueImageSource(index, size.token, source.data)
+        RaylibReleaseImageSource(source)
+    }
+
+    RaylibStartQueuedImage :: () {
+        if raylib_image_job_index >= 0 || raylib_assets_count <= 0 { return }
+        for scanned: cast(s32)0..raylib_assets_count - 1 {
+            index := (raylib_image_queue_next + scanned) % raylib_assets_count
+            asset := *raylib_assets[index]
+            if asset.state != RaylibImageQueued || asset.encoded.count == 0 { continue }
+            path := TypefaceText.TextFromCString(*asset.path[0])
+            if !ImagePixels.RaylibImageStartOwned(*raylib_image_job, path, asset.encoded) { return }
+            empty: []u8
+            asset.encoded = empty
+            raylib_image_source_queued = false
+            raylib_image_queue_next = (index + 1) % raylib_assets_count
+            asset.state = RaylibImageDecoding
+            raylib_image_job_index = index
+            raylib_image_job_generation = raylib_resource_generation
+            raylib_image_job_token = asset.token
+            return
+        }
+    }
+
+    // Publish CPU results before starting app work. Uploads never run on
+    // the decode worker or concurrently with layout's metric snapshots.
+    RaylibPumpImages :: () {
+        if RenderOnAppThread() || RaylibCurrentContext() == null { return }
+        if raylib_image_job_index >= 0 && ImagePixels.RaylibImageFinished(*raylib_image_job) {
+            image := ImagePixels.RaylibImageTake(*raylib_image_job)
+            index := raylib_image_job_index
+            if raylib_image_job_generation == raylib_resource_generation &&
+            index < raylib_assets_count && raylib_assets[index].token == raylib_image_job_token &&
+            raylib_assets[index].state == RaylibImageDecoding {
+                if image.data != null {
+                    raylib_assets[index].texture = HostRaylibTextureFromImage(image)
+                }
+                raylib_assets[index].state = ifx raylib_assets[index].texture.id != 0 then RaylibImageReady else RaylibImageFailed
+                raylib_assets[index].retry_after = HostRaylibGetTime() + RaylibImageDecodeRetry
+                PaintResourcesChanged()
+            }
+            ImagePixels.RaylibImageRelease(image)
+            raylib_image_job_index = -1
+        }
+        RaylibStartQueuedImage()
+    }
+
+    RaylibStopImages :: () {
+        ImagePixels.RaylibImageClose(*raylib_image_job)
+        if raylib_image_job_index >= 0 && raylib_image_job_index < raylib_assets_count &&
+        raylib_assets[raylib_image_job_index].state == RaylibImageDecoding {
+            raylib_assets[raylib_image_job_index].state = RaylibImageQueued
+        }
+        raylib_image_job_index = -1
+    }
+
     // Hosts may free app resources before closing their window. Finish the
     // last owned frame before destroying a texture or font it still uses.
     RaylibDrainAppFrame :: () {
@@ -2901,6 +3050,8 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         width: s32
         height: s32
         generation: u64
+        asset_index: s32
+        asset_token: u64
     }
     raylib_app_metrics: [2048]RaylibAppMetricEntry;
     raylib_frame_pipeline: RenderPipeline;
@@ -2910,6 +3061,10 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         unused argument
         #if #defined(ANDROID_BUILD) {
             AndroidJniKeepHostThread()
+            // Custom hosts may use their own JNI helpers. Attach once here
+            // so those helpers also see this worker's existing VM session.
+            session: AndroidJniSession
+            if AndroidJniAttachCurrent(*session) != 0 { AndroidJniDetachCurrent(*session) }
         }
     }
     RaylibAppWorkerStop :: (argument: *void) {
@@ -2935,31 +3090,46 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
     raylib_metrics_pending: bool;
     raylib_app_metrics_changed: bool;
     #if #defined(ANDROID_BUILD) {
-    raylib_app_surface_transform: AndroidSurfaceTransform;
+        raylib_app_surface_transform: AndroidSurfaceTransform;
 
-    RaylibRecordSurfaceClear :: (viewport: AndroidViewport, canvas: u32, zoom: float32) -> bool {
-        return RecordFrameOperation(PaintCommand.{.bounds = Rectangle.{cast(float32)viewport.x,
-            cast(float32)viewport.y, cast(float32)viewport.width, cast(float32)viewport.height},
-            .texture_id = canvas, .radius = zoom}, RaylibReplaySurfaceClear)
-    }
-    RaylibReplaySurfaceClear :: (command: PaintCommand) {
-        viewport: AndroidViewport
-        viewport.x = cast(s32)command.bounds.x
-        viewport.y = cast(s32)command.bounds.y
-        viewport.width = cast(s32)command.bounds.width
-        viewport.height = cast(s32)command.bounds.height
-        ClearAndroidFrame(viewport, command.texture_id, command.radius)
-    }
-    RaylibReadAppTransform :: (output: *AndroidSurfaceTransform) -> bool {
-        if !RenderOnAppThread() || output == null { return false }
-        output.* = raylib_app_surface_transform
-        return true
+        RaylibRecordSurfaceClear :: (viewport: AndroidViewport, canvas: u32, zoom: float32) -> bool {
+            return RecordFrameOperation(PaintCommand.{.bounds = Rectangle.{cast(float32)viewport.x,
+                        cast(float32)viewport.y, cast(float32)viewport.width, cast(float32)viewport.height},
+                    .texture_id = canvas, .radius = zoom}, RaylibReplaySurfaceClear)
+        }
+        RaylibReplaySurfaceClear :: (command: PaintCommand) {
+            viewport: AndroidViewport
+            viewport.x = cast(s32)command.bounds.x
+            viewport.y = cast(s32)command.bounds.y
+            viewport.width = cast(s32)command.bounds.width
+            viewport.height = cast(s32)command.bounds.height
+            ClearAndroidFrame(viewport, command.texture_id, command.radius)
+        }
+        RaylibReadAppTransform :: (output: *AndroidSurfaceTransform) -> bool {
+            if !RenderOnAppThread() || output == null { return false }
+            output.* = raylib_app_surface_transform
+            return true
+        }
+
     }
 
+    RaylibResource :: enum {
+        GlyphWidth
+        ImageSize
+        ImageSource
+        TypefaceData
+        TypefaceFile
+        SystemTypeface
+        SelectTypeface
+        ResetGraphics
+        InvalidateAssets
+        ReleaseTypefaces
+        IconTexture
+        RetainedTargets
     }
 
     RaylibAppRequest :: struct {
-        operation: s32
+        operation: RaylibResource
         name: string
         value: string
         extension: string
@@ -2971,38 +3141,74 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         ok: bool
         texture: Texture2D
         pixels: []u8
+        asset_index: s32
+        asset_token: u64
+        generation: u64
+        image_data: string
+        needs_source: bool
     }
 
     RaylibAppResource :: (argument: *void) {
         request := cast(*RaylibAppRequest)argument
-        if request.operation == 1 {
-            request.width = MeasureGlyphWidth(request.value, request.count, request.name)
-        } else if request.operation == 2 {
-            index := RaylibAssetIndex(request.value)
-            if index >= 0 {
-                request.width = raylib_assets[index].texture.width
-                request.height = raylib_assets[index].texture.height
+        if request.operation == RaylibResource.GlyphWidth {
+            #if #defined(ANDROID_DEBUG) {
+                raylib_debug_text_requests += 1
+                if raylib_debug_frames % 300 == 299 {
+                    key := RaylibAssetHash(request.value)
+                    RaylibPipelineTrace("metric len=%d font=%d key=%d.%d face=%d unused=%d",
+                        cast(s32)request.value.count, request.count, cast(s32)(key >> cast(u64)32),
+                        cast(s32)(key & cast(u64)0xffffffff), cast(s32)RaylibAssetHash(request.name), 0)
+                }
             }
-        } else if request.operation == 3 {
+            request.width = MeasureGlyphWidth(request.value, request.count, request.name)
+        } else if request.operation == RaylibResource.ImageSize {
+            #if #defined(ANDROID_DEBUG) {
+                raylib_debug_image_requests += 1
+            }
+            index := RaylibAssetIndex(request.value, true)
+            request.asset_index = index
+            if index >= 0 {
+                size := RaylibAssetSize(index)
+                request.width = size.width
+                request.height = size.height
+                request.asset_token = size.token
+                request.needs_source = size.needs_source
+            }
+        } else if request.operation == RaylibResource.ImageSource {
+            valid := request.generation == raylib_resource_generation &&
+            request.asset_index >= 0 && request.asset_index < raylib_assets_count
+            if valid { valid = raylib_assets[request.asset_index].token == request.asset_token }
+            if valid {
+                request.ok = RaylibQueueImageSource(request.asset_index, request.asset_token, request.image_data)
+                size := RaylibAssetSize(request.asset_index)
+                request.width = size.width
+                request.height = size.height
+                request.asset_token = size.token
+                request.needs_source = size.needs_source
+            } else {
+                request.width = -1
+                request.height = -1
+                request.asset_token = 0
+                request.needs_source = false
+            }
+        } else if request.operation == RaylibResource.TypefaceData {
             request.ok = LoadTypefaceData(request.name, request.extension,
                 request.value, request.seed, request.count)
-        } else if request.operation == 4 {
+        } else if request.operation == RaylibResource.TypefaceFile {
             request.ok = LoadTypefaceFile(request.name, request.value, request.seed, request.count)
-        } else if request.operation == 5 {
+        } else if request.operation == RaylibResource.SystemTypeface {
             request.ok = LoadSystemTypeface(request.name)
-        } else if request.operation == 6 {
+        } else if request.operation == RaylibResource.SelectTypeface {
             request.ok = SelectTypeface(request.name)
-        } else if request.operation == 7 {
+        } else if request.operation == RaylibResource.ResetGraphics {
             ResetRaylibGraphics(request.flag)
-        } else if request.operation == 8 {
+        } else if request.operation == RaylibResource.InvalidateAssets {
             InvalidateRaylibAssets()
-        } else if request.operation == 9 {
+        } else if request.operation == RaylibResource.ReleaseTypefaces {
             ReleaseTypefaces()
-        } else if request.operation == 10 {
-            RaylibIconTextureFree(request.texture)
-        } else if request.operation == 11 {
+        } else if request.operation == RaylibResource.IconTexture {
             request.texture = RaylibIconTexture(request.pixels, request.count)
-        } else if request.operation == 12 {
+        } else if request.operation == RaylibResource.RetainedTargets {
             // Preallocate both targets while the producer is waiting. A
             // later render never changes storage the app is inspecting.
             request.ok = RaylibPrepareRetainedFrame(request.width, request.height)
@@ -3013,10 +3219,27 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
             }
             retained_frame_render_index = first
         }
+        request.generation = raylib_resource_generation
     }
 
     RaylibAppMetricsClear :: () {
         for index: cast(s32)0..2047 { raylib_app_metrics[index].length = 0 }
+    }
+
+    RaylibAppCaptureImage :: (path: string, index: s32, token: u64) {
+        if raylib_app_image_source_captured || !raylib_app_image_source_available { return }
+        raylib_app_image_source_captured = true
+        // Frame-scoped providers must be read before the app callback returns.
+        // Its resource request waits only while the owner copies those bytes.
+        source := RaylibReadImageSource(path, raylib_app_image_reader,
+            raylib_app_image_context, raylib_app_image_reader_active)
+        request := RaylibAppRequest.{.operation = RaylibResource.ImageSource,
+            .asset_index = index, .asset_token = token, .generation = raylib_app_generation,
+            .image_data = source.data}
+        RenderCall(RaylibAppResource, cast(*void)*request)
+        RaylibReleaseImageSource(source)
+        raylib_app_assets[index] = RaylibImageSize.{request.asset_token, request.width,
+            request.height, request.needs_source}
     }
 
     RaylibAppMetric :: (value: string, font: s32, height: bool, image: bool = false, typeface: string = "") -> s32 {
@@ -3026,24 +3249,45 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         index := cast(s32)(hash % cast(u64)2048)
         entry := *raylib_app_metrics[index]
         same := entry.length == cast(s32)value.count && entry.hash == hash &&
-            entry.font == font && entry.generation == raylib_app_generation
+        entry.font == font && entry.generation == raylib_app_generation
         if same {
             for at: cast(s64)0..value.count - 1 {
                 if entry.bytes[at] != value[at] { same = false; break }
             }
         }
+        if same && image {
+            slot := entry.asset_index
+            if slot >= 0 && slot < RaylibAssetCapacity &&
+            raylib_app_assets[slot].token == entry.asset_token {
+                if raylib_app_assets[slot].needs_source { RaylibAppCaptureImage(value, slot, entry.asset_token) }
+                size := raylib_app_assets[slot]
+                return ifx height then size.height else size.width
+            }
+            same = false
+        }
         if same { return ifx height then entry.height else entry.width }
-        request := RaylibAppRequest.{.operation = ifx image then 2 else 1,
+        request := RaylibAppRequest.{.operation = ifx image then RaylibResource.ImageSize else RaylibResource.GlyphWidth,
             .name = typeface, .value = value, .count = font}
         RenderCall(RaylibAppResource, cast(*void)*request)
-        if value.count > 0 && value.count <= 256 && request.width > 0 {
+        if image && request.asset_index >= 0 && request.asset_index < RaylibAssetCapacity {
+            raylib_app_assets[request.asset_index] = RaylibImageSize.{request.asset_token, request.width, request.height, request.needs_source}
+        }
+        if value.count > 0 && value.count <= 256 && (request.width > 0 || image) {
             entry.hash = hash
             entry.length = cast(s32)value.count
             entry.font = font
             entry.generation = raylib_app_generation
             entry.width = request.width
             entry.height = request.height
+            entry.asset_index = request.asset_index
+            entry.asset_token = request.asset_token
             for at: cast(s64)0..value.count - 1 { entry.bytes[at] = value[at] }
+        }
+        if image && request.asset_index >= 0 && request.asset_index < RaylibAssetCapacity {
+            slot := request.asset_index
+            if request.needs_source { RaylibAppCaptureImage(value, slot, request.asset_token) }
+            size := raylib_app_assets[slot]
+            return ifx height then size.height else size.width
         }
         return ifx height then request.height else request.width
     }
@@ -3080,6 +3324,23 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
     #if #defined(ANDROID_DEBUG) {
         raylib_debug_font_bakes: s32;
         raylib_debug_frames: s32;
+        raylib_debug_text_requests: s32;
+        raylib_debug_image_requests: s32;
+        RaylibDiagnosticClock :: () -> float64 { return HostRaylibGetTime() }
+        RaylibDiagnosticAssets :: () {
+            ready: s32
+            queued: s32
+            failed: s32
+            for index: cast(s32)0..raylib_assets_count - 1 {
+                state := raylib_assets[index].state
+                if state == RaylibImageReady { ready += 1 }
+                if state == RaylibImageQueued { queued += 1 }
+                if state == RaylibImageFailed { failed += 1 }
+            }
+            RaylibPipelineTrace("assets total=%d ready=%d queued=%d failed=%d job=%d reader=%d",
+                raylib_assets_count, ready, queued, failed, raylib_image_job_index,
+                ifx raylib_asset_reader_active then 1 else 0)
+        }
         PipelineLogPrint :: (priority: s32, tag: *u8, format: *u8,
             a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) -> s32 #foreign pipeline_log "__android_log_print";
         RaylibPipelineTrace :: (format: string, a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) {
@@ -3091,17 +3352,17 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
 
     #if #defined(ANDROID_BUILD) {
         pipeline_egl :: #system_library "EGL";
-    PipelineLogWrite :: (priority: s32, tag: *u8, message: *u8) -> s32 #foreign pipeline_log "__android_log_write";
-    RaylibPipelineError :: (message: string) {
-        tag: [6]u8 = .[107, 114, 121, 111, 110, 0]
-        text: [256]u8
-        if CopyCString(message, text[:]) { unused PipelineLogWrite(6, *tag[0], *text[0]) }
-    }
-    RaylibCurrentContext :: () -> *void #foreign pipeline_egl "__real_eglGetCurrentContext";
-    #program_export
-    __wrap_eglGetCurrentContext :: () -> *void {
-        return ifx RenderOnAppThread() then raylib_app_context else RaylibCurrentContext()
-    }
+        PipelineLogWrite :: (priority: s32, tag: *u8, message: *u8) -> s32 #foreign pipeline_log "__android_log_write";
+        RaylibPipelineError :: (message: string) {
+            tag: [6]u8 = .[107, 114, 121, 111, 110, 0]
+            text: [256]u8
+            if CopyCString(message, text[:]) { unused PipelineLogWrite(6, *tag[0], *text[0]) }
+        }
+        RaylibCurrentContext :: () -> *void #foreign pipeline_egl "__real_eglGetCurrentContext";
+        #program_export
+        __wrap_eglGetCurrentContext :: () -> *void {
+            return ifx RenderOnAppThread() then raylib_app_context else RaylibCurrentContext()
+        }
     } else {
         frame_sdl :: #system_library "SDL2";
         RaylibCurrentContext :: () -> *void #foreign frame_sdl "SDL_GL_GetCurrentContext";
@@ -3115,8 +3376,17 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         SetPaintPixelScale(raylib_app_zoom)
         raylib_app_retained_frame = false
         raylib_app_reuse_previous = false
+        raylib_app_image_source_captured = false
         if raylib_app_metrics_changed { Metrics.GlyphMetricsChanged() }
         raylib_app_procedure(raylib_app_argument)
+    }
+
+    RaylibRecordPaint :: (command: QueuedPaint) -> bool {
+        if RenderOnAppThread() && command.builtin_emitter && command.data.kind == cast(s32)PaintKind.PaintKindImage &&
+        command.data.texture_id == 0 && command.data.texture.id == 0 && command.data.asset_path.count > 0 {
+            unused RaylibAppMetric(command.data.asset_path, 0, false, true)
+        }
+        return RenderRecord(command)
     }
 
     #program_export
@@ -3129,20 +3399,21 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
             pipeline.pending = -1
         }
         raylib_pipeline_context = context
+        paint_recorder = RaylibRecordPaint
         raylib_app_context = context
         PrepareRaylibAppTiming()
         #if #defined(ANDROID_BUILD) {
-        viewport: AndroidViewport
-        unused SyncAndroidViewport(*viewport)
-        unused ReadAndroidSurfaceTransform(*raylib_app_surface_transform)
-        android_surface_worker = RenderOnAppThread
-        android_surface_clear = RaylibRecordSurfaceClear
-        android_surface_read_transform = RaylibReadAppTransform
+            viewport: AndroidViewport
+            unused SyncAndroidViewport(*viewport)
+            unused ReadAndroidSurfaceTransform(*raylib_app_surface_transform)
+            android_surface_worker = RenderOnAppThread
+            android_surface_clear = RaylibRecordSurfaceClear
+            android_surface_read_transform = RaylibReadAppTransform
         }
         raylib_app_zoom = raylib_zoom
         raylib_app_previous_texture = RetainedPreviousFrameTexture()
         if pipeline.pending >= 0 && raylib_app_retained_frame &&
-            (!raylib_app_reuse_previous || retained_frame_previous_index < 0) {
+        (!raylib_app_reuse_previous || retained_frame_previous_index < 0) {
             // The next app frame samples the target being completed now.
             // Its handle is stable; its pixels are consumed only on replay,
             // after this target has finished. Sampling the older target would
@@ -3150,6 +3421,13 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
             raylib_app_previous_texture = retained_frame_targets[retained_frame_render_index].texture
         }
         raylib_app_generation = raylib_resource_generation
+        raylib_app_image_source_available = !raylib_image_source_queued
+        raylib_app_image_reader = raylib_asset_reader
+        raylib_app_image_context = raylib_asset_context
+        raylib_app_image_reader_active = raylib_asset_reader_active
+        for index: cast(s32)0..RaylibAssetCapacity - 1 {
+            raylib_app_assets[index] = RaylibAssetSize(index)
+        }
         revision := Metrics.GlyphMetricsRevision()
         if revision != raylib_app_metrics_revision {
             RaylibAppMetricsClear()
@@ -3159,6 +3437,10 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         raylib_metrics_pending = false
         raylib_app_procedure = procedure
         raylib_app_argument = argument
+        #if #defined(ANDROID_DEBUG) {
+            raylib_debug_text_requests = 0
+            raylib_debug_image_requests = 0
+        }
         ok := RenderPipelineStep(pipeline, RaylibPipelineCompose, null)
         if !ok { RaylibPipelineError("kryon: frame recording or replay failed") }
         #if #defined(ANDROID_DEBUG) {
@@ -3168,11 +3450,20 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
                 RaylibPipelineTrace("frame=%d commands=%d bytes=%d points=%d font-bakes=%d retained=%d",
                     raylib_debug_frames, cast(s32)frame.commands.count, cast(s32)frame.bytes.count,
                     cast(s32)frame.points.count, raylib_debug_font_bakes, ifx retained_frame_active then 1 else 0)
+                RaylibPipelineTrace("us app=%d paint=%d swap=%d barrier=%d text-rpc=%d image-rpc=%d",
+                    cast(s32)(render_compose_seconds * 1000000.0), cast(s32)(render_paint_seconds * 1000000.0),
+                    cast(s32)(frame_swap_seconds * 1000000.0), cast(s32)(render_barrier_seconds * 1000000.0),
+                    raylib_debug_text_requests, raylib_debug_image_requests)
+                RaylibDiagnosticAssets()
             }
         }
         // Retained-frame bookkeeping must finish before a waiting resource
         // request can replace its targets. Empty frames still poll events.
         PollRaylibFrameEvents()
+        // Lifecycle notifications in the app callback may have discarded
+        // old resources. Publish decoded pixels only after that callback,
+        // and defer them again if platform polling replaced the context.
+        if RaylibCurrentContext() == raylib_pipeline_context { RaylibPumpImages() }
         return ok
     }
 }

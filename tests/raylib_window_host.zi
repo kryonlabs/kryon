@@ -1,3 +1,4 @@
+#import "raylib_image_decode"
 #import "raylib_runtime"
 #import "byte_text_linux"
 #import "paint_texture"

@@ -28,6 +28,9 @@ frame_presentation_count: u64;
 frame_target_seconds: float64 = 1.0 / 60.0;
 frame_elapsed_seconds: float32 = 1.0 / 60.0;
 frame_app_elapsed_seconds: float32 = 1.0 / 60.0;
+#if #defined(ANDROID_DEBUG) {
+    frame_swap_seconds: float64;
+}
 
 PollRaylibFrameEvents :: () { FramePoll() }
 PrepareRaylibAppTiming :: () { frame_app_elapsed_seconds = frame_elapsed_seconds }
@@ -47,7 +50,7 @@ ReplayFrameEnd :: (command: PaintCommand) { unused command; __wrap_EndDrawing() 
 ReplayFrameClear :: (command: PaintCommand) { __wrap_ClearBackground(command.color) }
 ReplayFrameCamera :: (command: PaintCommand) {
     __wrap_BeginMode2D(Camera.{command.origin,
-        Vector2.{command.bounds.x, command.bounds.y}, command.rotation, command.radius})
+            Vector2.{command.bounds.x, command.bounds.y}, command.rotation, command.radius})
 }
 ReplayFrameEndCamera :: (command: PaintCommand) { unused command; __wrap_EndMode2D() }
 ReplayFrameScissor :: (command: PaintCommand) {
@@ -59,9 +62,19 @@ ReplayFrameRate :: (command: PaintCommand) { __wrap_SetTargetFPS(command.font) }
 
 #program_export
 __wrap_SetTargetFPS :: (fps: s32) {
+    if RenderOnAppThread() { RenderPublishFrameRate(fps) }
     if RecordFrameOperation(PaintCommand.{.font = fps}, ReplayFrameRate) { return }
     frame_target_seconds = ifx fps > 0 then 1.0 / cast(float64)fps else 0.0
     FrameSetTarget(fps)
+}
+
+FrameApplyActiveRate :: () {
+    fps: s32
+    if !RenderReadFrameRate(*fps) { return }
+    seconds := ifx fps > 0 then 1.0 / cast(float64)fps else 0.0
+    // New activity must not wait behind a recorded idle frame. A lower rate
+    // still takes effect with its own paint, after the active frame presents.
+    if seconds < frame_target_seconds { __wrap_SetTargetFPS(fps) }
 }
 
 #program_export
@@ -86,12 +99,24 @@ __wrap_BeginDrawing :: () {
 __wrap_EndDrawing :: () {
     if RecordFrameOperation(PaintCommand.{}, ReplayFrameEnd) { return }
     FrameEnd()
+    #if #defined(ANDROID_DEBUG) {
+        swap_started := FrameTime()
+    }
     FrameSwap()
+    #if #defined(ANDROID_DEBUG) {
+        frame_swap_seconds = FrameTime() - swap_started
+    }
     // EGL's swap interval supplies vsync; also bound software/no-vsync
     // surfaces to 60 Hz. Polling waits for the app's stable input snapshot.
-    now := FrameTime()
-    remaining := frame_presented_at + frame_target_seconds - now
-    if remaining > 0.0 && remaining <= frame_target_seconds { FrameWait(remaining) }
+    while true {
+        FrameApplyActiveRate()
+        remaining := frame_presented_at + frame_target_seconds - FrameTime()
+        if remaining <= 0.0 || remaining > frame_target_seconds { break }
+        // Recheck an app's request during a long idle wait. Active frames
+        // usually finish in one sleep; a newer request never touches GL here.
+        if render_pipeline != null && remaining > 0.008 { remaining = 0.008 }
+        FrameWait(remaining)
+    }
     finished := FrameTime()
     if frame_presented_at > 0.0 { frame_elapsed_seconds = cast(float32)(finished - frame_presented_at) }
     frame_presented_at = finished
@@ -108,8 +133,8 @@ __wrap_ClearBackground :: (color: Color) {
 #program_export
 __wrap_BeginMode2D :: (camera: Camera) {
     if RecordFrameOperation(PaintCommand.{.origin = camera.offset,
-        .bounds = Rectangle.{camera.target.x, camera.target.y, 0.0, 0.0},
-        .rotation = camera.rotation, .radius = camera.zoom}, ReplayFrameCamera) { return }
+            .bounds = Rectangle.{camera.target.x, camera.target.y, 0.0, 0.0},
+            .rotation = camera.rotation, .radius = camera.zoom}, ReplayFrameCamera) { return }
     FrameBeginCamera(camera)
 }
 
@@ -122,7 +147,7 @@ __wrap_EndMode2D :: () {
 #program_export
 __wrap_BeginScissorMode :: (x: s32, y: s32, width: s32, height: s32) {
     if RecordFrameOperation(PaintCommand.{.bounds = Rectangle.{cast(float32)x,
-        cast(float32)y, cast(float32)width, cast(float32)height}}, ReplayFrameScissor) { return }
+                cast(float32)y, cast(float32)width, cast(float32)height}}, ReplayFrameScissor) { return }
     FrameBeginScissor(x, y, width, height)
 }
 
