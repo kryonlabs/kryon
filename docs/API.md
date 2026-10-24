@@ -262,5 +262,7 @@ controller's D-pad, drawn in the largest square of its bounds. Directions are
 0 left, 1 up, 2 right and 3 down. It returns the arm held (`direction`) and
 `step`: true when an arm is pressed or the thumb slides onto another arm,
 then while held after twice `repeat_seconds` and at each repeat, like a held
-arrow key. The hub stops, and a quick tap steps once. It is composed from
-`Press`, `Box` and `SvgIcon`, so hosted games can use it.
+arrow key. The hub stops, and a quick tap steps once. `floating` lays it
+over a board: lighter arms and outlined arrows let the pieces under it show
+through, and drawn after the board it takes the presses there. It is composed
+from `Press`, `Box` and `SvgIcon`, so hosted games can use it.

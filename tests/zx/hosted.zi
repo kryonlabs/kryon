@@ -80,7 +80,7 @@ main :: () -> s32 {
             .bounds = Rectangle.{400.0, 320.0, 200.0, 120.0}, .now = AppNow(), .repeat_seconds = 0.1})
     if stick.step { print("Hosted joystick step\n") }
     pad := DirectionPad(AppSession(), DirectionPadProps.{.key = cast(u64)34000, .id = 34000,
-            .bounds = Rectangle.{640.0, 300.0, 160.0, 160.0}, .now = AppNow(), .repeat_seconds = 0.1})
+            .bounds = Rectangle.{640.0, 300.0, 160.0, 160.0}, .now = AppNow(), .repeat_seconds = 0.1, .floating = true})
     if pad.step {
         if pad.direction == 0 { print("Hosted pad step left\n") }
         if pad.direction == 1 { print("Hosted pad step up\n") }
