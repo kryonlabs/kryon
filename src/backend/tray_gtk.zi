@@ -55,9 +55,13 @@ FnFileTest :: #type (*u8, s32) -> s32 #c_call;
 FnCanonicalize :: #type (*u8, *u8) -> *u8 #c_call;
 FnMonotonic :: #type () -> s64 #c_call;
 FnIndicatorNew :: #type (*u8, *u8, s32) -> *void #c_call;
+FnName :: #type (*u8) -> void #c_call;
 FnIndicatorIcon :: #type (*void, *u8, *u8) -> void #c_call;
 
 gtk_init_check: FnInitCheck;
+// Panels name the tray after GLib's program name, which is otherwise the
+// executable's file name, such as breeze-linux-x86_64.
+g_set_prgname: FnName;
 gtk_disable_setlocale: FnVoid;
 gtk_menu_new: FnNew;
 gtk_menu_item_new_with_label: FnNewWithText;
@@ -148,6 +152,7 @@ LoadLibraries :: () {
     handle: *void = OpenLibrary("libgtk-3.so.0")
     if handle == null { return }
     ok: bool = Resolve(handle, cast(*void)*gtk_init_check, "gtk_init_check")
+    unused Resolve(handle, cast(*void)*g_set_prgname, "g_set_prgname")
     ok = ok && Resolve(handle, cast(*void)*gtk_disable_setlocale,
         "gtk_disable_setlocale")
     ok = ok && Resolve(handle, cast(*void)*gtk_menu_new, "gtk_menu_new")
@@ -685,6 +690,7 @@ OpenIndicatorIfUnembedded :: (data: *void) -> s32 {
 id_text: [128]u8;
 
 Run :: (argument: *void) -> *void {
+    if g_set_prgname != null { g_set_prgname(*id_text[0]) }
     if gtk_init_check(null, null) == 0 {
         SetState(FAILED)
         return null
