@@ -13,6 +13,7 @@ using Host :: #import "Canvas";
 #import "tree_draw"
 #import "canvas_frame"
 #import "tree_input"
+#import "scroll_device"
 #import "key_input"
 #import "text_input_props"
 #import "app_protocol"
@@ -145,7 +146,12 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
     pointer: PointerFrame = TestDriverPointer(session, PollPointer())
     TreePointerUpdate(session, pointer)
     TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
-    PointerWheelSend(session, pointer.x, pointer.y, TestDriverWheel(CanvasWheelMove()))
+    wheel := TestDriverWheel(CanvasWheelMove())
+    PointerWheelSend(session, pointer.x, pointer.y, wheel)
+    // Scrolls take their wheel, drags and flings from the sampled device;
+    // without it no list in a compiled page could scroll.
+    BeginScrollFrame(session, Vector2.{pointer.x, pointer.y}, pointer.pressed,
+        pointer.down, pointer.released, wheel, AppNowHost())
     if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false
