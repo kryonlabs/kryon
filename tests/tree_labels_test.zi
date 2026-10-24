@@ -61,10 +61,14 @@ main :: () -> s32 {
         if !TreeFinish(session) || !Same(session, label, detail) ||
             !Same(other, "other", "other detail") { return 8 }
     }
-    // Duplicate keys reject the replacement without changing the old frame.
-    Start(session); unused Add(session, cast(u64)7, "failed", "failed detail")
-    unused Add(session, cast(u64)7, "duplicate", "")
-    if TreeFinish(session) || !Same(session, "a longer replacement label", "detail") { return 9 }
+    // A repeated key keeps the frame: the first widget keeps the key, the
+    // repeat is drawn under a derived key, and the frame reports the key.
+    Start(session); unused Add(session, cast(u64)7, "first", "first detail")
+    unused Add(session, cast(u64)7, "repeat", "")
+    if !TreeFinish(session) || !Same(session, "first", "first detail") || TreeCount(session) != 3 ||
+        TreeNodeAt(session, 2).semantic_label != "repeat" ||
+        TreeFrameRepeatedKey(session) != cast(u64)7 ||
+        TreeFrameRepeatedKind(session) != cast(s32)WidgetKindText { return 9 }
     for i: 0..65536 { bytes[i] = cast(u8)(65 + i % 26) }
     // The existing combined 64 KiB label/detail limit remains exact.
     Start(session)
