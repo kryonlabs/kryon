@@ -168,17 +168,18 @@ PaintTextRange :: struct {
     valid: bool
 }
 
-KeepShortPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
+KeepPaintBlockBytes :: (blocks: *Vec($T), slot: s32, value: string,
+    capacity: s32, inverted: bool, offset: s32) -> PaintTextRange {
     result: PaintTextRange
-    block_index: s32 = cast(s32)pending_short_text[slot].count - 1
+    block_index: s32 = cast(s32)blocks.*.count - 1
     start: s32 = 0
-    if block_index >= 0 { start = pending_short_text[slot][block_index].length }
-    if block_index < 0 || value.count > cast(s64)(PAINT_SHORT_TEXT_CAPACITY - start) {
+    if block_index >= 0 { start = blocks.*[block_index].length }
+    if block_index < 0 || value.count > cast(s64)(capacity - start) {
         // Copy before growing: value may refer to another block in this Vec.
-        extra: PaintShortTextBlock
+        extra: T
         for at: cast(s64)0..value.count - 1 { extra.bytes[at] = value[at] }
         extra.length = cast(s32)value.count
-        if !VecPush(pending_short_text[slot], extra) {
+        if !VecPush(blocks.*, extra) {
             pending_paint[slot].overflow = true
             return result
         }
@@ -186,70 +187,30 @@ KeepShortPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
         start = 0
     } else {
         for at: cast(s64)0..value.count - 1 {
-            pending_short_text[slot][block_index].bytes[cast(s64)start + at] = value[at]
+            blocks.*[block_index].bytes[cast(s64)start + at] = value[at]
         }
-        pending_short_text[slot][block_index].length = start + cast(s32)value.count
+        blocks.*[block_index].length = start + cast(s32)value.count
     }
-    result.start = -start - 1
+    result.start = start
+    if inverted { result.start = -start - offset - 1 }
     result.block = block_index
     result.valid = true
     return result
+}
+
+KeepShortPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
+    return KeepPaintBlockBytes(*pending_short_text[slot], slot, value,
+        PAINT_SHORT_TEXT_CAPACITY, true, 0)
 }
 
 KeepMediumPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
-    result: PaintTextRange
-    block_index: s32 = cast(s32)pending_medium_text[slot].count - 1
-    start: s32 = 0
-    if block_index >= 0 { start = pending_medium_text[slot][block_index].length }
-    if block_index < 0 || value.count > cast(s64)(PAINT_MEDIUM_TEXT_CAPACITY - start) {
-        // Copy before growing: value may refer to another block in this Vec.
-        extra: PaintMediumTextBlock
-        for at: cast(s64)0..value.count - 1 { extra.bytes[at] = value[at] }
-        extra.length = cast(s32)value.count
-        if !VecPush(pending_medium_text[slot], extra) {
-            pending_paint[slot].overflow = true
-            return result
-        }
-        block_index += 1
-        start = 0
-    } else {
-        for at: cast(s64)0..value.count - 1 {
-            pending_medium_text[slot][block_index].bytes[cast(s64)start + at] = value[at]
-        }
-        pending_medium_text[slot][block_index].length = start + cast(s32)value.count
-    }
-    result.start = -start - PAINT_SHORT_TEXT_CAPACITY - 1
-    result.block = block_index
-    result.valid = true
-    return result
+    return KeepPaintBlockBytes(*pending_medium_text[slot], slot, value,
+        PAINT_MEDIUM_TEXT_CAPACITY, true, PAINT_SHORT_TEXT_CAPACITY)
 }
 
 KeepLongPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
-    result: PaintTextRange
-    block_index: s32 = cast(s32)pending_text[slot].count - 1
-    start: s32 = 0
-    if block_index >= 0 { start = pending_text[slot][block_index].length }
-    if block_index < 0 || value.count > cast(s64)(PAINT_TEXT_CAPACITY - start) {
-        // Copy before growing: value may refer to another block in this Vec.
-        extra: PaintTextBlock
-        for at: cast(s64)0..value.count - 1 { extra.bytes[at] = value[at] }
-        extra.length = cast(s32)value.count
-        if !VecPush(pending_text[slot], extra) {
-            pending_paint[slot].overflow = true
-            return result
-        }
-        block_index += 1
-        start = 0
-    } else {
-        for at: cast(s64)0..value.count - 1 {
-            pending_text[slot][block_index].bytes[cast(s64)start + at] = value[at]
-        }
-        pending_text[slot][block_index].length = start + cast(s32)value.count
-    }
-    result.start = start
-    result.block = block_index
-    result.valid = true
-    return result
+    return KeepPaintBlockBytes(*pending_text[slot], slot, value,
+        PAINT_TEXT_CAPACITY, false, 0)
 }
 
 // The signed offset also records the pool, without enlarging every paint
