@@ -22,6 +22,9 @@
 #import "tab_bar_props"
 #import "segmented_control_widget"
 #import "segmented_control_props"
+#import "fieldset_widget"
+#import "fieldset_props"
+#import "toggle_measure"
 #import "title_bar_widget"
 #import "title_bar_props"
 #import "dropdown_props"
@@ -58,6 +61,9 @@ main :: () -> s32 {
     view := SegmentedControl(session, SegmentedControlProps.{.selected_index = 0,
             .has_selection = true}, segments[:])
     if !view.changed || view.selected_index != 1 { return 13 }
+    Fieldset(session, FieldsetProps.{.title = "Details"})
+    size := ToggleSize(session, ToggleProps.{.off_label = "Off", .on_label = "On"})
+    if size.x != 72.0 || size.y != 30.0 { return 16 }
     options: [1]DropdownOption
     bar := TitleBar(session, TitleBarProps.{.title = "Lumi", .trailing_width = 90}, options[0:0])
     if bar.trailing_bounds.width != 90.0 { return 10 }

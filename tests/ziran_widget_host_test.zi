@@ -24,6 +24,8 @@
 #import "dropdown_props"
 #import "context_menu_widget"
 #import "svg_icon_props"
+#import "fieldset_props"
+#import "toggle_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "hosted_values"
@@ -92,6 +94,9 @@ spinbox_codec: WidgetSpinboxPropsCodec;
 spinbox_result: WidgetSpinboxStepResultCodec;
 time_picker_codec: WidgetTimePickerPropsCodec;
 svg_icon_codec: WidgetSvgIconPropsCodec;
+fieldset_codec: WidgetFieldsetPropsCodec;
+toggle_codec: WidgetTogglePropsCodec;
+vector_codec: WidgetVector2Codec;
 time_picker_result: WidgetTimePickerResultCodec;
 tab_codecs: [40]WidgetTabCodec;
 tab_values: [40]HostValue;
@@ -374,6 +379,21 @@ main :: () -> s32 {
     WidgetDecodeTimePickerResult(result, *time_picker_result).value != 1439 ||
     WidgetDecodeTimePickerResult(result, *time_picker_result).changed {
         return 32
+    }
+    // A fieldset paints its frame; a toggle answers the size it needs.
+    fieldset_before := PendingPaintCount(session)
+    arguments[1] = WidgetEncodeFieldsetProps(FieldsetProps.{.bounds = Rectangle.{0.0, 220.0, 200.0, 80.0}},
+        *fieldset_codec)
+    if Call("fieldset_widget", "FieldsetHostedHost", arguments[:2], *result) != 1 ||
+    PendingPaintCount(session) <= fieldset_before {
+        return 107
+    }
+    arguments[1] = WidgetEncodeToggleProps(ToggleProps.{.off_label = "Off", .on_label = "On"},
+        *toggle_codec)
+    if Call("toggle_measure", "ToggleSizeHostedHost", arguments[:2], *result) != 1 ||
+    !WidgetValidVector2(result) || WidgetDecodeVector2(result, *vector_codec).x <= 0.0 ||
+    WidgetDecodeVector2(result, *vector_codec).y <= 0.0 {
+        return 108
     }
     // A vector icon on its own paints its cells and answers nothing.
     icon_before := PendingPaintCount(session)

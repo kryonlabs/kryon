@@ -1,97 +1,109 @@
-Theme :: #import "theme";
-#import "session"
-#import "control_props"
-#import "drawing_props"
-#import "fieldset"
-#import "fieldset_props"
-#import "font_metrics"
-#import "geometry"
-#import "paint_queue"
-#import "style"
-#import "style_sheet"
-#import "surface"
-#import "tree"
-#import "widget_kind"
-
-using WidgetKind;
-using ButtonTone;
-using ButtonEmphasis;
-using ControlSize;
-using ButtonState;
-using StyleField;
-
-#program_export
-FieldsetDefaultFace :: () -> StyleData {
-    face: StyleData
-    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
-        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
-        cast(u32)StyleRadius | cast(u32)StyleOpacity |
-        cast(u32)StyleFontSize | cast(u32)StylePaddingX |
-        cast(u32)StylePaddingY | cast(u32)StyleGap
-    face.background = cast(u32)0xffffffff
-    face.foreground = Theme.LightText()
-    face.border = Theme.LightBorder()
-    face.border_width = 1.0
-    face.radius = 8.0
-    face.opacity = 1.0
-    face.font_size = 18.0
-    face.padding_x = 8.0
-    face.padding_y = 8.0
-    face.gap = 9.0
-    return face
-}
-
-#program_export
-FieldsetFaceFor :: (props: FieldsetProps) -> StyleFrame {
-    facts: StyleFacts = StyleControlRoleFacts(StyleKindFieldset(),
-        props.id, props.class_name, StyleAny(),
-        cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
-        cast(s32)ControlSizeMedium, ButtonStateNormal)
-    frame: StyleFrame
-    frame.value = ResolveInstalledStyleRules(
-        FieldsetDefaultFace(), facts, ButtonStateNormal)
-    return frame
-}
-
-#program_export
-Fieldset :: (session: Session, props: FieldsetProps) {
-    key: u64 = props.key
-    if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
-    if key == cast(u64)0 { key = TreeNextKey(session) }
-    face: StyleFrame = FieldsetFaceFor(props)
-    font: s32 = ResolveFont(0,
-        StyleFontValue(face.value.fields, face.value.font_size), 18)
-    title_width: s32 = 0
-    if props.title != "" {
-        title_width = GlyphWidth(props.title, font, face.value.typeface)
+// Portable compositions use the same widget as retained native hosts.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "fieldset_props"
+    host_api :: #system_library "host_api";
+    FieldsetHostedHost :: (session: Session, props: FieldsetProps) -> s32 #foreign host_api;
+    #program_export
+    Fieldset :: (session: Session, props: FieldsetProps) {
+        unused FieldsetHostedHost(session, props)
     }
-    paint: FieldsetPaint = FieldsetPaintFor(props.bounds,
-        cast(float32)title_width, props.title != "", 1.0, face)
-    node: s32 = -1
-    if TreeIsBuilding(session) {
-        node = TreeSubmitCurrent(session, key, WidgetKindFieldset, paint.frame)
-        if node < 0 { return }
-        TreeSetLabel(session, node, props.title)
+} else {
+    Theme :: #import "theme";
+    #import "session"
+    #import "control_props"
+    #import "drawing_props"
+    #import "fieldset"
+    #import "fieldset_props"
+    #import "font_metrics"
+    #import "geometry"
+    #import "paint_queue"
+    #import "style"
+    #import "style_sheet"
+    #import "surface"
+    #import "tree"
+    #import "widget_kind"
+
+    using WidgetKind;
+    using ButtonTone;
+    using ButtonEmphasis;
+    using ControlSize;
+    using ButtonState;
+    using StyleField;
+
+    #program_export
+    FieldsetDefaultFace :: () -> StyleData {
+        face: StyleData
+        face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+            cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+            cast(u32)StyleRadius | cast(u32)StyleOpacity |
+            cast(u32)StyleFontSize | cast(u32)StylePaddingX |
+            cast(u32)StylePaddingY | cast(u32)StyleGap
+        face.background = cast(u32)0xffffffff
+        face.foreground = Theme.LightText()
+        face.border = Theme.LightBorder()
+        face.border_width = 1.0
+        face.radius = 8.0
+        face.opacity = 1.0
+        face.font_size = 18.0
+        face.padding_x = 8.0
+        face.padding_y = 8.0
+        face.gap = 9.0
+        return face
     }
-    opacity: float32 = StyleOpacityValue(face.value.fields,
-        face.value.opacity)
-    background: Color = ColorFromPacked(Opacity(
-        paint.background_color, opacity))
-    if background.a > cast(u8)0 {
-        PaintRoundedFill(session, node, paint.frame, face.value.radius,
-            12, background)
+
+    #program_export
+    FieldsetFaceFor :: (props: FieldsetProps) -> StyleFrame {
+        facts: StyleFacts = StyleControlRoleFacts(StyleKindFieldset(),
+            props.id, props.class_name, StyleAny(),
+            cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
+            cast(s32)ControlSizeMedium, ButtonStateNormal)
+        frame: StyleFrame
+        frame.value = ResolveInstalledStyleRules(
+            FieldsetDefaultFace(), facts, ButtonStateNormal)
+        return frame
     }
-    if paint.border_width > 0.0 {
-        PaintRoundedOutline(session, node, paint.frame, face.value.radius,
-            12, paint.border_width,
-            ColorFromPacked(Opacity(paint.border_color, opacity)))
-    }
-    if paint.show_title {
-        PaintRoundedFill(session, node, paint.title_background, 0.0, 4,
-            background)
-        PaintClippedLabel(session, node, props.title, cast(s32)paint.title_text.x,
-            cast(s32)paint.title_text.y, font,
-            ColorFromPacked(Opacity(paint.text_color, opacity)),
-            paint.title_text)
+
+    #program_export
+    Fieldset :: (session: Session, props: FieldsetProps) {
+        key: u64 = props.key
+        if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
+        if key == cast(u64)0 { key = TreeNextKey(session) }
+        face: StyleFrame = FieldsetFaceFor(props)
+        font: s32 = ResolveFont(0,
+            StyleFontValue(face.value.fields, face.value.font_size), 18)
+        title_width: s32 = 0
+        if props.title != "" {
+            title_width = GlyphWidth(props.title, font, face.value.typeface)
+        }
+        paint: FieldsetPaint = FieldsetPaintFor(props.bounds,
+            cast(float32)title_width, props.title != "", 1.0, face)
+        node: s32 = -1
+        if TreeIsBuilding(session) {
+            node = TreeSubmitCurrent(session, key, WidgetKindFieldset, paint.frame)
+            if node < 0 { return }
+            TreeSetLabel(session, node, props.title)
+        }
+        opacity: float32 = StyleOpacityValue(face.value.fields,
+            face.value.opacity)
+        background: Color = ColorFromPacked(Opacity(
+            paint.background_color, opacity))
+        if background.a > cast(u8)0 {
+            PaintRoundedFill(session, node, paint.frame, face.value.radius,
+                12, background)
+        }
+        if paint.border_width > 0.0 {
+            PaintRoundedOutline(session, node, paint.frame, face.value.radius,
+                12, paint.border_width,
+                ColorFromPacked(Opacity(paint.border_color, opacity)))
+        }
+        if paint.show_title {
+            PaintRoundedFill(session, node, paint.title_background, 0.0, 4,
+                background)
+            PaintClippedLabel(session, node, props.title, cast(s32)paint.title_text.x,
+                cast(s32)paint.title_text.y, font,
+                ColorFromPacked(Opacity(paint.text_color, opacity)),
+                paint.title_text)
+        }
     }
 }

@@ -25,6 +25,9 @@
 #import "segmented_control_widget"
 #import "segmented_control_props"
 #import "box_widget"
+#import "fieldset_widget"
+#import "fieldset_props"
+#import "toggle_measure"
 #import "tile_map"
 #import "box_props"
 #import "svg_icon_widget"
@@ -102,6 +105,8 @@ widget_segment_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetSegmentOptionCodec;
 widget_segmented_codec: WidgetSegmentedControlPropsCodec;
 widget_segmented_result_codec: WidgetSegmentedControlResultCodec;
 widget_box_codec: WidgetBoxPropsCodec;
+widget_fieldset_codec: WidgetFieldsetPropsCodec;
+widget_vector_codec: WidgetVector2Codec;
 widget_svg_icon_codec: WidgetSvgIconPropsCodec;
 widget_press_codec: WidgetPressPropsCodec;
 widget_press_result_codec: WidgetPressResultCodec;
@@ -147,6 +152,8 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "checkbox_widget") && function == "CheckboxHostedHost") ||
     (ModuleName(module, "toggle_widget") && function == "ToggleHostedHost") ||
     (ModuleName(module, "box_widget") && function == "BoxHostedHost") ||
+    (ModuleName(module, "fieldset_widget") && function == "FieldsetHostedHost") ||
+    (ModuleName(module, "toggle_measure") && function == "ToggleSizeHostedHost") ||
     (ModuleName(module, "svg_icon_widget") && function == "SvgIconHostedHost") ||
     (ModuleName(module, "press_widget") && function == "PressHostedHost") ||
     (ModuleName(module, "spinbox_widget") && function == "SpinboxHostedHost") ||
@@ -350,6 +357,16 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "BoxHostedHost" && ModuleName(owner, "box_widget") && WidgetValidBoxProps(props) {
         result.* = HostScalar("s32", cast(s64)Box(session, WidgetDecodeBoxProps(props, *widget_box_codec)))
+        return 1
+    }
+    if name == "FieldsetHostedHost" && ModuleName(owner, "fieldset_widget") && WidgetValidFieldsetProps(props) {
+        Fieldset(session, WidgetDecodeFieldsetProps(props, *widget_fieldset_codec))
+        result.* = HostScalar("s32", 0)
+        return 1
+    }
+    if name == "ToggleSizeHostedHost" && ModuleName(owner, "toggle_measure") && WidgetValidToggleProps(props) {
+        result.* = WidgetEncodeVector2(ToggleSize(session, WidgetDecodeToggleProps(props,
+            *widget_toggle_codec)), *widget_vector_codec)
         return 1
     }
     if name == "SvgIconHostedHost" && ModuleName(owner, "svg_icon_widget") && WidgetValidSvgIconProps(props) {

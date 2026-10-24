@@ -206,7 +206,12 @@ own window calls `RaylibUseIconTextures()` after `InitWindow`.
 A bundle draws a row of choices, such as a week or calendar view, with
 `SegmentedControl(session, props, options)` from
 [`segmented_control_widget`](../src/ui/segmented_control_widget.zi); its host
-draws it as it draws its own, with up to 32 options.
+draws it as it draws its own, with up to 32 options. It frames a form's
+sections with `Fieldset(session, props)` from
+[`fieldset_widget`](../src/ui/fieldset_widget.zi), and places a toggle at a
+row's end with the size `ToggleSize(session, props)` from
+[`toggle_measure`](../src/ui/toggle_measure.zi) answers, which stays apart from
+the toggle widget as `text_measure` stays apart from Text.
 
 [`open_uri`](../src/backend/open_uri.zi) opens a link with the platform's
 handler: `OpenUri(uri)` passes it unchanged to the desktop opener, Windows'

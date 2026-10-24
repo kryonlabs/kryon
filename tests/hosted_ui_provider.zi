@@ -77,6 +77,23 @@ TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
 }
 
 #import "segmented_control_props"
+#import "fieldset_props"
+#import "geometry"
+
+#program_export "FieldsetHostedHost"
+Fieldset :: (session: Session, props: FieldsetProps) -> s32 {
+    unused session
+    unused props
+    return 0
+}
+
+#program_export "ToggleSizeHostedHost"
+ToggleSize :: (session: Session, props: ToggleProps) -> Vector2 {
+    if session.slot != 4 || props.on_label != "On" {
+        return Vector2.{}
+    }
+    return Vector2.{72.0, 30.0}
+}
 
 #program_export "SegmentedControlHostedHost"
 SegmentedControl :: (session: Session, props: SegmentedControlProps,

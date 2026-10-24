@@ -1,0 +1,25 @@
+// The size a Toggle needs for its labels and track, so a caller can place
+// it at the end of a row. It stays apart from toggle_widget, as
+// text_measure stays apart from text_widget.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "geometry"
+    #import "toggle_props"
+    host_api :: #system_library "host_api";
+    ToggleSizeHostedHost :: (session: Session, props: ToggleProps) -> Vector2 #foreign host_api;
+    // A portable app asks its host, which sizes the toggle as it draws it.
+    #program_export
+    ToggleSize :: (session: Session, props: ToggleProps) -> Vector2 {
+        return ToggleSizeHostedHost(session, props)
+    }
+} else {
+    #import "session"
+    #import "geometry"
+    #import "toggle_props"
+    #import "toggle_widget"
+    #program_export
+    ToggleSize :: (session: Session, props: ToggleProps) -> Vector2 {
+        unused session
+        return ToggleMinimumSize(props)
+    }
+}
