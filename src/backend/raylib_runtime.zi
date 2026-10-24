@@ -1771,6 +1771,28 @@ RaylibWheelMove :: () -> float32 {
 }
 
 #program_export
+// One still frame while an application loads: its title centred on a calm
+// background with three soft dots, so a window is never left black while
+// its bundle is read and prepared.
+RaylibLoadingFrame :: (title: string) {
+    width := cast(float32)HostRaylibGetScreenWidth()
+    height := cast(float32)HostRaylibGetScreenHeight()
+    HostRaylibBeginDrawing()
+    HostRaylibClearBackground(Color.{24, 28, 30, 255})
+    label: [256]u8
+    if raylib_font_loaded && title.count > 0 && CopyCString(title, label[:]) {
+        size: float32 = 40.0
+        measured := HostRaylibMeasureFontText(raylib_font, *label[0], size, 1.0)
+        HostRaylibDrawFontText(raylib_font, *label[0], Vector2.{(width - measured.x) / 2.0, height / 2.0 - measured.y},
+            size, 1.0, Color.{232, 236, 234, 255})
+    }
+    for dot: cast(s32)0..2 {
+        HostRaylibDrawRounded(Rectangle.{width / 2.0 - 29.0 + cast(float32)dot * 24.0, height / 2.0 + 20.0, 10.0, 10.0},
+            1.0, 8, Color.{232, 236, 234, cast(u8)(90 + dot * 60)})
+    }
+    HostRaylibEndDrawing()
+}
+
 BeginRaylibFrame :: () {
     #if RAYLIB_FRAME_THREADS {
         if RecordFrameOperation(PaintCommand.{}, RaylibReplayBegin) { return }

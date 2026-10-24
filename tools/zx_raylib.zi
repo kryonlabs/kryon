@@ -41,6 +41,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if !OpenRaylib(960, 600, title_text) { return 1 }
     defer { CloseRaylib() }
     unused RaylibBundleTypeface()
+    // The bundle takes a moment to read and prepare; show the app's name.
+    RaylibLoadingFrame(ifx title_text.count > 0 then title_text else ProgramTitle())
     host: RaylibBundle
     if !RaylibBundleOpen(*host, data) { print("kryon: ZX is invalid or requires unavailable services\n"); return 1 }
     defer { RaylibBundleClose(*host) }
