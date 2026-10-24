@@ -1,0 +1,17 @@
+#import "loading_indicator"
+
+// Laws for the loading animation. Each states the expected behavior
+// independently of the implementation; `ziran check` proves it over every
+// listed input. An implementation edit may not change this file.
+
+// A dot's level stays in range, rises through the first half of its cycle,
+// settles through the second, and repeats every cycle.
+#law LevelInRange forall phase: 0..999, dot: 0..2 => LoadingDotLevel(phase, dot) >= 0 && LoadingDotLevel(phase, dot) <= LOADING_LEVEL_FULL;
+#law Rises forall phase: 0..498 => LoadingDotLevel(phase + 1, 0) > LoadingDotLevel(phase, 0);
+#law Settles forall phase: 500..998 => LoadingDotLevel(phase + 1, 0) < LoadingDotLevel(phase, 0);
+#law Smooth forall phase: 0..998, dot: 0..2 => LoadingDotLevel(phase + 1, dot) - LoadingDotLevel(phase, dot) <= 2 && LoadingDotLevel(phase, dot) - LoadingDotLevel(phase + 1, dot) <= 2;
+
+// Each dot follows the one before it, so the three move in turn and never
+// all at once.
+#law DotsFollowInTurn forall phase: 200..999, dot: 1..2 => LoadingDotLevel(phase, dot) == LoadingDotLevel(phase - LOADING_DOT_LAG, dot - 1);
+#law NeverAllTogether forall phase: 0..999 => LoadingDotLevel(phase, 0) != LoadingDotLevel(phase, 1) || LoadingDotLevel(phase, 1) != LoadingDotLevel(phase, 2);

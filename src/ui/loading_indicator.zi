@@ -1,0 +1,55 @@
+// The one loading animation every app and host shows while something is on
+// its way: three dots that brighten and rise in turn, as Lumi types. It is
+// drawn from boxes, so portable apps and native hosts show the same thing.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "box_widget"
+#import "box_props"
+
+LoadingIndicatorProps :: struct {
+    key: u64
+    // The dots are centered here.
+    bounds: Rectangle
+    // Seconds on any steady clock; the animation follows it.
+    now: float64
+    scale: float32
+}
+
+LOADING_DOTS :: 3
+// Each dot follows the one before it by a fifth of a cycle.
+LOADING_DOT_LAG :: 200
+LOADING_LEVEL_FULL :: 1000
+
+// Where a clock stands in the animation's cycle, 0 to 999; 1.4 cycles a second.
+LoadingPhase :: (now: float64) -> s32 {
+    turns := now * 1.4
+    phase := cast(s32)((turns - cast(float64)cast(s64)turns) * 1000.0)
+    if phase < 0 { phase += 1000 }
+    if phase > 999 { phase = 999 }
+    return phase
+}
+
+// How bright and high a dot is at a phase, 0 to LOADING_LEVEL_FULL: it rises
+// to full in the first half of its cycle and settles in the second.
+LoadingDotLevel :: (phase: s32, dot: s32) -> s32 {
+    own := (phase - dot * LOADING_DOT_LAG) % 1000
+    if own < 0 { own += 1000 }
+    return ifx own < 500 then own * 2 else (1000 - own) * 2
+}
+
+LoadingIndicator :: (session: Session, props: LoadingIndicatorProps) {
+    scale := ifx props.scale > 0.0 then props.scale else 1.0
+    size := 8.0 * scale
+    step := 14.0 * scale
+    rise := 4.0 * scale
+    phase := LoadingPhase(props.now)
+    left := props.bounds.x + (props.bounds.width - (step * cast(float32)(LOADING_DOTS - 1) + size)) / 2.0
+    top := props.bounds.y + (props.bounds.height - size) / 2.0 + rise / 2.0
+    for dot: cast(s32)0..LOADING_DOTS - 1 {
+        level := cast(float32)LoadingDotLevel(phase, dot) / cast(float32)LOADING_LEVEL_FULL
+        unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, dot),
+                .bounds = Rectangle.{left + cast(float32)dot * step, top - level * rise, size, size},
+                .fill = Color.{170, 170, 170, cast(u8)(90.0 + 165.0 * level)}, .radius = size / 2.0})
+    }
+}
