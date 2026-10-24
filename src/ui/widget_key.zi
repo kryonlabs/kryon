@@ -1,0 +1,16 @@
+#import "session"
+
+// A widget given a key that its parent already holds this frame is drawn
+// under a derived key instead of failing the whole frame, so one repeated
+// key never blanks a screen. Derived keys are parts of the repeated key with
+// negative part numbers, which no widget uses for its own parts; the host
+// reports the repeat for the app to fix.
+WIDGET_KEY_ATTEMPTS :: 64
+
+WidgetRepeatedPart :: (attempt: s32) -> s32 {
+    return -2 - attempt
+}
+
+WidgetRepeatedKey :: (key: u64, attempt: s32) -> u64 {
+    return WidgetPartKey(key, WidgetRepeatedPart(attempt))
+}

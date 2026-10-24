@@ -131,18 +131,24 @@ Check :: () -> s32 {
 
     if BeginFrame(first, cast(u64)7, bounds) !=
         cast(FrameStatus)FrameOk { return 11 }
-    TreeSubmit(first, cast(u64)40, 0, WidgetKindText, bounds)
-    if TreeSubmit(first, cast(u64)40, 0, WidgetKindButton, bounds) >= 0 ||
-        EndFrame(first) != cast(FrameStatus)FrameDuplicateKey ||
-        TreeCount(first) != 7 || PendingPaintCount(first) != 0 {
+    // A repeated key never blanks the frame: the second widget draws under
+    // a derived key, and the frame reports the repeat for the app to fix.
+    text: s32 = TreeSubmit(first, cast(u64)40, 0, WidgetKindText, bounds)
+    repeated: s32 = TreeSubmit(first, cast(u64)40, 0, WidgetKindButton, bounds)
+    if text < 0 || repeated < 0 || EndFrame(first) != cast(FrameStatus)FrameOk ||
+        TreeNodeAt(first, repeated).key == cast(u64)40 ||
+        TreeNodeAt(first, text).key != cast(u64)40 ||
+        TreeFrameRepeatedKey(first) != cast(u64)40 ||
+        TreeFrameRepeatedKind(first) != WidgetKindButton {
         return 12
     }
+    committed: s32 = TreeCount(first)
     if BeginFrame(first, cast(u64)7, bounds) !=
         cast(FrameStatus)FrameOk { return 13 }
     a = TreeSubmit(first, cast(u64)11, 0, WidgetKindGroup, bounds)
     if !TreePushScope(first, a) ||
         EndFrame(first) != cast(FrameStatus)FrameInvalidScope ||
-        TreeCount(first) != 7 { return 14 }
+        TreeCount(first) != committed || TreeFrameRepeatedKey(first) != cast(u64)0 { return 14 }
 
     if !CloseSession(first) || SessionValid(first) ||
         !SessionValid(second) || TreeCount(second) != 2 { return 15 }

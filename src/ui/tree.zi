@@ -12,6 +12,7 @@
     #import "semantic"
     #import "session"
     #import "widget_kind"
+    #import "widget_key"
     #import "vec"
 
     // A retained node keeps its identity only when its key, kind, and parent key
@@ -333,6 +334,10 @@
         // The widget that made the frame fail, so hosts can report it.
         error_key: u64
         error_kind: s32
+        // The first key submitted twice under one parent this frame; the
+        // repeat was drawn under a derived key (see widget_key).
+        repeated_key: u64
+        repeated_kind: s32
     }
 
     trees: [9]TreeStore;
@@ -769,6 +774,8 @@
         trees[slot].error = cast(FrameStatus)FrameOk
         trees[slot].error_key = cast(u64)0
         trees[slot].error_kind = 0
+        trees[slot].repeated_key = cast(u64)0
+        trees[slot].repeated_kind = 0
         trees[slot].staged_identity_generation =
         trees[slot].next_identity_generation
         trees[slot].identity_order_unchanged = true
@@ -915,10 +922,25 @@
             }
         }
         if !node.auto_key && TreeExplicitExists(session, parent_generation, key) {
-            trees[slot].error = cast(FrameStatus)FrameDuplicateKey
-            trees[slot].error_key = key
-            trees[slot].error_kind = kind
-            return -1
+            // A repeated key keeps the frame: the widget is drawn under a
+            // derived key and the repeat is reported, never a blank screen.
+            attempt: s32 = 0
+            derived: u64 = WidgetRepeatedKey(key, attempt)
+            while attempt < WIDGET_KEY_ATTEMPTS && TreeExplicitExists(session, parent_generation, derived) {
+                attempt += 1
+                derived = WidgetRepeatedKey(key, attempt)
+            }
+            if attempt >= WIDGET_KEY_ATTEMPTS {
+                trees[slot].error = cast(FrameStatus)FrameDuplicateKey
+                trees[slot].error_key = key
+                trees[slot].error_kind = kind
+                return -1
+            }
+            if trees[slot].repeated_key == cast(u64)0 {
+                trees[slot].repeated_key = key
+                trees[slot].repeated_kind = kind
+            }
+            node.key = derived
         }
         node.kind = kind
         node.measured_bounds = bounds
@@ -980,7 +1002,7 @@
         }
         if !node.auto_key {
             capacity: s32 = cast(s32)trees[slot].new_slots.count
-            hash: u64 = TreeIdentityHash(parent_generation, key, 0)
+            hash: u64 = TreeIdentityHash(parent_generation, node.key, 0)
             position: s32 = cast(s32)(hash & cast(u64)(capacity - 1))
             while trees[slot].new_slots[position] >= 0 {
                 position = (position + 1) & (capacity - 1)
@@ -1179,6 +1201,20 @@
     TreeFrameErrorKind :: (session: Session) -> s32 {
         if !SessionValid(session) { return 0 }
         return trees[session.slot].error_kind
+    }
+
+    // The first key the frame received twice under one parent, or 0, and its
+    // kind. The frame still drew; the app should give the widgets own keys.
+    #program_export
+    TreeFrameRepeatedKey :: (session: Session) -> u64 {
+        if !SessionValid(session) { return cast(u64)0 }
+        return trees[session.slot].repeated_key
+    }
+
+    #program_export
+    TreeFrameRepeatedKind :: (session: Session) -> s32 {
+        if !SessionValid(session) { return 0 }
+        return trees[session.slot].repeated_kind
     }
 
     #program_export

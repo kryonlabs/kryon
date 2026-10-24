@@ -1,0 +1,11 @@
+#import "widget_key"
+
+// Laws for repeated widget keys. Each states the expected behavior
+// independently of the implementation; `ziran check` proves it over every
+// listed input. An implementation edit may not change this file.
+
+// A repeated key becomes a part no widget uses for its own parts, and each
+// attempt takes a different part, so a frame finds a free key and draws.
+#law RepeatedPartsAreTheirOwn forall attempt: 0..63 => WidgetRepeatedPart(attempt) < -1;
+#law AttemptsDiffer forall first: 0..63, second: 0..63 => first == second || WidgetRepeatedPart(first) != WidgetRepeatedPart(second);
+#law EnoughAttempts custom WIDGET_KEY_ATTEMPTS >= 8;
