@@ -35,3 +35,21 @@ TextTypefaceKey :: (path: string, output: []u8) -> string {
     output[21] = 0
     return TextView(output[:21])
 }
+
+// Stable scope tickets avoid borrowing a registered name across font loading,
+// which may replace that name's backing storage.
+#program_export
+TextTypefaceSlot :: (index: s32) -> string {
+    slots: [16]string = .["@font0", "@font1", "@font2", "@font3", "@font4", "@font5", "@font6", "@font7",
+    "@font8", "@font9", "@font10", "@font11", "@font12", "@font13", "@font14", "@font15"]
+    if index < 0 || index >= 16 { return "@builtin" }
+    return slots[index]
+}
+
+#program_export
+TextTypefaceSlotIndex :: (name: string) -> s32 {
+    for index: cast(s32)0..15 {
+        if name == TextTypefaceSlot(index) { return index }
+    }
+    return -1
+}

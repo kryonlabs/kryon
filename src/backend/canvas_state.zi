@@ -161,14 +161,19 @@ LoadSystemTypeface :: (name: string) -> bool {
 }
 
 CanvasTextTypeface :: (name: string) -> string {
-    previous := "@builtin"
-    if canvas_active_typeface_index >= 0 {
-        previous = TextView(canvas_typefaces[canvas_active_typeface_index].name[:canvas_typefaces[canvas_active_typeface_index].name_length])
-    }
+    previous := TextTypefaceSlot(canvas_active_typeface_index)
     if name == "@builtin" {
         canvas_active_typeface_index = -1
         canvas_font_loaded = false
         canvas_font_registered = false
+        return previous
+    }
+    saved_slot := TextTypefaceSlotIndex(name)
+    if saved_slot >= 0 && saved_slot < canvas_typeface_count {
+        canvas_font = canvas_typefaces[saved_slot].font
+        canvas_active_typeface_index = saved_slot
+        canvas_font_loaded = true
+        canvas_font_registered = true
         return previous
     }
     key := name

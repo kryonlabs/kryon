@@ -926,14 +926,19 @@ LoadSystemTypeface :: (name: string) -> bool {
 // Select without invalidating layout on every scoped switch. Loading a new
 // resource still publishes its actual metrics revision through StoreTypeface.
 RaylibTextTypeface :: (name: string) -> string {
-    previous := "@builtin"
-    if raylib_active_typeface_index >= 0 {
-        previous = TypefaceText.TextFromCString(*raylib_typefaces[raylib_active_typeface_index].name[0])
-    }
+    previous := TextTypefaceSlot(raylib_active_typeface_index)
     if name == "@builtin" {
         raylib_active_typeface_index = -1
         raylib_font_loaded = false
         raylib_font_registered = false
+        return previous
+    }
+    saved_slot := TextTypefaceSlotIndex(name)
+    if saved_slot >= 0 && saved_slot < raylib_typeface_count {
+        raylib_font = raylib_typefaces[saved_slot].font
+        raylib_active_typeface_index = saved_slot
+        raylib_font_loaded = true
+        raylib_font_registered = true
         return previous
     }
     key := name
