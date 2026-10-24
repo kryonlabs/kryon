@@ -208,6 +208,7 @@ tree.zi
 tree_draw.zi
 tree_input.zi
 typeface_source.zi
+widget_key.zi
 widget_kind.zi
 window_flags.zi
 zoom.zi
