@@ -8,13 +8,11 @@ include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
+cp "$repo/tests/widget_test_session.zi" "$work/"
+
 cat > "$work/app.zi" <<'ZI'
 #import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+#import "widget_test_session"
 
 #import "geometry"
 #import "paint_queue"

@@ -14,6 +14,29 @@ widget_test=${widget_test%.zi}
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
 
+if test "${widget_run_saved:-0}" = 1; then
+    test "$("$ziran" run "$work/saved.zx")" = 0
+fi
+
+if test "${widget_native:-0}" = 1; then
+    for target in c cpp; do
+        output=$work/native-$target
+        "$ziran" build --target="$target" --root "$repo/tests" \
+            --module-path "$repo/src/ui" --module-path "$widget_std" \
+            -o "$output" "$source"
+        if test "$target" = c; then
+            "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
+                -Wl,--gc-sections -I"$ziran_root/include" -I"$output" \
+                "$output"/*.c -o "$output/app"
+        else
+            "${CXX:-c++}" -std=c++17 -ffunction-sections -fdata-sections \
+                -Wl,--gc-sections -I"$ziran_root/include" -I"$output" \
+                "$output"/*.cpp -o "$output/app"
+        fi
+        env -u DISPLAY -u WAYLAND_DISPLAY "$output/app"
+    done
+fi
+
 for input in source saved; do
     if test "$input" = source; then
         module=$source

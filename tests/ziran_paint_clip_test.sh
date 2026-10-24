@@ -1,13 +1,11 @@
 #!/bin/sh
 . "$(dirname -- "$0")/test_context.sh"
 
+cp "$repo/tests/widget_test_session.zi" "$work/"
+
 cat > "$work/app.zi" <<'ZI'
 #import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+#import "widget_test_session"
 
 #import "drawing_props"
 #import "geometry"

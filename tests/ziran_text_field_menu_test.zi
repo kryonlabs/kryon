@@ -1,10 +1,6 @@
 #import "ziran_widget_noop_host"
 #import "session"
-test_session: Session;
-TestSession :: () -> Session {
-    if !SessionValid(test_session) { test_session = SessionOpen() }
-    return test_session
-}
+#import "widget_test_session"
 
 #import "drawing_props"
 #import "geometry"
