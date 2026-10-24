@@ -99,6 +99,33 @@ HostFieldScalarValid :: (value: *HostValue, position: s32, name: string,
 
 HostRecordValidator :: #type (value: HostValue) -> bool;
 
+HostElementRule :: struct {
+    type_name: string
+    kind: s32
+    validate_record: HostRecordValidator
+}
+
+HostFieldSliceValid :: (value: *HostValue, position: s32, name: string,
+    type_name: string, limit: usize, rule: HostElementRule) -> bool {
+    field_at := HostFieldAt(value.*, position, name)
+    if field_at < 0 { return true }
+    field := value.fields[field_at].value
+    if field.kind != cast(s32)HostSlice || TextFromCString(field.type_name) != type_name ||
+    field.length > limit || (field.length > cast(usize)0 && field.elements == null) {
+        return false
+    }
+    index: usize = 0
+    while index < field.length {
+        if rule.validate_record != null {
+            if !rule.validate_record(field.elements[index]) { return false }
+        } else {
+            if !HostScalarValid(field.elements[index], rule.type_name, rule.kind) { return false }
+        }
+        index += cast(usize)1
+    }
+    return true
+}
+
 HostFieldRecordValid :: (value: *HostValue, position: s32, name: string,
     valid: HostRecordValidator) -> bool {
     field_at := HostFieldAt(value.*, position, name)

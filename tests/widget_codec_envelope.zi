@@ -3,4 +3,6 @@
 CodecEnvelope :: struct {
     leaf: CodecLeaf
     children: []CodecLeaf
+    names: []string
+    counts: []s32
 }

@@ -3,6 +3,7 @@
 #import "widget_codec_envelope"
 #import "partial_leaf_codec"
 #import "partial_envelope_codec"
+#import "hosted_values"
 using HostValueKind;
 encoded: WidgetCodecEnvelopeCodec;
 decoded: WidgetCodecEnvelopeCodec;
@@ -11,9 +12,13 @@ main :: () -> s32 {
     children: [2]CodecLeaf
     children[0] = .{11, "first"}
     children[1] = .{-12, "second β"}
+    names: [2]string = .["", "β"]
+    counts: [2]s32 = .[-12, 2147483647]
     data: CodecEnvelope
     data.leaf = .{-2147483647, "retained"}
     data.children = children[:]
+    data.names = names[:]
+    data.counts = counts[:]
     value := WidgetEncodeCodecEnvelope(data, *encoded)
     if !WidgetValidCodecEnvelope(value) { return 1 }
     result := WidgetDecodeCodecEnvelope(value, *decoded)
@@ -26,6 +31,51 @@ main :: () -> s32 {
     if !WidgetValidCodecEnvelope(value) { return 3 }
     result = WidgetDecodeCodecEnvelope(value, *decoded)
     if result.leaf.name != "retained" || decoded.children_decoded[1].name != "second β" { return 4 }
+    if decoded.names_decoded[0] != "" || decoded.names_decoded[1] != "β" ||
+        decoded.counts_decoded[0] != -12 || decoded.counts_decoded[1] != 2147483647 { return 6 }
+    // Slice shape checks run before any element is read. Empty slices may
+    // have no storage, while nonempty and over-capacity slices must fail.
+    slice := value.fields[0].value
+    value.fields[0].value.elements = null
+    if WidgetValidCodecEnvelope(value) { return 7 }
+    value.fields[0].value.length = 0
+    if !WidgetValidCodecEnvelope(value) { return 8 }
+    value.fields[0].value.length = 1025
+    if WidgetValidCodecEnvelope(value) { return 9 }
+    value.fields[0].value = slice
+    value.fields[0].value.kind = cast(s32)HostArray
+    if WidgetValidCodecEnvelope(value) { return 10 }
+    value.fields[0].value = slice
+    value.fields[0].value.type_name = HostTextData("[]Other")
+    if WidgetValidCodecEnvelope(value) { return 11 }
+    value.fields[0].value = slice
+    old_name := value.fields[0].name
+    value.fields[0].name = HostTextData("unknown")
+    if !WidgetValidCodecEnvelope(value) { return 12 }
+    value.fields[0].name = old_name
+    // Record and scalar elements both retain their own validation rules.
+    record := slice.elements[1]
+    slice.elements[1].kind = -1
+    if WidgetValidCodecEnvelope(value) { return 13 }
+    slice.elements[1] = record
+    text := value.fields[2].value.elements[1]
+    value.fields[2].value.elements[1].data = null
+    if WidgetValidCodecEnvelope(value) { return 14 }
+    value.fields[2].value.elements[1] = text
+    number := value.fields[3].value.elements[0]
+    value.fields[3].value.elements[0].kind = -1
+    if WidgetValidCodecEnvelope(value) { return 15 }
+    value.fields[3].value.elements[0] = number
+    // The inclusive capacity boundary is valid; the next element is not.
+    boundary: [1024]HostValue
+    for index: 0..1023 { boundary[index] = HostScalar("s32", cast(s64)index) }
+    scalar_slice := value.fields[3].value
+    value.fields[3].value.elements = *boundary[0]
+    value.fields[3].value.length = 1024
+    if !WidgetValidCodecEnvelope(value) { return 16 }
+    value.fields[3].value.length = 1025
+    if WidgetValidCodecEnvelope(value) { return 17 }
+    value.fields[3].value = scalar_slice
     value.fields[1].value.fields[0].value.kind = -1
     if WidgetValidCodecEnvelope(value) { return 5 }
     return 0

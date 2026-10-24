@@ -289,6 +289,10 @@ def encoder(kind, fields, records):
              f'    value := HostRecordValue("{kind}", codec.fields[:])']
     for index, (name, field_kind) in enumerate(fields):
         target = f'codec.fields[{index}].value'
+        if field_kind not in records and not field_kind.startswith('[]'):
+            lines += [f'    codec.fields[{index}] = HostField.{{.name = HostTextData("{name}"), '
+                      f'.value = {scalar_encode(f"data.{name}", field_kind)}}}']
+            continue
         lines += [f'    codec.fields[{index}].name = HostTextData("{name}")']
         if field_kind in records:
             lines += [f'    {target} = WidgetEncode{field_kind}(data.{name}, *codec.{name})']
@@ -310,16 +314,6 @@ def encoder(kind, fields, records):
                           f'WidgetEncode{element}(data.{name}[index], *codec.{name}_codecs[index])'
                           if element in records else scalar_encode(f'data.{name}[index]', element)),
                       '            index += cast(usize)1', '        }', '    }']
-        elif field_kind == 'string':
-            lines += [f'    {target} = HostValue.{{.kind = cast(s32)HostString, .type_name = HostTextData("string"), '
-                      f'.data = HostTextData(data.{name}), .length = cast(usize)data.{name}.count}}']
-        elif field_kind.startswith('float'):
-            lines += [f'    {target} = HostValue.{{.kind = cast(s32)HostReal, .type_name = HostTextData("{field_kind}"), '
-                      f'.real = cast(float64)data.{name}}}']
-        elif field_kind == 'bool':
-            lines += [f'    {target} = HostScalar("bool", ifx data.{name} then 1 else 0)']
-        else:
-            lines += [f'    {target} = HostScalar("{field_kind}", cast(s64)data.{name})']
     return lines + ['    return value', '}', '']
 
 
@@ -359,19 +353,15 @@ def validator(kind, fields, records):
     lines = [f'WidgetValid{kind} :: (value: HostValue) -> bool {{',
              f'    if !HostRecordValid(*value, "{kind}") {{ return false }}']
     for index, (name, field_kind) in enumerate(fields):
-        source = 'value.fields[field_at].value'
         if field_kind in records:
             lines += [f'    if !HostFieldRecordValid(*value, {index}, "{name}", WidgetValid{field_kind}) {{ return false }}']
         elif field_kind.startswith('[]'):
             element = field_kind[2:]
             limit = slice_limit(kind, name)
-            body = [f'    if {source}.kind != cast(s32)HostSlice || TextFromCString({source}.type_name) != "{field_kind}" ||',
-                    f'        {source}.length > cast(usize){limit} || ({source}.length > cast(usize)0 && {source}.elements == null) {{ return false }}',
-                    '    {', '        index: usize = 0', f'        while index < {source}.length {{',
-                    f'            if !WidgetValid{element}({source}.elements[index]) {{ return false }}' if element in records else
-                    f'            if !HostScalarValid({source}.elements[index], "{element}", cast(s32){scalar_kind(element)}) {{ return false }}',
-                    '            index += cast(usize)1', '        }', '    }']
-            lines += matched(index, name, body)
+            rule = (f'.validate_record = WidgetValid{element}' if element in records else
+                    f'.type_name = "{element}", .kind = cast(s32){scalar_kind(element)}')
+            lines += [f'    if !HostFieldSliceValid(*value, {index}, "{name}", "{field_kind}", cast(usize){limit},',
+                      f'        HostElementRule.{{{rule}}}) {{ return false }}']
         else:
             lines += [f'    if !HostFieldScalarValid(*value, {index}, "{name}", "{field_kind}", cast(s32){scalar_kind(field_kind)}) {{ return false }}']
     return lines + ['    return true', '}', '']
