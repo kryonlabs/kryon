@@ -49,6 +49,14 @@ ifneq ($(filter $(PROJECT_BACKEND)/$(PROJECT_CODEGEN),desktop/zx canvas/zx rayli
 HOST_MODULE := zx_run
 endif
 BROWSER_BACKEND := $(filter $(PROJECT_BACKEND),canvas dom)
+# The program's name for its window, page and menu entry: the install name or
+# else the package name. The kryon tool passes it as KRYON_PROGRAM_TITLE, read
+# only as a shell variable, so the text cannot change a recipe. Native and ZX
+# programs keep it beside them (src/backend/program_title.zi reads it there);
+# pages carry it in their HTML shell.
+PROGRAM_TITLE_FILE := $(if $(filter %.html,$(PROGRAM)),,$(if $(filter %.zx,$(PROGRAM)),$(PROGRAM:.zx=.title),$(PROGRAM).title))
+PAGE_SHELL := $(if $(BROWSER_BACKEND),$(GEN_DIR)/page-shell.html)
+PAGE_SHELL_SOURCE := $(KRYON_DIR)/mk/$(if $(filter zx,$(PROJECT_CODEGEN)),zx,canvas)-shell.html
 HOST_ID := $(ZIRAN_PACKAGE_ID)_$(HOST_MODULE)
 PROJECT_CONFIG_FILES := ziran.toml ziran.lock
 ZIRAN_MODULE_ARGS := --project
@@ -74,6 +82,7 @@ ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zx/canvas)
 ZX_CANVAS_DIR := $(abspath $(GEN_DIR)/player)
 ZX_CANVAS_PROGRAM := $(abspath build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html)
 ZX_CANVAS_BUNDLE := $(abspath $(PROGRAM))
+ZX_CANVAS_SHELL := $(PAGE_SHELL)
 include $(KRYON_DIR)/mk/zx-canvas.mk
 BROWSER_PROGRAM := $(ZX_CANVAS_PROGRAM)
 endif
@@ -155,7 +164,22 @@ HOST_LIBS += -pthread
 endif
 endif
 
-.PHONY: run build check install toolchain
+.PHONY: run build check install toolchain program-title-config
+
+# Considered on every build, rewritten only when the name changes.
+ifneq ($(PROGRAM_TITLE_FILE),)
+$(PROGRAM_TITLE_FILE): program-title-config
+	@mkdir -p $(dir $@)
+	@printf '%s\n' "$${KRYON_PROGRAM_TITLE:-$(PROJECT_NAME)}" > $@.new
+	@cmp -s $@.new $@ && rm -f $@.new || mv -f $@.new $@
+endif
+ifneq ($(PAGE_SHELL),)
+$(PAGE_SHELL): $(PAGE_SHELL_SOURCE) $(KRYON_DIR)/mk/page-title.awk program-title-config
+	@mkdir -p $(dir $@)
+	@KRYON_PAGE_TITLE="$${KRYON_PROGRAM_TITLE:-$(PROJECT_NAME)}" \
+		awk -f $(KRYON_DIR)/mk/page-title.awk $(PAGE_SHELL_SOURCE) > $@.new
+	@cmp -s $@.new $@ && rm -f $@.new || mv -f $@.new $@
+endif
 
 
 # Project builds run the driver, which shells out to zi2zir and zi2c.
@@ -167,7 +191,7 @@ $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bi
 		build/bin/ziran build/bin/zi2zir build/bin/zi2c
 
 build: toolchain
-	$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(PROGRAM) $(BROWSER_PROGRAM) $(NATIVE_PLAYER) \
+	$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(PROGRAM) $(PROGRAM_TITLE_FILE) $(BROWSER_PROGRAM) $(NATIVE_PLAYER) \
 		PROJECT_NAME=$(PROJECT_NAME) PROJECT_ENTRY=$(PROJECT_ENTRY) \
 		PROJECT_BACKEND=$(PROJECT_BACKEND) PROJECT_CODEGEN=$(PROJECT_CODEGEN) \
 		PROJECT_PROFILE=$(PROJECT_PROFILE) KRYON_DIR=$(KRYON_DIR) ZIRAN_DIR=$(ZIRAN_DIR)
@@ -207,7 +231,7 @@ $(GEN_DIR)/compile_commands.json: $(C_STAMP) $(ZIRAN)
 		--compiler '$(CC) -O2 -ffunction-sections -fdata-sections' \
 		-o $@ $(C_DIR) || { echo "kryon: this Kryon needs a newer Ziran; run ziran update ziran" >&2; exit 1; }
 
-$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS)
+$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL)
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 	@temporary=$$(mktemp build/$(PROJECT_NAME).XXXXXX.html); \
 		trap 'rm -f "$$temporary"' EXIT; \
@@ -215,7 +239,7 @@ ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 		$(C_DIR)/*.c $(CANVAS_LIBS) \
 		--embed-file $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf \
 		-sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
-		--shell-file $(KRYON_DIR)/mk/canvas-shell.html \
+		--shell-file $(PAGE_SHELL) \
 		-o "$$temporary" && chmod 644 "$$temporary" && mv "$$temporary" $@
 else
 	@temporary=$$(mktemp build/$(PROJECT_NAME).XXXXXX.html); \
@@ -283,6 +307,9 @@ else
 		cp $(PROGRAM) "$$program.new"; \
 	fi; chmod 755 "$$program.new"; \
 	mv -f "$$program.new" "$$program"; echo "$$program"; \
+	share="$$prefix/share/kryon/$$bin"; mkdir -p "$$share"; \
+	cp $(PROGRAM_TITLE_FILE) "$$share/app.title.new"; \
+	mv -f "$$share/app.title.new" "$$share/app.title"; echo "$$share/app.title"; \
 	icon=""; \
 	if [ -n "$$KRYON_INSTALL_ICON" ]; then \
 		mkdir -p "$$prefix/share/pixmaps"; \

@@ -6,6 +6,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "image_props"
+#import "program_title"
 #import "paint_texture"
 #import "paint_queue"
 #import "svg_icon"
@@ -1349,11 +1350,13 @@ RaylibDiscardTypefaceTextures :: (typeface: *RaylibTypeface) {
     }
 }
 
+// An empty title names the window after the program; see program_title.
 #program_export
 OpenRaylib :: (width: s32 = 960, height: s32 = 600,
-    title: string = "Kryon Ziran", flags: u32 = cast(u32)4) -> bool {
+    title: string = "", flags: u32 = cast(u32)4) -> bool {
     label: [512]u8
-    if width <= 0 || height <= 0 || !CopyCString(title, label[:]) { return false }
+    if width <= 0 || height <= 0 ||
+        !CopyCString(ifx title.count > 0 then title else ProgramTitle(), label[:]) { return false }
     raylib_quit = false
     raylib_pointer = PointerFrame.{}
     raylib_secondary = SecondaryPointerFrame.{}

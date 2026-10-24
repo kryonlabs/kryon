@@ -343,7 +343,7 @@ bin = "example"
 
 [tool.kryon.install]
 profile = "desktop"            # default: default_profile
-name = "Example"               # menu name; default: package name
+name = "Example"               # menu and window name; default: package name
 comment = "What it does"
 icon = "assets/icon.png"
 categories = "Utility;"
@@ -351,6 +351,13 @@ working_directory = "."        # start in the project directory
 autostart = true               # also start at login
 autostart_env = "EXAMPLE_HIDDEN=1"
 ```
+
+Every window and browser page is named after the app: this `name`, or else
+the package name. A build keeps it beside the program as
+`build/NAME-PROFILE.title`, an install as `share/kryon/example/app.title`,
+and a page in its HTML `<title>`. A ZX player names a bundle by the `.title`
+beside it or by its file name, and a program without a title by its own file
+name.
 
 The program is copied to `~/.local/bin/example` (or `--prefix DIR`). The copy
 replaces the old file in one step, so a running copy is never touched and

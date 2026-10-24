@@ -20,6 +20,8 @@ for form in source saved; do
             compiler=${CC:-cc}; standard=c11; extension=c
         "$compiler" -std="$standard" -O1 -ffunction-sections -fdata-sections \
             -Wl,--gc-sections -I"$output" "$output"/*."$extension" -lm -o "$output/test"
+        # The default title is the one kept beside the program.
+        printf '%s\n' 'Probe Window' > "$output/test.title"
         timeout --kill-after=2s 10s "$output/test"
     done
 done

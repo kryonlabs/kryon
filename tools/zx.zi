@@ -7,6 +7,7 @@
 #import "desktop_runtime"
 #import "geometry"
 #import "drawing_props"
+#import "program_title"
 #import "vec"
 #import "file_linux"
 Media :: #import "media_linux";
@@ -631,9 +632,13 @@ main :: (argc: s32, argv: **u8) -> s32 {
         if !current.valid { return 1 }
         bundle_name = *current.path[0]
         bundle_path = TextFromCString(bundle_name)
+        unused ProgramTitleFor(bundle_path)
     } else if argc == 2 || check {
         bundle_name = argv[ifx check then 2 else 1]
         bundle_path = TextFromCString(bundle_name)
+        // A played file is named by its .title, or else its file name. An
+        // installed app finds share/kryon/BIN/app.title from the player.
+        unused ProgramTitleFor(bundle_path)
     } else {
         link: [32]u8
         if !CopyCString("/proc/self/exe", link[:]) { return 1 }

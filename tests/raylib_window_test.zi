@@ -42,7 +42,7 @@ main :: () -> s32 {
     if Probe.closes != 1 || Probe.window_ready { return 10 }
     if !Runtime.OpenRaylib() || Probe.opens != 2 || Probe.window_width != 960 ||
         Probe.window_height != 600 || Probe.window_flags != cast(u32)4 ||
-        Text.TextFromCString(*Probe.window_title[0]) != "Kryon Ziran" ||
+        Text.TextFromCString(*Probe.window_title[0]) != "Probe Window" ||
         Runtime.PollMiddlePointer().down || !Runtime.PollRaylib() { return 11 }
     Runtime.CloseRaylib()
     if Probe.closes != 2 { return 12 }

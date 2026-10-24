@@ -137,7 +137,7 @@ def main():
             "try:\n"
             "    for _ in range(100):\n"
             "        found = subprocess.run(['xdotool', 'search', '--name', "
-            "'Kryon Ziran'], capture_output=True, text=True)\n"
+            "'^desktop_probe$'], capture_output=True, text=True)\n"
             "        if found.returncode == 0 and found.stdout.strip():\n"
             "            window = found.stdout.splitlines()[0]\n"
             "            break\n"

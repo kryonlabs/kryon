@@ -698,7 +698,7 @@ PageBoot :: (width: s32, height: s32, title: string) {
     page_canvas = 0
     if canvas != 0 { page_canvas = WebKeep(canvas) }
     if page_canvas != 0 { PageResizeMain(width, height) }
-    if document != 0 { WebSet(document, page_names.title, WebText(title)) }
+    if document != 0 && title.count > 0 { WebSet(document, page_names.title, WebText(title)) }
     if page_canvas != 0 {
         observer_class: s32 = WebGetObject(WebGlobal, page_names.resize_observer)
         if observer_class != 0 {

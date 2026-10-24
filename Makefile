@@ -316,6 +316,10 @@ typeface-source-test: $(ZI2C_BIN)
 raylib-project-test: build/bin/kryon
 	@python3 tests/raylib_project_test.py
 
+.PHONY: program-title-test
+program-title-test: $(ZI2C_BIN)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/program_title_test.sh
+
 .PHONY: raylib-window-test
 raylib-window-test: $(ZI2C_BIN)
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY ZIRAN_ROOT="$(ZIRAN_DIR)" \
@@ -433,7 +437,7 @@ pixmap-emoji: project-toolchain
 pixmap-surface-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY sh tests/pixmap_surface_test.sh
 
-test: check canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test raylib-window-test system-clipboard-linux-test
+test: check canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test dom-project-test typeface-source-test pixmap-surface-test program-title-test raylib-window-test system-clipboard-linux-test
 
 clean:
 	rm -rf $(BUILD_DIR)

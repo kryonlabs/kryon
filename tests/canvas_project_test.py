@@ -54,6 +54,7 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
     run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], project)
     output = project / "build/canvas_probe-web.html"
     assert output.is_file() and output.stat().st_size > 100_000
+    assert "<title>canvas_probe</title>" in output.read_text(errors="replace"), "page is not named after the program"
     assert next((project / "build/generated/web/ir").glob("*_canvas_run.zir"), None)
     assert next((project / "build/generated/web/c").glob("*_canvas_run.c"), None)
     run(["node", ROOT / "tests/canvas_backend_browser.mjs",

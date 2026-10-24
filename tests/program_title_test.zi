@@ -1,0 +1,22 @@
+// Program names: the title kept beside a program or in its install's
+// share/kryon, or else its file name, and the limits on a name a host sets.
+#import "program_title"
+Text :: #import "byte_text_linux";
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    expected := Text.TextFromCString(argv[1])
+    if ProgramTitle() != expected { return 2 }
+    if ProgramStem("/a.b/c/app.zx") != "app" || ProgramStem("Z:\\x\\hosted.zx") != "hosted" ||
+        ProgramStem("build/Apfelwurm-desktop") != "Apfelwurm-desktop" ||
+        ProgramStem(".zx") != ".zx" { return 3 }
+    if SetProgramTitle("") || SetProgramTitle("\nrest") || ProgramTitle() != expected { return 4 }
+    if !SetProgramTitle("Apfelwurm  \nsecond line") || ProgramTitle() != "Apfelwurm" { return 5 }
+    long: [300]u8
+    for index: 0..253 { long[index] = cast(u8)97 }
+    long[254] = cast(u8)195
+    long[255] = cast(u8)169
+    if !SetProgramTitle(TextView(long[0:256])) || ProgramTitle().count != 254 { return 6 }
+    return 0
+}

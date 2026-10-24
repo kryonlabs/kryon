@@ -4,6 +4,11 @@
 
 ### Added
 
+- Every window and page is named after its app instead of "Kryon Ziran" or
+  "Kryon ZX": the install name, or else the package name. Builds keep it
+  beside the program, installs in `share/kryon/BIN/app.title`, and web
+  pages in their title; a ZX player names a bundle by the `.title` beside
+  it or its file name, and a program without one by its own file name.
 - `DirectionPad`: a four-way pad for touch games, like a D-pad. Pressing an
   arm steps at once, holding repeats like an arrow key, sliding onto another
   arm turns and a quick tap steps once; hosted games can use it.

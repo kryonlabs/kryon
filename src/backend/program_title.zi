@@ -1,0 +1,133 @@
+// The name hosts show for their program: the window or page title and the
+// accessibility application name. A Kryon project build writes it beside the
+// program as build/NAME-PROFILE.title, and an install keeps it as
+// share/kryon/BIN/app.title, from [tool.kryon.install] name or else the
+// package name. A program without either is named after its own file.
+#import "std/file"
+#import "std/byte_text_linux"
+#import "c_string"
+
+#if #defined(_WIN32) {
+    program_kernel32 :: #system_library "kernel32";
+    ProgramPathRaw :: (module: *void, output: *u8, size: u32) -> u32 #foreign program_kernel32 "GetModuleFileNameA";
+} else #if !#defined(PLATFORM_WEB) {
+    program_libc :: #system_library "libc";
+    ProgramLinkRaw :: (path: *u8, output: *u8, capacity: usize) -> isize #foreign program_libc "readlink";
+}
+
+PROGRAM_TITLE_LIMIT :: 256;
+program_title_bytes: [PROGRAM_TITLE_LIMIT]u8;
+program_title_count: s64;
+program_title_known: bool;
+
+// Names the program with the first line of TITLE, kept to whole UTF-8
+// characters within 255 bytes. An empty first line leaves the name unchanged.
+SetProgramTitle :: (title: string) -> bool {
+    count: s64 = 0
+    while count < cast(s64)title.count && count < PROGRAM_TITLE_LIMIT - 1 &&
+        title[count] != cast(u8)10 && title[count] != cast(u8)13 && title[count] != cast(u8)0 {
+        count += 1
+    }
+    if count < cast(s64)title.count {
+        while count > 0 && (cast(s32)title[count] & 192) == 128 { count -= 1 }
+    }
+    while count > 0 && title[count - 1] == cast(u8)32 { count -= 1 }
+    if count == 0 { return false }
+    for index: 0..count - 1 { program_title_bytes[index] = title[index] }
+    program_title_count = count
+    program_title_known = true
+    return true
+}
+
+// Where the file name in PATH begins, after its last / or \.
+ProgramNameStart :: (path: string) -> s64 {
+    start: s64 = cast(s64)path.count
+    while start > 0 && path[start - 1] != cast(u8)47 && path[start - 1] != cast(u8)92 { start -= 1 }
+    return start
+}
+
+// The file name of PATH without its directory or extension.
+ProgramStem :: (path: string) -> string {
+    start := ProgramNameStart(path)
+    end: s64 = cast(s64)path.count
+    dot: s64 = end - 1
+    while dot > start && path[dot] != cast(u8)46 { dot -= 1 }
+    if dot > start { end = dot }
+    return path[start:end]
+}
+
+ProgramAppend :: (output: []u8, at: s64, text: string) -> s64 {
+    if at < 0 || at + cast(s64)text.count >= cast(s64)output.count { return -1 }
+    next := at
+    for byte: text { output[next] = byte; next += 1 }
+    return next
+}
+
+ProgramTitleFile :: (path: string) -> bool {
+    if path.count == 0 { return false }
+    file := OpenRead(path)
+    if !file.valid { return false }
+    bytes: [PROGRAM_TITLE_LIMIT]u8
+    count := Read(file, bytes[:])
+    unused CloseFile(file)
+    if count <= 0 { return false }
+    return SetProgramTitle(TextView(bytes[0:count]))
+}
+
+// Reads the title kept beside PATH, a program or a ZX bundle: the same name
+// with its extension, if any, replaced by .title.
+ProgramTitleBeside :: (path: string) -> bool {
+    stem := ProgramStem(path)
+    if stem.count == 0 { return false }
+    bytes: [4096]u8
+    at := ProgramAppend(bytes[:], 0, path[0:ProgramNameStart(path)])
+    at = ProgramAppend(bytes[:], at, stem)
+    at = ProgramAppend(bytes[:], at, ".title")
+    if at < 0 { return false }
+    return ProgramTitleFile(TextView(bytes[0:at]))
+}
+
+// Names a program played from PATH: its title file, or else its file name.
+ProgramTitleFor :: (path: string) -> bool {
+    return ProgramTitleBeside(path) || SetProgramTitle(ProgramStem(path))
+}
+
+// The running executable, or "" where the platform does not say.
+ProgramPath :: (output: []u8) -> string {
+    #if #defined(_WIN32) {
+        size := ProgramPathRaw(null, *output[0], cast(u32)output.count)
+        if size == 0 || cast(s64)size >= cast(s64)output.count { return "" }
+        return TextView(output[0:size])
+    } else #if !#defined(PLATFORM_WEB) {
+        link: [16]u8
+        if !CopyCString("/proc/self/exe", link[:]) { return "" }
+        size := ProgramLinkRaw(*link[0], *output[0], cast(usize)output.count)
+        if size <= 0 || cast(s64)size >= cast(s64)output.count { return "" }
+        return TextView(output[0:size])
+    } else {
+        return ""
+    }
+}
+
+// The program's name, looked up once: set by the host, kept beside the
+// executable, kept in its install's share/kryon, or the executable's file
+// name. It is "" only on the web, where the page keeps its built-in title.
+ProgramTitle :: () -> string {
+    if !program_title_known {
+        program_title_known = true
+        path_bytes: [4096]u8
+        program := ProgramPath(path_bytes[:])
+        stem := ProgramStem(program)
+        if stem.count > 0 && !ProgramTitleBeside(program) {
+            installed: [4096]u8
+            at := ProgramAppend(installed[:], 0, program[0:ProgramNameStart(program)])
+            at = ProgramAppend(installed[:], at, "../share/kryon/")
+            at = ProgramAppend(installed[:], at, stem)
+            at = ProgramAppend(installed[:], at, "/app.title")
+            if at < 0 || !ProgramTitleFile(TextView(installed[0:at])) {
+                unused SetProgramTitle(stem)
+            }
+        }
+    }
+    return TextView(program_title_bytes[0:program_title_count])
+}

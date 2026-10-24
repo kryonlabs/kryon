@@ -46,7 +46,7 @@ for mode in ('keyboard', 'unicode'):
             while time.monotonic() < deadline and process.poll() is None:
                 # This server belongs only to this player and its Wine process
                 # family. It cannot see or target the owner's desktop.
-                found = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', '^Kryon ZX$'],
+                found = subprocess.run(['xdotool', 'search', '--onlyvisible', '--name', '^app$'],
                                        capture_output=True, text=True)
                 if found.returncode == 0 and found.stdout.strip():
                     window = found.stdout.splitlines()[0]

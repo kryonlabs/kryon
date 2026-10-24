@@ -2,8 +2,10 @@
 // native; the selected file carries the complete application. Started
 // without a file, it plays app.zx from its own folder and titles its window
 // with app.title from there, so an application ships as this player, its
-// bundle and the font in one folder.
+// bundle and the font in one folder. A file it is given is named by the
+// .title beside it, or else by its file name.
 #import "bundle_raylib"
+#import "program_title"
 #import "raylib_runtime"
 #import "std/byte_text_linux"
 Player :: #import "bundle_player";
@@ -16,7 +18,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     path: [4096]u8
     title_path: [4096]u8
     title: [256]u8
-    title_text := "Kryon ZX"
+    title_text := ""
     file := ifx beside then RaylibBundleBeside("app.zx", path[:]) else TextFromCString(argv[ifx check then 2 else 1])
     data := RaylibBundleRead(file)
     if data.count == 0 { print("kryon: could not read the ZX file\n"); return 2 }
@@ -33,6 +35,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
         }
         if length > 0 { title_text = TextView(title[0:length]) }
         if named.count > 0 { RaylibBundleFree(named) }
+    } else {
+        unused ProgramTitleFor(file)
     }
     if !OpenRaylib(960, 600, title_text) { return 1 }
     defer { CloseRaylib() }

@@ -4,6 +4,7 @@ A :: #import "accessibility_linux";
 #import "cairo_raster"
 #import "desktop_runtime"
 #import "geometry"
+#import "program_title"
 #import "session"
 #import "tree"
 #import "tree_draw"
@@ -64,7 +65,7 @@ DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
     DesktopFrameUnchanged(finished.paint_unchanged)
     if !accessibility_attempted && !CaptureRequested() {
         accessibility_attempted = true
-        title: string = "Kryon Ziran"
+        title: string = ProgramTitle()
         for index: 0..TreeCount(session) - 1 {
             node: TreeEntry = TreeNodeAt(session, index)
             if cast(s32)node.semantic_kind == 1 && node.semantic_label.count > 0 { title = node.semantic_label; break }

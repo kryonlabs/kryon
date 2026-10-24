@@ -10,6 +10,7 @@
 #import "canvas_events"
 #import "canvas_frame"
 #import "page_core"
+#import "program_title"
 #import "page_files"
 #import "session"
 #import "paint_queue"
@@ -60,8 +61,9 @@ WindowQuitHost :: () {
 #program_export
 OpenCanvas :: () -> bool {
     CanvasFrameReset()
-    title: [32]u8
-    if !CopyCString("Kryon Ziran", title[:]) { return false }
+    // An unnamed page keeps the title its HTML shell gives it.
+    title: [512]u8
+    if !CopyCString(ProgramTitle(), title[:]) { return false }
     SetConfigFlags(cast(u32)4)
     InitWindow(960, 600, *title[0])
     if !IsWindowReady() { return false }

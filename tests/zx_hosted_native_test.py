@@ -80,7 +80,7 @@ with tempfile.TemporaryDirectory(prefix='native-data-', dir=output) as data:
                 window = None
                 deadline = time.monotonic() + 30
                 while time.monotonic() < deadline and app.poll() is None:
-                    selector = ['--name', '^Kryon ZX$'] if args.runner else ['--pid', str(app.pid)]
+                    selector = ['--name', '^hosted$'] if args.runner else ['--pid', str(app.pid)]
                     found = subprocess.run(['xdotool', 'search', '--onlyvisible', *selector],
                                            capture_output=True, text=True)
                     if found.returncode == 0 and found.stdout.strip():

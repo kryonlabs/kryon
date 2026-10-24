@@ -3,6 +3,7 @@
 #import "cairo_raster"
 #import "desktop_keys"
 #import "geometry"
+#import "program_title"
 #import "tree_input"
 #import "session"
 #import "utf8"
@@ -164,8 +165,8 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if !CopyCString("SDL_MOUSE_FOCUS_CLICKTHROUGH", hint[:]) ||
         !CopyCString("1", enabled[:]) { return false }
     unused SetHint(*hint[0], *enabled[0])
-    title: [32]u8
-    if !CopyCString("Kryon Ziran", title[:]) { return false }
+    title: [512]u8
+    if !CopyCString(ProgramTitle(), title[:]) { return false }
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
         cast(s32)0x2fff0000, width, height, cast(u32)0x20)
     if window == null { return false }

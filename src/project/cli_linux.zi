@@ -531,6 +531,12 @@ main :: () -> s32 {
         profile.backend == "canvas" || profile.backend == "raylib"))) {
         return Error("this backend/codegen pair is not available yet")
     }
+    // Hosts name the program's window, page and menu entry after this.
+    program_title: string = config.install.name
+    if program_title == "" { program_title = config.name }
+    if !SetEnvironment("KRYON_PROGRAM_TITLE", program_title) {
+        return Error("cannot pass the program title")
+    }
     makefile_bytes: [4096]u8
     makefile: string = Join(installed_kryon,
         "/mk/ziran-project.mk", makefile_bytes[:])

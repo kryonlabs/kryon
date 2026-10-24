@@ -165,6 +165,8 @@ backend = "desktop"
     executable = next(line[5:] for line in desktop.read_text().splitlines()
                       if line.startswith("Exec="))
     assert shlex.split(executable) == [str(prefix / "bin/zx_probe")]
+    assert (prefix / "share/kryon/zx_probe/app.title").read_text() == "zx_probe\n", \
+        "the install does not name its window"
     installed = OUTPUT / "installed.png"
     run(["xvfb-run", "-a", *shlex.split(executable)], ROOT,
         {**env, "KRYON_CAPTURE_PATH": str(installed)})
