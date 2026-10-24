@@ -101,7 +101,7 @@ Theme :: #import "theme";
                 left := x + GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
                 color := ifx run.link then TextLinkColor(prepared.color) else prepared.color
                 PaintClippedEmphasis(session, node, props.text[at:run.end], left, y,
-                    prepared.font, color, clip)
+                    prepared.font, color, clip, prepared.typeface)
                 at = run.end
             }
         }
@@ -160,11 +160,11 @@ Theme :: #import "theme";
             left := x + GlyphWidth(props.text[line_start:at], prepared.font, prepared.typeface)
             if !run.link {
                 PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
-                    prepared.color, clip)
+                    prepared.color, clip, prepared.typeface)
             } else {
                 color := TextLinkColor(prepared.color)
                 PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
-                    color, clip)
+                    color, clip, prepared.typeface)
                 width := GlyphWidth(props.text[at:run.end], prepared.font, prepared.typeface)
                 underline := RectangleIntersection(Rectangle.{cast(float32)left,
                         cast(float32)(y + prepared.line_height - 1), cast(float32)width, 1.0}, clip)
@@ -180,7 +180,7 @@ Theme :: #import "theme";
     PrepareText :: (props: TextProps, face: TextFace) -> PreparedText {
         prepared: PreparedText
         prepared.bounds = props.bounds
-        prepared.typeface = face.value.typeface
+        prepared.typeface = ifx props.typeface != "" then props.typeface else face.value.typeface
         appearance: TextAppearance = ResolveTextStyle(props.font, 0,
             ResolveFont(0, StyleFontValue(face.value.fields,
             face.value.font_size), face.fallback_font),
@@ -193,7 +193,7 @@ Theme :: #import "theme";
         prepared.line_height = GlyphLineHeight(prepared.font,
             prepared.typeface)
         if prepared.line_height < 1 { prepared.line_height = prepared.font }
-        prepared.line_gap = TextDefaultLineGap(1.0)
+        prepared.line_gap = ifx props.line_gap > 0 then props.line_gap else TextDefaultLineGap(1.0)
         prepared.wrap = cast(TextWrap)TextWrapPolicy(props.bounds.width,
             cast(s32)props.wrap)
 
@@ -281,8 +281,8 @@ Theme :: #import "theme";
             // A line too wide for its bounds keeps the start that fits and
             // ends in "...".
             ellipsis: bool = props.wrap == TextWrap.TextWrapEllipsis &&
-                prepared.bounds.width > 0.0 &&
-                cast(float32)line.width > prepared.bounds.width
+            prepared.bounds.width > 0.0 &&
+            cast(float32)line.width > prepared.bounds.width
             dots_width: s32 = 0
             if ellipsis {
                 dots_width = GlyphWidth("...", prepared.font, prepared.typeface)
@@ -290,7 +290,7 @@ Theme :: #import "theme";
                     cast(s32)prepared.bounds.width - dots_width,
                     prepared.font, prepared.typeface)
                 line.width = GlyphWidth(value, prepared.font, prepared.typeface) +
-                    dots_width
+                dots_width
                 line.end = line.start + cast(s32)value.count
             }
             x: s32 = TextLineXFor(cast(s32)prepared.bounds.x,
@@ -322,7 +322,7 @@ Theme :: #import "theme";
                 if ellipsis {
                     PaintClippedLabel(session, node, "...",
                         x + line.width - dots_width, y, prepared.font,
-                        prepared.color, clip)
+                        prepared.color, clip, prepared.typeface)
                 }
                 PaintTextEmphasis(session, node, props, prepared, line, x, y, clip)
                 if props.strikethrough {

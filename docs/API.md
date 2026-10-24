@@ -266,3 +266,16 @@ arrow key. The hub stops, and a quick tap steps once. `floating` lays it
 over a board: lighter arms and outlined arrows let the pieces under it show
 through, and drawn after the board it takes the presses there. It is composed
 from `Press`, `Box` and `SvgIcon`, so hosted games can use it.
+
+## Reading pages
+
+`text_measure.TextPage(session, props, start)` returns a UTF-8 byte range
+(`start`, `end`, `next`) that fits `props.bounds`. Draw `text[start:end]` with
+the same Text props and continue at `next`. Only separating whitespace is
+skipped; a viewport shorter than a line reports no progress. Apps keep their
+own content anchors and page indexes so reflow preserves the reading place.
+
+`TextProps.line_gap` supplies extra units between lines. `typeface` names a
+registered face or a font asset. Hosted fonts pass the same asset policy as
+images; absolute host paths are refused. Raylib and Canvas select the face
+for measurement and for queued paint, restoring the interface font afterward.

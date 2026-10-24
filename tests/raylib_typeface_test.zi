@@ -403,6 +403,15 @@ main :: () -> s32 {
     draw_count = 0
     RasterText("A中B", 7, 11, 12, Drawing.Color.{255, 255, 255, 255})
     if bad_size || !CheckOrigins("A中B", 7, 11, 12) { return 33 }
+    // A reader can measure a packaged font without changing the app's UI
+    // face. The real font bytes, advances and scope restoration are tested.
+    selected_before := raylib_active_typeface_index
+    ordinary := MeasureGlyphWidth("WWWWiiii", 20, "Offline Latin")
+    alternate := MeasureGlyphWidth("WWWWiiii", 20, "assets/fonts/DejaVuSans.ttf")
+    if ordinary <= 0 || alternate <= 0 || ordinary == alternate ||
+        raylib_active_typeface_index != selected_before { return 37 }
+    if MeasureGlyphWidth("WWWWiiii", 20, "assets/fonts/does-not-exist.ttf") != ordinary ||
+        raylib_active_typeface_index != selected_before { return 38 }
     ReleaseTypefaces()
     if loaded != released || raylib_fallback_face_count != 0 { return 13 }
     return 0

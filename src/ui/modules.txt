@@ -179,6 +179,7 @@ text_input_platform.zi
 text_input_props.zi
 text_layout.zi
 text_props.zi
+text_typeface.zi
 text_selection_host.zi
 text_selection_widget.zi
 text_request.zi

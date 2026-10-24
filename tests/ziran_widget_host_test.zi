@@ -247,6 +247,15 @@ main :: () -> s32 {
     Call("text_widget", "TextLinkAtHostedHost", link_arguments[:3], *result) != 0 {
         return 93
     }
+    // Guest fonts stay within the same asset boundary as their pictures.
+    font_codec: WidgetTextPropsCodec
+    encoded_font := WidgetEncodeTextProps(TextProps.{.typeface = "/private/font.ttf", .line_gap = 11}, *font_codec)
+    refused_font := WidgetHostTextProps(encoded_font)
+    if refused_font.typeface != "" || refused_font.line_gap != 11 { return 94 }
+    encoded_font = WidgetEncodeTextProps(TextProps.{.typeface = "ui"}, *font_codec)
+    if WidgetHostTextProps(encoded_font).typeface != "ui" { return 95 }
+    encoded_font = WidgetEncodeTextProps(TextProps.{.typeface = "assets/forbidden.ttf"}, *font_codec)
+    if WidgetHostTextProps(encoded_font).typeface != "" { return 96 }
     // A portable app measures a line of text with the host's own fonts, to
     // place controls beside it.
     if !WidgetHostSupports("p0123456789abcdef_text_measure", "TextWidthHostedHost") { return 94 }

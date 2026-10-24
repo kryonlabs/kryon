@@ -1,0 +1,62 @@
+#import "ziran_mesh_noop_host"
+#import "drawing_props"
+#import "geometry"
+Utf8 :: #import "std/utf8";
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    factor: s32 = ifx typeface == "wide" then 2 else 1
+    return cast(s32)Utf8.Count(value) * font * factor / 2
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused typeface
+    return font
+}
+
+failed: bool;
+#load "unexpected_raster_text.zi";
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32, color: Color, clip: Rectangle) {
+    if active_face != "wide" { failed = true }
+    painted = true
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+    unused clip
+}
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32, segments: s32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused color
+}
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+}
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32, segments: s32, width: float32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused width
+    unused color
+}
+#load "unexpected_raster_image.zi";
+
+active_face: string = "ui";
+painted: bool;
+#program_export
+PageHostTypeface :: (name: string) -> string {
+    previous := ifx active_face == "ui" then "ui" else "wide"
+    active_face = name
+    return previous
+}
+#program_export
+PageHostPainted :: () -> bool { return painted && !failed && active_face == "ui" }

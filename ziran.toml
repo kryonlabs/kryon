@@ -63,6 +63,8 @@ widget_palette = "src/ui/widget_palette.zi"
 # Direct widget modules let portable hosts select only their required effects.
 text_widget = "src/ui/text_widget.zi"
 text_props = "src/ui/text_props.zi"
+text_measure = "src/ui/text_measure.zi"
+text_typeface = "src/ui/text_typeface.zi"
 text_align = "src/ui/text_align.zi"
 image_widget = "src/ui/image_widget.zi"
 image_props = "src/ui/image_props.zi"

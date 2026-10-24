@@ -1,0 +1,59 @@
+#import "tree_draw"
+#import "geometry"
+#import "session"
+#import "text_props"
+#import "text_measure"
+#import "ziran_text_page_host"
+#import "font_metrics"
+#import "text_typeface"
+#import "text_widget"
+#import "tree"
+
+#program_export
+main :: () -> s32 {
+    props := TextProps.{.text = "one two three four five six seven eight nine ten\n\n水の道\nlast line",
+        .font = 14, .bounds = Rectangle.{0.0, 0.0, 70.0, 40.0}}
+    counts: [2]s32
+    for size: cast(s32)0..1 {
+        props.font = ifx size == 0 then 14 else 28
+        props.line_gap = ifx size == 0 then 2 else 12
+        at: s32
+        while at < props.text.count {
+            page := TextPage(Session.{}, props, at)
+            again := TextPage(Session.{}, props, at)
+            if page.start != at || page.end <= at || page.next <= at ||
+            page.next > props.text.count || page.end != again.end || page.next != again.next { return 1 }
+            if page.end < props.text.count && (props.text[page.end] & cast(u8)192) == cast(u8)128 { return 2 }
+            measured := props
+            measured.text = props.text[page.start:page.end]
+            if TextHeight(Session.{}, measured) > cast(s32)props.bounds.height { return 3 }
+            for index: page.end..page.next - 1 {
+                if props.text[index] > #char " " { return 4 }
+            }
+            at = page.next
+            counts[size] += 1
+        }
+    }
+    if counts[1] <= counts[0] { return 5 }
+    props.bounds.height = 1.0
+    if TextPage(Session.{}, props, 0).next != 0 { return 6 }
+    props.bounds.height = 4000.0
+    if TextPage(Session.{}, props, 0).next != props.text.count { return 7 }
+    if TextPage(Session.{}, props, -1).next != -1 { return 8 }
+    // Widths differ by face and drawing restores the host's selected UI font.
+    props.bounds.height = 40.0
+    props.font = 14
+    props.line_gap = 2
+    normal := TextPage(Session.{}, props, 0)
+    props.typeface = "wide"
+    wide := TextPage(Session.{}, props, 0)
+    if wide.next >= normal.next { return 9 }
+    SetTextTypefaceSelector(PageHostTypeface)
+    session := SessionOpen()
+    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 300.0})
+    props.text = "ink"
+    Text(session, props)
+    unused EndFrame(session)
+    if !PageHostPainted() { return 10 }
+    return 0
+}

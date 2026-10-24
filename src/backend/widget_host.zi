@@ -160,6 +160,18 @@ WidgetHostTextProps :: (props: HostValue) -> TextProps {
     text: TextProps = WidgetDecodeTextProps(props, *widget_text_codec)
     text.strong = widget_text_codec.strong_decoded[:HostSliceLength(props, 15, "strong")]
     text.links = widget_text_codec.links_decoded[:HostSliceLength(props, 18, "links")]
+    if text.typeface.count >= 7 && text.typeface[:7] == "assets/" {
+        text.typeface = WidgetHostAssetPath(text.typeface)
+    } else {
+        // A guest can name a registered face, but cannot load arbitrary host
+        // paths. Only its own allowed assets pass through the resolver.
+        for byte: text.typeface {
+            if byte == #char "/" || byte == #char "\\" || byte == #char ":" {
+                text.typeface = ""
+                break
+            }
+        }
+    }
     return text
 }
 

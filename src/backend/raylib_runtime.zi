@@ -20,6 +20,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "tree_input"
 #import "raylib_clip"
 #import "text_emphasis"
+#import "text_typeface"
 #import "image_orientation"
 #if !#defined(_WIN32) {
     #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
@@ -47,6 +48,7 @@ RaylibGlyphMetricsChanged :: () {
             return
         }
     }
+    SetTextTypefaceSelector(RaylibTextTypeface)
     Metrics.GlyphMetricsChanged()
 }
 
@@ -919,6 +921,50 @@ LoadSystemTypeface :: (name: string) -> bool {
         path := SystemTypeface.FileFor(name, 0, path_bytes[:], *face)
         return path != "" && RaylibLoadTypefaceFile(name, path, null, 0, face)
     }
+}
+
+// Select without invalidating layout on every scoped switch. Loading a new
+// resource still publishes its actual metrics revision through StoreTypeface.
+RaylibTextTypeface :: (name: string) -> string {
+    previous := "@builtin"
+    if raylib_active_typeface_index >= 0 {
+        previous = TypefaceText.TextFromCString(*raylib_typefaces[raylib_active_typeface_index].name[0])
+    }
+    if name == "@builtin" {
+        raylib_active_typeface_index = -1
+        raylib_font_loaded = false
+        raylib_font_registered = false
+        return previous
+    }
+    key := name
+    key_buffer: [32]u8
+    if name.count >= 64 || (name.count >= 7 && name[:7] == "assets/") ||
+        (name.count > 0 && name[0] == #char "/") {
+        key = TextTypefaceKey(name, key_buffer[:])
+    }
+    index := RaylibTypefaceIndex(key)
+    if index < 0 && key != name {
+        // Packed app resources are served by the host's LoadFileData hook;
+        // they need not be files visible to FileExists.
+        path: [4096]u8
+        count: s32
+        if CopyCString(name, path[:]) {
+            bytes := HostTypefaceFileData(*path[0], *count)
+            if bytes != null {
+                data := TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(bytes, cast(u64)count))
+                extension := ifx name.count >= 4 then name[name.count - 4:] else ".ttf"
+                if LoadTypefaceData(key, extension, data, null, 0) { index = RaylibTypefaceIndex(key) }
+                HostTypefaceFileDataFree(bytes)
+            }
+        }
+    }
+    if index >= 0 {
+        raylib_font = raylib_typefaces[index].font
+        raylib_active_typeface_index = index
+        raylib_font_loaded = true
+        raylib_font_registered = true
+    }
+    return previous
 }
 
 #program_export
@@ -1983,8 +2029,10 @@ RaylibTextExtent :: (value: string, font: s32) -> Vector2 {
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
     #if RAYLIB_FRAME_THREADS {
-        if RenderOnAppThread() { return RaylibAppMetric(value, font, false) }
+        if RenderOnAppThread() { return RaylibAppMetric(value, font, false, false, typeface) }
     }
+    previous := TextTypefaceUse(typeface)
+    defer { unused TextTypefaceUse(previous) }
     bytes: [4096]u8
     if !CopyCString(value, bytes[:]) { return 0 }
     if raylib_font_loaded {
@@ -2923,7 +2971,7 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
     RaylibAppResource :: (argument: *void) {
         request := cast(*RaylibAppRequest)argument
         if request.operation == 1 {
-            request.width = MeasureGlyphWidth(request.value, request.count, "")
+            request.width = MeasureGlyphWidth(request.value, request.count, request.name)
         } else if request.operation == 2 {
             index := RaylibAssetIndex(request.value)
             if index >= 0 {
@@ -2966,8 +3014,9 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         for index: cast(s32)0..2047 { raylib_app_metrics[index].length = 0 }
     }
 
-    RaylibAppMetric :: (value: string, font: s32, height: bool, image: bool = false) -> s32 {
+    RaylibAppMetric :: (value: string, font: s32, height: bool, image: bool = false, typeface: string = "") -> s32 {
         hash := RaylibAssetHash(value) ^ (cast(u64)font * cast(u64)1099511628211)
+        if typeface != "" { hash = hash ^ RaylibAssetHash(typeface) }
         if image { hash = hash ^ cast(u64)0x9e3779b9 }
         index := cast(s32)(hash % cast(u64)2048)
         entry := *raylib_app_metrics[index]
@@ -2980,7 +3029,7 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         }
         if same { return ifx height then entry.height else entry.width }
         request := RaylibAppRequest.{.operation = ifx image then 2 else 1,
-            .value = value, .count = font}
+            .name = typeface, .value = value, .count = font}
         RenderCall(RaylibAppResource, cast(*void)*request)
         if value.count > 0 && value.count <= 256 && request.width > 0 {
             entry.hash = hash

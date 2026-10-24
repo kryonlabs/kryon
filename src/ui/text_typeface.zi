@@ -1,0 +1,37 @@
+// A raster host selects a font only for the current measurement or label.
+// Names and font asset paths share the same bounded resource identity.
+TextTypefaceSelector :: #type (name: string) -> string;
+text_typeface_selector: TextTypefaceSelector;
+text_typeface_installed: bool;
+
+#program_export
+SetTextTypefaceSelector :: (select: TextTypefaceSelector) {
+    text_typeface_selector = select
+    text_typeface_installed = true
+}
+
+#program_export
+TextTypefaceUse :: (name: string) -> string {
+    if !text_typeface_installed || name == "" { return "" }
+    return text_typeface_selector(name)
+}
+
+// Paths may exceed a registered face name's capacity. Hash the whole path,
+// including its package namespace, so separately installed assets stay apart.
+#program_export
+TextTypefaceKey :: (path: string, output: []u8) -> string {
+    if output.count < 22 { return "" }
+    hash: u64 = cast(u64)14695981039346656037
+    for byte: path {
+        hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211
+    }
+    prefix := "font-"
+    digits := "0123456789abcdef"
+    for index: cast(s32)0..4 { output[index] = prefix[index] }
+    for index: cast(s32)0..15 {
+        digit := cast(s32)((hash >> cast(u64)(60 - index * 4)) & cast(u64)15)
+        output[index + 5] = digits[digit]
+    }
+    output[21] = 0
+    return TextView(output[:21])
+}

@@ -102,9 +102,9 @@ WidgetValidTextRange :: (value: HostValue) -> bool {
     return true
 }
 
-// Widget codec schema: ["TextProps",[["key","u64"],["bounds","Rectangle"],["text","string"],["font","s32"],["fallback_font","s32"],["style_kind","s32"],["semantic_kind","SemanticKind"],["heading_level","s32"],["class_name","s32"],["wrap","TextWrap"],["align","TextAlign"],["vertical_align","TextAlign"],["disabled","bool"],["selectable","bool"],["strikethrough","bool"],["strong","[]TextRange"],["typing","bool"],["typed","s32"],["links","[]TextRange"]]]
+// Widget codec schema: ["TextProps",[["key","u64"],["bounds","Rectangle"],["text","string"],["font","s32"],["fallback_font","s32"],["style_kind","s32"],["semantic_kind","SemanticKind"],["heading_level","s32"],["class_name","s32"],["wrap","TextWrap"],["align","TextAlign"],["vertical_align","TextAlign"],["disabled","bool"],["selectable","bool"],["strikethrough","bool"],["strong","[]TextRange"],["typing","bool"],["typed","s32"],["links","[]TextRange"],["typeface","string"],["line_gap","s32"]]]
 WidgetTextPropsCodec :: struct {
-    fields: [19]HostField
+    fields: [21]HostField
     bounds: WidgetRectangleCodec
     strong_values: [1024]HostValue
     strong_codecs: [1024]WidgetTextRangeCodec
@@ -160,6 +160,8 @@ WidgetDecodeTextProps :: (value: HostValue, codec: *WidgetTextPropsCodec) -> Tex
             // Slice storage is attached by the rendering effect after decoding.
         }
     }
+    data.typeface = HostValueText(HostFieldValue(*value, 19, "typeface", *zero).*)
+    data.line_gap = cast(s32)HostFieldValue(*value, 20, "line_gap", *zero).integer
     return data
 }
 
@@ -186,6 +188,8 @@ WidgetValidTextProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 17, "typed", "s32", cast(s32)HostInteger) { return false }
     if !HostFieldSliceValid(*value, 18, "links", "[]TextRange", cast(usize)1024,
         HostElementRule.{.validate_record = WidgetValidTextRange}) { return false }
+    if !HostFieldScalarValid(*value, 19, "typeface", "string", cast(s32)HostString) { return false }
+    if !HostFieldScalarValid(*value, 20, "line_gap", "s32", cast(s32)HostInteger) { return false }
     return true
 }
 

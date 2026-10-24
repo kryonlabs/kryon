@@ -56,6 +56,10 @@ TextProps :: struct {
     // theme's link color and underlined, inside the ordinary text; TextLinkAt
     // finds the one under a pointer so the caller can open it.
     links: []TextRange
+    // Registered face or a font asset path; empty keeps the theme face.
+    typeface: string
+    // Extra units between lines; zero keeps the default gap.
+    line_gap: s32
 }
 
 PreparedText :: struct {

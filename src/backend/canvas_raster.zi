@@ -3,6 +3,7 @@
 #import "geometry"
 #import "paint_texture"
 #import "canvas_state"
+#import "text_typeface"
 #import "canvas_types"
 #import "canvas_draw"
 #import "canvas_texture"
@@ -52,9 +53,9 @@ CanvasDrawImageClipped :: (texture: Texture2D, source: Rectangle,
         // enclosing clip/camera, but avoid rebuilding an identical scissor
         // and reading its modelview for every tile in a board.
         if rotation == 0.0 && destination.width > 0.0 && destination.height > 0.0 &&
-            destination.x >= cast(float32)x && destination.y >= cast(float32)y &&
-            destination.x + destination.width <= cast(float32)(x + width) &&
-            destination.y + destination.height <= cast(float32)(y + height) {
+        destination.x >= cast(float32)x && destination.y >= cast(float32)y &&
+        destination.x + destination.width <= cast(float32)(x + width) &&
+        destination.y + destination.height <= cast(float32)(y + height) {
             DrawTexturePro(texture, source, destination, origin, rotation, tint)
             return
         }
@@ -95,6 +96,8 @@ CanvasDrawImageClipped :: (texture: Texture2D, source: Rectangle,
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
+    previous := TextTypefaceUse(typeface)
+    defer { unused TextTypefaceUse(previous) }
     face: s32 = 0
     if canvas_font_loaded { face = CanvasFontFace(canvas_font) }
     return cast(s32)(PageTextWidth(face, value, font) + 0.5)

@@ -5,6 +5,7 @@
 #import "raster"
 #import "raster_shape"
 #import "raster_text"
+#import "text_typeface"
 #import "session"
 #import "tree"
 #import "vec"
@@ -281,7 +282,7 @@ KeepMeshPoints :: (blocks: *Vec(PaintMeshBlock), points: []Vector2,
     count: s64, dx: float32, dy: float32) -> PaintMeshRange {
     result: PaintMeshRange
     if count <= 0 || count > cast(s64)IMAGE_MESH_POINT_LIMIT ||
-        points.count < count { return result }
+    points.count < count { return result }
     block_index: s32 = cast(s32)blocks.count - 1
     if block_index < 0 || count > cast(s64)(IMAGE_MESH_POINT_LIMIT -
         blocks.*[block_index].count) {
@@ -368,8 +369,8 @@ ShapeVisible :: (command: PaintCommand) -> Rectangle {
 
 ShapeWhole :: (command: PaintCommand, visible: Rectangle) -> bool {
     return visible.x == command.bounds.x && visible.y == command.bounds.y &&
-        visible.width == command.bounds.width &&
-        visible.height == command.bounds.height
+    visible.width == command.bounds.width &&
+    visible.height == command.bounds.height
 }
 
 ShapeRadius :: (bounds: Rectangle, radius: float32) -> float32 {
@@ -435,7 +436,7 @@ FillShapeRows :: (bounds: Rectangle, radius: float32, width: float32,
         left: float32 = bounds.x + outer
         right: float32 = bounds.x + bounds.width - outer
         inside: bool = width > 0.0 && center > bounds.y + width &&
-            center < bounds.y + bounds.height - width
+        center < bounds.y + bounds.height - width
         if !inside {
             FillClippedSpan(left, right, y, height, visible, color)
         } else {
@@ -484,8 +485,8 @@ EmitLine :: (command: PaintCommand) {
         if line.width != 0.0 && line.height != 0.0 {
             // A diagonal line is drawn whole or not at all.
             if line.x < clip.x || line.y < clip.y ||
-                line.x + line.width > clip.x + clip.width ||
-                line.y + line.height > clip.y + clip.height { return }
+            line.x + line.width > clip.x + clip.width ||
+            line.y + line.height > clip.y + clip.height { return }
         } else if line.height == 0.0 {
             if line.y < clip.y || line.y > clip.y + clip.height { return }
             x0: float32 = line.x
@@ -526,7 +527,7 @@ EmitRoundedFill :: (command: PaintCommand) {
 
 GradientChannel :: (first: u8, second: u8, amount: float32) -> u8 {
     value: float32 = cast(float32)first +
-        (cast(float32)second - cast(float32)first) * amount + 0.5
+    (cast(float32)second - cast(float32)first) * amount + 0.5
     if value <= 0.0 { return cast(u8)0 }
     if value >= 255.0 { return cast(u8)255 }
     return cast(u8)value
@@ -576,6 +577,8 @@ EmitRoundedOutline :: (command: PaintCommand) {
 }
 
 EmitLabel :: (command: PaintCommand) {
+    previous := TextTypefaceUse(command.asset_path)
+    defer { unused TextTypefaceUse(previous) }
     if command.italic {
         PaintTextItalicClipped(command.value, command.x, command.y,
             command.font, command.color, command.clip, command.emphasis)
@@ -656,7 +659,7 @@ QueuePaint :: (session: Session, command: *QueuedPaint) {
     if command.data.overlay_layer > 0 { pending_paint[slot].overlays = true }
     pending_paint[slot].ordered = false
     if command.data.node < 0 && TreeIsBuilding(session) &&
-        command.clips {
+    command.clips {
         scope: NodeGeometry = TreeCurrentPaintGeometry(session)
         if scope.clipped {
             clip_for: PaintClipper = command.clip_for
@@ -673,13 +676,13 @@ QueuePaint :: (session: Session, command: *QueuedPaint) {
         moved_x = dx
         moved_y = dy
         full_bounds: bool = command.data.bounds.x == geometry.measured_bounds.x &&
-            command.data.bounds.y == geometry.measured_bounds.y &&
-            command.data.bounds.width == geometry.measured_bounds.width &&
-            command.data.bounds.height == geometry.measured_bounds.height
+        command.data.bounds.y == geometry.measured_bounds.y &&
+        command.data.bounds.width == geometry.measured_bounds.width &&
+        command.data.bounds.height == geometry.measured_bounds.height
         full_clip: bool = command.data.clip.x == geometry.measured_bounds.x &&
-            command.data.clip.y == geometry.measured_bounds.y &&
-            command.data.clip.width == geometry.measured_bounds.width &&
-            command.data.clip.height == geometry.measured_bounds.height
+        command.data.clip.y == geometry.measured_bounds.y &&
+        command.data.clip.width == geometry.measured_bounds.width &&
+        command.data.clip.height == geometry.measured_bounds.height
         command.data.bounds.x += dx
         command.data.bounds.y += dy
         command.data.clip.x += dx
@@ -800,10 +803,11 @@ PaintRoundedOutline :: (session: Session, node: s32, bounds: Rectangle, radius: 
 
 #program_export
 PaintLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
-    font: s32, color: Color) {
+    font: s32, color: Color, typeface: string = "") {
     command: QueuedPaint
     command.data.kind = PaintKindText
     command.data.node = node
+    command.data.asset_path = typeface
     command.data.value = value
     command.data.x = x
     command.data.y = y
@@ -821,10 +825,11 @@ PaintLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
 
 #program_export
 PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
-    font: s32, color: Color, clip: Rectangle) {
+    font: s32, color: Color, clip: Rectangle, typeface: string = "") {
     command: QueuedPaint
     command.data.kind = PaintKindClippedText
     command.data.node = node
+    command.data.asset_path = typeface
     command.data.value = value
     command.data.x = x
     command.data.y = y
@@ -844,10 +849,11 @@ PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32
 // The extra stroke of emphasized text, at the position of its painted label.
 #program_export
 PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: s32,
-    font: s32, color: Color, clip: Rectangle) {
+    font: s32, color: Color, clip: Rectangle, typeface: string = "") {
     command: QueuedPaint
     command.data.kind = PaintKindClippedText
     command.data.node = node
+    command.data.asset_path = typeface
     command.data.value = value
     command.data.x = x
     command.data.y = y
@@ -869,10 +875,11 @@ PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: 
 // text, at the position of its painted label.
 #program_export
 PaintClippedSlanted :: (session: Session, node: s32, value: string, x: s32, y: s32,
-    font: s32, color: Color, clip: Rectangle, emphasis: bool) {
+    font: s32, color: Color, clip: Rectangle, emphasis: bool, typeface: string = "") {
     command: QueuedPaint
     command.data.kind = PaintKindClippedText
     command.data.node = node
+    command.data.asset_path = typeface
     command.data.value = value
     command.data.x = x
     command.data.y = y
@@ -928,7 +935,7 @@ PaintImageMesh :: (session: Session, node: s32, asset_path: string,
     points: []Vector2, clip: Rectangle, tint: Color,
     texture: Texture2D = Texture2D.{0, 0, 0, 0, 0}, smooth: bool = false) {
     if PaintMeshPointCount(columns, rows) == 0 ||
-        points.count < PaintMeshPointCount(columns, rows) { return }
+    points.count < PaintMeshPointCount(columns, rows) { return }
     command: QueuedPaint
     command.data.kind = PaintKindImage
     command.data.smooth = smooth
@@ -1026,7 +1033,7 @@ PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
     if data.owns_mesh {
         count: s32 = cast(s32)PaintMeshPointCount(data.mesh_columns, data.mesh_rows)
         data.mesh_points = pending_mesh[slot][data.mesh_block].points[data.mesh_start:
-            data.mesh_start + count]
+        data.mesh_start + count]
     }
     return data
 }
@@ -1063,7 +1070,7 @@ SnapshotTextAppend :: (slot: s32, values: bool, value: string) -> s64 {
 
 SnapshotSpanEqual :: (slot: s32, values: bool, value: string, start: s64, count: s64) -> bool {
     if value.count != count || slot <= 0 || slot >= 9 || start < 0 ||
-        count < 0 { return false }
+    count < 0 { return false }
     length := ifx values then paint_snapshot_value_counts[slot] else paint_snapshot_asset_counts[slot]
     if start > length || count > length - start { return false }
     compared: s64
@@ -1142,7 +1149,7 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     current.rotation != previous.data.rotation { return false }
     if current.smooth != previous.data.smooth { return false }
     if current.mesh_columns != previous.data.mesh_columns ||
-        current.mesh_rows != previous.data.mesh_rows { return false }
+    current.mesh_rows != previous.data.mesh_rows { return false }
     if !SnapshotMeshEqual(slot, current, previous) { return false }
     return true
 }
@@ -1155,7 +1162,7 @@ SnapshotMeshEqual :: (slot: s32, current: PaintCommand,
     block: s32 = previous.mesh_block
     start: s32 = previous.mesh_start
     if current.mesh_points.count < count || block < 0 || start < 0 ||
-        cast(s64)block >= paint_snapshot_meshes[slot].count { return false }
+    cast(s64)block >= paint_snapshot_meshes[slot].count { return false }
     // Read the kept block through its address. Indexing the block itself
     // copies all of its points for every point compared, which made a still
     // page of meshes (a chart of figures) take most of a second per frame.
@@ -1295,7 +1302,7 @@ PaintSnapshotEmit :: (session: Session) -> bool {
             previous.data.mesh_rows)
         if mesh_count > 0 {
             command.data.mesh_points = paint_snapshot_meshes[slot][previous.mesh_block].points[previous.mesh_start:
-                previous.mesh_start + mesh_count]
+            previous.mesh_start + mesh_count]
         }
         command.emit = previous.emit
         command.has_emitter = previous.has_emitter
@@ -1314,7 +1321,7 @@ PaintPlanUnchanged :: (session: Session) -> bool {
     index: s32 = 0
     while cast(s64)index < pending_paint[slot].items.count {
         if !pending_paint[slot].items[index].builtin_emitter || !paint_snapshots[slot][index].builtin_emitter ||
-            pending_paint[slot].items[index].has_emitter != paint_snapshots[slot][index].has_emitter { return false }
+        pending_paint[slot].items[index].has_emitter != paint_snapshots[slot][index].has_emitter { return false }
         if !PaintCommandEqual(slot, PendingPaintAt(session, index),
             paint_snapshots[slot][index]) { return false }
         index += 1
@@ -1330,7 +1337,7 @@ PaintCommandArea :: (command: PaintCommand, area: *Rectangle) -> bool {
     margin: float32 = 2.0 + command.line_width
     kind := command.kind
     if kind == PaintKindClippedText || kind == PaintKindImage ||
-        (kind == PaintKindText && (command.italic || command.emphasis)) {
+    (kind == PaintKindText && (command.italic || command.emphasis)) {
         // These draw only inside their clip.
         area.* = Rectangle.{command.clip.x - margin, command.clip.y - margin,
             command.clip.width + margin * 2.0, command.clip.height + margin * 2.0}
@@ -1352,7 +1359,7 @@ PaintCommandArea :: (command: PaintCommand, area: *Rectangle) -> bool {
         bounds.width + margin * 2.0, bounds.height + margin * 2.0}
     if command.clip_set {
         area.* = RectangleIntersection(area.*, Rectangle.{command.clip.x - margin, command.clip.y - margin,
-            command.clip.width + margin * 2.0, command.clip.height + margin * 2.0})
+                command.clip.width + margin * 2.0, command.clip.height + margin * 2.0})
     }
     return true
 }
@@ -1397,8 +1404,8 @@ PaintDamage :: (session: Session) -> PaintFrameDamage {
         current: PaintCommand
         if index < count { current = PendingPaintAt(session, cast(s32)index) }
         if index < count && index < previous &&
-            pending_paint[slot].items[index].has_emitter == paint_snapshots[slot][index].has_emitter &&
-            PaintCommandEqual(slot, current, paint_snapshots[slot][index]) { continue }
+        pending_paint[slot].items[index].has_emitter == paint_snapshots[slot][index].has_emitter &&
+        PaintCommandEqual(slot, current, paint_snapshots[slot][index]) { continue }
         box: Rectangle
         if index < count {
             if !PaintCommandArea(current, *box) { return result }

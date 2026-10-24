@@ -39,3 +39,60 @@
             prepared.line_gap)
     }
 }
+
+TextPageRange :: struct {
+    start: s32
+    end: s32
+    next: s32
+}
+
+// A screenful measured by the same Text props that draw it. Positions are
+// UTF-8 byte offsets. Only separating whitespace is skipped between pages;
+// every visible character stays in one page, including an oversized word.
+// With room for less than one line no progress is reported.
+#program_export
+TextPage :: (session: Session, props: TextProps, start: s32) -> TextPageRange {
+    result := TextPageRange.{start, start, start}
+    count := cast(s32)props.text.count
+    if start < 0 || start >= count || props.bounds.width <= 0.0 || props.bounds.height <= 0.0 {
+        return result
+    }
+    if (props.text[start] & cast(u8)192) == cast(u8)128 { return result }
+    text := props.text
+    props.text = text[start:]
+    if TextHeight(session, props) <= cast(s32)props.bounds.height {
+        end := count
+        while end > start && text[end - 1] <= #char " " { end -= 1 }
+        return TextPageRange.{start, end, count}
+    }
+    low := start
+    high := count
+    // Upper-bound search; snap each candidate to a complete UTF-8 scalar.
+    while low < high {
+        middle := low + (high - low + 1) / 2
+        end := middle
+        while end < count && (text[end] & cast(u8)192) == cast(u8)128 { end += 1 }
+        props.text = text[start:end]
+        if TextHeight(session, props) <= cast(s32)props.bounds.height {
+            low = end
+        } else {
+            high = middle - 1
+        }
+    }
+    end := low
+    while end > start && end < count && (text[end] & cast(u8)192) == cast(u8)128 { end -= 1 }
+    if end == start { return result }
+    if end < count && text[end] > #char " " && text[end - 1] > #char " " {
+        boundary := end
+        while boundary > start && text[boundary - 1] > #char " " { boundary -= 1 }
+        // Leave a whole Latin word on the next page. Unspaced scripts still
+        // break on a scalar boundary when there is no separating whitespace.
+        if boundary > start { end = boundary }
+    }
+    next := end
+    while end > start && text[end - 1] <= #char " " { end -= 1 }
+    while next < count && text[next] <= #char " " { next += 1 }
+    result.end = end
+    result.next = next
+    return result
+}

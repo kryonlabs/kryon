@@ -5,6 +5,8 @@
 #import "canvas_texture"
 #import "canvas_text"
 #import "canvas_os"
+#import "text_typeface"
+#import "text_buffer"
 
 c :: #system_library "c";
 HostTypefaceAllocate :: (size: usize) -> *u8 #foreign c "malloc";
@@ -65,6 +67,7 @@ CanvasTypefaceIndex :: (name: string) -> s32 {
 }
 
 CanvasStoreTypeface :: (name: string, font: CanvasFont) -> bool {
+    SetTextTypefaceSelector(CanvasTextTypeface)
     if font.texture.id == cast(u32)0 || name.count == 0 ||
     name.count >= 64 {
         return false
@@ -155,6 +158,29 @@ LoadTypefaceFile :: (name: string, path: string,
 #program_export
 LoadSystemTypeface :: (name: string) -> bool {
     return false
+}
+
+CanvasTextTypeface :: (name: string) -> string {
+    previous := "@builtin"
+    if canvas_active_typeface_index >= 0 {
+        previous = TextView(canvas_typefaces[canvas_active_typeface_index].name[:canvas_typefaces[canvas_active_typeface_index].name_length])
+    }
+    if name == "@builtin" {
+        canvas_active_typeface_index = -1
+        canvas_font_loaded = false
+        canvas_font_registered = false
+        return previous
+    }
+    key := name
+    key_buffer: [32]u8
+    if name.count >= 64 || (name.count >= 7 && name[:7] == "assets/") ||
+    (name.count > 0 && name[0] == #char "/") { key = TextTypefaceKey(name, key_buffer[:]) }
+    index := CanvasTypefaceIndex(key)
+    if index < 0 && key != name && LoadTypefaceFile(key, name, null, 0) {
+        index = CanvasTypefaceIndex(key)
+    }
+    if index >= 0 { unused SelectTypeface(key) }
+    return previous
 }
 
 #program_export
