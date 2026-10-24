@@ -196,12 +196,9 @@ ListBoxLayoutFor :: (bounds: Rectangle, item_count: s32, row_height: s32,
 #program_export
 ListBoxRowBounds :: (bounds: Rectangle, row_index: s32,
     layout: ListBoxLayout) -> Rectangle {
-    row: Rectangle
-    row.x = bounds.x
-    row.y = bounds.y + cast(float32)(row_index * layout.row_height - layout.y_offset)
-    row.width = bounds.width
-    row.height = cast(float32)layout.row_height
-    return row
+    return Rectangle.{.x = bounds.x,
+        .y = bounds.y + cast(float32)(row_index * layout.row_height - layout.y_offset),
+        .width = bounds.width, .height = cast(float32)layout.row_height}
 }
 
 #program_export

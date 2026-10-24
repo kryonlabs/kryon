@@ -14,34 +14,18 @@ likes: s32;
 likes_text: [48]u8;
 
 Heading :: (session: Session, key: s32, text: string, level: s32, bounds: Rectangle, font: s32) {
-    props: TextProps
-    props.key = cast(u64)key
-    props.bounds = bounds
-    props.text = text
-    props.font = font
-    props.semantic_kind = SemanticKind.SemanticHeading
-    props.heading_level = level
-    Text(session, props)
+    Text(session, TextProps.{.key = cast(u64)key, .bounds = bounds, .text = text, .font = font,
+        .semantic_kind = SemanticKind.SemanticHeading, .heading_level = level})
 }
 
 Paragraph :: (session: Session, key: s32, text: string, bounds: Rectangle, font: s32) {
-    props: TextProps
-    props.key = cast(u64)key
-    props.bounds = bounds
-    props.text = text
-    props.font = font
-    props.semantic_kind = SemanticKind.SemanticParagraph
-    props.wrap = TextWrap.TextWrapAuto
-    Text(session, props)
+    Text(session, TextProps.{.key = cast(u64)key, .bounds = bounds, .text = text, .font = font,
+        .semantic_kind = SemanticKind.SemanticParagraph, .wrap = TextWrap.TextWrapAuto})
 }
 
 WebLink :: (session: Session, key: s32, text: string, url: string, bounds: Rectangle) {
-    props: LinkProps
-    props.key = cast(u64)key
-    props.bounds = bounds
-    props.text = text
-    props.link = url
-    unused Link(session, props)
+    unused Link(session, LinkProps.{.key = cast(u64)key, .bounds = bounds, .text = text,
+        .link = url})
 }
 
 #program_export

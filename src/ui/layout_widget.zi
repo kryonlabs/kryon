@@ -65,14 +65,9 @@ TreePlaceStack :: (session: Session, parent_index: s32, bounds: Rectangle) -> Re
 #program_export
 TreePlaceGrid :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rectangle {
     parent: LayoutInfo = TreeLayoutAt(session, parent_index)
-    props: GridProps
-    props.bounds = parent.bounds
-    props.gap = parent.gap
-    props.padding = parent.padding
-    props.columns = parent.columns
-    props.min_item_width = parent.min_item_width
-    props.max_columns = parent.max_columns
-    grid: GridCursor = BeginGridCursor(props)
+    grid: GridCursor = BeginGridCursor(GridProps.{.bounds = parent.bounds, .gap = parent.gap,
+        .padding = parent.padding, .columns = parent.columns,
+        .min_item_width = parent.min_item_width, .max_columns = parent.max_columns})
     progress: LayoutProgress = TreeLayoutProgressAt(session, parent_index)
     if progress.grid_initialized {
         grid.y = progress.grid_y

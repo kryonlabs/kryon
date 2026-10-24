@@ -11,12 +11,8 @@ GroupPolicy :: struct {
 #program_export
 GroupPolicyFor :: (bounds: Rectangle, gap: s32, padding: s32) -> GroupPolicy {
     metrics: LayoutMetrics = LayoutMetricsFor(bounds, gap, padding)
-    policy: GroupPolicy
-    policy.bounds = bounds
-    policy.content = metrics.content
-    policy.gap = metrics.gap
-    policy.padding = metrics.padding
-    return policy
+    return GroupPolicy.{.bounds = bounds, .content = metrics.content, .gap = metrics.gap,
+        .padding = metrics.padding}
 }
 
 #program_export

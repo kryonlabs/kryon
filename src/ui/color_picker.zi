@@ -19,11 +19,8 @@ ColorPickerSwatchPaint :: struct {
 #program_export
 ColorPickerSwatchPaintFor :: (bounds: Rectangle, label_inset: float32,
     text_line_height: float32) -> ColorPickerSwatchPaint {
-    paint: ColorPickerSwatchPaint
-    paint.bounds = bounds
-    paint.label_x = bounds.x + label_inset
-    paint.label_y = bounds.y + (bounds.height - text_line_height) / 2.0
-    return paint
+    return ColorPickerSwatchPaint.{.bounds = bounds, .label_x = bounds.x + label_inset,
+        .label_y = bounds.y + (bounds.height - text_line_height) / 2.0}
 }
 
 #program_export

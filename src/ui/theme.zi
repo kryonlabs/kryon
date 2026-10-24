@@ -269,37 +269,14 @@ Metrics :: struct {
 
 #program_export
 DefaultMetrics :: () -> Metrics {
-    metrics: Metrics
-    metrics.radius_small = 4.0
-    metrics.radius_medium = 8.0
-    metrics.radius_large = 12.0
-    metrics.radius_pill = 999.0
-    metrics.border_width = 1.0
-    metrics.focus_width = 2.0
-    metrics.focus_gap = 2.0
-    metrics.space_1 = 4.0
-    metrics.space_2 = 8.0
-    metrics.space_3 = 12.0
-    metrics.space_4 = 16.0
-    metrics.space_5 = 24.0
-    metrics.space_6 = 32.0
-    metrics.control_height_small = 32.0
-    metrics.control_height_medium = 40.0
-    metrics.control_height_large = 48.0
-    metrics.control_padding_small = 12.0
-    metrics.control_padding_medium = 16.0
-    metrics.control_padding_large = 20.0
-    metrics.control_gap = 8.0
-    metrics.font_size_small = 16.0
-    metrics.font_size_medium = 18.0
-    metrics.font_size_large = 20.0
-    metrics.icon_size_small = 14.0
-    metrics.icon_size_medium = 18.0
-    metrics.icon_size_large = 20.0
-    metrics.shadow_offset_y = 2.0
-    metrics.shadow_blur = 8.0
-    metrics.disabled_opacity = 0.45
-    metrics.transition_fast_ms = 80.0
-    metrics.transition_normal_ms = 140.0
-    return metrics
+    return Metrics.{.radius_small = 4.0, .radius_medium = 8.0, .radius_large = 12.0,
+        .radius_pill = 999.0, .border_width = 1.0, .focus_width = 2.0, .focus_gap = 2.0,
+        .space_1 = 4.0, .space_2 = 8.0, .space_3 = 12.0, .space_4 = 16.0, .space_5 = 24.0,
+        .space_6 = 32.0, .control_height_small = 32.0, .control_height_medium = 40.0,
+        .control_height_large = 48.0, .control_padding_small = 12.0,
+        .control_padding_medium = 16.0, .control_padding_large = 20.0, .control_gap = 8.0,
+        .font_size_small = 16.0, .font_size_medium = 18.0, .font_size_large = 20.0,
+        .icon_size_small = 14.0, .icon_size_medium = 18.0, .icon_size_large = 20.0,
+        .shadow_offset_y = 2.0, .shadow_blur = 8.0, .disabled_opacity = 0.45,
+        .transition_fast_ms = 80.0, .transition_normal_ms = 140.0}
 }

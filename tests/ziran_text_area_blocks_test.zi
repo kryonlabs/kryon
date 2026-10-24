@@ -10,14 +10,8 @@ Host :: #import "ziran_text_area_cache_host";
 // font is 5 px a byte at size 10 and as tall as its size.
 LayoutFor :: (wrap_width: s32, hidden: []TextRange, blocks: []TextAreaBlock,
     lines: []TextAreaLine) -> TextAreaLayout {
-    layout: TextAreaLayout
-    layout.font = 10
-    layout.gap = 0
-    layout.wrap_width = wrap_width
-    layout.hidden = hidden
-    layout.blocks = blocks
-    layout.lines = lines
-    return layout
+    return TextAreaLayout.{.font = 10, .gap = 0, .wrap_width = wrap_width, .hidden = hidden,
+        .blocks = blocks, .lines = lines}
 }
 
 Plain :: (value: string) -> TextAreaView {

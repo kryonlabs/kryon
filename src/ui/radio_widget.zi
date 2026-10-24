@@ -140,14 +140,8 @@ Radio :: (session: Session, props: RadioProps) -> s32 {
             bounds.width += gap + cast(float32)label_width
         }
     }
-    spec: RadioSpec
-    spec.bounds = bounds
-    spec.checked = props.checked
-    spec.disabled = props.disabled
-    spec.scale = 1.0
-    spec.frame = ring
-    spec.selected = mark
-    paint: RadioPaint = RadioPaintFor(spec)
+    paint: RadioPaint = RadioPaintFor(RadioSpec.{.bounds = bounds, .checked = props.checked,
+        .disabled = props.disabled, .scale = 1.0, .frame = ring, .selected = mark})
     ring_opacity: float32 = StyleOpacityValue(ring.value.fields,
         ring.value.opacity)
     mark_opacity: float32 = StyleOpacityValue(mark.value.fields,

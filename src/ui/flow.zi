@@ -24,20 +24,11 @@ FlowResult :: struct {
 // submitting each child, then closes the retained scope with End(session).
 #program_export
 Flow :: (session: Session, props: FlowProps) -> FlowResult {
-    row: ColumnProps
-    row.bounds = props.bounds
-    row.gap = props.gap
-    row.padding = props.padding
-    row.key = props.key
-    container: LayoutContainer = Row(session, row)
-    result: FlowResult
-    result.node = container.node
-    result.opened = container.opened
-    result.bounds = container.bounds
-    result.content = container.content
-    result.gap = container.gap
-    result.padding = container.padding
-    return result
+    container: LayoutContainer = Row(session, ColumnProps.{.bounds = props.bounds,
+        .gap = props.gap, .padding = props.padding, .key = props.key})
+    return FlowResult.{.node = container.node, .opened = container.opened,
+        .bounds = container.bounds, .content = container.content, .gap = container.gap,
+        .padding = container.padding}
 }
 
 #program_export

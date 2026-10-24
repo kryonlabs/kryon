@@ -21,13 +21,8 @@ RouterFindRoute :: (routes: []RouterRoute, route_id: s32) -> s32 {
 #program_export
 RouterStateInit :: (initial_route: s32,
     route_version: s32) -> RouterState {
-    state: RouterState
-    state.initialized = true
-    state.current_route = initial_route
-    state.previous_route = initial_route
-    state.requested_route = -1
-    state.route_version = route_version
-    return state
+    return RouterState.{.initialized = true, .current_route = initial_route,
+        .previous_route = initial_route, .requested_route = -1, .route_version = route_version}
 }
 
 #program_export

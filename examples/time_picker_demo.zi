@@ -31,15 +31,9 @@ DemoSetNow :: (minutes: s32) {
 
 Label :: (session: Session, key: s32, text: string, bounds: Rectangle,
     font: s32, muted: bool) {
-    props: TextProps
-    props.key = cast(u64)key
-    props.bounds = bounds
-    props.text = text
-    props.font = font
-    props.disabled = muted
-    props.wrap = TextWrap.TextWrapNone
-    props.vertical_align = TextAlign.TextAlignCenter
-    Text(session, props)
+    Text(session, TextProps.{.key = cast(u64)key, .bounds = bounds, .text = text, .font = font,
+        .disabled = muted, .wrap = TextWrap.TextWrapNone,
+        .vertical_align = TextAlign.TextAlignCenter})
 }
 
 Card :: (session: Session, key: s32, bounds: Rectangle) {

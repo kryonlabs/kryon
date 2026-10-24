@@ -17,13 +17,8 @@ Frame :: () -> s32 {
     if !SessionValid(session) { session = SessionOpen() }
     if !SessionValid(session) { return -1 }
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 160.0})
-    message: TextProps
-    message.key = cast(u64)2
-    message.bounds = Rectangle.{24.0, 48.0, 272.0, 64.0}
-    message.text = "Hello, world!"
-    message.font = 32
-    message.wrap = cast(TextWrap)TextWrapNone
-    Text(session, message)
+    Text(session, TextProps.{.key = cast(u64)2, .bounds = Rectangle.{24.0, 48.0, 272.0, 64.0},
+        .text = "Hello, world!", .font = 32, .wrap = cast(TextWrap)TextWrapNone})
     if EndFrame(session) != cast(FrameStatus)FrameOk { return -1 }
     return TreeCount(session)
 }

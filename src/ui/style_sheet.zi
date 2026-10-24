@@ -426,26 +426,13 @@ StyleCacheInstall :: () {
 }
 
 StyleWithoutTypeface :: (source: StyleData) -> StyleData {
-    result: StyleData
-    result.fields = source.fields
-    result.background = source.background
-    result.foreground = source.foreground
-    result.border = source.border
-    result.focus = source.focus
-    result.radius = source.radius
-    result.border_width = source.border_width
-    result.opacity = source.opacity
-    result.padding_x = source.padding_x
-    result.padding_y = source.padding_y
-    result.gap = source.gap
-    result.font_size = source.font_size
-    result.icon_size = source.icon_size
-    result.offset_x = source.offset_x
-    result.offset_y = source.offset_y
-    result.background_end = source.background_end
-    result.material = source.material
-    result.letter_spacing = source.letter_spacing
-    return result
+    return StyleData.{.fields = source.fields, .background = source.background,
+        .foreground = source.foreground, .border = source.border, .focus = source.focus,
+        .radius = source.radius, .border_width = source.border_width, .opacity = source.opacity,
+        .padding_x = source.padding_x, .padding_y = source.padding_y, .gap = source.gap,
+        .font_size = source.font_size, .icon_size = source.icon_size, .offset_x = source.offset_x,
+        .offset_y = source.offset_y, .background_end = source.background_end,
+        .material = source.material, .letter_spacing = source.letter_spacing}
 }
 
 #program_export

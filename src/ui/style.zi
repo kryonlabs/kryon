@@ -14,11 +14,9 @@ StateFlags :: struct {
 #program_export
 ResolveFlags :: (state: s32, disabled: bool, loading: bool,
     selected: bool) -> StateFlags {
-    flags: StateFlags
-    flags.disabled = disabled || state == ButtonStateDisabled
-    flags.loading = loading || state == ButtonStateLoading
-    flags.selected = selected || state == ButtonStateSelected
-    return flags
+    return StateFlags.{.disabled = disabled || state == ButtonStateDisabled,
+        .loading = loading || state == ButtonStateLoading,
+        .selected = selected || state == ButtonStateSelected}
 }
 
 InteractionState :: struct {

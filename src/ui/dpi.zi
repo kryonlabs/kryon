@@ -26,21 +26,10 @@ DPIState :: struct {
 
 #program_export
 InitialDPI :: () -> DPIState {
-    state: DPIState
-    state.physical_width = 320
-    state.physical_height = 560
-    state.view_width = 320
-    state.view_height = 560
-    state.layout_width = 320
-    state.layout_height = 560
-    state.ui_scale = 1.0
-    state.ui_scale_clamped = 1.0
-    state.render_scale = 1.0
-    state.camera_zoom = 1.0
-    state.base_width = 320
-    state.base_height = 560
-    state.zoom = 1.0
-    return state
+    return DPIState.{.physical_width = 320, .physical_height = 560, .view_width = 320,
+        .view_height = 560, .layout_width = 320, .layout_height = 560, .ui_scale = 1.0,
+        .ui_scale_clamped = 1.0, .render_scale = 1.0, .camera_zoom = 1.0, .base_width = 320,
+        .base_height = 560, .zoom = 1.0}
 }
 
 #scope_file

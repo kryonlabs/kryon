@@ -47,18 +47,9 @@ field_text_length: s32;
 field_inside: bool = true;
 
 Props :: () -> TimePickerProps {
-    props: TimePickerProps
-    props.key = cast(u64)21
-    props.id = 21
-    props.label = "Start time"
-    props.bounds = field
-    props.value = value
-    props.now = now
-    props.now_label = now_label
-    props.done_label = done_label
-    props.clear_label = clear_label
-    props.disabled = disabled
-    return props
+    return TimePickerProps.{.key = cast(u64)21, .id = 21, .label = "Start time", .bounds = field,
+        .value = value, .now = now, .now_label = now_label, .done_label = done_label,
+        .clear_label = clear_label, .disabled = disabled}
 }
 
 Inside :: (inner: Rectangle, outer: Rectangle) -> bool {

@@ -37,13 +37,10 @@ SelectableLabelInset :: (scale: float32, face: StyleFrame) -> float32 {
 
 #program_export
 SelectablePaintFor :: (spec: SelectableSpec) -> SelectablePaint {
-    paint: SelectablePaint
-    paint.bounds = spec.bounds
-    paint.label_x = spec.bounds.x + spec.label_inset
-    paint.text_color = spec.face.value.foreground
-    paint.draw_fill = !spec.disabled && (spec.selected || spec.hovered || spec.pressed)
-    paint.fill_color = spec.face.value.background
-    return paint
+    return SelectablePaint.{.bounds = spec.bounds, .label_x = spec.bounds.x + spec.label_inset,
+        .text_color = spec.face.value.foreground,
+        .draw_fill = !spec.disabled && (spec.selected || spec.hovered || spec.pressed),
+        .fill_color = spec.face.value.background}
 }
 
 #program_export

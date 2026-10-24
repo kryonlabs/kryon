@@ -12,12 +12,7 @@ highlighted: bool;
 counter_bytes: [48]u8;
 
 Label :: (session: Session, key: u64, bounds: Rectangle, text: string, size: s32) {
-    props: TextProps
-    props.key = key
-    props.bounds = bounds
-    props.text = text
-    props.font = size
-    Text(session, props)
+    Text(session, TextProps.{.key = key, .bounds = bounds, .text = text, .font = size})
 }
 
 CounterText :: () -> string {
@@ -100,13 +95,9 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     slider.max = 100.0
     amount = Slider(session, slider).value
 
-    progress: ProgressProps
-    progress.key = cast(u64)41
-    progress.bounds = Rectangle.{left, 340.0, width, 12.0}
-    progress.min = 0
-    progress.max = 100
-    progress.value = cast(s32)amount
-    Progress(session, progress)
+    Progress(session, ProgressProps.{.key = cast(u64)41,
+        .bounds = Rectangle.{left, 340.0, width, 12.0}, .min = 0, .max = 100,
+        .value = cast(s32)amount})
 
     toggle: ToggleProps
     toggle.key = cast(u64)50

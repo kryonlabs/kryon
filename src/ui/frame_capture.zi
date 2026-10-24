@@ -103,38 +103,17 @@ FrameNodeFrom :: (entry: TreeEntry) -> FrameNode {
 }
 
 FramePaintFrom :: (command: PaintCommand) -> FramePaint {
-    paint: FramePaint
-    paint.kind = command.kind
-    paint.node = command.node
-    paint.x = command.bounds.x
-    paint.y = command.bounds.y
-    paint.width = command.bounds.width
-    paint.height = command.bounds.height
-    paint.clip_x = command.clip.x
-    paint.clip_y = command.clip.y
-    paint.clip_width = command.clip.width
-    paint.clip_height = command.clip.height
-    paint.red = command.color.r
-    paint.green = command.color.g
-    paint.blue = command.color.b
-    paint.alpha = command.color.a
-    paint.radius = command.radius
-    paint.segments = command.segments
-    paint.line_width = command.line_width
-    paint.value = command.value
-    paint.text_x = command.x
-    paint.text_y = command.y
-    paint.font = command.font
-    paint.asset_path = command.asset_path
-    paint.texture_id = command.texture_id
-    paint.source_x = command.source.x
-    paint.source_y = command.source.y
-    paint.source_width = command.source.width
-    paint.source_height = command.source.height
-    paint.origin_x = command.origin.x
-    paint.origin_y = command.origin.y
-    paint.rotation = command.rotation
-    return paint
+    return FramePaint.{.kind = command.kind, .node = command.node, .x = command.bounds.x,
+        .y = command.bounds.y, .width = command.bounds.width, .height = command.bounds.height,
+        .clip_x = command.clip.x, .clip_y = command.clip.y, .clip_width = command.clip.width,
+        .clip_height = command.clip.height, .red = command.color.r, .green = command.color.g,
+        .blue = command.color.b, .alpha = command.color.a, .radius = command.radius,
+        .segments = command.segments, .line_width = command.line_width, .value = command.value,
+        .text_x = command.x, .text_y = command.y, .font = command.font,
+        .asset_path = command.asset_path, .texture_id = command.texture_id,
+        .source_x = command.source.x, .source_y = command.source.y,
+        .source_width = command.source.width, .source_height = command.source.height,
+        .origin_x = command.origin.x, .origin_y = command.origin.y, .rotation = command.rotation}
 }
 
 // These effects belong to an opt-in inspection host. Ordinary EndFrame does

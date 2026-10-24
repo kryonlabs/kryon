@@ -100,11 +100,9 @@ ImageFitBounds :: (bounds: Rectangle, source: Rectangle,
 #program_export
 ImagePlaceholderLayoutFor :: (bounds: Rectangle, text_width: s32,
     font_height: s32) -> ImagePlaceholderLayout {
-    layout: ImagePlaceholderLayout
-    layout.bounds = bounds
-    layout.label_x = cast(s32)bounds.x + (cast(s32)bounds.width - text_width) / 2
-    layout.label_y = cast(s32)bounds.y + (cast(s32)bounds.height - font_height) / 2
-    return layout
+    return ImagePlaceholderLayout.{.bounds = bounds,
+        .label_x = cast(s32)bounds.x + (cast(s32)bounds.width - text_width) / 2,
+        .label_y = cast(s32)bounds.y + (cast(s32)bounds.height - font_height) / 2}
 }
 
 #program_export

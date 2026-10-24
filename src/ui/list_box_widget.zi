@@ -112,32 +112,18 @@ ListBoxFace :: (kind: s32, id: s32, class_name: s32,
 
 #program_export
 ListBoxSingleView :: (props: ListBoxProps) -> ListBoxView {
-    view: ListBoxView
-    view.key = props.key
-    view.bounds = props.bounds
-    view.id = props.id
-    view.class_name = props.class_name
-    view.scroll_offset = props.scroll_offset
-    view.scroll_delta = props.scroll_delta
-    view.row_height = props.row_height
-    view.scale = props.scale
-    view.disabled = props.disabled
-    return view
+    return ListBoxView.{.key = props.key, .bounds = props.bounds, .id = props.id,
+        .class_name = props.class_name, .scroll_offset = props.scroll_offset,
+        .scroll_delta = props.scroll_delta, .row_height = props.row_height, .scale = props.scale,
+        .disabled = props.disabled}
 }
 
 #program_export
 ListBoxMultiView :: (props: ListBoxMultiProps) -> ListBoxView {
-    view: ListBoxView
-    view.key = props.key
-    view.bounds = props.bounds
-    view.id = props.id
-    view.class_name = props.class_name
-    view.scroll_offset = props.scroll_offset
-    view.scroll_delta = props.scroll_delta
-    view.row_height = props.row_height
-    view.scale = props.scale
-    view.disabled = props.disabled
-    return view
+    return ListBoxView.{.key = props.key, .bounds = props.bounds, .id = props.id,
+        .class_name = props.class_name, .scroll_offset = props.scroll_offset,
+        .scroll_delta = props.scroll_delta, .row_height = props.row_height, .scale = props.scale,
+        .disabled = props.disabled}
 }
 
 #program_export

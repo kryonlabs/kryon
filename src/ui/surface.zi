@@ -146,11 +146,8 @@ FillStates :: struct {
 
 #program_export
 FillState :: (fields: u32, start: u32, end: u32) -> FillStates {
-    state: FillStates
-    state.normal = (fields & cast(u32)8192) != cast(u32)0
-    state.normal_start = start
-    state.normal_end = end
-    return state
+    return FillStates.{.normal = (fields & cast(u32)8192) != cast(u32)0, .normal_start = start,
+        .normal_end = end}
 }
 
 #program_export

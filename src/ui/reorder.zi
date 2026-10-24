@@ -111,12 +111,8 @@ ReorderHandlePaintFor :: (bounds: Rectangle, scale: float32,
 }
 
 ReorderDotBounds :: (x: s32, y: s32, size: s32) -> Rectangle {
-    bounds: Rectangle
-    bounds.x = cast(float32)x
-    bounds.y = cast(float32)y
-    bounds.width = cast(float32)size
-    bounds.height = cast(float32)size
-    return bounds
+    return Rectangle.{.x = cast(float32)x, .y = cast(float32)y, .width = cast(float32)size,
+        .height = cast(float32)size}
 }
 #program_export
 ReorderTargetIndexFor :: (target: s32, item_count: s32) -> s32 {
@@ -129,13 +125,8 @@ ReorderTargetIndexFor :: (target: s32, item_count: s32) -> s32 {
 
 #program_export
 ReorderListResultDefault :: (pointer_y: s32) -> ReorderListResult {
-    result: ReorderListResult
-    result.from_index = -1
-    result.to_index = -1
-    result.active_index = -1
-    result.target_index = -1
-    result.pointer_y = pointer_y
-    return result
+    return ReorderListResult.{.from_index = -1, .to_index = -1, .active_index = -1,
+        .target_index = -1, .pointer_y = pointer_y}
 }
 #program_export
 ReorderListActiveResultFor :: (from_index: s32, active_index: s32,
