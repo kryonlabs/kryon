@@ -35,10 +35,7 @@ Flow :: (session: Session, props: FlowProps) -> FlowResult {
 FlowChildBounds :: (flow: FlowResult, declared: Rectangle,
     measured: Rectangle, child_index: s32,
     previous_width_sum: float32) -> Rectangle {
-    container: LayoutContainer
-    container.bounds = flow.bounds
-    container.gap = flow.gap
-    container.padding = flow.padding
+    container: LayoutContainer = .{.bounds = flow.bounds, .gap = flow.gap, .padding = flow.padding}
     return RowChildBounds(container, declared, measured,
         child_index, previous_width_sum)
 }

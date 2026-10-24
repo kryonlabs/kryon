@@ -59,20 +59,12 @@ TabBarContentLayout :: struct {
 TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     close: StyleFrame, scale: float32) -> TabBarPaint {
     if scale <= 0.0 { scale = 1.0 }
-    paint: TabBarPaint
-    paint.bar = bar
-    paint.tab = tab
-    paint.close = close
-    paint.bar_color = bar.value.background
-    paint.bar_border_color = bar.value.border
-    paint.tab_color = tab.value.background
-    paint.tab_border_color = tab.value.border
-    paint.text_color = tab.value.foreground
-    paint.close_color = close.value.foreground
-    paint.focus_color = tab.value.focus
-    paint.radius = tab.value.radius
-    paint.border_width = tab.value.border_width
-    paint.opacity = tab.value.opacity
+    paint: TabBarPaint = .{.bar = bar, .tab = tab, .close = close,
+        .bar_color = bar.value.background, .bar_border_color = bar.value.border,
+        .tab_color = tab.value.background, .tab_border_color = tab.value.border,
+        .text_color = tab.value.foreground, .close_color = close.value.foreground,
+        .focus_color = tab.value.focus, .radius = tab.value.radius,
+        .border_width = tab.value.border_width, .opacity = tab.value.opacity}
     paint.text_padding = TabBarMetric(tab.value.fields,
         cast(u32)StylePaddingX, tab.value.padding_x, 8.0, scale, true)
     paint.content_inset_y = TabBarMetric(tab.value.fields,

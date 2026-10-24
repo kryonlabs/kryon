@@ -116,22 +116,12 @@ Toolbar :: (session: Session, props: ToolbarProps, options: []DropdownOption,
     divider: StyleFrame = ToolbarFaceFor(props, ToolbarDividerRole())
     action_face: StyleFrame = ToolbarFaceFor(props,
         ToolbarActionRole())
-    spec: ToolbarSpec
-    spec.x = props.x
-    spec.y = props.y
-    spec.width = props.width
-    spec.height = props.height
-    spec.action_count = (cast(s32)actions.count)
-    spec.action_icon_size = -1
-    spec.action_icon_padding = -1
-    spec.action_gap = -1
-    spec.side_padding = -1
-    spec.dropdown_min_width = props.dropdown_min_width
-    spec.dropdown_max_width = props.dropdown_max_width
-    spec.dropdown_height = props.dropdown_height
-    spec.scale = props.scale
-    spec.bar = bar
-    spec.action = action_face
+    spec: ToolbarSpec = .{.x = props.x, .y = props.y, .width = props.width, .height = props.height,
+        .action_count = (cast(s32)actions.count), .action_icon_size = -1,
+        .action_icon_padding = -1, .action_gap = -1, .side_padding = -1,
+        .dropdown_min_width = props.dropdown_min_width,
+        .dropdown_max_width = props.dropdown_max_width, .dropdown_height = props.dropdown_height,
+        .scale = props.scale, .bar = bar, .action = action_face}
     layout: ToolbarLayout = ToolbarLayoutFor(spec)
     if TreeIsBuilding(session) {
         result.node = TreeSubmitCurrent(session, key, WidgetKindToolbar,

@@ -74,26 +74,14 @@ FramePaint :: struct {
 }
 
 FrameNodeFrom :: (entry: TreeEntry) -> FrameNode {
-    node: FrameNode
-    node.key = entry.key
-    node.parent_key = entry.parent_key
-    node.kind = entry.kind
-    node.x = entry.bounds.x
-    node.y = entry.bounds.y
-    node.width = entry.bounds.width
-    node.height = entry.bounds.height
-    node.label = entry.semantic_label
-    node.semantic_kind = cast(s32)entry.semantic_kind
-    node.heading_level = entry.heading_level
-    node.identity_generation = entry.identity_generation
-    node.interactive = entry.interactive
-    node.disabled = entry.disabled
-    node.loading = entry.loading
-    node.selected = entry.selected
-    node.focus_id = entry.focus_id
-    node.has_text = entry.has_text
-    node.read_only = entry.read_only
-    node.secure = entry.secure
+    node: FrameNode = .{.key = entry.key, .parent_key = entry.parent_key, .kind = entry.kind,
+        .x = entry.bounds.x, .y = entry.bounds.y, .width = entry.bounds.width,
+        .height = entry.bounds.height, .label = entry.semantic_label,
+        .semantic_kind = cast(s32)entry.semantic_kind, .heading_level = entry.heading_level,
+        .identity_generation = entry.identity_generation, .interactive = entry.interactive,
+        .disabled = entry.disabled, .loading = entry.loading, .selected = entry.selected,
+        .focus_id = entry.focus_id, .has_text = entry.has_text, .read_only = entry.read_only,
+        .secure = entry.secure}
     if !entry.secure {
         node.text_bytes = entry.text_bytes
         node.text_cursor = entry.text_cursor

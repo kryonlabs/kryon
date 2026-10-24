@@ -42,10 +42,8 @@ FrameTransitionImage :: (surface: FrameSurface, bounds: Rectangle,
     elapsed_seconds: float32, duration_seconds: float32) -> ImageProps {
     alpha := FrameTransitionAlpha(elapsed_seconds, duration_seconds)
     alpha_byte := cast(u32)(alpha * 255.0 + 0.5)
-    image: ImageProps
-    image.bounds = bounds
-    image.fit = cast(ImageFit)ImageFitStretch
-    image.texture = surface.texture
+    image: ImageProps = .{.bounds = bounds, .fit = cast(ImageFit)ImageFitStretch,
+        .texture = surface.texture}
     // Raylib render targets store rows opposite to normal textures. The
     // negative source height is the host's upright sampling convention.
     image.source = Rectangle.{0.0, 0.0,

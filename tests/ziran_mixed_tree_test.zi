@@ -14,11 +14,8 @@ using FrameStatus;
 
 #program_export
 Frame :: () -> s32 {
-    progress: ProgressProps
-    progress.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
-    progress.min = 0
-    progress.max = 100
-    progress.value = 50
+    progress: ProgressProps = .{.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}, .min = 0,
+        .max = 100, .value = 50}
     separator: SeparatorProps
     separator.bounds = Rectangle.{20.0, 50.0, 20.0, 40.0}
     separator.vertical = true

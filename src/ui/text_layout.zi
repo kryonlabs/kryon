@@ -220,10 +220,7 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
 
 NextTextLineUncached :: (value: string, start: s32, max_width: float32,
     wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
-    line: TextLinePlan
-    line.start = start
-    line.end = start
-    line.next = cast(s32)value.count + 1
+    line: TextLinePlan = .{.start = start, .end = start, .next = cast(s32)value.count + 1}
     if start >= cast(s32)value.count { return line }
     wrapped: bool = wrap == cast(TextWrap)TextWrapAuto && max_width > 0.0
     offset: s32 = start

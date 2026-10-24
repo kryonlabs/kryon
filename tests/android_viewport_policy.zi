@@ -1,16 +1,9 @@
 #import, file "../src/backend/android_surface.zi";
 
 PolicyCheck :: () -> s32 {
-    insets: AndroidWindowInsets
-    insets.system_left = -1
-    insets.system_top = 53
-    insets.system_right = 84
-    insets.system_bottom = 24
-    insets.ime_bottom = 120
-    insets.cutout_left = 4
-    insets.cutout_top = 60
-    insets.cutout_right = 80
-    insets.cutout_bottom = 8
+    insets: AndroidWindowInsets = .{.system_left = -1, .system_top = 53, .system_right = 84,
+        .system_bottom = 24, .ime_bottom = 120, .cutout_left = 4, .cutout_top = 60,
+        .cutout_right = 80, .cutout_bottom = 8}
     viewport := ResolveViewport(320, 560, insets,
         AndroidViewportPolicySafeArea(), 1)
     if viewport.x != 4 || viewport.y != 60 || viewport.width != 232 ||

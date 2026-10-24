@@ -115,10 +115,8 @@ Frame :: () -> s32 {
         scroll_y = 0
         focused = true
     }
-    ime_state: CompositionState
-    ime_state.active = ime_active
-    ime_state.cursor = ime_cursor
-    ime_state.selection_length = ime_selection_length
+    ime_state: CompositionState = .{.active = ime_active, .cursor = ime_cursor,
+        .selection_length = ime_selection_length}
     frame_ime_text: [64]u8
     if ime_text_count > 64 { return -47 }
     frame_ime_byte: s64 = 0

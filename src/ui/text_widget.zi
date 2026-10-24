@@ -59,10 +59,8 @@ Theme :: #import "theme";
     #program_export
     TextFaceFor :: (props: TextProps, defaults: TextFace) -> TextFace {
         face: TextFace = defaults
-        request: TextStyleRequest
-        request.kind = props.style_kind
-        request.class_name = props.class_name
-        request.disabled = props.disabled
+        request: TextStyleRequest = .{.kind = props.style_kind, .class_name = props.class_name,
+            .disabled = props.disabled}
         face.value = TextStyleFor(request, defaults.value)
         return face
     }

@@ -30,11 +30,8 @@ QueuedText :: (into: []u8) -> string {
 ShowText :: (text: string, width: float32, wrap: TextWrap) -> string {
     PaintClear(TestSession())
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 80.0})
-    props: TextProps
-    props.bounds = Rectangle.{10.0, 10.0, width, 20.0}
-    props.text = text
-    props.font = 10
-    props.wrap = wrap
+    props: TextProps = .{.bounds = Rectangle.{10.0, 10.0, width, 20.0}, .text = text, .font = 10,
+        .wrap = wrap}
     Text(TestSession(), props)
     unused TreeFinish(TestSession())
     return QueuedText(shown[:])

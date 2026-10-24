@@ -12,11 +12,8 @@ Answer :: () -> s32 {
     point = Vector2.{80.0, 80.0}
     if CanvasHitTest(point, hits[:]) != -1 { return 2 }
 
-    canvas: Canvas
-    canvas.bounds = Rectangle.{10.0, 20.0, 100.0, 100.0}
-    canvas.scroll_x = 5
-    canvas.scroll_y = 7
-    canvas.zoom = 2.0
+    canvas: Canvas = .{.bounds = Rectangle.{10.0, 20.0, 100.0, 100.0}, .scroll_x = 5,
+        .scroll_y = 7, .zoom = 2.0}
     point = Vector2.{20.0, 30.0}
     screen: Vector2 = CanvasToScreen(canvas, point)
     if screen.x != 20.0 || screen.y != 26.0 { return 3 }

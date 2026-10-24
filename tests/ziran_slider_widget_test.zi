@@ -23,24 +23,12 @@ phase: s32;
 
 #program_export
 Frame :: () -> s32 {
-    continuous: SliderProps
-    continuous.key = cast(u64)7
-    continuous.id = 7
-    continuous.class_name = 9
-    continuous.label = "Gain"
-    continuous.value_text = "25%"
-    continuous.bounds = Rectangle.{10.0, 20.0, 100.0, 80.0}
-    continuous.value = 25.0
-    continuous.min = 0.0
-    continuous.max = 100.0
-    discrete: DiscreteSliderProps
-    discrete.key = cast(u64)8
-    discrete.id = 8
-    discrete.bounds = Rectangle.{130.0, 20.0, 30.0, 100.0}
-    discrete.value = 5
-    discrete.min = 0
-    discrete.max = 10
-    discrete.vertical = true
+    continuous: SliderProps = .{.key = cast(u64)7, .id = 7, .class_name = 9, .label = "Gain",
+        .value_text = "25%", .bounds = Rectangle.{10.0, 20.0, 100.0, 80.0}, .value = 25.0,
+        .min = 0.0, .max = 100.0}
+    discrete: DiscreteSliderProps = .{.key = cast(u64)8, .id = 8,
+        .bounds = Rectangle.{130.0, 20.0, 30.0, 100.0}, .value = 5, .min = 0, .max = 10,
+        .vertical = true}
     if phase >= 2 { continuous.value = 100.0 }
     if phase >= 3 {
         discrete.value = 10

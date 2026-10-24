@@ -211,11 +211,8 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint {
     }
     if track_w > bounds.width { track_w = bounds.width }
     if track_h > bounds.height { track_h = bounds.height }
-    track: Rectangle
-    track.x = bounds.x + (bounds.width - track_w) * 0.5
-    track.y = bounds.y + (bounds.height - track_h) * 0.5
-    track.width = track_w
-    track.height = track_h
+    track: Rectangle = .{.x = bounds.x + (bounds.width - track_w) * 0.5,
+        .y = bounds.y + (bounds.height - track_h) * 0.5, .width = track_w, .height = track_h}
 
     paint.track = spec.track
     paint.active = spec.active

@@ -129,10 +129,7 @@ ListBoxMultiView :: (props: ListBoxMultiProps) -> ListBoxView {
 #program_export
 ListBoxViewStart :: (session: Session, view: ListBoxView, item_count: s32,
     multi: bool) -> ListBoxViewState {
-    result: ListBoxViewState
-    result.node = -1
-    result.multi = multi
-    result.bounds = view.bounds
+    result: ListBoxViewState = .{.node = -1, .multi = multi, .bounds = view.bounds}
     parent: Rectangle = TreeCurrentParentBounds(session)
     if result.bounds.width <= 0.0 { result.bounds.width = parent.width }
     if result.bounds.height <= 0.0 { result.bounds.height = parent.height }
@@ -345,10 +342,8 @@ ListBoxViewFinish :: (session: Session, view: ListBoxViewState,
 #program_export
 ListBox :: (session: Session, props: ListBoxProps,
     items: []ListBoxItem) -> ListBoxResult {
-    result: ListBoxResult
-    result.node = -1
-    result.selected_index = props.selected_index
-    result.scroll_offset = props.scroll_offset
+    result: ListBoxResult = .{.node = -1, .selected_index = props.selected_index,
+        .scroll_offset = props.scroll_offset}
     view: ListBoxViewState = ListBoxViewStart(session,
         ListBoxSingleView(props), (cast(s32)items.count), false)
     if !view.valid { return result }
@@ -410,11 +405,8 @@ ListBoxMultiApply :: (selected: []bool, clicked: s32,
 #program_export
 ListBoxMulti :: (session: Session, props: ListBoxMultiProps, items: []ListBoxItem,
     selected: []bool) -> ListBoxMultiResult {
-    result: ListBoxMultiResult
-    result.node = -1
-    result.clicked_index = -1
-    result.anchor = props.anchor
-    result.scroll_offset = props.scroll_offset
+    result: ListBoxMultiResult = .{.node = -1, .clicked_index = -1, .anchor = props.anchor,
+        .scroll_offset = props.scroll_offset}
     if (cast(s32)selected.count) != (cast(s32)items.count) { return result }
     view: ListBoxViewState = ListBoxViewStart(session,
         ListBoxMultiView(props), (cast(s32)items.count), true)

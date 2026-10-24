@@ -90,10 +90,7 @@ CollapsibleCloseKey :: () -> u64 {
 #program_export
 Collapsible :: (session: Session, props: CollapsibleProps,
     headers: []CollapsibleHeader) -> CollapsibleResult {
-    result: CollapsibleResult
-    result.node = -1
-    result.open = props.open
-    result.hidden = props.hidden
+    result: CollapsibleResult = .{.node = -1, .open = props.open, .hidden = props.hidden}
     if props.hidden { return result }
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }

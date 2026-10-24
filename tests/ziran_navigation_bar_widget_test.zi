@@ -55,13 +55,8 @@ Frame :: () -> s32 {
         items[1] = first
     }
     if phase == 2 { items[1].disabled = true }
-    props: NavigationBarProps
-    props.key = cast(u64)10
-    props.id = 10
-    props.class_name = 9
-    props.view_width = 300
-    props.view_height = 180
-    props.height = 80
+    props: NavigationBarProps = .{.key = cast(u64)10, .id = 10, .class_name = 9, .view_width = 300,
+        .view_height = 180, .height = 80}
     if NavigationBarHeight(props) != 80 { return -30 }
     themed: NavigationBarProps = props
     themed.height = 0

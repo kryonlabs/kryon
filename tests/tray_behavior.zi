@@ -42,10 +42,8 @@ main :: () -> s32 {
 
     paths: [1]string
     paths[0] = "missing/icon.png"
-    spec: TraySpec
-    spec.id = "kryon-tray-test"
-    spec.title = "Kryon tray test"
-    spec.icon_name = "kryon-tray-test"
+    spec: TraySpec = .{.id = "kryon-tray-test", .title = "Kryon tray test",
+        .icon_name = "kryon-tray-test"}
     spec.icon_paths = paths[:]
     spec.activate_action = 11
     spec.menu = menu[:]

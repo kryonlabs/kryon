@@ -85,11 +85,8 @@ Frame :: (session: Session, props: *TextAreaProps, page: *s32, page_height: s32,
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
-    props: TextAreaProps
-    props.key = cast(u64)77
-    props.focus_id = 77
-    props.bounds = Rectangle.{20.0, 20.0, 200.0, 100.0}
-    props.value = LONG
+    props: TextAreaProps = .{.key = cast(u64)77, .focus_id = 77,
+        .bounds = Rectangle.{20.0, 20.0, 200.0, 100.0}, .value = LONG}
     page: s32 = 0
 
     // With a mouse, on a page that fits as Diary's does, a drag selects the

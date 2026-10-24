@@ -46,14 +46,9 @@ Frame :: () -> s32 {
     rule.style.opacity = 0.5
     rules.items[0] = rule
     InstallStyleRules(rules)
-    props: TextProps
-    props.key = cast(u64)7
-    props.bounds = Rectangle.{10.0, 20.0, 50.0, 24.0}
-    props.text = "Alpha beta\nGamma"
-    props.class_name = 7
-    props.wrap = cast(TextWrap)TextWrapAuto
-    props.align = cast(TextAlign)TextAlignCenter
-    props.strikethrough = true
+    props: TextProps = .{.key = cast(u64)7, .bounds = Rectangle.{10.0, 20.0, 50.0, 24.0},
+        .text = "Alpha beta\nGamma", .class_name = 7, .wrap = cast(TextWrap)TextWrapAuto,
+        .align = cast(TextAlign)TextAlignCenter, .strikethrough = true}
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
     Text(TestSession(), props)
     phase = 1

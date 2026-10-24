@@ -32,16 +32,11 @@ Answer :: () -> s32 {
     page_props.key = cast(u64)10
     page_props.title = "Document"
     page: PageResult = Page(TestSession(), page_props)
-    heading: HeadingProps
-    heading.key = cast(u64)11
-    heading.bounds = Rectangle.{10.0, 20.0, 0.0, 0.0}
-    heading.text = "Title"
-    heading.level = 9
+    heading: HeadingProps = .{.key = cast(u64)11, .bounds = Rectangle.{10.0, 20.0, 0.0, 0.0},
+        .text = "Title", .level = 9}
     Heading(TestSession(), heading)
-    paragraph: ParagraphTextProps
-    paragraph.key = cast(u64)12
-    paragraph.bounds = Rectangle.{10.0, 40.0, 0.0, 0.0}
-    paragraph.text = "Body"
+    paragraph: ParagraphTextProps = .{.key = cast(u64)12,
+        .bounds = Rectangle.{10.0, 40.0, 0.0, 0.0}, .text = "Body"}
     ParagraphText(TestSession(), paragraph)
     if !page.opened || !End(TestSession()) || !TreeFinish(TestSession()) ||
         TreeCount(TestSession()) != 4 ||
@@ -58,11 +53,7 @@ Answer :: () -> s32 {
         TreeNodeAt(TestSession(), 3).bounds.width != 190.0 { return -1 }
     PaintFlush(TestSession())
     TreeStart(TestSession(), cast(u64)20, bounds)
-    column_props: ColumnProps
-    column_props.key = cast(u64)21
-    column_props.bounds = bounds
-    column_props.padding = 5
-    column_props.gap = 3
+    column_props: ColumnProps = .{.key = cast(u64)21, .bounds = bounds, .padding = 5, .gap = 3}
     column: LayoutContainer = Column(TestSession(), column_props)
     first: TextProps
     first.key = cast(u64)22

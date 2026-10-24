@@ -22,14 +22,8 @@ secure_field: bool;
 
 // A selected "hello" in "hello world"; the field is at (10, 10), 200 by 30.
 Field :: (copy: bool, paste: bool) -> TextFieldResult {
-    props: TextFieldProps
-    props.key = cast(u64)4
-    props.bounds = Rectangle.{10.0, 10.0, 200.0, 30.0}
-    props.value = "hello world"
-    props.anchor = 0
-    props.cursor = 5
-    props.focused = true
-    props.secure = secure_field
+    props: TextFieldProps = .{.key = cast(u64)4, .bounds = Rectangle.{10.0, 10.0, 200.0, 30.0},
+        .value = "hello world", .anchor = 0, .cursor = 5, .focused = true, .secure = secure_field}
     props.input.copy = copy
     props.input.paste = paste
     return TextField(TestSession(), props)

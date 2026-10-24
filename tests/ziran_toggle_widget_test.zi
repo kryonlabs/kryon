@@ -23,20 +23,11 @@ phase: s32;
 
 #program_export
 Frame :: () -> s32 {
-    plain: ToggleProps
-    plain.key = cast(u64)7
-    plain.id = 7
-    plain.class_name = 9
-    plain.label = "Wireless"
+    plain: ToggleProps = .{.key = cast(u64)7, .id = 7, .class_name = 9, .label = "Wireless"}
     plain.bounds.x = 10.0
     plain.bounds.y = 20.0
-    labels: ToggleProps
-    labels.key = cast(u64)8
-    labels.id = 8
-    labels.class_name = 10
-    labels.label = "Mode"
-    labels.off_label = "Off"
-    labels.on_label = "On"
+    labels: ToggleProps = .{.key = cast(u64)8, .id = 8, .class_name = 10, .label = "Mode",
+        .off_label = "Off", .on_label = "On"}
     labels.bounds.x = 10.0
     labels.bounds.y = 60.0
     if phase == 0 {

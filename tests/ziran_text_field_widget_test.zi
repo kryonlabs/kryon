@@ -70,10 +70,8 @@ Frame :: () -> s32 {
         frame_composition_text[frame_composition_byte] = ime_text[frame_composition_byte]
         frame_composition_byte += 1
     }
-    frame_composition: CompositionState
-    frame_composition.active = ime_active
-    frame_composition.cursor = ime_cursor
-    frame_composition.selection_length = ime_selection_length
+    frame_composition: CompositionState = .{.active = ime_active, .cursor = ime_cursor,
+        .selection_length = ime_selection_length}
     frame_composition.text = TextView(frame_composition_text[:frame_composition_count])
     props: TextFieldProps
     props.key = cast(u64)77
@@ -260,11 +258,8 @@ Frame :: () -> s32 {
         if result.clipboard_write || result.edit.changed ||
         result.cursor != 2 { return -18 }
     } else if phase == 18 {
-        sample: CompositionEvent
-        sample.phase = cast(CompositionPhase)CompositionUpdate
-        sample.text = "éx"
-        sample.cursor = 1
-        sample.selection_length = 2
+        sample: CompositionEvent = .{.phase = cast(CompositionPhase)CompositionUpdate,
+            .text = "éx", .cursor = 1, .selection_length = 2}
         boundary: CompositionTransition = CompositionTransitionFor(
             CompositionState.{}, sample, true, false)
         if boundary.state.cursor != 0 ||
@@ -347,15 +342,9 @@ number_focused: bool;
 number_blur: bool;
 
 NumberFrame :: () -> bool {
-    props: TextFieldProps
-    props.key = cast(u64)78
-    props.bounds = Rectangle.{20.0, 20.0, 120.0, 36.0}
-    props.value = "1250"
-    props.cursor = number_cursor
-    props.anchor = number_anchor
-    props.focused = number_focused
-    props.focus_id = 78
-    props.numeric = true
+    props: TextFieldProps = .{.key = cast(u64)78, .bounds = Rectangle.{20.0, 20.0, 120.0, 36.0},
+        .value = "1250", .cursor = number_cursor, .anchor = number_anchor,
+        .focused = number_focused, .focus_id = 78, .numeric = true}
     props.input.blur = number_blur
     BeginFrame(number_session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
     result := TextField(number_session, props)
@@ -413,10 +402,7 @@ main :: () -> s32 {
     edit = TextFieldEditFor(edit_props, 28, 28)
     if !edit.changed || edit.start != 28 || edit.end != 36 { return 6 }
     // A numeric field takes digits only, typed, pasted or replaced whole.
-    number_props: TextFieldProps
-    number_props.numeric = true
-    number_props.value = "12"
-    number_props.max_codepoints = 4
+    number_props: TextFieldProps = .{.numeric = true, .value = "12", .max_codepoints = 4}
     if !TextFieldReplacementAllowed(number_props, 2, 2, "34") ||
     TextFieldReplacementAllowed(number_props, 2, 2, "3a") ||
     TextFieldReplacementAllowed(number_props, 0, 2, "-5") ||
@@ -440,11 +426,8 @@ main :: () -> s32 {
     // An opt-in clear button appears for text, returns one complete edit and
     // disappears when the caller applies it. The field keeps keyboard focus.
     clear_session := SessionOpen()
-    clear_props: TextFieldProps
-    clear_props.key = 90
-    clear_props.bounds = Rectangle.{10.0, 10.0, 240.0, 48.0}
-    clear_props.value = "Find me"
-    clear_props.clear_label = "Clear search"
+    clear_props: TextFieldProps = .{.key = 90, .bounds = Rectangle.{10.0, 10.0, 240.0, 48.0},
+        .value = "Find me", .clear_label = "Clear search"}
     TreeStart(clear_session, 1, Rectangle.{0.0, 0.0, 300.0, 160.0})
     unused TextField(clear_session, clear_props)
     if !TreeFinish(clear_session) { return 40 }

@@ -168,10 +168,7 @@ Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
         TreeSetSelected(session, node, result.checked)
         TreeSetLabel(session, node, props.label)
     }
-    spec: CheckboxSpec
-    spec.bounds = bounds
-    spec.checked = result.checked
-    spec.enabled = !props.disabled
+    spec: CheckboxSpec = .{.bounds = bounds, .checked = result.checked, .enabled = !props.disabled}
     spec.hovered = TreeHoveredAt(session, previous)
     spec.pressed = TreePressedAt(session, previous)
     spec.scale = 1.0

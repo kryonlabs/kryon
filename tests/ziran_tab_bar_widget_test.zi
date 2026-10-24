@@ -55,18 +55,11 @@ Frame :: () -> s32 {
     tabs[3].key = cast(u64)13
     tabs[3].label = "Build"
     tabs[3].closeable = true
-    props: TabBarProps
-    props.key = cast(u64)77
-    props.bounds = Rectangle.{20.0, 20.0, 240.0, 36.0}
-    props.selected_index = selected
-    props.scroll_offset = scroll_offset
-    props.dragging = dragging
-    props.drag_from = drag_from
-    props.last_clicked_index = last_clicked_index
-    props.last_clicked_at = last_clicked_at
-    props.last_click_valid = last_click_valid
-    props.id = 77
-    props.reorder_enabled = true
+    props: TabBarProps = .{.key = cast(u64)77, .bounds = Rectangle.{20.0, 20.0, 240.0, 36.0},
+        .selected_index = selected, .scroll_offset = scroll_offset, .dragging = dragging,
+        .drag_from = drag_from, .last_clicked_index = last_clicked_index,
+        .last_clicked_at = last_clicked_at, .last_click_valid = last_click_valid, .id = 77,
+        .reorder_enabled = true}
     props.input.now = cast(float32)phase * 0.1
     if phase == 3 {
         props.input.focused = true
@@ -288,10 +281,8 @@ main :: () -> s32 {
         index += 1
     }
     tabs: [2]Tab = .[Tab.{.label = "Home"}, Tab.{.label = "Work"}]
-    props: TabBarProps
-    props.key = cast(u64)800
-    props.bounds = Rectangle.{20.0, 20.0, 500.0, 40.0}
-    props.content_sized = true
+    props: TabBarProps = .{.key = cast(u64)800, .bounds = Rectangle.{20.0, 20.0, 500.0, 40.0},
+        .content_sized = true}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 600.0, 100.0})
     compact := TabBar(TestSession(), props, tabs[:])
     if !TreeFinish(TestSession()) || compact.selected_tab_bounds.width >= 250.0 {

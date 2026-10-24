@@ -22,17 +22,9 @@ phase: s32;
 
 #program_export
 Frame :: () -> s32 {
-    props: SpinboxProps
-    props.key = cast(u64)7
-    props.id = 7
-    props.class_name = 9
-    props.label = "Count"
-    props.bounds = Rectangle.{10.0, 20.0, 120.0, 36.0}
-    props.min = -12
-    props.max = 12
-    props.step = 2
-    props.wrap = true
-    props.value = -12
+    props: SpinboxProps = .{.key = cast(u64)7, .id = 7, .class_name = 9, .label = "Count",
+        .bounds = Rectangle.{10.0, 20.0, 120.0, 36.0}, .min = -12, .max = 12, .step = 2,
+        .wrap = true, .value = -12}
     if phase == 2 { props.value = -10 }
     if phase == 4 {
         props.value = 12

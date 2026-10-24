@@ -49,11 +49,8 @@ CellWrite :: (cells: []Cell, columns: s32, rows: s32,
     while at < (cast(s32)text.count) {
         point: Decoded = Decode(text, at)
         if point.after <= at { break }
-        cell: Cell
-        cell.glyph = point.value
-        cell.foreground = foreground
-        cell.background = background
-        cell.attributes = attributes
+        cell: Cell = .{.glyph = point.value, .foreground = foreground, .background = background,
+            .attributes = attributes}
         if CellPut(cells, columns, rows, col, y, cell) { written += 1 }
         col += 1
         at = point.after

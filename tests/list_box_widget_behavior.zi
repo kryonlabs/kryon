@@ -27,12 +27,8 @@ Frame :: () -> s32 {
     items[1] = ListBoxItem.{cast(u64)12, "B"}
     items[2] = ListBoxItem.{cast(u64)13, "C"}
     items[3] = ListBoxItem.{cast(u64)14, "D"}
-    single: ListBoxProps
-    single.key = cast(u64)20
-    single.bounds = Rectangle.{10.0, 10.0, 100.0, 42.0}
-    single.row_height = 20
-    single.selected_index = single_selected
-    single.scroll_offset = single_scroll
+    single: ListBoxProps = .{.key = cast(u64)20, .bounds = Rectangle.{10.0, 10.0, 100.0, 42.0},
+        .row_height = 20, .selected_index = single_selected, .scroll_offset = single_scroll}
     if phase == 1 { single.scroll_delta = 10 }
     if phase == 2 {
         single.focused = true
@@ -44,12 +40,9 @@ Frame :: () -> s32 {
         single.navigation = ListBoxKeyHome()
         single.scroll_delta = -100
     }
-    multi: ListBoxMultiProps
-    multi.key = cast(u64)30
-    multi.bounds = Rectangle.{120.0, 10.0, 100.0, 60.0}
-    multi.row_height = 20
-    multi.anchor = anchor
-    multi.scroll_offset = multi_scroll
+    multi: ListBoxMultiProps = .{.key = cast(u64)30,
+        .bounds = Rectangle.{120.0, 10.0, 100.0, 60.0}, .row_height = 20, .anchor = anchor,
+        .scroll_offset = multi_scroll}
     if phase == 0 { multi.anchor = -1 }
     if phase == 2 || phase == 3 { multi.control = true }
     if phase == 4 {

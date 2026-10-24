@@ -22,13 +22,9 @@ Frame :: () -> s32 {
     options[0] = SegmentOption.{cast(u64)11, "One", false}
     options[1] = SegmentOption.{cast(u64)22, "Two", false}
     options[2] = SegmentOption.{cast(u64)33, "Three", false}
-    props: SegmentedControlProps
-    props.key = cast(u64)20
-    props.id = 20
-    props.bounds = Rectangle.{10.0, 20.0, 150.0, 0.0}
-    props.has_selection = true
-    props.selected_index = selected
-    props.wrap = phase < 4
+    props: SegmentedControlProps = .{.key = cast(u64)20, .id = 20,
+        .bounds = Rectangle.{10.0, 20.0, 150.0, 0.0}, .has_selection = true,
+        .selected_index = selected, .wrap = phase < 4}
     if phase == 3 || phase == 4 { options[2].disabled = true }
     if phase == 6 { props.has_selection = false }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 260.0, 120.0})

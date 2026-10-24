@@ -58,12 +58,9 @@ Frame :: () -> s32 {
     actions[1].emphasis = cast(ButtonEmphasis)ButtonEmphasisFilled
     actions[2].label = "Details"
     actions[2].disabled = true
-    props: ActionModalProps
-    props.key = cast(u64)42
-    props.title = "Confirm"
-    props.message = "Delete the selected file and every associated version?"
-    props.show_close = true
-    props.close_label = "Close"
+    props: ActionModalProps = .{.key = cast(u64)42, .title = "Confirm",
+        .message = "Delete the selected file and every associated version?", .show_close = true,
+        .close_label = "Close"}
 
     rules: StyleRules
     rules.count = 1

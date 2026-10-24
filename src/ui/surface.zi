@@ -174,10 +174,7 @@ FillTransition :: (normal: FillStates, hover: FillStates, press: FillStates,
 FlatLayer :: (index: s32, width: float32, height: float32, radius: float32,
               border_width: float32, background: u32, border: u32,
               opacity: float32) -> SurfaceLayer {
-    layer: SurfaceLayer
-    layer.width = width
-    layer.height = height
-    layer.radius = radius
+    layer: SurfaceLayer = .{.width = width, .height = height, .radius = radius}
     if index == 0 { layer.color = Opacity(background, opacity) }
     if index == 1 && border_width > 0.0 {
         layer.color = Opacity(border, opacity)
@@ -377,10 +374,7 @@ GlassLayer :: (index: s32, width: float32, height: float32, radius: float32,
     border_width: float32, background: u32, border: u32, focus: u32,
     hover: float32, press: float32, focused: float32, disabled: bool,
     opacity: float32, ambient: u32) -> SurfaceLayer {
-    layer: SurfaceLayer
-    layer.width = width
-    layer.height = height
-    layer.radius = radius
+    layer: SurfaceLayer = .{.width = width, .height = height, .radius = radius}
     light: bool = ((ambient >> cast(u32)24) & cast(u32)255) +
         ((ambient >> cast(u32)16) & cast(u32)255) + ((ambient >> cast(u32)8) & cast(u32)255) > cast(u32)450
     h: float32 = Unit(hover)

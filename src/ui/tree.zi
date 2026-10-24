@@ -896,13 +896,8 @@
             trees[slot].error = cast(FrameStatus)FrameAllocationFailed
             return -1
         }
-        node: NodeCore
-        node.key = key
-        node.auto_key = key == cast(u64)0
-        node.semantic_index = -1
-        node.interaction_index = -1
-        node.state_index = -1
-        node.layout_index = -1
+        node: NodeCore = .{.key = key, .auto_key = key == cast(u64)0, .semantic_index = -1,
+            .interaction_index = -1, .state_index = -1, .layout_index = -1}
         parent_generation: u64 = cast(u64)0
         if parent_index >= 0 {
             parent_generation = trees[slot].submitted[parent_index].identity_generation

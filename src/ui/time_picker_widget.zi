@@ -312,11 +312,8 @@ TimePicker :: (session: Session, props: TimePickerProps) -> TimePickerResult {
         }
     }
     was_open: bool = retained.open && !props.disabled
-    state: TimePickerKeyState
-    state.open = was_open
-    state.column = retained.column
-    state.keyboard = retained.keyboard
-    state.value = result.value
+    state: TimePickerKeyState = .{.open = was_open, .column = retained.column,
+        .keyboard = retained.keyboard, .value = result.value}
     // Scroll the columns to the value: 1 shows its rows, 2 centers them.
     reveal: s32 = 0
 

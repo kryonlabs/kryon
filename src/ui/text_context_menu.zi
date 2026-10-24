@@ -197,12 +197,8 @@ TextMenuDraw :: (session: Session) {
     items[4].id = TEXT_MENU_SELECT_ALL
     items[4].label = "Select all"
     items[4].disabled = !text_menu_select_enabled
-    props: ContextMenuProps
-    props.key = text_menu_key * cast(u64)31 + cast(u64)17
-    props.open = true
-    props.x = text_menu_x
-    props.y = text_menu_y
-    props.escape = text_menu_escape
+    props: ContextMenuProps = .{.key = text_menu_key * cast(u64)31 + cast(u64)17, .open = true,
+        .x = text_menu_x, .y = text_menu_y, .escape = text_menu_escape}
     menu: ContextMenuResult = ContextMenu(session, props, items[0:5])
     if menu.activated_id != 0 {
         text_menu_command = menu.activated_id

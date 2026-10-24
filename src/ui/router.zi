@@ -88,12 +88,9 @@ RouterFindHash :: (routes: []RouterRoute,
 
 RouterResultFor :: (state: RouterState,
     routes: []RouterRoute) -> RouterResult {
-    result: RouterResult
-    result.state = state
-    result.route = state.current_route
-    result.previous_route = state.previous_route
-    result.requested_route = state.requested_route
-    result.changed = state.changed
+    result: RouterResult = .{.state = state, .route = state.current_route,
+        .previous_route = state.previous_route, .requested_route = state.requested_route,
+        .changed = state.changed}
     result.route_index = RouterFindRoute(routes, state.current_route)
     result.node = -1
     return result

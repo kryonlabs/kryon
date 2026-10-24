@@ -20,13 +20,8 @@ buffer: [64]u8;
 
 // A selected "hello" in "hello world"; the area is at (10, 10), 200 by 90.
 Field :: (copy: bool, paste: bool) -> TextAreaResult {
-    props: TextAreaProps
-    props.key = cast(u64)4
-    props.bounds = Rectangle.{10.0, 10.0, 200.0, 90.0}
-    props.value = "hello world"
-    props.anchor = 0
-    props.cursor = 5
-    props.focused = true
+    props: TextAreaProps = .{.key = cast(u64)4, .bounds = Rectangle.{10.0, 10.0, 200.0, 90.0},
+        .value = "hello world", .anchor = 0, .cursor = 5, .focused = true}
     props.input.copy = copy
     props.input.paste = paste
     return TextArea(TestSession(), props)

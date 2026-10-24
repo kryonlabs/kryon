@@ -5,10 +5,7 @@
 SelfTest :: () -> s32 {
     buffer: [12]Cell
     cells: []Cell = buffer[0:12]
-    base: Cell
-    base.glyph = cast(u32)32
-    base.foreground = cast(u32)7
-    base.background = cast(u32)1
+    base: Cell = .{.glyph = cast(u32)32, .foreground = cast(u32)7, .background = cast(u32)1}
     CellFill(cells, 4, 3, 0, 0, 4, 3, base)
     if buffer[11].glyph != cast(u32)32 { return 1 }
     if CellWrite(cells, 4, 3, 2, 1, "aé", cast(u32)2, cast(u32)1, cast(u32)0) != 2 {

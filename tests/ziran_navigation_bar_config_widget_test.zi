@@ -55,15 +55,9 @@ Frame :: () -> s32 {
     labels[0] = "First"
     labels[1] = "Second"
     labels[2] = "Third"
-    props: NavigationBarConfigProps
-    props.key = cast(u64)40
-    props.id = 40
-    props.title = "Navigation"
-    props.route_count = route_count
-    props.max_route_count = 4
-    props.dropdown_open = open
-    props.dropdown_row = open_row
-    props.focused_row = 0
+    props: NavigationBarConfigProps = .{.key = cast(u64)40, .id = 40, .title = "Navigation",
+        .route_count = route_count, .max_route_count = 4, .dropdown_open = open,
+        .dropdown_row = open_row, .focused_row = 0}
     if phase == 6 { props.trigger_input.enter = true }
     if phase == 7 {
         props.menu_input.navigating = true

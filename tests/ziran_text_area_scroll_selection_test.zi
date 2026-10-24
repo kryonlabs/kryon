@@ -20,12 +20,9 @@ Frame :: (session: Session, props: TextAreaProps) -> TextAreaResult {
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
-    props: TextAreaProps
-    props.key = cast(u64)77
-    props.focus_id = 77
-    props.bounds = Rectangle.{20.0, 20.0, 100.0, 52.0}
-    props.value = "abcd\nefgh\nijkl\nmnop\nqrst\nuvwx\nyzAB\nCDEF\nGHIJ\nKLMN"
-    props.read_only = true
+    props: TextAreaProps = .{.key = cast(u64)77, .focus_id = 77,
+        .bounds = Rectangle.{20.0, 20.0, 100.0, 52.0},
+        .value = "abcd\nefgh\nijkl\nmnop\nqrst\nuvwx\nyzAB\nCDEF\nGHIJ\nKLMN", .read_only = true}
     unused Frame(session, props)
     TreePointerUpdate(session, PointerFrame.{31.0, 36.0, true, true, false})
     result := Frame(session, props)

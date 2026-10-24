@@ -41,12 +41,8 @@ Frame :: () -> s32 {
     options[0].label = "One"
     options[1].key = cast(u64)42
     options[1].label = "Two"
-    props: TitleBarProps
-    props.key = cast(u64)10
-    props.id = 10
-    props.class_name = 9
-    props.bounds = Rectangle.{0.0, 0.0, 240.0, 48.0}
-    props.title = "Voyager"
+    props: TitleBarProps = .{.key = cast(u64)10, .id = 10, .class_name = 9,
+        .bounds = Rectangle.{0.0, 0.0, 240.0, 48.0}, .title = "Voyager"}
     if phase == 4 { props.title = "Interstellar Navigation" }
     // A strong title is drawn again with its small extra stroke.
     props.strong_title = phase == 0
@@ -124,11 +120,8 @@ CheckTrailing :: () -> s32 {
     dropdown := TitleBarLayoutFor(360, 48, false, true, 0, 0, 120, metrics)
     if dropdown.dropdown_bounds.x != 12.0 || dropdown.dropdown_bounds.width != 212.0 { return 4 }
     // The widget reports the slot where the bar is placed.
-    props: TitleBarProps
-    props.key = cast(u64)20
-    props.bounds = Rectangle.{10.0, 5.0, 360.0, 48.0}
-    props.title = "Lumi"
-    props.trailing_width = 120
+    props: TitleBarProps = .{.key = cast(u64)20, .bounds = Rectangle.{10.0, 5.0, 360.0, 48.0},
+        .title = "Lumi", .trailing_width = 120}
     TreeStart(TestSession(), cast(u64)6, Rectangle.{0.0, 0.0, 400.0, 100.0})
     options: [1]DropdownOption
     result := TitleBar(TestSession(), props, options[0:0])

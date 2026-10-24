@@ -28,15 +28,9 @@ Frame :: () -> s32 {
             cast(DropZone)DropTop ||
         PaneDropZone(bounds, Vector2.{70.0, 98.0}, 0.2, 0) !=
             cast(DropZone)DropBottom { return -15 }
-    props: PanedViewProps
-    props.key = cast(u64)20
-    props.id = 20
-    props.bounds = bounds
-    props.vertical = phase < 3
-    props.has_split = true
-    props.split = split
-    props.min_first = 20
-    props.min_second = 20
+    props: PanedViewProps = .{.key = cast(u64)20, .id = 20, .bounds = bounds,
+        .vertical = phase < 3, .has_split = true, .split = split, .min_first = 20,
+        .min_second = 20}
     if phase == 0 { props.split = 60 }
     if phase == 3 { props.split = 40 }
     if phase == 6 { props.disabled = true }

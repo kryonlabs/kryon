@@ -139,14 +139,8 @@ NavigationBarPaintImage :: (session: Session, node: s32, image: ImageProps,
 NavigationBarHeight :: (props: NavigationBarProps) -> s32 {
     if props.compact { return cast(s32)props.bounds.height }
     if props.height > 0 { return props.height }
-    spec: NavigationBarSpec
-    spec.view_width = props.view_width
-    spec.view_height = props.view_height
-    spec.count = 1
-    spec.side_margin = -1
-    spec.bottom_margin = -1
-    spec.icon_size = -1
-    spec.scale = props.scale
+    spec: NavigationBarSpec = .{.view_width = props.view_width, .view_height = props.view_height,
+        .count = 1, .side_margin = -1, .bottom_margin = -1, .icon_size = -1, .scale = props.scale}
     spec.bar = NavigationBarFaceFor(props)
     return NavigationBarPaintFor(spec).height
 }
@@ -269,12 +263,9 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
         }
     } else if layout.primary_count > 0 && layout.scroll_bounds.width > 0.0 &&
     layout.scroll_bounds.height > 0.0 {
-        scroll: ScrollProps
-        scroll.key = key * cast(u64)65599 + cast(u64)1
-        scroll.bounds = layout.scroll_bounds
-        scroll.scale = props.scale
-        scroll.horizontal = !props.vertical
-        scroll.scroll_offset = offset
+        scroll: ScrollProps = .{.key = key * cast(u64)65599 + cast(u64)1,
+            .bounds = layout.scroll_bounds, .scale = props.scale, .horizontal = !props.vertical,
+            .scroll_offset = offset}
         if props.vertical { scroll.content_height = layout.content_extent }
         else { scroll.content_width = layout.content_extent }
         scrolled := Scroll(session, scroll)
@@ -321,14 +312,8 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
 #program_export
 NavigationBar :: (session: Session, props: NavigationBarProps,
     items: []NavigationBarItem) -> NavigationBarResult {
-    result: NavigationBarResult
-    result.node = -1
-    result.clicked_index = -1
-    result.clicked_route = -1
-    result.closed_index = -1
-    result.closed_route = -1
-    result.drop_index = -1
-    result.drag_route = -1
+    result: NavigationBarResult = .{.node = -1, .clicked_index = -1, .clicked_route = -1,
+        .closed_index = -1, .closed_route = -1, .drop_index = -1, .drag_route = -1}
     if props.compact { return DrawCompactNavigation(session, props, items, result) }
     if (cast(s32)items.count) <= 0 || props.view_width <= 0 ||
     props.view_height <= 0 { return result }
@@ -390,15 +375,9 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
             face.value.font_size), 12)
         line_height: s32 = GlyphLineHeight(font,
             face.value.typeface)
-        item_spec: NavigationBarItemSpec
-        item_spec.bar = paint
-        item_spec.index = index
-        item_spec.active = item.active
-        item_spec.disabled = item.disabled
-        item_spec.hovered = hovered
-        item_spec.label_height = line_height
-        item_spec.base = base
-        item_spec.face = face
+        item_spec: NavigationBarItemSpec = .{.bar = paint, .index = index, .active = item.active,
+            .disabled = item.disabled, .hovered = hovered, .label_height = line_height,
+            .base = base, .face = face}
         layout: NavigationBarItemPaint =
         NavigationBarItemPaintFor(item_spec)
         node: s32 = -1

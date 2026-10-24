@@ -214,10 +214,8 @@ ClipTest :: () -> s32 {
 // A shape a layout places moves there with its paint.
 LayoutTest :: () -> s32 {
     Begin()
-    props: ColumnProps
-    props.key = cast(u64)60
-    props.bounds = Rectangle.{0.0, 0.0, 200.0, 200.0}
-    props.padding = 10
+    props: ColumnProps = .{.key = cast(u64)60, .bounds = Rectangle.{0.0, 0.0, 200.0, 200.0},
+        .padding = 10}
     column: LayoutContainer = Column(TestSession(), props)
     node: s32 = Triangle(TestSession(), TriangleProps.{.key = cast(u64)61,
             .second = Vector2.{20.0, 0.0}, .third = Vector2.{0.0, 20.0},

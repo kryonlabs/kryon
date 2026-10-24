@@ -15,17 +15,9 @@ using FrameStatus;
 
 DrawField :: (session: Session, focused: bool, read_only: bool,
     disabled: bool) -> bool {
-    props: TextFieldProps
-    props.key = cast(u64)41
-    props.bounds = Rectangle.{20.0, 20.0, 220.0, 36.0}
-    props.value = "Diary"
-    props.label = "Entry"
-    props.cursor = 5
-    props.anchor = 5
-    props.focused = focused
-    props.focus_id = 41
-    props.read_only = read_only
-    props.disabled = disabled
+    props: TextFieldProps = .{.key = cast(u64)41, .bounds = Rectangle.{20.0, 20.0, 220.0, 36.0},
+        .value = "Diary", .label = "Entry", .cursor = 5, .anchor = 5, .focused = focused,
+        .focus_id = 41, .read_only = read_only, .disabled = disabled}
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
     unused TextField(session, props)
     return EndFrame(session) == cast(FrameStatus)FrameOk

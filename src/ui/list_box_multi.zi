@@ -78,13 +78,8 @@ ListBoxMultiRowDecisionFor :: (hot: bool, disabled: bool,
 #program_export
 ListBoxMultiNavigate :: (item_count: s32, cursor: s32, control: bool,
     shift: bool, input: ListBoxMultiInput) -> ListBoxMultiNavResult {
-    result: ListBoxMultiNavResult
-    result.clicked = -1
-    result.anchor = cursor
-    result.anchor_changed = false
-    result.control = control
-    result.shift = shift
-    result.range_anchor = -1
+    result: ListBoxMultiNavResult = .{.clicked = -1, .anchor = cursor, .anchor_changed = false,
+        .control = control, .shift = shift, .range_anchor = -1}
     if item_count <= 0 { return result }
     if cursor < 0 { cursor = 0 }
     if cursor >= item_count { cursor = item_count - 1 }

@@ -122,12 +122,9 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     options[0].label = "Light"
     options[1].key = cast(u64)2
     options[1].label = "Dark"
-    theme: SegmentedControlProps
-    theme.key = cast(u64)3
-    theme.id = 3
-    theme.bounds = Rectangle.{x + width - 170.0, y + 2.0, 170.0, 0.0}
-    theme.has_selection = true
-    theme.selected_index = want
+    theme: SegmentedControlProps = .{.key = cast(u64)3, .id = 3,
+        .bounds = Rectangle.{x + width - 170.0, y + 2.0, 170.0, 0.0}, .has_selection = true,
+        .selected_index = want}
     switched: SegmentedControlResult = SegmentedControl(session, theme,
         options[:])
     if switched.changed { dark = switched.selected_index == 1 }

@@ -19,21 +19,15 @@ alpha: float32;
 
 #program_export
 Frame :: () -> s32 {
-    compact: ColorPickerProps
-    compact.key = cast(u64)20
-    compact.bounds = Rectangle.{10.0, 10.0, 180.0, 50.0}
-    compact.label = "Color"
-    compact.channels = 3
+    compact: ColorPickerProps = .{.key = cast(u64)20,
+        .bounds = Rectangle.{10.0, 10.0, 180.0, 50.0}, .label = "Color", .channels = 3}
     compact.values[0] = compact_red
     compact.values[1] = 0.5
     compact.values[2] = 0.75
     if phase >= 3 { compact.disabled = true }
-    expanded: ColorPickerProps
-    expanded.key = cast(u64)30
-    expanded.bounds = Rectangle.{10.0, 70.0, 180.0, 180.0}
-    expanded.label = "Preview"
-    expanded.channels = 4
-    expanded.picker = true
+    expanded: ColorPickerProps = .{.key = cast(u64)30,
+        .bounds = Rectangle.{10.0, 70.0, 180.0, 180.0}, .label = "Preview", .channels = 4,
+        .picker = true}
     expanded.values[0] = 0.25
     expanded.values[1] = 0.5
     expanded.values[2] = 0.75

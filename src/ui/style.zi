@@ -32,11 +32,8 @@ ResolveInteraction :: (explicit_state: s32, disabled: bool, loading: bool,
     selected: bool) -> InteractionState {
     state: s32 = ResolveState(explicit_state, disabled, loading,
         pressed, hovered, focused, selected)
-    interaction: InteractionState
-    interaction.state = state
-    interaction.hovered = hovered
-    interaction.pressed = pressed
-    interaction.focused = focused
+    interaction: InteractionState = .{.state = state, .hovered = hovered, .pressed = pressed,
+        .focused = focused}
     if explicit_state != ButtonStateAuto {
         interaction.hovered = state == ButtonStateHover
         interaction.pressed = state == ButtonStatePressed

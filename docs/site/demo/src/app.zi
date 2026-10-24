@@ -76,12 +76,9 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     }
     Label(session, cast(u64)22, Rectangle.{left, 158.0, width, 28.0}, CounterText(), 18)
 
-    check: CheckboxProps
-    check.key = cast(u64)30
-    check.id = 30
-    check.bounds = Rectangle.{left, 198.0, width, 32.0}
-    check.label = "Enable button"
-    check.checked = enabled
+    check: CheckboxProps = .{.key = cast(u64)30, .id = 30,
+        .bounds = Rectangle.{left, 198.0, width, 32.0}, .label = "Enable button",
+        .checked = enabled}
     enabled = Checkbox(session, check).checked
 
     slider: SliderProps
@@ -99,12 +96,9 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         .bounds = Rectangle.{left, 340.0, width, 12.0}, .min = 0, .max = 100,
         .value = cast(s32)amount})
 
-    toggle: ToggleProps
-    toggle.key = cast(u64)50
-    toggle.id = 50
-    toggle.bounds = Rectangle.{left, 368.0, width, 32.0}
-    toggle.label = "Highlight card"
-    toggle.value = highlighted
+    toggle: ToggleProps = .{.key = cast(u64)50, .id = 50,
+        .bounds = Rectangle.{left, 368.0, width, 32.0}, .label = "Highlight card",
+        .value = highlighted}
     highlighted = Toggle(session, toggle).value
     Label(session, cast(u64)60, Rectangle.{left, 408.0, width, 20.0}, "Ziran source. Canvas2D rendering.", 12)
     return 0

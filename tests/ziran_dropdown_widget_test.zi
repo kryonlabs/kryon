@@ -75,13 +75,9 @@ Frame :: () -> s32 {
         long_options[option_index].label = "Item"
         option_index += 1
     }
-    props: DropdownProps
-    props.key = cast(u64)11
-    props.id = 11
-    props.class_name = 9
-    props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
-    props.selected_index = selected_state
-    props.open = open_state
+    props: DropdownProps = .{.key = cast(u64)11, .id = 11, .class_name = 9,
+        .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}, .selected_index = selected_state,
+        .open = open_state}
     if phase == 4 {
         props.focused = true
         props.trigger_input.down = true
@@ -198,10 +194,8 @@ UncontrolledFrame :: () -> DropdownResult {
         options[index].label = "Row"
         index += 1
     }
-    props: DropdownProps
-    props.key = cast(u64)31
-    props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
-    props.selected_index = uncontrolled_selected
+    props: DropdownProps = .{.key = cast(u64)31, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
+        .selected_index = uncontrolled_selected}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
     result: DropdownResult = Dropdown(TestSession(), props, options[:])
     unused TreeFinish(TestSession())
@@ -264,10 +258,8 @@ DeviceFrame :: (x: float32, y: float32, pressed: bool, down: bool,
         options[index].key = cast(u64)cast(u32)(300 + index)
         options[index].label = DeviceLabels[index]
     }
-    props: DropdownProps
-    props.key = cast(u64)37
-    props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
-    props.selected_index = device_selected
+    props: DropdownProps = .{.key = cast(u64)37, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
+        .selected_index = device_selected}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
     result: DropdownResult = Dropdown(TestSession(), props, options[:])
     unused TreeFinish(TestSession())
@@ -367,10 +359,8 @@ SidebarFrame :: () -> DropdownResult {
         options[index].label = DeviceLabels[index]
     }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
-    props: DropdownProps
-    props.key = cast(u64)43
-    props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
-    props.selected_index = sidebar_selected
+    props: DropdownProps = .{.key = cast(u64)43, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
+        .selected_index = sidebar_selected}
     result: DropdownResult = Dropdown(TestSession(), props, options[:])
     page: ButtonProps
     page.key = cast(u64)51
@@ -453,16 +443,12 @@ PageFrame :: () -> DropdownResult {
         options[index].label = DeviceLabels[index]
     }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
-    page: ScrollProps
-    page.key = cast(u64)61
-    page.bounds = Rectangle.{0.0, 0.0, 220.0, 120.0}
-    page.content_height = 120
+    page: ScrollProps = .{.key = cast(u64)61, .bounds = Rectangle.{0.0, 0.0, 220.0, 120.0},
+        .content_height = 120}
     result: DropdownResult
     if Scroll(TestSession(), page).opened {
-        props: DropdownProps
-        props.key = cast(u64)47
-        props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
-        props.selected_index = page_selected
+        props: DropdownProps = .{.key = cast(u64)47, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
+            .selected_index = page_selected}
         props.menu_input.end = page_to_end
         props.menu_input.navigating = page_to_end
         result = Dropdown(TestSession(), props, options[:])
@@ -515,10 +501,8 @@ ActionFrame :: () -> DropdownResult {
         options[index].action_label = "Download"
     }
     options[3].action_shape = ""
-    props: DropdownProps
-    props.key = cast(u64)41
-    props.bounds = Rectangle.{10.0, 10.0, 160.0, 28.0}
-    props.selected_index = action_selected
+    props: DropdownProps = .{.key = cast(u64)41, .bounds = Rectangle.{10.0, 10.0, 160.0, 28.0},
+        .selected_index = action_selected}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
     result: DropdownResult = Dropdown(TestSession(), props, options[:])
     unused TreeFinish(TestSession())

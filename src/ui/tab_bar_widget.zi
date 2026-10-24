@@ -328,16 +328,9 @@ Theme :: #import "theme";
     // callers apply the returned selection, close, and reorder events.
     #program_export
     TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
-        result: TabBarResult
-        result.node = -1
-        result.activated_index = -1
-        result.closed_index = -1
-        result.double_clicked_index = -1
-        result.middle_clicked_index = -1
-        result.reordered_from = -1
-        result.reordered_to = -1
-        result.drag_from = -1
-        result.drag_to = -1
+        result: TabBarResult = .{.node = -1, .activated_index = -1, .closed_index = -1,
+            .double_clicked_index = -1, .middle_clicked_index = -1, .reordered_from = -1,
+            .reordered_to = -1, .drag_from = -1, .drag_to = -1}
         result.selected_index = TabBarSelectedIndexFor(
             props.selected_index, (cast(s32)tabs.count))
         result.last_clicked_index = props.last_clicked_index

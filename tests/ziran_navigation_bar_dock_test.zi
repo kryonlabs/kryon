@@ -91,13 +91,8 @@ main :: () -> s32 {
     rules.items[2] = rule
     InstallStyleRules(rules)
     session := SessionOpen()
-    props: NavigationBarProps
-    props.key = cast(u64)10
-    props.compact = true
-    props.vertical = true
-    props.bounds = bounds
-    props.footer_count = 2
-    props.draggable = true
+    props: NavigationBarProps = .{.key = cast(u64)10, .compact = true, .vertical = true,
+        .bounds = bounds, .footer_count = 2, .draggable = true}
     items: [7]NavigationBarItem
     for index: cast(s32)0..cast(s32)6 {
         items[index].key = cast(u64)(100 + index)

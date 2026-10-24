@@ -16,13 +16,9 @@ Equal :: (a: StyleData, b: StyleData) -> bool {
 }
 
 Base :: (index: s32) -> StyleData {
-    value: StyleData
-    value.fields = cast(u32)0x80000000 | cast(u32)StyleForeground
-    value.background = cast(u32)index
-    value.foreground = cast(u32)(index + 100)
-    value.border = cast(u32)123
-    value.focus = cast(u32)456
-    value.radius = cast(float32)index
+    value: StyleData = .{.fields = cast(u32)0x80000000 | cast(u32)StyleForeground,
+        .background = cast(u32)index, .foreground = cast(u32)(index + 100), .border = cast(u32)123,
+        .focus = cast(u32)456, .radius = cast(float32)index}
     value.border_width = 3.0; value.opacity = 0.7
     value.padding_x = 11.0; value.padding_y = 13.0; value.gap = 17.0
     value.font_size = 19.0; value.icon_size = 23.0

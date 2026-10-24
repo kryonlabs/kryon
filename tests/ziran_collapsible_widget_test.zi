@@ -26,16 +26,9 @@ Frame :: () -> s32 {
     headers[1] = CollapsibleHeader.{20, 1}
     headers[2] = CollapsibleHeader.{21, 2}
     headers[3] = CollapsibleHeader.{22, 1}
-    props: CollapsibleProps
-    props.key = cast(u64)20
-    props.id = 20
-    props.bounds = Rectangle.{10.0, 20.0, 140.0, 90.0}
-    props.label = "Details"
-    props.close_label = "Close"
-    props.open = open_state
-    props.hidden = hidden_state
-    props.has_open = true
-    props.closable = true
+    props: CollapsibleProps = .{.key = cast(u64)20, .id = 20,
+        .bounds = Rectangle.{10.0, 20.0, 140.0, 90.0}, .label = "Details", .close_label = "Close",
+        .open = open_state, .hidden = hidden_state, .has_open = true, .closable = true}
     if phase >= 3 && phase <= 5 {
         props.tree = true
         props.depth = 1

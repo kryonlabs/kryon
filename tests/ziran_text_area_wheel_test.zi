@@ -44,11 +44,9 @@ Frame :: (session: Session, props: *TextAreaProps, page: s32, mouse: Vector2,
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
-    props: TextAreaProps
-    props.key = cast(u64)77
-    props.focus_id = 77
-    props.bounds = Rectangle.{20.0, 20.0, 200.0, 100.0}
-    props.value = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np\nq\nr\ns\nt"
+    props: TextAreaProps = .{.key = cast(u64)77, .focus_id = 77,
+        .bounds = Rectangle.{20.0, 20.0, 200.0, 100.0},
+        .value = "a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np\nq\nr\ns\nt"}
     over_area := Vector2.{60.0, 60.0}
     over_page := Vector2.{260.0, 160.0}
     first := Frame(session, *props, 0, over_area, 0.0)

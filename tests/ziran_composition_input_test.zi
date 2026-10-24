@@ -22,10 +22,8 @@ Frame :: () -> s32 {
         previous_text[previous_byte] = state_text[previous_byte]
         previous_byte += 1
     }
-    previous: CompositionState
-    previous.active = state_active
-    previous.cursor = state_cursor
-    previous.selection_length = state_selection_length
+    previous: CompositionState = .{.active = state_active, .cursor = state_cursor,
+        .selection_length = state_selection_length}
     previous.text = TextView(previous_text[:previous_count])
     transition: CompositionTransition = CompositionTransitionFor(
         previous, CompositionEventForSample(sample), true, false)
@@ -49,10 +47,8 @@ Frame :: () -> s32 {
     state_cursor = next.cursor
     state_selection_length = next.selection_length
 
-    state: CompositionState
-    state.active = state_active
-    state.cursor = state_cursor
-    state.selection_length = state_selection_length
+    state: CompositionState = .{.active = state_active, .cursor = state_cursor,
+        .selection_length = state_selection_length}
     state.text = TextView(state_text[:state_text_count])
     if phase == 0 {
         if !sample.available ||

@@ -159,11 +159,7 @@ SegmentedSelectionFor :: (selected_index: s32, clicked_index: s32,
 SegmentedRowFor :: (bounds_x: float32, bounds_width: float32, y: s32,
     row_start: s32, row_count: s32, row_width: s32, wrap: bool,
     metrics: SegmentedMetrics) -> SegmentedRow {
-    row: SegmentedRow
-    row.start = row_start
-    row.count = row_count
-    row.width = row_width
-    row.y = y
+    row: SegmentedRow = .{.start = row_start, .count = row_count, .width = row_width, .y = y}
     available: s32 = cast(s32)bounds_width
     if row_count <= 0 || available <= 0 {
         return row

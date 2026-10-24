@@ -28,13 +28,8 @@ Answer :: () -> s32 {
     filled_label := ProgressLayoutFor(track_bounds, 0, 100, 90, 20.0, 14.0, 6.0)
     if empty_label.label_on_fill || empty_label.label_x < 74.0 ||
         !filled_label.label_on_fill || filled_label.label_x + 20.0 > 100.0 { return -20 }
-    props: ProgressProps
-    props.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}
-    props.min = 0
-    props.max = 100
-    props.value = 25
-    props.label = "50%"
-    props.class_name = 7
+    props: ProgressProps = .{.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}, .min = 0, .max = 100,
+        .value = 25, .label = "50%", .class_name = 7}
     defaults: ProgressFaces
     defaults.scale = 1.0
     defaults.fallback_font = 16

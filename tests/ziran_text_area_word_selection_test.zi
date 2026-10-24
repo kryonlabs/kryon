@@ -40,12 +40,8 @@ Click :: (session: Session, props: *TextAreaProps, x: float32, now: float64) -> 
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
-    props: TextAreaProps
-    props.key = cast(u64)78
-    props.focus_id = 78
-    props.bounds = Rectangle.{20.0, 20.0, 260.0, 40.0}
-    props.value = "one two three"
-    props.read_only = true
+    props: TextAreaProps = .{.key = cast(u64)78, .focus_id = 78,
+        .bounds = Rectangle.{20.0, 20.0, 260.0, 40.0}, .value = "one two three", .read_only = true}
     unused Frame(session, *props)
     // A single click places a caret inside "two".
     result := Click(session, *props, 66.0, 1.0)

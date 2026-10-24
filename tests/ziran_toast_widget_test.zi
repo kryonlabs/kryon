@@ -37,10 +37,8 @@ Frame :: () -> s32 {
     previous_state.class_name = state_class_name
     previous_state.until_seconds = state_until_seconds
     previous_state.message = TextView(previous_message[:previous_count])
-    props: ToastProps
-    props.key = cast(u64)17
-    props.viewport = Rectangle.{10.0, 20.0, 200.0, 100.0}
-    props.state = previous_state
+    props: ToastProps = .{.key = cast(u64)17, .viewport = Rectangle.{10.0, 20.0, 200.0, 100.0},
+        .state = previous_state}
     if phase == 0 {
         props.message = "Hello"
         props.seconds = 2.0

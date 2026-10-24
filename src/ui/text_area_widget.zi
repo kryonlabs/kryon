@@ -182,10 +182,7 @@ TextAreaRangesHash :: (ranges: []TextRange) -> u64 {
 TextAreaNextRowUncached :: (value: string, start: s32,
     wrap_width: s32, font: s32,
     typeface: string, hidden: []TextRange) -> TextAreaRow {
-    row: TextAreaRow
-    row.start = start
-    row.end = start
-    row.next = (cast(s32)value.count) + 1
+    row: TextAreaRow = .{.start = start, .end = start, .next = (cast(s32)value.count) + 1}
     if start < 0 || start > (cast(s32)value.count) { return row }
     line: TextLogicalLine = TextLogicalLineFor(value, start)
     row.end = line.end
@@ -416,11 +413,8 @@ TextAreaViewSegment :: struct {
 #program_export
 TextAreaViewFor :: (value: string, anchor: s32,
     cursor: s32, composition: CompositionState) -> TextAreaView {
-    view: TextAreaView
-    view.value = value
-    view.length = (cast(s32)value.count)
-    view.replace_start = (cast(s32)value.count)
-    view.replace_end = (cast(s32)value.count)
+    view: TextAreaView = .{.value = value, .length = (cast(s32)value.count),
+        .replace_start = (cast(s32)value.count), .replace_end = (cast(s32)value.count)}
     if composition.active {
         selection: TextSelectionRange = TextSelectionRangeForLength(
             anchor, cursor, (cast(s32)value.count))
@@ -522,10 +516,7 @@ TextAreaViewSpanWidth :: (view: TextAreaView,
 TextAreaViewNextRow :: (view: TextAreaView,
     start: s32, wrap_width: s32, font: s32,
     typeface: string) -> TextAreaRow {
-    row: TextAreaRow
-    row.start = start
-    row.end = start
-    row.next = view.length + 1
+    row: TextAreaRow = .{.start = start, .end = start, .next = view.length + 1}
     if start < 0 || start > view.length { return row }
     line_end: s32 = start
     while line_end < view.length &&
@@ -1268,12 +1259,8 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     hidden := TextAreaRangesFor(props.value, props.hidden)
     strong := TextAreaRangesFor(props.value, props.strong)
     italic := TextAreaRangesFor(props.value, props.italic)
-    layout: TextAreaLayout
-    layout.font = font
-    layout.typeface = face.value.typeface
-    layout.gap = gap
-    layout.wrap_width = wrap_width
-    layout.hidden = hidden
+    layout: TextAreaLayout = .{.font = font, .typeface = face.value.typeface, .gap = gap,
+        .wrap_width = wrap_width, .hidden = hidden}
     layout.blocks = TextAreaBlocksFor(props.value, props.blocks)
     layout.lines = TextAreaLinesFor(props.value, props.lines)
     // The value without a composition, for carets and points of the value.

@@ -88,10 +88,7 @@ TreePlaceGrid :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rec
 #program_export
 ContainerFor :: (session: Session, props: ColumnProps,
     kind: s32) -> LayoutContainer {
-    result: LayoutContainer
-    result.node = -1
-    result.kind = kind
-    result.bounds = props.bounds
+    result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
     parent: Rectangle = TreeCurrentParentBounds(session)
     if result.bounds.width <= 0.0 { result.bounds.width = parent.width }
     if result.bounds.height <= 0.0 { result.bounds.height = parent.height }
@@ -149,11 +146,8 @@ Screen :: (session: Session, props: ColumnProps) -> LayoutContainer {
 
 #program_export
 Grid :: (session: Session, props: GridProps) -> GridResult {
-    row: ColumnProps
-    row.bounds = props.bounds
-    row.gap = props.gap
-    row.padding = props.padding
-    row.key = props.key
+    row: ColumnProps = .{.bounds = props.bounds, .gap = props.gap, .padding = props.padding,
+        .key = props.key}
     result: GridResult
     result.container = ContainerFor(session, row, WidgetKindGrid)
     TreeSetLayout(session, result.container.node, result.container.gap,

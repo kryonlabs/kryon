@@ -51,12 +51,8 @@ main :: () -> s32 {
     options: [2]SegmentOption
     options[0] = SegmentOption.{cast(u64)11, "Week", false}
     options[1] = SegmentOption.{cast(u64)22, "Calendar", false}
-    props: SegmentedControlProps
-    props.key = cast(u64)20
-    props.id = 20
-    props.bounds = Rectangle.{10.0, 20.0, 300.0, 40.0}
-    props.has_selection = true
-    props.selected_index = 1
+    props: SegmentedControlProps = .{.key = cast(u64)20, .id = 20,
+        .bounds = Rectangle.{10.0, 20.0, 300.0, 40.0}, .has_selection = true, .selected_index = 1}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 80.0})
     unused SegmentedControl(TestSession(), props, options[0:2])
     if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 4 { return 2 }

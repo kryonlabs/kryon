@@ -5,10 +5,7 @@
 #program_export
 main :: () -> s32 {
     window_close_id = 42
-    event: WindowEventHeader
-    event.event_type = 0x200
-    event.window_id = 41
-    event.event = 14
+    event: WindowEventHeader = .{.event_type = 0x200, .window_id = 41, .event = 14}
     WindowCloseEvent(null, cast(*void)(*event))
     if WindowCloseTake() {
         return 1

@@ -24,10 +24,8 @@ using StyleField;
 
 #program_export
 SegmentedControlDefaultFace :: (kind: s32) -> StyleData {
-    face: StyleData
-    face.fields = cast(u32)StyleFontSize | cast(u32)StylePaddingX
-    face.font_size = 14.0
-    face.padding_x = 10.0
+    face: StyleData = .{.fields = cast(u32)StyleFontSize | cast(u32)StylePaddingX,
+        .font_size = 14.0, .padding_x = 10.0}
     if kind == StyleKindSegmentedControl() {
         face.fields = face.fields | cast(u32)StyleGap |
             cast(u32)StyleIconSize | cast(u32)StyleContentOffset
@@ -107,10 +105,7 @@ SegmentedControlHeight :: (session: Session, props: SegmentedControlProps,
 #program_export
 SegmentedControl :: (session: Session, props: SegmentedControlProps,
     options: []SegmentOption) -> SegmentedControlResult {
-    result: SegmentedControlResult
-    result.node = -1
-    result.clicked_index = -1
-    result.selected_index = -1
+    result: SegmentedControlResult = .{.node = -1, .clicked_index = -1, .selected_index = -1}
     if props.has_selection { result.selected_index = props.selected_index }
     result.height = SegmentedControlHeight(session, props, options)
     bounds: Rectangle = props.bounds

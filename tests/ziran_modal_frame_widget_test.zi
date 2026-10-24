@@ -34,11 +34,7 @@ Frame :: () -> s32 {
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
-    props: ModalFrameProps
-    props.key = cast(u64)11
-    props.id = 11
-    props.class_name = 9
-    props.title = "Settings"
+    props: ModalFrameProps = .{.key = cast(u64)11, .id = 11, .class_name = 9, .title = "Settings"}
     if phase == 4 { props.title = "Interstellar Navigation" }
     props.width = 200
     props.height = 140

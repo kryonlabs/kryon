@@ -20,14 +20,10 @@ using FrameStatus;
 phase: s32;
 
 Frame :: () -> s32 {
-    props: LinkProps
-    props.key = cast(u64)7
-    props.focus_id = 7
-    props.bounds = Rectangle.{10.0, 20.0, 0.0, 0.0}
-    props.text = "Docs"
-    props.link = "https://example.test/docs"
-    props.focus_activate = phase == 2 || phase == 3
-    props.disabled = phase == 3
+    props: LinkProps = .{.key = cast(u64)7, .focus_id = 7,
+        .bounds = Rectangle.{10.0, 20.0, 0.0, 0.0}, .text = "Docs",
+        .link = "https://example.test/docs", .focus_activate = phase == 2 || phase == 3,
+        .disabled = phase == 3}
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 60.0})
     result: LinkResult = Link(TestSession(), props)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 || result.node != 1 ||

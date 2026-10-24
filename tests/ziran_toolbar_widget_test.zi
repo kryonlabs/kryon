@@ -47,15 +47,8 @@ Frame :: () -> s32 {
     actions[1].key = cast(u64)52
     actions[1].label = "Off"
     actions[1].disabled = true
-    props: ToolbarProps
-    props.key = cast(u64)10
-    props.id = 10
-    props.class_name = 9
-    props.x = 10
-    props.y = 10
-    props.width = 300
-    props.height = 40
-    props.draw_menu = true
+    props: ToolbarProps = .{.key = cast(u64)10, .id = 10, .class_name = 9, .x = 10, .y = 10,
+        .width = 300, .height = 40, .draw_menu = true}
     props.dropdown.key = cast(u64)11
     props.dropdown.id = 11
     props.dropdown.selected_index = selected_state

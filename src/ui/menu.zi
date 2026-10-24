@@ -434,10 +434,9 @@ MenuSubmenuOrigin :: (row: Rectangle) -> Vector2 {
 
 #program_export
 MenuSeparatorLineFor :: (row: Rectangle, metrics: MenuMetrics) -> MenuLine {
-    line: MenuLine
-    line.x1 = cast(s32)row.x + metrics.separator_inset
-    line.y1 = cast(s32)(row.y + row.height / 2.0)
-    line.x2 = cast(s32)(row.x + row.width) - metrics.separator_inset
+    line: MenuLine = .{.x1 = cast(s32)row.x + metrics.separator_inset,
+        .y1 = cast(s32)(row.y + row.height / 2.0),
+        .x2 = cast(s32)(row.x + row.width) - metrics.separator_inset}
     line.y2 = line.y1
     if line.x2 < line.x1 {
         line.x2 = line.x1
@@ -508,11 +507,9 @@ MenuBarLabelY :: (item: Rectangle, line_height: s32) -> s32 {
 #program_export
 MenuGroupItemBounds :: (x: s32, bar: Rectangle, width: s32,
     metrics: MenuMetrics) -> Rectangle {
-    item: Rectangle
-    item.x = cast(float32)x
-    item.y = bar.y + cast(float32)metrics.bar_item_y_padding
-    item.width = cast(float32)width
-    item.height = bar.height - cast(float32)(metrics.bar_item_y_padding * 2)
+    item: Rectangle = .{.x = cast(float32)x, .y = bar.y + cast(float32)metrics.bar_item_y_padding,
+        .width = cast(float32)width,
+        .height = bar.height - cast(float32)(metrics.bar_item_y_padding * 2)}
     if item.height < 0.0 { item.height = 0.0 }
     return item
 }

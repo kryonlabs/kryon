@@ -23,15 +23,9 @@ clicks: s32;
 // list. Returns 1 when the field is focused, 0 when not, -1 on a bad frame.
 Frame :: () -> s32 {
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
-    field: TextFieldProps
-    field.key = cast(u64)77
-    field.bounds = Rectangle.{20.0, 20.0, 220.0, 36.0}
-    field.value = "/"
-    field.label = "Message"
-    field.cursor = 1
-    field.anchor = 1
-    field.focused = focused
-    field.focus_id = 77
+    field: TextFieldProps = .{.key = cast(u64)77, .bounds = Rectangle.{20.0, 20.0, 220.0, 36.0},
+        .value = "/", .label = "Message", .cursor = 1, .anchor = 1, .focused = focused,
+        .focus_id = 77}
     field.input.focus = request_focus
     result: TextFieldResult = TextField(TestSession(), field)
     button: ButtonProps

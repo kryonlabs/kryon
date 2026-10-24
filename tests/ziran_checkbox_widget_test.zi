@@ -23,12 +23,8 @@ phase: s32;
 
 #program_export
 Frame :: () -> s32 {
-    props: CheckboxProps
-    props.key = cast(u64)7
-    props.id = 7
-    props.class_name = 9
-    props.label = "Agree"
-    props.bounds = Rectangle.{10.0, 20.0, 120.0, 30.0}
+    props: CheckboxProps = .{.key = cast(u64)7, .id = 7, .class_name = 9, .label = "Agree",
+        .bounds = Rectangle.{10.0, 20.0, 120.0, 30.0}}
     if phase == 0 {
         rules: StyleRules
         rules.count = 1
