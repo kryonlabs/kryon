@@ -211,7 +211,10 @@ sections with `Fieldset(session, props)` from
 [`fieldset_widget`](../src/ui/fieldset_widget.zi), and places a toggle at a
 row's end with the size `ToggleSize(session, props)` from
 [`toggle_measure`](../src/ui/toggle_measure.zi) answers, which stays apart from
-the toggle widget as `text_measure` stays apart from Text.
+the toggle widget as `text_measure` stays apart from Text. Lines, circles,
+rings and triangles from [`shape_widget`](../src/ui/shape_widget.zi) are
+hosted too, so a bundle can draw a chart's lines and dots; their host fills
+them with the renderer's `RasterTriangles`.
 
 [`open_uri`](../src/backend/open_uri.zi) opens a link with the platform's
 handler: `OpenUri(uri)` passes it unchanged to the desktop opener, Windows'

@@ -20,6 +20,10 @@ set -- --bind pointer_input:PollPointer=hosted_ui_provider:Pointer \
     --bind segmented_control_widget:SegmentedControlHostedHost=hosted_ui_provider:SegmentedControl \
     --bind fieldset_widget:FieldsetHostedHost=hosted_ui_provider:Fieldset \
     --bind toggle_measure:ToggleSizeHostedHost=hosted_ui_provider:ToggleSize \
+    --bind shape_widget:LineHostedHost=hosted_ui_provider:Line \
+    --bind shape_widget:CircleHostedHost=hosted_ui_provider:Circle \
+    --bind shape_widget:RingHostedHost=hosted_ui_provider:Ring \
+    --bind shape_widget:TriangleHostedHost=hosted_ui_provider:Triangle \
     --bind title_bar_widget:TitleBarHostedHost=hosted_ui_provider:TitleBar \
     --bind dropdown_widget:DropdownHostedHost=hosted_ui_provider:Dropdown \
     --bind modal_widget:ActionModalHostedHost=hosted_ui_provider:ActionModal
@@ -28,7 +32,7 @@ set -- --bind pointer_input:PollPointer=hosted_ui_provider:Pointer \
     --entry hosted_ui:main -o "$work/ui.zx" \
     "$repo/tests/hosted_ui.zi" "$repo/tests/hosted_ui_provider.zi"
 test "$("$ziran" run "$work/ui.zx")" = 42
-printf '%s\n' 'Hosted portable Text, Image, Button, TextArea, Scroll, SegmentedControl, Fieldset, ToggleSize and TitleBar contracts passed'
+printf '%s\n' 'Hosted portable Text, Image, Button, TextArea, Scroll, SegmentedControl, Fieldset, ToggleSize, shapes and TitleBar contracts passed'
 for target in c; do
     executable=
     if test "$target" = c; then executable=--exe; fi

@@ -26,6 +26,8 @@
 #import "segmented_control_props"
 #import "box_widget"
 #import "fieldset_widget"
+#import "shape_widget"
+#import "shape_props"
 #import "fieldset_props"
 #import "toggle_measure"
 #import "tile_map"
@@ -106,6 +108,10 @@ widget_segmented_codec: WidgetSegmentedControlPropsCodec;
 widget_segmented_result_codec: WidgetSegmentedControlResultCodec;
 widget_box_codec: WidgetBoxPropsCodec;
 widget_fieldset_codec: WidgetFieldsetPropsCodec;
+widget_line_codec: WidgetLinePropsCodec;
+widget_circle_codec: WidgetCirclePropsCodec;
+widget_ring_codec: WidgetRingPropsCodec;
+widget_triangle_codec: WidgetTrianglePropsCodec;
 widget_vector_codec: WidgetVector2Codec;
 widget_svg_icon_codec: WidgetSvgIconPropsCodec;
 widget_press_codec: WidgetPressPropsCodec;
@@ -153,6 +159,9 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "toggle_widget") && function == "ToggleHostedHost") ||
     (ModuleName(module, "box_widget") && function == "BoxHostedHost") ||
     (ModuleName(module, "fieldset_widget") && function == "FieldsetHostedHost") ||
+    (ModuleName(module, "shape_widget") && (function == "LineHostedHost" ||
+        function == "CircleHostedHost" || function == "RingHostedHost" ||
+        function == "TriangleHostedHost")) ||
     (ModuleName(module, "toggle_measure") && function == "ToggleSizeHostedHost") ||
     (ModuleName(module, "svg_icon_widget") && function == "SvgIconHostedHost") ||
     (ModuleName(module, "press_widget") && function == "PressHostedHost") ||
@@ -357,6 +366,24 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "BoxHostedHost" && ModuleName(owner, "box_widget") && WidgetValidBoxProps(props) {
         result.* = HostScalar("s32", cast(s64)Box(session, WidgetDecodeBoxProps(props, *widget_box_codec)))
+        return 1
+    }
+    if name == "LineHostedHost" && ModuleName(owner, "shape_widget") && WidgetValidLineProps(props) {
+        result.* = HostScalar("s32", cast(s64)Line(session, WidgetDecodeLineProps(props, *widget_line_codec)))
+        return 1
+    }
+    if name == "CircleHostedHost" && ModuleName(owner, "shape_widget") && WidgetValidCircleProps(props) {
+        result.* = HostScalar("s32", cast(s64)Circle(session, WidgetDecodeCircleProps(props,
+            *widget_circle_codec)))
+        return 1
+    }
+    if name == "RingHostedHost" && ModuleName(owner, "shape_widget") && WidgetValidRingProps(props) {
+        result.* = HostScalar("s32", cast(s64)Ring(session, WidgetDecodeRingProps(props, *widget_ring_codec)))
+        return 1
+    }
+    if name == "TriangleHostedHost" && ModuleName(owner, "shape_widget") && WidgetValidTriangleProps(props) {
+        result.* = HostScalar("s32", cast(s64)Triangle(session, WidgetDecodeTriangleProps(props,
+            *widget_triangle_codec)))
         return 1
     }
     if name == "FieldsetHostedHost" && ModuleName(owner, "fieldset_widget") && WidgetValidFieldsetProps(props) {

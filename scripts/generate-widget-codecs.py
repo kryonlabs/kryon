@@ -45,7 +45,7 @@ KRYON_MODULES = ['session', 'input_protocol', 'geometry', 'drawing_props', 'text
                  'toggle_props', 'tab_bar_props', 'box_props', 'press_props', 'spinbox_props',
                  'time_picker_props', 'dropdown', 'dropdown_props', 'title_bar_props',
                  'modal', 'modal_props', 'context_menu_widget', 'svg_icon_props', 'tile_map',
-                 'segmented_control_props', 'fieldset_props']
+                 'segmented_control_props', 'fieldset_props', 'shape_props']
 KRYON_ROOTS = ['PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
                'ScrollProps', 'ScrollResult', 'Session', 'CheckboxProps', 'CheckboxValueResult',
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
@@ -55,7 +55,8 @@ KRYON_ROOTS = ['PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAr
                'ModalFrameResult', 'ActionModalProps', 'ActionModalAction', 'ActionModalResult',
                'ContextMenuProps', 'ContextMenuItem', 'ContextMenuResult', 'SvgIconProps',
                'TileMapProps', 'TileMapResult', 'SegmentedControlProps', 'SegmentedControlResult',
-               'SegmentOption', 'FieldsetProps', 'Vector2']
+               'SegmentOption', 'FieldsetProps', 'Vector2', 'LineProps', 'CircleProps',
+               'RingProps', 'TriangleProps']
 
 
 # Operations used only by generated consumers and test fixtures. Their schemas

@@ -25,6 +25,8 @@
 #import "fieldset_widget"
 #import "fieldset_props"
 #import "toggle_measure"
+#import "shape_widget"
+#import "shape_props"
 #import "title_bar_widget"
 #import "title_bar_props"
 #import "dropdown_props"
@@ -64,6 +66,10 @@ main :: () -> s32 {
     Fieldset(session, FieldsetProps.{.title = "Details"})
     size := ToggleSize(session, ToggleProps.{.off_label = "Off", .on_label = "On"})
     if size.x != 72.0 || size.y != 30.0 { return 16 }
+    if Line(session, LineProps.{.end = Vector2.{4.0, 3.0}}) != 81 { return 17 }
+    if Circle(session, CircleProps.{.radius = 5.0}) != 82 { return 18 }
+    if Ring(session, RingProps.{.outer_radius = 5.0}) != 83 { return 19 }
+    if Triangle(session, TriangleProps.{}) != 84 { return 20 }
     options: [1]DropdownOption
     bar := TitleBar(session, TitleBarProps.{.title = "Lumi", .trailing_width = 90}, options[0:0])
     if bar.trailing_bounds.width != 90.0 { return 10 }

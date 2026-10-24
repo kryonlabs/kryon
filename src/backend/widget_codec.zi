@@ -33,6 +33,7 @@
 #import "tile_map"
 #import "segmented_control_props"
 #import "fieldset_props"
+#import "shape_props"
 using HostValueKind;
 
 // Widget codec schema: ["PointerFrame",[["x","float32"],["y","float32"],["down","bool"],["pressed","bool"],["released","bool"]]]
@@ -2597,5 +2598,178 @@ WidgetValidFieldsetProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 2, "id", "s32", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 3, "class_name", "s32", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 4, "title", "string", cast(s32)HostString) { return false }
+    return true
+}
+
+WidgetLinePropsCodec :: struct {
+    fields: [5]HostField
+    start: WidgetVector2Codec
+    end: WidgetVector2Codec
+    color: WidgetColorCodec
+}
+
+WidgetEncodeLineProps :: (data: LineProps, codec: *WidgetLinePropsCodec) -> HostValue {
+    value := HostRecordValue("LineProps", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("key"), .value = HostScalar("u64", cast(s64)data.key)}
+    codec.fields[1].name = HostTextData("start")
+    codec.fields[1].value = WidgetEncodeVector2(data.start, *codec.start)
+    codec.fields[2].name = HostTextData("end")
+    codec.fields[2].value = WidgetEncodeVector2(data.end, *codec.end)
+    codec.fields[3] = HostField.{.name = HostTextData("thickness"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.thickness}}
+    codec.fields[4].name = HostTextData("color")
+    codec.fields[4].value = WidgetEncodeColor(data.color, *codec.color)
+    return value
+}
+
+WidgetDecodeLineProps :: (value: HostValue, codec: *WidgetLinePropsCodec) -> LineProps {
+    data: LineProps
+    zero: HostValue
+    data.key = cast(u64)HostFieldValue(*value, 0, "key", *zero).bits
+    data.start = WidgetDecodeVector2(HostFieldValue(*value, 1, "start", *zero).*, *codec.start)
+    data.end = WidgetDecodeVector2(HostFieldValue(*value, 2, "end", *zero).*, *codec.end)
+    data.thickness = cast(float32)HostFieldValue(*value, 3, "thickness", *zero).real
+    data.color = WidgetDecodeColor(HostFieldValue(*value, 4, "color", *zero).*, *codec.color)
+    return data
+}
+
+WidgetValidLineProps :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "LineProps") { return false }
+    if !HostFieldScalarValid(*value, 0, "key", "u64", cast(s32)HostUnsigned) { return false }
+    if !HostFieldRecordValid(*value, 1, "start", WidgetValidVector2) { return false }
+    if !HostFieldRecordValid(*value, 2, "end", WidgetValidVector2) { return false }
+    if !HostFieldScalarValid(*value, 3, "thickness", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldRecordValid(*value, 4, "color", WidgetValidColor) { return false }
+    return true
+}
+
+WidgetCirclePropsCodec :: struct {
+    fields: [6]HostField
+    center: WidgetVector2Codec
+    fill: WidgetColorCodec
+    edge: WidgetColorCodec
+}
+
+WidgetEncodeCircleProps :: (data: CircleProps, codec: *WidgetCirclePropsCodec) -> HostValue {
+    value := HostRecordValue("CircleProps", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("key"), .value = HostScalar("u64", cast(s64)data.key)}
+    codec.fields[1].name = HostTextData("center")
+    codec.fields[1].value = WidgetEncodeVector2(data.center, *codec.center)
+    codec.fields[2] = HostField.{.name = HostTextData("radius"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.radius}}
+    codec.fields[3].name = HostTextData("fill")
+    codec.fields[3].value = WidgetEncodeColor(data.fill, *codec.fill)
+    codec.fields[4].name = HostTextData("edge")
+    codec.fields[4].value = WidgetEncodeColor(data.edge, *codec.edge)
+    codec.fields[5] = HostField.{.name = HostTextData("has_edge"), .value = HostScalar("bool", ifx data.has_edge then 1 else 0)}
+    return value
+}
+
+WidgetDecodeCircleProps :: (value: HostValue, codec: *WidgetCirclePropsCodec) -> CircleProps {
+    data: CircleProps
+    zero: HostValue
+    data.key = cast(u64)HostFieldValue(*value, 0, "key", *zero).bits
+    data.center = WidgetDecodeVector2(HostFieldValue(*value, 1, "center", *zero).*, *codec.center)
+    data.radius = cast(float32)HostFieldValue(*value, 2, "radius", *zero).real
+    data.fill = WidgetDecodeColor(HostFieldValue(*value, 3, "fill", *zero).*, *codec.fill)
+    data.edge = WidgetDecodeColor(HostFieldValue(*value, 4, "edge", *zero).*, *codec.edge)
+    data.has_edge = HostFieldValue(*value, 5, "has_edge", *zero).integer != 0
+    return data
+}
+
+WidgetValidCircleProps :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "CircleProps") { return false }
+    if !HostFieldScalarValid(*value, 0, "key", "u64", cast(s32)HostUnsigned) { return false }
+    if !HostFieldRecordValid(*value, 1, "center", WidgetValidVector2) { return false }
+    if !HostFieldScalarValid(*value, 2, "radius", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldRecordValid(*value, 3, "fill", WidgetValidColor) { return false }
+    if !HostFieldRecordValid(*value, 4, "edge", WidgetValidColor) { return false }
+    if !HostFieldScalarValid(*value, 5, "has_edge", "bool", cast(s32)HostInteger) { return false }
+    return true
+}
+
+WidgetRingPropsCodec :: struct {
+    fields: [7]HostField
+    center: WidgetVector2Codec
+    color: WidgetColorCodec
+}
+
+WidgetEncodeRingProps :: (data: RingProps, codec: *WidgetRingPropsCodec) -> HostValue {
+    value := HostRecordValue("RingProps", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("key"), .value = HostScalar("u64", cast(s64)data.key)}
+    codec.fields[1].name = HostTextData("center")
+    codec.fields[1].value = WidgetEncodeVector2(data.center, *codec.center)
+    codec.fields[2] = HostField.{.name = HostTextData("inner_radius"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.inner_radius}}
+    codec.fields[3] = HostField.{.name = HostTextData("outer_radius"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.outer_radius}}
+    codec.fields[4] = HostField.{.name = HostTextData("start_angle"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.start_angle}}
+    codec.fields[5] = HostField.{.name = HostTextData("end_angle"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.end_angle}}
+    codec.fields[6].name = HostTextData("color")
+    codec.fields[6].value = WidgetEncodeColor(data.color, *codec.color)
+    return value
+}
+
+WidgetDecodeRingProps :: (value: HostValue, codec: *WidgetRingPropsCodec) -> RingProps {
+    data: RingProps
+    zero: HostValue
+    data.key = cast(u64)HostFieldValue(*value, 0, "key", *zero).bits
+    data.center = WidgetDecodeVector2(HostFieldValue(*value, 1, "center", *zero).*, *codec.center)
+    data.inner_radius = cast(float32)HostFieldValue(*value, 2, "inner_radius", *zero).real
+    data.outer_radius = cast(float32)HostFieldValue(*value, 3, "outer_radius", *zero).real
+    data.start_angle = cast(float32)HostFieldValue(*value, 4, "start_angle", *zero).real
+    data.end_angle = cast(float32)HostFieldValue(*value, 5, "end_angle", *zero).real
+    data.color = WidgetDecodeColor(HostFieldValue(*value, 6, "color", *zero).*, *codec.color)
+    return data
+}
+
+WidgetValidRingProps :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "RingProps") { return false }
+    if !HostFieldScalarValid(*value, 0, "key", "u64", cast(s32)HostUnsigned) { return false }
+    if !HostFieldRecordValid(*value, 1, "center", WidgetValidVector2) { return false }
+    if !HostFieldScalarValid(*value, 2, "inner_radius", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 3, "outer_radius", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 4, "start_angle", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 5, "end_angle", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldRecordValid(*value, 6, "color", WidgetValidColor) { return false }
+    return true
+}
+
+WidgetTrianglePropsCodec :: struct {
+    fields: [5]HostField
+    first: WidgetVector2Codec
+    second: WidgetVector2Codec
+    third: WidgetVector2Codec
+    color: WidgetColorCodec
+}
+
+WidgetEncodeTriangleProps :: (data: TriangleProps, codec: *WidgetTrianglePropsCodec) -> HostValue {
+    value := HostRecordValue("TriangleProps", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("key"), .value = HostScalar("u64", cast(s64)data.key)}
+    codec.fields[1].name = HostTextData("first")
+    codec.fields[1].value = WidgetEncodeVector2(data.first, *codec.first)
+    codec.fields[2].name = HostTextData("second")
+    codec.fields[2].value = WidgetEncodeVector2(data.second, *codec.second)
+    codec.fields[3].name = HostTextData("third")
+    codec.fields[3].value = WidgetEncodeVector2(data.third, *codec.third)
+    codec.fields[4].name = HostTextData("color")
+    codec.fields[4].value = WidgetEncodeColor(data.color, *codec.color)
+    return value
+}
+
+WidgetDecodeTriangleProps :: (value: HostValue, codec: *WidgetTrianglePropsCodec) -> TriangleProps {
+    data: TriangleProps
+    zero: HostValue
+    data.key = cast(u64)HostFieldValue(*value, 0, "key", *zero).bits
+    data.first = WidgetDecodeVector2(HostFieldValue(*value, 1, "first", *zero).*, *codec.first)
+    data.second = WidgetDecodeVector2(HostFieldValue(*value, 2, "second", *zero).*, *codec.second)
+    data.third = WidgetDecodeVector2(HostFieldValue(*value, 3, "third", *zero).*, *codec.third)
+    data.color = WidgetDecodeColor(HostFieldValue(*value, 4, "color", *zero).*, *codec.color)
+    return data
+}
+
+WidgetValidTriangleProps :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "TriangleProps") { return false }
+    if !HostFieldScalarValid(*value, 0, "key", "u64", cast(s32)HostUnsigned) { return false }
+    if !HostFieldRecordValid(*value, 1, "first", WidgetValidVector2) { return false }
+    if !HostFieldRecordValid(*value, 2, "second", WidgetValidVector2) { return false }
+    if !HostFieldRecordValid(*value, 3, "third", WidgetValidVector2) { return false }
+    if !HostFieldRecordValid(*value, 4, "color", WidgetValidColor) { return false }
     return true
 }

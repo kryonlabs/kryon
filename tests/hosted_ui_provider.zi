@@ -87,6 +87,29 @@ Fieldset :: (session: Session, props: FieldsetProps) -> s32 {
     return 0
 }
 
+#import "shape_props"
+
+#program_export "LineHostedHost"
+Line :: (session: Session, props: LineProps) -> s32 {
+    return ifx session.slot == 4 && props.end.x == 4.0 then 81 else 0
+}
+
+#program_export "CircleHostedHost"
+Circle :: (session: Session, props: CircleProps) -> s32 {
+    return ifx session.slot == 4 && props.radius == 5.0 then 82 else 0
+}
+
+#program_export "RingHostedHost"
+Ring :: (session: Session, props: RingProps) -> s32 {
+    return ifx session.slot == 4 && props.outer_radius == 5.0 then 83 else 0
+}
+
+#program_export "TriangleHostedHost"
+Triangle :: (session: Session, props: TriangleProps) -> s32 {
+    unused props
+    return ifx session.slot == 4 then 84 else 0
+}
+
 #program_export "ToggleSizeHostedHost"
 ToggleSize :: (session: Session, props: ToggleProps) -> Vector2 {
     if session.slot != 4 || props.on_label != "On" {

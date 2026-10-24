@@ -25,6 +25,7 @@
 #import "context_menu_widget"
 #import "svg_icon_props"
 #import "fieldset_props"
+#import "shape_props"
 #import "toggle_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -95,6 +96,10 @@ spinbox_result: WidgetSpinboxStepResultCodec;
 time_picker_codec: WidgetTimePickerPropsCodec;
 svg_icon_codec: WidgetSvgIconPropsCodec;
 fieldset_codec: WidgetFieldsetPropsCodec;
+line_codec: WidgetLinePropsCodec;
+circle_codec: WidgetCirclePropsCodec;
+ring_codec: WidgetRingPropsCodec;
+triangle_codec: WidgetTrianglePropsCodec;
 toggle_codec: WidgetTogglePropsCodec;
 vector_codec: WidgetVector2Codec;
 time_picker_result: WidgetTimePickerResultCodec;
@@ -151,6 +156,13 @@ TileMapPaintSame :: (session: Session, count: s32) -> bool {
 }
 
 // Calls the host as a bundle does: arguments as values, names as C text.
+// Hosted shapes fill triangles through the renderer; this test draws none.
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    unused points
+    unused color
+}
+
 Call :: (module: string, function: string, arguments: []HostValue, result: *HostValue) -> s32 {
     unused CopyCString(module, module_name[:])
     unused CopyCString(function, function_name[:])
@@ -394,6 +406,26 @@ main :: () -> s32 {
     !WidgetValidVector2(result) || WidgetDecodeVector2(result, *vector_codec).x <= 0.0 ||
     WidgetDecodeVector2(result, *vector_codec).y <= 0.0 {
         return 108
+    }
+    // Each shape paints itself.
+    shape_before := PendingPaintCount(session)
+    black := Color.{0, 0, 0, 255}
+    arguments[1] = WidgetEncodeLineProps(LineProps.{.start = Vector2.{10.0, 300.0},
+            .end = Vector2.{60.0, 330.0}, .thickness = 2.0, .color = black}, *line_codec)
+    if Call("shape_widget", "LineHostedHost", arguments[:2], *result) != 1 { return 109 }
+    arguments[1] = WidgetEncodeCircleProps(CircleProps.{.center = Vector2.{80.0, 300.0},
+            .radius = 6.0, .fill = black}, *circle_codec)
+    if Call("shape_widget", "CircleHostedHost", arguments[:2], *result) != 1 { return 110 }
+    arguments[1] = WidgetEncodeRingProps(RingProps.{.center = Vector2.{100.0, 300.0},
+            .inner_radius = 3.0, .outer_radius = 6.0, .end_angle = 180.0, .color = black},
+        *ring_codec)
+    if Call("shape_widget", "RingHostedHost", arguments[:2], *result) != 1 { return 111 }
+    arguments[1] = WidgetEncodeTriangleProps(TriangleProps.{.first = Vector2.{120.0, 300.0},
+            .second = Vector2.{130.0, 310.0}, .third = Vector2.{110.0, 310.0}, .color = black},
+        *triangle_codec)
+    if Call("shape_widget", "TriangleHostedHost", arguments[:2], *result) != 1 ||
+    PendingPaintCount(session) < shape_before + 4 {
+        return 112
     }
     // A vector icon on its own paints its cells and answers nothing.
     icon_before := PendingPaintCount(session)
