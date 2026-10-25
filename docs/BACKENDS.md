@@ -37,6 +37,9 @@ SDL pixel hosts prefer accelerated texture presentation without blocking on
 vertical refresh. `SDL_RENDER_DRIVER` retains explicit driver selection,
 including `software`; hosts without an accelerated driver use software
 presentation automatically. Pixel rasterization remains on CPU workers.
+Desktop windows become visible only after their first complete frame has
+been uploaded and presented. A failed initial upload or copy leaves the
+window hidden until presentation succeeds.
 
 The `image_preview` module also supplies `ImageCompress` for smaller upright
 JPEG copies. It keeps transparent and animated originals intact and returns
