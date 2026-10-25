@@ -275,9 +275,9 @@ WidgetValidImageMesh :: (value: HostValue) -> bool {
     return true
 }
 
-// Widget codec schema: ["ImageProps",[["asset_path","string"],["alt_text","string"],["bounds","Rectangle"],["source","Rectangle"],["origin","Vector2"],["rotation","float32"],["fit","ImageFit"],["class_name","s32"],["texture","Texture2D"],["tint","u32"],["key","u64"],["smooth","bool"],["mesh","ImageMesh"]]]
+// Widget codec schema: ["ImageProps",[["asset_path","string"],["alt_text","string"],["bounds","Rectangle"],["source","Rectangle"],["origin","Vector2"],["rotation","float32"],["fit","ImageFit"],["class_name","s32"],["radius","float32"],["texture","Texture2D"],["tint","u32"],["key","u64"],["smooth","bool"],["mesh","ImageMesh"]]]
 WidgetImagePropsCodec :: struct {
-    fields: [13]HostField
+    fields: [14]HostField
     bounds: WidgetRectangleCodec
     source: WidgetRectangleCodec
     origin: WidgetVector2Codec
@@ -296,11 +296,12 @@ WidgetDecodeImageProps :: (value: HostValue, codec: *WidgetImagePropsCodec) -> I
     data.rotation = cast(float32)HostFieldValue(*value, 5, "rotation", *zero).real
     data.fit = cast(ImageFit)HostFieldValue(*value, 6, "fit", *zero).integer
     data.class_name = cast(s32)HostFieldValue(*value, 7, "class_name", *zero).integer
-    data.texture = WidgetDecodeTexture2D(HostFieldValue(*value, 8, "texture", *zero).*, *codec.texture)
-    data.tint = cast(u32)HostFieldValue(*value, 9, "tint", *zero).bits
-    data.key = cast(u64)HostFieldValue(*value, 10, "key", *zero).bits
-    data.smooth = HostFieldValue(*value, 11, "smooth", *zero).integer != 0
-    data.mesh = WidgetDecodeImageMesh(HostFieldValue(*value, 12, "mesh", *zero).*, *codec.mesh)
+    data.radius = cast(float32)HostFieldValue(*value, 8, "radius", *zero).real
+    data.texture = WidgetDecodeTexture2D(HostFieldValue(*value, 9, "texture", *zero).*, *codec.texture)
+    data.tint = cast(u32)HostFieldValue(*value, 10, "tint", *zero).bits
+    data.key = cast(u64)HostFieldValue(*value, 11, "key", *zero).bits
+    data.smooth = HostFieldValue(*value, 12, "smooth", *zero).integer != 0
+    data.mesh = WidgetDecodeImageMesh(HostFieldValue(*value, 13, "mesh", *zero).*, *codec.mesh)
     return data
 }
 
@@ -314,11 +315,12 @@ WidgetValidImageProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 5, "rotation", "float32", cast(s32)HostReal) { return false }
     if !HostFieldScalarValid(*value, 6, "fit", "ImageFit", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 7, "class_name", "s32", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 8, "texture", WidgetValidTexture2D) { return false }
-    if !HostFieldScalarValid(*value, 9, "tint", "u32", cast(s32)HostUnsigned) { return false }
-    if !HostFieldScalarValid(*value, 10, "key", "u64", cast(s32)HostUnsigned) { return false }
-    if !HostFieldScalarValid(*value, 11, "smooth", "bool", cast(s32)HostInteger) { return false }
-    if !HostFieldRecordValid(*value, 12, "mesh", WidgetValidImageMesh) { return false }
+    if !HostFieldScalarValid(*value, 8, "radius", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldRecordValid(*value, 9, "texture", WidgetValidTexture2D) { return false }
+    if !HostFieldScalarValid(*value, 10, "tint", "u32", cast(s32)HostUnsigned) { return false }
+    if !HostFieldScalarValid(*value, 11, "key", "u64", cast(s32)HostUnsigned) { return false }
+    if !HostFieldScalarValid(*value, 12, "smooth", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldRecordValid(*value, 13, "mesh", WidgetValidImageMesh) { return false }
     return true
 }
 

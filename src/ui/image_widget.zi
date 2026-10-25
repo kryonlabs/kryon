@@ -120,6 +120,7 @@ Image :: (session: Session, image: ImageProps) {
     if (faces.surface.fields & cast(u32)StyleRadius) != cast(u32)0 {
         radius = faces.surface.radius
     }
+    if image.radius > 0.0 { radius = image.radius }
     if (faces.surface.fields & cast(u32)StyleBackground) != cast(u32)0 {
         PaintRoundedFill(session, node, image.bounds, radius, 12,
             ColorFromPacked(faces.surface.background))

@@ -452,7 +452,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         }
         // A warped image's grid; images inside buttons, title bars and
         // dropdown options are drawn without one.
-        mesh_at := HostFieldAt(props, 12, "mesh")
+        mesh_at := HostFieldAt(props, 13, "mesh")
         if mesh_at >= 0 {
             image.mesh.points = WidgetHostMeshPoints(props.fields[mesh_at].value)
         }

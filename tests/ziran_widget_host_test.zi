@@ -341,7 +341,7 @@ main :: () -> s32 {
     for index: cast(s32)0..3 {
         point_values[index] = WidgetEncodeVector2(mesh_points[index], *point_codecs[index])
     }
-    mesh_at := HostFieldAt(arguments[1], 12, "mesh")
+    mesh_at := HostFieldAt(arguments[1], 13, "mesh")
     points_at := HostFieldAt(arguments[1].fields[mesh_at].value, 2, "points")
     if mesh_at < 0 || points_at < 0 || arguments[1].fields[mesh_at].value.fields[points_at].value.length != cast(usize)0 {
         return 42

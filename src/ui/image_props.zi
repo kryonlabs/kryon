@@ -32,6 +32,8 @@ ImageProps :: struct {
     rotation: float32
     fit: ImageFit
     class_name: s32
+    // A positive corner radius overrides the image's style radius.
+    radius: float32
     // Runtime texture: honored instead of asset_path when set.
     texture: Texture2D
     // A nonzero packed RGBA color tints this image. Zero uses its style color.

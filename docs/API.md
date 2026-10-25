@@ -97,6 +97,8 @@ send `KeyEscape` with `KeyboardSend`, and application shortcuts check
 Use `Image(ImageProps)` for UI images. Its asset path, bounds, fit, and alt
 text describe the image at the widget boundary. Backend texture calls are
 renderer primitives, not alternate widget APIs.
+`ImageProps.radius` gives an image rounded corners in native and hosted UI;
+a positive value overrides its style radius.
 
 `ImageProps.mesh` warps the same image over a grid of `columns` × `rows`
 screen points, row by row from the source's top left, each cell drawn as two
