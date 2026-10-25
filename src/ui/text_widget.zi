@@ -186,7 +186,9 @@ Theme :: #import "theme";
             face.value.font_size), face.fallback_font),
             face.value.foreground, cast(u32)0, Theme.LightText(),
             false, (face.value.fields & cast(u32)StyleForeground) != cast(u32)0,
-            props.disabled, false, 0)
+            // A stylesheet's opacity already supplies the disabled face;
+            // the fallback must not fade it a second time.
+            props.disabled && (face.value.fields & cast(u32)StyleOpacity) == cast(u32)0, false, 0)
         prepared.font = appearance.font
         prepared.color = ColorFromPacked(Opacity(appearance.color,
             StyleOpacityValue(face.value.fields, face.value.opacity)))

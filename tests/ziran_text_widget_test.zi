@@ -160,6 +160,15 @@ LinkChecks :: () -> s32 {
     plain := linked
     plain.links = ranges[:0]
     if TextLinkAt(TestSession(), plain, 35.0, 5.0) != -1 { return 16 }
+    // Disabled text receives one fade, with or without a palette rule.
+    face := TextFace.{.fallback_font = 14,
+        .value = StyleData.{.fields = cast(u32)StyleForeground | cast(u32)StyleOpacity,
+            .foreground = cast(u32)0xf2f0ffff, .opacity = 0.45}}
+    dim := PrepareText(TextProps.{.font = 14, .disabled = true}, face)
+    if dim.color.a != cast(u8)114 { return 17 }
+    face.value.fields = cast(u32)StyleForeground
+    dim = PrepareText(TextProps.{.font = 14, .disabled = true}, face)
+    if dim.color.a != cast(u8)114 { return 18 }
     ClearStyleTokenColors()
     return 0
 }
