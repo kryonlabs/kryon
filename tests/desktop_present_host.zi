@@ -5,8 +5,10 @@ CountsRaw :: (uploads: s32, copies: s32, presents: s32) -> bool #foreign c "desk
 RejectUpdateRaw :: (reject: bool) #foreign c "desktop_test_reject_update";
 RejectCopyRaw :: (reject: bool) #foreign c "desktop_test_reject_copy";
 PixelRaw :: (window: *void, expected: u32) -> bool #foreign c "desktop_test_pixel";
+WindowPixelRaw :: (window: *void, expected: u32) -> bool #foreign c "desktop_test_window_pixel";
 Reset :: () { ResetRaw() }
 Counts :: (uploads: s32, copies: s32, presents: s32) -> bool { return CountsRaw(uploads, copies, presents) }
 RejectUpdate :: (reject: bool) { RejectUpdateRaw(reject) }
 RejectCopy :: (reject: bool) { RejectCopyRaw(reject) }
 Pixel :: (window: *void, expected: u32) -> bool { return PixelRaw(window, expected) }
+WindowPixel :: (window: *void, expected: u32) -> bool { return WindowPixelRaw(window, expected) }

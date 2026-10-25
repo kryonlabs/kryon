@@ -48,7 +48,8 @@ main :: () -> s32 {
     // The first successful present reveals already-painted pixels, including
     // when the application marked its initial frame unchanged.
     if !Frame(true) || !Counts(0, 1) || !Desktop.WindowVisibleHost() ||
-    !Probe.Pixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) { return 2 }
+    !Probe.Pixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) ||
+    !Probe.WindowPixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) { return 2 }
     Probe.Reset()
     for i: 0..29 { if !Frame(true) { return 3 } }
     if !Counts(0, 0) { return 4 }

@@ -10,6 +10,8 @@ export YUE_DESKTOP_RECOVERY=0
 cat > "$work/probe.c" <<'C'
 #define _GNU_SOURCE
 #include <SDL.h>
+#include <SDL_syswm.h>
+#include <X11/Xutil.h>
 #include <dlfcn.h>
 #include <assert.h>
 #include <stdbool.h>
@@ -29,6 +31,18 @@ bool desktop_test_pixel(SDL_Window *window, Uint32 expected) {
     SDL_Renderer *renderer = SDL_GetRenderer(window);
     return renderer != NULL && SDL_RenderReadPixels(renderer, &rect,
         SDL_PIXELFORMAT_ARGB8888, &actual, sizeof(actual)) == 0 && actual == expected;
+}
+bool desktop_test_window_pixel(SDL_Window *window, Uint32 expected) {
+    SDL_SysWMinfo info;
+    SDL_VERSION(&info.version);
+    if (!SDL_GetWindowWMInfo(window, &info) || info.subsystem != SDL_SYSWM_X11)
+        return false;
+    XImage *image = XGetImage(info.info.x11.display, info.info.x11.window,
+        50, 50, 1, 1, AllPlanes, ZPixmap);
+    if (image == NULL) return false;
+    unsigned long actual = XGetPixel(image, 0, 0);
+    XDestroyImage(image);
+    return (actual & 0xffffff) == (expected & 0xffffff);
 }
 
 int SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect,
