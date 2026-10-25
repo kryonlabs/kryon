@@ -308,6 +308,7 @@ Controls :: #import "control_props";
 Drawing :: #import "drawing_props";
 Menu :: #import "dropdown";
 Picture :: #import "image";
+Dialog :: #import "modal";
 #scope_file
 Rule :: (rules: *Sheet.StyleRules, kind: s32, background: u32, foreground: u32, state: s32 = 0) {
     item := *rules.items[rules.count]; item.selector = Sheet.StyleDefaultSelector(); item.selector.kind = kind; item.state = state
@@ -364,6 +365,15 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = false) -> Sheet.
     missing_picture.selector.role = Picture.ImageLabelRole()
     missing_picture.style.fields = cast(u32)Controls.StyleField.StyleForeground
     missing_picture.style.foreground = fg
+    // Dialog panels share the app palette; their scrim remains translucent.
+    panel := *rules.items[rules.count]; panel.selector = Sheet.StyleDefaultSelector(); rules.count += 1
+    panel.selector.kind = Sheet.StyleKindModal(); panel.selector.role = Dialog.ModalPanelRole()
+    panel.style.fields = cast(u32)Controls.StyleField.StyleBackground | cast(u32)Controls.StyleField.StyleForeground | cast(u32)Controls.StyleField.StyleBorder
+    panel.style.background = palette.base; panel.style.foreground = fg; panel.style.border = palette.border
+    close := *rules.items[rules.count]; close.selector = Sheet.StyleDefaultSelector(); rules.count += 1
+    close.selector.kind = Sheet.StyleKindModal(); close.selector.role = Dialog.ModalCloseRole()
+    close.style.fields = cast(u32)Controls.StyleField.StyleBackground | cast(u32)Controls.StyleField.StyleForeground
+    close.style.background = palette.base; close.style.foreground = fg
     Rule(*rules, Sheet.StyleKindTextField(), button, fg)
     Rule(*rules, Sheet.StyleKindTextArea(), button, fg)
     Rule(*rules, Sheet.StyleKindSpinbox(), palette.base, fg)

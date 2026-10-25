@@ -7,6 +7,7 @@
 #import "scroll"
 #import "dropdown"
 #import "image"
+#import "modal"
 using ButtonTone;
 using ButtonEmphasis;
 using ButtonState;
@@ -98,6 +99,18 @@ main :: () -> s32 {
     dark_thumb := ScrollFace(StyleKindScrollThumb(), 0, false, cast(s32)ButtonStateNormal, 10.0)
     dark_track := ScrollFace(StyleKindScroll(), 0, false, cast(s32)ButtonStateNormal, 10.0)
     Check(dark_track.value.background == cast(u32)0 && CssLuminance(dark_thumb.value.background) > CssLuminance(dark.background), "dark scrollbar follows its palette instead of a light track")
+    for mode: cast(s32)0..1 {
+        theme := SystemPaletteFallback(mode == 1)
+        Check(SystemPaletteInstall(theme), "dialog palette installs")
+        facts := StyleDefaultFacts(StyleKindModal())
+        facts.role = ModalPanelRole()
+        dialog := ResolveInstalledStyleRules(Base(), facts, 0)
+        Check(dialog.background == theme.base && dialog.foreground == theme.text && dialog.border == theme.border,
+            "dialog panel and text share the light or dark app palette")
+        facts.role = ModalScrimRole()
+        scrim := ResolveInstalledStyleRules(Base(), facts, 0)
+        Check(scrim.background == cast(u32)Untouched, "dialog palette preserves its translucent scrim")
+    }
     print("System palette buttons: % failures\n", failures)
     return ifx failures == 0 then 0 else 1
 }
