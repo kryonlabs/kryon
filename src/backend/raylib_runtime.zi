@@ -293,10 +293,15 @@ RaylibTypefaceIndex :: (name: string) -> s32 {
 
 // Without an explicit seed a UI font starts with the scripts most locales
 // need; anything else is added on first use.
-raylib_default_glyph_ranges: [18]s32 = .[
-0x0020, 0x007E, 0x00A0, 0x024F, 0x0370, 0x03FF, 0x0400, 0x04FF,
-0x2010, 0x205E, 0x20A0, 0x20C0, 0x2190, 0x21FF, 0x2212, 0x2212,
-0xFFFD, 0xFFFD];
+// The glyphs a typeface bakes when it is registered: ASCII, Latin-1 and the
+// punctuation interfaces use most. Every bake draws each baked glyph, so
+// baking Latin Extended, Greek, Cyrillic and the symbol blocks up front made
+// a phone's start wait about 0.4 s; RaylibEnsureGlyphs adds any other glyph
+// the first time text needs it.
+raylib_default_glyph_ranges: [20]s32 = .[
+0x0020, 0x007E, 0x00A0, 0x00FF, 0x2013, 0x2014, 0x2018, 0x201D,
+0x2022, 0x2022, 0x2026, 0x2026, 0x20AC, 0x20AC, 0x2192, 0x2192,
+0x2212, 0x2212, 0xFFFD, 0xFFFD];
 
 RaylibHasGlyph :: (typeface: *RaylibTypeface, codepoint: s32) -> bool {
     if codepoint < 0 || codepoint > 0x10FFFF { return false }
@@ -344,7 +349,7 @@ RaylibSeedGlyphs :: (typeface: *RaylibTypeface, seed: *s32,
         return true
     }
     range: s32 = 0
-    while range < 18 {
+    while range < 20 {
         codepoint: s32 = raylib_default_glyph_ranges[range]
         while codepoint <= raylib_default_glyph_ranges[range + 1] {
             if !RaylibAddGlyph(typeface, codepoint) { return false }
