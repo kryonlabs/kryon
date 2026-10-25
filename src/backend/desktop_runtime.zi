@@ -121,6 +121,7 @@ desktop_texture_reset: bool;
 desktop_pixels_valid: bool;
 // Keep the native window hidden until its first complete frame is presented.
 desktop_first_frame: bool;
+desktop_first_frame_show: bool;
 // A size ResizeDesktop asked for, applied when the next frame begins.
 desktop_next_width: s32;
 desktop_next_height: s32;
@@ -184,6 +185,7 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     desktop_texture_reset = false
     desktop_pixels_valid = false
     desktop_first_frame = true
+    desktop_first_frame_show = true
     StartTextInput()
     return OpenRaster(width, height)
 }
@@ -539,7 +541,7 @@ EndDesktopFrame :: () -> bool {
     desktop_present_pending = false
     if desktop_first_frame {
         desktop_first_frame = false
-        ShowWindow(window)
+        if desktop_first_frame_show { ShowWindow(window) }
     }
     return true
 }
@@ -582,10 +584,9 @@ WindowFocusedHost :: () -> bool {
 WindowSetVisibleHost :: (visible: bool) {
     if window == null { return }
     if desktop_first_frame {
-        // An explicit hide before the first frame must stay hidden. A show
-        // waits for the same fully painted frame as the initial launch.
-        if visible { return }
-        desktop_first_frame = false
+        // Explicit visibility still waits for fully painted initial pixels.
+        desktop_first_frame_show = visible
+        return
     }
     if visible {
         ShowWindow(window)

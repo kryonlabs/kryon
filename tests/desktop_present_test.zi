@@ -34,6 +34,8 @@ main :: () -> s32 {
     if !Desktop.OpenDesktopSized(160, 120) { return 1 }
     defer Desktop.CloseDesktop()
     if Desktop.WindowVisibleHost() { return 21 }
+    Desktop.WindowSetVisibleHost(true)
+    if Desktop.WindowVisibleHost() { return 24 }
     Quiet()
     // A failed first upload/copy cannot expose an unpainted native window.
     Probe.RejectUpdate(true)
@@ -89,6 +91,16 @@ main :: () -> s32 {
     Show(Desktop.DesktopWindow()); Delay(cast(u32)30)
     if !Desktop.PollDesktop() || !Desktop.WindowVisibleHost() || !Frame(true) || !Counts(1, 1) { return 19 }
     if !Probe.Pixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) { return 20 }
+    // Apps may request an initially hidden window and show it later. Their
+    // first frame must be ready without overriding that visibility choice.
+    Desktop.CloseDesktop()
+    if !Desktop.OpenDesktopSized(160, 120) { return 25 }
+    Desktop.WindowSetVisibleHost(false)
+    Probe.Reset()
+    if !Frame(false) || Desktop.WindowVisibleHost() || !Counts(1, 1) { return 26 }
+    Desktop.WindowSetVisibleHost(true)
+    if !Desktop.WindowVisibleHost() ||
+    !Probe.Pixel(Desktop.DesktopWindow(), cast(u32)0xffdc283c) { return 27 }
     print("Unchanged desktop frames skip presentation; owned exposure, resize, resets and failures redraw safely\n")
     return 0
 }
