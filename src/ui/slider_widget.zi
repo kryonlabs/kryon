@@ -1,288 +1,306 @@
-Theme :: #import "theme";
-#import "session"
-#import "control_props"
-#import "drawing_props"
-#import "font_metrics"
-#import "geometry"
-#import "paint_queue"
-#import "slider"
-#import "slider_props"
-#import "style"
-#import "style_sheet"
-#import "surface"
-#import "tree"
-#import "tree_input"
-#import "widget_kind"
+// Portable compositions use the same widget as retained native hosts.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "slider_props"
+    host_api :: #system_library "host_api";
+    SliderHostedHost :: (session: Session, props: SliderProps) -> SliderStep #foreign host_api;
+    DiscreteSliderHostedHost :: (session: Session,
+        props: DiscreteSliderProps) -> SliderDiscreteStep #foreign host_api;
+    #program_export
+    Slider :: (session: Session, props: SliderProps) -> SliderStep {
+        return SliderHostedHost(session, props)
+    }
+    #program_export
+    DiscreteSlider :: (session: Session, props: DiscreteSliderProps) -> SliderDiscreteStep {
+        return DiscreteSliderHostedHost(session, props)
+    }
+} else {
+    Theme :: #import "theme";
+    #import "session"
+    #import "control_props"
+    #import "drawing_props"
+    #import "font_metrics"
+    #import "geometry"
+    #import "paint_queue"
+    #import "slider"
+    #import "slider_props"
+    #import "style"
+    #import "style_sheet"
+    #import "surface"
+    #import "tree"
+    #import "tree_input"
+    #import "widget_kind"
 
-using WidgetKind;
-using ButtonTone;
-using ButtonEmphasis;
-using ControlSize;
-using ButtonState;
-using StyleField;
+    using WidgetKind;
+    using ButtonTone;
+    using ButtonEmphasis;
+    using ControlSize;
+    using ButtonState;
+    using StyleField;
 
-#program_export
-SliderDefaultFace :: (kind: s32, role: s32,
-    disabled: bool) -> StyleData {
-    face: StyleData
-    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
-        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
-        cast(u32)StyleOpacity | cast(u32)StyleFontSize
-    face.background = Theme.LightBorder()
-    face.foreground = Theme.LightText()
-    face.border = cast(u32)0x00000000
-    face.opacity = 1.0
-    face.font_size = 14.0
-    if kind == StyleKindSliderThumb() {
-        face.background = cast(u32)0xffffffff
-        face.border = Theme.LightBorderStrong()
-        face.border_width = 1.0
-    } else if role == SliderFillRole() {
-        face.background = Theme.LightAccent()
-    } else if role == SliderLabelRole() {
-        face.background = cast(u32)0x00000000
-    }
-    if disabled {
-        face.background = Opacity(face.background, 0.45)
-        face.foreground = Opacity(face.foreground, 0.45)
-        face.border = Opacity(face.border, 0.45)
-    }
-    return face
-}
-
-#program_export
-SliderFaceFor :: (id: s32,
-    class_name: s32, disabled: bool, kind: s32,
-    role: s32, tone: ButtonTone, state: s32) -> StyleFrame {
-    facts: StyleFacts = StyleControlRoleFacts(kind, id, class_name,
-        role, cast(s32)tone, cast(s32)ButtonEmphasisFilled,
-        cast(s32)ControlSizeMedium, state)
-    frame: StyleFrame
-    frame.value = ResolveInstalledStyleRules(
-        SliderDefaultFace(kind, role, disabled), facts, state)
-    return frame
-}
-
-SliderPrepared :: struct {
-    key: u64
-    drag: PointerDrag
-    layout: SliderLayout
-    spec: SliderSpec
-    label: StyleFrame
-    font: s32
-    line_height: s32
-    value_text: string
-}
-
-#program_export
-PrepareSlider :: (session: Session, key: u64, bounds: Rectangle, id: s32,
-    label_text: string, value_text: string, vertical: bool, disabled: bool,
-    class_name: s32) -> SliderPrepared {
-    prepared: SliderPrepared
-    prepared.key = key
-    prepared.value_text = value_text
-    if prepared.key == cast(u64)0 && id > 0 {
-        prepared.key = cast(u64)cast(u32)id
-    }
-    previous: s32 = -1
-    if TreeIsBuilding(session) {
-        previous = TreePrevious(session, TreeCurrentParent(session), prepared.key, WidgetKindSlider)
-    }
-    prepared.drag = TreeTakeDragAt(session, previous)
-    hovered: bool = TreeHoveredAt(session, previous)
-    pressed: bool = prepared.drag.active || TreePressedAt(session, previous)
-    state: s32 = ResolveState(cast(s32)ButtonStateAuto, disabled,
-        false, pressed, hovered, false, false)
-    track: StyleFrame = SliderFaceFor(id, class_name,
-        disabled, StyleKindSlider(), SliderTrackRole(),
-        cast(ButtonTone)ButtonToneNeutral, state)
-    active: StyleFrame = SliderFaceFor(id, class_name,
-        disabled, StyleKindSlider(), SliderFillRole(),
-        cast(ButtonTone)ButtonToneAccent, state)
-    thumb: StyleFrame = SliderFaceFor(id, class_name,
-        disabled, StyleKindSliderThumb(), StyleAny(),
-        cast(ButtonTone)ButtonToneAccent, state)
-    prepared.label = SliderFaceFor(id, class_name,
-        disabled, StyleKindSlider(), SliderLabelRole(),
-        cast(ButtonTone)ButtonToneNeutral, state)
-    prepared.font = ResolveFont(0,
-        StyleFontValue(prepared.label.value.fields,
-            prepared.label.value.font_size), 14)
-    if label_text != "" || value_text != "" {
-        prepared.line_height = GlyphLineHeight(prepared.font,
-            prepared.label.value.typeface)
-    }
-    min_length: float32 = cast(float32)SliderMinimumLengthForStyle(track, 1.0)
-    thumb_size: float32 = cast(float32)SliderThumbSizeForStyle(thumb, 1.0)
-    if vertical {
-        if bounds.height < min_length { bounds.height = min_length }
-        if bounds.width < thumb_size { bounds.width = thumb_size }
-    } else {
-        if bounds.width < min_length { bounds.width = min_length }
-        if bounds.height < thumb_size { bounds.height = thumb_size }
-    }
-    if label_text == "" && value_text == "" {
-        prepared.layout.bounds = bounds
-        prepared.layout.track = bounds
-    } else {
-        value_width: float32 = 0.0
-        if value_text != "" {
-            value_width = cast(float32)GlyphWidth(value_text,
-                prepared.font, prepared.label.value.typeface)
+    #program_export
+    SliderDefaultFace :: (kind: s32, role: s32,
+        disabled: bool) -> StyleData {
+        face: StyleData
+        face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+            cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+            cast(u32)StyleOpacity | cast(u32)StyleFontSize
+        face.background = Theme.LightBorder()
+        face.foreground = Theme.LightText()
+        face.border = cast(u32)0x00000000
+        face.opacity = 1.0
+        face.font_size = 14.0
+        if kind == StyleKindSliderThumb() {
+            face.background = cast(u32)0xffffffff
+            face.border = Theme.LightBorderStrong()
+            face.border_width = 1.0
+        } else if role == SliderFillRole() {
+            face.background = Theme.LightAccent()
+        } else if role == SliderLabelRole() {
+            face.background = cast(u32)0x00000000
         }
-        prepared.layout = SliderLayoutFor(bounds,
-            cast(float32)prepared.line_height,
-            cast(float32)prepared.line_height, value_width, 1.0,
-            false, vertical, false, false)
+        if disabled {
+            face.background = Opacity(face.background, 0.45)
+            face.foreground = Opacity(face.foreground, 0.45)
+            face.border = Opacity(face.border, 0.45)
+        }
+        return face
     }
-    prepared.spec.bounds = prepared.layout.track
-    prepared.spec.vertical = vertical
-    prepared.spec.active = prepared.drag.active
-    prepared.spec.hovered = hovered
-    prepared.spec.disabled = disabled
-    prepared.spec.scale = 1.0
-    prepared.spec.track = track
-    prepared.spec.active_track = active
-    prepared.spec.thumb = thumb
-    return prepared
-}
 
-#program_export
-SliderDragRatio :: (prepared: SliderPrepared) -> float32 {
-    paint: SliderPaint = SliderPaintFor(prepared.spec)
-    if prepared.spec.vertical {
-        return SliderPointerRatio(prepared.drag.y,
-            paint.track_bounds.y, paint.track_bounds.height, true)
+    #program_export
+    SliderFaceFor :: (id: s32,
+        class_name: s32, disabled: bool, kind: s32,
+        role: s32, tone: ButtonTone, state: s32) -> StyleFrame {
+        facts: StyleFacts = StyleControlRoleFacts(kind, id, class_name,
+            role, cast(s32)tone, cast(s32)ButtonEmphasisFilled,
+            cast(s32)ControlSizeMedium, state)
+        frame: StyleFrame
+        frame.value = ResolveInstalledStyleRules(
+            SliderDefaultFace(kind, role, disabled), facts, state)
+        return frame
     }
-    return SliderPointerRatio(prepared.drag.x,
-        paint.track_bounds.x, paint.track_bounds.width, false)
-}
 
-#program_export
-PaintSliderForNode :: (session: Session, node: s32, paint: SliderPaint,
-    label_text: string, value_text: string, layout: SliderLayout,
-    label: StyleFrame, font: s32,
-    line_height: s32) {
-    track_opacity: float32 = StyleOpacityValue(
-        paint.track.value.fields, paint.track.value.opacity)
-    PaintRoundedFill(session, node, paint.track_bounds,
-        PillRadius(paint.track_bounds), 16,
-        ColorFromPacked(Opacity(paint.track.value.background,
-            track_opacity)))
-    if paint.track.value.border_width > 0.0 {
-        PaintRoundedOutline(session, node, paint.track_bounds,
+    SliderPrepared :: struct {
+        key: u64
+        drag: PointerDrag
+        layout: SliderLayout
+        spec: SliderSpec
+        label: StyleFrame
+        font: s32
+        line_height: s32
+        value_text: string
+    }
+
+    #program_export
+    PrepareSlider :: (session: Session, key: u64, bounds: Rectangle, id: s32,
+        label_text: string, value_text: string, vertical: bool, disabled: bool,
+        class_name: s32) -> SliderPrepared {
+        prepared: SliderPrepared
+        prepared.key = key
+        prepared.value_text = value_text
+        if prepared.key == cast(u64)0 && id > 0 {
+            prepared.key = cast(u64)cast(u32)id
+        }
+        previous: s32 = -1
+        if TreeIsBuilding(session) {
+            previous = TreePrevious(session, TreeCurrentParent(session), prepared.key, WidgetKindSlider)
+        }
+        prepared.drag = TreeTakeDragAt(session, previous)
+        hovered: bool = TreeHoveredAt(session, previous)
+        pressed: bool = prepared.drag.active || TreePressedAt(session, previous)
+        state: s32 = ResolveState(cast(s32)ButtonStateAuto, disabled,
+            false, pressed, hovered, false, false)
+        track: StyleFrame = SliderFaceFor(id, class_name,
+            disabled, StyleKindSlider(), SliderTrackRole(),
+            cast(ButtonTone)ButtonToneNeutral, state)
+        active: StyleFrame = SliderFaceFor(id, class_name,
+            disabled, StyleKindSlider(), SliderFillRole(),
+            cast(ButtonTone)ButtonToneAccent, state)
+        thumb: StyleFrame = SliderFaceFor(id, class_name,
+            disabled, StyleKindSliderThumb(), StyleAny(),
+            cast(ButtonTone)ButtonToneAccent, state)
+        prepared.label = SliderFaceFor(id, class_name,
+            disabled, StyleKindSlider(), SliderLabelRole(),
+            cast(ButtonTone)ButtonToneNeutral, state)
+        prepared.font = ResolveFont(0,
+            StyleFontValue(prepared.label.value.fields,
+                prepared.label.value.font_size), 14)
+        if label_text != "" || value_text != "" {
+            prepared.line_height = GlyphLineHeight(prepared.font,
+                prepared.label.value.typeface)
+        }
+        min_length: float32 = cast(float32)SliderMinimumLengthForStyle(track, 1.0)
+        thumb_size: float32 = cast(float32)SliderThumbSizeForStyle(thumb, 1.0)
+        if vertical {
+            if bounds.height < min_length { bounds.height = min_length }
+            if bounds.width < thumb_size { bounds.width = thumb_size }
+        } else {
+            if bounds.width < min_length { bounds.width = min_length }
+            if bounds.height < thumb_size { bounds.height = thumb_size }
+        }
+        if label_text == "" && value_text == "" {
+            prepared.layout.bounds = bounds
+            prepared.layout.track = bounds
+        } else {
+            value_width: float32 = 0.0
+            if value_text != "" {
+                value_width = cast(float32)GlyphWidth(value_text,
+                    prepared.font, prepared.label.value.typeface)
+            }
+            prepared.layout = SliderLayoutFor(bounds,
+                cast(float32)prepared.line_height,
+                cast(float32)prepared.line_height, value_width, 1.0,
+                false, vertical, false, false)
+        }
+        prepared.spec.bounds = prepared.layout.track
+        prepared.spec.vertical = vertical
+        prepared.spec.active = prepared.drag.active
+        prepared.spec.hovered = hovered
+        prepared.spec.disabled = disabled
+        prepared.spec.scale = 1.0
+        prepared.spec.track = track
+        prepared.spec.active_track = active
+        prepared.spec.thumb = thumb
+        return prepared
+    }
+
+    #program_export
+    SliderDragRatio :: (prepared: SliderPrepared) -> float32 {
+        paint: SliderPaint = SliderPaintFor(prepared.spec)
+        if prepared.spec.vertical {
+            return SliderPointerRatio(prepared.drag.y,
+                paint.track_bounds.y, paint.track_bounds.height, true)
+        }
+        return SliderPointerRatio(prepared.drag.x,
+            paint.track_bounds.x, paint.track_bounds.width, false)
+    }
+
+    #program_export
+    PaintSliderForNode :: (session: Session, node: s32, paint: SliderPaint,
+        label_text: string, value_text: string, layout: SliderLayout,
+        label: StyleFrame, font: s32,
+        line_height: s32) {
+        track_opacity: float32 = StyleOpacityValue(
+            paint.track.value.fields, paint.track.value.opacity)
+        PaintRoundedFill(session, node, paint.track_bounds,
             PillRadius(paint.track_bounds), 16,
-            paint.track.value.border_width,
-            ColorFromPacked(Opacity(paint.track.value.border,
+            ColorFromPacked(Opacity(paint.track.value.background,
                 track_opacity)))
-    }
-    if paint.active_bounds.width > 0.0 &&
-        paint.active_bounds.height > 0.0 {
-        active_opacity: float32 = StyleOpacityValue(
-            paint.active_track.value.fields,
-            paint.active_track.value.opacity)
-        PaintRoundedFill(session, node, paint.active_bounds,
-            PillRadius(paint.active_bounds), 16,
-            ColorFromPacked(Opacity(
-                paint.active_track.value.background,
-                active_opacity)))
-    }
-    thumb: Rectangle = Rectangle.{
-        paint.thumb_x - paint.thumb_radius,
-        paint.thumb_y - paint.thumb_radius,
-        paint.thumb_radius * 2.0, paint.thumb_radius * 2.0}
-    PaintRoundedFill(session, node, thumb,
-        PillRadius(thumb), 16,
-        ColorFromPacked(paint.thumb_fill_color))
-    if paint.thumb.value.border_width > 0.0 {
-        PaintRoundedOutline(session, node, thumb,
+        if paint.track.value.border_width > 0.0 {
+            PaintRoundedOutline(session, node, paint.track_bounds,
+                PillRadius(paint.track_bounds), 16,
+                paint.track.value.border_width,
+                ColorFromPacked(Opacity(paint.track.value.border,
+                    track_opacity)))
+        }
+        if paint.active_bounds.width > 0.0 &&
+            paint.active_bounds.height > 0.0 {
+            active_opacity: float32 = StyleOpacityValue(
+                paint.active_track.value.fields,
+                paint.active_track.value.opacity)
+            PaintRoundedFill(session, node, paint.active_bounds,
+                PillRadius(paint.active_bounds), 16,
+                ColorFromPacked(Opacity(
+                    paint.active_track.value.background,
+                    active_opacity)))
+        }
+        thumb: Rectangle = Rectangle.{
+            paint.thumb_x - paint.thumb_radius,
+            paint.thumb_y - paint.thumb_radius,
+            paint.thumb_radius * 2.0, paint.thumb_radius * 2.0}
+        PaintRoundedFill(session, node, thumb,
             PillRadius(thumb), 16,
-            paint.thumb.value.border_width,
-            ColorFromPacked(paint.thumb_edge_color))
+            ColorFromPacked(paint.thumb_fill_color))
+        if paint.thumb.value.border_width > 0.0 {
+            PaintRoundedOutline(session, node, thumb,
+                PillRadius(thumb), 16,
+                paint.thumb.value.border_width,
+                ColorFromPacked(paint.thumb_edge_color))
+        }
+        if label_text != "" {
+            label_opacity: float32 = StyleOpacityValue(label.value.fields,
+                label.value.opacity)
+            x: s32 = cast(s32)(layout.label.x +
+                SliderLabelInsetForStyle(label, 1.0))
+            y: s32 = cast(s32)(layout.label.y +
+                (layout.label.height - cast(float32)line_height) * 0.5)
+            PaintClippedLabel(session, node, label_text, x, y, font,
+                ColorFromPacked(Opacity(label.value.foreground,
+                    label_opacity)), layout.label)
+        }
+        if value_text != "" {
+            value_opacity: float32 = StyleOpacityValue(label.value.fields,
+                label.value.opacity)
+            y: s32 = cast(s32)(layout.value.y +
+                (layout.value.height - cast(float32)line_height) * 0.5)
+            PaintClippedLabel(session, node, value_text,
+                cast(s32)layout.value.x, y, font,
+                ColorFromPacked(Opacity(label.value.foreground,
+                    value_opacity)), layout.value)
+        }
     }
-    if label_text != "" {
-        label_opacity: float32 = StyleOpacityValue(label.value.fields,
-            label.value.opacity)
-        x: s32 = cast(s32)(layout.label.x +
-            SliderLabelInsetForStyle(label, 1.0))
-        y: s32 = cast(s32)(layout.label.y +
-            (layout.label.height - cast(float32)line_height) * 0.5)
-        PaintClippedLabel(session, node, label_text, x, y, font,
-            ColorFromPacked(Opacity(label.value.foreground,
-                label_opacity)), layout.label)
-    }
-    if value_text != "" {
-        value_opacity: float32 = StyleOpacityValue(label.value.fields,
-            label.value.opacity)
-        y: s32 = cast(s32)(layout.value.y +
-            (layout.value.height - cast(float32)line_height) * 0.5)
-        PaintClippedLabel(session, node, value_text,
-            cast(s32)layout.value.x, y, font,
-            ColorFromPacked(Opacity(label.value.foreground,
-                value_opacity)), layout.value)
-    }
-}
 
-#program_export
-SubmitSlider :: (session: Session, prepared: SliderPrepared, ratio: float32,
-    id: s32, label_text: string, semantic_label: string,
-    disabled: bool) {
-    spec: SliderSpec = prepared.spec
-    spec.ratio = ratio
-    paint: SliderPaint = SliderPaintFor(spec)
-    node: s32 = -1
-    if TreeIsBuilding(session) {
-        node = TreeSubmitCurrent(session, prepared.key, WidgetKindSlider,
-            prepared.layout.bounds)
-        if node < 0 { return }
-        TreeSetInteractive(session, node, disabled, false, id)
-        TreeSetDragCapture(session, node, true)
-        if semantic_label == "" { semantic_label = label_text }
-        TreeSetLabel(session, node, semantic_label)
+    #program_export
+    SubmitSlider :: (session: Session, prepared: SliderPrepared, ratio: float32,
+        id: s32, label_text: string, semantic_label: string,
+        disabled: bool) {
+        spec: SliderSpec = prepared.spec
+        spec.ratio = ratio
+        paint: SliderPaint = SliderPaintFor(spec)
+        node: s32 = -1
+        if TreeIsBuilding(session) {
+            node = TreeSubmitCurrent(session, prepared.key, WidgetKindSlider,
+                prepared.layout.bounds)
+            if node < 0 { return }
+            TreeSetInteractive(session, node, disabled, false, id)
+            TreeSetDragCapture(session, node, true)
+            if semantic_label == "" { semantic_label = label_text }
+            TreeSetLabel(session, node, semantic_label)
+        }
+        PaintSliderForNode(session, node, paint, label_text,
+            prepared.value_text, prepared.layout, prepared.label,
+            prepared.font, prepared.line_height)
     }
-    PaintSliderForNode(session, node, paint, label_text,
-        prepared.value_text, prepared.layout, prepared.label,
-        prepared.font, prepared.line_height)
-}
 
-// The caller stores the proposed value for the next frame. Multiple values
-// are ordinary compositions of this scalar control and SliderCellBoundsFor.
-#program_export
-Slider :: (session: Session, props: SliderProps) -> SliderStep {
-    prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
-        props.id, props.label, props.value_text, props.vertical,
-        props.disabled, props.class_name)
-    result: SliderStep
-    result.value = props.value
-    if !props.disabled && props.max > props.min &&
-        (prepared.drag.active || prepared.drag.started ||
-            prepared.drag.ended) {
-        result.value = SliderValue(props.min, props.max,
-            SliderDragRatio(prepared))
-        result.changed = result.value != props.value
+    // The caller stores the proposed value for the next frame. Multiple values
+    // are ordinary compositions of this scalar control and SliderCellBoundsFor.
+    #program_export
+    Slider :: (session: Session, props: SliderProps) -> SliderStep {
+        prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
+            props.id, props.label, props.value_text, props.vertical,
+            props.disabled, props.class_name)
+        result: SliderStep
+        result.value = props.value
+        if !props.disabled && props.max > props.min &&
+            (prepared.drag.active || prepared.drag.started ||
+                prepared.drag.ended) {
+            result.value = SliderValue(props.min, props.max,
+                SliderDragRatio(prepared))
+            result.changed = result.value != props.value
+        }
+        SubmitSlider(session, prepared, SliderRatio(result.value,
+            props.min, props.max), props.id, props.label,
+            props.semantic_label, props.disabled)
+        return result
     }
-    SubmitSlider(session, prepared, SliderRatio(result.value,
-        props.min, props.max), props.id, props.label,
-        props.semantic_label, props.disabled)
-    return result
-}
 
-#program_export
-DiscreteSlider :: (session: Session, props: DiscreteSliderProps) -> SliderDiscreteStep {
-    prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
-        props.id, props.label, props.value_text, props.vertical,
-        props.disabled, props.class_name)
-    result: SliderDiscreteStep
-    result.value = props.value
-    if !props.disabled && props.max > props.min &&
-        (prepared.drag.active || prepared.drag.started ||
-            prepared.drag.ended) {
-        result.value = SliderDiscreteValue(props.min, props.max,
-            SliderDragRatio(prepared))
-        result.changed = result.value != props.value
+    #program_export
+    DiscreteSlider :: (session: Session, props: DiscreteSliderProps) -> SliderDiscreteStep {
+        prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
+            props.id, props.label, props.value_text, props.vertical,
+            props.disabled, props.class_name)
+        result: SliderDiscreteStep
+        result.value = props.value
+        if !props.disabled && props.max > props.min &&
+            (prepared.drag.active || prepared.drag.started ||
+                prepared.drag.ended) {
+            result.value = SliderDiscreteValue(props.min, props.max,
+                SliderDragRatio(prepared))
+            result.changed = result.value != props.value
+        }
+        SubmitSlider(session, prepared, SliderDiscreteRatio(result.value,
+            props.min, props.max), props.id, props.label,
+            props.semantic_label, props.disabled)
+        return result
     }
-    SubmitSlider(session, prepared, SliderDiscreteRatio(result.value,
-        props.min, props.max), props.id, props.label,
-        props.semantic_label, props.disabled)
-    return result
 }

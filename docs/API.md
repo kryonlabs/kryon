@@ -135,8 +135,7 @@ command. Kryon cuts the shape into triangles, clips them to its parent's clip
 and sends each colour's triangles to the host in one `RasterTriangles` call;
 a radial fade is drawn as rings of one colour each. `BoxProps.fill_bottom`
 with `has_fill_bottom` fades a box's fill from top to bottom, as
-`DrawRectangleGradientV` does. The shapes have no `KRYON_HOSTED_UI` variant
-yet.
+`DrawRectangleGradientV` does.
 
 An application using a Kryon host exports a Ziran function with this shape:
 
@@ -214,7 +213,11 @@ row's end with the size `ToggleSize(session, props)` from
 the toggle widget as `text_measure` stays apart from Text. Lines, circles,
 rings and triangles from [`shape_widget`](../src/ui/shape_widget.zi) are
 hosted too, so a bundle can draw a chart's lines and dots; their host fills
-them with the renderer's `RasterTriangles`.
+them with the renderer's `RasterTriangles`. `Slider` and `DiscreteSlider`
+from [`slider_widget`](../src/ui/slider_widget.zi) and `Progress` from
+[`progress_widget`](../src/ui/progress_widget.zi) are hosted as well: the
+host drags the slider with its own pointer and answers the value, and paints
+the progress bar.
 
 [`open_uri`](../src/backend/open_uri.zi) opens a link with the platform's
 handler: `OpenUri(uri)` passes it unchanged to the desktop opener, Windows'

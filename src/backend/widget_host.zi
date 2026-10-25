@@ -29,6 +29,10 @@
 #import "shape_widget"
 #import "shape_props"
 #import "fieldset_props"
+#import "slider_widget"
+#import "slider_props"
+#import "progress_widget"
+#import "progress_props"
 #import "toggle_measure"
 #import "tile_map"
 #import "box_props"
@@ -107,6 +111,11 @@ widget_segment_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetSegmentOptionCodec;
 widget_segmented_codec: WidgetSegmentedControlPropsCodec;
 widget_segmented_result_codec: WidgetSegmentedControlResultCodec;
 widget_box_codec: WidgetBoxPropsCodec;
+widget_slider_codec: WidgetSliderPropsCodec;
+widget_slider_step_codec: WidgetSliderStepCodec;
+widget_discrete_slider_codec: WidgetDiscreteSliderPropsCodec;
+widget_discrete_step_codec: WidgetSliderDiscreteStepCodec;
+widget_progress_codec: WidgetProgressPropsCodec;
 widget_fieldset_codec: WidgetFieldsetPropsCodec;
 widget_line_codec: WidgetLinePropsCodec;
 widget_circle_codec: WidgetCirclePropsCodec;
@@ -163,6 +172,9 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
         function == "CircleHostedHost" || function == "RingHostedHost" ||
         function == "TriangleHostedHost")) ||
     (ModuleName(module, "toggle_measure") && function == "ToggleSizeHostedHost") ||
+    (ModuleName(module, "slider_widget") && (function == "SliderHostedHost" ||
+        function == "DiscreteSliderHostedHost")) ||
+    (ModuleName(module, "progress_widget") && function == "ProgressHostedHost") ||
     (ModuleName(module, "svg_icon_widget") && function == "SvgIconHostedHost") ||
     (ModuleName(module, "press_widget") && function == "PressHostedHost") ||
     (ModuleName(module, "spinbox_widget") && function == "SpinboxHostedHost") ||
@@ -384,6 +396,22 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     if name == "TriangleHostedHost" && ModuleName(owner, "shape_widget") && WidgetValidTriangleProps(props) {
         result.* = HostScalar("s32", cast(s64)Triangle(session, WidgetDecodeTriangleProps(props,
             *widget_triangle_codec)))
+        return 1
+    }
+    if name == "SliderHostedHost" && ModuleName(owner, "slider_widget") && WidgetValidSliderProps(props) {
+        step := Slider(session, WidgetDecodeSliderProps(props, *widget_slider_codec))
+        result.* = WidgetEncodeSliderStep(step, *widget_slider_step_codec)
+        return 1
+    }
+    if name == "DiscreteSliderHostedHost" && ModuleName(owner, "slider_widget") &&
+    WidgetValidDiscreteSliderProps(props) {
+        step := DiscreteSlider(session, WidgetDecodeDiscreteSliderProps(props,
+            *widget_discrete_slider_codec))
+        result.* = WidgetEncodeSliderDiscreteStep(step, *widget_discrete_step_codec)
+        return 1
+    }
+    if name == "ProgressHostedHost" && ModuleName(owner, "progress_widget") && WidgetValidProgressProps(props) {
+        Progress(session, WidgetDecodeProgressProps(props, *widget_progress_codec))
         return 1
     }
     if name == "FieldsetHostedHost" && ModuleName(owner, "fieldset_widget") && WidgetValidFieldsetProps(props) {

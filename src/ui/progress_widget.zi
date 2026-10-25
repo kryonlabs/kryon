@@ -1,64 +1,76 @@
-#import "session"
-#import "font_metrics"
-#import "geometry"
-#import "progress"
-#import "progress_props"
-#import "progress_raster"
-#import "progress_style"
-#import "style"
-#import "style_sheet"
-#import "tree"
-#import "widget_kind"
-
-using WidgetKind;
-
-// Resolved faces are values supplied by Kryon's style cascade. The platform
-// only measures glyphs and rasterizes commands.
-PreparedProgress :: struct {
-    paint: ProgressPaint
-    font: s32
-    label_opacity: float32
-}
-
-#program_export
-PrepareProgress :: (props: ProgressProps,
-    faces: ProgressFaces) -> PreparedProgress {
-    prepared: PreparedProgress
-    prepared.font = ResolveFont(0,
-        StyleFontValue(faces.label.value.fields,
-            faces.label.value.font_size), faces.fallback_font)
-    prepared.label_opacity = StyleOpacityValue(faces.label.value.fields,
-        faces.label.value.opacity)
-    label_width: s32 = 0
-    label_height: s32 = 0
-    if props.label != "" {
-        label_width = GlyphWidth(props.label, prepared.font,
-            faces.label.value.typeface)
-        label_height = GlyphLineHeight(prepared.font,
-            faces.label.value.typeface)
+// Portable compositions use the same widget as retained native hosts.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "progress_props"
+    host_api :: #system_library "host_api";
+    ProgressHostedHost :: (session: Session, props: ProgressProps) #foreign host_api;
+    #program_export
+    Progress :: (session: Session, props: ProgressProps) {
+        ProgressHostedHost(session, props)
     }
-    prepared.paint = ProgressPaintFor(props.bounds, props.min, props.max,
-        props.value, cast(float32)label_width, cast(float32)label_height, faces.scale,
-        faces.track, faces.fill, faces.label)
-    return prepared
-}
+} else {
+    #import "session"
+    #import "font_metrics"
+    #import "geometry"
+    #import "progress"
+    #import "progress_props"
+    #import "progress_raster"
+    #import "progress_style"
+    #import "style"
+    #import "style_sheet"
+    #import "tree"
+    #import "widget_kind"
 
-#program_export
-PaintProgressProps :: (session: Session, props: ProgressProps, faces: ProgressFaces) {
-    prepared: PreparedProgress = PrepareProgress(props, faces)
-    PaintProgress(session, props.bounds, prepared.paint, props.label,
-        prepared.font, prepared.label_opacity)
-}
+    using WidgetKind;
 
-#program_export
-Progress :: (session: Session, props: ProgressProps) {
-    node: s32 = -1
-    if TreeIsBuilding(session) {
-        node = TreeSubmitCurrent(session, props.key, WidgetKindProgress, props.bounds)
-        if node < 0 { return }
+    // Resolved faces are values supplied by Kryon's style cascade. The platform
+    // only measures glyphs and rasterizes commands.
+    PreparedProgress :: struct {
+        paint: ProgressPaint
+        font: s32
+        label_opacity: float32
     }
-    faces: ProgressFaces = ProgressFacesFor(props.class_name, DefaultProgressFaces())
-    prepared: PreparedProgress = PrepareProgress(props, faces)
-    PaintProgressForNode(session, node, props.bounds, prepared.paint,
-        props.label, prepared.font, prepared.label_opacity)
+
+    #program_export
+    PrepareProgress :: (props: ProgressProps,
+        faces: ProgressFaces) -> PreparedProgress {
+        prepared: PreparedProgress
+        prepared.font = ResolveFont(0,
+            StyleFontValue(faces.label.value.fields,
+                faces.label.value.font_size), faces.fallback_font)
+        prepared.label_opacity = StyleOpacityValue(faces.label.value.fields,
+            faces.label.value.opacity)
+        label_width: s32 = 0
+        label_height: s32 = 0
+        if props.label != "" {
+            label_width = GlyphWidth(props.label, prepared.font,
+                faces.label.value.typeface)
+            label_height = GlyphLineHeight(prepared.font,
+                faces.label.value.typeface)
+        }
+        prepared.paint = ProgressPaintFor(props.bounds, props.min, props.max,
+            props.value, cast(float32)label_width, cast(float32)label_height, faces.scale,
+            faces.track, faces.fill, faces.label)
+        return prepared
+    }
+
+    #program_export
+    PaintProgressProps :: (session: Session, props: ProgressProps, faces: ProgressFaces) {
+        prepared: PreparedProgress = PrepareProgress(props, faces)
+        PaintProgress(session, props.bounds, prepared.paint, props.label,
+            prepared.font, prepared.label_opacity)
+    }
+
+    #program_export
+    Progress :: (session: Session, props: ProgressProps) {
+        node: s32 = -1
+        if TreeIsBuilding(session) {
+            node = TreeSubmitCurrent(session, props.key, WidgetKindProgress, props.bounds)
+            if node < 0 { return }
+        }
+        faces: ProgressFaces = ProgressFacesFor(props.class_name, DefaultProgressFaces())
+        prepared: PreparedProgress = PrepareProgress(props, faces)
+        PaintProgressForNode(session, node, props.bounds, prepared.paint,
+            props.label, prepared.font, prepared.label_opacity)
+    }
 }

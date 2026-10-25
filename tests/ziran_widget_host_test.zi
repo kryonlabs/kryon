@@ -16,6 +16,8 @@
 #import "text_input_props"
 #import "tab_bar_props"
 #import "segmented_control_props"
+#import "slider_props"
+#import "progress_props"
 #import "press_props"
 #import "spinbox_props"
 #import "time_picker_props"
@@ -100,6 +102,11 @@ line_codec: WidgetLinePropsCodec;
 circle_codec: WidgetCirclePropsCodec;
 ring_codec: WidgetRingPropsCodec;
 triangle_codec: WidgetTrianglePropsCodec;
+slider_codec: WidgetSliderPropsCodec;
+slider_step: WidgetSliderStepCodec;
+discrete_codec: WidgetDiscreteSliderPropsCodec;
+discrete_step: WidgetSliderDiscreteStepCodec;
+progress_codec: WidgetProgressPropsCodec;
 toggle_codec: WidgetTogglePropsCodec;
 vector_codec: WidgetVector2Codec;
 time_picker_result: WidgetTimePickerResultCodec;
@@ -426,6 +433,28 @@ main :: () -> s32 {
     if Call("shape_widget", "TriangleHostedHost", arguments[:2], *result) != 1 ||
     PendingPaintCount(session) < shape_before + 4 {
         return 112
+    }
+    // Sliders answer with their value as it is, untouched by a pointer;
+    // a progress bar paints itself.
+    arguments[1] = WidgetEncodeSliderProps(SliderProps.{.key = cast(u64)317,
+            .bounds = Rectangle.{10.0, 340.0, 200.0, 36.0}, .value = 4.0, .max = 10.0}, *slider_codec)
+    if Call("slider_widget", "SliderHostedHost", arguments[:2], *result) != 1 ||
+    !WidgetValidSliderStep(result) || WidgetDecodeSliderStep(result, *slider_step).value != 4.0 {
+        return 113
+    }
+    arguments[1] = WidgetEncodeDiscreteSliderProps(DiscreteSliderProps.{.key = cast(u64)318,
+            .bounds = Rectangle.{10.0, 380.0, 200.0, 36.0}, .value = 3, .max = 10}, *discrete_codec)
+    if Call("slider_widget", "DiscreteSliderHostedHost", arguments[:2], *result) != 1 ||
+    !WidgetValidSliderDiscreteStep(result) ||
+    WidgetDecodeSliderDiscreteStep(result, *discrete_step).value != 3 {
+        return 114
+    }
+    progress_before := PendingPaintCount(session)
+    arguments[1] = WidgetEncodeProgressProps(ProgressProps.{.key = cast(u64)319,
+            .bounds = Rectangle.{10.0, 420.0, 200.0, 5.0}, .max = 60, .value = 30}, *progress_codec)
+    if Call("progress_widget", "ProgressHostedHost", arguments[:2], *result) != 1 ||
+    PendingPaintCount(session) <= progress_before {
+        return 115
     }
     // A vector icon on its own paints its cells and answers nothing.
     icon_before := PendingPaintCount(session)
