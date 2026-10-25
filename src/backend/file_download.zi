@@ -160,6 +160,106 @@ FileDownloadRelease :: (download: *FileDownload) {
     DownloadSeek :: (file: *void, offset: isize, origin: s32) -> s32 #foreign download_c "fseek";
     DownloadTell :: (file: *void) -> isize #foreign download_c "ftell";
     DownloadClose :: (file: *void) -> s32 #foreign download_c "fclose";
+    DownloadRead :: (bytes: *u8, size: usize, count: usize, file: *void) -> usize #foreign download_c "fread";
+
+    CurlHeadersPath :: (download: *FileDownload, output: []u8) -> bool {
+        path := TextFromCString(*download.temporary[0])
+        suffix := ".headers"
+        if path.count + suffix.count >= output.count { return false }
+        for byte, index: path { output[index] = byte }
+        for byte, index: suffix { output[path.count + index] = byte }
+        output[path.count + suffix.count] = 0
+        return true
+    }
+
+    CurlHeaderName :: (name: string, expected: string) -> bool {
+        if name.count != expected.count { return false }
+        for byte, index: name {
+            lower := ifx byte >= #char "A" && byte <= #char "Z" then byte + 32 else byte
+            if lower != expected[index] { return false }
+        }
+        return true
+    }
+
+    // Only a complete successful response can supply a transfer total. A
+    // redirect, incomplete header, conflicting length or chunked body cannot.
+    CurlHeaderTotal :: (headers: string) -> u64 {
+        at: s64
+        total: u64
+        result: u64
+        valid: bool
+        length_seen: bool
+        successful: bool
+        while at < headers.count {
+            start := at
+            while at < headers.count && headers[at] != 10 { at += 1 }
+            if at == headers.count { return 0 }
+            end := at
+            at += 1
+            if end > start && headers[end - 1] == 13 { end -= 1 }
+            line := headers[start:end]
+            if line.count >= 5 && line[:5] == "HTTP/" {
+                total = 0
+                result = 0
+                valid = true
+                length_seen = false
+                space: s64
+                while space < line.count && line[space] != 32 { space += 1 }
+                successful = space + 4 <= line.count && line[space + 1] == 50 &&
+                line[space + 2] >= 48 && line[space + 2] <= 57 &&
+                line[space + 3] >= 48 && line[space + 3] <= 57
+            } else if line.count == 0 {
+                result = ifx successful && valid && length_seen then total else 0
+            } else {
+                colon: s64
+                while colon < line.count && line[colon] != 58 { colon += 1 }
+                if colon == line.count { continue }
+                if CurlHeaderName(line[:colon], "transfer-encoding") {
+                    valid = false
+                } else if CurlHeaderName(line[:colon], "content-length") {
+                    first := colon + 1
+                    last := line.count
+                    while first < last && (line[first] == 32 || line[first] == 9) { first += 1 }
+                    while last > first && (line[last - 1] == 32 || line[last - 1] == 9) { last -= 1 }
+                    length: u64
+                    if first == last { valid = false }
+                    for byte: line[first:last] {
+                        if byte < 48 || byte > 57 ||
+                        length > (cast(u64)18446744073709551615 - cast(u64)(byte - 48)) / 10 {
+                            valid = false
+                            break
+                        }
+                        length = length * 10 + cast(u64)(byte - 48)
+                    }
+                    if length_seen && length != total { valid = false }
+                    length_seen = true
+                    total = length
+                }
+            }
+        }
+        return result
+    }
+
+    CurlReadTotal :: (download: *FileDownload) {
+        path: [4096]u8
+        mode: [4]u8
+        if download.total_bytes > 0 || !CurlHeadersPath(download, path[:]) ||
+        !CopyCString("rb", mode[:]) { return }
+        file := DownloadOpen(*path[0], *mode[0])
+        if file == null { return }
+        defer { unused DownloadClose(file) }
+        if DownloadSeek(file, 0, 2) != 0 { return }
+        count := DownloadTell(file)
+        if count <= 0 || count > 65536 || DownloadSeek(file, 0, 0) != 0 { return }
+        bytes: [65536]u8
+        if DownloadRead(*bytes[0], 1, cast(usize)count, file) != cast(usize)count { return }
+        download.total_bytes = CurlHeaderTotal(TextFromBytes(bytes[:count]))
+    }
+
+    CurlRemoveHeaders :: (download: *FileDownload) {
+        path: [4096]u8
+        if CurlHeadersPath(download, path[:]) { unused DownloadRemove(*path[0]) }
+    }
 
     DownloadDigits :: (value: u64, output: []u8) {
         digits: [24]u8
@@ -189,6 +289,8 @@ FileDownloadRelease :: (download: *FileDownload) {
         silent_flag: [16]u8
         show_error_flag: [16]u8
         output_flag: [16]u8
+        header_flag: [16]u8
+        headers: [4096]u8
         maximum_flag: [32]u8
         timeout_flag: [32]u8
         timeout_value: [8]u8
@@ -196,12 +298,14 @@ FileDownloadRelease :: (download: *FileDownload) {
         if !CopyCString(url, url_bytes[:]) || !CopyCString("/usr/bin/curl", executable[:]) ||
         !CopyCString("--fail", fail_flag[:]) || !CopyCString("--location", location_flag[:]) ||
         !CopyCString("--silent", silent_flag[:]) || !CopyCString("--show-error", show_error_flag[:]) ||
-        !CopyCString("--output", output_flag[:]) || !CopyCString("--max-filesize", maximum_flag[:]) ||
+        !CopyCString("--output", output_flag[:]) || !CopyCString("--dump-header", header_flag[:]) ||
+        !CurlHeadersPath(download, headers[:]) || !CopyCString("--max-filesize", maximum_flag[:]) ||
         !CopyCString("--max-time", timeout_flag[:]) || !CopyCString("900", timeout_value[:]) {
             FileDownloadError(download, "download service unavailable")
             return false
         }
         DownloadDigits(download.maximum_bytes, maximum[:])
+        CurlRemoveHeaders(download)
         pid := DownloadFork()
         if pid < 0 {
             FileDownloadError(download, "failed to start download")
@@ -212,7 +316,7 @@ FileDownloadRelease :: (download: *FileDownload) {
             DownloadExec(*executable[0], *executable[0], *fail_flag[0], *location_flag[0],
                 *silent_flag[0], *show_error_flag[0], *maximum_flag[0], *maximum[0],
                 *timeout_flag[0], *timeout_value[0], *output_flag[0],
-                *download.temporary[0], *url_bytes[0], terminator)
+                *download.temporary[0], *header_flag[0], *headers[0], *url_bytes[0], terminator)
             DownloadExit(127)
         }
         download.handle = cast(u64)pid
@@ -224,6 +328,7 @@ FileDownloadRelease :: (download: *FileDownload) {
         if download.handle == 0 {
             return
         }
+        CurlReadTotal(download)
         mode: [4]u8
         if CopyCString("rb", mode[:]) {
             file := DownloadOpen(*download.temporary[0], *mode[0])
@@ -251,6 +356,7 @@ FileDownloadRelease :: (download: *FileDownload) {
             return
         }
         download.handle = 0
+        CurlRemoveHeaders(download)
         if result == pid && status == 0 &&
         DownloadRename(*download.temporary[0], *download.destination[0]) == 0 {
             download.status = .Ready
@@ -275,6 +381,7 @@ FileDownloadRelease :: (download: *FileDownload) {
             DownloadWait(pid, *status, 0)
             DownloadRemove(*download.temporary[0])
         }
+        CurlRemoveHeaders(download)
     }
 }
 

@@ -31,6 +31,23 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == '/slow':
             time.sleep(3)
             self.answer(200, b'late answer')
+        elif self.path == '/redirect-stream':
+            self.send_response(302)
+            self.send_header('Location', '/stream')
+            self.send_header('Content-Length', '3')
+            self.end_headers()
+            self.wfile.write(b'old')
+        elif self.path == '/stream':
+            self.send_response(200)
+            self.send_header('Content-Length', '100000')
+            self.end_headers()
+            try:
+                for _ in range(100):
+                    self.wfile.write(b'x' * 1000)
+                    self.wfile.flush()
+                    time.sleep(.01)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         else:
             self.answer(404, b'missing')
 

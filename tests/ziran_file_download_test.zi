@@ -43,18 +43,31 @@ Finish :: (download: *FileDownload) -> FileDownloadStatus {
 
 #program_export
 main :: () -> s32 {
+    headers: [7]string = .[
+    "HTTP/1.1 200 OK\r\ncOnTeNt-LeNgTh: 100000 \r\n\r\n",
+    "HTTP/1.1 302 Found\r\nContent-Length: 3\r\n\r\nHTTP/2 200\r\nContent-Length: 100000\r\n\r\n",
+    "HTTP/1.1 200 OK\r\nContent-Length: 100000\r\n",
+    "HTTP/1.1 200 OK\r\nContent-Length: 100000\r\nContent-Length: 1\r\n\r\n",
+    "HTTP/1.1 200 OK\r\nContent-Length: 100000\r\nTransfer-Encoding: chunked\r\n\r\n",
+    "HTTP/1.1 200 OK\r\nContent-Length: 18446744073709551616\r\n\r\n",
+    "HTTP/1.1 404 Missing\r\nContent-Length: 100000\r\n\r\n"]
+    for header, index: headers {
+        expected: u64 = ifx index < 2 then 100000 else 0
+        if CurlHeaderTotal(header) != expected { return 10 + cast(s32)index }
+    }
     name: [16]u8
     CopyCString("HTTP_TEST_PORT", name[:])
     port = TextFromCString(GetEnv(*name[0]))
     url: [128]u8
     download: FileDownload
     if !FileDownloadStart(*download, Url("/big", url[:]), "big.bin") || Finish(*download) != .Ready ||
-    download.bytes != 100000 || !Exists("big.bin") || Exists("big.bin.part") {
+    download.bytes != 100000 || !Exists("big.bin") || Exists("big.bin.part") || Exists("big.bin.part.headers") {
         return 1
     }
     download = FileDownload.{}
     if !FileDownloadStart(*download, Url("/missing", url[:]), "missing.bin") || Finish(*download) != .Error ||
-    TextFromCString(*download.error[0]) != "download failed" || Exists("missing.bin") || Exists("missing.bin.part") {
+    TextFromCString(*download.error[0]) != "download failed" || Exists("missing.bin") ||
+    Exists("missing.bin.part") || Exists("missing.bin.part.headers") {
         return 2
     }
     // A download larger than its limit fails and leaves nothing behind.
@@ -69,7 +82,7 @@ main :: () -> s32 {
     }
     unused Sleep(200000)
     FileDownloadRelease(*download)
-    if download.status != .Idle || Exists("slow.bin") || Exists("slow.bin.part") {
+    if download.status != .Idle || Exists("slow.bin") || Exists("slow.bin.part") || Exists("slow.bin.part.headers") {
         return 5
     }
     // Nothing listens on port 9: the network is reported unreachable.
@@ -85,5 +98,17 @@ main :: () -> s32 {
         return 7
     }
     FileDownloadRelease(*download)
+    download = FileDownload.{}
+    if !FileDownloadStart(*download, Url("/redirect-stream", url[:]), "stream.bin") { return 8 }
+    progress: bool
+    for attempt: 0..999 {
+        status := FileDownloadPoll(*download)
+        if status == .Downloading && download.bytes > 0 && download.bytes < 100000 &&
+        download.total_bytes == 100000 { progress = true }
+        if status != .Downloading { break }
+        unused Sleep(10000)
+    }
+    if download.status != .Ready || !progress || download.bytes != 100000 ||
+    Exists("stream.bin.part.headers") { return 9 }
     return 0
 }
