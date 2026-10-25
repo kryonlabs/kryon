@@ -61,7 +61,7 @@ runner does this for every application it runs, with no application code:
 keys they consume never reach the application, and `RaylibSetZoom` scales the
 frame, so layout reflows to the smaller viewport as a browser page does and
 text is rebaked at its scaled size to stay sharp. `KRYON_ZOOM=1.5` starts a
-window at 150%.
+window at 150%; the native ZX player draws a bundle at that density too.
 
 An application imports the module as `Zoom` (and `DPI` for the platform enum)
 from the Kryon package. To opt out, or to force zoom on every platform, call

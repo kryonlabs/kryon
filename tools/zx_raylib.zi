@@ -40,6 +40,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     if !OpenRaylib(960, 600, title_text) { return 1 }
     defer { CloseRaylib() }
+    // KRYON_ZOOM draws at a display density, as other Kryon desktop apps do.
+    zoom := RaylibEnvironmentZoom()
+    if zoom > 0.0 { RaylibSetZoom(zoom) }
     unused RaylibBundleTypeface()
     // The bundle takes a moment to read and prepare; show the app's name.
     RaylibLoadingFrame(ifx title_text.count > 0 then title_text else ProgramTitle())
