@@ -96,6 +96,43 @@ InvalidateCanvasAssets :: () {
     canvas_image_error = false
 }
 
+// Content under one folder was replaced: forget only the images whose path
+// starts with `prefix`, keeping every other image on screen.
+#program_export
+InvalidateCanvasAssetsUnder :: (prefix: string) {
+    if prefix.count == 0 {
+        return
+    }
+    flushed := false
+    for index: cast(s32)0..canvas_assets_count - 1 {
+        asset := *canvas_assets[index]
+        if asset.length < cast(s32)prefix.count {
+            continue
+        }
+        under := true
+        for at: cast(s64)0..prefix.count - 1 {
+            if asset.path[at] != prefix[at] {
+                under = false
+                break
+            }
+        }
+        if !under {
+            continue
+        }
+        if !flushed {
+            PageFlushPaint()
+            flushed = true
+        }
+        if asset.texture.id != cast(u32)0 {
+            UnloadTexture(asset.texture)
+        }
+        asset.* = CanvasAsset.{}
+    }
+    if flushed {
+        PaintResourcesChanged()
+    }
+}
+
 #program_export
 CloseCanvas :: () {
     CanvasFrameReset()

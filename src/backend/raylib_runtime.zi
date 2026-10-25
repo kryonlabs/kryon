@@ -1440,6 +1440,59 @@ InvalidateRaylibAssets :: () {
     raylib_image_error = false
 }
 
+// Whether an asset entry's path starts with `prefix`.
+RaylibAssetUnder :: (index: s32, prefix: string) -> bool {
+    asset := *raylib_assets[index]
+    if prefix.count == 0 || asset.length < cast(s32)prefix.count {
+        return false
+    }
+    for at: cast(s64)0..prefix.count - 1 {
+        if asset.path[at] != prefix[at] {
+            return false
+        }
+    }
+    return true
+}
+
+// Content under one folder was replaced: forget only the images whose path
+// starts with `prefix`, so they load again from the new content, and keep
+// every other image on screen. A frame drawn meanwhile shows the forgotten
+// ones as loading; nothing else blinks.
+#program_export
+InvalidateRaylibAssetsUnder :: (prefix: string) {
+    #if RAYLIB_FRAME_THREADS {
+        if RenderOnAppThread() {
+            request := RaylibAppRequest.{.operation = RaylibResource.InvalidateAssetsUnder, .value = prefix}
+            RenderCall(RaylibAppResource, cast(*void)*request)
+            return
+        }
+        RaylibDrainAppFrame()
+    }
+    flushed := false
+    for index: cast(s32)0..raylib_assets_count - 1 {
+        if !RaylibAssetUnder(index, prefix) {
+            continue
+        }
+        if !flushed {
+            HostRaylibFlushBatch()
+            flushed = true
+        }
+        if raylib_assets[index].texture.id != 0 {
+            HostRaylibUnloadTexture(raylib_assets[index].texture)
+        }
+        #if RAYLIB_FRAME_THREADS {
+            RaylibReleaseQueuedImage(*raylib_assets[index])
+        }
+        // An empty path never matches a lookup, and a new token drops a
+        // decode still running for it; the next lookup loads it again.
+        raylib_assets[index] = RaylibAsset.{}
+        raylib_asset_hashes[index] = 0
+    }
+    if flushed {
+        PaintResourcesChanged()
+    }
+}
+
 // Call on the rendering thread after its context is current again. A lost
 // context's names may already identify unrelated textures in the new context;
 // forget them without sending deletion requests there.
@@ -3201,6 +3254,7 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         SelectTypeface
         ResetGraphics
         InvalidateAssets
+        InvalidateAssetsUnder
         ReleaseTypefaces
         IconTexture
         RetainedTargets
@@ -3283,6 +3337,8 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
             ResetRaylibGraphics(request.flag)
         } else if request.operation == RaylibResource.InvalidateAssets {
             InvalidateRaylibAssets()
+        } else if request.operation == RaylibResource.InvalidateAssetsUnder {
+            InvalidateRaylibAssetsUnder(request.value)
         } else if request.operation == RaylibResource.ReleaseTypefaces {
             ReleaseTypefaces()
         } else if request.operation == RaylibResource.IconTexture {
