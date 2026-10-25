@@ -1,0 +1,5 @@
+host_api :: #system_library "host_api";
+// How many images the backend is still reading or decoding. A host covers an
+// app it has just opened while this is above zero, so the app appears whole
+// once its pictures are ready instead of drawing gaps where they will be.
+ImagesPending :: () -> s32 #foreign host_api;

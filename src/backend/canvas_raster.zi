@@ -157,6 +157,12 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
     EndRasterClip(saved)
 }
 
+// The browser decodes images itself and draws each when it is ready.
+#program_export
+ImagesPending :: () -> s32 {
+    return 0
+}
+
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
     index: s32 = CanvasAssetIndex(asset_path)

@@ -2669,6 +2669,23 @@ ImageHeight :: (asset_path: string) -> s32 {
     return raylib_assets[index].texture.height
 }
 
+// How many images are still being read or decoded. A host covers an app it
+// has just opened while this is above zero, so the app appears whole once its
+// pictures are ready; images already decoded keep it at zero.
+#program_export
+ImagesPending :: () -> s32 {
+    #if RAYLIB_FRAME_THREADS {
+        if RenderOnAppThread() {
+            request := RaylibAppRequest.{.operation = RaylibResource.PendingImages}
+            RenderCall(RaylibAppResource, cast(*void)*request)
+            return request.width
+        }
+        return RaylibImagesPendingCount()
+    } else {
+        return 0
+    }
+}
+
 // A smooth image samples between its pixels and, once raylib has built its
 // mipmaps, from smaller copies when it is drawn small. Without mipmaps, as for
 // a texture whose sides are not powers of two on OpenGL ES 2, raylib keeps the
@@ -2974,6 +2991,16 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         return RaylibImageSize.{asset.token, dimension, dimension, needs}
     }
 
+    // Images still read or decoded, as the render thread sees them.
+    RaylibImagesPendingCount :: () -> s32 {
+        pending: s32 = 0
+        for index: cast(s32)0..raylib_assets_count - 1 {
+            state := raylib_assets[index].state
+            if state == RaylibImageQueued || state == RaylibImageDecoding { pending += 1 }
+        }
+        return pending
+    }
+
     RaylibImageSource :: struct { data: string; owned: *u8 }
     RaylibReadImageSource :: (path: string, reader: RaylibAssetReadCall,
         context: *void, active: bool) -> RaylibImageSource {
@@ -3177,6 +3204,7 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         ReleaseTypefaces
         IconTexture
         RetainedTargets
+        PendingImages
     }
 
     RaylibAppRequest :: struct {
@@ -3269,6 +3297,8 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
                 request.ok = RaylibPrepareRetainedFrame(request.width, request.height)
             }
             retained_frame_render_index = first
+        } else if request.operation == RaylibResource.PendingImages {
+            request.width = RaylibImagesPendingCount()
         }
         request.generation = raylib_resource_generation
     }
