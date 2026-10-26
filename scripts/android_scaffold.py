@@ -30,6 +30,8 @@ if not all(c.isalnum() or c == "_" for c in args.activity):
     raise SystemExit(f"Invalid activity class name: {args.activity}")
 
 values = {
+    # CMake reads words after a project name as languages.
+    "__CMAKE_NAME__": "".join(c for c in args.name if c.isalnum() or c == "_"),
     "__NAME__": args.name,
     "__PACKAGE__": args.package,
     "__PACKAGE_PATH__": args.package.replace(".", "/"),

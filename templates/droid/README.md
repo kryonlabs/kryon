@@ -1,7 +1,8 @@
 # Android project templates
 
 `scripts/android_scaffold.py` copies these into a Kryon application when
-`kryon build --profile android` first runs. `__NAME__`, `__PACKAGE__`,
+`kryon build --profile android` first runs. `__NAME__`, `__CMAKE_NAME__`
+(the name without spaces), `__PACKAGE__`,
 `__PACKAGE_PATH__`, `__ACTIVITY__`, `__ACTIVITY_CLASS__` and
 `__ACTIVITY_SLASH__` are replaced with the project name and the
 `[tool.kryon.android]` settings.

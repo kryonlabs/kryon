@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(__NAME__ C)
+project(__CMAKE_NAME__ C)
 
 get_filename_component(REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../../.." ABSOLUTE)
 if(NOT DEFINED KRYON_DIR OR NOT DEFINED ZIRAN_DIR OR NOT DEFINED RAYLIB_DIR)
