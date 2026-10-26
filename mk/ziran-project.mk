@@ -119,6 +119,9 @@ endif
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_LIBS := $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0)
+# The http_transfer desktop worker drives curl from a detached thread.
+# Without a libcurl.pc, link the runtime library by exact filename.
+HOST_LIBS += $(shell pkg-config --libs libcurl 2>/dev/null || echo '-l:libcurl.so.4')
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
 ifeq ($(PROJECT_BACKEND),raylib)
