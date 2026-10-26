@@ -250,7 +250,7 @@ else
 		trap 'rm -f "$$temporary"' EXIT; \
 		$(CC) -std=c99 -pedantic-errors $(HOST_CFLAGS) -O2 -ffunction-sections -fdata-sections \
 		-I$(ZIRAN_DIR)/include -I$(C_DIR) $(C_DIR)/*.c \
-		-Wl,--gc-sections $(HOST_LIBS) -lm -o "$$temporary" && \
+		-Wl,--gc-sections $(HOST_LIBS) $(LDLIBS) -lm -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@
 endif
 endif
