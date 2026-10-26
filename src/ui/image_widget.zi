@@ -11,6 +11,7 @@ Theme :: #import "theme";
     Image :: (session: Session, image: ImageProps) { ImageHostedHost(session, image) }
 } else {
 #import "session"
+#import "semantic"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -113,6 +114,9 @@ Image :: (session: Session, image: ImageProps) {
         if node < 0 { return }
         TreeSetLabel(session, node, image.alt_text)
         TreeSetSemanticDetail(session, node, image.asset_path)
+        // An image widget is an image semantically; the detail carries its
+        // source, which the DOM host reconciles into a real <img src>.
+        TreeSetSemantic(session, node, SemanticKind.SemanticImage, 0)
     }
     faces: ImageFaces = ImageFacesFor(image,
         DefaultImageFaces())
