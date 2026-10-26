@@ -73,6 +73,7 @@ SetSourceRGBA :: (paint: *void, red: float64, green: float64,
 GetSource :: (paint: *void) -> *void #foreign cairo_library "cairo_get_source";
 PatternFilter :: (pattern: *void, filter: s32) #foreign cairo_library "cairo_pattern_set_filter";
 Paint :: (paint: *void) #foreign cairo_library "cairo_paint";
+PaintAlpha :: (paint: *void, alpha: float64) #foreign cairo_library "cairo_paint_with_alpha";
 NewPath :: (paint: *void) #foreign cairo_library "cairo_new_path";
 CanvasRectangle :: (paint: *void, x: float64, y: float64,
     width: float64, height: float64) #foreign cairo_library "cairo_rectangle";
@@ -559,6 +560,19 @@ ImageHeight :: (asset_path: string) -> s32 {
     return ImageSurfaceHeight(image)
 }
 
+// White RGB with a lower alpha is an image fade. Preserve the source colours;
+// coloured tints retain the host's existing alpha-mask recolouring behaviour.
+PaintImagePattern :: (pattern: *void, tint: Color) {
+    if tint.r == cast(u8)255 && tint.g == cast(u8)255 && tint.b == cast(u8)255 {
+        SetSource(paint, pattern)
+        if tint.a == cast(u8)255 { Paint(paint) }
+        else { PaintAlpha(paint, cast(float64)tint.a / 255.0) }
+    } else {
+        SetColor(tint)
+        MaskPattern(paint, pattern)
+    }
+}
+
 #program_export
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
@@ -602,14 +616,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
         return
     }
     PatternFilter(pattern, ifx CurrentPaintSmooth() then 1 else 3)
-    if tint.r == cast(u8)255 && tint.g == cast(u8)255 &&
-        tint.b == cast(u8)255 && tint.a == cast(u8)255 {
-        SetSource(paint, pattern)
-        Paint(paint)
-    } else {
-        SetColor(tint)
-        MaskPattern(paint, pattern)
-    }
+    PaintImagePattern(pattern, tint)
     PatternDestroy(pattern)
     Restore(paint)
 }
@@ -711,14 +718,7 @@ CairoMeshTriangle :: (image: *void, a: Vector2, a_source: Vector2,
         return
     }
     PatternFilter(pattern, ifx CurrentPaintSmooth() then 4 else 3)
-    if tint.r == cast(u8)255 && tint.g == cast(u8)255 &&
-        tint.b == cast(u8)255 && tint.a == cast(u8)255 {
-        SetSource(paint, pattern)
-        Paint(paint)
-    } else {
-        SetColor(tint)
-        MaskPattern(paint, pattern)
-    }
+    PaintImagePattern(pattern, tint)
     PatternDestroy(pattern)
     Restore(paint)
 }

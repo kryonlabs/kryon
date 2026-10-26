@@ -30,6 +30,16 @@ Draw :: (path: string, smooth: bool, tint: Color) -> bool {
     return Raster.FinishRasterFrame()
 }
 
+// Independent source-over reference against the raster host's clear colour.
+Faded :: (color: Color, alpha: u8) -> u32 {
+    a := cast(u32)alpha
+    inverse := cast(u32)255 - a
+    red := (cast(u32)color.r * a + 248 * inverse + 127) / 255
+    green := (cast(u32)color.g * a + 250 * inverse + 127) / 255
+    blue := (cast(u32)color.b * a + 252 * inverse + 127) / 255
+    return (red << 16) | (green << 8) | blue
+}
+
 main :: (argc: s32, argv: **u8) -> s32 {
     if argc != 2 { return 1 }
     root := TextFromCString(argv[1])
@@ -50,6 +60,13 @@ main :: (argc: s32, argv: **u8) -> s32 {
     // Smooth blends neighbouring pixels across the middle.
     if !Draw(path, true, white) { return 7 }
     if Pixel(31, 16) == red || Pixel(32, 16) == green { print("smooth image kept a hard edge\n"); return 8 }
-    print("Cairo scales images with sharp pixels unless they ask to be smooth\n")
+    // Fading a multicoloured image changes its opacity, never its colours.
+    alphas: [5]u8 = .[0, 64, 128, 254, 255]
+    for alpha: alphas {
+        if !Draw(path, false, .{255, 255, 255, alpha}) { return 9 }
+        if !Is(16, 16, Faded(.{255, 0, 0, 255}, alpha)) ||
+            !Is(48, 16, Faded(.{0, 255, 0, 255}, alpha)) { return 10 }
+    }
+    print("Cairo preserves image colours while fading and scales sharply unless smooth\n")
     return 0
 }
