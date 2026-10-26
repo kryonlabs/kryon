@@ -1,0 +1,51 @@
+#import "session"
+#import "geometry"
+#import "joystick"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_keyboard_navigation_host"
+
+session: Session;
+result: SwipeAreaResult;
+secondary_tap: bool;
+disabled: bool;
+
+Frame :: (now: float64) -> bool {
+    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    result = SwipeArea(session, SwipeAreaProps.{.key = cast(u64)70,
+            .bounds = Rectangle.{10.0, 10.0, 100.0, 40.0}, .label = "Board", .now = now,
+            .secondary_tap = secondary_tap, .disabled = disabled})
+    return EndFrame(session) == FrameStatus.FrameOk
+}
+
+Secondary :: (x: float32, y: float32, released: bool) {
+    unused TreePointerUpdate(session, PointerFrame.{.x = x, .y = y})
+    TreeSecondaryPointerUpdate(session, SecondaryPointerFrame.{.released = released})
+}
+
+#program_export
+main :: () -> s32 {
+    session = SessionOpen()
+    if !Frame(0.0) { return 1 }
+    Secondary(40.0, 30.0, true)
+    if !Frame(0.1) || result.tapped { return 2 }
+    secondary_tap = true
+    Secondary(40.0, 30.0, true)
+    if !Frame(0.2) || !result.tapped || result.x != 40.0 || result.y != 30.0 || result.swiped != -1 { return 3 }
+    Secondary(40.0, 30.0, false)
+    if !Frame(0.3) || result.tapped { return 4 }
+    Secondary(300.0, 200.0, true)
+    if !Frame(0.4) || result.tapped { return 5 }
+    disabled = true
+    Secondary(40.0, 30.0, true)
+    if !Frame(0.5) || result.tapped { return 6 }
+    disabled = false
+    TreeSecondaryPointerUpdate(session, SecondaryPointerFrame.{})
+    if !Frame(0.6) { return 9 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 40.0, .y = 30.0, .down = true, .pressed = true})
+    if !Frame(1.0) { return 7 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 40.0, .y = 30.0, .released = true})
+    if !Frame(1.1) || !result.tapped { return 8 }
+    return 0
+}

@@ -52,6 +52,8 @@ SwipeAreaProps :: struct {
     // Seconds between steps while a press is held; 0 steps only on release.
     repeat_seconds: float32
     disabled: bool
+    // Also report a right click as a tap at that position.
+    secondary_tap: bool
 }
 
 SwipeAreaResult :: struct {
@@ -140,7 +142,7 @@ Joystick :: (session: Session, props: JoystickProps) -> JoystickResult {
     base := Color.{128, 140, 136, 64}
     knob := Color.{128, 140, 136, ifx result.direction >= 0 then cast(u8)170 else cast(u8)120}
     unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 1), .bounds = Rectangle.{cx - radius, cy - radius,
-            radius * 2.0, radius * 2.0}, .fill = base, .radius = radius})
+                radius * 2.0, radius * 2.0}, .fill = base, .radius = radius})
     lean := radius * 0.45
     kx := cx; ky := cy
     if result.direction == 0 { kx -= lean }
@@ -149,7 +151,7 @@ Joystick :: (session: Session, props: JoystickProps) -> JoystickResult {
     if result.direction == 3 { ky += lean }
     size := radius * 0.8
     unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 2), .bounds = Rectangle.{kx - size / 2.0, ky - size / 2.0,
-            size, size}, .fill = knob, .radius = size / 2.0})
+                size, size}, .fill = knob, .radius = size / 2.0})
     return result
 }
 
@@ -200,6 +202,13 @@ SwipeArea :: (session: Session, props: SwipeAreaProps) -> SwipeAreaResult {
                 result.y = press.y
             }
         }
+    }
+    if props.secondary_tap && press.right_clicked {
+        result.swiped = -1
+        result.held = false
+        result.tapped = true
+        result.x = press.x
+        result.y = press.y
     }
     return result
 }

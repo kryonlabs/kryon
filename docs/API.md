@@ -281,6 +281,8 @@ paints the same cover composition for a native loading screen.
 ## Game touch controls
 
 `kryon/joystick` provides `SwipeArea` (swipes and taps over a board) and
+its `secondary_tap` option reports a right click as a tap at that position.
+It is off by default. The same module provides
 `Joystick` (a stick to lean). `kryon/direction_pad` provides
 `DirectionPad(session, DirectionPadProps)`, a four-way pad like a game
 controller's D-pad, drawn in the largest square of its bounds. Directions are
