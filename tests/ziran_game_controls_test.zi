@@ -1,0 +1,50 @@
+#import "session"
+#import "geometry"
+#import "joystick"
+#import "direction_pad"
+#import "paint_queue"
+#import "tree"
+#import "tree_draw"
+#import "ziran_keyboard_navigation_host"
+
+Near :: (a: float32, b: float32) -> bool { return a - b < 0.01 && b - a < 0.01 }
+
+#program_export
+main :: () -> s32 {
+    // Phone portrait and landscape, including an inset usable viewport.
+    viewports: [4]Rectangle = .[Rectangle.{0.0, 0.0, 320.0, 568.0},
+        Rectangle.{0.0, 0.0, 390.0, 844.0}, Rectangle.{0.0, 0.0, 844.0, 390.0},
+        Rectangle.{18.0, 56.0, 640.0, 304.0}]
+    for viewport: viewports {
+        pad := DirectionPadBounds(viewport)
+        if pad.width < 168.0 || pad.width > 216.0 || pad.width != pad.height { return 1 }
+        if pad.x - viewport.x < 23.99 || viewport.y + viewport.height - pad.y - pad.height < 23.99 { return 2 }
+        if pad.x + pad.width > viewport.x + viewport.width || pad.y < viewport.y { return 3 }
+        if DirectionPadCell(pad.x, pad.y, pad.width / 3.0, 0).width < 48.0 { return 4 }
+    }
+    tiny := DirectionPadBounds(Rectangle.{10.0, 20.0, 100.0, 60.0})
+    if tiny.x < 10.0 || tiny.y < 20.0 || tiny.x + tiny.width > 110.0 || tiny.y + tiny.height > 80.0 { return 5 }
+
+    session := SessionOpen()
+    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
+    gesture := SwipeAreaResult.{.down = true, .start_x = 100.0, .start_y = 120.0, .at_x = 300.0, .at_y = 120.0}
+    SwipeFeedback(session, SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture, .size = 60.0})
+    if PendingPaintCount(session) != 5 { return 6 }
+    base := PendingPaintAt(session, 0).bounds
+    ball := PendingPaintAt(session, 3).bounds
+    if !Near(base.x, 70.0) || !Near(base.y, 90.0) || !Near(base.width, 60.0) { return 7 }
+    if !Near(ball.x + ball.width / 2.0, 125.2) || !Near(ball.y + ball.height / 2.0, 120.0) { return 8 }
+    if EndFrame(session) != FrameStatus.FrameOk { return 9 }
+    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
+    gesture.at_x = gesture.start_x
+    SwipeFeedback(session, SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
+    ball = PendingPaintAt(session, 3).bounds
+    if !Near(ball.x + ball.width / 2.0, 100.0) { return 10 }
+    if EndFrame(session) != FrameStatus.FrameOk { return 11 }
+    unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
+    gesture.down = false
+    SwipeFeedback(session, SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
+    if PendingPaintCount(session) != 0 { return 12 }
+    if EndFrame(session) != FrameStatus.FrameOk { return 13 }
+    return 0
+}

@@ -294,6 +294,17 @@ over a board: lighter arms and outlined arrows let the pieces under it show
 through, and drawn after the board it takes the presses there. It is composed
 from `Press`, `Box` and `SvgIcon`, so hosted games can use it.
 
+`DirectionPadBounds(usable_viewport)` places a floating pad at the bottom left
+with 24–32 logical units of edge padding and a 168–216 unit side on normal
+phone screens, in either orientation. Pass the area inside system insets and
+app bars; very small embedded areas shrink the pad to fit.
+
+`joystick.SwipeFeedback(session, SwipeFeedbackProps.{key, gesture, size})`
+draws a faint base at a `SwipeAreaResult`'s contact start and a glowing ball
+following the finger, clamped to that base. It disappears on release and
+does not take input. Draw it after the board; `size` is the base diameter
+in logical units (56 by default). The app keeps its movement rules.
+
 ## Reading pages
 
 `text_measure.TextPage(session, props, start)` returns a UTF-8 byte range

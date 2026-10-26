@@ -19,6 +19,7 @@
 #import "box_props"
 #import "box_widget"
 #import "touch_hold"
+Math :: #import "std/math"
 
 JoystickProps :: struct {
     key: u64
@@ -76,6 +77,40 @@ SwipeAreaResult :: struct {
     at_x: float32
     at_y: float32
     lean: s32
+}
+
+SwipeFeedbackProps :: struct {
+    key: u64
+    gesture: SwipeAreaResult
+    // Diameter of the touch base in logical units; 0 means 56.
+    size: float32
+}
+
+// Draw after the board. This is decorative: the SwipeArea keeps the press.
+// A faint base marks the contact's start; a glowing ball follows the finger,
+// staying within the base. Lifting removes the whole feedback.
+SwipeFeedback :: (session: Session, props: SwipeFeedbackProps) {
+    gesture := props.gesture
+    if !gesture.down { return }
+    base := ifx props.size > 0.0 then props.size else 56.0
+    unused Box(session, BoxProps.{.key = props.key,
+        .bounds = Rectangle.{gesture.start_x - base / 2.0, gesture.start_y - base / 2.0, base, base},
+        .fill = Color.{255, 255, 255, 22}, .border = Color.{255, 255, 255, 90}, .radius = base / 2.0})
+    dx := gesture.at_x - gesture.start_x
+    dy := gesture.at_y - gesture.start_y
+    reach := base * 0.42
+    distance := cast(float32)Math.Sqrt(cast(float64)(dx * dx + dy * dy))
+    if distance > reach { dx = dx * reach / distance; dy = dy * reach / distance }
+    ball := base * 0.42
+    glow := ball * 1.7
+    cx := gesture.start_x + dx
+    cy := gesture.start_y + dy
+    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 1),
+        .bounds = Rectangle.{cx - glow / 2.0, cy - glow / 2.0, glow, glow},
+        .fill = Color.{255, 246, 210, 46}, .radius = glow / 2.0})
+    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 2),
+        .bounds = Rectangle.{cx - ball / 2.0, cy - ball / 2.0, ball, ball},
+        .fill = Color.{255, 252, 236, 200}, .border = Color.{255, 255, 255, 240}, .radius = ball / 2.0})
 }
 
 TOUCH_SLOTS :: 8

@@ -45,6 +45,24 @@ DirectionPadResult :: struct {
     step: bool
 }
 
+// A thumb-sized floating pad at the bottom left of the usable viewport.
+// Use the short side in either orientation. Normal phone sizes leave 24–32
+// units at the edges and give each arm at least a 48-unit visible button.
+// Tiny embedded viewports shrink the pad and its margin to keep it inside.
+DirectionPadBounds :: (viewport: Rectangle) -> Rectangle {
+    short := ifx viewport.width < viewport.height then viewport.width else viewport.height
+    if short <= 0.0 { return Rectangle.{viewport.x, viewport.y, 0.0, 0.0} }
+    margin := short * 0.06
+    if margin < 24.0 { margin = 24.0 }
+    if margin > 32.0 { margin = 32.0 }
+    if margin > short * 0.1 { margin = short * 0.1 }
+    side := short * 0.44
+    if side < 168.0 { side = 168.0 }
+    if side > 216.0 { side = 216.0 }
+    if side > short - margin * 2.0 { side = short - margin * 2.0 }
+    return Rectangle.{viewport.x + margin, viewport.y + viewport.height - margin - side, side, side}
+}
+
 // One frame of a held pad: what to do now and what to remember.
 DirectionPadHold :: struct {
     // Step this way now, or -1.
