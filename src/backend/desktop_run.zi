@@ -6,10 +6,12 @@ A :: #import "accessibility_linux";
 #import "geometry"
 #import "program_title"
 #import "session"
+#import "scroll_device"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
 Clock :: #import "frame_clock";
+Timer :: #import "std/timer_linux";
 
 using FrameStatus;
 
@@ -53,6 +55,9 @@ DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
     TreePointerUpdate(session, pointer)
     TreeSecondaryPointerUpdate(session, secondary)
     PointerWheelSend(session, pointer.x, pointer.y, wheel)
+    BeginScrollFrame(session, .{pointer.x, pointer.y}, pointer.pressed,
+        pointer.down, pointer.released, wheel,
+        cast(float64)Timer.MonotonicMilliseconds() / 1000.0)
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk { return false }
     if Frame(session, viewport) != 0 {

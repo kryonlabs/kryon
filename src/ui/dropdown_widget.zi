@@ -474,7 +474,12 @@
             TreeSetLabel(session, result.node, label)
             bounds = TreeSubmittedNodeAt(session, result.node).bounds
         }
-        DropdownPaintTrigger(session, result.node, bounds, props, options,
+        // Trigger paint is translated by QueuePaint; the popup below needs
+        // window coordinates to choose its position and receive input.
+        trigger := props.bounds
+        trigger.width = bounds.width
+        trigger.height = bounds.height
+        DropdownPaintTrigger(session, result.node, trigger, props, options,
             face, result.selected_index, result.open)
         if !result.open { return result }
 

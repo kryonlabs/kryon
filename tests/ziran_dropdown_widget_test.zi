@@ -8,6 +8,8 @@
 #import "dropdown_props"
 #import "dropdown_widget"
 #import "geometry"
+#import "layout_widget"
+#import "layout_props"
 #import "image_props"
 #import "paint_queue"
 #import "scroll_device"
@@ -551,6 +553,44 @@ ActionMenu :: () -> s32 {
     return 0
 }
 
+// An auto-placed trigger paints at its hit target and opens its popup there.
+PlacedDropdown :: () -> s32 {
+    session := SessionOpen()
+    options: [2]DropdownOption
+    options[0].label = "First"; options[1].label = "Second"
+    props: DropdownProps = .{.key = 91, .bounds = .{0.0, 0.0, 200.0, 32.0}}
+    step: s32 = 0
+    while step < 2 {
+        props.open = step == 1
+        PaintClear(session)
+        TreeStart(session, 1, .{0.0, 0.0, 400.0, 300.0})
+        column := Column(session, .{.key = 90, .bounds = .{40.0, 60.0, 240.0, 150.0}})
+        choice := Dropdown(session, props, options[:])
+        if !End(session) || !TreeFinish(session) { return 1 }
+        target := TreeNodeAt(session, choice.node).bounds
+        if target.x != 40.0 || target.y != 60.0 { return 2 }
+        found := false
+        for index: cast(s32)0..PendingPaintCount(session) - 1 {
+            paint := PendingPaintAt(session, index)
+            if paint.node == choice.node && paint.kind == PaintKindRoundedFill {
+                if paint.bounds.x != target.x || paint.bounds.y != target.y ||
+                paint.bounds.width != target.width || paint.bounds.height != target.height { return 3 }
+                found = true
+            }
+        }
+        if !found { return 4 }
+        if step == 1 {
+            if !choice.open { return 5 }
+            option := TreeHitAt(session, 55.0, 108.0)
+            if TreeNodeAt(session, option).kind != WidgetKindSelectable { return 6 }
+        }
+        step += 1
+    }
+    PaintClear(session)
+    unused SessionClose(session)
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     // Padding inside the colored option is independent of the menu gutter.
@@ -635,5 +675,7 @@ main :: () -> s32 {
     if paged != 0 { return 70 + paged }
     acted: s32 = ActionMenu()
     if acted != 0 { return 90 + acted }
+    placed := PlacedDropdown()
+    if placed != 0 { return 110 + placed }
     return 0
 }

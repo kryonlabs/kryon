@@ -288,6 +288,10 @@ Theme :: #import "theme";
             sample_x: float32 = drag.x
             if drag.started {
                 sample_x = props.bounds.x + drag.grab_x
+            } else if previous >= 0 {
+                // Drag observations are in window coordinates; glyph layout
+                // and queued paint use the field's declared coordinates.
+                sample_x -= TreeNodeAt(session, previous).bounds.x - props.bounds.x
             }
             selected: s32 = TextFieldCursorAtX(display,
                 cast(s32)sample_x - scroll.text_origin_x,
@@ -535,7 +539,8 @@ Theme :: #import "theme";
             TextHostPresent(session, result.node, props.value, result.cursor,
                 result.anchor, props.secure, props.numeric, props.read_only,
                 result.edit.changed)
-            bounds = TreeSubmittedNodeAt(session, result.node).bounds
+            // QueuePaint applies the retained node's placement once. Keep the
+            // paint in declared coordinates, as its glyph layout already is.
         }
         PaintRoundedFill(session, result.node, bounds,
             face.value.radius, 12,
@@ -670,6 +675,11 @@ Theme :: #import "theme";
             clear.key = field_key * cast(u64)65599 + cast(u64)41
             clear.bounds = Rectangle.{bounds.x + bounds.width - clear_size, bounds.y,
                 clear_size, bounds.height}
+            if result.node >= 0 {
+                placed := TreeSubmittedNodeAt(session, result.node).bounds
+                clear.bounds.x += placed.x - bounds.x
+                clear.bounds.y += placed.y - bounds.y
+            }
             clear.label = props.clear_label
             clear.icon_shape = "S1.8rr:M6 6L18 18M18 6L6 18"
             clear.icon_only = true

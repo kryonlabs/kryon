@@ -2,6 +2,9 @@
 #import "widget_test_session"
 
 #import "geometry"
+#import "layout_widget"
+#import "layout_props"
+#import "paint_queue"
 #import "semantic"
 #import "text_field_widget"
 #import "text_input"
@@ -18,6 +21,7 @@ using SemanticKind;
 using WidgetKind;
 using CompositionPhase;
 using FrameStatus;
+using PaintKind;
 
 phase: s32;
 value: string;
@@ -382,6 +386,42 @@ NumberTap :: () -> s32 {
     return 0
 }
 
+// Layout moves the hit target and paint together, including drag selection.
+PlacedField :: () -> s32 {
+    session := SessionOpen()
+    props: TextFieldProps = .{.key = 91, .bounds = .{0.0, 0.0, 200.0, 32.0},
+        .value = "abcdef", .label = "Placed field", .cursor = 6, .anchor = 6}
+    step: s32 = 0
+    while step < 3 {
+        if step == 1 { TreePointerUpdate(session, .{60.0, 76.0, true, true, false}) }
+        if step == 2 { TreePointerUpdate(session, .{80.0, 76.0, true, false, false}) }
+        PaintClear(session)
+        TreeStart(session, 1, .{0.0, 0.0, 400.0, 300.0})
+        column := Column(session, .{.key = 90, .bounds = .{40.0, 60.0, 240.0, 150.0}})
+        field := TextField(session, props)
+        if !End(session) || !TreeFinish(session) { return 1 }
+        target := TreeNodeAt(session, field.node).bounds
+        if target.x != 40.0 || target.y != 60.0 { return 2 }
+        found := false
+        for index: cast(s32)0..PendingPaintCount(session) - 1 {
+            paint := PendingPaintAt(session, index)
+            if paint.node == field.node && paint.kind == PaintKindRoundedFill && paint.bounds.height == target.height {
+                if paint.bounds.x != target.x || paint.bounds.y != target.y ||
+                paint.bounds.width != target.width || paint.bounds.height != target.height { return 3 }
+                found = true
+            }
+        }
+        if !found { return 4 }
+        if step == 1 && field.cursor != 1 { return 5 }
+        if step == 2 && field.cursor != 4 { return 6 }
+        props.cursor = field.cursor; props.anchor = field.anchor
+        step += 1
+    }
+    PaintClear(session)
+    unused SessionClose(session)
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     // Editing moves by user-perceived characters; byte ranges remain public.
@@ -447,5 +487,7 @@ main :: () -> s32 {
     if TreeNodeAt(clear_session, TreeHitAt(clear_session, 225.0, 34.0)).kind !=
     WidgetKindTextField { return 45 }
     unused SessionClose(clear_session)
+    placed := PlacedField()
+    if placed != 0 { return 50 + placed }
     return 0
 }

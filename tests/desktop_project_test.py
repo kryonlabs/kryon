@@ -53,6 +53,7 @@ def main():
         )
         (project / "src/app.zi").write_text(
             'using UI :: #import "Widgets";\n'
+            'scroll_offset: s32;\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
             '    key: s32 = KeyboardTake(session)\n'
@@ -63,6 +64,11 @@ def main():
             '    if typed == 122 || typed == 233 { return 1 }\n'
             '    if PointerWheelTake(session, viewport) > 0.0 { return 1 }\n'
             '    if SecondaryPointerSample(session).released { return 1 }\n'
+            '    scroll := Scroll(session, .{.key = 80, .bounds = .{700.0, 10.0, 200.0, 150.0},\n'
+            '        .content_height = 600, .scroll_offset = scroll_offset})\n'
+            '    scroll_offset = scroll.scroll_offset\n'
+            '    if scroll.opened { End(session) }\n'
+            '    if scroll_offset > 0 { return 1 }\n'
             '    image: ImageProps\n'
             '    image.key = cast(u64)1\n'
             '    image.bounds = Rectangle.{80.0, 80.0, 240.0, 240.0}\n'
@@ -193,6 +199,9 @@ def main():
             "window, '470', '432'], check=True)\n"
             "        time.sleep(0.2)\n"
             "        subprocess.run(['xdotool', 'click', '4'], check=True)\n"
+            "    elif sys.argv[1] == 'scroll':\n"
+            "        subprocess.run(['xdotool', 'mousemove', '--window', "
+            "window, '780', '70', 'click', '5'], check=True)\n"
             "    stdout, stderr = app.communicate(timeout=10)\n"
             "    assert app.returncode == 1, (app.returncode, stdout, stderr)\n"
             "    assert 'desktop frame rendering failed' in stderr, stderr\n"
@@ -209,14 +218,14 @@ def main():
             "                child.kill()\n"
             "                child.wait()\n"
         )
-        for mode in ("key", "control", "text", "unicode", "wheel"):
+        for mode in ("key", "control", "text", "unicode", "wheel", "scroll"):
             run(["xvfb-run", "-a", "python3", "input_check.py", mode],
                 project, env)
         # A real window manager activates an unfocused window on the click.
         # Direct windowfocus above would hide SDL swallowing that first click.
         run(["xvfb-run", "-a", "dbus-run-session", "--", "python3",
              "input_check.py", "secondary"], project, env)
-    print("desktop Ziran project: image, text line box, keyboard, modifiers, UTF-8 text, wheel, and first right-click passed")
+    print("desktop Ziran project: image, text line box, keyboard, modifiers, UTF-8 text, wheel, scroll widget, and first right-click passed")
 
 
 if __name__ == "__main__":
