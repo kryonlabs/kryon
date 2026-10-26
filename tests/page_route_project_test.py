@@ -73,6 +73,12 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
         '    }\n'
         '    target[length + index] = cast(u8)0\n'
         '    if !Same(GetRouteQuery(), "?probe=1") { return 0 }\n'
+        '    origin: *u8 = GetRouteOrigin()\n'
+        '    if origin[0] != cast(u8)102 { return 0 }\n'  # f
+        '    if origin[1] != cast(u8)105 { return 0 }\n'  # i
+        '    if origin[2] != cast(u8)108 { return 0 }\n'  # l
+        '    if origin[3] != cast(u8)101 { return 0 }\n'  # e
+        '    if origin[4] != cast(u8)58 { return 0 }\n'   # :
         '    PushRoute(*target[0])\n'
         '    if !Same(GetRouteHash(), "#round") { return 0 }\n'
         '    if !Same(GetRouteQuery(), "?probe=1") { return 0 }\n'

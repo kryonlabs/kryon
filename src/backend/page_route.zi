@@ -12,6 +12,8 @@ PAGE_ROUTE_MAX :: 2049
 page_route_path: [PAGE_ROUTE_MAX]u8;
 page_route_hash: [PAGE_ROUTE_MAX]u8;
 page_route_query: [PAGE_ROUTE_MAX]u8;
+page_route_origin: [PAGE_ROUTE_MAX]u8;
+page_route_origin_read: bool;
 page_route_version: s32;
 page_route_started: bool;
 
@@ -63,6 +65,58 @@ PageRouteReadQuery :: (query: []u8) {
         PageRouteReadText(WebGet(location, WebName("search")), query)
     }
     WebEnd(scope)
+}
+
+// The page's origin, "scheme://host[:port]" with no trailing slash, read once
+// and kept: it cannot change while the page lives. Browsers without an
+// origin property fall back to protocol + "//" + host, and a file:// page
+// reports an empty origin, matching Location's own empty value there.
+PageRouteReadOrigin :: (origin: []u8) {
+    origin[0] = cast(u8)0
+    scope: s32 = WebScope()
+    location: s32 = WebGetObject(WebGlobal, WebName("location"))
+    if location != 0 && !WebFailed() {
+        value := WebGet(location, WebName("origin"))
+        if value.tag == WebStringTag && WebAsObject(value) != 0 && !WebFailed() {
+            PageRouteReadText(value, origin)
+        } else {
+            protocol: [64]u8
+            host: [512]u8
+            PageRouteReadText(WebGet(location, WebName("protocol")), protocol[:])
+            PageRouteReadText(WebGet(location, WebName("host")), host[:])
+            PageRouteJoinOrigin(origin, protocol[:], host[:])
+        }
+    }
+    WebEnd(scope)
+}
+
+// protocol ("https:") plus host ("a.example:8443") as "https://a.example:8443".
+PageRouteJoinOrigin :: (origin: []u8, protocol: []u8, host: []u8) {
+    write: s32 = 0
+    index: s32 = 0
+    while write + 1 < cast(s32)origin.count && protocol[index] != cast(u8)0 {
+        origin[write] = protocol[index]
+        write += 1
+        index += 1
+    }
+    if write == 0 || host[0] == cast(u8)0 { origin[write] = cast(u8)0; return }
+    if origin[write - 1] != cast(u8)58 { // :
+        if write + 1 >= cast(s32)origin.count { origin[write] = cast(u8)0; return }
+        origin[write] = cast(u8)58
+        write += 1
+    }
+    if write + 2 < cast(s32)origin.count {
+        origin[write] = cast(u8)47
+        origin[write + 1] = cast(u8)47
+        write += 2
+    }
+    index = 0
+    while write + 1 < cast(s32)origin.count && host[index] != cast(u8)0 {
+        origin[write] = host[index]
+        write += 1
+        index += 1
+    }
+    origin[write] = cast(u8)0
 }
 
 PageRouteSync :: () {
@@ -184,6 +238,18 @@ GetRouteVersion :: () -> s32 {
 GetRouteQuery :: () -> *u8 {
     PageRouteReadQuery(page_route_query[:])
     return *page_route_query[0]
+}
+
+// The page's origin ("https://host[:port]"), read once and then kept.
+// Applications use it to turn same-origin relative paths into the absolute
+// http/https URLs the HTTP transfer layer requires. Empty outside a page.
+#program_export
+GetRouteOrigin :: () -> *u8 {
+    if !page_route_origin_read {
+        PageRouteReadOrigin(page_route_origin[:])
+        page_route_origin_read = true
+    }
+    return *page_route_origin[0]
 }
 
 #program_export

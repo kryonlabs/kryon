@@ -16,7 +16,7 @@ existing behavior of emitting a full repaint immediately.
 | `Kryon` | Geometry, drawing values, sessions, `Text(TextProps)`, and `Button(ButtonProps)` |
 | `Widgets` | The core widget catalog, including `Image(ImageProps)`, page structure, fields, controls, layout, and tree input |
 | `Page`, `Semantic` | Direct page and semantic-kind exports for document-oriented applications |
-| `PageRoute` | Browser route path, hash, and history (`GetRoutePath`, `PushRoute`, ...) for Canvas and DOM profiles |
+| `PageRoute` | Browser route path, hash, and history (`GetRoutePath`, `PushRoute`, `GetRouteOrigin`, ...) for Canvas and DOM profiles |
 | `geometry`, `drawing_props`, `session`, `tree`, `surface`, `paint_queue`, `style`, `style_sheet`, `control_props`, `font_metrics`, `scroll`, `semantic`, `tree_input`, `widget_kind` | Building blocks for widget packages |
 
 ## Widget packages
