@@ -239,6 +239,7 @@ ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 		$(C_DIR)/*.c $(CANVAS_LIBS) \
 		--embed-file $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf \
 		-sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
+		-sALLOW_MEMORY_GROWTH=1 \
 		--shell-file $(PAGE_SHELL) \
 		-o "$$temporary" && chmod 644 "$$temporary" && mv "$$temporary" $@
 else
