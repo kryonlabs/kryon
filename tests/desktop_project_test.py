@@ -22,6 +22,7 @@ def private_environment():
                  "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER",
                  "SDL_MOUSE_FOCUS_CLICKTHROUGH"):
         env.pop(name, None)
+    env["YUE_DESKTOP_RECOVERY"] = "0"
     return env
 
 
@@ -136,7 +137,8 @@ def main():
             "env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)\n"
             "try:\n"
             "    for _ in range(100):\n"
-            "        found = subprocess.run(['xdotool', 'search', '--name', "
+            "        found = subprocess.run(['xdotool', 'search', '--onlyvisible', "
+            "'--pid', str(app.pid), '--name', "
             "'^desktop_probe$'], capture_output=True, text=True)\n"
             "        if found.returncode == 0 and found.stdout.strip():\n"
             "            window = found.stdout.splitlines()[0]\n"
