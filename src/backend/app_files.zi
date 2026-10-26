@@ -35,6 +35,13 @@ AppFileFree :: (value: string) {
 } else {
     FileError :: () -> *s32 #foreign libc "__errno_location";
 }
+// "No such file or directory". Emscripten numbers errors as WASI does, so
+// the browser reports 44 where the other platforms report 2.
+#if #defined(PLATFORM_WEB) {
+    FILE_MISSING :: 44
+} else {
+    FILE_MISSING :: 2
+}
 
 AppFileNameValid :: (name: string) -> bool {
     if name.count == 0 || name.count > 1024 || name[0] == cast(u8)47 {
@@ -149,7 +156,7 @@ AppFileRead :: (files: *AppFiles, name: string) -> string {
     }
     file := OpenRead(path)
     if !file.valid {
-        if FileError().* == 2 {
+        if FileError().* == FILE_MISSING {
             files.status = DOCUMENT_MISSING
         }
         return ""
