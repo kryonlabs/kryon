@@ -671,8 +671,11 @@ main :: () -> s32 {
             .asset_path = "assets/photo.png", .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}, *image_codec)
     if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 ||
     !PaintHasAsset(session, "apps/owner-b/assets/photo.png") || PaintHasAsset(session, "apps/owner-a/assets/photo.png") { return 51 }
+    // An allowed image its owner cannot resolve yet draws as loading.
     resolved_owner = 0
-    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 { return 52 }
+    paints := PendingPaintCount(session)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 ||
+    PendingPaintCount(session) != paints { return 52 }
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 53 }
     // Old callers retain the packed path and cannot inherit a prior resolver.

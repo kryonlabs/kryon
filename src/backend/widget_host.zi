@@ -66,6 +66,8 @@ using HostValueKind;
 WidgetAssetAllowed :: #type (path: string) -> bool;
 // Resolves an allowed packed path into the current app's renderer namespace.
 // Returned text must remain valid until the host has painted the frame.
+// An empty result is an allowed image the host does not have yet, such as
+// art still downloading: it draws as loading and resolves again next frame.
 WidgetAssetResolve :: #type (path: string) -> string;
 
 WIDGET_HOST_TAB_LIMIT :: 32
@@ -260,10 +262,13 @@ WidgetHostAssetPath :: (path: string) -> string {
 WidgetHostImage :: (image: *ImageProps) -> bool {
     if image.texture.id != cast(u32)0 { return false }
     packed := image.asset_path
-    if packed == "" { return WidgetHostAssetAllowed(packed) }
-    resolved := WidgetHostAssetPath(packed)
-    if packed != "" && resolved == "" { return false }
-    image.asset_path = resolved
+    if !WidgetHostAssetAllowed(packed) { return false }
+    if packed == "" { return true }
+    image.asset_path = WidgetHostAssetPath(packed)
+    if image.asset_path == "" {
+        image.texture.width = -1
+        image.texture.height = -1
+    }
     return true
 }
 
