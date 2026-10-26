@@ -101,6 +101,7 @@ svg_icon_props = "src/ui/svg_icon_props.zi"
 TestDriver = "src/backend/test_driver.zi"
 test_driver = "src/backend/test_driver.zi"
 key_input = "src/ui/key_input.zi"
+open_uri = "src/backend/open_uri.zi"
 # Headless frames: paints into a pixel buffer on every target.
 pixmap = "src/backend/pixmap.zi"
 pixmap_frame = "src/backend/pixmap_frame.zi"
