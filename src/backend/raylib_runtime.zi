@@ -208,6 +208,11 @@ RaylibAssetLoadBudget :: 0.004
 // also renews once a frame interval has passed, so their images still load.
 RaylibAssetLoadWindow :: 0.016
 RaylibAssetLoading :: -2
+// Hosts of games can keep the last complete picture while a newly used
+// animation frame is decoding. Other hosts retain progressive image loading.
+raylib_complete_picture_frames: bool;
+raylib_complete_picture_frame: bool;
+raylib_picture_deferred: bool;
 raylib_asset_load_spent: float64;
 raylib_asset_loads: s32;
 raylib_asset_load_window: float64 = -1.0;
@@ -950,7 +955,7 @@ RaylibTextTypeface :: (name: string) -> string {
     key := name
     key_buffer: [32]u8
     if name.count >= 64 || (name.count >= 7 && name[:7] == "assets/") ||
-        (name.count > 0 && name[0] == #char "/") {
+    (name.count > 0 && name[0] == #char "/") {
         key = TextTypefaceKey(name, key_buffer[:])
     }
     index := RaylibTypefaceIndex(key)
@@ -1324,6 +1329,7 @@ RaylibAssetIndex :: (path: string, include_loading: bool = false) -> s32 {
         raylib_asset_loads = 0
     }
     if raylib_asset_loads > 0 && raylib_asset_load_spent >= RaylibAssetLoadBudget {
+        raylib_picture_deferred = true
         return RaylibAssetLoading
     }
     raylib_asset_loads += 1
@@ -1583,7 +1589,7 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
     title: string = "", flags: u32 = cast(u32)4) -> bool {
     label: [512]u8
     if width <= 0 || height <= 0 ||
-        !CopyCString(ifx title.count > 0 then title else ProgramTitle(), label[:]) { return false }
+    !CopyCString(ifx title.count > 0 then title else ProgramTitle(), label[:]) { return false }
     raylib_quit = false
     raylib_pointer = PointerFrame.{}
     raylib_secondary = SecondaryPointerFrame.{}
@@ -1872,6 +1878,16 @@ RaylibLoadingFrame :: (title: string) {
     HostRaylibEndDrawing()
 }
 
+// Opt in from the native host. The render thread owns this presentation
+// policy, including when the app composes its frames on a worker thread.
+#program_export
+RaylibCompletePictureFrames :: (enabled: bool) {
+    #if RAYLIB_FRAME_THREADS {
+        if RecordFrameOperation(PaintCommand.{.x = ifx enabled then 1 else 0}, RaylibReplayCompletePictures) { return }
+    }
+    raylib_complete_picture_frames = enabled
+}
+
 BeginRaylibFrame :: () {
     #if RAYLIB_FRAME_THREADS {
         if RecordFrameOperation(PaintCommand.{}, RaylibReplayBegin) { return }
@@ -1883,7 +1899,10 @@ BeginRaylibFrame :: () {
     raylib_asset_load_spent = 0.0
     raylib_asset_loads = 0
     raylib_asset_load_window = HostRaylibGetTime()
-    HostRaylibBeginDrawing()
+    raylib_picture_deferred = false
+    raylib_complete_picture_frame = raylib_complete_picture_frames &&
+    BeginRetainedFrame(HostRaylibGetScreenWidth(), HostRaylibGetScreenHeight())
+    if !raylib_complete_picture_frame { HostRaylibBeginDrawing() }
     HostRaylibClearBackground(Color.{248, 250, 252, 255})
     // Scale the modelview matrix itself rather than pushing a transform:
     // the clip code reads the modelview to place scissors, and BeginDrawing
@@ -1897,6 +1916,12 @@ BeginRaylibFrame :: () {
 EndRaylibFrame :: () -> bool {
     #if RAYLIB_FRAME_THREADS {
         if RecordFrameOperation(PaintCommand.{}, RaylibReplayEnd) { return true }
+    }
+    if raylib_complete_picture_frame {
+        incomplete := raylib_picture_deferred || ImagesPending() > 0
+        raylib_complete_picture_frame = false
+        if incomplete { return EndRetainedFrameReusePrevious() && !raylib_image_error }
+        return EndRetainedFrame() && !raylib_image_error
     }
     HostRaylibEndDrawing()
     return !raylib_image_error
@@ -3446,6 +3471,7 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
             command.mesh_points, command.mesh_columns, command.mesh_rows, command.clip, command.color)
     }
     RaylibReplayBegin :: (command: PaintCommand) { unused command; BeginRaylibFrame() }
+    RaylibReplayCompletePictures :: (command: PaintCommand) { RaylibCompletePictureFrames(command.x != 0) }
     RaylibReplayEnd :: (command: PaintCommand) { unused command; unused EndRaylibFrame() }
     RaylibReplayZoom :: (command: PaintCommand) { RaylibSetZoom(command.radius) }
     RaylibReplayRetainedBegin :: (command: PaintCommand) {

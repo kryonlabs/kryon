@@ -22,6 +22,11 @@ smooth_filters: s32;
 GetTime :: () -> float64 { return clock_seconds }
 
 #program_export
+GetScreenWidth :: () -> s32 { return 100 }
+#program_export
+GetScreenHeight :: () -> s32 { return 100 }
+
+#program_export
 ClearBackground :: (color: Color) { unused color }
 
 // The frame is not zoomed here; BeginRaylibFrame only scales a zoomed one.
@@ -39,8 +44,8 @@ LoadTexture :: (path: *u8) -> Texture2D {
 
 // A sideways camera JPEG: Exif orientation 6, stored turned left.
 sideways_jpeg: [40]u8 = .[255, 216, 255, 225, 0, 34, 69, 120, 105, 102, 0, 0,
-    77, 77, 0, 42, 0, 0, 0, 8, 0, 1, 1, 18, 0, 3, 0, 0, 0, 1, 0, 6,
-    0, 0, 0, 0, 0, 0, 255, 217];
+77, 77, 0, 42, 0, 0, 0, 8, 0, 1, 1, 18, 0, 3, 0, 0, 0, 1, 0, 6,
+0, 0, 0, 0, 0, 0, 255, 217];
 photo_pixels: [4]u8;
 file_frees: s32;
 image_unloads: s32;

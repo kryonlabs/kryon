@@ -204,6 +204,13 @@ again every frame. A host that draws textures registers
 the same pixels; raylib's `OpenRaylib` does, and a raylib host that opens its
 own window calls `RaylibUseIconTextures()` after `InitWindow`.
 
+A native game host using `raylib_runtime` can enable
+`RaylibCompletePictureFrames(true)` for its `BeginRaylibFrame` /
+`EndRaylibFrame` loop. Two retained screen textures keep the last complete
+frame visible while newly requested images decode, including later animation
+sprites. Decoding continues while that frame is held. Hosts that want images
+to appear progressively keep the default, `false`.
+
 A bundle draws a row of choices, such as a week or calendar view, with
 `SegmentedControl(session, props, options)` from
 [`segmented_control_widget`](../src/ui/segmented_control_widget.zi); its host

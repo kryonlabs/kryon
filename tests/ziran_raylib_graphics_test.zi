@@ -138,5 +138,25 @@ main :: () -> s32 {
     image_unloads != 1 || graphics_failed {
         return 21
     }
+    // A game's newly requested animation sprite must not reveal a hole.
+    // The actual decoder budget postpones it; the prior complete target
+    // remains the presenter until a subsequent frame can draw the sprite.
+    RaylibCompletePictureFrames(true)
+    BeginRaylibFrame()
+    DrawAsset("complete-board.png")
+    if !EndRaylibFrame() { return 22 }
+    complete := RetainedPreviousFrameTexture().id
+    load_seconds = 0.005
+    BeginRaylibFrame()
+    DrawAsset("animation-a.png")
+    DrawAsset("animation-b.png")
+    if !EndRaylibFrame() || presented != complete ||
+    RetainedPreviousFrameTexture().id != complete { return 23 }
+    BeginRaylibFrame()
+    DrawAsset("animation-a.png")
+    DrawAsset("animation-b.png")
+    if !EndRaylibFrame() || RetainedPreviousFrameTexture().id == complete ||
+    presented == complete { return 24 }
+    RaylibCompletePictureFrames(false)
     return 0
 }
