@@ -166,6 +166,9 @@ PollCanvas :: () -> bool {
 }
 
 #program_export
+CanvasSetExitKey :: (key: s32) { SetExitKey(key) }
+
+#program_export
 CanvasViewport :: () -> Rectangle {
     return Rectangle.{0.0, 0.0,
         cast(float32)GetScreenWidth(),

@@ -62,6 +62,10 @@ Only this host's event listeners and resize observer are removed on close.
 A subsequent open creates new input and texture state; cached default font
 memory is released before closing the canvas.
 
+Applications that handle Escape as navigation can call `CanvasSetExitKey(0)`
+through `kryon/Canvas` to disable the host's default Escape-to-exit behavior.
+Other keys remain available through `CanvasPressedKey`.
+
 Images are RGBA8 (`format = 7`). Individual pixel allocations are limited to
 64 MiB and 16384 pixels per dimension. Tint caching retains at most 32 entries
 and 16 MiB of pixels; releasing or updating a texture invalidates its cached
