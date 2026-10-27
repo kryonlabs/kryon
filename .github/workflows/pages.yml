@@ -39,7 +39,7 @@ jobs:
           path: kryonlabs/kryon
       # The locked compiler comes prebuilt.
       - name: Set up the locked Ziran
-        uses: ziranlang/ziran/.github/actions/setup@79ca2f95c0e90e6c339e2921a198b4f946eb50bb
+        uses: ziranlang/ziran/.github/actions/setup@5d3e5ca4cae76398dd2545a0e33d2b741fe5d321
         with:
           project: kryonlabs/kryon
           path: ziranlang/ziran
@@ -127,6 +127,7 @@ jobs:
           node-version: '22'
 
       - name: Install private display tools
+        timeout-minutes: 10
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3 xvfb

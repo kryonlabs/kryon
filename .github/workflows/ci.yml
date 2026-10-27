@@ -31,7 +31,7 @@ jobs:
 
       # The locked compiler comes prebuilt, and the package checkouts cached.
       - name: Set up the locked Ziran and fetch packages
-        uses: ziranlang/ziran/.github/actions/setup@79ca2f95c0e90e6c339e2921a198b4f946eb50bb
+        uses: ziranlang/ziran/.github/actions/setup@5d3e5ca4cae76398dd2545a0e33d2b741fe5d321
         with:
           project: kryon
           path: ziran
@@ -62,29 +62,27 @@ jobs:
       - name: Name the checked-out Kryon commit master
         run: git checkout -B master
 
-      # The locked compiler comes prebuilt, and the package checkouts cached.
-      - name: Set up the locked Ziran and fetch packages
-        uses: ziranlang/ziran/.github/actions/setup@79ca2f95c0e90e6c339e2921a198b4f946eb50bb
+      # The locked compiler comes prebuilt, the package checkouts cached, and
+      # Ubuntu packages from the canonical archive.
+      - name: Set up the locked Ziran, its packages and the build tools
+        uses: ziranlang/ziran/.github/actions/setup@5d3e5ca4cae76398dd2545a0e33d2b741fe5d321
         with:
           project: kryon
           path: ziran
           fetch: true
+          recommends: true
+          packages: >-
+            build-essential python3 ripgrep xvfb pkg-config libsdl2-dev libcairo2-dev
+            libfreetype-dev libfontconfig1-dev libcurl4-openssl-dev libdrm-dev libgbm-dev
+            libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri imagemagick xclip xdotool
+            x11-xserver-utils python3-gi python3-pil ffmpeg gir1.2-gtk-3.0 gir1.2-atspi-2.0
+            libglib2.0-dev libpango1.0-dev at-spi2-core dbus-x11 gstreamer1.0-plugins-base
+            gstreamer1.0-plugins-good gstreamer1.0-libav
 
       # Template tests serve this checkout through local Git URLs and use
       # the manifest's master ref. Keep that ref at the locked commit.
       - name: Prepare locked toolchain ref
         run: git -C "$ZIRAN_ROOT" checkout -B master
-
-      - name: Install build tools
-        timeout-minutes: 15
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential python3 ripgrep xvfb \
-            pkg-config libsdl2-dev libcairo2-dev libfreetype-dev libfontconfig1-dev libcurl4-openssl-dev \
-            libdrm-dev libgbm-dev libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri imagemagick \
-            xclip xdotool x11-xserver-utils python3-gi python3-pil ffmpeg gir1.2-gtk-3.0 gir1.2-atspi-2.0 \
-            libglib2.0-dev libpango1.0-dev at-spi2-core dbus-x11 \
-            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -160,24 +158,22 @@ jobs:
       - name: Name the checked-out Kryon commit master
         run: git checkout -B master
 
-      # The locked compiler comes prebuilt, and the package checkouts cached.
-      - name: Set up the locked Ziran and fetch packages
-        uses: ziranlang/ziran/.github/actions/setup@79ca2f95c0e90e6c339e2921a198b4f946eb50bb
+      # The locked compiler comes prebuilt, the package checkouts cached, and
+      # Ubuntu packages from the canonical archive.
+      - name: Set up the locked Ziran, its packages and the build tools
+        uses: ziranlang/ziran/.github/actions/setup@5d3e5ca4cae76398dd2545a0e33d2b741fe5d321
         with:
           project: kryon
           path: ziran
           fetch: true
+          recommends: true
+          packages: >-
+            build-essential python3 python3-pil ripgrep ffmpeg pkg-config libsdl2-dev
+            libcairo2-dev libglib2.0-dev libpango1.0-dev libfreetype-dev libfontconfig1-dev
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav
 
       - name: Prepare locked toolchain ref
         run: git -C "$ZIRAN_ROOT" checkout -B master
-
-      - name: Install build tools
-        timeout-minutes: 15
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential python3 python3-pil ripgrep ffmpeg \
-            pkg-config libsdl2-dev libcairo2-dev libglib2.0-dev libpango1.0-dev libfreetype-dev libfontconfig1-dev \
-            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -204,27 +200,24 @@ jobs:
       - name: Name the checked-out Kryon commit master
         run: git checkout -B master
 
-      # The locked compiler comes prebuilt, and the package checkouts cached.
-      - name: Set up the locked Ziran and fetch packages
-        uses: ziranlang/ziran/.github/actions/setup@79ca2f95c0e90e6c339e2921a198b4f946eb50bb
+      # The locked compiler comes prebuilt, the package checkouts cached, and
+      # Ubuntu packages from the canonical archive.
+      - name: Set up the locked Ziran, its packages and the build tools
+        uses: ziranlang/ziran/.github/actions/setup@5d3e5ca4cae76398dd2545a0e33d2b741fe5d321
         with:
           project: kryon
           path: ziran
           fetch: true
+          recommends: true
+          packages: >-
+            build-essential python3 pkg-config libsdl2-dev libcairo2-dev libglib2.0-dev
+            libpango1.0-dev libdrm-dev libgbm-dev libegl-dev libgles-dev libegl-mesa0
+            libgl1-mesa-dri libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev
+            fonts-dejavu-core fonts-wqy-zenhei xvfb xdotool x11-apps x11-utils imagemagick xfwm4
+            dbus-x11
 
       - name: Prepare locked toolchain ref
         run: git -C "$ZIRAN_ROOT" checkout -B master
-
-      - name: Install host libraries and X tools
-        timeout-minutes: 15
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential python3 pkg-config \
-            libsdl2-dev libcairo2-dev libglib2.0-dev libpango1.0-dev libdrm-dev libgbm-dev libegl-dev libgles-dev \
-            libegl-mesa0 libgl1-mesa-dri \
-            libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev \
-            fonts-dejavu-core fonts-wqy-zenhei \
-            xvfb xdotool x11-apps x11-utils imagemagick xfwm4 dbus-x11
 
       - name: Set up Go
         uses: actions/setup-go@v6
