@@ -39,7 +39,7 @@ jobs:
           path: kryonlabs/kryon
       # The locked compiler comes prebuilt.
       - name: Set up the locked Ziran
-        uses: ziranlang/ziran/.github/actions/setup@979159a55bcf1f9edb9eb8f26ea10aca421412e2
+        uses: ziranlang/ziran/.github/actions/setup@4c27b5a080a9596f5919ece1651e5a372be2142f
         with:
           project: kryonlabs/kryon
           path: ziranlang/ziran
