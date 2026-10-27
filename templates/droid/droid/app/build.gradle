@@ -84,5 +84,8 @@ android {
 dependencies {
     if (googlePlay) {
         implementation 'com.android.billingclient:billing:9.1.0'
+        // Billing's AndroidX libraries mix Kotlin 1.6 and 1.8 standard
+        // libraries; one Kotlin version keeps their classes from colliding.
+        implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
     }
 }
