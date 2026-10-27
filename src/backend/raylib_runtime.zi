@@ -12,6 +12,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
+#import "test_driver"
 #import "image_props"
 #import "program_title"
 #import "paint_texture"
@@ -1707,6 +1708,14 @@ CloseRaylibAppFrames :: () {
     }
 }
 
+driver_session: Session;
+
+// The test driver needs the session to validate the pointer it injects.
+#program_export
+RaylibSetDriverSession :: (session: Session) {
+    driver_session = session
+}
+
 #program_export
 PollRaylib :: () -> bool {
     if raylib_quit || HostRaylibWindowShouldClose() { return false }
@@ -1717,6 +1726,7 @@ PollRaylib :: () -> bool {
     // A press and release inside one frame still counts as held for it.
     raylib_pointer.down = HostRaylibMouseDown(0) || raylib_pointer.pressed
     raylib_pointer.released = HostRaylibMouseReleased(0)
+    raylib_pointer = TestDriverPointer(driver_session, raylib_pointer)
     #if #defined(ANDROID_BUILD) {
         // A touch that began and ended within one frame reports nothing.
         AndroidTouch.AndroidTouchInstall()
@@ -1790,6 +1800,16 @@ RaylibEnvironmentZoom :: () -> float32 {
 
 #program_export
 RaylibPressedKey :: () -> s32 {
+    result := RaylibPressedKeyRaw()
+    if result == 0 {
+        for candidate: cast(s32)0..349 {
+            if TestDriverKeyPressed(candidate) { return candidate }
+        }
+    }
+    return result
+}
+
+RaylibPressedKeyRaw :: () -> s32 {
     return HostRaylibGetKeyPressed()
 }
 
@@ -1847,12 +1867,18 @@ RaylibModifiers :: () -> s32 {
 
 #program_export
 RaylibTypedCodepoint :: () -> s32 {
-    return HostRaylibGetCharPressed()
+    real := HostRaylibGetCharPressed()
+    #if #defined(ANDROID_BUILD) {
+        return real
+    }
+    // A test driver may stand in for the person (KRYON_TEST_DRIVER).
+    if real == 0 { return TestDriverCodepoint() }
+    return real
 }
 
 #program_export
 RaylibWheelMove :: () -> float32 {
-    return raylib_wheel_move
+    return TestDriverWheel(raylib_wheel_move)
 }
 
 #program_export
