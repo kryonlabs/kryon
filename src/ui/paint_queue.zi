@@ -1048,9 +1048,18 @@ SnapshotTextAppend :: (slot: s32, values: bool, value: string) -> s64 {
             block: PaintSnapshotBlock
             if !VecPush(paint_snapshot_values[slot], block) { return -1 }
         }
-        for at: cast(s64)0..value.count - 1 {
-            index := start + at
-            paint_snapshot_values[slot][index / PAINT_SNAPSHOT_BLOCK_CAPACITY].bytes[index % PAINT_SNAPSHOT_BLOCK_CAPACITY] = value[at]
+        copied: s64 = 0
+        while copied < value.count {
+            index := start + copied
+            offset := index % PAINT_SNAPSHOT_BLOCK_CAPACITY
+            part := cast(s64)PAINT_SNAPSHOT_BLOCK_CAPACITY - offset
+            if part > value.count - copied { part = value.count - copied }
+            // One run per block, written through the block's address: every
+            // frame copies each paint command's text, and finding its block
+            // for each byte cost a phone a tenth of the frame.
+            kept := *paint_snapshot_values[slot][index / PAINT_SNAPSHOT_BLOCK_CAPACITY]
+            for at: cast(s64)0..part - 1 { kept.bytes[offset + at] = value[copied + at] }
+            copied += part
         }
         paint_snapshot_value_counts[slot] = start + value.count
     } else {
@@ -1059,9 +1068,15 @@ SnapshotTextAppend :: (slot: s32, values: bool, value: string) -> s64 {
             block: PaintSnapshotBlock
             if !VecPush(paint_snapshot_assets[slot], block) { return -1 }
         }
-        for at: cast(s64)0..value.count - 1 {
-            index := start + at
-            paint_snapshot_assets[slot][index / PAINT_SNAPSHOT_BLOCK_CAPACITY].bytes[index % PAINT_SNAPSHOT_BLOCK_CAPACITY] = value[at]
+        copied: s64 = 0
+        while copied < value.count {
+            index := start + copied
+            offset := index % PAINT_SNAPSHOT_BLOCK_CAPACITY
+            part := cast(s64)PAINT_SNAPSHOT_BLOCK_CAPACITY - offset
+            if part > value.count - copied { part = value.count - copied }
+            kept := *paint_snapshot_assets[slot][index / PAINT_SNAPSHOT_BLOCK_CAPACITY]
+            for at: cast(s64)0..part - 1 { kept.bytes[offset + at] = value[copied + at] }
+            copied += part
         }
         paint_snapshot_asset_counts[slot] = start + value.count
     }

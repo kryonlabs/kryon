@@ -15,6 +15,8 @@ HostTypefaceFree :: (bytes: *u8) #foreign c "free";
 CanvasAsset :: struct {
     path: [1024]u8
     length: s32
+    // An FNV-1a hash of the path: a lookup compares bytes only on a match.
+    hash: u64
     texture: Texture2D
     // Drawn with the browser's image smoothing.
     smooth: bool
@@ -237,9 +239,13 @@ CanvasTryFont :: (path: *u8) -> bool {
 
 CanvasAssetIndex :: (path: string) -> s32 {
     if path.count == 0 || path.count >= 1024 { return -1 }
+    // Every image drawn looks its texture up, and asset paths share long
+    // prefixes, so compare a hash before any bytes.
+    hash: u64 = cast(u64)2166136261
+    for byte: path { hash = (hash ^ cast(u64)byte) * cast(u64)16777619 }
     index: s32 = 0
     while index < canvas_assets_count {
-        if canvas_assets[index].length == cast(s32)path.count {
+        if canvas_assets[index].hash == hash && canvas_assets[index].length == cast(s32)path.count {
             same: bool = true
             at: s32 = 0
             while at < cast(s32)path.count {
@@ -266,6 +272,7 @@ CanvasAssetIndex :: (path: string) -> s32 {
         return -1
     }
     canvas_assets[index].length = cast(s32)path.count
+    canvas_assets[index].hash = hash
     canvas_assets[index].texture =
     LoadTexture(*canvas_assets[index].path[0])
     canvas_assets[index].smooth = false
