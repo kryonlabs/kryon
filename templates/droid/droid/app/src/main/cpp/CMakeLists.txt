@@ -38,6 +38,12 @@ else()
     message(FATAL_ERROR "Unsupported Android ABI: ${ANDROID_ABI}")
 endif()
 list(APPEND APP_ZIRAN_DEFINES --define ${APP_ZIRAN_ARCH})
+# The app's edition (build.gradle app.edition): Google Play or F-Droid.
+if(APP_EDITION STREQUAL "gplay")
+    list(APPEND APP_ZIRAN_DEFINES --define GOOGLE_PLAY)
+elseif(APP_EDITION STREQUAL "fdroid")
+    list(APPEND APP_ZIRAN_DEFINES --define FDROID)
+endif()
 
 set(APP_ZIRAN_IR_DIR "${CMAKE_BINARY_DIR}/ziran/ir")
 set(APP_ZIRAN_GEN_DIR "${CMAKE_BINARY_DIR}/ziran/generated")

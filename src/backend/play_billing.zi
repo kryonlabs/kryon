@@ -2,15 +2,80 @@
 // the activity's playBilling bridge (templates/droid). Requests and the JSON
 // answer are described in PlayBilling.java. Every other platform, edition or
 // older activity answers "".
+#import "std/json_scan"
 #if #defined(ANDROID_BUILD) {
     #import "android_jni"
     #import "std/c_string"
     #import "std/byte_text_linux"
 }
 
+// One answer, typed: products with Play's price in the buyer's currency and
+// the first purchase Play still lists for the app's server to confirm.
+PlayBillingProduct :: struct {
+    id: [64]u8
+    price: [64]u8
+    micros: s64
+}
+PlayBillingPurchase :: struct {
+    product: [64]u8
+    token: [1024]u8
+}
+PlayBillingState :: struct {
+    ready: bool
+    package_name: [256]u8
+    error: [128]u8
+    products: [8]PlayBillingProduct
+    product_count: s32
+    purchase: PlayBillingPurchase
+    has_purchase: bool
+}
+
+PlayBillingRead :: (answer: string, state: *PlayBillingState) -> bool {
+    state.* = .{}
+    if answer.count == 0 || answer[0] != #char "{" { return false }
+    state.ready = MatchLiteral(answer, FieldAt(answer, 0, "ready"), "true")
+    unused ReadStringText(answer, FieldAt(answer, 0, "package"), state.package_name[:])
+    unused ReadStringText(answer, FieldAt(answer, 0, "error"), state.error[:])
+    products := FieldAt(answer, 0, "products")
+    for index: cast(s32)0..7 {
+        item := ElementAt(answer, products, index)
+        if item < 0 { break }
+        end := ValueEnd(answer, item, 0)
+        if end <= item { break }
+        text := answer[item:end]
+        product := *state.products[state.product_count]
+        if ReadStringText(text, FieldAt(text, 0, "id"), product.id[:]) <= 0 ||
+        ReadStringText(text, FieldAt(text, 0, "price"), product.price[:]) <= 0 { continue }
+        product.micros = cast(s64)ReadNumber(text, FieldAt(text, 0, "micros")).value
+        state.product_count += 1
+    }
+    first := ElementAt(answer, FieldAt(answer, 0, "purchases"), 0)
+    end := ValueEnd(answer, first, 0)
+    if first >= 0 && end > first {
+        text := answer[first:end]
+        state.has_purchase = ReadStringText(text, FieldAt(text, 0, "product"), state.purchase.product[:]) > 0 &&
+            ReadStringText(text, FieldAt(text, 0, "token"), state.purchase.token[:]) > 0
+    }
+    return true
+}
+
+// Load one-time products ("dew_100,dew_500"), open the purchase sheet for one,
+// or forget a purchase the app's server has credited and consumed.
+PlayBillingProducts :: (ids: string, output: []u8) -> string { return PlayBillingAsk("products:", ids, output) }
+PlayBillingBuy :: (id: string, output: []u8) -> string { return PlayBillingAsk("buy:", id, output) }
+PlayBillingDone :: (token: string, output: []u8) -> string { return PlayBillingAsk("done:", token, output) }
+
+PlayBillingAsk :: (verb: string, value: string, output: []u8) -> string {
+    request: [1100]u8
+    if verb.count + value.count >= request.count { return "" }
+    for byte, at: verb { request[at] = byte }
+    for byte, at: value { request[verb.count + at] = byte }
+    return PlayBillingCall(TextView(request[:verb.count + value.count]), output)
+}
+
 PlayBillingCall :: (request: string, output: []u8) -> string {
     #if #defined(ANDROID_BUILD) {
-        text: [512]u8
+        text: [1200]u8
         if !CopyCString(request, text[:]) { return "" }
         session: AndroidJniSession
         if AndroidJniAttachCurrent(*session) == 0 { return "" }

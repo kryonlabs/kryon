@@ -18,10 +18,16 @@ if (kryonDir == null || ziranDir == null || raylibDir == null) {
 def androidAbis = (project.findProperty('app.abis') ?:
     System.getenv('KRYON_ANDROID_ABIS') ?: 'arm64-v8a').split(',').toList()
 def appCodegen = envOrProp('KRYON_PROJECT_CODEGEN', 'app.codegen') ?: 'c99'
-// The Google Play edition adds Play Billing; other editions carry no Google
-// libraries. Play Billing needs Android 6 and AndroidX
-// (pass -Pandroid.useAndroidX=true with app.googlePlay=true).
-def googlePlay = project.findProperty('app.googlePlay') == 'true'
+// One app, three editions: -Papp.edition=direct (the default), fdroid or
+// gplay. The Google Play edition adds Play Billing (kryon/play_billing) and
+// needs Android 6 and AndroidX (-Pandroid.useAndroidX=true); the others carry
+// no Google libraries. Native code sees GOOGLE_PLAY or FDROID.
+def appEdition = (project.findProperty('app.edition') ?:
+    (project.findProperty('app.googlePlay') == 'true' ? 'gplay' : 'direct')).toString()
+if (!(appEdition in ['direct', 'fdroid', 'gplay'])) {
+    throw new GradleException('app.edition must be direct, fdroid or gplay')
+}
+def googlePlay = appEdition == 'gplay'
 def requestedMinSdk = Integer.parseInt((project.findProperty('app.minSdk') ?: '21').toString())
 
 android {
@@ -45,7 +51,8 @@ android {
                 arguments '-DKRYON_DIR=' + kryonDir,
                     '-DZIRAN_DIR=' + ziranDir,
                     '-DRAYLIB_DIR=' + raylibDir,
-                    '-DAPP_CODEGEN=' + appCodegen
+                    '-DAPP_CODEGEN=' + appCodegen,
+                    '-DAPP_EDITION=' + appEdition
             }
         }
     }
