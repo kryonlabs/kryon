@@ -22,6 +22,15 @@ ZI2ZIR_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2zir
 ZI2C_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2c
 ZI2GO_BIN ?= $(ZIRAN_BUILD_DIR)/bin/zi2go
 ZIRAN_BIN ?= $(ZIRAN_BUILD_DIR)/bin/ziran
+# Ziran's make rebuilds every object when its build directory is spelled
+# another way, so its own directory is passed the way it spells it.
+ifeq ($(ZIRAN_BUILD_DIR),$(abspath $(ZIRAN_DIR)/build))
+ZIRAN_MAKE_FLAGS :=
+ZIRAN_TOOL_TARGETS := build/bin/zi2zir build/bin/zi2c build/bin/zi2go
+else
+ZIRAN_MAKE_FLAGS := BUILD_DIR=$(ZIRAN_BUILD_DIR)
+ZIRAN_TOOL_TARGETS := $(ZI2ZIR_BIN) $(ZI2C_BIN) $(ZI2GO_BIN)
+endif
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
 KRYON_DIR := $(CURDIR)
@@ -39,7 +48,7 @@ all: source-check $(BUILD_DIR)/libkryon.a backends-check
 
 # Project command. Its implementation and platform integration are Ziran.
 project-toolchain:
-	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) BUILD_DIR=$(ZIRAN_BUILD_DIR) all
+	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) $(ZIRAN_MAKE_FLAGS) all
 
 # The kryon tool builds its Ziran toolchain only when it is missing, as ziran
 # builds a pinned one: a locked toolchain never changes, and a local one is
@@ -63,8 +72,7 @@ build/bin/kryon: build/project/gen/cli_linux.c Makefile
 		chmod 755 "$$temporary" && mv "$$temporary" $@
 
 $(BUILD_DIR)/ziran-toolchain.stamp: $(ZIRAN_SOURCES)
-	$(MAKE) -C $(ZIRAN_DIR) BUILD_DIR=$(ZIRAN_BUILD_DIR) \
-		$(ZI2ZIR_BIN) $(ZI2C_BIN) $(ZI2GO_BIN)
+	$(MAKE) -C $(ZIRAN_DIR) $(ZIRAN_MAKE_FLAGS) $(ZIRAN_TOOL_TARGETS)
 	mkdir -p $(BUILD_DIR)
 	touch $@
 

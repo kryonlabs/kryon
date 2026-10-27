@@ -29,22 +29,13 @@ jobs:
         with:
           path: kryon
 
-      - name: Read locked toolchain
-        id: toolchain
-        run: python3 -c 'import json; print("commit=" + json.load(open("ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
-
-      - name: Checkout Ziran
-        uses: actions/checkout@v7
+      # The locked compiler comes prebuilt, and the package checkouts cached.
+      - name: Set up the locked Ziran and fetch packages
+        uses: ziranlang/ziran/.github/actions/setup@79ca2f95c0e90e6c339e2921a198b4f946eb50bb
         with:
-          repository: ziranlang/ziran
-          ref: ${{ steps.toolchain.outputs.commit }}
+          project: kryon
           path: ziran
-
-      - name: Build the locked compiler and fetch locked source packages
-        run: |
-          make -C "$ZIRAN_ROOT" all
-          export PATH="$ZIRAN_ROOT/build/bin:$PATH"
-          ziran fetch --locked
+          fetch: true
 
       # No GUI launch or screenshot can reach a runner's inherited display.
       - name: Build native player and execute the portable VM with CPU pixels
@@ -66,18 +57,18 @@ jobs:
         with:
           path: kryon
 
-      - name: Read locked toolchain
-        id: toolchain
-        run: |
-          git checkout -B master
-          python3 -c 'import json; print("commit=" + json.load(open("ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
+      # Template tests serve the checkouts through local Git URLs and use
+      # their master refs.
+      - name: Name the checked-out Kryon commit master
+        run: git checkout -B master
 
-      - name: Checkout Ziran
-        uses: actions/checkout@v7
+      # The locked compiler comes prebuilt, and the package checkouts cached.
+      - name: Set up the locked Ziran and fetch packages
+        uses: ziranlang/ziran/.github/actions/setup@79ca2f95c0e90e6c339e2921a198b4f946eb50bb
         with:
-          repository: ziranlang/ziran
-          ref: ${{ steps.toolchain.outputs.commit }}
+          project: kryon
           path: ziran
+          fetch: true
 
       # Template tests serve this checkout through local Git URLs and use
       # the manifest's master ref. Keep that ref at the locked commit.
@@ -85,6 +76,7 @@ jobs:
         run: git -C "$ZIRAN_ROOT" checkout -B master
 
       - name: Install build tools
+        timeout-minutes: 15
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3 ripgrep xvfb \
@@ -123,13 +115,6 @@ jobs:
           git clone https://github.com/emscripten-core/emsdk.git ~/emsdk
           ~/emsdk/emsdk install 6.0.6
           ~/emsdk/emsdk activate 6.0.6
-
-      # Platform builds resolve locked source packages while make reads its
-      # files, so the compiler and package cache must exist first.
-      - name: Build the locked compiler and fetch locked source packages
-        run: |
-          make -C "$ZIRAN_ROOT" all
-          "$ZIRAN_ROOT/build/bin/ziran" fetch --locked
 
       - name: Build and test
         env:
@@ -170,23 +155,24 @@ jobs:
         with:
           path: kryon
 
-      - name: Read locked toolchain
-        id: toolchain
-        run: |
-          git checkout -B master
-          python3 -c 'import json; print("commit=" + json.load(open("ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
+      # Template tests serve the checkouts through local Git URLs and use
+      # their master refs.
+      - name: Name the checked-out Kryon commit master
+        run: git checkout -B master
 
-      - name: Checkout Ziran
-        uses: actions/checkout@v7
+      # The locked compiler comes prebuilt, and the package checkouts cached.
+      - name: Set up the locked Ziran and fetch packages
+        uses: ziranlang/ziran/.github/actions/setup@79ca2f95c0e90e6c339e2921a198b4f946eb50bb
         with:
-          repository: ziranlang/ziran
-          ref: ${{ steps.toolchain.outputs.commit }}
+          project: kryon
           path: ziran
+          fetch: true
 
       - name: Prepare locked toolchain ref
         run: git -C "$ZIRAN_ROOT" checkout -B master
 
       - name: Install build tools
+        timeout-minutes: 15
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3 python3-pil ripgrep ffmpeg \
@@ -213,23 +199,24 @@ jobs:
         with:
           path: kryon
 
-      - name: Read locked toolchain
-        id: toolchain
-        run: |
-          git checkout -B master
-          python3 -c 'import json; print("commit=" + json.load(open("ziran.lock"))["toolchain"]["commit"])' >> "$GITHUB_OUTPUT"
+      # Template tests serve the checkouts through local Git URLs and use
+      # their master refs.
+      - name: Name the checked-out Kryon commit master
+        run: git checkout -B master
 
-      - name: Checkout Ziran
-        uses: actions/checkout@v7
+      # The locked compiler comes prebuilt, and the package checkouts cached.
+      - name: Set up the locked Ziran and fetch packages
+        uses: ziranlang/ziran/.github/actions/setup@79ca2f95c0e90e6c339e2921a198b4f946eb50bb
         with:
-          repository: ziranlang/ziran
-          ref: ${{ steps.toolchain.outputs.commit }}
+          project: kryon
           path: ziran
+          fetch: true
 
       - name: Prepare locked toolchain ref
         run: git -C "$ZIRAN_ROOT" checkout -B master
 
       - name: Install host libraries and X tools
+        timeout-minutes: 15
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential python3 pkg-config \
