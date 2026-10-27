@@ -71,11 +71,13 @@ def main():
             manifest = (work / name / "ziran.toml").read_text()
             assert 'tool = "kryon"' in manifest and "{{" not in manifest, manifest
 
+        # The first command in the fresh cache may fetch and build the locked
+        # toolchain and report it; the profile list is compared after that.
+        run([KRYON, "check", "desktop"], work / "demo-app", env)
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
         assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  portable  SDL2/Cairo window", "  tui  terminal",
                                          "  web  Canvas2D browser page",
                                          "  shot  headless image, PPM on standard output"], profiles
-        run([KRYON, "check", "desktop"], work / "demo-app", env)
         # The shot profile draws a frame without any display.
         shot = run([KRYON, "run", "shot"], work / "demo-app", env)
         assert shot.startswith("P3\n960 600\n255\n"), shot[:40]
