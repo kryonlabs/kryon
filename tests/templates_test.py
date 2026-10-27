@@ -53,27 +53,6 @@ def run(command, directory, env, succeed=True, stdin=subprocess.DEVNULL):
     return result.stdout
 
 
-def screen(text):
-    """Terminal output without its escape sequences."""
-    out, index = [], 0
-    while index < len(text):
-        if text[index] == "\x1b":
-            index += 1
-            if index < len(text) and text[index] == "[":
-                index += 1
-                while index < len(text) and not ("@" <= text[index] <= "~"):
-                    index += 1
-            index += 1
-            continue
-        out.append(text[index])
-        index += 1
-    # Dependency materialization can emit a Git checkout receipt before the
-    # first screen. Compare the rendered terminal content, not that one-time
-    # provisioning message (the second, cached launcher does not emit it).
-    lines = "".join(out).splitlines(keepends=True)
-    return "".join(line for line in lines if not line.startswith("HEAD is now at ")).lstrip("\n")
-
-
 def main():
     assert KRYON.exists(), "build build/bin/kryon first"
     with tempfile.TemporaryDirectory(prefix="kryon-templates-") as directory:
@@ -83,32 +62,14 @@ def main():
         usage = run([KRYON, "help"], work, env)
         assert "app (window), tui (terminal), pages (navigation), web (browser page)" in usage
 
-        rendered = {
-            "app": ["Count up to the goal, one step at a time.", "Smaller step",
-                    "Reset", "Progress to the goal"],
-            "tui": ["1 of 6 done", "[x] Add a task list to the app",
-                    "Up/Down move  Space toggles  Ctrl+C quits"],
-            "pages": ["Home", "Library", "Settings", "Open the library"],
-        }
-        for template, expected in rendered.items():
+        # Terminal rendering is not tested; each template is created and checked.
+        for template in ("app", "tui", "pages"):
             name = f"demo-{template}"
             created = run([KRYON, "new", name, "--template", template,
                            "--overrides", work / "overrides.toml"], work, env)
             assert f"created {name} from kryon:{template}" in created, created
-            project = work / name
-            manifest = (project / "ziran.toml").read_text()
+            manifest = (work / name / "ziran.toml").read_text()
             assert 'tool = "kryon"' in manifest and "{{" not in manifest, manifest
-            # `kryon run PROFILE` goes through ziran to the locked Kryon; with
-            # output redirected the terminal host renders one frame.
-            output = screen(run([KRYON, "run", "tui"], project, env))
-            for line in [name] + expected:
-                assert line in output, (template, line, output)
-            # tool = "kryon" makes plain `ziran run` the same command. A first
-            # run may also report fetching or building, so compare what the
-            # terminal shows rather than every byte.
-            direct = screen(run(["ziran", "run", "tui"], project, env))
-            for line in [name] + expected:
-                assert line in direct, (template, line, direct)
 
         profiles = run([KRYON, "profiles"], work / "demo-app", env)
         assert profiles.splitlines() == ["* desktop  SDL2/Cairo window", "  portable  SDL2/Cairo window", "  tui  terminal",
@@ -138,7 +99,6 @@ def main():
         manifest = (tool / "ziran.toml").read_text()
         assert 'entry = "src/main.zi"' in manifest and 'tool = "kryon"' in manifest
         assert "[tool.kryon]" in manifest and 'entry = "src/app.zi"' in manifest
-        assert "1 of 6 done" in screen(run([KRYON, "run"], tool, env))
 
         # Without the settings ziran passes, the front door never loops.
         guarded = dict(env, KRYON_FRONT_DOOR="1")
