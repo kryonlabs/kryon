@@ -20,8 +20,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Google Play Billing for the Google Play edition of a Kryon app. Native code
- * reaches it through the activity's playBilling bridge with one request:
+ * Google Play Billing for the Google Play edition of a Kryon app. kryon/play_billing
+ * loads this class with the activity's class loader and calls call() with one request:
  *   "products:a,b"  load one-time products and their prices in the user's currency
  *   "buy:a"         open Play's purchase sheet for product a
  *   "done:token"    forget a purchase that the app's server verified and consumed

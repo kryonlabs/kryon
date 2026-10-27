@@ -1,7 +1,7 @@
-// Google Play Billing for the Google Play edition of an Android app, through
-// the activity's playBilling bridge (templates/droid). Requests and the JSON
-// answer are described in PlayBilling.java. Every other platform, edition or
-// older activity answers "".
+// Google Play Billing for the Google Play edition of an Android app
+// (org.kryonlabs.play.PlayBilling, templates/droid/droid/app/src/gplay).
+// Requests and the JSON answer are described in PlayBilling.java. Every other
+// platform or edition answers "".
 #import "std/json_scan"
 #if #defined(ANDROID_BUILD) {
     #import "android_jni"
@@ -54,7 +54,7 @@ PlayBillingRead :: (answer: string, state: *PlayBillingState) -> bool {
     if first >= 0 && end > first {
         text := answer[first:end]
         state.has_purchase = ReadStringText(text, FieldAt(text, 0, "product"), state.purchase.product[:]) > 0 &&
-            ReadStringText(text, FieldAt(text, 0, "token"), state.purchase.token[:]) > 0
+        ReadStringText(text, FieldAt(text, 0, "token"), state.purchase.token[:]) > 0
     }
     return true
 }
@@ -81,22 +81,23 @@ PlayBillingCall :: (request: string, output: []u8) -> string {
         if AndroidJniAttachCurrent(*session) == 0 { return "" }
         defer { AndroidJniDetachCurrent(*session) }
         env := session.env
-        method := AndroidJniMethod(*session, "playBilling", "(Ljava/lang/String;)Ljava/lang/String;")
-        if method == null {
-            // An activity made before this bridge has no such method.
-            if env.functions.ExceptionCheck(env) != 0 { env.functions.ExceptionClear(env) }
-            return ""
-        }
-        arguments: [1]JniValue
-        arguments[0].reference = AndroidJniString(env, *text[0])
-        if arguments[0].reference == null { return "" }
-        defer { env.functions.DeleteLocalRef(env, arguments[0].reference) }
-        value := env.functions.CallObjectMethodA(env, session.activity, method, *arguments[0])
-        if env.functions.ExceptionCheck(env) != 0 {
-            env.functions.ExceptionClear(env)
-            return ""
-        }
-        if value == null { return "" }
+        // The activity's class loader finds the Play-only class, so apps need
+        // no bridge code: an edition without it simply answers "".
+        billing := PlayBillingClass(env, session.activity)
+        if billing == null { return "" }
+        defer { env.functions.DeleteLocalRef(env, billing) }
+        name_1: [8]u8
+        name_2: [80]u8
+        method := env.functions.GetStaticMethodID(env, billing, PlayBillingName("call", name_1[:]),
+            PlayBillingName("(Landroid/app/Activity;Ljava/lang/String;)Ljava/lang/String;", name_2[:]))
+        if method == null { PlayBillingClear(env); return "" }
+        arguments: [2]JniValue
+        arguments[0].reference = session.activity
+        arguments[1].reference = AndroidJniString(env, *text[0])
+        if arguments[1].reference == null { return "" }
+        defer { env.functions.DeleteLocalRef(env, arguments[1].reference) }
+        value := env.functions.CallStaticObjectMethodA(env, billing, method, *arguments[0])
+        if PlayBillingClear(env) || value == null { return "" }
         defer { env.functions.DeleteLocalRef(env, value) }
         bytes := env.functions.GetStringUTFChars(env, value, null)
         if bytes == null { return "" }
@@ -108,4 +109,47 @@ PlayBillingCall :: (request: string, output: []u8) -> string {
     unused request
     unused output
     return ""
+}
+
+#if #defined(ANDROID_BUILD) {
+    // A NUL-terminated copy for JNI names and signatures.
+    PlayBillingName :: (text: string, output: []u8) -> *u8 {
+        if !CopyCString(text, output) { return null }
+        return *output[0]
+    }
+
+    PlayBillingClear :: (env: *JniEnv) -> bool {
+        if env.functions.ExceptionCheck(env) == 0 { return false }
+        env.functions.ExceptionClear(env)
+        return true
+    }
+
+    // org.kryonlabs.play.PlayBilling through the activity's class loader, or null.
+    PlayBillingClass :: (env: *JniEnv, activity: *void) -> *void {
+        activity_class := env.functions.GetObjectClass(env, activity)
+        if activity_class == null { return null }
+        defer { env.functions.DeleteLocalRef(env, activity_class) }
+        name_3: [24]u8
+        name_4: [40]u8
+        get_loader := env.functions.GetMethodID(env, activity_class, PlayBillingName("getClassLoader", name_3[:]), PlayBillingName("()Ljava/lang/ClassLoader;", name_4[:]))
+        if get_loader == null { PlayBillingClear(env); return null }
+        loader := env.functions.CallObjectMethodA(env, activity, get_loader, null)
+        if PlayBillingClear(env) || loader == null { return null }
+        defer { env.functions.DeleteLocalRef(env, loader) }
+        loader_class := env.functions.GetObjectClass(env, loader)
+        if loader_class == null { return null }
+        defer { env.functions.DeleteLocalRef(env, loader_class) }
+        name_5: [16]u8
+        name_6: [48]u8
+        load := env.functions.GetMethodID(env, loader_class, PlayBillingName("loadClass", name_5[:]), PlayBillingName("(Ljava/lang/String;)Ljava/lang/Class;", name_6[:]))
+        if load == null { PlayBillingClear(env); return null }
+        arguments: [1]JniValue
+        name_7: [40]u8
+        arguments[0].reference = AndroidJniString(env, PlayBillingName("org.kryonlabs.play.PlayBilling", name_7[:]))
+        if arguments[0].reference == null { return null }
+        defer { env.functions.DeleteLocalRef(env, arguments[0].reference) }
+        billing := env.functions.CallObjectMethodA(env, loader, load, *arguments[0])
+        if PlayBillingClear(env) { return null }
+        return billing
+    }
 }

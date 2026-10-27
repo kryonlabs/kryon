@@ -155,21 +155,6 @@ public class __ACTIVITY__ extends NativeActivity {
         return path;
     }
 
-    // Google Play Billing, present only in the Google Play edition
-    // (app.googlePlay=true). Every other edition answers "".
-    public String playBilling(String request) {
-        try {
-            return (String) Class.forName("org.kryonlabs.play.PlayBilling")
-                .getMethod("call", android.app.Activity.class, String.class)
-                .invoke(null, this, request);
-        } catch (ClassNotFoundException e) {
-            return "";
-        } catch (ReflectiveOperationException e) {
-            Log.w(TAG, "Play Billing failed", e);
-            return "";
-        }
-    }
-
     public void bundleResult(int accepted) {
         if (accepted != 0) {
             Log.i("ZX", "Bundle loaded");
