@@ -1,6 +1,8 @@
 // Browser applications can compose their own lifecycle with this host.
 using Runtime :: #import "canvas_host";
 using Raster :: #import "canvas_raster";
+// EndCanvasUiFrame repaints only the damaged pixels of the retained canvas.
+using Retained :: #import "canvas_frame";
 Input :: #import "canvas_input";
 // Match the modifier bitset accepted by KeyboardModifiersSend.
 CanvasModifiers :: () -> s32 {
