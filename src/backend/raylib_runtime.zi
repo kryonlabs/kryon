@@ -13,6 +13,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "drawing_props"
 #import "geometry"
 #import "test_driver"
+#import "session"
 #import "image_props"
 #import "program_title"
 #import "paint_texture"
