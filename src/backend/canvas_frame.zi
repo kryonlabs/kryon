@@ -141,26 +141,39 @@ EndCanvasUiFrame :: (session: Session) -> FrameStatus {
         status = finished.status
         if status == FrameStatus.FrameOk && !finished.paint_unchanged {
             if finished.damage_partial {
-                area := finished.damage
-                // One device-pixel-aligned clip covers both clearing and
-                // replay; translucent paint outside it must remain untouched.
-                left := cast(s32)(cast(float64)area.x * page_dpi) - 1
-                top := cast(s32)(cast(float64)area.y * page_dpi) - 1
-                right := cast(s32)(cast(float64)(area.x + area.width) * page_dpi) + 2
-                bottom := cast(s32)(cast(float64)(area.y + area.height) * page_dpi) + 2
-                area = Rectangle.{cast(float32)(cast(float64)left / page_dpi),
-                    cast(float32)(cast(float64)top / page_dpi),
-                    cast(float32)(cast(float64)(right - left) / page_dpi),
-                    cast(float32)(cast(float64)(bottom - top) / page_dpi)}
+                // Each changed place is cleared and repainted on its own,
+                // under one clip of all of them.
+                areas: [PAINT_DAMAGE_AREA_LIMIT]Rectangle
+                count := PaintDamageAreaCount(session)
+                if count <= 0 {
+                    count = 1
+                    areas[0] = finished.damage
+                } else {
+                    for at: cast(s32)0..count - 1 { areas[at] = PaintDamageAreaAt(session, at) }
+                }
                 ctx := page_ctx
                 unused WebCall0(ctx, page_names.save)
                 unused WebCall0(ctx, page_names.begin_path)
-                unused WebCall4(ctx, page_names.rect, WebNumber(cast(float64)area.x),
-                    WebNumber(cast(float64)area.y), WebNumber(cast(float64)area.width),
-                    WebNumber(cast(float64)area.height))
+                for at: cast(s32)0..count - 1 {
+                    area := areas[at]
+                    // Device-pixel-aligned clips cover both clearing and
+                    // replay; translucent paint outside them must remain untouched.
+                    left := cast(s32)(cast(float64)area.x * page_dpi) - 1
+                    top := cast(s32)(cast(float64)area.y * page_dpi) - 1
+                    right := cast(s32)(cast(float64)(area.x + area.width) * page_dpi) + 2
+                    bottom := cast(s32)(cast(float64)(area.y + area.height) * page_dpi) + 2
+                    area = Rectangle.{cast(float32)(cast(float64)left / page_dpi),
+                        cast(float32)(cast(float64)top / page_dpi),
+                        cast(float32)(cast(float64)(right - left) / page_dpi),
+                        cast(float32)(cast(float64)(bottom - top) / page_dpi)}
+                    areas[at] = area
+                    unused WebCall4(ctx, page_names.rect, WebNumber(cast(float64)area.x),
+                        WebNumber(cast(float64)area.y), WebNumber(cast(float64)area.width),
+                        WebNumber(cast(float64)area.height))
+                }
                 unused WebCall0(ctx, page_names.clip)
-                CanvasFrameFill(area)
-                PaintFlushArea(session, area)
+                for at: cast(s32)0..count - 1 { CanvasFrameFill(areas[at]) }
+                PaintFlushAreas(session, areas[:count])
                 PageFlushPaint()
                 unused WebCall0(ctx, page_names.restore)
             } else {

@@ -1400,6 +1400,85 @@ PaintFrameDamage :: struct {
     area: Rectangle
 }
 
+// Places that changed apart are also kept apart, so a host can repaint
+// each alone: a figure bobbing above a board and a piece moving below it
+// need not repaint the whole board between them. Together they lie within
+// the frame's `area`, and no two of them touch.
+PAINT_DAMAGE_AREA_LIMIT :: 4
+PaintDamageAreas :: struct {
+    count: s32
+    areas: [PAINT_DAMAGE_AREA_LIMIT]Rectangle
+}
+paint_damage_areas: [9]PaintDamageAreas;
+
+PaintAreasNear :: (first: Rectangle, second: Rectangle) -> bool {
+    // A host widens each area to whole device pixels; keep them apart by more.
+    gap: float32 = 4.0
+    return first.x <= second.x + second.width + gap && second.x <= first.x + first.width + gap &&
+        first.y <= second.y + second.height + gap && second.y <= first.y + first.height + gap
+}
+
+PaintAreasUnion :: (first: Rectangle, second: Rectangle) -> Rectangle {
+    area := first
+    joined := true
+    PaintAreaJoin(*area, *joined, second)
+    return area
+}
+
+PaintDamageAdd :: (damage: *PaintDamageAreas, next: Rectangle) {
+    if next.width <= 0.0 || next.height <= 0.0 { return }
+    merged := next
+    index: s32 = 0
+    while index < damage.count {
+        if PaintAreasNear(damage.areas[index], merged) {
+            // The grown area may now reach one already passed.
+            merged = PaintAreasUnion(damage.areas[index], merged)
+            damage.count -= 1
+            damage.areas[index] = damage.areas[damage.count]
+            index = 0
+        } else {
+            index += 1
+        }
+    }
+    if damage.count < PAINT_DAMAGE_AREA_LIMIT {
+        damage.areas[damage.count] = merged
+        damage.count += 1
+        return
+    }
+    // With every area in use, the new one joins the area it grows least.
+    best: s32 = 0
+    growth: float32 = 0.0
+    for at: cast(s32)0..damage.count - 1 {
+        area := damage.areas[at]
+        both := PaintAreasUnion(area, merged)
+        grows := both.width * both.height - area.width * area.height
+        if at == 0 || grows < growth {
+            best = at
+            growth = grows
+        }
+    }
+    grown := PaintAreasUnion(damage.areas[best], merged)
+    damage.count -= 1
+    damage.areas[best] = damage.areas[damage.count]
+    PaintDamageAdd(damage, grown)
+}
+
+// The separate areas of the damage the last committed frame reported.
+#program_export
+PaintDamageAreaCount :: (session: Session) -> s32 {
+    if !SessionValid(session) { return 0 }
+    return paint_damage_areas[SessionIndex(session)].count
+}
+
+#program_export
+PaintDamageAreaAt :: (session: Session, index: s32) -> Rectangle {
+    empty: Rectangle
+    if !SessionValid(session) { return empty }
+    damage := *paint_damage_areas[SessionIndex(session)]
+    if index < 0 || index >= damage.count { return empty }
+    return damage.areas[index]
+}
+
 // Compares this frame's paint with the previous frame's, command by command,
 // and joins the areas of the commands that differ, as they were and as they
 // are now. A command painted by its own emitter makes the whole frame differ.
@@ -1407,6 +1486,7 @@ PaintDamage :: (session: Session) -> PaintFrameDamage {
     result: PaintFrameDamage
     if !SessionValid(session) { return result }
     slot: s32 = SessionIndex(session)
+    paint_damage_areas[slot].count = 0
     if !paint_snapshots_valid[slot] { return result }
     count := pending_paint[slot].items.count
     previous := paint_snapshots[slot].count
@@ -1425,6 +1505,7 @@ PaintDamage :: (session: Session) -> PaintFrameDamage {
         if index < count {
             if !PaintCommandArea(current, *box) { return result }
             PaintAreaJoin(*area, *joined, box)
+            PaintDamageAdd(*paint_damage_areas[slot], box)
         }
         if index < previous {
             kept := paint_snapshots[slot][index]
@@ -1432,6 +1513,7 @@ PaintDamage :: (session: Session) -> PaintFrameDamage {
             before.value = SnapshotTextRead(slot, true, kept.value_start, kept.value_count)
             if before.value.count != kept.value_count || !PaintCommandArea(before, *box) { return result }
             PaintAreaJoin(*area, *joined, box)
+            PaintDamageAdd(*paint_damage_areas[slot], box)
         }
         if !joined { return result }
     }
@@ -1445,6 +1527,14 @@ PaintDamage :: (session: Session) -> PaintFrameDamage {
 // previous frame's pixels everywhere else and clips this paint to the area.
 #program_export
 PaintFlushArea :: (session: Session, area: Rectangle) {
+    areas: [1]Rectangle = .{area}
+    PaintFlushAreas(session, areas[:])
+}
+
+// The same for several areas at once, with the paint clipped to all of them:
+// each command that may touch one is emitted once.
+#program_export
+PaintFlushAreas :: (session: Session, areas: []Rectangle) {
     if PaintOverflow(session) || !PaintOrder(session) { PaintClear(session); return }
     index: s32 = 0
     while cast(s64)index < pending_paint[SessionIndex(session)].items.count {
@@ -1454,7 +1544,8 @@ PaintFlushArea :: (session: Session, area: Rectangle) {
             data := PendingPaintAt(session, index)
             box: Rectangle
             touched := !queued.builtin_emitter || !PaintCommandArea(data, *box)
-            if !touched {
+            for area: areas {
+                if touched { break }
                 overlap := RectangleIntersection(box, area)
                 touched = overlap.width > 0.0 && overlap.height > 0.0
             }

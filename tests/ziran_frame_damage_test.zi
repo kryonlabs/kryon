@@ -81,5 +81,33 @@ main :: () -> s32 {
     PaintFlush(session)
     if custom_calls != 2 || line_draws != 16 || text_draws != 6 { return 15 }
     unused CloseSession(session)
+    // Changes far apart stay separate areas, and only their paint is replayed.
+    session = SessionOpen()
+    result = Frame(session, 50.0, "a")
+    if result.damage_partial || line_draws != 19 || text_draws != 7 { return 16 }
+    result = Frame(session, 80.0, "cc")
+    count := PaintDamageAreaCount(session)
+    if !result.damage_partial || count < 2 { return 17 }
+    areas: [PAINT_DAMAGE_AREA_LIMIT]Rectangle
+    was: bool = false
+    now: bool = false
+    label: bool = false
+    for at: cast(s32)0..count - 1 {
+        area := PaintDamageAreaAt(session, at)
+        areas[at] = area
+        line := area.y <= 100.0 && area.y + area.height >= 101.0 && area.y >= 90.0
+        here := line && area.x <= 50.0 && area.x + area.width >= 70.0
+        there := line && area.x <= 80.0 && area.x + area.width >= 100.0
+        words := area.x <= 300.0 && area.y <= 50.0 && area.x + area.width >= 312.0 && area.y + area.height <= 95.0
+        // The label and the line lie apart, so no area joins them.
+        if words && area.x < 200.0 { return 18 }
+        was = was || here
+        now = now || there
+        label = label || words
+    }
+    if !was || !now || !label { return 18 }
+    PaintFlushAreas(session, areas[:count])
+    if line_draws != 20 || text_draws != 8 || failed { return 19 }
+    unused CloseSession(session)
     return 0
 }
