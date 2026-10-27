@@ -18,6 +18,11 @@ if (kryonDir == null || ziranDir == null || raylibDir == null) {
 def androidAbis = (project.findProperty('app.abis') ?:
     System.getenv('KRYON_ANDROID_ABIS') ?: 'arm64-v8a').split(',').toList()
 def appCodegen = envOrProp('KRYON_PROJECT_CODEGEN', 'app.codegen') ?: 'c99'
+// The Google Play edition adds Play Billing; other editions carry no Google
+// libraries. Play Billing needs Android 6 and AndroidX
+// (pass -Pandroid.useAndroidX=true with app.googlePlay=true).
+def googlePlay = project.findProperty('app.googlePlay') == 'true'
+def requestedMinSdk = Integer.parseInt((project.findProperty('app.minSdk') ?: '21').toString())
 
 android {
     namespace '__PACKAGE__'
@@ -26,7 +31,7 @@ android {
 
     defaultConfig {
         applicationId '__PACKAGE__'
-        minSdk Integer.parseInt((project.findProperty('app.minSdk') ?: '21').toString())
+        minSdk googlePlay ? Math.max(requestedMinSdk, 23) : requestedMinSdk
         targetSdk 36
         versionCode 1
         versionName '0.1.0'
@@ -58,9 +63,19 @@ android {
         sourceSets.release.manifest.srcFile 'src/zx/AndroidManifest.xml'
     }
 
+    if (googlePlay) {
+        sourceSets.main.java.srcDir 'src/gplay/java'
+    }
+
     buildTypes {
         release {
             minifyEnabled false
         }
+    }
+}
+
+dependencies {
+    if (googlePlay) {
+        implementation 'com.android.billingclient:billing:9.1.0'
     }
 }

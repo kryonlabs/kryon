@@ -1,0 +1,46 @@
+// Google Play Billing for the Google Play edition of an Android app, through
+// the activity's playBilling bridge (templates/droid). Requests and the JSON
+// answer are described in PlayBilling.java. Every other platform, edition or
+// older activity answers "".
+#if #defined(ANDROID_BUILD) {
+    #import "android_jni"
+    #import "std/c_string"
+    #import "std/byte_text_linux"
+}
+
+PlayBillingCall :: (request: string, output: []u8) -> string {
+    #if #defined(ANDROID_BUILD) {
+        text: [512]u8
+        if !CopyCString(request, text[:]) { return "" }
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 { return "" }
+        defer { AndroidJniDetachCurrent(*session) }
+        env := session.env
+        method := AndroidJniMethod(*session, "playBilling", "(Ljava/lang/String;)Ljava/lang/String;")
+        if method == null {
+            // An activity made before this bridge has no such method.
+            if env.functions.ExceptionCheck(env) != 0 { env.functions.ExceptionClear(env) }
+            return ""
+        }
+        arguments: [1]JniValue
+        arguments[0].reference = AndroidJniString(env, *text[0])
+        if arguments[0].reference == null { return "" }
+        defer { env.functions.DeleteLocalRef(env, arguments[0].reference) }
+        value := env.functions.CallObjectMethodA(env, session.activity, method, *arguments[0])
+        if env.functions.ExceptionCheck(env) != 0 {
+            env.functions.ExceptionClear(env)
+            return ""
+        }
+        if value == null { return "" }
+        defer { env.functions.DeleteLocalRef(env, value) }
+        bytes := env.functions.GetStringUTFChars(env, value, null)
+        if bytes == null { return "" }
+        defer { env.functions.ReleaseStringUTFChars(env, value, bytes) }
+        answer := TextFromCString(bytes)
+        if !CopyCString(answer, output) { return "" }
+        return TextView(output[:answer.count])
+    }
+    unused request
+    unused output
+    return ""
+}
