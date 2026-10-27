@@ -1,4 +1,5 @@
 #import "c_string"
+#import "byte_text_linux"
 #import "drawing_props"
 #import "tree_input"
 #import "canvas_types"
@@ -7,6 +8,8 @@
 #import "canvas_os"
 #import "text_typeface"
 #import "text_buffer"
+// Text layout stays cached while these fonts stay loaded; see font_metrics.
+Metrics :: #import "font_metrics";
 
 c :: #system_library "c";
 HostTypefaceAllocate :: (size: usize) -> *u8 #foreign c "malloc";
@@ -25,6 +28,9 @@ CanvasAsset :: struct {
 canvas_assets: [32]CanvasAsset;
 canvas_assets_count: s32;
 canvas_assets_next: s32;
+// The asset found last: an image asks for its width, its height and its
+// texture in turn, so most lookups only confirm the same path again.
+canvas_asset_last: s32 = -1;
 canvas_pointer: PointerFrame;
 canvas_secondary: SecondaryPointerFrame;
 canvas_wheel_move: float32;
@@ -132,6 +138,7 @@ LoadTypefaceData :: (name: string, extension: string, data: string,
         UnloadFont(font)
         return false
     }
+    Metrics.GlyphMetricsChanged()
     return true
 }
 
@@ -154,6 +161,7 @@ LoadTypefaceFile :: (name: string, path: string,
         UnloadFont(font)
         return false
     }
+    Metrics.GlyphMetricsChanged()
     return true
 }
 
@@ -222,6 +230,7 @@ ReleaseTypefaces :: () {
     canvas_font = CanvasFont.{}
     canvas_font_loaded = false
     canvas_font_registered = false
+    Metrics.GlyphMetricsChanged()
 }
 
 #program_export
@@ -234,28 +243,30 @@ CanvasTryFont :: (path: *u8) -> bool {
     canvas_font = LoadFontEx(path, 32, null, 0)
     canvas_font_loaded = canvas_font.texture.id != cast(u32)0
     canvas_font_registered = false
+    Metrics.GlyphMetricsChanged()
     return canvas_font_loaded
+}
+
+CanvasAssetIs :: (index: s32, path: string) -> bool {
+    asset := *canvas_assets[index]
+    return asset.length == cast(s32)path.count && TextFromBytes(asset.path[:asset.length]) == path
 }
 
 CanvasAssetIndex :: (path: string) -> s32 {
     if path.count == 0 || path.count >= 1024 { return -1 }
+    if canvas_asset_last >= 0 && canvas_asset_last < canvas_assets_count &&
+    CanvasAssetIs(canvas_asset_last, path) {
+        return canvas_asset_last
+    }
     // Every image drawn looks its texture up, and asset paths share long
     // prefixes, so compare a hash before any bytes.
     hash: u64 = cast(u64)2166136261
     for byte: path { hash = (hash ^ cast(u64)byte) * cast(u64)16777619 }
     index: s32 = 0
     while index < canvas_assets_count {
-        if canvas_assets[index].hash == hash && canvas_assets[index].length == cast(s32)path.count {
-            same: bool = true
-            at: s32 = 0
-            while at < cast(s32)path.count {
-                if canvas_assets[index].path[at] != path[at] {
-                    same = false
-                    break
-                }
-                at += 1
-            }
-            if same { return index }
+        if canvas_assets[index].hash == hash && CanvasAssetIs(index, path) {
+            canvas_asset_last = index
+            return index
         }
         index += 1
     }
@@ -280,5 +291,6 @@ CanvasAssetIndex :: (path: string) -> s32 {
         canvas_assets[index].length = 0
         return -1
     }
+    canvas_asset_last = index
     return index
 }

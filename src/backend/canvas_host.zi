@@ -14,6 +14,7 @@
 #import "page_files"
 #import "session"
 #import "paint_queue"
+Metrics :: #import "font_metrics";
 
 canvas_cursor_shape: s32 = -1;
 
@@ -74,6 +75,9 @@ OpenCanvas :: () -> bool {
             CanvasTryFont(*path[0])
         }
     }
+    // The page measures text with fonts it has finished loading, and every
+    // font change bumps the revision, so laid-out lines are reused.
+    if Metrics.GlyphMetricsRevision() == cast(u64)0 { Metrics.GlyphMetricsChanged() }
     return true
 }
 
