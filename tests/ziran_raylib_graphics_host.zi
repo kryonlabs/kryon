@@ -33,6 +33,25 @@ ClearBackground :: (color: Color) { unused color }
 #program_export
 rlScalef :: (x: float32, y: float32, z: float32) { unused x; unused y; unused z; graphics_failed = true }
 
+// Ordinary image recovery must stay on DrawTexturePro. Polygon submission is
+// linked through RasterImage, but any call here is an unexpected GPU effect.
+#program_export
+rlSetTexture :: (id: u32) { unused id; graphics_failed = true }
+#program_export
+rlGetTextureIdDefault :: () -> u32 { graphics_failed = true; return 0 }
+#program_export
+rlTexCoord2f :: (x: float32, y: float32) { unused x; unused y; graphics_failed = true }
+#program_export
+rlVertex2f :: (x: float32, y: float32) { unused x; unused y; graphics_failed = true }
+#program_export
+rlNormal3f :: (x: float32, y: float32, z: float32) { unused x; unused y; unused z; graphics_failed = true }
+#program_export
+rlBegin :: (mode: s32) { unused mode; graphics_failed = true }
+#program_export
+rlEnd :: () { graphics_failed = true }
+#program_export
+rlColor4ub :: (r: u8, g: u8, b: u8, a: u8) { unused r; unused g; unused b; unused a; graphics_failed = true }
+
 #program_export
 LoadTexture :: (path: *u8) -> Texture2D {
     unused path
