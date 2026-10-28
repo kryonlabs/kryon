@@ -267,6 +267,9 @@ canvas-audio-engine-test:
 .PHONY: dom-spec-test
 dom-spec-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/dom_spec_zi_test.sh
+	@mkdir -p build/scratch/dom-pixels
+	@'$(ZIRAN_BIN)' bundle --root tests --module-path src/ui --module-path src/backend --module-path '$(ZIRAN_DIR)/std' --entry dom_pixels_test:main -o build/scratch/dom-pixels/pixels.zx tests/dom_pixels_test.zi
+	@test "$$('$(ZIRAN_BIN)' run build/scratch/dom-pixels/pixels.zx)" = 0
 
 .PHONY: canvas-events-test
 canvas-events-test:

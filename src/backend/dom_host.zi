@@ -199,11 +199,11 @@ DomWhole :: (value: s64) -> string {
 
 // A CSS length in pixels, kept to hundredths.
 DomPixels :: (value: float64, output: []u8) -> string {
-    length: s64
-    {
-        number: string = FormatDecimal(value, 2, output[0:24])
-        length = number.count
-    }
+    digits: [32]u8
+    number := FormatDecimal(value, 2, digits[:])
+    length := number.count
+    if length + 3 > output.count { return "0px" }
+    for index: cast(s64)0..length - 1 { output[index] = number[index] }
     output[length] = cast(u8)112
     output[length + 1] = cast(u8)120
     output[length + 2] = cast(u8)0
@@ -240,6 +240,7 @@ DomMakeElement :: (tag: string, identity: string) -> s32 {
     DomStyle(style, dom_names.border, "0")
     DomStyle(style, dom_names.background, "transparent")
     DomStyle(style, dom_names.color, "transparent")
+    if tag == "img" { DomStyle(style, dom_names.opacity, "0") }
     return created
 }
 
@@ -347,6 +348,8 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
     if box_height < 0.0 { box_height = 0.0 }
     DomStyle(style, dom_names.width, DomPixels(box_width, pixels[:]))
     DomStyle(style, dom_names.height, DomPixels(box_height, pixels[:]))
+        node := TreeNodeAt(dom_session,index)
+        DomStyle(style,dom_names.overflow,ifx node.clips_children then "hidden" else "visible")
     } else {
         DomStyle(style, dom_names.box_sizing, "border-box")
         if widget_kind == 21 { DomStyle(style, WebName("display"), "flex") }
@@ -360,7 +363,9 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
         DomStyle(style, dom_names.pointer_events, "none")
         DomStyle(style, dom_names.cursor, "default")
     }
-    if (flags & 2) != 0 {
+    if tag == "img" && !dom_document_layout {
+        DomStyle(style, dom_names.opacity, "0")
+    } else if (flags & 2) != 0 {
         DomStyle(style, dom_names.opacity, "0.45")
     } else {
         DomStyle(style, dom_names.opacity, "1")
@@ -369,7 +374,10 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
         WebSet(element, dom_names.text_content, WebText(label))
     }
     if (flags & 64) != 0 { DomSetAttribute(element, "href", url) } else { DomClearAttribute(element, "href") }
-    if (flags & 128) != 0 { DomSetAttribute(element, "src", url) } else { DomClearAttribute(element, "src") }
+    // Positioned app pictures already have one native paint img backed by
+    // the decoded asset. The semantic node must not fetch a second,
+    // unversioned copy outside the application asset loader.
+    if (flags & 128) != 0 && dom_document_layout { DomSetAttribute(element, "src", url) } else { DomClearAttribute(element, "src") }
     if label.count > 0 {
         DomSetAttribute(element, "aria-label", label)
     } else {
@@ -684,6 +692,16 @@ DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
     key: s32 = DomHostFind(node.identity_generation)
     if key < 0 || !DomSame(WebObject(dom_records[key].element), WebObject(element)) { return }
     if node.kind != 8 && !node.has_text { return }
+    if node.kind == 8 {
+        // Pointer observations still drive drags and held controls. A native
+        // keyboard click has detail=0; a pointer click was already delivered.
+        if context == 9 || context == 10 { return }
+        if context == 1 && WebGetNumber(event, WebName("detail")) > 0.0 { return }
+        if context == 6 || context == 7 || context == 8 {
+            code := cast(s32)WebGetNumber(event, WebName("keyCode"))
+            if code != 9 && code != 13 && code != 32 { return }
+        }
+    }
     unused WebCall0(event, WebName("stopPropagation"))
     if context == 3 {
         if !DomSame(WebGet(PageDocument(), WebName("activeElement")), WebObject(element)) { return }

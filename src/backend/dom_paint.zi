@@ -1,0 +1,270 @@
+// Native positioned HTML/CSS paint for compiled AppContext applications.
+// Text remains browser text. Encoded pictures remain img elements. Only
+// custom drawing, meshes and texture canvases use bounded canvas tiles.
+#import "web"
+#import "std/format"
+#import "number_text"
+#import "canvas_types"
+#import "std/vec"
+#import "geometry"
+#import "drawing_props"
+#import "paint_queue"
+#import "tree"
+#import "tree_draw"
+#import "session"
+#import "dom_host"
+#import "page_core"
+#import "page_paint"
+#import "page_font"
+#import "page_texture"
+#import "canvas_state"
+#import "canvas_text"
+#import "text_typeface"
+#import "canvas_frame"
+
+DOM_PAINT_MAX :: 8192
+DomPaintNode :: struct { element: s32; tag: s32; child: s32; kind: s32; }
+dom_paint_nodes: [DOM_PAINT_MAX]DomPaintNode;
+dom_paint_count: s32;
+dom_paint_used: s32;
+dom_paint_root: s32;
+dom_paint_session: Session;
+dom_paint_failed: bool;
+dom_paint_tile_node: s32 = -2;
+dom_paint_tile_context: s32;
+
+DomPaintCss :: (element: s32, name: string, value: string) {
+    DomStyle(WebGetObject(element, WebName("style")), WebName(name), value)
+}
+DomPaintLength :: (element: s32, name: string, value: float64) {
+    bytes: [32]u8
+    DomPaintCss(element, name, DomPixels(value, bytes[:]))
+}
+DomPaintColor :: (element: s32, name: string, color: Color) {
+    DomPaintCss(element, name, PageColor(color.r, color.g, color.b, color.a))
+}
+DomPaintBox :: (element: s32, bounds: Rectangle) {
+    DomPaintLength(element, "left", bounds.x); DomPaintLength(element, "top", bounds.y)
+    DomPaintLength(element, "width", bounds.width); DomPaintLength(element, "height", bounds.height)
+}
+DomPaintElement :: (tag: string, kind: s32) -> s32 {
+    if dom_paint_used >= DOM_PAINT_MAX { dom_paint_failed = true; return 0 }
+    at := dom_paint_used; dom_paint_used += 1
+    node := *dom_paint_nodes[at]
+    name := WebName(tag)
+    document := WebGetObject(WebGlobal, WebName("document"))
+    if node.element == 0 || node.tag != name || node.kind != kind {
+        element := WebAsObject(WebCall1(document, WebName("createElement"), WebText(tag)))
+        if node.element != 0 {
+            unused WebCall2(dom_paint_root, WebName("replaceChild"), WebObject(element), WebObject(node.element))
+            WebRelease(node.element)
+            if node.child != 0 { WebRelease(node.child) }
+        } else { unused WebCall1(dom_paint_root, WebName("appendChild"), WebObject(element)) }
+        node.* = DomPaintNode.{.element = WebKeep(element), .tag = name, .kind = kind}
+        DomSetAttribute(element, "data-kryon-paint", tag)
+        DomPaintCss(element, "position", "absolute")
+        DomPaintCss(element, "boxSizing", "border-box")
+        DomPaintCss(element, "margin", "0"); DomPaintCss(element, "padding", "0")
+        DomPaintCss(element, "pointerEvents", "none")
+    }
+    return node.element
+}
+
+DomPaintRecord :: (queued: QueuedPaint) -> bool {
+    scope := WebScope()
+    defer { WebEnd(scope) }
+    p := queued.data
+    native := p.kind >= 1 && p.kind <= 7
+    if p.kind == 1 && p.bounds.width != 0.0 && p.bounds.height != 0.0 { native = false }
+    image_id: s32
+    if p.kind == 5 {
+        image_id = cast(s32)p.texture.id
+        if image_id == 0 { image_id = cast(s32)p.texture_id }
+        if image_id == 0 && p.asset_path.count > 0 {
+            index := CanvasAssetIndex(p.asset_path)
+            if index >= 0 { image_id = cast(s32)canvas_assets[index].texture.id }
+        }
+        slot := PageTextureFind(image_id)
+        native = slot >= 0 && page_textures[slot].source_url != 0 && p.mesh_columns == 0 && p.rotation == 0.0 &&
+            p.source.width > 0.0 && p.source.height > 0.0 && p.origin.x == 0.0 && p.origin.y == 0.0 && p.color.r == cast(u8)255 && p.color.g == cast(u8)255 && p.color.b == cast(u8)255
+    }
+    if !native {
+        if dom_paint_tile_node != p.node || dom_paint_tile_context == 0 {
+            bounds := p.bounds
+            if p.node >= 0 { bounds = TreeNodeAt(dom_paint_session, p.node).bounds }
+            bounds = RectangleIntersection(bounds, Rectangle.{0.0,0.0,cast(float32)page_width,cast(float32)page_height})
+            if bounds.width <= 0.0 || bounds.height <= 0.0 { return true }
+            tile := DomPaintElement("canvas", 0)
+            if tile == 0 { return true }
+            DomPaintBox(tile, bounds)
+            width := PageCeil(cast(float64)bounds.width * page_dpi)
+            height := PageCeil(cast(float64)bounds.height * page_dpi)
+            if cast(s32)WebGetNumber(tile, page_names.width) != width { WebSet(tile, page_names.width, WebNumber(cast(float64)width)) }
+            if cast(s32)WebGetNumber(tile, page_names.height) != height { WebSet(tile, page_names.height, WebNumber(cast(float64)height)) }
+            ctx := PageContext2D(tile)
+            transform: [6]WebValue = .[WebNumber(1),WebNumber(0),WebNumber(0),WebNumber(1),WebNumber(0),WebNumber(0)]
+            unused WebCall(ctx, page_names.set_transform, *transform[0], 6)
+            unused WebCall4(ctx, WebName("clearRect"), WebNumber(0), WebNumber(0), WebNumber(cast(float64)width), WebNumber(cast(float64)height))
+            transform[0] = WebNumber(page_dpi); transform[3] = WebNumber(page_dpi)
+            transform[4] = WebNumber(0.0 - cast(float64)bounds.x * page_dpi)
+            transform[5] = WebNumber(0.0 - cast(float64)bounds.y * page_dpi)
+            unused WebCall(ctx, page_names.set_transform, *transform[0], 6)
+            dom_paint_tile_node = p.node
+            if dom_paint_tile_context != 0 { WebRelease(dom_paint_tile_context) }
+            dom_paint_tile_context = WebKeep(ctx)
+        }
+        previous := page_ctx
+        page_ctx = dom_paint_tile_context
+        EmitPaintDirect(queued)
+        page_ctx = previous
+        return true
+    }
+    dom_paint_tile_node = -2
+    if dom_paint_tile_context != 0 { WebRelease(dom_paint_tile_context) }
+    dom_paint_tile_context = 0
+    element := DomPaintElement(ifx p.kind == 4 || p.kind == 6 then "span" else "div", p.kind)
+    if element == 0 { return true }
+    // A slot may have held another paint kind in the previous frame.
+    DomPaintCss(element, "background", "transparent"); DomPaintCss(element, "border", "0")
+    DomPaintCss(element, "borderRadius", "0"); DomPaintCss(element, "clipPath", "none")
+    DomPaintCss(element, "transform", "none"); DomPaintCss(element, "overflow", "visible")
+    DomPaintCss(element, "opacity", "1")
+    bounds := p.bounds
+    if p.kind == 4 || p.kind == 6 {
+        previous := TextTypefaceUse(p.asset_path)
+        face: s32
+        if canvas_font_loaded { face = CanvasFontFace(canvas_font) }
+        size := PageTextSizeFor(PageMeasureContext(), face, p.font)
+        DomPaintCss(element, "font", PageFontSpec(size.hundredths, face))
+        unused TextTypefaceUse(previous)
+        DomPaintLength(element, "lineHeight", cast(float64)p.font)
+        DomPaintCss(element, "whiteSpace", "pre")
+        DomPaintCss(element, "pointerEvents", "auto"); DomPaintCss(element, "userSelect", "text")
+        DomPaintCss(element, "color", PageColor(p.color.r,p.color.g,p.color.b,p.color.a))
+        DomPaintCss(element, "fontStyle", ifx p.italic then "italic" else "normal")
+        DomPaintCss(element, "fontWeight", ifx p.emphasis then "bold" else "normal")
+        if !DomSame(WebGet(element, WebName("textContent")), WebText(p.value)) { WebSet(element, WebName("textContent"), WebText(p.value)) }
+        bounds = Rectangle.{cast(float32)p.x,cast(float32)p.y,cast(float32)PageTextWidth(face,p.value,p.font) + 2.0,cast(float32)p.font}
+    } else if p.kind == 1 {
+        thickness: float32 = ifx p.line_width > 0.0 then p.line_width else 1.0
+        if p.bounds.width == 0.0 {
+            bounds.width = thickness
+            if bounds.height < 0.0 { bounds.y += bounds.height; bounds.height = 0.0 - bounds.height }
+        } else {
+            bounds.height = thickness
+            if bounds.width < 0.0 { bounds.x += bounds.width; bounds.width = 0.0 - bounds.width }
+        }
+        DomPaintColor(element, "backgroundColor", p.color)
+    } else if p.kind == 2 || p.kind == 3 || p.kind == 7 {
+        DomPaintLength(element,"borderRadius",p.radius)
+        if p.kind == 3 {
+            DomPaintCss(element,"borderStyle","solid")
+            DomPaintLength(element,"borderWidth",p.line_width)
+            DomPaintColor(element,"borderColor",p.color)
+        } else if p.kind == 7 {
+            // CSS owns this gradient, with no rasterized background image.
+            bytes: [256]u8
+            color_a := PageColor(p.color.r,p.color.g,p.color.b,p.color.a)
+            a: [48]u8; n := color_a.count
+            for i: cast(s32)0..cast(s32)n-1 { a[i] = color_a[i] }
+            gradient: Vec(u8)
+            BuilderPrint(*gradient,"linear-gradient(to bottom,%,%)",TextView(a[:n]),PageColor(p.end_color.r,p.end_color.g,p.end_color.b,p.end_color.a))
+            DomPaintCss(element,"background",BuilderFinish(gradient))
+        } else { DomPaintColor(element,"backgroundColor",p.color) }
+    } else if p.kind == 5 {
+        DomPaintCss(element,"overflow","hidden")
+        DomPaintLength(element,"borderRadius",p.radius)
+        slot := PageTextureFind(image_id)
+        at := dom_paint_used - 1
+        image := dom_paint_nodes[at].child
+        if image == 0 {
+            image = WebAsObject(WebCall1(WebGetObject(WebGlobal,WebName("document")),WebName("createElement"),WebText("img")))
+            dom_paint_nodes[at].child = WebKeep(image)
+            DomPaintCss(image,"position","absolute"); DomPaintCss(image,"maxWidth","none")
+            DomSetAttribute(image,"alt",""); DomSetAttribute(image,"draggable","false")
+            unused WebCall1(element,WebName("appendChild"),WebObject(image))
+        }
+        if !DomSame(WebGet(image,WebName("src")),WebObject(page_textures[slot].source_url)) {
+            WebSet(image,WebName("src"),WebObject(page_textures[slot].source_url))
+        }
+        sx := p.bounds.width / p.source.width; sy := p.bounds.height / p.source.height
+        DomPaintBox(image,Rectangle.{0.0-p.source.x*sx,0.0-p.source.y*sy,
+            cast(float32)WebGetNumber(page_textures[slot].canvas,page_names.width)*sx,
+            cast(float32)WebGetNumber(page_textures[slot].canvas,page_names.height)*sy})
+        DomPaintCss(image,"imageRendering",ifx p.smooth then "auto" else "pixelated")
+        if p.color.a != cast(u8)255 {
+            opacity: [32]u8
+            DomPaintCss(element,"opacity",FormatDecimal(cast(float64)p.color.a / 255.0,3,opacity[:]))
+        }
+    }
+    DomPaintBox(element,bounds)
+    clip := p.clip
+    clipped := p.kind == 5 || p.kind == 6 || p.clip_set
+    if clipped {
+        top := clip.y - bounds.y; left := clip.x - bounds.x
+        right := bounds.x + bounds.width - clip.x - clip.width
+        bottom := bounds.y + bounds.height - clip.y - clip.height
+        if top < 0.0 { top = 0.0 }; if left < 0.0 { left = 0.0 }
+        if right < 0.0 { right = 0.0 }; if bottom < 0.0 { bottom = 0.0 }
+        css: Vec(u8)
+        BuilderPrint(*css,"inset(%px %px %px %px)",top,right,bottom,left)
+        DomPaintCss(element,"clipPath",BuilderFinish(css))
+    }
+    return true
+}
+
+DomPaintFrame :: (session: Session) -> FrameStatus {
+    DomHostInitNames()
+    result := CommitFrameDamaged(session)
+    if result.status != FrameStatus.FrameOk || result.paint_unchanged { return result.status }
+    scope := WebScope()
+    defer { WebEnd(scope) }
+    page_native_dom = true
+    page_draw_hooks = PageDrawHooks.{}
+    canvas_frame_clear_pending = false
+    if dom_paint_root == 0 {
+        document := WebGetObject(WebGlobal,WebName("document"))
+        root := WebAsObject(WebCall1(document,WebName("createElement"),WebText("div")))
+        dom_paint_root = WebKeep(root)
+        DomSetAttribute(root,"id","kryon-dom-paint"); DomSetAttribute(root,"aria-hidden","true")
+        DomPaintCss(root,"position","absolute"); DomPaintCss(root,"inset","0")
+        DomPaintCss(root,"overflow","hidden"); DomPaintCss(root,"pointerEvents","none")
+        DomPaintCss(root,"zIndex","1")
+        unused WebCall1(PageLayoutBoxHandle(),WebName("appendChild"),WebObject(root))
+        DomPaintCss(PageCanvas(),"visibility","hidden")
+    }
+    dom_paint_used = 0; dom_paint_failed = false
+    dom_paint_tile_node = -2
+    if dom_paint_tile_context != 0 { WebRelease(dom_paint_tile_context) }
+    dom_paint_tile_context = 0; dom_paint_session = session
+    previous := paint_recorder; paint_recorder = DomPaintRecord
+    PaintFlush(session)
+    paint_recorder = previous
+    for at: cast(s32)dom_paint_used..dom_paint_count - 1 {
+        node := dom_paint_nodes[at]
+        unused WebCall1(dom_paint_root,WebName("removeChild"),WebObject(node.element))
+        WebRelease(node.element); if node.child != 0 { WebRelease(node.child) }
+        dom_paint_nodes[at] = DomPaintNode.{}
+    }
+    dom_paint_count = dom_paint_used
+    return ifx dom_paint_failed then FrameStatus.FramePaintOverflow else FrameStatus.FrameOk
+}
+
+DomPaintClose :: () {
+    scope := WebScope()
+    for at: cast(s32)0..dom_paint_count - 1 {
+        WebRelease(dom_paint_nodes[at].element)
+        if dom_paint_nodes[at].child != 0 { WebRelease(dom_paint_nodes[at].child) }
+        dom_paint_nodes[at] = DomPaintNode.{}
+    }
+    if dom_paint_root != 0 {
+        parent := WebGetObject(dom_paint_root,WebName("parentNode"))
+        unused WebCall1(parent,WebName("removeChild"),WebObject(dom_paint_root))
+        WebRelease(dom_paint_root)
+    }
+    if dom_paint_tile_context != 0 { WebRelease(dom_paint_tile_context) }
+    dom_paint_root = 0; dom_paint_count = 0; dom_paint_used = 0; dom_paint_tile_context = 0
+    page_native_dom = false
+    DomPaintCss(PageCanvas(),"visibility","visible")
+    WebEnd(scope)
+}

@@ -1,0 +1,11 @@
+#import "dom_host"
+#program_export
+main :: () -> s32 {
+    bytes: [32]u8
+    if DomPixels(26.0,bytes[:]) != "26px" { return 1 }
+    if DomPixels(12.75,bytes[:]) != "12.75px" { return 2 }
+    if DomPixels(-8.25,bytes[:]) != "-8.25px" { return 3 }
+    if DomPixels(0.0,bytes[:]) != "0px" { return 4 }
+    if DomPixels(1254.5,bytes[:]) != "1254.5px" { return 5 }
+    return 0
+}

@@ -14,6 +14,7 @@ using Host :: #import "Canvas";
 #import "canvas_frame"
 #import "dom_tree"
 #import "dom_host"
+#import "dom_paint"
 #import "tree_input"
 #import "scroll_device"
 #import "key_input"
@@ -164,7 +165,9 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
     canvas_app_session = session
     canvas_app_bounds = viewport
     unused CanvasAppMain()
-    commit_status := EndCanvasUiFrame(session)
+    commit_status: FrameStatus
+    if canvas_app_semantic_dom { commit_status = DomPaintFrame(session) }
+    else { commit_status = EndCanvasUiFrame(session) }
     if commit_status != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false
@@ -189,6 +192,7 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
         CloseCanvas()
         return CanvasAppError("kryon: could not open the browser canvas")
     }
+    page_native_dom = semantic_dom
     canvas_app_mode = APP_IDENTIFY
     query: [512]u8
     PageRouteReadQuery(query[:])
@@ -249,7 +253,7 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
     unused BundleStorageSync(false)
     AppFilesClose(*canvas_app_files)
     CloseSession(session)
-    if semantic_dom { DomClose() }
+    if semantic_dom { DomPaintClose(); DomClose() }
     CloseCanvas()
     if ok { return 0 }
     return CanvasAppError("kryon: the compiled app's frame failed")

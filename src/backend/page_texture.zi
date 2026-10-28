@@ -17,6 +17,7 @@ PageTexture :: struct {
     target: bool
     filter: s32
     revision: u64
+    source_url: s32
 }
 
 // A copy of a texture multiplied by a colour. `order` is when it was made,
@@ -121,6 +122,7 @@ PageTexturesReset :: () {
     index: s32 = 0
     while index < PAGE_TEXTURE_MAX {
         if page_textures[index].id != 0 {
+            PageTextureUrlRelease(index)
             WebRelease(page_textures[index].canvas)
             page_textures[index] = PageTexture.{}
         }
@@ -441,6 +443,7 @@ PageTextureFree :: (id: s32) {
     PageFlushPaint()
     slot: s32 = PageTextureFind(id)
     if slot >= 0 {
+        PageTextureUrlRelease(slot)
         WebRelease(page_textures[slot].canvas)
         page_textures[slot] = PageTexture.{}
     }
@@ -453,7 +456,8 @@ PageTextureUpdateRgba :: (id: s32, pixels: *u8, x: s32, y: s32, width: s32, heig
     if slot < 0 || pixels == null || width <= 0 || height <= 0 { return }
     scope: s32 = WebScope()
     PageWritePixels(page_textures[slot].canvas, pixels, x, y, width, height)
-    page_textures[slot].revision += 1
+    PageTextureUrlRelease(slot)
+        page_textures[slot].revision += 1
     // Tinted copies of this texture hold its previous pixels.
     PageTintsClearFor(id)
     WebEnd(scope)
@@ -497,6 +501,7 @@ PageTargetSelect :: (id: s32) {
         page_saved = 0
         page_raster_clips = 0
         // Cached tints go stale as soon as a target is written.
+        PageTextureUrlRelease(slot)
         page_textures[slot].revision += 1
         PageTintsClearFor(id)
     }
@@ -580,6 +585,14 @@ PageTextureFromEncoded :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> 
                     if id != 0 {
                         width.* = cast(s32)w
                         height.* = cast(s32)h
+                        if page_native_dom {
+                        slot := PageTextureFind(id)
+                        parts := WebNewArray()
+                        unused WebCall1(parts, WebName("push"), WebObject(WebBytes(0, cast(*void)bytes, size)))
+                        blob := WebNew1(WebGetObject(WebGlobal, WebName("Blob")), WebObject(parts))
+                        url := WebAsObject(WebCall1(WebGetObject(WebGlobal, WebName("URL")), WebName("createObjectURL"), WebObject(blob)))
+                        page_textures[slot].source_url = WebKeep(url)
+                        }
                     }
                 }
             }
@@ -677,4 +690,14 @@ PageImageExport :: (path: string, pixels: *u8, width: s32, height: s32) -> s32 {
     }
     WebEnd(scope)
     return ok
+}
+
+// An encoded asset can be shown by a native img without another pixel copy.
+PageTextureUrlRelease :: (slot: s32) {
+    if slot < 0 || page_textures[slot].source_url == 0 { return }
+    scope := WebScope()
+    url := page_textures[slot].source_url
+    unused WebCall1(WebGetObject(WebGlobal, WebName("URL")), WebName("revokeObjectURL"), WebObject(url))
+    WebRelease(url); page_textures[slot].source_url = 0
+    WebEnd(scope)
 }

@@ -132,6 +132,8 @@ page_ctx: s32;
 // instance while the application awaits an image decode or storage.
 page_back_canvas: s32;
 page_front_ctx: s32;
+// Native DOM app frames have their own paint elements, not a full-page bitmap.
+page_native_dom: bool;
 page_created_canvas: bool;
 page_open: bool;
 page_closed: bool;
@@ -541,7 +543,7 @@ PageRefreshPixelRatio :: () {
 // Shows the frame drawn so far by copying the back canvas to the page.
 PagePresent :: () {
     PageFlushPaint()
-    if !PageIsOpen() || page_back_canvas == 0 || page_front_ctx == 0 { return }
+    if page_native_dom || !PageIsOpen() || page_back_canvas == 0 || page_front_ctx == 0 { return }
     scope: s32 = WebScope()
     unused WebCall0(page_front_ctx, page_names.save)
     args: [6]WebValue

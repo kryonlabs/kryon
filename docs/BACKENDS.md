@@ -35,8 +35,11 @@ The desktop host uses `cairo_raster.zi`. The DOM host reuses
 the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
 Standalone `AppContext` applications can use the same two presentations with
 the compiled hosts `canvas_app_run.zi` and `dom_app_run.zi`; the DOM entry
-reuses the Canvas frame lifecycle and reconciles a semantic overlay after the
-raster frame commits. It does not replace Canvas rasterization by default.
+reuses the application frame lifecycle while emitting positioned native HTML
+text, images and buttons with CSS boxes, gradients and clipping. Custom drawing,
+meshes and texture effects use bounded Canvas tiles in paint order; the full-page
+Canvas bitmap is not presented in this mode. The ordinary document-layout DOM
+host remains available for browser flow layout.
 SDL pixel hosts prefer accelerated texture presentation without blocking on
 vertical refresh. `SDL_RENDER_DRIVER` retains explicit driver selection,
 including `software`; hosts without an accelerated driver use software
