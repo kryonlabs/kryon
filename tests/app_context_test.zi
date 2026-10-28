@@ -9,6 +9,8 @@
 #import "drawing_props"
 #import "tile_map"
 #import "widget_codec"
+#import "text_input_platform"
+#import "session"
 
 writes: s32;
 tile_calls: s32;
@@ -59,7 +61,13 @@ main :: () -> s32 {
     accent: [6]u8 = .[cast(u8)97, cast(u8)99, cast(u8)99, cast(u8)101, cast(u8)110, cast(u8)116]
     if !SetStyleTokenColorBytes(accent[:], cast(u32)0x2e7d68ff) { return 11 }
     if !Open(*app, "good.zx", "diary") || writes != 0 { return 1 }
+    app.session = SessionOpen()
+    if TextInputFocused(app.session) { return 15 }
     if !AppContextRun(*app, APP_FRAME) || writes != 1 || tile_calls != 1 { return 2 }
+    if !app.keyboard || !TextInputFocused(app.session) { return 16 }
+    TextInputFocusFrameBegin(app.session)
+    TextInputFocusFrameBegin(app.session)
+    if TextInputFocused(app.session) { return 17 }
     if !AppContextRestart(*app) || writes != 1 { return 3 }
     if !AppContextRun(*app, APP_FRAME) || writes != 2 { return 4 }
     // The reply stays readable after the bundle reclaims its run's strings,
@@ -76,6 +84,7 @@ main :: () -> s32 {
     frame_writes = 0
     if !AppContextRunFrame(*app, false) || writes != 6 || tile_calls != 6 || tile_after_write { return 14 }
     HostedAppClose(*app.app)
+    unused SessionClose(app.session)
     if Open(*app, "good.zx", "other") || writes != 6 { return 5 }
     if Open(*app, "future.zx", "diary") || writes != 6 { return 6 }
     if Open(*app, "identify-write.zx", "diary") || writes != 6 { return 7 }

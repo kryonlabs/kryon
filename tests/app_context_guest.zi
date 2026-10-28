@@ -40,5 +40,6 @@ main :: () -> s32 {
     if accent.r != 46 || accent.g != 125 || accent.b != 104 || accent.a != 255 { return 4 }
     own := AppThemeColor("no-such-token", Color.{1, 2, 3, 255})
     if own.r != 1 || own.g != 2 || own.b != 3 { return 5 }
+    AppKeyboard(true)
     return 0
 }

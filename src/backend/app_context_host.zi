@@ -8,6 +8,7 @@
 #import "session"
 #import "geometry"
 #import "text_input_props"
+#import "text_input_platform"
 #import "hosted_app"
 #import "hosted_values"
 #import "widget_codec"
@@ -252,6 +253,7 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
         if name == "AppKeyboardHost" && count == 1 &&
         HostScalarValid(arguments[0], "bool", cast(s32)HostInteger) {
             app.keyboard = arguments[0].integer != 0
+            if app.keyboard { TextInputNoteFocused(app.session) }
             return 1
         }
     }
