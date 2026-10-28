@@ -19,7 +19,12 @@ never the semantic tree or capture snapshots; password copy/cut is blocked.
 Native edit requests are bounded to 64 KiB.
 
 The default remains an absolutely positioned, transparent semantic overlay
-on Canvas2D. For document widgets, call this before the first frame:
+on Canvas2D. Canvas applications compiled through `canvas_app_run.zi` can
+select the equivalent entry `dom_app_run.zi`; that host keeps the AppContext
+lifecycle, storage, input and Canvas frame, then reconciles the additional
+semantic elements. Consequently canvas-heavy apps normally use slightly more
+memory and CPU in DOM mode, not less. For document widgets, call this before
+the first frame:
 
 ```ziran
 Dom :: #import "kryon/Dom";

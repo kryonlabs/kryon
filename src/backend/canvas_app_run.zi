@@ -12,6 +12,8 @@ using Host :: #import "Canvas";
 #import "tree"
 #import "tree_draw"
 #import "canvas_frame"
+#import "dom_tree"
+#import "dom_host"
 #import "tree_input"
 #import "scroll_device"
 #import "key_input"
@@ -49,6 +51,7 @@ canvas_app_unsaved: bool;
 
 // A page embedded with ?mini runs the app in mini mode.
 canvas_app_mini: bool;
+canvas_app_semantic_dom: bool;
 #program_export
 AppModeHost :: () -> s32 { return canvas_app_mode }
 
@@ -146,6 +149,7 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
     pointer: PointerFrame = TestDriverPointer(session, PollPointer())
     TreePointerUpdate(session, pointer)
     TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+    if canvas_app_semantic_dom { DomHostFrame(session) }
     wheel := TestDriverWheel(CanvasWheelMove())
     PointerWheelSend(session, pointer.x, pointer.y, wheel)
     // Scrolls take their wheel, drags and flings from the sampled device;
@@ -160,18 +164,27 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
     canvas_app_session = session
     canvas_app_bounds = viewport
     unused CanvasAppMain()
-    if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
+    commit_status := EndCanvasUiFrame(session)
+    if commit_status != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         return false
     }
-    CanvasCursor(session)
+    if canvas_app_semantic_dom {
+        if !DomReconcile(session, viewport) {
+            EndCanvasFrame()
+            return false
+        }
+    } else {
+        CanvasCursor(session)
+    }
     drawn := EndCanvasFrame()
     TestDriverFrame(session)
     return drawn
 }
 
 #program_export
-main :: () -> s32 {
+CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
+    canvas_app_semantic_dom = semantic_dom
     if !OpenCanvas() {
         CloseCanvas()
         return CanvasAppError("kryon: could not open the browser canvas")
@@ -236,7 +249,11 @@ main :: () -> s32 {
     unused BundleStorageSync(false)
     AppFilesClose(*canvas_app_files)
     CloseSession(session)
+    if semantic_dom { DomClose() }
     CloseCanvas()
     if ok { return 0 }
     return CanvasAppError("kryon: the compiled app's frame failed")
 }
+
+#program_export
+main :: () -> s32 { return CanvasAppMainLoop(false) }

@@ -139,6 +139,7 @@ Dialog = "src/ui/dialog.zi"
 FileDialogLinux = "src/backend/file_dialog_linux.zi"
 Tray = "src/backend/Tray/module.zi"
 PageRoute = "src/backend/page_route.zi"
+dom_app_run = "src/backend/dom_app_run.zi"
 # Building blocks for widget packages such as Plot and DataViews,
 # which draw into the retained tree with Kryon's own primitives.
 session = "src/ui/session.zi"

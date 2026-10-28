@@ -33,6 +33,10 @@ See [Ziran projects](PROJECTS.md) for the complete package manifest.
 
 The desktop host uses `cairo_raster.zi`. The DOM host reuses
 the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
+Standalone `AppContext` applications can use the same two presentations with
+the compiled hosts `canvas_app_run.zi` and `dom_app_run.zi`; the DOM entry
+reuses the Canvas frame lifecycle and reconciles a semantic overlay after the
+raster frame commits. It does not replace Canvas rasterization by default.
 SDL pixel hosts prefer accelerated texture presentation without blocking on
 vertical refresh. `SDL_RENDER_DRIVER` retains explicit driver selection,
 including `software`; hosts without an accelerated driver use software

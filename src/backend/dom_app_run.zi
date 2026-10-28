@@ -1,0 +1,7 @@
+// Runs a compiled AppContext page with Canvas2D pixels and the semantic DOM
+// overlay. This keeps custom canvas applications usable while native elements
+// provide interaction and browser accessibility where the app submits them.
+#import "canvas_app_run"
+
+#program_export
+main :: () -> s32 { return CanvasAppMainLoop(true) }
