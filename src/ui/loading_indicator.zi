@@ -6,9 +6,6 @@
 #import "drawing_props"
 #import "box_widget"
 #import "box_props"
-#if #defined(KRYON_HOSTED_UI) {
-    #import "app_theme"
-}
 
 LoadingIndicatorProps :: struct {
     key: u64
@@ -50,9 +47,7 @@ LoadingIndicator :: (session: Session, props: LoadingIndicatorProps) {
     left := props.bounds.x + (props.bounds.width - (step * cast(float32)(LOADING_DOTS - 1) + size)) / 2.0
     top := props.bounds.y + (props.bounds.height - size) / 2.0 + rise / 2.0
     color := Color.{170, 170, 170, 255}
-    #if #defined(KRYON_HOSTED_UI) {
-        color = AppThemeColor("progress", AppThemeColor("accent", color))
-    } else {
+    #if !#defined(KRYON_HOSTED_UI) {
         color = StyleTokenColorOr("progress", StyleTokenColorOr("accent", color))
     }
     for dot: cast(s32)0..LOADING_DOTS - 1 {
