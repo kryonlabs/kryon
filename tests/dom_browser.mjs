@@ -14,7 +14,7 @@ await unlink(join(profile, 'DevToolsActivePort')).catch(error => {
 const browser = spawn(process.env.CHROMIUM || 'chromium', [
   '--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
   '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0',
-  '--user-data-dir=' + profile, html
+  '--user-data-dir=' + profile, 'about:blank'
 ], {detached: true, stdio: ['ignore', 'ignore', 'pipe']});
 let errors = '';
 browser.stderr.on('data', data => { errors = (errors + data).slice(-8000); });
@@ -63,6 +63,19 @@ try {
     return result;
   }
   await command('Runtime.enable');
+  await command('Page.enable');
+  await command('Page.addScriptToEvaluateOnNewDocument', {source: `
+    new MutationObserver(records => {
+      for (const record of records) for (const node of record.addedNodes) {
+        if (node.id === 'kryon-dom-paint') globalThis.__nativeDomPaintObserved =
+          [...node.querySelectorAll('[data-kryon-paint="span"]')].map(element => ({
+            text: element.textContent, left: element.style.left,
+            font: element.style.font, color: element.style.color
+          }));
+      }
+    }).observe(document, {childList:true, subtree:true});
+  `});
+  await command('Page.navigate', {url: html});
   if (process.env.KRYON_DOM_INTERACTION) {
     async function evaluate(expression) {
       const response = await command('Runtime.evaluate', {expression, returnByValue: true});
@@ -141,6 +154,8 @@ try {
     expression: `(() => {
       const snapshot = globalThis.__kryonDomSnapshot;
       const failures = [];
+      const paint = globalThis.__nativeDomPaintObserved;
+      if (!paint?.some(node => node.text === 'Semantic DOM' && node.left === '10px' && node.font && node.color)) failures.push('missing native HTML/CSS text paint');
       if (!snapshot) failures.push('missing DOM snapshot');
       if (snapshot && snapshot.title !== 'DOM Probe') failures.push('title ' + snapshot.title);
       if (snapshot) {

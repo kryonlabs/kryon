@@ -2,6 +2,8 @@
 #import "canvas_host"
 #import "dom_tree"
 #import "dom_host"
+#import "dom_paint"
+#import "page_core"
 #import "geometry"
 #import "session"
 #import "tree"
@@ -27,6 +29,11 @@ DomError :: (message: string) -> s32 {
     return 1
 }
 
+DomFrameCommit :: (session: Session) -> FrameStatus {
+    if DomDocumentLayout() { return EndFrame(session) }
+    return DomPaintFrame(session)
+}
+
 DrawDomFrame :: (session: Session, viewport: Rectangle) -> bool {
     BeginCanvasFrame()
     pointer: PointerFrame = PollPointer()
@@ -44,7 +51,7 @@ DrawDomFrame :: (session: Session, viewport: Rectangle) -> bool {
         DomError("kryon: browser document frame failed")
         return false
     }
-    if EndFrame(session) != cast(FrameStatus)FrameOk {
+    if DomFrameCommit(session) != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
         DomError("kryon: browser document could not commit")
         return false
@@ -72,6 +79,7 @@ main :: () -> s32 {
         CloseCanvas()
         return DomError("kryon: could not open a UI session")
     }
+    page_native_dom = true
     ok: bool = true
     while ok && PollCanvas() {
         key: s32 = CanvasPressedKey()
@@ -84,6 +92,7 @@ main :: () -> s32 {
         ok = DrawDomFrame(session, CanvasViewport())
     }
     CloseSession(session)
+    DomPaintClose()
     DomClose()
     CloseCanvas()
     if ok { return 0 }
