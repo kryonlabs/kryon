@@ -24,6 +24,7 @@
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "input_protocol"
 #import "std/number_text"
 #import "std/text_buffer"
 Clock :: #import "std/timer_linux";
@@ -144,6 +145,9 @@ AndroidRunMain :: () -> s32 {
         CloseRaylib()
         return AndroidError("kryon: could not open a UI session")
     }
+    AndroidTextInputOpen(session)
+    defer { AndroidTextInputClose(session) }
+    RaylibExitKey(0)
     // Android's own interface font when the application loaded none.
     system_font := !raylib_font_registered && LoadSystemTypeface("ui") && SelectTypeface("ui")
     ok: bool = true
@@ -168,8 +172,9 @@ AndroidRunMain :: () -> s32 {
             }
         }
         if key != 0 {
-            // The hardware back key arrives as raylib's KEY_BACK (4).
-            KeyboardSend(session, key)
+            // Android Back follows the same in-app navigation and overlay
+            // dismissal path as Escape on the other hosts.
+            KeyboardSend(session, ifx key == 4 then KeyEscape else key)
         }
         viewport: AndroidViewport
         SyncAndroidViewport(*viewport)
@@ -197,13 +202,14 @@ AndroidRunMain :: () -> s32 {
         AndroidTextInputBeginFrame(session)
         draw := AndroidDrawJob.{.session = session, .viewport = viewport, .bounds = bounds}
         ok = RunRaylibAppFrame(AndroidAppCompose, cast(*void)*draw) && draw.ok
+        AndroidTextInputFrame(session, false)
         if ok && first_frame {
             first_frame = false
             AndroidNotifyFirstFrame()
         }
         // The application consumes keys while composing its frame. A back
         // key nothing took closes the activity, as Android users expect.
-        if ok && KeyboardTake(session) == 4 {
+        if ok && key == 4 && KeyboardTake(session) == KeyEscape {
             AndroidJniFinishActivity()
         }
     }

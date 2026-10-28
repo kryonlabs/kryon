@@ -4,6 +4,7 @@
 // Text input follows the session-owned queue contract of text_input_platform,
 // so OS keyboard callbacks on the UI thread cannot target a recycled session.
 #import "android_jni"
+#import "android_picker"
 #import "android_surface"
 #import "android_text_editor"
 #import "android_text_menu"
@@ -531,12 +532,16 @@ AndroidNativeInsetsFn :: #type (*JniEnv, *void, s32, s32, s32, s32,
     s32, s32, s32, s32, s32) -> void #c_call;
 AndroidNativeDensityFn :: #type (*JniEnv, *void, float32) -> void #c_call;
 AndroidNativeLifecycleFn :: #type (*JniEnv, *void, u8, u8) -> s32 #c_call;
+AndroidNativePickerFn :: #type (*JniEnv, *void, s32, *void) -> void #c_call;
+AndroidNativeEditorFn :: #type (*JniEnv, *void, s64, s64, *void, s32, s32) -> void #c_call;
 AndroidNativeProcedure :: union {
     nothing: AndroidNativeVoidFn
     integer: AndroidNativeIntegerFn
     insets: AndroidNativeInsetsFn
     density: AndroidNativeDensityFn
     lifecycle: AndroidNativeLifecycleFn
+    picker: AndroidNativePickerFn
+    editor: AndroidNativeEditorFn
 }
 AndroidNativeMethod :: struct {
     name: *u8
@@ -546,9 +551,9 @@ AndroidNativeMethod :: struct {
 
 #program_export
 AndroidJniRegisterNatives :: (env: *JniEnv, klass: *void) -> s32 {
-    methods: [9]AndroidNativeMethod
-    names: [9][64]u8
-    signatures: [9][128]u8
+    methods: [12]AndroidNativeMethod
+    names: [12][64]u8
+    signatures: [12][128]u8
     CopyCString("nativeSetInsets", names[0][:])
     CopyCString("(IIIIIIIII)V", signatures[0][:])
     methods[0].name = *names[0][0]
@@ -594,8 +599,23 @@ AndroidJniRegisterNatives :: (env: *JniEnv, klass: *void) -> s32 {
     methods[8].name = *names[8][0]
     methods[8].signature = *signatures[8][0]
     methods[8].procedure.nothing = AndroidNativeInvalidateGraphics
+    CopyCString("nativeImportSelectedFile", names[9][:])
+    CopyCString("(ILjava/lang/String;)V", signatures[9][:])
+    methods[9].name = *names[9][0]
+    methods[9].signature = *signatures[9][0]
+    methods[9].procedure.picker = AndroidNativePickerSelected
+    CopyCString("nativeImportCancelled", names[10][:])
+    CopyCString("(I)V", signatures[10][:])
+    methods[10].name = *names[10][0]
+    methods[10].signature = *signatures[10][0]
+    methods[10].procedure.integer = AndroidNativePickerCancelled
+    CopyCString("nativeTextInputState", names[11][:])
+    CopyCString("(JJ[BII)V", signatures[11][:])
+    methods[11].name = *names[11][0]
+    methods[11].signature = *signatures[11][0]
+    methods[11].procedure.editor = AndroidNativeTextInputState
     return env.functions.RegisterNatives(env, klass,
-        cast(*void)*methods[0], 9)
+        cast(*void)*methods[0], 12)
 }
 
 #program_export

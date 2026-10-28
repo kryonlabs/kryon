@@ -9,6 +9,7 @@
 #import "session"
 #import "geometry"
 #import "tree_draw"
+#import "input_protocol"
 Player :: #import "bundle_player";
 
 AndroidBundleDraw :: struct {
@@ -113,10 +114,10 @@ AndroidBundleRunMain :: () -> s32 {
             point = AndroidTextInputCharacter()
         }
         draw := AndroidBundleDraw.{.host = host, .viewport = viewport,
-            .bounds = bounds, .zoom = zoom, .key = key}
+            .bounds = bounds, .zoom = zoom, .key = ifx key == 4 then KeyEscape else key}
         ok := RunRaylibAppFrame(AndroidBundleCompose, cast(*void)*draw) && draw.ok
         AndroidTextInputFrame(input_session, host.player.keyboard)
-        if !ok || key == 4 { AndroidJniFinishActivity(); break }
+        if !ok || host.player.closed { AndroidJniFinishActivity(); break }
         if first { first = false; AndroidNotifyFirstFrame() }
     }
     return ifx hosts[active].player.failed then 1 else 0

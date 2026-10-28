@@ -2,9 +2,15 @@ package __PACKAGE__;
 
 import android.app.NativeActivity;
 import android.content.Intent;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import java.nio.charset.StandardCharsets;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.OutputStream;
 import java.io.InputStream;
+import android.net.Uri;
 import android.content.res.Configuration;
 import android.graphics.Insets;
 import android.graphics.Rect;
@@ -16,6 +22,11 @@ import android.util.Log;
 import android.view.DisplayCutout;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.text.InputType;
 import android.view.ViewTreeObserver;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -43,6 +54,15 @@ public class __ACTIVITY__ extends NativeActivity {
     private long startupStarted;
     private String pendingBundle;
     private int lastDeleteRepeatCount = -1;
+    private static final int DOCUMENT_PICKER = 19741;
+    private int documentRequest = -1;
+    private boolean documentSave;
+    private Uri saveDocument;
+    private File saveStage;
+    private EditText inputEditor;
+    private boolean applyingInput;
+    private long inputTarget;
+    private long inputRevision;
 
     private native void nativeSetInsets(int left, int top, int right, int bottom, int imeBottom,
         int cutoutLeft, int cutoutTop, int cutoutRight, int cutoutBottom);
@@ -54,6 +74,196 @@ public class __ACTIVITY__ extends NativeActivity {
     private native void nativeTextInputEnter();
     private native int nativeSyncLifecycleState(boolean paused, boolean windowFocused);
     private native void nativeInvalidateGraphicsResources();
+    private native void nativeImportSelectedFile(int request, String path);
+    private native void nativeImportCancelled(int request);
+    private native void nativeTextInputState(long target, long revision, byte[] value, int cursor, int anchor);
+
+    private EditText inputEditor() {
+        if (inputEditor != null) return inputEditor;
+        inputEditor = new EditText(this) {
+            @Override protected void onSelectionChanged(int start, int end) {
+                super.onSelectionChanged(start, end);
+                publishInput();
+            }
+        };
+        inputEditor.setAlpha(0);
+        inputEditor.setPadding(0, 0, 0, 0);
+        inputEditor.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        inputEditor.setFocusableInTouchMode(true);
+        inputEditor.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        inputEditor.addTextChangedListener(new TextWatcher() {
+            public void beforeTextChanged(CharSequence value, int start, int count, int after) {}
+            public void onTextChanged(CharSequence value, int start, int before, int count) {}
+            public void afterTextChanged(Editable value) { publishInput(); }
+        });
+        inputEditor.setOnEditorActionListener((view, action, event) -> {
+            nativeTextInputEnter();
+            return true;
+        });
+        addContentView(inputEditor, new ViewGroup.LayoutParams(1, 1));
+        return inputEditor;
+    }
+
+    private void publishInput() {
+        if (applyingInput || inputEditor == null || inputTarget == 0) return;
+        String text = inputEditor.getText().toString();
+        int start = Math.max(0, inputEditor.getSelectionStart());
+        int end = Math.max(0, inputEditor.getSelectionEnd());
+        nativeTextInputState(inputTarget, ++inputRevision, text.getBytes(StandardCharsets.UTF_8),
+            text.substring(0, end).getBytes(StandardCharsets.UTF_8).length,
+            text.substring(0, start).getBytes(StandardCharsets.UTF_8).length);
+    }
+
+    private static int utf16Offset(String text, int bytes) {
+        int at = 0;
+        int used = 0;
+        while (at < text.length() && used < bytes) {
+            int next = at + Character.charCount(text.codePointAt(at));
+            int size = text.substring(at, next).getBytes(StandardCharsets.UTF_8).length;
+            if (used + size > bytes) break;
+            used += size;
+            at = next;
+        }
+        return at;
+    }
+
+    public void setTextInputState(long target, long revision, byte[] value, int cursor, int anchor,
+                                  boolean secure, boolean numeric, boolean multiline) {
+        runOnUiThread(() -> {
+            if (inputTarget == target && revision < inputRevision) return;
+            EditText editor = inputEditor();
+            applyingInput = true;
+            try {
+                int type = numeric ? InputType.TYPE_CLASS_NUMBER : InputType.TYPE_CLASS_TEXT;
+                if (secure) type |= InputType.TYPE_TEXT_VARIATION_PASSWORD;
+                if (multiline) type |= InputType.TYPE_TEXT_FLAG_MULTI_LINE;
+                if (editor.getInputType() != type) editor.setInputType(type);
+                inputTarget = target;
+                inputRevision = revision;
+                String text = new String(value, StandardCharsets.UTF_8);
+                if (!editor.getText().toString().equals(text)) editor.setText(text);
+                editor.setSelection(utf16Offset(text, anchor), utf16Offset(text, cursor));
+            } finally {
+                applyingInput = false;
+            }
+        });
+    }
+
+    public void openImportPicker(String mime, int request) {
+        openDocumentPicker(mime, null, request);
+    }
+
+    public void openSavePicker(String filename, String mime, int request) {
+        openDocumentPicker(mime, filename, request);
+    }
+
+    private void openDocumentPicker(String mime, String filename, int request) {
+        runOnUiThread(() -> {
+            if (documentRequest >= 0) nativeImportCancelled(documentRequest);
+            documentRequest = request;
+            documentSave = filename != null;
+            Intent intent = new Intent(documentSave ? Intent.ACTION_CREATE_DOCUMENT : Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType(mime == null || mime.isEmpty() ? "*/*" : mime);
+            if (documentSave) intent.putExtra(Intent.EXTRA_TITLE, filename);
+            try {
+                startActivityForResult(intent, DOCUMENT_PICKER);
+            } catch (RuntimeException error) {
+                documentRequest = -1;
+                nativeImportCancelled(request);
+                Log.w(TAG, "Could not open document picker", error);
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != DOCUMENT_PICKER || documentRequest < 0) return;
+        int request = documentRequest;
+        documentRequest = -1;
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+            nativeImportCancelled(request);
+            return;
+        }
+        File stage = null;
+        try {
+            stage = File.createTempFile("kryon-document-", ".tmp", getCacheDir());
+            if (documentSave) {
+                synchronized (this) {
+                    if (saveStage != null) saveStage.delete();
+                    saveStage = stage;
+                    saveDocument = data.getData();
+                }
+            } else {
+                try (InputStream input = getContentResolver().openInputStream(data.getData());
+                     OutputStream output = new FileOutputStream(stage)) {
+                    if (input == null) throw new java.io.IOException("No document stream");
+                    copyDocument(input, output);
+                }
+            }
+            nativeImportSelectedFile(request, stage.getAbsolutePath());
+        } catch (Exception error) {
+            if (stage != null) stage.delete();
+            nativeImportCancelled(request);
+            Log.w(TAG, "Could not read selected document", error);
+        }
+    }
+
+    private static void copyDocument(InputStream input, OutputStream output) throws java.io.IOException {
+        byte[] buffer = new byte[8192];
+        int total = 0;
+        int count;
+        while ((count = input.read(buffer)) != -1) {
+            total += count;
+            if (total > 1024 * 1024) throw new java.io.IOException("Document exceeds 1 MiB");
+            output.write(buffer, 0, count);
+        }
+    }
+
+    public synchronized boolean savePickedFile(String stagedPath) {
+        if (saveDocument == null || saveStage == null || !saveStage.getAbsolutePath().equals(stagedPath)) return false;
+        try (InputStream input = new FileInputStream(saveStage);
+             OutputStream output = getContentResolver().openOutputStream(saveDocument, "wt")) {
+            if (output == null) return false;
+            copyDocument(input, output);
+            output.flush();
+            saveStage.delete();
+            saveStage = null;
+            saveDocument = null;
+            return true;
+        } catch (Exception error) {
+            Log.w(TAG, "Could not save selected document", error);
+            return false;
+        }
+    }
+
+    // The native clipboard bridge uses bytes so full UTF-8 survives JNI.
+    public byte[] readClipboardText() {
+        try {
+            ClipboardManager clipboard = (ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+            ClipData data = clipboard == null ? null : clipboard.getPrimaryClip();
+            if (data == null || data.getItemCount() == 0) return new byte[0];
+            CharSequence text = data.getItemAt(0).coerceToText(this);
+            return (text == null ? "" : text.toString()).getBytes(StandardCharsets.UTF_8);
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Could not read the clipboard", error);
+            return null;
+        }
+    }
+
+    public boolean writeClipboardText(byte[] bytes) {
+        if (bytes == null) return false;
+        try {
+            ClipboardManager clipboard = (ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+            if (clipboard == null) return false;
+            clipboard.setPrimaryClip(ClipData.newPlainText("", new String(bytes, StandardCharsets.UTF_8)));
+            return true;
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Could not write the clipboard", error);
+            return false;
+        }
+    }
 
     public void onNativeFirstFrame() {
         runOnUiThread(() -> {
@@ -71,7 +281,7 @@ public class __ACTIVITY__ extends NativeActivity {
         runOnUiThread(() -> {
             InputMethodManager imm =
                 (InputMethodManager)getSystemService(INPUT_METHOD_SERVICE);
-            View view = getWindow() != null ? getWindow().getDecorView() : null;
+            View view = visible ? inputEditor() : inputEditor;
             if (imm == null || view == null) return;
             if (visible) {
                 view.requestFocus();
@@ -84,6 +294,9 @@ public class __ACTIVITY__ extends NativeActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (inputEditor != null && inputEditor.hasFocus() && inputTarget != 0) {
+            return super.dispatchKeyEvent(event);
+        }
         if (event != null && event.getAction() == KeyEvent.ACTION_DOWN) {
             int keyCode = event.getKeyCode();
             if (keyCode == KeyEvent.KEYCODE_DEL) {
