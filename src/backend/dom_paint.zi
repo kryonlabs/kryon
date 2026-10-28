@@ -124,11 +124,8 @@ DomPaintRecord :: (queued: QueuedPaint) -> bool {
     dom_paint_tile_context = 0
     element := DomPaintElement(ifx p.kind == 4 || p.kind == 6 then "span" else "div", p.kind)
     if element == 0 { return true }
-    // A slot may have held another paint kind in the previous frame.
-    DomPaintCss(element, "background", "transparent"); DomPaintCss(element, "border", "0")
-    DomPaintCss(element, "borderRadius", "0"); DomPaintCss(element, "clipPath", "none")
-    DomPaintCss(element, "transform", "none"); DomPaintCss(element, "overflow", "visible")
-    DomPaintCss(element, "opacity", "1")
+    // A changed kind gets a new element. Stable kinds update only their own
+    // properties, so unrelated CSS never toggles twice in an active frame.
     bounds := p.bounds
     if p.kind == 4 || p.kind == 6 {
         previous := TextTypefaceUse(p.asset_path)
@@ -192,10 +189,8 @@ DomPaintRecord :: (queued: QueuedPaint) -> bool {
             cast(float32)WebGetNumber(page_textures[slot].canvas,page_names.width)*sx,
             cast(float32)WebGetNumber(page_textures[slot].canvas,page_names.height)*sy})
         DomPaintCss(image,"imageRendering",ifx p.smooth then "auto" else "pixelated")
-        if p.color.a != cast(u8)255 {
-            opacity: [32]u8
-            DomPaintCss(element,"opacity",FormatDecimal(cast(float64)p.color.a / 255.0,3,opacity[:]))
-        }
+        opacity: [32]u8
+        DomPaintCss(element,"opacity",FormatDecimal(cast(float64)p.color.a / 255.0,3,opacity[:]))
     }
     DomPaintBox(element,bounds)
     clip := p.clip
@@ -209,7 +204,7 @@ DomPaintRecord :: (queued: QueuedPaint) -> bool {
         css: Vec(u8)
         BuilderPrint(*css,"inset(%px %px %px %px)",top,right,bottom,left)
         DomPaintCss(element,"clipPath",BuilderFinish(css))
-    }
+    } else { DomPaintCss(element,"clipPath","none") }
     return true
 }
 

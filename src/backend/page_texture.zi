@@ -457,7 +457,7 @@ PageTextureUpdateRgba :: (id: s32, pixels: *u8, x: s32, y: s32, width: s32, heig
     scope: s32 = WebScope()
     PageWritePixels(page_textures[slot].canvas, pixels, x, y, width, height)
     PageTextureUrlRelease(slot)
-        page_textures[slot].revision += 1
+    page_textures[slot].revision += 1
     // Tinted copies of this texture hold its previous pixels.
     PageTintsClearFor(id)
     WebEnd(scope)
