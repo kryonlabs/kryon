@@ -94,6 +94,18 @@ ContentSize :: struct {
     icon_size: float32
     gap: float32
 }
+
+// Picture-only buttons use their available space; toolbar glyphs retain the
+// style's icon size. The inset leaves room for the selection/focus treatment.
+#program_export
+ButtonPictureSize :: (width: float32, height: float32, styled_size: float32,
+    icon_only: bool, picture: bool) -> float32 {
+    if !icon_only || !picture { return styled_size }
+    side := ifx width < height then width else height
+    side -= 12.0
+    if side < 0.0 { side = 0.0 }
+    return side
+}
 #program_export
 ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool {
     if clicked { return !open }

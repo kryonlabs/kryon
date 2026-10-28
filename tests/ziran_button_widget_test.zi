@@ -28,6 +28,10 @@ phase: s32;
 
 #program_export
 Frame :: () -> s32 {
+    if ButtonPictureSize(64.0, 64.0, 18.0, true, true) != 52.0 { return 90 }
+    if ButtonPictureSize(80.0, 40.0, 18.0, true, true) != 28.0 { return 91 }
+    if ButtonPictureSize(64.0, 64.0, 18.0, true, false) != 18.0 { return 92 }
+    if ButtonPictureSize(64.0, 64.0, 18.0, false, true) != 18.0 { return 93 }
     props: ButtonProps
     props.key = cast(u64)7
     props.id = 7

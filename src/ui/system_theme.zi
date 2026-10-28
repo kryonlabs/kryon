@@ -340,7 +340,9 @@ ButtonColors :: (rules: *Sheet.StyleRules, tone: s32, emphasis: s32, fields: u32
 #scope_export
 // The style rules a palette gives every widget, without installing them.
 #program_export
-SystemPaletteRules :: (palette: SystemPalette, material: bool = false) -> Sheet.StyleRules {
+SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.StyleRules {
+    // Material is the shared application policy, including older saved choices.
+    unused material
     rules: Sheet.StyleRules; bg := palette.background; fg := palette.text
     button := CssMix(bg, fg, 0.10); hover := CssMix(bg, fg, 0.16)
     // A palette supplies colors while widgets keep their standard geometry.
@@ -407,7 +409,7 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = false) -> Sheet.
         if kind == Sheet.StyleKindButton() || kind == Sheet.StyleKindTextField() || kind == Sheet.StyleKindTextArea() || kind == Sheet.StyleKindSpinbox() || kind == Sheet.StyleKindSpinboxValue() || kind == Sheet.StyleKindDropdown() {
             rules.items[i].style.fields |= cast(u32)Controls.StyleField.StyleFontSize | cast(u32)Controls.StyleField.StyleRadius | cast(u32)Controls.StyleField.StyleFocus | cast(u32)Controls.StyleField.StyleMaterial
             rules.items[i].style.font_size = 15.0; rules.items[i].style.radius = 6.0; rules.items[i].style.focus = palette.selected
-            rules.items[i].style.material = ifx material then Controls.MaterialKind.MaterialLightfield else Controls.MaterialKind.MaterialFlat
+            rules.items[i].style.material = Controls.MaterialKind.MaterialLightfield
         }
     }
     // Buttons keep their tone and emphasis: each tone takes its palette role
@@ -434,7 +436,7 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = false) -> Sheet.
 }
 
 #program_export
-SystemPaletteInstall :: (palette: SystemPalette, material: bool = false) -> bool {
+SystemPaletteInstall :: (palette: SystemPalette, material: bool = true) -> bool {
     if !Sheet.InstallStyleRules(SystemPaletteRules(palette, material)) { return false }
     SystemPaletteTokens(palette)
     return true

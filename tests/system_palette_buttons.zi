@@ -40,6 +40,9 @@ main :: () -> s32 {
     palette := SystemPaletteFallback(false)
     palette.selected = CssPack(29, 185, 84, 255)
     Check(SystemPaletteInstall(palette), "palette installs")
+    Check(Face(StyleKindButton(), ButtonToneNeutral, ButtonEmphasisFilled, 0).material == MaterialKind.MaterialLightfield, "application palettes default to Material")
+    Check(SystemPaletteInstall(palette, false), "older saved widget choice is accepted")
+    Check(Face(StyleKindButton(), ButtonToneNeutral, ButtonEmphasisFilled, 0).material == MaterialKind.MaterialLightfield, "older Classic choice still renders Material")
     bg := palette.background; fg := palette.text
     button := StyleKindButton()
 

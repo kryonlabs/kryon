@@ -31,7 +31,7 @@ WidgetPalette :: struct {
     WidgetPaletteUse :: (session: Session, palette: WidgetPalette) -> bool {
         return WidgetPaletteHostedHost(session, palette.background, palette.base, palette.text,
             palette.selected, palette.selected_text, palette.border, palette.danger,
-            palette.warning, palette.success, palette.material)
+            palette.warning, palette.success, true)
     }
     // Draws the following widgets in the host's own style again.
     #program_export
@@ -70,7 +70,7 @@ WidgetPalette :: struct {
             .selected_text = palette.selected_text, .border = palette.border,
             .danger = palette.danger, .warning = palette.warning, .success = palette.success}
         if !widget_palette_ready || !WidgetPaletteSame(palette, widget_palette_built) {
-            widget_palette_rules = SystemPaletteRules(colors, palette.material)
+            widget_palette_rules = SystemPaletteRules(colors, true)
             widget_palette_built = palette
             widget_palette_ready = true
         }

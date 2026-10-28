@@ -284,8 +284,12 @@ Theme :: #import "theme";
         has_shape: bool = props.icon_shape != ""
         has_image: bool = icon_image.asset_path != "" ||
         icon_image.texture.id != cast(u32)0 || has_shape
+        picture := !has_shape && (props.image.asset_path != "" || props.image.texture.id != cast(u32)0) &&
+            props.image.asset_path != "icons/ui.png"
+        icon_size := ButtonPictureSize(bounds.width, bounds.height, face.icon_size,
+            props.icon_only, picture)
         content: ButtonContent = ContentLayout(bounds.width, bounds.height,
-            cast(float32)label_width, face.icon_size, face.gap, has_image,
+            cast(float32)label_width, icon_size, face.gap, has_image,
             props.icon_only,
             cast(s32)props.icon_placement == IconPlacementTrailing,
             face.offset_x, face.offset_y,
