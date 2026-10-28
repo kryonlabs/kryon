@@ -1,4 +1,5 @@
 #import "drawing_props"
+#import "geometry"
 
 // Paint emission is serial per frame. Host rasterizers read the runtime
 // texture handle here without importing the widget paint queue.
@@ -12,3 +13,54 @@ emitting_smooth: bool;
 
 #program_export
 CurrentPaintSmooth :: () -> bool { return emitting_smooth }
+
+emitting_image_polygon: []Vector2;
+#program_export
+CurrentPaintPolygon :: () -> []Vector2 { return emitting_image_polygon }
+
+ImageRasterProcedure :: #type (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) -> ();
+
+// Pixel hosts without a native path clip sample the same polygon as
+// horizontal spans. The draw callback keeps ordinary source/tint mapping.
+ImagePolygonScan :: (points: []Vector2, asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color,
+    draw: ImageRasterProcedure) {
+    if points.count < 3 || points.count > 4096 || destination.width <= 0.0 || destination.height <= 0.0 { return }
+    area := RectangleIntersection(destination, clip)
+    if area.width <= 0.0 || area.height <= 0.0 { return }
+    first := cast(s32)area.y
+    if cast(float32)first > area.y { first -= 1 }
+    last := cast(s32)(area.y + area.height)
+    if cast(float32)last < area.y + area.height { last += 1 }
+    intersections: [4096]float32
+    for y: cast(s32)first..last - 1 {
+        v := (cast(float32)y + 0.5 - destination.y) / destination.height
+        count: s32
+        previous := points[points.count - 1]
+        for at: cast(s64)0..points.count - 1 {
+            next := points[at]
+            if (previous.y <= v && next.y > v) || (next.y <= v && previous.y > v) {
+                x := previous.x + (v - previous.y) * (next.x - previous.x) / (next.y - previous.y)
+                position := count
+                while position > 0 && intersections[position - 1] > x {
+                    intersections[position] = intersections[position - 1]; position -= 1
+                }
+                intersections[position] = x; count += 1
+            }
+            previous = next
+        }
+        at: s32
+        while at + 1 < count {
+            left := destination.x + intersections[at] * destination.width
+            right := destination.x + intersections[at + 1] * destination.width
+            strip := RectangleIntersection(area, Rectangle.{left,cast(float32)y,right-left,1.0})
+            if strip.width > 0.0 && strip.height > 0.0 {
+                draw(asset_path,texture_id,source,destination,strip,origin,rotation,radius,tint)
+            }
+            at += 2
+        }
+    }
+}

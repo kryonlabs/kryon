@@ -1,6 +1,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "image_props"
+#import "image"
 #import "paint_texture"
 #import "raster"
 #import "raster_shape"
@@ -70,6 +71,7 @@ PaintCommand :: struct {
     // A warped image's grid (see ImageMesh). Its points are copied into the
     // session's frame storage when queued, starting at mesh_start.
     mesh_columns: s32
+    image_clip_count: s32
     mesh_rows: s32
     mesh_points: []Vector2
     mesh_block: s32
@@ -270,6 +272,11 @@ PaintMeshPointCount :: (columns: s32, rows: s32) -> s64 {
     return count
 }
 
+PaintPointCount :: (data: PaintCommand) -> s64 {
+    if data.image_clip_count >= 3 && data.image_clip_count <= IMAGE_MESH_POINT_LIMIT { return data.image_clip_count }
+    return PaintMeshPointCount(data.mesh_columns, data.mesh_rows)
+}
+
 PaintMeshRange :: struct {
     block: s32
     start: s32
@@ -311,8 +318,9 @@ KeepMeshPoints :: (blocks: *Vec(PaintMeshBlock), points: []Vector2,
 // build them in a short-lived buffer. Points move with their node, as the
 // command's bounds and clip do.
 KeepPaintMesh :: (slot: s32, data: *PaintCommand, dx: float32, dy: float32) {
-    count: s64 = PaintMeshPointCount(data.mesh_columns, data.mesh_rows)
+    count: s64 = PaintPointCount(data.*)
     if count == 0 { return }
+    if data.image_clip_count > 0 { dx = 0.0; dy = 0.0 }
     kept := KeepMeshPoints(*pending_mesh[slot], data.mesh_points, count, dx, dy)
     if !kept.valid {
         pending_paint[slot].overflow = true
@@ -598,6 +606,7 @@ EmitImage :: (command: PaintCommand) {
     if command.clip.width > 0.0 && command.clip.height > 0.0 {
         emitting_texture = command.texture
         emitting_smooth = command.smooth
+        if command.image_clip_count > 0 { emitting_image_polygon = command.mesh_points }
         if PaintMeshPointCount(command.mesh_columns, command.mesh_rows) > 0 {
             RasterImageMesh(command.asset_path, command.texture_id,
                 command.source, command.mesh_points, command.mesh_columns,
@@ -610,6 +619,7 @@ EmitImage :: (command: PaintCommand) {
         }
         emitting_texture.id = cast(u32)0
         emitting_smooth = false
+        emitting_image_polygon = emitting_image_polygon[:0]
     }
 }
 
@@ -904,6 +914,16 @@ PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
     origin: Vector2, rotation: float32, radius: float32,
     tint: Color, texture: Texture2D = Texture2D.{0, 0, 0, 0, 0},
     smooth: bool = false) {
+    empty: [1]Vector2
+    PaintImageWithPolygon(session,node,asset_path,texture_id,source,destination,clip,
+        origin,rotation,radius,tint,texture,smooth,empty[:0])
+}
+
+PaintImageWithPolygon :: (session: Session, node: s32, asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color, texture: Texture2D, smooth: bool, clip_polygon: []Vector2) {
+    if clip_polygon.count > 0 && !ImagePolygonValid(clip_polygon) { return }
     command: QueuedPaint
     command.data.kind = PaintKindImage
     command.data.smooth = smooth
@@ -918,6 +938,8 @@ PaintImage :: (session: Session, node: s32, asset_path: string, texture_id: u32,
     command.data.rotation = rotation
     command.data.radius = radius
     command.data.color = tint
+    command.data.image_clip_count = cast(s32)clip_polygon.count
+    command.data.mesh_points = clip_polygon
     emit: PaintEmitter = EmitImage
     clip_for: PaintClipper = ClipImage
     command.emit = emit
@@ -1031,7 +1053,7 @@ PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
         data.asset_path = PendingTextValue(slot, data.asset_block, data.asset_start, data.asset_count)
     }
     if data.owns_mesh {
-        count: s32 = cast(s32)PaintMeshPointCount(data.mesh_columns, data.mesh_rows)
+        count: s32 = cast(s32)PaintPointCount(data)
         data.mesh_points = pending_mesh[slot][data.mesh_block].points[data.mesh_start:
         data.mesh_start + count]
     }
@@ -1163,7 +1185,7 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     current.origin.y != previous.data.origin.y ||
     current.rotation != previous.data.rotation { return false }
     if current.smooth != previous.data.smooth { return false }
-    if current.mesh_columns != previous.data.mesh_columns ||
+    if current.image_clip_count != previous.data.image_clip_count || current.mesh_columns != previous.data.mesh_columns ||
     current.mesh_rows != previous.data.mesh_rows { return false }
     if !SnapshotMeshEqual(slot, current, previous) { return false }
     return true
@@ -1172,7 +1194,7 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
 // A warped image is unchanged only while every one of its points is.
 SnapshotMeshEqual :: (slot: s32, current: PaintCommand,
     previous: PaintSnapshot) -> bool {
-    count: s64 = PaintMeshPointCount(current.mesh_columns, current.mesh_rows)
+    count: s64 = PaintPointCount(current)
     if count == 0 { return true }
     block: s32 = previous.mesh_block
     start: s32 = previous.mesh_start
@@ -1234,7 +1256,7 @@ PaintSnapshotStore :: (session: Session) -> bool {
             return false
         }
         previous.asset_count = current.asset_path.count
-        mesh_count: s64 = PaintMeshPointCount(current.mesh_columns, current.mesh_rows)
+        mesh_count: s64 = PaintPointCount(current)
         if mesh_count > 0 {
             kept := KeepMeshPoints(*paint_snapshot_meshes[slot],
                 current.mesh_points, mesh_count, 0.0, 0.0)
@@ -1313,8 +1335,7 @@ PaintSnapshotEmit :: (session: Session) -> bool {
             if !SnapshotTextJoin(slot, false, previous.asset_start, previous.asset_count, *asset_text) { return false }
             command.data.asset_path = TextView(VecSlice(asset_text, 0, asset_text.count))
         }
-        mesh_count: s32 = cast(s32)PaintMeshPointCount(previous.data.mesh_columns,
-            previous.data.mesh_rows)
+        mesh_count: s32 = cast(s32)PaintPointCount(previous.data)
         if mesh_count > 0 {
             command.data.mesh_points = paint_snapshot_meshes[slot][previous.mesh_block].points[previous.mesh_start:
             previous.mesh_start + mesh_count]

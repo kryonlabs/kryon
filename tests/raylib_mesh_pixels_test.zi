@@ -3,6 +3,7 @@
 #import "geometry"
 #import "drawing_props"
 #import "c_string"
+#import "paint_texture"
 
 test_raylib :: #system_library "raylib";
 TestInitWindow :: (width: s32, height: s32, title: *u8) #foreign test_raylib "InitWindow";
@@ -23,6 +24,9 @@ triangle_after: bool;
 solid_after: bool;
 points: [6]Vector2;
 texture: Texture2D;
+polygon_mode: bool;
+polygon_count: s32;
+polygon_points: [6]Vector2;
 probe_x: [4]s32;
 probe_y: [4]s32;
 probe_color: [4]u32;
@@ -38,8 +42,13 @@ Probe :: (index: s32, x: s32, y: s32, color: u32) {
 Check :: (columns: s32, rows: s32, clip: Rectangle) -> bool {
     TestBeginDrawing()
     TestClearBackground(Color.{0, 0, 0, 255})
-    RasterImageMesh("", texture.id, .{0.0, 0.0, 2.0, 2.0}, points[:], columns, rows,
-        clip, .{255, 255, 255, 255})
+    if polygon_mode {
+        emitting_image_polygon = polygon_points[:polygon_count]
+        RasterImage("",texture.id,.{0.0,0.0,2.0,2.0},.{32.0,32.0,128.0,128.0},
+            clip,.{0.0,0.0},0.0,0.0,.{255,255,255,255})
+        emitting_image_polygon = polygon_points[:0]
+    } else { RasterImageMesh("", texture.id, .{0.0, 0.0, 2.0, 2.0}, points[:], columns, rows,
+        clip, .{255, 255, 255, 255}) }
     if triangle_after {
         // A rounded fill, which Kryon draws as plain triangles.
         RasterRoundedRectangle(.{192.0, 192.0, 56.0, 56.0}, 12.0, 8,
@@ -161,5 +170,16 @@ main :: () -> s32 {
     Probe(3, 180, 180, black)
     if !Check(2, 2, full) { return 8 }
     if !CheckRetainedAlpha() { return 9 }
+    solid_after = false; polygon_mode = true; polygon_count = 4
+    polygon_points[0] = .{0.5,0.0}; polygon_points[1] = .{1.0,0.5}
+    polygon_points[2] = .{0.5,1.0}; polygon_points[3] = .{0.0,0.5}
+    Probe(0,80,55,red); Probe(1,130,80,green); Probe(2,56,112,blue); Probe(3,40,40,black)
+    if !Check(0,0,full) { return 10 }
+    // Concave cuts work even when the polygon center is outside.
+    polygon_count = 6
+    polygon_points[0] = .{0.0,0.0}; polygon_points[1] = .{1.0,0.0}; polygon_points[2] = .{1.0,0.3}
+    polygon_points[3] = .{0.3,0.3}; polygon_points[4] = .{0.3,1.0}; polygon_points[5] = .{0.0,1.0}
+    Probe(0,40,40,red); Probe(1,150,40,green); Probe(2,40,150,blue); Probe(3,150,150,black)
+    if !Check(0,0,full) { return 11 }
     return 0
 }

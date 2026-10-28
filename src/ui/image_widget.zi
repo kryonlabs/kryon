@@ -136,6 +136,7 @@ Image :: (session: Session, image: ImageProps) {
             StyleOpacityValue(faces.surface.fields, faces.surface.opacity)))
     }
     plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
+    if image.clip_polygon.count > 0 && (!ImagePolygonValid(image.clip_polygon) || ImageMeshActive(image.mesh)) { return }
     if ImageMeshActive(image.mesh) {
         // A warped image draws its grid or nothing: no placeholder covers
         // its bounds, which may be a whole stage of pieces.
@@ -146,10 +147,10 @@ Image :: (session: Session, image: ImageProps) {
                 image.smooth)
         }
     } else if plan.draw && tint.a > cast(u8)0 {
-        PaintImage(session, node, image.asset_path, image.texture.id,
+        PaintImageWithPolygon(session, node, image.asset_path, image.texture.id,
             plan.source, plan.destination, image.bounds,
             image.origin, image.rotation, radius, plan.tint, image.texture,
-            image.smooth)
+            image.smooth, image.clip_polygon)
     } else if !plan.draw && texture.width >= 0 && texture.height >= 0 {
         // A host still loading the asset reports a negative size; the
         // placeholder is only for an image that is unavailable.

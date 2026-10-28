@@ -593,6 +593,17 @@ RasterImage :: (asset_path: string, texture_id: u32,
     Save(paint)
     RoundBox(clip, radius)
     Clip(paint)
+    polygon := CurrentPaintPolygon()
+    if polygon.count >= 3 {
+        NewPath(paint)
+        MoveTo(paint, destination.x + polygon[0].x * destination.width,
+            destination.y + polygon[0].y * destination.height)
+        for at: cast(s64)1..polygon.count - 1 {
+            LineTo(paint, destination.x + polygon[at].x * destination.width,
+                destination.y + polygon[at].y * destination.height)
+        }
+        ClosePath(paint); Clip(paint)
+    }
     Translate(paint, destination.x,
         destination.y)
     Rotate(paint, cast(float64)rotation *

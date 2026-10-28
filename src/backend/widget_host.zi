@@ -275,15 +275,17 @@ WidgetHostImage :: (image: *ImageProps) -> bool {
 // A warped image's points, validated with its props, decoded into the
 // host's own buffer.
 WidgetHostMeshPoints :: (mesh: HostValue) -> []Vector2 {
-    count: usize = 0
     points_at := HostFieldAt(mesh, 2, "points")
-    if points_at >= 0 {
-        points := mesh.fields[points_at].value
-        while count < points.length && count < cast(usize)IMAGE_MESH_POINT_LIMIT {
-            widget_image_mesh_points[count] = WidgetDecodeVector2(points.elements[count],
-                *widget_image_mesh_point_codec)
-            count += cast(usize)1
-        }
+    if points_at >= 0 { return WidgetHostImagePoints(mesh.fields[points_at].value) }
+    return widget_image_mesh_points[:0]
+}
+
+WidgetHostImagePoints :: (points: HostValue) -> []Vector2 {
+    count: usize = 0
+    while count < points.length && count < cast(usize)IMAGE_MESH_POINT_LIMIT {
+        widget_image_mesh_points[count] = WidgetDecodeVector2(points.elements[count],
+            *widget_image_mesh_point_codec)
+        count += cast(usize)1
     }
     return widget_image_mesh_points[:cast(s64)count]
 }
@@ -461,6 +463,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         if mesh_at >= 0 {
             image.mesh.points = WidgetHostMeshPoints(props.fields[mesh_at].value)
         }
+        polygon_at := HostFieldAt(props, 14, "clip_polygon")
+        if polygon_at >= 0 { image.clip_polygon = WidgetHostImagePoints(props.fields[polygon_at].value) }
         Image(session, image)
         return 1
     }

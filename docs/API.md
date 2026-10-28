@@ -100,6 +100,12 @@ renderer primitives, not alternate widget APIs.
 `ImageProps.radius` gives an image rounded corners in native and hosted UI;
 a positive value overrides its style radius.
 
+`ImageProps.clip_polygon` clips an image without stretching its content.
+Supply 3–4096 points in normalized destination coordinates (0–1); the path
+closes automatically. Empty leaves the image unchanged. Invalid coordinates,
+too few points, or combining a polygon with a mesh draw nothing. Native,
+hosted and browser images retain their own copy of the supplied points.
+
 `ImageProps.mesh` warps the same image over a grid of `columns` × `rows`
 screen points, row by row from the source's top left, each cell drawn as two
 textured triangles: a cut-out puppet's painted arm can bend at its elbow, or

@@ -14,6 +14,8 @@
 #import "page_texture"
 #import "page_mesh"
 #import "raylib_clip"
+#import "page_core"
+#import "web"
 
 libm :: #system_library "m";
 CanvasSqrt :: (value: float32) -> float32 #foreign libm "sqrtf";
@@ -210,8 +212,28 @@ RasterImage :: (asset_path: string, texture_id: u32,
         canvas_image_error = true
         return
     }
+    polygon := CurrentPaintPolygon()
+    scope := WebScope()
+    context := page_ctx
+    if polygon.count >= 3 {
+        PageMeshFlush()
+        unused WebCall0(context, WebName("save"))
+        unused WebCall0(context, WebName("beginPath"))
+        unused WebCall2(context, WebName("moveTo"),
+            WebNumber(destination.x + polygon[0].x * destination.width),
+            WebNumber(destination.y + polygon[0].y * destination.height))
+        for at: cast(s64)1..polygon.count - 1 {
+            unused WebCall2(context, WebName("lineTo"),
+                WebNumber(destination.x + polygon[at].x * destination.width),
+                WebNumber(destination.y + polygon[at].y * destination.height))
+        }
+        unused WebCall0(context, WebName("closePath"))
+        unused WebCall0(context, WebName("clip"))
+    }
     CanvasDrawImageClipped(texture, source, destination, clip, origin,
         rotation, radius, tint)
+    if polygon.count >= 3 { unused WebCall0(context, WebName("restore")) }
+    WebEnd(scope)
 }
 
 // A warped image (see ImageMesh): the canvas draws each triangle of each

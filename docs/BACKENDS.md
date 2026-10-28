@@ -40,6 +40,10 @@ text, images and buttons with CSS boxes, gradients and clipping. Custom drawing,
 meshes and texture effects use bounded Canvas tiles in paint order; the full-page
 Canvas bitmap is not presented in this mode. The ordinary document-layout DOM
 host remains available for browser flow layout.
+Polygon-clipped images use native Cairo/Canvas path clips; DOM keeps these
+custom image shapes in bounded Canvas tiles. Raylib caches bounded polygon triangulations and draws them directly on the
+GPU, including all Jungle puzzle pieces. Complex polygons and pixel hosts use
+clipped spans while preserving the original source mapping.
 SDL pixel hosts prefer accelerated texture presentation without blocking on
 vertical refresh. `SDL_RENDER_DRIVER` retains explicit driver selection,
 including `software`; hosts without an accelerated driver use software

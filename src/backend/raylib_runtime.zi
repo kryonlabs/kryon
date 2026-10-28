@@ -15,6 +15,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "test_driver"
 #import "session"
 #import "image_props"
+#import "image"
 #import "program_title"
 #import "paint_texture"
 #import "paint_queue"
@@ -2807,6 +2808,96 @@ RaylibSmoothAsset :: (index: s32) {
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    polygon := CurrentPaintPolygon()
+    if polygon.count >= 3 {
+        if rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 && radius <= 0.0 && polygon.count <= 128 {
+            RaylibImagePolygon(asset_path,texture_id,source,destination,clip,tint,polygon)
+        } else { ImagePolygonScan(polygon,asset_path,texture_id,source,destination,clip,
+            origin,rotation,radius,tint,RasterImageUnmasked) }
+    } else { RasterImageUnmasked(asset_path,texture_id,source,destination,clip,origin,rotation,radius,tint) }
+}
+
+RaylibPolygonCache :: struct {
+    count: s32
+    points: [128]Vector2
+    triangles: [378]s32
+    triangle_count: s32
+}
+raylib_polygon_cache: [32]RaylibPolygonCache;
+raylib_polygon_next: s32;
+
+RaylibPolygonSlot :: (points: []Vector2) -> s32 {
+    for slot: cast(s32)0..31 {
+        entry := *raylib_polygon_cache[slot]
+        if entry.count != points.count { continue }
+        same := true
+        for at: cast(s64)0..points.count-1 {
+            if entry.points[at].x != points[at].x || entry.points[at].y != points[at].y { same = false; break }
+        }
+        if same { return slot }
+    }
+    slot := raylib_polygon_next; raylib_polygon_next = (slot+1)%32
+    entry := *raylib_polygon_cache[slot]
+    entry.count = cast(s32)points.count
+    for at: cast(s64)0..points.count-1 { entry.points[at] = points[at] }
+    entry.triangle_count = ImagePolygonTriangulate(points,entry.triangles[:])
+    return slot
+}
+
+RaylibImagePolygon :: (asset_path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, tint: Color, points: []Vector2) {
+    #if RAYLIB_FRAME_THREADS {
+        if RenderOnAppThread() && texture_id == 0 && asset_path.count > 0 {
+            unused RaylibAppMetric(asset_path,0,false,true)
+        }
+        if RecordFrameOperation(PaintCommand.{.asset_path = asset_path,.texture_id = texture_id,
+            .texture = CurrentPaintTexture(),.source = source,.bounds = destination,.clip = clip,
+            .color = tint,.smooth = CurrentPaintSmooth(),.image_clip_count = cast(s32)points.count,
+            .mesh_points = points},RaylibReplayImagePolygon) { return }
+    }
+    if points.count < 3 || source.width <= 0.0 || source.height <= 0.0 || destination.width <= 0.0 || destination.height <= 0.0 || clip.width <= 0.0 || clip.height <= 0.0 { return }
+    polygon_slot := RaylibPolygonSlot(points)
+    if raylib_polygon_cache[polygon_slot].triangle_count == 0 {
+        ImagePolygonScan(points,asset_path,texture_id,source,destination,clip,.{0.0,0.0},0.0,0.0,tint,RasterImageUnmasked)
+        return
+    }
+    texture: Texture2D
+    if texture_id != 0 {
+        texture = CurrentPaintTexture()
+        if texture.id != texture_id {
+            texture.id = texture_id; texture.width = cast(s32)(source.x + source.width); texture.height = cast(s32)(source.y + source.height)
+        }
+    } else {
+        index := RaylibAssetIndex(asset_path)
+        if index == RaylibAssetLoading { return }
+        if index < 0 { raylib_image_error = true; return }
+        if CurrentPaintSmooth() && !raylib_assets[index].smooth { RaylibSmoothAsset(index) }
+        texture = raylib_assets[index].texture
+    }
+    if texture.width <= 0 || texture.height <= 0 { return }
+    inside := destination.x >= clip.x && destination.y >= clip.y &&
+        destination.x + destination.width <= clip.x + clip.width && destination.y + destination.height <= clip.y + clip.height
+    saved: RasterClipState
+    if !inside { saved = BeginRasterClip(clip) }
+    HostRaylibSetTexture(texture.id); HostRaylibBegin(RaylibTriangles)
+    HostRaylibVertexColor(tint.r,tint.g,tint.b,tint.a); HostRaylibNormal(0.0,0.0,1.0)
+    w := cast(float32)texture.width; h := cast(float32)texture.height
+    entry := *raylib_polygon_cache[polygon_slot]
+    for at: cast(s32)0..entry.triangle_count/3-1 {
+        p := points[entry.triangles[at*3]]; q := points[entry.triangles[at*3+1]]; r := points[entry.triangles[at*3+2]]
+        a := Vector2.{destination.x+p.x*destination.width,destination.y+p.y*destination.height}
+        b := Vector2.{destination.x+q.x*destination.width,destination.y+q.y*destination.height}
+        c := Vector2.{destination.x+r.x*destination.width,destination.y+r.y*destination.height}
+        RaylibTexturedTriangle(a,RaylibMeshSource(source,p.x,p.y,w,h),b,RaylibMeshSource(source,q.x,q.y,w,h),
+            c,RaylibMeshSource(source,r.x,r.y,w,h))
+    }
+    HostRaylibEnd(); HostRaylibSetTexture(HostRaylibDefaultTexture()); HostRaylibSetTexture(0)
+    if !inside { EndRasterClip(saved) }
+}
+
+RasterImageUnmasked :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() && texture_id == 0 && asset_path.count > 0 {
             unused RaylibAppMetric(asset_path, 0, false, true)
@@ -3492,6 +3583,13 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
     RaylibReplayRasterImage :: (command: PaintCommand) {
         RasterImage(command.asset_path, command.texture_id, command.source, command.bounds,
             command.clip, command.origin, command.rotation, command.radius, command.color)
+    }
+    RaylibReplayImagePolygon :: (command: PaintCommand) {
+        saved_texture := emitting_texture; saved_smooth := emitting_smooth
+        emitting_texture = command.texture; emitting_smooth = command.smooth
+        RaylibImagePolygon(command.asset_path,command.texture_id,command.source,
+            command.bounds,command.clip,command.color,command.mesh_points)
+        emitting_texture = saved_texture; emitting_smooth = saved_smooth
     }
     RaylibReplayRasterMesh :: (command: PaintCommand) {
         RasterImageMesh(command.asset_path, command.texture_id, command.source,

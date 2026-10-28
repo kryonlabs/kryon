@@ -275,9 +275,9 @@ WidgetValidImageMesh :: (value: HostValue) -> bool {
     return true
 }
 
-// Widget codec schema: ["ImageProps",[["asset_path","string"],["alt_text","string"],["bounds","Rectangle"],["source","Rectangle"],["origin","Vector2"],["rotation","float32"],["fit","ImageFit"],["class_name","s32"],["radius","float32"],["texture","Texture2D"],["tint","u32"],["key","u64"],["smooth","bool"],["mesh","ImageMesh"]]]
+// Widget codec schema: ["ImageProps",[["asset_path","string"],["alt_text","string"],["bounds","Rectangle"],["source","Rectangle"],["origin","Vector2"],["rotation","float32"],["fit","ImageFit"],["class_name","s32"],["radius","float32"],["texture","Texture2D"],["tint","u32"],["key","u64"],["smooth","bool"],["mesh","ImageMesh"],["clip_polygon","[]Vector2"]]]
 WidgetImagePropsCodec :: struct {
-    fields: [14]HostField
+    fields: [15]HostField
     bounds: WidgetRectangleCodec
     source: WidgetRectangleCodec
     origin: WidgetVector2Codec
@@ -321,6 +321,8 @@ WidgetValidImageProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 11, "key", "u64", cast(s32)HostUnsigned) { return false }
     if !HostFieldScalarValid(*value, 12, "smooth", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldRecordValid(*value, 13, "mesh", WidgetValidImageMesh) { return false }
+    if !HostFieldSliceValid(*value, 14, "clip_polygon", "[]Vector2", cast(usize)IMAGE_MESH_POINT_LIMIT,
+        HostElementRule.{.validate_record = WidgetValidVector2}) { return false }
     return true
 }
 

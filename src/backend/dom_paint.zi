@@ -85,7 +85,7 @@ DomPaintRecord :: (queued: QueuedPaint) -> bool {
             if index >= 0 { image_id = cast(s32)canvas_assets[index].texture.id }
         }
         slot := PageTextureFind(image_id)
-        native = slot >= 0 && page_textures[slot].source_url != 0 && p.mesh_columns == 0 && p.rotation == 0.0 &&
+        native = slot >= 0 && page_textures[slot].source_url != 0 && p.mesh_columns == 0 && p.image_clip_count == 0 && p.rotation == 0.0 &&
             p.source.width > 0.0 && p.source.height > 0.0 && p.origin.x == 0.0 && p.origin.y == 0.0 && p.color.r == cast(u8)255 && p.color.g == cast(u8)255 && p.color.b == cast(u8)255
     }
     if !native {

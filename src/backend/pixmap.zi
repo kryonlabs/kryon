@@ -785,7 +785,17 @@ PixmapFillTriangle :: (triangle: ImageCanvas.MeshTriangle, color: Color) {
 
 // Hosts supply decoded assets; absent assets retain the screenshot placeholder.
 #program_export
-RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    polygon := CurrentPaintPolygon()
+    if polygon.count >= 3 {
+        ImagePolygonScan(polygon,asset_path,texture_id,source,destination,clip,
+            origin,rotation,radius,tint,RasterImageUnmasked)
+    } else { RasterImageUnmasked(asset_path,texture_id,source,destination,clip,origin,rotation,radius,tint) }
+}
+
+RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
     destination: Rectangle, clip: Rectangle, origin: Vector2, rotation: float32,
     radius: float32, tint: Color) {
     unused texture_id

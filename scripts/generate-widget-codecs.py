@@ -28,7 +28,8 @@ SLICE_LIMIT = 1024
 # bounds them: every ImageProps codec (in buttons, title bars and each
 # dropdown option) would otherwise hold room for a warped image's grid. The
 # host decodes a grid's points for the Image effect alone.
-HOST_DECODED_SLICES = {('ImageMesh', 'points'): 'IMAGE_MESH_POINT_LIMIT'}
+HOST_DECODED_SLICES = {('ImageMesh', 'points'): 'IMAGE_MESH_POINT_LIMIT',
+                       ('ImageProps', 'clip_polygon'): 'IMAGE_MESH_POINT_LIMIT'}
 
 
 def slice_limit(kind, name):

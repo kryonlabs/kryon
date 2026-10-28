@@ -47,4 +47,9 @@ ImageProps :: struct {
     // whose painted limbs bend. `bounds` stays the node's bounds and clip;
     // `fit`, `origin`, `rotation` and the style radius do not apply.
     mesh: ImageMesh
+    // Closed polygon in destination-local normalized coordinates (0..1).
+    // Clips the sampled image without warping it; empty means no extra clip.
+    // A nonempty polygon needs 3..IMAGE_MESH_POINT_LIMIT vertices and cannot
+    // be combined with a mesh. The frame retains a copy of these points.
+    clip_polygon: []Vector2
 }

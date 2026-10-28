@@ -35,6 +35,73 @@ ImageMeshComplete :: (mesh: ImageMesh) -> bool {
     return needed <= cast(s64)IMAGE_MESH_POINT_LIMIT && mesh.points.count >= needed
 }
 
+#program_export
+ImagePolygonValid :: (points: []Vector2) -> bool {
+    if points.count < 3 || points.count > IMAGE_MESH_POINT_LIMIT { return false }
+    for at: cast(s64)0..points.count - 1 {
+        p := points[at]
+        if !(p.x >= 0.0 && p.x <= 1.0 && p.y >= 0.0 && p.y <= 1.0) { return false }
+    }
+    return true
+}
+
+// Triangulate a small simple polygon, retaining source vertex indices so
+// texture coordinates follow the original image instead of warping it.
+ImagePolygonCross :: (a: Vector2, b: Vector2, c: Vector2) -> float32 {
+    return (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x)
+}
+ImagePolygonTriangulate :: (points: []Vector2, triangles: []s32) -> s32 {
+    if !ImagePolygonValid(points) || points.count > 128 || triangles.count < (points.count-2)*3 { return 0 }
+    indices: [128]s32
+    count := cast(s32)points.count
+    area: float32
+    previous := points[points.count-1]
+    for at: cast(s32)0..count-1 {
+        indices[at] = at
+        next := points[at]; area += previous.x*next.y-next.x*previous.y; previous = next
+    }
+    if area > -0.0000001 && area < 0.0000001 { return 0 }
+    direction: float32 = ifx area > 0.0 then 1.0 else -1.0
+    changed := true
+    while changed && count > 3 {
+        changed = false
+        for at: cast(s32)0..count-1 {
+            a := points[indices[(at+count-1)%count]]; b := points[indices[at]]; c := points[indices[(at+1)%count]]
+            cross := ImagePolygonCross(a,b,c)
+            if cross > -0.0000001 && cross < 0.0000001 &&
+                (b.x-a.x)*(b.x-c.x)+(b.y-a.y)*(b.y-c.y) <= 0.0000001 {
+                for move: cast(s32)at..count-2 { indices[move] = indices[move+1] }
+                count -= 1; changed = true; break
+            }
+        }
+    }
+    written: s32
+    while count > 3 {
+        found := false
+        for at: cast(s32)0..count-1 {
+            ia := indices[(at+count-1)%count]; ib := indices[at]; ic := indices[(at+1)%count]
+            a := points[ia]; b := points[ib]; c := points[ic]
+            if ImagePolygonCross(a,b,c)*direction <= 0.0000001 { continue }
+            blocked := false
+            for check: cast(s32)0..count-1 {
+                id := indices[check]
+                if id == ia || id == ib || id == ic { continue }
+                point := points[id]
+                if ImagePolygonCross(a,b,point)*direction >= -0.0000001 &&
+                   ImagePolygonCross(b,c,point)*direction >= -0.0000001 &&
+                   ImagePolygonCross(c,a,point)*direction >= -0.0000001 { blocked = true; break }
+            }
+            if blocked { continue }
+            triangles[written] = ia; triangles[written+1] = ib; triangles[written+2] = ic; written += 3
+            for move: cast(s32)at..count-2 { indices[move] = indices[move+1] }
+            count -= 1; found = true; break
+        }
+        if !found { return 0 }
+    }
+    triangles[written] = indices[0]; triangles[written+1] = indices[1]; triangles[written+2] = indices[2]
+    return written+3
+}
+
 ImageDrawPlan :: struct {
     draw: bool
     source: Rectangle

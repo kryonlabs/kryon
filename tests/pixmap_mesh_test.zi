@@ -142,7 +142,39 @@ main :: () -> s32 {
     if raster != 0 { print("%\n", raster); return raster }
     widget := WidgetCases()
     if widget != 0 { print("%\n", widget); return widget }
+    polygon := PolygonCases()
+    if polygon != 0 { print("%\n", polygon); return polygon }
     PixmapClearImage(0)
     print("0\n")
+    return 0
+}
+
+PolygonFrame :: (session: Session, points: []Vector2, reuse: bool) -> PixmapFrameResult {
+    unused PixmapResumeInto(16,16,surface[:])
+    unused BeginFrame(session,1,.{0.0,0.0,16.0,16.0})
+    PaintRoundedFill(session,-1,.{0.0,0.0,16.0,16.0},0.0,0,.{16,32,48,255})
+    Image(session,ImageProps.{.asset_path = "mesh.png",.bounds = .{0.0,0.0,16.0,16.0},
+        .clip_polygon = points})
+    // This buffer belongs to the caller, not to the retained frame.
+    for at: cast(s64)0..points.count - 1 { points[at] = .{0.8,0.8} }
+    result := EndPixmapFrame(session,reuse,BACKGROUND,true)
+    PixmapEndInto()
+    return result
+}
+
+PolygonCases :: () -> s32 {
+    session := SessionOpen()
+    points: [3]Vector2 = .[.{0.0,0.0},.{1.0,0.0},.{0.0,1.0}]
+    result := PolygonFrame(session,points[:],false)
+    if result.status != FrameStatus.FrameOk || !Is(2,2,RED) || !Is(13,13,BACKGROUND) { return 30 }
+    points[0] = .{0.0,0.0}; points[1] = .{1.0,0.0}; points[2] = .{0.0,1.0}
+    result = PolygonFrame(session,points[:],true)
+    if !result.paint_unchanged { return 31 }
+    points[0] = .{1.0,1.0}; points[1] = .{1.0,0.0}; points[2] = .{0.0,1.0}
+    result = PolygonFrame(session,points[:],true)
+    if result.paint_unchanged || !Is(2,2,BACKGROUND) || !Is(13,13,WHITE) { return 32 }
+    result = PolygonFrame(session,points[:2],false)
+    if result.status != FrameStatus.FrameOk || !Is(13,13,BACKGROUND) { return 33 }
+    unused SessionClose(session)
     return 0
 }

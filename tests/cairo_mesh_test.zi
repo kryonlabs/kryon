@@ -1,11 +1,13 @@
 Raster :: #import "cairo_raster";
 #import "geometry"
 #import "drawing_props"
+#import "paint_texture"
 #import "std/byte_text_linux"
 #import "std/format"
 #import "std/vec"
 
 points: [6]Vector2;
+polygon: [3]Vector2 = .[.{0.0,0.0},.{1.0,0.0},.{0.0,1.0}];
 
 // The surface color at a pixel as 0xRRGGBB (Cairo keeps ARGB32 words).
 Pixel :: (x: s32, y: s32) -> u32 {
@@ -88,6 +90,15 @@ main :: (argc: s32, argv: **u8) -> s32 {
     for at: cast(s32)1..62 {
         if !Is(at, at, cast(u32)0x00a000) || !Is(63 - at, at, cast(u32)0x00a000) { return 13 }
     }
-    print("Cairo draws plain, mirrored, bent and clipped warped images\n")
+    Raster.BeginRasterFrame()
+    emitting_image_polygon = polygon[:]
+    Raster.RasterImage(path,0,.{0.0,0.0,2.0,2.0},full,full,.{0.0,0.0},0.0,0.0,.{255,255,255,255})
+    emitting_image_polygon = polygon[:0]
+    if !Raster.FinishRasterFrame() { return 14 }
+    if !Is(8,8,red) || !Is(48,8,green) || !Is(48,48,background) { return 15 }
+    Raster.BeginRasterFrame()
+    Raster.RasterImage(path,0,.{0.0,0.0,2.0,2.0},full,full,.{0.0,0.0},0.0,0.0,.{255,255,255,255})
+    if !Raster.FinishRasterFrame() || !Is(48,48,white) { return 16 }
+    print("Cairo draws meshes and polygon-clipped images without leaking clips\n")
     return 0
 }
