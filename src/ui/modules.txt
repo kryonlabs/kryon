@@ -70,6 +70,7 @@ layout_widget.zi
 link.zi
 link_props.zi
 link_widget.zi
+loading_screen.zi
 list_box.zi
 list_box_multi.zi
 list_box_props.zi

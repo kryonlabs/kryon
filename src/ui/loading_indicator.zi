@@ -6,6 +6,9 @@
 #import "drawing_props"
 #import "box_widget"
 #import "box_props"
+#if #defined(KRYON_HOSTED_UI) {
+    #import "app_theme"
+}
 
 LoadingIndicatorProps :: struct {
     key: u64
@@ -46,10 +49,15 @@ LoadingIndicator :: (session: Session, props: LoadingIndicatorProps) {
     phase := LoadingPhase(props.now)
     left := props.bounds.x + (props.bounds.width - (step * cast(float32)(LOADING_DOTS - 1) + size)) / 2.0
     top := props.bounds.y + (props.bounds.height - size) / 2.0 + rise / 2.0
+    color := StyleTokenColorOr("progress", StyleTokenColorOr("accent", Color.{170, 170, 170, 255}))
+    #if #defined(KRYON_HOSTED_UI) {
+        color = AppThemeColor("progress", AppThemeColor("accent", color))
+    }
     for dot: cast(s32)0..LOADING_DOTS - 1 {
         level := cast(float32)LoadingDotLevel(phase, dot) / cast(float32)LOADING_LEVEL_FULL
+        color.a = cast(u8)(90.0 + 165.0 * level)
         unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, dot),
                 .bounds = Rectangle.{left + cast(float32)dot * step, top - level * rise, size, size},
-                .fill = Color.{170, 170, 170, cast(u8)(90.0 + 165.0 * level)}, .radius = size / 2.0})
+                .fill = color, .radius = size / 2.0})
     }
 }

@@ -1,0 +1,57 @@
+// Run on a private display for previews. Width, height, dark and measured
+// progress can be selected with numeric command-line arguments.
+#import "loading_screen"
+#import "raylib_runtime"
+#import "widget_palette"
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "tree_draw"
+#import "geometry"
+#import "drawing_props"
+
+c :: #system_library "c";
+atoi :: (text: *u8) -> s32 #foreign c;
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    width: s32 = 390
+    height: s32 = 780
+    if argc > 2 {
+        width = atoi(argv[1])
+        height = atoi(argv[2])
+    }
+    dark := argc > 3 && atoi(argv[3]) != 0
+    measured := argc > 4 && atoi(argv[4]) != 0
+    if !OpenRaylib(width, height, "Kryon loading preview") {
+        return 1
+    }
+    session := SessionOpen()
+    palette := WidgetPalette.{.background = cast(u32)0xf7f9fcff, .base = cast(u32)0xffffffff,
+        .text = cast(u32)0x17263cff, .selected = cast(u32)0x527beaff,
+        .selected_text = cast(u32)0xffffffff, .border = cast(u32)0xe2e8f0ff}
+    if dark {
+        palette.background = cast(u32)0x101722ff
+        palette.base = cast(u32)0x182332ff
+        palette.text = cast(u32)0xe8eef8ff
+        palette.selected = cast(u32)0x8faaffff
+        palette.border = cast(u32)0x29364aff
+    }
+    for frame: cast(s32)0..179 {
+        BeginRaylibFrame()
+        area := Rectangle.{0.0, 0.0, cast(float32)width, cast(float32)height}
+        BeginFrame(session, cast(u64)1, area)
+        unused WidgetPaletteUse(session, palette)
+        LoadingScreen(session, LoadingScreenProps.{.key = cast(u64)2, .bounds = area,
+                .title = "Inner Breeze", .detail = "Getting things ready for you",
+                .icon_shape = "S1.7rr:M12 21C6 17 5 9 12 3C19 9 18 17 12 21ZM12 21V10M12 16L7 12M12 13L16 9",
+                .now = cast(float64)frame / 60.0, .scale = 1.0,
+                .has_progress = measured, .completed = 3, .total = 5})
+        unused EndFrame(session)
+        if !EndRaylibFrame() {
+            return 2
+        }
+    }
+    CloseRaylib()
+    return 0
+}

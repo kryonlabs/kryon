@@ -1,0 +1,156 @@
+// A shared opening surface. Applications supply their identity and real work
+// progress; the same composition runs in native and portable widget hosts.
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "box_props"
+#import "box_widget"
+#import "text_props"
+#import "text_align"
+#import "text_widget"
+#import "image_props"
+#import "image_widget"
+#import "svg_icon_props"
+#import "svg_icon_widget"
+#import "shape_props"
+#import "shape_widget"
+#import "progress_props"
+#import "progress_widget"
+#import "layout"
+#if #defined(KRYON_HOSTED_UI) {
+    #import "app_theme"
+}
+
+LoadingScreenProps :: struct {
+    key: u64
+    bounds: Rectangle
+    title: string
+    detail: string
+    icon_shape: string
+    icon_asset: string
+    now: float64
+    scale: float32
+    // Actual work, never an elapsed-time estimate. Without it, a quiet arc
+    // moves around the app's mark and no percentage is invented.
+    has_progress: bool
+    completed: s32
+    total: s32
+    reduced_motion: bool
+    title_class: s32
+    detail_class: s32
+}
+
+LoadingScreenLayout :: struct {
+    scale: float32
+    mark: Rectangle
+    title: Rectangle
+    detail: Rectangle
+    progress: Rectangle
+}
+
+LoadingScreenLayoutFor :: (bounds: Rectangle, scale: float32) -> LoadingScreenLayout {
+    result: LoadingScreenLayout
+    if bounds.width <= 0.0 || bounds.height <= 0.0 {
+        return result
+    }
+    if scale <= 0.0 {
+        scale = 1.0
+    }
+    if bounds.width < 280.0 * scale {
+        scale = bounds.width / 280.0
+    }
+    if bounds.height < 300.0 * scale {
+        scale = bounds.height / 300.0
+    }
+    width := bounds.width - 48.0 * scale
+    if width > 340.0 * scale {
+        width = 340.0 * scale
+    }
+    left := bounds.x + (bounds.width - width) / 2.0
+    top := bounds.y + (bounds.height - 244.0 * scale) * 0.44
+    result.scale = scale
+    result.mark = Rectangle.{bounds.x + bounds.width / 2.0 - 40.0 * scale,
+        top + 12.0 * scale, 80.0 * scale, 80.0 * scale}
+    result.title = Rectangle.{left, top + 128.0 * scale, width, 34.0 * scale}
+    result.detail = Rectangle.{left, top + 171.0 * scale, width, 44.0 * scale}
+    result.progress = Rectangle.{left + 32.0 * scale, top + 238.0 * scale,
+        width - 64.0 * scale, 4.0 * scale}
+    return result
+}
+
+LoadingScreenAngle :: (now: float64) -> float32 {
+    turns := now / 1.8
+    phase := turns - cast(float64)cast(s64)turns
+    if phase < 0.0 {
+        phase += 1.0
+    }
+    return cast(float32)phase * 360.0 - 90.0
+}
+
+LoadingScreenColor :: (token: string, fallback: Color) -> Color {
+    #if #defined(KRYON_HOSTED_UI) {
+        return AppThemeColor(token, fallback)
+    } else {
+        return StyleTokenColorOr(token, fallback)
+    }
+}
+
+LoadingScreen :: (session: Session, props: LoadingScreenProps) {
+    layout := LoadingScreenLayoutFor(props.bounds, props.scale)
+    scale := layout.scale
+    if scale <= 0.0 {
+        return
+    }
+    accent := LoadingScreenColor("progress", LoadingScreenColor("accent", Color.{75, 126, 235, 255}))
+    surface := LoadingScreenColor("surface", Color.{255, 255, 255, 255})
+    border := LoadingScreenColor("border-soft", LoadingScreenColor("border", Color.{224, 230, 238, 255}))
+    canvas := LoadingScreenColor("canvas", Color.{247, 249, 252, 255})
+    Box(session, BoxProps.{.key = WidgetPartKey(props.key, 0), .bounds = props.bounds, .fill = canvas})
+    center := Vector2.{layout.mark.x + layout.mark.width / 2.0,
+        layout.mark.y + layout.mark.height / 2.0}
+    glow := accent
+    glow.a = 12
+    clear := accent
+    clear.a = 0
+    Circle(session, CircleProps.{.key = WidgetPartKey(props.key, 1), .center = center,
+            .radius = 112.0 * scale, .fill = glow, .edge = clear, .has_edge = true})
+    Box(session, BoxProps.{.key = WidgetPartKey(props.key, 2), .bounds = layout.mark,
+            .fill = surface, .border = border, .radius = 24.0 * scale})
+    mark := Rectangle.{layout.mark.x + 19.0 * scale, layout.mark.y + 19.0 * scale,
+        42.0 * scale, 42.0 * scale}
+    if props.icon_asset != "" {
+        Image(session, ImageProps.{.key = WidgetPartKey(props.key, 3), .bounds = mark,
+                .asset_path = props.icon_asset, .fit = ImageFit.ImageFitContain,
+                .smooth = true, .alt_text = props.title})
+    } else if props.icon_shape != "" {
+        SvgIcon(session, SvgIconProps.{.bounds = mark, .shape = props.icon_shape, .color = accent})
+    }
+    if !props.has_progress {
+        track := accent
+        track.a = 20
+        Ring(session, RingProps.{.key = WidgetPartKey(props.key, 4), .center = center,
+                .inner_radius = 55.0 * scale, .outer_radius = 57.0 * scale,
+                .start_angle = 0.0, .end_angle = 360.0, .color = track})
+        angle: float32 = ifx props.reduced_motion then cast(float32)-90.0 else LoadingScreenAngle(props.now)
+        for segment: cast(s32)0..15 {
+            color := accent
+            color.a = cast(u8)(30 + segment * 14)
+            start := angle + cast(float32)segment * 8.0
+            Ring(session, RingProps.{.key = WidgetPartKey(props.key, 10 + segment), .center = center,
+                    .inner_radius = 55.0 * scale, .outer_radius = 57.0 * scale,
+                    .start_angle = start, .end_angle = start + 8.5, .color = color})
+        }
+    }
+    strong: [1]TextRange = .[TextRange.{0, cast(s32)props.title.count}]
+    Text(session, TextProps.{.key = WidgetPartKey(props.key, 30), .bounds = layout.title,
+            .text = props.title, .font = cast(s32)(24.0 * scale), .strong = strong[:],
+            .class_name = props.title_class, .align = TextAlign.TextAlignCenter,
+            .wrap = TextWrap.TextWrapEllipsis})
+    Text(session, TextProps.{.key = WidgetPartKey(props.key, 31), .bounds = layout.detail,
+            .text = props.detail, .font = cast(s32)(14.0 * scale),
+            .class_name = props.detail_class, .align = TextAlign.TextAlignCenter})
+    if props.has_progress {
+        Progress(session, ProgressProps.{.key = WidgetPartKey(props.key, 32), .bounds = layout.progress,
+                .min = 0, .max = props.total, .value = props.completed})
+    }
+}

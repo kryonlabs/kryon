@@ -1,5 +1,9 @@
 using UI :: #import "Widgets";
 
+PublicLoadingScreen :: (session: Session, props: LoadingScreenProps) {
+    LoadingScreen(session, props)
+}
+
 PublicWidgets :: (session: Session, button: ButtonProps,
     image: ImageProps, checkbox: CheckboxProps, slider: SliderProps,
     dropdown: DropdownProps) -> s32 {

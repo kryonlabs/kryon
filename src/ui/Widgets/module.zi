@@ -13,6 +13,7 @@ using TreeInputModule :: #import "tree_input";
 using BoxPropsModule :: #import "box_props";
 
 using CarouselModule :: #import "carousel";
+using LoadingScreenModule :: #import "loading_screen";
 using BoxWidgetModule :: #import "box_widget";
 using CheckboxPropsModule :: #import "checkbox_props";
 using CheckboxWidgetModule :: #import "checkbox_widget";

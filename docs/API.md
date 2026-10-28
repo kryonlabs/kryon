@@ -278,6 +278,18 @@ Enter/Space share one selection; only that selection exposes an action.
 The caller keeps game launching and any footer controls. `CarouselArtwork`
 paints the same cover composition for a native loading screen.
 
+## Loading surfaces
+
+`kryon/loading_screen` provides `LoadingScreen(session, LoadingScreenProps)`
+for app starts and longer operations. Supply a title, localized detail and
+an app icon (`icon_shape` or `icon_asset`). Its responsive composition uses
+the current canvas, surface, border and accent tokens in native and hosted
+apps. A quiet arc moves with `now`; `reduced_motion` keeps it still. Set
+`has_progress`, `completed` and `total` only for measured work, to show a
+slim standard progress bar instead. It never invents a percentage. The same
+surface is exported by `Widgets`; title/detail class IDs allow text styling.
+Use `loading_indicator` for small inline waits, with the same theme accent.
+
 ## Game touch controls
 
 `kryon/joystick` provides `SwipeArea` (swipes and taps over a board) and
