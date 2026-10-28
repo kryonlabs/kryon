@@ -171,6 +171,31 @@ main :: () -> s32 {
     if fits.page < 40 || fits.area.scroll_y != 0 { return 17 }
     unused Frame(session, *props, *page, 400, 60.0, 60.0, false, false, true)
     unused SessionClose(session)
+
+    // The keyboard shrinks an already focused editor a frame after its
+    // tap. A photo before the caret must count toward the reveal, without
+    // a new edit or navigation key. Manual readers retain their scroll.
+    session = SessionOpen()
+    photo: [1]TextAreaBlock = .[TextAreaBlock.{.start = 2, .height = 120}]
+    props = TextAreaProps.{.key = cast(u64)77, .focus_id = 77,
+        .bounds = Rectangle.{20.0, 0.0, 200.0, 190.0},
+        .value = "a\nb\nc\nd", .cursor = 7, .anchor = 7, .blocks = photo[:]}
+    page = 0
+    unused Frame(session, *props, *page, 200, 280.0, 195.0, false, false, false)
+    props.input.focus = true
+    unused Frame(session, *props, *page, 200, 280.0, 195.0, false, false, false)
+    props.input.focus = false
+    before_keyboard := props.scroll_y
+    props.bounds.height = 60.0
+    keyboard := Frame(session, *props, *page, 200, 280.0, 195.0, false, false, false)
+    if keyboard.area.scroll_y <= before_keyboard { return 18 }
+    if keyboard.area.cursor != 7 || keyboard.area.anchor != 7 { return 19 }
+    props.manual_scroll = true
+    props.scroll_y = 0
+    props.bounds.height = 40.0
+    reader := Frame(session, *props, *page, 200, 280.0, 195.0, false, false, false)
+    if reader.area.scroll_y != 0 { return 20 }
+    unused SessionClose(session)
     return 0
 }
 

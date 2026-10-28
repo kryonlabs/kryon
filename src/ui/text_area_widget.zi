@@ -1220,6 +1220,13 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     if TreeIsBuilding(session) {
         previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindTextArea)
     }
+    // Opening a phone keyboard changes the viewport after the tap frame.
+    // Reveal the retained caret again when that new viewport arrives.
+    resized: bool = false
+    if previous >= 0 {
+        old_bounds := TreeNodeAt(session, previous).bounds
+        resized = old_bounds.width != bounds.width || old_bounds.height != bounds.height
+    }
     activated: bool = TreeTakeActivationAt(session, previous)
     drag: PointerDrag = TreeTakeDragAt(session, previous)
     if TreeHasFocus(session) { result.focused = TreeFocusedAt(session, previous) }
@@ -1648,7 +1655,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     }
     if !props.manual_scroll && TextAreaRevealCursorShouldRun(result.focused,
         result.edit.changed, navigation || pointer_moved ||
-        props.input.focus || result.composition_changed) {
+        props.input.focus || result.composition_changed || resized) {
         viewport: s32 = cast(s32)bounds.height - padding_y * 2
         result.scroll_y = TextAreaScrollFor(
             TextAreaRevealScroll(result.scroll_y,
