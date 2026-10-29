@@ -5,8 +5,13 @@
     #import "session"
     host_api :: #system_library "host_api";
     EndHostedHost :: (session: Session) -> bool #foreign host_api;
+    TreePushScopeHostedHost :: (session: Session, index: s32) -> bool #foreign host_api;
     #program_export
     End :: (session: Session) -> bool { return EndHostedHost(session) }
+    #program_export
+    TreePushScope :: (session: Session, index: s32) -> bool {
+        return TreePushScopeHostedHost(session, index)
+    }
 } else {
     #import "geometry"
     #import "semantic"

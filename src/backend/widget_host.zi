@@ -33,6 +33,8 @@
 #import "slider_props"
 #import "progress_widget"
 #import "progress_props"
+#import "overlay_props"
+#import "overlay_widget"
 #import "toggle_measure"
 #import "tile_map"
 #import "box_props"
@@ -118,6 +120,10 @@ widget_slider_step_codec: WidgetSliderStepCodec;
 widget_discrete_slider_codec: WidgetDiscreteSliderPropsCodec;
 widget_discrete_step_codec: WidgetSliderDiscreteStepCodec;
 widget_progress_codec: WidgetProgressPropsCodec;
+widget_dismissible_overlay_codec: WidgetDismissibleOverlayPropsCodec;
+widget_dismissible_overlay_result_codec: WidgetDismissibleOverlayResultCodec;
+widget_popup_codec: WidgetPopupPropsCodec;
+widget_popup_result_codec: WidgetPopupResultCodec;
 widget_fieldset_codec: WidgetFieldsetPropsCodec;
 widget_line_codec: WidgetLinePropsCodec;
 widget_circle_codec: WidgetCirclePropsCodec;
@@ -163,6 +169,7 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "text_area_widget") && function == "TextAreaHostedHost") ||
     (ModuleName(module, "scroll_widget") && function == "ScrollHostedHost") ||
     (ModuleName(module, "tree") && function == "EndHostedHost") ||
+    (ModuleName(module, "tree") && function == "TreePushScopeHostedHost") ||
     (ModuleName(module, "text_field_widget") && function == "TextFieldHostedHost") ||
     (ModuleName(module, "tab_bar_widget") && function == "TabBarHostedHost") ||
     (ModuleName(module, "segmented_control_widget") && function == "SegmentedControlHostedHost") ||
@@ -177,6 +184,8 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "slider_widget") && (function == "SliderHostedHost" ||
         function == "DiscreteSliderHostedHost")) ||
     (ModuleName(module, "progress_widget") && function == "ProgressHostedHost") ||
+    (ModuleName(module, "overlay_widget") && (function == "DismissibleOverlayHostedHost" ||
+        function == "PopupHostedHost")) ||
     (ModuleName(module, "svg_icon_widget") && function == "SvgIconHostedHost") ||
     (ModuleName(module, "press_widget") && function == "PressHostedHost") ||
     (ModuleName(module, "spinbox_widget") && function == "SpinboxHostedHost") ||
@@ -337,6 +346,18 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         End(session)
         widget_host_depth -= 1
         result.* = HostScalar("bool", 1)
+        return 1
+    }
+    if name == "TreePushScopeHostedHost" && ModuleName(owner, "tree") && count == 2 {
+        if widget_host_depth >= WIDGET_HOST_SCOPE_DEPTH ||
+        !HostScalarValid(arguments[1], "s32", cast(s32)HostInteger) {
+            return 0
+        }
+        pushed := TreePushScope(session, cast(s32)arguments[1].integer)
+        if pushed {
+            widget_host_depth += 1
+        }
+        result.* = HostScalar("bool", ifx pushed then 1 else 0)
         return 1
     }
     if name == "TabBarHostedHost" && ModuleName(owner, "tab_bar_widget") && count == 3 {
@@ -531,6 +552,20 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_host_depth += 1
         }
         result.* = WidgetEncodeScrollResult(frame, *widget_scroll_result_codec)
+        return 1
+    }
+    if name == "DismissibleOverlayHostedHost" && ModuleName(owner, "overlay_widget") &&
+    WidgetValidDismissibleOverlayProps(props) {
+        overlay := DismissibleOverlay(session,
+            WidgetDecodeDismissibleOverlayProps(props, *widget_dismissible_overlay_codec))
+        result.* = WidgetEncodeDismissibleOverlayResult(overlay,
+            *widget_dismissible_overlay_result_codec)
+        return 1
+    }
+    if name == "PopupHostedHost" && ModuleName(owner, "overlay_widget") &&
+    WidgetValidPopupProps(props) {
+        popup := Popup(session, WidgetDecodePopupProps(props, *widget_popup_codec))
+        result.* = WidgetEncodePopupResult(popup, *widget_popup_result_codec)
         return 1
     }
     if name == "CheckboxHostedHost" && ModuleName(owner, "checkbox_widget") && WidgetValidCheckboxProps(props) {

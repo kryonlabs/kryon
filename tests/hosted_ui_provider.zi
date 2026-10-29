@@ -138,6 +138,22 @@ Progress :: (session: Session, props: ProgressProps) {
     }
 }
 
+#import "overlay_props"
+
+#program_export "DismissibleOverlayHostedHost"
+DismissibleOverlay :: (session: Session,
+    props: DismissibleOverlayProps) -> DismissibleOverlayResult {
+    unused props
+    return DismissibleOverlayResult.{.closed = session.slot == 4,
+        .panel_node = ifx session.slot == 4 then 85 else -1}
+}
+
+#program_export "PopupHostedHost"
+Popup :: (session: Session, props: PopupProps) -> PopupResult {
+    unused props
+    return PopupResult.{.node = ifx session.slot == 4 then 86 else -1}
+}
+
 #program_export
 HostedProgressValue :: () -> s32 {
     return hosted_progress_value

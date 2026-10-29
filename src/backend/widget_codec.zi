@@ -36,6 +36,7 @@
 #import "shape_props"
 #import "slider_props"
 #import "progress_props"
+#import "overlay_props"
 using HostValueKind;
 
 // Widget codec schema: ["PointerFrame",[["x","float32"],["y","float32"],["down","bool"],["pressed","bool"],["released","bool"]]]
@@ -2990,5 +2991,157 @@ WidgetValidProgressProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 4, "label", "string", cast(s32)HostString) { return false }
     if !HostFieldScalarValid(*value, 5, "class_name", "s32", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 6, "key", "u64", cast(s32)HostUnsigned) { return false }
+    return true
+}
+
+WidgetDismissibleOverlayPropsCodec :: struct {
+    fields: [8]HostField
+    bounds: WidgetRectangleCodec
+    keep_bounds: WidgetRectangleCodec
+    scrim: WidgetColorCodec
+}
+
+WidgetEncodeDismissibleOverlayProps :: (data: DismissibleOverlayProps, codec: *WidgetDismissibleOverlayPropsCodec) -> HostValue {
+    value := HostRecordValue("DismissibleOverlayProps", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("key"), .value = HostScalar("u64", cast(s64)data.key)}
+    codec.fields[1].name = HostTextData("bounds")
+    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
+    codec.fields[2].name = HostTextData("keep_bounds")
+    codec.fields[2].value = WidgetEncodeRectangle(data.keep_bounds, *codec.keep_bounds)
+    codec.fields[3] = HostField.{.name = HostTextData("view_width"), .value = HostScalar("s32", cast(s64)data.view_width)}
+    codec.fields[4] = HostField.{.name = HostTextData("view_height"), .value = HostScalar("s32", cast(s64)data.view_height)}
+    codec.fields[5].name = HostTextData("scrim")
+    codec.fields[5].value = WidgetEncodeColor(data.scrim, *codec.scrim)
+    codec.fields[6] = HostField.{.name = HostTextData("dismiss_disabled"), .value = HostScalar("bool", ifx data.dismiss_disabled then 1 else 0)}
+    codec.fields[7] = HostField.{.name = HostTextData("non_modal"), .value = HostScalar("bool", ifx data.non_modal then 1 else 0)}
+    return value
+}
+
+WidgetDecodeDismissibleOverlayProps :: (value: HostValue, codec: *WidgetDismissibleOverlayPropsCodec) -> DismissibleOverlayProps {
+    data: DismissibleOverlayProps
+    zero: HostValue
+    data.key = cast(u64)HostFieldValue(*value, 0, "key", *zero).bits
+    data.bounds = WidgetDecodeRectangle(HostFieldValue(*value, 1, "bounds", *zero).*, *codec.bounds)
+    data.keep_bounds = WidgetDecodeRectangle(HostFieldValue(*value, 2, "keep_bounds", *zero).*, *codec.keep_bounds)
+    data.view_width = cast(s32)HostFieldValue(*value, 3, "view_width", *zero).integer
+    data.view_height = cast(s32)HostFieldValue(*value, 4, "view_height", *zero).integer
+    data.scrim = WidgetDecodeColor(HostFieldValue(*value, 5, "scrim", *zero).*, *codec.scrim)
+    data.dismiss_disabled = HostFieldValue(*value, 6, "dismiss_disabled", *zero).integer != 0
+    data.non_modal = HostFieldValue(*value, 7, "non_modal", *zero).integer != 0
+    return data
+}
+
+WidgetValidDismissibleOverlayProps :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "DismissibleOverlayProps") { return false }
+    if !HostFieldScalarValid(*value, 0, "key", "u64", cast(s32)HostUnsigned) { return false }
+    if !HostFieldRecordValid(*value, 1, "bounds", WidgetValidRectangle) { return false }
+    if !HostFieldRecordValid(*value, 2, "keep_bounds", WidgetValidRectangle) { return false }
+    if !HostFieldScalarValid(*value, 3, "view_width", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 4, "view_height", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldRecordValid(*value, 5, "scrim", WidgetValidColor) { return false }
+    if !HostFieldScalarValid(*value, 6, "dismiss_disabled", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 7, "non_modal", "bool", cast(s32)HostInteger) { return false }
+    return true
+}
+
+WidgetDismissibleOverlayResultCodec :: struct {
+    fields: [6]HostField
+}
+
+WidgetEncodeDismissibleOverlayResult :: (data: DismissibleOverlayResult, codec: *WidgetDismissibleOverlayResultCodec) -> HostValue {
+    value := HostRecordValue("DismissibleOverlayResult", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("node"), .value = HostScalar("s32", cast(s64)data.node)}
+    codec.fields[1] = HostField.{.name = HostTextData("panel_node"), .value = HostScalar("s32", cast(s64)data.panel_node)}
+    codec.fields[2] = HostField.{.name = HostTextData("closed"), .value = HostScalar("bool", ifx data.closed then 1 else 0)}
+    codec.fields[3] = HostField.{.name = HostTextData("outside_released"), .value = HostScalar("bool", ifx data.outside_released then 1 else 0)}
+    codec.fields[4] = HostField.{.name = HostTextData("release_consumed"), .value = HostScalar("bool", ifx data.release_consumed then 1 else 0)}
+    codec.fields[5] = HostField.{.name = HostTextData("tapped"), .value = HostScalar("bool", ifx data.tapped then 1 else 0)}
+    return value
+}
+
+WidgetDecodeDismissibleOverlayResult :: (value: HostValue, codec: *WidgetDismissibleOverlayResultCodec) -> DismissibleOverlayResult {
+    data: DismissibleOverlayResult
+    unused codec
+    zero: HostValue
+    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
+    data.panel_node = cast(s32)HostFieldValue(*value, 1, "panel_node", *zero).integer
+    data.closed = HostFieldValue(*value, 2, "closed", *zero).integer != 0
+    data.outside_released = HostFieldValue(*value, 3, "outside_released", *zero).integer != 0
+    data.release_consumed = HostFieldValue(*value, 4, "release_consumed", *zero).integer != 0
+    data.tapped = HostFieldValue(*value, 5, "tapped", *zero).integer != 0
+    return data
+}
+
+WidgetValidDismissibleOverlayResult :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "DismissibleOverlayResult") { return false }
+    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 1, "panel_node", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 2, "closed", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 3, "outside_released", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 4, "release_consumed", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 5, "tapped", "bool", cast(s32)HostInteger) { return false }
+    return true
+}
+
+WidgetPopupPropsCodec :: struct {
+    fields: [3]HostField
+    bounds: WidgetRectangleCodec
+    keep_bounds: WidgetRectangleCodec
+}
+
+WidgetEncodePopupProps :: (data: PopupProps, codec: *WidgetPopupPropsCodec) -> HostValue {
+    value := HostRecordValue("PopupProps", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("key"), .value = HostScalar("u64", cast(s64)data.key)}
+    codec.fields[1].name = HostTextData("bounds")
+    codec.fields[1].value = WidgetEncodeRectangle(data.bounds, *codec.bounds)
+    codec.fields[2].name = HostTextData("keep_bounds")
+    codec.fields[2].value = WidgetEncodeRectangle(data.keep_bounds, *codec.keep_bounds)
+    return value
+}
+
+WidgetDecodePopupProps :: (value: HostValue, codec: *WidgetPopupPropsCodec) -> PopupProps {
+    data: PopupProps
+    zero: HostValue
+    data.key = cast(u64)HostFieldValue(*value, 0, "key", *zero).bits
+    data.bounds = WidgetDecodeRectangle(HostFieldValue(*value, 1, "bounds", *zero).*, *codec.bounds)
+    data.keep_bounds = WidgetDecodeRectangle(HostFieldValue(*value, 2, "keep_bounds", *zero).*, *codec.keep_bounds)
+    return data
+}
+
+WidgetValidPopupProps :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "PopupProps") { return false }
+    if !HostFieldScalarValid(*value, 0, "key", "u64", cast(s32)HostUnsigned) { return false }
+    if !HostFieldRecordValid(*value, 1, "bounds", WidgetValidRectangle) { return false }
+    if !HostFieldRecordValid(*value, 2, "keep_bounds", WidgetValidRectangle) { return false }
+    return true
+}
+
+WidgetPopupResultCodec :: struct {
+    fields: [3]HostField
+}
+
+WidgetEncodePopupResult :: (data: PopupResult, codec: *WidgetPopupResultCodec) -> HostValue {
+    value := HostRecordValue("PopupResult", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("node"), .value = HostScalar("s32", cast(s64)data.node)}
+    codec.fields[1] = HostField.{.name = HostTextData("panel_node"), .value = HostScalar("s32", cast(s64)data.panel_node)}
+    codec.fields[2] = HostField.{.name = HostTextData("closed"), .value = HostScalar("bool", ifx data.closed then 1 else 0)}
+    return value
+}
+
+WidgetDecodePopupResult :: (value: HostValue, codec: *WidgetPopupResultCodec) -> PopupResult {
+    data: PopupResult
+    unused codec
+    zero: HostValue
+    data.node = cast(s32)HostFieldValue(*value, 0, "node", *zero).integer
+    data.panel_node = cast(s32)HostFieldValue(*value, 1, "panel_node", *zero).integer
+    data.closed = HostFieldValue(*value, 2, "closed", *zero).integer != 0
+    return data
+}
+
+WidgetValidPopupResult :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "PopupResult") { return false }
+    if !HostFieldScalarValid(*value, 0, "node", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 1, "panel_node", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 2, "closed", "bool", cast(s32)HostInteger) { return false }
     return true
 }

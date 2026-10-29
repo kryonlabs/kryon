@@ -1,12 +1,30 @@
-#import "session"
-#import "drawing_props"
-#import "geometry"
-#import "overlay"
-#import "overlay_props"
-#import "paint_queue"
-#import "tree"
-#import "tree_input"
-#import "widget_kind"
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "overlay_props"
+    host_api :: #system_library "host_api";
+    DismissibleOverlayHostedHost :: (session: Session,
+        props: DismissibleOverlayProps) -> DismissibleOverlayResult #foreign host_api;
+    PopupHostedHost :: (session: Session,
+        props: PopupProps) -> PopupResult #foreign host_api;
+    #program_export
+    DismissibleOverlay :: (session: Session,
+        props: DismissibleOverlayProps) -> DismissibleOverlayResult {
+        return DismissibleOverlayHostedHost(session, props)
+    }
+    #program_export
+    Popup :: (session: Session, props: PopupProps) -> PopupResult {
+        return PopupHostedHost(session, props)
+    }
+} else {
+    #import "session"
+    #import "drawing_props"
+    #import "geometry"
+    #import "overlay"
+    #import "overlay_props"
+    #import "paint_queue"
+    #import "tree"
+    #import "tree_input"
+    #import "widget_kind"
 
 using WidgetKind;
 
@@ -115,4 +133,5 @@ Popup :: (session: Session, props: PopupProps) -> PopupResult {
     result.panel_node = TreeSubmit(session, OverlayPanelKey(), result.node,
         WidgetKindCustom, props.bounds)
     return result
+}
 }

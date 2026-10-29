@@ -47,7 +47,7 @@ KRYON_MODULES = ['session', 'input_protocol', 'geometry', 'drawing_props', 'text
                  'time_picker_props', 'dropdown', 'dropdown_props', 'title_bar_props',
                  'modal', 'modal_props', 'context_menu_widget', 'svg_icon_props', 'tile_map',
                  'segmented_control_props', 'fieldset_props', 'shape_props', 'slider_props',
-                 'progress_props']
+                 'progress_props', 'overlay_props']
 KRYON_ROOTS = ['PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
                'ScrollProps', 'ScrollResult', 'Session', 'CheckboxProps', 'CheckboxValueResult',
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
@@ -59,7 +59,8 @@ KRYON_ROOTS = ['PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAr
                'TileMapProps', 'TileMapResult', 'SegmentedControlProps', 'SegmentedControlResult',
                'SegmentOption', 'FieldsetProps', 'Vector2', 'LineProps', 'CircleProps',
                'RingProps', 'TriangleProps', 'SliderProps', 'SliderStep', 'DiscreteSliderProps',
-               'SliderDiscreteStep', 'ProgressProps']
+               'SliderDiscreteStep', 'ProgressProps', 'DismissibleOverlayProps',
+               'DismissibleOverlayResult', 'PopupProps', 'PopupResult']
 
 
 # Operations used only by generated consumers and test fixtures. Their schemas

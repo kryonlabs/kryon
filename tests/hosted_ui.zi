@@ -32,6 +32,8 @@
 #import "slider_props"
 #import "progress_widget"
 #import "progress_props"
+#import "overlay_widget"
+#import "overlay_props"
 Provider :: #import "hosted_ui_provider";
 #import "title_bar_widget"
 #import "title_bar_props"
@@ -82,6 +84,10 @@ main :: () -> s32 {
     if !stepped.changed || stepped.value != 4 { return 22 }
     Progress(session, ProgressProps.{.max = 60, .value = 30})
     if Provider.HostedProgressValue() != 30 { return 23 }
+    overlay := DismissibleOverlay(session, DismissibleOverlayProps.{})
+    if !overlay.closed || overlay.panel_node != 85 { return 24 }
+    popup := Popup(session, PopupProps.{})
+    if popup.closed || popup.node != 86 { return 25 }
     options: [1]DropdownOption
     bar := TitleBar(session, TitleBarProps.{.title = "Lumi", .trailing_width = 90}, options[0:0])
     if bar.trailing_bounds.width != 90.0 { return 10 }
