@@ -419,7 +419,8 @@ DriverPointer :: (driver: *TestDriverClient, x: float64, y: float64, down: bool)
     return true
 }
 
-// Turns the wheel by WHEEL lines down (negative: up) with the pointer at X, Y.
+// Turns the wheel by WHEEL lines with the pointer at X, Y. Desktop hosts
+// follow SDL: positive turns away from the person (up), negative down.
 DriverWheel :: (driver: *TestDriverClient, x: float64, y: float64, wheel: float64) -> bool {
     fields: Vec(u8)
     BuilderPrint(*fields, "\tx=%\ty=%\twheel=%", x, y, wheel)

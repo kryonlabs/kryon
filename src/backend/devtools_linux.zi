@@ -82,6 +82,11 @@ BrowserRoute :: struct {
 BrowserConnection :: struct {
     fd: s32
     request: Vec(u8)
+    // The whole response once the request is complete, sent as the socket
+    // takes it, so a slow reader never holds up the browser or the server.
+    response: string
+    sent: s64
+    responding: bool
 }
 
 Browser :: struct {
@@ -251,26 +256,15 @@ DevtoolsPath :: (target: string) -> string {
     return BuilderFinish(out)
 }
 
-DevtoolsSendAll :: (fd: s32, text: string) -> bool {
-    descriptor := cast(*TextDescriptor)(*text)
-    sent: u64 = 0
-    total := cast(u64)text.count
-    while sent < total {
-        count := SendRaw(fd, *descriptor.data[sent], total - sent, DEVTOOLS_NO_SIGNAL)
-        if count <= 0 { return false }
-        sent += cast(u64)count
-    }
-    return true
-}
-
-DevtoolsRespond :: (fd: s32, status: s32, content_type: string, headers: string, body: string) {
-    head: Vec(u8)
+DevtoolsResponse :: (status: s32, content_type: string, headers: string, body: string) -> string {
+    out: Vec(u8)
     reason := ifx status == 200 then "OK" else ifx status == 404 then "Not Found" else "Error"
-    BuilderPrint(*head, "HTTP/1.1 % %\r\n", cast(s64)status, reason)
-    BuilderPrint(*head, "Content-Type: %\r\nContent-Length: %\r\nConnection: close\r\n", content_type, body.count)
-    Append(*head, headers)
-    Append(*head, "\r\n")
-    if DevtoolsSendAll(fd, BuilderFinish(head)) { unused DevtoolsSendAll(fd, body) }
+    BuilderPrint(*out, "HTTP/1.1 % %\r\n", cast(s64)status, reason)
+    BuilderPrint(*out, "Content-Type: %\r\nContent-Length: %\r\nConnection: close\r\n", content_type, body.count)
+    Append(*out, headers)
+    Append(*out, "\r\n")
+    Append(*out, body)
+    return BuilderFinish(out)
 }
 
 // Inserts the browser's head text after <head> in an HTML page.
@@ -285,12 +279,12 @@ DevtoolsInject :: (browser: *Browser, content_type: string, body: string) -> str
     return BuilderFinish(out)
 }
 
-DevtoolsAnswer :: (browser: *Browser, fd: s32, request: string) {
+DevtoolsAnswer :: (browser: *Browser, request: string) -> string {
     line_end := DevtoolsFind(request, "\r\n", 0)
     first := ifx line_end < 0 then request else request[0:line_end]
     space := DevtoolsFind(first, " ", 0)
     second := ifx space < 0 then -1 else DevtoolsFind(first, " ", space + 1)
-    if space < 0 || second < 0 { DevtoolsRespond(fd, 400, "text/plain", "", "Bad request"); return }
+    if space < 0 || second < 0 { return DevtoolsResponse(400, "text/plain", "", "Bad request") }
     target := first[space + 1:second]
     stored: Vec(u8)
     Append(*stored, target)
@@ -304,18 +298,17 @@ DevtoolsAnswer :: (browser: *Browser, fd: s32, request: string) {
         body := route.body
         if route.file.count > 0 {
             text, ok := ReadEntireFile(BuilderJoin(browser.root, "/", route.file))
-            if !ok { DevtoolsRespond(fd, 404, "text/plain", "", "Not found"); return }
+            if !ok { return DevtoolsResponse(404, "text/plain", "", "Not found") }
             body = text
         }
-        DevtoolsRespond(fd, status, content_type, route.headers, DevtoolsInject(browser, content_type, body))
-        return
+        return DevtoolsResponse(status, content_type, route.headers, DevtoolsInject(browser, content_type, body))
     }
-    if DevtoolsFind(path, "..", 0) >= 0 { DevtoolsRespond(fd, 404, "text/plain", "", "Not found"); return }
+    if DevtoolsFind(path, "..", 0) >= 0 { return DevtoolsResponse(404, "text/plain", "", "Not found") }
     file := ifx path == "/" then "/index.html" else path
     text, ok := ReadEntireFile(BuilderJoin(browser.root, file, ""))
-    if !ok { DevtoolsRespond(fd, 404, "text/plain", "", "Not found"); return }
+    if !ok { return DevtoolsResponse(404, "text/plain", "", "Not found") }
     content_type := DevtoolsContentType(file)
-    DevtoolsRespond(fd, 200, content_type, "", DevtoolsInject(browser, content_type, text))
+    return DevtoolsResponse(200, content_type, "", DevtoolsInject(browser, content_type, text))
 }
 
 BuilderJoin :: (first: string, second: string, third: string) -> string {
@@ -328,7 +321,7 @@ BuilderJoin :: (first: string, second: string, third: string) -> string {
 
 DevtoolsAccept :: (browser: *Browser) {
     while true {
-        fd := AcceptRaw(browser.listen_fd, null, null, DEVTOOLS_CLOEXEC)
+        fd := AcceptRaw(browser.listen_fd, null, null, DEVTOOLS_CLOEXEC | DEVTOOLS_NONBLOCK)
         if fd < 0 { return }
         slot: s32 = -1
         for index: 0..DEVTOOLS_CONNECTIONS - 1 {
@@ -336,26 +329,55 @@ DevtoolsAccept :: (browser: *Browser) {
         }
         if slot < 0 { unused CloseRaw(fd); continue }
         browser.connections[slot].fd = fd
+        browser.connections[slot].responding = false
+        browser.connections[slot].response = ""
+        browser.connections[slot].sent = 0
         VecClear(browser.connections[slot].request)
     }
 }
 
-DevtoolsReadConnection :: (browser: *Browser, slot: s32) {
+DevtoolsCloseConnection :: (browser: *Browser, slot: s32) {
+    unused CloseRaw(browser.connections[slot].fd)
+    browser.connections[slot].fd = -1
+    browser.connections[slot].responding = false
+    browser.connections[slot].response = ""
+}
+
+// Sends what the socket takes now; closes the connection once all is sent.
+DevtoolsFlush :: (browser: *Browser, slot: s32) {
+    response := browser.connections[slot].response
+    descriptor := cast(*TextDescriptor)(*response)
+    while browser.connections[slot].sent < response.count {
+        at := browser.connections[slot].sent
+        count := SendRaw(browser.connections[slot].fd, *descriptor.data[at], cast(u64)(response.count - at), DEVTOOLS_NO_SIGNAL)
+        if count <= 0 { return }
+        browser.connections[slot].sent += count
+    }
+    DevtoolsCloseConnection(browser, slot)
+}
+
+DevtoolsReadConnection :: (browser: *Browser, slot: s32, events: s16) {
     fd := browser.connections[slot].fd
-    count := ReadRaw(fd, *devtools_chunk[0], cast(u64)devtools_chunk.count)
-    if count <= 0 {
-        unused CloseRaw(fd)
-        browser.connections[slot].fd = -1
+    if browser.connections[slot].responding {
+        if (events & 24) != 0 { DevtoolsCloseConnection(browser, slot) }
+        else { DevtoolsFlush(browser, slot) }
         return
     }
+    count := ReadRaw(fd, *devtools_chunk[0], cast(u64)devtools_chunk.count)
+    if count == 0 || (count < 0 && (events & 24) != 0) {
+        DevtoolsCloseConnection(browser, slot)
+        return
+    }
+    if count < 0 { return }
     for at: 0..count - 1 { unused VecPush(browser.connections[slot].request, devtools_chunk[at]) }
     text: Vec(u8)
     for at: 0..browser.connections[slot].request.count - 1 { unused VecPush(text, browser.connections[slot].request[at]) }
     whole := BuilderFinish(text)
     if DevtoolsFind(whole, "\r\n\r\n", 0) < 0 { return }
-    DevtoolsAnswer(browser, fd, whole)
-    unused CloseRaw(fd)
-    browser.connections[slot].fd = -1
+    browser.connections[slot].response = DevtoolsAnswer(browser, whole)
+    browser.connections[slot].sent = 0
+    browser.connections[slot].responding = true
+    DevtoolsFlush(browser, slot)
 }
 
 // ---- The browser ----
@@ -509,7 +531,7 @@ DevtoolsPump :: (browser: *Browser, timeout_ms: s32, wanted: s64, matched: *bool
         count += 1
         for index: 0..DEVTOOLS_CONNECTIONS - 1 {
             if browser.connections[index].fd < 0 { continue }
-            fds[count] = .{fd = browser.connections[index].fd, events = 1}
+            fds[count] = .{fd = browser.connections[index].fd, events = ifx browser.connections[index].responding then cast(s16)4 else cast(s16)1}
             slots[count] = cast(s32)index
             count += 1
         }
@@ -520,7 +542,7 @@ DevtoolsPump :: (browser: *Browser, timeout_ms: s32, wanted: s64, matched: *bool
     for index: 0..count - 1 {
         if fds[index].revents == 0 { continue }
         if slots[index] == -1 { DevtoolsAccept(browser) }
-        else if slots[index] >= 0 { DevtoolsReadConnection(browser, slots[index]) }
+        else if slots[index] >= 0 { DevtoolsReadConnection(browser, slots[index], fds[index].revents) }
         else {
             read := ReadRaw(browser.from_browser, *devtools_chunk[0], cast(u64)devtools_chunk.count)
             if read <= 0 { return BrowserFail(browser, "the browser closed its DevTools pipe", "") }
@@ -750,8 +772,7 @@ BrowserClose :: (browser: *Browser) {
     }
     if browser.port > 0 {
         for index: 0..DEVTOOLS_CONNECTIONS - 1 {
-            if browser.connections[index].fd >= 0 { unused CloseRaw(browser.connections[index].fd) }
-            browser.connections[index].fd = -1
+            if browser.connections[index].fd >= 0 { DevtoolsCloseConnection(browser, cast(s32)index) }
         }
         unused CloseRaw(browser.listen_fd)
         browser.port = 0
