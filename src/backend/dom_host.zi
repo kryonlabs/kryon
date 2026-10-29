@@ -693,10 +693,21 @@ DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
     if key < 0 || !DomSame(WebObject(dom_records[key].element), WebObject(element)) { return }
     if node.kind != 8 && !node.has_text { return }
     if node.kind == 8 {
-        // Pointer observations still drive drags and held controls. A native
-        // keyboard click has detail=0; a pointer click was already delivered.
-        if context == 9 || context == 10 { return }
-        if context == 1 && WebGetNumber(event, WebName("detail")) > 0.0 { return }
+        // Buttons resolve by element identity. The overlay stylesheet may
+        // reflow rows away from the app's internal coordinates, so letting
+        // the canvas hit-test route real pointer presses picks whichever
+        // widget used to sit at those coordinates. Keep button mouse
+        // activity away from the canvas path entirely and let the DOM
+        // click carry the press, keyboard or pointer alike.
+        if context == 9 || context == 10 {
+            unused WebCall0(event, WebName("stopPropagation"))
+            return
+        }
+        if context == 1 {
+            unused WebCall0(event, WebName("stopPropagation"))
+            dom_click = node.identity_generation
+            return
+        }
         if context == 6 || context == 7 || context == 8 {
             code := cast(s32)WebGetNumber(event, WebName("keyCode"))
             if code != 9 && code != 13 && code != 32 { return }
@@ -718,7 +729,6 @@ DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
         }
     }
     if context == 0 { unused TreeFocusAt(dom_session, index) }
-    if context == 1 && node.kind == 8 { dom_click = node.identity_generation }
     if context == 2 || context == 3 || context == 5 { dom_records[key].pending = true }
     if context == 4 { dom_records[key].composing = true }
     if context == 5 { dom_records[key].composing = false }
