@@ -18,4 +18,11 @@ Layout:
 - `src/main.zi` — the Android entry; delegates to Kryon's `AndroidRunMain`.
 - `src/android_glue.zi` — `JNI_OnLoad`, registering the canonical natives.
 
+The Google Play edition (`-Papp.edition=gplay`) applies
+`templates/android-gplay.gradle` from the Kryon checkout, which adds Play
+Billing and `droid/app/src/gplay`. The scaffold copies neither, so the
+normal and F-Droid editions name no Google library;
+`scripts/check-google-free.py` (or the `google-free` action) checks both
+the Gradle files and the APKs.
+
 This README is not copied into applications.

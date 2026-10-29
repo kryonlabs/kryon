@@ -1,0 +1,16 @@
+// The Google Play edition's additions, applied by an app's build.gradle only
+// for -Papp.edition=gplay. Kryon keeps them outside templates/droid, so the
+// scaffold never copies them into an app: the direct and F-Droid editions'
+// build files and APKs carry no Google library.
+android {
+    // Kryon's Play Billing class (kryon/play_billing finds it through the
+    // activity's class loader).
+    sourceSets.main.java.srcDir new File(buildscript.sourceFile.parentFile, 'droid/droid/app/src/gplay/java')
+}
+
+dependencies {
+    implementation 'com.android.billingclient:billing:9.1.0'
+    // Billing's AndroidX libraries mix Kotlin 1.6 and 1.8 standard
+    // libraries; one Kotlin version keeps their classes from colliding.
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
+}

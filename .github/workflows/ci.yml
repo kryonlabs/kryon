@@ -94,6 +94,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Keep Google libraries in the gplay edition
+        run: python3 scripts/check-google-free.py --source .
+
       - name: Check submodule URLs
         run: sh scripts/check-submodule-urls.sh
 

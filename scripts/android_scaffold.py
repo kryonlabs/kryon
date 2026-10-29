@@ -46,6 +46,10 @@ for template in sorted(templates.rglob("*")):
     if template.is_dir() or template.name == "README.md":
         continue
     relative = template.relative_to(templates)
+    # Play Billing stays in Kryon; only the Google Play build applies it
+    # (templates/android-gplay.gradle), so apps hold no Google code.
+    if relative.parts[:4] == ("droid", "app", "src", "gplay"):
+        continue
     parts = []
     for part in relative.parts:
         for key, value in values.items():

@@ -19,9 +19,10 @@ def androidAbis = (project.findProperty('app.abis') ?:
     System.getenv('KRYON_ANDROID_ABIS') ?: 'arm64-v8a').split(',').toList()
 def appCodegen = envOrProp('KRYON_PROJECT_CODEGEN', 'app.codegen') ?: 'c99'
 // One app, three editions: -Papp.edition=direct (the default), fdroid or
-// gplay. The Google Play edition adds Play Billing (kryon/play_billing) and
-// needs Android 6 and AndroidX (-Pandroid.useAndroidX=true); the others carry
-// no Google libraries. Native code sees GOOGLE_PLAY or FDROID.
+// gplay. The Google Play edition adds Play Billing (kryon/play_billing) from
+// Kryon's templates/android-gplay.gradle and needs Android 6 and AndroidX
+// (-Pandroid.useAndroidX=true); only it may carry Google libraries. Native
+// code sees GOOGLE_PLAY or FDROID.
 def appEdition = (project.findProperty('app.edition') ?:
     (project.findProperty('app.googlePlay') == 'true' ? 'gplay' : 'direct')).toString()
 if (!(appEdition in ['direct', 'fdroid', 'gplay'])) {
@@ -70,10 +71,6 @@ android {
         sourceSets.release.manifest.srcFile 'src/zx/AndroidManifest.xml'
     }
 
-    if (googlePlay) {
-        sourceSets.main.java.srcDir 'src/gplay/java'
-    }
-
     buildTypes {
         release {
             minifyEnabled false
@@ -81,11 +78,6 @@ android {
     }
 }
 
-dependencies {
-    if (googlePlay) {
-        implementation 'com.android.billingclient:billing:9.1.0'
-        // Billing's AndroidX libraries mix Kotlin 1.6 and 1.8 standard
-        // libraries; one Kotlin version keeps their classes from colliding.
-        implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
-    }
+if (googlePlay) {
+    apply from: new File(kryonDir, 'templates/android-gplay.gradle')
 }

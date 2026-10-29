@@ -1,0 +1,30 @@
+name: Google-free Android editions
+description: >-
+  Fails when a normal or F-Droid APK, or a Gradle file their builds read,
+  holds a Google library; only the -gplay edition may (scripts/check-google-free.py).
+inputs:
+  packages:
+    description: APKs (or globs) of the normal and -fdroid editions to search.
+    default: ''
+  source:
+    description: Folder whose Gradle files are checked as F-Droid scans them; empty skips it.
+    default: '.'
+  expect-google:
+    description: "'true' when the packages are -gplay: fail unless Play Billing is found, proving the search works."
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+        SOURCE: ${{ inputs.source }}
+        EXPECT_GOOGLE: ${{ inputs.expect-google }}
+      run: |
+        set -euo pipefail
+        arguments=()
+        if [ -n "$SOURCE" ]; then arguments+=(--source "$SOURCE"); fi
+        if [ "$EXPECT_GOOGLE" = true ]; then arguments+=(--expect-google); fi
+        # Globs in PACKAGES expand here; a glob matching nothing stays as
+        # written and fails as a missing file.
+        python3 "$GITHUB_ACTION_PATH/../../../scripts/check-google-free.py" "${arguments[@]}" $PACKAGES
