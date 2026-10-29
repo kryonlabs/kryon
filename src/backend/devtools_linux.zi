@@ -527,16 +527,25 @@ DevtoolsString :: (text: string, object: s32, name: string) -> string {
     return BuilderFinish(value.value)
 }
 
+// Sends one message and the NUL that ends it. A string's storage is not
+// followed by a NUL, so the terminator is written on its own; a missing one
+// joins this message to the next and the browser stops answering.
 DevtoolsWrite :: (browser: *Browser, message: string) -> bool {
     descriptor := cast(*TextDescriptor)(*message)
     sent: u64 = 0
-    total := cast(u64)message.count + 1
+    total := cast(u64)message.count
     while sent < total {
         count := WriteRaw(browser.to_browser, *descriptor.data[sent], total - sent)
         if count <= 0 { return false }
         sent += cast(u64)count
     }
-    return true
+    terminator: [1]u8
+    while true {
+        count := WriteRaw(browser.to_browser, *terminator[0], 1)
+        if count == 1 { return true }
+        if count < 0 { return false }
+    }
+    return false
 }
 
 // Handles one whole message: a reply is returned through MATCHED when its

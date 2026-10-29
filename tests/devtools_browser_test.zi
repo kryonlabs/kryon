@@ -26,6 +26,12 @@ main :: () -> s32 {
     if !BrowserWait(*browser, "document.title === 'Served' && window.injected", 20000) { BrowserClose(*browser); return 9 }
     if BrowserNumber(*browser, "fetch('/data.json').then(r => r.json()).then(d => d.answer)", 0.0) != 42.0 { BrowserClose(*browser); return 10 }
     if BrowserText(*browser, "fetch('/missing').then(r => String(r.status))") != "404" { BrowserClose(*browser); return 11 }
+    // Each message ends in its own NUL, even when the byte after the
+    // message's storage is not one; otherwise the browser joins it to the
+    // next message and stops answering.
+    padded := "{\"id\":900000,\"method\":\"Browser.getVersion\"}Z"
+    if !DevtoolsWrite(*browser, padded[0:padded.count - 1]) { BrowserClose(*browser); return 29 }
+    if BrowserNumber(*browser, "6 * 7", 0.0) != 42.0 { BrowserClose(*browser); return 29 }
     // Media reads byte ranges; audio is served as audio.
     ranges: [4]string = .["fetch('/clip.ogg',{headers:{Range:'bytes=2-4'}}).then(async r => r.status + ' ' + r.headers.get('content-range') + ' ' + await r.text())",
         "fetch('/clip.ogg',{headers:{Range:'bytes=-3'}}).then(async r => r.status + ' ' + await r.text())",
