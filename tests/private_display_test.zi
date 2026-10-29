@@ -1,0 +1,95 @@
+// A private display starts its own Xvfb, runs a client on it, finds the
+// window that client owns, reads its title, captures, resizes, saves and
+// reloads its pixels, then stops only what it started. Run with a bogus
+// inherited DISPLAY: nothing may use it.
+#import "private_display_linux"
+#import "c_string"
+#import "byte_text_linux"
+#import "format"
+#import "file"
+#import "timer_linux"
+
+#scope_file
+x11 :: #system_library "X11";
+libc :: #system_library "libc";
+XOpen :: (name: *u8) -> *void #foreign x11 "XOpenDisplay";
+XRoot :: (display: *void, screen: s32) -> u64 #foreign x11 "XRootWindow";
+XCreate :: (display: *void, parent: u64, x: s32, y: s32, width: u32, height: u32, border: u32, border_pixel: u64,
+    background: u64) -> u64 #foreign x11 "XCreateSimpleWindow";
+XName :: (display: *void, window: u64, name: *u8) -> s32 #foreign x11 "XStoreName";
+XAtom :: (display: *void, name: *u8, existing: s32) -> u64 #foreign x11 "XInternAtom";
+XChange :: (display: *void, window: u64, property: u64, kind: u64, format: s32, mode: s32, data: *u8, count: s32) -> s32 #foreign x11 "XChangeProperty";
+XMap :: (display: *void, window: u64) -> s32 #foreign x11 "XMapWindow";
+XFlush :: (display: *void) -> s32 #foreign x11 "XFlush";
+ProcessId :: () -> s32 #foreign libc "getpid";
+Environment :: (name: *u8) -> *u8 #foreign libc "getenv";
+
+// The client: a red 200x100 window titled "Private probe", owned by this PID.
+Client :: () -> s32 {
+    name: [16]u8
+    unused CopyCString("DISPLAY", name[:])
+    connection := XOpen(Environment(*name[0]))
+    if connection == null { return 20 }
+    window := XCreate(connection, XRoot(connection, 0), 0, 0, 200, 100, 0, 0, 0xff0000)
+    title: [32]u8
+    unused CopyCString("Private probe", title[:])
+    unused XName(connection, window, *title[0])
+    atom: [16]u8
+    unused CopyCString("_NET_WM_PID", atom[:])
+    pid: s64 = ProcessId()
+    unused XChange(connection, window, XAtom(connection, *atom[0], 0), 6, 32, 0, cast(*u8)*pid, 1)
+    unused XMap(connection, window)
+    unused XFlush(connection)
+    while true { unused SleepMilliseconds(100) }
+    return 0
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc > 1 && TextFromCString(argv[1]) == "client" { return Client() }
+    folder := TextFromCString(argv[1])
+    log: Vec(u8)
+    BuilderPrint(*log, "%/xvfb.log", folder)
+    display := OpenPrivateDisplay(640, 480, BuilderFinish(log))
+    if !display.valid { print("private display: %\n", display.error); return 1 }
+    defer ClosePrivateDisplay(*display)
+    if display.name == ":9999" || !PrivateDisplayOwned(*display) { return 2 }
+    self := TextFromCString(argv[0])
+    arguments: [2]string = .[self, "client"]
+    extra: [1]string = .["PRIVATE_DISPLAY_TEST=1"]
+    client_log: Vec(u8)
+    BuilderPrint(*client_log, "%/client.log", folder)
+    client := StartOnDisplay(*display, arguments[:], extra[:], "", BuilderFinish(client_log))
+    if !client.started { return 3 }
+    window := FindOwnedWindow(*display, client.pid, 10000)
+    if window == 0 { unused StopOwnedProcess(*client, 2000); return 4 }
+    // A PID that owns nothing finds nothing.
+    if FindOwnedWindow(*display, client.pid + 100000, 0) != 0 { return 5 }
+    if WindowTitle(*display, window) != "Private probe" { return 6 }
+    width, height := WindowSize(*display, window)
+    if width != 200 || height != 100 { return 7 }
+    image: DisplayImage
+    if !CaptureWindow(*display, window, *image) || image.width != 200 || image.height != 100 { return 8 }
+    if ImagePixel(*image, 10, 10) != 0xff0000 || PixelRed(ImagePixel(*image, 199, 99)) != 255 { return 9 }
+    if ImageColorCount(*image) != 1 { return 10 }
+    if !ResizeWindow(*display, window, 320, 150) { return 11 }
+    unused SleepMilliseconds(100)
+    if !CaptureWindow(*display, window, *image) || image.width != 320 || image.height != 150 { return 12 }
+    region: DisplayImage
+    ImageRegion(*image, 300, 140, 50, 50, *region)
+    if region.width != 20 || region.height != 10 || ImagePixel(*region, 0, 0) != 0xff0000 { return 13 }
+    png: Vec(u8)
+    BuilderPrint(*png, "%/probe.png", folder)
+    path := BuilderFinish(png)
+    loaded: DisplayImage
+    if !SavePNG(*image, path) || !LoadPNG(path, *loaded) || loaded.width != 320 || loaded.height != 150 { return 14 }
+    for i: 0..loaded.pixels.count - 1 { if loaded.pixels[i] != image.pixels[i] { return 15 } }
+    if !StopOwnedProcess(*client, 5000) || !client.finished { return 16 }
+    server := display.server.pid
+    ClosePrivateDisplay(*display)
+    if display.server.started && !display.server.finished { return 17 }
+    status: Vec(u8)
+    BuilderPrint(*status, "/proc/%/exe", server)
+    if PathExists(BuilderFinish(status)) { return 18 }
+    return 0
+}
