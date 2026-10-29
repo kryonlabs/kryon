@@ -3,6 +3,7 @@
 // for the build under test. Both run in the test's own process: every wait
 // polls the browser's pipe and serves the server's requests.
 //
+//     #import "kryon/devtools_linux"
 //     browser: Browser
 //     if !BrowserServe(*browser, "build/web") { return 1 }
 //     if !BrowserOpen(*browser, "build/t/web-test") { return 1 }
