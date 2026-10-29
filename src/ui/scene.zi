@@ -1,0 +1,1144 @@
+// A 3D scene of meshes, groups and lights, drawn in software by
+// scene_render. Shapes are generated the way three.js generates them, so a
+// model written for three.js keeps its look here.
+//
+//     scene: Scene
+//     SceneInit(*scene)
+//     AddHemisphereLight(*scene, sky, ground, 1.25)
+//     group := BeginGroup(*scene)
+//     body := Sphere(*scene, 0.2, LitMaterial(skin))
+//     SetScale(*scene, body, 1.3, 0.62, 1.0)
+//     EndGroup(*scene)
+//     SetPosition(*scene, group, 0.0, 0.15, 0.0)
+//
+// Nodes are numbered; every builder returns its node. A node made while a
+// group is open belongs to that group.
+#import "std/math"
+#import "std/vec"
+#import "std/option"
+#import "drawing_props"
+
+Vector3 :: struct { x: float64; y: float64; z: float64; }
+
+// A point of a flat outline or a texture coordinate.
+ShapePoint :: struct { x: float64; y: float64; }
+
+MaterialKind :: enum {
+    MaterialLit :: 0     // lit like three.js's MeshStandardMaterial
+    MaterialUnlit :: 1   // its colour as given, like MeshBasicMaterial
+    MaterialShadow :: 2  // only the shadows falling on it, like ShadowMaterial
+}
+
+SceneMaterial :: struct {
+    kind: MaterialKind
+    color: Color             // sRGB; its alpha is ignored
+    roughness: float64
+    metalness: float64
+    glow: Color              // emissive colour
+    glow_strength: float64
+    opacity: float64
+    transparent: bool        // drawn after opaque meshes and blended
+    double_sided: bool
+    flat: bool               // one normal per face
+    vertex_colors: bool      // multiply by each vertex's linear colour
+    texture: s32             // AddTexture's number, or -1
+    alpha_test: float64      // texels below this alpha are not drawn
+    exact_color: bool        // written without tone mapping
+}
+
+SceneNode :: struct {
+    parent: s32
+    mesh: s32                // -1 for a group
+    position: Vector3
+    rotation: Vector3        // radians, applied as three.js's XYZ order
+    scale: Vector3
+    cast_shadow: bool
+    receive_shadow: bool
+    visible: bool            // seen by the camera; hidden nodes still cast shadows
+}
+
+SceneMesh :: struct {
+    first_vertex: s32
+    vertex_count: s32
+    first_index: s32
+    index_count: s32         // 0: each three vertices make a triangle
+    material: SceneMaterial
+}
+
+SceneTexture :: struct { width: s32; height: s32; first_texel: s64; }
+
+SceneLight :: struct {
+    color: Color
+    intensity: float64
+    position: Vector3        // the light shines from here towards target
+    target: Vector3
+    shadow: bool
+    shadow_half_width: float64
+    shadow_half_height: float64
+    shadow_near: float64
+    shadow_far: float64
+    shadow_size: s32
+    shadow_bias: float64
+    shadow_normal_bias: float64
+    shadow_radius: float64
+}
+
+Scene :: struct {
+    nodes: Vec(SceneNode)
+    meshes: Vec(SceneMesh)
+    positions: Vec(Vector3)
+    normals: Vec(Vector3)
+    colors: Vec(Vector3)
+    uvs: Vec(ShapePoint)
+    indices: Vec(s32)
+    textures: Vec(SceneTexture)
+    texels: Vec(u8)
+    lights: Vec(SceneLight)
+    open: Vec(s32)
+    sky: Color
+    ground: Color
+    hemisphere: float64      // hemisphere light intensity, 0 for none
+    background: Color        // alpha 0 leaves the picture transparent
+    exposure: float64
+    tone_mapping: bool       // three.js's neutral tone mapping
+    failed: bool
+}
+
+// A flat outline drawn with moves, lines, curves and arcs, as three.js's
+// Shape; Extrude raises it.
+ShapeSegment :: struct {
+    kind: s32                // 0 line, 1 quadratic, 2 cubic, 3 ellipse arc
+    start: ShapePoint
+    control: ShapePoint
+    control2: ShapePoint
+    end: ShapePoint
+    center: ShapePoint
+    radius_x: float64
+    radius_y: float64
+    start_angle: float64
+    end_angle: float64
+    clockwise: bool
+}
+
+Shape :: struct {
+    segments: Vec(ShapeSegment)
+    current: ShapePoint
+}
+
+SceneInit :: (scene: *Scene) {
+    SceneClear(scene)
+}
+
+// Removes every node, mesh, texture and light; the settings return to
+// their defaults.
+SceneClear :: (scene: *Scene) {
+    VecClear(scene.nodes)
+    VecClear(scene.meshes)
+    VecClear(scene.positions)
+    VecClear(scene.normals)
+    VecClear(scene.colors)
+    VecClear(scene.uvs)
+    VecClear(scene.indices)
+    VecClear(scene.textures)
+    VecClear(scene.texels)
+    VecClear(scene.lights)
+    VecClear(scene.open)
+    scene.sky = .{255, 255, 255, 255}
+    scene.ground = .{0, 0, 0, 255}
+    scene.hemisphere = 0.0
+    scene.background = .{0, 0, 0, 0}
+    scene.exposure = 1.0
+    scene.tone_mapping = false
+    scene.failed = false
+}
+
+SceneFree :: (scene: *Scene) {
+    VecFree(scene.nodes)
+    VecFree(scene.meshes)
+    VecFree(scene.positions)
+    VecFree(scene.normals)
+    VecFree(scene.colors)
+    VecFree(scene.uvs)
+    VecFree(scene.indices)
+    VecFree(scene.textures)
+    VecFree(scene.texels)
+    VecFree(scene.lights)
+    VecFree(scene.open)
+}
+
+// ---------------------------------------------------------------- materials
+
+LitMaterial :: (color: Color, roughness: float64 = 1.0, metalness: float64 = 0.0) -> SceneMaterial {
+    return .{kind = .MaterialLit, color = color, roughness = roughness,
+        metalness = metalness, opacity = 1.0, texture = -1}
+}
+
+UnlitMaterial :: (color: Color) -> SceneMaterial {
+    return .{kind = .MaterialUnlit, color = color, opacity = 1.0, texture = -1}
+}
+
+// Shows only the shadows cast onto it, in COLOR at OPACITY.
+ShadowMaterial :: (color: Color, opacity: float64) -> SceneMaterial {
+    return .{kind = .MaterialShadow, color = color, opacity = opacity,
+        transparent = true, texture = -1}
+}
+
+// Copies straight-alpha RGBA8 pixels for materials to use.
+AddTexture :: (scene: *Scene, pixels: []u8, width: s32, height: s32) -> s32 {
+    if width <= 0 || height <= 0 || pixels.count < cast(s64)width * height * 4 { scene.failed = true; return -1 }
+    texture: SceneTexture = .{width, height, scene.texels.count}
+    for at: 0..cast(s64)width * height * 4 - 1 {
+        if !VecPush(scene.texels, pixels[at]) { scene.failed = true; return -1 }
+    }
+    if !VecPush(scene.textures, texture) { scene.failed = true; return -1 }
+    return cast(s32)(scene.textures.count - 1)
+}
+
+// ---------------------------------------------------------------- lights
+
+// Light from above in SKY and from below in GROUND, as three.js's
+// HemisphereLight.
+AddHemisphereLight :: (scene: *Scene, sky: Color, ground: Color, intensity: float64) {
+    scene.sky = sky
+    scene.ground = ground
+    scene.hemisphere = intensity
+}
+
+// Parallel light shining from POSITION towards the origin.
+AddDirectionalLight :: (scene: *Scene, color: Color, intensity: float64, position: Vector3) -> s32 {
+    light: SceneLight = .{color = color, intensity = intensity, position = position}
+    if !VecPush(scene.lights, light) { scene.failed = true; return -1 }
+    return cast(s32)(scene.lights.count - 1)
+}
+
+// LIGHT casts shadows inside a box HALF_WIDTH by HALF_HEIGHT around its
+// beam between NEAR and FAR, kept in a SIZE by SIZE depth map and softened
+// over RADIUS texels.
+CastLightShadow :: (scene: *Scene, light: s32, half_width: float64, half_height: float64,
+    near: float64, far: float64, size: s32, bias: float64, normal_bias: float64, radius: float64) {
+    if light < 0 || light >= cast(s32)scene.lights.count { return }
+    kept := *scene.lights[light]
+    kept.shadow = true
+    kept.shadow_half_width = half_width
+    kept.shadow_half_height = half_height
+    kept.shadow_near = near
+    kept.shadow_far = far
+    kept.shadow_size = size
+    kept.shadow_bias = bias
+    kept.shadow_normal_bias = normal_bias
+    kept.shadow_radius = radius
+}
+
+// ---------------------------------------------------------------- nodes
+
+BeginGroup :: (scene: *Scene) -> s32 {
+    group := AddNode(scene, -1)
+    if !VecPush(scene.open, group) { scene.failed = true }
+    return group
+}
+
+EndGroup :: (scene: *Scene) -> s32 {
+    if scene.open.count == 0 { scene.failed = true; return -1 }
+    group := scene.open[scene.open.count - 1]
+    unused VecPop(scene.open)
+    return group
+}
+
+SetPosition :: (scene: *Scene, node: s32, x: float64, y: float64, z: float64) -> s32 {
+    if !ValidNode(scene, node) { return node }
+    kept := *scene.nodes[node]
+    kept.position = .{x, y, z}
+    return node
+}
+
+// Moves NODE by the given amounts.
+Translate :: (scene: *Scene, node: s32, x: float64, y: float64, z: float64) -> s32 {
+    if !ValidNode(scene, node) { return node }
+    kept := *scene.nodes[node]
+    kept.position = .{kept.position.x + x, kept.position.y + y, kept.position.z + z}
+    return node
+}
+
+SetRotation :: (scene: *Scene, node: s32, x: float64, y: float64, z: float64) -> s32 {
+    if !ValidNode(scene, node) { return node }
+    kept := *scene.nodes[node]
+    kept.rotation = .{x, y, z}
+    return node
+}
+
+SetScale :: (scene: *Scene, node: s32, x: float64, y: float64, z: float64) -> s32 {
+    if !ValidNode(scene, node) { return node }
+    kept := *scene.nodes[node]
+    kept.scale = .{x, y, z}
+    return node
+}
+
+SetShadows :: (scene: *Scene, node: s32, casts: bool, receive: bool) -> s32 {
+    if !ValidNode(scene, node) { return node }
+    kept := *scene.nodes[node]
+    kept.cast_shadow = casts
+    kept.receive_shadow = receive
+    return node
+}
+
+// A hidden node and its children are not seen but still cast shadows.
+SetVisible :: (scene: *Scene, node: s32, visible: bool) -> s32 {
+    if !ValidNode(scene, node) { return node }
+    kept := *scene.nodes[node]
+    kept.visible = visible
+    return node
+}
+
+NodePosition :: (scene: *Scene, node: s32) -> Vector3 {
+    if !ValidNode(scene, node) { return .{} }
+    return scene.nodes[node].position
+}
+
+NodeRotation :: (scene: *Scene, node: s32) -> Vector3 {
+    if !ValidNode(scene, node) { return .{} }
+    return scene.nodes[node].rotation
+}
+
+NodeScale :: (scene: *Scene, node: s32) -> Vector3 {
+    if !ValidNode(scene, node) { return .{} }
+    return scene.nodes[node].scale
+}
+
+// Changes the material of every mesh at or below NODE.
+SetMaterial :: (scene: *Scene, node: s32, material: SceneMaterial) -> s32 {
+    if !ValidNode(scene, node) { return node }
+    for at: 0..scene.nodes.count - 1 {
+        if scene.nodes[at].mesh >= 0 && Descends(scene, cast(s32)at, node) {
+            mesh := *scene.meshes[scene.nodes[at].mesh]
+            mesh.material = material
+        }
+    }
+    return node
+}
+
+NodeMaterial :: (scene: *Scene, node: s32) -> SceneMaterial {
+    if !ValidNode(scene, node) || scene.nodes[node].mesh < 0 { return .{} }
+    return scene.meshes[scene.nodes[node].mesh].material
+}
+
+// ---------------------------------------------------------------- vertices
+
+VertexCount :: (scene: *Scene, node: s32) -> s32 {
+    if !ValidNode(scene, node) || scene.nodes[node].mesh < 0 { return 0 }
+    return scene.meshes[scene.nodes[node].mesh].vertex_count
+}
+
+VertexPosition :: (scene: *Scene, node: s32, vertex: s32) -> Vector3 {
+    at := VertexAt(scene, node, vertex)
+    if at < 0 { return .{} }
+    return scene.positions[at]
+}
+
+SetVertexPosition :: (scene: *Scene, node: s32, vertex: s32, position: Vector3) {
+    at := VertexAt(scene, node, vertex)
+    if at >= 0 { scene.positions[at] = position }
+}
+
+// A linear colour, used by materials with vertex_colors.
+SetVertexColor :: (scene: *Scene, node: s32, vertex: s32, color: Vector3) {
+    at := VertexAt(scene, node, vertex)
+    if at >= 0 { scene.colors[at] = color }
+}
+
+// Normals from the faces, as three.js's computeVertexNormals: shared by
+// the faces meeting at an indexed vertex, one per face otherwise.
+ComputeNormals :: (scene: *Scene, node: s32) {
+    if !ValidNode(scene, node) || scene.nodes[node].mesh < 0 { return }
+    mesh := scene.meshes[scene.nodes[node].mesh]
+    first := mesh.first_vertex
+    if mesh.index_count > 0 {
+        for at: 0..mesh.vertex_count - 1 { scene.normals[first + at] = .{} }
+        triangle: s32 = 0
+        while triangle + 2 < mesh.index_count {
+            a := first + scene.indices[mesh.first_index + triangle]
+            b := first + scene.indices[mesh.first_index + triangle + 1]
+            c := first + scene.indices[mesh.first_index + triangle + 2]
+            face := FaceNormal(scene.positions[a], scene.positions[b], scene.positions[c])
+            scene.normals[a] = Add3(scene.normals[a], face)
+            scene.normals[b] = Add3(scene.normals[b], face)
+            scene.normals[c] = Add3(scene.normals[c], face)
+            triangle += 3
+        }
+        for at: 0..mesh.vertex_count - 1 { scene.normals[first + at] = Normalize3(scene.normals[first + at]) }
+        return
+    }
+    triangle: s32 = 0
+    while triangle + 2 < mesh.vertex_count {
+        a := first + triangle
+        face := Normalize3(FaceNormal(scene.positions[a], scene.positions[a + 1], scene.positions[a + 2]))
+        scene.normals[a] = face
+        scene.normals[a + 1] = face
+        scene.normals[a + 2] = face
+        triangle += 3
+    }
+}
+
+// ---------------------------------------------------------------- shapes
+
+Sphere :: (scene: *Scene, radius: float64, material: SceneMaterial,
+    width_segments: s32 = 32, height_segments: s32 = 16,
+    phi_start: float64 = 0.0, phi_length: float64 = SCENE_TAU,
+    theta_start: float64 = 0.0, theta_length: float64 = SCENE_PI) -> s32 {
+    columns := ifx width_segments < 3 then 3 else width_segments
+    rows := ifx height_segments < 2 then 2 else height_segments
+    theta_end := Min(theta_start + theta_length, SCENE_PI)
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    for iy: 0..rows {
+        v := cast(float64)iy / cast(float64)rows
+        theta := theta_start + v * theta_length
+        y := radius * Cos(theta)
+        ring := Sqrt(Max(radius * radius - y * y, 0.0))
+        u_offset: float64 = 0.0
+        if iy == 0 && theta_start == 0.0 { u_offset = 0.5 / cast(float64)columns }
+        else if iy == rows && theta_end == SCENE_PI { u_offset = -0.5 / cast(float64)columns }
+        for ix: 0..columns {
+            u := cast(float64)ix / cast(float64)columns
+            phi := phi_start + u * phi_length
+            point: Vector3 = .{-ring * Cos(phi), y, ring * Sin(phi)}
+            PushVertex(scene, point, Normalize3(point), .{u + u_offset, 1.0 - v})
+        }
+    }
+    for iy: 0..rows - 1 {
+        for ix: 0..columns - 1 {
+            a := iy * (columns + 1) + ix + 1
+            b := iy * (columns + 1) + ix
+            c := (iy + 1) * (columns + 1) + ix
+            d := (iy + 1) * (columns + 1) + ix + 1
+            if iy != 0 || theta_start > 0.0 { PushTriangle(scene, a, b, d) }
+            if iy != rows - 1 || theta_end < SCENE_PI { PushTriangle(scene, b, c, d) }
+        }
+    }
+    return FinishMesh(scene, first, first_index, true, material)
+}
+
+Cylinder :: (scene: *Scene, radius_top: float64, radius_bottom: float64, height: float64,
+    material: SceneMaterial, radial_segments: s32 = 32, height_segments: s32 = 1,
+    open_ended: bool = false, theta_start: float64 = 0.0, theta_length: float64 = SCENE_TAU) -> s32 {
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    half := height / 2.0
+    slope := (radius_bottom - radius_top) / height
+    for y: 0..height_segments {
+        v := cast(float64)y / cast(float64)height_segments
+        radius := v * (radius_bottom - radius_top) + radius_top
+        for x: 0..radial_segments {
+            u := cast(float64)x / cast(float64)radial_segments
+            theta := u * theta_length + theta_start
+            sine := Sin(theta)
+            cosine := Cos(theta)
+            PushVertex(scene, .{radius * sine, -v * height + half, radius * cosine},
+                Normalize3(.{sine, slope, cosine}), .{u, 1.0 - v})
+        }
+    }
+    for x: 0..radial_segments - 1 {
+        for y: 0..height_segments - 1 {
+            a := y * (radial_segments + 1) + x
+            b := (y + 1) * (radial_segments + 1) + x
+            c := (y + 1) * (radial_segments + 1) + x + 1
+            d := y * (radial_segments + 1) + x + 1
+            if radius_top > 0.0 || y != 0 { PushTriangle(scene, a, b, d) }
+            if radius_bottom > 0.0 || y != height_segments - 1 { PushTriangle(scene, b, c, d) }
+        }
+    }
+    if !open_ended {
+        if radius_top > 0.0 { CylinderCap(scene, first, true, radius_top, half, radial_segments, theta_start, theta_length) }
+        if radius_bottom > 0.0 { CylinderCap(scene, first, false, radius_bottom, half, radial_segments, theta_start, theta_length) }
+    }
+    return FinishMesh(scene, first, first_index, true, material)
+}
+
+Cone :: (scene: *Scene, radius: float64, height: float64, material: SceneMaterial,
+    radial_segments: s32 = 32) -> s32 {
+    return Cylinder(scene, 0.0, radius, height, material, radial_segments)
+}
+
+Torus :: (scene: *Scene, radius: float64, tube: float64, material: SceneMaterial,
+    radial_segments: s32 = 12, tubular_segments: s32 = 48, arc: float64 = SCENE_TAU) -> s32 {
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    for j: 0..radial_segments {
+        v := cast(float64)j / cast(float64)radial_segments * SCENE_TAU
+        for i: 0..tubular_segments {
+            u := cast(float64)i / cast(float64)tubular_segments * arc
+            point: Vector3 = .{(radius + tube * Cos(v)) * Cos(u), (radius + tube * Cos(v)) * Sin(u), tube * Sin(v)}
+            center: Vector3 = .{radius * Cos(u), radius * Sin(u), 0.0}
+            PushVertex(scene, point, Normalize3(Sub3(point, center)),
+                .{cast(float64)i / cast(float64)tubular_segments, cast(float64)j / cast(float64)radial_segments})
+        }
+    }
+    for j: 1..radial_segments {
+        for i: 1..tubular_segments {
+            a := (tubular_segments + 1) * j + i - 1
+            b := (tubular_segments + 1) * (j - 1) + i - 1
+            c := (tubular_segments + 1) * (j - 1) + i
+            d := (tubular_segments + 1) * j + i
+            PushTriangle(scene, a, b, d)
+            PushTriangle(scene, b, c, d)
+        }
+    }
+    return FinishMesh(scene, first, first_index, true, material)
+}
+
+// Revolves the outline POINTS, each (radius, height), around the y axis.
+Lathe :: (scene: *Scene, points: []ShapePoint, material: SceneMaterial, segments: s32 = 12,
+    phi_start: float64 = 0.0, phi_length: float64 = SCENE_TAU) -> s32 {
+    count := cast(s32)points.count
+    if count < 2 { scene.failed = true; return -1 }
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    length := Min(Max(phi_length, 0.0), SCENE_TAU)
+    // The profile's normals, before turning: as three.js's LatheGeometry.
+    normals: Vec(ShapePoint)
+    previous: ShapePoint
+    for j: 0..count - 1 {
+        if j == count - 1 {
+            unused VecPush(normals, Normalize2(previous))
+        } else {
+            dx := points[j + 1].x - points[j].x
+            dy := points[j + 1].y - points[j].y
+            current: ShapePoint = .{dy, -dx}
+            if j == 0 {
+                previous = current
+                unused VecPush(normals, Normalize2(current))
+            } else {
+                unused VecPush(normals, Normalize2(.{current.x + previous.x, current.y + previous.y}))
+                previous = current
+            }
+        }
+    }
+    for i: 0..segments {
+        phi := phi_start + cast(float64)i * (1.0 / cast(float64)segments) * length
+        sine := Sin(phi)
+        cosine := Cos(phi)
+        for j: 0..count - 1 {
+            PushVertex(scene, .{points[j].x * sine, points[j].y, points[j].x * cosine},
+                .{normals[j].x * sine, normals[j].y, normals[j].x * cosine},
+                .{cast(float64)i / cast(float64)segments, cast(float64)j / cast(float64)(count - 1)})
+        }
+    }
+    for i: 0..segments - 1 {
+        for j: 0..count - 2 {
+            base := j + i * count
+            PushTriangle(scene, base, base + count, base + 1)
+            PushTriangle(scene, base + count + 1, base + 1, base + count)
+        }
+    }
+    return FinishMesh(scene, first, first_index, true, material)
+}
+
+// A WIDTH by HEIGHT rectangle facing +z.
+Plane :: (scene: *Scene, width: float64, height: float64, material: SceneMaterial,
+    width_segments: s32 = 1, height_segments: s32 = 1) -> s32 {
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    for iy: 0..height_segments {
+        y := cast(float64)iy * height / cast(float64)height_segments - height / 2.0
+        for ix: 0..width_segments {
+            x := cast(float64)ix * width / cast(float64)width_segments - width / 2.0
+            PushVertex(scene, .{x, -y, 0.0}, .{0.0, 0.0, 1.0},
+                .{cast(float64)ix / cast(float64)width_segments, 1.0 - cast(float64)iy / cast(float64)height_segments})
+        }
+    }
+    for iy: 0..height_segments - 1 {
+        for ix: 0..width_segments - 1 {
+            a := ix + (width_segments + 1) * iy
+            b := ix + (width_segments + 1) * (iy + 1)
+            c := ix + 1 + (width_segments + 1) * (iy + 1)
+            d := ix + 1 + (width_segments + 1) * iy
+            PushTriangle(scene, a, b, d)
+            PushTriangle(scene, b, c, d)
+        }
+    }
+    return FinishMesh(scene, first, first_index, true, material)
+}
+
+// A box with edges rounded to RADIUS in SEGMENTS steps, as three.js's
+// RoundedBoxGeometry.
+RoundedBox :: (scene: *Scene, width: float64, height: float64, depth: float64, radius: float64,
+    material: SceneMaterial, segments: s32 = 2) -> s32 {
+    total := segments * 2 + 1
+    round := Min(Min(width / 2.0, height / 2.0), Min(depth / 2.0, radius))
+    // A unit box of TOTAL steps a side, as three.js's BoxGeometry.
+    box: BoxWork
+    BoxSide(*box, 2, 1, 0, -1.0, -1.0, 1.0, total)
+    BoxSide(*box, 2, 1, 0, 1.0, -1.0, -1.0, total)
+    BoxSide(*box, 0, 2, 1, 1.0, 1.0, 1.0, total)
+    BoxSide(*box, 0, 2, 1, 1.0, -1.0, -1.0, total)
+    BoxSide(*box, 0, 1, 2, 1.0, -1.0, 1.0, total)
+    BoxSide(*box, 0, 1, 2, -1.0, -1.0, -1.0, total)
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    inner: Vector3 = .{width / 2.0 - round, height / 2.0 - round, depth / 2.0 - round}
+    half_step := 0.5 / cast(float64)total
+    for at: 0..box.triangles.count - 1 {
+        point := box.corners[box.triangles[at]]
+        normal: Vector3 = .{point.x - Sign(point.x) * half_step, point.y - Sign(point.y) * half_step,
+            point.z - Sign(point.z) * half_step}
+        normal = Normalize3(normal)
+        PushVertex(scene, .{inner.x * Sign(point.x) + normal.x * round, inner.y * Sign(point.y) + normal.y * round,
+            inner.z * Sign(point.z) + normal.z * round}, normal, .{})
+    }
+    return FinishMesh(scene, first, first_index, false, material)
+}
+
+Icosahedron :: (scene: *Scene, radius: float64, material: SceneMaterial, detail: s32 = 0) -> s32 {
+    t := (1.0 + Sqrt(5.0)) / 2.0
+    corners: [36]float64 = .[-1.0, t, 0.0, 1.0, t, 0.0, -1.0, -t, 0.0, 1.0, -t, 0.0,
+        0.0, -1.0, t, 0.0, 1.0, t, 0.0, -1.0, -t, 0.0, 1.0, -t,
+        t, 0.0, -1.0, t, 0.0, 1.0, -t, 0.0, -1.0, -t, 0.0, 1.0]
+    faces: [60]s32 = .[0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11,
+        1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8,
+        3, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9,
+        4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1]
+    return Polyhedron(scene, corners[:], faces[:], radius, detail, material)
+}
+
+Octahedron :: (scene: *Scene, radius: float64, material: SceneMaterial, detail: s32 = 0) -> s32 {
+    corners: [18]float64 = .[1.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, -1.0]
+    faces: [24]s32 = .[0, 2, 4, 0, 4, 3, 0, 3, 5, 0, 5, 2, 1, 2, 5, 1, 5, 3, 1, 3, 4, 1, 4, 2]
+    return Polyhedron(scene, corners[:], faces[:], radius, detail, material)
+}
+
+// A mesh from triangles of POSITIONS, three at a time; normals come from
+// the faces and colours start white.
+TriangleMesh :: (scene: *Scene, positions: []Vector3, material: SceneMaterial) -> s32 {
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    for point: positions { PushVertex(scene, point, .{}, .{}) }
+    node := FinishMesh(scene, first, first_index, false, material)
+    ComputeNormals(scene, node)
+    return node
+}
+
+ShapeMoveTo :: (shape: *Shape, x: float64, y: float64) {
+    shape.current = .{x, y}
+}
+
+ShapeLineTo :: (shape: *Shape, x: float64, y: float64) {
+    PushSegment(shape, .{kind = 0, start = shape.current, end = .{x, y}})
+}
+
+ShapeQuadraticTo :: (shape: *Shape, control_x: float64, control_y: float64, x: float64, y: float64) {
+    PushSegment(shape, .{kind = 1, start = shape.current, control = .{control_x, control_y}, end = .{x, y}})
+}
+
+ShapeBezierTo :: (shape: *Shape, x1: float64, y1: float64, x2: float64, y2: float64, x: float64, y: float64) {
+    PushSegment(shape, .{kind = 2, start = shape.current, control = .{x1, y1}, control2 = .{x2, y2}, end = .{x, y}})
+}
+
+// An arc around (X, Y), joined to the outline by a line when it does not
+// start where the outline ends, as three.js's absarc.
+ShapeArc :: (shape: *Shape, x: float64, y: float64, radius: float64,
+    start_angle: float64, end_angle: float64, clockwise: bool = false) {
+    arc: ShapeSegment = .{kind = 3, center = .{x, y}, radius_x = radius, radius_y = radius,
+        start_angle = start_angle, end_angle = end_angle, clockwise = clockwise}
+    begin := SegmentPoint(arc, 0.0)
+    if shape.segments.count > 0 && (begin.x != shape.current.x || begin.y != shape.current.y) {
+        ShapeLineTo(shape, begin.x, begin.y)
+    }
+    if !VecPush(shape.segments, arc) { return }
+    shape.current = SegmentPoint(arc, 1.0)
+}
+
+// Closes the outline with a line back to its start.
+ShapeClose :: (shape: *Shape) {
+    if shape.segments.count == 0 { return }
+    begin := SegmentPoint(shape.segments[0], 0.0)
+    finish := SegmentPoint(shape.segments[shape.segments.count - 1], 1.0)
+    if begin.x != finish.x || begin.y != finish.y {
+        PushSegment(shape, .{kind = 0, start = finish, end = begin})
+    }
+}
+
+// SHAPE raised DEPTH along +z, with edges rounded over BEVEL_THICKNESS and
+// BEVEL_SIZE in BEVEL_SEGMENTS steps when either is above zero, as
+// three.js's ExtrudeGeometry. Curves become CURVE_SEGMENTS lines.
+Extrude :: (scene: *Scene, shape: *Shape, depth: float64, material: SceneMaterial,
+    bevel_thickness: float64 = 0.0, bevel_size: float64 = 0.0, bevel_segments: s32 = 3,
+    curve_segments: s32 = 12) -> s32 {
+    bevel := bevel_thickness > 0.0 || bevel_size > 0.0
+    layers := ifx bevel then bevel_segments else 0
+    work: ExtrudeWork
+    ShapePoints(shape, curve_segments, *work)
+    if ShapeArea(*work) >= 0.0 { ReverseOutline(*work) }
+    MergeOverlapping(*work)
+    count := cast(s32)work.outline.count
+    if count < 3 { scene.failed = true; return -1 }
+    for i: 0..count - 1 {
+        unused VecPush(work.moves, BevelVector(work.outline[i], work.outline[(i + count - 1) % count],
+            work.outline[(i + 1) % count]))
+    }
+    TriangulateOutline(*work)
+    // Layers of the outline, front bevel to back bevel, as three.js lays them.
+    for b: 0..layers - 1 {
+        t := cast(float64)b / cast(float64)layers
+        z := bevel_thickness * Cos(t * SCENE_PI / 2.0)
+        size := bevel_size * Sin(t * SCENE_PI / 2.0)
+        for i: 0..count - 1 { unused VecPush(work.layers, Lift(work.outline[i], work.moves[i], size, -z)) }
+    }
+    full := ifx bevel then bevel_size else 0.0
+    for i: 0..count - 1 { unused VecPush(work.layers, Lift(work.outline[i], work.moves[i], full, 0.0)) }
+    for i: 0..count - 1 { unused VecPush(work.layers, Lift(work.outline[i], work.moves[i], full, depth)) }
+    back := layers - 1
+    while back >= 0 {
+        t := cast(float64)back / cast(float64)layers
+        z := bevel_thickness * Cos(t * SCENE_PI / 2.0)
+        size := bevel_size * Sin(t * SCENE_PI / 2.0)
+        for i: 0..count - 1 { unused VecPush(work.layers, Lift(work.outline[i], work.moves[i], size, depth + z)) }
+        back -= 1
+    }
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    last_layer := 1 + layers * 2
+    at: s64 = 0
+    while at + 2 < work.faces.count {
+        PushCorner(scene, work.layers[work.faces[at + 2]])
+        PushCorner(scene, work.layers[work.faces[at + 1]])
+        PushCorner(scene, work.layers[work.faces[at]])
+        at += 3
+    }
+    at = 0
+    while at + 2 < work.faces.count {
+        PushCorner(scene, work.layers[work.faces[at] + count * last_layer])
+        PushCorner(scene, work.layers[work.faces[at + 1] + count * last_layer])
+        PushCorner(scene, work.layers[work.faces[at + 2] + count * last_layer])
+        at += 3
+    }
+    i := count - 1
+    while i >= 0 {
+        k := ifx i - 1 < 0 then count - 1 else i - 1
+        for step: 0..last_layer - 1 {
+            a := work.layers[i + count * step]
+            b := work.layers[k + count * step]
+            c := work.layers[k + count * (step + 1)]
+            d := work.layers[i + count * (step + 1)]
+            PushCorner(scene, a); PushCorner(scene, b); PushCorner(scene, d)
+            PushCorner(scene, b); PushCorner(scene, c); PushCorner(scene, d)
+        }
+        i -= 1
+    }
+    node := FinishMesh(scene, first, first_index, false, material)
+    ComputeNormals(scene, node)
+    return node
+}
+
+#scope_file
+
+SCENE_PI :: 3.141592653589793
+SCENE_TAU :: 6.283185307179586
+
+Min :: (a: float64, b: float64) -> float64 { return ifx a < b then a else b }
+Max :: (a: float64, b: float64) -> float64 { return ifx a > b then a else b }
+Abs :: (a: float64) -> float64 { return ifx a < 0.0 then -a else a }
+Sign :: (a: float64) -> float64 {
+    if a > 0.0 { return 1.0 }
+    if a < 0.0 { return -1.0 }
+    return 0.0
+}
+
+Add3 :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x + b.x, a.y + b.y, a.z + b.z} }
+Sub3 :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x - b.x, a.y - b.y, a.z - b.z} }
+Cross3 :: (a: Vector3, b: Vector3) -> Vector3 {
+    return .{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}
+}
+
+Normalize3 :: (a: Vector3) -> Vector3 {
+    length := Sqrt(a.x * a.x + a.y * a.y + a.z * a.z)
+    if length == 0.0 { return a }
+    return .{a.x / length, a.y / length, a.z / length}
+}
+
+Normalize2 :: (a: ShapePoint) -> ShapePoint {
+    length := Sqrt(a.x * a.x + a.y * a.y)
+    if length == 0.0 { return a }
+    return .{a.x / length, a.y / length}
+}
+
+// As three.js: the cross product of (c - b) and (a - b).
+FaceNormal :: (a: Vector3, b: Vector3, c: Vector3) -> Vector3 {
+    return Cross3(Sub3(c, b), Sub3(a, b))
+}
+
+ValidNode :: (scene: *Scene, node: s32) -> bool {
+    return node >= 0 && node < cast(s32)scene.nodes.count
+}
+
+Descends :: (scene: *Scene, node: s32, ancestor: s32) -> bool {
+    at := node
+    while at >= 0 {
+        if at == ancestor { return true }
+        at = scene.nodes[at].parent
+    }
+    return false
+}
+
+VertexAt :: (scene: *Scene, node: s32, vertex: s32) -> s32 {
+    if !ValidNode(scene, node) || scene.nodes[node].mesh < 0 { return -1 }
+    mesh := scene.meshes[scene.nodes[node].mesh]
+    if vertex < 0 || vertex >= mesh.vertex_count { return -1 }
+    return mesh.first_vertex + vertex
+}
+
+AddNode :: (scene: *Scene, mesh: s32) -> s32 {
+    node: SceneNode = .{parent = -1, mesh = mesh, scale = .{1.0, 1.0, 1.0},
+        cast_shadow = true, receive_shadow = true, visible = true}
+    if scene.open.count > 0 { node.parent = scene.open[scene.open.count - 1] }
+    if !VecPush(scene.nodes, node) { scene.failed = true; return -1 }
+    return cast(s32)(scene.nodes.count - 1)
+}
+
+PushVertex :: (scene: *Scene, position: Vector3, normal: Vector3, uv: ShapePoint) {
+    if !VecPush(scene.positions, position) || !VecPush(scene.normals, normal) ||
+        !VecPush(scene.colors, .{1.0, 1.0, 1.0}) || !VecPush(scene.uvs, uv) { scene.failed = true }
+}
+
+PushCorner :: (scene: *Scene, position: Vector3) {
+    PushVertex(scene, position, .{}, .{})
+}
+
+PushTriangle :: (scene: *Scene, a: s32, b: s32, c: s32) {
+    if !VecPush(scene.indices, a) || !VecPush(scene.indices, b) || !VecPush(scene.indices, c) { scene.failed = true }
+}
+
+FinishMesh :: (scene: *Scene, first: s32, first_index: s32, indexed: bool, material: SceneMaterial) -> s32 {
+    mesh: SceneMesh = .{first_vertex = first, vertex_count = cast(s32)scene.positions.count - first,
+        first_index = first_index, material = material}
+    if indexed { mesh.index_count = cast(s32)scene.indices.count - first_index }
+    if !VecPush(scene.meshes, mesh) { scene.failed = true; return -1 }
+    return AddNode(scene, cast(s32)(scene.meshes.count - 1))
+}
+
+CylinderCap :: (scene: *Scene, first: s32, top: bool, radius: float64, half: float64,
+    radial_segments: s32, theta_start: float64, theta_length: float64) {
+    sign := ifx top then 1.0 else -1.0
+    center_start := cast(s32)scene.positions.count - first
+    for x: 1..radial_segments { PushVertex(scene, .{0.0, half * sign, 0.0}, .{0.0, sign, 0.0}, .{0.5, 0.5}) }
+    center_end := cast(s32)scene.positions.count - first
+    for x: 0..radial_segments {
+        u := cast(float64)x / cast(float64)radial_segments
+        theta := u * theta_length + theta_start
+        cosine := Cos(theta)
+        sine := Sin(theta)
+        PushVertex(scene, .{radius * sine, half * sign, radius * cosine}, .{0.0, sign, 0.0},
+            .{cosine * 0.5 + 0.5, sine * 0.5 * sign + 0.5})
+    }
+    for x: 0..radial_segments - 1 {
+        c := center_start + x
+        i := center_end + x
+        if top { PushTriangle(scene, i, i + 1, c) } else { PushTriangle(scene, i + 1, i, c) }
+    }
+}
+
+// One side of three.js's BoxGeometry(1, 1, 1, steps, steps, steps), its
+// triangles listed corner by corner as toNonIndexed lists them.
+BoxWork :: struct { corners: Vec(Vector3); triangles: Vec(s32); }
+
+BoxSide :: (box: *BoxWork, u: s32, v: s32, w: s32,
+    u_direction: float64, v_direction: float64, depth: float64, steps: s32) {
+    base := cast(s32)box.corners.count
+    for iy: 0..steps {
+        y := cast(float64)iy / cast(float64)steps - 0.5
+        for ix: 0..steps {
+            x := cast(float64)ix / cast(float64)steps - 0.5
+            axes: [3]float64
+            axes[u] = x * u_direction
+            axes[v] = y * v_direction
+            axes[w] = depth / 2.0
+            unused VecPush(box.corners, .{axes[0], axes[1], axes[2]})
+        }
+    }
+    for iy: 0..steps - 1 {
+        for ix: 0..steps - 1 {
+            a := base + ix + (steps + 1) * iy
+            b := base + ix + (steps + 1) * (iy + 1)
+            c := base + ix + 1 + (steps + 1) * (iy + 1)
+            d := base + ix + 1 + (steps + 1) * iy
+            unused VecPush(box.triangles, a); unused VecPush(box.triangles, b); unused VecPush(box.triangles, d)
+            unused VecPush(box.triangles, b); unused VecPush(box.triangles, c); unused VecPush(box.triangles, d)
+        }
+    }
+}
+
+// Faces of a polyhedron split DETAIL times and pushed onto a sphere of
+// RADIUS, as three.js's PolyhedronGeometry.
+Polyhedron :: (scene: *Scene, corners: []float64, faces: []s32, radius: float64, detail: s32,
+    material: SceneMaterial) -> s32 {
+    first := cast(s32)scene.positions.count
+    first_index := cast(s32)scene.indices.count
+    columns := detail + 1
+    at: s64 = 0
+    while at + 2 < faces.count {
+        a: Vector3 = .{corners[faces[at] * 3], corners[faces[at] * 3 + 1], corners[faces[at] * 3 + 2]}
+        b: Vector3 = .{corners[faces[at + 1] * 3], corners[faces[at + 1] * 3 + 1], corners[faces[at + 1] * 3 + 2]}
+        c: Vector3 = .{corners[faces[at + 2] * 3], corners[faces[at + 2] * 3 + 1], corners[faces[at + 2] * 3 + 2]}
+        grid: Vec(Vector3)
+        for i: 0..columns {
+            aj := Lerp3(a, c, cast(float64)i / cast(float64)columns)
+            bj := Lerp3(b, c, cast(float64)i / cast(float64)columns)
+            rows := columns - i
+            for j: 0..rows {
+                if j == 0 && i == columns { unused VecPush(grid, aj) }
+                else { unused VecPush(grid, Lerp3(aj, bj, cast(float64)j / cast(float64)rows)) }
+            }
+        }
+        for i: 0..columns - 1 {
+            for j: 0..2 * (columns - i) - 2 {
+                k := j / 2
+                if j % 2 == 0 {
+                    PolyhedronCorner(scene, grid[GridAt(columns, i, k + 1)], radius)
+                    PolyhedronCorner(scene, grid[GridAt(columns, i + 1, k)], radius)
+                    PolyhedronCorner(scene, grid[GridAt(columns, i, k)], radius)
+                } else {
+                    PolyhedronCorner(scene, grid[GridAt(columns, i, k + 1)], radius)
+                    PolyhedronCorner(scene, grid[GridAt(columns, i + 1, k + 1)], radius)
+                    PolyhedronCorner(scene, grid[GridAt(columns, i + 1, k)], radius)
+                }
+            }
+        }
+        at += 3
+    }
+    node := FinishMesh(scene, first, first_index, false, material)
+    if detail == 0 { ComputeNormals(scene, node) }
+    return node
+}
+
+// Row I of a subdivided face holds COLUMNS - I + 1 points.
+GridAt :: (columns: s32, i: s32, j: s32) -> s32 {
+    return i * (columns + 1) - i * (i - 1) / 2 + j
+}
+
+PolyhedronCorner :: (scene: *Scene, point: Vector3, radius: float64) {
+    direction := Normalize3(point)
+    PushVertex(scene, .{direction.x * radius, direction.y * radius, direction.z * radius}, direction, .{})
+}
+
+Lerp3 :: (a: Vector3, b: Vector3, t: float64) -> Vector3 {
+    return .{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t}
+}
+
+PushSegment :: (shape: *Shape, segment: ShapeSegment) {
+    if !VecPush(shape.segments, segment) { return }
+    shape.current = segment.end
+}
+
+SegmentPoint :: (segment: ShapeSegment, t: float64) -> ShapePoint {
+    if segment.kind == 0 {
+        if t == 1.0 { return segment.end }
+        return .{segment.start.x + (segment.end.x - segment.start.x) * t,
+            segment.start.y + (segment.end.y - segment.start.y) * t}
+    }
+    if segment.kind == 1 {
+        k := 1.0 - t
+        return .{k * k * segment.start.x + 2.0 * k * t * segment.control.x + t * t * segment.end.x,
+            k * k * segment.start.y + 2.0 * k * t * segment.control.y + t * t * segment.end.y}
+    }
+    if segment.kind == 2 {
+        k := 1.0 - t
+        return .{k * k * k * segment.start.x + 3.0 * k * k * t * segment.control.x +
+            3.0 * k * t * t * segment.control2.x + t * t * t * segment.end.x,
+            k * k * k * segment.start.y + 3.0 * k * k * t * segment.control.y +
+            3.0 * k * t * t * segment.control2.y + t * t * t * segment.end.y}
+    }
+    delta := segment.end_angle - segment.start_angle
+    same := Abs(delta) < 2.220446049250313e-16
+    while delta < 0.0 { delta += SCENE_TAU }
+    while delta > SCENE_TAU { delta -= SCENE_TAU }
+    if delta < 2.220446049250313e-16 { delta = ifx same then 0.0 else SCENE_TAU }
+    if segment.clockwise && !same { delta = ifx delta == SCENE_TAU then -SCENE_TAU else delta - SCENE_TAU }
+    angle := segment.start_angle + t * delta
+    return .{segment.center.x + segment.radius_x * Cos(angle), segment.center.y + segment.radius_y * Sin(angle)}
+}
+
+ExtrudeWork :: struct {
+    outline: Vec(ShapePoint)
+    moves: Vec(ShapePoint)
+    faces: Vec(s32)
+    ring: Vec(s32)
+    layers: Vec(Vector3)
+}
+
+// The outline as points, each curve split as three.js's CurvePath does.
+ShapePoints :: (shape: *Shape, divisions: s32, work: *ExtrudeWork) {
+    have_last := false
+    last: ShapePoint
+    for at: 0..shape.segments.count - 1 {
+        segment := shape.segments[at]
+        resolution := divisions
+        if segment.kind == 0 { resolution = 1 }
+        if segment.kind == 3 { resolution = divisions * 2 }
+        for d: 0..resolution {
+            point := SegmentPoint(segment, cast(float64)d / cast(float64)resolution)
+            if have_last && point.x == last.x && point.y == last.y { continue }
+            unused VecPush(work.outline, point)
+            last = point
+            have_last = true
+        }
+    }
+}
+
+ShapeArea :: (work: *ExtrudeWork) -> float64 {
+    area: float64 = 0.0
+    n := work.outline.count
+    p: s64 = n - 1
+    q: s64 = 0
+    while q < n {
+        area += work.outline[p].x * work.outline[q].y - work.outline[q].x * work.outline[p].y
+        p = q
+        q += 1
+    }
+    return area * 0.5
+}
+
+ReverseOutline :: (work: *ExtrudeWork) {
+    low: s64 = 0
+    high := work.outline.count - 1
+    while low < high {
+        kept := work.outline[low]
+        work.outline[low] = work.outline[high]
+        work.outline[high] = kept
+        low += 1
+        high -= 1
+    }
+}
+
+// Drops points that repeat their neighbour, the outline's ends included.
+MergeOverlapping :: (work: *ExtrudeWork) {
+    if work.outline.count == 0 { return }
+    limit := 1.0e-10 * 1.0e-10
+    previous := work.outline[0]
+    i: s64 = 1
+    while i <= work.outline.count {
+        index := i % work.outline.count
+        current := work.outline[index]
+        dx := current.x - previous.x
+        dy := current.y - previous.y
+        scale := Max(Max(Abs(current.x), Abs(current.y)), Max(Abs(previous.x), Abs(previous.y)))
+        if dx * dx + dy * dy <= limit * scale * scale {
+            at := index
+            while at + 1 < work.outline.count { work.outline[at] = work.outline[at + 1]; at += 1 }
+            unused VecPop(work.outline)
+            if work.outline.count == 0 { return }
+            continue
+        }
+        previous = current
+        i += 1
+    }
+}
+
+// How far a bevel moves each point, as three.js's getBevelVec.
+BevelVector :: (point: ShapePoint, previous: ShapePoint, next: ShapePoint) -> ShapePoint {
+    prev_x := point.x - previous.x
+    prev_y := point.y - previous.y
+    next_x := next.x - point.x
+    next_y := next.y - point.y
+    prev_length_sq := prev_x * prev_x + prev_y * prev_y
+    collinear := prev_x * next_y - prev_y * next_x
+    epsilon := 2.220446049250313e-16
+    shrink: float64 = 0.0
+    trans_x: float64 = 0.0
+    trans_y: float64 = 0.0
+    if Abs(collinear) > epsilon {
+        prev_length := Sqrt(prev_length_sq)
+        next_length := Sqrt(next_x * next_x + next_y * next_y)
+        prev_shift_x := previous.x - prev_y / prev_length
+        prev_shift_y := previous.y + prev_x / prev_length
+        next_shift_x := next.x - next_y / next_length
+        next_shift_y := next.y + next_x / next_length
+        factor := ((next_shift_x - prev_shift_x) * next_y - (next_shift_y - prev_shift_y) * next_x) /
+            (prev_x * next_y - prev_y * next_x)
+        trans_x = prev_shift_x + prev_x * factor - point.x
+        trans_y = prev_shift_y + prev_y * factor - point.y
+        trans_length_sq := trans_x * trans_x + trans_y * trans_y
+        if trans_length_sq <= 2.0 { return .{trans_x, trans_y} }
+        shrink = Sqrt(trans_length_sq / 2.0)
+    } else {
+        same := false
+        if prev_x > epsilon {
+            if next_x > epsilon { same = true }
+        } else if prev_x < -epsilon {
+            if next_x < -epsilon { same = true }
+        } else if Sign(prev_y) == Sign(next_y) {
+            same = true
+        }
+        if same {
+            trans_x = -prev_y
+            trans_y = prev_x
+            shrink = Sqrt(prev_length_sq)
+        } else {
+            trans_x = prev_x
+            trans_y = prev_y
+            shrink = Sqrt(prev_length_sq / 2.0)
+        }
+    }
+    return .{trans_x / shrink, trans_y / shrink}
+}
+
+Lift :: (point: ShapePoint, move: ShapePoint, size: float64, z: float64) -> Vector3 {
+    return .{point.x + move.x * size, point.y + move.y * size, z}
+}
+
+// Splits a simple polygon into triangles by cutting off ears. Each
+// triangle turns counter-clockwise, as three.js's Earcut leaves the lids.
+TriangulateOutline :: (work: *ExtrudeWork) {
+    VecClear(work.ring)
+    for i: 0..work.outline.count - 1 { unused VecPush(work.ring, cast(s32)i) }
+    if ShapeArea(work) < 0.0 {
+        low: s64 = 0
+        high := work.ring.count - 1
+        while low < high {
+            kept := work.ring[low]
+            work.ring[low] = work.ring[high]
+            work.ring[high] = kept
+            low += 1
+            high -= 1
+        }
+    }
+    while work.ring.count > 3 {
+        n := work.ring.count
+        cut := false
+        for i: 0..n - 1 {
+            a := work.ring[(i + n - 1) % n]
+            b := work.ring[i]
+            c := work.ring[(i + 1) % n]
+            if IsEar(work, a, b, c) {
+                PushFace(work, a, b, c)
+                at := i
+                while at + 1 < work.ring.count { work.ring[at] = work.ring[at + 1]; at += 1 }
+                unused VecPop(work.ring)
+                cut = true
+                break
+            }
+        }
+        // A tangled outline: fan the rest from its first point.
+        if !cut { break }
+    }
+    for i: 1..work.ring.count - 2 { PushFace(work, work.ring[0], work.ring[i], work.ring[i + 1]) }
+}
+
+PushFace :: (work: *ExtrudeWork, a: s32, b: s32, c: s32) {
+    unused VecPush(work.faces, a); unused VecPush(work.faces, b); unused VecPush(work.faces, c)
+}
+
+Turn :: (a: ShapePoint, b: ShapePoint, c: ShapePoint) -> float64 {
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+}
+
+IsEar :: (work: *ExtrudeWork, a: s32, b: s32, c: s32) -> bool {
+    pa := work.outline[a]
+    pb := work.outline[b]
+    pc := work.outline[c]
+    if Turn(pa, pb, pc) <= 0.0 { return false }
+    for at: 0..work.ring.count - 1 {
+        other := work.ring[at]
+        if other == a || other == b || other == c { continue }
+        p := work.outline[other]
+        if Turn(pa, pb, p) >= 0.0 && Turn(pb, pc, p) >= 0.0 && Turn(pc, pa, p) >= 0.0 { return false }
+    }
+    return true
+}

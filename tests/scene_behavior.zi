@@ -1,0 +1,94 @@
+// Scene builds three.js's shapes vertex for vertex, and RenderScene lights,
+// shadows and smooths them without a display.
+#import "std/math"
+#import "std/vec"
+#import "std/image"
+#import "drawing_props"
+#import "scene"
+#import "scene_render"
+
+Check :: (ok: bool, message: string) -> s32 {
+    if ok { return 0 }
+    print("scene: %\n", message)
+    return 1
+}
+
+// Vertex and index counts that three.js r186 generates for the same calls.
+Shapes :: () -> s32 {
+    scene: Scene
+    SceneInit(*scene)
+    m := LitMaterial(.{200, 100, 50, 255})
+    failures: s32 = 0
+    sphere := Sphere(*scene, 0.3, m, 48, 36)
+    failures += Check(VertexCount(*scene, sphere) == 1813 && scene.meshes[0].index_count == 10080, "sphere")
+    failures += Check(VertexCount(*scene, Cylinder(*scene, 0.1, 0.12, 0.5, m, 40)) == 244, "cylinder")
+    failures += Check(VertexCount(*scene, Torus(*scene, 0.2, 0.03, m, 24, 64)) == 1625, "torus")
+    failures += Check(VertexCount(*scene, RoundedBox(*scene, 0.6, 0.4, 0.5, 0.05, m, 4)) == 2916, "rounded box")
+    failures += Check(VertexCount(*scene, Icosahedron(*scene, 0.3, m, 2)) == 540, "icosahedron")
+    circle: Shape
+    ShapeArc(*circle, 0.0, 0.0, 0.3, 0.0, 6.283185307179586)
+    failures += Check(VertexCount(*scene, Extrude(*scene, *circle, 0.01, m, 0.02, 0.02, 4, 48)) == 5748, "bevelled disc")
+    star: Shape
+    ShapeMoveTo(*star, 0.0, -0.4); ShapeLineTo(*star, 0.1, -0.1); ShapeLineTo(*star, 0.4, 0.0)
+    ShapeLineTo(*star, 0.1, 0.1); ShapeLineTo(*star, 0.0, 0.4); ShapeLineTo(*star, -0.1, 0.1)
+    ShapeLineTo(*star, -0.4, 0.0); ShapeLineTo(*star, -0.1, -0.1); ShapeClose(*star)
+    failures += Check(VertexCount(*scene, Extrude(*scene, *star, 0.04, m, 0.04, 0.04, 4, 48)) == 468, "bevelled star")
+    profile: [3]ShapePoint = .[.{0.0, 0.0}, .{0.13, 0.01}, .{0.0, 0.52}]
+    failures += Check(VertexCount(*scene, Lathe(*scene, profile[:], m, 48)) == 147, "lathe")
+    failures += Check(!scene.failed && scene.open.count == 0, "scene failed")
+    SceneFree(*scene)
+    return failures
+}
+
+Pixel :: (image: *Image, x: s32, y: s32, channel: s32) -> s32 {
+    return cast(s32)image.pixels[(cast(s64)y * image.width + x) * 4 + channel]
+}
+
+// A sphere standing on a shadow catcher, seen from above and lit from the
+// top left: its shadow falls to the bottom right, its edge is smoothed.
+Lighting :: () -> s32 {
+    scene: Scene
+    SceneInit(*scene)
+    scene.tone_mapping = true
+    AddHemisphereLight(*scene, .{0xee, 0xf6, 0xf3, 255}, .{0x6e, 0x4c, 0x36, 255}, 1.25)
+    key := AddDirectionalLight(*scene, .{255, 255, 255, 255}, 2.3, .{-2.0, 5.0, -2.0})
+    CastLightShadow(*scene, key, 1.0, 1.0, 0.1, 20.0, 256, -0.0004, 0.01, 2.0)
+    ball := SetPosition(*scene, Sphere(*scene, 0.15, LitMaterial(.{200, 100, 50, 255}, 0.78)), 0.0, 0.3, 0.0)
+    catcher := SetRotation(*scene, Plane(*scene, 2.0, 2.0, ShadowMaterial(.{0, 0, 0, 255}, 0.5)), -1.5707963267948966, 0.0, 0.0)
+    unused SetShadows(*scene, catcher, false, true)
+    camera := OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.1, 20.0)
+    camera.position = .{0.0, 10.0, 0.0}
+    camera.target = .{0.0, 0.0, 0.0}
+    camera.up = .{0.0, 0.0, -1.0}
+    image: Image
+    image.width = 32
+    image.height = 32
+    failures: s32 = 0
+    failures += Check(RenderScene(*scene, camera, *image), "render")
+    failures += Check(image.pixels.count == 32 * 32 * 4, "picture size")
+    // The ball is opaque; its lit side faces the light.
+    failures += Check(Pixel(*image, 16, 16, 3) == 255, "ball opaque")
+    failures += Check(Pixel(*image, 14, 14, 0) > Pixel(*image, 18, 18, 0), "light from the top left")
+    // Its shadow lies on the catcher beside it, and the far corner is clear.
+    failures += Check(Pixel(*image, 22, 22, 3) > 40, "shadow cast to the bottom right")
+    failures += Check(Pixel(*image, 1, 1, 3) == 0, "unshadowed catcher is clear")
+    // Hidden nodes still cast shadows; the ball's edge is part covered.
+    unused SetVisible(*scene, ball, false)
+    failures += Check(RenderScene(*scene, camera, *image), "render hidden")
+    failures += Check(Pixel(*image, 22, 22, 3) > 40 && Pixel(*image, 16, 16, 0) == 0, "hidden ball casts its shadow")
+    unused SetVisible(*scene, ball, true)
+    unused SetVisible(*scene, catcher, false)
+    failures += Check(RenderScene(*scene, camera, *image), "render ball")
+    edge := false
+    for x: 0..31 {
+        alpha := Pixel(*image, cast(s32)x, 16, 3)
+        if alpha > 0 && alpha < 255 { edge = true }
+    }
+    failures += Check(edge, "edges are smoothed")
+    SceneFree(*scene)
+    return failures
+}
+
+main :: () -> s32 {
+    return Shapes() + Lighting()
+}

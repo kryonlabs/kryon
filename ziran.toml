@@ -46,6 +46,9 @@ bundle_resources = "src/backend/bundle_resources.zi"
 bundle_raylib = "src/backend/bundle_raylib.zi"
 app_asset = "src/backend/app_asset.zi"
 image_raster = "src/ui/image_raster.zi"
+# 3D scenes drawn in software into std/image pictures.
+scene = "src/ui/scene.zi"
+scene_render = "src/ui/scene_render.zi"
 # Run portable app bundles inside a host app and draw their widgets.
 hosted_app = "src/backend/hosted_app.zi"
 input_protocol = "src/ui/input_protocol.zi"

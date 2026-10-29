@@ -1,0 +1,952 @@
+// Draws a Scene into an RGBA image in software: depth-map shadows, four
+// samples per pixel, and three.js's standard material, neutral tone mapping
+// and sRGB output, so a scene lit as in three.js looks the same.
+//
+//     camera := OrthographicCamera(-0.5, 0.5, 0.5, -0.5, 0.1, 20.0)
+//     camera.position = .{0.0, 10.0, 0.0}
+//     image := NewImage(512, 512)
+//     ok := RenderScene(*scene, camera, *image)
+#import "std/math"
+#import "std/vec"
+#import "std/image"
+#import "drawing_props"
+#import "scene"
+
+SceneCamera :: struct {
+    perspective: bool
+    left: float64            // orthographic bounds at the target's distance
+    right: float64
+    top: float64
+    bottom: float64
+    fov: float64             // perspective: vertical field of view in degrees
+    aspect: float64
+    near: float64
+    far: float64
+    position: Vector3
+    target: Vector3          // looked at from position
+    up: Vector3
+}
+
+OrthographicCamera :: (left: float64, right: float64, top: float64, bottom: float64,
+    near: float64, far: float64) -> SceneCamera {
+    return .{left = left, right = right, top = top, bottom = bottom, near = near, far = far,
+        target = .{0.0, 0.0, -1.0}, up = .{0.0, 1.0, 0.0}}
+}
+
+PerspectiveCamera :: (fov: float64, aspect: float64, near: float64, far: float64) -> SceneCamera {
+    return .{perspective = true, fov = fov, aspect = aspect, near = near, far = far,
+        target = .{0.0, 0.0, -1.0}, up = .{0.0, 1.0, 0.0}}
+}
+
+// Draws SCENE as CAMERA sees it into IMAGE, whose width and height are
+// kept. False when the scene or the image cannot be drawn.
+RenderScene :: (scene: *Scene, camera: SceneCamera, image: *Image) -> bool {
+    width := image.width
+    height := image.height
+    if scene.failed || width <= 0 || height <= 0 || scene.open.count != 0 { return false }
+    work := *scene_renderer
+    work.width = width
+    work.height = height
+    work.camera = camera
+    work.tone_mapping = scene.tone_mapping
+    work.exposure = scene.exposure
+    if !PrepareNodes(work, scene) { return false }
+    PrepareLights(work, scene)
+    for light: 0..work.light_count - 1 {
+        if work.lights[light].shadow { DrawShadowMap(work, scene, cast(s32)light) }
+    }
+    samples := cast(s64)width * height * SAMPLES
+    clear: [4]u8
+    if scene.background.a > 0 {
+        clear[0] = scene.background.r; clear[1] = scene.background.g; clear[2] = scene.background.b; clear[3] = 255
+    }
+    VecClear(work.color)
+    VecClear(work.depth)
+    for at: 0..samples - 1 {
+        if !VecPush(work.color, clear[0]) || !VecPush(work.color, clear[1]) ||
+            !VecPush(work.color, clear[2]) || !VecPush(work.color, clear[3]) ||
+            !VecPush(work.depth, 1.0) { return false }
+    }
+    // Opaque meshes in the order they were made, then blended ones from the
+    // farthest to the nearest, as three.js sorts them.
+    for node: 0..scene.nodes.count - 1 {
+        if MeshDrawn(work, scene, cast(s32)node) && !scene.meshes[scene.nodes[node].mesh].material.transparent {
+            DrawMesh(work, scene, cast(s32)node)
+        }
+    }
+    VecClear(work.order)
+    for node: 0..scene.nodes.count - 1 {
+        if MeshDrawn(work, scene, cast(s32)node) && scene.meshes[scene.nodes[node].mesh].material.transparent {
+            unused VecPush(work.order, cast(s32)node)
+        }
+    }
+    SortFarthestFirst(work)
+    for at: 0..work.order.count - 1 { DrawMesh(work, scene, work.order[at]) }
+    return Resolve(work, image)
+}
+
+#scope_file
+
+SAMPLES :: 4
+MAX_LIGHTS :: 4
+RENDER_PI :: 3.141592653589793
+
+// Row-major: m[row * 4 + column].
+Matrix :: struct { m: [16]float64; }
+
+RenderLight :: struct {
+    color: Vector3           // linear, times the intensity
+    direction: Vector3       // towards the light, in view space
+    shadow: bool
+    shadow_matrix: Matrix    // world to map coordinates and depth, 0 to 1
+    bias: float64
+    normal_bias: float64
+    radius: float64
+    size: s32
+    first_texel: s64
+}
+
+RenderVertex :: struct {
+    x: float64               // window position, y down
+    y: float64
+    z: float64               // depth, 0 near to 1 far
+    w: float64
+    ndc_x: float64
+    ndc_y: float64
+    view: Vector3            // position seen from the camera
+    normal: Vector3          // in view space
+    world: Vector3
+    world_normal: Vector3
+    color: Vector3
+    uv: ShapePoint
+}
+
+// What a mesh's triangles share while they are drawn.
+DrawState :: struct {
+    material: SceneMaterial
+    base: Vector3            // linear colour
+    glow: Vector3
+    flipped: bool            // its world matrix mirrors it
+    receive: bool
+    texture: SceneTexture
+    scene: *Scene
+}
+
+Renderer :: struct {
+    width: s32
+    height: s32
+    camera: SceneCamera
+    view: Matrix
+    projection: Matrix
+    world: Vec(Matrix)
+    shown: Vec(bool)
+    lights: [MAX_LIGHTS]RenderLight
+    light_count: s32
+    tone_mapping: bool
+    exposure: float64
+    sky: Vector3
+    ground: Vector3
+    up: Vector3              // the hemisphere's sky direction, in view space
+    shadow_depth: Vec(float32)
+    color: Vec(u8)
+    depth: Vec(float32)
+    order: Vec(s32)
+    vertices: Vec(RenderVertex)
+}
+
+scene_renderer: Renderer;
+dfg_table: [512]float64;
+dfg_ready: bool;
+
+Min :: (a: float64, b: float64) -> float64 { return ifx a < b then a else b }
+Max :: (a: float64, b: float64) -> float64 { return ifx a > b then a else b }
+Abs :: (a: float64) -> float64 { return ifx a < 0.0 then -a else a }
+Saturate :: (a: float64) -> float64 { return Min(Max(a, 0.0), 1.0) }
+Floor :: (a: float64) -> float64 {
+    whole := cast(float64)cast(s64)a
+    return ifx whole > a then whole - 1.0 else whole
+}
+Fract :: (a: float64) -> float64 { return a - Floor(a) }
+
+Add :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x + b.x, a.y + b.y, a.z + b.z} }
+Sub :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x - b.x, a.y - b.y, a.z - b.z} }
+Times :: (a: Vector3, k: float64) -> Vector3 { return .{a.x * k, a.y * k, a.z * k} }
+Mul :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x * b.x, a.y * b.y, a.z * b.z} }
+Dot :: (a: Vector3, b: Vector3) -> float64 { return a.x * b.x + a.y * b.y + a.z * b.z }
+Cross :: (a: Vector3, b: Vector3) -> Vector3 {
+    return .{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}
+}
+Normalize :: (a: Vector3) -> Vector3 {
+    length := Sqrt(Dot(a, a))
+    if length == 0.0 { return a }
+    return .{a.x / length, a.y / length, a.z / length}
+}
+
+Identity :: () -> Matrix {
+    result: Matrix
+    result.m[0] = 1.0; result.m[5] = 1.0; result.m[10] = 1.0; result.m[15] = 1.0
+    return result
+}
+
+Multiply :: (a: Matrix, b: Matrix) -> Matrix {
+    result: Matrix
+    for row: 0..3 {
+        for column: 0..3 {
+            sum: float64 = 0.0
+            for k: 0..3 { sum += a.m[row * 4 + k] * b.m[k * 4 + column] }
+            result.m[row * 4 + column] = sum
+        }
+    }
+    return result
+}
+
+// Translation, then XYZ rotation, then scale, as three.js composes.
+Compose :: (position: Vector3, rotation: Vector3, scale: Vector3) -> Matrix {
+    a := Cos(rotation.x); b := Sin(rotation.x)
+    c := Cos(rotation.y); d := Sin(rotation.y)
+    e := Cos(rotation.z); f := Sin(rotation.z)
+    ae := a * e; af := a * f; be := b * e; bf := b * f
+    result := Identity()
+    result.m[0] = c * e * scale.x; result.m[1] = -c * f * scale.y; result.m[2] = d * scale.z
+    result.m[4] = (af + be * d) * scale.x; result.m[5] = (ae - bf * d) * scale.y; result.m[6] = -b * c * scale.z
+    result.m[8] = (bf - ae * d) * scale.x; result.m[9] = (be + af * d) * scale.y; result.m[10] = a * c * scale.z
+    result.m[3] = position.x; result.m[7] = position.y; result.m[11] = position.z
+    return result
+}
+
+Inverse :: (a: Matrix) -> Matrix {
+    m := a.m
+    inv: [16]float64
+    inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10]
+    inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10]
+    inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9]
+    inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9]
+    inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10]
+    inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10]
+    inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9]
+    inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9]
+    inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6]
+    inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6]
+    inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5]
+    inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5]
+    inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6]
+    inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6]
+    inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5]
+    inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5]
+    determinant := m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12]
+    result: Matrix
+    if determinant == 0.0 { return result }
+    for at: 0..15 { result.m[at] = inv[at] / determinant }
+    return result
+}
+
+Determinant3 :: (a: Matrix) -> float64 {
+    m := a.m
+    return m[0] * (m[5] * m[10] - m[6] * m[9]) - m[1] * (m[4] * m[10] - m[6] * m[8]) + m[2] * (m[4] * m[9] - m[5] * m[8])
+}
+
+// The upper 3 by 3 part inverted and transposed, for normals.
+NormalMatrix :: (a: Matrix) -> Matrix {
+    upper := a
+    upper.m[3] = 0.0; upper.m[7] = 0.0; upper.m[11] = 0.0
+    upper.m[12] = 0.0; upper.m[13] = 0.0; upper.m[14] = 0.0; upper.m[15] = 1.0
+    inverse := Inverse(upper)
+    result: Matrix
+    for row: 0..3 { for column: 0..3 { result.m[row * 4 + column] = inverse.m[column * 4 + row] } }
+    return result
+}
+
+Point :: (a: Matrix, p: Vector3) -> Vector3 {
+    return .{a.m[0] * p.x + a.m[1] * p.y + a.m[2] * p.z + a.m[3],
+        a.m[4] * p.x + a.m[5] * p.y + a.m[6] * p.z + a.m[7],
+        a.m[8] * p.x + a.m[9] * p.y + a.m[10] * p.z + a.m[11]}
+}
+
+Direction :: (a: Matrix, p: Vector3) -> Vector3 {
+    return .{a.m[0] * p.x + a.m[1] * p.y + a.m[2] * p.z,
+        a.m[4] * p.x + a.m[5] * p.y + a.m[6] * p.z,
+        a.m[8] * p.x + a.m[9] * p.y + a.m[10] * p.z}
+}
+
+// The transposed rotation: from view space back to the world.
+BackDirection :: (a: Matrix, p: Vector3) -> Vector3 {
+    return .{a.m[0] * p.x + a.m[4] * p.y + a.m[8] * p.z,
+        a.m[1] * p.x + a.m[5] * p.y + a.m[9] * p.z,
+        a.m[2] * p.x + a.m[6] * p.y + a.m[10] * p.z}
+}
+
+ProjectW :: (a: Matrix, p: Vector3) -> float64 {
+    return a.m[12] * p.x + a.m[13] * p.y + a.m[14] * p.z + a.m[15]
+}
+
+// The world-to-eye matrix of an eye at POSITION facing TARGET, as
+// three.js's Object3D.lookAt for cameras.
+LookAt :: (position: Vector3, target: Vector3, up: Vector3) -> Matrix {
+    z := Sub(position, target)
+    if Dot(z, z) == 0.0 { z.z = 1.0 }
+    z = Normalize(z)
+    x := Cross(up, z)
+    if Dot(x, x) == 0.0 {
+        if Abs(up.z) == 1.0 { z.x += 0.0001 } else { z.z += 0.0001 }
+        z = Normalize(z)
+        x = Cross(up, z)
+    }
+    x = Normalize(x)
+    y := Cross(z, x)
+    result := Identity()
+    result.m[0] = x.x; result.m[1] = x.y; result.m[2] = x.z
+    result.m[4] = y.x; result.m[5] = y.y; result.m[6] = y.z
+    result.m[8] = z.x; result.m[9] = z.y; result.m[10] = z.z
+    result.m[3] = -Dot(x, position); result.m[7] = -Dot(y, position); result.m[11] = -Dot(z, position)
+    return result
+}
+
+Orthographic :: (left: float64, right: float64, top: float64, bottom: float64, near: float64, far: float64) -> Matrix {
+    result := Identity()
+    result.m[0] = 2.0 / (right - left); result.m[3] = -(right + left) / (right - left)
+    result.m[5] = 2.0 / (top - bottom); result.m[7] = -(top + bottom) / (top - bottom)
+    result.m[10] = -2.0 / (far - near); result.m[11] = -(far + near) / (far - near)
+    return result
+}
+
+Projection :: (camera: SceneCamera) -> Matrix {
+    if !camera.perspective {
+        return Orthographic(camera.left, camera.right, camera.top, camera.bottom, camera.near, camera.far)
+    }
+    top := camera.near * Tan(camera.fov * RENDER_PI / 360.0)
+    height := 2.0 * top
+    width := camera.aspect * height
+    left := -0.5 * width
+    right := left + width
+    bottom := top - height
+    result: Matrix
+    result.m[0] = 2.0 * camera.near / (right - left)
+    result.m[2] = (right + left) / (right - left)
+    result.m[5] = 2.0 * camera.near / (top - bottom)
+    result.m[6] = (top + bottom) / (top - bottom)
+    result.m[10] = -(camera.far + camera.near) / (camera.far - camera.near)
+    result.m[11] = -2.0 * camera.far * camera.near / (camera.far - camera.near)
+    result.m[14] = -1.0
+    return result
+}
+
+// sRGB to linear, as three.js's Color does.
+Linear :: (value: u8) -> float64 {
+    c := cast(float64)value / 255.0
+    if c < 0.04045 { return c * 0.0773993808 }
+    return Pow(c * 0.9478672986 + 0.0521327014, 2.4)
+}
+
+LinearColor :: (color: Color) -> Vector3 {
+    return .{Linear(color.r), Linear(color.g), Linear(color.b)}
+}
+
+// Linear to an sRGB byte, as three.js's output transfer.
+Encode :: (value: float64) -> u8 {
+    c := Saturate(value)
+    encoded := ifx c <= 0.0031308 then c * 12.92 else Pow(c, 0.41666) * 1.055 - 0.055
+    return cast(u8)(Saturate(encoded) * 255.0 + 0.5)
+}
+
+// three.js's NeutralToneMapping.
+Neutral :: (color: Vector3, exposure: float64) -> Vector3 {
+    c := Times(color, exposure)
+    x := Min(c.x, Min(c.y, c.z))
+    offset := ifx x < 0.08 then x - 6.25 * x * x else 0.04
+    c = .{c.x - offset, c.y - offset, c.z - offset}
+    peak := Max(c.x, Max(c.y, c.z))
+    start := 0.8 - 0.04
+    if peak < start { return c }
+    d := 1.0 - start
+    new_peak := 1.0 - d * d / (peak + d - start)
+    c = Times(c, new_peak / peak)
+    g := 1.0 - 1.0 / (0.15 * (peak - new_peak) + 1.0)
+    return .{c.x + (new_peak - c.x) * g, c.y + (new_peak - c.y) * g, c.z + (new_peak - c.z) * g}
+}
+
+HalfFloat :: (bits: u16) -> float64 {
+    exponent := cast(s32)((bits >> 10) & 31)
+    fraction := cast(float64)(bits & 1023)
+    value: float64 = 0.0
+    if exponent == 0 { value = fraction / 1024.0 * Pow(2.0, -14.0) }
+    else { value = (1.0 + fraction / 1024.0) * Pow(2.0, cast(float64)(exponent - 15)) }
+    return ifx (bits & 32768) != 0 then -value else value
+}
+
+// three.js's 16 by 16 table of the split-sum terms, filtered linearly.
+DFG :: (roughness: float64, dot_nv: float64) -> ShapePoint {
+    if !dfg_ready {
+        at: s32 = 0
+        digits: s32 = 0
+        bits: u16 = 0
+        for character: 0..DFG_HEX.count - 1 {
+            code := cast(s32)DFG_HEX[character]
+            digit: s32 = -1
+            if code >= #char "0" && code <= #char "9" { digit = code - #char "0" }
+            if code >= #char "a" && code <= #char "f" { digit = code - #char "a" + 10 }
+            if digit < 0 { continue }
+            bits = cast(u16)((cast(s32)bits << 4) | digit)
+            digits += 1
+            if digits == 4 && at < 512 { dfg_table[at] = HalfFloat(bits); at += 1; digits = 0; bits = 0 }
+        }
+        dfg_ready = true
+    }
+    tx := Min(Max(roughness * 16.0 - 0.5, 0.0), 15.0)
+    ty := Min(Max(dot_nv * 16.0 - 0.5, 0.0), 15.0)
+    x0 := cast(s32)Floor(tx)
+    y0 := cast(s32)Floor(ty)
+    x1 := ifx x0 < 15 then x0 + 1 else 15
+    y1 := ifx y0 < 15 then y0 + 1 else 15
+    fx := tx - cast(float64)x0
+    fy := ty - cast(float64)y0
+    result: ShapePoint
+    for channel: 0..1 {
+        a := dfg_table[(y0 * 16 + x0) * 2 + channel]
+        b := dfg_table[(y0 * 16 + x1) * 2 + channel]
+        c := dfg_table[(y1 * 16 + x0) * 2 + channel]
+        d := dfg_table[(y1 * 16 + x1) * 2 + channel]
+        value := (a * (1.0 - fx) + b * fx) * (1.0 - fy) + (c * (1.0 - fx) + d * fx) * fy
+        if channel == 0 { result.x = value } else { result.y = value }
+    }
+    return result
+}
+
+PrepareNodes :: (work: *Renderer, scene: *Scene) -> bool {
+    VecClear(work.world)
+    VecClear(work.shown)
+    for at: 0..scene.nodes.count - 1 {
+        node := scene.nodes[at]
+        local := Compose(node.position, node.rotation, node.scale)
+        world := local
+        shown := node.visible
+        // Groups are made before what they hold.
+        if node.parent >= 0 {
+            if node.parent >= cast(s32)at { return false }
+            world = Multiply(work.world[node.parent], local)
+            shown = shown && work.shown[node.parent]
+        }
+        if !VecPush(work.world, world) || !VecPush(work.shown, shown) { return false }
+    }
+    camera := work.camera
+    work.view = LookAt(camera.position, camera.target, camera.up)
+    work.projection = Projection(camera)
+    return true
+}
+
+PrepareLights :: (work: *Renderer, scene: *Scene) {
+    work.sky = Times(LinearColor(scene.sky), scene.hemisphere)
+    work.ground = Times(LinearColor(scene.ground), scene.hemisphere)
+    work.up = Normalize(Direction(work.view, .{0.0, 1.0, 0.0}))
+    work.light_count = 0
+    VecClear(work.shadow_depth)
+    for at: 0..scene.lights.count - 1 {
+        if work.light_count >= MAX_LIGHTS { break }
+        source := scene.lights[at]
+        light: RenderLight
+        light.color = Times(LinearColor(source.color), source.intensity)
+        light.direction = Normalize(Direction(work.view, Sub(source.position, source.target)))
+        if source.shadow && source.shadow_size > 0 {
+            eye := LookAt(source.position, source.target, .{0.0, 1.0, 0.0})
+            lens := Orthographic(-source.shadow_half_width, source.shadow_half_width,
+                source.shadow_half_height, -source.shadow_half_height, source.shadow_near, source.shadow_far)
+            bias := Identity()
+            bias.m[0] = 0.5; bias.m[3] = 0.5; bias.m[5] = 0.5; bias.m[7] = 0.5; bias.m[10] = 0.5; bias.m[11] = 0.5
+            light.shadow = true
+            light.shadow_matrix = Multiply(bias, Multiply(lens, eye))
+            light.bias = source.shadow_bias
+            light.normal_bias = source.shadow_normal_bias
+            light.radius = source.shadow_radius
+            light.size = source.shadow_size
+            light.first_texel = work.shadow_depth.count
+            for texel: 0..cast(s64)light.size * light.size - 1 { unused VecPush(work.shadow_depth, 1.0) }
+        }
+        work.lights[work.light_count] = light
+        work.light_count += 1
+    }
+}
+
+MeshDrawn :: (work: *Renderer, scene: *Scene, node: s32) -> bool {
+    return scene.nodes[node].mesh >= 0 && work.shown[node]
+}
+
+// Triangle corners of NODE's mesh, in order.
+Corner :: (scene: *Scene, mesh: SceneMesh, at: s32) -> s32 {
+    if mesh.index_count > 0 { return mesh.first_vertex + scene.indices[mesh.first_index + at] }
+    return mesh.first_vertex + at
+}
+
+Corners :: (mesh: SceneMesh) -> s32 {
+    return ifx mesh.index_count > 0 then mesh.index_count else mesh.vertex_count
+}
+
+// Depths of the faces facing away from LIGHT, as three.js renders shadow
+// maps for one-sided materials.
+DrawShadowMap :: (work: *Renderer, scene: *Scene, light: s32) {
+    shadow := work.lights[light]
+    size := cast(float64)shadow.size
+    for node: 0..scene.nodes.count - 1 {
+        source := scene.nodes[node]
+        if source.mesh < 0 || !source.cast_shadow { continue }
+        mesh := scene.meshes[source.mesh]
+        world := work.world[node]
+        flipped := Determinant3(world) < 0.0
+        corners := Corners(mesh)
+        at: s32 = 0
+        while at + 2 < corners {
+            points: [3]Vector3
+            for k: 0..2 {
+                p := Point(shadow.shadow_matrix, Point(world, scene.positions[Corner(scene, mesh, at + cast(s32)k)]))
+                points[k] = .{p.x * size, p.y * size, p.z}
+            }
+            area := (points[1].x - points[0].x) * (points[2].y - points[0].y) -
+                (points[1].y - points[0].y) * (points[2].x - points[0].x)
+            front := (area > 0.0) != flipped
+            if mesh.material.double_sided || !front { ShadowTriangle(work, shadow, points[0], points[1], points[2]) }
+            at += 3
+        }
+    }
+}
+
+ShadowTriangle :: (work: *Renderer, light: RenderLight, a: Vector3, b0: Vector3, c0: Vector3) {
+    b := b0
+    c := c0
+    area := Edge(a.x, a.y, b.x, b.y, c.x, c.y)
+    if area == 0.0 { return }
+    if area < 0.0 { b = c0; c = b0; area = -area }
+    size := light.size
+    x0 := Max(Floor(Min(a.x, Min(b.x, c.x))), 0.0)
+    x1 := Min(Floor(Max(a.x, Max(b.x, c.x))) + 1.0, cast(float64)size)
+    y0 := Max(Floor(Min(a.y, Min(b.y, c.y))), 0.0)
+    y1 := Min(Floor(Max(a.y, Max(b.y, c.y))) + 1.0, cast(float64)size)
+    y := cast(s32)y0
+    while y < cast(s32)y1 {
+        x := cast(s32)x0
+        while x < cast(s32)x1 {
+            px := cast(float64)x + 0.5
+            py := cast(float64)y + 0.5
+            e0 := Edge(b.x, b.y, c.x, c.y, px, py)
+            e1 := Edge(c.x, c.y, a.x, a.y, px, py)
+            e2 := Edge(a.x, a.y, b.x, b.y, px, py)
+            if Covers(e0, b, c) && Covers(e1, c, a) && Covers(e2, a, b) {
+                z := (e0 * a.z + e1 * b.z + e2 * c.z) / area
+                at := light.first_texel + cast(s64)y * size + x
+                if z >= 0.0 && z <= 1.0 && z <= cast(float64)work.shadow_depth[at] { work.shadow_depth[at] = cast(float32)z }
+            }
+            x += 1
+        }
+        y += 1
+    }
+}
+
+// Twice the signed area of (a, b, p).
+Edge :: (ax: float64, ay: float64, bx: float64, by: float64, px: float64, py: float64) -> float64 {
+    return (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+}
+
+// Inside an edge, or on it when only one of two triangles sharing it may
+// claim the point.
+Covers :: (e: float64, a: Vector3, b: Vector3) -> bool {
+    if e > 0.0 { return true }
+    if e < 0.0 { return false }
+    dy := b.y - a.y
+    return dy < 0.0 || (dy == 0.0 && b.x - a.x > 0.0)
+}
+
+DrawMesh :: (work: *Renderer, scene: *Scene, node: s32) {
+    mesh := scene.meshes[scene.nodes[node].mesh]
+    world := work.world[node]
+    model_view := Multiply(work.view, world)
+    normals := NormalMatrix(model_view)
+    state: DrawState
+    state.material = mesh.material
+    state.scene = scene
+    state.base = LinearColor(mesh.material.color)
+    state.glow = Times(LinearColor(mesh.material.glow), mesh.material.glow_strength)
+    state.flipped = Determinant3(world) < 0.0
+    state.receive = scene.nodes[node].receive_shadow
+    if mesh.material.texture >= 0 && mesh.material.texture < cast(s32)scene.textures.count {
+        state.texture = scene.textures[mesh.material.texture]
+    } else {
+        state.material.texture = -1
+    }
+    VecClear(work.vertices)
+    for at: 0..mesh.vertex_count - 1 {
+        source := mesh.first_vertex + cast(s32)at
+        vertex: RenderVertex
+        vertex.view = Point(model_view, scene.positions[source])
+        clip := Point(work.projection, vertex.view)
+        vertex.w = ProjectW(work.projection, vertex.view)
+        if vertex.w > 1.0e-12 {
+            vertex.ndc_x = clip.x / vertex.w
+            vertex.ndc_y = clip.y / vertex.w
+            vertex.x = (vertex.ndc_x + 1.0) * 0.5 * cast(float64)work.width
+            vertex.y = (1.0 - vertex.ndc_y) * 0.5 * cast(float64)work.height
+            vertex.z = (clip.z / vertex.w + 1.0) * 0.5
+        }
+        vertex.normal = Normalize(Direction(normals, scene.normals[source]))
+        vertex.world = Point(world, scene.positions[source])
+        vertex.world_normal = Normalize(BackDirection(work.view, vertex.normal))
+        vertex.color = scene.colors[source]
+        vertex.uv = scene.uvs[source]
+        if !VecPush(work.vertices, vertex) { return }
+    }
+    corners := Corners(mesh)
+    at: s32 = 0
+    while at + 2 < corners {
+        a := Corner(scene, mesh, at) - mesh.first_vertex
+        b := Corner(scene, mesh, at + 1) - mesh.first_vertex
+        c := Corner(scene, mesh, at + 2) - mesh.first_vertex
+        DrawTriangle(work, scene, *state, a, b, c)
+        at += 3
+    }
+}
+
+DrawTriangle :: (work: *Renderer, scene: *Scene, state: *DrawState, ia: s32, ib0: s32, ic0: s32) {
+    va := *work.vertices[ia]
+    vb := *work.vertices[ib0]
+    vc := *work.vertices[ic0]
+    if va.w <= 1.0e-12 || vb.w <= 1.0e-12 || vc.w <= 1.0e-12 { return }
+    ndc_area := (vb.ndc_x - va.ndc_x) * (vc.ndc_y - va.ndc_y) - (vb.ndc_y - va.ndc_y) * (vc.ndc_x - va.ndc_x)
+    if ndc_area == 0.0 { return }
+    front := (ndc_area > 0.0) != state.flipped
+    if !front && !state.material.double_sided { return }
+    ib := ib0
+    ic := ic0
+    area := Edge(va.x, va.y, vb.x, vb.y, vc.x, vc.y)
+    if area < 0.0 { ib = ic0; ic = ib0; area = -area }
+    a := work.vertices[ia]
+    b := work.vertices[ib]
+    c := work.vertices[ic]
+    pa: Vector3 = .{a.x, a.y, 0.0}
+    pb: Vector3 = .{b.x, b.y, 0.0}
+    pc: Vector3 = .{c.x, c.y, 0.0}
+    // A face's own normal faces the camera, as three.js finds it from the
+    // screen derivatives of the position.
+    face := Normalize(Cross(Sub(b.view, a.view), Sub(c.view, a.view)))
+    if Dot(face, ViewDirection(work, Times(Add(Add(a.view, b.view), c.view), 1.0 / 3.0))) < 0.0 { face = Times(face, -1.0) }
+    side := ifx front then 1.0 else -1.0
+    // How fast the normal turns across a pixel, for three.js's
+    // geometry roughness.
+    ax := -(c.y - b.y) / area; ay := (c.x - b.x) / area
+    bx := -(a.y - c.y) / area; by := (a.x - c.x) / area
+    cx := -(b.y - a.y) / area; cy := (b.x - a.x) / area
+    turn: float64 = 0.0
+    if !state.material.flat {
+        dx := Add(Add(Times(a.normal, ax), Times(b.normal, bx)), Times(c.normal, cx))
+        dy := Add(Add(Times(a.normal, ay), Times(b.normal, by)), Times(c.normal, cy))
+        turn = Max(Max(Max(Abs(dx.x), Abs(dy.x)), Max(Abs(dx.y), Abs(dy.y))), Max(Abs(dx.z), Abs(dy.z)))
+    }
+    sample_x: [SAMPLES]float64 = .[0.375, 0.875, 0.125, 0.625]
+    sample_y: [SAMPLES]float64 = .[0.125, 0.375, 0.625, 0.875]
+    width := work.width
+    x0 := cast(s32)Max(Floor(Min(a.x, Min(b.x, c.x))), 0.0)
+    x1 := cast(s32)Min(Floor(Max(a.x, Max(b.x, c.x))) + 1.0, cast(float64)width)
+    y0 := cast(s32)Max(Floor(Min(a.y, Min(b.y, c.y))), 0.0)
+    y1 := cast(s32)Min(Floor(Max(a.y, Max(b.y, c.y))) + 1.0, cast(float64)work.height)
+    y := y0
+    while y < y1 {
+        x := x0
+        while x < x1 {
+            passed: [SAMPLES]bool
+            depths: [SAMPLES]float64
+            any := false
+            pixel := (cast(s64)y * width + x) * SAMPLES
+            for s: 0..SAMPLES - 1 {
+                sx := cast(float64)x + sample_x[s]
+                sy := cast(float64)y + sample_y[s]
+                e0 := Edge(b.x, b.y, c.x, c.y, sx, sy)
+                e1 := Edge(c.x, c.y, a.x, a.y, sx, sy)
+                e2 := Edge(a.x, a.y, b.x, b.y, sx, sy)
+                if Covers(e0, pb, pc) && Covers(e1, pc, pa) && Covers(e2, pa, pb) {
+                    z := (e0 * a.z + e1 * b.z + e2 * c.z) / area
+                    if z >= 0.0 && z <= 1.0 && z <= cast(float64)work.depth[pixel + s] {
+                        passed[s] = true
+                        depths[s] = z
+                        any = true
+                    }
+                }
+            }
+            if any {
+                cx0 := cast(float64)x + 0.5
+                cy0 := cast(float64)y + 0.5
+                la := Edge(b.x, b.y, c.x, c.y, cx0, cy0) / area
+                lb := Edge(c.x, c.y, a.x, a.y, cx0, cy0) / area
+                lc := Edge(a.x, a.y, b.x, b.y, cx0, cy0) / area
+                if work.camera.perspective {
+                    sum := la / a.w + lb / b.w + lc / c.w
+                    la = la / a.w / sum
+                    lb = lb / b.w / sum
+                    lc = lc / c.w / sum
+                }
+                rgba := Shade(work, state, *a, *b, *c, la, lb, lc, face, side, turn, x, y)
+                if rgba.discard == false {
+                    for s: 0..SAMPLES - 1 {
+                        if !passed[s] { continue }
+                        Store(work, state, (pixel + s) * 4, rgba)
+                        work.depth[pixel + s] = cast(float32)depths[s]
+                    }
+                }
+            }
+            x += 1
+        }
+        y += 1
+    }
+}
+
+ViewDirection :: (work: *Renderer, view: Vector3) -> Vector3 {
+    if !work.camera.perspective { return .{0.0, 0.0, 1.0} }
+    return Normalize(Times(view, -1.0))
+}
+
+Fragment :: struct { r: float64; g: float64; b: float64; a: float64; discard: bool; }
+
+Store :: (work: *Renderer, state: *DrawState, at: s64, fragment: Fragment) {
+    r := cast(float64)Encode(fragment.r) / 255.0
+    g := cast(float64)Encode(fragment.g) / 255.0
+    b := cast(float64)Encode(fragment.b) / 255.0
+    if !state.material.transparent {
+        work.color[at] = cast(u8)(r * 255.0 + 0.5)
+        work.color[at + 1] = cast(u8)(g * 255.0 + 0.5)
+        work.color[at + 2] = cast(u8)(b * 255.0 + 0.5)
+        work.color[at + 3] = 255
+        return
+    }
+    alpha := Saturate(fragment.a)
+    keep := 1.0 - alpha
+    work.color[at] = Byte(r * alpha + cast(float64)work.color[at] / 255.0 * keep)
+    work.color[at + 1] = Byte(g * alpha + cast(float64)work.color[at + 1] / 255.0 * keep)
+    work.color[at + 2] = Byte(b * alpha + cast(float64)work.color[at + 2] / 255.0 * keep)
+    work.color[at + 3] = Byte(alpha + cast(float64)work.color[at + 3] / 255.0 * keep)
+}
+
+Byte :: (value: float64) -> u8 { return cast(u8)(Saturate(value) * 255.0 + 0.5) }
+
+Shade :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex, c: *RenderVertex,
+    la: float64, lb: float64, lc: float64, face: Vector3, side: float64, turn: float64, x: s32, y: s32) -> Fragment {
+    material := state.material
+    result: Fragment
+    view := Add(Add(Times(a.view, la), Times(b.view, lb)), Times(c.view, lc))
+    world := Add(Add(Times(a.world, la), Times(b.world, lb)), Times(c.world, lc))
+    world_normal := Add(Add(Times(a.world_normal, la), Times(b.world_normal, lb)), Times(c.world_normal, lc))
+    shadow: [MAX_LIGHTS]float64
+    for light: 0..work.light_count - 1 {
+        shadow[light] = 1.0
+        if work.lights[light].shadow && state.receive {
+            shadow[light] = ShadowAt(work, work.lights[light], world, world_normal, x, y)
+        }
+    }
+    if material.kind == .MaterialShadow {
+        mask: float64 = 1.0
+        for light: 0..work.light_count - 1 { mask *= shadow[light] }
+        return Output(work, state, state.base, material.opacity * (1.0 - mask))
+    }
+    diffuse := state.base
+    alpha := material.opacity
+    if material.vertex_colors {
+        diffuse = Mul(diffuse, Add(Add(Times(a.color, la), Times(b.color, lb)), Times(c.color, lc)))
+    }
+    if material.texture >= 0 {
+        u := a.uv.x * la + b.uv.x * lb + c.uv.x * lc
+        v := a.uv.y * la + b.uv.y * lb + c.uv.y * lc
+        texel := Texel(work, state, u, v)
+        diffuse = Mul(diffuse, .{texel.r, texel.g, texel.b})
+        alpha *= texel.a
+    }
+    if alpha < material.alpha_test { result.discard = true; return result }
+    if material.kind == .MaterialUnlit { return Output(work, state, diffuse, alpha) }
+    normal := face
+    if !material.flat {
+        normal = Normalize(Add(Add(Times(a.normal, la), Times(b.normal, lb)), Times(c.normal, lc)))
+        if material.double_sided { normal = Times(normal, side) }
+    }
+    eye := ViewDirection(work, view)
+    roughness := Min(Max(material.roughness, 0.0525) + turn, 1.0)
+    metal := material.metalness
+    diffuse_part := Times(diffuse, 1.0 - metal)
+    specular: Vector3 = .{0.04 + (diffuse.x - 0.04) * metal, 0.04 + (diffuse.y - 0.04) * metal, 0.04 + (diffuse.z - 0.04) * metal}
+    dot_nv := Saturate(Dot(normal, eye))
+    dfg := DFG(roughness, dot_nv)
+    energy := dfg.x + dfg.y
+    compensation: Vector3 = .{1.0 + specular.x * (1.0 / energy - 1.0), 1.0 + specular.y * (1.0 / energy - 1.0),
+        1.0 + specular.z * (1.0 / energy - 1.0)}
+    direct_diffuse: Vector3
+    direct_specular: Vector3
+    alpha2 := roughness * roughness
+    for light: 0..work.light_count - 1 {
+        source := work.lights[light]
+        dot_nl := Saturate(Dot(normal, source.direction))
+        irradiance := Times(source.color, dot_nl * shadow[light])
+        half := Normalize(Add(source.direction, eye))
+        dot_nh := Saturate(Dot(normal, half))
+        dot_vh := Saturate(Dot(eye, half))
+        fresnel := Pow(2.0, (-5.55473 * dot_vh - 6.98316) * dot_vh)
+        f: Vector3 = .{specular.x * (1.0 - fresnel) + fresnel, specular.y * (1.0 - fresnel) + fresnel,
+            specular.z * (1.0 - fresnel) + fresnel}
+        a2 := alpha2 * alpha2
+        gv := dot_nl * Sqrt(a2 + (1.0 - a2) * dot_nv * dot_nv)
+        gl := dot_nv * Sqrt(a2 + (1.0 - a2) * dot_nl * dot_nl)
+        visibility := 0.5 / Max(gv + gl, 1.0e-6)
+        denominator := dot_nh * dot_nh * (a2 - 1.0) + 1.0
+        distribution := a2 / (RENDER_PI * denominator * denominator)
+        direct_specular = Add(direct_specular, Mul(Times(Mul(irradiance, f), visibility * distribution), compensation))
+        f0 := 0.04 * (1.0 - fresnel) + fresnel
+        direct_diffuse = Add(direct_diffuse, Times(Mul(irradiance, diffuse_part), (1.0 - f0) / RENDER_PI))
+    }
+    // The hemisphere's light, with the energy the rough surface reflects.
+    weight := 0.5 * Dot(normal, work.up) + 0.5
+    irradiance := Add(work.ground, Times(Sub(work.sky, work.ground), weight))
+    single := 0.04 * dfg.x + dfg.y
+    average := 0.04 + 0.96 * 0.047619
+    multiple := single * average / (1.0 - (1.0 - energy) * average) * (1.0 - energy)
+    indirect := Times(Mul(irradiance, diffuse_part), (1.0 - single - multiple) / RENDER_PI)
+    light := Add(Add(Add(direct_diffuse, indirect), direct_specular), state.glow)
+    return Output(work, state, light, alpha)
+}
+
+Output :: (work: *Renderer, state: *DrawState, color: Vector3, alpha: float64) -> Fragment {
+    out := color
+    if work.tone_mapping && !state.material.exact_color { out = Neutral(out, work.exposure) }
+    return .{out.x, out.y, out.z, alpha, false}
+}
+
+Texel :: (work: *Renderer, state: *DrawState, u: float64, v: float64) -> Fragment {
+    texture := state.texture
+    tx := cast(s32)Floor(u * cast(float64)texture.width)
+    ty := cast(s32)Floor(v * cast(float64)texture.height)
+    tx = ifx tx < 0 then 0 else ifx tx >= texture.width then texture.width - 1 else tx
+    ty = ifx ty < 0 then 0 else ifx ty >= texture.height then texture.height - 1 else ty
+    // Pictures are kept top row first; texture rows count from the bottom.
+    at := texture.first_texel + (cast(s64)(texture.height - 1 - ty) * texture.width + tx) * 4
+    scene := state.scene
+    return .{Linear(scene.texels[at]), Linear(scene.texels[at + 1]), Linear(scene.texels[at + 2]),
+        cast(float64)scene.texels[at + 3] / 255.0, false}
+}
+
+// three.js's soft shadow: five samples on a turning disc, each compared
+// with the four nearest depths.
+ShadowAt :: (work: *Renderer, light: RenderLight, world: Vector3, world_normal: Vector3, x: s32, y: s32) -> float64 {
+    coord := Point(light.shadow_matrix, Add(world, Times(world_normal, light.normal_bias)))
+    z := coord.z + light.bias
+    if coord.x < 0.0 || coord.x > 1.0 || coord.y < 0.0 || coord.y > 1.0 || z > 1.0 { return 1.0 }
+    size := cast(float64)light.size
+    radius := light.radius / size
+    fx := cast(float64)x + 0.5
+    fy := cast(float64)(work.height - 1 - y) + 0.5
+    noise := Fract(52.9829189 * Fract(fx * 0.06711056 + fy * 0.00583715))
+    phi := noise * 2.0 * RENDER_PI
+    total: float64 = 0.0
+    for i: 0..4 {
+        r := Sqrt((cast(float64)i + 0.5) / 5.0)
+        theta := cast(float64)i * 2.399963229728653 + phi
+        total += Compare(work, light, coord.x + Cos(theta) * r * radius, coord.y + Sin(theta) * r * radius, z)
+    }
+    return total * 0.2
+}
+
+Compare :: (work: *Renderer, light: RenderLight, u: float64, v: float64, z: float64) -> float64 {
+    size := light.size
+    tx := u * cast(float64)size - 0.5
+    ty := v * cast(float64)size - 0.5
+    x0 := Floor(tx)
+    y0 := Floor(ty)
+    fx := tx - x0
+    fy := ty - y0
+    a := Lit(work, light, cast(s32)x0, cast(s32)y0, z)
+    b := Lit(work, light, cast(s32)x0 + 1, cast(s32)y0, z)
+    c := Lit(work, light, cast(s32)x0, cast(s32)y0 + 1, z)
+    d := Lit(work, light, cast(s32)x0 + 1, cast(s32)y0 + 1, z)
+    return (a * (1.0 - fx) + b * fx) * (1.0 - fy) + (c * (1.0 - fx) + d * fx) * fy
+}
+
+Lit :: (work: *Renderer, light: RenderLight, x: s32, y: s32, z: float64) -> float64 {
+    size := light.size
+    cx := ifx x < 0 then 0 else ifx x >= size then size - 1 else x
+    cy := ifx y < 0 then 0 else ifx y >= size then size - 1 else y
+    depth := work.shadow_depth[light.first_texel + cast(s64)cy * size + cx]
+    return ifx z <= cast(float64)depth then 1.0 else 0.0
+}
+
+SortFarthestFirst :: (work: *Renderer) {
+    // Insertion sort keeps equal depths in the order they were made.
+    keys: Vec(float64)
+    for at: 0..work.order.count - 1 {
+        origin := Point(work.world[work.order[at]], .{})
+        view := Point(work.view, origin)
+        clip := Point(work.projection, view)
+        w := ProjectW(work.projection, view)
+        unused VecPush(keys, ifx w != 0.0 then clip.z / w else clip.z)
+    }
+    i: s64 = 1
+    while i < work.order.count {
+        key := keys[i]
+        node := work.order[i]
+        j := i - 1
+        while j >= 0 && keys[j] < key {
+            keys[j + 1] = keys[j]
+            work.order[j + 1] = work.order[j]
+            j -= 1
+        }
+        keys[j + 1] = key
+        work.order[j + 1] = node
+        i += 1
+    }
+}
+
+// Averages each pixel's samples and stores them with straight alpha.
+Resolve :: (work: *Renderer, image: *Image) -> bool {
+    VecClear(image.pixels)
+    pixels := cast(s64)work.width * work.height
+    for pixel: 0..pixels - 1 {
+        sum: [4]s64
+        for s: 0..SAMPLES - 1 {
+            at := (pixel * SAMPLES + s) * 4
+            for channel: 0..3 { sum[channel] += cast(s64)work.color[at + channel] }
+        }
+        out: [4]u8
+        if sum[3] > 0 {
+            for channel: 0..2 {
+                value := (sum[channel] * 255 + sum[3] / 2) / sum[3]
+                out[channel] = cast(u8)(ifx value > 255 then 255 else value)
+            }
+            out[3] = cast(u8)((sum[3] + SAMPLES / 2) / SAMPLES)
+        }
+        for channel: 0..3 { if !VecPush(image.pixels, out[channel]) { return false } }
+    }
+    return true
+}
+
+// The table's half floats as hex, sixteen to a line.
+DFG_HEX :: #string END
+30b53ad1314c3a4d33d2391c35ef382837f336a638d135393979341039f83252
+3a5330f03a942fc93abf2e353ada2d053ae82c1f3aed2ae03aea29d13ae128ff
+363838e4364a38ce3699385e374e372c383935a438dc3462396e32c439de3134
+3a2b30033a592e3a3a6d2ce13a6e2bba3a5f2a333a49290a3a2d28263a0a26e8
+389436d7389736c938a3367538bc35ac38ee349c393e33323997318639e23038
+3a132e753a292cf53a2d2bac3a2129ff3a0428bc39dc279039ad261a397824fa
+39ac34a839ac34a339ae348039ae342339b1330e39c231a939e0306339fc2eb5
+3a0c2d1d3a142bcf3a0729ff39e928a339be273c398925b3394a248839072345
+3a7732233a76321f3a7332043a6a31b33a5831143a45303b3a342eb63a262d31
+3a1e2bef3a0b2a0d39ec28a139c0271b398725803944244938fa22bd38ac2155
+3b072fca3b062fca3b002fb83af42f7c3adb2eea3ab42e003a852cec3a5e2bc5
+3a362a003a0d289939dc270739a02562395a2424390b226838b720fd385f1fd1
+3b692cb93b682cbb3b622cbb3b562cae3b3b2c783b0d2c0a3acf2ae33a922998
+3a5428673a1726d039d3253c398924023935222638dc20bd387d1f54381d1db3
+3ba9296b3ba8296f3ba3297b3b9829873b7f29763b4e29273b0e28953ac227b7
+3a73263b3a2324e739d0239b397621d93917207e38b21ee7384b1d5337c71c1e
+3bd225cb3bd125d33bcd25f03bc2261f3bad26453b7d262d3b3e25c43aec250f
+3a93243a3a3222ce39d0215b3969202a38fe1e6e388f1cf1381f1b9b376219dd
+3be921ab3be921b73be521e53bdd22413bc922a73ba022ec3b6222cd3b0f2247
+3aae21753a44208839d41f4939601dbe38e91c7738701ae837f119533708181b
+3bf61cea3bf61cfb3bf31d383bec1dbd3bda1e7c3bb71f253b7d1f793b2c1f4c
+3ac61ea63a551dbb39da1cbd395a1b9d38d81a00385518ac37ab173c36b71598
+3bfc17363bfc17593bf917e73bf418963be419973bc61aa83b911b843b431bd2
+3ade1b8a3a651acd39e219d3395718cd38ca17b3383e1613376d14bf366f135e
+3bff101b3bff10393bfc10c83bf912263bea14283bcf15843b9f16c53b54179a
+3af017ce3a76177139ea16a4395615a738bf14a738291379373511ea362d10a1
+3c00061b3c00066a3bfe081c3bfa0a4c3bed0d163bd50fb33ba9114d3b63127c
+3b01132f3a85134439f412d23957120d38b511223817103c37030ed335f00d6d
+3c00007a3c0000893bfe011d3bfb027c3bf004fa3bda08813bb10acd3b6f0c97
+3b100d7b3a930df139fe0def39590d8a38af0ce938080c3136d50af035b909a3
+3c0000003c0000013bff00153bfb00593bf200fd3bdd01df3bb7031c3b79047c
+3b1d05d43aa006d53a08075a395d075e38aa06f737f4064836ac05763586049f
+END;
