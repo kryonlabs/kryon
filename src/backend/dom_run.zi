@@ -6,6 +6,7 @@
 #import "page_core"
 #import "geometry"
 #import "session"
+#import "std/number_text"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
@@ -51,9 +52,34 @@ DrawDomFrame :: (session: Session, viewport: Rectangle) -> bool {
         DomError("kryon: browser document frame failed")
         return false
     }
-    if DomFrameCommit(session) != cast(FrameStatus)FrameOk {
+    commit_status := DomFrameCommit(session)
+    if commit_status != cast(FrameStatus)FrameOk {
         EndCanvasFrame()
-        DomError("kryon: browser document could not commit")
+        failure := FrameFailureAt(session)
+        detail: [240]u8
+        length: s64 = 0
+        digits: [24]u8
+        parts: [7]string = .["kryon: browser document could not commit: ", failure.message,
+            " (kind ", FormatInteger(cast(s64)failure.kind, digits[:]), ")"]
+        for part: parts {
+            for byte: part {
+                if length < 239 { detail[length] = byte; length += 1 }
+            }
+        }
+        DomError(TextView(detail[0:length]))
+        depth := TreeFramePendingScopes(session)
+        depth_detail: [96]u8
+        depth_digits: [24]u8
+        kind_digits: [24]u8
+        depth_parts: [5]string = .["kryon: pending scopes: ", FormatInteger(cast(s64)depth, depth_digits[:]),
+            ", kind ", FormatInteger(cast(s64)failure.kind, kind_digits[:]), ", submitted above"]
+        depth_length: s64 = 0
+        for part: depth_parts {
+            for byte: part {
+                if depth_length < 95 { depth_detail[depth_length] = byte; depth_length += 1 }
+            }
+        }
+        DomError(TextView(depth_detail[0:depth_length]))
         return false
     }
     if !DomReconcile(session, viewport) {

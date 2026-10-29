@@ -1151,6 +1151,15 @@
         trees[slot].building = false
         if trees[slot].scope_depth != 1 &&
         trees[slot].error == cast(FrameStatus)FrameOk {
+            pending: s32 = 1
+            while pending < trees[slot].scope_depth {
+                pending_node: s32 = trees[slot].scope[pending]
+                if pending_node >= 0 && pending_node < trees[slot].submitted_count {
+                    trees[slot].error_key = trees[slot].submitted[pending_node].key
+                    trees[slot].error_kind = trees[slot].submitted[pending_node].kind
+                }
+                pending += 1
+            }
             trees[slot].error = cast(FrameStatus)FrameInvalidScope
         }
         if trees[slot].error != cast(FrameStatus)FrameOk ||
@@ -1192,6 +1201,14 @@
     TreeFrameStatus :: (session: Session) -> FrameStatus {
         if !SessionValid(session) { return cast(FrameStatus)FrameInvalidSession }
         return trees[session.slot].error
+    }
+
+    #program_export
+    TreeFramePendingScopes :: (session: Session) -> s32 {
+        if !SessionValid(session) { return 0 }
+        slot := SessionIndex(session)
+        if trees[slot].scope_depth > 1 { return trees[slot].scope_depth }
+        return 0
     }
 
     // The key and kind of the widget that failed the frame, such as the second

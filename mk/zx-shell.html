@@ -20,6 +20,7 @@
   <script>
     var Module = {
       onExit: function(code) {
+        console.log("MODULE EXIT " + code + " at:", new Error().stack);
         document.getElementById("result").textContent = code === 0 ? "PASS" : "FAIL " + code;
       },
       onAbort: function(reason) {

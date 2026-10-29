@@ -5,6 +5,7 @@
 // pointer. It decides nothing about the input itself.
 #import "page_core"
 #import "page_files"
+#import "dom_host"
 #import "canvas_events"
 #import "byte_text_linux"
 #import "web"
@@ -253,7 +254,10 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
         button: s32 = cast(s32)WebGetNumber(event, page_event_names.button)
         flags: s32 = PageEventSend(CanvasEventMouseDown, button, 0,
             PageEventPointX(event), PageEventPointY(event), 0, 0, event)
-        if (flags & CanvasEventFocusCanvas) != 0 { PageFocusQuietly() }
+        // Document-layout pages are ordinary DOM documents: inputs own
+        // focus and text selection natively, and stealing it for the
+        // hidden canvas kills double-click selection.
+        if (flags & CanvasEventFocusCanvas) != 0 && !DomDocumentLayout() { PageFocusQuietly() }
         pointer: WebValue = WebGet(event, page_event_names.pointer_id)
         if (flags & CanvasEventCapturePointer) != 0 && !WebIsUndefined(pointer) &&
             WebTypeOf(WebGetObject(page_canvas, page_event_names.set_pointer_capture)) == WebTypeFunction {
@@ -264,6 +268,12 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
         unused PageEventSend(CanvasEventMouseUp, button, 0, PageEventPointX(event),
             PageEventPointY(event), 0, 0, event)
     } else if context == PageEventWheel {
+        if DomDocumentLayout() {
+            // Document-layout pages are ordinary scrolling documents: the
+            // browser owns the wheel and the hidden canvas never claims it.
+            WebEnd(scope)
+            return
+        }
         flags: s32 = PageEventSend(CanvasEventWheel,
             cast(s32)WebGetNumber(event, page_event_names.delta_mode), 0,
             WebGetNumber(event, page_event_names.delta_x),
