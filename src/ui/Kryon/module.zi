@@ -3,7 +3,9 @@
 using Geometry :: #import "geometry";
 using Drawing :: #import "drawing_props";
 using SessionModule :: #import "session";
+#if !#defined(KRYON_HOSTED_UI) {
 using PaintQueue :: #import "paint_queue";
+}
 using TextPropsModule :: #import "text_props";
 using TextAlignModule :: #import "text_align";
 using TextWidgetModule :: #import "text_widget";

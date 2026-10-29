@@ -1,4 +1,5 @@
 #import "text_widget"
+#import "Kryon"
 #import "checkbox_widget"
 #import "checkbox_props"
 #import "toggle_widget"
