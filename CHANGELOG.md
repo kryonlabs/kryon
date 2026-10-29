@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Title bars follow the app palette, keeping dark game navigation readable.
+
 ### Added
 
 - Every window and page is named after its app instead of "Kryon Ziran" or

@@ -1,4 +1,5 @@
 #import "system_theme"
+Sheet :: #import "style_sheet";
 
 Sweet :: "@define-color theme_fg_color #C3C7D1;\n@define-color theme_bg_color #161925;\n@define-color theme_base_color #181b28;\n@define-color theme_selected_bg_color #c50ed2;\n@define-color theme_selected_fg_color #fefefe;\n@define-color borders #090a0f;\n@define-color error_color #e6133e;\n@define-color warning_color #cc5500;\n@define-color success_color #0096b1;\n@define-color wm_bg_a shade(#161925, 1.2);\n";
 
@@ -11,6 +12,18 @@ main :: () -> s32 {
     if palette.base != cast(u32)0x181b28FF || palette.selected != cast(u32)0xc50ed2FF { return 3 }
     if palette.selected_text != cast(u32)0xfefefeFF || palette.border != cast(u32)0x090a0fFF { return 4 }
     if palette.danger != cast(u32)0xe6133eFF || palette.success != cast(u32)0x0096b1FF { return 5 }
+
+    // An app palette also owns the title bar, including dark game shells.
+    rules: Sheet.StyleRules = SystemPaletteRules(palette)
+    found: bool
+    for index: 0..rules.count - 1 {
+        rule := rules.items[index]
+        if rule.selector.kind == Sheet.StyleKindTitleBar() {
+            if rule.style.background != palette.background || rule.style.foreground != palette.text { return 17 }
+            found = true
+        }
+    }
+    if !found { return 18 }
 
     // A light theme, whatever the hint says.
     light: string = "@define-color theme_fg_color #2e3436;\n@define-color theme_bg_color #f6f5f4;\n"

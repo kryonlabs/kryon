@@ -356,6 +356,7 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.S
     }
     Rule(*rules, Sheet.StyleKindApp(), bg, fg); Rule(*rules, Sheet.StyleKindSurface(), palette.base, fg)
     Rule(*rules, Sheet.StyleKindText(), bg, fg)
+    Rule(*rules, Sheet.StyleKindTitleBar(), bg, fg)
     // Pictures keep their source colours. The shared text foreground would
     // otherwise tint every opaque sprite into a flat rectangle.
     picture := *rules.items[rules.count]; picture.selector = Sheet.StyleDefaultSelector(); rules.count += 1
