@@ -15,6 +15,7 @@ main :: () -> s32 {
     if JsonQuote("a\"\\\n\x01") != "\"a\\\"\\\\\\n\\u0001\"" { return 3 }
     page := "<!doctype html><html><head><title>Served</title></head><body style=margin:0><button id=b style='position:absolute;left:10px;top:10px;width:100px;height:40px' onclick='window.clicks=(window.clicks||0)+1'>Go</button><input id=i style='position:absolute;left:10px;top:80px'><script>setTimeout(() => { throw new Error('page broke') }, 0)</script></body></html>"
     if !WriteEntireFile(BuilderJoin(work, "/site/index.html", ""), page) { return 4 }
+    if !WriteEntireFile(BuilderJoin(work, "/site/clip.ogg", ""), "0123456789") { return 4 }
     browser: Browser
     if !BrowserServe(*browser, BuilderJoin(work, "/site", "")) { return 5 }
     browser.head = "<script>window.injected = true</script>"
@@ -25,6 +26,15 @@ main :: () -> s32 {
     if !BrowserWait(*browser, "document.title === 'Served' && window.injected", 20000) { BrowserClose(*browser); return 9 }
     if BrowserNumber(*browser, "fetch('/data.json').then(r => r.json()).then(d => d.answer)", 0.0) != 42.0 { BrowserClose(*browser); return 10 }
     if BrowserText(*browser, "fetch('/missing').then(r => String(r.status))") != "404" { BrowserClose(*browser); return 11 }
+    // Media reads byte ranges; audio is served as audio.
+    ranges: [4]string = .["fetch('/clip.ogg',{headers:{Range:'bytes=2-4'}}).then(async r => r.status + ' ' + r.headers.get('content-range') + ' ' + await r.text())",
+        "fetch('/clip.ogg',{headers:{Range:'bytes=-3'}}).then(async r => r.status + ' ' + await r.text())",
+        "fetch('/clip.ogg',{headers:{Range:'bytes=20-'}}).then(r => String(r.status))",
+        "fetch('/clip.ogg').then(async r => r.headers.get('content-type') + ' ' + r.headers.get('accept-ranges') + ' ' + await r.text())"]
+    expected: [4]string = .["206 bytes 2-4/10 234", "206 789", "416", "audio/ogg bytes 0123456789"]
+    for index: 0..3 {
+        if BrowserText(*browser, ranges[index]) != expected[index] { BrowserClose(*browser); return 30 + cast(s32)index }
+    }
     if !BrowserClick(*browser, 60.0, 30.0) || !BrowserWait(*browser, "window.clicks === 1", 5000) { BrowserClose(*browser); return 12 }
     if !BrowserClick(*browser, 40.0, 90.0) || !BrowserKey(*browser, "a", "KeyA", 65) ||
        !BrowserWait(*browser, "document.getElementById('i').value === 'a'", 5000) { BrowserClose(*browser); return 13 }

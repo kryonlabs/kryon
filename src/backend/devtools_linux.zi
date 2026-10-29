@@ -39,6 +39,7 @@ CloseRaw :: (fd: s32) -> s32 #foreign devtools_c "close";
 PipeRaw :: (fds: *s32, flags: s32) -> s32 #foreign devtools_c "pipe2";
 ForkRaw :: () -> s32 #foreign devtools_c "fork";
 DupRaw :: (source: s32, destination: s32) -> s32 #foreign devtools_c "dup2";
+FcntlRaw :: (fd: s32, command: s32, value: s32) -> s32 #foreign devtools_c "fcntl";
 OpenRaw :: (path: *u8, flags: s32, mode: s32) -> s32 #foreign devtools_c "open";
 ExecRaw :: (path: *u8, arguments: *DevtoolsArgument) -> s32 #foreign devtools_c "execvp";
 ExitRaw :: (code: s32) -> void #foreign devtools_c "_exit";
@@ -210,6 +211,12 @@ DevtoolsContentType :: (path: string) -> string {
     if DevtoolsEnds(path, ".js") || DevtoolsEnds(path, ".mjs") { return "text/javascript" }
     if DevtoolsEnds(path, ".wasm") { return "application/wasm" }
     if DevtoolsEnds(path, ".png") { return "image/png" }
+    if DevtoolsEnds(path, ".webp") { return "image/webp" }
+    if DevtoolsEnds(path, ".jpg") || DevtoolsEnds(path, ".jpeg") { return "image/jpeg" }
+    // Media elements need audio types to play, rather than hold their connections.
+    if DevtoolsEnds(path, ".ogg") { return "audio/ogg" }
+    if DevtoolsEnds(path, ".wav") { return "audio/wav" }
+    if DevtoolsEnds(path, ".mp3") { return "audio/mpeg" }
     if DevtoolsEnds(path, ".json") { return "application/json" }
     if DevtoolsEnds(path, ".css") { return "text/css" }
     if DevtoolsEnds(path, ".svg") { return "image/svg+xml" }
@@ -258,7 +265,7 @@ DevtoolsPath :: (target: string) -> string {
 
 DevtoolsResponse :: (status: s32, content_type: string, headers: string, body: string) -> string {
     out: Vec(u8)
-    reason := ifx status == 200 then "OK" else ifx status == 404 then "Not Found" else "Error"
+    reason := ifx status == 200 then "OK" else ifx status == 206 then "Partial Content" else ifx status == 404 then "Not Found" else ifx status == 416 then "Range Not Satisfiable" else "Error"
     BuilderPrint(*out, "HTTP/1.1 % %\r\n", cast(s64)status, reason)
     BuilderPrint(*out, "Content-Type: %\r\nContent-Length: %\r\nConnection: close\r\n", content_type, body.count)
     Append(*out, headers)
@@ -308,7 +315,54 @@ DevtoolsAnswer :: (browser: *Browser, request: string) -> string {
     text, ok := ReadEntireFile(BuilderJoin(browser.root, file, ""))
     if !ok { return DevtoolsResponse(404, "text/plain", "", "Not found") }
     content_type := DevtoolsContentType(file)
-    return DevtoolsResponse(200, content_type, "", DevtoolsInject(browser, content_type, text))
+    // Media elements read audio and video in byte ranges; answer them, or
+    // they hold their connections and the page's loading never ends.
+    from, to, ranged := DevtoolsRange(request, text.count)
+    if ranged {
+        if from > to { return DevtoolsResponse(416, "text/plain", DevtoolsJoinRange("*", 0, -1, text.count), "") }
+        return DevtoolsResponse(206, content_type, DevtoolsJoinRange("", from, to, text.count), text[from:to + 1])
+    }
+    return DevtoolsResponse(200, content_type, "Accept-Ranges: bytes\r\n", DevtoolsInject(browser, content_type, text))
+}
+
+// A request's single "Range: bytes=first-last" (or "first-", or "-suffix")
+// clipped to SIZE bytes. first > last means it cannot be satisfied.
+DevtoolsRange :: (request: string, size: s64) -> (first: s64, last: s64, ranged: bool) {
+    at := DevtoolsFind(request, "\r\nRange: bytes=", 0)
+    if at < 0 { at = DevtoolsFind(request, "\r\nrange: bytes=", 0) }
+    if at < 0 { return 0, 0, false }
+    at += 15
+    first: s64 = -1
+    last: s64 = -1
+    while at < request.count && request[at] >= #char "0" && request[at] <= #char "9" {
+        first = ifx first < 0 then 0 else first
+        first = first * 10 + cast(s64)(request[at] - #char "0")
+        at += 1
+    }
+    if at >= request.count || request[at] != #char "-" { return 0, 0, false }
+    at += 1
+    while at < request.count && request[at] >= #char "0" && request[at] <= #char "9" {
+        last = ifx last < 0 then 0 else last
+        last = last * 10 + cast(s64)(request[at] - #char "0")
+        at += 1
+    }
+    if at < request.count && request[at] == #char "," { return 0, 0, false }
+    if first < 0 {
+        if last <= 0 { return 1, 0, true }
+        first = ifx last > size then 0 else size - last
+        last = size - 1
+    } else if last < 0 || last >= size {
+        last = size - 1
+    }
+    if first >= size { return 1, 0, true }
+    return first, last, true
+}
+
+DevtoolsJoinRange :: (unit: string, first: s64, last: s64, size: s64) -> string {
+    out: Vec(u8)
+    if unit.count > 0 { BuilderPrint(*out, "Content-Range: bytes %/%\r\n", unit, size) }
+    else { BuilderPrint(*out, "Accept-Ranges: bytes\r\nContent-Range: bytes %-%/%\r\n", first, last, size) }
+    return BuilderFinish(out)
 }
 
 BuilderJoin :: (first: string, second: string, third: string) -> string {
@@ -422,7 +476,12 @@ BrowserOpen :: (browser: *Browser, profile: string) -> bool {
         output := OpenRaw(log, 577, 420)
         if input < 0 || output < 0 { ExitRaw(127) }
         if DupRaw(input, 0) < 0 || DupRaw(output, 1) < 0 || DupRaw(output, 2) < 0 { ExitRaw(127) }
-        if DupRaw(to_browser[0], 3) < 0 || DupRaw(from_browser[1], 4) < 0 { ExitRaw(127) }
+        // Chromium reads 3 and writes 4. Copy both ends above them first
+        // (F_DUPFD), since either may already be 3 or 4, and dup2 onto the
+        // same number would keep close-on-exec.
+        reading := FcntlRaw(to_browser[0], 0, 10)
+        writing := FcntlRaw(from_browser[1], 0, 10)
+        if reading < 0 || writing < 0 || DupRaw(reading, 3) < 0 || DupRaw(writing, 4) < 0 { ExitRaw(127) }
         for index: 0..scrubbed.count - 1 { unused UnsetRaw(*devtools_scrubbed[index][0]) }
         unused SetRaw(temporary, temporary_value, 1)
         unused ExecRaw(devtools_pointers[0].value, *devtools_pointers[0])
