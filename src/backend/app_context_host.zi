@@ -18,6 +18,19 @@
 
 using HostValueKind;
 
+// Apps ask whether the device's main input is a keyboard and mouse, for
+// example to skip a touch-controls question. A native desktop host says yes;
+// Android and the web say no. A host that runs inside another host answers
+// through its harness, which asks its own host.
+KRYON_INPUT_DESKTOP :: "kryon.input.desktop"
+
+HostInputDesktop :: () -> bool {
+    #if #defined(PLATFORM_DESKTOP) && !#defined(ANDROID_BUILD) && !#defined(PLATFORM_WEB) {
+        return true
+    }
+    return false
+}
+
 AppServiceAllows :: #type (context: *void, function: string) -> bool;
 
 AppContext :: struct {
@@ -177,6 +190,7 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
     HostScalarValid(arguments[0], "string", cast(s32)HostString) {
         capability := AppArgumentText(arguments[0])
         available := capability == "AppThemeColorHost" || capability == "tile_map.sampling" ||
+        (capability == KRYON_INPUT_DESKTOP && HostInputDesktop()) ||
         (app.allows != null && app.allows(app.context, capability))
         result.* = HostScalar("bool", ifx available then 1 else 0)
         return 1

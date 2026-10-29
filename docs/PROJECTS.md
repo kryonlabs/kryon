@@ -300,6 +300,10 @@ before its first frame.
 
 `AppSupports(name)` queries optional services; `AppService(name, request)`
 returns `{"status":"unavailable"}` when the harness does not grant one.
+`AppSupports("kryon.input.desktop")` is true when the device's main input is
+a keyboard and mouse: native desktop hosts answer yes, Android and the web
+no, and a harness that runs inside another host passes the question on.
+Older hosts answer no, so an app keeps its touch behaviour there.
 An app that imports `kryon/app_theme` follows the host's theme:
 `AppThemeColor(token, fallback)` returns the host stylesheet's colour for
 `canvas`, `surface`, `border`, `text`, `accent` or `link`, and `fallback` for
