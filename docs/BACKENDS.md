@@ -31,7 +31,11 @@ See [Ziran projects](PROJECTS.md) for the complete package manifest.
 | `dom` | `src/backend/dom_run.zi` | Semantic DOM layer over the Canvas2D raster host |
 | `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package, raylib OpenGL ES 2 |
 
-The desktop host uses `cairo_raster.zi`. The DOM host reuses
+The desktop host uses `cairo_raster.zi`. Its frame loop is `desktop_loop.zi`:
+a project host that needs its own window size imports `kryon/desktop_loop`
+and returns `RunDesktop(width, height)`, and `DesktopStartBeside(marker)`
+starts a program opened from its build folder where its files are.
+The DOM host reuses
 the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
 Standalone `AppContext` applications can use the same two presentations with
 the compiled hosts `canvas_app_run.zi` and `dom_app_run.zi`; the DOM entry
