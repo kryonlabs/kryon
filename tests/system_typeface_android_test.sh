@@ -19,4 +19,4 @@ for form in source saved; do
         KRYON_TEST_OLD_ANDROID=1 "$output/test"
     done
 done
-echo 'Android font selection, UTF-16, collection faces, cleanup and older API fallback passed C source and saved IR'
+echo 'Android font selection, UTF-16, collection faces, cleanup and older API fallback with fonts.xml faces passed C source and saved IR'

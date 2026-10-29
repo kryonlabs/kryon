@@ -1,8 +1,9 @@
 // Ask Android for installed fonts instead of guessing vendor-specific filenames.
 // Resolve API 29 entry points dynamically. Older Android versions have no font
 // lookup; their interface face is Roboto, found by its standard path, and
-// applications may still bundle their own fonts. Raylib checks actual glyph
-// coverage.
+// Chinese, Japanese and Korean faces come from the fonts.xml family for their
+// language. Applications may still bundle their own fonts. Raylib checks
+// actual glyph coverage.
 #scope_module
 CString :: #import "std/c_string";
 Text :: #import "std/byte_text_linux";
@@ -12,6 +13,9 @@ Open :: (name: *u8, flags: s32) -> *void #foreign dl "dlopen";
 Symbol :: (library: *void, name: *u8) -> *void #foreign dl "dlsym";
 Copy :: (target: *void, source: *void, size: usize) -> *void #foreign c "memcpy";
 Access :: (path: *u8, mode: s32) -> s32 #foreign c "access";
+FileOpen :: (path: *u8, mode: *u8) -> *void #foreign c "fopen";
+FileRead :: (data: *void, size: usize, count: usize, file: *void) -> usize #foreign c "fread";
+FileClose :: (file: *void) -> s32 #foreign c "fclose";
 
 Create :: #type () -> *void #c_call;
 Destroy :: #type (*void) #c_call;
@@ -27,6 +31,9 @@ file_path: FilePath;
 collection_index: CollectionIndex;
 tried: bool;
 ready: bool;
+config_read: bool;
+config_count: s32;
+config_bytes: [131072]u8;
 
 Resolve :: (library: *void, slot: *void, name: string) -> bool {
     bytes: [64]u8
@@ -76,7 +83,7 @@ FileFor :: (family: string, codepoint: s32, output: []u8, face: *s32) -> string 
         return ""
     }
     if !Load() {
-        return OlderFileFor(selected_family, output, face)
+        return OlderFileFor(selected_family, codepoint, output, face)
     }
     // Each lookup owns its matcher; Android matchers cannot cross threads.
     matcher := create_matcher()
@@ -115,8 +122,13 @@ FileFor :: (family: string, codepoint: s32, output: []u8, face: *s32) -> string 
     return Text.TextFromCString(*output[0])
 }
 
-// Android before 10: the standard interface faces, when this device has them.
-OlderFileFor :: (family: string, output: []u8, face: *s32) -> string {
+// Android before 10: the face its font configuration lists for a Chinese,
+// Japanese or Korean character, otherwise the standard interface faces.
+OlderFileFor :: (family: string, codepoint: s32, output: []u8, face: *s32) -> string {
+    language := ScriptLanguage(codepoint)
+    if language != "" && ConfiguredFile(ConfigText(), language, output, face) {
+        return Text.TextFromCString(*output[0])
+    }
     candidates: [3]string = .["/system/fonts/Roboto-Regular.ttf", "/system/fonts/NotoSans-Regular.ttf", "/system/fonts/DroidSans.ttf"]
     if family == "monospace" { candidates[0] = "/system/fonts/DroidSansMono.ttf" }
     for candidate: candidates {
@@ -127,4 +139,138 @@ OlderFileFor :: (family: string, output: []u8, face: *s32) -> string {
     }
     if output.count > 0 { output[0] = 0 }
     return ""
+}
+
+#scope_module
+ConfigText :: () -> string {
+    if !config_read {
+        config_read = true
+        path: [32]u8
+        mode: [4]u8
+        if CString.CopyCString("/system/etc/fonts.xml", path[:]) && CString.CopyCString("rb", mode[:]) {
+            file := FileOpen(*path[0], *mode[0])
+            if file != null {
+                config_count = cast(s32)FileRead(cast(*void)*config_bytes[0], 1, 131072, file)
+                unused FileClose(file)
+            }
+        }
+    }
+    return Text.TextFromBytes(config_bytes[0:config_count])
+}
+
+// The language whose CJK face draws a character, as fonts.xml names it.
+ScriptLanguage :: (codepoint: s32) -> string {
+    if (codepoint >= 0x1100 && codepoint <= 0x11FF) || (codepoint >= 0x3130 && codepoint <= 0x318F) ||
+    (codepoint >= 0xAC00 && codepoint <= 0xD7AF) {
+        return "ko"
+    }
+    if (codepoint >= 0x3040 && codepoint <= 0x30FF) || (codepoint >= 0x31F0 && codepoint <= 0x31FF) ||
+    (codepoint >= 0xFF66 && codepoint <= 0xFF9F) {
+        return "ja"
+    }
+    if (codepoint >= 0x2E80 && codepoint <= 0x2FDF) || (codepoint >= 0x3000 && codepoint <= 0x303F) ||
+    (codepoint >= 0x3100 && codepoint <= 0x312F) || (codepoint >= 0x3190 && codepoint <= 0x31BF) ||
+    (codepoint >= 0x3200 && codepoint <= 0x4DBF) || (codepoint >= 0x4E00 && codepoint <= 0x9FFF) ||
+    (codepoint >= 0xF900 && codepoint <= 0xFAFF) || (codepoint >= 0xFE30 && codepoint <= 0xFE4F) ||
+    (codepoint >= 0xFF00 && codepoint <= 0xFFEF) || (codepoint >= 0x20000 && codepoint <= 0x3134F) {
+        return "zh-Hans"
+    }
+    return ""
+}
+
+Find :: (text: string, pattern: string, from: s64) -> s64 {
+    at := from
+    while at >= 0 && at + pattern.count <= text.count {
+        if text[at:at + pattern.count] == pattern { return at }
+        at += 1
+    }
+    return -1
+}
+
+// The value of an attribute such as lang="ja" in one tag, or "".
+Attribute :: (tag: string, name: string) -> string {
+    at := Find(tag, name, 0)
+    while at >= 0 {
+        start := at + name.count
+        if (at == 0 || tag[at - 1] == #char " " || tag[at - 1] == #char "\n" || tag[at - 1] == #char "\t") &&
+        start + 1 < tag.count && tag[start] == #char "=" && tag[start + 1] == #char "\"" {
+            finish := Find(tag, "\"", start + 2)
+            if finish < 0 { return "" }
+            return tag[start + 2:finish]
+        }
+        at = Find(tag, name, at + 1)
+    }
+    return ""
+}
+
+HasWord :: (words: string, word: string) -> bool {
+    at: s64 = 0
+    while at < words.count {
+        while at < words.count && words[at] == #char " " { at += 1 }
+        start := at
+        while at < words.count && words[at] != #char " " { at += 1 }
+        if at > start && words[start:at] == word { return true }
+    }
+    return false
+}
+
+#scope_export
+// The first face of a language's family in an Android font configuration,
+// skipping serif fallbacks, written as /system/fonts/FILE with its face.
+ConfiguredFile :: (config: string, language: string, output: []u8, face: *s32) -> bool {
+    at := Find(config, "<family", 0)
+    while at >= 0 {
+        tag_end := Find(config, ">", at)
+        close := Find(config, "</family>", at)
+        if tag_end < 0 || close < tag_end { return false }
+        if HasWord(Attribute(config[at:tag_end], "lang"), language) {
+            return FirstFile(config[tag_end + 1:close], output, face)
+        }
+        at = Find(config, "<family", close)
+    }
+    return false
+}
+
+#scope_module
+FirstFile :: (family: string, output: []u8, face: *s32) -> bool {
+    at := Find(family, "<font ", 0)
+    while at >= 0 {
+        tag_end := Find(family, ">", at)
+        close := Find(family, "</font>", at)
+        if tag_end < 0 || close < tag_end { return false }
+        tag := family[at:tag_end]
+        if Attribute(tag, "fallbackFor") == "" {
+            start := tag_end + 1
+            finish := close
+            while start < finish && (family[start] == #char " " || family[start] == #char "\n") { start += 1 }
+            while finish > start && (family[finish - 1] == #char " " || family[finish - 1] == #char "\n") { finish -= 1 }
+            index := Number(Attribute(tag, "index"))
+            prefix := "/system/fonts/"
+            name := family[start:finish]
+            if name.count == 0 || index < 0 || Find(name, "/", 0) >= 0 ||
+            prefix.count + name.count >= output.count {
+                return false
+            }
+            for position: 0..prefix.count - 1 { output[position] = prefix[position] }
+            for position: 0..name.count - 1 { output[prefix.count + position] = name[position] }
+            output[prefix.count + name.count] = 0
+            if face != null { face.* = index }
+            return true
+        }
+        at = Find(family, "<font ", close)
+    }
+    return false
+}
+
+// A face index; no attribute means the first face, a bad one fails.
+Number :: (text: string) -> s32 {
+    if text.count == 0 { return 0 }
+    if text.count > 4 { return -1 }
+    value: s32 = 0
+    for position: 0..text.count - 1 {
+        digit := text[position]
+        if digit < #char "0" || digit > #char "9" { return -1 }
+        value = value * 10 + cast(s32)(digit - #char "0")
+    }
+    return value
 }

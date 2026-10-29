@@ -95,11 +95,26 @@ main :: () -> s32 {
     index_fn = FakeIndex
     output: [128]u8
     face: s32 = -1
+    // Android before 10 picks Chinese, Japanese and Korean faces from fonts.xml.
+    config := "<familyset>\n<family name=\"sans-serif\">\n<font weight=\"400\">Roboto-Regular.ttf</font>\n</family>\n<family lang=\"zh-Hans\">\n    <font weight=\"400\" style=\"normal\" index=\"2\">NotoSansCJK-Regular.ttc</font>\n</family>\n<family lang=\"zh-Hant zh-Bopo\">\n<font weight=\"400\" index=\"3\" fallbackFor=\"serif\">NotoSerifCJK-Regular.ttc</font>\n<font weight=\"400\" index=\"3\">NotoSansCJK-Regular.ttc</font>\n</family>\n<family lang=\"ko\">\n<font weight=\"400\">NotoSansKR.otf</font>\n</family>\n</familyset>\n"
+    Require(Android.ConfiguredFile(config, "zh-Hans", output[:], *face) &&
+        Text.TextFromCString(*output[0]) == "/system/fonts/NotoSansCJK-Regular.ttc" && face == 2, 18)
+    Require(Android.ConfiguredFile(config, "zh-Bopo", output[:], *face) &&
+        Text.TextFromCString(*output[0]) == "/system/fonts/NotoSansCJK-Regular.ttc" && face == 3, 19)
+    Require(Android.ConfiguredFile(config, "ko", output[:], *face) &&
+        Text.TextFromCString(*output[0]) == "/system/fonts/NotoSansKR.otf" && face == 0, 20)
+    small: [16]u8
+    Require(!Android.ConfiguredFile(config, "ja", output[:], *face) &&
+        !Android.ConfiguredFile(config, "zh", output[:], *face) &&
+        !Android.ConfiguredFile(config, "zh-Hans", small[:], *face) &&
+        !Android.ConfiguredFile("", "ko", output[:], *face), 21)
+    face = -1
     env: [32]u8
     unused CString.CopyCString("KRYON_TEST_OLD_ANDROID", env[:])
     if Environment(*env[0]) != null {
         Require(Android.FileFor("ui", 0, output[:], *face) == "", 1)
         Require(Android.FileFor("ui", 65, output[:], *face) == "" && opened == 1, 2)
+        Require(Android.FileFor("ui", 0x4E2D, output[:], *face) == "", 22)
         return 0
     }
     Require(Android.FileFor("ui", 0, output[:], *face) == "/system/fonts/NotoSansCJK-Regular.ttc", 3)
