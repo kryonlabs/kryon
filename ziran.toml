@@ -102,6 +102,8 @@ svg_icon_props = "src/ui/svg_icon_props.zi"
 # running app; inactive unless KRYON_TEST_DRIVER names a directory.
 TestDriver = "src/backend/test_driver.zi"
 test_driver = "src/backend/test_driver.zi"
+# The test process's side: find, press, type and wait in a driven app.
+test_driver_client = "src/backend/test_driver_client.zi"
 key_input = "src/ui/key_input.zi"
 open_uri = "src/backend/open_uri.zi"
 play_billing = "src/backend/play_billing.zi"

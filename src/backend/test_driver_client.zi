@@ -1,0 +1,439 @@
+// The test process's side of the test driver (test_driver.zi). A test starts
+// an app with KRYON_TEST_DRIVER naming an empty directory, then finds widgets
+// by label, role or key, presses them with the app's own pointer path, types,
+// sends keys and waits for the tree to settle:
+//
+//     driver := DriverOpen("build/my-test/driver")
+//     // start the app with DriverEnvironment(driver) in its environment
+//     DriverWatch(*driver, pid, "build/my-test/app.log")
+//     if !DriverPress(*driver, .{label = "Settings"}) { return 1 }
+//     unused DriverType(*driver, "Morning walk")
+//     unused DriverKey(*driver, DRIVER_KEY_ENTER, false, false)
+//     unused DriverWait(*driver, .{contains = "Morning walk"}, 20000)
+//
+// Selectors match visible widgets unless hidden is set. Every wait has a
+// timeout; a failed call prints what the app showed then and returns false.
+#import "c_string"
+#import "byte_text_linux"
+#import "file"
+#import "json_scan"
+#import "format"
+#import "timer_linux"
+
+#scope_file
+test_driver_client_c :: #system_library "c";
+DriverRealPath :: (path: *u8, output: *u8) -> *u8 #foreign test_driver_client_c "realpath";
+#scope_export
+
+DRIVER_KEY_SPACE :: 32
+DRIVER_KEY_ESCAPE :: 256
+DRIVER_KEY_ENTER :: 257
+DRIVER_KEY_TAB :: 258
+DRIVER_KEY_BACKSPACE :: 259
+DRIVER_KEY_DELETE :: 261
+DRIVER_KEY_RIGHT :: 262
+DRIVER_KEY_LEFT :: 263
+DRIVER_KEY_DOWN :: 264
+DRIVER_KEY_UP :: 265
+DRIVER_KEY_PAGE_UP :: 266
+DRIVER_KEY_PAGE_DOWN :: 267
+DRIVER_KEY_HOME :: 268
+DRIVER_KEY_END :: 269
+
+// Empty text fields and a false has_key or has_focus_id match anything.
+DriverSelector :: struct {
+    label: string
+    contains: string
+    role: string
+    value: string
+    key: u64
+    has_key: bool
+    focus_id: s32
+    has_focus_id: bool
+    // Which match a press uses, counting from 0 in tree order.
+    index: s32
+    // Also match widgets that do not show.
+    hidden: bool
+    // Only match enabled widgets.
+    enabled: bool
+}
+
+// A widget as the app reported it, in the app's logical pixels.
+DriverNode :: struct {
+    kind: string
+    role: string
+    label: string
+    detail: string
+    value: string
+    key: u64
+    x: float64
+    y: float64
+    width: float64
+    height: float64
+    visible: bool
+    enabled: bool
+    selected: bool
+    focused: bool
+    loading: bool
+    focus_id: s64
+}
+
+// Runs one app frame while a single-process test waits for a reply.
+DriverPump :: #type () -> bool;
+
+TestDriverClient :: struct {
+    directory: string
+    serial: s64
+    // The app's process and log, reported when a call fails.
+    pid: s32
+    log: string
+    // Without a pump, waits sleep between polls.
+    pump: DriverPump
+    // The last reply: its status, its matching widgets and its whole text.
+    ok: bool
+    error: string
+    stable_frames: s64
+    nodes: Vec(DriverNode)
+    reply: string
+}
+
+// A driver for the app that will be started with DriverEnvironment. The
+// directory is created when missing and emptied of earlier commands.
+DriverOpen :: (directory: string) -> TestDriverClient {
+    driver: TestDriverClient
+    unused CreateDirectory(directory)
+    path: [4096]u8
+    resolved: [4096]u8
+    driver.directory = directory
+    if CopyCString(directory, path[:]) && DriverRealPath(*path[0], *resolved[0]) != null {
+        copy: Vec(u8)
+        Append(*copy, TextFromCString(*resolved[0]))
+        driver.directory = BuilderFinish(copy)
+    }
+    names: [4]string = .["command", "command.tmp", "reply", "reply.tmp"]
+    for name: names { unused RemoveFile(DriverPath(driver.directory, name)) }
+    return driver
+}
+
+// The environment entry that turns the driver on in the app.
+DriverEnvironment :: (driver: *TestDriverClient) -> string {
+    text: Vec(u8)
+    BuilderPrint(*text, "KRYON_TEST_DRIVER=%", driver.directory)
+    return BuilderFinish(text)
+}
+
+// Follows the app's process, so a crash fails a wait at once, and its log.
+DriverWatch :: (driver: *TestDriverClient, pid: s32, log: string) {
+    driver.pid = pid
+    driver.log = log
+}
+
+DriverPath :: (directory: string, name: string) -> string {
+    path: Vec(u8)
+    BuilderPrint(*path, "%/%", directory, name)
+    return BuilderFinish(path)
+}
+
+// Whether the watched app is still running; true when none is watched.
+DriverAppRunning :: (pid: s32) -> bool {
+    if pid <= 0 { return true }
+    path: Vec(u8)
+    BuilderPrint(*path, "/proc/%/stat", cast(s64)pid)
+    stat := OpenRead(BuilderFinish(path))
+    if !stat.valid { return false }
+    bytes: [512]u8
+    count := Read(stat, bytes[:])
+    unused CloseFile(stat)
+    // The state follows the parenthesized command name.
+    at := count - 1
+    while at > 0 && bytes[at] != #char ")" { at -= 1 }
+    return at + 2 < count && bytes[at + 2] != #char "Z" && bytes[at + 2] != #char "X"
+}
+
+DriverIdle :: (driver: *TestDriverClient) {
+    if driver.pump != null { unused driver.pump() }
+    else { unused SleepMilliseconds(10) }
+}
+
+// Prints MESSAGE with the app's state, its log's end and its visible labels,
+// and returns false.
+DriverFail :: (driver: *TestDriverClient, message: string) -> bool {
+    print("FAIL: %\n", message)
+    if !DriverAppRunning(driver.pid) { print("  The app exited.\n") }
+    if driver.log.count > 0 {
+        text, ok := ReadEntireFile(driver.log)
+        if ok && text.count > 0 {
+            start := ifx text.count > 4000 then text.count - 4000 else 0
+            print("  App log:\n%\n", text[start:])
+        }
+    }
+    if driver.reply.count > 0 && DriverAppRunning(driver.pid) {
+        if DriverSend(driver, "tree", "", 5000) {
+            labels: Vec(u8)
+            for index: 0..driver.nodes.count - 1 {
+                node := driver.nodes[index]
+                if node.label.count > 0 && node.visible {
+                    if labels.count > 0 { Append(*labels, ", ") }
+                    BuilderPrint(*labels, "% (%)", node.label, node.kind)
+                }
+            }
+            print("  Visible labels: %\n", BuilderFinish(labels))
+        }
+    }
+    return false
+}
+
+Joined :: (first: string, second: string, third: string) -> string {
+    text: Vec(u8)
+    Append(*text, first)
+    Append(*text, second)
+    Append(*text, third)
+    return BuilderFinish(text)
+}
+
+DriverEscape :: (out: *Vec(u8), value: string) {
+    for byte: value {
+        if byte == #char "\\" { Append(out, "\\\\") }
+        else if byte == #char "\t" { Append(out, "\\t") }
+        else if byte == #char "\n" { Append(out, "\\n") }
+        else { unused VecPush(<<out, byte) }
+    }
+}
+
+DriverField :: (out: *Vec(u8), name: string, value: string) {
+    BuilderPrint(out, "\t%=", name)
+    DriverEscape(out, value)
+}
+
+DriverSelectorFields :: (selector: DriverSelector) -> string {
+    fields: Vec(u8)
+    if selector.label.count > 0 { DriverField(*fields, "label", selector.label) }
+    if selector.contains.count > 0 { DriverField(*fields, "contains", selector.contains) }
+    if selector.role.count > 0 { DriverField(*fields, "role", selector.role) }
+    if selector.value.count > 0 { DriverField(*fields, "value", selector.value) }
+    if selector.has_key { BuilderPrint(*fields, "\tkey=%", selector.key) }
+    if selector.has_focus_id { BuilderPrint(*fields, "\tfocus_id=%", cast(s64)selector.focus_id) }
+    if selector.index > 0 { BuilderPrint(*fields, "\tindex=%", cast(s64)selector.index) }
+    if !selector.hidden { Append(*fields, "\tvisible=1") }
+    if selector.enabled { Append(*fields, "\tenabled=1") }
+    return BuilderFinish(fields)
+}
+
+// A short description of a selector for failure messages.
+DriverDescribe :: (selector: DriverSelector) -> string {
+    text: Vec(u8)
+    if selector.label.count > 0 { BuilderPrint(*text, "label \"%\" ", selector.label) }
+    if selector.contains.count > 0 { BuilderPrint(*text, "containing \"%\" ", selector.contains) }
+    if selector.role.count > 0 { BuilderPrint(*text, "role % ", selector.role) }
+    if selector.has_key { BuilderPrint(*text, "key % ", selector.key) }
+    if selector.index > 0 { BuilderPrint(*text, "index % ", cast(s64)selector.index) }
+    return BuilderFinish(text)
+}
+
+DriverBool :: (text: string, object: s32, name: string) -> bool {
+    at := FieldAt(text, object, name)
+    return at >= 0 && MatchLiteral(text, at, "true")
+}
+
+DriverNumber :: (text: string, object: s32, name: string) -> float64 {
+    at := FieldAt(text, object, name)
+    if at < 0 { return 0.0 }
+    number := ReadNumber(text, at)
+    return ifx number.valid then number.value else 0.0
+}
+
+DriverString :: (text: string, object: s32, name: string) -> string {
+    at := FieldAt(text, object, name)
+    if at < 0 { return "" }
+    value := ReadStringValue(text, at, 1048576)
+    if !value.valid { return "" }
+    return BuilderFinish(value.value)
+}
+
+driver_positions: [8192]s32;
+
+DriverParse :: (driver: *TestDriverClient, text: string) {
+    driver.reply = text
+    driver.ok = DriverBool(text, 0, "ok")
+    driver.error = DriverString(text, 0, "error")
+    driver.stable_frames = cast(s64)DriverNumber(text, 0, "stable_frames")
+    VecClear(driver.nodes)
+    nodes := FieldAt(text, 0, "nodes")
+    if nodes < 0 { return }
+    count := ArrayPositions(text, nodes, driver_positions[:])
+    if count > cast(s32)driver_positions.count { count = cast(s32)driver_positions.count }
+    for index: 0..count - 1 {
+        at := driver_positions[index]
+        node: DriverNode
+        node.kind = DriverString(text, at, "kind")
+        node.role = DriverString(text, at, "role")
+        node.label = DriverString(text, at, "label")
+        node.detail = DriverString(text, at, "detail")
+        node.value = DriverString(text, at, "value")
+        node.key = cast(u64)DriverNumber(text, at, "key")
+        node.x = DriverNumber(text, at, "x")
+        node.y = DriverNumber(text, at, "y")
+        node.width = DriverNumber(text, at, "width")
+        node.height = DriverNumber(text, at, "height")
+        node.visible = DriverBool(text, at, "visible")
+        node.enabled = DriverBool(text, at, "enabled")
+        node.selected = DriverBool(text, at, "selected")
+        node.focused = DriverBool(text, at, "focused")
+        node.loading = DriverBool(text, at, "loading")
+        node.focus_id = cast(s64)DriverNumber(text, at, "focus_id")
+        unused VecPush(driver.nodes, node)
+    }
+}
+
+// Sends one command, waits for the app's reply to it and keeps that reply.
+// FIELDS are tab-led name=value pairs. False when no reply came in time.
+DriverSend :: (driver: *TestDriverClient, verb: string, fields: string, timeout_ms: s64) -> bool {
+    driver.serial += 1
+    command: Vec(u8)
+    BuilderPrint(*command, "%\t%", driver.serial, verb)
+    Append(*command, fields)
+    Append(*command, "\n")
+    reply_path := DriverPath(driver.directory, "reply")
+    temporary := DriverPath(driver.directory, "command.tmp")
+    unused RemoveFile(reply_path)
+    if !WriteEntireFile(temporary, BuilderFinish(command)) ||
+       !RenamePath(temporary, DriverPath(driver.directory, "command")) {
+        print("FAIL: cannot write a test driver command in %\n", driver.directory)
+        return false
+    }
+    deadline := MonotonicMilliseconds() + timeout_ms
+    while MonotonicMilliseconds() < deadline {
+        if !DriverAppRunning(driver.pid) {
+            driver.reply = ""
+            return DriverFail(driver, Joined(verb, ": the app stopped", ""))
+        }
+        text, found := ReadEntireFile(reply_path)
+        if !found || text.count == 0 { DriverIdle(driver); continue }
+        serial := ReadNumber(text, FieldAt(text, 0, "serial"))
+        unused RemoveFile(reply_path)
+        if !serial.valid || cast(s64)serial.value != driver.serial { continue }
+        DriverParse(driver, text)
+        return true
+    }
+    driver.reply = ""
+    return DriverFail(driver, Joined(verb, ": no reply in time", ""))
+}
+
+// Every widget matching SELECTOR, in tree order, in driver.nodes.
+DriverFind :: (driver: *TestDriverClient, selector: DriverSelector) -> s64 {
+    if !DriverSend(driver, "find", DriverSelectorFields(selector), 15000) { return 0 }
+    return driver.nodes.count
+}
+
+// Every widget, visible or not, in driver.nodes.
+DriverTree :: (driver: *TestDriverClient) -> s64 {
+    if !DriverSend(driver, "tree", "", 15000) { return 0 }
+    return driver.nodes.count
+}
+
+// The visible labels, one per line, for checks on what a screen says.
+DriverText :: (driver: *TestDriverClient) -> string {
+    unused DriverTree(driver)
+    text: Vec(u8)
+    for index: 0..driver.nodes.count - 1 {
+        node := driver.nodes[index]
+        if node.label.count > 0 && node.visible { BuilderPrint(*text, "%\n", node.label) }
+    }
+    return BuilderFinish(text)
+}
+
+// Waits until a widget matches; it is then driver.nodes[0].
+DriverWait :: (driver: *TestDriverClient, selector: DriverSelector, timeout_ms: s64) -> bool {
+    deadline := MonotonicMilliseconds() + timeout_ms
+    while true {
+        if DriverFind(driver, selector) > 0 { return true }
+        if driver.reply.count == 0 { return false }
+        if MonotonicMilliseconds() >= deadline {
+            return DriverFail(driver, Joined("no widget matches ", DriverDescribe(selector), "in time"))
+        }
+        unused SleepMilliseconds(50)
+    }
+    return false
+}
+
+// Waits until no widget matches.
+DriverWaitGone :: (driver: *TestDriverClient, selector: DriverSelector, timeout_ms: s64) -> bool {
+    deadline := MonotonicMilliseconds() + timeout_ms
+    while DriverFind(driver, selector) > 0 {
+        if MonotonicMilliseconds() >= deadline {
+            return DriverFail(driver, Joined("", DriverDescribe(selector), "still shows"))
+        }
+        unused SleepMilliseconds(50)
+    }
+    return driver.reply.count > 0
+}
+
+// Waits until the tree stays the same for FRAMES frames. A screen with a
+// running animation never settles: then this is false after the timeout.
+DriverWaitIdle :: (driver: *TestDriverClient, frames: s64, timeout_ms: s64) -> bool {
+    deadline := MonotonicMilliseconds() + timeout_ms
+    while true {
+        if !DriverSend(driver, "status", "", 15000) { return false }
+        if driver.stable_frames >= frames { return true }
+        if MonotonicMilliseconds() >= deadline { return false }
+        unused SleepMilliseconds(30)
+    }
+    return false
+}
+
+// Presses the selector's match with the app's pointer once it shows.
+DriverPress :: (driver: *TestDriverClient, selector: DriverSelector) -> bool {
+    if !DriverWait(driver, selector, 20000) { return false }
+    unused DriverWaitIdle(driver, 2, 2000)
+    if !DriverSend(driver, "press", DriverSelectorFields(selector), 15000) { return false }
+    if !driver.ok { return DriverFail(driver, Joined("press ", DriverDescribe(selector), driver.error)) }
+    return true
+}
+
+// Types TEXT into the focused field.
+DriverType :: (driver: *TestDriverClient, text: string) -> bool {
+    fields: Vec(u8)
+    DriverField(*fields, "text", text)
+    if !DriverSend(driver, "type", BuilderFinish(fields), 20000) { return false }
+    if !driver.ok { return DriverFail(driver, Joined("type: ", driver.error, "")) }
+    return true
+}
+
+// Presses and releases a key: a DRIVER_KEY_ code or an upper-case letter.
+DriverKey :: (driver: *TestDriverClient, code: s32, control: bool, shift: bool) -> bool {
+    fields: Vec(u8)
+    BuilderPrint(*fields, "\tcode=%", cast(s64)code)
+    if control { Append(*fields, "\tcontrol=1") }
+    if shift { Append(*fields, "\tshift=1") }
+    if !DriverSend(driver, "key", BuilderFinish(fields), 15000) { return false }
+    if !driver.ok { return DriverFail(driver, Joined("key: ", driver.error, "")) }
+    return true
+}
+
+// Moves the app's pointer to X, Y with the button DOWN or up.
+DriverPointer :: (driver: *TestDriverClient, x: float64, y: float64, down: bool) -> bool {
+    fields: Vec(u8)
+    BuilderPrint(*fields, "\tx=%\ty=%\tdown=%", x, y, ifx down then "1" else "0")
+    if !DriverSend(driver, "pointer", BuilderFinish(fields), 15000) { return false }
+    if !driver.ok { return DriverFail(driver, Joined("pointer: ", driver.error, "")) }
+    return true
+}
+
+// Turns the wheel by WHEEL lines down (negative: up) with the pointer at X, Y.
+DriverWheel :: (driver: *TestDriverClient, x: float64, y: float64, wheel: float64) -> bool {
+    fields: Vec(u8)
+    BuilderPrint(*fields, "\tx=%\ty=%\twheel=%", x, y, wheel)
+    if !DriverSend(driver, "pointer", BuilderFinish(fields), 15000) { return false }
+    if !driver.ok { return DriverFail(driver, Joined("wheel: ", driver.error, "")) }
+    return true
+}
+
+// A press and release at X, Y, as a person's tap.
+DriverTap :: (driver: *TestDriverClient, x: float64, y: float64) -> bool {
+    return DriverPointer(driver, x, y, true) && DriverPointer(driver, x, y, false)
+}
+
+// Gives the pointer back to the person (or the window system's events).
+DriverReleasePointer :: (driver: *TestDriverClient) -> bool {
+    return DriverSend(driver, "pointer", "\treal=1", 15000)
+}

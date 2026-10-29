@@ -1,0 +1,78 @@
+// A test process's client finds, presses, types and waits through the test
+// driver's files. The app runs in this process: the client's pump runs one
+// app frame while it waits for each reply.
+#import "session"
+#import "geometry"
+#import "button_props"
+#import "button_widget"
+#import "text_props"
+#import "text_widget"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "test_driver"
+#import "test_driver_client"
+#import "ziran_test_driver_host"
+#import "environment_linux"
+
+using FrameStatus;
+
+session: Session;
+clicks: s32;
+enter_presses: s32;
+typed: [256]u8;
+typed_count: s32;
+
+Frame :: () -> bool {
+    real: PointerFrame
+    pointer := TestDriverPointer(session, real)
+    unused TreePointerUpdate(session, pointer)
+    if BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0}) !=
+    cast(FrameStatus)FrameOk { return false }
+    if Button(session, ButtonProps.{.id = 7, .label = "Save",
+            .bounds = Rectangle.{20.0, 20.0, 100.0, 40.0}}) != 0 {
+        clicks += 1
+    }
+    Text(session, TextProps.{.text = ifx clicks > 0 then "Saved" else "Unsaved", .font = 14,
+            .bounds = Rectangle.{20.0, 80.0, 200.0, 20.0}})
+    Text(session, TextProps.{.text = "Below", .font = 14,
+            .bounds = Rectangle.{20.0, 900.0, 200.0, 20.0}})
+    codepoint := TestDriverCodepoint()
+    while codepoint != 0 {
+        if codepoint < 128 && typed_count < 255 {
+            typed[typed_count] = cast(u8)codepoint
+            typed_count += 1
+        }
+        codepoint = TestDriverCodepoint()
+    }
+    if TestDriverKeyPressed(DRIVER_KEY_ENTER) { enter_presses += 1 }
+    if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
+    TestDriverFrame(session)
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    directory := EnvironmentText("KRYON_TEST_DRIVER")
+    if directory.count == 0 { return 1 }
+    session = SessionOpen()
+    driver := DriverOpen(directory)
+    driver.pump = Frame
+    if !DriverWait(*driver, .{label = "Save", role = "button"}, 5000) { return 2 }
+    save := driver.nodes[0]
+    if save.x != 20.0 || save.width != 100.0 || !save.visible || !save.enabled { return 3 }
+    if DriverFind(*driver, .{label = "Below"}) != 0 { return 4 }
+    if DriverFind(*driver, .{label = "Below", hidden = true}) != 1 { return 5 }
+    if !DriverPress(*driver, .{label = "Save"}) || clicks != 1 { return 6 }
+    if !DriverWait(*driver, .{contains = "aved"}, 5000) || driver.nodes[0].label != "Saved" { return 7 }
+    if !DriverWaitGone(*driver, .{label = "Unsaved"}, 5000) { return 8 }
+    if !DriverType(*driver, "a\tb") || typed_count != 3 || typed[1] != #char "\t" { return 9 }
+    if !DriverKey(*driver, DRIVER_KEY_ENTER, false, false) || enter_presses != 1 { return 10 }
+    if !DriverWaitIdle(*driver, 2, 5000) { return 11 }
+    text := DriverText(*driver)
+    if text != "Save\nSaved\n" { return 12 }
+    if !DriverTap(*driver, 70.0, 40.0) || clicks != 2 { return 13 }
+    // A press on nothing fails with the app's reason and what it showed.
+    if DriverSend(*driver, "press", "\tlabel=Missing", 2000) && driver.ok { return 14 }
+    return 0
+}
