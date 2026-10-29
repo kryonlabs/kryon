@@ -1,0 +1,807 @@
+// A private headless Chromium for web tests, driven over the DevTools
+// protocol through --remote-debugging-pipe, with a small static HTTP server
+// for the build under test. Both run in the test's own process: every wait
+// polls the browser's pipe and serves the server's requests.
+//
+//     browser: Browser
+//     if !BrowserServe(*browser, "build/web") { return 1 }
+//     if !BrowserOpen(*browser, "build/t/web-test") { return 1 }
+//     unused BrowserCall(*browser, "Page.navigate", BrowserParams1("url", BrowserUrl(*browser, "/index.html")))
+//     if !BrowserWait(*browser, "document.title === 'Shovey'", 30000) { ... }
+//     BrowserClose(*browser)
+//
+// The browser gets no display, desktop session or bus. CHROMIUM names the
+// program; otherwise chromium on PATH. Messages and server requests are
+// handled one at a time, so a test never needs threads.
+#import "c_string"
+#import "byte_text_linux"
+#import "file"
+#import "json_scan"
+#import "format"
+#import "timer_linux"
+#import "environment_linux"
+#import "option"
+
+#scope_file
+devtools_c :: #system_library "c";
+SocketRaw :: (domain: s32, kind: s32, protocol: s32) -> s32 #foreign devtools_c "socket";
+SetOptionRaw :: (fd: s32, level: s32, name: s32, value: *s32, length: u32) -> s32 #foreign devtools_c "setsockopt";
+BindRaw :: (fd: s32, address: *DevtoolsAddress, length: u32) -> s32 #foreign devtools_c "bind";
+ListenRaw :: (fd: s32, backlog: s32) -> s32 #foreign devtools_c "listen";
+AcceptRaw :: (fd: s32, address: *void, length: *u32, flags: s32) -> s32 #foreign devtools_c "accept4";
+SocketNameRaw :: (fd: s32, address: *DevtoolsAddress, length: *u32) -> s32 #foreign devtools_c "getsockname";
+PollRaw :: (fds: *DevtoolsPoll, count: u64, timeout: s32) -> s32 #foreign devtools_c "poll";
+ReadRaw :: (fd: s32, output: *u8, count: u64) -> s64 #foreign devtools_c "read";
+WriteRaw :: (fd: s32, input: *u8, count: u64) -> s64 #foreign devtools_c "write";
+SendRaw :: (fd: s32, input: *u8, count: u64, flags: s32) -> s64 #foreign devtools_c "send";
+CloseRaw :: (fd: s32) -> s32 #foreign devtools_c "close";
+PipeRaw :: (fds: *s32, flags: s32) -> s32 #foreign devtools_c "pipe2";
+ForkRaw :: () -> s32 #foreign devtools_c "fork";
+DupRaw :: (source: s32, destination: s32) -> s32 #foreign devtools_c "dup2";
+OpenRaw :: (path: *u8, flags: s32, mode: s32) -> s32 #foreign devtools_c "open";
+ExecRaw :: (path: *u8, arguments: *DevtoolsArgument) -> s32 #foreign devtools_c "execvp";
+ExitRaw :: (code: s32) -> void #foreign devtools_c "_exit";
+WaitRaw :: (pid: s32, status: *s32, options: s32) -> s32 #foreign devtools_c "waitpid";
+KillRaw :: (pid: s32, signal_number: s32) -> s32 #foreign devtools_c "kill";
+SessionRaw :: () -> s32 #foreign devtools_c "setsid";
+UnsetRaw :: (name: *u8) -> s32 #foreign devtools_c "unsetenv";
+SetRaw :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign devtools_c "setenv";
+IgnoreSignalRaw :: (signal_number: s32, handler: usize) -> usize #foreign devtools_c "signal";
+
+DevtoolsAddress :: struct { family: u16; port: u16; address: u32; zero: [8]u8 }
+DevtoolsPoll :: struct { fd: s32; events: s16; revents: s16 }
+DevtoolsArgument :: struct { value: *u8 }
+
+DEVTOOLS_CLOEXEC :: 524288
+DEVTOOLS_NONBLOCK :: 2048
+DEVTOOLS_NO_SIGNAL :: 16384
+DEVTOOLS_CONNECTIONS :: 32
+
+// The message being received, until its closing NUL.
+devtools_pending: Vec(u8);
+devtools_arguments: [24][4096]u8;
+devtools_pointers: [25]DevtoolsArgument;
+devtools_scrubbed: [8][32]u8;
+devtools_strings: [4][4096]u8;
+devtools_chunk: [65536]u8;
+#scope_export
+
+// A path the server answers itself instead of a file from its root. With
+// file set, the body is that file under the root.
+BrowserRoute :: struct {
+    path: string
+    body: string
+    file: string
+    content_type: string
+    // Extra header lines, each ending in \r\n.
+    headers: string
+    status: s32
+}
+
+BrowserConnection :: struct {
+    fd: s32
+    request: Vec(u8)
+}
+
+Browser :: struct {
+    pid: s32
+    to_browser: s32
+    from_browser: s32
+    serial: s64
+    // The page's DevTools session.
+    session: string
+    profile: string
+    // The browser's TMPDIR: its socket paths must stay short, so not under
+    // a long session folder. Empty means /tmp.
+    temporary: string
+    // The static server; port 0 while none runs.
+    listen_fd: s32
+    port: s32
+    root: string
+    routes: Vec(BrowserRoute)
+    // Inserted after <head> in every HTML page the server sends.
+    head: string
+    connections: [DEVTOOLS_CONNECTIONS]BrowserConnection
+    // Every request target the server received, in order.
+    requests: Vec(string)
+    // Events not yet taken, as whole messages, oldest first.
+    events: Vec(string)
+    // Descriptions of the page's uncaught exceptions.
+    exceptions: Vec(string)
+    // The last reply's result object.
+    result: string
+    error: string
+    failed: bool
+}
+
+// Text as a JSON string, quotes included.
+JsonQuote :: (text: string) -> string {
+    out: Vec(u8)
+    DevtoolsQuote(*out, text)
+    return BuilderFinish(out)
+}
+
+DevtoolsQuote :: (out: *Vec(u8), text: string) {
+    digits := "0123456789abcdef"
+    unused VecPush(<<out, #char "\"")
+    for byte: text {
+        if byte == #char "\"" { Append(out, "\\\"") }
+        else if byte == #char "\\" { Append(out, "\\\\") }
+        else if byte == #char "\n" { Append(out, "\\n") }
+        else if byte == #char "\r" { Append(out, "\\r") }
+        else if byte == #char "\t" { Append(out, "\\t") }
+        else if byte < cast(u8)32 {
+            Append(out, "\\u00")
+            unused VecPush(<<out, digits[(byte >> 4) & 15])
+            unused VecPush(<<out, digits[byte & 15])
+        } else { unused VecPush(<<out, byte) }
+    }
+    unused VecPush(<<out, #char "\"")
+}
+
+// {"NAME": "VALUE"}, the common one-string parameters.
+BrowserParams1 :: (name: string, value: string) -> string {
+    out: Vec(u8)
+    Append(*out, "{")
+    DevtoolsQuote(*out, name)
+    Append(*out, ":")
+    DevtoolsQuote(*out, value)
+    Append(*out, "}")
+    return BuilderFinish(out)
+}
+
+// The server's address for PATH.
+BrowserUrl :: (browser: *Browser, path: string) -> string {
+    out: Vec(u8)
+    BuilderPrint(*out, "http://127.0.0.1:%", cast(s64)browser.port)
+    Append(*out, path)
+    return BuilderFinish(out)
+}
+
+BrowserFail :: (browser: *Browser, message: string, detail: string) -> bool {
+    print("FAIL: %", message)
+    print("%\n", detail)
+    if browser.exceptions.count > 0 {
+        print("  Page exceptions:\n")
+        for index: 0..browser.exceptions.count - 1 { print("  %\n", browser.exceptions[index]) }
+    }
+    browser.failed = true
+    return false
+}
+
+// ---- The static server ----
+
+// Serves ROOT's files on a free local port.
+BrowserServe :: (browser: *Browser, root: string) -> bool {
+    browser.root = root
+    for index: 0..DEVTOOLS_CONNECTIONS - 1 { browser.connections[index].fd = -1 }
+    unused IgnoreSignalRaw(13, cast(usize)1)
+    fd := SocketRaw(2, 1 | DEVTOOLS_CLOEXEC | DEVTOOLS_NONBLOCK, 0)
+    if fd < 0 { return BrowserFail(browser, "cannot open the server socket", "") }
+    reuse: s32 = 1
+    unused SetOptionRaw(fd, 1, 2, *reuse, 4)
+    address: DevtoolsAddress
+    address.family = 2
+    address.address = 16777343
+    if BindRaw(fd, *address, 16) != 0 || ListenRaw(fd, 64) != 0 {
+        unused CloseRaw(fd)
+        return BrowserFail(browser, "cannot listen on a local port", "")
+    }
+    length: u32 = 16
+    unused SocketNameRaw(fd, *address, *length)
+    browser.listen_fd = fd
+    browser.port = cast(s32)(((address.port & 255) << 8) | (address.port >> 8))
+    return true
+}
+
+// Answers PATH (the request target before any query) from BODY.
+BrowserAddRoute :: (browser: *Browser, route: BrowserRoute) {
+    unused VecPush(browser.routes, route)
+}
+
+DevtoolsContentType :: (path: string) -> string {
+    if DevtoolsEnds(path, ".html") || path == "/" { return "text/html; charset=utf-8" }
+    if DevtoolsEnds(path, ".js") || DevtoolsEnds(path, ".mjs") { return "text/javascript" }
+    if DevtoolsEnds(path, ".wasm") { return "application/wasm" }
+    if DevtoolsEnds(path, ".png") { return "image/png" }
+    if DevtoolsEnds(path, ".json") { return "application/json" }
+    if DevtoolsEnds(path, ".css") { return "text/css" }
+    if DevtoolsEnds(path, ".svg") { return "image/svg+xml" }
+    if DevtoolsEnds(path, ".webmanifest") { return "application/manifest+json" }
+    if DevtoolsEnds(path, ".txt") { return "text/plain; charset=utf-8" }
+    return "application/octet-stream"
+}
+
+DevtoolsEnds :: (text: string, suffix: string) -> bool {
+    return text.count >= suffix.count && text[text.count - suffix.count:] == suffix
+}
+
+DevtoolsFind :: (text: string, needle: string, from: s64) -> s64 {
+    if needle.count > text.count { return -1 }
+    at := from
+    while at + needle.count <= text.count {
+        if text[at:at + needle.count] == needle { return at }
+        at += 1
+    }
+    return -1
+}
+
+DevtoolsHex :: (byte: u8) -> s32 {
+    if byte >= #char "0" && byte <= #char "9" { return cast(s32)(byte - #char "0") }
+    if byte >= #char "a" && byte <= #char "f" { return cast(s32)(byte - #char "a") + 10 }
+    if byte >= #char "A" && byte <= #char "F" { return cast(s32)(byte - #char "A") + 10 }
+    return -1
+}
+
+// The decoded path of a request target, without its query.
+DevtoolsPath :: (target: string) -> string {
+    out: Vec(u8)
+    at: s64 = 0
+    while at < target.count && target[at] != #char "?" && target[at] != #char "#" {
+        if target[at] == #char "%" && at + 2 < target.count &&
+           DevtoolsHex(target[at + 1]) >= 0 && DevtoolsHex(target[at + 2]) >= 0 {
+            unused VecPush(out, cast(u8)(DevtoolsHex(target[at + 1]) * 16 + DevtoolsHex(target[at + 2])))
+            at += 3
+        } else {
+            unused VecPush(out, target[at])
+            at += 1
+        }
+    }
+    return BuilderFinish(out)
+}
+
+DevtoolsSendAll :: (fd: s32, text: string) -> bool {
+    descriptor := cast(*TextDescriptor)(*text)
+    sent: u64 = 0
+    total := cast(u64)text.count
+    while sent < total {
+        count := SendRaw(fd, *descriptor.data[sent], total - sent, DEVTOOLS_NO_SIGNAL)
+        if count <= 0 { return false }
+        sent += cast(u64)count
+    }
+    return true
+}
+
+DevtoolsRespond :: (fd: s32, status: s32, content_type: string, headers: string, body: string) {
+    head: Vec(u8)
+    reason := ifx status == 200 then "OK" else ifx status == 404 then "Not Found" else "Error"
+    BuilderPrint(*head, "HTTP/1.1 % %\r\n", cast(s64)status, reason)
+    BuilderPrint(*head, "Content-Type: %\r\nContent-Length: %\r\nConnection: close\r\n", content_type, body.count)
+    Append(*head, headers)
+    Append(*head, "\r\n")
+    if DevtoolsSendAll(fd, BuilderFinish(head)) { unused DevtoolsSendAll(fd, body) }
+}
+
+// Inserts the browser's head text after <head> in an HTML page.
+DevtoolsInject :: (browser: *Browser, content_type: string, body: string) -> string {
+    if browser.head.count == 0 || DevtoolsFind(content_type, "text/html", 0) < 0 { return body }
+    at := DevtoolsFind(body, "<head>", 0)
+    if at < 0 { return body }
+    out: Vec(u8)
+    Append(*out, body[0:at + 6])
+    Append(*out, browser.head)
+    Append(*out, body[at + 6:])
+    return BuilderFinish(out)
+}
+
+DevtoolsAnswer :: (browser: *Browser, fd: s32, request: string) {
+    line_end := DevtoolsFind(request, "\r\n", 0)
+    first := ifx line_end < 0 then request else request[0:line_end]
+    space := DevtoolsFind(first, " ", 0)
+    second := ifx space < 0 then -1 else DevtoolsFind(first, " ", space + 1)
+    if space < 0 || second < 0 { DevtoolsRespond(fd, 400, "text/plain", "", "Bad request"); return }
+    target := first[space + 1:second]
+    stored: Vec(u8)
+    Append(*stored, target)
+    unused VecPush(browser.requests, BuilderFinish(stored))
+    path := DevtoolsPath(target)
+    for index: 0..browser.routes.count - 1 {
+        route := browser.routes[index]
+        if route.path != target && route.path != path { continue }
+        status := ifx route.status == 0 then cast(s32)200 else route.status
+        content_type := ifx route.content_type.count > 0 then route.content_type else DevtoolsContentType(path)
+        body := route.body
+        if route.file.count > 0 {
+            text, ok := ReadEntireFile(BuilderJoin(browser.root, "/", route.file))
+            if !ok { DevtoolsRespond(fd, 404, "text/plain", "", "Not found"); return }
+            body = text
+        }
+        DevtoolsRespond(fd, status, content_type, route.headers, DevtoolsInject(browser, content_type, body))
+        return
+    }
+    if DevtoolsFind(path, "..", 0) >= 0 { DevtoolsRespond(fd, 404, "text/plain", "", "Not found"); return }
+    file := ifx path == "/" then "/index.html" else path
+    text, ok := ReadEntireFile(BuilderJoin(browser.root, file, ""))
+    if !ok { DevtoolsRespond(fd, 404, "text/plain", "", "Not found"); return }
+    content_type := DevtoolsContentType(file)
+    DevtoolsRespond(fd, 200, content_type, "", DevtoolsInject(browser, content_type, text))
+}
+
+BuilderJoin :: (first: string, second: string, third: string) -> string {
+    out: Vec(u8)
+    Append(*out, first)
+    Append(*out, second)
+    Append(*out, third)
+    return BuilderFinish(out)
+}
+
+DevtoolsAccept :: (browser: *Browser) {
+    while true {
+        fd := AcceptRaw(browser.listen_fd, null, null, DEVTOOLS_CLOEXEC)
+        if fd < 0 { return }
+        slot: s32 = -1
+        for index: 0..DEVTOOLS_CONNECTIONS - 1 {
+            if browser.connections[index].fd < 0 { slot = cast(s32)index; break }
+        }
+        if slot < 0 { unused CloseRaw(fd); continue }
+        browser.connections[slot].fd = fd
+        VecClear(browser.connections[slot].request)
+    }
+}
+
+DevtoolsReadConnection :: (browser: *Browser, slot: s32) {
+    fd := browser.connections[slot].fd
+    count := ReadRaw(fd, *devtools_chunk[0], cast(u64)devtools_chunk.count)
+    if count <= 0 {
+        unused CloseRaw(fd)
+        browser.connections[slot].fd = -1
+        return
+    }
+    for at: 0..count - 1 { unused VecPush(browser.connections[slot].request, devtools_chunk[at]) }
+    text: Vec(u8)
+    for at: 0..browser.connections[slot].request.count - 1 { unused VecPush(text, browser.connections[slot].request[at]) }
+    whole := BuilderFinish(text)
+    if DevtoolsFind(whole, "\r\n\r\n", 0) < 0 { return }
+    DevtoolsAnswer(browser, fd, whole)
+    unused CloseRaw(fd)
+    browser.connections[slot].fd = -1
+}
+
+// ---- The browser ----
+
+DevtoolsCString :: (text: string, slot: s32) -> *u8 {
+    unused CopyCString(text, devtools_strings[slot][:])
+    return *devtools_strings[slot][0]
+}
+
+// Starts a private headless Chromium with its profile in PROFILE (created
+// when missing) and attaches to its first page.
+BrowserOpen :: (browser: *Browser, profile: string) -> bool {
+    unused CreateDirectory(profile)
+    browser.profile = profile
+    program := EnvironmentText("CHROMIUM")
+    if program.count == 0 { program = "chromium" }
+    arguments: [12]string = .[program, "--headless", "--no-sandbox", "--disable-gpu",
+        "--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check",
+        "--remote-debugging-pipe", BuilderJoin("--user-data-dir=", profile, ""),
+        "--hide-scrollbars", "--mute-audio", "about:blank"]
+    for index: 0..arguments.count - 1 {
+        if !CopyCString(arguments[index], devtools_arguments[index][:]) { return BrowserFail(browser, "argument too long", "") }
+        devtools_pointers[index].value = *devtools_arguments[index][0]
+    }
+    devtools_pointers[arguments.count].value = null
+    scrubbed: [6]string = .["DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER", "GDK_DISPLAY"]
+    for index: 0..scrubbed.count - 1 { unused CopyCString(scrubbed[index], devtools_scrubbed[index][:]) }
+    temporary := DevtoolsCString("TMPDIR", 0)
+    temporary_value := DevtoolsCString(ifx browser.temporary.count > 0 then browser.temporary else "/tmp", 1)
+    log := DevtoolsCString(BuilderJoin(profile, "/browser.log", ""), 2)
+    null_path := DevtoolsCString("/dev/null", 3)
+    to_browser: [2]s32
+    from_browser: [2]s32
+    if PipeRaw(*to_browser[0], DEVTOOLS_CLOEXEC) != 0 || PipeRaw(*from_browser[0], DEVTOOLS_CLOEXEC) != 0 {
+        return BrowserFail(browser, "cannot open the DevTools pipes", "")
+    }
+    pid := ForkRaw()
+    if pid < 0 { return BrowserFail(browser, "cannot start the browser", "") }
+    if pid == 0 {
+        unused SessionRaw()
+        input := OpenRaw(null_path, 0, 0)
+        output := OpenRaw(log, 577, 420)
+        if input < 0 || output < 0 { ExitRaw(127) }
+        if DupRaw(input, 0) < 0 || DupRaw(output, 1) < 0 || DupRaw(output, 2) < 0 { ExitRaw(127) }
+        if DupRaw(to_browser[0], 3) < 0 || DupRaw(from_browser[1], 4) < 0 { ExitRaw(127) }
+        for index: 0..scrubbed.count - 1 { unused UnsetRaw(*devtools_scrubbed[index][0]) }
+        unused SetRaw(temporary, temporary_value, 1)
+        unused ExecRaw(devtools_pointers[0].value, *devtools_pointers[0])
+        ExitRaw(127)
+    }
+    unused CloseRaw(to_browser[0])
+    unused CloseRaw(from_browser[1])
+    browser.pid = pid
+    browser.to_browser = to_browser[1]
+    browser.from_browser = from_browser[0]
+    deadline := MonotonicMilliseconds() + 30000
+    while MonotonicMilliseconds() < deadline {
+        if !BrowserCall(browser, "Target.getTargets", "{}") { return false }
+        at := FieldAt(browser.result, 0, "targetInfos")
+        count := ArrayCount(browser.result, at)
+        for index: 0..count - 1 {
+            target := ElementAt(browser.result, at, index)
+            kind := DevtoolsString(browser.result, target, "type")
+            if kind != "page" { continue }
+            params := BrowserJoinParams(DevtoolsString(browser.result, target, "targetId"))
+            if !BrowserCall(browser, "Target.attachToTarget", params) { return false }
+            browser.session = DevtoolsString(browser.result, 0, "sessionId")
+            return browser.session.count > 0 || BrowserFail(browser, "no page session", "")
+        }
+        BrowserSleep(browser, 100)
+    }
+    return BrowserFail(browser, "the browser opened no page", "")
+}
+
+BrowserJoinParams :: (target: string) -> string {
+    out: Vec(u8)
+    Append(*out, "{\"targetId\":")
+    DevtoolsQuote(*out, target)
+    Append(*out, ",\"flatten\":true}")
+    return BuilderFinish(out)
+}
+
+DevtoolsString :: (text: string, object: s32, name: string) -> string {
+    at := FieldAt(text, object, name)
+    if at < 0 { return "" }
+    value := ReadStringValue(text, at, 268435456)
+    if !value.valid { return "" }
+    return BuilderFinish(value.value)
+}
+
+DevtoolsWrite :: (browser: *Browser, message: string) -> bool {
+    descriptor := cast(*TextDescriptor)(*message)
+    sent: u64 = 0
+    total := cast(u64)message.count + 1
+    while sent < total {
+        count := WriteRaw(browser.to_browser, *descriptor.data[sent], total - sent)
+        if count <= 0 { return false }
+        sent += cast(u64)count
+    }
+    return true
+}
+
+// Handles one whole message: a reply is returned through MATCHED when its
+// id is WANTED; an event is kept.
+DevtoolsMessage :: (browser: *Browser, message: string, wanted: s64, matched: *bool) {
+    id := FieldAt(message, 0, "id")
+    if id >= 0 {
+        number := ReadNumber(message, id)
+        if !number.valid || cast(s64)number.value != wanted { return }
+        <<matched = true
+        browser.error = ""
+        browser.result = "{}"
+        result := FieldAt(message, 0, "result")
+        if result >= 0 {
+            end := ValueEnd(message, result, 0)
+            if end > result { browser.result = message[result:end] }
+        }
+        error := FieldAt(message, 0, "error")
+        if error >= 0 {
+            end := ValueEnd(message, error, 0)
+            browser.error = ifx end > error then message[error:end] else "error"
+        }
+        return
+    }
+    method := DevtoolsString(message, 0, "method")
+    if method == "Runtime.exceptionThrown" {
+        params := FieldAt(message, 0, "params")
+        details := FieldAt(message, params, "exceptionDetails")
+        exception := FieldAt(message, details, "exception")
+        description := DevtoolsString(message, exception, "description")
+        if description.count == 0 { description = DevtoolsString(message, details, "text") }
+        unused VecPush(browser.exceptions, description)
+    }
+    if browser.events.count < 100000 { unused VecPush(browser.events, message) }
+}
+
+// Waits up to TIMEOUT_MS for the browser or the server, handling whatever
+// arrives. WANTED names the reply being waited for, or 0.
+DevtoolsPump :: (browser: *Browser, timeout_ms: s32, wanted: s64, matched: *bool) -> bool {
+    fds: [DEVTOOLS_CONNECTIONS + 2]DevtoolsPoll
+    slots: [DEVTOOLS_CONNECTIONS + 2]s32
+    count: s32 = 0
+    if browser.pid > 0 {
+        fds[count] = .{fd = browser.from_browser, events = 1}
+        slots[count] = -2
+        count += 1
+    }
+    if browser.port > 0 {
+        fds[count] = .{fd = browser.listen_fd, events = 1}
+        slots[count] = -1
+        count += 1
+        for index: 0..DEVTOOLS_CONNECTIONS - 1 {
+            if browser.connections[index].fd < 0 { continue }
+            fds[count] = .{fd = browser.connections[index].fd, events = 1}
+            slots[count] = cast(s32)index
+            count += 1
+        }
+    }
+    if count == 0 { unused SleepMilliseconds(cast(s64)timeout_ms); return true }
+    ready := PollRaw(*fds[0], cast(u64)count, timeout_ms)
+    if ready <= 0 { return true }
+    for index: 0..count - 1 {
+        if fds[index].revents == 0 { continue }
+        if slots[index] == -1 { DevtoolsAccept(browser) }
+        else if slots[index] >= 0 { DevtoolsReadConnection(browser, slots[index]) }
+        else {
+            read := ReadRaw(browser.from_browser, *devtools_chunk[0], cast(u64)devtools_chunk.count)
+            if read <= 0 { return BrowserFail(browser, "the browser closed its DevTools pipe", "") }
+            start: s64 = 0
+            for at: 0..read - 1 {
+                if devtools_chunk[at] != 0 { continue }
+                unused BuilderAppend(devtools_pending, TextView(devtools_chunk[start:at]))
+                message: Vec(u8)
+                VecSwap(message, devtools_pending)
+                DevtoolsMessage(browser, BuilderFinish(message), wanted, matched)
+                start = at + 1
+            }
+            if start < read { unused BuilderAppend(devtools_pending, TextView(devtools_chunk[start:read])) }
+        }
+    }
+    return true
+}
+
+// Lets TIME pass while the browser and server keep being served.
+BrowserSleep :: (browser: *Browser, milliseconds: s64) {
+    deadline := MonotonicMilliseconds() + milliseconds
+    matched := false
+    while true {
+        left := deadline - MonotonicMilliseconds()
+        if left <= 0 { return }
+        unused DevtoolsPump(browser, cast(s32)(ifx left > 50 then 50 else left), 0, *matched)
+    }
+}
+
+// Calls METHOD with PARAMS (a JSON object) on the page, or on the browser
+// before a page is attached; its result is then browser.result.
+BrowserCall :: (browser: *Browser, method: string, params: string) -> bool {
+    return BrowserCallTimed(browser, method, params, 30000)
+}
+
+BrowserCallTimed :: (browser: *Browser, method: string, params: string, timeout_ms: s64) -> bool {
+    browser.serial += 1
+    message: Vec(u8)
+    BuilderPrint(*message, "{\"id\":%,\"method\":", browser.serial)
+    DevtoolsQuote(*message, method)
+    Append(*message, ",\"params\":")
+    Append(*message, ifx params.count > 0 then params else "{}")
+    if browser.session.count > 0 {
+        Append(*message, ",\"sessionId\":")
+        DevtoolsQuote(*message, browser.session)
+    }
+    Append(*message, "}")
+    if !DevtoolsWrite(browser, BuilderFinish(message)) { return BrowserFail(browser, method, ": the browser is gone") }
+    deadline := MonotonicMilliseconds() + timeout_ms
+    matched := false
+    while !matched {
+        if MonotonicMilliseconds() > deadline { return BrowserFail(browser, method, " timed out") }
+        if !DevtoolsPump(browser, 50, browser.serial, *matched) { return false }
+    }
+    if browser.error.count > 0 { return BrowserFail(browser, BuilderJoin(method, ": ", browser.error), "") }
+    return true
+}
+
+// The oldest kept event named METHOD, removed from the queue; "" if none.
+BrowserTakeEvent :: (browser: *Browser, method: string) -> string {
+    for index: 0..browser.events.count - 1 {
+        if DevtoolsString(browser.events[index], 0, "method") != method { continue }
+        copy: Vec(u8)
+        Append(*copy, browser.events[index])
+        for at: index..browser.events.count - 2 { browser.events[at] = browser.events[at + 1] }
+        unused VecPop(browser.events)
+        return BuilderFinish(copy)
+    }
+    return ""
+}
+
+// Waits for an event named METHOD and returns it.
+BrowserWaitEvent :: (browser: *Browser, method: string, timeout_ms: s64) -> string {
+    deadline := MonotonicMilliseconds() + timeout_ms
+    while MonotonicMilliseconds() < deadline {
+        event := BrowserTakeEvent(browser, method)
+        if event.count > 0 { return event }
+        BrowserSleep(browser, 20)
+    }
+    unused BrowserFail(browser, "no event ", method)
+    return ""
+}
+
+// The value of EXPRESSION in the page, as JSON text ("null" when it has
+// none). Promises are awaited. False when it throws.
+BrowserEvaluate :: (browser: *Browser, expression: string) -> bool {
+    params: Vec(u8)
+    Append(*params, "{\"expression\":")
+    DevtoolsQuote(*params, expression)
+    Append(*params, ",\"returnByValue\":true,\"awaitPromise\":true}")
+    if !BrowserCall(browser, "Runtime.evaluate", BuilderFinish(params)) { return false }
+    details := FieldAt(browser.result, 0, "exceptionDetails")
+    if details >= 0 {
+        exception := FieldAt(browser.result, details, "exception")
+        description := DevtoolsString(browser.result, exception, "description")
+        if description.count == 0 { description = DevtoolsString(browser.result, details, "text") }
+        return BrowserFail(browser, BuilderJoin(expression, " threw: ", description), "")
+    }
+    result := FieldAt(browser.result, 0, "result")
+    value := FieldAt(browser.result, result, "value")
+    if value < 0 { browser.result = "null"; return true }
+    end := ValueEnd(browser.result, value, 0)
+    browser.result = browser.result[value:end]
+    return true
+}
+
+// Whether EXPRESSION is truthy in the page; false also when it throws.
+BrowserTrue :: (browser: *Browser, expression: string) -> bool {
+    if !BrowserEvaluate(browser, BuilderJoin("!!(", expression, ")")) { return false }
+    return browser.result == "true"
+}
+
+// EXPRESSION's number value, or FALLBACK.
+BrowserNumber :: (browser: *Browser, expression: string, fallback: float64) -> float64 {
+    if !BrowserEvaluate(browser, expression) { return fallback }
+    number := ReadNumber(browser.result, 0)
+    return ifx number.valid then number.value else fallback
+}
+
+// EXPRESSION's string value, or "".
+BrowserText :: (browser: *Browser, expression: string) -> string {
+    if !BrowserEvaluate(browser, expression) { return "" }
+    value := ReadStringValue(browser.result, 0, 268435456)
+    return ifx value.valid then BuilderFinish(value.value) else ""
+}
+
+// Waits until EXPRESSION is truthy in the page.
+BrowserWait :: (browser: *Browser, expression: string, timeout_ms: s64) -> bool {
+    deadline := MonotonicMilliseconds() + timeout_ms
+    while true {
+        params: Vec(u8)
+        Append(*params, "{\"expression\":")
+        DevtoolsQuote(*params, BuilderJoin("!!(", expression, ")"))
+        Append(*params, ",\"returnByValue\":true,\"awaitPromise\":true}")
+        if !BrowserCall(browser, "Runtime.evaluate", BuilderFinish(params)) { return false }
+        if DevtoolsFind(browser.result, "\"value\":true", 0) >= 0 { return true }
+        if MonotonicMilliseconds() >= deadline { return BrowserFail(browser, "timed out waiting for ", expression) }
+        BrowserSleep(browser, 100)
+    }
+    return false
+}
+
+// A mouse event at X, Y: TYPE is mousePressed, mouseReleased, mouseMoved
+// or mouseWheel; DELTA_Y scrolls for mouseWheel.
+BrowserMouse :: (browser: *Browser, kind: string, x: float64, y: float64, delta_y: float64) -> bool {
+    params: Vec(u8)
+    Append(*params, "{\"type\":")
+    DevtoolsQuote(*params, kind)
+    BuilderPrint(*params, ",\"x\":%,\"y\":%", x, y)
+    if kind == "mouseWheel" { BuilderPrint(*params, ",\"deltaX\":0,\"deltaY\":%", delta_y) }
+    else if kind != "mouseMoved" { Append(*params, ",\"button\":\"left\",\"clickCount\":1") }
+    Append(*params, "}")
+    return BrowserCall(browser, "Input.dispatchMouseEvent", BuilderFinish(params))
+}
+
+// A left click at X, Y.
+BrowserClick :: (browser: *Browser, x: float64, y: float64) -> bool {
+    return BrowserMouse(browser, "mousePressed", x, y, 0.0) && BrowserMouse(browser, "mouseReleased", x, y, 0.0)
+}
+
+// Presses and releases a key: KEY and CODE as DOM names ("ArrowLeft"),
+// CODE_NUMBER as the Windows virtual key code.
+BrowserKey :: (browser: *Browser, key: string, code: string, key_code: s32) -> bool {
+    kinds: [2]string = .["keyDown", "keyUp"]
+    for kind: kinds {
+        params: Vec(u8)
+        Append(*params, "{\"type\":")
+        DevtoolsQuote(*params, kind)
+        Append(*params, ",\"key\":")
+        DevtoolsQuote(*params, key)
+        Append(*params, ",\"code\":")
+        DevtoolsQuote(*params, code)
+        // A printable key types its character as it goes down.
+        if kind == "keyDown" && key.count == 1 {
+            Append(*params, ",\"text\":")
+            DevtoolsQuote(*params, key)
+        }
+        BuilderPrint(*params, ",\"windowsVirtualKeyCode\":%,\"nativeVirtualKeyCode\":%}", cast(s64)key_code, cast(s64)key_code)
+        if !BrowserCall(browser, "Input.dispatchKeyEvent", BuilderFinish(params)) { return false }
+    }
+    return true
+}
+
+// Sets the page's size in CSS pixels, its device scale and touch mode.
+BrowserViewport :: (browser: *Browser, width: s32, height: s32, scale: float64, mobile: bool) -> bool {
+    params: Vec(u8)
+    BuilderPrint(*params, "{\"width\":%,\"height\":%,\"deviceScaleFactor\":%,\"mobile\":%}",
+        cast(s64)width, cast(s64)height, scale, mobile)
+    return BrowserCall(browser, "Emulation.setDeviceMetricsOverride", BuilderFinish(params))
+}
+
+// Runs SCRIPT in every new document before the page's own scripts.
+BrowserScriptOnLoad :: (browser: *Browser, script: string) -> bool {
+    return BrowserCall(browser, "Page.addScriptToEvaluateOnNewDocument", BrowserParams1("source", script))
+}
+
+// Opens URL and turns on page and runtime events.
+BrowserNavigate :: (browser: *Browser, url: string) -> bool {
+    return BrowserCall(browser, "Page.enable", "{}") && BrowserCall(browser, "Runtime.enable", "{}") &&
+        BrowserCall(browser, "Page.navigate", BrowserParams1("url", url))
+}
+
+// Saves a PNG screenshot of the page's viewport to PATH.
+BrowserScreenshot :: (browser: *Browser, path: string) -> bool {
+    if !BrowserCall(browser, "Page.captureScreenshot", "{\"format\":\"png\"}") { return false }
+    data := DevtoolsString(browser.result, 0, "data")
+    bytes := Base64Decode(data)
+    if bytes.count == 0 { return BrowserFail(browser, "an empty screenshot", "") }
+    return WriteEntireFile(path, bytes) || BrowserFail(browser, "cannot write ", path)
+}
+
+// Closes the browser and its process group, and the server.
+BrowserClose :: (browser: *Browser) {
+    if browser.pid > 0 {
+        browser.session = ""
+        unused BrowserCallTimed(browser, "Browser.close", "{}", 3000)
+        deadline := MonotonicMilliseconds() + 5000
+        status: s32
+        while WaitRaw(browser.pid, *status, 1) == 0 && MonotonicMilliseconds() < deadline { unused SleepMilliseconds(20) }
+        if WaitRaw(browser.pid, *status, 1) == 0 {
+            unused KillRaw(-browser.pid, 9)
+            unused WaitRaw(browser.pid, *status, 0)
+        }
+        unused CloseRaw(browser.to_browser)
+        unused CloseRaw(browser.from_browser)
+        browser.pid = 0
+    }
+    if browser.port > 0 {
+        for index: 0..DEVTOOLS_CONNECTIONS - 1 {
+            if browser.connections[index].fd >= 0 { unused CloseRaw(browser.connections[index].fd) }
+            browser.connections[index].fd = -1
+        }
+        unused CloseRaw(browser.listen_fd)
+        browser.port = 0
+    }
+}
+
+// ---- Base64, for screenshots and fulfilled requests ----
+
+BASE64_DIGITS :: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+Base64Encode :: (bytes: string) -> string {
+    out: Vec(u8)
+    at: s64 = 0
+    while at < bytes.count {
+        a := cast(u32)bytes[at]
+        b := ifx at + 1 < bytes.count then cast(u32)bytes[at + 1] else cast(u32)0
+        c := ifx at + 2 < bytes.count then cast(u32)bytes[at + 2] else cast(u32)0
+        triple := (a << 16) | (b << 8) | c
+        unused VecPush(out, BASE64_DIGITS[(triple >> 18) & 63])
+        unused VecPush(out, BASE64_DIGITS[(triple >> 12) & 63])
+        unused VecPush(out, ifx at + 1 < bytes.count then BASE64_DIGITS[(triple >> 6) & 63] else #char "=")
+        unused VecPush(out, ifx at + 2 < bytes.count then BASE64_DIGITS[triple & 63] else #char "=")
+        at += 3
+    }
+    return BuilderFinish(out)
+}
+
+Base64Value :: (digit: u8) -> s32 {
+    if digit >= #char "A" && digit <= #char "Z" { return cast(s32)(digit - #char "A") }
+    if digit >= #char "a" && digit <= #char "z" { return cast(s32)(digit - #char "a") + 26 }
+    if digit >= #char "0" && digit <= #char "9" { return cast(s32)(digit - #char "0") + 52 }
+    if digit == #char "+" { return 62 }
+    if digit == #char "/" { return 63 }
+    return -1
+}
+
+// The bytes of TEXT; "" when it is not base64.
+Base64Decode :: (text: string) -> string {
+    out: Vec(u8)
+    bits: u32 = 0
+    held: s32 = 0
+    for digit: text {
+        if digit == #char "=" { break }
+        value := Base64Value(digit)
+        if value < 0 { return "" }
+        bits = (bits << 6) | cast(u32)value
+        held += 6
+        if held >= 8 {
+            held -= 8
+            unused VecPush(out, cast(u8)((bits >> cast(u32)held) & 255))
+        }
+    }
+    return BuilderFinish(out)
+}

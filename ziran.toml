@@ -104,6 +104,8 @@ TestDriver = "src/backend/test_driver.zi"
 test_driver = "src/backend/test_driver.zi"
 # The test process's side: find, press, type and wait in a driven app.
 test_driver_client = "src/backend/test_driver_client.zi"
+# A private headless Chromium over the DevTools pipe, with a static server.
+devtools = "src/backend/devtools_linux.zi"
 # A private Xvfb for window tests: owned windows, capture, PNG and pixels.
 private_display = "src/backend/private_display_linux.zi"
 key_input = "src/ui/key_input.zi"

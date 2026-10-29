@@ -1,0 +1,57 @@
+// A private headless Chromium loads pages from the test's own server,
+// evaluates, clicks, types, intercepts a request, reports page exceptions
+// and takes a screenshot.
+#import "devtools_linux"
+#import "json_scan"
+#import "format"
+#import "file"
+#import "environment_linux"
+
+#program_export
+main :: () -> s32 {
+    work := EnvironmentText("DEVTOOLS_TEST_DIR")
+    if work.count == 0 { return 1 }
+    if Base64Decode(Base64Encode("a\0bc~")) != "a\0bc~" || Base64Encode("ab") != "YWI=" || Base64Decode("/w==").count != 1 { return 2 }
+    if JsonQuote("a\"\\\n\x01") != "\"a\\\"\\\\\\n\\u0001\"" { return 3 }
+    page := "<!doctype html><html><head><title>Served</title></head><body style=margin:0><button id=b style='position:absolute;left:10px;top:10px;width:100px;height:40px' onclick='window.clicks=(window.clicks||0)+1'>Go</button><input id=i style='position:absolute;left:10px;top:80px'><script>setTimeout(() => { throw new Error('page broke') }, 0)</script></body></html>"
+    if !WriteEntireFile(BuilderJoin(work, "/site/index.html", ""), page) { return 4 }
+    browser: Browser
+    if !BrowserServe(*browser, BuilderJoin(work, "/site", "")) { return 5 }
+    browser.head = "<script>window.injected = true</script>"
+    BrowserAddRoute(*browser, .{path = "/data.json", body = "{\"answer\":42}", headers = "Cache-Control: no-store\r\n"})
+    if !BrowserOpen(*browser, BuilderJoin(work, "/profile", "")) { return 6 }
+    if !BrowserViewport(*browser, 400, 300, 1.0, false) { BrowserClose(*browser); return 7 }
+    if !BrowserNavigate(*browser, BrowserUrl(*browser, "/index.html")) { BrowserClose(*browser); return 8 }
+    if !BrowserWait(*browser, "document.title === 'Served' && window.injected", 20000) { BrowserClose(*browser); return 9 }
+    if BrowserNumber(*browser, "fetch('/data.json').then(r => r.json()).then(d => d.answer)", 0.0) != 42.0 { BrowserClose(*browser); return 10 }
+    if BrowserText(*browser, "fetch('/missing').then(r => String(r.status))") != "404" { BrowserClose(*browser); return 11 }
+    if !BrowserClick(*browser, 60.0, 30.0) || !BrowserWait(*browser, "window.clicks === 1", 5000) { BrowserClose(*browser); return 12 }
+    if !BrowserClick(*browser, 40.0, 90.0) || !BrowserKey(*browser, "a", "KeyA", 65) ||
+       !BrowserWait(*browser, "document.getElementById('i').value === 'a'", 5000) { BrowserClose(*browser); return 13 }
+    if !BrowserWait(*browser, "true", 1000) || browser.exceptions.count == 0 { BrowserClose(*browser); return 14 }
+    seen := false
+    for index: 0..browser.requests.count - 1 { if browser.requests[index] == "/data.json" { seen = true } }
+    if !seen { BrowserClose(*browser); return 15 }
+    // An intercepted request is answered by the test.
+    if !BrowserCall(*browser, "Fetch.enable", "{\"patterns\":[{\"urlPattern\":\"https://example.invalid/*\"}]}") { BrowserClose(*browser); return 16 }
+    unused BrowserCall(*browser, "Runtime.evaluate", "{\"expression\":\"window.got = fetch('https://example.invalid/x').then(r => r.text())\"}")
+    paused := BrowserWaitEvent(*browser, "Fetch.requestPaused", 10000)
+    if paused.count == 0 { BrowserClose(*browser); return 17 }
+    params := FieldAt(paused, 0, "params")
+    request := ReadStringValue(paused, FieldAt(paused, params, "requestId"), 256)
+    if !request.valid { BrowserClose(*browser); return 18 }
+    fulfil: Vec(u8)
+    Append(*fulfil, "{\"requestId\":")
+    Append(*fulfil, JsonQuote(BuilderFinish(request.value)))
+    Append(*fulfil, ",\"responseCode\":200,\"responseHeaders\":[{\"name\":\"Access-Control-Allow-Origin\",\"value\":\"*\"}],\"body\":")
+    Append(*fulfil, JsonQuote(Base64Encode("intercepted")))
+    Append(*fulfil, "}")
+    if !BrowserCall(*browser, "Fetch.fulfillRequest", BuilderFinish(fulfil)) { BrowserClose(*browser); return 19 }
+    if BrowserText(*browser, "window.got") != "intercepted" { BrowserClose(*browser); return 20 }
+    shot := BuilderJoin(work, "/shot.png", "")
+    if !BrowserScreenshot(*browser, shot) { BrowserClose(*browser); return 21 }
+    bytes, ok := ReadEntireFile(shot)
+    BrowserClose(*browser)
+    if !ok || bytes.count < 100 || bytes[1:4] != "PNG" { return 22 }
+    return 0
+}
