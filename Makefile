@@ -353,6 +353,11 @@ raylib-mesh-pixels-test: $(ZI2C_BIN)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" \
 		sh tests/raylib_mesh_pixels_test.sh
 
+.PHONY: raylib-frame-input-test
+raylib-frame-input-test: project-toolchain $(RAYLIB_A)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
+		sh tests/raylib_frame_snapshot_test.sh
+
 .PHONY: raylib-frame-pixels-test
 raylib-frame-pixels-test: project-toolchain $(RAYLIB_A)
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_frame_pixels_test.py --host \

@@ -7,6 +7,7 @@
 #import "std/byte_text_linux"
 #import "session"
 #import "input_protocol"
+#import "frame_snapshot"
 #import "tree_input"
 #import "tree"
 #import "text_widget"
@@ -100,6 +101,7 @@ widget_scroll_codec: WidgetScrollPropsCodec;
 widget_scroll_result_codec: WidgetScrollResultCodec;
 widget_session_codec: WidgetSessionCodec;
 widget_pointer_codec: WidgetPointerFrameCodec;
+widget_frame_input_codec: WidgetFrameInputSnapshotCodec;
 widget_checkbox_codec: WidgetCheckboxPropsCodec;
 widget_checkbox_result_codec: WidgetCheckboxValueResultCodec;
 widget_toggle_codec: WidgetTogglePropsCodec;
@@ -157,7 +159,8 @@ widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
 WidgetHostSupports :: (module: string, function: string) -> bool {
-    return (ModuleName(module, "pointer_input") && function == "PollPointer") ||
+    return (ModuleName(module, "frame_snapshot") && function == "CaptureFrameInputHost") ||
+    (ModuleName(module, "pointer_input") && function == "PollPointer") ||
     (ModuleName(module, "carousel") && function == "CarouselWheelHostedHost") ||
     (ModuleName(module, "text_widget") && function == "TextHostedHost") ||
     (ModuleName(module, "text_widget") && function == "TextLinkAtHostedHost") ||
@@ -338,6 +341,10 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     session := WidgetDecodeSession(arguments[0], *widget_session_codec)
     if session.slot != widget_host_session.slot || session.epoch != widget_host_session.epoch {
         return 0
+    }
+    if name == "CaptureFrameInputHost" && ModuleName(owner, "frame_snapshot") && count == 1 {
+        result.* = WidgetEncodeFrameInputSnapshot(CaptureFrameInput(session), *widget_frame_input_codec)
+        return 1
     }
     if name == "EndHostedHost" && ModuleName(owner, "tree") && count == 1 {
         if widget_host_depth == 0 {

@@ -1,3 +1,6 @@
+#import "frame_snapshot"
+#import "session"
+#import "input_protocol"
 Runtime :: #import "raylib_runtime";
 Probe :: #import "raylib_window_host";
 SelectionProbe :: #import "raylib_selection_host";
@@ -24,6 +27,12 @@ main :: () -> s32 {
     Probe.middle_pressed = true; Probe.middle_released = true
     Probe.fresh_key = 65; Probe.repeated_key = 263
     if !Runtime.PollRaylib() { return 5 }
+    input_session := SessionOpen()
+    if !Runtime.RaylibFrameInputBegin(input_session) { return 15 }
+    first_input := CaptureFrameInput(input_session)
+    if first_input.elapsed_ms != 2000 || first_input.delta_ms != 0 ||
+    first_input.sequence != cast(u64)1 || first_input.keys[65] != cast(u8)3 { return 16 }
+    FrameInputEnd(input_session)
     pointer := Runtime.PollPointer(); middle := Runtime.PollMiddlePointer()
     if pointer.x != 17.0 || pointer.y != 29.0 ||
         !middle.pressed || !middle.released || middle.down { return 6 }
@@ -32,13 +41,27 @@ main :: () -> s32 {
         !Runtime.RaylibKeyDown(65) || Runtime.RaylibKeyDown(512) ||
         Runtime.RaylibKeyDown(0) || !Runtime.RaylibFocused() { return 7 }
     Probe.middle_pressed = false; Probe.middle_released = false
+    Probe.probe_time = 1.0
     Probe.middle_down = true; Probe.repeated_key = 0; Probe.focused = false
     if !Runtime.PollRaylib() || !Runtime.PollMiddlePointer().down ||
         Runtime.PollMiddlePointer().pressed || Runtime.PollMiddlePointer().released ||
         Runtime.RaylibRepeatedKey() != 0 || Runtime.RaylibFocused() { return 8 }
+    if !Runtime.RaylibFrameInputBegin(input_session) { return 17 }
+    second_input := CaptureFrameInput(input_session)
+    if second_input.elapsed_ms != 2000 || second_input.delta_ms != 0 ||
+    second_input.sequence != cast(u64)2 || second_input.keys[65] != cast(u8)FrameKeyReleased ||
+    first_input.keys[65] != cast(u8)3 { return 18 }
+    FrameInputEnd(input_session)
+    Probe.focused = true; Probe.probe_time = 2.25; Probe.fresh_key = 65
+    if !Runtime.PollRaylib() || !Runtime.RaylibFrameInputBegin(input_session) { return 20 }
+    regained_input := CaptureFrameInput(input_session)
+    if regained_input.elapsed_ms != 2250 || regained_input.delta_ms != 250 ||
+    regained_input.keys[65] != cast(u8)FrameKeyHeld { return 21 }
+    FrameInputEnd(input_session)
     Runtime.WindowQuitHost()
     if Runtime.PollRaylib() { return 9 }
     Runtime.CloseRaylib()
+    if Runtime.RaylibFrameInputBegin(input_session) { return 19 }
     if Probe.closes != 1 || Probe.window_ready { return 10 }
     if !Runtime.OpenRaylib() || Probe.opens != 2 || Probe.window_width != 960 ||
         Probe.window_height != 600 || Probe.window_flags != cast(u32)4 ||

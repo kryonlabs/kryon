@@ -1,0 +1,171 @@
+#import "std/bundle_host"
+#import "hosted_values"
+#import "widget_codec"
+#import "tree_input"
+#import "session"
+#import "input_protocol"
+#import "raylib_runtime"
+#import "frame_snapshot"
+#import "key_input"
+#import "widget_host"
+#import "hosted_app"
+#import "std/file"
+#import "std/c_string"
+
+// Real SDL events enter raylib's platform poller; no replacement input provider.
+sdl :: #system_library "SDL2";
+raylib_input :: #system_library "raylib";
+Event :: struct {
+    kind: u32
+    timestamp: u32
+    window: u32
+    state: u8
+    repeat: u8
+    pad1: u8
+    pad2: u8
+    scancode: s32
+    keycode: s32
+    modifiers: u16
+    pad3: u16
+    unused_value: u32
+    tail: [24]u8
+}
+PushEvent :: (event: *Event) -> s32 #foreign sdl "SDL_PushEvent";
+PollEvents :: () #foreign raylib_input "PollInputEvents";
+
+KeyEvent :: (down: bool, repeat: bool, scancode: s32 = 4, keycode: s32 = 97) -> bool {
+    event: Event
+    event.kind = ifx down then cast(u32)0x300 else cast(u32)0x301
+    event.state = ifx down then cast(u8)1 else cast(u8)0
+    event.repeat = ifx repeat then cast(u8)1 else cast(u8)0
+    event.scancode = scancode
+    event.keycode = keycode
+    return PushEvent(*event) == 1
+}
+
+FocusEvent :: (focused: bool) -> bool {
+    event: Event
+    event.kind = cast(u32)0x200
+    event.state = ifx focused then cast(u8)12 else cast(u8)13
+    return PushEvent(*event) == 1
+}
+
+AllowAsset :: (path: string) -> bool { unused path; return false }
+Allows :: (context: *void, module: string, function: string) -> bool {
+    unused context
+    return WidgetHostSupports(module, function)
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenRaylib(320, 200, "Frame input local test") { return Failure(1) }
+    defer { CloseRaylib() }
+    RaylibExitKey(0)
+    session := SessionOpen()
+    other := SessionOpen()
+    if !FocusEvent(true) { return Failure(2) }
+    PollEvents()
+    if !PollRaylib() || !RaylibFrameInputBegin(session) { return Failure(2) }
+    initial := CaptureFrameInput(session)
+    if !initial.available || initial.delta_ms != 0 || initial.sequence != cast(u64)1 { return Failure(3) }
+    FrameInputEnd(session)
+    bytes, ok := ReadEntireFile("frame-snapshot.zx")
+    app: HostedApp
+    if !ok || !HostedAppOpen(*app, bytes) || !HostedAppStart(*app, Allows, WidgetHostCall, null) { return Failure(4) }
+    defer { HostedAppClose(*app) }
+    if !KeyEvent(true, false) || !KeyEvent(true, false, 80, 0x40000050) || !FocusEvent(true) { return Failure(5) }
+    // SDL_TEXTINPUT text starts at offset 12 in SDL_Event.
+    typed: Event
+    typed.kind = cast(u32)0x303
+    typed.state = cast(u8)120
+    if PushEvent(*typed) != 1 { return Failure(6) }
+    PollEvents()
+    if !PollRaylib() || !RaylibFrameInputBegin(session) { return Failure(7) }
+    first := CaptureFrameInput(session)
+    if first.keys[65] != cast(u8)3 || first.keys[KeyLeft] != cast(u8)3 || !first.focused || first.delta_ms < 0 ||
+    first.sequence != cast(u64)2 || CaptureFrameInput(other).available { return Failure(8) }
+    // Snapshots neither drain the raylib queues nor the retained session queues.
+    if RaylibPressedKey() != 65 || RaylibPressedKey() != KeyLeft || RaylibPressedKey() != 0 ||
+    RaylibTypedCodepoint() != 120 || RaylibTypedCodepoint() != 0 { return Failure(9) }
+    unused KeyboardSend(session, KeyEscape)
+    unused TypedCodepointSend(session, 120)
+    again := CaptureFrameInput(session)
+    if again.keys[65] != first.keys[65] || KeyboardTake(session) != KeyEscape { return Failure(10) }
+    text: [8]u8
+    if TypedTextTake(session, text[:]) != "x" { return Failure(11) }
+    answer: s64
+    if !WidgetHostSupports("frame_snapshot", "CaptureFrameInputHost") ||
+    WidgetHostSupports("unrelated", "CaptureFrameInputHost") ||
+    WidgetHostSupports("frame_snapshot", "KeyboardTake") { return Failure(32) }
+    WidgetHostBegin(session, AllowAsset)
+    if !HostedAppRun(*app, *answer) || answer != 42 { return Failure(12) }
+    WidgetHostEnd()
+    session_codec: WidgetSessionCodec
+    argument: [1]HostValue
+    argument[0] = WidgetEncodeSession(session, *session_codec)
+    result: HostValue
+    if WidgetHostCall(null, HostTextData("frame_snapshot"), HostTextData("CaptureFrameInputHost"),
+    *argument[0], 1, *result) != 0 { return Failure(13) }
+    // A foreign session is refused even while a different hosted frame is active.
+    WidgetHostBegin(other, AllowAsset)
+    if WidgetHostCall(null, HostTextData("frame_snapshot"), HostTextData("CaptureFrameInputHost"),
+    *argument[0], 1, *result) != 0 { return Failure(14) }
+    WidgetHostEnd()
+    FrameInputEnd(session)
+    WidgetHostBegin(session, AllowAsset)
+    if WidgetHostCall(null, HostTextData("frame_snapshot"), HostTextData("CaptureFrameInputHost"),
+    *argument[0], 1, *result) != 1 { return Failure(33) }
+    zero: HostValue
+    if HostFieldValue(*result, 0, "available", *zero).integer != 0 { return Failure(34) }
+    WidgetHostEnd()
+    if CaptureFrameInput(session).available { return Failure(15) }
+    // Held without repeat is independent of consuming the press queue.
+    PollEvents()
+    if !PollRaylib() || !RaylibFrameInputBegin(session) ||
+    CaptureFrameInput(session).keys[65] != cast(u8)FrameKeyHeld { return Failure(16) }
+    FrameInputEnd(session)
+    if !KeyEvent(true, true) { return Failure(17) }
+    PollEvents()
+    if !PollRaylib() || !RaylibFrameInputBegin(session) { return Failure(18) }
+    repeated := CaptureFrameInput(session)
+    if repeated.keys[65] != cast(u8)9 || first.keys[65] != cast(u8)3 ||
+    repeated.elapsed_ms < first.elapsed_ms || repeated.sequence <= first.sequence ||
+    RaylibRepeatedKey() != 65 || RaylibRepeatedKey() != 0 { return Failure(19) }
+    WidgetHostBegin(session, AllowAsset)
+    if !HostedAppRun(*app, *answer) || answer != 42 { return Failure(20) }
+    WidgetHostEnd()
+    FrameInputEnd(session)
+    if !KeyEvent(false, false) { return Failure(21) }
+    PollEvents()
+    if !PollRaylib() || !RaylibFrameInputBegin(session) ||
+    CaptureFrameInput(session).keys[65] != cast(u8)FrameKeyReleased { return Failure(22) }
+    FrameInputEnd(session)
+    if !KeyEvent(true, false) { return Failure(23) }
+    PollEvents()
+    if !PollRaylib() { return Failure(24) }
+    if !FocusEvent(false) { return Failure(25) }
+    PollEvents()
+    if !PollRaylib() || !RaylibFrameInputBegin(session) { return Failure(26) }
+    lost := CaptureFrameInput(session)
+    if lost.focused || lost.keys[65] != cast(u8)FrameKeyReleased || lost.pointer.down ||
+    lost.pointer.pressed || lost.secondary.down || lost.modifiers != 0 { return Failure(27) }
+    FrameInputEnd(session)
+    PollEvents()
+    if !PollRaylib() || !RaylibFrameInputBegin(session) ||
+    CaptureFrameInput(session).keys[65] != cast(u8)0 { return Failure(28) }
+    FrameInputEnd(session)
+    if !FocusEvent(true) || !KeyEvent(true, false) { return Failure(29) }
+    PollEvents()
+    if !PollRaylib() || !RaylibFrameInputBegin(session) { return Failure(30) }
+    regained := CaptureFrameInput(session)
+    if !regained.focused || regained.keys[65] != cast(u8)FrameKeyHeld || regained.delta_ms < 0 { return Failure(31) }
+    FrameInputEnd(session)
+    return 0
+}
+
+libc :: #system_library "c";
+PrintFailure :: (format: *u8, code: s32) -> s32 #foreign libc "printf";
+Failure :: (code: s32) -> s32 {
+    unused PrintFailure(HostTextData("frame snapshot failure %d\n"), code)
+    return code
+}

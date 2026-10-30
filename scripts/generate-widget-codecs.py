@@ -48,7 +48,7 @@ KRYON_MODULES = ['session', 'input_protocol', 'geometry', 'drawing_props', 'text
                  'modal', 'modal_props', 'context_menu_widget', 'svg_icon_props', 'tile_map',
                  'segmented_control_props', 'fieldset_props', 'shape_props', 'slider_props',
                  'progress_props', 'overlay_props']
-KRYON_ROOTS = ['PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
+KRYON_ROOTS = ['FrameInputSnapshot', 'PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
                'ScrollProps', 'ScrollResult', 'Session', 'CheckboxProps', 'CheckboxValueResult',
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
                'TabBarProps', 'TabBarResult', 'BoxProps', 'PressProps', 'PressResult',
@@ -66,6 +66,8 @@ KRYON_ROOTS = ['PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAr
 # Operations used only by generated consumers and test fixtures. Their schemas
 # remain available so --uses can generate each missing operation when needed.
 KRYON_BUILD_TIME_METHODS = {
+    'WidgetDecodeFrameInputSnapshot',
+    'WidgetValidFrameInputSnapshot',
     'WidgetDecodeActionModalResult',
     'WidgetDecodeCheckboxValueResult',
     'WidgetDecodeContextMenuResult',
@@ -211,8 +213,8 @@ def order(schema, roots, provided):
     needed = []
 
     def discover(kind):
-        if kind.startswith('[]'):
-            discover(kind[2:])
+        if kind.startswith('['):
+            discover(kind.split(']', 1)[1])
             return
         if kind in schema and kind not in needed and kind not in provided:
             for _, field_kind in schema[kind]:
@@ -276,13 +278,14 @@ def generate(schema, needed, provided, header, imports, methods=None):
             for name, field_kind in fields:
                 if field_kind in records:
                     lines += [f'    {name}: Widget{field_kind}Codec']
-                if field_kind.startswith('[]') and not host_decoded(kind, name):
-                    element = field_kind[2:]
-                    limit = slice_limit(kind, name)
+                if field_kind.startswith('[') and not host_decoded(kind, name):
+                    element = field_kind.split(']', 1)[1]
+                    limit = slice_limit(kind, name) if field_kind.startswith('[]') else int(field_kind[1:].split(']')[0])
                     lines += [f'    {name}_values: [{limit}]HostValue']
                     if element in records:
                         lines += [f'    {name}_codecs: [{limit}]Widget{element}Codec']
-                    lines += [f'    {name}_decoded: [{limit}]{element}']
+                    if field_kind.startswith('[]'):
+                        lines += [f'    {name}_decoded: [{limit}]{element}']
             lines += ['}', '']
         for operation, emit in emitters.items():
             if methods is None or 'Widget' + operation + kind in methods:
@@ -295,7 +298,7 @@ def encoder(kind, fields, records):
              f'    value := HostRecordValue("{kind}", codec.fields[:])']
     for index, (name, field_kind) in enumerate(fields):
         target = f'codec.fields[{index}].value'
-        if field_kind not in records and not field_kind.startswith('[]'):
+        if field_kind not in records and not field_kind.startswith('['):
             lines += [f'    codec.fields[{index}] = HostField.{{.name = HostTextData("{name}"), '
                       f'.value = {scalar_encode(f"data.{name}", field_kind)}}}']
             continue
@@ -306,10 +309,11 @@ def encoder(kind, fields, records):
             lines += [f'    {target}.kind = cast(s32)HostSlice',
                       f'    {target}.type_name = HostTextData("{field_kind}")',
                       f'    {target}.length = cast(usize)0']
-        elif field_kind.startswith('[]'):
-            element = field_kind[2:]
-            limit = slice_limit(kind, name)
-            lines += [f'    {target}.kind = cast(s32)HostSlice',
+        elif field_kind.startswith('['):
+            fixed = not field_kind.startswith('[]')
+            element = field_kind.split(']', 1)[1]
+            limit = int(field_kind[1:].split(']')[0]) if fixed else slice_limit(kind, name)
+            lines += [f'    {target}.kind = cast(s32)' + ('HostArray' if fixed else 'HostSlice'),
                       f'    {target}.type_name = HostTextData("{field_kind}")',
                       f'    {target}.length = cast(usize)data.{name}.count',
                       f'    if {target}.length > cast(usize){limit} {{ {target}.length = cast(usize){limit} }}',
@@ -338,15 +342,17 @@ def decoder(kind, fields, records):
         elif field_kind.startswith('[]') and host_decoded(kind, name):
             # These slices are decoded into the rendering effect's storage.
             continue
-        elif field_kind.startswith('[]'):
+        elif field_kind.startswith('['):
             source = 'value.fields[field_at].value'
-            element = field_kind[2:]
-            body = ['    {', '        index: usize = 0', f'        while index < {source}.length {{',
-                    f'            codec.{name}_decoded[index] = ' + (
+            fixed = not field_kind.startswith('[]')
+            element = field_kind.split(']', 1)[1]
+            limit = int(field_kind[1:].split(']')[0]) if fixed else slice_limit(kind, name)
+            body = ['    {', '        index: usize = 0', f'        while index < {source}.length' + (f' && index < cast(usize){limit}' if fixed else '') + ' {',
+                    f'            ' + (f'data.{name}[index]' if fixed else f'codec.{name}_decoded[index]') + ' = ' + (
                         f'WidgetDecode{element}({source}.elements[index], *codec.{name}_codecs[index])'
                         if element in records else scalar_decode(f'{source}.elements[index]', element)),
                     '            index += cast(usize)1', '        }', '    }',
-                    '    // Slice storage is attached by the rendering effect after decoding.']
+                    * ([] if fixed else ['    // Slice storage is attached by the rendering effect after decoding.'])]
             lines += matched(index, name, body)
         else:
             lines += [f'    data.{name} = ' + scalar_decode(source + ('.*' if field_kind == 'string' else ''), field_kind)]
@@ -361,13 +367,23 @@ def validator(kind, fields, records):
     for index, (name, field_kind) in enumerate(fields):
         if field_kind in records:
             lines += [f'    if !HostFieldRecordValid(*value, {index}, "{name}", WidgetValid{field_kind}) {{ return false }}']
-        elif field_kind.startswith('[]'):
-            element = field_kind[2:]
-            limit = slice_limit(kind, name)
+        elif field_kind.startswith('['):
+            fixed = not field_kind.startswith('[]')
+            element = field_kind.split(']', 1)[1]
+            limit = int(field_kind[1:].split(']')[0]) if fixed else slice_limit(kind, name)
             rule = (f'.validate_record = WidgetValid{element}' if element in records else
                     f'.type_name = "{element}", .kind = cast(s32){scalar_kind(element)}')
-            lines += [f'    if !HostFieldSliceValid(*value, {index}, "{name}", "{field_kind}", cast(usize){limit},',
-                      f'        HostElementRule.{{{rule}}}) {{ return false }}']
+            if fixed:
+                body = [f'    field := value.fields[field_at].value',
+                        f'    if !HostArrayValid(field, "{field_kind}", cast(usize){limit}) {{ return false }}',
+                        '    index: usize = 0', f'    while index < cast(usize){limit} {{',
+                        ('        if !WidgetValid' + element + '(field.elements[index]) { return false }' if element in records else
+                         f'        if !HostScalarValid(field.elements[index], "{element}", cast(s32){scalar_kind(element)}) {{ return false }}'),
+                        '        index += cast(usize)1', '    }']
+                lines += matched(index, name, body)
+            else:
+                lines += [f'    if !HostFieldSliceValid(*value, {index}, "{name}", "{field_kind}", cast(usize){limit},',
+                          f'        HostElementRule.{{{rule}}}) {{ return false }}']
         else:
             lines += [f'    if !HostFieldScalarValid(*value, {index}, "{name}", "{field_kind}", cast(s32){scalar_kind(field_kind)}) {{ return false }}']
     return lines + ['    return true', '}', '']

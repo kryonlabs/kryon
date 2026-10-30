@@ -10,6 +10,9 @@ ziran.local.toml
 .zcode
 .kryon-ide-state
 
+# Test-owned scratch and logs
+/work/
+
 # Build output
 build/
 dist/

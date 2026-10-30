@@ -74,4 +74,4 @@ result = subprocess.run([sys.executable, str(generator), '--source',
                          str(repo / 'tests/widget_codec_leaf.zi'), '--root', 'CodecLeaf',
                          '--uses', str(partial), '--output', str(partial)], text=True, capture_output=True)
 assert result.returncode != 0 and partial.read_bytes() == before
-print('Partial and legacy codec providers: C source/saved IR, nested slices, UTF-8, reordered fields and invalid data passed')
+print('Partial and legacy codec providers: C source/saved IR, nested slices, fixed arrays, UTF-8, reordered fields and invalid data passed')

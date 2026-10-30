@@ -1,0 +1,49 @@
+#import "session"
+#import "input_protocol"
+#import "frame_snapshot"
+#import "tree_input"
+#import "key_input"
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    other := SessionOpen()
+    if CaptureFrameInput(session).available || CaptureFrameInput(Session.{}).available { return 1 }
+    sample: FrameInputSnapshot
+    sample.available = true
+    sample.focused = true
+    sample.sequence = cast(u64)1
+    sample.elapsed_ms = 200
+    sample.pointer = PointerFrame.{4.0, 5.0, true, true, false}
+    sample.keys[KeyLeft] = cast(u8)(FrameKeyHeld | FrameKeyPressed)
+    sample.keys[65] = cast(u8)(FrameKeyHeld | FrameKeyRepeated)
+    unused KeyboardSend(session, KeyEscape)
+    unused TypedCodepointSend(session, 233)
+    unused KeyboardModifiersSend(session, KeyModifierShift)
+    if !FrameInputBegin(session, sample) || FrameInputBegin(session, sample) { return 2 }
+    first := CaptureFrameInput(session)
+    first.keys[KeyLeft] = cast(u8)0
+    sample.keys[65] = cast(u8)0
+    again := CaptureFrameInput(session)
+    if again.keys[KeyLeft] != cast(u8)3 || again.keys[65] != cast(u8)9 ||
+    again.pointer.x != 4.0 || again.sequence != cast(u64)1 || again.elapsed_ms != 200 ||
+    CaptureFrameInput(other).available { return 3 }
+    text: [8]u8
+    if KeyboardTake(session) != KeyEscape || KeyboardTake(session) != 0 ||
+    TypedTextTake(session, text[:]) != "é" || TypedTextTake(session, text[:]) != "" ||
+    KeyboardModifiers(session) != KeyModifierShift { return 4 }
+    FrameInputEnd(other)
+    if !CaptureFrameInput(session).available { return 5 }
+    FrameInputEnd(session)
+    if CaptureFrameInput(session).available || again.keys[65] != cast(u8)9 { return 6 }
+    if !FrameInputBegin(session, sample) { return 7 }
+    unused SessionClose(session)
+    reopened := SessionOpen()
+    if reopened.slot != session.slot || CaptureFrameInput(reopened).available ||
+    CaptureFrameInput(session).available || FrameInputBegin(session, sample) { return 8 }
+    if !FrameInputBegin(reopened, sample) { return 9 }
+    FrameInputEnd(session)
+    if !CaptureFrameInput(reopened).available { return 10 }
+    FrameInputEnd(reopened)
+    return 0
+}

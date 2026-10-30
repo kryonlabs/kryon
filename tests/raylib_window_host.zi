@@ -119,3 +119,11 @@ GetKeyPressed :: () -> s32 { key := fresh_key; fresh_key = 0; return key }
 IsKeyDown :: (key: s32) -> bool { return key == 65 }
 #program_export
 IsKeyPressedRepeat :: (key: s32) -> bool { return key == repeated_key && key != 0 }
+
+probe_time: float64 = 2.0;
+#program_export
+GetTime :: () -> float64 { return probe_time }
+#program_export
+IsKeyPressed :: (key: s32) -> bool { return key != 0 && key == fresh_key }
+#program_export
+IsKeyReleased :: (key: s32) -> bool { unused key; return false }

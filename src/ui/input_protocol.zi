@@ -43,3 +43,23 @@ PointInBounds :: (x: float32, y: float32, bounds: Rectangle) -> bool {
     x >= bounds.x && y >= bounds.y &&
     x < bounds.x + bounds.width && y < bounds.y + bounds.height
 }
+
+// Per-key flags, indexed by the same normalized codes as KeyboardTake.
+FrameKeyHeld :: 1;
+FrameKeyPressed :: 2;
+FrameKeyReleased :: 4;
+FrameKeyRepeated :: 8;
+
+// Owned value: no borrowed slices, text, or live device queries.
+FrameInputSnapshot :: struct {
+    available: bool
+    keys: [512]u8
+    pointer: PointerFrame
+    secondary: SecondaryPointerFrame
+    focused: bool
+    modifiers: s32
+    wheel: float32
+    elapsed_ms: s64
+    delta_ms: s64
+    sequence: u64
+}

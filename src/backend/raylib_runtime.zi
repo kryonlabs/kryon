@@ -21,6 +21,8 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "paint_queue"
 #import "svg_icon"
 #import "tree_input"
+#import "frame_snapshot"
+#import "input_protocol"
 #import "raylib_clip"
 #import "text_emphasis"
 #import "text_typeface"
@@ -139,6 +141,8 @@ HostRaylibMouseDown :: (button: s32) -> bool #foreign raylib "IsMouseButtonDown"
 HostRaylibMouseReleased :: (button: s32) -> bool #foreign raylib "IsMouseButtonReleased";
 HostRaylibMouseWheelMove :: () -> float32 #foreign raylib "GetMouseWheelMove";
 HostRaylibGetKeyPressed :: () -> s32 #foreign raylib "GetKeyPressed";
+HostRaylibIsKeyPressed :: (key: s32) -> bool #foreign raylib "IsKeyPressed";
+HostRaylibIsKeyReleased :: (key: s32) -> bool #foreign raylib "IsKeyReleased";
 HostRaylibIsKeyDown :: (key: s32) -> bool #foreign raylib "IsKeyDown";
 HostRaylibIsKeyPressedRepeat :: (key: s32) -> bool #foreign raylib "IsKeyPressedRepeat";
 HostRaylibGetCharPressed :: () -> s32 #foreign raylib "GetCharPressed";
@@ -1717,6 +1721,7 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
     if width <= 0 || height <= 0 ||
     !CopyCString(ifx title.count > 0 then title else ProgramTitle(), label[:]) { return false }
     raylib_quit = false
+    raylib_frame_input = FrameInputSnapshot.{}
     raylib_pointer = PointerFrame.{}
     raylib_secondary = SecondaryPointerFrame.{}
     raylib_middle = SecondaryPointerFrame.{}
@@ -1750,6 +1755,7 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
 
 #program_export
 CloseRaylib :: () {
+    raylib_frame_input = FrameInputSnapshot.{}
     #if RAYLIB_FRAME_THREADS {
         CloseRaylibAppFrames()
     }
@@ -1843,7 +1849,10 @@ RaylibSetDriverSession :: (session: Session) {
 
 #program_export
 PollRaylib :: () -> bool {
-    if raylib_quit || HostRaylibWindowShouldClose() { return false }
+    if raylib_quit || HostRaylibWindowShouldClose() {
+        raylib_frame_input = FrameInputSnapshot.{}
+        return false
+    }
     // Screen pixels; PollPointer reports them in zoomed space.
     raylib_pointer.x = cast(float32)HostRaylibMouseX()
     raylib_pointer.y = cast(float32)HostRaylibMouseY()
@@ -1873,7 +1882,64 @@ PollRaylib :: () -> bool {
     raylib_middle.released = HostRaylibMouseReleased(2)
     raylib_repeat_next = 0
     raylib_wheel_move = HostRaylibMouseWheelMove()
+    RaylibGatherFrameInput()
     return true
+}
+
+// Gather beside pointer polling, without taking keyboard/character queues.
+raylib_frame_input: FrameInputSnapshot;
+
+RaylibGatherFrameInput :: () {
+    previous := raylib_frame_input
+    sample: FrameInputSnapshot
+    sample.available = true
+    sample.focused = HostRaylibIsWindowFocused()
+    sample.sequence = previous.sequence + cast(u64)1
+    sample.elapsed_ms = cast(s64)(HostRaylibGetTime() * 1000.0)
+    if sample.elapsed_ms < previous.elapsed_ms { sample.elapsed_ms = previous.elapsed_ms }
+    if previous.available { sample.delta_ms = sample.elapsed_ms - previous.elapsed_ms }
+    sample.pointer = raylib_pointer
+    sample.secondary = raylib_secondary
+    if sample.focused {
+        sample.modifiers = RaylibModifiers()
+        sample.wheel = raylib_wheel_move
+    } else {
+        sample.pointer.down = false
+        sample.pointer.pressed = false
+        sample.pointer.released = previous.pointer.down || sample.pointer.released
+        sample.secondary.down = false
+        sample.secondary.pressed = false
+        sample.secondary.released = previous.secondary.down || sample.secondary.released
+    }
+    for key: cast(s32)1..511 {
+        flags: u8
+        if sample.focused {
+            if HostRaylibIsKeyDown(key) { flags |= cast(u8)FrameKeyHeld }
+            if (!previous.available || previous.focused) && HostRaylibIsKeyPressed(key) { flags |= cast(u8)FrameKeyPressed }
+            if HostRaylibIsKeyReleased(key) { flags |= cast(u8)FrameKeyReleased }
+            if (!previous.available || previous.focused) && HostRaylibIsKeyPressedRepeat(key) { flags |= cast(u8)FrameKeyRepeated }
+        } else if (previous.keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0 {
+            flags = cast(u8)FrameKeyReleased
+        }
+        code := key
+        #if #defined(ANDROID_BUILD) {
+            // Android Back uses code 4 in raylib, as android_run normalizes it.
+            if code == 4 { code = KeyEscape }
+        }
+        sample.keys[code] |= flags
+    }
+    raylib_frame_input = sample
+}
+
+// Custom native hosts call this after PollRaylib and FrameInputEnd after
+// their application callback. PollRaylib owns timing and event gathering.
+#program_export
+RaylibFrameInputBegin :: (session: Session) -> bool {
+    sample := raylib_frame_input
+    zoom := RaylibZoom()
+    sample.pointer.x /= zoom
+    sample.pointer.y /= zoom
+    return FrameInputBegin(session, sample)
 }
 
 #program_export

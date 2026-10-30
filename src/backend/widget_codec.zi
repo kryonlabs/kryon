@@ -54,6 +54,73 @@ WidgetEncodePointerFrame :: (data: PointerFrame, codec: *WidgetPointerFrameCodec
     return value
 }
 
+WidgetSecondaryPointerFrameCodec :: struct {
+    fields: [3]HostField
+}
+
+WidgetEncodeSecondaryPointerFrame :: (data: SecondaryPointerFrame, codec: *WidgetSecondaryPointerFrameCodec) -> HostValue {
+    value := HostRecordValue("SecondaryPointerFrame", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("down"), .value = HostScalar("bool", ifx data.down then 1 else 0)}
+    codec.fields[1] = HostField.{.name = HostTextData("pressed"), .value = HostScalar("bool", ifx data.pressed then 1 else 0)}
+    codec.fields[2] = HostField.{.name = HostTextData("released"), .value = HostScalar("bool", ifx data.released then 1 else 0)}
+    return value
+}
+
+WidgetDecodeSecondaryPointerFrame :: (value: HostValue, codec: *WidgetSecondaryPointerFrameCodec) -> SecondaryPointerFrame {
+    data: SecondaryPointerFrame
+    unused codec
+    zero: HostValue
+    data.down = HostFieldValue(*value, 0, "down", *zero).integer != 0
+    data.pressed = HostFieldValue(*value, 1, "pressed", *zero).integer != 0
+    data.released = HostFieldValue(*value, 2, "released", *zero).integer != 0
+    return data
+}
+
+WidgetValidSecondaryPointerFrame :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "SecondaryPointerFrame") { return false }
+    if !HostFieldScalarValid(*value, 0, "down", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 1, "pressed", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 2, "released", "bool", cast(s32)HostInteger) { return false }
+    return true
+}
+
+// Widget codec schema: ["FrameInputSnapshot",[["available","bool"],["keys","[512]u8"],["pointer","PointerFrame"],["secondary","SecondaryPointerFrame"],["focused","bool"],["modifiers","s32"],["wheel","float32"],["elapsed_ms","s64"],["delta_ms","s64"],["sequence","u64"]]]
+WidgetFrameInputSnapshotCodec :: struct {
+    fields: [10]HostField
+    keys_values: [512]HostValue
+    pointer: WidgetPointerFrameCodec
+    secondary: WidgetSecondaryPointerFrameCodec
+}
+
+WidgetEncodeFrameInputSnapshot :: (data: FrameInputSnapshot, codec: *WidgetFrameInputSnapshotCodec) -> HostValue {
+    value := HostRecordValue("FrameInputSnapshot", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("available"), .value = HostScalar("bool", ifx data.available then 1 else 0)}
+    codec.fields[1].name = HostTextData("keys")
+    codec.fields[1].value.kind = cast(s32)HostArray
+    codec.fields[1].value.type_name = HostTextData("[512]u8")
+    codec.fields[1].value.length = cast(usize)data.keys.count
+    if codec.fields[1].value.length > cast(usize)512 { codec.fields[1].value.length = cast(usize)512 }
+    codec.fields[1].value.elements = *codec.keys_values[0]
+    {
+        index: usize = 0
+        while index < codec.fields[1].value.length {
+            codec.keys_values[index] = HostScalar("u8", cast(s64)data.keys[index])
+            index += cast(usize)1
+        }
+    }
+    codec.fields[2].name = HostTextData("pointer")
+    codec.fields[2].value = WidgetEncodePointerFrame(data.pointer, *codec.pointer)
+    codec.fields[3].name = HostTextData("secondary")
+    codec.fields[3].value = WidgetEncodeSecondaryPointerFrame(data.secondary, *codec.secondary)
+    codec.fields[4] = HostField.{.name = HostTextData("focused"), .value = HostScalar("bool", ifx data.focused then 1 else 0)}
+    codec.fields[5] = HostField.{.name = HostTextData("modifiers"), .value = HostScalar("s32", cast(s64)data.modifiers)}
+    codec.fields[6] = HostField.{.name = HostTextData("wheel"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.wheel}}
+    codec.fields[7] = HostField.{.name = HostTextData("elapsed_ms"), .value = HostScalar("s64", cast(s64)data.elapsed_ms)}
+    codec.fields[8] = HostField.{.name = HostTextData("delta_ms"), .value = HostScalar("s64", cast(s64)data.delta_ms)}
+    codec.fields[9] = HostField.{.name = HostTextData("sequence"), .value = HostScalar("u64", cast(s64)data.sequence)}
+    return value
+}
+
 WidgetRectangleCodec :: struct {
     fields: [4]HostField
 }

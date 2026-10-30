@@ -15,6 +15,7 @@ source = true
 Frame = "src/ui/tree_draw.zi"
 tree_draw = "src/ui/tree_draw.zi"
 frame_input = "src/ui/frame_input.zi"
+frame_snapshot = "src/ui/frame_snapshot.zi"
 frame_capture = "src/ui/frame_capture.zi"
 Desktop = "src/backend/Desktop/module.zi"
 desktop_loop = "src/backend/desktop_loop.zi"

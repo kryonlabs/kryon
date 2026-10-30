@@ -19,12 +19,35 @@ main :: () -> s32 {
     data.children = children[:]
     data.names = names[:]
     data.counts = counts[:]
+    data.flags[0] = cast(u8)3
+    data.flags[1] = cast(u8)9
+    data.pair = children
     value := WidgetEncodeCodecEnvelope(data, *encoded)
     if !WidgetValidCodecEnvelope(value) { return 1 }
     result := WidgetDecodeCodecEnvelope(value, *decoded)
     if result.leaf.number != data.leaf.number || result.leaf.name != data.leaf.name ||
         decoded.children_decoded[0].number != 11 || decoded.children_decoded[0].name != "first" ||
         decoded.children_decoded[1].number != -12 || decoded.children_decoded[1].name != "second β" { return 2 }
+    if result.flags[0] != cast(u8)3 || result.flags[1] != cast(u8)9 ||
+    result.pair[1].number != -12 || result.pair[1].name != "second β" { return 18 }
+    array := value.fields[4].value
+    value.fields[4].value.length = 1
+    if WidgetValidCodecEnvelope(value) { return 19 }
+    value.fields[4].value = array
+    value.fields[4].value.kind = cast(s32)HostSlice
+    if WidgetValidCodecEnvelope(value) { return 20 }
+    value.fields[4].value = array
+    value.fields[4].value.elements = null
+    if WidgetValidCodecEnvelope(value) { return 21 }
+    value.fields[4].value = array
+    flag := array.elements[0]
+    array.elements[0].kind = -1
+    if WidgetValidCodecEnvelope(value) { return 22 }
+    array.elements[0] = flag
+    value.fields[5].value.elements[0].kind = -1
+    if WidgetValidCodecEnvelope(value) { return 23 }
+    value.fields[5].value.elements[0].kind = cast(s32)HostRecord
+    if !WidgetValidCodecEnvelope(value) { return 24 }
     saved := value.fields[0]
     value.fields[0] = value.fields[1]
     value.fields[1] = saved

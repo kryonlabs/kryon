@@ -1,3 +1,4 @@
+#import "frame_snapshot"
 #import "secondary_pointer"
 #import "test_driver"
 #import "app"
@@ -33,6 +34,8 @@ RaylibError :: (message: string) -> s32 {
 
 DrawRaylibFrame :: (session: Session, viewport: Rectangle, wheel: float32,
     capture: bool) -> bool {
+    unused RaylibFrameInputBegin(session)
+    defer { FrameInputEnd(session) }
     BeginRaylibFrame()
     pointer: PointerFrame = PollPointer()
     TreePointerUpdate(session, pointer)

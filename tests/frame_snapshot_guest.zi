@@ -1,0 +1,26 @@
+#import "session"
+#import "input_protocol"
+#import "frame_snapshot"
+
+saved: FrameInputSnapshot;
+phase: s32;
+
+#program_export
+main :: () -> s32 {
+    session := Session.{1, cast(u64)1}
+    first := CaptureFrameInput(session)
+    again := CaptureFrameInput(session)
+    if !first.available || first.sequence != again.sequence ||
+    first.elapsed_ms != again.elapsed_ms || first.keys[65] != again.keys[65] { return 1 }
+    if phase == 0 {
+        if first.keys[65] != cast(u8)(FrameKeyHeld | FrameKeyPressed) ||
+        !first.focused || first.delta_ms < 0 { return 2 }
+        saved = first
+        phase = 1
+    } else {
+        if first.keys[65] != cast(u8)(FrameKeyHeld | FrameKeyRepeated) ||
+        saved.keys[65] != cast(u8)(FrameKeyHeld | FrameKeyPressed) ||
+        saved.sequence >= first.sequence { return 3 }
+    }
+    return 42
+}

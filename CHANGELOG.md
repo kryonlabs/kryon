@@ -19,6 +19,11 @@
 
 ### Added
 
+- `frame_snapshot.CaptureFrameInput` returns owned per-frame held, pressed,
+  released and repeated keys with pointer, focus and monotonic timing. Raylib
+  gathers without consuming legacy keyboard/text queues; hosted reads stay
+  scoped to the active session and frame.
+
 - `TextFieldState` and props/edit/result helpers apply field changes to
   caller-owned bytes, including overlapping replacements, with atomic range,
   UTF-8 and capacity validation. Applications keep their own commit policy.

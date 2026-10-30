@@ -121,6 +121,44 @@ an inactive frame cannot read input, and another session's sample is not exposed
 The pointer value schema lives in `input_protocol`, independently of the native
 retained input implementation.
 
+`frame_snapshot.CaptureFrameInput(session: Session) -> FrameInputSnapshot`
+returns the host's immutable observations for the current frame. `available`
+is false before a host publishes, after it ends the frame, or for an invalid
+or different session. The result owns its `keys: [512]u8` array and nested
+pointer values: retained copies survive subsequent polls and hosted calls.
+Test `snapshot.keys[KeyLeft] & cast(u8)FrameKeyHeld` for sustained movement.
+Each entry combines `FrameKeyHeld` (1), `FrameKeyPressed` (2),
+`FrameKeyReleased` (4), and `FrameKeyRepeated` (8). A repeat is distinct from
+a fresh press; holding a key does not invent repeats. Indices use the existing
+uppercase ASCII and named `Key` codes; index zero is unused.
+
+The snapshot also carries `pointer`, `secondary`, `focused`, `modifiers`,
+`wheel`, and `elapsed_ms`, `delta_ms`, `sequence`. Raylib samples a monotonic
+clock once per successful `PollRaylib`: first delta is zero, later deltas are
+nonnegative, and repeated captures have identical timing. Sequence starts at
+one for each opened host. Pointer coordinates use the host's logical zoom.
+On focus loss, held keys become released for one poll, held pointer buttons
+are released, and pressed/repeated keys, modifiers and wheel are cleared.
+Further unfocused polls have no held keys or repeated releases. The first
+focused poll after focus loss may report held keys but suppresses fresh
+press and repeat flags, preventing a focus change from activating a shortcut.
+
+Hosts publish on the session's owning thread with `FrameInputBegin(session, snapshot) -> bool` and call
+`FrameInputEnd(session)` after the callback, including failure paths. Publishing
+copies the value and rejects replacement while that session's frame is open.
+Kryon's Raylib app loop does this automatically; custom Raylib loops call
+`RaylibFrameInputBegin(session)` after `PollRaylib`, then `FrameInputEnd` when
+their callback ends. Other providers must supply equivalent gathered state;
+this API does not infer held keys from consumed keyboard events. A hosted
+bundle requests only `frame_snapshot.CaptureFrameInputHost`; `WidgetHostCall`
+validates the session against the active `WidgetHostBegin` before returning
+that session's published snapshot. No input is queried outside that frame.
+
+Capturing never consumes `KeyboardTake`, `TypedTextTake`, Raylib's key/character
+queues, IME, clipboard, or Escape routing. Applications retain movement,
+simulation, repeat cadence, and navigation policy. The existing `FrameInput`
+replay record and its apply/field helpers retain their contract.
+
 `Scroll` reveals a newly focused text input and adjusts when the viewport
 resizes, such as when a phone keyboard opens. It retains that focus transition
 on the scroll node. Keeping an input focused never recenters it after manual

@@ -1,0 +1,45 @@
+#import "session"
+#import "input_protocol"
+
+#if #defined(KRYON_HOSTED_UI) {
+    host_api :: #system_library "host_api";
+    CaptureFrameInputHost :: (session: Session) -> FrameInputSnapshot #foreign host_api;
+} else {
+    frame_snapshots: [9]FrameInputSnapshot;
+    frame_snapshot_epochs: [9]u64;
+
+    // Host boundary: publish once, then close after the application callback.
+    // A second publication cannot change observations during an open frame.
+    #program_export
+    FrameInputBegin :: (session: Session, input: FrameInputSnapshot) -> bool {
+        slot := SessionIndex(session)
+        if slot == 0 || !input.available ||
+        (frame_snapshot_epochs[slot] == session.epoch && frame_snapshots[slot].available) {
+            return false
+        }
+        frame_snapshot_epochs[slot] = session.epoch
+        frame_snapshots[slot] = input
+        return true
+    }
+
+    #program_export
+    FrameInputEnd :: (session: Session) {
+        slot := SessionIndex(session)
+        if slot != 0 && frame_snapshot_epochs[slot] == session.epoch {
+            frame_snapshots[slot] = FrameInputSnapshot.{}
+        }
+    }
+}
+
+#program_export
+CaptureFrameInput :: (session: Session) -> FrameInputSnapshot {
+    #if #defined(KRYON_HOSTED_UI) {
+        return CaptureFrameInputHost(session)
+    } else {
+        slot := SessionIndex(session)
+        if slot == 0 || frame_snapshot_epochs[slot] != session.epoch {
+            return FrameInputSnapshot.{}
+        }
+        return frame_snapshots[slot]
+    }
+}
