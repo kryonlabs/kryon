@@ -30,7 +30,8 @@ PressResult :: struct {
     down: bool
     // The press ended this frame.
     released: bool
-    // Where the pointer is while the press continues or where it ended.
+    // Where the pointer is while the press continues or where it ended,
+    // including where a pointer click landed.
     x: float32
     y: float32
     // The secondary (right) button was released on the area this frame, to

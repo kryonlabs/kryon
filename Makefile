@@ -309,6 +309,8 @@ dom-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/dom_project_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		YUE_DESKTOP_RECOVERY=0 KRYON_DOM_INTERACTION=1 python3 tests/dom_project_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		YUE_DESKTOP_RECOVERY=0 KRYON_DOM_PRESS=1 python3 tests/dom_project_test.py
 
 .PHONY: native-text-test native-accessibility-test bundle-preload-test
 native-text-test:

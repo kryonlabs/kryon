@@ -13,6 +13,11 @@ PointerState :: struct {
     hovered_generation: u64
     held_generation: u64
     activation_generation: u64
+    // Where a pointer activation landed; keyboard and assistive
+    // activations have no point.
+    activation_pointed: bool
+    activation_x: float32
+    activation_y: float32
     pressed_generation: u64
     released_generation: u64
     held_x: float32
@@ -33,6 +38,14 @@ PointerState :: struct {
 // new press outside it from one it has already seen.
 PointerPress :: struct {
     serial: s32
+    x: float32
+    y: float32
+}
+
+// A queued activation, with the point a pointer activation landed on.
+PointerActivation :: struct {
+    activated: bool
+    pointed: bool
     x: float32
     y: float32
 }
@@ -460,6 +473,9 @@ TreePointerUpdate :: (session: Session, frame: PointerFrame) -> s32 {
             trees[input_slot].committed[hit].identity_generation {
                 active_pointer[input_slot].activation_generation =
                 active_pointer[input_slot].held_generation
+                active_pointer[input_slot].activation_pointed = true
+                active_pointer[input_slot].activation_x = frame.x
+                active_pointer[input_slot].activation_y = frame.y
                 if active_pointer[input_slot].focus_generation ==
                 active_pointer[input_slot].held_generation {
                     unused TreeFocusAt(session, hit)
@@ -652,23 +668,47 @@ TreeActivateAt :: (session: Session, index: s32) -> bool {
     if !TreePointerActivatable(node.kind, node.focus_id,
         node.disabled, node.loading) { return false }
     active_pointer[session.slot].activation_generation = node.identity_generation
+    active_pointer[session.slot].activation_pointed = false
+    return true
+}
+
+// A platform pointer click resolved by the host, such as a DOM button
+// click, activates like a release at that point.
+#program_export
+TreeActivatePointAt :: (session: Session, index: s32, x: float32, y: float32) -> bool {
+    if !TreeActivateAt(session, index) { return false }
+    active_pointer[session.slot].activation_pointed = true
+    active_pointer[session.slot].activation_x = x
+    active_pointer[session.slot].activation_y = y
     return true
 }
 
 #program_export
-TreeTakeActivationAt :: (session: Session, index: s32) -> bool {
+TreeTakePointerActivationAt :: (session: Session, index: s32) -> PointerActivation {
     input_slot := SessionIndex(session)
-    if index < 0 || index >= TreeCount(session) { return false }
+    activation: PointerActivation
+    if index < 0 || index >= TreeCount(session) { return activation }
     entry: NodeInput = TreeInputAt(session, index)
     if !entry.interactive || !TreeInputAllowedAt(session, index) ||
     !TreePointerActivatable(entry.kind, entry.focus_id,
         entry.disabled, entry.loading) ||
     active_pointer[input_slot].activation_generation == 0 ||
     active_pointer[input_slot].activation_generation != entry.identity_generation {
-        return false
+        return activation
     }
     active_pointer[input_slot].activation_generation = 0
-    return true
+    activation.activated = true
+    activation.pointed = active_pointer[input_slot].activation_pointed
+    if activation.pointed {
+        activation.x = active_pointer[input_slot].activation_x
+        activation.y = active_pointer[input_slot].activation_y
+    }
+    return activation
+}
+
+#program_export
+TreeTakeActivationAt :: (session: Session, index: s32) -> bool {
+    return TreeTakePointerActivationAt(session, index).activated
 }
 
 // Escape belongs to the uppermost retained overlay, including a popup in

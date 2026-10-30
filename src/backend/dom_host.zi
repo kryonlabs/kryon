@@ -4,6 +4,7 @@
 #import "web"
 #import "number_text"
 #import "page_core"
+#import "geometry"
 #import "text_buffer"
 #import "session"
 #import "tree"
@@ -98,6 +99,11 @@ dom_text_bytes: [32]u8;
 dom_previous: [8193]u64;
 dom_session: Session;
 dom_click: u64;
+// Where a pointer click landed in app coordinates; keyboard clicks have
+// no point.
+dom_click_pointed: bool;
+dom_click_x: float32;
+dom_click_y: float32;
 dom_document_layout: bool;
 dom_css: s32;
 EditorStage :: struct { value: s32; cursor: s32; anchor: s32; secure: bool; numeric: bool; read_only: bool; edited: bool; }
@@ -634,7 +640,11 @@ DomHostFrame :: (session: Session) {
     for key: 0..dom_count - 1 {
         record: DomHostRecord = dom_records[key]
         if record.index >= TreeCount(session) || TreeNodeAt(session, record.index).identity_generation != record.identity { continue }
-        if dom_click == record.identity { unused TreeActivateAt(session, record.index); dom_click = 0 }
+        if dom_click == record.identity {
+            if dom_click_pointed { unused TreeActivatePointAt(session, record.index, dom_click_x, dom_click_y) }
+            else { unused TreeActivateAt(session, record.index) }
+            dom_click = 0
+        }
         if !record.pending || record.composing { continue }
         value_handle: s32 = WebGetObject(record.element, WebName("value"))
         length: s32 = WebStringLength(value_handle)
@@ -673,6 +683,24 @@ DomEventName :: (event: s32) -> string {
     return "cut"
 }
 
+// A pointer click's place on the element, mapped onto the node's bounds so
+// a stylesheet that scales or reflows the overlay still reports where on
+// the control it landed. Keyboard and scripted clicks have detail 0.
+DomClickPoint :: (event: s32, element: s32, bounds: Rectangle) {
+    dom_click_pointed = false
+    if WebGetNumber(event, WebName("detail")) <= 0.0 { return }
+    rect: s32 = WebAsObject(WebCall0(element, page_names.get_bounding_client_rect))
+    if rect == 0 { return }
+    width: float64 = WebGetNumber(rect, WebName("width"))
+    height: float64 = WebGetNumber(rect, WebName("height"))
+    if width <= 0.0 || height <= 0.0 { return }
+    across: float64 = (WebGetNumber(event, WebName("clientX")) - WebGetNumber(rect, WebName("left"))) / width
+    down: float64 = (WebGetNumber(event, WebName("clientY")) - WebGetNumber(rect, WebName("top"))) / height
+    dom_click_x = bounds.x + cast(float32)(across * cast(float64)bounds.width)
+    dom_click_y = bounds.y + cast(float32)(down * cast(float64)bounds.height)
+    dom_click_pointed = true
+}
+
 DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
     if !SessionValid(dom_session) { return }
     target: s32 = WebGetObject(event, WebName("target"))
@@ -706,6 +734,7 @@ DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
         if context == 1 {
             unused WebCall0(event, WebName("stopPropagation"))
             dom_click = node.identity_generation
+            DomClickPoint(event, element, node.bounds)
             return
         }
         if context == 6 || context == 7 || context == 8 {

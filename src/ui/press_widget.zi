@@ -48,7 +48,8 @@ Press :: (session: Session, props: PressProps) -> PressResult {
     }
     state: WidgetState = TreePreviousWidgetState(session, previous)
     // The click is read before the drag, whose end clears it.
-    activated: bool = TreeTakeActivationAt(session, previous)
+    activation: PointerActivation = TreeTakePointerActivationAt(session, previous)
+    activated: bool = activation.activated
     drag: PointerDrag = TreeTakeDragAt(session, previous)
     now: s32 = PressClock(props.now)
     hold: float32 = ifx props.hold_seconds > 0.0 then props.hold_seconds else PRESS_HOLD_SECONDS
@@ -75,6 +76,11 @@ Press :: (session: Session, props: PressProps) -> PressResult {
         result.released = true
         result.x = drag.x
         result.y = drag.y
+    }
+    // A host-resolved click, such as a DOM button's, has no drag.
+    if activation.pointed {
+        result.x = activation.x
+        result.y = activation.y
     }
     // Lifting the pointer after a hold is not also a click.
     held_before: bool = state.open && state.index == 1

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- On the web, clicking or tapping a `Press` reports where it landed, so a
+  full-page area can tell a left-side tap from a right-side one. Keyboard
+  clicks still report no point.
 - `SwipeArea` forgets a touch that was released while the area was hidden, so
   the next touch starts from its own position instead of the old one.
 - Title bars follow the app palette, keeping dark game navigation readable.

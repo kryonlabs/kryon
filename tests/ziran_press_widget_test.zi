@@ -1,6 +1,7 @@
 // A press clicks, becomes a hold after its time, reports the pointer while
 // it lasts and, with capture, keeps it off the area; Enter and Space click it.
-// Releasing the secondary button on it reports a right click there.
+// Releasing the secondary button on it reports a right click there. A
+// click a host resolved at a point, such as a DOM button's, reports where.
 #import "session"
 #import "geometry"
 #import "press_props"
@@ -19,10 +20,11 @@ session: Session;
 result: PressResult;
 capture: bool;
 disabled: bool;
+press_id: s32 = 70;
 
 Frame :: (now: float64) -> bool {
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
-    result = Press(session, PressProps.{.id = 70, .label = "Message",
+    result = Press(session, PressProps.{.id = press_id, .label = "Message",
             .bounds = Rectangle.{10.0, 10.0, 100.0, 40.0}, .now = now,
             .capture = capture, .disabled = disabled})
     return EndFrame(session) == cast(FrameStatus)FrameOk
@@ -47,7 +49,8 @@ Answer :: () -> s32 {
     Pointer(20.0, 20.0, true, true, false)
     if !Frame(0.1) || !result.down || result.held { return 2 }
     Pointer(20.0, 20.0, false, false, true)
-    if !Frame(0.2) || !result.clicked || !result.released || result.held { return 3 }
+    if !Frame(0.2) || !result.clicked || !result.released || result.held ||
+    result.x != 20.0 || result.y != 20.0 { return 3 }
 
     // A long press holds once and does not click when it lifts.
     Pointer(20.0, 20.0, true, true, false)
@@ -81,6 +84,26 @@ Answer :: () -> s32 {
     unused KeyboardSend(session, 32)
     if !Frame(4.1) || !result.clicked { return 14 }
     unused KeyboardSend(session, 0)
+
+    // A host-resolved click reports where it landed, right or left, as a
+    // click without a press or release.
+    if !Frame(4.2) || !TreeActivatePointAt(session, result.node, 95.0, 45.0) { return 32 }
+    if !Frame(4.3) || !result.clicked || result.released || result.down ||
+    result.x != 95.0 || result.y != 45.0 { return 33 }
+    if !Frame(4.31) || result.clicked { return 34 }
+    if !TreeActivatePointAt(session, result.node, 12.0, 15.0) { return 35 }
+    if !Frame(4.32) || !result.clicked || result.x != 12.0 || result.y != 15.0 { return 36 }
+    // An activation without a point keeps none from an earlier click.
+    if !TreeActivatePointAt(session, result.node, 95.0, 45.0) ||
+    !TreeActivateAt(session, result.node) { return 37 }
+    if !Frame(4.33) || !result.clicked || result.x != 0.0 || result.y != 0.0 { return 38 }
+    // A click queued for a node that was replaced reaches neither the new
+    // node nor the old one coming back.
+    if !TreeActivatePointAt(session, result.node, 95.0, 45.0) { return 39 }
+    press_id = 71
+    if !Frame(4.34) || result.clicked { return 40 }
+    press_id = 70
+    if !Frame(4.35) || result.clicked || !Frame(4.36) || result.clicked { return 41 }
 
     // Releasing the secondary button on the area is a right click there,
     // never a click; off the area it is nothing.

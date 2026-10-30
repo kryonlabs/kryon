@@ -1,0 +1,57 @@
+// A full-page transparent Press beside an ordinary button, laid out at the
+// app's own coordinates. The browser driver clicks them through the page's
+// real input and reads back what the app received.
+using UI :: #import "kryon/Widgets";
+#import "std/web"
+host_api :: #system_library "host_api";
+RequestWindowClose :: () #foreign host_api;
+
+PRESS_BOUNDS :: Rectangle.{0.0, 56.0, 640.0, 400.0}
+
+press_clicks: s32;
+replaced_clicks: s32;
+plain_clicks: s32;
+
+Report :: (name: string, value: float64) {
+    WebSet(WebGlobal, WebName(name), WebNumber(value))
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    scope: s32 = WebScope()
+    defer WebEnd(scope)
+    page: PageProps
+    page.key = 2; page.bounds = viewport; page.title = "DOM Press Point"
+    opened: PageResult = Page(session, page)
+    plain: ButtonProps
+    plain.key = 10; plain.id = 10; plain.label = "Plain"
+    plain.bounds = .{10.0, 10.0, 100.0, 32.0}
+    if Button(session, plain) != 0 { plain_clicks += 1 }
+    // Replacing the press gives it a new identity; a click resolved for the
+    // old element must not reach the new one.
+    replaced: bool = WebAsBool(WebGet(WebGlobal, WebName("__kryonReplacePress")))
+    press: PressProps
+    press.key = ifx replaced then cast(u64)21 else cast(u64)20
+    press.id = ifx replaced then 21 else 20
+    press.label = "Turn the page"
+    press.bounds = PRESS_BOUNDS
+    press.capture = true
+    result: PressResult = Press(session, press)
+    if result.clicked {
+        if replaced { replaced_clicks += 1 } else { press_clicks += 1 }
+        Report("__kryonPressX", cast(float64)result.x)
+        Report("__kryonPressY", cast(float64)result.y)
+        WebSet(WebGlobal, WebName("__kryonPressReleased"), WebBool(result.released))
+    }
+    Report("__kryonPressClicks", cast(float64)press_clicks)
+    Report("__kryonReplacedClicks", cast(float64)replaced_clicks)
+    Report("__kryonPlainClicks", cast(float64)plain_clicks)
+    Report("__kryonPressLeft", cast(float64)PRESS_BOUNDS.x)
+    Report("__kryonPressTop", cast(float64)PRESS_BOUNDS.y)
+    Report("__kryonPressWidth", cast(float64)PRESS_BOUNDS.width)
+    Report("__kryonPressHeight", cast(float64)PRESS_BOUNDS.height)
+    WebSet(WebGlobal, WebName("__kryonPressReady"), WebBool(true))
+    if opened.opened { End(session) }
+    if WebAsBool(WebGet(WebGlobal, WebName("__kryonTestDone"))) { RequestWindowClose() }
+    return 0
+}

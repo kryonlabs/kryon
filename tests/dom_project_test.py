@@ -85,11 +85,15 @@ with (project / "lock").open("w") as lock:
     )
     if os.environ.get("KRYON_DOM_INTERACTION"):
         (project / "src/app.zi").write_text((ROOT / "tests/fixtures/dom_interaction.zi").read_text())
+    driver = ROOT / "tests/dom_browser.mjs"
+    if os.environ.get("KRYON_DOM_PRESS"):
+        (project / "src/app.zi").write_text((ROOT / "tests/fixtures/dom_press_point.zi").read_text())
+        driver = ROOT / "tests/dom_press_point_browser.mjs"
     run([ZIRAN, "lock"], project)
     run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], project)
     output = project / "build/dom_probe-web.html"
     assert output.is_file() and output.stat().st_size > 100_000
     assert next((project / "build/generated/web/ir").glob("*_dom_run.zir"), None)
     assert next((project / "build/generated/web/c").glob("*_dom_run.c"), None)
-    run(["node", ROOT / "tests/dom_browser.mjs", output.as_uri(), project / "browser-profile"], project)
+    run(["node", driver, output.as_uri(), project / "browser-profile"], project)
 print("Semantic DOM Ziran project: manifest, saved IR, generated C, Emscripten page, and browser semantics passed")
