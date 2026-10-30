@@ -1,0 +1,139 @@
+#import "media"
+#import "media_audio_host"
+#import "media_audio_raylib"
+#import "session"
+#import "hosted_app"
+#import "frame_replay"
+#import "std/file"
+#import "std/timer_linux"
+#import "std/byte_text_linux"
+
+revoked_owner: *MediaAudioOwner;
+revoked_unloads: s32;
+RevokeProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
+    answer := AssetAudioProvider(voice, command, bytes)
+    if command.operation == .Load && answer.code == .Ok { MediaAudioOwnerClose(revoked_owner) }
+    if command.operation == .Unload { revoked_unloads += 1 }
+    return answer
+}
+short_fixture: string;
+fixture: string;
+reads: s32;
+Allowed :: (path: string) -> bool { return path.count >= 12 && path[:12] == "assets/test/" }
+Read :: (context: *void, path: string) -> string {
+    unused context
+    reads += 1
+    if path == "assets/test/short.wav" { return short_fixture }
+    if path == "assets/test/missing.wav" { return "" }
+    if path == "assets/test/corrupt.wav" { return "broken" }
+    if path == "assets/test/huge.wav" {
+        // The host must reject the length before a provider can inspect bytes.
+        descriptor := cast(*TextDescriptor)(*fixture)
+        return TextFromBytes(BytesFromPointer(descriptor.data, 8388609))
+    }
+    return fixture
+}
+Command :: (session: Session, operation: MediaAudioOperation, voice: s32 = 1,
+    gain: float32 = 0.5, music: bool = false, looping: bool = false,
+    asset: string = "assets/test/tone.wav") -> MediaAudioResult {
+    return MediaAudio(session, MediaAudioCommand.{.operation = operation, .voice = voice,
+        .asset = asset, .gain = gain, .music = music, .looping = looping})
+}
+#program_export
+main :: () -> s32 {
+    bytes, ok := ReadEntireFile("work/game-asset-audio/tone.wav")
+    if !ok { return 1 }
+    fixture = bytes
+    short, short_ok := ReadEntireFile("work/game-asset-audio/short.wav")
+    if !short_ok { return 36 }
+    short_fixture = short
+    session := SessionOpen()
+    owner: MediaAudioOwner
+    // No provider is a truthful result, not success.
+    MediaAudioBegin(*owner, session, Allowed, Read, null)
+    if Command(session, .Capabilities).code != .Unsupported { return 2 }
+    MediaAudioEnd()
+    MediaAudioUseRaylib()
+    MediaAudioBegin(*owner, session, Allowed, Read, null)
+    caps := Command(session, .Capabilities)
+    #if #defined(AUDIO_DEVICE_UNAVAILABLE_TEST) {
+        if caps.code != .Unavailable { return 34 }
+        MediaAudioOwnerClose(*owner)
+        MediaAudioEnd()
+        unused SessionClose(session)
+        return 0
+    }
+    if caps.code != .Ok || caps.capabilities != cast(u32)7 { return 3 }
+    if Command(session, .Load, 17).code != .Limit { return 4 }
+    if Command(session, .Load, 1, -0.1).code != .Invalid { return 5 }
+    if Command(session, .Load, 1, 1.1).code != .Invalid { return 6 }
+    bits: u32 = 2143289344
+    nonfinite := cast(*float32)(*bits)
+    if Command(session, .Gain, 1, nonfinite.*).code != .Invalid { return 32 }
+    bits = 2139095040
+    if Command(session, .Gain, 1, nonfinite.*).code != .Invalid { return 33 }
+    paths: [6]string = .{"/etc/passwd", "assets/../test/tone.wav", "assets/test/./tone.wav",
+        "assets/test//tone.wav", "assets/test/../../other/tone.wav", "assets/other/tone.wav"}
+    for path: paths {
+        if Command(session, .Load, 1, .5, false, false, path).code != .Denied { return 7 }
+    }
+    if reads != 0 { return 8 }
+    if Command(session, .Load, 1, .5, false, false, "assets/test/missing.wav").code != .Missing { return 9 }
+    if Command(session, .Load, 1, .5, false, false, "assets/test/huge.wav").code != .Limit { return 10 }
+    if Command(session, .Load, 1, .5, false, false, "assets/test/corrupt.wav").code != .Failed { return 11 }
+    if Command(session, .Load).state != .Ready { return 12 }
+    if Command(session, .Play, 1, .5, false, true).code != .Invalid { return 13 }
+    if Command(session, .Play).state != .Playing { return 14 }
+    if Command(session, .Load, 3, .5, false, false, "assets/test/short.wav").code != .Ok { return 37 }
+    if Command(session, .Play, 3).code != .Ok { return 38 }
+    for attempt: 0..19 {
+        unused attempt
+        unused SleepMilliseconds(10)
+        MediaAudioOwnerTick(*owner)
+    }
+    if Command(session, .Status, 3).state != .Finished { return 39 }
+    if Command(session, .Unload, 3).code != .Ok { return 40 }
+    if Command(session, .Load, 2, .7, true).state != .Ready { return 15 }
+    if Command(session, .Play, 2, .5, true, true).state != .Playing { return 16 }
+    if Command(session, .Gain, 2, 0).code != .Ok || owner.voices[1].gain != 0.0 { return 17 }
+    if Command(session, .Gain, 2, 1).code != .Ok || owner.voices[1].gain != 1.0 { return 18 }
+    if Command(session, .Stop).state != .Stopped { return 19 }
+    if Command(session, .Status, 2).state != .Playing { return 20 }
+    MediaAudioEnd()
+    if Command(session, .Status, 2).code != .Unsupported { return 21 }
+    MediaAudioOwnerTick(*owner)
+    if owner.voices[1].state != .Playing { return 22 }
+    // Another actual app reusing the same outer session has separate voices.
+    next: MediaAudioOwner
+    MediaAudioBegin(*next, session, Allowed, Read, null)
+    if Command(session, .Status, 2).code != .Missing { return 23 }
+    if Command(session, .Load, 2, .5, true).code != .Ok { return 24 }
+    MediaAudioOwnerClose(*owner)
+    if Command(session, .Play, 2, .5, true, true).code != .Ok { return 25 }
+    if Command(session, .Unload, 2).state != .Unloaded { return 26 }
+    if Command(session, .Status, 2).code != .Missing { return 27 }
+    // Actual HostedAppClose owns disposal, even without a final guest frame.
+    app: HostedApp
+    MediaAudioBegin(*app.audio, session, Allowed, Read, null)
+    if Command(session, .Load).code != .Ok { return 28 }
+    HostedAppClose(*app)
+    if app.audio.voices[0].resource != null { return 29 }
+    // A session disappearing releases resources on the next host tick.
+    MediaAudioBegin(*next, session, Allowed, Read, null)
+    if Command(session, .Load).code != .Ok { return 30 }
+    unused SessionClose(session)
+    MediaAudioOwnerTick(*next)
+    if next.voices[0].resource != null { return 31 }
+    MediaAudioEnd()
+    // A decode completing after ownership revocation disposes its temporary
+    // resource instead of attaching it to a reused owner object.
+    live := SessionOpen()
+    MediaAudioUseProvider(RevokeProvider)
+    revoked_owner = *owner
+    MediaAudioBegin(*owner, live, Allowed, Read, null)
+    if Command(live, .Load).code != .Denied || revoked_unloads != 1 || owner.voices[0].resource != null { return 35 }
+    MediaAudioEnd()
+    MediaAudioOwnerClose(*owner)
+    unused SessionClose(live)
+    return 0
+}

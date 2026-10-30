@@ -12,7 +12,7 @@ printf 'hello\n' > "$work/notes/hello.txt"
 "$ziran" bundle --root "$repo/tests" --module-path "$ziran_root/std" \
     --entry hosted_app_loop:main -o "$work/hosted_app_loop.zx" "$repo/tests/hosted_app_loop.zi"
 "$ziran" build --target=c --no-main --entry ziran_hosted_app_test:main --root "$repo/tests" \
-    --module-path "$repo/src/backend" --module-path "$ziran_root/std" -o "$work/c" \
+    --module-path "$repo/src/backend" --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" \
     "$repo/tests/ziran_hosted_app_test.zi"
 "${CC:-cc}" -O2 -std=c11 -ffunction-sections -fdata-sections -I"$work/c" -I"$ziran_root/include" \
     "$work"/c/*.c "${ZIRAN_LIB:-$ziran_root/build/libziran.a}" -Wl,--gc-sections -lm -lpthread -o "$work/run"

@@ -159,6 +159,12 @@ FrameReplayClose :: (replay: *FrameReplay) {
 // Called for each host call of a recording run.
 FrameReplayRecord :: (replay: *FrameReplay, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: HostValue, returned: s32) {
+    // Audio commands can start/stop resources. Replaying a recorded command
+    // would restart music or duplicate an effect; rerun its owning app instead.
+    if TextFromCString(function) == "MediaAudioHost" {
+        replay.recording = false
+        return
+    }
     call: ReplayCall
     call.module = ReplayCopyText(module)
     call.function = ReplayCopyText(function)

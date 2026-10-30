@@ -1,0 +1,48 @@
+#import "kryon/app_context"
+#import "kryon/app_protocol"
+using Media :: #import "kryon/Media";
+#import "kryon/session"
+phase: s32;
+retained: string;
+Call :: (operation: MediaAudioOperation, voice: s32 = 1, gain: float32 = .5,
+    music: bool = false, looping: bool = false, asset: string = "assets/test/tone.wav") -> MediaAudioResult {
+    return MediaAudio(AppSession(), MediaAudioCommand.{.operation = operation, .voice = voice,
+        .gain = gain, .music = music, .looping = looping, .asset = asset})
+}
+#program_export
+main :: () -> s32 {
+    mode := AppMode()
+    if mode == APP_IDENTIFY {
+        AppIdentity("audio-test", 1)
+        AppDescribe("Audio test", "")
+        return APP_PROTOCOL
+    }
+    if mode != APP_FRAME { return 0 }
+    #if #defined(AUDIO_UNAVAILABLE_TEST) {
+        answer := Call(.Capabilities)
+        if answer.code != .Unavailable || answer.capabilities != cast(u32)7 { return 90 }
+        return 0
+    }
+    if phase == 0 {
+        if Call(.Capabilities).code != .Ok { return 1 }
+        if Call(.Status, 2).code != .Missing { return 2 }
+        denied := Call(.Load, 1, .5, false, false, "assets/other/tone.wav")
+        if denied.code != .Denied { return 3 }
+        retained = denied.message
+        if Call(.Load).code != .Ok { return 4 }
+        if Call(.Play).state != .Playing { return 5 }
+        if Call(.Load, 2, .7, true).code != .Ok { return 6 }
+        if Call(.Play, 2, .7, true, true).state != .Playing { return 7 }
+        if retained != "Asset is outside this app's resource policy" { return 8 }
+    } else if phase == 1 {
+        if Call(.Status, 2).state != .Playing { return 9 }
+        if Call(.Gain, 2, 0).code != .Ok { return 10 }
+        if Call(.Stop).state != .Stopped { return 11 }
+        if Call(.Status, 2).state != .Playing { return 12 }
+        if retained != "Asset is outside this app's resource policy" { return 13 }
+    } else {
+        if Call(.Status, 2).code != .Missing { return 14 }
+    }
+    phase += 1
+    return 0
+}

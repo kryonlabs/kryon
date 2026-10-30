@@ -1,0 +1,71 @@
+#import "media_audio"
+#import "media_audio_host"
+#import "media_audio_raylib"
+#import "canvas_audio_host"
+#import "session"
+#import "std/file"
+#import "std/web"
+revoked_owner: *MediaAudioOwner;
+revoked_unloads: s32;
+RevokeProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
+    answer := AssetAudioProvider(voice, command, bytes)
+    if command.operation == .Load && answer.code == .Ok {
+        WebSleep(1)
+        MediaAudioOwnerClose(revoked_owner)
+    }
+    if command.operation == .Unload { revoked_unloads += 1 }
+    return answer
+}
+fixture: string;
+Allowed :: (path: string) -> bool { return path == "assets/test/tone.wav" }
+Read :: (context: *void, path: string) -> string { unused context; unused path; return fixture }
+Call :: (session: Session, operation: MediaAudioOperation, voice: s32 = 1,
+    music: bool = false, looping: bool = false) -> MediaAudioResult {
+    return MediaAudio(session, MediaAudioCommand.{.operation = operation, .voice = voice,
+        .asset = "assets/test/tone.wav", .music = music, .looping = looping, .gain = .5})
+}
+#program_export
+main :: () -> s32 {
+    data, ok := ReadEntireFile("tone.wav")
+    if !ok { return 1 }
+    fixture = data
+    MediaAudioUseRaylib()
+    session := SessionOpen()
+    old: MediaAudioOwner
+    MediaAudioBegin(*old, session, Allowed, Read, null)
+    if Call(session, .Capabilities).code != .Suspended { return 2 }
+    if Call(session, .Load).code != .Suspended || old.voices[0].resource != null { return 3 }
+    MediaAudioEnd()
+    MediaAudioOwnerClose(*old)
+    // CDP dispatches a real trusted gesture into this private headless page.
+    WebSet(WebGlobal, WebName("audioTestPhase"), WebText("gesture"))
+    attempts: s32 = 0
+    while AudioHostState() != 1 && attempts < 300 { WebSleep(10); attempts += 1 }
+    if AudioHostState() != 1 { return 4 }
+    owner: MediaAudioOwner
+    MediaAudioBegin(*owner, session, Allowed, Read, null)
+    if Call(session, .Status).code != .Missing { return 5 }
+    if Call(session, .Load).code != .Ok { return 6 }
+    if Call(session, .Play).state != .Playing { return 7 }
+    if Call(session, .Load, 2, true).code != .Ok { return 8 }
+    if Call(session, .Play, 2, true, true).state != .Playing { return 9 }
+    if Call(session, .Stop).state != .Stopped { return 10 }
+    if Call(session, .Status, 2).state != .Playing { return 11 }
+    MediaAudioEnd()
+    WebSleep(20)
+    MediaAudioOwnerTick(*owner)
+    if owner.voices[1].state != .Playing { return 12 }
+    MediaAudioBegin(*owner, session, Allowed, Read, null)
+    if Call(session, .Unload, 2).code != .Ok { return 13 }
+    MediaAudioOwnerClose(*owner)
+    MediaAudioEnd()
+    MediaAudioUseProvider(RevokeProvider)
+    revoked_owner = *owner
+    MediaAudioBegin(*owner, session, Allowed, Read, null)
+    if Call(session, .Load).code != .Denied || revoked_unloads != 1 || owner.voices[0].resource != null { return 14 }
+    MediaAudioEnd()
+    MediaAudioOwnerClose(*owner)
+    unused SessionClose(session)
+    AudioHostClose()
+    return 0
+}

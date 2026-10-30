@@ -1,0 +1,149 @@
+// Provider-neutral storage owned by an actual app instance, never a global
+// session slot. No commands or borrowed guest strings survive dispatch.
+#import "media_audio"
+#import "session"
+MEDIA_AUDIO_VOICES :: 16
+MEDIA_AUDIO_ASSET_LIMIT :: 8388608
+MediaAudioVoice :: struct {
+    resource: *void
+    state: MediaAudioState
+    music: bool
+    gain: float32
+}
+MediaAudioProvider :: #type (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult;
+MediaAudioAllowed :: #type (path: string) -> bool;
+// Borrows packed resource data until return; the provider retains its own copy.
+MediaAudioRead :: #type (context: *void, path: string) -> string;
+MediaAudioOwner :: struct {
+    generation: u64
+    in_flight: bool
+    voices: [MEDIA_AUDIO_VOICES]MediaAudioVoice
+    provider: MediaAudioProvider
+    session: Session
+    allowed: MediaAudioAllowed
+    read: MediaAudioRead
+    context: *void
+}
+media_audio_provider: MediaAudioProvider;
+// Install on the host's owning thread. Existing owners retain their provider.
+MediaAudioUseProvider :: (provider: MediaAudioProvider) { media_audio_provider = provider }
+MediaAudioAssetValid :: (path: string) -> bool {
+    if path.count < 8 || path.count > 1024 || path[:7] != "assets/" { return false }
+    start: s64 = 0
+    for at: 0..path.count {
+        if at < path.count {
+            byte := path[at]
+            if byte < cast(u8)32 || byte == cast(u8)127 || byte == cast(u8)92 || byte == cast(u8)58 { return false }
+            if byte != cast(u8)47 { continue }
+        }
+        part := path[start:at]
+        if part == "" || part == "." || part == ".." { return false }
+        start = at + 1
+    }
+    return true
+}
+MediaAudioOwnerClose :: (owner: *MediaAudioOwner) {
+    if owner.provider != null {
+        for index: 0..MEDIA_AUDIO_VOICES - 1 {
+            if owner.voices[index].resource != null {
+                unused owner.provider(*owner.voices[index], MediaAudioCommand.{.operation = .Unload}, "")
+            }
+        }
+    }
+    generation := owner.generation + cast(u64)1
+    in_flight := owner.in_flight
+    owner.* = MediaAudioOwner.{}
+    owner.generation = generation
+    owner.in_flight = in_flight
+}
+// A host supplies its actual verified instance's owner and current policy.
+// Change of account/resource ownership must close this owner before reuse.
+MediaAudioOwnerBind :: (owner: *MediaAudioOwner, session: Session,
+    allowed: MediaAudioAllowed, read: MediaAudioRead, context: *void) {
+    if owner.session.slot != session.slot || owner.session.epoch != session.epoch ||
+    owner.context != context {
+        MediaAudioOwnerClose(owner)
+    }
+    owner.session = session
+    owner.allowed = allowed
+    owner.read = read
+    owner.context = context
+    if owner.provider == null { owner.provider = media_audio_provider }
+}
+MediaAudioOwnerCall :: (owner: *MediaAudioOwner, session: Session, command: MediaAudioCommand) -> MediaAudioResult {
+    if owner.in_flight { return .{.code = .Unavailable, .message = "Audio operation in flight"} }
+    if !SessionValid(session) || owner.session.slot != session.slot || owner.session.epoch != session.epoch {
+        return .{.code = .Denied, .message = "Audio owner is outside this session"}
+    }
+    if cast(s32)command.operation < 0 || cast(s32)command.operation > cast(s32)MediaAudioOperation.Status {
+        return .{.code = .Invalid, .message = "Unknown audio operation"}
+    }
+    if command.gain != command.gain || command.gain < 0.0 || command.gain > 1.0 {
+        return .{.code = .Invalid, .message = "Gain must be finite and within 0..1"}
+    }
+    if command.operation == .Capabilities {
+        if owner.provider == null { return .{.code = .Unsupported, .message = "No asset audio provider"} }
+        unused_voice: MediaAudioVoice
+        return owner.provider(*unused_voice, command, "")
+    }
+    if command.voice < 1 || command.voice > MEDIA_AUDIO_VOICES {
+        return .{.code = .Limit, .message = "Voice must be within 1..16"}
+    }
+    if owner.provider == null { return .{.code = .Unsupported, .message = "No asset audio provider"} }
+    voice := *owner.voices[command.voice - 1]
+    generation := owner.generation
+    provider := owner.provider
+    working := voice.*
+    owner.in_flight = true
+    defer { owner.in_flight = false }
+    bytes := ""
+    if command.operation == .Load {
+        if voice.resource != null { return .{.code = .Invalid, .state = voice.state, .message = "Unload this voice before loading"} }
+        if !MediaAudioAssetValid(command.asset) || owner.allowed == null || !owner.allowed(command.asset) {
+            return .{.code = .Denied, .message = "Asset is outside this app's resource policy"}
+        }
+        if owner.read == null { return .{.code = .Unavailable, .message = "No packed asset reader"} }
+        bytes = owner.read(owner.context, command.asset)
+        if bytes.count <= 0 { return .{.code = .Missing, .message = "Audio asset is unavailable"} }
+        if bytes.count > MEDIA_AUDIO_ASSET_LIMIT { return .{.code = .Limit, .message = "Audio asset exceeds 8 MiB"} }
+    } else if voice.resource == null {
+        return .{.code = .Missing, .message = "Voice is not loaded"}
+    }
+    // Decoding may yield in a browser. Close/rebind revokes the generation;
+    // the completed resource is discarded instead of entering a later app.
+    if generation != owner.generation || !SessionValid(session) {
+        return .{.code = .Denied, .message = "Audio ownership changed during the operation"}
+    }
+    answer := provider(*working, command, bytes)
+    if generation != owner.generation {
+        if command.operation == .Load && working.resource != null {
+            unused provider(*working, MediaAudioCommand.{.operation = .Unload}, "")
+        }
+        return .{.code = .Denied, .message = "Audio ownership changed during the operation"}
+    }
+    voice.* = working
+    if !SessionValid(session) {
+        MediaAudioOwnerClose(owner)
+        return .{.code = .Denied, .message = "Audio session closed during the operation"}
+    }
+    return answer
+}
+MediaAudioOwnerTick :: (owner: *MediaAudioOwner) {
+    if !SessionValid(owner.session) { MediaAudioOwnerClose(owner); return }
+    if owner.provider == null { return }
+    for index: 0..MEDIA_AUDIO_VOICES - 1 {
+        if owner.voices[index].resource != null {
+            unused owner.provider(*owner.voices[index], MediaAudioCommand.{.operation = .Status}, "")
+        }
+    }
+}
+MediaAudioNativeCall :: (context: *void, session: Session, command: MediaAudioCommand) -> MediaAudioResult {
+    return MediaAudioOwnerCall(cast(*MediaAudioOwner)context, session, command)
+}
+MediaAudioBegin :: (owner: *MediaAudioOwner, session: Session, allowed: MediaAudioAllowed,
+    read: MediaAudioRead, context: *void) {
+    MediaAudioOwnerBind(owner, session, allowed, read, context)
+    MediaAudioOwnerTick(owner)
+    MediaAudioScopeBegin(MediaAudioNativeCall, cast(*void)owner)
+}
+MediaAudioEnd :: () { MediaAudioScopeEnd() }

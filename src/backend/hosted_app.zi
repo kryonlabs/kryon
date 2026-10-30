@@ -7,6 +7,7 @@
 #import "std/byte_text_linux"
 #import "bundle_preload"
 #import "frame_replay"
+#import "media_audio_host"
 
 // The most host calls one bundle may import. An app that draws every screen
 // itself calls a few dozen widgets and as many of its host's own functions.
@@ -17,6 +18,7 @@ HOSTED_APP_STEP_LIMIT :: 10000000
 HostedApp :: struct {
     bundle: *void
     instance: *void
+    audio: MediaAudioOwner
     // The last run trapped or returned no answer.
     failed: bool
     // The host's call, and a quiet frame to show again; see HostedAppRunFrame.
@@ -142,8 +144,9 @@ HostedAppRunFrame :: (app: *HostedApp, answer: *s64, quiet: bool) -> bool {
     if app.replay.settle > 0 { app.replay.settle -= 1 }
     app.replay.recording = record
     ran := HostedAppRun(app, answer)
+    recorded := app.replay.recording
     app.replay.recording = false
-    app.replay.ready = record && ran
+    app.replay.ready = record && ran && recorded
     app.replay.answer = answer.*
     return ran
 }
@@ -157,6 +160,7 @@ HostedAppRestart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall,
     app.instance = null
     ready := HostedAppStart(app, allows, call, context) && accepts(context)
     if ready {
+        MediaAudioOwnerClose(*app.audio)
         CloseBundleInstance(previous)
     } else {
         CloseBundleInstance(app.instance)
@@ -167,6 +171,7 @@ HostedAppRestart :: (app: *HostedApp, allows: HostedAppAllows, call: HostCall,
 }
 
 HostedAppClose :: (app: *HostedApp) {
+    MediaAudioOwnerClose(*app.audio)
     if app.replay != null {
         FrameReplayClose(app.replay)
         HostedRelease(cast(*void)app.replay)

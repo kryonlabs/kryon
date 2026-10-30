@@ -4,6 +4,7 @@ Player :: #import "bundle_player";
 #import "bundle_raster"
 #import "bundle_resources"
 #import "bundle_media"
+#import "media_audio_raylib"
 #import "bundle_app"
 #import "app_files"
 #import "tree_input"
@@ -108,6 +109,7 @@ RaylibBundlePlatform :: (context: *void, module: *u8, function: *u8,
 }
 
 RaylibBundleOpen :: (host: *RaylibBundle, data: string, previous: *RaylibBundle = null) -> bool {
+    MediaAudioUseRaylib()
     RaylibBundleClose(host)
     bytes := cast(*TextDescriptor)(*data)
     checked := OpenBundleBytes(bytes.data, cast(u64)data.count)

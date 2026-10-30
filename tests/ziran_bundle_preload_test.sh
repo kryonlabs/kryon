@@ -6,12 +6,12 @@ unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 work="$repo/build/scratch/bundle-preload"
 rm -rf "$work"
 mkdir -p "$work/c"
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" \
+"$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" --module-path "$repo/src/ui" \
     -o "$work/ir" "$repo/tests/ziran_bundle_names_test.zi"
 "$ziran" bundle --root "$work/ir" --entry ziran_bundle_names_test:main \
     -o "$work/fixture.zx" "$work/ir/ziran_bundle_names_test.zir"
 "$ziran" build --target=c --no-main --entry bundle_preload_test:Check --root "$repo/tests" \
-    --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+    --module-path "$repo/src/backend" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/c" "$repo/tests/bundle_preload_test.zi"
 cat > "$work/c/main.c" <<'C'
 #include <stdio.h>

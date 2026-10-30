@@ -61,6 +61,9 @@
 #import "hosted_values"
 #import "widget_codec"
 #import "bundle_names"
+#import "media_audio"
+#import "media_audio_host"
+#import "media_audio_codec"
 
 using HostValueKind;
 
@@ -78,6 +81,11 @@ WIDGET_HOST_OPTION_LIMIT :: 32
 // Scrolls and dialog panels a bundle may hold open at once.
 WIDGET_HOST_SCOPE_DEPTH :: 16
 
+widget_host_audio: *MediaAudioOwner;
+widget_host_audio_read: MediaAudioRead;
+widget_host_audio_context: *void;
+widget_audio_command_codec: WidgetMediaAudioCommandCodec;
+widget_audio_result_codec: WidgetMediaAudioResultCodec;
 widget_host_session: Session;
 widget_host_active: bool;
 widget_host_depth: s32;
@@ -159,7 +167,8 @@ widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
 WidgetHostSupports :: (module: string, function: string) -> bool {
-    return (ModuleName(module, "frame_snapshot") && function == "CaptureFrameInputHost") ||
+    return (ModuleName(module, "media_audio") && function == "MediaAudioHost") ||
+    (ModuleName(module, "frame_snapshot") && function == "CaptureFrameInputHost") ||
     (ModuleName(module, "pointer_input") && function == "PollPointer") ||
     (ModuleName(module, "carousel") && function == "CarouselWheelHostedHost") ||
     (ModuleName(module, "text_widget") && function == "TextHostedHost") ||
@@ -238,13 +247,27 @@ WidgetHostTextLinkAt :: (session: Session, arguments: *HostValue, result: *HostV
     return 1
 }
 
-WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed, resolve: WidgetAssetResolve = WidgetHostPackedPath) {
+WidgetHostAudioReadNone :: (context: *void, path: string) -> string {
+    unused context
+    unused path
+    return ""
+}
+
+WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed, resolve: WidgetAssetResolve = WidgetHostPackedPath,
+    audio: *MediaAudioOwner = null, audio_read: MediaAudioRead = WidgetHostAudioReadNone, audio_context: *void = null) {
+    widget_host_audio = audio
+    widget_host_audio_read = audio_read
+    widget_host_audio_context = audio_context
     widget_host_session = session
     widget_host_asset_allowed = asset_allowed
     widget_host_asset_resolve = resolve
     widget_host_depth = 0
     widget_host_palette_used = false
     widget_host_active = true
+    if audio != null {
+        MediaAudioOwnerBind(audio, session, WidgetHostAssetAllowed, audio_read, audio_context)
+        MediaAudioOwnerTick(audio)
+    }
 }
 
 // Closes any scroll the bundle left open, so the host's tree stays balanced,
@@ -259,6 +282,8 @@ WidgetHostEnd :: () {
         widget_host_palette_used = false
     }
     widget_host_active = false
+    widget_host_audio = null
+    widget_host_audio_context = null
 }
 
 WidgetHostAssetAllowed :: (path: string) -> bool {
@@ -321,6 +346,24 @@ WidgetHostPalette :: (session: Session, arguments: *HostValue, result: *HostValu
     return 1
 }
 
+// The active widget frame supplies the asset policy; the actual instance
+// supplies ownership and a packed resource reader. No owner means unsupported.
+WidgetHostAudioCall :: (audio: *MediaAudioOwner, read: MediaAudioRead, context: *void,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    if !widget_host_active || count != 2 || !WidgetValidSession(arguments[0]) ||
+    !WidgetValidMediaAudioCommand(arguments[1]) { return 0 }
+    session := WidgetDecodeSession(arguments[0], *widget_session_codec)
+    if session.slot != widget_host_session.slot || session.epoch != widget_host_session.epoch { return 0 }
+    command := WidgetDecodeMediaAudioCommand(arguments[1], *widget_audio_command_codec)
+    answer := MediaAudioResult.{.code = .Unsupported, .message = "Host has no owned asset audio scope"}
+    if audio != null {
+        MediaAudioOwnerBind(audio, session, WidgetHostAssetAllowed, read, context)
+        answer = MediaAudioOwnerCall(audio, session, command)
+    }
+    result.* = WidgetEncodeMediaAudioResult(answer, *widget_audio_result_codec)
+    return 1
+}
+
 // A HostCall for the hosted widget functions. Returns 0 for a call it does
 // not answer or refuses.
 WidgetHostCall :: (context: *void, module: *u8, function: *u8,
@@ -331,6 +374,10 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     owner := TextFromCString(module)
     name := TextFromCString(function)
+    if name == "MediaAudioHost" && ModuleName(owner, "media_audio") {
+        return WidgetHostAudioCall(widget_host_audio, widget_host_audio_read, widget_host_audio_context,
+            arguments, count, result)
+    }
     if name == "PollPointer" && ModuleName(owner, "pointer_input") && count == 0 {
         result.* = WidgetEncodePointerFrame(PointerSample(widget_host_session), *widget_pointer_codec)
         return 1

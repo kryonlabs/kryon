@@ -10,6 +10,7 @@
 #import "text_input_props"
 #import "text_input_platform"
 #import "hosted_app"
+#import "media_audio_host"
 #import "hosted_values"
 #import "widget_codec"
 #import "widget_host"
@@ -136,6 +137,15 @@ AppContextDropReply :: (app: *AppContext) {
     app.reply = ""
 }
 
+AppContextAudioRead :: (context: *void, path: string) -> string {
+    asset := HostedAppAsset(cast(*HostedApp)context, path)
+    return ifx asset.found then asset.data else ""
+}
+// Call before changing an existing instance's account/resource ownership.
+AppContextAudioReset :: (app: *AppContext) {
+    MediaAudioOwnerClose(*AppContextRuntime(app).audio)
+}
+
 AppContextCall :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     app := cast(*AppContext)context
@@ -154,6 +164,11 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
     if !AppModule(TextFromCString(module)) {
         if app.mode != APP_FRAME || !app.identified || !app.described {
             return 0
+        }
+        if name == "MediaAudioHost" && ModuleName(TextFromCString(module), "media_audio") {
+            runtime := AppContextRuntime(app)
+            return WidgetHostAudioCall(*runtime.audio, AppContextAudioRead, cast(*void)runtime,
+                arguments, count, result)
         }
         if app.widgets == null { return 0 }
         return app.widgets(app.context, module, function, arguments, count, result)
@@ -317,6 +332,7 @@ AppContextRestart :: (app: *AppContext) -> bool {
 
 // The supervising harness brackets this call with WidgetHostBegin/End.
 AppContextRun :: (app: *AppContext, mode: s32) -> bool {
+    MediaAudioOwnerTick(*AppContextRuntime(app).audio)
     app.mode = mode
     app.keyboard = false
     AppContextDropReply(app)
@@ -329,6 +345,7 @@ AppContextRun :: (app: *AppContext, mode: s32) -> bool {
 // running the app, as long as its reads answer as before; see
 // HostedAppRunFrame. The harness brackets it with WidgetHostBegin/End.
 AppContextRunFrame :: (app: *AppContext, quiet: bool) -> bool {
+    MediaAudioOwnerTick(*AppContextRuntime(app).audio)
     app.mode = APP_FRAME
     app.keyboard = false
     AppContextDropReply(app)

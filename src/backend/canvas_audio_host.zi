@@ -222,6 +222,19 @@
         return 1
     }
 
+    // Distinguish an existing but blocked/suspended context from playback.
+    AudioHostState :: () -> s32 {
+        if AudioHostOpen() == 0 { return 0 }
+        state := WebGet(audio_context, audio_names.state)
+        if state.tag != WebStringTag { return 0 }
+        bytes: [32]u8
+        unused WebCopyString(WebAsObject(state), bytes[:])
+        value := TextFromCString(*bytes[0])
+        if value == "running" { return 1 }
+        if value == "suspended" || value == "interrupted" { return 2 }
+        return 0
+    }
+
     AudioHostResume :: () {
         if audio_context == 0 { return }
         state: WebValue = WebGet(audio_context, audio_names.state)

@@ -1,0 +1,45 @@
+// Asset voices on the existing Media surface. IDs are local to one app instance.
+#import "session"
+MediaAudioOperation :: enum { Capabilities; Load; Play; Gain; Stop; Unload; Status; }
+MediaAudioCode :: enum { Ok; Unsupported; Unavailable; Suspended; Invalid; Denied; Missing; Limit; Failed; }
+MediaAudioState :: enum { Unloaded; Ready; Playing; Stopped; Finished; }
+MediaAudioCommand :: struct {
+    operation: MediaAudioOperation
+    voice: s32
+    asset: string
+    music: bool
+    looping: bool
+    gain: float32
+}
+MediaAudioResult :: struct {
+    code: MediaAudioCode
+    state: MediaAudioState
+    // Bit 1 effects, 2 music, 4 gain. No PCM contract is advertised.
+    capabilities: u32
+    message: string
+}
+#if #defined(KRYON_HOSTED_UI) {
+    host_api :: #system_library "host_api";
+    MediaAudioHost :: (session: Session, command: MediaAudioCommand) -> MediaAudioResult #foreign host_api;
+} else {
+    MediaAudioHandler :: #type (context: *void, session: Session, command: MediaAudioCommand) -> MediaAudioResult;
+    MediaAudioScope :: struct { handler: MediaAudioHandler; context: *void; }
+    media_audio_scope: MediaAudioScope;
+    // Host-only synchronous scope. Ending a frame does not stop its voices.
+    MediaAudioScopeBegin :: (handler: MediaAudioHandler, context: *void) {
+        media_audio_scope.handler = handler
+        media_audio_scope.context = context
+    }
+    MediaAudioScopeEnd :: () {
+        media_audio_scope = MediaAudioScope.{}
+    }
+}
+#program_export
+MediaAudio :: (session: Session, command: MediaAudioCommand) -> MediaAudioResult {
+    #if #defined(KRYON_HOSTED_UI) {
+        return MediaAudioHost(session, command)
+    } else {
+        if media_audio_scope.handler == null { return MediaAudioResult.{.code = .Unsupported, .message = "No asset audio provider in this scope"} }
+        return media_audio_scope.handler(media_audio_scope.context, session, command)
+    }
+}

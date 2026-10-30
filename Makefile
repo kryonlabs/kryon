@@ -539,3 +539,12 @@ test: android-surface-test android-rotation-pixels-test
 window-focus-test:
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 python3 tests/window_focus_test.py
 test: window-focus-test
+
+# Asset audio uses actual decoders on a private null device and a muted private
+# browser. It never connects to the owner's audio session or desktop.
+.PHONY: asset-audio-test
+asset-audio-test: $(RAYLIB_A)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
+		ZIRAN_BUILD_DIR="$(ZIRAN_BUILD_DIR)" python3 tests/media_audio_test.py --browser
+
+test: asset-audio-test

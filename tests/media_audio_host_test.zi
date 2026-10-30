@@ -1,0 +1,129 @@
+#import "app_context_host"
+#import "app_protocol"
+#import "hosted_app"
+#import "media_audio"
+#import "media_audio_host"
+#import "media_audio_raylib"
+#import "media_audio_codec"
+#import "widget_host"
+#import "widget_codec"
+#import "hosted_values"
+#import "std/bundle_host"
+#import "std/file"
+#import "std/c_string"
+#import "std/byte_text_linux"
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "frame_replay"
+#import "ziran_composition_widget_host"
+#import "ziran_system_clipboard_host"
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) { unused points; unused color }
+#program_export
+ImageWidth :: (path: string) -> s32 { unused path; return 0 }
+#program_export
+ImageHeight :: (path: string) -> s32 { unused path; return 0 }
+Allowed :: (path: string) -> bool { return path == "assets/test/tone.wav" }
+UnusedWidgets :: (context: *void, module: *u8, function: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 {
+    unused context; unused module; unused function; unused args; unused count; unused result
+    return 0
+}
+Unavailable :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
+    unused voice; unused command; unused bytes
+    return .{.code = .Unavailable, .capabilities = cast(u32)7, .message = "No test device"}
+}
+Open :: (app: *AppContext, bytes: string, session: Session) -> bool {
+    app.session = session
+    app.widgets = UnusedWidgets
+    app.expected_id = "audio-test"
+    return AppContextOpen(app, bytes)
+}
+Frame :: (app: *AppContext) -> bool {
+    WidgetHostBegin(app.session, Allowed)
+    answer := AppContextRunFrame(app, true)
+    WidgetHostEnd()
+    return answer
+}
+#program_export
+main :: () -> s32 {
+    bytes, ok := ReadEntireFile("work/game-asset-audio/guest.zx")
+    if !ok { return 1 }
+    session := SessionOpen()
+    #if #defined(AUDIO_UNAVAILABLE_TEST) {
+        MediaAudioUseProvider(Unavailable)
+    } else {
+        MediaAudioUseRaylib()
+    }
+    first: AppContext
+    if !Open(*first, bytes, session) || !Frame(*first) { return 2 }
+    #if #defined(AUDIO_UNAVAILABLE_TEST) {
+        HostedAppClose(*first.app)
+        unused SessionClose(session)
+        return 0
+    }
+    if first.app.replay.ready { return 3 }
+    if !Frame(*first) { return 4 }
+    second: AppContext
+    if !Open(*second, bytes, session) || !Frame(*second) { return 5 }
+    if first.app.audio.voices[1].resource == second.app.audio.voices[1].resource { return 6 }
+    // New ownership revokes only the old owner's voices, even on one session.
+    AppContextAudioReset(*first)
+    if first.app.audio.voices[1].resource != null || second.app.audio.voices[1].resource == null { return 7 }
+    if !Frame(*first) || !Frame(*second) { return 8 }
+    HostedAppClose(*first.app)
+    if second.app.audio.voices[1].resource == null { return 9 }
+    // A successful actual VM restart releases voices and gets fresh guest state.
+    if !AppContextRestart(*second) || second.app.audio.voices[1].resource != null { return 10 }
+    if !Frame(*second) { return 11 }
+    // Malformed record and wrong-session calls are rejected before dispatch.
+    session_codec: WidgetSessionCodec
+    command_codec: WidgetMediaAudioCommandCodec
+    args: [2]HostValue
+    other := SessionOpen()
+    args[0] = WidgetEncodeSession(other, *session_codec)
+    args[1] = WidgetEncodeMediaAudioCommand(MediaAudioCommand.{.operation = .Stop, .voice = 2}, *command_codec)
+    result: HostValue
+    WidgetHostBegin(session, Allowed)
+    if WidgetHostAudioCall(*second.app.audio, AppContextAudioRead, cast(*void)(*second.app), *args[0], 2, *result) != 0 { return 12 }
+    args[0] = WidgetEncodeSession(session, *session_codec)
+    args[1].kind = cast(s32)HostValueKind.HostPointer
+    if WidgetHostAudioCall(*second.app.audio, AppContextAudioRead, cast(*void)(*second.app), *args[0], 2, *result) != 0 { return 13 }
+    WidgetHostEnd()
+    raw: MediaAudioOwner
+    module: [32]u8
+    function: [32]u8
+    unused CopyCString("kryon_media_audio", module[:])
+    unused CopyCString("MediaAudioHost", function[:])
+    WidgetHostBegin(session, Allowed, WidgetHostPackedPath, *raw,
+        AppContextAudioRead, cast(*void)(*second.app))
+    args[1] = WidgetEncodeMediaAudioCommand(MediaAudioCommand.{.operation = .Load, .voice = 2,
+        .asset = "assets/test/tone.wav", .music = true, .gain = .5}, *command_codec)
+    if WidgetHostCall(null, *module[0], *function[0], *args[0], 2, *result) != 1 { return 14 }
+    result_codec: WidgetMediaAudioResultCodec
+    decoded := WidgetDecodeMediaAudioResult(result, *result_codec)
+    if decoded.code != .Ok || decoded.state != .Ready { return 15 }
+    args[1] = WidgetEncodeMediaAudioCommand(MediaAudioCommand.{.operation = .Play, .voice = 2,
+        .looping = true}, *command_codec)
+    if WidgetHostCall(null, *module[0], *function[0], *args[0], 2, *result) != 1 { return 19 }
+    WidgetHostEnd()
+    if WidgetHostCall(null, *module[0], *function[0], *args[0], 2, *result) != 0 { return 16 }
+    WidgetHostBegin(session, Allowed, WidgetHostPackedPath, *raw,
+        AppContextAudioRead, cast(*void)(*second.app))
+    args[1] = WidgetEncodeMediaAudioCommand(MediaAudioCommand.{.operation = .Status, .voice = 2}, *command_codec)
+    if WidgetHostCall(null, *module[0], *function[0], *args[0], 2, *result) != 1 { return 20 }
+    decoded = WidgetDecodeMediaAudioResult(result, *result_codec)
+    if decoded.code != .Ok || decoded.state != .Playing { return 21 }
+    WidgetHostEnd()
+    WidgetHostBegin(session, Allowed)
+    if WidgetHostCall(null, *module[0], *function[0], *args[0], 2, *result) != 1 { return 17 }
+    decoded = WidgetDecodeMediaAudioResult(result, *result_codec)
+    if decoded.code != .Unsupported { return 18 }
+    WidgetHostEnd()
+    MediaAudioOwnerClose(*raw)
+    HostedAppClose(*second.app)
+    unused SessionClose(other)
+    unused SessionClose(session)
+    return 0
+}

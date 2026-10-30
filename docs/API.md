@@ -429,3 +429,99 @@ own content anchors and page indexes so reflow preserves the reading place.
 registered face or a font asset. Hosted fonts pass the same asset policy as
 images; absolute host paths are refused. Raylib and Canvas select the face
 for measurement and for queued paint, restoring the interface font afterward.
+
+## Asset audio
+
+`kryon/Media` retains `MediaOpen`, pause/stop/state/message and text fetching.
+It also exports `MediaAudio(session, command: MediaAudioCommand) ->
+MediaAudioResult`. A hosted bundle uses `KRYON_HOSTED_UI` and requests only
+`media_audio.MediaAudioHost` for this function. The same types/function are
+available directly from `kryon/media_audio`.
+
+`MediaAudioCommand` has `operation: MediaAudioOperation`, `voice: s32`,
+`asset: string`, `music: bool`, `looping: bool`, and `gain: float32`.
+`MediaAudioOperation` is `Capabilities`, `Load`, `Play`, `Gain`, `Stop`,
+`Unload`, or `Status`. Voice IDs are caller-selected `1..16`, local to one
+actual app instance. Each loaded voice has an independent decoder and gain;
+several effects and music voices can play together. `Load` uses `asset`,
+`music`, and `gain`; unload an occupied ID before reloading it. `Play` starts
+from the beginning and uses `looping`, which is accepted only on a voice
+loaded with `music = true`. `Gain` changes only that voice. Gain must be
+finite and in `0..1`; out-of-range, NaN and infinite values are rejected,
+without clamping or changing playback. Zero-initialized gain means silence.
+`Stop` retains a decoded voice for replay; `Unload` stops and frees it.
+`Status` updates the stream and reports actual completion. `Capabilities`
+does not need a voice ID. There is no queued playback or automatic transition.
+
+`MediaAudioResult` owns `message: string` across the hosted boundary, with
+`code: MediaAudioCode`, `state: MediaAudioState`, and `capabilities: u32`.
+Codes are `Ok`, `Unsupported` (no provider), `Unavailable` (no device/reader
+or an operation already in flight), `Suspended` (browser context cannot play,
+including before an autoplay-unlocking gesture), `Invalid`, `Denied`,
+`Missing`, `Limit`, and `Failed` (decode failure). States are `Unloaded`,
+`Ready`, `Playing`, `Stopped`, and `Finished`. A failed command does not
+imply playing; inspect `code` first. Capability bits 1, 2 and 4 mean asset
+effects, asset music and gain. Providers retain those capability bits when
+the device is unavailable or suspended. This slice advertises no PCM API.
+
+```zi
+using Media :: #import "kryon/Media";
+// Once, after verifying the capability/result:
+loaded := MediaAudio(session, MediaAudioCommand.{.operation = .Load,
+    .voice = 1, .asset = "assets/my-game/chime.wav", .gain = .6})
+if loaded.code == .Ok {
+    played := MediaAudio(session, MediaAudioCommand.{.operation = .Play, .voice = 1})
+    // Consume played.code in the application's audio policy.
+}
+```
+
+Only packed paths under `assets/` pass: absolute paths, empty path components,
+traversal, backslashes and schemes are refused before the host's existing
+allowed-asset callback and packed reader. An asset is at most 8 MiB; there
+are at most 16 loaded voices per owner and no command queue. Resource bytes
+are copied/decoded into provider-owned storage; no native pointer or decoder
+handle crosses the VM. The host reply codec uses named fields, and the VM
+copies its strings before the host reuses the reply buffers.
+
+Hosts import `kryon/media_audio_raylib` and call `MediaAudioUseRaylib()` once
+on their owning thread. It reuses Raylib memory music streams on native
+Raylib hosts (including the existing Android build boundary) and the current
+Canvas WebAudio engine on the web. Native and browser behavior is tested;
+Android/device execution has not been verified by this slice. A browser
+reports `Suspended` before its context runs: the app can retry after a real
+user gesture; no play request is queued to run in another app later.
+The standalone `RaylibBundleOpen` installs this provider. Other hosts that
+have not installed one receive `Unsupported`, regardless of platform name.
+
+`HostedApp.audio` stores the owner for the actual VM instance. The existing
+`AppContextCall` dispatches audio only in an identified app's active widget
+frame, validates its session and existing widget asset policy, and reads
+only that runtime's packed resources. `AppContextRun` / `AppContextRunFrame`
+service streams; audio commands disable quiet-frame replay so effects cannot
+repeat as cached UI. `HostedAppClose` and successful `HostedAppRestart`
+release all voices. Failed restart preserves the previous instance's audio.
+Before changing an existing context's account/resource ownership, the host
+must call `AppContextAudioReset(app)`; it revokes in-flight decoding too.
+Never use the outer Session alone as the resource owner.
+
+A custom hosted widget host can supply its own instance's `MediaAudioOwner`
+and packed reader as the final optional arguments to
+`WidgetHostBegin(session, allowed, resolve, audio, audio_read, audio_context)`.
+The original arguments remain sufficient. Without an owner, audio returns
+`Unsupported`. `WidgetHostEnd` clears dispatch only; music survives frames.
+The custom host must call `MediaAudioOwnerClose(owner)` on actual disposal,
+account/resource context changes and instance close. Keep the owner storage
+alive until an in-flight synchronous host call returns; a browser decode may
+yield. A revoked decode discards its temporary resource before returning.
+
+Native app hosts can use `MediaAudioBegin(owner, session, allowed, read,
+context)` / `MediaAudioEnd()` around each callback, and
+`MediaAudioOwnerTick(owner)` once per host frame while voices continue.
+Binding a changed session or resource context closes previous voices;
+close explicitly before replacing a reader or changing its policy in place.
+closing an invalid session is also detected by the next tick. Owner close
+is explicit and idempotent. Closing one owner never closes the shared device
+or another owner's voices. Hosts can register a different actual provider
+with `MediaAudioUseProvider`; existing owners retain their provider until
+closed. The caller retains cue selection, score/synthesis, volume UI, mute,
+phrase scheduling and any single-in-flight music transition policy.

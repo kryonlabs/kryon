@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+- Media provides owned asset effects and looping music as independent voices,
+  with bounded gain, stop/unload/status, scoped packed-resource access and
+  native Raylib / browser providers. Suspended and unavailable audio return
+  explicit results; app disposal and successful restart release its voices.
+
 - Standard Desktop and Canvas hosts publish owned frame input snapshots from
   their actual SDL and browser event state, preserving widget input queues and
   clearing publication after callbacks, cancellation and teardown.

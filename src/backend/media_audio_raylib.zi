@@ -1,0 +1,140 @@
+// Actual existing Raylib / Canvas audio providers, with owned memory decoders.
+#import "media_audio_host"
+#import "media_audio"
+#import "std/byte_text_linux"
+#import "std/c_string"
+audio_c :: #system_library "c";
+AssetAudioAllocate :: (count: usize, size: usize) -> *void #foreign audio_c "calloc";
+AssetAudioFree :: (value: *void) #foreign audio_c "free";
+AssetAudioCopy :: (to: *void, from: *void, count: usize) -> *void #foreign audio_c "memcpy";
+#if #defined(PLATFORM_WEB) {
+    #import "canvas_audio_engine"
+    #import "canvas_audio_host"
+    AssetAudioResource :: struct { id: s32 }
+} else {
+    AssetAudioStream :: struct { buffer: *void; processor: *void; rate: u32; size: u32; channels: u32; }
+    AssetAudioMusic :: struct {
+        stream: AssetAudioStream; frames: u32; looping: bool; context_type: s32; context: *void;
+    }
+    AssetAudioResource :: struct { music: AssetAudioMusic; bytes: *u8; }
+    asset_raylib :: #system_library "raylib";
+    AssetAudioOpen :: () #foreign asset_raylib "InitAudioDevice";
+    AssetAudioReady :: () -> bool #foreign asset_raylib "IsAudioDeviceReady";
+    AssetAudioLoad :: (kind: *u8, bytes: *u8, length: s32) -> AssetAudioMusic #foreign asset_raylib "LoadMusicStreamFromMemory";
+    AssetAudioValid :: (music: AssetAudioMusic) -> bool #foreign asset_raylib "IsMusicValid";
+    AssetAudioPlay :: (music: AssetAudioMusic) #foreign asset_raylib "PlayMusicStream";
+    AssetAudioVolume :: (music: AssetAudioMusic, gain: float32) #foreign asset_raylib "SetMusicVolume";
+    AssetAudioStop :: (music: AssetAudioMusic) #foreign asset_raylib "StopMusicStream";
+    AssetAudioUpdate :: (music: AssetAudioMusic) #foreign asset_raylib "UpdateMusicStream";
+    AssetAudioPlaying :: (music: AssetAudioMusic) -> bool #foreign asset_raylib "IsMusicStreamPlaying";
+    AssetAudioUnload :: (music: AssetAudioMusic) #foreign asset_raylib "UnloadMusicStream";
+}
+AssetAudioDevice :: () -> MediaAudioCode {
+    #if #defined(PLATFORM_WEB) {
+        state := AudioHostState()
+        if state == 0 { return .Unavailable }
+        if state == 2 { return .Suspended }
+        return .Ok
+    } else {
+        if !AssetAudioReady() { AssetAudioOpen() }
+        return ifx AssetAudioReady() then MediaAudioCode.Ok else MediaAudioCode.Unavailable
+    }
+}
+AssetAudioDispose :: (resource: *AssetAudioResource) {
+    if resource == null { return }
+    #if #defined(PLATFORM_WEB) {
+        AudioEngineMusicStop(resource.id)
+        AudioEngineRelease(resource.id)
+    } else {
+        AssetAudioStop(resource.music)
+        AssetAudioUnload(resource.music)
+        AssetAudioFree(cast(*void)resource.bytes)
+    }
+    AssetAudioFree(cast(*void)resource)
+}
+AssetAudioReply :: (voice: *MediaAudioVoice, code: MediaAudioCode = .Ok) -> MediaAudioResult {
+    return .{.code = code, .state = voice.state, .capabilities = cast(u32)7,
+        .message = ifx code == .Suspended then "Audio context suspended; a user gesture may be required" else
+            ifx code == .Unavailable then "Audio device unavailable" else ""}
+}
+AssetAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
+    resource := cast(*AssetAudioResource)voice.resource
+    if command.operation == .Unload {
+        AssetAudioDispose(resource)
+        voice.* = MediaAudioVoice.{}
+        return AssetAudioReply(voice)
+    }
+    if command.operation == .Stop {
+        #if #defined(PLATFORM_WEB) {
+            AudioEngineMusicStop(resource.id)
+        } else {
+            AssetAudioStop(resource.music)
+        }
+        voice.state = .Stopped
+        return AssetAudioReply(voice)
+    }
+    device := AssetAudioDevice()
+    if device != .Ok { return AssetAudioReply(voice, device) }
+    if command.operation == .Capabilities { return AssetAudioReply(voice) }
+    if command.operation == .Load {
+        resource = cast(*AssetAudioResource)AssetAudioAllocate(1, size_of(AssetAudioResource))
+        if resource == null { return AssetAudioReply(voice, .Limit) }
+        data := cast(*TextDescriptor)(*bytes)
+        #if #defined(PLATFORM_WEB) {
+            resource.id = AudioEngineLoadMemory(data.data, cast(s32)bytes.count)
+            if resource.id == 0 { AssetAudioFree(cast(*void)resource); return AssetAudioReply(voice, .Failed) }
+            AudioEngineBufferVolume(resource.id, command.gain)
+        } else {
+            // Memory stream decoders retain the input until UnloadMusicStream.
+            resource.bytes = cast(*u8)AssetAudioAllocate(cast(usize)bytes.count, 1)
+            if resource.bytes == null { AssetAudioFree(cast(*void)resource); return AssetAudioReply(voice, .Limit) }
+            unused AssetAudioCopy(cast(*void)resource.bytes, cast(*void)data.data, cast(usize)bytes.count)
+            start := command.asset.count
+            while start > 0 && command.asset[start - 1] != cast(u8)46 { start -= 1 }
+            extension: [16]u8
+            if start == 0 || !CopyCString(command.asset[start - 1:], extension[:]) {
+                AssetAudioFree(cast(*void)resource.bytes); AssetAudioFree(cast(*void)resource)
+                return AssetAudioReply(voice, .Failed)
+            }
+            resource.music = AssetAudioLoad(*extension[0], resource.bytes, cast(s32)bytes.count)
+            if !AssetAudioValid(resource.music) {
+                AssetAudioFree(cast(*void)resource.bytes); AssetAudioFree(cast(*void)resource)
+                return AssetAudioReply(voice, .Failed)
+            }
+            AssetAudioVolume(resource.music, command.gain)
+        }
+        voice.resource = cast(*void)resource
+        voice.music = command.music
+        voice.gain = command.gain
+        voice.state = .Ready
+    } else if command.operation == .Play {
+        if command.looping && !voice.music { return AssetAudioReply(voice, .Invalid) }
+        #if #defined(PLATFORM_WEB) {
+            AudioEngineMusicStop(resource.id)
+            AudioEngineMusicPlay(resource.id, ifx command.looping then 1 else 0)
+        } else {
+            AssetAudioStop(resource.music)
+            resource.music.looping = command.looping
+            AssetAudioPlay(resource.music)
+        }
+        voice.state = .Playing
+    } else if command.operation == .Gain {
+        #if #defined(PLATFORM_WEB) {
+            AudioEngineBufferVolume(resource.id, command.gain)
+        } else {
+            AssetAudioVolume(resource.music, command.gain)
+        }
+        voice.gain = command.gain
+    } else if command.operation != .Status { return AssetAudioReply(voice, .Invalid) }
+    if voice.state == .Playing {
+        playing: bool
+        #if #defined(PLATFORM_WEB) {
+            playing = AudioEngineMusicPlaying(resource.id) != 0
+        } else {
+            AssetAudioUpdate(resource.music); playing = AssetAudioPlaying(resource.music)
+        }
+        if !playing { voice.state = .Finished }
+    }
+    return AssetAudioReply(voice)
+}
+MediaAudioUseRaylib :: () { MediaAudioUseProvider(AssetAudioProvider) }
