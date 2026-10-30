@@ -10,14 +10,23 @@ AssetAudioCopy :: (to: *void, from: *void, count: usize) -> *void #foreign audio
 #if #defined(PLATFORM_WEB) {
     #import "canvas_audio_engine"
     #import "canvas_audio_host"
-    AssetAudioResource :: struct { id: s32 }
+    AssetAudioResource :: struct { id: s32; pcm: bool; rate: s32; channels: s32; frames: s32; }
 } else {
     AssetAudioStream :: struct { buffer: *void; processor: *void; rate: u32; size: u32; channels: u32; }
     AssetAudioMusic :: struct {
         stream: AssetAudioStream; frames: u32; looping: bool; context_type: s32; context: *void;
     }
-    AssetAudioResource :: struct { music: AssetAudioMusic; bytes: *u8; }
+    AssetAudioResource :: struct { music: AssetAudioMusic; bytes: *u8; pcm: bool; rate: s32; channels: s32; frames: s32; }
     asset_raylib :: #system_library "raylib";
+    PcmBufferSize :: (frames: s32) #foreign asset_raylib "SetAudioStreamBufferSizeDefault";
+    PcmLoad :: (rate: u32, bits: u32, channels: u32) -> AssetAudioStream #foreign asset_raylib "LoadAudioStream";
+    PcmValid :: (stream: AssetAudioStream) -> bool #foreign asset_raylib "IsAudioStreamValid";
+    PcmPlay :: (stream: AssetAudioStream) #foreign asset_raylib "PlayAudioStream";
+    PcmStop :: (stream: AssetAudioStream) #foreign asset_raylib "StopAudioStream";
+    PcmReady :: (stream: AssetAudioStream) -> bool #foreign asset_raylib "IsAudioStreamProcessed";
+    PcmUpdate :: (stream: AssetAudioStream, data: *void, frames: s32) #foreign asset_raylib "UpdateAudioStream";
+    PcmVolume :: (stream: AssetAudioStream, gain: float32) #foreign asset_raylib "SetAudioStreamVolume";
+    PcmUnload :: (stream: AssetAudioStream) #foreign asset_raylib "UnloadAudioStream";
     AssetAudioOpen :: () #foreign asset_raylib "InitAudioDevice";
     AssetAudioReady :: () -> bool #foreign asset_raylib "IsAudioDeviceReady";
     AssetAudioLoad :: (kind: *u8, bytes: *u8, length: s32) -> AssetAudioMusic #foreign asset_raylib "LoadMusicStreamFromMemory";
@@ -42,6 +51,16 @@ AssetAudioDevice :: () -> MediaAudioCode {
 }
 AssetAudioDispose :: (resource: *AssetAudioResource) {
     if resource == null { return }
+    if resource.pcm {
+        #if #defined(PLATFORM_WEB) {
+            AudioEngineStreamFree(resource.id)
+        } else {
+            PcmStop(resource.music.stream); PcmUnload(resource.music.stream)
+            AssetAudioFree(cast(*void)resource.bytes)
+        }
+        AssetAudioFree(cast(*void)resource)
+        return
+    }
     #if #defined(PLATFORM_WEB) {
         AudioEngineMusicStop(resource.id)
         AudioEngineRelease(resource.id)
@@ -53,7 +72,7 @@ AssetAudioDispose :: (resource: *AssetAudioResource) {
     AssetAudioFree(cast(*void)resource)
 }
 AssetAudioReply :: (voice: *MediaAudioVoice, code: MediaAudioCode = .Ok) -> MediaAudioResult {
-    return .{.code = code, .state = voice.state, .capabilities = cast(u32)7,
+    return .{.code = code, .state = voice.state, .capabilities = cast(u32)15,
         .message = ifx code == .Suspended then "Audio context suspended; a user gesture may be required" else
             ifx code == .Unavailable then "Audio device unavailable" else ""}
 }
@@ -64,6 +83,7 @@ AssetAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, byte
         voice.* = MediaAudioVoice.{}
         return AssetAudioReply(voice)
     }
+    if voice.pcm || command.operation == .CreateStream { return PcmAudioProvider(voice, command) }
     if command.operation == .Stop {
         #if #defined(PLATFORM_WEB) {
             AudioEngineMusicStop(resource.id)
@@ -138,3 +158,94 @@ AssetAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, byte
     return AssetAudioReply(voice)
 }
 MediaAudioUseRaylib :: () { MediaAudioUseProvider(AssetAudioProvider) }
+
+// Open-ended streams never finish on underrun: the device emits silence until
+// another complete block arrives. Only Stop/Play or Unload changes that state.
+PcmAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand) -> MediaAudioResult {
+    resource := cast(*AssetAudioResource)voice.resource
+    if command.operation == .Stop {
+        #if #defined(PLATFORM_WEB) {
+            AudioEngineStreamStop(resource.id)
+        } else {
+            PcmStop(resource.music.stream)
+        }
+        voice.state = .Stopped
+        return AssetAudioReply(voice)
+    }
+    device := AssetAudioDevice()
+    if device != .Ok { return AssetAudioReply(voice, device) }
+    if command.operation == .CreateStream {
+        resource = cast(*AssetAudioResource)AssetAudioAllocate(1, size_of(AssetAudioResource))
+        if resource == null { return AssetAudioReply(voice, .Limit) }
+        resource.pcm = true
+        resource.rate = command.sample_rate
+        resource.channels = command.channels
+        resource.frames = command.frames_per_block
+        #if #defined(PLATFORM_WEB) {
+            resource.id = AudioEngineStreamCreate(resource.rate, 16, resource.channels)
+            if resource.id == 0 { AssetAudioFree(cast(*void)resource); return AssetAudioReply(voice, .Limit) }
+            AudioEngineStreamVolume(resource.id, command.gain)
+        } else {
+            PcmBufferSize(resource.frames)
+            resource.music.stream = PcmLoad(cast(u32)resource.rate, 16, cast(u32)resource.channels)
+            PcmBufferSize(0)
+            if !PcmValid(resource.music.stream) { AssetAudioFree(cast(*void)resource); return AssetAudioReply(voice, .Failed) }
+            resource.bytes = cast(*u8)AssetAudioAllocate(cast(usize)(resource.frames * resource.channels), 2)
+            if resource.bytes == null { AssetAudioDispose(resource); return AssetAudioReply(voice, .Limit) }
+            PcmVolume(resource.music.stream, command.gain)
+        }
+        voice.resource = cast(*void)resource
+        voice.pcm = true
+        voice.block_bytes = resource.frames * resource.channels * 2
+        voice.gain = command.gain
+        voice.state = .Ready
+    } else if command.operation == .Play {
+        if command.looping { return AssetAudioReply(voice, .Invalid) }
+        #if #defined(PLATFORM_WEB) {
+            AudioEngineStreamStop(resource.id); AudioEngineStreamPlay(resource.id)
+        } else {
+            PcmStop(resource.music.stream); PcmPlay(resource.music.stream)
+        }
+        voice.state = .Playing
+    } else if command.operation == .Gain {
+        #if #defined(PLATFORM_WEB) {
+            AudioEngineStreamVolume(resource.id, command.gain)
+        } else {
+            PcmVolume(resource.music.stream, command.gain)
+        }
+        voice.gain = command.gain
+    } else if command.operation != .Status && command.operation != .SubmitStream { return AssetAudioReply(voice, .Invalid) }
+    writable: bool
+    if voice.state == .Playing {
+        #if #defined(PLATFORM_WEB) {
+            writable = AudioEngineStreamProcessed(resource.id) != 0
+        } else {
+            writable = PcmReady(resource.music.stream)
+        }
+    }
+    if command.operation == .SubmitStream {
+        if voice.state != .Playing { return AssetAudioReply(voice, .Invalid) }
+        if !writable { return AssetAudioReply(voice, .Backpressure) }
+        // Both providers synchronously copy this block into owned storage.
+        data := cast(*TextDescriptor)(*command.pcm)
+        #if #defined(PLATFORM_WEB) {
+            if AudioEngineStreamUpdate(resource.id, cast(*void)data.data, resource.frames, resource.rate, 16, resource.channels) == 0 {
+                return AssetAudioReply(voice, .Failed)
+            }
+            writable = AudioEngineStreamProcessed(resource.id) != 0
+        } else {
+            // Raylib consumes native s16; the public payload is always LE.
+            samples := cast(*s16)resource.bytes
+            for index: 0..resource.frames * resource.channels - 1 {
+                at := index * 2
+                sample := cast(u16)command.pcm[at] | (cast(u16)command.pcm[at + 1] << 8)
+                samples[index] = cast(s16)sample
+            }
+            PcmUpdate(resource.music.stream, cast(*void)resource.bytes, resource.frames)
+            writable = PcmReady(resource.music.stream)
+        }
+    }
+    reply := AssetAudioReply(voice)
+    reply.writable = writable
+    return reply
+}

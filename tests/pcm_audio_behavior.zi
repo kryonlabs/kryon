@@ -1,0 +1,61 @@
+#if #defined(PLATFORM_WEB) {
+    #import "canvas_audio_engine"
+    #import "canvas_audio_host"
+    #import "std/web"
+}
+#if #defined(KRYON_HOSTED_UI) {
+    #import "kryon/media_audio"
+    #import "kryon/session"
+} else {
+    #import "media_audio"
+    #import "session"
+}
+#import "std/byte_text_linux"
+PcmCreate :: (session: Session, voice: s32 = 16, rate: s32 = 22050,
+    channels: s32 = 1, frames: s32 = 2048) -> MediaAudioResult {
+    return MediaAudio(session, MediaAudioCommand.{.operation = .CreateStream,
+        .voice = voice, .format = .S16LE, .sample_rate = rate, .channels = channels,
+        .frames_per_block = frames, .gain = .5})
+}
+PcmCall :: (session: Session, operation: MediaAudioOperation, voice: s32 = 16,
+    pcm: string = "") -> MediaAudioResult {
+    return MediaAudio(session, MediaAudioCommand.{.operation = operation, .voice = voice, .pcm = pcm})
+}
+PcmBehavior :: (session: Session) -> s32 {
+    if PcmCreate(session, 16, 7999).code != .Invalid { return 101 }
+    if PcmCreate(session, 16, 48001).code != .Invalid { return 102 }
+    if PcmCreate(session, 16, 22050, 3).code != .Invalid { return 103 }
+    if PcmCreate(session, 16, 22050, 1, 8193).code != .Invalid { return 104 }
+    if PcmCreate(session).code != .Ok { return 105 }
+    if PcmCreate(session).code != .Invalid { return 106 }
+    if PcmCall(session, .SubmitStream).code != .Limit { return 107 }
+    block: [4096]u8
+    {
+    data := TextFromBytes(block[:])
+    if PcmCall(session, .SubmitStream, 16, data).code != .Invalid { return 108 }
+    if PcmCall(session, .Play).state != .Playing { return 109 }
+    // Full block acceptance or explicit rejection; never partial acceptance.
+    if PcmCall(session, .SubmitStream, 16, data).code != .Ok { return 110 }
+    }
+    block[0] = cast(u8)255
+    block[1] = cast(u8)127
+    data := TextFromBytes(block[:])
+    #if #defined(PLATFORM_WEB) {
+        // The actual WebAudio source owns a copy of the first block.
+        stream := AudioFindStream(audio_streams[0].id)
+        if stream < 0 { return 121 }
+        source := AudioFindSource(audio_streams[stream].sources[0])
+        buffer := WebGetObject(audio_sources[source].source, WebName("buffer"))
+        samples := WebCall1(buffer, WebName("getChannelData"), WebNumber(0.0))
+        if WebAt(samples.aux, 0).number != 0.0 { return 122 }
+    }
+    if PcmCall(session, .SubmitStream, 16, data).code != .Ok { return 111 }
+    if PcmCall(session, .SubmitStream, 16, data).code != .Backpressure { return 112 }
+    if PcmCall(session, .Status).writable { return 113 }
+    if PcmCall(session, .Stop).state != .Stopped { return 114 }
+    if PcmCall(session, .Play).state != .Playing { return 115 }
+    if !PcmCall(session, .Status).writable { return 116 }
+    if PcmCall(session, .SubmitStream, 16, data).code != .Ok { return 117 }
+    // Leave the stream alive across guest frames, resets and actual restart.
+    return 0
+}

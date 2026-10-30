@@ -439,9 +439,9 @@ MediaAudioResult`. A hosted bundle uses `KRYON_HOSTED_UI` and requests only
 available directly from `kryon/media_audio`.
 
 `MediaAudioCommand` has `operation: MediaAudioOperation`, `voice: s32`,
-`asset: string`, `music: bool`, `looping: bool`, and `gain: float32`.
+`asset: string`, `music: bool`, `looping: bool`, and `gain: float32`, plus the PCM fields below.
 `MediaAudioOperation` is `Capabilities`, `Load`, `Play`, `Gain`, `Stop`,
-`Unload`, or `Status`. Voice IDs are caller-selected `1..16`, local to one
+`Unload`, `Status`, `CreateStream`, or `SubmitStream`. Voice IDs are caller-selected `1..16`, local to one
 actual app instance. Each loaded voice has an independent decoder and gain;
 several effects and music voices can play together. `Load` uses `asset`,
 `music`, and `gain`; unload an occupied ID before reloading it. `Play` starts
@@ -454,15 +454,17 @@ without clamping or changing playback. Zero-initialized gain means silence.
 does not need a voice ID. There is no queued playback or automatic transition.
 
 `MediaAudioResult` owns `message: string` across the hosted boundary, with
-`code: MediaAudioCode`, `state: MediaAudioState`, and `capabilities: u32`.
+`code: MediaAudioCode`, `state: MediaAudioState`, `capabilities: u32`, and
+`writable: bool` for PCM streams.
 Codes are `Ok`, `Unsupported` (no provider), `Unavailable` (no device/reader
 or an operation already in flight), `Suspended` (browser context cannot play,
 including before an autoplay-unlocking gesture), `Invalid`, `Denied`,
-`Missing`, `Limit`, and `Failed` (decode failure). States are `Unloaded`,
+`Missing`, `Limit`, `Failed` (provider/decode failure), and `Backpressure`
+(a full PCM stream). States are `Unloaded`,
 `Ready`, `Playing`, `Stopped`, and `Finished`. A failed command does not
 imply playing; inspect `code` first. Capability bits 1, 2 and 4 mean asset
 effects, asset music and gain. Providers retain those capability bits when
-the device is unavailable or suspended. This slice advertises no PCM API.
+the device is unavailable or suspended. Bit 8 advertises bounded PCM streams.
 
 ```zi
 using Media :: #import "kryon/Media";
@@ -474,6 +476,32 @@ if loaded.code == .Ok {
     // Consume played.code in the application's audio policy.
 }
 ```
+
+`CreateStream` occupies one of the same 16 voices. Set `format: MediaAudioFormat`
+to `S16LE` (signed little-endian 16-bit interleaved samples), `sample_rate` to
+8000–48000 Hz, `channels` to 1 or 2, `frames_per_block` to 2048–8192, and
+`gain` to a finite value in `0..1`. These are the provider's supported bounds;
+no other PCM formats are advertised. Creation accepts no samples. `Play`
+starts an empty stream; repeating it clears pending samples. `SubmitStream`
+uses `pcm: string` as binary bytes, including NULs, and requires exactly
+`frames_per_block * channels * 2` bytes (at most 32768). Samples are copied
+before return; the guest retains no host pointer. Format/rate/channels are
+fixed until `Unload`; submission uses the voice's creation settings.
+
+`Status` returns `writable: bool`, true only for a running stream with room
+for a complete block. `SubmitStream` returns `Backpressure` without accepting
+any bytes when full; retry the same block later. `Ok` means the entire block
+was copied. The provider holds at most two blocks in its existing stream
+buffers; no application command queue is added. `Stop` clears queued samples,
+`Gain` changes only that voice, and `Unload` frees the stream. Streams remain
+`Playing` across frames and underruns, emitting silence while empty: they are
+open-ended and do not claim `Finished` or a precise drained count. Asset voices
+retain their existing completion semantics. Suspended/unavailable providers
+reject creation, play and submission without queuing them for later autoplay;
+after a trusted browser gesture the app must retry explicitly. Owner reset,
+revocation, close and successful restart dispose streams with asset voices.
+Wurm's synthesis, phrase scheduling, crossfades and game policy stay in Wurm;
+its existing mono 22050 Hz / 2048-frame transport fits these bounds.
 
 Only packed paths under `assets/` pass: absolute paths, empty path components,
 traversal, backslashes and schemes are refused before the host's existing

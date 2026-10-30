@@ -44,10 +44,16 @@ def browser(common):
     run(['node', ROOT / 'tests/media_audio_browser_test.mjs', (gen / 'test.html').as_uri(), WORK / 'browser-profile'])
 
 def main():
+    global WORK
     parser = argparse.ArgumentParser()
     parser.add_argument('--browser', action='store_true')
+    parser.add_argument('--pcm', action='store_true')
     options = parser.parse_args()
-    run(['git', 'check-ignore', 'work/game-asset-audio/tone.wav'])
+    if options.pcm:
+        WORK = ROOT / 'work/pcm-audio'
+        ENV.update(PULSE_SERVER='unix:' + str(WORK / 'no-pulse'),
+                   ALSA_CONFIG_PATH=str(WORK / 'alsa.conf'))
+    run(['git', 'check-ignore', WORK / 'tone.wav'])
     WORK.mkdir(parents=True, exist_ok=True)
     lock = (WORK / 'lock').open('w')
     fcntl.flock(lock, fcntl.LOCK_EX)
@@ -66,6 +72,8 @@ def main():
         output.writeframes(b'\0\0' * 160)
     common = ['--root', ROOT / 'tests', '--module-path', ROOT / 'src/ui',
               '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN_ROOT / 'std']
+    if options.pcm:
+        common += ['--define', 'PCM_AUDIO_TEST']
     ir = WORK / 'ir'
     gen = WORK / 'c'
     run(['python3', ROOT / 'scripts/generate-widget-codecs.py',
@@ -107,6 +115,7 @@ def main():
     (consumer / 'src').mkdir(parents=True, exist_ok=True)
     guest = consumer / 'src/media_audio_guest.zi'
     shutil.copyfile(ROOT / 'tests/media_audio_guest.zi', guest)
+    shutil.copyfile(ROOT / 'tests/pcm_audio_behavior.zi', consumer / 'src/pcm_audio_behavior.zi')
     (consumer / 'ziran.toml').write_text('[package]\nname = "audio_consumer"\nmodule_roots = ["src"]\n[toolchain]\ngit = "https://github.com/ziranlang/ziran.git"\nref = "master"\n[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\nref = "master"\n')
     raylib = subprocess.check_output([str(ZIRAN), 'pkg', 'path', 'raylib'], cwd=ROOT, text=True).strip()
     (consumer / 'ziran.local.toml').write_text('[overrides]\n' + ''.join(
@@ -115,7 +124,7 @@ def main():
     run([ZIRAN, 'lock', '--offline'], cwd=consumer)
     host = ROOT / 'tests/media_audio_host_test.zi'
     for fake in (False, True):
-        define = ['--define', 'AUDIO_UNAVAILABLE_TEST'] if fake else []
+        define = ['--define', 'AUDIO_UNAVAILABLE_TEST'] if fake else (['--define', 'PCM_AUDIO_TEST'] if options.pcm else [])
         run([ZIRAN, 'ir', '--project', '--offline', '--root', consumer / 'src', '--define', 'KRYON_HOSTED_UI', *define, '-o', WORK / 'guest-ir', guest], cwd=consumer)
         for form in ('source', 'saved'):
             paths = ['--project', '--offline', '--root', consumer / 'src'] if form == 'source' else ['--root', WORK / 'guest-ir']

@@ -8,6 +8,8 @@ MediaAudioVoice :: struct {
     resource: *void
     state: MediaAudioState
     music: bool
+    pcm: bool
+    block_bytes: s32
     gain: float32
 }
 MediaAudioProvider :: #type (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult;
@@ -75,7 +77,7 @@ MediaAudioOwnerCall :: (owner: *MediaAudioOwner, session: Session, command: Medi
     if !SessionValid(session) || owner.session.slot != session.slot || owner.session.epoch != session.epoch {
         return .{.code = .Denied, .message = "Audio owner is outside this session"}
     }
-    if cast(s32)command.operation < 0 || cast(s32)command.operation > cast(s32)MediaAudioOperation.Status {
+    if cast(s32)command.operation < 0 || cast(s32)command.operation > cast(s32)MediaAudioOperation.SubmitStream {
         return .{.code = .Invalid, .message = "Unknown audio operation"}
     }
     if command.gain != command.gain || command.gain < 0.0 || command.gain > 1.0 {
@@ -97,7 +99,14 @@ MediaAudioOwnerCall :: (owner: *MediaAudioOwner, session: Session, command: Medi
     owner.in_flight = true
     defer { owner.in_flight = false }
     bytes := ""
-    if command.operation == .Load {
+    if command.operation == .CreateStream {
+        if voice.resource != null { return .{.code = .Invalid, .state = voice.state, .message = "Unload this voice before loading"} }
+        if command.format != .S16LE || command.sample_rate < 8000 || command.sample_rate > 48000 ||
+        command.channels < 1 || command.channels > 2 || command.frames_per_block < 2048 || command.frames_per_block > 8192 {
+            return .{.code = .Invalid, .message = "PCM requires S16LE, 8000..48000 Hz, 1..2 channels and 2048..8192 frames per block"}
+        }
+        if command.pcm.count != 0 { return .{.code = .Invalid, .message = "CreateStream does not submit samples"} }
+    } else if command.operation == .Load {
         if voice.resource != null { return .{.code = .Invalid, .state = voice.state, .message = "Unload this voice before loading"} }
         if !MediaAudioAssetValid(command.asset) || owner.allowed == null || !owner.allowed(command.asset) {
             return .{.code = .Denied, .message = "Asset is outside this app's resource policy"}
@@ -109,6 +118,10 @@ MediaAudioOwnerCall :: (owner: *MediaAudioOwner, session: Session, command: Medi
     } else if voice.resource == null {
         return .{.code = .Missing, .message = "Voice is not loaded"}
     }
+    if command.operation == .SubmitStream {
+        if !voice.pcm { return .{.code = .Invalid, .message = "Voice is not a PCM stream"} }
+        if command.pcm.count != cast(s64)voice.block_bytes { return .{.code = .Limit, .message = "Submit exactly one configured PCM block"} }
+    }
     // Decoding may yield in a browser. Close/rebind revokes the generation;
     // the completed resource is discarded instead of entering a later app.
     if generation != owner.generation || !SessionValid(session) {
@@ -116,7 +129,7 @@ MediaAudioOwnerCall :: (owner: *MediaAudioOwner, session: Session, command: Medi
     }
     answer := provider(*working, command, bytes)
     if generation != owner.generation {
-        if command.operation == .Load && working.resource != null {
+        if (command.operation == .Load || command.operation == .CreateStream) && working.resource != null {
             unused provider(*working, MediaAudioCommand.{.operation = .Unload}, "")
         }
         return .{.code = .Denied, .message = "Audio ownership changed during the operation"}

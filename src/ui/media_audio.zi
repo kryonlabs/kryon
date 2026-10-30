@@ -1,8 +1,9 @@
 // Asset voices on the existing Media surface. IDs are local to one app instance.
 #import "session"
-MediaAudioOperation :: enum { Capabilities; Load; Play; Gain; Stop; Unload; Status; }
-MediaAudioCode :: enum { Ok; Unsupported; Unavailable; Suspended; Invalid; Denied; Missing; Limit; Failed; }
+MediaAudioOperation :: enum { Capabilities; Load; Play; Gain; Stop; Unload; Status; CreateStream; SubmitStream; }
+MediaAudioCode :: enum { Ok; Unsupported; Unavailable; Suspended; Invalid; Denied; Missing; Limit; Failed; Backpressure; }
 MediaAudioState :: enum { Unloaded; Ready; Playing; Stopped; Finished; }
+MediaAudioFormat :: enum { Unspecified; S16LE; }
 MediaAudioCommand :: struct {
     operation: MediaAudioOperation
     voice: s32
@@ -10,13 +11,19 @@ MediaAudioCommand :: struct {
     music: bool
     looping: bool
     gain: float32
+    format: MediaAudioFormat
+    sample_rate: s32
+    channels: s32
+    frames_per_block: s32
+    pcm: string
 }
 MediaAudioResult :: struct {
     code: MediaAudioCode
     state: MediaAudioState
-    // Bit 1 effects, 2 music, 4 gain. No PCM contract is advertised.
+    // Bits 1 effects, 2 music, 4 gain, 8 bounded PCM streams.
     capabilities: u32
     message: string
+    writable: bool
 }
 #if #defined(KRYON_HOSTED_UI) {
     host_api :: #system_library "host_api";

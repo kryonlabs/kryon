@@ -1,0 +1,20 @@
+// Deterministic pressure on the actual Raylib buffers: pause device consumption
+// while filling them, then resume after returning the full-buffer status.
+#import "media_audio_raylib"
+#import "media_audio_host"
+#import "media_audio"
+pcm_test_raylib :: #system_library "raylib";
+PausePcm :: (stream: AssetAudioStream) #foreign pcm_test_raylib "PauseAudioStream";
+ResumePcm :: (stream: AssetAudioStream) #foreign pcm_test_raylib "ResumeAudioStream";
+PcmTestProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
+    answer := AssetAudioProvider(voice, command, bytes)
+    if voice.pcm && answer.code == .Ok && command.operation == .Play {
+        resource := cast(*AssetAudioResource)voice.resource
+        PausePcm(resource.music.stream)
+    }
+    if voice.pcm && answer.code == .Ok && command.operation == .Status {
+        resource := cast(*AssetAudioResource)voice.resource
+        ResumePcm(resource.music.stream)
+    }
+    return answer
+}

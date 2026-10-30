@@ -1,6 +1,10 @@
+#if #defined(PCM_AUDIO_TEST) {
+    #import "pcm_audio_behavior"
+}
 #import "media_audio"
 #import "media_audio_host"
 #import "media_audio_raylib"
+#import "std/byte_text_linux"
 #import "canvas_audio_host"
 #import "session"
 #import "std/file"
@@ -9,7 +13,7 @@ revoked_owner: *MediaAudioOwner;
 revoked_unloads: s32;
 RevokeProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
     answer := AssetAudioProvider(voice, command, bytes)
-    if command.operation == .Load && answer.code == .Ok {
+    if (command.operation == .Load || command.operation == .CreateStream) && answer.code == .Ok {
         WebSleep(1)
         MediaAudioOwnerClose(revoked_owner)
     }
@@ -34,6 +38,9 @@ main :: () -> s32 {
     old: MediaAudioOwner
     MediaAudioBegin(*old, session, Allowed, Read, null)
     if Call(session, .Capabilities).code != .Suspended { return 2 }
+    #if #defined(PCM_AUDIO_TEST) {
+        if PcmCreate(session).code != .Suspended || old.voices[15].resource != null { return 120 }
+    }
     if Call(session, .Load).code != .Suspended || old.voices[0].resource != null { return 3 }
     MediaAudioEnd()
     MediaAudioOwnerClose(*old)
@@ -44,6 +51,10 @@ main :: () -> s32 {
     if AudioHostState() != 1 { return 4 }
     owner: MediaAudioOwner
     MediaAudioBegin(*owner, session, Allowed, Read, null)
+    #if #defined(PCM_AUDIO_TEST) {
+        pcm_result := PcmBehavior(session)
+        if pcm_result != 0 { return pcm_result }
+    }
     if Call(session, .Status).code != .Missing { return 5 }
     if Call(session, .Load).code != .Ok { return 6 }
     if Call(session, .Play).state != .Playing { return 7 }
@@ -52,10 +63,15 @@ main :: () -> s32 {
     if Call(session, .Stop).state != .Stopped { return 10 }
     if Call(session, .Status, 2).state != .Playing { return 11 }
     MediaAudioEnd()
-    WebSleep(20)
+    WebSleep(250)
     MediaAudioOwnerTick(*owner)
     if owner.voices[1].state != .Playing { return 12 }
     MediaAudioBegin(*owner, session, Allowed, Read, null)
+    #if #defined(PCM_AUDIO_TEST) {
+        if PcmCall(session, .Status).state != .Playing || !PcmCall(session, .Status).writable { return 123 }
+        block: [4096]u8
+        if PcmCall(session, .SubmitStream, 16, TextFromBytes(block[:])).code != .Ok { return 124 }
+    }
     if Call(session, .Unload, 2).code != .Ok { return 13 }
     MediaAudioOwnerClose(*owner)
     MediaAudioEnd()
@@ -63,6 +79,10 @@ main :: () -> s32 {
     revoked_owner = *owner
     MediaAudioBegin(*owner, session, Allowed, Read, null)
     if Call(session, .Load).code != .Denied || revoked_unloads != 1 || owner.voices[0].resource != null { return 14 }
+    #if #defined(PCM_AUDIO_TEST) {
+        MediaAudioBegin(*owner, session, Allowed, Read, null)
+        if PcmCreate(session).code != .Denied || revoked_unloads != 2 || owner.voices[15].resource != null { return 126 }
+    }
     MediaAudioEnd()
     MediaAudioOwnerClose(*owner)
     unused SessionClose(session)

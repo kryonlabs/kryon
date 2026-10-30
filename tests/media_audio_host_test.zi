@@ -1,3 +1,6 @@
+#if #defined(PCM_AUDIO_TEST) {
+    #import "pcm_audio_native_provider"
+}
 #import "app_context_host"
 #import "app_protocol"
 #import "hosted_app"
@@ -18,6 +21,8 @@
 #import "frame_replay"
 #import "ziran_composition_widget_host"
 #import "ziran_system_clipboard_host"
+audio_test_c :: #system_library "c";
+AudioTestFailure :: (format: *u8, code: s64, trapped: s32) -> s32 #foreign audio_test_c "printf";
 #program_export
 RasterTriangles :: (points: []Vector2, color: Color) { unused points; unused color }
 #program_export
@@ -43,18 +48,31 @@ Open :: (app: *AppContext, bytes: string, session: Session) -> bool {
 Frame :: (app: *AppContext) -> bool {
     WidgetHostBegin(app.session, Allowed)
     answer := AppContextRunFrame(app, true)
+    if !answer {
+        format: [80]u8
+        unused CopyCString("audio guest returned %lld (trapped=%d)\n", format[:])
+        unused AudioTestFailure(*format[0], app.app.replay.answer,
+            ifx app.app.failed then 1 else 0)
+    }
     WidgetHostEnd()
     return answer
 }
 #program_export
 main :: () -> s32 {
-    bytes, ok := ReadEntireFile("work/game-asset-audio/guest.zx")
+    #if #defined(PCM_AUDIO_TEST) {
+        bytes, ok := ReadEntireFile("work/pcm-audio/guest.zx")
+    } else {
+        bytes, ok := ReadEntireFile("work/game-asset-audio/guest.zx")
+    }
     if !ok { return 1 }
     session := SessionOpen()
     #if #defined(AUDIO_UNAVAILABLE_TEST) {
         MediaAudioUseProvider(Unavailable)
     } else {
         MediaAudioUseRaylib()
+    #if #defined(PCM_AUDIO_TEST) {
+        MediaAudioUseProvider(PcmTestProvider)
+    }
     }
     first: AppContext
     if !Open(*first, bytes, session) || !Frame(*first) { return 2 }
@@ -71,11 +89,17 @@ main :: () -> s32 {
     // New ownership revokes only the old owner's voices, even on one session.
     AppContextAudioReset(*first)
     if first.app.audio.voices[1].resource != null || second.app.audio.voices[1].resource == null { return 7 }
+    #if #defined(PCM_AUDIO_TEST) {
+        if first.app.audio.voices[15].resource != null || second.app.audio.voices[15].resource == null { return 128 }
+    }
     if !Frame(*first) || !Frame(*second) { return 8 }
     HostedAppClose(*first.app)
     if second.app.audio.voices[1].resource == null { return 9 }
     // A successful actual VM restart releases voices and gets fresh guest state.
     if !AppContextRestart(*second) || second.app.audio.voices[1].resource != null { return 10 }
+    #if #defined(PCM_AUDIO_TEST) {
+        if second.app.audio.voices[15].resource != null { return 129 }
+    }
     if !Frame(*second) { return 11 }
     // Malformed record and wrong-session calls are rejected before dispatch.
     session_codec: WidgetSessionCodec

@@ -6,7 +6,7 @@
 using HostValueKind;
 
 WidgetMediaAudioCommandCodec :: struct {
-    fields: [6]HostField
+    fields: [11]HostField
 }
 
 WidgetEncodeMediaAudioCommand :: (data: MediaAudioCommand, codec: *WidgetMediaAudioCommandCodec) -> HostValue {
@@ -17,6 +17,11 @@ WidgetEncodeMediaAudioCommand :: (data: MediaAudioCommand, codec: *WidgetMediaAu
     codec.fields[3] = HostField.{.name = HostTextData("music"), .value = HostScalar("bool", ifx data.music then 1 else 0)}
     codec.fields[4] = HostField.{.name = HostTextData("looping"), .value = HostScalar("bool", ifx data.looping then 1 else 0)}
     codec.fields[5] = HostField.{.name = HostTextData("gain"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.gain}}
+    codec.fields[6] = HostField.{.name = HostTextData("format"), .value = HostScalar("MediaAudioFormat", cast(s64)data.format)}
+    codec.fields[7] = HostField.{.name = HostTextData("sample_rate"), .value = HostScalar("s32", cast(s64)data.sample_rate)}
+    codec.fields[8] = HostField.{.name = HostTextData("channels"), .value = HostScalar("s32", cast(s64)data.channels)}
+    codec.fields[9] = HostField.{.name = HostTextData("frames_per_block"), .value = HostScalar("s32", cast(s64)data.frames_per_block)}
+    codec.fields[10] = HostField.{.name = HostTextData("pcm"), .value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.pcm), .length = cast(usize)data.pcm.count}}
     return value
 }
 
@@ -30,6 +35,11 @@ WidgetDecodeMediaAudioCommand :: (value: HostValue, codec: *WidgetMediaAudioComm
     data.music = HostFieldValue(*value, 3, "music", *zero).integer != 0
     data.looping = HostFieldValue(*value, 4, "looping", *zero).integer != 0
     data.gain = cast(float32)HostFieldValue(*value, 5, "gain", *zero).real
+    data.format = cast(MediaAudioFormat)HostFieldValue(*value, 6, "format", *zero).integer
+    data.sample_rate = cast(s32)HostFieldValue(*value, 7, "sample_rate", *zero).integer
+    data.channels = cast(s32)HostFieldValue(*value, 8, "channels", *zero).integer
+    data.frames_per_block = cast(s32)HostFieldValue(*value, 9, "frames_per_block", *zero).integer
+    data.pcm = HostValueText(HostFieldValue(*value, 10, "pcm", *zero).*)
     return data
 }
 
@@ -41,11 +51,16 @@ WidgetValidMediaAudioCommand :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 3, "music", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 4, "looping", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 5, "gain", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 6, "format", "MediaAudioFormat", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 7, "sample_rate", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 8, "channels", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 9, "frames_per_block", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 10, "pcm", "string", cast(s32)HostString) { return false }
     return true
 }
 
 WidgetMediaAudioResultCodec :: struct {
-    fields: [4]HostField
+    fields: [5]HostField
 }
 
 WidgetEncodeMediaAudioResult :: (data: MediaAudioResult, codec: *WidgetMediaAudioResultCodec) -> HostValue {
@@ -54,6 +69,7 @@ WidgetEncodeMediaAudioResult :: (data: MediaAudioResult, codec: *WidgetMediaAudi
     codec.fields[1] = HostField.{.name = HostTextData("state"), .value = HostScalar("MediaAudioState", cast(s64)data.state)}
     codec.fields[2] = HostField.{.name = HostTextData("capabilities"), .value = HostScalar("u32", cast(s64)data.capabilities)}
     codec.fields[3] = HostField.{.name = HostTextData("message"), .value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.message), .length = cast(usize)data.message.count}}
+    codec.fields[4] = HostField.{.name = HostTextData("writable"), .value = HostScalar("bool", ifx data.writable then 1 else 0)}
     return value
 }
 
@@ -65,6 +81,7 @@ WidgetDecodeMediaAudioResult :: (value: HostValue, codec: *WidgetMediaAudioResul
     data.state = cast(MediaAudioState)HostFieldValue(*value, 1, "state", *zero).integer
     data.capabilities = cast(u32)HostFieldValue(*value, 2, "capabilities", *zero).bits
     data.message = HostValueText(HostFieldValue(*value, 3, "message", *zero).*)
+    data.writable = HostFieldValue(*value, 4, "writable", *zero).integer != 0
     return data
 }
 
@@ -74,5 +91,6 @@ WidgetValidMediaAudioResult :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 1, "state", "MediaAudioState", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 2, "capabilities", "u32", cast(s32)HostUnsigned) { return false }
     if !HostFieldScalarValid(*value, 3, "message", "string", cast(s32)HostString) { return false }
+    if !HostFieldScalarValid(*value, 4, "writable", "bool", cast(s32)HostInteger) { return false }
     return true
 }
