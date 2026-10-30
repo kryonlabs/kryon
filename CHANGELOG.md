@@ -19,6 +19,9 @@
 
 ### Added
 
+- `TextFieldState` and props/edit/result helpers apply field changes to
+  caller-owned bytes, including overlapping replacements, with atomic range,
+  UTF-8 and capacity validation. Applications keep their own commit policy.
 - Every window and page is named after its app instead of "Kryon Ziran" or
   "Kryon ZX": the install name, or else the package name. Builds keep it
   beside the program, installs in `share/kryon/BIN/app.title`, and web

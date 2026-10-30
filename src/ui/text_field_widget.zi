@@ -1,5 +1,7 @@
 Theme :: #import "theme";
 #import "text_host"
+// Caller-owned buffers use TextFieldStateProps before this same widget and
+// TextFieldStateApplyResult afterwards; commit remains on TextFieldResult.
 // Portable compositions use the same widgets as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"

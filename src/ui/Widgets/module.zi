@@ -72,7 +72,8 @@ using SpinboxWidgetModule :: #import "spinbox_widget";
 using TabBarPropsModule :: #import "tab_bar_props";
 using TabBarWidgetModule :: #import "tab_bar_widget";
 using TextInputPropsModule :: #import "text_input_props";
-// Text field and area props carry composition state and events from here.
+// Caller-owned TextFieldState, its props and edit/result application are part
+// of the same field surface. Field/area composition state and events follow.
 using TextInputModule :: #import "text_input";
 using TextAreaWidgetModule :: #import "text_area_widget";
 using TextFieldWidgetModule :: #import "text_field_widget";

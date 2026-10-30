@@ -62,8 +62,15 @@ main :: () -> s32 {
     automatic := Toggle(session, ToggleProps.{.id = 53, .value = true})
     if !automatic.changed || automatic.value { return 6 }
     if Box(session, BoxProps.{.radius = 12.0}) != 71 { return 7 }
-    field := TextField(session, TextFieldProps.{.value = "List title", .cursor = 3})
+    field_bytes: [32]u8
+    initial := "List title"
+    for index: cast(s64)0..initial.count - 1 { field_bytes[index] = initial[index] }
+    field_state := TextFieldState.{.bytes = field_bytes[:],
+        .length = cast(s32)initial.count, .cursor = 3}
+    field := TextField(session, TextFieldStateProps(field_state, TextFieldProps.{}))
     if field.cursor != 4 || field.edit.replacement != "✓" { return 8 }
+    if !TextFieldStateApplyResult(*field_state, field) || field_state.cursor != 4 ||
+        TextView(field_bytes[:field_state.length]) != "✓List title" { return 19 }
     tabs: [2]Tab = .[Tab.{.label = "One"}, Tab.{.label = "Two"}]
     selected := TabBar(session, TabBarProps.{.selected_index = 0}, tabs[:])
     if selected.selected_index != 1 { return 9 }

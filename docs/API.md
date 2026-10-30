@@ -56,6 +56,51 @@ available. Editors keep the normal caret reveal unless they enable this flag.
 `ScrollProps.manual_scroll` similarly suppresses automatic focused-field
 reveal for a reader that owns its viewport.
 
+`TextFieldState` keeps a field's value and interaction state in caller-owned
+storage. Import it and its helpers from `Widgets` (or `text_input_props`).
+Give `bytes` a writable slice and set `length`, `cursor`, `anchor`, `scroll_x`
+and `focused` as needed. Every byte of the slice is usable capacity; length
+does not include a terminator and the helpers do not write one.
+
+```zi
+// Keep the bytes and state alive between frames.
+name_bytes: [96]u8;
+name: TextFieldState;
+// Initialize once: name.bytes = name_bytes[:]
+
+// In Frame, use the existing widget and keep the application's commit policy.
+edited := TextField(session, TextFieldStateProps(name, TextFieldProps.{
+    .key = cast(u64)42, .bounds = bounds, .label = "Name", .input = input}))
+if TextFieldStateApplyResult(*name, edited) && edited.committed {
+    // Save or navigate according to the application's workflow.
+}
+```
+
+`TextFieldStateProps(state: TextFieldState, props: TextFieldProps) -> TextFieldProps`
+fills value, selection, scroll and focus, and limits `max_bytes` to storage
+capacity while preserving stricter application limits and all other props.
+The value borrows the buffer; consume borrowed result text before mutating it.
+An invalid length or UTF-8 value disables the field; zero capacity is read-only.
+
+`TextFieldStateApplyEdit(state: *TextFieldState, edit: TextFieldEdit) -> bool`
+accepts only ordered ranges within the existing value, with both ends at
+UTF-8 scalar boundaries, valid UTF-8 replacement text, and a result that fits
+the slice. The current value must also be valid UTF-8. Replacement can borrow
+any part of the destination: a temporary owned join is freed after the call.
+Rejected edits, including allocation failures, preserve every byte and state
+field. An accepted changed edit collapses selection after the replacement.
+An unchanged edit is accepted without changing state. Application-specific
+text limits beyond storage capacity are enforced by the widget's props.
+
+`TextFieldStateApplyResult(state: *TextFieldState, result: TextFieldResult) -> bool`
+applies the edit and copies cursor, anchor, scroll and focus together. A rejected
+edit preserves all of them. Successful application clamps cursor and anchor
+to scalar boundaries in the resulting text and scroll to zero or greater;
+the widget still owns grapheme navigation. `true` means accepted, including
+navigation with no edit; it does not mean committed. Enter, Escape, clipboard
+and IME composition remain available on the original result for the application
+to handle, with their existing borrowed-text lifetime requirements.
+
 A `TextArea` can preview a markup language over its value without changing
 it. `hidden` bytes take no width or caret stop, `strong` bytes are bold and
 `italic` bytes slanted (backends that register a slant raster, as Raylib

@@ -15,13 +15,19 @@
 #import "widget_kind"
 #import "ziran_composition_widget_host"
 #import "ziran_system_clipboard_host"
-#import "ziran_widget_noop_host"
 
 using SemanticKind;
 using WidgetKind;
 using CompositionPhase;
 using FrameStatus;
 using PaintKind;
+
+// The composition host supplies raster effects. Importing the general noop
+// host as well would export the same native C symbols twice.
+#program_export
+ImageWidth :: (asset_path: string) -> s32 { unused asset_path; return 0 }
+#program_export
+ImageHeight :: (asset_path: string) -> s32 { unused asset_path; return 0 }
 
 phase: s32;
 value: string;
@@ -487,7 +493,58 @@ main :: () -> s32 {
     if TreeNodeAt(clear_session, TreeHitAt(clear_session, 225.0, 34.0)).kind !=
     WidgetKindTextField { return 45 }
     unused SessionClose(clear_session)
+    owned := OwnedField()
+    if owned != 0 { return 60 + owned }
     placed := PlacedField()
     if placed != 0 { return 50 + placed }
+    return 0
+}
+
+// Exercise the caller-owned API with real field edits and navigation, rather
+// than implementing a second test-only edit application path.
+OwnedField :: () -> s32 {
+    session := SessionOpen()
+    bytes: [12]u8
+    bytes[0] = cast(u8)65; bytes[1] = cast(u8)0xc3
+    bytes[2] = cast(u8)0xa9; bytes[3] = cast(u8)66
+    state := TextFieldState.{.bytes = bytes[:], .length = 4,
+        .cursor = 3, .anchor = 1, .focused = true}
+    props: TextFieldProps = .{.key = cast(u64)991,
+        .bounds = Rectangle.{20.0, 20.0, 220.0, 36.0}, .label = "Owned"}
+    props.input.text = "Q"
+    props.input.focus = true
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    edited := TextField(session, TextFieldStateProps(state, props))
+    if !edited.edit.changed { return 31 }
+    if edited.edit.start != 1 { return 32 }
+    if edited.edit.end != 3 { return 33 }
+    if edited.edit.replacement != "Q" { return 34 }
+    if !TextFieldStateApplyResult(*state, edited) { return 21 }
+    if TextView(bytes[:state.length]) != "AQB" { return 22 }
+    if state.cursor != 2 { return 23 }
+    if state.anchor != 2 { return 24 }
+    if !state.focused { return 25 }
+    // Applications apply edits while still composing the frame. Queued text
+    // already owns its bytes, so the original field still paints correctly.
+    kept := false
+    for index: cast(s32)0..PendingPaintCount(session) - 1 {
+        if PendingPaintAt(session, index).value == "AéB" { kept = true }
+    }
+    if !kept { return 26 }
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 1 }
+    props.input = TextFieldInput.{.left = true, .shift = true, .commit = true}
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    edited = TextField(session, TextFieldStateProps(state, props))
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 3 }
+    if !TextFieldStateApplyResult(*state, edited) || state.cursor != 1 ||
+        state.anchor != 2 || !edited.committed || TextView(bytes[:state.length]) != "AQB" {
+        return 4
+    }
+    props.input = TextFieldInput.{.blur = true}
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    edited = TextField(session, TextFieldStateProps(state, props))
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 5 }
+    if !TextFieldStateApplyResult(*state, edited) || state.focused { return 6 }
+    unused SessionClose(session)
     return 0
 }

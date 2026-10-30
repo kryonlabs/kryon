@@ -18,6 +18,12 @@ PublicTextField :: (session: Session, props: TextFieldProps) -> CompositionState
     return result.composition
 }
 
+PublicTextFieldState :: (session: Session, state: *TextFieldState,
+    props: TextFieldProps) -> bool {
+    result := TextField(session, TextFieldStateProps(state.*, props))
+    return TextFieldStateApplyResult(state, result) && result.committed
+}
+
 // TextProps.align and wrap take values an application names from the same
 // import as Text.
 PublicTextAlignment :: (session: Session, props: TextProps) {

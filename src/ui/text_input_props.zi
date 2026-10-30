@@ -1,6 +1,19 @@
 #import "geometry"
 #import "text_input"
 #import "text_props"
+Utf8 :: #import "std/utf8"
+using Vectors :: #import "std/vec"
+
+// The caller owns bytes; length excludes unused capacity, with no trailing
+// zero required. Composition and clipboard lifetimes remain with the caller.
+TextFieldState :: struct {
+    bytes: []u8
+    length: s32
+    cursor: s32
+    anchor: s32
+    scroll_x: s32
+    focused: bool
+}
 
 TextFieldInput :: struct {
     text: string
@@ -73,6 +86,95 @@ TextFieldResult :: struct {
     // application may take an image or files from it instead.
     paste_without_text: bool
     edit: TextFieldEdit
+}
+
+TextFieldStateValid :: (state: TextFieldState) -> bool {
+    return state.bytes.count <= 2147483647 && state.length >= 0 &&
+        state.length <= state.bytes.count &&
+        Utf8.Valid(TextView(state.bytes[:state.length]))
+}
+
+// Fill the existing widget's value and interaction props from caller state.
+// The value borrows bytes until the next mutation. Other props, including
+// composition and application limits, keep their supplied values.
+#program_export
+TextFieldStateProps :: (state: TextFieldState,
+    props: TextFieldProps) -> TextFieldProps {
+    if !TextFieldStateValid(state) {
+        props.value = ""
+        props.disabled = true
+        return props
+    }
+    props.value = TextView(state.bytes[:state.length])
+    props.cursor = CompositionBoundaryFor(props.value, state.cursor)
+    props.anchor = CompositionBoundaryFor(props.value, state.anchor)
+    props.scroll_x = state.scroll_x
+    props.focused = state.focused
+    if props.max_bytes <= 0 || props.max_bytes > state.bytes.count {
+        props.max_bytes = cast(s32)state.bytes.count
+    }
+    if state.bytes.count == 0 { props.read_only = true }
+    return props
+}
+
+// True means accepted (including an unchanged edit). Invalid state, ranges,
+// UTF-8 or capacity and allocation failures leave every byte and field alone.
+// Both range ends must be UTF-8 scalar boundaries. Replacement may alias any
+// part of bytes: stage the whole join before publishing it. Accepted edits
+// collapse selection after the replacement; result application below supplies
+// the widget's final selection, focus and scroll instead.
+#program_export
+TextFieldStateApplyEdit :: (state: *TextFieldState,
+    edit: TextFieldEdit) -> bool {
+    if state == null { return false }
+    if !TextFieldStateValid(state.*) { return false }
+    if !edit.changed { return true }
+    if edit.start < 0 || edit.end < edit.start || edit.end > state.length {
+        return false
+    }
+    {
+        value := TextView(state.bytes[:state.length])
+        if CompositionBoundaryFor(value, edit.start) != edit.start ||
+            CompositionBoundaryFor(value, edit.end) != edit.end {
+            return false
+        }
+    }
+    remaining := cast(s64)state.length - (edit.end - edit.start)
+    if edit.replacement.count > state.bytes.count - remaining ||
+        !Utf8.Valid(edit.replacement) { return false }
+    joined: Vec(u8)
+    defer { VecFree(joined) }
+    for index: 0..edit.start - 1 {
+        if !VecPush(joined, state.bytes[index]) { return false }
+    }
+    for byte: edit.replacement {
+        if !VecPush(joined, byte) { return false }
+    }
+    for index: edit.end..state.length - 1 {
+        if !VecPush(joined, state.bytes[index]) { return false }
+    }
+    for index: cast(s64)0..joined.count - 1 { state.bytes[index] = joined[index] }
+    state.length = cast(s32)joined.count
+    state.cursor = edit.start + cast(s32)edit.replacement.count
+    state.anchor = state.cursor
+    return true
+}
+
+// Apply bytes and interaction state together; a rejected edit keeps both.
+// Cursor/anchor are clamped to scalar boundaries in the resulting value and
+// negative scroll becomes zero. Enter, Escape, clipboard and composition are
+// still decisions for the application using the original TextFieldResult.
+#program_export
+TextFieldStateApplyResult :: (state: *TextFieldState,
+    result: TextFieldResult) -> bool {
+    if !TextFieldStateApplyEdit(state, result.edit) { return false }
+    value := TextView(state.bytes[:state.length])
+    state.cursor = CompositionBoundaryFor(value, result.cursor)
+    state.anchor = CompositionBoundaryFor(value, result.anchor)
+    state.scroll_x = result.scroll_x
+    if state.scroll_x < 0 { state.scroll_x = 0 }
+    state.focused = result.focused
+    return true
 }
 
 TextAreaInput :: struct {

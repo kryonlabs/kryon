@@ -1,0 +1,125 @@
+#import "text_input_props"
+#import "text_input"
+
+bytes: [12]u8;
+state: TextFieldState;
+
+Reset :: (value: string) {
+    for index: 0..11 { bytes[index] = cast(u8)85 }
+    for index: cast(s64)0..value.count - 1 { bytes[index] = value[index] }
+    state = TextFieldState.{.bytes = bytes[:], .length = cast(s32)value.count,
+        .cursor = 1, .anchor = 3, .scroll_x = 19, .focused = true}
+}
+
+Value :: () -> string { return TextView(bytes[:state.length]) }
+
+Rejected :: (edit: TextFieldEdit) -> bool {
+    before := state
+    saved: [12]u8
+    for index: 0..11 { saved[index] = bytes[index] }
+    result := TextFieldResult.{.edit = edit, .cursor = 0, .anchor = 0,
+        .scroll_x = 0, .focused = false, .committed = true}
+    if TextFieldStateApplyResult(*state, result) { return false }
+    if state.length != before.length || state.cursor != before.cursor ||
+        state.anchor != before.anchor || state.scroll_x != before.scroll_x ||
+        state.focused != before.focused { return false }
+    for index: 0..11 { if bytes[index] != saved[index] { return false } }
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    Reset("AéBC")
+    {
+        supplied: TextFieldProps = .{.key = cast(u64)17, .label = "Name",
+            .display_value = "shown", .max_bytes = 100}
+        supplied.composition = CompositionState.{.active = true, .text = "preedit"}
+        props: TextFieldProps = TextFieldStateProps(state, supplied)
+        if props.value != "AéBC" || props.cursor != 1 || props.anchor != 3 ||
+            props.scroll_x != 19 || !props.focused || props.max_bytes != 12 ||
+            props.key != cast(u64)17 || props.label != "Name" ||
+            props.display_value != "shown" || props.composition.text != "preedit" {
+            return 1
+        }
+        props = TextFieldStateProps(state, TextFieldProps.{.max_bytes = 4})
+        if props.max_bytes != 4 { return 2 }
+    }
+    result := TextFieldResult.{.edit = TextFieldEdit.{.changed = true,
+            .start = 1, .end = 3, .replacement = "🍎"},
+        .cursor = 5, .anchor = 1, .scroll_x = 27, .focused = true,
+        .committed = true, .escaped = true}
+    if !TextFieldStateApplyResult(*state, result) || Value() != "A🍎BC" ||
+        state.length != 7 || state.cursor != 5 || state.anchor != 1 ||
+        state.scroll_x != 27 || !state.focused || !result.committed ||
+        !result.escaped { return 3 }
+
+    // Grow over a replacement borrowed from the suffix, then borrow across
+    // the overwritten range, then shrink from a range inside the deletion.
+    Reset("abcdef")
+    if !TextFieldStateApplyEdit(*state, TextFieldEdit.{.changed = true,
+        .start = 1, .end = 2, .replacement = TextView(bytes[2:6])}) ||
+        Value() != "acdefcdef" || state.cursor != 5 || state.anchor != 5 {
+        return 4
+    }
+    Reset("abcdef")
+    if !TextFieldStateApplyEdit(*state, TextFieldEdit.{.changed = true,
+        .start = 3, .end = 6, .replacement = TextView(bytes[:4])}) ||
+        Value() != "abcabcd" { return 5 }
+    Reset("abcdef")
+    if !TextFieldStateApplyEdit(*state, TextFieldEdit.{.changed = true,
+        .start = 0, .end = 6, .replacement = TextView(bytes[1:3])}) ||
+        Value() != "bc" { return 6 }
+    Reset("abcdef")
+    if !TextFieldStateApplyEdit(*state, TextFieldEdit.{.changed = true,
+        .start = 0, .end = 0, .replacement = Value()}) ||
+        Value() != "abcdefabcdef" || state.length != 12 { return 7 }
+    if !TextFieldStateApplyEdit(*state, TextFieldEdit.{.changed = true,
+        .start = 0, .end = 12}) || Value() != "" ||
+        state.cursor != 0 || state.anchor != 0 { return 8 }
+
+    Reset("AéBC")
+    if !Rejected(TextFieldEdit.{.changed = true, .start = -1, .end = 1}) ||
+        !Rejected(TextFieldEdit.{.changed = true, .start = 4, .end = 3}) ||
+        !Rejected(TextFieldEdit.{.changed = true, .start = 0, .end = 6}) ||
+        !Rejected(TextFieldEdit.{.changed = true, .start = 2, .end = 3}) ||
+        !Rejected(TextFieldEdit.{.changed = true, .start = 1, .end = 2}) ||
+        !Rejected(TextFieldEdit.{.changed = true, .replacement = "12345678"}) {
+        return 9
+    }
+    malformed: [4]u8 = .[cast(u8)0xf0, cast(u8)0x80, cast(u8)0x80, cast(u8)0x80]
+    if !Rejected(TextFieldEdit.{.changed = true, .replacement = TextView(malformed[:])}) ||
+        !Rejected(TextFieldEdit.{.changed = true, .replacement = TextView(bytes[1:2])}) {
+        return 10
+    }
+    // No edit still copies navigation, selection, scroll and focus. Cursor
+    // offsets clamp to scalar boundaries; commit stays on the result.
+    result = TextFieldResult.{.cursor = 2, .anchor = 99, .scroll_x = -1,
+        .committed = true, .edit = TextFieldEdit.{.start = -99, .end = 99}}
+    if !TextFieldStateApplyResult(*state, result) || Value() != "AéBC" ||
+        state.cursor != 1 || state.anchor != 5 || state.scroll_x != 0 ||
+        state.focused || !result.committed { return 11 }
+    state.cursor = -1; state.anchor = 2
+    {
+        props := TextFieldStateProps(state, TextFieldProps.{})
+        if props.cursor != 0 || props.anchor != 1 { return 12 }
+    }
+    state.length = 13
+    if !Rejected(TextFieldEdit.{.changed = true}) { return 13 }
+    {
+        props := TextFieldStateProps(state, TextFieldProps.{})
+        if !props.disabled || props.value != "" { return 14 }
+    }
+    state.length = -1
+    if !Rejected(TextFieldEdit.{}) { return 15 }
+    Reset("AéBC")
+    bytes[1] = cast(u8)0xff
+    if !Rejected(TextFieldEdit.{.changed = true, .start = 0, .end = 5}) { return 16 }
+    empty: TextFieldState
+    if !TextFieldStateApplyEdit(*empty, TextFieldEdit.{.changed = true}) ||
+        TextFieldStateApplyEdit(*empty, TextFieldEdit.{.changed = true,
+            .replacement = "X"}) ||
+        !TextFieldStateProps(empty, TextFieldProps.{}).read_only ||
+        TextFieldStateApplyEdit(null, TextFieldEdit.{}) ||
+        TextFieldStateApplyResult(null, TextFieldResult.{}) { return 17 }
+    return 0
+}
