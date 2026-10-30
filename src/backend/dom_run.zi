@@ -39,6 +39,7 @@ DrawDomFrame :: (session: Session, viewport: Rectangle) -> bool {
     BeginCanvasFrame()
     pointer: PointerFrame = PollPointer()
     TreePointerUpdate(session, pointer)
+    TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
     DomHostFrame(session)
     PointerWheelSend(session, pointer.x, pointer.y, CanvasWheelMove())
     if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {

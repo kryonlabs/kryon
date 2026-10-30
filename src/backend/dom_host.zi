@@ -749,7 +749,7 @@ DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
         // release that ends it, over whichever control, reach the page's
         // pointer, whose release is also its click.
         surface: bool = !dom_document_layout && TreeInputAt(dom_session, index).captures_drag
-        if context == 9 && surface {
+        if context == 9 && (surface || button != 1) {
             dom_mouse_buttons |= button
             return
         }
@@ -762,6 +762,18 @@ DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
             if surface && WebGetNumber(event, WebName("detail")) > 0.0 { return }
             dom_click = node.identity_generation
             DomClickPoint(event, element, node.bounds)
+            return
+        }
+        // Captured coordinate surfaces use the page keyboard path, just
+        // like their pointer path. It prevents the native click and supplies
+        // both the app key and the tree keyboard activation once.
+        if surface && (context == 6 || context == 7 || context == 8) {
+            code := cast(s32)WebGetNumber(event, WebName("keyCode"))
+            if context == 6 && (code == 13 || code == 32) &&
+            !WebAsBool(WebGet(event, WebName("repeat"))) {
+                dom_click = node.identity_generation
+                dom_click_pointed = false
+            }
             return
         }
         if context == 6 || context == 7 || context == 8 {

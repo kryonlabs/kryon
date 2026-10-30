@@ -3,6 +3,7 @@
 // through the page's real input and reads back what the app received.
 using UI :: #import "kryon/Widgets";
 #import "std/web"
+#import "kryon/tree_input"
 host_api :: #system_library "host_api";
 RequestWindowClose :: () #foreign host_api;
 
@@ -20,6 +21,7 @@ Report :: (name: string, value: float64) {
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     scope: s32 = WebScope()
     defer WebEnd(scope)
+    WebSet(WebGlobal, WebName("__kryonRightHeld"), WebBool(SecondaryPointerSample(session).down))
     page: PageProps
     page.key = 2; page.bounds = viewport; page.title = "DOM Press Point"
     opened: PageResult = Page(session, page)

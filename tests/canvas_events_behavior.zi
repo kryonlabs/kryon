@@ -115,14 +115,23 @@ PointerChecks :: () -> s32 {
     flags := Send(CanvasEventMouseDown, 2, 0, 30.0, 60.0, "", "")
     if canvas_clipboard_gesture_until != 2000.0 { return 6 }
     if flags != (CanvasEventFocusCanvas | CanvasEventCapturePointer) { return 3 }
-    if !canvas_buttons_down[2] { return 4 }
-    if !CanvasQueueHas(*canvas_buttons_pressed[0], canvas_buttons_pressed_count, 2) { return 5 }
+    if !canvas_buttons_down[1] { return 4 }
+    if !CanvasQueueHas(*canvas_buttons_pressed[0], canvas_buttons_pressed_count, 1) { return 5 }
     unused Send(CanvasEventMouseUp, 2, 0, 30.0, 60.0, "", "")
-    if canvas_buttons_down[2] { return 6 }
-    if !CanvasQueueHas(*canvas_buttons_released[0], canvas_buttons_released_count, 2) { return 7 }
+    if canvas_buttons_down[1] { return 6 }
+    if !CanvasQueueHas(*canvas_buttons_released[0], canvas_buttons_released_count, 1) { return 7 }
     // A button beyond the supported range is ignored.
     unused Send(CanvasEventMouseDown, 9, 0, 0.0, 0.0, "", "")
     if canvas_buttons_pressed_count != 1 { return 8 }
+    CanvasEventsReset()
+    unused Send(CanvasEventMouseDown, 0, 0, 0.0, 0.0, "", "")
+    unused Send(CanvasEventMouseDown, 1, 0, 0.0, 0.0, "", "")
+    if !canvas_buttons_down[0] || !canvas_buttons_down[2] || canvas_buttons_down[1] { return 9 }
+    unused Send(CanvasEventMouseUp, 1, 0, 0.0, 0.0, "", "")
+    if !canvas_buttons_down[0] || canvas_buttons_down[2] { return 10 }
+    unused Send(CanvasEventMouseDown, 2, 0, 0.0, 0.0, "", "")
+    unused Send(CanvasEventMouseUp, 0, 0, 0.0, 0.0, "", "")
+    if canvas_buttons_down[0] || !canvas_buttons_down[1] { return 11 }
     return 0
 }
 

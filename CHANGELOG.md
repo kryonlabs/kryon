@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- HTML browser apps receive right-clicks separately from middle-clicks, and
+  captured page areas keep Space and Enter in sync with the app.
 - Mouse drags follow captured `Press` areas in the HTML browser renderer,
   including when released over another control or outside the area.
 

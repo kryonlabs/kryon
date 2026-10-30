@@ -226,6 +226,12 @@ try {
   if (results.keyboard.x !== 0 || results.keyboard.y !== 0 || results.keyboard.released) {
     throw new Error('keyboard click kept a pointer point: ' + JSON.stringify(results.keyboard));
   }
+  const spaced = await evaluate('globalThis.__kryonPressClicks');
+  await command('Input.dispatchKeyEvent', {type:'keyDown', key:' ', code:'Space', windowsVirtualKeyCode:32});
+  await command('Input.dispatchKeyEvent', {type:'keyUp', key:' ', code:'Space', windowsVirtualKeyCode:32});
+  await until(`globalThis.__kryonPressClicks === ${spaced+1}`, 'focused Space click');
+  await settle();
+  if (await evaluate(`__kryonPressClicks !== ${spaced+1} || __kryonPressX !== 0 || __kryonPressY !== 0 || __kryonPressReleased`)) throw Error('focused Space was not one semantic activation');
   // The ordinary button clicks and the press does not.
   const plain = await at('Plain', 0.5, 0.5);
   const press_before = await evaluate('globalThis.__kryonPressClicks');
@@ -234,6 +240,20 @@ try {
   await until(`globalThis.__kryonPlainClicks === ${plain_before + 1}`, 'plain button click');
   await settle();
   if (await evaluate('globalThis.__kryonPressClicks') !== press_before) throw new Error('plain click also clicked the press');
+  // Secondary input on both coordinate surfaces and ordinary DOM buttons
+  // reaches the portable API with native right=1 and middle=2 semantics.
+  for (const target of [right, plain]) {
+    for (const [button, buttons] of [
+      ['right', 2],
+      ['middle', 4]
+    ]) {
+      await command('Input.dispatchMouseEvent', {type:'mousePressed', ...target, button, buttons, clickCount:1});
+      await settle();
+      if (await evaluate('globalThis.__kryonRightHeld') !== (button==='right')) throw Error(button+' secondary state on '+JSON.stringify(target));
+      await command('Input.dispatchMouseEvent', {type:'mouseReleased', ...target, button, buttons:0, clickCount:1});
+      await until('!globalThis.__kryonRightHeld', button+' released');
+    }
+  }
   // A drag from the press that ends over the button, the editor or no
   // control ends at the page's pointer and clicks nothing.
   const editor = await at('Editor', 0.5, 0.5);

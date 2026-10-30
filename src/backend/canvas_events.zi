@@ -327,6 +327,11 @@
             CanvasSetMouse(CanvasPointerX(x), CanvasPointerY(y))
             return 0
         }
+        // DOM numbers are left/middle/right; the portable/native API is
+        // left/right/middle. Normalize once, before held and edge queues.
+        if kind == CanvasEventMouseDown || kind == CanvasEventMouseUp {
+            if a == 1 { a = 2 } else if a == 2 { a = 1 }
+        }
         if kind == CanvasEventMouseDown {
             canvas_clipboard_gesture_until = PageNow() + 1000.0
             CanvasSetMouse(CanvasPointerX(x), CanvasPointerY(y))
