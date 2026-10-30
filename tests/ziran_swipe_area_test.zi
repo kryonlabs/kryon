@@ -1,6 +1,9 @@
 #import "session"
 #import "geometry"
 #import "joystick"
+#import "box_props"
+#import "box_widget"
+#import "drawing_props"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
@@ -10,12 +13,19 @@ session: Session;
 result: SwipeAreaResult;
 secondary_tap: bool;
 disabled: bool;
+shown: bool = true;
 
 Frame :: (now: float64) -> bool {
     unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
-    result = SwipeArea(session, SwipeAreaProps.{.key = cast(u64)70,
-            .bounds = Rectangle.{10.0, 10.0, 100.0, 40.0}, .label = "Board", .now = now,
-            .secondary_tap = secondary_tap, .disabled = disabled})
+    if shown {
+        result = SwipeAreaResult.{}
+        result = SwipeArea(session, SwipeAreaProps.{.key = cast(u64)70,
+                .bounds = Rectangle.{10.0, 10.0, 100.0, 40.0}, .label = "Board", .now = now,
+                .repeat_seconds = 0.2, .secondary_tap = secondary_tap, .disabled = disabled})
+    } else {
+        unused Box(session, BoxProps.{.key = cast(u64)71,
+                .bounds = Rectangle.{0.0, 0.0, 400.0, 300.0}, .fill = Color.{0, 0, 0, 255}})
+    }
     return EndFrame(session) == FrameStatus.FrameOk
 }
 
@@ -47,5 +57,21 @@ main :: () -> s32 {
     if !Frame(1.0) { return 7 }
     unused TreePointerUpdate(session, PointerFrame.{.x = 40.0, .y = 30.0, .released = true})
     if !Frame(1.1) || !result.tapped { return 8 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 40.0, .y = 30.0, .down = true, .pressed = true})
+    if !Frame(1.2) { return 10 }
+    shown = false
+    unused TreePointerUpdate(session, PointerFrame.{.x = 40.0, .y = 30.0, .released = true})
+    if !Frame(1.3) { return 11 }
+    TreePointerCancel(session)
+    shown = true
+    unused TreePointerUpdate(session, PointerFrame.{})
+    if !Frame(1.4) || result.down { return 12 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 100.0, .y = 35.0, .down = true, .pressed = true})
+    if !Frame(1.5) || !result.down || result.start_x != 100.0 || result.start_y != 35.0 { return 13 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 100.0, .y = 90.0, .down = true})
+    if !Frame(1.6) || result.start_x != 100.0 || result.start_y != 35.0 ||
+            result.lean != 3 || result.swiped != 3 { return 14 }
+    unused TreePointerUpdate(session, PointerFrame.{.x = 100.0, .y = 90.0, .released = true})
+    if !Frame(1.7) || result.down { return 15 }
     return 0
 }

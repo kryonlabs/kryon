@@ -227,10 +227,18 @@ SwipeArea :: (session: Session, props: SwipeAreaProps) -> SwipeAreaResult {
             result.y = press.y
         }
     }
-    if press.released && slot.active {
+    if !press.down && slot.active {
+        stepped := slot.stepped
+        start_x := slot.start_x
+        start_y := slot.start_y
         slot.active = false
-        if !slot.stepped {
-            result.swiped = TouchDirection(press.x - slot.start_x, press.y - slot.start_y, reach)
+        slot.direction = -1
+        slot.stepped = false
+        slot.next = 0.0
+        slot.start_x = 0.0
+        slot.start_y = 0.0
+        if press.released && !stepped {
+            result.swiped = TouchDirection(press.x - start_x, press.y - start_y, reach)
             if result.swiped < 0 {
                 result.tapped = true
                 result.x = press.x

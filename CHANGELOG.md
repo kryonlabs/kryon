@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- `SwipeArea` forgets a touch that was released while the area was hidden, so
+  the next touch starts from its own position instead of the old one.
 - Title bars follow the app palette, keeping dark game navigation readable.
 - Updating an app's files never blanks its pictures: each image keeps
   drawing until its new bytes have decoded, and an image whose bytes did not
