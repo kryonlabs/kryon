@@ -1,6 +1,6 @@
-// A full-page transparent Press beside an ordinary button, laid out at the
-// app's own coordinates. The browser driver clicks them through the page's
-// real input and reads back what the app received.
+// A full-page transparent Press beside an ordinary button and an editor,
+// laid out at the app's own coordinates. The browser driver clicks them
+// through the page's real input and reads back what the app received.
 using UI :: #import "kryon/Widgets";
 #import "std/web"
 host_api :: #system_library "host_api";
@@ -27,6 +27,11 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     plain.key = 10; plain.id = 10; plain.label = "Plain"
     plain.bounds = .{10.0, 10.0, 100.0, 32.0}
     if Button(session, plain) != 0 { plain_clicks += 1 }
+    // A drag on the press may end over this editor, the button or no control.
+    editor: TextFieldProps
+    editor.key = 30; editor.focus_id = 30; editor.label = "Editor"
+    editor.value = "Notes"; editor.bounds = .{130.0, 10.0, 200.0, 32.0}
+    TextField(session, editor)
     // Replacing the press gives it a new identity; a click resolved for the
     // old element must not reach the new one.
     replaced: bool = WebAsBool(WebGet(WebGlobal, WebName("__kryonReplacePress")))
@@ -42,6 +47,12 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         Report("__kryonPressX", cast(float64)result.x)
         Report("__kryonPressY", cast(float64)result.y)
         WebSet(WebGlobal, WebName("__kryonPressReleased"), WebBool(result.released))
+    }
+    // Where a press still held is, so the driver sees a drag followed.
+    WebSet(WebGlobal, WebName("__kryonPressDown"), WebBool(result.down))
+    if result.down {
+        Report("__kryonPressDownX", cast(float64)result.x)
+        Report("__kryonPressDownY", cast(float64)result.y)
     }
     Report("__kryonPressClicks", cast(float64)press_clicks)
     Report("__kryonReplacedClicks", cast(float64)replaced_clicks)

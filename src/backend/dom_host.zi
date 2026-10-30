@@ -104,6 +104,9 @@ dom_click: u64;
 dom_click_pointed: bool;
 dom_click_x: float32;
 dom_click_y: float32;
+// The mouse buttons, one bit each, pressed on a drag surface and followed by
+// the page's pointer until released.
+dom_mouse_buttons: s32;
 dom_document_layout: bool;
 dom_css: s32;
 EditorStage :: struct { value: s32; cursor: s32; anchor: s32; secure: bool; numeric: bool; read_only: bool; edited: bool; }
@@ -491,7 +494,7 @@ DomHostClose :: () {
     if dom_root == 0 {
         DomClearEditors(); TextHostClear()
         if dom_css != 0 { WebRelease(dom_css) }; dom_css = 0
-        dom_document_layout = false; dom_session = Session.{}; dom_click = 0
+        dom_document_layout = false; dom_session = Session.{}; dom_click = 0; dom_mouse_buttons = 0
         return
     }
     scope: s32 = WebScope()
@@ -546,6 +549,7 @@ DomHostClose :: () {
     dom_document_layout = false
     dom_session = Session.{}
     dom_click = 0
+    dom_mouse_buttons = 0
     WebEnd(scope)
 }
 
@@ -703,6 +707,19 @@ DomClickPoint :: (event: s32, element: s32, bounds: Rectangle) {
 
 DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
     if !SessionValid(dom_session) { return }
+    // A mouse button the page's pointer follows is released at the page's
+    // pointer, over whatever it ends. Another button pressed and released
+    // meanwhile, such as a secondary click during a drag, keeps its own.
+    button: s32 = 0
+    if context == 9 || context == 10 {
+        which := cast(s32)WebGetNumber(event, WebName("button"))
+        if which >= 0 && which < 5 { button = cast(s32)1 << which }
+    }
+    if context == 9 { dom_mouse_buttons &= ~button }
+    if context == 10 && (dom_mouse_buttons & button) != 0 {
+        dom_mouse_buttons &= ~button
+        return
+    }
     target: s32 = WebGetObject(event, WebName("target"))
     element: s32 = WebAsObject(WebCall1(target, WebName("closest"), WebText("[data-kryon-index]")))
     if element == 0 { return }
@@ -725,14 +742,24 @@ DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
         // reflow rows away from the app's internal coordinates, so letting
         // the canvas hit-test route real pointer presses picks whichever
         // widget used to sit at those coordinates. Keep button mouse
-        // activity away from the canvas path entirely and let the DOM
-        // click carry the press, keyboard or pointer alike.
+        // activity away from the canvas path and let the DOM click carry
+        // the press, keyboard or pointer alike. A drag surface (a Press
+        // with capture) on an overlay laid out at the app's coordinates
+        // follows the mouse instead, as it follows touch: its press and the
+        // release that ends it, over whichever control, reach the page's
+        // pointer, whose release is also its click.
+        surface: bool = !dom_document_layout && TreeInputAt(dom_session, index).captures_drag
+        if context == 9 && surface {
+            dom_mouse_buttons |= button
+            return
+        }
         if context == 9 || context == 10 {
             unused WebCall0(event, WebName("stopPropagation"))
             return
         }
         if context == 1 {
             unused WebCall0(event, WebName("stopPropagation"))
+            if surface && WebGetNumber(event, WebName("detail")) > 0.0 { return }
             dom_click = node.identity_generation
             DomClickPoint(event, element, node.bounds)
             return

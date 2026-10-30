@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased
+## [Unreleased]
+
+- Mouse drags follow captured `Press` areas in the HTML browser renderer,
+  including when released over another control or outside the area.
 
 - On the web, clicking or tapping a `Press` reports where it landed, so a
   full-page area can tell a left-side tap from a right-side one. Keyboard

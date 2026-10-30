@@ -85,7 +85,7 @@ try {
   await command('Page.enable');
   await command('Emulation.setDeviceMetricsOverride', {width: 800, height: 600, deviceScaleFactor: 1, mobile: false});
   await command('Page.navigate', {url: html});
-  await until(`globalThis.__kryonPressReady && document.querySelector('[aria-label="Turn the page"]') && document.querySelector('[aria-label="Plain"]')`, 'page ready');
+  await until(`globalThis.__kryonPressReady && document.querySelector('[aria-label="Turn the page"]') && document.querySelector('[aria-label="Plain"]') && document.querySelector('[aria-label="Editor"]')`, 'page ready');
   const shape = await evaluate(`(() => {
     globalThis.__trace = [];
     for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
@@ -134,10 +134,11 @@ try {
       button: 'left', clickCount: 1, ...states[1]});
   }
   const results = {};
-  // A click on the press reaches it once, at the point it landed. Mouse
-  // clicks arrive as the button's native click; touch may instead arrive
-  // through the page's own touch input, which cancels the browser's click.
-  async function pointed(name, point, input, counter = '__kryonPressClicks', touch = false) {
+  // A click on the press reaches it once, at the point it landed. On this
+  // drag surface the mouse reaches it through the page's pointer, as touch
+  // does through the page's touch input, and the browser's own click, which
+  // touch and a chorded mouse press cancel, must not click it again.
+  async function pointed(name, point, input, counter = '__kryonPressClicks', cancelled = false) {
     const before = await evaluate(`globalThis.${counter}`);
     await evaluate('globalThis.__trace = []');
     await input();
@@ -147,9 +148,9 @@ try {
     const got = await state();
     const clicks = got.trace.filter(entry => entry.type === 'click');
     results[name] = {x: got.x, y: got.y, want: {x: want.x, y: want.y},
-      path: clicks.length ? 'click' : 'touch input', click: clicks.at(-1) ?? null};
+      path: clicks.length ? 'click' : 'page input', click: clicks.at(-1) ?? null};
     if (await evaluate(`globalThis.${counter}`) !== before + 1) throw new Error(name + ' clicked twice: ' + JSON.stringify(got));
-    if (clicks.length > 1 || (!touch && clicks.length !== 1) || clicks.some(click => click.detail < 1)) {
+    if (clicks.length > 1 || (!cancelled && clicks.length !== 1) || clicks.some(click => click.detail < 1)) {
       throw new Error(name + ' native click: ' + JSON.stringify(got.trace));
     }
     if (Math.abs(got.x - want.x) > 1 || Math.abs(got.y - want.y) > 1) {
@@ -177,6 +178,44 @@ try {
   // pointer released on the same control does.
   const end = await at('Turn the page', 0.15, 0.5);
   await pointed('drag released on the press', end, () => mouse(right, end));
+  // A mouse drag on the press is followed while it lasts, as a touch drag
+  // is, and its release clicks once where it ended.
+  const middle = await at('Turn the page', 0.5, 0.45);
+  await pointed('mouse drag followed', middle, async () => {
+    await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: right.x, y: right.y});
+    await command('Input.dispatchMouseEvent', {type: 'mousePressed', x: right.x, y: right.y,
+      button: 'left', clickCount: 1, buttons: 1});
+    for (let step = 1; step <= 4; step++) {
+      await command('Input.dispatchMouseEvent', {type: 'mouseMoved', button: 'left', buttons: 1,
+        x: right.x + (middle.x - right.x) * step / 4, y: right.y + (middle.y - right.y) * step / 4});
+    }
+    const want = await expected(middle);
+    await until(`globalThis.__kryonPressDown && Math.abs(globalThis.__kryonPressDownX - ${want.x}) <= 1 &&
+      Math.abs(globalThis.__kryonPressDownY - ${want.y}) <= 1`, 'mouse drag followed');
+    await command('Input.dispatchMouseEvent', {type: 'mouseReleased', x: middle.x, y: middle.y,
+      button: 'left', clickCount: 1, buttons: 0});
+  });
+  // A secondary click during the drag ends only itself: the drag is still
+  // followed and clicks once where the primary button is released.
+  await pointed('mouse drag with a secondary click', middle, async () => {
+    await command('Input.dispatchMouseEvent', {type: 'mouseMoved', x: left.x, y: left.y});
+    await command('Input.dispatchMouseEvent', {type: 'mousePressed', x: left.x, y: left.y,
+      button: 'left', clickCount: 1, buttons: 1});
+    await command('Input.dispatchMouseEvent', {type: 'mouseMoved', button: 'left', buttons: 1,
+      x: (left.x + middle.x) / 2, y: (left.y + middle.y) / 2});
+    await command('Input.dispatchMouseEvent', {type: 'mousePressed', x: (left.x + middle.x) / 2,
+      y: (left.y + middle.y) / 2, button: 'right', clickCount: 1, buttons: 3});
+    await until(`globalThis.__kryonPressDown`, 'drag held with the secondary button');
+    await command('Input.dispatchMouseEvent', {type: 'mouseReleased', x: (left.x + middle.x) / 2,
+      y: (left.y + middle.y) / 2, button: 'right', clickCount: 1, buttons: 1});
+    await command('Input.dispatchMouseEvent', {type: 'mouseMoved', button: 'left', buttons: 1, x: middle.x, y: middle.y});
+    const want = await expected(middle);
+    await until(`globalThis.__kryonPressDown && Math.abs(globalThis.__kryonPressDownX - ${want.x}) <= 1 &&
+      Math.abs(globalThis.__kryonPressDownY - ${want.y}) <= 1`, 'drag followed after the secondary click');
+    await command('Input.dispatchMouseEvent', {type: 'mouseReleased', x: middle.x, y: middle.y,
+      button: 'left', clickCount: 1, buttons: 0});
+  }, '__kryonPressClicks', true);
+  await until('globalThis.__kryonPressDown === false', 'drag released after the secondary click');
   // Enter on the focused press clicks it with no pointer point.
   const keyed = await evaluate('globalThis.__kryonPressClicks');
   await evaluate(`document.querySelector('[aria-label="Turn the page"]').focus()`);
@@ -195,11 +234,27 @@ try {
   await until(`globalThis.__kryonPlainClicks === ${plain_before + 1}`, 'plain button click');
   await settle();
   if (await evaluate('globalThis.__kryonPressClicks') !== press_before) throw new Error('plain click also clicked the press');
-  // A drag from the press onto the button clicks neither.
-  await mouse(right, plain);
+  // A drag from the press that ends over the button, the editor or no
+  // control ends at the page's pointer and clicks nothing.
+  const editor = await at('Editor', 0.5, 0.5);
+  const value = await evaluate(`document.querySelector('[aria-label="Editor"]').value`);
+  for (const [name, point] of [['button', plain], ['editor', editor], ['no control', {x: 720, y: 540}]]) {
+    await mouse(right, point);
+    await until('globalThis.__kryonPressDown === false', 'drag released over ' + name);
+    await settle();
+    if (await evaluate(`__kryonPressDown || __kryonPressClicks !== ${press_before} || __kryonPlainClicks !== ${plain_before + 1}`)) {
+      throw new Error('drag released over ' + name + ': ' + JSON.stringify(await state()));
+    }
+  }
+  if (await evaluate(`document.querySelector('[aria-label="Editor"]').value`) !== value) {
+    throw new Error('drag released over the editor changed it');
+  }
+  // The button still clicks once after a drag released outside it.
+  await mouse(plain);
+  await until(`globalThis.__kryonPlainClicks === ${plain_before + 2}`, 'plain click after drags');
   await settle();
-  if (await evaluate(`__kryonPressClicks !== ${press_before} || __kryonPlainClicks !== ${plain_before + 1}`)) {
-    throw new Error('drag across controls clicked: ' + JSON.stringify(await state()));
+  if (await evaluate(`__kryonPressClicks !== ${press_before} || __kryonPlainClicks !== ${plain_before + 2}`)) {
+    throw new Error('plain click after drags: ' + JSON.stringify(await state()));
   }
   // The click's own frame replaces the press: the new node never receives
   // the click resolved for the old element.
@@ -218,7 +273,7 @@ try {
   await pointed('replaced press', left, () => mouse(left), '__kryonReplacedClicks');
   await evaluate('globalThis.__kryonTestDone = true');
   console.log('DOM press point: ' + JSON.stringify(results));
-  console.log('Native DOM press: right/left mouse, touch, drag, keyboard, plain button and replaced identity PASS');
+  console.log('Native DOM press: right/left mouse, touch, drag, followed mouse drag, secondary click during a drag, keyboard, plain button, drags released over button/editor/no control and replaced identity PASS');
   process.exitCode = 0;
 } finally {
   if (socket) socket.close();
