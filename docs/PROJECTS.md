@@ -114,6 +114,66 @@ for lock, cache, and override details.
 
 ## Profiles and hosts
 
+### Foreign renderer artifacts
+
+Builders can request Kryon's foreign libraries and standard resources through
+the generic Ziran artifact API (toolchain revision 5461202417d48e2b31122354419179b262d7530c
+or later):
+
+```sh
+ziran pkg artifact kryon:renderer-raylib --platform linux-x86_64-gnu --locked
+CC=x86_64-w64-mingw32-gcc AR=x86_64-w64-mingw32-ar \
+  ziran pkg artifact kryon:renderer-raylib --platform windows-x86_64-mingw --locked
+ziran pkg artifact kryon:renderer-desktop --platform linux-x86_64-gnu --locked
+ziran pkg artifact kryon:renderer-web --platform emscripten-wasm32-emscripten --locked
+```
+
+Omit `--locked` when using `ziran.local.toml` overrides. Success stdout is one
+absolute `artifact.tsv` path. Verify its declared SHA-256 output rows and resolve
+their paths beside that descriptor. `renderer.json` has schema 1, the artifact
+and platform, ordered `archives` and `link_flags`, `compile_flags`, Ziran
+`defines`, `include_directories`, and `resources`. Paths in those fields are
+relative to the descriptor directory; system flags are argv tokens. Pass archive
+paths after application objects, followed by `link_flags`. Pass compile flags
+and resolved include directories when compiling native code; pass defines to
+Ziran's ordinary compiler invocation. No generated Ziran source tree or object
+list is part of this contract.
+
+Every recipe includes `resources/kryon-font.ttf` and its Liberation license.
+`renderer-raylib` also includes `lib/libraylib.a`, the four public Raylib headers
+under `include/`, and the Raylib license. Linux uses SDL2/GLES2; Windows uses
+RGFW/OpenGL 1.1. Both preserve JPEG, TrueType and audio support. Linux
+`renderer-desktop` declares the existing SDL/Cairo/FreeType/Pango/Fontconfig/GIO
+system dependencies rather than redistributing system libraries.
+
+`renderer-web` supplies `web/ziran_web.js` from the selected Ziran toolchain,
+`js_libraries`, browser link flags and `preload_files` entries (`path`, `mount`)
+for the standard font at `/kryon-font.ttf`. Feed these to Emscripten's
+`--js-library` and `--preload-file` arguments. Game resources remain separate.
+
+The Raylib recipe also accepts `android-aarch64-bionic` and
+`android-armv7-bionic`. Set `[tool.kryon.renderer] android_ndk` to the installed
+NDK directory and `android_api` to a decimal API level (default 21, minimum 21).
+Set `CC` to that ABI/API's NDK clang executable so compiler identity is keyed,
+for example `aarch64-linux-android21-clang`. The provider uses Kryon's existing
+Android Raylib helper with its GLES2 batching, JPEG/PNG/TTF and OGG/audio options.
+NativeActivity glue, the application shared library, edition, packaging and
+signing remain with the app packaging build. Unsupported recipe/platform pairs
+fail explicitly. Other hosts and architectures are not yet provider targets.
+
+Widget and renderer Ziran code remains ordinary `kryon/...` imports. These
+artifacts do not provide a separately compiled Ziran component ABI: the current
+generic artifact API stages provider files but does not define such a language
+component interface. Builders must not rewrite generated C/H or reconstruct a
+private module/object list to manufacture one.
+
+Run `make renderer-artifact-test` for real outputs, hashes, dirty isolation and
+a maintained Raylib renderer compiled and run on private Xvfb. Add `--cross`
+to `python3 tests/renderer_artifact_test.py` for installed MinGW and Android
+toolchains. After pushing, `--clean --revision COMMIT` uses normal immutable
+package resolution and requires two independent consumers to receive the exact
+same descriptor. A dirty canonical provider deliberately cannot prove reuse.
+
 Define each profile under `[tool.kryon.profiles.NAME]`. It requires `backend`;
 `codegen` defaults to `c99`. Supported backends are `terminal`, `desktop`,
 `raylib`, `canvas`, `dom`, `pixmap`, and `android`. Set `default_profile` under `[tool.kryon]` when there

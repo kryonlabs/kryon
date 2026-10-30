@@ -29,6 +29,7 @@ RAYLIB_PLATFORM_LIBS := $(RAYLIB_LIBS) -ldl -lpthread
 endif
 RAYLIB_CC ?= $(CC)
 RAYLIB_AR ?= $(AR)
+RAYLIB_JOBS ?= 4
 
 # Resolve the optional source package once, only when its archive is needed.
 .SECONDEXPANSION:
@@ -37,7 +38,7 @@ $(RAYLIB_A): $$(RAYLIB_INPUTS)
 	@test -f $(RAYLIB_SOURCE)/raylib.h || { echo "The locked raylib source package is incomplete; run ziran fetch" >&2; exit 1; }
 	mkdir -p $(RAYLIB_BUILD)/source
 	cp -R $(RAYLIB_SOURCE)/. $(RAYLIB_BUILD)/source/
-	$(MAKE) -j4 -C $(RAYLIB_BUILD)/source \
+	$(MAKE) -j$(RAYLIB_JOBS) -C $(RAYLIB_BUILD)/source \
 		RAYLIB_SRC_PATH=. RAYLIB_RELEASE_PATH=.. \
 		PLATFORM=$(RAYLIB_PLATFORM) GRAPHICS=$(RAYLIB_GRAPHICS) \
 		CC="$(RAYLIB_CC)" AR="$(RAYLIB_AR)" \

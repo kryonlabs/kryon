@@ -1,0 +1,10 @@
+#import "kryon/raylib_runtime"
+
+#program_export
+main :: () -> s32 {
+    if !OpenRaylib() { return 1 }
+    BeginRaylibFrame()
+    if !EndRaylibFrame() { CloseRaylib(); return 2 }
+    CloseRaylib()
+    return 0
+}

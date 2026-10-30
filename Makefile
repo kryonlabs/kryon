@@ -13,6 +13,8 @@ site-gallery-test:
 
 CC ?= cc
 AR ?= ar
+# Project tools execute on the build host, even when artifact CC targets an ABI.
+PROJECT_CC ?= cc
 BUILD_DIR ?= build/ziran
 # Resolve the configured package; CI supplies its already checked-out source.
 ZIRAN_DIR ?= $(if $(ZIRAN_ROOT),$(ZIRAN_ROOT),$(shell ziran pkg path ziran))
@@ -66,7 +68,7 @@ build/bin/kryon: build/project/gen/cli_linux.c Makefile
 	mkdir -p build/bin
 	@temporary=$$(mktemp build/bin/kryon.XXXXXX); \
 		trap 'rm -f "$$temporary"' EXIT; \
-		$(CC) -std=c99 -pedantic-errors -O2 -ffunction-sections -fdata-sections \
+		$(PROJECT_CC) -std=c99 -pedantic-errors -O2 -ffunction-sections -fdata-sections \
 		-I$(ZIRAN_INCLUDE) -Ibuild/project/gen build/project/gen/*.c \
 		-Wl,--gc-sections -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@
@@ -140,6 +142,10 @@ project-test: project-toolchain build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_static_archive_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_host_test.py
 	@$(MAKE) --no-print-directory templates-test
+
+.PHONY: renderer-artifact-test
+renderer-artifact-test: build/bin/kryon
+	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/renderer_artifact_test.py
 
 .PHONY: zx-test zx-reload-test
 include mk/zx-canvas.mk

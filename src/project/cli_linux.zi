@@ -413,6 +413,7 @@ main :: () -> s32 {
     command_line: FileContents = ReadFile("/proc/self/cmdline", command_bytes[:])
     if !command_line.ok { return Error("cannot read command arguments") }
     verb: string = ArgumentAt(command_line.text, 1)
+    if verb == "artifact" { return RendererArtifact(command_line.text) }
     if verb == "help" || verb == "--help" || verb == "-h" || verb == "" {
         return Usage()
     }
@@ -587,5 +588,23 @@ main :: () -> s32 {
         if args[at] == "" { return Error("project path or value is too long") }
         at += 1
     }
+    return Execute(args[:])
+}
+
+// The package driver owns staging, hashing and publication. This command only
+// runs Kryon's foreign-library build recipe; Ziran modules remain imports.
+RendererArtifact :: (command_line: string) -> s32 {
+    if ArgumentCount(command_line) != 7 ||
+    ArgumentAt(command_line, 3) != "--platform" ||
+    ArgumentAt(command_line, 5) != "--output" {
+        return Error("usage: artifact NAME --platform OS-ARCH-ABI --output STAGE")
+    }
+    root_bytes: [4096]u8
+    script_bytes: [4096]u8
+    root := Environment("ZIRAN_PACKAGE_ROOT", root_bytes[:])
+    if root == "" { return Error("artifact requires the package driver") }
+    args: [8]string = .["python3", Join(root, "/scripts/renderer_artifact.py", script_bytes[:]),
+        ArgumentAt(command_line, 2), "--platform", ArgumentAt(command_line, 4),
+        "--output", ArgumentAt(command_line, 6), root]
     return Execute(args[:])
 }

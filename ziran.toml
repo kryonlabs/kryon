@@ -221,3 +221,20 @@ categories = "string"
 working_directory = "string"
 autostart = "bool=false"
 autostart_env = "string"
+
+# Native platform/ABI is selected by pkg artifact --platform, not codegen.
+[options.renderer]
+android_ndk = "string"
+android_api = "string=21"
+
+[artifacts.renderer-raylib]
+inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "mk/renderer-artifact.mk", "mk/raylib-library.mk", "cmake/renderer-artifact/CMakeLists.txt", "cmake/KryonAndroid.cmake", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+outputs = ["lib/libraylib.a", "include/raylib.h", "include/rlgl.h", "include/raymath.h", "include/rcamera.h", "resources/LICENSE-raylib", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
+
+[artifacts.renderer-desktop]
+inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+outputs = ["resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
+
+[artifacts.renderer-web]
+inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+outputs = ["web/ziran_web.js", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]

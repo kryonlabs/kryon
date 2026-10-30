@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Game builders can share target-specific foreign renderer libraries and
+  standard font/browser resources through Kryon's package artifacts.
+
 - Media provides owned asset effects and looping music as independent voices,
   with bounded gain, stop/unload/status, scoped packed-resource access and
   native Raylib / browser providers. Suspended and unavailable audio return

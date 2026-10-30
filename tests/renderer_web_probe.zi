@@ -1,0 +1,10 @@
+#import "kryon/Canvas"
+#import "kryon/geometry"
+#import "kryon/drawing_props"
+
+#program_export
+main :: () -> s32 {
+    RasterRoundedRectangle(Rectangle.{0.0, 0.0, 32.0, 32.0}, 4.0, 8,
+        Color.{24, 28, 30, 255})
+    return 0
+}
