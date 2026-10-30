@@ -525,3 +525,51 @@ or another owner's voices. Hosts can register a different actual provider
 with `MediaAudioUseProvider`; existing owners retain their provider until
 closed. The caller retains cue selection, score/synthesis, volume UI, mute,
 phrase scheduling and any single-in-flight music transition policy.
+
+## Document persistence
+
+The existing `kryon/app_context` export provides `DocumentStorageReady() -> bool`
+and `DocumentFlush() -> bool`, bound to `app_context:DocumentStorageReadyHost`
+and `app_context:DocumentFlushHost` (both zero arguments, bool result).
+`AppLocal` and the direct Canvas/DOM app host implement them. Other hosts must
+explicitly grant and dispatch these capabilities; importing them grants no access.
+
+Readiness is nonblocking: true requires an open private document namespace and,
+in a browser, successful initial IndexedDB hydration. Before readiness, reads
+report `DOCUMENT_ERROR`, writes and flush return false. The host opens storage
+with `AppFilesOpen` after hydration; the guest does not initialize host storage.
+
+`DocumentWrite`/`WriteStore` retain their queued browser semantics. A true write
+result alone does not acknowledge persistence. After successful writes,
+`DocumentFlush` returns true only when the backing store has acknowledged a
+snapshot including those writes. It waits for any previous snapshot, then
+requests and awaits a fresh one. Later writes remain in memory for a subsequent
+flush; this operation neither clears a host's pending-write flag nor reloads
+files from storage. Failure, unavailable storage, a 15-second browser deadline,
+or namespace revocation returns false. False does not roll back queued bytes
+or promise that an already running backend transaction has been cancelled.
+
+The native provider syncs file bytes before atomic replacement and syncs parent
+directories after rename, including new ancestors. Platforms/filesystems that
+cannot sync directories reject that write rather than claim durability. The
+browser reuses IDBFS and Asyncify; its acknowledgement is the successful IDBFS
+transaction callback, subject to the browser's persistence/eviction policy.
+Atomic replacements have distinct mtimes even within one millisecond, as IDBFS
+uses mtimes to detect changes.
+
+Hosts use `AppFilesReady(files)` and `AppFilesFlush(files)` for their authorized
+`AppFiles`. The no-argument guest operation cannot name or read another node.
+The browser backing store is the existing shared `/kryon-apps` mount: the host's
+physical sync can include other queued namespaces, without exposing their paths,
+bytes, handles, or authority to the guest. An AppFiles outside this mount can still stage packed assets, but reports
+false for durable readiness and flush. Initial hydration is never restarted by flush.
+
+Call on the owning thread. Browser flush yields; keep the owner and its AppFiles
+alive until it returns and never reenter its running VM while suspended. Close
+with `AppFilesClose` before changing account/resource ownership or rebinding the
+namespace; close/open increments a generation, and an in-flight flush then
+returns false even if its old snapshot succeeds. Do not overwrite live AppFiles
+or mutate its root/lock directly. Readiness is availability, not an account grant.
+
+`make -j1 document-storage-test` exercises native and actual disposable headless
+IndexedDB storage, source/saved compilation and portable AppLocal dispatch.

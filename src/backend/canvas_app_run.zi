@@ -112,6 +112,10 @@ AppLocaleHost :: (key: string) -> string { unused key; return "" }
 AppAssetPathHost :: (name: string) -> string { return name }
 
 #program_export
+DocumentStorageReadyHost :: () -> bool { return AppFilesReady(*canvas_app_files) }
+#program_export
+DocumentFlushHost :: () -> bool { return AppFilesFlush(*canvas_app_files) }
+#program_export
 DocumentStatusHost :: () -> s32 { return canvas_app_files.status }
 #program_export
 DocumentReadHost :: (name: string) -> string {

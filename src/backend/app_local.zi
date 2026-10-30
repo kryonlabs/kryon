@@ -30,6 +30,7 @@ AppLocalAllows :: (context: *void, name: string) -> bool {
     }
     return name == "AppNowHost" || name == "AppLocalOffsetHost" ||
     name == "AppLocaleHost" || name == "DocumentReadHost" ||
+    name == "DocumentStorageReadyHost" || name == "DocumentFlushHost" ||
     name == "DocumentStatusHost" || name == "DocumentWriteHost" ||
     name == "ReadStoreHost" || name == "WriteStoreHost" ||
     name == "ClipboardCopyHost"
@@ -104,6 +105,11 @@ AppLocalCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "AppLocalOffsetHost" && count == 0 {
         result.* = HostScalar("s32", cast(s64)BundleLocalOffset())
+        return 1
+    }
+    if (name == "DocumentStorageReadyHost" || name == "DocumentFlushHost") && count == 0 {
+        ready := ifx name == "DocumentFlushHost" then AppFilesFlush(*local.files) else AppFilesReady(*local.files)
+        result.* = HostScalar("bool", ifx ready then 1 else 0)
         return 1
     }
     if name == "DocumentStatusHost" && count == 0 {

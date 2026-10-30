@@ -19,6 +19,8 @@ AppReplyHost :: (value: string) #foreign host_api;
 AppServiceHost :: (name: string, request: string) -> string #foreign host_api;
 // Documents distinguish missing files from failed reads; they are not sync records.
 DocumentReadHost :: (name: string) -> string #foreign host_api;
+DocumentStorageReadyHost :: () -> bool #foreign host_api;
+DocumentFlushHost :: () -> bool #foreign host_api;
 DocumentStatusHost :: () -> s32 #foreign host_api;
 DocumentWriteHost :: (name: string, value: string) -> bool #foreign host_api;
 
@@ -288,3 +290,9 @@ DocumentStatus :: () -> s32 {
 DocumentWrite :: (name: string, value: string) -> bool {
     return DocumentWriteHost(name, value)
 }
+
+#program_export
+DocumentStorageReady :: () -> bool { return DocumentStorageReadyHost() }
+
+#program_export
+DocumentFlush :: () -> bool { return DocumentFlushHost() }

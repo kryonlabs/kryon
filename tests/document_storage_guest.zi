@@ -1,0 +1,9 @@
+#import "app_context"
+#program_export
+main :: () -> s64 {
+    if !DocumentStorageReady() { return 1 }
+    if DocumentWrite("../denied", "bad") { return 2 }
+    if !DocumentWrite("guest/progress", "earned+pending") || !DocumentFlush() { return 3 }
+    if DocumentRead("guest/progress") != "earned+pending" { return 4 }
+    return 0
+}

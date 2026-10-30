@@ -5,6 +5,11 @@
 #import "std/text"
 #import "std/byte_text_linux"
 #import "app_protocol"
+#if #defined(PLATFORM_WEB) {
+    #import "bundle_storage_web"
+    #import "std/web"
+    #import "page_files"
+}
 
 APP_DOCUMENT_LIMIT :: 16777216
 
@@ -12,6 +17,7 @@ AppFiles :: struct {
     root: string
     status: s32
     lock: FileHandle
+    generation: u64
 }
 
 libc :: #system_library "libc";
@@ -112,6 +118,11 @@ AppFilePath :: (files: *AppFiles, name: string, create: bool) -> string {
 }
 
 AppFilesOpen :: (files: *AppFiles, root: string) -> bool {
+    if files.lock.valid { return false }
+    files.generation += 1
+    #if #defined(PLATFORM_WEB) {
+        if AppFilesPersistent(root) && !BundleStorageReady() { return false }
+    }
     if !AppPrivateDirectory(root) {
         return false
     }
@@ -136,6 +147,7 @@ AppFilesOpen :: (files: *AppFiles, root: string) -> bool {
 }
 
 AppFilesClose :: (files: *AppFiles) {
+    files.generation += 1
     if files.lock.valid {
         unused CloseFile(files.lock)
     }
@@ -146,7 +158,7 @@ AppFilesClose :: (files: *AppFiles) {
 
 AppFileRead :: (files: *AppFiles, name: string) -> string {
     files.status = DOCUMENT_ERROR
-    if !files.lock.valid {
+    if !AppFilesAvailable(files) {
         return ""
     }
     path := AppFilePath(files, name, false)
@@ -186,13 +198,23 @@ AppFileRead :: (files: *AppFiles, name: string) -> string {
 }
 
 AppFileWrite :: (files: *AppFiles, name: string, value: string) -> bool {
-    if !files.lock.valid || value.count > APP_DOCUMENT_LIMIT || name == ".lock" {
+    if !AppFilesAvailable(files) || value.count > APP_DOCUMENT_LIMIT || name == ".lock" {
         return false
     }
     path := AppFilePath(files, name, true)
     defer { AppFileFree(path) }
     if path == "" {
         return false
+    }
+    #if #defined(PLATFORM_WEB) {
+        // IDBFS compares millisecond mtimes, not bytes. Atomic replacements
+        // in the same clock tick must still differ from the persisted file.
+        previous_time: float64 = -1.0
+        if PathExists(path) {
+            stat := WebAsObject(WebCall1(PageFileSystem(), WebName("stat"), WebText(path)))
+            previous_time = WebAsNumber(WebCall0(WebGetObject(stat, WebName("mtime")), WebName("getTime")))
+            if WebFailed() { return false }
+        }
     }
     temporary: Vec(u8)
     BuilderPrint(*temporary, "%.new", path)
@@ -220,5 +242,57 @@ AppFileWrite :: (files: *AppFiles, name: string, value: string) -> bool {
         unused RemoveFile(next)
         return false
     }
+    #if #defined(PLATFORM_WEB) {
+        if previous_time >= 0.0 {
+            unused WebCall3(PageFileSystem(), WebName("utime"), WebText(path),
+                WebNumber(previous_time + 1.0), WebNumber(previous_time + 1.0))
+            if WebFailed() { return false }
+        }
+    }
+    #if !#defined(PLATFORM_WEB) {
+        // Persist the rename and any newly created ancestors, leaf first.
+        index := path.count - 1
+        while index > 0 {
+            if path[index] == cast(u8)47 {
+                directory := OpenRead(path[:index])
+                if !directory.valid { return false }
+                synced := SyncFile(directory)
+                closed := CloseFile(directory)
+                if !synced || !closed { return false }
+            }
+            index -= 1
+        }
+    }
     return true
+}
+
+// AppFiles also stages packed assets outside the persistent browser mount.
+AppFilesPersistent :: (root: string) -> bool {
+    return root == "/kryon-apps" || (root.count > 12 && root[:12] == "/kryon-apps/")
+}
+
+AppFilesAvailable :: (files: *AppFiles) -> bool {
+    if !files.lock.valid || files.root == "" { return false }
+    #if #defined(PLATFORM_WEB) {
+        if AppFilesPersistent(files.root) { return BundleStorageReady() }
+    }
+    return true
+}
+
+// Nonblocking durable-storage availability, distinct from staging assets.
+AppFilesReady :: (files: *AppFiles) -> bool {
+    #if #defined(PLATFORM_WEB) {
+        if !AppFilesPersistent(files.root) { return false }
+    }
+    return AppFilesAvailable(files)
+}
+
+// Owning-thread barrier. The owner storage must survive the yielding call.
+AppFilesFlush :: (files: *AppFiles) -> bool {
+    if !AppFilesReady(files) { return false }
+    generation := files.generation
+    #if #defined(PLATFORM_WEB) {
+        if !BundleStorageFlush() { return false }
+    }
+    return generation == files.generation && AppFilesReady(files)
 }

@@ -20,7 +20,7 @@ BundleStorageSynced :: (context: s32, error: s32, second: s32, third: s32) {
 }
 
 BundleStorageSync :: (populate: bool) -> bool {
-    if storage_busy || storage_failed { return false }
+    if !storage_started || storage_busy || storage_failed || (!populate && !storage_ready) || (populate && storage_ready) { return false }
     if storage_callback == 0 { storage_callback = WebFunction(BundleStorageSynced, 0) }
     storage_busy = true
     unused WebCall2(PageFileSystem(), WebName("syncfs"), WebBool(populate),
@@ -48,7 +48,7 @@ BundleStorageFailed :: () -> bool { return storage_failed }
 // Account and other durable saves wait for IndexedDB to acknowledge the
 // complete filesystem snapshot before reporting success to the person.
 BundleStorageFlush :: () -> bool {
-    if !storage_started || storage_failed { return false }
+    if !BundleStorageReady() { return false }
     deadline := PageNow() + 15000.0
     while storage_busy && !storage_failed {
         if PageNow() >= deadline { return false }

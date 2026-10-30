@@ -1,0 +1,102 @@
+#import "app_files"
+#import "app_local"
+#import "hosted_app"
+#import "std/file"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "ziran_system_clipboard_host"
+#if #defined(PLATFORM_WEB) {
+    #import "bundle_storage_web"
+    #import "std/web"
+    #import "page_core"
+    #import "page_files"
+}
+files: AppFiles;
+later: bool;
+LaterWrite :: (context: s32, first: s32, second: s32, third: s32) {
+    unused context; unused first; unused second; unused third
+    later = AppFileWrite(*files, "later", "second snapshot")
+}
+Revoke :: (context: s32, first: s32, second: s32, third: s32) {
+    unused context; unused first; unused second; unused third
+    AppFilesClose(*files)
+    unused AppFilesOpen(*files, "/kryon-apps/other")
+}
+Allows :: (context: *void, module: string, function: string) -> bool {
+    unused module
+    return AppLocalAllows(context, function)
+}
+#program_export
+main :: () -> s32 {
+    root := "/kryon-apps/storage-test"
+
+    if AppFilesReady(*files) || AppFilesFlush(*files) { return 1 }
+    #if #defined(PLATFORM_WEB) {
+        // The existing Canvas player stages assets before IDB hydration.
+        assets: AppFiles
+        if !AppFilesOpen(*assets, "/tmp/kryon-storage-assets") ||
+        !AppFileWrite(*assets, "image", "packed") || AppFilesReady(*assets) || AppFilesFlush(*assets) ||
+        AppFileRead(*assets, "image") != "packed" { return 21 }
+        AppFilesClose(*assets)
+        if BundleStorageFlush() || BundleStorageSync(false) { return 2 }
+        opened := BundleStorageOpen()
+        if WebAsNumber(WebGet(WebGlobal, WebName("storageTestMode"))) == 2.0 {
+            while opened && !BundleStorageFailed() { WebSleep(5) }
+            if BundleStorageReady() || AppFilesFlush(*files) || AppFilesOpen(*files, root) { return 19 }
+            return 0
+        }
+        if !opened { return 3 }
+        if AppFilesOpen(*files, root) || BundleStorageFlush() { return 4 }
+        while !BundleStorageReady() && !BundleStorageFailed() { WebSleep(5) }
+        if BundleStorageFailed() || BundleStorageSync(true) { return 5 }
+    } else {
+        root_bytes, root_ok := ReadEntireFile("work/document-storage/root.txt")
+        if !root_ok { return 6 }
+        root = root_bytes
+    }
+    if !AppFilesOpen(*files, root) || !AppFilesReady(*files) { return 7 }
+    #if #defined(PLATFORM_WEB) {
+        mode := WebAsNumber(WebGet(WebGlobal, WebName("storageTestMode")))
+        if mode == 1 {
+            if AppFileRead(*files, "progress") != "record+pending" ||
+            AppFileRead(*files, "later") != "second snapshot" ||
+            AppFileRead(*files, "guest/progress") != "earned+pending" { return 8 }
+            return 0
+        }
+    }
+    if !AppFileWrite(*files, "progress", "record+pending") { return 9 }
+    #if #defined(PLATFORM_WEB) {
+        unused WebCall2(WebGlobal, WebName("setTimeout"), WebObject(WebFunction(LaterWrite, 0)), WebNumber(5))
+        // A prior background snapshot cannot acknowledge a later write.
+        if !BundleStorageSync(false) { return 10 }
+    }
+    if !AppFilesFlush(*files) { return 11 }
+    #if #defined(PLATFORM_WEB) {
+        if !later || !AppFilesFlush(*files) { return 12 }
+    }
+    // Replace an already acknowledged path twice, including same-tick writes.
+    if !AppFileWrite(*files, "progress", "replacement") || !AppFilesFlush(*files) ||
+    !AppFileWrite(*files, "progress", "record+pending") || !AppFilesFlush(*files) { return 20 }
+    local: AppLocal
+    // Transfer the already opened namespace to the local portable provider.
+    local.files = files
+    files.lock.valid = false
+    bytes, ok := ReadEntireFile("work/document-storage/guest.zx")
+    app: HostedApp
+    if !ok || !HostedAppOpen(*app, bytes) ||
+    !HostedAppStart(*app, Allows, AppLocalCall, cast(*void)*local) { return 13 }
+    answer: s64
+    if !HostedAppRun(*app, *answer) || answer != 0 { return 14 }
+    HostedAppClose(*app)
+    files = local.files
+    #if #defined(PLATFORM_WEB) {
+        unused WebCall2(WebGlobal, WebName("setTimeout"), WebObject(WebFunction(Revoke, 0)), WebNumber(5))
+        if AppFilesFlush(*files) { return 15 }
+        if !AppFileWrite(*files, "other-owner", "isolated") { return 16 }
+        unused WebCall0(WebGlobal, WebName("storageTestFail"))
+        if AppFilesFlush(*files) || !BundleStorageFailed() { return 17 }
+    }
+    AppFilesClose(*files)
+    if AppFilesFlush(*files) || AppFilesReady(*files) { return 18 }
+    return 0
+}

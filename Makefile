@@ -554,3 +554,7 @@ asset-audio-test: $(RAYLIB_A)
 		ZIRAN_BUILD_DIR="$(ZIRAN_BUILD_DIR)" python3 tests/media_audio_test.py --browser
 
 test: asset-audio-test
+
+.PHONY: document-storage-test
+document-storage-test:
+	@ZIRAN_ROOT="$(abspath $(ZIRAN_DIR))" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/document_storage_test.py
