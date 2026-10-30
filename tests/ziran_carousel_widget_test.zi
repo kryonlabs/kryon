@@ -1,0 +1,71 @@
+#import "carousel"
+#import "drawing_props"
+#import "geometry"
+#import "session"
+#import "tree"
+#import "tree_draw"
+#import "widget_test_session"
+#import "ziran_image_widget_host"
+
+using FrameStatus;
+
+#program_export
+DrawCarousel :: (item: CarouselItem) -> s32 {
+    unused BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 180.0})
+    props: CarouselProps
+    props.key = cast(u64)1
+    props.bounds = Rectangle.{0.0, 0.0, 320.0, 180.0}
+    props.now = 1.0
+    props.label = "Game carousel"
+    state: CarouselState
+    items: [1]CarouselItem
+    items[0] = item
+    unused Carousel(TestSession(), props, items[0:1], *state)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return 90 }
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    ExpectCarousel()
+    item: CarouselItem
+    item.label = "Cropped game"
+    item.portrait = "cropped.png"
+    item.landscape = "cropped.png"
+    item.source = Rectangle.{4.0, 8.0, 120.0, 60.0}
+    if DrawCarousel(item) != 0 { return 1 }
+    source := CarouselLastSource()
+    if CarouselCoverDraws() != 1 || source.x != 4.0 || source.y != 8.0 ||
+            source.width != 120.0 || source.height != 60.0 ||
+            ImageHostFailed() { return 2 }
+
+    item.label = "Whole game"
+    item.portrait = "whole.png"
+    item.landscape = "whole.png"
+    item.source = Rectangle.{}
+    if DrawCarousel(item) != 0 { return 3 }
+    source = CarouselLastSource()
+    if CarouselCoverDraws() != 2 || source.x != 0.0 || source.y != 0.0 ||
+            source.width != 400.0 || source.height != 200.0 ||
+            ImageHostFailed() { return 4 }
+
+    unused BeginFrame(TestSession(), cast(u64)2, Rectangle.{0.0, 0.0, 320.0, 180.0})
+    unused CarouselArtwork(TestSession(), Rectangle.{0.0, 0.0, 320.0, 180.0},
+        cast(u64)3, "whole.png", "", "Artwork")
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return 5 }
+    source = CarouselLastSource()
+    if CarouselCoverDraws() != 3 || source.x != 0.0 || source.y != 0.0 ||
+            source.width != 400.0 || source.height != 200.0 ||
+            ImageHostFailed() { return 6 }
+
+    crop := Rectangle.{4.0, 8.0, 120.0, 60.0}
+    unused BeginFrame(TestSession(), cast(u64)3, Rectangle.{0.0, 0.0, 320.0, 180.0})
+    unused CarouselArtwork(TestSession(), Rectangle.{0.0, 0.0, 320.0, 180.0},
+        cast(u64)3, "cropped.png", "", "Artwork", crop)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return 7 }
+    source = CarouselLastSource()
+    if CarouselCoverDraws() != 4 || source.x != 4.0 || source.y != 8.0 ||
+            source.width != 120.0 || source.height != 60.0 ||
+            ImageHostFailed() { return 8 }
+    return 0
+}

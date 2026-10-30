@@ -278,11 +278,13 @@ optional host theme colours from a portable app.
 
 `kryon/carousel` provides `Carousel(session, props, items, state)` for a
 full-cover browser. Keep a `CarouselState`, pass `CarouselItem` values with
-portrait and landscape art, an optional logo and caption, and an action
-label. It returns the activated item index, or -1. Swipe, wheel, arrows and
+portrait and landscape art, an optional source crop, an optional logo and
+caption, and an action label. A zero `source` uses the whole selected image.
+It returns the activated item index, or -1. Swipe, wheel, arrows and
 Enter/Space share one selection; only that selection exposes an action.
 The caller keeps game launching and any footer controls. `CarouselArtwork`
-paints the same cover composition for a native loading screen.
+paints the same cover composition for a native loading screen and accepts the
+same optional source crop, defaulting to the whole image.
 
 ## Loading surfaces
 

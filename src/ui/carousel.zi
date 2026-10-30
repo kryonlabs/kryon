@@ -27,6 +27,7 @@ CarouselItem :: struct {
     label: string
     portrait: string
     landscape: string
+    source: Rectangle
     logo: string
     caption: string
     action: string
@@ -54,9 +55,11 @@ CarouselProps :: struct {
 
 // A whole cover, also usable while a native game is loading.
 CarouselArtwork :: (session: Session, bounds: Rectangle, key: u64,
-    art: string, logo: string, label: string) -> Rectangle {
+    art: string, logo: string, label: string,
+    source: Rectangle = Rectangle.{}) -> Rectangle {
     Image(session, ImageProps.{.key = key, .asset_path = art, .alt_text = label,
-            .bounds = bounds, .fit = ImageFit.ImageFitCover, .smooth = true})
+            .bounds = bounds, .source = source, .fit = ImageFit.ImageFitCover,
+            .smooth = true})
     width := ifx bounds.height > bounds.width then bounds.width * 0.88 else bounds.height * 0.95
     if width > 760.0 { width = 760.0 }
     area := Rectangle.{bounds.x + (bounds.width - width) / 2.0,
@@ -154,7 +157,7 @@ Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
         art := ifx bounds.height > bounds.width || item.landscape == "" then item.portrait else item.landscape
         Image(session, ImageProps.{.key = key, .asset_path = art, .alt_text = item.label,
                 .bounds = Rectangle.{bounds.x + offset, bounds.y, bounds.width, bounds.height},
-                .fit = ImageFit.ImageFitCover, .smooth = true})
+                .source = item.source, .fit = ImageFit.ImageFitCover, .smooth = true})
     }
     CarouselTitle(session, props, items, state, scale)
     // Keep the one action still while covers slide underneath it.

@@ -8,12 +8,19 @@ images: s32;
 labels: s32;
 metrics: s32;
 failed: bool;
+carousel_phase: bool;
+carousel_draws: s32;
+last_source: Rectangle;
 
 MeasureImage :: (asset_path: string, width: bool) -> s32 {
     sizes += 1
     if asset_path == "assets/hero.png" {
         if width { return 200 }
         return 100
+    }
+    if carousel_phase && (asset_path == "cropped.png" || asset_path == "whole.png") {
+        if width { return 400 }
+        return 200
     }
     // The host is still loading this one.
     if asset_path == "loading.png" { return -1 }
@@ -36,6 +43,12 @@ RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
     tint: Color) {
+    if carousel_phase {
+        if asset_path != "cropped.png" && asset_path != "whole.png" { failed = true }
+        last_source = source
+        carousel_draws += 1
+        return
+    }
     expected_red: u8 = ifx images == 0 then cast(u8)0x10 else cast(u8)0x50
     expected_green: u8 = ifx images == 0 then cast(u8)0x20 else cast(u8)0x60
     expected_blue: u8 = ifx images == 0 then cast(u8)0x30 else cast(u8)0x70
@@ -72,6 +85,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
+    if carousel_phase { return }
     unused bounds
     unused radius
     unused segments
@@ -84,6 +98,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterText :: (value: string, x: s32, y: s32, font: s32,
     color: Color) {
+    if carousel_phase { return }
     if value != "Missing hero" || x != 20 || y != 5 || font != 14 ||
         color.r != cast(u8)0x10 || color.g != cast(u8)0x20 ||
         color.b != cast(u8)0x30 || color.a != cast(u8)0x7f {
@@ -95,6 +110,7 @@ RasterText :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
+    if carousel_phase { return }
     unused value
     unused x
     unused y
@@ -108,6 +124,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
     unused typeface
+    if carousel_phase { return (cast(s32)value.count) * font / 2 }
     if value != "Missing hero" || font != 14 { failed = true }
     metrics += 1
     return 60
@@ -116,6 +133,7 @@ MeasureGlyphWidth :: (value: string, font: s32,
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
     unused typeface
+    if carousel_phase { return font }
     if font != 14 { failed = true }
     metrics += 1
     return 10
@@ -135,3 +153,12 @@ ImageLabels :: () -> s32 { return labels }
 
 #program_export
 ImageMetrics :: () -> s32 { return metrics }
+
+#program_export
+ExpectCarousel :: () { carousel_phase = true }
+
+#program_export
+CarouselCoverDraws :: () -> s32 { return carousel_draws }
+
+#program_export
+CarouselLastSource :: () -> Rectangle { return last_source }
