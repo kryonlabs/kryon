@@ -81,33 +81,39 @@ OpenCanvas :: () -> bool {
     return true
 }
 
-// The next frame reloads changed resources through the normal asset loader.
-// Existing fonts and the canvas remain usable during package activation.
+// The bytes behind one cached image may have changed. A drawn texture stays
+// until the image's next use reads its bytes again; an image without one
+// simply loads again.
+CanvasInvalidateAsset :: (index: s32) {
+    if canvas_assets[index].texture.id == cast(u32)0 {
+        CanvasForgetAsset(index)
+        return
+    }
+    canvas_assets[index].revalidating = true
+}
+
+// Changed resources are read again through the normal asset loader on their
+// next use. Fonts, the canvas and every drawn image remain usable during
+// package activation.
 #program_export
 InvalidateCanvasAssets :: () {
-    PageFlushPaint()
     PaintResourcesChanged()
-    index: s32 = 0
-    while index < canvas_assets_count {
-        if canvas_assets[index].texture.id != cast(u32)0 {
-            UnloadTexture(canvas_assets[index].texture)
+    for index: cast(s32)0..canvas_assets_count - 1 {
+        if canvas_assets[index].length > 0 {
+            CanvasInvalidateAsset(index)
         }
-        canvas_assets[index] = CanvasAsset.{}
-        index += 1
     }
-    canvas_assets_count = 0
-    canvas_assets_next = 0
     canvas_image_error = false
 }
 
-// Content under one folder was replaced: forget only the images whose path
-// starts with `prefix`, keeping every other image on screen.
+// Content under one folder was replaced: revalidate only the images whose
+// path starts with `prefix`, keeping every image on screen meanwhile.
 #program_export
 InvalidateCanvasAssetsUnder :: (prefix: string) {
     if prefix.count == 0 {
         return
     }
-    flushed := false
+    revalidated := false
     for index: cast(s32)0..canvas_assets_count - 1 {
         asset := *canvas_assets[index]
         if asset.length < cast(s32)prefix.count {
@@ -123,16 +129,11 @@ InvalidateCanvasAssetsUnder :: (prefix: string) {
         if !under {
             continue
         }
-        if !flushed {
-            PageFlushPaint()
-            flushed = true
-        }
-        if asset.texture.id != cast(u32)0 {
-            UnloadTexture(asset.texture)
-        }
-        asset.* = CanvasAsset.{}
+        CanvasInvalidateAsset(index)
+        revalidated = true
     }
-    if flushed {
+    if revalidated {
+        // The next frame composes again, so each image's next use comes soon.
         PaintResourcesChanged()
     }
 }

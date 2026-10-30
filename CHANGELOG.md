@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Title bars follow the app palette, keeping dark game navigation readable.
+- Updating an app's files never blanks its pictures: each image keeps
+  drawing until its new bytes have decoded, and an image whose bytes did not
+  change is not decoded again, on desktop, Android and the web.
 
 ### Added
 

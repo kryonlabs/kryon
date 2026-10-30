@@ -126,6 +126,39 @@
         return Texture2D.{cast(u32)id, width, height, 1, 7}
     }
 
+    CanvasEncodedTexture :: struct {
+        texture: Texture2D
+        // FNV-1a and length of the bytes read; a length of 0 when the path
+        // has none.
+        content: u64
+        size: s64
+    }
+
+    // Reads the image at `path` and decodes it unless its bytes hash to
+    // `previous`: a revalidated image whose bytes are unchanged keeps its
+    // texture.
+    LoadTextureUnlessContent :: (path: *u8, previous: u64, previous_size: s64) -> CanvasEncodedTexture {
+        result: CanvasEncodedTexture
+        size: s32
+        data := CanvasLoadFileData(path, *size)
+        if data == null || size <= 0 {
+            if data != null { CanvasRelease(cast(*void)data) }
+            return result
+        }
+        hash := cast(u64)14695981039346656037
+        for at: cast(s32)0..size - 1 { hash = (hash ^ cast(u64)data[at]) * cast(u64)1099511628211 }
+        result.content = hash
+        result.size = cast(s64)size
+        if hash != previous || result.size != previous_size {
+            width: s32
+            height: s32
+            id := PageTextureFromEncoded(data, size, *width, *height)
+            if id != 0 { result.texture = Texture2D.{cast(u32)id, width, height, 1, 7} }
+        }
+        CanvasRelease(cast(*void)data)
+        return result
+    }
+
     #program_export
     UnloadTexture :: (texture: Texture2D) {
         if texture.id != cast(u32)0 { PageTextureFree(cast(s32)texture.id) }

@@ -142,7 +142,6 @@ HostRaylibGetKeyPressed :: () -> s32 #foreign raylib "GetKeyPressed";
 HostRaylibIsKeyDown :: (key: s32) -> bool #foreign raylib "IsKeyDown";
 HostRaylibIsKeyPressedRepeat :: (key: s32) -> bool #foreign raylib "IsKeyPressedRepeat";
 HostRaylibGetCharPressed :: () -> s32 #foreign raylib "GetCharPressed";
-HostRaylibLoadTexture :: (path: *u8) -> Texture2D #foreign raylib "LoadTexture";
 HostRaylibGetTime :: () -> float64 #foreign raylib "GetTime";
 HostRaylibUnloadTexture :: (texture: Texture2D) #foreign raylib "UnloadTexture";
 HostRaylibRenderTexture :: struct {
@@ -189,6 +188,15 @@ RaylibAsset :: struct {
     token: u64
     retry_after: float64
     encoded: []u8
+    // Its folder was replaced: the texture stays drawn until its bytes are
+    // read again, and only bytes that differ replace it.
+    revalidating: bool
+    // FNV-1a and length of the bytes the texture was decoded from, and of
+    // the bytes waiting to replace it.
+    content: u64
+    content_size: s64
+    source_content: u64
+    source_size: s64
 }
 
 // Image textures by asset path. A photo grid draws dozens of thumbnails per
@@ -1241,7 +1249,7 @@ raylib_asset_reader_active: bool;
 
 #program_export
 RaylibSetAssetReader :: (reader: RaylibAssetReadCall, context: *void) {
-    InvalidateRaylibAssets()
+    RaylibForgetAssets()
     raylib_asset_reader = reader
     raylib_asset_context = context
     raylib_asset_reader_active = reader != null
@@ -1249,7 +1257,7 @@ RaylibSetAssetReader :: (reader: RaylibAssetReadCall, context: *void) {
 
 #program_export
 RaylibClearAssetReader :: () {
-    InvalidateRaylibAssets()
+    RaylibForgetAssets()
     raylib_asset_reader_active = false
     raylib_asset_context = null
 }
@@ -1262,31 +1270,115 @@ RaylibMemoryTexture :: (path: string, data: string) -> Texture2D {
     return texture
 }
 
-// A JPEG photo stands upright by its Exif orientation, as browsers and
-// GdkPixbuf draw it, since raylib's decoder leaves the pixels as stored.
-// Every other asset loads as stored.
-RaylibLoadAssetTexture :: (path: *u8, text: string) -> Texture2D {
-    if raylib_asset_reader_active {
-        return RaylibMemoryTexture(text, raylib_asset_reader(raylib_asset_context, text))
-    }
-    if !ImagePixels.RaylibJpegPath(text) {
-        return HostRaylibLoadTexture(path)
-    }
-    size: s32 = 0
-    data := HostTypefaceFileData(path, *size)
-    if data == null || size <= 0 {
-        if data != null {
-            HostTypefaceFileDataFree(data)
+RaylibImageSource :: struct { data: string; owned: *u8 }
+RaylibReadImageSource :: (path: string, reader: RaylibAssetReadCall,
+    context: *void, active: bool) -> RaylibImageSource {
+    source: RaylibImageSource
+    if active {
+        source.data = reader(context, path)
+    } else {
+        name: [1024]u8
+        count: s32
+        if CopyCString(path, name[:]) { source.owned = HostTypefaceFileData(*name[0], *count) }
+        if source.owned != null && count > 0 {
+            source.data = TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(source.owned, cast(u64)count))
         }
-        return Texture2D.{}
     }
-    image := ImagePixels.RaylibDecodeImage(text,
-        TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(data, cast(u64)size)))
-    HostTypefaceFileDataFree(data)
-    if image.data == null { return Texture2D.{} }
-    texture := HostRaylibTextureFromImage(image)
-    ImagePixels.RaylibImageRelease(image)
-    return texture
+    return source
+}
+
+RaylibReleaseImageSource :: (source: RaylibImageSource) {
+    if source.owned != null { HostTypefaceFileDataFree(source.owned) }
+}
+
+// Whether `data` are the bytes the asset's texture was decoded from.
+RaylibAssetSameContent :: (asset: *RaylibAsset, data: string) -> bool {
+    return asset.texture.id != 0 && data.count > 0 &&
+    cast(s64)data.count == asset.content_size && RaylibAssetHash(data) == asset.content
+}
+
+// Serial hosts decode on the frame thread. A JPEG photo stands upright by
+// its Exif orientation, as browsers and GdkPixbuf draw it, since raylib's
+// decoder leaves the pixels as stored. Bytes the drawn texture came from
+// keep it; other bytes replace it only once they have decoded, so an image
+// being revalidated never leaves the screen. Returns whether the asset has
+// a texture to draw.
+RaylibDecodeAsset :: (index: s32, path: string) -> bool {
+    asset := *raylib_assets[index]
+    asset.revalidating = false
+    source := RaylibReadImageSource(path, raylib_asset_reader, raylib_asset_context, raylib_asset_reader_active)
+    defer { RaylibReleaseImageSource(source) }
+    if source.data.count == 0 {
+        // The image is gone from its folder.
+        return false
+    }
+    if RaylibAssetSameContent(asset, source.data) {
+        return true
+    }
+    texture := RaylibMemoryTexture(path, source.data)
+    if texture.id == 0 {
+        // Undecodable replacement bytes leave the drawn picture in place.
+        return asset.texture.id != 0
+    }
+    if asset.texture.id != 0 {
+        // The draw batch can still refer to the texture being replaced.
+        HostRaylibFlushBatch()
+        HostRaylibUnloadTexture(asset.texture)
+        PaintResourcesChanged()
+    }
+    asset.texture = texture
+    asset.smooth = false
+    asset.content = RaylibAssetHash(source.data)
+    asset.content_size = cast(s64)source.data.count
+    return true
+}
+
+// Serial hosts spend a frame's decoding budget on new and revalidated
+// images alike, always at least one per frame.
+RaylibAssetLoadAllowed :: (started: float64) -> bool {
+    if raylib_asset_load_window < 0.0 ||
+    started - raylib_asset_load_window >= RaylibAssetLoadWindow {
+        raylib_asset_load_window = started
+        raylib_asset_load_spent = 0.0
+        raylib_asset_loads = 0
+    }
+    if raylib_asset_loads > 0 && raylib_asset_load_spent >= RaylibAssetLoadBudget {
+        return false
+    }
+    raylib_asset_loads += 1
+    return true
+}
+
+// An image being revalidated keeps drawing its texture while the frame's
+// budget is spent; an image whose bytes are gone is forgotten.
+RaylibRevalidateSerialAsset :: (index: s32, path: string) -> bool {
+    started := HostRaylibGetTime()
+    if !RaylibAssetLoadAllowed(started) {
+        return true
+    }
+    defer { raylib_asset_load_spent += HostRaylibGetTime() - started }
+    if RaylibDecodeAsset(index, path) {
+        return true
+    }
+    RaylibForgetAsset(index)
+    return false
+}
+
+// Releases one cached image. An empty path never matches a lookup, and a
+// new token drops a decode still running for it; the next lookup loads it
+// again.
+RaylibForgetAsset :: (index: s32) {
+    if raylib_assets[index].texture.id != 0 {
+        // The draw batch can still refer to the texture being released.
+        HostRaylibFlushBatch()
+        HostRaylibUnloadTexture(raylib_assets[index].texture)
+        PaintResourcesChanged()
+    }
+    #if RAYLIB_FRAME_THREADS {
+        RaylibReleaseQueuedImage(*raylib_assets[index])
+    }
+    raylib_assets[index] = RaylibAsset.{}
+    raylib_asset_hashes[index] = 0
 }
 
 RaylibAssetIndex :: (path: string, include_loading: bool = false) -> s32 {
@@ -1311,6 +1403,10 @@ RaylibAssetIndex :: (path: string, include_loading: bool = false) -> s32 {
                     if !include_loading && raylib_assets[index].texture.id == 0 {
                         return ifx raylib_assets[index].state == RaylibImageFailed then -1 else RaylibAssetLoading
                     }
+                } else {
+                    if raylib_assets[index].revalidating && !RaylibRevalidateSerialAsset(index, path) {
+                        return -1
+                    }
                 }
                 return index
             }
@@ -1325,23 +1421,14 @@ RaylibAssetIndex :: (path: string, include_loading: bool = false) -> s32 {
         return ifx include_loading then index else RaylibAssetLoading
     }
     started := HostRaylibGetTime()
-    if raylib_asset_load_window < 0.0 ||
-    started - raylib_asset_load_window >= RaylibAssetLoadWindow {
-        raylib_asset_load_window = started
-        raylib_asset_load_spent = 0.0
-        raylib_asset_loads = 0
-    }
-    if raylib_asset_loads > 0 && raylib_asset_load_spent >= RaylibAssetLoadBudget {
+    if !RaylibAssetLoadAllowed(started) {
         raylib_picture_deferred = true
         return RaylibAssetLoading
     }
-    raylib_asset_loads += 1
     defer { raylib_asset_load_spent += HostRaylibGetTime() - started }
     index = RaylibReserveAsset(path, hash)
     if index < 0 { return -1 }
-    raylib_assets[index].texture = RaylibLoadAssetTexture(*raylib_assets[index].path[0], path)
-    raylib_assets[index].smooth = false
-    if raylib_assets[index].texture.id == cast(u32)0 {
+    if !RaylibDecodeAsset(index, path) {
         raylib_assets[index].length = 0
         return -1
     }
@@ -1414,13 +1501,39 @@ RaylibUseIconTextures :: () {
     SvgIconUseTextures(RaylibIconTexture, RaylibIconTextureFree)
 }
 
-// Resource updates keep the window, fonts and retained targets alive. Flush
-// queued draws before releasing image names that the batch may still use.
+// Resource updates keep the window, fonts, retained targets and every
+// decoded image alive: each image is read again on its next use and stays
+// drawn until bytes that differ have decoded in its place.
 #program_export
 InvalidateRaylibAssets :: () {
     #if RAYLIB_FRAME_THREADS {
         if RenderOnAppThread() {
             request := RaylibAppRequest.{.operation = RaylibResource.InvalidateAssets}
+            RenderCall(RaylibAppResource, cast(*void)*request)
+            raylib_app_generation = request.generation
+            RaylibAppMetricsClear()
+            return
+        }
+        RaylibDrainAppFrame()
+        raylib_resource_generation += cast(u64)1
+    }
+    // The next frame composes again, so each image's next use comes soon.
+    PaintResourcesChanged()
+    for index: cast(s32)0..raylib_assets_count - 1 {
+        if raylib_assets[index].length > 0 {
+            RaylibRevalidateAsset(index)
+        }
+    }
+    raylib_image_error = false
+}
+
+// A different asset reader names different content: forget every image.
+// Flush queued draws before releasing image names that the batch may
+// still use.
+RaylibForgetAssets :: () {
+    #if RAYLIB_FRAME_THREADS {
+        if RenderOnAppThread() {
+            request := RaylibAppRequest.{.operation = RaylibResource.ForgetAssets}
             RenderCall(RaylibAppResource, cast(*void)*request)
             raylib_app_generation = request.generation
             RaylibAppMetricsClear()
@@ -1463,10 +1576,32 @@ RaylibAssetUnder :: (index: s32, prefix: string) -> bool {
     return true
 }
 
-// Content under one folder was replaced: forget only the images whose path
-// starts with `prefix`, so they load again from the new content, and keep
-// every other image on screen. A frame drawn meanwhile shows the forgotten
-// ones as loading; nothing else blinks.
+// The bytes behind one cached image may have changed. A drawn texture
+// stays until the image's next use reads its bytes again: the same bytes
+// keep it, and different ones replace it once they have decoded. An image
+// not yet drawn starts loading again, and any decode of old bytes still
+// running for it is dropped by its new token.
+RaylibRevalidateAsset :: (index: s32) {
+    asset := *raylib_assets[index]
+    if asset.texture.id == 0 {
+        RaylibForgetAsset(index)
+        return
+    }
+    asset.revalidating = true
+    asset.retry_after = 0.0
+    #if RAYLIB_FRAME_THREADS {
+        #if #defined(ANDROID_DEBUG) {
+            raylib_debug_images_revalidated += 1
+        }
+        RaylibReleaseQueuedImage(asset)
+        asset.state = RaylibImageReady
+        raylib_asset_serial += cast(u64)1
+        asset.token = raylib_asset_serial
+    }
+}
+
+// Content under one folder was replaced: revalidate only the images whose
+// path starts with `prefix`. Every image stays on screen meanwhile.
 #program_export
 InvalidateRaylibAssetsUnder :: (prefix: string) {
     #if RAYLIB_FRAME_THREADS {
@@ -1477,27 +1612,15 @@ InvalidateRaylibAssetsUnder :: (prefix: string) {
         }
         RaylibDrainAppFrame()
     }
-    flushed := false
+    revalidated := false
     for index: cast(s32)0..raylib_assets_count - 1 {
-        if !RaylibAssetUnder(index, prefix) {
-            continue
+        if RaylibAssetUnder(index, prefix) {
+            RaylibRevalidateAsset(index)
+            revalidated = true
         }
-        if !flushed {
-            HostRaylibFlushBatch()
-            flushed = true
-        }
-        if raylib_assets[index].texture.id != 0 {
-            HostRaylibUnloadTexture(raylib_assets[index].texture)
-        }
-        #if RAYLIB_FRAME_THREADS {
-            RaylibReleaseQueuedImage(*raylib_assets[index])
-        }
-        // An empty path never matches a lookup, and a new token drops a
-        // decode still running for it; the next lookup loads it again.
-        raylib_assets[index] = RaylibAsset.{}
-        raylib_asset_hashes[index] = 0
     }
-    if flushed {
+    if revalidated {
+        // The next frame composes again, so each image's next use comes soon.
         PaintResourcesChanged()
     }
 }
@@ -2869,6 +2992,9 @@ RaylibImagePolygon :: (asset_path: string, texture_id: u32, source: Rectangle,
         }
     } else {
         index := RaylibAssetIndex(asset_path)
+        #if #defined(ANDROID_DEBUG) {
+            RaylibDebugImageDrawn(asset_path, index >= 0)
+        }
         if index == RaylibAssetLoading { return }
         if index < 0 { raylib_image_error = true; return }
         if CurrentPaintSmooth() && !raylib_assets[index].smooth { RaylibSmoothAsset(index) }
@@ -2923,6 +3049,9 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32,
         }
     } else if asset_path.count > 0 {
         index: s32 = RaylibAssetIndex(asset_path)
+        #if #defined(ANDROID_DEBUG) {
+            RaylibDebugImageDrawn(asset_path, index >= 0)
+        }
         if index == RaylibAssetLoading { return }
         if index < 0 {
             raylib_image_error = true
@@ -2968,6 +3097,9 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
         }
     } else if asset_path.count > 0 {
         index: s32 = RaylibAssetIndex(asset_path)
+        #if #defined(ANDROID_DEBUG) {
+            RaylibDebugImageDrawn(asset_path, index >= 0)
+        }
         if index == RaylibAssetLoading { return }
         if index < 0 {
             raylib_image_error = true
@@ -3175,47 +3307,33 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
     RaylibImageReadRetry :: 0.1
     RaylibImageDecodeRetry :: 1.0
 
+    // A texture being revalidated or replaced keeps its size: the app lays
+    // out and draws it as before while its bytes are read and decoded.
     RaylibAssetSize :: (index: s32) -> RaylibImageSize {
         if index < 0 || index >= raylib_assets_count { return RaylibImageSize.{} }
         asset := *raylib_assets[index]
-        if asset.state == RaylibImageReady {
-            return RaylibImageSize.{asset.token, asset.texture.width, asset.texture.height, false}
+        needs := asset.encoded.count == 0 && asset.state != RaylibImageDecoding &&
+        (asset.state != RaylibImageReady || asset.revalidating) &&
+        HostRaylibGetTime() >= asset.retry_after
+        if asset.texture.id != 0 {
+            return RaylibImageSize.{asset.token, asset.texture.width, asset.texture.height, needs}
         }
         dimension: s32 = ifx asset.state == RaylibImageFailed then 0 else -1
-        needs := asset.encoded.count == 0 && asset.state != RaylibImageDecoding &&
-        HostRaylibGetTime() >= asset.retry_after
         return RaylibImageSize.{asset.token, dimension, dimension, needs}
     }
 
-    // Images still read or decoded, as the render thread sees them.
+    // Images still read or decoded, as the render thread sees them. One
+    // whose old texture is still drawn is not pending.
     RaylibImagesPendingCount :: () -> s32 {
         pending: s32 = 0
         for index: cast(s32)0..raylib_assets_count - 1 {
             state := raylib_assets[index].state
-            if state == RaylibImageQueued || state == RaylibImageDecoding { pending += 1 }
-        }
-        return pending
-    }
-
-    RaylibImageSource :: struct { data: string; owned: *u8 }
-    RaylibReadImageSource :: (path: string, reader: RaylibAssetReadCall,
-        context: *void, active: bool) -> RaylibImageSource {
-        source: RaylibImageSource
-        if active {
-            source.data = reader(context, path)
-        } else {
-            name: [1024]u8
-            count: s32
-            if CopyCString(path, name[:]) { source.owned = HostTypefaceFileData(*name[0], *count) }
-            if source.owned != null && count > 0 {
-                source.data = TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(source.owned, cast(u64)count))
+            if raylib_assets[index].texture.id == 0 &&
+            (state == RaylibImageQueued || state == RaylibImageDecoding) {
+                pending += 1
             }
         }
-        return source
-    }
-
-    RaylibReleaseImageSource :: (source: RaylibImageSource) {
-        if source.owned != null { HostTypefaceFileDataFree(source.owned) }
+        return pending
     }
 
     RaylibReleaseQueuedImage :: (asset: *RaylibAsset) {
@@ -3228,15 +3346,36 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
 
     // One waiting source and one active decode bound memory. File callbacks
     // never run here: the producer has already captured their bytes.
+    // A revalidated image whose bytes are unchanged keeps its texture
+    // without decoding; one whose bytes are gone is forgotten.
     RaylibQueueImageSource :: (index: s32, token: u64, data: string) -> bool {
         if index < 0 || index >= raylib_assets_count || raylib_image_source_queued { return false }
         asset := *raylib_assets[index]
-        if asset.token != token || asset.state == RaylibImageReady || asset.state == RaylibImageDecoding { return false }
+        if asset.token != token || asset.state == RaylibImageDecoding { return false }
+        if asset.state == RaylibImageReady && !asset.revalidating { return false }
+        if asset.revalidating && data.count == 0 {
+            #if #defined(ANDROID_DEBUG) {
+                raylib_debug_images_forgotten += 1
+            }
+            RaylibForgetAsset(index)
+            return false
+        }
+        if RaylibAssetSameContent(asset, data) {
+            #if #defined(ANDROID_DEBUG) {
+                raylib_debug_images_kept += 1
+            }
+            asset.revalidating = false
+            asset.state = RaylibImageReady
+            return true
+        }
         encoded := ImagePixels.RaylibImageBytesCopy(data)
         if encoded.count == 0 {
             asset.retry_after = HostRaylibGetTime() + RaylibImageReadRetry
             return false
         }
+        asset.revalidating = false
+        asset.source_content = RaylibAssetHash(data)
+        asset.source_size = cast(s64)data.count
         asset.encoded = encoded
         asset.state = RaylibImageQueued
         raylib_image_source_queued = true
@@ -3284,11 +3423,28 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
             if raylib_image_job_generation == raylib_resource_generation &&
             index < raylib_assets_count && raylib_assets[index].token == raylib_image_job_token &&
             raylib_assets[index].state == RaylibImageDecoding {
+                asset := *raylib_assets[index]
+                texture: Texture2D
                 if image.data != null {
-                    raylib_assets[index].texture = HostRaylibTextureFromImage(image)
+                    texture = HostRaylibTextureFromImage(image)
                 }
-                raylib_assets[index].state = ifx raylib_assets[index].texture.id != 0 then RaylibImageReady else RaylibImageFailed
-                raylib_assets[index].retry_after = HostRaylibGetTime() + RaylibImageDecodeRetry
+                // A replacement takes the old texture's place in one step;
+                // undecodable replacement bytes leave the old picture.
+                if texture.id != 0 {
+                    if asset.texture.id != 0 {
+                        #if #defined(ANDROID_DEBUG) {
+                            raylib_debug_images_replaced += 1
+                        }
+                        HostRaylibFlushBatch()
+                        HostRaylibUnloadTexture(asset.texture)
+                    }
+                    asset.texture = texture
+                    asset.smooth = false
+                    asset.content = asset.source_content
+                    asset.content_size = asset.source_size
+                }
+                asset.state = ifx asset.texture.id != 0 then RaylibImageReady else RaylibImageFailed
+                asset.retry_after = HostRaylibGetTime() + RaylibImageDecodeRetry
                 PaintResourcesChanged()
             }
             ImagePixels.RaylibImageRelease(image)
@@ -3398,6 +3554,7 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         ResetGraphics
         InvalidateAssets
         InvalidateAssetsUnder
+        ForgetAssets
         ReleaseTypefaces
         IconTexture
         RetainedTargets
@@ -3482,6 +3639,8 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
             InvalidateRaylibAssets()
         } else if request.operation == RaylibResource.InvalidateAssetsUnder {
             InvalidateRaylibAssetsUnder(request.value)
+        } else if request.operation == RaylibResource.ForgetAssets {
+            RaylibForgetAssets()
         } else if request.operation == RaylibResource.ReleaseTypefaces {
             ReleaseTypefaces()
         } else if request.operation == RaylibResource.IconTexture {
@@ -3614,6 +3773,51 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         raylib_debug_frames: s32;
         raylib_debug_text_requests: s32;
         raylib_debug_image_requests: s32;
+        // Images drawn with a texture in one replayed frame and without one
+        // in the next: each such frame is an image blinking out.
+        raylib_debug_drawn: [2][128]u64;
+        raylib_debug_drawn_count: [2]s32;
+        raylib_debug_drawn_current: s32;
+        raylib_debug_blinks: s32;
+        raylib_debug_blink_frames: s32;
+        raylib_debug_images_revalidated: s32;
+        raylib_debug_images_kept: s32;
+        raylib_debug_images_replaced: s32;
+        raylib_debug_images_forgotten: s32;
+        RaylibDebugImageDrawn :: (path: string, textured: bool) {
+            key := RaylibAssetHash(path)
+            if textured {
+                current := raylib_debug_drawn_current
+                if raylib_debug_drawn_count[current] < 128 {
+                    raylib_debug_drawn[current][raylib_debug_drawn_count[current]] = key
+                    raylib_debug_drawn_count[current] += 1
+                }
+                return
+            }
+            previous := 1 - raylib_debug_drawn_current
+            for at: cast(s32)0..raylib_debug_drawn_count[previous] - 1 {
+                if raylib_debug_drawn[previous][at] == key {
+                    raylib_debug_blinks += 1
+                    return
+                }
+            }
+        }
+        // After each replayed frame. A frame that drew no image, as one that
+        // presented its retained target again, keeps the earlier record.
+        RaylibDebugImageFrame :: () {
+            if raylib_debug_blinks == 0 && raylib_debug_drawn_count[raylib_debug_drawn_current] == 0 {
+                return
+            }
+            if raylib_debug_blinks > 0 {
+                raylib_debug_blink_frames += 1
+                RaylibPipelineTrace("image blink frame=%d images=%d blink-frames=%d revalidated=%d kept=%d replaced=%d",
+                    raylib_debug_frames, raylib_debug_blinks, raylib_debug_blink_frames,
+                    raylib_debug_images_revalidated, raylib_debug_images_kept, raylib_debug_images_replaced)
+            }
+            raylib_debug_blinks = 0
+            raylib_debug_drawn_current = 1 - raylib_debug_drawn_current
+            raylib_debug_drawn_count[raylib_debug_drawn_current] = 0
+        }
         RaylibDiagnosticClock :: () -> float64 { return HostRaylibGetTime() }
         RaylibDiagnosticAssets :: () {
             ready: s32
@@ -3628,6 +3832,10 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
             RaylibPipelineTrace("assets total=%d ready=%d queued=%d failed=%d job=%d reader=%d",
                 raylib_assets_count, ready, queued, failed, raylib_image_job_index,
                 ifx raylib_asset_reader_active then 1 else 0)
+            RaylibPipelineTrace("images blink-frames=%d revalidated=%d kept=%d replaced=%d forgotten=%d drawn=%d",
+                raylib_debug_blink_frames, raylib_debug_images_revalidated, raylib_debug_images_kept,
+                raylib_debug_images_replaced, raylib_debug_images_forgotten,
+                raylib_debug_drawn_count[1 - raylib_debug_drawn_current])
         }
         PipelineLogPrint :: (priority: s32, tag: *u8, format: *u8,
             a: s32, b: s32, c: s32, d: s32, e: s32, f: s32) -> s32 #foreign pipeline_log "__android_log_print";
@@ -3732,6 +3940,7 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         ok := RenderPipelineStep(pipeline, RaylibPipelineCompose, null)
         if !ok { RaylibPipelineError("kryon: frame recording or replay failed") }
         #if #defined(ANDROID_DEBUG) {
+            RaylibDebugImageFrame()
             raylib_debug_frames += 1
             if raylib_debug_frames <= 4 || raylib_debug_frames % 300 == 0 {
                 frame := *pipeline.frames[pipeline.pending]

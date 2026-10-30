@@ -218,7 +218,8 @@ PendingFrames :: () -> s32 {
     if !WaitForImage("later.png") { return 41 }
     later := Rly.RaylibAssetIndex("later.png")
     if TextureHash(Rly.raylib_assets[later].texture) != hash { return 42 }
-    Rly.InvalidateRaylibAssets()
+    // Another reader names other content: every image loads again.
+    Rly.RaylibSetAssetReader(Asset, null)
     HoldDecode()
     if Rly.ImageWidth("fixture.png") != -1 { return 35 }
     WaitDecodeStarted()
@@ -319,6 +320,103 @@ ReadFixture :: (path: string) -> string {
     }
     Release(bytes)
     return ""
+}
+
+// Bytes a replaced folder serves for one image; "" once it is gone.
+revalidated_bytes: string;
+RevalidatedAsset :: (context: *void, path: string) -> string {
+    unused context
+    if path == "practices/figure.png" { return revalidated_bytes }
+    return ifx path == "other/figure.png" then image_bytes else ""
+}
+
+// One frame drawing the figure over a dark background, as its pixel hash.
+RevalidatedFrame :: () -> u64 {
+    if !Rly.BeginRetainedFrame(128, 128) { return 0 }
+    box := Rectangle.{0.0, 0.0, 128.0, 128.0}
+    Rly.RasterRoundedRectangle(box, 0.0, 4, Color.{9, 15, 23, 255})
+    Rly.RasterImage("practices/figure.png", 0, Rectangle.{0.0, 0.0, 8.0, 8.0}, box,
+        box, Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 255})
+    if !Rly.EndRetainedFrame() { return 0 }
+    return TextureHash(Rly.RetainedPreviousFrameTexture())
+}
+
+// Replacing the content of a folder must never blank an image drawn from
+// it: unchanged bytes keep its texture without decoding, and changed bytes
+// replace it in one step only after they have decoded.
+RevalidatedImages :: () -> s32 {
+    revalidated_bytes = image_bytes
+    Rly.RaylibSetAssetReader(RevalidatedAsset, null)
+    if Rly.ImageWidth("practices/figure.png") != -1 || !WaitForImage("practices/figure.png") ||
+    !WaitForImage("other/figure.png") {
+        return 70
+    }
+    index := Rly.RaylibAssetIndex("practices/figure.png")
+    other := Rly.RaylibAssetIndex("other/figure.png")
+    drawn := Rly.raylib_assets[index].texture.id
+    other_drawn := Rly.raylib_assets[other].texture.id
+    reference := RevalidatedFrame()
+    if reference == 0 { return 71 }
+    decodes := decode_calls
+    creations := texture_creations
+    Rly.InvalidateRaylibAssetsUnder("practices/")
+    if Rly.raylib_assets[index].texture.id != drawn || Rly.ImagesPending() != 0 ||
+    Rly.ImageWidth("practices/figure.png") != 8 || RevalidatedFrame() != reference {
+        return 72
+    }
+    for attempt: 0..9 { Rly.RaylibPumpImages() }
+    if decode_calls != decodes || texture_creations != creations ||
+    Rly.raylib_assets[index].texture.id != drawn || Rly.raylib_assets[index].revalidating {
+        return 73
+    }
+    // Different bytes, here a trailing byte the decoder ignores, decode on
+    // the worker while every frame still draws the old texture.
+    changed := Allocate(cast(usize)image_bytes.count + 1)
+    if changed == null { return 74 }
+    defer { Release(changed) }
+    for at: cast(s64)0..image_bytes.count - 1 { changed[at] = image_bytes[at] }
+    changed[image_bytes.count] = 0
+    revalidated_bytes = TextFromBytes(BytesFromPointer(changed, cast(u64)image_bytes.count + 1))
+    HoldDecode()
+    Rly.InvalidateRaylibAssetsUnder("practices/")
+    if Rly.ImageWidth("practices/figure.png") != 8 { ReleaseDecode(); return 75 }
+    WaitDecodeStarted()
+    for frame: 0..3 {
+        Rly.RaylibPumpImages()
+        if Rly.raylib_assets[index].texture.id != drawn || Rly.ImagesPending() != 0 ||
+        Rly.ImageWidth("practices/figure.png") != 8 || RevalidatedFrame() != reference {
+            ReleaseDecode()
+            return 76
+        }
+    }
+    ReleaseDecode()
+    replaced := false
+    for attempt: 0..1999 {
+        Rly.RaylibPumpImages()
+        if Rly.raylib_assets[index].texture.id != drawn { replaced = true; break }
+        if RevalidatedFrame() != reference { return 77 }
+        unused SleepMicros(1000)
+    }
+    if !replaced || texture_creations != creations + 1 || decode_calls != decodes + 1 ||
+    RevalidatedFrame() != reference || Rly.raylib_assets[other].texture.id != other_drawn {
+        return 78
+    }
+    // A full update revalidates every image the same way.
+    replacement := Rly.raylib_assets[index].texture.id
+    Rly.InvalidateRaylibAssets()
+    if Rly.ImageWidth("practices/figure.png") != 8 || Rly.ImageWidth("other/figure.png") != 8 ||
+    Rly.raylib_assets[index].texture.id != replacement || Rly.raylib_assets[other].texture.id != other_drawn {
+        return 79
+    }
+    for attempt: 0..9 { Rly.RaylibPumpImages() }
+    if texture_creations != creations + 1 || RevalidatedFrame() != reference { return 80 }
+    // An image whose bytes are gone from the folder is forgotten.
+    revalidated_bytes = ""
+    Rly.InvalidateRaylibAssetsUnder("practices/")
+    unused Rly.ImageWidth("practices/figure.png")
+    if Rly.ImageWidth("practices/figure.png") != -1 || Rly.ImageWidth("other/figure.png") != 8 { return 81 }
+    Rly.RaylibClearAssetReader()
+    return 0
 }
 
 late_ready: bool;
@@ -519,6 +617,7 @@ main :: () -> s32 {
     text_measure_calls != before_measure { return 43 }
     Rly.CloseRaylibAppFrames()
     result := PendingFrames()
+    if result == 0 { result = RevalidatedImages() }
     if result == 0 && !FrameSource() { result = 46 }
     if result == 0 { result = Compare(false) }
     if result == 0 { result = Compare(true) }

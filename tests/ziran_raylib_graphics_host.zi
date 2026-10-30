@@ -52,20 +52,18 @@ rlEnd :: () { graphics_failed = true }
 #program_export
 rlColor4ub :: (r: u8, g: u8, b: u8, a: u8) { unused r; unused g; unused b; unused a; graphics_failed = true }
 
-#program_export
-LoadTexture :: (path: *u8) -> Texture2D {
-    unused path
-    texture_loads += 1
-    clock_seconds += load_seconds
-    return Texture2D.{cast(u32)(context_epoch * 1000 + texture_loads),
-        200, 100, 1, 7}
-}
-
 // A sideways camera JPEG: Exif orientation 6, stored turned left.
 sideways_jpeg: [40]u8 = .[255, 216, 255, 225, 0, 34, 69, 120, 105, 102, 0, 0,
 77, 77, 0, 42, 0, 0, 0, 8, 0, 1, 1, 18, 0, 3, 0, 0, 0, 1, 0, 6,
 0, 0, 0, 0, 0, 0, 255, 217];
 photo_pixels: [4]u8;
+// Every other image reads these stand-in bytes and decodes to 200x100;
+// changing a byte changes the image's content.
+image_bytes: [8]u8 = .[137, 80, 78, 71, 13, 10, 26, 10];
+image_pixels: [4]u8;
+// Whether image files have gone away.
+files_missing: bool;
+// Frees of the JPEG's file and decoded image.
 file_frees: s32;
 image_unloads: s32;
 clockwise_turns: s32;
@@ -74,22 +72,36 @@ other_turns: s32;
 
 #program_export
 LoadFileData :: (path: *u8, size: *s32) -> *u8 {
-    unused path
-    size.* = 40
-    return *sideways_jpeg[0]
+    size.* = 0
+    if files_missing { return null }
+    length: s32 = 0
+    while path[length] != cast(u8)0 { length += 1 }
+    if length >= 4 && path[length - 3] == cast(u8)106 && path[length - 2] == cast(u8)112 &&
+    path[length - 1] == cast(u8)103 {
+        size.* = 40
+        return *sideways_jpeg[0]
+    }
+    size.* = 8
+    return *image_bytes[0]
 }
 
 #program_export
 UnloadFileData :: (data: *u8) {
-    if data != *sideways_jpeg[0] { graphics_failed = true }
-    file_frees += 1
+    if data == *sideways_jpeg[0] {
+        file_frees += 1
+    } else if data != *image_bytes[0] {
+        graphics_failed = true
+    }
 }
 
 #program_export
 LoadImageFromMemory :: (file_type: *u8, data: *u8, size: s32) -> RaylibGlyphImage {
     unused file_type
-    if data != *sideways_jpeg[0] || size != 40 { graphics_failed = true }
-    return RaylibGlyphImage.{cast(*void)*photo_pixels[0], 100, 200, 1, 7}
+    if data == *sideways_jpeg[0] && size == 40 {
+        return RaylibGlyphImage.{cast(*void)*photo_pixels[0], 100, 200, 1, 7}
+    }
+    if data != *image_bytes[0] || size != 8 { graphics_failed = true }
+    return RaylibGlyphImage.{cast(*void)*image_pixels[0], 200, 100, 1, 7}
 }
 
 #program_export
@@ -112,14 +124,18 @@ ImageFlipVertical :: (image: *RaylibGlyphImage) { unused image; other_turns += 1
 #program_export
 LoadTextureFromImage :: (image: RaylibGlyphImage) -> Texture2D {
     texture_loads += 1
+    clock_seconds += load_seconds
     return Texture2D.{cast(u32)(context_epoch * 1000 + texture_loads),
         image.width, image.height, 1, image.format}
 }
 
 #program_export
 UnloadImage :: (image: RaylibGlyphImage) {
-    if image.data != cast(*void)*photo_pixels[0] { graphics_failed = true }
-    image_unloads += 1
+    if image.data == cast(*void)*photo_pixels[0] {
+        image_unloads += 1
+    } else if image.data != cast(*void)*image_pixels[0] {
+        graphics_failed = true
+    }
 }
 
 #program_export

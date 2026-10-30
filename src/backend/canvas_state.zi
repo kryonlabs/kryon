@@ -8,6 +8,8 @@
 #import "canvas_os"
 #import "text_typeface"
 #import "text_buffer"
+#import "page_core"
+#import "paint_queue"
 // Text layout stays cached while these fonts stay loaded; see font_metrics.
 Metrics :: #import "font_metrics";
 
@@ -23,6 +25,12 @@ CanvasAsset :: struct {
     texture: Texture2D
     // Drawn with the browser's image smoothing.
     smooth: bool
+    // Its folder was replaced: the texture stays drawn until its bytes are
+    // read again, and only bytes that differ replace it.
+    revalidating: bool
+    // FNV-1a and length of the bytes the texture was decoded from.
+    content: u64
+    content_size: s64
 }
 
 canvas_assets: [32]CanvasAsset;
@@ -252,10 +260,49 @@ CanvasAssetIs :: (index: s32, path: string) -> bool {
     return asset.length == cast(s32)path.count && TextFromBytes(asset.path[:asset.length]) == path
 }
 
+// Releases one cached image; an empty path never matches a lookup.
+CanvasForgetAsset :: (index: s32) {
+    if canvas_assets[index].texture.id != cast(u32)0 {
+        // Queued page paint can still refer to the texture being released.
+        PageFlushPaint()
+        UnloadTexture(canvas_assets[index].texture)
+        PaintResourcesChanged()
+    }
+    canvas_assets[index] = CanvasAsset.{}
+    if canvas_asset_last == index { canvas_asset_last = -1 }
+}
+
+// A revalidated image reads its bytes again on its next use. The same bytes
+// keep its texture, and different ones replace it in one step once they
+// have decoded, so it never leaves the screen; an image whose bytes are
+// gone is forgotten.
+CanvasRevalidateAsset :: (index: s32) -> bool {
+    asset := *canvas_assets[index]
+    asset.revalidating = false
+    loaded := LoadTextureUnlessContent(*asset.path[0], asset.content, asset.content_size)
+    if loaded.size == 0 {
+        CanvasForgetAsset(index)
+        return false
+    }
+    // Unchanged bytes, or undecodable replacement bytes, keep the picture.
+    if loaded.texture.id == cast(u32)0 { return true }
+    PageFlushPaint()
+    UnloadTexture(asset.texture)
+    asset.texture = loaded.texture
+    asset.smooth = false
+    asset.content = loaded.content
+    asset.content_size = loaded.size
+    PaintResourcesChanged()
+    return true
+}
+
 CanvasAssetIndex :: (path: string) -> s32 {
     if path.count == 0 || path.count >= 1024 { return -1 }
     if canvas_asset_last >= 0 && canvas_asset_last < canvas_assets_count &&
     CanvasAssetIs(canvas_asset_last, path) {
+        if canvas_assets[canvas_asset_last].revalidating && !CanvasRevalidateAsset(canvas_asset_last) {
+            return -1
+        }
         return canvas_asset_last
     }
     // Every image drawn looks its texture up, and asset paths share long
@@ -265,6 +312,9 @@ CanvasAssetIndex :: (path: string) -> s32 {
     index: s32 = 0
     while index < canvas_assets_count {
         if canvas_assets[index].hash == hash && CanvasAssetIs(index, path) {
+            if canvas_assets[index].revalidating && !CanvasRevalidateAsset(index) {
+                return -1
+            }
             canvas_asset_last = index
             return index
         }
@@ -284,8 +334,11 @@ CanvasAssetIndex :: (path: string) -> s32 {
     }
     canvas_assets[index].length = cast(s32)path.count
     canvas_assets[index].hash = hash
-    canvas_assets[index].texture =
-    LoadTexture(*canvas_assets[index].path[0])
+    loaded := LoadTextureUnlessContent(*canvas_assets[index].path[0], 0, 0)
+    canvas_assets[index].texture = loaded.texture
+    canvas_assets[index].content = loaded.content
+    canvas_assets[index].content_size = loaded.size
+    canvas_assets[index].revalidating = false
     canvas_assets[index].smooth = false
     if canvas_assets[index].texture.id == cast(u32)0 {
         canvas_assets[index].length = 0

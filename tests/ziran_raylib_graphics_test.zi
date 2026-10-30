@@ -80,10 +80,14 @@ main :: () -> s32 {
 
     // Cache eviction must submit earlier draws before deleting their texture.
     before_flushes := flushes
-    paths: [RaylibAssetCapacity][2]u8
+    paths: [RaylibAssetCapacity][6]u8
     for index: 0..RaylibAssetCapacity - 1 {
         paths[index][0] = cast(u8)(65 + index / 26)
         paths[index][1] = cast(u8)(97 + index % 26)
+        paths[index][2] = cast(u8)46
+        paths[index][3] = cast(u8)112
+        paths[index][4] = cast(u8)110
+        paths[index][5] = cast(u8)103
         if ImageWidth(TextFromBytes(paths[index][:])) != 200 {
             return 9
         }
@@ -103,13 +107,39 @@ main :: () -> s32 {
     font_releases := font_unloads
     target_releases := unloads
     loads := texture_loads
+    releases := texture_unloads
+    updated := RaylibAssetIndex("updated.png")
+    drawn := raylib_assets[updated].texture.id
+    // Fonts, retained frames and decoded images all survive an update.
     InvalidateRaylibAssets()
-    if texture_unloads != 3 + RaylibAssetCapacity || font_unloads != font_releases ||
+    if texture_unloads != releases || font_unloads != font_releases ||
     unloads != target_releases || RetainedPreviousFrameTexture().id != frame ||
     !SelectTypeface("updated") || graphics_failed { return 13 }
-    if ImageWidth("updated.png") != 200 || texture_loads != loads + 1 {
+    // Unchanged bytes keep the drawn texture without decoding again.
+    if ImageWidth("updated.png") != 200 || texture_loads != loads ||
+    raylib_assets[updated].texture.id != drawn {
         return 14
     }
+    // Changed bytes replace the texture only once they have decoded, so
+    // the image is never reported as loading and never drawn blank.
+    image_bytes[7] = 11
+    InvalidateRaylibAssetsUnder("upd")
+    if raylib_assets[updated].texture.id != drawn || texture_unloads != releases { return 25 }
+    if ImageWidth("updated.png") != 200 || texture_loads != loads + 1 ||
+    texture_unloads != releases + 1 || raylib_assets[updated].texture.id == drawn ||
+    graphics_failed {
+        return 26
+    }
+    // Images under other folders stay as they are.
+    replaced := raylib_assets[updated].texture.id
+    InvalidateRaylibAssetsUnder("other/")
+    if ImageWidth("updated.png") != 200 || raylib_assets[updated].texture.id != replaced { return 27 }
+    // An image whose bytes are gone is forgotten.
+    files_missing = true
+    InvalidateRaylibAssetsUnder("upd")
+    if ImageWidth("updated.png") != 0 || texture_unloads != releases + 2 || graphics_failed { return 28 }
+    files_missing = false
+    image_bytes[7] = 10
     // A frame decodes images until its budget is spent, always at least one.
     // Later images report loading, draw nothing without an error, and load
     // in the next frame.
