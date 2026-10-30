@@ -18,7 +18,22 @@ main :: () -> s32 {
     if DesktopKey(0x4000003A) != 290 || DesktopKey(0x40000045) != 301 ||
     DesktopKey(0x400000E0) != 341 || DesktopKey(0x400000E5) != 344 { return 5 }
     // A key with no shared code is not reported.
-    if DesktopKey(0x40000062) != 0 || DesktopKey(233) != 0 ||
+    if DesktopKey(0x40000066) != 0 || DesktopKey(233) != 0 ||
     DesktopKey(0) != 0 { return 6 }
+    if DesktopKey(0x40000062) != 320 { return 7 }
+    for key: 0..8 { if DesktopKey(0x40000059 + cast(s32)key) != 321 + key { return 8 } }
+    queue: DesktopKeyBuffer
+    keys: [4]s32 = .[263, 65, 74, 324]
+    for index: 0..3 { if !DesktopKeyPush(*queue, keys[index], cast(s32)index) { return 9 } }
+    for index: 0..3 {
+        key, modifiers := DesktopKeyTake(*queue)
+        if key != keys[index] || modifiers != index { return 10 }
+    }
+    key, modifiers := DesktopKeyTake(*queue)
+    if key != 0 { return 11 }
+    queue = .{}
+    if DesktopKeyPush(*queue, 0, 0) { return 12 }
+    for index: 0..31 { if !DesktopKeyPush(*queue, 65, 0) { return 13 } }
+    if DesktopKeyPush(*queue, 66, 0) { return 14 }
     return 0
 }

@@ -62,6 +62,20 @@ main :: () -> s32 {
     if !PushTextAndClick() { return 10 }
     status := Received(-1)
     if status != 0 { return status }
+    // Four actual SDL keydown events in one poll retain every player's turn,
+    // including the physical numeric keypad, in arrival order.
+    raw: [4]s32 = .[0x40000050, 97, 106, 0x4000005C]
+    expected: [4]s32 = .[263, 65, 74, 324]
+    for index: 0..3 {
+        key_event: Event
+        key_event.kind = cast(u32)0x300
+        key_event.x = raw[index]
+        if Push(cast(*void)*key_event) != 1 { return 11 }
+    }
+    if !Desktop.PollDesktop() { return 12 }
+    if Desktop.DesktopPressedKey() != 324 || Desktop.DesktopPressedKey() != 0 { return 13 }
+    for index: 0..3 { if Desktop.DesktopNextKey() != expected[index] { return 14 } }
+    if Desktop.DesktopNextKey() != 0 || !Desktop.PollDesktop() || Desktop.DesktopNextKey() != 0 { return 15 }
     for sample: 0..19 {
         while Poll(cast(*void)*event) != 0 {}
         if !Desktop.PollDesktop() { return 2 }
@@ -84,6 +98,6 @@ main :: () -> s32 {
         }
         print("wake % %\n",sample,latency)
     }
-    print("Desktop idle waits preserve queued keyboard, text and pointer input exactly once\n")
+    print("Desktop idle waits preserve four simultaneous keys, text and pointer input exactly once\n")
     return 0
 }

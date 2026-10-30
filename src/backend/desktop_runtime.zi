@@ -89,6 +89,7 @@ pointer: PointerFrame;
 secondary: SecondaryPointerFrame;
 desktop_wheel: float32;
 desktop_key: s32;
+desktop_keys: DesktopKeyBuffer;
 // File drops are copied before SDL releases its event-owned path. Applications
 // consume them on the UI thread; unrelated windows and drop text stay separate.
 desktop_dropped_files: [16][4096]u8;
@@ -342,6 +343,7 @@ PollDesktop :: () -> bool {
     right_released: bool = false
     desktop_wheel = 0.0
     desktop_key = 0
+    desktop_keys = .{}
     desktop_key_modifiers = -1
     desktop_codepoint_count = 0
     desktop_codepoint_next = 0
@@ -400,6 +402,7 @@ PollDesktop :: () -> bool {
             // keysym.mod the low 16 bits at offset 24.
             desktop_key = DesktopKey(event.x)
             desktop_key_modifiers = event.y & 65535
+            unused DesktopKeyPush(*desktop_keys, desktop_key, desktop_key_modifiers)
         }
         if event.kind == cast(u32)0x303 {
             // SDL_TextInputEvent.text is a NUL-terminated UTF-8 array at
@@ -459,8 +462,18 @@ DesktopWheelMove :: () -> float32 { return desktop_wheel }
 
 #program_export
 DesktopPressedKey :: () -> s32 {
-    key: s32 = desktop_key
+    // Existing widget loops use the last key and its modifiers.
+    key := desktop_key
     desktop_key = 0
+    return key
+}
+
+// Games with several input targets drain the complete ordered snapshot.
+// Reading it does not change the ordinary single-widget event above.
+#program_export
+DesktopNextKey :: () -> s32 {
+    key, modifiers := DesktopKeyTake(*desktop_keys)
+    if key != 0 { desktop_key_modifiers = modifiers }
     return key
 }
 

@@ -115,6 +115,8 @@
 
 ### Fixed
 
+- Recognize desktop numeric-keypad digits and preserve simultaneous key presses for local multiplayer games.
+
 - Holding arrow keys keeps moving in browser apps and games.
 
 - Keep warped-image animations smooth on slower browsers and refresh views when their images change.

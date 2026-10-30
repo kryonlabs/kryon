@@ -35,6 +35,12 @@ The desktop host uses `cairo_raster.zi`. Its frame loop is `desktop_loop.zi`:
 a project host that needs its own window size imports `kryon/desktop_loop`
 and returns `RunDesktop(width, height)`, and `DesktopStartBeside(marker)`
 starts a program opened from its build folder where its files are.
+`DesktopPressedKey()` supplies the frame's last key to ordinary widget loops.
+Games with several players can drain `DesktopNextKey()` for every key in arrival
+order after `PollDesktop()`, up to 32 presses per poll. This snapshot is consumed
+independently from the widget event and resets on the next poll. Numeric-keypad
+digits use the shared codes 320–329; `DesktopModifiers()` follows the key most
+recently drained.
 The DOM host reuses
 the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
 Standalone `AppContext` applications can use the same two presentations with

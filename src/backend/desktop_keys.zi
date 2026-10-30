@@ -23,6 +23,9 @@ DesktopKey :: (sdl: s32) -> s32 {
     if sdl == 0x40000053 { return 282 }
     if sdl == 0x40000046 { return 283 }
     if sdl == 0x40000048 { return 284 }
+    // SDL puts keypad zero after one through nine; shared hosts use 320–329.
+    if sdl == 0x40000062 { return 320 }
+    if sdl >= 0x40000059 && sdl <= 0x40000061 { return sdl - 0x40000059 + 321 }
     // F1 through F12 are consecutive in both numberings.
     if sdl >= 0x4000003A && sdl <= 0x40000045 { return sdl - 0x4000003A + 290 }
     if sdl == 0x400000E0 { return 341 }
@@ -36,4 +39,26 @@ DesktopKey :: (sdl: s32) -> s32 {
     if sdl >= 97 && sdl <= 122 { return sdl - 32 }
     if sdl >= 32 && sdl < 127 { return sdl }
     return 0
+}
+
+// One poll may contain turns from several players. Keep their order and
+// modifiers without changing the session's single-widget keyboard event.
+DesktopKeyBuffer :: struct {
+    keys: [32]s32
+    modifiers: [32]s32
+    count: s32
+    next: s32
+}
+DesktopKeyPush :: (buffer: *DesktopKeyBuffer, key: s32, modifiers: s32) -> bool {
+    if key == 0 || buffer.count >= 32 { return false }
+    buffer.keys[buffer.count] = key
+    buffer.modifiers[buffer.count] = modifiers
+    buffer.count += 1
+    return true
+}
+DesktopKeyTake :: (buffer: *DesktopKeyBuffer) -> (key: s32, modifiers: s32) {
+    if buffer.next >= buffer.count { return 0, 0 }
+    at := buffer.next
+    buffer.next += 1
+    return buffer.keys[at], buffer.modifiers[at]
 }
