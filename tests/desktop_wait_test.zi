@@ -5,6 +5,8 @@ sdl :: #system_library "SDL2";
 Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
 Counter :: () -> u64 #foreign sdl "SDL_GetPerformanceCounter";
 Frequency :: () -> u64 #foreign sdl "SDL_GetPerformanceFrequency";
+WindowID :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+input_window: u32;
 Push :: (event: *void) -> s32 #foreign sdl "SDL_PushEvent";
 Poll :: (event: *void) -> s32 #foreign sdl "SDL_PollEvent";
 WaitTimeout :: (event: *void, milliseconds: s32) -> s32 #foreign sdl "SDL_WaitEventTimeout";
@@ -15,13 +17,13 @@ Event :: struct {
 }
 Work :: struct { ready: u64; delivered: bool }
 PushKey :: () -> bool {
-    key: Event; key.kind = cast(u32)0x300; key.x = 32
+    key: Event; key.window_id = input_window; key.kind = cast(u32)0x300; key.x = 32
     return Push(cast(*void)*key) == 1
 }
 PushTextAndClick :: () -> bool {
-    text: Event; text.kind = cast(u32)0x303; text.which = cast(u32)65
-    press: Event; press.kind = cast(u32)0x401; press.button = cast(u8)1
-    release: Event; release.kind = cast(u32)0x402; release.button = cast(u8)1
+    text: Event; text.window_id = input_window; text.kind = cast(u32)0x303; text.which = cast(u32)65
+    press: Event; press.window_id = input_window; press.kind = cast(u32)0x401; press.button = cast(u8)1
+    release: Event; release.window_id = input_window; release.kind = cast(u32)0x402; release.button = cast(u8)1
     return Push(cast(*void)*text) == 1 && Push(cast(*void)*press) == 1 &&
         Push(cast(*void)*release) == 1
 }
@@ -52,6 +54,7 @@ Received :: (round: s32) -> s32 {
 main :: () -> s32 {
     if !Desktop.OpenDesktopSized(160, 120) { return 1 }
     defer Desktop.CloseDesktop()
+    input_window = WindowID(Desktop.DesktopWindow())
     Delay(cast(u32)100)
     event: Event
     // A pump between two pushes leaves SDL's poll marker between them, as
@@ -68,6 +71,7 @@ main :: () -> s32 {
     expected: [4]s32 = .[263, 65, 74, 324]
     for index: 0..3 {
         key_event: Event
+        key_event.window_id = input_window
         key_event.kind = cast(u32)0x300
         key_event.x = raw[index]
         if Push(cast(*void)*key_event) != 1 { return 11 }

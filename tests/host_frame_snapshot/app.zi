@@ -1,0 +1,77 @@
+#import "session"
+#import "std/bundle_host"
+#import "geometry"
+#import "frame_snapshot"
+#import "input_protocol"
+#import "key_input"
+#import "tree_input"
+#import "widget_host"
+#import "widget_codec"
+#import "hosted_values"
+
+expected_flags: u8;
+expected_named_code: s32;
+expected_named_flags: u8;
+expected_focus: bool = true;
+expected_key: s32;
+expected_text: bool;
+expected_wheel: float32;
+expected_modifiers: s32;
+expected_pointer: bool;
+expected_sequence: u64;
+callback_fail: bool;
+failure: s32;
+saved: FrameInputSnapshot;
+last: FrameInputSnapshot;
+foreign: Session;
+libc :: #system_library "c";
+Print :: (format: *u8, sequence: s32, failure: s32, actual: s32, expected: s32) -> s32 #foreign libc "printf";
+
+AllowAsset :: (path: string) -> bool { unused path; return false }
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    unused viewport
+    first := CaptureFrameInput(session)
+    if !first.available || first.sequence != expected_sequence ||
+    first.focused != expected_focus || first.keys[65] != expected_flags ||
+    first.modifiers != expected_modifiers || first.wheel != expected_wheel ||
+    first.pointer.down != expected_pointer || first.secondary.down != expected_pointer ||
+    first.delta_ms < 0 || first.elapsed_ms < last.elapsed_ms { failure = 1 }
+    if expected_named_code != 0 && first.keys[expected_named_code] != expected_named_flags { failure = 14 }
+    if first.sequence == cast(u64)1 && first.delta_ms != 0 { failure = 2 }
+    if CaptureFrameInput(foreign).available { failure = 3 }
+    if KeyboardTake(session) != expected_key { failure = 4 }
+    text: [16]u8
+    typed := TypedTextTake(session, text[:])
+    if expected_text { if typed != "x" { failure = 5 } }
+    else if typed.count != 0 { failure = 6 }
+    again := CaptureFrameInput(session)
+    if again.sequence != first.sequence || again.elapsed_ms != first.elapsed_ms ||
+    again.delta_ms != first.delta_ms || again.keys[65] != first.keys[65] { failure = 7 }
+    if first.keys[65] == cast(u8)3 { saved = first }
+    if first.keys[65] == cast(u8)9 && saved.keys[65] != cast(u8)3 { failure = 8 }
+    argument: [1]HostValue
+    session_codec: WidgetSessionCodec
+    argument[0] = WidgetEncodeSession(session, *session_codec)
+    result: HostValue
+    module := HostTextData("frame_snapshot")
+    function := HostTextData("CaptureFrameInputHost")
+    if WidgetHostCall(null, module, function, *argument[0], 1, *result) != 0 { failure = 9 }
+    WidgetHostBegin(foreign, AllowAsset)
+    if WidgetHostCall(null, module, function, *argument[0], 1, *result) != 0 { failure = 10 }
+    WidgetHostEnd()
+    WidgetHostBegin(session, AllowAsset)
+    if WidgetHostCall(null, module, function, *argument[0], 1, *result) != 1 { failure = 11 }
+    zero: HostValue
+    if HostFieldValue(*result, 0, "available", *zero).integer != 1 ||
+    HostFieldValue(*result, 0, "sequence", *zero).integer != cast(s64)first.sequence { failure = 12 }
+    keys := HostFieldValue(*result, 0, "keys", *zero)
+    if keys.length != 512 || keys.elements[65].integer != cast(s64)expected_flags { failure = 13 }
+    WidgetHostEnd()
+    #if !#defined(PLATFORM_WEB) {
+        if failure != 0 { unused Print(HostTextData("sequence %d failure %d key %d expected %d\n"), cast(s32)first.sequence, failure, cast(s32)keys.elements[65].integer, cast(s32)expected_flags) }
+    }
+    last = first
+    return ifx callback_fail then 1 else failure
+}

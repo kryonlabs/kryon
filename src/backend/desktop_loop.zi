@@ -2,6 +2,7 @@
 // retained painting and accessibility. desktop_run is the default host; a
 // project host can call RunDesktop with its own window size.
 #import "secondary_pointer"
+#import "frame_snapshot"
 #import "test_driver"
 A :: #import "accessibility_linux";
 #import "app"
@@ -65,6 +66,9 @@ DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
     BeginScrollFrame(session, .{pointer.x, pointer.y}, pointer.pressed,
         pointer.down, pointer.released, wheel,
         cast(float64)Timer.MonotonicMilliseconds() / 1000.0)
+    if !DesktopFrameInputBegin(session) { return false }
+    published_session := session
+    defer { FrameInputEnd(published_session) }
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk { return false }
     if Frame(session, viewport) != 0 {
@@ -105,7 +109,7 @@ RunDesktop :: (width: s32 = 960, height: s32 = 600) -> s32 {
     }
     ok: bool = true
     if CaptureRequested() {
-        ok = DrawFrame(session)
+        ok = PollDesktop() && DrawFrame(session)
         if ok { ok = CaptureConfigured() }
     } else {
         while ok && PollDesktop() {

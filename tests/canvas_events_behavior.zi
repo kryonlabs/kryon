@@ -18,7 +18,7 @@ KeyMapChecks :: () -> s32 {
     if CanvasKeyOf("KeyA", "a") != 65 { return 1 }
     if CanvasKeyOf("KeyZ", "z") != 90 { return 2 }
     if CanvasKeyOf("Digit5", "5") != 53 { return 3 }
-    if CanvasKeyOf("Numpad7", "7") != 55 { return 4 }
+    if CanvasKeyOf("Numpad7", "7") != 327 { return 4 }
     if CanvasKeyOf("ArrowLeft", "") != 263 { return 5 }
     if CanvasKeyOf("F12", "") != 301 { return 6 }
     if CanvasKeyOf("Space", " ") != 32 { return 7 }

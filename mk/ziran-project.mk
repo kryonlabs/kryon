@@ -75,6 +75,9 @@ endif
 APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
+ifneq ($(filter $(PROJECT_BACKEND),desktop canvas dom),)
+HOST_SOURCES += $(KRYON_DIR)/src/backend/frame_input_provider.zi
+endif
 HOST_ROOT_SOURCES := $(HOST)
 ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zx/canvas)
 # Portable app IR is identical on desktop and web. Only the renderer shell

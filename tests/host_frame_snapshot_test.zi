@@ -1,0 +1,269 @@
+#import "session"
+#import "frame_snapshot"
+#import "input_protocol"
+#import "key_input"
+#import "tree_input"
+#import "tree"
+#import "tree_draw"
+#import "frame_input_provider"
+Probe :: #import "app";
+#if #defined(PLATFORM_WEB) {
+    Host :: #import "canvas_run";
+    #import "canvas_host"
+    #import "canvas_raster"
+    #import "canvas_input"
+    #import "canvas_window"
+    #import "page_core"
+    #import "web"
+} else {
+    Host :: #import "desktop_loop";
+    #import "desktop_runtime"
+}
+
+// Inject into actual platform event handlers, never into a widget input queue.
+#if #defined(PLATFORM_WEB) {
+    Dispatch :: (kind: string, code: string = "", key: string = "", repeat: bool = false) -> bool {
+        scope := WebScope()
+        options := WebNewObject()
+        WebSet(options, WebName("code"), WebText(code))
+        WebSet(options, WebName("key"), WebText(key))
+        WebSet(options, WebName("repeat"), WebBool(repeat))
+        WebSet(options, WebName("bubbles"), WebBool(true))
+        constructor := "KeyboardEvent"
+        if kind == "focus" || kind == "blur" { constructor = "Event" }
+        args: [2]WebValue = .{WebText(kind), WebObject(options)}
+        event := WebNew(WebGetObject(WebGlobal, WebName(constructor)), *args[0], 2)
+        unused WebCall1(WebGlobal, WebName("dispatchEvent"), WebObject(event))
+        WebEnd(scope)
+        return true
+    }
+    PointerEvents :: () {
+        scope := WebScope()
+        options := WebNewObject()
+        WebSet(options, WebName("clientX"), WebNumber(12))
+        WebSet(options, WebName("clientY"), WebNumber(14))
+        WebSet(options, WebName("button"), WebNumber(0))
+        args: [2]WebValue = .{WebText("mousedown"), WebObject(options)}
+        event := WebNew(WebGetObject(WebGlobal, WebName("MouseEvent")), *args[0], 2)
+        unused WebCall1(WebGlobal, WebName("dispatchEvent"), WebObject(event))
+        WebSet(options, WebName("button"), WebNumber(2))
+        event = WebNew(WebGetObject(WebGlobal, WebName("MouseEvent")), *args[0], 2)
+        unused WebCall1(WebGlobal, WebName("dispatchEvent"), WebObject(event))
+        WebSet(options, WebName("deltaY"), WebNumber(-120))
+        args[0] = WebText("wheel")
+        event = WebNew(WebGetObject(WebGlobal, WebName("WheelEvent")), *args[0], 2)
+        unused WebCall1(WebGlobal, WebName("dispatchEvent"), WebObject(event))
+        WebEnd(scope)
+    }
+    Key :: (down: bool, repeated: bool = false) -> bool {
+        return Dispatch(ifx down then "keydown" else "keyup", "KeyA", "a", repeated)
+    }
+    NamedKey :: (code: s32, down: bool) -> bool {
+        name := "ArrowLeft"
+        key := "ArrowLeft"
+        if code == 340 { name = "ShiftLeft"; key = "Shift" }
+        if code == 327 { name = "Numpad7"; key = "7" }
+        return Dispatch(ifx down then "keydown" else "keyup", name, key)
+    }
+    Focus :: (focused: bool) -> bool { return Dispatch(ifx focused then "focus" else "blur") }
+    Text :: () { unused Dispatch("keypress", "KeyX", "x") }
+    Poll :: () -> bool { return PollCanvas() }
+    Close :: () { CloseCanvas() }
+} else {
+    sdl :: #system_library "SDL2";
+    WindowId :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+    Push :: (event: *Event) -> s32 #foreign sdl "SDL_PushEvent";
+    EventKey :: struct {
+        kind: u32; timestamp: u32; window: u32
+        state: u8; repeat: u8; padding: u16
+        scancode: s32; keycode: s32; modifiers: u16; pad: u16
+        unused_value: u32; tail: [24]u8
+    }
+    SendKey :: (key: s32, down: bool, repeated: bool, own: bool = true) -> bool {
+        event: EventKey
+        event.kind = ifx down then cast(u32)0x300 else cast(u32)0x301
+        event.window = WindowId(DesktopWindow())
+        if !own { event.window += cast(u32)1 }
+        event.state = ifx down then cast(u8)1 else cast(u8)0
+        event.repeat = ifx repeated then cast(u8)1 else cast(u8)0
+        event.keycode = key
+        if key == 0x400000E1 && down { event.modifiers = cast(u16)3 }
+        return Push(cast(*Event)*event) == 1
+    }
+    Key :: (down: bool, repeated: bool = false) -> bool { return SendKey(97, down, repeated) }
+    NamedKey :: (code: s32, down: bool) -> bool {
+        native: s32 = 0x40000050
+        if code == 340 { native = 0x400000E1 }
+        if code == 327 { native = 0x4000005F }
+        return SendKey(native, down, false)
+    }
+    Focus :: (focused: bool) -> bool {
+        event: Event
+        event.kind = cast(u32)0x200
+        event.window_id = WindowId(DesktopWindow())
+        event.which = ifx focused then cast(u32)12 else cast(u32)13
+        return Push(*event) == 1
+    }
+    PointerEvents :: () {}
+    Text :: () {
+        event: Event
+        event.kind = cast(u32)0x303
+        event.window_id = WindowId(DesktopWindow())
+        event.which = cast(u32)120
+        unused Push(*event)
+    }
+    Poll :: () -> bool { return PollDesktop() }
+    Close :: () { CloseDesktop() }
+}
+
+Step :: (session: Session, flags: u8, focused: bool = true, legacy: s32 = 0,
+    typed: bool = false, fail: bool = false) -> bool {
+    if CaptureFrameInput(session).available || !Poll() { return false }
+    Probe.expected_sequence += cast(u64)1
+    Probe.expected_flags = flags
+    Probe.expected_focus = focused
+    Probe.expected_key = legacy
+    Probe.expected_text = typed
+    Probe.callback_fail = fail
+    key: s32
+    #if #defined(PLATFORM_WEB) {
+        key = CanvasPressedKey()
+    } else {
+        key = DesktopPressedKey()
+    }
+    if key != 0 { unused KeyboardSend(session, key) }
+    codepoint: s32
+    #if #defined(PLATFORM_WEB) {
+        codepoint = CanvasTypedCodepoint()
+    } else {
+        codepoint = DesktopTypedCodepoint()
+    }
+    while codepoint != 0 {
+        unused TypedCodepointSend(session, codepoint)
+        #if #defined(PLATFORM_WEB) {
+            codepoint = CanvasTypedCodepoint()
+        } else {
+            codepoint = DesktopTypedCodepoint()
+        }
+    }
+    drawn: bool
+    #if #defined(PLATFORM_WEB) {
+        drawn = Host.DrawCanvasFrame(session, CanvasViewport())
+    } else {
+        drawn = Host.DrawFrame(session)
+    }
+    return drawn != fail && Probe.failure == 0 && !CaptureFrameInput(session).available
+}
+
+RunProbe :: () -> s32 {
+    #if #defined(PLATFORM_WEB) {
+        if !OpenCanvas() { return 91 }
+        CanvasSetExitKey(0)
+    } else {
+        if !OpenDesktopSized(160, 120) { return 91 }
+    }
+    defer { Close() }
+    session := SessionOpen()
+    Probe.foreign = SessionOpen()
+    if !Focus(true) || !Step(session, cast(u8)0) { return 20 + Probe.failure }
+    if !Key(true) { return 40 }
+    Text()
+    if !Step(session, cast(u8)3, true, 65, true) { return 41 + Probe.failure }
+    if !Step(session, cast(u8)1) { return 55 + Probe.failure }
+    if !Key(true, true) || !Step(session, cast(u8)9, true, 65) { return 70 + Probe.failure }
+    if !Key(false) || !Step(session, cast(u8)4) { return 85 + Probe.failure }
+    if !Key(true) || !Step(session, cast(u8)3, true, 65) { return 100 + Probe.failure }
+    if !Focus(false) || !Step(session, cast(u8)4, false) { return 115 + Probe.failure }
+    if !Step(session, cast(u8)0, false) { return 130 + Probe.failure }
+    if !Focus(true) || !Key(true) || !Step(session, cast(u8)1, true, 65) { return 145 + Probe.failure }
+    // Shared named codes and modifier observations survive the widget drain.
+    for code: cast(s32)0..2 {
+        named: s32 = ifx code == 0 then 263 else ifx code == 1 then 340 else 327
+        Probe.expected_named_code = named
+        Probe.expected_named_flags = cast(u8)3
+        Probe.expected_modifiers = ifx named == 340 then 1 else 0
+        if !NamedKey(named, true) || !Step(session, cast(u8)1, true, named) { return 150 + Probe.failure }
+        Probe.expected_named_flags = cast(u8)4
+        Probe.expected_modifiers = 0
+        if !NamedKey(named, false) || !Step(session, cast(u8)1) { return 151 + Probe.failure }
+    }
+    Probe.expected_named_code = 0
+    // Losing and regaining focus between frames must also suppress activation.
+    regained_flags: u8 = 1
+    #if !#defined(PLATFORM_WEB) {
+        regained_flags = cast(u8)(FrameKeyHeld | FrameKeyReleased)
+    }
+    if !Focus(false) || !Focus(true) || !Key(true) ||
+    !Step(session, regained_flags, true, 65) { return 160 + Probe.failure }
+    #if #defined(PLATFORM_WEB) {
+        PointerEvents()
+        Probe.expected_pointer = true
+        Probe.expected_wheel = 1.0
+        if !Step(session, cast(u8)1) { return 175 + Probe.failure }
+        Probe.expected_pointer = false
+        Probe.expected_wheel = 0.0
+        if !Focus(false) || !Step(session, cast(u8)4, false) { return 190 + Probe.failure }
+        if !Probe.last.pointer.released || !Probe.last.secondary.released { return 204 }
+    } else {
+        if !SendKey(98, true, false, false) || !Step(session, cast(u8)1) ||
+        Probe.last.keys[66] != cast(u8)0 { return 205 }
+    }
+    #if #defined(PLATFORM_WEB) {
+        if !Step(session, cast(u8)0, false, 0, false, true) { return 206 + Probe.failure }
+    } else {
+        if !Focus(false) || !Step(session, cast(u8)4, false, 0, false, true) { return 206 + Probe.failure }
+    }
+    // Monotonic clamp and first/next timing without replacing a platform clock.
+    provider: FrameInputProvider
+    raw: FrameInputSnapshot
+    raw.focused = true
+    raw.elapsed_ms = 100
+    FrameInputProviderGather(*provider, raw)
+    raw.elapsed_ms = 90
+    FrameInputProviderGather(*provider, raw)
+    if provider.sample.elapsed_ms != 100 || provider.sample.delta_ms != 0 ||
+    provider.sample.sequence != cast(u64)2 { return 220 }
+    raw.elapsed_ms = 130
+    FrameInputProviderGather(*provider, raw)
+    if provider.sample.delta_ms != 30 { return 221 }
+    // Teardown clears an actively published snapshot, not just an ended one.
+    if !Poll() { return 222 }
+    #if #defined(PLATFORM_WEB) {
+        if !CanvasFrameInputBegin(session) { return 223 }
+    } else {
+        if !DesktopFrameInputBegin(session) { return 223 }
+    }
+    if !CaptureFrameInput(session).available { return 224 }
+    Close()
+    if CaptureFrameInput(session).available { return 225 }
+    #if #defined(PLATFORM_WEB) {
+        if !OpenCanvas() || !Poll() || !CanvasFrameInputBegin(session) { return 226 }
+    } else {
+        if !OpenDesktopSized(160, 120) || !Poll() || !DesktopFrameInputBegin(session) { return 226 }
+    }
+    if CaptureFrameInput(session).sequence != cast(u64)1 ||
+    CaptureFrameInput(session).delta_ms != 0 { return 227 }
+    // A terminal poll invalidates both the active and cached publication.
+    #if #defined(PLATFORM_WEB) {
+        RequestCanvasClose()
+        if Poll() || CanvasFrameInputBegin(session) { return 228 }
+    } else {
+        WindowQuitHost()
+        if Poll() || DesktopFrameInputBegin(session) { return 228 }
+    }
+    if CaptureFrameInput(session).available { return 229 }
+    CloseSession(Probe.foreign)
+    CloseSession(session)
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    result := RunProbe()
+    #if #defined(PLATFORM_WEB) {
+        // Asyncify's process exit can lose a resumed main's return status.
+        // Record the actual completed probe result before the exit hook.
+        WebSet(WebGlobal, WebName("hostFrameSnapshotResult"), WebNumber(cast(float64)result))
+    }
+    return result
+}

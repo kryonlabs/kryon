@@ -2,6 +2,8 @@
 #import "c_string"
 #import "cairo_raster"
 #import "desktop_keys"
+#import "frame_input_provider"
+Timer :: #import "std/timer_linux";
 #import "geometry"
 #import "program_title"
 #import "tree_input"
@@ -89,6 +91,10 @@ pointer: PointerFrame;
 secondary: SecondaryPointerFrame;
 desktop_wheel: float32;
 desktop_key: s32;
+desktop_frame_input: FrameInputProvider;
+desktop_raw_keys: [512]u8;
+desktop_input_focused: bool;
+desktop_input_started: s64;
 desktop_keys: DesktopKeyBuffer;
 // File drops are copied before SDL releases its event-owned path. Applications
 // consume them on the UI thread; unrelated windows and drop text stay separate.
@@ -160,6 +166,10 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
     if Init(cast(u32)0x20) != 0 { return false }
+    FrameInputProviderReset(*desktop_frame_input)
+    desktop_raw_keys = .{}
+    desktop_input_focused = false
+    desktop_input_started = Timer.MonotonicMilliseconds()
     frame_frequency = PerformanceFrequency()
     frame_clock.deadline = cast(u64)0
     // The click that focuses this window must still reach its widgets.
@@ -305,6 +315,8 @@ DesktopApplyResize :: () -> bool {
 
 #program_export
 CloseDesktop :: () {
+    FrameInputProviderReset(*desktop_frame_input)
+    desktop_raw_keys = .{}
     if desktop_cursor_shape >= 0 { SetCursor(null) }
     for index: 0..10 {
         if desktop_cursors[index] != null { FreeCursor(desktop_cursors[index]) }
@@ -335,6 +347,9 @@ SetPointerFrame :: (x: float32, y: float32, down: bool,
 
 #program_export
 PollDesktop :: () -> bool {
+    FrameInputProviderEnd(*desktop_frame_input)
+    if window == null { return false }
+    for key: cast(s32)1..511 { desktop_raw_keys[key] &= cast(u8)FrameKeyHeld }
     Clock.Begin(*frame_clock, PerformanceCounter(), frame_frequency)
     event: Event
     pressed: bool = false
@@ -363,6 +378,15 @@ PollDesktop :: () -> bool {
         if event.kind == cast(u32)0x200 && window != null &&
         event.window_id == GetWindowID(window) {
             detail := event.which & cast(u32)255
+            if detail == cast(u32)12 { desktop_input_focused = true }
+            if detail == cast(u32)13 {
+                desktop_input_focused = false
+                desktop_frame_input.focus_lost = true
+                for key: cast(s32)1..511 {
+                    held := (desktop_raw_keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0
+                    desktop_raw_keys[key] = ifx held then cast(u8)FrameKeyReleased else cast(u8)0
+                }
+            }
             // SDL_WINDOWEVENT_SHOWN / EXPOSED / RESTORED / DISPLAY_CHANGED.
             if detail == cast(u32)1 || detail == cast(u32)3 ||
             detail == cast(u32)9 || detail == cast(u32)18 {
@@ -389,13 +413,38 @@ PollDesktop :: () -> bool {
         }
         // SDL_QUIT comes from the last window closing or from the session
         // ending (SIGTERM, logout); it always quits.
-        if event.kind == cast(u32)0x100 { return false }
+        if event.kind == cast(u32)0x100 {
+            FrameInputProviderReset(*desktop_frame_input)
+            return false
+        }
         // SDL_WINDOWEVENT_CLOSE; SDL_WindowEvent.event is the byte at
         // offset 12, the low byte of Event.which here.
         if event.kind == cast(u32)0x200 &&
+        event.window_id == GetWindowID(window) &&
         (event.which & cast(u32)255) == cast(u32)14 {
-            if !desktop_intercept_close { return false }
+            if !desktop_intercept_close {
+                FrameInputProviderReset(*desktop_frame_input)
+                return false
+            }
             desktop_close_requested = true
+        }
+        // Only this host's window contributes input; never another SDL session.
+        if event.kind >= cast(u32)0x300 && event.kind <= cast(u32)0x403 &&
+        event.window_id != GetWindowID(window) { continue }
+        if event.kind == cast(u32)0x300 || event.kind == cast(u32)0x301 {
+            code := DesktopKey(event.x)
+            if code > 0 && code < 512 && desktop_input_focused {
+                if event.kind == cast(u32)0x301 {
+                    desktop_raw_keys[code] &= cast(u8)(FrameKeyPressed | FrameKeyRepeated)
+                    desktop_raw_keys[code] |= cast(u8)FrameKeyReleased
+                } else {
+                    held := (desktop_raw_keys[code] & cast(u8)FrameKeyHeld) != cast(u8)0
+                    desktop_raw_keys[code] |= cast(u8)FrameKeyHeld
+                    // SDL_KeyboardEvent.repeat is byte 13 (inside Event.which).
+                    if (event.which & cast(u32)0xFF00) != cast(u32)0 { desktop_raw_keys[code] |= cast(u8)FrameKeyRepeated }
+                    else if !held { desktop_raw_keys[code] |= cast(u8)FrameKeyPressed }
+                }
+            }
         }
         if event.kind == cast(u32)0x300 {
             // SDL_KeyboardEvent.keysym.sym occupies byte offset 20 and
@@ -454,7 +503,26 @@ PollDesktop :: () -> bool {
     secondary.down = (buttons & cast(u32)4) != cast(u32)0
     secondary.pressed = right_pressed
     secondary.released = right_released
-    return !desktop_quit
+    if desktop_quit {
+        FrameInputProviderReset(*desktop_frame_input)
+        return false
+    }
+    raw: FrameInputSnapshot
+    raw.keys = desktop_raw_keys
+    raw.focused = desktop_input_focused
+    raw.pointer = pointer
+    raw.secondary = secondary
+    raw.modifiers = DesktopModifiers()
+    raw.wheel = desktop_wheel
+    raw.elapsed_ms = Timer.MonotonicMilliseconds() - desktop_input_started
+    FrameInputProviderGather(*desktop_frame_input, raw)
+    return true
+}
+
+// Publish the observations frozen by PollDesktop, never a consumed widget queue.
+#program_export
+DesktopFrameInputBegin :: (session: Session) -> bool {
+    return FrameInputProviderBegin(*desktop_frame_input, session)
 }
 
 #program_export
@@ -502,7 +570,9 @@ DesktopTypedCodepoint :: () -> s32 {
 
 #program_export
 CheckPointerEvents :: () -> bool {
+    if window == null { return false }
     event: Event
+    event.window_id = GetWindowID(window)
     event.kind = cast(u32)0x401
     event.button = cast(u8)1
     if PushEvent(*event) != 1 || !PollDesktop() ||
@@ -529,6 +599,7 @@ DesktopFrameReusable :: () -> bool {
 
 #program_export
 EndDesktopFrame :: () -> bool {
+    FrameInputProviderEnd(*desktop_frame_input)
     if !FinishRasterFrame(desktop_frame_unchanged && desktop_pixels_valid) { return false }
     desktop_pixels_valid = true
     if !desktop_frame_unchanged { desktop_texture_dirty = true }

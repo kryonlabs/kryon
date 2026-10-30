@@ -133,10 +133,11 @@ a fresh press; holding a key does not invent repeats. Indices use the existing
 uppercase ASCII and named `Key` codes; index zero is unused.
 
 The snapshot also carries `pointer`, `secondary`, `focused`, `modifiers`,
-`wheel`, and `elapsed_ms`, `delta_ms`, `sequence`. Raylib samples a monotonic
-clock once per successful `PollRaylib`: first delta is zero, later deltas are
-nonnegative, and repeated captures have identical timing. Sequence starts at
-one for each opened host. Pointer coordinates use the host's logical zoom.
+`wheel`, and `elapsed_ms`, `delta_ms`, `sequence`. Desktop, Canvas and Raylib
+sample a monotonic clock once per successful host poll: first delta is zero,
+later deltas are nonnegative, and repeated captures have identical timing.
+Sequence starts at one for each opened host. Pointer coordinates use the
+host's logical zoom.
 On focus loss, held keys become released for one poll, held pointer buttons
 are released, and pressed/repeated keys, modifiers and wheel are cleared.
 Further unfocused polls have no held keys or repeated releases. The first
@@ -146,10 +147,18 @@ press and repeat flags, preventing a focus change from activating a shortcut.
 Hosts publish on the session's owning thread with `FrameInputBegin(session, snapshot) -> bool` and call
 `FrameInputEnd(session)` after the callback, including failure paths. Publishing
 copies the value and rejects replacement while that session's frame is open.
-Kryon's Raylib app loop does this automatically; custom Raylib loops call
-`RaylibFrameInputBegin(session)` after `PollRaylib`, then `FrameInputEnd` when
-their callback ends. Other providers must supply equivalent gathered state;
-this API does not infer held keys from consumed keyboard events. A hosted
+Kryon's standard Desktop, Canvas and Raylib app loops do this automatically.
+Desktop freezes raw SDL key events for its own window; Canvas freezes existing
+DOM held state and edge queues before widget reads. Both clear publication on
+callback cancellation, terminal polls and host teardown. Custom Desktop or
+Canvas loops call `DesktopFrameInputBegin(session)` or
+`CanvasFrameInputBegin(session)` after the matching successful poll, and
+`FrameInputEnd(session)` when their callback ends (including failure paths).
+The host also ends publication before presentation can yield. Custom Raylib
+loops call `RaylibFrameInputBegin(session)` after `PollRaylib`, then
+`FrameInputEnd` when their callback ends. Other providers must supply
+equivalent gathered state; this API does not infer held keys from consumed
+keyboard events. A hosted
 bundle requests only `frame_snapshot.CaptureFrameInputHost`; `WidgetHostCall`
 validates the session against the active `WidgetHostBegin` before returning
 that session's published snapshot. No input is queried outside that frame.

@@ -6,6 +6,7 @@
 // where a ZX player keeps them, /kryon-apps/<app id> on IndexedDB, so
 // saves carry over between the two.
 #import "secondary_pointer"
+#import "frame_snapshot"
 using Host :: #import "Canvas";
 #import "geometry"
 #import "session"
@@ -145,6 +146,8 @@ CanvasAppOpenFiles :: () -> bool {
 }
 
 CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
+    if !CanvasFrameInputBegin(session) { return false }
+    defer { FrameInputEnd(session) }
     BeginCanvasFrame()
     // A test driver may stand in for the person (KRYON_TEST_DRIVER).
     pointer: PointerFrame = TestDriverPointer(session, PollPointer())

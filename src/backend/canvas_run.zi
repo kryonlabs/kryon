@@ -1,4 +1,5 @@
 #import "secondary_pointer"
+#import "frame_snapshot"
 #import "app"
 #import "canvas_host"
 #import "canvas_frame"
@@ -28,6 +29,8 @@ CanvasError :: (message: string) -> s32 {
 }
 
 DrawCanvasFrame :: (session: Session, viewport: Rectangle) -> bool {
+    if !CanvasFrameInputBegin(session) { return false }
+    defer { FrameInputEnd(session) }
     BeginCanvasFrame()
     pointer: PointerFrame = PollPointer()
     TreePointerUpdate(session, pointer)

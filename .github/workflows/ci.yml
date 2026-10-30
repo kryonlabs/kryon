@@ -232,6 +232,9 @@ jobs:
       - name: Desktop host
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make desktop-project-test
 
+      - name: Desktop frame input snapshots
+        run: make desktop-frame-input-test
+
       - name: Raylib host
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY make raylib-project-test
 

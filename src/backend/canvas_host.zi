@@ -13,10 +13,13 @@
 #import "program_title"
 #import "page_files"
 #import "session"
+#import "frame_input_provider"
 #import "paint_queue"
 Metrics :: #import "font_metrics";
 
 canvas_cursor_shape: s32 = -1;
+canvas_host_input: FrameInputProvider;
+canvas_input_started: s64;
 
 #program_export
 CanvasCursor :: (session: Session) {
@@ -61,6 +64,8 @@ WindowQuitHost :: () {
 
 #program_export
 OpenCanvas :: () -> bool {
+    FrameInputProviderReset(*canvas_host_input)
+    canvas_input_started = cast(s64)PageNow()
     CanvasFrameReset()
     // An unnamed page keeps the title its HTML shell gives it.
     title: [512]u8
@@ -140,6 +145,7 @@ InvalidateCanvasAssetsUnder :: (prefix: string) {
 
 #program_export
 CloseCanvas :: () {
+    FrameInputProviderReset(*canvas_host_input)
     CanvasFrameReset()
     canvas_cursor_shape = -1
     index: s32 = 0
@@ -156,7 +162,11 @@ CloseCanvas :: () {
 
 #program_export
 PollCanvas :: () -> bool {
-    if WindowShouldClose() { return false }
+    FrameInputProviderEnd(*canvas_host_input)
+    if WindowShouldClose() {
+        FrameInputProviderReset(*canvas_host_input)
+        return false
+    }
     canvas_pointer.x = cast(float32)GetMouseX()
     canvas_pointer.y = cast(float32)GetMouseY()
     canvas_pointer.pressed = IsMouseButtonPressed(0)
@@ -167,7 +177,30 @@ PollCanvas :: () -> bool {
     canvas_secondary.pressed = IsMouseButtonPressed(1)
     canvas_secondary.released = IsMouseButtonReleased(1)
     canvas_wheel_move = GetMouseWheelMove()
+    raw: FrameInputSnapshot
+    raw.focused = canvas_focused
+    raw.pointer = canvas_pointer
+    raw.secondary = canvas_secondary
+    if IsKeyDown(340) || IsKeyDown(344) { raw.modifiers |= KeyModifierShift }
+    if IsKeyDown(341) || IsKeyDown(345) || IsKeyDown(343) || IsKeyDown(347) { raw.modifiers |= KeyModifierControl }
+    if IsKeyDown(342) || IsKeyDown(346) { raw.modifiers |= KeyModifierAlt }
+    raw.wheel = canvas_wheel_move
+    raw.elapsed_ms = cast(s64)PageNow() - canvas_input_started
+    for key: cast(s32)1..511 {
+        if IsKeyDown(key) { raw.keys[key] |= cast(u8)FrameKeyHeld }
+        if IsKeyPressed(key) { raw.keys[key] |= cast(u8)FrameKeyPressed }
+        if IsKeyReleased(key) { raw.keys[key] |= cast(u8)FrameKeyReleased }
+        if IsKeyPressedRepeat(key) { raw.keys[key] |= cast(u8)FrameKeyRepeated }
+    }
+    canvas_host_input.focus_lost = canvas_snapshot_focus_lost
+    canvas_snapshot_focus_lost = false
+    FrameInputProviderGather(*canvas_host_input, raw)
     return true
+}
+
+#program_export
+CanvasFrameInputBegin :: (session: Session) -> bool {
+    return FrameInputProviderBegin(*canvas_host_input, session)
 }
 
 #program_export
@@ -206,6 +239,7 @@ BeginCanvasFrame :: () {
 
 #program_export
 EndCanvasFrame :: () -> bool {
+    FrameInputProviderEnd(*canvas_host_input)
     CanvasFrameEnsureClear()
     EndDrawing()
     return !canvas_image_error

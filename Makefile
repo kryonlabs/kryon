@@ -271,6 +271,12 @@ dom-spec-test:
 	@'$(ZIRAN_BIN)' bundle --root tests --module-path src/ui --module-path src/backend --module-path '$(ZIRAN_DIR)/std' --entry dom_pixels_test:main -o build/scratch/dom-pixels/pixels.zx tests/dom_pixels_test.zi
 	@test "$$('$(ZIRAN_BIN)' run build/scratch/dom-pixels/pixels.zx)" = 0
 
+.PHONY: desktop-frame-input-test canvas-frame-input-test
+desktop-frame-input-test:
+	@python3 tests/host_frame_snapshot_test.py desktop
+canvas-frame-input-test:
+	@python3 tests/host_frame_snapshot_test.py canvas
+
 .PHONY: canvas-events-test
 canvas-events-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_events_zi_test.sh
@@ -284,7 +290,7 @@ web-js-boundary-test:
 	@python3 tests/web_js_boundary_test.py
 
 .PHONY: canvas-test
-canvas-test: web-js-boundary-test canvas-events-test mini-mode-test dom-spec-test canvas-audio-engine-test
+canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test mini-mode-test dom-spec-test canvas-audio-engine-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_backend_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/file_picker_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/http_transfer_browser_test.py

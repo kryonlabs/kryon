@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Standard Desktop and Canvas hosts publish owned frame input snapshots from
+  their actual SDL and browser event state, preserving widget input queues and
+  clearing publication after callbacks, cancellation and teardown.
+
 - HTML browser apps receive right-clicks separately from middle-clicks, and
   captured page areas keep Space and Enter in sync with the app.
 - Mouse drags follow captured `Press` areas in the HTML browser renderer,

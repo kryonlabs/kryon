@@ -1,0 +1,63 @@
+// Shared publication bookkeeping for event-driven hosts. Raw observations are
+// gathered by each host before any legacy widget queue can be consumed.
+#import "frame_snapshot"
+#import "session"
+#import "input_protocol"
+
+FrameInputProvider :: struct {
+    sample: FrameInputSnapshot
+    owner: Session
+    focus_lost: bool
+}
+
+FrameInputProviderEnd :: (provider: *FrameInputProvider) {
+    FrameInputEnd(provider.owner)
+    provider.owner = Session.{}
+}
+
+FrameInputProviderReset :: (provider: *FrameInputProvider) {
+    FrameInputProviderEnd(provider)
+    provider.* = FrameInputProvider.{}
+}
+
+FrameInputProviderGather :: (provider: *FrameInputProvider, raw: FrameInputSnapshot) {
+    FrameInputProviderEnd(provider)
+    previous := provider.sample
+    sample := raw
+    sample.available = true
+    sample.sequence = previous.sequence + cast(u64)1
+    if sample.elapsed_ms < previous.elapsed_ms { sample.elapsed_ms = previous.elapsed_ms }
+    sample.delta_ms = 0
+    if previous.available { sample.delta_ms = sample.elapsed_ms - previous.elapsed_ms }
+    if !sample.focused {
+        sample.modifiers = 0
+        sample.wheel = 0.0
+        sample.pointer.down = false
+        sample.pointer.pressed = false
+        sample.pointer.released = previous.pointer.down || sample.pointer.released
+        sample.secondary.down = false
+        sample.secondary.pressed = false
+        sample.secondary.released = previous.secondary.down || sample.secondary.released
+    }
+    suppress := provider.focus_lost || (previous.available && !previous.focused)
+    for key: cast(s32)1..511 {
+        if !sample.focused {
+            sample.keys[key] = cast(u8)0
+            if (previous.keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0 {
+                sample.keys[key] = cast(u8)FrameKeyReleased
+            }
+        } else if suppress {
+            sample.keys[key] &= cast(u8)(FrameKeyHeld | FrameKeyReleased)
+        }
+    }
+    sample.keys[0] = cast(u8)0
+    provider.focus_lost = false
+    provider.sample = sample
+}
+
+FrameInputProviderBegin :: (provider: *FrameInputProvider, session: Session) -> bool {
+    if !provider.sample.available || SessionValid(provider.owner) { return false }
+    if !FrameInputBegin(session, provider.sample) { return false }
+    provider.owner = session
+    return true
+}
