@@ -115,6 +115,14 @@ IsMouseButtonReleased :: (button: s32) -> bool { return button == 2 && middle_re
 GetMouseWheelMove :: () -> float32 { return 0.0 }
 #program_export
 GetKeyPressed :: () -> s32 { key := fresh_key; fresh_key = 0; return key }
+// A Dvorak position (scancode 12, I, types c) and a non-Latin one (5, B).
+#program_export
+SDL_GetKeyFromScancode :: (scancode: s32) -> s32 {
+    if scancode == 12 { return 99 }
+    if scancode == 5 { return 0x441 }
+    if scancode >= 4 && scancode <= 29 { return scancode - 4 + 97 }
+    return 0
+}
 #program_export
 IsKeyDown :: (key: s32) -> bool { return key == 65 }
 #program_export

@@ -2002,7 +2002,47 @@ RaylibPressedKey :: () -> s32 {
 }
 
 RaylibPressedKeyRaw :: () -> s32 {
-    return HostRaylibGetKeyPressed()
+    return RaylibLayoutKey(HostRaylibGetKeyPressed())
+}
+
+// Raylib reports key positions. Shortcuts and control characters follow the
+// keyboard layout, so a position becomes the code of the key it types there,
+// as on the other hosts. A layout with no ASCII key there keeps the position.
+// RaylibKeyDown and frame snapshots stay positional, for held movement keys.
+#if !#defined(ANDROID_BUILD) && !#defined(_WIN32) && !#defined(__APPLE__) && !#defined(PLATFORM_WEB) {
+    keymap_sdl :: #system_library "SDL2";
+    HostSdlKeyFromScancode :: (scancode: s32) -> s32 #foreign keymap_sdl "SDL_GetKeyFromScancode";
+
+    RaylibKeyScancode :: (key: s32) -> s32 {
+        if key >= #char "A" && key <= #char "Z" { return key - #char "A" + 4 }
+        if key >= #char "1" && key <= #char "9" { return key - #char "1" + 30 }
+        if key == #char "0" { return 39 }
+        if key == #char "-" { return 45 }
+        if key == #char "=" { return 46 }
+        if key == #char "[" { return 47 }
+        if key == #char "]" { return 48 }
+        if key == #char "\\" { return 49 }
+        if key == #char ";" { return 51 }
+        if key == #char "'" { return 52 }
+        if key == #char "`" { return 53 }
+        if key == #char "," { return 54 }
+        if key == #char "." { return 55 }
+        if key == #char "/" { return 56 }
+        return 0
+    }
+
+    #program_export
+    RaylibLayoutKey :: (key: s32) -> s32 {
+        scancode := RaylibKeyScancode(key)
+        if scancode == 0 { return key }
+        typed := HostSdlKeyFromScancode(scancode)
+        if typed >= #char "a" && typed <= #char "z" { return typed - 32 }
+        if typed > 32 && typed < 127 { return typed }
+        return key
+    }
+} else {
+    #program_export
+    RaylibLayoutKey :: (key: s32) -> s32 { return key }
 }
 
 // OS repeats are separate from fresh presses in raylib. Return each repeated
@@ -2012,7 +2052,7 @@ RaylibRepeatedKey :: () -> s32 {
     while raylib_repeat_next < 512 {
         key := raylib_repeat_next
         raylib_repeat_next += 1
-        if HostRaylibIsKeyPressedRepeat(key) { return key }
+        if HostRaylibIsKeyPressedRepeat(key) { return RaylibLayoutKey(key) }
     }
     return 0
 }
@@ -2046,14 +2086,24 @@ RaylibSetTitle :: (title: string) -> bool {
 #program_export
 PollMiddlePointer :: () -> SecondaryPointerFrame { return raylib_middle }
 
-// The held modifier keys as KeyModifier bits, from raylib's left and right
-// shift (340, 344), control (341, 345), and alt (342, 346) keys.
+// The KeyModifier bit of raylib's left and right shift (340, 344), control
+// (341, 345), and alt (342, 346) keys, and zero for any other key.
+#program_export
+RaylibModifierBit :: (key: s32) -> s32 {
+    if key == 340 || key == 344 { return 1 }
+    if key == 341 || key == 345 { return 2 }
+    if key == 342 || key == 346 { return 4 }
+    return 0
+}
+
+// The modifier keys held during this poll as KeyModifier bits. One released
+// since the last poll still applies to a key pressed in that same interval.
 #program_export
 RaylibModifiers :: () -> s32 {
     modifiers: s32 = 0
-    if HostRaylibIsKeyDown(340) || HostRaylibIsKeyDown(344) { modifiers |= 1 }
-    if HostRaylibIsKeyDown(341) || HostRaylibIsKeyDown(345) { modifiers |= 2 }
-    if HostRaylibIsKeyDown(342) || HostRaylibIsKeyDown(346) { modifiers |= 4 }
+    for key: cast(s32)340..346 {
+        if HostRaylibIsKeyDown(key) || HostRaylibIsKeyReleased(key) { modifiers |= RaylibModifierBit(key) }
+    }
     return modifiers
 }
 

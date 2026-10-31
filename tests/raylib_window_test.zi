@@ -36,6 +36,9 @@ main :: () -> s32 {
     pointer := Runtime.PollPointer(); middle := Runtime.PollMiddlePointer()
     if pointer.x != 17.0 || pointer.y != 29.0 ||
         !middle.pressed || !middle.released || middle.down { return 6 }
+    if Runtime.RaylibLayoutKey(73) != 67 || Runtime.RaylibLayoutKey(66) != 66 ||
+        Runtime.RaylibLayoutKey(65) != 65 || Runtime.RaylibLayoutKey(263) != 263 ||
+        Runtime.RaylibLayoutKey(0) != 0 { return 23 }
     if Runtime.RaylibPressedKey() != 65 || Runtime.RaylibPressedKey() != 0 ||
         Runtime.RaylibRepeatedKey() != 263 || Runtime.RaylibRepeatedKey() != 0 ||
         !Runtime.RaylibKeyDown(65) || Runtime.RaylibKeyDown(512) ||
