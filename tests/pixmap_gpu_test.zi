@@ -1,6 +1,7 @@
 // The recorded GPU path against the CPU raster, in the same scene, read back
 // from the target. Blending may round differently by a step or two.
 Presenter :: #import "pixmap_sdl";
+Gpu :: #import "pixmap_sdl_gpu";
 Cells :: #import "pixmap_cell_text";
 #import "pixmap"
 #import "pixmap_gpu"
@@ -109,14 +110,14 @@ main :: () -> s32 {
         if !full { Scene(true) }
         Scene(full)
         PixmapEndInto()
-        if !Presenter.PixmapGpuOpen(renderer) { print("GPU recording unavailable\n"); return 5 }
-        target := Presenter.PixmapGpuCreateTarget(Width, Height)
+        if !Gpu.PixmapGpuOpen(renderer) { print("GPU recording unavailable\n"); return 5 }
+        target := Gpu.PixmapGpuCreateTarget(Width, Height)
         if target == null { return 6 }
         unused PixmapBeginInto(cast(u32)0x20252b, Width, Height, gpu[:], true)
-        if !full { Scene(true); Presenter.PixmapGpuDraw() }
+        if !full { Scene(true); Gpu.PixmapGpuDraw() }
         Scene(full)
         PixmapEndInto()
-        Presenter.PixmapGpuDraw()
+        Gpu.PixmapGpuDraw()
         if pixmap_gpu_vertices.count != 0 { print("recording kept\n"); return 7 }
         unused SetRenderTarget(renderer, target)
         if Read(renderer, null, cast(u32)372645892, *gpu[0], Width * 4) != 0 { return 8 }
@@ -131,12 +132,12 @@ main :: () -> s32 {
         RasterRoundedRectangle(.{0.0, 0.0, 480.0, 320.0}, 0.0, 0, Color.{32, 37, 43, 255})
         Scene(true)
         PixmapEndInto()
-        Presenter.PixmapGpuDraw()
+        Gpu.PixmapGpuDraw()
         unused SetRenderTarget(renderer, target)
         unused Read(renderer, null, cast(u32)372645892, *gpu[0], Width * 4)
         unused SetRenderTarget(renderer, null)
         unused PixmapBeginInto(cast(u32)0x20252b, Width, Height, cpu[:], true)
-        Presenter.PixmapGpuClose(); Scene(true); PixmapEndInto()
+        Gpu.PixmapGpuClose(); Scene(true); PixmapEndInto()
         failures += Compare("after atlas pressure", 3)
         DestroyTexture(target)
     }
