@@ -91,8 +91,9 @@ widget_host_active: bool;
 widget_host_depth: s32;
 widget_host_asset_allowed: WidgetAssetAllowed;
 widget_host_asset_resolve: WidgetAssetResolve;
-// A bundle drew this frame in its own palette, which ends with the frame.
-widget_host_palette_used: bool;
+// The palettes a bundle is drawing in this frame, nested; they end with
+// the frame.
+widget_host_palette_depth: s32;
 widget_text_codec: WidgetTextPropsCodec;
 widget_image_codec: WidgetImagePropsCodec;
 // The points of the warped image being drawn: the hosted Image effect
@@ -262,7 +263,7 @@ WidgetHostBegin :: (session: Session, asset_allowed: WidgetAssetAllowed, resolve
     widget_host_asset_allowed = asset_allowed
     widget_host_asset_resolve = resolve
     widget_host_depth = 0
-    widget_host_palette_used = false
+    widget_host_palette_depth = 0
     widget_host_active = true
     if audio != null {
         MediaAudioOwnerBind(audio, session, WidgetHostAssetAllowed, audio_read, audio_context)
@@ -277,9 +278,9 @@ WidgetHostEnd :: () {
         End(widget_host_session)
         widget_host_depth -= 1
     }
-    if widget_host_palette_used {
+    while widget_host_palette_depth > 0 {
         unused WidgetPaletteRestore(widget_host_session)
-        widget_host_palette_used = false
+        widget_host_palette_depth -= 1
     }
     widget_host_active = false
     widget_host_audio = null
@@ -341,7 +342,7 @@ WidgetHostPalette :: (session: Session, arguments: *HostValue, result: *HostValu
         .danger = colors[6], .warning = colors[7], .success = colors[8],
         .material = arguments[10].integer != 0}
     used := WidgetPaletteUse(session, palette)
-    if used { widget_host_palette_used = true }
+    if used { widget_host_palette_depth += 1 }
     result.* = HostScalar("bool", ifx used then 1 else 0)
     return 1
 }
@@ -439,8 +440,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         return WidgetHostPalette(session, arguments, result)
     }
     if name == "WidgetPaletteRestoreHostedHost" && ModuleName(owner, "widget_palette") && count == 1 {
-        restored := !widget_host_palette_used || WidgetPaletteRestore(session)
-        widget_host_palette_used = false
+        restored := widget_host_palette_depth == 0 || WidgetPaletteRestore(session)
+        if widget_host_palette_depth > 0 { widget_host_palette_depth -= 1 }
         result.* = HostScalar("bool", ifx restored then 1 else 0)
         return 1
     }

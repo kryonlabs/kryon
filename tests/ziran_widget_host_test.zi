@@ -782,9 +782,22 @@ main :: () -> s32 {
     StyleTokenColor("text").r != cast(u8)0xe0 || StyleTokenColor("accent").g != cast(u8)0xb9 { return 82 }
     themed := TextStyleFor(TextStyleRequest.{}, StyleData.{})
     if themed.foreground != cast(u32)0xe0e4e3ff || ActiveStyleRules().count == host_rules { return 78 }
+    // A palette inside that one, such as a button's, gives the outer
+    // palette back when it ends, not the host's style.
+    inner := colors
+    inner[1] = HostScalar("u32", cast(s64)0xf7f2e8ff)
+    inner[3] = HostScalar("u32", cast(s64)0x10203fff)
+    if Call("widget_palette", "WidgetPaletteHostedHost", inner[:], *result) != 1 ||
+    StyleTokenColor("canvas").r != cast(u8)0xf7 ||
+    TextStyleFor(TextStyleRequest.{}, StyleData.{}).foreground != cast(u32)0x10203fff { return 84 }
+    if Call("widget_palette", "WidgetPaletteRestoreHostedHost", restore[:], *result) != 1 ||
+    StyleTokenColor("canvas").r != cast(u8)0x26 || StyleTokenColor("text").r != cast(u8)0xe0 ||
+    TextStyleFor(TextStyleRequest.{}, StyleData.{}).foreground != cast(u32)0xe0e4e3ff { return 85 }
     if Call("widget_palette", "WidgetPaletteRestoreHostedHost", restore[:], *result) != 1 ||
     ActiveStyleRules().count != host_rules { return 79 }
-    if Call("widget_palette", "WidgetPaletteHostedHost", colors[:], *result) != 1 { return 80 }
+    // The frame's end unwinds every palette the bundle left open.
+    if Call("widget_palette", "WidgetPaletteHostedHost", colors[:], *result) != 1 ||
+    Call("widget_palette", "WidgetPaletteHostedHost", inner[:], *result) != 1 { return 80 }
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk || ActiveStyleRules().count != host_rules ||
     TextStyleFor(TextStyleRequest.{}, StyleData.{}).foreground == cast(u32)0xe0e4e3ff { return 81 }
@@ -792,6 +805,36 @@ main :: () -> s32 {
     restored_accent := StyleTokenColorOr("accent", Color.{5, 6, 7, 8})
     if CaptureStyleTokenColors().count != host_tokens.count || restored_canvas.r != original_canvas.r ||
     restored_canvas.a != original_canvas.a || restored_accent.g != original_accent.g || restored_accent.a != original_accent.a { return 83 }
+    // Twenty nested palettes: each shows, the restores past the sixteen
+    // remembered levels give the deepest remembered one, every one inside
+    // it comes back in turn, and the last restore gives the host its style.
+    BeginFrame(session, cast(u64)8, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    WidgetHostBegin(session, AllowPhoto)
+    deep := colors
+    for level: cast(s32)0..19 {
+        deep[1] = HostScalar("u32", cast(s64)((cast(u64)(0x10 + level) << cast(u64)24) | cast(u64)0xff))
+        if Call("widget_palette", "WidgetPaletteHostedHost", deep[:], *result) != 1 || result.integer != 1 ||
+        StyleTokenColor("canvas").r != cast(u8)(0x10 + level) { return 101 }
+    }
+    for restored: cast(s32)1..19 {
+        shown := ifx restored <= 3 then 16 else 19 - restored
+        if Call("widget_palette", "WidgetPaletteRestoreHostedHost", restore[:], *result) != 1 ||
+        StyleTokenColor("canvas").r != cast(u8)(0x10 + shown) ||
+        ActiveStyleRules().count == host_rules { return 102 }
+    }
+    if Call("widget_palette", "WidgetPaletteRestoreHostedHost", restore[:], *result) != 1 ||
+    ActiveStyleRules().count != host_rules { return 103 }
+    deep_canvas := StyleTokenColorOr("canvas", Color.{1, 2, 3, 4})
+    if deep_canvas.r != original_canvas.r || deep_canvas.a != original_canvas.a { return 104 }
+    // Twenty left open: the frame's end still gives the host its style.
+    for level: cast(s32)0..19 {
+        deep[1] = HostScalar("u32", cast(s64)((cast(u64)(0x10 + level) << cast(u64)24) | cast(u64)0xff))
+        if Call("widget_palette", "WidgetPaletteHostedHost", deep[:], *result) != 1 { return 105 }
+    }
+    WidgetHostEnd()
+    deep_canvas = StyleTokenColorOr("canvas", Color.{1, 2, 3, 4})
+    if EndFrame(session) != cast(FrameStatus)FrameOk || ActiveStyleRules().count != host_rules ||
+    deep_canvas.r != original_canvas.r || deep_canvas.a != original_canvas.a { return 106 }
     // Sampling overrides survive the bounded host codec with exact paint parity.
     paths: [2]string = .["assets/photo.png", "assets/photo.png"]
     mixed_layers: [6]s32 = .[0, 1, 0, 1, -1, 0]

@@ -220,8 +220,12 @@ Pixel snapping also works on older hosts because the bundle fits the bounds.
 
 `WidgetPaletteUse` scopes semantic colors along with widget rules. Hosted
 `AppThemeColor` calls and compositions using canvas, surface, text, border and
-accent see the same palette. `WidgetPaletteRestore` restores the complete prior
-token set, including host-specific colors and the absence of unset tokens.
+accent see the same palette. `WidgetPaletteRestore` restores the surrounding palette when calls nest,
+including its text style and semantic tokens. The host frame unwinds palettes
+a guest leaves open. Sixteen nested parents are retained; scopes beyond that
+restore to the deepest retained palette, then unwind to the original host.
+The outermost restore preserves the complete prior token set, including
+host-specific colors and the absence of unset tokens.
 
 Hosts call `PaintResourcesChanged()` when replacing raster resources without
 changing widget props. Retained frames then compose and paint again, including

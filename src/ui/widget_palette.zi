@@ -1,7 +1,9 @@
 // An app can draw its widgets in its own colours, whatever host draws them,
 // so a game keeps its look inside an app collection. The palette lasts until
-// the host's frame for the app ends; a host that is itself a portable bundle
-// passes it on to the host that draws. It stays apart from the widget
+// the host's frame for the app ends or its restore, which draws in the
+// palette it replaced, so a button's palette inside a screen's palette
+// leaves the screen's colours after it. A host that is itself a portable
+// bundle passes it on to the host that draws. It stays apart from the widget
 // modules, so bundles that never use it keep their reviewed bytes.
 #import "session"
 
@@ -54,6 +56,34 @@ WidgetPalette :: struct {
     widget_palette_rules: StyleRules;
     widget_palette_built: WidgetPalette;
     widget_palette_ready: bool;
+    // Palettes nest: a palette used inside another remembers the one it
+    // replaced, and its restore draws in that one again. Deeper than the
+    // remembered levels a palette still shows, and its restore draws in the
+    // deepest remembered palette, so the levels outside keep their colours
+    // and an app that uses a palette every frame without a restore still
+    // changes palette.
+    WIDGET_PALETTE_DEPTH :: 16;
+    widget_palette_outer: [WIDGET_PALETTE_DEPTH]WidgetPalette;
+    widget_palette_depth: s32;
+    widget_palette_deepest: WidgetPalette;
+    widget_palette_beyond: s32;
+
+    WidgetPaletteInstall :: (palette: WidgetPalette) {
+        colors := SystemPalette.{.found = true, .background = palette.background,
+            .base = palette.base, .text = palette.text, .selected = palette.selected,
+            .selected_text = palette.selected_text, .border = palette.border,
+            .danger = palette.danger, .warning = palette.warning, .success = palette.success}
+        if !widget_palette_ready || !WidgetPaletteSame(palette, widget_palette_built) {
+            widget_palette_rules = SystemPaletteRules(colors, true)
+            widget_palette_built = palette
+            widget_palette_ready = true
+        }
+        installed_rules = widget_palette_rules
+        SystemPaletteTokens(colors)
+        StyleCacheInstall()
+        resolver: TextStyleResolver = ResolveInstalledTextStyle
+        SetTextStyleResolver(resolver)
+    }
 
     WidgetPaletteSame :: (a: WidgetPalette, b: WidgetPalette) -> bool {
         return a.background == b.background && a.base == b.base && a.text == b.text &&
@@ -65,16 +95,15 @@ WidgetPalette :: struct {
     #program_export
     WidgetPaletteUse :: (session: Session, palette: WidgetPalette) -> bool {
         unused session
-        colors := SystemPalette.{.found = true, .background = palette.background,
-            .base = palette.base, .text = palette.text, .selected = palette.selected,
-            .selected_text = palette.selected_text, .border = palette.border,
-            .danger = palette.danger, .warning = palette.warning, .success = palette.success}
-        if !widget_palette_ready || !WidgetPaletteSame(palette, widget_palette_built) {
-            widget_palette_rules = SystemPaletteRules(colors, true)
-            widget_palette_built = palette
-            widget_palette_ready = true
-        }
-        if !widget_palette_active {
+        if widget_palette_active {
+            if widget_palette_depth < WIDGET_PALETTE_DEPTH {
+                widget_palette_outer[widget_palette_depth] = widget_palette_built
+                widget_palette_depth += 1
+            } else {
+                if widget_palette_beyond == 0 { widget_palette_deepest = widget_palette_built }
+                if widget_palette_beyond < 0x7fffffff { widget_palette_beyond += 1 }
+            }
+        } else {
             // The host's rules keep their typeface bytes, so its snapshot
             // can be put back without copying them again.
             widget_palette_saved = installed_rules
@@ -83,11 +112,7 @@ WidgetPalette :: struct {
             widget_palette_saved_tokens = CaptureStyleTokenColors()
             widget_palette_active = true
         }
-        installed_rules = widget_palette_rules
-        SystemPaletteTokens(colors)
-        StyleCacheInstall()
-        resolver: TextStyleResolver = ResolveInstalledTextStyle
-        SetTextStyleResolver(resolver)
+        WidgetPaletteInstall(palette)
         return true
     }
 
@@ -95,6 +120,16 @@ WidgetPalette :: struct {
     WidgetPaletteRestore :: (session: Session) -> bool {
         unused session
         if !widget_palette_active { return true }
+        if widget_palette_beyond > 0 {
+            widget_palette_beyond -= 1
+            WidgetPaletteInstall(widget_palette_deepest)
+            return true
+        }
+        if widget_palette_depth > 0 {
+            widget_palette_depth -= 1
+            WidgetPaletteInstall(widget_palette_outer[widget_palette_depth])
+            return true
+        }
         installed_rules = widget_palette_saved
         StyleCacheInstall()
         active_text_style_callback = widget_palette_saved_resolver

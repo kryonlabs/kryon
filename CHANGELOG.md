@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Keep surrounding theme colors when buttons and embedded modules finish drawing in their own palettes.
+
 - Keys pressed by the test driver also appear in frame input snapshots, so apps
   reading them can be driven in tests like apps reading the key queue.
 
