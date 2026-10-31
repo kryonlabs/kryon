@@ -254,11 +254,10 @@ install-user: build/bin/kryon zx-player
 # proves each over its whole listed domain.
 LAW_MODULES := $(wildcard src/ui/*_laws.zi)
 laws: $(BUILD_DIR)/ziran-toolchain.stamp
-	@for module in $(LAW_MODULES); do \
-		$(ZIRAN_DIR)/build/bin/ziran check --root src/ui $(ZIRAN_STD_PATH) $$module > /dev/null || exit 1; \
-	done
+	@printf '%s\n' $(LAW_MODULES) | xargs -P "$(TEST_JOBS)" -I{} \
+		sh -c '$(ZIRAN_DIR)/build/bin/ziran check --root src/ui $(ZIRAN_STD_PATH) "$$1" > /dev/null' sh {}
 	@echo "Kryon laws proved: $(words $(LAW_MODULES)) modules"
-	@ZIRAN_BIN=$(ZIRAN_DIR)/build/bin/ziran sh tests/law_mutation_test.sh
+	@TEST_JOBS="$(TEST_JOBS)" ZIRAN_BIN=$(ZIRAN_DIR)/build/bin/ziran sh tests/law_mutation_test.sh
 
 source-check:
 	sh tools/check-ziran-source.sh
@@ -273,6 +272,21 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
 
 check: all ziran-test header-check docs-check project-test public-surface-check host-keys-test laws
+
+# CI runs make test as parallel jobs on separate machines. The hosts shard takes
+# every test target not named here, so a new one cannot miss CI.
+CI_SHARD_ZX := renderer-consumer-test zx-test zx-reload-test zx-services-test zx-hosted-test \
+	zx-headless-test native-text-test native-accessibility-test bundle-preload-test
+CI_SHARD_CHECK := check
+CI_SHARD_WEB := canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test dom-project-test
+.PHONY: test-shard-zx test-shard-check test-shard-web test-shard-hosts
+test-shard-zx: $(CI_SHARD_ZX)
+test-shard-check: $(CI_SHARD_CHECK)
+test-shard-web: $(CI_SHARD_WEB)
+test-shard-hosts:
+	@rest=; for target in $$($(MAKE) --no-print-directory -pn test 2>/dev/null | sed -n 's/^test: //p' | head -1); do \
+		case " $(CI_SHARD_ZX) $(CI_SHARD_CHECK) $(CI_SHARD_WEB) " in *" $$target "*) ;; *) rest="$$rest $$target" ;; esac; \
+	done; test -n "$$rest"; $(MAKE) --no-print-directory $$rest
 
 # Minutes, not the half hour of make test: source rules plus the hosts whose
 # links a shared backend change can break. Run before pushing; CI runs it first.

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Every deliberately broken implementation must be rejected by the laws, so
-# the laws are known not to be vacuous. The unmutated tree must pass.
+# the laws are known not to be vacuous. make laws proves the unmutated tree first.
 set -eu
 
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -9,39 +9,46 @@ std=${ZIRAN_STD:-"$ziran_root/std"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-fresh() {
-    rm -rf "$work/ui"
-    cp -r "$repo/src/ui" "$work/ui"
+jobs=${TEST_JOBS:-4}
+running=0
+index=0
+
+# Each mutation gets its own tree. A failure is reported and remembered, so the
+# rest of its batch still finishes and the script stops after it.
+one_mutation() {
+    tree=$work/$1/ui file=$2 module=$3 expression=$4 law=$5
+    mkdir -p "$work/$1"
+    cp -r "$repo/src/ui" "$tree"
+    sed -i "$expression" "$tree/$file"
+    if cmp -s "$repo/src/ui/$file" "$tree/$file"; then
+        echo "mutation did not change $file: $expression" >&2
+        return 1
+    fi
+    if "$ziran" check --root "$tree" --module-path "$std" "$tree/$module" \
+        > "$work/$1/out.json" 2> "$work/$1/out.err"; then
+        echo "laws accepted mutation: $file: $expression" >&2
+        return 1
+    fi
+    if ! grep -q "law $law is disproved" "$work/$1/out.err"; then
+        echo "mutation $expression did not disprove $law" >&2
+        cat "$work/$1/out.err" >&2
+        return 1
+    fi
+    rm -rf "$work/$1"
 }
 
-check() {
-    "$ziran" check --root "$work/ui" --module-path "$std" "$work/ui/$1" \
-        > "$work/out.json" 2> "$work/out.err"
+finish_batch() {
+    wait
+    running=0
+    if [ -e "$work/failed" ]; then exit 1; fi
 }
-
-fresh
-for laws in "$repo"/src/ui/*_laws.zi; do
-    check "$(basename "$laws")"
-done
 
 # file, law module, sed expression, expected disproved law
 mutate() {
-    file=$1 module=$2 expression=$3 law=$4
-    fresh
-    sed -i "$expression" "$work/ui/$file"
-    if cmp -s "$repo/src/ui/$file" "$work/ui/$file"; then
-        echo "mutation did not change $file: $expression" >&2
-        exit 1
-    fi
-    if check "$module"; then
-        echo "laws accepted mutation: $file: $expression" >&2
-        exit 1
-    fi
-    if ! grep -q "law $law is disproved" "$work/out.err"; then
-        echo "mutation $expression did not disprove $law" >&2
-        cat "$work/out.err" >&2
-        exit 1
-    fi
+    index=$((index + 1))
+    { one_mutation "$index" "$@" || : > "$work/failed"; } &
+    running=$((running + 1))
+    if [ "$running" -ge "$jobs" ]; then finish_batch; fi
 }
 
 # Scrolling past the end, or before the start.
@@ -133,4 +140,5 @@ mutate direction_pad.zi direction_pad_laws.zi 's/    if arm != last {/    if arm
 mutate direction_pad.zi direction_pad_laws.zi 's/    } else if repeat > 0.0 \&\& now >= next {/    } else if repeat > 0.0 {/' HeldArmRepeats
 # Letting go remembering the arm, so pressing it again waits.
 mutate direction_pad.zi direction_pad_laws.zi 's/        hold.last = -1$/        hold.last = last/' PressAgainStepsAtOnce
+finish_batch
 echo "Kryon laws reject all mutations"

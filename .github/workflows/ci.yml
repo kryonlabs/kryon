@@ -21,6 +21,8 @@ jobs:
   push-check:
     name: Source rules and host links
     runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.changes.outputs.code }}
     defaults:
       run:
         working-directory: kryon
@@ -58,9 +60,27 @@ jobs:
       - name: Source rules and host links
         run: make push-check
 
+      # A push touching only prose or the site skips the long jobs: this job
+      # still checks the docs, and the Pages workflow tests the site. Anything
+      # unknown runs everything.
+      - name: Decide whether the long jobs apply
+        id: changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          code=true
+          if [ "$GITHUB_EVENT_NAME" = push ] && files=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$GITHUB_SHA" --jq '.files[].filename'); then
+            count=$(printf '%s\n' "$files" | grep -c . || true)
+            other=$(printf '%s\n' "$files" | grep -vE '^docs/|\.md$' || true)
+            if [ "$count" -gt 0 ] && [ "$count" -lt 300 ] && [ -z "$other" ]; then code=false; fi
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
   test-macos-zx:
     name: macOS native ZX build and display-free execution
     needs: push-check
+    if: needs.push-check.outputs.code == 'true'
     runs-on: macos-latest
     defaults:
       run:
@@ -88,9 +108,14 @@ jobs:
           build/zx-raylib/zx --check build/scratch/zx-headless/app.zx
 
   test-linux:
-    name: Ziran library and host tests
+    name: Ziran library and host tests (${{ matrix.shard }})
     needs: push-check
+    if: needs.push-check.outputs.code == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [zx, check, web, site, hosts]
     defaults:
       run:
         working-directory: kryon
@@ -115,7 +140,7 @@ jobs:
           fetch: true
           recommends: true
           packages: >-
-            build-essential python3 ripgrep xvfb pkg-config libsdl2-dev libcairo2-dev
+            build-essential ccache python3 ripgrep xvfb pkg-config libsdl2-dev libcairo2-dev
             libfreetype-dev libfontconfig1-dev libcurl4-openssl-dev libdrm-dev libgbm-dev
             libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri imagemagick xclip xdotool
             x11-xserver-utils python3-gi python3-pil ffmpeg gir1.2-gtk-3.0 gir1.2-atspi-2.0
@@ -160,18 +185,27 @@ jobs:
           ~/emsdk/emsdk install 6.0.6
           ~/emsdk/emsdk activate 6.0.6
 
+      - name: Keep compile results between runs
+        uses: ./kryon/.github/actions/compile-cache
+        with:
+          key: ${{ matrix.shard }}
+
       - name: Build and test
+        if: matrix.shard != 'site'
         env:
           CHROMIUM: google-chrome
-        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 make test
+        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 make test-shard-${{ matrix.shard }}
 
       - name: Check repeatable frame workloads
+        if: matrix.shard == 'hosts'
         run: python3 tools/performance.py --budget-ms 64
 
       - name: Test SVG example
+        if: matrix.shard == 'hosts'
         run: env -u DISPLAY -u WAYLAND_DISPLAY make -C examples test
 
       - name: Test live preview and rendered themes
+        if: matrix.shard == 'web'
         env:
           CHROMIUM: google-chrome
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY node tests/demo_browser.mjs
@@ -179,6 +213,7 @@ jobs:
       # The whole site is rebuilt from this checkout, so the live editor's
       # embedded examples match the gallery under test. Nothing is deployed.
       - name: Build and test the widget gallery
+        if: matrix.shard == 'site'
         env:
           CHROMIUM: google-chrome
         run: |
@@ -187,9 +222,14 @@ jobs:
           python3 tests/gallery_modules_test.py
           make site-gallery-test
 
+      - name: Show how much the compile cache saved
+        if: always()
+        run: ccache --show-stats || true
+
   test-sanitizers:
     name: Behavior tests under AddressSanitizer and UndefinedBehaviorSanitizer
     needs: push-check
+    if: needs.push-check.outputs.code == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -233,6 +273,7 @@ jobs:
   test-desktop-hosts:
     name: Desktop and raylib hosts on private Xvfb
     needs: push-check
+    if: needs.push-check.outputs.code == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:

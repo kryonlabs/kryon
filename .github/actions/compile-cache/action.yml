@@ -1,0 +1,39 @@
+name: Compile cache
+description: >-
+  Reuses C objects through ccache and Emscripten's generated system libraries
+  between runs. Run it after the setup action, which installs ccache.
+inputs:
+  key:
+    description: Separates the jobs' caches, since each compiles different programs.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Name today's compiler cache
+      id: day
+      shell: bash
+      run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+    # One entry a day per job keeps the repository's 10 GB cache allowance safe.
+    - name: Restore C objects
+      uses: actions/cache@v6
+      with:
+        path: ~/.ccache
+        key: ccache-${{ runner.os }}-${{ inputs.key }}-${{ steps.day.outputs.day }}
+        restore-keys: ccache-${{ runner.os }}-${{ inputs.key }}-
+    - name: Restore Emscripten system libraries
+      uses: actions/cache@v6
+      with:
+        path: |
+          kryon/build/emscripten-cache
+          kryon/build/ziran/emscripten-cache
+        key: emscripten-cache-${{ inputs.key }}-6.0.6
+    - name: Compile through the cache
+      shell: bash
+      run: |
+        echo /usr/lib/ccache >> "$GITHUB_PATH"
+        {
+          echo "CCACHE_DIR=$HOME/.ccache"
+          echo "CCACHE_MAXSIZE=150M"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE"
+          echo "CCACHE_NOHASHDIR=true"
+        } >> "$GITHUB_ENV"
