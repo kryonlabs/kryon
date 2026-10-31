@@ -377,6 +377,12 @@ raylib-frame-input-test: project-toolchain $(RAYLIB_A)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
 		sh tests/raylib_frame_snapshot_test.sh
 
+# The canonical Android host's frame publication, on desktop raylib and Xvfb.
+.PHONY: android-frame-input-test
+android-frame-input-test: project-toolchain $(RAYLIB_A)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
+		sh tests/android_frame_input_test.sh
+
 .PHONY: raylib-frame-pixels-test
 raylib-frame-pixels-test: project-toolchain $(RAYLIB_A)
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_frame_pixels_test.py --host \
@@ -546,7 +552,7 @@ android-surface-test: project-toolchain
 android-rotation-pixels-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/android_rotation_pixels_test.sh
 
-test: android-surface-test android-rotation-pixels-test
+test: android-surface-test android-rotation-pixels-test android-frame-input-test
 
 .PHONY: window-focus-test
 window-focus-test:

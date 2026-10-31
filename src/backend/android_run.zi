@@ -15,6 +15,7 @@
 #import "app"
 #import "std/byte_text_linux"
 #import "drawing_props"
+#import "frame_snapshot"
 #import "geometry"
 #import "raylib_runtime"
 #import "scroll_device"
@@ -75,6 +76,10 @@ AndroidFrameFailure :: (session: Session, step: string) {
 
 DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
     bounds: Rectangle) -> bool {
+    // The application reads this frame's polled input through
+    // CaptureFrameInput. Presentation may yield to the platform, so the
+    // publication closes before every EndRaylibFrame, failures included.
+    unused RaylibFrameInputBegin(session)
     BeginRaylibFrame()
     ClearAndroidFrame(viewport, AndroidCanvas(), RaylibZoom())
     pointer: PointerFrame = TestDriverPointer(session, PollPointer())
@@ -96,17 +101,20 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
     }
     if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk {
         AndroidFrameFailure(session, "the frame could not begin")
+        FrameInputEnd(session)
         EndRaylibFrame()
         return false
     }
     if Frame(session, bounds) != 0 {
         unused AndroidError("kryon: the application's frame failed")
         TreeCancel(session)
+        FrameInputEnd(session)
         EndRaylibFrame()
         return false
     }
     if EndFrame(session) != cast(FrameStatus)FrameOk {
         AndroidFrameFailure(session, "the frame could not finish")
+        FrameInputEnd(session)
         EndRaylibFrame()
         return false
     }
@@ -115,6 +123,7 @@ DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
     // RasterImage skips an unavailable asset; keep the activity alive so the
     // next frame can read the new provider/lifecycle state. Tree and application
     // failures above still stop the host.
+    FrameInputEnd(session)
     unused EndRaylibFrame()
     TestDriverFrame(session)
     return true

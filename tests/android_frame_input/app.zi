@@ -1,0 +1,21 @@
+// The application the canonical Android host calls back each frame.
+#import "session"
+#import "geometry"
+#import "frame_snapshot"
+#import "input_protocol"
+
+fail: bool;
+frames: s32;
+seen: FrameInputSnapshot;
+foreign_seen: bool;
+foreign: Session;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    unused viewport
+    frames += 1
+    seen = CaptureFrameInput(session)
+    if CaptureFrameInput(foreign).available { foreign_seen = true }
+    if fail { return 1 }
+    return 0
+}
