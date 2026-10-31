@@ -156,9 +156,10 @@ Exists :: (path: string) -> bool {
 }
 
 Execute :: (arguments: []string) -> s32 {
-    storage: [17]ArgumentBytes
-    pointers: [18]PointerSlot
-    if arguments.count == 0 || arguments.count > storage.count { return 127 }
+    storage: [19]ArgumentBytes
+    pointers: [20]PointerSlot
+    if arguments.count > storage.count { return Error("too many project command arguments") }
+    if arguments.count == 0 { return 127 }
     at: s32 = 0
     while at < cast(s32)arguments.count {
         if !CString(arguments[at], storage[at].data[:]) { return 127 }
@@ -562,9 +563,11 @@ main :: () -> s32 {
     ziran_bytes: [4096]u8
     library_bytes: [4096]u8
     static_archive_bytes: [4096]u8
+    native_artifacts_bytes: [4096]u8
+    native_platform_bytes: [4096]u8
     host_bytes: [4096]u8
     assets_bytes: [4096]u8
-    args: [17]string
+    args: [19]string
     args[0] = "make"
     args[1] = "--silent"
     args[2] = "--no-print-directory"
@@ -583,8 +586,10 @@ main :: () -> s32 {
         static_archive_bytes[:])
     args[15] = Join("PROJECT_HOST=", profile.host, host_bytes[:])
     args[16] = Join("PROJECT_ASSETS=", profile.assets, assets_bytes[:])
+    args[17] = Join("PROJECT_NATIVE_ARTIFACTS=", profile.native_artifacts, native_artifacts_bytes[:])
+    args[18] = Join("PROJECT_NATIVE_PLATFORM=", profile.native_platform, native_platform_bytes[:])
     at: s32 = 6
-    while at < 17 {
+    while at < 19 {
         if args[at] == "" { return Error("project path or value is too long") }
         at += 1
     }

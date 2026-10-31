@@ -9,6 +9,8 @@ ProjectProfile :: struct {
     host: string
     library: string
     static_archive: string
+    native_artifacts: string
+    native_platform: string
     assets: string
 }
 
@@ -59,6 +61,24 @@ ProjectNameValid :: (value: string) -> bool {
         at += 1
     }
     return true
+}
+
+ProjectArtifactsValid :: (value: string) -> bool {
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        start := at
+        while at < cast(s32)value.count && value[at] != cast(u8)58 { at += 1 }
+        if at == cast(s32)value.count || !ProjectNameValid(value[start:at]) { return false }
+        at += 1
+        start = at
+        while at < cast(s32)value.count && value[at] != cast(u8)32 { at += 1 }
+        if !ProjectNameValid(value[start:at]) { return false }
+        if at < cast(s32)value.count {
+            at += 1
+            if at == cast(s32)value.count { return false }
+        }
+    }
+    return value != ""
 }
 
 // Paths are passed through make and shell build rules. Keep them to ordinary
@@ -264,6 +284,10 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
                 config.profiles[selected].library = value
             } else if field == "static_archive" {
                 config.profiles[selected].static_archive = value
+            } else if field == "native_artifacts" {
+                config.profiles[selected].native_artifacts = value
+            } else if field == "native_platform" {
+                config.profiles[selected].native_platform = value
             } else if field == "assets" {
                 config.profiles[selected].assets = value
             }
@@ -323,6 +347,18 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
         !ProjectStaticArchiveValid(profile.static_archive) {
             config.error = "invalid profile static archive"
             return config
+        }
+        if profile.native_artifacts != "" || profile.native_platform != "" {
+            if !ProjectArtifactsValid(profile.native_artifacts) ||
+            !ProjectNameValid(profile.native_platform) {
+                config.error = "native artifacts need selections and an explicit platform"
+                return config
+            }
+            if profile.codegen != "" && profile.codegen != "c99" ||
+            profile.backend == "canvas" || profile.backend == "dom" || profile.backend == "android" {
+                config.error = "native artifacts require a native c99 profile"
+                return config
+            }
         }
         if profile.assets != "" && !ProjectPathValid(profile.assets) {
             config.error = "invalid profile assets path"

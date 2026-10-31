@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Native project profiles can link verified dependency-owned support artifacts,
+  including audio providers alongside an existing desktop renderer.
+
 - Game build tools can share renderer metadata validation, resource paths and
   ordered linker arguments instead of maintaining application copies.
 

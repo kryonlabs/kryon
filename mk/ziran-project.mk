@@ -35,7 +35,7 @@ C_STAMP := $(C_DIR)/.complete
 PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE)
 ifeq ($(PROJECT_CODEGEN),zx)
 PROGRAM := $(PROGRAM).zx
-ifneq ($(strip $(PROJECT_LIBRARY)$(PROJECT_STATIC_ARCHIVE)),)
+ifneq ($(strip $(PROJECT_LIBRARY)$(PROJECT_STATIC_ARCHIVE)$(PROJECT_NATIVE_ARTIFACTS)),)
 $(error a Zx profile cannot link a native library or static archive)
 endif
 endif
@@ -170,6 +170,24 @@ HOST_LIBS += -pthread
 endif
 endif
 
+ifneq ($(strip $(PROJECT_NATIVE_ARTIFACTS)),)
+ifneq ($(PROJECT_CODEGEN),c99)
+$(error native artifacts require a native c99 profile)
+endif
+ifneq ($(BROWSER_BACKEND),)
+$(error native artifacts require a native c99 profile)
+endif
+ifeq ($(strip $(PROJECT_NATIVE_PLATFORM)),)
+$(error native artifacts require an explicit native_platform)
+endif
+.PHONY: native-artifact-content
+HOST_DEPS += native-artifact-content
+PROJECT_ARTIFACT_LINK = python3 "$(KRYON_DIR)/scripts/link_artifacts.py" \
+	--toolchain "$(ZIRAN_DIR)" --project "$(CURDIR)" \
+	--platform "$(PROJECT_NATIVE_PLATFORM)" --artifacts "$(PROJECT_NATIVE_ARTIFACTS)" --
+PROJECT_ARTIFACT_LIBS := --kryon-artifact-libraries
+endif
+
 .PHONY: run build check install toolchain program-title-config
 
 # Considered on every build, rewritten only when the name changes.
@@ -251,9 +269,9 @@ ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 else
 	@temporary=$$(mktemp build/$(PROJECT_NAME).XXXXXX.html); \
 		trap 'rm -f "$$temporary"' EXIT; \
-		$(CC) -std=c99 -pedantic-errors $(HOST_CFLAGS) -O2 -ffunction-sections -fdata-sections \
+		$(PROJECT_ARTIFACT_LINK) $(CC) -std=c99 -pedantic-errors $(HOST_CFLAGS) -O2 -ffunction-sections -fdata-sections \
 		-I$(ZIRAN_DIR)/include -I$(C_DIR) $(C_DIR)/*.c \
-		-Wl,--gc-sections $(HOST_LIBS) $(LDLIBS) -lm -o "$$temporary" && \
+		-Wl,--gc-sections $(PROJECT_ARTIFACT_LIBS) $(HOST_LIBS) $(LDLIBS) -lm -o "$$temporary" && \
 		chmod 755 "$$temporary" && mv "$$temporary" $@
 endif
 endif

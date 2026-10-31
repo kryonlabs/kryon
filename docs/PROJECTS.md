@@ -218,6 +218,34 @@ non-regular file. Browser profiles reject the setting instead of silently
 omitting it. `library` remains the existing system-library escape hatch and
 should be avoided by reproducible applications.
 
+Native `c99` profiles can instead request dependency-owned foreign support
+with `native_artifacts` and an explicit `native_platform`:
+
+```toml
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+native_artifacts = "kryon:renderer-raylib"
+native_platform = "linux-x86_64-gnu"
+```
+
+This adds Raylib's foreign support, for example for `MediaAudio`, to the
+existing SDL/Cairo profile. It keeps that profile's host and rendering path.
+Use space-separated `package:artifact` selections for several providers.
+Selections come from the application's resolved package graph; no cache
+paths or prebuilt archive copies belong in its manifest. The toolchain must
+provide Ziran's [shared artifact consumer](https://github.com/ziranlang/ziran/commit/ee86330414a2febb0135d86506b505af5e6a660b).
+
+Each build requests and verifies the artifacts before linking, so changed
+provider inputs or local overrides cannot leave an old executable in place.
+Kryon's renderer metadata or a provider's ordered `link.txt` supplies its
+archives and prerequisite/system link arguments. These appear after the
+application objects and before the profile's existing system libraries.
+Provider failures, malformed metadata and digest mismatches fail the build;
+the existing executable is replaced only after the complete link succeeds.
+These options require a native `c99` profile; browser, Android and portable
+profiles use their existing target-specific packaging paths. Compile options
+and application asset packaging remain the selected profile's responsibility.
+
 ```toml
 [tool.kryon]
 default_profile = "tui"

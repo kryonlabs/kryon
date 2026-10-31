@@ -107,5 +107,27 @@ ProjectOptionsTest :: () -> s32 {
     ProjectAndroidPackageValid("com..demo") ||
     ProjectAndroidPackageValid("com.example.de;o") ||
     ProjectAndroidPackageValid("") { return 24 }
+    artifacts := ParseProject(
+        "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.native_artifacts=kryon:renderer-raylib support:native\nprofiles.tui.native_platform=linux-x86_64-gnu\n",
+        "demo", "src/app.zi")
+    if !artifacts.ok || artifacts.profiles[0].native_artifacts != "kryon:renderer-raylib support:native" ||
+    artifacts.profiles[0].native_platform != "linux-x86_64-gnu" { return 25 }
+    if ProjectArtifactsValid("kryon:renderer-raylib;touch") ||
+    ProjectArtifactsValid("kryon:$(touch)") || ProjectArtifactsValid("kryon:one two") ||
+    ProjectArtifactsValid("kryon:one ") || ProjectArtifactsValid("kryon:one  other:two") ||
+    ProjectArtifactsValid(":one") || ProjectArtifactsValid("one:") ||
+    ProjectArtifactsValid("one:two:three") { return 26 }
+    missing_platform := ParseProject(
+        "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.native_artifacts=support:native\n",
+        "demo", "src/app.zi")
+    if missing_platform.ok { return 27 }
+    unsafe_platform := ParseProject(
+        "profiles=tui\nprofiles.tui.backend=terminal\nprofiles.tui.native_artifacts=support:native\nprofiles.tui.native_platform=linux;touch\n",
+        "demo", "src/app.zi")
+    if unsafe_platform.ok { return 28 }
+    portable_artifacts := ParseProject(
+        "profiles=tui\nprofiles.tui.backend=desktop\nprofiles.tui.codegen=zx\nprofiles.tui.native_artifacts=support:native\nprofiles.tui.native_platform=linux-x86_64-gnu\n",
+        "demo", "src/app.zi")
+    if portable_artifacts.ok { return 29 }
     return 42
 }

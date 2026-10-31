@@ -4,7 +4,7 @@ module_roots = ["src/ui", "src/backend"]
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-ref = "master"
+ref = "ee86330414a2febb0135d86506b505af5e6a660b"
 
 [dependencies.raylib]
 git = "https://github.com/raysan5/raylib.git"
@@ -200,6 +200,8 @@ codegen = "string=c99"
 host = "string"
 library = "string"
 static_archive = "string"
+native_artifacts = "string"
+native_platform = "string"
 assets = "string"
 
 # Android profile settings: the application id of the generated droid
