@@ -39,6 +39,9 @@ main :: () -> s32 {
     if Runtime.RaylibLayoutKey(73) != 67 || Runtime.RaylibLayoutKey(66) != 66 ||
         Runtime.RaylibLayoutKey(65) != 65 || Runtime.RaylibLayoutKey(263) != 263 ||
         Runtime.RaylibLayoutKey(0) != 0 { return 23 }
+    #if #defined(_WIN32) || #defined(__APPLE__) {
+        if Runtime.RaylibLayoutKey(90) != 90 { return 24 }
+    }
     if Runtime.RaylibPressedKey() != 65 || Runtime.RaylibPressedKey() != 0 ||
         Runtime.RaylibRepeatedKey() != 263 || Runtime.RaylibRepeatedKey() != 0 ||
         !Runtime.RaylibKeyDown(65) || Runtime.RaylibKeyDown(512) ||

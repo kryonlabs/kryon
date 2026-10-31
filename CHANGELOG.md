@@ -2,7 +2,7 @@
 
 ## [Unreleased]
 
-- Keyboard shortcuts on Linux Raylib hosts follow the active keyboard layout,
+- Keyboard shortcuts on desktop Raylib hosts follow the active keyboard layout,
   such as Dvorak, instead of physical key positions.
 - Raylib hosts keep a modifier released in the same poll as its key press, so a
   quick Ctrl+C is not read as a plain key.

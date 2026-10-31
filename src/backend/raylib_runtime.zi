@@ -2009,40 +2009,55 @@ RaylibPressedKeyRaw :: () -> s32 {
 // keyboard layout, so a position becomes the code of the key it types there,
 // as on the other hosts. A layout with no ASCII key there keeps the position.
 // RaylibKeyDown and frame snapshots stay positional, for held movement keys.
-#if !#defined(ANDROID_BUILD) && !#defined(_WIN32) && !#defined(__APPLE__) && !#defined(PLATFORM_WEB) {
-    keymap_sdl :: #system_library "SDL2";
-    HostSdlKeyFromScancode :: (scancode: s32) -> s32 #foreign keymap_sdl "SDL_GetKeyFromScancode";
-
-    RaylibKeyScancode :: (key: s32) -> s32 {
-        if key >= #char "A" && key <= #char "Z" { return key - #char "A" + 4 }
-        if key >= #char "1" && key <= #char "9" { return key - #char "1" + 30 }
-        if key == #char "0" { return 39 }
-        if key == #char "-" { return 45 }
-        if key == #char "=" { return 46 }
-        if key == #char "[" { return 47 }
-        if key == #char "]" { return 48 }
-        if key == #char "\\" { return 49 }
-        if key == #char ";" { return 51 }
-        if key == #char "'" { return 52 }
-        if key == #char "`" { return 53 }
-        if key == #char "," { return 54 }
-        if key == #char "." { return 55 }
-        if key == #char "/" { return 56 }
-        return 0
-    }
-
-    #program_export
-    RaylibLayoutKey :: (key: s32) -> s32 {
-        scancode := RaylibKeyScancode(key)
-        if scancode == 0 { return key }
-        typed := HostSdlKeyFromScancode(scancode)
-        if typed >= #char "a" && typed <= #char "z" { return typed - 32 }
-        if typed > 32 && typed < 127 { return typed }
-        return key
-    }
-} else {
+RaylibTypedKey :: (key: s32, typed: s32) -> s32 {
+    if typed >= #char "a" && typed <= #char "z" { return typed - 32 }
+    if typed > 32 && typed < 127 { return typed }
+    return key
+}
+#if #defined(ANDROID_BUILD) || #defined(PLATFORM_WEB) {
     #program_export
     RaylibLayoutKey :: (key: s32) -> s32 { return key }
+} else {
+    #if #defined(_WIN32) || #defined(__APPLE__) {
+        // GLFW hosts name a printable key from the active layout.
+        HostRaylibGetKeyName :: (key: s32) -> *u8 #foreign raylib "GetKeyName";
+
+        #program_export
+        RaylibLayoutKey :: (key: s32) -> s32 {
+            if key < #char "'" || key > #char "`" { return key }
+            name := HostRaylibGetKeyName(key)
+            if name == null || name[0] == cast(u8)0 || name[1] != cast(u8)0 { return key }
+            return RaylibTypedKey(key, cast(s32)name[0])
+        }
+    } else {
+        keymap_sdl :: #system_library "SDL2";
+        HostSdlKeyFromScancode :: (scancode: s32) -> s32 #foreign keymap_sdl "SDL_GetKeyFromScancode";
+
+        RaylibKeyScancode :: (key: s32) -> s32 {
+            if key >= #char "A" && key <= #char "Z" { return key - #char "A" + 4 }
+            if key >= #char "1" && key <= #char "9" { return key - #char "1" + 30 }
+            if key == #char "0" { return 39 }
+            if key == #char "-" { return 45 }
+            if key == #char "=" { return 46 }
+            if key == #char "[" { return 47 }
+            if key == #char "]" { return 48 }
+            if key == #char "\\" { return 49 }
+            if key == #char ";" { return 51 }
+            if key == #char "'" { return 52 }
+            if key == #char "`" { return 53 }
+            if key == #char "," { return 54 }
+            if key == #char "." { return 55 }
+            if key == #char "/" { return 56 }
+            return 0
+        }
+
+        #program_export
+        RaylibLayoutKey :: (key: s32) -> s32 {
+            scancode := RaylibKeyScancode(key)
+            if scancode == 0 { return key }
+            return RaylibTypedKey(key, HostSdlKeyFromScancode(scancode))
+        }
+    }
 }
 
 // OS repeats are separate from fresh presses in raylib. Return each repeated

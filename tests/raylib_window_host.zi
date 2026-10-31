@@ -123,6 +123,18 @@ SDL_GetKeyFromScancode :: (scancode: s32) -> s32 {
     if scancode >= 4 && scancode <= 29 { return scancode - 4 + 97 }
     return 0
 }
+// The GLFW hosts' name for the same two positions and an unnamed key.
+layout_c: [2]u8 = .{99, 0};
+layout_other: [3]u8 = .{0xd1, 0x81, 0};
+layout_name: [2]u8 = .{0, 0};
+#program_export
+GetKeyName :: (key: s32) -> *u8 {
+    if key == 73 { return *layout_c[0] }
+    if key == 66 { return *layout_other[0] }
+    if key == 90 { return null }
+    if key >= 65 && key <= 90 { layout_name[0] = cast(u8)(key + 32); return *layout_name[0] }
+    return null
+}
 #program_export
 IsKeyDown :: (key: s32) -> bool { return key == 65 }
 #program_export
