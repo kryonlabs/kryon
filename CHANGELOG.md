@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- SDL pixel hosts can paint on the GPU, including text and terminal cells, and
+  fall back to CPU painting without one.
+
 - Fix apps failing to save documents and extract assets on Android, where
   system folders above the app's private storage cannot be opened.
 

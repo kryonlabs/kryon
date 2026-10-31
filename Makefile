@@ -517,6 +517,11 @@ pixmap-parallel-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_pixmap_parallel_test.sh
 test: pixmap-parallel-test
 
+.PHONY: pixmap-gpu-test
+pixmap-gpu-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_pixmap_gpu_test.sh
+test: pixmap-gpu-test
+
 .PHONY: style-cache-test
 style-cache-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_style_cache_test.sh

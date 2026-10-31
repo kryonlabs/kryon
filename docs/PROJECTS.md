@@ -201,6 +201,14 @@ Explicit `SDL_RENDER_DRIVER` and `SDL_FRAMEBUFFER_ACCELERATION` environment
 preferences, or normal/override priority SDL hints, take precedence. The
 helper leaves other hosts and their graphics APIs untouched.
 
+Such a host can also paint on the GPU. `PixmapGpuOpen(renderer)` records the
+same paint commands as textured triangles, including text and terminal cells
+through a glyph atlas, and returns false on a software renderer or software GL
+driver, where the host keeps uploading pixels. While it is on, create the
+presented texture with `PixmapGpuCreateTarget(width, height)` and call
+`PixmapGpuDraw()` instead of uploading damage, then copy and present as usual.
+`KRYON_PIXMAP_GPU=0` keeps CPU painting; `=1` also uses a software GL driver.
+
 These settings live only in `ziran.toml`. Kryon declares them under
 `[options]` in its own `ziran.toml`. Ziran checks the application's
 `[tool.kryon]` tables against that declaration, merges `ziran.local.toml` over

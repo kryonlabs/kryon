@@ -1,0 +1,185 @@
+// Records the pixel backend's raster effects as textured triangles instead of
+// writing pixels. Coordinates are the raster's device pixels and every quad is
+// already clipped, so the frame owner needs no clip state: it uploads the
+// atlas, draws the batches in order into a retained target and presents it.
+// Paint, damage and widgets are the same on both paths.
+#import "drawing_props"
+#import "vec"
+
+PixmapGpuVertex :: struct {
+    x: float32
+    y: float32
+    r: u8
+    g: u8
+    b: u8
+    a: u8
+    u: float32
+    v: float32
+}
+// slot is the image, or -1 for the atlas holding solid paint, glyphs and corners.
+PixmapGpuBatch :: struct { slot: s32; smooth: bool; first: s32; count: s32 }
+PixmapGpuUpload :: struct { x: s32; y: s32; width: s32; height: s32; start: s32 }
+PixmapGpuEntry :: struct { key: s64; x: s32; y: s32 }
+PixmapGpuFlushCall :: #type () -> ();
+
+PixmapGpuAtlasSide :: 2048;
+PixmapGpuMaskLimit :: 256;
+PixmapGpuEntryLimit :: 16384;
+// Solid paint samples the middle of this always-white corner of the atlas.
+PixmapGpuWhiteSide :: 4;
+
+pixmap_gpu_active: bool;
+pixmap_gpu_max_image: s32;
+pixmap_gpu_flush: PixmapGpuFlushCall;
+pixmap_gpu_vertices: Vec(PixmapGpuVertex);
+pixmap_gpu_batches: Vec(PixmapGpuBatch);
+pixmap_gpu_uploads: Vec(PixmapGpuUpload);
+pixmap_gpu_staged: Vec(u32);
+pixmap_gpu_entries: Vec(PixmapGpuEntry);
+pixmap_gpu_entry_count: s32;
+pixmap_gpu_pen_x: s32;
+pixmap_gpu_pen_y: s32;
+pixmap_gpu_row: s32;
+// The last solid quad, while a further pixel on its row can extend it.
+pixmap_gpu_run_open: bool;
+pixmap_gpu_run_right: s32;
+pixmap_gpu_run_top: s32;
+pixmap_gpu_run_color: Color;
+
+PixmapGpuRecordClear :: () {
+    VecClear(pixmap_gpu_vertices); VecClear(pixmap_gpu_batches)
+    VecClear(pixmap_gpu_uploads); VecClear(pixmap_gpu_staged)
+    pixmap_gpu_run_open = false
+}
+
+PixmapGpuAtlasClear :: () {
+    if pixmap_gpu_entries.count == 0 {
+        empty: PixmapGpuEntry
+        for index: 0..PixmapGpuEntryLimit - 1 {
+            if !VecPush(pixmap_gpu_entries, empty) { return }
+        }
+    } else {
+        for index: 0..PixmapGpuEntryLimit - 1 { pixmap_gpu_entries[index].key = 0 }
+    }
+    pixmap_gpu_entry_count = 0
+    pixmap_gpu_pen_x = PixmapGpuWhiteSide + 1; pixmap_gpu_pen_y = 0
+    pixmap_gpu_row = PixmapGpuWhiteSide
+}
+
+PixmapGpuHome :: (key: s64) -> s32 {
+    mixed := cast(u64)key * cast(u64)11400714819323198485
+    return cast(s32)(mixed >> cast(u64)50)
+}
+
+// The atlas slot holding key, or -1.
+PixmapGpuFind :: (key: s64) -> s32 {
+    at := PixmapGpuHome(key)
+    while true {
+        found := pixmap_gpu_entries[at].key
+        if found == key { return at }
+        if found == 0 { return -1 }
+        at = (at + 1) & (PixmapGpuEntryLimit - 1)
+    }
+    return -1
+}
+
+// A new slot for width x height pixels, whose coverage the caller stages next.
+// A full atlas first draws what refers to it, then starts over.
+PixmapGpuReserve :: (key: s64, width: s32, height: s32) -> s32 {
+    if width <= 0 || height <= 0 || width > PixmapGpuMaskLimit || height > PixmapGpuMaskLimit { return -1 }
+    if pixmap_gpu_pen_x + width > PixmapGpuAtlasSide {
+        pixmap_gpu_pen_x = 0; pixmap_gpu_pen_y += pixmap_gpu_row + 1; pixmap_gpu_row = 0
+    }
+    if pixmap_gpu_pen_y + height > PixmapGpuAtlasSide ||
+        pixmap_gpu_entry_count >= PixmapGpuEntryLimit * 3 / 4 {
+        if pixmap_gpu_flush != null { pixmap_gpu_flush() }
+        PixmapGpuAtlasClear()
+    }
+    at := PixmapGpuHome(key)
+    while pixmap_gpu_entries[at].key != 0 { at = (at + 1) & (PixmapGpuEntryLimit - 1) }
+    pixmap_gpu_entries[at].key = key
+    pixmap_gpu_entries[at].x = pixmap_gpu_pen_x; pixmap_gpu_entries[at].y = pixmap_gpu_pen_y
+    pixmap_gpu_entry_count += 1
+    upload: PixmapGpuUpload = .{pixmap_gpu_pen_x, pixmap_gpu_pen_y, width, height, cast(s32)pixmap_gpu_staged.count}
+    if !VecPush(pixmap_gpu_uploads, upload) { return -1 }
+    pixmap_gpu_pen_x += width + 1
+    if height > pixmap_gpu_row { pixmap_gpu_row = height }
+    return at
+}
+
+PixmapGpuStage :: (pixel: u32) { unused VecPush(pixmap_gpu_staged, pixel) }
+
+// Ink is the vertex color; the atlas supplies only coverage.
+PixmapGpuAddMask :: (key: s64, width: s32, height: s32, coverage: []u8) -> s32 {
+    at := PixmapGpuReserve(key, width, height)
+    if at < 0 { return -1 }
+    for index: 0..cast(s64)width * height - 1 {
+        PixmapGpuStage((cast(u32)coverage[index] << cast(u32)24) | cast(u32)0x00ffffff)
+    }
+    return at
+}
+
+PixmapGpuBatchFor :: (slot: s32, smooth: bool) {
+    count := pixmap_gpu_batches.count
+    if count > 0 && pixmap_gpu_batches[count - 1].slot == slot && pixmap_gpu_batches[count - 1].smooth == smooth {
+        pixmap_gpu_batches[count - 1].count += 6
+        return
+    }
+    batch: PixmapGpuBatch = .{slot, smooth, cast(s32)pixmap_gpu_vertices.count, 6}
+    unused VecPush(pixmap_gpu_batches, batch)
+}
+
+PixmapGpuPush :: (left: float32, top: float32, right: float32, bottom: float32,
+    u0: float32, v0: float32, u1: float32, v1: float32, color: Color, slot: s32, smooth: bool) {
+    PixmapGpuBatchFor(slot, smooth)
+    a: PixmapGpuVertex = .{left, top, color.r, color.g, color.b, color.a, u0, v0}
+    b: PixmapGpuVertex = .{right, top, color.r, color.g, color.b, color.a, u1, v0}
+    c: PixmapGpuVertex = .{right, bottom, color.r, color.g, color.b, color.a, u1, v1}
+    d: PixmapGpuVertex = .{left, bottom, color.r, color.g, color.b, color.a, u0, v1}
+    unused VecPush(pixmap_gpu_vertices, a); unused VecPush(pixmap_gpu_vertices, b); unused VecPush(pixmap_gpu_vertices, c)
+    unused VecPush(pixmap_gpu_vertices, a); unused VecPush(pixmap_gpu_vertices, c); unused VecPush(pixmap_gpu_vertices, d)
+    pixmap_gpu_run_open = false
+}
+
+// An axis-aligned textured quad cut to whole clip pixels, keeping its mapping.
+// Reversed texture coordinates mirror it.
+PixmapGpuQuad :: (left: float32, top: float32, right: float32, bottom: float32,
+    u0: float32, v0: float32, u1: float32, v1: float32, color: Color, slot: s32, smooth: bool,
+    clip_left: s32, clip_top: s32, clip_right: s32, clip_bottom: s32) {
+    width := right - left; height := bottom - top
+    if width <= 0.0 || height <= 0.0 { return }
+    x0 := left; y0 := top; x1 := right; y1 := bottom
+    if x0 < cast(float32)clip_left { x0 = cast(float32)clip_left }
+    if y0 < cast(float32)clip_top { y0 = cast(float32)clip_top }
+    if x1 > cast(float32)clip_right { x1 = cast(float32)clip_right }
+    if y1 > cast(float32)clip_bottom { y1 = cast(float32)clip_bottom }
+    if x1 <= x0 || y1 <= y0 { return }
+    per_x := (u1 - u0) / width; per_y := (v1 - v0) / height
+    PixmapGpuPush(x0, y0, x1, y1, u0 + (x0 - left) * per_x, v0 + (y0 - top) * per_y,
+        u0 + (x1 - left) * per_x, v0 + (y1 - top) * per_y, color, slot, smooth)
+}
+
+// Whole pixels the caller has already clipped.
+PixmapGpuRect :: (left: s32, top: s32, right: s32, bottom: s32, color: Color) {
+    if right <= left || bottom <= top || color.a == cast(u8)0 { return }
+    white: float32 = cast(float32)PixmapGpuWhiteSide / 2.0 / cast(float32)PixmapGpuAtlasSide
+    PixmapGpuPush(cast(float32)left, cast(float32)top, cast(float32)right, cast(float32)bottom,
+        white, white, white, white, color, -1, false)
+}
+
+// Per-pixel effects (narrow glyphs, warped images) join into runs along a row.
+PixmapGpuPixel :: (x: s32, y: s32, color: Color) {
+    if pixmap_gpu_run_open && pixmap_gpu_run_right == x && pixmap_gpu_run_top == y &&
+        pixmap_gpu_run_color.r == color.r && pixmap_gpu_run_color.g == color.g &&
+        pixmap_gpu_run_color.b == color.b && pixmap_gpu_run_color.a == color.a {
+        end := pixmap_gpu_vertices.count
+        edge := cast(float32)(x + 1)
+        pixmap_gpu_vertices[end - 5].x = edge; pixmap_gpu_vertices[end - 4].x = edge
+        pixmap_gpu_vertices[end - 2].x = edge
+        pixmap_gpu_run_right = x + 1
+        return
+    }
+    PixmapGpuRect(x, y, x + 1, y + 1, color)
+    pixmap_gpu_run_open = true; pixmap_gpu_run_right = x + 1
+    pixmap_gpu_run_top = y; pixmap_gpu_run_color = color
+}

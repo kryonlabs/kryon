@@ -2,6 +2,7 @@
 #import "geometry"
 #import "utf8"
 #import "pixmap_text"
+#import "pixmap_gpu"
 ImageCanvas :: #import "image_canvas";
 Metrics :: #import "font_metrics";
 #import "math"
@@ -20,6 +21,8 @@ Metrics :: #import "font_metrics";
     PixmapRows :: (start: s32, end: s32, width: s32,
         procedure: PixmapRowProcedure, argument: *void, independent: bool = true) {
         if end <= start || width <= 0 { return }
+        // A GPU frame records in paint order on the frame owner.
+        if pixmap_gpu_active { procedure(cast(s64)start, cast(s64)end, argument); return }
         // Small retained damage costs less than waking the pool.
         if independent && cast(s64)(end - start) * width >= 65536 {
             work: PixmapRowWork = .{procedure, argument}
@@ -105,6 +108,8 @@ pixmap_image_heights: [PixmapImageLimit]s32;
 // Registration publishes borrowed storage even when its path and size match;
 // a caller may have edited those pixels since its last registration.
 pixmap_image_revision: u64;
+// The revision of each slot's last change, for hosts holding a texture of it.
+pixmap_image_revisions: [PixmapImageLimit]u64;
 #program_export
 PixmapImageRevision :: () -> u64 { return pixmap_image_revision }
 PixmapImagePixels :: struct { value: []u32 }
@@ -113,7 +118,7 @@ pixmap_image_pixels: [PixmapImageLimit]PixmapImagePixels;
 #program_export
 PixmapClearImage :: (slot: s32) {
     if slot < 0 || slot >= PixmapImageLimit { return }
-    if pixmap_image_lengths[slot] > 0 { pixmap_image_revision += 1 }
+    if pixmap_image_lengths[slot] > 0 { pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision }
     pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
     pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
 }
@@ -140,7 +145,8 @@ PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u
     for i: 0..cast(s32)path.count - 1 { pixmap_image_paths[slot][i] = path[i] }
     pixmap_image_lengths[slot] = cast(s32)path.count
     pixmap_image_widths[slot] = width; pixmap_image_heights[slot] = height
-    pixmap_image_pixels[slot].value = pixels; pixmap_image_revision += 1; return true
+    pixmap_image_pixels[slot].value = pixels; pixmap_image_revision += 1
+    pixmap_image_revisions[slot] = pixmap_image_revision; return true
 }
 // Pixels outside [clip_left, clip_right) x [clip_top, clip_bottom) are kept.
 pixmap_clip_left: s32;
@@ -168,6 +174,7 @@ PixmapBeginInto :: (background: u32, width: s32, height: s32, pixels: []u32,
     opaque: bool = false) -> bool {
     if !PixmapResumeInto(width, height, pixels, opaque) { return false }
     background = background | pixmap_alpha
+    if pixmap_gpu_active { PixmapGpuRect(0, 0, width, height, PixmapOpaqueColor(background)); PixmapClipAll(); return true }
     clear: PixmapClearRowsData = .{background, 0, width}
     #if #defined(POSIX_THREADS) {
         procedure: PixmapRowProcedure = PixmapClearRows
@@ -234,6 +241,10 @@ PixmapDamageBegin :: (bounds: Rectangle, background: u32, clear: bool = true) {
     pixmap_damage_active = true; PixmapClipAll()
     if !clear { return }
     background = background | pixmap_alpha
+    if pixmap_gpu_active {
+        PixmapGpuRect(pixmap_clip_left, pixmap_clip_top, pixmap_clip_right, pixmap_clip_bottom, PixmapOpaqueColor(background))
+        return
+    }
     clear_rows: PixmapClearRowsData = .{background, pixmap_clip_left, pixmap_clip_right}
     #if #defined(POSIX_THREADS) {
         procedure: PixmapRowProcedure = PixmapClearRows
@@ -243,6 +254,10 @@ PixmapDamageBegin :: (bounds: Rectangle, background: u32, clear: bool = true) {
     }
 }
 
+PixmapOpaqueColor :: (packed: u32) -> Color {
+    return .{cast(u8)((packed >> cast(u32)16) & cast(u32)255), cast(u8)((packed >> cast(u32)8) & cast(u32)255),
+        cast(u8)(packed & cast(u32)255), cast(u8)255}
+}
 PixmapClearRowsData :: struct { background: u32; left: s32; right: s32 }
 PixmapClearRange :: (start: s32, end: s32, data: PixmapClearRowsData) {
     surface := pixmap_surface; stride := pixmap_width
@@ -294,6 +309,7 @@ PixmapBlend :: (x: s32, y: s32, color: Color, coverage: s32) {
         x >= pixmap_clip_right || y >= pixmap_clip_bottom { return }
     alpha: s32 = cast(s32)color.a * coverage / 255
     if alpha <= 0 { return }
+    if pixmap_gpu_active { PixmapGpuPixel(x, y, Color.{color.r, color.g, color.b, cast(u8)alpha}); return }
     index: s32 = y * pixmap_width + x
     // Full alpha mixes to the color itself.
     if alpha >= 255 {
@@ -391,12 +407,76 @@ PixmapFillRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32, color: Co
     right: s32 = x1
     if right > pixmap_clip_right { right = pixmap_clip_right }
     if left >= right || top >= bottom { return }
+    if pixmap_gpu_active { PixmapGpuFill(x0, y0, x1, y1, r, color); return }
     rows: PixmapFillRowsData = .{x0, y0, x1, y1, r, left, right, color}
     #if #defined(POSIX_THREADS) {
         procedure: PixmapRowProcedure = PixmapFillRows
         PixmapRows(top, bottom, right - left, procedure, cast(*void)*rows)
     } else {
         PixmapFillRange(top, bottom, rows)
+    }
+}
+// The strips between a rounded rectangle's corners never overlap them, so
+// translucent paint blends once everywhere.
+PixmapGpuSolid :: (x0: s32, y0: s32, x1: s32, y1: s32, color: Color) {
+    if x0 < pixmap_clip_left { x0 = pixmap_clip_left }
+    if y0 < pixmap_clip_top { y0 = pixmap_clip_top }
+    if x1 > pixmap_clip_right { x1 = pixmap_clip_right }
+    if y1 > pixmap_clip_bottom { y1 = pixmap_clip_bottom }
+    PixmapGpuRect(x0, y0, x1, y1, color)
+}
+// One quarter's coverage, drawn mirrored at all four corners. Sampling reflects
+// about each corner's centre, so the quarters are identical.
+PixmapGpuCorners :: (slot: s32, x0: s32, y0: s32, x1: s32, y1: s32, side: s32, color: Color) {
+    atlas := cast(float32)PixmapGpuAtlasSide
+    u0 := cast(float32)pixmap_gpu_entries[slot].x / atlas; v0 := cast(float32)pixmap_gpu_entries[slot].y / atlas
+    u1 := u0 + cast(float32)side / atlas; v1 := v0 + cast(float32)side / atlas
+    for corner: cast(s32)0..3 {
+        right_side := (corner & 1) != 0; bottom_side := corner >= 2
+        left := ifx right_side then x1 - side else x0
+        top := ifx bottom_side then y1 - side else y0
+        PixmapGpuQuad(cast(float32)left, cast(float32)top, cast(float32)(left + side), cast(float32)(top + side),
+            ifx right_side then u1 else u0, ifx bottom_side then v1 else v0,
+            ifx right_side then u0 else u1, ifx bottom_side then v0 else v1, color, -1, false,
+            pixmap_clip_left, pixmap_clip_top, pixmap_clip_right, pixmap_clip_bottom)
+    }
+}
+// Negative keys never meet a glyph's. A stroke's quarter depends on its radius
+// and width; a fill is a stroke of no width.
+PixmapGpuCornerSlot :: (side: s32, r: s32, w: s32) -> s32 {
+    key := -(cast(s64)side * 16777216 + cast(s64)r * 4096 + cast(s64)w + 1)
+    slot := PixmapGpuFind(key)
+    if slot >= 0 { return slot }
+    slot = PixmapGpuReserve(key, side, side)
+    if slot < 0 { return -1 }
+    extent := side * 2
+    for y: cast(s32)0..side - 1 {
+        for x: cast(s32)0..side - 1 {
+            samples := PixmapSamples(x, y, 0, 0, extent, extent, r)
+            if w > 0 && samples > 0 {
+                inner := r - w; if inner < 0 { inner = 0 }
+                samples -= PixmapSamples(x, y, w, w, extent - w, extent - w, inner)
+            }
+            PixmapGpuStage((cast(u32)(samples * 255 / 16) << cast(u32)24) | cast(u32)0x00ffffff)
+        }
+    }
+    return slot
+}
+PixmapGpuFill :: (x0: s32, y0: s32, x1: s32, y1: s32, r: s32, color: Color) {
+    if r <= 0 { PixmapGpuSolid(x0, y0, x1, y1, color); return }
+    PixmapGpuSolid(x0, y0 + r, x1, y1 - r, color)
+    PixmapGpuSolid(x0 + r, y0, x1 - r, y0 + r, color)
+    PixmapGpuSolid(x0 + r, y1 - r, x1 - r, y1, color)
+    slot := PixmapGpuCornerSlot(r, r, 0)
+    if slot >= 0 { PixmapGpuCorners(slot, x0, y0, x1, y1, r, color); return }
+    // Larger than an atlas entry: the same samples, pixel by pixel.
+    for y: y0..y1 - 1 {
+        if y >= y0 + r && y < y1 - r { continue }
+        for x: x0..x1 - 1 {
+            if x >= x0 + r && x < x1 - r { continue }
+            samples := PixmapSamples(x, y, x0, y0, x1, y1, r)
+            if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
+        }
     }
 }
 PixmapFillRowsData :: struct { x0: s32; y0: s32; x1: s32; y1: s32; radius: s32; left: s32; right: s32; color: Color }
@@ -449,6 +529,19 @@ PixmapStrokeRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32,
     band: s32 = r
     if w > band { band = w }
     band += 1
+    // A frame large enough to hold four separate corners draws straight sides
+    // as strips. Tighter frames keep the sampling below.
+    if pixmap_gpu_active && inner && x1 - x0 >= band * 2 && y1 - y0 >= band * 2 && color.a != cast(u8)0 {
+        slot := PixmapGpuCornerSlot(band, r, w)
+        if slot >= 0 {
+            PixmapGpuCorners(slot, x0, y0, x1, y1, band, color)
+            PixmapGpuSolid(x0 + band, y0, x1 - band, y0 + w, color)
+            PixmapGpuSolid(x0 + band, y1 - w, x1 - band, y1, color)
+            PixmapGpuSolid(x0, y0 + band, x0 + w, y1 - band, color)
+            PixmapGpuSolid(x1 - w, y0 + band, x1, y1 - band, color)
+            return
+        }
+    }
     top: s32 = y0
     if top < pixmap_clip_top { top = pixmap_clip_top }
     bottom: s32 = y1
@@ -576,6 +669,23 @@ PixmapDrawEmoji :: (emoji: s32, x: s32, y: s32, size: s32) {
     if offset < 0 { return }
     color: Color
     color.a = cast(u8)255
+    if pixmap_gpu_active {
+        key := -(cast(s64)emoji * 256 + cast(s64)size + 1) - (cast(s64)1 << cast(s64)56)
+        slot := PixmapGpuFind(key)
+        if slot < 0 {
+            slot = PixmapGpuReserve(key, size, size)
+            if slot >= 0 { for index: 0..size * size - 1 { PixmapGpuStage(pixmap_emoji_pool[offset + index]) } }
+        }
+        if slot >= 0 {
+            atlas := cast(float32)PixmapGpuAtlasSide
+            u0 := cast(float32)pixmap_gpu_entries[slot].x / atlas; v0 := cast(float32)pixmap_gpu_entries[slot].y / atlas
+            PixmapGpuQuad(cast(float32)x, cast(float32)y, cast(float32)(x + size), cast(float32)(y + size),
+                u0, v0, u0 + cast(float32)size / atlas, v0 + cast(float32)size / atlas,
+                Color.{255, 255, 255, 255}, -1, false,
+                pixmap_clip_left, pixmap_clip_top, pixmap_clip_right, pixmap_clip_bottom)
+            return
+        }
+    }
     for row: 0..size - 1 {
         for column: 0..size - 1 {
             pixel: u32 = pixmap_emoji_pool[offset + cast(s32)row * size + cast(s32)column]
@@ -620,6 +730,28 @@ PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
     right: s32 = mask.left + mask.width
     if right > pixmap_clip_right { right = pixmap_clip_right }
     if right <= left || bottom <= top { return }
+    if pixmap_gpu_active {
+        slot: s32 = -1
+        if mask.key != 0 {
+            slot = PixmapGpuFind(mask.key)
+            if slot < 0 { slot = PixmapGpuAddMask(mask.key, mask.width, mask.height, coverage) }
+        }
+        if slot >= 0 {
+            atlas := cast(float32)PixmapGpuAtlasSide
+            u0 := cast(float32)pixmap_gpu_entries[slot].x / atlas; v0 := cast(float32)pixmap_gpu_entries[slot].y / atlas
+            PixmapGpuQuad(cast(float32)mask.left, cast(float32)mask.top,
+                cast(float32)(mask.left + mask.width), cast(float32)(mask.top + mask.height),
+                u0, v0, u0 + cast(float32)mask.width / atlas, v0 + cast(float32)mask.height / atlas, color, -1, false,
+                pixmap_clip_left, pixmap_clip_top, pixmap_clip_right, pixmap_clip_bottom)
+            return
+        }
+        for y: top..bottom - 1 {
+            for x: left..right - 1 {
+                PixmapBlend(x, y, color, cast(s32)coverage[(y - mask.top) * mask.width + x - mask.left])
+            }
+        }
+        return
+    }
     red_source := cast(u32)color.r
     green_source := cast(u32)color.g
     blue_source := cast(u32)color.b
@@ -775,7 +907,8 @@ PixmapFillTriangle :: (triangle: ImageCanvas.MeshTriangle, color: Color) {
         if first < pixmap_clip_left { first = pixmap_clip_left }
         end: s32 = span.end
         if end > pixmap_clip_right { end = pixmap_clip_right }
-        if first < end {
+        if first < end && pixmap_gpu_active { PixmapGpuRect(first, y, end, y + 1, color) }
+        else if first < end {
             row: s32 = y * pixmap_width
             PixmapFillSpan(pixmap_surface[row + first:row + end], color)
         }
@@ -793,6 +926,34 @@ RasterImage :: (asset_path: string, texture_id: u32,
         ImagePolygonScan(polygon,asset_path,texture_id,source,destination,clip,
             origin,rotation,radius,tint,RasterImageUnmasked)
     } else { RasterImageUnmasked(asset_path,texture_id,source,destination,clip,origin,rotation,radius,tint) }
+}
+
+// A plain image is one textured quad. The texture holds premultiplied pixels,
+// as the raster's smooth sampling does. Rotated or rounded images, and sources
+// past the image's edge, keep the pixel path.
+PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) -> bool {
+    width := cast(float32)pixmap_image_widths[slot]; height := cast(float32)pixmap_image_heights[slot]
+    source_right := source.x + source.width; source_bottom := source.y + source.height
+    if rotation != 0.0 || radius > 0.0 || pixmap_image_widths[slot] > pixmap_gpu_max_image ||
+        pixmap_image_heights[slot] > pixmap_gpu_max_image ||
+        source.x < 0.0 || source.y < 0.0 || source_right < 0.0 || source_bottom < 0.0 ||
+        source.x > width || source.y > height || source_right > width || source_bottom > height { return false }
+    // Pixels whose centres lie in the clip.
+    clip_left := CeilInteger(clip.x - 0.5); clip_top := CeilInteger(clip.y - 0.5)
+    clip_right := CeilInteger(clip.x + clip.width - 0.5); clip_bottom := CeilInteger(clip.y + clip.height - 0.5)
+    if clip_left < pixmap_clip_left { clip_left = pixmap_clip_left }
+    if clip_top < pixmap_clip_top { clip_top = pixmap_clip_top }
+    if clip_right > pixmap_clip_right { clip_right = pixmap_clip_right }
+    if clip_bottom > pixmap_clip_bottom { clip_bottom = pixmap_clip_bottom }
+    alpha := cast(u32)tint.a
+    ink: Color = .{cast(u8)(cast(u32)tint.r * alpha / cast(u32)255), cast(u8)(cast(u32)tint.g * alpha / cast(u32)255),
+        cast(u8)(cast(u32)tint.b * alpha / cast(u32)255), tint.a}
+    left := destination.x - origin.x; top := destination.y - origin.y
+    PixmapGpuQuad(left, top, left + destination.width, top + destination.height,
+        source.x / width, source.y / height, source_right / width, source_bottom / height,
+        ink, slot, CurrentPaintSmooth(), clip_left, clip_top, clip_right, clip_bottom)
+    return true
 }
 
 RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
@@ -827,6 +988,7 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
         if top < cast(float32)pixmap_clip_top { top = cast(float32)pixmap_clip_top }
         if right > cast(float32)pixmap_clip_right { right = cast(float32)pixmap_clip_right }
         if bottom > cast(float32)pixmap_clip_bottom { bottom = cast(float32)pixmap_clip_bottom }
+        if pixmap_gpu_active && PixmapGpuImageQuad(slot, source, destination, clip, origin, rotation, radius, tint) { return }
         rows: PixmapImageRowsData = .{slot, FloorInteger(left), CeilInteger(right), source, destination, clip, origin, cosine, sine, radius, tint, CurrentPaintSmooth()}
         #if #defined(POSIX_THREADS) {
             procedure: PixmapRowProcedure = PixmapImageRows
@@ -990,7 +1152,7 @@ PixmapImageRange :: (start: s32, end: s32, data: PixmapImageRowsData) {
     // Most UI images are unrotated and untinted. Their source row is constant
     // across a destination row. Keep the exact sampling arithmetic, including
     // negative source sizes, but resolve the row and borrowed storage once.
-    if !data.smooth && cosine == 1.0 && sine == 0.0 && tint.r == cast(u8)255 &&
+    if !pixmap_gpu_active && !data.smooth && cosine == 1.0 && sine == 0.0 && tint.r == cast(u8)255 &&
         tint.g == cast(u8)255 && tint.b == cast(u8)255 && tint.a == cast(u8)255 {
         image_width := pixmap_image_widths[slot]
         image_height := pixmap_image_heights[slot]

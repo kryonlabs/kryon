@@ -1,0 +1,147 @@
+// The recorded GPU path against the CPU raster, in the same scene, read back
+// from the target. Blending may round differently by a step or two.
+Presenter :: #import "pixmap_sdl";
+Cells :: #import "pixmap_cell_text";
+#import "pixmap"
+#import "pixmap_gpu"
+#import "geometry"
+#import "drawing_props"
+#import "paint_texture"
+#import "std/c_string"
+
+sdl :: #system_library "SDL2";
+Init :: (flags: u32) -> s32 #foreign sdl "SDL_Init";
+Quit :: () #foreign sdl "SDL_Quit";
+CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32, flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
+DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
+DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
+DestroyTexture :: (texture: *void) #foreign sdl "SDL_DestroyTexture";
+SetRenderTarget :: (renderer: *void, texture: *void) -> s32 #foreign sdl "SDL_SetRenderTarget";
+Read :: (renderer: *void, rect: *void, format: u32, pixels: *u32, pitch: s32) -> s32 #foreign sdl "SDL_RenderReadPixels";
+LogicalSize :: (renderer: *void, width: s32, height: s32) -> s32 #foreign sdl "SDL_RenderSetLogicalSize";
+
+Width :: 480;
+Height :: 320;
+cpu: [153600]u32;
+gpu: [153600]u32;
+asset: [256]u32;
+smooth_asset: [256]u32;
+
+Scene :: (full: bool) {
+    if !full {
+        // Repaint only part of the frame, as a retained frame does.
+        PixmapDamageBegin(.{40.0, 30.0, 300.0, 200.0}, cast(u32)0x20252b)
+    }
+    RasterRoundedRectangle(.{0.0, 0.0, 480.0, 320.0}, 0.0, 0, Color.{32, 37, 43, 255})
+    RasterRoundedRectangle(.{10.0, 10.0, 200.0, 80.0}, 0.0, 0, Color.{200, 60, 40, 255})
+    RasterRoundedRectangle(.{50.0, 30.0, 200.0, 80.0}, 12.0, 0, Color.{40, 160, 220, 140})
+    RasterRoundedRectangle(.{270.0, 12.0, 40.0, 40.0}, 20.0, 0, Color.{250, 220, 80, 255})
+    RasterRoundedRectangleOutline(.{20.0, 100.0, 220.0, 60.0}, 10.0, 0, 2.0, Color.{255, 255, 255, 200})
+    RasterRoundedRectangleOutline(.{320.0, 12.0, 12.0, 12.0}, 6.0, 0, 3.0, Color.{120, 255, 120, 255})
+    RasterRoundedRectangle(.{340.0, 10.0, 130.0, 300.0}, 300.0, 0, Color.{70, 70, 200, 255})
+    RasterLine(.{10.0, 170.0, 120.0, 30.0}, Color.{255, 180, 180, 255})
+    points: [3]Vector2 = .{.{150.0, 170.0}, .{240.0, 175.0}, .{170.0, 215.0}}
+    RasterTriangles(points[:], Color.{120, 240, 160, 180})
+    RasterText("Harmony prose: the quick brown fox", 14, 112, 14, Color.{240, 240, 240, 255})
+    RasterTextClipped("clipped text keeps its clip", 14, 132, 16, Color.{255, 210, 120, 220}, .{20.0, 130.0, 110.0, 12.0})
+    RasterText("emoji \xF0\x9F\x98\x80 ok", 260, 70, 18, Color.{255, 255, 255, 255})
+    Cells.RasterTextCells("ls -la results 0123", .{14.0, 220.0, 0.0, 18.0}, 0, 9, 15, Color.{130, 240, 130, 255}, .{0.0, 0.0, 480.0, 320.0})
+    Cells.RasterTextCells("clipped run of terminal cells", .{14.0, 238.0, 0.0, 18.0}, 0, 9, 15, Color.{240, 130, 130, 255}, .{20.0, 240.0, 150.0, 10.0})
+    Cells.RasterTextCell("\xE6\x97\xA5", .{200.0, 220.0, 10.0, 18.0}, 15, Color.{255, 255, 255, 255}, .{0.0, 0.0, 480.0, 320.0})
+    Cells.RasterTextCell("\xCE\xA9", .{214.0, 220.0, 9.0, 18.0}, 15, Color.{255, 255, 0, 255}, .{0.0, 0.0, 480.0, 320.0})
+    white: Color = .{255, 255, 255, 255}; none: Vector2
+    RasterImage("fixture", 0, .{0.0, 0.0, 16.0, 16.0}, .{240.0, 100.0, 32.0, 32.0}, .{0.0, 0.0, 480.0, 320.0}, none, 0.0, 0.0, white)
+    RasterImage("fixture", 0, .{16.0, 0.0, -16.0, 16.0}, .{276.0, 100.0, 16.0, 16.0}, .{280.0, 104.0, 100.0, 100.0}, none, 0.0, 0.0, Color.{255, 128, 128, 200})
+    RasterImage("fixture", 0, .{0.0, 0.0, 16.0, 16.0}, .{240.0, 140.0, 40.0, 40.0}, .{240.0, 140.0, 40.0, 40.0}, none, 0.0, 10.0, white)
+    RasterImage("fixture", 0, .{0.0, 0.0, 16.0, 16.0}, .{310.0, 170.0, 32.0, 32.0}, .{0.0, 0.0, 480.0, 320.0}, .{16.0, 16.0}, 30.0, 0.0, white)
+    RasterImage("missing", 0, .{0.0, 0.0, 16.0, 16.0}, .{240.0, 200.0, 30.0, 30.0}, .{0.0, 0.0, 480.0, 320.0}, none, 0.0, 4.0, white)
+    // Filtering must not leave the next solid paint sampling this image.
+    emitting_smooth = true
+    RasterImage("smooth", 0, .{0.0, 0.0, 16.0, 16.0}, .{280.0, 210.0, 48.0, 48.0}, .{0.0, 0.0, 480.0, 320.0}, none, 0.0, 0.0, white)
+    emitting_smooth = false
+    RasterRoundedRectangle(.{280.0, 262.0, 48.0, 6.0}, 0.0, 0, Color.{240, 80, 80, 255})
+    if !full { PixmapDamageEnd() }
+}
+
+Compare :: (name: string, limit: s32) -> s32 {
+    wrong: s32; worst: s32; first_x: s32 = -1; first_y: s32
+    for y: cast(s32)0..Height - 1 { for x: cast(s32)0..Width - 1 {
+        a := cpu[y * Width + x]; b := gpu[y * Width + x]
+        for shift: cast(u32)0..2 {
+            one := cast(s32)((a >> (shift * cast(u32)8)) & cast(u32)255)
+            two := cast(s32)((b >> (shift * cast(u32)8)) & cast(u32)255)
+            difference := ifx one > two then one - two else two - one
+            if difference > worst { worst = difference }
+            if difference > limit {
+                if first_x < 0 { first_x = x; first_y = y }
+                wrong += 1; break
+            }
+        }
+    } }
+    if wrong > 0 { print("%: % pixels differ, first at %,%, worst %, cpu %, gpu %\n", name, wrong, first_x, first_y, worst, cpu[first_y * Width + first_x], gpu[first_y * Width + first_x]) }
+    return wrong
+}
+
+main :: () -> s32 {
+    if Init(cast(u32)32) != 0 { return 2 }
+    defer Quit()
+    title: [8]u8; unused CopyCString("gpu", title[:])
+    window := CreateWindow(*title[0], 0, 0, Width, Height, cast(u32)4)
+    if window == null { return 3 }
+    defer DestroyWindow(window)
+    renderer := Presenter.CreatePixmapRenderer(window)
+    if renderer == null { return 4 }
+    defer DestroyRenderer(renderer)
+    // Hosts present through a logical size; the target must ignore it.
+    unused LogicalSize(renderer, Width / 2, Height / 2)
+    for index: 0..255 {
+        asset[index] = ifx (index % 16) / 4 % 2 == (index / 16) / 4 % 2 then cast(u32)0xffe02050 else cast(u32)0x8020d0a0
+    }
+    unused PixmapSetImage(0, "fixture", 16, 16, asset[:])
+    for index: 0..255 {
+        smooth_asset[index] = cast(u32)0xff000000 | (cast(u32)(index % 16 * 16) << cast(u32)16) | (cast(u32)(index / 16 * 16) << cast(u32)8)
+    }
+    unused PixmapSetImage(1, "smooth", 16, 16, smooth_asset[:])
+    failures: s32
+    for pass: cast(s32)0..1 {
+        full := pass == 0
+        unused PixmapBeginInto(cast(u32)0x20252b, Width, Height, cpu[:], true)
+        if !full { Scene(true) }
+        Scene(full)
+        PixmapEndInto()
+        if !Presenter.PixmapGpuOpen(renderer) { print("GPU recording unavailable\n"); return 5 }
+        target := Presenter.PixmapGpuCreateTarget(Width, Height)
+        if target == null { return 6 }
+        unused PixmapBeginInto(cast(u32)0x20252b, Width, Height, gpu[:], true)
+        if !full { Scene(true); Presenter.PixmapGpuDraw() }
+        Scene(full)
+        PixmapEndInto()
+        Presenter.PixmapGpuDraw()
+        if pixmap_gpu_vertices.count != 0 { print("recording kept\n"); return 7 }
+        unused SetRenderTarget(renderer, target)
+        if Read(renderer, null, cast(u32)372645892, *gpu[0], Width * 4) != 0 { return 8 }
+        unused SetRenderTarget(renderer, null)
+        failures += Compare(ifx full then "full frame" else "damaged frame", 3)
+
+        // A filled atlas draws what refers to it and starts over, losing nothing.
+        unused PixmapBeginInto(cast(u32)0, Width, Height, gpu[:], true)
+        for font: cast(s32)6..150 {
+            RasterText("WMQ@#", 0, 0, font, Color.{255, 255, 255, 255})
+        }
+        RasterRoundedRectangle(.{0.0, 0.0, 480.0, 320.0}, 0.0, 0, Color.{32, 37, 43, 255})
+        Scene(true)
+        PixmapEndInto()
+        Presenter.PixmapGpuDraw()
+        unused SetRenderTarget(renderer, target)
+        unused Read(renderer, null, cast(u32)372645892, *gpu[0], Width * 4)
+        unused SetRenderTarget(renderer, null)
+        unused PixmapBeginInto(cast(u32)0x20252b, Width, Height, cpu[:], true)
+        Presenter.PixmapGpuClose(); Scene(true); PixmapEndInto()
+        failures += Compare("after atlas pressure", 3)
+        DestroyTexture(target)
+    }
+    if PixmapImageRevision() == cast(u64)0 { return 9 }
+    if failures > 0 { return 1 }
+    print("pixmap GPU recording matches the raster\n")
+    return 0
+}

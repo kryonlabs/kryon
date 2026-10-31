@@ -22,6 +22,8 @@ PixmapGlyphMask :: struct {
     top: s32
     width: s32
     height: s32
+    // Identifies the coverage among cached glyphs; 0 when it is not cached.
+    key: s64
 }
 
 // Coverage of the last rasterized glyph, 0 to 255, row by row.
@@ -374,11 +376,13 @@ PixmapCachedGlyph :: (glyph: s32, origin_x: s64, baseline: s64, font: s32,
     part_x: s64 = origin_x - whole_x * 256
     part_y: s64 = baseline - whole_y * 256
     nothing: []u8 = pixmap_mask[0:0]
+    mask.key = 0
     if font >= 65536 {
         if !PixmapRasterGlyph(glyph, origin_x, baseline, font, mask) { return nothing }
         return pixmap_mask[0:mask.width * mask.height]
     }
     key: s64 = ((cast(s64)glyph * 65536 + cast(s64)font) * 256 + part_x) * 256 + part_y + 1
+    mask.key = key
     home: s32 = cast(s32)((cast(s64)glyph * 7919 + cast(s64)font * 131 + part_x * 31 + part_y) % cast(s64)PixmapCacheSlots)
     free: s32 = -1
     for probe: 0..PixmapCacheProbes - 1 {
