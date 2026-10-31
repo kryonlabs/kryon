@@ -6,6 +6,12 @@ Probe :: #import "raylib_window_host";
 SelectionProbe :: #import "raylib_selection_host";
 Text :: #import "byte_text_linux";
 
+#if !#defined(_WIN32) && !#defined(__APPLE__) {
+    test_libc :: #system_library "libc";
+    TestPipeRaw :: (ends: *s32) -> s32 #foreign test_libc "pipe";
+    TestWriteRaw :: (fd: s32, data: *u8, count: u64) -> s64 #foreign test_libc "write";
+}
+
 #program_export
 main :: () -> s32 {
     if Runtime.OpenRaylib(0, 200) || Runtime.OpenRaylib(320, -1) ||
@@ -41,6 +47,25 @@ main :: () -> s32 {
         Runtime.RaylibLayoutKey(0) != 0 { return 23 }
     #if #defined(_WIN32) || #defined(__APPLE__) {
         if Runtime.RaylibLayoutKey(90) != 90 { return 24 }
+    }
+    #if #defined(_WIN32) || #defined(__APPLE__) {
+        none: [0]s32
+        if Runtime.RaylibWaitForActivity(none[:], 0) != Runtime.RaylibActivityUnsupported { return 25 }
+    } else {
+        pipes: [2]s32
+        if TestPipeRaw(*pipes[0]) != 0 { return 25 }
+        watched: [3]s32 = .{-1, pipes[0], pipes[1]}
+        watched[2] = -1
+        // Input from before the first wait may be queued; waking must not read it.
+        if Runtime.RaylibWaitForActivity(watched[:], 0) != Runtime.RaylibActivityInput { return 26 }
+        if Runtime.RaylibWaitForActivity(watched[:], 6) != Runtime.RaylibActivityNone { return 26 }
+        Probe.SendPollSentinel()
+        if Runtime.RaylibWaitForActivity(watched[:], 0) != Runtime.RaylibActivityNone { return 26 }
+        Probe.SendEvent()
+        if Runtime.RaylibWaitForActivity(watched[:], 1000) != Runtime.RaylibActivityInput || Probe.input_polls != 0 { return 27 }
+        byte: [1]u8 = .{1}
+        if TestWriteRaw(pipes[1], *byte[0], cast(u64)1) != cast(s64)1 ||
+            Runtime.RaylibWaitForActivity(watched[:], 1000) != Runtime.RaylibActivityDescriptor { return 28 }
     }
     if Runtime.RaylibPressedKey() != 65 || Runtime.RaylibPressedKey() != 0 ||
         Runtime.RaylibRepeatedKey() != 263 || Runtime.RaylibRepeatedKey() != 0 ||

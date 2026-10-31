@@ -266,6 +266,13 @@ not its physical position; on Raylib, `RaylibLayoutKey` converts a position from
 `RaylibKeyDown`. `TypedTextTake` collects the text typed since the
 last frame, and `TextFieldInputFor(key, modifiers, text)` turns both into a
 focused `TextField`'s input.
+A Raylib app that has nothing to animate can call
+`RaylibWaitForActivity(descriptors, milliseconds)` between frames instead of
+drawing: it returns `RaylibActivityDescriptor`, `RaylibActivityInput` or
+`RaylibActivityNone`, and `RaylibActivityUnsupported` on hosts that must keep
+drawing. After `RaylibActivityInput` draw two frames, since a frame uses input
+the previous one read. `RaylibPrepareGlyphs(text)` readies many characters at
+once, so drawing them one at a time does not rebuild a font for each.
 Application code owns its product state and calls widgets within `Frame`.
 The complete manifest and build commands are in [PROJECTS.md](PROJECTS.md).
 

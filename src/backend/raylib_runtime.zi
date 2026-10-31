@@ -672,10 +672,14 @@ RaylibRegisteredFallback :: (codepoint: s32) -> s32 {
         }
         typeface := *raylib_typefaces[index]
         if !RaylibHasGlyph(typeface, codepoint) {
-            if !RaylibAddGlyph(typeface, codepoint) || !RaylibSourceHasGlyph(typeface, codepoint) ||
-            !RaylibRebakeTypeface(typeface) {
+            if !RaylibAddGlyph(typeface, codepoint) || !RaylibSourceHasGlyph(typeface, codepoint) {
                 continue
             }
+            if raylib_glyph_batch {
+                raylib_glyph_batch_registered |= cast(u32)1 << cast(u32)index
+                return index
+            }
+            if !RaylibRebakeTypeface(typeface) { continue }
         }
         if RaylibFontHasCodepoint(typeface.font, codepoint) {
             return index
@@ -688,10 +692,40 @@ RaylibRegisteredFallback :: (codepoint: s32) -> s32 {
 // They do not consume the application's named typeface slots.
 raylib_fallback_faces: [16]RaylibTypeface;
 raylib_fallback_face_count: s32;
-RaylibFallbackEntry :: struct { codepoint: s32; primary: s32; face: s32 }
-raylib_fallback_entries: [512]RaylibFallbackEntry;
+// A hash of (codepoint, primary face) remembers each answer. A long CJK page
+// easily has more than a few hundred distinct characters, so this must hold
+// them all: on overflow it empties and refills from the sorted font list.
+RaylibFallbackEntry :: struct { codepoint: s32; primary: s32; face: s32; used: bool }
+RAYLIB_FALLBACK_SLOTS :: 8192
+raylib_fallback_entries: [8192]RaylibFallbackEntry;
 raylib_fallback_entry_count: s32;
-raylib_fallback_entry_next: s32;
+
+RaylibForgetFallbacks :: () {
+    if raylib_fallback_entry_count == 0 { return }
+    for index: cast(s32)0..RAYLIB_FALLBACK_SLOTS - 1 { raylib_fallback_entries[index].used = false }
+    raylib_fallback_entry_count = 0
+}
+
+// The entry for a codepoint: its answer when `used`, else the free slot.
+RaylibFallbackSlot :: (codepoint: s32) -> *RaylibFallbackEntry {
+    primary := raylib_active_typeface_index
+    slot := (codepoint * 31 + primary) & (RAYLIB_FALLBACK_SLOTS - 1)
+    while raylib_fallback_entries[slot].used {
+        entry := *raylib_fallback_entries[slot]
+        if entry.codepoint == codepoint && entry.primary == primary { return entry }
+        slot = (slot + 1) & (RAYLIB_FALLBACK_SLOTS - 1)
+    }
+    return *raylib_fallback_entries[slot]
+}
+
+// While text is prepared as a batch, faces gaining glyphs rebake once at its
+// end. One rebake per new character made a page of new glyphs quadratic: each
+// one rasterised everything the face had already gained.
+raylib_glyph_batch: bool;
+raylib_glyph_batch_registered: u32;
+raylib_glyph_batch_fallback: u32;
+raylib_glyph_batch_pending: [1024]s32;
+raylib_glyph_batch_pending_count: s32;
 
 RaylibCollectionSource :: (typeface: *RaylibTypeface, data: *u8,
     count: s32, face: s32) -> bool {
@@ -742,12 +776,8 @@ RaylibFileSource :: (typeface: *RaylibTypeface, path: string, face: s32) -> bool
 }
 
 RaylibFindFallback :: (codepoint: s32) -> s32 {
-    for index: 0..raylib_fallback_entry_count - 1 {
-        entry := raylib_fallback_entries[index]
-        if entry.codepoint == codepoint && entry.primary == raylib_active_typeface_index {
-            return entry.face
-        }
-    }
+    known := RaylibFallbackSlot(codepoint)
+    if known.used { return known.face }
     path_bytes: [1024]u8
     source_face: s32
     path: string = ""
@@ -785,21 +815,72 @@ RaylibFindFallback :: (codepoint: s32) -> s32 {
             } else { RaylibFreeTypefaceSource(*staged) }
         } else if face >= 0 {
             typeface := *raylib_fallback_faces[face]
+            deferred := false
             if !RaylibHasGlyph(typeface, codepoint) {
-                if !RaylibAddGlyph(typeface, codepoint) || !RaylibSourceHasGlyph(typeface, codepoint) ||
-                !RaylibRebakeTypeface(typeface) { face = -1 }
+                // Fontconfig just vouched for this face's coverage, and a
+                // bake still proves it; reading the source again is only
+                // for faces it has not chosen.
+                if !RaylibAddGlyph(typeface, codepoint) { face = -1 }
+                else if raylib_glyph_batch && raylib_glyph_batch_pending_count < 1024 {
+                    raylib_glyph_batch_fallback |= cast(u32)1 << cast(u32)face
+                    raylib_glyph_batch_pending[raylib_glyph_batch_pending_count] = codepoint
+                    raylib_glyph_batch_pending_count += 1
+                    deferred = true
+                } else if !RaylibRebakeTypeface(typeface) { face = -1 }
             }
-            if face >= 0 && !RaylibFontHasCodepoint(typeface.font, codepoint) { face = -1 }
+            if face >= 0 && !deferred && !RaylibFontHasCodepoint(typeface.font, codepoint) { face = -1 }
         }
     }
-    slot := raylib_fallback_entry_count
-    if slot < 512 { raylib_fallback_entry_count += 1 }
-    else {
-        slot = raylib_fallback_entry_next
-        raylib_fallback_entry_next = (slot + 1) % 512
+    if raylib_fallback_entry_count >= RAYLIB_FALLBACK_SLOTS / 2 {
+        RaylibForgetFallbacks()
+        known = RaylibFallbackSlot(codepoint)
     }
-    raylib_fallback_entries[slot] = .{codepoint, raylib_active_typeface_index, face}
+    known.* = .{codepoint, raylib_active_typeface_index, face, true}
+    raylib_fallback_entry_count += 1
     return face
+}
+
+// Ensures every character of a text is drawable, rebaking each face that
+// gained glyphs once however many it gained.
+RaylibPrepareGlyphs :: (value: string) {
+    RaylibEnsureGlyphs(value)
+    if raylib_glyph_batch { return }
+    wide := false
+    for index: cast(s64)0..value.count - 1 {
+        if value[index] >= cast(u8)0x80 { wide = true; break }
+    }
+    bytes: [4096]u8
+    if !wide || !CopyCString(value, bytes[:]) { return }
+    raylib_glyph_batch = true
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        length: s32
+        codepoint := HostRaylibCodepoint(*bytes[at], *length)
+        at += length
+        if codepoint < 0x80 || RaylibFontHasCodepoint(raylib_font, codepoint) { continue }
+        if RaylibRegisteredFallback(codepoint) < 0 { unused RaylibFindFallback(codepoint) }
+    }
+    raylib_glyph_batch = false
+    for index: cast(s32)0..raylib_typeface_count - 1 {
+        if (raylib_glyph_batch_registered & (cast(u32)1 << cast(u32)index)) != cast(u32)0 {
+            unused RaylibRebakeTypeface(*raylib_typefaces[index])
+        }
+    }
+    raylib_glyph_batch_registered = cast(u32)0
+    for index: cast(s32)0..raylib_fallback_face_count - 1 {
+        if (raylib_glyph_batch_fallback & (cast(u32)1 << cast(u32)index)) != cast(u32)0 {
+            unused RaylibRebakeTypeface(*raylib_fallback_faces[index])
+        }
+    }
+    raylib_glyph_batch_fallback = cast(u32)0
+    // A glyph its face could not bake after all draws as a miss from now on.
+    for index: cast(s32)0..raylib_glyph_batch_pending_count - 1 {
+        codepoint := raylib_glyph_batch_pending[index]
+        entry := RaylibFallbackSlot(codepoint)
+        if entry.used && entry.face >= 0 &&
+        !RaylibFontHasCodepoint(raylib_fallback_faces[entry.face].font, codepoint) { entry.face = -1 }
+    }
+    raylib_glyph_batch_pending_count = 0
 }
 
 RaylibStoreTypeface :: (name: string, staged: *RaylibTypeface) -> bool {
@@ -821,8 +902,7 @@ RaylibStoreTypeface :: (name: string, staged: *RaylibTypeface) -> bool {
     } else {
         RaylibUnloadTypefaceFonts(*raylib_typefaces[index])
         RaylibFreeTypefaceSource(*raylib_typefaces[index])
-        raylib_fallback_entry_count = 0
-        raylib_fallback_entry_next = 0
+        RaylibForgetFallbacks()
     }
     raylib_typefaces[index] = staged.*
     if raylib_active_typeface_index == index {
@@ -1053,8 +1133,7 @@ ReleaseTypefaces :: () {
         index += 1
     }
     raylib_fallback_face_count = 0
-    raylib_fallback_entry_count = 0
-    raylib_fallback_entry_next = 0
+    RaylibForgetFallbacks()
     raylib_active_typeface_index = -1
     raylib_font = RaylibFont.{}
     raylib_font_loaded = false
@@ -2083,6 +2162,74 @@ RaylibFocused :: () -> bool { return HostRaylibIsWindowFocused() }
 #program_export
 RaylibExitKey :: (key: s32) { HostRaylibSetExitKey(key) }
 
+// What ended RaylibWaitForActivity. Unsupported means this host can't wait
+// without losing input, so its caller keeps drawing every frame.
+RaylibActivityNone :: 0;
+RaylibActivityDescriptor :: 1;
+RaylibActivityInput :: 2;
+RaylibActivityUnsupported :: 3;
+#if #defined(ANDROID_BUILD) || #defined(PLATFORM_WEB) || #defined(_WIN32) || #defined(__APPLE__) {
+    RaylibWaitForActivity :: (descriptors: []s32, milliseconds: s32) -> s32 {
+        unused descriptors; unused milliseconds
+        return RaylibActivityUnsupported
+    }
+} else {
+    wait_sdl :: #system_library "SDL2";
+    wait_libc :: #system_library "libc";
+    HostSdlPumpEvents :: () #foreign wait_sdl "SDL_PumpEvents";
+    RaylibWaitFilter :: #type (*void, *void) -> s32 #c_call;
+    HostSdlAddWatch :: (callback: RaylibWaitFilter, userdata: *void) #foreign wait_sdl "SDL_AddEventWatch";
+    HostSdlAtomicSet :: (value: *s32, replacement: s32) -> s32 #foreign wait_sdl "SDL_AtomicSet";
+    RaylibPollDescriptor :: struct { fd: s32; events: s16; returned: s16 }
+    HostPoll :: (descriptors: *RaylibPollDescriptor, count: u64, milliseconds: s32) -> s32 #foreign wait_libc "poll";
+    RaylibWaitSlice :: 4;
+    RaylibWaitDescriptors :: 64;
+    raylib_wait_watching: bool;
+    raylib_wait_event: s32;
+    // SDL pushes this bookkeeping event through watches on every poll, so
+    // counting it would make each frame wake the next one forever.
+    RaylibSdlPollSentinel :: 0x7F00;
+    RaylibWaitEvent :: (userdata: *void, event: *void) -> s32 {
+        unused userdata
+        if event == null || (cast(*u32)event).* != cast(u32)RaylibSdlPollSentinel {
+            unused HostSdlAtomicSet(*raylib_wait_event, 1)
+        }
+        return 1
+    }
+    // Sleeps until a descriptor is readable, window input arrives or the time
+    // ends, without drawing. Only a frame reads input: raylib forgets what it
+    // queued whenever it polls, so polling here would drop keystrokes. A watch
+    // notices events however they are read, including while a frame presents.
+    // A frame reads events at its end and hands them out at the next frame's
+    // start, so one frame after Input may find nothing new; draw two.
+    // SDL has no descriptor to wait on, so it is checked between short sleeps.
+    RaylibWaitForActivity :: (descriptors: []s32, milliseconds: s32) -> s32 {
+        if !raylib_wait_watching {
+            // Input from before the watch may already be queued.
+            raylib_wait_watching = true
+            raylib_wait_event = 1
+            HostSdlAddWatch(RaylibWaitEvent, null)
+        }
+        waits: [RaylibWaitDescriptors]RaylibPollDescriptor
+        count: u64
+        for index: cast(s64)0..descriptors.count - 1 {
+            if count < cast(u64)RaylibWaitDescriptors && descriptors[index] >= 0 {
+                waits[count].fd = descriptors[index]; waits[count].events = cast(s16)1; count += cast(u64)1
+            }
+        }
+        remaining := milliseconds
+        while true {
+            HostSdlPumpEvents()
+            if HostSdlAtomicSet(*raylib_wait_event, 0) != 0 { return RaylibActivityInput }
+            if remaining <= 0 { return RaylibActivityNone }
+            slice := ifx remaining < RaylibWaitSlice then remaining else RaylibWaitSlice
+            if HostPoll(*waits[0], count, slice) > 0 { return RaylibActivityDescriptor }
+            remaining -= slice
+        }
+        return RaylibActivityNone
+    }
+}
+
 #program_export
 RaylibFrameRate :: (fps: s32) -> bool {
     if fps < 0 || fps > 1000 { return false }
@@ -2271,7 +2418,7 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
     }
     bytes: [4096]u8
     if !CopyCString(value, bytes[:]) { return .{0.0, 0.0} }
-    RaylibEnsureGlyphs(value)
+    RaylibPrepareGlyphs(value)
     primary := raylib_font
     logical_size := cast(float32)size
     text_size := logical_size

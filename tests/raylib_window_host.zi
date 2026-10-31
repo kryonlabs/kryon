@@ -116,6 +116,19 @@ GetMouseWheelMove :: () -> float32 { return 0.0 }
 #program_export
 GetKeyPressed :: () -> s32 { key := fresh_key; fresh_key = 0; return key }
 // A Dvorak position (scancode 12, I, types c) and a non-Latin one (5, B).
+input_polls: s32;
+EventWatch :: #type (*void, *void) -> s32 #c_call;
+event_watch: EventWatch;
+#program_export
+SDL_PumpEvents :: () { }
+#program_export
+SDL_AddEventWatch :: (callback: EventWatch, userdata: *void) { unused userdata; event_watch = callback }
+#program_export
+SDL_AtomicSet :: (value: *s32, replacement: s32) -> s32 { previous := value.*; value.* = replacement; return previous }
+#program_export
+PollInputEvents :: () { input_polls += 1 }
+SendEvent :: () { unused event_watch(null, null) }
+SendPollSentinel :: () { kind: u32 = cast(u32)0x7F00; unused event_watch(null, cast(*void)*kind) }
 #program_export
 SDL_GetKeyFromScancode :: (scancode: s32) -> s32 {
     if scancode == 12 { return 99 }

@@ -4,6 +4,12 @@
 
 - Web buttons still click once when a page update moves them mid press, and a
   press that starts off a button no longer locks input when released over one.
+- Text with many new CJK or symbol characters draws far faster: Fontconfig sorts
+  a family once, a text rebakes each fallback font once, and fallback answers
+  no longer expire after 512 characters.
+- Linux Raylib apps can sleep until a descriptor or window input is ready with
+  `RaylibWaitForActivity`, and prepare a whole screen's glyphs with
+  `RaylibPrepareGlyphs`.
 - Keyboard shortcuts on desktop Raylib hosts follow the active keyboard layout,
   such as Dvorak, instead of physical key positions.
 - Raylib hosts keep a modifier released in the same poll as its key press, so a

@@ -284,6 +284,14 @@ main :: () -> s32 {
     draw_count = 0
     RasterText("中", 0, 0, 20, Drawing.Color.{255, 255, 255, 255})
     if bad_glyph || draw_count != 1 || drawn[0].codepoint != 0x4E2D { return 11 }
+    // A text of new characters from one face rebakes that face once.
+    before_batch := loaded
+    RaylibPrepareGlyphs("一二三四五六七八")
+    if loaded - before_batch > 1 { return 41 }
+    draw_count = 0
+    RasterText("一二三四五六七八", 0, 0, 20, Drawing.Color.{255, 255, 255, 255})
+    if bad_glyph || draw_count != 8 || drawn[7].codepoint != 0x516B { return 42 }
+    if RaylibFindFallback(0x4E00) < 0 { return 43 }
     // Replacing a registered face clears misses and keeps glyphs measurable.
     if !LoadTypefaceFile("monospace", "assets/fonts/DejaVuSans.ttf", null, 0) ||
     raylib_fallback_entry_count != 0 { return 12 }

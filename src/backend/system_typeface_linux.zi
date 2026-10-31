@@ -12,8 +12,6 @@ Copy :: (target: *void, source: *void, size: usize) -> *void #foreign c "memcpy"
 Create :: #type () -> *void #c_call;
 Destroy :: #type (*void) #c_call;
 AddString :: #type (*void, *u8, *u8) -> s32 #c_call;
-AddCharset :: #type (*void, *u8, *void) -> s32 #c_call;
-AddCharacter :: #type (*void, u32) -> s32 #c_call;
 HasCharacter :: #type (*void, u32) -> s32 #c_call;
 Substitute :: #type (*void, *void, s32) -> s32 #c_call;
 Defaults :: #type (*void) #c_call;
@@ -26,10 +24,6 @@ FontSet :: struct { count: s32; capacity: s32; fonts: **void }
 create_pattern: Create;
 destroy_pattern: Destroy;
 add_string: AddString;
-add_charset: AddCharset;
-create_charset: Create;
-destroy_charset: Destroy;
-add_character: AddCharacter;
 has_character: HasCharacter;
 substitute: Substitute;
 defaults: Defaults;
@@ -61,10 +55,6 @@ Load :: () -> bool {
     ready = Resolve(library, cast(*void)*create_pattern, "FcPatternCreate") &&
         Resolve(library, cast(*void)*destroy_pattern, "FcPatternDestroy") &&
         Resolve(library, cast(*void)*add_string, "FcPatternAddString") &&
-        Resolve(library, cast(*void)*add_charset, "FcPatternAddCharSet") &&
-        Resolve(library, cast(*void)*create_charset, "FcCharSetCreate") &&
-        Resolve(library, cast(*void)*destroy_charset, "FcCharSetDestroy") &&
-        Resolve(library, cast(*void)*add_character, "FcCharSetAddChar") &&
         Resolve(library, cast(*void)*has_character, "FcCharSetHasChar") &&
         Resolve(library, cast(*void)*substitute, "FcConfigSubstitute") &&
         Resolve(library, cast(*void)*defaults, "FcDefaultSubstitute") &&
@@ -77,6 +67,40 @@ Load :: () -> bool {
     return ready
 }
 
+// Sorting every installed font takes milliseconds. A family's order does not
+// depend on the character, so each family sorts once: asking the sorted list
+// for its first face covering a character is what makes a page of new CJK or
+// symbols affordable. The set lives until exit; installing a font needs a
+// restart, as Fontconfig's own cache would without a rescan.
+SortedSlot :: struct { family: [64]u8; set: *FontSet }
+sorted_slots: [4]SortedSlot;
+sorted_next: s32;
+
+SortedFor :: (family: *u8) -> *FontSet {
+    name := Text.TextFromCString(family)
+    for index: 0..3 {
+        slot := *sorted_slots[index]
+        if slot.set != null && Text.TextFromCString(*slot.family[0]) == name { return slot.set }
+    }
+    pattern := create_pattern()
+    if pattern == null { return null }
+    defer destroy_pattern(pattern)
+    key: [16]u8
+    unused CString.CopyCString("family", key[:])
+    if add_string(pattern, *key[0], family) == 0 { return null }
+    if substitute(null, pattern, 0) == 0 { return null }
+    defaults(pattern)
+    result: s32
+    matches := sort(null, pattern, 0, null, *result)
+    if matches == null { return null }
+    slot := *sorted_slots[sorted_next]
+    sorted_next = (sorted_next + 1) % 4
+    if slot.set != null { destroy_set(cast(*void)slot.set) }
+    unused CString.CopyCString(name, slot.family[:])
+    slot.set = cast(*FontSet)matches
+    return slot.set
+}
+
 #scope_export
 // Zero requests just a family. Otherwise reject Fontconfig's nearest match
 // when no installed font covers the character; a match alone is not proof.
@@ -85,27 +109,9 @@ FileFor :: (family: string, codepoint: s32, output: []u8, face: *s32) -> string 
         (codepoint >= 0xD800 && codepoint <= 0xDFFF) { return "" }
     bytes: [64]u8
     if !CString.CopyCString(family, bytes[:]) || !Load() { return "" }
-    pattern := create_pattern()
-    if pattern == null { return "" }
-    defer destroy_pattern(pattern)
     key: [16]u8
-    unused CString.CopyCString("family", key[:])
-    if add_string(pattern, *key[0], *bytes[0]) == 0 { return "" }
-    if codepoint != 0 {
-        charset := create_charset()
-        if charset == null { return "" }
-        defer destroy_charset(charset)
-        unused CString.CopyCString("charset", key[:])
-        if add_character(charset, cast(u32)codepoint) == 0 ||
-            add_charset(pattern, *key[0], charset) == 0 { return "" }
-    }
-    if substitute(null, pattern, 0) == 0 { return "" }
-    defaults(pattern)
-    result: s32
-    matches := sort(null, pattern, 0, null, *result)
-    if matches == null { return "" }
-    defer destroy_set(matches)
-    faces := cast(*FontSet)matches
+    faces := SortedFor(*bytes[0])
+    if faces == null { return "" }
     for index: 0..faces.count - 1 {
         selected := faces.fonts[index]
         if codepoint != 0 {
