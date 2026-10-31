@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Real native and IDBFS barriers, including portable AppLocal guests."""
+import argparse
 import os
 from pathlib import Path
 import subprocess
@@ -12,14 +13,27 @@ for key in ('DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS',
     ENV.pop(key, None)
 def run(args):
     subprocess.run(list(map(str,args)),cwd=ROOT,env=ENV,check=True)
+def emscripten_compiler():
+    selected = os.environ.get('EMCC') or shutil.which('emcc')
+    if not selected:
+        selected = str(Path.home()/'emsdk/upstream/emscripten/emcc')
+    found = shutil.which(selected)
+    if not found:
+        raise SystemExit('Browser document storage tests require Emscripten; set EMCC or install emcc on PATH')
+    return str(Path(found).absolute())
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--browser', action='store_true', help='also run real browser IDBFS barriers')
+    args = parser.parse_args()
     run(['git','check-ignore','work/document-storage/root.txt'])
     WORK.mkdir(parents=True, exist_ok=True)
     (WORK/'data').mkdir(exist_ok=True)
     (WORK/'root.txt').write_text(str(WORK/'data'))
-    emcc=os.environ.get('EMCC',str(Path.home()/'emsdk/upstream/emscripten/emcc'))
-    ENV['EM_CACHE']=str(ROOT/'build/emscripten-cache')
-    run(['make','-j1','-C',ZIRAN_ROOT,'BOOTSTRAP=1','BUILD_DIR='+str(WORK/'runtime'),'CC='+emcc,'AR='+str(Path(emcc).with_name('emar')),'OBJCOPY=true','CFLAGS=-O2',WORK/'runtime/libziran.a'])
+    emcc = emscripten_compiler() if args.browser else None
+    if args.browser:
+        ENV['EM_CACHE']=str(ROOT/'build/emscripten-cache')
+        run(['make','-j1','-C',ZIRAN_ROOT,'BOOTSTRAP=1','BUILD_DIR='+str(WORK/'runtime'),'CC='+emcc,'AR='+str(Path(emcc).with_name('emar')),'OBJCOPY=true','CFLAGS=-O2',WORK/'runtime/libziran.a'])
     common=['--root',ROOT/'tests','--module-path',ROOT/'src/backend','--module-path',ROOT/'src/ui','--module-path',ZIRAN_ROOT/'std']
     guest=ROOT/'tests/document_storage_guest.zi'
     source=ROOT/'tests/document_storage_test.zi'
@@ -28,7 +42,7 @@ def main():
         paths=common if form=='source' else ['--root',WORK/'guest-ir']
         file=guest if form=='source' else WORK/'guest-ir/document_storage_guest.zir'
         run([ZIRAN,'bundle',*paths,'--entry','document_storage_guest:main','-o',WORK/'guest.zx',file])
-        for web in (False,True):
+        for web in ((False,True) if args.browser else (False,)):
             gen=WORK/'c'
             shutil.rmtree(gen,ignore_errors=True)
             define=['--define','PLATFORM_WEB'] if web else []
@@ -48,7 +62,7 @@ var storageTestMode=Number(new URLSearchParams(location.search).get('reload')||0
 var Module={preRun:[()=>{Date.now=()=>1700000000000; if(storageTestMode===2) indexedDB.open=()=>{throw new Error('initial IDB unavailable')};const sync=FS.syncfs; FS.syncfs=(p,cb)=>sync(p,e=>setTimeout(()=>cb(e),40));}],onExit:c=>document.getElementById('result').textContent=c?'FAIL '+c:'PASS',onAbort:e=>document.getElementById('result').textContent='ABORT '+e};
 function storageTestFail(){FS.filesystems.IDBFS.dbs['/kryon-apps'].close()}
 </script>{{{ SCRIPT }}}''')
-                run([os.environ.get('EMCC',str(Path.home()/'emsdk/upstream/emscripten/emcc')),*flags,WORK/'runtime/libziran.a','--js-library',ZIRAN_ROOT/'web/ziran_web.js','-lidbfs.js','-sASYNCIFY','-sSTACK_SIZE=16777216','-sASYNCIFY_STACK_SIZE=1048576','-g2','-sASSERTIONS=1','-sALLOW_MEMORY_GROWTH=1','-sINITIAL_MEMORY=134217728','-sSINGLE_FILE=1','-sEXIT_RUNTIME=1','-sEXPORTED_RUNTIME_METHODS=FS','-sENVIRONMENT=web','--embed-file',str(WORK/'guest.zx')+'@work/document-storage/guest.zx','--shell-file',shell,'-o',WORK/'test.html'])
+                run([emcc,*flags,WORK/'runtime/libziran.a','--js-library',ZIRAN_ROOT/'web/ziran_web.js','-lidbfs.js','-sASYNCIFY','-sSTACK_SIZE=16777216','-sASYNCIFY_STACK_SIZE=1048576','-g2','-sASSERTIONS=1','-sALLOW_MEMORY_GROWTH=1','-sINITIAL_MEMORY=134217728','-sSINGLE_FILE=1','-sEXIT_RUNTIME=1','-sEXPORTED_RUNTIME_METHODS=FS','-sENVIRONMENT=web','--embed-file',str(WORK/'guest.zx')+'@work/document-storage/guest.zx','--shell-file',shell,'-o',WORK/'test.html'])
                 shutil.rmtree(WORK/'browser-profile',ignore_errors=True)
                 run(['node',ROOT/'tests/document_storage_test.mjs',(WORK/'test.html').as_uri(),WORK/'browser-profile'])
             print(f'document storage {form} {"browser IDBFS + hosted VM" if web else "native + hosted VM"}: passed',flush=True)
