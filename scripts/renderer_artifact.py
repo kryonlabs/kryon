@@ -2,12 +2,76 @@
 import argparse
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+
+
+SUPPORTED_RENDERERS = {
+    'renderer-raylib': ('linux-x86_64-gnu', 'windows-x86_64-mingw',
+                        'android-aarch64-bionic', 'android-armv7-bionic'),
+    'renderer-desktop': ('linux-x86_64-gnu',),
+    'renderer-web': ('emscripten-wasm32-emscripten',),
+}
+
+
+def renderer_metadata(artifact):
+    """Resolve renderer.json through a verified Ziran Artifact consumer."""
+    meta = artifact.metadata('renderer.json')
+    if meta['platform'] not in SUPPORTED_RENDERERS.get(meta['artifact'], ()):
+        raise ValueError('unsupported renderer artifact/platform')
+
+    def text(value):
+        return isinstance(value, str) and bool(value) and all(
+            ord(char) >= 32 and ord(char) != 127 for char in value)
+
+    def strings(field, default=None):
+        values = meta.get(field, default)
+        if not isinstance(values, list) or not all(text(value) for value in values):
+            raise ValueError('invalid renderer metadata: ' + field)
+        return values
+
+    for field in ('compile_flags', 'link_flags', 'defines'):
+        strings(field)
+    meta['archives'] = [str(artifact.output(name)) for name in strings('archives')]
+    meta['js_libraries'] = [str(artifact.output(name)) for name in strings('js_libraries', [])]
+    directories = [artifact.path(name) for name in strings('include_directories')]
+    if not all(path.is_dir() for path in directories):
+        raise ValueError('renderer include directory is missing')
+    meta['include_directories'] = list(map(str, directories))
+    resources = meta.get('resources')
+    if (not isinstance(resources, dict) or not {'font', 'font_license'} <= resources.keys()
+            or not all(text(key) and text(value) for key, value in resources.items())):
+        raise ValueError('invalid renderer metadata: resources')
+    meta['resources'] = {key: str(artifact.output(name)) for key, name in resources.items()}
+    preloads = meta.get('preload_files', [])
+    if not isinstance(preloads, list):
+        raise ValueError('invalid renderer metadata: preload_files')
+    resolved = []
+    for item in preloads:
+        if (not isinstance(item, dict) or not text(item.get('path')) or not text(item.get('mount'))):
+            raise ValueError('invalid renderer preload')
+        mount = item['mount']
+        if (not mount.startswith('/') or '@' in mount or '\\' in mount
+                or '..' in PurePosixPath(mount).parts or str(PurePosixPath(mount)) != mount):
+            raise ValueError('invalid renderer preload mount')
+        resolved.append(dict(path=str(artifact.output(item['path'])), mount=mount))
+    meta['preload_files'] = resolved
+    return meta
+
+
+def renderer_link(meta, *, preloads=True):
+    """Ordered linker argv from renderer_metadata, including web resources."""
+    flags = [*meta['archives'], *meta['link_flags']]
+    for path in meta['js_libraries']:
+        flags.extend(['--js-library', path])
+    if preloads:
+        for item in meta['preload_files']:
+            flags.extend(['--preload-file', item['path'] + '@' + item['mount']])
+    return flags
 
 
 def run(args, **kwargs):
@@ -50,13 +114,9 @@ def mingw_library_flags(cc):
 
 
 def build(name, target, stage, root):
-    if name not in ('renderer-raylib', 'renderer-desktop', 'renderer-web'):
+    if name not in SUPPORTED_RENDERERS:
         raise ValueError('unknown renderer artifact: ' + name)
-    supported = {'renderer-raylib': ('linux-x86_64-gnu', 'windows-x86_64-mingw',
-                                    'android-aarch64-bionic', 'android-armv7-bionic'),
-                 'renderer-desktop': ('linux-x86_64-gnu',),
-                 'renderer-web': ('emscripten-wasm32-emscripten',)}
-    if target not in supported[name]:
+    if target not in SUPPORTED_RENDERERS[name]:
         raise ValueError(f'{name} does not support {target}')
     opts = options()
     toolchain = Path(os.environ['ZIRAN_TOOLCHAIN_ROOT'])

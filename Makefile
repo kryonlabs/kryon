@@ -143,7 +143,12 @@ project-test: project-toolchain build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_host_test.py
 	@$(MAKE) --no-print-directory templates-test
 
-.PHONY: renderer-artifact-test
+.PHONY: renderer-artifact-test renderer-consumer-test
+renderer-consumer-test:
+	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/renderer_consumer_test.py
+
+test: renderer-consumer-test
+
 renderer-artifact-test: build/bin/kryon
 	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/renderer_artifact_test.py
 

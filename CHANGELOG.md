@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Game build tools can share renderer metadata validation, resource paths and
+  ordered linker arguments instead of maintaining application copies.
+
 - MediaAudio adds owner-local Pause/Resume, retains paused PCM queues, and reports
   available asset-music playback seconds through native, hosted and browser hosts.
 

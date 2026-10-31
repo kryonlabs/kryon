@@ -29,6 +29,31 @@ No owner pauses the shared context. See [MediaAudio](API.md) for capability
 bits and position availability. Native tests use Raylib/miniaudio's paced null
 backend; browser tests use a disposable muted headless context and trusted gesture.
 
+## Renderer artifacts in build scripts
+
+The package exports `renderer-raylib`, `renderer-desktop` and `renderer-web`
+artifacts for the supported native and browser targets. Request them through
+`ziran pkg artifact kryon:NAME --platform OS-ARCH-ABI`, using the application's
+package wrapper and locked graph. Ziran's `scripts/ziran_artifacts.py` verifies
+the descriptor and its declared outputs; see its package guide for the Python
+`Artifact` and `request` API.
+
+Kryon's `scripts/renderer_artifact.py` provides the renderer-specific consumer
+functions alongside its provider. Load it from the resolved `pkg path kryon`
+directory and call `renderer_metadata(artifact)` with that verified artifact.
+It validates the renderer/platform combination, compile/link argument types,
+resources, include directories and virtual preload mounts, then returns
+metadata with absolute paths. Every archive, resource, JavaScript library and
+preload must be a declared artifact output. Paths resolve beside that
+artifact, regardless of the build script's working directory.
+
+`renderer_link(metadata, preloads=True)` returns ordered linker arguments,
+including JavaScript libraries and browser preloads. Set `preloads=False`
+when a host supplies those files separately. `compile_flags`, `defines` and
+`include_directories` remain separate metadata fields for the host compiler
+or CMake invocation. Application editions, asset lists and output names stay
+in the application.
+
 ## Available hosts
 
 | Profile backend | Ziran entry | Presentation |
