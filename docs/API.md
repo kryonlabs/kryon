@@ -240,6 +240,8 @@ and sends each colour's triangles to the host in one `RasterTriangles` call;
 a radial fade is drawn as rings of one colour each. `BoxProps.fill_bottom`
 with `has_fill_bottom` fades a box's fill from top to bottom, as
 `DrawRectangleGradientV` does.
+Import `kryon/shape_props` and `kryon/shape_widget` to use these shapes without
+loading the full widget catalog, including in a portable hosted bundle.
 
 An application using a Kryon host exports a Ziran function with this shape:
 
