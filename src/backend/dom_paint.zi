@@ -116,6 +116,9 @@ DomPaintRecord :: (queued: QueuedPaint) -> bool {
         previous := page_ctx
         page_ctx = dom_paint_tile_context
         EmitPaintDirect(queued)
+        // Deferred meshes must composite before restoring the page context:
+        // clipping and transforms still belong to this DOM tile.
+        PageFlushPaint()
         page_ctx = previous
         return true
     }

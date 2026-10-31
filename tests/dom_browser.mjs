@@ -11,8 +11,11 @@ const [html, profile] = process.argv.slice(2);
 await unlink(join(profile, 'DevToolsActivePort')).catch(error => {
   if (error.code !== 'ENOENT') throw error;
 });
+const meshTest = !process.env.KRYON_DOM_INTERACTION;
+const rendering = meshTest ? ['--enable-unsafe-swiftshader', '--enable-webgl',
+  '--use-gl=angle', '--use-angle=swiftshader', '--force-device-scale-factor=1.75'] : ['--disable-gpu'];
 const browser = spawn(process.env.CHROMIUM || 'chromium', [
-  '--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage',
+  '--headless', '--no-sandbox', ...rendering, '--disable-dev-shm-usage',
   '--no-first-run', '--no-default-browser-check', '--remote-debugging-port=0',
   '--user-data-dir=' + profile, 'about:blank'
 ], {detached: true, stdio: ['ignore', 'ignore', 'pipe']});
@@ -65,16 +68,27 @@ try {
   await command('Runtime.enable');
   await command('Page.enable');
   await command('Page.addScriptToEvaluateOnNewDocument', {source: `
+    globalThis.__meshDraws = 0;
+    const drawElements = WebGLRenderingContext.prototype.drawElements;
+    WebGLRenderingContext.prototype.drawElements = function(...args) {
+      globalThis.__meshDraws++;
+      return drawElements.apply(this, args);
+    };
     new MutationObserver(records => {
       for (const record of records) for (const node of record.addedNodes) {
-        if (node.id === 'kryon-dom-paint') globalThis.__nativeDomPaintObserved =
+        if (node.id === 'kryon-dom-paint') {
+          globalThis.__paintRoot = node;
+          globalThis.__nativeDomPaintObserved =
           [...node.querySelectorAll('[data-kryon-paint="span"]')].map(element => ({
             text: element.textContent, left: element.style.left,
             font: element.style.font, color: element.style.color
           }));
+        }
       }
+      if (globalThis.__paintRoot) globalThis.__paintTiles = [...globalThis.__paintRoot.querySelectorAll('canvas')];
     }).observe(document, {childList:true, subtree:true});
   `});
+  if (meshTest) await command('Emulation.setDeviceMetricsOverride', {width:640,height:480,deviceScaleFactor:1.75,mobile:false});
   await command('Page.navigate', {url: html});
   if (process.env.KRYON_DOM_INTERACTION) {
     async function evaluate(expression) {
@@ -157,6 +171,29 @@ try {
       const paint = globalThis.__nativeDomPaintObserved;
       if (!paint?.some(node => node.text === 'Semantic DOM' && node.left === '10px' && node.font && node.color)) failures.push('missing native HTML/CSS text paint');
       if (!snapshot) failures.push('missing DOM snapshot');
+      const tiles = globalThis.__paintTiles || [];
+      const source = document.createElement('canvas'); source.width = 2; source.height = 1;
+      const sourceContext = source.getContext('2d');
+      sourceContext.fillStyle = 'red'; sourceContext.fillRect(0,0,1,1);
+      sourceContext.fillStyle = 'blue'; sourceContext.fillRect(1,0,1,1);
+      for (const top of [160, 240]) {
+        const tile = tiles.find(tile => tile.style.left === '100px' && tile.style.top === top+'px');
+        if (!tile) { failures.push('missing mesh tile '+top); continue; }
+        const reference = document.createElement('canvas'); reference.width = tile.width; reference.height = tile.height;
+        const ctx = reference.getContext('2d'); ctx.imageSmoothingEnabled = false;
+        ctx.translate(reference.width, 0); ctx.scale(-1, 1);
+        ctx.drawImage(source, 0, 0, reference.width, reference.height);
+        const actual = tile.getContext('2d').getImageData(0,0,tile.width,tile.height).data;
+        const expected = ctx.getImageData(0,0,tile.width,tile.height).data;
+        // Compare interiors away from the shared triangle/texel boundaries.
+        for (const x of [tile.width/4|0, tile.width*3/4|0]) {
+          const at = ((tile.height/2|0)*tile.width+x)*4;
+          if (actual.slice(at,at+4).some((value,index) => Math.abs(value-expected[at+index]) > 2)) {
+            failures.push('mirrored mesh pixels '+top+': '+Array.from(actual.slice(at,at+4)));
+          }
+        }
+      }
+      if (globalThis.__meshDraws < 2) failures.push('accelerated meshes were not drawn');
       if (snapshot && snapshot.title !== 'DOM Probe') failures.push('title ' + snapshot.title);
       if (snapshot) {
         const nodes = snapshot.nodes;

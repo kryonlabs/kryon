@@ -6,6 +6,8 @@ import fcntl
 from pathlib import Path
 import subprocess
 import tempfile
+import struct
+import zlib
 
 from toolchain import ZIRAN, ZIRAN_ROOT
 
@@ -34,11 +36,20 @@ with (project / "lock").open("w") as lock:
         '[dependencies.kryon]\ngit = "https://github.com/kryonlabs/kryon.git"\n'
         'ref = "master"\n\n'
         '[tool.kryon]\ndefault_profile = "web"\n\n'
-        '[tool.kryon.profiles.web]\nbackend = "dom"\n'
+        '[tool.kryon.profiles.web]\nbackend = "dom"\nassets = "assets"\n'
     )
     if os.environ.get("KRYON_DOM_INTERACTION"):
         with (project / "ziran.toml").open("a") as manifest:
             manifest.write('\n[dependencies.Kss]\ngit = "https://github.com/kryonlabs/kss.git"\nref = "master"\n')
+    # A two-color encoded image exercises asset loading and mirrored UVs.
+    assets = project / "assets"
+    assets.mkdir(exist_ok=True)
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    (assets / "mesh.png").write_bytes(b"\x89PNG\r\n\x1a\n" +
+        chunk(b"IHDR", struct.pack(">IIBBBBB", 2, 1, 8, 6, 0, 0, 0)) +
+        chunk(b"IDAT", zlib.compress(bytes([0,255,0,0,255,0,0,255,255]))) + chunk(b"IEND", b""))
+    ENV["EMCC_CFLAGS"] = ENV.get("EMCC_CFLAGS", "") + f" --embed-file {assets}/mesh.png@/assets/mesh.png"
     overrides = {
         "kryon": str(ROOT),
         "ziran": str(ZIRAN_ROOT),
@@ -78,6 +89,13 @@ with (project / "lock").open("w") as lock:
         '    link.text = "Docs"\n'
         '    link.link = "https://example.test/docs"\n'
         '    Link(session, link)\n'
+        '    points: [4]Vector2 = .{.{180.0,160.0},.{100.0,160.0},.{180.0,200.0},.{100.0,200.0}}\n'
+        '    Image(session, ImageProps.{.key = 101, .bounds = .{100.0,160.0,80.0,40.0}, .asset_path = "assets/mesh.png", .mesh = .{2,2,points[:]}})\n'
+        '    // A separate fallback tile used to receive the deferred mesh.\n'
+        '    Image(session, ImageProps.{.key = 102, .bounds = .{12.0,9.0,38.0,38.0}, .rotation = 1.0, .asset_path = "assets/mesh.png"})\n'
+        '    points[0].y += 80.0; points[1].y += 80.0; points[2].y += 80.0; points[3].y += 80.0\n'
+        '    // Last mesh must finish before the frame restores the page context.\n'
+        '    Image(session, ImageProps.{.key = 103, .bounds = .{100.0,240.0,80.0,40.0}, .asset_path = "assets/mesh.png", .mesh = .{2,2,points[:]}})\n'
         '    RequestWindowClose()\n'
         '    if opened.opened { End(session) }\n'
         '    return 0\n'
