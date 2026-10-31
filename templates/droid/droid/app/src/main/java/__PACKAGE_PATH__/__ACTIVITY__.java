@@ -2,6 +2,7 @@ package __PACKAGE__;
 
 import android.app.NativeActivity;
 import android.content.Intent;
+import org.kryonlabs.platform.DocumentTypes;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import java.nio.charset.StandardCharsets;
@@ -164,7 +165,7 @@ public class __ACTIVITY__ extends NativeActivity {
             documentSave = filename != null;
             Intent intent = new Intent(documentSave ? Intent.ACTION_CREATE_DOCUMENT : Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType(mime == null || mime.isEmpty() ? "*/*" : mime);
+            DocumentTypes.apply(intent, mime);
             if (documentSave) intent.putExtra(Intent.EXTRA_TITLE, filename);
             try {
                 startActivityForResult(intent, DOCUMENT_PICKER);

@@ -231,5 +231,10 @@ main :: () -> s32 {
     Require(exception_pending == 0 && frames == 0, 30)
     Require(!AndroidSavePickerOpen(7, "", "application/octet-stream") &&
         !AndroidSavePickerCommit(""), 31)
+    java_throws = false
+    types := "application/pgp-keys,application/octet-stream,application/json,text/plain"
+    Require(AndroidPickerOpen(8, types), 32)
+    Require(last_request == 8 && CStringEquals(*java_text[0], types) &&
+        CStringEquals(*method_name[0], "openImportPicker"), 33)
     return 0
 }

@@ -96,7 +96,9 @@ PickerCall :: (name: string, text: string, request: s32) -> bool {
     return false
 }
 
-// Opens the document picker for mime_types ("*/*", "image/*").
+// Opens the document picker for one MIME type or a comma-separated allowlist.
+// Activities pass multiple types through Intent.EXTRA_MIME_TYPES with */* as
+// the primary type. Filename extensions are not Android picker filters.
 AndroidPickerOpen :: (request: s32, mime_types: string) -> bool {
     PickerStore(request, cast(s32)AndroidPickerResult.AndroidPickerNone, null)
     return PickerCall("openImportPicker", mime_types, request)

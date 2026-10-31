@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Android document pickers accept multiple file types, including key backups, without showing every file type.
 - Document storage tests run native coverage without a browser SDK and keep full IDBFS coverage in the configured browser test job.
 
 - Game builders can share target-specific foreign renderer libraries and
