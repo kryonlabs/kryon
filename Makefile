@@ -273,6 +273,13 @@ public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
 		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
 
 check: all ziran-test header-check docs-check project-test public-surface-check host-keys-test laws
+
+# Minutes, not the half hour of make test: source rules plus the hosts whose
+# links a shared backend change can break. Run before pushing; CI runs it first.
+.PHONY: push-check
+push-check:
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
+		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test pixmap-gpu-test
 .PHONY: canvas-audio-engine-test
 canvas-audio-engine-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_audio_engine_zi_test.sh

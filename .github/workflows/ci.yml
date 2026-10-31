@@ -17,8 +17,50 @@ env:
   ZIRAN_ROOT: ${{ github.workspace }}/ziran
 
 jobs:
+  # A broken host link fails here in minutes, before the long jobs start.
+  push-check:
+    name: Source rules and host links
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kryon
+    steps:
+      - name: Checkout Kryon
+        uses: actions/checkout@v7
+        with:
+          path: kryon
+
+      - name: Name the checked-out Kryon commit master
+        run: git checkout -B master
+
+      - name: Set up the locked Ziran, its packages and the build tools
+        uses: ziranlang/ziran/.github/actions/setup@4c27b5a080a9596f5919ece1651e5a372be2142f
+        with:
+          project: kryon
+          path: ziran
+          fetch: true
+          recommends: true
+          packages: >-
+            build-essential python3 ripgrep pkg-config libsdl2-dev libcairo2-dev libglib2.0-dev
+            libpango1.0-dev libdrm-dev libgbm-dev libegl-dev libgles-dev libegl-mesa0
+            libgl1-mesa-dri libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev
+            libcurl4-openssl-dev fonts-dejavu-core fonts-wqy-zenhei xvfb xdotool x11-apps x11-utils
+            imagemagick xfwm4 dbus-x11
+
+      - name: Prepare locked toolchain ref
+        run: git -C "$ZIRAN_ROOT" checkout -B master
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25.x'
+
+      - name: Source rules and host links
+        run: make push-check
+
   test-macos-zx:
     name: macOS native ZX build and display-free execution
+    needs: push-check
     runs-on: macos-latest
     defaults:
       run:
@@ -47,6 +89,7 @@ jobs:
 
   test-linux:
     name: Ziran library and host tests
+    needs: push-check
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -146,6 +189,7 @@ jobs:
 
   test-sanitizers:
     name: Behavior tests under AddressSanitizer and UndefinedBehaviorSanitizer
+    needs: push-check
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -188,6 +232,7 @@ jobs:
 
   test-desktop-hosts:
     name: Desktop and raylib hosts on private Xvfb
+    needs: push-check
     runs-on: ubuntu-latest
     defaults:
       run:

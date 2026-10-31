@@ -35,6 +35,8 @@ modules live in `src/ui/*.zi`, its hosts in `src/backend/*.zi`, and the
   `Window`, `Media`, `Video`, `Clock`, and `Service` are package exports in
   `ziran.toml`. A checker pass alone does not establish native or portable
   readiness.
+- Run `make push-check` before pushing: it takes minutes and links the hosts a
+  shared backend change can break. CI runs it before its long jobs.
 - `make test` is the current Kryon gate. It builds the checked Ziran library
   and runs Ziran source, saved-IR, and bundle behavior tests without a display.
 - Put one-off experiment builds in `build/scratch/<name>/`, never in new
