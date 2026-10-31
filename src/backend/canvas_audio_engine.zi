@@ -430,6 +430,7 @@
         }
         if entry.music_looping { return }
         if AudioHostSourceDone(entry.music_source) != 0 {
+            entry.music_offset = AudioHostBufferRead(entry.id, 3)
             entry.music_playing = false
             AudioHostSourceStop(entry.music_source)
         }
@@ -442,8 +443,13 @@
         if entry.music_playing {
             elapsed: float64 = AudioHostTime() - entry.music_started
             if elapsed < 0.0 { elapsed = 0.0 }
-            return entry.music_offset +
-                elapsed * cast(float64)AudioClampRate(entry.pitch)
+            position := entry.music_offset + elapsed * cast(float64)AudioClampRate(entry.pitch)
+            duration := AudioHostBufferRead(entry.id, 3)
+            if duration > 0.0 {
+                if entry.music_looping { position -= cast(float64)cast(s64)(position / duration) * duration }
+                else if position > duration { position = duration }
+            }
+            return position
         }
         return entry.music_offset
     }
@@ -545,6 +551,12 @@
 
     AudioEngineMusicLength :: (id: s32) -> float32 {
         return cast(float32)AudioBufferField(id, 3)
+    }
+
+    AudioEngineMusicPosition :: (id: s32) -> float64 {
+        index := AudioFindBuffer(id)
+        if index < 0 { return 0.0 }
+        return AudioMusicOffset(index)
     }
 
     AudioEngineMusicPlayed :: (id: s32) -> float32 {
@@ -744,6 +756,13 @@
     AudioEngineStreamPause :: (id: s32) {
         index: s32 = AudioFindStream(id)
         if index < 0 { return }
+        if !audio_streams[index].playing { return }
+        AudioPruneStream(index)
+        for slot: 0..audio_streams[index].source_count - 1 {
+            AudioHostSourcePause(audio_streams[index].sources[slot])
+        }
+        audio_streams[index].next_time -= AudioHostTime()
+        if audio_streams[index].next_time < 0.0 { audio_streams[index].next_time = 0.0 }
         audio_streams[index].playing = false
         AudioStopStreamTimer(index)
     }
@@ -752,11 +771,17 @@
         index: s32 = AudioFindStream(id)
         if index < 0 || AudioHostOpen() == 0 { return }
         AudioHostResume()
-        audio_streams[index].playing = true
-        now: float64 = AudioHostTime()
-        if audio_streams[index].next_time < now {
-            audio_streams[index].next_time = now
+        if audio_streams[index].playing { return }
+        for slot: 0..audio_streams[index].source_count - 1 {
+            if AudioHostSourceResume(audio_streams[index].sources[slot]) == 0 {
+                for restore: 0..audio_streams[index].source_count - 1 {
+                    AudioHostSourcePause(audio_streams[index].sources[restore])
+                }
+                return
+            }
         }
+        audio_streams[index].playing = true
+        audio_streams[index].next_time += AudioHostTime()
         AudioStartStreamTimer(index)
     }
 

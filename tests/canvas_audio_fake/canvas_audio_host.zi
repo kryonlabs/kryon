@@ -229,6 +229,13 @@
         return FakeStart(source, 0.0, 0.0, rate, volume, pan, when)
     }
 
+    AudioHostSourcePause :: (source: s32) {
+        if source > 0 && source < FAKE_LIMIT { fake_sources[source].live = false }
+    }
+    AudioHostSourceResume :: (source: s32) -> s32 {
+        if source > 0 && source < FAKE_LIMIT { fake_sources[source].live = true; return 1 }
+        return 0
+    }
     AudioHostSourceStop :: (source: s32) {
         if source > 0 && source < FAKE_LIMIT {
             empty: FakeSource

@@ -77,7 +77,7 @@ MediaAudioOwnerCall :: (owner: *MediaAudioOwner, session: Session, command: Medi
     if !SessionValid(session) || owner.session.slot != session.slot || owner.session.epoch != session.epoch {
         return .{.code = .Denied, .message = "Audio owner is outside this session"}
     }
-    if cast(s32)command.operation < 0 || cast(s32)command.operation > cast(s32)MediaAudioOperation.SubmitStream {
+    if cast(s32)command.operation < 0 || cast(s32)command.operation > cast(s32)MediaAudioOperation.Resume {
         return .{.code = .Invalid, .message = "Unknown audio operation"}
     }
     if command.gain != command.gain || command.gain < 0.0 || command.gain > 1.0 {

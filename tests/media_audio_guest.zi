@@ -40,6 +40,10 @@ main :: () -> s32 {
         if Call(.Play).state != .Playing { return 5 }
         if Call(.Load, 2, .7, true).code != .Ok { return 6 }
         if Call(.Play, 2, .7, true, true).state != .Playing { return 7 }
+        if Call(.Pause, 2).state != .Paused { return 31 }
+        paused := Call(.Status, 2)
+        if !paused.has_position || paused.position_seconds < 0.0 { return 32 }
+        if Call(.Resume, 2).state != .Playing { return 33 }
         if retained != "Asset is outside this app's resource policy" { return 8 }
     } else if phase == 1 {
         #if #defined(PCM_AUDIO_TEST) {
@@ -50,6 +54,9 @@ main :: () -> s32 {
         if Call(.Gain, 2, 0).code != .Ok { return 10 }
         if Call(.Stop).state != .Stopped { return 11 }
         if Call(.Status, 2).state != .Playing { return 12 }
+        position := Call(.Status, 2)
+        if !position.has_position || position.position_seconds < 0.0 { return 34 }
+        if Call(.Pause, 2).state != .Paused { return 35 }
         if retained != "Asset is outside this app's resource policy" { return 13 }
     } else {
         #if #defined(PCM_AUDIO_TEST) {

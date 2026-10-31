@@ -83,6 +83,13 @@ main :: () -> s32 {
     }
     if first.app.replay.ready { return 3 }
     if !Frame(*first) { return 4 }
+    // A rejected restart keeps the real paused owner and VM instance intact.
+    paused_resource := first.app.audio.voices[1].resource
+    old_instance := first.app.instance
+    first.expected_id = "reject-new-identity"
+    if AppContextRestart(*first) { return 33 }
+    first.expected_id = "audio-test"
+    if first.app.instance != old_instance || first.app.audio.voices[1].resource != paused_resource || first.app.audio.voices[1].state != .Paused { return 34 }
     second: AppContext
     if !Open(*second, bytes, session) || !Frame(*second) { return 5 }
     if first.app.audio.voices[1].resource == second.app.audio.voices[1].resource { return 6 }
@@ -115,6 +122,15 @@ main :: () -> s32 {
     args[1].kind = cast(s32)HostValueKind.HostPointer
     if WidgetHostAudioCall(*second.app.audio, AppContextAudioRead, cast(*void)(*second.app), *args[0], 2, *result) != 0 { return 13 }
     WidgetHostEnd()
+    // Both added scalar kinds survive named-field host encoding exactly.
+    roundtrip_codec: WidgetMediaAudioResultCodec
+    expected := MediaAudioResult.{.has_position = true, .position_seconds = 1.23456789, .state = .Paused}
+    encoded := WidgetEncodeMediaAudioResult(expected, *roundtrip_codec)
+    if !WidgetValidMediaAudioResult(encoded) { return 30 }
+    decoded_position := WidgetDecodeMediaAudioResult(encoded, *roundtrip_codec)
+    if !decoded_position.has_position || decoded_position.position_seconds != expected.position_seconds || decoded_position.state != .Paused { return 31 }
+    roundtrip_codec.fields[6].value.kind = cast(s32)HostValueKind.HostInteger
+    if WidgetValidMediaAudioResult(encoded) { return 32 }
     raw: MediaAudioOwner
     module: [32]u8
     function: [32]u8

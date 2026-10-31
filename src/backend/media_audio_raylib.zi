@@ -22,6 +22,8 @@ AssetAudioCopy :: (to: *void, from: *void, count: usize) -> *void #foreign audio
     PcmLoad :: (rate: u32, bits: u32, channels: u32) -> AssetAudioStream #foreign asset_raylib "LoadAudioStream";
     PcmValid :: (stream: AssetAudioStream) -> bool #foreign asset_raylib "IsAudioStreamValid";
     PcmPlay :: (stream: AssetAudioStream) #foreign asset_raylib "PlayAudioStream";
+    PcmPause :: (stream: AssetAudioStream) #foreign asset_raylib "PauseAudioStream";
+    PcmResume :: (stream: AssetAudioStream) #foreign asset_raylib "ResumeAudioStream";
     PcmStop :: (stream: AssetAudioStream) #foreign asset_raylib "StopAudioStream";
     PcmReady :: (stream: AssetAudioStream) -> bool #foreign asset_raylib "IsAudioStreamProcessed";
     PcmUpdate :: (stream: AssetAudioStream, data: *void, frames: s32) #foreign asset_raylib "UpdateAudioStream";
@@ -33,6 +35,9 @@ AssetAudioCopy :: (to: *void, from: *void, count: usize) -> *void #foreign audio
     AssetAudioValid :: (music: AssetAudioMusic) -> bool #foreign asset_raylib "IsMusicValid";
     AssetAudioPlay :: (music: AssetAudioMusic) #foreign asset_raylib "PlayMusicStream";
     AssetAudioVolume :: (music: AssetAudioMusic, gain: float32) #foreign asset_raylib "SetMusicVolume";
+    AssetAudioPause :: (music: AssetAudioMusic) #foreign asset_raylib "PauseMusicStream";
+    AssetAudioResume :: (music: AssetAudioMusic) #foreign asset_raylib "ResumeMusicStream";
+    AssetAudioPosition :: (music: AssetAudioMusic) -> float32 #foreign asset_raylib "GetMusicTimePlayed";
     AssetAudioStop :: (music: AssetAudioMusic) #foreign asset_raylib "StopMusicStream";
     AssetAudioUpdate :: (music: AssetAudioMusic) #foreign asset_raylib "UpdateMusicStream";
     AssetAudioPlaying :: (music: AssetAudioMusic) -> bool #foreign asset_raylib "IsMusicStreamPlaying";
@@ -72,9 +77,20 @@ AssetAudioDispose :: (resource: *AssetAudioResource) {
     AssetAudioFree(cast(*void)resource)
 }
 AssetAudioReply :: (voice: *MediaAudioVoice, code: MediaAudioCode = .Ok) -> MediaAudioResult {
-    return .{.code = code, .state = voice.state, .capabilities = cast(u32)15,
+    return .{.code = code, .state = voice.state, .capabilities = cast(u32)127,
         .message = ifx code == .Suspended then "Audio context suspended; a user gesture may be required" else
             ifx code == .Unavailable then "Audio device unavailable" else ""}
+}
+AssetAudioRefresh :: (voice: *MediaAudioVoice, resource: *AssetAudioResource) {
+    if voice.state == .Playing {
+        playing: bool
+        #if #defined(PLATFORM_WEB) {
+            playing = AudioEngineMusicPlaying(resource.id) != 0
+        } else {
+            AssetAudioUpdate(resource.music); playing = AssetAudioPlaying(resource.music)
+        }
+        if !playing { voice.state = .Finished }
+    }
 }
 AssetAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
     resource := cast(*AssetAudioResource)voice.resource
@@ -93,8 +109,32 @@ AssetAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, byte
         voice.state = .Stopped
         return AssetAudioReply(voice)
     }
+    if command.operation == .Pause || command.operation == .Resume {
+        AssetAudioRefresh(voice, resource)
+        if command.operation == .Pause && voice.state == .Paused { return AssetAudioReply(voice) }
+        if command.operation == .Resume && voice.state == .Playing {
+            return AssetAudioReply(voice, AssetAudioDevice())
+        }
+        if command.operation == .Pause && voice.state != .Playing { return AssetAudioReply(voice, .Invalid) }
+        if command.operation == .Resume && voice.state != .Paused { return AssetAudioReply(voice, .Invalid) }
+        if command.operation == .Resume {
+            ready := AssetAudioDevice()
+            if ready != .Ok { return AssetAudioReply(voice, ready) }
+        }
+        #if #defined(PLATFORM_WEB) {
+            if command.operation == .Pause { AudioEngineMusicPause(resource.id) }
+            else {
+                AudioEngineMusicResume(resource.id)
+                if AudioEngineMusicPlaying(resource.id) == 0 { return AssetAudioReply(voice, .Failed) }
+            }
+        } else {
+            if command.operation == .Pause { AssetAudioPause(resource.music) }
+            else { AssetAudioResume(resource.music) }
+        }
+        voice.state = ifx command.operation == .Pause then MediaAudioState.Paused else MediaAudioState.Playing
+    }
     device := AssetAudioDevice()
-    if device != .Ok { return AssetAudioReply(voice, device) }
+    if device != .Ok && command.operation != .Status && command.operation != .Pause { return AssetAudioReply(voice, device) }
     if command.operation == .Capabilities { return AssetAudioReply(voice) }
     if command.operation == .Load {
         resource = cast(*AssetAudioResource)AssetAudioAllocate(1, size_of(AssetAudioResource))
@@ -145,17 +185,22 @@ AssetAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, byte
             AssetAudioVolume(resource.music, command.gain)
         }
         voice.gain = command.gain
-    } else if command.operation != .Status { return AssetAudioReply(voice, .Invalid) }
-    if voice.state == .Playing {
-        playing: bool
+    } else if command.operation != .Status && command.operation != .Pause && command.operation != .Resume { return AssetAudioReply(voice, .Invalid) }
+    AssetAudioRefresh(voice, resource)
+    reply := AssetAudioReply(voice, ifx command.operation == .Status then device else MediaAudioCode.Ok)
+    if voice.music {
+        position: float64
         #if #defined(PLATFORM_WEB) {
-            playing = AudioEngineMusicPlaying(resource.id) != 0
+            position = AudioEngineMusicPosition(resource.id)
         } else {
-            AssetAudioUpdate(resource.music); playing = AssetAudioPlaying(resource.music)
+            position = cast(float64)AssetAudioPosition(resource.music)
         }
-        if !playing { voice.state = .Finished }
+        if position - position == 0.0 && position >= 0.0 {
+            reply.has_position = true
+            reply.position_seconds = position
+        }
     }
-    return AssetAudioReply(voice)
+    return reply
 }
 MediaAudioUseRaylib :: () { MediaAudioUseProvider(AssetAudioProvider) }
 
@@ -172,8 +217,31 @@ PcmAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand) -> Med
         voice.state = .Stopped
         return AssetAudioReply(voice)
     }
+    if command.operation == .Pause || command.operation == .Resume {
+        if command.operation == .Pause && voice.state == .Paused { return AssetAudioReply(voice) }
+        if command.operation == .Resume && voice.state == .Playing {
+            return AssetAudioReply(voice, AssetAudioDevice())
+        }
+        if command.operation == .Pause && voice.state != .Playing { return AssetAudioReply(voice, .Invalid) }
+        if command.operation == .Resume && voice.state != .Paused { return AssetAudioReply(voice, .Invalid) }
+        if command.operation == .Resume {
+            ready := AssetAudioDevice()
+            if ready != .Ok { return AssetAudioReply(voice, ready) }
+        }
+        #if #defined(PLATFORM_WEB) {
+            if command.operation == .Pause { AudioEngineStreamPause(resource.id) }
+            else {
+                AudioEngineStreamResume(resource.id)
+                if AudioEngineStreamPlaying(resource.id) == 0 { return AssetAudioReply(voice, .Failed) }
+            }
+        } else {
+            if command.operation == .Pause { PcmPause(resource.music.stream) }
+            else { PcmResume(resource.music.stream) }
+        }
+        voice.state = ifx command.operation == .Pause then MediaAudioState.Paused else MediaAudioState.Playing
+    }
     device := AssetAudioDevice()
-    if device != .Ok { return AssetAudioReply(voice, device) }
+    if device != .Ok && command.operation != .Status && command.operation != .Pause { return AssetAudioReply(voice, device) }
     if command.operation == .CreateStream {
         resource = cast(*AssetAudioResource)AssetAudioAllocate(1, size_of(AssetAudioResource))
         if resource == null { return AssetAudioReply(voice, .Limit) }
@@ -214,9 +282,9 @@ PcmAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand) -> Med
             PcmVolume(resource.music.stream, command.gain)
         }
         voice.gain = command.gain
-    } else if command.operation != .Status && command.operation != .SubmitStream { return AssetAudioReply(voice, .Invalid) }
+    } else if command.operation != .Status && command.operation != .SubmitStream && command.operation != .Pause && command.operation != .Resume { return AssetAudioReply(voice, .Invalid) }
     writable: bool
-    if voice.state == .Playing {
+    if voice.state == .Playing && device == .Ok {
         #if #defined(PLATFORM_WEB) {
             writable = AudioEngineStreamProcessed(resource.id) != 0
         } else {
@@ -245,7 +313,7 @@ PcmAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand) -> Med
             writable = PcmReady(resource.music.stream)
         }
     }
-    reply := AssetAudioReply(voice)
+    reply := AssetAudioReply(voice, ifx command.operation == .Status then device else MediaAudioCode.Ok)
     reply.writable = writable
     return reply
 }

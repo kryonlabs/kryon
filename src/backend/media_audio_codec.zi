@@ -60,7 +60,7 @@ WidgetValidMediaAudioCommand :: (value: HostValue) -> bool {
 }
 
 WidgetMediaAudioResultCodec :: struct {
-    fields: [5]HostField
+    fields: [7]HostField
 }
 
 WidgetEncodeMediaAudioResult :: (data: MediaAudioResult, codec: *WidgetMediaAudioResultCodec) -> HostValue {
@@ -70,6 +70,8 @@ WidgetEncodeMediaAudioResult :: (data: MediaAudioResult, codec: *WidgetMediaAudi
     codec.fields[2] = HostField.{.name = HostTextData("capabilities"), .value = HostScalar("u32", cast(s64)data.capabilities)}
     codec.fields[3] = HostField.{.name = HostTextData("message"), .value = HostValue.{.kind = cast(s32)HostString, .type_name = HostTextData("string"), .data = HostTextData(data.message), .length = cast(usize)data.message.count}}
     codec.fields[4] = HostField.{.name = HostTextData("writable"), .value = HostScalar("bool", ifx data.writable then 1 else 0)}
+    codec.fields[5] = HostField.{.name = HostTextData("has_position"), .value = HostScalar("bool", ifx data.has_position then 1 else 0)}
+    codec.fields[6] = HostField.{.name = HostTextData("position_seconds"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float64"), .real = cast(float64)data.position_seconds}}
     return value
 }
 
@@ -82,6 +84,8 @@ WidgetDecodeMediaAudioResult :: (value: HostValue, codec: *WidgetMediaAudioResul
     data.capabilities = cast(u32)HostFieldValue(*value, 2, "capabilities", *zero).bits
     data.message = HostValueText(HostFieldValue(*value, 3, "message", *zero).*)
     data.writable = HostFieldValue(*value, 4, "writable", *zero).integer != 0
+    data.has_position = HostFieldValue(*value, 5, "has_position", *zero).integer != 0
+    data.position_seconds = cast(float64)HostFieldValue(*value, 6, "position_seconds", *zero).real
     return data
 }
 
@@ -92,5 +96,7 @@ WidgetValidMediaAudioResult :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 2, "capabilities", "u32", cast(s32)HostUnsigned) { return false }
     if !HostFieldScalarValid(*value, 3, "message", "string", cast(s32)HostString) { return false }
     if !HostFieldScalarValid(*value, 4, "writable", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 5, "has_position", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 6, "position_seconds", "float64", cast(s32)HostReal) { return false }
     return true
 }

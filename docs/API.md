@@ -441,7 +441,7 @@ available directly from `kryon/media_audio`.
 `MediaAudioCommand` has `operation: MediaAudioOperation`, `voice: s32`,
 `asset: string`, `music: bool`, `looping: bool`, and `gain: float32`, plus the PCM fields below.
 `MediaAudioOperation` is `Capabilities`, `Load`, `Play`, `Gain`, `Stop`,
-`Unload`, `Status`, `CreateStream`, or `SubmitStream`. Voice IDs are caller-selected `1..16`, local to one
+`Unload`, `Status`, `CreateStream`, `SubmitStream`, `Pause`, or `Resume`. Voice IDs are caller-selected `1..16`, local to one
 actual app instance. Each loaded voice has an independent decoder and gain;
 several effects and music voices can play together. `Load` uses `asset`,
 `music`, and `gain`; unload an occupied ID before reloading it. `Play` starts
@@ -455,16 +455,40 @@ does not need a voice ID. There is no queued playback or automatic transition.
 
 `MediaAudioResult` owns `message: string` across the hosted boundary, with
 `code: MediaAudioCode`, `state: MediaAudioState`, `capabilities: u32`, and
-`writable: bool` for PCM streams.
+`writable: bool` for PCM streams, `has_position: bool`, and `position_seconds: float64`.
 Codes are `Ok`, `Unsupported` (no provider), `Unavailable` (no device/reader
 or an operation already in flight), `Suspended` (browser context cannot play,
 including before an autoplay-unlocking gesture), `Invalid`, `Denied`,
 `Missing`, `Limit`, `Failed` (provider/decode failure), and `Backpressure`
 (a full PCM stream). States are `Unloaded`,
-`Ready`, `Playing`, `Stopped`, and `Finished`. A failed command does not
+`Ready`, `Playing`, `Stopped`, `Finished`, and `Paused`. A failed command does not
 imply playing; inspect `code` first. Capability bits 1, 2 and 4 mean asset
 effects, asset music and gain. Providers retain those capability bits when
 the device is unavailable or suspended. Bit 8 advertises bounded PCM streams.
+
+Bits 16, 32 and 64 advertise asset pause/resume, asset-music position, and
+PCM pause/resume respectively. An older or partial provider need not implement
+these features; check its bits and result code. Existing operation/state wire
+values are unchanged; Pause, Resume and Paused are appended.
+
+`Pause` changes Playing to Paused, preserving the individual voice's offset,
+loop, gain and queued PCM copies. Repeating Pause on Paused succeeds. `Resume`
+changes Paused to Playing; repeating it on Playing succeeds only when the
+device/context is available. Both operations reject Ready, Stopped and Finished
+with Invalid, and unloaded IDs with Missing. Resume never starts a new voice or
+replays a stopped one. Play remains an explicit restart from the beginning.
+Neither operation suspends the shared device/context or another owner.
+
+Asset-music Status sets `has_position` only when `position_seconds` contains a
+finite, nonnegative provider playhead in seconds, within the current loop
+iteration (it wraps at the loop boundary). Paused time freezes. Browser time
+also freezes during external context suspension, using AudioContext.currentTime;
+Status then reports Suspended with its available frozen position. Resume while
+suspended returns Suspended and queues nothing; retry explicitly after unlocking.
+PCM and effects have `has_position = false`; zero seconds alone never indicates
+support. PCM exposes neither a drained counter nor an estimated elapsed duration.
+Paused PCM is not writable and rejects submission with Invalid, preserving the
+same bounded queued copies until Resume; Stop and Unload clear those copies.
 
 ```zi
 using Media :: #import "kryon/Media";

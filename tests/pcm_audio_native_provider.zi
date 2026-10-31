@@ -12,7 +12,7 @@ PcmTestProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: 
         resource := cast(*AssetAudioResource)voice.resource
         PausePcm(resource.music.stream)
     }
-    if voice.pcm && answer.code == .Ok && command.operation == .Status {
+    if voice.pcm && answer.code == .Ok && command.operation == .Status && voice.state == .Playing {
         resource := cast(*AssetAudioResource)voice.resource
         ResumePcm(resource.music.stream)
     }

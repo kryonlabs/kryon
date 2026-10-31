@@ -1,0 +1,82 @@
+#import "media_audio"
+#import "media_audio_host"
+#import "session"
+#if #defined(PLATFORM_WEB) {
+    #import "std/web"
+    #import "canvas_audio_host"
+} else {
+    #import "std/timer_linux"
+}
+PauseWait :: (owner: *MediaAudioOwner, milliseconds: s32) {
+    for step: 0..milliseconds / 10 - 1 {
+        unused step
+        #if #defined(PLATFORM_WEB) {
+            WebSleep(10)
+        } else {
+            unused SleepMilliseconds(10)
+        }
+        MediaAudioOwnerTick(owner)
+    }
+}
+PauseCall :: (session: Session, operation: MediaAudioOperation, voice: s32) -> MediaAudioResult {
+    return MediaAudio(session, MediaAudioCommand.{.operation = operation, .voice = voice,
+        .asset = "assets/test/tone.wav", .music = true, .looping = true, .gain = .3})
+}
+PauseBehavior :: (owner: *MediaAudioOwner, session: Session) -> s32 {
+    for id: 4..5 {
+        if PauseCall(session, .Load, cast(s32)id).code != .Ok { return 150 }
+        if PauseCall(session, .Resume, cast(s32)id).code != .Invalid { return 151 }
+        if PauseCall(session, .Play, cast(s32)id).code != .Ok { return 152 }
+    }
+    PauseWait(owner, 300)
+    before := PauseCall(session, .Status, 4)
+    if !before.has_position || before.position_seconds <= 0.0 { return 153 }
+    for id: 4..5 {
+        if PauseCall(session, .Pause, cast(s32)id).state != .Paused { return 154 }
+        if PauseCall(session, .Pause, cast(s32)id).code != .Ok { return 155 }
+    }
+    frozen := PauseCall(session, .Status, 4)
+    other: MediaAudioOwner
+    MediaAudioOwnerBind(*other, session, owner.allowed, owner.read, owner.context)
+    if MediaAudioOwnerCall(*other, session, MediaAudioCommand.{.operation = .Load, .voice = 4,
+        .asset = "assets/test/tone.wav", .music = true, .gain = .7}).code != .Ok { return 156 }
+    if MediaAudioOwnerCall(*other, session, MediaAudioCommand.{.operation = .Play, .voice = 4, .looping = true}).code != .Ok { return 157 }
+    PauseWait(*other, 300)
+    after := PauseCall(session, .Status, 4)
+    independent := MediaAudioOwnerCall(*other, session, MediaAudioCommand.{.operation = .Status, .voice = 4})
+    if !after.has_position || after.position_seconds != frozen.position_seconds || after.state != .Paused { return 158 }
+    if !independent.has_position || independent.position_seconds <= 0.0 { return 159 }
+    MediaAudioOwnerClose(*other)
+    for id: 4..5 { if PauseCall(session, .Resume, cast(s32)id).state != .Playing { return 160 } }
+    if owner.voices[3].gain != cast(float32).3 || owner.voices[4].gain != cast(float32).3 { return 161 }
+    PauseWait(owner, 300)
+    after = PauseCall(session, .Status, 4)
+    if !after.has_position || after.position_seconds <= frozen.position_seconds { return 162 }
+    #if #defined(PLATFORM_WEB) {
+        awaited: WebValue
+        suspension := WebCall0(audio_context, WebName("suspend"))
+        if !WebAwait(WebAsObject(suspension), *awaited) { return 167 }
+        suspended := PauseCall(session, .Status, 4)
+        if suspended.code != .Suspended || !suspended.has_position { return 168 }
+        PauseWait(owner, 200)
+        frozen_context := PauseCall(session, .Status, 4)
+        if frozen_context.position_seconds != suspended.position_seconds { return 169 }
+        if PauseCall(session, .Resume, 4).code != .Suspended { return 170 }
+        if PauseCall(session, .Pause, 4).state != .Paused { return 171 }
+        if PauseCall(session, .Resume, 4).code != .Suspended { return 172 }
+        // Explicit recovery after this page's earlier trusted unlocking gesture.
+        AudioHostResume()
+        WebSleep(30)
+        if PauseCall(session, .Resume, 4).code != .Ok { return 173 }
+    }
+    // Pass the loop boundary. Position is within the current iteration.
+    PauseWait(owner, 1600)
+    after = PauseCall(session, .Status, 4)
+    if !after.has_position || after.position_seconds < 0.0 || after.position_seconds >= 2.0 { return 163 }
+    for id: 4..5 {
+        if PauseCall(session, .Stop, cast(s32)id).state != .Stopped { return 164 }
+        if PauseCall(session, .Resume, cast(s32)id).code != .Invalid { return 165 }
+        if PauseCall(session, .Unload, cast(s32)id).code != .Ok { return 166 }
+    }
+    return 0
+}

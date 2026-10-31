@@ -1,3 +1,4 @@
+#import "media_audio_pause_behavior"
 #if #defined(PCM_AUDIO_TEST) {
     #import "pcm_audio_behavior"
 }
@@ -55,6 +56,8 @@ main :: () -> s32 {
         pcm_result := PcmBehavior(session)
         if pcm_result != 0 { return pcm_result }
     }
+    pause_result := PauseBehavior(*owner, session)
+    if pause_result != 0 { return pause_result }
     if Call(session, .Status).code != .Missing { return 5 }
     if Call(session, .Load).code != .Ok { return 6 }
     if Call(session, .Play).state != .Playing { return 7 }

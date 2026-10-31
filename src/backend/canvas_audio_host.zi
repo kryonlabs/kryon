@@ -79,6 +79,13 @@
         panner: s32
         ended: s32
         done: bool
+        paused_buffer: s32
+        offset: float64
+        when: float64
+        rate: float64
+        volume: float64
+        pan: float64
+        loop: s32
     }
 
     audio_sources: [AUDIO_HOST_SOURCES]AudioSourceRecord;
@@ -571,6 +578,7 @@
         if record.gain != 0 { WebRelease(record.gain) }
         if record.panner != 0 { WebRelease(record.panner) }
         if record.ended != 0 { WebRelease(record.ended) }
+        if record.paused_buffer != 0 { WebRelease(record.paused_buffer) }
         empty: AudioSourceRecord
         audio_sources[index] = empty
     }
@@ -592,6 +600,12 @@
         if slot < 0 { return 0 }
         record: AudioSourceRecord
         record.id = id
+        record.offset = offset
+        record.when = ifx use_offset then AudioHostTime() else when
+        record.rate = rate
+        record.volume = volume
+        record.pan = pan
+        record.loop = loop
         record.source = WebKeep(WebAsObject(WebCall0(audio_context,
             audio_names.create_source)))
         if record.source == 0 { return 0 }
@@ -632,7 +646,7 @@
             unused WebCall2(record.source, audio_names.start, WebNumber(0.0),
                 WebNumber(offset))
         } else {
-            unused WebCall1(record.source, audio_names.start, WebNumber(when))
+            unused WebCall2(record.source, audio_names.start, WebNumber(when), WebNumber(offset))
         }
         if WebFailed() {
             AudioSourceDrop(slot)
@@ -661,6 +675,35 @@
         return started
     }
 
+    // Retain only this node's immutable copied buffer, never suspend the shared context.
+    AudioHostSourcePause :: (source: s32) {
+        index := AudioFindSource(source)
+        if index < 0 || audio_sources[index].paused_buffer != 0 { return }
+        saved := audio_sources[index]
+        buffer := WebKeep(WebGetObject(saved.source, audio_names.buffer))
+        elapsed := AudioHostTime() - saved.when
+        if elapsed > 0.0 { saved.offset += elapsed * saved.rate }
+        saved.when = ifx elapsed < 0.0 then -elapsed else 0.0
+        AudioSourceDrop(index)
+        saved.source = 0; saved.gain = 0; saved.panner = 0; saved.ended = 0
+        saved.paused_buffer = buffer
+        audio_sources[index] = saved
+    }
+
+    AudioHostSourceResume :: (source: s32) -> s32 {
+        index := AudioFindSource(source)
+        if index < 0 || audio_sources[index].paused_buffer == 0 { return 0 }
+        saved := audio_sources[index]
+        audio_sources[index] = AudioSourceRecord.{}
+        if AudioPlay(source, saved.paused_buffer, saved.loop, saved.rate,
+            saved.volume, saved.pan, saved.offset, AudioHostTime() + saved.when, false) == 0 {
+            audio_sources[index] = saved
+            return 0
+        }
+        WebRelease(saved.paused_buffer)
+        return 1
+    }
+
     AudioHostSourceStop :: (source: s32) {
         index: s32 = AudioFindSource(source)
         if index >= 0 { AudioSourceDrop(index) }
@@ -671,6 +714,8 @@
         index: s32 = AudioFindSource(source)
         if index < 0 { return }
         record: *AudioSourceRecord = *audio_sources[index]
+        record.volume = volume; record.pan = pan; record.rate = rate
+        if record.source == 0 { return }
         if record.gain != 0 {
             AudioSetParam(WebGetObject(record.gain, audio_names.gain), volume)
         }

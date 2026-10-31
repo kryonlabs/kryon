@@ -51,6 +51,19 @@ PcmBehavior :: (session: Session) -> s32 {
     }
     if PcmCall(session, .SubmitStream, 16, data).code != .Ok { return 111 }
     if PcmCall(session, .SubmitStream, 16, data).code != .Backpressure { return 112 }
+    if PcmCall(session, .Pause).state != .Paused { return 130 }
+    #if #defined(PLATFORM_WEB) {
+        WebSleep(250)
+        if audio_streams[stream].source_count != 2 { return 134 }
+        for slot: 0..1 {
+            held := AudioFindSource(audio_streams[stream].sources[slot])
+            if held < 0 || audio_sources[held].paused_buffer == 0 || audio_sources[held].source != 0 { return 135 }
+        }
+    }
+    paused := PcmCall(session, .Status)
+    if paused.writable || paused.has_position { return 131 }
+    if PcmCall(session, .SubmitStream, 16, data).code != .Invalid { return 132 }
+    if PcmCall(session, .Resume).state != .Playing { return 133 }
     if PcmCall(session, .Status).writable { return 113 }
     if PcmCall(session, .Stop).state != .Stopped { return 114 }
     if PcmCall(session, .Play).state != .Playing { return 115 }

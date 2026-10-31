@@ -81,6 +81,14 @@ def main():
          '--root', 'MediaAudioResult', '--import', '"std/bundle_host"',
          '--import', '"std/byte_text_linux"', '--import', '"hosted_values"',
          '--import', '"media_audio"', '--output', ROOT / 'src/backend/media_audio_codec.zi', '--check'])
+    # Real Raylib decoder/mixer with miniaudio's paced null backend. ALSA's
+    # null PCM consumes as fast as possible and cannot verify playback time.
+    raylib = Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a'))
+    audio_source = raylib.parent / 'source/raudio.c'
+    null_audio = WORK / 'null-audio.o'
+    run([os.environ.get('CC', 'cc'), '-O1', '-ffunction-sections', '-fdata-sections',
+         '-DMA_ENABLE_ONLY_SPECIFIC_BACKENDS', '-DMA_ENABLE_NULL',
+         '-I' + str(audio_source.parent), '-c', audio_source, '-o', null_audio])
     source = ROOT / 'tests/media_audio_test.zi'
     run([ZIRAN, 'ir', *common, '-o', ir, source])
     for form in ('source', 'saved'):
@@ -91,7 +99,7 @@ def main():
         libs = subprocess.check_output(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2'], text=True).split()
         run([os.environ.get('CC', 'cc'), '-O1', '-ffunction-sections', '-fdata-sections',
              '-Wl,--gc-sections', '-I' + str(ZIRAN_ROOT / 'include'), '-I' + str(gen),
-             *sorted(gen.glob('*.c')), Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a')),
+             *sorted(gen.glob('*.c')), null_audio, Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a')),
              Path(os.environ.get('ZIRAN_BUILD_DIR', ZIRAN_ROOT / 'build')) / 'libziran.a', *libs, '-ldl', '-lpthread', '-lm', '-o', gen / 'test'])
         run(['timeout', '--kill-after=2s', '25s', gen / 'test'])
     print('native asset audio source/saved: passed', flush=True)
@@ -137,7 +145,7 @@ def main():
             host_gen = WORK / 'host-c'
             run([os.environ.get('CC', 'cc'), '-O1', '-ffunction-sections', '-fdata-sections',
                  '-Wl,--gc-sections', '-I' + str(ZIRAN_ROOT / 'include'), '-I' + str(host_gen),
-                 *sorted(host_gen.glob('*.c')), Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a')),
+                 *sorted(host_gen.glob('*.c')), null_audio, Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a')),
                  Path(os.environ.get('ZIRAN_BUILD_DIR', ZIRAN_ROOT / 'build')) / 'libziran.a', *libs, '-ldl', '-lpthread', '-lm', '-o', host_gen / 'test'])
             run(['timeout', '--kill-after=2s', '25s', host_gen / 'test'])
     print('hosted source/saved: real device + unavailable contract passed', flush=True)

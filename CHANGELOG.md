@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- MediaAudio adds owner-local Pause/Resume, retains paused PCM queues, and reports
+  available asset-music playback seconds through native, hosted and browser hosts.
+
 - Android document pickers accept multiple file types, including key backups, without showing every file type.
 - Document storage tests run native coverage without a browser SDK and keep full IDBFS coverage in the configured browser test job.
 

@@ -20,6 +20,15 @@ backend = "desktop"
 Run `ziran tool kryon build` or `ziran tool kryon run` from the application.
 See [Ziran projects](PROJECTS.md) for the complete package manifest.
 
+MediaAudio's Raylib and Canvas providers support individual voice Pause/Resume.
+Raylib uses Pause/ResumeMusicStream and Pause/ResumeAudioStream, and reports
+GetMusicTimePlayed for asset music. Canvas retains music offsets against the
+AudioContext clock and re-creates only that voice's source on explicit Resume;
+paused PCM retains at most two immutable buffers and their remaining offsets.
+No owner pauses the shared context. See [MediaAudio](API.md) for capability
+bits and position availability. Native tests use Raylib/miniaudio's paced null
+backend; browser tests use a disposable muted headless context and trusted gesture.
+
 ## Available hosts
 
 | Profile backend | Ziran entry | Presentation |
