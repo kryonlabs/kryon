@@ -22,8 +22,10 @@ html, profile = sys.argv[1], Path(sys.argv[2])
 shutil.rmtree(profile, ignore_errors=True)
 profile.mkdir(parents=True)
 environment = dict(os.environ)
-for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "GDK_DISPLAY", "DBUS_SESSION_BUS_ADDRESS"):
+for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "GDK_DISPLAY", "DBUS_SESSION_BUS_ADDRESS",
+             "SESSION_MANAGER"):
     environment.pop(name, None)
+environment["YUE_DESKTOP_RECOVERY"] = "0"
 browser = subprocess.Popen(
     ["sh", "-c", 'exec 3<&0 4>&1 "$@" </dev/null >/dev/null', "chromium",
      os.environ.get("CHROMIUM", "chromium"), "--headless", "--no-sandbox", "--disable-gpu",
