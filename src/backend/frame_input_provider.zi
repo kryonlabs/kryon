@@ -3,6 +3,7 @@
 #import "frame_snapshot"
 #import "session"
 #import "input_protocol"
+#import "test_driver"
 
 FrameInputProvider :: struct {
     sample: FrameInputSnapshot
@@ -57,7 +58,9 @@ FrameInputProviderGather :: (provider: *FrameInputProvider, raw: FrameInputSnaps
 
 FrameInputProviderBegin :: (provider: *FrameInputProvider, session: Session) -> bool {
     if !provider.sample.available || SessionValid(provider.owner) { return false }
-    if !FrameInputBegin(session, provider.sample) { return false }
+    sample := provider.sample
+    TestDriverFrameInput(*sample)
+    if !FrameInputBegin(session, sample) { return false }
     provider.owner = session
     return true
 }

@@ -1939,6 +1939,7 @@ RaylibFrameInputBegin :: (session: Session) -> bool {
     zoom := RaylibZoom()
     sample.pointer.x /= zoom
     sample.pointer.y /= zoom
+    TestDriverFrameInput(*sample)
     return FrameInputBegin(session, sample)
 }
 

@@ -12,6 +12,9 @@
 #import "tree_draw"
 #import "tree_input"
 #import "test_driver"
+#import "frame_input_provider"
+#import "frame_snapshot"
+#import "input_protocol"
 #import "ziran_test_driver_host"
 #import "c_string"
 #import "byte_text_linux"
@@ -32,6 +35,8 @@ clicks: s32;
 enter_presses: s32;
 control_held: bool;
 pointer_seen: PointerFrame;
+input_provider: FrameInputProvider;
+input_seen: FrameInputSnapshot;
 typed: [256]u8;
 typed_count: s32;
 label: string = "Hello";
@@ -124,6 +129,10 @@ Frame :: () -> bool {
         codepoint = TestDriverCodepoint()
     }
     if TestDriverKeyPressed(257) { enter_presses += 1 }
+    raw: FrameInputSnapshot
+    FrameInputProviderGather(*input_provider, raw)
+    if !FrameInputProviderBegin(*input_provider, session) { return false }
+    input_seen = CaptureFrameInput(session)
     if TestDriverKeyDown(341) { control_held = true }
     if CommitFrame(session) != cast(FrameStatus)FrameOk { return false }
     TestDriverFrame(session)
@@ -204,7 +213,12 @@ main :: () -> s32 {
     // A key is pressed for one frame, with Control held.
     if Run("10\tkey\tcode=257\tcontrol=1") != 2 { return 40 }
     if enter_presses != 1 || !control_held { return 41 }
+    // The published frame input carries the same press, for that frame only.
+    if input_seen.keys[257] != cast(u8)(FrameKeyHeld | FrameKeyPressed) ||
+    input_seen.keys[341] != cast(u8)FrameKeyHeld || !input_seen.focused ||
+    input_seen.modifiers != KeyModifierControl { return 43 }
     if !Frame() || enter_presses != 1 { return 42 }
+    if input_seen.keys[257] != cast(u8)0 || input_seen.modifiers != 0 { return 44 }
 
     // A held pointer drags until it is released, then the platform's returns.
     if Run("11\tpointer\tx=30\ty=30\tdown=1") != 2 { return 50 }

@@ -52,6 +52,7 @@
 #import "semantic"
 #import "tree"
 #import "tree_input"
+#import "input_protocol"
 #import "widget_kind"
 #import "c_string"
 #import "byte_text_linux"
@@ -313,6 +314,24 @@ TestDriverKeyDown :: (key: s32) -> bool {
     if test_driver.key_control && (key == 341 || key == 345) { return true }
     if test_driver.key_shift && (key == 340 || key == 344) { return true }
     return false
+}
+
+// Adds this frame's test key to a host's frame input, so apps reading the
+// snapshot see the same press widgets take from KeyboardSend.
+#program_export
+TestDriverFrameInput :: (input: *FrameInputSnapshot) {
+    if !TestDriverActive() || test_driver.key <= 0 || test_driver.key >= 512 { return }
+    if test_driver.key_frame != TestDriverCurrentFrame() { return }
+    input.focused = true
+    input.keys[test_driver.key] |= cast(u8)(FrameKeyHeld | FrameKeyPressed)
+    if test_driver.key_control {
+        input.keys[341] |= cast(u8)FrameKeyHeld
+        input.modifiers |= KeyModifierControl
+    }
+    if test_driver.key_shift {
+        input.keys[340] |= cast(u8)FrameKeyHeld
+        input.modifiers |= KeyModifierShift
+    }
 }
 
 // One UTF-8 codepoint at offset, which moves past it. Invalid bytes read as

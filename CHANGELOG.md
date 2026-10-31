@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Keys pressed by the test driver also appear in frame input snapshots, so apps
+  reading them can be driven in tests like apps reading the key queue.
+
 - Native project profiles can link verified dependency-owned support artifacts,
   including audio providers alongside an existing desktop renderer.
 
