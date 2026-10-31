@@ -6,9 +6,122 @@
 #import "text"
 #import "vec"
 
+test_libc :: #system_library "libc";
+RealSync :: (fd: s32) -> s32 #foreign test_libc "__real_fsync";
+ReadLinkRaw :: (path: *u8, output: *u8, size: usize) -> s64 #foreign test_libc "readlink";
+EffectiveUser :: () -> u32 #foreign test_libc "geteuid";
+
+watched: string;
+watched_hits: s64;
+watched_fails: bool;
+
+Watch :: (path: string, fails: bool) {
+    watched = path
+    watched_hits = 0
+    watched_fails = fails
+}
+
+// Every fsync in the binary arrives here, so the test sees exactly which
+// directories AppFiles reaches and can inject a real storage failure.
+#program_export "__wrap_fsync"
+SyncHook :: (fd: s32) -> s32 {
+    link: Vec(u8)
+    BuilderPrint(*link, "/proc/self/fd/%", fd)
+    text := BuilderFinish(link)
+    name: [4096]u8
+    target: [4096]u8
+    if !CopyCString(text, name[:]) { return -1 }
+    AppFileFree(text)
+    count := ReadLinkRaw(*name[0], *target[0], 4095)
+    if count < 0 { return -1 }
+    if TextFromBytes(BytesFromPointer(*target[0], cast(u64)count)) == watched {
+        watched_hits += 1
+        if watched_fails { return -1 }
+    }
+    return RealSync(fd)
+}
+
+Under :: (base: string, name: string) -> string {
+    path: Vec(u8)
+    BuilderPrint(*path, "%/%", base, name)
+    return BuilderFinish(path)
+}
+
+// A parent that allows traversal but not read-open, as Android's /data/user.
+ReadDeniedParent :: (base: string) -> s32 {
+    denied := Under(base, "denied")
+    files: AppFiles
+    if !AppFilesOpen(*files, Under(denied, "existing")) { return 20 }
+    if !AppFileWrite(*files, "root.json", "root") { return 21 }
+    if !AppFileWrite(*files, "nested/deep/file.json", "deep") { return 22 }
+    value := AppFileRead(*files, "nested/deep/file.json")
+    if value != "deep" { return 23 }
+    AppFileFree(value)
+    // The same denial inside the private root is a real durability failure.
+    if EffectiveUser() != 0 && AppFileWrite(*files, "blocked/file.json", "wrong") { return 24 }
+    AppFilesClose(*files)
+    created: AppFiles
+    if !AppFilesOpen(*created, Under(denied, "new/root")) { return 25 }
+    if !AppFileWrite(*created, "nested/file.json", "new") { return 26 }
+    AppFilesClose(*created)
+    return 0
+}
+
+SyncScope :: (base: string) -> s32 {
+    readable := Under(base, "readable")
+    root := Under(readable, "existing")
+    files: AppFiles
+    if !AppFilesOpen(*files, root) { return 30 }
+    // Nothing above the root is reached, even when the host would allow it.
+    Watch(readable, true)
+    if !AppFileWrite(*files, "file.json", "one") { return 31 }
+    if !AppFileWrite(*files, "nested/file.json", "one") { return 32 }
+    if watched_hits != 0 { return 33 }
+    Watch(root, false)
+    if !AppFileWrite(*files, "file.json", "two") || watched_hits == 0 { return 34 }
+    Watch(root, true)
+    if AppFileWrite(*files, "file.json", "three") { return 35 }
+    Watch(Under(root, "nested"), true)
+    if AppFileWrite(*files, "nested/file.json", "three") { return 36 }
+    Watch(Under(root, "file.json.new"), true)
+    if AppFileWrite(*files, "file.json", "four") || watched_hits == 0 { return 37 }
+    value := AppFileRead(*files, "file.json")
+    if value != "three" { return 38 }
+    AppFileFree(value)
+    Watch("", false)
+    AppFilesClose(*files)
+    return 0
+}
+
+NewRootScope :: (base: string) -> s32 {
+    readable := Under(base, "readable")
+    // The first new directory's host-owned parent is attempted, never required.
+    Watch(readable, true)
+    tolerated: AppFiles
+    if !AppFilesOpen(*tolerated, Under(readable, "tolerated")) || watched_hits != 1 { return 40 }
+    AppFilesClose(*tolerated)
+    // A parent AppFiles itself just created must persist its new child.
+    Watch(Under(readable, "chain"), false)
+    chained: AppFiles
+    if !AppFilesOpen(*chained, Under(readable, "chain/root")) || watched_hits != 1 { return 41 }
+    AppFilesClose(*chained)
+    Watch(Under(readable, "broken"), true)
+    broken: AppFiles
+    if AppFilesOpen(*broken, Under(readable, "broken/root")) { return 42 }
+    Watch("", false)
+    return 0
+}
+
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
-    if argc != 2 { return 1 }
+    if argc != 3 { return 1 }
+    base := TextFromCString(argv[2])
+    status := ReadDeniedParent(base)
+    if status != 0 { return status }
+    status = SyncScope(base)
+    if status != 0 { return status }
+    status = NewRootScope(base)
+    if status != 0 { return status }
     files: AppFiles
     if !AppFilesOpen(*files, TextFromCString(argv[1])) { return 2 }
     other: AppFiles

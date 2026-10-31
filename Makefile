@@ -566,9 +566,13 @@ test: asset-audio-test
 document-storage-test:
 	@ZIRAN_ROOT="$(abspath $(ZIRAN_DIR))" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/document_storage_test.py --browser
 
+.PHONY: app-files-test
+app-files-test:
+	@ZIRAN_ROOT="$(abspath $(ZIRAN_DIR))" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/ziran_app_files_test.sh
+
 .PHONY: pcm-audio-test
 pcm-audio-test: $(RAYLIB_A)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
 		ZIRAN_BUILD_DIR="$(ZIRAN_BUILD_DIR)" python3 tests/media_audio_test.py --browser --pcm
 
-test: pcm-audio-test document-storage-test
+test: pcm-audio-test document-storage-test app-files-test

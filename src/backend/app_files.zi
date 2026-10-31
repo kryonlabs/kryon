@@ -69,6 +69,22 @@ AppFileNameValid :: (name: string) -> bool {
     return true
 }
 
+AppSyncDirectory :: (path: string) -> bool {
+    directory := OpenRead(path)
+    if !directory.valid { return false }
+    synced := SyncFile(directory)
+    closed := CloseFile(directory)
+    return synced && closed
+}
+
+// Persists a new directory's entry. A parent this call created is ours and
+// must succeed. Any older parent belongs to the host, which may allow only
+// traversal (Android's /data/user), so syncing it is attempted, never required.
+AppSyncNewDirectory :: (path: string, parent: s64, parent_created: bool) -> bool {
+    if parent == 0 { parent = 1 }
+    return AppSyncDirectory(path[:parent]) || !parent_created
+}
+
 AppPrivateDirectory :: (path: string) -> bool {
     start: s64 = 1
     absolute := path.count > 0 && path[0] == cast(u8)47
@@ -83,11 +99,26 @@ AppPrivateDirectory :: (path: string) -> bool {
     if !absolute || path.count >= 3072 {
         return false
     }
+    parent: s64 = 0
+    parent_created := false
     for index: start..path.count {
         if index == path.count || path[index] == cast(u8)47 {
             prefix := path[:index]
-            if PathIsLink(prefix) || !CreatePrivateDirectory(prefix) {
+            if PathIsLink(prefix) {
                 return false
+            }
+            #if !#defined(_WIN32) && !#defined(PLATFORM_WEB) {
+                existed := DirectoryExists(prefix)
+            }
+            if !CreatePrivateDirectory(prefix) {
+                return false
+            }
+            #if !#defined(_WIN32) && !#defined(PLATFORM_WEB) {
+                if !existed && !AppSyncNewDirectory(path, parent, parent_created) {
+                    return false
+                }
+                parent = index
+                parent_created = !existed
             }
         }
     }
@@ -250,15 +281,12 @@ AppFileWrite :: (files: *AppFiles, name: string, value: string) -> bool {
         }
     }
     #if !#defined(PLATFORM_WEB) {
-        // Persist the rename and any newly created ancestors, leaf first.
+        // Persist the rename and any newly created ancestors, leaf first, down
+        // to the root itself. AppPrivateDirectory persisted the root's own entry.
         index := path.count - 1
-        while index > 0 {
-            if path[index] == cast(u8)47 {
-                directory := OpenRead(path[:index])
-                if !directory.valid { return false }
-                synced := SyncFile(directory)
-                closed := CloseFile(directory)
-                if !synced || !closed { return false }
+        while index >= files.root.count {
+            if path[index] == cast(u8)47 && !AppSyncDirectory(path[:index]) {
+                return false
             }
             index -= 1
         }

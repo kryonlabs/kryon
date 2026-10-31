@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Fix apps failing to save documents and extract assets on Android, where
+  system folders above the app's private storage cannot be opened.
+
 - Keep surrounding theme colors when buttons and embedded modules finish drawing in their own palettes.
 
 - Keys pressed by the test driver also appear in frame input snapshots, so apps
