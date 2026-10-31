@@ -41,7 +41,7 @@ generated = build / 'host'
 build.mkdir(parents=True, exist_ok=True)
 env.setdefault('EM_CACHE', str(ziran / 'build/emscripten-cache'))
 script_env = {**env, 'XDG_CACHE_HOME': str(build / 'cache')}
-subprocess.run(list(map(str, [ziran / 'build/bin/ziran', 'run', '--target=py', ziran / 'scripts/build_playground.zi', '--emcc', args.emcc,
+subprocess.run(list(map(str, [ziran / 'build/bin/ziran', 'run', '--target=c', ziran / 'scripts/build_playground.zi', '--emcc', args.emcc,
      '--output-dir', assets,
      '--embed-file', f'{kryon / "src/ui"}@/kryon/ui',
      '--embed-file', f'{project / "src/preview_entry.zi"}@/preview_entry.zi',
