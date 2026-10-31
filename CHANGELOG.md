@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Web buttons still click once when a page update moves them mid press, and a
+  press that starts off a button no longer locks input when released over one.
 - Keyboard shortcuts on desktop Raylib hosts follow the active keyboard layout,
   such as Dvorak, instead of physical key positions.
 - Raylib hosts keep a modifier released in the same poll as its key press, so a

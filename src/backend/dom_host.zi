@@ -89,6 +89,9 @@ DomHostRecord :: struct {
     composing: bool
 }
 
+// Where a pointer landed in app coordinates; keyboard clicks have no point.
+DomPoint :: struct { pointed: bool; x: float32; y: float32; }
+
 dom_names: DomHostNames;
 dom_records: [DOM_HOST_MAX]DomHostRecord;
 dom_by_index: [DOM_HOST_MAX]s32;
@@ -104,8 +107,15 @@ dom_click: u64;
 dom_click_pointed: bool;
 dom_click_x: float32;
 dom_click_y: float32;
-// The mouse buttons, one bit each, pressed on a drag surface and followed by
-// the page's pointer until released.
+// The button a primary mouse press landed on, and that button once the
+// release followed on it. The browser's click normally consumes the release.
+// When a republish moves the button between press and release the browser
+// sends no click, and the next frame activates the released button instead.
+dom_press: u64;
+dom_release: u64;
+dom_release_point: DomPoint;
+// The mouse buttons, one bit each, whose press the page's pointer received,
+// on a drag surface or no control, and follows until released.
 dom_mouse_buttons: s32;
 dom_document_layout: bool;
 dom_css: s32;
@@ -426,19 +436,24 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
             prior: s32 = DomHostFind(previous)
             if prior >= 0 { before = WebGetObject(dom_records[prior].element, WebName("nextSibling")) }
         }
-        document: s32 = WebGetObject(WebGlobal, dom_names.document)
-        active: s32 = WebGetObject(document, WebName("activeElement"))
-        selection_start: WebValue = WebGet(active, WebName("selectionStart"))
-        selection_end: WebValue = WebGet(active, WebName("selectionEnd"))
-        move: s32 = WebGetObject(container, WebName("moveBefore"))
-        if WebTypeOf(move) == WebTypeFunction && WebAsBool(WebGet(element, WebName("isConnected"))) {
-            unused WebCall2(container, WebName("moveBefore"), WebObject(element), WebObject(before))
-        } else {
-            unused WebCall2(container, WebName("insertBefore"), WebObject(element), WebObject(before))
-            if active != 0 && !DomSame(WebGet(document, WebName("activeElement")), WebObject(active)) {
-                unused WebCall0(active, WebName("focus"))
-                if selection_start.tag == WebNumberTag {
-                    unused WebCall2(active, WebName("setSelectionRange"), selection_start, selection_end)
+        // A sibling inserted ahead leaves this element already in place.
+        // Moving it anyway restarts the browser's press on it, and a press
+        // held across that move gets no click.
+        if !DomSame(WebObject(before), WebObject(element)) {
+            document: s32 = WebGetObject(WebGlobal, dom_names.document)
+            active: s32 = WebGetObject(document, WebName("activeElement"))
+            selection_start: WebValue = WebGet(active, WebName("selectionStart"))
+            selection_end: WebValue = WebGet(active, WebName("selectionEnd"))
+            move: s32 = WebGetObject(container, WebName("moveBefore"))
+            if WebTypeOf(move) == WebTypeFunction && WebAsBool(WebGet(element, WebName("isConnected"))) {
+                unused WebCall2(container, WebName("moveBefore"), WebObject(element), WebObject(before))
+            } else {
+                unused WebCall2(container, WebName("insertBefore"), WebObject(element), WebObject(before))
+                if active != 0 && !DomSame(WebGet(document, WebName("activeElement")), WebObject(active)) {
+                    unused WebCall0(active, WebName("focus"))
+                    if selection_start.tag == WebNumberTag {
+                        unused WebCall2(active, WebName("setSelectionRange"), selection_start, selection_end)
+                    }
                 }
             }
         }
@@ -495,6 +510,7 @@ DomHostClose :: () {
         DomClearEditors(); TextHostClear()
         if dom_css != 0 { WebRelease(dom_css) }; dom_css = 0
         dom_document_layout = false; dom_session = Session.{}; dom_click = 0; dom_mouse_buttons = 0
+        dom_press = 0; dom_release = 0
         return
     }
     scope: s32 = WebScope()
@@ -550,6 +566,8 @@ DomHostClose :: () {
     dom_session = Session.{}
     dom_click = 0
     dom_mouse_buttons = 0
+    dom_press = 0
+    dom_release = 0
     WebEnd(scope)
 }
 
@@ -649,6 +667,10 @@ DomHostFrame :: (session: Session) {
             else { unused TreeActivateAt(session, record.index) }
             dom_click = 0
         }
+        if dom_release == record.identity {
+            if dom_release_point.pointed { unused TreeActivatePointAt(session, record.index, dom_release_point.x, dom_release_point.y) }
+            else { unused TreeActivateAt(session, record.index) }
+        }
         if !record.pending || record.composing { continue }
         value_handle: s32 = WebGetObject(record.element, WebName("value"))
         length: s32 = WebStringLength(value_handle)
@@ -668,6 +690,8 @@ DomHostFrame :: (session: Session) {
         replace: bool = !node.read_only
         if TextRequestSend(session, record.index, value, replace, cursor, anchor) { dom_records[key].pending = false }
     }
+    // A release whose button was replaced since activates nothing.
+    dom_release = 0
     WebEnd(scope)
 }
 
@@ -690,19 +714,48 @@ DomEventName :: (event: s32) -> string {
 // A pointer click's place on the element, mapped onto the node's bounds so
 // a stylesheet that scales or reflows the overlay still reports where on
 // the control it landed. Keyboard and scripted clicks have detail 0.
-DomClickPoint :: (event: s32, element: s32, bounds: Rectangle) {
-    dom_click_pointed = false
-    if WebGetNumber(event, WebName("detail")) <= 0.0 { return }
+DomEventPoint :: (event: s32, element: s32, bounds: Rectangle) -> DomPoint {
+    point: DomPoint
+    if WebGetNumber(event, WebName("detail")) <= 0.0 { return point }
     rect: s32 = WebAsObject(WebCall0(element, page_names.get_bounding_client_rect))
-    if rect == 0 { return }
+    if rect == 0 { return point }
     width: float64 = WebGetNumber(rect, WebName("width"))
     height: float64 = WebGetNumber(rect, WebName("height"))
-    if width <= 0.0 || height <= 0.0 { return }
+    if width <= 0.0 || height <= 0.0 { return point }
     across: float64 = (WebGetNumber(event, WebName("clientX")) - WebGetNumber(rect, WebName("left"))) / width
     down: float64 = (WebGetNumber(event, WebName("clientY")) - WebGetNumber(rect, WebName("top"))) / height
-    dom_click_x = bounds.x + cast(float32)(across * cast(float64)bounds.width)
-    dom_click_y = bounds.y + cast(float32)(down * cast(float64)bounds.height)
-    dom_click_pointed = true
+    point.x = bounds.x + cast(float32)(across * cast(float64)bounds.width)
+    point.y = bounds.y + cast(float32)(down * cast(float64)bounds.height)
+    point.pointed = true
+    return point
+}
+
+DomClickPoint :: (event: s32, element: s32, bounds: Rectangle) {
+    point: DomPoint = DomEventPoint(event, element, bounds)
+    dom_click_pointed = point.pointed
+    dom_click_x = point.x
+    dom_click_y = point.y
+}
+
+// The page's pointer received a mouse press no control stopped, or its
+// release. A release over a button must then reach the page too, or the page
+// keeps that button down and ignores the input that follows.
+DomPagePressed :: (which: s32) {
+    if which < 0 || which >= 5 { return }
+    dom_mouse_buttons |= cast(s32)1 << which
+    if which == 0 { dom_press = 0 }
+}
+
+DomPageReleased :: (which: s32) {
+    if which < 0 || which >= 5 { return }
+    dom_mouse_buttons &= ~(cast(s32)1 << which)
+    if which == 0 { dom_press = 0 }
+}
+
+// A window that loses focus mid press gets no release for it.
+DomPageBlurred :: () {
+    dom_press = 0
+    dom_release = 0
 }
 
 DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
@@ -716,6 +769,10 @@ DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
         if which >= 0 && which < 5 { button = cast(s32)1 << which }
     }
     if context == 9 { dom_mouse_buttons &= ~button }
+    // Every primary press or release ends the press a button saw. Only a
+    // release on that same button, below, stands in for its click.
+    pressed: u64 = dom_press
+    if (context == 9 || context == 10) && button == 1 { dom_press = 0 }
     if context == 10 && (dom_mouse_buttons & button) != 0 {
         dom_mouse_buttons &= ~button
         return
@@ -753,13 +810,27 @@ DomEvent :: (context: s32, event: s32, second: s32, third: s32) {
             dom_mouse_buttons |= button
             return
         }
-        if context == 9 || context == 10 {
+        if context == 9 {
             unused WebCall0(event, WebName("stopPropagation"))
+            dom_press = node.identity_generation
+            return
+        }
+        // A republish that moves the button between press and release
+        // leaves the browser without a click. The release on the same
+        // button stands in for it until the click arrives.
+        if context == 10 {
+            unused WebCall0(event, WebName("stopPropagation"))
+            if button == 1 && pressed == node.identity_generation {
+                dom_release = pressed
+                dom_release_point = DomEventPoint(event, element, node.bounds)
+            }
             return
         }
         if context == 1 {
             unused WebCall0(event, WebName("stopPropagation"))
-            if surface && WebGetNumber(event, WebName("detail")) > 0.0 { return }
+            pointed: bool = WebGetNumber(event, WebName("detail")) > 0.0
+            if pointed && dom_release == node.identity_generation { dom_release = 0 }
+            if surface && pointed { return }
             dom_click = node.identity_generation
             DomClickPoint(event, element, node.bounds)
             return

@@ -1,0 +1,80 @@
+// Buttons the browser driver presses while the page republishes them. A
+// press held on Plain while it moves, gains a sibling ahead or is replaced
+// must activate it at most once, and only on a release over Plain itself.
+using UI :: #import "kryon/Widgets";
+#import "std/web"
+#import "kryon/tree_input"
+host_api :: #system_library "host_api";
+RequestWindowClose :: () #foreign host_api;
+
+plain_clicks: s32;
+replaced_clicks: s32;
+other_clicks: s32;
+frames: s32;
+
+Flag :: (name: string) -> bool {
+    return WebAsBool(WebGet(WebGlobal, WebName(name)))
+}
+
+Report :: (name: string, value: float64) {
+    WebSet(WebGlobal, WebName(name), WebNumber(value))
+}
+
+PlainButton :: (session: Session) {
+    // A new key is a new identity: a release resolved for the old Plain
+    // must not reach its replacement.
+    replaced: bool = Flag("__kryonReplacePlain")
+    plain: ButtonProps
+    plain.key = ifx replaced then cast(u64)13 else cast(u64)10
+    plain.id = ifx replaced then 13 else 10
+    plain.label = "Plain"
+    plain.bounds = .{10.0, 10.0, 100.0, 32.0}
+    if Button(session, plain) != 0 {
+        if replaced { replaced_clicks += 1 } else { plain_clicks += 1 }
+    }
+}
+
+OtherButton :: (session: Session) {
+    other: ButtonProps
+    other.key = 11; other.id = 11; other.label = "Other"
+    other.bounds = .{130.0, 10.0, 100.0, 32.0}
+    if Button(session, other) != 0 { other_clicks += 1 }
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    scope: s32 = WebScope()
+    defer WebEnd(scope)
+    WebSet(WebGlobal, WebName("__kryonPointerDown"), WebBool(PointerSample(session).down))
+    page: PageProps
+    page.key = 2; page.bounds = viewport; page.title = "DOM Press Move"
+    opened: PageResult = Page(session, page)
+    // Drawn after Other, Plain sits after it in the page; drawn first, the
+    // page must move Plain ahead of it.
+    if Flag("__kryonPlainFirst") {
+        PlainButton(session); OtherButton(session)
+    } else {
+        OtherButton(session)
+        // A sibling drawn just ahead of Plain leaves it where it is.
+        if Flag("__kryonInsertAhead") {
+            ahead: ButtonProps
+            ahead.key = 12; ahead.id = 12; ahead.label = "Ahead"
+            ahead.bounds = .{250.0, 10.0, 100.0, 32.0}
+            unused Button(session, ahead)
+        }
+        PlainButton(session)
+    }
+    editor: TextFieldProps
+    editor.key = 30; editor.focus_id = 30; editor.label = "Editor"
+    editor.value = "Notes"; editor.bounds = .{10.0, 80.0, 200.0, 32.0}
+    TextField(session, editor)
+    Report("__kryonPlainClicks", cast(float64)plain_clicks)
+    Report("__kryonReplacedClicks", cast(float64)replaced_clicks)
+    Report("__kryonOtherClicks", cast(float64)other_clicks)
+    frames += 1
+    Report("__kryonFrames", cast(float64)frames)
+    WebSet(WebGlobal, WebName("__kryonPressReady"), WebBool(true))
+    if opened.opened { End(session) }
+    if Flag("__kryonTestDone") { RequestWindowClose() }
+    return 0
+}
