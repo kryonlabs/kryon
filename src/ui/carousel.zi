@@ -51,19 +51,28 @@ CarouselProps :: struct {
     next_label: string
     scale: float32
     dark: bool
+    // Optional logical-pixel limits for a host's surrounding title controls.
+    // Zero preserves the standard cover branding size and top position.
+    logo_max_width: float32
+    logo_top: float32
+}
+
+CarouselLogoBounds :: (bounds: Rectangle, max_width: float32 = 0.0, top: float32 = 0.0) -> Rectangle {
+    width := ifx bounds.height > bounds.width then bounds.width * 0.88 else bounds.height * 0.95
+    if width > 760.0 { width = 760.0 }
+    if max_width > 0.0 && width > max_width { width = max_width }
+    return Rectangle.{bounds.x + (bounds.width - width) / 2.0,
+        bounds.y + ifx top > 0.0 then top else bounds.height * 0.05, width, width * 0.36}
 }
 
 // A whole cover, also usable while a native game is loading.
 CarouselArtwork :: (session: Session, bounds: Rectangle, key: u64,
     art: string, logo: string, label: string,
-    source: Rectangle = Rectangle.{}) -> Rectangle {
+    source: Rectangle = Rectangle.{}, logo_max_width: float32 = 0.0, logo_top: float32 = 0.0) -> Rectangle {
     Image(session, ImageProps.{.key = key, .asset_path = art, .alt_text = label,
             .bounds = bounds, .source = source, .fit = ImageFit.ImageFitCover,
             .smooth = true})
-    width := ifx bounds.height > bounds.width then bounds.width * 0.88 else bounds.height * 0.95
-    if width > 760.0 { width = 760.0 }
-    area := Rectangle.{bounds.x + (bounds.width - width) / 2.0,
-        bounds.y + bounds.height * 0.05, width, width * 0.36}
+    area := CarouselLogoBounds(bounds, logo_max_width, logo_top)
     if logo != "" {
         Image(session, ImageProps.{.key = key + 1, .asset_path = logo, .alt_text = label,
                 .bounds = area, .fit = ImageFit.ImageFitContain, .smooth = true})
@@ -102,9 +111,7 @@ CarouselTitle :: (session: Session, props: CarouselProps, items: []CarouselItem,
     fade := 1.0 - distance * 2.0
     if fade < 0.0 { fade = 0.0 }
     key := WidgetPartKey(props.key, 6)
-    width := ifx bounds.height > bounds.width then bounds.width * 0.88 else bounds.height * 0.95
-    if width > 760.0 { width = 760.0 }
-    logo := Rectangle.{bounds.x + (bounds.width - width) / 2.0, bounds.y + bounds.height * 0.05, width, width * 0.36}
+    logo := CarouselLogoBounds(bounds, props.logo_max_width, props.logo_top)
     logo_alpha := ifx shared then 1.0 else cast(float64)fade
     if item.logo != "" && logo_alpha > 0.02 {
         Image(session, ImageProps.{.key = key, .asset_path = item.logo, .alt_text = item.label,

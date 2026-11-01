@@ -1,7 +1,15 @@
 #import "carousel"
+#import "geometry"
 
 #program_export
 main :: () -> s32 {
+    portrait := Rectangle.{10.0, 20.0, 320.0, 640.0}
+    standard := CarouselLogoBounds(portrait)
+    if standard.width < 281.59 || standard.width > 281.61 || standard.y != 52.0 { return 8 }
+    compact := CarouselLogoBounds(portrait, 180.0, 116.0)
+    if compact.x != 80.0 || compact.y != 136.0 || compact.width != 180.0 || compact.height < 64.79 || compact.height > 64.81 { return 9 }
+    wide := CarouselLogoBounds(Rectangle.{0.0, 0.0, 1000.0, 600.0}, 360.0, 116.0)
+    if wide.x != 320.0 || wide.width != 360.0 || wide.y != 116.0 { return 10 }
     state: CarouselState
     CarouselSelect(*state, 3, -1, 1.0)
     if state.selected != 0 || state.position != 0.0 { return 1 }

@@ -21,6 +21,11 @@ existing behavior of emitting a full repaint immediately.
 
 ## Widget packages
 
+`CarouselProps.logo_max_width` optionally caps the cover logo's logical width;
+`logo_top` optionally positions it below surrounding controls, relative to the
+carousel bounds. Zero preserves the default title layout. `CarouselArtwork`
+accepts the same optional values after its source rectangle for startup covers.
+
 A widget that is not part of the core catalog lives in its own Git package
 and depends on Kryon. [Plot](https://github.com/kryonlabs/plot) and
 [DataViews](https://github.com/kryonlabs/data-views) are examples. Import
