@@ -1,0 +1,20 @@
+// "Continue as @name": one app on a device hands its account to another. Apply
+// from an app's build.gradle in every edition; nothing here names a Google
+// library. Kryon keeps this outside templates/droid so each app always builds
+// the pinned copy instead of holding its own. The app also needs a provider of
+// the natives (Entity's AccountHandoffJniOnLoad); without one it offers nothing.
+def handoffRoot = new File(buildscript.sourceFile.parentFile, 'android-account-handoff')
+
+android {
+    sourceSets.main.java.srcDir new File(handoffRoot, 'java')
+    sourceSets.main.res.srcDir new File(handoffRoot, 'res')
+    defaultConfig {
+        proguardFile new File(handoffRoot, 'proguard-rules.pro')
+    }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.sources.manifests.addStaticManifestFile(new File(handoffRoot, 'AndroidManifest.xml').path)
+    }
+}

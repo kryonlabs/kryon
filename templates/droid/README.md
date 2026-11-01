@@ -25,4 +25,9 @@ normal and F-Droid editions name no Google library;
 `scripts/check-google-free.py` (or the `google-free` action) checks both
 the Gradle files and the APKs.
 
+To offer "Continue as @name" between apps, an application's `build.gradle`
+applies `templates/android-account-handoff.gradle` from the Kryon checkout and
+its `JNI_OnLoad` calls Entity's `AccountHandoffJniOnLoad(vm)`. The allowlist
+lives in Entity's `src/account_handoff.zi`. It uses no Google library.
+
 This README is not copied into applications.

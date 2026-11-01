@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Merged into each app by templates/android-account-handoff.gradle. The query
+     names the action, not packages, so listing a new app in the allowlist
+     needs no manifest change: whoever answers still has to pass that check. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <intent>
+            <action android:name="org.kryonlabs.account.CONTINUE" />
+        </intent>
+    </queries>
+    <application>
+        <!-- Opened by another app with startActivityForResult, the only way
+             Android names the caller. -->
+        <activity
+            android:name="org.kryonlabs.platform.AccountHandoffConsentActivity"
+            android:exported="true"
+            android:launchMode="standard"
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="org.kryonlabs.account.CONTINUE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <!-- This app's side of a request, so its own activity needs no changes. -->
+        <activity
+            android:name="org.kryonlabs.platform.AccountHandoffRequestActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|density|uiMode"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+        <!-- Answers with the public name, and only to apps in the allowlist. -->
+        <provider
+            android:name="org.kryonlabs.platform.AccountHandoffNameProvider"
+            android:authorities="${applicationId}.account-handoff"
+            android:exported="true" />
+    </application>
+</manifest>
