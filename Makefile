@@ -266,10 +266,15 @@ source-check:
 docs-check:
 	python3 scripts/feature-matrix-html.py --check
 
-public-surface-check: $(BUILD_DIR)/ziran-toolchain.stamp
+public-surface-check: canvas-hosted-import-test $(BUILD_DIR)/ziran-toolchain.stamp
 	$(ZI2ZIR_BIN) --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/public/core src/ui/Kryon/module.zi
 	$(ZI2ZIR_BIN) --root tests --module-path src/ui $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
+
+.PHONY: canvas-hosted-import-test
+canvas-hosted-import-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT=$(ZIRAN_DIR) sh tests/canvas_hosted_import_test.sh
 
 check: all ziran-test header-check docs-check project-test public-surface-check host-keys-test laws
 

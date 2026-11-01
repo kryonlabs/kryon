@@ -1,0 +1,7 @@
+using Canvas :: #import "kryon/Canvas";
+
+#program_export
+Probe :: () -> s32 {
+    CanvasSetExitKey(0)
+    return 0
+}
