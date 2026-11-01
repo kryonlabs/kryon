@@ -476,6 +476,27 @@ AndroidSystemDark :: () -> s32 {
     return 0
 }
 
+// ActivityInfo screen-orientation values, distinct from Configuration's
+// observed portrait/landscape values returned by AndroidOrientation.
+AndroidOrientationSensor :: 4
+AndroidOrientationSensorLandscape :: 6
+
+// Requests policy through the activity's UI-thread bridge. True means queued,
+// not that Android has rotated (large-screen/platform policy may override it).
+// Custom activities implement requestOrientation(int), as in the scaffold.
+#program_export
+AndroidRequestOrientation :: (orientation: s32) -> bool {
+    if orientation < -1 || orientation > 14 { return false }
+    #if #defined(ANDROID_BUILD) {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 { return false }
+        accepted := AndroidJniCallVoidInteger(*session, "requestOrientation", "(I)V", orientation)
+        AndroidJniDetachCurrent(*session)
+        return accepted
+    }
+    return false
+}
+
 #program_export
 AndroidOrientation :: () -> s32 {
     #if #defined(ANDROID_BUILD) {

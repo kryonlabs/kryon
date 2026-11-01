@@ -104,5 +104,17 @@ main :: () -> s32 {
     // Finishing the activity without a native app is a no-op.
     AndroidJniFinishActivity()
     Require(activity_finish_calls == 0, 18)
+    Require(!AndroidRequestOrientation(AndroidOrientationSensor), 19)
+    OrientationVmOpen()
+    Require(!AndroidRequestOrientation(15) && !AndroidRequestOrientation(-2) && orientation_calls == 0, 20)
+    Require(AndroidRequestOrientation(AndroidOrientationSensor) && orientation_calls == 1 &&
+        orientation_value == 4 && orientation_method_valid && orientation_frames == 0, 21)
+    Require(AndroidRequestOrientation(AndroidOrientationSensorLandscape) && orientation_value == 6, 22)
+    // Observation reports configuration, and never changes the request.
+    AndroidNativeSetOrientation(null, null, 1)
+    Require(AndroidOrientation() == 1 && orientation_calls == 2, 23)
+    Require(AndroidRequestOrientation(AndroidOrientationSensor) && orientation_value == 4, 24)
+    orientation_throws = true
+    Require(!AndroidRequestOrientation(6) && orientation_frames == 0 && orientation_exception == 0, 25)
     return 0
 }

@@ -181,6 +181,15 @@ module names may repeat Kryon module names; every package is prefixed in the
 emitted C. `tests/ziran_android_device_test.sh` checks the device protocol
 headlessly with the Java side stubbed.
 
+`android_device.AndroidRequestOrientation(policy)` queues an ActivityInfo
+screen-orientation policy through `requestOrientation(int)` in the scaffold
+activity, which calls `setRequestedOrientation` on the UI thread. Custom
+activities must provide that method. `AndroidOrientationSensor` (4) permits
+sensor portrait and landscape; `AndroidOrientationSensorLandscape` (6) keeps
+landscape. The caller owns route policy and deduplication. A true result means
+the Java call succeeded, not that the OS has applied a rotation. Configuration
+observations still use `AndroidOrientation()` and are independent of requests.
+
 Android frames use the shared two-stage pipeline by default. A persistent
 app thread handles input, application code, layout and paint recording.
 The NativeActivity thread keeps the EGL context, replays the previous

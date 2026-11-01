@@ -6,6 +6,7 @@
 #import "android_jni"
 #import "android_surface"
 #import "session"
+#import "byte_text_linux"
 
 keyboard_calls: s32;
 keyboard_visible: bool;
@@ -19,7 +20,7 @@ SetPlatformTextKeyboardVisible :: (session: Session, visible: bool) {
 
 #program_export
 GetAndroidApp :: () -> *NativeAndroidApp {
-    return null
+    return ifx orientation_vm_ready then *orientation_app else null
 }
 
 activity_finish_calls: s32;
@@ -126,4 +127,56 @@ DrawRectangle :: (x: s32, y: s32, width: s32, height: s32,
     unused width
     unused height
     unused color
+}
+
+// A minimal Java VM records orientation requests and exception cleanup.
+orientation_vm_ready: bool;
+orientation_api: JniFunctions;
+orientation_vm_api: JniVmFunctions;
+orientation_env: JniEnv;
+orientation_vm: JniVm;
+orientation_activity: NativeActivity;
+orientation_app: NativeAndroidApp;
+orientation_calls: s32;
+orientation_value: s32;
+orientation_frames: s32;
+orientation_throws: bool;
+orientation_exception: u8;
+orientation_method_valid: bool;
+
+OrientationGetEnv :: (vm: *JniVm, output: **JniEnv, version: s32) -> s32 {
+    output[0] = *orientation_env
+    return 0
+}
+OrientationPush :: (env: *JniEnv, capacity: s32) -> s32 { orientation_frames += 1; return 0 }
+OrientationPop :: (env: *JniEnv, result: *void) -> *void { orientation_frames -= 1; return result }
+OrientationException :: (env: *JniEnv) -> u8 { return orientation_exception }
+OrientationClear :: (env: *JniEnv) { orientation_exception = 0 }
+OrientationDescribe :: (env: *JniEnv) {}
+OrientationClass :: (env: *JniEnv, object: *void) -> *void { return object }
+OrientationMethod :: (env: *JniEnv, klass: *void, name: *u8, signature: *u8) -> *void {
+    orientation_method_valid = TextFromCString(name) == "requestOrientation" && TextFromCString(signature) == "(I)V"
+    return klass
+}
+OrientationCall :: (env: *JniEnv, object: *void, method: *void, arguments: *JniValue) {
+    orientation_calls += 1
+    orientation_value = arguments[0].integer
+    if orientation_throws { orientation_exception = 1 }
+}
+OrientationVmOpen :: () {
+    orientation_env.functions = *orientation_api
+    orientation_vm.functions = *orientation_vm_api
+    orientation_activity.vm = *orientation_vm
+    orientation_activity.activity = cast(*void)*orientation_activity
+    orientation_app.activity = *orientation_activity
+    orientation_vm_api.GetEnv = OrientationGetEnv
+    orientation_api.PushLocalFrame = OrientationPush
+    orientation_api.PopLocalFrame = OrientationPop
+    orientation_api.ExceptionCheck = OrientationException
+    orientation_api.ExceptionClear = OrientationClear
+    orientation_api.ExceptionDescribe = OrientationDescribe
+    orientation_api.GetObjectClass = OrientationClass
+    orientation_api.GetMethodID = OrientationMethod
+    orientation_api.CallVoidMethodA = OrientationCall
+    orientation_vm_ready = true
 }

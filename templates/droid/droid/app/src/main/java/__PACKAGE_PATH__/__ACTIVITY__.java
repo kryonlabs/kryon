@@ -278,6 +278,16 @@ public class __ACTIVITY__ extends NativeActivity {
         });
     }
 
+    // Native requests can originate on the render/app worker. Android owns
+    // configuration changes; retain the existing activity and native state.
+    public void requestOrientation(final int orientation) {
+        runOnUiThread(() -> {
+            if (getRequestedOrientation() != orientation) {
+                setRequestedOrientation(orientation);
+            }
+        });
+    }
+
     public void setSoftKeyboardVisible(final boolean visible) {
         runOnUiThread(() -> {
             InputMethodManager imm =
