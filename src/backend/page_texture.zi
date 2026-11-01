@@ -18,6 +18,9 @@ PageTexture :: struct {
     filter: s32
     revision: u64
     source_url: s32
+    // Browser canvases have fixed dimensions for a registered texture.
+    width: s32
+    height: s32
 }
 
 // A copy of a texture multiplied by a colour. `order` is when it was made,
@@ -47,7 +50,7 @@ PageTextureFind :: (id: s32) -> s32 {
 }
 
 // Registers a canvas and returns its id; 0 when the table is full.
-PageTextureRegister :: (canvas: s32, target: bool) -> s32 {
+PageTextureRegister :: (canvas: s32, target: bool, width: s32, height: s32) -> s32 {
     tries: s32 = 0
     while tries < PAGE_TEXTURE_MAX {
         id: s32 = page_next_texture
@@ -55,7 +58,8 @@ PageTextureRegister :: (canvas: s32, target: bool) -> s32 {
         if page_next_texture >= 2147483000 { page_next_texture = 1 }
         slot: s32 = id % PAGE_TEXTURE_MAX
         if page_textures[slot].id == 0 {
-            page_textures[slot] = PageTexture.{id, WebKeep(canvas), target, 0, 1}
+            page_textures[slot] = PageTexture.{.id = id, .canvas = WebKeep(canvas),
+                .target = target, .revision = 1, .width = width, .height = height}
             return id
         }
         tries += 1
@@ -143,8 +147,8 @@ PageTextureCount :: () -> s32 {
 
 PageMakeTint :: (slot: s32, id: s32, r: s32, g: s32, b: s32) -> s32 {
     source: s32 = page_textures[slot].canvas
-    width: float64 = WebGetNumber(source, page_names.width)
-    height: float64 = WebGetNumber(source, page_names.height)
+    width := cast(float64)page_textures[slot].width
+    height := cast(float64)page_textures[slot].height
     copy: s32 = PageMakeCanvas(cast(s32)width, cast(s32)height)
     if copy == 0 { return -1 }
     context: s32 = PageContext2D(copy)
@@ -356,8 +360,8 @@ PageDrawTextureTriangle :: (id: s32, x0: float64, y0: float64, x1: float64,
     top: float64 = PageMin3(v0, v1, v2) - 1.0
     right: float64 = PageMax3(u0, u1, u2) + 1.0
     bottom: float64 = PageMax3(v0, v1, v2) + 1.0
-    width: float64 = WebGetNumber(tinted.canvas, page_names.width)
-    height: float64 = WebGetNumber(tinted.canvas, page_names.height)
+    width := cast(float64)page_textures[slot].width
+    height := cast(float64)page_textures[slot].height
     if left < 0.0 { left = 0.0 }
     if top < 0.0 { top = 0.0 }
     if right > width { right = width }
@@ -433,7 +437,7 @@ PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
     id: s32 = 0
     if canvas != 0 {
         PageWritePixels(canvas, pixels, 0, 0, width, height)
-        id = PageTextureRegister(canvas, false)
+        id = PageTextureRegister(canvas, false, width, height)
     }
     WebEnd(scope)
     return id
@@ -479,7 +483,7 @@ PageRenderTarget :: (width: s32, height: s32) -> s32 {
     scope: s32 = WebScope()
     canvas: s32 = PageMakeCanvas(width, height)
     id: s32 = 0
-    if canvas != 0 { id = PageTextureRegister(canvas, true) }
+    if canvas != 0 { id = PageTextureRegister(canvas, true, width, height) }
     WebEnd(scope)
     return id
 }
@@ -552,11 +556,8 @@ PageTextureRead :: (id: s32, pixels: *u8, capacity: u32) -> s32 {
 }
 
 // The bitmap is borrowed from the caller's Web scope and must be closed.
-PageDecodeBitmap :: (bytes: *u8, size: s32) -> s32 {
-    array: s32 = WebBytes(0, cast(*void)bytes, size)
-    parts: s32 = WebNewArray()
-    unused WebCall1(parts, WebName("push"), WebObject(array))
-    blob: s32 = WebNew1(WebGetObject(WebGlobal, WebName("Blob")), WebObject(parts))
+PageDecodeBitmap :: (blob: s32) -> s32 {
+    if blob == 0 { return 0 }
     promise: s32 = WebAsObject(WebCall1(WebGlobal, WebName("createImageBitmap"),
         WebObject(blob)))
     bitmap_value: WebValue
@@ -570,7 +571,10 @@ PageTextureFromEncoded :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> 
     PageInitNames()
     scope := WebScope()
     id: s32 = 0
-    bitmap := PageDecodeBitmap(bytes, size)
+    // Snapshot once. Canvas decoding and a native DOM image share this same
+    // encoded Blob instead of copying the Wasm bytes into two typed arrays.
+    blob := WebBlobBytes(cast(*void)bytes, size)
+    bitmap := PageDecodeBitmap(blob)
     if bitmap != 0 {
         w := WebGetNumber(bitmap, page_names.width)
         h := WebGetNumber(bitmap, page_names.height)
@@ -581,15 +585,12 @@ PageTextureFromEncoded :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> 
                 if context != 0 {
                     unused WebCall3(context, WebName("drawImage"), WebObject(bitmap),
                         WebNumber(0.0), WebNumber(0.0))
-                    if !WebFailed() { id = PageTextureRegister(canvas, false) }
+                    if !WebFailed() { id = PageTextureRegister(canvas, false, cast(s32)w, cast(s32)h) }
                     if id != 0 {
                         width.* = cast(s32)w
                         height.* = cast(s32)h
                         if page_native_dom {
                         slot := PageTextureFind(id)
-                        parts := WebNewArray()
-                        unused WebCall1(parts, WebName("push"), WebObject(WebBytes(0, cast(*void)bytes, size)))
-                        blob := WebNew1(WebGetObject(WebGlobal, WebName("Blob")), WebObject(parts))
                         url := WebAsObject(WebCall1(WebGetObject(WebGlobal, WebName("URL")), WebName("createObjectURL"), WebObject(blob)))
                         page_textures[slot].source_url = WebKeep(url)
                         }
@@ -609,7 +610,7 @@ PageImageDecode :: (bytes: *u8, size: s32, width: *s32, height: *s32) -> *u8 {
     PageInitNames()
     scope: s32 = WebScope()
     result: *u8 = null
-    bitmap := PageDecodeBitmap(bytes, size)
+    bitmap := PageDecodeBitmap(WebBlobBytes(cast(*void)bytes, size))
     if bitmap != 0 {
         w: float64 = WebGetNumber(bitmap, page_names.width)
         h: float64 = WebGetNumber(bitmap, page_names.height)

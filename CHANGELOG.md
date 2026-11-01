@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Browser image loading shares one encoded snapshot between Canvas and DOM,
+  and image meshes reuse texture dimensions while drawing.
 - Web buttons still click once when a page update moves them mid press, and a
   press that starts off a button no longer locks input when released over one.
 - Text with many new CJK or symbol characters draws far faster: Fontconfig sorts

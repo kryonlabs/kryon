@@ -133,6 +133,10 @@ TestSpriteState :: (clipped: bool) -> bool {
     image := LoadTextureFromImage(CanvasImageFromRgba(*pixels[0], 2, 2))
     target := LoadRenderTexture(32, 32)
     if !IsTextureValid(image) || target.id == cast(u32)0 { return false }
+    image_slot := PageTextureFind(cast(s32)image.id)
+    target_slot := PageTextureFind(cast(s32)target.id)
+    if page_textures[image_slot].width != 2 || page_textures[image_slot].height != 2 ||
+        page_textures[target_slot].width != 32 || page_textures[target_slot].height != 32 { return false }
     BeginTextureMode(target)
     ctx := PageContext()
     source := page_textures[PageTextureFind(cast(s32)image.id)].canvas
@@ -241,9 +245,20 @@ main :: () -> s32 {
     path: [32]u8
     CopyCString("/test-image.png", path[:])
     if !ExportImage(image, *path[0]) { return 9 }
+    // The native DOM URL and canvas decoder consume the same encoded snapshot.
+    page_native_dom = true
     direct := LoadTexture(*path[0])
+    page_native_dom = false
     if !IsTextureValid(direct) || direct.width != 8 || direct.height != 8 {
         CanvasTestFail(34)
+    }
+    direct_slot := PageTextureFind(cast(s32)direct.id)
+    if direct_slot < 0 || page_textures[direct_slot].width != 8 || page_textures[direct_slot].height != 8 ||
+        page_textures[direct_slot].source_url == 0 { CanvasTestFail(48) }
+    if direct_slot >= 0 {
+        response: WebValue
+        fetched := WebAsObject(WebCall1(WebGlobal, WebName("fetch"), WebObject(page_textures[direct_slot].source_url)))
+        if !WebAwait(fetched, *response) || !WebAsBool(WebGet(WebAsObject(response), WebName("ok"))) { CanvasTestFail(49) }
     }
     copied := LoadImageFromTexture(direct)
     if copied.data == null { CanvasTestFail(35) }
