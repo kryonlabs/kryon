@@ -79,6 +79,36 @@ ImageTextureFor :: (image: ImageProps) -> Texture2D {
     return texture
 }
 
+// What an image draws this frame: its picture once that is ready, else its
+// preview with the source mapped onto the preview's pixels. Asking for the
+// picture also starts a host loading it; the preview is asked for only
+// while the picture is not ready.
+ImageShown :: struct {
+    image: ImageProps
+    texture: Texture2D
+    showing: ImageShowing
+}
+
+#program_export
+ImageShownFor :: (image: ImageProps) -> ImageShown {
+    full := ImageTextureFor(image)
+    shown := ImageShown.{.image = image, .texture = full}
+    preview_texture: Texture2D
+    if full.id == cast(u32)0 && ImagePreviewUsable(image) {
+        preview := image
+        preview.asset_path = image.preview_path
+        preview_texture = ImageTextureFor(preview)
+        if preview_texture.id != cast(u32)0 {
+            preview.source = ImagePreviewSource(image.source, image.full_size,
+                preview_texture.width, preview_texture.height)
+            shown.image = preview
+            shown.texture = preview_texture
+        }
+    }
+    shown.showing = ImageShowingFor(full, preview_texture)
+    return shown
+}
+
 #program_export
 ImageTint :: (surface: StyleData) -> Color {
     packed: u32 = surface.foreground
@@ -129,31 +159,37 @@ Image :: (session: Session, image: ImageProps) {
         PaintRoundedFill(session, node, image.bounds, radius, 12,
             ColorFromPacked(faces.surface.background))
     }
-    texture: Texture2D = ImageTextureFor(image)
+    // The picture, or its preview while the picture loads; `drawn` keeps
+    // the image's own bounds, mesh and clip.
+    shown := ImageShownFor(image)
+    drawn := shown.image
+    texture: Texture2D = shown.texture
     tint: Color = ImageTint(faces.surface)
     if image.tint != cast(u32)0 {
         tint = ColorFromPacked(Opacity(image.tint,
             StyleOpacityValue(faces.surface.fields, faces.surface.opacity)))
     }
-    plan: ImageDrawPlan = ImageDrawPlanFor(image, texture, tint)
+    plan: ImageDrawPlan = ImageDrawPlanFor(drawn, texture, tint)
     if image.clip_polygon.count > 0 && (!ImagePolygonValid(image.clip_polygon) || ImageMeshActive(image.mesh)) { return }
     if ImageMeshActive(image.mesh) {
         // A warped image draws its grid or nothing: no placeholder covers
         // its bounds, which may be a whole stage of pieces.
         if plan.draw && tint.a > cast(u8)0 && ImageMeshComplete(image.mesh) {
-            PaintImageMesh(session, node, image.asset_path, image.texture.id,
+            PaintImageMesh(session, node, drawn.asset_path, image.texture.id,
                 plan.source, image.mesh.columns, image.mesh.rows,
                 image.mesh.points, image.bounds, plan.tint, image.texture,
                 image.smooth)
         }
     } else if plan.draw && tint.a > cast(u8)0 {
-        PaintImageWithPolygon(session, node, image.asset_path, image.texture.id,
+        PaintImageWithPolygon(session, node, drawn.asset_path, image.texture.id,
             plan.source, plan.destination, image.bounds,
             image.origin, image.rotation, radius, plan.tint, image.texture,
             image.smooth, image.clip_polygon)
-    } else if !plan.draw && texture.width >= 0 && texture.height >= 0 {
-        // A host still loading the asset reports a negative size; the
-        // placeholder is only for an image that is unavailable.
+    } else if !plan.draw && texture.width >= 0 && texture.height >= 0 &&
+        shown.showing != ImageShowing.ImageShowingNone {
+        // A host still loading the picture or its preview reports a
+        // negative size; the placeholder is only for an image that is
+        // unavailable.
         PaintImagePlaceholder(session, node, image, faces.label)
     }
     if (faces.surface.fields & cast(u32)StyleBorderWidth) != cast(u32)0 &&

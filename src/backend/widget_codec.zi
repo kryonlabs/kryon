@@ -343,14 +343,15 @@ WidgetValidImageMesh :: (value: HostValue) -> bool {
     return true
 }
 
-// Widget codec schema: ["ImageProps",[["asset_path","string"],["alt_text","string"],["bounds","Rectangle"],["source","Rectangle"],["origin","Vector2"],["rotation","float32"],["fit","ImageFit"],["class_name","s32"],["radius","float32"],["texture","Texture2D"],["tint","u32"],["key","u64"],["smooth","bool"],["mesh","ImageMesh"],["clip_polygon","[]Vector2"]]]
+// Widget codec schema: ["ImageProps",[["asset_path","string"],["alt_text","string"],["bounds","Rectangle"],["source","Rectangle"],["origin","Vector2"],["rotation","float32"],["fit","ImageFit"],["class_name","s32"],["radius","float32"],["texture","Texture2D"],["tint","u32"],["key","u64"],["smooth","bool"],["mesh","ImageMesh"],["clip_polygon","[]Vector2"],["preview_path","string"],["full_size","Vector2"]]]
 WidgetImagePropsCodec :: struct {
-    fields: [15]HostField
+    fields: [17]HostField
     bounds: WidgetRectangleCodec
     source: WidgetRectangleCodec
     origin: WidgetVector2Codec
     texture: WidgetTexture2DCodec
     mesh: WidgetImageMeshCodec
+    full_size: WidgetVector2Codec
 }
 
 WidgetDecodeImageProps :: (value: HostValue, codec: *WidgetImagePropsCodec) -> ImageProps {
@@ -370,6 +371,8 @@ WidgetDecodeImageProps :: (value: HostValue, codec: *WidgetImagePropsCodec) -> I
     data.key = cast(u64)HostFieldValue(*value, 11, "key", *zero).bits
     data.smooth = HostFieldValue(*value, 12, "smooth", *zero).integer != 0
     data.mesh = WidgetDecodeImageMesh(HostFieldValue(*value, 13, "mesh", *zero).*, *codec.mesh)
+    data.preview_path = HostValueText(HostFieldValue(*value, 15, "preview_path", *zero).*)
+    data.full_size = WidgetDecodeVector2(HostFieldValue(*value, 16, "full_size", *zero).*, *codec.full_size)
     return data
 }
 
@@ -391,6 +394,8 @@ WidgetValidImageProps :: (value: HostValue) -> bool {
     if !HostFieldRecordValid(*value, 13, "mesh", WidgetValidImageMesh) { return false }
     if !HostFieldSliceValid(*value, 14, "clip_polygon", "[]Vector2", cast(usize)IMAGE_MESH_POINT_LIMIT,
         HostElementRule.{.validate_record = WidgetValidVector2}) { return false }
+    if !HostFieldScalarValid(*value, 15, "preview_path", "string", cast(s32)HostString) { return false }
+    if !HostFieldRecordValid(*value, 16, "full_size", WidgetValidVector2) { return false }
     return true
 }
 

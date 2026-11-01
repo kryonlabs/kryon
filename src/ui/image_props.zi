@@ -52,4 +52,25 @@ ImageProps :: struct {
     // A nonempty polygon needs 3..IMAGE_MESH_POINT_LIMIT vertices and cannot
     // be combined with a mesh. The frame retains a copy of these points.
     clip_polygon: []Vector2
+    // A small copy of the same picture, such as a few-KB low-resolution
+    // version, drawn in the picture's place until the picture itself is
+    // ready, so something shows at once and the full picture replaces it
+    // cleanly. It is never drawn once the picture is ready, and a texture
+    // image does not use it. Empty means no stand-in.
+    preview_path: string
+    // The full picture's size in pixels. A preview drawing part of the
+    // picture (a nonempty `source`, such as a jigsaw piece) maps that
+    // rectangle onto its own smaller pixels with this size; without it such
+    // an image waits for the full picture. A whole picture needs no size.
+    full_size: Vector2
+}
+
+// What an image has on screen: nothing yet while its picture and stand-in
+// are loading, its preview, its full picture, or neither because both are
+// unavailable (the placeholder).
+ImageShowing :: enum {
+    ImageShowingNone :: 0
+    ImageShowingPreview :: 1
+    ImageShowingFull :: 2
+    ImageShowingUnavailable :: 3
 }

@@ -206,6 +206,19 @@ rotation and the style radius do not apply, and a grid with too few points
 draws nothing. Points are copied when the image is queued, at most 4096 per
 image (256 through a portable bundle's hosted `Image`).
 
+`ImageProps.preview_path` names a small copy of the same picture that draws in
+its place, with the image's own bounds, fit, mesh and clip, while the picture
+loads or when it is unavailable, so something shows at once and the picture
+replaces it when ready. A preview of part of a picture (a nonempty `source`,
+such as a jigsaw piece) needs `ImageProps.full_size`, the picture's size in
+pixels, to map that rectangle onto the preview; without it the image waits for
+the picture. Hosted previews pass the same asset policy as their picture.
+`image_showing.ImageShowingOf(session, image)` reports `ImageShowingNone`
+(loading), `ImageShowingPreview`, `ImageShowingFull` or
+`ImageShowingUnavailable`, natively and through a portable bundle's host, so
+an app can wait for a picture before what belongs with it. Asking starts the
+host loading the picture, which also fetches pictures shown soon.
+
 `image_mesh.ImageMeshQuad(bounds, camera, points)` constructs a four-corner
 mesh for the standard `ImageProps.mesh`. It uses the same 2D `Camera` as
 `WorldToScreen`, with caller-owned space for four points; too little space

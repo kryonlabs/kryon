@@ -10,6 +10,7 @@
 #import "paint_queue"
 #import "text_props"
 #import "image_props"
+#import "image_showing"
 #import "tile_map"
 #import "button_props"
 #import "scroll_props"
@@ -45,24 +46,27 @@
 using HostValueKind;
 using FrameStatus;
 
-// Image sizes for native builds; the photo is 40 px square.
-#program_export
-ImageWidth :: (asset_path: string) -> s32 {
-    unused asset_path
+// Image sizes for native builds; the photo is 40 px square. Its preview
+// is 10 px, the slow picture is still loading and the gone one unavailable.
+TestImageSize :: (asset_path: string) -> s32 {
+    if asset_path == "assets/slow.png" { return -1 }
+    if asset_path == "assets/gone.png" { return 0 }
+    if asset_path == "assets/photo-small.png" { return 10 }
     return 40
 }
 
 #program_export
-ImageHeight :: (asset_path: string) -> s32 {
-    unused asset_path
-    return 40
-}
+ImageWidth :: (asset_path: string) -> s32 { return TestImageSize(asset_path) }
 
-// A bundle may draw its own photo and nothing else.
+#program_export
+ImageHeight :: (asset_path: string) -> s32 { return TestImageSize(asset_path) }
+
+// A bundle may draw its own pictures and nothing else.
 asset_checks: s32;
 AllowPhoto :: (path: string) -> bool {
     asset_checks += 1
-    return path == "" || path == "assets/photo.png"
+    return path == "" || path == "assets/photo.png" || path == "assets/photo-small.png" ||
+        path == "assets/slow.png" || path == "assets/gone.png"
 }
 
 resolved_owner: s32;
@@ -80,6 +84,18 @@ PaintHasAsset :: (session: Session, path: string) -> bool {
         if PendingPaintAt(session, index).asset_path == path { return true }
     }
     return false
+}
+
+// What a bundle's ImageShowingOf answers for IMAGE, or -1 when refused.
+showing_codec: WidgetImagePropsCodec;
+HostedShowing :: (session: Session, image: ImageProps) -> s64 {
+    arguments: [2]HostValue
+    arguments[0] = WidgetEncodeSession(session, *session_codec)
+    arguments[1] = WidgetEncodeImageProps(image, *showing_codec)
+    answer: HostValue
+    if Call("image_showing", "ImageShowingHostedHost", arguments[:], *answer) != 1 ||
+    TextFromCString(answer.type_name) != "s32" { return -1 }
+    return answer.integer
 }
 
 module_name: [64]u8;
@@ -683,6 +699,65 @@ main :: () -> s32 {
     WidgetHostBegin(session, AllowPhoto)
     if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 ||
     !PaintHasAsset(session, "assets/photo.png") { return 54 }
+    // A preview stands in while its picture loads, and the bundle can ask
+    // what shows, as a narrated page waits for its picture.
+    if !WidgetHostSupports("kryon_image_showing", "ImageShowingHostedHost") { return 116 }
+    slow := ImageProps.{.asset_path = "assets/slow.png", .preview_path = "assets/photo-small.png",
+        .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}
+    if HostedShowing(session, slow) != cast(s64)ImageShowing.ImageShowingPreview ||
+    ImageShowingOf(session, slow) != ImageShowing.ImageShowingPreview { return 117 }
+    arguments[1] = WidgetEncodeImageProps(slow, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 ||
+    !PaintHasAsset(session, "assets/photo-small.png") || PaintHasAsset(session, "assets/slow.png") { return 118 }
+    queued = PendingPaintAt(session, PendingPaintCount(session) - 1)
+    if queued.source.width != 10.0 || queued.source.height != 10.0 { return 119 }
+    // A ready picture shows itself; its preview is not even asked for.
+    ready := slow
+    ready.asset_path = "assets/photo.png"
+    if HostedShowing(session, ready) != cast(s64)ImageShowing.ImageShowingFull { return 120 }
+    paints = PendingPaintCount(session)
+    arguments[1] = WidgetEncodeImageProps(ready, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 ||
+    PendingPaintCount(session) != paints + 1 || PendingPaintAt(session, paints).asset_path != "assets/photo.png" { return 121 }
+    // Without a preview a loading picture draws nothing, not a placeholder;
+    // an unavailable one is unavailable.
+    alone := ImageProps.{.asset_path = "assets/slow.png", .alt_text = "Slow", .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}
+    paints = PendingPaintCount(session)
+    arguments[1] = WidgetEncodeImageProps(alone, *image_codec)
+    if HostedShowing(session, alone) != cast(s64)ImageShowing.ImageShowingNone ||
+    Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 ||
+    PendingPaintCount(session) != paints { return 122 }
+    gone := alone
+    gone.asset_path = "assets/gone.png"
+    if HostedShowing(session, gone) != cast(s64)ImageShowing.ImageShowingUnavailable { return 123 }
+    // A gone picture still shows its preview.
+    gone.preview_path = "assets/photo-small.png"
+    if HostedShowing(session, gone) != cast(s64)ImageShowing.ImageShowingPreview { return 124 }
+    // Part of a picture maps onto the preview's pixels with the full size;
+    // without that size it waits for the picture.
+    piece := slow
+    piece.source = Rectangle.{20.0, 0.0, 20.0, 40.0}
+    if HostedShowing(session, piece) != cast(s64)ImageShowing.ImageShowingNone { return 125 }
+    piece.full_size = Vector2.{40.0, 40.0}
+    arguments[1] = WidgetEncodeImageProps(piece, *image_codec)
+    if HostedShowing(session, piece) != cast(s64)ImageShowing.ImageShowingPreview ||
+    Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 1 { return 126 }
+    queued = PendingPaintAt(session, PendingPaintCount(session) - 1)
+    if queued.asset_path != "assets/photo-small.png" || queued.source.x != 5.0 || queued.source.y != 0.0 ||
+    queued.source.width != 5.0 || queued.source.height != 10.0 { return 127 }
+    // A preview passes the asset policy: one the bundle may not draw is
+    // refused with its picture, and asking says only unavailable.
+    secret := slow
+    secret.preview_path = "private/key.png"
+    arguments[1] = WidgetEncodeImageProps(secret, *image_codec)
+    if Call("image_widget", "ImageHostedHost", arguments[:2], *result) != 0 ||
+    HostedShowing(session, secret) != cast(s64)ImageShowing.ImageShowingUnavailable { return 128 }
+    handle := ImageProps.{.asset_path = "assets/photo.png"}
+    handle.texture.id = cast(u32)3
+    showing_arguments: [2]HostValue
+    showing_arguments[0] = WidgetEncodeSession(session, *session_codec)
+    showing_arguments[1] = WidgetEncodeImageProps(handle, *image_codec)
+    if Call("image_showing", "ImageShowingHostedHost", showing_arguments[:], *result) != 0 { return 129 }
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 55 }
     // The hosted binding renders the canonical menu, accepts exact packaged

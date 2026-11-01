@@ -177,6 +177,7 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "text_measure") && function == "TextWidthHostedHost") ||
     (ModuleName(module, "text_measure") && function == "TextHeightHostedHost") ||
     (ModuleName(module, "image_widget") && function == "ImageHostedHost") ||
+    (ModuleName(module, "image_showing") && function == "ImageShowingHostedHost") ||
     (ModuleName(module, "tile_map") && function == "TileMapHostedHost") ||
     (ModuleName(module, "button_widget") && function == "ButtonHostedHost") ||
     (ModuleName(module, "text_area_widget") && function == "TextAreaHostedHost") ||
@@ -301,6 +302,13 @@ WidgetHostImage :: (image: *ImageProps) -> bool {
     if image.texture.id != cast(u32)0 { return false }
     packed := image.asset_path
     if !WidgetHostAssetAllowed(packed) { return false }
+    // A preview passes the same policy as its picture; one its owner cannot
+    // resolve yet is left out, and the picture draws as it would alone.
+    preview := image.preview_path
+    if preview != "" {
+        if !WidgetHostAssetAllowed(preview) { return false }
+        image.preview_path = WidgetHostAssetPath(preview)
+    }
     if packed == "" { return true }
     image.asset_path = WidgetHostAssetPath(packed)
     if image.asset_path == "" {
@@ -542,6 +550,16 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         polygon_at := HostFieldAt(props, 14, "clip_polygon")
         if polygon_at >= 0 { image.clip_polygon = WidgetHostImagePoints(props.fields[polygon_at].value) }
         Image(session, image)
+        return 1
+    }
+    if name == "ImageShowingHostedHost" && ModuleName(owner, "image_showing") && WidgetValidImageProps(props) {
+        image := WidgetDecodeImageProps(props, *widget_image_codec)
+        if image.texture.id != cast(u32)0 { return 0 }
+        // A picture the bundle may not draw is unavailable to it; the host
+        // never says whether such a file exists.
+        showing := ImageShowing.ImageShowingUnavailable
+        if WidgetHostImage(*image) { showing = ImageShownFor(image).showing }
+        result.* = HostScalar("s32", cast(s64)showing)
         return 1
     }
     if name == "TileMapHostedHost" && ModuleName(owner, "tile_map") && WidgetValidTileMapProps(props) {

@@ -102,6 +102,39 @@ ImagePolygonTriangulate :: (points: []Vector2, triangles: []s32) -> s32 {
     return written+3
 }
 
+// Whether IMAGE may draw its preview while its picture loads.
+#program_export
+ImagePreviewUsable :: (image: ImageProps) -> bool {
+    if image.preview_path == "" || image.texture.id != cast(u32)0 { return false }
+    if image.source.width == 0.0 || image.source.height == 0.0 { return true }
+    return image.full_size.x > 0.0 && image.full_size.y > 0.0
+}
+
+// SOURCE, in the full picture's FULL_SIZE pixels, in the pixels of a preview
+// PREVIEW_WIDTH × PREVIEW_HEIGHT. An empty source stays the whole preview.
+#program_export
+ImagePreviewSource :: (source: Rectangle, full_size: Vector2,
+    preview_width: s32, preview_height: s32) -> Rectangle {
+    if source.width == 0.0 || source.height == 0.0 ||
+        full_size.x <= 0.0 || full_size.y <= 0.0 { return Rectangle.{} }
+    sx := cast(float32)preview_width / full_size.x
+    sy := cast(float32)preview_height / full_size.y
+    return Rectangle.{source.x * sx, source.y * sy, source.width * sx, source.height * sy}
+}
+
+// What shows from the picture's and preview's host textures (ImageTextureFor:
+// a nonzero id is ready, a negative size is loading). A preview the image
+// may not use is passed as an empty texture.
+#program_export
+ImageShowingFor :: (full: Texture2D, preview: Texture2D) -> ImageShowing {
+    if full.id != cast(u32)0 { return ImageShowing.ImageShowingFull }
+    if preview.id != cast(u32)0 { return ImageShowing.ImageShowingPreview }
+    if full.width < 0 || full.height < 0 || preview.width < 0 || preview.height < 0 {
+        return ImageShowing.ImageShowingNone
+    }
+    return ImageShowing.ImageShowingUnavailable
+}
+
 ImageDrawPlan :: struct {
     draw: bool
     source: Rectangle
