@@ -1328,10 +1328,10 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             sample_y = origin_y
         }
         initial: s32 = TextAreaCursorAtPlace(layout, props.value,
-            cast(s32)drag.grab_x - padding_x,
+            TextPointerOffset(drag.grab_x, padding_x),
             cast(s32)drag.grab_y - padding_y + props.scroll_y)
         selected: s32 = TextAreaCursorAtPlace(layout, props.value,
-            cast(s32)sample_x - (cast(s32)bounds.x + padding_x),
+            TextPointerOffset(sample_x, cast(s32)bounds.x + padding_x),
             cast(s32)sample_y - (cast(s32)bounds.y + padding_y) +
                 result.scroll_y)
         dx: float32 = sample_x - origin_x
@@ -1423,7 +1423,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         if content_scrolled { touch_drag = PointerDrag.{} }
         point := TextTouchHitPoint(session, previous, touch_drag)
         touch_hit := TextAreaCursorAtPlace(layout, props.value,
-            cast(s32)point.x - (cast(s32)bounds.x + padding_x),
+            TextPointerOffset(point.x, cast(s32)bounds.x + padding_x),
             cast(s32)point.y - (cast(s32)bounds.y + padding_y) + result.scroll_y)
         touch := TextTouchUpdate(session, previous, key, props.value, touch_drag,
             touch_hit, result.anchor, result.cursor)

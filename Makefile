@@ -523,6 +523,11 @@ pixmap-density-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_density_test.sh
 test: pixmap-density-test
 
+.PHONY: pixmap-text-scale-test
+pixmap-text-scale-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/pixmap_text_scale_test.sh
+test: pixmap-text-scale-test
+
 .PHONY: pixmap-frame-test event-wake-sdl-test
 pixmap-frame-test: project-toolchain
 	sh tests/pixmap_frame_test.sh

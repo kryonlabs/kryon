@@ -1,0 +1,111 @@
+#import "pixmap"
+#import "drawing_props"
+#import "geometry"
+#import "font_metrics"
+#import "text_area_widget"
+#import "text_input"
+
+// Text drawn at a fractional density stays where its logical measure puts
+// it. A text area places carets, maps the pointer and paints the selection
+// from logical advances times the density, so the drawn glyphs must follow
+// the same advances: 13 units at 125% are 16.25 pixels, not a 16 pixel font.
+// At each glyph edge of single-line and wrapped rows, at 100%, 125% and 150%,
+// the drawn ink ends where the scaled caret edge says, and a pointer just
+// past that ink selects through the glyph, as dragging to the end of a word.
+// The pointer is rounded to logical units: truncating drops up to a unit,
+// which at 125% misses the caret stop past a narrow glyph such as "i".
+Width :: 480;
+Height :: 48;
+Left :: 4;
+Top :: 8;
+pixels: [23040]u32;
+ink :: Color.{255, 255, 255, 255};
+
+// The device column just right of the last inked pixel of `value` drawn at
+// the logical (Left, Top); 0 when nothing is drawn.
+InkEnd :: (value: string, font: s32, scale: float32) -> s32 {
+    unused PixmapBeginInto(cast(u32)0, Width, Height, pixels[:])
+    unused PixmapScale(scale, scale)
+    RasterText(value, Left, Top, font, ink)
+    PixmapEndInto()
+    end: s32 = 0
+    for row: 0..Height - 1 {
+        column: s32 = Width - 1
+        while column >= end {
+            if (pixels[row * Width + column] & cast(u32)0x00ffffff) != cast(u32)0 { end = column + 1; break }
+            column -= 1
+        }
+    }
+    return end
+}
+
+Distance :: (a: float32, b: float32) -> float32 {
+    if a > b { return a - b }
+    return b - a
+}
+
+// Every glyph edge of every row of `value` wrapped at `wrap` (0 for one
+// line); 0 when they all agree, or the failing check.
+CheckRows :: (value: string, wrap: s32, font: s32, scale: float32) -> s32 {
+    advance: s32 = GlyphLineHeight(font, "") + 4
+    offset: s32 = 0
+    index: s32 = 0
+    rows: s32 = 0
+    while offset < cast(s32)value.count {
+        row := TextAreaNextRow(value, offset, wrap, font, "")
+        if row.next <= offset { return 10 }
+        rows += 1
+        middle: s32 = index * advance + advance / 2
+        for end: row.start + 1..row.end {
+            if value[end - 1] == #char " " { continue }
+            prefix: string = value[row.start:end]
+            edge: s32 = GlyphCaret(prefix, cast(s32)prefix.count, font, "")
+            drawn: s32 = InkEnd(prefix, font, scale)
+            reference: s32 = InkEnd(prefix, font, 1.0)
+            if drawn <= 0 || reference <= 0 { return 11 }
+            // The selection highlight ends at the scaled caret edge. The ink
+            // keeps the space it has before that edge at 100%, scaled, to
+            // within the rounding of a device glyph size and pixel origin.
+            slack: float32 = cast(float32)(Left + edge) * scale - cast(float32)drawn
+            expected: float32 = cast(float32)(Left + edge - reference) * scale
+            if Distance(slack, expected) > 2.0 {
+                print("Ink of % at font % and % ends % device px from its caret edge, % expected\n",
+                    prefix, font, scale, slack, expected)
+                return 12
+            }
+            // The pointer at the ink's right boundary, in logical units as
+            // the text area converts it.
+            pointer: s32 = TextPointerOffset(cast(float32)drawn / scale, Left)
+            cursor: s32 = TextAreaCursorAtPoint(value, pointer, middle, wrap, font, "", advance)
+            if cursor != end {
+                print("Pointer past % at font % and % selects to byte %, % expected\n",
+                    prefix, font, scale, cursor, end)
+                return 13
+            }
+        }
+        offset = row.next
+        index += 1
+    }
+    if wrap > 0 && rows < 3 { return 14 }
+    return 0
+}
+
+main :: () -> s32 {
+    text := "Please ring a bell every minute in Wim Hof."
+    fonts: [3]s32 = .{12, 13, 14}
+    scales: [3]float32 = .{1.0, 1.25, 1.5}
+    for f: 0..cast(s32)2 {
+        font := fonts[f]
+        logical: s32 = MeasureGlyphWidth(text, font, "")
+        for s: 0..cast(s32)2 {
+            failed := CheckRows(text, 0, font, scales[s])
+            if failed != 0 { return failed }
+            failed = CheckRows(text, logical / 3, font, scales[s])
+            if failed != 0 { return failed + 10 }
+            // Drawing at a density never changes the logical measure.
+            if MeasureGlyphWidth(text, font, "") != logical { return 30 }
+        }
+    }
+    print("Scaled text ink, carets and pointer agree\n")
+    return 0
+}

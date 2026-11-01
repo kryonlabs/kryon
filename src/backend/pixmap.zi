@@ -772,8 +772,13 @@ PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
     }
 }
 
-PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
-    if font <= 0 { return }
+// Glyphs are rasterized at the whole device `font`, but the pen advances at
+// `pen_font`, the logical font times the exact density in 1/256 device px.
+// Measures, carets, hit tests and selection highlights all use
+// logical advances, so a rounded device font (16 for 13 at 125%) must not
+// move the glyphs off them.
+PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, pen_font: s64, color: Color) {
+    if font <= 0 || pen_font <= 0 { return }
     // A glyph stays well within two font sizes of its line box and advance,
     // so text past the clip draws nothing and is not rasterized.
     reach: s32 = font * 2
@@ -786,7 +791,7 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
         unit: PixmapTextUnit = PixmapNextUnit(value, at)
         if unit.after <= at { break }
         at = unit.after
-        origin: s64 = cast(s64)x * 256 + PixmapUnits(pen, font)
+        origin: s64 = cast(s64)x * 256 + PixmapFloorDiv(pen * pen_font, cast(s64)PixmapTextLine)
         whole: s32 = cast(s32)PixmapFloorDiv(origin, 256)
         // Advances never move left, so no later glyph reaches the clip.
         if whole - reach >= pixmap_clip_right { break }
@@ -804,8 +809,10 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
 
 #program_export
 RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    if font <= 0 { return }
+    pen_font := cast(s64)(cast(float64)font * cast(float64)pixmap_scale_x * 256.0 + 0.5)
     PixmapDrawText(value, PixmapRound(cast(float32)x * pixmap_scale_x),
-        PixmapRound(cast(float32)y * pixmap_scale_y), PixmapDeviceFont(font), color)
+        PixmapRound(cast(float32)y * pixmap_scale_y), PixmapDeviceFont(font), pen_font, color)
 }
 
 #program_export

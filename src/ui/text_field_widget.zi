@@ -296,7 +296,7 @@ Theme :: #import "theme";
                 sample_x -= TreeNodeAt(session, previous).bounds.x - props.bounds.x
             }
             selected: s32 = TextFieldCursorAtX(display,
-                cast(s32)sample_x - scroll.text_origin_x,
+                TextPointerOffset(sample_x, scroll.text_origin_x),
                 font, face.value.typeface)
             if props.secure {
                 count: s32 = TextFieldCodepoints(TextSpan(display,

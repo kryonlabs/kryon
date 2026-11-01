@@ -339,6 +339,15 @@ TextInputScaledMetric :: (value: float32, scale: float32) -> s32 {
     if metric < 0 { return 0 }
     return metric
 }
+// The pointer's logical offset from a text origin, to the nearest unit. At a
+// fractional density a device pixel is a fraction of a unit, and truncating
+// it drops up to a unit, which misses the caret stop past a narrow glyph.
+#program_export
+TextPointerOffset :: (pointer: float32, origin: s32) -> s32 {
+    offset: float32 = pointer - cast(float32)origin
+    if offset < 0.0 { return -cast(s32)(0.5 - offset) }
+    return cast(s32)(offset + 0.5)
+}
 #program_export
 TextAreaMinWrapWidth :: (scale: float32) -> s32 {
     return TextInputScaledMetric(24.0, scale)
