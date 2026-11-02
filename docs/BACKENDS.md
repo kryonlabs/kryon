@@ -195,7 +195,9 @@ through JNI natives registered by the generated `src/android_glue.zi`, and
 forwards soft-keyboard text as codepoint, backspace and enter events. The
 generated `src/main.zi` delegates to `AndroidRunMain`, which drives the
 session with the shared raylib host, Kryon's Android viewport policies, and
-the session-owned text input queue. Applications with their own JNI surface
+the session-owned text input queue. `Frame` always receives the safe area, clear
+of the system bars and cutouts; a backdrop meant to run behind them draws into
+`AndroidWindowBounds()`. Applications with their own JNI surface
 keep their own `JNI_OnLoad` and call `AndroidJniOnLoad` with their activity
 class to add the canonical natives. An application without Java code, a plain
 `NativeActivity`, calls `PollAndroidWindowInsets` once per frame instead: it

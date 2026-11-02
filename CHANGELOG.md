@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Android apps can no longer opt out of the safe area: every frame stays clear
+  of the status bar, navigation bar and camera cutout, and a backdrop that runs
+  behind them asks for `AndroidWindowBounds`.
 - Images load WebP files on every host: lossy, lossless and transparent
   pictures, and the first frame of animated ones.
 - Browser image loading shares one encoded snapshot between Canvas and DOM,

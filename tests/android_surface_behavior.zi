@@ -180,7 +180,7 @@ main :: () -> s32 {
     SyncAndroidViewport(*viewport)
     Require(core.resized_last_frame && core.screen.width == 1920 &&
         core.current_fbo.width == 640 && core.current_fbo.height == 480, 30)
-    SetAndroidViewportPolicy(AndroidViewportPolicyFull())
+    SetAndroidViewportPolicy(AndroidViewportPolicy.{})
     SyncAndroidViewport(*viewport)
     Require(viewport.width == 1920 && viewport.height == 1080 && viewport.x == 0, 31)
     geometry_result = -1

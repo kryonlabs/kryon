@@ -92,6 +92,16 @@ main :: () -> s32 {
     insets.system_top == 24 && insets.system_bottom == 48 &&
     insets.ime_bottom == 300 && insets.cutout_left == 0, 15)
 
+    // An app that sets no policy lays out clear of the bars and the camera;
+    // only AndroidWindowBounds reaches behind them, in layout units.
+    AndroidNativeSetDensity(null, null, 2.0)
+    AndroidNativeSetInsets(null, null, 0, 24, 0, 48, 0, 0, 60, 0, 0)
+    safe: AndroidViewport
+    Require(ResolveAndroidViewport(1080, 1920, GetAndroidViewportPolicy(), *safe) == 1 &&
+    safe.y == 60 && safe.height == 1812 && safe.insets.bottom == 48, 40)
+    window := AndroidWindowBounds()
+    Require(window.x == 0.0 && window.y == 0.0 && window.width == 540.0 && window.height == 960.0, 41)
+
     // Closing hides the keyboard once more and releases the owner: the
     // sequence showed and hid at each active/inactive frame, hid on the
     // owner swap, showed for the replacement, and hides on close.

@@ -11,7 +11,7 @@ PolicyCheck :: () -> s32 {
         return 1
     }
     viewport = ResolveViewport(320, 560, insets,
-        AndroidViewportPolicyFull(), 1)
+        AndroidViewportPolicy.{}, 1)
     if viewport.x != 0 || viewport.y != 0 || viewport.width != 320 ||
         viewport.height != 560 || viewport.insets.bottom != 0 {
         return 2
@@ -35,7 +35,7 @@ PolicyCheck :: () -> s32 {
         return 7
     }
     viewport = ResolveViewport(356, 596, insets,
-        AndroidViewportPolicyFull(), 1, margin)
+        AndroidViewportPolicy.{}, 1, margin)
     if viewport.x != 18 || viewport.y != 18 || viewport.width != 320 ||
         viewport.height != 560 {
         return 8
@@ -46,6 +46,20 @@ PolicyCheck :: () -> s32 {
         SurfaceMargin(356, 596, 0, 0).left != 0 ||
         SurfaceMargin(277, 337, 720, 1560).left != 0 {
         return 9
+    }
+    // A camera taller than the status bar pushes the top down, and a sideways
+    // cutout with the navigation bar does the same for each side in landscape.
+    camera: AndroidWindowInsets = .{.system_top = 53, .system_bottom = 84, .cutout_top = 70}
+    viewport = ResolveViewport(720, 1560, camera, GetAndroidViewportPolicy(), 1)
+    if viewport.x != 0 || viewport.y != 70 || viewport.width != 720 ||
+        viewport.height != 1406 || viewport.insets.bottom != 84 {
+        return 10
+    }
+    camera = .{.system_top = 53, .system_right = 84, .cutout_left = 70}
+    viewport = ResolveViewport(1560, 720, camera, GetAndroidViewportPolicy(), 1)
+    if viewport.x != 70 || viewport.y != 53 || viewport.width != 1406 ||
+        viewport.height != 667 || viewport.insets.right != 84 {
+        return 11
     }
     policy := AndroidViewportPolicySafeArea()
     policy.min_width = 260

@@ -157,11 +157,9 @@ ContentSize :: (size: s32, leading: s32, trailing: s32,
     return cast(s32)content
 }
 
-#program_export
-AndroidViewportPolicyFull :: () -> AndroidViewportPolicy {
-    policy: AndroidViewportPolicy
-    return policy
-}
+// Every Android frame stays clear of the status bar, navigation bar and camera
+// cutout. An app's Frame lays out inside its viewport, and only art meant to
+// run behind those bars asks for AndroidWindowBounds.
 #program_export
 AndroidViewportPolicySafeArea :: () -> AndroidViewportPolicy {
     policy: AndroidViewportPolicy

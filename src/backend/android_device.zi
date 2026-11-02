@@ -8,6 +8,7 @@
 #import "android_surface"
 #import "android_text_editor"
 #import "android_text_menu"
+#import "geometry"
 #import "text_context_menu"
 #import "c_string"
 #import "session"
@@ -452,6 +453,20 @@ AndroidNativeInvalidateGraphics :: (env: *JniEnv, activity: *void) {
 AndroidLayoutZoom :: () -> float32 {
     density := AndroidDensity()
     return ifx density >= 0.75 && density <= 8.0 then density else 1.0
+}
+
+// The whole window in layout units, behind the system bars and the camera, for
+// a backdrop only; everything else belongs in the viewport Frame receives.
+#program_export
+AndroidWindowBounds :: () -> Rectangle {
+    width: s32
+    height: s32
+    unused GetAndroidSurfaceSize(*width, *height)
+    window: AndroidViewport
+    unused ResolveAndroidViewport(width, height, AndroidViewportPolicy.{}, *window)
+    zoom := AndroidLayoutZoom()
+    return Rectangle.{cast(float32)window.x / zoom, cast(float32)window.y / zoom,
+        cast(float32)window.width / zoom, cast(float32)window.height / zoom}
 }
 
 #program_export
