@@ -100,6 +100,81 @@ The `image_preview` module also supplies `ImageCompress` for smaller upright
 JPEG copies. It keeps transparent and animated originals intact and returns
 no replacement when encoding would increase file size.
 
+## Experimental SDL3 GPU renderer
+
+Custom Linux x86_64 GNU hosts can import `kryon/pixmap_sdl3` and
+`kryon/pixmap_sdl3_gpu`. This is an opt-in rendering prototype, rather than a
+new project profile: the host supplies an SDL3 window, input loop and
+presentation. Existing desktop, SDL2 and Raylib profiles keep their behavior.
+The handwritten renderer is Ziran; SDL3 supplies the GPU API and shaders.
+
+Kryon's `native-sdl3` artifact builds static SDL 3.4.18 from its pinned official
+source package. No Git submodule or global SDL3 installation is needed. Build
+prerequisites are a GNU C toolchain, CMake, pkg-config, Python 3.11+, X11
+development headers and Vulkan headers/loader. Running requires an SDL3 GPU
+device, which may be software. On Debian/Ubuntu the additional test packages
+are `libvulkan-dev mesa-vulkan-drivers libx11-dev libxext-dev xvfb xauth`.
+From the Kryon checkout, with Ziran available:
+
+```sh
+build-queue -- env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY \
+  -u DBUS_SESSION_BUS_ADDRESS make sdl3-test
+```
+
+This resolves and builds the locked SDK through Ziran, verifies its declared
+outputs, and runs shared scene, geometry adapter and real private-Xvfb renderer
+tests. Package metadata and the generated import smoke test stay under ignored
+`work/sdl3-integration`; there is
+no copied source checkout or hard-coded SDK cache key. The Linux CI hosts job
+runs the same target with Mesa's software Vulkan device. Missing GPU support
+fails the test instead of skipping it.
+
+A host's minimal rendering sequence uses the ordinary package exports:
+
+```zi
+Sdl3 :: #import "kryon/pixmap_sdl3";
+Sink :: #import "kryon/pixmap_sdl3_gpu";
+// After SDL3 initialization and window creation, on the window's thread:
+renderer := Sdl3.CreatePixmapSdl3Renderer(window)
+// Check renderer != null, then Sink.PixmapSdl3Open(renderer).
+// Create and retain a target with Sink.PixmapSdl3CreateTarget(width, height).
+// Record normal pixmap painting, then check Sink.PixmapSdl3Draw().
+// Copy the target to the window with SDL_RenderTexture and SDL_RenderPresent.
+// Close the sink before destroying host-owned targets, renderer and window.
+```
+
+`CreatePixmapSdl3Renderer` explicitly requests SDL's `gpu` renderer and returns
+null on failure, without trying another renderer. Inspect
+`PixmapSdl3DescribeRenderer(renderer)` for the renderer name, API, device name
+and driver information; its strings are borrowed until renderer destruction.
+A `gpu` renderer using `vulkan` does not establish hardware acceleration.
+The verified local device was **llvmpipe LLVM 19.1.7 / Mesa 25.0.7**, a software
+Vulkan implementation. These tests establish rendering behavior, not hardware
+performance.
+
+The sink shares `pixmap_gpu`'s clipped geometry, glyph atlas, paint order and
+single active recorder. Image publications and sink calls must use the renderer
+thread. After a failed draw, close/open and repaint fully; after an SDL render
+device reset, call `PixmapSdl3DeviceLost`, recreate the host-owned target and
+repaint fully. The sink does not destroy host-owned render targets.
+
+The CPU parity tests cover five scenes and three frames each. Blending has small
+rounding differences (observed maximum channel difference 3). Exact nearest
+texel ties in the 1.25× zoom scene can choose the adjacent texel, as in the SDL2
+reference; the test accepts only analytically identified checker boundaries
+within the image and clip. The shared sampler is therefore not byte-exact at
+those ties. SDL3 also converts byte colors to float colors in 1536-vertex chunks,
+which can add draw calls; this does not establish a speedup over SDL2 or Raylib.
+See the executable lifecycle example in
+[`tests/sdl3_renderer_host_test.zi`](../tests/sdl3_renderer_host_test.zi).
+
+After `make sdl3-test`, the separate comparison harness is available with
+`build-queue -- python3 tests/backend_render_benchmark.py --smoke`. It records
+device identity, parity and raw samples under ignored
+`work/backend-render-benchmark`. The test-only Raylib adapter currently fails
+the zoom scene's pixel oracle, so the comparison returns status 2 and excludes
+that scene's Raylib timings. This does not make the SDL3 integration test fail.
+
 ## WebP images
 
 Images, image previews and app media files accept WebP wherever they accept

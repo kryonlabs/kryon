@@ -1,0 +1,233 @@
+// Optional SDL3 geometry sink for pixmap_gpu's already-clipped triangles.
+// The host creates the GPU renderer (SDL 3.4's "gpu" renderer), presents the
+// retained target, and destroys its targets and renderer after Close. All calls
+// and image publications belong on that renderer's thread. No renderer fallback.
+#import "vec"
+#import "pixmap_gpu"
+#import "pixmap"
+
+sdl3 :: #system_library "SDL3";
+CreateTexture :: (renderer: *void, format: u32, access: s32, width: s32, height: s32) -> *void #foreign sdl3 "SDL_CreateTexture";
+DestroyTexture :: (texture: *void) #foreign sdl3 "SDL_DestroyTexture";
+UpdateTexture :: (texture: *void, rectangle: *void, pixels: *u32, pitch: s32) -> bool #foreign sdl3 "SDL_UpdateTexture";
+SetTextureBlend :: (texture: *void, mode: u32) -> bool #foreign sdl3 "SDL_SetTextureBlendMode";
+SetTextureScale :: (texture: *void, mode: s32) -> bool #foreign sdl3 "SDL_SetTextureScaleMode";
+ComposeBlend :: (source_color: s32, target_color: s32, color_operation: s32,
+    source_alpha: s32, target_alpha: s32, alpha_operation: s32) -> u32 #foreign sdl3 "SDL_ComposeCustomBlendMode";
+SetRenderTarget :: (renderer: *void, texture: *void) -> bool #foreign sdl3 "SDL_SetRenderTarget";
+RenderGeometryRaw :: (renderer: *void, texture: *void, xy: *float32, xy_stride: s32,
+    color: *Sdl3Color, color_stride: s32, uv: *float32, uv_stride: s32,
+    count: s32, indices: *void, index_count: s32, index_size: s32) -> bool #foreign sdl3 "SDL_RenderGeometryRaw";
+RenderFlush :: (renderer: *void) -> bool #foreign sdl3 "SDL_FlushRenderer";
+Allocate :: (bytes: usize) -> *void #foreign sdl3 "SDL_malloc";
+Release :: (memory: *void) #foreign sdl3 "SDL_free";
+
+Sdl3Color :: struct { r: float32; g: float32; b: float32; a: float32 }
+Sdl3Area :: struct { x: s32; y: s32; width: s32; height: s32 }
+Sdl3Argb :: 372645892; // SDL_PIXELFORMAT_ARGB8888, matching pixmap's packed u32.
+// A multiple of three: split large batches only at triangle boundaries. XY/UV
+// remain borrowed from the recorder; only normalized SDL_FColor data is copied.
+Sdl3ColorCount :: 1536;
+sdl3_colors: [Sdl3ColorCount]Sdl3Color;
+sdl3_renderer: *void;
+sdl3_target: *void;
+sdl3_atlas: *void;
+sdl3_failed: bool;
+sdl3_premultiplied: u32;
+sdl3_images: [PixmapImageLimit]*void;
+sdl3_image_revisions: [PixmapImageLimit]u64;
+sdl3_image_smooth: [(PixmapImageLimit + 63) / 64]u64;
+sdl3_seen_revision: u64;
+sdl3_no_flush: PixmapGpuFlushCall;
+
+#scope_module
+ImageSmooth :: (slot: s64) -> bool {
+    if slot < 0 || slot >= PixmapImageLimit { return false }
+    return (sdl3_image_smooth[slot / 64] & (cast(u64)1 << cast(u64)(slot % 64))) != cast(u64)0
+}
+
+SetImageSmooth :: (slot: s64, smooth: bool) {
+    if slot < 0 || slot >= PixmapImageLimit { return }
+    word := slot / 64; mask := cast(u64)1 << cast(u64)(slot % 64)
+    if smooth { sdl3_image_smooth[word] |= mask }
+    else { sdl3_image_smooth[word] &= ~mask }
+}
+
+ForgetImage :: (slot: s64) {
+    if sdl3_images[slot] != null { DestroyTexture(sdl3_images[slot]); sdl3_images[slot] = null }
+    sdl3_image_revisions[slot] = 0; SetImageSmooth(slot, false)
+}
+
+SweepImages :: () {
+    revision := PixmapImageRevision()
+    if revision == sdl3_seen_revision { return }
+    sdl3_seen_revision = revision
+    for slot: 0..PixmapImageLimit - 1 {
+        if sdl3_images[slot] != null && sdl3_image_revisions[slot] != pixmap_image_revisions[slot] { ForgetImage(slot) }
+    }
+}
+
+OpenAtlas :: () -> bool {
+    // Complete a partially allocated recorder table before AtlasClear indexes it.
+    empty: PixmapGpuEntry
+    while pixmap_gpu_entries.count < PixmapGpuEntryLimit {
+        if !VecPush(pixmap_gpu_entries, empty) { return false }
+    }
+    atlas := CreateTexture(sdl3_renderer, cast(u32)Sdl3Argb, 0, PixmapGpuAtlasSide, PixmapGpuAtlasSide)
+    if atlas == null { return false }
+    white: [PixmapGpuWhiteSide * PixmapGpuWhiteSide]u32
+    for index: 0..white.count - 1 { white[index] = cast(u32)0xffffffff }
+    area: Sdl3Area = .{0, 0, PixmapGpuWhiteSide, PixmapGpuWhiteSide}
+    if !SetTextureBlend(atlas, cast(u32)1) || !SetTextureScale(atlas, 0) ||
+        !UpdateTexture(atlas, cast(*void)*area, *white[0], PixmapGpuWhiteSide * 4) {
+        DestroyTexture(atlas); return false
+    }
+    sdl3_atlas = atlas
+    PixmapGpuRecordClear(); PixmapGpuAtlasClear()
+    return true
+}
+
+ImageTexture :: (slot: s32) -> *void {
+    if slot < 0 || slot >= PixmapImageLimit { return null }
+    if sdl3_images[slot] != null { return sdl3_images[slot] }
+    width := pixmap_image_widths[slot]; height := pixmap_image_heights[slot]
+    if width <= 0 || height <= 0 || width > pixmap_gpu_max_image || height > pixmap_gpu_max_image { return null }
+    count := cast(s64)width * height
+    source := pixmap_image_pixels[slot].value
+    if source.count < count { return null }
+    // Premultiplied texels keep linear filtering from bleeding transparent RGB.
+    memory := Allocate(cast(usize)count * size_of(u32))
+    if memory == null { return null }
+    defer Release(memory)
+    pixels := cast(*u32)memory
+    for index: 0..count - 1 {
+        pixel := source[index]; alpha := pixel >> cast(u32)24
+        red := ((pixel >> cast(u32)16) & cast(u32)255) * alpha / cast(u32)255
+        green := ((pixel >> cast(u32)8) & cast(u32)255) * alpha / cast(u32)255
+        blue := (pixel & cast(u32)255) * alpha / cast(u32)255
+        pixels[index] = (alpha << cast(u32)24) | (red << cast(u32)16) | (green << cast(u32)8) | blue
+    }
+    texture := CreateTexture(sdl3_renderer, cast(u32)Sdl3Argb, 0, width, height)
+    if texture == null { return null }
+    if !SetTextureBlend(texture, sdl3_premultiplied) || !SetTextureScale(texture, 0) ||
+        !UpdateTexture(texture, null, pixels, width * 4) {
+        DestroyTexture(texture); return null
+    }
+    sdl3_images[slot] = texture
+    sdl3_image_revisions[slot] = pixmap_image_revisions[slot]
+    return texture
+}
+
+// A partial draw cannot be replayed over translucent paint. Latch the failure,
+// discard its recording, and require Close/Open plus a complete repaint. The
+// void recorder callback cannot return an error; the next Draw still reports it.
+Fail :: () -> bool {
+    sdl3_failed = true; PixmapGpuRecordClear(); return false
+}
+
+FlushRecorded :: () { unused PixmapSdl3Draw() }
+
+#scope_export
+PixmapSdl3Open :: (renderer: *void, max_image: s32 = 4096) -> bool {
+    if sdl3_renderer != null { return renderer == sdl3_renderer && !sdl3_failed }
+    if renderer == null || pixmap_gpu_active || max_image <= 0 || max_image > 16384 { return false }
+    sdl3_renderer = renderer; sdl3_failed = false
+    // ONE, ONE_MINUS_SRC_ALPHA, ADD for color and alpha.
+    sdl3_premultiplied = ComposeBlend(2, 6, 1, 2, 6, 1)
+    if sdl3_premultiplied == cast(u32)0x7fffffff || !OpenAtlas() {
+        sdl3_renderer = null; return false
+    }
+    pixmap_gpu_max_image = max_image; sdl3_seen_revision = 0
+    pixmap_gpu_flush = FlushRecorded; pixmap_gpu_active = true
+    return true
+}
+
+// The host owns every returned target, including superseded targets. On null,
+// the earlier target is retained. UseTarget restores it after a host failure.
+PixmapSdl3CreateTarget :: (width: s32, height: s32) -> *void {
+    if sdl3_renderer == null || sdl3_failed || width <= 0 || height <= 0 { return null }
+    if sdl3_target != null && !PixmapSdl3Draw() { return null }
+    next := CreateTexture(sdl3_renderer, cast(u32)Sdl3Argb, 2, width, height)
+    if next != null { sdl3_target = next }
+    return next
+}
+
+PixmapSdl3UseTarget :: (texture: *void) -> bool {
+    if sdl3_renderer == null || sdl3_failed { return false }
+    if sdl3_target != texture && sdl3_target != null && !PixmapSdl3Draw() { return false }
+    sdl3_target = texture; return true
+}
+
+// Upload packed dirty rectangles, then replay batches without sorting. SDL3's
+// bool results and float colors differ from SDL2's int results and byte colors.
+// On success the window is restored as render target, as in the SDL2 sink.
+PixmapSdl3Draw :: () -> bool {
+    if sdl3_renderer == null || sdl3_failed { return false }
+    SweepImages()
+    if sdl3_target == null { return pixmap_gpu_batches.count == 0 && pixmap_gpu_uploads.count == 0 }
+    for index: 0..pixmap_gpu_uploads.count - 1 {
+        upload := pixmap_gpu_uploads[index]
+        area: Sdl3Area = .{upload.x, upload.y, upload.width, upload.height}
+        if !UpdateTexture(sdl3_atlas, cast(*void)*area, *pixmap_gpu_staged[upload.start], upload.width * 4) { return Fail() }
+    }
+    if pixmap_gpu_batches.count > 0 {
+        if !SetRenderTarget(sdl3_renderer, sdl3_target) { return Fail() }
+        ok := true
+        for index: 0..pixmap_gpu_batches.count - 1 {
+            batch := pixmap_gpu_batches[index]
+            texture := sdl3_atlas
+            if batch.slot >= 0 {
+                texture = ImageTexture(batch.slot)
+                if texture != null && ImageSmooth(batch.slot) != batch.smooth {
+                    // Filtering changes must follow earlier queued draws using
+                    // that same texture, even on renderers deferring submission.
+                    if !RenderFlush(sdl3_renderer) || !SetTextureScale(texture, ifx batch.smooth then 1 else 0) { ok = false; break }
+                    SetImageSmooth(batch.slot, batch.smooth)
+                }
+            }
+            if texture == null { ok = false; break }
+            offset: s32
+            while offset < batch.count {
+                count := batch.count - offset
+                if count > Sdl3ColorCount { count = Sdl3ColorCount }
+                for at: cast(s32)0..count - 1 {
+                    vertex := pixmap_gpu_vertices[batch.first + offset + at]
+                    // PixmapGpuImageQuad already premultiplies image tint RGB;
+                    // atlas ink stays straight. Preserve both while normalizing.
+                    sdl3_colors[at] = .{cast(float32)vertex.r / 255.0,
+                        cast(float32)vertex.g / 255.0, cast(float32)vertex.b / 255.0, cast(float32)vertex.a / 255.0}
+                }
+                vertex := *pixmap_gpu_vertices[batch.first + offset]
+                if !RenderGeometryRaw(sdl3_renderer, texture, *vertex.x, cast(s32)size_of(PixmapGpuVertex),
+                    *sdl3_colors[0], cast(s32)size_of(Sdl3Color), *vertex.u, cast(s32)size_of(PixmapGpuVertex), count, null, 0, 0) {
+                    ok = false; break
+                }
+                offset += count
+            }
+            if !ok { break }
+        }
+        restored := SetRenderTarget(sdl3_renderer, null)
+        if !ok || !restored { return Fail() }
+    }
+    PixmapGpuRecordClear(); return true
+}
+
+// SDL's reset event invalidates target contents. Host recreates its retained
+// target and requests full damage after this; image textures return on demand.
+PixmapSdl3DeviceLost :: () -> bool {
+    if sdl3_renderer == null { return false }
+    sdl3_target = null; PixmapGpuRecordClear()
+    for slot: 0..PixmapImageLimit - 1 { ForgetImage(slot) }
+    if sdl3_atlas != null { DestroyTexture(sdl3_atlas); sdl3_atlas = null }
+    sdl3_failed = !OpenAtlas()
+    return !sdl3_failed
+}
+
+PixmapSdl3Close :: () {
+    if sdl3_renderer == null { return }
+    PixmapGpuRecordClear()
+    for slot: 0..PixmapImageLimit - 1 { ForgetImage(slot) }
+    if sdl3_atlas != null { DestroyTexture(sdl3_atlas); sdl3_atlas = null }
+    pixmap_gpu_active = false; pixmap_gpu_flush = sdl3_no_flush; pixmap_gpu_max_image = 0
+    sdl3_target = null; sdl3_renderer = null; sdl3_failed = false; sdl3_seen_revision = 0
+}

@@ -1,0 +1,169 @@
+// Shared pixmap paint workload for CPU, SDL2, raylib and SDL3 sinks. No clock, input,
+// resource loading or retained scene state. Call Describe for the workload key.
+// Hosts register BackendComparisonImagePixels as BackendComparisonImagePath
+// before timing, at the same free slot,
+// keep that caller-owned storage alive, use scale 1 and a Width x Height target,
+// then call BackendComparisonPaint once per full frame. Zoom is already applied
+// to paint coordinates here. Keep font resources and presentation policy equal.
+#import "geometry"
+#import "drawing_props"
+#import "raster"
+#import "raster_shape"
+#import "raster_text"
+#import "raster_triangles"
+#import "paint_texture"
+Pixels :: #import "pixmap";
+
+BackendComparisonWidth :: 480;
+BackendComparisonHeight :: 320;
+BackendComparisonPeriod :: 120;
+BackendComparisonSceneCount :: 5;
+BackendComparisonText :: 0;
+BackendComparisonImages :: 1;
+BackendComparisonShapes :: 2;
+BackendComparisonScroll :: 3;
+BackendComparisonZoom :: 4;
+BackendComparisonImagePath :: "backend-comparison-fixture";
+BackendComparisonImageSide :: 16;
+BackendComparisonBackground :: Color.{32, 37, 43, 255};
+
+BackendComparisonMetadata :: struct {
+    version: s32
+    valid: bool
+    scene: s32
+    name: string
+    frame: s32
+    period: s32
+    width: s32
+    height: s32
+    scale: float32
+    zoom: float32
+    scroll_y: s32
+}
+
+// Euclidean wrapping also handles the minimum s32 without negating it.
+#program_export
+BackendComparisonDescribe :: (scene: s32, frame: s32) -> BackendComparisonMetadata {
+    result: BackendComparisonMetadata
+    result.version = 1; result.scene = scene
+    result.frame = frame % BackendComparisonPeriod
+    if result.frame < 0 { result.frame += BackendComparisonPeriod }
+    result.period = BackendComparisonPeriod
+    result.width = BackendComparisonWidth; result.height = BackendComparisonHeight
+    result.scale = 1.0; result.zoom = 1.0
+    result.valid = scene >= 0 && scene < BackendComparisonSceneCount
+    if scene == BackendComparisonText { result.name = "text" }
+    else if scene == BackendComparisonImages { result.name = "images" }
+    else if scene == BackendComparisonShapes { result.name = "shapes" }
+    else if scene == BackendComparisonScroll {
+        result.name = "scroll"; result.scroll_y = result.frame * 2
+    } else if scene == BackendComparisonZoom {
+        result.name = "zoom"; result.zoom = 1.0 + cast(float32)(result.frame % 5) * 0.25
+        result.scroll_y = result.frame * 2
+    }
+    return result
+}
+
+#program_export
+BackendComparisonPrintMetadata :: (scene: s32, frame: s32) {
+    info := BackendComparisonDescribe(scene, frame)
+    print("scene_version=% scene=% name=% valid=% frame=% period=% width=% height=% scale=% zoom=% scroll_y=%\n",
+        info.version, info.scene, info.name, info.valid, info.frame, info.period,
+        info.width, info.height, info.scale, info.zoom, info.scroll_y)
+}
+
+// Straight-alpha 0xAARRGGBB, row-major. No registration or hidden asset cache.
+// A short destination is rejected before writing; trailing storage is preserved.
+#program_export
+BackendComparisonImagePixels :: (pixels: []u32) -> bool {
+    if pixels.count < BackendComparisonImageSide * BackendComparisonImageSide { return false }
+    for y: cast(s32)0..15 { for x: cast(s32)0..15 {
+        pixels[y * 16 + x] = ifx (x / 4 + y / 4) % 2 == 0 then cast(u32)0xffe02050 else cast(u32)0x8020d0a0
+    } }
+    return true
+}
+
+BackendComparisonTextPaint :: (frame: s32) {
+    for row: cast(s32)0..13 { for column: cast(s32)0..1 {
+        x := 8 + column * 240; y := 8 + row * 22
+        font := 12 + row % 3 * 2
+        ink: Color = .{230, cast(u8)(170 + row * 5), 140, 220}
+        value := ifx row % 2 == 0 then "Kryon: quick brown fox 012345" else "UTF-8: caf\xC3\xA9 \xCE\xA9 \xE6\x97\xA5"
+        PaintTextClipped(value, x - frame % 8, y, font, ink,
+            .{cast(float32)x, cast(float32)y, 224.0, 20.0})
+    } }
+}
+
+BackendComparisonImagesPaint :: (frame: s32) {
+    for row: cast(s32)0..5 { for column: cast(s32)0..7 {
+        x := cast(float32)(8 + column * 58); y := cast(float32)(8 + row * 50)
+        source: Rectangle = .{0.0, 0.0, 16.0, 16.0}
+        if (row + column + frame) % 2 != 0 { source = .{16.0, 0.0, -16.0, 16.0} }
+        // Every fourth tile exercises a tight clip and rounded source coverage.
+        radius: float32 = ifx column % 4 == 3 then 8.0 else 0.0
+        clip: Rectangle = .{x, y, 48.0, 40.0}
+        if column % 4 == 3 { clip = .{x + 4.0, y + 3.0, 36.0, 32.0} }
+        Pixels.RasterImage(BackendComparisonImagePath, 0, source,
+            .{x, y, 48.0, 40.0}, clip, .{}, 0.0, radius,
+            .{255, 255, 255, cast(u8)(255 - row % 3 * 40)})
+    } }
+}
+
+BackendComparisonShapesPaint :: (frame: s32) {
+    // Stable opaque, ordered alpha, rounded and clipped-text pixel probes.
+    FillRoundedRectangle(.{8.0, 8.0, 48.0, 24.0}, 0.0, 0, .{200, 60, 40, 255})
+    FillRoundedRectangle(.{32.0, 8.0, 48.0, 24.0}, 0.0, 0, .{20, 100, 220, 128})
+    FillRoundedRectangle(.{96.0, 8.0, 40.0, 24.0}, 12.0, 0, .{80, 200, 100, 255})
+    PaintTextClipped("MMMMMMMMMMMM", 360, 8, 18, .{255, 255, 255, 255}, .{380.0, 8.0, 24.0, 20.0})
+    for row: cast(s32)0..3 { for column: cast(s32)0..5 {
+        x := cast(float32)(8 + column * 78 + frame % 7)
+        y := cast(float32)(48 + row * 66)
+        FillRoundedRectangle(.{x, y, 64.0, 48.0}, cast(float32)(row * 5), 12,
+            .{cast(u8)(60 + column * 25), 100, 210, 170})
+        StrokeRoundedRectangle(.{x + 3.0, y + 3.0, 58.0, 42.0}, 9.0, 12, 2.0,
+            .{240, 220, 120, 210})
+        StrokeLine(.{x, y + 48.0, 64.0, -48.0}, .{120, 240, 160, 180})
+        points: [3]Vector2 = .{.{x + 10.0, y + 38.0}, .{x + 32.0, y + 10.0}, .{x + 54.0, y + 38.0}}
+        FillTriangles(points[:], .{240, 100, 80, 128})
+    } }
+}
+
+BackendComparisonViewPaint :: (info: BackendComparisonMetadata) {
+    clip: Rectangle = .{8.0, 40.0, 464.0, 272.0}
+    PaintText("Scroll / zoom: identical content", 8, 8, 18, .{230, 230, 240, 255})
+    for row: cast(s32)0..9 { for column: cast(s32)0..5 {
+        x := 8.0 + cast(float32)(column * 78) * info.zoom
+        y := 40.0 + cast(float32)(row * 46 - info.scroll_y) * info.zoom
+        Pixels.RasterImage(BackendComparisonImagePath, 0, .{0.0, 0.0, 16.0, 16.0},
+            .{x, y, 32.0 * info.zoom, 24.0 * info.zoom}, clip, .{}, 0.0, 0.0, .{255, 255, 255, 255})
+        PaintTextClipped("Tile 0123", cast(s32)x, cast(s32)(y + 26.0 * info.zoom),
+            cast(s32)(12.0 * info.zoom), .{210, 230, 250, 230}, clip)
+    } }
+}
+
+// A valid scene always paints its whole background, so previous target pixels
+// cannot influence the result. Invalid scene IDs emit nothing. Frame arithmetic
+// is normalized before use; huge or negative inputs stay bounded.
+#program_export
+BackendComparisonPaint :: (scene: s32, frame: s32) {
+    info := BackendComparisonDescribe(scene, frame)
+    if !info.valid { return }
+    // Direct raster calls share the paint emitter's image context. Fix sampling
+    // and masking for this workload, then restore the surrounding host state.
+    previous_smooth := emitting_smooth
+    previous_polygon := emitting_image_polygon
+    previous_texture := emitting_texture
+    emitting_smooth = false
+    emitting_image_polygon = previous_polygon[:0]
+    emitting_texture = .{}
+    defer {
+        emitting_smooth = previous_smooth
+        emitting_image_polygon = previous_polygon
+        emitting_texture = previous_texture
+    }
+    FillRoundedRectangle(.{0.0, 0.0, 480.0, 320.0}, 0.0, 0, BackendComparisonBackground)
+    if scene == BackendComparisonText { BackendComparisonTextPaint(info.frame) }
+    else if scene == BackendComparisonImages { BackendComparisonImagesPaint(info.frame) }
+    else if scene == BackendComparisonShapes { BackendComparisonShapesPaint(info.frame) }
+    else { BackendComparisonViewPaint(info) }
+}

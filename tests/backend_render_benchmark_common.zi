@@ -1,0 +1,145 @@
+// Test-only shared workload, correctness gate and CPU clocks. Adapter functions
+// are supplied by exactly one executable; SDL2 and SDL3 never share a link.
+Pixels :: #import "pixmap";
+#import "pixmap_gpu"
+#import, file "backend_comparison_scene.zi";
+#import "std/environment_linux"
+#import "std/c_string"
+#import "std/byte_text_linux"
+libc :: #system_library "c";
+Stamp :: struct { seconds: s64; nanoseconds: s64 }
+Clock :: (kind: s32, stamp: *Stamp) -> s32 #foreign libc "clock_gettime";
+Now :: () -> s64 { stamp: Stamp; if Clock(1, *stamp) != 0 { return -1 }; return stamp.seconds * 1000000000 + stamp.nanoseconds }
+Number :: (key: string, fallback: s32) -> s32 {
+    text := EnvironmentText(key); if text.count == 0 { return fallback }
+    result: s32
+    for byte: text { if byte < cast(u8)48 || byte > cast(u8)57 { return -1 }; result = result * 10 + cast(s32)byte - 48; if result > 100000 { return -1 } }
+    return result
+}
+Count :: 480 * 320;
+cpu: [Count]u32;
+gpu: [Count]u32;
+fixture: [256]u32;
+Sample :: struct { compose: s64; submit: s64; present: s64 }
+samples: [10000]Sample;
+Paint :: (scene: s32, frame: s32) -> bool {
+    if !Pixels.PixmapBeginInto(cast(u32)0xff20252b, 480, 320, gpu[:], true) { return false }
+    BackendComparisonPaint(scene, frame); Pixels.PixmapEndInto(); return true
+}
+Difference :: (first: u32, second: u32) -> s32 {
+    maximum: s32
+    for channel: cast(s32)0..3 {
+        shift := cast(u32)(channel * 8)
+        difference := cast(s32)((first >> shift) & cast(u32)255) -
+            cast(s32)((second >> shift) & cast(u32)255)
+        if difference < 0 { difference = -difference }
+        if difference > maximum { maximum = difference }
+    }
+    return maximum
+}
+
+// At a fractional zoom, an exact source checker boundary can coincide with a
+// destination pixel centre. CPU division and GPU UV interpolation can approach
+// that nearest-sampling discontinuity from opposite sides. Only that exact
+// location may match an adjacent reference pixel, along the tied axis only.
+// This is a sampling-boundary allowance, not an AA/channel tolerance increase.
+SamplingBoundaryMatch :: (scene: s32, frame: s32, x: s32, y: s32) -> bool {
+    if scene != BackendComparisonZoom || x < 8 || x >= 472 || y < 40 || y >= 312 { return false }
+    info := BackendComparisonDescribe(scene, frame)
+    if info.zoom <= 1.0 { return false }
+    px := cast(float32)x + 0.5; py := cast(float32)y + 0.5
+    for row: cast(s32)0..9 { for column: cast(s32)0..5 {
+        left := 8.0 + cast(float32)(column * 78) * info.zoom
+        top := 40.0 + cast(float32)(row * 46 - info.scroll_y) * info.zoom
+        width := 32.0 * info.zoom; height := 24.0 * info.zoom
+        if px < left || px >= left + width || py < top || py >= top + height { continue }
+        tie_x := false; tie_y := false
+        for edge: cast(s32)1..3 {
+            dx := px - (left + width * cast(float32)edge / 4.0)
+            dy := py - (top + height * cast(float32)edge / 4.0)
+            if dx >= -0.0001 && dx <= 0.0001 { tie_x = true }
+            if dy >= -0.0001 && dy <= 0.0001 { tie_y = true }
+        }
+        if !tie_x && !tie_y { return false }
+        for dy: cast(s32)-1..1 { for dx: cast(s32)-1..1 {
+            if (dx != 0 && !tie_x) || (dy != 0 && !tie_y) || (dx == 0 && dy == 0) { continue }
+            nx := x + dx; ny := y + dy
+            npx := cast(float32)nx + 0.5; npy := cast(float32)ny + 0.5
+            if nx < 8 || nx >= 472 || ny < 40 || ny >= 312 ||
+                npx < left || npx >= left + width || npy < top || npy >= top + height { continue }
+            if Difference(gpu[y * BackendComparisonWidth + x], cpu[ny * BackendComparisonWidth + nx]) <= 3 { return true }
+        } }
+        return false
+    } }
+    return false
+}
+
+Parity :: (scene: s32, frames: s32) -> bool {
+    passed := true
+    for index: cast(s32)0..frames - 1 {
+        frame := ifx frames == 3 && index == 2 then 119 else index
+        pixmap_gpu_active = false
+        if !Pixels.PixmapBeginInto(cast(u32)0xff20252b, 480, 320, cpu[:], true) { return false }
+        BackendComparisonPaint(scene, frame); Pixels.PixmapEndInto()
+        pixmap_gpu_active = true
+        if !Paint(scene, frame) || !bench_draw() || !bench_read() { return false }
+        maximum: s32; failures: s32; exact: s32; ties: s32; raw_failures: s32
+        for at: cast(s32)0..Count - 1 {
+            pixel_max: s32
+            for channel: cast(s32)0..3 {
+                shift := cast(u32)(channel * 8)
+                delta := cast(s32)((cpu[at] >> shift) & cast(u32)255) - cast(s32)((gpu[at] >> shift) & cast(u32)255)
+                if delta < 0 { delta = -delta }; if delta > pixel_max { pixel_max = delta }
+            }
+            if pixel_max > maximum { maximum = pixel_max }
+            if pixel_max > 3 {
+                raw_failures += 1
+                if SamplingBoundaryMatch(scene, frame, at % 480, at / 480) { ties += 1 }
+                else { failures += 1 }
+            }; if pixel_max == 0 { exact += 1 }
+        }
+        print("PARITY % % % % % % % %\n", scene, frame, Count, exact, maximum, failures, ties, raw_failures)
+        if failures > 0 { passed = false }
+    }
+    return passed
+}
+RunBackendRenderBenchmark :: () -> s32 {
+    if !BackendComparisonImagePixels(fixture[:]) || !Pixels.PixmapSetImage(0, BackendComparisonImagePath, 16, 16, fixture[:]) { return 1 }
+    defer Pixels.PixmapClearImage(0)
+    defer Pixels.PixmapCloseWorkers()
+    if !bench_open() { print("UNSUPPORTED renderer creation\n"); return 2 }
+    defer bench_close()
+    if EnvironmentText("BENCH_MODE") == "parity" {
+        frames := Number("BENCH_PARITY_FRAMES", 3)
+        if frames != 3 && frames != 120 { return 3 }
+        passed := true
+        for scene: cast(s32)0..4 { if !Parity(scene, frames) { passed = false } }
+        return ifx passed then 0 else 10
+    }
+    scene := Number("BENCH_SCENE", 0); warmup := Number("BENCH_WARMUP", 120); count := Number("BENCH_FRAMES", 240)
+    if scene < 0 || scene > 4 || warmup < 1 || count < 1 || count > 10000 { return 3 }
+    for frame: cast(s32)0..warmup - 1 { if !Paint(scene, frame) || !bench_draw() || !bench_present() { return 4 } }
+    if !bench_read() { return 5 } // drain warmup outside measured interval
+    start := Now(); if start < 0 { return 6 }
+    for frame: cast(s32)0..count - 1 {
+        a := Now(); if !Paint(scene, frame) { return 4 }; b := Now()
+        if !bench_draw() { return 4 }; c := Now()
+        if !bench_present() { return 4 }; d := Now()
+        samples[frame] = .{b - a, c - b, d - c}
+    }
+    drain_start := Now()
+    if !bench_read() { return 5 } // synchronous target readback proves completion
+    finish := Now()
+    print("WALL % % %\n", count, finish - start, finish - drain_start)
+    for frame: cast(s32)0..count - 1 {
+        sample := samples[frame]; print("SAMPLE % % % %\n", frame, sample.compose, sample.submit, sample.present)
+    }
+    return 0
+}
+BenchBool :: #type () -> bool;
+BenchVoid :: #type () -> ();
+bench_open: BenchBool;
+bench_close: BenchVoid;
+bench_draw: BenchBool;
+bench_present: BenchBool;
+bench_read: BenchBool;

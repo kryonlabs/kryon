@@ -135,6 +135,8 @@ pixmap = "src/backend/pixmap.zi"
 pixmap_frame = "src/backend/pixmap_frame.zi"
 pixmap_sdl = "src/backend/pixmap_sdl.zi"
 pixmap_sdl_gpu = "src/backend/pixmap_sdl_gpu.zi"
+pixmap_sdl3 = "src/backend/pixmap_sdl3.zi"
+pixmap_sdl3_gpu = "src/backend/pixmap_sdl3_gpu.zi"
 pixmap_cell_text = "src/backend/pixmap_cell_text.zi"
 EventWakeSDL = "src/backend/event_wake_sdl.zi"
 Theme = "src/ui/theme.zi"
@@ -258,3 +260,13 @@ outputs = ["resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer
 [artifacts.renderer-web]
 inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
 outputs = ["web/ziran_web.js", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
+
+[dependencies.sdl3]
+git = "https://github.com/libsdl-org/SDL.git"
+ref = "829a65d769d935c4852f8159e964312c0957260a"
+source = true
+
+# Optional SDL3 GPU renderer support; no change to existing renderer defaults.
+[artifacts.native-sdl3]
+inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "scripts/build-sdl3.sh", "Makefile"]
+outputs = ["lib/libSDL3.a", "lib/pkgconfig/sdl3.pc", "link.txt", "resources/LICENSE-SDL3", "resources/SDL_build_config.h", "resources/SDL3-headers.tar", "include/SDL3/SDL.h", "include/SDL3/SDL_render.h", "include/SDL3/SDL_gpu.h", "include/SDL3/SDL_version.h"]

@@ -1,0 +1,74 @@
+// Opt-in SDL >= 3.4 renderer creation. SDL's 2D GPU renderer owns its shaders.
+// Call on the window's owner thread; the caller owns the returned renderer.
+#import "std/c_string"
+
+sdl3 :: #system_library "SDL3";
+Version :: () -> s32 #foreign sdl3 "SDL_GetVersion";
+CreateRenderer :: (window: *void, name: *u8) -> *void #foreign sdl3 "SDL_CreateRenderer";
+DestroyRenderer :: (renderer: *void) #foreign sdl3 "SDL_DestroyRenderer";
+RendererName :: (renderer: *void) -> *u8 #foreign sdl3 "SDL_GetRendererName";
+RendererDevice :: (renderer: *void) -> *void #foreign sdl3 "SDL_GetGPURendererDevice";
+DeviceDriver :: (device: *void) -> *u8 #foreign sdl3 "SDL_GetGPUDeviceDriver";
+DeviceProperties :: (device: *void) -> u32 #foreign sdl3 "SDL_GetGPUDeviceProperties";
+StringProperty :: (properties: u32, name: *u8, fallback: *u8) -> *u8 #foreign sdl3 "SDL_GetStringProperty";
+
+// All strings and the device pointer are borrowed from SDL until destruction.
+// Optional device strings may be null. The API name (e.g. vulkan) does not prove
+// hardware acceleration: SDL can select a software Vulkan implementation.
+PixmapSdl3RendererMetadata :: struct {
+    valid: bool
+    renderer_name: *u8
+    device: *void
+    api: *u8
+    device_name: *u8
+    driver_name: *u8
+    driver_info: *u8
+}
+
+#scope_module
+IsGpuName :: (name: *u8) -> bool {
+    if name == null { return false }
+    return name[0] == cast(u8)103 && name[1] == cast(u8)112 &&
+        name[2] == cast(u8)117 && name[3] == cast(u8)0
+}
+
+Property :: (properties: u32, key: string) -> *u8 {
+    if properties == cast(u32)0 { return null }
+    name: [64]u8
+    if !CopyCString(key, name[:]) { return null }
+    return StringProperty(properties, *name[0], null)
+}
+
+#scope_export
+#program_export
+PixmapSdl3DescribeRenderer :: (renderer: *void) -> PixmapSdl3RendererMetadata {
+    result: PixmapSdl3RendererMetadata
+    if renderer == null || Version() < 3004000 { return result }
+    result.renderer_name = RendererName(renderer)
+    if !IsGpuName(result.renderer_name) { return result }
+    result.device = RendererDevice(renderer)
+    if result.device == null { return result }
+    result.api = DeviceDriver(result.device)
+    result.valid = result.api != null
+    properties := DeviceProperties(result.device)
+    result.device_name = Property(properties, "SDL.gpu.device.name")
+    result.driver_name = Property(properties, "SDL.gpu.device.driver_name")
+    result.driver_info = Property(properties, "SDL.gpu.device.driver_info")
+    return result
+}
+
+// An explicit single renderer name overrides SDL_RENDER_DRIVER preferences.
+// Failure is returned to the host; no SDL2, software, OpenGL or other renderer
+// is tried. A GPU device can itself be software; inspect the metadata/logs.
+#program_export
+CreatePixmapSdl3Renderer :: (window: *void) -> *void {
+    if window == null || Version() < 3004000 { return null }
+    name: [4]u8
+    if !CopyCString("gpu", name[:]) { return null }
+    renderer := CreateRenderer(window, *name[0])
+    if renderer == null { return null }
+    if !PixmapSdl3DescribeRenderer(renderer).valid {
+        DestroyRenderer(renderer); return null
+    }
+    return renderer
+}

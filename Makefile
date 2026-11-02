@@ -562,6 +562,12 @@ pixmap-gpu-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_pixmap_gpu_test.sh
 test: pixmap-gpu-test
 
+# Opt-in SDL3 SDK and real GPU-renderer parity on a private display.
+.PHONY: sdl3-test
+sdl3-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		YUE_DESKTOP_RECOVERY=0 ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/sdl3_test.py
+
 .PHONY: style-cache-test
 style-cache-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_style_cache_test.sh

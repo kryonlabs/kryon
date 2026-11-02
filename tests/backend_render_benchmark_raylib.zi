@@ -1,0 +1,112 @@
+// Test-only replay of pixmap_gpu geometry. This is NOT the existing raylib
+// high-level renderer: fonts, raster composition and ordered geometry are common.
+#import, file "backend_render_benchmark_common.zi";
+#import "std/c_string"
+#import "std/byte_text_linux"
+#import "pixmap_gpu"
+#import "drawing_props"
+#import "geometry"
+ray :: #system_library "raylib";
+sdl2 :: #system_library "SDL2";
+SwapInterval :: () -> s32 #foreign sdl2 "SDL_GL_GetSwapInterval";
+gles :: #system_library "GLESv2";
+Texture :: struct { id: u32; width: s32; height: s32; mipmaps: s32; format: s32 }
+Target :: struct { id: u32; texture: Texture; depth: Texture }
+Image :: struct { data: *void; width: s32; height: s32; mipmaps: s32; format: s32 }
+InitWindow :: (width: s32, height: s32, title: *u8) #foreign ray "InitWindow";
+CloseWindow :: () #foreign ray "CloseWindow";
+Ready :: () -> bool #foreign ray "IsWindowReady";
+Config :: (flags: u32) #foreign ray "SetConfigFlags";
+BeginDrawing :: () #foreign ray "BeginDrawing";
+EndDrawing :: () #foreign ray "EndDrawing";
+LoadTarget :: (width: s32, height: s32) -> Target #foreign ray "LoadRenderTexture";
+UnloadTarget :: (target: Target) #foreign ray "UnloadRenderTexture";
+BeginTarget :: (target: Target) #foreign ray "BeginTextureMode";
+EndTarget :: () #foreign ray "EndTextureMode";
+LoadTexture :: (image: Image) -> Texture #foreign ray "LoadTextureFromImage";
+Update :: (texture: Texture, rectangle: Rectangle, data: *void) #foreign ray "UpdateTextureRec";
+Unload :: (texture: Texture) #foreign ray "UnloadTexture";
+ReadTexture :: (texture: Texture) -> Image #foreign ray "LoadImageFromTexture";
+UnloadImage :: (image: Image) #foreign ray "UnloadImage";
+DrawTexture :: (texture: Texture, source: Rectangle, destination: Rectangle, origin: Vector2, rotation: float32, tint: Color) #foreign ray "DrawTexturePro";
+Flush :: () #foreign ray "rlDrawRenderBatchActive";
+SetTexture :: (id: u32) #foreign ray "rlSetTexture";
+Begin :: (mode: s32) #foreign ray "rlBegin";
+End :: () #foreign ray "rlEnd";
+Vertex :: (x: float32, y: float32) #foreign ray "rlVertex2f";
+Ink :: (r: u8, g: u8, b: u8, a: u8) #foreign ray "rlColor4ub";
+UV :: (u: float32, v: float32) #foreign ray "rlTexCoord2f";
+NoCull :: () #foreign ray "rlDisableBackfaceCulling";
+Factors :: (sr: s32, dr: s32, sa: s32, da: s32, er: s32, ea: s32) #foreign ray "rlSetBlendFactorsSeparate";
+Blend :: (mode: s32) #foreign ray "BeginBlendMode";
+EndBlend :: () #foreign ray "EndBlendMode";
+GlString :: (key: u32) -> *u8 #foreign gles "glGetString";
+target: Target; atlas: Texture; image_texture: Texture;
+alloclib :: #system_library "c";
+Allocate :: (count: usize, size: usize) -> *void #foreign alloclib "calloc";
+Release :: (value: *void) #foreign alloclib "free";
+converted: [65536]u32;
+Swap :: (argb: u32) -> u32 { return (argb & cast(u32)0xff00ff00) | ((argb & cast(u32)255) << cast(u32)16) | ((argb >> cast(u32)16) & cast(u32)255) }
+BenchOpen :: () -> bool {
+    Config(cast(u32)128) // hidden private window; no vsync flag
+    title: [32]u8; unused CopyCString("Private backend benchmark", title[:]); InitWindow(480, 320, *title[0])
+    if !Ready() || SwapInterval() != 0 { return false }
+    print("IDENTITY renderer=raylib-rlgl api=% device=% vendor=% vsync=0\n", TextFromCString(GlString(cast(u32)0x1f02)), TextFromCString(GlString(cast(u32)0x1f01)), TextFromCString(GlString(cast(u32)0x1f00)))
+    target = LoadTarget(480, 320); if target.id == cast(u32)0 { return false }
+    memory := Allocate(cast(usize)4194304, size_of(u32)); if memory == null { return false }
+    defer Release(memory)
+    atlas_pixels := cast(*u32)memory
+    for y: cast(s32)0..3 { for x: cast(s32)0..3 { atlas_pixels[y * 2048 + x] = cast(u32)0xffffffff } }
+    atlas = LoadTexture(.{cast(*void)*atlas_pixels[0], 2048, 2048, 1, 7}) // RGBA8
+    for index: cast(s32)0..255 {
+        p := fixture[index]; a := p >> cast(u32)24
+        r := ((p >> cast(u32)16) & cast(u32)255) * a / cast(u32)255
+        g := ((p >> cast(u32)8) & cast(u32)255) * a / cast(u32)255
+        b := (p & cast(u32)255) * a / cast(u32)255
+        converted[index] = (a << cast(u32)24) | (b << cast(u32)16) | (g << cast(u32)8) | r
+    }
+    image_texture = LoadTexture(.{cast(*void)*converted[0], 16, 16, 1, 7})
+    PixmapGpuRecordClear(); PixmapGpuAtlasClear(); pixmap_gpu_max_image = 4096
+    pixmap_gpu_flush = Replay; pixmap_gpu_active = true
+    NoCull(); return atlas.id != cast(u32)0 && image_texture.id != cast(u32)0
+}
+Replay :: () { unused BenchDraw() }
+BenchDraw :: () -> bool {
+    for index: 0..pixmap_gpu_uploads.count - 1 {
+        upload := pixmap_gpu_uploads[index]; count := upload.width * upload.height
+        if count > 65536 { return false }
+        for at: cast(s32)0..count - 1 { converted[at] = Swap(pixmap_gpu_staged[upload.start + at]) }
+        Update(atlas, .{cast(float32)upload.x, cast(float32)upload.y, cast(float32)upload.width, cast(float32)upload.height}, cast(*void)*converted[0])
+    }
+    BeginTarget(target); NoCull()
+    for index: 0..pixmap_gpu_batches.count - 1 {
+        batch := pixmap_gpu_batches[index]
+        if batch.smooth || batch.slot > 0 { EndTarget(); return false }
+        if batch.slot >= 0 { Factors(1, 771, 1, 771, 32774, 32774); Blend(7) }
+        else { Factors(770, 771, 1, 771, 32774, 32774); Blend(7) }
+        SetTexture(ifx batch.slot >= 0 then image_texture.id else atlas.id)
+        Begin(4) // RL_TRIANGLES
+        for at: cast(s32)0..batch.count - 1 {
+            v := pixmap_gpu_vertices[batch.first + at]; Ink(v.r, v.g, v.b, v.a); UV(v.u, v.v); Vertex(v.x, v.y)
+        }
+        End(); Flush(); EndBlend()
+    }
+    EndTarget(); PixmapGpuRecordClear(); return true
+}
+BenchPresent :: () -> bool {
+    BeginDrawing(); DrawTexture(target.texture, .{0.0, 0.0, 480.0, -320.0}, .{0.0, 0.0, 480.0, 320.0}, .{}, 0.0, .{255, 255, 255, 255}); EndDrawing(); return true
+}
+BenchRead :: () -> bool {
+    Flush(); image := ReadTexture(target.texture); if image.data == null { return false }; defer UnloadImage(image)
+    if image.width != 480 || image.height != 320 || image.format != 7 { return false }
+    values := cast(*u32)image.data
+    for y: cast(s32)0..319 { for x: cast(s32)0..479 { gpu[y * 480 + x] = Swap(values[(319 - y) * 480 + x]) } }
+    return true
+}
+BenchClose :: () { pixmap_gpu_active = false; Unload(atlas); Unload(image_texture); UnloadTarget(target); CloseWindow() }
+
+main :: () -> s32 {
+    bench_open = BenchOpen; bench_close = BenchClose; bench_draw = BenchDraw
+    bench_present = BenchPresent; bench_read = BenchRead
+    return RunBackendRenderBenchmark()
+}

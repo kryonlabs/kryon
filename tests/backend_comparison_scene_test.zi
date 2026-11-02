@@ -1,0 +1,125 @@
+#import, file "backend_comparison_scene.zi";
+#import "paint_texture"
+#import "geometry"
+#import "drawing_props"
+Pixels :: #import "pixmap";
+
+Count :: BackendComparisonWidth * BackendComparisonHeight;
+first: [Count + 4]u32;
+second: [Count + 4]u32;
+fixture: [260]u32;
+polygon: [3]Vector2;
+Background :: 0xff20252b;
+Guard :: 0xdeadbeef;
+
+Render :: (scene: s32, frame: s32, pixels: []u32, clear: u32) -> bool {
+    if !Pixels.PixmapBeginInto(clear, BackendComparisonWidth, BackendComparisonHeight, pixels, true) { return false }
+    BackendComparisonPaint(scene, frame)
+    Pixels.PixmapEndInto()
+    return true
+}
+
+Same :: () -> bool {
+    for at: cast(s32)0..Count - 1 { if first[at] != second[at] { return false } }
+    return true
+}
+
+Guards :: () -> bool {
+    for at: cast(s32)Count..Count + 3 {
+        if first[at] != Guard || second[at] != Guard { return false }
+    }
+    return true
+}
+
+Pixel :: (x: s32, y: s32) -> u32 { return first[y * BackendComparisonWidth + x] }
+
+Check :: (condition: bool, message: string) -> bool {
+    if !condition { print("FAIL: %\n", message) }
+    return condition
+}
+
+main :: () -> s32 {
+    defer Pixels.PixmapCloseWorkers()
+    for at: cast(s32)0..259 { fixture[at] = Guard }
+    if !Check(!BackendComparisonImagePixels(fixture[:255]), "short fixture storage accepted") { return 1 }
+    for at: cast(s32)0..259 { if fixture[at] != Guard { return 2 } }
+    if !BackendComparisonImagePixels(fixture[:]) { return 3 }
+    if !Check(fixture[0] == cast(u32)0xffe02050 && fixture[4] == cast(u32)0x8020d0a0 &&
+        fixture[64] == fixture[4] && fixture[68] == fixture[0], "fixture checker/alpha") { return 4 }
+    for at: cast(s32)256..259 { if fixture[at] != Guard { return 5 } }
+    if !Pixels.PixmapSetImage(0, BackendComparisonImagePath, 16, 16, fixture[:256]) { return 6 }
+    defer Pixels.PixmapClearImage(0)
+    for at: cast(s32)Count..Count + 3 { first[at] = Guard; second[at] = Guard }
+
+    frames: [3]s32 = .{0, 1, 119}
+    for scene: cast(s32)0..BackendComparisonSceneCount - 1 {
+        for frame: frames {
+            info := BackendComparisonDescribe(scene, frame)
+            if !Check(info.valid && info.version == 1 && info.scene == scene && info.frame == frame &&
+                info.name.count > 0 && info.width == 480 && info.height == 320 &&
+                info.scale == 1.0 && info.zoom >= 1.0 && info.zoom <= 2.0 && info.period == 120,
+                "scene metadata") { return 7 }
+            if !Render(scene, frame, first[:], cast(u32)0x010203) { return 8 }
+            // Poison the other target differently, and interleave another scene:
+            // neither old target pixels nor call order may affect the output.
+            if !Render((scene + 1) % BackendComparisonSceneCount, 7, second[:], cast(u32)0x654321) { return 9 }
+            if !Render(scene, frame + BackendComparisonPeriod, second[:], cast(u32)0xfedcba) { return 10 }
+            if !Check(Same() && Guards(), "repeat/period/order dependence or surface overrun") { return 11 }
+            if !Check(Pixel(0, 0) == Background && Pixel(479, 319) == Background, "scene background") { return 12 }
+            changed: s32
+            for at: cast(s32)0..Count - 1 { if first[at] != Background { changed += 1 } }
+            if !Check(changed > 100, "empty scene") { return 13 }
+        }
+        if !Render(scene, 0, first[:], cast(u32)0) || !Render(scene, 1, second[:], cast(u32)0) { return 14 }
+        if !Check(!Same(), "frame variation did not change pixels") { return 15 }
+        BackendComparisonPrintMetadata(scene, 1)
+    }
+
+    // Known solid/interior pixels, ordered alpha, radius and text clip. Values
+    // are independent of font outlines and antialiasing at shape boundaries.
+    if !Render(BackendComparisonShapes, 0, first[:], cast(u32)0) { return 16 }
+    if !Check(Pixel(16, 16) == cast(u32)0xffc83c28, "opaque fill") { return 17 }
+    if !Check(Pixel(40, 16) == cast(u32)0xff6e5082, "ordered translucent overlap") { return 18 }
+    if !Check(Pixel(96, 8) == Background && Pixel(116, 20) == cast(u32)0xff50c864, "rounded corner/interior") { return 19 }
+    ink: s32
+    for y: cast(s32)8..27 { for x: cast(s32)350..459 {
+        if x < 380 || x >= 404 { if Pixel(x, y) != Background { return 20 } }
+        else if Pixel(x, y) != Background { ink += 1 }
+    } }
+    if !Check(ink > 0, "clipped label missing") { return 21 }
+    if !Render(BackendComparisonImages, 0, first[:], cast(u32)0) { return 22 }
+    if !Check(Pixel(8, 8) == cast(u32)0xffe02050 && Pixel(20, 8) == cast(u32)0xff207b66,
+        "image source pixels/alpha") { return 23 }
+    // Last tile has an explicit inset clip. No image may escape it.
+    if !Check(Pixel(414, 8) == Background && Pixel(430, 20) != Background, "image clip") { return 24 }
+    // A host may have emitted a smooth/polygon-masked image just before this
+    // workload. The scene must still use its own fixed inputs and restore them.
+    polygon[0] = .{0.0, 0.0}; polygon[1] = .{1.0, 0.0}; polygon[2] = .{0.0, 1.0}
+    emitting_smooth = true; emitting_image_polygon = polygon[:]; emitting_texture.id = cast(u32)42
+    if !Render(BackendComparisonImages, 0, second[:], cast(u32)0) { return 33 }
+    if !Check(Same() && emitting_smooth && emitting_image_polygon.count == 3 &&
+        emitting_texture.id == cast(u32)42, "inherited image state or unrestored context") { return 34 }
+    emitting_smooth = false; emitting_image_polygon = polygon[:0]; emitting_texture = .{}
+    if !Render(BackendComparisonScroll, 119, first[:], cast(u32)0) { return 25 }
+    for y: cast(s32)32..319 { for x: cast(s32)0..479 {
+        if y < 40 || y >= 312 || x < 8 || x >= 472 {
+            if Pixel(x, y) != Background { print("viewport leak at %, %\n", x, y); return 26 }
+        }
+    } }
+
+    if !Render(-1, 0, first[:], cast(u32)0x123456) ||
+        !Render(BackendComparisonSceneCount, 0, second[:], cast(u32)0x123456) { return 27 }
+    for at: cast(s32)0..Count - 1 { if first[at] != cast(u32)0xff123456 || second[at] != first[at] { return 28 } }
+    if BackendComparisonDescribe(-1, 0).valid || BackendComparisonDescribe(5, 0).valid { return 29 }
+    extreme: [3]s32 = .{-1, -2147483648, 2147483647}
+    for frame: extreme {
+        info := BackendComparisonDescribe(BackendComparisonZoom, frame)
+        if !Check(info.frame >= 0 && info.frame < 120 && info.scroll_y == info.frame * 2 &&
+            info.zoom == 1.0 + cast(float32)(info.frame % 5) * 0.25, "extreme frame metadata") { return 30 }
+        if !Render(BackendComparisonZoom, frame, first[:], cast(u32)0) ||
+            !Render(BackendComparisonZoom, info.frame, second[:], cast(u32)0) { return 31 }
+        if !Check(Same() && Guards(), "extreme frame pixels") { return 32 }
+    }
+    print("Backend comparison scene CPU correctness passed\n")
+    return 0
+}

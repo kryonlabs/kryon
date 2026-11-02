@@ -1,0 +1,46 @@
+#import, file "backend_render_benchmark_common.zi";
+#import "std/c_string"
+#import "std/byte_text_linux"
+Sink :: #import "pixmap_sdl_gpu";
+sdl :: #system_library "SDL2";
+Init :: (flags: u32) -> s32 #foreign sdl "SDL_Init";
+Quit :: () #foreign sdl "SDL_Quit";
+CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32, flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
+CreateRenderer :: (window: *void, index: s32, flags: u32) -> *void #foreign sdl "SDL_CreateRenderer";
+DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
+DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
+DestroyTexture :: (texture: *void) #foreign sdl "SDL_DestroyTexture";
+SetTarget :: (renderer: *void, texture: *void) -> s32 #foreign sdl "SDL_SetRenderTarget";
+Copy :: (renderer: *void, texture: *void, source: *void, destination: *void) -> s32 #foreign sdl "SDL_RenderCopy";
+Present :: (renderer: *void) #foreign sdl "SDL_RenderPresent";
+Vsync :: (renderer: *void, value: s32) -> s32 #foreign sdl "SDL_RenderSetVSync";
+SwapInterval :: () -> s32 #foreign sdl "SDL_GL_GetSwapInterval";
+Read :: (renderer: *void, rectangle: *void, format: u32, pixels: *u32, pitch: s32) -> s32 #foreign sdl "SDL_RenderReadPixels";
+Details :: struct { name: *u8; flags: u32; format_count: u32; formats: [16]u32; max_width: s32; max_height: s32 }
+GetDetails :: (renderer: *void, info: *Details) -> s32 #foreign sdl "SDL_GetRendererInfo";
+GlGet :: #type (name: u32) -> *u8 #c_call;
+GetProc :: (name: *u8) -> GlGet #foreign sdl "SDL_GL_GetProcAddress";
+window: *void; renderer: *void; target: *void;
+BenchOpen :: () -> bool {
+    if Init(cast(u32)32) != 0 { return false }
+    title: [32]u8; unused CopyCString("Private backend benchmark", title[:])
+    window = CreateWindow(*title[0], 0, 0, 480, 320, cast(u32)8)
+    renderer = CreateRenderer(window, -1, cast(u32)10)
+    if renderer == null || Vsync(renderer, 0) != 0 { return false }
+    if SwapInterval() != 0 { return false }
+    info: Details; if GetDetails(renderer, *info) != 0 { return false }
+    name: [16]u8; unused CopyCString("glGetString", name[:]); get := GetProc(*name[0]); if get == null { return false }
+    print("IDENTITY renderer=% api=% device=% vendor=% vsync=0\n", TextFromCString(info.name), TextFromCString(get(cast(u32)0x1f02)), TextFromCString(get(cast(u32)0x1f01)), TextFromCString(get(cast(u32)0x1f00)))
+    if !Sink.PixmapGpuOpen(renderer) { return false }
+    target = Sink.PixmapGpuCreateTarget(480, 320); return target != null
+}
+BenchDraw :: () -> bool { Sink.PixmapGpuDraw(); return true }
+BenchPresent :: () -> bool { if SetTarget(renderer, null) != 0 || Copy(renderer, target, null, null) != 0 { return false }; Present(renderer); return true }
+BenchRead :: () -> bool { return SetTarget(renderer, target) == 0 && Read(renderer, null, cast(u32)372645892, *gpu[0], 1920) == 0 && SetTarget(renderer, null) == 0 }
+BenchClose :: () { Sink.PixmapGpuClose(); DestroyTexture(target); DestroyRenderer(renderer); DestroyWindow(window); Quit() }
+
+main :: () -> s32 {
+    bench_open = BenchOpen; bench_close = BenchClose; bench_draw = BenchDraw
+    bench_present = BenchPresent; bench_read = BenchRead
+    return RunBackendRenderBenchmark()
+}

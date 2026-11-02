@@ -147,6 +147,11 @@ jobs:
             libglib2.0-dev libpango1.0-dev at-spi2-core dbus-x11 gstreamer1.0-plugins-base
             gstreamer1.0-plugins-good gstreamer1.0-libav cmake libwebpdemux2
 
+      # SDL3's GPU renderer needs Vulkan even on a software-only runner.
+      - name: Install SDL3 software GPU test tools
+        if: matrix.shard == 'hosts'
+        run: sudo apt-get install -y libvulkan-dev mesa-vulkan-drivers libx11-dev libxext-dev xauth
+
       # Template tests serve this checkout through local Git URLs and use
       # the manifest's master ref. Keep that ref at the locked commit.
       - name: Prepare locked toolchain ref
@@ -200,6 +205,16 @@ jobs:
         env:
           CHROMIUM: google-chrome
         run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 make test-shard-${{ matrix.shard }}
+
+      - name: Test opt-in SDL3 GPU renderer on a private display
+        if: matrix.shard == 'hosts'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -- /usr/share/vulkan/icd.d/lvp_icd*.json
+          test -f "$1"
+          export VK_DRIVER_FILES="$1"
+          env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 make sdl3-test
 
       - name: Check repeatable frame workloads
         if: matrix.shard == 'hosts'

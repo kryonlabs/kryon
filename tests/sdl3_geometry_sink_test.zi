@@ -1,0 +1,379 @@
+Sink :: #import "pixmap_sdl3_gpu";
+Pixels :: #import "pixmap";
+#import "pixmap_gpu"
+#import "vec"
+
+libc :: #system_library "libc";
+Malloc :: (bytes: usize) -> *void #foreign libc "malloc";
+Free :: (memory: *void) #foreign libc "free";
+
+Texture :: struct { live: bool; access: s32; width: s32; height: s32; blend: u32; scale: s32 }
+Event :: struct { kind: s32; texture: *void; value: s32 }
+textures: [128]Texture;
+events: [1024]Event;
+event_count: s32;
+texture_count: s32;
+destroy_count: s32;
+renderer: s32;
+other_renderer: s32;
+current_target: *void;
+expected_target: *void;
+atlas: *void;
+failures: s32;
+fail_create: bool;
+fail_update: bool;
+fail_blend: bool;
+fail_scale: bool;
+fail_target: bool;
+fail_restore: bool;
+fail_geometry: bool;
+fail_flush: bool;
+fail_allocate: bool;
+fail_compose: bool;
+allocations: s32;
+releases: s32;
+expected_vertex: s32;
+geometry_calls: s32;
+dirty_calls: s32;
+image_calls: s32;
+fixture: [4]u32;
+
+Check :: (ok: bool, message: string) {
+    if !ok { failures += 1; print("FAIL: %\n", message) }
+}
+Near :: (one: float32, two: float32) -> bool {
+    delta := one - two; return delta > -0.000001 && delta < 0.000001
+}
+EventAt :: (kind: s32, texture: *void, value: s32) {
+    Check(event_count < 1024, "event capacity")
+    if event_count < 1024 { events[event_count] = .{kind, texture, value}; event_count += 1 }
+}
+AsTexture :: (texture: *void) -> *Texture { return cast(*Texture)texture }
+
+#program_export "SDL_CreateTexture"
+MockCreate :: (owner: *void, format: u32, access: s32, width: s32, height: s32) -> *void {
+    Check(owner == cast(*void)*renderer, "renderer identity")
+    Check(format == cast(u32)372645892 && width > 0 && height > 0, "packed ARGB texture dimensions")
+    if fail_create { return null }
+    Check(texture_count < 128, "texture capacity")
+    texture := *textures[texture_count]; texture_count += 1
+    texture.* = .{true, access, width, height, cast(u32)0, -1}
+    EventAt(1, cast(*void)texture, access)
+    if width == PixmapGpuAtlasSide && height == PixmapGpuAtlasSide && access == 0 { atlas = cast(*void)texture }
+    return cast(*void)texture
+}
+
+#program_export "SDL_DestroyTexture"
+MockDestroy :: (texture: *void) {
+    Check(texture != null && AsTexture(texture).live, "destroy live texture exactly once")
+    if texture != null { AsTexture(texture).live = false }
+    destroy_count += 1; EventAt(2, texture, 0)
+}
+
+#program_export "SDL_UpdateTexture"
+MockUpdate :: (texture: *void, rectangle: *void, pixels: *u32, pitch: s32) -> bool {
+    Check(AsTexture(texture).live, "upload live texture")
+    EventAt(3, texture, pitch)
+    if fail_update { return false }
+    if rectangle != null {
+        area := cast(*Sink.Sdl3Area)rectangle
+        Check(texture == atlas && pitch == area.width * 4, "atlas upload packed row pitch")
+        if area.x == 0 && area.y == 0 {
+            Check(area.width == 4 && area.height == 4 && pitch == 16, "white atlas corner")
+            for index: 0..15 { Check(pixels[index] == cast(u32)0xffffffff, "white texels") }
+        } else {
+            Check(area.x == 17 && area.y == 23 && area.width == 2 && area.height == 2, "dirty rectangle offset and extent")
+            Check(pitch == 8, "dirty pitch differs from atlas pitch")
+            for index: cast(s32)0..3 { Check(pixels[index] == cast(u32)(101 + index), "staged start and row data") }
+            dirty_calls += 1
+        }
+    } else {
+        Check(pitch == 8 && AsTexture(texture).width == 2 && AsTexture(texture).height == 2, "image upload pitch")
+        Check(pixels[0] == cast(u32)0x80402010 && pixels[1] == cast(u32)0 &&
+            pixels[2] == cast(u32)0xffffffff && pixels[3] == cast(u32)0xff010203, "premultiplied pixels and transparent RGB")
+        image_calls += 1
+    }
+    return true
+}
+
+#program_export "SDL_SetTextureBlendMode"
+MockBlend :: (texture: *void, blend: u32) -> bool {
+    EventAt(4, texture, cast(s32)blend)
+    if fail_blend { return false }
+    AsTexture(texture).blend = blend; return true
+}
+
+#program_export "SDL_SetTextureScaleMode"
+MockScale :: (texture: *void, scale: s32) -> bool {
+    EventAt(5, texture, scale)
+    if fail_scale { return false }
+    AsTexture(texture).scale = scale; return true
+}
+
+#program_export "SDL_ComposeCustomBlendMode"
+MockCompose :: (sc: s32, dc: s32, co: s32, sa: s32, da: s32, ao: s32) -> u32 {
+    Check(sc == 2 && dc == 6 && co == 1 && sa == 2 && da == 6 && ao == 1, "premultiplied blend equation")
+    return ifx fail_compose then cast(u32)0x7fffffff else cast(u32)1234
+}
+
+#program_export "SDL_SetRenderTarget"
+MockTarget :: (owner: *void, texture: *void) -> bool {
+    Check(owner == cast(*void)*renderer, "target renderer identity")
+    EventAt(6, texture, 0)
+    if fail_target && texture != null { return false }
+    if fail_restore && texture == null { return false }
+    current_target = texture; return true
+}
+
+#program_export "SDL_FlushRenderer"
+MockFlush :: (owner: *void) -> bool {
+    Check(owner == cast(*void)*renderer, "flush renderer identity")
+    EventAt(7, null, 0); return !fail_flush
+}
+
+#program_export "SDL_malloc"
+MockAllocate :: (bytes: usize) -> *void {
+    Check(bytes == cast(usize)16, "bounded image workspace")
+    if fail_allocate { return null }
+    allocations += 1; return Malloc(bytes)
+}
+#program_export "SDL_free"
+MockRelease :: (memory: *void) { releases += 1; Free(memory) }
+
+#program_export "SDL_RenderGeometryRaw"
+MockGeometry :: (owner: *void, texture: *void, xy: *float32, xy_stride: s32,
+    color: *Sink.Sdl3Color, color_stride: s32, uv: *float32, uv_stride: s32,
+    count: s32, indices: *void, index_count: s32, index_size: s32) -> bool {
+    Check(owner == cast(*void)*renderer && current_target != null && current_target == expected_target, "geometry renderer and retained target")
+    Check(indices == null && index_count == 0 && index_size == 0, "unindexed triangles")
+    Check(xy_stride == 20 && uv_stride == 20 && color_stride == 16, "actual native byte strides: vertex20, float-color16")
+    Check(count > 0 && count <= 1536 && count % 3 == 0, "bounded complete triangles")
+    Check(cast(usize)uv - cast(usize)xy == cast(usize)12, "actual UV offset is12")
+    first := *pixmap_gpu_vertices[expected_vertex]
+    Check(xy == *first.x && uv == *first.u, "XY and UV borrowed from original geometry")
+    batch_index: s64
+    while batch_index < pixmap_gpu_batches.count &&
+        expected_vertex >= pixmap_gpu_batches[batch_index].first + pixmap_gpu_batches[batch_index].count { batch_index += 1 }
+    batch := pixmap_gpu_batches[batch_index]
+    Check(expected_vertex >= batch.first && expected_vertex + count <= batch.first + batch.count, "ordered batch boundary")
+    if batch.slot < 0 { Check(texture == atlas && AsTexture(texture).blend == cast(u32)1 && AsTexture(texture).scale == 0, "straight atlas with nearest sampling") }
+    else { Check(texture != atlas && AsTexture(texture).blend == cast(u32)1234 &&
+        AsTexture(texture).scale == ifx batch.smooth then 1 else 0, "image sampling and premultiplied blend") }
+    for index: cast(s32)0..count - 1 {
+        vertex := pixmap_gpu_vertices[expected_vertex + index]
+        // Read as SDL does: independent streams with byte strides, not a cast
+        // to the sink's packed byte-color vertex or a copied XY/UV structure.
+        position := cast(*float32)(cast(usize)xy + cast(usize)index * cast(usize)xy_stride)
+        mapping := cast(*float32)(cast(usize)uv + cast(usize)index * cast(usize)uv_stride)
+        tint := cast(*float32)(cast(usize)color + cast(usize)index * cast(usize)color_stride)
+        Check(position[0] == vertex.x && position[1] == vertex.y && mapping[0] == vertex.u && mapping[1] == vertex.v, "clipped positions and mirrored UV unchanged")
+        a := cast(float32)vertex.a / 255.0
+        Check(Near(tint[0], cast(float32)vertex.r / 255.0) &&
+            Near(tint[1], cast(float32)vertex.g / 255.0) &&
+            Near(tint[2], cast(float32)vertex.b / 255.0) && Near(tint[3], a), "normalize recorded RGBA once, preserving image premultiplication")
+    }
+    expected_vertex += count; geometry_calls += 1; EventAt(8, texture, count)
+    return !fail_geometry
+}
+
+ResetObservation :: () {
+    event_count = 0; expected_vertex = 0; geometry_calls = 0; dirty_calls = 0; image_calls = 0
+}
+OpenTarget :: () -> *void {
+    Check(Sink.PixmapSdl3Open(cast(*void)*renderer), "open")
+    target := Sink.PixmapSdl3CreateTarget(96, 64)
+    Check(target != null, "create target"); expected_target = target; return target
+}
+CloseTarget :: (target: *void) {
+    Sink.PixmapSdl3Close(); count := destroy_count
+    Sink.PixmapSdl3Close()
+    Check(destroy_count == count && !pixmap_gpu_active && pixmap_gpu_flush == null, "idempotent close and callback release")
+    Check(AsTexture(target).live, "host still owns target")
+    MockDestroy(target)
+}
+Publish :: () { Check(Pixels.PixmapSetImage(0, "sink-fixture", 2, 2, fixture[:]), "publish image") }
+Quad :: (slot: s32, smooth: bool) {
+    PixmapGpuQuad(0.0, 0.0, 20.0, 10.0, 1.0, 0.0, 0.0, 1.0,
+        .{128, 64, 255, 128}, slot, smooth, 5, 2, 15, 8)
+}
+
+Scene :: () {
+    ResetObservation()
+    // A sentinel before the staged rectangle catches ignoring upload.start.
+    PixmapGpuStage(cast(u32)999)
+    for index: cast(s32)0..3 { PixmapGpuStage(cast(u32)(101 + index)) }
+    unused VecPush(pixmap_gpu_uploads, PixmapGpuUpload.{17, 23, 2, 2, 1})
+    Quad(-1, false); Quad(0, true); Quad(-1, false); Quad(0, false)
+    // Exercise all byte endpoints, independently per vertex, before normalization.
+    pixmap_gpu_vertices[0].r = cast(u8)0; pixmap_gpu_vertices[1].g = cast(u8)255
+    pixmap_gpu_vertices[2].a = cast(u8)0; pixmap_gpu_vertices[3].a = cast(u8)255
+    Check(pixmap_gpu_vertices[0].x == 5.0 && Near(pixmap_gpu_vertices[0].u, 0.75) &&
+        Near(pixmap_gpu_vertices[0].v, 0.2), "recorder supplies clipped mirrored mapping")
+    Check(Sink.PixmapSdl3Draw(), "draw scene")
+    Check(expected_vertex == 24 && geometry_calls == 4 && dirty_calls == 1 && image_calls == 1, "all ordered batches and dirty data consumed")
+    Check(pixmap_gpu_vertices.count == 0 && pixmap_gpu_batches.count == 0 &&
+        pixmap_gpu_uploads.count == 0 && pixmap_gpu_staged.count == 0, "successful recording drained")
+    Check(current_target == null, "window target restored")
+    Check(events[0].kind == 3 && events[0].texture == atlas && events[1].kind == 6, "dirty uploads precede retained draw")
+    previous: s32
+    for index: cast(s32)0..event_count - 1 {
+        if events[index].kind == 5 && events[index].value == 1 {
+            Check(index > 0 && events[index - 1].kind == 7, "flush before enabling smooth sampling")
+        }
+        if events[index].kind == 8 {
+            if previous == 0 || previous == 2 { Check(events[index].texture == atlas, "atlas/image/atlas/image order") }
+            else { Check(events[index].texture != atlas, "image interleaving") }
+            previous += 1
+        }
+    }
+    before := event_count; Check(Sink.PixmapSdl3Draw() && event_count == before, "empty draw emits no work")
+}
+
+Lifecycle :: () {
+    Check(!Sink.PixmapSdl3Open(null) && !Sink.PixmapSdl3Draw(), "reject null renderer and unopened draw")
+    fail_compose = true; before_create := texture_count
+    Check(!Sink.PixmapSdl3Open(cast(*void)*renderer) && texture_count == before_create && !pixmap_gpu_active, "unsupported blend equation rollback")
+    fail_compose = false
+    fail_create = true; Check(!Sink.PixmapSdl3Open(cast(*void)*renderer) && !pixmap_gpu_active, "atlas create rollback"); fail_create = false
+    for mode: cast(s32)0..2 {
+        fail_blend = mode == 0; fail_scale = mode == 1; fail_update = mode == 2
+        before := destroy_count
+        Check(!Sink.PixmapSdl3Open(cast(*void)*renderer) && !pixmap_gpu_active && destroy_count == before + 1, "atlas setup rollback")
+        Sink.PixmapSdl3Close(); Check(destroy_count == before + 1, "close after failed open")
+    }
+    fail_blend = false; fail_scale = false; fail_update = false
+    pixmap_gpu_active = true
+    Check(!Sink.PixmapSdl3Open(cast(*void)*renderer), "other sink ownership preserved")
+    Sink.PixmapSdl3Close(); Check(pixmap_gpu_active, "unopened close preserves other sink")
+    pixmap_gpu_active = false
+    target := OpenTarget(); Publish()
+    Check(Sink.PixmapSdl3Open(cast(*void)*renderer) && !Sink.PixmapSdl3Open(cast(*void)*other_renderer), "idempotent same renderer, reject different renderer")
+    Scene()
+    // Sweep stale revisions even without a geometry batch.
+    before := destroy_count; Publish(); Check(Sink.PixmapSdl3Draw() && destroy_count == before + 1, "stale image revision freed on idle draw")
+    ResetObservation(); Quad(0, false); Check(Sink.PixmapSdl3Draw() && image_calls == 1, "replacement image uploaded")
+    before = destroy_count; Pixels.PixmapClearImage(0)
+    Check(Sink.PixmapSdl3Draw() && destroy_count == before + 1, "cleared image texture disposed")
+    ResetObservation(); Quad(-1, false)
+    fail_create = true; Check(Sink.PixmapSdl3CreateTarget(100, 100) == null && geometry_calls == 1, "pending paint flushed to old target before target creation failure"); fail_create = false
+    ResetObservation(); Quad(-1, false); Check(Sink.PixmapSdl3Draw(), "earlier target survives create failure")
+    replacement := Sink.PixmapSdl3CreateTarget(80, 60)
+    Check(replacement != null && AsTexture(target).live, "replacement preserves host-owned old target")
+    ResetObservation(); Quad(-1, false); expected_target = replacement
+    Check(Sink.PixmapSdl3UseTarget(target) && geometry_calls == 1, "flush replacement before restoring earlier target")
+    expected_target = target
+    ResetObservation(); Quad(-1, false); pixmap_gpu_flush()
+    Check(pixmap_gpu_vertices.count == 0 && geometry_calls == 1 && Sink.PixmapSdl3Draw(), "recorder flush callback")
+    ResetObservation(); Quad(0, false); Publish(); Check(Sink.PixmapSdl3Draw(), "image before reset")
+    before = destroy_count; Check(Sink.PixmapSdl3DeviceLost() && destroy_count == before + 2, "reset disposes images and recreates atlas")
+    Check(Sink.PixmapSdl3UseTarget(target), "host restores recreated target after reset")
+    // Force a batch longer than the normalized-color workspace.
+    ResetObservation()
+    for index: 0..299 { Quad(-1, false) }
+    Check(Sink.PixmapSdl3Draw() && expected_vertex == 1800 && geometry_calls == 2, "large batch split only at triangle boundaries")
+    CloseTarget(target); MockDestroy(replacement)
+}
+
+FailurePaths :: () {
+    // Each failed draw is reported and latched, including the void callback.
+    for mode: cast(s32)0..9 {
+        target := OpenTarget(); Publish(); ResetObservation()
+        fail_allocate = mode == 0; fail_create = mode == 1; fail_update = mode == 2
+        fail_blend = mode == 3; fail_scale = mode == 4; fail_target = mode == 5
+        fail_geometry = mode == 6; fail_flush = mode == 7; fail_restore = mode == 8
+        Quad(0, true)
+        if mode == 9 { fail_geometry = true; pixmap_gpu_flush() }
+        Check(!Sink.PixmapSdl3Draw(), "draw reports injected failure")
+        before := geometry_calls
+        Check(!Sink.PixmapSdl3Draw() && geometry_calls == before, "failed partial frame never replayed")
+        Check(pixmap_gpu_batches.count == 0, "failed recording discarded")
+        if mode != 8 { Check(current_target == null, "failure restores window target") }
+        fail_allocate = false; fail_create = false; fail_update = false; fail_blend = false
+        fail_scale = false; fail_target = false; fail_geometry = false; fail_flush = false; fail_restore = false
+        CloseTarget(target); current_target = null
+    }
+    target := OpenTarget()
+    ResetObservation(); PixmapGpuStage(cast(u32)0); unused VecPush(pixmap_gpu_uploads, PixmapGpuUpload.{1, 1, 1, 1, 0})
+    fail_update = true; Check(!Sink.PixmapSdl3Draw(), "dirty atlas upload failure reported"); fail_update = false
+    CloseTarget(target)
+    target = OpenTarget(); fail_create = true
+    Check(!Sink.PixmapSdl3DeviceLost() && !Sink.PixmapSdl3Draw(), "device-reset atlas failure reported"); fail_create = false
+    CloseTarget(target)
+    Check(allocations == releases, "every image workspace freed on success and failure")
+}
+
+RecordedTint :: () {
+    target := OpenTarget(); Publish(); ResetObservation()
+    // Go through the real image recorder: low-level Quad fixtures alone would
+    // miss its existing premultiplication and permit multiplying alpha twice.
+    alphas: [4]u8 = .{0, 128, 215, 255}
+    for index: cast(s32)0..3 {
+        Check(Pixels.PixmapGpuImageQuad(0, .{2.0, 0.0, -2.0, 2.0}, .{0.0, 0.0, 20.0, 10.0},
+            .{5.0, 2.0, 10.0, 6.0}, .{}, 0.0, 0.0, .{128, 64, 255, alphas[index]}), "actual image recorder path")
+    }
+    // Independent byte expectations at zero, half, scene alpha215 and opaque.
+    red: [4]u8 = .{0, 64, 107, 128}; green: [4]u8 = .{0, 32, 53, 64}
+    for index: cast(s32)0..3 {
+        vertex := pixmap_gpu_vertices[index * 6]
+        Check(vertex.r == red[index] && vertex.g == green[index] && vertex.b == alphas[index] &&
+            vertex.a == alphas[index], "recorder already premultiplies tint RGB")
+    }
+    Check(Sink.PixmapSdl3Draw() && expected_vertex == 24 && geometry_calls == 1, "recorded translucent tint reaches SDL3 unchanged except normalization")
+    CloseTarget(target)
+}
+
+SamplingBits :: () {
+    target := OpenTarget()
+    Check(Sink.sdl3_images.count == Pixels.PixmapImageLimit &&
+        Sink.sdl3_image_revisions.count == Pixels.PixmapImageLimit &&
+        Sink.sdl3_image_smooth.count == (Pixels.PixmapImageLimit + 63) / 64, "image storage follows shared slot limit")
+    // First/last bits, the 32-bit boundary and adjacent 64-bit words must retain
+    // independent sampling state. Every assertion follows observed SDL calls.
+    slots: [7]s32 = .{0, 31, 32, 63, 64, 65, Pixels.PixmapImageLimit - 1}
+    paths: [7]string = .{"bit0", "bit31", "bit32", "bit63", "bit64", "bit65", "bitlast"}
+    for index: cast(s32)0..6 {
+        slot := slots[index]
+        Check(Pixels.PixmapSetImage(slot, paths[index], 2, 2, fixture[:]), "publish word-boundary image")
+        ResetObservation(); Quad(slot, true)
+        Check(Sink.PixmapSdl3Draw() && geometry_calls == 1 && image_calls == 1, "enable smooth at word boundary")
+    }
+    Check(Sink.sdl3_image_smooth[0] == cast(u64)0x8000000180000001 &&
+        Sink.sdl3_image_smooth[1] == cast(u64)3 &&
+        Sink.sdl3_image_smooth[Sink.sdl3_image_smooth.count - 1] == cast(u64)0x8000000000000000, "packed word boundaries and highest legal slot")
+    for index: cast(s32)0..6 {
+        // Reusing a smooth texture must not flush or change its filter again.
+        ResetObservation(); Quad(slots[index], true)
+        Check(Sink.PixmapSdl3Draw() && image_calls == 0, "reuse boundary texture sampling")
+        for event: cast(s32)0..event_count - 1 { Check(events[event].kind != 5 && events[event].kind != 7, "unchanged bit avoids filter update") }
+    }
+    ResetObservation(); Quad(63, false); Check(Sink.PixmapSdl3Draw(), "disable highest bit in first word")
+    Check(Sink.sdl3_image_smooth[0] == cast(u64)0x0000000180000001 &&
+        Sink.sdl3_image_smooth[1] == cast(u64)3, "clearing bit63 preserves both neighboring words")
+    Pixels.PixmapClearImage(64); Check(Sink.PixmapSdl3Draw(), "sweep first bit in second word")
+    Check(Sink.sdl3_image_smooth[1] == cast(u64)2 &&
+        Sink.sdl3_image_smooth[Sink.sdl3_image_smooth.count - 1] == cast(u64)0x8000000000000000, "stale cleanup clears only its sampling bit")
+    Check(Pixels.PixmapSetImage(64, "bit64", 2, 2, fixture[:]), "republish boundary slot")
+    ResetObservation(); Quad(64, false); Check(Sink.PixmapSdl3Draw(), "replacement starts nearest")
+    for event: cast(s32)0..event_count - 1 { Check(events[event].kind != 7, "stale smooth bit cannot survive replacement") }
+    Check(Sink.PixmapSdl3DeviceLost(), "reset boundary textures")
+    for word: 0..Sink.sdl3_image_smooth.count - 1 { Check(Sink.sdl3_image_smooth[word] == cast(u64)0, "reset clears all sampling words") }
+    Check(Sink.PixmapSdl3UseTarget(target), "restore target after boundary reset")
+    ResetObservation(); Quad(Pixels.PixmapImageLimit - 1, true)
+    Check(Sink.PixmapSdl3Draw(), "highest legal bit usable after reset")
+    ResetObservation(); Quad(Pixels.PixmapImageLimit, true)
+    Check(!Sink.PixmapSdl3Draw() && geometry_calls == 0 &&
+        Sink.sdl3_image_smooth[Sink.sdl3_image_smooth.count - 1] == cast(u64)0x8000000000000000, "out-of-range image rejected without corrupting sampling words")
+    CloseTarget(target)
+    for word: 0..Sink.sdl3_image_smooth.count - 1 { Check(Sink.sdl3_image_smooth[word] == cast(u64)0, "close clears all sampling words") }
+}
+
+main :: () -> s32 {
+    fixture[0] = cast(u32)0x80804020; fixture[1] = cast(u32)0x00ffffff
+    fixture[2] = cast(u32)0xffffffff; fixture[3] = cast(u32)0xff010203
+    Check(size_of(PixmapGpuVertex) == 20 && size_of(Sink.Sdl3Color) == 16, "native layout measured, not guessed")
+    Lifecycle(); RecordedTint(); SamplingBits(); FailurePaths()
+    for index: cast(s32)0..texture_count - 1 { Check(!textures[index].live, "no leaked texture") }
+    if failures > 0 { print("SDL3 geometry sink: % failures\n", failures); return 1 }
+    print("SDL3 float-color ABI, order, clipped UV, uploads, sampling bitset boundaries, translucency and lifecycle passed\n")
+    return 0
+}

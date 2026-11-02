@@ -1,0 +1,53 @@
+#import, file "backend_render_benchmark_common.zi";
+#import "std/c_string"
+#import "std/byte_text_linux"
+Host :: #import "pixmap_sdl3";
+Sink :: #import "pixmap_sdl3_gpu";
+sdl :: #system_library "SDL3";
+Init :: (flags: u32) -> bool #foreign sdl "SDL_Init";
+Quit :: () #foreign sdl "SDL_Quit";
+CreateWindow :: (title: *u8, width: s32, height: s32, flags: u64) -> *void #foreign sdl "SDL_CreateWindow";
+DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
+DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
+DestroyTexture :: (texture: *void) #foreign sdl "SDL_DestroyTexture";
+SetTarget :: (renderer: *void, texture: *void) -> bool #foreign sdl "SDL_SetRenderTarget";
+Copy :: (renderer: *void, texture: *void, source: *void, destination: *void) -> bool #foreign sdl "SDL_RenderTexture";
+Present :: (renderer: *void) -> bool #foreign sdl "SDL_RenderPresent";
+Vsync :: (renderer: *void, value: s32) -> bool #foreign sdl "SDL_SetRenderVSync";
+GetVsync :: (renderer: *void, value: *s32) -> bool #foreign sdl "SDL_GetRenderVSync";
+Read :: (renderer: *void, rectangle: *void) -> *Surface #foreign sdl "SDL_RenderReadPixels";
+Convert :: (surface: *Surface, format: u32) -> *Surface #foreign sdl "SDL_ConvertSurface";
+Free :: (surface: *Surface) #foreign sdl "SDL_DestroySurface";
+Surface :: struct { flags: u32; format: u32; width: s32; height: s32; pitch: s32; pixels: *void; references: s32; reserved: *void }
+window: *void; renderer: *void; target: *void;
+BenchOpen :: () -> bool {
+    if !Init(cast(u32)32) { return false }
+    title: [32]u8; unused CopyCString("Private backend benchmark", title[:])
+    window = CreateWindow(*title[0], 480, 320, cast(u64)8)
+    renderer = Host.CreatePixmapSdl3Renderer(window)
+    if renderer == null || !Vsync(renderer, 0) { return false }
+    actual_vsync: s32
+    if !GetVsync(renderer, *actual_vsync) || actual_vsync != 0 { return false }
+    info := Host.PixmapSdl3DescribeRenderer(renderer)
+    print("IDENTITY renderer=% api=% device=% driver=% driver_info=% vsync=0\n", TextFromCString(info.renderer_name), TextFromCString(info.api), TextFromCString(info.device_name), TextFromCString(info.driver_name), TextFromCString(info.driver_info))
+    if !Sink.PixmapSdl3Open(renderer) { return false }
+    target = Sink.PixmapSdl3CreateTarget(480, 320); return target != null
+}
+BenchDraw :: () -> bool { return Sink.PixmapSdl3Draw() }
+BenchPresent :: () -> bool { return SetTarget(renderer, null) && Copy(renderer, target, null, null) && Present(renderer) }
+BenchRead :: () -> bool {
+    if !SetTarget(renderer, target) { return false }
+    surface := Read(renderer, null); if surface == null { return false }; defer Free(surface)
+    argb := Convert(surface, cast(u32)372645892); if argb == null { return false }; defer Free(argb)
+    if argb.width != 480 || argb.height != 320 || argb.pitch < 1920 || argb.pixels == null { return false }
+    bytes := cast(*u8)argb.pixels
+    for y: cast(s32)0..319 { row := cast(*u32)(*bytes[y * argb.pitch]); for x: cast(s32)0..479 { gpu[y * 480 + x] = row[x] } }
+    return SetTarget(renderer, null)
+}
+BenchClose :: () { Sink.PixmapSdl3Close(); DestroyTexture(target); DestroyRenderer(renderer); DestroyWindow(window); Quit() }
+
+main :: () -> s32 {
+    bench_open = BenchOpen; bench_close = BenchClose; bench_draw = BenchDraw
+    bench_present = BenchPresent; bench_read = BenchRead
+    return RunBackendRenderBenchmark()
+}

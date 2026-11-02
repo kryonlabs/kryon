@@ -114,6 +114,22 @@ def mingw_library_flags(cc):
 
 
 def build(name, target, stage, root):
+    if name == 'native-sdl3':
+        if target != 'linux-x86_64-gnu':
+            raise ValueError(f'{name} does not support {target}')
+        project = Path(os.environ['ZIRAN_PROJECT_ROOT'])
+        toolchain = Path(os.environ['ZIRAN_TOOLCHAIN_ROOT'])
+        lock = json.loads((project / 'ziran.lock').read_text())
+        provider = next(p for p in lock['packages'] if p['id'] == os.environ['ZIRAN_PACKAGE_ID'])
+        dependency = next(p for p in lock['packages']
+                          if p['id'] == provider['dependencies']['sdl3'])
+        locked = [] if (project / 'ziran.local.toml').exists() else ['--locked']
+        source = Path(capture([toolchain / 'build/bin/ziran', 'pkg', 'path',
+                               dependency['name'], *locked], cwd=project))
+        if capture(['git', '-C', source, 'rev-parse', 'HEAD']) != dependency['commit']:
+            raise ValueError('resolved SDL3 does not match the provider locked edge')
+        run(['sh', root / 'scripts/build-sdl3.sh', target, stage, source])
+        return
     if name not in SUPPORTED_RENDERERS:
         raise ValueError('unknown renderer artifact: ' + name)
     if target not in SUPPORTED_RENDERERS[name]:

@@ -18,10 +18,19 @@
       "ref": "1844042d1ca751e62e61df7617dba19c98588339",
       "source": true,
       "url": "https://github.com/webmproject/libwebp.git"
+    },
+    {
+      "commit": "829a65d769d935c4852f8159e964312c0957260a",
+      "dependencies": {},
+      "id": "pe326a74d84047175",
+      "name": "sdl3",
+      "ref": "829a65d769d935c4852f8159e964312c0957260a",
+      "source": true,
+      "url": "https://github.com/libsdl-org/SDL.git"
     }
   ],
   "root": {
-    "dependencies": {"libwebp": "p651a2c7a393977c0", "raylib": "p5a77c9c35110e925"},
+    "dependencies": {"libwebp": "p651a2c7a393977c0", "raylib": "p5a77c9c35110e925", "sdl3": "pe326a74d84047175"},
     "name": "kryon"
   },
   "toolchain": {

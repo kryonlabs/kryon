@@ -209,6 +209,27 @@ presented texture with `PixmapGpuCreateTarget(width, height)` and call
 `PixmapGpuDraw()` instead of uploading damage, then copy and present as usual.
 `KRYON_PIXMAP_GPU=0` keeps CPU painting; `=1` also uses a software GL driver.
 
+For a custom **SDL3** host, the experimental exports are `kryon/pixmap_sdl3`
+and `kryon/pixmap_sdl3_gpu`; they require an SDL3 window and explicit `gpu`
+renderer. There is no `backend = "sdl3"` profile. From an application's package
+graph, request the pinned SDK with:
+
+```sh
+ziran pkg artifact kryon:native-sdl3 --platform linux-x86_64-gnu --locked
+```
+
+Use `--locked` when there is no `ziran.local.toml`. With local overrides, run
+`ziran lock` after the overridden package advances before requesting artifacts.
+The native artifact is
+currently Linux x86_64 GNU only. Verify the returned descriptor with Ziran's
+`Artifact` API; `Artifact.link_flags()` supplies the ordered static linker
+arguments. Verify and extract `Artifact.output("resources/SDL3-headers.tar")`
+into the consumer's build area for the complete include directory. The loose
+SDK headers are not all declared outputs, so use the verified archive for
+compilation. This SDK is native support for custom hosts, not a replacement
+renderer selection for an existing desktop profile. See
+[experimental SDL3 usage and tests](BACKENDS.md#experimental-sdl3-gpu-renderer).
+
 These settings live only in `ziran.toml`. Kryon declares them under
 `[options]` in its own `ziran.toml`. Ziran checks the application's
 `[tool.kryon]` tables against that declaration, merges `ziran.local.toml` over
