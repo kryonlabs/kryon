@@ -486,6 +486,14 @@ registered face or a font asset. Hosted fonts pass the same asset policy as
 images; absolute host paths are refused. Raylib and Canvas select the face
 for measurement and for queued paint, restoring the interface font afterward.
 
+`TextProps.wrap = TextWrap.TextWrapAnywhere` wraps at extended Unicode grapheme
+boundaries, including inside unbroken usernames. Combining marks, emoji ZWJ
+sequences and flags stay whole. Spaces are preserved and CR, LF and CRLF end
+lines. A single grapheme wider than the bounds stays whole on its own line;
+nonpositive widths disable wrapping. The default `TextWrapAuto` still wraps at
+word boundaries and keeps oversized Latin words intact. Supply enough height
+for the resulting lines.
+
 ## View transforms
 
 `raylib_runtime.RaylibTouches(points: []Vector2) -> s32` reads the most recent

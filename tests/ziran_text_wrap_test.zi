@@ -2,24 +2,74 @@
 #import "text_props"
 #import "ziran_text_wrap_host"
 #import "font_metrics"
+#import "text_behavior"
+Grapheme :: #import "std/grapheme";
 
 using TextWrap;
 
-wrapped: [8]string;
+wrapped: [64]string;
 
 // Wrap into `wrapped` and return the number of lines.
 Wrap :: (value: string, width: float32) -> s32 {
+    return WrapWith(value, width, cast(TextWrap)TextWrapAuto)
+}
+
+WrapWith :: (value: string, width: float32, policy: TextWrap) -> s32 {
     count: s32 = 0
     start: s32 = 0
-    while start < cast(s32)value.count && count < 8 {
+    while start < cast(s32)value.count && count < 64 {
         line: TextLinePlan = NextTextLine(value, start, width,
-            cast(TextWrap)TextWrapAuto, 14, "")
-        if line.end <= line.start { break }
+            policy, 14, "")
+        if line.next <= start { return -1 }
         wrapped[count] = value[line.start:line.end]
         count += 1
         start = line.next
     }
     return count
+}
+
+// Every byte is retained and every break is a grapheme boundary. Width may
+// exceed the bound only when the line contains a single oversized grapheme.
+AnywhereFits :: (value: string, width: float32) -> bool {
+    start: s32
+    while start < cast(s32)value.count {
+        line := NextTextLine(value, start, width, cast(TextWrap)TextWrapAnywhere, 14, "")
+        if line.start != start || line.end <= start || line.next <= start { return false }
+        if Grapheme.Boundary(value, line.end) != line.end { return false }
+        if line.width != MeasureGlyphWidth(value[start:line.end], 14, "") { return false }
+        if cast(float32)line.width > width && line.end != Grapheme.Next(value, start) { return false }
+        if line.end < cast(s32)value.count && line.next != line.end { return false }
+        start = line.next
+    }
+    return true
+}
+
+AnywhereTests :: () -> s32 {
+    anywhere := cast(TextWrap)TextWrapAnywhere
+    // The maximum-width Breeze alias is 32 wide Latin letters.
+    if WrapWith("wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww", 50.0, anywhere) != 7 ||
+        wrapped[0] != "wwwww" || wrapped[6] != "ww" { return 15 }
+    if !AnywhereFits("wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww", 50.0) { return 16 }
+    if WrapWith("áb́c", 20.0, anywhere) != 3 || wrapped[0] != "á" ||
+        wrapped[1] != "b́" || wrapped[2] != "c" { return 17 }
+    if !AnywhereFits("áb́c", 1.0) || !AnywhereFits("👩🏽‍💻🇵🇾x", 20.0) { return 18 }
+    if WrapWith("👩🏽‍💻🇵🇾x", 20.0, anywhere) != 3 || wrapped[0] != "👩🏽‍💻" ||
+        wrapped[1] != "🇵🇾" || wrapped[2] != "x" { return 19 }
+    if WrapWith("aa bb cc", 50.0, anywhere) != 2 || wrapped[0] != "aa bb" ||
+        wrapped[1] != " cc" || !AnywhereFits("aa bb cc", 50.0) { return 20 }
+    if WrapWith("ab\r\n\ncd\ref", 100.0, anywhere) != 4 || wrapped[0] != "ab" ||
+        wrapped[1] != "" || wrapped[2] != "cd" || wrapped[3] != "ef" { return 21 }
+    if WrapWith("abc", 0.0, anywhere) != 1 || wrapped[0] != "abc" ||
+        WrapWith("abc", -1.0, anywhere) != 1 { return 22 }
+    if TextWrapPolicy(30.0, cast(s32)anywhere) != cast(s32)anywhere ||
+        TextWrapPolicy(0.0, cast(s32)anywhere) != cast(s32)TextWrapNone { return 23 }
+    if !AnywhereFits("abc", 1.0) || !AnywhereFits("あいá👩‍👩‍👧‍👦", 10.0) { return 24 }
+    if WrapWith("", 30.0, anywhere) != 0 { return 25 }
+    // Reusing identical text with another policy must select another cache entry.
+    if Wrap("abcdefghij", 30.0) != 1 ||
+        WrapWith("abcdefghij", 30.0, anywhere) != 4 || wrapped[3] != "j" ||
+        Wrap("abcdefghij", 30.0) != 1 { return 26 }
+    return 0
 }
 
 #program_export
@@ -54,6 +104,8 @@ main :: () -> s32 {
     // An explicit line break still ends a line.
     if Wrap("あい\nうえ", 100.0) != 2 || wrapped[0] != "あい" ||
         wrapped[1] != "うえ" { return 10 }
+    result := AnywhereTests()
+    if result != 0 { return result }
     // A host that reports its glyph metrics gets lines laid out once while
     // they hold; changed text, width or metrics are laid out again.
     GlyphMetricsChanged()
@@ -67,5 +119,5 @@ main :: () -> s32 {
     GlyphMetricsChanged()
     if Wrap("aa bb cc dd", 50.0) != 2 || wrapped[0] != "aa bb" ||
         MeasureCalls() == before { return 14 }
-    return 0
+    return AnywhereTests()
 }

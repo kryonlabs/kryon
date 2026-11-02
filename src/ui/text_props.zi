@@ -21,6 +21,8 @@ TextWrap :: enum {
     TextWrapNone :: 1
     // One line, like TextWrapNone; text wider than its bounds ends in "...".
     TextWrapEllipsis :: 2
+    // Wrap at any extended grapheme boundary, including inside long words.
+    TextWrapAnywhere :: 3
 }
 
 // UTF-8 byte ranges in the visible text, with an exclusive end. Invalid or

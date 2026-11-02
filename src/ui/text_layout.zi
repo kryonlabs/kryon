@@ -162,8 +162,8 @@ TextLineCacheMatches :: (entry: *TextLineCache, revision: u64, hash: u64, count:
         entry.font == font && entry.width == width && entry.wrap == wrap
 }
 
-// A word wider than the available width stays intact on its own line; text
-// written without spaces wraps between characters as TextTokenNext allows.
+// Auto keeps oversized words intact and uses TextTokenNext's word boundaries.
+// Anywhere instead wraps between complete extended grapheme clusters.
 #program_export
 NextTextLine :: (value: string, start: s32, max_width: float32,
     wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
@@ -222,6 +222,27 @@ NextTextLineUncached :: (value: string, start: s32, max_width: float32,
     wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
     line: TextLinePlan = .{.start = start, .end = start, .next = cast(s32)value.count + 1}
     if start >= cast(s32)value.count { return line }
+    if wrap == cast(TextWrap)TextWrapAnywhere && max_width > 0.0 {
+        offset := start
+        while offset < cast(s32)value.count {
+            after := Grapheme.Next(value, offset)
+            if value[offset] == cast(u8)10 || value[offset] == cast(u8)13 {
+                line.next = after
+                return line
+            }
+            width := GlyphWidth(value[start:after], font, typeface)
+            if line.end > start && cast(float32)width > max_width {
+                line.next = offset
+                return line
+            }
+            // Even a cluster wider than the bounds occupies a whole line,
+            // so arbitrarily narrow widths always make progress.
+            line.end = after
+            line.width = width
+            offset = after
+        }
+        return line
+    }
     wrapped: bool = wrap == cast(TextWrap)TextWrapAuto && max_width > 0.0
     offset: s32 = start
     while offset < cast(s32)value.count {
