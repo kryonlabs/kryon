@@ -11,7 +11,7 @@ chmod 700 "$work/runtime"
 export HOME="$work/home" XDG_CONFIG_HOME="$work/config" XDG_DATA_HOME="$work/data" XDG_CACHE_HOME="$work/cache" XDG_RUNTIME_DIR="$work/runtime" WINEPREFIX="$work/prefix"
 "$ziran" build --target=c --no-main --define _WIN32 --define __x86_64__ --root "$repo/tests" \
     --module-path "$repo/src/backend" -o "$work/c" "$repo/tests/app_files_windows_test.zi"
-"${CC:-x86_64-w64-mingw32-gcc}" -O2 -std=c11 -ffunction-sections -fdata-sections \
+"${WINDOWS_CC:-x86_64-w64-mingw32-gcc}" -O2 -std=c11 -ffunction-sections -fdata-sections \
     -I"$work/c" -I"$ziran_root/include" "$work"/c/*.c -Wl,--gc-sections -static -static-libgcc -o "$work/run.exe"
 xvfb-run -a -n 400 -s '-screen 0 1280x1000x24' sh -eu -c '
     trap "wineserver -k" EXIT HUP INT TERM

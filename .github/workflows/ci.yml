@@ -190,6 +190,11 @@ jobs:
         with:
           key: ${{ matrix.shard }}
 
+      # The behavior suite executes the Windows storage regression under Wine.
+      - name: Install Windows storage test tools
+        if: matrix.shard == 'check'
+        run: sudo apt-get install -y gcc-mingw-w64-x86-64 wine wine64
+
       - name: Build and test
         if: matrix.shard != 'site'
         env:
@@ -267,6 +272,9 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.25.x'
+
+      - name: Install Windows storage test tools
+        run: sudo apt-get install -y gcc-mingw-w64-x86-64 wine wine64 xvfb xauth
 
       - name: Run the behavior tests with sanitized C
         run: env -u DISPLAY -u WAYLAND_DISPLAY make sanitize-test TEST_JOBS=4
