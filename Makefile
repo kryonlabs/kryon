@@ -262,6 +262,7 @@ laws: $(BUILD_DIR)/ziran-toolchain.stamp
 source-check:
 	sh tools/check-ziran-source.sh
 	python3 tests/style_role_policy_test.py
+	env PYTHONDONTWRITEBYTECODE=1 python3 tests/backend_render_benchmark_test.py
 
 docs-check:
 	python3 scripts/feature-matrix-html.py --check

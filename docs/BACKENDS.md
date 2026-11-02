@@ -175,6 +175,63 @@ device identity, parity and raw samples under ignored
 the zoom scene's pixel oracle, so the comparison returns status 2 and excludes
 that scene's Raylib timings. This does not make the SDL3 integration test fail.
 
+For SDL2 versus SDL3 on a physical AMD GPU under Linux, use the explicit
+hardware mode (choose the render node from `/sys/class/drm/renderD*/device`):
+
+```sh
+build-queue -- env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY \
+  -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 \
+  python3 tests/backend_render_benchmark.py --mode hardware \
+  --device /dev/dri/renderD129 --trials 5 --frames 1200 --warmup 240 \
+  --output work/backend-render-benchmark/hardware.json
+```
+
+Hardware mode uses SDL2 offscreen EGL/OpenGL and SDL3 offscreen Vulkan with
+a headless surface, without the desktop compositor. It removes inherited
+software-driver overrides and selects Mesa's Vulkan device by vendor/device
+ID. Selection is only a request: both hosts must report a physical renderer
+and nonzero Linux DRM graphics-engine execution on the requested PCI device.
+The report records that device's render node, PCI address, vendor/device IDs,
+kernel driver, renderer/API and Mesa versions. A mismatched device, software
+renderer, missing execution evidence or failed pixel oracle blocks hardware
+timing. This qualification currently requires AMD's Linux DRM counters; it
+does not infer acceleration from the Vulkan API name. Raylib is excluded
+from this hardware comparison. The default software mode still forces
+llvmpipe on private Xvfb; `--backends sdl2 sdl3` restricts its smoke test.
+
+Every selected backend must pass all 120 frames of all five 480×320 scenes
+before hardware timing starts, using the same channel tolerance and narrow
+checker-boundary rule described above. Parity exercises presentation as well
+as target readback. Repeated trials randomize backend order per scene and
+record CPU compose/submit/present p50/p95, individual frame samples, per-trial
+drained wall throughput and load averages. Drained wall throughput includes
+the final synchronous readback and CPU conversion; it is not a GPU timestamp
+measurement. Offscreen results do not measure visible-window/compositor
+performance, and other running workloads and GPU clock changes remain
+uncontrolled. No backend default or SDL2 software fallback is changed.
+
+The 2026-11-02 hardware run used AMD Radeon Graphics
+(RAPHAEL_MENDOCINO), `/dev/dri/renderD129`, PCI `0000:7a:00.0`,
+vendor/device `1002:13c0`, kernel `amdgpu`, Mesa 25.0.7. SDL2 used
+radeonsi OpenGL 4.6; SDL3 used RADV Vulkan. Both passed 600 parity frames,
+with zero failures after the specified checker-boundary allowance. Five
+randomized trials per scene used 1,200 timed frames and 240 warmup frames.
+Median drained frames/s, SDL2 then SDL3, were:
+
+- Text: 7,709 / 7,115 (SDL3 −7.7%).
+- Images: 2,819 / 2,894 (+2.7%).
+- Shapes: 4,047 / 4,794 (+18.5%).
+- Scroll: 8,270 / 6,633 (−19.8%).
+- Zoom: 9,829 / 7,406 (−24.7%).
+
+These are scene-specific observations from this machine, with trial spread
+and concurrent workloads; the small image difference does not establish a
+general advantage. The old forced-software comparison is not hardware
+evidence. Raw frame samples and DRM counters are in ignored
+`work/backend-render-benchmark/hardware.json`; the compact
+`hardware-summary.json` includes every trial's throughput and CPU latency
+p50/p95. Load averages were approximately 6.3/6.1/5.9 at both ends of the run.
+
 ## WebP images
 
 Images, image previews and app media files accept WebP wherever they accept

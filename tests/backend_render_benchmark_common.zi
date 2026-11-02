@@ -6,6 +6,9 @@ Pixels :: #import "pixmap";
 #import "std/environment_linux"
 #import "std/c_string"
 #import "std/byte_text_linux"
+Files :: #import "std/file_linux";
+#import "std/format"
+#import "std/text_tools"
 libc :: #system_library "c";
 Stamp :: struct { seconds: s64; nanoseconds: s64 }
 Clock :: (kind: s32, stamp: *Stamp) -> s32 #foreign libc "clock_gettime";
@@ -15,6 +18,26 @@ Number :: (key: string, fallback: s32) -> s32 {
     result: s32
     for byte: text { if byte < cast(u8)48 || byte > cast(u8)57 { return -1 }; result = result * 10 + cast(s32)byte - 48; if result > 100000 { return -1 } }
     return result
+}
+// Linux DRM client counters identify the device that actually executed work,
+// rather than a device merely enumerated/opened during driver initialization.
+// Read only this process's bounded fdinfo, outside all measured intervals.
+DeviceEvidence :: () {
+    if EnvironmentText("BENCH_DEVICE_EVIDENCE") != "1" { return }
+    cursor := Files.OpenDirectory("/proc/self/fdinfo")
+    if !cursor.valid { return }; defer { unused Files.CloseDirectory(*cursor) }
+    while true {
+        entry := Files.NextDirectoryEntry(*cursor); if !entry.valid { break }
+        name := TextFromBytes(entry.name[0:entry.name_count])
+        path: Vec(u8); BuilderPrint(*path, "/proc/self/fdinfo/%", name)
+        file := Files.OpenRead(BuilderFinish(path)); if !file.valid { continue }
+        buffer: [8192]u8; count := Files.Read(file, buffer[:]); unused Files.CloseFile(file)
+        if count <= 0 || count >= 8192 { continue }
+        lines := TextLines(TextFromBytes(buffer[0:count]))
+        for line: lines {
+            if TextHasPrefix(line, "drm-") { print("DEVICE % %\n", name, line) }
+        }
+    }
 }
 Count :: 480 * 320;
 cpu: [Count]u32;
@@ -82,7 +105,7 @@ Parity :: (scene: s32, frames: s32) -> bool {
         if !Pixels.PixmapBeginInto(cast(u32)0xff20252b, 480, 320, cpu[:], true) { return false }
         BackendComparisonPaint(scene, frame); Pixels.PixmapEndInto()
         pixmap_gpu_active = true
-        if !Paint(scene, frame) || !bench_draw() || !bench_read() { return false }
+        if !Paint(scene, frame) || !bench_draw() || !bench_present() || !bench_read() { return false }
         maximum: s32; failures: s32; exact: s32; ties: s32; raw_failures: s32
         for at: cast(s32)0..Count - 1 {
             pixel_max: s32
@@ -109,6 +132,7 @@ RunBackendRenderBenchmark :: () -> s32 {
     defer Pixels.PixmapCloseWorkers()
     if !bench_open() { print("UNSUPPORTED renderer creation\n"); return 2 }
     defer bench_close()
+    defer DeviceEvidence()
     if EnvironmentText("BENCH_MODE") == "parity" {
         frames := Number("BENCH_PARITY_FRAMES", 3)
         if frames != 3 && frames != 120 { return 3 }

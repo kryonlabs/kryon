@@ -6,6 +6,8 @@ Sink :: #import "pixmap_sdl3_gpu";
 sdl :: #system_library "SDL3";
 Init :: (flags: u32) -> bool #foreign sdl "SDL_Init";
 Quit :: () #foreign sdl "SDL_Quit";
+Error :: () -> *u8 #foreign sdl "SDL_GetError";
+Failed :: (step: string) -> bool { print("UNSUPPORTED %: %\n", step, TextFromCString(Error())); return false }
 CreateWindow :: (title: *u8, width: s32, height: s32, flags: u64) -> *void #foreign sdl "SDL_CreateWindow";
 DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
 DestroyRenderer :: (renderer: *void) #foreign sdl "SDL_DestroyRenderer";
@@ -21,11 +23,13 @@ Free :: (surface: *Surface) #foreign sdl "SDL_DestroySurface";
 Surface :: struct { flags: u32; format: u32; width: s32; height: s32; pitch: s32; pixels: *void; references: s32; reserved: *void }
 window: *void; renderer: *void; target: *void;
 BenchOpen :: () -> bool {
-    if !Init(cast(u32)32) { return false }
+    if !Init(cast(u32)32) { return Failed("SDL_Init") }
     title: [32]u8; unused CopyCString("Private backend benchmark", title[:])
     window = CreateWindow(*title[0], 480, 320, cast(u64)8)
+    if window == null { return Failed("SDL_CreateWindow") }
     renderer = Host.CreatePixmapSdl3Renderer(window)
-    if renderer == null || !Vsync(renderer, 0) { return false }
+    if renderer == null { return Failed("SDL_CreateRenderer gpu") }
+    if !Vsync(renderer, 0) { return Failed("SDL_SetRenderVSync") }
     actual_vsync: s32
     if !GetVsync(renderer, *actual_vsync) || actual_vsync != 0 { return false }
     info := Host.PixmapSdl3DescribeRenderer(renderer)
