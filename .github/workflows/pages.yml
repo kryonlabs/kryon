@@ -55,10 +55,15 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import os
+          import subprocess
           root = Path(os.environ['GITHUB_WORKSPACE'])
           settings = '[overrides]\nkryon = "' + str(root / 'kryonlabs/kryon') + '"\nziran = "' + str(root / 'ziranlang/ziran') + '"\n'
           for project in ('.', 'docs/site/demo', 'examples/gallery'):
               (Path(project) / 'ziran.local.toml').write_text(settings)
+              # An override can add dependency edges absent from the saved
+              # consumer lock. Resolve the selected checkout before building.
+              subprocess.run([str(root / 'ziranlang/ziran/build/bin/ziran'), 'lock'],
+                             cwd=project, check=True)
           PY
       - name: Build and verify portable browser assets
         run: |
