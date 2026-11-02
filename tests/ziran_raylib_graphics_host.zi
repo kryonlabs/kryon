@@ -1,5 +1,6 @@
 #import "raylib_image_decode"
 #import "raylib_runtime"
+#import "webp_codec_stub"
 #import "ziran_raylib_retained_host"
 #import "drawing_props"
 #import "raylib_clip"

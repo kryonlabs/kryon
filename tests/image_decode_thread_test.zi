@@ -1,6 +1,7 @@
 // CPU job ownership and completion without a graphics library or display.
 Pixels :: #import "raylib_image_decode";
 #import "std/byte_text_linux"
+#import "webp_codec_stub"
 c :: #system_library "c";
 Self :: () -> usize #foreign c "pthread_self";
 Allocate :: (bytes: usize) -> *u8 #foreign c "malloc";

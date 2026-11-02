@@ -585,7 +585,7 @@ android-webp-link-test: project-toolchain
 raylib-webp-decode-test: project-toolchain $(RAYLIB_ARCHIVES)
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER \
 		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
-		RAYLIB_LIBS="$(RAYLIB_PLATFORM_LIBS) -lm" sh tests/ziran_raylib_webp_decode_test.sh
+		RAYLIB_LIBS="$(RAYLIB_PLATFORM_LIBS) -lm" sh tests/raylib_webp_decode_test.sh
 test: raylib-webp-decode-test
 
 .PHONY: scene-test

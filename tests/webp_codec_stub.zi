@@ -1,0 +1,48 @@
+// libwebp entry points for tests that inject raylib's image functions and
+// link no codec archive. Every file is "not a WebP picture", so
+// webp_image.zi's callers take their non-WebP path.
+
+#program_export
+WebPGetInfo :: (data: *u8, size: usize, width: *s32, height: *s32) -> s32 {
+    unused data
+    unused size
+    unused width
+    unused height
+    return 0
+}
+#program_export
+WebPDecodeRGBA :: (data: *u8, size: usize, width: *s32, height: *s32) -> *u8 {
+    unused data
+    unused size
+    unused width
+    unused height
+    return null
+}
+#program_export
+WebPAnimDecoderOptionsInitInternal :: (options: *void, version: s32) -> s32 {
+    unused options
+    unused version
+    return 0
+}
+#program_export
+WebPAnimDecoderNewInternal :: (data: *void, options: *void, version: s32) -> *void {
+    unused data
+    unused options
+    unused version
+    return null
+}
+#program_export
+WebPAnimDecoderGetInfo :: (decoder: *void, info: *void) -> s32 {
+    unused decoder
+    unused info
+    return 0
+}
+#program_export
+WebPAnimDecoderGetNext :: (decoder: *void, frame: **u8, timestamp: *s32) -> s32 {
+    unused decoder
+    unused frame
+    unused timestamp
+    return 0
+}
+#program_export
+WebPAnimDecoderDelete :: (decoder: *void) { unused decoder }
