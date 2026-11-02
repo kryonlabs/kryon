@@ -11,16 +11,25 @@
       "url": "https://github.com/raysan5/raylib.git"
     },
     {
-      "commit": "24b939413acf65b6e68e51c46adc13c8f663c823",
-      "dependencies": {"raylib": "p5a77c9c35110e925"},
-      "id": "p9098c36172160f8c",
+      "commit": "1844042d1ca751e62e61df7617dba19c98588339",
+      "dependencies": {},
+      "id": "p651a2c7a393977c0",
+      "name": "libwebp",
+      "ref": "1844042d1ca751e62e61df7617dba19c98588339",
+      "source": true,
+      "url": "https://github.com/webmproject/libwebp.git"
+    },
+    {
+      "commit": "7dc62902389544bf8d1fb3a159152cbd3b889c78",
+      "dependencies": {"libwebp": "p651a2c7a393977c0", "raylib": "p5a77c9c35110e925"},
+      "id": "pcec085fc76d6fd7b",
       "name": "kryon",
       "ref": "master",
       "url": "https://github.com/kryonlabs/kryon.git"
     }
   ],
   "root": {
-    "dependencies": {"kryon": "p9098c36172160f8c"},
+    "dependencies": {"kryon": "pcec085fc76d6fd7b"},
     "name": "widgets"
   },
   "toolchain": {

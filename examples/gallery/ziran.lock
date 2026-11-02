@@ -3,7 +3,7 @@
   "packages": [
     {
       "commit": "a5b47e5a3d94507a2eb935238a5cae2a6b1960a6",
-      "dependencies": {"kryon": "p94b008abd1cfa2bc"},
+      "dependencies": {"kryon": "pcec085fc76d6fd7b"},
       "id": "p3298346fff363bab",
       "name": "DataViews",
       "ref": "master",
@@ -11,7 +11,7 @@
     },
     {
       "commit": "0d8ddc29ed60f2ff336892e05967a5b5d41ffecc",
-      "dependencies": {"kryon": "p94b008abd1cfa2bc"},
+      "dependencies": {"kryon": "pcec085fc76d6fd7b"},
       "id": "p50e012a6abad92ff",
       "name": "plot",
       "ref": "master",
@@ -27,16 +27,25 @@
       "url": "https://github.com/raysan5/raylib.git"
     },
     {
-      "commit": "197c26625c083cdb8b3779eb82bca105b993c8ed",
-      "dependencies": {"raylib": "p5a77c9c35110e925"},
-      "id": "p94b008abd1cfa2bc",
+      "commit": "1844042d1ca751e62e61df7617dba19c98588339",
+      "dependencies": {},
+      "id": "p651a2c7a393977c0",
+      "name": "libwebp",
+      "ref": "1844042d1ca751e62e61df7617dba19c98588339",
+      "source": true,
+      "url": "https://github.com/webmproject/libwebp.git"
+    },
+    {
+      "commit": "7dc62902389544bf8d1fb3a159152cbd3b889c78",
+      "dependencies": {"libwebp": "p651a2c7a393977c0", "raylib": "p5a77c9c35110e925"},
+      "id": "pcec085fc76d6fd7b",
       "name": "kryon",
       "ref": "master",
       "url": "https://github.com/kryonlabs/kryon.git"
     }
   ],
   "root": {
-    "dependencies": {"data_views": "p3298346fff363bab", "kryon": "p94b008abd1cfa2bc", "plot": "p50e012a6abad92ff"},
+    "dependencies": {"data_views": "p3298346fff363bab", "kryon": "pcec085fc76d6fd7b", "plot": "p50e012a6abad92ff"},
     "name": "gallery"
   },
   "toolchain": {
