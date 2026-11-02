@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Android: absolute file paths no longer go through raylib's asset reader, which
+  crashed a process with no running activity, such as Continue as approved while
+  the other app was closed.
 - Android prebuilt renderer packages link their codec archive through the
   renderer interface, instead of requiring every app to define a separate
   `kryonwebp` target.

@@ -4,6 +4,9 @@
 #import "paint_queue"
 #import "drawing_props"
 #import "geometry"
+#if #defined(ANDROID_BUILD) {
+    #import "android_fopen"
+}
 
 frame_raylib :: #system_library "raylib";
 FrameBegin :: () #foreign frame_raylib "__real_BeginDrawing";

@@ -1,0 +1,14 @@
+// raylib's Android fopen serves relative paths from the APK, which needs the
+// running activity. A process started only to answer another app, such as an
+// account hand-off, has none. Absolute paths are never APK assets, so they open
+// directly; everything else stays with raylib, renamed to KryonRaylibFopen when
+// it is built. --wrap=fopen sends every fopen in the app here, liboqs included.
+android_fopen_library :: #system_library "raylib";
+AndroidFopenFile :: (path: *u8, mode: *u8) -> *void #foreign android_fopen_library "__real_fopen";
+AndroidFopenAsset :: (path: *u8, mode: *u8) -> *void #foreign android_fopen_library "KryonRaylibFopen";
+
+#program_export
+__wrap_fopen :: (path: *u8, mode: *u8) -> *void {
+    if path != null && path[0] == cast(u8)47 { return AndroidFopenFile(path, mode) }
+    return AndroidFopenAsset(path, mode)
+}

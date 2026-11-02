@@ -72,7 +72,9 @@ function(kryon_android_raylib raylib_dir)
         SUPPORT_FILEFORMAT_JPG=1
         SUPPORT_FILEFORMAT_PNG=1
         SUPPORT_FILEFORMAT_OGG=1
-        SUPPORT_MODULE_RAUDIO=1)
+        SUPPORT_MODULE_RAUDIO=1
+        # src/backend/android_fopen.zi is the app's __wrap_fopen and calls this.
+        __wrap_fopen=KryonRaylibFopen)
     # rlgl's per-vertex batching runs for every mesh point each frame; size
     # optimization made it the hottest code on low-end phones.
     target_compile_options(raylib PRIVATE -O2 -ffunction-sections -fdata-sections
