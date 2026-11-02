@@ -280,7 +280,10 @@ AppFileWrite :: (files: *AppFiles, name: string, value: string) -> bool {
             if WebFailed() { return false }
         }
     }
-    #if !#defined(PLATFORM_WEB) {
+    // Windows RenamePath uses MOVEFILE_WRITE_THROUGH after the file flush.
+    // Its CRT cannot read-open directories for the POSIX fsync below; trying
+    // that would report failure after the replacement had already succeeded.
+    #if !#defined(_WIN32) && !#defined(PLATFORM_WEB) {
         // Persist the rename and any newly created ancestors, leaf first, down
         // to the root itself. AppPrivateDirectory persisted the root's own entry.
         index := path.count - 1

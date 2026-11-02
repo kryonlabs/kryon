@@ -1,0 +1,31 @@
+#import "app_files"
+#import "std/c_string"
+#import "std/byte_text_linux"
+
+// A successful durable replacement must report success to its caller. In
+// particular, the covers must be able to remember an explicit "Not now".
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    root := TextFromCString(argv[1])
+    files: AppFiles
+    if !AppFilesOpen(*files, root) { return 2 }
+    if !AppFileWrite(*files, "level-updates", "off") { return 3 }
+    value := AppFileRead(*files, "level-updates")
+    if value != "off" { return 4 }
+    AppFileFree(value)
+    if !AppFileWrite(*files, "level-updates", "on") { return 5 }
+    if !AppFileWrite(*files, "nested/deep/answer", "off") { return 6 }
+    if AppFileWrite(*files, "../escape", "bad") ||
+    AppFileWrite(*files, ".lock", "bad") { return 7 }
+    AppFilesClose(*files)
+    if !AppFilesOpen(*files, root) { return 8 }
+    value = AppFileRead(*files, "level-updates")
+    if value != "on" { return 9 }
+    AppFileFree(value)
+    value = AppFileRead(*files, "nested/deep/answer")
+    if value != "off" { return 10 }
+    AppFileFree(value)
+    AppFilesClose(*files)
+    return 0
+}
