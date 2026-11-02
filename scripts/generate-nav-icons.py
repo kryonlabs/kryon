@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ICON_DIR = ROOT / "icons"
 SOURCE_DIR = ICON_DIR / "sources" / "nav"
 MANIFEST_PATH = ICON_DIR / "ui.json"
-ATLAS_PATH = ICON_DIR / "ui.png"
+ATLAS_PATH = ICON_DIR / "ui.webp"
 SIZE = 64
 SCALE = 4
 
@@ -221,7 +221,7 @@ def main() -> None:
     manifest["height"] = atlas.height
     manifest["icons"] = icons
 
-    atlas.save(ATLAS_PATH)
+    atlas.save(ATLAS_PATH, lossless=True, exact=True, method=6)
     MANIFEST_PATH.write_text(json.dumps(manifest, indent=2) + "\n")
 
 

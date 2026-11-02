@@ -5,6 +5,8 @@ import argparse
 import copy
 import json
 from pathlib import Path
+
+from PIL import Image
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
@@ -241,7 +243,8 @@ def main() -> None:
             if name in SOURCE_OVERRIDES else sources[MAPPING[name]]
             for name in names
         ]
-        alias_rows = render_sheet(alias_paths, OUTPUT / "ui.png", COLUMNS, temp)
+        alias_rows = render_sheet(alias_paths, temp / "ui.png", COLUMNS, temp)
+        Image.open(temp / "ui.png").save(OUTPUT / "ui.webp", lossless=True, exact=True, method=6)
 
         for stale in (*OUTPUT.glob("mingcute-*.png"), *OUTPUT.glob("mingcute-*.json")):
             stale.unlink()
@@ -260,6 +263,7 @@ def main() -> None:
                          else f"core/filled/{MAPPING[icon['name']]}")
         })
     manifest.update({
+        "image": "ui.webp",
         "style": "mingcute-core",
         "license": "Apache-2.0",
         "upstream": "https://github.com/mingcute-design/mingcute-icons",

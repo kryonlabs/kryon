@@ -1,5 +1,6 @@
 #!/bin/sh
 . "$(dirname -- "$0")/test_context.sh"
+python3 "$repo/tests/icon_assets_test.py" "$work/icons"
 
 source=$repo/tests/icon_catalog_behavior.zi
 "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \

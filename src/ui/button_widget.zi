@@ -285,7 +285,7 @@ Theme :: #import "theme";
         has_image: bool = icon_image.asset_path != "" ||
         icon_image.texture.id != cast(u32)0 || has_shape
         picture := !has_shape && (props.image.asset_path != "" || props.image.texture.id != cast(u32)0) &&
-            props.image.asset_path != "icons/ui.png"
+            props.image.asset_path != "icons/ui.webp"
         icon_size := ButtonPictureSize(bounds.width, bounds.height, face.icon_size,
             props.icon_only, picture)
         content: ButtonContent = ContentLayout(bounds.width, bounds.height,
@@ -310,7 +310,7 @@ Theme :: #import "theme";
             tint_color: u32 = cast(u32)0xffffffff
             if image.tint != cast(u32)0 {
                 tint_color = image.tint
-            } else if image.asset_path == "icons/ui.png" {
+            } else if image.asset_path == "icons/ui.webp" {
                 tint_color = face.foreground
             }
             tint: Color = ColorFromPacked(Opacity(tint_color, opacity))

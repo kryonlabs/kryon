@@ -21,14 +21,14 @@ failed: bool;
 
 #program_export
 ImageWidth :: (asset_path: string) -> s32 {
-    if asset_path == "icons/ui.png" { return 512 }
+    if asset_path == "icons/ui.webp" { return 512 }
     if asset_path != "badge.png" { failed = true }
     return 32
 }
 
 #program_export
 ImageHeight :: (asset_path: string) -> s32 {
-    if asset_path == "icons/ui.png" { return 512 }
+    if asset_path == "icons/ui.webp" { return 512 }
     if asset_path != "badge.png" { failed = true }
     return 16
 }
@@ -138,7 +138,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32,
     tint: Color) {
-    if asset_path == "icons/ui.png" {
+    if asset_path == "icons/ui.webp" {
         // IconEdit is the seventh tile of the eight-column UI atlas.
         if source.x != 384.0 || source.y != 0.0 ||
             source.width != 64.0 || source.height != 64.0 ||

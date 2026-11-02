@@ -34,7 +34,7 @@ Draw :: (session: Session, pointer: PointerFrame, wheel: float32) -> bool {
 
 #program_export
 main :: () -> s32 {
-    scene_image = "../../icons/pfp.png"
+    scene_image = "../../icons/pfp.webp"
     if !OpenDesktopSized(1000, 700) { CloseDesktop(); return 1 }
     session := SessionOpen()
     ok := SessionValid(session)

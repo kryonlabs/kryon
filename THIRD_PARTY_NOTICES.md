@@ -9,6 +9,6 @@ The Kryon static package includes third-party code pinned by its package lock.
   pixmap host.
 - MingCute Core icons: Apache License 2.0, see
   `licenses/mingcute/LICENSE.txt` in the source tree. Kryon embeds only the
-  selected, renamed monochrome subset used by its UI in `icons/ui.png`.
+  selected, renamed monochrome subset used by its UI in `icons/ui.webp`.
   Apache 2.0 does not grant rights to third-party trademarks depicted by some
   brand icons; applications remain responsible for appropriate trademark use.

@@ -11,7 +11,7 @@ Examples:
   vendor/kryon/scripts/sync-icons.sh web-assets/icons
   vendor/kryon/scripts/sync-icons.sh web-assets/icons ui platforms payments
 
-Copies finished PNG spritesheets and their JSON manifests from Kryon's icons/
+Copies finished spritesheets (lossless WebP ui/pfp, PNG for the other sheets) and their JSON manifests from Kryon's icons/
 directory. With no SHEET arguments, all seven sheets are copied.
 EOF
     exit 2
@@ -40,7 +40,11 @@ copy_sheet()
             ;;
     esac
 
-    for extension in png json; do
+    case "$sheet" in
+        ui|pfp) image_extension=webp ;;
+        *) image_extension=png ;;
+    esac
+    for extension in "$image_extension" json; do
         source=$icon_root/$sheet.$extension
         [ -f "$source" ] || {
             printf 'sync-icons: sheet not found: %s\n' "$source" >&2

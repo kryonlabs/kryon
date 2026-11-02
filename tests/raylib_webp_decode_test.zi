@@ -33,10 +33,36 @@ Fail :: (name: string, failure: string) -> s32 {
     return 3
 }
 
+// Decode the consumer-staged catalog sheets through the native renderer path,
+// then compare every RGBA byte with the independently verified original pixels.
+CatalogSheet :: (directory: string, name: string, width: s32, height: s32) -> bool {
+    data, found := FixtureBytes(directory, name)
+    if !found { return false }
+    parts: [4]string = .[directory, "/", name, ".rgba"]
+    expected, raw_found := ReadEntireFile(TextJoin(parts[:], ""))
+    if !raw_found || expected.count != cast(s64)width * cast(s64)height * 4 { return false }
+    path_parts: [3]string = .["icons/", name, ".webp"]
+    image := Pixels.RaylibDecodeImage(TextJoin(path_parts[:], ""), data)
+    if image.data == null { return false }
+    valid := image.width == width && image.height == height && image.format == 7
+    if valid {
+        pixels := cast(*u8)image.data
+        for index: cast(s64)0..expected.count - 1 {
+            if pixels[index] != cast(u8)expected[index] { valid = false; break }
+        }
+    }
+    Pixels.RaylibImageRelease(image)
+    return valid
+}
+
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
-    if argc != 2 { return 2 }
+    if argc != 3 { return 2 }
     directory := TextFromCString(argv[1])
+    icons := TextFromCString(argv[2])
+    if !CatalogSheet(icons, "ui", 512, 512) || !CatalogSheet(icons, "pfp", 320, 384) {
+        return Fail("catalog", "staged WebP pixels differ")
+    }
     names: [4]string = .["lossy", "lossy-alpha", "lossless", "animated"]
     for name: names {
         failure := Decoded(directory, name, "art/picture.webp")

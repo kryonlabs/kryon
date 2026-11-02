@@ -73,7 +73,7 @@ def main():
         source = source.replace('    example_input := PreviewInputRead()\n', '')
         source = source.replace('example_input.theme == 2', 'false')
         source = source.replace('example_input.disabled', 'false')
-        source = source.replace('scene_image = "catalog-image.png"', 'scene_image = "assets/pfp.png"')
+        source = source.replace('scene_image = "catalog-image.png"', 'scene_image = "assets/pfp.webp"')
         app = output / 'app/app.zi'
         app.write_text(source)
         bundle = output / (entry['id'] + '.zx')

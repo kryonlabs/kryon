@@ -15,17 +15,17 @@ Check :: (id: s32, path: string, x: float32,
 
 #program_export
 main :: () -> s32 {
-    if !Check(cast(s32)IconCalendar, "icons/ui.png", 256.0, 0.0) { return 1 }
+    if !Check(cast(s32)IconCalendar, "icons/ui.webp", 256.0, 0.0) { return 1 }
     if !Check(16, "icons/language.png", 0.0, 0.0) { return 2 }
-    if !Check(31, "icons/ui.png", 128.0, 448.0) { return 3 }
-    if !Check(32, "icons/ui.png", 64.0, 448.0) { return 4 }
-    if !Check(35, "icons/ui.png", 64.0, 192.0) { return 5 }
-    if !Check(41, "icons/pfp.png", 0.0, 0.0) { return 6 }
-    if !Check(89, "icons/ui.png", 256.0, 192.0) { return 7 }
-    if !Check(117, "icons/ui.png", 0.0, 448.0) { return 8 }
-    if !Check(124, "icons/pfp.png", 0.0, 320.0) { return 9 }
-    if !Check(126, "icons/pfp.png", 128.0, 320.0) { return 10 }
-    if !Check(cast(s32)IconExpand, "icons/ui.png", 320.0, 448.0) { return 12 }
+    if !Check(31, "icons/ui.webp", 128.0, 448.0) { return 3 }
+    if !Check(32, "icons/ui.webp", 64.0, 448.0) { return 4 }
+    if !Check(35, "icons/ui.webp", 64.0, 192.0) { return 5 }
+    if !Check(41, "icons/pfp.webp", 0.0, 0.0) { return 6 }
+    if !Check(89, "icons/ui.webp", 256.0, 192.0) { return 7 }
+    if !Check(117, "icons/ui.webp", 0.0, 448.0) { return 8 }
+    if !Check(124, "icons/pfp.webp", 0.0, 320.0) { return 9 }
+    if !Check(126, "icons/pfp.webp", 128.0, 320.0) { return 10 }
+    if !Check(cast(s32)IconExpand, "icons/ui.webp", 320.0, 448.0) { return 12 }
     missing := ImageForIcon(128, Rectangle.{}, "missing")
     if missing.asset_path != "" { return 11 }
     return 0
