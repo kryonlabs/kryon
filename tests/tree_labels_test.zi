@@ -8,6 +8,7 @@ using WidgetKind;
 using FrameStatus;
 
 bytes: [65537]u8;
+paths: [128][512]u8;
 
 Start :: (session: Session) {
     TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
@@ -102,11 +103,40 @@ main :: () -> s32 {
     }
     if !TreeFinish(session) || TreeCount(session) != 601 ||
         TreeNodeAt(session, 600).semantic_detail != TextView(bytes[:256]) { return 16 }
-    // Starting a replacement clears the recent-value cache; canceling it
+    // Starting a replacement clears its owned label index; canceling it
     // leaves the accepted board's semantic values untouched.
     Start(session); unused Add(session, cast(u64)7, "changed", "different")
     TreeCancel(session)
     if TreeNodeAt(session, 600).semantic_detail != TextView(bytes[:256]) { return 17 }
+    // All 128 paths remain owned and deduplicated, including values older
+    // than the former 64-entry limit. Shared prefixes require exact bytes.
+    for path: cast(s32)0..127 {
+        for byte: 0..511 { paths[path][byte] = cast(u8)(byte % 251) }
+        paths[path][510] = cast(u8)path
+    }
+    Start(session)
+    first_path := Add(session, cast(u64)7, TextView(paths[0][:]), "")
+    borrowed := TreeSubmittedNodeAt(session, first_path).semantic_label
+    for reverse: cast(s32)0..126 {
+        path := 127 - reverse
+        unused Add(session, cast(u64)(path + 7), TextView(paths[path][:]), "")
+    }
+    for path: cast(s32)0..127 {
+        unused Add(session, cast(u64)(path + 200), TextView(paths[path][:]), TextView(paths[path][:]))
+    }
+    if borrowed != TextView(paths[0][:]) || !TreeFinish(session) { return 18 }
+    for path: cast(s32)0..127 {
+        if TreeNodeAt(session, ifx path == 0 then 1 else 129 - path).semantic_label != TextView(paths[path][:]) ||
+            TreeNodeAt(session, path + 129).semantic_detail != TextView(paths[path][:]) { return 19 }
+    }
+    // New bytes cannot displace an accepted full frame on failure.
+    Start(session)
+    for path: cast(s32)0..127 {
+        unused Add(session, cast(u64)(path + 7), TextView(paths[path][:]), "")
+    }
+    TreeSetSemanticDetail(session, 1, "x")
+    if TreeFinish(session) || TreeFrameStatus(session) != cast(FrameStatus)FrameAllocationFailed ||
+        TreeNodeAt(session, 2).semantic_label != TextView(paths[127][:]) { return 20 }
     TreeDispose(session); unused SessionClose(session)
     reopened := SessionOpen()
     if reopened.slot != session.slot || reopened.epoch == session.epoch { return 14 }

@@ -80,7 +80,7 @@ WidgetPalette :: struct {
         }
         installed_rules = widget_palette_rules
         SystemPaletteTokens(colors)
-        StyleCacheInstall()
+        StyleIndexInstall()
         resolver: TextStyleResolver = ResolveInstalledTextStyle
         SetTextStyleResolver(resolver)
     }
@@ -131,7 +131,7 @@ WidgetPalette :: struct {
             return true
         }
         installed_rules = widget_palette_saved
-        StyleCacheInstall()
+        StyleIndexInstall()
         active_text_style_callback = widget_palette_saved_resolver
         has_text_style_resolver = widget_palette_saved_has_resolver
         unused RestoreStyleTokenColors(widget_palette_saved_tokens)

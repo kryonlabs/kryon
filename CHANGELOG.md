@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Styles resolve directly from indexed rules, and repeated frame labels share owned bytes without bounded lookup caches. Session and frame flags use compact bitsets.
+
 - Android: absolute file paths no longer go through raylib's asset reader, which
   crashed a process with no running activity, such as Continue as approved while
   the other app was closed.

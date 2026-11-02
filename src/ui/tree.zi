@@ -294,9 +294,10 @@
         max_columns: s32
     }
 
-    LabelMemo :: struct {
-        offset: s64
-        length: s64
+    LabelSpan :: struct {
+        offset: u32
+        length: u32
+        prefix: u32
     }
 
     TreeStore :: struct {
@@ -311,12 +312,14 @@
         labels: [2][65536]u8
         committed_label_buffer: s32
         submitted_label_count: s64
-        // Repeated image paths and names share their owned frame bytes.
-        // A bounded recent-value cache keeps lookup work independent of the
-        // number of nodes, and the fixed buffers keep borrowed views stable.
-        label_memo: [64]LabelMemo
-        label_memo_count: s32
-        label_memo_next: s32
+        // Complete ownership directory for the submitted frame, ordered by
+        // length, first four bytes, then remaining bytes. Every distinct label
+        // has one span; small directories stay inline with heap overflow.
+        // There are no evictions. Moving spans never moves the
+        // packed bytes, so submitted and committed borrows remain stable.
+        submitted_labels: [64]LabelSpan
+        submitted_label_spans: s64
+        submitted_label_overflow: Vec(LabelSpan)
         committed_interactions: Vec(InteractionData)
         submitted_interactions: Vec(InteractionData)
         committed_states: Vec(WidgetState)
@@ -767,8 +770,8 @@
         VecClear(trees[slot].submitted_semantics)
         VecClear(trees[slot].submitted_text)
         trees[slot].submitted_label_count = 0
-        trees[slot].label_memo_count = 0
-        trees[slot].label_memo_next = 0
+        trees[slot].submitted_label_spans = 0
+        VecClear(trees[slot].submitted_label_overflow)
         VecClear(trees[slot].submitted_interactions)
         VecClear(trees[slot].submitted_states)
         VecClear(trees[slot].layouts)
@@ -1272,6 +1275,8 @@
         VecClear(trees[slot].submitted_semantics)
         VecClear(trees[slot].submitted_text)
         trees[slot].submitted_label_count = 0
+        trees[slot].submitted_label_spans = 0
+        VecClear(trees[slot].submitted_label_overflow)
         VecClear(trees[slot].submitted_interactions)
         VecClear(trees[slot].submitted_states)
         VecClear(trees[slot].layouts)
@@ -1407,30 +1412,74 @@
         trees[slot].submitted_semantics[semantic].secure = secure
     }
 
+    TreeLabelSpanAt :: (slot: s32, index: s64) -> LabelSpan {
+        if index < 64 { return trees[slot].submitted_labels[index] }
+        return trees[slot].submitted_label_overflow[index - 64]
+    }
+
+    TreeSetLabelSpan :: (slot: s32, index: s64, span: LabelSpan) {
+        if index < 64 { trees[slot].submitted_labels[index] = span }
+        else { trees[slot].submitted_label_overflow[index - 64] = span }
+    }
+
     TreeStoreLabel :: (slot: s32, value: string) -> s64 {
         if value.count == 0 { return 0 }
+        if value.count > 65536 {
+            trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+            return -1
+        }
         buffer: s32 = 1 - trees[slot].committed_label_buffer
-        for at: cast(s32)0..trees[slot].label_memo_count - 1 {
-            memo := trees[slot].label_memo[at]
-            if memo.length == value.count &&
-            TextView(trees[slot].labels[buffer][memo.offset:memo.offset + memo.length]) == value {
-                return memo.offset
+        prefix: u32
+        byte: s64 = 0
+        while byte < 4 {
+            prefix <<= cast(u32)8
+            if byte < value.count { prefix |= cast(u32)value[byte] }
+            byte += 1
+        }
+        low: s64 = 0
+        high: s64 = trees[slot].submitted_label_spans
+        while low < high {
+            middle := low + (high - low) / 2
+            span := TreeLabelSpanAt(slot, middle)
+            before: bool = span.length < cast(u32)value.count
+            if span.length == cast(u32)value.count {
+                before = span.prefix < prefix
+                if span.prefix == prefix {
+                    stored := TextView(trees[slot].labels[buffer][span.offset:cast(s64)span.offset + cast(s64)span.length])
+                    if stored == value { return cast(s64)span.offset }
+                    byte = 4
+                    while byte < value.count && stored[byte] == value[byte] { byte += 1 }
+                    before = byte < value.count && stored[byte] < value[byte]
+                }
             }
+            if before { low = middle + 1 } else { high = middle }
         }
         start: s64 = trees[slot].submitted_label_count
         if value.count > 65536 - start {
             trees[slot].error = cast(FrameStatus)FrameAllocationFailed
             return -1
         }
-        byte: s64 = 0
+        span := LabelSpan.{cast(u32)start, cast(u32)value.count, prefix}
+        // Reserve the directory entry before writing any owned bytes. Failure
+        // leaves both the directory and byte count unchanged.
+        if trees[slot].submitted_label_spans >= 64 &&
+        !VecPush(trees[slot].submitted_label_overflow, span) {
+            trees[slot].error = cast(FrameStatus)FrameAllocationFailed
+            return -1
+        }
+        at := trees[slot].submitted_label_spans
+        while at > low {
+            TreeSetLabelSpan(slot, at, TreeLabelSpanAt(slot, at - 1))
+            at -= 1
+        }
+        TreeSetLabelSpan(slot, low, span)
+        trees[slot].submitted_label_spans += 1
+        byte = 0
         while byte < value.count {
             trees[slot].labels[buffer][start + byte] = value[byte]
             byte += 1
         }
         trees[slot].submitted_label_count = start + byte
-        trees[slot].label_memo[trees[slot].label_memo_next] = LabelMemo.{start, value.count}
-        trees[slot].label_memo_next = (trees[slot].label_memo_next + 1) % 64
-        if trees[slot].label_memo_count < 64 { trees[slot].label_memo_count += 1 }
         return start
     }
 
@@ -1594,6 +1643,8 @@
         VecFree(trees[slot].submitted_semantics)
         VecFree(trees[slot].committed_text)
         VecFree(trees[slot].submitted_text)
+        VecFree(trees[slot].submitted_label_overflow)
+        trees[slot].submitted_label_spans = 0
         VecFree(trees[slot].committed_interactions)
         VecFree(trees[slot].submitted_interactions)
         VecFree(trees[slot].committed_states)

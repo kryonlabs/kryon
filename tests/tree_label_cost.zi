@@ -1,0 +1,46 @@
+#import "std/text"
+#import "session"
+#import "tree"
+#import "geometry"
+#import "widget_kind"
+using WidgetKind;
+
+values: [128][2048]u8;
+
+#program_export
+Prepare :: () {
+    for i: 0..127 {
+        for j: 0..2047 { values[i][j] = cast(u8)(47 + j % 73) }
+        values[i][0] = cast(u8)(65 + i % 26)
+        values[i][1] = cast(u8)(65 + i / 26)
+    }
+}
+
+// Labels-only modes repeatedly replace one node's label; composition submits
+// complete frames with labels and details, including committed reads.
+#program_export
+Measure :: (mode: s32, frames: s32) -> u64 {
+    session := SessionOpen()
+    digest: u64 = 1
+    count: s32 = ifx mode == 1 || mode == 3 then 128 else 8
+    length: s32 = ifx mode == 2 then 2048 else 32
+    for frame: 0..frames - 1 {
+        TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 800.0, 600.0})
+        node: s32 = -1
+        if mode != 3 { node = TreeSubmit(session, cast(u64)2, 0, WidgetKindText, Rectangle.{0.0, 0.0, 30.0, 20.0}) }
+        calls: s32 = ifx mode == 3 then 256 else 512
+        for i: 0..calls - 1 {
+            at := i % count
+            if mode == 3 { node = TreeSubmit(session, cast(u64)(i + 2), 0, WidgetKindText, Rectangle.{0.0, 0.0, 30.0, 20.0}) }
+            TreeSetLabel(session, node, TextView(values[at][:length]))
+            if mode == 3 { TreeSetSemanticDetail(session, node, "image/path/shared.png") }
+            view := TreeSubmittedNodeAt(session, node).semantic_label
+            if view.count != length { return 0 }
+            digest = (digest ^ (cast(u64)view.count + cast(u64)view[0] + cast(u64)view[1] + cast(u64)view[length - 1])) * cast(u64)1099511628211
+        }
+        if !TreeFinish(session) { return 0 }
+        if TreeNodeAt(session, node).semantic_label != TextView(values[(calls - 1) % count][:length]) { return 0 }
+    }
+    TreeDispose(session); unused SessionClose(session)
+    return digest
+}

@@ -4,6 +4,8 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
 work="$repo/build/scratch/style-cache/cost"
 mkdir -p "$work"
+exec 9>"$repo/build/scratch/style-cache/cost.lock"
+flock 9
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 "$ziran" build --target=c --no-main --root "$repo/tests" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" \

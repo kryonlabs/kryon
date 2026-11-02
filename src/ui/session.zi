@@ -5,7 +5,7 @@ Session :: struct {
     epoch: u64
 }
 
-session_active: [9]bool;
+session_active: u32;
 session_epochs: [9]u64;
 
 #program_export
@@ -16,7 +16,7 @@ SessionValid :: (session: Session) -> bool {
 #program_export
 SessionIndex :: (session: Session) -> s32 {
     if session.slot > 0 && session.slot < 9 &&
-        session_active[session.slot] &&
+        (session_active & (cast(u32)1 << cast(u32)session.slot)) != cast(u32)0 &&
         session_epochs[session.slot] == session.epoch {
         return session.slot
     }
@@ -28,10 +28,11 @@ SessionOpen :: () -> Session {
     result: Session
     slot: s32 = 1
     while slot < 9 {
-        if !session_active[slot] &&
+        mask := cast(u32)1 << cast(u32)slot
+        if (session_active & mask) == cast(u32)0 &&
             session_epochs[slot] != cast(u64)18446744073709551615 {
             session_epochs[slot] += cast(u64)1
-            session_active[slot] = true
+            session_active = session_active | mask
             result.slot = slot
             result.epoch = session_epochs[slot]
             return result
@@ -44,8 +45,21 @@ SessionOpen :: () -> Session {
 #program_export
 SessionClose :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
-    session_active[session.slot] = false
+    session_active = session_active & ~(cast(u32)1 << cast(u32)session.slot)
     return true
+}
+
+// Slot flags include the invalid slot zero, matching per-session storage.
+SessionFlagGet :: (flags: u32, slot: s32) -> bool {
+    if slot < 0 || slot >= 9 { return false }
+    return (flags & (cast(u32)1 << cast(u32)slot)) != cast(u32)0
+}
+
+SessionFlagSet :: (flags: u32, slot: s32, value: bool) -> u32 {
+    if slot < 0 || slot >= 9 { return flags }
+    mask := cast(u32)1 << cast(u32)slot
+    if value { return flags | mask }
+    return flags & ~mask
 }
 
 // The key of one part of a widget made of several nodes. Parts live in their

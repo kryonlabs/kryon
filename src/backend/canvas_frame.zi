@@ -80,7 +80,7 @@ CanvasFrameFill :: (area: Rectangle) {
 CanvasFrameBuiltin :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
     slot := SessionIndex(session)
-    if frame_retained[slot] {
+    if SessionFlagGet(frame_retained, slot) {
         for index: cast(s64)0..paint_snapshots[slot].count - 1 {
             command := paint_snapshots[slot][index]
             if command.has_emitter && !command.builtin_emitter { return false }

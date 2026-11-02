@@ -14,6 +14,13 @@ main :: () -> s32 {
     }
     extra := SessionOpen()
     if SessionValid(extra) || SessionIndex(extra) != 0 { return 3 }
+    last := handles[7]
+    if !SessionClose(last) || SessionClose(last) { return 12 }
+    for i: 0..6 { if !SessionValid(handles[i]) { return 13 } }
+    handles[7] = SessionOpen()
+    if handles[7].slot != 8 || handles[7].epoch != last.epoch + cast(u64)1 ||
+        !SessionValid(handles[7]) || SessionValid(last) || SessionClose(last) ||
+        SessionValid(SessionOpen()) { return 14 }
     original := handles[0]
     if !SessionClose(original) || SessionValid(original) || SessionIndex(original) != 0 || SessionClose(original) { return 4 }
     replacement := SessionOpen()

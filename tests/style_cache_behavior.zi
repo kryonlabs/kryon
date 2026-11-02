@@ -71,7 +71,7 @@ Answer :: () -> s32 {
         // Repeated selectors must still respect new caller defaults.
         if !Same(rules, Base(i + 1), facts, active) { return 3 }
     }
-    // Two equal priorities choose the later typeface, including on a hit.
+    // Two equal priorities choose the later typeface, on repeated queries.
     rules.count = 2
     for i: 0..cast(s32)1 {
         rules.items[i].selector = StyleDefaultSelector(); rules.items[i].state = StyleStateAny()
@@ -106,13 +106,45 @@ Answer :: () -> s32 {
     rules.items[StyleRuleCapacity - 1].style.font_size = 21.0
     if !InstallStyleRules(rules) { return 10 }
     if ResolveInstalledStyleRules(Base(43), facts, cast(s32)ButtonStateNormal).font_size != 21.0 { return 11 }
+    // Conservative bucket aliases must be rejected by the exact matcher.
+    // Exercise word boundaries, all fields, negative and out-of-domain values,
+    // normal-state wildcard semantics, and arbitrary signed cascade tiers.
+    rules = StyleRules.{}
+    rules.count = StyleRuleCapacity
+    for i: 0..cast(s32)StyleRuleCapacity - 1 {
+        selector := StyleDefaultSelector()
+        if i % 3 != 0 { selector.kind = 2 + (i % 3 - 1) * 64 }
+        if i % 4 != 0 { selector.class_name = 2 + (i % 3 - 1) * 64 }
+        if i % 5 == 0 { selector.name = i % 7 }
+        if i % 7 == 0 { selector.role = i % 3 }
+        if i % 11 == 0 { selector.state = i % 4 }
+        rules.items[i].selector = selector
+        rules.items[i].state = ifx i % 5 == 0 then 2 + (i % 3 - 1) * 64 else i % 3
+        rules.items[i].layer = ifx i % 2 == 0 then -2147483647 else 2147483647
+        rules.items[i].order = ifx i % 3 == 0 then 2147483647 else -2147483647
+        value := Base(i + 1)
+        value.fields = (cast(u32)1 << cast(u32)(i % 17)) | cast(u32)0x80000000
+        rules.items[i].style = value
+    }
+    if !InstallStyleRules(rules) { return 12 }
+    for i: 0..cast(s32)143 {
+        facts := StyleDefaultFacts(2 + (i % 3 - 1) * 64)
+        facts.class_name = 2 + (i / 3 % 3 - 1) * 64
+        facts.name = i % 7; facts.role = i % 3; facts.state = i % 4
+        active := ifx i % 5 == 0 then 1 else 2 + (i / 9 % 3 - 1) * 64
+        if !Same(rules, Base(i), facts, active) { return 13 }
+    }
+    // Caller mutation cannot change the published selector snapshot.
+    rules.items[0].selector.class_name = 999
+    snapshot := ActiveStyleRules()
+    if snapshot.items[0].selector.class_name != 0 { return 14 }
     return 42
 }
 
 #program_export
 main :: () -> s32 {
     result := Answer()
-    if result != 42 { print("Style cache regression %\n", result); return 1 }
+    if result != 42 { print("Installed style regression %\n", result); return 1 }
     print("Installed styles match fresh cascades\n")
     return 0
 }

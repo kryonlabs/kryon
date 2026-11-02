@@ -204,5 +204,58 @@ main :: () -> s32 {
     result = MeshFrame(meshes, mesh[:])
     if result.status != cast(FrameStatus)FrameOk || result.paint_unchanged || mesh_draws != 2 { return 33 }
     unused CloseSession(meshes)
+
+    // Invalid slot indices never shift a word or alter valid slots.
+    flags := SessionFlagSet(cast(u32)0, 0, true)
+    flags = SessionFlagSet(flags, 8, true)
+    if !SessionFlagGet(flags, 0) || !SessionFlagGet(flags, 8) { return 45 }
+    invalid: [5]s32 = .{-1, 9, 31, 32, 2147483647}
+    for index: 0..4 {
+        slot := invalid[index]
+        if SessionFlagGet(flags, slot) || SessionFlagSet(flags, slot, true) != flags ||
+            SessionFlagSet(flags, slot, false) != flags { return 46 }
+    }
+
+    // Nested input suspension must restore each session's flags independently.
+    a := SessionOpen()
+    b := SessionOpen()
+    seed := TreeInputSuspend(a)
+    seed.escape_captured = true
+    seed.focus_visible = true
+    if !TreeInputResume(a, seed) { return 34 }
+    outer := TreeInputSuspend(a)
+    if !outer.escape_captured || !outer.focus_visible || TreeEscapeCaptured(b) { return 35 }
+    inner_seed := TreeInputSuspend(a)
+    inner_seed.focus_visible = true
+    if !TreeInputResume(a, inner_seed) { return 36 }
+    inner := TreeInputSuspend(a)
+    if inner.escape_captured || !inner.focus_visible { return 37 }
+    if !TreeInputResume(a, inner) || !TreeInputResume(a, outer) { return 38 }
+    restored := TreeInputSuspend(a)
+    if !restored.escape_captured || !restored.focus_visible || TreeEscapeCaptured(b) { return 39 }
+    if !TreeInputResume(a, restored) || !CloseSession(a) { return 40 }
+    fresh_input := SessionOpen()
+    reset := TreeInputSuspend(fresh_input)
+    if reset.escape_captured || reset.focus_visible || TreeInputResume(fresh_input, restored) { return 41 }
+    unused CloseSession(fresh_input)
+
+    // Invalidating one session leaves another retained frame usable; resource
+    // replacement invalidates all sessions.
+    a = SessionOpen()
+    Start(a); unused Build(a)
+    Start(b); unused Build(b)
+    PaintSnapshotInvalidate(a)
+    Start(a)
+    if RetainFrame(a) { return 42 }
+    TreeCancel(a)
+    Start(b)
+    if !RetainFrame(b) { return 43 }
+    unused EndFrameRetained(b, true)
+    PaintResourcesChanged()
+    Start(b)
+    if RetainFrame(b) { return 44 }
+    TreeCancel(b)
+    unused CloseSession(a)
+    unused CloseSession(b)
     return 0
 }

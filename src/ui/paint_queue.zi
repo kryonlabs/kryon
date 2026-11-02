@@ -148,18 +148,16 @@ paint_snapshot_values: [9]Vec(PaintSnapshotBlock);
 paint_snapshot_assets: [9]Vec(PaintSnapshotBlock);
 paint_snapshot_value_counts: [9]s64;
 paint_snapshot_asset_counts: [9]s64;
-paint_snapshots_valid: [9]bool;
-frame_paint_unchanged: [9]bool;
+paint_snapshots_valid: u32;
+frame_paint_unchanged: u32;
 
 // A host replaced raster resources while the widget props stayed the same.
 // Keep the buffers alive for an emission already in progress, but require
 // composition and painting again on the next frame.
 #program_export
 PaintResourcesChanged :: () {
-    for slot: cast(s32)0..cast(s32)paint_snapshots_valid.count - 1 {
-        paint_snapshots_valid[slot] = false
-        frame_paint_unchanged[slot] = false
-    }
+    paint_snapshots_valid = cast(u32)0
+    frame_paint_unchanged = cast(u32)0
 }
 
 // Every queued label owns its text, including large grids of short-lived
@@ -1224,8 +1222,8 @@ PaintSnapshotInvalidate :: (session: Session) {
     VecClear(paint_snapshot_meshes[slot])
     paint_snapshot_value_counts[slot] = 0
     paint_snapshot_asset_counts[slot] = 0
-    paint_snapshots_valid[slot] = false
-    frame_paint_unchanged[slot] = false
+    paint_snapshots_valid = SessionFlagSet(paint_snapshots_valid, slot, false)
+    frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, slot, false)
 }
 
 PaintSnapshotStore :: (session: Session) -> bool {
@@ -1273,7 +1271,7 @@ PaintSnapshotStore :: (session: Session) -> bool {
         }
         index += 1
     }
-    paint_snapshots_valid[slot] = true
+    paint_snapshots_valid = SessionFlagSet(paint_snapshots_valid, slot, true)
     return true
 }
 
@@ -1317,7 +1315,7 @@ SnapshotTextJoin :: (slot: s32, values: bool, start: s64, count: s64,
 PaintSnapshotEmit :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
     slot := SessionIndex(session)
-    if !paint_snapshots_valid[slot] { return false }
+    if !SessionFlagGet(paint_snapshots_valid, slot) { return false }
     value_text: Vec(u8)
     asset_text: Vec(u8)
     defer { VecFree(value_text); VecFree(asset_text) }
@@ -1352,7 +1350,7 @@ PaintSnapshotEmit :: (session: Session) -> bool {
 PaintPlanUnchanged :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
     slot: s32 = SessionIndex(session)
-    if !paint_snapshots_valid[slot] { return false }
+    if !SessionFlagGet(paint_snapshots_valid, slot) { return false }
     if pending_paint[slot].items.count != paint_snapshots[slot].count { return false }
     index: s32 = 0
     while cast(s64)index < pending_paint[slot].items.count {
@@ -1508,7 +1506,7 @@ PaintDamage :: (session: Session) -> PaintFrameDamage {
     if !SessionValid(session) { return result }
     slot: s32 = SessionIndex(session)
     paint_damage_areas[slot].count = 0
-    if !paint_snapshots_valid[slot] { return result }
+    if !SessionFlagGet(paint_snapshots_valid, slot) { return result }
     count := pending_paint[slot].items.count
     previous := paint_snapshots[slot].count
     total := ifx count > previous then count else previous
@@ -1584,7 +1582,7 @@ PaintFlushAreas :: (session: Session, areas: []Rectangle) {
 #program_export
 FramePaintUnchanged :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
-    return frame_paint_unchanged[SessionIndex(session)]
+    return SessionFlagGet(frame_paint_unchanged, SessionIndex(session))
 }
 
 #program_export
@@ -1622,6 +1620,6 @@ PaintDispose :: (session: Session) {
     pending_paint[session.slot].overflow = false
     paint_snapshot_value_counts[session.slot] = 0
     paint_snapshot_asset_counts[session.slot] = 0
-    paint_snapshots_valid[session.slot] = false
-    frame_paint_unchanged[session.slot] = false
+    paint_snapshots_valid = SessionFlagSet(paint_snapshots_valid, session.slot, false)
+    frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, session.slot, false)
 }

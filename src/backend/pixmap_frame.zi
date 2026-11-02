@@ -106,7 +106,7 @@ EndPixmapFrame :: (session: Session, reuse: bool,
     result.paint_count = PendingPaintCount(session)
     unchanged: bool
     damage: Rectangle
-    if !reuse || !paint_snapshots_valid[slot] {
+    if !reuse || !SessionFlagGet(paint_snapshots_valid, slot) {
         unchanged = PaintPlanUnchanged(session); damage = viewport
     }
     else {
@@ -130,7 +130,7 @@ EndPixmapFrame :: (session: Session, reuse: bool,
         }
     }
     result.paint_unchanged = unchanged
-    frame_paint_unchanged[slot] = unchanged && reuse
+    frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, slot, unchanged && reuse)
     if unchanged && reuse { PaintClear(session); return result }
     // Store only after examining the old coverage, including removed paint.
     if !unchanged && !PaintSnapshotStore(session) { result.paint_unchanged = false }
