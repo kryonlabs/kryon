@@ -1,0 +1,207 @@
+#import "geometry"
+#import "math"
+
+ViewTransform :: struct {
+    viewport: Rectangle
+    page_width: float32
+    page_height: float32
+    zoom: float32
+    maximum: float32
+    page_x: float32
+    page_y: float32
+    pinch_anchor: Vector2
+    pinch_distance: float32
+    pinch_zoom: float32
+    pinching: bool
+}
+
+#scope_file
+ViewFinite :: (value: float32) -> bool {
+    limit: float32 = 3.402823e38
+    return value == value && value <= limit && value >= -limit
+}
+
+ViewMaximum :: (maximum: float32) -> float32 {
+    if ViewFinite(maximum) && maximum > 1.0 { return maximum }
+    return 1.0
+}
+
+ViewClamp :: (view: *ViewTransform) {
+    view.maximum = ViewMaximum(view.maximum)
+    if !ViewFinite(view.zoom) || view.zoom < 1.0 { view.zoom = 1.0 }
+    if view.zoom > view.maximum { view.zoom = view.maximum }
+    if !ViewFinite(view.page_x) { view.page_x = 0.0 }
+    if !ViewFinite(view.page_y) { view.page_y = 0.0 }
+    limit_x: float32 = view.page_width - view.page_width / view.zoom
+    limit_y: float32 = view.page_height - view.page_height / view.zoom
+    if view.page_x < 0.0 { view.page_x = 0.0 }
+    if view.page_y < 0.0 { view.page_y = 0.0 }
+    if view.page_x > limit_x { view.page_x = limit_x }
+    if view.page_y > limit_y { view.page_y = limit_y }
+}
+
+ViewDistance :: (a: Vector2, b: Vector2) -> float32 {
+    dx: float64 = cast(float64)(a.x - b.x)
+    dy: float64 = cast(float64)(a.y - b.y)
+    distance: float32 = cast(float32)Sqrt(dx * dx + dy * dy)
+    if !ViewFinite(distance) { return -1.0 }
+    return distance
+}
+
+ViewMidpoint :: (a: Vector2, b: Vector2) -> Vector2 {
+    return Vector2.{a.x * 0.5 + b.x * 0.5, a.y * 0.5 + b.y * 0.5}
+}
+
+#scope_export
+#program_export
+ViewFit :: (viewport: Rectangle, page_width: float32, page_height: float32,
+    maximum: float32) -> ViewTransform {
+    view: ViewTransform
+    view.viewport = viewport
+    view.page_width = page_width
+    view.page_height = page_height
+    view.zoom = 1.0
+    view.maximum = ViewMaximum(maximum)
+    view.page_x = 0.0
+    view.page_y = 0.0
+    view.pinch_anchor = Vector2.{0.0, 0.0}
+    view.pinch_distance = 0.0
+    view.pinch_zoom = 1.0
+    view.pinching = false
+    return view
+}
+
+#program_export
+ViewReset :: (view: *ViewTransform) {
+    view.zoom = 1.0
+    view.page_x = 0.0
+    view.page_y = 0.0
+    view.pinch_anchor = Vector2.{0.0, 0.0}
+    view.pinch_distance = 0.0
+    view.pinch_zoom = 1.0
+    view.pinching = false
+    ViewClamp(view)
+}
+
+#program_export
+ViewIsFit :: (view: ViewTransform) -> bool {
+    return view.zoom == 1.0 && view.page_x == 0.0 && view.page_y == 0.0
+}
+
+#program_export
+ViewScale :: (view: ViewTransform) -> Vector2 {
+    return Vector2.{view.viewport.width * view.zoom / view.page_width,
+                    view.viewport.height * view.zoom / view.page_height}
+}
+
+#program_export
+ViewScreenToPage :: (view: ViewTransform, screen: Vector2) -> Vector2 {
+    scale: Vector2 = ViewScale(view)
+    return Vector2.{view.page_x + (screen.x - view.viewport.x) / scale.x,
+                    view.page_y + (screen.y - view.viewport.y) / scale.y}
+}
+
+#program_export
+ViewPageToScreen :: (view: ViewTransform, page: Vector2) -> Vector2 {
+    scale: Vector2 = ViewScale(view)
+    return Vector2.{view.viewport.x + (page.x - view.page_x) * scale.x,
+                    view.viewport.y + (page.y - view.page_y) * scale.y}
+}
+
+#program_export
+ViewPageRect :: (view: ViewTransform, page: Rectangle) -> Rectangle {
+    top_left: Vector2 = ViewPageToScreen(view, Vector2.{page.x, page.y})
+    bottom_right: Vector2 = ViewPageToScreen(
+        view, Vector2.{page.x + page.width, page.y + page.height})
+    return Rectangle.{top_left.x, top_left.y,
+                      bottom_right.x - top_left.x, bottom_right.y - top_left.y}
+}
+
+#program_export
+ViewVisiblePage :: (view: ViewTransform) -> Rectangle {
+    return Rectangle.{view.page_x, view.page_y,
+                      view.page_width / view.zoom, view.page_height / view.zoom}
+}
+
+#program_export
+ViewZoomAt :: (view: *ViewTransform, screen: Vector2, factor: float32) {
+    if !ViewFinite(factor) || factor <= 0.0 ||
+       !ViewFinite(screen.x) || !ViewFinite(screen.y) { return }
+    page: Vector2 = ViewScreenToPage(view.*, screen)
+    view.zoom *= factor
+    scale: Vector2 = ViewScale(view.*)
+    view.page_x = page.x - (screen.x - view.viewport.x) / scale.x
+    view.page_y = page.y - (screen.y - view.viewport.y) / scale.y
+    ViewClamp(view)
+}
+
+#program_export
+ViewPanBy :: (view: *ViewTransform, screen_dx: float32, screen_dy: float32) {
+    if !ViewFinite(screen_dx) || !ViewFinite(screen_dy) { return }
+    scale: Vector2 = ViewScale(view.*)
+    view.page_x -= screen_dx / scale.x
+    view.page_y -= screen_dy / scale.y
+    ViewClamp(view)
+}
+
+#program_export
+ViewSetViewport :: (view: *ViewTransform, viewport: Rectangle) {
+    old_centre: Vector2 = Vector2.{
+        view.viewport.x + view.viewport.width * 0.5,
+        view.viewport.y + view.viewport.height * 0.5}
+    page_centre: Vector2 = ViewScreenToPage(view.*, old_centre)
+    view.viewport = viewport
+    scale: Vector2 = ViewScale(view.*)
+    view.page_x = page_centre.x - viewport.width / (2.0 * scale.x)
+    view.page_y = page_centre.y - viewport.height / (2.0 * scale.y)
+    ViewClamp(view)
+}
+
+#program_export
+ViewPinchBegin :: (view: *ViewTransform, a: Vector2, b: Vector2) {
+    view.pinching = false
+    distance: float32 = ViewDistance(a, b)
+    midpoint: Vector2 = ViewMidpoint(a, b)
+    if distance < 1.0 || !ViewFinite(midpoint.x) || !ViewFinite(midpoint.y) {
+        ViewClamp(view)
+        return
+    }
+    view.pinch_anchor = midpoint
+    view.pinch_distance = distance
+    view.pinch_zoom = view.zoom
+    view.pinching = true
+    ViewClamp(view)
+}
+
+#program_export
+ViewPinchUpdate :: (view: *ViewTransform, a: Vector2, b: Vector2) {
+    if !view.pinching { return }
+    distance: float32 = ViewDistance(a, b)
+    midpoint: Vector2 = ViewMidpoint(a, b)
+    if distance <= 0.0 || !ViewFinite(midpoint.x) || !ViewFinite(midpoint.y) {
+        ViewClamp(view)
+        return
+    }
+    anchor_page: Vector2 = ViewScreenToPage(view.*, view.pinch_anchor)
+    view.zoom = view.pinch_zoom * distance / view.pinch_distance
+    scale: Vector2 = ViewScale(view.*)
+    view.page_x = anchor_page.x - (midpoint.x - view.viewport.x) / scale.x
+    view.page_y = anchor_page.y - (midpoint.y - view.viewport.y) / scale.y
+    ViewClamp(view)
+}
+
+#program_export
+ViewPinchEnd :: (view: *ViewTransform) {
+    view.pinching = false
+    ViewClamp(view)
+}
+
+#program_export
+ViewWheelFactor :: (notches: float32) -> float32 {
+    if !ViewFinite(notches) { return 1.0 }
+    if notches > 32.0 { notches = 32.0 }
+    if notches < -32.0 { notches = -32.0 }
+    factor: float32 = cast(float32)Pow(1.2, cast(float64)notches)
+    if !ViewFinite(factor) || factor <= 0.0 { return 1.0 }
+    return factor
+}

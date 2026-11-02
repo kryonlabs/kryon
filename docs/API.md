@@ -463,6 +463,16 @@ registered face or a font asset. Hosted fonts pass the same asset policy as
 images; absolute host paths are refused. Raylib and Canvas select the face
 for measurement and for queued paint, restoring the interface font afterward.
 
+## View transforms
+
+`view_transform.ViewFit(viewport, page_width, page_height, maximum)` returns
+the state for a page that fills its viewport at zoom 1. The pure mapping and
+mutation helpers convert between page and screen coordinates, zoom at a point,
+pan, resize while preserving the visible centre, and drive a two-finger pinch.
+Every mutation keeps zoom in range and leaves no empty space around the page.
+Hosts observe wheel, pointer, and touch input and pass those observations in;
+`ViewWheelFactor(notches)` supplies the bounded 1.2-per-notch wheel factor.
+
 ## Asset audio
 
 `kryon/Media` retains `MediaOpen`, pause/stop/state/message and text fetching.

@@ -1,0 +1,144 @@
+#import "geometry"
+#import "view_transform"
+
+Near :: (a: float32, b: float32) -> bool {
+    difference: float32 = a - b
+    if difference < 0.0 { difference = 0.0 - difference }
+    return difference <= 0.01
+}
+
+NearPoint :: (a: Vector2, b: Vector2) -> bool {
+    return Near(a.x, b.x) && Near(a.y, b.y)
+}
+
+Finite :: (value: float32) -> bool {
+    return value == value && value <= 3.402823e38 && value >= -3.402823e38
+}
+
+Valid :: (view: ViewTransform) -> bool {
+    limit_x: float32 = view.page_width - view.page_width / view.zoom
+    limit_y: float32 = view.page_height - view.page_height / view.zoom
+    return view.zoom >= 1.0 && view.zoom <= view.maximum &&
+           view.page_x >= 0.0 && view.page_x <= limit_x &&
+           view.page_y >= 0.0 && view.page_y <= limit_y &&
+           Finite(view.zoom) && Finite(view.maximum) &&
+           Finite(view.page_x) && Finite(view.page_y)
+}
+
+#program_export
+main :: () -> s32 {
+    view: ViewTransform = ViewFit(Rectangle.{12.0, 7.0, 240.0, 180.0},
+                                  400.0, 300.0, 8.0)
+
+    zooms: [4]float32 = .[1.0, 1.5, 4.0, 8.0]
+    for zoom: zooms {
+        ViewReset(*view)
+        ViewZoomAt(*view, Vector2.{102.0, 77.0}, zoom)
+        screen: Vector2 = Vector2.{92.0, 62.0}
+        page: Vector2 = ViewScreenToPage(view, screen)
+        round_trip: Vector2 = ViewPageToScreen(view, page)
+        if !NearPoint(round_trip, screen) || !Valid(view) { return 1 }
+    }
+
+    ViewReset(*view)
+    anchor_screen: Vector2 = Vector2.{102.0, 67.0}
+    anchor_page: Vector2 = ViewScreenToPage(view, anchor_screen)
+    ViewZoomAt(*view, anchor_screen, 2.0)
+    if !NearPoint(ViewScreenToPage(view, anchor_screen), anchor_page) ||
+       !Near(view.zoom, 2.0) { return 2 }
+
+    ViewReset(*view)
+    ViewZoomAt(*view, Vector2.{132.0, 97.0}, 4.0)
+    ViewPanBy(*view, 10000.0, 10000.0)
+    if view.page_x != 0.0 || view.page_y != 0.0 || !Valid(view) { return 3 }
+    ViewPanBy(*view, -10000.0, -10000.0)
+    if !Near(view.page_x, 300.0) || !Near(view.page_y, 225.0) ||
+       !Valid(view) { return 4 }
+    ViewZoomAt(*view, Vector2.{132.0, 97.0}, 100.0)
+    if view.zoom != 8.0 || !Valid(view) { return 5 }
+    ViewZoomAt(*view, Vector2.{132.0, 97.0}, 0.01)
+    if view.zoom != 1.0 || view.page_x != 0.0 || view.page_y != 0.0 ||
+       !Valid(view) { return 6 }
+
+    ViewZoomAt(*view, Vector2.{132.0, 97.0}, 4.0)
+    ViewPanBy(*view, -10000.0, -10000.0)
+    ViewReset(*view)
+    ViewPanBy(*view, 80.0, 60.0)
+    if !ViewIsFit(view) || !Valid(view) { return 7 }
+
+    page_rect: Rectangle = Rectangle.{40.0, 50.0, 30.0, 20.0}
+    screen_rect: Rectangle = ViewPageRect(view, page_rect)
+    top_left: Vector2 = ViewPageToScreen(view, Vector2.{40.0, 50.0})
+    bottom_right: Vector2 = ViewPageToScreen(
+        view, Vector2.{70.0, 70.0})
+    if !NearPoint(Vector2.{screen_rect.x, screen_rect.y}, top_left) ||
+       !NearPoint(Vector2.{screen_rect.x + screen_rect.width,
+                           screen_rect.y + screen_rect.height}, bottom_right) {
+        return 8
+    }
+
+    ViewZoomAt(*view, Vector2.{132.0, 97.0}, 4.0)
+    visible: Rectangle = ViewVisiblePage(view)
+    if !Near(visible.width, 100.0) || !Near(visible.height, 75.0) ||
+       !Near(visible.x, view.page_x) || !Near(visible.y, view.page_y) {
+        return 9
+    }
+
+    portrait: ViewTransform = ViewFit(Rectangle.{0.0, 0.0, 180.0, 240.0},
+                                      400.0, 300.0, 8.0)
+    ViewZoomAt(*portrait, Vector2.{90.0, 120.0}, 4.0)
+    ViewPanBy(*portrait, -100.0, -100.0)
+    portrait_centre: Vector2 = ViewScreenToPage(
+        portrait, Vector2.{90.0, 120.0})
+    ViewSetViewport(*portrait, Rectangle.{0.0, 0.0, 240.0, 180.0})
+    landscape_centre: Vector2 = ViewScreenToPage(
+        portrait, Vector2.{120.0, 90.0})
+    if !NearPoint(portrait_centre, landscape_centre) || !Valid(portrait) {
+        return 10
+    }
+
+    ViewReset(*view)
+    ViewPinchBegin(*view, Vector2.{20.0, 40.0}, Vector2.{60.0, 40.0})
+    ViewPinchUpdate(*view, Vector2.{0.0, 40.0}, Vector2.{80.0, 40.0})
+    if !Near(view.zoom, 2.0) || !Valid(view) { return 11 }
+
+    ViewZoomAt(*view, Vector2.{132.0, 97.0}, 2.0)
+    ViewPinchBegin(*view, Vector2.{30.0, 50.0}, Vector2.{70.0, 50.0})
+    original_midpoint: Vector2 = Vector2.{50.0, 50.0}
+    original_page: Vector2 = ViewScreenToPage(view, original_midpoint)
+    ViewPinchUpdate(*view, Vector2.{10.0, 60.0}, Vector2.{50.0, 60.0})
+    moved_page: Vector2 = ViewScreenToPage(view, Vector2.{30.0, 60.0})
+    if !Near(view.zoom, 4.0) || !NearPoint(moved_page, original_page) ||
+       !Valid(view) { return 12 }
+
+    ViewPinchBegin(*view, Vector2.{30.0, 50.0}, Vector2.{70.0, 50.0})
+    original_page = ViewScreenToPage(view, Vector2.{50.0, 50.0})
+    ViewPinchUpdate(*view, Vector2.{20.0, 60.0}, Vector2.{100.0, 60.0})
+    followed_page: Vector2 = ViewScreenToPage(view, Vector2.{60.0, 60.0})
+    if !Near(view.zoom, 8.0) || !NearPoint(followed_page, original_page) ||
+       !Valid(view) { return 13 }
+
+    before: ViewTransform = view
+    ViewPinchBegin(*view, Vector2.{20.0, 40.0}, Vector2.{20.5, 40.0})
+    if view.pinching || !Valid(view) { return 14 }
+    ViewPinchBegin(*view, Vector2.{20.0, 40.0}, Vector2.{60.0, 40.0})
+    ViewPinchUpdate(*view, Vector2.{0.0 / 0.0, 40.0}, Vector2.{80.0, 40.0})
+    if !Valid(view) || view.zoom != before.zoom ||
+       view.page_x != before.page_x || view.page_y != before.page_y {
+        return 15
+    }
+    ViewPinchUpdate(*view, Vector2.{-3.0e38, 40.0},
+                    Vector2.{3.0e38, 40.0})
+    if !Valid(view) || view.zoom != before.zoom ||
+       view.page_x != before.page_x || view.page_y != before.page_y {
+        return 16
+    }
+    ViewPinchEnd(*view)
+    if view.pinching || !Valid(view) { return 17 }
+
+    if !Near(ViewWheelFactor(1.0), 1.2) ||
+       ViewWheelFactor(1.0e30) != ViewWheelFactor(32.0) ||
+       !Finite(ViewWheelFactor(1.0e30)) { return 18 }
+
+    return 0
+}
