@@ -304,6 +304,10 @@ VectorTransformPoint :: (transform: VectorTransform, x: float32, y: float32) -> 
 }
 
 VectorAddEdge :: (ax: float32, ay: float32, bx: float32, by: float32) {
+    if !Finite32(ax) || !Finite32(ay) || !Finite32(bx) || !Finite32(by) {
+        vector_overflow = true
+        return
+    }
     if ay == by { return }
     if vector_edge_count >= VECTOR_MAX_EDGES {
         vector_overflow = true
@@ -356,8 +360,8 @@ VectorPushCurve :: (x0: float32, y0: float32, x1: float32, y1: float32,
     return true
 }
 
-VectorFlattenCurve :: (x0: float32, y0: float32, x1: float32, y1: float32,
-    x2: float32, y2: float32, x3: float32, y3: float32) {
+VectorCurveClip :: (x0: float32, y0: float32, x1: float32, y1: float32,
+    x2: float32, y2: float32, x3: float32, y3: float32) -> s32 {
     minimum_x: float32 = x0
     if x1 < minimum_x { minimum_x = x1 }
     if x2 < minimum_x { minimum_x = x2 }
@@ -377,14 +381,23 @@ VectorFlattenCurve :: (x0: float32, y0: float32, x1: float32, y1: float32,
     render_height: float32 = cast(float32)vector_target_height
     render_width: float32 = cast(float32)vector_target_width
     if maximum_y <= 0.0 || minimum_y >= render_height || minimum_x > render_width {
+        return 1
+    }
+    if maximum_x <= 0.0 { return 2 }
+    return 0
+}
+
+VectorFlattenCurve :: (x0: float32, y0: float32, x1: float32, y1: float32,
+    x2: float32, y2: float32, x3: float32, y3: float32) {
+    if !Finite32(x0) || !Finite32(y0) || !Finite32(x1) || !Finite32(y1) ||
+        !Finite32(x2) || !Finite32(y2) || !Finite32(x3) || !Finite32(y3) {
+        vector_overflow = true
         return
     }
     if !VectorPushCurve(x0, y0, x1, y1, x2, y2, x3, y3) {
         vector_overflow = true
         return
     }
-    previous_x: float32 = x0
-    previous_y: float32 = y0
     while curve_stack_count > 0 {
         curve_stack_count -= 1
         at: s32 = curve_stack_count
@@ -396,6 +409,14 @@ VectorFlattenCurve :: (x0: float32, y0: float32, x1: float32, y1: float32,
         cy: float32 = curve_stack_y2[at]
         dx: float32 = curve_stack_x3[at]
         dy: float32 = curve_stack_y3[at]
+        // Clip at each subdivision. A curve wholly left contributes only its
+        // net winding, which its endpoint chord preserves on every scanline.
+        clip: s32 = VectorCurveClip(ax, ay, bx, by, cx, cy, dx, dy)
+        if clip == 1 { continue }
+        if clip == 2 {
+            VectorAddEdge(ax, ay, dx, dy)
+            continue
+        }
         if !VectorCurveFlat(ax, ay, bx, by, cx, cy, dx, dy) {
             ab_x: float32 = (ax + bx) * 0.5
             ab_y: float32 = (ay + by) * 0.5
@@ -416,9 +437,7 @@ VectorFlattenCurve :: (x0: float32, y0: float32, x1: float32, y1: float32,
             }
             continue
         }
-        VectorAddEdge(previous_x, previous_y, dx, dy)
-        previous_x = dx
-        previous_y = dy
+        VectorAddEdge(ax, ay, dx, dy)
     }
 }
 

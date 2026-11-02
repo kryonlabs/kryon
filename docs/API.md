@@ -19,13 +19,6 @@ existing behavior of emitting a full repaint immediately.
 | `PageRoute` | Browser route path, hash, and history (`GetRoutePath`, `PushRoute`, `GetRouteOrigin`, ...) for Canvas and DOM profiles |
 | `geometry`, `drawing_props`, `session`, `tree`, `surface`, `paint_queue`, `style`, `style_sheet`, `control_props`, `font_metrics`, `scroll`, `semantic`, `tree_input`, `widget_kind` | Building blocks for widget packages |
 
-## Widget packages
-
-`CarouselProps.logo_max_width` optionally caps the cover logo's logical width;
-`logo_top` optionally positions it below surrounding controls, relative to the
-carousel bounds. Zero preserves the default title layout. `CarouselArtwork`
-accepts the same optional values after its source rectangle for startup covers.
-
 ## Vector path coverage
 
 `vector_path` rasterizes the portable `KVP1` filled-path format and round
@@ -35,6 +28,16 @@ integer-translated tile with identical pixels. `VectorPolylineStroke` uses the
 same transform, target, and `VectorAdd` / `VectorErase` coverage arithmetic.
 File helpers are bounds-checked; callers retain ownership of all bytes and
 coverage storage.
+
+Calls share bounded scratch storage and must be serialized. Targets may be up
+to 8192 by 16384 pixels; invalid input or exhausted scratch returns `false`.
+
+## Widget packages
+
+`CarouselProps.logo_max_width` optionally caps the cover logo's logical width;
+`logo_top` optionally positions it below surrounding controls, relative to the
+carousel bounds. Zero preserves the default title layout. `CarouselArtwork`
+accepts the same optional values after its source rectangle for startup covers.
 
 A widget that is not part of the core catalog lives in its own Git package
 and depends on Kryon. [Plot](https://github.com/kryonlabs/plot) and

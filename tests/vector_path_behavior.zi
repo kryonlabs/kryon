@@ -319,42 +319,70 @@ CheckClipped :: () -> s32 {
     return 0
 }
 
+// Compare every pixel, including curved edges and translated fractional spans.
 CheckTile :: (scale: s32, failure: s32) -> s32 {
-    StartFile(8, 8, 1)
-    StartPath(#char "N")
-    MoveTo(16, 16)
-    LineTo(112, 16)
-    CurveTo(125, 16, 128, 19, 128, 32)
-    LineTo(128, 112)
-    LineTo(16, 112)
-    Close()
-    FinishPath()
+    CircleFile()
     full_size: s32 = 8 * scale
     full: VectorTarget = VectorTarget.{full_size, full_size, coverage[:]}
     Clear(full)
-    if !RenderFirst(full, cast(float32)scale, .VectorAdd) { return failure }
-    origin: s32 = 2 * scale
-    tile_size: s32 = 3 * scale
-    tile: VectorTarget = VectorTarget.{tile_size, tile_size, tile_coverage[:]}
-    Clear(tile)
+    factor: float32 = cast(float32)scale
+    transform: VectorTransform = VectorTransform.{factor, 0.0, 0.0, factor, 0.1875, 0.3125}
     path: VectorPathView = VectorFilePath(file_bytes[:file_length], 0)
-    transform: VectorTransform = VectorTransform.{
-        .a = cast(float32)scale, .b = 0.0, .c = 0.0,
-        .d = cast(float32)scale, .e = -cast(float32)origin, .f = -cast(float32)origin
-    }
-    if !VectorPathFill(path, transform, tile, .VectorAdd) { return failure + 1 }
-    y: s32 = 0
-    while y < tile_size {
-        x: s32 = 0
-        while x < tile_size {
-            full_index: s32 = (origin + y) * full_size + origin + x
-            if Difference(coverage[full_index], tile.coverage[y * tile_size + x]) > 1 {
-                return failure + 2
+    if !VectorPathFill(path, transform, full, .VectorAdd) { return failure }
+    tile_size: s32 = 2 * scale
+    tile: VectorTarget = VectorTarget.{tile_size, tile_size, tile_coverage[:]}
+    origin_y: s32 = 0
+    while origin_y < full_size {
+        origin_x: s32 = 0
+        while origin_x < full_size {
+            Clear(tile)
+            translated: VectorTransform = transform
+            translated.e -= cast(float32)origin_x
+            translated.f -= cast(float32)origin_y
+            if !VectorPathFill(path, translated, tile, .VectorAdd) { return failure + 1 }
+            y: s32 = 0
+            while y < tile_size {
+                x: s32 = 0
+                while x < tile_size {
+                    full_index: s32 = (origin_y + y) * full_size + origin_x + x
+                    if coverage[full_index] != tile.coverage[y * tile_size + x] {
+                        return failure + 2
+                    }
+                    x += 1
+                }
+                y += 1
             }
-            x += 1
+            origin_x += tile_size
         }
-        y += 1
+        origin_y += tile_size
     }
+    return 0
+}
+
+// Huge offscreen arcs must reduce to visible crossings rather than exhausting
+// edge scratch while zoomed into an eight-pixel tile near the circle's center.
+CheckLargeCurveTile :: () -> s32 {
+    StartFile(8, 8, 1)
+    StartPath(#char "N")
+    MoveTo(0, -1600000000)
+    CurveTo(880000000, -1600000000, 1600000000, -880000000, 1600000000, 0)
+    CurveTo(1600000000, 880000000, 880000000, 1600000000, 0, 1600000000)
+    CurveTo(-880000000, 1600000000, -1600000000, 880000000, -1600000000, 0)
+    CurveTo(-1600000000, -880000000, -880000000, -1600000000, 0, -1600000000)
+    Close()
+    FinishPath()
+    target: VectorTarget = VectorTarget.{8, 8, coverage[:]}
+    Clear(target)
+    if !RenderFirst(target, 8.0, .VectorAdd) { return 8300 }
+    if Area(target) != 64 { return 8301 }
+    // Finite affine coefficients can still overflow when applied to geometry.
+    StartFile(8, 8, 1)
+    SquarePath(#char "N", 0, 0, 112, 112)
+    Clear(target)
+    transform: VectorTransform = VectorTransform.{1.0, 3.0e38, 1.0e-38, 1.0, 0.0, 0.0}
+    if VectorPathFill(VectorFilePath(file_bytes[:file_length], 0), transform,
+        target, .VectorAdd) { return 8302 }
+    if Area(target) != 0 { return 8303 }
     return 0
 }
 
@@ -431,7 +459,7 @@ CheckStrokes :: () -> s32 {
     }
     index = 0
     while index < 32 * 32 {
-        if Difference(coverage[index], copy[index]) > 1 { return 6006 }
+        if coverage[index] != copy[index] { return 6006 }
         index += 1
     }
     return 0
@@ -485,6 +513,8 @@ main :: () -> s32 {
     result = CheckTile(3, 8100)
     if result != 0 { return result }
     result = CheckTile(8, 8200)
+    if result != 0 { return result }
+    result = CheckLargeCurveTile()
     if result != 0 { return result }
     result = CheckModes()
     if result != 0 { return result }
