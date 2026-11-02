@@ -47,7 +47,7 @@
     }
     #program_export
     GetKeyPressed :: () -> s32 {
-        return CanvasQueuePop(*canvas_keys_pressed[0], *canvas_keys_pressed_count)
+        return CanvasQueuePop(*canvas_pending_keys[0], *canvas_pending_keys_count)
     }
 
     #program_export

@@ -77,6 +77,12 @@
     canvas_keys_released_count: s32;
     canvas_keys_repeated: [CANVAS_QUEUE_LIMIT]s32;
     canvas_keys_repeated_count: s32;
+    // Delivery queues outlive a drawing frame. Edge queues above still expire
+    // at EndFrame, even when the app takes only one key before BeginDrawing.
+    canvas_pending_keys: [CANVAS_QUEUE_LIMIT]s32;
+    canvas_pending_keys_count: s32;
+    canvas_pending_repeats: [CANVAS_QUEUE_LIMIT]s32;
+    canvas_pending_repeats_count: s32;
     canvas_chars: [CANVAS_QUEUE_LIMIT]s32;
     canvas_chars_count: s32;
 
@@ -155,6 +161,12 @@
             canvas_frame_input.keys_repeated -= 1
         }
         return first
+    }
+
+    CanvasAppKeyTake :: () -> s32 {
+        key := CanvasQueuePop(*canvas_pending_keys[0], *canvas_pending_keys_count)
+        if key != 0 { return key }
+        return CanvasQueuePop(*canvas_pending_repeats[0], *canvas_pending_repeats_count)
     }
 
     CanvasQueueDiscard :: (items: *s32, count: *s32, consumed: s32) {
@@ -290,9 +302,11 @@
         if canvas_keys_down[mapped] && repeated {
             CanvasQueuePush(*canvas_keys_repeated[0],
                 *canvas_keys_repeated_count, mapped)
+            CanvasQueuePush(*canvas_pending_repeats[0], *canvas_pending_repeats_count, mapped)
         } else if !canvas_keys_down[mapped] {
             CanvasQueuePush(*canvas_keys_pressed[0],
                 *canvas_keys_pressed_count, mapped)
+            CanvasQueuePush(*canvas_pending_keys[0], *canvas_pending_keys_count, mapped)
         }
         canvas_keys_down[mapped] = true
         if shortcut && (mapped == 65 || mapped == 67 || mapped == 86 ||
@@ -395,6 +409,8 @@
             return 0
         }
         if kind == CanvasEventBlur {
+            canvas_pending_keys_count = 0
+            canvas_pending_repeats_count = 0
             canvas_focused = false
             canvas_snapshot_focus_lost = true
             index: s32 = 0
@@ -438,6 +454,8 @@
         canvas_keys_pressed_count = 0
         canvas_keys_released_count = 0
         canvas_keys_repeated_count = 0
+        canvas_pending_keys_count = 0
+        canvas_pending_repeats_count = 0
         canvas_chars_count = 0
         canvas_buttons_pressed_count = 0
         canvas_buttons_released_count = 0

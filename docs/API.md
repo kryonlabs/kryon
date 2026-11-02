@@ -308,6 +308,12 @@ drawing: it returns `RaylibActivityDescriptor`, `RaylibActivityInput` or
 drawing. After `RaylibActivityInput` draw two frames, since a frame uses input
 the previous one read. `RaylibPrepareGlyphs(text)` readies many characters at
 once, so drawing them one at a time does not rebuild a font for each.
+
+Canvas and DOM app hosts retain unread key presses and repeats across drawing
+frames, taking one application key per frame. Pressed/released snapshot flags
+still expire at the frame boundary; delivery does not replay those flags.
+Focus loss and host reset cancel unread keys.
+
 Application code owns its product state and calls widgets within `Frame`.
 The complete manifest and build commands are in [PROJECTS.md](PROJECTS.md).
 
