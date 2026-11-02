@@ -150,7 +150,7 @@ jobs:
       # SDL3's GPU renderer needs Vulkan even on a software-only runner.
       - name: Install SDL3 software GPU test tools
         if: matrix.shard == 'hosts'
-        run: sudo apt-get install -y libvulkan-dev mesa-vulkan-drivers libx11-dev libxext-dev xauth
+        run: sudo apt-get install -y libvulkan-dev mesa-vulkan-drivers libx11-dev libxext-dev libxtst-dev xauth
 
       # Template tests serve this checkout through local Git URLs and use
       # the manifest's master ref. Keep that ref at the locked commit.
@@ -200,12 +200,6 @@ jobs:
         if: matrix.shard == 'check'
         run: sudo apt-get install -y gcc-mingw-w64-x86-64 wine wine64
 
-      - name: Build and test
-        if: matrix.shard != 'site'
-        env:
-          CHROMIUM: google-chrome
-        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 make test-shard-${{ matrix.shard }}
-
       - name: Test opt-in SDL3 GPU renderer on a private display
         if: matrix.shard == 'hosts'
         env:
@@ -215,6 +209,12 @@ jobs:
           test -f "$1"
           export VK_DRIVER_FILES="$1"
           env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 make sdl3-test
+
+      - name: Build and test
+        if: matrix.shard != 'site'
+        env:
+          CHROMIUM: google-chrome
+        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 make test-shard-${{ matrix.shard }}
 
       - name: Check repeatable frame workloads
         if: matrix.shard == 'hosts'

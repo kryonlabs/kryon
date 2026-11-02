@@ -113,7 +113,7 @@ source package. No Git submodule or global SDL3 installation is needed. Build
 prerequisites are a GNU C toolchain, CMake, pkg-config, Python 3.11+, X11
 development headers and Vulkan headers/loader. Running requires an SDL3 GPU
 device, which may be software. On Debian/Ubuntu the additional test packages
-are `libvulkan-dev mesa-vulkan-drivers libx11-dev libxext-dev xvfb xauth`.
+are `libvulkan-dev mesa-vulkan-drivers libx11-dev libxext-dev libxtst-dev xvfb xauth`.
 From the Kryon checkout, with Ziran available:
 
 ```sh
