@@ -234,6 +234,13 @@ graphics context. Window shutdown joins the worker before closing GL.
 An active frame-rate request can interrupt an older frame's idle pacing;
 lower rates take effect with their recorded frame.
 
+`PollRaylib` gathers at most eight touch positions on the platform owner,
+alongside its pointer and frame-input snapshot. `RaylibTouches(points)` reads
+that stable screen-coordinate storage and applies the caller's current zoom;
+it never queries platform input from an app callback. The same frame barrier
+protects touch storage until the next poll. Android's mouse surface translation
+also applies to every touch, so pointer and pinch coordinates share a space.
+
 Image preparation captures encoded bytes on the app thread, before any
 frame-scoped resource views expire. At most one source is captured per frame,
 with one waiting source and one active decode job. The worker owns its bytes,

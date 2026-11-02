@@ -6,6 +6,7 @@
 #import "input_protocol"
 #import "raylib_runtime"
 #import "frame_snapshot"
+#import "geometry"
 #import "key_input"
 #import "widget_host"
 #import "hosted_app"
@@ -50,6 +51,122 @@ FocusEvent :: (focused: bool) -> bool {
     return PushEvent(*event) == 1
 }
 
+// Deterministic touch fixtures at raylib's FFI boundary. All window and key
+// events still use real SDL on the test's private Xvfb display.
+fixture_active: bool;
+fixture_count: s32;
+fixture_points: [8]Vector2;
+fixture_queries: s32;
+fixture_positions: s32;
+fixture_invalid: bool;
+fixture_owner: usize;
+thread_c :: #system_library "c";
+Self :: () -> usize #foreign thread_c "pthread_self";
+RealMouseX :: () -> s32 #foreign raylib_input "__real_GetMouseX";
+RealMouseY :: () -> s32 #foreign raylib_input "__real_GetMouseY";
+
+#program_export
+__wrap_GetMouseX :: () -> s32 {
+    if fixture_active { return 80 }
+    return RealMouseX()
+}
+#program_export
+__wrap_GetMouseY :: () -> s32 {
+    if fixture_active { return 150 }
+    return RealMouseY()
+}
+#program_export
+__wrap_GetTouchPointCount :: () -> s32 {
+    fixture_queries += 1
+    if Self() != fixture_owner { fixture_invalid = true }
+    return fixture_count
+}
+#program_export
+__wrap_GetTouchPosition :: (index: s32) -> Vector2 {
+    fixture_positions += 1
+    if Self() != fixture_owner || index < 0 || index >= 8 || index >= fixture_count {
+        fixture_invalid = true
+        return Vector2.{}
+    }
+    return fixture_points[index]
+}
+
+TouchFrame :: (argument: *void) {
+    result := cast(*s32)argument
+    #if #defined(KRYON_FRAME_THREADS) {
+        if Self() == fixture_owner { result.* = 51; return }
+    }
+    // Zoom may change in the callback; the snapshot retains screen pixels.
+    RaylibSetZoom(4.0)
+    points: [3]Vector2
+    points[2] = Vector2.{-99.0, -98.0}
+    if RaylibTouches(points[:]) != 2 || points[0].x != 20.0 || points[0].y != 37.5 ||
+    points[1].x != 35.0 || points[1].y != 57.5 ||
+    points[2].x != -99.0 || points[2].y != -98.0 { result.* = 52; return }
+    points[0].x = -1.0
+    if RaylibTouches(points[:1]) != 2 || points[0].x != 20.0 { result.* = 53 }
+}
+
+TouchFixtures :: () -> s32 {
+    fixture_active = true
+    defer { fixture_active = false; RaylibSetZoom(1.0) }
+    points: [9]Vector2
+    points[0] = Vector2.{-99.0, -98.0}
+    if !FocusEvent(true) { return 35 }
+    PollEvents()
+    fixture_count = 0
+    if !PollRaylib() || RaylibTouches(points[:]) != 0 ||
+    points[0].x != -99.0 || points[0].y != -98.0 || fixture_positions != 0 { return 36 }
+    fixture_count = -1
+    if !PollRaylib() || RaylibTouches(points[:0]) != 0 || fixture_positions != 0 { return 37 }
+    for index: cast(s32)0..7 {
+        fixture_points[index] = Vector2.{100.0 + cast(float32)index * 60.0,
+            200.0 + cast(float32)index * 80.0}
+    }
+    fixture_count = 2
+    RaylibSetZoom(2.0)
+    if !PollRaylib() { return 38 }
+    queries := fixture_queries
+    positions := fixture_positions
+    // Mutating the provider after the poll must not affect a callback.
+    fixture_count = 0
+    fixture_points[0] = Vector2.{-200.0, -400.0}
+    if RaylibTouches(points[:0]) != 2 || points[0].x != -99.0 || points[0].y != -98.0 ||
+    fixture_queries != queries || fixture_positions != positions { return 39 }
+    points[1] = Vector2.{-97.0, -96.0}
+    if RaylibTouches(points[:1]) != 2 || points[0].x != 40.0 || points[0].y != 75.0 ||
+    points[1].x != -97.0 || points[1].y != -96.0 { return 40 }
+    if RaylibTouches(points[:]) != 2 || points[1].x != 70.0 || points[1].y != 115.0 { return 41 }
+    // The first point matches the polled pointer in the current zoom.
+    pointer := PollPointer()
+    if pointer.x != points[0].x || pointer.y != points[0].y { return 42 }
+    result: s32
+    if !RunRaylibAppFrame(TouchFrame, cast(*void)*result) || !FlushRaylibAppFrames() { return 43 }
+    if result != 0 { return result }
+    if fixture_queries != queries || fixture_positions != positions || fixture_invalid { return 44 }
+    CloseRaylibAppFrames()
+    // A hostile count cannot overrun the backend snapshot or caller slice.
+    fixture_points[0] = Vector2.{100.0, 200.0}
+    fixture_count = 2147483647
+    RaylibSetZoom(2.0)
+    points[8] = Vector2.{-97.0, -96.0}
+    if !PollRaylib() || RaylibTouches(points[:]) != 8 || fixture_positions != positions + 8 ||
+    points[7].x != 250.0 || points[7].y != 355.0 ||
+    points[8].x != -97.0 || points[8].y != -96.0 || fixture_invalid { return 45 }
+    if !FocusEvent(false) { return 46 }
+    PollEvents()
+    positions = fixture_positions
+    if !PollRaylib() || RaylibTouches(points[:]) != 0 || fixture_positions != positions { return 47 }
+    // Terminal polling must revoke the previous touch snapshot.
+    if !FocusEvent(true) { return 48 }
+    PollEvents()
+    fixture_count = 2
+    if !PollRaylib() || RaylibTouches(points[:0]) != 2 { return 49 }
+    WindowQuitHost()
+    if PollRaylib() || RaylibTouches(points[:]) != 0 { return 50 }
+    return 0
+}
+
 AllowAsset :: (path: string) -> bool { unused path; return false }
 Allows :: (context: *void, module: string, function: string) -> bool {
     unused context
@@ -58,6 +175,9 @@ Allows :: (context: *void, module: string, function: string) -> bool {
 
 #program_export
 main :: () -> s32 {
+    fixture_owner = Self()
+    initial_points: [1]Vector2
+    if RaylibTouches(initial_points[:]) != 0 { return Failure(55) }
     if !OpenRaylib(320, 200, "Frame input local test") { return Failure(1) }
     defer { CloseRaylib() }
     RaylibExitKey(0)
@@ -160,6 +280,8 @@ main :: () -> s32 {
     regained := CaptureFrameInput(session)
     if !regained.focused || regained.keys[65] != cast(u8)FrameKeyHeld || regained.delta_ms < 0 { return Failure(31) }
     FrameInputEnd(session)
+    touch_result := TouchFixtures()
+    if touch_result != 0 { return Failure(touch_result) }
     return 0
 }
 

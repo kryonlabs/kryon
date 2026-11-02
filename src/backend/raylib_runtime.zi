@@ -135,6 +135,8 @@ HostRaylibDrawFontText :: (font: RaylibFont, value: *u8, position: Vector2,
 HostRaylibMeasureFontText :: (font: RaylibFont, value: *u8, size: float32,
     spacing: float32) -> Vector2 #foreign raylib "MeasureTextEx";
 HostRaylibMouseX :: () -> s32 #foreign raylib "GetMouseX";
+HostRaylibTouchCount :: () -> s32 #foreign raylib "GetTouchPointCount";
+HostRaylibTouchPosition :: (index: s32) -> Vector2 #foreign raylib "GetTouchPosition";
 HostRaylibMouseY :: () -> s32 #foreign raylib "GetMouseY";
 HostRaylibMousePressed :: (button: s32) -> bool #foreign raylib "IsMouseButtonPressed";
 HostRaylibMouseDown :: (button: s32) -> bool #foreign raylib "IsMouseButtonDown";
@@ -231,6 +233,11 @@ raylib_picture_deferred: bool;
 raylib_asset_load_spent: float64;
 raylib_asset_loads: s32;
 raylib_asset_load_window: float64 = -1.0;
+// Screen-coordinate input, gathered only by PollRaylib's platform owner.
+// The frame barrier keeps these observations stable during app callbacks.
+RaylibTouchCapacity :: 8
+raylib_touch_points: [RaylibTouchCapacity]Vector2;
+raylib_touch_count: s32;
 raylib_pointer: PointerFrame;
 raylib_secondary: SecondaryPointerFrame;
 raylib_middle: SecondaryPointerFrame;
@@ -1801,6 +1808,7 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
     !CopyCString(ifx title.count > 0 then title else ProgramTitle(), label[:]) { return false }
     raylib_quit = false
     raylib_frame_input = FrameInputSnapshot.{}
+    raylib_touch_count = 0
     raylib_pointer = PointerFrame.{}
     raylib_secondary = SecondaryPointerFrame.{}
     raylib_middle = SecondaryPointerFrame.{}
@@ -1838,6 +1846,7 @@ CloseRaylib :: () {
     #if RAYLIB_FRAME_THREADS {
         CloseRaylibAppFrames()
     }
+    raylib_touch_count = 0
     index: s32 = 0
     while index < 2 {
         if retained_frame_ready[index] {
@@ -1930,6 +1939,7 @@ RaylibSetDriverSession :: (session: Session) {
 PollRaylib :: () -> bool {
     if raylib_quit || HostRaylibWindowShouldClose() {
         raylib_frame_input = FrameInputSnapshot.{}
+        raylib_touch_count = 0
         return false
     }
     // Screen pixels; PollPointer reports them in zoomed space.
@@ -2008,6 +2018,28 @@ RaylibGatherFrameInput :: () {
         sample.keys[code] |= flags
     }
     raylib_frame_input = sample
+    RaylibGatherTouches(sample.focused)
+}
+
+RaylibGatherTouches :: (focused: bool) {
+    raylib_touch_count = 0
+    if !focused { return }
+    count := HostRaylibTouchCount()
+    if count <= 0 { return }
+    if count > RaylibTouchCapacity { count = RaylibTouchCapacity }
+    // Raylib maps touch zero to its mouse, but only the mouse includes the
+    // Android surface offset. Apply that translation to every finger.
+    first := HostRaylibTouchPosition(0)
+    shift_x := cast(float32)HostRaylibMouseX() - first.x
+    shift_y := cast(float32)HostRaylibMouseY() - first.y
+    raylib_touch_points[0] = Vector2.{first.x + shift_x, first.y + shift_y}
+    index: s32 = 1
+    while index < count {
+        touch := HostRaylibTouchPosition(index)
+        raylib_touch_points[index] = Vector2.{touch.x + shift_x, touch.y + shift_y}
+        index += 1
+    }
+    raylib_touch_count = count
 }
 
 // Custom native hosts call this after PollRaylib and FrameInputEnd after
@@ -2020,6 +2052,22 @@ RaylibFrameInputBegin :: (session: Session) -> bool {
     sample.pointer.y /= zoom
     TestDriverFrameInput(*sample)
     return FrameInputBegin(session, sample)
+}
+
+// The last poll's fingers in the same zoomed space as the pointer. Returns
+// the bounded snapshot count, which may exceed the room in points.
+#program_export
+RaylibTouches :: (points: []Vector2) -> s32 {
+    count := raylib_touch_count
+    if count == 0 || points.count == 0 { return count }
+    zoom := RaylibZoom()
+    index: s32 = 0
+    while index < count && cast(s64)index < points.count {
+        touch := raylib_touch_points[index]
+        points[index] = Vector2.{touch.x / zoom, touch.y / zoom}
+        index += 1
+    }
+    return count
 }
 
 #program_export

@@ -482,6 +482,16 @@ for measurement and for queued paint, restoring the interface font afterward.
 
 ## View transforms
 
+`raylib_runtime.RaylibTouches(points: []Vector2) -> s32` reads the most recent
+successful `PollRaylib` touch snapshot. It returns the active count clamped to
+0–8 and writes only the first `min(count, points.count)` coordinates; an empty
+slice can query the count. Coordinates include the Android surface offset
+and use the current `RaylibZoom()`, like `PollPointer`. Unwritten entries stay
+unchanged. Repeated calls do not poll or consume input, including on the app
+worker. Before the first poll, after shutdown or a terminal poll, and while
+unfocused the count is zero. Point order follows raylib, without stable finger
+identities; applications own gesture tracking and pinch/pan behavior.
+
 `view_transform.ViewFit(viewport, page_width, page_height, maximum)` returns
 the state for a page that fills its viewport at zoom 1. The pure mapping and
 mutation helpers convert between page and screen coordinates, zoom at a point,
