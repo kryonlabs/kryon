@@ -18,6 +18,23 @@ def run(*args, **kwargs):
     subprocess.run([str(arg) for arg in args], check=True, **kwargs)
 
 
+def jvm_environment(library):
+    environment = os.environ.copy()
+    # sanitize-test instruments the JNI shared library through its CC wrapper.
+    # Java itself is not instrumented: load the linked ASan runtime before the
+    # JVM rather than first encountering it in System.loadLibrary later.
+    if shutil.which("ldd"):
+        linked = subprocess.check_output(["ldd", str(library)], text=True)
+        for line in linked.splitlines():
+            fields = line.split()
+            if len(fields) >= 3 and fields[0].startswith("libasan.so") and fields[1] == "=>":
+                runtime = fields[2]
+                if Path(runtime).is_file():
+                    previous = environment.get("LD_PRELOAD", "")
+                    environment["LD_PRELOAD"] = runtime + (":" + previous if previous else "")
+    return environment
+
+
 FIXTURES = {
     "PushColdStartTest.java": r'''
 public class PushColdStartTest {
@@ -385,9 +402,10 @@ def main():
             for source in (target / "c").rglob("*.c"):
                 with source.open() as emitted:
                     assert all("com/google/" not in line and "PTokenComplete" not in line for line in emitted), edition
-        run("java", "-Xcheck:jni", f"-Djava.library.path={target}", "-cp", work / "classes", "PushLifecycleTest", edition)
+        environment = jvm_environment(target / "libmain.so")
+        run("java", "-Xcheck:jni", f"-Djava.library.path={target}", "-cp", work / "classes", "PushLifecycleTest", edition, env=environment)
         if edition == "gplay":
-            run("java", "-Xcheck:jni", f"-Djava.library.path={target}", "-cp", work / "classes", "PushColdStartTest")
+            run("java", "-Xcheck:jni", f"-Djava.library.path={target}", "-cp", work / "classes", "PushColdStartTest", env=environment)
     if shutil.which("groovy"):
         run("groovy", REPO / "tests/notification_push_gradle_test.groovy", REPO)
     else:
