@@ -10,6 +10,8 @@ import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.QueryProductDetailsParams;
 import com.android.billingclient.api.QueryPurchasesParams;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -23,7 +25,7 @@ import java.util.Set;
  * Google Play Billing for the Google Play edition of a Kryon app. kryon/play_billing
  * loads this class with the activity's class loader and calls call() with one request:
  *   "products:a,b"  load one-time products and their prices in the user's currency
- *   "buy:a"         open Play's purchase sheet for product a
+ *   "buy:a|account" open Play's purchase sheet and bind the purchase to account
  *   "done:token"    forget a purchase that the app's server verified and consumed
  *   "state"         answer only
  * Every request answers the current state as JSON. A purchase stays listed
@@ -62,7 +64,14 @@ public final class PlayBilling {
                 queryProducts();
             }
         } else if (request.startsWith("buy:")) {
-            buy(activity, request.substring(4));
+            String value = request.substring(4);
+            int separator = value.indexOf('|');
+            if (separator < 0) {
+                error = "unavailable";
+                sequence++;
+            } else {
+                buy(activity, value.substring(0, separator), value.substring(separator + 1));
+            }
         } else if (request.startsWith("done:")) {
             String token = request.substring(5);
             purchases.remove(token);
@@ -182,9 +191,15 @@ public final class PlayBilling {
         }
     }
 
-    private static void buy(final Activity activity, String id) {
+    private static void buy(final Activity activity, String id, String accountID) {
         final ProductDetails details = products.get(id);
         if (client == null || !client.isReady() || details == null) {
+            error = "unavailable";
+            sequence++;
+            return;
+        }
+        String binding = accountBinding(accountID);
+        if (!accountID.isEmpty() && binding.isEmpty()) {
             error = "unavailable";
             sequence++;
             return;
@@ -195,12 +210,14 @@ public final class PlayBilling {
         if (offer != null && offer.getOfferToken() != null) {
             item.setOfferToken(offer.getOfferToken());
         }
-        final BillingFlowParams params = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(Collections.singletonList(item.build()))
-            .build();
+        BillingFlowParams.Builder params = BillingFlowParams.newBuilder()
+            .setProductDetailsParamsList(Collections.singletonList(item.build()));
+        if (!binding.isEmpty()) {
+            params.setObfuscatedAccountId(binding);
+        }
         error = "";
         activity.runOnUiThread(() -> {
-            BillingResult result = client.launchBillingFlow(activity, params);
+            BillingResult result = client.launchBillingFlow(activity, params.build());
             if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
                 synchronized (PlayBilling.class) {
                     error = describe(result);
@@ -208,6 +225,25 @@ public final class PlayBilling {
                 }
             }
         });
+    }
+
+    private static String accountBinding(String accountID) {
+        if (accountID.isEmpty()) {
+            return "";
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(accountID.getBytes(StandardCharsets.UTF_8));
+            char[] hex = "0123456789abcdef".toCharArray();
+            StringBuilder out = new StringBuilder(hashed.length * 2);
+            for (byte value : hashed) {
+                int unsigned = value & 0xff;
+                out.append(hex[unsigned >>> 4]).append(hex[unsigned & 0x0f]);
+            }
+            return out.toString();
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            return "";
+        }
     }
 
     private static String state() {

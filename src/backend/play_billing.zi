@@ -62,8 +62,20 @@ PlayBillingRead :: (answer: string, state: *PlayBillingState) -> bool {
 // Load one-time products ("dew_100,dew_500"), open the purchase sheet for one,
 // or forget a purchase the app's server has credited and consumed.
 PlayBillingProducts :: (ids: string, output: []u8) -> string { return PlayBillingAsk("products:", ids, output) }
-PlayBillingBuy :: (id: string, output: []u8) -> string { return PlayBillingAsk("buy:", id, output) }
 PlayBillingDone :: (token: string, output: []u8) -> string { return PlayBillingAsk("done:", token, output) }
+
+PlayBillingBuy :: (id: string, accountID: string, output: []u8) -> string {
+    verb := "buy:"
+    separator := "|"
+    request: [1170]u8
+    total := verb.count + id.count + separator.count + accountID.count
+    if total >= request.count { return "" }
+    for byte, at: verb { request[at] = byte }
+    for byte, at: id { request[verb.count + at] = byte }
+    for byte, at: separator { request[verb.count + id.count + at] = byte }
+    for byte, at: accountID { request[verb.count + id.count + separator.count + at] = byte }
+    return PlayBillingCall(TextView(request[:total]), output)
+}
 
 PlayBillingAsk :: (verb: string, value: string, output: []u8) -> string {
     request: [1100]u8
