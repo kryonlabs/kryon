@@ -26,6 +26,16 @@ existing behavior of emitting a full repaint immediately.
 carousel bounds. Zero preserves the default title layout. `CarouselArtwork`
 accepts the same optional values after its source rectangle for startup covers.
 
+## Vector path coverage
+
+`vector_path` rasterizes the portable `KVP1` filled-path format and round
+polyline strokes into caller-owned 8-bit coverage. `VectorPathFill` accepts an
+affine `VectorTransform`, so hosts can render either a complete image or an
+integer-translated tile with identical pixels. `VectorPolylineStroke` uses the
+same transform, target, and `VectorAdd` / `VectorErase` coverage arithmetic.
+File helpers are bounds-checked; callers retain ownership of all bytes and
+coverage storage.
+
 A widget that is not part of the core catalog lives in its own Git package
 and depends on Kryon. [Plot](https://github.com/kryonlabs/plot) and
 [DataViews](https://github.com/kryonlabs/data-views) are examples. Import

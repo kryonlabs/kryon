@@ -1,0 +1,799 @@
+// Kryon vector path coverage rasterizer.
+//
+// KVP1 byte format:
+//   "KVP1"
+//   varint width_times_16
+//   varint height_times_16
+//   varint path_count
+//   for each path:
+//     one byte rule: 'E' (even-odd) or 'N' (nonzero)
+//     varint byte_length
+//     byte_length command bytes
+//
+// Commands are 'M' + 2 coordinates, 'L' + 2, 'C' + 6, or 'Z'. Coordinates
+// are zigzag LEB128 varints. Each value is a delta in 1/16 view-box units
+// from the previous coordinate on its axis in stream order, including cubic
+// control points. The first delta is relative to 0,0. M keeps the previous
+// coordinate as its delta base. Z closes the current subpath but does not
+// move that base.
+
+#import "geometry"
+#import "math"
+
+VectorTransform :: struct {
+    a: float32
+    b: float32
+    c: float32
+    d: float32
+    e: float32
+    f: float32
+}
+
+VectorTarget :: struct {
+    width: s32
+    height: s32
+    coverage: []u8
+}
+
+VectorMode :: enum { VectorAdd; VectorErase }
+
+VectorPathView :: struct {
+    rule: u8
+    commands: []u8
+}
+
+VectorEdge :: struct {
+    ax: float32
+    ay: float32
+    bx: float32
+    by: float32
+}
+
+VECTOR_MAX_WIDTH :: 8192
+VECTOR_MAX_HEIGHT :: 16384
+VECTOR_MAX_EDGES :: 65536
+VECTOR_MAX_ACTIVE :: 65536
+VECTOR_MAX_CROSSINGS :: 8192
+VECTOR_CURVE_STACK :: 24
+VECTOR_SAMPLES :: 4
+
+vector_edges: [VECTOR_MAX_EDGES]VectorEdge;
+vector_edge_count: s32 = 0;
+vector_overflow: bool = false;
+
+vector_row_count: [VECTOR_MAX_HEIGHT]s32;
+vector_row_start: [VECTOR_MAX_HEIGHT]s32;
+vector_row_cursor: [VECTOR_MAX_HEIGHT]s32;
+vector_edge_start: [VECTOR_MAX_EDGES]s32;
+vector_edge_order: [VECTOR_MAX_EDGES]s32;
+vector_active: [VECTOR_MAX_ACTIVE]s32;
+vector_active_count: s32 = 0;
+vector_cross_x: [VECTOR_MAX_CROSSINGS]float32;
+vector_cross_direction: [VECTOR_MAX_CROSSINGS]s32;
+vector_row: [VECTOR_MAX_WIDTH]float32;
+// Only these columns of vector_row may be nonzero; the rest stay untouched.
+vector_row_left: s32 = 0;
+vector_row_right: s32 = 0;
+
+curve_stack_x0: [VECTOR_CURVE_STACK]float32;
+curve_stack_y0: [VECTOR_CURVE_STACK]float32;
+curve_stack_x1: [VECTOR_CURVE_STACK]float32;
+curve_stack_y1: [VECTOR_CURVE_STACK]float32;
+curve_stack_x2: [VECTOR_CURVE_STACK]float32;
+curve_stack_y2: [VECTOR_CURVE_STACK]float32;
+curve_stack_x3: [VECTOR_CURVE_STACK]float32;
+curve_stack_y3: [VECTOR_CURVE_STACK]float32;
+curve_stack_count: s32 = 0;
+
+VectorReader :: struct {
+    bytes: []u8
+    at: s32
+}
+
+VectorSqrt :: (value: float32) -> float32 {
+    if value <= 0.0 { return 0.0 }
+    guess: float32 = value
+    if guess < 1.0 { guess = 1.0 }
+    step: s32 = 0
+    while step < 24 {
+        guess = 0.5 * (guess + value / guess)
+        step += 1
+    }
+    return guess
+}
+
+VectorReadVarint :: (reader: *VectorReader, result: *u64) -> bool {
+    value: u64 = 0
+    shift: u32 = 0
+    while true {
+        if reader.at >= cast(s32)reader.bytes.count || shift >= 35 { return false }
+        byte: u8 = reader.bytes[reader.at]
+        reader.at += 1
+        bits: u64 = cast(u64)(byte & cast(u8)127)
+        value |= bits << shift
+        if (cast(u32)byte & 128) == 0 { break }
+        shift += 7
+        if shift >= 35 { return false }
+    }
+    result.* = value
+    return true
+}
+
+VectorReadSigned :: (reader: *VectorReader, result: *s64) -> bool {
+    encoded: u64 = 0
+    if !VectorReadVarint(reader, *encoded) { return false }
+    magnitude: u64 = encoded >> cast(u32)1
+    if magnitude > cast(u64)2147483647 { return false }
+    signed: s64 = cast(s64)magnitude
+    if (encoded & cast(u64)1) != 0 { signed = -signed - 1 }
+    result.* = signed
+    return true
+}
+
+VectorReadCoordinate :: (reader: *VectorReader, previous: *s64, result: *float32) -> bool {
+    delta: s64 = 0
+    if !VectorReadSigned(reader, *delta) { return false }
+    next: s64 = previous.* + delta
+    if next < -2000000000 || next > 2000000000 { return false }
+    previous.* = next
+    result.* = cast(float32)next / 16.0
+    return true
+}
+
+VectorValidateCommands :: (commands: []u8) -> bool {
+    reader: VectorReader
+    reader.bytes = commands
+    reader.at = 0
+    x: s64 = 0
+    y: s64 = 0
+    start_x: s64 = 0
+    start_y: s64 = 0
+    subpath_open: bool = false
+    coordinate: float32 = 0.0
+    while reader.at < cast(s32)commands.count {
+        command: u8 = commands[reader.at]
+        reader.at += 1
+        if command == #char "M" {
+            if !VectorReadCoordinate(*reader, *x, *coordinate) { return false }
+            start_x = x
+            if !VectorReadCoordinate(*reader, *y, *coordinate) { return false }
+            start_y = y
+            subpath_open = true
+        } else if command == #char "L" {
+            if !subpath_open { return false }
+            if !VectorReadCoordinate(*reader, *x, *coordinate) { return false }
+            if !VectorReadCoordinate(*reader, *y, *coordinate) { return false }
+        } else if command == #char "C" {
+            if !subpath_open { return false }
+            value: s32 = 0
+            while value < 6 {
+                if !VectorReadCoordinate(*reader, *x, *coordinate) { return false }
+                value += 1
+                if !VectorReadCoordinate(*reader, *y, *coordinate) { return false }
+                value += 1
+            }
+        } else if command == #char "Z" {
+            if !subpath_open { return false }
+            subpath_open = false
+        } else {
+            return false
+        }
+    }
+    return reader.at == cast(s32)commands.count
+}
+
+#program_export
+VectorFileValid :: (bytes: []u8) -> bool {
+    reader: VectorReader
+    reader.bytes = bytes
+    reader.at = 0
+    if cast(s32)bytes.count < 4 { return false }
+    if bytes[0] != #char "K" || bytes[1] != #char "V" ||
+        bytes[2] != #char "P" || bytes[3] != #char "1" { return false }
+    reader.at = 4
+    encoded: u64 = 0
+    if !VectorReadVarint(*reader, *encoded) { return false }
+    if encoded == 0 ||
+        encoded > cast(u64)2147483647 { return false }
+    if !VectorReadVarint(*reader, *encoded) { return false }
+    if encoded == 0 ||
+        encoded > cast(u64)2147483647 { return false }
+    if !VectorReadVarint(*reader, *encoded) { return false }
+    if encoded > cast(u64)1000000 {
+        return false
+    }
+    path_count: s32 = cast(s32)encoded
+    path: s32 = 0
+    while path < path_count {
+        if reader.at >= cast(s32)bytes.count { return false }
+        rule: u8 = bytes[reader.at]
+        reader.at += 1
+        if rule != #char "E" && rule != #char "N" { return false }
+        length_encoded: u64 = 0
+        if !VectorReadVarint(*reader, *length_encoded) { return false }
+        if length_encoded > cast(u64)2147483647 { return false }
+        length: s32 = cast(s32)length_encoded
+        end: s64 = cast(s64)reader.at + length
+        if end > cast(s64)bytes.count {
+            return false
+        }
+        commands: []u8 = bytes[reader.at:cast(s32)end]
+        if !VectorValidateCommands(commands) { return false }
+        reader.at += length
+        path += 1
+    }
+    return reader.at == cast(s32)bytes.count
+}
+
+#program_export
+VectorFileSize :: (bytes: []u8) -> Vector2 {
+    result: Vector2
+    result.x = 0.0
+    result.y = 0.0
+    if !VectorFileValid(bytes) { return result }
+    reader: VectorReader
+    reader.bytes = bytes
+    reader.at = 4
+    encoded: u64 = 0
+    VectorReadVarint(*reader, *encoded)
+    result.x = cast(float32)encoded / 16.0
+    VectorReadVarint(*reader, *encoded)
+    result.y = cast(float32)encoded / 16.0
+    return result
+}
+
+#program_export
+VectorFilePathCount :: (bytes: []u8) -> s32 {
+    if !VectorFileValid(bytes) { return 0 }
+    reader: VectorReader
+    reader.bytes = bytes
+    reader.at = 4
+    width: u64 = 0
+    height: u64 = 0
+    count: u64 = 0
+    if !VectorReadVarint(*reader, *width) || !VectorReadVarint(*reader, *height) ||
+        !VectorReadVarint(*reader, *count) { return 0 }
+    return cast(s32)count
+}
+
+#program_export
+VectorFilePath :: (bytes: []u8, index: s32) -> VectorPathView {
+    result: VectorPathView
+    result.rule = 0
+    result.commands = bytes[:0]
+    if !VectorFileValid(bytes) || index < 0 { return result }
+    reader: VectorReader
+    reader.bytes = bytes
+    reader.at = 4
+    encoded: u64 = 0
+    if !VectorReadVarint(*reader, *encoded) || !VectorReadVarint(*reader, *encoded) ||
+        !VectorReadVarint(*reader, *encoded) { return result }
+    path_count: s32 = cast(s32)encoded
+    path: s32 = 0
+    while path < path_count {
+        if reader.at >= cast(s32)bytes.count { return result }
+        rule: u8 = bytes[reader.at]
+        reader.at += 1
+        length_encoded: u64 = 0
+        if !VectorReadVarint(*reader, *length_encoded) { return result }
+        length: s32 = cast(s32)length_encoded
+        end: s64 = cast(s64)reader.at + length
+        if end > cast(s64)bytes.count { return result }
+        if path == index {
+            result.rule = rule
+            result.commands = bytes[reader.at:cast(s32)end]
+            return result
+        }
+        reader.at += length
+        path += 1
+    }
+    return result
+}
+
+VectorTransformFinite :: (transform: VectorTransform) -> bool {
+    return Finite32(transform.a) && Finite32(transform.b) &&
+        Finite32(transform.c) && Finite32(transform.d) &&
+        Finite32(transform.e) && Finite32(transform.f)
+}
+
+VectorTransformPoint :: (transform: VectorTransform, x: float32, y: float32) -> Vector2 {
+    return Vector2.{
+        transform.a * x + transform.c * y + transform.e,
+        transform.b * x + transform.d * y + transform.f
+    }
+}
+
+VectorAddEdge :: (ax: float32, ay: float32, bx: float32, by: float32) {
+    if ay == by { return }
+    if vector_edge_count >= VECTOR_MAX_EDGES {
+        vector_overflow = true
+        return
+    }
+    vector_edges[vector_edge_count] = VectorEdge.{ax, ay, bx, by}
+    vector_edge_count += 1
+}
+
+VectorCurveFlat :: (x0: float32, y0: float32, x1: float32, y1: float32,
+    x2: float32, y2: float32, x3: float32, y3: float32) -> bool {
+    dx: float32 = x3 - x0
+    dy: float32 = y3 - y0
+    length_squared: float32 = dx * dx + dy * dy
+    d1: float32 = (x1 - x0) * dy - (y1 - y0) * dx
+    d2: float32 = (x2 - x0) * dy - (y2 - y0) * dx
+    if d1 < 0.0 { d1 = -d1 }
+    if d2 < 0.0 { d2 = -d2 }
+    distance: float32 = d1
+    if d2 > distance { distance = d2 }
+    if length_squared <= 0.000001 {
+        dx = x1 - x0
+        dy = y1 - y0
+        length_squared = dx * dx + dy * dy
+        dx = x2 - x0
+        dy = y2 - y0
+        other: float32 = dx * dx + dy * dy
+        if other > length_squared { length_squared = other }
+        dx = x3 - x0
+        dy = y3 - y0
+        other = dx * dx + dy * dy
+        if other > length_squared { length_squared = other }
+        return length_squared <= 0.04
+    }
+    return distance * distance <= 0.04 * length_squared
+}
+
+VectorPushCurve :: (x0: float32, y0: float32, x1: float32, y1: float32,
+    x2: float32, y2: float32, x3: float32, y3: float32) -> bool {
+    if curve_stack_count >= VECTOR_CURVE_STACK { return false }
+    curve_stack_x0[curve_stack_count] = x0
+    curve_stack_y0[curve_stack_count] = y0
+    curve_stack_x1[curve_stack_count] = x1
+    curve_stack_y1[curve_stack_count] = y1
+    curve_stack_x2[curve_stack_count] = x2
+    curve_stack_y2[curve_stack_count] = y2
+    curve_stack_x3[curve_stack_count] = x3
+    curve_stack_y3[curve_stack_count] = y3
+    curve_stack_count += 1
+    return true
+}
+
+VectorFlattenCurve :: (x0: float32, y0: float32, x1: float32, y1: float32,
+    x2: float32, y2: float32, x3: float32, y3: float32) {
+    minimum_x: float32 = x0
+    if x1 < minimum_x { minimum_x = x1 }
+    if x2 < minimum_x { minimum_x = x2 }
+    if x3 < minimum_x { minimum_x = x3 }
+    maximum_x: float32 = x0
+    if x1 > maximum_x { maximum_x = x1 }
+    if x2 > maximum_x { maximum_x = x2 }
+    if x3 > maximum_x { maximum_x = x3 }
+    minimum_y: float32 = y0
+    if y1 < minimum_y { minimum_y = y1 }
+    if y2 < minimum_y { minimum_y = y2 }
+    if y3 < minimum_y { minimum_y = y3 }
+    maximum_y: float32 = y0
+    if y1 > maximum_y { maximum_y = y1 }
+    if y2 > maximum_y { maximum_y = y2 }
+    if y3 > maximum_y { maximum_y = y3 }
+    render_height: float32 = cast(float32)vector_target_height
+    render_width: float32 = cast(float32)vector_target_width
+    if maximum_y <= 0.0 || minimum_y >= render_height || minimum_x > render_width {
+        return
+    }
+    if !VectorPushCurve(x0, y0, x1, y1, x2, y2, x3, y3) {
+        vector_overflow = true
+        return
+    }
+    previous_x: float32 = x0
+    previous_y: float32 = y0
+    while curve_stack_count > 0 {
+        curve_stack_count -= 1
+        at: s32 = curve_stack_count
+        ax: float32 = curve_stack_x0[at]
+        ay: float32 = curve_stack_y0[at]
+        bx: float32 = curve_stack_x1[at]
+        by: float32 = curve_stack_y1[at]
+        cx: float32 = curve_stack_x2[at]
+        cy: float32 = curve_stack_y2[at]
+        dx: float32 = curve_stack_x3[at]
+        dy: float32 = curve_stack_y3[at]
+        if !VectorCurveFlat(ax, ay, bx, by, cx, cy, dx, dy) {
+            ab_x: float32 = (ax + bx) * 0.5
+            ab_y: float32 = (ay + by) * 0.5
+            bc_x: float32 = (bx + cx) * 0.5
+            bc_y: float32 = (by + cy) * 0.5
+            cd_x: float32 = (cx + dx) * 0.5
+            cd_y: float32 = (cy + dy) * 0.5
+            abc_x: float32 = (ab_x + bc_x) * 0.5
+            abc_y: float32 = (ab_y + bc_y) * 0.5
+            bcd_x: float32 = (bc_x + cd_x) * 0.5
+            bcd_y: float32 = (bc_y + cd_y) * 0.5
+            middle_x: float32 = (abc_x + bcd_x) * 0.5
+            middle_y: float32 = (abc_y + bcd_y) * 0.5
+            if !VectorPushCurve(middle_x, middle_y, bcd_x, bcd_y, cd_x, cd_y, dx, dy) ||
+                !VectorPushCurve(ax, ay, ab_x, ab_y, abc_x, abc_y, middle_x, middle_y) {
+                vector_overflow = true
+                return
+            }
+            continue
+        }
+        VectorAddEdge(previous_x, previous_y, dx, dy)
+        previous_x = dx
+        previous_y = dy
+    }
+}
+
+vector_target_width: s32 = 0;
+vector_target_height: s32 = 0;
+
+VectorBuildFill :: (path: VectorPathView, transform: VectorTransform) -> bool {
+    if !VectorValidateCommands(path.commands) { return false }
+    if path.rule != #char "E" && path.rule != #char "N" { return false }
+    reader: VectorReader
+    reader.bytes = path.commands
+    reader.at = 0
+    x_units: s64 = 0
+    y_units: s64 = 0
+    coordinate: float32 = 0.0
+    start: Vector2
+    current: Vector2
+    open: bool = false
+    x: float32 = 0.0
+    y: float32 = 0.0
+    while reader.at < cast(s32)path.commands.count {
+        command: u8 = path.commands[reader.at]
+        reader.at += 1
+        if command == #char "M" {
+            if open && (current.x != start.x || current.y != start.y) {
+                VectorAddEdge(current.x, current.y, start.x, start.y)
+            }
+            VectorReadCoordinate(*reader, *x_units, *coordinate)
+            x = coordinate
+            VectorReadCoordinate(*reader, *y_units, *coordinate)
+            y = coordinate
+            start = VectorTransformPoint(transform, x, y)
+            current = start
+            open = true
+        } else if command == #char "L" {
+            VectorReadCoordinate(*reader, *x_units, *coordinate)
+            x = coordinate
+            VectorReadCoordinate(*reader, *y_units, *coordinate)
+            y = coordinate
+            point: Vector2 = VectorTransformPoint(transform, x, y)
+            VectorAddEdge(current.x, current.y, point.x, point.y)
+            current = point
+        } else if command == #char "C" {
+            values: [6]Vector2
+            value: s32 = 0
+            while value < 3 {
+                VectorReadCoordinate(*reader, *x_units, *coordinate)
+                x = coordinate
+                VectorReadCoordinate(*reader, *y_units, *coordinate)
+                y = coordinate
+                values[value] = VectorTransformPoint(transform, x, y)
+                value += 1
+            }
+            VectorFlattenCurve(current.x, current.y, values[0].x, values[0].y,
+                values[1].x, values[1].y, values[2].x, values[2].y)
+            current = values[2]
+        } else if command == #char "Z" {
+            VectorAddEdge(current.x, current.y, start.x, start.y)
+            current = start
+            open = false
+        }
+    }
+    if open && (current.x != start.x || current.y != start.y) {
+        VectorAddEdge(current.x, current.y, start.x, start.y)
+    }
+    return !vector_overflow
+}
+
+VectorBlend :: (old: u8, coverage: u8, mode: VectorMode) -> u8 {
+    old_value: s32 = cast(s32)old
+    new_value: s32 = cast(s32)coverage
+    numerator: s32 = 0
+    if mode == .VectorAdd {
+        numerator = 255 * old_value + (255 - old_value) * new_value + 127
+        return cast(u8)(numerator / 255)
+    }
+    numerator = old_value * (255 - new_value) + 127
+    return cast(u8)(numerator / 255)
+}
+
+VectorAddSpan :: (start: float32, stop: float32, weight: float32) {
+    if start < 0.0 { start = 0.0 }
+    width: float32 = cast(float32)vector_target_width
+    if stop > width { stop = width }
+    if stop <= start { return }
+    first: s32 = cast(s32)start
+    last: s32 = cast(s32)stop
+    if first < vector_row_left { vector_row_left = first }
+    if last >= vector_row_right {
+        vector_row_right = last + 1
+        if vector_row_right > vector_target_width { vector_row_right = vector_target_width }
+    }
+    if first == last {
+        vector_row[first] += (stop - start) * weight
+        return
+    }
+    vector_row[first] += (cast(float32)(first + 1) - start) * weight
+    at: s32 = first + 1
+    while at < last {
+        vector_row[at] += weight
+        at += 1
+    }
+    if last < vector_target_width {
+        vector_row[last] += (stop - cast(float32)last) * weight
+    }
+}
+
+VectorBucketEdges :: () -> bool {
+    row: s32 = 0
+    while row < vector_target_height {
+        vector_row_count[row] = 0
+        row += 1
+    }
+    vector_active_count = 0
+    // Edges that cannot touch the target are removed here, so the row table
+    // below holds exactly the edges that remain.
+    kept: s32 = 0
+    edge: s32 = 0
+    while edge < vector_edge_count {
+        current: VectorEdge = vector_edges[edge]
+        edge += 1
+        low: float32 = current.ay
+        high: float32 = current.by
+        if current.by < low { low = current.by }
+        if current.ay > high { high = current.ay }
+        minimum_x: float32 = current.ax
+        if current.bx < minimum_x { minimum_x = current.bx }
+        if high <= 0.0 || low >= cast(float32)vector_target_height ||
+            minimum_x > cast(float32)vector_target_width { continue }
+        row = 0
+        if low > 0.0 { row = cast(s32)low }
+        vector_edges[kept] = current
+        vector_edge_start[kept] = row
+        vector_row_count[row] += 1
+        kept += 1
+    }
+    vector_edge_count = kept
+    total: s32 = 0
+    row = 0
+    while row < vector_target_height {
+        vector_row_start[row] = total
+        vector_row_cursor[row] = total
+        total += vector_row_count[row]
+        row += 1
+    }
+    edge = 0
+    while edge < vector_edge_count {
+        row = vector_edge_start[edge]
+        position: s32 = vector_row_cursor[row]
+        vector_edge_order[position] = edge
+        vector_row_cursor[row] = position + 1
+        edge += 1
+    }
+    vector_active_count = 0
+    return true
+}
+
+VectorCoverEdges :: (even_odd: bool) {
+    row: s32 = 0
+    while row < vector_target_height {
+        position: s32 = vector_row_start[row]
+        stop: s32 = position + vector_row_count[row]
+        while position < stop {
+            if vector_active_count >= VECTOR_MAX_ACTIVE { return }
+            vector_active[vector_active_count] = vector_edge_order[position]
+            vector_active_count += 1
+            position += 1
+        }
+        if vector_active_count == 0 {
+            row += 1
+            continue
+        }
+        vector_row_left = vector_target_width
+        vector_row_right = 0
+        sample: s32 = 0
+        while sample < VECTOR_SAMPLES {
+            y: float32 = cast(float32)row +
+                (cast(float32)sample + 0.5) / cast(float32)VECTOR_SAMPLES
+            count: s32 = 0
+            active: s32 = 0
+            write: s32 = 0
+            while active < vector_active_count {
+                edge_index: s32 = vector_active[active]
+                edge: VectorEdge = vector_edges[edge_index]
+                low: float32 = edge.ay
+                high: float32 = edge.by
+                direction: s32 = 1
+                if edge.by < edge.ay {
+                    low = edge.by
+                    high = edge.ay
+                    direction = -1
+                }
+                if count >= VECTOR_MAX_CROSSINGS {
+                    vector_overflow = true
+                }
+                if high > y && count < VECTOR_MAX_CROSSINGS {
+                    if y >= low {
+                        x: float32 = edge.ax + (y - edge.ay) *
+                            (edge.bx - edge.ax) / (edge.by - edge.ay)
+                        at: s32 = count
+                        while at > 0 && vector_cross_x[at - 1] > x {
+                            vector_cross_x[at] = vector_cross_x[at - 1]
+                            vector_cross_direction[at] = vector_cross_direction[at - 1]
+                            at -= 1
+                        }
+                        vector_cross_x[at] = x
+                        vector_cross_direction[at] = direction
+                        count += 1
+                    }
+                    vector_active[write] = edge_index
+                    write += 1
+                }
+                active += 1
+            }
+            vector_active_count = write
+            winding: s32 = 0
+            at: s32 = 0
+            while at < count {
+                inside: bool = winding != 0
+                if even_odd { inside = (winding & 1) != 0 }
+                if inside && at > 0 {
+                    VectorAddSpan(vector_cross_x[at - 1], vector_cross_x[at],
+                        1.0 / cast(float32)VECTOR_SAMPLES)
+                }
+                winding += vector_cross_direction[at]
+                at += 1
+            }
+            // Edges right of the target were removed, so a span may run off its side.
+            if count > 0 && (ifx even_odd then (winding & 1) != 0 else winding != 0) {
+                VectorAddSpan(vector_cross_x[count - 1], cast(float32)vector_target_width,
+                    1.0 / cast(float32)VECTOR_SAMPLES)
+            }
+            sample += 1
+        }
+        column: s32 = vector_row_left
+        while column < vector_row_right {
+            value: s32 = cast(s32)(vector_row[column] * 255.0 + 0.5)
+            vector_row[column] = 0.0
+            if value < 0 { value = 0 }
+            if value > 255 { value = 255 }
+            coverage: u8 = cast(u8)value
+            if coverage != 0 {
+                target_index: s32 = row * vector_target_width + column
+                vector_target_coverage[target_index] =
+                    VectorBlend(vector_target_coverage[target_index], coverage, vector_target_mode)
+            }
+            column += 1
+        }
+        row += 1
+    }
+}
+
+vector_target_coverage: []u8;
+vector_target_mode: VectorMode;
+
+VectorTargetUsable :: (target: VectorTarget) -> bool {
+    if target.width <= 0 || target.height <= 0 || target.width > VECTOR_MAX_WIDTH ||
+        target.height > VECTOR_MAX_HEIGHT {
+        return false
+    }
+    needed: s64 = cast(s64)target.width * cast(s64)target.height
+    return cast(s64)target.coverage.count >= needed
+}
+
+VectorPrepareScratch :: (target: VectorTarget, mode: VectorMode) -> bool {
+    vector_target_width = target.width
+    vector_target_height = target.height
+    vector_target_coverage = target.coverage
+    vector_target_mode = mode
+    vector_edge_count = 0
+    vector_overflow = false
+    curve_stack_count = 0
+    return true
+}
+
+#program_export
+VectorPathFill :: (path: VectorPathView, transform: VectorTransform,
+    target: VectorTarget, mode: VectorMode) -> bool {
+    if !VectorTargetUsable(target) || !VectorTransformFinite(transform) {
+        return false
+    }
+    determinant: float32 = transform.a * transform.d - transform.b * transform.c
+    if determinant == 0.0 || !Finite32(determinant) { return false }
+    if !VectorPrepareScratch(target, mode) { return false }
+    if !VectorBuildFill(path, transform) { return false }
+    if !VectorBucketEdges() { return false }
+    VectorCoverEdges(path.rule == #char "E")
+    return !vector_overflow
+}
+
+VectorStrokeQuad :: (ax: float32, ay: float32, bx: float32, by: float32,
+    cx: float32, cy: float32, dx: float32, dy: float32) {
+    area: float32 = (ax * by - bx * ay + bx * cy - cx * by +
+        cx * dy - dx * cy + dx * ay - ax * dy) * 0.5
+    if area < 0.0 {
+        VectorAddEdge(ax, ay, dx, dy)
+        VectorAddEdge(dx, dy, cx, cy)
+        VectorAddEdge(cx, cy, bx, by)
+        VectorAddEdge(bx, by, ax, ay)
+    } else {
+        VectorAddEdge(ax, ay, bx, by)
+        VectorAddEdge(bx, by, cx, cy)
+        VectorAddEdge(cx, cy, dx, dy)
+        VectorAddEdge(dx, dy, ax, ay)
+    }
+}
+
+vector_unit_x: [16]float32 = .[1.0, 0.92388, 0.70711, 0.38268, 0.0, -0.38268, -0.70711, -0.92388,
+    -1.0, -0.92388, -0.70711, -0.38268, 0.0, 0.38268, 0.70711, 0.92388];
+vector_unit_y: [16]float32 = .[0.0, 0.38268, 0.70711, 0.92388, 1.0, 0.92388, 0.70711, 0.38268,
+    0.0, -0.38268, -0.70711, -0.92388, -1.0, -0.92388, -0.70711, -0.38268];
+
+VectorStrokeCircle :: (center: Vector2, radius: float32, transform: VectorTransform) {
+    // The same turning direction as VectorStrokeQuad, so nonzero fills overlap.
+    forward: bool = transform.a * transform.d - transform.b * transform.c > 0.0
+    index: s32 = 0
+    while index < 16 {
+        next: s32 = (index + 1) & 15
+        first: Vector2 = VectorTransformPoint(transform,
+            center.x + vector_unit_x[index] * radius, center.y + vector_unit_y[index] * radius)
+        second: Vector2 = VectorTransformPoint(transform,
+            center.x + vector_unit_x[next] * radius, center.y + vector_unit_y[next] * radius)
+        if forward { VectorAddEdge(first.x, first.y, second.x, second.y) }
+        else { VectorAddEdge(second.x, second.y, first.x, first.y) }
+        index += 1
+    }
+}
+
+#program_export
+VectorPolylineStroke :: (points: []Vector2, width: float32,
+    transform: VectorTransform, target: VectorTarget, mode: VectorMode) -> bool {
+    if !VectorTargetUsable(target) || !VectorTransformFinite(transform) ||
+        !Finite32(width) || width < 0.0 || points.count < 1 { return false }
+    determinant: float32 = transform.a * transform.d - transform.b * transform.c
+    if determinant == 0.0 || !Finite32(determinant) { return false }
+    half: float32 = width * 0.5
+    if !Finite32(half) { return false }
+    if !VectorPrepareScratch(target, mode) { return false }
+    count: s32 = cast(s32)points.count
+    index: s32 = 0
+    while index < count {
+        if !Finite32(points[index].x) || !Finite32(points[index].y) { return false }
+        index += 1
+    }
+    if half == 0.0 { half = 0.05 }
+    index = 0
+    while index < count {
+        VectorStrokeCircle(points[index], half, transform)
+        index += 1
+    }
+    index = 0
+    while index + 1 < count {
+        ax: float32 = points[index].x
+        ay: float32 = points[index].y
+        bx: float32 = points[index + 1].x
+        by: float32 = points[index + 1].y
+        dx: float32 = bx - ax
+        dy: float32 = by - ay
+        length_squared: float32 = dx * dx + dy * dy
+        if length_squared > 0.000001 {
+            length: float32 = VectorSqrt(length_squared)
+            ux: float32 = dx / length
+            uy: float32 = dy / length
+            nx: float32 = -uy * half
+            ny: float32 = ux * half
+            first: Vector2 = VectorTransformPoint(transform, ax + nx, ay + ny)
+            second: Vector2 = VectorTransformPoint(transform, bx + nx, by + ny)
+            third: Vector2 = VectorTransformPoint(transform, bx - nx, by - ny)
+            fourth: Vector2 = VectorTransformPoint(transform, ax - nx, ay - ny)
+            VectorStrokeQuad(first.x, first.y, second.x, second.y,
+                third.x, third.y, fourth.x, fourth.y)
+        }
+        index += 1
+    }
+    if !VectorBucketEdges() { return false }
+    VectorCoverEdges(false)
+    return !vector_overflow
+}
