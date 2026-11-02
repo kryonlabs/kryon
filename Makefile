@@ -635,3 +635,15 @@ pcm-audio-test: $(RAYLIB_A)
 		ZIRAN_BUILD_DIR="$(ZIRAN_BUILD_DIR)" python3 tests/media_audio_test.py --browser --pcm
 
 test: pcm-audio-test document-storage-test app-files-test
+
+.PHONY: android-notification-jvm-test
+android-notification-jvm-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/android_notification_jvm_test.py
+
+test: android-notification-jvm-test
+
+.PHONY: android-notifications-scaffold-test
+android-notifications-scaffold-test:
+	@python3 tests/android_notifications_scaffold_test.py
+
+test: android-notifications-scaffold-test

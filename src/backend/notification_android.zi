@@ -1,0 +1,40 @@
+// Bind this host for notification.zi in Android applications. Scheduling uses
+// android_notifications directly and never needs a push distributor.
+#import "android_notifications"
+#import "android_notification_jni"
+#import "android_jni"
+#import "notification"
+
+AndroidNotificationSetAppNameHost :: (name: string) { unused name }
+AndroidNotificationSupportedHost :: () -> bool { return true }
+AndroidNotificationAllowedHost :: () -> bool {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    allowed := NAllowed(session.env, session.activity)
+    AndroidJniDetachCurrent(*session)
+    return allowed
+}
+AndroidNotificationRequestHost :: () -> bool {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    // The scaffold only dispatches onto Android's UI thread. Permission
+    // decisions, including preserving a previous refusal, live in Ziran.
+    ok := AndroidJniCallVoid(*session, "requestKryonNotifications", null)
+    AndroidJniDetachCurrent(*session)
+    return ok
+}
+AndroidNotificationWindowFocusedHost :: () -> bool {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    focused := NInt(session.env, session.activity, "hasWindowFocus", "()Z") != 0
+    AndroidJniDetachCurrent(*session)
+    return focused
+}
+AndroidNotificationSendHost :: (props: NotificationProps) -> bool {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    sent := NPost(session.env, session.activity, NString(session.env, props.tag), props.id,
+        NString(session.env, props.title), NString(session.env, props.body))
+    AndroidJniDetachCurrent(*session)
+    return sent
+}

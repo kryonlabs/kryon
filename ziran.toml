@@ -17,6 +17,13 @@ ref = "1844042d1ca751e62e61df7617dba19c98588339"
 source = true
 
 [exports]
+notification = "src/ui/notification.zi"
+notification_push = "src/backend/notification_push.zi"
+notification_android = "src/backend/notification_android.zi"
+notification_schedule_host = "src/backend/notification_schedule_host.zi"
+notification_schedule = "src/backend/notification_schedule.zi"
+notification_schedule_policy = "src/backend/notification_schedule_policy.zi"
+android_notifications = "src/backend/android_notifications.zi"
 Frame = "src/ui/tree_draw.zi"
 tree_draw = "src/ui/tree_draw.zi"
 frame_input = "src/ui/frame_input.zi"

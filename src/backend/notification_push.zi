@@ -1,0 +1,517 @@
+// Optional remote transport; local notifications never depend on this module.
+// Opt in with templates/android-notifications-push.gradle and import this
+// module from the Android entry so its platform callbacks are linked.
+// One active account/application scope per package. Cancel before signing out.
+// Endpoint registration with an application's server remains the app's job.
+// PushStart is explicit enable/retry: callers preserve their existing disabled
+// preference before calling it on launch. PushRead/snapshot returns credentials
+// only for the matching scope; never log that snapshot. Observe revision and
+// register changed endpoints/keys with the app's existing server. For FCM send
+// data-only payloads with kryon_scope and kryon_instance (snapshot's wire).
+// Native callers use PushState.instance as the kryon_instance value.
+// The application validates payload content in its service's onPushMessage.
+#if #defined(ANDROID_BUILD) {
+    #import "android_notification_jni"
+    #import "android_jni"
+    #import "std/c_string"
+    #import "std/byte_text_linux"
+}
+
+PushUnsupported :: 0
+PushDisabled :: 1
+PushNoDistributor :: 2
+PushFirebaseUnconfigured :: 3
+PushRegistering :: 4
+PushReady :: 5
+PushFailed :: 6
+PushUnavailable :: 7
+PushInvalidScope :: 8
+PushProviderNone :: 0
+PushProviderUnified :: 1
+PushProviderFcm :: 2
+
+PushChoice :: struct { provider: s32; status: s32; distributor: string }
+PushState :: struct {
+    status: s32
+    provider: s32
+    revision: s64
+    instance: [128]u8
+    distributor: [256]u8
+    endpoint: [4096]u8
+    auth: [256]u8
+    p256dh: [256]u8
+}
+
+PushScopeValid :: (scope: string) -> bool {
+    if scope.count == 0 || scope.count > 128 { return false }
+    for byte: scope { if byte < 32 || byte == 127 { return false } }
+    return true
+}
+PushInstalled :: (installed: []string, value: string) -> bool {
+    if value.count == 0 { return false }
+    for item: installed { if item == value { return true } }
+    return false
+}
+PushBefore :: (a: string, b: string) -> bool {
+    for byte, at: a {
+        if at >= b.count { return false }
+        if byte != b[at] { return byte < b[at] }
+    }
+    return a.count < b.count
+}
+// No named distributor is privileged (Sunup is an ordinary UnifiedPush
+// distributor). Never replace an installed saved/default choice.
+PushChoose :: (gplay: bool, firebase_configured: bool, saved: string, default_distributor: string, installed: []string) -> PushChoice {
+    if gplay {
+        return PushChoice.{.provider = PushProviderFcm,
+            .status = ifx firebase_configured then PushRegistering else PushFirebaseUnconfigured}
+    }
+    choice := PushChoice.{.provider = PushProviderUnified, .status = PushRegistering}
+    if PushInstalled(installed, saved) { choice.distributor = saved; return choice }
+    if PushInstalled(installed, default_distributor) { choice.distributor = default_distributor; return choice }
+    for item: installed {
+        if item.count > 0 && (choice.distributor.count == 0 || PushBefore(item, choice.distributor)) { choice.distributor = item }
+    }
+    if choice.distributor.count == 0 { choice.status = PushNoDistributor }
+    return choice
+}
+PushAccepts :: (status: s32, provider: s32, expected_provider: s32, wire: string, incoming: string) -> bool {
+    return (status == PushRegistering || status == PushReady || status == PushUnavailable) &&
+        provider == expected_provider && wire.count > 0 && wire == incoming
+}
+
+PushStart :: (scope: string, label: string) -> s32 {
+    if !PushScopeValid(scope) || label.count > 1024 { return PushInvalidScope }
+    #if #defined(ANDROID_BUILD) {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 { return PushUnsupported }
+        result := PStart(session.env, session.activity, NString(session.env, scope), NString(session.env, label))
+        AndroidJniDetachCurrent(*session)
+        return result
+    }
+    return PushUnsupported
+}
+PushRead :: (scope: string, state: *PushState) -> bool {
+    state.* = .{}
+    #if #defined(ANDROID_BUILD) {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 { return false }
+        unused PLock(cast(*void)*p_mutex[0])
+        result := PRead(session.env, session.activity, NString(session.env, scope), state)
+        unused PUnlock(cast(*void)*p_mutex[0])
+        AndroidJniDetachCurrent(*session)
+        return result
+    }
+    unused scope
+    return false
+}
+PushCancel :: (scope: string) -> bool {
+    #if #defined(ANDROID_BUILD) {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 { return false }
+        result := PCancel(session.env, session.activity, NString(session.env, scope))
+        AndroidJniDetachCurrent(*session)
+        return result
+    }
+    unused scope
+    return false
+}
+
+#if #defined(ANDROID_BUILD) {
+    pc :: #system_library "c";
+    PLock :: (mutex: *void) -> s32 #foreign pc "pthread_mutex_lock";
+    PUnlock :: (mutex: *void) -> s32 #foreign pc "pthread_mutex_unlock";
+    p_mutex: [8]u64;
+    p_up :: "org/unifiedpush/android/connector/UnifiedPush"
+
+    PClear :: (env: *JniEnv) -> bool {
+        if env.functions.ExceptionCheck(env) == 0 { return false }
+        env.functions.ExceptionClear(env)
+        return true
+    }
+    PText :: (env: *JniEnv, value: *void, output: []u8) -> string {
+        if output.count > 0 { output[0] = 0 }
+        if value == null || env.functions.ExceptionCheck(env) != 0 { return "" }
+        bytes := env.functions.GetStringUTFChars(env, value, null)
+        if bytes == null { return "" }
+        text := TextFromCString(bytes)
+        ok := CopyCString(text, output)
+        env.functions.ReleaseStringUTFChars(env, value, bytes)
+        if !ok { return "" }
+        return TextView(output[:text.count])
+    }
+    // Attached native threads need the application's class loader for classes
+    // outside the Android boot class path. No Java reflection implementation.
+    PClass :: (env: *JniEnv, context: *void, name: string) -> *void {
+        loader := NObject(env, context, "getClassLoader", "()Ljava/lang/ClassLoader;")
+        bytes: [192]u8
+        if name.count >= bytes.count { return null }
+        for byte, at: name { bytes[at] = ifx byte == #char "/" then #char "." else byte }
+        return NObject(env, loader, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;", NRef(NString(env, TextView(bytes[:name.count]))))
+    }
+    PStatic :: (env: *JniEnv, context: *void, name: string, method_name: string, signature: string,
+        a: JniValue = .{}, b: JniValue = .{}, c: JniValue = .{}, d: JniValue = .{}, void_result: bool = false) -> *void {
+        klass := PClass(env, context, name)
+        method := NMethod(env, klass, method_name, signature, true)
+        arguments: [4]JniValue = .[a, b, c, d]
+        if method == null { return null }
+        if void_result { env.functions.CallStaticVoidMethodA(env, klass, method, *arguments[0]); return null }
+        return env.functions.CallStaticObjectMethodA(env, klass, method, *arguments[0])
+    }
+    PPrefs :: (env: *JniEnv, context: *void) -> *void {
+        return NObject(env, context, "getSharedPreferences", "(Ljava/lang/String;I)Landroid/content/SharedPreferences;", NRef(NString(env, "org.kryonlabs.push")), NNumber(0))
+    }
+    PGet :: (env: *JniEnv, prefs: *void, key: string) -> *void {
+        return NObject(env, prefs, "getString", "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;", NRef(NString(env, key)), NRef(NString(env, "")))
+    }
+    PInt :: (env: *JniEnv, prefs: *void, key: string) -> s32 {
+        return NInt(env, prefs, "getInt", "(Ljava/lang/String;I)I", NRef(NString(env, key)), NNumber(0))
+    }
+    PEdit :: (env: *JniEnv, prefs: *void) -> *void { return NObject(env, prefs, "edit", "()Landroid/content/SharedPreferences$Editor;") }
+    PPut :: (env: *JniEnv, editor: *void, key: string, value: *void) {
+        unused NObject(env, editor, "putString", "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;", NRef(NString(env, key)), NRef(value))
+    }
+    PPutInt :: (env: *JniEnv, editor: *void, key: string, value: s32) {
+        unused NObject(env, editor, "putInt", "(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;", NRef(NString(env, key)), NNumber(value))
+    }
+    PRevision :: (env: *JniEnv, prefs: *void, editor: *void) {
+        revision := NLong(env, prefs, "getLong", "(Ljava/lang/String;J)J", NRef(NString(env, "revision")), NWide(0))
+        unused NObject(env, editor, "putLong", "(Ljava/lang/String;J)Landroid/content/SharedPreferences$Editor;", NRef(NString(env, "revision")), NWide(revision + 1))
+    }
+    PCommit :: (env: *JniEnv, editor: *void) -> bool { return NInt(env, editor, "commit", "()Z") != 0 && !PClear(env) }
+    PEqual :: (env: *JniEnv, a: *void, b: *void) -> bool {
+        return a != null && b != null && NInt(env, a, "equals", "(Ljava/lang/Object;)Z", NRef(b)) != 0
+    }
+    PInvalidate :: (env: *JniEnv, prefs: *void, editor: *void, status: s32) {
+        PPutInt(env, editor, "status", status)
+        keys: [3]string = .["endpoint", "auth", "p256dh"]
+        for key: keys { PPut(env, editor, key, NString(env, "")) }
+        PRevision(env, prefs, editor)
+    }
+    PUnified :: (env: *JniEnv, context: *void, method: string, signature: string, b: JniValue = .{}, c: JniValue = .{}, d: JniValue = .{}, void_result: bool = false) -> *void {
+        return PStatic(env, context, p_up, method, signature, NRef(context), b, c, d, void_result)
+    }
+    PStopOld :: (env: *JniEnv, context: *void, provider: s32, wire: *void) {
+        if provider == PushProviderUnified {
+            unused PUnified(env, context, "unregister", "(Landroid/content/Context;Ljava/lang/String;)V", NRef(wire), .{}, .{}, true)
+            unused PClear(env)
+        }
+        // FCM tokens are installation-wide. Cancel invalidates our scope and
+        // callbacks, without deleting another app feature's Firebase token.
+    }
+    PStart :: (env: *JniEnv, context: *void, scope: *void, label: *void) -> s32 {
+        unused PLock(cast(*void)*p_mutex[0])
+        defer { unused PUnlock(cast(*void)*p_mutex[0]) }
+        unused env.functions.PushLocalFrame(env, 512)
+        defer { unused PClear(env); unused env.functions.PopLocalFrame(env, null) }
+        scope_bytes: [129]u8
+        if !PushScopeValid(PText(env, scope, scope_bytes[:])) { return PushInvalidScope }
+        prefs := PPrefs(env, context)
+        if prefs == null { return PushFailed }
+        choice: PushChoice
+        selected: [256]u8
+        #if #defined(GOOGLE_PLAY) {
+            // getInstance only observes an existing default FirebaseApp. Never
+            // initialize one, read google-services.json or create resources.
+            app := PStatic(env, context, "com/google/firebase/FirebaseApp", "getInstance", "()Lcom/google/firebase/FirebaseApp;")
+            configured := !PClear(env) && app != null
+            no_distributors: []string
+            choice = PushChoose(true, configured, "", "", no_distributors)
+        } else {
+            list := PUnified(env, context, "getDistributors", "(Landroid/content/Context;)Ljava/util/List;")
+            if PClear(env) || list == null { choice.status = PushUnavailable; choice.provider = PushProviderUnified }
+            else {
+                saved := PUnified(env, context, "getSavedDistributor", "(Landroid/content/Context;)Ljava/lang/String;")
+                if saved == null { saved = PUnified(env, context, "getAckDistributor", "(Landroid/content/Context;)Ljava/lang/String;") }
+                saved_bytes: [256]u8
+                saved_text := PText(env, saved, saved_bytes[:])
+                resolved := PUnified(env, context, "resolveDefaultDistributor", "(Landroid/content/Context;)Lorg/unifiedpush/android/connector/data/ResolvedDistributor;")
+                found := PClass(env, context, "org/unifiedpush/android/connector/data/ResolvedDistributor$Found")
+                default_bytes: [256]u8
+                default_text := ""
+                if resolved != null && found != null && env.functions.IsInstanceOf(env, resolved, found) != 0 {
+                    default_text = PText(env, NObject(env, resolved, "getPackageName", "()Ljava/lang/String;"), default_bytes[:])
+                }
+                count := NInt(env, list, "size")
+                // Keep the entire installed set; no fixed provider-count cap.
+                best: [256]u8
+                saved_installed := false
+                default_installed := false
+                index: s32 = 0
+                while index < count {
+                    item := NObject(env, list, "get", "(I)Ljava/lang/Object;", NNumber(index))
+                    text_bytes: [256]u8
+                    text := PText(env, item, text_bytes[:])
+                    if text.count > 0 {
+                        if text == saved_text { saved_installed = true }
+                        if text == default_text { default_installed = true }
+                        if best[0] == 0 || PushBefore(text, TextFromCString(*best[0])) { unused CopyCString(text, best[:]) }
+                    }
+                    env.functions.DeleteLocalRef(env, item)
+                    index += 1
+                }
+                chosen := TextFromCString(*best[0])
+                if default_installed { chosen = default_text }
+                if saved_installed { chosen = saved_text }
+                unused CopyCString(chosen, selected[:])
+                choice.provider = PushProviderUnified
+                choice.distributor = TextFromCString(*selected[0])
+                choice.status = ifx choice.distributor.count > 0 then PushRegistering else PushNoDistributor
+            }
+        }
+        old_status := PInt(env, prefs, "status")
+        old_provider := PInt(env, prefs, "provider")
+        same := PEqual(env, PGet(env, prefs, "scope"), scope) && old_provider == choice.provider &&
+            PEqual(env, PGet(env, prefs, "distributor"), NString(env, choice.distributor)) &&
+            (old_status == PushReady || old_status == PushRegistering || old_status == PushUnavailable)
+        if choice.status != PushRegistering { same = false }
+        old_wire := PGet(env, prefs, "wire")
+        wire := old_wire
+        editor := PEdit(env, prefs)
+        if !same {
+            uuid := NStatic(env, "java/util/UUID", "randomUUID", "()Ljava/util/UUID;")
+            wire = NObject(env, uuid, "toString", "()Ljava/lang/String;")
+            PInvalidate(env, prefs, editor, choice.status)
+            PPut(env, editor, "scope", scope)
+            PPut(env, editor, "wire", wire)
+            PPut(env, editor, "distributor", NString(env, choice.distributor))
+            PPutInt(env, editor, "provider", choice.provider)
+        } else if old_status != PushReady { PPutInt(env, editor, "status", PushRegistering) }
+        if !PCommit(env, editor) { return PushFailed }
+        // Publish invalidation before unregister: late callbacks see new wire.
+        if !same { PStopOld(env, context, old_provider, old_wire) }
+        if choice.status != PushRegistering { return choice.status }
+        #if #defined(GOOGLE_PLAY) {
+            messaging := PStatic(env, context, "com/google/firebase/messaging/FirebaseMessaging", "getInstance", "()Lcom/google/firebase/messaging/FirebaseMessaging;")
+            task := NObject(env, messaging, "getToken", "()Lcom/google/android/gms/tasks/Task;")
+            request := NObject(env, NStatic(env, "java/util/UUID", "randomUUID", "()Ljava/util/UUID;"), "toString", "()Ljava/lang/String;")
+            request_editor := PEdit(env, prefs)
+            PPut(env, request_editor, "request", request)
+            if !PCommit(env, request_editor) { return PushFailed }
+            klass := PClass(env, context, "org/kryonlabs/notifications/push/TokenCallback")
+            constructor := NMethod(env, klass, "<init>", "(Landroid/content/Context;Ljava/lang/String;)V")
+            arguments: [2]JniValue = .[NRef(context), NRef(request)]
+            listener: *void
+            if constructor != null { listener = env.functions.NewObjectA(env, klass, constructor, *arguments[0]) }
+            unused NObject(env, task, "addOnCompleteListener", "(Lcom/google/android/gms/tasks/OnCompleteListener;)Lcom/google/android/gms/tasks/Task;", NRef(listener))
+        } else {
+            unused PUnified(env, context, "saveDistributor", "(Landroid/content/Context;Ljava/lang/String;)V", NRef(NString(env, choice.distributor)), .{}, .{}, true)
+            unused PUnified(env, context, "register", "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V", NRef(wire), NRef(label), NRef(null), true)
+        }
+        if PClear(env) {
+            editor = PEdit(env, prefs)
+            PInvalidate(env, prefs, editor, PushFailed)
+            unused PCommit(env, editor)
+            return PushFailed
+        }
+        return ifx same && old_status == PushReady then PushReady else PushRegistering
+    }
+    PCancel :: (env: *JniEnv, context: *void, scope: *void) -> bool {
+        unused PLock(cast(*void)*p_mutex[0])
+        defer { unused PUnlock(cast(*void)*p_mutex[0]) }
+        prefs := PPrefs(env, context)
+        if !PEqual(env, PGet(env, prefs, "scope"), scope) { return false }
+        provider := PInt(env, prefs, "provider")
+        wire := PGet(env, prefs, "wire")
+        editor := PEdit(env, prefs)
+        PInvalidate(env, prefs, editor, PushDisabled)
+        PPut(env, editor, "wire", NString(env, ""))
+        if !PCommit(env, editor) { return false }
+        PStopOld(env, context, provider, wire)
+        return true
+    }
+    PRead :: (env: *JniEnv, context: *void, scope: *void, state: *PushState) -> bool {
+        prefs := PPrefs(env, context)
+        if !PEqual(env, PGet(env, prefs, "scope"), scope) { return false }
+        state.status = PInt(env, prefs, "status")
+        state.provider = PInt(env, prefs, "provider")
+        // A removed distributor immediately invalidates its endpoint on read.
+        if state.provider == PushProviderUnified && state.status == PushReady {
+            list := PUnified(env, context, "getDistributors", "(Landroid/content/Context;)Ljava/util/List;")
+            distributor := PGet(env, prefs, "distributor")
+            installed := NInt(env, list, "contains", "(Ljava/lang/Object;)Z", NRef(distributor)) != 0
+            if PClear(env) || !installed {
+                editor := PEdit(env, prefs)
+                PInvalidate(env, prefs, editor, PushNoDistributor)
+                PPut(env, editor, "wire", NString(env, ""))
+                unused PCommit(env, editor)
+                state.status = PushNoDistributor
+            }
+        }
+        state.revision = NLong(env, prefs, "getLong", "(Ljava/lang/String;J)J", NRef(NString(env, "revision")), NWide(0))
+        unused PText(env, PGet(env, prefs, "wire"), state.instance[:])
+        unused PText(env, PGet(env, prefs, "distributor"), state.distributor[:])
+        if state.status == PushReady {
+            unused PText(env, PGet(env, prefs, "endpoint"), state.endpoint[:])
+            unused PText(env, PGet(env, prefs, "auth"), state.auth[:])
+            unused PText(env, PGet(env, prefs, "p256dh"), state.p256dh[:])
+        }
+        return !PClear(env)
+    }
+
+    #program_export "Java_org_kryonlabs_notifications_push_PushCallbacks_start"
+    PStartCallback :: (env: *JniEnv, klass: *void, context: *void, scope: *void, label: *void) -> s32 {
+        unused klass
+        return PStart(env, context, scope, label)
+    }
+    #program_export "Java_org_kryonlabs_notifications_push_PushCallbacks_cancel"
+    PCancelCallback :: (env: *JniEnv, klass: *void, context: *void, scope: *void) -> u8 {
+        unused klass
+        result := PCancel(env, context, scope)
+        unused PClear(env)
+        return ifx result then 1 else 0
+    }
+    #program_export "Java_org_kryonlabs_notifications_push_PushCallbacks_endpoint"
+    PEndpointCallback :: (env: *JniEnv, klass: *void, context: *void, provider: s32, wire: *void, endpoint: *void, auth: *void, key: *void) -> u8 {
+        unused klass
+        unused PLock(cast(*void)*p_mutex[0])
+        defer { unused PUnlock(cast(*void)*p_mutex[0]); unused PClear(env) }
+        return PEndpoint(env, context, provider, wire, endpoint, auth, key)
+    }
+    PEndpoint :: (env: *JniEnv, context: *void, provider: s32, wire: *void, endpoint: *void, auth: *void, key: *void) -> u8 {
+        prefs := PPrefs(env, context)
+        expected_bytes: [128]u8
+        wire_bytes: [128]u8
+        expected := PText(env, PGet(env, prefs, "wire"), expected_bytes[:])
+        incoming := PText(env, wire, wire_bytes[:])
+        if !PushAccepts(PInt(env, prefs, "status"), PInt(env, prefs, "provider"), provider, expected, incoming) { return 0 }
+        endpoint_bytes: [4096]u8
+        auth_bytes: [256]u8
+        key_bytes: [256]u8
+        value := PText(env, endpoint, endpoint_bytes[:])
+        unused PText(env, auth, auth_bytes[:])
+        unused PText(env, key, key_bytes[:])
+        if value.count == 0 || (provider == PushProviderUnified && (value.count < 8 || value[0:8] != "https://")) { return 0 }
+        changed := !PEqual(env, PGet(env, prefs, "endpoint"), endpoint) ||
+            !PEqual(env, PGet(env, prefs, "auth"), NString(env, TextFromCString(*auth_bytes[0]))) ||
+            !PEqual(env, PGet(env, prefs, "p256dh"), NString(env, TextFromCString(*key_bytes[0]))) || PInt(env, prefs, "status") != PushReady
+        editor := PEdit(env, prefs)
+        PPut(env, editor, "endpoint", endpoint)
+        PPut(env, editor, "auth", NString(env, TextFromCString(*auth_bytes[0])))
+        PPut(env, editor, "p256dh", NString(env, TextFromCString(*key_bytes[0])))
+        PPutInt(env, editor, "status", PushReady)
+        if changed { PRevision(env, prefs, editor) }
+        return ifx PCommit(env, editor) then 1 else 0
+    }
+    #program_export "Java_org_kryonlabs_notifications_push_PushCallbacks_failed"
+    PFailedCallback :: (env: *JniEnv, klass: *void, context: *void, provider: s32, wire: *void, temporary: u8) {
+        unused klass
+        unused PLock(cast(*void)*p_mutex[0])
+        defer { unused PUnlock(cast(*void)*p_mutex[0]); unused PClear(env) }
+        prefs := PPrefs(env, context)
+        if PInt(env, prefs, "provider") != provider || PInt(env, prefs, "status") == PushDisabled || !PEqual(env, PGet(env, prefs, "wire"), wire) { return }
+        editor := PEdit(env, prefs)
+        PInvalidate(env, prefs, editor, ifx temporary != 0 then PushUnavailable else PushFailed)
+        unused PCommit(env, editor)
+    }
+    // App callback can use this gate before processing a payload. No generic
+    // remote payload is displayed or sent to an arbitrary service by Kryon.
+    #program_export "Java_org_kryonlabs_notifications_push_PushCallbacks_accepts"
+    PAcceptsCallback :: (env: *JniEnv, klass: *void, context: *void, provider: s32, wire: *void) -> u8 {
+        unused klass
+        unused PLock(cast(*void)*p_mutex[0])
+        defer { unused PUnlock(cast(*void)*p_mutex[0]); unused PClear(env) }
+        prefs := PPrefs(env, context)
+        valid := PInt(env, prefs, "status") == PushReady && PInt(env, prefs, "provider") == provider && PEqual(env, PGet(env, prefs, "wire"), wire)
+        return ifx valid then 1 else 0
+    }
+    #if #defined(GOOGLE_PLAY) {
+        #program_export "Java_org_kryonlabs_notifications_push_TokenCallback_complete"
+        PTokenComplete :: (env: *JniEnv, klass: *void, context: *void, request: *void, task: *void) {
+            unused klass
+            unused PLock(cast(*void)*p_mutex[0])
+            prefs := PPrefs(env, context)
+            if !PEqual(env, PGet(env, prefs, "request"), request) {
+                unused PUnlock(cast(*void)*p_mutex[0]); unused PClear(env); return
+            }
+            wire := PGet(env, prefs, "wire")
+            if NInt(env, task, "isSuccessful", "()Z") != 0 {
+                token := NObject(env, task, "getResult", "()Ljava/lang/Object;")
+                if !PClear(env) && token != null {
+                    unused PEndpoint(env, context, PushProviderFcm, wire, token, null, null)
+                    unused PUnlock(cast(*void)*p_mutex[0]); unused PClear(env)
+                    return
+                }
+            }
+            unused PClear(env)
+            editor := PEdit(env, prefs)
+            PInvalidate(env, prefs, editor, PushFailed)
+            if PInt(env, prefs, "status") != PushDisabled { unused PCommit(env, editor) }
+            unused PUnlock(cast(*void)*p_mutex[0])
+            unused PClear(env)
+        }
+        #program_export "Java_org_kryonlabs_notifications_push_SharedFcmService_refresh"
+        PTokenRefresh :: (env: *JniEnv, klass: *void, context: *void, token: *void) {
+            unused klass
+            unused PLock(cast(*void)*p_mutex[0])
+            defer { unused PUnlock(cast(*void)*p_mutex[0]); unused PClear(env) }
+            prefs := PPrefs(env, context)
+            wire := PGet(env, prefs, "wire")
+            // A token refresh supersedes outstanding getToken completions.
+            editor := PEdit(env, prefs)
+            PPut(env, editor, "request", NString(env, ""))
+            if !PCommit(env, editor) { return }
+            unused PEndpoint(env, context, PushProviderFcm, wire, token, null, null)
+        }
+        PFcmEnvelope :: (env: *JniEnv, prefs: *void, scope: *void, wire: *void) -> bool {
+            return PInt(env, prefs, "provider") == PushProviderFcm && PInt(env, prefs, "status") == PushReady &&
+                PEqual(env, PGet(env, prefs, "scope"), scope) && PEqual(env, PGet(env, prefs, "wire"), wire)
+        }
+        // FCM notification payloads can auto-display inside the SDK before
+        // onMessageReceived. Gate before super.handleIntent, and accept only
+        // data messages carrying the active application's account+instance.
+        #program_export "Java_org_kryonlabs_notifications_push_SharedFcmService_ingress"
+        PFcmIngress :: (env: *JniEnv, klass: *void, context: *void, intent: *void) -> u8 {
+            unused klass
+            unused PLock(cast(*void)*p_mutex[0])
+            defer { unused PUnlock(cast(*void)*p_mutex[0]); unused PClear(env) }
+            prefs := PPrefs(env, context)
+            if PInt(env, prefs, "provider") != PushProviderFcm || intent == null { return 0 }
+            action := NObject(env, intent, "getAction", "()Ljava/lang/String;")
+            if PEqual(env, action, NString(env, "com.google.firebase.messaging.NEW_TOKEN")) {
+                status := PInt(env, prefs, "status")
+                return ifx status == PushRegistering || status == PushReady || status == PushUnavailable then 1 else 0
+            }
+            if !PEqual(env, action, NString(env, "com.google.android.c2dm.intent.RECEIVE")) &&
+                !PEqual(env, action, NString(env, "com.google.firebase.messaging.RECEIVE_DIRECT_BOOT")) { return 0 }
+            flags: [2]string = .["gcm.n.e", "gcm.notification.e"]
+            for key: flags {
+                flag := NObject(env, intent, "getStringExtra", "(Ljava/lang/String;)Ljava/lang/String;", NRef(NString(env, key)))
+                if PEqual(env, flag, NString(env, "1")) { return 0 }
+            }
+            scope := NObject(env, intent, "getStringExtra", "(Ljava/lang/String;)Ljava/lang/String;", NRef(NString(env, "kryon_scope")))
+            wire := NObject(env, intent, "getStringExtra", "(Ljava/lang/String;)Ljava/lang/String;", NRef(NString(env, "kryon_instance")))
+            return ifx PFcmEnvelope(env, prefs, scope, wire) then 1 else 0
+        }
+        #program_export "Java_org_kryonlabs_notifications_push_SharedFcmService_acceptsMessage"
+        PFcmMessage :: (env: *JniEnv, klass: *void, context: *void, message: *void) -> u8 {
+            unused klass
+            unused PLock(cast(*void)*p_mutex[0])
+            defer { unused PUnlock(cast(*void)*p_mutex[0]); unused PClear(env) }
+            data := NObject(env, message, "getData", "()Ljava/util/Map;")
+            scope := NObject(env, data, "get", "(Ljava/lang/Object;)Ljava/lang/Object;", NRef(NString(env, "kryon_scope")))
+            wire := NObject(env, data, "get", "(Ljava/lang/Object;)Ljava/lang/Object;", NRef(NString(env, "kryon_instance")))
+            return ifx PFcmEnvelope(env, PPrefs(env, context), scope, wire) then 1 else 0
+        }
+    }
+    #program_export "Java_org_kryonlabs_notifications_push_PushCallbacks_snapshot"
+    PSnapshotCallback :: (env: *JniEnv, klass: *void, context: *void, scope: *void) -> *void {
+        unused klass
+        unused PLock(cast(*void)*p_mutex[0])
+        defer { unused PUnlock(cast(*void)*p_mutex[0]); unused PClear(env) }
+        state: PushState
+        if !PRead(env, context, scope, *state) { return NString(env, "{}") }
+        json := NNew(env, "org/json/JSONObject", "()V")
+        unused NObject(env, json, "put", "(Ljava/lang/String;I)Lorg/json/JSONObject;", NRef(NString(env, "status")), NNumber(state.status))
+        unused NObject(env, json, "put", "(Ljava/lang/String;I)Lorg/json/JSONObject;", NRef(NString(env, "provider")), NNumber(state.provider))
+        unused NObject(env, json, "put", "(Ljava/lang/String;J)Lorg/json/JSONObject;", NRef(NString(env, "revision")), NWide(state.revision))
+        keys: [2]string = .["distributor", "wire"]
+        for key: keys {
+            unused NObject(env, json, "put", "(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;", NRef(NString(env, key)), NRef(PGet(env, PPrefs(env, context), key)))
+        }
+        unused NObject(env, json, "put", "(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;", NRef(NString(env, "endpoint")), NRef(NString(env, TextFromCString(*state.endpoint[0]))))
+        unused NObject(env, json, "put", "(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;", NRef(NString(env, "auth")), NRef(NString(env, TextFromCString(*state.auth[0]))))
+        unused NObject(env, json, "put", "(Ljava/lang/String;Ljava/lang/Object;)Lorg/json/JSONObject;", NRef(NString(env, "p256dh")), NRef(NString(env, TextFromCString(*state.p256dh[0]))))
+        return NObject(env, json, "toString", "()Ljava/lang/String;")
+    }
+}

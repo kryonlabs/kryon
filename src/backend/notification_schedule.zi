@@ -1,0 +1,111 @@
+// Persistent local-time reminders. Push transports are independent of alarms.
+#import "notification"
+#import "notification_schedule_policy"
+#if #defined(ANDROID_BUILD) && !#defined(KRYON_HOSTED_UI) {
+    #import "android_notifications"
+}
+#if #defined(KRYON_HOSTED_UI) {
+    host_api :: #system_library "host_api";
+    DailyNotificationsSupportedHost :: () -> bool #foreign host_api;
+    ScheduleDailyNotificationHost :: (props: NotificationProps, hour: s32, minute: s32,
+        suppress_on_open: bool, not_before_unix_ms: s64, weekdays: u32, skip_local_date: s32) -> bool #foreign host_api;
+    ScheduleNotificationAtHost :: (props: NotificationProps, year: s32, month: s32,
+        day: s32, hour: s32, minute: s32) -> bool #foreign host_api;
+    ScheduleNotificationDatesHost :: (props: NotificationProps, dates: []s32,
+        hour: s32, minute: s32) -> bool #foreign host_api;
+    CancelDailyNotificationHost :: (tag: string, id: s32) -> bool #foreign host_api;
+    NotificationAppOpenedHost :: (tag: string, id: s32) -> bool #foreign host_api;
+}
+
+#program_export
+DailyNotificationValid :: (props: NotificationProps, hour: s32, minute: s32,
+    not_before_unix_ms: s64) -> bool {
+    return props.tag.count > 0 && props.tag.count <= 128 && props.id >= 0 &&
+        props.title.count > 0 && props.title.count <= 256 &&
+        props.body.count > 0 && props.body.count <= 2048 &&
+        hour >= 0 && hour < 24 && minute >= 0 && minute < 60 &&
+        not_before_unix_ms >= 0
+}
+
+// True means the host supports persistent offline reminders, independently
+// of notification permission. Scheduling never prompts or changes permission.
+#program_export
+DailyNotificationsSupported :: () -> bool {
+    #if #defined(KRYON_HOSTED_UI) {
+        return DailyNotificationsSupportedHost()
+    }
+    #if #defined(ANDROID_BUILD) && !#defined(KRYON_HOSTED_UI) {
+        return true
+    }
+    return false
+}
+
+#program_export
+ScheduleDailyNotification :: (props: NotificationProps, hour: s32,
+    minute: s32 = 0, suppress_on_open: bool = false,
+    not_before_unix_ms: s64 = 0, weekdays: u32 = 127, skip_local_date: s32 = 0) -> bool {
+    if skip_local_date != 0 && !NotificationDateValid(skip_local_date / 10000, (skip_local_date / 100) % 100, skip_local_date % 100) { return false }
+    if weekdays == 0 || weekdays > 127 { return false }
+    if !DailyNotificationValid(props, hour, minute, not_before_unix_ms) { return false }
+    #if #defined(KRYON_HOSTED_UI) {
+        return ScheduleDailyNotificationHost(props, hour, minute, suppress_on_open, not_before_unix_ms, weekdays, skip_local_date)
+    }
+    #if #defined(ANDROID_BUILD) && !#defined(KRYON_HOSTED_UI) {
+        return AndroidScheduleDaily(props, hour, minute, suppress_on_open, not_before_unix_ms, weekdays, 0, skip_local_date)
+    }
+    return false
+}
+
+#program_export
+CancelDailyNotification :: (tag: string, id: s32) -> bool {
+    if tag.count == 0 || tag.count > 128 || id < 0 { return false }
+    #if #defined(KRYON_HOSTED_UI) {
+        return CancelDailyNotificationHost(tag, id)
+    }
+    #if #defined(ANDROID_BUILD) && !#defined(KRYON_HOSTED_UI) {
+        return AndroidCancelDaily(tag, id)
+    }
+    return false
+}
+
+// Mark only the game actually opened, including resume and local midnight.
+// A collection host must never mark its other games as opened.
+#program_export
+NotificationAppOpened :: (tag: string, id: s32) -> bool {
+    #if #defined(KRYON_HOSTED_UI) {
+        return NotificationAppOpenedHost(tag, id)
+    }
+    #if #defined(ANDROID_BUILD) && !#defined(KRYON_HOSTED_UI) {
+        return AndroidNotificationOpened(tag, id)
+    }
+    return false
+}
+
+// One-shot device-local date. Apps calculate their own recurrence policy.
+#program_export
+ScheduleNotificationAt :: (props: NotificationProps, year: s32, month: s32,
+    day: s32, hour: s32, minute: s32 = 0) -> bool {
+    if !NotificationDateValid(year, month, day) || !DailyNotificationValid(props, hour, minute, 0) { return false }
+    #if #defined(KRYON_HOSTED_UI) {
+        return ScheduleNotificationAtHost(props, year, month, day, hour, minute)
+    }
+    #if #defined(ANDROID_BUILD) && !#defined(KRYON_HOSTED_UI) {
+        return AndroidScheduleDaily(props, hour, minute, false, 0, 127, year * 10000 + month * 100 + day)
+    }
+    return false
+}
+
+// A finite caller-evaluated recurrence: one persisted rule and one OS alarm.
+// Dates are strictly increasing local YYYYMMDD values, at most3660 entries.
+#program_export
+ScheduleNotificationDates :: (props: NotificationProps, dates: []s32,
+    hour: s32, minute: s32 = 0) -> bool {
+    if !NotificationDatesValid(dates) || !DailyNotificationValid(props, hour, minute, 0) { return false }
+    #if #defined(KRYON_HOSTED_UI) {
+        return ScheduleNotificationDatesHost(props, dates, hour, minute)
+    }
+    #if #defined(ANDROID_BUILD) && !#defined(KRYON_HOSTED_UI) {
+        return AndroidScheduleDates(props, dates, hour, minute)
+    }
+    return false
+}

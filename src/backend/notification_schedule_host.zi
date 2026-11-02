@@ -1,0 +1,187 @@
+// Native dispatch for portable reminders. The caller supplies an identity
+// verified against its own package slot, never an identity from HostValue.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+UTF8 :: #import "std/utf8"
+#import "notification"
+#import "notification_schedule"
+#import "notification_schedule_policy"
+#import "hosted_values"
+#import "bundle_names"
+
+using HostValueKind;
+
+KRYON_NOTIFICATION_SCHEDULE :: "kryon.notification.schedule"
+
+NotificationScheduleHostSupports :: (module: string, name: string) -> bool {
+    return ModuleName(module, "notification_schedule") &&
+        (name == "DailyNotificationsSupportedHost" || name == "ScheduleDailyNotificationHost" ||
+        name == "ScheduleNotificationAtHost" || name == "ScheduleNotificationDatesHost" || name == "CancelDailyNotificationHost" ||
+        name == "NotificationAppOpenedHost")
+}
+
+// A tag is local to the verified app. Delimiters inside it never change
+// the preceding host-owned app prefix; native tags are never truncated.
+NotificationScheduleLocalTag :: (text: string) -> bool {
+    return text.count > 0 && text.count <= 128 && NotificationScheduleTextValid(text)
+}
+
+NotificationScheduleHostIdentity :: (id: string) -> bool {
+    // Reserve "hosted:", the app delimiter, and at least one local tag byte.
+    if id.count == 0 || id.count > 119 || id == "." || id == ".." { return false }
+    for index: 0..id.count - 1 {
+        byte := id[index]
+        if !((byte >= #char "a" && byte <= #char "z") ||
+            (byte >= #char "0" && byte <= #char "9") ||
+            byte == #char "." || byte == #char "_" || byte == #char "-") { return false }
+    }
+    return true
+}
+
+NotificationScheduleHostInteger :: (value: HostValue, type_name: string, low: s64, high: s64) -> bool {
+    return HostScalarValid(value, type_name, cast(s32)HostInteger) &&
+        value.integer >= low && value.integer <= high
+}
+
+NotificationScheduleHostText :: (value: HostValue, limit: usize) -> bool {
+    return HostScalarValid(value, "string", cast(s32)HostString) &&
+        value.length > cast(usize)0 && value.length <= limit
+}
+
+NotificationScheduleTextValid :: (text: string) -> bool {
+    if !UTF8.Valid(text) { return false }
+    for index: 0..text.count - 1 { if text[index] == cast(u8)0 { return false } }
+    return true
+}
+
+NotificationScheduleHostDates :: (value: HostValue, output: []s32) -> s32 {
+    if value.kind != cast(s32)HostSlice || TextFromCString(value.type_name) != "[]s32" ||
+        value.length == cast(usize)0 || value.length > cast(usize)3660 ||
+        value.length > cast(usize)output.count || value.elements == null { return 0 }
+    previous: s32 = 0
+    for index: cast(usize)0..value.length - cast(usize)1 {
+        item := value.elements[index]
+        if !NotificationScheduleHostInteger(item, "s32", 19700101, 99991231) { return 0 }
+        date := cast(s32)item.integer
+        if date <= previous || !NotificationDateValid(date / 10000, (date / 100) % 100, date % 100) { return 0 }
+        output[index] = date
+        previous = date
+    }
+    return cast(s32)value.length
+}
+
+// Decode only the six bounded public fields. Unknown/duplicate fields and
+// oversized records are rejected before inspecting their contents.
+NotificationScheduleHostProps :: (value: HostValue, props: *NotificationProps) -> bool {
+    if !HostRecordValid(*value, "NotificationProps") || value.field_count != cast(usize)6 { return false }
+    title := HostFieldAt(value, 0, "title")
+    body := HostFieldAt(value, 1, "body")
+    tag := HostFieldAt(value, 2, "tag")
+    id := HostFieldAt(value, 3, "id")
+    priority := HostFieldAt(value, 4, "priority")
+    focused := HostFieldAt(value, 5, "suppress_when_focused")
+    if title < 0 || body < 0 || tag < 0 || id < 0 || priority < 0 || focused < 0 { return false }
+    if !NotificationScheduleHostText(value.fields[title].value, cast(usize)256) ||
+        !NotificationScheduleHostText(value.fields[body].value, cast(usize)2048) ||
+        !NotificationScheduleHostText(value.fields[tag].value, cast(usize)128) ||
+        !NotificationScheduleHostInteger(value.fields[id].value, "s32", 0, 2147483647) ||
+        !NotificationScheduleHostInteger(value.fields[priority].value, "NotificationPriority", 0, 2) ||
+        !NotificationScheduleHostInteger(value.fields[focused].value, "bool", 0, 1) { return false }
+    props.title = HostValueText(value.fields[title].value)
+    props.body = HostValueText(value.fields[body].value)
+    props.tag = HostValueText(value.fields[tag].value)
+    props.id = cast(s32)value.fields[id].value.integer
+    props.priority = cast(NotificationPriority)value.fields[priority].value.integer
+    props.suppress_when_focused = value.fields[focused].value.integer != 0
+    return NotificationScheduleLocalTag(props.tag) && NotificationScheduleTextValid(props.title) &&
+        NotificationScheduleTextValid(props.body)
+}
+
+// Success at the ABI level returns a bool, including policy denial. Only the
+// trusted caller can enable schedules. Revocation still permits cleanup of
+// that same app's rules. This function never requests OS permission.
+NotificationScheduleHostCall :: (verified_id: string, enabled: bool, name: string,
+    arguments: *HostValue, count: s32, result: *HostValue, focused: bool = false) -> s32 {
+    if result == null { return 0 }
+    result.* = HostScalar("bool", 0)
+    if !NotificationScheduleHostIdentity(verified_id) { return 1 }
+    if name == "DailyNotificationsSupportedHost" {
+        if count != 0 { return 0 }
+        result.* = HostScalar("bool", ifx enabled && DailyNotificationsSupported() then 1 else 0)
+        return 1
+    }
+    if arguments == null || count < 0 || count > 7 { return 0 }
+    // Prefix belongs only to the trusted identity. Local tags and numeric
+    // IDs retain their public meaning inside that namespace.
+    tag_bytes: [128]u8
+    prefix := "hosted:"
+    for index: 0..prefix.count - 1 { tag_bytes[index] = prefix[index] }
+    for index: 0..verified_id.count - 1 { tag_bytes[prefix.count + index] = verified_id[index] }
+    prefix_length := prefix.count + verified_id.count
+    tag_bytes[prefix_length] = #char ":"
+    prefix_length += 1
+    if name == "CancelDailyNotificationHost" || name == "NotificationAppOpenedHost" {
+        if count != 2 || !NotificationScheduleHostText(arguments[0], cast(usize)128) ||
+            !NotificationScheduleLocalTag(HostValueText(arguments[0])) ||
+            !NotificationScheduleHostInteger(arguments[1], "s32", 0, 2147483647) { return 0 }
+        local_tag := HostValueText(arguments[0])
+        if prefix_length + local_tag.count > 128 { return 0 }
+        for index: 0..local_tag.count - 1 { tag_bytes[prefix_length + index] = local_tag[index] }
+        native_tag := TextFromBytes(tag_bytes[:prefix_length + local_tag.count])
+        id := cast(s32)arguments[1].integer
+        accepted := false
+        if name == "CancelDailyNotificationHost" { accepted = CancelDailyNotification(native_tag, id) }
+        else if enabled && focused { accepted = NotificationAppOpened(native_tag, id) }
+        result.* = HostScalar("bool", ifx accepted then 1 else 0)
+        return 1
+    }
+    if name != "ScheduleDailyNotificationHost" && name != "ScheduleNotificationAtHost" &&
+        name != "ScheduleNotificationDatesHost" { return 0 }
+    if (name == "ScheduleNotificationDatesHost" && count != 4) ||
+        (name == "ScheduleDailyNotificationHost" && count != 7) ||
+        (name == "ScheduleNotificationAtHost" && count != 6) { return 0 }
+    props: NotificationProps
+    if !NotificationScheduleHostProps(arguments[0], *props) { return 0 }
+    if prefix_length + props.tag.count > 128 { return 0 }
+    for index: 0..props.tag.count - 1 { tag_bytes[prefix_length + index] = props.tag[index] }
+    props.tag = TextFromBytes(tag_bytes[:prefix_length + props.tag.count])
+    if name == "ScheduleNotificationDatesHost" {
+        if !NotificationScheduleHostInteger(arguments[2], "s32", 0, 23) ||
+            !NotificationScheduleHostInteger(arguments[3], "s32", 0, 59) { return 0 }
+        dates: [3660]s32
+        length := NotificationScheduleHostDates(arguments[1], dates[:])
+        if length == 0 { return 0 }
+        accepted := enabled && ScheduleNotificationDates(props, dates[:length],
+            cast(s32)arguments[2].integer, cast(s32)arguments[3].integer)
+        result.* = HostScalar("bool", ifx accepted then 1 else 0)
+        return 1
+    }
+    if name == "ScheduleDailyNotificationHost" {
+        if !NotificationScheduleHostInteger(arguments[1], "s32", 0, 23) ||
+            !NotificationScheduleHostInteger(arguments[2], "s32", 0, 59) ||
+            !NotificationScheduleHostInteger(arguments[3], "bool", 0, 1) ||
+            !NotificationScheduleHostInteger(arguments[4], "s64", 0, 253402300799999) ||
+            !HostScalarValid(arguments[5], "u32", cast(s32)HostUnsigned) ||
+            arguments[5].bits == cast(u64)0 || arguments[5].bits > cast(u64)127 ||
+            !NotificationScheduleHostInteger(arguments[6], "s32", 0, 99991231) { return 0 }
+        skip := cast(s32)arguments[6].integer
+        if skip != 0 && !NotificationDateValid(skip / 10000, (skip / 100) % 100, skip % 100) { return 0 }
+        accepted := enabled && ScheduleDailyNotification(props, cast(s32)arguments[1].integer,
+            cast(s32)arguments[2].integer, arguments[3].integer != 0,
+            arguments[4].integer, cast(u32)arguments[5].bits, skip)
+        result.* = HostScalar("bool", ifx accepted then 1 else 0)
+        return 1
+    }
+    if !NotificationScheduleHostInteger(arguments[1], "s32", 1, 9999) ||
+        !NotificationScheduleHostInteger(arguments[2], "s32", 1, 12) ||
+        !NotificationScheduleHostInteger(arguments[3], "s32", 1, 31) ||
+        !NotificationScheduleHostInteger(arguments[4], "s32", 0, 23) ||
+        !NotificationScheduleHostInteger(arguments[5], "s32", 0, 59) ||
+        !NotificationDateValid(cast(s32)arguments[1].integer, cast(s32)arguments[2].integer,
+            cast(s32)arguments[3].integer) { return 0 }
+    accepted := enabled && ScheduleNotificationAt(props, cast(s32)arguments[1].integer,
+        cast(s32)arguments[2].integer, cast(s32)arguments[3].integer,
+        cast(s32)arguments[4].integer, cast(s32)arguments[5].integer)
+    result.* = HostScalar("bool", ifx accepted then 1 else 0)
+    return 1
+}

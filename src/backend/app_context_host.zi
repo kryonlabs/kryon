@@ -16,6 +16,8 @@
 #import "widget_host"
 #import "bundle_names"
 #import "drawing_props"
+#import "notification_schedule_host"
+#import "frame_snapshot"
 
 using HostValueKind;
 
@@ -109,6 +111,9 @@ AppThemeCall :: (module: string, name: string) -> bool {
 
 AppContextAllows :: (context: *void, module: string, name: string) -> bool {
     app := cast(*AppContext)context
+    // Bind optional reminder imports even on an unsupported/disabled host;
+    // calls answer false. No storage is touched during identification.
+    if NotificationScheduleHostSupports(module, name) { return true }
     if AppThemeCall(module, name) {
         return true
     }
@@ -150,6 +155,17 @@ AppContextCall :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
     app := cast(*AppContext)context
     name := TextFromCString(function)
+    if NotificationScheduleHostSupports(TextFromCString(module), name) {
+        if !app.identified || !app.described || app.mode != APP_FRAME ||
+            !AppIdValid(app.expected_id) || TextFromCString(*app.id[0]) != app.expected_id {
+            result.* = HostScalar("bool", 0)
+            return 1
+        }
+        enabled := app.allows != null && app.allows(app.context, KRYON_NOTIFICATION_SCHEDULE)
+        input := CaptureFrameInput(app.session)
+        return NotificationScheduleHostCall(app.expected_id, enabled, name, arguments, count, result,
+            input.available && input.focused)
+    }
     if AppThemeCall(TextFromCString(module), name) {
         if count != 1 || !HostScalarValid(arguments[0], "string", cast(s32)HostString) {
             return 0

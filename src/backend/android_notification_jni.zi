@@ -1,0 +1,125 @@
+// Small checked JNI vocabulary used by Android's notification host.
+#import "android_jni"
+#import "std/c_string"
+
+NClass :: (env: *JniEnv, name: string) -> *void {
+    if env.functions.ExceptionCheck(env) != 0 { return null }
+    bytes: [192]u8
+    if !CopyCString(name, bytes[:]) { return null }
+    return env.functions.FindClass(env, *bytes[0])
+}
+NString :: (env: *JniEnv, text: string) -> *void {
+    if env.functions.ExceptionCheck(env) != 0 || text.count > 4096 { return null }
+    // NewStringUTF consumes modified UTF-8, not ordinary UTF-8. A byte-array
+    // constructor preserves supplementary characters and embedded NULs.
+    bytes: [4096]u8
+    for byte, at: text { bytes[at] = byte }
+    array := env.functions.NewByteArray(env, cast(s32)text.count)
+    if array == null || env.functions.ExceptionCheck(env) != 0 { return null }
+    env.functions.SetByteArrayRegion(env, array, 0, cast(s32)text.count, *bytes[0])
+    class_name: [24]u8
+    constructor: [8]u8
+    signature: [32]u8
+    encoding_name: [8]u8
+    CopyCString("java/lang/String", class_name[:])
+    CopyCString("<init>", constructor[:])
+    CopyCString("([BLjava/lang/String;)V", signature[:])
+    CopyCString("UTF-8", encoding_name[:])
+    klass := env.functions.FindClass(env, *class_name[0])
+    if klass == null || env.functions.ExceptionCheck(env) != 0 { return null }
+    method := env.functions.GetMethodID(env, klass, *constructor[0], *signature[0])
+    if method == null || env.functions.ExceptionCheck(env) != 0 { return null }
+    encoding := env.functions.NewStringUTF(env, *encoding_name[0])
+    arguments: [2]JniValue
+    arguments[0].reference = array
+    arguments[1].reference = encoding
+    result := env.functions.NewObjectA(env, klass, method, *arguments[0])
+    unused env.functions.ExceptionCheck(env)
+    env.functions.DeleteLocalRef(env, array)
+    env.functions.DeleteLocalRef(env, encoding)
+    env.functions.DeleteLocalRef(env, klass)
+    return result
+}
+NMethod :: (env: *JniEnv, klass: *void, name: string, signature: string, static: bool = false) -> *void {
+    if klass == null || env.functions.ExceptionCheck(env) != 0 { return null }
+    names: [96]u8
+    signatures: [256]u8
+    if !CopyCString(name, names[:]) || !CopyCString(signature, signatures[:]) { return null }
+    if static { return env.functions.GetStaticMethodID(env, klass, *names[0], *signatures[0]) }
+    return env.functions.GetMethodID(env, klass, *names[0], *signatures[0])
+}
+NObject :: (env: *JniEnv, object: *void, name: string, signature: string, a: JniValue = .{}, b: JniValue = .{}, c: JniValue = .{}, d: JniValue = .{}) -> *void {
+    arguments: [4]JniValue = .[a, b, c, d]
+    if object == null || env.functions.ExceptionCheck(env) != 0 { return null }
+    klass := env.functions.GetObjectClass(env, object)
+    method := NMethod(env, klass, name, signature)
+    env.functions.DeleteLocalRef(env, klass)
+    if method == null { return null }
+    value := env.functions.CallObjectMethodA(env, object, method, *arguments[0])
+    if env.functions.ExceptionCheck(env) != 0 { return null }
+    return value
+}
+NStatic :: (env: *JniEnv, name: string, method_name: string, signature: string, a: JniValue = .{}, b: JniValue = .{}, c: JniValue = .{}, d: JniValue = .{}) -> *void {
+    arguments: [4]JniValue = .[a, b, c, d]
+    klass := NClass(env, name)
+    method := NMethod(env, klass, method_name, signature, true)
+    if method == null { return null }
+    value := env.functions.CallStaticObjectMethodA(env, klass, method, *arguments[0])
+    unused env.functions.ExceptionCheck(env)
+    env.functions.DeleteLocalRef(env, klass)
+    return value
+}
+NNew :: (env: *JniEnv, name: string, signature: string, a: JniValue = .{}, b: JniValue = .{}, c: JniValue = .{}, d: JniValue = .{}) -> *void {
+    arguments: [4]JniValue = .[a, b, c, d]
+    klass := NClass(env, name)
+    method := NMethod(env, klass, "<init>", signature)
+    if method == null { return null }
+    value := env.functions.NewObjectA(env, klass, method, *arguments[0])
+    unused env.functions.ExceptionCheck(env)
+    env.functions.DeleteLocalRef(env, klass)
+    return value
+}
+NInt :: (env: *JniEnv, object: *void, name: string, signature: string = "()I", a: JniValue = .{}, b: JniValue = .{}, c: JniValue = .{}, d: JniValue = .{}) -> s32 {
+    arguments: [4]JniValue = .[a, b, c, d]
+    if object == null || env.functions.ExceptionCheck(env) != 0 { return 0 }
+    klass := env.functions.GetObjectClass(env, object)
+    method := NMethod(env, klass, name, signature)
+    env.functions.DeleteLocalRef(env, klass)
+    if method == null { return 0 }
+    if signature[signature.count - 1] == #char "Z" {
+        value := cast(s32)env.functions.CallBooleanMethodA(env, object, method, *arguments[0])
+        unused env.functions.ExceptionCheck(env)
+        return value
+    }
+    value := env.functions.CallIntMethodA(env, object, method, *arguments[0])
+    unused env.functions.ExceptionCheck(env)
+    return value
+}
+NLong :: (env: *JniEnv, object: *void, name: string, signature: string = "()J", a: JniValue = .{}, b: JniValue = .{}, c: JniValue = .{}, d: JniValue = .{}) -> s64 {
+    arguments: [4]JniValue = .[a, b, c, d]
+    if object == null || env.functions.ExceptionCheck(env) != 0 { return 0 }
+    klass := env.functions.GetObjectClass(env, object)
+    method := NMethod(env, klass, name, signature)
+    env.functions.DeleteLocalRef(env, klass)
+    if method == null { return 0 }
+    value := env.functions.CallLongMethodA(env, object, method, *arguments[0])
+    unused env.functions.ExceptionCheck(env)
+    return value
+}
+NVoid :: (env: *JniEnv, object: *void, name: string, signature: string, a: JniValue = .{}, b: JniValue = .{}, c: JniValue = .{}, d: JniValue = .{}) {
+    arguments: [4]JniValue = .[a, b, c, d]
+    if object == null || env.functions.ExceptionCheck(env) != 0 { return }
+    klass := env.functions.GetObjectClass(env, object)
+    method := NMethod(env, klass, name, signature)
+    env.functions.DeleteLocalRef(env, klass)
+    if method != null {
+        env.functions.CallVoidMethodA(env, object, method, *arguments[0])
+        unused env.functions.ExceptionCheck(env)
+    }
+}
+NRef :: (value: *void) -> JniValue { return JniValue.{.reference = value} }
+NNumber :: (value: s32) -> JniValue { return JniValue.{.integer = value} }
+NWide :: (value: s64) -> JniValue { return JniValue.{.long_integer = value} }
+NService :: (env: *JniEnv, context: *void, name: string) -> *void {
+    return NObject(env, context, "getSystemService", "(Ljava/lang/String;)Ljava/lang/Object;", NRef(NString(env, name)))
+}

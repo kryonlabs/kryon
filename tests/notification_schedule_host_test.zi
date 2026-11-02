@@ -1,0 +1,164 @@
+#import "app_context_host"
+#import "app_protocol"
+#import "notification_schedule_host"
+Provider :: #import "notification_schedule"
+#import "file"
+#import "c_string"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "hosted_values"
+#import "hosted_app"
+#import "notification"
+#import "session"
+#import "frame_snapshot"
+#import "input_protocol"
+
+enabled: bool = true;
+Allows :: (context: *void, name: string) -> bool {
+    unused context
+    return enabled && name == KRYON_NOTIFICATION_SCHEDULE
+}
+
+Open :: (app: *AppContext, path: string, expected: string = "wurm") -> bool {
+    bytes, ok := ReadEntireFile(path)
+    if !ok { return false }
+    app.expected_id = expected
+    app.allows = Allows
+    return AppContextOpen(app, bytes)
+}
+
+// Flip the expected tag only at the scheduler's actual execution boundary.
+// The practice tag proves that equal numeric ids don't collapse local tags.
+Call :: (context: *void, module: *u8, function: *u8, arguments: *HostValue,
+    count: s32, result: *HostValue) -> s32 {
+    if TextFromCString(function) == "ScheduleDailyNotificationHost" && Provider.daily % 2 == 1 {
+        app := cast(*AppContext)context
+        Provider.expected_tag = ifx app.expected_id == "wurm" then "hosted:wurm:practice" else "hosted:shovey:practice"
+    }
+    return AppContextCall(context, module, function, arguments, count, result)
+}
+
+Run :: (app: *AppContext) -> bool {
+    // Exercise the real AppContext registry/dispatcher with the recording
+    // wrapper above, without widgets, a display, permission prompts or JNI.
+    AppContextRuntime(app).replay.call = Call
+    app.session = SessionOpen()
+    if !FrameInputBegin(app.session, FrameInputSnapshot.{.available = true, .focused = true}) { return false }
+    ran := AppContextRun(app, APP_FRAME)
+    FrameInputEnd(app.session)
+    unused SessionClose(app.session)
+    return ran
+}
+
+Malformed :: () -> bool {
+    args: [6]HostValue
+    answer: HostValue
+    if NotificationScheduleHostCall("wurm", true, "CancelDailyNotificationHost", null, 2, *answer) != 0 { return false }
+    args[0] = HostValue.{.kind = cast(s32)HostValueKind.HostString, .type_name = HostTextData("string"),
+        .data = HostTextData("chest"), .length = cast(usize)129}
+    args[1] = HostScalar("s32", 1900)
+    if NotificationScheduleHostCall("wurm", true, "CancelDailyNotificationHost", *args[0], 2, *answer) != 0 { return false }
+    args[0].length = cast(usize)5
+    args[1].integer = 4294969196
+    if NotificationScheduleHostCall("wurm", true, "NotificationAppOpenedHost", *args[0], 2, *answer) != 0 { return false }
+    args[1] = HostScalar("s32", -1)
+    if NotificationScheduleHostCall("wurm", true, "CancelDailyNotificationHost", *args[0], 2, *answer) != 0 { return false }
+    if NotificationScheduleHostCall("wurm:shovey", true, "DailyNotificationsSupportedHost", null, 0, *answer) != 1 || answer.integer != 0 { return false }
+    if NotificationScheduleHostSupports("evil_notification_schedule", "CancelDailyNotificationHost") { return false }
+    // A source guest cannot forge ABI widths; direct native calls verify that
+    // even malformed marshal values are rejected before narrowing or reading.
+    large: [128]u8
+    for index: 0..127 { large[index] = #char "x" }
+    args[0].data = *large[0]
+    args[0].length = cast(usize)128
+    args[1] = HostScalar("s32", 1900)
+    if NotificationScheduleHostCall("wurm", true, "CancelDailyNotificationHost", *args[0], 2, *answer) != 0 { return false }
+    fields: [6]HostField
+    fields[0] = HostField.{.name = HostTextData("title"), .value = HostValue.{.kind = cast(s32)HostValueKind.HostString,
+        .type_name = HostTextData("string"), .data = HostTextData("Chest"), .length = cast(usize)5}}
+    fields[1] = HostField.{.name = HostTextData("body"), .value = fields[0].value}
+    fields[2] = HostField.{.name = HostTextData("tag"), .value = fields[0].value}
+    fields[3] = HostField.{.name = HostTextData("id"), .value = HostScalar("s32", 1900)}
+    fields[4] = HostField.{.name = HostTextData("priority"), .value = HostScalar("NotificationPriority", 0)}
+    fields[5] = HostField.{.name = HostTextData("suppress_when_focused"), .value = HostScalar("bool", 0)}
+    record := HostRecordValue("NotificationProps", fields[:])
+    props: NotificationProps
+    if !NotificationScheduleHostProps(record, *props) { return false }
+    fields[0].value.length = cast(usize)257
+    if NotificationScheduleHostProps(record, *props) { return false }
+    fields[0].value.length = cast(usize)5
+    fields[4].value.integer = 3
+    if NotificationScheduleHostProps(record, *props) { return false }
+    fields[4].value.integer = 0
+    fields[5].value.integer = 2
+    if NotificationScheduleHostProps(record, *props) { return false }
+    fields[5].value.integer = 0
+    fields[5].name = HostTextData("tag")
+    if NotificationScheduleHostProps(record, *props) { return false }
+    // Unknown focus must not suppress a reward reminder on another day.
+    args[0] = fields[2].value
+    Provider.expected_tag = "hosted:wurm:Chest"
+    if NotificationScheduleHostCall("wurm", true, "NotificationAppOpenedHost", *args[0], 2, *answer) != 1 || answer.integer != 0 { return false }
+    values: [2]HostValue
+    values[0] = HostScalar("s32", 20280229)
+    values[1] = HostScalar("s32", 20300101)
+    date_slice := HostValue.{.kind = cast(s32)HostValueKind.HostSlice, .type_name = HostTextData("[]s32"),
+        .elements = *values[0], .length = cast(usize)2}
+    output: [3660]s32
+    if NotificationScheduleHostDates(date_slice, output[:]) != 2 || output[0] != 20280229 || output[1] != 20300101 { return false }
+    date_slice.length = cast(usize)3661
+    if NotificationScheduleHostDates(date_slice, output[:]) != 0 { return false }
+    date_slice.length = cast(usize)2
+    values[1] = values[0]
+    if NotificationScheduleHostDates(date_slice, output[:]) != 0 { return false }
+    values[1] = HostScalar("s32", 20280228)
+    if NotificationScheduleHostDates(date_slice, output[:]) != 0 { return false }
+    values[1] = HostScalar("s32", 20300230)
+    if NotificationScheduleHostDates(date_slice, output[:]) != 0 { return false }
+    values[1] = HostScalar("s32", 4325267296)
+    if NotificationScheduleHostDates(date_slice, output[:]) != 0 { return false }
+    date_slice.elements = null
+    if NotificationScheduleHostDates(date_slice, output[:]) != 0 { return false }
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    app: AppContext
+    Provider.expected_tag = "hosted:wurm:chest"
+    if !Open(*app, "good.zx") || Provider.opened != 0 || !Run(*app) { return 1 }
+    HostedAppClose(*app.app)
+    if Provider.daily != 2 || Provider.dated != 1 || Provider.cancelled != 1 || Provider.opened != 1 || Provider.failures != 0 { return 2 }
+    // A malicious guest's native-looking tag remains inside Wurm's prefix.
+    Provider.expected_tag = "hosted:wurm:hosted:shovey:chest"
+    if !Open(*app, "spoof.zx") || !Run(*app) { return 3 }
+    HostedAppClose(*app.app)
+    if Provider.daily != 4 || Provider.dated != 2 || Provider.cancelled != 2 || Provider.opened != 2 || Provider.failures != 0 { return 4 }
+    // Claiming Shovey while loaded in Wurm's verified slot rejects the bundle.
+    if Open(*app, "wrong.zx") || Provider.opened != 2 { return 5 }
+    Provider.expected_tag = "hosted:shovey:chest"
+    if !Open(*app, "wrong.zx", "shovey") || !Run(*app) { return 12 }
+    HostedAppClose(*app.app)
+    if Provider.daily != 6 || Provider.dated != 3 || Provider.cancelled != 3 || Provider.opened != 3 || Provider.failures != 0 { return 13 }
+    enabled = false
+    Provider.expected_tag = "hosted:wurm:chest"
+    if !Open(*app, "disabled.zx") || !Run(*app) { return 6 }
+    HostedAppClose(*app.app)
+    if Provider.daily != 6 || Provider.opened != 3 || Provider.cancelled != 4 || Provider.failures != 0 { return 7 }
+    // Empty expected_id may be fine for ordinary UI, but never authorizes
+    // reminder identity. Post-identify mutation cannot grant another app.
+    if !Open(*app, "disabled.zx", "") { return 8 }
+    enabled = true
+    app.mode = APP_FRAME
+    answer: HostValue
+    returned := AppContextCall(cast(*void)(*app), HostTextData("notification_schedule"),
+        HostTextData("DailyNotificationsSupportedHost"), null, 0, *answer)
+    if returned != 1 || answer.integer != 0 { return 9 }
+    app.expected_id = "shovey"
+    returned = AppContextCall(cast(*void)(*app), HostTextData("notification_schedule"),
+        HostTextData("DailyNotificationsSupportedHost"), null, 0, *answer)
+    if returned != 1 || answer.integer != 0 { return 10 }
+    HostedAppClose(*app.app)
+    if !Malformed() || Provider.failures != 0 || Provider.opened != 3 || Provider.cancelled != 4 || Provider.daily != 6 || Provider.queued != 3 { return 11 }
+    return 0
+}

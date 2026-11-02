@@ -695,3 +695,51 @@ or mutate its root/lock directly. Readiness is availability, not an account gran
 
 `make -j1 document-storage-test` exercises native and actual disposable headless
 IndexedDB storage, source/saved compilation and portable AppLocal dispatch.
+
+## Local notifications
+
+`kryon/notification_schedule` schedules Android OS reminders independently of
+push, network access, and the running app loop. `DailyNotificationsSupported()`
+reports scheduler support independently of permission. Other native platforms
+return false; portable apps use their authenticated host capability.
+
+- `ScheduleDailyNotification(props, hour, minute=0, suppress_on_open=false,
+  not_before_unix_ms=0, weekdays=127, skip_local_date=0)` persists one rule.
+  Weekday bits are Sunday=1 through Saturday=64. Times use the device's current
+  timezone; `not_before_unix_ms` is an absolute UTC lower bound.
+  `skip_local_date` excludes one YYYYMMDD date, for example today's completion.
+- `ScheduleNotificationAt(props, year, month, day, hour, minute=0)` schedules
+  one local date; an elapsed date/time is rejected.
+- `ScheduleNotificationDates(props, dates, hour, minute=0)` keeps one alarm for
+  a caller-evaluated, finite sequence of at most 3660 strictly increasing valid
+  YYYYMMDD dates. Apps own recurrence and refresh this explicit horizon.
+- `CancelDailyNotification(tag, id)` cancels any of those rule types and its
+  visible notification. Reusing `(tag,id)` replaces the rule.
+- `NotificationAppOpened(tag,id)` durably marks that particular rule's local
+  date and cancels its visible notice. Games call it on actual game entry,
+  resume and local date changes while playing. A collection host must never
+  mark its other games opened when the host foregrounds.
+
+Scheduling persists even before permission is granted and never prompts.
+Applications request permission through `notification.RequestNotifications`;
+Kryon's Android host prompts once and preserves a refusal. System notification
+settings remain authoritative. Failed scheduling returns false. Android's
+inexact alarms can arrive later during idle; force-stopped applications cannot
+receive alarms until relaunched. Reboot, clock, timezone and package-replacement
+broadcasts rebuild future alarms from private preferences. Dates already opened
+or delivered remain suppressed when the clock moves backward. Android allows at
+most 480 active Kryon rules per host package and 64 per authenticated hosted app;
+replacements do not consume another slot and cancellation frees it.
+
+The Android scaffold includes the notification receiver and permissions. Existing
+Android hosts must include `org.kryonlabs.notifications.NotificationReceiver`
+from the canonical scaffold, declare POST_NOTIFICATIONS and
+RECEIVE_BOOT_COMPLETED, and merge its receiver actions from the scaffold manifest.
+Include `android_notifications` in the native graph so receiver exports survive
+linking. `notification_desktop` dispatches immediate notification effects to the
+Android implementation when ANDROID_BUILD is defined. Custom activities provide
+`requestKryonNotifications()` using the scaffold's UI-thread callback.
+
+In-app `ToastProps.seconds` is independent: a toast's caller chooses display
+length. OS notifications have no app-chosen toast deadline and remain subject
+to Android's notification settings and user dismissal.

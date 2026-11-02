@@ -1,0 +1,41 @@
+// Shared delivery guards, executed by the Android receiver and portable tests.
+NotificationDateValid :: (year: s32, month: s32, day: s32) -> bool {
+    if year < 1970 || year > 9999 || month < 1 || month > 12 || day < 1 { return false }
+    days: s32 = 31
+    if month == 4 || month == 6 || month == 9 || month == 11 { days = 30 }
+    if month == 2 {
+        days = 28
+        if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) { days = 29 }
+    }
+    return day <= days
+}
+NotificationDayAllowed :: (today: s32, opened: s32, delivered: s32,
+    suppress_on_open: bool, weekday: s32, weekdays: u32, exact_date: s32 = 0) -> bool {
+    if today <= delivered || (suppress_on_open && today <= opened) { return false }
+    if exact_date != 0 && exact_date != today { return false }
+    if weekday < 0 || weekday > 6 { return false }
+    return (weekdays & (cast(u32)1 << cast(u32)weekday)) != 0
+}
+
+// Hosted app IDs contain no colon; the host constructs this namespace.
+NotificationOwnerPrefix :: (tag: string) -> string {
+    prefix := "hosted:"
+    if tag.count <= prefix.count { return "" }
+    for byte, at: prefix {
+        if tag[at] != byte { return "" }
+    }
+    for at: prefix.count..tag.count - 1 {
+        if tag[at] == #char ":" { return tag[:at + 1] }
+    }
+    return ""
+}
+
+NotificationDatesValid :: (dates: []s32) -> bool {
+    if dates.count == 0 || dates.count > 3660 { return false }
+    previous: s32 = 0
+    for date: dates {
+        if date <= previous || !NotificationDateValid(date / 10000, (date / 100) % 100, date % 100) { return false }
+        previous = date
+    }
+    return true
+}

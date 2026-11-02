@@ -1,0 +1,95 @@
+#import "android_jni"
+#import "android_notifications"
+#import "notification"
+#import "notification_desktop"
+
+fixture_activity: NativeActivity;
+fixture_app: NativeAndroidApp;
+
+#program_export
+GetAndroidApp :: () -> *NativeAndroidApp { return *fixture_app }
+#program_export
+ANativeActivity_finish :: (activity: *void) { unused activity }
+
+#program_export "Java_NotificationTest_init"
+Initialize :: (env: *JniEnv, klass: *void, context: *void) {
+    unused klass
+    unused env.functions.GetJavaVM(env, *fixture_activity.vm)
+    fixture_activity.activity = env.functions.NewGlobalRef(env, context)
+    fixture_app.activity = *fixture_activity
+}
+
+#program_export "Java_NotificationTest_schedule"
+Schedule :: (env: *JniEnv, klass: *void, hour: s32, minute: s32, not_before: s64, suppress: u8, date: s32) -> u8 {
+    unused env
+    unused klass
+    props: NotificationProps
+    props.tag = "game.chest"
+    props.id = 1
+    props.title = "Chest"
+    props.body = "Reward available"
+    return ifx AndroidScheduleDaily(props, hour, minute, suppress != 0, not_before, 127, date) then cast(u8)1 else cast(u8)0
+}
+
+#program_export "Java_NotificationTest_open"
+Opened :: (env: *JniEnv, klass: *void) -> u8 {
+    unused env
+    unused klass
+    return ifx AndroidNotificationOpened("game.chest", 1) then cast(u8)1 else cast(u8)0
+}
+
+#program_export "Java_NotificationTest_cancel"
+Cancel :: (env: *JniEnv, klass: *void) -> u8 {
+    unused env
+    unused klass
+    return ifx AndroidCancelDaily("game.chest", 1) then cast(u8)1 else cast(u8)0
+}
+
+#program_export "Java_NotificationTest_fire"
+Fire :: (env: *JniEnv, klass: *void, context: *void, intent: *void) {
+    AndroidNotificationReceive(env, klass, context, intent)
+}
+
+#program_export "Java_NotificationTest_openId"
+OpenID :: (env: *JniEnv, klass: *void, id: s32) -> u8 {
+    unused env
+    unused klass
+    return ifx AndroidNotificationOpened("hosted:fixture:open", id) then cast(u8)1 else cast(u8)0
+}
+#program_export "Java_NotificationTest_cycleId"
+CycleID :: (env: *JniEnv, klass: *void, id: s32) -> u8 {
+    unused env
+    unused klass
+    props: NotificationProps
+    props.tag = "hosted:cycle:rule"
+    props.id = id
+    props.title = "Cycle"
+    props.body = "Body"
+    if !AndroidScheduleDaily(props, 19, 0, false, 0, 127) { return 0 }
+    return ifx AndroidCancelDaily(props.tag, id) then cast(u8)1 else cast(u8)0
+}
+#program_export "Java_NotificationTest_cancelUnknown"
+CancelUnknown :: (env: *JniEnv, klass: *void) -> u8 {
+    unused env
+    unused klass
+    return ifx AndroidCancelDaily("hosted:unknown:rule", 79) then cast(u8)1 else cast(u8)0
+}
+
+#program_export "Java_NotificationTest_request"
+Request :: (env: *JniEnv, klass: *void) {
+    AndroidNotificationRequestPermission(env, klass, fixture_activity.activity)
+}
+#program_export "Java_NotificationTest_dates"
+Dates :: (env: *JniEnv, klass: *void, input: *void) -> u8 {
+    unused klass
+    count := env.functions.GetArrayLength(env, input)
+    if count <= 0 || count > 3660 { return 0 }
+    values: [3660]s32
+    env.functions.GetIntArrayRegion(env, input, 0, count, *values[0])
+    props: NotificationProps
+    props.tag = "game.chest"
+    props.id = 1
+    props.title = "Chest"
+    props.body = "Reward available"
+    return ifx AndroidScheduleDates(props, values[:count], 19, 0) then cast(u8)1 else cast(u8)0
+}

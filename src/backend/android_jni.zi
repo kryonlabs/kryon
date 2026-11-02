@@ -37,6 +37,7 @@ JniGetMethodIDFn :: #type (*JniEnv, *void, *u8, *u8) -> *void #c_call;
 JniCallObjectMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> *void #c_call;
 JniCallBooleanMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> u8 #c_call;
 JniCallIntMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> s32 #c_call;
+JniCallLongMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> s64 #c_call;
 JniCallVoidMethodAFn :: #type (*JniEnv, *void, *void, *JniValue) -> void #c_call;
 JniGetFieldIDFn :: #type (*JniEnv, *void, *u8, *u8) -> *void #c_call;
 JniGetIntFieldFn :: #type (*JniEnv, *void, *void) -> s32 #c_call;
@@ -51,6 +52,7 @@ JniNewStringUTFFn :: #type (*JniEnv, *u8) -> *void #c_call;
 JniGetStringUTFCharsFn :: #type (*JniEnv, *void, *u8) -> *u8 #c_call;
 JniReleaseStringUTFCharsFn :: #type (*JniEnv, *void, *u8) -> void #c_call;
 JniGetArrayLengthFn :: #type (*JniEnv, *void) -> s32 #c_call;
+JniNewObjectArrayFn :: #type (*JniEnv, s32, *void, *void) -> *void #c_call;
 JniGetObjectArrayElementFn :: #type (*JniEnv, *void, s32) -> *void #c_call;
 JniNewByteArrayFn :: #type (*JniEnv, s32) -> *void #c_call;
 JniGetByteArrayRegionFn :: #type (*JniEnv, *void, s32, s32, *u8) -> void #c_call;
@@ -86,7 +88,9 @@ JniFunctions :: struct {
     CallBooleanMethodA: JniCallBooleanMethodAFn
     reserved_40: [11]*void
     CallIntMethodA: JniCallIntMethodAFn
-    reserved_52: [11]*void
+    reserved_52: [2]*void
+    CallLongMethodA: JniCallLongMethodAFn
+    reserved_55: [8]*void
     CallVoidMethodA: JniCallVoidMethodAFn
     reserved_64: [30]*void
     GetFieldID: JniGetFieldIDFn
@@ -110,7 +114,7 @@ JniFunctions :: struct {
     GetStringUTFChars: JniGetStringUTFCharsFn
     ReleaseStringUTFChars: JniReleaseStringUTFCharsFn
     GetArrayLength: JniGetArrayLengthFn
-    reserved_172: [1]*void
+    NewObjectArray: JniNewObjectArrayFn
     GetObjectArrayElement: JniGetObjectArrayElementFn
     reserved_174: [2]*void
     NewByteArray: JniNewByteArrayFn

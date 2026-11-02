@@ -589,6 +589,10 @@ public class __ACTIVITY__ extends NativeActivity {
         syncLifecycleState();
     }
 
+    public void requestKryonNotifications() {
+        runOnUiThread(() -> org.kryonlabs.notifications.NotificationReceiver.requestPermission(this));
+    }
+
     @Override
     protected void onResume() {
         super.onResume();

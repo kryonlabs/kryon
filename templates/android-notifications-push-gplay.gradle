@@ -1,0 +1,6 @@
+// Loaded only by the optional push script for app.edition=gplay. Kept outside
+// the copied droid scaffold so other editions contain no Google dependencies.
+android.sourceSets.main.java.srcDir new File(buildscript.sourceFile.parentFile, 'android-notifications-push/gplay/java')
+dependencies {
+    implementation 'com.google.firebase:firebase-messaging:25.1.2'
+}

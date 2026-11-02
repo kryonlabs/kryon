@@ -1,0 +1,47 @@
+// Recording native scheduler fixture, substituted only in the native test
+// host. Guests compile the real portable notification_schedule module.
+#import "notification"
+expected_tag: string;
+daily: s32;
+dated: s32;
+queued: s32;
+cancelled: s32;
+opened: s32;
+failures: s32;
+DailyNotificationsSupported :: () -> bool { return true }
+ScheduleDailyNotification :: (props: NotificationProps, hour: s32, minute: s32 = 0,
+    suppress_on_open: bool = false, not_before_unix_ms: s64 = 0, weekdays: u32 = 127, skip_local_date: s32 = 0) -> bool {
+    if props.tag != expected_tag || props.id != 1900 || props.title != "Chest" || props.body != "Ready" ||
+        hour != 19 || minute != 17 || !suppress_on_open || not_before_unix_ms != 1793700000000 || weekdays != 62 ||
+        (daily % 2 == 0 && skip_local_date != 20261102) || (daily % 2 == 1 && skip_local_date != 0) {
+        failures += 1
+    }
+    daily += 1
+    return true
+}
+ScheduleNotificationAt :: (props: NotificationProps, year: s32, month: s32, day: s32,
+    hour: s32, minute: s32 = 0) -> bool {
+    if props.tag != expected_tag || props.id != 1900 || year != 2028 || month != 2 || day != 29 ||
+        hour != 19 || minute != 17 { failures += 1 }
+    dated += 1
+    return true
+}
+ScheduleNotificationDates :: (props: NotificationProps, dates: []s32, hour: s32, minute: s32 = 0) -> bool {
+    if props.tag != expected_tag || props.id != 1900 || dates.count != 3 || hour != 19 || minute != 17 {
+        failures += 1
+        return false
+    }
+    if dates[0] != 20280229 || dates[1] != 20300101 || dates[2] != 20321231 { failures += 1 }
+    queued += 1
+    return true
+}
+CancelDailyNotification :: (tag: string, id: s32) -> bool {
+    if tag != expected_tag || id != 1900 { failures += 1 }
+    cancelled += 1
+    return true
+}
+NotificationAppOpened :: (tag: string, id: s32) -> bool {
+    if tag != expected_tag || id != 1900 { failures += 1 }
+    opened += 1
+    return true
+}

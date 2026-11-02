@@ -4,6 +4,9 @@
 // Android and the browser deliver their own.
 #import "notification"
 #import "c_string"
+#if #defined(ANDROID_BUILD) {
+    #import "notification_android"
+}
 
 DESKTOP_NOTIFICATIONS :: #defined(PLATFORM_DESKTOP) && !#defined(_WIN32)
 
@@ -31,6 +34,9 @@ NotificationSetAppNameHost :: (name: string) {
 
 #program_export
 NotificationSupportedHost :: () -> bool {
+    #if #defined(ANDROID_BUILD) {
+        return AndroidNotificationSupportedHost()
+    }
     #if DESKTOP_NOTIFICATIONS {
         executable: [32]u8
         if !CopyCString("/usr/bin/notify-send", executable[:]) {
@@ -43,16 +49,25 @@ NotificationSupportedHost :: () -> bool {
 
 #program_export
 NotificationAllowedHost :: () -> bool {
+    #if #defined(ANDROID_BUILD) {
+        return AndroidNotificationAllowedHost()
+    }
     return NotificationSupportedHost()
 }
 
 #program_export
 NotificationRequestHost :: () -> bool {
+    #if #defined(ANDROID_BUILD) {
+        return AndroidNotificationRequestHost()
+    }
     return NotificationSupportedHost()
 }
 
 #program_export
 NotificationWindowFocusedHost :: () -> bool {
+    #if #defined(ANDROID_BUILD) {
+        return AndroidNotificationWindowFocusedHost()
+    }
     #if DESKTOP_NOTIFICATIONS {
         return NotificationWindowFocused()
     }
@@ -61,6 +76,9 @@ NotificationWindowFocusedHost :: () -> bool {
 
 #program_export
 NotificationSendHost :: (props: NotificationProps) -> bool {
+    #if #defined(ANDROID_BUILD) {
+        return AndroidNotificationSendHost(props)
+    }
     #if DESKTOP_NOTIFICATIONS {
         if !NotificationSupportedHost() {
             return false

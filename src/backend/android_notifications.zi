@@ -1,0 +1,478 @@
+// Android OS notifications and persisted local alarms. All policy is Ziran;
+// NotificationReceiver.java only forwards Android callbacks to this module.
+#import "android_notification_jni"
+#import "android_jni"
+#import "std/c_string"
+#import "notification"
+#import "notification_schedule_policy"
+
+nc :: #system_library "c";
+NLockNative :: (mutex: *void) -> s32 #foreign nc "pthread_mutex_lock";
+NUnlockNative :: (mutex: *void) -> s32 #foreign nc "pthread_mutex_unlock";
+n_mutex: [8]u64;
+
+NPreferences :: (env: *JniEnv, context: *void, name: *void) -> *void {
+    return NObject(env, context, "getSharedPreferences", "(Ljava/lang/String;I)Landroid/content/SharedPreferences;", NRef(name), NNumber(0))
+}
+NIndex :: (env: *JniEnv, context: *void) -> *void {
+    return NPreferences(env, context, NString(env, "kryon.daily.index"))
+}
+// Fixed reusable preference slots bound both live and historical storage.
+// Index values encode slot+1: negative is an open-only state, positive active.
+NSlot :: (env: *JniEnv, context: *void, key: *void) -> s32 {
+    return NInt(env, NIndex(env, context), "getInt", "(Ljava/lang/String;I)I", NRef(key), NNumber(0))
+}
+NSlotPreferences :: (env: *JniEnv, context: *void, slot: s32) -> *void {
+    suffix := NStatic(env, "java/lang/Integer", "toString", "(I)Ljava/lang/String;", NNumber(slot - 1))
+    name := NObject(env, NString(env, "kryon.daily.slot."), "concat", "(Ljava/lang/String;)Ljava/lang/String;", NRef(suffix))
+    return NPreferences(env, context, name)
+}
+NRule :: (env: *JniEnv, context: *void, key: *void) -> *void {
+    slot := NSlot(env, context, key)
+    if slot < 0 { slot = -slot }
+    if slot == 0 { return null }
+    return NSlotPreferences(env, context, slot)
+}
+NOwnerMatches :: (env: *JniEnv, rule: *void, key: *void) -> bool {
+    return NInt(env, NGetString(env, rule, "owner"), "equals", "(Ljava/lang/Object;)Z", NRef(key)) != 0
+}
+NInitializeSlot :: (env: *JniEnv, context: *void, slot: s32, key: *void) -> bool {
+    editor := NEdit(env, NSlotPreferences(env, context, slot))
+    unused NObject(env, editor, "clear", "()Landroid/content/SharedPreferences$Editor;")
+    unused NObject(env, editor, "putString", "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;", NRef(NString(env, "owner")), NRef(key))
+    return NCommit(env, editor)
+}
+NRuleMatches :: (env: *JniEnv, rule: *void, key: *void) -> bool {
+    if !NOwnerMatches(env, rule, key) { return false }
+    tag := NGetString(env, rule, "tag")
+    prefix := NObject(env, tag, "concat", "(Ljava/lang/String;)Ljava/lang/String;", NRef(NString(env, ":")))
+    number := NStatic(env, "java/lang/Integer", "toString", "(I)Ljava/lang/String;", NNumber(NGetInt(env, rule, "id", -1)))
+    identity := NObject(env, prefix, "concat", "(Ljava/lang/String;)Ljava/lang/String;", NRef(number))
+    return NInt(env, identity, "equals", "(Ljava/lang/Object;)Z", NRef(key)) != 0 &&
+        NInt(env, NGetString(env, rule, "title"), "length") > 0 &&
+        NInt(env, NGetString(env, rule, "body"), "length") > 0
+}
+NReserve :: (env: *JniEnv, context: *void, key: *void, tag: string) -> s32 {
+    existing := NSlot(env, context, key)
+    if existing != 0 {
+        slot := ifx existing < 0 then -existing else existing
+        if !NOwnerMatches(env, NSlotPreferences(env, context, slot), key) && !NInitializeSlot(env, context, slot, key) { return 0 }
+        return slot
+    }
+    if !NCapacity(env, context, key, tag) { return 0 }
+    index := NIndex(env, context)
+    all := NObject(env, index, "getAll", "()Ljava/util/Map;")
+    for slot: cast(s32)1..480 {
+        positive := NStatic(env, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", NNumber(slot))
+        negative := NStatic(env, "java/lang/Integer", "valueOf", "(I)Ljava/lang/Integer;", NNumber(-slot))
+        used := NInt(env, all, "containsValue", "(Ljava/lang/Object;)Z", NRef(positive)) != 0 ||
+            NInt(env, all, "containsValue", "(Ljava/lang/Object;)Z", NRef(negative)) != 0
+        env.functions.DeleteLocalRef(env, positive)
+        env.functions.DeleteLocalRef(env, negative)
+        if used { continue }
+        if !NInitializeSlot(env, context, slot, key) { return 0 }
+        editor := NEdit(env, index)
+        unused NObject(env, editor, "putInt", "(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;", NRef(key), NNumber(-slot))
+        if NCommit(env, editor) { return slot }
+        return 0
+    }
+    return 0
+}
+NForget :: (env: *JniEnv, context: *void, key: *void) -> bool {
+    slot := NSlot(env, context, key)
+    if slot == 0 { return true }
+    if slot < 0 { slot = -slot }
+    // Never publish an active index pointing at cleared or reassigned data.
+    deactivation := NEdit(env, NIndex(env, context))
+    unused NObject(env, deactivation, "putInt", "(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;", NRef(key), NNumber(-slot))
+    if !NCommit(env, deactivation) { return false }
+    rule := NRule(env, context, key)
+    if rule != null {
+        editor := NEdit(env, rule)
+        unused NObject(env, editor, "clear", "()Landroid/content/SharedPreferences$Editor;")
+        if !NCommit(env, editor) { return false }
+    }
+    editor := NEdit(env, NIndex(env, context))
+    unused NObject(env, editor, "remove", "(Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;", NRef(key))
+    return NCommit(env, editor)
+}
+NKey :: (env: *JniEnv, tag: string, id: s32) -> *void {
+    number := NStatic(env, "java/lang/Integer", "toString", "(I)Ljava/lang/String;", NNumber(id))
+    prefix := NObject(env, NString(env, tag), "concat", "(Ljava/lang/String;)Ljava/lang/String;", NRef(NString(env, ":")))
+    return NObject(env, prefix, "concat", "(Ljava/lang/String;)Ljava/lang/String;", NRef(number))
+}
+NEdit :: (env: *JniEnv, prefs: *void) -> *void {
+    return NObject(env, prefs, "edit", "()Landroid/content/SharedPreferences$Editor;")
+}
+NPutInt :: (env: *JniEnv, editor: *void, key: string, value: s32) {
+    unused NObject(env, editor, "putInt", "(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;", NRef(NString(env, key)), NNumber(value))
+}
+NPutLong :: (env: *JniEnv, editor: *void, key: string, value: s64) {
+    unused NObject(env, editor, "putLong", "(Ljava/lang/String;J)Landroid/content/SharedPreferences$Editor;", NRef(NString(env, key)), NWide(value))
+}
+NPutString :: (env: *JniEnv, editor: *void, key: string, value: string) {
+    unused NObject(env, editor, "putString", "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;", NRef(NString(env, key)), NRef(NString(env, value)))
+}
+NGetInt :: (env: *JniEnv, prefs: *void, key: string, fallback: s32 = 0) -> s32 {
+    return NInt(env, prefs, "getInt", "(Ljava/lang/String;I)I", NRef(NString(env, key)), NNumber(fallback))
+}
+NGetString :: (env: *JniEnv, prefs: *void, key: string) -> *void {
+    return NObject(env, prefs, "getString", "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;", NRef(NString(env, key)), NRef(NString(env, "")))
+}
+NCommit :: (env: *JniEnv, editor: *void) -> bool { return NInt(env, editor, "commit", "()Z") != 0 }
+NCalendar :: (env: *JniEnv) -> *void {
+    return NStatic(env, "java/util/Calendar", "getInstance", "()Ljava/util/Calendar;")
+}
+NCalendarGet :: (env: *JniEnv, calendar: *void, field: s32) -> s32 {
+    return NInt(env, calendar, "get", "(I)I", NNumber(field))
+}
+NDate :: (env: *JniEnv, calendar: *void) -> s32 {
+    return NCalendarGet(env, calendar, 1) * 10000 + (NCalendarGet(env, calendar, 2) + 1) * 100 + NCalendarGet(env, calendar, 5)
+}
+NSdk :: (env: *JniEnv) -> s32 {
+    klass := NClass(env, "android/os/Build$VERSION")
+    name: [16]u8
+    signature: [2]u8
+    CopyCString("SDK_INT", name[:])
+    CopyCString("I", signature[:])
+    field := env.functions.GetStaticFieldID(env, klass, *name[0], *signature[0])
+    if field == null { return 0 }
+    return env.functions.GetStaticIntField(env, klass, field)
+}
+NAllowed :: (env: *JniEnv, context: *void) -> bool {
+    if NSdk(env) >= 33 && NInt(env, context, "checkSelfPermission", "(Ljava/lang/String;)I", NRef(NString(env, "android.permission.POST_NOTIFICATIONS"))) != 0 { return false }
+    if NSdk(env) >= 26 {
+        channel := NObject(env, NService(env, context, "notification"), "getNotificationChannel", "(Ljava/lang/String;)Landroid/app/NotificationChannel;", NRef(NString(env, "kryon.reminders")))
+        if channel != null && NInt(env, channel, "getImportance") == 0 { return false }
+    }
+    if NSdk(env) >= 24 {
+        return NInt(env, NService(env, context, "notification"), "areNotificationsEnabled", "()Z") != 0
+    }
+    return true
+}
+NPending :: (env: *JniEnv, context: *void, key: *void) -> *void {
+    intent := NNew(env, "android/content/Intent", "()V")
+    package_name := NObject(env, context, "getPackageName", "()Ljava/lang/String;")
+    unused NObject(env, intent, "setClassName", "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;", NRef(package_name), NRef(NString(env, "org.kryonlabs.notifications.NotificationReceiver")))
+    unused NObject(env, intent, "setAction", "(Ljava/lang/String;)Landroid/content/Intent;", NRef(NString(env, "org.kryonlabs.notifications.DAILY")))
+    encoded := NStatic(env, "android/net/Uri", "encode", "(Ljava/lang/String;)Ljava/lang/String;", NRef(key))
+    uri_text := NObject(env, NString(env, "kryon-reminder:"), "concat", "(Ljava/lang/String;)Ljava/lang/String;", NRef(encoded))
+    uri := NStatic(env, "android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;", NRef(uri_text))
+    unused NObject(env, intent, "setData", "(Landroid/net/Uri;)Landroid/content/Intent;", NRef(uri))
+    unused NObject(env, intent, "putExtra", "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/Intent;", NRef(NString(env, "key")), NRef(key))
+    // UPDATE_CURRENT | IMMUTABLE; distinct tag+id URI is alarm identity.
+    return NStatic(env, "android/app/PendingIntent", "getBroadcast", "(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;", NRef(context), NNumber(0), NRef(intent), NNumber(201326592))
+}
+NCancelVisible :: (env: *JniEnv, context: *void, prefs: *void) {
+    NVoid(env, NService(env, context, "notification"), "cancel", "(Ljava/lang/String;I)V", NRef(NGetString(env, prefs, "tag")), NNumber(NGetInt(env, prefs, "id")))
+}
+NCapacity :: (env: *JniEnv, context: *void, key: *void, tag: string) -> bool {
+    index := NIndex(env, context)
+    if NInt(env, index, "contains", "(Ljava/lang/String;)Z", NRef(key)) != 0 { return true }
+    all := NObject(env, index, "getAll", "()Ljava/util/Map;")
+    if NInt(env, all, "size") >= 480 { return false }
+    prefix := NotificationOwnerPrefix(tag)
+    if prefix.count == 0 { return true }
+    java_prefix := NString(env, prefix)
+    keys := NObject(env, all, "keySet", "()Ljava/util/Set;")
+    iterator := NObject(env, keys, "iterator", "()Ljava/util/Iterator;")
+    count: s32 = 0
+    while NInt(env, iterator, "hasNext", "()Z") != 0 {
+        item := NObject(env, iterator, "next", "()Ljava/lang/Object;")
+        if NInt(env, item, "startsWith", "(Ljava/lang/String;)Z", NRef(java_prefix)) != 0 { count += 1 }
+        env.functions.DeleteLocalRef(env, item)
+        if count >= 64 { return false }
+    }
+    return env.functions.ExceptionCheck(env) == 0
+}
+NDates :: (env: *JniEnv, prefs: *void) -> *void {
+    text := NObject(env, prefs, "getString", "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;", NRef(NString(env, "dates")), NRef(NString(env, "[]")))
+    return NNew(env, "org/json/JSONArray", "(Ljava/lang/String;)V", NRef(text))
+}
+NQueuedDateAllowed :: (env: *JniEnv, prefs: *void, today: s32) -> bool {
+    queue := NDates(env, prefs)
+    count := NInt(env, queue, "length")
+    if count == 0 { return true }
+    for at: 0..count - 1 {
+        if NInt(env, queue, "getInt", "(I)I", NNumber(at)) == today { return true }
+    }
+    return false
+}
+NNextQueued :: (env: *JniEnv, prefs: *void, queue: *void) -> s64 {
+    now := NCalendar(env)
+    now_ms := NLong(env, now, "getTimeInMillis")
+    today := NDate(env, now)
+    delivered := NGetInt(env, prefs, "delivered")
+    count := NInt(env, queue, "length")
+    for at: 0..count - 1 {
+        date := NInt(env, queue, "getInt", "(I)I", NNumber(at))
+        if date < today || date <= delivered { continue }
+        unused env.functions.PushLocalFrame(env, 64)
+        target := NCalendar(env)
+        NVoid(env, target, "set", "(III)V", NNumber(date / 10000), NNumber((date / 100) % 100 - 1), NNumber(date % 100))
+        NVoid(env, target, "set", "(II)V", NNumber(11), NNumber(NGetInt(env, prefs, "hour")))
+        NVoid(env, target, "set", "(II)V", NNumber(12), NNumber(NGetInt(env, prefs, "minute")))
+        NVoid(env, target, "set", "(II)V", NNumber(13), NNumber(0))
+        NVoid(env, target, "set", "(II)V", NNumber(14), NNumber(0))
+        stamp := NLong(env, target, "getTimeInMillis")
+        unused env.functions.PopLocalFrame(env, null)
+        if stamp > now_ms { return stamp }
+    }
+    return 0
+}
+NNext :: (env: *JniEnv, prefs: *void) -> s64 {
+    queue := NDates(env, prefs)
+    if NInt(env, queue, "length") > 0 { return NNextQueued(env, prefs, queue) }
+    now := NCalendar(env)
+    now_ms := NLong(env, now, "getTimeInMillis")
+    target := NCalendar(env)
+    exact_date := NGetInt(env, prefs, "exact_date")
+    if exact_date != 0 {
+        NVoid(env, target, "set", "(III)V", NNumber(exact_date / 10000), NNumber((exact_date / 100) % 100 - 1), NNumber(exact_date % 100))
+    }
+    not_before := NLong(env, prefs, "getLong", "(Ljava/lang/String;J)J", NRef(NString(env, "not_before")), NWide(0))
+    if exact_date == 0 && not_before > now_ms { NVoid(env, target, "setTimeInMillis", "(J)V", NWide(not_before)) }
+    NVoid(env, target, "set", "(II)V", NNumber(11), NNumber(NGetInt(env, prefs, "hour")))
+    NVoid(env, target, "set", "(II)V", NNumber(12), NNumber(NGetInt(env, prefs, "minute")))
+    NVoid(env, target, "set", "(II)V", NNumber(13), NNumber(0))
+    NVoid(env, target, "set", "(II)V", NNumber(14), NNumber(0))
+    highwater := NGetInt(env, prefs, "delivered")
+    if NGetInt(env, prefs, "suppress") != 0 {
+        opened := NGetInt(env, prefs, "opened")
+        if opened > highwater { highwater = opened }
+    }
+    if exact_date == 0 && NDate(env, target) < highwater {
+        NVoid(env, target, "set", "(III)V", NNumber(highwater / 10000), NNumber((highwater / 100) % 100 - 1), NNumber(highwater % 100))
+    }
+    for unused_index: 0..8 {
+        unused env.functions.PushLocalFrame(env, 32)
+        stamp := NLong(env, target, "getTimeInMillis")
+        weekday := NCalendarGet(env, target, 7) - 1
+        if stamp > now_ms && stamp >= not_before && NDate(env, target) > highwater && NDate(env, target) != NGetInt(env, prefs, "skip_date") &&
+            (NGetInt(env, prefs, "weekdays", 127) & (1 << weekday)) != 0 {
+            unused env.functions.PopLocalFrame(env, null)
+            return stamp
+        }
+        unused env.functions.PopLocalFrame(env, null)
+        if exact_date != 0 { return 0 }
+        NVoid(env, target, "add", "(II)V", NNumber(5), NNumber(1))
+    }
+    return 0
+}
+NArm :: (env: *JniEnv, context: *void, key: *void, prefs: *void) -> bool {
+    next := NNext(env, prefs)
+    if next <= 0 {
+        if NGetInt(env, prefs, "exact_date") != 0 || NInt(env, NDates(env, prefs), "length") > 0 {
+            unused NForget(env, context, key)
+        }
+        return false
+    }
+    method := ifx NSdk(env) >= 23 then "setAndAllowWhileIdle" else "set"
+    NVoid(env, NService(env, context, "alarm"), method, "(IJLandroid/app/PendingIntent;)V", NNumber(0), NWide(next), NRef(NPending(env, context, key)))
+    return env.functions.ExceptionCheck(env) == 0
+}
+NPost :: (env: *JniEnv, context: *void, tag: *void, id: s32, title: *void, body: *void) -> bool {
+    if !NAllowed(env, context) { return false }
+    manager := NService(env, context, "notification")
+    app := NObject(env, context, "getApplicationInfo", "()Landroid/content/pm/ApplicationInfo;")
+    pm := NObject(env, context, "getPackageManager", "()Landroid/content/pm/PackageManager;")
+    label := NObject(env, app, "loadLabel", "(Landroid/content/pm/PackageManager;)Ljava/lang/CharSequence;", NRef(pm))
+    channel_id := NString(env, "kryon.reminders")
+    builder: *void
+    if NSdk(env) >= 26 {
+        channel := NNew(env, "android/app/NotificationChannel", "(Ljava/lang/String;Ljava/lang/CharSequence;I)V", NRef(channel_id), NRef(label), NNumber(3))
+        NVoid(env, manager, "createNotificationChannel", "(Landroid/app/NotificationChannel;)V", NRef(channel))
+        builder = NNew(env, "android/app/Notification$Builder", "(Landroid/content/Context;Ljava/lang/String;)V", NRef(context), NRef(channel_id))
+    } else {
+        builder = NNew(env, "android/app/Notification$Builder", "(Landroid/content/Context;)V", NRef(context))
+    }
+    unused NObject(env, builder, "setSmallIcon", "(I)Landroid/app/Notification$Builder;", NNumber(17301659))
+    unused NObject(env, builder, "setContentTitle", "(Ljava/lang/CharSequence;)Landroid/app/Notification$Builder;", NRef(title))
+    unused NObject(env, builder, "setContentText", "(Ljava/lang/CharSequence;)Landroid/app/Notification$Builder;", NRef(body))
+    unused NObject(env, builder, "setAutoCancel", "(Z)Landroid/app/Notification$Builder;", NNumber(1))
+    launch := NObject(env, pm, "getLaunchIntentForPackage", "(Ljava/lang/String;)Landroid/content/Intent;", NRef(NObject(env, context, "getPackageName", "()Ljava/lang/String;")))
+    if launch != null {
+        tap := NStatic(env, "android/app/PendingIntent", "getActivity", "(Landroid/content/Context;ILandroid/content/Intent;I)Landroid/app/PendingIntent;", NRef(context), NNumber(0), NRef(launch), NNumber(201326592))
+        unused NObject(env, builder, "setContentIntent", "(Landroid/app/PendingIntent;)Landroid/app/Notification$Builder;", NRef(tap))
+    }
+    notice := NObject(env, builder, "build", "()Landroid/app/Notification;")
+    NVoid(env, manager, "notify", "(Ljava/lang/String;ILandroid/app/Notification;)V", NRef(tag), NNumber(id), NRef(notice))
+    return env.functions.ExceptionCheck(env) == 0
+}
+
+AndroidScheduleDaily :: (props: NotificationProps, hour: s32, minute: s32, suppress: bool,
+    not_before: s64, weekdays: u32, exact_date: s32 = 0, skip_local_date: s32 = 0) -> bool {
+    empty: []s32
+    return AndroidSchedulePlan(props, hour, minute, suppress, not_before, weekdays, exact_date, empty, skip_local_date)
+}
+AndroidScheduleDates :: (props: NotificationProps, dates: []s32, hour: s32, minute: s32) -> bool {
+    return AndroidSchedulePlan(props, hour, minute, false, 0, 127, 0, dates, 0)
+}
+AndroidSchedulePlan :: (props: NotificationProps, hour: s32, minute: s32, suppress: bool,
+    not_before: s64, weekdays: u32, exact_date: s32, dates: []s32, skip_local_date: s32) -> bool {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    env := session.env
+    unused NLockNative(cast(*void)*n_mutex[0])
+    key := NKey(env, props.tag, props.id)
+    slot := NReserve(env, session.activity, key, props.tag)
+    if slot == 0 {
+        unused NUnlockNative(cast(*void)*n_mutex[0])
+        AndroidJniDetachCurrent(*session)
+        return false
+    }
+    prefs := NRule(env, session.activity, key)
+    editor := NEdit(env, prefs)
+    NPutString(env, editor, "title", props.title)
+    NPutString(env, editor, "body", props.body)
+    NPutString(env, editor, "tag", props.tag)
+    NPutInt(env, editor, "id", props.id)
+    NPutInt(env, editor, "hour", hour)
+    NPutInt(env, editor, "minute", minute)
+    NPutInt(env, editor, "suppress", ifx suppress then 1 else 0)
+    NPutInt(env, editor, "weekdays", cast(s32)weekdays)
+    NPutLong(env, editor, "not_before", not_before)
+    NPutInt(env, editor, "exact_date", exact_date)
+    NPutInt(env, editor, "skip_date", skip_local_date)
+    queue := NNew(env, "org/json/JSONArray", "()V")
+    for date: dates {
+        value := NObject(env, queue, "put", "(I)Lorg/json/JSONArray;", NNumber(date))
+        if value != null { env.functions.DeleteLocalRef(env, value) }
+    }
+    encoded := NObject(env, queue, "toString", "()Ljava/lang/String;")
+    unused NObject(env, editor, "putString", "(Ljava/lang/String;Ljava/lang/String;)Landroid/content/SharedPreferences$Editor;", NRef(NString(env, "dates")), NRef(encoded))
+    ok := NCommit(env, editor)
+    index_editor := NEdit(env, NIndex(env, session.activity))
+    unused NObject(env, index_editor, "putInt", "(Ljava/lang/String;I)Landroid/content/SharedPreferences$Editor;", NRef(key), NNumber(slot))
+    ok = NCommit(env, index_editor) && ok
+    ok = NArm(env, session.activity, key, prefs) && ok
+    unused NUnlockNative(cast(*void)*n_mutex[0])
+    AndroidJniDetachCurrent(*session)
+    return ok
+}
+AndroidCancelDaily :: (tag: string, id: s32) -> bool {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    env := session.env
+    unused NLockNative(cast(*void)*n_mutex[0])
+    key := NKey(env, tag, id)
+    NVoid(env, NService(env, session.activity, "alarm"), "cancel", "(Landroid/app/PendingIntent;)V", NRef(NPending(env, session.activity, key)))
+    NVoid(env, NService(env, session.activity, "notification"), "cancel", "(Ljava/lang/String;I)V", NRef(NString(env, tag)), NNumber(id))
+    ok := NForget(env, session.activity, key)
+    ok = env.functions.ExceptionCheck(env) == 0 && ok
+    unused NUnlockNative(cast(*void)*n_mutex[0])
+    AndroidJniDetachCurrent(*session)
+    return ok
+}
+AndroidNotificationOpened :: (tag: string, id: s32) -> bool {
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    env := session.env
+    unused NLockNative(cast(*void)*n_mutex[0])
+    key := NKey(env, tag, id)
+    slot := NReserve(env, session.activity, key, tag)
+    if slot == 0 {
+        unused NUnlockNative(cast(*void)*n_mutex[0])
+        AndroidJniDetachCurrent(*session)
+        return false
+    }
+    prefs := NRule(env, session.activity, key)
+    date := NDate(env, NCalendar(env))
+    ok := true
+    if date > NGetInt(env, prefs, "opened") {
+        editor := NEdit(env, prefs)
+        NPutString(env, editor, "tag", tag)
+        NPutInt(env, editor, "id", id)
+        NPutInt(env, editor, "opened", date)
+        ok = NCommit(env, editor)
+        // Only an active rule is rearmed; mark-open cannot resurrect a cancel.
+        if NSlot(env, session.activity, key) > 0 {
+            NCancelVisible(env, session.activity, prefs)
+            ok = NArm(env, session.activity, key, prefs) && ok
+        }
+    }
+    unused NUnlockNative(cast(*void)*n_mutex[0])
+    AndroidJniDetachCurrent(*session)
+    return ok
+}
+
+// Receiver runs with a Context even after process death: no Activity required.
+#program_export "Java_org_kryonlabs_notifications_NotificationReceiver_receive"
+AndroidNotificationReceive :: (env: *JniEnv, klass: *void, context: *void, intent: *void) {
+    unused klass
+    if env == null || context == null || intent == null { return }
+    unused env.functions.PushLocalFrame(env, 256)
+    unused NLockNative(cast(*void)*n_mutex[0])
+    index := NIndex(env, context)
+    alarm_key := NObject(env, intent, "getStringExtra", "(Ljava/lang/String;)Ljava/lang/String;", NRef(NString(env, "key")))
+    all := NObject(env, index, "getAll", "()Ljava/util/Map;")
+    keys := NObject(env, all, "keySet", "()Ljava/util/Set;")
+    iterator := NObject(env, keys, "iterator", "()Ljava/util/Iterator;")
+    while NInt(env, iterator, "hasNext", "()Z") != 0 {
+        unused env.functions.PushLocalFrame(env, 256)
+        key := NObject(env, iterator, "next", "()Ljava/lang/Object;")
+        if alarm_key != null && NInt(env, key, "equals", "(Ljava/lang/Object;)Z", NRef(alarm_key)) == 0 {
+            unused env.functions.PopLocalFrame(env, null)
+            continue
+        }
+        if NSlot(env, context, key) <= 0 {
+            unused env.functions.PopLocalFrame(env, null)
+            continue
+        }
+        prefs := NRule(env, context, key)
+        if !NRuleMatches(env, prefs, key) {
+            unused NForget(env, context, key)
+            unused env.functions.PopLocalFrame(env, null)
+            continue
+        }
+        if alarm_key != null && NInt(env, key, "equals", "(Ljava/lang/Object;)Z", NRef(alarm_key)) != 0 {
+            now := NCalendar(env)
+            today := NDate(env, now)
+            // Reject stale alarms on a skipped weekday, before the selected
+            // time/not-before, after opening, or after today's delivery.
+            minute := NCalendarGet(env, now, 11) * 60 + NCalendarGet(env, now, 12)
+            due := minute >= NGetInt(env, prefs, "hour") * 60 + NGetInt(env, prefs, "minute") &&
+                (NGetInt(env, prefs, "weekdays", 127) & (1 << (NCalendarGet(env, now, 7) - 1))) != 0 &&
+                NLong(env, now, "getTimeInMillis") >= NLong(env, prefs, "getLong", "(Ljava/lang/String;J)J", NRef(NString(env, "not_before")), NWide(0))
+            due = due && today != NGetInt(env, prefs, "skip_date") && NQueuedDateAllowed(env, prefs, today)
+            if due && NotificationDayAllowed(today, NGetInt(env, prefs, "opened"), NGetInt(env, prefs, "delivered"),
+                NGetInt(env, prefs, "suppress") != 0, NCalendarGet(env, now, 7) - 1,
+                cast(u32)NGetInt(env, prefs, "weekdays", 127), NGetInt(env, prefs, "exact_date")) && NAllowed(env, context) {
+                // Commit before OS posting: process death cannot duplicate a
+                // delivered day's notice. Posting failure may lose that day.
+                editor := NEdit(env, prefs)
+                NPutInt(env, editor, "delivered", today)
+                if NCommit(env, editor) {
+                    unused NPost(env, context, NGetString(env, prefs, "tag"), NGetInt(env, prefs, "id"), NGetString(env, prefs, "title"), NGetString(env, prefs, "body"))
+                }
+            }
+        }
+        unused NArm(env, context, key, prefs)
+        if env.functions.ExceptionCheck(env) != 0 { env.functions.ExceptionClear(env) }
+        unused env.functions.PopLocalFrame(env, null)
+    }
+    unused NUnlockNative(cast(*void)*n_mutex[0])
+    if env.functions.ExceptionCheck(env) != 0 { env.functions.ExceptionClear(env) }
+    unused env.functions.PopLocalFrame(env, null)
+}
+
+#program_export "Java_org_kryonlabs_notifications_NotificationReceiver_requestPermission"
+AndroidNotificationRequestPermission :: (env: *JniEnv, klass: *void, activity: *void) {
+    unused klass
+    if env == null || activity == null { return }
+    unused env.functions.PushLocalFrame(env, 64)
+    if NSdk(env) >= 33 && !NAllowed(env, activity) {
+        prefs := NPreferences(env, activity, NString(env, "kryon.notification.permission"))
+        if NGetInt(env, prefs, "requested") == 0 {
+            editor := NEdit(env, prefs)
+            NPutInt(env, editor, "requested", 1)
+            if NCommit(env, editor) {
+                klass_string := NClass(env, "java/lang/String")
+                permissions := env.functions.NewObjectArray(env, 1, klass_string, NString(env, "android.permission.POST_NOTIFICATIONS"))
+                NVoid(env, activity, "requestPermissions", "([Ljava/lang/String;I)V", NRef(permissions), NNumber(20741))
+            }
+        }
+    }
+    if env.functions.ExceptionCheck(env) != 0 { env.functions.ExceptionClear(env) }
+    unused env.functions.PopLocalFrame(env, null)
+}

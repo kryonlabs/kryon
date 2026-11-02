@@ -1,0 +1,41 @@
+#import "app_context"
+#import "app_protocol"
+#import "notification"
+#import "notification_schedule"
+
+#program_export
+main :: () -> s32 {
+    if AppMode() == APP_IDENTIFY {
+        #if #defined(NOTIFICATION_WRONG_ID) {
+            AppIdentity("shovey")
+        } else {
+            AppIdentity("wurm")
+        }
+        AppDescribe("Wurm", "")
+        // No permission, storage or open marks are allowed in identification.
+        if DailyNotificationsSupported() || NotificationAppOpened("chest", 1900) { return 10 }
+        return APP_PROTOCOL
+    }
+    #if #defined(NOTIFICATION_DISABLED) {
+        if DailyNotificationsSupported() { return 11 }
+        disabled_props := NotificationProps.{.title = "Chest", .body = "Ready", .tag = "chest", .id = 1900}
+        if ScheduleDailyNotification(disabled_props, 19) || NotificationAppOpened("chest", 1900) { return 12 }
+        if !CancelDailyNotification("chest", 1900) { return 13 }
+        return 0
+    }
+    if !DailyNotificationsSupported() { return 1 }
+    props := NotificationProps.{.title = "Chest", .body = "Ready", .tag = "chest", .id = 1900}
+    #if #defined(NOTIFICATION_SPOOF_TAG) {
+        props.tag = "hosted:shovey:chest"
+    }
+    if !ScheduleDailyNotification(props, 19, 17, true, 1793700000000, 62, 20261102) { return 2 }
+    if !ScheduleNotificationAt(props, 2028, 2, 29, 19, 17) { return 3 }
+    dates: [3]s32 = .[20280229, 20300101, 20321231]
+    if !ScheduleNotificationDates(props, dates[:], 19, 17) { return 7 }
+    if !NotificationAppOpened(props.tag, props.id) { return 4 }
+    if !CancelDailyNotification(props.tag, props.id) { return 5 }
+    // Distinct local tags with the same large id remain distinct rules.
+    props.tag = "practice"
+    if !ScheduleDailyNotification(props, 19, 17, true, 1793700000000, 62) { return 6 }
+    return 0
+}

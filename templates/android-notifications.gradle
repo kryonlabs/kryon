@@ -1,0 +1,6 @@
+// Existing Android apps apply this to compile Kryon's thin OS callback class.
+// No push library or Google dependency is needed for local reminders.
+android {
+    sourceSets.main.java.srcDir new File(buildscript.sourceFile.parentFile,
+        'droid/droid/app/src/main/java/org/kryonlabs/notifications')
+}

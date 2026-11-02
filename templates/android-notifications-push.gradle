@@ -1,0 +1,35 @@
+// Optional transport. Apps keep server registration and payload handling.
+// Apply after the application's android block; kryon.dir identifies Kryon.
+def pushKryonDir = System.getenv('KRYON_DIR') ?: project.findProperty('kryon.dir')
+if (pushKryonDir == null) {
+    throw new GradleException('Pass -Pkryon.dir=... for optional push transport')
+}
+def pushEdition = (project.findProperty('app.edition') ?:
+    (project.findProperty('app.googlePlay') == 'true' ? 'gplay' : 'direct')).toString()
+if (!(pushEdition in ['direct', 'fdroid', 'gplay'])) {
+    throw new GradleException('app.edition must be direct, fdroid or gplay')
+}
+android.sourceSets.main.java.srcDir new File(pushKryonDir, 'templates/android-notifications-push/common/java')
+if (pushEdition == 'gplay') {
+    apply from: new File(pushKryonDir, 'templates/android-notifications-push-gplay.gradle')
+} else {
+    android.sourceSets.main.java.srcDir new File(pushKryonDir, 'templates/android-notifications-push/unified/java')
+    // The app may subclass SharedPushService to retain its own server and
+    // payload handling; declare that one service in its application manifest.
+    dependencies {
+        implementation 'org.unifiedpush.android:connector:3.3.3-rc1'
+    }
+}
+// An app with an existing service can choose its subclass through placeholders
+// without adding a second PUSH_EVENT/MESSAGING_EVENT handler.
+android.defaultConfig.manifestPlaceholders += [
+    kryonPushService: (project.findProperty('app.pushService') ?:
+        (pushEdition == 'gplay' ? 'org.kryonlabs.notifications.push.SharedFcmService' :
+            'org.kryonlabs.notifications.push.SharedPushService')).toString()
+]
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.sources.manifests.addStaticManifestFile(new File(pushKryonDir,
+            'templates/android-notifications-push/' + (pushEdition == 'gplay' ? 'gplay' : 'unified') + '/AndroidManifest.xml').path)
+    }
+}

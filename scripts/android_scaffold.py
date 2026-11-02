@@ -3,11 +3,14 @@
 
 The generated files belong to the application: this script writes only files
 that do not exist yet, so an app customizes its activity or build freely.
+Library-owned notification receiver code is refreshed and its required manifest
+entries are merged without replacing application routes or configuration.
 Placeholders in kryon/templates/droid carry the application id, activity and
 entry names.
 """
 import argparse
 from pathlib import Path
+from android_notifications_scaffold import ensure_notifications
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--root", type=Path, required=True)
@@ -80,3 +83,5 @@ if written:
         print(f"  {path}")
 else:
     print("Android project already present")
+
+ensure_notifications(root, args.kryon.resolve())
