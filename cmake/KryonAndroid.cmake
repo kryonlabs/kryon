@@ -149,7 +149,8 @@ endfunction()
 # Kryon's own platform keyboard implementation; an application that supplies
 # its own JNI glue, like one with a custom SetPlatformTextKeyboardVisible,
 # must not call this. The library exposes Android's entry points and the
-# raylib CORE data symbol required by AndroidSurface synchronization.
+# raylib CORE data symbol required by AndroidSurface synchronization, plus
+# notification JNI callbacks that Android resolves on receiver/service startup.
 function(kryon_android_host target)
     target_compile_definitions(${target} PRIVATE KRYON_ANDROID_HOST=1)
     foreach(source IN LISTS ARGN)
@@ -160,9 +161,12 @@ function(kryon_android_host target)
             # main does not apply.
             set_source_files_properties("${source}"
                 PROPERTIES COMPILE_OPTIONS "-ffreestanding")
-        elseif(source_name STREQUAL "android_glue.c")
+        elseif(source_name STREQUAL "android_glue.c" OR
+               source_name MATCHES "(^|_)(android_notifications|notification_push)\\.c$")
             # The VM locates this exported entry before native methods are
-            # registered through it.
+            # registered through it. Notification receivers and push services
+            # also locate their JNI callbacks after a cold process start.
+            # Package-generated sources carry an identity prefix.
             set_source_files_properties("${source}"
                 PROPERTIES COMPILE_OPTIONS "-fvisibility=default")
         endif()

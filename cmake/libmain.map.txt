@@ -3,6 +3,9 @@
         # Android loads the NativeActivity entry and registers JNI methods.
         ANativeActivity_onCreate;
         JNI_OnLoad;
+        # Receivers and optional push services can start without an Activity.
+        Java_org_kryonlabs_notifications_NotificationReceiver_*;
+        Java_org_kryonlabs_notifications_push_*;
         # AndroidSurface resolves the statically linked raylib window state.
         CORE;
     local:
