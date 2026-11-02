@@ -52,6 +52,7 @@ bundle_resources = "src/backend/bundle_resources.zi"
 bundle_raylib = "src/backend/bundle_raylib.zi"
 app_asset = "src/backend/app_asset.zi"
 image_raster = "src/ui/image_raster.zi"
+vector_path = "src/ui/vector_path.zi"
 # 3D scenes drawn in software into std/image pictures.
 scene = "src/ui/scene.zi"
 scene_render = "src/ui/scene_render.zi"
