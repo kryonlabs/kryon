@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Android prebuilt renderer packages link their codec archive through the
+  renderer interface, instead of requiring every app to define a separate
+  `kryonwebp` target.
 - Android apps can no longer opt out of the safe area: every frame stays clear
   of the status bar, navigation bar and camera cutout, and a backdrop that runs
   behind them asks for `AndroidWindowBounds`.

@@ -80,6 +80,7 @@ function(kryon_android_raylib raylib_dir)
     target_include_directories(raylib PUBLIC
         "${raylib_dir}" "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}")
     kryon_webp_decoder("${webp_dir}")
+    target_link_libraries(raylib PUBLIC kryonwebp)
 endfunction()
 
 # Turn a shared library into a Kryon NativeActivity payload: add the NDK's
@@ -139,7 +140,7 @@ function(kryon_android_app target)
     # Gradle strips the packaged library. Keep this original, with line
     # information, so native startup failures can be symbolicated.
     target_link_libraries(${target}
-        raylib kryonwebp android log OpenSLES EGL GLESv2 atomic dl m)
+        raylib android log OpenSLES EGL GLESv2 atomic dl m)
 endfunction()
 
 # Adopt Kryon's canonical Android host for a shared-library target whose
