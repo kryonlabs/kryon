@@ -56,10 +56,12 @@ $(RAYLIB_A): $$(RAYLIB_INPUTS) | $(WEBP_A)
 		CUSTOM_CFLAGS="$(if $(filter PLATFORM_DESKTOP_SDL,$(RAYLIB_PLATFORM)),-DUSING_SDL2_PROJECT) $(RAYLIB_CFLAGS) -O2 -ffunction-sections -fdata-sections"
 	@test -f $@
 
+# `command` runs cmake through the shell: GNU Make 4.3's own search stops at the
+# cmake folder Emscripten puts on PATH and fails with Permission denied.
 $(WEBP_A): $$(WEBP_INPUTS)
 	@test -n "$(WEBP_PACKAGE)" && test -f "$(WEBP_PACKAGE)/src/demux/anim_decode.c" || { echo "Run ziran fetch; Kryon needs the locked libwebp source package" >&2; exit 1; }
 	cmake -S $(KRYON_DIR)/cmake/webp -B $(WEBP_BUILD) -DWEBP_DIR="$(WEBP_PACKAGE)" \
 		-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(RAYLIB_CC)" \
 		-DCMAKE_C_FLAGS="$(WEBP_CFLAGS)" >/dev/null
-	cmake --build $(WEBP_BUILD) --target kryonwebp --parallel $(RAYLIB_JOBS)
+	command cmake --build $(WEBP_BUILD) --target kryonwebp --parallel $(RAYLIB_JOBS)
 	@test -f $@
