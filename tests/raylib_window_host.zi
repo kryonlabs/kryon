@@ -3,6 +3,7 @@
 #import "byte_text_linux"
 #import "paint_texture"
 #import "drawing_props"
+#import "geometry"
 
 opens: s32;
 closes: s32;
@@ -105,6 +106,10 @@ WindowShouldClose :: () -> bool { return false }
 GetMouseX :: () -> s32 { return 17 }
 #program_export
 GetMouseY :: () -> s32 { return 29 }
+#program_export
+GetTouchPointCount :: () -> s32 { return 0 }
+#program_export
+GetTouchPosition :: (index: s32) -> Vector2 { unused index; return Vector2.{} }
 #program_export
 IsMouseButtonDown :: (button: s32) -> bool { return button == 2 && middle_down }
 #program_export
