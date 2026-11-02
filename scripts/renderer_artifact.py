@@ -145,13 +145,18 @@ def build(name, target, stage, root):
         project = Path(os.environ['ZIRAN_PROJECT_ROOT'])
         lock = json.loads((project / 'ziran.lock').read_text())
         provider = next(p for p in lock['packages'] if p['id'] == os.environ['ZIRAN_PACKAGE_ID'])
-        edge = provider['dependencies']['raylib']
-        dependency = next(p for p in lock['packages'] if p['id'] == edge)
         # pkg path selects names; reject an ambiguous/shadowed result explicitly.
         locked = [] if (project / 'ziran.local.toml').exists() else ['--locked']
-        source = Path(capture([toolchain / 'build/bin/ziran', 'pkg', 'path', dependency['name'], *locked], cwd=project))
-        if capture(['git', '-C', source, 'rev-parse', 'HEAD']) != dependency['commit']:
-            raise ValueError('resolved Raylib does not match the provider locked edge')
+        def locked_source(name):
+            edge = provider['dependencies'][name]
+            dependency = next(p for p in lock['packages'] if p['id'] == edge)
+            source = Path(capture([toolchain / 'build/bin/ziran', 'pkg', 'path',
+                                   dependency['name'], *locked], cwd=project))
+            if capture(['git', '-C', source, 'rev-parse', 'HEAD']) != dependency['commit']:
+                raise ValueError(f'resolved {name} does not match the provider locked edge')
+            return source
+        source = locked_source('raylib')
+        webp_source = locked_source('libwebp')
         cc = os.environ.get('CC', 'cc')
         triple = capture([cc, '-dumpmachine'])
         if target == 'linux-x86_64-gnu' and ('x86_64' not in triple or 'linux' not in triple):
@@ -162,7 +167,9 @@ def build(name, target, stage, root):
         for header in headers:
             copy(source / 'src' / header, stage / 'include' / header)
         copy(source / 'LICENSE', stage / 'resources/LICENSE-raylib')
-        meta.update(archives=['lib/libraylib.a'], include_directories=['include'])
+        copy(webp_source / 'COPYING', stage / 'resources/LICENSE-libwebp')
+        copy(webp_source / 'PATENTS', stage / 'resources/PATENTS-libwebp')
+        meta.update(archives=['lib/libraylib.a', 'lib/libkryonwebp.a'], include_directories=['include'])
         # Intermediates are disposable and kept inside staging; only final files
         # remain when the generic driver validates and publishes the descriptor.
         with tempfile.TemporaryDirectory(prefix='.build-', dir=stage) as temporary:
@@ -172,10 +179,12 @@ def build(name, target, stage, root):
                 run(['make', '-j1', '-f', root / 'mk/renderer-artifact.mk',
                      'RAYLIB_JOBS=1',
                      f'KRYON_DIR={root}', f'RAYLIB_PACKAGE={source}', f'RAYLIB_BUILD={work}',
+                     f'WEBP_PACKAGE={webp_source}', f'WEBP_BUILD={work}/webp',
                      f'RAYLIB_CC={cc}', f'RAYLIB_AR={os.environ.get("AR", "ar")}',
                      f'RAYLIB_CFLAGS={flags} -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_TTF=1',
-                     str(work / 'libraylib.a')])
+                     str(work / 'libraylib.a'), str(work / 'webp/libkryonwebp.a')])
                 archive = work / 'libraylib.a'
+                webp_archive = work / 'webp/libkryonwebp.a'
                 meta['compile_flags'] = shlex.split(flags)
                 meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2', 'fontconfig'])) + ['-ldl', '-lpthread', '-lm']
                 meta['defines'] = ['PLATFORM_DESKTOP_SDL', 'GRAPHICS_API_OPENGL_ES2']
@@ -207,13 +216,27 @@ def build(name, target, stage, root):
                     cmake_source = root / 'cmake/renderer-artifact'
                     config += [f'-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake',
                                f'-DANDROID_ABI={abi}', f'-DANDROID_PLATFORM=android-{api}',
-                               f'-DRAYLIB_DIR={source}/src']
+                               f'-DRAYLIB_DIR={source}/src', f'-DWEBP_DIR={webp_source}']
                     meta['defines'] = ['ANDROID_BUILD', macro]
                     meta['link_flags'] = ['-Wl,--wrap=fopen', '-lEGL', '-lGLESv2', '-landroid', '-llog', '-lOpenSLES', '-lm', '-ldl']
                 run(['cmake', '-S', cmake_source, '-B', work, *config])
-                run(['cmake', '--build', work, '--target', 'raylib', '--parallel', '1'])
+                targets = ['raylib']
+                if target.startswith('android-'):
+                    # kryon_android_raylib also defines the WebP codec target.
+                    targets.append('kryonwebp')
+                run(['cmake', '--build', work, '--target', *targets, '--parallel', '1'])
+                if target == 'windows-x86_64-mingw':
+                    # raylib's own CMake project builds raylib; the codec uses
+                    # Kryon's WebP project with the same cross toolchain.
+                    windows = [option for option in config
+                               if not option.startswith(('-DPLATFORM=', '-DOPENGL', '-DCMAKE_C_FLAGS='))]
+                    run(['cmake', '-S', root / 'cmake/webp', '-B', work / 'webp', *windows,
+                         f'-DWEBP_DIR={webp_source}', '-DCMAKE_C_FLAGS=-O2'])
+                    run(['cmake', '--build', work / 'webp', '--target', 'kryonwebp', '--parallel', '1'])
                 archive = next(work.rglob('libraylib.a'))
+                webp_archive = next(work.rglob('libkryonwebp.a'))
             copy(archive, stage / 'lib/libraylib.a')
+            copy(webp_archive, stage / 'lib/libkryonwebp.a')
     (stage / 'renderer.json').write_text(json.dumps(meta, indent=2) + '\n')
 
 

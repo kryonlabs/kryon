@@ -100,6 +100,30 @@ The `image_preview` module also supplies `ImageCompress` for smaller upright
 JPEG copies. It keeps transparent and animated originals intact and returns
 no replacement when encoding would increase file size.
 
+## WebP images
+
+Images, image previews and app media files accept WebP wherever they accept
+PNG or JPEG, recognized by the file's `RIFF`/`WEBP` signature rather than
+its name. Lossy, lossless and alpha pictures decode to straight RGBA. An
+animated WebP decodes to its first complete frame, since Kryon images are
+still; `ImageCompress` keeps animated originals unchanged.
+
+- The raylib and Android hosts decode through `webp_image.zi` with libwebp's
+  decoder and animation demuxer, built from the locked `libwebp` source
+  package into the static `kryonwebp` archive (`cmake/WebP.cmake`, no
+  encoder or threads). Canvases above 8192 × 8192 pixels are refused.
+  `mk/raylib-library.mk` builds it as `WEBP_A` beside `RAYLIB_A`;
+  `kryon_android_raylib` builds it for each ABI; the `renderer-raylib`
+  artifact lists `lib/libkryonwebp.a` in its archives.
+- The desktop (Cairo) host loads the system libwebp demuxer
+  (`libwebpdemux.so.2`) on first use, like its other optional codecs.
+- The canvas and DOM hosts use the browser's own WebP decoder.
+
+`make raylib-webp-decode-test` and `make image-decode-test` decode the
+`tests/fixtures/webp` pictures natively, `tests/webp_browser_test.py` does the
+same in headless Chromium, and `make android-webp-link-test` links the
+decoder for every Android ABI.
+
 The PNG byte and pixel rules are Ziran in `png.zi`. PNG supports all standard
 color types and depths, transparency, all five filters, and Adam7 interlace.
 Sixteen-bit samples use their high byte; ancillary color profiles and gamma
@@ -160,8 +184,10 @@ NDK, and CMake. `kryon run --profile android` additionally installs and
 launches it on a connected device through adb, and `kryon check --profile
 android` checks the whole Zi graph with the Android defines. The build needs
 a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`
-(`ANDROID_HOME`, default `$HOME/Android/Sdk`), and the locked `raylib`
-source package.
+(`ANDROID_HOME`, default `$HOME/Android/Sdk`), and the locked `raylib` and
+`libwebp` source packages. Scaffolds pass `WEBP_DIR` to
+`kryon_android_raylib`; an older one-argument call receives it from `kryon
+build` as `KRYON_ANDROID_WEBP_DIR`.
 
 At runtime a `NativeActivity` subclass owns the Java side: it reports window
 insets, display cutouts, IME state, density, dark mode and orientation

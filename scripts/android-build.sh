@@ -33,6 +33,10 @@ raylib_dir="${KRYON_ANDROID_RAYLIB_DIR:-}"
 if [ -z "$raylib_dir" ]; then
     raylib_dir="$("$ziran_bin" pkg path raylib 2>/dev/null || true)"
 fi
+webp_dir="${KRYON_ANDROID_WEBP_DIR:-}"
+if [ -z "$webp_dir" ]; then
+    webp_dir="$("$ziran_bin" pkg path libwebp 2>/dev/null || true)"
+fi
 # The package root may be the repository, whose library sources live in src/.
 if [ -n "$raylib_dir" ] && [ ! -f "$raylib_dir/raylib.h" ] &&
     [ -f "$raylib_dir/src/raylib.h" ]; then
@@ -42,6 +46,12 @@ if [ -z "$raylib_dir" ] || [ ! -f "$raylib_dir/raylib.h" ]; then
     echo "kryon: the locked raylib source package is missing; run ziran fetch" >&2
     exit 2
 fi
+if [ -z "$webp_dir" ] || [ ! -f "$webp_dir/CMakeLists.txt" ]; then
+    echo "kryon: the locked libwebp source package is missing; run ziran fetch" >&2
+    exit 2
+fi
+KRYON_ANDROID_WEBP_DIR="$webp_dir"
+export KRYON_ANDROID_WEBP_DIR
 
 if [ "$codegen" = "zx" ]; then
     python3 "$kryon_dir/scripts/android_scaffold.py" \
@@ -102,6 +112,7 @@ run_gradle() {
 
 run_gradle -p droid assembleDebug \
     -Pkryon.dir="$kryon_dir" -Pziran.dir="$ziran_dir" -Praylib.dir="$raylib_dir" \
+    -Pwebp.dir="$webp_dir" \
     -Papp.minSdk="$min_sdk" -Papp.abis="$abis" -Papp.codegen="$codegen"
 
 apk="droid/app/build/outputs/apk/debug/app-debug.apk"

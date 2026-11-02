@@ -4,20 +4,28 @@
     {
       "commit": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
       "dependencies": {},
-      "id": "pcc7aa76725f2fb2f",
+      "id": "p5a77c9c35110e925",
       "name": "raylib",
       "ref": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
       "source": true,
       "url": "https://github.com/raysan5/raylib.git"
+    },
+    {
+      "commit": "1844042d1ca751e62e61df7617dba19c98588339",
+      "dependencies": {},
+      "id": "p651a2c7a393977c0",
+      "name": "libwebp",
+      "ref": "1844042d1ca751e62e61df7617dba19c98588339",
+      "source": true,
+      "url": "https://github.com/webmproject/libwebp.git"
     }
   ],
   "root": {
-    "dependencies": {"raylib": "pcc7aa76725f2fb2f"},
-    "dependency_refs": {"raylib": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e"},
+    "dependencies": {"libwebp": "p651a2c7a393977c0", "raylib": "p5a77c9c35110e925"},
     "name": "kryon"
   },
   "toolchain": {
-    "commit": "e60f523bde0e9552c1f13600898473e03e584740",
+    "commit": "c47f927ca316a0494dff4f2389de3333bc8e08b4",
     "ref": "e60f523bde0e9552c1f13600898473e03e584740",
     "url": "https://github.com/ziranlang/ziran.git"
   }

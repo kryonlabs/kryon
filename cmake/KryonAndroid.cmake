@@ -5,7 +5,7 @@
 #
 #   include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
 #   kryon_android_reproducible_paths("${REPO_ROOT}") # before dependency targets
-#   kryon_android_raylib("${RAYLIB_DIR}")        # static target `raylib`
+#   kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}")  # `raylib`, `kryonwebp`
 #   add_library(main SHARED ${APP_SOURCES})
 #   kryon_android_app(main)                     # glue, size flags, system libs
 #
@@ -13,6 +13,7 @@
 # include directories, and libraries to `main` as usual.
 
 include_guard(GLOBAL)
+include("${CMAKE_CURRENT_LIST_DIR}/WebP.cmake")
 
 set(KRYON_ANDROID_NATIVE_APP_GLUE_DIR
     "${ANDROID_NDK}/sources/android/native_app_glue")
@@ -31,8 +32,15 @@ function(kryon_android_reproducible_paths source_root)
 endfunction()
 
 # Compile raylib's Android backend with the module and file-format set Kryon
-# uses: GLES2 rendering, raudio with OGG, PNG/JPG images, and TTF fonts.
+# uses: GLES2 rendering, raudio with OGG, PNG/JPG images, and TTF fonts, plus
+# Kryon's WebP codec (`kryonwebp`, cmake/WebP.cmake) from the libwebp source.
+# Application scaffolds created before WebP omit the second argument; `kryon
+# build --profile android` then supplies it as KRYON_ANDROID_WEBP_DIR.
 function(kryon_android_raylib raylib_dir)
+    set(webp_dir "${ARGV1}")
+    if(webp_dir STREQUAL "")
+        set(webp_dir "$ENV{KRYON_ANDROID_WEBP_DIR}")
+    endif()
     if(NOT EXISTS "${raylib_dir}/raylib.h")
         message(FATAL_ERROR "No raylib source at ${raylib_dir}")
     endif()
@@ -71,6 +79,7 @@ function(kryon_android_raylib raylib_dir)
         -fno-omit-frame-pointer $<$<NOT:$<CONFIG:Debug>>:-g1>)
     target_include_directories(raylib PUBLIC
         "${raylib_dir}" "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}")
+    kryon_webp_decoder("${webp_dir}")
 endfunction()
 
 # Turn a shared library into a Kryon NativeActivity payload: add the NDK's
@@ -130,7 +139,7 @@ function(kryon_android_app target)
     # Gradle strips the packaged library. Keep this original, with line
     # information, so native startup failures can be symbolicated.
     target_link_libraries(${target}
-        raylib android log OpenSLES EGL GLESv2 atomic dl m)
+        raylib kryonwebp android log OpenSLES EGL GLESv2 atomic dl m)
 endfunction()
 
 # Adopt Kryon's canonical Android host for a shared-library target whose

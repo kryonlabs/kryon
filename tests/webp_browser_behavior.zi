@@ -1,0 +1,52 @@
+// Runs in headless Chromium: the canvas and DOM hosts decode the WebP
+// fixtures with the browser's own codecs (createImageBitmap) through
+// PageImageDecode, the path of LoadImage, LoadImageFromMemory and image
+// previews. webp_browser_fixtures is generated from tests/fixtures/webp.
+#import "page_texture"
+#import "web"
+#import "vec"
+#import "text_tools"
+#import "webp_fixture_checks"
+#import "webp_browser_fixtures"
+
+browser_c :: #system_library "c";
+Release :: (pixels: *void) #foreign browser_c "free";
+
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+
+Decoded :: (name: string, data: []u8) -> string {
+    width: s32 = 0
+    height: s32 = 0
+    pixels := PageImageDecode(*data[0], cast(s32)data.count, *width, *height)
+    // Canvas readback round-trips through premultiplied alpha.
+    failure := WebPFixtureCheck(name, pixels, width, height, 2)
+    if pixels != null { Release(cast(*void)pixels) }
+    return failure
+}
+
+Check :: () -> string {
+    names: [4]string = .["lossy", "lossy-alpha", "lossless", "animated"]
+    for name: names {
+        bytes: Vec(u8)
+        if !TextHexDecodeInto(WebPFixtureHex(name), *bytes, 65536) || bytes.count == 0 {
+            VecFree(bytes)
+            return "fixture"
+        }
+        failure := Decoded(name, VecSlice(bytes, 0, bytes.count))
+        VecFree(bytes)
+        if failure.count > 0 { return failure }
+    }
+    return "PASS"
+}
+
+#program_export
+main :: () -> s32 {
+    Report(Check())
+    return 0
+}

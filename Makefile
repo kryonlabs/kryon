@@ -337,6 +337,7 @@ canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test min
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/file_export_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/page_socket_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/browser_viewport_browser_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/webp_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_audio_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY EM_CACHE="$(abspath $(BUILD_DIR))/emscripten-cache" \
 		sh tests/canvas_text_os_wasm_test.sh
@@ -397,12 +398,12 @@ raylib-text-pixels-test: $(ZI2C_BIN)
 
 .PHONY: raylib-mesh-pixels-test
 raylib-mesh-pixels-test: $(ZI2C_BIN)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" \
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" WEBP_A="$(WEBP_A)" \
 		sh tests/raylib_mesh_pixels_test.sh
 
 .PHONY: raylib-frame-input-test
-raylib-frame-input-test: project-toolchain $(RAYLIB_A)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
+raylib-frame-input-test: project-toolchain $(RAYLIB_ARCHIVES)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
 		sh tests/raylib_frame_snapshot_test.sh
 
 # The canonical Android host's frame publication, on desktop raylib and Xvfb.
@@ -412,9 +413,9 @@ android-frame-input-test: project-toolchain $(RAYLIB_A)
 		sh tests/android_frame_input_test.sh
 
 .PHONY: raylib-frame-pixels-test
-raylib-frame-pixels-test: project-toolchain $(RAYLIB_A)
+raylib-frame-pixels-test: project-toolchain $(RAYLIB_ARCHIVES)
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_frame_pixels_test.py --host \
-		--raylib "$(RAYLIB_A)" --runtime "$(ZIRAN_BUILD_DIR)/libziran.a"
+		--raylib "$(RAYLIB_A)" --webp "$(WEBP_A)" --runtime "$(ZIRAN_BUILD_DIR)/libziran.a"
 
 .PHONY: raylib-secondary-window-test
 raylib-secondary-window-test: $(ZI2C_BIN)
@@ -426,7 +427,7 @@ raylib-trace-test: $(ZI2C_BIN)
 
 .PHONY: raylib-clip-test
 raylib-clip-test: $(ZI2C_BIN)
-	@ZIRAN_DIR="$(abspath $(ZIRAN_DIR))" ZI2C_BIN="$(ZI2C_BIN)" \
+	@ZIRAN_DIR="$(abspath $(ZIRAN_DIR))" ZI2C_BIN="$(ZI2C_BIN)" WEBP_A="$(WEBP_A)" \
 		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_clip_test.sh
 
 .PHONY: raylib-smooth-shape-test
@@ -477,7 +478,7 @@ sanitize-test: project-toolchain
 # removes every other entry that nothing has written to for a day, so a build
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
-BUILD_OUTPUTS := ziran project bin tools test examples sanitize raylib-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
+BUILD_OUTPUTS := ziran project bin tools test examples sanitize raylib-ziran webp-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
 	emscripten-cache android-surface-check text-input-platform-test zx-player zx-test zx-canvas zx-canvas-test gallery-zx \
 	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay dom-project
 # Keep prior generated output while an installed or running app may use it.
@@ -572,6 +573,20 @@ video-test: project-toolchain
 image-decode-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_image_decode_linux_test.sh
 test: image-decode-test
+
+# Android NDK link of the WebP decoder for every ABI; needs ANDROID_NDK.
+.PHONY: android-webp-link-test
+android-webp-link-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_webp_link_test.py \
+		--ndk "$(or $(ANDROID_NDK),$(HOME)/Android/Sdk/ndk/28.2.13676358)"
+
+.PHONY: raylib-webp-decode-test
+raylib-webp-decode-test: project-toolchain $(RAYLIB_ARCHIVES)
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER \
+		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
+		RAYLIB_LIBS="$(RAYLIB_PLATFORM_LIBS) -lm" sh tests/ziran_raylib_webp_decode_test.sh
+test: raylib-webp-decode-test
 
 .PHONY: scene-test
 scene-test: project-toolchain

@@ -207,6 +207,10 @@ send `KeyEscape` with `KeyboardSend`, and application shortcuts check
 Use `Image(ImageProps)` for UI images. Its asset path, bounds, fit, and alt
 text describe the image at the widget boundary. Backend texture calls are
 renderer primitives, not alternate widget APIs.
+Asset paths may name PNG, JPEG or WebP files on every host. WebP is
+recognized by its content: lossy, lossless and transparent pictures load as
+RGBA, and an animated WebP shows its first frame (Kryon images are still).
+See [WebP images](BACKENDS.md#webp-images) for each host's decoder.
 `ImageProps.radius` gives an image rounded corners in native and hosted UI;
 a positive value overrides its style radius.
 

@@ -36,6 +36,8 @@ def main():
     parser.add_argument("--package", default="xyz.waozi.inbe.verification")
     parser.add_argument("--raylib", type=Path, required=True,
                         help="Android raylib static archive built with custom frame control")
+    parser.add_argument("--webp", type=Path, required=True,
+                        help="Kryon's kryonwebp static archive for the same ABI")
     parser.add_argument("--runtime", type=Path,
                         help="Android Ziran runtime static archive for the same ABI")
     parser.add_argument("--build-only", action="store_true")
@@ -52,6 +54,7 @@ def main():
     compiler = os.environ.get("CC", "cc") if args.host else toolchain / "bin/armv7a-linux-androideabi24-clang"
     # Existing artifacts are immutable inputs. No active app output is replaced.
     raylib = args.raylib.resolve(strict=True)
+    webp = args.webp.resolve(strict=True)
     runtime = (args.runtime or ziran / "build/libziran.a").resolve(strict=True)
     source = ROOT / "tests/android_frame_pixels_test.zi"
     generated = WORK / "c"
@@ -78,7 +81,7 @@ def main():
     executable = WORK / ("host-frame-test" if args.host else "frame-test")
     command = [compiler, "-std=c11", "-O2", "-ffunction-sections", "-fdata-sections",
                "-I" + str(ziran / "include"), *["-iquote" + str(p) for p in includes],
-               *sorted(generated.rglob("*.c")), raylib, runtime,
+               *sorted(generated.rglob("*.c")), raylib, webp, runtime,
                "-Wl,--gc-sections", "-Wl,--export-dynamic-symbol=CORE",
                *["-Wl,--wrap=" + name for name in wraps],
                *libraries, "-o", executable]
@@ -101,7 +104,7 @@ def main():
                "originating_chat": "-1000000002", "serial": args.serial,
                "package": args.package, "mode": "private EGL pbuffer; hashes only",
                "inputs": {str(p): hashlib.sha256(p.read_bytes()).hexdigest()
-                          for p in [executable, fixture, font, raylib, runtime]}}
+                          for p in [executable, fixture, font, raylib, webp, runtime]}}
     if args.build_only:
         print("Built offscreen GLES hash harness; no device access")
         return

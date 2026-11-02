@@ -2,6 +2,7 @@
 #import "std/c_string"
 #import "std/byte_text_linux"
 #import "image_orientation"
+#import "webp_image"
 
 image_raylib :: #system_library "raylib";
 RaylibGlyphImage :: struct {
@@ -57,11 +58,19 @@ RaylibTurnUpright :: (image: *RaylibGlyphImage, orientation: s32) {
 
 
 // The caller owns the returned pixels. Decoding by extension preserves the
-// stored orientation; decoding an asset path also applies JPEG Exif.
+// stored orientation; decoding an asset path also applies JPEG Exif. WebP is
+// recognized by its RIFF signature and decodes through libwebp to RGBA.
 RaylibDecodePixels :: (data: string, file_type: string) -> RaylibGlyphImage {
     extension: [16]u8
     if data.count == 0 || data.count > 2147483647 || !CopyCString(file_type, extension[:]) {
         return RaylibGlyphImage.{}
+    }
+    if WebPImageSignature(data) {
+        width: s32 = 0
+        height: s32 = 0
+        pixels := WebPImageDecode(data, *width, *height)
+        if pixels == null { return RaylibGlyphImage.{} }
+        return RaylibGlyphImage.{cast(*void)pixels, width, height, 1, 7}
     }
     bytes := cast(*TextDescriptor)(*data)
     return HostRaylibLoadImageFromMemory(*extension[0], bytes.data, cast(s32)data.count)

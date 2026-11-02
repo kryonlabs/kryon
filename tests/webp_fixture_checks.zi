@@ -1,0 +1,53 @@
+// Expected pixels of tests/fixtures/webp, shared by the native and browser
+// WebP tests. Each check returns "" when the decoded straight RGBA matches.
+// Lossy colors may move by a few levels; alpha planes are stored losslessly.
+// `slack` widens color tolerance for hosts that round-trip through
+// premultiplied canvases.
+
+WebPNear :: (pixels: *u8, width: s32, x: s32, y: s32, red: s32, green: s32, blue: s32,
+    alpha: s32, tolerance: s32) -> bool {
+    at := (cast(s64)y * cast(s64)width + cast(s64)x) * 4
+    expected: [4]s32 = .[red, green, blue, alpha]
+    for channel: 0..3 {
+        difference := cast(s32)pixels[at + channel] - expected[channel]
+        if difference < 0 { difference = -difference }
+        limit := ifx channel == 3 then 0 else tolerance
+        if difference > limit { return false }
+    }
+    return true
+}
+
+WebPFixtureCheck :: (name: string, pixels: *u8, width: s32, height: s32, slack: s32) -> string {
+    if pixels == null { return "not decoded" }
+    if name == "lossy" {
+        if width != 16 || height != 16 { return "lossy size" }
+        if !WebPNear(pixels, width, 2, 8, 200, 40, 40, 255, 8 + slack) ||
+            !WebPNear(pixels, width, 13, 8, 40, 60, 200, 255, 8 + slack) { return "lossy pixels" }
+        return ""
+    }
+    if name == "lossy-alpha" {
+        if width != 16 || height != 16 { return "lossy alpha size" }
+        if !WebPNear(pixels, width, 2, 8, 30, 160, 90, 255, 8 + slack) ||
+            !WebPNear(pixels, width, 13, 8, 30, 160, 90, 64, 8 + slack) { return "lossy alpha pixels" }
+        return ""
+    }
+    if name == "lossless" {
+        if width != 3 || height != 2 { return "lossless size" }
+        expected: [24]s32 = .[10, 20, 30, 255, 40, 50, 60, 255, 70, 80, 90, 255,
+            100, 110, 120, 128, 130, 140, 150, 255, 160, 170, 180, 255]
+        for index: 0..5 {
+            x := cast(s32)(index % 3)
+            y := cast(s32)(index / 3)
+            if !WebPNear(pixels, width, x, y, expected[index * 4], expected[index * 4 + 1],
+                expected[index * 4 + 2], expected[index * 4 + 3], slack) { return "lossless pixels" }
+        }
+        return ""
+    }
+    if name == "animated" {
+        if width != 8 || height != 8 { return "animation canvas size" }
+        if !WebPNear(pixels, width, 0, 0, 250, 200, 0, 255, slack) ||
+            !WebPNear(pixels, width, 7, 7, 250, 200, 0, 255, slack) { return "first frame pixels" }
+        return ""
+    }
+    return "unknown fixture"
+}

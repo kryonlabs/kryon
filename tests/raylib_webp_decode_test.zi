@@ -1,0 +1,58 @@
+// Decodes tests/fixtures/webp through the raylib and Android image path
+// (RaylibDecodeImage), linked with Kryon's kryonwebp archive.
+Pixels :: #import "raylib_image_decode";
+#import "webp_fixture_checks"
+#import "file"
+#import "text_tools"
+#import "std/byte_text_linux"
+
+FixtureBytes :: (directory: string, name: string) -> (data: string, ok: bool) {
+    parts: [4]string = .[directory, "/", name, ".webp"]
+    data, ok := ReadEntireFile(TextJoin(parts[:], ""))
+    return data, ok
+}
+
+// "" when the fixture decodes as expected under the given asset path.
+Decoded :: (directory: string, name: string, path: string) -> string {
+    data, found := FixtureBytes(directory, name)
+    if !found { return "fixture missing" }
+    image := Pixels.RaylibDecodeImage(path, data)
+    if image.data == null { return "not decoded" }
+    failure := ""
+    if image.mipmaps != 1 || image.format != 7 {
+        failure = "not RGBA"
+    } else {
+        failure = WebPFixtureCheck(name, cast(*u8)image.data, image.width, image.height, 0)
+    }
+    Pixels.RaylibImageRelease(image)
+    return failure
+}
+
+Fail :: (name: string, failure: string) -> s32 {
+    print("%: %\n", name, failure)
+    return 3
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 2 }
+    directory := TextFromCString(argv[1])
+    names: [4]string = .["lossy", "lossy-alpha", "lossless", "animated"]
+    for name: names {
+        failure := Decoded(directory, name, "art/picture.webp")
+        if failure.count > 0 { return Fail(name, failure) }
+    }
+    // Files are recognized by content: a WebP named .png still decodes.
+    misnamed := Decoded(directory, "lossless", "art/picture.png")
+    if misnamed.count > 0 { return Fail("misnamed lossless", misnamed) }
+    data, found := FixtureBytes(directory, "lossy-alpha")
+    if !found { return Fail("lossy-alpha", "fixture missing") }
+    // Truncated files decode to nothing instead of reading past their end.
+    cuts: [3]s64 = .[12, 30, data.count - 1]
+    for cut: cuts {
+        truncated := Pixels.RaylibDecodeImage("art/cut.webp", data[:cut])
+        if truncated.data != null { return Fail("truncated", "decoded") }
+    }
+    print("WebP lossy, lossy alpha, lossless, animated first frame and truncated files passed\n")
+    return 0
+}

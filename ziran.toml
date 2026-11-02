@@ -11,6 +11,11 @@ git = "https://github.com/raysan5/raylib.git"
 ref = "fafa2cea97d0cb379d832086ba45a989fa6f9c8e"
 source = true
 
+[dependencies.libwebp]
+git = "https://github.com/webmproject/libwebp.git"
+ref = "1844042d1ca751e62e61df7617dba19c98588339"
+source = true
+
 [exports]
 Frame = "src/ui/tree_draw.zi"
 tree_draw = "src/ui/tree_draw.zi"
@@ -234,8 +239,8 @@ android_ndk = "string"
 android_api = "string=21"
 
 [artifacts.renderer-raylib]
-inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "mk/renderer-artifact.mk", "mk/raylib-library.mk", "cmake/renderer-artifact/CMakeLists.txt", "cmake/KryonAndroid.cmake", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
-outputs = ["lib/libraylib.a", "include/raylib.h", "include/rlgl.h", "include/raymath.h", "include/rcamera.h", "resources/LICENSE-raylib", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
+inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "mk/renderer-artifact.mk", "mk/raylib-library.mk", "cmake/renderer-artifact/CMakeLists.txt", "cmake/KryonAndroid.cmake", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+outputs = ["lib/libraylib.a", "lib/libkryonwebp.a", "include/raylib.h", "include/rlgl.h", "include/raymath.h", "include/rcamera.h", "resources/LICENSE-raylib", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
 
 [artifacts.renderer-desktop]
 inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]

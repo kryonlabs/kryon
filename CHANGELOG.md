@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Images load WebP files on every host: lossy, lossless and transparent
+  pictures, and the first frame of animated ones.
 - Browser image loading shares one encoded snapshot between Canvas and DOM,
   and image meshes reuse texture dimensions while drawing.
 - Web buttons still click once when a page update moves them mid press, and a

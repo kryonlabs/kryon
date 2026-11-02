@@ -16,5 +16,5 @@ for target in c; do
     suffix=c; header=h; compiler=${CC:-cc}; standard=c11
     printf '#include "image_decode_linux_test.%s"\nint main(int argc, char **argv) { return image_decode_linux_test_main(argc, (uint8_t **)argv); }\n' "$header" > "$out/$target/driver.$suffix"
     "$compiler" -std="$standard" -O2 -I"$ziran_root/include" -I"$out/$target" "$out/$target"/*."$suffix" -ldl -o "$out/$target/run"
-    env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER "$out/$target/run" "$out/original.png"
+    env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER "$out/$target/run" "$out/original.png" "$root/tests/fixtures/webp"
 done

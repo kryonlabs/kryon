@@ -1,0 +1,105 @@
+// WebP decoding for native hosts through libwebp's decoder and animation
+// demuxer, linked from Kryon's `kryonwebp` archive (cmake/WebP.cmake).
+// Lossy, lossless and alpha pictures decode to straight RGBA; an animated
+// file decodes to its first complete frame.
+#import "std/byte_text_linux"
+
+webp_codec :: #system_library "kryonwebp";
+webp_c :: #system_library "c";
+
+WebPBytes :: struct {
+    bytes: *u8
+    size: usize
+}
+WebPAnimationOptions :: struct {
+    color_mode: s32
+    use_threads: s32
+    padding: [7]u32
+}
+WebPAnimationInfo :: struct {
+    canvas_width: u32
+    canvas_height: u32
+    loop_count: u32
+    background: u32
+    frame_count: u32
+    padding: [4]u32
+}
+
+// libwebp's demux ABI 1.7 (WEBP_DEMUX_ABI_VERSION) and MODE_RGBA.
+WEBP_DEMUX_ABI :: 0x0107
+WEBP_MODE_RGBA :: 1
+// Larger canvases are refused rather than allocated: 8192 x 8192 RGBA.
+WEBP_PIXELS_MAX :: 67108864
+
+HostWebPGetInfo :: (data: *u8, size: usize, width: *s32,
+    height: *s32) -> s32 #foreign webp_codec "WebPGetInfo";
+HostWebPDecodeRGBA :: (data: *u8, size: usize, width: *s32,
+    height: *s32) -> *u8 #foreign webp_codec "WebPDecodeRGBA";
+HostWebPAnimationOptionsInit :: (options: *WebPAnimationOptions,
+    version: s32) -> s32 #foreign webp_codec "WebPAnimDecoderOptionsInitInternal";
+HostWebPAnimationNew :: (data: *WebPBytes, options: *WebPAnimationOptions,
+    version: s32) -> *void #foreign webp_codec "WebPAnimDecoderNewInternal";
+HostWebPAnimationInfo :: (decoder: *void,
+    info: *WebPAnimationInfo) -> s32 #foreign webp_codec "WebPAnimDecoderGetInfo";
+HostWebPAnimationNext :: (decoder: *void, frame: **u8,
+    timestamp: *s32) -> s32 #foreign webp_codec "WebPAnimDecoderGetNext";
+HostWebPAnimationDelete :: (decoder: *void) #foreign webp_codec "WebPAnimDecoderDelete";
+WebPAllocate :: (size: usize) -> *u8 #foreign webp_c "malloc";
+WebPCopy :: (target: *u8, source: *u8, size: usize) -> *void #foreign webp_c "memcpy";
+
+// A RIFF container whose form type is WEBP, whatever the file is named.
+WebPImageSignature :: (data: string) -> bool {
+    return data.count >= 12 && data[:4] == "RIFF" && data[8:12] == "WEBP"
+}
+
+// Straight RGBA pixels, row after row, allocated with malloc for the caller
+// to free; null for malformed, truncated or oversized files.
+WebPImageDecode :: (data: string, width: *s32, height: *s32) -> *u8 {
+    width.* = 0
+    height.* = 0
+    if !WebPImageSignature(data) || data.count > 2147483647 { return null }
+    bytes := cast(*TextDescriptor)(*data)
+    size := cast(usize)data.count
+    w: s32 = 0
+    h: s32 = 0
+    if HostWebPGetInfo(bytes.data, size, *w, *h) == 0 || w <= 0 || h <= 0 ||
+        cast(s64)w * cast(s64)h > WEBP_PIXELS_MAX { return null }
+    pixels := HostWebPDecodeRGBA(bytes.data, size, *w, *h)
+    if pixels == null {
+        // Still pictures decode directly; animations need the demuxer.
+        pixels = WebPImageFirstFrame(bytes.data, size, *w, *h)
+    }
+    if pixels == null { return null }
+    width.* = w
+    height.* = h
+    return pixels
+}
+
+// The first frame of an animation, composed on its transparent canvas.
+WebPImageFirstFrame :: (data: *u8, size: usize, width: *s32, height: *s32) -> *u8 {
+    options: WebPAnimationOptions
+    if HostWebPAnimationOptionsInit(*options, WEBP_DEMUX_ABI) == 0 { return null }
+    options.color_mode = WEBP_MODE_RGBA
+    options.use_threads = 0
+    source := WebPBytes.{data, size}
+    decoder := HostWebPAnimationNew(*source, *options, WEBP_DEMUX_ABI)
+    if decoder == null { return null }
+    pixels: *u8 = null
+    info: WebPAnimationInfo
+    frame: *u8 = null
+    timestamp: s32 = 0
+    if HostWebPAnimationInfo(decoder, *info) != 0 && info.canvas_width > 0 &&
+        info.canvas_height > 0 &&
+        cast(u64)info.canvas_width * cast(u64)info.canvas_height <= cast(u64)WEBP_PIXELS_MAX &&
+        HostWebPAnimationNext(decoder, *frame, *timestamp) != 0 && frame != null {
+        count := cast(usize)info.canvas_width * cast(usize)info.canvas_height * cast(usize)4
+        pixels = WebPAllocate(count)
+        if pixels != null {
+            unused WebPCopy(pixels, frame, count)
+            width.* = cast(s32)info.canvas_width
+            height.* = cast(s32)info.canvas_height
+        }
+    }
+    HostWebPAnimationDelete(decoder)
+    return pixels
+}

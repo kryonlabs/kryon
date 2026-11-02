@@ -1,8 +1,12 @@
 // Cross-link the foreign renderer without introducing an application ABI.
 raylib :: #system_library "raylib";
+webp :: #system_library "kryonwebp";
 InitWindow :: (width: s32, height: s32, title: *u8) #foreign raylib "InitWindow";
 CloseWindow :: () #foreign raylib "CloseWindow";
 GetScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
+WebPGetInfo :: (data: *u8, size: usize, width: *s32,
+    height: *s32) -> s32 #foreign webp "WebPGetInfo";
+WebPAnimDecoderDelete :: (decoder: *void) #foreign webp "WebPAnimDecoderDelete";
 
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
@@ -11,5 +15,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     width := GetScreenWidth()
     CloseWindow()
     if width < 1 { return 2 }
+    // The renderer archives carry Kryon's WebP decoder and demuxer.
+    if WebPGetInfo(cast(*u8)0, cast(usize)0, cast(*s32)0, cast(*s32)0) != 0 { return 3 }
+    WebPAnimDecoderDelete(null)
     return 0
 }

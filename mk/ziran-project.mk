@@ -129,15 +129,15 @@ RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
 ifeq ($(PROJECT_BACKEND),raylib)
 include $(KRYON_DIR)/mk/raylib-library.mk
-HOST_DEPS := $(RAYLIB_A)
-HOST_LIBS := $(RAYLIB_A) $(RAYLIB_PLATFORM_LIBS)
+HOST_DEPS := $(RAYLIB_ARCHIVES)
+HOST_LIBS := $(RAYLIB_ARCHIVES) $(RAYLIB_PLATFORM_LIBS)
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 
 endif
 ifeq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN),raylib/zx)
 ZX_RAYLIB_DIR := $(abspath $(GEN_DIR)/player)
 ZX_RAYLIB_PROGRAM := $(ZX_RAYLIB_DIR)/zx
-ZX_RAYLIB_ARCHIVE := $(RAYLIB_A)
+ZX_RAYLIB_ARCHIVE := $(RAYLIB_ARCHIVES)
 include $(KRYON_DIR)/mk/zx-raylib.mk
 NATIVE_PLAYER := $(ZX_RAYLIB_PROGRAM)
 endif

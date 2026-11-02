@@ -7,6 +7,8 @@ compiler=${ZI2C_BIN:-"$ziran_dir/build/bin/zi2c"}
 standard=${ZIRAN_STD:-"$ziran_dir/std"}
 raylib_source=${RAYLIB_SOURCE:-$("$ziran" pkg path raylib)}
 raylib=${RAYLIB_A:-"$raylib_source/src/libraylib.a"}
+webp=${WEBP_A:-"$root/build/webp-ziran/libkryonwebp.a"}
+test -f "$webp" || { echo "build a raylib project first, or set WEBP_A to the kryonwebp archive" >&2; exit 1; }
 raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm}
 work=$(mktemp -d "$root/build/raylib-clip.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
@@ -16,7 +18,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
     "$root/tests/raylib_clip_behavior.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
     -Wl,--gc-sections -I"$ziran_dir/include" -iquote "$work/c" \
-    "$work/c"/*.c "$raylib" $raylib_libs \
+    "$work/c"/*.c "$raylib" "$webp" $raylib_libs \
     -o "$work/test"
 python3 - "$work/red.png" "$work/split.png" <<'PY'
 import struct

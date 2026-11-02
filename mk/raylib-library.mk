@@ -4,6 +4,13 @@ RAYLIB_SOURCE = $(addsuffix /src,$(RAYLIB_PACKAGE))
 RAYLIB_BUILD ?= $(KRYON_DIR)/build/raylib-ziran
 RAYLIB_A ?= $(RAYLIB_BUILD)/libraylib.a
 RAYLIB_INPUTS = $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)
+# Kryon's WebP codec (decoder and animation demuxer) from the locked libwebp
+# source package; every raylib host links it beside libraylib.a.
+WEBP_PACKAGE = $(eval WEBP_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path libwebp $(if $(wildcard ziran.local.toml),,--locked)))$(WEBP_PACKAGE)
+WEBP_BUILD ?= $(KRYON_DIR)/build/webp-ziran
+WEBP_A ?= $(WEBP_BUILD)/libkryonwebp.a
+WEBP_INPUTS = $(KRYON_DIR)/cmake/WebP.cmake $(KRYON_DIR)/cmake/webp/CMakeLists.txt $(wildcard $(WEBP_PACKAGE)/CMakeLists.txt $(WEBP_PACKAGE)/src/*/*.c $(WEBP_PACKAGE)/src/*/*.h)
+RAYLIB_ARCHIVES = $(RAYLIB_A) $(WEBP_A)
 RAYLIB_HOST_OS := $(shell uname -s)
 ifeq ($(RAYLIB_HOST_OS),Darwin)
 RAYLIB_HOST_DEFINES := __APPLE__ $(if $(filter x86_64,$(shell uname -m)),__x86_64__,__aarch64__)
@@ -30,10 +37,11 @@ endif
 RAYLIB_CC ?= $(CC)
 RAYLIB_AR ?= $(AR)
 RAYLIB_JOBS ?= 4
+WEBP_CFLAGS ?= -O2
 
 # Resolve the optional source package once, only when its archive is needed.
 .SECONDEXPANSION:
-$(RAYLIB_A): $$(RAYLIB_INPUTS)
+$(RAYLIB_A): $$(RAYLIB_INPUTS) | $(WEBP_A)
 	@test -n "$(RAYLIB_SOURCE)" || { echo "Run ziran lock; Kryon needs the locked raylib source package" >&2; exit 1; }
 	@test -f $(RAYLIB_SOURCE)/raylib.h || { echo "The locked raylib source package is incomplete; run ziran fetch" >&2; exit 1; }
 	mkdir -p $(RAYLIB_BUILD)/source
@@ -46,4 +54,12 @@ $(RAYLIB_A): $$(RAYLIB_INPUTS)
 		RAYLIB_MODULE_MODELS=TRUE \
 		SDL_INCLUDE_PATH=$(RAYLIB_SDL_INCLUDE) \
 		CUSTOM_CFLAGS="$(if $(filter PLATFORM_DESKTOP_SDL,$(RAYLIB_PLATFORM)),-DUSING_SDL2_PROJECT) $(RAYLIB_CFLAGS) -O2 -ffunction-sections -fdata-sections"
+	@test -f $@
+
+$(WEBP_A): $$(WEBP_INPUTS)
+	@test -n "$(WEBP_PACKAGE)" && test -f "$(WEBP_PACKAGE)/src/demux/anim_decode.c" || { echo "Run ziran fetch; Kryon needs the locked libwebp source package" >&2; exit 1; }
+	cmake -S $(KRYON_DIR)/cmake/webp -B $(WEBP_BUILD) -DWEBP_DIR="$(WEBP_PACKAGE)" \
+		-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(RAYLIB_CC)" \
+		-DCMAKE_C_FLAGS="$(WEBP_CFLAGS)" >/dev/null
+	cmake --build $(WEBP_BUILD) --target kryonwebp --parallel $(RAYLIB_JOBS)
 	@test -f $@

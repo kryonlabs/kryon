@@ -2,14 +2,15 @@ cmake_minimum_required(VERSION 3.22)
 project(__CMAKE_NAME__ C)
 
 get_filename_component(REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../../.." ABSOLUTE)
-if(NOT DEFINED KRYON_DIR OR NOT DEFINED ZIRAN_DIR OR NOT DEFINED RAYLIB_DIR)
+if(NOT DEFINED KRYON_DIR OR NOT DEFINED ZIRAN_DIR OR NOT DEFINED RAYLIB_DIR OR NOT DEFINED WEBP_DIR)
     message(FATAL_ERROR
         "kryon build --profile android passes -DKRYON_DIR, -DZIRAN_DIR and "
-        "-DRAYLIB_DIR; a manual gradle run passes them as -P properties")
+        "-DRAYLIB_DIR and -DWEBP_DIR; a manual gradle run passes them as -P properties")
 endif()
 get_filename_component(KRYON_DIR "${KRYON_DIR}" ABSOLUTE BASE_DIR "${REPO_ROOT}")
 get_filename_component(ZIRAN_DIR "${ZIRAN_DIR}" ABSOLUTE BASE_DIR "${REPO_ROOT}")
 get_filename_component(RAYLIB_DIR "${RAYLIB_DIR}" ABSOLUTE BASE_DIR "${REPO_ROOT}")
+get_filename_component(WEBP_DIR "${WEBP_DIR}" ABSOLUTE BASE_DIR "${REPO_ROOT}")
 include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
 
 find_program(HOST_PYTHON NAMES python3 REQUIRED)
@@ -73,7 +74,7 @@ execute_process(COMMAND "${HOST_PYTHON}"
     "--flags=-O2 -fPIC"
     COMMAND_ERROR_IS_FATAL ANY)
 
-kryon_android_raylib("${RAYLIB_DIR}")
+kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}")
 
 add_library(main SHARED ${APP_ZIRAN_GENERATED_SOURCES})
 kryon_android_app(main)

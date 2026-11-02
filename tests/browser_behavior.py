@@ -16,10 +16,11 @@ def run(args, **options):
     return subprocess.run(list(map(str, args)), env=environment, check=True, **options)
 
 
-def build_behavior(work, name):
+def build_behavior(work, name, module_paths=()):
     generated = work / 'generated'
+    extra = [argument for path in module_paths for argument in ('--module-path', path)]
     run([BIN / 'zi2c', '--no-main', '--define', 'PLATFORM_WEB', '--root', ROOT / 'tests',
-         '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN / 'std',
+         '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN / 'std', *extra,
          '-o', generated, ROOT / 'tests' / (name + '_browser_behavior.zi')])
     shell = work / 'shell.html'
     shell.write_text('<!doctype html><html><head><meta charset="utf-8"></head><body>'

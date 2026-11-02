@@ -508,18 +508,32 @@ LoadPNG :: (asset_path: string) -> *void {
     path: [4096]u8
     if !CopyCString(asset_path, path[:]) { return null }
     image: *void
-    decoded := Decode.OpenImage(*path[0])
-    if decoded != null {
-        image = ImageSurfaceCreate(0, Decode.Width(decoded), Decode.Height(decoded))
+    // WebP files are recognized by content; other formats keep GdkPixbuf
+    // and, without it, Cairo's PNG reader.
+    webp := Decode.OpenWebP(asset_path)
+    if webp.pixels != null {
+        image = ImageSurfaceCreate(0, webp.width, webp.height)
         if image == null || SurfaceStatus(image) != 0 ||
-            !Decode.CopyPixels(decoded, ImageSurfaceData(image), ImageSurfaceStride(image)) {
+            !Decode.CopyWebP(webp, ImageSurfaceData(image), ImageSurfaceStride(image)) {
             if image != null { SurfaceDestroy(image) }
             image = null
         }
-        Decode.CloseImage(decoded)
+        Decode.CloseWebP(webp)
         if image != null { SurfaceMarkDirty(image) }
     } else {
-        image = ImageSurfaceFromPNG(*path[0])
+        decoded := Decode.OpenImage(*path[0])
+        if decoded != null {
+            image = ImageSurfaceCreate(0, Decode.Width(decoded), Decode.Height(decoded))
+            if image == null || SurfaceStatus(image) != 0 ||
+                !Decode.CopyPixels(decoded, ImageSurfaceData(image), ImageSurfaceStride(image)) {
+                if image != null { SurfaceDestroy(image) }
+                image = null
+            }
+            Decode.CloseImage(decoded)
+            if image != null { SurfaceMarkDirty(image) }
+        } else {
+            image = ImageSurfaceFromPNG(*path[0])
+        }
     }
     if image == null { return null }
     if SurfaceStatus(image) != 0 {
