@@ -1,7 +1,7 @@
-#import "android_device"
-#import "android_jni"
-#import "android_notifications"
-#import "notification_desktop"
+#import "kryon/android_device"
+#import "kryon/android_jni"
+#import "kryon/android_notifications"
+#import "kryon/notification_desktop"
 
 // Registers Kryon's canonical Android natives on this activity. Keep your
 // own JNI_OnLoad and call AndroidJniOnLoad yourself to add application

@@ -20,6 +20,7 @@ source = true
 notification = "src/ui/notification.zi"
 notification_push = "src/backend/notification_push.zi"
 notification_android = "src/backend/notification_android.zi"
+notification_desktop = "src/backend/notification_desktop.zi"
 notification_schedule_host = "src/backend/notification_schedule_host.zi"
 notification_schedule = "src/backend/notification_schedule.zi"
 notification_schedule_policy = "src/backend/notification_schedule_policy.zi"
