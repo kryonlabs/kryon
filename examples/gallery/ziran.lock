@@ -49,8 +49,8 @@
     "name": "gallery"
   },
   "toolchain": {
-    "commit": "4f3dc0544aad373d3e0311ce9b9a15fd7c3f2e6e",
-    "ref": "master",
+    "commit": "c47f927ca316a0494dff4f2389de3333bc8e08b4",
+    "ref": "c47f927ca316a0494dff4f2389de3333bc8e08b4",
     "url": "https://github.com/ziranlang/ziran.git"
   }
 }
