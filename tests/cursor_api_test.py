@@ -1,5 +1,6 @@
 """Persistent cursor requests, the application cursor and real SDL bitmap
-cursors (premultiplied, cached, steady) on private Xvfb."""
+cursors (premultiplied, cached, steady) on private Xvfb, then the same
+requests as CSS cursors in Canvas and DOM pages in a private headless Chromium."""
 import ctypes as c
 import os
 from pathlib import Path
@@ -20,6 +21,7 @@ for name in ('DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','GDK_DISPLAY','DBUS_SESSIO
     ENV.pop(name, None)
 ENV.update(YUE_DESKTOP_RECOVERY='0', TMPDIR=str(OUTPUT), SDL_RENDER_DRIVER='software')
 ENV['KRYON_APP_DATA'] = str(OUTPUT / 'portable-data')
+ENV.setdefault('EM_CACHE', str(ROOT / 'build/emscripten-cache'))
 
 def run(args, cwd=ROOT, **kw):
     try:
@@ -262,6 +264,12 @@ assets = "assets"
                     cwd=OUTPUT,env=ENV | {'TMPDIR':invalid},capture_output=True,timeout=15)
                 assert rejected.returncode == 1, 'Invalid extraction TMPDIR was accepted'
         run(['xvfb-run','-a','-s','-screen 0 1400x1000x24 -nolisten tcp','env','KRYON_PRIVATE_XVFB=1',sys.executable,Path(__file__).resolve(),'--drive',mode])
+    # Canvas and DOM: the same requests as CSS cursors in a private headless
+    # Chromium. The short profile path keeps its sockets below 108 bytes.
+    ENV['EMCC_CFLAGS'] = ENV.get('EMCC_CFLAGS','') + f' --embed-file {OUTPUT}/assets@/assets'
+    for profile in ('web','dom'):
+        run([ZIRAN,'tool','kryon','build','--profile',profile],OUTPUT)
+        run([sys.executable,ROOT/'tests/cursor_browser.py',OUTPUT/f'build/cursor_probe-{profile}.html',ROOT/f'build/scratch/cw-{profile}'])
     print('Cursor source/saved IR, C, Go and portable model passed',flush=True)
 
 if __name__=='__main__':

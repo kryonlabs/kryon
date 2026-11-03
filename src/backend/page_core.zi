@@ -883,8 +883,13 @@ PageCursorOverrideObject :: (value: s32) {
 PageCursorOverride :: (value: string) {
     if value == "" { PageCursorOverrideObject(0); return }
     scope := WebScope()
-    PageCursorOverrideObject(WebAsObject(WebText(value)))
+    PageCursorOverrideObject(PageTextHandle(value))
     WebEnd(scope)
+}
+// A JavaScript string handle for VALUE in the current scope. WebText alone is
+// only a view of Wasm memory and has no handle.
+PageTextHandle :: (value: string) -> s32 {
+    return WebAsObject(WebCall1(WebGlobal, WebName("String"), WebText(value)))
 }
 PageCursorOverrideValue :: () -> s32 { return page_cursor_override }
 PageCursorOverrideRevision :: () -> u64 { return page_cursor_override_revision }

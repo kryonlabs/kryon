@@ -87,7 +87,7 @@ CanvasCursorImageUrl :: (source: s32, width: s32, height: s32) -> s32 {
 }
 
 CanvasCursorText :: (prefix: string, url: s32, suffix: string) -> WebValue {
-    start := WebAsObject(WebText(prefix))
+    start := PageTextHandle(prefix)
     middle := WebAsObject(WebCall1(start, WebName("concat"), WebObject(url)))
     return WebCall1(middle, WebName("concat"), WebText(suffix))
 }
@@ -208,7 +208,7 @@ CanvasCursor :: (session: Session) {
     shown := false
     if props.hidden {
         scope := WebScope()
-        css := WebAsObject(WebText("none"))
+        css := PageTextHandle("none")
         CanvasCursorShow(css)
         WebEnd(scope)
         shown = true
