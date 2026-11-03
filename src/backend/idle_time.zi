@@ -1,8 +1,7 @@
 // How long the desktop session has had no input, and whether it is Wayland.
-// It asks the session's idle service over D-Bus (GNOME's Mutter idle
-// monitor, then the freedesktop screen saver) at most twice a second; it
-// never opens or reads a display. Without GIO (APP_HAVE_GIO) the idle time is
-// unknown.
+// X11 uses the session-wide XScreenSaver counter, including keys in other
+// applications. Wayland uses the session's D-Bus idle service. Both are
+// sampled at most twice a second; unavailable sources return unknown.
 #import "c_string"
 
 idle_time_c :: #system_library "c";
@@ -10,6 +9,11 @@ IdleGetEnv :: (name: *u8) -> *u8 #foreign idle_time_c "getenv";
 IdleCompare :: (left: *u8, right: *u8) -> s32 #foreign idle_time_c "strcmp";
 
 IDLE_TIME_GIO :: #defined(APP_HAVE_GIO) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD)
+IDLE_TIME_X11 :: #defined(PLATFORM_DESKTOP) && !#defined(_WIN32) && !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD)
+
+#if IDLE_TIME_X11 {
+    #import "idle_time_x11"
+}
 
 #if IDLE_TIME_GIO {
     idle_time_gio :: #system_library "gio-2.0";
@@ -131,6 +135,13 @@ IsWaylandSession :: () -> bool {
 
 // Milliseconds since the last input in the session, or -1 when unknown.
 IdleMilliseconds :: () -> s64 {
+    #if IDLE_TIME_X11 {
+        // XWayland only sees its own clients, not the whole Wayland session.
+        if !IsWaylandSession() {
+            idle := X11IdleMilliseconds()
+            if idle >= 0 { return idle }
+        }
+    }
     #if IDLE_TIME_GIO {
         now := IdleMonotonicTime()
         if idle_time_last_query != 0 && now - idle_time_last_query < 500000 {

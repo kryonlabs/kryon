@@ -1,0 +1,88 @@
+// Read the X server's session-wide idle counter. This includes keyboard and
+// pointer activity in every application, without selecting or grabbing input.
+#import "c_string"
+Timer :: #import "timer_linux";
+
+#scope_file
+c :: #system_library "c";
+dl :: #system_library "dl";
+OpenLibrary :: (name: *u8, flags: s32) -> *void #foreign dl "dlopen";
+FindSymbol :: (library: *void, name: *u8) -> *void #foreign dl "dlsym";
+CopyMemory :: (target: *void, source: *void, count: usize) -> *void #foreign c "memcpy";
+GetEnvironment :: (name: *u8) -> *u8 #foreign c "getenv";
+
+ScreenSaverInfo :: struct {
+    window: usize
+    state: s32
+    kind: s32
+    til_or_since: usize
+    idle: usize
+    event_mask: usize
+}
+OpenDisplay :: #type (*u8) -> *void #c_call;
+RootWindow :: #type (*void) -> usize #c_call;
+QueryExtension :: #type (*void, *s32, *s32) -> s32 #c_call;
+QueryInfo :: #type (*void, usize, *ScreenSaverInfo) -> s32 #c_call;
+
+open_display: OpenDisplay;
+root_window: RootWindow;
+query_extension: QueryExtension;
+query_info: QueryInfo;
+initialized: bool;
+display: *void;
+last_query: s64;
+cached: s64 = -1;
+
+Resolve :: (library: *void, slot: *void, name: string) -> bool {
+    bytes: [64]u8
+    if !CopyCString(name, bytes[:]) { return false }
+    symbol := FindSymbol(library, *bytes[0])
+    if symbol == null { return false }
+    unused CopyMemory(slot, cast(*void)*symbol, size_of(*void))
+    return true
+}
+
+Initialize :: () {
+    if initialized { return }
+    initialized = true
+    display_name: [16]u8
+    if !CopyCString("DISPLAY", display_name[:]) { return }
+    name := GetEnvironment(*display_name[0])
+    // Never discover or recover a display from elsewhere in the session.
+    if name == null || name[0] == 0 { return }
+    library_name: [32]u8
+    if !CopyCString("libX11.so.6", library_name[:]) { return }
+    x11 := OpenLibrary(*library_name[0], 1)
+    if x11 == null { return }
+    if !CopyCString("libXss.so.1", library_name[:]) { return }
+    xss := OpenLibrary(*library_name[0], 1)
+    if xss == null { return }
+    if !Resolve(x11, cast(*void)*open_display, "XOpenDisplay") ||
+    !Resolve(x11, cast(*void)*root_window, "XDefaultRootWindow") ||
+    !Resolve(xss, cast(*void)*query_extension, "XScreenSaverQueryExtension") ||
+    !Resolve(xss, cast(*void)*query_info, "XScreenSaverQueryInfo") {
+        return
+    }
+    candidate := open_display(name)
+    if candidate == null { return }
+    event_base: s32
+    error_base: s32
+    if query_extension(candidate, *event_base, *error_base) != 0 {
+        display = candidate
+    }
+}
+
+#scope_export
+X11IdleMilliseconds :: () -> s64 {
+    Initialize()
+    if display == null { return -1 }
+    now := Timer.MonotonicMilliseconds()
+    if last_query != 0 && now - last_query < 500 { return cached }
+    last_query = now
+    info: ScreenSaverInfo
+    cached = -1
+    if query_info(display, root_window(display), *info) != 0 {
+        cached = cast(s64)info.idle
+    }
+    return cached
+}

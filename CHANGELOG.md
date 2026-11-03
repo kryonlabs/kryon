@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- X11 session idle time now includes typing in other applications.
 - Custom cursors persist until changed, an application-wide cursor covers every session, and bitmap cursors no longer flicker or show light edges.
 
 - Support desktop and web gamepads for game navigation, including View/Select host navigation, and expose modal titles to accessibility.
