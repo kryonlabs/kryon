@@ -1,0 +1,42 @@
+#import "canvas_app_hooks"
+#import "session"
+#import "geometry"
+#import "text_input_props"
+started: s32;
+stopped: s32;
+pumped: s32;
+replacement: s32;
+observed: string;
+stop_ok: bool = true;
+Start :: (mini: bool) -> bool { started += 1; return !mini }
+Stop :: () -> bool { stopped += 1; return stop_ok }
+Pump :: () { pumped += 1 }
+Supports :: (capability: string) -> bool { return capability == "example.overlay" }
+Service :: (name: string, request: string) -> string { return ifx name == "example.overlay" then request else "unavailable" }
+Frame :: (session: Session, bounds: Rectangle, key: s32, modifiers: s32, input: TextFieldInput) -> s32 {
+    if bounds.width != 480.0 || key != 65 || modifiers != 2 { return -2 }
+    observed = input.text
+    return replacement
+}
+main :: () -> s32 {
+    if !CanvasAppExtensionStart(false) || CanvasAppExtensionSupports("example.overlay") { return 1 }
+    if CanvasAppExtensionService("x", "y") != "{\"status\":\"unavailable\"}" { return 2 }
+    if CanvasAppExtensionFrame(.{}, .{}, 0, 0, .{}) != 0 { return 3 }
+    CanvasAppExtensionPump()
+    if !CanvasAppExtensionStop() { return 10 }
+    CanvasAppUseHooks(CanvasAppHooks.{Start, Stop, Pump, Supports, Service, Frame})
+    if !CanvasAppExtensionStart(false) || CanvasAppExtensionStart(true) || started != 2 { return 4 }
+    CanvasAppExtensionPump()
+    if !CanvasAppExtensionStop() { return 11 }
+    if pumped != 1 || stopped != 1 || !CanvasAppExtensionSupports("example.overlay") || CanvasAppExtensionSupports("other") { return 5 }
+    stop_ok = false
+    if CanvasAppExtensionStop() || stopped != 2 { return 12 }
+    if CanvasAppExtensionService("example.overlay", "open") != "open" { return 6 }
+    for result: cast(s32)-1..1 {
+        replacement = result
+        if CanvasAppExtensionFrame(.{}, Rectangle.{0.0, 0.0, 480.0, 800.0}, 65, 2, TextFieldInput.{.text = "private input"}) != result || observed != "private input" { return 7 }
+    }
+    CanvasAppUseHooks(.{})
+    if CanvasAppExtensionFrame(.{}, .{}, 0, 0, .{}) != 0 || CanvasAppExtensionSupports("example.overlay") { return 8 }
+    return 0
+}

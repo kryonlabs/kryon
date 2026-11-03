@@ -17,6 +17,8 @@ ref = "1844042d1ca751e62e61df7617dba19c98588339"
 source = true
 
 [exports]
+canvas_app_hooks = "src/backend/canvas_app_hooks.zi"
+canvas_app_run = "src/backend/canvas_app_run.zi"
 notification = "src/ui/notification.zi"
 notification_push = "src/backend/notification_push.zi"
 notification_android = "src/backend/notification_android.zi"
@@ -67,6 +69,7 @@ scene_render = "src/ui/scene_render.zi"
 # Run portable app bundles inside a host app and draw their widgets.
 hosted_app = "src/backend/hosted_app.zi"
 input_protocol = "src/ui/input_protocol.zi"
+pointer_input = "src/ui/pointer_input.zi"
 file_picker = "src/backend/file_picker.zi"
 app_theme = "src/backend/app_theme.zi"
 app_mini = "src/backend/app_mini.zi"
@@ -115,6 +118,7 @@ modal_widget = "src/ui/modal_widget.zi"
 modal_props = "src/ui/modal_props.zi"
 modal_frame_widget = "src/ui/modal_frame_widget.zi"
 text_field_widget = "src/ui/text_field_widget.zi"
+text_area_widget = "src/ui/text_area_widget.zi"
 svg_icon_widget = "src/ui/svg_icon_widget.zi"
 svg_icon_props = "src/ui/svg_icon_props.zi"
 # Lets a test process read the widget tree and press, type and drag in a

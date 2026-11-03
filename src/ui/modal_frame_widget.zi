@@ -149,6 +149,7 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
     result.node = overlay.node
     result.panel_node = overlay.panel_node
     result.dismissed = overlay.closed
+    TreeSetLabel(session, result.node, props.title)
     if overlay.closed || result.panel_node < 0 { return result }
     opacity: float32 = StyleOpacityValue(panel.value.fields,
         panel.value.opacity)

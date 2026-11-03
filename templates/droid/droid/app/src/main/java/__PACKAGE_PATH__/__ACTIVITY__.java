@@ -46,6 +46,28 @@ public class __ACTIVITY__ extends NativeActivity {
     }
 
     private static final String TAG = "__ACTIVITY__";
+    private static final int MAX_LAUNCH_URI_LENGTH = 4096;
+    private static String pendingLaunchUri = "";
+
+    // Transport only: the application must validate this untrusted value.
+    private static synchronized void captureLaunchUri(Intent intent) {
+        if (intent == null) return;
+        try {
+            String uri = intent.getDataString();
+            if (uri != null && !uri.isEmpty() && uri.length() <= MAX_LAUNCH_URI_LENGTH) {
+                pendingLaunchUri = uri;
+            }
+        } catch (RuntimeException ignored) {
+            // A malformed incoming intent must not prevent activity startup.
+        }
+    }
+
+    /** JNI static ()Ljava/lang/String; latest bounded URI, or empty; consumes once. */
+    public static synchronized String takeLaunchUri() {
+        String uri = pendingLaunchUri;
+        pendingLaunchUri = "";
+        return uri;
+    }
 
     // [system bars, IME, cutouts] mirrored in native.
     private final int[] cachedInsets = new int[9];
@@ -393,6 +415,7 @@ public class __ACTIVITY__ extends NativeActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        captureLaunchUri(intent);
         stageBundle(intent);
     }
 
@@ -401,6 +424,9 @@ public class __ACTIVITY__ extends NativeActivity {
         startupStarted = SystemClock.elapsedRealtime();
         // Only window attribute calls run before the decor view exists.
         configureWindowFlags();
+        // Capture before NativeActivity starts native code. A recreation must
+        // not replay the original intent after native code consumed it.
+        if (savedInstanceState == null) captureLaunchUri(getIntent());
         super.onCreate(savedInstanceState);
         stageBundle(getIntent());
         configureSystemBars();

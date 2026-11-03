@@ -31,6 +31,7 @@ using Host :: #import "Canvas";
 #import "mini_embed"
 #import "std/web"
 #import "std/text_buffer"
+#import "canvas_app_hooks"
 
 using FrameStatus;
 
@@ -95,15 +96,14 @@ AppKeyboardHost :: (visible: bool) { unused visible }
 AppNowHost :: () -> float64 { return cast(float64)BundleUnixMilliseconds() / 1000.0 }
 #program_export
 AppLocalOffsetHost :: () -> s32 { return BundleLocalOffset() }
-// The page offers no optional services such as an account, sync or
-// sharing; only mini mode, when its address asks for it.
+// Optional services belong to the installed host extension.
 #program_export
-AppSupportsHost :: (capability: string) -> bool { return canvas_app_mini && capability == MINI_MODE_CAPABILITY }
+AppSupportsHost :: (capability: string) -> bool {
+    return (canvas_app_mini && capability == MINI_MODE_CAPABILITY) || CanvasAppExtensionSupports(capability)
+}
 #program_export
 AppServiceHost :: (name: string, request: string) -> string {
-    unused name
-    unused request
-    return "{\"status\":\"unavailable\"}"
+    return CanvasAppExtensionService(name, request)
 }
 // The app carries its own words; a page has no locale files of its own.
 #program_export
@@ -171,7 +171,10 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
     canvas_app_mode = APP_FRAME
     canvas_app_session = session
     canvas_app_bounds = viewport
-    unused CanvasAppMain()
+    replacement := CanvasAppExtensionFrame(session, viewport, canvas_app_key, canvas_app_modifiers,
+        TextFieldInputFor(canvas_app_key, canvas_app_modifiers, TextView(canvas_app_typed[:canvas_app_typed_length])))
+    if replacement < 0 { EndCanvasFrame(); return false }
+    if replacement == 0 { unused CanvasAppMain() }
     commit_status: FrameStatus
     if canvas_app_semantic_dom { commit_status = DomPaintFrame(session) }
     else { commit_status = EndCanvasUiFrame(session) }
@@ -215,6 +218,7 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
         return CanvasAppError("kryon: could not open a UI session")
     }
     files_open := false
+    extension_open := false
     last_saved: float64 = 0.0
     ok: bool = true
     while ok && PollCanvas() {
@@ -230,7 +234,10 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
                 break
             }
             files_open = true
+            if !CanvasAppExtensionStart(canvas_app_mini) { ok = false; break }
+            extension_open = true
         }
+        CanvasAppExtensionPump()
         canvas_app_key = CanvasPressedKey()
         if canvas_app_key == 0 {
             for candidate: cast(s32)0..349 {
@@ -257,6 +264,7 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
             last_saved = PageNow()
         }
     }
+    if extension_open && !CanvasAppExtensionStop() { ok = false }
     unused BundleStorageSync(false)
     AppFilesClose(*canvas_app_files)
     CloseSession(session)

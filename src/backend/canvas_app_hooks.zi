@@ -1,0 +1,47 @@
+// Optional compiled-canvas host extension. Install before entering the loop.
+// Callbacks run on its frame thread; no callback owns BeginFrame/EndFrame.
+#import "session"
+#import "geometry"
+#import "text_input_props"
+
+CanvasAppStart :: #type (mini: bool) -> bool;
+CanvasAppStop :: #type () -> bool;
+CanvasAppPump :: #type () -> void;
+CanvasAppSupports :: #type (capability: string) -> bool;
+CanvasAppService :: #type (name: string, request: string) -> string;
+// 0 lets the app draw; 1 replaces it for this frame; -1 fails the loop.
+// A replacement receives all input and the app callback is never called.
+CanvasAppFrameHook :: #type (session: Session, bounds: Rectangle, key: s32,
+    modifiers: s32, input: TextFieldInput) -> s32;
+CanvasAppHooks :: struct {
+    start: CanvasAppStart
+    stop: CanvasAppStop
+    pump: CanvasAppPump
+    supports: CanvasAppSupports
+    service: CanvasAppService
+    frame: CanvasAppFrameHook
+}
+canvas_app_hooks: CanvasAppHooks;
+
+CanvasAppUseHooks :: (hooks: CanvasAppHooks) { canvas_app_hooks = hooks }
+CanvasAppExtensionStart :: (mini: bool) -> bool {
+    return canvas_app_hooks.start == null || canvas_app_hooks.start(mini)
+}
+CanvasAppExtensionStop :: () -> bool {
+    return canvas_app_hooks.stop == null || canvas_app_hooks.stop()
+}
+CanvasAppExtensionPump :: () {
+    if canvas_app_hooks.pump != null { canvas_app_hooks.pump() }
+}
+CanvasAppExtensionSupports :: (capability: string) -> bool {
+    return canvas_app_hooks.supports != null && canvas_app_hooks.supports(capability)
+}
+CanvasAppExtensionService :: (name: string, request: string) -> string {
+    if canvas_app_hooks.service != null { return canvas_app_hooks.service(name, request) }
+    return "{\"status\":\"unavailable\"}"
+}
+CanvasAppExtensionFrame :: (session: Session, bounds: Rectangle, key: s32,
+    modifiers: s32, input: TextFieldInput) -> s32 {
+    if canvas_app_hooks.frame != null { return canvas_app_hooks.frame(session, bounds, key, modifiers, input) }
+    return 0
+}

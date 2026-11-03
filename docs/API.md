@@ -133,8 +133,8 @@ at most one size per line, or ignored as a whole; without them the layout is
 the plain area's. During an IME composition, lines and
 boxes after it move with the preedit.
 
-`pointer_input.SamplePointer()` also works inside a hosted widget frame. The
-host returns the pointer sample for the session passed to `WidgetHostBegin`;
+Import `kryon/pointer_input` for `SamplePointer()`, which also works inside a
+hosted widget frame. The host returns the pointer sample for the session passed to `WidgetHostBegin`;
 an inactive frame cannot read input, and another session's sample is not exposed.
 The pointer value schema lives in `input_protocol`, independently of the native
 retained input implementation.
@@ -387,6 +387,28 @@ handler: `OpenUri(uri)` passes it unchanged to the desktop opener, Windows'
 shell, an Android `ACTION_VIEW` intent or a new browser tab,
 and `CanOpenUri(uri)` says whether that platform can open it. Android code
 reaches the activity through [`android_jni`](../src/backend/android_jni.zi).
+
+The generated Android activity also exposes `public static synchronized String
+takeLaunchUri()` (JNI static signature `()Ljava/lang/String;`). It consumes the
+latest nonempty intent data string of at most 4,096 UTF-16 units and returns
+`""` when none is pending. Capture occurs before native startup and on
+`onNewIntent`; recreation with saved state does not replay the original launch.
+The single slot is process memory only; a newer bounded value replaces it.
+Null, empty, oversized or unreadable data leaves the slot unchanged. Values
+are preserved without decoding or truncation. The application owns URL
+allowlisting, UTF-8 copy bounds, user confirmation and any resulting action.
+The bridge does not open URLs or validate their origin. Applications own
+their manifest intent filters and custom-activity integration.
+
+`kryon/play_billing` exposes `PlayBillingBuy(id, accountID, output)` for
+Google Play editions. Pass the signed-in account's stable ID. The bridge sends
+`buy:product|account` and sets Play's obfuscated account ID to the lowercase
+64-character SHA-256 digest of the account ID's UTF-8 bytes. Empty IDs,
+embedded NULs, delimiters and oversized requests are rejected without opening
+a purchase sheet. Each queued sheet retains the account from its request.
+The application server must verify the paid purchase and its account binding
+before crediting it; this client binding alone grants no balance or referral
+reward. Other editions/platforms return an empty answer.
 
 Other platform services an application may import:
 
@@ -757,3 +779,26 @@ Android implementation when ANDROID_BUILD is defined. Custom activities provide
 In-app `ToastProps.seconds` is independent: a toast's caller chooses display
 length. OS notifications have no app-chosen toast deadline and remain subject
 to Android's notification settings and user dismissal.
+
+## Compiled canvas host extensions
+
+`canvas_app_run.CanvasAppMainLoop(false)` runs an AppContext app compiled into
+its page. Bind `canvas_app_run:CanvasAppMain=app:Main`. Private documents retain
+`/kryon-apps/<app id>` on IndexedDB. The bare runner supports mini mode only.
+
+A host may install `canvas_app_hooks.CanvasAppHooks` with `CanvasAppUseHooks`
+before entering the loop. Every callback is optional: `start(mini) -> bool`
+runs once after persistent storage and the app's documents are open; `pump()`
+runs before input each frame; `stop() -> bool` runs after a successful start, before
+storage flush and teardown. A false stop result makes the loop fail after cleanup.
+A failed start must clean up its own partial work.
+`supports(capability)` and `service(name, request)` provide host-owned optional
+services. An absent service returns the usual unavailable JSON response.
+
+`frame(session, bounds, key, modifiers, input) -> s32` runs inside the runner's
+frame. Return 0 to run the app, 1 to replace its entire frame, or -1 to fail the
+loop. Replacement frames exclusively receive input; the app callback is skipped,
+including on the frame that closes an overlay. The host draws widgets but never
+calls BeginFrame/EndFrame. Callbacks run on the frame thread. Account, payment,
+authentication and application navigation policies belong to the embedding
+package. A host decides which services it offers in mini mode.

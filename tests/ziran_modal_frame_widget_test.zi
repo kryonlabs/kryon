@@ -63,6 +63,7 @@ Frame :: () -> s32 {
         result.panel_node != 3 ||
         TreeNodeAt(TestSession(), 1).kind != WidgetKindModal ||
         TreeNodeAt(TestSession(), 3).kind != WidgetKindCustom { return -20 }
+    if TreeNodeAt(TestSession(), result.node).semantic_label != props.title { return -21 }
     // Content follows the frame in the panel's overlay layer, so the opaque
     // panel cannot cover it.
     if content >= 0 && (TreeNodeAt(TestSession(), content).parent_key !=

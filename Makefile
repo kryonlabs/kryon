@@ -660,3 +660,22 @@ android-notifications-scaffold-test:
 	@python3 tests/android_notifications_scaffold_test.py
 
 test: android-notifications-scaffold-test
+
+.PHONY: android-launch-uri-test
+android-launch-uri-test:
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/android_launch_uri_test.py
+
+test: android-launch-uri-test
+
+# Play Billing SDK compilation and account-bound request protocol, no device.
+# Requires an Android SDK/NDK and cached Billing AAR from a gplay build.
+.PHONY: play-billing-test
+play-billing-test:
+	@python3 tests/play_billing_test.py
+
+
+# Optional extensions on the compiled canvas runner retain the bare defaults.
+.PHONY: canvas-app-hooks-test
+canvas-app-hooks-test:
+	@python3 tests/canvas_app_hooks_test.py
+canvas-test: canvas-app-hooks-test
