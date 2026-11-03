@@ -327,6 +327,7 @@ canvas-frame-input-test:
 canvas-events-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_app_key_queue_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_events_zi_test.sh
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/password_canvas_browser_test.py
 
 .PHONY: mini-mode-test
 mini-mode-test:

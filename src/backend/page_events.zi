@@ -7,6 +7,7 @@
 #import "page_files"
 #import "dom_host"
 #import "canvas_events"
+#import "input_protocol"
 #import "byte_text_linux"
 #import "web"
 
@@ -50,6 +51,8 @@ PageEventNames :: struct {
     delta_x: s32
     delta_y: s32
     repeat: s32
+    shift_key: s32
+    alt_key: s32
     ctrl_key: s32
     meta_key: s32
     code: s32
@@ -79,6 +82,8 @@ PageEventsInit :: () {
     page_event_names.delta_x = WebName("deltaX")
     page_event_names.delta_y = WebName("deltaY")
     page_event_names.repeat = WebName("repeat")
+    page_event_names.shift_key = WebName("shiftKey")
+    page_event_names.alt_key = WebName("altKey")
     page_event_names.ctrl_key = WebName("ctrlKey")
     page_event_names.meta_key = WebName("metaKey")
     page_event_names.code = WebName("code")
@@ -285,10 +290,12 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
     } else if context == PageEventKeyDown {
         repeat: s32 = 0
         if WebAsBool(WebGet(event, page_event_names.repeat)) { repeat = 1 }
-        command: s32 = 0
+        modifiers: s32 = 0
+        if WebAsBool(WebGet(event, page_event_names.shift_key)) { modifiers |= KeyModifierShift }
+        if WebAsBool(WebGet(event, page_event_names.alt_key)) { modifiers |= KeyModifierAlt }
         if WebAsBool(WebGet(event, page_event_names.ctrl_key)) ||
-            WebAsBool(WebGet(event, page_event_names.meta_key)) { command = 1 }
-        flags: s32 = PageEventSend(CanvasEventKeyDown, repeat, command, 0.0, 0.0,
+            WebAsBool(WebGet(event, page_event_names.meta_key)) { modifiers |= KeyModifierControl }
+        flags: s32 = PageEventSend(CanvasEventKeyDown, repeat, modifiers, 0.0, 0.0,
             page_event_names.code, page_event_names.key, event)
         PageEventSettle(event, flags)
     } else if context == PageEventKeyUp {

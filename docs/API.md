@@ -312,7 +312,13 @@ once, so drawing them one at a time does not rebuild a font for each.
 Canvas and DOM app hosts retain unread key presses and repeats across drawing
 frames, taking one application key per frame. Pressed/released snapshot flags
 still expire at the frame boundary; delivery does not replay those flags.
-Focus loss and host reset cancel unread keys.
+Focus loss and host reset cancel unread keys. Each queued press or repeat
+retains its DOM event's Shift, Control/Meta and Alt modifiers. Custom Canvas
+loops read `CanvasPressedKeyModifiers()` immediately after `CanvasPressedKey()`
+and submit those bits with `KeyboardModifiersSend(session, modifiers)`.
+An empty key take reports current held modifiers. `CanvasModifiers()` and
+`CaptureFrameInput(session).modifiers` still report held state at their own
+sampling time; consuming a shortcut never changes held keys or snapshot flags.
 
 Application code owns its product state and calls widgets within `Frame`.
 The complete manifest and build commands are in [PROJECTS.md](PROJECTS.md).

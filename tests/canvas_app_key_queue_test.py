@@ -24,9 +24,9 @@ SOURCE = '''#import "page_core"
 
 main :: () -> s32 {
     CanvasEventsReset()
-    unused CanvasKeyDown("Home", "Home", false, false)
+    unused CanvasKeyDown("Home", "Home", false, 0)
     unused CanvasKeyUp("Home", "Home")
-    unused CanvasKeyDown("Digit4", "4", false, false)
+    unused CanvasKeyDown("Digit4", "4", false, 0)
     unused CanvasKeyUp("Digit4", "4")
     // CanvasAppMainLoop takes one AppKey before CanvasAppFrame begins drawing.
     first := CanvasAppKeyTake()
@@ -43,35 +43,83 @@ main :: () -> s32 {
     CanvasEventsEndFrame()
     if CanvasAppKeyTake() != 0 { return 6 }
     // Events arriving while drawing yields survive cleanup, with no duplication.
-    unused CanvasKeyDown("KeyA", "a", false, false)
+    unused CanvasKeyDown("KeyA", "a", false, 0)
     CanvasEventsBeginFrame()
     if CanvasAppKeyTake() != 65 { return 7 }
-    unused CanvasKeyDown("KeyB", "b", false, false)
+    unused CanvasKeyDown("KeyB", "b", false, 0)
     CanvasEventsEndFrame()
     if !CanvasQueueHas(*canvas_keys_pressed[0], canvas_keys_pressed_count, 66) { return 8 }
     if CanvasAppKeyTake() != 66 { return 9 }
     CanvasEventsBeginFrame()
     CanvasEventsEndFrame()
     if CanvasAppKeyTake() != 0 || canvas_keys_pressed_count != 0 { return 10 }
-    unused CanvasKeyDown("KeyC", "c", false, false)
+    unused CanvasKeyDown("KeyC", "c", false, 0)
     if GetKeyPressed() != 67 || CanvasAppKeyTake() != 0 { return 16 }
     CanvasEventsBeginFrame()
     CanvasEventsEndFrame()
     // Repeats also survive frames and retain the existing fresh-key priority.
-    unused CanvasKeyDown("KeyA", "a", true, false)
-    unused CanvasKeyDown("KeyB", "b", true, false)
+    unused CanvasKeyDown("KeyA", "a", true, 0)
+    unused CanvasKeyDown("KeyB", "b", true, 0)
     if CanvasAppKeyTake() != 65 { return 11 }
     CanvasEventsBeginFrame()
     CanvasEventsEndFrame()
     if canvas_keys_repeated_count != 0 { return 12 }
     if CanvasAppKeyTake() != 66 || CanvasAppKeyTake() != 0 { return 13 }
-    unused CanvasKeyDown("KeyC", "c", false, false)
+    unused CanvasKeyDown("KeyC", "c", false, 0)
     CanvasEventsReset()
     if CanvasAppKeyTake() != 0 { return 14 }
     // A focus change cancels pending shortcuts instead of replaying them later.
-    unused CanvasKeyDown("KeyD", "d", false, false)
+    unused CanvasKeyDown("KeyD", "d", false, 0)
     unused CanvasEvent(CanvasEventBlur, 0, 0, 0.0, 0.0, null, null)
     if CanvasAppKeyTake() != 0 { return 15 }
+    // Complete shortcuts retain event flags after every physical key is up.
+    CanvasEventsReset()
+    unused CanvasKeyDown("ControlLeft", "Control", false, 2)
+    unused CanvasKeyDown("KeyA", "a", false, 2)
+    unused CanvasKeyUp("KeyA", "a")
+    unused CanvasKeyUp("ControlLeft", "Control")
+    unused CanvasKeyDown("KeyB", "b", false, 0)
+    unused CanvasKeyUp("KeyB", "b")
+    if CanvasHeldModifiers() != 0 || IsKeyDown(341) { return 17 }
+    if CanvasAppKeyTake() != 341 || canvas_key_event.modifiers != 2 { return 18 }
+    CanvasEventsBeginFrame()
+    CanvasEventsEndFrame()
+    if CanvasAppKeyTake() != 65 || canvas_key_event.modifiers != 2 { return 19 }
+    if CanvasHeldModifiers() != 0 { return 20 }
+    // The same fresh queue backs the legacy GetKeyPressed consumer.
+    if GetKeyPressed() != 66 || canvas_key_event.modifiers != 0 { return 21 }
+    if CanvasAppKeyTake() != 0 || canvas_key_event.modifiers != 0 { return 22 }
+    // Repeats carry their own flags, even when the modifier changes while held.
+    CanvasEventsReset()
+    unused CanvasKeyDown("KeyA", "a", false, 2)
+    unused CanvasKeyDown("KeyA", "A", true, 3)
+    CanvasEventsBeginFrame()
+    unused CanvasKeyDown("KeyA", "a", true, 0)
+    unused CanvasKeyDown("KeyB", "b", false, 4)
+    unused CanvasKeyUp("KeyA", "a")
+    unused CanvasKeyUp("KeyB", "b")
+    CanvasEventsEndFrame()
+    if CanvasAppKeyTake() != 65 || canvas_key_event.modifiers != 2 { return 23 }
+    if CanvasAppKeyTake() != 66 || canvas_key_event.modifiers != 4 { return 24 }
+    if CanvasAppKeyTake() != 65 || canvas_key_event.modifiers != 3 { return 25 }
+    if CanvasAppKeyTake() != 65 || canvas_key_event.modifiers != 0 { return 26 }
+    if CanvasAppKeyTake() != 0 || canvas_key_event.modifiers != 0 { return 27 }
+    // Bounded queues drop a whole event, never just its key or modifiers.
+    for at: cast(s32)0..CANVAS_QUEUE_LIMIT {
+        unused CanvasKeyDown("KeyC", "c", false, at % 8)
+        unused CanvasKeyUp("KeyC", "c")
+    }
+    for at: cast(s32)0..CANVAS_QUEUE_LIMIT - 1 {
+        if CanvasAppKeyTake() != 67 || canvas_key_event.modifiers != at % 8 { return 28 }
+    }
+    if CanvasAppKeyTake() != 0 { return 29 }
+    unused CanvasKeyDown("KeyA", "a", false, 7)
+    CanvasEventsReset()
+    if canvas_key_event.modifiers != 0 || CanvasAppKeyTake() != 0 { return 30 }
+    unused CanvasKeyDown("KeyA", "a", false, 7)
+    unused CanvasAppKeyTake()
+    unused CanvasEvent(CanvasEventBlur, 0, 0, 0.0, 0.0, null, null)
+    if canvas_key_event.modifiers != 0 || CanvasAppKeyTake() != 0 { return 31 }
     return 0
 }
 '''

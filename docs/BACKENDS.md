@@ -391,11 +391,16 @@ when their window and input integration keeps all graphics on one owner.
 A host polls platform input and submits it to the session before calling the
 application's `Frame`. The application and widgets consume generic session
 input such as `KeyboardTake`, `TypedCodepointTake`,
-`PointerWheelTake`, and pointer state. `KeyboardModifiers` reports the held
+`PointerWheelTake`, and pointer state. `KeyboardModifiers` reports
 Shift, Control, and Alt keys as `KeyModifierShift`, `KeyModifierControl`, and
 `KeyModifierAlt` bits, so a shortcut such as Ctrl+S is a key press read with
 the modifiers that were down. The desktop and raylib hosts submit them with
-`KeyboardModifiersSend` before each frame; the other hosts report none.
+`KeyboardModifiersSend` before each frame. Canvas and DOM app hosts submit
+the modifiers retained with the consumed key press or repeat, so shortcuts
+remain intact when all physical keys are released before a frame. Custom
+Canvas loops pair `CanvasPressedKey()` with `CanvasPressedKeyModifiers()`;
+`CanvasModifiers()` and the immutable frame snapshot keep their held-state
+semantics. Other hosts report none.
 The host calls `BeginFrame` and
 `EndFrame` around application composition, then presents the resulting
 paint operations. Widget behavior stays in `src/ui/`.

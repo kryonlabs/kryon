@@ -28,7 +28,7 @@ main :: () -> s32 {
     }
     // Existing keyboard and repeat queues have priority; an unread gamepad
     // press survives frame cleanup and does not invent another press.
-    unused CanvasKeyDown("KeyK", "k", false, false)
+    unused CanvasKeyDown("KeyK", "k", false, 0)
     buttons[0][7] = true
     Step()
     if Take() != 75 { return 30 }
@@ -38,7 +38,7 @@ main :: () -> s32 {
     if Take() != 257 || Take() != 0 { return 31 }
     buttons[0][7] = false
     Step()
-    unused CanvasKeyDown("KeyK", "k", true, false)
+    unused CanvasKeyDown("KeyK", "k", true, 0)
     buttons[0][6] = true
     Step()
     if Take() != 75 || Take() != 256 { return 32 }

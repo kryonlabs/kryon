@@ -4,6 +4,7 @@
 #import "byte_text_linux"
 #import "page_core"
 #import "gamepad_navigation"
+#import "input_protocol"
 #if #defined(PLATFORM_WEB) {
     CanvasEventMouseMove :: 0
     CanvasEventMouseDown :: 1
@@ -80,9 +81,14 @@
     canvas_keys_repeated_count: s32;
     // Delivery queues outlive a drawing frame. Edge queues above still expire
     // at EndFrame, even when the app takes only one key before BeginDrawing.
-    canvas_pending_keys: [CANVAS_QUEUE_LIMIT]s32;
+    CanvasKeyEvent :: struct {
+        key: s32
+        modifiers: s32
+    }
+    canvas_key_event: CanvasKeyEvent;
+    canvas_pending_keys: [CANVAS_QUEUE_LIMIT]CanvasKeyEvent;
     canvas_pending_keys_count: s32;
-    canvas_pending_repeats: [CANVAS_QUEUE_LIMIT]s32;
+    canvas_pending_repeats: [CANVAS_QUEUE_LIMIT]CanvasKeyEvent;
     canvas_pending_repeats_count: s32;
     canvas_chars: [CANVAS_QUEUE_LIMIT]s32;
     canvas_chars_count: s32;
@@ -165,10 +171,35 @@
         return first
     }
 
+    // This is live held state, independent of any consumed key event.
+    CanvasHeldModifiers :: () -> s32 {
+        value: s32 = 0
+        if canvas_keys_down[340] || canvas_keys_down[344] { value |= KeyModifierShift }
+        if canvas_keys_down[341] || canvas_keys_down[345] ||
+            canvas_keys_down[343] || canvas_keys_down[347] { value |= KeyModifierControl }
+        if canvas_keys_down[342] || canvas_keys_down[346] { value |= KeyModifierAlt }
+        return value
+    }
+
+    CanvasKeyQueuePush :: (items: *CanvasKeyEvent, count: *s32, key: s32, modifiers: s32) {
+        if count.* >= CANVAS_QUEUE_LIMIT { return }
+        items[count.*] = CanvasKeyEvent.{key, modifiers}
+        count.* += 1
+    }
+
+    CanvasKeyQueueTake :: (items: *CanvasKeyEvent, count: *s32) -> s32 {
+        canvas_key_event = CanvasKeyEvent.{0, CanvasHeldModifiers()}
+        if count.* <= 0 { return 0 }
+        canvas_key_event = items[0]
+        for index: cast(s32)1..count.* - 1 { items[index - 1] = items[index] }
+        count.* -= 1
+        return canvas_key_event.key
+    }
+
     CanvasAppKeyTake :: () -> s32 {
-        key := CanvasQueuePop(*canvas_pending_keys[0], *canvas_pending_keys_count)
+        key := CanvasKeyQueueTake(*canvas_pending_keys[0], *canvas_pending_keys_count)
         if key != 0 { return key }
-        key = CanvasQueuePop(*canvas_pending_repeats[0], *canvas_pending_repeats_count)
+        key = CanvasKeyQueueTake(*canvas_pending_repeats[0], *canvas_pending_repeats_count)
         if key != 0 { return key }
         if !canvas_focused || canvas_snapshot_focus_lost { return 0 }
         return GamepadNavigationTake(*canvas_gamepad_navigation)
@@ -300,21 +331,21 @@
     }
 
     CanvasKeyDown :: (code: string, key: string, repeated: bool,
-        shortcut: bool) -> s32 {
+        modifiers: s32) -> s32 {
         mapped: s32 = CanvasKeyOf(code, key)
         if mapped <= 0 || mapped >= CANVAS_KEY_LIMIT { return 0 }
         flags: s32 = 0
         if canvas_keys_down[mapped] && repeated {
             CanvasQueuePush(*canvas_keys_repeated[0],
                 *canvas_keys_repeated_count, mapped)
-            CanvasQueuePush(*canvas_pending_repeats[0], *canvas_pending_repeats_count, mapped)
+            CanvasKeyQueuePush(*canvas_pending_repeats[0], *canvas_pending_repeats_count, mapped, modifiers)
         } else if !canvas_keys_down[mapped] {
             CanvasQueuePush(*canvas_keys_pressed[0],
                 *canvas_keys_pressed_count, mapped)
-            CanvasQueuePush(*canvas_pending_keys[0], *canvas_pending_keys_count, mapped)
+            CanvasKeyQueuePush(*canvas_pending_keys[0], *canvas_pending_keys_count, mapped, modifiers)
         }
         canvas_keys_down[mapped] = true
-        if shortcut && (mapped == 65 || mapped == 67 || mapped == 86 ||
+        if (modifiers & KeyModifierControl) != 0 && (mapped == 65 || mapped == 67 || mapped == 86 ||
             mapped == 88) {
             // The browser only allows a clipboard write inside a gesture.
             canvas_clipboard_gesture_until = PageNow() + 1000.0
@@ -381,7 +412,7 @@
         }
         if kind == CanvasEventKeyDown {
             return CanvasKeyDown(TextFromCString(code), TextFromCString(key),
-                a != 0, b != 0)
+                a != 0, b)
         }
         if kind == CanvasEventKeyUp {
             return CanvasKeyUp(TextFromCString(code), TextFromCString(key))
@@ -415,6 +446,7 @@
         }
         if kind == CanvasEventBlur {
             GamepadNavigationBlur(*canvas_gamepad_navigation)
+            canvas_key_event = .{}
             canvas_pending_keys_count = 0
             canvas_pending_repeats_count = 0
             canvas_focused = false
@@ -446,6 +478,7 @@
 
     // Forget all earlier input.
     CanvasEventsReset :: () {
+        canvas_key_event = .{}
         canvas_gamepad_navigation = .{}
         canvas_frame_input = CanvasFrameInput.{}
         index: s32 = 0

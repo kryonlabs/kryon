@@ -234,6 +234,11 @@ CanvasPressedKey :: () -> s32 {
     return CanvasAppKeyTake()
 }
 
+// Read after CanvasPressedKey: flags belong to that consumed event, even
+// after its physical modifiers were released. An empty take uses held state.
+#program_export
+CanvasPressedKeyModifiers :: () -> s32 { return canvas_key_event.modifiers }
+
 #program_export
 CanvasTypedCodepoint :: () -> s32 {
     return GetCharPressed()

@@ -63,7 +63,7 @@ KeyChecks :: () -> s32 {
     if Send(CanvasEventKeyUp, 0, 0, 0.0, 0.0, "ArrowDown", "") != CanvasEventPreventDefault { return 9 }
     if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "F5", "") != 0 { return 10 }
     // A copy or paste shortcut opens the clipboard gesture window.
-    if Send(CanvasEventKeyDown, 0, 1, 0.0, 0.0, "KeyC", "c") != CanvasEventPreventDefault { return 11 }
+    if Send(CanvasEventKeyDown, 0, 2, 0.0, 0.0, "KeyC", "c") != CanvasEventPreventDefault { return 11 }
     if canvas_clipboard_gesture_until != 2000.0 { return 12 }
     if Send(CanvasEventKeyDown, 0, 0, 0.0, 0.0, "KeyV", "v") != 0 { return 13 }
     // Unmapped keys do nothing.

@@ -239,12 +239,14 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
         }
         CanvasAppExtensionPump()
         canvas_app_key = CanvasPressedKey()
+        canvas_app_modifiers = CanvasPressedKeyModifiers()
         if canvas_app_key == 0 {
+            canvas_app_modifiers = CanvasModifiers()
             for candidate: cast(s32)0..349 {
                 if TestDriverKeyPressed(candidate) { canvas_app_key = candidate; break }
             }
         }
-        canvas_app_modifiers = CanvasModifiers()
+        KeyboardModifiersSend(session, canvas_app_modifiers)
         if canvas_app_key != 0 { unused KeyboardSend(session, canvas_app_key) }
         codepoint: s32 = CanvasTypedCodepoint()
         while codepoint != 0 {

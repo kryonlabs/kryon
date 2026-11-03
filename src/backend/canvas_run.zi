@@ -67,6 +67,7 @@ main :: () -> s32 {
     ok: bool = true
     while ok && PollCanvas() {
         key: s32 = CanvasPressedKey()
+        KeyboardModifiersSend(session, CanvasPressedKeyModifiers())
         if key != 0 { KeyboardSend(session, key) }
         codepoint: s32 = CanvasTypedCodepoint()
         while codepoint != 0 {
