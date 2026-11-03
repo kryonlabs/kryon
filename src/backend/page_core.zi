@@ -767,6 +767,7 @@ PageClose :: () {
     PageFlushPaint()
     if !page_open || page_closed { return }
     scope: s32 = WebScope()
+    PageCursorOverride("")
     page_closed = true
     page_close_requested = true
     PageStopListening()
@@ -869,9 +870,29 @@ PageApplyCursor :: (node: s32, value: string) {
     if style != 0 { WebSet(style, page_names.cursor, WebText(value)) }
 }
 
+// A bitmap or hidden cursor the canvas shows, kept as browser text so DOM
+// elements reuse it. Its revision changes only when the value does.
+page_cursor_override: s32;
+page_cursor_override_revision: u64;
+PageCursorOverrideObject :: (value: s32) {
+    if page_cursor_override == 0 && value == 0 { return }
+    if page_cursor_override != 0 { WebRelease(page_cursor_override) }
+    page_cursor_override = ifx value != 0 then WebKeep(value) else 0
+    page_cursor_override_revision += cast(u64)1
+}
+PageCursorOverride :: (value: string) {
+    if value == "" { PageCursorOverrideObject(0); return }
+    scope := WebScope()
+    PageCursorOverrideObject(WebAsObject(WebText(value)))
+    WebEnd(scope)
+}
+PageCursorOverrideValue :: () -> s32 { return page_cursor_override }
+PageCursorOverrideRevision :: () -> u64 { return page_cursor_override_revision }
+
 PageSetCursor :: (cursor: s32) {
     if !page_open { return }
     scope: s32 = WebScope()
+    PageCursorOverride("")
     page_cursor = PageCursorName(cursor)
     PageApplyCursor(page_canvas, page_cursor)
     if page_canvas != 0 {

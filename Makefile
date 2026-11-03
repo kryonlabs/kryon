@@ -306,6 +306,11 @@ gamepad-test:
 	python3 tests/canvas_gamepad_test.py
 test: gamepad-test
 
+.PHONY: cursor-api-test
+cursor-api-test:
+	python3 tests/cursor_api_test.py
+test: cursor-api-test
+
 .PHONY: canvas-audio-engine-test
 canvas-audio-engine-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_audio_engine_zi_test.sh

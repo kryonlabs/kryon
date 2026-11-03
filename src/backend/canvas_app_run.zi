@@ -182,13 +182,12 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
         EndCanvasFrame()
         return false
     }
+    CanvasCursor(session)
     if canvas_app_semantic_dom {
         if !DomReconcile(session, viewport) {
             EndCanvasFrame()
             return false
         }
-    } else {
-        CanvasCursor(session)
     }
     drawn := EndCanvasFrame()
     TestDriverFrame(session)

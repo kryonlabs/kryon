@@ -1,0 +1,79 @@
+#import "widget_host"
+#import "widget_codec"
+#import "hosted_values"
+#import "std/bundle_host"
+#import "cursor"
+#import "tree"
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "std/byte_text_linux"
+
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) { unused points; unused color }
+
+Allow :: (path: string) -> bool { return path == "assets/hand.png" }
+resolved: [64]u8;
+Resolve :: (path: string) -> string {
+    unused path
+    value := "owner-a/assets/hand.png"
+    for index: 0..cast(s32)value.count - 1 { resolved[index] = value[index] }
+    return TextFromBytes(resolved[:value.count])
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    foreign_session := SessionOpen()
+    TreeStart(session, cast(u64)1, .{0.0,0.0,100.0,100.0})
+    codec: WidgetSessionCodec
+    args: [8]HostValue
+    args[0] = WidgetEncodeSession(session, *codec)
+    args[1] = HostValue.{.kind = cast(s32)HostValueKind.HostString,
+        .type_name = HostTextData("string"), .data = HostTextData("assets/hand.png"), .length = cast(usize)15}
+    args[2] = HostScalar("s32", 32); args[3] = HostScalar("s32", 24)
+    args[4] = HostScalar("s32", 3); args[5] = HostScalar("s32", 5)
+    args[6] = HostScalar("bool", 0); args[7] = HostScalar("s32", 0)
+    answer: HostValue
+    module := HostTextData("kryon_cursor")
+    function := HostTextData("CursorSetHostedHost")
+    if WidgetHostCall(null, module, function, *args[0], 8, *answer) != 0 { return 1 }
+    WidgetHostBegin(session, Allow, Resolve)
+    if WidgetHostCall(null, module, function, *args[0], 8, *answer) != 1 || answer.integer != 1 { return 2 }
+    resolved[0] = #char "x"
+    if CursorGet(session).asset_path != "owner-a/assets/hand.png" { return 3 }
+    args[0] = WidgetEncodeSession(foreign_session, *codec)
+    if WidgetHostCall(null, module, function, *args[0], 8, *answer) != 0 || CursorRequested(foreign_session) { return 4 }
+    args[0] = WidgetEncodeSession(session, *codec)
+    args[2] = HostScalar("s32", 4294967328)
+    if WidgetHostCall(null, module, function, *args[0], 8, *answer) != 0 { return 5 }
+    args[2] = HostScalar("s32", 32)
+    args[4] = HostScalar("s32", 32)
+    if WidgetHostCall(null, module, function, *args[0], 8, *answer) != 1 || answer.integer != 0 { return 6 }
+    args[4] = HostScalar("s32", 3)
+    args[1].data = HostTextData("assets/../a.png"); args[1].length = cast(usize)14
+    if WidgetHostCall(null, module, function, *args[0], 8, *answer) != 1 || answer.integer != 0 { return 7 }
+    args[1].data = HostTextData("assets/nope.png"); args[1].length = cast(usize)15
+    if WidgetHostCall(null, module, function, *args[0], 8, *answer) != 1 || answer.integer != 0 { return 8 }
+    if CursorGet(session).asset_path != "owner-a/assets/hand.png" { return 14 }
+    // Repeating the accepted request keeps it; the empty request withdraws it.
+    args[1].data = HostTextData("assets/hand.png"); args[1].length = cast(usize)15
+    if WidgetHostCall(null, module, function, *args[0], 8, *answer) != 1 || answer.integer != 1 ||
+    CursorGet(session).asset_path != "owner-a/assets/hand.png" { return 9 }
+    WidgetHostEnd()
+    if WidgetHostCall(null, module, function, *args[0], 8, *answer) != 0 { return 10 }
+    if !TreeFinish(session) || !CursorRequested(session) { return 11 }
+    // Requests persist across frames, outside WidgetHostBegin too.
+    TreeStart(session, cast(u64)1, .{0.0,0.0,100.0,100.0})
+    if !TreeFinish(session) || CursorGet(session).asset_path != "owner-a/assets/hand.png" { return 12 }
+    WidgetHostBegin(session, Allow, Resolve)
+    empty: [8]HostValue = args
+    empty[1] = HostValue.{.kind = cast(s32)HostValueKind.HostString,
+        .type_name = HostTextData("string"), .data = HostTextData(""), .length = cast(usize)0}
+    empty[2] = HostScalar("s32", 0); empty[3] = HostScalar("s32", 0)
+    empty[4] = HostScalar("s32", 0); empty[5] = HostScalar("s32", 0)
+    if WidgetHostCall(null, module, function, *empty[0], 8, *answer) != 1 || answer.integer != 1 ||
+    CursorRequested(session) { return 13 }
+    WidgetHostEnd()
+    return 0
+}

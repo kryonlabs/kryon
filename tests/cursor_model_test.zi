@@ -1,0 +1,97 @@
+#import "session"
+#import "cursor"
+#import "tree"
+#import "tree_input"
+#import "geometry"
+#import "std/byte_text_linux"
+using CursorShape;
+
+// Requests persist until the next deliberate change, sessions inherit the
+// application cursor, and only text, crosshair and resize shapes show through.
+#program_export
+Answer :: () -> s32 {
+    a := SessionOpen()
+    b := SessionOpen()
+    if CursorSet(Session.{}, .{}) || CursorSet(Session.{}, .{.hidden = true}) { return 1 }
+    bytes: [16]u8 = .[97, 115, 115, 101, 116, 115, 47, 104, 97, 110, 100, 46, 112, 110, 103, 0]
+    {
+        // No frame is needed; the path is copied.
+        borrowed := CursorProps.{.asset_path = TextFromBytes(bytes[:15]), .width = 32, .height = 48, .hotspot_x = 3, .hotspot_y = 4}
+        if !CursorSet(a, borrowed) || CursorRequested(b) { return 2 }
+    }
+    props := CursorProps.{.asset_path = "assets/hand.png", .width = 32, .height = 48, .hotspot_x = 3, .hotspot_y = 4}
+    bytes[7] = cast(u8)120
+    if CursorGet(a).asset_path != "assets/hand.png" { return 3 }
+    // Invalid requests are refused and keep the last valid one.
+    props.hotspot_x = 32
+    if CursorSet(a, props) || CursorGet(a).hotspot_x != 3 { return 4 }
+    props.hotspot_x = -1
+    if CursorSet(a, props) { return 5 }
+    props.hotspot_x = 0; props.width = 129
+    if CursorSet(a, props) { return 6 }
+    props.width = 0
+    if CursorSet(a, props) { return 7 }
+    props.width = 32; props.hidden = true
+    if CursorSet(a, props) || CursorGet(a).hidden || CursorGet(a).width != 32 { return 8 }
+    // Frames, cancelled frames and rejected frames never change a request.
+    TreeStart(a, cast(u64)1, .{0.0, 0.0, 100.0, 100.0})
+    TreeCancel(a)
+    if !CursorRequested(a) || CursorGet(a).asset_path != "assets/hand.png" { return 9 }
+    TreeStart(a, cast(u64)1, .{0.0, 0.0, 100.0, 100.0})
+    unused TreeSubmit(a, cast(u64)2, 77, 1, .{0.0, 0.0, 1.0, 1.0})
+    if TreeFinish(a) || !CursorRequested(a) { return 10 }
+    TreeStart(a, cast(u64)1, .{0.0, 0.0, 100.0, 100.0})
+    if !TreeFinish(a) || !CursorRequested(a) { return 11 }
+    // Repeating the request changes nothing; the empty request withdraws it.
+    before := CursorGet(a)
+    if !CursorSet(a, before) || !CursorPropsSame(CursorGet(a), before) { return 12 }
+    if !CursorSet(a, .{}) || CursorRequested(a) || CursorGet(a).asset_path != "" { return 13 }
+    // Without an application cursor every session shows its widget shape.
+    if CursorResolve(a, cast(s32)CursorClickable).shape != cast(s32)CursorClickable ||
+    CursorResolve(a, cast(s32)CursorClickable).asset_path != "" || CursorResolve(a, 99).shape != 0 { return 14 }
+    app := CursorProps.{.asset_path = "assets/app.png", .width = 32, .height = 32, .hotspot_x = 7, .hotspot_y = 1}
+    if !CursorSetDefault(app) || !CursorPropsSame(CursorGetDefault(), app) { return 15 }
+    // Default, arrow, clickable and disabled; then text, crosshair and resizes.
+    pointers: [4]s32 = .[0, 1, 4, 10]
+    for shape: pointers {
+        if !CursorPropsSame(CursorResolve(a, shape), app) || !CursorPropsSame(CursorResolve(b, shape), app) { return 16 }
+    }
+    functional: [7]s32 = .[2, 3, 5, 6, 7, 8, 9]
+    for shape: functional {
+        shown := CursorResolve(a, shape)
+        if shown.asset_path != "" || shown.shape != shape { return 17 }
+    }
+    // A session's own request replaces the application cursor everywhere.
+    tool := CursorProps.{.asset_path = "assets/tool.png", .width = 32, .height = 32, .hotspot_x = 8, .hotspot_y = 28}
+    if !CursorSet(a, tool) || !CursorPropsSame(CursorResolve(a, cast(s32)CursorText), tool) { return 18 }
+    if !CursorPropsSame(CursorResolve(b, cast(s32)CursorDefault), app) { return 19 }
+    if !CursorSet(a, .{.hidden = true}) || !CursorResolve(a, 0).hidden || CursorResolve(a, 0).asset_path != "" { return 20 }
+    if !CursorSet(a, .{.shape = cast(s32)CursorCrosshair}) || CursorResolve(a, 0).shape != cast(s32)CursorCrosshair { return 21 }
+    // Disposed and closed sessions keep no request; a reused slot inherits.
+    TreeStart(a, cast(u64)1, .{0.0, 0.0, 100.0, 100.0})
+    TreeDispose(a)
+    if CursorRequested(a) { return 22 }
+    if !CursorSet(a, tool) || !SessionClose(a) || CursorRequested(a) { return 23 }
+    fresh := SessionOpen()
+    if fresh.slot != a.slot || CursorRequested(fresh) || !CursorPropsSame(CursorResolve(fresh, 0), app) { return 24 }
+    if CursorSet(a, tool) || CursorRequested(fresh) { return 25 }
+    // The application cursor validates like requests and can be withdrawn.
+    if CursorSetDefault(.{.asset_path = "assets/a", .width = 129, .height = 1}) || !CursorPropsSame(CursorGetDefault(), app) { return 26 }
+    if !CursorSetDefault(.{}) || CursorResolve(fresh, cast(s32)CursorClickable).shape != cast(s32)CursorClickable { return 27 }
+    if !CursorPackedPath("assets/a.png") || CursorPackedPath("assets//a") ||
+    CursorPackedPath("assets/../a") || CursorPackedPath("/assets/a") ||
+    CursorPackedPath("assets/a/") || CursorPackedPath("assets/a\\b") ||
+    CursorPackedPath("assets/a:b") || CursorPackedPath("assets/./a") { return 28 }
+    if !CursorPropsValid(.{.asset_path = "assets/a", .width = 128, .height = 1, .hotspot_x = 127}) ||
+    CursorPropsValid(.{.asset_path = "assets/a", .width = 1, .height = 1, .hotspot_y = 1}) ||
+    CursorPropsValid(.{.shape = 11}) || CursorPropsValid(.{.shape = -1}) ||
+    CursorPropsValid(.{.hidden = true, .width = 1}) { return 29 }
+    if CursorPropsSame(app, tool) || !CursorPropsEmpty(.{}) || CursorPropsEmpty(.{.shape = 1}) { return 30 }
+    return 42
+}
+
+#program_export
+main :: () -> s32 {
+    answer := Answer()
+    return ifx answer == 42 then 0 else answer
+}

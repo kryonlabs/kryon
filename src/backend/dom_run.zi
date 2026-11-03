@@ -83,6 +83,7 @@ DrawDomFrame :: (session: Session, viewport: Rectangle) -> bool {
         DomError(TextView(depth_detail[0:depth_length]))
         return false
     }
+    CanvasCursor(session)
     if !DomReconcile(session, viewport) {
         EndCanvasFrame()
         DomError("kryon: document layout contains an unsupported widget")

@@ -12,6 +12,7 @@
 #import "text_request"
 #import "text_host"
 #import "widget_kind"
+#import "cursor"
 Utf8 :: #import "std/utf8";
 Grapheme :: #import "std/grapheme";
 
@@ -101,6 +102,8 @@ dom_frame: s32;
 dom_text_bytes: [32]u8;
 dom_previous: [8193]u64;
 dom_session: Session;
+dom_cursor_revision: u64;
+dom_cursor_applied: bool;
 dom_click: u64;
 // Where a pointer click landed in app coordinates; keyboard clicks have
 // no point.
@@ -296,6 +299,7 @@ DomHostBegin :: (count: s32, width: float64, height: float64) {
         if box == 0 { box = WebGetObject(document, dom_names.body) }
         unused WebCall1(box, dom_names.append_child, WebObject(root))
         dom_root = WebKeep(root)
+        dom_cursor_applied = false
         if dom_document_layout {
             DomSetAttribute(root, "data-layout", "document")
             DomStyle(style, dom_names.position, "relative")
@@ -310,6 +314,15 @@ DomHostBegin :: (count: s32, width: float64, height: float64) {
             name: string = DomEventName(event)
             PageListen(root, name, DomEvent, event, true)
         }
+    }
+    // The root shows the canvas host's bitmap or hidden cursor; nodes inherit
+    // it. Styles change only when that cursor does.
+    if dom_root != 0 && (!dom_cursor_applied || dom_cursor_revision != PageCursorOverrideRevision()) {
+        style := WebGetObject(dom_root, dom_names.style)
+        override := PageCursorOverrideValue()
+        WebSet(style, dom_names.cursor, ifx override != 0 then WebObject(override) else WebText("default"))
+        dom_cursor_revision = PageCursorOverrideRevision()
+        dom_cursor_applied = true
     }
     WebEnd(scope)
     dom_frame += 1
@@ -374,13 +387,16 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
         if widget_kind == 21 { DomStyle(style, WebName("display"), "flex") }
         if widget_kind == 23 { DomStyle(style, WebName("display"), "grid") }
     }
+    inherit_cursor := PageCursorOverrideValue() != 0 && (CursorRequested(dom_session) ||
+        CursorReplacesShape(CursorShapeForWidget(cast(WidgetKind)widget_kind, (flags & 2) != 0)))
     if (flags & 1) != 0 || dom_document_layout {
         DomStyle(style, dom_names.pointer_events, "auto")
-        if (flags & 1) != 0 { DomStyle(style, dom_names.cursor, "pointer") }
+        if inherit_cursor { DomStyle(style, dom_names.cursor, "inherit") }
+        else if (flags & 1) != 0 { DomStyle(style, dom_names.cursor, "pointer") }
         else { DomStyle(style, dom_names.cursor, "default") }
     } else {
         DomStyle(style, dom_names.pointer_events, "none")
-        DomStyle(style, dom_names.cursor, "default")
+        DomStyle(style, dom_names.cursor, ifx inherit_cursor then "inherit" else "default")
     }
     if tag == "img" && !dom_document_layout {
         DomStyle(style, dom_names.opacity, "0")

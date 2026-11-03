@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Custom cursors persist until changed, an application-wide cursor covers every session, and bitmap cursors no longer flicker or show light edges.
+
 - Support desktop and web gamepads for game navigation, including View/Select host navigation, and expose modal titles to accessibility.
 
 - Custom Linux x86_64 hosts can try an opt-in SDL3 GPU renderer, using a pinned

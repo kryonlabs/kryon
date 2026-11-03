@@ -1,0 +1,71 @@
+#import "kryon/session"
+#import "kryon/geometry"
+#import "kryon/box_widget"
+#import "kryon/box_props"
+#import "kryon/cursor"
+#if !#defined(KRYON_HOSTED_UI) {
+    #import "kryon/tree_input"
+}
+
+mode: s32 = 1;
+frame: s32;
+started: bool;
+
+Hand :: () -> CursorProps {
+    return CursorProps.{.asset_path = "assets/hand.png", .width = 32, .height = 24, .hotspot_x = 3, .hotspot_y = 5}
+}
+Tool :: () -> CursorProps {
+    return CursorProps.{.asset_path = "assets/tool.png", .width = 32, .height = 24, .hotspot_x = 4, .hotspot_y = 20}
+}
+
+// Keys 1-8 choose a request. Requests persist; mode 1 repeats its request
+// every frame, which must change nothing, and mode 7 alternates two bitmaps.
+DrawCursorFrame :: (session: Session, viewport: Rectangle, key: s32) -> s32 {
+    changed := !started
+    started = true
+    if key >= 49 && key <= 56 { mode = key - 48; changed = true }
+    frame += 1
+    Box(session, BoxProps.{.key = 2, .bounds = viewport, .fill = .{240, 240, 240, 255}})
+    if mode == 1 {
+        if !CursorSet(session, Hand()) { return 1 }
+    } else if mode == 7 {
+        if !CursorSet(session, ifx frame % 2 == 0 then Hand() else Tool()) { return 7 }
+    } else if changed {
+        if mode == 2 && !CursorSet(session, CursorProps.{.hidden = true}) { return 2 }
+        if mode == 3 && !CursorSet(session, CursorProps.{}) { return 3 }
+        // A packed host may refuse an absent resource before decoding it.
+        if mode == 4 { unused CursorSet(session, CursorProps.{.asset_path = "assets/missing.png", .width = 32, .height = 24}) }
+        if mode == 5 {
+            moved := Hand()
+            moved.hotspot_x = 9
+            if !CursorSet(session, moved) { return 5 }
+        }
+        // Invalid dimensions are refused and keep the current request.
+        if mode == 6 && CursorSet(session, CursorProps.{.asset_path = "assets/hand.png", .width = 129, .height = 24}) { return 6 }
+        if mode == 8 && !CursorSet(session, Tool()) { return 8 }
+    }
+    return 0
+}
+
+#if #defined(KRYON_HOSTED_UI) {
+    #import "kryon/app_context"
+    #import "kryon/app_protocol"
+    #program_export
+    main :: () -> s32 {
+        if AppMode() == APP_IDENTIFY {
+            AppIdentity("cursor.probe")
+            AppDescribe("Cursor probe", "")
+            return APP_PROTOCOL
+        }
+        if AppMode() != APP_FRAME { return 0 }
+        return DrawCursorFrame(AppSession(), AppBounds(), AppKey())
+    }
+} else {
+    #program_export
+    Frame :: (session: Session, viewport: Rectangle) -> s32 {
+        // The application cursor every session inherits; set once.
+        if !started && !CursorSetDefault(CursorProps.{.asset_path = "assets/app.png", .width = 32, .height = 32,
+            .hotspot_x = 7, .hotspot_y = 1}) { return 9 }
+        return DrawCursorFrame(session, viewport, KeyboardTake(session))
+    }
+}

@@ -8,6 +8,8 @@ Timer :: #import "std/timer_linux";
 #import "program_title"
 #import "tree_input"
 #import "session"
+#import "cursor"
+RasterCursor :: #import "cairo_raster";
 #import "utf8"
 Presenter :: #import "pixmap_sdl";
 Video :: #import "video_linux";
@@ -71,6 +73,13 @@ SetHint :: (name: *u8, value: *u8) -> s32 #foreign sdl_library "SDL_SetHint";
 GetClipboardText :: () -> *u8 #foreign sdl_library "SDL_GetClipboardText";
 SetClipboardText :: (text: *u8) -> s32 #foreign sdl_library "SDL_SetClipboardText";
 FreeSdlMemory :: (memory: *void) #foreign sdl_library "SDL_free";
+GetDefaultCursor :: () -> *void #foreign sdl_library "SDL_GetDefaultCursor";
+GetCurrentVideoDriver :: () -> *u8 #foreign sdl_library "SDL_GetCurrentVideoDriver";
+ShowCursor :: (toggle: s32) -> s32 #foreign sdl_library "SDL_ShowCursor";
+CreateColorCursor :: (surface: *void, x: s32, y: s32) -> *void #foreign sdl_library "SDL_CreateColorCursor";
+CursorSurface :: (pixels: *u8, width: s32, height: s32, depth: s32, pitch: s32,
+    red: u32, green: u32, blue: u32, alpha: u32) -> *void #foreign sdl_library "SDL_CreateRGBSurfaceFrom";
+FreeSurface :: (surface: *void) #foreign sdl_library "SDL_FreeSurface";
 CreateSystemCursor :: (shape: s32) -> *void #foreign sdl_library "SDL_CreateSystemCursor";
 SetCursor :: (cursor: *void) #foreign sdl_library "SDL_SetCursor";
 FreeCursor :: (cursor: *void) #foreign sdl_library "SDL_FreeCursor";
@@ -193,23 +202,173 @@ desktop_first_frame_show: bool;
 desktop_next_width: s32;
 desktop_next_height: s32;
 desktop_cursors: [11]*void;
-desktop_cursor_shape: s32 = -1;
 
-// UI chooses the shape; SDL applies it to this process's own window.
+// Bitmap cursors stay cached by request, so switching between an application
+// hand and a tool never re-decodes, frees or briefly shows another cursor.
+DESKTOP_CUSTOM_CURSORS :: 8
+DesktopCustomCursor :: struct {
+    cursor: *void
+    props: CursorProps
+    used: u64
+    length: s32
+    path: [4096]u8
+}
+desktop_custom: [DESKTOP_CUSTOM_CURSORS]DesktopCustomCursor;
+desktop_custom_clock: u64;
+// The last resolved request and what it selected. SDL is called only when
+// the resolved request changes.
+desktop_cursor_applied: DesktopCustomCursor;
+desktop_cursor_applied_valid: bool;
+desktop_cursor_applied_loaded: bool;
+desktop_cursor_selected: *void;
+desktop_cursor_hidden: bool;
+desktop_cursor_scale: s32;
+
+// XCURSOR_SIZE is the desktop's cursor size; 24 is one-to-one. Logical
+// cursor units scale with it, in quarter steps from 1x to 4x.
+DesktopCursorScaleQuarters :: () -> s32 {
+    if desktop_cursor_scale > 0 { return desktop_cursor_scale }
+    desktop_cursor_scale = 4
+    name: [16]u8
+    if !CopyCString("XCURSOR_SIZE", name[:]) { return desktop_cursor_scale }
+    value := GetEnvironment(*name[0])
+    if value == null { return desktop_cursor_scale }
+    size: s32 = 0
+    text := TextFromCString(value)
+    for byte: text {
+        if byte < #char "0" || byte > #char "9" || size > 1000 { size = 0; break }
+        size = size * 10 + cast(s32)(byte - #char "0")
+    }
+    if size > 0 {
+        quarters := (size * 4 + 12) / 24
+        if quarters < 4 { quarters = 4 }
+        if quarters > 16 { quarters = 16 }
+        desktop_cursor_scale = quarters
+    }
+    return desktop_cursor_scale
+}
+
+DesktopCursorPixels :: (logical: s32) -> s32 {
+    pixels := (logical * DesktopCursorScaleQuarters() + 2) / 4
+    if pixels < 1 { pixels = 1 }
+    if pixels > 128 { pixels = 128 }
+    return pixels
+}
+
+// X11's Xcursor expects premultiplied ARGB and SDL copies it unchanged there;
+// Wayland and other SDL drivers premultiply straight ARGB themselves.
+DesktopCursorPremultiplied :: () -> bool {
+    driver := GetCurrentVideoDriver()
+    return driver != null && TextFromCString(driver) == "x11"
+}
+
+DesktopCursorKey :: (entry: *DesktopCustomCursor, props: CursorProps) -> bool {
+    return CursorPropsSame(entry.props, CursorProps.{.width = props.width, .height = props.height,
+        .hotspot_x = props.hotspot_x, .hotspot_y = props.hotspot_y, .hidden = props.hidden,
+        .shape = props.shape}) && TextFromBytes(entry.path[:entry.length]) == props.asset_path
+}
+
+DesktopCursorRemember :: (entry: *DesktopCustomCursor, props: CursorProps) {
+    unused CopyCString(props.asset_path, entry.path[:])
+    entry.length = cast(s32)props.asset_path.count
+    entry.props = CursorProps.{.width = props.width, .height = props.height,
+        .hotspot_x = props.hotspot_x, .hotspot_y = props.hotspot_y, .hidden = props.hidden,
+        .shape = props.shape}
+}
+
+DesktopBitmapCursor :: (props: CursorProps) -> *void {
+    oldest: s32 = 0
+    for index: cast(s32)0..DESKTOP_CUSTOM_CURSORS - 1 {
+        entry := *desktop_custom[index]
+        if entry.cursor != null && DesktopCursorKey(entry, props) {
+            desktop_custom_clock += cast(u64)1
+            entry.used = desktop_custom_clock
+            return entry.cursor
+        }
+        if entry.cursor == null || (desktop_custom[oldest].cursor != null && entry.used < desktop_custom[oldest].used) {
+            oldest = index
+        }
+    }
+    width := DesktopCursorPixels(props.width)
+    height := DesktopCursorPixels(props.height)
+    hot_x := (props.hotspot_x * width + props.width / 2) / props.width
+    hot_y := (props.hotspot_y * height + props.height / 2) / props.height
+    if hot_x >= width { hot_x = width - 1 }
+    if hot_y >= height { hot_y = height - 1 }
+    pixels: [16384]u32
+    if !RasterCursor.CairoImagePixels(props.asset_path, width, height, pixels[:], DesktopCursorPremultiplied()) { return null }
+    surface := CursorSurface(cast(*u8)*pixels[0], width, height, 32,
+        width * 4, cast(u32)0xff0000, cast(u32)0xff00,
+        cast(u32)0xff, cast(u32)0xff000000)
+    if surface == null { return null }
+    next := CreateColorCursor(surface, hot_x, hot_y)
+    FreeSurface(surface)
+    if next == null { return null }
+    entry := *desktop_custom[oldest]
+    if entry.cursor != null {
+        // Never free the cursor SDL is showing; select the replacement first.
+        if entry.cursor == desktop_cursor_selected {
+            SetCursor(next)
+            desktop_cursor_selected = next
+        }
+        FreeCursor(entry.cursor)
+    }
+    entry.cursor = next
+    desktop_custom_clock += cast(u64)1
+    entry.used = desktop_custom_clock
+    DesktopCursorRemember(entry, props)
+    return next
+}
+
+DesktopSystemCursor :: (shape: s32) -> *void {
+    native: [11]s32 = .{0, 0, 1, 3, 11, 7, 8, 5, 6, 9, 10}
+    if shape < 0 || shape >= 11 { shape = 0 }
+    if desktop_cursors[shape] == null { desktop_cursors[shape] = CreateSystemCursor(native[shape]) }
+    return desktop_cursors[shape]
+}
+
+// Restores SDL's own cursor and visibility at teardown.
+DesktopCursorRelease :: () {
+    if desktop_cursor_selected != null || desktop_cursor_hidden {
+        SetCursor(GetDefaultCursor())
+        unused ShowCursor(1)
+    }
+    desktop_cursor_selected = null
+    desktop_cursor_hidden = false
+    desktop_cursor_applied_valid = false
+}
+
+// UI chooses the cursor; SDL applies it to this process's own window only.
+// The resolved request is compared every frame and applied only on change.
 #program_export
 DesktopCursor :: (session: Session) -> bool {
-    if window == null { return false }
-    shape := TreeCursor(session)
-    if shape == desktop_cursor_shape { return true }
-    native: [11]s32 = .{0, 0, 1, 3, 11, 7, 8, 5, 6, 9, 10}
-    if shape < 0 || shape >= 11 { return false }
-    if desktop_cursors[shape] == null {
-        desktop_cursors[shape] = CreateSystemCursor(native[shape])
-        if desktop_cursors[shape] == null { return false }
+    if window == null || !SessionValid(session) { return false }
+    props := CursorResolve(session, TreeCursor(session))
+    if desktop_cursor_applied_valid && DesktopCursorKey(*desktop_cursor_applied, props) {
+        return desktop_cursor_applied_loaded
     }
-    SetCursor(desktop_cursors[shape])
-    desktop_cursor_shape = shape
-    return true
+    loaded: bool = true
+    selected: *void
+    if !props.hidden {
+        if props.asset_path != "" {
+            selected = DesktopBitmapCursor(props)
+            loaded = selected != null
+        }
+        if selected == null { selected = DesktopSystemCursor(props.shape) }
+        if selected == null { return false }
+        if selected != desktop_cursor_selected {
+            SetCursor(selected)
+            desktop_cursor_selected = selected
+        }
+    }
+    if props.hidden != desktop_cursor_hidden {
+        unused ShowCursor(ifx props.hidden then 0 else 1)
+        desktop_cursor_hidden = props.hidden
+    }
+    DesktopCursorRemember(*desktop_cursor_applied, props)
+    desktop_cursor_applied_valid = true
+    desktop_cursor_applied_loaded = loaded
+    return loaded
 }
 
 // SDL_PIXELFORMAT_ARGB8888, which matches Cairo's image surface.
@@ -389,12 +548,16 @@ CloseDesktop :: () {
         if desktop_controllers[slot].handle != null { GameControllerClose(desktop_controllers[slot].handle) }
         desktop_controllers[slot] = .{}
     }
-    if desktop_cursor_shape >= 0 { SetCursor(null) }
+    DesktopCursorRelease()
+    for index: cast(s32)0..DESKTOP_CUSTOM_CURSORS - 1 {
+        if desktop_custom[index].cursor != null { FreeCursor(desktop_custom[index].cursor) }
+        desktop_custom[index] = .{}
+    }
+    desktop_cursor_scale = 0
     for index: 0..10 {
         if desktop_cursors[index] != null { FreeCursor(desktop_cursors[index]) }
         desktop_cursors[index] = null
     }
-    desktop_cursor_shape = -1
     Video.VideoStopHost()
     StopTextInput()
     CloseRaster()
@@ -528,6 +691,7 @@ PollDesktop :: () -> bool {
         // ending (SIGTERM, logout); it always quits.
         if event.kind == cast(u32)0x100 {
             FrameInputProviderReset(*desktop_frame_input)
+            DesktopCursorRelease()
             return false
         }
         // SDL_WINDOWEVENT_CLOSE; SDL_WindowEvent.event is the byte at
@@ -537,6 +701,7 @@ PollDesktop :: () -> bool {
         (event.which & cast(u32)255) == cast(u32)14 {
             if !desktop_intercept_close {
                 FrameInputProviderReset(*desktop_frame_input)
+                DesktopCursorRelease()
                 return false
             }
             desktop_close_requested = true
@@ -618,6 +783,7 @@ PollDesktop :: () -> bool {
     secondary.released = right_released
     if desktop_quit {
         FrameInputProviderReset(*desktop_frame_input)
+        DesktopCursorRelease()
         return false
     }
     raw: FrameInputSnapshot

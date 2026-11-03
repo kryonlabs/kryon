@@ -16,19 +16,217 @@
 #import "session"
 #import "frame_input_provider"
 #import "paint_queue"
+#import "cursor"
+#import "page_texture"
+#import "web"
+#import "number_text"
+#import "byte_text_linux"
 Metrics :: #import "font_metrics";
 
-canvas_cursor_shape: s32 = -1;
+// Bitmap cursors keep their CSS by request and density, so switching between
+// an application hand and a tool never re-encodes an image.
+CANVAS_CURSOR_IMAGES :: 4
+CanvasCursorImage :: struct {
+    css: s32
+    props: CursorProps
+    dpi: float64
+    used: u64
+    length: s32
+    path: [1024]u8
+}
+canvas_cursor_images: [CANVAS_CURSOR_IMAGES]CanvasCursorImage;
+canvas_cursor_clock: u64;
+// The resolved request the page shows. CSS changes only when it differs; an
+// image that is not available yet is retried a few frames later.
+canvas_cursor_applied: CanvasCursorImage;
+canvas_cursor_applied_valid: bool;
+canvas_cursor_failed: CanvasCursorImage;
+canvas_cursor_retry: s32;
 canvas_host_input: FrameInputProvider;
 canvas_input_started: s64;
 
+CanvasCursorSame :: (entry: *CanvasCursorImage, props: CursorProps, dpi: float64) -> bool {
+    return entry.dpi == dpi && CursorPropsSame(entry.props, CursorProps.{.width = props.width,
+        .height = props.height, .hotspot_x = props.hotspot_x, .hotspot_y = props.hotspot_y,
+        .hidden = props.hidden, .shape = props.shape}) && TextFromBytes(entry.path[:entry.length]) == props.asset_path
+}
+
+CanvasCursorRemember :: (entry: *CanvasCursorImage, props: CursorProps, dpi: float64) -> bool {
+    if props.asset_path.count >= 1024 || !CopyCString(props.asset_path, entry.path[:]) { return false }
+    entry.length = cast(s32)props.asset_path.count
+    entry.props = CursorProps.{.width = props.width, .height = props.height,
+        .hotspot_x = props.hotspot_x, .hotspot_y = props.hotspot_y, .hidden = props.hidden,
+        .shape = props.shape}
+    entry.dpi = dpi
+    return true
+}
+
+CanvasCursorPixels :: (logical: s32, dpi: float64) -> s32 {
+    pixels := cast(s32)(cast(float64)logical * dpi + 0.5)
+    if pixels < 1 { pixels = 1 }
+    if pixels > 128 { pixels = 128 }
+    return pixels
+}
+
+// A PNG data URL of the asset at WIDTH by HEIGHT device pixels, or 0.
+CanvasCursorImageUrl :: (source: s32, width: s32, height: s32) -> s32 {
+    // A regular canvas supplies toDataURL even on OffscreenCanvas hosts.
+    target := WebAsObject(WebCall1(PageDocument(), page_names.create_element, WebText("canvas")))
+    if target == 0 { return 0 }
+    WebSet(target, page_names.width, WebNumber(cast(float64)width))
+    WebSet(target, page_names.height, WebNumber(cast(float64)height))
+    context := PageContext2D(target)
+    if context == 0 { return 0 }
+    WebSet(context, WebName("imageSmoothingQuality"), WebText("high"))
+    args: [5]WebValue = .{WebObject(source), WebNumber(0.0), WebNumber(0.0),
+        WebNumber(cast(float64)width), WebNumber(cast(float64)height)}
+    unused WebCall(context, page_names.draw_image, *args[0], 5)
+    url := WebAsObject(WebCall0(target, WebName("toDataURL")))
+    if WebFailed() || WebStringLength(url) <= 0 { return 0 }
+    return url
+}
+
+CanvasCursorText :: (prefix: string, url: s32, suffix: string) -> WebValue {
+    start := WebAsObject(WebText(prefix))
+    middle := WebAsObject(WebCall1(start, WebName("concat"), WebObject(url)))
+    return WebCall1(middle, WebName("concat"), WebText(suffix))
+}
+
+CanvasCursorDensity :: (dpi: float64, buffer: []u8) -> string {
+    // Density in hundredths, such as 2x or 1.5x.
+    hundredths := cast(s64)(dpi * 100.0 + 0.5)
+    fraction := hundredths % 100
+    if fraction % 10 == 0 { fraction = fraction / 10 }
+    scratch: [24]u8
+    at: s32 = 0
+    for byte: FormatInteger(hundredths / 100, scratch[:]) { buffer[at] = byte; at += 1 }
+    if fraction != 0 {
+        buffer[at] = #char "."; at += 1
+        if hundredths % 100 < 10 { buffer[at] = #char "0"; at += 1 }
+        for byte: FormatInteger(fraction, scratch[:]) { buffer[at] = byte; at += 1 }
+    }
+    buffer[at] = #char "x"; at += 1
+    return TextFromBytes(buffer[:at])
+}
+
+// Kept CSS text for a bitmap request at DPI, or 0 when its image is missing.
+CanvasCursorCss :: (props: CursorProps, dpi: float64) -> s32 {
+    oldest: s32 = 0
+    for index: cast(s32)0..CANVAS_CURSOR_IMAGES - 1 {
+        entry := *canvas_cursor_images[index]
+        if entry.css != 0 && CanvasCursorSame(entry, props, dpi) {
+            canvas_cursor_clock += cast(u64)1
+            entry.used = canvas_cursor_clock
+            return entry.css
+        }
+        if entry.css == 0 || (canvas_cursor_images[oldest].css != 0 && entry.used < canvas_cursor_images[oldest].used) {
+            oldest = index
+        }
+    }
+    asset := CanvasAssetIndex(props.asset_path)
+    if asset < 0 { return 0 }
+    slot := PageTextureFind(cast(s32)canvas_assets[asset].texture.id)
+    if slot < 0 { return 0 }
+    scope := WebScope()
+    defer WebEnd(scope)
+    number: [24]u8
+    hotspot: [64]u8
+    at: s32 = 0
+    hotspot[at] = #char " "; at += 1
+    for byte: FormatInteger(cast(s64)props.hotspot_x, number[:]) { hotspot[at] = byte; at += 1 }
+    hotspot[at] = #char " "; at += 1
+    for byte: FormatInteger(cast(s64)props.hotspot_y, number[:]) { hotspot[at] = byte; at += 1 }
+    for byte: ", auto" { hotspot[at] = byte; at += 1 }
+    tail := TextFromBytes(hotspot[:at])
+    single := CanvasCursorImageUrl(page_textures[slot].canvas, props.width, props.height)
+    if single == 0 { return 0 }
+    suffix: [80]u8
+    close := "\")"
+    length: s32 = 0
+    for byte: close { suffix[length] = byte; length += 1 }
+    for byte: tail { suffix[length] = byte; length += 1 }
+    // The style keeps the last value the browser accepts: a 1x image, then the
+    // density-matched image-set where the browser supports it.
+    style := WebGetObject(WebAsObject(WebCall1(PageDocument(), page_names.create_element, WebText("div"))), page_names.style)
+    WebSet(style, page_names.cursor, CanvasCursorText("url(\"", single, TextFromBytes(suffix[:length])))
+    if dpi != 1.0 {
+        dense := CanvasCursorImageUrl(page_textures[slot].canvas,
+            CanvasCursorPixels(props.width, dpi), CanvasCursorPixels(props.height, dpi))
+        if dense != 0 {
+            density: [24]u8
+            set_suffix: [128]u8
+            count: s32 = 0
+            for byte: "\") " { set_suffix[count] = byte; count += 1 }
+            for byte: CanvasCursorDensity(dpi, density[:]) { set_suffix[count] = byte; count += 1 }
+            set_suffix[count] = #char ")"; count += 1
+            for byte: tail { set_suffix[count] = byte; count += 1 }
+            ending := TextFromBytes(set_suffix[:count])
+            WebSet(style, page_names.cursor, CanvasCursorText("image-set(url(\"", dense, ending))
+            accepted := WebAsObject(WebGet(style, page_names.cursor))
+            if accepted == 0 || !WebAsBool(WebCall1(accepted, WebName("includes"), WebText("image-set"))) {
+                WebSet(style, page_names.cursor, CanvasCursorText("-webkit-image-set(url(\"", dense, ending))
+            }
+        }
+    }
+    css := WebAsObject(WebGet(style, page_names.cursor))
+    if WebFailed() || css == 0 || WebStringLength(css) <= 0 { return 0 }
+    entry := *canvas_cursor_images[oldest]
+    if !CanvasCursorRemember(entry, props, dpi) { return 0 }
+    if entry.css != 0 { WebRelease(entry.css) }
+    entry.css = WebKeep(css)
+    canvas_cursor_clock += cast(u64)1
+    entry.used = canvas_cursor_clock
+    return entry.css
+}
+
+// Applies kept CSS to the app's canvas and its container, never the page body.
+CanvasCursorShow :: (css: s32) {
+    scope := WebScope()
+    PageCursorOverrideObject(css)
+    nodes: [2]s32 = .{page_canvas, 0}
+    if page_canvas != 0 { nodes[1] = WebGetObject(page_canvas, page_names.parent_element) }
+    for node: nodes {
+        if node == 0 { continue }
+        style := WebGetObject(node, page_names.style)
+        if style != 0 { WebSet(style, page_names.cursor, WebObject(css)) }
+    }
+    WebEnd(scope)
+}
+
+// UI chooses the cursor. The page's styles change only when the resolved
+// request or the device pixel ratio does.
 #program_export
 CanvasCursor :: (session: Session) {
-    shape := TreeCursor(session)
-    if shape != canvas_cursor_shape {
-        PageSetCursor(shape)
-        canvas_cursor_shape = shape
+    if !page_open { return }
+    props := CursorResolve(session, TreeCursor(session))
+    dpi := page_dpi
+    if canvas_cursor_applied_valid && CanvasCursorSame(*canvas_cursor_applied, props, dpi) { return }
+    if canvas_cursor_retry > 0 && CanvasCursorSame(*canvas_cursor_failed, props, dpi) {
+        canvas_cursor_retry -= 1
+        return
     }
+    shown := false
+    if props.hidden {
+        scope := WebScope()
+        css := WebAsObject(WebText("none"))
+        CanvasCursorShow(css)
+        WebEnd(scope)
+        shown = true
+    } else if props.asset_path != "" {
+        css := CanvasCursorCss(props, dpi)
+        if css != 0 { CanvasCursorShow(css); shown = true }
+    }
+    if !shown {
+        PageSetCursor(props.shape)
+        // Show the system shape now, then try the image again shortly.
+        if props.asset_path != "" {
+            canvas_cursor_retry = 30
+            unused CanvasCursorRemember(*canvas_cursor_failed, props, dpi)
+            canvas_cursor_applied_valid = false
+            return
+        }
+    }
+    canvas_cursor_applied_valid = CanvasCursorRemember(*canvas_cursor_applied, props, dpi)
 }
 
 #program_export
@@ -146,9 +344,15 @@ InvalidateCanvasAssetsUnder :: (prefix: string) {
 
 #program_export
 CloseCanvas :: () {
+    if canvas_cursor_applied_valid { PageSetCursor(0) }
     FrameInputProviderReset(*canvas_host_input)
     CanvasFrameReset()
-    canvas_cursor_shape = -1
+    canvas_cursor_applied_valid = false
+    canvas_cursor_retry = 0
+    for index: cast(s32)0..CANVAS_CURSOR_IMAGES - 1 {
+        if canvas_cursor_images[index].css != 0 { WebRelease(canvas_cursor_images[index].css) }
+        canvas_cursor_images[index] = .{}
+    }
     index: s32 = 0
     while index < canvas_assets_count {
         if canvas_assets[index].texture.id != cast(u32)0 {

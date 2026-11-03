@@ -480,6 +480,60 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
     Restore(paint)
 }
 
+// Render an asset into caller-owned ARGB pixels, premultiplied as Cairo keeps
+// them or straight. Scaling happens in premultiplied space, so transparent
+// edges never pick up colour from fully transparent pixels. The image cache
+// remains private to the raster host; no Cairo objects escape.
+#program_export
+CairoImagePixels :: (asset_path: string, width: s32, height: s32, pixels: []u32, premultiplied: bool) -> bool {
+    if width <= 0 || height <= 0 || width > 8192 || height > 8192 ||
+    cast(s64)width * cast(s64)height > pixels.count { return false }
+    image := LoadPNG(asset_path)
+    if image == null { return false }
+    source_width := ImageSurfaceWidth(image)
+    source_height := ImageSurfaceHeight(image)
+    if source_width <= 0 || source_height <= 0 { return false }
+    scaled := ImageSurfaceCreate(0, width, height)
+    if scaled == null { return false }
+    defer SurfaceDestroy(scaled)
+    if SurfaceStatus(scaled) != 0 { return false }
+    context := Create(scaled)
+    if context == null { return false }
+    Scale(context, cast(float64)width / cast(float64)source_width,
+        cast(float64)height / cast(float64)source_height)
+    pattern := PatternForSurface(image)
+    // GOOD box-filters large reductions without Lanczos ringing at outlines.
+    PatternFilter(pattern, 1)
+    SetSource(context, pattern)
+    Paint(context)
+    ok := Status(context) == 0
+    PatternDestroy(pattern)
+    Destroy(context)
+    if !ok { return false }
+    SurfaceFlush(scaled)
+    bytes := ImageSurfaceData(scaled)
+    for y: 0..height - 1 {
+        for x: 0..width - 1 {
+            pixel := (cast(*u32)(*bytes[y * ImageSurfaceStride(scaled) + x * 4])).*
+            alpha := pixel >> 24
+            if alpha == cast(u32)0 {
+                pixel = cast(u32)0
+            } else if !premultiplied && alpha < cast(u32)255 {
+                half := alpha / cast(u32)2
+                red := (((pixel >> 16) & cast(u32)255) * cast(u32)255 + half) / alpha
+                green := (((pixel >> 8) & cast(u32)255) * cast(u32)255 + half) / alpha
+                blue := ((pixel & cast(u32)255) * cast(u32)255 + half) / alpha
+                if red > cast(u32)255 { red = cast(u32)255 }
+                if green > cast(u32)255 { green = cast(u32)255 }
+                if blue > cast(u32)255 { blue = cast(u32)255 }
+                pixel = (alpha << 24) | (red << 16) | (green << 8) | blue
+            }
+            pixels[y * width + x] = pixel
+        }
+    }
+    return true
+}
+
 LoadPNG :: (asset_path: string) -> *void {
     if asset_path == Video.VideoAsset {
         if Video.width <= 0 || Video.height <= 0 { if video_surface != null { SurfaceDestroy(video_surface); video_surface = null }; return null }

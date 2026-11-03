@@ -1,6 +1,8 @@
 #import "widget_kind"
+#import "session"
 
 // The shape is a UI decision. The platform only applies the selected shape.
+// CursorSet selects an asset, system shape or visibility until changed.
 CursorShape :: enum {
     CursorDefault :: 0
     CursorArrow :: 1
@@ -97,4 +99,155 @@ CursorEndFrame :: (state: CursorFrame) -> CursorDecision {
     state.applied = state.requested
     decision.state = state
     return decision
+}
+
+// A deliberate UI request. Size and hotspot are logical units; each host
+// renders the image at its own pixel density. Asset paths never expose native
+// cursor handles.
+CursorProps :: struct {
+    asset_path: string
+    width: s32
+    height: s32
+    hotspot_x: s32
+    hotspot_y: s32
+    hidden: bool
+    shape: s32
+}
+
+CursorPropsValid :: (props: CursorProps) -> bool {
+    if props.shape < 0 || props.shape > 10 || props.asset_path.count > 4095 { return false }
+    for byte: props.asset_path { if byte == cast(u8)0 { return false } }
+    if props.asset_path.count == 0 {
+        return props.width == 0 && props.height == 0 && props.hotspot_x == 0 && props.hotspot_y == 0
+    }
+    return !props.hidden && props.width > 0 && props.width <= 128 &&
+    props.height > 0 && props.height <= 128 && props.hotspot_x >= 0 &&
+    props.hotspot_x < props.width && props.hotspot_y >= 0 && props.hotspot_y < props.height
+}
+
+// The empty request (no asset, no shape, not hidden) withdraws a request.
+CursorPropsEmpty :: (props: CursorProps) -> bool {
+    return props.asset_path.count == 0 && !props.hidden && props.shape == 0
+}
+
+CursorPropsSame :: (a: CursorProps, b: CursorProps) -> bool {
+    return a.width == b.width && a.height == b.height && a.hotspot_x == b.hotspot_x &&
+    a.hotspot_y == b.hotspot_y && a.hidden == b.hidden && a.shape == b.shape &&
+    a.asset_path == b.asset_path
+}
+
+// An application cursor replaces the pointer shapes. Text editing, crosshair
+// and resize shapes still tell the user what a drag or click there does.
+CursorReplacesShape :: (shape: s32) -> bool {
+    return shape == cast(s32)CursorDefault || shape == cast(s32)CursorArrow ||
+    shape == cast(s32)CursorClickable || shape == cast(s32)CursorDisabled
+}
+
+// A guest may request only a packed asset, before the host's own asset policy.
+CursorPackedPath :: (path: string) -> bool {
+    if path.count < 8 || path.count > 4095 || path[:7] != "assets/" { return false }
+    start: s32 = 0
+    for index: 0..cast(s32)path.count {
+        if index < path.count && (path[index] == cast(u8)0 || path[index] == #char "\\" || path[index] == #char ":") { return false }
+        if index == path.count || path[index] == #char "/" {
+            part := path[start:index]
+            if part == "" || part == "." || part == ".." { return false }
+            start = index + 1
+        }
+    }
+    return true
+}
+
+#if #defined(KRYON_HOSTED_UI) {
+    host_api :: #system_library "host_api";
+    CursorSetHostedHost :: (session: Session, asset_path: string, width: s32,
+        height: s32, hotspot_x: s32, hotspot_y: s32, hidden: bool, shape: s32) -> bool #foreign host_api;
+    #program_export
+    CursorSet :: (session: Session, props: CursorProps) -> bool {
+        if !CursorPropsValid(props) { return false }
+        return CursorSetHostedHost(session, props.asset_path, props.width,
+            props.height, props.hotspot_x, props.hotspot_y, props.hidden, props.shape)
+    }
+} else {
+    #import "std/byte_text_linux"
+    // Requests persist until the next deliberate change. Hosts compare the
+    // resolved cursor each frame and touch the platform only when it differs.
+    CursorStorage :: struct {
+        epoch: u64
+        requested: bool
+        props: CursorProps
+        length: s32
+        path: [4096]u8
+    }
+    // Slot zero is never a session; it holds the application default.
+    cursor_requests: [9]CursorStorage;
+
+    CursorStore :: (storage: *CursorStorage, props: CursorProps) {
+        if CursorPropsEmpty(props) { storage.requested = false; return }
+        for index: 0..cast(s32)props.asset_path.count - 1 {
+            storage.path[index] = props.asset_path[index]
+        }
+        storage.length = cast(s32)props.asset_path.count
+        storage.props = CursorProps.{.width = props.width, .height = props.height,
+            .hotspot_x = props.hotspot_x, .hotspot_y = props.hotspot_y,
+            .hidden = props.hidden, .shape = props.shape}
+        storage.requested = true
+    }
+    CursorStored :: (slot: s32) -> CursorProps {
+        if slot < 0 || slot >= 9 || !cursor_requests[slot].requested { return .{} }
+        result := cursor_requests[slot].props
+        result.asset_path = TextFromBytes(cursor_requests[slot].path[:cursor_requests[slot].length])
+        return result
+    }
+
+    CursorRequested :: (session: Session) -> bool {
+        slot := SessionIndex(session)
+        return slot != 0 && cursor_requests[slot].epoch == session.epoch && cursor_requests[slot].requested
+    }
+    // The session's own request, or the empty request when it has none.
+    CursorGet :: (session: Session) -> CursorProps {
+        if !CursorRequested(session) { return .{} }
+        return CursorStored(session.slot)
+    }
+    // Replaces this session's request until the next CursorSet; the empty
+    // request withdraws it. Repeating the same request changes nothing.
+    #program_export
+    CursorSet :: (session: Session, props: CursorProps) -> bool {
+        slot := SessionIndex(session)
+        if slot == 0 || !CursorPropsValid(props) { return false }
+        if cursor_requests[slot].epoch != session.epoch {
+            cursor_requests[slot] = .{.epoch = session.epoch}
+        }
+        CursorStore(*cursor_requests[slot], props)
+        return true
+    }
+    // The application cursor every session inherits while it has no request
+    // of its own. Hosts set it; hosted guests cannot.
+    #program_export
+    CursorSetDefault :: (props: CursorProps) -> bool {
+        if !CursorPropsValid(props) { return false }
+        CursorStore(*cursor_requests[0], props)
+        return true
+    }
+    CursorGetDefault :: () -> CursorProps { return CursorStored(0) }
+
+    // What a host shows for SESSION over a widget whose own shape is
+    // WIDGET_SHAPE (TreeCursor): its request, else the application cursor
+    // for pointer shapes, else the widget's system shape.
+    #program_export
+    CursorResolve :: (session: Session, widget_shape: s32) -> CursorProps {
+        if CursorRequested(session) { return CursorGet(session) }
+        if cursor_requests[0].requested && CursorReplacesShape(widget_shape) {
+            return CursorStored(0)
+        }
+        shape := widget_shape
+        if shape < 0 || shape > 10 { shape = cast(s32)CursorDefault }
+        return .{.shape = shape}
+    }
+
+    // A disposed session keeps no request.
+    CursorSessionEnd :: (session: Session) {
+        slot := SessionIndex(session)
+        if slot != 0 { cursor_requests[slot] = .{} }
+    }
 }

@@ -476,6 +476,61 @@ Use `loading_indicator` for small inline waits, with the same theme accent.
 
 ## Game touch controls
 
+Import `kryon/cursor` for `CursorSet(session, CursorProps) -> bool` and
+`CursorSetDefault(CursorProps) -> bool`. A request persists until the next
+deliberate change: repeating it every frame changes nothing, frames never clear
+it, and the empty request `.{}` withdraws it. `CursorSetDefault` sets the
+application cursor that every session inherits; it replaces the default, arrow,
+clickable and disabled widget shapes, while text, crosshair and resize shapes
+still show through. A session's own request wins over both. Requests copy their
+asset path; disposing or closing a session drops its request.
+
+```zi
+#import "kryon/cursor"
+// Once at startup: the whole application shows this hand.
+unused CursorSetDefault(CursorProps.{.asset_path = "assets/hand.webp",
+    .width = 32, .height = 32, .hotspot_x = 7, .hotspot_y = 1})
+// A deliberate tool state; .{} returns to the application cursor.
+unused CursorSet(session, CursorProps.{.asset_path = "assets/can.webp",
+    .width = 32, .height = 32, .hotspot_x = 4, .hotspot_y = 6})
+```
+
+`width`, `height` and the integer hotspot are logical units, each size 1–128,
+independent of the source image size and UI zoom; the hotspot is measured from
+the top left and must be inside. Hosts rasterize at their own pixel density
+(desktop `XCURSOR_SIZE`/24, web `devicePixelRatio`), so give a source at least
+two to four times the logical size. `asset_path` is at most 4095 bytes with no
+NUL. With no asset, use `shape` (the `CursorShape` values 0–10) or `hidden`;
+size and hotspot must then be zero. An asset and `hidden` together are invalid.
+Invalid requests return false and keep the last valid request. A missing or
+undecodable image falls back to the requested system shape; only an explicit
+hidden request hides the pointer. `CursorResolve(session, widget_shape)` returns
+what a host shows.
+
+The SDL/Cairo desktop host applies a real bitmap cursor scoped to its own
+windows, caches decoded cursors, and calls the system only when the resolved
+cursor changes, so switching between requests never flickers. X11 receives
+premultiplied pixels and other drivers straight alpha, so soft edges show no
+light fringe. It restores the system cursor on close. Canvas and DOM draw the
+image into a CSS cursor (a 1x image plus an `image-set` density entry) with the
+same hotspot on the canvas or root, and DOM widgets inherit it. Other hosts
+retain their system pointer; touch feedback is drawn by the application. These
+requests never move, lock, grab or warp a pointer.
+
+Portable hosted apps use `CursorSet` with `KRYON_HOSTED_UI` (the application
+cursor belongs to their host). Its only effect is `cursor.CursorSetHostedHost`; `WidgetHostCall` requires the active
+`WidgetHostBegin` session. Asset requests must name a normalized packed path
+under `assets/`, pass that instance's existing asset policy, and resolve through
+its existing asset resolver. The host copies the resolved path before returning;
+no guest image bytes, pointer or native cursor handle crosses this boundary.
+An unavailable resolution returns false. Hosts apply the resolved cursor after
+committing the frame with `DesktopCursor(session)` or `CanvasCursor(session)`;
+the standard loops already do this. Custom hosts must restore cursors before
+teardown.
+The generic desktop player extracts packed assets into a private directory under
+`TMPDIR` (an existing absolute directory), or the system default when unset,
+and removes that directory on normal exit.
+
 `kryon/joystick` provides `SwipeArea` (swipes and taps over a board) and
 its `secondary_tap` option reports a right click as a tap at that position.
 It is off by default. The same module provides

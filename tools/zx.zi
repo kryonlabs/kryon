@@ -23,6 +23,7 @@ using HostValueKind;
 libc :: #system_library "libc";
 ChangeDirectory :: (path: *u8) -> s32 #foreign libc "chdir";
 TemporaryDirectory :: (path: *u8) -> *u8 #foreign libc "mkdtemp";
+PlayerEnvironment :: (name: *u8) -> *u8 #foreign libc "getenv";
 RemoveDirectory :: (path: *u8) -> s32 #foreign libc "rmdir";
 PlayerReadlink :: (path: *u8, output: *u8, count: u64) -> s64 #foreign libc "readlink";
 Name :: struct { bytes: [128]u8 }
@@ -274,6 +275,22 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
 // Native image loaders then use their normal asset paths. Normal completion
 // removes the files and directories this instance created;
 // user data stays elsewhere.
+TemporaryAssets :: (storage: []u8) -> bool {
+    name: [8]u8
+    unused CopyCString("TMPDIR", name[:])
+    value := PlayerEnvironment(*name[0])
+    root := ifx value == null then "/tmp" else TextFromCString(value)
+    if root == "" { root = "/tmp" }
+    suffix := "/zx-XXXXXX"
+    length := root.count + suffix.count
+    if storage.count == 0 || length >= storage.count || root[0] != cast(u8)47 ||
+    !DirectoryExists(root) { return false }
+    for index: 0..cast(s32)root.count - 1 { storage[index] = root[index] }
+    for index: 0..cast(s32)suffix.count - 1 { storage[root.count + index] = suffix[index] }
+    storage[length] = cast(u8)0
+    return TemporaryDirectory(*storage[0]) != null
+}
+
 AssetPath :: (root: string, name: string, bytes: []u8) -> string {
     count := root.count + name.count + 1
     if count >= bytes.count { return "" }
@@ -387,10 +404,10 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
     }
     replacement := OpenBundle(*candidate.path[0])
     if replacement == null { return }
-    temporary: [64]u8
+    temporary: [4096]u8
     replacement_assets: string
     if BundleAssets(replacement) > cast(u64)0 {
-        if !CopyCString("/tmp/zx-XXXXXX", temporary[:]) || TemporaryDirectory(*temporary[0]) == null {
+        if !TemporaryAssets(temporary[:]) {
             CloseBundle(replacement)
             return
         }
@@ -495,11 +512,10 @@ main :: (argc: s32, argv: **u8) -> s32 {
             print("zx: hosted app release watching is not available yet\n")
             return 1
         }
-        resource_bytes: [64]u8
+        resource_bytes: [4096]u8
         resource_root: string
         if BundleAssets(bundle) > cast(u64)0 {
-            if !CopyCString("/tmp/zx-XXXXXX", resource_bytes[:]) ||
-            TemporaryDirectory(*resource_bytes[0]) == null {
+            if !TemporaryAssets(resource_bytes[:]) {
                 CloseBundle(bundle)
                 return 1
             }
@@ -570,11 +586,10 @@ main :: (argc: s32, argv: **u8) -> s32 {
         return 1
     }
     LimitBundleSteps(instance, 5000000)
-    temporary: [64]u8
+    temporary: [4096]u8
     assets_root: string = ""
     if BundleAssets(bundle) > cast(u64)0 {
-        ok = CopyCString("/tmp/zx-XXXXXX", temporary[:]) &&
-        TemporaryDirectory(*temporary[0]) != null
+        ok = TemporaryAssets(temporary[:])
         if ok {
             assets_root = TextFromCString(*temporary[0])
             ok = ExtractAssets(bundle, assets_root) && ChangeDirectory(*temporary[0]) == 0

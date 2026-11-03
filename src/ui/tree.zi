@@ -17,6 +17,7 @@
     #import "semantic"
     #import "session"
     #import "widget_kind"
+    #import "cursor"
     #import "widget_key"
     #import "vec"
 
@@ -1636,6 +1637,7 @@
     #program_export
     TreeDispose :: (session: Session) {
         if !SessionValid(session) { return }
+        CursorSessionEnd(session)
         slot: s32 = session.slot
         VecFree(trees[slot].committed)
         VecFree(trees[slot].submitted)

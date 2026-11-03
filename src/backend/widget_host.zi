@@ -64,6 +64,7 @@
 #import "media_audio"
 #import "media_audio_host"
 #import "media_audio_codec"
+#import "cursor"
 
 using HostValueKind;
 
@@ -168,7 +169,8 @@ widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
 WidgetHostSupports :: (module: string, function: string) -> bool {
-    return (ModuleName(module, "media_audio") && function == "MediaAudioHost") ||
+    return (ModuleName(module, "cursor") && function == "CursorSetHostedHost") ||
+    (ModuleName(module, "media_audio") && function == "MediaAudioHost") ||
     (ModuleName(module, "frame_snapshot") && function == "CaptureFrameInputHost") ||
     (ModuleName(module, "pointer_input") && function == "PollPointer") ||
     (ModuleName(module, "carousel") && function == "CarouselWheelHostedHost") ||
@@ -400,6 +402,31 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "CaptureFrameInputHost" && ModuleName(owner, "frame_snapshot") && count == 1 {
         result.* = WidgetEncodeFrameInputSnapshot(CaptureFrameInput(session), *widget_frame_input_codec)
+        return 1
+    }
+    if name == "CursorSetHostedHost" && ModuleName(owner, "cursor") && count == 8 {
+        if !HostScalarValid(arguments[1], "string", cast(s32)HostString) ||
+        !HostScalarValid(arguments[6], "bool", cast(s32)HostInteger) { return 0 }
+        for index: 2..7 {
+            if index == 6 { continue }
+            if !HostScalarValid(arguments[index], "s32", cast(s32)HostInteger) ||
+            arguments[index].integer < -2147483648 || arguments[index].integer > 2147483647 { return 0 }
+        }
+        if arguments[6].integer != 0 && arguments[6].integer != 1 { return 0 }
+        props := CursorProps.{.asset_path = HostValueText(arguments[1]),
+            .width = cast(s32)arguments[2].integer, .height = cast(s32)arguments[3].integer,
+            .hotspot_x = cast(s32)arguments[4].integer, .hotspot_y = cast(s32)arguments[5].integer,
+            .hidden = arguments[6].integer != 0, .shape = cast(s32)arguments[7].integer}
+        accepted := CursorPropsValid(props)
+        if accepted && props.asset_path != "" {
+            accepted = CursorPackedPath(props.asset_path)
+            if accepted {
+                props.asset_path = WidgetHostAssetPath(props.asset_path)
+                accepted = props.asset_path != "" && CursorPropsValid(props)
+            }
+        }
+        if accepted { accepted = CursorSet(session, props) }
+        result.* = HostScalar("bool", ifx accepted then 1 else 0)
         return 1
     }
     if name == "EndHostedHost" && ModuleName(owner, "tree") && count == 1 {
