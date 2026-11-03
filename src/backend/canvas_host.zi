@@ -1,3 +1,4 @@
+#import "gamepad_navigation"
 #import "c_string"
 #import "geometry"
 #import "drawing_props"
@@ -167,6 +168,7 @@ PollCanvas :: () -> bool {
         FrameInputProviderReset(*canvas_host_input)
         return false
     }
+    CanvasGamepadPoll()
     canvas_pointer.x = cast(float32)GetMouseX()
     canvas_pointer.y = cast(float32)GetMouseY()
     canvas_pointer.pressed = IsMouseButtonPressed(0)
@@ -191,6 +193,19 @@ PollCanvas :: () -> bool {
         if IsKeyPressed(key) { raw.keys[key] |= cast(u8)FrameKeyPressed }
         if IsKeyReleased(key) { raw.keys[key] |= cast(u8)FrameKeyReleased }
         if IsKeyPressedRepeat(key) { raw.keys[key] |= cast(u8)FrameKeyRepeated }
+    }
+    for button: cast(s32)0..15 {
+        key := GamepadNavigationKey(button)
+        if key == 0 { continue }
+        flags := GamepadNavigationFlags(canvas_gamepad_navigation, button)
+        keyboard := raw.keys[key]
+        raw.keys[key] |= flags
+        if ((keyboard & cast(u8)FrameKeyHeld) != cast(u8)0 &&
+            (flags & cast(u8)FrameKeyReleased) != cast(u8)0) ||
+        ((flags & cast(u8)FrameKeyHeld) != cast(u8)0 &&
+            (keyboard & cast(u8)FrameKeyReleased) != cast(u8)0) {
+            raw.keys[key] &= ~cast(u8)FrameKeyReleased
+        }
     }
     canvas_host_input.focus_lost = canvas_snapshot_focus_lost
     canvas_snapshot_focus_lost = false

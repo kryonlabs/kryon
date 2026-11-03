@@ -1,0 +1,68 @@
+#import "desktop_keys"
+#import "gamepad_navigation"
+#program_export
+main :: () -> s32 {
+    for button: cast(s32)-1..255 {
+        expected: s32
+        if button == 0 { expected = 257 }
+        if button == 1 { expected = 256 }
+        if button == 4 { expected = 290 }
+        if button == 6 { expected = 77 }
+        if button == 11 { expected = 265 }
+        if button == 12 { expected = 264 }
+        if button == 13 { expected = 263 }
+        if button == 14 { expected = 262 }
+        if DesktopGamepadKey(button) != expected { return 1 }
+    }
+    if DesktopGamepadKey(-2147483647) != 0 || DesktopGamepadKey(2147483647) != 0 { return 2 }
+    // The shared standard-Gamepad mapping and left-stick decisions are
+    // exercised in native C/Go and the portable VM as well.
+    for button: cast(s32)-1..255 {
+        expected: s32
+        if button == 0 { expected = 257 }
+        if button == 1 { expected = 256 }
+        if button == 8 { expected = 290 }
+        if button == 9 { expected = 77 }
+        if button == 12 { expected = 265 }
+        if button == 13 { expected = 264 }
+        if button == 14 { expected = 263 }
+        if button == 15 { expected = 262 }
+        if GamepadNavigationKey(button) != expected { return 3 }
+    }
+    if GamepadNavigationAxes(0.49, -0.49) != cast(u32)0 { return 4 }
+    if GamepadNavigationAxes(-0.9, 0.9) != cast(u32)0x6000 { return 5 }
+    state: GamepadNavigationState
+    masks: [4]u32
+    GamepadNavigationPoll(*state, masks, true)
+    masks[0] = cast(u32)1
+    GamepadNavigationPoll(*state, masks, true)
+    if GamepadNavigationTake(*state) != 257 || GamepadNavigationFlags(state, 0) != cast(u8)3 { return 6 }
+    GamepadNavigationPoll(*state, masks, true)
+    if GamepadNavigationTake(*state) != 0 || GamepadNavigationFlags(state, 0) != cast(u8)1 { return 7 }
+    masks[1] = cast(u32)1
+    GamepadNavigationPoll(*state, masks, true)
+    if GamepadNavigationTake(*state) != 257 { return 8 }
+    masks[0] = cast(u32)0
+    GamepadNavigationPoll(*state, masks, true)
+    if GamepadNavigationFlags(state, 0) != cast(u8)1 { return 9 }
+    masks[1] = cast(u32)0
+    GamepadNavigationPoll(*state, masks, true)
+    if GamepadNavigationFlags(state, 0) != cast(u8)4 { return 10 }
+    masks[0] = cast(u32)0x200
+    GamepadNavigationPoll(*state, masks, true)
+    GamepadNavigationBlur(*state)
+    if GamepadNavigationTake(*state) != 0 { return 11 }
+    GamepadNavigationPoll(*state, masks, true)
+    if GamepadNavigationTake(*state) != 0 { return 12 }
+    // Repeated disconnect/reconnect edges cannot grow the queue unboundedly.
+    for turn: cast(s32)0..39 {
+        masks[0] = cast(u32)0
+        GamepadNavigationPoll(*state, masks, true)
+        masks[0] = cast(u32)1
+        GamepadNavigationPoll(*state, masks, true)
+    }
+    if state.count != 32 { return 13 }
+    for at: cast(s32)0..31 { if GamepadNavigationTake(*state) != 257 { return 14 } }
+    if GamepadNavigationTake(*state) != 0 { return 15 }
+    return 0
+}

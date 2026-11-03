@@ -1,0 +1,125 @@
+#import "desktop_runtime"
+#import "desktop_keys"
+#import "frame_snapshot"
+#import "session"
+
+sdl :: #system_library "SDL2";
+TestInit :: (flags: u32) -> s32 #foreign sdl "SDL_Init";
+TestQuit :: () #foreign sdl "SDL_Quit";
+WindowID :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+Push :: (event: *Event) -> s32 #foreign sdl "SDL_PushEvent";
+DeviceInstance :: (index: s32) -> s32 #foreign sdl "SDL_JoystickGetDeviceInstanceID";
+Attach :: (kind: s32, axes: s32, buttons: s32, hats: s32) -> s32 #foreign sdl "SDL_JoystickAttachVirtual";
+Detach :: (index: s32) -> s32 #foreign sdl "SDL_JoystickDetachVirtual";
+Controller :: (instance: s32) -> *void #foreign sdl "SDL_GameControllerFromInstanceID";
+
+Focus :: (focused: bool, own: bool = true) -> bool {
+    event: Event
+    event.kind = cast(u32)0x200
+    event.window_id = WindowID(DesktopWindow())
+    if !own { event.window_id += cast(u32)1 }
+    event.which = ifx focused then cast(u32)12 else cast(u32)13
+    return Push(*event) == 1
+}
+Button :: (instance: s32, button: s32, down: bool) -> bool {
+    event: Event
+    event.kind = ifx down then cast(u32)0x651 else cast(u32)0x652
+    event.window_id = cast(u32)instance
+    event.which = cast(u32)button
+    return Push(*event) == 1
+}
+Keyboard :: (down: bool) -> bool {
+    event: Event
+    event.kind = ifx down then cast(u32)0x300 else cast(u32)0x301
+    event.window_id = WindowID(DesktopWindow())
+    event.x = 13
+    return Push(*event) == 1
+}
+Step :: (session: Session, key: s32 = 0, flags: u8 = cast(u8)0,
+    legacy: s32 = 0, focused: bool = true) -> bool {
+    if !PollDesktop() || !DesktopFrameInputBegin(session) { return false }
+    sample := CaptureFrameInput(session)
+    FrameInputEnd(session)
+    last := DesktopPressedKey()
+    next := DesktopNextKey()
+    after := DesktopNextKey()
+    valid := sample.available && sample.focused == focused && sample.keys[key] == flags &&
+        last == legacy && next == legacy && after == 0
+    if !valid {
+        print("key % flags % expected %, focus % expected %, queues %/%/% expected %/%/0\n",
+            key, sample.keys[key], flags, sample.focused, focused, last, next, after, legacy, legacy)
+    }
+    return valid
+}
+#program_export
+main :: () -> s32 {
+    // Virtual controllers are created inside this process, before and after
+    // the host opens. Only synthetic events go to this private SDL queue.
+    if TestInit(cast(u32)0x2000) != 0 { return 1 }
+    indices: [5]s32
+    instances: [5]s32
+    indices[0] = Attach(1, 0, 15, 0)
+    if indices[0] < 0 { TestQuit(); return 2 }
+    instances[0] = DeviceInstance(indices[0])
+    if !OpenDesktopSized(160, 120) { TestQuit(); return 3 }
+    defer { CloseDesktop() }
+    session := SessionOpen()
+    if Controller(instances[0]) == null { return 4 }
+    if !Focus(true) || !Step(session) { return 5 }
+    // Every navigation mapping reaches both legacy queues and snapshots.
+    buttons: [8]s32 = .{11, 12, 13, 14, 0, 1, 6, 4}
+    for at: cast(s32)0..7 {
+        button := buttons[at]
+        key := DesktopGamepadKey(button)
+        if !Button(instances[0], button, true) || !Step(session, key, cast(u8)3, key) { return 10 + at }
+        if !Button(instances[0], button, true) || !Step(session, key, cast(u8)1) { return 20 + at }
+        if !Button(instances[0], button, false) || !Step(session, key, cast(u8)4) { return 30 + at }
+        if !Step(session, key) { return 40 + at }
+    }
+    // A complete tap within one poll retains its press and release.
+    if !Button(instances[0], 0, true) || !Button(instances[0], 0, false) ||
+    !Step(session, 257, cast(u8)6, 257) { return 49 }
+    if !Button(instances[0], 2, true) || !Button(-1, 0, true) || !Step(session) { return 50 }
+    for at: cast(s32)1..4 {
+        indices[at] = Attach(1, 0, 15, 0)
+        if indices[at] < 0 { return 51 }
+        instances[at] = DeviceInstance(indices[at])
+    }
+    if !Step(session) { return 52 }
+    for at: cast(s32)0..3 { if Controller(instances[at]) == null { return 53 } }
+    if Controller(instances[4]) != null { return 54 }
+    if !Button(instances[4], 0, true) || !Step(session, 257) { return 55 }
+    // A duplicate device-added event cannot consume a second slot.
+    added: Event
+    added.kind = cast(u32)0x653
+    added.window_id = cast(u32)indices[0]
+    if Push(*added) != 1 || !Step(session) { return 56 }
+    // Two controllers and the keyboard may hold the same standard key.
+    if !Button(instances[0], 0, true) || !Step(session, 257, cast(u8)3, 257) { return 60 }
+    if !Button(instances[1], 0, true) || !Step(session, 257, cast(u8)3, 257) { return 61 }
+    if !Button(instances[0], 0, false) || !Step(session, 257, cast(u8)1) { return 62 }
+    if !Keyboard(true) || !Step(session, 257, cast(u8)3, 257) { return 63 }
+    if !Keyboard(false) || !Step(session, 257, cast(u8)1) { return 69 }
+    if !Keyboard(true) || !Step(session, 257, cast(u8)3, 257) { return 79 }
+    // Removing a held controller releases only its own source; the fifth
+    // virtual controller takes the freed slot, despite shifted device indices.
+    if Detach(indices[1]) != 0 || !Step(session, 257, cast(u8)1) { return 64 }
+    if Controller(instances[4]) == null { return 65 }
+    if !Keyboard(false) || !Step(session, 257, cast(u8)4) { return 66 }
+    if !Button(instances[4], 0, true) || !Step(session, 257, cast(u8)3, 257) { return 67 }
+    if Detach(indices[4] - 1) != 0 || !Step(session, 257, cast(u8)4) { return 68 }
+    // A foreign focus event has no effect. Losing own focus cancels queued
+    // activation and held state; background buttons cannot reach either API.
+    if !Focus(false, false) || !Button(instances[0], 11, true) || !Step(session, 265, cast(u8)3, 265) { return 70 }
+    if !Button(instances[0], 0, true) || !Focus(false) || !Step(session, 265, cast(u8)4, 0, false) { return 71 }
+    if !Button(instances[0], 6, true) || !Step(session, 77, cast(u8)0, 0, false) { return 72 }
+    if !Focus(true) || !Button(instances[0], 6, true) || !Step(session, 77, cast(u8)1) { return 73 }
+    if !Button(instances[0], 6, false) || !Step(session, 77, cast(u8)4) { return 74 }
+    if !Button(instances[0], 6, true) || !Step(session, 77, cast(u8)3, 77) { return 75 }
+    // Loss/regain in one poll also suppresses a controller activation.
+    if !Focus(false) || !Focus(true) || !Button(instances[0], 1, true) || !Step(session, 256, cast(u8)1) { return 76 }
+    CloseDesktop()
+    if DesktopPressedKey() != 0 || DesktopNextKey() != 0 || CaptureFrameInput(session).available { return 81 }
+    if !OpenDesktopSized(160, 120) || !Focus(true) || !Step(session) { return 80 }
+    return 0
+}

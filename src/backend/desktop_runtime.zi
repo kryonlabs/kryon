@@ -75,6 +75,66 @@ CreateSystemCursor :: (shape: s32) -> *void #foreign sdl_library "SDL_CreateSyst
 SetCursor :: (cursor: *void) #foreign sdl_library "SDL_SetCursor";
 FreeCursor :: (cursor: *void) #foreign sdl_library "SDL_FreeCursor";
 
+NumJoysticks :: () -> s32 #foreign sdl_library "SDL_NumJoysticks";
+IsGameController :: (index: s32) -> s32 #foreign sdl_library "SDL_IsGameController";
+GameControllerOpen :: (index: s32) -> *void #foreign sdl_library "SDL_GameControllerOpen";
+GameControllerClose :: (controller: *void) #foreign sdl_library "SDL_GameControllerClose";
+GameControllerJoystick :: (controller: *void) -> *void #foreign sdl_library "SDL_GameControllerGetJoystick";
+JoystickInstanceID :: (joystick: *void) -> s32 #foreign sdl_library "SDL_JoystickInstanceID";
+JoystickDeviceInstanceID :: (index: s32) -> s32 #foreign sdl_library "SDL_JoystickGetDeviceInstanceID";
+
+DesktopController :: struct {
+    handle: *void
+    instance: s32
+    buttons: u32
+}
+desktop_controllers: [4]DesktopController;
+desktop_gamepad_keys: [512]u8;
+
+DesktopControllerFind :: (instance: s32) -> s32 {
+    for slot: cast(s32)0..3 {
+        if desktop_controllers[slot].handle != null &&
+        desktop_controllers[slot].instance == instance { return slot }
+    }
+    return -1
+}
+DesktopControllerOpen :: (index: s32) {
+    if index < 0 || IsGameController(index) == 0 { return }
+    instance := JoystickDeviceInstanceID(index)
+    if instance < 0 || DesktopControllerFind(instance) >= 0 { return }
+    for slot: cast(s32)0..3 {
+        if desktop_controllers[slot].handle == null {
+            handle := GameControllerOpen(index)
+            if handle == null { return }
+            desktop_controllers[slot].handle = handle
+            desktop_controllers[slot].instance = JoystickInstanceID(GameControllerJoystick(handle))
+            desktop_controllers[slot].buttons = cast(u32)0
+            return
+        }
+    }
+}
+DesktopControllersScan :: () {
+    count := NumJoysticks()
+    for index: cast(s32)0..count - 1 { DesktopControllerOpen(index) }
+}
+DesktopControllerHeld :: (button: s32) -> bool {
+    for slot: cast(s32)0..3 {
+        if (desktop_controllers[slot].buttons & (cast(u32)1 << cast(u32)button)) != cast(u32)0 { return true }
+    }
+    return false
+}
+DesktopControllerRelease :: (slot: s32) {
+    desktop_controllers[slot].buttons = cast(u32)0
+    for button: cast(s32)0..14 {
+        key := DesktopGamepadKey(button)
+        if key != 0 && !DesktopControllerHeld(button) &&
+        (desktop_gamepad_keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0 {
+            desktop_gamepad_keys[key] &= cast(u8)(FrameKeyPressed | FrameKeyRepeated)
+            desktop_gamepad_keys[key] |= cast(u8)FrameKeyReleased
+        }
+    }
+}
+
 window: *void;
 #program_export
 DesktopWindow :: () -> *void { return window }
@@ -165,9 +225,10 @@ OpenDesktop :: () -> bool {
 OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
-    if Init(cast(u32)0x20) != 0 { return false }
+    if Init(cast(u32)0x2020) != 0 { return false }
     FrameInputProviderReset(*desktop_frame_input)
     desktop_raw_keys = .{}
+    desktop_gamepad_keys = .{}
     desktop_input_focused = false
     desktop_input_started = Timer.MonotonicMilliseconds()
     frame_frequency = PerformanceFrequency()
@@ -198,7 +259,9 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     desktop_first_frame = true
     desktop_first_frame_show = true
     StartTextInput()
-    return OpenRaster(width, height)
+    if !OpenRaster(width, height) { return false }
+    DesktopControllersScan()
+    return true
 }
 
 // The drawing area of the window, in pixels.
@@ -317,6 +380,15 @@ DesktopApplyResize :: () -> bool {
 CloseDesktop :: () {
     FrameInputProviderReset(*desktop_frame_input)
     desktop_raw_keys = .{}
+    desktop_gamepad_keys = .{}
+    desktop_input_focused = false
+    desktop_key = 0
+    desktop_keys = .{}
+    desktop_key_modifiers = -1
+    for slot: cast(s32)0..3 {
+        if desktop_controllers[slot].handle != null { GameControllerClose(desktop_controllers[slot].handle) }
+        desktop_controllers[slot] = .{}
+    }
     if desktop_cursor_shape >= 0 { SetCursor(null) }
     for index: 0..10 {
         if desktop_cursors[index] != null { FreeCursor(desktop_cursors[index]) }
@@ -350,6 +422,7 @@ PollDesktop :: () -> bool {
     FrameInputProviderEnd(*desktop_frame_input)
     if window == null { return false }
     for key: cast(s32)1..511 { desktop_raw_keys[key] &= cast(u8)FrameKeyHeld }
+    for key: cast(s32)1..511 { desktop_gamepad_keys[key] &= cast(u8)FrameKeyHeld }
     Clock.Begin(*frame_clock, PerformanceCounter(), frame_frequency)
     event: Event
     pressed: bool = false
@@ -382,6 +455,10 @@ PollDesktop :: () -> bool {
             if detail == cast(u32)13 {
                 desktop_input_focused = false
                 desktop_frame_input.focus_lost = true
+                desktop_key = 0
+                desktop_keys = .{}
+                desktop_key_modifiers = -1
+                for slot: cast(s32)0..3 { DesktopControllerRelease(slot) }
                 for key: cast(s32)1..511 {
                     held := (desktop_raw_keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0
                     desktop_raw_keys[key] = ifx held then cast(u8)FrameKeyReleased else cast(u8)0
@@ -391,6 +468,42 @@ PollDesktop :: () -> bool {
             if detail == cast(u32)1 || detail == cast(u32)3 ||
             detail == cast(u32)9 || detail == cast(u32)18 {
                 desktop_present_pending = true
+            }
+        }
+        // Controller events have no window ID: offset 8 is the device index
+        // for ADDED, instance ID otherwise; the button byte is at offset 12.
+        if event.kind == cast(u32)0x653 { DesktopControllerOpen(cast(s32)event.window_id) }
+        if event.kind == cast(u32)0x654 {
+            slot := DesktopControllerFind(cast(s32)event.window_id)
+            if slot >= 0 {
+                DesktopControllerRelease(slot)
+                GameControllerClose(desktop_controllers[slot].handle)
+                desktop_controllers[slot] = .{}
+                DesktopControllersScan()
+            }
+        }
+        if event.kind == cast(u32)0x651 || event.kind == cast(u32)0x652 {
+            slot := DesktopControllerFind(cast(s32)event.window_id)
+            button := cast(s32)(event.which & cast(u32)255)
+            code := DesktopGamepadKey(button)
+            if slot >= 0 && code != 0 && desktop_input_focused {
+                mask := cast(u32)1 << cast(u32)button
+                held := (desktop_controllers[slot].buttons & mask) != cast(u32)0
+                if event.kind == cast(u32)0x651 && !held {
+                    desktop_controllers[slot].buttons |= mask
+                    desktop_gamepad_keys[code] |= cast(u8)(FrameKeyHeld | FrameKeyPressed)
+                    if !desktop_frame_input.focus_lost && desktop_frame_input.sample.focused {
+                        desktop_key = code
+                        desktop_key_modifiers = 0
+                        unused DesktopKeyPush(*desktop_keys, code, 0)
+                    }
+                } else if event.kind == cast(u32)0x652 && held {
+                    desktop_controllers[slot].buttons &= ~mask
+                    if !DesktopControllerHeld(button) {
+                        desktop_gamepad_keys[code] &= cast(u8)FrameKeyPressed
+                        desktop_gamepad_keys[code] |= cast(u8)FrameKeyReleased
+                    }
+                }
             }
         }
         // SDL renderer resets have no window ID. They invalidate the texture
@@ -509,6 +622,16 @@ PollDesktop :: () -> bool {
     }
     raw: FrameInputSnapshot
     raw.keys = desktop_raw_keys
+    for key: cast(s32)1..511 {
+        raw.keys[key] |= desktop_gamepad_keys[key]
+        // Releasing one source must not release another held source.
+        if ((desktop_raw_keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0 &&
+            (desktop_gamepad_keys[key] & cast(u8)FrameKeyReleased) != cast(u8)0) ||
+        ((desktop_gamepad_keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0 &&
+            (desktop_raw_keys[key] & cast(u8)FrameKeyReleased) != cast(u8)0) {
+            raw.keys[key] &= ~cast(u8)FrameKeyReleased
+        }
+    }
     raw.focused = desktop_input_focused
     raw.pointer = pointer
     raw.secondary = secondary

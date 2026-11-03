@@ -299,7 +299,13 @@ test-shard-hosts:
 .PHONY: push-check
 push-check:
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
-		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test pixmap-gpu-test
+		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test pixmap-gpu-test gamepad-test
+.PHONY: gamepad-test
+gamepad-test:
+	python3 tests/desktop_gamepad_test.py
+	python3 tests/canvas_gamepad_test.py
+test: gamepad-test
+
 .PHONY: canvas-audio-engine-test
 canvas-audio-engine-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_audio_engine_zi_test.sh

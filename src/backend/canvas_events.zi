@@ -3,6 +3,7 @@
 // state, and what the page must do about each event is decided in this module.
 #import "byte_text_linux"
 #import "page_core"
+#import "gamepad_navigation"
 #if #defined(PLATFORM_WEB) {
     CanvasEventMouseMove :: 0
     CanvasEventMouseDown :: 1
@@ -109,6 +110,7 @@
     canvas_touch_count: s32;
     canvas_touch_pending: s32;
 
+    canvas_gamepad_navigation: GamepadNavigationState;
     canvas_focused: bool = true;
     canvas_snapshot_focus_lost: bool;
     canvas_cursor_hidden: bool;
@@ -166,7 +168,10 @@
     CanvasAppKeyTake :: () -> s32 {
         key := CanvasQueuePop(*canvas_pending_keys[0], *canvas_pending_keys_count)
         if key != 0 { return key }
-        return CanvasQueuePop(*canvas_pending_repeats[0], *canvas_pending_repeats_count)
+        key = CanvasQueuePop(*canvas_pending_repeats[0], *canvas_pending_repeats_count)
+        if key != 0 { return key }
+        if !canvas_focused || canvas_snapshot_focus_lost { return 0 }
+        return GamepadNavigationTake(*canvas_gamepad_navigation)
     }
 
     CanvasQueueDiscard :: (items: *s32, count: *s32, consumed: s32) {
@@ -409,6 +414,7 @@
             return 0
         }
         if kind == CanvasEventBlur {
+            GamepadNavigationBlur(*canvas_gamepad_navigation)
             canvas_pending_keys_count = 0
             canvas_pending_repeats_count = 0
             canvas_focused = false
@@ -440,6 +446,7 @@
 
     // Forget all earlier input.
     CanvasEventsReset :: () {
+        canvas_gamepad_navigation = .{}
         canvas_frame_input = CanvasFrameInput.{}
         index: s32 = 0
         while index < CANVAS_KEY_LIMIT {

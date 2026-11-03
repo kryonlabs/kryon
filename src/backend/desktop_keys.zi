@@ -1,3 +1,5 @@
+#import "gamepad_navigation"
+
 // SDL reports its own keycodes. Every Kryon host sends the same codes as the
 // canvas and raylib hosts: letters as uppercase ASCII and named keys
 // from 256 (Escape) upward, so an application reads keys the same way on any
@@ -38,6 +40,17 @@ DesktopKey :: (sdl: s32) -> s32 {
     if sdl == 0x400000E7 { return 347 }
     if sdl >= 97 && sdl <= 122 { return sdl - 32 }
     if sdl >= 32 && sdl < 127 { return sdl }
+    return 0
+}
+
+// SDL_GameControllerButton navigation uses the same codes as keyboard input.
+// Other buttons and axes retain no runtime UI policy.
+#program_export
+DesktopGamepadKey :: (button: s32) -> s32 {
+    if button == 0 || button == 1 { return GamepadNavigationKey(button) }
+    if button == 4 { return GamepadNavigationKey(8) }
+    if button == 6 { return GamepadNavigationKey(9) }
+    if button >= 11 && button <= 14 { return GamepadNavigationKey(button + 1) }
     return 0
 }
 

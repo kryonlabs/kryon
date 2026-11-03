@@ -1,3 +1,4 @@
+#import "gamepad_navigation"
 #import "canvas_types"
 #import "canvas_events"
 #import "c_string"
@@ -6,6 +7,25 @@
 #import "page_core"
 #import "page_input"
 #if #defined(PLATFORM_WEB) {
+
+    // Sample existing page gamepad APIs once per host poll. Their button
+    // IDs are raylib's; navigation uses standard Gamepad numbering internally.
+    CanvasGamepadPoll :: () {
+        buttons: [4]u32
+        logical: [8]s32 = .{0, 1, 9, 12, 13, 14, 15, 8}
+        native: [8]s32 = .{7, 6, 15, 1, 3, 4, 2, 13}
+        for pad: cast(s32)0..3 {
+            if PageGamepadQuery(pad, 0, 0) == 0 { continue }
+            for at: cast(s32)0..7 {
+                if PageGamepadQuery(pad, 2, native[at]) != 0 {
+                    buttons[pad] |= cast(u32)1 << cast(u32)logical[at]
+                }
+            }
+            buttons[pad] |= GamepadNavigationAxes(cast(float32)PageGamepadAxis(pad, 0),
+                cast(float32)PageGamepadAxis(pad, 1))
+        }
+        GamepadNavigationPoll(*canvas_gamepad_navigation, buttons, canvas_focused, canvas_snapshot_focus_lost)
+    }
 
     canvas_gamepad_names: [512]u8;
     canvas_gamepad_next: s32;

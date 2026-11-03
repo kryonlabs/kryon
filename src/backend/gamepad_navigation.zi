@@ -1,0 +1,80 @@
+// Standard Gamepad button numbering: A/B, Start, and D-pad. Platform
+// adapters translate their button IDs before sharing keyboard navigation.
+GamepadNavigationKey :: (button: s32) -> s32 {
+    if button == 0 { return 257 }
+    if button == 1 { return 256 }
+    if button == 8 { return 290 } // View/Select: host navigation (F1).
+    if button == 9 { return 77 }
+    if button == 12 { return 265 }
+    if button == 13 { return 264 }
+    if button == 14 { return 263 }
+    if button == 15 { return 262 }
+    return 0
+}
+
+GamepadNavigationAxes :: (x: float32, y: float32) -> u32 {
+    buttons: u32
+    if x <= -0.5 { buttons |= cast(u32)1 << 14 }
+    if x >= 0.5 { buttons |= cast(u32)1 << 15 }
+    if y <= -0.5 { buttons |= cast(u32)1 << 12 }
+    if y >= 0.5 { buttons |= cast(u32)1 << 13 }
+    return buttons
+}
+
+GamepadNavigationState :: struct {
+    buttons: [4]u32
+    held: u32
+    pressed: u32
+    released: u32
+    focused: bool
+    pending: [32]s32
+    count: s32
+}
+GamepadNavigationBlur :: (state: *GamepadNavigationState) {
+    state.focused = false
+    state.count = 0
+    state.held = cast(u32)0
+    state.pressed = cast(u32)0
+    state.released = cast(u32)0
+}
+GamepadNavigationPoll :: (state: *GamepadNavigationState, buttons: [4]u32,
+    focused: bool, focus_lost: bool = false) {
+    suppress := !focused || !state.focused || focus_lost
+    previous := state.held
+    state.held = cast(u32)0
+    state.pressed = cast(u32)0
+    if !focused || focus_lost { state.count = 0 }
+    for pad: cast(s32)0..3 {
+        now := buttons[pad] & cast(u32)0xF303
+        fresh := now & ~state.buttons[pad]
+        state.buttons[pad] = now
+        if focused { state.held |= now }
+        if !suppress {
+            state.pressed |= fresh
+            for button: cast(s32)0..15 {
+                if (fresh & (cast(u32)1 << cast(u32)button)) != cast(u32)0 && state.count < 32 {
+                    state.pending[state.count] = GamepadNavigationKey(button)
+                    state.count += 1
+                }
+            }
+        }
+    }
+    state.released = previous & ~state.held
+    state.focused = focused
+}
+GamepadNavigationFlags :: (state: GamepadNavigationState, button: s32) -> u8 {
+    if button < 0 || button > 15 { return cast(u8)0 }
+    mask := cast(u32)1 << cast(u32)button
+    flags: u8
+    if (state.held & mask) != cast(u32)0 { flags |= cast(u8)1 }
+    if (state.pressed & mask) != cast(u32)0 { flags |= cast(u8)2 }
+    if (state.released & mask) != cast(u32)0 { flags |= cast(u8)4 }
+    return flags
+}
+GamepadNavigationTake :: (state: *GamepadNavigationState) -> s32 {
+    if !state.focused || state.count == 0 { return 0 }
+    key := state.pending[0]
+    state.count -= 1
+    for at: cast(s32)0..state.count - 1 { state.pending[at] = state.pending[at + 1] }
+    return key
+}

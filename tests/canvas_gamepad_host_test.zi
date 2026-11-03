@@ -1,0 +1,20 @@
+// Link the real Canvas host entry and its existing standard-key delegate.
+// Page gamepad sampling is covered independently by canvas_gamepad_test.
+#import "canvas_host"
+#import "canvas_events"
+#import "gamepad_navigation"
+
+#program_export
+main :: () -> s32 {
+    CanvasEventsReset()
+    buttons: [4]u32
+    GamepadNavigationPoll(*canvas_gamepad_navigation, buttons, true)
+    buttons[0] = cast(u32)1
+    GamepadNavigationPoll(*canvas_gamepad_navigation, buttons, true)
+    if CanvasPressedKey() != 257 || CanvasPressedKey() != 0 { return 1 }
+    GamepadNavigationPoll(*canvas_gamepad_navigation, buttons, true)
+    if CanvasPressedKey() != 0 { return 2 }
+    GamepadNavigationBlur(*canvas_gamepad_navigation)
+    if CanvasPressedKey() != 0 { return 3 }
+    return 0
+}

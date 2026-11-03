@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Support desktop and web gamepads for game navigation, including View/Select host navigation, and expose modal titles to accessibility.
+
 - Custom Linux x86_64 hosts can try an opt-in SDL3 GPU renderer, using a pinned
   SDL3 source package without installing SDL3 globally.
 
