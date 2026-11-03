@@ -4,11 +4,11 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGER GDK_DISPLAY LISTEN_PID LISTEN_FDS LISTEN_FDNAMES NOTIFY_SOCKET
 export YUE_DESKTOP_RECOVERY=0 WINEDEBUG=-all
-work="$repo/work/windows-app-files"
-git -C "$repo" check-ignore -q work/windows-app-files/probe
-mkdir -p "$work/home" "$work/config" "$work/data" "$work/cache" "$work/runtime"
+work="$repo/build/scratch/windows-app-files"
+git -C "$repo" check-ignore -q build/scratch/windows-app-files/probe
+mkdir -p "$work/home" "$work/config" "$work/data" "$work/cache" "$work/runtime" "$work/tmp"
 chmod 700 "$work/runtime"
-export HOME="$work/home" XDG_CONFIG_HOME="$work/config" XDG_DATA_HOME="$work/data" XDG_CACHE_HOME="$work/cache" XDG_RUNTIME_DIR="$work/runtime" WINEPREFIX="$work/prefix"
+export TMPDIR="$work/tmp" XDG_CONFIG_HOME="$work/config" XDG_DATA_HOME="$work/data" XDG_CACHE_HOME="$work/cache" XDG_RUNTIME_DIR="$work/runtime" WINEPREFIX="$work/prefix"
 # Ubuntu's Wine 10 keeps wineserver beside the multiarch loader, without
 # installing a wineserver command on PATH. Use that same server for bootstrap
 # and cleanup; never fall back to the owner's default prefix.
@@ -27,11 +27,38 @@ fi
     exit 1
 }
 export WINESERVER
+# Nix splits mcfgthread's headers and static runtime. Its GCC wrapper propagates
+# the dev output but does not add the runtime to standalone link searches.
+# Follow only this compiler's declared inputs, never arbitrary store versions.
+windows_cc=${WINDOWS_CC:-x86_64-w64-mingw32-gcc}
+set --
+if [ "$("$windows_cc" -print-file-name=libmcfgthread.a)" = libmcfgthread.a ]; then
+    cc_root=$(dirname "$(dirname "$(readlink -f "$(command -v "$windows_cc")")")")
+    inputs="$cc_root/nix-support/propagated-target-target-deps"
+    if [ -f "$inputs" ]; then
+        for input in $(cat "$inputs"); do
+            runtimes="$input/nix-support/propagated-build-inputs"
+            for runtime in "$input" $(cat "$runtimes" 2>/dev/null || :); do
+                if [ -f "$runtime/lib/libmcfgthread.a" ]; then
+                    set -- "-L$runtime/lib"
+                    break
+                fi
+            done
+            [ "$#" -eq 0 ] || break
+        done
+    fi
+fi
 "$ziran" build --target=c --no-main --define _WIN32 --define __x86_64__ --root "$repo/tests" \
     --module-path "$repo/src/backend" -o "$work/c" "$repo/tests/app_files_windows_test.zi"
-"${WINDOWS_CC:-x86_64-w64-mingw32-gcc}" -O2 -std=c11 -ffunction-sections -fdata-sections \
+"$windows_cc" "$@" -O2 -std=c11 -ffunction-sections -fdata-sections \
     -I"$work/c" -I"$ziran_root/include" "$work"/c/*.c -Wl,--gc-sections -static -static-libgcc -o "$work/run.exe"
-xvfb-run -a -n 400 -s '-screen 0 1280x1000x24' sh -eu -c '
+# Debian Wine 10's temporary-directory.patch frees secure_getenv("TMPDIR")
+# when /run/user/$uid is absent (Debian #1110936). Unset it only for Wine,
+# including wineserver cleanup; Xvfb and compilation keep our private tmpdir.
+# The package fix is to duplicate TMPDIR before freeing it in server_tmpdir().
+xvfb-run -a -n 400 -s '-screen 0 1280x1000x24' env -u TMPDIR HOME="$work/home" sh -eu -c '
+    unset WINEARCH WINELOADER WINEDLLPATH WINEDLLOVERRIDES WINELOADERNOEXEC
+    export WINEARCH=win64
     cleanup() {
         result=$?
         trap - EXIT HUP INT TERM
