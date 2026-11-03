@@ -169,7 +169,6 @@ CursorPackedPath :: (path: string) -> bool {
             props.height, props.hotspot_x, props.hotspot_y, props.hidden, props.shape)
     }
 } else {
-    #import "std/byte_text_linux"
     // Requests persist until the next deliberate change. Hosts compare the
     // resolved cursor each frame and touch the platform only when it differs.
     CursorStorage :: struct {
@@ -196,7 +195,7 @@ CursorPackedPath :: (path: string) -> bool {
     CursorStored :: (slot: s32) -> CursorProps {
         if slot < 0 || slot >= 9 || !cursor_requests[slot].requested { return .{} }
         result := cursor_requests[slot].props
-        result.asset_path = TextFromBytes(cursor_requests[slot].path[:cursor_requests[slot].length])
+        result.asset_path = TextView(cursor_requests[slot].path[:cursor_requests[slot].length])
         return result
     }
 
