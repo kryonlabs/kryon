@@ -62,7 +62,7 @@ def main():
                  '-sASYNCIFY', '-sSINGLE_FILE=1', '-sEXIT_RUNTIME=1', '-sENVIRONMENT=web',
                  '--shell-file', shell, '-o', gen / 'test.html'])
             shutil.rmtree(WORK / 'browser-profile', ignore_errors=True)
-            run([os.environ.get('JS_RUNTIME', 'bun'), ROOT / 'tests/canvas_backend_browser.mjs', (gen / 'test.html').as_uri(),
+        run([os.environ.get('JS_RUNTIME', 'node'), ROOT / 'tests/canvas_backend_browser.mjs', (gen / 'test.html').as_uri(),
                  WORK / 'browser-profile'], timeout=40)
     print(args.platform + ': actual frame snapshot, legacy queues, hosted guard and cleanup passed')
 
