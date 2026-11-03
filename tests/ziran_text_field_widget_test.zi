@@ -8,6 +8,7 @@
 #import "semantic"
 #import "text_field_widget"
 #import "text_input"
+#import "key_input"
 #import "text_input_props"
 #import "tree"
 #import "tree_draw"
@@ -495,6 +496,8 @@ main :: () -> s32 {
     unused SessionClose(clear_session)
     owned := OwnedField()
     if owned != 0 { return 60 + owned }
+    password := PasswordKeyboard()
+    if password != 0 { return 80 + password }
     placed := PlacedField()
     if placed != 0 { return 50 + placed }
     return 0
@@ -545,6 +548,63 @@ OwnedField :: () -> s32 {
     edited = TextField(session, TextFieldStateProps(state, props))
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 5 }
     if !TextFieldStateApplyResult(*state, edited) || state.focused { return 6 }
+    unused SessionClose(session)
+    return 0
+}
+
+// Exercise the public key decoder, retained widget and caller-owned state
+// together. Secure fields keep byte selection for editing without publishing
+// their contents to paint, semantics or the clipboard.
+PasswordKeyboard :: () -> s32 {
+    session := SessionOpen()
+    bytes: [32]u8
+    state := TextFieldState.{.bytes = bytes[:], .focused = true}
+    if !TextFieldStateApplyEdit(*state, TextFieldEdit.{.changed = true,
+        .replacement = "Aé🔑z"}) { return 1 }
+    props: TextFieldProps = .{.key = 992, .bounds = .{20.0, 20.0, 220.0, 36.0},
+        .label = "Secret", .secure = true, .display_value = "••••"}
+    step: s32 = 0
+    while step < 14 {
+        props.input = TextFieldInput.{}
+        if step == 0 { props.input.focus = true }
+        if step == 1 || step == 4 || step == 9 || step == 12 {
+            // A host may supply typed text along with the shortcut. It must
+            // not replace the selected password with the letter a.
+            props.input = TextFieldInputFor(65, KeyModifierControl, "a")
+        }
+        if step == 2 { props.input = TextFieldInputFor(67, KeyModifierControl, "c") }
+        if step == 3 { props.input = TextFieldInputFor(88, KeyModifierControl, "x") }
+        if step == 5 { props.input = TextFieldInputFor(0, 0, "é") }
+        if step == 6 { props.input = TextFieldInputFor(KeyLeft, KeyModifierShift, "") }
+        if step == 7 { props.input = TextFieldInputFor(KeyDelete, 0, "") }
+        if step == 8 || step == 11 { props.input = TextFieldInputFor(0, 0, "abc") }
+        if step == 10 { props.input = TextFieldInputFor(KeyBackspace, 0, "") }
+        if step == 13 { props.input = TextFieldInputFor(KeyDelete, 0, "") }
+        BeginFrame(session, 1, .{0.0, 0.0, 300.0, 100.0})
+        result := TextField(session, TextFieldStateProps(state, props))
+        if result.clipboard_write || result.clipboard_text != "" { return 3 }
+        if step == 1 || step == 2 || step == 3 || step == 4 {
+            if result.cursor != 8 || result.anchor != 0 || result.edit.changed { return 4 }
+        }
+        if (step == 9 || step == 12) && (result.cursor != 3 || result.anchor != 0 ||
+            result.edit.changed) { return 13 }
+        if step == 5 && (!result.edit.changed || result.edit.start != 0 ||
+            result.edit.end != 8 || result.edit.replacement != "é") { return 5 }
+        if step == 6 && (result.cursor != 0 || result.anchor != 2) { return 6 }
+        if (step == 7 || step == 10 || step == 13) && (!result.edit.changed ||
+            result.edit.start != 0 || result.edit.end != state.length) { return 7 }
+        for index: cast(s32)0..PendingPaintCount(session) - 1 {
+            paint := PendingPaintAt(session, index)
+            if paint.value == "Aé🔑z" || paint.value == "é" || paint.value == "abc" { return 10 }
+        }
+        if EndFrame(session) != cast(FrameStatus)FrameOk { return 2 }
+        if !TreeNodeAt(session, result.node).secure { return 8 }
+        hidden: [32]u8
+        if TreeTextRange(session, result.node, 0, state.length, hidden[:]) != "" { return 9 }
+        if !TextFieldStateApplyResult(*state, result) { return 11 }
+        if (step == 7 || step == 10 || step == 13) && state.length != 0 { return 12 }
+        step += 1
+    }
     unused SessionClose(session)
     return 0
 }
