@@ -232,6 +232,8 @@
         circle_hit: bool
         captures_drag: bool
         focus_id: s32
+        // A CursorShape the widget chose over its kind's own; 0 for none.
+        cursor: s32
     }
 
     // State a widget keeps on its own node from one frame to the next, such
@@ -284,6 +286,7 @@
         circle_hit: bool
         captures_drag: bool
         focus_id: s32
+        cursor: s32
     }
 
     LayoutInfo :: struct {
@@ -676,6 +679,7 @@
             input.circle_hit = interaction.circle_hit
             input.captures_drag = interaction.captures_drag
             input.focus_id = interaction.focus_id
+            input.cursor = interaction.cursor
         }
         return input
     }
@@ -780,6 +784,7 @@
         trees[slot].submitted_modal_layer = 0
         trees[slot].scope_depth = 0
         trees[slot].building = true
+        CursorHoverFrameStart(session)
         trees[slot].error = cast(FrameStatus)FrameOk
         trees[slot].error_key = cast(u64)0
         trees[slot].error_kind = 0
@@ -1186,6 +1191,7 @@
         trees[slot].committed_count = trees[slot].submitted_count
         trees[slot].committed_modal_layer = trees[slot].submitted_modal_layer
         trees[slot].next_identity_generation = trees[slot].staged_identity_generation
+        CursorHoverFrameCommit(session)
         return true
     }
 
@@ -1582,6 +1588,19 @@
         interaction: s32 = trees[slot].submitted[index].interaction_index
         if interaction < 0 { return }
         trees[slot].submitted_interactions[interaction].captures_drag = captures_drag
+    }
+
+    // The cursor shape over an interactive node instead of its kind's own;
+    // 0 or an invalid shape restores the kind's shape.
+    #program_export
+    TreeSetCursor :: (session: Session, index: s32, shape: s32) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 ||
+        index >= trees[slot].submitted_count { return }
+        interaction: s32 = trees[slot].submitted[index].interaction_index
+        if interaction < 0 { return }
+        if shape < 0 || shape > 10 { shape = 0 }
+        trees[slot].submitted_interactions[interaction].cursor = shape
     }
 
     #program_export

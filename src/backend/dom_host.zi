@@ -387,11 +387,17 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
         if widget_kind == 21 { DomStyle(style, WebName("display"), "flex") }
         if widget_kind == 23 { DomStyle(style, WebName("display"), "grid") }
     }
+    // A widget's own cursor (PressProps.cursor) replaces its kind's shape.
+    node_cursor: s32 = 0
+    if (flags & 2) == 0 { node_cursor = TreeInputAt(dom_session, index).cursor }
+    widget_shape: s32 = CursorShapeForWidget(cast(WidgetKind)widget_kind, (flags & 2) != 0)
+    if node_cursor > 0 { widget_shape = node_cursor }
     inherit_cursor := PageCursorOverrideValue() != 0 && (CursorRequested(dom_session) ||
-        CursorReplacesShape(CursorShapeForWidget(cast(WidgetKind)widget_kind, (flags & 2) != 0)))
+        CursorReplacesShape(widget_shape))
     if (flags & 1) != 0 || dom_document_layout {
         DomStyle(style, dom_names.pointer_events, "auto")
         if inherit_cursor { DomStyle(style, dom_names.cursor, "inherit") }
+        else if node_cursor > 0 { DomStyle(style, dom_names.cursor, PageCursorName(node_cursor)) }
         else if (flags & 1) != 0 { DomStyle(style, dom_names.cursor, "pointer") }
         else { DomStyle(style, dom_names.cursor, "default") }
     } else {

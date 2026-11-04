@@ -348,15 +348,27 @@ TreeHitAt :: (session: Session, x: float32, y: float32,
 
 // Cursor eligibility uses the same clipping, overlay and hit order as input.
 // Disabled controls still own their hit area, even though they cannot activate.
+// Where no widget has a shape, the committed frame's CursorHover mark from
+// the app's own hit test applies.
 #program_export
 TreeCursor :: (session: Session) -> s32 {
     if !SessionValid(session) { return cast(s32)CursorShape.CursorDefault }
     pointer := PointerSample(session)
     hit := TreeHitAt(session, pointer.x, pointer.y, true)
-    if hit < 0 { return cast(s32)CursorShape.CursorDefault }
-    node := TreeInputAt(session, hit)
-    return CursorShapeForWidget(cast(WidgetKind)node.kind,
-        node.disabled || node.loading)
+    shape := cast(s32)CursorShape.CursorDefault
+    if hit >= 0 {
+        node := TreeInputAt(session, hit)
+        shape = CursorShapeForWidget(cast(WidgetKind)node.kind,
+            node.disabled || node.loading)
+        if node.cursor > 0 && !node.disabled && !node.loading { shape = node.cursor }
+    }
+    // The app's own hover mark shows over empty space and over a disabled
+    // widget it covers, such as a bubble that takes a tap anywhere.
+    if shape == cast(s32)CursorShape.CursorDefault || shape == cast(s32)CursorShape.CursorDisabled {
+        hovered := CursorHovered(session)
+        if hovered != cast(s32)CursorShape.CursorDefault { return hovered }
+    }
+    return shape
 }
 
 // A scroll viewport, or a widget that scrolls content it has out of view.

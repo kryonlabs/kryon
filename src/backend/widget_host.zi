@@ -169,7 +169,8 @@ widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 // The widget calls WidgetHostCall answers, for checking a bundle's
 // capabilities before it runs.
 WidgetHostSupports :: (module: string, function: string) -> bool {
-    return (ModuleName(module, "cursor") && function == "CursorSetHostedHost") ||
+    return (ModuleName(module, "cursor") && (function == "CursorSetHostedHost" ||
+        function == "CursorHoverHostedHost")) ||
     (ModuleName(module, "media_audio") && function == "MediaAudioHost") ||
     (ModuleName(module, "frame_snapshot") && function == "CaptureFrameInputHost") ||
     (ModuleName(module, "pointer_input") && function == "PollPointer") ||
@@ -426,6 +427,13 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             }
         }
         if accepted { accepted = CursorSet(session, props) }
+        result.* = HostScalar("bool", ifx accepted then 1 else 0)
+        return 1
+    }
+    if name == "CursorHoverHostedHost" && ModuleName(owner, "cursor") && count == 2 {
+        if !HostScalarValid(arguments[1], "s32", cast(s32)HostInteger) ||
+        arguments[1].integer < -2147483648 || arguments[1].integer > 2147483647 { return 0 }
+        accepted := CursorHover(session, cast(s32)arguments[1].integer)
         result.* = HostScalar("bool", ifx accepted then 1 else 0)
         return 1
     }

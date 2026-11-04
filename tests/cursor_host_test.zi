@@ -74,6 +74,22 @@ main :: () -> s32 {
     empty[4] = HostScalar("s32", 0); empty[5] = HostScalar("s32", 0)
     if WidgetHostCall(null, module, function, *empty[0], 8, *answer) != 1 || answer.integer != 1 ||
     CursorRequested(session) { return 13 }
+    // A guest's hover mark reaches only its own session's building frame.
+    hover := HostTextData("CursorHoverHostedHost")
+    marks: [2]HostValue
+    marks[0] = WidgetEncodeSession(session, *codec)
+    marks[1] = HostScalar("s32", 4)
+    TreeStart(session, cast(u64)1, .{0.0,0.0,100.0,100.0})
+    if WidgetHostCall(null, module, hover, *marks[0], 2, *answer) != 1 || answer.integer != 1 { return 15 }
+    marks[1] = HostScalar("s32", 11)
+    if WidgetHostCall(null, module, hover, *marks[0], 2, *answer) != 1 || answer.integer != 0 { return 16 }
+    marks[1] = HostScalar("s32", 4294967300)
+    if WidgetHostCall(null, module, hover, *marks[0], 2, *answer) != 0 { return 17 }
+    marks[0] = WidgetEncodeSession(foreign_session, *codec); marks[1] = HostScalar("s32", 4)
+    if WidgetHostCall(null, module, hover, *marks[0], 2, *answer) != 0 { return 18 }
+    if !TreeFinish(session) || CursorHovered(session) != 4 || CursorHovered(foreign_session) != 0 { return 19 }
     WidgetHostEnd()
+    marks[0] = WidgetEncodeSession(session, *codec)
+    if WidgetHostCall(null, module, hover, *marks[0], 2, *answer) != 0 { return 20 }
     return 0
 }

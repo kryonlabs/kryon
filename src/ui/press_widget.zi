@@ -101,6 +101,7 @@ Press :: (session: Session, props: PressProps) -> PressResult {
         result.node = TreeSubmitCurrent(session, key, WidgetKindButton, props.bounds)
         if result.node < 0 { return result }
         TreeSetInteractive(session, result.node, props.disabled, false, props.id)
+        TreeSetCursor(session, result.node, props.cursor)
         TreeSetDragCapture(session, result.node, props.capture)
         TreeSetLabel(session, result.node, props.label)
         TreeSetWidgetState(session, result.node, state)

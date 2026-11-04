@@ -476,21 +476,42 @@ Use `loading_indicator` for small inline waits, with the same theme accent.
 
 ## Game touch controls
 
-Import `kryon/cursor` for `CursorSet(session, CursorProps) -> bool` and
-`CursorSetDefault(CursorProps) -> bool`. A request persists until the next
+Import `kryon/cursor` for `CursorSet(session, CursorProps) -> bool`,
+`CursorSetDefault(CursorProps) -> bool`, `CursorSetPointing(CursorProps) -> bool`
+and `CursorHover(session, shape) -> bool`. A request persists until the next
 deliberate change: repeating it every frame changes nothing, frames never clear
 it, and the empty request `.{}` withdraws it. `CursorSetDefault` sets the
 application cursor that every session inherits; it replaces the default, arrow,
 clickable and disabled widget shapes, while text, crosshair and resize shapes
-still show through. A session's own request wins over both. Requests copy their
-asset path; disposing or closing a session drops its request.
+still show through. `CursorSetPointing` sets the application's pointing cursor,
+shown instead only where a click does something: over clickable widgets and
+over targets the app marks with `CursorHover`. Without one, clickable shows the
+application cursor. A session's own request wins over all of them. Requests
+copy their asset path; disposing or closing a session drops its request.
+
+A target the app draws and hit-tests itself (a painted hotspot, a field)
+reports the shape under the pointer with `CursorHover(session, shape)` while it
+builds the frame, from the same test that decides its clicks. A frame keeps its
+highest-priority mark, and its commit replaces the previous frame's, so the
+cursor changes only when the hovered target does; a retained, cancelled or
+failed frame keeps the committed mark, and a frame without one shows the
+default. A widget with its own shape under the pointer wins over the mark,
+except a disabled one the app's mark covers. A `Press` the app refines with its
+own hit test, such as a painted shape inside its bounds, sets
+`PressProps.cursor` to `CursorArrow` while the pointer is off that shape; only
+the cursor changes, never presses, touch or keys. Invalid shapes and inactive
+sessions return false.
 
 ```zi
 #import "kryon/cursor"
-// Once at startup: the whole application shows this hand.
-unused CursorSetDefault(CursorProps.{.asset_path = "assets/hand.webp",
-    .width = 32, .height = 32, .hotspot_x = 7, .hotspot_y = 1})
-// A deliberate tool state; .{} returns to the application cursor.
+// Once at startup: a calm arrow everywhere, a hand only where a click works.
+unused CursorSetDefault(CursorProps.{.asset_path = "assets/arrow.webp",
+    .width = 32, .height = 32, .hotspot_x = 6, .hotspot_y = 2})
+unused CursorSetPointing(CursorProps.{.asset_path = "assets/hand.webp",
+    .width = 32, .height = 32, .hotspot_x = 8, .hotspot_y = 1})
+// Each frame, from the hit test that opens the painted door.
+if DoorAt(pointer.x, pointer.y) { unused CursorHover(session, cast(s32)CursorShape.CursorClickable) }
+// A deliberate tool state; .{} returns to the application cursors.
 unused CursorSet(session, CursorProps.{.asset_path = "assets/can.webp",
     .width = 32, .height = 32, .hotspot_x = 4, .hotspot_y = 6})
 ```
@@ -517,8 +538,10 @@ same hotspot on the canvas or root, and DOM widgets inherit it. Other hosts
 retain their system pointer; touch feedback is drawn by the application. These
 requests never move, lock, grab or warp a pointer.
 
-Portable hosted apps use `CursorSet` with `KRYON_HOSTED_UI` (the application
-cursor belongs to their host). Its only effect is `cursor.CursorSetHostedHost`; `WidgetHostCall` requires the active
+Portable hosted apps use `CursorSet` and `CursorHover` with `KRYON_HOSTED_UI`
+(the application cursors belong to their host). Their only effects are
+`cursor.CursorSetHostedHost` and `cursor.CursorHoverHostedHost`, which marks
+only the active session's building frame; `WidgetHostCall` requires the active
 `WidgetHostBegin` session. Asset requests must name a normalized packed path
 under `assets/`, pass that instance's existing asset policy, and resolve through
 its existing asset resolver. The host copies the resolved path before returning;

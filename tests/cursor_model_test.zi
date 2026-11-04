@@ -87,6 +87,58 @@ Answer :: () -> s32 {
     CursorPropsValid(.{.shape = 11}) || CursorPropsValid(.{.shape = -1}) ||
     CursorPropsValid(.{.hidden = true, .width = 1}) { return 29 }
     if CursorPropsSame(app, tool) || !CursorPropsEmpty(.{}) || CursorPropsEmpty(.{.shape = 1}) { return 30 }
+    // The pointing cursor shows only over clickable shapes; the calm default
+    // shows over everything else a pointer shape covers.
+    calm := CursorProps.{.asset_path = "assets/calm.png", .width = 32, .height = 32, .hotspot_x = 6, .hotspot_y = 2}
+    point := CursorProps.{.asset_path = "assets/point.png", .width = 32, .height = 32, .hotspot_x = 8, .hotspot_y = 1}
+    if !CursorSetDefault(calm) || !CursorSetPointing(point) || !CursorPropsSame(CursorGetPointing(), point) { return 31 }
+    if !CursorPropsSame(CursorResolve(fresh, cast(s32)CursorClickable), point) { return 32 }
+    calm_shapes: [3]s32 = .[0, 1, 10]
+    for shape: calm_shapes { if !CursorPropsSame(CursorResolve(fresh, shape), calm) { return 33 } }
+    if CursorResolve(fresh, cast(s32)CursorText).shape != cast(s32)CursorText { return 34 }
+    // A session's own tool request still wins over both.
+    if !CursorSet(fresh, tool) || !CursorPropsSame(CursorResolve(fresh, cast(s32)CursorClickable), tool) ||
+    !CursorSet(fresh, .{}) { return 35 }
+    if CursorSetPointing(.{.asset_path = "assets/a", .width = 0, .height = 1}) ||
+    !CursorPropsSame(CursorGetPointing(), point) { return 36 }
+    // An app-drawn target's mark shows once its frame commits, survives a
+    // cancelled (retained) or failed frame, and an unmarked frame clears it.
+    view := Rectangle.{0.0, 0.0, 100.0, 100.0}
+    if CursorHover(Session.{}, cast(s32)CursorClickable) || CursorHover(fresh, 11) || CursorHover(fresh, -1) { return 37 }
+    if CursorHovered(fresh) != cast(s32)CursorDefault { return 38 }
+    TreeStart(fresh, cast(u64)1, view)
+    if !CursorHover(fresh, cast(s32)CursorClickable) || CursorHovered(fresh) != cast(s32)CursorDefault { return 39 }
+    if !TreeFinish(fresh) || CursorHovered(fresh) != cast(s32)CursorClickable { return 40 }
+    TreeStart(fresh, cast(u64)1, view)
+    TreeCancel(fresh)
+    if CursorHovered(fresh) != cast(s32)CursorClickable { return 41 }
+    TreeStart(fresh, cast(u64)1, view)
+    unused TreeSubmit(fresh, cast(u64)2, 77, 1, .{0.0, 0.0, 1.0, 1.0})
+    if TreeFinish(fresh) || CursorHovered(fresh) != cast(s32)CursorClickable { return 43 }
+    // Repeating the same mark every frame keeps the same shape.
+    for frame: 0..3 {
+        TreeStart(fresh, cast(u64)1, view)
+        unused CursorHover(fresh, cast(s32)CursorClickable)
+        if !TreeFinish(fresh) || CursorHovered(fresh) != cast(s32)CursorClickable { return 44 }
+    }
+    // The highest-priority mark of a frame wins.
+    TreeStart(fresh, cast(u64)1, view)
+    unused CursorHover(fresh, cast(s32)CursorDisabled)
+    unused CursorHover(fresh, cast(s32)CursorClickable)
+    unused CursorHover(fresh, cast(s32)CursorText)
+    if !TreeFinish(fresh) || CursorHovered(fresh) != cast(s32)CursorClickable { return 45 }
+    TreeStart(fresh, cast(u64)1, view)
+    if !TreeFinish(fresh) || CursorHovered(fresh) != cast(s32)CursorDefault { return 46 }
+    // Marks belong to their session, and disposal drops them.
+    other := SessionOpen()
+    TreeStart(other, cast(u64)1, view)
+    unused CursorHover(other, cast(s32)CursorClickable)
+    if !TreeFinish(other) || CursorHovered(other) != cast(s32)CursorClickable ||
+    CursorHovered(fresh) != cast(s32)CursorDefault { return 47 }
+    TreeDispose(other)
+    if CursorHovered(other) != cast(s32)CursorDefault { return 48 }
+    // Withdrawn, clickable shows the calm default again.
+    if !CursorSetPointing(.{}) || !CursorPropsSame(CursorResolve(fresh, cast(s32)CursorClickable), calm) { return 49 }
     return 42
 }
 

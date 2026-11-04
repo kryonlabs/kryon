@@ -1754,9 +1754,9 @@ WidgetValidBoxProps :: (value: HostValue) -> bool {
     return true
 }
 
-// Widget codec schema: ["PressProps",[["key","u64"],["id","s32"],["bounds","Rectangle"],["label","string"],["now","float64"],["hold_seconds","float32"],["capture","bool"],["disabled","bool"]]]
+// Widget codec schema: ["PressProps",[["key","u64"],["id","s32"],["bounds","Rectangle"],["label","string"],["now","float64"],["hold_seconds","float32"],["capture","bool"],["disabled","bool"],["cursor","s32"]]]
 WidgetPressPropsCodec :: struct {
-    fields: [8]HostField
+    fields: [9]HostField
     bounds: WidgetRectangleCodec
 }
 
@@ -1771,6 +1771,7 @@ WidgetDecodePressProps :: (value: HostValue, codec: *WidgetPressPropsCodec) -> P
     data.hold_seconds = cast(float32)HostFieldValue(*value, 5, "hold_seconds", *zero).real
     data.capture = HostFieldValue(*value, 6, "capture", *zero).integer != 0
     data.disabled = HostFieldValue(*value, 7, "disabled", *zero).integer != 0
+    data.cursor = cast(s32)HostFieldValue(*value, 8, "cursor", *zero).integer
     return data
 }
 
@@ -1784,6 +1785,7 @@ WidgetValidPressProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 5, "hold_seconds", "float32", cast(s32)HostReal) { return false }
     if !HostFieldScalarValid(*value, 6, "capture", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 7, "disabled", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 8, "cursor", "s32", cast(s32)HostInteger) { return false }
     return true
 }
 

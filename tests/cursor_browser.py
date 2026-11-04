@@ -6,8 +6,9 @@ Drives only the private browser started here over its DevTools pipe, with no
 desktop connection. At device pixel ratio 2 the element under the pointer must
 show each request as one CSS cursor: a 2x density image set, drawn at the
 logical size, with the requested hotspot; the application cursor after a
-withdraw; none when hidden. A request repeated every frame must never touch
-any element's cursor style.
+withdraw; none when hidden; the pointing cursor only over the press and the
+painted target the app marks, the application cursor between them. A request
+repeated every frame must never touch any element's cursor style.
 """
 import base64
 import io
@@ -174,6 +175,18 @@ def expect(browser, what, hotspot=None, size=None, hidden=False):
     return css
 
 
+def expect_at(browser, what, point, hotspot, size):
+    """The element under POINT shows the bitmap cursor with HOTSPOT; its CSS."""
+    x, y = point
+    browser.move(x, y)
+    test = f'c.includes("url(") && / {hotspot[0]} {hotspot[1]}, /.test(c)'
+    css = browser.until(f'(() => {{ const e = document.elementFromPoint({x}, {y}); '
+                        f'const c = e ? getComputedStyle(e).cursor : ""; return {test} ? c : "" }})()', what)
+    width, height = size
+    assert images(css) == [(width * 2, height * 2)], (what, images(css))
+    return css
+
+
 def main():
     page, profile = Path(sys.argv[1]).resolve(), Path(sys.argv[2]).resolve()
     browser = Browser(profile)
@@ -203,11 +216,28 @@ def main():
         assert expect(browser, 'refused size keeps the request', (9, 5), (32, 24))
         browser.digit(1)
         assert expect(browser, 'hand again', (3, 5), (32, 24)) == hand, 'the hand cursor changed'
+        # Mode 9: a press on the left quarter, nothing in the middle and a
+        # painted target on the right quarter the app marks with CursorHover.
+        browser.digit(9)
+        calm = expect_at(browser, 'application cursor over nothing', (320, 120), (7, 1), (32, 32))
+        point = expect_at(browser, 'pointing cursor over the press', (60, 120), (8, 1), (32, 32))
+        assert point != calm
+        assert expect_at(browser, 'calm between targets', (300, 200), (7, 1), (32, 32)) == calm
+        assert expect_at(browser, 'pointing over the painted target', (600, 120), (8, 1), (32, 32)) == point
+        # Resting over a target, or moving inside it, never rewrites a style.
+        browser.evaluate(WATCH)
+        for x in (560, 590, 620, 590):
+            browser.move(x, 100)
+            time.sleep(.05)
+        time.sleep(.3)
+        changes = browser.evaluate('cursorProbe.changes')
+        assert not changes, ('moving over one target rewrote the cursor style', changes)
+        assert expect_at(browser, 'calm after leaving', (400, 120), (7, 1), (32, 32)) == calm
         assert not browser.errors, browser.errors
     finally:
         browser.close()
-    print(f'{page.name}: hand, application, hidden, tool and hotspot cursors as 2x image sets, '
-          'steady under repeated requests', flush=True)
+    print(f'{page.name}: hand, application, pointing, hidden, tool and hotspot cursors as 2x image sets, '
+          'pointing only over the press and the marked target, steady under repeated requests', flush=True)
 
 
 if __name__ == '__main__':

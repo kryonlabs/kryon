@@ -3,8 +3,14 @@
 #import "kryon/box_widget"
 #import "kryon/box_props"
 #import "kryon/cursor"
-#if !#defined(KRYON_HOSTED_UI) {
+#import "kryon/press_props"
+#import "kryon/press_widget"
+#if #defined(KRYON_HOSTED_UI) {
+    #import "kryon/pointer_input"
+    ProbePointerX :: (session: Session) -> float32 { unused session; return SamplePointer().x }
+} else {
     #import "kryon/tree_input"
+    ProbePointerX :: (session: Session) -> float32 { return PointerSample(session).x }
 }
 
 mode: s32 = 1;
@@ -18,14 +24,29 @@ Tool :: () -> CursorProps {
     return CursorProps.{.asset_path = "assets/tool.png", .width = 32, .height = 24, .hotspot_x = 4, .hotspot_y = 20}
 }
 
-// Keys 1-8 choose a request. Requests persist; mode 1 repeats its request
+// Keys 1-9 choose a request. Requests persist; mode 1 repeats its request
 // every frame, which must change nothing, and mode 7 alternates two bitmaps.
+// Mode 9 withdraws the request over three bands: a clickable press on the
+// left quarter, a press whose painted shape the pointer is off (it names
+// the arrow) in the middle and, on the right quarter, a painted target the
+// app hit-tests itself and marks with CursorHover.
 DrawCursorFrame :: (session: Session, viewport: Rectangle, key: s32) -> s32 {
     changed := !started
     started = true
-    if key >= 49 && key <= 56 { mode = key - 48; changed = true }
+    if key >= 49 && key <= 57 { mode = key - 48; changed = true }
     frame += 1
     Box(session, BoxProps.{.key = 2, .bounds = viewport, .fill = .{240, 240, 240, 255}})
+    if mode == 9 {
+        if changed && !CursorSet(session, CursorProps.{}) { return 9 }
+        unused Press(session, PressProps.{.key = 3, .id = 3, .label = "Press",
+            .bounds = .{viewport.x, viewport.y, viewport.width / 4.0, viewport.height}})
+        unused Press(session, PressProps.{.key = 4, .id = 4, .label = "Off the shape",
+            .bounds = .{viewport.x + viewport.width * 0.375, viewport.y, viewport.width / 4.0, viewport.height},
+            .cursor = cast(s32)CursorShape.CursorArrow})
+        if ProbePointerX(session) >= viewport.x + viewport.width * 0.75 &&
+            !CursorHover(session, cast(s32)CursorShape.CursorClickable) { return 10 }
+        return 0
+    }
     if mode == 1 {
         if !CursorSet(session, Hand()) { return 1 }
     } else if mode == 7 {
@@ -66,6 +87,9 @@ DrawCursorFrame :: (session: Session, viewport: Rectangle, key: s32) -> s32 {
         // The application cursor every session inherits; set once.
         if !started && !CursorSetDefault(CursorProps.{.asset_path = "assets/app.png", .width = 32, .height = 32,
             .hotspot_x = 7, .hotspot_y = 1}) { return 9 }
+        // The pointing cursor shows only where a click does something.
+        if !started && !CursorSetPointing(CursorProps.{.asset_path = "assets/point.png", .width = 32, .height = 32,
+            .hotspot_x = 8, .hotspot_y = 1}) { return 11 }
         return DrawCursorFrame(session, viewport, KeyboardTake(session))
     }
 }

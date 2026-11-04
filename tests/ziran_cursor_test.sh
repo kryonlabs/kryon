@@ -49,6 +49,48 @@ TreeCursorTest :: () -> s32 {
     TreePointerUpdate(session, PointerFrame.{90.0, 20.0, false, false, false})
     if TreeCursor(session) != cast(s32)CursorText { return -33 }
     if TreeCursor(Session.{}) != cast(s32)CursorDefault { return -34 }
+    // A painted target the app hit-tests itself marks the pointer with
+    // CursorHover; a widget with its own shape under the pointer still wins.
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    field = TreeSubmit(session, cast(u64)3, 0, cast(s32)WidgetKind.WidgetKindTextField, .{70.0, 10.0, 40.0, 30.0})
+    TreeSetInteractive(session, field, false, false, 3)
+    unused CursorHover(session, cast(s32)CursorClickable)
+    if !TreeFinish(session) { return -35 }
+    TreePointerUpdate(session, PointerFrame.{150.0, 70.0, false, false, false})
+    if TreeCursor(session) != cast(s32)CursorClickable { return -36 }
+    TreePointerUpdate(session, PointerFrame.{90.0, 20.0, false, false, false})
+    if TreeCursor(session) != cast(s32)CursorText { return -37 }
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    if !TreeFinish(session) { return -38 }
+    TreePointerUpdate(session, PointerFrame.{150.0, 70.0, false, false, false})
+    if TreeCursor(session) != cast(s32)CursorDefault { return -39 }
+    // A press the app refines with its own hit test names its cursor; a
+    // disabled one still shows disabled, and an invalid shape is ignored.
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    button = TreeSubmit(session, cast(u64)2, 0, cast(s32)WidgetKind.WidgetKindButton, .{10.0, 10.0, 40.0, 30.0})
+    TreeSetInteractive(session, button, false, false, 2)
+    TreeSetCursor(session, button, cast(s32)CursorArrow)
+    disabled = TreeSubmit(session, cast(u64)4, 0, cast(s32)WidgetKind.WidgetKindButton, .{130.0, 10.0, 40.0, 30.0})
+    TreeSetInteractive(session, disabled, true, false, 4)
+    TreeSetCursor(session, disabled, cast(s32)CursorArrow)
+    clipped = TreeSubmit(session, cast(u64)6, 0, cast(s32)WidgetKind.WidgetKindButton, .{10.0, 60.0, 40.0, 30.0})
+    TreeSetInteractive(session, clipped, false, false, 6)
+    TreeSetCursor(session, clipped, 99)
+    if !TreeFinish(session) { return -40 }
+    TreePointerUpdate(session, PointerFrame.{30.0, 20.0, false, false, false})
+    if TreeCursor(session) != cast(s32)CursorArrow || TreeHitAt(session, 30.0, 20.0) != button { return -41 }
+    TreePointerUpdate(session, PointerFrame.{150.0, 20.0, false, false, false})
+    if TreeCursor(session) != cast(s32)CursorDisabled { return -42 }
+    TreePointerUpdate(session, PointerFrame.{30.0, 70.0, false, false, false})
+    if TreeCursor(session) != cast(s32)CursorClickable { return -43 }
+    // A hover mark the app makes over a disabled widget it covers wins.
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    disabled = TreeSubmit(session, cast(u64)4, 0, cast(s32)WidgetKind.WidgetKindButton, .{130.0, 10.0, 40.0, 30.0})
+    TreeSetInteractive(session, disabled, true, false, 4)
+    unused CursorHover(session, cast(s32)CursorClickable)
+    if !TreeFinish(session) { return -44 }
+    TreePointerUpdate(session, PointerFrame.{150.0, 20.0, false, false, false})
+    if TreeCursor(session) != cast(s32)CursorClickable { return -45 }
     return 42
 }
 

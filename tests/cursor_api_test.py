@@ -158,6 +158,33 @@ def drive(mode):
                 xdo('windowfocus',window); assert hand()
             finally:
                 x.XDestroyWindow(connection,other); x.XSync(connection,0)
+            # Mode 9: the pointing cursor only over the press and over the
+            # painted target the app marks with CursorHover, the calm cursor
+            # between them, and no re-selection while the pointer rests. The
+            # pointer of this private display moves; the desktop's never does.
+            def shell(command,*args):
+                found=subprocess.run(['xdotool',command,'--shell',*map(str,args)],capture_output=True,text=True,check=True,timeout=5)
+                return dict(line.split('=',1) for line in found.stdout.split())
+            home=shell('getmouselocation'); frame=shell('getwindowgeometry',window)
+            wx,wy,ww,wh=(int(frame[name]) for name in ('X','Y','WIDTH','HEIGHT'))
+            def hover(fraction): xdo('mousemove',wx+int(ww*fraction),wy+wh//2)
+            def point(): return bitmap(0xe0a020,(32,32),(8,1))
+            key(9)
+            if mode=='native':
+                for fraction,shown,what in ((.5,app,'nothing'),(.1,point,'the press'),(.5,app,'nothing again'),
+                                            (.9,point,'the painted target'),(.6,app,'the edge of the target')):
+                    hover(fraction); wait(shown,f'Mode 9 over {what} showed the wrong cursor'); premultiplied(); steady(.3)
+            else:
+                # A hosted guest's player sets no application cursors: the
+                # system pointer and clickable shapes show instead.
+                hover(.5); wait(lambda: not hand() and not hidden(),'Mode 9 hid or kept the request'); calm=cursor()[:5]
+                hover(.1); wait(lambda: cursor()[:5]!=calm,'The press did not show the clickable shape'); clickable=cursor()[:5]
+                steady(.3)
+                hover(.9); wait(lambda: cursor()[:5]==clickable,'The painted target did not show the clickable shape')
+                steady(.3)
+                hover(.5); wait(lambda: cursor()[:5]==calm,'Leaving the target kept the clickable shape')
+            xdo('mousemove',home['X'],home['Y'])
+            key(1); wait(hand,'Custom request did not resume after the hover bands')
             key(3); key(4); wait(lambda: cursor()[:5]==baseline[:5],'Missing asset did not fall back visibly')
             key(2); wait(hidden,'Hide before exit failed')
             if mode == 'portable':
@@ -177,7 +204,7 @@ def drive(mode):
                 try: child.wait(timeout=5)
                 except subprocess.TimeoutExpired: child.kill(); child.wait(timeout=5)
             x.XCloseDisplay(connection)
-    print(f'Private Xvfb {mode}: premultiplied bitmaps, app cursor, steady repeats, cached switching, hotspots, hide/missing/refused, leave, focus and exit passed',flush=True)
+    print(f'Private Xvfb {mode}: premultiplied bitmaps, app and pointing cursors, hover marks, steady repeats, cached switching, hotspots, hide/missing/refused, leave, focus and exit passed',flush=True)
 
 def main():
     OUTPUT.mkdir(parents=True,exist_ok=True)
@@ -187,7 +214,7 @@ def main():
     (OUTPUT/'src').mkdir(exist_ok=True); (OUTPUT/'assets').mkdir(exist_ok=True)
     # Opaque colour inside a soft, light edge: the edge must reach X11
     # premultiplied, never as a light fringe.
-    for name,colour in (('hand',(224,32,64)),('tool',(32,160,64)),('app',(32,64,224))):
+    for name,colour in (('hand',(224,32,64)),('tool',(32,160,64)),('app',(32,64,224)),('point',(224,160,32))):
         image=Image.new('RGBA',(1024,1024),(255,255,255,0))
         image.paste(Image.new('RGBA',(896,896),(255,255,255,96)),(64,64))
         image.paste(Image.new('RGBA',(768,768),(*colour,255)),(128,128))

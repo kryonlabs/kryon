@@ -168,6 +168,12 @@ CursorPackedPath :: (path: string) -> bool {
         return CursorSetHostedHost(session, props.asset_path, props.width,
             props.height, props.hotspot_x, props.hotspot_y, props.hidden, props.shape)
     }
+    CursorHoverHostedHost :: (session: Session, shape: s32) -> bool #foreign host_api;
+    #program_export
+    CursorHover :: (session: Session, shape: s32) -> bool {
+        if shape < cast(s32)CursorDefault || shape > cast(s32)CursorDisabled { return false }
+        return CursorHoverHostedHost(session, shape)
+    }
 } else {
     // Requests persist until the next deliberate change. Hosts compare the
     // resolved cursor each frame and touch the platform only when it differs.
@@ -230,12 +236,77 @@ CursorPackedPath :: (path: string) -> bool {
     }
     CursorGetDefault :: () -> CursorProps { return CursorStored(0) }
 
+    // The application's pointing cursor, shown only where a click does
+    // something: over clickable widgets and app-drawn targets marked with
+    // CursorHover. Everywhere else shows the default. Hosts set it; the empty
+    // request withdraws it, and clickable then shows the default again.
+    cursor_pointing: CursorStorage;
+    #program_export
+    CursorSetPointing :: (props: CursorProps) -> bool {
+        if !CursorPropsValid(props) { return false }
+        CursorStore(*cursor_pointing, props)
+        return true
+    }
+    CursorGetPointing :: () -> CursorProps {
+        if !cursor_pointing.requested { return .{} }
+        result := cursor_pointing.props
+        result.asset_path = TextView(cursor_pointing.path[:cursor_pointing.length])
+        return result
+    }
+
+    // A target the app hit-tests itself (a painted hotspot, a field) reports
+    // what the pointer is over with CursorHover while it builds its frame,
+    // from the same test that decides its clicks. The frame collects the
+    // highest-priority mark and its commit replaces the last one, so the
+    // cursor changes only when the hovered target does, a retained or
+    // cancelled frame keeps the committed mark, and a frame without a mark
+    // shows the default.
+    CursorHoverState :: struct {
+        epoch: u64
+        building: s32
+        committed: s32
+    }
+    cursor_hovers: [9]CursorHoverState;
+
+    #program_export
+    CursorHover :: (session: Session, shape: s32) -> bool {
+        slot := SessionIndex(session)
+        if slot == 0 || shape < cast(s32)CursorDefault || shape > cast(s32)CursorDisabled { return false }
+        if cursor_hovers[slot].epoch != session.epoch { cursor_hovers[slot] = .{.epoch = session.epoch} }
+        if CursorPriorityFor(shape) >= CursorPriorityFor(cursor_hovers[slot].building) {
+            cursor_hovers[slot].building = shape
+        }
+        return true
+    }
+    // TreeStart and a successful TreeFinish call these.
+    CursorHoverFrameStart :: (session: Session) {
+        slot := SessionIndex(session)
+        if slot == 0 { return }
+        if cursor_hovers[slot].epoch != session.epoch { cursor_hovers[slot] = .{.epoch = session.epoch} }
+        cursor_hovers[slot].building = cast(s32)CursorDefault
+    }
+    CursorHoverFrameCommit :: (session: Session) {
+        slot := SessionIndex(session)
+        if slot == 0 || cursor_hovers[slot].epoch != session.epoch { return }
+        cursor_hovers[slot].committed = cursor_hovers[slot].building
+    }
+    // The committed frame's mark; the default when it made none.
+    CursorHovered :: (session: Session) -> s32 {
+        slot := SessionIndex(session)
+        if slot == 0 || cursor_hovers[slot].epoch != session.epoch { return cast(s32)CursorDefault }
+        return cursor_hovers[slot].committed
+    }
+
     // What a host shows for SESSION over a widget whose own shape is
-    // WIDGET_SHAPE (TreeCursor): its request, else the application cursor
-    // for pointer shapes, else the widget's system shape.
+    // WIDGET_SHAPE (TreeCursor): its request, else the application pointing
+    // cursor over something clickable, else the application cursor for
+    // pointer shapes, else the widget's system shape.
     #program_export
     CursorResolve :: (session: Session, widget_shape: s32) -> CursorProps {
         if CursorRequested(session) { return CursorGet(session) }
+        if widget_shape == cast(s32)CursorClickable && cursor_pointing.requested {
+            return CursorGetPointing()
+        }
         if cursor_requests[0].requested && CursorReplacesShape(widget_shape) {
             return CursorStored(0)
         }
@@ -247,6 +318,6 @@ CursorPackedPath :: (path: string) -> bool {
     // A disposed session keeps no request.
     CursorSessionEnd :: (session: Session) {
         slot := SessionIndex(session)
-        if slot != 0 { cursor_requests[slot] = .{} }
+        if slot != 0 { cursor_requests[slot] = .{}; cursor_hovers[slot] = .{} }
     }
 }

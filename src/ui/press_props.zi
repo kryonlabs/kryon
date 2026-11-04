@@ -17,6 +17,12 @@ PressProps :: struct {
     // enclosing scroll take it, so the pointer can sweep across items.
     capture: bool
     disabled: bool
+    // The cursor shape (CursorShape) over the area; 0 shows the clickable
+    // shape. An area the app refines with its own hit test, such as a
+    // painted bed inside its bounding box, passes CursorArrow while the
+    // pointer is off that shape, so the cursor never promises a click there.
+    // Only the cursor changes: presses, touch and keys are unchanged.
+    cursor: s32
 }
 
 PressResult :: struct {
