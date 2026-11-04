@@ -148,7 +148,7 @@ RaylibBundleOpen :: (host: *RaylibBundle, data: string, previous: *RaylibBundle 
         .measure_width = MeasureGlyphWidth, .measure_height = MeasureGlyphLineHeight,
         .image_width = ImageWidth, .image_height = ImageHeight,
         .line = RasterLine, .rectangle = RasterRoundedRectangle, .outline = RasterRoundedRectangleOutline,
-        .text = RasterText, .clipped_text = RasterTextClipped,
+        .text = RasterText, .clipped_text = RasterTextClipped, .rotated_text = RasterTextRotated,
         .image = RasterImage, .triangles = RasterTriangles, .mesh = RasterImageMesh}
     RaylibSetAssetReader(RaylibBundleAsset, cast(*void)host)
     if !Player.PlayerUseRenderer(*host.player, RasterHostCall, cast(*void)(*host.raster)) ||

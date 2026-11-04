@@ -196,6 +196,15 @@ Scale :: () -> s32 {
 }
 
 #program_export
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32, color: Color,
+    clip: Rectangle, origin: Vector2, rotation: float32, outer_clip: Rectangle,
+    outer_clipped: bool, emphasis: bool, italic: bool) {
+    unused value; unused x; unused y; unused font; unused color; unused clip; unused origin
+    unused rotation; unused outer_clip; unused outer_clipped; unused emphasis; unused italic
+}
+
+
+#program_export
 main :: () -> s32 {
     if Check() == 42 && Scale() == 42 { return 0 }
     return 1

@@ -15,6 +15,7 @@ set -- \
     --bind raster:RasterLine=ziran_overlay_widget_host:RasterLine \
     --bind raster_text:RasterText=ziran_overlay_widget_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_overlay_widget_host:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=ziran_overlay_widget_host:RasterTextRotated \
     --bind paint_queue:RasterImage=ziran_overlay_widget_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_overlay_widget_host:RasterImageMesh
 
@@ -64,6 +65,9 @@ func (testOverlayHost) RasterText(value string, x, y, font int32,
     ZiranOverlayWidgetHost_RasterText(value, x, y, font, color)
 }
 
+func (testOverlayHost) RasterTextRotated(value string, x, y, font int32, color Color, clip Rectangle, origin Vector2, rotation float32, outerClip Rectangle, outerClipped, emphasis, italic bool) {
+    ZiranOverlayWidgetHost_RasterTextRotated(value,x,y,font,color,clip,origin,rotation,outerClip,outerClipped,emphasis,italic)
+}
 func (testOverlayHost) RasterTextClipped(value string, x, y, font int32,
     color Color, clip Rectangle) {
     ZiranOverlayWidgetHost_RasterTextClipped(value, x, y, font, color, clip)

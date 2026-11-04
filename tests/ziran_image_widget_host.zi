@@ -162,3 +162,6 @@ CarouselCoverDraws :: () -> s32 { return carousel_draws }
 
 #program_export
 CarouselLastSource :: () -> Rectangle { return last_source }
+
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) { unused points; unused color }

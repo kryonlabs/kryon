@@ -175,9 +175,36 @@ WidgetValidTextRange :: (value: HostValue) -> bool {
     return true
 }
 
-// Widget codec schema: ["TextProps",[["key","u64"],["bounds","Rectangle"],["text","string"],["font","s32"],["fallback_font","s32"],["style_kind","s32"],["semantic_kind","SemanticKind"],["heading_level","s32"],["class_name","s32"],["wrap","TextWrap"],["align","TextAlign"],["vertical_align","TextAlign"],["disabled","bool"],["selectable","bool"],["strikethrough","bool"],["strong","[]TextRange"],["typing","bool"],["typed","s32"],["links","[]TextRange"],["typeface","string"],["line_gap","s32"]]]
+WidgetVector2Codec :: struct {
+    fields: [2]HostField
+}
+
+WidgetEncodeVector2 :: (data: Vector2, codec: *WidgetVector2Codec) -> HostValue {
+    value := HostRecordValue("Vector2", codec.fields[:])
+    codec.fields[0] = HostField.{.name = HostTextData("x"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.x}}
+    codec.fields[1] = HostField.{.name = HostTextData("y"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.y}}
+    return value
+}
+
+WidgetDecodeVector2 :: (value: HostValue, codec: *WidgetVector2Codec) -> Vector2 {
+    data: Vector2
+    unused codec
+    zero: HostValue
+    data.x = cast(float32)HostFieldValue(*value, 0, "x", *zero).real
+    data.y = cast(float32)HostFieldValue(*value, 1, "y", *zero).real
+    return data
+}
+
+WidgetValidVector2 :: (value: HostValue) -> bool {
+    if !HostRecordValid(*value, "Vector2") { return false }
+    if !HostFieldScalarValid(*value, 0, "x", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 1, "y", "float32", cast(s32)HostReal) { return false }
+    return true
+}
+
+// Widget codec schema: ["TextProps",[["key","u64"],["bounds","Rectangle"],["text","string"],["font","s32"],["fallback_font","s32"],["style_kind","s32"],["semantic_kind","SemanticKind"],["heading_level","s32"],["class_name","s32"],["wrap","TextWrap"],["align","TextAlign"],["vertical_align","TextAlign"],["disabled","bool"],["selectable","bool"],["strikethrough","bool"],["strong","[]TextRange"],["typing","bool"],["typed","s32"],["links","[]TextRange"],["typeface","string"],["line_gap","s32"],["rotation","float32"],["origin","Vector2"]]]
 WidgetTextPropsCodec :: struct {
-    fields: [21]HostField
+    fields: [23]HostField
     bounds: WidgetRectangleCodec
     strong_values: [1024]HostValue
     strong_codecs: [1024]WidgetTextRangeCodec
@@ -185,6 +212,7 @@ WidgetTextPropsCodec :: struct {
     links_values: [1024]HostValue
     links_codecs: [1024]WidgetTextRangeCodec
     links_decoded: [1024]TextRange
+    origin: WidgetVector2Codec
 }
 
 WidgetDecodeTextProps :: (value: HostValue, codec: *WidgetTextPropsCodec) -> TextProps {
@@ -235,6 +263,8 @@ WidgetDecodeTextProps :: (value: HostValue, codec: *WidgetTextPropsCodec) -> Tex
     }
     data.typeface = HostValueText(HostFieldValue(*value, 19, "typeface", *zero).*)
     data.line_gap = cast(s32)HostFieldValue(*value, 20, "line_gap", *zero).integer
+    data.rotation = cast(float32)HostFieldValue(*value, 21, "rotation", *zero).real
+    data.origin = WidgetDecodeVector2(HostFieldValue(*value, 22, "origin", *zero).*, *codec.origin)
     return data
 }
 
@@ -263,33 +293,8 @@ WidgetValidTextProps :: (value: HostValue) -> bool {
         HostElementRule.{.validate_record = WidgetValidTextRange}) { return false }
     if !HostFieldScalarValid(*value, 19, "typeface", "string", cast(s32)HostString) { return false }
     if !HostFieldScalarValid(*value, 20, "line_gap", "s32", cast(s32)HostInteger) { return false }
-    return true
-}
-
-WidgetVector2Codec :: struct {
-    fields: [2]HostField
-}
-
-WidgetEncodeVector2 :: (data: Vector2, codec: *WidgetVector2Codec) -> HostValue {
-    value := HostRecordValue("Vector2", codec.fields[:])
-    codec.fields[0] = HostField.{.name = HostTextData("x"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.x}}
-    codec.fields[1] = HostField.{.name = HostTextData("y"), .value = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = cast(float64)data.y}}
-    return value
-}
-
-WidgetDecodeVector2 :: (value: HostValue, codec: *WidgetVector2Codec) -> Vector2 {
-    data: Vector2
-    unused codec
-    zero: HostValue
-    data.x = cast(float32)HostFieldValue(*value, 0, "x", *zero).real
-    data.y = cast(float32)HostFieldValue(*value, 1, "y", *zero).real
-    return data
-}
-
-WidgetValidVector2 :: (value: HostValue) -> bool {
-    if !HostRecordValid(*value, "Vector2") { return false }
-    if !HostFieldScalarValid(*value, 0, "x", "float32", cast(s32)HostReal) { return false }
-    if !HostFieldScalarValid(*value, 1, "y", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldScalarValid(*value, 21, "rotation", "float32", cast(s32)HostReal) { return false }
+    if !HostFieldRecordValid(*value, 22, "origin", WidgetValidVector2) { return false }
     return true
 }
 

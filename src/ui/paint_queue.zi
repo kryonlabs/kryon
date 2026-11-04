@@ -52,6 +52,8 @@ PaintCommand :: struct {
     clip_set: bool
     origin: Vector2
     rotation: float32
+    text_outer_clip: Rectangle
+    text_outer_clipped: bool
     // Queued text is copied into the session's frame text so a caller may
     // pass a label formatted into its own short-lived buffer.
     text_start: s64
@@ -585,7 +587,11 @@ EmitRoundedOutline :: (command: PaintCommand) {
 EmitLabel :: (command: PaintCommand) {
     previous := TextTypefaceUse(command.asset_path)
     defer { unused TextTypefaceUse(previous) }
-    if command.italic {
+    if command.rotation != 0.0 {
+        PaintTextRotated(command.value,command.x,command.y,command.font,command.color,
+            command.clip,command.origin,command.rotation,command.text_outer_clip,
+            command.text_outer_clipped,command.emphasis,command.italic)
+    } else if command.italic {
         PaintTextItalicClipped(command.value, command.x, command.y,
             command.font, command.color, command.clip, command.emphasis)
     } else if command.emphasis {
@@ -622,6 +628,11 @@ EmitImage :: (command: PaintCommand) {
 }
 
 ClipLabel :: (command: PaintCommand, geometry: NodeGeometry) -> PaintCommand {
+    if command.rotation != 0.0 {
+        command.text_outer_clip = geometry.clip
+        command.text_outer_clipped = true
+        return command
+    }
     if command.kind == PaintKindText {
         command.kind = PaintKindClippedText
         command.clip = geometry.clip
@@ -695,6 +706,9 @@ QueuePaint :: (session: Session, command: *QueuedPaint) {
         command.data.bounds.y += dy
         command.data.clip.x += dx
         command.data.clip.y += dy
+        if command.data.rotation != 0.0 && (command.data.kind == PaintKindText || command.data.kind == PaintKindClippedText) {
+            command.data.origin.x += dx; command.data.origin.y += dy
+        }
         command.data.x += cast(s32)dx
         command.data.y += cast(s32)dy
         if full_bounds {
@@ -833,7 +847,8 @@ PaintLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
 
 #program_export
 PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
-    font: s32, color: Color, clip: Rectangle, typeface: string = "") {
+    font: s32, color: Color, clip: Rectangle, typeface: string = "",
+    rotation: float32 = 0.0, origin: Vector2 = Vector2.{}) {
     command: QueuedPaint
     command.data.kind = PaintKindClippedText
     command.data.node = node
@@ -843,6 +858,8 @@ PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32
     command.data.y = y
     command.data.font = font
     command.data.color = color
+    command.data.rotation = rotation
+    command.data.origin = origin
     command.data.clip = clip
     emit: PaintEmitter = EmitLabel
     clip_for: PaintClipper = ClipLabel
@@ -857,7 +874,8 @@ PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32
 // The extra stroke of emphasized text, at the position of its painted label.
 #program_export
 PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: s32,
-    font: s32, color: Color, clip: Rectangle, typeface: string = "") {
+    font: s32, color: Color, clip: Rectangle, typeface: string = "",
+    rotation: float32 = 0.0, origin: Vector2 = Vector2.{}) {
     command: QueuedPaint
     command.data.kind = PaintKindClippedText
     command.data.node = node
@@ -867,6 +885,8 @@ PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: 
     command.data.y = y
     command.data.font = font
     command.data.color = color
+    command.data.rotation = rotation
+    command.data.origin = origin
     command.data.clip = clip
     command.data.emphasis = true
     emit: PaintEmitter = EmitLabel
@@ -883,7 +903,8 @@ PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: 
 // text, at the position of its painted label.
 #program_export
 PaintClippedSlanted :: (session: Session, node: s32, value: string, x: s32, y: s32,
-    font: s32, color: Color, clip: Rectangle, emphasis: bool, typeface: string = "") {
+    font: s32, color: Color, clip: Rectangle, emphasis: bool, typeface: string = "",
+    rotation: float32 = 0.0, origin: Vector2 = Vector2.{}) {
     command: QueuedPaint
     command.data.kind = PaintKindClippedText
     command.data.node = node
@@ -893,6 +914,8 @@ PaintClippedSlanted :: (session: Session, node: s32, value: string, x: s32, y: s
     command.data.y = y
     command.data.font = font
     command.data.color = color
+    command.data.rotation = rotation
+    command.data.origin = origin
     command.data.clip = clip
     command.data.emphasis = emphasis
     command.data.italic = true
@@ -1182,6 +1205,11 @@ PaintCommandEqual :: (slot: s32, current: PaintCommand,
     if current.origin.x != previous.data.origin.x ||
     current.origin.y != previous.data.origin.y ||
     current.rotation != previous.data.rotation { return false }
+    if current.text_outer_clipped != previous.data.text_outer_clipped ||
+    current.text_outer_clip.x != previous.data.text_outer_clip.x ||
+    current.text_outer_clip.y != previous.data.text_outer_clip.y ||
+    current.text_outer_clip.width != previous.data.text_outer_clip.width ||
+    current.text_outer_clip.height != previous.data.text_outer_clip.height { return false }
     if current.smooth != previous.data.smooth { return false }
     if current.image_clip_count != previous.data.image_clip_count || current.mesh_columns != previous.data.mesh_columns ||
     current.mesh_rows != previous.data.mesh_rows { return false }
@@ -1375,7 +1403,11 @@ PaintCommandArea :: (command: PaintCommand, area: *Rectangle) -> bool {
         // These draw only inside their clip.
         area.* = Rectangle.{command.clip.x - margin, command.clip.y - margin,
             command.clip.width + margin * 2.0, command.clip.height + margin * 2.0}
-        return command.clip.width > 0.0 && command.clip.height > 0.0
+        if kind == PaintKindClippedText && command.rotation != 0.0 {
+            area.* = RotatedRectangleBounds(area.*, command.origin, command.rotation)
+            if command.text_outer_clipped { area.* = RectangleIntersection(area.*, command.text_outer_clip) }
+        }
+        return area.width > 0.0 && area.height > 0.0
     }
     if kind == PaintKindText {
         lines: s32 = 1

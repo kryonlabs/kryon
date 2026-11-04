@@ -1,0 +1,16 @@
+using UI :: #import "kryon/Widgets";
+#import "std/web"
+#import "kryon/paint_queue"
+frames: s32;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    unused viewport
+    frames += 1
+    WebSet(WebGlobal,WebName("__fixtureFrames"),WebNumber(cast(float64)frames))
+    Text(session,TextProps.{.key=cast(u64)10,.bounds=.{100.0,100.0,180.0,40.0},
+        .text="Rotated",.font=32,.rotation=27.5,.origin=.{90.0,20.0},.wrap=.TextWrapNone})
+    Text(session,TextProps.{.key=cast(u64)11,.bounds=.{100.0,260.0,180.0,40.0},
+        .text="Horizontal",.font=32,.wrap=.TextWrapNone})
+    WebSet(WebGlobal,WebName("__fixturePaint"),WebNumber(cast(float64)PendingPaintCount(session)))
+    return 0
+}

@@ -10,6 +10,7 @@ set -- \
     --bind system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost \
     --bind system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
     --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
+widget_triangles_needed=1
 . "$repo/tests/widget_raster_bindings.sh"
 
 widget_std="$ziran_root/std"

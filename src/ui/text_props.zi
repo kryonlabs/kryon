@@ -62,6 +62,9 @@ TextProps :: struct {
     typeface: string
     // Extra units between lines; zero keeps the default gap.
     line_gap: s32
+    // Clockwise degrees, around bounds top-left plus origin (logical units).
+    rotation: float32
+    origin: Vector2
 }
 
 PreparedText :: struct {

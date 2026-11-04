@@ -64,3 +64,18 @@ RectangleIntersection :: (a: Rectangle, b: Rectangle) -> Rectangle {
     if result.height < 0.0 { result.height = 0.0 }
     return result
 }
+
+// Axis-aligned coverage of a rectangle rotated clockwise about a world point.
+RotatedRectangleBounds :: (bounds: Rectangle, origin: Vector2, rotation: float32) -> Rectangle {
+    camera: Camera = .{.offset = origin, .target = origin, .rotation = rotation, .zoom = 1.0}
+    points: [4]Vector2 = .[.{bounds.x,bounds.y},.{bounds.x+bounds.width,bounds.y},
+        .{bounds.x+bounds.width,bounds.y+bounds.height},.{bounds.x,bounds.y+bounds.height}]
+    first := WorldToScreen(points[0], camera)
+    left := first.x; right := first.x; top := first.y; bottom := first.y
+    for point: points {
+        at := WorldToScreen(point, camera)
+        if at.x < left { left = at.x }; if at.x > right { right = at.x }
+        if at.y < top { top = at.y }; if at.y > bottom { bottom = at.y }
+    }
+    return .{left,top,right-left,bottom-top}
+}

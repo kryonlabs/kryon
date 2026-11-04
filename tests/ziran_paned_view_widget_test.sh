@@ -11,7 +11,7 @@ bind_image=paint_queue:RasterImage=paned_view_host:RasterImage
 bind_mesh=paint_queue:RasterImageMesh=paned_view_host:RasterImageMesh
 
 set -- --bind "$bind_fill" --bind "$bind_outline" --bind "$bind_line" \
-    --bind "$bind_text" --bind "$bind_clipped" --bind "$bind_image" --bind "$bind_mesh"
+    --bind raster_text:RasterTextRotated=paned_view_host:RasterTextRotated --bind "$bind_text" --bind "$bind_clipped" --bind "$bind_image" --bind "$bind_mesh"
 widget_native=1
 widget_run_saved=1
 widget_std="$ziran_root/std"

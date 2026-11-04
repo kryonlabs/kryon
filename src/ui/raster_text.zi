@@ -49,3 +49,14 @@ PaintTextItalicClipped :: (value: string, x: s32, y: s32, font: s32,
     }
     RasterTextClipped(value, x, y, font, color, clip)
 }
+
+// Local text clipping rotates with the glyphs; ancestor clipping stays fixed.
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
+    outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) #foreign host_api;
+PaintTextRotated :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
+    outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {
+    if clip.width <= 0.0 || clip.height <= 0.0 { return }
+    RasterTextRotated(value,x,y,font,color,clip,origin,rotation,outer_clip,outer_clipped,emphasis,italic)
+}

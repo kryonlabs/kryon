@@ -74,6 +74,13 @@ DomPaintRecord :: (queued: QueuedPaint) -> bool {
     scope := WebScope()
     defer { WebEnd(scope) }
     p := queued.data
+    if (p.kind == 4 || p.kind == 6) && p.rotation != 0.0 {
+        dom_paint_tile_node = -2
+        if dom_paint_tile_context != 0 { WebRelease(dom_paint_tile_context) }
+        dom_paint_tile_context = 0
+        DomRotatedText(p)
+        return true
+    }
     native := p.kind >= 1 && p.kind <= 7
     if p.kind == 1 && p.bounds.width != 0.0 && p.bounds.height != 0.0 { native = false }
     image_id: s32
@@ -265,4 +272,50 @@ DomPaintClose :: () {
     page_native_dom = false
     DomPaintCss(PageCanvas(),"visibility","visible")
     WebEnd(scope)
+}
+
+// The outer box keeps ancestor clipping in world space; the child keeps
+// text clipping, selection and the rotation in local space.
+DomRotatedText :: (p: PaintCommand) {
+    outer := DomPaintElement("div",p.kind)
+    if outer == 0 { return }
+    bounds := RotatedRectangleBounds(p.clip,p.origin,p.rotation)
+    if p.text_outer_clipped { bounds = RectangleIntersection(bounds,p.text_outer_clip) }
+    DomPaintBox(outer,bounds); DomPaintCss(outer,"overflow","hidden")
+    at := dom_paint_used-1
+    inner := dom_paint_nodes[at].child
+    if inner == 0 {
+        inner = WebAsObject(WebCall1(WebGetObject(WebGlobal,WebName("document")),WebName("createElement"),WebText("span")))
+        dom_paint_nodes[at].child = WebKeep(inner)
+        unused WebCall1(outer,WebName("appendChild"),WebObject(inner))
+    }
+    DomPaintCss(inner,"position","absolute")
+    DomPaintCss(inner,"whiteSpace","pre"); DomPaintCss(inner,"pointerEvents","auto"); DomPaintCss(inner,"userSelect","text")
+    previous := TextTypefaceUse(p.asset_path)
+    face: s32
+    if canvas_font_loaded { face = CanvasFontFace(canvas_font) }
+    size := PageTextSizeFor(PageMeasureContext(),face,p.font)
+    DomPaintCss(inner,"font",PageFontSpec(size.hundredths,face))
+    unused TextTypefaceUse(previous)
+    DomPaintLength(inner,"lineHeight",cast(float64)p.font)
+    DomPaintCss(inner,"color",PageColor(p.color.r,p.color.g,p.color.b,p.color.a))
+    DomPaintCss(inner,"fontStyle",ifx p.italic then "italic" else "normal")
+    DomPaintCss(inner,"fontWeight",ifx p.emphasis then "bold" else "normal")
+    if !DomSame(WebGet(inner,WebName("textContent")),WebText(p.value)) { WebSet(inner,WebName("textContent"),WebText(p.value)) }
+    // Put the local clip on a full local box; text keeps its own offset.
+    DomPaintBox(inner,Rectangle.{cast(float32)p.x-bounds.x,cast(float32)p.y-bounds.y,
+        cast(float32)PageTextWidth(face,p.value,p.font)+2.0,cast(float32)p.font})
+    transform: Vec(u8)
+    BuilderPrint(*transform,"rotate(%deg)",p.rotation)
+    DomPaintCss(inner,"transform",BuilderFinish(transform))
+    pivot: Vec(u8)
+    BuilderPrint(*pivot,"%px %px",p.origin.x-cast(float32)p.x,p.origin.y-cast(float32)p.y)
+    DomPaintCss(inner,"transformOrigin",BuilderFinish(pivot))
+    path: Vec(u8)
+    right := p.clip.x+p.clip.width-cast(float32)p.x
+    bottom := p.clip.y+p.clip.height-cast(float32)p.y
+    BuilderPrint(*path,"polygon(%px %px,%px %px,%px %px,%px %px)",
+        p.clip.x-cast(float32)p.x,p.clip.y-cast(float32)p.y,
+        right,p.clip.y-cast(float32)p.y,right,bottom,p.clip.x-cast(float32)p.x,bottom)
+    DomPaintCss(inner,"clipPath",BuilderFinish(path))
 }

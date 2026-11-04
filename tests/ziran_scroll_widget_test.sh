@@ -338,6 +338,7 @@ cat > "$work/native_main.h" <<'C'
 #define HOST extern "C"
 #else
 #include "app.h"
+#include <assert.h>
 #define HOST
 #endif
 HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
@@ -369,6 +370,13 @@ HOST void RasterImageMesh(String path, uint32_t id, Rectangle source,
     Slice points, int32_t columns, int32_t rows, Rectangle clip, Color tint) {
     (void)path; (void)id; (void)source; (void)points;
     (void)columns; (void)rows; (void)clip; (void)tint;
+}
+HOST void RasterTextRotated(String value, int32_t x, int32_t y, int32_t font,
+    Color color, Rectangle clip, Vector2 origin, float rotation,
+    Rectangle outer_clip, bool outer_clipped, bool emphasis, bool italic) {
+    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
+    (void)origin; (void)rotation; (void)outer_clip; (void)outer_clipped;
+    (void)emphasis; (void)italic; assert(0 && "unexpected rotated text");
 }
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
@@ -425,6 +433,7 @@ set -- \
     --bind raster:RasterLine=ziran_widget_noop_host:RasterLine \
     --bind raster_text:RasterText=ziran_widget_noop_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_widget_noop_host:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
     --bind paint_queue:RasterImage=ziran_widget_noop_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 "$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \

@@ -1,0 +1,78 @@
+#import "raylib_runtime"
+#import "raylib_image_decode"
+#import "geometry"
+#import "drawing_props"
+#import "c_string"
+
+rotation_test_raylib :: #system_library "raylib";
+ReadTexture :: (texture: Texture2D) -> RaylibGlyphImage #foreign rotation_test_raylib "LoadImageFromTexture";
+
+TestBeginTarget :: (target: HostRaylibRenderTexture) #foreign rotation_test_raylib "BeginTextureMode";
+TestEndTarget :: () #foreign rotation_test_raylib "EndTextureMode";
+TestClear :: (color: Color) #foreign rotation_test_raylib "ClearBackground";
+TestInit :: (width: s32, height: s32, title: *u8) #foreign rotation_test_raylib "InitWindow";
+TestReady :: () -> bool #foreign rotation_test_raylib "IsWindowReady";
+TestClose :: () #foreign rotation_test_raylib "CloseWindow";
+TestDefault :: () -> RaylibFont #foreign rotation_test_raylib "GetFontDefault";
+TestLoadTarget :: (width: s32, height: s32) -> HostRaylibRenderTexture #foreign rotation_test_raylib "LoadRenderTexture";
+TestTargetReady :: (target: HostRaylibRenderTexture) -> bool #foreign rotation_test_raylib "IsRenderTextureValid";
+TestFreeTarget :: (target: HostRaylibRenderTexture) #foreign rotation_test_raylib "UnloadRenderTexture";
+TestFreeImage :: (image: RaylibGlyphImage) #foreign rotation_test_raylib "UnloadImage";
+
+#if #defined(KRYON_FRAME_THREADS) {
+    #import "render_dispatch"
+    test_pipeline: RenderPipeline;
+}
+DrawRotated :: (argument: *void) {
+    angle := (cast(*float32)argument).*
+    RasterTextRotated("Diagonal",60,100,32,Color.{255,255,255,255},
+        Rectangle.{60.0,100.0,140.0,32.0},Vector2.{130.0,116.0},angle,Rectangle.{},false,false,false)
+}
+
+// Read only our offscreen render texture; never capture a window or desktop.
+Coverage :: (target: HostRaylibRenderTexture, angle: float32) -> Rectangle {
+    TestBeginTarget(target)
+    TestClear(Color.{0,0,0,255})
+    #if #defined(KRYON_FRAME_THREADS) {
+        if !RenderPipelineStep(*test_pipeline, DrawRotated, cast(*void)*angle) ||
+        !RenderPipelineFlush(*test_pipeline) { return Rectangle.{} }
+    } else { DrawRotated(cast(*void)*angle) }
+    TestEndTarget()
+    image := ReadTexture(target.texture)
+    defer TestFreeImage(image)
+    pixels := cast(*u8)image.data
+    left: s32=256; right: s32; top: s32=256; bottom: s32; count: s32
+    for y: 0..255 { for x: 0..255 {
+        at := (y*256+x)*4
+        if pixels[at] > cast(u8)16 {
+            count += 1
+            if x<left { left=cast(s32)x }; if x>right { right=cast(s32)x }
+            if y<top { top=cast(s32)y }; if y>bottom { bottom=cast(s32)y }
+        }
+    } }
+    if count < 100 { return Rectangle.{} }
+    return .{cast(float32)left,cast(float32)top,cast(float32)(right-left+1),cast(float32)(bottom-top+1)}
+}
+#program_export
+main :: () -> s32 {
+    title: [32]u8
+    unused CopyCString("Rotation test",title[:])
+    TestInit(256,256,*title[0])
+    if !TestReady() { return 1 }
+    defer TestClose()
+    raylib_font=TestDefault(); raylib_font_loaded=true
+    #if #defined(KRYON_FRAME_THREADS) {
+        if !RenderPipelineOpen(*test_pipeline) { return 5 }
+        defer RenderPipelineClose(*test_pipeline)
+    }
+    target := TestLoadTarget(256,256)
+    if !TestTargetReady(target) { return 2 }
+    defer TestFreeTarget(target)
+    horizontal := Coverage(target,0.0)
+    vertical := Coverage(target,90.0)
+    if horizontal.width < 80.0 || horizontal.height > 32.0 ||
+        vertical.height < 80.0 || vertical.width > 32.0 { return 3 }
+    angled := Coverage(target,-27.0)
+    if angled.width < 70.0 || angled.height < 45.0 { return 4 }
+    return 0
+}

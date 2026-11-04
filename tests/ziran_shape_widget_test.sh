@@ -21,6 +21,7 @@ set -- \
     --bind raster:RasterLine=$host:RasterLine \
     --bind raster_text:RasterText=$host:RasterText \
     --bind raster_text:RasterTextClipped=$host:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=ziran_shape_widget_host:RasterTextRotated \
     --bind paint_queue:RasterImage=$host:RasterImage \
     --bind paint_queue:RasterImageMesh=$host:RasterImageMesh
 

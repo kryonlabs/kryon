@@ -5,6 +5,7 @@ source=$repo/tests/ziran_page_text_test.zi
 widget_host=ziran_page_text_host
 widget_mesh_host=ziran_mesh_noop_host
 set --
+widget_triangles_needed=1
 . "$repo/tests/widget_raster_bindings.sh"
 
 widget_std="$ziran_root/std"

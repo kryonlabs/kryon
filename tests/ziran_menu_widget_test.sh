@@ -15,7 +15,8 @@ set -- \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_context_menu_widget_host:RasterRoundedRectangleOutline \
     --bind raster:RasterLine=ziran_context_menu_widget_host:RasterLine \
     --bind raster_text:RasterText=ziran_context_menu_widget_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_context_menu_widget_host:RasterTextClipped
+    --bind raster_text:RasterTextClipped=ziran_context_menu_widget_host:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=ziran_context_menu_widget_host:RasterTextRotated
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --entry "$entry" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source

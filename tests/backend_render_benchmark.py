@@ -41,6 +41,7 @@ BINDINGS = ['raster:RasterLine=pixmap:RasterLine',
             'raster_shape:RasterRoundedRectangleOutline=pixmap:RasterRoundedRectangleOutline',
             'raster_text:RasterText=pixmap:RasterText',
             'raster_text:RasterTextClipped=pixmap:RasterTextClipped',
+            'raster_text:RasterTextRotated=pixmap:RasterTextRotated',
             'raster_triangles:RasterTriangles=pixmap:RasterTriangles']
 
 

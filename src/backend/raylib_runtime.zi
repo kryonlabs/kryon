@@ -12,6 +12,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
+#import "math"
 #import "test_driver"
 #import "session"
 #import "image_props"
@@ -112,6 +113,7 @@ RaylibGlyphInfo :: struct {
     advance_x: s32
     image: ImagePixels.RaylibGlyphImage
 }
+HostRaylibDefaultFont :: () -> RaylibFont #foreign raylib "GetFontDefault";
 HostRaylibGlyphIndex :: (font: RaylibFont, codepoint: s32) -> s32 #foreign raylib "GetGlyphIndex";
 HostRaylibCodepoint :: (value: *u8, length: *s32) -> s32 #foreign raylib "GetCodepointNext";
 HostRaylibLoadFont :: (path: *u8, size: s32, codepoints: *s32,
@@ -2545,7 +2547,7 @@ RaylibTextWithFallback :: (value: string, x: s32, y: s32, size: s32,
                     RaylibDrawEmphasis(RaylibGlyphFont(selected, codepoint), *glyph[0], glyph_position,
                         text_size, color, pixels, matrix)
                 } else {
-                    HostRaylibDrawFontText(RaylibGlyphFont(selected, codepoint), *glyph[0],
+                    RaylibDrawClippedGlyph(RaylibGlyphFont(selected, codepoint), *glyph[0],
                         glyph_position, text_size, 0.0, color)
                 }
                 if raylib_text_italic {
@@ -2575,7 +2577,7 @@ RaylibDrawEmphasis :: (font: RaylibFont, glyph: *u8, position: Vector2,
         step = 1.0 / matrix.m0
     }
     for stroke: 1..strokes {
-        HostRaylibDrawFontText(font, glyph,
+        RaylibDrawClippedGlyph(font, glyph,
             .{position.x + step * cast(float32)stroke, position.y}, size, 0.0, color)
     }
 }
@@ -4289,5 +4291,60 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         // and defer them again if platform polling replaced the context.
         if RaylibCurrentContext() == raylib_pipeline_context { RaylibPumpImages() }
         return ok
+    }
+}
+
+// Clip each glyph in its own local coordinates before rotating its quad.
+// This avoids a rotated scissor's enlarged bounding box leaking glyph edges.
+raylib_rotated_text: bool;
+raylib_rotated_text_clip: Rectangle;
+RaylibDrawClippedGlyph :: (font: RaylibFont, value: *u8, position: Vector2,
+    size: float32, spacing: float32, tint: Color) {
+    if !raylib_rotated_text { HostRaylibDrawFontText(font,value,position,size,spacing,tint); return }
+    length: s32
+    code := HostRaylibCodepoint(value,*length)
+    index := HostRaylibGlyphIndex(font,code)
+    glyphs := cast(*RaylibGlyphInfo)font.glyphs
+    scale := size / cast(float32)font.base_size
+    padding := cast(float32)font.glyph_padding
+    rec := font.recs[index]
+    source := Rectangle.{rec.x-padding,rec.y-padding,rec.width+2.0*padding,rec.height+2.0*padding}
+    destination := Rectangle.{position.x+(cast(float32)glyphs[index].offset_x-padding)*scale,
+        position.y+(cast(float32)glyphs[index].offset_y-padding)*scale,source.width*scale,source.height*scale}
+    visible := RectangleIntersection(destination,raylib_rotated_text_clip)
+    if visible.width <= 0.0 || visible.height <= 0.0 { return }
+    source.x += (visible.x-destination.x)/scale; source.y += (visible.y-destination.y)/scale
+    source.width = visible.width/scale; source.height = visible.height/scale
+    HostRaylibDrawTexture(font.texture,source,visible,Vector2.{},0.0,tint)
+}
+#program_export
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
+    outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {
+    #if RAYLIB_FRAME_THREADS {
+        if RecordFrameOperation(PaintCommand.{.value=value,.x=x,.y=y,.font=font,.color=color,
+            .clip=clip,.origin=origin,.rotation=rotation,.text_outer_clip=outer_clip,
+            .text_outer_clipped=outer_clipped,.emphasis=emphasis,.italic=italic}, RaylibReplayRotatedText) { return }
+    }
+    saved: RasterClipState
+    if outer_clipped { saved = BeginRasterClip(outer_clip) }
+    sine := SineDegrees(rotation); cosine := CosineDegrees(rotation)
+    matrix: [16]float32 = .[cosine,sine,0.0,0.0,-sine,cosine,0.0,0.0,0.0,0.0,1.0,0.0,
+        origin.x-cosine*origin.x+sine*origin.y,origin.y-sine*origin.x-cosine*origin.y,0.0,1.0]
+    HostRaylibPushMatrix(); HostRaylibMultMatrix(*matrix[0])
+    raylib_rotated_text = true; raylib_rotated_text_clip = clip
+    raylib_text_emphasis = emphasis; raylib_text_italic = italic
+    old_font := raylib_font; old_loaded := raylib_font_loaded
+    if !old_loaded { raylib_font = HostRaylibDefaultFont(); raylib_font_loaded = true }
+    RasterText(value,x,y,font,color)
+    raylib_font = old_font; raylib_font_loaded = old_loaded
+    raylib_text_emphasis = false; raylib_text_italic = false; raylib_rotated_text = false
+    HostRaylibPopMatrix()
+    if outer_clipped { EndRasterClip(saved) }
+}
+#if RAYLIB_FRAME_THREADS {
+    RaylibReplayRotatedText :: (p: PaintCommand) {
+        RasterTextRotated(p.value,p.x,p.y,p.font,p.color,p.clip,p.origin,p.rotation,
+            p.text_outer_clip,p.text_outer_clipped,p.emphasis,p.italic)
     }
 }

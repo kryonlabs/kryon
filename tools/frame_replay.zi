@@ -62,8 +62,8 @@ ReplayState :: struct {
     failed: bool
     pointer_fields: [5]HostField
     labels: [12]Name
-    bindings: [22]HostBinding
-    binding_names: [44]Name
+    bindings: [23]HostBinding
+    binding_names: [46]Name
     samples: [1024]ReplaySample
     current_sample: s32
     input_names: [20]Name
@@ -416,7 +416,7 @@ ReplayCall :: (context: *void, module_name: *u8, function_name: *u8,
         (function == "RasterRoundedRectangle" ||
          function == "RasterRoundedRectangleOutline")) ||
        (module == "raster_text" &&
-        (function == "RasterText" || function == "RasterTextClipped")) ||
+        (function == "RasterText" || function == "RasterTextClipped" || function == "RasterTextRotated")) ||
        (module == "paint_queue" &&
         (function == "RasterImage" || function == "RasterImageMesh")) ||
        (module == "raster_triangles" && function == "RasterTriangles") {
@@ -729,7 +729,8 @@ ReadTrace :: (state: *ReplayState, path: string) -> bool {
 InitializeBindings :: (state: *ReplayState, pointer_module: string) -> bool {
     callback: HostCall = ReplayCall
     if !PreparePointer(state) || !PrepareInput(state) { return false }
-    return SetBinding(state, 0, "font_metrics", "MeasureGlyphWidth", callback) &&
+    return SetBinding(state, 22, "raster_text", "RasterTextRotated", callback) &&
+        SetBinding(state, 0, "font_metrics", "MeasureGlyphWidth", callback) &&
         SetBinding(state, 1, "font_metrics", "MeasureGlyphLineHeight", callback) &&
         SetBinding(state, 2, "raster_shape", "RasterRoundedRectangle", callback) &&
         SetBinding(state, 3, "raster_shape", "RasterRoundedRectangleOutline", callback) &&
@@ -760,7 +761,7 @@ Replay :: (state: *ReplayState, bundle_path: string,
     bundle: *void = OpenBundle(*bundle_name[0])
     if bundle == null { return false }
     instance: *void = InstantiateBundle(bundle, *state.bindings[0],
-                                        cast(u64)22)
+                                        cast(u64)23)
     if instance == null { CloseBundle(bundle); return false }
     state.output = OpenReplace(output_path)
     if !state.output.valid {

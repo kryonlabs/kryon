@@ -207,6 +207,7 @@ cat > "$work/native_main.h" <<'C'
 #define HOST extern "C"
 #else
 #include "app.h"
+#include <assert.h>
 #define HOST
 #endif
 HOST void RasterRoundedRectangle(Rectangle bounds, float radius,
@@ -238,6 +239,13 @@ HOST void RasterImageMesh(String path, uint32_t id, Rectangle source,
     Slice points, int32_t columns, int32_t rows, Rectangle clip, Color tint) {
     (void)path; (void)id; (void)source; (void)points;
     (void)columns; (void)rows; (void)clip; (void)tint;
+}
+HOST void RasterTextRotated(String value, int32_t x, int32_t y, int32_t font,
+    Color color, Rectangle clip, Vector2 origin, float rotation,
+    Rectangle outer_clip, bool outer_clipped, bool emphasis, bool italic) {
+    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
+    (void)origin; (void)rotation; (void)outer_clip; (void)outer_clipped;
+    (void)emphasis; (void)italic; assert(0 && "unexpected rotated text");
 }
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C

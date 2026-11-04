@@ -691,3 +691,16 @@ play-billing-test:
 canvas-app-hooks-test:
 	@python3 tests/canvas_app_hooks_test.py
 canvas-test: canvas-app-hooks-test
+
+.PHONY: rotated-text-test
+rotated-text-test: project-toolchain $(RAYLIB_ARCHIVES)
+	@sh tests/rotated_text_test.sh
+	@sh tests/rotated_text_raylib_test.sh
+	@sh tests/rotated_text_cairo_test.sh
+	@python3 tests/rotated_text_web_test.py
+test: rotated-text-test
+
+.PHONY: cairo-scaled-image-test
+cairo-scaled-image-test: project-toolchain
+	@sh tests/ziran_cairo_scaled_image_test.sh
+test: cairo-scaled-image-test

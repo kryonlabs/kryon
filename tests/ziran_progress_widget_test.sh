@@ -9,7 +9,8 @@ set -- \
     --bind raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_progress_raster_host:RasterRoundedRectangleOutline \
     --bind raster_text:RasterText=ziran_progress_raster_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_progress_raster_host:RasterTextClipped
+    --bind raster_text:RasterTextClipped=ziran_progress_raster_host:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated
 
 "$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
     -o "$work/ir" "$portable"
@@ -97,6 +98,13 @@ HOST void RasterImageMesh(String path, uint32_t id, Rectangle source,
     (void)path; (void)id; (void)source; (void)points;
     (void)columns; (void)rows; (void)clip; (void)tint;
 }
+HOST void RasterTextRotated(String value, int32_t x, int32_t y, int32_t font,
+    Color color, Rectangle clip, Vector2 origin, float rotation,
+    Rectangle outer_clip, bool outer_clipped, bool emphasis, bool italic) {
+    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
+    (void)origin; (void)rotation; (void)outer_clip; (void)outer_clipped;
+    (void)emphasis; (void)italic; assert(0 && "unexpected rotated text");
+}
 int main(void) {
     assert(Answer() == 42 && measures == 2 && draws == 5);
     return 0;
@@ -157,6 +165,7 @@ func (host *widgetHost) RasterText(value string, x int32, y int32,
     }
     host.draws++
 }
+func (host *widgetHost) RasterTextRotated(value string, x, y, font int32, color Color, clip Rectangle, origin Vector2, rotation float32, outerClip Rectangle, outerClipped, emphasis, italic bool) { panic("unexpected rotated text") }
 func (host *widgetHost) RasterTextClipped(value string, x, y, font int32,
     color Color, clip Rectangle) {
     host.t.Fatal("Progress should not draw clipped text")

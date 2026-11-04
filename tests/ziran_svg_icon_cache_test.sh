@@ -7,6 +7,7 @@ set -- \
     --bind raster:RasterLine=ziran_navigation_bar_widget_host:RasterLine \
     --bind raster_text:RasterText=ziran_navigation_bar_widget_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_navigation_bar_widget_host:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
     --bind raster_shape:RasterRoundedRectangle=ziran_navigation_bar_widget_host:RasterRoundedRectangle \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_navigation_bar_widget_host:RasterRoundedRectangleOutline \
     --bind paint_queue:RasterImage=ziran_navigation_bar_widget_host:RasterImage \

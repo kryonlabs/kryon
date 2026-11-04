@@ -20,6 +20,8 @@ Theme :: #import "theme";
     #import "drawing_props"
     #import "font_metrics"
     #import "geometry"
+    #import "math"
+    #import "shape_paint"
     #import "paint_queue"
     #import "text_layout"
     #import "semantic"
@@ -101,7 +103,7 @@ Theme :: #import "theme";
                 left := x + GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
                 color := ifx run.link then TextLinkColor(prepared.color) else prepared.color
                 PaintClippedEmphasis(session, node, props.text[at:run.end], left, y,
-                    prepared.font, color, clip, prepared.typeface)
+                    prepared.font, color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
                 at = run.end
             }
         }
@@ -160,16 +162,16 @@ Theme :: #import "theme";
             left := x + GlyphWidth(props.text[line_start:at], prepared.font, prepared.typeface)
             if !run.link {
                 PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
-                    prepared.color, clip, prepared.typeface)
+                    prepared.color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
             } else {
                 color := TextLinkColor(prepared.color)
                 PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
-                    color, clip, prepared.typeface)
+                    color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
                 width := GlyphWidth(props.text[at:run.end], prepared.font, prepared.typeface)
                 underline := RectangleIntersection(Rectangle.{cast(float32)left,
                         cast(float32)(y + prepared.line_height - 1), cast(float32)width, 1.0}, clip)
                 if underline.width > 0.0 && underline.height > 0.0 {
-                    PaintRoundedFill(session, node, underline, 0.0, 1, color)
+                    PaintTextRule(session,node,props,prepared,underline,color)
                 }
             }
             at = run.end
@@ -324,7 +326,7 @@ Theme :: #import "theme";
                 if ellipsis {
                     PaintClippedLabel(session, node, "...",
                         x + line.width - dots_width, y, prepared.font,
-                        prepared.color, clip, prepared.typeface)
+                        prepared.color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
                 }
                 PaintTextEmphasis(session, node, props, prepared, line, x, y, clip)
                 if props.strikethrough {
@@ -333,13 +335,31 @@ Theme :: #import "theme";
                         cast(float32)prepared.line_height, 1.0)
                     strike = RectangleIntersection(strike, prepared.bounds)
                     if strike.width > 0.0 && strike.height > 0.0 {
-                        PaintRoundedFill(session, node, strike, 0.0, 1, prepared.color)
+                        PaintTextRule(session,node,props,prepared,strike,prepared.color)
                     }
                 }
             }
             y += prepared.line_height + prepared.line_gap
             start = line.next
         }
+    }
+
+    PaintTextRule :: (session: Session, node: s32, props: TextProps, prepared: PreparedText,
+        bounds: Rectangle, color: Color) {
+        if props.rotation == 0.0 { PaintRoundedFill(session,node,bounds,0.0,1,color); return }
+        origin := TextOrigin(props,prepared)
+        camera: Camera = .{.offset=origin,.target=origin,.rotation=props.rotation,.zoom=1.0}
+        a := WorldToScreen(Vector2.{bounds.x,bounds.y},camera)
+        b := WorldToScreen(Vector2.{bounds.x+bounds.width,bounds.y},camera)
+        c := WorldToScreen(Vector2.{bounds.x+bounds.width,bounds.y+bounds.height},camera)
+        d := WorldToScreen(Vector2.{bounds.x,bounds.y+bounds.height},camera)
+        area := RotatedRectangleBounds(bounds,origin,props.rotation)
+        PaintTriangleShape(session,node,area,a,b,c,color)
+        PaintTriangleShape(session,node,area,a,c,d,color)
+    }
+
+    TextOrigin :: (props: TextProps, prepared: PreparedText) -> Vector2 {
+        return .{prepared.bounds.x + props.origin.x, prepared.bounds.y + props.origin.y}
     }
 
     // The face Text paints props with.
@@ -354,11 +374,13 @@ Theme :: #import "theme";
 
     #program_export
     Text :: (session: Session, props: TextProps) {
+        if !Finite32(props.rotation) || !Finite32(props.origin.x) || !Finite32(props.origin.y) { return }
         face: TextFace = TextFaceOf(props)
         prepared: PreparedText = PrepareText(props, face)
         node: s32 = -1
         if TreeIsBuilding(session) {
-            node = TreeSubmitCurrent(session, props.key, WidgetKindText, prepared.bounds)
+            node = TreeSubmitCurrent(session, props.key, WidgetKindText,
+                RotatedRectangleBounds(prepared.bounds, TextOrigin(props, prepared), props.rotation))
             if node < 0 { return }
             TreeSetLabel(session, node, props.text)
             TreeSetStyleClass(session, node, props.class_name)
@@ -383,6 +405,9 @@ Theme :: #import "theme";
             return -1
         }
         prepared := PrepareText(props, TextFaceOf(props))
+        origin := TextOrigin(props, prepared)
+        point := ScreenToWorld(Vector2.{x,y}, Camera.{.offset=origin,.target=origin,.rotation=props.rotation,.zoom=1.0})
+        x = point.x; y = point.y
         top := TextFirstLineY(props, prepared)
         start: s32 = 0
         while start <= cast(s32)props.text.count {
@@ -427,6 +452,9 @@ Theme :: #import "theme";
     }
 
     TextByteAtPoint :: (props: TextProps, prepared: PreparedText, x: float32, y: float32) -> s32 {
+        origin := TextOrigin(props,prepared)
+        point := ScreenToWorld(Vector2.{x,y},Camera.{.offset=origin,.target=origin,.rotation=props.rotation,.zoom=1.0})
+        x = point.x; y = point.y
         top := TextFirstLineY(props, prepared)
         start: s32 = 0
         while start <= props.text.count {
@@ -488,9 +516,9 @@ Theme :: #import "theme";
                     line.width, cast(s32)props.align)
                 before := GlyphWidth(props.text[line.start:from], prepared.font, prepared.typeface)
                 after := GlyphWidth(props.text[line.start:to], prepared.font, prepared.typeface)
-                PaintRoundedFill(session, node, RectangleIntersection(prepared.bounds,
+                PaintTextRule(session,node,props,prepared,RectangleIntersection(prepared.bounds,
                     Rectangle.{cast(float32)(left + before), cast(float32)top,
-                        cast(float32)(after - before), cast(float32)prepared.line_height}), 0.0, 1, color)
+                        cast(float32)(after - before), cast(float32)prepared.line_height}),color)
             }
             start = line.next
             top += prepared.line_height + prepared.line_gap

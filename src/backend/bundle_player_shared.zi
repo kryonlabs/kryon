@@ -132,6 +132,16 @@ PrepareInput :: (player: *Player) -> bool {
                 cast(s32)args[2].integer, cast(float32)args[3].real, ColorFrom(args[4]))
             return 1
         }
+        if function == "RasterTextRotated" && count == 12 &&
+        args[0].kind == HostString && args[1].kind == HostInteger && args[2].kind == HostInteger &&
+        args[3].kind == HostInteger && ColorValue(args[4]) && RectangleValue(args[5]) && VectorValue(args[6]) &&
+        args[7].kind == HostReal && RectangleValue(args[8]) && args[9].kind == HostInteger &&
+        args[10].kind == HostInteger && args[11].kind == HostInteger {
+            RasterTextRotated(TextValue(args[0]),cast(s32)args[1].integer,cast(s32)args[2].integer,
+                cast(s32)args[3].integer,ColorFrom(args[4]),RectangleFrom(args[5]),VectorFrom(args[6]),
+                cast(float32)args[7].real,RectangleFrom(args[8]),args[9].integer != 0,args[10].integer != 0,args[11].integer != 0)
+            return 1
+        }
         if (function == "RasterText" && count == 5) ||
         (function == "RasterTextClipped" && count == 6) {
             if args[0].kind != HostString || args[1].kind != HostInteger ||

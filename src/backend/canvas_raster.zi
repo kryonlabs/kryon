@@ -302,3 +302,26 @@ CanvasMeshTriangle :: (id: s32, a: Vector2, a_source: Vector2, b: Vector2,
         cast(float64)c_source.x, cast(float64)c_source.y,
         cast(s32)tint.r, cast(s32)tint.g, cast(s32)tint.b, cast(s32)tint.a, filter)
 }
+
+#program_export
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
+    outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {
+    scope := WebScope(); ctx := PageContext()
+    unused WebCall0(ctx,WebName("save"))
+    if outer_clipped {
+        unused WebCall0(ctx,WebName("beginPath"))
+        unused WebCall4(ctx,WebName("rect"),WebNumber(outer_clip.x),WebNumber(outer_clip.y),WebNumber(outer_clip.width),WebNumber(outer_clip.height))
+        unused WebCall0(ctx,WebName("clip"))
+    }
+    unused WebCall2(ctx,WebName("translate"),WebNumber(origin.x),WebNumber(origin.y))
+    unused WebCall1(ctx,WebName("rotate"),WebNumber(cast(float64)rotation*0.017453292519943295))
+    unused WebCall2(ctx,WebName("translate"),WebNumber(-origin.x),WebNumber(-origin.y))
+    unused WebCall0(ctx,WebName("beginPath"))
+    unused WebCall4(ctx,WebName("rect"),WebNumber(clip.x),WebNumber(clip.y),WebNumber(clip.width),WebNumber(clip.height))
+    unused WebCall0(ctx,WebName("clip"))
+    unused italic
+    stroke := ifx emphasis then (ifx font / 24 > 0 then font / 24 else 1) else 0
+    RasterText(value,x+stroke,y,font,color)
+    unused WebCall0(ctx,WebName("restore")); WebEnd(scope)
+}

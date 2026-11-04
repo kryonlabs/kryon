@@ -21,6 +21,10 @@ RasterImageCall :: #type (asset: string, generation: u32, source: Rectangle, des
 RasterTrianglesCall :: #type (points: []Vector2, color: Color) -> void;
 RasterImageMeshCall :: #type (asset: string, generation: u32, source: Rectangle, points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) -> void;
 
+RasterTextRotatedCall :: #type (text: string, x: s32, y: s32, font: s32, color: Color,
+    clip: Rectangle, origin: Vector2, rotation: float32, outer_clip: Rectangle,
+    outer_clipped: bool, emphasis: bool, italic: bool) -> void;
+
 RasterHost :: struct {
     asset_bundle: *void
     x: float32
@@ -33,6 +37,7 @@ RasterHost :: struct {
     rectangle: RasterRoundedRectangleCall
     outline: RasterRoundedRectangleOutlineCall
     clipped_text: RasterTextClippedCall
+    rotated_text: RasterTextRotatedCall
     text: RasterTextCall
     image: RasterImageCall
     triangles: RasterTrianglesCall
@@ -49,6 +54,7 @@ RasterHostValid :: (host: RasterHost) -> bool {
     host.outline != null &&
     host.clipped_text != null &&
     host.text != null &&
+    host.rotated_text != null &&
     host.image != null &&
     host.triangles != null &&
     host.mesh != null
@@ -131,6 +137,18 @@ RasterHostCall :: (context: *void, module: *u8, function_name: *u8,
     args[2].kind == HostInteger && args[3].kind == HostReal && Values.ColorValue(args[4]) {
         host.outline(RasterHostBounds(host, args[0]), cast(float32)args[1].real,
             cast(s32)args[2].integer, cast(float32)args[3].real, Values.ColorFrom(args[4]))
+        return 1
+    }
+    if function == "RasterTextRotated" && count == 12 &&
+    args[0].kind == HostString && args[1].kind == HostInteger && args[2].kind == HostInteger &&
+    args[3].kind == HostInteger && Values.ColorValue(args[4]) && Values.RectangleValue(args[5]) &&
+    Values.VectorValue(args[6]) && args[7].kind == HostReal && Values.RectangleValue(args[8]) &&
+    args[9].kind == HostInteger && args[10].kind == HostInteger && args[11].kind == HostInteger {
+        origin := Values.VectorFrom(args[6]); origin.x += host.x; origin.y += host.y
+        host.rotated_text(Values.TextValue(args[0]),cast(s32)args[1].integer+cast(s32)host.x,
+            cast(s32)args[2].integer+cast(s32)host.y,cast(s32)args[3].integer,Values.ColorFrom(args[4]),
+            RasterHostBounds(host,args[5]),origin,cast(float32)args[7].real,RasterHostBounds(host,args[8]),
+            args[9].integer != 0,args[10].integer != 0,args[11].integer != 0)
         return 1
     }
     if (function == "RasterText" && count == 5) ||

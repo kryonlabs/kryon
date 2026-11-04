@@ -669,6 +669,27 @@ PixmapDrawEmoji :: (emoji: s32, x: s32, y: s32, size: s32) {
     if offset < 0 { return }
     color: Color
     color.a = cast(u8)255
+    if pixmap_text_rotation != 0.0 {
+        bounds := Rectangle.{cast(float32)x/pixmap_scale_x,cast(float32)y/pixmap_scale_y,
+            cast(float32)size/pixmap_scale_x,cast(float32)size/pixmap_scale_y}
+        area := PixmapDeviceBounds(RotatedRectangleBounds(bounds,pixmap_text_origin,pixmap_text_rotation))
+        camera: Camera = .{.offset=pixmap_text_origin,.target=pixmap_text_origin,.rotation=pixmap_text_rotation,.zoom=1.0}
+        for row: cast(s32)area.y-1..cast(s32)(area.y+area.height)+1 {
+            for column: cast(s32)area.x-1..cast(s32)(area.x+area.width)+1 {
+                point := ScreenToWorld(Vector2.{(cast(float32)column+0.5)/pixmap_scale_x,(cast(float32)row+0.5)/pixmap_scale_y},camera)
+                clip := pixmap_text_local_clip
+                sx := cast(s32)(point.x*pixmap_scale_x)-x; sy := cast(s32)(point.y*pixmap_scale_y)-y
+                if sx >= 0 && sy >= 0 && sx < size && sy < size && point.x >= clip.x && point.y >= clip.y &&
+                point.x < clip.x+clip.width && point.y < clip.y+clip.height {
+                    pixel := pixmap_emoji_pool[offset+sy*size+sx]
+                    tint: Color = .{cast(u8)((pixel >> cast(u32)16) & cast(u32)255),
+                        cast(u8)((pixel >> cast(u32)8) & cast(u32)255),cast(u8)(pixel & cast(u32)255),cast(u8)255}
+                    PixmapBlend(cast(s32)column,cast(s32)row,tint,cast(s32)(pixel >> cast(u32)24))
+                }
+            }
+        }
+        return
+    }
     if pixmap_gpu_active {
         key := -(cast(s64)emoji * 256 + cast(s64)size + 1) - (cast(s64)1 << cast(s64)56)
         slot := PixmapGpuFind(key)
@@ -719,6 +740,7 @@ PixmapBlendMaskRGB :: (old: u32, source_rb: u32, source_green: u32,
 // Source channels and host alpha are constant; only coverage and the old
 // RGB channels vary per pixel. No glyph-sized color cache is needed.
 PixmapBlendMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
+    if pixmap_text_rotation != 0.0 { PixmapBlendRotatedMask(mask,coverage,color); return }
     source_alpha := cast(u32)color.a
     if source_alpha == cast(u32)0 { return }
     top: s32 = mask.top
@@ -782,7 +804,7 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, pen_font: s64, colo
     // A glyph stays well within two font sizes of its line box and advance,
     // so text past the clip draws nothing and is not rasterized.
     reach: s32 = font * 2
-    if y + font + reach <= pixmap_clip_top || y - reach >= pixmap_clip_bottom { return }
+    if pixmap_text_rotation == 0.0 && (y + font + reach <= pixmap_clip_top || y - reach >= pixmap_clip_bottom) { return }
     baseline: s64 = cast(s64)y * 256 + PixmapTextBaseline(font)
     pen: s64 = 0
     mask: PixmapGlyphMask
@@ -794,8 +816,8 @@ PixmapDrawText :: (value: string, x: s32, y: s32, font: s32, pen_font: s64, colo
         origin: s64 = cast(s64)x * 256 + PixmapFloorDiv(pen * pen_font, cast(s64)PixmapTextLine)
         whole: s32 = cast(s32)PixmapFloorDiv(origin, 256)
         // Advances never move left, so no later glyph reaches the clip.
-        if whole - reach >= pixmap_clip_right { break }
-        if whole + PixmapTextWidth(unit.advance, font) + reach > pixmap_clip_left {
+        if pixmap_text_rotation == 0.0 && whole - reach >= pixmap_clip_right { break }
+        if pixmap_text_rotation != 0.0 || whole + PixmapTextWidth(unit.advance, font) + reach > pixmap_clip_left {
             if unit.emoji >= 0 {
                 PixmapDrawEmoji(unit.emoji, whole, y, font)
             } else if unit.glyph >= 0 {
@@ -1333,4 +1355,41 @@ SystemClipboardByteHost :: (index: s32) -> s32 {
 SystemClipboardWriteHost :: (text: string) -> bool {
     unused text
     return false
+}
+
+pixmap_text_rotation: float32;
+pixmap_text_origin: Vector2;
+pixmap_text_local_clip: Rectangle;
+PixmapBlendRotatedMask :: (mask: PixmapGlyphMask, coverage: []u8, color: Color) {
+    // Rotate in logical units so nonuniform device density preserves the angle.
+    local := Rectangle.{cast(float32)mask.left/pixmap_scale_x,cast(float32)mask.top/pixmap_scale_y,
+        cast(float32)mask.width/pixmap_scale_x,cast(float32)mask.height/pixmap_scale_y}
+    bounds := PixmapDeviceBounds(RotatedRectangleBounds(local,pixmap_text_origin,pixmap_text_rotation))
+    camera: Camera = .{.offset=pixmap_text_origin,.target=pixmap_text_origin,.rotation=pixmap_text_rotation,.zoom=1.0}
+    for y: cast(s32)bounds.y-1..cast(s32)(bounds.y+bounds.height)+1 {
+        for x: cast(s32)bounds.x-1..cast(s32)(bounds.x+bounds.width)+1 {
+            point := ScreenToWorld(Vector2.{(cast(float32)x+0.5)/pixmap_scale_x,(cast(float32)y+0.5)/pixmap_scale_y},camera)
+            clip := pixmap_text_local_clip
+            if point.x >= clip.x && point.y >= clip.y && point.x < clip.x+clip.width && point.y < clip.y+clip.height {
+                column := cast(s32)(point.x*pixmap_scale_x)-mask.left
+                row := cast(s32)(point.y*pixmap_scale_y)-mask.top
+                if column >= 0 && row >= 0 && column < mask.width && row < mask.height {
+                    PixmapBlend(x,y,color,cast(s32)coverage[row*mask.width+column])
+                }
+            }
+        }
+    }
+}
+#program_export
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
+    outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {
+    left := pixmap_clip_left; top := pixmap_clip_top; right := pixmap_clip_right; bottom := pixmap_clip_bottom
+    if outer_clipped { PixmapClipTo(outer_clip) }
+    pixmap_text_rotation = rotation; pixmap_text_origin = origin; pixmap_text_local_clip = clip
+    unused italic
+    stroke := ifx emphasis then (ifx font / 24 > 0 then font / 24 else 1) else 0
+    RasterText(value,x+stroke,y,font,color)
+    pixmap_text_rotation = 0.0
+    pixmap_clip_left=left; pixmap_clip_top=top; pixmap_clip_right=right; pixmap_clip_bottom=bottom
 }

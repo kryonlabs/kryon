@@ -7,6 +7,7 @@ widget_mesh_host=ziran_mesh_noop_host
 set -- \
     --bind image_raster:ImageWidth=ziran_image_widget_host:ImageWidth \
     --bind image_raster:ImageHeight=ziran_image_widget_host:ImageHeight
+widget_triangles_needed=1
 . "$repo/tests/widget_raster_bindings.sh"
 
 widget_native=1

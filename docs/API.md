@@ -579,6 +579,15 @@ following the finger, clamped to that base. It disappears on release and
 does not take input. Draw it after the board; `size` is the base diameter
 in logical units (56 by default). The app keeps its movement rules.
 
+## Rotated text
+
+`TextProps.rotation` rotates text clockwise in degrees about `bounds` top left
+plus `TextProps.origin` (logical units). Zero keeps horizontal text; `origin =
+Vector2.{bounds.width / 2.0, bounds.height / 2.0}` rotates about the box centre.
+Layout and font sizes stay unchanged. Native Raylib (including Android), Canvas
+and DOM preserve the same pivot; local text clipping rotates with the text,
+while ancestor clipping stays in its original coordinate space.
+
 ## Reading pages
 
 `text_measure.TextPage(session, props, start)` returns a UTF-8 byte range

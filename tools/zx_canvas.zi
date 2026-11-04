@@ -234,7 +234,7 @@ main :: () -> s32 {
         .measure_width = MeasureGlyphWidth, .measure_height = MeasureGlyphLineHeight,
         .image_width = ImageWidth, .image_height = ImageHeight,
         .line = RasterLine, .rectangle = RasterRoundedRectangle, .outline = RasterRoundedRectangleOutline,
-        .text = RasterText, .clipped_text = RasterTextClipped,
+        .text = RasterText, .clipped_text = RasterTextClipped, .rotated_text = RasterTextRotated,
         .image = RasterImage, .triangles = RasterTriangles, .mesh = RasterImageMesh}
     if !RasterHostValid(raster) { return 1 }
     player: Player.Player

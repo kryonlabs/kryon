@@ -16,6 +16,7 @@ set -- --bind raster_triangles:RasterTriangles=pixmap:RasterTriangles \
     --bind raster_shape:RasterRoundedRectangleOutline=pixmap:RasterRoundedRectangleOutline \
     --bind raster_text:RasterText=pixmap:RasterText \
     --bind raster_text:RasterTextClipped=pixmap:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=pixmap:RasterTextRotated \
     --bind paint_queue:RasterImage=pixmap:RasterImage \
     --bind paint_queue:RasterImageMesh=pixmap:RasterImageMesh
 "$ziran" ir --project --root "$repo/tests" -o "$work/ir" "$source"

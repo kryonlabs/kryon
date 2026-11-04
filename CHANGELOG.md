@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Text can rotate around a chosen origin while keeping its full font size on native, web and Android renderers.
+- Repeatedly scaled scene images render smoothly without resampling each frame.
+
 - X11 session idle time now includes typing in other applications.
 - Custom cursors persist until changed, an application-wide cursor covers every session, and bitmap cursors no longer flicker or show light edges.
 - An application pointing cursor shows only over something clickable, including painted targets an app hit-tests itself.

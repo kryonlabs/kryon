@@ -50,7 +50,7 @@ cd "$project"
 set --
 for effect in raster_triangles:RasterTriangles \
     raster_shape:RasterRoundedRectangle raster_shape:RasterRoundedRectangleOutline \
-    raster:RasterLine raster_text:RasterText raster_text:RasterTextClipped \
+    raster:RasterLine raster_text:RasterText raster_text:RasterTextClipped raster_text:RasterTextRotated \
     paint_queue:RasterImage paint_queue:RasterImageMesh; do
     set -- "$@" --bind "kryon/$effect=ziran_shape_widget_host:${effect#*:}"
 done

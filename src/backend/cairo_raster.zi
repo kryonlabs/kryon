@@ -4,6 +4,7 @@
 #import "font_metrics"
 #import "image_props"
 #import "paint_texture"
+#import "math"
 Utf8 :: #import "std/utf8";
 Video :: #import "video_linux";
 video_surface: *void;
@@ -118,6 +119,7 @@ CairoMatrix :: struct {
     y0: float64
 }
 TransformBy :: (paint: *void, matrix: *CairoMatrix) #foreign cairo_library "cairo_transform";
+GetMatrix :: (paint: *void, matrix: *CairoMatrix) #foreign cairo_library "cairo_get_matrix";
 PatternForSurface :: (surface: *void) -> *void #foreign cairo_library "cairo_pattern_create_for_surface";
 PatternDestroy :: (pattern: *void) #foreign cairo_library "cairo_pattern_destroy";
 SetSource :: (paint: *void, pattern: *void) #foreign cairo_library "cairo_set_source";
@@ -208,6 +210,80 @@ frame_pending: bool;
 Decode :: #import "image_decode_linux";
 CachedImage :: struct { path: [4096]u8; length: s32; image: *void; used: u64; bytes: s64; }
 cached_images: [128]CachedImage;
+
+// Repeated smooth downscaling can dominate a frame even when decoded images
+// are retained. Cache device-aligned samples, including the subpixel phase,
+// so clipping, tint and translation still compose on the original paint.
+ScaledImage :: struct {
+    source: *void; image: *void; width: float32; height: float32;
+    phase_x: float32; phase_y: float32; used: u64; bytes: s64;
+}
+scaled_images: [32]ScaledImage;
+scaled_bytes: s64;
+scaled_clock: u64;
+ClearScaledImage :: (index: s32) {
+    if scaled_images[index].image != null { SurfaceDestroy(scaled_images[index].image) }
+    scaled_bytes -= scaled_images[index].bytes
+    scaled_images[index] = .{}
+}
+ForgetScaledImage :: (source: *void) {
+    for i: cast(s32)0..31 { if scaled_images[i].source == source { ClearScaledImage(i) } }
+}
+ScaledImageFor :: (image: *void, source: Rectangle, destination: Rectangle) -> *void {
+    if !Finite32(destination.x) || !Finite32(destination.y) || !Finite32(destination.width) ||
+        !Finite32(destination.height) || destination.width > 4096.0 || destination.height > 4096.0 ||
+        destination.x < -1048576.0 || destination.x > 1048576.0 ||
+        destination.y < -1048576.0 || destination.y > 1048576.0 { return null }
+    width := ImageSurfaceWidth(image); height := ImageSurfaceHeight(image)
+    if image == video_surface || source.x != 0.0 || source.y != 0.0 ||
+        source.width != cast(float32)width || source.height != cast(float32)height ||
+        cast(s64)width * height < 65536 || destination.width >= source.width ||
+        destination.height >= source.height { return null }
+    matrix: CairoMatrix; GetMatrix(paint, *matrix)
+    if matrix.xx != 1.0 || matrix.yy != 1.0 || matrix.xy != 0.0 || matrix.yx != 0.0 ||
+        matrix.x0 != 0.0 || matrix.y0 != 0.0 { return null }
+    px := destination.x - cast(float32)FloorInteger(destination.x)
+    py := destination.y - cast(float32)FloorInteger(destination.y)
+    scaled_clock += 1
+    for i: cast(s32)0..31 {
+        entry := *scaled_images[i]
+        if entry.source == image && entry.width == destination.width && entry.height == destination.height &&
+            entry.phase_x == px && entry.phase_y == py {
+            entry.used = scaled_clock; return entry.image
+        }
+    }
+    w := CeilInteger(px + destination.width)
+    h := CeilInteger(py + destination.height)
+    bytes := cast(s64)w * h * 4
+    if w <= 0 || h <= 0 || bytes > 67108864 { return null }
+    slot: s32 = -1
+    while true {
+        oldest: s32 = -1
+        for i: cast(s32)0..31 {
+            if scaled_images[i].image == null { if slot < 0 { slot = i }; continue }
+            if oldest < 0 || scaled_images[i].used < scaled_images[oldest].used { oldest = i }
+        }
+        if slot >= 0 && scaled_bytes + bytes <= 67108864 { break }
+        if oldest < 0 { return null }
+        ClearScaledImage(oldest)
+        if slot < 0 { slot = oldest }
+    }
+    sampled := ImageSurfaceCreate(0, w, h)
+    if sampled == null || SurfaceStatus(sampled) != 0 {
+        if sampled != null { SurfaceDestroy(sampled) }; return null
+    }
+    context := Create(sampled)
+    Translate(context, px, py)
+    Scale(context, cast(float64)destination.width / source.width, cast(float64)destination.height / source.height)
+    pattern := PatternForSurface(image)
+    PatternFilter(pattern, 1); SetSource(context, pattern); Paint(context)
+    PatternDestroy(pattern)
+    ok := Status(context) == 0; Destroy(context)
+    if !ok { SurfaceDestroy(sampled); return null }
+    scaled_images[slot] = .{image, sampled, destination.width, destination.height, px, py, scaled_clock, bytes}
+    scaled_bytes += bytes
+    return sampled
+}
 image_clock: u64;
 image_bytes: s64;
 
@@ -324,6 +400,7 @@ OpenRaster :: (width: s32, height: s32) -> bool {
 
 #program_export
 CloseRaster :: () {
+    for i: cast(s32)0..31 { ClearScaledImage(i) }
     if video_surface != null { SurfaceDestroy(video_surface); video_surface = null }
     video_revision = 0; video_width = 0; video_height = 0
     GlyphCaretClear()
@@ -605,6 +682,7 @@ LoadPNG :: (asset_path: string) -> *void {
         if slot >= 0 && image_bytes + bytes <= 268435456 { break }
         if oldest < 0 { SurfaceDestroy(image); return null }
         image_bytes -= cached_images[oldest].bytes
+        ForgetScaledImage(cached_images[oldest].image)
         SurfaceDestroy(cached_images[oldest].image); cached_images[oldest] = .{}
         if slot < 0 { slot = oldest }
     }
@@ -658,6 +736,10 @@ RasterImage :: (asset_path: string, texture_id: u32,
         image_error = true
         return
     }
+    sampled: *void
+    if rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 && CurrentPaintSmooth() {
+        sampled = ScaledImageFor(image, source, destination)
+    }
     Save(paint)
     RoundBox(clip, radius)
     Clip(paint)
@@ -671,6 +753,16 @@ RasterImage :: (asset_path: string, texture_id: u32,
                 destination.y + polygon[at].y * destination.height)
         }
         ClosePath(paint); Clip(paint)
+    }
+    if sampled != null {
+        // Apply the same destination edge clip once, after sampling, so a
+        // fractional edge does not acquire a second antialiasing coverage.
+        CanvasRectangle(paint, destination.x, destination.y, destination.width, destination.height)
+        Clip(paint)
+        Translate(paint, cast(float64)FloorInteger(destination.x), cast(float64)FloorInteger(destination.y))
+        pattern := PatternForSurface(sampled)
+        PatternFilter(pattern, 3); PaintImagePattern(pattern, tint)
+        PatternDestroy(pattern); Restore(paint); return
     }
     Translate(paint, destination.x,
         destination.y)
@@ -799,5 +891,19 @@ CairoMeshTriangle :: (image: *void, a: Vector2, a_source: Vector2,
     PatternFilter(pattern, ifx CurrentPaintSmooth() then 4 else 3)
     PaintImagePattern(pattern, tint)
     PatternDestroy(pattern)
+    Restore(paint)
+}
+
+#program_export
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
+    outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {
+    PrepareRasterPaint(); Save(paint)
+    if outer_clipped { NewPath(paint); CanvasRectangle(paint,outer_clip.x,outer_clip.y,outer_clip.width,outer_clip.height); Clip(paint) }
+    Translate(paint,origin.x,origin.y); Rotate(paint,cast(float64)rotation*0.017453292519943295)
+    Translate(paint,-origin.x,-origin.y)
+    unused italic
+    stroke := ifx emphasis then (ifx font / 24 > 0 then font / 24 else 1) else 0
+    RasterTextClipped(value,x+stroke,y,font,color,clip)
     Restore(paint)
 }

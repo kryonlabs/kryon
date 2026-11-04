@@ -14,6 +14,7 @@ set -- --bind raster:RasterLine=pixmap:RasterLine \
     --bind raster_shape:RasterRoundedRectangleOutline=pixmap:RasterRoundedRectangleOutline \
     --bind raster_text:RasterText=pixmap:RasterText \
     --bind raster_text:RasterTextClipped=pixmap:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=pixmap:RasterTextRotated \
     --bind raster_triangles:RasterTriangles=pixmap:RasterTriangles
 "$ziran" ir --project --root "$repo/tests" --module-path "$repo/tests" -o "$work/ir" "$source"
 for target in c go; do

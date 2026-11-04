@@ -6,6 +6,7 @@ set -- \
     --bind raster:RasterLine=separator_widget_host:RasterLine \
     --bind raster_text:RasterText=separator_widget_host:RasterText \
     --bind raster_text:RasterTextClipped=separator_widget_host:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=separator_widget_host:RasterTextRotated \
     --bind font_metrics:MeasureGlyphWidth=separator_widget_host:MeasureGlyphWidth \
     --bind raster_shape:RasterRoundedRectangle=separator_widget_host:RasterRoundedRectangle
 
@@ -99,6 +100,13 @@ HOST void RasterImageMesh(String path, uint32_t id, Rectangle source,
     (void)path; (void)id; (void)source; (void)points;
     (void)columns; (void)rows; (void)clip; (void)tint;
 }
+HOST void RasterTextRotated(String value, int32_t x, int32_t y, int32_t font,
+    Color color, Rectangle clip, Vector2 origin, float rotation,
+    Rectangle outer_clip, bool outer_clipped, bool emphasis, bool italic) {
+    (void)value; (void)x; (void)y; (void)font; (void)color; (void)clip;
+    (void)origin; (void)rotation; (void)outer_clip; (void)outer_clipped;
+    (void)emphasis; (void)italic; assert(0 && "unexpected rotated text");
+}
 int main(void) {
     assert(Answer() == 42 && lines == 2 && texts == 1 &&
            measures == 1 && bullets == 1);
@@ -145,6 +153,7 @@ func (h *separatorHost) RasterText(value string, x, y, font int32,
        color.B != 0xcc || color.A != 0xdd { h.t.Fatal("label") }
     h.texts++
 }
+func (h *separatorHost) RasterTextRotated(value string, x, y, font int32, color Color, clip Rectangle, origin Vector2, rotation float32, outerClip Rectangle, outerClipped, emphasis, italic bool) { panic("unexpected rotated text") }
 func (h *separatorHost) RasterTextClipped(value string, x, y, font int32,
     color Color, clip Rectangle) {
     h.t.Fatal("Separator should not draw clipped text")

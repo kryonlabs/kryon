@@ -337,3 +337,28 @@ SystemClipboardWriteHost :: (text: string) -> bool {
     unused text
     return false
 }
+
+// Terminal layout uses cells: rotate each glyph's cell position. The terminal
+// still owns the appearance of each character, as for ordinary terminal text.
+#program_export
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
+    outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {
+    unused font; unused color; unused emphasis; unused italic
+    camera: Camera = .{.offset=origin,.target=origin,.rotation=rotation,.zoom=1.0}
+    at: s32; column: s32 = x
+    while at < cast(s32)value.count {
+        glyph := Decode(value,at)
+        if glyph.after <= at { break }
+        if cast(float32)column >= clip.x && cast(float32)column < clip.x+clip.width &&
+        cast(float32)y >= clip.y && cast(float32)y < clip.y+clip.height {
+            point := WorldToScreen(Vector2.{cast(float32)column,cast(float32)y},camera)
+            if !outer_clipped || (point.x >= outer_clip.x && point.y >= outer_clip.y &&
+            point.x < outer_clip.x+outer_clip.width && point.y < outer_clip.y+outer_clip.height) {
+                cell: Cell; cell.glyph = glyph.value
+                CellPut(terminal_buffer[0:1920],terminal_columns,terminal_rows,cast(s32)point.x,cast(s32)point.y,cell)
+            }
+        }
+        column += 1; at = glyph.after
+    }
+}

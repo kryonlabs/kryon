@@ -52,6 +52,9 @@ func (mixedHost) RasterText(value string, x, y, font int32, color Color) {
     ZiranMixedTreeHost_RasterText(value, x, y, font, color)
 }
 
+func (mixedHost) RasterTextRotated(value string, x, y, font int32, color Color, clip Rectangle, origin Vector2, rotation float32, outerClip Rectangle, outerClipped, emphasis, italic bool) {
+    ZiranMixedTreeHost_RasterTextRotated(value,x,y,font,color,clip,origin,rotation,outerClip,outerClipped,emphasis,italic)
+}
 func (mixedHost) RasterTextClipped(value string, x, y, font int32,
     color Color, clip Rectangle) {
     ZiranMixedTreeHost_RasterTextClipped(value, x, y, font, color, clip)

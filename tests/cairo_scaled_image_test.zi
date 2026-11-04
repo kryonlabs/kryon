@@ -1,0 +1,43 @@
+Raster :: #import "cairo_raster";
+Texture :: #import "paint_texture";
+#import "geometry"
+#import "drawing_props"
+#import "std/byte_text_linux"
+#import "std/format"
+#import "std/vec"
+
+reference: [65536]u8;
+Draw :: (path: string, bounds: Rectangle, tint: Color, cached: bool) -> bool {
+    Raster.BeginRasterFrame()
+    Texture.emitting_smooth = true
+    origin: Vector2
+    if !cached { bounds.x += 1.0; origin.x = 1.0 }
+    Raster.RasterImage(path, 0, .{0.0,0.0,512.0,512.0}, bounds,
+        .{7.0,9.0,113.0,103.0}, origin, 0.0, 0.0, tint)
+    return Raster.FinishRasterFrame()
+}
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    text: Vec(u8); BuilderPrint(*text,"%/scaled.png",TextFromCString(argv[1])); path := BuilderFinish(text)
+    if !Raster.OpenRaster(128,128) { return 2 }
+    defer Raster.CloseRaster()
+    tints: [3]Color = .[.{255,255,255,255},.{255,255,255,128},.{40,160,70,200}]
+    for phase: 0..3 { for tint: tints {
+        bounds: Rectangle = .{-15.0 + cast(float32)phase * 0.25, 3.0 + cast(float32)phase * 0.25, 149.25, 117.5}
+        if !Draw(path,bounds,tint,false) { return 3 }
+        data := Raster.RasterSurfaceData()
+        for i: 0..65535 { reference[i] = data[i] }
+        for repeat: 0..1 {
+            if !Draw(path,bounds,tint,true) { return 4 }
+            data = Raster.RasterSurfaceData()
+            for i: 0..65535 {
+                delta := cast(s32)data[i] - cast(s32)reference[i]
+                if delta < -2 || delta > 2 { print("cached sample differs at %: % vs %\n",i,data[i],reference[i]); return 5 }
+            }
+        }
+    } }
+    Raster.CloseRaster()
+    if !Raster.OpenRaster(128,128) || !Draw(path,.{0.0,0.0,100.0,100.0},.{255,255,255,255},true) { return 6 }
+    print("Cairo cached scaling matches direct filtering, fractional translation, clips, alpha, tint and reopen\n")
+    return 0
+}

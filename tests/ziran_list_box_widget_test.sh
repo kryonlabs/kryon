@@ -9,6 +9,7 @@ set -- \
     --bind raster:RasterLine=list_box_widget_host:RasterLine \
     --bind raster_text:RasterText=list_box_widget_host:RasterText \
     --bind raster_text:RasterTextClipped=list_box_widget_host:RasterTextClipped \
+    --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
     --bind paint_queue:RasterImage=list_box_widget_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 
