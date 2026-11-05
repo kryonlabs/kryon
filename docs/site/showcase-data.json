@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-10-24",
+  "updatedAt": "2026-11-05",
   "source": "https://github.com/kryonlabs/showcase/tree/master/projects",
   "starPlatforms": [
     "github"
@@ -25,7 +25,7 @@
       ],
       "featured": true,
       "repository": "https://github.com/waozixyz/inbe",
-      "stars": 30,
+      "stars": 32,
       "rank": 1
     },
     {
@@ -48,8 +48,30 @@
       ],
       "featured": true,
       "repository": "https://github.com/waozixyz/pass",
-      "stars": 4,
+      "stars": 6,
       "rank": 2
+    },
+    {
+      "slug": "shelf",
+      "name": "Shelf",
+      "summary": "File explorer for Rill and Taiji OS that also runs as a standalone desktop app.",
+      "author": {
+        "name": "KryonLabs",
+        "url": "https://github.com/kryonlabs"
+      },
+      "homepage": "https://github.com/kryonlabs/shelf",
+      "banner": "showcase/shelf-1dcbd10eaaa0.png",
+      "bannerAlt": "Shelf file explorer showcase banner",
+      "tags": [
+        "files",
+        "desktop",
+        "kryon",
+        "plan9"
+      ],
+      "featured": true,
+      "repository": "https://github.com/kryonlabs/shelf",
+      "stars": 0,
+      "rank": 3
     },
     {
       "slug": "terminal",
