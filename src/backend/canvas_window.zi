@@ -1,4 +1,5 @@
 #import "canvas_types"
+#import "canvas_texture"
 #import "drawing_props"
 #import "canvas_text"
 #import "canvas_events"
@@ -36,16 +37,19 @@
         canvas_height = height
         canvas_external_frame_pacing = false
         PageMeshReset()
+        CanvasBitmapClose()
         PageTexturesReset()
         PageBoot(width, height, TextFromCString(title))
         PageEventsBind()
         CanvasEventsOpen()
+        CanvasBitmapOpen()
         canvas_ready = true
         canvas_last_frame = PageNow() / 1000.0
     }
 
     #program_export
     CloseWindow :: () {
+        CanvasBitmapClose()
         CloseCanvasText()
         PageMeshReset()
         PageClose()

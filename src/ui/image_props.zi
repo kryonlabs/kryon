@@ -34,7 +34,8 @@ ImageProps :: struct {
     class_name: s32
     // A positive corner radius overrides the image's style radius.
     radius: float32
-    // Runtime texture: honored instead of asset_path when set.
+    // Runtime texture: honored instead of asset_path when set. Managed RGBA
+    // images come from bitmap_image and belong to their creating Session.
     texture: Texture2D
     // A nonzero packed RGBA color tints this image. Zero uses its style color.
     tint: u32

@@ -1,3 +1,5 @@
+Bitmaps :: #import "bitmap_store";
+
 // A value handle is portable across native code and Ziran bundles.
 // Slot zero is invalid; an epoch rejects handles after their slot closes.
 Session :: struct {
@@ -45,6 +47,7 @@ SessionOpen :: () -> Session {
 #program_export
 SessionClose :: (session: Session) -> bool {
     if !SessionValid(session) { return false }
+    Bitmaps.BitmapDisposeOwner(session.slot, session.epoch)
     session_active = session_active & ~(cast(u32)1 << cast(u32)session.slot)
     return true
 }

@@ -1,0 +1,26 @@
+#import "bitmap_store"
+#import "std/vec"
+// The view lives only inside Check, so the owning Vec is freed after it ends.
+Check :: (view: []u8) -> s32 {
+    a := BitmapCreateOwned(1,1,2048,2048,view)
+    if a.id == cast(u32)0 || bitmap_bytes != BITMAP_IMAGE_SESSION_BUDGET { return 2 }
+    if BitmapCreateOwned(1,1,1,1,view[:4]).id != cast(u32)0 { return 3 }
+    b := BitmapCreateOwned(2,1,2048,2048,view)
+    if b.id == cast(u32)0 || bitmap_bytes != BITMAP_IMAGE_BYTE_BUDGET { return 4 }
+    if BitmapCreateOwned(3,1,1,1,view[:4]).id != cast(u32)0 { return 5 }
+    BitmapDisposeOwner(1,1)
+    c := BitmapCreateOwned(3,1,1,1,view[:4])
+    if c.id == cast(u32)0 { return 6 }
+    BitmapDisposeOwner(2,1); BitmapDisposeOwner(3,1)
+    if bitmap_bytes != 0 { return 7 }
+    return 0
+}
+main :: () -> s32 {
+    bytes: Vec(u8)
+    if !VecResizeBounded(bytes,16777216,16777216) { return 1 }
+    result := Check(VecSlice(bytes,0,bytes.count))
+    VecFree(bytes)
+    if result != 0 { return result }
+    print("Managed bitmap real per-session/global allocation budgets and recovery passed\n")
+    return 0
+}

@@ -1,0 +1,16 @@
+#import "widget_host"
+#import "image_props"
+#import "drawing_props"
+#program_export
+main :: () -> s32 {
+    if WidgetHostSupports("bitmap_image","BitmapImageCreate") ||
+        WidgetHostSupports("kryon/bitmap_image","BitmapImageCreate") ||
+        WidgetHostSupports("bitmap_image","BitmapImageUpdate") ||
+        WidgetHostSupports("bitmap_image","BitmapImageRelease") { return 1 }
+    image: ImageProps; image.texture = Texture2D.{1,2,2,1,7}
+    if WidgetHostImage(*image) { return 2 }
+    image.texture.id = cast(u32)0x80000001
+    if WidgetHostImage(*image) { return 3 }
+    print("Hosted bitmap lifecycle capabilities stay denied; raw and managed guest texture IDs rejected\n")
+    return 0
+}

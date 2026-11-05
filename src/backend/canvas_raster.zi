@@ -7,6 +7,7 @@
 #import "canvas_types"
 #import "canvas_draw"
 #import "canvas_texture"
+Bitmaps :: #import "bitmap_store";
 #import "canvas_text"
 #import "image_props"
 #import "page_font"
@@ -189,7 +190,10 @@ RasterImage :: (asset_path: string, texture_id: u32,
         return
     }
     texture: Texture2D
-    if texture_id != cast(u32)0 {
+    if Bitmaps.BitmapTagged(texture_id) {
+        texture = CanvasBitmapTexture(texture_id)
+        if texture.id == cast(u32)0 { return }
+    } else if texture_id != cast(u32)0 {
         texture = CurrentPaintTexture()
         if texture.id != texture_id {
             // Keep direct calls to the low-level raster effect usable.
@@ -212,6 +216,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
         canvas_image_error = true
         return
     }
+    if Bitmaps.BitmapTagged(texture_id) { SetTextureFilter(texture, ifx CurrentPaintSmooth() then 1 else 0) }
     polygon := CurrentPaintPolygon()
     scope := WebScope()
     context := page_ctx
@@ -245,7 +250,10 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     count: s64 = cast(s64)columns * cast(s64)rows
     if count > cast(s64)IMAGE_MESH_POINT_LIMIT || points.count < count { return }
     texture: Texture2D
-    if texture_id != cast(u32)0 {
+    if Bitmaps.BitmapTagged(texture_id) {
+        texture = CanvasBitmapTexture(texture_id)
+        if texture.id == cast(u32)0 { return }
+    } else if texture_id != cast(u32)0 {
         texture = CurrentPaintTexture()
         if texture.id != texture_id {
             // Keep direct calls to the low-level raster effect usable.
@@ -266,6 +274,7 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
         canvas_image_error = true
         return
     }
+    if Bitmaps.BitmapTagged(texture_id) { SetTextureFilter(texture, ifx CurrentPaintSmooth() then 1 else 0) }
     id: s32 = cast(s32)texture.id
     filter: s32 = PageTextureFilterFor(id)
     if PageMeshDraw(id, source, points[:count], columns, rows, clip, tint, filter) {

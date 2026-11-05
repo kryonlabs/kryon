@@ -1,0 +1,32 @@
+// PCM transport only. Codec/container/resampler logic belongs to audio/*.
+// Raylib currently supplies the native device/mixer while hosts migrate sinks.
+AudioStream :: struct { buffer: *void; processor: *void; rate: u32; size: u32; channels: u32; }
+#scope_file
+raylib :: #system_library "raylib";
+StreamBufferSizeRaw :: (frames: s32) #foreign raylib "SetAudioStreamBufferSizeDefault";
+StreamLoadRaw :: (rate: u32, bits: u32, channels: u32) -> AudioStream #foreign raylib "LoadAudioStream";
+StreamValidRaw :: (stream: AudioStream) -> bool #foreign raylib "IsAudioStreamValid";
+StreamPlayRaw :: (stream: AudioStream) #foreign raylib "PlayAudioStream";
+StreamPauseRaw :: (stream: AudioStream) #foreign raylib "PauseAudioStream";
+StreamResumeRaw :: (stream: AudioStream) #foreign raylib "ResumeAudioStream";
+StreamStopRaw :: (stream: AudioStream) #foreign raylib "StopAudioStream";
+StreamReadyRaw :: (stream: AudioStream) -> bool #foreign raylib "IsAudioStreamProcessed";
+StreamUpdateRaw :: (stream: AudioStream, data: *void, frames: s32) #foreign raylib "UpdateAudioStream";
+StreamVolumeRaw :: (stream: AudioStream, gain: float32) #foreign raylib "SetAudioStreamVolume";
+StreamUnloadRaw :: (stream: AudioStream) #foreign raylib "UnloadAudioStream";
+#scope_export
+StreamBufferSize :: (frames: s32) { StreamBufferSizeRaw(frames) }
+StreamLoad :: (rate: u32, bits: u32, channels: u32) -> AudioStream { return StreamLoadRaw(rate, bits, channels) }
+StreamValid :: (stream: AudioStream) -> bool { return StreamValidRaw(stream) }
+StreamPlay :: (stream: AudioStream) { StreamPlayRaw(stream) }
+StreamPause :: (stream: AudioStream) { StreamPauseRaw(stream) }
+StreamResume :: (stream: AudioStream) { StreamResumeRaw(stream) }
+StreamStop :: (stream: AudioStream) { StreamStopRaw(stream) }
+StreamReady :: (stream: AudioStream) -> bool { return StreamReadyRaw(stream) }
+StreamUpdate :: (stream: AudioStream, data: *void, frames: s32) { StreamUpdateRaw(stream, data, frames) }
+StreamVolume :: (stream: AudioStream, gain: float32) { StreamVolumeRaw(stream, gain) }
+StreamUnload :: (stream: AudioStream) { StreamUnloadRaw(stream) }
+DeviceOpenRaw :: () #foreign raylib "InitAudioDevice";
+DeviceReadyRaw :: () -> bool #foreign raylib "IsAudioDeviceReady";
+DeviceOpen :: () { DeviceOpenRaw() }
+DeviceReady :: () -> bool { return DeviceReadyRaw() }

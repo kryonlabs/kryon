@@ -1,0 +1,33 @@
+// Managed, synchronous RGBA uploads for the standard Image widget.
+#import "session"
+#import "drawing_props"
+
+#if #defined(KRYON_HOSTED_UI) {
+    // A hosted instance must obtain these capabilities from its owner. The
+    // standard widget host deliberately does not grant raw texture access.
+    bitmap_host :: #system_library "host_api";
+    BitmapImageCreate :: (session: Session, width: s32, height: s32, rgba: []u8) -> Texture2D #foreign bitmap_host;
+    BitmapImageUpdate :: (session: Session, image: Texture2D, rgba: []u8) -> bool #foreign bitmap_host;
+    BitmapImageRelease :: (session: Session, image: Texture2D) #foreign bitmap_host;
+} else {
+    #import "bitmap_store"
+    #import "paint_queue"
+
+    #program_export
+    BitmapImageCreate :: (session: Session, width: s32, height: s32, rgba: []u8) -> Texture2D {
+        if !SessionValid(session) { return .{} }
+        bitmap_changed = PaintResourcesChanged
+        return BitmapCreateOwned(session.slot, session.epoch, width, height, rgba)
+    }
+    #program_export
+    BitmapImageUpdate :: (session: Session, image: Texture2D, rgba: []u8) -> bool {
+        if !SessionValid(session) { return false }
+        return BitmapUpdateOwned(session.slot, session.epoch, image, rgba)
+    }
+    #program_export
+    BitmapImageRelease :: (session: Session, image: Texture2D) {
+        if !SessionValid(session) { return }
+        at := BitmapOwnedSlot(session.slot, session.epoch, image)
+        if at >= 0 { BitmapDrop(at) }
+    }
+}

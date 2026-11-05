@@ -1,5 +1,6 @@
 Sink :: #import "pixmap_sdl3_gpu";
 Pixels :: #import "pixmap";
+Bitmaps :: #import "bitmap_store";
 #import "pixmap_gpu"
 #import "vec"
 
@@ -333,7 +334,22 @@ SamplingBits :: () {
     paths: [7]string = .{"bit0", "bit31", "bit32", "bit63", "bit64", "bit65", "bitlast"}
     for index: cast(s32)0..6 {
         slot := slots[index]
-        Check(Pixels.PixmapSetImage(slot, paths[index], 2, 2, fixture[:]), "publish word-boundary image")
+        if slot >= Pixels.PixmapAssetImageLimit {
+            // Slots above the asset range belong to managed bitmaps.
+            // Same texels as fixture, so the fake upload check stays exact.
+            rgba: [16]u8
+            for at: 0..3 {
+                pixel := fixture[at]
+                rgba[at * 4] = cast(u8)((pixel >> cast(u32)16) & cast(u32)255)
+                rgba[at * 4 + 1] = cast(u8)((pixel >> cast(u32)8) & cast(u32)255)
+                rgba[at * 4 + 2] = cast(u8)(pixel & cast(u32)255)
+                rgba[at * 4 + 3] = cast(u8)(pixel >> cast(u32)24)
+            }
+            image := Bitmaps.BitmapCreateOwned(1, 1, 2, 2, rgba[:])
+            Check(image.id != cast(u32)0 && Pixels.PixmapPaintImageSlot("", image.id) == slot, "publish word-boundary image")
+        } else {
+            Check(Pixels.PixmapSetImage(slot, paths[index], 2, 2, fixture[:]), "publish word-boundary image")
+        }
         ResetObservation(); Quad(slot, true)
         Check(Sink.PixmapSdl3Draw() && geometry_calls == 1 && image_calls == 1, "enable smooth at word boundary")
     }
@@ -365,6 +381,7 @@ SamplingBits :: () {
         Sink.sdl3_image_smooth[Sink.sdl3_image_smooth.count - 1] == cast(u64)0x8000000000000000, "out-of-range image rejected without corrupting sampling words")
     CloseTarget(target)
     for word: 0..Sink.sdl3_image_smooth.count - 1 { Check(Sink.sdl3_image_smooth[word] == cast(u64)0, "close clears all sampling words") }
+    Bitmaps.BitmapDisposeOwner(1, 1)
 }
 
 main :: () -> s32 {

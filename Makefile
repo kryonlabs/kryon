@@ -734,3 +734,12 @@ android-avif-test: project-toolchain
 .PHONY: avif-render-test
 avif-render-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO) $(ZX_RAYLIB_RUNTIME)
 	@sh tests/avif_render_test.sh
+
+
+.PHONY: bitmap-image-test
+bitmap-image-test: project-toolchain
+	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran sh tests/bitmap_store_test.sh
+	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran sh tests/bitmap_image_test.sh
+	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran sh tests/bitmap_host_policy_test.sh
+	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran python3 tests/bitmap_image_browser_test.py
+test: bitmap-image-test

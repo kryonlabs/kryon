@@ -1,0 +1,13 @@
+// Run target-selection branches on the Linux null test sink; this does not
+// claim native execution on the target named by a checker define.
+#import "media_audio_raylib"
+#import "media_audio_host"
+#import "media_audio"
+#program_export
+main :: () -> s32 {
+    voice: MediaAudioVoice
+    command := MediaAudioCommand.{.operation = .Load, .voice = 1, .asset = "assets/test/unsupported.opus", .gain = 0.5}
+    result := AssetAudioProvider(*voice, command, "not decoded on this target")
+    if result.code != .Unsupported || voice.resource != null { return 1 }
+    return 0
+}

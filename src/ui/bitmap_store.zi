@@ -1,0 +1,167 @@
+// Internal storage for managed images. Session calls disposal directly, so
+// this module deliberately does not import session or the paint queue.
+#import "drawing_props"
+#import "std/vec"
+
+BITMAP_IMAGE_LIMIT :: 64
+BITMAP_IMAGE_MAX_DIMENSION :: 4096
+BITMAP_IMAGE_MAX_PIXELS :: 4194304
+// Includes both straight and premultiplied ARGB copies; provider copies are
+// bounded by the same dimensions/count. No caller memory is retained.
+BITMAP_IMAGE_BYTE_BUDGET :: 67108864
+BITMAP_IMAGE_SESSION_BUDGET :: 33554432
+BITMAP_IMAGE_TAG :: 2147483648
+
+BitmapUpload :: #type (width: s32, height: s32, rgba: []u8) -> u32;
+BitmapReplace :: #type (id: u32, width: s32, height: s32, rgba: []u8) -> bool;
+BitmapFree :: #type (id: u32) -> ();
+BitmapChanged :: #type () -> ();
+
+BitmapStorage :: struct {
+    image: Texture2D
+    owner_slot: s32
+    owner_epoch: u64
+    pixels: Vec(u32)
+    premultiplied: Vec(u32)
+    provider_id: u32
+    revision: u64
+}
+bitmap_images: [BITMAP_IMAGE_LIMIT]BitmapStorage;
+bitmap_next_id: u32 = 1;
+bitmap_revision: u64;
+bitmap_bytes: s64;
+bitmap_changed: BitmapChanged;
+bitmap_upload: BitmapUpload;
+bitmap_replace: BitmapReplace;
+bitmap_free: BitmapFree;
+// Zero slots used to detach a provider; function types reject a null literal.
+bitmap_no_upload: BitmapUpload;
+bitmap_no_replace: BitmapReplace;
+bitmap_no_free: BitmapFree;
+
+BitmapTagged :: (id: u32) -> bool {
+    return (id & cast(u32)BITMAP_IMAGE_TAG) != cast(u32)0
+}
+BitmapPixelCount :: (width: s32, height: s32) -> s64 {
+    if width <= 0 || height <= 0 || width > BITMAP_IMAGE_MAX_DIMENSION ||
+        height > BITMAP_IMAGE_MAX_DIMENSION { return 0 }
+    count := cast(s64)width * cast(s64)height
+    return ifx count <= BITMAP_IMAGE_MAX_PIXELS then count else cast(s64)0
+}
+BitmapSlot :: (id: u32) -> s32 {
+    if !BitmapTagged(id) { return -1 }
+    for at: cast(s32)0..BITMAP_IMAGE_LIMIT - 1 {
+        if bitmap_images[at].image.id == id { return at }
+    }
+    return -1
+}
+BitmapOwnedSlot :: (slot: s32, epoch: u64, image: Texture2D) -> s32 {
+    at := BitmapSlot(image.id)
+    if at < 0 { return -1 }
+    item := *bitmap_images[at]
+    if item.owner_slot != slot || item.owner_epoch != epoch ||
+        item.image.width != image.width || item.image.height != image.height ||
+        image.mipmaps != 1 || image.format != 7 { return -1 }
+    return at
+}
+BitmapPublish :: (at: s32) {
+    bitmap_revision += 1
+    bitmap_images[at].revision = bitmap_revision
+    if bitmap_changed != null { bitmap_changed() }
+}
+BitmapDrop :: (at: s32) {
+    item := *bitmap_images[at]
+    if item.image.id == cast(u32)0 { return }
+    if item.provider_id != cast(u32)0 && bitmap_free != null { bitmap_free(item.provider_id) }
+    bitmap_bytes -= item.pixels.count * 8
+    VecFree(item.pixels); VecFree(item.premultiplied)
+    item.image = .{}; item.owner_slot = 0; item.owner_epoch = 0
+    item.provider_id = 0
+    BitmapPublish(at)
+}
+BitmapDisposeOwner :: (slot: s32, epoch: u64) {
+    for at: cast(s32)0..BITMAP_IMAGE_LIMIT - 1 {
+        if bitmap_images[at].owner_slot == slot && bitmap_images[at].owner_epoch == epoch {
+            BitmapDrop(at)
+        }
+    }
+}
+// A provider closes all its images before changing callbacks. This also
+// prevents a canvas ID from escaping into a later graphics context.
+BitmapProviderUse :: (upload: BitmapUpload, replace: BitmapReplace, release: BitmapFree) {
+    for at: cast(s32)0..BITMAP_IMAGE_LIMIT - 1 { BitmapDrop(at) }
+    bitmap_upload = upload; bitmap_replace = replace; bitmap_free = release
+}
+BitmapProviderClose :: () {
+    for at: cast(s32)0..BITMAP_IMAGE_LIMIT - 1 { BitmapDrop(at) }
+    bitmap_upload = bitmap_no_upload; bitmap_replace = bitmap_no_replace; bitmap_free = bitmap_no_free
+}
+BitmapRgbaPixel :: (rgba: []u8, at: s64) -> u32 {
+    return (cast(u32)rgba[at + 3] << 24) | (cast(u32)rgba[at] << 16) |
+        (cast(u32)rgba[at + 1] << 8) | cast(u32)rgba[at + 2]
+}
+BitmapCopyPixels :: (at: s32, rgba: []u8) {
+    item := *bitmap_images[at]
+    for pixel: cast(s64)0..item.pixels.count - 1 {
+        offset := pixel * 4
+        item.pixels[pixel] = BitmapRgbaPixel(rgba, offset)
+        alpha := cast(u32)rgba[offset + 3]
+        item.premultiplied[pixel] = (alpha << 24) |
+            (((cast(u32)rgba[offset] * alpha + 127) / 255) << 16) |
+            (((cast(u32)rgba[offset + 1] * alpha + 127) / 255) << 8) |
+            ((cast(u32)rgba[offset + 2] * alpha + 127) / 255)
+    }
+}
+BitmapCreateOwned :: (slot: s32, epoch: u64, width: s32, height: s32, rgba: []u8) -> Texture2D {
+    count := BitmapPixelCount(width, height)
+    if slot <= 0 || count == 0 || rgba.count != count * 4 ||
+        bitmap_next_id >= cast(u32)BITMAP_IMAGE_TAG { return .{} }
+    #if #defined(PLATFORM_WEB) {
+        if bitmap_upload == null || bitmap_replace == null || bitmap_free == null { return .{} }
+    }
+    required := count * 8
+    owner_bytes: s64
+    free_slot: s32 = -1
+    for at: cast(s32)0..BITMAP_IMAGE_LIMIT - 1 {
+        if bitmap_images[at].image.id == cast(u32)0 { free_slot = at }
+        if bitmap_images[at].owner_slot == slot && bitmap_images[at].owner_epoch == epoch {
+            owner_bytes += bitmap_images[at].pixels.count * 8
+        }
+    }
+    if free_slot < 0 || required > BITMAP_IMAGE_BYTE_BUDGET - bitmap_bytes ||
+        required > BITMAP_IMAGE_SESSION_BUDGET - owner_bytes { return .{} }
+    item := *bitmap_images[free_slot]
+    if !VecResizeBounded(item.pixels, count, count) { return .{} }
+    if !VecResizeBounded(item.premultiplied, count, count) {
+        VecFree(item.pixels); return .{}
+    }
+    provider_id: u32
+    if bitmap_upload != null {
+        provider_id = bitmap_upload(width, height, rgba)
+        if provider_id == cast(u32)0 {
+            VecFree(item.pixels); VecFree(item.premultiplied); return .{}
+        }
+    }
+    item.image = Texture2D.{bitmap_next_id | cast(u32)BITMAP_IMAGE_TAG, width, height, 1, 7}
+    bitmap_next_id += cast(u32)1
+    item.owner_slot = slot; item.owner_epoch = epoch; item.provider_id = provider_id
+    BitmapCopyPixels(free_slot, rgba)
+    bitmap_bytes += required
+    BitmapPublish(free_slot)
+    return item.image
+}
+BitmapUpdateOwned :: (slot: s32, epoch: u64, image: Texture2D, rgba: []u8) -> bool {
+    at := BitmapOwnedSlot(slot, epoch, image)
+    if at < 0 { return false }
+    item := *bitmap_images[at]
+    if rgba.count != item.pixels.count * 4 { return false }
+    changed := false
+    for pixel: cast(s64)0..item.pixels.count - 1 {
+        if item.pixels[pixel] != BitmapRgbaPixel(rgba, pixel * 4) { changed = true; break }
+    }
+    if !changed { return true }
+    if bitmap_replace != null && !bitmap_replace(item.provider_id, image.width, image.height, rgba) { return false }
+    BitmapCopyPixels(at, rgba)
+    BitmapPublish(at)
+    return true
+}

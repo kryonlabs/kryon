@@ -35,6 +35,8 @@ jobs:
       - name: Name the checked-out Kryon commit master
         run: git checkout -B master
 
+      # Every job that builds the AVIF decoder on x86-64 needs nasm for
+      # libaom's SIMD; arm64 builds assemble with the C compiler.
       - name: Set up the locked Ziran, its packages and the build tools
         uses: ziranlang/ziran/.github/actions/setup@4c27b5a080a9596f5919ece1651e5a372be2142f
         with:
@@ -47,7 +49,7 @@ jobs:
             libpango1.0-dev libdrm-dev libgbm-dev libegl-dev libgles-dev libegl-mesa0
             libgl1-mesa-dri libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev
             libcurl4-openssl-dev fonts-dejavu-core fonts-wqy-zenhei xvfb xdotool x11-apps x11-utils
-            imagemagick xfwm4 dbus-x11 cmake libwebpdemux2
+            imagemagick xfwm4 dbus-x11 cmake nasm libwebpdemux2
 
       - name: Prepare locked toolchain ref
         run: git -C "$ZIRAN_ROOT" checkout -B master
@@ -99,6 +101,10 @@ jobs:
           path: ziran
           fetch: true
 
+      - name: Install the AVIF decoder's x86-64 assembler
+        if: runner.arch == 'X64'
+        run: brew install nasm
+
       # No GUI launch or screenshot can reach a runner's inherited display.
       - name: Build native player and execute the portable VM with CPU pixels
         run: |
@@ -145,7 +151,7 @@ jobs:
             libegl-dev libgles-dev libegl-mesa0 libgl1-mesa-dri imagemagick xclip xdotool
             x11-xserver-utils python3-gi python3-pil ffmpeg gir1.2-gtk-3.0 gir1.2-atspi-2.0
             libglib2.0-dev libpango1.0-dev at-spi2-core dbus-x11 gstreamer1.0-plugins-base
-            gstreamer1.0-plugins-good gstreamer1.0-libav cmake libwebpdemux2
+            gstreamer1.0-plugins-good gstreamer1.0-libav cmake nasm libwebpdemux2
 
       # SDL3's GPU renderer needs Vulkan even on a software-only runner.
       - name: Install SDL3 software GPU test tools
@@ -278,7 +284,7 @@ jobs:
             build-essential python3 python3-pil ripgrep ffmpeg pkg-config libsdl2-dev
             libcairo2-dev libglib2.0-dev libpango1.0-dev libfreetype-dev libfontconfig1-dev
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-libav cmake
-            libwebpdemux2
+            nasm libwebpdemux2
 
       - name: Prepare locked toolchain ref
         run: git -C "$ZIRAN_ROOT" checkout -B master
@@ -327,7 +333,7 @@ jobs:
             libpango1.0-dev libdrm-dev libgbm-dev libegl-dev libgles-dev libegl-mesa0
             libgl1-mesa-dri libx11-dev libxt-dev libxext-dev libfontconfig1-dev libfreetype-dev
             fonts-dejavu-core fonts-wqy-zenhei xvfb xdotool x11-apps x11-utils imagemagick xfwm4
-            dbus-x11 cmake libwebpdemux2
+            dbus-x11 cmake nasm libwebpdemux2
 
       - name: Prepare locked toolchain ref
         run: git -C "$ZIRAN_ROOT" checkout -B master

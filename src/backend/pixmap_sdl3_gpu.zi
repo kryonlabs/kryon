@@ -93,15 +93,14 @@ ImageTexture :: (slot: s32) -> *void {
     width := pixmap_image_widths[slot]; height := pixmap_image_heights[slot]
     if width <= 0 || height <= 0 || width > pixmap_gpu_max_image || height > pixmap_gpu_max_image { return null }
     count := cast(s64)width * height
-    source := pixmap_image_pixels[slot].value
-    if source.count < count { return null }
+    if PixmapSourceCount(slot) < count { return null }
     // Premultiplied texels keep linear filtering from bleeding transparent RGB.
     memory := Allocate(cast(usize)count * size_of(u32))
     if memory == null { return null }
     defer Release(memory)
     pixels := cast(*u32)memory
     for index: 0..count - 1 {
-        pixel := source[index]; alpha := pixel >> cast(u32)24
+        pixel := PixmapSourcePixel(slot, index); alpha := pixel >> cast(u32)24
         red := ((pixel >> cast(u32)16) & cast(u32)255) * alpha / cast(u32)255
         green := ((pixel >> cast(u32)8) & cast(u32)255) * alpha / cast(u32)255
         blue := (pixel & cast(u32)255) * alpha / cast(u32)255

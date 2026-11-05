@@ -4,6 +4,7 @@
 #import "font_metrics"
 #import "image_props"
 #import "paint_texture"
+Bitmaps :: #import "bitmap_store";
 #import "math"
 Utf8 :: #import "std/utf8";
 Video :: #import "video_linux";
@@ -744,25 +745,44 @@ PaintImagePattern :: (pattern: *void, tint: Color) {
     }
 }
 
+// A managed source borrows its immutable premultiplied copy only while this
+// synchronous paint runs. Never retain a scaled cache keyed by this surface.
+// Managed surfaces borrow store pixels for one draw. Callers release them on
+// every exit explicitly, because loops below cannot share names with a defer.
+CairoReleaseManaged :: (texture_id: u32, image: *void) {
+    if texture_id != cast(u32)0 && image != null { SurfaceDestroy(image) }
+}
+CairoManagedImage :: (id: u32) -> *void {
+    at := Bitmaps.BitmapSlot(id)
+    if at < 0 { return null }
+    item := *Bitmaps.bitmap_images[at]
+    image := ImageSurfaceBorrow(cast(*u8)*item.premultiplied[0], 0,
+        item.image.width, item.image.height, item.image.width * 4)
+    if image != null && SurfaceStatus(image) != 0 { SurfaceDestroy(image); return null }
+    return image
+}
+
 #program_export
 RasterImage :: (asset_path: string, texture_id: u32,
     source: Rectangle, destination: Rectangle, clip: Rectangle,
     origin: Vector2, rotation: float32, radius: float32, tint: Color) {
     PrepareRasterPaint()
-    if texture_id != cast(u32)0 || asset_path.count == 0 ||
+    if (texture_id == cast(u32)0 && asset_path.count == 0) ||
         source.width <= 0.0 || source.height <= 0.0 ||
         destination.width <= 0.0 || destination.height <= 0.0 ||
         clip.width <= 0.0 || clip.height <= 0.0 {
         image_error = true
         return
     }
-    image: *void = LoadPNG(asset_path)
+    image: *void
+    if texture_id != cast(u32)0 { image = CairoManagedImage(texture_id) }
+    else { image = LoadPNG(asset_path) }
     if image == null {
         image_error = true
         return
     }
     sampled: *void
-    if rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 && CurrentPaintSmooth() {
+    if texture_id == cast(u32)0 && rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 && CurrentPaintSmooth() {
         sampled = ScaledImageFor(image, source, destination)
     }
     Save(paint)
@@ -787,7 +807,8 @@ RasterImage :: (asset_path: string, texture_id: u32,
         Translate(paint, cast(float64)FloorInteger(destination.x), cast(float64)FloorInteger(destination.y))
         pattern := PatternForSurface(sampled)
         PatternFilter(pattern, 3); PaintImagePattern(pattern, tint)
-        PatternDestroy(pattern); Restore(paint); return
+        PatternDestroy(pattern); Restore(paint)
+        CairoReleaseManaged(texture_id, image); return
     }
     Translate(paint, destination.x,
         destination.y)
@@ -808,6 +829,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
     pattern: *void = PatternForSurface(image)
     if pattern == null {
         Restore(paint)
+        CairoReleaseManaged(texture_id, image)
         image_error = true
         return
     }
@@ -815,11 +837,12 @@ RasterImage :: (asset_path: string, texture_id: u32,
     PaintImagePattern(pattern, tint)
     PatternDestroy(pattern)
     Restore(paint)
+    CairoReleaseManaged(texture_id, image)
 }
 
 // A warped image (see ImageMesh): each triangle of each grid cell is the
 // image drawn through the source-to-surface transform of its corners,
-// clipped to the triangle. Runtime textures are not available to this host.
+// clipped to the triangle. Managed bitmaps use the same source surface.
 #program_export
 RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
@@ -827,11 +850,13 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     if columns < 2 || rows < 2 || clip.width <= 0.0 || clip.height <= 0.0 { return }
     count: s64 = cast(s64)columns * cast(s64)rows
     if count > cast(s64)IMAGE_MESH_POINT_LIMIT || points.count < count { return }
-    if texture_id != cast(u32)0 || asset_path.count == 0 {
+    if texture_id == cast(u32)0 && asset_path.count == 0 {
         image_error = true
         return
     }
-    image: *void = LoadPNG(asset_path)
+    image: *void
+    if texture_id != cast(u32)0 { image = CairoManagedImage(texture_id) }
+    else { image = LoadPNG(asset_path) }
     if image == null {
         image_error = true
         return
@@ -859,6 +884,7 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
         }
     }
     Restore(paint)
+    CairoReleaseManaged(texture_id, image)
 }
 
 // The source point at a share of the source rectangle; a negative width or

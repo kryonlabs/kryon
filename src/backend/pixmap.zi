@@ -7,6 +7,7 @@ ImageCanvas :: #import "image_canvas";
 Metrics :: #import "font_metrics";
 #import "math"
 #import "paint_texture"
+Bitmaps :: #import "bitmap_store";
 
 #if #defined(POSIX_THREADS) {
     Workers :: #import "std/parallel_linux";
@@ -99,7 +100,8 @@ PixmapDeviceBounds :: (bounds: Rectangle) -> Rectangle {
 PixmapDeviceFont :: (font: s32) -> s32 { return PixmapRound(cast(float32)font * pixmap_scale_y) }
 // The host owns these decoded 0xAARRGGBB pixels and keeps them alive until
 // clearing/replacing the slot. Image widgets still resolve an ordinary asset.
-PixmapImageLimit :: 1024;
+PixmapAssetImageLimit :: 1024;
+PixmapImageLimit :: 1088;
 pixmap_image_paths: [PixmapImageLimit][256]u8;
 pixmap_image_lengths: [PixmapImageLimit]s32;
 pixmap_image_widths: [PixmapImageLimit]s32;
@@ -111,13 +113,55 @@ pixmap_image_revision: u64;
 // The revision of each slot's last change, for hosts holding a texture of it.
 pixmap_image_revisions: [PixmapImageLimit]u64;
 #program_export
-PixmapImageRevision :: () -> u64 { return pixmap_image_revision }
+PixmapImageRevision :: () -> u64 {
+    PixmapSyncBitmaps()
+    return pixmap_image_revision
+}
 PixmapImagePixels :: struct { value: []u32 }
 pixmap_image_pixels: [PixmapImageLimit]PixmapImagePixels;
+pixmap_bitmap_revision: u64;
+
+// Separate reserved slots keep managed IDs out of the asset path namespace.
+// The frame owner synchronizes before any CPU/GPU use of these borrowed views.
+PixmapSyncBitmaps :: () {
+    if pixmap_bitmap_revision == Bitmaps.bitmap_revision { return }
+    for at: cast(s32)0..Bitmaps.BITMAP_IMAGE_LIMIT - 1 {
+        slot := PixmapAssetImageLimit + at
+        item := *Bitmaps.bitmap_images[at]
+        if pixmap_image_revisions[slot] == item.revision { continue }
+        pixmap_image_widths[slot] = item.image.width
+        pixmap_image_heights[slot] = item.image.height
+        pixmap_image_revisions[slot] = item.revision
+    }
+    pixmap_bitmap_revision = Bitmaps.bitmap_revision
+    pixmap_image_revision += 1
+}
+// Managed slots read the store through checked indexing; Ziran keeps no
+// long-lived view of a global Vec, so a released image traps instead of
+// exposing freed storage. Asset slots keep their caller-owned views.
+PixmapSourcePixel :: (slot: s32, index: s64) -> u32 {
+    if slot >= PixmapAssetImageLimit {
+        return Bitmaps.bitmap_images[slot - PixmapAssetImageLimit].pixels[index]
+    }
+    return pixmap_image_pixels[slot].value[index]
+}
+PixmapSourceCount :: (slot: s32) -> s64 {
+    if slot >= PixmapAssetImageLimit {
+        return Bitmaps.bitmap_images[slot - PixmapAssetImageLimit].pixels.count
+    }
+    return pixmap_image_pixels[slot].value.count
+}
+PixmapPaintImageSlot :: (path: string, id: u32) -> s32 {
+    if id == cast(u32)0 { return PixmapImageIndex(path) }
+    at := Bitmaps.BitmapSlot(id)
+    if at < 0 { return -1 }
+    PixmapSyncBitmaps()
+    return PixmapAssetImageLimit + at
+}
 
 #program_export
 PixmapClearImage :: (slot: s32) {
-    if slot < 0 || slot >= PixmapImageLimit { return }
+    if slot < 0 || slot >= PixmapAssetImageLimit { return }
     if pixmap_image_lengths[slot] > 0 { pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision }
     pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
     pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
@@ -125,7 +169,7 @@ PixmapClearImage :: (slot: s32) {
 
 PixmapImageIndex :: (path: string) -> s32 {
     if path.count == 0 || path.count >= 256 { return -1 }
-    for slot: 0..PixmapImageLimit - 1 {
+    for slot: 0..PixmapAssetImageLimit - 1 {
         if pixmap_image_lengths[slot] != path.count { continue }
         same := true
         for i: 0..cast(s32)path.count - 1 { if pixmap_image_paths[slot][i] != path[i] { same = false; break } }
@@ -136,7 +180,7 @@ PixmapImageIndex :: (path: string) -> s32 {
 
 #program_export
 PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u32) -> bool {
-    if slot < 0 || slot >= PixmapImageLimit || path.count == 0 || path.count >= 256 ||
+    if slot < 0 || slot >= PixmapAssetImageLimit || path.count == 0 || path.count >= 256 ||
         width <= 0 || height <= 0 || width > 16384 || height > 16384 ||
         cast(s64)width * cast(s64)height > pixels.count { return false }
     for i: 0..cast(s32)path.count - 1 { if path[i] == cast(u8)0 { return false } }
@@ -1070,10 +1114,10 @@ PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, cli
 RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
     destination: Rectangle, clip: Rectangle, origin: Vector2, rotation: float32,
     radius: float32, tint: Color) {
-    unused texture_id
     destination = PixmapDeviceBounds(destination); clip = PixmapDeviceBounds(clip)
     origin.x *= pixmap_scale_x; origin.y *= pixmap_scale_y; radius *= pixmap_scale_y
-    slot := PixmapImageIndex(asset_path)
+    slot := PixmapPaintImageSlot(asset_path, texture_id)
+    if texture_id != cast(u32)0 && slot < 0 { return }
     if slot >= 0 {
         if !Finite32(source.x) || !Finite32(source.y) || !Finite32(source.width) || !Finite32(source.height) ||
             !Finite32(destination.x) || !Finite32(destination.y) || !Finite32(destination.width) || !Finite32(destination.height) ||
@@ -1107,7 +1151,7 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
             // An image may borrow the destination surface. Preserve ordered
             // serial behavior for every overlapping view of that storage.
             image := pixmap_image_pixels[slot].value
-            if image.count > 0 {
+            if slot < PixmapAssetImageLimit && image.count > 0 {
                 source_start := cast(usize)*image[0]; source_end := source_start + cast(usize)image.count * 4
                 target_start := cast(usize)*pixmap_surface[0]; target_end := target_start + cast(usize)(pixmap_width * pixmap_height) * 4
                 independent = source_end <= target_start || target_end <= source_start
@@ -1146,8 +1190,7 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
 #program_export
 RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
-    unused texture_id
-    slot := PixmapImageIndex(asset_path)
+    slot := PixmapPaintImageSlot(asset_path, texture_id)
     if slot < 0 || !ImageCanvas.MeshGridValid(points, columns, rows) { return }
     clip = PixmapDeviceBounds(clip)
     if !Finite32(clip.x) || !Finite32(clip.y) || !Finite32(clip.width) ||
@@ -1214,7 +1257,7 @@ PixmapMeshPixel :: (slot: s32, x: s32, y: s32) -> u32 {
     if y < 0 { y = 0 }
     if x >= width { x = width - 1 }
     if y >= height { y = height - 1 }
-    return pixmap_image_pixels[slot].value[y * width + x]
+    return PixmapSourcePixel(slot, cast(s64)(y * width + x))
 }
 
 // The image's color at a source point: the nearest pixel, or when smooth
@@ -1268,6 +1311,7 @@ PixmapImageRange :: (start: s32, end: s32, data: PixmapImageRowsData) {
         image_width := pixmap_image_widths[slot]
         image_height := pixmap_image_heights[slot]
         image := pixmap_image_pixels[slot].value
+        managed := slot >= PixmapAssetImageLimit
         surface := pixmap_surface
         stride := pixmap_width
         alpha := pixmap_alpha
@@ -1286,7 +1330,8 @@ PixmapImageRange :: (start: s32, end: s32, data: PixmapImageRowsData) {
                 if local_x < 0.0 || local_x >= destination.width { continue }
                 sx := source.x + local_x * source.width / destination.width
                 if !Finite32(sx) || sx < 0.0 || sx >= cast(float32)image_width { continue }
-                packed := image[source_row + FloorInteger(sx)]
+                at := source_row + FloorInteger(sx)
+                packed := ifx managed then PixmapSourcePixel(slot, cast(s64)at) else image[at]
                 if packed >> cast(u32)24 == cast(u32)255 {
                     surface[target_row + x] = (packed & cast(u32)0x00ffffff) | alpha
                 } else {
@@ -1324,7 +1369,7 @@ PixmapImageTransformedRange :: (start: s32, end: s32, data: PixmapImageRowsData)
                 // ordinary images too. Transparent texels contribute no ink.
                 color = PixmapMeshTexel(slot, .{sx, sy}, true)
             } else {
-                packed := pixmap_image_pixels[slot].value[FloorInteger(sy) * pixmap_image_widths[slot] + FloorInteger(sx)]
+                packed := PixmapSourcePixel(slot, cast(s64)(FloorInteger(sy) * pixmap_image_widths[slot] + FloorInteger(sx)))
                 color = .{cast(u8)((packed >> cast(u32)16) & cast(u32)255),
                     cast(u8)((packed >> cast(u32)8) & cast(u32)255),
                     cast(u8)(packed & cast(u32)255), cast(u8)(packed >> cast(u32)24)}

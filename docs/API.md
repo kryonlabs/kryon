@@ -245,6 +245,30 @@ See [WebP images](BACKENDS.md#webp-images) and [AVIF images](BACKENDS.md#avif-im
 `ImageProps.radius` gives an image rounded corners in native and hosted UI;
 a positive value overrides its style radius.
 
+Import `kryon/bitmap_image` to create a runtime RGBA image for the same
+`Image(session, ImageProps.{.texture = image, .smooth = true, ...})`:
+`BitmapImageCreate(session: Session, width: s32, height: s32, rgba: []u8) -> Texture2D`,
+`BitmapImageUpdate(session: Session, image: Texture2D, rgba: []u8) -> bool`, and
+`BitmapImageRelease(session: Session, image: Texture2D)`. Bytes are tightly packed,
+row-major straight RGBA8 and copied/consumed synchronously; reuse the input buffer
+after the call. Create failure returns a zero texture. Update returns true for
+accepted unchanged data, and false preserves the old pixels. Only successful
+changed data invalidates retained paint. Smooth sampling and alpha use the
+ordinary Image renderer on Desktop/Cairo, pixmap and Canvas.
+
+Managed handles belong to the complete Session (slot and epoch) and current
+provider. Dimensions must be positive, at most 4096 each and 4,194,304 pixels;
+byte count must equal width × height × 4. There are at most 64 images, with a
+64 MiB total and 32 MiB per-session budget for straight and premultiplied CPU
+copies. Provider copies have the same bounded dimensions/count. Bad, modified,
+stale and cross-session handles are rejected; releasing them is harmless.
+Closing a Session releases its images. Closing/replacing the Canvas provider
+also releases its images. Call on the session/provider's frame thread, outside
+an active raster emission. Native renderer texture handles keep their existing
+contract. Standard hosted widget policy continues to reject all guest runtime
+texture IDs and does not advertise bitmap lifecycle capabilities; an embedding
+must provide a separate authenticated ownership policy to grant those effects.
+
 `ImageProps.clip_polygon` clips an image without stretching its content.
 Supply 3–4096 points in normalized destination coordinates (0–1); the path
 closes automatically. Empty leaves the image unchanged. Invalid coordinates,

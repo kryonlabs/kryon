@@ -3,6 +3,7 @@ accessibility_node.zi
 accessibility_policy.zi
 accessibility_props.zi
 bevel.zi
+bitmap_store.zi
 box_props.zi
 box_widget.zi
 button.zi

@@ -1,0 +1,78 @@
+// Actual incremental Opus decoder + paced miniaudio null PCM transport.
+#import "media_audio_opus"
+#import "opus_audio_provider"
+#import "media_audio_host"
+#import "media_audio"
+#import "session"
+#import "std/file"
+#import "std/byte_text_linux"
+#import "std/timer_linux"
+Sink :: #import "audio_sink_raylib"
+fixture: string;
+Allowed :: (path: string) -> bool { return path == "assets/test/tone.opus" }
+Read :: (context: *void, path: string) -> string { unused context; unused path; return fixture }
+Call :: (owner: *MediaAudioOwner, session: Session, operation: MediaAudioOperation, loop: bool = false, music: bool = true) -> MediaAudioResult {
+    return MediaAudioOwnerCall(owner, session, .{.operation = operation, .voice = 1, .asset = "assets/test/tone.opus", .gain = 0.4, .music = music, .looping = loop})
+}
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 3 { return 1 }
+    bytes, valid := ReadEntireFile(TextFromCString(argv[1]))
+    if !valid { return 2 }; fixture = bytes
+    Sink.DeviceOpen()
+    if !Sink.DeviceReady() { return 3 }
+    session := SessionOpen()
+    owner: MediaAudioOwner
+    UseOpusTestProvider()
+    MediaAudioOwnerBind(*owner, session, Allowed, Read, null)
+    if Call(*owner, session, .Load).state != .Ready { return 4 }
+    if Call(*owner, session, .Play).state != .Playing { return 5 }
+    initial := Call(*owner, session, .Status)
+    if initial.state != .Playing || !initial.has_position || initial.position_seconds < 0.0 { return 6 }
+    unused SleepMilliseconds(65)
+    playing := Call(*owner, session, .Status)
+    if playing.state != .Playing || playing.position_seconds <= 0.0 { return 7 }
+    paused := Call(*owner, session, .Pause)
+    unused SleepMilliseconds(80)
+    stable := Call(*owner, session, .Status)
+    if stable.state != .Paused || stable.position_seconds != paused.position_seconds { return 8 }
+    if Call(*owner, session, .Resume).state != .Playing { return 9 }
+    if Call(*owner, session, .Gain).code != .Ok { return 10 }
+    if Call(*owner, session, .Stop).state != .Stopped { return 11 }
+    if Call(*owner, session, .Play).state != .Playing { return 12 }
+    deadline := MonotonicMilliseconds() + 2000
+    while Call(*owner, session, .Status).state == .Playing {
+        if MonotonicMilliseconds() > deadline { return 13 }
+        unused SleepMilliseconds(5)
+    }
+    finished := Call(*owner, session, .Status)
+    if finished.state != .Finished || finished.position_seconds <= 0.0 { return 14 }
+    if Call(*owner, session, .Play, true).state != .Playing { return 15 }
+    deadline = MonotonicMilliseconds() + 1400
+    while MonotonicMilliseconds() < deadline { MediaAudioOwnerTick(*owner); unused SleepMilliseconds(5) }
+    looped := Call(*owner, session, .Status)
+    if looped.state != .Playing || looped.position_seconds < 0.0 || looped.position_seconds >= finished.position_seconds { return 16 }
+    if Call(*owner, session, .Unload).code != .Ok || owner.voices[0].resource != null { return 17 }
+    if Call(*owner, session, .Load, false, false).state != .Ready { return 18 }
+    if Call(*owner, session, .Play, true).code != .Invalid { return 19 }
+    MediaAudioOwnerClose(*owner)
+    if owner.voices[0].resource != null { return 20 }
+    short_bytes, short_valid := ReadEntireFile(TextFromCString(argv[2]))
+    if !short_valid { return 21 }; fixture = short_bytes
+    MediaAudioOwnerBind(*owner, session, Allowed, Read, null)
+    if Call(*owner, session, .Load).state != .Ready || Call(*owner, session, .Play, true).state != .Playing { return 22 }
+    deadline = MonotonicMilliseconds() + 180
+    while MonotonicMilliseconds() < deadline { MediaAudioOwnerTick(*owner); unused SleepMilliseconds(5) }
+    if Call(*owner, session, .Status).state != .Playing { return 23 }
+    if Call(*owner, session, .Stop).state != .Stopped || Call(*owner, session, .Play).state != .Playing { return 24 }
+    if Call(*owner, session, .Status).state != .Playing { return 25 }
+    deadline = MonotonicMilliseconds() + 1000
+    while Call(*owner, session, .Status).state == .Playing {
+        if MonotonicMilliseconds() > deadline { return 26 }; unused SleepMilliseconds(5)
+    }
+    if Call(*owner, session, .Status).state != .Finished { return 27 }
+    MediaAudioOwnerClose(*owner)
+    unused SessionClose(session)
+    print("incremental Opus native sink/session, pause/gain/position/loop/completion/cleanup passed\n")
+    return 0
+}

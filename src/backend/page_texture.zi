@@ -418,16 +418,18 @@ PageMax3 :: (a: float64, b: float64, c: float64) -> float64 {
 
 // Copies `width` by `height` RGBA pixels from memory into a canvas's image
 // at (x, y).
-PageWritePixels :: (canvas: s32, pixels: *u8, x: s32, y: s32, width: s32, height: s32) {
+PageWritePixels :: (canvas: s32, pixels: *u8, x: s32, y: s32, width: s32, height: s32) -> bool {
     context: s32 = PageContext2D(canvas)
-    if context == 0 { return }
+    if context == 0 { return false }
     image: s32 = WebAsObject(WebCall2(context, WebName("createImageData"),
         WebNumber(cast(float64)width), WebNumber(cast(float64)height)))
-    if image == 0 { return }
-    unused WebCopyIn(WebGetObject(image, WebName("data")), cast(*void)pixels,
+    if image == 0 { return false }
+    copied := WebCopyIn(WebGetObject(image, WebName("data")), cast(*void)pixels,
         width * height * 4)
+    if copied != width * height * 4 { return false }
     unused WebCall3(context, WebName("putImageData"), WebObject(image),
         WebNumber(cast(float64)x), WebNumber(cast(float64)y))
+    return !WebFailed()
 }
 
 PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
@@ -435,12 +437,35 @@ PageTextureFromRgba :: (pixels: *u8, width: s32, height: s32) -> s32 {
     scope: s32 = WebScope()
     canvas: s32 = PageMakeCanvas(width, height)
     id: s32 = 0
-    if canvas != 0 {
-        PageWritePixels(canvas, pixels, 0, 0, width, height)
+    if canvas != 0 && PageWritePixels(canvas, pixels, 0, 0, width, height) {
         id = PageTextureRegister(canvas, false, width, height)
     }
     WebEnd(scope)
     return id
+}
+
+// Failed uploads leave the original canvas, revision, URL and tint cache intact.
+PageTextureReplaceRgba :: (id: s32, pixels: *u8, width: s32, height: s32) -> bool {
+    slot := PageTextureFind(id)
+    if slot < 0 || pixels == null || page_textures[slot].target ||
+        page_textures[slot].width != width || page_textures[slot].height != height { return false }
+    PageFlushPaint()
+    scope := WebScope()
+    canvas := PageMakeCanvas(width, height)
+    ok := canvas != 0 && PageWritePixels(canvas, pixels, 0, 0, width, height)
+    if ok {
+        kept := WebKeep(canvas)
+        if kept == 0 { ok = false }
+        else {
+            PageTextureUrlRelease(slot)
+            WebRelease(page_textures[slot].canvas)
+            page_textures[slot].canvas = kept
+            page_textures[slot].revision += 1
+            PageTintsClearFor(id)
+        }
+    }
+    WebEnd(scope)
+    return ok
 }
 
 PageTextureFree :: (id: s32) {

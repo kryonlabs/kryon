@@ -1,0 +1,166 @@
+#import "bitmap_image"
+#import "bitmap_store"
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "image_props"
+#import "image_widget"
+#import "tree"
+#import "tree_draw"
+#import "paint_queue"
+#if #defined(BITMAP_DESKTOP) {
+    Desktop :: #import "desktop_runtime";
+    Raster :: #import "cairo_raster";
+} else #if #defined(PLATFORM_WEB) {
+    #import "canvas_host"
+    #import "canvas_window"
+    #import "canvas_texture"
+    #import "canvas_frame"
+    #import "canvas_raster"
+    #import "page_texture"
+    #import "page_core"
+    #import "web"
+} else {
+    #import "pixmap"
+    #import "pixmap_frame"
+}
+pixels: [256]u32;
+rgba: [16]u8 = .[255,0,0,255, 0,255,0,128, 0,0,255,0, 255,255,255,255];
+BACKGROUND: u32 = 0xf8fafc;
+bounds: Rectangle;
+failed: bool;
+Frame :: (session: Session, image: Texture2D, smooth: bool) -> bool {
+    #if #defined(BITMAP_DESKTOP) {
+        Desktop.BeginDesktopFrame()
+    } else #if #defined(PLATFORM_WEB) {
+        CanvasFrameBegin(.{248,250,252,255})
+    } else {
+        if !PixmapResumeInto(16,16,pixels[:],true) { failed = true }
+    }
+    unused BeginFrame(session, 1, bounds)
+    Image(session, ImageProps.{.key = 7, .bounds = bounds, .texture = image,
+        .smooth = smooth, .tint = cast(u32)0xffffffff})
+    #if #defined(BITMAP_DESKTOP) {
+        reusable := Desktop.DesktopFrameReusable()
+        done := EndFrameRetained(session,reusable)
+        Desktop.DesktopFrameUnchanged(done.paint_unchanged && reusable)
+        if done.status != FrameStatus.FrameOk || !Desktop.EndDesktopFrame() { failed = true }
+        return done.paint_unchanged
+    } else #if #defined(PLATFORM_WEB) {
+        if EndCanvasUiFrame(session) != FrameStatus.FrameOk { failed = true }
+        PageFlushPaint()
+        return FramePaintUnchanged(session)
+    } else {
+        done := EndPixmapFrame(session,true,BACKGROUND)
+        if done.status != FrameStatus.FrameOk { failed = true }
+        return done.paint_unchanged
+    }
+}
+Pixel :: (x: s32,y: s32) -> u32 {
+    #if #defined(BITMAP_DESKTOP) {
+        data := cast(*u32)Raster.RasterSurfaceData()
+        return data[y * (Raster.RasterSurfaceStride() / 4) + x] & cast(u32)0xffffff
+    } else #if #defined(PLATFORM_WEB) {
+        bytes: [1024]u8
+        if PageTextureRead(0,*bytes[0],1024) == 0 { failed = true; return 0 }
+        at := (y * 16 + x) * 4
+        return (cast(u32)bytes[at] << 16) | (cast(u32)bytes[at + 1] << 8) | cast(u32)bytes[at + 2]
+    } else { return pixels[y * 16 + x] & cast(u32)0xffffff }
+}
+Near :: (actual: u32,expected: u32) -> bool {
+    for shift: 0..2 {
+        a := cast(s32)((actual >> cast(u32)(shift * 8)) & cast(u32)255)
+        b := cast(s32)((expected >> cast(u32)(shift * 8)) & cast(u32)255)
+        if a < b - 2 || a > b + 2 { return false }
+    }
+    return true
+}
+Test :: () -> s32 {
+    bounds = .{0.0,0.0,16.0,16.0}
+    #if #defined(BITMAP_DESKTOP) {
+        if !Desktop.OpenDesktopSized(16,16) { return 1 }
+        defer { Desktop.CloseDesktop() }
+    } else #if #defined(PLATFORM_WEB) {
+        title: [1]u8
+        InitWindow(16,16,*title[0])
+        defer { CloseWindow() }
+    } else { defer { PixmapEndInto(); PixmapCloseWorkers() } }
+    session := SessionOpen(); other := SessionOpen()
+    defer { unused CloseSession(session); unused CloseSession(other) }
+    if BitmapImageCreate(Session.{},2,2,rgba[:]).id != cast(u32)0 ||
+        BitmapImageCreate(session,2147483647,2147483647,rgba[:]).id != cast(u32)0 ||
+        BitmapImageCreate(session,2,2,rgba[:15]).id != cast(u32)0 { return 2 }
+    BitmapImageRelease(Session.{},Texture2D.{})
+    image := BitmapImageCreate(session,2,2,rgba[:])
+    if image.id == cast(u32)0 { return 3 }
+    rgba[0] = 7
+    if Frame(session,image,false) || failed || Pixel(1,1) != cast(u32)0xff0000 ||
+        !Near(Pixel(14,1),cast(u32)0x7cfd7e) || Pixel(1,14) != BACKGROUND ||
+        Pixel(14,14) != cast(u32)0xffffff { return 4 }
+    rgba[0] = 255
+    if !Frame(session,image,false) || failed { return 5 }
+    revision := bitmap_revision
+    if !BitmapImageUpdate(session,image,rgba[:]) || bitmap_revision != revision ||
+        !Frame(session,image,false) { return 6 }
+    if Frame(session,image,true) || Pixel(7,1) == cast(u32)0xff0000 ||
+        Pixel(8,1) == cast(u32)0x7cfd7e || failed { return 7 }
+    edge := Pixel(7,14)
+    if cast(s32)(edge & cast(u32)255) - cast(s32)((edge >> 16) & cast(u32)255) > 6 { return 22 }
+    if !Frame(session,image,true) { return 8 }
+    if BitmapImageUpdate(other,image,rgba[:]) || BitmapImageUpdate(session,image,rgba[:15]) { return 9 }
+    modified := image; modified.width = 1
+    if BitmapImageUpdate(session,modified,rgba[:]) { return 10 }
+    BitmapImageRelease(other,image)
+    if !BitmapImageUpdate(session,image,rgba[:]) { return 11 }
+    unused BeginFrame(other,2,bounds)
+    Image(other,ImageProps.{.key=7,.bounds=bounds,.texture=image})
+    if PendingPaintCount(other) != 0 { return 12 }
+    PaintClear(other)
+    rgba[0] = 0
+    if !BitmapImageUpdate(session,image,rgba[:]) || Frame(session,image,false) ||
+        Pixel(1,1) != cast(u32)0 || failed { return 13 }
+    // Actual Canvas allocation/upload failures must preserve the old image,
+    // its provider texture, revision and retained frame.
+    #if #defined(PLATFORM_WEB) {
+        scope := WebScope()
+        unused WebCall1(WebGlobal,WebName("eval"),WebText("globalThis.bitmapOriginal=[globalThis.CanvasRenderingContext2D,globalThis.OffscreenCanvasRenderingContext2D].filter(Boolean).map(c=>[c.prototype,c.prototype.createImageData]);for(const [p] of globalThis.bitmapOriginal)p.createImageData=function(){throw Error('bitmap test allocation failure')};"))
+        revision = bitmap_revision; count := PageTextureCount()
+        rgba[0] = 255
+        if BitmapImageUpdate(session,image,rgba[:]) || bitmap_revision != revision ||
+            BitmapImageCreate(session,2,2,rgba[:]).id != cast(u32)0 || PageTextureCount() != count { return 14 }
+        unused WebCall1(WebGlobal,WebName("eval"),WebText("for(const [p,f] of globalThis.bitmapOriginal)p.createImageData=f;delete globalThis.bitmapOriginal;"))
+        WebEnd(scope)
+        if !Frame(session,image,false) || Pixel(1,1) != cast(u32)0 || failed { return 15 }
+    }
+    // Direct SessionClose, slot reuse and descriptor forgery cannot resurrect
+    // managed handles. CloseSession also follows this path.
+    if !SessionClose(session) || BitmapSlot(image.id) >= 0 ||
+        BitmapImageUpdate(session,image,rgba[:]) { return 16 }
+    replacement := SessionOpen()
+    defer { unused CloseSession(replacement) }
+    if replacement.slot != session.slot || replacement.epoch == session.epoch { return 17 }
+    if BitmapImageUpdate(replacement,image,rgba[:]) { return 18 }
+    next := BitmapImageCreate(replacement,2,2,rgba[:])
+    if next.id == cast(u32)0 || next.id == image.id { return 19 }
+    BitmapImageRelease(replacement,next); BitmapImageRelease(replacement,next)
+    if BitmapSlot(next.id) >= 0 { return 20 }
+    #if #defined(PLATFORM_WEB) {
+        next = BitmapImageCreate(replacement,2,2,rgba[:])
+        CloseWindow()
+        if BitmapSlot(next.id) >= 0 || BitmapImageUpdate(replacement,next,rgba[:]) { return 21 }
+    }
+    return 0
+}
+#program_export
+main :: () -> s32 {
+    result := Test()
+    #if #defined(PLATFORM_WEB) {
+        scope := WebScope()
+        doc := WebGetObject(WebGlobal,WebName("document"))
+        element := WebAsObject(WebCall1(doc,WebName("getElementById"),WebText("result")))
+        WebSet(element,WebName("textContent"),WebText(ifx result == 0 then "PASS" else "FAIL"))
+        WebSet(WebGlobal,WebName("bitmapTestResult"),WebNumber(cast(float64)result))
+        WebEnd(scope)
+    } else { print("Managed Image lifecycle/render result: %\n",result) }
+    return result
+}

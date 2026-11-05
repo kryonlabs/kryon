@@ -31,7 +31,11 @@ Call :: (session: Session, operation: MediaAudioOperation, voice: s32 = 1,
 }
 #program_export
 main :: () -> s32 {
-    data, ok := ReadEntireFile("tone.wav")
+    #if #defined(OPUS_AUDIO_TEST) {
+        data, ok := ReadEntireFile("tone.opus")
+    } else {
+        data, ok := ReadEntireFile("tone.wav")
+    }
     if !ok { return 1 }
     fixture = data
     MediaAudioUseRaylib()

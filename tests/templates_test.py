@@ -43,13 +43,15 @@ def environment(work):
     return env
 
 
-def run(command, directory, env, succeed=True, stdin=subprocess.DEVNULL):
+def run(command, directory, env, succeed=True, stdin=subprocess.DEVNULL, separate=False):
+    # SEPARATE keeps build diagnostics (stderr) out of a program's own output.
     result = subprocess.run([str(part) for part in command], cwd=directory, env=env,
                             stdin=stdin, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, text=True, timeout=900)
+                            stderr=subprocess.PIPE if separate else subprocess.STDOUT,
+                            text=True, timeout=900)
     if succeed != (result.returncode == 0):
         raise AssertionError(f"{' '.join(map(str, command))} returned "
-                             f"{result.returncode}:\n{result.stdout}")
+                             f"{result.returncode}:\n{result.stdout}{result.stderr or ''}")
     return result.stdout
 
 
@@ -79,7 +81,7 @@ def main():
                                          "  web  Canvas2D browser page",
                                          "  shot  headless image, PPM on standard output"], profiles
         # The shot profile draws a frame without any display.
-        shot = run([KRYON, "run", "shot"], work / "demo-app", env)
+        shot = run([KRYON, "run", "shot"], work / "demo-app", env, separate=True)
         assert shot.startswith("P3\n960 600\n255\n"), shot[:40]
         assert len(shot.splitlines()) == 603, len(shot.splitlines())
 

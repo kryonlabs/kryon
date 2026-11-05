@@ -1,0 +1,21 @@
+#import "media_audio_opus"
+#import "media_audio_host"
+#import "media_audio"
+Sink :: #import "audio_sink_raylib"
+OpusTestProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
+    if command.operation == .Capabilities { return .{.code = .Ok, .capabilities = cast(u32)127} }
+    asset := cast(*OpusAsset)voice.resource
+    if command.operation == .Unload { OpusAssetDispose(asset); voice.* = MediaAudioVoice.{}; return .{.code = .Ok} }
+    if command.operation == .Load {
+        code: MediaAudioCode
+        asset = OpusAssetLoad(bytes, command.gain, *code)
+        if asset == null { return .{.code = code} }
+        voice.resource = cast(*void)asset; voice.state = .Ready; voice.music = command.music; voice.gain = command.gain
+        return OpusAssetReply(asset, voice, .Ok)
+    }
+    return OpusAssetCommand(asset, voice, command, ifx Sink.DeviceReady() then MediaAudioCode.Ok else MediaAudioCode.Unavailable)
+}
+UseOpusTestProvider :: () {
+    Sink.DeviceOpen()
+    MediaAudioUseProvider(OpusTestProvider)
+}

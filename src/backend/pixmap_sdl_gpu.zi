@@ -41,9 +41,12 @@ gpu_renderer: *void;
 gpu_target: *void;
 gpu_atlas: *void;
 gpu_premultiplied: s32;
-gpu_images: [1024]*void;
-gpu_image_revisions: [1024]u64;
-gpu_image_smooth: [1024]bool;
+// Mirrors pixmap's PixmapImageLimit (1024 asset + 64 managed slots); array
+// capacities need a local constant, and every slot below is range-checked.
+GpuImageLimit :: 1088;
+gpu_images: [GpuImageLimit]*void;
+gpu_image_revisions: [GpuImageLimit]u64;
+gpu_image_smooth: [GpuImageLimit]bool;
 gpu_seen_revision: u64;
 gpu_premultiply: Vec(u32);
 
@@ -143,22 +146,23 @@ SweepImages :: () {
     revision := Pixels.PixmapImageRevision()
     if revision == gpu_seen_revision { return }
     gpu_seen_revision = revision
-    for slot: 0..Pixels.PixmapImageLimit - 1 {
+    for slot: 0..GpuImageLimit - 1 {
         if gpu_images[slot] != null && gpu_image_revisions[slot] != Pixels.pixmap_image_revisions[slot] { ForgetImage(slot) }
     }
 }
 
 ImageTexture :: (slot: s32) -> *void {
+    if slot < 0 || slot >= GpuImageLimit { return null }
     if gpu_images[slot] != null { return gpu_images[slot] }
     width := Pixels.pixmap_image_widths[slot]; height := Pixels.pixmap_image_heights[slot]
     if width <= 0 || height <= 0 { return null }
     texture := CreateTexture(gpu_renderer, cast(u32)GpuArgb, 0, width, height)
     if texture == null { return null }
     unused SetTextureBlend(texture, gpu_premultiplied)
-    source := Pixels.pixmap_image_pixels[slot].value
+    if Pixels.PixmapSourceCount(slot) < cast(s64)width * height { DestroyTexture(texture); return null }
     VecClear(gpu_premultiply)
     for index: 0..cast(s64)width * height - 1 {
-        pixel := source[index]; alpha := pixel >> cast(u32)24
+        pixel := Pixels.PixmapSourcePixel(slot, index); alpha := pixel >> cast(u32)24
         red := ((pixel >> cast(u32)16) & cast(u32)255) * alpha / cast(u32)255
         green := ((pixel >> cast(u32)8) & cast(u32)255) * alpha / cast(u32)255
         blue := (pixel & cast(u32)255) * alpha / cast(u32)255
@@ -205,7 +209,7 @@ PixmapGpuDraw :: () {
 PixmapGpuDeviceLost :: () {
     if !pixmap_gpu_active { return }
     gpu_target = null
-    for slot: 0..Pixels.PixmapImageLimit - 1 { ForgetImage(slot) }
+    for slot: 0..GpuImageLimit - 1 { ForgetImage(slot) }
     if gpu_atlas != null { DestroyTexture(gpu_atlas); gpu_atlas = null }
     if !OpenAtlas() { pixmap_gpu_active = false }
 }
@@ -214,7 +218,7 @@ PixmapGpuDeviceLost :: () {
 PixmapGpuClose :: () {
     if !pixmap_gpu_active { return }
     PixmapGpuRecordClear()
-    for slot: 0..Pixels.PixmapImageLimit - 1 { ForgetImage(slot) }
+    for slot: 0..GpuImageLimit - 1 { ForgetImage(slot) }
     if gpu_atlas != null { DestroyTexture(gpu_atlas); gpu_atlas = null }
     VecFree(gpu_premultiply)
     pixmap_gpu_active = false; gpu_target = null; gpu_renderer = null

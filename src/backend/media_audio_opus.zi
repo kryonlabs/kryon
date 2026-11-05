@@ -1,0 +1,153 @@
+// Incremental native Opus asset transport. No decoder/resampler is implemented
+// here: audio/opus owns those reusable language capabilities.
+#import "media_audio"
+#import "media_audio_host"
+#import "std/byte_text_linux"
+Audio :: #import "audio/opus"
+Types :: #import "audio/types"
+Sink :: #import "audio_sink_raylib"
+#scope_file
+libc :: #system_library "c";
+Allocate :: (count: usize, size: usize) -> *void #foreign libc "calloc";
+Free :: (memory: *void) #foreign libc "free";
+Copy :: (output: *void, input: *void, count: usize) -> *void #foreign libc "memcpy";
+BLOCK :: 2048
+#scope_export
+OpusAsset :: struct {
+    decoder: Audio.Decoder
+    stream: Sink.AudioStream
+    compressed: *u8
+    pcm: [4096]float32
+    cache: [4096]float32
+    native: [4096]s16
+    queued: [2]s64
+    next: s32
+    submitted: s64
+    retired: s64
+    silence_blocks: s32
+    looping: bool
+    short_loop: bool
+}
+OpusAssetDispose :: (asset: *OpusAsset) {
+    if asset == null { return }
+    if asset.stream.buffer != null { Sink.StreamStop(asset.stream); Sink.StreamUnload(asset.stream) }
+    Audio.DecoderClose(*asset.decoder)
+    Free(cast(*void)asset.compressed)
+    Free(cast(*void)asset)
+}
+OpusAssetLoad :: (bytes: string, gain: float32, code: *MediaAudioCode) -> *OpusAsset {
+    <<code = .Failed
+    if bytes.count <= 0 || bytes.count > MEDIA_AUDIO_ASSET_LIMIT { <<code = .Limit; return null }
+    descriptor := cast(*TextDescriptor)(*bytes)
+    asset := cast(*OpusAsset)Allocate(1, size_of(OpusAsset))
+    if asset == null { <<code = .Limit; return null }
+    asset.compressed = cast(*u8)Allocate(cast(usize)bytes.count, 1)
+    if asset.compressed == null { OpusAssetDispose(asset); <<code = .Limit; return null }
+    unused Copy(cast(*void)asset.compressed, cast(*void)descriptor.data, cast(usize)bytes.count)
+    status := Audio.DecoderOpen(*asset.decoder, BytesFromPointer(asset.compressed, cast(u64)bytes.count), cast(s64)48000 * 86400)
+    if status != Types.OK {
+        if status == Types.Unsupported { <<code = .Unsupported }
+        if status == Types.LimitExceeded { <<code = .Limit }
+        OpusAssetDispose(asset); return null
+    }
+    Sink.StreamBufferSize(BLOCK)
+    asset.stream = Sink.StreamLoad(48000, 16, cast(u32)asset.decoder.info.channels)
+    Sink.StreamBufferSize(0)
+    if !Sink.StreamValid(asset.stream) { OpusAssetDispose(asset); return null }
+    Sink.StreamVolume(asset.stream, gain)
+    <<code = .Ok
+    return asset
+}
+#scope_file
+Restart :: (asset: *OpusAsset) -> bool {
+    return Audio.DecoderRewind(*asset.decoder) == Types.OK
+}
+// Two accepted silent blocks after EOF prove both earlier audio blocks have
+// been consumed. Completion never fires just because decoding ran ahead.
+Pump :: (asset: *OpusAsset, voice: *MediaAudioVoice) -> bool {
+    channels := asset.decoder.info.channels
+    for attempt: 0..1 {
+        if !Sink.StreamReady(asset.stream) { break }
+        made: s64
+        if asset.short_loop {
+            frames := asset.decoder.info.frames
+            for i: 0..BLOCK - 1 {
+                source := (asset.submitted * BLOCK + i) % frames
+                for channel: 0..channels - 1 { asset.pcm[i * channels + channel] = asset.cache[source * channels + channel] }
+            }
+            made = BLOCK
+        } else {
+            if Audio.DecoderRead(*asset.decoder, asset.pcm[0:BLOCK * channels], *made) != Types.OK { return false }
+            if made < BLOCK && asset.looping {
+                if !Restart(asset) { return false }
+                extra: s64
+                if Audio.DecoderRead(*asset.decoder, asset.pcm[made * channels:BLOCK * channels], *extra) != Types.OK { return false }
+                made += extra
+            }
+            for i: made * channels..cast(s64)BLOCK * channels - 1 { asset.pcm[i] = 0.0 }
+        }
+        for i: 0..BLOCK * channels - 1 {
+            value := cast(float64)asset.pcm[i]
+            if value != value { return false }
+            if value < -1.0 { value = -1.0 }; if value > 32767.0 / 32768.0 { value = 32767.0 / 32768.0 }
+            asset.native[i] = cast(s16)(value * 32768.0)
+        }
+        if asset.submitted >= 2 { asset.retired += asset.queued[asset.next] }
+        asset.queued[asset.next] = made; asset.next = (asset.next + 1) % 2
+        asset.submitted += 1
+        Sink.StreamUpdate(asset.stream, cast(*void)*asset.native[0], BLOCK)
+        if made == 0 { asset.silence_blocks += 1 }
+        if !asset.looping && asset.silence_blocks >= 2 {
+            voice.state = .Finished; Sink.StreamStop(asset.stream); break
+        }
+    }
+    return true
+}
+#scope_export
+OpusAssetReply :: (asset: *OpusAsset, voice: *MediaAudioVoice, code: MediaAudioCode) -> MediaAudioResult {
+    answer := MediaAudioResult.{.code = code, .state = voice.state, .capabilities = cast(u32)127}
+    if voice.music {
+        frames := asset.retired
+        if asset.looping { frames %= asset.decoder.info.frames }
+        if voice.state == .Finished { frames = asset.decoder.info.frames }
+        answer.has_position = true; answer.position_seconds = cast(float64)frames / 48000.0
+    }
+    return answer
+}
+OpusAssetCommand :: (asset: *OpusAsset, voice: *MediaAudioVoice, command: MediaAudioCommand, device: MediaAudioCode) -> MediaAudioResult {
+    if command.operation == .Stop {
+        Sink.StreamStop(asset.stream); asset.retired = 0; voice.state = .Stopped
+        return OpusAssetReply(asset, voice, .Ok)
+    }
+    if command.operation == .Pause {
+        if voice.state == .Paused { return OpusAssetReply(asset, voice, .Ok) }
+        if voice.state != .Playing { return OpusAssetReply(asset, voice, .Invalid) }
+        Sink.StreamPause(asset.stream); voice.state = .Paused
+        return OpusAssetReply(asset, voice, .Ok)
+    }
+    if command.operation == .Resume {
+        if voice.state != .Paused && voice.state != .Playing { return OpusAssetReply(asset, voice, .Invalid) }
+        if device != .Ok { return OpusAssetReply(asset, voice, device) }
+        Sink.StreamResume(asset.stream); voice.state = .Playing
+    } else if command.operation == .Play {
+        if command.looping && !voice.music { return OpusAssetReply(asset, voice, .Invalid) }
+        if device != .Ok { return OpusAssetReply(asset, voice, device) }
+        Sink.StreamStop(asset.stream)
+        if !Restart(asset) { return OpusAssetReply(asset, voice, .Failed) }
+        asset.looping = command.looping; asset.submitted = 0; asset.retired = 0
+        asset.next = 0; asset.silence_blocks = 0; asset.short_loop = asset.looping && asset.decoder.info.frames < BLOCK
+        if asset.short_loop {
+            made: s64
+            if Audio.DecoderRead(*asset.decoder, asset.cache[0:asset.decoder.info.frames * asset.decoder.info.channels], *made) != Types.OK || made != asset.decoder.info.frames { return OpusAssetReply(asset, voice, .Failed) }
+        }
+        voice.state = .Playing
+        if !Pump(asset, voice) { voice.state = .Stopped; return OpusAssetReply(asset, voice, .Failed) }
+        Sink.StreamPlay(asset.stream)
+    } else if command.operation == .Gain {
+        Sink.StreamVolume(asset.stream, command.gain); voice.gain = command.gain
+    } else if command.operation != .Status { return OpusAssetReply(asset, voice, .Invalid) }
+    if voice.state == .Playing && device == .Ok {
+        if !Pump(asset, voice) { Sink.StreamStop(asset.stream); voice.state = .Stopped; return OpusAssetReply(asset, voice, .Failed) }
+    }
+    return OpusAssetReply(asset, voice, ifx command.operation == .Status then device else MediaAudioCode.Ok)
+}

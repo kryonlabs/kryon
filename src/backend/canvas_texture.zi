@@ -5,7 +5,28 @@
 #import "page_core"
 #import "page_paint"
 #import "page_texture"
+Bitmaps :: #import "bitmap_store";
 #if #defined(PLATFORM_WEB) {
+    // Registered by OpenCanvas; the store owns lifetime and CPU bytes.
+    CanvasBitmapUpload :: (width: s32, height: s32, rgba: []u8) -> u32 {
+        return cast(u32)PageTextureFromRgba(*rgba[0], width, height)
+    }
+    CanvasBitmapReplace :: (id: u32, width: s32, height: s32, rgba: []u8) -> bool {
+        return PageTextureReplaceRgba(cast(s32)id, *rgba[0], width, height)
+    }
+    CanvasBitmapFree :: (id: u32) { PageTextureFree(cast(s32)id) }
+    CanvasBitmapOpen :: () {
+        Bitmaps.BitmapProviderUse(CanvasBitmapUpload, CanvasBitmapReplace, CanvasBitmapFree)
+    }
+    CanvasBitmapClose :: () { Bitmaps.BitmapProviderClose() }
+    CanvasBitmapTexture :: (id: u32) -> Texture2D {
+        at := Bitmaps.BitmapSlot(id)
+        if at < 0 { return .{} }
+        texture := Bitmaps.bitmap_images[at].image
+        texture.id = Bitmaps.bitmap_images[at].provider_id
+        return texture
+    }
+
     canvas_browser :: #system_library "env";
 
     CanvasLoadFileData :: (path: *u8, size: *s32) -> *u8 #foreign canvas_browser "LoadFileData";

@@ -19,6 +19,7 @@ Theme :: #import "theme";
 #import "image"
 #import "image_props"
 #import "image_raster"
+Bitmaps :: #import "bitmap_store";
 #import "paint_queue"
 #import "style"
 #import "style_sheet"
@@ -138,6 +139,8 @@ PaintImagePlaceholder :: (session: Session, node: s32, image: ImageProps,
 
 #program_export
 Image :: (session: Session, image: ImageProps) {
+    if Bitmaps.BitmapTagged(image.texture.id) &&
+        (!SessionValid(session) || Bitmaps.BitmapOwnedSlot(session.slot, session.epoch, image.texture) < 0) { return }
     node: s32 = -1
     if TreeIsBuilding(session) {
         node = TreeSubmitCurrent(session, image.key, WidgetKindImage, image.bounds)

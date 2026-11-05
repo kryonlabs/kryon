@@ -1,0 +1,85 @@
+#import "bitmap_store"
+#import "drawing_props"
+
+rgba: [16]u8 = .[255,0,0,255, 0,255,0,128, 0,0,255,0, 255,255,255,255];
+changes: s32;
+uploads: s32;
+replacements: s32;
+frees: s32;
+fail_upload: bool;
+fail_replace: bool;
+Changed :: () { changes += 1 }
+Upload :: (width: s32, height: s32, bytes: []u8) -> u32 {
+    unused width; unused height; unused bytes
+    uploads += 1
+    return ifx fail_upload then cast(u32)0 else cast(u32)42
+}
+Replace :: (id: u32, width: s32, height: s32, bytes: []u8) -> bool {
+    unused id; unused width; unused height; unused bytes
+    replacements += 1
+    return !fail_replace
+}
+Free :: (id: u32) { if id == cast(u32)42 { frees += 1 } }
+main :: () -> s32 {
+    bitmap_changed = Changed
+    if BitmapCreateOwned(1,1,0,2,rgba[:]).id != cast(u32)0 ||
+        BitmapCreateOwned(1,1,-1,2,rgba[:]).id != cast(u32)0 ||
+        BitmapCreateOwned(1,1,2147483647,2147483647,rgba[:]).id != cast(u32)0 ||
+        BitmapCreateOwned(1,1,2,2,rgba[:15]).id != cast(u32)0 ||
+        BitmapCreateOwned(1,1,1,2,rgba[:]).id != cast(u32)0 { return 1 }
+    image := BitmapCreateOwned(1,1,2,2,rgba[:])
+    at := BitmapOwnedSlot(1,1,image)
+    if at < 0 || changes != 1 || bitmap_bytes != 32 { return 2 }
+    if bitmap_images[at].pixels[1] != cast(u32)0x8000ff00 ||
+        bitmap_images[at].premultiplied[1] != cast(u32)0x80008000 ||
+        bitmap_images[at].premultiplied[2] != cast(u32)0 { return 3 }
+    rgba[0] = 0
+    if bitmap_images[at].pixels[0] != cast(u32)0xffff0000 { return 4 }
+    if BitmapUpdateOwned(2,1,image,rgba[:]) || BitmapUpdateOwned(1,2,image,rgba[:]) ||
+        BitmapUpdateOwned(1,1,image,rgba[:15]) || changes != 1 { return 5 }
+    modified := image; modified.width = 1
+    if BitmapUpdateOwned(1,1,modified,rgba[:]) { return 6 }
+    modified = image; modified.format = 1
+    if BitmapUpdateOwned(1,1,modified,rgba[:]) { return 7 }
+    if !BitmapUpdateOwned(1,1,image,rgba[:]) || changes != 2 { return 8 }
+    revision := bitmap_revision
+    if !BitmapUpdateOwned(1,1,image,rgba[:]) || bitmap_revision != revision { return 9 }
+    BitmapDisposeOwner(2,1)
+    if BitmapSlot(image.id) != at { return 10 }
+    BitmapDisposeOwner(1,1)
+    if BitmapSlot(image.id) >= 0 || bitmap_bytes != 0 || BitmapUpdateOwned(1,1,image,rgba[:]) { return 11 }
+    next := BitmapCreateOwned(1,2,2,2,rgba[:])
+    if next.id == image.id || next.id == cast(u32)0 { return 12 }
+    BitmapDisposeOwner(1,2)
+    // Table exhaustion and slot reuse never resurrect an old handle.
+    handles: [BITMAP_IMAGE_LIMIT]Texture2D
+    for i: 0..BITMAP_IMAGE_LIMIT - 1 {
+        handles[i] = BitmapCreateOwned(1,3,1,1,rgba[:4])
+        if handles[i].id == cast(u32)0 { return 13 }
+    }
+    if BitmapCreateOwned(1,3,1,1,rgba[:4]).id != cast(u32)0 { return 14 }
+    BitmapDrop(BitmapSlot(handles[0].id))
+    newest := BitmapCreateOwned(1,3,1,1,rgba[:4])
+    if newest.id == cast(u32)0 || newest.id == handles[0].id || BitmapSlot(handles[0].id) >= 0 { return 15 }
+    BitmapDisposeOwner(1,3)
+    BitmapProviderUse(Upload,Replace,Free)
+    fail_upload = true
+    revision = bitmap_revision
+    if BitmapCreateOwned(1,4,2,2,rgba[:]).id != cast(u32)0 ||
+        bitmap_revision != revision || bitmap_bytes != 0 { return 16 }
+    fail_upload = false
+    image = BitmapCreateOwned(1,4,2,2,rgba[:])
+    if image.id == cast(u32)0 || uploads != 2 { return 17 }
+    at = BitmapSlot(image.id); old := bitmap_images[at].pixels[0]
+    revision = bitmap_revision; rgba[0] = 9; fail_replace = true
+    if BitmapUpdateOwned(1,4,image,rgba[:]) || bitmap_revision != revision ||
+        bitmap_images[at].pixels[0] != old { return 18 }
+    fail_replace = false
+    if !BitmapUpdateOwned(1,4,image,rgba[:]) || replacements != 2 { return 19 }
+    revision = bitmap_revision
+    if !BitmapUpdateOwned(1,4,image,rgba[:]) || replacements != 2 || bitmap_revision != revision { return 20 }
+    BitmapProviderClose()
+    if frees != 1 || bitmap_bytes != 0 || BitmapSlot(image.id) >= 0 { return 21 }
+    print("Managed bitmap storage: bounds, copied alpha, ownership, stale IDs, limits, atomic failure and provider lifetime passed\n")
+    return 0
+}

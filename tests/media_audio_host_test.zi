@@ -1,3 +1,6 @@
+#if #defined(OPUS_AUDIO_TEST) {
+    #import "opus_audio_provider"
+}
 #if #defined(PCM_AUDIO_TEST) {
     #import "pcm_audio_native_provider"
 }
@@ -59,17 +62,25 @@ Frame :: (app: *AppContext) -> bool {
 }
 #program_export
 main :: () -> s32 {
+    #if #defined(OPUS_AUDIO_TEST) {
+        bytes, ok := ReadEntireFile("build/scratch/opus-audio/guest.zx")
+    } else {
     #if #defined(PCM_AUDIO_TEST) {
         bytes, ok := ReadEntireFile("work/pcm-audio/guest.zx")
     } else {
         bytes, ok := ReadEntireFile("work/game-asset-audio/guest.zx")
+    }
     }
     if !ok { return 1 }
     session := SessionOpen()
     #if #defined(AUDIO_UNAVAILABLE_TEST) {
         MediaAudioUseProvider(Unavailable)
     } else {
+    #if #defined(OPUS_AUDIO_TEST) {
+        UseOpusTestProvider()
+    } else {
         MediaAudioUseRaylib()
+    }
     #if #defined(PCM_AUDIO_TEST) {
         MediaAudioUseProvider(PcmTestProvider)
     }
