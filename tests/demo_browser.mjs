@@ -29,7 +29,7 @@ const server = http.createServer(async (request, response) => {
 const targetURL = process.argv[2];
 if (!targetURL) await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
 const url = targetURL || 'http://127.0.0.1:' + server.address().port + '/demo.html';
-const browser = spawn('xvfb-run', ['-a', process.env.CHROMIUM || 'chromium', '--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-site-isolation-trials', '--remote-debugging-port=0', '--user-data-dir=' + profile, 'about:blank'], {env, detached: true, stdio: ['ignore', 'ignore', 'pipe']});
+const browser = spawn('xvfb-run', ['-a', process.env.CHROMIUM || 'chromium', '--headless', '--no-sandbox', '--disable-gpu', '--use-gl=disabled', '--disable-dev-shm-usage', '--disable-background-networking', '--disable-site-isolation-trials', '--remote-debugging-port=0', '--user-data-dir=' + profile, 'about:blank'], {env, detached: true, stdio: ['ignore', 'ignore', 'pipe']});
 let browserLog = '', socket, sequence = 0;
 const pending = new Map(), exceptions = [], requests = [], consoleLines = [];
 browser.stderr.on('data', chunk => { browserLog = (browserLog + chunk).slice(-4000); });
@@ -120,9 +120,17 @@ async function screenshot(name) {
 try {
   let port;
   await waitFor(async () => { try { port = Number((await fs.readFile(path.join(profile, 'DevToolsActivePort'), 'utf8')).split('\n')[0]); return !!port; } catch { return false; } }, 'Private browser did not start');
-  const pages = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json();
+  const pages = await (await fetch('http://127.0.0.1:' + port + '/json/list', {signal: AbortSignal.timeout(10000)})).json();
   socket = new WebSocket(pages.find(page => page.type === 'page').webSocketDebuggerUrl);
-  await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, {once: true}); socket.addEventListener('error', reject, {once: true}); });
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Private browser WebSocket startup timed out')), 10000);
+    socket.addEventListener('open', () => { clearTimeout(timer); resolve(); }, {once: true});
+    socket.addEventListener('error', error => { clearTimeout(timer); reject(error); }, {once: true});
+  });
+  socket.addEventListener('close', () => {
+    for (const item of pending.values()) { clearTimeout(item.timer); item.reject(new Error('Private browser connection closed')); }
+    pending.clear();
+  });
   socket.addEventListener('message', event => {
     const message = JSON.parse(event.data);
     if (message.method === 'Runtime.exceptionThrown') exceptions.push(message.params.exceptionDetails);
@@ -269,15 +277,16 @@ try {
     else browser.once('exit', resolve);
   });
   try { process.kill(-browser.pid, 'SIGTERM'); } catch {}
-  const stopped = await Promise.race([
-    exited.then(() => true),
-    delay(2000).then(() => false)
-  ]);
-  if (!stopped) {
+  await Promise.race([exited, delay(2000)]);
+  if (browser.exitCode === null && browser.signalCode === null) {
     try { process.kill(-browser.pid, 'SIGKILL'); } catch {}
-    await exited;
+    await Promise.race([exited, delay(2000)]);
   }
-  if (server.listening) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); }
+  browser.stderr.destroy();
+  if (server.listening) {
+    server.closeAllConnections();
+    await Promise.race([new Promise(resolve => server.close(resolve)), delay(2000)]);
+  }
   // xvfb-run can exit before Chromium's children finish closing profile files.
   await fs.rm(profile, {recursive: true, force: true, maxRetries: 10, retryDelay: 100});
 }

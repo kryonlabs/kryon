@@ -232,6 +232,74 @@ evidence. Raw frame samples and DRM counters are in ignored
 `hardware-summary.json` includes every trial's throughput and CPU latency
 p50/p95. Load averages were approximately 6.3/6.1/5.9 at both ends of the run.
 
+## AVIF images
+
+Native AVIF and WebP decoding is supplied by the standalone Ziran `avif`,
+`webp` and `image_codec` packages. Kryon selects the platform engine and adapts
+caller-owned straight RGBA8 into host pixels, surfaces and textures. Codec
+parsing, native ABI and frame composition belong to those packages. The current
+native engines explicitly bridge pinned external libraries; this integration
+makes no authored AV1 decoder or performance claim.
+
+Content routing uses the packages' bounded prefix predicates; their decoders
+perform complete container validation. Kryon's CMake entry points consume the
+packages' shared native build recipes and retain the existing target names and
+archive locations. Package directories come from `ziran pkg path`; renderer
+artifacts pass their resolved dependency paths explicitly. Custom CMake hosts
+can set `KRYON_AVIF_PACKAGE_DIR` and `KRYON_WEBP_PACKAGE_DIR` to those paths.
+
+The adapters allocate the final host buffer once. AVIF probes metadata, then
+revalidates and decodes the same immutable encoded buffer into that storage;
+this repeats bounded metadata parsing without copying a full owned output.
+Failed decode, cancellation and changed output dimensions release the buffer
+before publishing any pixels. Browser codecs and pixel-renderer inputs retain
+their existing paths.
+
+`Image(ImageProps)` accepts AVIF assets through the same path as PNG/JPEG/WebP,
+including extensionless names and packaged bundle/APK assets. Native hosts
+use the locked libavif 1.3 and libaom CPU decoder; Android 9 requires no OS
+AVIF support. The still-image API shows the first complete frame of a sequence.
+ARMv7 uses libaom's portable CPU kernels: the locked AOM/NDK combination emits
+unaligned NEON loads which fault on real Android hardware. Other architectures
+retain their SIMD kernels. The ARMv7 device suite covers both Debug and Release,
+including the original large YUV420 crash input and background image loading.
+8/10/12-bit color and monochrome decode to straight 8-bit RGBA; alpha and
+container clean aperture, rotation and mirroring are preserved. The renderer
+then premultiplies for Cairo or composites normally in Raylib. HDR tone mapping
+and ICC display color management are outside the existing 8-bit image surface.
+
+Encoded files are limited to 256 MiB, dimensions to 32768 per axis and pixel
+count to 67,108,864 (a 256 MiB RGBA buffer). These are independent axis/count
+limits, permitting wide images below the pixel budget. Invalid/truncated
+containers, invalid crops and oversized images return no image. Decoding uses
+one CPU thread and retains only the first decoded frame.
+
+`mk/raylib-library.mk` builds `AVIF_A`, `AOM_A` and Linux `AVIF_SO` beside the
+existing renderer archives. `kryon_android_raylib(raylib, webp, avif, aom)`
+links the static codec for each ABI; older scaffolds receive the source paths
+through `KRYON_ANDROID_AVIF_DIR` and `KRYON_ANDROID_AOM_DIR`. The Raylib artifact
+includes the static codec archives. The desktop artifact includes the
+self-contained `libkryonavif.so`; `renderer_link` retains it as a runtime
+dependency so application packaging tools carry it into their lib directory.
+Cairo also searches beside the executable and its `lib`/`../lib` directories;
+`KRYON_AVIF_LIBRARY` can select an explicit codec file for custom hosts.
+
+Canvas/DOM use the browser AVIF decoder through `PageImageDecode`; supported
+browsers supply their native AVIF implementation. The pure pixel renderer
+accepts decoded pixel buffers through `PixmapSetImage`, as for other formats.
+
+`make avif-decode-test` runs independent RGBA goldens from source and saved IR.
+`make avif-render-test` checks real Cairo and private-display Raylib rendering,
+including a portable bundle using the public Image widget. `make android-avif-test
+ANDROID_NDK=... ANDROID_SERIAL=ZE2223BQZT` builds all four ABIs and runs the
+ARMv7 CPU/golden-pixel tests on the Android 9 USB Moto. `make avif-browser-test`
+exercises the Canvas/DOM image boundary in private headless Firefox.
+
+The headless package suite, `build-queue -- sh tests/image_integration.sh`,
+resolves real native artifacts and tests source and saved IR under ASan, UBSan
+and leak detection, including adapter failure cleanup. With development-only
+package overrides, set `ZIRAN_ROOT` and `ZIRAN_BIN` to the rebuilt toolchain.
+
 ## WebP images
 
 Images, image previews and app media files accept WebP wherever they accept
@@ -243,7 +311,9 @@ still; `ImageCompress` keeps animated originals unchanged.
 - The raylib and Android hosts decode through `webp_image.zi` with libwebp's
   decoder and animation demuxer, built from the locked `libwebp` source
   package into the static `kryonwebp` archive (`cmake/WebP.cmake`, no
-  encoder or threads). Canvases above 8192 × 8192 pixels are refused.
+  encoder or threads). Images above 67108864 pixels are refused. The static
+  adapter retains its 2147483647-byte input cap; Cairo retains its 256 MiB
+  encoded-file budget.
   `mk/raylib-library.mk` builds it as `WEBP_A` beside `RAYLIB_A`;
   `kryon_android_raylib` builds it for each ABI; the `renderer-raylib`
   artifact lists `lib/libkryonwebp.a` in its archives.

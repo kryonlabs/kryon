@@ -6,14 +6,14 @@ build=$repo/build/text-shaping
 mkdir -p "$build"
 exec 9>"$build/lock"
 flock 9
-"$ziran" ir --module-path "$repo/src/ui" --module-path "$repo/src/backend" --module-path "$ziran_root/std" --root "$repo/tests" -o "$build/ir" "$repo/tests/cairo_text.zi"
+"$ziran" ir --project --root "$repo/tests" -o "$build/ir" "$repo/tests/cairo_text.zi"
 for source in source saved; do
     input=$repo/tests/cairo_text.zi
     root=$repo/tests
     if [ "$source" = saved ]; then input=$build/ir/cairo_text.zir; root=$build/ir; fi
     for target in c; do
         output=$build/$source-$target
-        "$ziran" build --module-path "$repo/src/ui" --module-path "$repo/src/backend" --module-path "$ziran_root/std" --target="$target" --no-main --root "$root" \
+        "$ziran" build --project --target="$target" --no-main --root "$root" \
             --module-path "$build/ir" --entry cairo_text:Run -o "$output" "$input"
         suffix=c; header=h; compiler=${CC:-cc}; standard=c11
         printf '#include "cairo_text.%s"\nint main(void) { return Run(); }\n' "$header" >"$output/driver.$suffix"

@@ -1,0 +1,38 @@
+// Optional native bridge selection. Codec ABI, parsing and transformations
+// are owned by avif; Kryon adapts only backend storage and platform policy.
+using Bridge :: #import "avif/bridge"
+Bmff :: #import "avif/bmff";
+Codecs :: #import "image_codec/api";
+#import "ziran_image_decode"
+#import "std/byte_text_linux"
+AVIF_PIXEL_LIMIT :: 67108864
+AVIF_BYTE_LIMIT :: 268435456
+AvifAllocate :: (count: usize) -> *u8 { return ImagePixelsAllocate(count) }
+AvifFree :: (pixels: *u8) { ImagePixelsFree(pixels) }
+
+AvifSignature :: (data: string) -> bool {
+    return Bmff.HasSignature(ImageEncodedBytes(data))
+}
+
+
+AvifDecode :: (api: AvifAPI, data: string, width: *s32, height: *s32) -> *u8 {
+    return AvifDecodeWithOptions(api, data, Codecs.DefaultOptions(), width, height)
+}
+
+AvifDecodeWithOptions :: (api: AvifAPI, data: string, options: Codecs.DecodeOptions,
+    width: *s32, height: *s32) -> *u8 {
+    width.* = 0; height.* = 0
+    input := ImageEncodedBytes(data)
+    probe := Bridge.BridgeProbe(api, input, options)
+    if !probe.is_ok { return null }
+    count := cast(s64)probe.metadata.width * probe.metadata.height * 4
+    pixels := ImagePixelsAllocate(cast(usize)count)
+    if pixels == null { return null }
+    output := Codecs.OutputBuffer.{BytesFromPointer(pixels, cast(u64)count), cast(s64)probe.metadata.width * 4}
+    result := Bridge.DecodeIntoWithAPI(api, input, output, options)
+    if !result.is_ok || result.metadata.width != probe.metadata.width || result.metadata.height != probe.metadata.height {
+        ImagePixelsFree(pixels); return null
+    }
+    width.* = result.metadata.width; height.* = result.metadata.height
+    return pixels
+}

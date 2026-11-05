@@ -5,6 +5,7 @@
 #import "geometry"
 #import "image_props"
 #import "navigation_bar_props"
+#import "navigation_bar"
 #import "navigation_bar_widget"
 #import "paint_queue"
 #import "semantic"
@@ -61,7 +62,29 @@ Frame :: () -> s32 {
     themed: NavigationBarProps = props
     themed.height = 0
     // Without an explicit height the bar takes the theme's.
-    if NavigationBarHeight(themed) != 32 { return -31 }
+    if NavigationBarHeight(themed) != 80 { return -31 }
+    bar_face := NavigationBarFaceFor(props)
+    item_face := NavigationBarItemFaceFor(props, items[0], false)
+    plan := NavigationBarPaintFor(NavigationBarSpec.{.view_width = 300,
+        .view_height = 180, .count = 3, .side_margin = -1,
+        .bottom_margin = -1, .icon_size = -1, .bar = bar_face, .item = item_face})
+    spec := NavigationBarItemSpec.{.bar = plan, .active = true,
+        .has_icon = true, .label_height = 13, .base = item_face, .face = item_face}
+    layout := NavigationBarItemPaintFor(spec)
+    if plan.bar_bounds.width != 300.0 || plan.height != 80 ||
+        layout.state_bounds.width != 64.0 || layout.state_bounds.height != 32.0 ||
+        layout.icon_bounds.y < layout.state_bounds.y ||
+        layout.label_bounds.y < layout.state_bounds.y + layout.state_bounds.height ||
+        layout.label_bounds.y + layout.label_bounds.height > 180.0 { return -32 }
+    narrow := NavigationBarPaintFor(NavigationBarSpec.{.view_width = 60,
+        .view_height = 180, .count = 3, .side_margin = -1,
+        .bottom_margin = -1, .icon_size = -1, .bar = bar_face, .item = item_face})
+    if narrow.bar_bounds.width != 60.0 || narrow.tab_width != 20 { return -34 }
+    spec.has_icon = false
+    layout = NavigationBarItemPaintFor(spec)
+    if layout.label_bounds.y < layout.state_bounds.y ||
+        layout.label_bounds.y + layout.label_bounds.height >
+        layout.state_bounds.y + layout.state_bounds.height { return -33 }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 180.0})
     result: NavigationBarResult = NavigationBar(TestSession(), props,
         items[0:3])
@@ -106,7 +129,7 @@ main :: () -> s32 {
         if Frame() != index || NavigationHostFailed() { return 1 }
         index += 1
     }
-    if NavigationFills() < 6 || NavigationOutlines() != 3 ||
+    if NavigationFills() < 6 || NavigationOutlines() != 0 ||
         NavigationLabels() != 9 || NavigationImages() != 6 ||
         NavigationBarFills() != 3 || NavigationTintedImages() != 3 { return 2 }
     return 0

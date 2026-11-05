@@ -46,7 +46,7 @@ ToggleDefaultFace :: (kind: s32, role: s32,
     face.focus = Theme.LightAccent()
     face.border_width = 0.0
     face.opacity = 1.0
-    face.font_size = 14.0
+    face.font_size = Theme.TypeLabel()
     if kind == StyleKindToggleThumb() {
         face.background = cast(u32)0xffffffff
         face.foreground = cast(u32)0xffffffff
@@ -106,6 +106,10 @@ PaintToggleForNode :: (session: Session, node: s32, props: ToggleProps,
             paint.track.value.border_width,
             ColorFromPacked(Opacity(paint.track.value.border,
                 track_opacity)))
+    }
+    if paint.show_focus {
+        PaintRoundedOutline(session, node, paint.focus_bounds, track_radius + 2.0, 16,
+            2.0, ColorFromPacked(paint.track.value.focus))
     }
     if paint.has_labels {
         active_opacity: float32 = StyleOpacityValue(
@@ -217,6 +221,7 @@ Toggle :: (session: Session, props: ToggleProps) -> ToggleValueResult {
         TreeTakeActivationAt(session, previous), !props.disabled, true)
     spec: ToggleSpec = ToggleSpecFor(props, result.value,
         TreeHoveredAt(session, previous), TreePressedAt(session, previous))
+    spec.focused = !props.disabled && TreeFocusVisibleAt(session, previous)
     has_labels: bool = spec.has_labels
     label: StyleFrame = spec.label
     font: s32 = spec.font

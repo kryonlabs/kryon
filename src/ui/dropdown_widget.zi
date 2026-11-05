@@ -57,18 +57,18 @@
         cast(u32)StyleIconSize | cast(u32)StyleContentOffset
         face.foreground = Theme.LightText()
         face.opacity = 1.0
-        face.font_size = 14.0
+        face.font_size = Theme.TypeLabel()
         face.icon_size = 16.0
         face.padding_x = 10.0
         face.padding_y = 4.0
         face.gap = 4.0
         face.offset_x = 14.0
         face.offset_y = 16.0
-        face.radius = 8.0
+        face.radius = Theme.ShapeMedium()
         if role == DropdownPanelRole() {
             // The menu gutter is separate from padding inside each option.
             face.padding_x = 4.0
-            face.background = cast(u32)0xffffffff
+            face.background = Theme.LightSurface()
             face.border = Theme.LightBorderStrong()
             face.border_width = 1.0
         } else if role == DropdownOptionRole() {
@@ -85,7 +85,7 @@
             face.border = cast(u32)0x00000000
             face.icon_size = 8.0
             face.padding_y = 2.0
-            face.radius = 4.0
+            face.radius = Theme.ShapeSmall()
         } else {
             face.background = Theme.LightSunken()
             face.border = Theme.LightBorderStrong()
@@ -538,6 +538,7 @@
         if panel_node < 0 { return result }
         panel_opacity: float32 = StyleOpacityValue(panel.value.fields,
             panel.value.opacity)
+        PaintElevation(session, panel_node, menu, panel.value.radius, panel_opacity)
         PaintRoundedFill(session, panel_node, menu, panel.value.radius, 12,
             ColorFromPacked(Opacity(panel.value.background,
             panel_opacity)))

@@ -5,6 +5,7 @@
 set -eu
 repo=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)
 . "$repo/tests/toolchain.sh"
+. "$repo/tests/image_packages.sh"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGER
 raylib=${RAYLIB_A:-$repo/build/raylib-ziran/libraylib.a}
 webp=${WEBP_A:-$repo/build/webp-ziran/libkryonwebp.a}
@@ -16,16 +17,16 @@ work=$(mktemp -d "$repo/build/scratch/raylib-webp-decode.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/raylib_webp_decode_test.zi
 python3 "$repo/tests/icon_assets_test.py" "$work/icons"
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" \
+image_ziran ir --root "$repo/tests" --module-path "$repo/src/backend" \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source
     if test "$form" = saved; then input=$work/ir/raylib_webp_decode_test.zir; fi
     output=$work/$form
-    "$ziran" build --target=c --root "$repo/tests" --module-path "$repo/src/backend" \
+    image_ziran build --target=c --root "$repo/tests" --module-path "$repo/src/backend" \
         --module-path "$ziran_root/std" -o "$output" "$input"
     "${CC:-cc}" -std=c11 -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections \
-        -I"$ziran_root/include" -I"$output" "$output"/*.c "$raylib" "$webp" \
+        -I"$ziran_root/include" -I"$output" "$output"/*.c "$raylib" "$webp" "${AVIF_A:-$repo/build/avif-ziran/avif/libavif.a}" "${AOM_A:-$repo/build/avif-ziran/aom/libaom.a}" \
         $raylib_libs -lm -o "$output/test"
     timeout --kill-after=2s 20s "$output/test" "$repo/tests/fixtures/webp" "$work/icons"
 done

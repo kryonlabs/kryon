@@ -8,6 +8,16 @@ long_text: [2048]u8;
 Run :: () -> s32 {
     if !OpenRaster(800, 140) { return 1 }
     defer CloseRaster()
+    // Layouts own strings from reusable caller buffers, and measurements
+    // remain stable across font changes and cache eviction.
+    bytes: [3]u8 = .[87, 87, 87]
+    wide := GlyphWidth(TextView(bytes[:]), 24, "")
+    for at: 0..2 { bytes[at] = 105 }
+    thin := GlyphWidth(TextView(bytes[:]), 24, "")
+    if wide <= thin || GlyphWidth("WWW", 24, "") != wide { return 9 }
+    for size: cast(s32)10..30 { unused GlyphWidth("evict", size, "") }
+    if GlyphWidth("WWW", 24, "") != wide ||
+        GlyphWidth("iii", 24, "") != thin { return 10 }
     BeginRasterFrame()
     if GlyphWidth("é", 24, "") != GlyphWidth("e", 24, "") { return 2 }
     if GlyphWidth("لا", 24, "") >= GlyphWidth("ل", 24, "") + GlyphWidth("ا", 24, "") { return 3 }

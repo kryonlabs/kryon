@@ -9,4 +9,18 @@ CardProps :: struct {
     disabled: bool
     selected: bool
     state: ButtonState
+    key: u64
+    label: string
+    variant: CardVariant
+}
+
+CardVariant :: enum {
+    CardFilled :: 0
+    CardElevated :: 1
+    CardOutlined :: 2
+}
+
+CardResult :: struct {
+    activated: bool
+    content: Rectangle
 }

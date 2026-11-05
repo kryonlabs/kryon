@@ -4,13 +4,21 @@ RAYLIB_SOURCE = $(addsuffix /src,$(RAYLIB_PACKAGE))
 RAYLIB_BUILD ?= $(KRYON_DIR)/build/raylib-ziran
 RAYLIB_A ?= $(RAYLIB_BUILD)/libraylib.a
 RAYLIB_INPUTS = $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)
-# Kryon's WebP codec (decoder and animation demuxer) from the locked libwebp
-# source package; every raylib host links it beside libraylib.a.
+# Package-owned decoder recipes keep Kryon's existing archive paths.
+WEBP_CODEC_PACKAGE = $(eval WEBP_CODEC_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path webp $(if $(wildcard ziran.local.toml),,--locked)))$(WEBP_CODEC_PACKAGE)
 WEBP_PACKAGE = $(eval WEBP_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path libwebp $(if $(wildcard ziran.local.toml),,--locked)))$(WEBP_PACKAGE)
 WEBP_BUILD ?= $(KRYON_DIR)/build/webp-ziran
 WEBP_A ?= $(WEBP_BUILD)/libkryonwebp.a
-WEBP_INPUTS = $(KRYON_DIR)/cmake/WebP.cmake $(KRYON_DIR)/cmake/webp/CMakeLists.txt $(wildcard $(WEBP_PACKAGE)/CMakeLists.txt $(WEBP_PACKAGE)/src/*/*.c $(WEBP_PACKAGE)/src/*/*.h)
-RAYLIB_ARCHIVES = $(RAYLIB_A) $(WEBP_A)
+WEBP_INPUTS = $(KRYON_DIR)/cmake/WebP.cmake $(KRYON_DIR)/cmake/ImagePackages.cmake $(KRYON_DIR)/cmake/webp/CMakeLists.txt $(wildcard $(WEBP_CODEC_PACKAGE)/native/*.cmake $(WEBP_PACKAGE)/CMakeLists.txt $(WEBP_PACKAGE)/src/*/*.c $(WEBP_PACKAGE)/src/*/*.h)
+AVIF_CODEC_PACKAGE = $(eval AVIF_CODEC_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path avif $(if $(wildcard ziran.local.toml),,--locked)))$(AVIF_CODEC_PACKAGE)
+AVIF_PACKAGE = $(eval AVIF_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path libavif $(if $(wildcard ziran.local.toml),,--locked)))$(AVIF_PACKAGE)
+AOM_PACKAGE = $(eval AOM_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path libaom $(if $(wildcard ziran.local.toml),,--locked)))$(AOM_PACKAGE)
+AVIF_BUILD ?= $(KRYON_DIR)/build/avif-ziran
+AVIF_A ?= $(AVIF_BUILD)/avif/libavif.a
+AOM_A ?= $(AVIF_BUILD)/aom/libaom.a
+AVIF_SO ?= $(AVIF_BUILD)/libkryonavif.so
+AVIF_INPUTS = $(KRYON_DIR)/cmake/AVIF.cmake $(KRYON_DIR)/cmake/ImagePackages.cmake $(KRYON_DIR)/cmake/avif/CMakeLists.txt $(wildcard $(AVIF_CODEC_PACKAGE)/native/*.cmake)
+RAYLIB_ARCHIVES = $(RAYLIB_A) $(WEBP_A) $(AVIF_A) $(AOM_A)
 RAYLIB_HOST_OS := $(shell uname -s)
 ifeq ($(RAYLIB_HOST_OS),Darwin)
 RAYLIB_HOST_DEFINES := __APPLE__ $(if $(filter x86_64,$(shell uname -m)),__x86_64__,__aarch64__)
@@ -61,7 +69,18 @@ $(RAYLIB_A): $$(RAYLIB_INPUTS) | $(WEBP_A)
 $(WEBP_A): $$(WEBP_INPUTS)
 	@test -n "$(WEBP_PACKAGE)" && test -f "$(WEBP_PACKAGE)/src/demux/anim_decode.c" || { echo "Run ziran fetch; Kryon needs the locked libwebp source package" >&2; exit 1; }
 	cmake -S $(KRYON_DIR)/cmake/webp -B $(WEBP_BUILD) -DWEBP_DIR="$(WEBP_PACKAGE)" \
+		-DKRYON_WEBP_PACKAGE_DIR="$(WEBP_CODEC_PACKAGE)" \
 		-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(RAYLIB_CC)" \
 		-DCMAKE_C_FLAGS="$(WEBP_CFLAGS)" >/dev/null
 	command cmake --build $(WEBP_BUILD) --target kryonwebp --parallel $(RAYLIB_JOBS)
+	@test -f $@
+
+$(AVIF_A): $$(AVIF_INPUTS)
+	cmake -S $(KRYON_DIR)/cmake/avif -B $(AVIF_BUILD) -DAVIF_DIR="$(AVIF_PACKAGE)" -DAOM_DIR="$(AOM_PACKAGE)" \
+		-DKRYON_AVIF_PACKAGE_DIR="$(AVIF_CODEC_PACKAGE)" \
+		-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(RAYLIB_CC)"
+	command cmake --build $(AVIF_BUILD) --target avif_static $(if $(filter Linux,$(RAYLIB_HOST_OS)),kryonavif) --parallel $(RAYLIB_JOBS)
+	@test -f $@
+
+$(AOM_A) $(AVIF_SO): $(AVIF_A)
 	@test -f $@

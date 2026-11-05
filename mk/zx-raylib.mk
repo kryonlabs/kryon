@@ -10,7 +10,7 @@ ZX_RAYLIB_LDFLAGS ?= $(if $(filter Darwin,$(RAYLIB_HOST_OS)),-Wl$(comma)-dead_st
 comma := ,
 ZX_RAYLIB_CFLAGS ?= -O2
 ZX_RAYLIB_DEFINES ?= $(RAYLIB_HOST_DEFINES)
-ZX_RAYLIB_ARCHIVE ?= $(KRYON_DIR)/build/raylib-ziran/libraylib.a $(KRYON_DIR)/build/webp-ziran/libkryonwebp.a
+ZX_RAYLIB_ARCHIVE ?= $(KRYON_DIR)/build/raylib-ziran/libraylib.a $(KRYON_DIR)/build/webp-ziran/libkryonwebp.a $(AVIF_A) $(AOM_A)
 ZX_RAYLIB_HTTP_LIBS ?= $(or $(shell pkg-config --libs libcurl 2>/dev/null),$(if $(filter Linux,$(RAYLIB_HOST_OS)),-l:libcurl.so.4,-lcurl))
 ZX_RAYLIB_LIBS ?= $(RAYLIB_PLATFORM_LIBS) $(ZX_RAYLIB_HTTP_LIBS) -lm
 ZX_RAYLIB_GENERATED := $(ZX_RAYLIB_DIR)/generated
@@ -38,12 +38,11 @@ $(ZX_RAYLIB_DIR)/config: zx-raylib-config
 	@printf '%s\n' "$(ZIRAN_DIR)" "$(ZX_RAYLIB_CC)" "$(ZX_RAYLIB_AR)" "$(ZX_RAYLIB_OBJCOPY)" "$(ZX_RAYLIB_PRIVATE_HEADERS)" "$(ZX_RAYLIB_CFLAGS)" "$(ZX_RAYLIB_DEFINES)" "$(ZX_RAYLIB_ARCHIVE)" "$(ZX_RAYLIB_LDFLAGS)" "$(ZX_RAYLIB_LIBS)" > $@.new
 	@cmp -s $@.new $@ && rm $@.new || mv $@.new $@
 
-$(ZX_RAYLIB_GENERATED)/.complete: $(ZX_RAYLIB_SOURCES) $(ZX_RAYLIB_COMPILER) $(KRYON_DIR)/mk/zx-raylib.mk $(ZX_RAYLIB_DIR)/config
+$(ZX_RAYLIB_GENERATED)/.complete: $(ZX_RAYLIB_SOURCES) $(ZX_RAYLIB_COMPILER) $(KRYON_DIR)/mk/zx-raylib.mk $(KRYON_DIR)/ziran.toml $(KRYON_DIR)/ziran.lock $(ZX_RAYLIB_DIR)/config
 	mkdir -p $(ZX_RAYLIB_GENERATED)/ir $(ZX_RAYLIB_GENERATED)/c
 	rm -f $(ZX_RAYLIB_GENERATED)/ir/*.zir $(ZX_RAYLIB_GENERATED)/c/*.[ch]
-	$(ZIRAN_DIR)/build/bin/ziran ir $(ZX_RAYLIB_DEFINE_ARGS) --root $(KRYON_DIR)/tools \
-		--module-path $(KRYON_DIR)/src/backend --module-path $(KRYON_DIR)/src/ui \
-		--module-path $(ZIRAN_DIR)/std -o $(ZX_RAYLIB_GENERATED)/ir $(KRYON_DIR)/tools/zx_raylib.zi
+	cd "$(KRYON_DIR)" && $(ZIRAN_DIR)/build/bin/ziran ir --project $(ZX_RAYLIB_DEFINE_ARGS) --root $(KRYON_DIR)/tools \
+		-o $(ZX_RAYLIB_GENERATED)/ir $(KRYON_DIR)/tools/zx_raylib.zi
 	$(ZIRAN_DIR)/build/bin/zi2c $(ZX_RAYLIB_DEFINE_ARGS) --root $(ZX_RAYLIB_GENERATED)/ir \
 		-o $(ZX_RAYLIB_GENERATED)/c $(ZX_RAYLIB_GENERATED)/ir/*.zir
 	touch $@

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Real native and IDBFS barriers, including portable AppLocal guests."""
+
+from toolchain import JS_RUNTIME
 import argparse
 import os
 from pathlib import Path
@@ -64,6 +66,6 @@ function storageTestFail(){FS.filesystems.IDBFS.dbs['/kryon-apps'].close()}
 </script>{{{ SCRIPT }}}''')
                 run([emcc,*flags,WORK/'runtime/libziran.a','--js-library',ZIRAN_ROOT/'web/ziran_web.js','-lidbfs.js','-sASYNCIFY','-sSTACK_SIZE=16777216','-sASYNCIFY_STACK_SIZE=1048576','-g2','-sASSERTIONS=1','-sALLOW_MEMORY_GROWTH=1','-sINITIAL_MEMORY=134217728','-sSINGLE_FILE=1','-sEXIT_RUNTIME=1','-sEXPORTED_RUNTIME_METHODS=FS','-sENVIRONMENT=web','--embed-file',str(WORK/'guest.zx')+'@work/document-storage/guest.zx','--shell-file',shell,'-o',WORK/'test.html'])
                 shutil.rmtree(WORK/'browser-profile',ignore_errors=True)
-                run(['node',ROOT/'tests/document_storage_test.mjs',(WORK/'test.html').as_uri(),WORK/'browser-profile'])
+                run([JS_RUNTIME,ROOT/'tests/document_storage_test.mjs',(WORK/'test.html').as_uri(),WORK/'browser-profile'])
             print(f'document storage {form} {"browser IDBFS + hosted VM" if web else "native + hosted VM"}: passed',flush=True)
 if __name__=='__main__': main()

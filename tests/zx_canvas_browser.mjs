@@ -19,7 +19,7 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const query=mode==='url'||mode==='hosted'?'?bundle='+encodeURIComponent(basename(downloaded)):'';
-const browser=spawn(process.env.CHROMIUM||'chromium',['--headless','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'http://127.0.0.1:'+server.address().port+'/'+basename(html)+query],{detached:true,stdio:['ignore','ignore','pipe']});
+const browser=spawn(process.env.CHROMIUM||'chromium',['--headless','--no-sandbox','--disable-gpu','--use-gl=disabled','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'http://127.0.0.1:'+server.address().port+'/'+basename(html)+query],{detached:true,stdio:['ignore','ignore','pipe']});
 let errors='',socket,diagnostics='';browser.stderr.on('data',v=>errors=(errors+v).slice(-2000));
 try {
   const deadline=Date.now()+45000;
@@ -30,9 +30,13 @@ try {
     await delay(50);
   }
   assert(port,'Chromium debug endpoint unavailable: '+errors);
-  const pages=await(await fetch('http://127.0.0.1:'+port+'/json/list')).json();
+  const pages=await(await fetch('http://127.0.0.1:'+port+'/json/list',{signal:AbortSignal.timeout(10000)})).json();
   socket=new WebSocket(pages.find(p=>p.type==='page').webSocketDebuggerUrl);
-  await new Promise((resolve,reject)=>{socket.addEventListener('open',resolve,{once:true});socket.addEventListener('error',reject,{once:true});});
+  await new Promise((resolve,reject)=>{
+    const timer=setTimeout(()=>reject(new Error('Private ZX browser startup timed out')),10000);
+    socket.addEventListener('open',()=>{clearTimeout(timer);resolve();},{once:true});
+    socket.addEventListener('error',error=>{clearTimeout(timer);reject(error);},{once:true});
+  });
   let seq=0;const pending=new Map();
   socket.addEventListener('message',e=>{
     const m=JSON.parse(e.data);
@@ -288,7 +292,15 @@ try {
   console.log('ZX Canvas '+mode+': image, text, click state, resize and input passed');
   }
 } finally {
-  socket?.close();try {process.kill(-browser.pid,'SIGTERM');}catch {}
-  await new Promise(resolve=>browser.exitCode!==null||browser.signalCode!==null?resolve():browser.once('exit',resolve));
-  await new Promise(resolve=>server.close(resolve));await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:100});
+  socket?.close();
+  const exited=new Promise(resolve=>browser.exitCode!==null||browser.signalCode!==null?resolve():browser.once('exit',resolve));
+  try {process.kill(-browser.pid,'SIGTERM');}catch {}
+  await Promise.race([exited,delay(2000)]);
+  if(browser.exitCode===null&&browser.signalCode===null){
+    try {process.kill(-browser.pid,'SIGKILL');}catch {}
+    await Promise.race([exited,delay(2000)]);
+  }
+  browser.stderr.destroy();server.closeAllConnections();
+  await Promise.race([new Promise(resolve=>server.close(resolve)),delay(2000)]);
+  await rm(profile,{recursive:true,force:true,maxRetries:10,retryDelay:100});
 }

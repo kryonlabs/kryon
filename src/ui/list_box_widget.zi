@@ -72,13 +72,13 @@ ListBoxDefaultFace :: (state: s32,
         cast(u32)StyleRadius | cast(u32)StyleOpacity |
         cast(u32)StyleFontSize | cast(u32)StylePaddingX |
         cast(u32)StyleIconSize
-    face.background = cast(u32)0xffffffff
+    face.background = Theme.LightSurface()
     face.foreground = Theme.LightText()
     face.border = Theme.LightBorder()
     face.border_width = 1.0
-    face.radius = 4.0
+    face.radius = Theme.ShapeMedium()
     face.opacity = 1.0
-    face.font_size = 14.0
+    face.font_size = Theme.TypeLabel()
     face.padding_x = 8.0
     face.icon_size = 8.0
     if item {

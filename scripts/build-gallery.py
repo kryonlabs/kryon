@@ -11,12 +11,15 @@ PROJECT = ROOT / 'examples/gallery'
 SITE = ROOT / 'docs/site'
 ASSETS = SITE / 'assets'
 env = os.environ.copy()
-for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS'):
+for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER'):
     env.pop(name, None)
+env['YUE_DESKTOP_RECOVERY'] = '0'
 modules, scenes = prepare()
 env['PROJECT_EXTRA_SOURCES'] = 'build/catalog/catalog.zi'
 command = ['ziran', 'tool', 'kryon', 'build', '--profile', 'web']
-if not (PROJECT / 'ziran.local.toml').exists():
+if (PROJECT / 'ziran.local.toml').exists():
+    subprocess.run(['ziran', 'lock'], cwd=PROJECT, env=env, check=True)
+else:
     command.append('--locked')
 subprocess.run(command, cwd=PROJECT, env=env, check=True)
 compiled = (PROJECT / 'build/gallery-web.html').read_text()

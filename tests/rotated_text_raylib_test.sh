@@ -10,11 +10,10 @@ for profile in native android-replay; do
     set --
     if [ "$profile" = android-replay ]; then set -- --define KRYON_FRAME_THREADS; fi
     output=$work/$profile
-    "$ziran" build --target=c "$@" --root "$repo/tests" --module-path "$repo/src/ui" \
-        --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+    "$ziran" build --project --target=c "$@" --root "$repo/tests" --module-path "$repo/tests" \
         -o "$output" "$repo/tests/rotated_text_raylib_test.zi"
     "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections -Wl,--gc-sections \
-        -I"$output" "$output"/*.c "$archive" "${WEBP_A:-$repo/build/webp-ziran/libkryonwebp.a}" $libs -o "$output/test"
+        -I"$output" "$output"/*.c "$archive" "${WEBP_A:-$repo/build/webp-ziran/libkryonwebp.a}" "${AVIF_A:-$repo/build/avif-ziran/avif/libavif.a}" "${AOM_A:-$repo/build/avif-ziran/aom/libaom.a}" $libs -o "$output/test"
     env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
         -u GDK_DISPLAY YUE_DESKTOP_RECOVERY=0 LIBGL_ALWAYS_SOFTWARE=1 \
         timeout --kill-after=2s 45s xvfb-run -a -n 300 -s '-screen 0 300x300x24' "$output/test"

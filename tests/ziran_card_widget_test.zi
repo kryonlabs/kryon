@@ -1,0 +1,71 @@
+#import "ziran_composition_widget_host"
+#import "ziran_card_image_host"
+#import "card"
+#import "card_props"
+#import "card_widget"
+#import "elevation"
+#import "geometry"
+#import "control_props"
+#import "drawing_props"
+#import "session"
+#import "widget_test_session"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "style_sheet"
+#import "list_box"
+#import "style"
+
+#program_export
+main :: () -> s32 {
+    bounds := Rectangle.{10.0, 20.0, 100.0, 80.0}
+    content := CardContentBounds(bounds)
+    if content.x != 26.0 || content.y != 36.0 || content.width != 68.0 || content.height != 48.0 { return 1 }
+    small := CardContentBounds(Rectangle.{0.0, 0.0, 8.0, 4.0})
+    if small.width != 0.0 || small.height != 0.0 { return 2 }
+    invalid := CardContentBounds(Rectangle.{0.0, 0.0, -1.0, -2.0})
+    if invalid.width != 0.0 || invalid.height != 0.0 { return 3 }
+    if ElevationEdgeBounds(bounds, 1).y != 100.0 || ElevationEdgeBounds(bounds, 2).y != 101.0 ||
+        ElevationEdgeBounds(bounds, 3).width != 0.0 || ElevationEdgeAlpha(0) != cast(u32)0 ||
+        ElevationEdgeAlpha(1) != cast(u32)24 || ElevationEdgeAlpha(2) != cast(u32)10 { return 4 }
+    if ElevationEdgeBounds(bounds, 1, 12.0).width != 76.0 { return 16 }
+    if CardEmphasis(.CardFilled) != .ButtonEmphasisSoft || CardEmphasis(.CardElevated) != .ButtonEmphasisFilled ||
+        CardEmphasis(.CardOutlined) != .ButtonEmphasisOutline { return 5 }
+    outlined := CardDefaultFace(.ButtonEmphasisOutline, cast(s32)ButtonState.ButtonStateNormal)
+    if outlined.border_width != 1.0 || outlined.radius != 12.0 { return 6 }
+    filled := CardDefaultFace(.ButtonEmphasisSoft, cast(s32)ButtonState.ButtonStateNormal)
+    if filled.border_width != 0.0 || filled.background == outlined.background { return 7 }
+    item: StyleFrame
+    item.value.fields = cast(u32)StyleField.StyleIconSize
+    item.value.icon_size = 8.0
+    if ListBoxRowHeight(0, 1.0, item) != 40 || ListBoxRowHeight(22, 1.0, item) != 22 { return 14 }
+    item.value.fields |= cast(u32)StyleField.StyleContentOffset
+    item.value.offset_y = 48.0
+    if ListBoxRowHeight(0, 1.0, item) != 48 { return 15 }
+    session := TestSession()
+    viewport := Rectangle.{0.0, 0.0, 300.0, 220.0}
+    BeginFrame(session, cast(u64)1, viewport)
+    result := Card(session, CardProps.{.key = cast(u64)10, .bounds = bounds, .variant = .CardElevated})
+    if result.activated || result.content.width != 68.0 { return 8 }
+    if EndFrame(session) != .FrameOk || TreeCount(session) != 4 { return 9 }
+    // A filled card is decorative: there is only its surface, no focus target.
+    BeginFrame(session, cast(u64)1, viewport)
+    unused Card(session, CardProps.{.key = cast(u64)10, .bounds = bounds})
+    if EndFrame(session) != .FrameOk || TreeCount(session) != 2 { return 10 }
+    props := CardProps.{.key = cast(u64)20, .bounds = bounds, .clickable = true}
+    BeginFrame(session, cast(u64)1, viewport)
+    unused Card(session, props)
+    if EndFrame(session) != .FrameOk { return 11 }
+    TreePointerUpdate(session, PointerFrame.{30.0, 40.0, true, true, false})
+    TreePointerUpdate(session, PointerFrame.{30.0, 40.0, false, false, true})
+    BeginFrame(session, cast(u64)1, viewport)
+    result = Card(session, props)
+    if !result.activated || EndFrame(session) != .FrameOk { return 12 }
+    props.disabled = true
+    TreePointerUpdate(session, PointerFrame.{30.0, 40.0, true, true, false})
+    TreePointerUpdate(session, PointerFrame.{30.0, 40.0, false, false, true})
+    BeginFrame(session, cast(u64)1, viewport)
+    result = Card(session, props)
+    if result.activated || EndFrame(session) != .FrameOk { return 13 }
+    return 0
+}

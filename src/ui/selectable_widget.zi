@@ -4,6 +4,7 @@ Theme :: #import "theme";
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
+#import "focus"
 #import "paint_queue"
 #import "selectable"
 #import "selectable_props"
@@ -25,15 +26,16 @@ using StyleField;
 SelectableDefaultFace :: (state: s32) -> StyleData {
     face: StyleData
     face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
-        cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth | cast(u32)StyleFocus |
         cast(u32)StyleRadius | cast(u32)StyleOpacity |
         cast(u32)StyleFontSize | cast(u32)StylePaddingX
     face.background = cast(u32)0x00000000
     face.foreground = Theme.LightText()
+    face.focus = Theme.LightAccent()
     face.border = cast(u32)0x00000000
     face.opacity = 1.0
-    face.radius = 4.0
-    face.font_size = 14.0
+    face.radius = Theme.ShapeSmall()
+    face.font_size = Theme.TypeLabel()
     face.padding_x = 8.0
     if state == ButtonStateHover {
         face.background = Theme.LightRaised()
@@ -106,6 +108,10 @@ Selectable :: (session: Session, props: SelectableProps) -> SelectableToggleResu
         PaintRoundedOutline(session, node, paint.bounds, face.value.radius, 12,
             face.value.border_width,
             ColorFromPacked(Opacity(face.value.border, opacity)))
+    }
+    if !props.disabled && TreeFocusVisibleAt(session, previous) {
+        PaintRoundedOutline(session, node, FocusDefaultOutlineBounds(paint.bounds, 1.0),
+            face.value.radius + 2.0, 12, 2.0, ColorFromPacked(face.value.focus))
     }
     if props.label != "" {
         font: s32 = ResolveFont(0,

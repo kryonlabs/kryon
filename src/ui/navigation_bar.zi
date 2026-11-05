@@ -45,6 +45,7 @@ NavigationBarItemSpec :: struct {
     disabled: bool
     hovered: bool
     label_height: s32
+    has_icon: bool
     base: StyleFrame
     face: StyleFrame
 }
@@ -518,9 +519,7 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint {
 
     y: s32 = spec.view_height - bottom_margin - height
     available_w: s32 = spec.view_width - side_margin * 2
-    min_available: s32 = NavigationBarMetric(spec.bar.value.fields,
-        cast(u32)StyleContentOffset, spec.bar.value.offset_x, 96.0, scale, false)
-    if available_w < min_available { available_w = min_available }
+    if available_w < 0 { available_w = 0 }
     tab_w: s32 = available_w
     if count > 0 { tab_w = available_w / count }
     min_tab: s32 = NavigationBarMetric(spec.bar.value.fields,
@@ -535,7 +534,7 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint {
     paint.bounds.width = cast(float32)spec.view_width
     paint.bounds.height = cast(float32)height
     inset: s32 = NavigationBarMetric(spec.bar.value.fields,
-        cast(u32)StyleBorderWidth, spec.bar.value.border_width, 1.0, scale, true)
+        cast(u32)StyleBorderWidth, spec.bar.value.border_width, 0.0, scale, true)
     paint.bar_bounds.x = cast(float32)(side_margin + inset)
     paint.bar_bounds.y = cast(float32)(y + inset)
     paint.bar_bounds.width = cast(float32)(available_w - inset * 2)
@@ -564,40 +563,23 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     w: s32 = spec.bar.tab_width
     if index == spec.bar.count - 1 { w = spec.bar.start_x + spec.bar.group_width - x }
     if w < 0 { w = 0 }
-    state_w: s32 = NavigationBarMetric(spec.face.value.fields,
-        cast(u32)StylePaddingX, spec.face.value.padding_x, 58.0, scale, true)
-    state_h: s32 = NavigationBarMetric(spec.face.value.fields,
-        cast(u32)StylePaddingY, spec.face.value.padding_y, 58.0, scale, true)
-    icon_breathing: s32 = NavigationBarMetric(spec.face.value.fields,
-        cast(u32)StyleContentOffset, spec.face.value.offset_x, 16.0, scale, true)
-    if state_w < spec.bar.icon_size + icon_breathing {
-        state_w = spec.bar.icon_size + icon_breathing
-    }
-    if state_h < spec.bar.icon_size + icon_breathing {
-        state_h = spec.bar.icon_size + icon_breathing
-    }
-    label_gap: s32 = NavigationBarMetric(spec.base.value.fields,
-        cast(u32)StyleGap, spec.base.value.gap, 4.0, scale, true)
-    edge_inset: s32 = NavigationBarMetric(spec.base.value.fields,
-        cast(u32)StylePaddingY, spec.base.value.padding_y, 2.0, scale, true)
-    // Reserve the font's descent and atlas padding inside the label box.
-    // The nominal line height alone clips glyphs at enlarged UI scales.
+    state_w: s32 = cast(s32)(64.0 * scale)
+    if state_w > w - 8 { state_w = w - 8 }
+    if state_w < 0 { state_w = 0 }
+    state_h: s32 = cast(s32)(32.0 * scale)
+    label_gap: s32 = cast(s32)(4.0 * scale)
     label_paint_h: s32 = spec.label_height + cast(s32)(8.0 * scale + 0.5)
-    stack_h: s32 = state_h + label_gap + label_paint_h
-    state_y: s32 = spec.bar.y + (spec.bar.height - stack_h) / 2
-    if state_y < spec.bar.y + edge_inset {
-        state_y = spec.bar.y + edge_inset
+    stack_h := state_h + label_gap + label_paint_h
+    state_y := spec.bar.y + (spec.bar.height - stack_h) / 2
+    label_y := state_y + state_h + label_gap
+    icon_y := state_y + (state_h - spec.bar.icon_size) / 2
+    if !spec.has_icon {
+        state_y = spec.bar.y + (spec.bar.height - state_h) / 2
+        label_y = state_y + (state_h - label_paint_h) / 2
+        // Label-only destinations use their whole slot minus an edge gap.
+        state_w = w - 16
+        if state_w < 0 { state_w = 0 }
     }
-    label_y: s32 = state_y + state_h + label_gap
-    if label_y + label_paint_h > spec.bar.y + spec.bar.height - edge_inset {
-        label_y = spec.bar.y + spec.bar.height - label_paint_h - edge_inset
-        state_y = label_y - label_gap - state_h
-        if state_y < spec.bar.y + edge_inset {
-            state_y = spec.bar.y + edge_inset
-        }
-    }
-    icon_y: s32 = state_y + (state_h - spec.bar.icon_size) / 2
-
     paint.bounds.x = cast(float32)x
     paint.bounds.y = cast(float32)spec.bar.y
     paint.bounds.width = cast(float32)w
@@ -619,7 +601,7 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     paint.label_bounds.height = cast(float32)label_paint_h
 
     paint.face = spec.face
-    paint.draw_face = spec.active || spec.hovered
+    paint.draw_face = spec.active
     paint.icon_color = spec.base.value.foreground
     paint.text_color = spec.base.value.foreground
     if spec.active {
@@ -628,9 +610,7 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
         paint.icon_color = paint.face.value.foreground
         paint.text_color = spec.bar.bar.value.foreground
     }
-    if !spec.active {
-        paint.face.value.opacity = 0.45
-    }
+
     paint.icon_alpha = 255
     if spec.disabled { paint.icon_alpha = 150 }
     return paint

@@ -1,4 +1,6 @@
 """The same app.zx runs on desktop and through the browser VM renderer."""
+
+from toolchain import JS_RUNTIME
 import os
 import re
 from pathlib import Path
@@ -76,11 +78,11 @@ assert all(re.fullmatch(r'(?:p[0-9a-f]{16}_)?(?:bundle_app|hosted_app)\.c', path
            for path in generated.glob('*_app.c'))
 assert not list(generated.glob('*_zx_run.c'))
 for mode in ('keyboard', 'unicode'):
-    run(['node', ROOT / 'tests/zx_canvas_browser.mjs',
+    run([JS_RUNTIME, ROOT / 'tests/zx_canvas_browser.mjs',
          project / 'build/zx_canvas_probe-web.html', mode])
 run(['make', '-C', ROOT, 'zx-canvas', 'ZX_CANVAS_BUNDLE='])
-run(['node', ROOT / 'tests/zx_canvas_browser.mjs', ROOT / 'build/zx-canvas/player.html',
+run([JS_RUNTIME, ROOT / 'tests/zx_canvas_browser.mjs', ROOT / 'build/zx-canvas/player.html',
      'file', web])
-run(['node', ROOT / 'tests/zx_canvas_browser.mjs', ROOT / 'build/zx-canvas/player.html',
+run([JS_RUNTIME, ROOT / 'tests/zx_canvas_browser.mjs', ROOT / 'build/zx-canvas/player.html',
      'url', web])
 print('Desktop/native/web identical ZX, complete browser rendering and input passed')

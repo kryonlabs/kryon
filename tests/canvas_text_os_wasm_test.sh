@@ -47,5 +47,5 @@ find "$work/c" -type f -name '*.c' -exec \
     --pre-js "$work/fixture.js" \
     -sASYNCIFY -sEXIT_RUNTIME=1 -sENVIRONMENT=node -sWASM_ASYNC_COMPILATION=0 \
     -o "$work/test.js" {} +
-env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_DISPLAY node "$work/test.js"
+env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_DISPLAY "${JS_RUNTIME:-node}" "$work/test.js"
 echo "Canvas text, font lifetime, filesystem, callbacks and varargs Wasm test passed"

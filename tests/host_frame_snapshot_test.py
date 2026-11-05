@@ -32,9 +32,8 @@ def main():
     WORK.mkdir(parents=True, exist_ok=True)
     lock = (WORK / 'lock').open('w')
     fcntl.flock(lock, fcntl.LOCK_EX)
-    common = ['--root', ROOT / 'tests', '--module-path', ROOT / 'tests/host_frame_snapshot',
-              '--module-path', ROOT / 'src/ui', '--module-path', ROOT / 'src/backend',
-              '--module-path', ZIRAN_ROOT / 'std']
+    common = ['--project', '--root', ROOT / 'tests',
+              '--module-path', ROOT / 'tests/host_frame_snapshot']
     define = ['--define', 'PLATFORM_WEB'] if args.platform == 'canvas' else []
     ir = WORK / (args.platform + '-ir')
     gen = WORK / (args.platform + '-c')

@@ -1,0 +1,133 @@
+// Inject package-owned ABI functions to exercise host cleanup after allocation.
+#import "avif_decode"
+#import "ziran_image_decode"
+#import "image_integration_fixture"
+#import "std/byte_text_linux"
+ABI :: #import "avif/bridge";
+Options :: #import "image_codec/api";
+source_image: ABI.RawImage;
+decoder: ABI.RawDecoder;
+version: [6]u8 = .[49, 46, 51, 46, 48, 0];
+parses: s32;
+creates: s32;
+destroys: s32;
+failure: s32;
+token: Options.Cancellation;
+
+Version :: () -> *u8 { return *version[0] }
+Create :: () -> *ABI.RawDecoder {
+    creates += 1
+    decoder = ABI.RawDecoder.{}
+    source_image = ABI.RawImage.{}
+    source_image.width = 2; source_image.height = 2; source_image.depth = 8
+    source_image.format = 1; source_image.range = 1
+    decoder.image = *source_image; decoder.image_count = 1
+    return *decoder
+}
+Destroy :: (value: *ABI.RawDecoder) { unused value; destroys += 1 }
+Memory :: (value: *ABI.RawDecoder, bytes: *u8, count: usize) -> s32 {
+    unused value; unused bytes; unused count; return 0
+}
+Parse :: (value: *ABI.RawDecoder) -> s32 {
+    unused value; parses += 1
+    if parses == 2 && failure == 1 { source_image.width = 3 }
+    if parses == 2 && failure == 3 { token.requested = true }
+    return 0
+}
+Next :: (value: *ABI.RawDecoder) -> s32 { unused value; return 0 }
+Defaults :: (rgb: *ABI.RawRGB, image: *ABI.RawImage) {
+    rgb.width = image.width; rgb.height = image.height
+}
+Convert :: (image: *ABI.RawImage, rgb: *ABI.RawRGB) -> s32 {
+    if failure == 2 { return 1 }
+    for i: cast(s64)0..cast(s64)image.width * image.height * 4 - 1 { rgb.pixels[i] = cast(u8)i }
+    return 0
+}
+Crop :: (crop: *ABI.RawCrop, aperture: *u32, width: u32, height: u32, format: s32, diag: *void) -> s32 {
+    unused crop; unused aperture; unused width; unused height; unused format; unused diag; return 1
+}
+API :: () -> ABI.AvifAPI { return ABI.AvifAPI.{Version, Create, Destroy, Memory, Parse, Next, Defaults, Convert, Crop} }
+
+SignatureContract :: () -> bool {
+    // Routing reads only a prefix. Full container validation belongs to the
+    // selected decoder, including malformed bytes after a recognized header.
+    header: [4100]u8
+    header[3] = 16
+    for i: 0..3 { header[4 + i] = "ftyp"[i]; header[8 + i] = "avif"[i] }
+    for count: 0..15 {
+        if AvifSignature(TextFromBytes(header[:count])) { return false }
+    }
+    if !AvifSignature(TextFromBytes(header[:16])) { return false }
+    header[11] = #char "s"
+    if !AvifSignature(TextFromBytes(header[:16])) { return false }
+    // Minor-version bytes do not count as a compatible brand.
+    for i: 0..3 { header[8 + i] = 0; header[12 + i] = "avif"[i] }
+    if AvifSignature(TextFromBytes(header[:16])) { return false }
+    header[3] = 20
+    for i: 0..3 { header[16 + i] = "avif"[i] }
+    if AvifSignature(TextFromBytes(header[:19])) || !AvifSignature(TextFromBytes(header[:20])) { return false }
+    // The original host recognizes an available ftyp up to 4096 bytes.
+    header[2] = 16; header[3] = 0
+    if !AvifSignature(TextFromBytes(header[:4096])) { return false }
+    header[3] = 1
+    if AvifSignature(TextFromBytes(header[:4097])) { return false }
+    header[2] = 0; header[3] = 20; header[4] = #char "x"
+    if AvifSignature(TextFromBytes(header[:20])) { return false }
+
+    webp: [12]u8
+    for i: 0..3 { webp[i] = "RIFF"[i]; webp[8 + i] = "WEBP"[i] }
+    for count: 0..11 {
+        if ImageWebpSignature(TextFromBytes(webp[:count])) { return false }
+    }
+    // A declared RIFF size is a decoder concern, not a prefix-routing gate.
+    if !ImageWebpSignature(TextFromBytes(webp[:])) { return false }
+    webp[4] = 255; webp[5] = 255; webp[6] = 255; webp[7] = 255
+    if !ImageWebpSignature(TextFromBytes(webp[:])) { return false }
+    webp[11] = #char "X"
+    return !ImageWebpSignature(TextFromBytes(webp[:]))
+}
+
+Contract :: (encoded: string) -> bool {
+    options := Options.DefaultOptions()
+    options.cancellation = *token
+    for mode: cast(s32)0..3 {
+        parses = 0; creates = 0; destroys = 0; failure = mode; token.requested = false
+        width: s32 = -1; height: s32 = -1
+        pixels := AvifDecodeWithOptions(API(), encoded, options, *width, *height)
+        if mode == 0 {
+            if pixels == null || width != 2 || height != 2 { return false }
+            good := pixels[0] == 0 && pixels[15] == 15
+            AvifFree(pixels)
+            if !good { return false }
+        } else {
+            if pixels != null { AvifFree(pixels); return false }
+            if width != 0 || height != 0 { return false }
+        }
+        if creates != 2 || destroys != creates { return false }
+    }
+    // Invalid limits, a pre-cancelled token and missing native functions must
+    // fail before acquiring a native decoder or publishing host dimensions.
+    for mode: 0..2 {
+        options = Options.DefaultOptions(); options.cancellation = *token
+        token.requested = mode == 1
+        if mode == 0 { options.limits.max_pixels = 0 }
+        api := API()
+        if mode == 2 { missing: ABI.AvifAPI; api.version = missing.version }
+        creates = 0; destroys = 0
+        width: s32 = -1; height: s32 = -1
+        pixels := AvifDecodeWithOptions(api, encoded, options, *width, *height)
+        if pixels != null { AvifFree(pixels); return false }
+        if width != 0 || height != 0 || creates != 0 || destroys != 0 { return false }
+    }
+    return true
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 2 }
+    if !SignatureContract() { print("Image prefix routing contract failed\n"); return 4 }
+    encoded := Fixture(TextFromCString(argv[1]), "rgba8", ".avif")
+    if encoded.count == 0 || !Contract(TextFromBytes(VecSlice(encoded, 0, encoded.count))) { return 3 }
+    print("Image adapter contract: second-parse size change, conversion failure, cancellation, limits and cleanup passed\n")
+    return 0
+}

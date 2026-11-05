@@ -274,8 +274,9 @@ Menu :: (session: Session, props: MenuProps, groups: []MenuGroup, state: *MenuSt
         panel_key := MenuPanelKey(key, state, depth)
         panel := TreeSubmit(session, panel_key, root, WidgetKindCustom, panel_bounds)
         if panel < 0 { break }
-        PaintRoundedFill(session, panel, panel_bounds, 6.0 * scale, 8, fill)
-        PaintRoundedOutline(session, panel, panel_bounds, 6.0 * scale, 8, scale, border)
+        PaintElevation(session, panel, panel_bounds, Theme.ShapeMedium() * scale, 1.0)
+        PaintRoundedFill(session, panel, panel_bounds, Theme.ShapeMedium() * scale, 8, fill)
+        PaintRoundedOutline(session, panel, panel_bounds, Theme.ShapeMedium() * scale, 8, scale, border)
         maximum := cast(s32)items.count * metrics.row_height + metrics.panel_margin * 2 - cast(s32)panel_bounds.height
         if maximum < 0 { maximum = 0 }
         selected := state.selected[depth]

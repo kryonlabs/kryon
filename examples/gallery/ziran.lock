@@ -2,55 +2,68 @@
   "format": 1,
   "packages": [
     {
-      "commit": "a5b47e5a3d94507a2eb935238a5cae2a6b1960a6",
-      "dependencies": {"kryon": "pcec085fc76d6fd7b"},
-      "id": "p3298346fff363bab",
-      "name": "DataViews",
-      "ref": "master",
-      "url": "https://github.com/kryonlabs/data-views.git"
-    },
-    {
-      "commit": "0d8ddc29ed60f2ff336892e05967a5b5d41ffecc",
-      "dependencies": {"kryon": "pcec085fc76d6fd7b"},
-      "id": "p50e012a6abad92ff",
-      "name": "plot",
-      "ref": "master",
-      "url": "https://github.com/kryonlabs/plot.git"
-    },
-    {
-      "commit": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
+      "commit": "829a65d769d935c4852f8159e964312c0957260a",
       "dependencies": {},
-      "id": "p5a77c9c35110e925",
-      "name": "raylib",
-      "ref": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
+      "id": "p16cd0434af3dff7b",
+      "name": "sdl3",
+      "ref": "829a65d769d935c4852f8159e964312c0957260a",
       "source": true,
-      "url": "https://github.com/raysan5/raylib.git"
+      "url": "https://github.com/libsdl-org/SDL.git"
     },
     {
       "commit": "1844042d1ca751e62e61df7617dba19c98588339",
       "dependencies": {},
-      "id": "p651a2c7a393977c0",
+      "id": "p3b3c785a0e17e605",
       "name": "libwebp",
       "ref": "1844042d1ca751e62e61df7617dba19c98588339",
       "source": true,
       "url": "https://github.com/webmproject/libwebp.git"
     },
     {
-      "commit": "7dc62902389544bf8d1fb3a159152cbd3b889c78",
-      "dependencies": {"libwebp": "p651a2c7a393977c0", "raylib": "p5a77c9c35110e925"},
-      "id": "pcec085fc76d6fd7b",
+      "commit": "b83565470e04b7653e9dd88fb776bf7d513736ca",
+      "dependencies": {"kryon": "pc1804bf62ee8780e"},
+      "dependency_refs": {"kryon": "master"},
+      "id": "p4c3f14b15870aa32",
+      "name": "DataViews",
+      "ref": "master",
+      "url": "https://github.com/kryonlabs/data-views.git"
+    },
+    {
+      "commit": "3f888653b6b97010163d824c4cc72476be3214f3",
+      "dependencies": {"kryon": "pc1804bf62ee8780e"},
+      "dependency_refs": {"kryon": "master"},
+      "id": "pab5377a2950368a2",
+      "name": "plot",
+      "ref": "master",
+      "url": "https://github.com/kryonlabs/plot.git"
+    },
+    {
+      "commit": "20b38574f23e329f889c581d37fe84e34f55b2f0",
+      "dependencies": {"libwebp": "p3b3c785a0e17e605", "raylib": "pcc7aa76725f2fb2f", "sdl3": "p16cd0434af3dff7b"},
+      "dependency_refs": {"libwebp": "1844042d1ca751e62e61df7617dba19c98588339", "raylib": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e", "sdl3": "829a65d769d935c4852f8159e964312c0957260a"},
+      "id": "pc1804bf62ee8780e",
       "name": "kryon",
       "ref": "master",
       "url": "https://github.com/kryonlabs/kryon.git"
+    },
+    {
+      "commit": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
+      "dependencies": {},
+      "id": "pcc7aa76725f2fb2f",
+      "name": "raylib",
+      "ref": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e",
+      "source": true,
+      "url": "https://github.com/raysan5/raylib.git"
     }
   ],
   "root": {
-    "dependencies": {"data_views": "p3298346fff363bab", "kryon": "pcec085fc76d6fd7b", "plot": "p50e012a6abad92ff"},
+    "dependencies": {"data_views": "p4c3f14b15870aa32", "kryon": "pc1804bf62ee8780e", "plot": "pab5377a2950368a2"},
+    "dependency_refs": {"data_views": "master", "kryon": "master", "plot": "master"},
     "name": "gallery"
   },
   "toolchain": {
-    "commit": "c47f927ca316a0494dff4f2389de3333bc8e08b4",
-    "ref": "c47f927ca316a0494dff4f2389de3333bc8e08b4",
+    "commit": "1d616e3a1761dd4e4a1c5a960c165d30ba16da29",
+    "ref": "1d616e3a1761dd4e4a1c5a960c165d30ba16da29",
     "url": "https://github.com/ziranlang/ziran.git"
   }
 }

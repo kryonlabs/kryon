@@ -2,6 +2,7 @@
 set -eu
 root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)
 . "$root/tests/toolchain.sh"
+. "$root/tests/image_packages.sh"
 out="$root/build/scratch/image-decode"
 mkdir -p "$out"
 python3 - "$out/original.png" <<'PY'
@@ -12,7 +13,7 @@ image.putpixel((4500,300),(200,0,0,128))
 image.save(sys.argv[1])
 PY
 for target in c; do
-    "$ziran" build --root "$root/tests" --module-path "$root/src/backend" --target="$target" --no-main -o "$out/$target" "$root/tests/image_decode_linux_test.zi"
+    image_ziran build --root "$root/tests" --module-path "$root/src/backend" --target="$target" --no-main -o "$out/$target" "$root/tests/image_decode_linux_test.zi"
     suffix=c; header=h; compiler=${CC:-cc}; standard=c11
     printf '#include "image_decode_linux_test.%s"\nint main(int argc, char **argv) { return image_decode_linux_test_main(argc, (uint8_t **)argv); }\n' "$header" > "$out/$target/driver.$suffix"
     "$compiler" -std="$standard" -O2 -I"$ziran_root/include" -I"$out/$target" "$out/$target"/*."$suffix" -ldl -o "$out/$target/run"

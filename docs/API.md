@@ -32,6 +32,37 @@ coverage storage.
 Calls share bounded scratch storage and must be serialized. Targets may be up
 to 8192 by 16384 pixels; invalid input or exhausted scratch returns `false`.
 
+## Bottom navigation
+
+`NavigationBar(session, props, items)` defaults to a full-width 80-unit tonal
+bottom bar. Reserve `NavigationBarHeight(props)` above the bottom of the view.
+Each `NavigationBarItem` accepts an optional `icon_shape` (the standard Shape
+format) or `image`; the icon is 24 units inside a 64 by 32 selection pill, with
+its label below. With neither icon, the label is centered inside the pill.
+Item keys, route results, disabled hit testing and custom style rules retain
+their existing contracts. Pointer hover/press and keyboard focus draw state
+layers; keyboard focus adds a ring. `compact` retains the scrolling dock/rail
+layout used by Breeze, including its footer and drag/close behavior.
+
+## Cards
+
+`Card(session, CardProps)` draws a filled, elevated or outlined Material surface.
+Import it from `Widgets` or `kryon/card_widget`. Set `variant` to `CardFilled`
+(the default), `CardElevated` or `CardOutlined`, and supply `bounds` and a stable
+`key`. The returned `content` rectangle has 16 units of padding, reduced for
+small bounds. Draw your content in that rectangle; Card does not open a scope.
+
+Cards are decorative by default. `clickable` enables the standard Button's
+pointer, keyboard, focus and disabled behavior; `activated` reports activation.
+An optional `label` is drawn centered and announced by the clickable surface.
+Selected and explicit state props retain their usual meaning. Installed Card
+style rules apply by id, class and emphasis (soft, filled and outline for the
+three variants). Elevated cards and floating menus/dialogs use two fixed,
+1-unit contact strips, with no blur, offscreen bitmap or animation timer.
+
+A ListBox with no explicit row height uses 40 units. Its icon size does not
+set its row height. Explicit `row_height` and style `offset_y` still win.
+
 ## Widget packages
 
 `CarouselProps.logo_max_width` optionally caps the cover logo's logical width;
@@ -207,10 +238,10 @@ send `KeyEscape` with `KeyboardSend`, and application shortcuts check
 Use `Image(ImageProps)` for UI images. Its asset path, bounds, fit, and alt
 text describe the image at the widget boundary. Backend texture calls are
 renderer primitives, not alternate widget APIs.
-Asset paths may name PNG, JPEG or WebP files on every host. WebP is
+Asset paths may name PNG, JPEG, WebP or AVIF files on image-loading hosts. WebP is
 recognized by its content: lossy, lossless and transparent pictures load as
 RGBA, and an animated WebP shows its first frame (Kryon images are still).
-See [WebP images](BACKENDS.md#webp-images) for each host's decoder.
+See [WebP images](BACKENDS.md#webp-images) and [AVIF images](BACKENDS.md#avif-images) for each host's decoder.
 `ImageProps.radius` gives an image rounded corners in native and hosted UI;
 a positive value overrides its style radius.
 

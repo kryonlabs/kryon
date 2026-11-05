@@ -1,6 +1,60 @@
 #import "card_props"
-#import "button_props"
-#import "control_props"
 #import "geometry"
+#import "control_props"
+#import "style"
+#import "style_sheet"
+Theme :: #import "theme";
 
-using ControlSize;
+using StyleField;
+
+// Shared with Button so clickable cards retain its keyboard and pointer policy.
+#program_export
+CardDefaultFace :: (emphasis: ButtonEmphasis, state: s32) -> StyleData {
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth | cast(u32)StyleRadius |
+        cast(u32)StyleOpacity | cast(u32)StyleFocus
+    face.background = Theme.LightSunken()
+    if emphasis == .ButtonEmphasisFilled { face.background = Theme.LightSurface() }
+    face.foreground = Theme.LightText()
+    face.border = Theme.LightBorderStrong()
+    face.focus = Theme.LightAccent()
+    face.radius = Theme.ShapeMedium()
+    face.opacity = 1.0
+    if emphasis == .ButtonEmphasisOutline {
+        face.background = Theme.LightSurface()
+        face.border_width = 1.0
+    }
+    if state == cast(s32)ButtonState.ButtonStateHover {
+        face.background = Theme.StateLayer(face.background, face.foreground, cast(u32)8)
+    } else if state == cast(s32)ButtonState.ButtonStatePressed {
+        face.background = Theme.StateLayer(face.background, face.foreground, cast(u32)12)
+    } else if state == cast(s32)ButtonState.ButtonStateSelected {
+        face.background = Theme.LightSelection()
+    }
+    if state == cast(s32)ButtonState.ButtonStateDisabled { face.opacity = 0.45 }
+    return face
+}
+
+#program_export
+CardEmphasis :: (variant: CardVariant) -> ButtonEmphasis {
+    if variant == .CardElevated { return .ButtonEmphasisFilled }
+    if variant == .CardOutlined { return .ButtonEmphasisOutline }
+    return .ButtonEmphasisSoft
+}
+
+// Return usable space without changing the caller's parent or clipping children.
+#program_export
+CardContentBounds :: (bounds: Rectangle) -> Rectangle {
+    x := bounds.width * 0.5
+    y := bounds.height * 0.5
+    if x > 16.0 { x = 16.0 }
+    if y > 16.0 { y = 16.0 }
+    if x < 0.0 { x = 0.0 }
+    if y < 0.0 { y = 0.0 }
+    width := bounds.width - x * 2.0
+    height := bounds.height - y * 2.0
+    if width < 0.0 { width = 0.0 }
+    if height < 0.0 { height = 0.0 }
+    return Rectangle.{bounds.x + x, bounds.y + y, width, height}
+}

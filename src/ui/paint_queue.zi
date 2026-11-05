@@ -1,5 +1,6 @@
 #import "drawing_props"
 #import "geometry"
+#import "elevation"
 #import "image_props"
 #import "image"
 #import "paint_texture"
@@ -142,9 +143,9 @@ PaintSnapshot :: struct {
 
 paint_snapshots: [9]Vec(PaintSnapshot);
 paint_snapshot_meshes: [9]Vec(PaintMeshBlock);
-// Eight initial Vec slots cover the former 32 KiB pool without reserving
-// eight full label-sized blocks. A label may span several snapshot blocks.
-PAINT_SNAPSHOT_BLOCK_CAPACITY :: 4096
+// Eight initial Vec slots reserve 4 KiB for ordinary retained labels.
+// Large labels still span as many owned blocks as needed.
+PAINT_SNAPSHOT_BLOCK_CAPACITY :: 512
 PaintSnapshotBlock :: struct { bytes: [PAINT_SNAPSHOT_BLOCK_CAPACITY]u8; }
 paint_snapshot_values: [9]Vec(PaintSnapshotBlock);
 paint_snapshot_assets: [9]Vec(PaintSnapshotBlock);
@@ -1654,4 +1655,16 @@ PaintDispose :: (session: Session) {
     paint_snapshot_asset_counts[session.slot] = 0
     paint_snapshots_valid = SessionFlagSet(paint_snapshots_valid, session.slot, false)
     frame_paint_unchanged = SessionFlagSet(frame_paint_unchanged, session.slot, false)
+}
+
+// Two narrow contact strips under an opaque floating surface. These
+// ordinary retained commands allocate no blur buffer or per-frame storage.
+#program_export
+PaintElevation :: (session: Session, node: s32, bounds: Rectangle,
+    radius: float32, opacity: float32) {
+    if bounds.width <= 0.0 || bounds.height <= 0.0 || opacity <= 0.0 { return }
+    for layer: cast(s32)1..2 {
+        PaintRoundedFill(session, node, ElevationEdgeBounds(bounds, layer, radius),
+            0.0, 4, Color.{0, 0, 0, cast(u8)(cast(float32)ElevationEdgeAlpha(layer) * opacity)})
+    }
 }

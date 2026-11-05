@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Owned asset audio: real native decoder/device, source + saved IR, hosted VM."""
+
+from toolchain import JS_RUNTIME
 import argparse
 import json
 import os
@@ -41,7 +43,7 @@ def browser(common):
          '-sEXIT_RUNTIME=1', '-sENVIRONMENT=web', '--embed-file', str(WORK / 'tone.wav') + '@tone.wav',
          '--shell-file', shell, '-o', gen / 'test.html'], env=env)
     shutil.rmtree(WORK / 'browser-profile', ignore_errors=True)
-    run(['node', ROOT / 'tests/media_audio_browser_test.mjs', (gen / 'test.html').as_uri(), WORK / 'browser-profile'])
+    run([JS_RUNTIME, ROOT / 'tests/media_audio_browser_test.mjs', (gen / 'test.html').as_uri(), WORK / 'browser-profile'])
 
 def main():
     global WORK

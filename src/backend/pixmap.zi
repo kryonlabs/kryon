@@ -373,11 +373,17 @@ PixmapRadius :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32) -> s32 {
 // Pointer iteration remains bounded by the borrowed slice on every target.
 PixmapFillSpan :: (span: []u32, color: Color) {
     alpha := cast(u32)color.a
-    if alpha == cast(u32)0 { return }
+    if alpha == cast(u32)0 || span.count <= 0 { return }
     if alpha == cast(u32)255 {
         rgb := (cast(u32)color.r << cast(u32)16) |
             (cast(u32)color.g << cast(u32)8) | cast(u32)color.b | pixmap_alpha
-        for *pixel: span { <<pixel = rgb }
+        at: s64 = 0
+        while span.count - at >= 4 {
+            span[at] = rgb; span[at + 1] = rgb
+            span[at + 2] = rgb; span[at + 3] = rgb
+            at += 4
+        }
+        while at < span.count { span[at] = rgb; at += 1 }
         return
     }
     inverse := cast(u32)255 - alpha
@@ -488,6 +494,45 @@ PixmapFillRange :: (start: s32, end: s32, data: PixmapFillRowsData) {
     while y < cast(s32)end {
         corner_row: bool = y < y0 + r || y >= y1 - r
         row: s32 = y * stride
+        // Large Material corners contain broad empty and solid regions.
+        // Locate the two monotone boundaries once per row, then sample only
+        // the antialiased edge. Reflection keeps the original 4x4 coverage
+        // exactly, including translucent fills and clipped corners. No mask
+        // cache or allocation is needed; rows remain independent for workers.
+        if corner_row && r > 8 {
+            low := x0; high := x0 + r
+            while low < high {
+                middle := low + (high - low) / 2
+                if PixmapSamples(middle, y, x0, y0, x1, y1, r) > 0 { high = middle }
+                else { low = middle + 1 }
+            }
+            first := low
+            high = x0 + r
+            while low < high {
+                middle := low + (high - low) / 2
+                if PixmapSamples(middle, y, x0, y0, x1, y1, r) == 16 { high = middle }
+                else { low = middle + 1 }
+            }
+            solid_left := low; solid_right := x1 - (solid_left - x0)
+            last := x1 - (first - x0)
+            edge_left := first; if edge_left < left { edge_left = left }
+            edge_end := solid_left; if edge_end > right { edge_end = right }
+            for x: edge_left..edge_end - 1 {
+                samples := PixmapSamples(x, y, x0, y0, x1, y1, r)
+                PixmapBlend(x, y, color, samples * 255 / 16)
+            }
+            span_left := solid_left; if span_left < left { span_left = left }
+            span_right := solid_right; if span_right > right { span_right = right }
+            if span_left < span_right { PixmapFillSpan(surface[row + span_left:row + span_right], color) }
+            edge_left = solid_right; if edge_left < left { edge_left = left }
+            edge_end = last; if edge_end > right { edge_end = right }
+            for x: edge_left..edge_end - 1 {
+                samples := PixmapSamples(x, y, x0, y0, x1, y1, r)
+                PixmapBlend(x, y, color, samples * 255 / 16)
+            }
+            y += 1
+            continue
+        }
         x: s32 = left
         while x < right {
             // Only rounded corners need per-pixel coverage. Blend flat
@@ -511,10 +556,18 @@ PixmapFillRange :: (start: s32, end: s32, data: PixmapFillRowsData) {
     }
 }
 
+// One already-owned row of a CPU surface; clip once before writing a span.
+PixmapSolidSpan :: (left: s32, right: s32, y: s32, color: Color) {
+    if y < pixmap_clip_top || y >= pixmap_clip_bottom { return }
+    if left < pixmap_clip_left { left = pixmap_clip_left }
+    if right > pixmap_clip_right { right = pixmap_clip_right }
+    if left < right { PixmapFillSpan(pixmap_surface[y * pixmap_width + left:y * pixmap_width + right], color) }
+}
+
 // Strokes a rounded rectangle's inside edge `width` pixels thick.
 PixmapStrokeRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32,
     width: s32, color: Color) {
-    if x1 <= x0 || y1 <= y0 { return }
+    if x1 <= x0 || y1 <= y0 || color.a == cast(u8)0 { return }
     r: s32 = PixmapRadius(x0, y0, x1, y1, radius)
     w: s32 = width
     if w < 1 { w = 1 }
@@ -541,6 +594,35 @@ PixmapStrokeRounded :: (x0: s32, y0: s32, x1: s32, y1: s32, radius: s32,
             PixmapGpuSolid(x1 - w, y0 + band, x1, y1 - band, color)
             return
         }
+    }
+    if !pixmap_gpu_active && inner {
+        // Sample only the four corner squares. The previous path sampled
+        // the whole width of every corner row, including empty interiors.
+        // Capsule buttons are valid here too: their straight middle can have
+        // zero height, without overlapping any translucent corner pixels.
+        side := ifx r > w then r else w
+        top := y0; if top < pixmap_clip_top { top = pixmap_clip_top }
+        bottom := y1; if bottom > pixmap_clip_bottom { bottom = pixmap_clip_bottom }
+        for y: top..bottom - 1 {
+            if y >= y0 + side && y < y1 - side {
+                PixmapSolidSpan(x0, x0 + w, y, color)
+                PixmapSolidSpan(x1 - w, x1, y, color)
+            } else {
+                if y < y0 + w || y >= y1 - w { PixmapSolidSpan(x0 + side, x1 - side, y, color) }
+                for corner: cast(s32)0..1 {
+                    left := ifx corner == 0 then x0 else x1 - side
+                    right := left + side
+                    if left < pixmap_clip_left { left = pixmap_clip_left }
+                    if right > pixmap_clip_right { right = pixmap_clip_right }
+                    for x: left..right - 1 {
+                        samples := PixmapSamples(x, y, x0, y0, x1, y1, r)
+                        samples -= PixmapSamples(x, y, ix0, iy0, ix1, iy1, ir)
+                        if samples > 0 { PixmapBlend(x, y, color, samples * 255 / 16) }
+                    }
+                }
+            }
+        }
+        return
     }
     top: s32 = y0
     if top < pixmap_clip_top { top = pixmap_clip_top }

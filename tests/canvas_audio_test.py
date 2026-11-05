@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Run Zi PCM transforms and the real WebAudio effects through Wasm."""
+
+from toolchain import JS_RUNTIME
 import os
 from pathlib import Path
 import shlex
@@ -30,5 +32,5 @@ with tempfile.TemporaryDirectory(prefix='canvas-audio-', dir=ROOT / 'build') as 
          '--js-library', ROOT / 'tests/canvas_audio_effects.js',
          '--pre-js', ROOT / 'tests/canvas_audio_fixture.js', '-sASYNCIFY', '-sEXIT_RUNTIME=1', '-sEXPORTED_RUNTIME_METHODS=FS',
          '-sENVIRONMENT=node', '-sWASM_ASYNC_COMPILATION=0', '-o', work / 'test.js'])
-    run(['node', work / 'test.js'])
+    run([JS_RUNTIME, work / 'test.js'])
 print('Canvas audio PCM, export, sound/music, callback and resource lifetime Wasm test passed')

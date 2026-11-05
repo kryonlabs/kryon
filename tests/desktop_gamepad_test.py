@@ -32,8 +32,7 @@ def main():
     WORK.mkdir(parents=True, exist_ok=True)
     with (WORK / 'lock').open('w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        common = ['--root', ROOT / 'tests', '--module-path', ROOT / 'src/backend',
-                  '--module-path', ROOT / 'src/ui', '--module-path', ZIRAN_ROOT / 'std']
+        common = ['--project', '--root', ROOT / 'tests']
         libs = subprocess.check_output(['pkg-config', '--libs', 'sdl2', 'cairo', 'freetype2',
                                        'fontconfig', 'pangocairo', 'gio-2.0'], text=True).split()
         for name in ('desktop_gamepad_mapping_test', 'desktop_keys_test', 'desktop_gamepad_test'):

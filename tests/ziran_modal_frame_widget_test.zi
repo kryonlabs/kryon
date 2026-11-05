@@ -126,9 +126,9 @@ main :: () -> s32 {
     }
     if ModalPanels() != 4 || ModalScrims() != 5 ||
         ModalLabels() != 5 || ModalStrokes() != 8 { return 2 }
-    // Centred, "Settings" (72 wide) starts at 50 + (200 - 72) / 2; at the
+    // Centred, "Settings" (88 wide) starts at 50 + (200 - 88) / 2; at the
     // start it follows the left action, 60 + 6 + 36 + 6.
-    if ModalCentredTitleX() != 114 || ModalStartTitleX() != 108 ||
+    if ModalCentredTitleX() != 106 || ModalStartTitleX() != 108 ||
         ModalStrongTitleX() != 109 { return 3 }
     return 0
 }

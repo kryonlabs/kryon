@@ -34,7 +34,7 @@ for mode in serial threaded; do
         -o "$work/host-c" "$repo/tests/raylib_frame_snapshot_test.zi"
     # shellcheck disable=SC2046,SC2086
     "${CC:-cc}" -std=c11 -O1 -ffunction-sections -fdata-sections -I"$work/host-c" \
-        "$work/host-c"/*.c "$archive" "$webp" "${ZIRAN_LIB:-$ziran_root/build/libziran.a}" \
+        "$work/host-c"/*.c "$archive" "$webp" "${AVIF_A:-$repo/build/avif-ziran/avif/libavif.a}" "${AOM_A:-$repo/build/avif-ziran/aom/libaom.a}" "${ZIRAN_LIB:-$ziran_root/build/libziran.a}" \
         -Wl,--gc-sections -Wl,--wrap=GetTouchPointCount -Wl,--wrap=GetTouchPosition \
         -Wl,--wrap=GetMouseX -Wl,--wrap=GetMouseY $wraps \
         $(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm -o "$work/host-c/test"

@@ -15,13 +15,13 @@ failed: bool;
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
-    if font < 12 || font > 18 || typeface.count != 0 { failed = true }
+    if font < 12 || font > 22 || typeface.count != 0 { failed = true }
     return (cast(s32)value.count) * font / 2
 }
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    if font < 12 || font > 18 || typeface.count != 0 { failed = true }
+    if font < 12 || font > 22 || typeface.count != 0 { failed = true }
     return font
 }
 
@@ -94,7 +94,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
         failed = true
     }
     if value == "Settings" {
-        if font != 18 { failed = true }
+        if font != (ifx settings_titles >= 2 then 21 else 22) { failed = true }
         // Phases 0 and 1 centre it; phase 3 starts it, then strengthens it.
         if settings_titles == 0 {
             centred_title_x = x

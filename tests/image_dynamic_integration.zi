@@ -1,0 +1,43 @@
+// Optional native loading must link without a static AVIF/WebP dependency.
+Decode :: #import "image_decode_linux";
+#import "std/byte_text_linux"
+
+OpenFixture :: (directory: string, name: string) -> Decode.WebPImage {
+    path: [4096]u8
+    suffix := ".webp"
+    count := directory.count + name.count + suffix.count + 1
+    if count > path.count { return Decode.WebPImage.{} }
+    at: s64 = 0
+    for byte: directory { path[at] = byte; at += 1 }
+    path[at] = 47; at += 1
+    for byte: name { path[at] = byte; at += 1 }
+    for byte: suffix { path[at] = byte; at += 1 }
+    return Decode.OpenWebP(TextFromBytes(path[:count]))
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 2 }
+    directory := TextFromCString(argv[1])
+    wide := OpenFixture(directory, "wide-canvas")
+    if wide.pixels != null { Decode.CloseStill(wide); return 3 }
+    names: [2]string = .["many-frames", "large-metadata"]
+    for name: names {
+        for repetition: 0..3 {
+            image := OpenFixture(directory, name)
+            if image.pixels == null { print("Dynamic WebP % failed\n", name); return 4 }
+            good := image.width == 3 && image.height == 2 && !image.avif
+            if good {
+                output: [6]u32
+                output[0] = 123
+                good = !Decode.CopyWebP(image, cast(*u8)*output[0], 11) && output[0] == 123
+                good = good && Decode.CopyWebP(image, cast(*u8)*output[0], 12)
+                good = good && output[0] == cast(u32)0xff0a141e && output[3] == cast(u32)0x8032373c
+            }
+            Decode.CloseStill(image)
+            if !good { return 5 }
+        }
+    }
+    print("Optional dynamic image adapter: no static codec link, host limits, first frame, metadata, alpha and release passed\n")
+    return 0
+}

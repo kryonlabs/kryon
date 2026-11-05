@@ -1,0 +1,8 @@
+// Static codec selection for raylib and Android. Codec policy and native ABI
+// live in the reusable package; Kryon only adapts backend pixel ownership.
+Avif :: #import "avif/api";
+#import "avif_decode"
+
+AvifImageDecode :: (data: string, width: *s32, height: *s32) -> *u8 {
+    return AvifDecode(Avif.StaticNativeAPI(), data, width, height)
+}

@@ -21,6 +21,7 @@ Theme :: #import "theme";
 #import "button_widget"
 #import "scroll_props"
 #import "scroll_widget"
+#import "svg_icon"
 
 using SemanticKind;
 using WidgetKind;
@@ -43,23 +44,25 @@ NavigationBarDefaultFace :: (item: bool, active: bool,
     face.background = Theme.LightSunken()
     face.foreground = Theme.LightText()
     face.border = Theme.LightBorder()
-    face.border_width = 1.0
-    face.radius = 20.0
+    face.border_width = 0.0
+    face.radius = 0.0
     face.opacity = 1.0
-    face.icon_size = 32.0
+    face.icon_size = 80.0
     face.font_size = 12.0
     face.gap = 4.0
     if item {
         face.background = cast(u32)0x00000000
         face.border_width = 0.0
-        face.radius = 29.0
+        face.radius = 16.0
+        face.icon_size = 24.0
+        face.foreground = Theme.LightMuted()
         if active {
-            face.background = Theme.LightAccent()
-            face.foreground = cast(u32)0xffffffff
+            face.background = Theme.LightSelection()
+            face.foreground = Theme.LightSelectionText()
         } else if hovered {
             face.background = Theme.LightRaised()
         }
-        if disabled { face.opacity = 0.45 }
+        if disabled { face.opacity = 0.38 }
     }
     return face
 }
@@ -366,6 +369,8 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
             result.clicked_route = item.route
         }
         hovered: bool = TreeHoveredAt(session, previous) && !item.disabled
+        pressed := !item.disabled && TreePressedAt(session, previous)
+        focused := !item.disabled && TreeFocusVisibleAt(session, previous)
         face: StyleFrame = NavigationBarItemFaceFor(props,
             item, hovered)
         base: StyleFrame = NavigationBarItemFaceFor(props,
@@ -373,10 +378,13 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
         font: s32 = ResolveFont(0,
             StyleFontValue(face.value.fields,
             face.value.font_size), 12)
+        if item.active { font += 1 }
         line_height: s32 = GlyphLineHeight(font,
             face.value.typeface)
         item_spec: NavigationBarItemSpec = .{.bar = paint, .index = index, .active = item.active,
-            .disabled = item.disabled, .hovered = hovered, .label_height = line_height,
+            .disabled = item.disabled, .hovered = hovered,
+            .has_icon = item.icon_shape != "" || item.image.asset_path != "" || item.image.texture.id != cast(u32)0,
+            .label_height = line_height,
             .base = base, .face = face}
         layout: NavigationBarItemPaint =
         NavigationBarItemPaintFor(item_spec)
@@ -391,26 +399,39 @@ NavigationBar :: (session: Session, props: NavigationBarProps,
             TreeSetLabel(session, node, item.label)
             TreeSetSelected(session, node, item.active)
         }
+        face_opacity := StyleOpacityValue(face.value.fields, face.value.opacity)
         if layout.draw_face {
-            face_opacity: float32 = StyleOpacityValue(
-                layout.face.value.fields,
-                layout.face.value.opacity)
-            PaintRoundedFill(session, node, layout.state_bounds,
-                layout.face.value.radius, 12,
-                ColorFromPacked(Opacity(
-                layout.face.value.background, face_opacity)))
+            PaintRoundedFill(session, node, layout.state_bounds, layout.state_bounds.height / 2.0, 12,
+                ColorFromPacked(Opacity(face.value.background, face_opacity)))
         }
-        image_opacity: float32 = cast(float32)layout.icon_alpha / 255.0
-        NavigationBarPaintImage(session, node, item.image,
-            layout.icon_bounds, layout.bounds, layout.icon_color,
-            image_opacity)
+        if hovered || pressed || focused {
+            amount: float32 = 0.08
+            if pressed || focused { amount = 0.12 }
+            PaintRoundedFill(session, node, layout.state_bounds, layout.state_bounds.height / 2.0, 12,
+                ColorFromPacked(Opacity(layout.icon_color, amount)))
+        }
+        if focused {
+            ring := layout.state_bounds
+            ring.x -= 2.0; ring.y -= 2.0
+            ring.width += 4.0; ring.height += 4.0
+            focus := face.value.focus
+            if (focus & cast(u32)255) == cast(u32)0 { focus = Theme.LightAccent() }
+            PaintRoundedOutline(session, node, ring, ring.height / 2.0, 12, 2.0, ColorFromPacked(focus))
+        }
+        if item.icon_shape != "" {
+            PaintSvgIcon(session, node, item.icon_shape, layout.icon_bounds,
+                ColorFromPacked(Opacity(layout.icon_color, face_opacity)))
+        } else {
+            NavigationBarPaintImage(session, node, item.image,
+                layout.icon_bounds, layout.bounds, layout.icon_color, face_opacity)
+        }
         if item.label != "" {
             label_width: s32 = GlyphWidth(item.label, font,
                 face.value.typeface)
             label_x: s32 = cast(s32)layout.label_bounds.x +
             (cast(s32)layout.label_bounds.width - label_width) / 2
             text_opacity: float32 = StyleOpacityValue(
-                base.value.fields, base.value.opacity)
+                face.value.fields, face.value.opacity)
             PaintClippedLabel(session, node, item.label,
                 label_x,
                 cast(s32)layout.label_bounds.y, font,

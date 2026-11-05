@@ -14,7 +14,10 @@ the ordinary Kryon library. Source stays in the browser. Programs must fit
 Ziran's portable subset and the installed Canvas capabilities. Each VM frame
 has a statement limit, and compilation and rendering have timeout recovery.
 
-Build the normal initial preview with `./build.sh`. To rebuild the editor's
+Build the normal initial preview with `build-queue -- ./build.sh`. For changes
+in this checkout, set the ignored `ziran.local.toml` override `kryon` to this
+repository root. The source build resolves that override with `ziran lock`
+before compiling; production locks retain actual published revisions. To rebuild the editor's
 compiler and Canvas host, activate Emscripten 6.0.6 and run:
 
 ```sh
@@ -26,6 +29,13 @@ path`, including the demo's ignored local overrides. Use a Ziran revision
 that provides `BuildBundle` and `BundleInstanceLimitSteps`. The three generated
 editor assets in `../assets/` are committed with the static site, alongside
 the original `widgets.html` preview.
+
+From the Kryon repository root, `build-queue -- make site-browser-test`
+runs the Python browser suite in a private headless Chromium. It covers the
+app and module catalogs, responsive navigation, themes, keyboard focus,
+legacy routes, and real editor compilation, including rotated text. To retain
+review images, run `build-queue -- python3 tests/site_browser_test.py
+--screenshots backup/labs-site/verification` after confirming `backup/` is ignored.
 
 From the Kryon repository root, `node tests/demo_browser.mjs` starts a local
 server and private Xvfb/Chromium display. It checks real compilation, rendered

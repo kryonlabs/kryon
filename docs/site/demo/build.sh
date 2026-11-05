@@ -2,6 +2,7 @@
 set -eu
 cd "$(dirname "$0")"
 if [ -f ziran.local.toml ]; then
+    env -u DISPLAY -u WAYLAND_DISPLAY ziran lock
     env -u DISPLAY -u WAYLAND_DISPLAY ziran tool kryon build --profile web
 else
     env -u DISPLAY -u WAYLAND_DISPLAY ziran tool kryon build --profile web --locked

@@ -37,7 +37,7 @@ CollapsibleDefaultFace :: (role: s32, state: s32) -> StyleData {
     face.border = Theme.LightBorder()
     face.border_width = 1.0
     face.focus = Theme.LightAccent()
-    face.radius = 4.0
+    face.radius = Theme.ShapeMedium()
     face.opacity = 1.0
     face.font_size = 16.0
     face.padding_x = 8.0

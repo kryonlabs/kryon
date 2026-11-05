@@ -11,6 +11,7 @@ Theme :: #import "theme";
     Button :: (session: Session, props: ButtonProps) -> s32 { return ButtonHostedHost(session, props) }
 } else {
     #import "session"
+    #import "card"
     #import "button"
     #import "button_props"
     #import "control_props"
@@ -68,7 +69,7 @@ Theme :: #import "theme";
         if props.tone == cast(ButtonTone)ButtonToneNeutral { ink = face.foreground }
         if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisSoft {
             face.foreground = ink
-            face.background = Opacity(face.background, 0.16)
+            face.background = Theme.StateLayer(Theme.LightSurface(), ink, cast(u32)12)
         } else if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisOutline {
             face.foreground = ink
             face.border = ink
@@ -80,22 +81,31 @@ Theme :: #import "theme";
             face.background = cast(u32)0x00000000
         }
         if state == ButtonStateHover {
-            face.background = GradientColor(face.background,
-                cast(u32)0xffffffff, 0.08)
+            face.background = Theme.StateLayer(face.background, face.foreground, cast(u32)8)
         } else if state == ButtonStatePressed ||
         state == ButtonStateSelected {
-            face.background = GradientColor(face.background,
-                cast(u32)0x000000ff, 0.12)
+            face.background = Theme.StateLayer(face.background, face.foreground, cast(u32)12)
         } else if state == ButtonStateDisabled || state == ButtonStateLoading {
-            face.background = Opacity(face.background, 0.45)
-            face.foreground = Opacity(face.foreground, 0.45)
-            face.border = Opacity(face.border, 0.45)
+            // Default filled faces sit on the default surface. Precompose
+            // neutral disabled layers so software hosts can fill opaque spans.
+            // Transparent actions retain their surrounding surface normally.
+            if (face.background & cast(u32)255) != cast(u32)0 {
+                face.background = Theme.StateLayer(Theme.LightBackground(), Theme.LightText(), cast(u32)12)
+                face.foreground = Theme.StateLayer(face.background, Theme.LightText(), cast(u32)38)
+            } else { face.foreground = Opacity(Theme.LightText(), 0.38) }
+            face.border = Opacity(face.border, 0.12)
         }
-        face.radius = 8.0
+        if props.style_kind == StyleKindCard() {
+            return CardDefaultFace(props.emphasis, state)
+        }
+        face.radius = Theme.ShapeFull()
+        // Outlined actions keep compact corners: stroking a full capsule is
+        // measurably dearer on software hosts than filling one.
+        if props.emphasis == cast(ButtonEmphasis)ButtonEmphasisOutline { face.radius = 8.0 }
         face.opacity = 1.0
         face.padding_x = 12.0
         face.padding_y = 6.0
-        face.font_size = 14.0
+        face.font_size = Theme.TypeLabel()
         face.icon_size = 18.0
         face.gap = 8.0
         return face

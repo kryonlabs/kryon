@@ -5,6 +5,8 @@ from pathlib import Path
 import subprocess
 
 
+JS_RUNTIME = os.environ.get("JS_RUNTIME", "node")
+
 ROOT = Path(__file__).resolve().parents[1]
 source = os.environ.get("ZIRAN_ROOT")
 if not source:

@@ -16,6 +16,7 @@ import subprocess
 import tempfile
 
 from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
+from image_packages import image_module_args
 
 ABIS = ("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
 PROBE = '''#import "webp_image"
@@ -36,7 +37,7 @@ include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
 if(ONE_ARGUMENT)
     kryon_android_raylib("${RAYLIB_DIR}")
 else()
-    kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}")
+    kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}" "${AVIF_DIR}" "${AOM_DIR}")
 endif()
 file(GLOB probe_sources "${PROBE_DIR}/*.c")
 add_library(probe SHARED ${probe_sources})
@@ -76,7 +77,7 @@ def main():
         source = work / "probe.zi"
         source.write_text(PROBE)
         generated = work / "generated"
-        run([ZIRAN, "build", "--target=c", "--no-main", "--define", "ANDROID_BUILD",
+        run([ZIRAN, "build", *image_module_args(), "--target=c", "--no-main", "--define", "ANDROID_BUILD",
              "--root", work, "--module-path", ROOT / "src/backend",
              "--module-path", ZIRAN_ROOT / "std", "-o", generated, source])
         project = work / "project"
@@ -89,10 +90,10 @@ def main():
                  f"-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake",
                  f"-DANDROID_ABI={abi}", "-DANDROID_PLATFORM=android-21",
                  "-DCMAKE_BUILD_TYPE=Release", f"-DKRYON_DIR={ROOT}",
-                 f"-DRAYLIB_DIR={raylib}", *([] if one else [f"-DWEBP_DIR={webp}"]),
+                 f"-DAVIF_DIR={package('libavif')}", f"-DAOM_DIR={package('libaom')}", f"-DRAYLIB_DIR={raylib}", *([] if one else [f"-DWEBP_DIR={webp}"]),
                  f"-DONE_ARGUMENT={'ON' if one else 'OFF'}", f"-DPROBE_DIR={generated}",
                  f"-DZIRAN_INCLUDE={ZIRAN_ROOT / 'include'}"],
-                {"KRYON_ANDROID_WEBP_DIR": str(webp)} if one else None)
+                {"KRYON_ANDROID_WEBP_DIR": str(webp), "KRYON_ANDROID_AVIF_DIR": str(package("libavif")), "KRYON_ANDROID_AOM_DIR": str(package("libaom"))} if one else None)
             run(["cmake", "--build", output, "--target", "probe", "--parallel", "2"])
             symbols = run([nm, "--defined-only", "-D", output / "libprobe.so"])
             assert "KryonWebPProbe" in symbols, abi

@@ -1,4 +1,6 @@
 """Build standalone AppContext ZXs and exercise browser app persistence."""
+
+from toolchain import JS_RUNTIME
 import json
 import os
 import subprocess
@@ -40,7 +42,7 @@ for name, defines in [('hosted', []), ('hosted_other', ['--define', 'HOSTED_OTHE
 (output / 'invalid.zx').write_bytes(b'invalid ZX')
 subprocess.run([sys.executable, str(ROOT / 'tests/zx_hosted_native_test.py')],
                env=env, check=True, timeout=100)
-subprocess.run(['node', str(ROOT / 'tests/zx_canvas_browser.mjs'),
+subprocess.run([JS_RUNTIME, str(ROOT / 'tests/zx_canvas_browser.mjs'),
                 str(ROOT / 'build/zx-canvas/player.html'), 'hosted', str(output / 'hosted.zx')],
                env=env, check=True, timeout=120)
 print('AppContext bundles run through the generic standalone browser host')

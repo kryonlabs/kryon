@@ -10,6 +10,9 @@ ziran.local.toml
 .zcode
 .kryon-ide-state
 
+# Local managed session state
+/.yue/
+
 # Test-owned scratch and logs
 /work/
 

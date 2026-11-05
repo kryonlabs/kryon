@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Compile Zi Canvas2D effects to Wasm and verify pixels in a private headless browser."""
+
+from toolchain import JS_RUNTIME
 import os
 from pathlib import Path
 import subprocess
@@ -13,6 +15,8 @@ environment = dict(os.environ)
 for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'GDK_DISPLAY'):
     environment.pop(name, None)
 environment.setdefault('EM_CACHE', str(ROOT / 'build/emscripten-cache'))
+if os.environ.get('CANVAS_TEST_CHROMIUM'):
+    environment['CHROMIUM'] = os.environ['CANVAS_TEST_CHROMIUM']
 
 def run(args, **options):
     return subprocess.run(list(map(str,args)), env=environment, check=True, **options)
@@ -36,6 +40,8 @@ with tempfile.TemporaryDirectory(prefix='canvas-browser-', dir=ROOT / 'build') a
         environment['CANVAS_TEST_MESH_GPU'] = gpu
         for dpi in ('1', '1.25', '2'):
             environment['CANVAS_TEST_DPI'] = dpi
-            run(['node', ROOT/'tests/canvas_backend_browser.mjs',
-                 (work/'test.html').as_uri(), work/('profile-' + gpu + '-' + dpi)], timeout=35)
+            profile = work / ('profile-' + gpu + '-' + dpi)
+            profile.mkdir(mode=0o700)
+            run([JS_RUNTIME, ROOT/'tests/canvas_backend_browser.mjs',
+                 (work/'test.html').as_uri(), profile], timeout=35)
 print('Canvas2D Zi/Wasm browser pixels, nested clips, input and lifecycle passed')

@@ -1,0 +1,55 @@
+#import "card"
+#import "card_props"
+#import "button_props"
+#import "button_widget"
+#import "box_props"
+#import "box_widget"
+#import "control_props"
+#import "drawing_props"
+#import "elevation"
+#import "session"
+#import "surface"
+#import "style"
+#import "style_sheet"
+Theme :: #import "theme";
+
+// Composed from existing host capabilities; portable apps need no new effect.
+#program_export
+Card :: (session: Session, props: CardProps) -> CardResult {
+    result: CardResult
+    result.content = CardContentBounds(props.bounds)
+    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+    state := ResolveState(cast(s32)props.state, props.disabled, false,
+        false, false, false, props.selected)
+    emphasis := CardEmphasis(props.variant)
+    facts := StyleControlRoleFacts(StyleKindCard(), props.id, props.class_name,
+        StyleAny(), cast(s32)ButtonTone.ButtonToneNeutral, cast(s32)emphasis,
+        cast(s32)ControlSize.ControlSizeMedium, state)
+    face := ResolveInstalledStyleRules(CardDefaultFace(emphasis, state), facts, state)
+    opacity := StyleOpacityValue(face.fields, face.opacity)
+    if props.disabled && opacity == 1.0 { opacity = 0.45 }
+    if props.variant == .CardElevated {
+        // Two precomputed alpha edges, each one unit wide. No blurred surface,
+        // bitmap cache, clock or temporary allocation; interiors paint once.
+        for layer: cast(s32)1..2 {
+            edge := ElevationEdgeBounds(props.bounds, layer, face.radius)
+            alpha := ElevationEdgeAlpha(layer)
+            unused Box(session, BoxProps.{.bounds = edge,
+                .fill = ColorFromPacked(Opacity(alpha, opacity))})
+        }
+    }
+    if props.clickable {
+        result.activated = Button(session, ButtonProps.{.key = props.key,
+            .bounds = props.bounds, .id = props.id, .class_name = props.class_name,
+            .label = props.label, .style_kind = StyleKindCard(),
+            .emphasis = emphasis, .disabled = props.disabled,
+            .selected = props.selected, .state = props.state}) == 1
+    } else {
+        border: Color
+        if face.border_width > 0.0 { border = ColorFromPacked(Opacity(face.border, opacity)) }
+        unused Box(session, BoxProps.{.key = props.key, .bounds = props.bounds,
+            .fill = ColorFromPacked(Opacity(face.background, opacity)),
+            .border = border, .radius = face.radius})
+    }
+    return result
+}

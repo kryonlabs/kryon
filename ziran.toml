@@ -4,7 +4,7 @@ module_roots = ["src/ui", "src/backend"]
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-ref = "17c9c54dad73af2d1e2883201da8988d553fe3b8"
+ref = "1d616e3a1761dd4e4a1c5a960c165d30ba16da29"
 
 [dependencies.raylib]
 git = "https://github.com/raysan5/raylib.git"
@@ -100,6 +100,10 @@ button_widget = "src/ui/button_widget.zi"
 press_props = "src/ui/press_props.zi"
 press_widget = "src/ui/press_widget.zi"
 button_props = "src/ui/button_props.zi"
+elevation = "src/ui/elevation.zi"
+card = "src/ui/card.zi"
+card_props = "src/ui/card_props.zi"
+card_widget = "src/ui/card_widget.zi"
 box_widget = "src/ui/box_widget.zi"
 joystick = "src/ui/joystick.zi"
 direction_pad = "src/ui/direction_pad.zi"
@@ -255,12 +259,12 @@ android_ndk = "string"
 android_api = "string=21"
 
 [artifacts.renderer-raylib]
-inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "mk/renderer-artifact.mk", "mk/raylib-library.mk", "cmake/renderer-artifact/CMakeLists.txt", "cmake/KryonAndroid.cmake", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
-outputs = ["lib/libraylib.a", "lib/libkryonwebp.a", "include/raylib.h", "include/rlgl.h", "include/raymath.h", "include/rcamera.h", "resources/LICENSE-raylib", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
+inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "mk/renderer-artifact.mk", "mk/raylib-library.mk", "cmake/renderer-artifact/CMakeLists.txt", "cmake/KryonAndroid.cmake", "cmake/ImagePackages.cmake", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/avif/CMakeLists.txt", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+outputs = ["lib/libraylib.a", "lib/libkryonwebp.a", "lib/libavif.a", "lib/libaom.a", "resources/LICENSE-libavif", "resources/LICENSE-libaom", "resources/PATENTS-libaom", "include/raylib.h", "include/rlgl.h", "include/raymath.h", "include/rcamera.h", "resources/LICENSE-raylib", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
 
 [artifacts.renderer-desktop]
-inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
-outputs = ["resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
+inputs = ["cmake/AVIF.cmake", "cmake/ImagePackages.cmake", "cmake/avif/CMakeLists.txt","src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
+outputs = ["lib/libkryonavif.so", "resources/LICENSE-libavif", "resources/LICENSE-libaom", "resources/PATENTS-libaom", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
 
 [artifacts.renderer-web]
 inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
@@ -275,3 +279,25 @@ source = true
 [artifacts.native-sdl3]
 inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "scripts/build-sdl3.sh", "Makefile"]
 outputs = ["lib/libSDL3.a", "lib/pkgconfig/sdl3.pc", "link.txt", "resources/LICENSE-SDL3", "resources/SDL_build_config.h", "resources/SDL3-headers.tar", "include/SDL3/SDL.h", "include/SDL3/SDL_render.h", "include/SDL3/SDL_gpu.h", "include/SDL3/SDL_version.h"]
+
+[dependencies.libavif]
+git = "https://github.com/AOMediaCodec/libavif.git"
+ref = "1aadfad932c98c069a1204261b1856f81f3bc199"
+source = true
+
+[dependencies.libaom]
+git = "https://aomedia.googlesource.com/aom"
+ref = "d772e334cc724105040382a977ebb10dfd393293"
+source = true
+
+[dependencies.image_codec]
+git = "https://github.com/ziranlang/image-codec.git"
+ref = "a8767d78d0c08d5b1c1fc0bab6fcafdc7a6da930"
+
+[dependencies.avif]
+git = "https://github.com/ziranlang/avif.git"
+ref = "d649529af4effb79cf538d68a74841ce0f9c800b"
+
+[dependencies.webp]
+git = "https://github.com/ziranlang/webp.git"
+ref = "b29d4f43fd295377f745ee88fe6596358fdd12c0"

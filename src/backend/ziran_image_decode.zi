@@ -1,0 +1,19 @@
+// Native backend storage. Image packages own decoding and std/image pixels;
+// hosts own the malloc buffer handed to Cairo or raylib's image allocator.
+Encoded :: #import "image_codec/bytes";
+Riff :: #import "webp/riff";
+#import "std/byte_text_linux"
+image_memory :: #system_library "c";
+RawImageAllocate :: (count: usize) -> *u8 #foreign image_memory "malloc";
+RawImageFree :: (pixels: *u8) #foreign image_memory "free";
+ImagePixelsAllocate :: (count: usize) -> *u8 { return RawImageAllocate(count) }
+ImagePixelsFree :: (pixels: *u8) { RawImageFree(pixels) }
+
+ImageEncodedBytes :: (data: string) -> Encoded.BorrowedBytes {
+    bytes := cast(*TextDescriptor)(*data)
+    return Encoded.BorrowBytes(BytesFromPointer(bytes.data, cast(u64)data.count))
+}
+
+ImageWebpSignature :: (data: string) -> bool {
+    return Riff.WebpHasSignature(ImageEncodedBytes(data))
+}

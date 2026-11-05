@@ -12,7 +12,7 @@ Answer :: () -> s32 {
         light.accent != LightAccent() || light.border != LightBorder() {
         return 3
     }
-    if dark.background != PackedColor(cast(u32)0x001D38, cast(u32)255) {
+    if dark.background != PackedColor(cast(u32)0x101513, cast(u32)255) {
         return 4
     }
     if light.focus == dark.focus { return 5 }
@@ -27,6 +27,22 @@ Answer :: () -> s32 {
     if metrics.control_height_medium != 40.0 || metrics.disabled_opacity <= 0.0 {
         return 9
     }
+    if ShapeSmall() != metrics.radius_small || ShapeMedium() != metrics.radius_medium ||
+        ShapeLarge() != metrics.radius_large || ShapeFull() != metrics.radius_pill { return 10 }
+    if TypeLabel() != metrics.font_size_small || TypeBody() != metrics.font_size_medium ||
+        TypeTitle() != metrics.font_size_large || metrics.shadow_blur != 0.0 { return 11 }
+    // Opaque faces retain alpha; transparent faces acquire only a state tint.
+    if StateLayer(cast(u32)0xffffffff, cast(u32)0x000000ff, cast(u32)8) != cast(u32)0xeaeaeaff { return 12 }
+    if StateLayer(cast(u32)0, cast(u32)0x006b5fff, cast(u32)12) != cast(u32)0x006b5f1e { return 13 }
+    for percent: cast(u32)0..100 {
+        sample := StateLayer(cast(u32)0x12345680, cast(u32)0xaabbccff, percent)
+        if (sample & cast(u32)255) != cast(u32)128 { return 14 }
+    }
+    if StateLayer(light.surface, light.text, cast(u32)0) != light.surface ||
+        StateLayer(light.surface, light.text, cast(u32)1000) != light.text { return 15 }
+    if scheme.primary_container == scheme.primary || scheme.on_primary_container != light.text ||
+        scheme.surface_container_low == scheme.surface_container_high ||
+        scheme.inverse_surface != light.text || scheme.scrim != cast(u32)0x00000052 { return 16 }
     return 42
 }
 

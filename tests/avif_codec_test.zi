@@ -1,0 +1,54 @@
+Pixels :: #import "raylib_image_decode";
+#import "avif_title_fixture"
+
+#import "file"
+#import "text_tools"
+#import "std/byte_text_linux"
+
+Fixture :: (directory: string, name: string, extension: string) -> string {
+    parts: [4]string = .[directory, "/", name, extension]
+    data, ok := ReadEntireFile(TextJoin(parts[:], ""))
+    if !ok { return "" }
+    return data
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 2 }
+    directory := TextFromCString(argv[1])
+    if !AvifTitleFixture(directory) { print("Large title fixture failed\n"); return 10 }
+    names: [17]string = .["rgba8", "rgba10", "rgba12", "gray8", "gray10", "gray12",
+        "transform00", "transform01", "transform10", "transform11", "transform20", "transform21",
+        "transform30", "transform31", "premultiplied", "opaque", "animated"]
+    for name: names {
+        data := Fixture(directory, name, ".avif")
+        golden := Fixture(directory, name, ".rgba")
+        width: s32 = ifx name.count > 9 && name[:9] == "transform" then 4 else 8
+        height: s32 = ifx width == 4 then 4 else 6
+        tolerance: s32 = ifx name == "premultiplied" then 4 else ifx name == "rgba10" || name == "rgba12" || name[:4] == "gray" then 1 else 0
+        paths: [3]string = .["assets/image.avif", "assets/image.png", "assets/extensionless"]
+        for path: paths {
+            image := Pixels.RaylibDecodeImage(path, data)
+            if image.data == null { print("%: decode failed\n", name); return 3 }
+            if image.width != width || image.height != height || image.format != 7 {
+                print("%: dimensions/format %, %\n", name, image.width, image.height); return 4
+            }
+            bytes := cast(*u8)image.data
+            for i: 0..golden.count - 1 {
+                difference := cast(s32)bytes[i] - cast(s32)golden[i]
+                if difference < -tolerance || difference > tolerance {
+                    print("% pixel byte %: got % expected %\n", name, i, bytes[i], cast(u8)golden[i]); return 5
+                }
+            }
+            Pixels.RaylibImageRelease(image)
+        }
+    }
+    bad: [5]string = .["oversized", "pixel-limit", "bad-crop", "truncated", "malformed"]
+    for name: bad {
+        data := Fixture(directory, name, ".avif")
+        image := Pixels.RaylibDecodeImage("extensionless", data)
+        if image.data != null { print("%: invalid accepted\n", name); return 9 }
+    }
+    print("AVIF source/IR RGBA, 8/10/12-bit gray, crop/rotate/mirror, alpha, first frame, extensionless and invalid inputs passed\n")
+    return 0
+}

@@ -1,0 +1,24 @@
+#import "geometry"
+
+// Fixed contact strips under the straight part of a rounded surface. Drawing
+// only these pixels avoids rasterizing a full translucent rounded outline.
+#program_export
+ElevationEdgeBounds :: (bounds: Rectangle, layer: s32,
+    radius: float32 = 0.0) -> Rectangle {
+    result: Rectangle
+    if layer < 1 || layer > 2 || bounds.width <= 0.0 || bounds.height <= 0.0 { return result }
+    if radius < 0.0 { radius = 0.0 }
+    if radius > bounds.width * 0.5 { radius = bounds.width * 0.5 }
+    result.x = bounds.x + radius
+    result.y = bounds.y + bounds.height + cast(float32)(layer - 1)
+    result.width = bounds.width - radius * 2.0
+    result.height = 1.0
+    return result
+}
+
+#program_export
+ElevationEdgeAlpha :: (layer: s32) -> u32 {
+    if layer == 1 { return cast(u32)24 }
+    if layer == 2 { return cast(u32)10 }
+    return cast(u32)0
+}

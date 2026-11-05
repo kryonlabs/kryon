@@ -37,9 +37,9 @@ ColorPickerDefaultFace :: (swatch: bool,
     face.foreground = Theme.LightText()
     face.border = cast(u32)0x00000000
     face.opacity = 1.0
-    face.radius = 4.0
-    face.font_size = 14.0
-    face.padding_x = 6.0
+    face.radius = Theme.ShapeSmall()
+    face.font_size = Theme.TypeLabel()
+    face.padding_x = 8.0
     face.padding_y = 2.0
     face.gap = 4.0
     face.icon_size = 36.0

@@ -74,7 +74,7 @@ HOST_CFLAGS := -Wno-main
 endif
 APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
-HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi)
+HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRYON_DIR)/src/backend/avif*.zi)
 ifneq ($(filter $(PROJECT_BACKEND),desktop canvas dom),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/frame_input_provider.zi
 endif
@@ -103,7 +103,7 @@ C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/$(HOST_ID).zir
 endif
 ifeq ($(PROJECT_BACKEND),desktop)
-HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
+HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backend/image_decode_linux.zi $(KRYON_DIR)/src/backend/avif_decode.zi $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_METHODS=FS
@@ -121,7 +121,10 @@ ASSET_DEPENDENCY := asset-content
 endif
 HOST_DEPS :=
 ifeq ($(PROJECT_BACKEND),desktop)
-HOST_LIBS := $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0)
+include $(KRYON_DIR)/mk/raylib-library.mk
+HOST_DEPS := $(AVIF_SO)
+HOST_LIBS := -Wl,--no-as-needed $(AVIF_SO) -Wl,--as-needed -Wl,-rpath,$(AVIF_BUILD) -Wl,-rpath,'$$ORIGIN/../lib'
+HOST_LIBS += $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0)
 # The http_transfer desktop worker drives curl from a detached thread.
 # Without a libcurl.pc, link the runtime library by exact filename.
 HOST_LIBS += $(shell pkg-config --libs libcurl 2>/dev/null || echo '-l:libcurl.so.4')

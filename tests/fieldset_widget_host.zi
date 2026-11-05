@@ -29,7 +29,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
-    if radius != 8.0 || segments != 12 || width != 1.0 { failed = true }
+    if radius != 12.0 || segments != 12 || width != 1.0 { failed = true }
     outlines += 1
 }
 
@@ -43,8 +43,8 @@ RasterText :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
-    if value != "Group" || x != 26 || y != 21 || font != 18 ||
-        clip.x != 26.0 || clip.y != 21.0 ||
+    if value != "Group" || x != 26 || y != 22 || font != 18 ||
+        clip.x != 26.0 || clip.y != 22.0 ||
         clip.width != 35.0 || clip.height != 18.0 ||
         color.r != cast(u8)0xaa || color.g != cast(u8)0xbb ||
         color.b != cast(u8)0xcc || color.a != cast(u8)127 { failed = true }

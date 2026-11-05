@@ -203,6 +203,16 @@ main :: () -> s32 {
             result.paint_count != 5000 { return 3 }
     }
     if draws != 5000 || bad { return 4 }
+    // A long frame still retains exact bytes across many small blocks.
+    // A fresh small frame must not reserve the former 32 KiB minimum.
+    PaintDispose(session)
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+    PaintLabel(session, -1, "small", 0, 0, 14, Color.{})
+    if !PaintSnapshotStore(session) ||
+        paint_snapshot_values[session.slot].capacity * PAINT_SNAPSHOT_BLOCK_CAPACITY > 4096 {
+        return 22
+    }
+    TreeCancel(session)
     // A changed byte beyond the former total limit invalidates the plan;
     // the following identical frame retains that new byte too.
     changed_last = true

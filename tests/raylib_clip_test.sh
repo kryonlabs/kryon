@@ -18,7 +18,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
     "$root/tests/raylib_clip_behavior.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
     -Wl,--gc-sections -I"$ziran_dir/include" -iquote "$work/c" \
-    "$work/c"/*.c "$raylib" "$webp" $raylib_libs \
+    "$work/c"/*.c "$raylib" "$webp" "${AVIF_A:-$root/build/avif-ziran/avif/libavif.a}" "${AOM_A:-$root/build/avif-ziran/aom/libaom.a}" $raylib_libs \
     -o "$work/test"
 python3 - "$work/red.png" "$work/split.png" <<'PY'
 import struct

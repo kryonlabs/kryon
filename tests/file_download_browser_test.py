@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Run file_download's streaming fetch in private headless Chromium against a local server."""
+
+from toolchain import JS_RUNTIME
 from pathlib import Path
 import subprocess
 import tempfile
@@ -13,7 +15,7 @@ with tempfile.TemporaryDirectory(prefix='file-download-browser-', dir=ROOT / 'bu
                               stderr=subprocess.DEVNULL, text=True)
     try:
         port = server.stdout.readline().strip()
-        run(['node', ROOT / 'tests/canvas_backend_browser.mjs',
+        run([JS_RUNTIME, ROOT / 'tests/canvas_backend_browser.mjs',
              (work / 'test.html').as_uri() + '?port=' + port, work / 'profile'], timeout=45)
     finally:
         server.kill()

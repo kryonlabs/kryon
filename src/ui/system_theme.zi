@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 // Reads a desktop theme's colors from its GTK CSS, so an application can follow
 // the system theme. This file only parses text; system_theme_linux finds the
 // theme and reads its files.
@@ -254,22 +255,12 @@ CssFirst :: (css: string, first: string, second: string, fallback: u32) -> u32 {
 SystemPaletteFallback :: (dark: bool) -> SystemPalette {
     palette: SystemPalette
     palette.dark = dark
-    if dark {
-        palette.background = CssPack(0x24, 0x24, 0x28, 255)
-        palette.base = CssPack(0x1b, 0x1b, 0x1f, 255)
-        palette.text = CssPack(0xe8, 0xe8, 0xea, 255)
-        palette.border = CssPack(0x0c, 0x0c, 0x0e, 255)
-    } else {
-        palette.background = CssPack(0xf2, 0xf2, 0xf4, 255)
-        palette.base = CssPack(0xff, 0xff, 0xff, 255)
-        palette.text = CssPack(0x24, 0x24, 0x28, 255)
-        palette.border = CssPack(0xc4, 0xc4, 0xc8, 255)
-    }
-    palette.selected = CssPack(0x35, 0x84, 0xe4, 255)
-    palette.selected_text = CssPack(255, 255, 255, 255)
-    palette.danger = CssPack(0xe0, 0x1b, 0x24, 255)
-    palette.warning = CssPack(0xf5, 0xc2, 0x11, 255)
-    palette.success = CssPack(0x2e, 0xc2, 0x7e, 255)
+    colors := Theme.DefaultPalette(dark)
+    palette.background = colors.background; palette.base = colors.surface
+    palette.text = colors.text; palette.border = colors.border
+    palette.selected = colors.accent; palette.selected_text = colors.on_accent
+    palette.danger = colors.danger; palette.warning = colors.warning
+    palette.success = colors.success
     return palette
 }
 
@@ -310,6 +301,18 @@ Menu :: #import "dropdown";
 Picture :: #import "image";
 Dialog :: #import "modal";
 #scope_file
+PaletteRole :: (rules: *Sheet.StyleRules, kind: s32, role: s32,
+    background: u32, foreground: u32, border: u32) {
+    item := *rules.items[rules.count]; item.selector = Sheet.StyleDefaultSelector()
+    item.selector.kind = kind; item.selector.role = role; rules.count += 1
+    item.style.fields = cast(u32)Controls.StyleField.StyleBackground |
+        cast(u32)Controls.StyleField.StyleForeground | cast(u32)Controls.StyleField.StyleBorder
+    item.style.background = background; item.style.foreground = foreground; item.style.border = border
+}
+PaletteAccent :: (rules: *Sheet.StyleRules, kind: s32, background: u32, foreground: u32) {
+    PaletteRole(rules, kind, Sheet.StyleAny(), background, foreground, background)
+    rules.items[rules.count - 1].selector.tone = cast(s32)Controls.ButtonTone.ButtonToneAccent
+}
 Rule :: (rules: *Sheet.StyleRules, kind: s32, background: u32, foreground: u32, state: s32 = 0) {
     item := *rules.items[rules.count]; item.selector = Sheet.StyleDefaultSelector(); item.selector.kind = kind; item.state = state
     item.style.fields = cast(u32)Controls.StyleField.StyleBackground | cast(u32)Controls.StyleField.StyleForeground
@@ -344,7 +347,7 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.S
     // Material is the shared application policy, including older saved choices.
     unused material
     rules: Sheet.StyleRules; bg := palette.background; fg := palette.text
-    button := CssMix(bg, fg, 0.10); hover := CssMix(bg, fg, 0.16)
+    button := CssMix(bg, palette.selected, 0.08); hover := CssMix(button, fg, 0.08)
     // A palette supplies colors while widgets keep their standard geometry.
     shared := *rules.items[rules.count]; shared.selector = Sheet.StyleDefaultSelector(); rules.count += 1
     shared.style.fields = cast(u32)Controls.StyleField.StyleForeground | cast(u32)Controls.StyleField.StyleFocus
@@ -409,10 +412,18 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.S
         kind := rules.items[i].selector.kind
         if kind == Sheet.StyleKindButton() || kind == Sheet.StyleKindTextField() || kind == Sheet.StyleKindTextArea() || kind == Sheet.StyleKindSpinbox() || kind == Sheet.StyleKindSpinboxValue() || kind == Sheet.StyleKindDropdown() {
             rules.items[i].style.fields |= cast(u32)Controls.StyleField.StyleFontSize | cast(u32)Controls.StyleField.StyleRadius | cast(u32)Controls.StyleField.StyleFocus | cast(u32)Controls.StyleField.StyleMaterial
-            rules.items[i].style.font_size = 15.0; rules.items[i].style.radius = 6.0; rules.items[i].style.focus = palette.selected
-            rules.items[i].style.material = Controls.MaterialKind.MaterialLightfield
+            rules.items[i].style.font_size = Theme.TypeLabel(); rules.items[i].style.radius = Theme.ShapeSmall();
+            if kind == Sheet.StyleKindButton() { rules.items[i].style.radius = Theme.ShapeFull() }
+            if kind == Sheet.StyleKindDropdown() { rules.items[i].style.radius = Theme.ShapeMedium() }
+            rules.items[i].style.focus = palette.selected
+            rules.items[i].style.material = Controls.MaterialKind.MaterialFlat
         }
     }
+    outline_shape := *rules.items[rules.count]; outline_shape.selector = Sheet.StyleDefaultSelector(); rules.count += 1
+    outline_shape.selector.kind = Sheet.StyleKindButton()
+    outline_shape.selector.emphasis = cast(s32)Controls.ButtonEmphasis.ButtonEmphasisOutline
+    outline_shape.style.fields = cast(u32)Controls.StyleField.StyleRadius
+    outline_shape.style.radius = 8.0
     // Buttons keep their tone and emphasis: each tone takes its palette role
     // (accent is the selection color), and only filled and soft buttons get a
     // background. Neutral buttons that are not filled use the text color.
@@ -423,16 +434,62 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.S
     edge := ink | cast(u32)Controls.StyleField.StyleBorder
     for index: 0..4 {
         tone := cast(s32)index; fill := fills[index]; mark := ifx tone == 0 then fg else fill
-        lit := ifx tone == 0 then hover else CssMix(fill, fg, 0.12)
+        lit := Theme.StateLayer(fill, inks[index], cast(u32)8)
+        pressed := Theme.StateLayer(fill, inks[index], cast(u32)12)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, fill, inks[index], 0)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, lit, inks[index], 0, 2)
-        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, lit, inks[index], 0, 4)
-        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, lit, inks[index], 0, 7)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, pressed, inks[index], 0, 3)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, pressed, inks[index], 0, 7)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisSoft, paint, CssMix(bg, mark, 0.16), mark, 0)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisOutline, edge, 0, mark, ifx tone == 0 then palette.border else fill)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisGhost, ink, 0, mark, 0)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisLink, ink, 0, mark, 0)
+        emphasis: [4]s32 = .{cast(s32)Controls.ButtonEmphasis.ButtonEmphasisSoft, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisOutline, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisGhost, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisLink}
+        for variant: 0..3 {
+            base := ifx variant == 0 then CssMix(bg, mark, 0.16) else cast(u32)0
+            ButtonColors(*rules, tone, emphasis[variant], paint, Theme.StateLayer(base, mark, cast(u32)8), mark, 0, cast(s32)Controls.ButtonState.ButtonStateHover)
+            ButtonColors(*rules, tone, emphasis[variant], paint, Theme.StateLayer(base, mark, cast(u32)12), mark, 0, cast(s32)Controls.ButtonState.ButtonStatePressed)
+        }
     }
+    tonal := CssMix(palette.base, palette.selected, 0.08)
+    clear := cast(u32)0
+    PaletteAccent(*rules, Sheet.StyleKindCheckbox(), palette.selected, palette.selected_text)
+    PaletteAccent(*rules, Sheet.StyleKindRadio(), palette.selected, palette.selected_text)
+    PaletteAccent(*rules, Sheet.StyleKindToggle(), palette.selected, palette.selected_text)
+    Rule(*rules, Sheet.StyleKindToggleThumb(), palette.base, palette.base)
+    PaletteRole(*rules, Sheet.StyleKindSlider(), Sheet.StyleAny(), tonal, fg, clear)
+    PaletteAccent(*rules, Sheet.StyleKindSlider(), palette.selected, palette.selected_text)
+    PaletteRole(*rules, Sheet.StyleKindSliderThumb(), Sheet.StyleAny(), palette.selected, palette.selected_text, clear)
+    PaletteRole(*rules, Sheet.StyleKindProgress(), Sheet.StyleAny(), tonal, fg, clear)
+    PaletteAccent(*rules, Sheet.StyleKindProgress(), palette.selected, palette.selected_text)
+    panels: [4]s32 = .{Sheet.StyleKindListBox(), Sheet.StyleKindListBoxMulti(), Sheet.StyleKindFieldset(), Sheet.StyleKindPopup()}
+    for index: 0..3 { PaletteRole(*rules, panels[index], Sheet.StyleAny(), palette.base, fg, palette.border) }
+    items: [3]s32 = .{Sheet.StyleKindListBoxItem(), Sheet.StyleKindListBoxMultiItem(), Sheet.StyleKindSelectable()}
+    for index: 0..2 {
+        Rule(*rules, items[index], clear, fg)
+        Rule(*rules, items[index], CssMix(palette.base, fg, 0.08), fg, cast(s32)Controls.ButtonState.ButtonStateHover)
+        Rule(*rules, items[index], CssMix(palette.base, fg, 0.12), fg, cast(s32)Controls.ButtonState.ButtonStatePressed)
+        Rule(*rules, items[index], CssMix(palette.base, palette.selected, 0.16), fg, selected_state)
+    }
+    // Card variants share semantic colours, including dark palettes.
+    for variant: cast(s32)0..2 {
+        card := *rules.items[rules.count]
+        rules.count += 1
+        card.selector = Sheet.StyleDefaultSelector()
+        card.selector.kind = Sheet.StyleKindCard()
+        card.selector.emphasis = variant
+        card.style.fields = cast(u32)Controls.StyleField.StyleBackground |
+            cast(u32)Controls.StyleField.StyleBorder
+        card.style.background = palette.base
+        if variant == cast(s32)Controls.ButtonEmphasis.ButtonEmphasisSoft {
+            card.style.background = CssMix(palette.base, palette.selected, 0.08)
+        }
+        card.style.border = palette.border
+    }
+    Rule(*rules, Sheet.StyleKindCard(), CssMix(palette.base, fg, 0.08), fg, hover_state)
+    Rule(*rules, Sheet.StyleKindCard(), CssMix(palette.base, fg, 0.12), fg,
+        cast(s32)Controls.ButtonState.ButtonStatePressed)
+    Rule(*rules, Sheet.StyleKindCard(), CssMix(palette.base, palette.selected, 0.16), fg, selected_state)
     return rules
 }
 

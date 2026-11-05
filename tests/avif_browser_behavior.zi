@@ -1,0 +1,42 @@
+// Canvas and DOM use PageImageDecode and the browser's own AVIF decoder.
+#import "page_texture"
+#import "web"
+#import "file"
+#import "text_tools"
+#import "std/byte_text_linux"
+browser_c :: #system_library "c";
+Release :: (pixels: *void) #foreign browser_c "free";
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+Check :: () -> string {
+    names: [9]string = .["rgba8", "rgba10", "rgba12", "gray8", "gray10", "gray12", "opaque", "premultiplied", "animated"]
+    for name: names {
+        parts: [3]string = .["/avif/", name, ".avif"]
+        data, ok := ReadEntireFile(TextJoin(parts[:], ""))
+        if !ok || data.count == 0 { return "fixture" }
+        parts[2] = ".rgba"
+        golden, found := ReadEntireFile(TextJoin(parts[:], ""))
+        if !found { return "golden" }
+        descriptor := cast(*TextDescriptor)(*data)
+        width: s32 = 0; height: s32 = 0
+        pixels := PageImageDecode(descriptor.data, cast(s32)data.count, *width, *height)
+        if pixels == null || width != 8 || height != 6 { return name }
+        good := true
+        for i: 0..golden.count - 1 {
+            alpha := cast(u8)golden[(i / 4) * 4 + 3]
+            if alpha == 0 && i % 4 != 3 { continue }
+            difference := cast(s32)pixels[i] - cast(s32)golden[i]
+            if difference < -5 || difference > 5 { good = false; break }
+        }
+        Release(cast(*void)pixels)
+        if !good { return name }
+    }
+    return "PASS"
+}
+#program_export
+main :: () -> s32 { Report(Check()); return 0 }

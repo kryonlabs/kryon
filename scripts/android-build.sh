@@ -52,6 +52,12 @@ if [ -z "$webp_dir" ] || [ ! -f "$webp_dir/CMakeLists.txt" ]; then
 fi
 KRYON_ANDROID_WEBP_DIR="$webp_dir"
 export KRYON_ANDROID_WEBP_DIR
+KRYON_ANDROID_AVIF_DIR="${KRYON_ANDROID_AVIF_DIR:-$("$ziran_bin" pkg path libavif)}"
+KRYON_ANDROID_AOM_DIR="${KRYON_ANDROID_AOM_DIR:-$("$ziran_bin" pkg path libaom)}"
+export KRYON_ANDROID_AVIF_DIR KRYON_ANDROID_AOM_DIR
+KRYON_AVIF_PACKAGE_DIR="$("$ziran_bin" pkg path avif)"
+KRYON_WEBP_PACKAGE_DIR="$("$ziran_bin" pkg path webp)"
+export KRYON_AVIF_PACKAGE_DIR KRYON_WEBP_PACKAGE_DIR
 
 if [ "$codegen" = "zx" ]; then
     python3 "$kryon_dir/scripts/android_scaffold.py" \

@@ -1,0 +1,28 @@
+#import "std/file_linux"
+#import "std/vec"
+#import "std/byte_text_linux"
+
+EmptyBytes :: () -> Vec(u8) { bytes: Vec(u8); return bytes }
+
+Fixture :: (directory: string, name: string, extension: string) -> Vec(u8) {
+    bytes: Vec(u8)
+    path: [4096]u8
+    if directory.count + name.count + extension.count + 1 > path.count { return EmptyBytes() }
+    at: s64 = 0
+    for value: directory { path[at] = value; at += 1 }
+    path[at] = 47; at += 1
+    for value: name { path[at] = value; at += 1 }
+    for value: extension { path[at] = value; at += 1 }
+    file := OpenRead(TextFromBytes(path[:at]))
+    if !file.valid { return EmptyBytes() }
+    defer { unused CloseFile(file) }
+    size := FileSize(file)
+    if size <= 0 || !VecResize(bytes, size) { return EmptyBytes() }
+    read: s64 = 0
+    while read < size {
+        count := ReadAt(file, VecSlice(bytes, read, size), read)
+        if count <= 0 { return EmptyBytes() }
+        read += count
+    }
+    return bytes
+}

@@ -14,6 +14,7 @@
 
 include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/WebP.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/AVIF.cmake")
 
 set(KRYON_ANDROID_NATIVE_APP_GLUE_DIR
     "${ANDROID_NDK}/sources/android/native_app_glue")
@@ -82,7 +83,16 @@ function(kryon_android_raylib raylib_dir)
     target_include_directories(raylib PUBLIC
         "${raylib_dir}" "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}")
     kryon_webp_decoder("${webp_dir}")
-    target_link_libraries(raylib PUBLIC kryonwebp)
+    set(avif_dir "${ARGV2}")
+    set(aom_dir "${ARGV3}")
+    if(avif_dir STREQUAL "")
+        set(avif_dir "$ENV{KRYON_ANDROID_AVIF_DIR}")
+    endif()
+    if(aom_dir STREQUAL "")
+        set(aom_dir "$ENV{KRYON_ANDROID_AOM_DIR}")
+    endif()
+    kryon_avif_decoder("${avif_dir}" "${aom_dir}")
+    target_link_libraries(raylib PUBLIC kryonwebp ziran_avif::static)
 endfunction()
 
 # Turn a shared library into a Kryon NativeActivity payload: add the NDK's

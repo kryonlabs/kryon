@@ -46,3 +46,16 @@ WebPAnimDecoderGetNext :: (decoder: *void, frame: **u8, timestamp: *s32) -> s32 
 }
 #program_export
 WebPAnimDecoderDelete :: (decoder: *void) { unused decoder }
+
+#program_export
+WebPGetDecoderVersion :: () -> s32 { return 0 }
+#program_export
+WebPDecodeRGBAInto :: (data: *u8, size: usize, output: *u8,
+    capacity: usize, stride: s32) -> *u8 {
+    unused data
+    unused size
+    unused output
+    unused capacity
+    unused stride
+    return null
+}

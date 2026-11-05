@@ -62,15 +62,15 @@ Theme :: #import "theme";
         cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
         cast(u32)StyleOpacity | cast(u32)StylePaddingX |
         cast(u32)StyleFontSize
-        face.background = cast(u32)0xffffffff
+        face.background = Theme.LightSunken()
         face.foreground = Theme.LightText()
         face.border = Theme.LightBorderStrong()
         face.focus = Theme.LightAccent()
-        face.radius = 8.0
+        face.radius = Theme.ShapeSmall()
         face.border_width = 1.0
         face.opacity = 1.0
-        face.padding_x = 10.0
-        face.font_size = 14.0
+        face.padding_x = 12.0
+        face.font_size = Theme.TypeLabel()
         return face
     }
 
@@ -549,11 +549,12 @@ Theme :: #import "theme";
             ColorFromPacked(Opacity(face.value.background,
             opacity)))
         border: u32 = face.value.border
-        if result.focused { border = face.value.focus }
+        border_width := face.value.border_width
+        if result.focused { border = face.value.focus; border_width = 2.0 }
         if face.value.border_width > 0.0 {
             PaintRoundedOutline(session, result.node, bounds,
                 face.value.radius, 12,
-                face.value.border_width,
+                border_width,
                 ColorFromPacked(Opacity(border, opacity)))
         }
         line_height: s32 = GlyphLineHeight(font,

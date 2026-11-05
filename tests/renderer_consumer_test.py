@@ -18,7 +18,7 @@ class VerifiedArtifact:
         self.root = root
         self.meta = meta
         self.declared = {'renderer.json', 'lib/second.a', 'lib/first.a',
-                         'font.ttf', 'font-license', 'web/glue.js'}
+                         'font.ttf', 'font-license', 'web/glue.js', 'lib/libkryonavif.so'}
 
     def metadata(self, name):
         assert name == 'renderer.json'
@@ -66,6 +66,14 @@ class RendererConsumerTest(unittest.TestCase):
         self.assertEqual(result['resources']['font'], str(self.root / 'font.ttf'))
         self.assertEqual(self.meta['archives'][0], 'lib/second.a')
 
+    def test_packaged_cpu_codec_is_retained_for_installers(self):
+        self.meta.update(artifact='renderer-desktop', shared_libraries=['lib/libkryonavif.so'])
+        result = self.consume()
+        flags = renderer.renderer_link(result)
+        self.assertEqual(flags[-5:], ['-Wl,--no-as-needed',
+            str(self.root / 'lib/libkryonavif.so'), '-Wl,--as-needed',
+            '-Wl,-rpath,' + str(self.root / 'lib'), '-Wl,-rpath,$ORIGIN/../lib'])
+
     def test_web_glue_and_virtual_preloads(self):
         self.meta.update(artifact='renderer-web', platform='emscripten-wasm32-emscripten', archives=[],
             include_directories=[], js_libraries=['web/glue.js'],
@@ -82,7 +90,7 @@ class RendererConsumerTest(unittest.TestCase):
             self.consume()
 
     def test_bad_field_types_fail(self):
-        for field in ('compile_flags', 'link_flags', 'defines', 'archives', 'include_directories', 'js_libraries'):
+        for field in ('compile_flags', 'link_flags', 'defines', 'archives', 'shared_libraries', 'include_directories', 'js_libraries'):
             for value in (None, 'one string', [False], [''], ['bad\nargument']):
                 original = self.meta.get(field, [])
                 self.meta[field] = value

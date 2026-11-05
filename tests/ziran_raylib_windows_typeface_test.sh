@@ -21,17 +21,15 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 source=$repo/tests/raylib_typeface_windows_test.zi
-"$ziran" ir --define _WIN32 --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
-    --module-path "$ziran_root/std" -o "$work/ir" "$source"
+"$ziran" ir --project --define _WIN32 --root "$repo/tests" \
+    -o "$work/ir" "$source"
 for form in source saved; do
     input=$source
     if test "$form" = saved; then input=$work/ir/raylib_typeface_windows_test.zir; fi
     for target in c; do
         output=$work/$form-$target
-        "$ziran" build --target="$target" --define _WIN32 --root "$repo/tests" \
-            --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
-            --module-path "$ziran_root/std" -o "$output" "$input"
+        "$ziran" build --project --target="$target" --define _WIN32 --root "$repo/tests" \
+            -o "$output" "$input"
         if test -e "$output/system_typeface_linux.c" || \
             test -e "$output/system_typeface_linux.cpp" || \
             test -e "$output/system_typeface_android.c" || \

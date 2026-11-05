@@ -56,7 +56,7 @@ Init :: () -> bool {
 }
 
 OpenImage :: (path: *u8) -> *void {
-    if !Init() { return null }
+    if AVIFFile(TextFromCString(path)) || !Init() { return null }
     width: s32; height: s32
     if info(path, *width, *height) == null || width <= 0 || height <= 0 { return null }
     if width > 32768 || height > 32768 || cast(s64)width * cast(s64)height > ImagePixelLimit {
@@ -102,137 +102,70 @@ CopyPixels :: (image: *void, destination: *u8, stride: s32) -> bool {
 // decode to straight RGBA, and an animation to its first complete frame.
 #import "std/file_linux"
 #import "std/byte_text_linux"
-WebPInfo :: #type (data: *u8, size: usize, width: *s32, height: *s32) -> s32 #c_call;
-WebPDecode :: #type (data: *u8, size: usize, width: *s32, height: *s32) -> *u8 #c_call;
-WebPBuffer :: #type (size: usize) -> *u8 #c_call;
-WebPRelease :: #type (pixels: *u8) -> void #c_call;
-WebPOptionsInit :: #type (options: *void, version: s32) -> s32 #c_call;
-WebPAnimationNew :: #type (data: *void, options: *void, version: s32) -> *void #c_call;
-WebPAnimationInfo :: #type (decoder: *void, info: *void) -> s32 #c_call;
-WebPAnimationNext :: #type (decoder: *void, frame: **u8, timestamp: *s32) -> s32 #c_call;
-WebPAnimationDelete :: #type (decoder: *void) -> void #c_call;
-WebPSource :: struct { bytes: *u8; size: usize; }
-WebPOptions :: struct { color_mode: s32; use_threads: s32; padding: [7]u32; }
-WebPCanvas :: struct { width: u32; height: u32; loop_count: u32; background: u32; frames: u32; padding: [4]u32; }
-webp_info: WebPInfo;
-webp_decode: WebPDecode;
-webp_malloc: WebPBuffer;
-webp_free: WebPRelease;
-webp_options_init: WebPOptionsInit;
-webp_animation_new: WebPAnimationNew;
-webp_animation_info: WebPAnimationInfo;
-webp_animation_next: WebPAnimationNext;
-webp_animation_delete: WebPAnimationDelete;
+NativeWebp :: #import "webp/dynamic";
+Codecs :: #import "image_codec/api";
+WebpRiff :: #import "webp/riff";
+WebpEngine :: #import "webp/engine";
+#import "ziran_image_decode"
+webp_engine: NativeWebp.DynamicWebpEngine;
 webp_initialized: bool;
 webp_available: bool;
-webp_library: *void;
 
-WebPImage :: struct {
-    pixels: *u8
-    width: s32
-    height: s32
-}
+// POD storage retained only until the host has copied/uploaded the pixels.
+// Both package output paths use libc allocation; avif preserves the existing
+// allocator discriminator for callers that share the still-image close path.
+WebPImage :: struct { pixels: *u8; width: s32; height: s32; avif: bool; }
 
 WebPInit :: () -> bool {
     if webp_initialized { return webp_available }
     webp_initialized = true
-    name: [64]u8
-    unused CopyCString("libwebpdemux.so.2", name[:])
-    webp_library = Open(*name[0], 1)
-    if webp_library == null { return false }
-    webp_available = WebPResolve(cast(*void)*webp_info, "WebPGetInfo") &&
-        WebPResolve(cast(*void)*webp_decode, "WebPDecodeRGBA") &&
-        WebPResolve(cast(*void)*webp_malloc, "WebPMalloc") &&
-        WebPResolve(cast(*void)*webp_free, "WebPFree") &&
-        WebPResolve(cast(*void)*webp_options_init, "WebPAnimDecoderOptionsInitInternal") &&
-        WebPResolve(cast(*void)*webp_animation_new, "WebPAnimDecoderNewInternal") &&
-        WebPResolve(cast(*void)*webp_animation_info, "WebPAnimDecoderGetInfo") &&
-        WebPResolve(cast(*void)*webp_animation_next, "WebPAnimDecoderGetNext") &&
-        WebPResolve(cast(*void)*webp_animation_delete, "WebPAnimDecoderDelete")
+    webp_engine = NativeWebp.OpenDynamicWebp("libwebpdemux.so.2")
+    webp_available = webp_engine.available
     return webp_available
 }
 
-// dlsym also searches libwebpdemux's own dependency, libwebp.
-WebPResolve :: (slot: *void, name: string) -> bool {
-    bytes: [64]u8
-    if !CopyCString(name, bytes[:]) { return false }
-    symbol := Symbol(webp_library, *bytes[0])
-    if symbol == null { return false }
-    unused Copy(slot, cast(*void)*symbol, size_of(*void))
-    return true
-}
-
-// The first animation frame, in a WebPMalloc copy of the demuxer's canvas.
-WebPFirstFrame :: (data: *u8, size: usize, width: *s32, height: *s32) -> *u8 {
-    options: WebPOptions
-    // libwebp's demux ABI 1.7 and MODE_RGBA.
-    if webp_options_init(cast(*void)*options, 0x0107) == 0 { return null }
-    options.color_mode = 1
-    options.use_threads = 0
-    source := WebPSource.{data, size}
-    decoder := webp_animation_new(cast(*void)*source, cast(*void)*options, 0x0107)
-    if decoder == null { return null }
-    pixels: *u8 = null
-    canvas: WebPCanvas
-    frame: *u8 = null
-    timestamp: s32 = 0
-    if webp_animation_info(decoder, cast(*void)*canvas) != 0 && canvas.width > 0 &&
-        canvas.height > 0 && canvas.width <= 32768 && canvas.height <= 32768 &&
-        cast(s64)canvas.width * cast(s64)canvas.height <= ImagePixelLimit &&
-        webp_animation_next(decoder, *frame, *timestamp) != 0 && frame != null {
-        count := cast(usize)canvas.width * cast(usize)canvas.height * cast(usize)4
-        pixels = webp_malloc(count)
-        if pixels != null {
-            unused Copy(cast(*void)pixels, cast(*void)frame, count)
-            width.* = cast(s32)canvas.width
-            height.* = cast(s32)canvas.height
-        }
-    }
-    webp_animation_delete(decoder)
-    return pixels
-}
-
-// The file's pixels when it is a WebP file and libwebp is installed; empty
-// otherwise, so other formats keep their GdkPixbuf and Cairo PNG paths.
 OpenWebP :: (path: string) -> WebPImage {
     file := OpenRead(path)
     if !file.valid { return WebPImage.{} }
+    defer { unused CloseFile(file) }
     header: [12]u8
     size := FileSize(file)
+    // Cairo's encoded-file budget remains 256 MiB. The static WebP adapter
+    // separately retains its existing 2 GiB input ceiling.
     if size < 12 || size > 268435456 || ReadAt(file, header[:], 0) != 12 ||
-        header[0] != 82 || header[1] != 73 || header[2] != 70 || header[3] != 70 ||
-        header[8] != 87 || header[9] != 69 || header[10] != 66 || header[11] != 80 ||
-        !WebPInit() {
-        unused CloseFile(file)
-        return WebPImage.{}
-    }
-    data := webp_malloc(cast(usize)size)
+        !ImageWebpSignature(TextFromBytes(header[:])) || !WebPInit() { return WebPImage.{} }
+    data := ImagePixelsAllocate(cast(usize)size)
+    if data == null { return WebPImage.{} }
+    defer { ImagePixelsFree(data) }
     read: s64 = 0
-    while data != null && read < size {
+    while read < size {
         count := ReadAt(file, BytesFromPointer(*data[read], cast(u64)(size - read)), read)
-        if count <= 0 { break }
+        if count <= 0 { return WebPImage.{} }
         read += count
     }
-    unused CloseFile(file)
-    image: WebPImage
-    if data != null && read == size {
-        width: s32 = 0
-        height: s32 = 0
-        if webp_info(data, cast(usize)size, *width, *height) != 0 && width > 0 && height > 0 &&
-            width <= 32768 && height <= 32768 &&
-            cast(s64)width * cast(s64)height <= ImagePixelLimit {
-            pixels := webp_decode(data, cast(usize)size, *width, *height)
-            if pixels == null { pixels = WebPFirstFrame(data, cast(usize)size, *width, *height) }
-            if pixels != null { image = WebPImage.{pixels, width, height} }
-        }
+    options := WebpEngine.WebpDefaultOptions()
+    options.limits.max_input_bytes = 268435456
+    options.limits.max_frames = 2147483647
+    options.limits.max_metadata_bytes = options.limits.max_input_bytes
+    input := ImageEncodedBytes(TextFromBytes(BytesFromPointer(data, cast(u64)size)))
+    probe := WebpRiff.WebpProbe(input, options.limits)
+    if !probe.is_ok { return WebPImage.{} }
+    count := cast(s64)probe.metadata.width * probe.metadata.height * 4
+    pixels := ImagePixelsAllocate(cast(usize)count)
+    if pixels == null { return WebPImage.{} }
+    output := Codecs.OutputBuffer.{BytesFromPointer(pixels, cast(u64)count), cast(s64)probe.metadata.width * 4}
+    result := NativeWebp.DynamicWebpDecodeInto(*webp_engine, input, output, options)
+    if !result.is_ok || result.metadata.width != probe.metadata.width || result.metadata.height != probe.metadata.height {
+        ImagePixelsFree(pixels); return WebPImage.{}
     }
-    if data != null { webp_free(data) }
-    return image
+    return WebPImage.{pixels, result.metadata.width, result.metadata.height, false}
 }
 
 // Straight RGBA to Cairo's premultiplied ARGB32 rows of the given stride.
 CopyWebP :: (image: WebPImage, destination: *u8, stride: s32) -> bool {
-    if image.pixels == null || destination == null || stride < image.width * 4 { return false }
+    if image.pixels == null || destination == null || image.width <= 0 || image.height <= 0 ||
+        image.width > 32768 || image.height > 32768 ||
+        cast(s64)image.width * image.height > ImagePixelLimit || stride < image.width * 4 { return false }
     for y: 0..image.height - 1 {
         for x: 0..image.width - 1 {
             input := (y * image.width + x) * 4
@@ -240,7 +173,7 @@ CopyWebP :: (image: WebPImage, destination: *u8, stride: s32) -> bool {
             red := (cast(u32)image.pixels[input] * alpha + 127) / 255
             green := (cast(u32)image.pixels[input + 1] * alpha + 127) / 255
             blue := (cast(u32)image.pixels[input + 2] * alpha + 127) / 255
-            pixel := cast(*u32)(*destination[y * stride + x * 4])
+            pixel := cast(*u32)(*destination[cast(s64)y * stride + x * 4])
             pixel.* = (alpha << 24) | (red << 16) | (green << 8) | blue
         }
     }
@@ -248,5 +181,118 @@ CopyWebP :: (image: WebPImage, destination: *u8, stride: s32) -> bool {
 }
 
 CloseWebP :: (image: WebPImage) {
-    if image.pixels != null { webp_free(image.pixels) }
+    if image.pixels != null { ImagePixelsFree(image.pixels) }
+}
+
+// Packaged CPU AVIF decoder. It is independent of GdkPixbuf's loader set.
+#import "avif_decode"
+avif_api: AvifAPI;
+avif_library: *void;
+avif_initialized: bool;
+avif_available: bool;
+AvifReadLink :: (path: *u8, output: *u8, capacity: usize) -> isize #foreign c "readlink";
+AvifGetEnv :: (name: *u8) -> *u8 #foreign c "getenv";
+AvifResolve :: (slot: *void, name: string) -> bool {
+    bytes: [64]u8
+    if !CopyCString(name, bytes[:]) { return false }
+    symbol := Symbol(avif_library, *bytes[0])
+    if symbol == null { return false }
+    unused Copy(slot, cast(*void)*symbol, size_of(*void))
+    return true
+}
+AvifOpenLibrary :: (path: string) -> *void {
+    bytes: [4096]u8
+    if !CopyCString(path, bytes[:]) { return null }
+    return Open(*bytes[0], 1)
+}
+AvifInit :: () -> bool {
+    if avif_initialized { return avif_available }
+    avif_initialized = true
+    name: [32]u8
+    unused CopyCString("KRYON_AVIF_LIBRARY", name[:])
+    explicit := AvifGetEnv(*name[0])
+    if explicit != null { avif_library = AvifOpenLibrary(TextFromCString(explicit)) }
+    if avif_library == null { avif_library = AvifOpenLibrary("libkryonavif.so") }
+    // Installed binaries and AppDirs can carry the codec next to the executable
+    // or in their lib directory. Never depend on the process working directory.
+    if avif_library == null {
+        unused CopyCString("/proc/self/exe", name[:])
+        executable: [4096]u8
+        count := AvifReadLink(*name[0], *executable[0], 4095)
+        if count > 0 && count < 4095 {
+            slash := count - 1
+            while slash >= 0 && executable[slash] != 47 { slash -= 1 }
+            if slash >= 0 {
+                directory := TextFromBytes(executable[:slash + 1])
+                suffixes: [3]string = .["libkryonavif.so", "lib/libkryonavif.so", "../lib/libkryonavif.so"]
+                for suffix: suffixes {
+                    full: [4096]u8
+                    if directory.count + suffix.count + 1 > full.count { continue }
+                    for i: 0..directory.count - 1 { full[i] = directory[i] }
+                    for i: 0..suffix.count - 1 { full[directory.count + i] = suffix[i] }
+                    full[directory.count + suffix.count] = 0
+                    avif_library = Open(*full[0], 1)
+                    if avif_library != null { break }
+                }
+            }
+        }
+    }
+    if avif_library == null { return false }
+    avif_available = AvifResolve(cast(*void)*avif_api.version, "avifVersion") &&
+        AvifResolve(cast(*void)*avif_api.create, "avifDecoderCreate") &&
+        AvifResolve(cast(*void)*avif_api.destroy, "avifDecoderDestroy") &&
+        AvifResolve(cast(*void)*avif_api.memory, "avifDecoderSetIOMemory") &&
+        AvifResolve(cast(*void)*avif_api.parse, "avifDecoderParse") &&
+        AvifResolve(cast(*void)*avif_api.next, "avifDecoderNextImage") &&
+        AvifResolve(cast(*void)*avif_api.defaults, "avifRGBImageSetDefaults") &&
+        AvifResolve(cast(*void)*avif_api.convert, "avifImageYUVToRGB") &&
+        AvifResolve(cast(*void)*avif_api.crop, "avifCropRectConvertCleanApertureBox")
+    return avif_available
+}
+OpenAVIF :: (path: string) -> WebPImage {
+    file := OpenRead(path)
+    if !file.valid { return WebPImage.{} }
+    defer { unused CloseFile(file) }
+    size := FileSize(file)
+    header: [4096]u8
+    if size < 16 || size > AVIF_BYTE_LIMIT { return WebPImage.{} }
+    wanted := ifx size < 4096 then size else 4096
+    count := ReadAt(file, header[:wanted], 0)
+    if count != wanted || !AvifSignature(TextFromBytes(header[:count])) || !AvifInit() { return WebPImage.{} }
+    data := AvifAllocate(cast(usize)size)
+    if data == null { return WebPImage.{} }
+    defer { AvifFree(data) }
+    read: s64 = 0
+    while read < size {
+        count = ReadAt(file, BytesFromPointer(*data[read], cast(u64)(size - read)), read)
+        if count <= 0 { return WebPImage.{} }
+        read += count
+    }
+    width: s32 = 0; height: s32 = 0
+    pixels := AvifDecode(avif_api, TextFromBytes(BytesFromPointer(data, cast(u64)size)), *width, *height)
+    return WebPImage.{pixels, width, height, true}
+}
+OpenStill :: (path: string) -> WebPImage {
+    image := OpenAVIF(path)
+    if image.pixels != null { return image }
+    return OpenWebP(path)
+}
+CloseStill :: (image: WebPImage) {
+    if image.avif {
+        if image.pixels != null { AvifFree(image.pixels) }
+    } else { CloseWebP(image) }
+}
+
+// A recognized AVIF failure must not fall through to an unbounded system
+// loader and bypass the packaged decoder's allocation limits.
+AVIFFile :: (path: string) -> bool {
+    file := OpenRead(path)
+    if !file.valid { return false }
+    defer { unused CloseFile(file) }
+    header: [4096]u8
+    size := FileSize(file)
+    if size < 16 { return false }
+    wanted := ifx size < 4096 then size else 4096
+    count := ReadAt(file, header[:wanted], 0)
+    return count == wanted && AvifSignature(TextFromBytes(header[:count]))
 }

@@ -160,19 +160,38 @@ layout: *void;
 font_description: *void;
 font_family: [256]u8;
 text_error: bool;
-layout_font: s32;
-layout_length: s64;
+// Pango owns each cached string and glyph run. A short bounded working set
+// avoids reshaping labels as measurement and painting alternate between them.
+ShapedEntry :: struct { layout: *void; font: s32; length: s64; }
+SHAPED_LAYOUT_LIMIT :: 8;
+SHAPED_LABEL_BYTES :: 256;
+shaped_entries: [SHAPED_LAYOUT_LIMIT]ShapedEntry;
+shaped_next: s32;
+
 
 ShapedLayout :: (value: string, font: s32, typeface: string) -> bool {
     if layout == null || font <= 0 || value.count > 2147483647 { return false }
-    if layout_font == font && layout_length == value.count {
-        stored: *u8 = LayoutTextPointer(layout)
-        same: bool = true
-        for byte: 0..cast(s32)value.count - 1 {
+    for index: cast(s32)0..SHAPED_LAYOUT_LIMIT - 1 {
+        entry := shaped_entries[index]
+        if entry.layout == null || entry.font != font || entry.length != value.count { continue }
+        stored := LayoutTextPointer(entry.layout)
+        same := true
+        for byte: cast(s64)0..value.count - 1 {
             if stored[byte] != value[byte] { same = false; break }
         }
-        if same { return true }
+        if same { layout = entry.layout; return true }
     }
+    slot := shaped_next
+    // Long editor runs share one slot, so eight large documents cannot
+    // accumulate merely because the host measured them in succession.
+    if value.count > SHAPED_LABEL_BYTES { slot = 0 }
+    else { shaped_next = (shaped_next + 1) % SHAPED_LAYOUT_LIMIT }
+    if shaped_entries[slot].layout == null {
+        shaped_entries[slot].layout = LayoutNew(paint)
+        if shaped_entries[slot].layout == null { return false }
+        LayoutSingleParagraph(shaped_entries[slot].layout, 1)
+    }
+    layout = shaped_entries[slot].layout
     if !Utf8.Valid(value) { return false }
     FontFamily(font_description, *font_family[0])
     // Text paint effects carry the host font, so measurement uses it too.
@@ -192,7 +211,8 @@ ShapedLayout :: (value: string, font: s32, typeface: string) -> bool {
     for byte: 0..cast(s32)value.count - 1 { layout_bytes[byte] = value[byte] }
     layout_bytes[value.count] = 0
     LayoutText(layout, layout_bytes, cast(s32)value.count)
-    layout_font = font; layout_length = value.count
+    shaped_entries[slot].font = font
+    shaped_entries[slot].length = value.count
     return true
 }
 
@@ -388,8 +408,9 @@ OpenRaster :: (width: s32, height: s32) -> bool {
             FontQueryFree(pattern)
         }
     }
-    layout_font = 0; layout_length = 0
+    shaped_next = 0
     layout = LayoutNew(paint)
+    shaped_entries[0].layout = layout
     font_description = FontDescriptionNew()
     if layout == null || font_description == null { CloseRaster(); return false }
     LayoutSingleParagraph(layout, 1)
@@ -405,7 +426,11 @@ CloseRaster :: () {
     video_revision = 0; video_width = 0; video_height = 0
     GlyphCaretClear()
     if layout_bytes != null { LayoutFree(layout_bytes) }; layout_bytes = null; layout_capacity = 0
-    if layout != null { LayoutUnref(layout) }; layout = null
+    for index: cast(s32)0..SHAPED_LAYOUT_LIMIT - 1 {
+        if shaped_entries[index].layout != null { LayoutUnref(shaped_entries[index].layout) }
+        shaped_entries[index] = .{}
+    }
+    layout = null
     if font_description != null { FontDescriptionFree(font_description) }; font_description = null
     for i: 0..127 {
         if cached_images[i].image != null { SurfaceDestroy(cached_images[i].image) }
@@ -639,9 +664,9 @@ LoadPNG :: (asset_path: string) -> *void {
     path: [4096]u8
     if !CopyCString(asset_path, path[:]) { return null }
     image: *void
-    // WebP files are recognized by content; other formats keep GdkPixbuf
+    // AVIF and WebP are recognized by content; other formats keep GdkPixbuf
     // and, without it, Cairo's PNG reader.
-    webp := Decode.OpenWebP(asset_path)
+    webp := Decode.OpenStill(asset_path)
     if webp.pixels != null {
         image = ImageSurfaceCreate(0, webp.width, webp.height)
         if image == null || SurfaceStatus(image) != 0 ||
@@ -649,9 +674,9 @@ LoadPNG :: (asset_path: string) -> *void {
             if image != null { SurfaceDestroy(image) }
             image = null
         }
-        Decode.CloseWebP(webp)
+        Decode.CloseStill(webp)
         if image != null { SurfaceMarkDirty(image) }
-    } else {
+    } else if !Decode.AVIFFile(asset_path) {
         decoded := Decode.OpenImage(*path[0])
         if decoded != null {
             image = ImageSurfaceCreate(0, Decode.Width(decoded), Decode.Height(decoded))

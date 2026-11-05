@@ -1,0 +1,39 @@
+#import "pixmap"
+Decode :: #import "image_decode_linux"
+#import "std/byte_text_linux"
+#import "file"
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 3 { return 1 }
+    image := Decode.OpenAVIF(TextFromCString(argv[1]))
+    if image.pixels == null || image.width != 8 || image.height != 6 { return 2 }
+    defer { Decode.CloseStill(image) }
+    golden, found := ReadEntireFile(TextFromCString(argv[2]))
+    if !found || golden.count != 192 { return 3 }
+    source: [48]u32
+    for i: 0..47 {
+        at := i * 4
+        source[i] = (cast(u32)image.pixels[at + 3] << 24) | (cast(u32)image.pixels[at] << 16) |
+            (cast(u32)image.pixels[at + 1] << 8) | cast(u32)image.pixels[at + 2]
+    }
+    // The pure pixel renderer borrows caller-owned straight ARGB pixels,
+    // independently of the format used by the host to decode the asset.
+    if !PixmapSetImage(0,"AVIF fixture",8,6,source[:]) { return 4 }
+    defer { PixmapClearImage(0); PixmapCloseWorkers() }
+    output: [4800]u32
+    if !PixmapBeginInto(cast(u32)0,80,60,output[:],true) { return 5 }
+    RasterImage("AVIF fixture",0,.{0.0,0.0,8.0,6.0},.{0.0,0.0,80.0,60.0},
+        .{0.0,0.0,80.0,60.0},.{0.0,0.0},0.0,0.0,.{255,255,255,255})
+    PixmapEndInto()
+    for y: 0..5 { for x: 0..7 {
+        at := (y * 8 + x) * 4
+        alpha := cast(u32)golden[at + 3]
+        r := (cast(u32)golden[at] * alpha + 127) / 255
+        g := (cast(u32)golden[at + 1] * alpha + 127) / 255
+        b := (cast(u32)golden[at + 2] * alpha + 127) / 255
+        expected := cast(u32)0xff000000 | (r << 16) | (g << 8) | b
+        if output[(y * 10 + 5) * 80 + x * 10 + 5] != expected { return 6 }
+    } }
+    print("AVIF decoded RGBA registration and pure Pixmap alpha raster passed\n")
+    return 0
+}

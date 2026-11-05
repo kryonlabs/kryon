@@ -43,13 +43,13 @@ ModalFrameDefaultFace :: (role: s32) -> StyleData {
         cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
         cast(u32)StyleRadius | cast(u32)StyleOpacity |
         cast(u32)StyleFontSize
-    face.background = cast(u32)0xffffffff
+    face.background = Theme.LightSurface()
     face.foreground = Theme.LightText()
     face.border = Theme.LightBorderStrong()
-    face.border_width = 1.0
-    face.radius = 8.0
+    face.border_width = 0.0
+    face.radius = Theme.ShapeLarge()
     face.opacity = 1.0
-    face.font_size = 18.0
+    face.font_size = Theme.TypeTitle()
     if role == ModalScrimRole() {
         face.background = cast(u32)0x00000080
         face.border_width = 0.0
@@ -153,6 +153,8 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
     if overlay.closed || result.panel_node < 0 { return result }
     opacity: float32 = StyleOpacityValue(panel.value.fields,
         panel.value.opacity)
+    PaintElevation(session, result.panel_node, result.layout.panel,
+        panel.value.radius, opacity)
     PaintRoundedFill(session, result.panel_node, result.layout.panel,
         panel.value.radius, 12,
         ColorFromPacked(Opacity(panel.value.background, opacity)))

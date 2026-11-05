@@ -43,13 +43,14 @@
         disabled: bool) -> StyleData {
         face: StyleData
         face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
-            cast(u32)StyleBorder | cast(u32)StyleBorderWidth |
+            cast(u32)StyleBorder | cast(u32)StyleBorderWidth | cast(u32)StyleFocus |
             cast(u32)StyleOpacity | cast(u32)StyleFontSize
         face.background = Theme.LightBorder()
         face.foreground = Theme.LightText()
+        face.focus = Theme.LightAccent()
         face.border = cast(u32)0x00000000
         face.opacity = 1.0
-        face.font_size = 14.0
+        face.font_size = Theme.TypeLabel()
         if kind == StyleKindSliderThumb() {
             face.background = cast(u32)0xffffffff
             face.border = Theme.LightBorderStrong()
@@ -82,6 +83,7 @@
 
     SliderPrepared :: struct {
         key: u64
+        focus_visible: bool
         drag: PointerDrag
         layout: SliderLayout
         spec: SliderSpec
@@ -105,6 +107,7 @@
         if TreeIsBuilding(session) {
             previous = TreePrevious(session, TreeCurrentParent(session), prepared.key, WidgetKindSlider)
         }
+        prepared.focus_visible = !disabled && TreeFocusVisibleAt(session, previous)
         prepared.drag = TreeTakeDragAt(session, previous)
         hovered: bool = TreeHoveredAt(session, previous)
         pressed: bool = prepared.drag.active || TreePressedAt(session, previous)
@@ -256,6 +259,13 @@
             TreeSetDragCapture(session, node, true)
             if semantic_label == "" { semantic_label = label_text }
             TreeSetLabel(session, node, semantic_label)
+        }
+        if prepared.focus_visible {
+            focus_bounds := Rectangle.{paint.thumb_x - paint.thumb_radius - 3.0,
+                paint.thumb_y - paint.thumb_radius - 3.0,
+                (paint.thumb_radius + 3.0) * 2.0, (paint.thumb_radius + 3.0) * 2.0}
+            PaintRoundedOutline(session, node, focus_bounds, PillRadius(focus_bounds),
+                16, 2.0, ColorFromPacked(paint.thumb.value.focus))
         }
         PaintSliderForNode(session, node, paint, label_text,
             prepared.value_text, prepared.layout, prepared.label,

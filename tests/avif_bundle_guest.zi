@@ -1,0 +1,22 @@
+#import "app_context"
+#import "app_protocol"
+#import "image_widget"
+#import "image_props"
+#import "geometry"
+#program_export
+main :: () -> s32 {
+    mode := AppMode()
+    if mode == APP_IDENTIFY {
+        AppIdentity("kryon.avif.test")
+        AppDescribe("AVIF portable test","")
+        return APP_PROTOCOL
+    }
+    if mode != APP_FRAME { return 0 }
+    props: ImageProps
+    props.key = cast(u64)1
+    props.asset_path = "assets/image"
+    props.bounds = .{0.0,0.0,80.0,60.0}
+    props.alt_text = "AVIF alpha fixture"
+    Image(AppSession(),props)
+    return 0
+}

@@ -55,7 +55,7 @@ Theme :: #import "theme";
         face.opacity = 1.0
         face.padding_x = 120.0
         face.padding_y = 6.0
-        face.font_size = 14.0
+        face.font_size = Theme.TypeLabel()
         face.icon_size = 32.0
         face.gap = 4.0
         face.offset_x = 240.0

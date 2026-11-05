@@ -50,7 +50,7 @@ kryon_android_app(app)
 SOURCE_PROJECT = '''cmake_minimum_required(VERSION 3.22)
 project(KryonSourceRendererLink C)
 include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
-kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}")
+kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}" "${AVIF_DIR}" "${AOM_DIR}")
 add_library(app SHARED app.c)
 target_link_options(app PRIVATE -Wl,--no-undefined)
 kryon_android_app(app)
@@ -97,7 +97,7 @@ def build(project, output, ndk, zi2c, raylib, webp, abi="armeabi-v7a"):
          f"-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake",
          f"-DANDROID_ABI={abi}", "-DANDROID_PLATFORM=android-21",
          "-DCMAKE_BUILD_TYPE=Release", f"-DKRYON_DIR={ROOT}",
-         f"-DRAYLIB_DIR={raylib}/src", f"-DWEBP_DIR={webp}",
+         f"-DAVIF_DIR={package('libavif')}", f"-DAOM_DIR={package('libaom')}", f"-DRAYLIB_DIR={raylib}/src", f"-DWEBP_DIR={webp}",
          f"-DZI2C_BIN={zi2c}"])
     run(["cmake", "--build", output, "--target", "app", "--parallel", "2"])
 

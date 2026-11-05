@@ -1,0 +1,62 @@
+// Actual large YUV420 input which faulted in libaom's ARMv7 CfL NEON path.
+Pixels :: #import "raylib_image_decode";
+#import "file"
+#import "text_tools"
+#if #defined(ANDROID_BUILD) {
+    Threads :: #import "std/thread_linux";
+}
+
+AvifTitlePixels :: (image: Pixels.RaylibGlyphImage, golden: string) -> bool {
+    if image.data == null || image.width != 1024 || image.height != 1536 ||
+        image.format != 7 || golden.count != 256 {
+        print("Title dimensions/format: %, %, %; golden bytes: %\n", image.width, image.height, image.format, golden.count)
+        return false
+    }
+    pixels := cast(*u8)image.data
+    for y: 0..7 {
+        for x: 0..7 {
+            offset := ((y * 192 + 96) * 1024 + x * 128 + 64) * 4
+            for channel: 0..3 {
+                difference := cast(s32)pixels[offset + channel] - cast(s32)golden[(y * 8 + x) * 4 + channel]
+                if difference < -3 || difference > 3 {
+                    print("Title sample %, % channel %: got % expected %\n", x, y, channel,
+                        pixels[offset + channel], cast(u8)golden[(y * 8 + x) * 4 + channel])
+                    return false
+                }
+            }
+        }
+    }
+    for pixel: 0..1024 * 1536 - 1 {
+        if pixels[pixel * 4 + 3] != 255 { print("Title alpha at pixel % is not opaque\n", pixel); return false }
+    }
+    return true
+}
+
+AvifTitleFixture :: (directory: string) -> bool {
+    parts: [2]string = .[directory, "/jungle-title.avif"]
+    data, found := ReadEntireFile(TextJoin(parts[:], ""))
+    parts[1] = "/jungle-title-samples.rgba"
+    golden, sampled := ReadEntireFile(TextJoin(parts[:], ""))
+    if !found || !sampled || data.count != 83822 {
+        print("Title fixture missing/changed: % bytes; golden % bytes\n", data.count, golden.count)
+        return false
+    }
+    print("Decoding large YUV420 title fixture\n")
+    image := Pixels.RaylibDecodeImage("assets/extensionless", data)
+    good := AvifTitlePixels(image, golden)
+    Pixels.RaylibImageRelease(image)
+    if !good { return false }
+    #if #defined(ANDROID_BUILD) {
+        // Exercise the same background worker used by APK image loading.
+        job: Pixels.RaylibImageJob
+        if !Pixels.RaylibImageStart(*job, "assets/title.avif", data) { return false }
+        Threads.ThreadWait(*job.thread)
+        image = Pixels.RaylibImageTake(*job)
+        good = AvifTitlePixels(image, golden)
+        Pixels.RaylibImageRelease(image)
+        Pixels.RaylibImageClose(*job)
+        if !good { return false }
+    }
+    print("Large YUV420 title pixels passed\n")
+    return true
+}

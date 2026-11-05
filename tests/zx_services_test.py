@@ -1,4 +1,6 @@
 """Run one service-bearing ZX on native and browser players, with local HTTP."""
+
+from toolchain import JS_RUNTIME
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import argparse
 import json
@@ -150,7 +152,7 @@ try:
         (output / 'native.log').write_text(result.stdout + result.stderr)
         assert result.returncode == 0 and 'ZX media, HTTP and clock passed' in result.stdout, result.stdout + result.stderr
     if not args.skip_browser and not args.android_serial:
-        subprocess.run(['node', str(ROOT / 'tests/zx_canvas_browser.mjs'),
+        subprocess.run([JS_RUNTIME, str(ROOT / 'tests/zx_canvas_browser.mjs'),
                         str(ROOT / 'build/zx-canvas/player.html'), 'services', str(bundle)],
                        env=env, check=True, timeout=90)
 finally:

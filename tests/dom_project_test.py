@@ -10,7 +10,7 @@ import struct
 import sys
 import zlib
 
-from toolchain import ZIRAN, ZIRAN_ROOT
+from toolchain import JS_RUNTIME, ZIRAN, ZIRAN_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV = dict(os.environ)
@@ -108,7 +108,7 @@ with (project / "lock").open("w") as lock:
     if os.environ.get("KRYON_DOM_PRESS"):
         (project / "src/app.zi").write_text((ROOT / "tests/fixtures/dom_press_point.zi").read_text())
         driver = ROOT / "tests/dom_press_point_browser.mjs"
-    runner = "node"
+    runner = JS_RUNTIME
     if os.environ.get("KRYON_DOM_PRESS_MOVE"):
         (project / "src/app.zi").write_text((ROOT / "tests/fixtures/dom_press_move.zi").read_text())
         driver = ROOT / "tests/dom_press_move_browser.py"

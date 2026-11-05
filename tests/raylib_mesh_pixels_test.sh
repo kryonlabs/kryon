@@ -19,7 +19,7 @@ raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl 
     --module-path "$ziran_root/std" -o "$work/c" \
     "$repo/tests/raylib_mesh_pixels_test.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
-    -Wl,--gc-sections -I"$work/c" "$work/c"/*.c "$archive" "$webp" \
+    -Wl,--gc-sections -I"$work/c" "$work/c"/*.c "$archive" "$webp" "${AVIF_A:-$repo/build/avif-ziran/avif/libavif.a}" "${AOM_A:-$repo/build/avif-ziran/aom/libaom.a}" \
     $raylib_libs -o "$work/test"
 cd "$repo"
 env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \

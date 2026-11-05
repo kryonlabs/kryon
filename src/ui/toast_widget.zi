@@ -68,7 +68,7 @@ ToastSurfaceFace :: (class_name: s32) -> StyleFrame {
     defaults.background = Theme.LightText()
     defaults.border = Theme.LightMuted()
     defaults.border_width = 1.0
-    defaults.radius = 8.0
+    defaults.radius = Theme.ShapeSmall()
     defaults.opacity = 1.0
     defaults.padding_x = 14.0
     defaults.padding_y = 10.0

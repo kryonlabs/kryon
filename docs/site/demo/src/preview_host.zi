@@ -53,6 +53,7 @@ SupportedCapability :: (function: string) -> bool {
         function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight" ||
         function == "RasterRoundedRectangle" || function == "RasterRoundedRectangleOutline" ||
         function == "RasterLine" || function == "RasterTriangles" || function == "RasterText" || function == "RasterTextClipped" ||
+        function == "RasterTextRotated" ||
         function == "RasterImage" || function == "RasterImageMesh" || function == "ImageWidth" || function == "ImageHeight" ||
         function == "SystemClipboardOpenHost" || function == "SystemClipboardByteHost" ||
         function == "SystemClipboardWriteHost"
@@ -113,6 +114,13 @@ PreviewCall :: (context: *void, module_name: *u8, function_name: *u8,
     }
     if function == "RasterTextClipped" && count == 6 {
         RasterTextClipped(HostText(args[0]), cast(s32)HostNumber(args[1]), cast(s32)HostNumber(args[2]), cast(s32)HostNumber(args[3]), HostColor(args[4]), HostRectangle(args[5]))
+        return 1
+    }
+    if function == "RasterTextRotated" && count == 12 {
+        RasterTextRotated(HostText(args[0]), cast(s32)HostNumber(args[1]), cast(s32)HostNumber(args[2]),
+            cast(s32)HostNumber(args[3]), HostColor(args[4]), HostRectangle(args[5]), HostVector(args[6]),
+            HostNumber(args[7]), HostRectangle(args[8]), args[9].integer != 0, args[10].integer != 0,
+            args[11].integer != 0)
         return 1
     }
     if function == "RasterImage" && count == 9 {

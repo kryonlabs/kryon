@@ -230,7 +230,10 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
     } else if scene == 20 {
         items: [3]NavigationBarItem
         items[0].label = "Home"; items[0].active = nav == 0; items[1].label = "Library"; items[1].active = nav == 1; items[2].label = "Settings"; items[2].active = nav == 2; items[2].disabled = disabled
-        moved := NavigationBar(session, NavigationBarProps.{.bounds = b, .view_width = 480, .view_height = 320, .height = 64}, items[:])
+        items[0].icon_shape = "F:M3 10 L12 3 L21 10 V21 H15 V14 H9 V21 H3 Z"
+        items[1].icon_shape = "F:M4 3 H10 V21 H4 Z M14 3 H20 V21 H14 Z"
+        items[2].icon_shape = "F:M12 3 L21 8 V16 L12 21 L3 16 V8 Z M9 9 H15 V15 H9 Z"
+        moved := NavigationBar(session, NavigationBarProps.{.bounds = b, .view_width = 480, .view_height = 320}, items[:])
         if moved.clicked_index >= 0 { nav = moved.clicked_index }
     } else if scene == 21 {
         actions: [2]ToolbarAction
@@ -420,11 +423,20 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         picked := StylePicker(session, StylePickerProps.{.dropdown = .{.bounds = b, .disabled = disabled}}, packs[:])
         if picked.changed { dark = picked.selected_id == "dark" }
         Label(session, "The caller applies the chosen palette.", 150.0)
+    } else if scene == 54 {
+        variants: [3]CardVariant = .{.CardFilled, .CardElevated, .CardOutlined}
+        for index: cast(s32)0..2 {
+            card_bounds := Rectangle.{24.0, 48.0 + cast(float32)index * 82.0, 432.0, 64.0}
+            result := Card(session, CardProps.{.key = cast(u64)(100 + index),
+                .bounds = card_bounds, .variant = variants[index]})
+            Text(session, TextProps.{.bounds = result.content,
+                .text = ifx index == 0 then "Filled card" else ifx index == 1 then "Elevated card" else "Outlined card"})
+        }
     }
 }
 
 
-CoreSceneCount :: 54;
+CoreSceneCount :: 55;
 
 SceneName :: (index: s32) -> string {
     if index == 0 { return "Button" }
@@ -481,5 +493,6 @@ SceneName :: (index: s32) -> string {
     if index == 51 { return "Transition fade" }
     if index == 52 { return "DiscreteSlider" }
     if index == 53 { return "StylePicker" }
+    if index == 54 { return "Card" }
     return ""
 }

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Build a Canvas2D application that reads and writes the browser route."""
 
+from toolchain import JS_RUNTIME
+
 import os
 from pathlib import Path
 import subprocess
@@ -93,6 +95,6 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
     run([ZIRAN, "tool", "kryon", "build", "--profile", "web"], project)
     output = project / "build/route_probe-web.html"
     assert output.is_file() and output.stat().st_size > 100_000
-    run(["node", ROOT / "tests/canvas_backend_browser.mjs",
+    run([JS_RUNTIME, ROOT / "tests/canvas_backend_browser.mjs",
          output.as_uri() + "?probe=1", project / "browser-profile"], project)
 print("Browser route: path, query, hash, push, replace and version passed")

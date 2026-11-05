@@ -43,9 +43,9 @@ SpinboxDefaultFace :: (value_face: bool, disabled: bool) -> StyleData {
     face.foreground = Theme.LightText()
     face.border = Theme.LightBorder()
     face.border_width = 1.0
-    face.radius = 8.0
+    face.radius = Theme.ShapeSmall()
     face.opacity = 1.0
-    face.font_size = 14.0
+    face.font_size = Theme.TypeLabel()
     if value_face { face.background = cast(u32)0xffffffff }
     if disabled {
         face.background = Opacity(face.background, 0.45)

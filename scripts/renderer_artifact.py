@@ -36,6 +36,7 @@ def renderer_metadata(artifact):
 
     for field in ('compile_flags', 'link_flags', 'defines'):
         strings(field)
+    meta['shared_libraries'] = [str(artifact.output(name)) for name in strings('shared_libraries', [])]
     meta['archives'] = [str(artifact.output(name)) for name in strings('archives')]
     meta['js_libraries'] = [str(artifact.output(name)) for name in strings('js_libraries', [])]
     directories = [artifact.path(name) for name in strings('include_directories')]
@@ -66,6 +67,12 @@ def renderer_metadata(artifact):
 def renderer_link(meta, *, preloads=True):
     """Ordered linker argv from renderer_metadata, including web resources."""
     flags = [*meta['archives'], *meta['link_flags']]
+    for library in meta.get('shared_libraries', []):
+        # Retain the lazy codec in DT_NEEDED so application packaging tools copy
+        # it. The first path supports the development artifact; ORIGIN supports
+        # installed AppDirs independently of cwd and system codec packages.
+        flags.extend(['-Wl,--no-as-needed', library, '-Wl,--as-needed',
+                      '-Wl,-rpath,' + str(Path(library).parent), '-Wl,-rpath,$ORIGIN/../lib'])
     for path in meta['js_libraries']:
         flags.extend(['--js-library', path])
     if preloads:
@@ -142,6 +149,26 @@ def build(name, target, stage, root):
                            'font_license': 'resources/LICENSE-Liberation'})
     copy(root / 'assets/fonts/LiberationSans-Regular.ttf', stage / meta['resources']['font'])
     copy(root / 'assets/fonts/LICENSE-Liberation', stage / meta['resources']['font_license'])
+    # Resolve the provider's locked dependency edge, never a consumer's
+    # potentially shadowing top-level alias. pkg path remains the public API.
+    project = Path(os.environ['ZIRAN_PROJECT_ROOT'])
+    lock = json.loads((project / 'ziran.lock').read_text())
+    provider = next(p for p in lock['packages'] if p['id'] == os.environ['ZIRAN_PACKAGE_ID'])
+    # pkg path selects names; reject an ambiguous/shadowed result explicitly.
+    locked = [] if (project / 'ziran.local.toml').exists() else ['--locked']
+    def locked_source(name):
+        edge = provider['dependencies'][name]
+        dependency = next(p for p in lock['packages'] if p['id'] == edge)
+        source = Path(capture([toolchain / 'build/bin/ziran', 'pkg', 'path',
+                               dependency['name'], *locked], cwd=project))
+        # pkg path validates an explicit local development identity itself.
+        # Committed dependencies additionally retain the exact provider edge.
+        if 'commit' in dependency and capture(['git', '-C', source, 'rev-parse', 'HEAD']) != dependency['commit']:
+            raise ValueError(f'resolved {name} does not match the provider locked edge')
+        return source
+    avif_source = locked_source('libavif') if name != 'renderer-web' else None
+    aom_source = locked_source('libaom') if name != 'renderer-web' else None
+    avif_package = locked_source('avif') if name != 'renderer-web' else None
     if name == 'renderer-web':
         copy(toolchain / 'web/ziran_web.js', stage / 'web/ziran_web.js')
         meta['link_flags'] = ['-sUSE_ZLIB=1', '-lidbfs.js', '-sFORCE_FILESYSTEM=1',
@@ -155,24 +182,17 @@ def build(name, target, stage, root):
         packages = ['sdl2', 'cairo', 'freetype2', 'pangocairo', 'fontconfig', 'gio-2.0']
         meta['compile_flags'] = shlex.split(capture(['pkg-config', '--cflags', *packages]))
         meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', *packages])) + ['-lm', '-lpthread']
+        with tempfile.TemporaryDirectory(prefix='.build-', dir=stage) as temporary:
+            run(['cmake', '-S', root / 'cmake/avif', '-B', temporary,
+                 f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}',
+                 f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}', '-DCMAKE_BUILD_TYPE=Release'])
+            run(['cmake', '--build', temporary, '--target', 'kryonavif', '--parallel', '2'])
+            copy(Path(temporary) / 'libkryonavif.so', stage / 'lib/libkryonavif.so')
+        meta['shared_libraries'] = ['lib/libkryonavif.so']
     else:
-        # Resolve the provider's locked dependency edge, never a consumer's
-        # potentially shadowing top-level alias. pkg path remains the public API.
-        project = Path(os.environ['ZIRAN_PROJECT_ROOT'])
-        lock = json.loads((project / 'ziran.lock').read_text())
-        provider = next(p for p in lock['packages'] if p['id'] == os.environ['ZIRAN_PACKAGE_ID'])
-        # pkg path selects names; reject an ambiguous/shadowed result explicitly.
-        locked = [] if (project / 'ziran.local.toml').exists() else ['--locked']
-        def locked_source(name):
-            edge = provider['dependencies'][name]
-            dependency = next(p for p in lock['packages'] if p['id'] == edge)
-            source = Path(capture([toolchain / 'build/bin/ziran', 'pkg', 'path',
-                                   dependency['name'], *locked], cwd=project))
-            if capture(['git', '-C', source, 'rev-parse', 'HEAD']) != dependency['commit']:
-                raise ValueError(f'resolved {name} does not match the provider locked edge')
-            return source
         source = locked_source('raylib')
         webp_source = locked_source('libwebp')
+        webp_package = locked_source('webp')
         cc = os.environ.get('CC', 'cc')
         triple = capture([cc, '-dumpmachine'])
         if target == 'linux-x86_64-gnu' and ('x86_64' not in triple or 'linux' not in triple):
@@ -185,7 +205,7 @@ def build(name, target, stage, root):
         copy(source / 'LICENSE', stage / 'resources/LICENSE-raylib')
         copy(webp_source / 'COPYING', stage / 'resources/LICENSE-libwebp')
         copy(webp_source / 'PATENTS', stage / 'resources/PATENTS-libwebp')
-        meta.update(archives=['lib/libraylib.a', 'lib/libkryonwebp.a'], include_directories=['include'])
+        meta.update(archives=['lib/libraylib.a', 'lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libaom.a'], include_directories=['include'])
         # Intermediates are disposable and kept inside staging; only final files
         # remain when the generic driver validates and publishes the descriptor.
         with tempfile.TemporaryDirectory(prefix='.build-', dir=stage) as temporary:
@@ -196,11 +216,15 @@ def build(name, target, stage, root):
                      'RAYLIB_JOBS=1',
                      f'KRYON_DIR={root}', f'RAYLIB_PACKAGE={source}', f'RAYLIB_BUILD={work}',
                      f'WEBP_PACKAGE={webp_source}', f'WEBP_BUILD={work}/webp',
+                     f'WEBP_CODEC_PACKAGE={webp_package}', f'AVIF_CODEC_PACKAGE={avif_package}',
+                     f'AVIF_PACKAGE={avif_source}', f'AOM_PACKAGE={aom_source}', f'AVIF_BUILD={work}/avif-codec',
                      f'RAYLIB_CC={cc}', f'RAYLIB_AR={os.environ.get("AR", "ar")}',
                      f'RAYLIB_CFLAGS={flags} -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_TTF=1',
-                     str(work / 'libraylib.a'), str(work / 'webp/libkryonwebp.a')])
+                     str(work / 'libraylib.a'), str(work / 'webp/libkryonwebp.a'), str(work / 'avif-codec/avif/libavif.a')])
                 archive = work / 'libraylib.a'
                 webp_archive = work / 'webp/libkryonwebp.a'
+                avif_archive = work / 'avif-codec/avif/libavif.a'
+                aom_archive = work / 'avif-codec/aom/libaom.a'
                 meta['compile_flags'] = shlex.split(flags)
                 meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2', 'fontconfig'])) + ['-ldl', '-lpthread', '-lm']
                 meta['defines'] = ['PLATFORM_DESKTOP_SDL', 'GRAPHICS_API_OPENGL_ES2']
@@ -208,12 +232,18 @@ def build(name, target, stage, root):
                 config = ['-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_EXAMPLES=OFF']
                 if target == 'windows-x86_64-mingw':
                     compiler = Path(shutil.which(cc) or cc)
-                    prefix = compiler.name.removesuffix('gcc')
+                    prefix = triple + '-'
+                    variant = next((suffix for suffix in ('-posix', '-win32')
+                                    if compiler.name.endswith(suffix)), '')
+                    cxx = compiler.with_name(prefix + 'g++' + variant)
+                    if not cxx.is_file():
+                        cxx = compiler.with_name(prefix + 'g++')
                     libraries = mingw_library_flags(cc)
                     config += ['-DCMAKE_SYSTEM_NAME=Windows', f'-DCMAKE_C_COMPILER={cc}',
-                               '-DCMAKE_RC_COMPILER=' + str(compiler.with_name(prefix + 'windres')),
+                               '-DCMAKE_CXX_COMPILER=' + os.environ.get('CXX', str(cxx)),
+                               '-DCMAKE_RC_COMPILER=' + os.environ.get('RC', str(compiler.with_name(prefix + 'windres'))),
                                '-DCMAKE_AR=' + os.environ.get('AR', str(compiler.with_name(prefix + 'ar'))),
-                               '-DCMAKE_RANLIB=' + str(compiler.with_name(prefix + 'ranlib')),
+                               '-DCMAKE_RANLIB=' + os.environ.get('RANLIB', str(compiler.with_name(prefix + 'ranlib'))),
                                '-DCMAKE_EXE_LINKER_FLAGS=' + ' '.join(libraries),
                                '-DPLATFORM=RGFW', '-DOPENGL_VERSION=1.1',
                                '-DOPENGL_opengl_LIBRARY=opengl32', '-DOPENGL_gl_LIBRARY=opengl32',
@@ -232,14 +262,16 @@ def build(name, target, stage, root):
                     cmake_source = root / 'cmake/renderer-artifact'
                     config += [f'-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake',
                                f'-DANDROID_ABI={abi}', f'-DANDROID_PLATFORM=android-{api}',
-                               f'-DRAYLIB_DIR={source}/src', f'-DWEBP_DIR={webp_source}']
+                               f'-DRAYLIB_DIR={source}/src', f'-DWEBP_DIR={webp_source}',
+                               f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DKRYON_WEBP_PACKAGE_DIR={webp_package}',
+                               f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}']
                     meta['defines'] = ['ANDROID_BUILD', macro]
                     meta['link_flags'] = ['-Wl,--wrap=fopen', '-lEGL', '-lGLESv2', '-landroid', '-llog', '-lOpenSLES', '-lm', '-ldl']
                 run(['cmake', '-S', cmake_source, '-B', work, *config])
                 targets = ['raylib']
                 if target.startswith('android-'):
                     # kryon_android_raylib also defines the WebP codec target.
-                    targets.append('kryonwebp')
+                    targets.extend(['kryonwebp', 'avif_static'])
                 run(['cmake', '--build', work, '--target', *targets, '--parallel', '1'])
                 if target == 'windows-x86_64-mingw':
                     # raylib's own CMake project builds raylib; the codec uses
@@ -247,12 +279,25 @@ def build(name, target, stage, root):
                     windows = [option for option in config
                                if not option.startswith(('-DPLATFORM=', '-DOPENGL', '-DCMAKE_C_FLAGS='))]
                     run(['cmake', '-S', root / 'cmake/webp', '-B', work / 'webp', *windows,
+                         f'-DKRYON_WEBP_PACKAGE_DIR={webp_package}',
                          f'-DWEBP_DIR={webp_source}', '-DCMAKE_C_FLAGS=-O2'])
                     run(['cmake', '--build', work / 'webp', '--target', 'kryonwebp', '--parallel', '1'])
+                    run(['cmake', '-S', root / 'cmake/avif', '-B', work / 'avif-codec', *windows,
+                         f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}',
+                         f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}'])
+                    run(['cmake', '--build', work / 'avif-codec', '--target', 'avif_static', '--parallel', '1'])
+                avif_archive = next(work.rglob('libavif.a'))
+                aom_archive = next(work.rglob('libaom.a'))
                 archive = next(work.rglob('libraylib.a'))
                 webp_archive = next(work.rglob('libkryonwebp.a'))
             copy(archive, stage / 'lib/libraylib.a')
             copy(webp_archive, stage / 'lib/libkryonwebp.a')
+            copy(avif_archive, stage / 'lib/libavif.a')
+            copy(aom_archive, stage / 'lib/libaom.a')
+    if name != 'renderer-web':
+        copy(avif_source / 'LICENSE', stage / 'resources/LICENSE-libavif')
+        copy(aom_source / 'LICENSE', stage / 'resources/LICENSE-libaom')
+        copy(aom_source / 'PATENTS', stage / 'resources/PATENTS-libaom')
     (stage / 'renderer.json').write_text(json.dumps(meta, indent=2) + '\n')
 
 

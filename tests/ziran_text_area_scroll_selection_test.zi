@@ -2,11 +2,13 @@
 #import "geometry"
 #import "text_area_widget"
 #import "text_input_props"
+#import "text_touch"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
 #import "ziran_composition_widget_host"
 #import "ziran_system_clipboard_host"
+using Vectors :: #import "std/vec"
 
 using FrameStatus;
 
@@ -15,6 +17,112 @@ Frame :: (session: Session, props: TextAreaProps) -> TextAreaResult {
     result := TextArea(session, props)
     unused EndFrame(session)
     return result
+}
+
+// A layout may place an area away from its declared origin, including above
+// the viewport when a parent scrolls. Pointer events use the retained bounds.
+PlaceArea :: (session: Session, parent: s32, bounds: Rectangle) -> Rectangle {
+    unused session
+    unused parent
+    return Rectangle.{-60.0, -36.0, bounds.width, bounds.height}
+}
+
+PlacedFrame :: (session: Session, props: TextAreaProps) -> TextAreaResult {
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    TreeSetPlacement(session, 0, PlaceArea)
+    result := TextArea(session, props)
+    unused EndFrame(session)
+    return result
+}
+
+ApplyAreaResult :: (props: *TextAreaProps, edited: TextAreaResult) {
+    if edited.edit.changed {
+        bytes: Vec(u8)
+        BuilderPrint(*bytes, "%", props.value[:edited.edit.start])
+        BuilderPrint(*bytes, "%", edited.edit.replacement)
+        BuilderPrint(*bytes, "%", props.value[edited.edit.end:])
+        props.value = BuilderFinish(bytes)
+    }
+    props.cursor = edited.cursor
+    props.anchor = edited.anchor
+    props.scroll_y = edited.scroll_y
+    props.focused = edited.focused
+    props.selecting = edited.selecting
+}
+
+touch_time: s64 = 1000;
+
+TouchClock :: () -> s64 { return touch_time }
+
+PositionedCorrection :: () -> s32 {
+    session := SessionOpen()
+    props: TextAreaProps = .{.key = cast(u64)78, .focus_id = 78,
+        .bounds = Rectangle.{0.0, 0.0, 240.0, 140.0},
+        .value = "alpha bravo\ncharlie delta\necho foxtrot\ngolf hotel"}
+    unused PlacedFrame(session, props)
+    TreePointerUpdate(session, PointerFrame.{12.0, 12.0, true, true, false})
+    pressed := PlacedFrame(session, props)
+    if pressed.cursor <= 0 || pressed.anchor != pressed.cursor { return 14 }
+    props.cursor = pressed.cursor
+    props.anchor = pressed.anchor
+    props.focused = pressed.focused
+    TreePointerUpdate(session, PointerFrame.{12.0, 12.0, false, false, true})
+    released := PlacedFrame(session, props)
+    if released.cursor != pressed.cursor || released.anchor != pressed.anchor { return 15 }
+    ApplyAreaResult(*props, released)
+    TreePointerUpdate(session, PointerFrame.{12.0, 12.0, false, false, false})
+    redrawn := PlacedFrame(session, props)
+    if redrawn.cursor != pressed.cursor || redrawn.anchor != pressed.anchor { return 16 }
+    ApplyAreaResult(*props, redrawn)
+    original := props.value
+    props.input.text = "é"
+    inserted := PlacedFrame(session, props)
+    if !inserted.edit.changed || inserted.edit.start != pressed.cursor ||
+    inserted.edit.end != pressed.cursor || inserted.cursor != pressed.cursor + 2 { return 17 }
+    ApplyAreaResult(*props, inserted)
+    props.input = .{}
+    redrawn = PlacedFrame(session, props)
+    if redrawn.cursor != inserted.cursor || redrawn.anchor != inserted.cursor { return 18 }
+    props.input.backspace = true
+    deleted := PlacedFrame(session, props)
+    if !deleted.edit.changed || deleted.edit.start != pressed.cursor ||
+    deleted.edit.end != inserted.cursor || deleted.cursor != pressed.cursor { return 19 }
+    ApplyAreaResult(*props, deleted)
+    if props.value != original { return 20 }
+    props.input = .{}
+    props.input.left = true
+    moved := PlacedFrame(session, props)
+    if moved.cursor >= pressed.cursor || moved.anchor != moved.cursor { return 21 }
+    ApplyAreaResult(*props, moved)
+    props.input = .{}
+    redrawn = PlacedFrame(session, props)
+    if redrawn.cursor != moved.cursor || redrawn.anchor != moved.anchor { return 22 }
+    // Android's touch hit testing and long press use the same retained origin.
+    TextTouchInstall(TouchClock)
+    TreePointerUpdate(session, PointerFrame.{20.0, 12.0, true, true, false})
+    pressed = PlacedFrame(session, props)
+    ApplyAreaResult(*props, pressed)
+    TreePointerUpdate(session, PointerFrame.{20.0, 12.0, false, false, true})
+    released = PlacedFrame(session, props)
+    if released.cursor != pressed.cursor || released.anchor != pressed.anchor { return 23 }
+    ApplyAreaResult(*props, released)
+    TreePointerUpdate(session, PointerFrame.{20.0, 12.0, false, false, false})
+    redrawn = PlacedFrame(session, props)
+    if redrawn.cursor != released.cursor || redrawn.anchor != released.anchor { return 24 }
+    TreePointerUpdate(session, PointerFrame.{12.0, 12.0, true, true, false})
+    pressed = PlacedFrame(session, props)
+    ApplyAreaResult(*props, pressed)
+    word := TextTouchWord(props.value, pressed.cursor)
+    touch_time += 600
+    TreePointerUpdate(session, PointerFrame.{12.0, 12.0, true, false, false})
+    held := PlacedFrame(session, props)
+    if held.anchor != word.anchor || held.cursor != word.cursor { return 25 }
+    ApplyAreaResult(*props, held)
+    TreePointerUpdate(session, PointerFrame.{12.0, 12.0, false, false, true})
+    released = PlacedFrame(session, props)
+    if released.anchor != word.anchor || released.cursor != word.cursor { return 26 }
+    unused SessionClose(session)
+    return 0
 }
 
 #program_export
@@ -88,7 +196,7 @@ main :: () -> s32 {
     result = Frame(session, props)
     if result.scroll_y != 108 { return 13 }
     unused SessionClose(session)
-    return 0
+    return PositionedCorrection()
 }
 
 // No asset loads here: a text area's boxes would show their labels.

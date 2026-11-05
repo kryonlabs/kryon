@@ -16,39 +16,39 @@ ResolveDark :: (policy: ThemePolicy, system_dark: bool) -> bool {
 // Shared fallback roles. Widgets use these same colors before a style sheet
 // is installed; a sheet still overrides each declared field normally.
 #program_export
-LightBackground :: () -> u32 { return cast(u32)0xf7fafcff }
+LightBackground :: () -> u32 { return cast(u32)0xf6faf8ff }
 #program_export
-LightSurface :: () -> u32 { return cast(u32)0xffffffff }
+LightSurface :: () -> u32 { return cast(u32)0xfffefaff }
 #program_export
-LightRaised :: () -> u32 { return cast(u32)0xe6eef2ff }
+LightRaised :: () -> u32 { return cast(u32)0xdce9e5ff }
 #program_export
-LightSunken :: () -> u32 { return cast(u32)0xf1f6f8ff }
+LightSunken :: () -> u32 { return cast(u32)0xedf3f0ff }
 #program_export
-LightText :: () -> u32 { return cast(u32)0x203b4bff }
+LightText :: () -> u32 { return cast(u32)0x191c1bff }
 #program_export
-LightMuted :: () -> u32 { return cast(u32)0x546d7aff }
+LightMuted :: () -> u32 { return cast(u32)0x404945ff }
 #program_export
-LightDisabled :: () -> u32 { return cast(u32)0x8ca8b5ff }
+LightDisabled :: () -> u32 { return cast(u32)0x76817bff }
 #program_export
-LightBorder :: () -> u32 { return cast(u32)0xb4c8d2ff }
+LightBorder :: () -> u32 { return cast(u32)0xbec9c2ff }
 #program_export
-LightBorderStrong :: () -> u32 { return cast(u32)0x889faaff }
+LightBorderStrong :: () -> u32 { return cast(u32)0x6f7973ff }
 #program_export
-LightAccent :: () -> u32 { return cast(u32)0x176b83ff }
+LightAccent :: () -> u32 { return cast(u32)0x006b5fff }
 #program_export
-LightAccentHover :: () -> u32 { return cast(u32)0x1b7c92ff }
+LightAccentHover :: () -> u32 { return cast(u32)0x14776cff }
 #program_export
-LightAccentPressed :: () -> u32 { return cast(u32)0x10546aff }
+LightAccentPressed :: () -> u32 { return cast(u32)0x005449ff }
 #program_export
-LightSelection :: () -> u32 { return cast(u32)0xd8edf2ff }
+LightSelection :: () -> u32 { return cast(u32)0xbcece0ff }
 #program_export
-LightSelectionText :: () -> u32 { return cast(u32)0x145d72ff }
+LightSelectionText :: () -> u32 { return cast(u32)0x002019ff }
 #program_export
-LightSuccess :: () -> u32 { return cast(u32)0x23735cff }
+LightSuccess :: () -> u32 { return cast(u32)0x236b50ff }
 #program_export
-LightWarning :: () -> u32 { return cast(u32)0x98621cff }
+LightWarning :: () -> u32 { return cast(u32)0x805600ff }
 #program_export
-LightDanger :: () -> u32 { return cast(u32)0xb94143ff }
+LightDanger :: () -> u32 { return cast(u32)0xba1a1aff }
 
 // Canonical light/dark palette. Hosts only unpack these RGBA values.
 Palette :: struct {
@@ -106,6 +106,16 @@ Scheme :: struct {
     on_error: u32
     disabled_container: u32
     disabled_content: u32
+    primary_container: u32
+    on_primary_container: u32
+    secondary_container: u32
+    on_secondary_container: u32
+    surface_container_low: u32
+    surface_container_high: u32
+    outline_variant: u32
+    inverse_surface: u32
+    on_inverse_surface: u32
+    scrim: u32
 }
 
 #program_export
@@ -160,6 +170,16 @@ SchemeFor :: (background: u32, surface: u32, text: u32, primary: u32,
     scheme.on_error = OnColor(scheme.error)
     scheme.disabled_container = (ToneFor(background, 14, 14, dark) & ~cast(u32)255) | cast(u32)disabled_alpha
     scheme.disabled_content = (text & ~cast(u32)255) | cast(u32)disabled_alpha
+    scheme.primary_container = StateLayer(scheme.surface, primary, cast(u32)16)
+    scheme.on_primary_container = text
+    scheme.secondary_container = StateLayer(scheme.surface, secondary, cast(u32)16)
+    scheme.on_secondary_container = text
+    scheme.surface_container_low = StateLayer(scheme.surface, text, cast(u32)4)
+    scheme.surface_container_high = StateLayer(scheme.surface, text, cast(u32)8)
+    scheme.outline_variant = StateLayer(scheme.surface, text, cast(u32)24)
+    scheme.inverse_surface = text
+    scheme.on_inverse_surface = scheme.surface
+    scheme.scrim = cast(u32)0x00000052
     return scheme
 }
 
@@ -167,33 +187,33 @@ SchemeFor :: (background: u32, surface: u32, text: u32, primary: u32,
 DefaultPalette :: (dark: bool) -> Palette {
     palette: Palette
     if dark {
-        palette.background = PackedColor(cast(u32)0x001D38, cast(u32)255)
-        palette.surface = PackedColor(cast(u32)0x092039, cast(u32)255)
-        palette.surface_raised = PackedColor(cast(u32)0x153858, cast(u32)255)
-        palette.surface_sunken = PackedColor(cast(u32)0x04172B, cast(u32)255)
+        palette.background = PackedColor(cast(u32)0x101513, cast(u32)255)
+        palette.surface = PackedColor(cast(u32)0x171d1a, cast(u32)255)
+        palette.surface_raised = PackedColor(cast(u32)0x29332e, cast(u32)255)
+        palette.surface_sunken = PackedColor(cast(u32)0x0b100e, cast(u32)255)
         palette.overlay = PackedColor(cast(u32)0x000000, cast(u32)217)
-        palette.text = PackedColor(cast(u32)0xF5F8FF, cast(u32)255)
-        palette.text_muted = PackedColor(cast(u32)0xA9BBD1, cast(u32)255)
-        palette.text_disabled = PackedColor(cast(u32)0x72839A, cast(u32)255)
-        palette.icon = PackedColor(cast(u32)0xD8E5F5, cast(u32)255)
-        palette.icon_muted = PackedColor(cast(u32)0xA9BBD1, cast(u32)255)
-        palette.border = PackedColor(cast(u32)0x315C85, cast(u32)255)
-        palette.border_strong = PackedColor(cast(u32)0x315C85, cast(u32)255)
-        palette.divider = PackedColor(cast(u32)0x315C85, cast(u32)255)
-        palette.focus = PackedColor(cast(u32)0x409CFF, cast(u32)255)
-        palette.selection = PackedColor(cast(u32)0x1E6DE0, cast(u32)255)
-        palette.accent = PackedColor(cast(u32)0x006CFF, cast(u32)255)
-        palette.on_accent = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.accent_hover = PackedColor(cast(u32)0x1689FF, cast(u32)255)
-        palette.accent_pressed = PackedColor(cast(u32)0x0055D4, cast(u32)255)
-        palette.success = PackedColor(cast(u32)0x009F7A, cast(u32)255)
-        palette.on_success = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.warning = PackedColor(cast(u32)0xC88B00, cast(u32)255)
-        palette.on_warning = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.danger = PackedColor(cast(u32)0xF0162A, cast(u32)255)
-        palette.on_danger = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
+        palette.text = PackedColor(cast(u32)0xdfe4df, cast(u32)255)
+        palette.text_muted = PackedColor(cast(u32)0xbec9c2, cast(u32)255)
+        palette.text_disabled = PackedColor(cast(u32)0x89938c, cast(u32)255)
+        palette.icon = PackedColor(cast(u32)0xdfe4df, cast(u32)255)
+        palette.icon_muted = PackedColor(cast(u32)0xbec9c2, cast(u32)255)
+        palette.border = PackedColor(cast(u32)0x414943, cast(u32)255)
+        palette.border_strong = PackedColor(cast(u32)0x414943, cast(u32)255)
+        palette.divider = PackedColor(cast(u32)0x414943, cast(u32)255)
+        palette.focus = PackedColor(cast(u32)0x80d5bf, cast(u32)255)
+        palette.selection = PackedColor(cast(u32)0x264e43, cast(u32)255)
+        palette.accent = PackedColor(cast(u32)0x80d5bf, cast(u32)255)
+        palette.on_accent = PackedColor(cast(u32)0x00382d, cast(u32)255)
+        palette.accent_hover = PackedColor(cast(u32)0x91dac7, cast(u32)255)
+        palette.accent_pressed = PackedColor(cast(u32)0xa1e0d0, cast(u32)255)
+        palette.success = PackedColor(cast(u32)0x8bd7b6, cast(u32)255)
+        palette.on_success = PackedColor(cast(u32)0x00382d, cast(u32)255)
+        palette.warning = PackedColor(cast(u32)0xefc16e, cast(u32)255)
+        palette.on_warning = PackedColor(cast(u32)0x432c00, cast(u32)255)
+        palette.danger = PackedColor(cast(u32)0xffb4ab, cast(u32)255)
+        palette.on_danger = PackedColor(cast(u32)0x690005, cast(u32)255)
         palette.info = PackedColor(cast(u32)0x168BD2, cast(u32)255)
-        palette.on_info = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
+        palette.on_info = PackedColor(cast(u32)0x000000, cast(u32)255)
         palette.link = PackedColor(cast(u32)0x00BBFF, cast(u32)255)
         palette.link_hover = PackedColor(cast(u32)0x8AC2FF, cast(u32)255)
         palette.shadow = PackedColor(cast(u32)0x000000, cast(u32)128)
@@ -269,14 +289,46 @@ Metrics :: struct {
 
 #program_export
 DefaultMetrics :: () -> Metrics {
-    return Metrics.{.radius_small = 4.0, .radius_medium = 8.0, .radius_large = 12.0,
+    return Metrics.{.radius_small = 4.0, .radius_medium = 12.0, .radius_large = 28.0,
         .radius_pill = 999.0, .border_width = 1.0, .focus_width = 2.0, .focus_gap = 2.0,
         .space_1 = 4.0, .space_2 = 8.0, .space_3 = 12.0, .space_4 = 16.0, .space_5 = 24.0,
         .space_6 = 32.0, .control_height_small = 32.0, .control_height_medium = 40.0,
         .control_height_large = 48.0, .control_padding_small = 12.0,
         .control_padding_medium = 16.0, .control_padding_large = 20.0, .control_gap = 8.0,
-        .font_size_small = 16.0, .font_size_medium = 18.0, .font_size_large = 20.0,
+        .font_size_small = 14.0, .font_size_medium = 16.0, .font_size_large = 22.0,
         .icon_size_small = 14.0, .icon_size_medium = 18.0, .icon_size_large = 20.0,
-        .shadow_offset_y = 2.0, .shadow_blur = 8.0, .disabled_opacity = 0.45,
+        .shadow_offset_y = 2.0, .shadow_blur = 0.0, .disabled_opacity = 0.45,
         .transition_fast_ms = 80.0, .transition_normal_ms = 140.0}
+}
+
+// Shared shape and type scale. These scalar defaults do not allocate or copy
+// a palette per control; explicit app props and installed rules still win.
+#program_export
+ShapeSmall :: () -> float32 { return 4.0 }
+#program_export
+ShapeMedium :: () -> float32 { return 12.0 }
+#program_export
+ShapeLarge :: () -> float32 { return 28.0 }
+#program_export
+ShapeFull :: () -> float32 { return 999.0 }
+#program_export
+TypeLabel :: () -> float32 { return 14.0 }
+#program_export
+TypeBody :: () -> float32 { return 16.0 }
+#program_export
+TypeTitle :: () -> float32 { return 22.0 }
+
+// Precompose Material state layers into the existing face. No extra paint
+// command, timer, cache or per-frame heap allocation is required. A transparent
+// face gains a tinted layer rather than mixing invisible RGB with white.
+#program_export
+StateLayer :: (background: u32, content: u32, percent: u32) -> u32 {
+    if percent > cast(u32)100 { percent = cast(u32)100 }
+    if (background & cast(u32)255) == cast(u32)0 {
+        return (content & ~cast(u32)255) | (percent * cast(u32)255 / cast(u32)100)
+    }
+    red := (((background >> cast(u32)24) & cast(u32)255) * (cast(u32)100 - percent) + ((content >> cast(u32)24) & cast(u32)255) * percent) / cast(u32)100
+    green := (((background >> cast(u32)16) & cast(u32)255) * (cast(u32)100 - percent) + ((content >> cast(u32)16) & cast(u32)255) * percent) / cast(u32)100
+    blue := (((background >> cast(u32)8) & cast(u32)255) * (cast(u32)100 - percent) + ((content >> cast(u32)8) & cast(u32)255) * percent) / cast(u32)100
+    return (red << cast(u32)24) | (green << cast(u32)16) | (blue << cast(u32)8) | (background & cast(u32)255)
 }

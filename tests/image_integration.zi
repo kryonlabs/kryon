@@ -1,0 +1,97 @@
+// Package-backed native adapters, without a renderer or UI import.
+#import "avif_image"
+#import "webp_image"
+#import "ziran_image_decode"
+#import "std/file_linux"
+#import "std/vec"
+#import "std/byte_text_linux"
+#import "webp_fixture_checks"
+
+#import "image_integration_fixture"
+
+AvifFixtures :: (directory: string) -> bool {
+    names: [17]string = .["rgba8", "rgba10", "rgba12", "gray8", "gray10", "gray12",
+        "transform00", "transform01", "transform10", "transform11", "transform20", "transform21",
+        "transform30", "transform31", "premultiplied", "opaque", "animated"]
+    for name: names {
+        encoded := Fixture(directory, name, ".avif")
+        golden := Fixture(directory, name, ".rgba")
+        w: s32 = ifx name.count > 9 && name[:9] == "transform" then 4 else 8
+        h: s32 = ifx w == 4 then 4 else 6
+        tolerance: s32 = ifx name == "premultiplied" then 4 else ifx name == "rgba10" || name == "rgba12" || name[:4] == "gray" then 1 else 0
+        if encoded.count == 0 || golden.count != cast(s64)w * h * 4 { return false }
+        for repetition: 0..3 {
+            width: s32 = -1; height: s32 = -1
+            pixels := AvifImageDecode(TextFromBytes(VecSlice(encoded, 0, encoded.count)), *width, *height)
+            if pixels == null || width != w || height != h { print("AVIF % dimensions\n", name); return false }
+            good := true
+            for i: 0..golden.count - 1 {
+                difference := cast(s32)pixels[i] - cast(s32)golden[i]
+                if difference < -tolerance || difference > tolerance { good = false; break }
+            }
+            ImagePixelsFree(pixels)
+            if !good { print("AVIF % pixels\n", name); return false }
+        }
+    }
+    bad: [5]string = .["oversized", "pixel-limit", "bad-crop", "truncated", "malformed"]
+    for name: bad {
+        width: s32 = -1; height: s32 = -1
+        encoded := Fixture(directory, name, ".avif")
+        pixels := AvifImageDecode(TextFromBytes(VecSlice(encoded, 0, encoded.count)), *width, *height)
+        if pixels != null { ImagePixelsFree(pixels); return false }
+        if width != 0 || height != 0 { return false }
+    }
+    return true
+}
+
+WebpFixtures :: (directory: string) -> bool {
+    names: [4]string = .["lossy", "lossy-alpha", "lossless", "animated"]
+    for name: names {
+        encoded := Fixture(directory, name, ".webp")
+        if encoded.count == 0 { return false }
+        for repetition: 0..3 {
+            width: s32 = -1; height: s32 = -1
+            pixels := WebPImageDecode(TextFromBytes(VecSlice(encoded, 0, encoded.count)), *width, *height)
+            if pixels == null { print("WebP % decode\n", name); return false }
+            failure := WebPFixtureCheck(name, pixels, width, height, 0)
+            ImagePixelsFree(pixels)
+            if failure.count != 0 { print("WebP %: %\n", name, failure); return false }
+        }
+        cuts: [3]s64 = .[12, 30, encoded.count - 1]
+        for cut: cuts {
+            width: s32 = -1; height: s32 = -1
+            pixels := WebPImageDecode(TextFromBytes(VecSlice(encoded, 0, cut)), *width, *height)
+            if pixels != null { ImagePixelsFree(pixels); return false }
+            if width != 0 || height != 0 { return false }
+        }
+    }
+    return true
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 4 { return 2 }
+    if !AvifFixtures(TextFromCString(argv[1])) { return 3 }
+    if !WebpFixtures(TextFromCString(argv[2])) { return 4 }
+    // A narrow animation canvas can exceed the shared default axis limit
+    // while fitting this host's original total-pixel budget.
+    wide := Fixture(TextFromCString(argv[3]), "wide-canvas", ".webp")
+    width: s32; height: s32
+    pixels := WebPImageDecode(TextFromBytes(VecSlice(wide, 0, wide.count)), *width, *height)
+    if pixels == null { return 5 }
+    good := width == 40000 && height == 2 && pixels[0] == 10 && pixels[1] == 20 && pixels[2] == 30 && pixels[3] == 255
+    if good { good = pixels[(cast(s64)width * height - 1) * 4 + 3] == 0 }
+    ImagePixelsFree(pixels)
+    if !good { return 5 }
+    extra: [2]string = .["many-frames", "large-metadata"]
+    for name: extra {
+        encoded := Fixture(TextFromCString(argv[3]), name, ".webp")
+        pixels = WebPImageDecode(TextFromBytes(VecSlice(encoded, 0, encoded.count)), *width, *height)
+        if pixels == null { print("WebP % compatibility\n", name); return 6 }
+        failure := WebPFixtureCheck("lossless", pixels, width, height, 0)
+        ImagePixelsFree(pixels)
+        if failure.count != 0 { return 6 }
+    }
+    print("Headless image adapters: depth, alpha, transforms, first frame, limits and repeated ownership passed\n")
+    return 0
+}

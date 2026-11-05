@@ -1,0 +1,75 @@
+#import "geometry"
+#import "drawing_props"
+#import "std/byte_text_linux"
+#import "file"
+#if #defined(AVIF_RAYLIB) {
+    #import "raylib_runtime"
+    #import "raylib_image_decode"
+    #import "bundle_raylib"
+    test_raylib :: #system_library "raylib";
+    TestClear :: (color: Color) #foreign test_raylib "ClearBackground";
+    TestCapture :: () -> RaylibGlyphImage #foreign test_raylib "LoadImageFromScreen";
+} else {
+    #import "cairo_raster"
+}
+
+// Compare actual composited pixels with an independent source-over reference.
+CheckPixels :: (data: *u8, rgba: bool, width: s32, golden: string) -> bool {
+    for y: 0..5 { for x: 0..7 {
+        at := (y * 8 + x) * 4
+        alpha := cast(s32)golden[at + 3]
+        for channel: 0..2 {
+            background := ifx rgba then 0 else ifx channel == 0 then 248 else ifx channel == 1 then 250 else 252
+            expected := (cast(s32)golden[at + channel] * alpha + background * (255 - alpha) + 127) / 255
+            offset := ((y * 10 + 5) * width + x * 10 + 5) * 4
+            actual := cast(s32)data[offset + (ifx rgba then channel else 2 - channel)]
+            if actual < expected - 2 || actual > expected + 2 {
+                print("render x% y% channel% got% expected%\n", x,y,channel,actual,expected);return false
+            }
+        }
+    } }
+    return true
+}
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 4 { return 1 }
+    path := TextFromCString(argv[1])
+    golden, ok := ReadEntireFile(TextFromCString(argv[2]))
+    if !ok || golden.count != 192 { return 2 }
+    #if #defined(AVIF_RAYLIB) {
+        if !OpenRaylib(80,60,"AVIF private render") { return 3 }
+        defer { CloseRaylib() }
+        // Asset-backed raster path, including extensionless file sniffing.
+        BeginRaylibFrame()
+        TestClear(.{0,0,0,255})
+        RasterImage(path,0,.{0.0,0.0,8.0,6.0},.{0.0,0.0,80.0,60.0},
+            .{0.0,0.0,80.0,60.0},.{0.0,0.0},0.0,0.0,.{255,255,255,255})
+        unused EndRaylibFrame()
+        image := TestCapture()
+        if image.data == null || !CheckPixels(cast(*u8)image.data,true,image.width,golden) { return 4 }
+        RaylibImageRelease(image)
+        // Same public Image(ImageProps), executed in the portable VM, with
+        // its extensionless AVIF bytes supplied by the bundle asset reader.
+        bundle, found := ReadEntireFile(TextFromCString(argv[3]))
+        if !found { return 5 }
+        host: RaylibBundle
+        if !RaylibBundleOpen(*host,bundle) { return 6 }
+        defer { RaylibBundleClose(*host) }
+        BeginRaylibFrame()
+        TestClear(.{0,0,0,255})
+        if !RaylibBundleFrame(*host,.{0.0,0.0,80.0,60.0},0) { return 7 }
+        unused EndRaylibFrame()
+        image = TestCapture()
+        if image.data == null || !CheckPixels(cast(*u8)image.data,true,image.width,golden) { return 8 }
+        RaylibImageRelease(image)
+    } else {
+        if !OpenRaster(80,60) { return 3 }
+        defer { CloseRaster() }
+        BeginRasterFrame()
+        RasterImage(path,0,.{0.0,0.0,8.0,6.0},.{0.0,0.0,80.0,60.0},
+            .{0.0,0.0,80.0,60.0},.{0.0,0.0},0.0,0.0,.{255,255,255,255})
+        if !FinishRasterFrame() || !CheckPixels(RasterSurfaceData(),false,80,golden) { return 4 }
+    }
+    print("AVIF actual render pixels and transparency passed\n")
+    return 0
+}

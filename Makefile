@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := all
 
-.PHONY: site site-gallery site-gallery-test
+.PHONY: site site-gallery site-gallery-test site-browser-test
 site:
 	python3 scripts/build-site.py
 
@@ -9,7 +9,12 @@ site-gallery:
 
 site-gallery-test:
 	python3 scripts/gallery.py
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 node tests/gallery_browser.mjs
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 "$(JS_RUNTIME)" tests/gallery_browser.mjs
+
+site-browser-test:
+	python3 tests/site_browser_test.py
+
+JS_RUNTIME ?= node
 
 CC ?= cc
 AR ?= ar
@@ -158,6 +163,9 @@ renderer-artifact-test: build/bin/kryon
 include mk/zx-canvas.mk
 include mk/raylib-library.mk
 include mk/zx-raylib.mk
+
+# Injected graphics hosts still link the production AVIF native ABI.
+ziran-test behavior-tests: $(AVIF_A) $(AOM_A)
 $(ZX_CANVAS_GENERATED)/.complete $(ZX_RAYLIB_GENERATED)/.complete: | project-toolchain
 zx-reload-test: zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
@@ -396,7 +404,7 @@ program-title-test: $(ZI2C_BIN)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/program_title_test.sh
 
 .PHONY: raylib-window-test
-raylib-window-test: $(ZI2C_BIN)
+raylib-window-test: $(ZI2C_BIN) $(WEBP_A) $(AVIF_A) $(AOM_A)
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY ZIRAN_ROOT="$(ZIRAN_DIR)" \
 		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_window_test.sh
 
@@ -422,9 +430,9 @@ raylib-frame-input-test: project-toolchain $(RAYLIB_ARCHIVES)
 
 # The canonical Android host's frame publication, on desktop raylib and Xvfb.
 .PHONY: android-frame-input-test
-android-frame-input-test: project-toolchain $(RAYLIB_A)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
-		sh tests/android_frame_input_test.sh
+android-frame-input-test: project-toolchain $(RAYLIB_ARCHIVES)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
+		AVIF_A="$(AVIF_A)" AOM_A="$(AOM_A)" sh tests/android_frame_input_test.sh
 
 # Android's fopen, for a process with no running activity.
 .PHONY: android-fopen-test
@@ -497,7 +505,7 @@ sanitize-test: project-toolchain
 # removes every other entry that nothing has written to for a day, so a build
 # another session is running keeps its files. Go's module cache is read-only,
 # so write permission comes back first.
-BUILD_OUTPUTS := ziran project bin tools test examples sanitize raylib-ziran webp-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
+BUILD_OUTPUTS := ziran project bin tools test examples sanitize raylib-ziran webp-ziran avif-ziran zx-reload-test zx-raylib zx-native-test zx-android-test \
 	emscripten-cache android-surface-check text-input-platform-test zx-player zx-test zx-canvas zx-canvas-test gallery-zx \
 	accessibility text-shaping performance frame-replay frame-inspect frame-input-replay dom-project
 # Keep prior generated output while an installed or running app may use it.
@@ -704,3 +712,20 @@ test: rotated-text-test
 cairo-scaled-image-test: project-toolchain
 	@sh tests/ziran_cairo_scaled_image_test.sh
 test: cairo-scaled-image-test
+
+.PHONY: avif-decode-test
+avif-decode-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/avif_decode_test.sh
+test: avif-decode-test
+
+.PHONY: avif-browser-test
+avif-browser-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/avif_browser_test.py
+
+.PHONY: android-avif-test
+android-avif-test: project-toolchain
+	@python3 tests/android_avif_decode_test.py --ndk "$(ANDROID_NDK)" $(if $(ANDROID_SERIAL),--serial "$(ANDROID_SERIAL)")
+
+.PHONY: avif-render-test
+avif-render-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO) $(ZX_RAYLIB_RUNTIME)
+	@sh tests/avif_render_test.sh

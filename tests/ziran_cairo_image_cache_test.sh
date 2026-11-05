@@ -2,6 +2,7 @@
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
+. "$repo/tests/image_packages.sh"
 work="$repo/build/scratch/cairo-image-cache"
 mkdir -p "$work/fixtures"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGER
@@ -16,14 +17,14 @@ for index in range(131):
 PY
 libs="$(pkg-config --libs cairo freetype2 pangocairo fontconfig glib-2.0) -ldl -lm -lpthread"
 source="$repo/tests/cairo_image_cache_test.zi"
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" \
+image_ziran ir --root "$repo/tests" --module-path "$repo/src/backend" \
     --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source; root=$repo/tests
     if test "$form" = saved; then input=$work/ir/cairo_image_cache_test.zir; root=$work/ir; fi
     for target in c; do
         output=$work/$target-$form
-        "$ziran" build --root "$root" --module-path "$repo/src/backend" \
+        image_ziran build --root "$root" --module-path "$repo/src/backend" \
             --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
             --target="$target" --no-main -o "$output" "$input"
         suffix=c; header=h; compiler=${CC:-cc}; standard=c11

@@ -13,7 +13,7 @@
   <text x="164" y="115" fill="#202c29" font-family="Noto Sans,Arial,sans-serif" font-size="36" font-weight="700">Kryon Labs</text>
   <text x="70" y="270" fill="#202c29" font-family="Noto Serif,Georgia,serif" font-size="69" font-weight="600">Useful interfaces.</text>
   <text x="70" y="356" fill="#315e48" font-family="Noto Serif,Georgia,serif" font-size="69" font-weight="600">Clear foundations.</text>
-  <text x="72" y="438" fill="#59645d" font-family="Noto Sans,Arial,sans-serif" font-size="27">A reusable UI library written in Ziran.</text>
+  <text x="72" y="438" fill="#59645d" font-family="Noto Sans,Arial,sans-serif" font-size="27">Desktop apps and visual UI modules.</text>
   <rect x="70" y="548" width="50" height="8" fill="#a65234"/>
   <text x="140" y="563" fill="#59645d" font-family="Noto Sans,Arial,sans-serif" font-size="22">kryonlabs.com</text>
 </svg>

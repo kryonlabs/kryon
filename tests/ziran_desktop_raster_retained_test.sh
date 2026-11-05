@@ -8,8 +8,8 @@ unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGE
 export YUE_DESKTOP_RECOVERY=0
 libs="$(pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11) -lm -lpthread"
 source=$repo/tests/desktop_raster_retained_test.zi
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" "$source"
+"$ziran" ir --project --root "$repo/tests" \
+    -o "$work/ir" "$source"
 for form in source saved; do
     input=$source
     root=$repo/tests
@@ -20,8 +20,7 @@ for form in source saved; do
     for target in c; do
         executable=--exe
         output=$work/$target-$form
-        LDLIBS="$libs" "$ziran" build --root "$root" --module-path "$root" \
-            --module-path "$repo/src/backend" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+        LDLIBS="$libs" "$ziran" build --project --root "$root" \
             --target="$target" --entry desktop_raster_retained_test:main $executable \
             -o "$output" "$input"
         xvfb-run -a "$output/desktop_raster_retained_test" > "$work/$target-$form.log"

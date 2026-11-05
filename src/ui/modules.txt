@@ -17,6 +17,7 @@ canvas_grid.zi
 canvas_props.zi
 card.zi
 card_props.zi
+card_widget.zi
 cell.zi
 checkbox.zi
 checkbox_props.zi
@@ -35,6 +36,7 @@ cursor.zi
 dialog.zi
 dpi.zi
 drawing_props.zi
+elevation.zi
 dropdown.zi
 dropdown_props.zi
 dropdown_widget.zi

@@ -2,12 +2,20 @@
 
 ## [Unreleased]
 
-- Text can rotate around a chosen origin while keeping its full font size on native, web and Android renderers.
+- Explore Kryon Labs apps and visual modules with real previews, clear availability and an editable widget gallery.
+
+- Native images load AVIF through shared image packages.
+- TextArea pointer selection respects the retained view position.
+
 - Repeatedly scaled scene images render smoothly without resampling each frame.
+
+- Text can rotate around a chosen origin while keeping its full font size on native, web and Android renderers.
 
 - X11 session idle time now includes typing in other applications.
 - Custom cursors persist until changed, an application-wide cursor covers every session, and bitmap cursors no longer flicker or show light edges.
 - An application pointing cursor shows only over something clickable, including painted targets an app hit-tests itself.
+
+- Give widgets Material-style tones and states, and bottom navigation an icon-and-label layout with clear selection and focus.
 
 - Support desktop and web gamepads for game navigation, including View/Select host navigation, and expose modal titles to accessibility.
 

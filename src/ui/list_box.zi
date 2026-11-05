@@ -38,11 +38,7 @@ ListBoxMetric :: (fields: u32, field: u32, value: float32,
 ListBoxRowHeight :: (row_height: s32, scale: float32, item: StyleFrame) -> s32 {
     if scale <= 0.0 { scale = 1.0 }
     if row_height <= 0 {
-        fallback: float32 = 30.0
-        if (item.value.fields & cast(u32)StyleIconSize) != cast(u32)0 &&
-           item.value.icon_size > 0.0 {
-            fallback = item.value.icon_size
-        }
+        fallback: float32 = 40.0
         return ListBoxMetric(item.value.fields, cast(u32)StyleContentOffset,
             item.value.offset_y, fallback, scale, false)
     }

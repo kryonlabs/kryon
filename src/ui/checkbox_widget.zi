@@ -46,7 +46,7 @@ CheckboxDefaultFace :: (role: s32, disabled: bool) -> StyleData {
     face.focus = Theme.LightAccent()
     face.border_width = 1.0
     face.opacity = 1.0
-    face.font_size = 14.0
+    face.font_size = Theme.TypeLabel()
     if role == CheckboxBoxRoleForTone(cast(ButtonTone)ButtonToneAccent) {
         face.background = Theme.LightAccent()
         face.foreground = cast(u32)0xffffffff
@@ -171,6 +171,7 @@ Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
     spec: CheckboxSpec = .{.bounds = bounds, .checked = result.checked, .enabled = !props.disabled}
     spec.hovered = TreeHoveredAt(session, previous)
     spec.pressed = TreePressedAt(session, previous)
+    spec.focused = !props.disabled && TreeFocusVisibleAt(session, previous)
     spec.scale = 1.0
     spec.box = box
     spec.active = active

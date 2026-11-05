@@ -1,0 +1,5 @@
+// No pictures belong to this test; dimensions stay empty if one is requested.
+#program_export
+ImageWidth :: (path: string) -> s32 { unused path; return 0 }
+#program_export
+ImageHeight :: (path: string) -> s32 { unused path; return 0 }

@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 SITE = Path(__file__).resolve().parents[1] / 'docs/site'
-PAGES = ['index', 'getting-started', 'docs', 'renderers', 'showcase', 'widgets', 'demo']
+PAGES = ['index', 'apps', 'modules', 'getting-started', 'docs', 'renderers', 'widgets', 'demo']
 
 
 class Head(HTMLParser):
@@ -41,7 +41,7 @@ def update():
             'og:url': url, 'og:title': head.title, 'og:description': head.description,
             'og:image': 'https://kryonlabs.com/og.png', 'og:image:type': 'image/png',
             'og:image:width': '1200', 'og:image:height': '630',
-            'og:image:alt': 'Kryon Labs — Useful interfaces. Clear foundations. A reusable UI library written in Ziran.',
+            'og:image:alt': 'Kryon Labs — Useful interfaces. Clear foundations. Desktop apps and visual UI modules.',
             'twitter:card': 'summary_large_image', 'twitter:title': head.title,
             'twitter:description': head.description, 'twitter:image': 'https://kryonlabs.com/og.png',
             'twitter:image:alt': 'Kryon Labs — Useful interfaces. Clear foundations.',

@@ -3,6 +3,9 @@
 #import "std/byte_text_linux"
 #import "image_orientation"
 #import "webp_image"
+#import "avif_image"
+#import "avif_decode"
+PixelsMemory :: #import "ziran_image_decode";
 
 image_raylib :: #system_library "raylib";
 RaylibGlyphImage :: struct {
@@ -19,6 +22,8 @@ HostRaylibImageRotateCW :: (image: *RaylibGlyphImage) #foreign image_raylib "Ima
 HostRaylibImageRotateCCW :: (image: *RaylibGlyphImage) #foreign image_raylib "ImageRotateCCW";
 HostRaylibImageFlipHorizontal :: (image: *RaylibGlyphImage) #foreign image_raylib "ImageFlipHorizontal";
 HostRaylibImageFlipVertical :: (image: *RaylibGlyphImage) #foreign image_raylib "ImageFlipVertical";
+
+WebPImageSignature :: (data: string) -> bool { return PixelsMemory.ImageWebpSignature(data) }
 
 RaylibJpegPath :: (path: string) -> bool {
     if path.count >= 4 {
@@ -62,8 +67,15 @@ RaylibTurnUpright :: (image: *RaylibGlyphImage, orientation: s32) {
 // recognized by its RIFF signature and decodes through libwebp to RGBA.
 RaylibDecodePixels :: (data: string, file_type: string) -> RaylibGlyphImage {
     extension: [16]u8
-    if data.count == 0 || data.count > 2147483647 || !CopyCString(file_type, extension[:]) {
+    if data.count == 0 || data.count > 2147483647 {
         return RaylibGlyphImage.{}
+    }
+    if AvifSignature(data) {
+        width: s32 = 0
+        height: s32 = 0
+        pixels := AvifImageDecode(data, *width, *height)
+        if pixels == null { return RaylibGlyphImage.{} }
+        return RaylibGlyphImage.{cast(*void)pixels, width, height, 1, 7}
     }
     if WebPImageSignature(data) {
         width: s32 = 0
@@ -72,6 +84,7 @@ RaylibDecodePixels :: (data: string, file_type: string) -> RaylibGlyphImage {
         if pixels == null { return RaylibGlyphImage.{} }
         return RaylibGlyphImage.{cast(*void)pixels, width, height, 1, 7}
     }
+    if !CopyCString(file_type, extension[:]) { return RaylibGlyphImage.{} }
     bytes := cast(*TextDescriptor)(*data)
     return HostRaylibLoadImageFromMemory(*extension[0], bytes.data, cast(s32)data.count)
 }
@@ -79,8 +92,8 @@ RaylibDecodePixels :: (data: string, file_type: string) -> RaylibGlyphImage {
 RaylibDecodeImage :: (path: string, data: string) -> RaylibGlyphImage {
     dot := path.count - 1
     while dot >= 0 && path[dot] != cast(u8)46 { dot -= 1 }
-    if dot < 0 { return RaylibGlyphImage.{} }
-    image := RaylibDecodePixels(data, path[dot:])
+    extension := ifx dot < 0 then "" else path[dot:]
+    image := RaylibDecodePixels(data, extension)
     if image.data != null && RaylibJpegPath(path) {
         RaylibTurnUpright(*image, ImageExifOrientation(data))
     }

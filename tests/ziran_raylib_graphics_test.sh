@@ -8,8 +8,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_raylib_graphics_test.zi
 
 # All graphics effects are injected Zi providers; no display or GPU is used.
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+"$ziran" ir --project --root "$repo/tests" --module-path "$repo/tests" \
     -o "$work/ir" "$source"
 for input in source saved; do
     module=$source
@@ -20,15 +19,16 @@ for input in source saved; do
     fi
     for target in c; do
         output=$work/$input-$target
-        "$ziran" build --target="$target" --root "$root" \
-            --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
-            --module-path "$ziran_root/std" -o "$output" "$module"
+        "$ziran" build --project --target="$target" --root "$root" --module-path "$root" \
+            -o "$output" "$module"
             compiler=${CC:-cc}
             standard=c11
             extension=c
         "$compiler" -std="$standard" -O2 -ffunction-sections -fdata-sections \
             -Wl,--gc-sections -I"$output" "$output"/*."$extension" \
-            -lm -o "$output/test"
+            "${AVIF_A:-$repo/build/avif-ziran/avif/libavif.a}" \
+            "${AOM_A:-$repo/build/avif-ziran/aom/libaom.a}" \
+            -ldl -lpthread -lm -o "$output/test"
         "$output/test"
     done
 done

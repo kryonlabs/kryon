@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Build a real Ziran application with the Canvas2D profile and load it."""
 
+from toolchain import JS_RUNTIME
+
 import os
 from pathlib import Path
 import subprocess
@@ -57,6 +59,6 @@ with tempfile.TemporaryDirectory(prefix="canvas-project-", dir=ROOT / "build") a
     assert "<title>canvas_probe</title>" in output.read_text(errors="replace"), "page is not named after the program"
     assert next((project / "build/generated/web/ir").glob("*_canvas_run.zir"), None)
     assert next((project / "build/generated/web/c").glob("*_canvas_run.c"), None)
-    run(["node", ROOT / "tests/canvas_backend_browser.mjs",
+    run([JS_RUNTIME, ROOT / "tests/canvas_backend_browser.mjs",
          output.as_uri(), project / "browser-profile"], project)
 print("Canvas Ziran project: manifest, saved IR, generated C, Emscripten page, and browser exit passed")

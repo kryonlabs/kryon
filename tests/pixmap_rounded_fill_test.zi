@@ -1,0 +1,43 @@
+// Compare the span path to the unchanged per-pixel 4x4 coverage oracle.
+#import "pixmap"
+#import "drawing_props"
+actual: [4096]u32;
+expected: [4096]u32;
+#program_export
+main :: () -> s32 {
+    for radius: cast(s32)0..32 {
+        for opacity: 0..2 {
+            for clipped: 0..2 {
+                for operation: cast(s32)0..3 {
+                for index: 0..4095 { actual[index] = cast(u32)0xff25374b; expected[index] = actual[index] }
+                color: Color = .{45, 187, 126, cast(u8)(ifx opacity == 0 then 255 else ifx opacity == 1 then 95 else 0)}
+                if !PixmapBeginInto(cast(u32)0xff25374b, 64, 64, actual[:], true) { return 1 }
+                if clipped == 1 { PixmapClipTo(.{7.0, 11.0, 31.0, 36.0}) }
+                if clipped == 2 { PixmapClipTo(.{37.0, 9.0, 21.0, 44.0}) }
+                if operation == 0 { RasterRoundedRectangle(.{3.0, 5.0, 55.0, 49.0}, cast(float32)radius, 12, color) }
+                else { RasterRoundedRectangleOutline(.{3.0, 5.0, 55.0, 49.0}, cast(float32)radius, 12, cast(float32)(ifx operation == 1 then 1 else ifx operation == 2 then 3 else 30), color) }
+                PixmapEndInto()
+                if !PixmapResumeInto(64, 64, expected[:], true) { return 2 }
+                if clipped == 1 { PixmapClipTo(.{7.0, 11.0, 31.0, 36.0}) }
+                if clipped == 2 { PixmapClipTo(.{37.0, 9.0, 21.0, 44.0}) }
+                r := PixmapRadius(3, 5, 58, 54, radius)
+                for y: cast(s32)5..53 { for x: cast(s32)3..57 {
+                    samples := PixmapSamples(x, y, 3, 5, 58, 54, r)
+                    if operation > 0 {
+                        w: s32 = ifx operation == 1 then 1 else ifx operation == 2 then 3 else 30
+                        ir := r - w; if ir < 0 { ir = 0 }
+                        if 3 + w < 58 - w && 5 + w < 54 - w { samples -= PixmapSamples(x, y, 3 + w, 5 + w, 58 - w, 54 - w, ir) }
+                    }
+                    PixmapBlend(x, y, color, samples * 255 / 16)
+                } }
+                PixmapEndInto()
+                for index: 0..4095 {
+                    if actual[index] != expected[index] { print("radius %, opacity %, clip %, pixel %\n", radius, opacity, clipped, index); return 3 }
+                }
+                }
+            }
+        }
+    }
+    print("Rounded fill spans match the coverage oracle\n")
+    return 0
+}

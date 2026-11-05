@@ -54,7 +54,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
     expected_red: u8 = cast(u8)0x12
-    if outlines == 0 { expected_red = cast(u8)0x88 }
+    if outlines == 0 { expected_red = cast(u8)0x6f }
     if !BoxIsExpected(bounds) || radius != cast(float32)0.18 ||
         segments != 8 || width != 1.0 || color.r != expected_red {
         failed = true
@@ -72,8 +72,8 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     if value != "Agree" || x != 42 || y != 29 || font != 14 ||
         clip.x != 10.0 || clip.y != 20.0 ||
         clip.width != 120.0 || clip.height != 30.0 ||
-        color.r != cast(u8)0x20 || color.g != cast(u8)0x3b ||
-        color.b != cast(u8)0x4b { failed = true }
+        color.r != cast(u8)0x19 || color.g != cast(u8)0x1c ||
+        color.b != cast(u8)0x1b { failed = true }
     labels += 1
 }
 
