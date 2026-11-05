@@ -291,8 +291,9 @@ bytes. Only the first decoded frame is retained.
 
 `mk/raylib-library.mk` builds `AVIF_A`, `AOM_A` and Linux `AVIF_SO` beside the
 existing renderer archives; `AVIF_A` contains dav1d. Building it needs Meson,
-Ninja and, on x86, NASM; `ZIRAN_AVIF_TOOLS` can name a directory holding the
-avif package's pinned Meson/Ninja. `kryon_android_raylib(raylib, webp, avif, aom)`
+Ninja and, on x86, NASM plus YASM, which libaom prefers (the locked libaom 3.13
+rejects NASM 3); `ZIRAN_AVIF_TOOLS` can name a directory holding the avif
+package's pinned Meson/Ninja. `kryon_android_raylib(raylib, webp, avif, aom)`
 links the static codec for each ABI; older scaffolds receive the source paths
 through `KRYON_ANDROID_AVIF_DIR`, `KRYON_ANDROID_AOM_DIR` and `KRYON_DAV1D_DIR`
 (otherwise dav1d comes from the locked package graph). The Raylib artifact
