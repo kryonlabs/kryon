@@ -24,3 +24,22 @@ Keep this binary unchanged; the generator above only regenerates tiny cases.
 RGBA samples at each grid cell's center, with a three-byte-value tolerance for
 YUV conversion differences. Tests also check the dimensions and every alpha
 byte, and Android repeats the decode through the actual background worker.
+
+## Engine corpus
+
+`tests/generate_avif_corpus.py` adds the decoder classes Kryon apps ship and
+writes `tests/avif_strict_digests.zi`: FNV-1a 64 digests of the libaom oracle's
+strict RGBA8 output for every case above plus this corpus, cross-checked
+against the avif package's independent `.strict.rgba` goldens. dav1d at every
+thread count and libaom must match them exactly on each target.
+
+| file | class | source |
+|---|---|---|
+| `ui-icon-444.avif` | 48x48 RGBA UI icon, 4:4:4 q90, 760 bytes | drawn by the generator |
+| `photo-444.avif` | 768x576 photo, 4:4:4 q60 | libavif `tests/data/dog_exif_extended_xmp_icc.jpg` (libavif licence), Lanczos, ICC/EXIF stripped |
+| `photo-420-large.avif` | 4032x3024 (12 MP) photo, 4:2:0 q35, 227 KiB | the same photo at full size |
+| `jungle-clownfish.avif` | 940x940 RGBA Jungle asset, q35, 33 KiB | byte copy of the owner's Jungle `assets/fishing/clownfish.avif`, SHA-256 `aa00f3ab77b7e5b0fd36c1637ce0e7753a42016eb40152259b58f4db3dbc39a8` |
+| `control.png` | 8x6 PNG of `rgba8.rgba` | browser control for the unsupported-AVIF run |
+
+Pillow 12.3 (libavif 1.4.2, libaom) encoded the generated files; encoder
+versions change bytes, so the committed files are canonical.

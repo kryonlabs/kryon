@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Native AVIF images decode with dav1d and its CPU-tuned assembly on desktop and every Android ABI, using up to four cores for large frames.
+
 - Tall buttons such as launcher and keypad tiles keep rounded card corners, show their pictures large, and neutral soft buttons take a light accent tint.
 
 - Web touches and clicks land on what is drawn under them when the page pads its canvas for a phone's notch or home bar.

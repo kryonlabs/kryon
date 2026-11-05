@@ -257,12 +257,15 @@ their existing paths.
 
 `Image(ImageProps)` accepts AVIF assets through the same path as PNG/JPEG/WebP,
 including extensionless names and packaged bundle/APK assets. Native hosts
-use the locked libavif 1.3 and libaom CPU decoder; Android 9 requires no OS
-AVIF support. The still-image API shows the first complete frame of a sequence.
-ARMv7 uses libaom's portable CPU kernels: the locked AOM/NDK combination emits
-unaligned NEON loads which fault on real Android hardware. Other architectures
-retain their SIMD kernels. The ARMv7 device suite covers both Debug and Release,
-including the original large YUV420 crash input and background image loading.
+decode with the locked libavif 1.3 and dav1d, its assembly selected at run time
+for the CPU (x86 SSE2 to AVX-512, ARMv7 and AArch64 NEON); Android 9 requires
+no OS AVIF support. libaom is linked as the explicit comparison oracle, never
+as a fallback. The still-image API shows the first complete frame of a
+sequence. The ARMv7 oracle keeps libaom's portable kernels, because the locked
+AOM/NDK combination emits unaligned NEON loads which fault on real Android
+hardware; dav1d's own NEON runs there. The ARMv7 device suite covers both Debug
+and Release, including the original large YUV420 crash input and background
+image loading.
 8/10/12-bit color and monochrome decode to straight 8-bit RGBA; alpha and
 container clean aperture, rotation and mirroring are preserved. The renderer
 then premultiplies for Cairo or composites normally in Raylib. HDR tone mapping
@@ -271,13 +274,28 @@ and ICC display color management are outside the existing 8-bit image surface.
 Encoded files are limited to 256 MiB, dimensions to 32768 per axis and pixel
 count to 67,108,864 (a 256 MiB RGBA buffer). These are independent axis/count
 limits, permitting wide images below the pixel budget. Invalid/truncated
-containers, invalid crops and oversized images return no image. Decoding uses
-one CPU thread and retains only the first decoded frame.
+containers, invalid crops and oversized images return no image. 4:2:0 frames
+of at least 8 MiP and other frames of at least 2 MiP decode on the process's
+usable cores, capped at 4 threads; smaller frames use one, because threading
+slowed them by up to 2.7x on the Moto. Thread count never changes output
+bytes. Only the first decoded frame is retained.
+
+| target | engine | proof |
+|---|---|---|
+| Linux x86-64 | dav1d, SSE2..AVX-512 | executed: strict parity, benchmark |
+| Android armeabi-v7a | dav1d NEON | executed on the USB Moto (MT6765, Android 9): parity, benchmark |
+| Android arm64-v8a | dav1d NEON, dotprod, i8mm | static build under qemu-user: strict parity |
+| Android x86, x86_64 | dav1d SSSE3..AVX-512 | static build on the x86-64 host: strict parity |
+| Linux AArch64 | dav1d NEON, dotprod, i8mm | qemu-user: strict parity |
+| Windows, macOS | dav1d via the same recipe | unverified here |
 
 `mk/raylib-library.mk` builds `AVIF_A`, `AOM_A` and Linux `AVIF_SO` beside the
-existing renderer archives. `kryon_android_raylib(raylib, webp, avif, aom)`
+existing renderer archives; `AVIF_A` contains dav1d. Building it needs Meson,
+Ninja and, on x86, NASM; `ZIRAN_AVIF_TOOLS` can name a directory holding the
+avif package's pinned Meson/Ninja. `kryon_android_raylib(raylib, webp, avif, aom)`
 links the static codec for each ABI; older scaffolds receive the source paths
-through `KRYON_ANDROID_AVIF_DIR` and `KRYON_ANDROID_AOM_DIR`. The Raylib artifact
+through `KRYON_ANDROID_AVIF_DIR`, `KRYON_ANDROID_AOM_DIR` and `KRYON_DAV1D_DIR`
+(otherwise dav1d comes from the locked package graph). The Raylib artifact
 includes the static codec archives. The desktop artifact includes the
 self-contained `libkryonavif.so`; `renderer_link` retains it as a runtime
 dependency so application packaging tools carry it into their lib directory.
@@ -285,15 +303,32 @@ Cairo also searches beside the executable and its `lib`/`../lib` directories;
 `KRYON_AVIF_LIBRARY` can select an explicit codec file for custom hosts.
 
 Canvas/DOM use the browser AVIF decoder through `PageImageDecode`; supported
-browsers supply their native AVIF implementation. The pure pixel renderer
-accepts decoded pixel buffers through `PixmapSetImage`, as for other formats.
+browsers (Firefox 93+, Chromium 85+, Safari 16.4+) supply their native AVIF
+implementation. In a browser without AVIF, every AVIF decode fails cleanly:
+no pixels and zero size, so the image is treated like any undecodable file,
+while PNG, JPEG and WebP keep working. Ship a fallback format for such
+browsers. The pure pixel renderer accepts decoded pixel buffers through
+`PixmapSetImage`, as for other formats.
 
-`make avif-decode-test` runs independent RGBA goldens from source and saved IR.
+`make avif-decode-test` runs independent RGBA goldens from source and saved IR,
+and checks dav1d (automatic, 1 and 8 threads) and the libaom oracle against the
+strict libavif digests in `tests/avif_strict_digests.zi`, tolerance 0. The
+independent goldens keep small documented tolerances: ±1 for 10/12-bit and
+grayscale (8-bit rounding of the source pattern), ±4 premultiplied (unpremultiply
+rounding) and ±3 for Jungle title samples (YUV420 conversion versus Pillow).
 `make avif-render-test` checks real Cairo and private-display Raylib rendering,
 including a portable bundle using the public Image widget. `make android-avif-test
 ANDROID_NDK=... ANDROID_SERIAL=ZE2223BQZT` builds all four ABIs and runs the
-ARMv7 CPU/golden-pixel tests on the Android 9 USB Moto. `make avif-browser-test`
-exercises the Canvas/DOM image boundary in private headless Firefox.
+ARMv7 strict-parity/golden-pixel tests on the Android 9 USB Moto, asserting each
+ABI's dav1d assembly. `make avif-cross-test [AVIF_CROSS_ROOT=...] [ANDROID_NDK=...]`
+runs the strict parity test for Linux AArch64 and static Android arm64-v8a
+under qemu-user (Cortex-A53 and every emulated feature) and Android x86/x86_64
+on the host; `AVIF_CROSS_ROOT` is a prefix holding the AArch64 GCC and
+qemu-aarch64. `make avif-browser-test` exercises the Canvas/DOM image
+boundary in private headless Firefox, reporting the AVIF capability, and repeats
+it as a browser without AVIF. `make avif-benchmark [ANDROID_SERIAL=ZE2223BQZT]
+[AVIF_BENCHMARK_BROWSER=1]` records ms/image, MP/s and peak RSS for libaom,
+dav1d threads and SIMD tiers, and Firefox, in `build/scratch/avif-benchmark`.
 
 The headless package suite, `build-queue -- sh tests/image_integration.sh`,
 resolves real native artifacts and tests source and saved IR under ASan, UBSan

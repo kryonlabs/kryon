@@ -1,5 +1,6 @@
 Pixels :: #import "raylib_image_decode";
 #import "avif_title_fixture"
+#import "avif_engine_parity"
 
 #import "file"
 #import "text_tools"
@@ -17,6 +18,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if argc != 2 { return 2 }
     directory := TextFromCString(argv[1])
     if !AvifTitleFixture(directory) { print("Large title fixture failed\n"); return 10 }
+    if !AvifEngineParity(directory) { return 11 }
     names: [17]string = .["rgba8", "rgba10", "rgba12", "gray8", "gray10", "gray12",
         "transform00", "transform01", "transform10", "transform11", "transform20", "transform21",
         "transform30", "transform31", "premultiplied", "opaque", "animated"]

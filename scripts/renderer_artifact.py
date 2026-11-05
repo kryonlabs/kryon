@@ -156,8 +156,8 @@ def build(name, target, stage, root):
     provider = next(p for p in lock['packages'] if p['id'] == os.environ['ZIRAN_PACKAGE_ID'])
     # pkg path selects names; reject an ambiguous/shadowed result explicitly.
     locked = [] if (project / 'ziran.local.toml').exists() else ['--locked']
-    def locked_source(name):
-        edge = provider['dependencies'][name]
+    def locked_source(name, owner=None):
+        edge = (owner or provider)['dependencies'][name]
         dependency = next(p for p in lock['packages'] if p['id'] == edge)
         source = Path(capture([toolchain / 'build/bin/ziran', 'pkg', 'path',
                                dependency['name'], *locked], cwd=project))
@@ -169,6 +169,9 @@ def build(name, target, stage, root):
     avif_source = locked_source('libavif') if name != 'renderer-web' else None
     aom_source = locked_source('libaom') if name != 'renderer-web' else None
     avif_package = locked_source('avif') if name != 'renderer-web' else None
+    # dav1d, the default AV1 engine, is pinned by the avif package's own edge.
+    avif_entry = next((p for p in lock['packages'] if p['id'] == provider['dependencies'].get('avif')), None)
+    dav1d_source = locked_source('dav1d', avif_entry) if name != 'renderer-web' else None
     if name == 'renderer-web':
         copy(toolchain / 'web/ziran_web.js', stage / 'web/ziran_web.js')
         meta['link_flags'] = ['-sUSE_ZLIB=1', '-lidbfs.js', '-sFORCE_FILESYSTEM=1',
@@ -184,7 +187,7 @@ def build(name, target, stage, root):
         meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', *packages])) + ['-lm', '-lpthread']
         with tempfile.TemporaryDirectory(prefix='.build-', dir=stage) as temporary:
             run(['cmake', '-S', root / 'cmake/avif', '-B', temporary,
-                 f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}',
+                 f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DDAV1D_DIR={dav1d_source}',
                  f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}', '-DCMAKE_BUILD_TYPE=Release'])
             run(['cmake', '--build', temporary, '--target', 'kryonavif', '--parallel', '2'])
             copy(Path(temporary) / 'libkryonavif.so', stage / 'lib/libkryonavif.so')
@@ -217,7 +220,8 @@ def build(name, target, stage, root):
                      f'KRYON_DIR={root}', f'RAYLIB_PACKAGE={source}', f'RAYLIB_BUILD={work}',
                      f'WEBP_PACKAGE={webp_source}', f'WEBP_BUILD={work}/webp',
                      f'WEBP_CODEC_PACKAGE={webp_package}', f'AVIF_CODEC_PACKAGE={avif_package}',
-                     f'AVIF_PACKAGE={avif_source}', f'AOM_PACKAGE={aom_source}', f'AVIF_BUILD={work}/avif-codec',
+                     f'AVIF_PACKAGE={avif_source}', f'AOM_PACKAGE={aom_source}', f'DAV1D_PACKAGE={dav1d_source}',
+                     f'AVIF_BUILD={work}/avif-codec',
                      f'RAYLIB_CC={cc}', f'RAYLIB_AR={os.environ.get("AR", "ar")}',
                      f'RAYLIB_CFLAGS={flags} -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_TTF=1',
                      str(work / 'libraylib.a'), str(work / 'webp/libkryonwebp.a'), str(work / 'avif-codec/avif/libavif.a')])
@@ -264,7 +268,7 @@ def build(name, target, stage, root):
                                f'-DANDROID_ABI={abi}', f'-DANDROID_PLATFORM=android-{api}',
                                f'-DRAYLIB_DIR={source}/src', f'-DWEBP_DIR={webp_source}',
                                f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DKRYON_WEBP_PACKAGE_DIR={webp_package}',
-                               f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}']
+                               f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}', f'-DDAV1D_DIR={dav1d_source}']
                     meta['defines'] = ['ANDROID_BUILD', macro]
                     meta['link_flags'] = ['-Wl,--wrap=fopen', '-lEGL', '-lGLESv2', '-landroid', '-llog', '-lOpenSLES', '-lm', '-ldl']
                 run(['cmake', '-S', cmake_source, '-B', work, *config])
@@ -283,7 +287,7 @@ def build(name, target, stage, root):
                          f'-DWEBP_DIR={webp_source}', '-DCMAKE_C_FLAGS=-O2'])
                     run(['cmake', '--build', work / 'webp', '--target', 'kryonwebp', '--parallel', '1'])
                     run(['cmake', '-S', root / 'cmake/avif', '-B', work / 'avif-codec', *windows,
-                         f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}',
+                         f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DDAV1D_DIR={dav1d_source}',
                          f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}'])
                     run(['cmake', '--build', work / 'avif-codec', '--target', 'avif_static', '--parallel', '1'])
                 avif_archive = next(work.rglob('libavif.a'))
@@ -298,6 +302,7 @@ def build(name, target, stage, root):
         copy(avif_source / 'LICENSE', stage / 'resources/LICENSE-libavif')
         copy(aom_source / 'LICENSE', stage / 'resources/LICENSE-libaom')
         copy(aom_source / 'PATENTS', stage / 'resources/PATENTS-libaom')
+        copy(dav1d_source / 'COPYING', stage / 'resources/LICENSE-dav1d')
     (stage / 'renderer.json').write_text(json.dumps(meta, indent=2) + '\n')
 
 

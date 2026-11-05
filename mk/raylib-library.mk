@@ -13,6 +13,7 @@ WEBP_INPUTS = $(KRYON_DIR)/cmake/WebP.cmake $(KRYON_DIR)/cmake/ImagePackages.cma
 AVIF_CODEC_PACKAGE = $(eval AVIF_CODEC_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path avif $(if $(wildcard ziran.local.toml),,--locked)))$(AVIF_CODEC_PACKAGE)
 AVIF_PACKAGE = $(eval AVIF_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path libavif $(if $(wildcard ziran.local.toml),,--locked)))$(AVIF_PACKAGE)
 AOM_PACKAGE = $(eval AOM_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path libaom $(if $(wildcard ziran.local.toml),,--locked)))$(AOM_PACKAGE)
+DAV1D_PACKAGE = $(eval DAV1D_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path dav1d $(if $(wildcard ziran.local.toml),,--locked)))$(DAV1D_PACKAGE)
 AVIF_BUILD ?= $(KRYON_DIR)/build/avif-ziran
 AVIF_A ?= $(AVIF_BUILD)/avif/libavif.a
 AOM_A ?= $(AVIF_BUILD)/aom/libaom.a
@@ -77,7 +78,7 @@ $(WEBP_A): $$(WEBP_INPUTS)
 
 $(AVIF_A): $$(AVIF_INPUTS)
 	cmake -S $(KRYON_DIR)/cmake/avif -B $(AVIF_BUILD) -DAVIF_DIR="$(AVIF_PACKAGE)" -DAOM_DIR="$(AOM_PACKAGE)" \
-		-DKRYON_AVIF_PACKAGE_DIR="$(AVIF_CODEC_PACKAGE)" \
+		-DDAV1D_DIR="$(DAV1D_PACKAGE)" -DKRYON_AVIF_PACKAGE_DIR="$(AVIF_CODEC_PACKAGE)" \
 		-DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="$(RAYLIB_CC)"
 	command cmake --build $(AVIF_BUILD) --target avif_static $(if $(filter Linux,$(RAYLIB_HOST_OS)),kryonavif) --parallel $(RAYLIB_JOBS)
 	@test -f $@

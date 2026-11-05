@@ -38,12 +38,12 @@
       "url": "https://github.com/AOMediaCodec/libavif.git"
     },
     {
-      "commit": "d649529af4effb79cf538d68a74841ce0f9c800b",
+      "commit": "9da2e2ae6f1e76d3c65b26b2b6eb8da9ad1bc67c",
       "dependencies": {"dav1d": "pb24767b9eb34d961", "image_codec": "pf881ecd979d92258", "libaom": "pfba2650e0a73c0ea", "libavif": "p57c0272208aae8db"},
       "dependency_refs": {"dav1d": "54706fc6bc0cdecab7e9593974a4039cc038fca7", "image_codec": "a8767d78d0c08d5b1c1fc0bab6fcafdc7a6da930", "libaom": "d772e334cc724105040382a977ebb10dfd393293", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199"},
-      "id": "pa02edb78c0cdc1d4",
+      "id": "p604d73d730de99c3",
       "name": "avif",
-      "ref": "d649529af4effb79cf538d68a74841ce0f9c800b",
+      "ref": "9da2e2ae6f1e76d3c65b26b2b6eb8da9ad1bc67c",
       "url": "https://github.com/ziranlang/avif.git"
     },
     {
@@ -83,8 +83,8 @@
     }
   ],
   "root": {
-    "dependencies": {"avif": "pa02edb78c0cdc1d4", "image_codec": "pf881ecd979d92258", "libaom": "pfba2650e0a73c0ea", "libavif": "p57c0272208aae8db", "libwebp": "p3b3c785a0e17e605", "raylib": "pcc7aa76725f2fb2f", "sdl3": "p16cd0434af3dff7b", "webp": "p3506771824db7a7c"},
-    "dependency_refs": {"avif": "d649529af4effb79cf538d68a74841ce0f9c800b", "image_codec": "a8767d78d0c08d5b1c1fc0bab6fcafdc7a6da930", "libaom": "d772e334cc724105040382a977ebb10dfd393293", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339", "raylib": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e", "sdl3": "829a65d769d935c4852f8159e964312c0957260a", "webp": "b29d4f43fd295377f745ee88fe6596358fdd12c0"},
+    "dependencies": {"avif": "p604d73d730de99c3", "image_codec": "pf881ecd979d92258", "libaom": "pfba2650e0a73c0ea", "libavif": "p57c0272208aae8db", "libwebp": "p3b3c785a0e17e605", "raylib": "pcc7aa76725f2fb2f", "sdl3": "p16cd0434af3dff7b", "webp": "p3506771824db7a7c"},
+    "dependency_refs": {"avif": "9da2e2ae6f1e76d3c65b26b2b6eb8da9ad1bc67c", "image_codec": "a8767d78d0c08d5b1c1fc0bab6fcafdc7a6da930", "libaom": "d772e334cc724105040382a977ebb10dfd393293", "libavif": "1aadfad932c98c069a1204261b1856f81f3bc199", "libwebp": "1844042d1ca751e62e61df7617dba19c98588339", "raylib": "fafa2cea97d0cb379d832086ba45a989fa6f9c8e", "sdl3": "829a65d769d935c4852f8159e964312c0957260a", "webp": "b29d4f43fd295377f745ee88fe6596358fdd12c0"},
     "name": "kryon"
   },
   "toolchain": {

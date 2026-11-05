@@ -731,6 +731,21 @@ avif-browser-test: project-toolchain
 android-avif-test: project-toolchain
 	@python3 tests/android_avif_decode_test.py --ndk "$(ANDROID_NDK)" $(if $(ANDROID_SERIAL),--serial "$(ANDROID_SERIAL)")
 
+# Static AVIF strict parity: Linux AArch64 (and with ANDROID_NDK, Android
+# arm64-v8a) under qemu-user, Android x86/x86_64 natively. AVIF_CROSS_ROOT holds the cross
+# GCC (default: the system root).
+.PHONY: avif-cross-test
+avif-cross-test: project-toolchain
+	@python3 tests/avif_cross_test.py $(if $(AVIF_CROSS_ROOT),--toolchain-root "$(AVIF_CROSS_ROOT)") $(if $(ANDROID_NDK),--ndk "$(ANDROID_NDK)")
+
+# Benchmark receipt: libaom oracle vs dav1d threads/SIMD tiers on this host,
+# plus the USB Moto with ANDROID_SERIAL and Firefox with AVIF_BENCHMARK_BROWSER=1.
+.PHONY: avif-benchmark
+avif-benchmark: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/avif_benchmark.py \
+		$(if $(ANDROID_SERIAL),--serial "$(ANDROID_SERIAL)" --ndk "$(or $(ANDROID_NDK),$(HOME)/Android/Sdk/ndk/28.2.13676358)") \
+		$(if $(AVIF_BENCHMARK_BROWSER),--browser)
+
 .PHONY: avif-render-test
 avif-render-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO) $(ZX_RAYLIB_RUNTIME)
 	@sh tests/avif_render_test.sh

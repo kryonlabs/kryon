@@ -1,6 +1,6 @@
 # Shared dependency paths for standalone backend tests. The ordinary package
 # resolver/artifact path is exercised separately by image_integration.sh.
-image_avif=$("$ziran" pkg path avif)
+image_avif=${KRYON_AVIF_PACKAGE_DIR:-$("$ziran" pkg path avif)}
 image_webp=$("$ziran" pkg path webp)
 image_codec=$("$ziran" pkg path image_codec)
 image_ziran() {

@@ -1,0 +1,64 @@
+// Per-target AVIF bit-exactness through Kryon's static decoder. dav1d with
+// its automatic thread count, one thread, the automatic cap and the explicit
+// maximum, plus the libaom oracle, must all reproduce the strict libavif RGBA8
+// digest of every case.
+using Bridge :: #import "avif/bridge"
+Avif :: #import "avif/api";
+Engine :: #import "avif/engine";
+Codecs :: #import "image_codec/api";
+#import "avif_strict_digests"
+#import "ziran_image_decode"
+#import "file"
+#import "text_tools"
+#import "std/byte_text_linux"
+
+AvifParityDigest :: (pixels: *u8, count: s64) -> u64 {
+    hash: u64 = 0xcbf29ce484222325
+    for i: 0..count - 1 { hash = (hash ^ cast(u64)pixels[i]) * 0x100000001b3 }
+    return hash
+}
+
+// Zero reports a failed decode; FNV-1a of real pixels is never zero here.
+AvifParityDecode :: (data: string, codec: s32, threads: s32, width: *s32, height: *s32) -> u64 {
+    width.* = 0; height.* = 0
+    api := Avif.StaticNativeAPI()
+    input := ImageEncodedBytes(data)
+    options := Codecs.DefaultOptions()
+    probe := Bridge.BridgeProbe(api, input, options, codec)
+    if !probe.is_ok { return 0 }
+    count := cast(s64)probe.metadata.width * probe.metadata.height * 4
+    pixels := ImagePixelsAllocate(cast(usize)count)
+    if pixels == null { return 0 }
+    output := Codecs.OutputBuffer.{BytesFromPointer(pixels, cast(u64)count), cast(s64)probe.metadata.width * 4}
+    result := Bridge.DecodeIntoWithAPI(api, input, output, options, codec, threads)
+    digest: u64 = 0
+    if result.is_ok {
+        digest = AvifParityDigest(pixels, count)
+        width.* = result.metadata.width; height.* = result.metadata.height
+    }
+    ImagePixelsFree(pixels)
+    return digest
+}
+
+AvifEngineParity :: (directory: string) -> bool {
+    for index: 0..AVIF_STRICT_COUNT - 1 {
+        expected := AvifStrictCaseAt(index)
+        parts: [4]string = .[directory, "/", expected.name, ".avif"]
+        data, ok := ReadEntireFile(TextJoin(parts[:], ""))
+        if !ok { print("%: fixture missing\n", expected.name); return false }
+        codecs: [5]s32 = .[Bridge.CodecDav1d, Bridge.CodecDav1d, Bridge.CodecDav1d, Bridge.CodecDav1d, Bridge.CodecLibaom]
+        threads: [5]s32 = .[0, 1, Bridge.AUTO_THREADS, Engine.MAX_DECODE_THREADS, 1]
+        for run: 0..4 {
+            width: s32; height: s32
+            digest := AvifParityDecode(data, codecs[run], threads[run], *width, *height)
+            if digest != expected.digest || width != expected.width || height != expected.height {
+                print("% codec % threads %: %x% digest % expected %\n", expected.name, codecs[run], threads[run],
+                    width, height, digest, expected.digest)
+                return false
+            }
+        }
+    }
+    print("AVIF strict parity: dav1d auto/1/%/% threads and libaom oracle bit-exact on % cases\n",
+        Bridge.AUTO_THREADS, Engine.MAX_DECODE_THREADS, AVIF_STRICT_COUNT)
+    return true
+}

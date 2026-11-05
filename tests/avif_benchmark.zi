@@ -1,0 +1,93 @@
+// AVIF decode benchmark through Kryon's static decoder: probe, caller-owned
+// output allocation, decode and release, the same sequence as
+// AvifDecodeWithOptions. One engine, thread count and optional dav1d CPU-flag
+// mask per process, so its peak RSS belongs to that configuration alone.
+// Usage: avif-benchmark FILE dav1d|libaom THREADS MASK ITERATIONS
+// THREADS 0 is the bridge's automatic bounded count; MASK -1 keeps dav1d's
+// own CPU detection. Prints one JSON line; every sample is digest-checked.
+using Bridge :: #import "avif/bridge"
+Avif :: #import "avif/api";
+Codecs :: #import "image_codec/api";
+#import "avif_engine_parity"
+#import "ziran_image_decode"
+#import "file"
+#import "std/number_text"
+#import "std/timer_linux"
+#import "std/byte_text_linux"
+
+benchmark_libc :: #system_library "libc";
+benchmark_avif :: #system_library "avif";
+// struct rusage: two timevals then fourteen longs; ru_maxrss is in KiB.
+BenchmarkUsage :: struct { fields: [18]isize; }
+BenchmarkResourceUsage :: (who: s32, usage: *BenchmarkUsage) -> s32 #foreign benchmark_libc "getrusage";
+BenchmarkDav1dMask :: (mask: u32) #foreign benchmark_avif "dav1d_set_cpu_flags_mask";
+MAX_SAMPLES :: 256
+
+// avifPixelFormat (444 1, 422 2, 420 3, 400 4) from the first av1C property,
+// the input the bridge's automatic thread policy reads.
+BenchmarkPixelFormat :: (data: string) -> s32 {
+    for i: 0..data.count - 8 {
+        if data[i] == 97 && data[i + 1] == 118 && data[i + 2] == 49 && data[i + 3] == 67 {
+            flags := cast(s32)data[i + 6]
+            if (flags & 16) != 0 { return 4 }
+            if (flags & 8) != 0 { return ifx (flags & 4) != 0 then 3 else 2 }
+            return 1
+        }
+    }
+    return 0
+}
+
+BenchmarkNumber :: (text: string) -> s64 {
+    value, count := IntegerPrefix(text)
+    if count == 0 || count != text.count { return -2 }
+    return value
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 6 { print("usage: avif-benchmark FILE dav1d|libaom THREADS MASK ITERATIONS\n"); return 2 }
+    path := TextFromCString(argv[1])
+    engine := TextFromCString(argv[2])
+    threads := BenchmarkNumber(TextFromCString(argv[3]))
+    mask := BenchmarkNumber(TextFromCString(argv[4]))
+    iterations := BenchmarkNumber(TextFromCString(argv[5]))
+    codec: s32 = Bridge.CodecDav1d
+    if engine == "libaom" { codec = Bridge.CodecLibaom }
+    else if engine != "dav1d" { return 3 }
+    if threads < 0 || threads > 8 || (codec == Bridge.CodecLibaom && threads != 1) { return 4 }
+    if mask < -1 || (mask >= 0 && codec != Bridge.CodecDav1d) || iterations < 1 || iterations > MAX_SAMPLES { return 5 }
+    data, ok := ReadEntireFile(path)
+    if !ok { return 6 }
+    if mask >= 0 { BenchmarkDav1dMask(cast(u32)mask) }
+    width: s32; height: s32
+    // Warm and correctness decode; every timed sample must reproduce it.
+    expected := AvifParityDecode(data, codec, cast(s32)threads, *width, *height)
+    if expected == 0 { return 7 }
+    pixels := cast(s64)width * height
+    effective := ifx threads == 0 then cast(s64)Bridge.DecodeThreads(pixels, BenchmarkPixelFormat(data)) else threads
+    samples: [256]s64
+    total: s64 = 0
+    for i: 0..iterations - 1 {
+        start := MonotonicNanoseconds()
+        sample_width: s32; sample_height: s32
+        digest := AvifParityDecode(data, codec, cast(s32)threads, *sample_width, *sample_height)
+        end := MonotonicNanoseconds()
+        if start < 0 || end < start || digest != expected { return 8 }
+        samples[i] = end - start
+        total += end - start
+    }
+    // Insertion sort; at most MAX_SAMPLES values.
+    for i: 1..iterations - 1 {
+        value := samples[i]
+        j := i - 1
+        while j >= 0 && samples[j] > value { samples[j + 1] = samples[j]; j -= 1 }
+        samples[j + 1] = value
+    }
+    usage: BenchmarkUsage
+    rss: s64 = -1
+    if BenchmarkResourceUsage(0, *usage) == 0 { rss = cast(s64)usage.fields[4] }
+    print("{\"file\":\"%\",\"engine\":\"%\",\"threads\":%,\"effective_threads\":%,\"mask\":%,\"width\":%,\"height\":%,\"input_bytes\":%,\"iterations\":%,\"min_ns\":%,\"p50_ns\":%,\"max_ns\":%,\"mean_ns\":%,\"peak_rss_kib\":%,\"digest\":%}\n",
+        path, engine, threads, effective, mask, width, height, data.count, iterations,
+        samples[0], samples[iterations / 2], samples[iterations - 1], total / iterations, rss, expected)
+    return 0
+}
