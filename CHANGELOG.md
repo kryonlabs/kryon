@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Tall buttons such as launcher and keypad tiles keep rounded card corners, show their pictures large, and neutral soft buttons take a light accent tint.
+
 - Web touches and clicks land on what is drawn under them when the page pads its canvas for a phone's notch or home bar.
 
 - Explore Kryon Labs apps and visual modules with real previews, clear availability and an editable widget gallery.

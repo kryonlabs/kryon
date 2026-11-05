@@ -32,6 +32,15 @@ Frame :: () -> s32 {
     if ButtonPictureSize(80.0, 40.0, 18.0, true, true) != 28.0 { return 91 }
     if ButtonPictureSize(64.0, 64.0, 18.0, true, false) != 18.0 { return 92 }
     if ButtonPictureSize(64.0, 64.0, 18.0, false, true) != 18.0 { return 93 }
+    // Tiles show their artwork large; ordinary controls keep glyph size.
+    if ButtonLabeledPictureSize(190.0, 88.0, 18.0, 20.0, 8.0, true) != 36.0 { return 80 }
+    if ButtonLabeledPictureSize(190.0, 160.0, 18.0, 20.0, 8.0, true) != 64.0 { return 81 }
+    if ButtonLabeledPictureSize(60.0, 160.0, 18.0, 20.0, 8.0, true) != 36.0 { return 82 }
+    if ButtonLabeledPictureSize(300.0, 64.0, 18.0, 20.0, 8.0, false) != 40.0 { return 83 }
+    if ButtonLabeledPictureSize(300.0, 40.0, 18.0, 20.0, 8.0, false) != 18.0 { return 84 }
+    // Capsules stay capsules on controls; tall tiles take card corners.
+    if ButtonCornerRadius(999.0, 40.0) != 999.0 || ButtonCornerRadius(999.0, 88.0) != 20.0 ||
+        ButtonCornerRadius(8.0, 88.0) != 8.0 { return 85 }
     muted := ButtonDefaultFace(ButtonProps.{.tone = .ButtonToneAccent}, cast(s32)ButtonState.ButtonStateDisabled)
     if (muted.background & cast(u32)255) != cast(u32)255 ||
         (muted.foreground & cast(u32)255) != cast(u32)255 ||

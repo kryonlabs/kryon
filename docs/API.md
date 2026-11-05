@@ -44,6 +44,17 @@ their existing contracts. Pointer hover/press and keyboard focus draw state
 layers; keyboard focus adds a ring. `compact` retains the scrolling dock/rail
 layout used by Breeze, including its footer and drag/close behavior.
 
+## Buttons
+
+Installed system palettes give buttons the full (capsule) shape. A button
+taller than 56 units is a tile, such as a launcher or keypad tile, and takes
+20-unit card corners instead of becoming a stadium; `pill` and `circle` still
+force a capsule. Neutral soft buttons are tonal: a light tint of the palette's
+accent over the background. A labeled `image` in a tile fills the spare
+height instead of staying at the styled icon size: up to 64 units above the
+label, or up to 40 units beside it. A vector `icon_shape` still takes
+precedence over an `image` and keeps the styled size.
+
 ## Cards
 
 `Card(session, CardProps)` draws a filled, elevated or outlined Material surface.

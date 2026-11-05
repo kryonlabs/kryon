@@ -234,7 +234,7 @@ Theme :: #import "theme";
         label_height: s32, focus_visible: bool = false) {
         if props.invisible { return }
         opacity: float32 = StyleOpacityValue(face.fields, face.opacity)
-        radius: float32 = face.radius
+        radius: float32 = ButtonCornerRadius(face.radius, bounds.height)
         if props.pill || props.circle { radius = bounds.height * 0.5 }
         background: Color = ColorFromPacked(Opacity(face.background, opacity))
         // A colour swatch shows its own colour, never the style's fill.
@@ -298,6 +298,12 @@ Theme :: #import "theme";
             props.image.asset_path != "icons/ui.webp"
         icon_size := ButtonPictureSize(bounds.width, bounds.height, face.icon_size,
             props.icon_only, picture)
+        if picture && !props.icon_only && props.label != "" &&
+            props.icon_placement != cast(IconPlacement)IconPlacementTrailing {
+            icon_size = ButtonLabeledPictureSize(bounds.width, bounds.height, icon_size,
+                cast(float32)label_height, face.gap,
+                props.icon_placement == cast(IconPlacement)IconPlacementAbove)
+        }
         content: ButtonContent = ContentLayout(bounds.width, bounds.height,
             cast(float32)label_width, icon_size, face.gap, has_image,
             props.icon_only,

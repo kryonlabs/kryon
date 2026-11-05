@@ -106,6 +106,33 @@ ButtonPictureSize :: (width: float32, height: float32, styled_size: float32,
     if side < 0.0 { side = 0.0 }
     return side
 }
+
+// A labeled picture in a tall button, such as a launcher tile or a list row,
+// fills the spare height instead of staying glyph sized. Ordinary controls
+// keep the styled size.
+#program_export
+ButtonLabeledPictureSize :: (width: float32, height: float32, styled_size: float32,
+    label_height: float32, gap: float32, above: bool) -> float32 {
+    if height < 56.0 { return styled_size }
+    side := height - 24.0
+    limit: float32 = 40.0
+    if above {
+        side = height - label_height - gap - 24.0
+        limit = 64.0
+        if side > width - 24.0 { side = width - 24.0 }
+    }
+    if side > limit { side = limit }
+    if side < styled_size { return styled_size }
+    return side
+}
+
+// The full shape is a capsule for controls. A taller button is a tile and
+// takes card corners rather than becoming a stadium.
+#program_export
+ButtonCornerRadius :: (radius: float32, height: float32) -> float32 {
+    if radius >= 999.0 && height > 56.0 { return 20.0 }
+    return radius
+}
 #program_export
 ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool {
     if clicked { return !open }

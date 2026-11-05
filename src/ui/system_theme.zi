@@ -432,21 +432,25 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.S
     paint := cast(u32)Controls.StyleField.StyleBackground | cast(u32)Controls.StyleField.StyleForeground
     ink := cast(u32)Controls.StyleField.StyleForeground
     edge := ink | cast(u32)Controls.StyleField.StyleBorder
+    // Neutral soft buttons are tonal: a light tint of the accent rather than
+    // flat grey, so launcher tiles, keypads and tabs share the palette.
+    tonal_button := CssMix(CssMix(bg, fg, 0.05), palette.selected, 0.12)
     for index: 0..4 {
         tone := cast(s32)index; fill := fills[index]; mark := ifx tone == 0 then fg else fill
+        soft := ifx tone == 0 then tonal_button else CssMix(bg, mark, 0.16)
         lit := Theme.StateLayer(fill, inks[index], cast(u32)8)
         pressed := Theme.StateLayer(fill, inks[index], cast(u32)12)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, fill, inks[index], 0)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, lit, inks[index], 0, 2)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, pressed, inks[index], 0, 3)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisFilled, paint, pressed, inks[index], 0, 7)
-        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisSoft, paint, CssMix(bg, mark, 0.16), mark, 0)
+        ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisSoft, paint, soft, mark, 0)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisOutline, edge, 0, mark, ifx tone == 0 then palette.border else fill)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisGhost, ink, 0, mark, 0)
         ButtonColors(*rules, tone, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisLink, ink, 0, mark, 0)
         emphasis: [4]s32 = .{cast(s32)Controls.ButtonEmphasis.ButtonEmphasisSoft, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisOutline, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisGhost, cast(s32)Controls.ButtonEmphasis.ButtonEmphasisLink}
         for variant: 0..3 {
-            base := ifx variant == 0 then CssMix(bg, mark, 0.16) else cast(u32)0
+            base := ifx variant == 0 then soft else cast(u32)0
             ButtonColors(*rules, tone, emphasis[variant], paint, Theme.StateLayer(base, mark, cast(u32)8), mark, 0, cast(s32)Controls.ButtonState.ButtonStateHover)
             ButtonColors(*rules, tone, emphasis[variant], paint, Theme.StateLayer(base, mark, cast(u32)12), mark, 0, cast(s32)Controls.ButtonState.ButtonStatePressed)
         }
