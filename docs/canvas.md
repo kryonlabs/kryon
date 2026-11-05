@@ -55,8 +55,10 @@ application using `emscripten_set_main_loop` must call
 scheduler waits for frames. `SetTargetFPS` then adjusts that scheduler's RAF
 interval; it does not suspend `EndDrawing`. Opening a window resets this mode.
 
-The host finds `#canvas` and measures its `#canvas-frame` container when one is
-present. Otherwise it measures the canvas parent. Include UTF-8 metadata in
+The host finds `#canvas` and fills its `#canvas-frame` container when one is
+present, otherwise the canvas parent. It draws at the canvas's own CSS size, so
+a frame padded for safe-area insets still matches where touches land, and maps
+pointer positions through the canvas's shown box. Include UTF-8 metadata in
 HTML shells, including shells using Emscripten's single-file Wasm output.
 Only this host's event listeners and resize observer are removed on close.
 A subsequent open creates new input and texture state; cached default font

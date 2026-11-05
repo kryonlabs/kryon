@@ -1,0 +1,23 @@
+// Page geometry shared by the canvas page's sizing and its pointer events.
+// The page draws its frame at page_width by page_height units and the browser
+// stretches that bitmap over the canvas's CSS box, so both sides must agree on
+// that box.
+
+// The canvas's laid-out size on one axis. A fluid canvas fills its frame's
+// content box, which is smaller than the frame's border box when the frame is
+// padded, for example by env(safe-area-inset-*). The canvas's own size is
+// used while it lies within the frame; before layout, or if it overflows the
+// frame, the frame's size is used.
+PageFluidExtent :: (canvas: float64, frame: float64) -> float64 {
+    if canvas > 0.0 && (frame <= 0.0 || canvas <= frame + 0.5) { return canvas }
+    return frame
+}
+
+// A browser client coordinate in page units: its distance from the shown
+// canvas's edge, scaled from the canvas's CSS size to the size the page draws
+// at, so a touch lands on what is drawn under it.
+PagePointerUnit :: (client: float64, origin: float64, shown: float64, logical: s32) -> float64 {
+    offset := client - origin
+    if shown > 0.0 && logical > 0 { return offset * cast(float64)logical / shown }
+    return offset
+}

@@ -350,8 +350,13 @@ mini-mode-test:
 web-js-boundary-test:
 	@python3 tests/web_js_boundary_test.py
 
+.PHONY: page-geometry-test
+page-geometry-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/page_geometry_test.sh
+test: page-geometry-test
+
 .PHONY: canvas-test
-canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test mini-mode-test dom-spec-test canvas-audio-engine-test
+canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test mini-mode-test dom-spec-test canvas-audio-engine-test page-geometry-test
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/canvas_backend_test.sh
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/file_picker_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/http_transfer_browser_test.py

@@ -1,0 +1,29 @@
+#import, file "../src/backend/page_geometry.zi";
+
+// A phone page whose canvas frame is padded by safe-area insets: the frame is
+// 400 by 800 CSS pixels, the canvas inside it 400 by 720 (top 48, bottom 32).
+#program_export
+GeometryCheck :: () -> s32 {
+    // The page draws at the canvas's own size, not the padded frame's.
+    if PageFluidExtent(400.0, 400.0) != 400.0 { return 1 }
+    if PageFluidExtent(720.0, 800.0) != 720.0 { return 2 }
+    // Not laid out yet, or overflowing the frame: the frame decides.
+    if PageFluidExtent(0.0, 800.0) != 800.0 { return 3 }
+    if PageFluidExtent(1600.0, 800.0) != 800.0 { return 4 }
+    if PageFluidExtent(720.0, 0.0) != 720.0 { return 5 }
+
+    // A keypad button drawn at page y 600..640 shows at client y 648..688.
+    // A touch on its centre maps back to its centre, as does the left edge.
+    centre := PagePointerUnit(668.0, 48.0, 720.0, 720)
+    if centre < 619.99 || centre > 620.01 { return 6 }
+    if PagePointerUnit(10.0, 0.0, 400.0, 400) != 10.0 { return 7 }
+
+    // A canvas shown smaller than the page it draws (720 units in a 648 pixel
+    // box) still maps the touch onto the drawing under the finger.
+    scaled := PagePointerUnit(48.0 + 558.0, 48.0, 648.0, 720)
+    if scaled < 619.99 || scaled > 620.01 { return 8 }
+    // Nothing measured: client offsets pass through.
+    if PagePointerUnit(100.0, 20.0, 0.0, 720) != 80.0 { return 9 }
+    return 42
+}
+

@@ -4,6 +4,7 @@
 // policy gives: whether to cancel the event, focus the canvas, or capture the
 // pointer. It decides nothing about the input itself.
 #import "page_core"
+#import "page_geometry"
 #import "page_files"
 #import "dom_host"
 #import "canvas_events"
@@ -146,18 +147,28 @@ PageEventSend :: (kind: s32, a: s32, b: s32, x: float64, y: float64,
     return CanvasEvent(kind, a, b, x, y, *page_event_code[0], *page_event_key[0])
 }
 
+// Pointer positions in page units, mapped through the canvas's CSS box the
+// page's bitmap is shown in.
 PageEventPointX :: (event: s32) -> float64 {
     rect: s32 = WebAsObject(WebCall0(page_canvas, page_names.get_bounding_client_rect))
     left: float64 = 0.0
-    if rect != 0 { left = WebGetNumber(rect, page_event_names.left) }
-    return WebGetNumber(event, page_event_names.client_x) - left
+    shown: float64 = 0.0
+    if rect != 0 {
+        left = WebGetNumber(rect, page_event_names.left)
+        shown = WebGetNumber(rect, page_names.width)
+    }
+    return PagePointerUnit(WebGetNumber(event, page_event_names.client_x), left, shown, page_width)
 }
 
 PageEventPointY :: (event: s32) -> float64 {
     rect: s32 = WebAsObject(WebCall0(page_canvas, page_names.get_bounding_client_rect))
     top: float64 = 0.0
-    if rect != 0 { top = WebGetNumber(rect, page_event_names.top) }
-    return WebGetNumber(event, page_event_names.client_y) - top
+    shown: float64 = 0.0
+    if rect != 0 {
+        top = WebGetNumber(rect, page_event_names.top)
+        shown = WebGetNumber(rect, page_names.height)
+    }
+    return PagePointerUnit(WebGetNumber(event, page_event_names.client_y), top, shown, page_height)
 }
 
 PageEventTouches :: (event: s32) {

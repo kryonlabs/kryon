@@ -4,6 +4,7 @@
 // application draws and how it reacts to input is decided elsewhere; this
 // module only holds the page objects those decisions act on.
 #import "web"
+#import "page_geometry"
 #import "number_text"
 #import "text_buffer"
 #import "byte_text_linux"
@@ -447,10 +448,23 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
     fluid: bool = box != 0 && !PageSame(box, canvas)
     width: float64 = cast(float64)requested_width
     height: float64 = cast(float64)requested_height
+    // A fluid canvas fills its frame before it is measured.
+    if fluid && style != 0 {
+        WebSet(style, page_names.width, WebText("100%"))
+        WebSet(style, page_names.height, WebText("100%"))
+    }
     if box != 0 && WebTypeOf(WebGetObject(box, page_names.get_bounding_client_rect)) == WebTypeFunction {
         rect: s32 = WebAsObject(WebCall0(box, page_names.get_bounding_client_rect))
         rect_width: float64 = WebGetNumber(rect, page_names.width)
         rect_height: float64 = WebGetNumber(rect, page_names.height)
+        if fluid {
+            // Draw at the canvas's own CSS size: a padded frame (safe-area
+            // insets) is larger, and drawing at its size would squeeze the
+            // picture away from where the pointer lands.
+            shown: s32 = WebAsObject(WebCall0(canvas, page_names.get_bounding_client_rect))
+            rect_width = PageFluidExtent(WebGetNumber(shown, page_names.width), rect_width)
+            rect_height = PageFluidExtent(WebGetNumber(shown, page_names.height), rect_height)
+        }
         if rect_width > 0.0 && rect_height > 0.0 {
             width = rect_width
             height = rect_height
@@ -460,10 +474,7 @@ PageResizeMain :: (requested_width: s32, requested_height: s32) {
     new_height: s32 = PageFirstSize(PageRound(height), requested_height, page_height)
     if style != 0 {
         lengths: [32]u8
-        if fluid {
-            WebSet(style, page_names.width, WebText("100%"))
-            WebSet(style, page_names.height, WebText("100%"))
-        } else {
+        if !fluid {
             WebSet(style, page_names.width, WebText(PageLength(cast(float64)new_width, lengths[:])))
             WebSet(style, page_names.height, WebText(PageLength(cast(float64)new_height, lengths[:])))
         }
