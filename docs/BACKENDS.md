@@ -435,7 +435,8 @@ copies.
 | DOM `<img>` | Scaled by the browser |
 
 Firefox has no `imageSmoothingQuality`. Canvas therefore does not rely on
-it, and still sets it to `high` for smooth draws that it does not cache.
+it, and still sets it to `high` for upright smooth draws that it does not
+cache; meshes and transformed images keep the browser's default.
 The cached Canvas copy matches Pillow for opaque pictures. Translucent
 pictures differ by the browser's 8-bit premultiplied blend, up to about
 3.5 levels on average.
