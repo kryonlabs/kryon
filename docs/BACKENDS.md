@@ -442,6 +442,15 @@ The cached Canvas copy matches Pillow for opaque pictures. Translucent
 pictures differ by the browser's 8-bit premultiplied blend, up to about
 3.5 levels on average.
 
+A web profile's page carries two builds of the program: one compiled with
+`-msimd128` and a baseline one. A small script in the page starts the
+SIMD128 build where `WebAssembly.validate` accepts a SIMD probe module, so
+Canvas copies use std/resample's SIMD128 kernels, and the baseline build
+elsewhere. Both builds give the same bytes. The page stays one file, and the
+font is carried once for both builds (`mk/web-page.sh`).
+`tests/web_simd_page_test.py`, part of `make canvas-project-test`, checks
+this in headless Firefox and Chromium.
+
 A host that sleeps between events calls `PixmapLanczosPending` or
 `LanczosSetWake` so it draws again when a copy finishes. The desktop loop
 already does this by pushing a wake event. `PixmapLanczosWait` and

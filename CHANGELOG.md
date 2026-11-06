@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Web pages scale images with WebAssembly SIMD where the browser supports it, and fall back to a baseline build elsewhere.
+
 - Smooth images are shown at their on-screen size with Lanczos filtering on every backend, made off the UI thread (a slice per frame on the web) and matching Pillow.
 
 - Native AVIF images decode with dav1d and its CPU-tuned assembly on desktop and every Android ABI, using up to four cores for large frames.

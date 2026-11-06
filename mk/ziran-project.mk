@@ -258,17 +258,24 @@ $(GEN_DIR)/compile_commands.json: $(C_STAMP) $(ZIRAN)
 		--compiler '$(CC) -O2 -ffunction-sections -fdata-sections' \
 		-o $@ $(C_DIR) || { echo "kryon: this Kryon needs a newer Ziran; run ziran update ziran" >&2; exit 1; }
 
-$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL)
+# A page carries two builds of the program: one with WebAssembly SIMD128,
+# which std/resample's Lanczos kernels use, and a baseline one for browsers
+# without it. mk/web-page.sh adds the loader that starts the one the
+# browser validates, and carries the font once for both.
+WEB_LINK = EM_CACHE=$(EM_CACHE) $(EMCC) -O2 -I$(ZIRAN_DIR)/include -iquote $(C_DIR) \
+	$(C_DIR)/*.c $(CANVAS_LIBS) \
+	-sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
+	-sALLOW_MEMORY_GROWTH=1
+
+$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL) $(if $(PAGE_SHELL),$(KRYON_DIR)/mk/web-page.sh)
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
-	@temporary=$$(mktemp build/$(PROJECT_NAME).XXXXXX.html); \
-		trap 'rm -f "$$temporary"' EXIT; \
-		EM_CACHE=$(EM_CACHE) $(EMCC) -O2 -I$(ZIRAN_DIR)/include -iquote $(C_DIR) \
-		$(C_DIR)/*.c $(CANVAS_LIBS) \
-		--embed-file $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf \
-		-sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
-		-sALLOW_MEMORY_GROWTH=1 \
-		--shell-file $(PAGE_SHELL) \
-		-o "$$temporary" && chmod 644 "$$temporary" && mv "$$temporary" $@
+	@modules=$$(mktemp -d build/$(PROJECT_NAME).XXXXXX); \
+		trap 'rm -rf "$$modules"' EXIT; \
+		$(WEB_LINK) -msimd128 -o "$$modules/simd128.js" && \
+		$(WEB_LINK) -o "$$modules/baseline.js" && \
+		sh $(KRYON_DIR)/mk/web-page.sh $(PAGE_SHELL) "$$modules/simd128.js" "$$modules/baseline.js" \
+			$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf > "$$modules/page.html" && \
+		chmod 644 "$$modules/page.html" && mv "$$modules/page.html" $@
 else
 	@temporary=$$(mktemp build/$(PROJECT_NAME).XXXXXX.html); \
 		trap 'rm -f "$$temporary"' EXIT; \

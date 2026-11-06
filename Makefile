@@ -372,6 +372,7 @@ canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test min
 .PHONY: canvas-project-test
 canvas-project-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_project_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/web_simd_page_test.py
 
 .PHONY: page-route-project-test
 page-route-project-test:
