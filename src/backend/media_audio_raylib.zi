@@ -9,7 +9,7 @@ AssetAudioFree :: (value: *void) #foreign audio_c "free";
 AssetAudioCopy :: (to: *void, from: *void, count: usize) -> *void #foreign audio_c "memcpy";
 // Ogg Opus assets decode through audio/opus on native Linux and Android, which
 // link libopus. Browsers use their own decoder; Apple/Windows report Unsupported.
-#if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) && !#defined(_WIN32) {
+#if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) {
     #import "media_audio_opus"
 }
 // Content, not the file name, selects the decoder: the first Ogg page must
@@ -79,7 +79,7 @@ AssetAudioDispose :: (resource: *AssetAudioResource) {
         AssetAudioFree(cast(*void)resource)
         return
     }
-    #if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) && !#defined(_WIN32) {
+    #if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) {
         if resource.opus != null {
             OpusAssetDispose(cast(*OpusAsset)resource.opus)
             AssetAudioFree(cast(*void)resource)
@@ -120,7 +120,7 @@ AssetAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, byte
         return AssetAudioReply(voice)
     }
     if voice.pcm || command.operation == .CreateStream { return PcmAudioProvider(voice, command) }
-    #if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) && !#defined(_WIN32) {
+    #if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) {
         if resource != null && resource.opus != null { return OpusAudioProvider(voice, resource, command) }
     }
     if command.operation == .Stop {
@@ -169,7 +169,7 @@ AssetAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, byte
             AudioEngineBufferVolume(resource.id, command.gain)
         } else {
             if AssetAudioOggOpus(bytes) {
-                #if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) && !#defined(_WIN32) {
+                #if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) {
                     code: MediaAudioCode
                     asset := OpusAssetLoad(bytes, command.gain, *code)
                     if asset == null { AssetAudioFree(cast(*void)resource); return AssetAudioReply(voice, code) }
@@ -245,7 +245,7 @@ AssetAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, byte
 }
 MediaAudioUseRaylib :: () { MediaAudioUseProvider(AssetAudioProvider) }
 
-#if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) && !#defined(_WIN32) {
+#if !#defined(PLATFORM_WEB) && !#defined(__APPLE__) {
     // A loaded Opus voice: each Status (MediaAudioOwnerTick) decodes ahead and
     // feeds its own PCM stream, so the owner's frame tick keeps it playing.
     OpusAudioProvider :: (voice: *MediaAudioVoice, resource: *AssetAudioResource, command: MediaAudioCommand) -> MediaAudioResult {

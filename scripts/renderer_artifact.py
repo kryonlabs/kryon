@@ -208,7 +208,15 @@ def build(name, target, stage, root):
         copy(source / 'LICENSE', stage / 'resources/LICENSE-raylib')
         copy(webp_source / 'COPYING', stage / 'resources/LICENSE-libwebp')
         copy(webp_source / 'PATENTS', stage / 'resources/PATENTS-libwebp')
-        meta.update(archives=['lib/libraylib.a', 'lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libaom.a'], include_directories=['include'])
+        # media_audio_raylib decodes Ogg Opus with the audio package's libopus,
+        # built from that package's own pinned edge and static codec recipe.
+        audio_package = locked_source('audio')
+        audio_entry = next(p for p in lock['packages'] if p['id'] == provider['dependencies']['audio'])
+        opus_source = locked_source('libopus', audio_entry)
+        samplerate_source = locked_source('libsamplerate', audio_entry)
+        copy(opus_source / 'COPYING', stage / 'resources/LICENSE-opus')
+        opus_config = [f'-DOPUS_DIR={opus_source}', f'-DSAMPLERATE_DIR={samplerate_source}']
+        meta.update(archives=['lib/libraylib.a', 'lib/libkryonwebp.a', 'lib/libavif.a', 'lib/libaom.a', 'lib/libopus.a'], include_directories=['include'])
         # Intermediates are disposable and kept inside staging; only final files
         # remain when the generic driver validates and publishes the descriptor.
         with tempfile.TemporaryDirectory(prefix='.build-', dir=stage) as temporary:
@@ -230,7 +238,10 @@ def build(name, target, stage, root):
                 avif_archive = work / 'avif-codec/avif/libavif.a'
                 aom_archive = work / 'avif-codec/aom/libaom.a'
                 meta['compile_flags'] = shlex.split(flags)
-                meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2', 'fontconfig'])) + ['-lopus', '-ldl', '-lpthread', '-lm']
+                meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2', 'fontconfig'])) + ['-ldl', '-lpthread', '-lm']
+                run(['cmake', '-S', audio_package / 'native', '-B', work / 'audio', '-DCMAKE_BUILD_TYPE=Release',
+                     f'-DCMAKE_C_COMPILER={cc}', *opus_config])
+                run(['cmake', '--build', work / 'audio', '--target', 'opus', '--parallel', '1'])
                 meta['defines'] = ['PLATFORM_DESKTOP_SDL', 'GRAPHICS_API_OPENGL_ES2']
             else:
                 config = ['-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_EXAMPLES=OFF']
@@ -243,7 +254,8 @@ def build(name, target, stage, root):
                     if not cxx.is_file():
                         cxx = compiler.with_name(prefix + 'g++')
                     libraries = mingw_library_flags(cc)
-                    config += ['-DCMAKE_SYSTEM_NAME=Windows', f'-DCMAKE_C_COMPILER={cc}',
+                    # dav1d's cross build validates the target processor.
+                    config += ['-DCMAKE_SYSTEM_NAME=Windows', '-DCMAKE_SYSTEM_PROCESSOR=AMD64', f'-DCMAKE_C_COMPILER={cc}',
                                '-DCMAKE_CXX_COMPILER=' + os.environ.get('CXX', str(cxx)),
                                '-DCMAKE_RC_COMPILER=' + os.environ.get('RC', str(compiler.with_name(prefix + 'windres'))),
                                '-DCMAKE_AR=' + os.environ.get('AR', str(compiler.with_name(prefix + 'ar'))),
@@ -254,7 +266,8 @@ def build(name, target, stage, root):
                                '-DCMAKE_C_FLAGS=-O2 -ffunction-sections -fdata-sections -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_TTF=1']
                     cmake_source = source
                     meta['defines'] = ['_WIN32', 'PLATFORM_DESKTOP_RGFW', 'GRAPHICS_API_OPENGL_11']
-                    meta['link_flags'] = libraries + ['-lopengl32', '-lgdi32', '-lwinmm', '-luser32', '-lshell32', '-lole32', '-luuid', '-lm']
+                    # libssp: the audio package's MinGW libopus keeps its stack protector.
+                    meta['link_flags'] = libraries + ['-lssp', '-lopengl32', '-lgdi32', '-lwinmm', '-luser32', '-lshell32', '-lole32', '-luuid', '-lm']
                 else:
                     ndk = Path(opts.get('renderer.android_ndk', ''))
                     api = opts.get('renderer.android_api', '21')
@@ -268,14 +281,16 @@ def build(name, target, stage, root):
                                f'-DANDROID_ABI={abi}', f'-DANDROID_PLATFORM=android-{api}',
                                f'-DRAYLIB_DIR={source}/src', f'-DWEBP_DIR={webp_source}',
                                f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DKRYON_WEBP_PACKAGE_DIR={webp_package}',
-                               f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}', f'-DDAV1D_DIR={dav1d_source}']
+                               f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}', f'-DDAV1D_DIR={dav1d_source}',
+                               f'-DKRYON_ANDROID_AUDIO_DIR={audio_package}', f'-DKRYON_ANDROID_OPUS_DIR={opus_source}',
+                               f'-DKRYON_ANDROID_SAMPLERATE_DIR={samplerate_source}']
                     meta['defines'] = ['ANDROID_BUILD', macro]
                     meta['link_flags'] = ['-Wl,--wrap=fopen', '-lEGL', '-lGLESv2', '-landroid', '-llog', '-lOpenSLES', '-lm', '-ldl']
                 run(['cmake', '-S', cmake_source, '-B', work, *config])
                 targets = ['raylib']
                 if target.startswith('android-'):
                     # kryon_android_raylib also defines the WebP codec target.
-                    targets.extend(['kryonwebp', 'avif_static'])
+                    targets.extend(['kryonwebp', 'avif_static', 'opus'])
                 run(['cmake', '--build', work, '--target', *targets, '--parallel', '1'])
                 if target == 'windows-x86_64-mingw':
                     # raylib's own CMake project builds raylib; the codec uses
@@ -290,6 +305,8 @@ def build(name, target, stage, root):
                          f'-DKRYON_AVIF_PACKAGE_DIR={avif_package}', f'-DDAV1D_DIR={dav1d_source}',
                          f'-DAVIF_DIR={avif_source}', f'-DAOM_DIR={aom_source}'])
                     run(['cmake', '--build', work / 'avif-codec', '--target', 'avif_static', '--parallel', '1'])
+                    run(['cmake', '-S', audio_package / 'native', '-B', work / 'audio', *windows, *opus_config])
+                    run(['cmake', '--build', work / 'audio', '--target', 'opus', '--parallel', '1'])
                 avif_archive = next(work.rglob('libavif.a'))
                 aom_archive = next(work.rglob('libaom.a'))
                 archive = next(work.rglob('libraylib.a'))
@@ -298,6 +315,7 @@ def build(name, target, stage, root):
             copy(webp_archive, stage / 'lib/libkryonwebp.a')
             copy(avif_archive, stage / 'lib/libavif.a')
             copy(aom_archive, stage / 'lib/libaom.a')
+            copy(next(work.rglob('libopus.a')), stage / 'lib/libopus.a')
     if name != 'renderer-web':
         copy(avif_source / 'LICENSE', stage / 'resources/LICENSE-libavif')
         copy(aom_source / 'LICENSE', stage / 'resources/LICENSE-libaom')

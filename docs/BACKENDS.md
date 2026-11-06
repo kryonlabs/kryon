@@ -28,9 +28,10 @@ paused PCM retains at most two immutable buffers and their remaining offsets.
 No owner pauses the shared context. See [MediaAudio](API.md) for capability
 bits and position availability. Native tests use Raylib/miniaudio's paced null
 backend; browser tests use a disposable muted headless context and trusted gesture.
-Ogg Opus assets decode through the `audio` package on native Linux and Android;
-those targets link `-lopus -lm`, and `scripts/android-build.sh` exports the
-package paths `KryonAndroid.cmake` needs to build its static `opus` target.
+Ogg Opus assets decode through the `audio` package on native Linux, Windows and
+Android; those targets link `-lopus -lm` (the `renderer-raylib` artifact ships a
+static `lib/libopus.a`), and `scripts/android-build.sh` exports the package paths
+`KryonAndroid.cmake` needs to build its static `opus` target.
 
 ## Renderer artifacts in build scripts
 

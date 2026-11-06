@@ -804,14 +804,15 @@ Hosts import `kryon/media_audio_raylib` and call `MediaAudioUseRaylib()` once
 on their owning thread. It reuses Raylib memory music streams on native
 Raylib hosts and the current Canvas WebAudio engine on the web. The decoder
 is chosen by content, not name: bytes starting with an Ogg page whose first
-packet is `OpusHead` decode through the `audio` package (libopus) on Linux
-and Android, streamed into a Raylib audio stream in two 2048-frame blocks
-that `Status` and `MediaAudioOwnerTick` refill. Other bytes, including
-Vorbis Ogg, stay on Raylib's decoders. Native Linux and Android link
-`-lopus -lm` (Android builds the package's static `opus` target). On macOS
-and Windows, Ogg Opus currently returns `Unsupported`; the browser decodes
-Opus itself. Linux, Android device (null audio) and browser behavior is
-tested. There is no Seek or duration operation. A browser
+packet is `OpusHead` decode through the `audio` package (libopus) on Linux,
+Windows and Android, streamed into a Raylib audio stream in two 2048-frame
+blocks that `Status` and `MediaAudioOwnerTick` refill. Other bytes, including
+Vorbis Ogg, stay on Raylib's decoders. These hosts link libopus: `-lopus -lm`
+from Kryon's makefiles, or the static `lib/libopus.a` in the `renderer-raylib`
+artifact (Android builds the package's `opus` target). On macOS, Ogg Opus
+currently returns `Unsupported`; the browser decodes Opus itself. Linux,
+Windows (MinGW under Wine), Android device and browser behavior is tested
+with null or muted audio. There is no Seek or duration operation. A browser
 reports `Suspended` before its context runs: the app can retry after a real
 user gesture; no play request is queued to run in another app later.
 The standalone `RaylibBundleOpen` installs this provider. Other hosts that

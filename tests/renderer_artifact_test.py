@@ -9,7 +9,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'work/renderer-artifacts'
-TOOL = 'a0ff750cf2528d516f08b556f6d1793151412acd'
+TOOL = '38710d1fd95b9b0e5253df57820f1c5fafe37295'
 
 
 def main():
@@ -54,7 +54,8 @@ ref = "{args.revision}"
         if args.clean:
             local.unlink(missing_ok=True)
         else:
-            local.write_text(f'[overrides]\nkryon = "{ROOT}"\n')
+            audio = subprocess.check_output([ziran, 'pkg', 'path', 'audio'], cwd=ROOT, env=env, text=True).strip()
+            local.write_text(f'[overrides]\nkryon = "{ROOT}"\naudio = "{audio}"\n')
         call([ziran, 'lock'], app)
         apps.append(app)
 

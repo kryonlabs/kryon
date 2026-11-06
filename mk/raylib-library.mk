@@ -35,6 +35,9 @@ RAYLIB_CFLAGS ?=
 RAYLIB_LIBS ?= -lopengl32 -lgdi32 -lwinmm
 RAYLIB_PLATFORM_LIBS := $(RAYLIB_LIBS)
 RAYLIB_HOST_DEFINES := _WIN32
+# media_audio_raylib decodes Ogg Opus assets with the audio package's libopus;
+# its MinGW build keeps the stack protector, which needs GCC's libssp.
+RAYLIB_AUDIO_LIBS ?= -lopus -lssp -lm
 else
 RAYLIB_SDL_INCLUDE := $(shell pkg-config --variable=includedir sdl2)
 RAYLIB_CFLAGS ?= $(shell pkg-config --cflags sdl2 libdrm gbm egl glesv2)

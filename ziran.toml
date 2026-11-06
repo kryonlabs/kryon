@@ -266,7 +266,7 @@ android_api = "string=21"
 
 [artifacts.renderer-raylib]
 inputs = ["src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "mk/renderer-artifact.mk", "mk/raylib-library.mk", "cmake/renderer-artifact/CMakeLists.txt", "cmake/KryonAndroid.cmake", "cmake/ImagePackages.cmake", "cmake/WebP.cmake", "cmake/webp/CMakeLists.txt", "cmake/AVIF.cmake", "cmake/avif/CMakeLists.txt", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
-outputs = ["lib/libraylib.a", "lib/libkryonwebp.a", "lib/libavif.a", "lib/libaom.a", "resources/LICENSE-libavif", "resources/LICENSE-libaom", "resources/PATENTS-libaom", "resources/LICENSE-dav1d", "include/raylib.h", "include/rlgl.h", "include/raymath.h", "include/rcamera.h", "resources/LICENSE-raylib", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
+outputs = ["lib/libraylib.a", "lib/libkryonwebp.a", "lib/libavif.a", "lib/libaom.a", "lib/libopus.a", "resources/LICENSE-opus", "resources/LICENSE-libavif", "resources/LICENSE-libaom", "resources/PATENTS-libaom", "resources/LICENSE-dav1d", "include/raylib.h", "include/rlgl.h", "include/raymath.h", "include/rcamera.h", "resources/LICENSE-raylib", "resources/LICENSE-libwebp", "resources/PATENTS-libwebp", "resources/kryon-font.ttf", "resources/LICENSE-Liberation", "renderer.json"]
 
 [artifacts.renderer-desktop]
 inputs = ["cmake/AVIF.cmake", "cmake/ImagePackages.cmake", "cmake/avif/CMakeLists.txt","src/project/cli_linux.zi", "src/project/options.zi", "scripts/renderer_artifact.py", "Makefile", "assets/fonts/LiberationSans-Regular.ttf", "assets/fonts/LICENSE-Liberation"]
@@ -310,4 +310,4 @@ ref = "02145a00a1f0df2a111da04a75f3fef260883897"
 
 [dependencies.audio]
 git = "https://github.com/ziranlang/audio.git"
-ref = "ac683154c3b84078702a219953b2061a8c9db6f1"
+ref = "f5eed1e6c817997d51508f9c3c7b948a0bb4ad0b"
