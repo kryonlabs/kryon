@@ -731,6 +731,13 @@ lanczos-goldens-test: project-toolchain $(RAYLIB_ARCHIVES)
 	@python3 tests/canvas_lanczos_test.py
 test: lanczos-goldens-test
 
+# The Canvas host keeps every image a scene draws decoded once, in private
+# headless Firefox.
+.PHONY: canvas-asset-cache-test
+canvas-asset-cache-test: project-toolchain
+	@python3 tests/canvas_asset_cache_test.py
+test: canvas-asset-cache-test
+
 # Benchmark receipt: std/resample's Lanczos against Pillow, Pillow-SIMD,
 # libvips and stb_image_resize2 here and on the ARMv7 Moto over ADB.
 .PHONY: lanczos-benchmark

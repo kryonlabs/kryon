@@ -32,11 +32,20 @@ CanvasAsset :: struct {
     // FNV-1a and length of the bytes the texture was decoded from.
     content: u64
     content_size: s64
+    // The lookup clock at its last use: a full cache replaces the image
+    // used longest ago.
+    used: u64
 }
 
-canvas_assets: [32]CanvasAsset;
+// A scene often draws more images than fit a small cache: one replaced in
+// arrival order was decoded again every frame. The cache keeps the images
+// used most recently, up to a slot count and a total of decoded pixels.
+CANVAS_ASSET_SLOTS :: 128
+CANVAS_ASSET_PIXEL_LIMIT :: 100663296
+
+canvas_assets: [CANVAS_ASSET_SLOTS]CanvasAsset;
 canvas_assets_count: s32;
-canvas_assets_next: s32;
+canvas_asset_clock: u64;
 // The asset found last: an image asks for its width, its height and its
 // texture in turn, so most lookups only confirm the same path again.
 canvas_asset_last: s32 = -1;
@@ -305,6 +314,8 @@ CanvasAssetIndex :: (path: string) -> s32 {
         if canvas_assets[canvas_asset_last].revalidating && !CanvasRevalidateAsset(canvas_asset_last) {
             return -1
         }
+        canvas_asset_clock += 1
+        canvas_assets[canvas_asset_last].used = canvas_asset_clock
         return canvas_asset_last
     }
     // Every image drawn looks its texture up, and asset paths share long
@@ -317,20 +328,14 @@ CanvasAssetIndex :: (path: string) -> s32 {
             if canvas_assets[index].revalidating && !CanvasRevalidateAsset(index) {
                 return -1
             }
+            canvas_asset_clock += 1
+            canvas_assets[index].used = canvas_asset_clock
             canvas_asset_last = index
             return index
         }
         index += 1
     }
-    if canvas_assets_count < 32 {
-        index = canvas_assets_count
-        canvas_assets_count += 1
-    } else {
-        index = canvas_assets_next
-        UnloadTexture(canvas_assets[index].texture)
-        Lanczos.LanczosForget(canvas_assets[index].hash)
-        canvas_assets_next = (canvas_assets_next + 1) % 32
-    }
+    index = CanvasAssetSlot()
     if !CopyCString(path, canvas_assets[index].path[:]) {
         canvas_assets[index].length = 0
         return -1
@@ -347,6 +352,53 @@ CanvasAssetIndex :: (path: string) -> s32 {
         canvas_assets[index].length = 0
         return -1
     }
+    canvas_asset_clock += 1
+    canvas_assets[index].used = canvas_asset_clock
     canvas_asset_last = index
+    CanvasAssetsFitPixels(index)
     return index
+}
+
+CanvasAssetPixels :: (index: s32) -> s64 {
+    texture := canvas_assets[index].texture
+    if texture.id == cast(u32)0 { return 0 }
+    return cast(s64)texture.width * cast(s64)texture.height
+}
+
+// The cached image used longest ago, other than KEEP; -1 when none is.
+CanvasAssetOldest :: (keep: s32) -> s32 {
+    oldest: s32 = -1
+    for index: cast(s32)0..canvas_assets_count - 1 {
+        if index == keep || canvas_assets[index].texture.id == cast(u32)0 { continue }
+        if oldest < 0 || canvas_assets[index].used < canvas_assets[oldest].used { oldest = index }
+    }
+    return oldest
+}
+
+// A slot for a new image: a free one, else the one used longest ago.
+CanvasAssetSlot :: () -> s32 {
+    for index: cast(s32)0..canvas_assets_count - 1 {
+        if canvas_assets[index].length == 0 && canvas_assets[index].texture.id == cast(u32)0 { return index }
+    }
+    if canvas_assets_count < CANVAS_ASSET_SLOTS {
+        canvas_assets_count += 1
+        return canvas_assets_count - 1
+    }
+    index := CanvasAssetOldest(-1)
+    if index < 0 { index = 0 }
+    CanvasForgetAsset(index)
+    return index
+}
+
+// Releases the images used longest ago until the decoded pixels fit the
+// limit; KEEP, the image just loaded, always stays.
+CanvasAssetsFitPixels :: (keep: s32) {
+    pixels: s64 = 0
+    for index: cast(s32)0..canvas_assets_count - 1 { pixels += CanvasAssetPixels(index) }
+    while pixels > CANVAS_ASSET_PIXEL_LIMIT {
+        oldest := CanvasAssetOldest(keep)
+        if oldest < 0 { return }
+        pixels -= CanvasAssetPixels(oldest)
+        CanvasForgetAsset(oldest)
+    }
 }

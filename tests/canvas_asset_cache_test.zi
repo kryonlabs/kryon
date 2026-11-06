@@ -1,0 +1,85 @@
+// The Canvas host's image cache in a real browser: a scene drawing more
+// images than a small cache held decoded each of them again every frame.
+// tests/canvas_asset_cache_test.py serves the pictures and runs the page.
+#import "canvas_window"
+#import "canvas_frame"
+#import "canvas_raster"
+#import "canvas_state"
+#import "canvas_draw"
+#import "drawing_props"
+#import "web"
+#import "std/format"
+#import "std/vec"
+
+PICTURES :: 140
+
+Path :: (index: s32) -> string {
+    text: Vec(u8); BuilderPrint(*text, "/cache/%.png", index); return BuilderFinish(text)
+}
+
+// The texture now drawn for a picture, loading it on a miss.
+Texture :: (index: s32) -> u32 {
+    asset := CanvasAssetIndex(Path(index))
+    if asset < 0 { return 0 }
+    return canvas_assets[asset].texture.id
+}
+
+Cached :: (index: s32) -> bool {
+    path := Path(index)
+    for asset: cast(s32)0..canvas_assets_count - 1 {
+        if CanvasAssetIs(asset, path) && canvas_assets[asset].texture.id != cast(u32)0 { return true }
+    }
+    return false
+}
+
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+
+Test :: () -> s32 {
+    // Forty pictures a frame, as a world map with its landmarks draws: each
+    // is decoded once, and later frames draw the same textures.
+    first: [40]u32
+    for index: cast(s32)0..39 {
+        first[index] = Texture(index)
+        if first[index] == cast(u32)0 { return 10 }
+    }
+    for frame: cast(s32)0..4 {
+        for index: cast(s32)0..39 {
+            if Texture(index) != first[index] { return 20 + frame }
+        }
+    }
+    // A full cache replaces the picture used longest ago, never one just used.
+    for index: cast(s32)40..CANVAS_ASSET_SLOTS - 1 {
+        if Texture(index) == cast(u32)0 { return 30 }
+    }
+    if canvas_assets_count != CANVAS_ASSET_SLOTS { return 31 }
+    if Texture(0) != first[0] { return 32 }
+    if Texture(CANVAS_ASSET_SLOTS) == cast(u32)0 { return 33 }
+    if Cached(1) { return 34 }
+    if !Cached(0) || !Cached(2) || !Cached(CANVAS_ASSET_SLOTS) { return 35 }
+    if Texture(0) != first[0] { return 36 }
+    // A forgotten picture's slot is used again before the oldest goes.
+    for asset: cast(s32)0..canvas_assets_count - 1 {
+        if CanvasAssetIs(asset, Path(5)) { CanvasForgetAsset(asset) }
+    }
+    if Texture(PICTURES - 1) == cast(u32)0 { return 40 }
+    if !Cached(2) || Cached(5) { return 41 }
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    title: [1]u8
+    InitWindow(64, 64, *title[0])
+    defer { CloseWindow() }
+    result := Test()
+    if result == 0 { Report("PASS") } else {
+        text: Vec(u8); BuilderPrint(*text, "FAIL %", result); Report(BuilderFinish(text))
+    }
+    return result
+}
