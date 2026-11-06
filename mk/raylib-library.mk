@@ -42,6 +42,8 @@ RAYLIB_LIBS ?= $(shell pkg-config --libs sdl2 libdrm gbm egl glesv2)
 RAYLIB_PLATFORM ?= PLATFORM_DESKTOP_SDL
 RAYLIB_GRAPHICS ?= GRAPHICS_API_OPENGL_ES2
 RAYLIB_PLATFORM_LIBS := $(RAYLIB_LIBS) -ldl -lpthread
+# media_audio_raylib decodes Ogg Opus assets with the audio package's libopus.
+RAYLIB_AUDIO_LIBS ?= -lopus -lm
 endif
 RAYLIB_CC ?= $(CC)
 RAYLIB_AR ?= $(AR)

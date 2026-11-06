@@ -1,6 +1,6 @@
-// Actual incremental Opus decoder + paced miniaudio null PCM transport.
-#import "media_audio_opus"
-#import "opus_audio_provider"
+// Production native provider (media_audio_raylib) with real Ogg Opus content:
+// incremental audio/opus decoding into a paced miniaudio null PCM stream.
+#import "media_audio_raylib"
 #import "media_audio_host"
 #import "media_audio"
 #import "session"
@@ -23,7 +23,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if !Sink.DeviceReady() { return 3 }
     session := SessionOpen()
     owner: MediaAudioOwner
-    UseOpusTestProvider()
+    MediaAudioUseRaylib()
     MediaAudioOwnerBind(*owner, session, Allowed, Read, null)
     if Call(*owner, session, .Load).state != .Ready { return 4 }
     if Call(*owner, session, .Play).state != .Playing { return 5 }
@@ -40,13 +40,18 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if Call(*owner, session, .Gain).code != .Ok { return 10 }
     if Call(*owner, session, .Stop).state != .Stopped { return 11 }
     if Call(*owner, session, .Play).state != .Playing { return 12 }
-    deadline := MonotonicMilliseconds() + 2000
+    started := MonotonicMilliseconds()
+    deadline := started + 2000
     while Call(*owner, session, .Status).state == .Playing {
         if MonotonicMilliseconds() > deadline { return 13 }
         unused SleepMilliseconds(5)
     }
     finished := Call(*owner, session, .Status)
     if finished.state != .Finished || finished.position_seconds <= 0.0 { return 14 }
+    // Completion is paced by the device: every decoded block, including the
+    // first two queued at Play, is consumed before the voice finishes.
+    elapsed := cast(float64)(MonotonicMilliseconds() - started)
+    if elapsed < finished.position_seconds * 1000.0 - 60.0 { print("finished after % ms of % s\n", elapsed, finished.position_seconds); return 29 }
     if Call(*owner, session, .Play, true).state != .Playing { return 15 }
     deadline = MonotonicMilliseconds() + 1400
     while MonotonicMilliseconds() < deadline { MediaAudioOwnerTick(*owner); unused SleepMilliseconds(5) }
@@ -64,7 +69,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
     deadline = MonotonicMilliseconds() + 180
     while MonotonicMilliseconds() < deadline { MediaAudioOwnerTick(*owner); unused SleepMilliseconds(5) }
     if Call(*owner, session, .Status).state != .Playing { return 23 }
-    if Call(*owner, session, .Stop).state != .Stopped || Call(*owner, session, .Play).state != .Playing { return 24 }
+    if Call(*owner, session, .Stop).state != .Stopped { return 24 }
+    replay := Call(*owner, session, .Play)
+    if replay.code != .Ok || replay.state != .Playing { return 28 }
     if Call(*owner, session, .Status).state != .Playing { return 25 }
     deadline = MonotonicMilliseconds() + 1000
     while Call(*owner, session, .Status).state == .Playing {

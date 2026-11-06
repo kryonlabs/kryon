@@ -70,8 +70,10 @@ package = "com.kryon.zxtest"
 abis = "x86_64,arm64-v8a,armeabi-v7a"
 min_sdk = "21"
 ''')
+    # Kryon's audio package (libopus for the player's Ogg Opus assets).
+    audio = subprocess.check_output([str(ZIRAN), 'pkg', 'path', 'audio'], cwd=ROOT, text=True).strip()
     (project / 'ziran.local.toml').write_text(
-        f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n')
+        f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\naudio = "{audio}"\n')
     run([ZIRAN, 'lock'])
     for profile in ('portable', 'android'):
         run([ZIRAN, 'tool', 'kryon', 'build', '--profile', profile])

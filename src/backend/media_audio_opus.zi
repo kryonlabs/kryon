@@ -140,8 +140,9 @@ OpusAssetCommand :: (asset: *OpusAsset, voice: *MediaAudioVoice, command: MediaA
             made: s64
             if Audio.DecoderRead(*asset.decoder, asset.cache[0:asset.decoder.info.frames * asset.decoder.info.channels], *made) != Types.OK || made != asset.decoder.info.frames { return OpusAssetReply(asset, voice, .Failed) }
         }
+        // Raylib's PlayAudioStream marks both sub-buffers consumed, so start
+        // the stream first; blocks filled before it would be discarded.
         voice.state = .Playing
-        if !Pump(asset, voice) { voice.state = .Stopped; return OpusAssetReply(asset, voice, .Failed) }
         Sink.StreamPlay(asset.stream)
     } else if command.operation == .Gain {
         Sink.StreamVolume(asset.stream, command.gain); voice.gain = command.gain

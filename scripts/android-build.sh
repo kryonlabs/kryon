@@ -56,6 +56,11 @@ KRYON_ANDROID_AVIF_DIR="${KRYON_ANDROID_AVIF_DIR:-$("$ziran_bin" pkg path libavi
 KRYON_ANDROID_AOM_DIR="${KRYON_ANDROID_AOM_DIR:-$("$ziran_bin" pkg path libaom)}"
 KRYON_DAV1D_DIR="${KRYON_DAV1D_DIR:-$("$ziran_bin" pkg path dav1d)}"
 export KRYON_ANDROID_AVIF_DIR KRYON_ANDROID_AOM_DIR KRYON_DAV1D_DIR
+# libopus for Ogg Opus assets in media_audio_raylib (cmake/KryonAndroid.cmake).
+KRYON_ANDROID_AUDIO_DIR="${KRYON_ANDROID_AUDIO_DIR:-$("$ziran_bin" pkg path audio)}"
+KRYON_ANDROID_OPUS_DIR="${KRYON_ANDROID_OPUS_DIR:-$("$ziran_bin" pkg path libopus)}"
+KRYON_ANDROID_SAMPLERATE_DIR="${KRYON_ANDROID_SAMPLERATE_DIR:-$("$ziran_bin" pkg path libsamplerate)}"
+export KRYON_ANDROID_AUDIO_DIR KRYON_ANDROID_OPUS_DIR KRYON_ANDROID_SAMPLERATE_DIR
 KRYON_AVIF_PACKAGE_DIR="$("$ziran_bin" pkg path avif)"
 KRYON_WEBP_PACKAGE_DIR="$("$ziran_bin" pkg path webp)"
 export KRYON_AVIF_PACKAGE_DIR KRYON_WEBP_PACKAGE_DIR

@@ -133,7 +133,7 @@ endif
 ifeq ($(PROJECT_BACKEND),raylib)
 include $(KRYON_DIR)/mk/raylib-library.mk
 HOST_DEPS := $(RAYLIB_ARCHIVES)
-HOST_LIBS := $(RAYLIB_ARCHIVES) $(RAYLIB_PLATFORM_LIBS)
+HOST_LIBS := $(RAYLIB_ARCHIVES) $(RAYLIB_PLATFORM_LIBS) $(RAYLIB_AUDIO_LIBS)
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 
 endif

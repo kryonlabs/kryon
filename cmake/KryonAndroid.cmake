@@ -5,7 +5,7 @@
 #
 #   include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
 #   kryon_android_reproducible_paths("${REPO_ROOT}") # before dependency targets
-#   kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}")  # `raylib`, `kryonwebp`
+#   kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}")  # `raylib`, `kryonwebp`, `opus`
 #   add_library(main SHARED ${APP_SOURCES})
 #   kryon_android_app(main)                     # glue, size flags, system libs
 #
@@ -93,6 +93,35 @@ function(kryon_android_raylib raylib_dir)
     endif()
     kryon_avif_decoder("${avif_dir}" "${aom_dir}")
     target_link_libraries(raylib PUBLIC kryonwebp ziran_avif::static)
+    set(audio_dir "${ARGV4}")
+    set(opus_dir "${ARGV5}")
+    set(samplerate_dir "${ARGV6}")
+    if(audio_dir STREQUAL "")
+        set(audio_dir "$ENV{KRYON_ANDROID_AUDIO_DIR}")
+        set(opus_dir "$ENV{KRYON_ANDROID_OPUS_DIR}")
+        set(samplerate_dir "$ENV{KRYON_ANDROID_SAMPLERATE_DIR}")
+    endif()
+    if(NOT audio_dir STREQUAL "")
+        kryon_android_audio("${audio_dir}" "${opus_dir}" "${samplerate_dir}")
+    endif()
+endfunction()
+
+# Ogg Opus assets in media_audio_raylib decode with audio/opus, which needs
+# libopus. Builds it from the audio package's pinned sources (`ziran pkg path
+# audio`, `libopus`, `libsamplerate`) and links it through raylib, so a
+# NativeActivity app that imports the raylib audio backend gets it with raylib.
+# kryon_android_raylib calls this with its optional fifth to seventh arguments,
+# or with KRYON_ANDROID_AUDIO_DIR, KRYON_ANDROID_OPUS_DIR and
+# KRYON_ANDROID_SAMPLERATE_DIR, which `kryon build --profile android` sets.
+function(kryon_android_audio audio_dir opus_dir samplerate_dir)
+    if(NOT EXISTS "${audio_dir}/native/AudioCodecs.cmake")
+        message(FATAL_ERROR "No audio package at ${audio_dir}")
+    endif()
+    include("${audio_dir}/native/AudioCodecs.cmake")
+    ziran_audio_codecs("${opus_dir}" "${samplerate_dir}")
+    # As with raylib, debug APKs still need real-time decoding on slow phones.
+    target_compile_options(opus PRIVATE -O2)
+    target_link_libraries(raylib PUBLIC opus)
 endfunction()
 
 # Turn a shared library into a Kryon NativeActivity payload: add the NDK's

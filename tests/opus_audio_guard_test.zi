@@ -1,13 +1,44 @@
-// Run target-selection branches on the Linux null test sink; this does not
-// claim native execution on the target named by a checker define.
+// Production decoder selection on the Linux null sink: Ogg Opus content goes
+// to audio/opus whatever the asset is called, everything else stays on Raylib.
 #import "media_audio_raylib"
 #import "media_audio_host"
 #import "media_audio"
+#import "std/file"
+#import "std/byte_text_linux"
+Load :: (voice: *MediaAudioVoice, asset: string, bytes: string) -> MediaAudioResult {
+    return AssetAudioProvider(voice, .{.operation = .Load, .voice = 1, .asset = asset, .gain = 0.5, .music = true}, bytes)
+}
+Opus :: (voice: *MediaAudioVoice) -> bool {
+    resource := cast(*AssetAudioResource)voice.resource
+    return resource != null && resource.opus != null
+}
+// Arguments: a valid Ogg Opus file, then an Ogg file whose first packet is not OpusHead.
 #program_export
-main :: () -> s32 {
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 3 { return 1 }
+    opus, opus_ok := ReadEntireFile(TextFromCString(argv[1]))
+    other, other_ok := ReadEntireFile(TextFromCString(argv[2]))
+    if !opus_ok || !other_ok { return 2 }
+    if !AssetAudioOggOpus(opus) || AssetAudioOggOpus(other) { return 3 }
+    if AssetAudioOggOpus("OggS") || AssetAudioOggOpus("not an Ogg Opus stream at all, only text bytes") { return 4 }
+    // Truncated first page: the segment table points past the end.
+    if AssetAudioOggOpus(opus[0:30]) { return 5 }
     voice: MediaAudioVoice
-    command := MediaAudioCommand.{.operation = .Load, .voice = 1, .asset = "assets/test/unsupported.opus", .gain = 0.5}
-    result := AssetAudioProvider(*voice, command, "not decoded on this target")
-    if result.code != .Unsupported || voice.resource != null { return 1 }
+    // The .wav name does not send Opus content to Raylib's WAV decoder.
+    loaded := Load(*voice, "assets/test/voice.wav", opus)
+    if loaded.code != .Ok || loaded.state != .Ready || !Opus(*voice) { return 6 }
+    if !loaded.has_position || loaded.position_seconds != 0.0 { return 7 }
+    if AssetAudioProvider(*voice, .{.operation = .Play, .voice = 1}, "").state != .Playing { return 8 }
+    if AssetAudioProvider(*voice, .{.operation = .Status, .voice = 1}, "").code != .Ok { return 9 }
+    if AssetAudioProvider(*voice, .{.operation = .SubmitStream, .voice = 1}, "").code != .Invalid { return 10 }
+    if AssetAudioProvider(*voice, .{.operation = .Unload, .voice = 1}, "").code != .Ok || voice.resource != null { return 11 }
+    // Non-Opus Ogg (and an .opus name on non-Ogg bytes) keeps Raylib's path,
+    // which rejects these bytes instead of reporting the target unsupported.
+    if Load(*voice, "assets/test/other.ogg", other).code != .Failed || voice.resource != null { return 12 }
+    if Load(*voice, "assets/test/fake.opus", "not decoded as Opus").code != .Failed || voice.resource != null { return 13 }
+    // Invalid Ogg Opus content fails in the Opus decoder and leaks nothing.
+    broken := opus[0:opus.count - 9]
+    if Load(*voice, "assets/test/broken.opus", broken).code == .Ok || voice.resource != null { return 14 }
+    print("Ogg Opus content routing, production load/play/unload and Raylib fallbacks passed\n")
     return 0
 }

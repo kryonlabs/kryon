@@ -72,8 +72,12 @@ def main():
         output.setsampwidth(2)
         output.setframerate(8000)
         output.writeframes(b'\0\0' * 160)
+    # media_audio_raylib routes Ogg Opus content through the audio package.
+    audio = Path(os.environ['AUDIO_PACKAGE']) if 'AUDIO_PACKAGE' in os.environ else Path(
+        subprocess.check_output([str(ZIRAN), 'pkg', 'path', 'audio'], cwd=ROOT, text=True).strip())
     common = ['--root', ROOT / 'tests', '--module-path', ROOT / 'src/ui',
-              '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN_ROOT / 'std']
+              '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN_ROOT / 'std',
+              '--module-path', 'audio=' + str(audio / 'src')]
     if options.pcm:
         common += ['--define', 'PCM_AUDIO_TEST']
     ir = WORK / 'ir'
@@ -98,7 +102,7 @@ def main():
         paths = common if form == 'source' else ['--root', ir]
         file = source if form == 'source' else ir / 'media_audio_test.zir'
         run([ZIRAN, 'build', '--target=c', *paths, '--entry', 'media_audio_test:main', '-o', gen, file])
-        libs = subprocess.check_output(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2'], text=True).split()
+        libs = subprocess.check_output(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2'], text=True).split() + ['-lopus']
         run([os.environ.get('CC', 'cc'), '-O1', '-ffunction-sections', '-fdata-sections',
              '-Wl,--gc-sections', '-I' + str(ZIRAN_ROOT / 'include'), '-I' + str(gen),
              *sorted(gen.glob('*.c')), null_audio, Path(os.environ.get('RAYLIB_A', ROOT / 'build/raylib-ziran/libraylib.a')),
@@ -130,7 +134,7 @@ def main():
     raylib = subprocess.check_output([str(ZIRAN), 'pkg', 'path', 'raylib'], cwd=ROOT, text=True).strip()
     (consumer / 'ziran.local.toml').write_text('[overrides]\n' + ''.join(
         name + ' = ' + json.dumps(str(path)) + '\n'
-        for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT), ('raylib', raylib)]))
+        for name, path in [('kryon', ROOT), ('ziran', ZIRAN_ROOT), ('raylib', raylib), ('audio', audio)]))
     run([ZIRAN, 'lock', '--offline'], cwd=consumer)
     host = ROOT / 'tests/media_audio_host_test.zi'
     for fake in (False, True):

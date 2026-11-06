@@ -307,3 +307,7 @@ ref = "2f349f8c4a46c7476c6c02b87ec570e66d3a8f34"
 [dependencies.webp]
 git = "https://github.com/ziranlang/webp.git"
 ref = "02145a00a1f0df2a111da04a75f3fef260883897"
+
+[dependencies.audio]
+git = "https://github.com/ziranlang/audio.git"
+ref = "ac683154c3b84078702a219953b2061a8c9db6f1"

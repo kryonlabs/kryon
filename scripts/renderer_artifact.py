@@ -230,7 +230,7 @@ def build(name, target, stage, root):
                 avif_archive = work / 'avif-codec/avif/libavif.a'
                 aom_archive = work / 'avif-codec/aom/libaom.a'
                 meta['compile_flags'] = shlex.split(flags)
-                meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2', 'fontconfig'])) + ['-ldl', '-lpthread', '-lm']
+                meta['link_flags'] = shlex.split(capture(['pkg-config', '--libs', 'sdl2', 'libdrm', 'gbm', 'egl', 'glesv2', 'fontconfig'])) + ['-lopus', '-ldl', '-lpthread', '-lm']
                 meta['defines'] = ['PLATFORM_DESKTOP_SDL', 'GRAPHICS_API_OPENGL_ES2']
             else:
                 config = ['-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=OFF', '-DBUILD_EXAMPLES=OFF']

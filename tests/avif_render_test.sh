@@ -15,7 +15,7 @@ for host in cairo raylib; do
     libs="$(pkg-config --libs cairo freetype2 pangocairo fontconfig glib-2.0) -ldl -lm -lpthread"
     if test "$host" = raylib; then
         set -- --define AVIF_RAYLIB --define BUNDLE_NATIVE_RENDERER
-        libs="$repo/build/raylib-ziran/libraylib.a $repo/build/webp-ziran/libkryonwebp.a $repo/build/avif-ziran/avif/libavif.a $repo/build/avif-ziran/aom/libaom.a $repo/build/zx-raylib/runtime/libziran.a $(pkg-config --libs sdl2 libdrm gbm egl glesv2) $(pkg-config --libs libcurl 2>/dev/null || echo -l:libcurl.so.4) -ldl -lpthread -lm"
+        libs="$repo/build/raylib-ziran/libraylib.a $repo/build/webp-ziran/libkryonwebp.a $repo/build/avif-ziran/avif/libavif.a $repo/build/avif-ziran/aom/libaom.a $repo/build/zx-raylib/runtime/libziran.a $(pkg-config --libs sdl2 libdrm gbm egl glesv2) $(pkg-config --libs libcurl 2>/dev/null || echo -l:libcurl.so.4) -lopus -ldl -lpthread -lm"
     fi
     "$ziran" build --project --target=c "$@" --root "$repo/tests" \
         -o "$out/$host" "$repo/tests/avif_render_test.zi"
