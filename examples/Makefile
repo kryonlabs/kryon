@@ -70,6 +70,7 @@ $(BUILD_DIR)/hello-host: $(BUILD_DIR)/hello-native/hello_host.c $(NATIVE_LIB) Ma
 	$(CC) -std=c11 -Wall -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/hello-native $(BUILD_DIR)/hello-native/hello_host.c \
 		$(BUILD_DIR)/hello-native/hello.c $(BUILD_DIR)/hello-native/math.c \
+		$(BUILD_DIR)/hello-native/vec.c \
 		$(NATIVE_LIB) -lm -o $@
 
 $(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host
