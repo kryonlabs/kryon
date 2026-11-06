@@ -8,6 +8,8 @@ Metrics :: #import "font_metrics";
 #import "math"
 #import "paint_texture"
 Bitmaps :: #import "bitmap_store";
+// Smooth images use the shared Lanczos cache only where it has a worker.
+PIXMAP_LANCZOS :: #defined(POSIX_THREADS)
 
 #if #defined(POSIX_THREADS) {
     Workers :: #import "std/parallel_linux";
@@ -52,6 +54,9 @@ Bitmaps :: #import "bitmap_store";
 PixmapCloseWorkers :: () {
     #if #defined(POSIX_THREADS) {
         Workers.ParallelClose(*pixmap_workers)
+    }
+    #if PIXMAP_LANCZOS {
+        Lanczos.LanczosClose()
     }
 }
 #program_export
@@ -100,8 +105,12 @@ PixmapDeviceBounds :: (bounds: Rectangle) -> Rectangle {
 PixmapDeviceFont :: (font: s32) -> s32 { return PixmapRound(cast(float32)font * pixmap_scale_y) }
 // The host owns these decoded 0xAARRGGBB pixels and keeps them alive until
 // clearing/replacing the slot. Image widgets still resolve an ordinary asset.
+// After the asset slots come the Lanczos copies of drawn images, which the
+// shared cache owns, and then the managed bitmaps.
 PixmapAssetImageLimit :: 1024;
-PixmapImageLimit :: 1088;
+PixmapCopyImageStart :: 1024;
+PixmapManagedImageStart :: 1088;
+PixmapImageLimit :: 1152;
 pixmap_image_paths: [PixmapImageLimit][256]u8;
 pixmap_image_lengths: [PixmapImageLimit]s32;
 pixmap_image_widths: [PixmapImageLimit]s32;
@@ -126,9 +135,12 @@ pixmap_bitmap_revision: u64;
 PixmapSyncBitmaps :: () {
     if pixmap_bitmap_revision == Bitmaps.bitmap_revision { return }
     for at: cast(s32)0..Bitmaps.BITMAP_IMAGE_LIMIT - 1 {
-        slot := PixmapAssetImageLimit + at
+        slot := PixmapManagedImageStart + at
         item := *Bitmaps.bitmap_images[at]
         if pixmap_image_revisions[slot] == item.revision { continue }
+        #if PIXMAP_LANCZOS {
+            Lanczos.LanczosForget(PixmapLanczosContent(slot))
+        }
         pixmap_image_widths[slot] = item.image.width
         pixmap_image_heights[slot] = item.image.height
         pixmap_image_revisions[slot] = item.revision
@@ -140,14 +152,14 @@ PixmapSyncBitmaps :: () {
 // long-lived view of a global Vec, so a released image traps instead of
 // exposing freed storage. Asset slots keep their caller-owned views.
 PixmapSourcePixel :: (slot: s32, index: s64) -> u32 {
-    if slot >= PixmapAssetImageLimit {
-        return Bitmaps.bitmap_images[slot - PixmapAssetImageLimit].pixels[index]
+    if slot >= PixmapManagedImageStart {
+        return Bitmaps.bitmap_images[slot - PixmapManagedImageStart].pixels[index]
     }
     return pixmap_image_pixels[slot].value[index]
 }
 PixmapSourceCount :: (slot: s32) -> s64 {
-    if slot >= PixmapAssetImageLimit {
-        return Bitmaps.bitmap_images[slot - PixmapAssetImageLimit].pixels.count
+    if slot >= PixmapManagedImageStart {
+        return Bitmaps.bitmap_images[slot - PixmapManagedImageStart].pixels.count
     }
     return pixmap_image_pixels[slot].value.count
 }
@@ -156,12 +168,15 @@ PixmapPaintImageSlot :: (path: string, id: u32) -> s32 {
     at := Bitmaps.BitmapSlot(id)
     if at < 0 { return -1 }
     PixmapSyncBitmaps()
-    return PixmapAssetImageLimit + at
+    return PixmapManagedImageStart + at
 }
 
 #program_export
 PixmapClearImage :: (slot: s32) {
     if slot < 0 || slot >= PixmapAssetImageLimit { return }
+    #if PIXMAP_LANCZOS {
+        Lanczos.LanczosForget(PixmapLanczosContent(slot))
+    }
     if pixmap_image_lengths[slot] > 0 { pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision }
     pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
     pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
@@ -186,11 +201,115 @@ PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u
     for i: 0..cast(s32)path.count - 1 { if path[i] == cast(u8)0 { return false } }
     existing := PixmapImageIndex(path)
     if existing >= 0 && existing != slot { return false }
+    #if PIXMAP_LANCZOS {
+        Lanczos.LanczosForget(PixmapLanczosContent(slot))
+    }
     for i: 0..cast(s32)path.count - 1 { pixmap_image_paths[slot][i] = path[i] }
     pixmap_image_lengths[slot] = cast(s32)path.count
     pixmap_image_widths[slot] = width; pixmap_image_heights[slot] = height
     pixmap_image_pixels[slot].value = pixels; pixmap_image_revision += 1
     pixmap_image_revisions[slot] = pixmap_image_revision; return true
+}
+
+// Native threaded builds draw smooth images from the shared Lanczos cache
+// (lanczos_cache): a copy at the device pixels an image covers, published
+// in a copy slot and drawn 1:1, so the CPU rows and the GPU hosts show the
+// same bytes. Until it is made the image keeps its bilinear sampling. Other
+// targets have no worker and keep that sampling, so their bytes still agree.
+#if PIXMAP_LANCZOS {
+    Lanczos :: #import "lanczos_cache";
+    #import "paint_queue"
+
+    // The pixmap's copies are their own session, keyed by slot.
+    PIXMAP_LANCZOS_SESSION :: 0x706978;
+    PixmapLanczosContent :: (slot: s32) -> u64 { return cast(u64)0x7069780000000000 | cast(u64)slot }
+
+    PixmapPixelView :: struct { data: *u32; length: s64 }
+    // Borrows PIXELS as COUNT pixels; the cache keeps them alive until the
+    // entry's release clears the slot.
+    PixmapPixelsAt :: (pixels: *u8, count: s64) -> []u32 {
+        result: []u32
+        view := cast(*PixmapPixelView)(*result)
+        view.data = cast(*u32)pixels; view.length = count
+        return result
+    }
+
+    PixmapLanczosRelease :: (argument: *void) {
+        entry := cast(*Lanczos.LanczosEntry)argument
+        if entry.texture == cast(u32)0 { return }
+        slot := PixmapCopyImageStart + cast(s32)entry.texture - 1
+        pixmap_image_widths[slot] = 0; pixmap_image_heights[slot] = 0
+        pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
+        pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision
+        entry.texture = 0
+    }
+
+    // Publishes ENTRY's copy in a free copy slot. There are more copy slots
+    // than cache entries, and each entry's release frees its slot.
+    PixmapPublishCopy :: (entry: *Lanczos.LanczosEntry) -> bool {
+        for slot: PixmapCopyImageStart..PixmapManagedImageStart - 1 {
+            if pixmap_image_widths[slot] != 0 { continue }
+            pixmap_image_widths[slot] = entry.key.width; pixmap_image_heights[slot] = entry.key.height
+            pixmap_image_pixels[slot].value = PixmapPixelsAt(entry.pixels, cast(s64)entry.key.width * entry.key.height)
+            pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision
+            entry.texture = cast(u32)(slot - PixmapCopyImageStart + 1)
+            entry.release = PixmapLanczosRelease
+            return true
+        }
+        return false
+    }
+
+    // The copy slot to draw SLOT's SOURCE over DESTINATION (device pixels,
+    // unrotated) with, or -1 to draw the image itself. COPY_SOURCE is the
+    // copy's whole area and SNAPPED the pixels it covers; SMOOTH says a copy
+    // of another size stands in, stretched, until this size is made.
+    PixmapLanczosSlot :: (slot: s32, source: Rectangle, destination: Rectangle,
+        copy_source: *Rectangle, snapped: *Rectangle, smooth: *bool) -> s32 {
+        if slot < 0 || (slot >= PixmapCopyImageStart && slot < PixmapManagedImageStart) { return -1 }
+        width := pixmap_image_widths[slot]; height := pixmap_image_heights[slot]
+        count := cast(s64)width * height
+        if width <= 0 || height <= 0 || PixmapSourceCount(slot) < count { return -1 }
+        snapped.* = Lanczos.LanczosSnap(destination)
+        if !Lanczos.LanczosEligible(source, width, height, snapped.*) { return -1 }
+        key: Lanczos.LanczosKey = .{PixmapLanczosContent(slot), pixmap_image_revisions[slot], PIXMAP_LANCZOS_SESSION,
+            source, cast(s32)snapped.width, cast(s32)snapped.height}
+        pixels: *u8 = null
+        if Lanczos.LanczosCanStart(key) {
+            if slot >= PixmapManagedImageStart {
+                pixels = cast(*u8)*Bitmaps.bitmap_images[slot - PixmapManagedImageStart].pixels[0]
+            } else {
+                pixels = cast(*u8)*pixmap_image_pixels[slot].value[0]
+            }
+        }
+        entry := Lanczos.LanczosLookup(key, pixels, width, height, cast(s64)width * 4,
+            Lanczos.LANCZOS_STRAIGHT, Lanczos.LANCZOS_STRAIGHT)
+        if entry == null { return -1 }
+        if entry.texture == cast(u32)0 && !PixmapPublishCopy(entry) { return -1 }
+        copy_source.* = .{0.0, 0.0, cast(float32)entry.key.width, cast(float32)entry.key.height}
+        smooth.* = entry.key.width != key.width || entry.key.height != key.height
+        return PixmapCopyImageStart + cast(s32)entry.texture - 1
+    }
+}
+
+// Whether a Lanczos copy is being made. A host that sleeps between events
+// draws another frame once it is done, or calls LanczosSetWake.
+#program_export
+PixmapLanczosPending :: () -> bool {
+    #if PIXMAP_LANCZOS {
+        return Lanczos.LanczosPending()
+    } else {
+        return false
+    }
+}
+// Waits for the copy being made, as before a screenshot; true when one
+// was, so the next frame draws it.
+#program_export
+PixmapLanczosWait :: () -> bool {
+    #if PIXMAP_LANCZOS {
+        return Lanczos.LanczosWait()
+    } else {
+        return false
+    }
 }
 // Pixels outside [clip_left, clip_right) x [clip_top, clip_bottom) are kept.
 pixmap_clip_left: s32;
@@ -243,6 +362,10 @@ PixmapResumeInto :: (width: s32, height: s32, pixels: []u32,
     // The bundled outlines and logical advances are immutable. Declare their
     // lifetime once so widgets can retain layout across unchanged frames.
     if Metrics.GlyphMetricsRevision() == cast(u64)0 { Metrics.GlyphMetricsChanged() }
+    #if PIXMAP_LANCZOS {
+        // A finished copy replaces what the last frame drew.
+        if Lanczos.LanczosPump() { PaintResourcesChanged() }
+    }
     pixmap_surface = pixels; pixmap_width = width; pixmap_height = height
     pixmap_alpha = ifx opaque then cast(u32)0xff000000 else cast(u32)0
     pixmap_damage_active = false
@@ -1087,7 +1210,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
 // as the raster's smooth sampling does. Rotated or rounded images, and sources
 // past the image's edge, keep the pixel path.
 PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, clip: Rectangle,
-    origin: Vector2, rotation: float32, radius: float32, tint: Color) -> bool {
+    origin: Vector2, rotation: float32, radius: float32, tint: Color, smooth: bool = false) -> bool {
     width := cast(float32)pixmap_image_widths[slot]; height := cast(float32)pixmap_image_heights[slot]
     source_right := source.x + source.width; source_bottom := source.y + source.height
     if rotation != 0.0 || radius > 0.0 || pixmap_image_widths[slot] > pixmap_gpu_max_image ||
@@ -1107,7 +1230,7 @@ PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, cli
     left := destination.x - origin.x; top := destination.y - origin.y
     PixmapGpuQuad(left, top, left + destination.width, top + destination.height,
         source.x / width, source.y / height, source_right / width, source_bottom / height,
-        ink, slot, CurrentPaintSmooth(), clip_left, clip_top, clip_right, clip_bottom)
+        ink, slot, smooth, clip_left, clip_top, clip_right, clip_bottom)
     return true
 }
 
@@ -1124,6 +1247,19 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
             !Finite32(clip.x) || !Finite32(clip.y) || !Finite32(clip.width) || !Finite32(clip.height) ||
             !Finite32(origin.x) || !Finite32(origin.y) || !Finite32(rotation) || !Finite32(radius) ||
             destination.width <= 0.0 || destination.height <= 0.0 || clip.width <= 0.0 || clip.height <= 0.0 { return }
+        smooth := CurrentPaintSmooth()
+        #if PIXMAP_LANCZOS {
+            // A smooth unrotated image draws its Lanczos copy pixel for pixel.
+            if smooth && rotation == 0.0 {
+                shown: Rectangle = .{destination.x - origin.x, destination.y - origin.y, destination.width, destination.height}
+                copy_source: Rectangle; snapped: Rectangle; stretched: bool
+                copy := PixmapLanczosSlot(slot, source, shown, *copy_source, *snapped, *stretched)
+                if copy >= 0 {
+                    slot = copy; source = copy_source; destination = snapped
+                    origin = .{0.0, 0.0}; smooth = stretched
+                }
+            }
+        }
         // Clamp floats before converting them to pixel indexes.
         left := clip.x; top := clip.y; right := clip.x + clip.width; bottom := clip.y + clip.height
         if !Finite32(right) || !Finite32(bottom) { return }
@@ -1143,8 +1279,8 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32, source: Rectangle,
         if top < cast(float32)pixmap_clip_top { top = cast(float32)pixmap_clip_top }
         if right > cast(float32)pixmap_clip_right { right = cast(float32)pixmap_clip_right }
         if bottom > cast(float32)pixmap_clip_bottom { bottom = cast(float32)pixmap_clip_bottom }
-        if pixmap_gpu_active && PixmapGpuImageQuad(slot, source, destination, clip, origin, rotation, radius, tint) { return }
-        rows: PixmapImageRowsData = .{slot, FloorInteger(left), CeilInteger(right), source, destination, clip, origin, cosine, sine, radius, tint, CurrentPaintSmooth()}
+        if pixmap_gpu_active && PixmapGpuImageQuad(slot, source, destination, clip, origin, rotation, radius, tint, smooth) { return }
+        rows: PixmapImageRowsData = .{slot, FloorInteger(left), CeilInteger(right), source, destination, clip, origin, cosine, sine, radius, tint, smooth}
         #if #defined(POSIX_THREADS) {
             procedure: PixmapRowProcedure = PixmapImageRows
             independent := true
@@ -1311,7 +1447,7 @@ PixmapImageRange :: (start: s32, end: s32, data: PixmapImageRowsData) {
         image_width := pixmap_image_widths[slot]
         image_height := pixmap_image_heights[slot]
         image := pixmap_image_pixels[slot].value
-        managed := slot >= PixmapAssetImageLimit
+        managed := slot >= PixmapManagedImageStart
         surface := pixmap_surface
         stride := pixmap_width
         alpha := pixmap_alpha

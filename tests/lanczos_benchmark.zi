@@ -1,0 +1,192 @@
+// std/resample's Lanczos timed as Kryon's shared cache runs it: premultiply
+// a copy of the picture, plan, both passes and unpremultiply.
+//   lanczos_benchmark IN WIDTH HEIGHT OUT_WIDTH OUT_HEIGHT ITERATIONS LEVEL THREADS OUT
+// IN and OUT are raw RGBA. LEVEL is scalar, sse2, avx2, neon or best;
+// THREADS above 1 splits both passes over a std/parallel_linux pool, whose
+// size ZIRAN_PAR_THREADS sets. Prints the level, the median and fastest
+// microseconds and the process's peak resident KiB (VmHWM).
+// Built with --define LANCZOS_BENCH_STB and linked with stb_image_resize2's
+// implementation (its header compiled as C), LEVEL stb times that library
+// instead, a test-only oracle: straight RGBA, clamped edges, Lanczos-3.
+#import "std/resample"
+#import "std/file_linux"
+#import "std/byte_text_linux"
+#import "std/timer_linux"
+#import "std/format"
+#import "std/vec"
+#import "std/math"
+Workers :: #import "std/parallel_linux";
+
+bench_c :: #system_library "c";
+BenchCopy :: (target: *u8, source: *u8, bytes: usize) -> *void #foreign bench_c "memcpy";
+
+BENCH_STB :: #defined(LANCZOS_BENCH_STB)
+#if BENCH_STB {
+    stb :: #system_library "stb_image_resize2";
+    StbKernel :: #type (x: float32, scale: float32, user: *void) -> float32 #c_call;
+    StbSupport :: #type (scale: float32, user: *void) -> float32 #c_call;
+    // STBIR_RGBA, STBIR_TYPE_UINT8 and STBIR_EDGE_CLAMP.
+    STB_RGBA :: 4
+    STB_UINT8 :: 0
+    STB_CLAMP :: 0
+    StbInit :: (resize: *void, input: *u8, width: s32, height: s32, stride: s32,
+        output: *u8, out_width: s32, out_height: s32, out_stride: s32, layout: s32, kind: s32) #foreign stb "stbir_resize_init";
+    StbEdges :: (resize: *void, horizontal: s32, vertical: s32) -> s32 #foreign stb "stbir_set_edgemodes";
+    StbFilters :: (resize: *void, horizontal: StbKernel, horizontal_support: StbSupport,
+        vertical: StbKernel, vertical_support: StbSupport) -> s32 #foreign stb "stbir_set_filter_callbacks";
+    StbResize :: (resize: *void) -> s32 #foreign stb "stbir_resize_extended";
+
+    StbLanczos :: (x: float32, scale: float32, user: *void) -> float32 {
+        unused scale; unused user
+        distance := cast(float64)x
+        if distance < 0.0 { distance = -distance }
+        if distance >= 3.0 { return 0.0 }
+        if distance < 0.000000001 { return 1.0 }
+        p := 3.141592653589793 * distance
+        return cast(float32)(3.0 * Sin(p) * Sin(p / 3.0) / (p * p))
+    }
+    StbSupport3 :: (scale: float32, user: *void) -> float32 { unused scale; unused user; return 3.0 }
+
+    // One resize; STBIR_RESIZE is 200 bytes on x86-64 and smaller on ARMv7.
+    StbRun :: (input: *u8, width: s32, height: s32, output: *u8, out_width: s32, out_height: s32) -> bool {
+        resize: [64]u64
+        StbInit(cast(*void)*resize[0], input, width, height, width * 4, output, out_width, out_height, out_width * 4,
+            STB_RGBA, STB_UINT8)
+        kernel: StbKernel = StbLanczos
+        support: StbSupport = StbSupport3
+        unused StbEdges(cast(*void)*resize[0], STB_CLAMP, STB_CLAMP)
+        unused StbFilters(cast(*void)*resize[0], kernel, support, kernel, support)
+        return StbResize(cast(*void)*resize[0]) != 0
+    }
+}
+
+Job :: struct {
+    plan: *ResamplePlan
+    input: *u8
+    stride: s64
+    output: *u8
+    output_stride: s64
+}
+
+FirstRows :: (start: s64, end: s64, argument: *void) {
+    job := cast(*Job)argument
+    ResamplePlanFirst(job.plan, job.input, job.stride, job.output, job.output_stride, cast(s32)start, cast(s32)end)
+}
+SecondRows :: (start: s64, end: s64, argument: *void) {
+    job := cast(*Job)argument
+    ResamplePlanSecond(job.plan, job.input, job.stride, job.output, job.output_stride, cast(s32)start, cast(s32)end)
+}
+
+PlanRelease :: (plan: *ResamplePlan) {
+    VecFree(plan.intermediate)
+    VecFree(plan.horizontal.bounds); VecFree(plan.horizontal.weights)
+    VecFree(plan.horizontal.packed); VecFree(plan.horizontal.scratch)
+    VecFree(plan.vertical.bounds); VecFree(plan.vertical.weights)
+    VecFree(plan.vertical.packed); VecFree(plan.vertical.scratch)
+}
+
+Number :: (text: *u8) -> s64 {
+    value: s64 = 0
+    at: s64 = 0
+    while text[at] >= 48 && text[at] <= 57 { value = value * 10 + cast(s64)(text[at] - 48); at += 1 }
+    return value
+}
+
+Same :: (text: *u8, word: string) -> bool {
+    for at: cast(s64)0..word.count - 1 { if text[at] != word[at] { return false } }
+    return text[word.count] == 0
+}
+
+// VmHWM from /proc/self/status, in KiB.
+PeakKib :: () -> s64 {
+    status: [8192]u8
+    file := OpenRead("/proc/self/status")
+    read := ReadAt(file, BytesFromPointer(*status[0], 8191), 0)
+    unused CloseFile(file)
+    if read <= 0 { return -1 }
+    for at: cast(s64)0..read - 7 {
+        if status[at] == 86 && status[at + 1] == 109 && status[at + 2] == 72 && status[at + 3] == 87 &&
+            status[at + 4] == 77 && status[at + 5] == 58 {
+            next := at + 6
+            while next < read && (status[next] == 32 || status[next] == 9) { next += 1 }
+            return Number(*status[next])
+        }
+    }
+    return -1
+}
+
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 10 { print("usage: lanczos_benchmark IN WIDTH HEIGHT OUT_WIDTH OUT_HEIGHT ITERATIONS LEVEL THREADS OUT\n"); return 1 }
+    width := cast(s32)Number(argv[2]); height := cast(s32)Number(argv[3])
+    out_width := cast(s32)Number(argv[4]); out_height := cast(s32)Number(argv[5])
+    iterations := Number(argv[6])
+    threads := Number(argv[8])
+    names: [5]string = .["scalar", "sse2", "avx2", "neon", "best"]
+    level: s32 = -2
+    for index: cast(s32)0..4 { if Same(argv[7], names[index]) { level = ifx index == 4 then -1 else index } }
+    use_stb := false
+    #if BENCH_STB {
+        use_stb = Same(argv[7], "stb")
+    }
+    if (level == -2 && !use_stb) || width <= 0 || height <= 0 || out_width <= 0 || out_height <= 0 { return 1 }
+    used := "stb"
+    if !use_stb {
+        if !ResampleUseKernels(level) { print("unavailable %\n", names[ifx level < 0 then 4 else level]); return 3 }
+        used = names[ResampleKernels()]
+    }
+    bytes := cast(s64)width * height * 4
+    out_bytes := cast(s64)out_width * out_height * 4
+    input: Vec(u8); work: Vec(u8); output: Vec(u8)
+    if !VecResize(input, bytes) || !VecResize(work, bytes) || !VecResize(output, out_bytes) { return 2 }
+    file := OpenRead(TextFromCString(argv[1]))
+    read := ReadAt(file, BytesFromPointer(*input[0], cast(u64)bytes), 0)
+    unused CloseFile(file)
+    if read != bytes { print("short input\n"); return 2 }
+    pool: Workers.ParallelPool
+    samples: Vec(s64)
+    first: Workers.RangeProcedure = FirstRows
+    second: Workers.RangeProcedure = SecondRows
+    for iteration: cast(s64)0..iterations - 1 {
+        start := MonotonicNanoseconds()
+        if use_stb {
+            #if BENCH_STB {
+                if !StbRun(*input[0], width, height, *output[0], out_width, out_height) { return 4 }
+            }
+            unused VecPush(samples, MonotonicNanoseconds() - start)
+            continue
+        }
+        unused BenchCopy(*work[0], *input[0], cast(usize)bytes)
+        ResamplePremultiply(*work[0], cast(s64)width * height)
+        plan: ResamplePlan
+        if !ResamplePlanInto(*plan, width, height, 0.0, 0.0, cast(float64)width, cast(float64)height,
+            out_width, out_height, RESAMPLE_LANCZOS) { return 4 }
+        job := Job.{*plan, *work[0], cast(s64)width * 4, *output[0], cast(s64)out_width * 4}
+        if threads > 1 {
+            Workers.ParallelRun(*pool, 0, cast(s64)ResamplePlanFirstRows(*plan), first, cast(*void)*job)
+            Workers.ParallelRun(*pool, 0, cast(s64)ResamplePlanSecondRows(*plan), second, cast(*void)*job)
+        } else {
+            FirstRows(0, cast(s64)ResamplePlanFirstRows(*plan), cast(*void)*job)
+            SecondRows(0, cast(s64)ResamplePlanSecondRows(*plan), cast(*void)*job)
+        }
+        ResampleUnpremultiply(*output[0], cast(s64)out_width * out_height)
+        PlanRelease(*plan)
+        unused VecPush(samples, MonotonicNanoseconds() - start)
+    }
+    Workers.ParallelClose(*pool)
+    if iterations > 0 {
+        saved := OpenReplace(TextFromCString(argv[9]))
+        written := Write(saved, BytesFromPointer(*output[0], cast(u64)out_bytes))
+        if !CloseFile(saved) || written != out_bytes { return 5 }
+        // Insertion sort: a handful of samples.
+        for i: cast(s64)1..samples.count - 1 {
+            value := samples[i]; at := i
+            while at > 0 && samples[at - 1] > value { samples[at] = samples[at - 1]; at -= 1 }
+            samples[at] = value
+        }
+        print("% % % %\n", used, samples[samples.count / 2] / 1000, samples[0] / 1000, PeakKib())
+    } else {
+        print("% 0 0 %\n", used, PeakKib())
+    }
+    return 0
+}

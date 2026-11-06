@@ -719,6 +719,23 @@ cairo-scaled-image-test: project-toolchain
 	@sh tests/ziran_cairo_scaled_image_test.sh
 test: cairo-scaled-image-test
 
+# Smooth images draw their shared Lanczos copies the same as Pillow on the
+# pixmap host, Raylib in a private Xvfb window and Canvas in private headless
+# Firefox; cairo-scaled-image-test checks Cairo's, and
+# tests/lanczos_backend_goldens.sh runs all four.
+.PHONY: lanczos-goldens-test
+lanczos-goldens-test: project-toolchain $(RAYLIB_ARCHIVES)
+	@sh tests/ziran_pixmap_lanczos_test.sh
+	@RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" AVIF_A="$(AVIF_A)" AOM_A="$(AOM_A)" sh tests/raylib_lanczos_test.sh
+	@python3 tests/canvas_lanczos_test.py
+test: lanczos-goldens-test
+
+# Benchmark receipt: std/resample's Lanczos against Pillow, Pillow-SIMD,
+# libvips and stb_image_resize2 here and on the ARMv7 Moto over ADB.
+.PHONY: lanczos-benchmark
+lanczos-benchmark: project-toolchain
+	@sh tests/lanczos_benchmark.sh
+
 .PHONY: avif-decode-test
 avif-decode-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/avif_decode_test.sh

@@ -130,6 +130,14 @@ LoadTextureFromImage :: (image: RaylibGlyphImage) -> Texture2D {
         image.width, image.height, 1, image.format}
 }
 
+// Lanczos copies read textures back; this fake has no pixels to give, so
+// smooth pictures keep the GPU filter.
+#program_export
+LoadImageFromTexture :: (texture: Texture2D) -> RaylibGlyphImage {
+    unused texture
+    return RaylibGlyphImage.{}
+}
+
 #program_export
 UnloadImage :: (image: RaylibGlyphImage) {
     if image.data == cast(*void)*photo_pixels[0] {

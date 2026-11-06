@@ -13,6 +13,7 @@
 #import "c_string"
 #import "geometry"
 #import "drawing_props"
+Lanczos :: #import "lanczos_cache";
 #if #defined(PLATFORM_WEB) {
     canvas_monitor_name: [32]u8;
     canvas_empty: [1]u8;
@@ -38,6 +39,8 @@
         canvas_external_frame_pacing = false
         PageMeshReset()
         CanvasBitmapClose()
+        // Lanczos copies are page textures.
+        Lanczos.LanczosClose()
         PageTexturesReset()
         PageBoot(width, height, TextFromCString(title))
         PageEventsBind()
@@ -49,6 +52,7 @@
 
     #program_export
     CloseWindow :: () {
+        Lanczos.LanczosClose()
         CanvasBitmapClose()
         CloseCanvasText()
         PageMeshReset()

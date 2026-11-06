@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Smooth images are shown at their on-screen size with Lanczos filtering on every backend, made off the UI thread (a slice per frame on the web) and matching Pillow.
+
 - Native AVIF images decode with dav1d and its CPU-tuned assembly on desktop and every Android ABI, using up to four cores for large frames.
 
 - Tall buttons such as launcher and keypad tiles keep rounded card corners, show their pictures large, and neutral soft buttons take a light accent tint.

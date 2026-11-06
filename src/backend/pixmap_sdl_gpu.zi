@@ -41,9 +41,9 @@ gpu_renderer: *void;
 gpu_target: *void;
 gpu_atlas: *void;
 gpu_premultiplied: s32;
-// Mirrors pixmap's PixmapImageLimit (1024 asset + 64 managed slots); array
+// Mirrors pixmap's PixmapImageLimit (1024 asset, 64 Lanczos copy and 64 managed slots); array
 // capacities need a local constant, and every slot below is range-checked.
-GpuImageLimit :: 1088;
+GpuImageLimit :: 1152;
 gpu_images: [GpuImageLimit]*void;
 gpu_image_revisions: [GpuImageLimit]u64;
 gpu_image_smooth: [GpuImageLimit]bool;

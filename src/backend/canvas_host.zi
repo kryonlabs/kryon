@@ -22,6 +22,7 @@
 #import "number_text"
 #import "byte_text_linux"
 Metrics :: #import "font_metrics";
+Lanczos :: #import "lanczos_cache";
 
 // Bitmap cursors keep their CSS by request and density, so switching between
 // an application hand and a tool never re-encodes an image.
@@ -456,6 +457,9 @@ CanvasWheelMove :: () -> float32 {
 #program_export
 BeginCanvasFrame :: () {
     canvas_image_error = false
+    // The page makes Lanczos copies a slice per frame; a finished one is
+    // drawn on this frame.
+    if Lanczos.LanczosPump() { PaintResourcesChanged() }
     CanvasFrameBegin(Color.{248, 250, 252, 255})
 }
 

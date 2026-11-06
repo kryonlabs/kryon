@@ -1,0 +1,100 @@
+#import "raylib_image_decode"
+#import "raylib_runtime"
+#import "geometry"
+#import "drawing_props"
+#import "c_string"
+#import "paint_texture"
+#import "std/byte_text_linux"
+#import "std/file_linux"
+#import "std/format"
+#import "std/vec"
+Lanczos :: #import "lanczos_cache";
+
+test_raylib :: #system_library "raylib";
+TestInitWindow :: (width: s32, height: s32, title: *u8) #foreign test_raylib "InitWindow";
+TestIsWindowReady :: () -> bool #foreign test_raylib "IsWindowReady";
+TestCapture :: () -> RaylibGlyphImage #foreign test_raylib "LoadImageFromScreen";
+TestImageFree :: (image: RaylibGlyphImage) #foreign test_raylib "UnloadImage";
+TestFlush :: () #foreign test_raylib "rlDrawRenderBatchActive";
+
+CLIP :: Rectangle.{7.0, 9.0, 113.0, 103.0}
+frame: [65536]u8;
+kept: [65536]u8;
+
+// One frame over the hosts' background; the screen is read before it is
+// presented.
+Draw :: (path: string, source: Rectangle, bounds: Rectangle, tint: Color) -> bool {
+    BeginRaylibFrame()
+    emitting_smooth = true
+    RasterImage(path, 0, source, bounds, CLIP, .{}, 0.0, 0.0, tint)
+    emitting_smooth = false
+    TestFlush()
+    image := TestCapture()
+    ok := image.data != null && image.format == 7 && image.width == 128 && image.height == 128
+    if ok {
+        bytes := cast(*u8)image.data
+        for i: 0..65535 { frame[i] = bytes[i] }
+    }
+    TestImageFree(image)
+    return EndRaylibFrame() && ok
+}
+
+Save :: (directory: string, name: string, index: s32) -> bool {
+    text: Vec(u8); BuilderPrint(*text, "%/%-%.rgba", directory, name, index); path := BuilderFinish(text)
+    file := OpenReplace(path)
+    written := Write(file, BytesFromPointer(*frame[0], 65536))
+    return CloseFile(file) && written == 65536
+}
+
+Floor :: (value: float32) -> s32 {
+    whole := cast(s32)value
+    if cast(float32)whole > value { whole -= 1 }
+    return whole
+}
+
+// Each smooth picture is first drawn with the GPU's filter while its
+// Lanczos copy is made from the texture; then the copy is drawn 1:1 over
+// the whole pixels the picture covers, the same on later frames, and saved
+// for tests/lanczos_goldens.py to compare with Pillow.
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    directory := TextFromCString(argv[1])
+    title: [64]u8
+    CopyCString("Kryon Lanczos test", title[:])
+    TestInitWindow(128, 128, *title[0])
+    if !TestIsWindowReady() { return 1 }
+    defer CloseRaylib()
+    sources: [2]string = .["opaque", "alpha"]
+    boxes: [4]Rectangle = .[.{0.0, 0.0, 512.0, 512.0}, .{37.5, 20.25, 300.0, 280.5},
+        .{100.0, 100.0, 24.0, 18.0}, .{0.0, 0.0, 512.0, 512.0}]
+    targets: [4]Rectangle = .[.{-15.25, 3.25, 149.25, 117.5}, .{4.0, 6.0, 113.0, 97.0},
+        .{2.4, 1.6, 120.6, 90.2}, .{20.0, 20.0, 64.0, 64.0}]
+    tints: [4]Color = .[.{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 128}]
+    for kind: cast(s32)0..1 {
+        text: Vec(u8); BuilderPrint(*text, "%/%.png", directory, sources[kind]); path := BuilderFinish(text)
+        for index: cast(s32)0..3 {
+            // The first frames load the picture and start its copy.
+            started := false
+            for attempt: cast(s32)0..63 {
+                if !Draw(path, boxes[index], targets[index], tints[index]) { print("frame failed: % %\n", sources[kind], index); return 2 }
+                if Lanczos.LanczosPending() { started = true; break }
+            }
+            if !started || !Lanczos.LanczosWait() { print("no Lanczos copy started: % %\n", sources[kind], index); return 3 }
+            if !Draw(path, boxes[index], targets[index], tints[index]) { return 4 }
+            for i: 0..65535 { kept[i] = frame[i] }
+            if !Draw(path, boxes[index], targets[index], tints[index]) { return 5 }
+            for i: 0..65535 {
+                if frame[i] != kept[i] { print("the Lanczos copy changed between frames: % %\n", sources[kind], index); return 6 }
+            }
+            if Lanczos.LanczosPending() { print("an exact copy started another: % %\n", sources[kind], index); return 7 }
+            if !Save(directory, sources[kind], index) { return 8 }
+            target := targets[index]
+            left := Floor(target.x); top := Floor(target.y)
+            right := Floor(target.x + target.width); bottom := Floor(target.y + target.height)
+            print("raylib % % % % % %\n", sources[kind], index, left, top, right - left, bottom - top)
+        }
+    }
+    print("Raylib draws settled Lanczos copies 1:1 and keeps them stable across frames\n")
+    return 0
+}

@@ -28,6 +28,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "text_emphasis"
 #import "text_typeface"
 ImagePixels :: #import "raylib_image_decode";
+Lanczos :: #import "lanczos_cache";
 #if !#defined(_WIN32) {
     #if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
         SystemTypeface :: #import "system_typeface_android";
@@ -125,6 +126,7 @@ HostTypefaceFileData :: (path: *u8, count: *s32) -> *u8 #foreign raylib "LoadFil
 HostTypefaceFileDataFree :: (bytes: *u8) #foreign raylib "UnloadFileData";
 HostRaylibUnloadFont :: (font: RaylibFont) #foreign raylib "UnloadFont";
 HostRaylibTextureFilter :: (texture: Texture2D, filter: s32) #foreign raylib "SetTextureFilter";
+HostRaylibImageFromTexture :: (texture: Texture2D) -> ImagePixels.RaylibGlyphImage #foreign raylib "LoadImageFromTexture";
 HostRaylibGenTextureMipmaps :: (texture: *Texture2D) #foreign raylib "GenTextureMipmaps";
 HostTypefaceAllocate :: (size: usize) -> *u8 #foreign c "malloc";
 HostTypefaceFree :: (bytes: *u8) #foreign c "free";
@@ -1542,6 +1544,7 @@ RaylibReserveAsset :: (path: string, hash: u64) -> s32 {
             HostRaylibFlushBatch()
             HostRaylibUnloadTexture(raylib_assets[index].texture)
         }
+        Lanczos.LanczosForget(raylib_asset_hashes[index])
         raylib_assets_next = (raylib_assets_next + 1) % RaylibAssetCapacity
     }
     raylib_assets[index] = RaylibAsset.{}
@@ -1758,6 +1761,11 @@ ResetRaylibGraphics :: (context_lost: bool = false) {
     }
     raylib_assets_count = 0
     raylib_assets_next = 0
+    // Lanczos copies are textures too; a lost context's are already gone.
+    if context_lost {
+        for slot: cast(s32)0..Lanczos.LANCZOS_SLOTS - 1 { Lanczos.lanczos_entries[slot].texture = 0 }
+    }
+    Lanczos.LanczosClose()
     index = 0
     while index < 2 {
         if !context_lost && retained_frame_ready[index] {
@@ -1870,6 +1878,7 @@ CloseRaylib :: () {
         index += 1
     }
     raylib_assets_count = 0
+    Lanczos.LanczosClose()
     ReleaseTypefaces()
     if HostRaylibIsWindowReady() { HostRaylibCloseWindow() }
 }
@@ -2375,6 +2384,8 @@ BeginRaylibFrame :: () {
     #if RAYLIB_FRAME_THREADS {
         if render_pipeline == null { RaylibPumpImages() }
     }
+    // A finished Lanczos copy changes what unchanged widgets paint.
+    if Lanczos.LanczosPump() { PaintResourcesChanged() }
     raylib_image_error = false
     raylib_asset_load_spent = 0.0
     raylib_asset_loads = 0
@@ -3358,7 +3369,8 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32,
             unused RaylibAppMetric(asset_path, 0, false, true)
         }
         if RecordFrameOperation(PaintCommand.{.asset_path = asset_path, .texture_id = texture_id,
-                .source = source, .bounds = destination, .clip = clip, .origin = origin,
+                .texture = CurrentPaintTexture(), .smooth = CurrentPaintSmooth(),
+                .image_clip_count = cast(s32)CurrentPaintPolygon().count, .source = source, .bounds = destination, .clip = clip, .origin = origin,
                 .rotation = rotation, .radius = radius, .color = tint}, RaylibReplayRasterImage) { return }
     }
     // Negative source dimensions mirror images and orient render targets.
@@ -3386,6 +3398,9 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32,
             raylib_image_error = true
             return
         }
+        if CurrentPaintSmooth() && rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 && radius <= 0.0 &&
+            !raylib_replay_polygon && CurrentPaintPolygon().count < 3 &&
+            RaylibLanczosImage(index, source, destination, clip, tint) { return }
         if CurrentPaintSmooth() && !raylib_assets[index].smooth {
             RaylibSmoothAsset(index)
         }
@@ -3396,6 +3411,82 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32,
     }
     RaylibDrawImageClipped(texture, source, destination, clip, origin,
         rotation, radius, tint)
+}
+
+// Copies belong to the GL context that drew them.
+RaylibLanczosSession :: () -> u64 {
+    #if RAYLIB_FRAME_THREADS {
+        return cast(u64)cast(usize)RaylibCurrentContext()
+    } else {
+        return 0x72616c
+    }
+}
+// A strip of a polygon-clipped picture keeps the GPU filter: its copies
+// would differ per strip.
+raylib_replay_polygon: bool;
+
+RaylibLanczosRelease :: (argument: *void) {
+    entry := cast(*Lanczos.LanczosEntry)argument
+    if entry.texture != 0 {
+        HostRaylibFlushBatch()
+        HostRaylibUnloadTexture(Texture2D.{entry.texture, entry.key.width, entry.key.height, 1, 7})
+    }
+    entry.texture = 0
+}
+
+// A smooth picture drawn upright at the window's own scale shows its
+// Lanczos copy (see lanczos_cache) over the whole pixels it covers, edges
+// rounded down as RaylibDrawImageClipped places pictures. The source is
+// read back from its texture once per new size, only when the worker can
+// start. False draws the texture with the GPU's filter.
+RaylibLanczosImage :: (index: s32, source: Rectangle, destination: Rectangle,
+    clip: Rectangle, tint: Color) -> bool {
+    asset := *raylib_assets[index]
+    texture := asset.texture
+    if raylib_zoom != 1.0 || texture.id == 0 || texture.format != 7 { return false }
+    left := RaylibFloor(destination.x)
+    top := RaylibFloor(destination.y)
+    snapped := Rectangle.{cast(float32)left, cast(float32)top,
+        cast(float32)(RaylibFloor(destination.x + destination.width) - left),
+        cast(float32)(RaylibFloor(destination.y + destination.height) - top)}
+    if !Lanczos.LanczosEligible(source, texture.width, texture.height, snapped) { return false }
+    width := cast(s32)snapped.width
+    height := cast(s32)snapped.height
+    // The path names the picture in every build; the bytes it was decoded
+    // from name its revision once they are replaced.
+    key: Lanczos.LanczosKey = .{raylib_asset_hashes[index], asset.content, RaylibLanczosSession(), source, width, height}
+    entry := Lanczos.LanczosLookup(key, null, 0, 0, 0, Lanczos.LANCZOS_STRAIGHT, Lanczos.LANCZOS_STRAIGHT)
+    exact := entry != null && entry.key.width == width && entry.key.height == height
+    if !exact && Lanczos.LanczosCanStart(key) {
+        HostRaylibFlushBatch()
+        pixels := HostRaylibImageFromTexture(texture)
+        if pixels.data != null && pixels.format == 7 && pixels.width == texture.width && pixels.height == texture.height {
+            unused Lanczos.LanczosLookup(key, cast(*u8)pixels.data, pixels.width, pixels.height,
+                cast(s64)pixels.width * 4, Lanczos.LANCZOS_STRAIGHT, Lanczos.LANCZOS_STRAIGHT)
+        }
+        ImagePixels.RaylibImageRelease(pixels)
+    }
+    if entry == null { return false }
+    if entry.texture == 0 {
+        if entry.pixels == null { return false }
+        upload := ImagePixels.RaylibGlyphImage.{cast(*void)entry.pixels, entry.key.width, entry.key.height, 1, 7}
+        copy := HostRaylibTextureFromImage(upload)
+        if copy.id == 0 { return false }
+        // Bilinear samples texel centers exactly at one texel per pixel, and
+        // smooths a copy of another size until its own replaces it.
+        HostRaylibTextureFilter(copy, 1)
+        entry.texture = copy.id
+        entry.release = RaylibLanczosRelease
+        // The texture is the only copy kept.
+        Lanczos.LanczosUploaded(entry)
+    }
+    x := RaylibFloor(clip.x)
+    y := RaylibFloor(clip.y)
+    part := Rectangle.{cast(float32)x, cast(float32)y,
+        cast(float32)(RaylibFloor(clip.x + clip.width) - x), cast(float32)(RaylibFloor(clip.y + clip.height) - y)}
+    RaylibDrawImagePart(Texture2D.{entry.texture, entry.key.width, entry.key.height, 1, 7},
+        Rectangle.{0.0, 0.0, cast(float32)entry.key.width, cast(float32)entry.key.height}, snapped, part, tint)
+    return true
 }
 
 // A warped image (see ImageMesh): each grid cell as two textured triangles
@@ -4069,8 +4160,13 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
 
     RaylibReplayTextureFree :: (command: PaintCommand) { RaylibIconTextureFree(command.texture) }
     RaylibReplayRasterImage :: (command: PaintCommand) {
-        RasterImage(command.asset_path, command.texture_id, command.source, command.bounds,
+        saved_texture := emitting_texture; saved_smooth := emitting_smooth
+        emitting_texture = command.texture; emitting_smooth = command.smooth
+        raylib_replay_polygon = command.image_clip_count >= 3
+        RasterImageUnmasked(command.asset_path, command.texture_id, command.source, command.bounds,
             command.clip, command.origin, command.rotation, command.radius, command.color)
+        raylib_replay_polygon = false
+        emitting_texture = saved_texture; emitting_smooth = saved_smooth
     }
     RaylibReplayImagePolygon :: (command: PaintCommand) {
         saved_texture := emitting_texture; saved_smooth := emitting_smooth

@@ -1,0 +1,94 @@
+Pixels :: #import "pixmap";
+Texture :: #import "paint_texture";
+Lanczos :: #import "lanczos_cache";
+#import "geometry"
+#import "drawing_props"
+#import "std/byte_text_linux"
+#import "std/file_linux"
+#import "std/format"
+#import "std/vec"
+
+CLIP :: Rectangle.{7.0, 9.0, 113.0, 103.0}
+
+surface: [16384]u32;
+pictures: [2][262144]u32;
+
+Draw :: (path: string, source: Rectangle, bounds: Rectangle, tint: Color, smooth: bool) -> bool {
+    if !Pixels.PixmapBeginInto(cast(u32)Pixels.PixmapBackground, 128, 128, surface[:], true) { return false }
+    Texture.emitting_smooth = smooth
+    Pixels.RasterImage(path, 0, source, bounds, CLIP, .{}, 0.0, 0.0, tint)
+    Pixels.PixmapEndInto()
+    return true
+}
+
+frame: [16384]u32;
+Keep :: () { for i: 0..16383 { frame[i] = surface[i] } }
+Same :: () -> bool {
+    for i: 0..16383 { if surface[i] != frame[i] { return false } }
+    return true
+}
+
+Load :: (directory: string, name: string, kind: s32) -> bool {
+    text: Vec(u8); BuilderPrint(*text, "%/%.argb", directory, name); path := BuilderFinish(text)
+    file := OpenRead(path)
+    read := ReadAt(file, BytesFromPointer(cast(*u8)*pictures[kind][0], 1048576), 0)
+    return CloseFile(file) && read == 1048576
+}
+
+Save :: (directory: string, name: string, index: s32) -> bool {
+    text: Vec(u8); BuilderPrint(*text, "%/%-%.bgra", directory, name, index); path := BuilderFinish(text)
+    file := OpenReplace(path)
+    written := Write(file, BytesFromPointer(cast(*u8)*surface[0], 65536))
+    return CloseFile(file) && written == 65536
+}
+
+CopySlots :: () -> s32 {
+    count: s32 = 0
+    for slot: Pixels.PixmapCopyImageStart..Pixels.PixmapManagedImageStart - 1 {
+        if Pixels.pixmap_image_widths[slot] != 0 { count += 1 }
+    }
+    return count
+}
+
+// Each smooth draw first samples bilinearly and starts its Lanczos copy;
+// once the copy is made it is drawn from a copy slot, the same on every
+// later frame, and saved for tests/lanczos_goldens.py to compare with Pillow.
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    directory := TextFromCString(argv[1])
+    sources: [2]string = .["opaque", "alpha"]
+    boxes: [4]Rectangle = .[.{0.0, 0.0, 512.0, 512.0}, .{37.5, 20.25, 300.0, 280.5},
+        .{100.0, 100.0, 24.0, 18.0}, .{0.0, 0.0, 512.0, 512.0}]
+    targets: [4]Rectangle = .[.{-15.25, 3.25, 149.25, 117.5}, .{4.0, 6.0, 113.0, 97.0},
+        .{2.4, 1.6, 120.6, 90.2}, .{20.0, 20.0, 64.0, 64.0}]
+    tints: [4]Color = .[.{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 128}]
+    for kind: cast(s32)0..1 {
+        if !Load(directory, sources[kind], kind) { return 2 }
+        if !Pixels.PixmapSetImage(kind, sources[kind], 512, 512, pictures[kind][:]) { return 2 }
+    }
+    for kind: cast(s32)0..1 {
+        for index: cast(s32)0..3 {
+            if !Draw(sources[kind], boxes[index], targets[index], tints[index], true) { return 3 }
+            if !Pixels.PixmapLanczosWait() { print("no Lanczos copy started: % %\n", sources[kind], index); return 4 }
+            if !Draw(sources[kind], boxes[index], targets[index], tints[index], true) { return 5 }
+            Keep()
+            if !Draw(sources[kind], boxes[index], targets[index], tints[index], true) || !Same() {
+                print("the Lanczos copy changed between frames: % %\n", sources[kind], index); return 6
+            }
+            if Pixels.PixmapLanczosPending() { print("an exact copy started another: % %\n", sources[kind], index); return 7 }
+            if !Save(directory, sources[kind], index) { return 8 }
+            snapped := Lanczos.LanczosSnap(targets[index])
+            print("pixmap % % % % % %\n", sources[kind], index, snapped.x, snapped.y, snapped.width, snapped.height)
+        }
+    }
+    // A sharp image never makes a copy.
+    if !Draw(sources[0], boxes[1], targets[1], tints[0], false) || Pixels.PixmapLanczosPending() { return 9 }
+    // Replacing or clearing a picture frees its copies and their slots.
+    if CopySlots() == 0 { return 10 }
+    Pixels.PixmapClearImage(0)
+    if !Pixels.PixmapSetImage(1, sources[1], 512, 512, pictures[1][:]) { return 11 }
+    if CopySlots() != 0 { print("% copy slots outlived their pictures\n", CopySlots()); return 12 }
+    Pixels.PixmapCloseWorkers()
+    print("Pixmap draws settled Lanczos copies 1:1 and keeps them stable across frames\n")
+    return 0
+}

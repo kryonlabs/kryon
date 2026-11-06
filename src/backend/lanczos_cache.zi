@@ -1,0 +1,551 @@
+// Smooth images at their on-screen size: one cache of Lanczos copies that
+// the backends draw pixel for pixel, each made off the UI thread, or on the
+// web a slice of rows per frame.
+// A backend asks for a key: the picture's content and revision, its source
+// rectangle and the whole device pixels it covers. Until that copy is ready
+// it draws the previous copy of the same picture stretched, or its own
+// filter when there is none, and the finished copy replaces it in one step.
+//
+// Copies are std/resample's Pillow Lanczos bytes over premultiplied pixels,
+// so they match Pillow's Image.resize(size, LANCZOS, box) exactly. Like
+// Pillow, filtering works on the stored sRGB bytes, not in linear light.
+// Only axis-aligned draws under a plain translation are cached; meshes,
+// rotation, scaled transforms and managed textures keep their own paths.
+#import "geometry"
+Resample :: #import "std/resample"
+
+// A copy's largest side, its most pixels, all copies' bytes and one
+// session's bytes.
+LANCZOS_SIDE_LIMIT :: 4096
+LANCZOS_PIXEL_LIMIT :: 4194304
+LANCZOS_BYTE_LIMIT :: 67108864
+LANCZOS_SESSION_BYTE_LIMIT :: 33554432
+// The largest source region one copy reads.
+LANCZOS_SOURCE_PIXEL_LIMIT :: 16777216
+LANCZOS_SLOTS :: 48
+
+// Byte layouts of sources and copies: straight or premultiplied alpha. The
+// four channels may be in any order; alpha is the last byte of each pixel
+// for straight sources and copies.
+LANCZOS_STRAIGHT :: 0
+LANCZOS_PREMULTIPLIED :: 1
+
+LANCZOS_THREADS :: #defined(POSIX_THREADS) || #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
+// A page without threads makes its copy in slices between frames.
+LANCZOS_STEPPED :: !LANCZOS_THREADS && #defined(PLATFORM_WEB)
+LANCZOS_JOBS :: LANCZOS_THREADS || LANCZOS_STEPPED
+// Filter taps, in output pixels times taps, one slice computes.
+LANCZOS_STEP_TAPS :: 2097152
+
+LanczosKey :: struct {
+    // The backend's identity for the source pixels, never reused for other
+    // pixels, and a revision that changes when they change.
+    content: u64
+    revision: u64
+    session: u64
+    source: Rectangle
+    width: s32
+    height: s32
+}
+
+// Frees a backend's uploaded copy of an entry.
+LanczosRelease :: #type (entry: *void) #c_call;
+
+LanczosEntry :: struct {
+    key: LanczosKey
+    // Null once a backend holds its only copy (LanczosUploaded); BYTES
+    // still counts it, and is zero only for a free slot.
+    pixels: *u8
+    bytes: s64
+    used: u64
+    layout: s32
+    // A backend's uploaded copy, such as a Cairo surface or a GPU texture,
+    // released before the pixels are freed.
+    surface: *void
+    texture: u32
+    release: LanczosRelease
+}
+
+lanczos_c :: #system_library "c";
+LanczosAllocate :: (bytes: usize) -> *u8 #foreign lanczos_c "malloc";
+LanczosFree :: (bytes: *u8) #foreign lanczos_c "free";
+LanczosCopy :: (target: *u8, source: *u8, bytes: usize) -> *void #foreign lanczos_c "memcpy";
+
+lanczos_entries: [LANCZOS_SLOTS]LanczosEntry;
+lanczos_bytes: s64;
+lanczos_clock: u64;
+
+LanczosFloor :: (value: float32) -> s32 {
+    whole := cast(s32)value
+    if cast(float32)whole > value { whole -= 1 }
+    return whole
+}
+LanczosCeil :: (value: float32) -> s32 {
+    whole := cast(s32)value
+    if cast(float32)whole < value { whole += 1 }
+    return whole
+}
+
+LanczosSameSource :: (a: *LanczosKey, b: *LanczosKey) -> bool {
+    return a.content == b.content && a.session == b.session &&
+        a.source.x == b.source.x && a.source.y == b.source.y &&
+        a.source.width == b.source.width && a.source.height == b.source.height
+}
+
+LanczosClearEntry :: (entry: *LanczosEntry) {
+    if entry.bytes == 0 { return }
+    if entry.release != null { entry.release(cast(*void)entry) }
+    if entry.pixels != null { LanczosFree(entry.pixels) }
+    lanczos_bytes -= entry.bytes
+    entry.* = .{}
+}
+
+LanczosSessionBytes :: (session: u64) -> s64 {
+    total: s64 = 0
+    for i: cast(s32)0..LANCZOS_SLOTS - 1 {
+        if lanczos_entries[i].bytes != 0 && lanczos_entries[i].key.session == session {
+            total += lanczos_entries[i].bytes
+        }
+    }
+    return total
+}
+
+// Frees least recently drawn copies until BYTES more fit, and returns a free
+// slot, or -1.
+LanczosRoom :: (session: u64, bytes: s64) -> s32 {
+    while true {
+        free: s32 = -1
+        oldest: s32 = -1
+        oldest_session: s32 = -1
+        for i: cast(s32)0..LANCZOS_SLOTS - 1 {
+            entry := *lanczos_entries[i]
+            if entry.bytes == 0 { if free < 0 { free = i }; continue }
+            if oldest < 0 || entry.used < lanczos_entries[oldest].used { oldest = i }
+            if entry.key.session == session &&
+                (oldest_session < 0 || entry.used < lanczos_entries[oldest_session].used) { oldest_session = i }
+        }
+        if LanczosSessionBytes(session) + bytes > LANCZOS_SESSION_BYTE_LIMIT {
+            if oldest_session < 0 { return -1 }
+            LanczosClearEntry(*lanczos_entries[oldest_session]); continue
+        }
+        if free >= 0 && lanczos_bytes + bytes <= LANCZOS_BYTE_LIMIT { return free }
+        if oldest < 0 { return -1 }
+        LanczosClearEntry(*lanczos_entries[oldest])
+    }
+    return -1
+}
+
+// Takes ownership of PIXELS: the copy replaces every other copy of the
+// same picture and source, whatever its size or revision.
+LanczosInstall :: (key: LanczosKey, pixels: *u8, layout: s32) -> bool {
+    bytes := cast(s64)key.width * key.height * 4
+    for i: cast(s32)0..LANCZOS_SLOTS - 1 {
+        entry := *lanczos_entries[i]
+        if entry.bytes != 0 && LanczosSameSource(*entry.key, *key) { LanczosClearEntry(entry) }
+    }
+    slot := LanczosRoom(key.session, bytes)
+    if slot < 0 { LanczosFree(pixels); return false }
+    lanczos_clock += 1
+    lanczos_entries[slot] = .{.key = key, .pixels = pixels, .bytes = bytes, .used = lanczos_clock, .layout = layout}
+    lanczos_bytes += bytes
+    return true
+}
+
+// Frees ENTRY's pixels once its backend has uploaded them; the upload is
+// then its only copy, and its release must free it.
+LanczosUploaded :: (entry: *LanczosEntry) {
+    if entry.pixels != null { LanczosFree(entry.pixels); entry.pixels = null }
+}
+
+#if LANCZOS_JOBS {
+    // One copy is made at a time from its own premultiplied copy of the
+    // source region the filter reads.
+    LanczosJob :: struct {
+        key: LanczosKey
+        layout: s32
+        input: *u8
+        input_width: s32
+        input_height: s32
+        // The whole picture's size and where the copied region starts.
+        width: s32
+        height: s32
+        left: s32
+        top: s32
+        output: *u8
+        ok: bool
+        discard: bool
+        plan: Resample.ResamplePlan
+        // The rows of each pass a stepped job has made.
+        first_done: s32
+        second_done: s32
+    }
+    lanczos_job: LanczosJob;
+    lanczos_job_active: bool;
+    lanczos_failed: LanczosKey;
+    lanczos_changed: bool;
+
+    // Once the job has stopped.
+    LanczosTake :: () {
+        lanczos_job_active = false
+        job := *lanczos_job
+        output := job.output
+        job.output = null
+        if job.discard { if output != null { LanczosFree(output) }; return }
+        if !job.ok || output == null {
+            lanczos_failed = job.key
+            if output != null { LanczosFree(output) }
+            return
+        }
+        if LanczosInstall(job.key, output, job.layout) { lanczos_changed = true }
+    }
+
+    LanczosFirstRows :: (start: s64, end: s64, argument: *void) {
+        job := cast(*LanczosJob)argument
+        Resample.ResamplePlanFirst(*job.plan, job.input, cast(s64)job.input_width * 4,
+            job.output, cast(s64)job.key.width * 4, cast(s32)start, cast(s32)end)
+    }
+    LanczosSecondRows :: (start: s64, end: s64, argument: *void) {
+        job := cast(*LanczosJob)argument
+        Resample.ResamplePlanSecond(*job.plan, job.input, cast(s64)job.input_width * 4,
+            job.output, cast(s64)job.key.width * 4, cast(s32)start, cast(s32)end)
+    }
+
+    LanczosPlanRelease :: (plan: *Resample.ResamplePlan) {
+        VecFree(plan.intermediate)
+        VecFree(plan.horizontal.bounds); VecFree(plan.horizontal.weights)
+        VecFree(plan.horizontal.packed); VecFree(plan.horizontal.scratch)
+        VecFree(plan.vertical.bounds); VecFree(plan.vertical.weights)
+        VecFree(plan.vertical.packed); VecFree(plan.vertical.scratch)
+    }
+
+    // Moves a plan for the whole picture onto the region copied from LEFT,
+    // TOP. Its weights, and so its bytes, stay those of the whole picture.
+    LanczosPlanOffset :: (plan: *Resample.ResamplePlan, left: s32, top: s32) {
+        if plan.horizontal_pass {
+            axis := *plan.horizontal
+            for out: cast(s64)0..cast(s64)axis.output - 1 {
+                axis.bounds[out * 2] -= left
+                axis.packed[out * axis.entry] = cast(u32)axis.bounds[out * 2]
+            }
+        }
+        plan.first_row -= top
+        // Without a first pass the second reads the region's rows itself.
+        if plan.vertical_pass && !plan.horizontal_pass {
+            axis := *plan.vertical
+            for out: cast(s64)0..cast(s64)axis.output - 1 {
+                axis.bounds[out * 2] -= top
+                axis.packed[out * axis.entry] = cast(u32)axis.bounds[out * 2]
+            }
+        }
+    }
+
+    // Plans the job's resize and allocates its copy.
+    LanczosPrepare :: (job: *LanczosJob) -> bool {
+        job.ok = false
+        source := job.key.source
+        if !Resample.ResamplePlanInto(*job.plan, job.width, job.height,
+            cast(float64)source.x, cast(float64)source.y, cast(float64)source.width, cast(float64)source.height,
+            job.key.width, job.key.height, Resample.RESAMPLE_LANCZOS) { return false }
+        LanczosPlanOffset(*job.plan, job.left, job.top)
+        job.output = LanczosAllocate(cast(usize)(cast(s64)job.key.width * job.key.height * 4))
+        return job.output != null
+    }
+
+    // After both passes, or to stop: frees the source region and the plan.
+    LanczosFinish :: (job: *LanczosJob, ok: bool) {
+        if ok && job.layout == LANCZOS_STRAIGHT {
+            Resample.ResampleUnpremultiply(job.output, cast(s64)job.key.width * job.key.height)
+        }
+        job.ok = ok
+        // Idle copies keep no plan scratch.
+        LanczosPlanRelease(*job.plan)
+        LanczosFree(job.input)
+        job.input = null
+    }
+
+    // Copies the source region the filter reads, premultiplied, into a new
+    // job. False when it does not fit.
+    LanczosRegion :: (key: LanczosKey, pixels: *u8, width: s32, height: s32, stride: s64,
+        layout: s32, output_layout: s32) -> bool {
+        scale_x := key.source.width / cast(float32)key.width
+        scale_y := key.source.height / cast(float32)key.height
+        margin_x := LanczosCeil(3.0 * (ifx scale_x < 1.0 then 1.0 else scale_x)) + 2
+        margin_y := LanczosCeil(3.0 * (ifx scale_y < 1.0 then 1.0 else scale_y)) + 2
+        left := LanczosFloor(key.source.x) - margin_x
+        top := LanczosFloor(key.source.y) - margin_y
+        right := LanczosCeil(key.source.x + key.source.width) + margin_x
+        bottom := LanczosCeil(key.source.y + key.source.height) + margin_y
+        if left < 0 { left = 0 }
+        if top < 0 { top = 0 }
+        if right > width { right = width }
+        if bottom > height { bottom = height }
+        input_width := right - left
+        input_height := bottom - top
+        if input_width <= 0 || input_height <= 0 ||
+            cast(s64)input_width * input_height > LANCZOS_SOURCE_PIXEL_LIMIT { return false }
+        row_bytes := cast(s64)input_width * 4
+        input := LanczosAllocate(cast(usize)(row_bytes * input_height))
+        if input == null { return false }
+        for row: cast(s64)0..cast(s64)input_height - 1 {
+            unused LanczosCopy(*input[row * row_bytes], *pixels[(cast(s64)top + row) * stride + cast(s64)left * 4],
+                cast(usize)row_bytes)
+        }
+        if layout == LANCZOS_STRAIGHT { Resample.ResamplePremultiply(input, cast(s64)input_width * input_height) }
+        job := *lanczos_job
+        job.key = key; job.layout = output_layout
+        job.input = input; job.input_width = input_width; job.input_height = input_height
+        job.width = width; job.height = height; job.left = left; job.top = top
+        job.output = null; job.ok = false; job.discard = false
+        job.first_done = 0; job.second_done = 0
+        return true
+    }
+}
+
+#if LANCZOS_THREADS {
+    // The thread module std/parallel_linux uses on this system.
+    #if #defined(_WIN32) {
+        #import "std/thread_windows"
+    } else {
+        #import "std/thread_linux"
+    }
+    Workers :: #import "std/parallel_linux";
+
+    // The worker owns the job and splits both passes over a bounded pool.
+    lanczos_thread: Thread;
+    lanczos_pool: Workers.ParallelPool;
+    lanczos_wake: ThreadNotification;
+
+    LanczosWorker :: (argument: *void) {
+        job := cast(*LanczosJob)argument
+        ok := LanczosPrepare(job)
+        if ok {
+            first: Workers.RangeProcedure = LanczosFirstRows
+            second: Workers.RangeProcedure = LanczosSecondRows
+            Workers.ParallelRun(*lanczos_pool, 0, cast(s64)Resample.ResamplePlanFirstRows(*job.plan), first, argument)
+            Workers.ParallelRun(*lanczos_pool, 0, cast(s64)Resample.ResamplePlanSecondRows(*job.plan), second, argument)
+        }
+        LanczosFinish(job, ok)
+    }
+
+    // Starts the worker on a copy for KEY. False when it is busy or the
+    // copy does not fit.
+    LanczosStart :: (key: LanczosKey, pixels: *u8, width: s32, height: s32, stride: s64,
+        layout: s32, output_layout: s32) -> bool {
+        if lanczos_job_active || !LanczosRegion(key, pixels, width, height, stride, layout, output_layout) { return false }
+        job := *lanczos_job
+        if !ThreadStart(*lanczos_thread, LanczosWorker, cast(*void)job, lanczos_wake) {
+            LanczosFree(job.input); job.input = null
+            return false
+        }
+        lanczos_job_active = true
+        return true
+    }
+
+    // Runs PROCEDURE(ARGUMENT) on the worker when a copy is finished, so a
+    // host sleeping until its next event wakes to draw it. It must only wake.
+    LanczosSetWake :: (procedure: ThreadProcedure, argument: *void) {
+        lanczos_wake = .{procedure, argument}
+    }
+}
+
+#if LANCZOS_STEPPED {
+    // Makes rows of the job worth about BUDGET taps; true once both passes
+    // are done.
+    LanczosStep :: (budget: s64) -> bool {
+        job := *lanczos_job
+        first_rows := Resample.ResamplePlanFirstRows(*job.plan)
+        second_rows := Resample.ResamplePlanSecondRows(*job.plan)
+        first_taps := ifx job.plan.horizontal_pass then job.plan.horizontal.size else 1
+        first_cost := cast(s64)job.key.width * first_taps
+        second_cost := cast(s64)job.key.width * job.plan.vertical.size
+        if second_cost < 1 { second_cost = 1 }
+        spent: s64 = 0
+        while job.first_done < first_rows && spent < budget {
+            rows := (budget - spent) / first_cost
+            if rows < 1 { rows = 1 }
+            if rows > cast(s64)(first_rows - job.first_done) { rows = cast(s64)(first_rows - job.first_done) }
+            LanczosFirstRows(cast(s64)job.first_done, cast(s64)job.first_done + rows, cast(*void)job)
+            job.first_done += cast(s32)rows
+            spent += rows * first_cost
+        }
+        while job.first_done == first_rows && job.second_done < second_rows && spent < budget {
+            rows := (budget - spent) / second_cost
+            if rows < 1 { rows = 1 }
+            if rows > cast(s64)(second_rows - job.second_done) { rows = cast(s64)(second_rows - job.second_done) }
+            LanczosSecondRows(cast(s64)job.second_done, cast(s64)job.second_done + rows, cast(*void)job)
+            job.second_done += cast(s32)rows
+            spent += rows * second_cost
+        }
+        return job.first_done == first_rows && job.second_done == second_rows
+    }
+
+    // Plans a copy for KEY, made by later pumps. False when one is being
+    // made or it does not fit.
+    LanczosStart :: (key: LanczosKey, pixels: *u8, width: s32, height: s32, stride: s64,
+        layout: s32, output_layout: s32) -> bool {
+        if lanczos_job_active || !LanczosRegion(key, pixels, width, height, stride, layout, output_layout) { return false }
+        job := *lanczos_job
+        lanczos_job_active = true
+        if !LanczosPrepare(job) { LanczosFinish(job, false); LanczosTake() }
+        return true
+    }
+
+    // Runs the job's next slice, or all of it, and takes it once it is done.
+    LanczosAdvance :: (budget: s64) {
+        job := *lanczos_job
+        if job.discard { LanczosFinish(job, false); LanczosTake(); return }
+        if LanczosStep(budget) { LanczosFinish(job, true); LanczosTake() }
+    }
+}
+
+// Whether a copy is being made.
+LanczosPending :: () -> bool {
+    #if LANCZOS_JOBS {
+        return lanczos_job_active
+    } else {
+        return false
+    }
+}
+
+// Takes a finished copy into the cache, after making the next slice of a
+// stepped one. True when one replaced what draws, so the host must paint
+// again.
+LanczosPump :: () -> bool {
+    #if LANCZOS_THREADS {
+        if lanczos_job_active && ThreadFinished(*lanczos_thread) { LanczosTake() }
+    } else #if LANCZOS_STEPPED {
+        if lanczos_job_active { LanczosAdvance(LANCZOS_STEP_TAPS) }
+    }
+    #if LANCZOS_JOBS {
+        changed := lanczos_changed
+        lanczos_changed = false
+        return changed
+    } else {
+        return false
+    }
+}
+
+// Waits for the copy being made, as before capturing a frame, and takes it
+// into the cache; false when none was being made. The next LanczosPump
+// reports the change.
+LanczosWait :: () -> bool {
+    #if LANCZOS_JOBS {
+        if !lanczos_job_active { return false }
+        #if LANCZOS_THREADS {
+            ThreadWait(*lanczos_thread)
+            LanczosTake()
+        } else {
+            LanczosAdvance(0x7fffffffffffffff)
+        }
+        return true
+    } else {
+        return false
+    }
+}
+
+// The device pixels a cached draw covers: DESTINATION's edges rounded to
+// whole pixels.
+LanczosSnap :: (destination: Rectangle) -> Rectangle {
+    left := LanczosFloor(destination.x + 0.5)
+    top := LanczosFloor(destination.y + 0.5)
+    right := LanczosFloor(destination.x + destination.width + 0.5)
+    bottom := LanczosFloor(destination.y + destination.height + 0.5)
+    return .{cast(float32)left, cast(float32)top, cast(float32)(right - left), cast(float32)(bottom - top)}
+}
+
+// Whether SOURCE of a WIDTH by HEIGHT picture drawn over SNAPPED device
+// pixels is worth a Lanczos copy: a whole-pixel draw of the source at its
+// own size needs none.
+LanczosEligible :: (source: Rectangle, width: s32, height: s32, snapped: Rectangle) -> bool {
+    if !(source.width > 0.0) || !(source.height > 0.0) || !(source.x >= 0.0) || !(source.y >= 0.0) ||
+        source.x + source.width > cast(float32)width || source.y + source.height > cast(float32)height {
+        return false
+    }
+    if !(snapped.width >= 1.0) || !(snapped.height >= 1.0) ||
+        snapped.width > cast(float32)LANCZOS_SIDE_LIMIT || snapped.height > cast(float32)LANCZOS_SIDE_LIMIT ||
+        cast(s64)snapped.width * cast(s64)snapped.height > LANCZOS_PIXEL_LIMIT {
+        return false
+    }
+    return snapped.width != source.width || snapped.height != source.height ||
+        source.x != cast(float32)LanczosFloor(source.x) || source.y != cast(float32)LanczosFloor(source.y)
+}
+
+// Whether a copy for KEY would start now: the worker is free and has not
+// failed to make this one. A host that must read its pixels back, as from a
+// GPU texture, asks before reading.
+LanczosCanStart :: (key: LanczosKey) -> bool {
+    #if LANCZOS_JOBS {
+        failed := LanczosSameSource(*lanczos_failed, *key) && lanczos_failed.revision == key.revision &&
+            lanczos_failed.width == key.width && lanczos_failed.height == key.height
+        return !lanczos_job_active && !failed && cast(s64)key.width * key.height * 4 <= LANCZOS_SESSION_BYTE_LIMIT
+    } else {
+        return false
+    }
+}
+
+// The copy to draw for KEY: its own once ready, else a copy of the same
+// picture, revision and source at another size, to stretch until its own
+// replaces it, or null. Copies of an older revision are dropped. A missing copy is made from PIXELS (WIDTH by
+// HEIGHT, STRIDE bytes per row, in LAYOUT), copied now, when the worker is
+// free; the copy has OUTPUT_LAYOUT. Null PIXELS only looks.
+LanczosLookup :: (key: LanczosKey, pixels: *u8, width: s32, height: s32, stride: s64,
+    layout: s32, output_layout: s32) -> *LanczosEntry {
+    lanczos_clock += 1
+    stale: *LanczosEntry = null
+    for i: cast(s32)0..LANCZOS_SLOTS - 1 {
+        entry := *lanczos_entries[i]
+        if entry.bytes == 0 || !LanczosSameSource(*entry.key, *key) { continue }
+        if entry.key.revision != key.revision { LanczosClearEntry(entry); continue }
+        entry.used = lanczos_clock
+        if entry.key.width == key.width && entry.key.height == key.height && entry.layout == output_layout { return entry }
+        stale = entry
+    }
+    if pixels != null && LanczosCanStart(key) {
+        #if LANCZOS_JOBS {
+            unused LanczosStart(key, pixels, width, height, stride, layout, output_layout)
+        }
+    }
+    return stale
+}
+
+// Drops every copy of CONTENT, including one being made, as when its
+// pixels are freed or replaced.
+LanczosForget :: (content: u64) {
+    for i: cast(s32)0..LANCZOS_SLOTS - 1 {
+        if lanczos_entries[i].bytes != 0 && lanczos_entries[i].key.content == content {
+            LanczosClearEntry(*lanczos_entries[i])
+        }
+    }
+    #if LANCZOS_JOBS {
+        if lanczos_job_active && lanczos_job.key.content == content { lanczos_job.discard = true }
+    }
+}
+
+// Drops one session's copies, as when it closes or its resources reload.
+LanczosForgetSession :: (session: u64) {
+    for i: cast(s32)0..LANCZOS_SLOTS - 1 {
+        if lanczos_entries[i].bytes != 0 && lanczos_entries[i].key.session == session {
+            LanczosClearEntry(*lanczos_entries[i])
+        }
+    }
+    #if LANCZOS_JOBS {
+        if lanczos_job_active && lanczos_job.key.session == session { lanczos_job.discard = true }
+    }
+}
+
+// Waits for the worker and drops every copy and the worker pool.
+LanczosClose :: () {
+    #if LANCZOS_THREADS {
+        if lanczos_job_active { ThreadWait(*lanczos_thread) }
+        Workers.ParallelClose(*lanczos_pool)
+    } else #if LANCZOS_STEPPED {
+        if lanczos_job_active { LanczosFinish(*lanczos_job, false) }
+    }
+    #if LANCZOS_JOBS {
+        lanczos_job_active = false
+        if lanczos_job.output != null { LanczosFree(lanczos_job.output); lanczos_job.output = null }
+        lanczos_failed = .{}
+    }
+    for i: cast(s32)0..LANCZOS_SLOTS - 1 { LanczosClearEntry(*lanczos_entries[i]) }
+    lanczos_bytes = 0
+}

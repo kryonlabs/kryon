@@ -261,6 +261,9 @@ PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
         if smooth != (filter != 0) {
             WebSet(ctx, page_names.image_smoothing, WebBool(filter != 0))
         }
+        // Smooth images take the browser's best filter. A resized canvas
+        // forgets it, so it is set for every smooth draw.
+        if filter != 0 { WebSet(ctx, page_names.image_quality, WebText("high")) }
         previous_alpha: float64 = 1.0
         if a < 255 {
             previous_alpha = WebGetNumber(ctx, page_names.global_alpha)
@@ -282,6 +285,7 @@ PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
     }
     unused WebCall0(ctx, page_names.save)
     WebSet(ctx, page_names.image_smoothing, WebBool(filter != 0))
+    if filter != 0 { WebSet(ctx, page_names.image_quality, WebText("high")) }
     if a < 255 {
         WebSet(ctx, page_names.global_alpha, WebNumber(cast(float64)a / 255.0))
     }
@@ -335,6 +339,7 @@ PageDrawTextureTriangle :: (id: s32, x0: float64, y0: float64, x1: float64,
     tinted: PageTintedSource = PageTintedSourceFor(slot, id, r, g, b)
     unused WebCall0(ctx, page_names.save)
     WebSet(ctx, WebName("imageSmoothingEnabled"), WebBool(filter != 0))
+    if filter != 0 { WebSet(ctx, page_names.image_quality, WebText("high")) }
     if a < 255 {
         WebSet(ctx, WebName("globalAlpha"), WebNumber(cast(float64)a / 255.0))
     }

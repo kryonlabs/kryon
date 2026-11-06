@@ -1,43 +1,71 @@
 Raster :: #import "cairo_raster";
 Texture :: #import "paint_texture";
+Lanczos :: #import "lanczos_cache";
 #import "geometry"
 #import "drawing_props"
 #import "std/byte_text_linux"
+#import "std/file_linux"
 #import "std/format"
 #import "std/vec"
 
-reference: [65536]u8;
-Draw :: (path: string, bounds: Rectangle, tint: Color, cached: bool) -> bool {
+CLIP :: Rectangle.{7.0, 9.0, 113.0, 103.0}
+
+Draw :: (path: string, source: Rectangle, bounds: Rectangle, tint: Color, smooth: bool) -> bool {
     Raster.BeginRasterFrame()
-    Texture.emitting_smooth = true
-    origin: Vector2
-    if !cached { bounds.x += 1.0; origin.x = 1.0 }
-    Raster.RasterImage(path, 0, .{0.0,0.0,512.0,512.0}, bounds,
-        .{7.0,9.0,113.0,103.0}, origin, 0.0, 0.0, tint)
+    Texture.emitting_smooth = smooth
+    Raster.RasterImage(path, 0, source, bounds, CLIP, .{}, 0.0, 0.0, tint)
     return Raster.FinishRasterFrame()
 }
+
+frame: [65536]u8;
+Keep :: () { data := Raster.RasterSurfaceData(); for i: 0..65535 { frame[i] = data[i] } }
+Same :: () -> bool {
+    data := Raster.RasterSurfaceData()
+    for i: 0..65535 { if data[i] != frame[i] { return false } }
+    return true
+}
+
+Save :: (directory: string, name: string, index: s32) -> bool {
+    text: Vec(u8); BuilderPrint(*text, "%/%-%.bgra", directory, name, index); path := BuilderFinish(text)
+    file := OpenReplace(path)
+    written := Write(file, BytesFromPointer(Raster.RasterSurfaceData(), 65536))
+    return CloseFile(file) && written == 65536
+}
+
+// Each smooth draw first shows Cairo's filter and starts its Lanczos copy;
+// once the copy is made it is drawn, the same on every later frame, and
+// saved for tests/lanczos_backend_goldens.sh to compare with Pillow.
 main :: (argc: s32, argv: **u8) -> s32 {
     if argc != 2 { return 1 }
-    text: Vec(u8); BuilderPrint(*text,"%/scaled.png",TextFromCString(argv[1])); path := BuilderFinish(text)
-    if !Raster.OpenRaster(128,128) { return 2 }
-    defer Raster.CloseRaster()
-    tints: [3]Color = .[.{255,255,255,255},.{255,255,255,128},.{40,160,70,200}]
-    for phase: 0..3 { for tint: tints {
-        bounds: Rectangle = .{-15.0 + cast(float32)phase * 0.25, 3.0 + cast(float32)phase * 0.25, 149.25, 117.5}
-        if !Draw(path,bounds,tint,false) { return 3 }
-        data := Raster.RasterSurfaceData()
-        for i: 0..65535 { reference[i] = data[i] }
-        for repeat: 0..1 {
-            if !Draw(path,bounds,tint,true) { return 4 }
-            data = Raster.RasterSurfaceData()
-            for i: 0..65535 {
-                delta := cast(s32)data[i] - cast(s32)reference[i]
-                if delta < -2 || delta > 2 { print("cached sample differs at %: % vs %\n",i,data[i],reference[i]); return 5 }
+    directory := TextFromCString(argv[1])
+    sources: [2]string = .["opaque", "alpha"]
+    boxes: [4]Rectangle = .[.{0.0, 0.0, 512.0, 512.0}, .{37.5, 20.25, 300.0, 280.5},
+        .{100.0, 100.0, 24.0, 18.0}, .{0.0, 0.0, 512.0, 512.0}]
+    targets: [4]Rectangle = .[.{-15.25, 3.25, 149.25, 117.5}, .{4.0, 6.0, 113.0, 97.0},
+        .{2.4, 1.6, 120.6, 90.2}, .{20.0, 20.0, 64.0, 64.0}]
+    tints: [4]Color = .[.{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 128}]
+    if !Raster.OpenRaster(128, 128) { return 2 }
+    for kind: cast(s32)0..1 {
+        text: Vec(u8); BuilderPrint(*text, "%/%.png", directory, sources[kind]); path := BuilderFinish(text)
+        for index: cast(s32)0..3 {
+            if !Draw(path, boxes[index], targets[index], tints[index], true) { return 3 }
+            if !Lanczos.LanczosWait() { print("no Lanczos copy started: % %\n", sources[kind], index); return 4 }
+            if !Draw(path, boxes[index], targets[index], tints[index], true) { return 5 }
+            Keep()
+            if !Draw(path, boxes[index], targets[index], tints[index], true) || !Same() {
+                print("the Lanczos copy changed between frames: % %\n", sources[kind], index); return 6
             }
+            if Lanczos.LanczosPending() { print("an exact copy started another: % %\n", sources[kind], index); return 7 }
+            if !Save(directory, sources[kind], index) { return 8 }
+            snapped := Lanczos.LanczosSnap(targets[index])
+            print("cairo % % % % % %\n", sources[kind], index, snapped.x, snapped.y, snapped.width, snapped.height)
         }
-    } }
+    }
+    // A sharp image never makes a copy.
+    sharp: Vec(u8); BuilderPrint(*sharp, "%/opaque.png", directory); sharp_path := BuilderFinish(sharp)
+    if !Draw(sharp_path, boxes[1], targets[1], tints[0], false) || Lanczos.LanczosPending() { return 9 }
     Raster.CloseRaster()
-    if !Raster.OpenRaster(128,128) || !Draw(path,.{0.0,0.0,100.0,100.0},.{255,255,255,255},true) { return 6 }
-    print("Cairo cached scaling matches direct filtering, fractional translation, clips, alpha, tint and reopen\n")
+    if !Raster.OpenRaster(128, 128) { return 10 }
+    print("Cairo draws settled Lanczos copies 1:1 and keeps them stable across frames\n")
     return 0
 }

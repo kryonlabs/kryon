@@ -8,6 +8,7 @@
 #import "canvas_draw"
 #import "canvas_texture"
 Bitmaps :: #import "bitmap_store";
+Lanczos :: #import "lanczos_cache";
 #import "canvas_text"
 #import "image_props"
 #import "page_font"
@@ -160,6 +161,79 @@ RasterTextClipped :: (value: string, x: s32, y: s32,
     EndRasterClip(saved)
 }
 
+// Copies belong to the one page.
+CANVAS_LANCZOS_SESSION :: 0x63616e
+
+CanvasLanczosRelease :: (argument: *void) {
+    entry := cast(*Lanczos.LanczosEntry)argument
+    if entry.texture != 0 { PageTextureFree(cast(s32)entry.texture) }
+    entry.texture = 0
+}
+
+// A smooth picture drawn upright at one scale on both axes shows its
+// Lanczos copy (see lanczos_cache) over the whole device pixels it covers.
+// Firefox has no imageSmoothingQuality, so the browser's own filter is
+// only what draws until the copy is made. The source is read back from its
+// canvas once per new size, only when a copy can start, and the copy then
+// lives only in its own canvas. False draws the picture with the browser's
+// filter.
+CanvasLanczosImage :: (index: s32, source: Rectangle, destination: Rectangle,
+    clip: Rectangle, radius: float32, tint: Color) -> bool {
+    asset := *canvas_assets[index]
+    texture := asset.texture
+    slot := PageTextureFind(cast(s32)texture.id)
+    if slot < 0 || page_textures[slot].target || page_ctx == 0 { return false }
+    matrix := WebAsObject(WebCall0(page_ctx, page_names.get_transform))
+    if matrix == 0 { return false }
+    a := WebGetNumber(matrix, page_names.a)
+    d := WebGetNumber(matrix, page_names.d)
+    e := WebGetNumber(matrix, page_names.e)
+    f := WebGetNumber(matrix, page_names.f)
+    if WebGetNumber(matrix, page_names.b) != 0.0 || WebGetNumber(matrix, page_names.c) != 0.0 ||
+        !(a > 0.0) || !(d > 0.0) { return false }
+    snapped := Lanczos.LanczosSnap(Rectangle.{cast(float32)(cast(float64)destination.x * a + e),
+        cast(float32)(cast(float64)destination.y * d + f), cast(float32)(cast(float64)destination.width * a),
+        cast(float32)(cast(float64)destination.height * d)})
+    if !Lanczos.LanczosEligible(source, texture.width, texture.height, snapped) { return false }
+    width := cast(s32)snapped.width
+    height := cast(s32)snapped.height
+    // The path names the picture; the bytes it was decoded from and any
+    // later upload to its canvas name its revision.
+    revision := asset.content ^ (page_textures[slot].revision * cast(u64)0x9e3779b97f4a7c15)
+    key: Lanczos.LanczosKey = .{asset.hash, revision, CANVAS_LANCZOS_SESSION, source, width, height}
+    entry := Lanczos.LanczosLookup(key, null, 0, 0, 0, Lanczos.LANCZOS_STRAIGHT, Lanczos.LANCZOS_STRAIGHT)
+    exact := entry != null && entry.key.width == width && entry.key.height == height
+    if !exact && Lanczos.LanczosCanStart(key) {
+        bytes := cast(u32)texture.width * cast(u32)texture.height * 4
+        pixels := CanvasAllocate(bytes)
+        if pixels != null {
+            if PageTextureRead(cast(s32)texture.id, pixels, bytes) == 1 {
+                unused Lanczos.LanczosLookup(key, pixels, texture.width, texture.height,
+                    cast(s64)texture.width * 4, Lanczos.LANCZOS_STRAIGHT, Lanczos.LANCZOS_STRAIGHT)
+            }
+            CanvasRelease(cast(*void)pixels)
+        }
+    }
+    if entry == null { return false }
+    if entry.texture == 0 {
+        if entry.pixels == null { return false }
+        id := PageTextureFromRgba(entry.pixels, entry.key.width, entry.key.height)
+        if id == 0 { return false }
+        entry.texture = cast(u32)id
+        entry.release = CanvasLanczosRelease
+        Lanczos.LanczosUploaded(entry)
+    }
+    // Its own copy lands pixel for pixel; one of another size is stretched
+    // smoothly until its own replaces it.
+    PageTextureFilter(cast(s32)entry.texture, ifx exact then 0 else 1)
+    shown := Rectangle.{cast(float32)((cast(float64)snapped.x - e) / a), cast(float32)((cast(float64)snapped.y - f) / d),
+        cast(float32)(cast(float64)snapped.width / a), cast(float32)(cast(float64)snapped.height / d)}
+    CanvasDrawImageClipped(Texture2D.{entry.texture, entry.key.width, entry.key.height, 1, 7},
+        Rectangle.{0.0, 0.0, cast(float32)entry.key.width, cast(float32)entry.key.height}, shown, clip,
+        Vector2.{}, 0.0, radius, tint)
+    return true
+}
+
 // The browser decodes images itself and draws each when it is ready.
 #program_export
 ImagesPending :: () -> s32 {
@@ -190,6 +264,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
         return
     }
     texture: Texture2D
+    asset: s32 = -1
     if Bitmaps.BitmapTagged(texture_id) {
         texture = CanvasBitmapTexture(texture_id)
         if texture.id == cast(u32)0 { return }
@@ -212,6 +287,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
             SetTextureFilter(texture, 1)
             canvas_assets[index].smooth = true
         }
+        asset = index
     } else {
         canvas_image_error = true
         return
@@ -235,8 +311,11 @@ RasterImage :: (asset_path: string, texture_id: u32,
         unused WebCall0(context, WebName("closePath"))
         unused WebCall0(context, WebName("clip"))
     }
-    CanvasDrawImageClipped(texture, source, destination, clip, origin,
-        rotation, radius, tint)
+    if asset < 0 || !CurrentPaintSmooth() || rotation != 0.0 ||
+        !CanvasLanczosImage(asset, source, destination, clip, radius, tint) {
+        CanvasDrawImageClipped(texture, source, destination, clip, origin,
+            rotation, radius, tint)
+    }
     if polygon.count >= 3 { unused WebCall0(context, WebName("restore")) }
     WebEnd(scope)
 }

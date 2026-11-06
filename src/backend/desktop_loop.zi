@@ -8,6 +8,7 @@ A :: #import "accessibility_linux";
 #import "app"
 #import "cairo_raster"
 #import "desktop_runtime"
+Lanczos :: #import "lanczos_cache";
 #import "geometry"
 #import "program_title"
 #import "session"
@@ -110,6 +111,9 @@ RunDesktop :: (width: s32 = 960, height: s32 = 600) -> s32 {
     ok: bool = true
     if CaptureRequested() {
         ok = PollDesktop() && DrawFrame(session)
+        // A capture shows smooth pictures' finished Lanczos copies.
+        settled := 0
+        while ok && settled < 64 && Lanczos.LanczosWait() { ok = DrawFrame(session); settled += 1 }
         if ok { ok = CaptureConfigured() }
     } else {
         while ok && PollDesktop() {

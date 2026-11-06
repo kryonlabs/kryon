@@ -400,6 +400,61 @@ generation roots without entry pruning. This keeps both the host `main` and
 the raster adapters available to the paint queue. Native projects continue
 through the ordinary package entry route.
 
+## Smooth images (Lanczos)
+
+A smooth picture (`.smooth = true`) is shown at the device pixels it
+covers through one shared cache, `src/backend/lanczos_cache.zi`. The copy is
+std/resample's Lanczos-3, which gives the same bytes as Pillow's
+`Image.resize(size, LANCZOS, box)`. It is computed over premultiplied
+pixels and drawn pixel for pixel. The key is the picture's content, its
+revision, the source rectangle, the device-pixel size and the session.
+Until a copy is ready, the backend draws the previous copy of the same
+picture stretched, or uses its own filter if there is none. The finished
+copy replaces it in one step. A changed or released picture forgets its
+copies.
+
+- Only axis-aligned draws under a plain translation are cached. Rotation,
+  scaled transforms, meshes, polygon strips and render targets keep the
+  backend's own filter. A whole-pixel draw at the source's own size needs no
+  copy.
+- Limits: a copy is at most 4096 pixels per side and 4,194,304 pixels; all
+  copies together take at most 64 MiB, and one session at most 32 MiB.
+- Like Pillow, filtering works on the stored sRGB bytes, not in linear
+  light.
+- Copies are made on a worker thread with a std/parallel pool in builds
+  with `POSIX_THREADS`, `ANDROID_BUILD` or `KRYON_FRAME_THREADS`. A browser
+  build without threads makes a slice of rows each frame instead (about two
+  million filter taps). Other builds keep the backend's filter.
+
+| Backend | Lanczos copy |
+| --- | --- |
+| Desktop/Cairo | Cached surface, drawn 1:1 |
+| Raylib | Uploaded texture; the CPU copy is freed after upload |
+| pixmap and SDL3 GPU | A copy slot drawn 1:1 (threaded builds only, `PIXMAP_LANCZOS`), so the CPU rows and GPU hosts show the same bytes |
+| Canvas | Ziran resampler in slices, from the texture's pixels read back, then uploaded |
+| DOM `<img>` | Scaled by the browser |
+
+Firefox has no `imageSmoothingQuality`. Canvas therefore does not rely on
+it, and still sets it to `high` for smooth draws that it does not cache.
+The cached Canvas copy matches Pillow for opaque pictures. Translucent
+pictures differ by the browser's 8-bit premultiplied blend, up to about
+3.5 levels on average.
+
+A host that sleeps between events calls `PixmapLanczosPending` or
+`LanczosSetWake` so it draws again when a copy finishes. The desktop loop
+already does this by pushing a wake event. `PixmapLanczosWait` and
+`LanczosWait` finish the current copy; captures use them so every
+smooth picture is final.
+
+`make lanczos-goldens-test` (part of `make test`) compares Cairo, pixmap,
+Raylib on a private Xvfb display and Canvas in headless Firefox against
+Pillow goldens. `make lanczos-benchmark` times Kryon against Pillow,
+Pillow-SIMD, libvips and stb_image_resize2. It reports ms per output
+megapixel, extra peak memory and PSNR against a float64 reference, on
+x86-64 and over ADB on an ARMv7 phone. It writes
+`build/scratch/lanczos-bench/receipt.md`. The comparison libraries are
+test-only oracles.
+
 ## Android host
 
 `backend = "android"` builds an installable APK instead of a native binary.

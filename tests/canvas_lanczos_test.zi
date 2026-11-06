@@ -1,0 +1,109 @@
+// Smooth images through the Canvas host in a real browser: the page makes
+// each Lanczos copy in slices between frames, then draws the picture from
+// it pixel for pixel. tests/canvas_lanczos_test.py reads the frames back
+// and compares them with Pillow (tests/lanczos_goldens.py).
+#import "canvas_window"
+#import "canvas_frame"
+#import "canvas_raster"
+#import "canvas_state"
+#import "page_texture"
+#import "page_core"
+#import "paint_texture"
+#import "geometry"
+#import "drawing_props"
+#import "c_string"
+#import "web"
+#import "std/format"
+#import "std/vec"
+Lanczos :: #import "lanczos_cache";
+
+CLIP :: Rectangle.{7.0, 9.0, 113.0, 103.0}
+frame: [65536]u8;
+kept: [65536]u8;
+
+// One frame over the hosts' background, pumped first as BeginCanvasFrame
+// does; the frame is read before it is presented.
+Draw :: (path: string, source: Rectangle, bounds: Rectangle, tint: Color, smooth: bool) -> bool {
+    unused Lanczos.LanczosPump()
+    CanvasFrameBegin(Color.{248, 250, 252, 255})
+    CanvasFrameEnsureClear()
+    emitting_smooth = smooth
+    RasterImage(path, 0, source, bounds, CLIP, .{}, 0.0, 0.0, tint)
+    emitting_smooth = false
+    ok := PageTextureRead(0, *frame[0], 65536) == 1
+    EndDrawing()
+    return ok && !canvas_image_error
+}
+
+// Hands the frame and the device pixels its picture covers to the driver.
+Publish :: (name: string, index: s32, covered: Rectangle) {
+    text: Vec(u8)
+    BuilderPrint(*text, "canvas % % % % % %", name, index, covered.x, covered.y, covered.width, covered.height)
+    line := BuilderFinish(text)
+    scope := WebScope()
+    record := WebNewObject()
+    WebSet(record, WebName("line"), WebText(line))
+    WebSet(record, WebName("data"), WebObject(WebBytes(WebBytesUint8, cast(*void)*frame[0], 65536)))
+    unused WebCall1(WebGetObject(WebGlobal, WebName("lanczosFrames")), WebName("push"), WebObject(record))
+    WebEnd(scope)
+}
+
+Report :: (text: string) {
+    scope := WebScope()
+    document := WebGetObject(WebGlobal, WebName("document"))
+    result := WebAsObject(WebCall1(document, WebName("getElementById"), WebText("result")))
+    WebSet(result, WebName("textContent"), WebText(text))
+    WebEnd(scope)
+}
+
+// Each smooth picture is first drawn with the browser's filter while its
+// copy is made; the first case of each picture is finished only by the
+// pumps of later frames, as an app's are, the others by LanczosWait. The
+// copy is then drawn the same on later frames.
+Test :: () -> s32 {
+    sources: [2]string = .["opaque", "alpha"]
+    boxes: [4]Rectangle = .[.{0.0, 0.0, 512.0, 512.0}, .{37.5, 20.25, 300.0, 280.5},
+        .{100.0, 100.0, 24.0, 18.0}, .{0.0, 0.0, 512.0, 512.0}]
+    targets: [4]Rectangle = .[.{-15.25, 3.25, 149.25, 117.5}, .{4.0, 6.0, 113.0, 97.0},
+        .{2.4, 1.6, 120.6, 90.2}, .{20.0, 20.0, 64.0, 64.0}]
+    tints: [4]Color = .[.{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 255}, .{255, 255, 255, 128}]
+    for kind: cast(s32)0..1 {
+        text: Vec(u8); BuilderPrint(*text, "/lanczos/%.png", sources[kind]); path := BuilderFinish(text)
+        for index: cast(s32)0..3 {
+            if !Draw(path, boxes[index], targets[index], tints[index], true) { return 10 + kind * 4 + index }
+            if !Lanczos.LanczosPending() { return 20 + kind * 4 + index }
+            if index == 0 {
+                frames: s32 = 0
+                while Lanczos.LanczosPending() && frames < 1000 {
+                    if !Draw(path, boxes[index], targets[index], tints[index], true) { return 30 + kind }
+                    frames += 1
+                }
+                if Lanczos.LanczosPending() { return 32 + kind }
+            } else if !Lanczos.LanczosWait() { return 40 + kind * 4 + index }
+            if !Draw(path, boxes[index], targets[index], tints[index], true) { return 50 + kind * 4 + index }
+            for i: 0..65535 { kept[i] = frame[i] }
+            if !Draw(path, boxes[index], targets[index], tints[index], true) { return 60 + kind * 4 + index }
+            for i: 0..65535 { if frame[i] != kept[i] { return 70 + kind * 4 + index } }
+            if Lanczos.LanczosPending() { return 80 + kind * 4 + index }
+            Publish(sources[kind], index, Lanczos.LanczosSnap(targets[index]))
+        }
+        // A sharp draw never makes a copy.
+        if !Draw(path, boxes[1], targets[1], tints[0], false) || Lanczos.LanczosPending() { return 90 + kind }
+    }
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    title: [1]u8
+    InitWindow(128, 128, *title[0])
+    defer { CloseWindow() }
+    scope := WebScope()
+    WebSet(WebGlobal, WebName("lanczosFrames"), WebObject(WebNewArray()))
+    WebEnd(scope)
+    result := Test()
+    if result == 0 { Report("PASS") } else {
+        text: Vec(u8); BuilderPrint(*text, "FAIL %", result); Report(BuilderFinish(text))
+    }
+    return result
+}

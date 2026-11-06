@@ -1,6 +1,7 @@
 #import "byte_text_linux"
 #import "c_string"
 #import "cairo_raster"
+Lanczos :: #import "lanczos_cache";
 #import "desktop_keys"
 #import "frame_input_provider"
 Timer :: #import "std/timer_linux";
@@ -379,12 +380,22 @@ OpenDesktop :: () -> bool {
     return OpenDesktopSized(960, 600)
 }
 
+// A finished Lanczos copy wakes a window waiting for its next event.
+DesktopLanczosWake :: (argument: *void) {
+    event: Event
+    event.kind = cast(u32)0x8000
+    unused PushEvent(*event)
+}
+
 // Opens the window with a drawing area of `width` by `height` pixels.
 #program_export
 OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
     if Init(cast(u32)0x2020) != 0 { return false }
+    #if #defined(POSIX_THREADS) || #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS) {
+        Lanczos.LanczosSetWake(DesktopLanczosWake, null)
+    }
     FrameInputProviderReset(*desktop_frame_input)
     desktop_raw_keys = .{}
     desktop_gamepad_keys = .{}

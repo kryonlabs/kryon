@@ -89,6 +89,7 @@ PageNames :: struct {
     get_transform: s32
     draw_image: s32
     image_smoothing: s32
+    image_quality: s32
     global_alpha: s32
     a: s32
     b: s32
@@ -241,6 +242,7 @@ PageInitNames :: () {
     page_names.get_transform = WebName("getTransform")
     page_names.draw_image = WebName("drawImage")
     page_names.image_smoothing = WebName("imageSmoothingEnabled")
+    page_names.image_quality = WebName("imageSmoothingQuality")
     page_names.global_alpha = WebName("globalAlpha")
     page_names.a = WebName("a")
     page_names.b = WebName("b")
