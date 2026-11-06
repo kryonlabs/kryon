@@ -5,7 +5,8 @@
 # by Ziran right after the statement: C counts no allocations left after a
 # thousand frames of each kind, AddressSanitizer finds no read of a freed
 # label, and the frame text keeps its first capacity. Source and saved IR
-# agree on C, Go and portable bundles.
+# agree on C, Go and portable bundles. A fresh Text in a TextProps literal
+# measured by TextWidth or TextLinkAt is freed too: MeasureGlyphWidth is #reads.
 set -eu
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -46,9 +47,9 @@ void __wrap_free(void *p) { if (p) outstanding--; __real_free(p); }
 int main(void) {
     static const char *const kinds[] = {"PaintLabel", "PaintClippedLabel",
         "PaintClippedEmphasis", "PaintClippedSlanted", "PaintImage", "Text",
-        "PaintLabel outside a frame"};
+        "PaintLabel outside a frame", "TextWidth(fresh)", "TextLinkAt(fresh)"};
     int failed = 0;
-    for (int kind = 0; kind < 7; kind++) {
+    for (int kind = 0; kind < 9; kind++) {
         int warm = PaintFrames(kind, 20);
         long before = outstanding;
         int drawn = PaintFrames(kind, 1000);

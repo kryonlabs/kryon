@@ -4,7 +4,7 @@ module_roots = ["src/ui", "src/backend"]
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-ref = "dd799d389d7983a897520eba91ecd9904b54bba8"
+ref = "38710d1fd95b9b0e5253df57820f1c5fafe37295"
 
 [dependencies.raylib]
 git = "https://github.com/raysan5/raylib.git"

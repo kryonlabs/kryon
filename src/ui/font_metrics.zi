@@ -1,9 +1,11 @@
 host_api :: #system_library "host_api";
 
 // Font rasterizers report physical glyph measurements. UI layout stays in Kryon.
+// Every host only reads the strings during the call (it copies what it caches),
+// so Ziran may free a fresh string right after the call.
 MeasureGlyphWidth :: (value: string, font: s32,
-    typeface: string) -> s32 #foreign host_api;
-MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 #foreign host_api;
+    typeface: string) -> s32 #reads #foreign host_api;
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 #reads #foreign host_api;
 
 // Zero keeps layout uncached for hosts whose font services may change without
 // notification. A host opts in by publishing its initial metrics, then calls

@@ -6,6 +6,7 @@
 #import "session"
 #import "text_props"
 #import "text_widget"
+#import "text_measure"
 #import "tree"
 #import "tree_draw"
 
@@ -39,8 +40,21 @@ QueueWidgetText :: (round: s64) {
     Text(paint_session, props)
 }
 
+// A fresh Text goes straight into the record literal, as an app writes
+// TextWidth(session, TextProps.{.text = Make()}). The call lays it out through
+// PrepareText and measures it with MeasureGlyphWidth, a #reads foreign call,
+// so Ziran frees it. The same holds for TextLinkAt below.
+QueueLiteralText :: (round: s64) {
+    session := paint_session
+    w := TextWidth(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+        .text = Card("text ", round)})
+    if w <= 0 { bad = true }
+    Drawn(Card("w ", round))
+}
+
 // kind: 0 label, 1 clipped label, 2 emphasis, 3 slanted, 4 image path,
-// 5 Text widget, 6 label outside a frame.
+// 5 Text widget, 6 label outside a frame, 7 TextWidth and 8 TextLinkAt of a
+// fresh Text in a TextProps literal.
 // Ziran frees an argument only when nothing written before it in the call
 // could observe the move, so the session and node are locals here.
 QueueKind :: (kind: s32, round: s64) {
@@ -60,6 +74,13 @@ QueueKind :: (kind: s32, round: s64) {
             Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 255})
     } else if kind == 5 {
         QueueWidgetText(round)
+    } else if kind == 7 {
+        QueueLiteralText(round)
+    } else if kind == 8 {
+        l := TextLinkAt(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+            .text = Card("text ", round)}, 0.0, 0.0)
+        if l != -1 { bad = true }
+        Drawn(Card("w ", round))
     }
 }
 
@@ -98,11 +119,11 @@ PaintTextCapacity :: () -> s64 {
 
 #program_export
 PaintCheck :: () -> s32 {
-    for kind: cast(s32)0..6 {
+    for kind: cast(s32)0..8 {
         if PaintFrames(kind, 20) != 20 { return 1 + kind }
     }
     capacity := PaintTextCapacity()
-    for kind: cast(s32)0..6 {
+    for kind: cast(s32)0..8 {
         if PaintFrames(kind, 1000) != 1000 { return 10 + kind }
     }
     if PaintTextCapacity() != capacity { return 20 }
