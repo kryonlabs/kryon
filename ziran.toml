@@ -293,17 +293,17 @@ source = true
 
 [dependencies.libaom]
 git = "https://aomedia.googlesource.com/aom"
-ref = "d772e334cc724105040382a977ebb10dfd393293"
+ref = "b141d9c45db236335351c8a4b2a14b3ade27c937"
 source = true
 
 [dependencies.image_codec]
 git = "https://github.com/ziranlang/image-codec.git"
-ref = "a8767d78d0c08d5b1c1fc0bab6fcafdc7a6da930"
+ref = "360553150917f352e49e1beb78917370792ccaef"
 
 [dependencies.avif]
 git = "https://github.com/ziranlang/avif.git"
-ref = "9da2e2ae6f1e76d3c65b26b2b6eb8da9ad1bc67c"
+ref = "2f349f8c4a46c7476c6c02b87ec570e66d3a8f34"
 
 [dependencies.webp]
 git = "https://github.com/ziranlang/webp.git"
-ref = "b29d4f43fd295377f745ee88fe6596358fdd12c0"
+ref = "02145a00a1f0df2a111da04a75f3fef260883897"
