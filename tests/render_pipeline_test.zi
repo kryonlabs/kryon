@@ -41,10 +41,10 @@ ComposeQueued :: (argument: *void) {
     command.data.asset_path = "queue.png"
     command.data.texture.id = cast(u32)17
     command.data.smooth = true
-    QueuePaint(queued_session, *command)
+    SubmitPaint(queued_session, command)
     if !PaintSnapshotStore(queued_session) { failure = 21 }
     PaintFlush(queued_session)
-    QueuePaint(queued_session, *command)
+    SubmitPaint(queued_session, command)
     PaintFlushArea(queued_session, Rectangle.{0.0, 0.0, 30.0, 30.0})
     if !PaintSnapshotEmit(queued_session) { failure = 22 }
 }

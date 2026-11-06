@@ -107,7 +107,7 @@ TestRetainedCanvas :: () -> bool {
             custom.data.bounds = .{80.0, 10.0, 20.0, 20.0}
             custom.emit = TestRetainedCustomPaint
             custom.has_emitter = true
-            QueuePaint(session, *custom)
+            SubmitPaint(session, custom)
         }
         if EndCanvasUiFrame(session) != FrameStatus.FrameOk { good = false; break }
         if phase == 15 && canvas_frame_ready { good = false; break }

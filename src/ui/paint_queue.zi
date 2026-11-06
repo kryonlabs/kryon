@@ -172,49 +172,73 @@ PaintTextRange :: struct {
     valid: bool
 }
 
-KeepPaintBlockBytes :: (blocks: *Vec($T), slot: s32, value: string,
-    capacity: s32, inverted: bool, offset: s32) -> PaintTextRange {
+// Reserves count bytes at the end of a pool's last block, or in a new one.
+// The pool keeps room for its next block, so pushing one never moves the
+// blocks a queued text may be copied from; KeepPaintBlockRoom reserves the
+// room after that once the caller has copied. The caller passes only the
+// length, never the text, so a label's string stays a read-only argument.
+ReservePaintBlockBytes :: (blocks: *Vec($T), slot: s32, count: s64,
+    capacity: s32) -> PaintTextRange {
     result: PaintTextRange
     block_index: s32 = cast(s32)blocks.*.count - 1
     start: s32 = 0
     if block_index >= 0 { start = blocks.*[block_index].length }
-    if block_index < 0 || value.count > cast(s64)(capacity - start) {
-        // Copy before growing: value may refer to another block in this Vec.
+    if block_index < 0 || count > cast(s64)(capacity - start) {
         extra: T
-        for at: cast(s64)0..value.count - 1 { extra.bytes[at] = value[at] }
-        extra.length = cast(s32)value.count
-        if !VecPush(blocks.*, extra) {
+        if (blocks.*.count > 0 && blocks.*.count >= blocks.*.capacity) ||
+        !VecPush(blocks.*, extra) {
             pending_paint[slot].overflow = true
             return result
         }
         block_index += 1
         start = 0
-    } else {
-        for at: cast(s64)0..value.count - 1 {
-            blocks.*[block_index].bytes[cast(s64)start + at] = value[at]
-        }
-        blocks.*[block_index].length = start + cast(s32)value.count
     }
+    blocks.*[block_index].length = start + cast(s32)count
     result.start = start
-    if inverted { result.start = -start - offset - 1 }
     result.block = block_index
     result.valid = true
     return result
 }
 
+// A failed reservation is reported by the next block that needs it.
+KeepPaintBlockRoom :: (blocks: *Vec($T)) {
+    if blocks.*.count < blocks.*.capacity { return }
+    unused VecReserve(blocks.*, blocks.*.count * 2)
+}
+
 KeepShortPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
-    return KeepPaintBlockBytes(*pending_short_text[slot], slot, value,
-        PAINT_SHORT_TEXT_CAPACITY, true, 0)
+    kept := ReservePaintBlockBytes(*pending_short_text[slot], slot, value.count,
+        PAINT_SHORT_TEXT_CAPACITY)
+    if !kept.valid { return kept }
+    for at: cast(s64)0..value.count - 1 {
+        pending_short_text[slot][kept.block].bytes[cast(s64)kept.start + at] = value[at]
+    }
+    KeepPaintBlockRoom(*pending_short_text[slot])
+    kept.start = -kept.start - 1
+    return kept
 }
 
 KeepMediumPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
-    return KeepPaintBlockBytes(*pending_medium_text[slot], slot, value,
-        PAINT_MEDIUM_TEXT_CAPACITY, true, PAINT_SHORT_TEXT_CAPACITY)
+    kept := ReservePaintBlockBytes(*pending_medium_text[slot], slot, value.count,
+        PAINT_MEDIUM_TEXT_CAPACITY)
+    if !kept.valid { return kept }
+    for at: cast(s64)0..value.count - 1 {
+        pending_medium_text[slot][kept.block].bytes[cast(s64)kept.start + at] = value[at]
+    }
+    KeepPaintBlockRoom(*pending_medium_text[slot])
+    kept.start = -kept.start - PAINT_SHORT_TEXT_CAPACITY - 1
+    return kept
 }
 
 KeepLongPaintBytes :: (slot: s32, value: string) -> PaintTextRange {
-    return KeepPaintBlockBytes(*pending_text[slot], slot, value,
-        PAINT_TEXT_CAPACITY, false, 0)
+    kept := ReservePaintBlockBytes(*pending_text[slot], slot, value.count,
+        PAINT_TEXT_CAPACITY)
+    if !kept.valid { return kept }
+    for at: cast(s64)0..value.count - 1 {
+        pending_text[slot][kept.block].bytes[cast(s64)kept.start + at] = value[at]
+    }
+    KeepPaintBlockRoom(*pending_text[slot])
+    return kept
 }
 
 // The signed offset also records the pool, without enlarging every paint
@@ -241,27 +265,53 @@ PendingTextValue :: (slot: s32, block: s32, offset: s64, count: s64) -> string {
 }
 
 // Only the ownership fields change; avoid copying the drawing record and
-// its nested geometry just to retain a label or image path.
-KeepPaintText :: (slot: s32, data: *PaintCommand) {
-    if data.value.count == 0 { return }
-    retained := KeepPaintBytes(slot, data.value)
+// its nested geometry just to retain a label or image path. The strings are
+// only read here, so a caller may free them as soon as its paint call ends.
+KeepPaintText :: (slot: s32, data: *PaintCommand, value: string) {
+    if value.count == 0 { return }
+    retained := KeepPaintBytes(slot, value)
     if !retained.valid { return }
     data.text_start = cast(s64)retained.start
-    data.text_count = data.value.count
+    data.text_count = value.count
     data.text_block = retained.block
     data.owns_text = true
 }
 
 // Asset paths have the same frame lifetime as labels. In particular, an
 // image may be composed from a caller's temporary or editable path buffer.
-KeepPaintAsset :: (slot: s32, data: *PaintCommand) {
-    if data.asset_path.count == 0 { return }
-    retained := KeepPaintBytes(slot, data.asset_path)
+KeepPaintAsset :: (slot: s32, data: *PaintCommand, path: string) {
+    if path.count == 0 { return }
+    retained := KeepPaintBytes(slot, path)
     if !retained.valid { return }
     data.asset_start = cast(s64)retained.start
-    data.asset_count = data.asset_path.count
+    data.asset_count = path.count
     data.asset_block = retained.block
     data.owns_asset = true
+}
+
+// Point a command's strings at its frame copies, never at a caller's bytes.
+// The views last until the pool grows again.
+ResolvePaintText :: (slot: s32, data: *PaintCommand) {
+    data.value = ""
+    data.asset_path = ""
+    if data.owns_text {
+        data.value = PendingTextValue(slot, data.text_block, data.text_start, data.text_count)
+    }
+    if data.owns_asset {
+        data.asset_path = PendingTextValue(slot, data.asset_block, data.asset_start, data.asset_count)
+    }
+}
+
+// Paint outside a frame is drawn at once, from a copy freed after drawing,
+// so the caller's strings stay read-only arguments here too. It never
+// touches the frame text, which a flush may be drawing from.
+EmitPaintNow :: (command: QueuedPaint, value: string, asset: string) {
+    copy: Vec(u8)
+    defer VecFree(copy)
+    if !BuilderAppend(copy, value) || !BuilderAppend(copy, asset) { return }
+    command.data.value = TextView(VecSlice(copy, 0, value.count))
+    command.data.asset_path = TextView(VecSlice(copy, value.count, copy.count))
+    EmitPaint(command)
 }
 
 // The number of grid points a warped image draws; 0 when its grid is not
@@ -660,15 +710,19 @@ ClipImage :: (command: PaintCommand, geometry: NodeGeometry) -> PaintCommand {
 
 #program_export
 SubmitPaint :: (session: Session, command: QueuedPaint) {
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, command.data.value, command.data.asset_path)
 }
 
 // Widget painters own their local command until this call returns. Borrow it
 // while adjusting geometry and copy it once into the pending queue. Public
 // SubmitPaint keeps its value semantics for callers that reuse their command.
-QueuePaint :: (session: Session, command: *QueuedPaint) {
+QueuePaint :: (session: Session, command: *QueuedPaint, value: string,
+    asset: string) {
+    command.data.owns_text = false
+    command.data.owns_asset = false
+    command.data.owns_mesh = false
     if command.data.node < 0 && !TreeIsBuilding(session) {
-        EmitPaint(command.*)
+        EmitPaintNow(command.*, value, asset)
         return
     }
     layer_node := command.data.node
@@ -678,6 +732,10 @@ QueuePaint :: (session: Session, command: *QueuedPaint) {
     slot := SessionIndex(session)
     if command.data.overlay_layer > 0 { pending_paint[slot].overlays = true }
     pending_paint[slot].ordered = false
+    KeepPaintText(slot, *command.data, value)
+    KeepPaintAsset(slot, *command.data, asset)
+    // A clipper sees the copies; the queued record keeps only their ranges.
+    ResolvePaintText(slot, *command.data)
     if command.data.node < 0 && TreeIsBuilding(session) &&
     command.clips {
         scope: NodeGeometry = TreeCurrentPaintGeometry(session)
@@ -726,9 +784,9 @@ QueuePaint :: (session: Session, command: *QueuedPaint) {
         }
     }
     destination := SessionIndex(session)
-    KeepPaintText(destination, *command.data)
-    KeepPaintAsset(destination, *command.data)
     KeepPaintMesh(destination, *command.data, moved_x, moved_y)
+    command.data.value = ""
+    command.data.asset_path = ""
     if !VecPush(pending_paint[destination].items, command.*) {
         pending_paint[destination].overflow = true
     }
@@ -749,7 +807,7 @@ PaintLine :: (session: Session, node: s32, bounds: Rectangle,
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, "", "")
 }
 
 // Corner radius that turns bounds into a pill, or a circle when square.
@@ -779,7 +837,7 @@ PaintRoundedFill :: (session: Session, node: s32, bounds: Rectangle, radius: flo
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, "", "")
 }
 
 // Queued with the other paint so it lands above images submitted earlier in
@@ -800,7 +858,7 @@ PaintVerticalGradient :: (session: Session, node: s32, bounds: Rectangle,
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, "", "")
 }
 
 #program_export
@@ -821,7 +879,7 @@ PaintRoundedOutline :: (session: Session, node: s32, bounds: Rectangle, radius: 
     clip_for: PaintClipper = ClipShape
     command.clip_for = clip_for
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, "", "")
 }
 
 #program_export
@@ -830,8 +888,6 @@ PaintLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
     command: QueuedPaint
     command.data.kind = PaintKindText
     command.data.node = node
-    command.data.asset_path = typeface
-    command.data.value = value
     command.data.x = x
     command.data.y = y
     command.data.font = font
@@ -843,7 +899,7 @@ PaintLabel :: (session: Session, node: s32, value: string, x: s32, y: s32,
     command.has_emitter = true
     command.builtin_emitter = true
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, value, typeface)
 }
 
 #program_export
@@ -853,8 +909,6 @@ PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32
     command: QueuedPaint
     command.data.kind = PaintKindClippedText
     command.data.node = node
-    command.data.asset_path = typeface
-    command.data.value = value
     command.data.x = x
     command.data.y = y
     command.data.font = font
@@ -869,7 +923,7 @@ PaintClippedLabel :: (session: Session, node: s32, value: string, x: s32, y: s32
     command.has_emitter = true
     command.builtin_emitter = true
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, value, typeface)
 }
 
 // The extra stroke of emphasized text, at the position of its painted label.
@@ -880,8 +934,6 @@ PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: 
     command: QueuedPaint
     command.data.kind = PaintKindClippedText
     command.data.node = node
-    command.data.asset_path = typeface
-    command.data.value = value
     command.data.x = x
     command.data.y = y
     command.data.font = font
@@ -897,7 +949,7 @@ PaintClippedEmphasis :: (session: Session, node: s32, value: string, x: s32, y: 
     command.has_emitter = true
     command.builtin_emitter = true
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, value, typeface)
 }
 
 // A slanted label, or with `emphasis` the extra stroke of slanted emphasized
@@ -909,8 +961,6 @@ PaintClippedSlanted :: (session: Session, node: s32, value: string, x: s32, y: s
     command: QueuedPaint
     command.data.kind = PaintKindClippedText
     command.data.node = node
-    command.data.asset_path = typeface
-    command.data.value = value
     command.data.x = x
     command.data.y = y
     command.data.font = font
@@ -927,7 +977,7 @@ PaintClippedSlanted :: (session: Session, node: s32, value: string, x: s32, y: s
     command.has_emitter = true
     command.builtin_emitter = true
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, value, typeface)
 }
 
 #program_export
@@ -950,7 +1000,6 @@ PaintImageWithPolygon :: (session: Session, node: s32, asset_path: string, textu
     command.data.kind = PaintKindImage
     command.data.smooth = smooth
     command.data.node = node
-    command.data.asset_path = asset_path
     command.data.texture_id = texture_id
     command.data.texture = texture
     command.data.source = source
@@ -969,7 +1018,7 @@ PaintImageWithPolygon :: (session: Session, node: s32, asset_path: string, textu
     command.has_emitter = true
     command.builtin_emitter = true
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, "", asset_path)
 }
 
 // A texture warped over a grid of points (see ImageMesh), clipped to clip.
@@ -984,7 +1033,6 @@ PaintImageMesh :: (session: Session, node: s32, asset_path: string,
     command.data.kind = PaintKindImage
     command.data.smooth = smooth
     command.data.node = node
-    command.data.asset_path = asset_path
     command.data.texture_id = texture_id
     command.data.texture = texture
     command.data.source = source
@@ -1001,7 +1049,7 @@ PaintImageMesh :: (session: Session, node: s32, asset_path: string,
     command.has_emitter = true
     command.builtin_emitter = true
     command.clips = true
-    QueuePaint(session, *command)
+    QueuePaint(session, *command, "", asset_path)
 }
 
 #program_export
@@ -1068,12 +1116,7 @@ PendingPaintAt :: (session: Session, index: s32) -> PaintCommand {
         return empty
     }
     data: PaintCommand = pending_paint[slot].items[index].data
-    if data.owns_text {
-        data.value = PendingTextValue(slot, data.text_block, data.text_start, data.text_count)
-    }
-    if data.owns_asset {
-        data.asset_path = PendingTextValue(slot, data.asset_block, data.asset_start, data.asset_count)
-    }
+    ResolvePaintText(slot, *data)
     if data.owns_mesh {
         count: s32 = cast(s32)PaintPointCount(data)
         data.mesh_points = pending_mesh[slot][data.mesh_block].points[data.mesh_start:

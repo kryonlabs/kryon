@@ -1,0 +1,156 @@
+#import "vec"
+#import "ziran_mesh_noop_host"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "text_props"
+#import "text_widget"
+#import "tree"
+#import "tree_draw"
+
+using FrameStatus;
+
+// Each frame paints labels made fresh for that frame. A label passed
+// straight to a paint call is freed when the caller's statement ends; a
+// Text widget's label is freed when the caller's function returns. Both
+// are freed before EndFrame draws them, so every drawn string is Kryon's
+// own frame copy.
+bad: bool;
+drawn: s32;
+digit: u8;
+paint_session: Session;
+
+Card :: (prefix: string, round: s64) -> Text {
+    out: Vec(u8)
+    if !BuilderAppend(out, prefix) || !VecPush(out, cast(u8)(48 + round % 10)) { bad = true }
+    return BuilderFinish(out)
+}
+
+Drawn :: (value: string) {
+    if value.count < 2 || value[value.count - 1] != digit || value[value.count - 2] != 32 { bad = true }
+    drawn += 1
+}
+
+QueueWidgetText :: (round: s64) {
+    owned: Text = Card("text ", round)
+    props := TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+        .text = TextView(owned)}
+    Text(paint_session, props)
+}
+
+// kind: 0 label, 1 clipped label, 2 emphasis, 3 slanted, 4 image path,
+// 5 Text widget, 6 label outside a frame.
+// Ziran frees an argument only when nothing written before it in the call
+// could observe the move, so the session and node are locals here.
+QueueKind :: (kind: s32, round: s64) {
+    bounds := Rectangle.{0.0, 0.0, 100.0, 100.0}
+    session := paint_session
+    none: s32 = -1
+    if kind == 0 {
+        PaintLabel(session, none, Card("label ", round), 0, 0, 14, Color.{1, 2, 3, 255})
+    } else if kind == 1 {
+        PaintClippedLabel(session, none, Card("clip ", round), 0, 0, 14, Color.{1, 2, 3, 255}, bounds)
+    } else if kind == 2 {
+        PaintClippedEmphasis(session, none, Card("bold ", round), 0, 0, 14, Color.{1, 2, 3, 255}, bounds)
+    } else if kind == 3 {
+        PaintClippedSlanted(session, none, Card("slant ", round), 0, 0, 14, Color.{1, 2, 3, 255}, bounds, false)
+    } else if kind == 4 {
+        PaintImage(session, none, Card("path ", round), cast(u32)0, bounds, bounds, bounds,
+            Vector2.{}, 0.0, 0.0, Color.{255, 255, 255, 255})
+    } else if kind == 5 {
+        QueueWidgetText(round)
+    }
+}
+
+// Paints `rounds` frames of one kind and returns how many labels drew.
+#program_export
+PaintFrames :: (kind: s32, rounds: s64) -> s32 {
+    if !SessionValid(paint_session) { paint_session = SessionOpen() }
+    drawn = 0
+    round: s64 = 0
+    while round < rounds {
+        digit = cast(u8)(48 + round % 10)
+        if kind == 6 {
+            session := paint_session
+            none: s32 = -1
+            PaintLabel(session, none, Card("now ", round), 0, 0, 14, Color.{1, 2, 3, 255})
+        } else {
+            BeginFrame(paint_session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+            QueueKind(kind, round)
+            if EndFrame(paint_session) != cast(FrameStatus)FrameOk { bad = true }
+            if kind == 5 && TreeNodeAt(paint_session, 1).semantic_label.count != 6 { bad = true }
+        }
+        round += 1
+    }
+    if bad { return -1 }
+    return drawn
+}
+
+// The frame text is reset every frame and reused: a thousand frames of
+// labels keep the capacity the first frames reserved.
+#program_export
+PaintTextCapacity :: () -> s64 {
+    slot := paint_session.slot
+    return pending_short_text[slot].capacity + pending_medium_text[slot].capacity +
+        pending_text[slot].capacity
+}
+
+#program_export
+PaintCheck :: () -> s32 {
+    for kind: cast(s32)0..6 {
+        if PaintFrames(kind, 20) != 20 { return 1 + kind }
+    }
+    capacity := PaintTextCapacity()
+    for kind: cast(s32)0..6 {
+        if PaintFrames(kind, 1000) != 1000 { return 10 + kind }
+    }
+    if PaintTextCapacity() != capacity { return 20 }
+    return 0
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    unused font; unused typeface
+    return cast(s32)value.count * 7
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused font; unused typeface
+    return 12
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    unused x; unused y; unused font; unused color
+    Drawn(value)
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused clip
+    RasterText(value, x, y, font, color)
+}
+
+#program_export
+RasterLine :: (bounds: Rectangle, color: Color) { unused bounds; unused color }
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) { unused bounds; unused radius; unused segments; unused color }
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds; unused radius; unused segments; unused width; unused color
+}
+#program_export
+RasterImage :: (path: string, id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) {
+    unused id; unused source; unused destination; unused clip
+    unused origin; unused rotation; unused radius; unused tint
+    Drawn(path)
+}
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) { unused points; unused color }

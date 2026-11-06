@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Labels and image paths are copied when painted, so callers may free their strings right after the call.
+
 - Web scenes that draw more than 32 images no longer decode them again every frame; the image cache keeps the most recently used ones.
 
 - Web pages scale images with WebAssembly SIMD where the browser supports it, and fall back to a baseline build elsewhere.
