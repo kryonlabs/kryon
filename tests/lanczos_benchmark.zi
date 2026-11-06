@@ -1,10 +1,11 @@
 // std/resample's Lanczos timed as Kryon's shared cache runs it: premultiply
 // a copy of the picture, plan, both passes and unpremultiply.
 //   lanczos_benchmark IN WIDTH HEIGHT OUT_WIDTH OUT_HEIGHT ITERATIONS LEVEL THREADS OUT
-// IN and OUT are raw RGBA. LEVEL is scalar, sse2, avx2, neon or best;
+// IN and OUT are raw RGBA. LEVEL is scalar, sse2, avx2, neon, simd128 or best;
 // THREADS above 1 splits both passes over a std/parallel_linux pool, whose
 // size ZIRAN_PAR_THREADS sets. Prints the level, the median and fastest
-// microseconds and the process's peak resident KiB (VmHWM).
+// microseconds and the process's peak resident KiB (VmHWM, -1 where there is
+// no /proc, as in WebAssembly).
 // Built with --define LANCZOS_BENCH_STB and linked with stb_image_resize2's
 // implementation (its header compiled as C), LEVEL stb times that library
 // instead, a test-only oracle: straight RGBA, clamped edges, Lanczos-3.
@@ -122,9 +123,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
     out_width := cast(s32)Number(argv[4]); out_height := cast(s32)Number(argv[5])
     iterations := Number(argv[6])
     threads := Number(argv[8])
-    names: [5]string = .["scalar", "sse2", "avx2", "neon", "best"]
+    names: [6]string = .["scalar", "sse2", "avx2", "neon", "simd128", "best"]
     level: s32 = -2
-    for index: cast(s32)0..4 { if Same(argv[7], names[index]) { level = ifx index == 4 then -1 else index } }
+    for index: cast(s32)0..5 { if Same(argv[7], names[index]) { level = ifx index == 5 then -1 else index } }
     use_stb := false
     #if BENCH_STB {
         use_stb = Same(argv[7], "stb")
@@ -132,8 +133,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     if (level == -2 && !use_stb) || width <= 0 || height <= 0 || out_width <= 0 || out_height <= 0 { return 1 }
     used := "stb"
     if !use_stb {
-        if !ResampleUseKernels(level) { print("unavailable %\n", names[ifx level < 0 then 4 else level]); return 3 }
-        used = names[ResampleKernels()]
+        if !ResampleUseKernels(level) { print("unavailable %\n", names[ifx level < 0 then 5 else level]); return 3 }
+        used = names[ifx level >= 0 then level else ResampleKernels()]
     }
     bytes := cast(s64)width * height * 4
     out_bytes := cast(s64)out_width * out_height * 4

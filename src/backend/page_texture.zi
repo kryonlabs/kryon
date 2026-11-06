@@ -209,6 +209,13 @@ PageTintedSourceFor :: (slot: s32, id: s32, r: s32, g: s32, b: s32) -> PageTinte
     return result
 }
 
+// Whether the context's transform keeps images upright: scaled and moved,
+// but not turned or skewed.
+PageTransformUpright :: (ctx: s32) -> bool {
+    matrix: s32 = WebAsObject(WebCall0(ctx, page_names.get_transform))
+    return WebGetNumber(matrix, page_names.b) == 0.0 && WebGetNumber(matrix, page_names.c) == 0.0
+}
+
 PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
     dx: float64, dy: float64, dw: float64, dh: float64, ox: float64, oy: float64,
     rotation: float64, r: s32, g: s32, b: s32, a: s32, filter: s32) {
@@ -262,8 +269,10 @@ PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
             WebSet(ctx, page_names.image_smoothing, WebBool(filter != 0))
         }
         // An upright smooth image takes the browser's best filter for this
-        // draw only; meshes and transformed images keep its default.
-        if filter != 0 { WebSet(ctx, page_names.image_quality, WebText("high")) }
+        // draw only; meshes and images that it or a camera turns keep its
+        // default.
+        best := filter != 0 && PageTransformUpright(ctx)
+        if best { WebSet(ctx, page_names.image_quality, WebText("high")) }
         previous_alpha: float64 = 1.0
         if a < 255 {
             previous_alpha = WebGetNumber(ctx, page_names.global_alpha)
@@ -273,7 +282,7 @@ PageDrawTexture :: (id: s32, sx: float64, sy: float64, sw: float64, sh: float64,
             WebNumber(source_y), WebNumber(source_w), WebNumber(source_h),
             WebNumber(dx), WebNumber(dy), WebNumber(dest_w), WebNumber(dest_h)}
         unused WebCall(ctx, page_names.draw_image, *args[0], 9)
-        if filter != 0 { WebSet(ctx, page_names.image_quality, WebText("low")) }
+        if best { WebSet(ctx, page_names.image_quality, WebText("low")) }
         if a < 255 {
             WebSet(ctx, page_names.global_alpha, WebNumber(previous_alpha))
         }
