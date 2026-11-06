@@ -1,0 +1,58 @@
+#import "vec"
+#import "app_context"
+
+// An app builds each request and document fresh and passes it straight to
+// AppService, DocumentWrite, AppReply or DocumentRead. Ziran frees it right
+// after the call, so every string the host sees is the app's own bytes for
+// that call only and the host keeps nothing.
+bad: bool;
+seen: s32;
+digit: u8;
+
+Card :: (prefix: string, round: s64) -> Text {
+    out: Vec(u8)
+    if !BuilderAppend(out, prefix) || !VecPush(out, cast(u8)(48 + round % 10)) { bad = true }
+    return BuilderFinish(out)
+}
+
+Check :: (value: string) {
+    if value.count < 2 || value[value.count - 1] != digit || value[value.count - 2] != 32 { bad = true }
+    seen += 1
+}
+
+#program_export
+AppServiceHost :: (name: string, request: string) -> string {
+    Check(name); Check(request)
+    return "{\"status\":\"ok\"}"
+}
+#program_export
+DocumentWriteHost :: (name: string, value: string) -> bool {
+    Check(name); Check(value)
+    return true
+}
+#program_export
+DocumentReadHost :: (name: string) -> string { Check(name); return "" }
+#program_export
+AppReplyHost :: (value: string) { Check(value) }
+
+// kind: 0 AppService, 1 DocumentWrite, 2 AppReply, 3 DocumentRead.
+#program_export
+CallRounds :: (kind: s32, rounds: s64) -> s32 {
+    seen = 0
+    round: s64 = 0
+    while round < rounds {
+        digit = cast(u8)(48 + round % 10)
+        if kind == 0 {
+            if AppService(Card("svc ", round), Card("req ", round)) == "" { bad = true }
+        } else if kind == 1 {
+            if !DocumentWrite(Card("doc ", round), Card("val ", round)) { bad = true }
+        } else if kind == 2 {
+            AppReply(Card("rep ", round))
+        } else {
+            if DocumentRead(Card("doc ", round)) != "" { bad = true }
+        }
+        round += 1
+    }
+    if bad { return -1 }
+    return seen
+}

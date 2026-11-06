@@ -8,21 +8,24 @@
 
 host_api :: #system_library "host_api";
 
+// #reads: a host copies what it keeps of the string arguments of these calls
+// (documents and replies are written or copied during the call, a service
+// answers from its request), so Ziran frees a fresh Text right after the call.
 AppIdentityHost :: (id: string, minimum_api: s32) #foreign host_api;
 AppSupportsHost :: (capability: string) -> bool #foreign host_api;
 AppLocaleHost :: (key: string) -> string #foreign host_api;
 AppAreaInputHost :: () -> TextAreaInput #foreign host_api;
 AppCommandHost :: () -> string #foreign host_api;
-AppReplyHost :: (value: string) #foreign host_api;
+AppReplyHost :: (value: string) #reads #foreign host_api;
 // Optional services use a versioned app-owned document. A missing grant
 // answers explicitly; importing this call never grants the named service.
-AppServiceHost :: (name: string, request: string) -> string #foreign host_api;
+AppServiceHost :: (name: string, request: string) -> string #reads #foreign host_api;
 // Documents distinguish missing files from failed reads; they are not sync records.
-DocumentReadHost :: (name: string) -> string #foreign host_api;
+DocumentReadHost :: (name: string) -> string #reads #foreign host_api;
 DocumentStorageReadyHost :: () -> bool #foreign host_api;
 DocumentFlushHost :: () -> bool #foreign host_api;
 DocumentStatusHost :: () -> s32 #foreign host_api;
-DocumentWriteHost :: (name: string, value: string) -> bool #foreign host_api;
+DocumentWriteHost :: (name: string, value: string) -> bool #reads #foreign host_api;
 
 AppModeHost :: () -> s32 #foreign host_api;
 // The app's name and its icon, a vector Shape from an icon package.

@@ -8,6 +8,8 @@ CanvasAppStart :: #type (mini: bool) -> bool;
 CanvasAppStop :: #type () -> bool;
 CanvasAppPump :: #type () -> void;
 CanvasAppSupports :: #type (capability: string) -> bool;
+// A service reads its name and request during the call and keeps neither: the
+// app frees both right after it returns.
 CanvasAppService :: #type (name: string, request: string) -> string;
 // 0 lets the app draw; 1 replaces it for this frame; -1 fails the loop.
 // A replacement receives all input and the app callback is never called.
