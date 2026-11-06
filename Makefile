@@ -164,8 +164,8 @@ include mk/zx-canvas.mk
 include mk/raylib-library.mk
 include mk/zx-raylib.mk
 
-# Injected graphics hosts still link the production AVIF native ABI.
-ziran-test behavior-tests: $(AVIF_A) $(AOM_A)
+# Injected graphics hosts still link the production WebP and AVIF native ABIs.
+ziran-test behavior-tests: $(WEBP_A) $(AVIF_A) $(AOM_A)
 $(ZX_CANVAS_GENERATED)/.complete $(ZX_RAYLIB_GENERATED)/.complete: | project-toolchain
 zx-reload-test: zx-player
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
@@ -414,7 +414,7 @@ raylib-window-test: $(ZI2C_BIN) $(WEBP_A) $(AVIF_A) $(AOM_A)
 		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_window_test.sh
 
 .PHONY: raylib-typeface-test
-raylib-typeface-test: $(ZI2C_BIN)
+raylib-typeface-test: $(ZI2C_BIN) $(WEBP_A) $(AVIF_A) $(AOM_A)
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_typeface_test.sh
 
@@ -447,7 +447,8 @@ android-fopen-test: project-toolchain
 .PHONY: raylib-frame-pixels-test
 raylib-frame-pixels-test: project-toolchain $(RAYLIB_ARCHIVES)
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_frame_pixels_test.py --host \
-		--raylib "$(RAYLIB_A)" --webp "$(WEBP_A)" --runtime "$(ZIRAN_BUILD_DIR)/libziran.a"
+		--raylib "$(RAYLIB_A)" --webp "$(WEBP_A)" --archive "$(AVIF_A)" --archive "$(AOM_A)" \
+		--runtime "$(ZIRAN_BUILD_DIR)/libziran.a"
 
 .PHONY: raylib-secondary-window-test
 raylib-secondary-window-test: $(ZI2C_BIN)

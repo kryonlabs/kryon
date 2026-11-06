@@ -30,7 +30,8 @@ for mode in serial threaded; do
     fi
     # Reuse the test's disposable output for each backend configuration.
     # shellcheck disable=SC2086
-    "$ziran" build --target=c "$@" $defines \
+    # The native host resolves Kryon's module roots and image packages from the project.
+    "$ziran" build --project --target=c --root "$repo/tests" $defines \
         -o "$work/host-c" "$repo/tests/raylib_frame_snapshot_test.zi"
     # shellcheck disable=SC2046,SC2086
     "${CC:-cc}" -std=c11 -O1 -ffunction-sections -fdata-sections -I"$work/host-c" \
