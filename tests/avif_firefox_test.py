@@ -58,11 +58,15 @@ def firefox(directory):
             with (WORK/'firefox.log').open('wb') as log:
                 process=subprocess.Popen(['firefox','--headless','--marionette','--no-remote','--profile',str(profile),'about:blank'],env=environment,stdout=log,stderr=subprocess.STDOUT)
                 try:
-                    deadline=time.monotonic()+30;connection=None
+                    # A fresh profile on a busy CI runner can take over 30 s
+                    # before Marionette listens.
+                    deadline=time.monotonic()+120;connection=None
                     while time.monotonic()<deadline and process.poll() is None:
                         try:connection=socket.create_connection(('127.0.0.1',port),timeout=1);break
                         except OSError:time.sleep(.1)
-                    assert connection is not None, f'Firefox startup exit {process.poll()}; see {WORK}/firefox.log'
+                    if connection is None:
+                        log.flush();tail=(WORK/'firefox.log').read_bytes()[-4000:].decode(errors='replace')
+                        raise AssertionError(f'Firefox startup exit {process.poll()}; {WORK}/firefox.log ends:\n{tail}')
                     with connection:
                         connection.settimeout(300); receive(connection);sequence=0
                         def command(method,parameters):
