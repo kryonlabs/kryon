@@ -139,7 +139,7 @@ HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backen
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_METHODS=FS
-EMCC ?= $(HOME)/emsdk/upstream/emscripten/emcc
+include $(KRYON_DIR)/mk/emcc.mk
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
 PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(PROJECT_EXTRA_SOURCES) $(UI_SOURCES) $(HOST) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)

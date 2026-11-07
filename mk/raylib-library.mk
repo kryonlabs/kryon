@@ -4,7 +4,7 @@ RAYLIB_SOURCE = $(addsuffix /src,$(RAYLIB_PACKAGE))
 # RAYLIB_WEB=web selects raylib's own PLATFORM_WEB build: GLFW through
 # Emscripten on WebGL 1 (GLES2), with rmodels and raudio, in its own directory.
 ifeq ($(RAYLIB_WEB),web)
-EMCC ?= $(HOME)/emsdk/upstream/emscripten/emcc
+include $(KRYON_DIR)/mk/emcc.mk
 RAYLIB_BUILD ?= $(KRYON_DIR)/build/raylib-web
 RAYLIB_A ?= $(RAYLIB_BUILD)/libraylib.web.a
 else
