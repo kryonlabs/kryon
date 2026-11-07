@@ -25,4 +25,4 @@ if [ "$status" -ne 0 ]; then
     tail -20 "$work/profile/browser.log" >&2 || true
     exit 1
 fi
-echo 'DevTools: served pages, evaluation, clicks, keys, interception, page exceptions and screenshots'
+echo 'DevTools: served pages, extra switches, evaluation, clicks, keys, interception, page exceptions and screenshots'

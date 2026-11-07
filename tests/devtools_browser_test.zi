@@ -20,10 +20,14 @@ main :: () -> s32 {
     if !BrowserServe(*browser, BuilderJoin(work, "/site", "")) { return 5 }
     browser.head = "<script>window.injected = true</script>"
     BrowserAddRoute(*browser, .{path = "/data.json", body = "{\"answer\":42}", headers = "Cache-Control: no-store\r\n"})
+    // Extra switches reach Chromium.
+    flags: [1]string = .["--user-agent=KryonDevtoolsTest"]
+    browser.flags = flags[:]
     if !BrowserOpen(*browser, BuilderJoin(work, "/profile", "")) { return 6 }
     if !BrowserViewport(*browser, 400, 300, 1.0, false) { BrowserClose(*browser); return 7 }
     if !BrowserNavigate(*browser, BrowserUrl(*browser, "/index.html")) { BrowserClose(*browser); return 8 }
     if !BrowserWait(*browser, "document.title === 'Served' && window.injected", 20000) { BrowserClose(*browser); return 9 }
+    if BrowserText(*browser, "navigator.userAgent") != "KryonDevtoolsTest" { BrowserClose(*browser); return 23 }
     if BrowserNumber(*browser, "fetch('/data.json').then(r => r.json()).then(d => d.answer)", 0.0) != 42.0 { BrowserClose(*browser); return 10 }
     if BrowserText(*browser, "fetch('/missing').then(r => String(r.status))") != "404" { BrowserClose(*browser); return 11 }
     // Each message ends in its own NUL, even when the byte after the

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- The DevTools test browser takes extra Chromium switches in `flags`, such as the SwiftShader ones a WebGL page needs.
+
 - DOM pages report an image's size only once the browser has decoded it for display, and keep showing that decoded image, so it never shows blank; an image the browser cannot decode reports as unavailable.
 
 - raylib apps, including ones with their own 3D host, can build as WebGL browser pages with `platform = "web"`, with their asset folders preloaded.

@@ -101,6 +101,9 @@ Browser :: struct {
     // The browser's TMPDIR: its socket paths must stay short, so not under
     // a long session folder. Empty means /tmp.
     temporary: string
+    // Extra Chromium switches, at most 12: a WebGL page needs
+    // --enable-unsafe-swiftshader, --use-gl=angle and --use-angle=swiftshader.
+    flags: []string
     // The static server; port 0 while none runs.
     listen_fd: s32
     port: s32
@@ -448,15 +451,22 @@ BrowserOpen :: (browser: *Browser, profile: string) -> bool {
     browser.profile = profile
     program := EnvironmentText("CHROMIUM")
     if program.count == 0 { program = "chromium" }
-    arguments: [12]string = .[program, "--headless", "--no-sandbox", "--disable-gpu",
+    if browser.flags.count > 12 { return BrowserFail(browser, "more than 12 browser flags", "") }
+    fixed: [11]string = .[program, "--headless", "--no-sandbox", "--disable-gpu",
         "--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check",
         "--remote-debugging-pipe", BuilderJoin("--user-data-dir=", profile, ""),
-        "--hide-scrollbars", "--mute-audio", "about:blank"]
-    for index: 0..arguments.count - 1 {
+        "--hide-scrollbars", "--mute-audio"]
+    arguments: [24]string
+    count := 0
+    for fixed { arguments[count] = it; count += 1 }
+    for browser.flags { arguments[count] = it; count += 1 }
+    arguments[count] = "about:blank"
+    count += 1
+    for index: 0..count - 1 {
         if !CopyCString(arguments[index], devtools_arguments[index][:]) { return BrowserFail(browser, "argument too long", "") }
         devtools_pointers[index].value = *devtools_arguments[index][0]
     }
-    devtools_pointers[arguments.count].value = null
+    devtools_pointers[count].value = null
     scrubbed: [6]string = .["DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER", "GDK_DISPLAY"]
     for index: 0..scrubbed.count - 1 { unused CopyCString(scrubbed[index], devtools_scrubbed[index][:]) }
     temporary := DevtoolsCString("TMPDIR", 0)
