@@ -29,6 +29,10 @@ AVIF_SO ?= $(AVIF_BUILD)/libkryonavif.so
 AVIF_INPUTS = $(KRYON_DIR)/cmake/AVIF.cmake $(KRYON_DIR)/cmake/ImagePackages.cmake $(KRYON_DIR)/cmake/avif/CMakeLists.txt $(wildcard $(AVIF_CODEC_PACKAGE)/native/*.cmake)
 RAYLIB_ARCHIVES = $(RAYLIB_A) $(WEBP_A) $(AVIF_A) $(AOM_A)
 RAYLIB_HOST_OS := $(shell uname -s)
+# The http_transfer and file_download desktop workers drive curl from a
+# detached thread. Without a libcurl.pc, link the runtime library by exact
+# filename on Linux.
+RAYLIB_HTTP_LIBS := $(or $(shell pkg-config --libs libcurl 2>/dev/null),$(if $(filter Linux,$(RAYLIB_HOST_OS)),-l:libcurl.so.4,-lcurl))
 ifeq ($(RAYLIB_WEB),web)
 # The page decodes WebP and AVIF with Ziran's own decoders, so the native
 # codec archives stay out of its link.

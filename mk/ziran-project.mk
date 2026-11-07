@@ -157,15 +157,16 @@ include $(KRYON_DIR)/mk/raylib-library.mk
 HOST_DEPS := $(AVIF_SO)
 HOST_LIBS := -Wl,--no-as-needed $(AVIF_SO) -Wl,--as-needed -Wl,-rpath,$(AVIF_BUILD) -Wl,-rpath,'$$ORIGIN/../lib'
 HOST_LIBS += $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0)
-# The http_transfer desktop worker drives curl from a detached thread.
-# Without a libcurl.pc, link the runtime library by exact filename.
-HOST_LIBS += $(shell pkg-config --libs libcurl 2>/dev/null || echo '-l:libcurl.so.4')
+HOST_LIBS += $(RAYLIB_HTTP_LIBS)
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
 ifeq ($(PROJECT_BACKEND),raylib)
 include $(KRYON_DIR)/mk/raylib-library.mk
 HOST_DEPS := $(RAYLIB_ARCHIVES)
 HOST_LIBS := $(RAYLIB_ARCHIVES) $(RAYLIB_PLATFORM_LIBS) $(RAYLIB_AUDIO_LIBS)
+ifeq ($(RAYLIB_WEB),)
+HOST_LIBS += $(RAYLIB_HTTP_LIBS)
+endif
 RUN_ENV := KRYON_FONT_PATH=$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 
 endif
