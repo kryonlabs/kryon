@@ -17,7 +17,13 @@ PageTexture :: struct {
     target: bool
     filter: s32
     revision: u64
+    // A native DOM page shows the encoded asset as this decoded img, held
+    // for the texture's life so it never paints before its pixels exist.
     source_url: s32
+    source_image: s32
+    // The DOM paint pass showing source_image; another use that pass draws
+    // from the canvas, since one element has one place.
+    source_shown: u64
     // Browser canvases have fixed dimensions for a registered texture.
     width: s32
     height: s32
@@ -126,7 +132,7 @@ PageTexturesReset :: () {
     index: s32 = 0
     while index < PAGE_TEXTURE_MAX {
         if page_textures[index].id != 0 {
-            PageTextureUrlRelease(index)
+            PageTextureSourceRelease(index)
             WebRelease(page_textures[index].canvas)
             page_textures[index] = PageTexture.{}
         }
@@ -470,7 +476,7 @@ PageTextureReplaceRgba :: (id: s32, pixels: *u8, width: s32, height: s32) -> boo
         kept := WebKeep(canvas)
         if kept == 0 { ok = false }
         else {
-            PageTextureUrlRelease(slot)
+            PageTextureSourceRelease(slot)
             WebRelease(page_textures[slot].canvas)
             page_textures[slot].canvas = kept
             page_textures[slot].revision += 1
@@ -485,7 +491,7 @@ PageTextureFree :: (id: s32) {
     PageFlushPaint()
     slot: s32 = PageTextureFind(id)
     if slot >= 0 {
-        PageTextureUrlRelease(slot)
+        PageTextureSourceRelease(slot)
         WebRelease(page_textures[slot].canvas)
         page_textures[slot] = PageTexture.{}
     }
@@ -498,7 +504,7 @@ PageTextureUpdateRgba :: (id: s32, pixels: *u8, x: s32, y: s32, width: s32, heig
     if slot < 0 || pixels == null || width <= 0 || height <= 0 { return }
     scope: s32 = WebScope()
     PageWritePixels(page_textures[slot].canvas, pixels, x, y, width, height)
-    PageTextureUrlRelease(slot)
+    PageTextureSourceRelease(slot)
     page_textures[slot].revision += 1
     // Tinted copies of this texture hold its previous pixels.
     PageTintsClearFor(id)
@@ -543,7 +549,7 @@ PageTargetSelect :: (id: s32) {
         page_saved = 0
         page_raster_clips = 0
         // Cached tints go stale as soon as a target is written.
-        PageTextureUrlRelease(slot)
+        PageTextureSourceRelease(slot)
         page_textures[slot].revision += 1
         PageTintsClearFor(id)
     }
@@ -603,15 +609,16 @@ PageDecodeBitmap :: (blob: s32) -> s32 {
     return WebAsObject(bitmap_value)
 }
 
-// A native DOM page shows the encoded Blob in its own img, so the texture is
-// ready only once the browser has decoded that image too: an img given the
-// URL then paints in the frame that sets it. Returns false when it fails.
+// A native DOM page shows the encoded Blob as an img, so the texture is ready
+// only once the browser has decoded that img; the texture keeps it.
+// Returns false when it fails.
 PageTextureDecodeSource :: (slot: s32, blob: s32) -> bool {
     url := WebAsObject(WebCall1(WebGetObject(WebGlobal, WebName("URL")), WebName("createObjectURL"), WebObject(blob)))
     if url == 0 { return false }
     page_textures[slot].source_url = WebKeep(url)
     image := WebNew0(WebGetObject(WebGlobal, WebName("Image")))
     if image == 0 { return false }
+    page_textures[slot].source_image = WebKeep(image)
     WebSet(image, WebName("src"), WebObject(url))
     decoded: WebValue
     promise := WebAsObject(WebCall0(image, WebName("decode")))
@@ -746,8 +753,13 @@ PageImageExport :: (path: string, pixels: *u8, width: s32, height: s32) -> s32 {
 }
 
 // An encoded asset can be shown by a native img without another pixel copy.
-PageTextureUrlRelease :: (slot: s32) {
-    if slot < 0 || page_textures[slot].source_url == 0 { return }
+// Its img no longer matches pixels written to the texture.
+PageTextureSourceRelease :: (slot: s32) {
+    if slot < 0 { return }
+    if page_textures[slot].source_image != 0 {
+        WebRelease(page_textures[slot].source_image); page_textures[slot].source_image = 0
+    }
+    if page_textures[slot].source_url == 0 { return }
     scope := WebScope()
     url := page_textures[slot].source_url
     unused WebCall1(WebGetObject(WebGlobal, WebName("URL")), WebName("revokeObjectURL"), WebObject(url))

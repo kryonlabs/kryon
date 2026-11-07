@@ -2,10 +2,11 @@
 """A DOM image texture is ready only once its img has decoded.
 
 Drives only the private headless Chromium started here, over its DevTools
-pipe, with no desktop connection. A mutation observer reads the page's img
-as the frame that sets its source is published, before the browser can run
-a load task: the size the application was given must already be on screen.
-A decode the browser rejects must report the image as unavailable.
+pipe, with no desktop connection. A mutation observer reads the page's imgs
+as each frame is published, before the browser can run a load task: the size
+the application was given must already be on screen, and so must an image
+shown again after other textures loaded. A decode the browser rejects must
+report the image as unavailable.
 """
 
 import json
@@ -15,7 +16,6 @@ import select
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 
 html, profile = sys.argv[1], Path(sys.argv[2])
@@ -26,9 +26,6 @@ for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "GDK_DISPLAY", "DBUS_SE
              "SESSION_MANAGER"):
     environment.pop(name, None)
 environment["YUE_DESKTOP_RECOVERY"] = "0"
-# Chromium's singleton socket must fit a Unix socket path.
-sockets = tempfile.TemporaryDirectory(prefix="kr-", dir="/var/tmp")
-environment["TMPDIR"] = sockets.name
 browser = subprocess.Popen(
     ["sh", "-c", 'exec 3<&0 4>&1 "$@" </dev/null >/dev/null', "chromium",
      os.environ.get("CHROMIUM", "chromium"), "--headless", "--no-sandbox", "--disable-gpu",
@@ -84,7 +81,7 @@ def until(expression, what):
         if evaluate("!!(" + expression + ")"):
             return
         time.sleep(0.03)
-    raise AssertionError("Timed out: " + what + " " + json.dumps(evaluate("__decodeSeen")) + " "
+    raise AssertionError("Timed out: " + what + " " + json.dumps(evaluate("[__decodeSeen, __again, __blank]")) + " "
                          + " ".join(map(str, diagnostics)))
 
 
@@ -94,16 +91,30 @@ try:
     command("Runtime.enable")
     command("Page.enable")
     command("Emulation.setDeviceMetricsOverride", width=800, height=600, deviceScaleFactor=1, mobile=False)
-    # Record the first published page img in the microtask after its frame,
-    # and let the driver make the browser reject image decodes.
+    # In the microtask after each published frame, record the first page img,
+    # its next showing after other textures loaded, and any img shown blank.
+    # The driver can also make the browser reject image decodes.
     command("Page.addScriptToEvaluateOnNewDocument", source="""
-        globalThis.__decodeSeen = null;
+        globalThis.__decodeSeen = null; globalThis.__again = null; globalThis.__blank = [];
         new MutationObserver(() => {
-          if (__decodeSeen) return;
-          const image = [...document.querySelectorAll('#kryon-dom-paint img')].find(node => node.src.startsWith('blob:'));
-          if (!image) return;
-          __decodeSeen = {width: globalThis.__kryonWidth, height: globalThis.__kryonHeight,
-            complete: image.complete, naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight};
+          const root = document.querySelector('#kryon-dom-paint');
+          const images = root ? [...root.querySelectorAll('img')] : [];
+          for (const image of images) {
+            if (!image.complete || image.naturalWidth === 0) __blank.push(image.src);
+          }
+          if (!__decodeSeen && images.length) {
+            const image = globalThis.__pageImage = images[0];
+            __decodeSeen = {width: globalThis.__kryonWidth, height: globalThis.__kryonHeight,
+              complete: image.complete, naturalWidth: image.naturalWidth, naturalHeight: image.naturalHeight};
+          }
+          const page = images.find(image => image.src === globalThis.__pageImage?.src);
+          if (globalThis.__kryonAgain && !__again && page) {
+            // The second showing draws from the texture's canvas.
+            const copy = [...root.querySelectorAll('canvas')].find(tile => tile.style.left === '320px');
+            const pixel = copy && copy.getContext('2d').getImageData(copy.width / 2, copy.height / 2, 1, 1).data;
+            __again = {complete: page.complete, naturalWidth: page.naturalWidth, same: page === __pageImage,
+              images: images.filter(image => image.src === page.src).length, copy: pixel ? [...pixel] : null};
+          }
         }).observe(document, {subtree: true, childList: true, attributes: true, attributeFilter: ['src']});
         const decode = HTMLImageElement.prototype.decode;
         HTMLImageElement.prototype.decode = function () {
@@ -128,6 +139,18 @@ try:
         raise AssertionError("an undecodable image reported a size")
     print("ok an undecodable image reports unavailable")
 
+    evaluate("globalThis.__kryonOthers = true")
+    until("""globalThis.__kryonOthersLoaded === 6 && !document.querySelector('#kryon-dom-paint')
+        .contains(__pageImage)""", "other textures loaded with the page image hidden")
+    evaluate("globalThis.__kryonAgain = true")
+    until("__again", "the page image shown again")
+    again = evaluate("__again")
+    if not again["complete"] or again["naturalWidth"] != 300 or not again["same"] or again["images"] != 1:
+        raise AssertionError("the image shown again was not its decoded img: " + json.dumps(again))
+    if not again["copy"] or again["copy"][3] == 0:
+        raise AssertionError("the second showing in one frame drew nothing: " + json.dumps(again))
+    print("ok an image shown again after other textures loaded is its decoded img, and a second copy draws")
+
     frames = evaluate("__kryonFrames")
     evaluate("globalThis.__kryonRejectDecode = true; globalThis.__kryonReject = true")
     until("globalThis.__kryonFrames >= %d && globalThis.__kryonRejectedWidth !== undefined" % (frames + 3),
@@ -136,6 +159,9 @@ try:
         raise AssertionError("an image whose img decode failed reported a size")
     print("ok a rejected img decode reports unavailable and frames continue")
 
+    blank = evaluate("__blank")
+    if blank:
+        raise AssertionError("imgs were published before they decoded: " + json.dumps(blank))
     if diagnostics:
         raise AssertionError("page errors: " + " ".join(map(str, diagnostics)))
     evaluate("globalThis.__kryonTestDone = true")
@@ -150,4 +176,3 @@ finally:
     except subprocess.TimeoutExpired:
         browser.terminate()
         browser.wait(timeout=10)
-    sockets.cleanup()

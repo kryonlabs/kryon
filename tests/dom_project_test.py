@@ -10,7 +10,7 @@ import struct
 import sys
 import zlib
 
-from toolchain import JS_RUNTIME, ZIRAN, ZIRAN_ROOT
+from toolchain import JS_RUNTIME, ZIRAN, ZIRAN_ROOT, chromium_temp_directory
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV = dict(os.environ)
@@ -60,7 +60,14 @@ with (project / "lock").open("w") as lock:
         (assets / "page.png").write_bytes(page)
         (assets / "rejected.png").write_bytes(page)
         (assets / "broken.png").write_bytes(b"not an image")
-        for name in ("page.png", "rejected.png", "broken.png"):
+        names = ["page.png", "rejected.png", "broken.png"]
+        # Other textures loaded while the page image is hidden.
+        for index in range(6):
+            rows = b"".join(b"\0" + bytes((index * 40, 255 - index * 40, 128)) * 40 for _ in range(30))
+            names.append(f"other{index}.png")
+            (assets / names[-1]).write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 40, 30, 8, 2, 0, 0, 0)) +
+                                              chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+        for name in names:
             ENV["EMCC_CFLAGS"] += f" --embed-file {assets}/{name}@/assets/{name}"
     overrides = {
         "kryon": str(ROOT),
@@ -134,5 +141,7 @@ with (project / "lock").open("w") as lock:
     assert output.is_file() and output.stat().st_size > 100_000
     assert next((project / "build/generated/web/ir").glob("*_dom_run.zir"), None)
     assert next((project / "build/generated/web/c").glob("*_dom_run.c"), None)
-    run([runner, driver, output.as_uri(), project / "browser-profile"], project)
+    with chromium_temp_directory() as sockets:
+        ENV["TMPDIR"] = sockets
+        run([runner, driver, output.as_uri(), project / "browser-profile"], project)
 print("Semantic DOM Ziran project: manifest, saved IR, generated C, Emscripten page, and browser semantics passed")
