@@ -51,6 +51,17 @@ with (project / "lock").open("w") as lock:
         chunk(b"IHDR", struct.pack(">IIBBBBB", 2, 1, 8, 6, 0, 0, 0)) +
         chunk(b"IDAT", zlib.compress(bytes([0,255,0,0,255,0,0,255,255]))) + chunk(b"IEND", b""))
     ENV["EMCC_CFLAGS"] = ENV.get("EMCC_CFLAGS", "") + f" --embed-file {assets}/mesh.png@/assets/mesh.png"
+    if os.environ.get("KRYON_DOM_IMAGE_DECODE"):
+        # A page image, bytes no browser decodes, and one whose img decode
+        # the driver rejects.
+        rows = b"".join(b"\0" + bytes((x * 7 + y * 3) % 256 for x in range(300) for _ in range(3)) for y in range(200))
+        page = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 300, 200, 8, 2, 0, 0, 0)) +
+                chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+        (assets / "page.png").write_bytes(page)
+        (assets / "rejected.png").write_bytes(page)
+        (assets / "broken.png").write_bytes(b"not an image")
+        for name in ("page.png", "rejected.png", "broken.png"):
+            ENV["EMCC_CFLAGS"] += f" --embed-file {assets}/{name}@/assets/{name}"
     overrides = {
         "kryon": str(ROOT),
         "ziran": str(ZIRAN_ROOT),
@@ -109,6 +120,10 @@ with (project / "lock").open("w") as lock:
         (project / "src/app.zi").write_text((ROOT / "tests/fixtures/dom_press_point.zi").read_text())
         driver = ROOT / "tests/dom_press_point_browser.mjs"
     runner = JS_RUNTIME
+    if os.environ.get("KRYON_DOM_IMAGE_DECODE"):
+        (project / "src/app.zi").write_text((ROOT / "tests/fixtures/dom_image_decode.zi").read_text())
+        driver = ROOT / "tests/dom_image_decode_browser.py"
+        runner = sys.executable
     if os.environ.get("KRYON_DOM_PRESS_MOVE"):
         (project / "src/app.zi").write_text((ROOT / "tests/fixtures/dom_press_move.zi").read_text())
         driver = ROOT / "tests/dom_press_move_browser.py"

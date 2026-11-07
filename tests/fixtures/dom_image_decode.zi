@@ -1,0 +1,42 @@
+// Loads an image once the browser driver asks for it. The DOM host must
+// report its size only when the img showing it has decoded, and must report
+// an undecodable image as unavailable rather than wait on it.
+using UI :: #import "kryon/Widgets";
+#import "std/web"
+Raster :: #import "kryon/image_raster";
+host_api :: #system_library "host_api";
+RequestWindowClose :: () #foreign host_api;
+
+frames: s32;
+
+Flag :: (name: string) -> bool {
+    return WebAsBool(WebGet(WebGlobal, WebName(name)))
+}
+
+Report :: (name: string, value: float64) {
+    WebSet(WebGlobal, WebName(name), WebNumber(value))
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    scope: s32 = WebScope()
+    defer WebEnd(scope)
+    page: PageProps
+    page.key = 2; page.bounds = viewport; page.title = "DOM Image Decode"
+    opened: PageResult = Page(session, page)
+    if Flag("__kryonLoad") {
+        // The driver reads these as the frame's img is published.
+        Report("__kryonWidth", cast(float64)Raster.AssetWidth("assets/page.png"))
+        Report("__kryonHeight", cast(float64)Raster.AssetHeight("assets/page.png"))
+        Report("__kryonBrokenWidth", cast(float64)Raster.AssetWidth("assets/broken.png"))
+        Image(session, ImageProps.{.key = 20, .bounds = .{0.0, 0.0, 300.0, 200.0}, .asset_path = "assets/page.png"})
+    }
+    if Flag("__kryonReject") {
+        Report("__kryonRejectedWidth", cast(float64)Raster.AssetWidth("assets/rejected.png"))
+    }
+    frames += 1
+    Report("__kryonFrames", cast(float64)frames)
+    if opened.opened { End(session) }
+    if Flag("__kryonTestDone") { RequestWindowClose() }
+    return 0
+}

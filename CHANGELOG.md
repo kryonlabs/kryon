@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- DOM pages report an image's size only once the browser has decoded it for display, so it never shows blank the first time; an image the browser cannot decode reports as unavailable.
+
 - raylib apps, including ones with their own 3D host, can build as WebGL browser pages with `platform = "web"`, with their asset folders preloaded.
 
 - Labels and image paths are copied when painted, so callers may free their strings right after the call.
