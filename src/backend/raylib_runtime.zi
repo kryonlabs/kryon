@@ -1067,15 +1067,18 @@ RaylibTextTypeface :: (name: string) -> string {
     index := RaylibTypefaceIndex(key)
     if index < 0 && key != name {
         // Packed app resources are served by the host's LoadFileData hook;
-        // they need not be files visible to FileExists.
+        // they need not be files visible to FileExists. The selector only
+        // reads `name`, so the load takes the hashed key and the extension
+        // from their own buffers.
         path: [4096]u8
         count: s32
         if CopyCString(name, path[:]) {
             bytes := HostTypefaceFileData(*path[0], *count)
             if bytes != null {
                 data := TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(bytes, cast(u64)count))
-                extension := ifx name.count >= 4 then name[name.count - 4:] else ".ttf"
-                if LoadTypefaceData(key, extension, data, null, 0) { index = RaylibTypefaceIndex(key) }
+                hashed_key := TextView(key_buffer[:key.count])
+                extension := ifx name.count >= 4 then TextView(path[name.count - 4:name.count]) else ".ttf"
+                if LoadTypefaceData(hashed_key, extension, data, null, 0) { index = RaylibTypefaceIndex(hashed_key) }
                 HostTypefaceFileDataFree(bytes)
             }
         }

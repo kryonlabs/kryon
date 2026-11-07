@@ -307,7 +307,10 @@ test-shard-hosts:
 .PHONY: push-check
 push-check:
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 \
-		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test pixmap-gpu-test gamepad-test
+		$(MAKE) --no-print-directory source-check public-surface-check docs-check zx-player desktop-project-test pixmap-gpu-test gamepad-test text-hook-hosts-ir-test
+.PHONY: text-hook-hosts-ir-test
+text-hook-hosts-ir-test:
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/text_hook_hosts_ir_test.sh
 .PHONY: gamepad-test
 gamepad-test:
 	python3 tests/desktop_gamepad_test.py
