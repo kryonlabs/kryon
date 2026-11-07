@@ -415,13 +415,15 @@ raylib-window-test: $(ZI2C_BIN) $(WEBP_A) $(AVIF_A) $(AOM_A)
 		ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_window_test.sh
 
 .PHONY: raylib-typeface-test
-raylib-typeface-test: $(ZI2C_BIN) $(WEBP_A) $(AVIF_A) $(AOM_A)
+raylib-typeface-test: $(ZI2C_BIN) $(RAYLIB_ARCHIVES)
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
-		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_typeface_test.sh
+		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" \
+		sh tests/raylib_typeface_test.sh
 
 .PHONY: raylib-text-pixels-test
-raylib-text-pixels-test: $(ZI2C_BIN)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" \
+raylib-text-pixels-test: $(ZI2C_BIN) $(RAYLIB_ARCHIVES)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
+		AVIF_A="$(AVIF_A)" AOM_A="$(AOM_A)" RAYLIB_AUDIO_LIBS="$(RAYLIB_AUDIO_LIBS)" \
 		sh tests/raylib_text_pixels_test.sh
 
 .PHONY: raylib-mesh-pixels-test
