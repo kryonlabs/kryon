@@ -29,7 +29,7 @@ Start :: () {
     tasks[1].label = "Add a task list to the app"
     tasks[1].done = true
     tasks[2].label = "Try kryon run desktop"
-    tasks[3].label = "Style the app with KSS"
+    tasks[3].label = "Style the app with CSS"
     tasks[4].label = "Write a test for the tasks"
     tasks[5].label = "Install it with kryon install"
 }

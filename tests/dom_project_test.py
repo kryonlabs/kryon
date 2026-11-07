@@ -41,7 +41,7 @@ with (project / "lock").open("w") as lock:
     )
     if os.environ.get("KRYON_DOM_INTERACTION"):
         with (project / "ziran.toml").open("a") as manifest:
-            manifest.write('\n[dependencies.Kss]\ngit = "https://github.com/kryonlabs/kss.git"\nref = "master"\n')
+            manifest.write('\n[dependencies.css]\ngit = "https://github.com/kryonlabs/css.git"\nref = "master"\n')
     # A two-color encoded image exercises asset loading and mirrored UVs.
     assets = project / "assets"
     assets.mkdir(exist_ok=True)
@@ -74,9 +74,9 @@ with (project / "lock").open("w") as lock:
         "ziran": str(ZIRAN_ROOT),
     }
     if os.environ.get("KRYON_DOM_INTERACTION"):
-        local_kss = Path(os.environ.get("KSS_ROOT", ROOT.parent / "packages/kss"))
-        if local_kss.is_dir():
-            overrides["Kss"] = str(local_kss)
+        local_css = Path(os.environ.get("CSS_ROOT", ROOT.parent / "packages/css"))
+        if local_css.is_dir():
+            overrides["css"] = str(local_css)
     if os.environ.get("RAYLIB_SOURCE"):
         overrides["raylib"] = os.environ["RAYLIB_SOURCE"]
     (project / "ziran.local.toml").write_text(

@@ -46,9 +46,9 @@ depend on Kryon: [Plot](https://github.com/kryonlabs/plot),
 (`session`, `tree`, `surface`, `paint_queue`, `style`, and the others listed
 in `ziran.toml`); see [writing a widget package](docs/API.md#widget-packages).
 
-Style sheets are the separate [KSS](https://github.com/kryonlabs/kss)
-package: it parses and formats `.kss` text, installs the rules, and ships the
-classic, lightfield, and material style packs. Kryon keeps the rule table and
+Style sheets are the separate [CSS](https://github.com/kryonlabs/css)
+package: it parses and formats a subset of CSS, installs the rules, and ships
+the classic, lightfield, and material style packs. Kryon keeps the rule table and
 style resolution, so an app that builds its rules in code needs no parser.
 
 The optional [Game2D](https://github.com/kryonlabs/game2d) Ziran package owns

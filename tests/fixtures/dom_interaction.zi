@@ -1,6 +1,6 @@
 using UI :: #import "kryon/Widgets";
 Dom :: #import "kryon/Dom";
-CSS :: #import "Kss/Kss";
+CSS :: #import "css/Css";
 #import "std/web"
 host_api :: #system_library "host_api";
 RequestWindowClose :: () #foreign host_api;
@@ -35,8 +35,8 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     if !started {
         css: [8192]u8
         sheet: CSS.CSSExport = CSS.ExportCSS(
-            "@pack probe; Button.hero { background: #112233; color: white; } TextField { width: 200; margin-y: 8; } @media (max-width: 600px) { TextField { width: 120; } }",
-            "probe.kss", CSS.KssDefaultEnvironment(), css[:])
+            "Button.hero { background: #112233; color: white; } TextField { width: 200px; margin-block: 8px; } @media (max-width: 600px) { TextField { width: 120px; } }",
+            "probe.css", CSS.CssDefaultEnvironment(), css[:])
         if !sheet.ok || !Dom.UseDocumentLayout(TextView(css[:sheet.count])) { return 1 }
         initial: string = "Aé"
         for byte: 0..3 { value[byte] = initial[byte] }

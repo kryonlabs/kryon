@@ -28,7 +28,7 @@ the first frame:
 
 ```ziran
 Dom :: #import "kryon/Dom";
-// css is an application-owned CSS string, optionally exported by KSS.
+// css is an application-owned CSS string, optionally exported by the CSS package.
 Dom.UseDocumentLayout(css)
 ```
 
@@ -41,14 +41,14 @@ owned by CSS; the core retained geometry remains the application's submitted
 layout. Prefer native identity activation over canvas hit tests in this mode.
 
 DOM elements carry `data-kryon-widget` names and hashed `data-kryon-class`
-values for supported styled text and controls. The separate KSS package
+values for supported styled text and controls. The separate CSS package
 exports `ExportCSS(source, path, environment, output)` and `StyleClass(name)`.
-Its exporter shares the existing parser and token/environment rules, scopes
-selectors to `#kryon-dom-root`, maps widget/class/state selectors and expands
-portable declarations. Media conditions are preserved. Check its `ok` result
-before attaching output. Imports, layers, nested selector functions and
-unsupported native materials fail explicitly; consult the KSS package for
-its current export subset.
+The exporter scopes selectors to `#kryon-dom-root`, maps widget, class and
+state selectors to those attributes, and writes rules in Kryon's priority
+order so the browser ranks them as native hosts do. Environment media queries
+are decided for the given environment; viewport queries stay for the browser.
+Check its `ok` result before attaching output. Unresolved imports and
+attribute selectors fail explicitly; see the CSS package for its subset.
 
 The DOM root and private presentation handles are removed at close. A
 text/semantics-only test snapshot omits secure values. Verification runs a
@@ -59,7 +59,7 @@ python3 tests/dom_project_test.py
 KRYON_DOM_INTERACTION=1 python3 tests/dom_project_test.py
 ```
 
-The second check uses KSS and verifies no DOM mutations during unchanged
+The second check uses the CSS package and verifies no DOM mutations during unchanged
 frames, Unicode editing, identity/focus/caret after reorder, button routing,
 responsive sizing, password redaction and a native editor in the browser's
 accessibility tree. Neither test uses the owner's desktop or browser profile.

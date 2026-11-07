@@ -24,7 +24,7 @@ PageBoundsOrParent :: (session: Session, bounds: Rectangle) -> Rectangle {
     return bounds
 }
 
-// A page or section is flush until KSS declares spacing.
+// A page or section is flush until a style sheet declares spacing.
 #program_export
 PageBoxStyle :: (kind: s32, class_name: s32) -> StyleData {
     base: StyleData

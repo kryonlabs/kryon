@@ -11,7 +11,7 @@ They describe development builds, not released downloads.
 - `kryon-gallery.webp`: a selection of widgets from the real browser gallery.
 - `plot-candles.webp`: the gallery CandleChart example (`plot/4`), with sample data.
 - `data-views-table.webp`: the gallery TableView example (`data_views/2`), with sample data.
-- `kss-packs.webp`: the same fixture interface with the real KSS style packs.
+- `css-packs.webp`: the same fixture interface with the real CSS style packs.
 - `game2d-controls.webp`: the Game2D control chooser, compiled and rendered in
   the private browser live editor.
 

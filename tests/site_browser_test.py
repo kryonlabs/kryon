@@ -33,7 +33,7 @@ PAGES = ['index', 'apps', 'modules', 'widgets', 'docs', 'getting-started', 'rend
 NAV = ['Apps', 'Modules', 'Gallery', 'Docs']
 CURRENT = {'apps': 'Apps', 'modules': 'Modules', 'widgets': 'Gallery', 'docs': 'Docs'}
 APPS = {'terminal', 'browser', 'github', 'shelf'}
-MODULES = {'kryon', 'plot', 'data-views', 'kss', 'mingcute', 'game2d'}
+MODULES = {'kryon', 'plot', 'data-views', 'css', 'mingcute', 'game2d'}
 # Repositories that are not public yet; the site must not send visitors there.
 PRIVATE = ('github.com/kryonlabs/terminal', 'github.com/kryonlabs/browser', 'github.com/kryonlabs/github')
 

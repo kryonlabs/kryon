@@ -115,7 +115,7 @@ try {
       return {width:editor.getBoundingClientRect().width, password:document.querySelector('[aria-label="Password"]').type, readonly:document.querySelector('[aria-label="Read only"]').readOnly, color:getComputedStyle(document.querySelector('[aria-label="Run"]')).backgroundColor};
     })()`);
     if (initial.width !== 200 || initial.password !== 'password' || !initial.readonly || initial.color !== 'rgb(17, 34, 51)') {
-      throw new Error('Native presentation or KSS mismatch: ' + JSON.stringify(initial));
+      throw new Error('Native presentation or CSS mismatch: ' + JSON.stringify(initial));
     }
     await delay(150);
     await evaluate('globalThis.__changes = 0; globalThis.__changeDetails = []');
@@ -139,7 +139,7 @@ try {
     await evaluate('globalThis.__kryonTestDone = true');
     await until(`document.getElementById('result')?.textContent === 'PASS'`);
     if (!await evaluate(`!JSON.stringify(globalThis.__kryonDomSnapshot).includes('test secret')`)) throw new Error('Snapshot leaked secure editor text');
-    console.log('Native DOM: stable identity/focus, incremental updates, Unicode input, KSS, responsive layout and browser accessibility PASS');
+    console.log('Native DOM: stable identity/focus, incremental updates, Unicode input, CSS, responsive layout and browser accessibility PASS');
     process.exitCode = 0;
   } else {
   let result = 'pending';

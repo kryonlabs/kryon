@@ -127,7 +127,7 @@ dom_editors: [8192]EditorStage;
 
 DomDocumentLayout :: () -> bool { return dom_document_layout }
 
-// Call before the first frame. The app owns CSS authoring (KSS can export it).
+// Call before the first frame. The app owns CSS authoring (the CSS package can export it).
 // Unsupported canvas-only widgets fail the frame instead of disappearing.
 #program_export
 UseDocumentLayout :: (css: string) -> bool {

@@ -6,8 +6,9 @@ using Vectors :: #import "std/vec"
 using ButtonState;
 using StyleField;
 
-// KSS is the text format. The runtime API uses plain Style* names.
-// Compilers and parsers lower .kss files into these typed rule tables.
+// Style sheets are a subset of CSS (the css package). The runtime API uses
+// plain Style* names; the parser and compiled packs lower sheets into these
+// typed rule tables.
 
 #program_export
 StyleAny :: () -> s32 {
