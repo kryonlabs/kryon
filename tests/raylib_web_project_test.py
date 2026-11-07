@@ -148,7 +148,7 @@ class QuietHandler(http.server.SimpleHTTPRequestHandler):
         pass
 
 
-def chromium(url, profile, output):
+def chromium(url, profile, output, wait_ms=6000):
     """One private headless Chromium run with software WebGL and no desktop."""
     env = {key: value for key, value in os.environ.items() if key not in (
         "DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS", "SESSION_MANAGER")}
@@ -164,13 +164,37 @@ def chromium(url, profile, output):
                "--hide-scrollbars", "--window-size=640,480",
                # Real time: under virtual time the compositor never presents the
                # WebGL frames the page draws between its ASYNCIFY sleeps.
-               "--timeout=6000",
+               f"--timeout={wait_ms}",
                "--user-data-dir=" + str(profile), *output, url]
     with socket_dir:
-        result = subprocess.run(command, env=env, text=True, capture_output=True, timeout=120)
+        result = subprocess.run(command, env=env, text=True, capture_output=True,
+                                timeout=wait_ms / 1000 + 120)
     if result.returncode:
         raise AssertionError(f"Chromium exited {result.returncode}: {result.stderr[-4000:]}")
     return result.stdout
+
+
+# The pixels the page shows once a frame is on screen: the 3D cube, the 3D
+# clear color, the Kryon panel over it, and the asset image.
+EXPECTED = (((320, 240), (200, 80, 60), "3D cube missing"),
+            ((600, 440), (140, 210, 240), "3D clear missing"),
+            ((100, 60), (30, 60, 200), "Kryon UI over 3D missing"),
+            ((472, 52), (230, 30, 40), "asset image missing"))
+
+
+def page_frame(url, project):
+    """The page's pixels once a whole frame is on screen. A headless
+    screenshot fires at one moment, and on a slow machine that can still show
+    the WebGL canvas black before a frame is presented, so each attempt takes
+    a fresh profile and waits longer."""
+    for attempt, wait_ms in enumerate((6000, 20000, 45000)):
+        shot = project / f"page-{attempt}.png"
+        chromium(url, project / f"profile-shot-{attempt}", ["--screenshot=" + str(shot)], wait_ms)
+        png = png_pixels(shot)
+        assert png[:2] == (640, 480), png[:2]
+        if all(rgb(png, x, y) == color for (x, y), color, _ in EXPECTED):
+            break
+    return png
 
 
 def main():
@@ -204,16 +228,11 @@ def main():
             assert "data-kryon" not in dom, "page ended or aborted: " + dom[-2000:]
             title = re.search(r"<title>(.*?)</title>", dom, re.S)
             assert title and title.group(1) == "Raylib Web Probe", title and title.group(1)
-            shot = project / "page.png"
-            chromium(url, project / "profile-shot", ["--screenshot=" + str(shot)])
+            png = page_frame(url, project)
         finally:
             server.shutdown()
-        png = png_pixels(shot)
-        assert png[:2] == (640, 480), png[:2]
-        assert rgb(png, 320, 240) == (200, 80, 60), ("3D cube missing", rgb(png, 320, 240))
-        assert rgb(png, 600, 440) == (140, 210, 240), ("3D clear missing", rgb(png, 600, 440))
-        assert rgb(png, 100, 60) == (30, 60, 200), ("Kryon UI over 3D missing", rgb(png, 100, 60))
-        assert rgb(png, 472, 52) == (230, 30, 40), ("asset image missing", rgb(png, 472, 52))
+        for (x, y), color, failure in EXPECTED:
+            assert rgb(png, x, y) == color, (failure, rgb(png, x, y))
     print("raylib web profile: 3D cube under Kryon UI, assets and preload mounted, page titled")
 
 
