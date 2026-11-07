@@ -6,7 +6,7 @@
 // the glyphs by whole pixels, which stays crisp at any scale. Others get the
 // portable copy shifted by a logical stroke.
 TextEmphasisRaster :: #type (value: string, x: s32, y: s32, font: s32,
-    color: Color, clip: Rectangle) -> ();
+    color: Color, clip: Rectangle) -> () #reads;
 
 text_emphasis_raster: TextEmphasisRaster;
 text_emphasis_raster_set: bool;
@@ -32,7 +32,7 @@ RunTextEmphasisRaster :: (value: string, x: s32, y: s32, font: s32,
 // quads registers a raster that draws it slanted, and with `emphasis` its
 // extra stroke slanted the same way. Others draw it upright.
 TextItalicRaster :: #type (value: string, x: s32, y: s32, font: s32,
-    color: Color, clip: Rectangle, emphasis: bool) -> ();
+    color: Color, clip: Rectangle, emphasis: bool) -> () #reads;
 
 text_italic_raster: TextItalicRaster;
 text_italic_raster_set: bool;

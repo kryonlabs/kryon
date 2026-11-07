@@ -1,8 +1,10 @@
 #import "session"
 #import "text_props"
 
+// Text calls the painter with its props and frees a fresh props.text after
+// the call, so every installed painter only reads its strings.
 TextSelectionPainter :: #type (session: Session, node: s32,
-    props: TextProps, prepared: PreparedText) -> void;
+    props: TextProps, prepared: PreparedText) -> void #reads;
 selection_painter: TextSelectionPainter;
 selection_painter_ready: bool;
 TextSelectionActivity :: #type (session: Session) -> bool;

@@ -55,7 +55,8 @@ painted: bool;
 #program_export
 PageHostTypeface :: (name: string) -> string {
     previous := ifx active_face == "ui" then "ui" else "wide"
-    active_face = name
+    // TextTypefaceSelector is #reads: keep the host's own name, not the view.
+    active_face = ifx name == "wide" then "wide" else "ui"
     return previous
 }
 #program_export

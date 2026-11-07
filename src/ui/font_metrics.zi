@@ -14,7 +14,7 @@ glyph_metrics_revision: u64;
 
 // A shaping host can measure a caret in the full run, preserving ligatures
 // and bidi context. Other hosts keep their existing prefix measurements.
-CaretMeasure :: #type (string, s32, s32, string) -> s32;
+CaretMeasure :: #type (string, s32, s32, string) -> s32 #reads;
 caret_measure: CaretMeasure;
 has_caret_measure: bool;
 

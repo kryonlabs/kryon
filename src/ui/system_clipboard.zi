@@ -8,8 +8,9 @@ host_api :: #system_library "host_api";
 SystemClipboardOpenHost :: () -> s32 #foreign host_api;
 // One byte (0 to 255) of the snapshot, or -1 past its end.
 SystemClipboardByteHost :: (index: s32) -> s32 #foreign host_api;
-// Replaces the clipboard's text; false when the host has no clipboard.
-SystemClipboardWriteHost :: (text: string) -> bool #foreign host_api;
+// Replaces the clipboard's text; false when the host has no clipboard. The
+// host copies the text during the call (#reads).
+SystemClipboardWriteHost :: (text: string) -> bool #reads #foreign host_api;
 
 // The text on the system clipboard, read into buffer (which holds at most
 // buffer.count bytes; longer text is cut on a whole character). It is "" when

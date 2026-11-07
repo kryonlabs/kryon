@@ -1,6 +1,6 @@
 // A raster host selects a font only for the current measurement or label.
 // Names and font asset paths share the same bounded resource identity.
-TextTypefaceSelector :: #type (name: string) -> string;
+TextTypefaceSelector :: #type (name: string) -> string #reads;
 text_typeface_selector: TextTypefaceSelector;
 text_typeface_installed: bool;
 

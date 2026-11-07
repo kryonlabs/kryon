@@ -1,0 +1,121 @@
+#import "vec"
+#import "ziran_mesh_noop_host"
+#import "ziran_system_clipboard_host"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "text_props"
+#import "text_widget"
+#import "text_selection_widget"
+#import "tree"
+#import "tree_draw"
+
+using FrameStatus;
+
+// Each frame passes a fresh Text straight into the TextProps literal of a
+// Text widget, as Jungle's book and story lines do. Text only reads
+// props.text: PaintTextLines takes views of it, including the ellipsis line
+// it reassigns, and the selection painter called through the #reads
+// TextSelectionPainter reads it too, so Ziran frees it after the call.
+bad: bool;
+drawn: s32;
+paint_session: Session;
+
+Card :: (prefix: string, round: s64) -> Text {
+    out: Vec(u8)
+    if !BuilderAppend(out, prefix) || !VecPush(out, cast(u8)(48 + round % 10)) { bad = true }
+    return BuilderFinish(out)
+}
+
+// kind: 0 a plain line, 1 a line too wide for its bounds that ends in "...",
+// 2 a selectable line drawn by the installed selection painter.
+QueueKind :: (kind: s32, round: s64) {
+    session := paint_session
+    if kind == 0 {
+        Text(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+            .text = Card("plain text ", round)})
+    } else if kind == 1 {
+        Text(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 40.0, 20.0},
+            .wrap = TextWrap.TextWrapEllipsis, .text = Card("a line too wide ", round)})
+    } else {
+        Text(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+            .selectable = true, .text = Card("selectable ", round)})
+    }
+}
+
+// Paints `rounds` frames of one kind and returns how many frames drew all
+// their lines: the shortened line and its "..." draw as two.
+#program_export
+PaintFrames :: (kind: s32, rounds: s64) -> s32 {
+    if !SessionValid(paint_session) {
+        paint_session = SessionOpen()
+        TextSelectionEnable()
+    }
+    drawn = 0
+    round: s64 = 0
+    while round < rounds {
+        BeginFrame(paint_session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+        QueueKind(kind, round)
+        if EndFrame(paint_session) != cast(FrameStatus)FrameOk { bad = true }
+        round += 1
+    }
+    if bad { return -1 }
+    lines: s32 = ifx kind == 1 then 2 else 1
+    if drawn != cast(s32)rounds * lines { return -1 }
+    return cast(s32)rounds
+}
+
+#program_export
+PaintCheck :: () -> s32 {
+    for kind: cast(s32)0..2 {
+        if PaintFrames(kind, 20) != 20 { return 1 + kind }
+    }
+    return 0
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    unused font; unused typeface
+    return cast(s32)value.count * 7
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused font; unused typeface
+    return 12
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    unused x; unused y; unused font; unused color
+    if value.count < 1 { bad = true }
+    drawn += 1
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused clip
+    RasterText(value, x, y, font, color)
+}
+
+#program_export
+RasterLine :: (bounds: Rectangle, color: Color) { unused bounds; unused color }
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) { unused bounds; unused radius; unused segments; unused color }
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds; unused radius; unused segments; unused width; unused color
+}
+#program_export
+RasterImage :: (path: string, id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) {
+    unused path; unused id; unused source; unused destination; unused clip
+    unused origin; unused rotation; unused radius; unused tint
+}
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) { unused points; unused color }
