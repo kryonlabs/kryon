@@ -1,6 +1,12 @@
 // Static WebP selection for native hosts. The package owns RIFF parsing,
 // native ABI and first-frame composition. Decode directly into host storage.
-Webp :: #import "webp/facade";
+// A raylib page links no native codec: it uses the package's authored still
+// image engine, VP8L and keyframe VP8 with alpha.
+#if #defined(PLATFORM_WEB) {
+    Authored :: #import "webp/authored";
+} else {
+    Webp :: #import "webp/facade";
+}
 Riff :: #import "webp/riff";
 Codecs :: #import "image_codec/api";
 Engine :: #import "webp/engine";
@@ -23,7 +29,12 @@ WebPImageDecode :: (data: string, width: *s32, height: *s32) -> *u8 {
     pixels := ImagePixelsAllocate(cast(usize)count)
     if pixels == null { return null }
     output := Codecs.OutputBuffer.{BytesFromPointer(pixels, cast(u64)count), cast(s64)probe.metadata.width * 4}
-    result := Webp.WebpDecodeInto(input, output, options)
+    result: Engine.WebpOutputResult
+    #if #defined(PLATFORM_WEB) {
+        result = Authored.WebpAuthoredDecodeInto(input, output, options)
+    } else {
+        result = Webp.WebpDecodeInto(input, output, options)
+    }
     if !result.is_ok || result.metadata.width != probe.metadata.width || result.metadata.height != probe.metadata.height {
         ImagePixelsFree(pixels); return null
     }

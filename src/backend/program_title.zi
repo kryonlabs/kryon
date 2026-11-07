@@ -115,6 +115,11 @@ ProgramPath :: (output: []u8) -> string {
 ProgramTitle :: () -> string {
     if !program_title_known {
         program_title_known = true
+        #if #defined(PLATFORM_WEB) {
+            // A raylib page carries its title in its file system.
+            unused ProgramTitleFile("/kryon.title")
+            return TextView(program_title_bytes[0:program_title_count])
+        }
         path_bytes: [4096]u8
         program := ProgramPath(path_bytes[:])
         stem := ProgramStem(program)

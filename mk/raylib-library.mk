@@ -1,8 +1,16 @@
 # raylib keeps its library sources and Makefile in src/ of the package.
 RAYLIB_PACKAGE = $(eval RAYLIB_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path raylib $(if $(wildcard ziran.local.toml),,--locked)))$(RAYLIB_PACKAGE)
 RAYLIB_SOURCE = $(addsuffix /src,$(RAYLIB_PACKAGE))
+# RAYLIB_WEB=web selects raylib's own PLATFORM_WEB build: GLFW through
+# Emscripten on WebGL 1 (GLES2), with rmodels and raudio, in its own directory.
+ifeq ($(RAYLIB_WEB),web)
+EMCC ?= $(HOME)/emsdk/upstream/emscripten/emcc
+RAYLIB_BUILD ?= $(KRYON_DIR)/build/raylib-web
+RAYLIB_A ?= $(RAYLIB_BUILD)/libraylib.web.a
+else
 RAYLIB_BUILD ?= $(KRYON_DIR)/build/raylib-ziran
 RAYLIB_A ?= $(RAYLIB_BUILD)/libraylib.a
+endif
 RAYLIB_INPUTS = $(wildcard $(RAYLIB_SOURCE)/*.c $(RAYLIB_SOURCE)/*.h $(RAYLIB_SOURCE)/platforms/*.c $(RAYLIB_SOURCE)/Makefile)
 # Package-owned decoder recipes keep Kryon's existing archive paths.
 WEBP_CODEC_PACKAGE = $(eval WEBP_CODEC_PACKAGE := $(shell $(or $(ZIRAN),ziran) pkg path webp $(if $(wildcard ziran.local.toml),,--locked)))$(WEBP_CODEC_PACKAGE)
@@ -21,7 +29,17 @@ AVIF_SO ?= $(AVIF_BUILD)/libkryonavif.so
 AVIF_INPUTS = $(KRYON_DIR)/cmake/AVIF.cmake $(KRYON_DIR)/cmake/ImagePackages.cmake $(KRYON_DIR)/cmake/avif/CMakeLists.txt $(wildcard $(AVIF_CODEC_PACKAGE)/native/*.cmake)
 RAYLIB_ARCHIVES = $(RAYLIB_A) $(WEBP_A) $(AVIF_A) $(AOM_A)
 RAYLIB_HOST_OS := $(shell uname -s)
-ifeq ($(RAYLIB_HOST_OS),Darwin)
+ifeq ($(RAYLIB_WEB),web)
+# The page decodes WebP and AVIF with Ziran's own decoders, so the native
+# codec archives stay out of its link.
+RAYLIB_ARCHIVES = $(RAYLIB_A)
+RAYLIB_PLATFORM := PLATFORM_WEB
+RAYLIB_GRAPHICS := GRAPHICS_API_OPENGL_ES2
+RAYLIB_CFLAGS :=
+RAYLIB_PLATFORM_LIBS :=
+RAYLIB_CC := $(EMCC)
+RAYLIB_AR := $(dir $(EMCC))emar
+else ifeq ($(RAYLIB_HOST_OS),Darwin)
 RAYLIB_HOST_DEFINES := __APPLE__ $(if $(filter x86_64,$(shell uname -m)),__x86_64__,__aarch64__)
 RAYLIB_PLATFORM ?= PLATFORM_DESKTOP_GLFW
 RAYLIB_GRAPHICS ?= GRAPHICS_API_OPENGL_33
@@ -55,7 +73,7 @@ WEBP_CFLAGS ?= -O2
 
 # Resolve the optional source package once, only when its archive is needed.
 .SECONDEXPANSION:
-$(RAYLIB_A): $$(RAYLIB_INPUTS) | $(WEBP_A)
+$(RAYLIB_A): $$(RAYLIB_INPUTS) | $(if $(filter web,$(RAYLIB_WEB)),,$(WEBP_A))
 	@test -n "$(RAYLIB_SOURCE)" || { echo "Run ziran lock; Kryon needs the locked raylib source package" >&2; exit 1; }
 	@test -f $(RAYLIB_SOURCE)/raylib.h || { echo "The locked raylib source package is incomplete; run ziran fetch" >&2; exit 1; }
 	mkdir -p $(RAYLIB_BUILD)/source

@@ -65,6 +65,7 @@ in the application.
 | `terminal` | `src/backend/terminal_run.zi` | 80 × 24 terminal cells via `terminal.zi` |
 | `desktop` | `src/backend/desktop_run.zi` | SDL2 window with Cairo raster |
 | `raylib` | `src/backend/raylib_run.zi` | raylib SDL2/OpenGL ES 2 window |
+| `raylib` with `platform = "web"` | `src/backend/raylib_run.zi` | raylib WebGL 1 page with Emscripten and Asyncify; see [raylib in the browser](#raylib-in-the-browser) |
 | `canvas` | `src/backend/canvas_run.zi` | Canvas2D page with Emscripten and Asyncify |
 | `dom` | `src/backend/dom_run.zi` | Semantic DOM layer over the Canvas2D raster host |
 | `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package, raylib OpenGL ES 2 |
@@ -103,6 +104,77 @@ window hidden until presentation succeeds.
 The `image_preview` module also supplies `ImageCompress` for smaller upright
 JPEG copies. It keeps transparent and animated originals intact and returns
 no replacement when encoding would increase file size.
+
+## raylib in the browser
+
+A `raylib` profile with `platform = "web"` builds the same raylib host, or a
+project's own raylib host, as a WebGL page. raylib's `PLATFORM_WEB` library
+(GLFW through Emscripten, OpenGL ES 2 on WebGL 1, with `rmodels` and `raudio`)
+builds once into `build/raylib-web/`, and the generated program is compiled
+with `PLATFORM_WEB` defined, so no POSIX threads are used.
+
+```toml
+[tool.kryon.profiles.web]
+backend = "raylib"
+platform = "web"
+host = "src/host.zi"                 # optional custom raylib host
+assets = "assets"                    # mounted at /assets
+preload = "client/bin/textures@textures mods"
+```
+
+| Key | Meaning |
+| --- | --- |
+| `platform` | `web` builds a browser page. It needs `backend = "raylib"` with c99 codegen; `library`, `static_archive` and `native_artifacts` are rejected. |
+| `host` | A project host as for native raylib. The default is `raylib_run.zi`. |
+| `assets` | One project directory, mounted at its own relative path. |
+| `preload` | Space-separated project directories, `DIR` or `DIR@MOUNT`, mounted at `/DIR` or `/MOUNT`. It needs `platform = "web"`. |
+
+`ziran tool kryon build --profile web` writes `index.html`, `index.js`,
+`index.wasm` and, when files are preloaded, `index.data` to
+`build/NAME-PROFILE/`. A new build replaces the directory only after the link
+succeeds. Serve that directory over HTTP, not `file://`, so the page can fetch
+its module and data. Copy it as a whole, for example to a site's `play/`
+directory. The page's working directory is `/`, so relative asset paths
+resolve as they do from the project directory on the desktop. Kryon's UI font
+is preloaded at `/kryon-font.ttf`. The page's `<title>` and raylib's window
+title come from `[tool.kryon.install] name` or else the package name. The page
+records how the program ended in `document.body.dataset.kryon` (`exit CODE` or
+`abort REASON`).
+
+The program keeps its ordinary blocking loop. Emscripten's ASYNCIFY suspends
+the program inside `PollRaylib()`: raylib's web `WindowShouldClose()` sleeps
+12 ms, which returns to the browser so it can present the frame and deliver
+input. The frame rate therefore depends on that sleep. Kryon sets raylib's
+target FPS to 0 in the page, because a frame limit would spin the browser's
+only thread. A custom host follows these rules:
+
+- Call `OpenRaylib(width, height, title, flags)` once. Pass
+  `FLAG_WINDOW_RESIZABLE` (4, the default) so the canvas follows the browser
+  window, and keep the result of `RaylibViewport()` per frame rather than the
+  opening size.
+- Loop on `while PollRaylib() { ... }` from `main` or a procedure called
+  directly by it. Each frame calls `PollRaylib()` once. Do not wait, sleep or
+  spin anywhere else in the loop.
+- Inside a frame call `RaylibFrameInputBegin(session)`, then
+  `BeginRaylibFrame()`. Draw the world after it: clear the background, then
+  call `BeginMode3D`, the 3D drawing and `EndMode3D`. Then call
+  `BeginFrame(session, ...)`, the app's `Frame`, `EndFrame`,
+  `FrameInputEnd(session)` and `EndRaylibFrame()`. Kryon paints above
+  whatever the host drew earlier in the frame.
+- Use only GLES2/WebGL 1 features: no geometry shaders, `#version 100`
+  shaders, and power-of-two textures when mipmaps or repeat wrapping are
+  needed.
+- Read files through the preloaded mounts. Writes stay in the page's memory
+  file system and are lost on reload.
+- Leave out native-only libraries: threads, `#system_library` libraries other
+  than raylib, libc and libm, and `RunRaylibAppFrame` worker pipelines. WebP assets
+  decode with the `webp` package's authored still-image engine; AVIF assets
+  do not decode in this host.
+- Return from `main` to end the page. `CloseRaylib()` releases the WebGL
+  context.
+
+`make raylib-web-project-test` builds such a host, with a 3D cube under a
+Kryon `Box` and `Image`, and checks the page in private headless Chromium.
 
 ## Experimental SDL3 GPU renderer
 

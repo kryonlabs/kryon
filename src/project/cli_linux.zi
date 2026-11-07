@@ -156,8 +156,8 @@ Exists :: (path: string) -> bool {
 }
 
 Execute :: (arguments: []string) -> s32 {
-    storage: [19]ArgumentBytes
-    pointers: [20]PointerSlot
+    storage: [21]ArgumentBytes
+    pointers: [22]PointerSlot
     if arguments.count > storage.count { return Error("too many project command arguments") }
     if arguments.count == 0 { return 127 }
     at: s32 = 0
@@ -197,7 +197,9 @@ ArgumentCount :: (command_line: string) -> s32 {
     return count
 }
 
-BackendDescription :: (backend: string) -> string {
+BackendDescription :: (profile: ProjectProfile) -> string {
+    backend := profile.backend
+    if backend == "raylib" && profile.platform == "web" { return "raylib WebGL browser page" }
     if backend == "desktop" { return "SDL2/Cairo window" }
     if backend == "raylib" { return "raylib window" }
     if backend == "canvas" { return "Canvas2D browser page" }
@@ -255,7 +257,7 @@ ChooseProfile :: (config: ProjectConfig) -> s32 {
         PrintFd(1, ") ")
         PrintFd(1, config.profiles[index].name)
         PrintFd(1, " (")
-        PrintFd(1, BackendDescription(config.profiles[index].backend))
+        PrintFd(1, BackendDescription(config.profiles[index]))
         PrintFd(1, ")\n")
         index += 1
     }
@@ -287,7 +289,7 @@ ListProfiles :: (config: ProjectConfig) -> s32 {
         else { PrintFd(1, "  ") }
         PrintFd(1, profile.name)
         PrintFd(1, "  ")
-        PrintFd(1, BackendDescription(profile.backend))
+        PrintFd(1, BackendDescription(profile))
         PrintFd(1, "\n")
         index += 1
     }
@@ -567,7 +569,9 @@ main :: () -> s32 {
     native_platform_bytes: [4096]u8
     host_bytes: [4096]u8
     assets_bytes: [4096]u8
-    args: [19]string
+    platform_bytes: [4096]u8
+    preload_bytes: [4096]u8
+    args: [21]string
     args[0] = "make"
     args[1] = "--silent"
     args[2] = "--no-print-directory"
@@ -588,8 +592,10 @@ main :: () -> s32 {
     args[16] = Join("PROJECT_ASSETS=", profile.assets, assets_bytes[:])
     args[17] = Join("PROJECT_NATIVE_ARTIFACTS=", profile.native_artifacts, native_artifacts_bytes[:])
     args[18] = Join("PROJECT_NATIVE_PLATFORM=", profile.native_platform, native_platform_bytes[:])
+    args[19] = Join("PROJECT_PLATFORM=", profile.platform, platform_bytes[:])
+    args[20] = Join("PROJECT_PRELOAD=", profile.preload, preload_bytes[:])
     at: s32 = 6
-    while at < 19 {
+    while at < 21 {
         if args[at] == "" { return Error("project path or value is too long") }
         at += 1
     }

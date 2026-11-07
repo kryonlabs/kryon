@@ -1835,7 +1835,15 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
     }
     RaylibUseIconTextures()
     TextSelectionEnable()
-    HostRaylibSetTargetFPS(60)
+    #if #defined(PLATFORM_WEB) {
+        // PollRaylib's WindowShouldClose yields to the page each frame; a
+        // frame limit would spin the browser's only thread instead.
+        HostRaylibSetTargetFPS(0)
+        page_font: [32]u8
+        if CopyCString("/kryon-font.ttf", page_font[:]) { RaylibTryFont(*page_font[0]) }
+    } else {
+        HostRaylibSetTargetFPS(60)
+    }
     name: [32]u8
     if CopyCString("KRYON_FONT_PATH", name[:]) {
         RaylibTryFont(HostRaylibGetEnvironment(*name[0]))

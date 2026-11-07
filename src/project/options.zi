@@ -12,6 +12,10 @@ ProjectProfile :: struct {
     native_artifacts: string
     native_platform: string
     assets: string
+    // "web" builds the raylib backend into a WebGL browser page.
+    platform: string
+    // Space-separated DIR or DIR@MOUNT entries for the page's file system.
+    preload: string
 }
 
 ProjectInstall :: struct {
@@ -115,6 +119,43 @@ ProjectHostValid :: (value: string) -> bool {
         at += 1
     }
     return true
+}
+
+// A relative path whose segments are never empty, "." or "..".
+ProjectRelativeValid :: (value: string) -> bool {
+    length: s32 = cast(s32)value.count
+    if length == 0 || !ProjectPathValid(value) || value[0] == cast(u8)47 { return false }
+    start: s32 = 0
+    at: s32 = 0
+    while at <= length {
+        if at == length || value[at] == cast(u8)47 {
+            if at == start || value[start:at] == "." ||
+            value[start:at] == ".." { return false }
+            start = at + 1
+        }
+        at += 1
+    }
+    return true
+}
+
+// Space-separated DIR or DIR@MOUNT entries, each side a relative path.
+ProjectPreloadValid :: (value: string) -> bool {
+    at: s32 = 0
+    while at < cast(s32)value.count {
+        start := at
+        while at < cast(s32)value.count && value[at] != cast(u8)32 { at += 1 }
+        entry: string = value[start:at]
+        split: s32 = 0
+        while split < cast(s32)entry.count && entry[split] != cast(u8)64 { split += 1 }
+        if !ProjectRelativeValid(entry[0:split]) { return false }
+        if split < cast(s32)entry.count &&
+        !ProjectRelativeValid(entry[split + 1:cast(s32)entry.count]) { return false }
+        if at < cast(s32)value.count {
+            at += 1
+            if at == cast(s32)value.count { return false }
+        }
+    }
+    return value != ""
 }
 
 ProjectStaticArchiveValid :: (value: string) -> bool {
@@ -290,6 +331,10 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
                 config.profiles[selected].native_platform = value
             } else if field == "assets" {
                 config.profiles[selected].assets = value
+            } else if field == "platform" {
+                config.profiles[selected].platform = value
+            } else if field == "preload" {
+                config.profiles[selected].preload = value
             }
         } else if key == "install.profile" {
             config.install.profile = value
@@ -362,6 +407,19 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
         }
         if profile.assets != "" && !ProjectPathValid(profile.assets) {
             config.error = "invalid profile assets path"
+            return config
+        }
+        if profile.platform != "" && (profile.platform != "web" ||
+            profile.backend != "raylib" ||
+            (profile.codegen != "" && profile.codegen != "c99") ||
+            profile.library != "" || profile.static_archive != "" ||
+            profile.native_artifacts != "") {
+            config.error = "platform web needs a raylib c99 profile without native libraries"
+            return config
+        }
+        if profile.preload != "" &&
+        (profile.platform != "web" || !ProjectPreloadValid(profile.preload)) {
+            config.error = "preload needs platform web and relative DIR or DIR@MOUNT entries"
             return config
         }
         if profile.codegen == "" {

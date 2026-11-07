@@ -238,6 +238,8 @@ static_archive = "string"
 native_artifacts = "string"
 native_platform = "string"
 assets = "string"
+platform = "string"
+preload = "string"
 
 # Android profile settings: the application id of the generated droid
 # project, the minimum system version, the built ABIs, and the activity

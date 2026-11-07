@@ -292,7 +292,8 @@ check: all ziran-test header-check docs-check project-test public-surface-check 
 CI_SHARD_ZX := renderer-consumer-test zx-test zx-reload-test zx-services-test zx-hosted-test \
 	zx-headless-test native-text-test native-accessibility-test bundle-preload-test
 CI_SHARD_CHECK := check
-CI_SHARD_WEB := canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test dom-project-test
+CI_SHARD_WEB := canvas-test canvas-project-test zx-canvas-test zx-raylib-test page-route-project-test dom-project-test \
+	raylib-web-project-test
 .PHONY: test-shard-zx test-shard-check test-shard-web test-shard-hosts
 test-shard-zx: $(CI_SHARD_ZX)
 test-shard-check: $(CI_SHARD_CHECK)
@@ -407,6 +408,14 @@ typeface-source-test: $(ZI2C_BIN)
 .PHONY: raylib-project-test
 raylib-project-test: build/bin/kryon
 	@python3 tests/raylib_project_test.py
+
+# platform = "web": a custom raylib host's 3D cube under Kryon UI on WebGL, in
+# private headless Chromium.
+.PHONY: raylib-web-project-test
+raylib-web-project-test: build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		YUE_DESKTOP_RECOVERY=0 python3 tests/raylib_web_project_test.py
+test: raylib-web-project-test
 
 .PHONY: program-title-test
 program-title-test: $(ZI2C_BIN)

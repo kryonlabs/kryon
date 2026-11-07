@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kryon Ziran</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #f8fafc; overscroll-behavior: none; }
+    canvas { display: block; width: 100%; height: 100%; outline: none; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+  <script>
+    // raylib's PLATFORM_WEB host draws into #canvas. The page records how the
+    // program ended in data-kryon for tests and embedding pages.
+    var Module = {
+      canvas: document.getElementById("canvas"),
+      onExit: function(code) { document.body.dataset.kryon = "exit " + code; },
+      onAbort: function(reason) { document.body.dataset.kryon = "abort " + reason; }
+    };
+  </script>
+  {{{ SCRIPT }}}
+</body>
+</html>
