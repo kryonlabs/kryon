@@ -22,6 +22,9 @@
     CarouselWheel :: (session: Session, bounds: Rectangle) -> float32 { return PointerWheelTake(session, bounds) }
 }
 #import "joystick"
+#import "shape_widget"
+#import "shape_props"
+#import "text_measure"
 
 CarouselItem :: struct {
     label: string
@@ -31,6 +34,7 @@ CarouselItem :: struct {
     logo: string
     caption: string
     action: string
+    action_ribbon: string // Optional promotion attached to the action, never the title.
     disabled: bool
 }
 
@@ -131,6 +135,29 @@ CarouselTitle :: (session: Session, props: CarouselProps, items: []CarouselItem,
             .align = TextAlign.TextAlignCenter, .vertical_align = TextAlign.TextAlignCenter})
 }
 
+// A folded strip overlaps the action's top edge, leaving its label and hit
+// target intact. Decorative nodes never intercept pointer or keyboard input.
+CarouselActionRibbon :: (session: Session, key: u64, button: Rectangle, label: string, scale: float32 = 1.0) {
+    if label == "" { return }
+    width := cast(float32)TextWidth(session, TextProps.{.text = label, .font = cast(s32)(14.0 * scale)}) + 28.0 * scale
+    if width > button.width - 16.0 * scale { width = button.width - 16.0 * scale }
+    x := button.x + (button.width - width) / 2.0
+    y := button.y - 17.0 * scale
+    height := 26.0 * scale
+    fold := 7.0 * scale
+    unused Triangle(session, TriangleProps.{.key = key + 2,
+        .first = Vector2.{x - fold, y + height}, .second = Vector2.{x, y + height - fold},
+        .third = Vector2.{x, y + height + fold}, .color = Color.{135, 39, 28, 255}})
+    unused Triangle(session, TriangleProps.{.key = key + 3,
+        .first = Vector2.{x + width + fold, y + height}, .second = Vector2.{x + width, y + height - fold},
+        .third = Vector2.{x + width, y + height + fold}, .color = Color.{135, 39, 28, 255}})
+    unused Box(session, BoxProps.{.key = key, .bounds = Rectangle.{x - fold, y, width + fold * 2.0, height},
+        .fill = Color.{214, 58, 38, 255}, .radius = 2.0 * scale})
+    unused Text(session, TextProps.{.key = key + 1, .bounds = Rectangle.{x, y, width, height},
+        .text = label, .font = cast(s32)(14.0 * scale),
+        .align = TextAlign.TextAlignCenter, .vertical_align = TextAlign.TextAlignCenter})
+}
+
 // Returns the activated item, or -1. Pointer, swipe, wheel and keyboard
 // select the same page; only the selected page exposes an action.
 Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
@@ -179,6 +206,8 @@ Carousel :: (session: Session, props: CarouselProps, items: []CarouselItem,
             .tone = ButtonTone.ButtonToneSuccess, .emphasis = ButtonEmphasis.ButtonEmphasisFilled}) != 0 {
         activated = state.selected
     }
+    CarouselActionRibbon(session, WidgetPartKey(props.key, 8),
+        Rectangle.{bounds.x + (bounds.width - action_width) / 2.0, action_y, action_width, 64.0 * scale}, item.action_ribbon, scale)
     // Round, solid arrows stay readable over any cover.
     middle := bounds.y + bounds.height * 0.5 - 24.0 * scale
     if state.selected > 0 && Button(session, ButtonProps.{.key = WidgetPartKey(props.key, 2),
