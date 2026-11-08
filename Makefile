@@ -15,6 +15,7 @@ site-browser-test:
 	python3 tests/site_browser_test.py
 
 JS_RUNTIME ?= node
+EMCC ?= $(HOME)/emsdk/upstream/emscripten/emcc
 
 CC ?= cc
 AR ?= ar
@@ -371,7 +372,7 @@ canvas-test: canvas-frame-input-test web-js-boundary-test canvas-events-test min
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/webp_browser_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/canvas_audio_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY EM_CACHE="$(abspath $(BUILD_DIR))/emscripten-cache" \
-		sh tests/canvas_text_os_wasm_test.sh
+		sh tests/canvas_text_os_wasm_test.sh "$(dir $(ZIRAN_BIN))" "$(EMCC)"
 
 .PHONY: canvas-project-test
 canvas-project-test:

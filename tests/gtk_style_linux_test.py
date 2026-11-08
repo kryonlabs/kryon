@@ -14,7 +14,8 @@ ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'build/scratch/gtk-style-linux'
 CSS = ROOT / 'tests/gtk_style_linux_test.css'
 SCRUB = ('DISPLAY', 'WAYLAND_DISPLAY', 'WAYLAND_SOCKET', 'XAUTHORITY',
-         'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'ICEAUTHORITY')
+         'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'ICEAUTHORITY', 'GDK_DISPLAY',
+         'DESKTOP_SESSION', 'XDG_CURRENT_DESKTOP', 'XDG_SESSION_ID', 'XDG_SESSION_TYPE')
 
 
 def run(args, **kwargs):
@@ -22,7 +23,7 @@ def run(args, **kwargs):
     subprocess.run(list(map(str, args)), cwd=ROOT, check=True, **kwargs)
 
 
-def reference(scale):
+def reference(scale, screen_css=None, local_css=None, state=0):
     """Independent GTK calls, with Cairo's premultiplied ARGB converted by Python."""
     gtk = C.CDLL('libgtk-3.so.0')
     gdk = C.CDLL('libgdk-3.so.0')
@@ -51,6 +52,15 @@ def reference(scale):
     add_class(context, b'flat')
     fn(gtk, 'gtk_widget_set_name', None, ptr, text)(button, b'target')
     fn(gtk, 'gtk_style_context_set_scale', None, ptr, int_)(context, scale)
+    extra=[]
+    for css, local in ((screen_css,False),(local_css,True)):
+        if css is None: continue
+        new=fn(gtk,'gtk_css_provider_new',ptr)()
+        assert fn(gtk,'gtk_css_provider_load_from_data',int_,ptr,text,C.c_ssize_t,ptr)(new,css.encode(),-1,None)
+        if local: fn(gtk,'gtk_style_context_add_provider',None,ptr,ptr,C.c_uint)(context,new,900)
+        else: fn(gtk,'gtk_style_context_add_provider_for_screen',None,ptr,ptr,C.c_uint)(screen,new,900)
+        extra.append((new,local))
+    fn(gtk,'gtk_style_context_set_state',None,ptr,C.c_uint)(context,state)
     w, h = 24 * scale, 16 * scale
     surface = fn(cairo, 'cairo_image_surface_create', ptr, int_, int_, int_)(0, w, h)
     draw = fn(cairo, 'cairo_create', ptr, ptr)(surface)
@@ -72,6 +82,9 @@ def reference(scale):
             result.append(alpha)
     fn(cairo, 'cairo_destroy', None, ptr)(draw)
     fn(cairo, 'cairo_surface_destroy', None, ptr)(surface)
+    for new,local in extra:
+        if not local: fn(gtk,'gtk_style_context_remove_provider_for_screen',None,ptr,ptr)(screen,new)
+        fn(obj,'g_object_unref',None,ptr)(new)
     fn(gtk, 'gtk_widget_destroy', None, ptr)(window)
     fn(gtk, 'gtk_style_context_remove_provider_for_screen', None, ptr, ptr)(screen, provider)
     fn(obj, 'g_object_unref', None, ptr)(provider)
@@ -140,7 +153,7 @@ def reference_icon(name,scale,color='#112233'):
     return bytes(rgba)
 
 
-def reference_text(variant, scale):
+def reference_text(variant, scale, screen_css=None, local_css=None, state=0):
     gtk=C.CDLL('libgtk-3.so.0'); gdk=C.CDLL('libgdk-3.so.0'); obj=C.CDLL('libgobject-2.0.so.0')
     pango=C.CDLL('libpango-1.0.so.0'); cairo=C.CDLL('libcairo.so.2')
     ptr,text,int_,double=C.c_void_p,C.c_char_p,C.c_int,C.c_double
@@ -159,6 +172,15 @@ def reference_text(variant, scale):
     add_class(context,('normal' if variant in ('override','markup') else variant).encode())
     fn(gtk,'gtk_widget_set_name',None,ptr,text)(button,b'target')
     fn(gtk,'gtk_style_context_set_scale',None,ptr,int_)(context,scale)
+    extra=[]
+    for css, local in ((screen_css,False),(local_css,True)):
+        if css is None: continue
+        new=fn(gtk,'gtk_css_provider_new',ptr)()
+        assert fn(gtk,'gtk_css_provider_load_from_data',int_,ptr,text,C.c_ssize_t,ptr)(new,css.encode(),-1,None)
+        if local: fn(gtk,'gtk_style_context_add_provider',None,ptr,ptr,C.c_uint)(context,new,900)
+        else: fn(gtk,'gtk_style_context_add_provider_for_screen',None,ptr,ptr,C.c_uint)(screen,new,900)
+        extra.append((new,local))
+    fn(gtk,'gtk_style_context_set_state',None,ptr,C.c_uint)(context,state)
     layout=fn(gtk,'gtk_widget_create_pango_layout',ptr,ptr,text)(button,'Café 世界\nLabel'.encode())
     if variant=='markup':
         fn(pango,'pango_layout_set_markup',None,ptr,text,int_)(layout,
@@ -189,6 +211,9 @@ def reference_text(variant, scale):
             rgba.append(alpha)
     fn(cairo,'cairo_destroy',None,ptr)(draw); fn(cairo,'cairo_surface_destroy',None,ptr)(surface)
     fn(obj,'g_object_unref',None,ptr)(layout)
+    for new,local in extra:
+        if not local: fn(gtk,'gtk_style_context_remove_provider_for_screen',None,ptr,ptr)(screen,new)
+        fn(obj,'g_object_unref',None,ptr)(new)
     fn(gtk,'gtk_widget_destroy',None,ptr)(window)
     fn(gtk,'gtk_style_context_remove_provider_for_screen',None,ptr,ptr)(screen,provider)
     fn(obj,'g_object_unref',None,ptr)(provider)
@@ -198,6 +223,7 @@ def reference_text(variant, scale):
 def execute(probe, output):
     # Only this subprocess has the private server's display and private bus.
     run([probe, CSS, output, 'full'])
+    run([probe, CSS, output, 'rebind'])
     for name, scale in (('normal', 1), ('scale2', 2)):
         actual = (output / (name + '.rgba')).read_bytes()
         expected = reference(scale)
@@ -223,6 +249,16 @@ def execute(probe, output):
             assert any(actual[3::4]), 'Text produced no ink'
             texts.append(actual)
     assert len(set(texts))==10, 'Font styles, explicit font, markup or scale were ignored'
+    screen_css='* { padding:7px; color:#123456; background-image:none; background-color:#203040; border:0; border-radius:0; font:16px DejaVu Sans; text-shadow:none; } .fixture-root:disabled button { padding:11px; } button:disabled { color:#556677; }'
+    local_css='* { padding:1px; color:#abcdef; background-color:#504030; font:20px DejaVu Sans; } *:disabled { color:#987654; }'
+    replacement='* { padding:2px; color:#aabbcc; background-color:#304050; font:18px DejaVu Sans; }'
+    for name,css,state,color in (('screen',None,0,'#123456'),('local',local_css,0,'#abcdef'),
+                                 ('state',local_css,8,'#987654'),('rejected',local_css,0,'#abcdef'),
+                                 ('replaced',replacement,0,'#aabbcc'),('released',None,0,'#123456')):
+        assert (output/f'provider-{name}.rgba').read_bytes()==reference(1,screen_css,css,state), name
+        assert (output/f'provider-{name}-text.rgba').read_bytes()==reference_text('normal',1,screen_css,css,state), (name,'text')
+        assert (output/f'provider-{name}-icon.rgba').read_bytes()==reference_icon('fixture-symbolic',1,color), (name,'icon')
+    print('GTK providers: independent real-widget query/render/text/icon/state lifecycle reference passed',flush=True)
     print('GTK widget reference: exact gradient/frame/icon/text/markup pixels at scales 1 and 2; live custom provider pixels passed', flush=True)
 
 
@@ -241,7 +277,7 @@ def main():
     WORK.mkdir(parents=True, exist_ok=True)
     for variable, folder in (('HOME', 'home'), ('XDG_CONFIG_HOME', 'config'),
                              ('XDG_DATA_HOME', 'data'), ('XDG_CACHE_HOME', 'cache'),
-                             ('XDG_STATE_HOME', 'state'), ('XDG_RUNTIME_DIR', 'runtime')):
+                             ('XDG_STATE_HOME', 'state'), ('XDG_RUNTIME_DIR', 'runtime'), ('TMPDIR', 'tmp')):
         private = WORK / folder
         private.mkdir(mode=0o700, exist_ok=True)
         private.chmod(0o700)
@@ -251,7 +287,6 @@ def main():
     settings.mkdir(parents=True, exist_ok=True)
     (settings / 'settings.ini').write_text('[Settings]\ngtk-theme-name=Adwaita\ngtk-xft-dpi=98304\n')
     env['XDG_CONFIG_HOME'] = str(config)
-    env['TMPDIR'] = str(ROOT / 'build')
     make_icon_themes(WORK/'icons')
     env['GTK_STYLE_ICON_PATH']=str(WORK/'icons')
     source = ROOT / 'tests/gtk_style_linux_test.zi'

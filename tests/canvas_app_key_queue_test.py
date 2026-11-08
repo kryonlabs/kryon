@@ -8,7 +8,7 @@ import subprocess
 from toolchain import ZIRAN, ZIRAN_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
-WORK = ROOT / 'work/canvas-app-key-queue'
+WORK = ROOT / 'build/scratch/canvas-app-key-queue'
 ENV = dict(os.environ)
 for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'GDK_DISPLAY',
              'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'DESKTOP_SESSION',
@@ -21,8 +21,19 @@ SOURCE = '''#import "page_core"
 #import "canvas_events"
 #import "page_input"
 #import "canvas_input"
+#import "tree_input"
+#import "session"
 
 main :: () -> s32 {
+    CanvasEventsReset()
+    session := SessionOpen()
+    if KeyF3 != 292 { return 32 }
+    unused CanvasKeyDown("F3", "F3", false, 0)
+    key := CanvasAppKeyTake()
+    unused KeyboardSend(session, key)
+    if key != KeyF3 || KeyboardTake(session) != KeyF3 || KeyboardTake(session) != 0 { return 33 }
+    unused CanvasKeyUp("F3", "F3")
+    unused SessionClose(session)
     CanvasEventsReset()
     unused CanvasKeyDown("Home", "Home", false, 0)
     unused CanvasKeyUp("Home", "Home")
@@ -130,7 +141,7 @@ def run(args):
 
 
 def main():
-    run(['git', 'check-ignore', 'work/canvas-app-key-queue/test'])
+    run(['git', 'check-ignore', 'build/scratch/canvas-app-key-queue/test'])
     WORK.mkdir(parents=True, exist_ok=True)
     with (WORK / 'lock').open('w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)

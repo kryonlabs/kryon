@@ -7,6 +7,9 @@
 main :: () -> s32 {
     session: Session = SessionOpen()
     if !SessionValid(session) { return 1 }
+    if KeyF3 != 292 { return 12 }
+    unused KeyboardSend(session, KeyF3)
+    if KeyboardTake(session) != KeyF3 || KeyboardTake(session) != 0 { return 13 }
     // Typed codepoints arrive as one UTF-8 text, then the queue is empty.
     storage: [16]u8
     TypedCodepointSend(session, 104)

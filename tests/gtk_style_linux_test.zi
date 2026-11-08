@@ -19,11 +19,79 @@ Screen :: () -> *void #foreign gdk "gdk_screen_get_default";
 AddProvider :: (screen: *void, provider: *void, priority: u32) #foreign gtk "gtk_style_context_add_provider_for_screen";
 RemoveProvider :: (screen: *void, provider: *void) #foreign gtk "gtk_style_context_remove_provider_for_screen";
 Unref :: (object: *void) #foreign gobject "g_object_unref";
+Get :: (object: *void, property: *u8, args: ..any) #foreign gobject "g_object_get";
 Settings :: () -> *void #foreign gtk "gtk_settings_get_default";
 Set :: (object: *void, property: *u8, args: ..any) #foreign gobject "g_object_set";
 IconTheme :: () -> *void #foreign gtk "gtk_icon_theme_get_default";
 IconSearch :: (theme: *void, paths: **u8, count: s32) #foreign gtk "gtk_icon_theme_set_search_path";
+Ref :: (object: *void) -> *void #foreign gobject "g_object_ref";
+DisplayDefault :: () -> *void #foreign gdk "gdk_display_get_default";
+DisplayOpen :: (name: *u8) -> *void #foreign gdk "gdk_display_open";
+DisplayClose :: (display: *void) #foreign gdk "gdk_display_close";
+DisplayManager :: () -> *void #foreign gdk "gdk_display_manager_get";
+DisplaySet :: (manager: *void, display: *void) #foreign gdk "gdk_display_manager_set_default_display";
+WeakRef :: (object: *void, callback: *void, data: *void) #foreign gobject "g_object_weak_ref";
+WeakUnref :: (object: *void, callback: *void, data: *void) #foreign gobject "g_object_weak_unref";
+NativeWeak :: #type (*void, *void) -> void #c_call;
+// GObject's public native header, read only for independent ref ownership checks.
+ObjectHeader :: struct { kind: *void; refs: u32 }
+ObjectRefs :: (object: *void) -> u32 { header := cast(*ObjectHeader)object; return header.refs }
+Gone :: (data: *void, object: *void) { counter := cast(*s32)data; counter[0] += 1 }
+PreferenceValue :: (settings: *void) -> s32 {
+    key: [40]u8; unused CopyCString("gtk-application-prefer-dark-theme",key[:])
+    value: s32; Get(settings,*key[0],*value,cast(*u8)null)
+    return value
+}
+Rebind :: (nodes: []Native.GtkStyleNode) -> s32 {
+    if !Native.GtkStyleQuery(nodes,1).available { return 83 }
+    original := DisplayDefault()
+    key: [16]u8; unused CopyCString("DISPLAY",key[:])
+    first := DisplayOpen(Environment(*key[0]))
+    second := DisplayOpen(Environment(*key[0]))
+    if first == null || second == null || first == second || first == original || second == original { return 84 }
+    // gdk_display_open returns a borrow; own a ref across its close operation.
+    unused Ref(first); unused Ref(second)
+    manager := DisplayManager()
+    generation := Native.GtkStyleGeneration()
+    DisplaySet(manager,first)
+    first_settings := Settings(); first_refs := ObjectRefs(first_settings)
+    first_value := PreferenceValue(first_settings)
+    if !Native.GtkStyleQuery(nodes,1).available || ObjectRefs(first_settings) != first_refs { return 85 }
+    if Native.GtkStyleGeneration() <= generation { return 86 }
+    scope := Native.GtkStyleDarkPreferencePush(first_value == 0)
+    if scope == 0 || ObjectRefs(first_settings) != first_refs + cast(u32)1 { return 87 }
+    generation=Native.GtkStyleGeneration()
+    DisplaySet(manager,second)
+    second_settings := Settings(); second_refs := ObjectRefs(second_settings)
+    second_value := PreferenceValue(second_settings)
+    if !Native.GtkStyleQuery(nodes,1).available || ObjectRefs(second_settings) != second_refs ||
+        Native.GtkStyleGeneration() <= generation { return 88 }
+    if !Native.GtkStyleDarkPreferenceRestore(scope) || ObjectRefs(first_settings) != first_refs ||
+        PreferenceValue(first_settings) != first_value || PreferenceValue(second_settings) != second_value { return 89 }
+    scope=Native.GtkStyleDarkPreferencePush(second_value == 0)
+    if scope == 0 || !Native.GtkStyleDarkPreferenceRestore(scope) || ObjectRefs(second_settings) != second_refs { return 90 }
+    gone: [2]s32
+    callback: NativeWeak = Gone
+    raw: **void=cast(**void)*callback
+    WeakRef(first_settings,raw[0],cast(*void)*gone[0])
+    WeakRef(second_settings,raw[0],cast(*void)*gone[1])
+    DisplayClose(first); Unref(first)
+    DisplaySet(manager,original)
+    DisplayClose(second); Unref(second)
+    unused Native.GtkStylePoll()
+    available := Native.GtkStyleQuery(nodes,1).available
+    scope=Native.GtkStyleDarkPreferencePush(true)
+    restored := scope != 0 && Native.GtkStyleDarkPreferenceRestore(scope)
+    first_remaining: u32; second_remaining: u32
+    if gone[0] == 0 { first_remaining=ObjectRefs(first_settings); WeakUnref(first_settings,raw[0],cast(*void)*gone[0]) }
+    if gone[1] == 0 { second_remaining=ObjectRefs(second_settings); WeakUnref(second_settings,raw[0],cast(*void)*gone[1]) }
+    if !available { return 91 }
+    if !restored { return 92 }
+    print("GTK settings rebind: observer refs +0, scope refs +1/restored; weak=%/% remaining native refs=%/%\n",gone[0],gone[1],first_remaining,second_remaining)
+    return 0
+}
 libc :: #system_library "c";
+Unset :: (name: *u8) -> s32 #foreign libc "unsetenv";
 Environment :: (name: *u8) -> *u8 #foreign libc "getenv";
 cairo :: #system_library "cairo";
 RealAllocate :: (count: usize, size: usize) -> *u8 #foreign libc "__real_calloc";
@@ -31,11 +99,13 @@ RealFree :: (data: *u8) #foreign libc "__real_free";
 RealSurface :: (format: s32, width: s32, height: s32) -> *void #foreign cairo "__real_cairo_image_surface_create";
 fail_allocate: bool;
 fail_surface: bool;
+fail_provider_allocate: bool;
 owned: [256]*u8;
 outstanding: s32;
 
 #program_export "__wrap_calloc"
 __wrap_calloc :: (count: usize, size: usize) -> *u8 {
+    if fail_provider_allocate && size == 1 { return null }
     if fail_allocate && size == 4 && (count == 384 || count == 256) { return null }
     data := RealAllocate(count,size)
     if data != null && size == 4 && (count == 64 || count == 256 || count == 384 || count == 1024 || count == 1536 || count == 6144 || count == 24576) {
@@ -68,6 +138,133 @@ Save :: (directory: string, name: string, data: []u8) -> bool {
     return CloseFile(file) && count == data.count
 }
 
+ProviderCSS :: "* { padding:7px; color:#123456; background-image:none; background-color:#203040; border:0; border-radius:0; font:16px DejaVu Sans; text-shadow:none; } .fixture-root:disabled button { padding:11px; } button:disabled { color:#556677; }";
+LocalCSS :: "* { padding:1px; color:#abcdef; background-color:#504030; font:20px DejaVu Sans; } *:disabled { color:#987654; }";
+ReplacementCSS :: "* { padding:2px; color:#aabbcc; background-color:#304050; font:18px DejaVu Sans; }";
+Snapshot :: (nodes: []Native.GtkStyleNode, directory: string, name: string) -> bool {
+    image := Native.GtkStyleRaster(nodes,24,16,1)
+    if image.rgba.count == 0 { return false }
+    okay := Save(directory,name,image.rgba)
+    Native.GtkStyleBitmapRelease(*image)
+    text: Vec(u8); BuilderPrint(*text,"%-text",name)
+    image=Native.GtkTextRaster(nodes,"Café 世界\nLabel",96,64,1,1)
+    okay=okay && image.rgba.count != 0 && Save(directory,BuilderFinish(text),image.rgba)
+    Native.GtkStyleBitmapRelease(*image)
+    icon: Vec(u8); BuilderPrint(*icon,"%-icon",name)
+    image=Native.GtkIconRaster("fixture-symbolic",16,1,nodes)
+    okay=okay && image.rgba.count != 0 && Save(directory,BuilderFinish(icon),image.rgba)
+    Native.GtkStyleBitmapRelease(*image)
+    return okay
+}
+DarkPreference :: () -> s32 {
+    key: [40]u8
+    unused CopyCString("gtk-application-prefer-dark-theme",key[:])
+    value: s32
+    Get(Settings(),*key[0],*value,cast(*u8)null)
+    return value
+}
+ProviderLifecycle :: (nodes: []Native.GtkStyleNode, directory: string) -> s32 {
+    key: [64]u8
+    unused CopyCString("gtk-xft-dpi",key[:]); Set(Settings(),*key[0],cast(s32)98304,cast(*u8)null)
+    unused CopyCString("gtk-application-prefer-dark-theme",key[:]); Set(Settings(),*key[0],cast(s32)0,cast(*u8)null)
+    unused CopyCString("gtk-icon-theme-name",key[:]);
+    value: [32]u8; unused CopyCString("FixtureMain",value[:]); Set(Settings(),*key[0],*value[0],cast(*u8)null)
+    unused Native.GtkStylePoll()
+    generation := Native.GtkStyleGeneration()
+    screen := Native.GtkStyleProviderCreate(ProviderCSS)
+    local := Native.GtkStyleProviderCreate(LocalCSS)
+    if screen == 0 || local == 0 || screen == local || Native.GtkStyleGeneration() != generation { return 50 }
+    if !Native.GtkStyleProviderInstall(screen,900) || Native.GtkStyleGeneration() <= generation { return 51 }
+    generation=Native.GtkStyleGeneration()
+    if !Native.GtkStyleProviderInstall(screen,900) || Native.GtkStyleGeneration() != generation { return 52 }
+    if Native.GtkStyleQuery(nodes,1).padding.left != 7 || !Snapshot(nodes,directory,"provider-screen") { return 53 }
+    attachments: [1]Native.GtkStyleProviderAttachment=.[.{local,900}]
+    nodes[1].providers=attachments[:]
+    if Native.GtkStyleQuery(nodes,1).padding.left != 1 || !Snapshot(nodes,directory,"provider-local") { return 54 }
+    nodes[1].state=8
+    if Native.GtkStyleQuery(nodes,1).foreground != cast(u32)0x987654ff || !Snapshot(nodes,directory,"provider-state") { return 55 }
+    nodes[1].state=0
+    nodes[0].providers=attachments[:]
+    if Native.GtkStyleQuery(nodes[:1],1).padding.left != 1 { return 56 }
+    nodes[0].providers=attachments[:0]
+    generation=Native.GtkStyleGeneration()
+    byte: [1]u8
+    oversized := TextView(BytesFromPointer(*byte[0],1048577))
+    invalid: string
+    descriptor: *TextDescriptor=cast(*TextDescriptor)(*invalid)
+    descriptor.data=*byte[0]; descriptor.length=cast(usize)(cast(s64)-1)
+    if Native.GtkStyleProviderReplace(local,"* { padding:3px; bogus-property: ; }") ||
+        Native.GtkStyleProviderReplace(local,"* {}\0") ||
+        Native.GtkStyleProviderReplace(local,oversized) ||
+        Native.GtkStyleProviderReplace(local,invalid) ||
+        Native.GtkStyleProviderReplace(0,LocalCSS) || Native.GtkStyleProviderRelease(0) ||
+        Native.GtkStyleProviderInstall(0,900) || Native.GtkStyleGeneration() != generation { return 57 }
+    fail_provider_allocate=true
+    failed := Native.GtkStyleProviderReplace(local,ReplacementCSS)
+    fail_provider_allocate=false
+    if failed || Native.GtkStyleGeneration() != generation || Native.GtkStyleQuery(nodes,1).padding.left != 1 ||
+        !Snapshot(nodes,directory,"provider-rejected") { return 58 }
+    if !Native.GtkStyleProviderReplace(local,ReplacementCSS) || Native.GtkStyleGeneration() <= generation ||
+        Native.GtkStyleQuery(nodes,1).padding.left != 2 || !Snapshot(nodes,directory,"provider-replaced") { return 59 }
+    // Higher screen priority beats a lower local priority; equal priorities favor local.
+    if !Native.GtkStyleProviderInstall(screen,901) || Native.GtkStyleQuery(nodes,1).padding.left != 7 ||
+        !Native.GtkStyleProviderInstall(screen,900) || Native.GtkStyleQuery(nodes,1).padding.left != 2 { return 60 }
+    if !Native.GtkStyleProviderRelease(local) || Native.GtkStyleQuery(nodes,1).available { return 61 }
+    nodes[1].providers=attachments[:0]
+    generation=Native.GtkStyleGeneration()
+    if Native.GtkStyleProviderRelease(local) || Native.GtkStyleProviderReplace(local,LocalCSS) ||
+        Native.GtkStyleGeneration() != generation || !Snapshot(nodes,directory,"provider-released") { return 62 }
+    nodes[0].state=8
+    if Native.GtkStyleQuery(nodes,1).padding.left != 11 { return 63 }
+    nodes[0].state=0
+    if !Native.GtkStyleProviderRelease(screen) { return 64 }
+    // Bound live handles, recycle slots without recycling identifiers.
+    handles: [64]u64
+    for i: 0..63 { handles[i]=Native.GtkStyleProviderCreate(""); if handles[i] == 0 { return 65 } }
+    if Native.GtkStyleProviderCreate("") != 0 { return 66 }
+    for handle: handles { if !Native.GtkStyleProviderRelease(handle) { return 67 } }
+    if Native.GtkStyleProviderRelease(handles[0]) { return 68 }
+    // Synchronous native settings notifications need no event-loop iteration.
+    unused CopyCString("gtk-application-prefer-dark-theme",key[:])
+    generation=Native.GtkStyleGeneration()
+    Set(Settings(),*key[0],cast(s32)1,cast(*u8)null)
+    if Native.GtkStyleGeneration() <= generation { return 82 }
+    Set(Settings(),*key[0],cast(s32)0,cast(*u8)null)
+    // Original false, nested true/false/true; remove an older scope out of order.
+    generation=Native.GtkStyleGeneration()
+    first := Native.GtkStyleDarkPreferencePush(true)
+    if first == 0 || DarkPreference() != 1 || Native.GtkStyleGeneration() <= generation { return 69 }
+    light := Native.GtkStyleDarkPreferencePush(false)
+    dark := Native.GtkStyleDarkPreferencePush(true)
+    generation=Native.GtkStyleGeneration()
+    if light == 0 || dark == 0 || !Native.GtkStyleDarkPreferenceRestore(light) ||
+        Native.GtkStyleGeneration() != generation || !Native.GtkStyleDarkPreferenceRestore(dark) ||
+        Native.GtkStyleGeneration() != generation { return 70 }
+    if !Native.GtkStyleDarkPreferenceRestore(first) || DarkPreference() != 0 || Native.GtkStyleGeneration() <= generation { return 71 }
+    generation=Native.GtkStyleGeneration()
+    if Native.GtkStyleDarkPreferenceRestore(first) || Native.GtkStyleDarkPreferenceRestore(0) ||
+        Native.GtkStyleGeneration() != generation { return 72 }
+    if Native.GtkStylePoll() == 0 { return 73 }
+    // Restoring every scope releases the borrowed settings owner; the next scope
+    // must capture a fresh externally changed original (true).
+    unused CopyCString("gtk-application-prefer-dark-theme",key[:]); Set(Settings(),*key[0],cast(s32)1,cast(*u8)null)
+    scope := Native.GtkStyleDarkPreferencePush(false)
+    if scope == 0 || DarkPreference() != 0 || !Native.GtkStyleDarkPreferenceRestore(scope) || DarkPreference() != 1 { return 75 }
+    for i: 0..63 { handles[i]=Native.GtkStyleDarkPreferencePush(false); if handles[i] == 0 { return 76 } }
+    generation=Native.GtkStyleGeneration()
+    if Native.GtkStyleDarkPreferencePush(true) != 0 || Native.GtkStyleGeneration() != generation { return 77 }
+    for i: 0..63 { if !Native.GtkStyleDarkPreferenceRestore(handles[i]) { return 78 } }
+    if DarkPreference() != 1 { return 79 }
+    provider := Native.GtkStyleProviderCreate(ProviderCSS)
+    scope=Native.GtkStyleDarkPreferencePush(false)
+    if provider == 0 || scope == 0 || !Native.GtkStyleProviderInstall(provider,900) { return 80 }
+    // Cleanup uses retained screen/settings refs even after DISPLAY changes.
+    unused CopyCString("DISPLAY",key[:]); unused Unset(*key[0])
+    if !Native.GtkStyleProviderRelease(provider) || !Native.GtkStyleDarkPreferenceRestore(scope) || DarkPreference() != 1 { return 81 }
+    print("GTK provider lifecycle: atomic parser/OOM, priorities, context ancestry, stale/bounded handles, nested settings and generation passed\n")
+    return 0
+}
+
 #program_export "main"
 main :: (argc: s32, argv: **u8) -> s32 {
     if argc != 4 { return 1 }
@@ -77,6 +274,10 @@ main :: (argc: s32, argv: **u8) -> s32 {
         .{.widget_type="GtkWindow",.element="window",.classes=classes[:]},
         .{.widget_type="GtkButton",.element="button",.name="target",.classes=flat[:]}]
     if TextFromCString(argv[3]) == "no-display" {
+        generation := Native.GtkStyleGeneration()
+        if Native.GtkStyleProviderCreate("* { padding:1px; }") != 0 || Native.GtkStyleDarkPreferencePush(true) != 0 ||
+            Native.GtkStyleProviderRelease(1) || Native.GtkStyleDarkPreferenceRestore(1) ||
+            Native.GtkStyleGeneration() != generation { return 74 }
         plain: [8]u8
         if Native.GtkMarkupPlain("<b>&amp;</b>",plain[:]) != 1 || plain[0] != 38 || plain[1] != 0 { return 44 }
         if Native.GtkStyleQuery(nodes[:],1).available { return 2 }
@@ -86,6 +287,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         return 0
     }
     if Init(null,null) == 0 { return 4 }
+    if TextFromCString(argv[3]) == "rebind" { return Rebind(nodes[:]) }
     provider := ProviderNew()
     if ProviderLoad(provider,argv[1],null) == 0 { return 5 }
     defer Unref(provider)
@@ -274,5 +476,5 @@ main :: (argc: s32, argv: **u8) -> s32 {
     AddProvider(Screen(),provider,800)
     if Native.GtkStyleQuery(nodes[:],1).foreground != cast(u32)0xabcdefff { return 24 }
     print("GTK native style: selectors/state, metrics, provider/theme updates, owned BitmapImage upload, bounds and repeated disposal passed\n")
-    return 0
+    return ProviderLifecycle(nodes[:],directory)
 }

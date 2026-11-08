@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Linux apps can apply reusable GTK CSS providers to individual style contexts or their process screen, and temporarily select dark styling with nested restoration.
+- Apps can handle F3 shortcuts through the shared `KeyF3` key constant.
+
 - Modified Tab stays available to applications; TabBar keyboard navigation and removed or disabled focused tabs transfer retained focus to the selected tab.
 
 - Editable TextFields can opt into plain Tab for application completion while Shift+Tab retains focus traversal.

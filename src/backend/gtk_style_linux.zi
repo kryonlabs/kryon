@@ -8,12 +8,14 @@ GtkStyleDisabled :: 8;
 GtkStyleFocused :: 32;
 GtkStyleChecked :: 2048;
 
+GtkStyleProviderAttachment :: struct { provider: u64; priority: u32 }
 GtkStyleNode :: struct {
     widget_type: string
     element: string
     name: string
     classes: []string
     state: u32
+    providers: []GtkStyleProviderAttachment
 }
 GtkStyleInsets :: struct { left: s32; right: s32; top: s32; bottom: s32 }
 GtkStyleMetrics :: struct {
@@ -120,6 +122,106 @@ LayoutBaseline :: (layout: *void) -> s32 #foreign pango "pango_layout_get_baseli
 RenderLayout :: (context: *void, draw: *void, x: float64, y: float64, layout: *void) #foreign gtk "gtk_render_layout";
 ValidUTF8 :: (text: *u8, length: isize, end: **u8) -> s32 #foreign glib "g_utf8_validate";
 
+ProviderNew :: () -> *void #foreign gtk "gtk_css_provider_new";
+ProviderLoad :: (provider: *void, data: *u8, length: isize, error: **void) -> s32 #foreign gtk "gtk_css_provider_load_from_data";
+ProviderAdd :: (screen: *void, provider: *void, priority: u32) #foreign gtk "gtk_style_context_add_provider_for_screen";
+ProviderRemove :: (screen: *void, provider: *void) #foreign gtk "gtk_style_context_remove_provider_for_screen";
+ContextProvider :: (context: *void, provider: *void, priority: u32) #foreign gtk "gtk_style_context_add_provider";
+Ref :: (object: *void) -> *void #foreign gobject "g_object_ref";
+ErrorFree :: (error: *void) #foreign glib "g_error_free";
+Settings :: () -> *void #foreign gtk "gtk_settings_get_default";
+ObjectGet :: (object: *void, name: *u8, args: ..any) #foreign gobject "g_object_get";
+ObjectSet :: (object: *void, name: *u8, args: ..any) #foreign gobject "g_object_set";
+NotifyCallback :: #type (*void, *void, *void) -> void #c_call;
+WeakCallback :: #type (*void, *void) -> void #c_call;
+SignalConnect :: (object: *void, signal: *u8, callback: *void, data: *void, destroy: *void, flags: s32) -> usize #foreign gobject "g_signal_connect_data";
+SignalDisconnect :: (object: *void, id: usize) #foreign gobject "g_signal_handler_disconnect";
+WeakRef :: (object: *void, callback: *void, data: *void) #foreign gobject "g_object_weak_ref";
+WeakUnref :: (object: *void, callback: *void, data: *void) #foreign gobject "g_object_weak_unref";
+watched_settings: *void;
+settings_signal: usize;
+SettingsNotify :: (object: *void, property: *void, data: *void) { Changed() }
+SettingsFinalized :: (data: *void, object: *void) {
+    watched_settings = null; settings_signal = 0
+    Changed()
+}
+WatchSettings :: () {
+    object := Settings()
+    if object == watched_settings { return }
+    weak: WeakCallback = SettingsFinalized
+    weak_raw: **void = cast(**void)*weak
+    if watched_settings != null {
+        // A default-display change can select already initialized settings,
+        // without delivering any property notification or GLib event.
+        Changed()
+        if settings_signal != 0 { SignalDisconnect(watched_settings, settings_signal) }
+        WeakUnref(watched_settings, weak_raw[0], null)
+    }
+    watched_settings = object; settings_signal = 0
+    if object == null { return }
+    notify: NotifyCallback = SettingsNotify
+    notify_raw: **void = cast(**void)*notify
+    key: [8]u8
+    unused CString.CopyCString("notify", key[:])
+    settings_signal = SignalConnect(object, *key[0], notify_raw[0], null, null, 0)
+    // Neither connection holds a settings ref. Finalization clears the borrow.
+    WeakRef(object, weak_raw[0], null)
+}
+Ready :: () -> bool {
+    if Init(null, null) == 0 || Screen() == null { return false }
+    WatchSettings()
+    return true
+}
+ProviderSlot :: struct { id: u64; object: *void; screen: *void; priority: u32 }
+PreferenceSlot :: struct { id: u64; value: bool }
+providers: [64]ProviderSlot;
+preferences: [64]PreferenceSlot;
+next_provider: u64 = 1;
+next_preference: u64 = 1;
+settings_object: *void;
+settings_original: bool;
+style_generation: u64 = 1;
+style_pending: bool;
+Changed :: () { style_generation += 1; style_pending = true }
+ProviderIndex :: (handle: u64) -> s32 {
+    if handle == 0 { return -1 }
+    for i: 0..63 { if providers[i].id == handle { return cast(s32)i } }
+    return -1
+}
+ParseProvider :: (css: string) -> *void {
+    // Allocate before touching GTK, so invalid input/allocation failure is atomic.
+    descriptor := cast(*Text.TextDescriptor)(*css)
+    if css.count < 0 || css.count > 1048576 || (css.count > 0 && descriptor.data == null) { return null }
+    for c: css { if c == 0 { return null } }
+    bytes := Allocate(cast(usize)css.count + 1, 1)
+    if bytes == null { return null }
+    defer Free(bytes)
+    for i: 0..css.count - 1 { bytes[i] = css[i] }
+    if !Ready() { return null }
+    object := ProviderNew()
+    if object == null { return null }
+    error: *void
+    loaded := ProviderLoad(object, bytes, cast(isize)css.count, *error)
+    if error != null { ErrorFree(error) }
+    if loaded == 0 || error != null { Unref(object); return null }
+    return object
+}
+DarkValue :: () -> bool {
+    value: s32
+    key: [40]u8
+    unused CString.CopyCString("gtk-application-prefer-dark-theme", key[:])
+    ObjectGet(settings_object, *key[0], *value, cast(*u8)null)
+    return value != 0
+}
+ApplyDark :: (value: bool) {
+    if DarkValue() == value { return }
+    key: [40]u8
+    unused CString.CopyCString("gtk-application-prefer-dark-theme", key[:])
+    generation := style_generation
+    ObjectSet(settings_object, *key[0], cast(s32)value, cast(*u8)null)
+    if style_generation == generation { Changed() }
+}
+
 ValidText :: (value: string) -> bool {
     if value.count > 255 { return false }
     for byte: value { if byte == cast(u8)0 { return false } }
@@ -130,11 +232,13 @@ MakeContext :: (nodes: []GtkStyleNode, scale: s32) -> *void {
     if nodes.count < 1 || nodes.count > 32 || scale < 1 || scale > 4 { return null }
     for node: nodes {
         if node.widget_type == "" || !ValidText(node.widget_type) ||
-            !ValidText(node.element) || !ValidText(node.name) || node.classes.count > 32 ||
+            !ValidText(node.element) || !ValidText(node.name) || node.classes.count < 0 || node.classes.count > 32 ||
+            node.providers.count < 0 || node.providers.count > 32 ||
             (node.state & cast(u32)0xFFFFE000) != 0 { return null }
         for name: node.classes { if name == "" || !ValidText(name) { return null } }
+        for attachment: node.providers { if ProviderIndex(attachment.provider) < 0 { return null } }
     }
-    if Init(null, null) == 0 { return null }
+    if !Ready() { return null }
     screen := Screen()
     if screen == null { return null }
     builder := BuilderNew()
@@ -175,6 +279,9 @@ MakeContext :: (nodes: []GtkStyleNode, scale: s32) -> *void {
         ContextScale(context, scale)
         ContextPath(context, path)
         ContextState(context, node.state)
+        for attachment: node.providers {
+            ContextProvider(context, providers[ProviderIndex(attachment.provider)].object, attachment.priority)
+        }
         if parent != null { ContextParent(context, parent); Unref(parent) }
         parent = context
     }
@@ -453,11 +560,98 @@ GtkIconRaster :: (name: string, size: s32, scale: s32, nodes: []GtkStyleNode) ->
     return .{w,h,Text.BytesFromPointer(data,count * cast(u64)4)}
 }
 
+// Tokens are process-local, bounded to 64 live entries and never reused.
+// All operations run on the GTK owning thread, just like the raster bridge.
+GtkStyleProviderCreate :: (css: string) -> u64 {
+    if next_provider == 0 { return 0 }
+    slot: s32 = -1
+    for i: 0..63 { if providers[i].id == 0 { slot = cast(s32)i; break } }
+    if slot < 0 { return 0 }
+    object := ParseProvider(css)
+    if object == null { return 0 }
+    id := next_provider; next_provider += 1
+    providers[slot] = .{.id=id, .object=object}
+    return id
+}
+GtkStyleProviderInstall :: (handle: u64, priority: u32) -> bool {
+    at := ProviderIndex(handle)
+    if at < 0 { return false }
+    slot := *providers[at]
+    // Reinstalling at the same priority is a no-op, including display env changes.
+    if slot.screen != null && slot.priority == priority { return true }
+    if !Ready() { return false }
+    screen := Screen()
+    if screen == null { return false }
+    unused Ref(screen)
+    if slot.screen != null { ProviderRemove(slot.screen, slot.object); Unref(slot.screen) }
+    slot.screen = screen; slot.priority = priority
+    ProviderAdd(screen, slot.object, priority)
+    Changed()
+    return true
+}
+GtkStyleProviderReplace :: (handle: u64, css: string) -> bool {
+    at := ProviderIndex(handle)
+    if at < 0 { return false }
+    object := ParseProvider(css)
+    if object == null { return false }
+    slot := *providers[at]
+    if slot.screen != null {
+        ProviderRemove(slot.screen, slot.object)
+        ProviderAdd(slot.screen, object, slot.priority)
+    }
+    Unref(slot.object); slot.object = object
+    Changed()
+    return true
+}
+GtkStyleProviderRelease :: (handle: u64) -> bool {
+    at := ProviderIndex(handle)
+    if at < 0 { return false }
+    slot := providers[at]
+    providers[at] = .{}
+    if slot.screen != null { ProviderRemove(slot.screen, slot.object); Unref(slot.screen) }
+    Unref(slot.object)
+    Changed()
+    return true
+}
+GtkStyleDarkPreferencePush :: (value: bool) -> u64 {
+    if next_preference == 0 { return 0 }
+    at: s32 = -1
+    for i: 0..63 { if preferences[i].id == 0 { at = cast(s32)i; break } }
+    if at < 0 { return 0 }
+    if settings_object == null {
+        if !Ready() { return 0 }
+        object := Settings()
+        if object == null { return 0 }
+        settings_object = Ref(object)
+        settings_original = DarkValue()
+    }
+    id := next_preference; next_preference += 1
+    preferences[at] = .{id, value}
+    ApplyDark(value)
+    return id
+}
+GtkStyleDarkPreferenceRestore :: (handle: u64) -> bool {
+    if handle == 0 { return false }
+    at: s32 = -1
+    for i: 0..63 { if preferences[i].id == handle { at = cast(s32)i; break } }
+    if at < 0 { return false }
+    preferences[at] = .{}
+    newest: u64
+    value := settings_original
+    for scope: preferences { if scope.id > newest { newest = scope.id; value = scope.value } }
+    ApplyDark(value)
+    if newest == 0 { Unref(settings_object); settings_object = null }
+    return true
+}
+GtkStyleGeneration :: () -> u64 { return style_generation }
+
 // Non-GTK event loops may explicitly deliver pending GTK settings changes.
 // Never blocks; callbacks execute on the calling (GTK owning) thread.
 GtkStylePoll :: () -> s32 {
-    if Init(null, null) == 0 { return 0 }
+    if !Ready() { return 0 }
     count: s32 = 0
     while count < 32 && Iterate(null, 0) != 0 { count += 1 }
+    if count > 0 { style_generation += 1 }
+    if style_pending { style_pending = false; count += 1 }
     return count
 }

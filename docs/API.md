@@ -276,7 +276,8 @@ scrolling; applications should not repeat their own focused-field reveal loop.
 while a field has focus. `DismissibleOverlay` and `Popup` report it through
 `closed`; a non-dismissible modal consumes Escape without closing. Hosts
 send `KeyEscape` with `KeyboardSend`, and application shortcuts check
-`TreeEscapeCaptured(session)` before handling that same Escape.
+`TreeEscapeCaptured(session)` before handling that same Escape. `KeyF3` is the
+canonical F3 key code (292) for application shortcuts.
 
 ## Style rules
 
@@ -397,7 +398,11 @@ input and accessibility. Call its functions on the GTK owning thread, and call
 `GtkStylePoll()` from a non-GTK event loop to deliver up to 32 pending GLib events.
 
 A `GtkStyleNode` contains `widget_type` (for example `"GtkButton"`), CSS `element`,
-CSS ID `name`, `classes: []string` and GTK `state: u32`. Pass an ancestor-to-leaf
+CSS ID `name`, `classes: []string`, GTK `state: u32` and optional
+`providers: []GtkStyleProviderAttachment`. Each attachment contains a live
+`provider: u64` handle and native `priority: u32`; it applies only to that node's
+GTK context, including ancestor contexts. At equal priority, GTK gives context
+providers precedence over screen providers, using its own selector rules. Pass an ancestor-to-leaf
 slice of nodes. State constants are `GtkStyleNormal`, `GtkStyleActive`,
 `GtkStylePrelight`, `GtkStyleSelected`, `GtkStyleDisabled`, `GtkStyleFocused` and
 `GtkStyleChecked`; combine flags for compound states.
@@ -439,8 +444,48 @@ Scale is 1–4. Style paths have 1–32 nodes and up to 32 classes per node;
 selector strings and font descriptions are at most 255 bytes with no NUL.
 Text must be valid UTF-8 without NUL and at most 65,536 bytes. Raster axes are
 at most 4096 physical pixels with a 4,194,304-pixel total limit; icon edges are
-at most 2048 physical pixels. Icon names cannot be paths. The module does not
-change the application's theme selection.
+at most 2048 physical pixels. Icon names cannot be paths.
+`GtkStyleProviderCreate(css: string) -> u64` parses CSS with GTK's native parser,
+without installing it. Zero means failure. `GtkStyleProviderInstall(handle,
+priority: u32) -> bool` installs that provider on this process's default GTK
+screen. Repeating the same installation is a no-op. A provider can also be
+attached to several node contexts at different priorities without screen
+installation. `GtkStyleProviderReplace(handle, css) -> bool` parses a fresh
+provider before replacing the existing one. Parser errors, invalid lengths,
+embedded NUL, input above 1,048,576 bytes, and recoverable allocation failures
+leave the old provider and generation unchanged. Empty CSS is valid. GTK/GLib's
+own fatal allocation policy remains in effect. CSS may reference resources;
+applications choose which CSS they trust.
+
+`GtkStyleProviderRelease(handle) -> bool` removes its screen installation and
+releases owned refs. Remove attachments using that handle before the next query;
+a stale attachment rejects the whole path. Zero, stale and double release return
+false. There are at most 64 live providers and 32 attachments per node. Handles
+are process-local, never reused, and must not be persisted. Release works after
+display environment variables change, without reinitializing GTK.
+
+`GtkStyleDarkPreferencePush(value: bool) -> u64` temporarily sets this process's
+`gtk-application-prefer-dark-theme`. `GtkStyleDarkPreferenceRestore(token) ->
+bool` removes that scope. The newest live scope wins, even when older scopes
+are restored out of order. The last restore reinstates the original value and
+releases the settings reference; the next push captures a fresh original.
+There are at most 64 live scopes. Zero/stale tokens fail without changing the
+setting. These calls do not modify desktop configuration files or other
+processes. Coordinate writes to this same property while scopes are active.
+
+`GtkStyleGeneration() -> u64` changes immediately on successful provider
+installation, replacement or release and effective preference changes. Creating
+an unattached provider and failed calls do not change it. Cache query, raster,
+text and icon results with this generation and the complete path (including
+attachments, priorities and states). The bridge itself retains no result cache.
+Native GTK settings notifications invalidate generation synchronously, without
+retaining a settings owner. A default-settings identity change invalidates
+on the next bridge call. `GtkStylePoll()` also advances generation when it
+delivers GLib events, covering external theme/settings reloads; it returns nonzero once after API invalidation
+as well as for delivered events. Call it before checking cached styles. All
+provider/settings APIs share the GTK owning thread rule and fail safely without
+a display. This opt-in Linux module adds no GTK dependency to portable, WASM,
+Windows or Go application imports.
 
 `ImageProps.clip_polygon` clips an image without stretching its content.
 Supply 3–4096 points in normalized destination coordinates (0–1); the path
