@@ -21,7 +21,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "program_title"
 #import "paint_texture"
 #import "paint_queue"
-Bitmaps :: #import "bitmap_store";
+using Bitmaps :: #import "bitmap_store";
 #import "std/vec"
 #import "svg_icon"
 #import "tree_input"
@@ -1572,7 +1572,7 @@ RaylibReserveAsset :: (path: string, hash: u64) -> s32 {
 // Managed IDs never reach GL. Only the graphics owner touches this bounded
 // cache; completed worker frames supply copied pixels instead of live storage.
 RaylibBitmapEntry :: struct { id: u32; revision: u64; texture: Texture2D; smooth: bool }
-raylib_bitmaps: [Bitmaps.BITMAP_IMAGE_LIMIT]RaylibBitmapEntry;
+raylib_bitmaps: [BITMAP_IMAGE_LIMIT]RaylibBitmapEntry;
 raylib_bitmap_bytes: s64;
 raylib_bitmap_next: s32;
 

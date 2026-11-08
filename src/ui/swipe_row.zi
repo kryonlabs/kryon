@@ -50,6 +50,26 @@ SwipeRowActionFor :: (offset: float32, width: float32, threshold: float32) -> s3
     return 0
 }
 
+// Stages share the same decision for both preview and release. A missing or
+// invalid long stage preserves the single-action contract. 3/4 are long sides.
+#program_export
+SwipeRowStageFor :: (props: SwipeRowProps, offset: float32) -> s32 {
+    short_share: float32 = SWIPE_ROW_THRESHOLD
+    if props.threshold > 0.0 { short_share = props.threshold }
+    if offset < 0.0 && props.end_threshold > 0.0 { short_share = props.end_threshold }
+    long_share := cast(float32)0.5
+    if props.long_threshold > 0.0 { long_share = props.long_threshold }
+    if long_share > short_share {
+        stage := SwipeRowActionFor(offset, props.bounds.width, long_share)
+        if stage == 1 && props.long_start.icon_shape.count > 0 { return 3 }
+        if stage == 2 && props.long_end.icon_shape.count > 0 { return 4 }
+    }
+    stage := SwipeRowActionFor(offset, props.bounds.width, short_share)
+    if stage == 1 && props.start.icon_shape.count == 0 { return 0 }
+    if stage == 2 && props.end.icon_shape.count == 0 { return 0 }
+    return stage
+}
+
 // The slide back eases out over a short time and is 0 once done.
 #program_export
 SwipeRowSettleOffset :: (from: float32, elapsed: float64) -> float32 {
@@ -71,6 +91,9 @@ SwipeRowStrip :: (session: Session, props: SwipeRowProps, offset: float32,
         strip.x = props.bounds.x + props.bounds.width + offset
         strip.width = -offset
     }
+    stage := SwipeRowStageFor(props, offset)
+    if stage == 3 { action = props.long_start }
+    if stage == 4 { action = props.long_end }
     unused Box(session, BoxProps.{.key = props.key ^ cast(u64)SWIPE_ROW_STRIP_KEY,
             .bounds = strip, .fill = action.fill})
     icon: float32 = 24.0 * scale
@@ -97,8 +120,8 @@ SwipeRow :: (session: Session, props: SwipeRowProps, state: SwipeRowState) -> Sw
     scale: float32 = 1.0
     if props.scale > 0.0 { scale = props.scale }
     width: float32 = props.bounds.width
-    has_start: bool = props.start.icon_shape.count > 0
-    has_end: bool = props.end.icon_shape.count > 0
+    has_start: bool = props.start.icon_shape.count > 0 || props.long_start.icon_shape.count > 0
+    has_end: bool = props.end.icon_shape.count > 0 || props.long_end.icon_shape.count > 0
     next: SwipeRowState = state
     if press.down && !pressing {
         // A new press on this row ends another row's slide back.
@@ -129,12 +152,15 @@ SwipeRow :: (session: Session, props: SwipeRowProps, state: SwipeRowState) -> Sw
         // The finger lifted, or an enclosing scroll took the press.
         action: s32 = 0
         if next.sideways && press.released && !props.disabled {
-            action = SwipeRowActionFor(next.offset, width, props.threshold)
+            action = SwipeRowStageFor(props, next.offset)
         }
         result.swiped_start = action == 1
         result.swiped_end = action == 2
+        result.swiped_long_start = action == 3
+        result.swiped_long_end = action == 4
         removed: bool = (action == 1 && props.start.removes) ||
-        (action == 2 && props.end.removes)
+        (action == 2 && props.end.removes) ||
+        (action == 3 && props.long_start.removes) || (action == 4 && props.long_end.removes)
         moved: float32 = next.offset
         next = SwipeRowState.{}
         if !removed && SwipeRowAbs(moved) >= 0.5 {

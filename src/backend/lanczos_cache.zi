@@ -135,13 +135,15 @@ LanczosRoom :: (session: u64, bytes: s64) -> s32 {
     return -1
 }
 
-// Takes ownership of PIXELS: the copy replaces every other copy of the
-// same picture and source, whatever its size or revision.
+// Takes ownership of PIXELS. Sizes of the same revision coexist within the
+// LRU budgets; replace only this size/layout or copies of an older revision.
 LanczosInstall :: (key: LanczosKey, pixels: *u8, layout: s32) -> bool {
     bytes := cast(s64)key.width * key.height * 4
     for i: cast(s32)0..LANCZOS_SLOTS - 1 {
         entry := *lanczos_entries[i]
-        if entry.bytes != 0 && LanczosSameSource(*entry.key, *key) { LanczosClearEntry(entry) }
+        if entry.bytes != 0 && LanczosSameSource(*entry.key, *key) &&
+            (entry.key.revision != key.revision || (entry.key.width == key.width &&
+                entry.key.height == key.height && entry.layout == layout)) { LanczosClearEntry(entry) }
     }
     slot := LanczosRoom(key.session, bytes)
     if slot < 0 { LanczosFree(pixels); return false }
@@ -496,8 +498,10 @@ LanczosLookup :: (key: LanczosKey, pixels: *u8, width: s32, height: s32, stride:
         entry := *lanczos_entries[i]
         if entry.bytes == 0 || !LanczosSameSource(*entry.key, *key) { continue }
         if entry.key.revision != key.revision { LanczosClearEntry(entry); continue }
-        entry.used = lanczos_clock
-        if entry.key.width == key.width && entry.key.height == key.height && entry.layout == output_layout { return entry }
+        if entry.key.width == key.width && entry.key.height == key.height && entry.layout == output_layout {
+            entry.used = lanczos_clock
+            return entry
+        }
         stale = entry
     }
     if pixels != null && LanczosCanStart(key) {
@@ -505,6 +509,7 @@ LanczosLookup :: (key: LanczosKey, pixels: *u8, width: s32, height: s32, stride:
             unused LanczosStart(key, pixels, width, height, stride, layout, output_layout)
         }
     }
+    if stale != null { stale.used = lanczos_clock }
     return stale
 }
 

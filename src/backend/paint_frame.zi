@@ -4,7 +4,7 @@
 #import "geometry"
 #import "std/vec"
 #import "std/byte_text_linux"
-Bitmaps :: #import "bitmap_store";
+using Bitmaps :: #import "bitmap_store";
 
 RecordedBitmap :: struct { id: u32; revision: u64; start: s64; count: s64 }
 
@@ -25,7 +25,7 @@ PaintFrame :: struct {
     bytes: Vec(u8)
     points: Vec(Vector2)
     bitmap_pixels: Vec(u32)
-    bitmaps: [Bitmaps.BITMAP_IMAGE_LIMIT]RecordedBitmap
+    bitmaps: [BITMAP_IMAGE_LIMIT]RecordedBitmap
     bitmap_count: s32
     failed: bool
 }

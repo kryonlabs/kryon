@@ -486,7 +486,8 @@ revision, the source rectangle, the device-pixel size and the session.
 Until a copy is ready, the backend draws the previous copy of the same
 picture stretched, or uses its own filter if there is none. The finished
 copy replaces it in one step. A changed or released picture forgets its
-copies.
+copies. Distinct sizes of the same source and revision coexist within the
+LRU budgets, so a large cover and its small marker do not evict each other.
 
 - Only axis-aligned draws under a plain translation are cached. Rotation,
   scaled transforms, meshes, polygon strips and render targets keep the

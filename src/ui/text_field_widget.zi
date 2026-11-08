@@ -467,10 +467,11 @@ Theme :: #import "theme";
                 result.anchor = Grapheme.Boundary(props.value, request.anchor)
             } else if !props.read_only && (request.value.count == 0 || TextFieldInputTextAllowed(request.value)) &&
             TextFieldReplacementAllowed(props, 0, cast(s32)props.value.count, request.value) {
-                result.edit.start = 0
-                result.edit.end = cast(s32)props.value.count
-                result.edit.replacement = request.value
-                result.edit.changed = true
+                change := TextRequestChangeFor(props.value, request.value)
+                result.edit.start = change.start
+                result.edit.end = change.end
+                result.edit.replacement = change.replacement
+                result.edit.changed = change.changed
                 result.cursor = request.cursor
                 result.anchor = request.anchor
             }

@@ -15,6 +15,7 @@ TestSession :: () -> Session {
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "text_request"
 #import "ziran_composition_widget_host"
 #import "ziran_system_clipboard_host"
 
@@ -574,8 +575,57 @@ Frame :: () -> s32 {
     return old
 }
 
+// A correction snapshot near the start of a long note must neither reveal
+// its last line on the edit frame nor move the returned selection there.
+CorrectionTest :: () -> bool {
+    original := "teh note\nsecond\nthird\nfourth\nfifth\nsixth\nseventh\nlast"
+    corrected := "the note\nsecond\nthird\nfourth\nfifth\nsixth\nseventh\nlast"
+    props := TextAreaProps.{.key = cast(u64)999, .bounds = Rectangle.{0.0, 0.0, 220.0, 60.0},
+        .value = original, .cursor = 3, .anchor = 3, .focused = true}
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    first := TextArea(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return false }
+    if !TextRequestSend(TestSession(), first.node, corrected, true, 3, 3) { return false }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    edited := TextArea(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return false }
+    if !edited.edit.changed || edited.edit.start != 1 || edited.edit.end != 3 ||
+        edited.edit.replacement != "he" || edited.cursor != 3 || edited.anchor != 3 || edited.scroll_y != 0 { return false }
+    props.value = corrected
+    props.cursor = edited.cursor
+    props.anchor = edited.anchor
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    settled := TextArea(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return false }
+    if settled.cursor != 3 || settled.anchor != 3 || settled.scroll_y != 0 { return false }
+    // Selection-only native snapshots still reveal the requested caret.
+    end := cast(s32)corrected.count
+    if !TextRequestSend(TestSession(), settled.node, corrected, true, end, end) { return false }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    selected := TextArea(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return false }
+    if selected.edit.changed || selected.cursor != end || selected.anchor != end || selected.scroll_y <= 0 { return false }
+    props.cursor = selected.cursor
+    props.anchor = selected.anchor
+    props.scroll_y = selected.scroll_y
+    if !TextRequestSend(TestSession(), selected.node, corrected, true, 0, 0) { return false }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
+    selected = TextArea(TestSession(), props)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return false }
+    if selected.edit.changed || selected.cursor != 0 || selected.scroll_y != 0 { return false }
+    // UTF-8 cuts stay intact.
+    same := TextRequestChangeFor(corrected, corrected)
+    unicode := TextRequestChangeFor("éx rest", "éy rest")
+    combining := TextRequestChangeFor("e rest", "é rest")
+    removed := TextRequestChangeFor("é rest", " rest")
+    return !same.changed && unicode.start == 2 && unicode.end == 3 && unicode.replacement == "y" &&
+        combining.start == 0 && combining.end == 1 && combining.replacement == "é" &&
+        removed.start == 0 && removed.end == 2 && removed.replacement == ""
+}
+
 #program_export
 main :: () -> s32 {
+    if !CorrectionTest() { return 90 }
     // Combining sequences span borrowed text and preedit segments without
     // wrapping or hit-testing inside a grapheme.
     view := TextAreaViewFor("ex", 1, 1, CompositionState.{active=true, text="́"})

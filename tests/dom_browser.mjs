@@ -128,6 +128,15 @@ try {
     if (!await evaluate(`globalThis.__editor === document.querySelector('[aria-label="Editor"]') && document.activeElement === globalThis.__editor && globalThis.__editor.selectionStart === 4`)) {
       throw new Error('Reordering lost editor identity, focus or Unicode caret');
     }
+    // Correct the first grapheme while retaining the Unicode suffix and the
+    // browser's interior caret through the native snapshot/edit round trip.
+    await evaluate(`globalThis.__editor.setSelectionRange(0, 1)`);
+    await command('Input.insertText', {text:'B'});
+    await until(`globalThis.__kryonAccepted === 'Bé界'`);
+    await delay(150);
+    if (!await evaluate(`globalThis.__editor.value === 'Bé界' && globalThis.__editor.selectionStart === 1 && globalThis.__editor.selectionEnd === 1`)) {
+      throw new Error('Correction lost unchanged Unicode text or moved the caret');
+    }
     await evaluate(`document.querySelector('[aria-label="Run"]').click()`);
     await until(`document.querySelector('h1')?.textContent === 'Clicked'`);
     const accessibility = await command('Accessibility.getFullAXTree');

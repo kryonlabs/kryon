@@ -102,3 +102,34 @@ TextRequestTake :: (session: Session, index: s32) -> TextRequest {
 TextRequestClear :: (session: Session) {
     if SessionValid(session) { text_requests[session.slot] = PendingTextRequest.{} }
 }
+
+// Preserve unchanged text around a native editor snapshot. Replacing the whole
+// document would map an interior caret to its end while TextArea paints the
+// preceding value on the edit frame. Both cut points stay grapheme boundaries.
+TextRequestChange :: struct {
+    start: s32
+    end: s32
+    replacement: string
+    changed: bool
+}
+
+#program_export
+TextRequestChangeFor :: (before: string, after: string) -> TextRequestChange {
+    start: s32 = 0
+    while start < before.count && start < after.count && before[start] == after[start] { start += 1 }
+    while Grapheme.Boundary(before, start) != start || Grapheme.Boundary(after, start) != start {
+        start -= 1
+    }
+    old_end := cast(s32)before.count
+    new_end := cast(s32)after.count
+    while old_end > start && new_end > start && before[old_end - 1] == after[new_end - 1] {
+        old_end -= 1
+        new_end -= 1
+    }
+    while old_end < before.count && (Grapheme.Boundary(before, old_end) != old_end ||
+        Grapheme.Boundary(after, new_end) != new_end) {
+        old_end += 1
+        new_end += 1
+    }
+    return TextRequestChange.{start, old_end, after[start:new_end], before != after}
+}

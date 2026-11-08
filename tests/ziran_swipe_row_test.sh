@@ -8,5 +8,6 @@ set -- \
     --bind paint_queue:RasterImage=ziran_keyboard_navigation_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
 
+widget_native=1
 widget_std="$ziran_root/std"
 . "$repo/tests/widget_matrix.sh"

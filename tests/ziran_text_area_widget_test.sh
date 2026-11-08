@@ -12,5 +12,6 @@ set -- \
     --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
 . "$repo/tests/widget_raster_bindings.sh"
 
+widget_native=1
 widget_std="$ziran_root/std"
 . "$repo/tests/widget_matrix.sh"

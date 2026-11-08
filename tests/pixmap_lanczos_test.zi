@@ -81,6 +81,22 @@ main :: (argc: s32, argv: **u8) -> s32 {
             print("pixmap % % % % % %\n", sources[kind], index, snapped.x, snapped.y, snapped.width, snapped.height)
         }
     }
+    // One picture can be a large cover and a small marker in the same UI.
+    // Settling either size must retain the other's exact pixels and stop jobs.
+    if !Draw(sources[0], boxes[0], targets[0], tints[0], true) { return 20 }
+    unused Pixels.PixmapLanczosWait()
+    if !Draw(sources[0], boxes[0], targets[0], tints[0], true) { return 21 }
+    Keep()
+    if !Draw(sources[0], boxes[0], targets[3], tints[0], true) { return 22 }
+    unused Pixels.PixmapLanczosWait()
+    for turn: cast(s32)0..7 {
+        if !Draw(sources[0], boxes[0], targets[0], tints[0], true) || !Same() || Pixels.PixmapLanczosPending() {
+            print("large copy was evicted by marker\n"); return 23
+        }
+        if !Draw(sources[0], boxes[0], targets[3], tints[0], true) || Pixels.PixmapLanczosPending() {
+            print("marker copy was evicted by cover\n"); return 24
+        }
+    }
     // A sharp image never makes a copy.
     if !Draw(sources[0], boxes[1], targets[1], tints[0], false) || Pixels.PixmapLanczosPending() { return 9 }
     // Replacing or clearing a picture frees its copies and their slots.

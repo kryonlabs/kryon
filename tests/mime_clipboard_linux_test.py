@@ -343,7 +343,8 @@ def main():
              '-o', output, input_], env=env)
         probe = output / 'mime_clipboard_probe'
         assert subprocess.run([probe], env=env, timeout=5).returncode == 20
-        run(['xvfb-run', '-a', '-n', '430', '-s', '-screen 0 640x480x24 -nolisten tcp',
+        # Cases close their last X client; keep the private server alive between them.
+        run(['xvfb-run', '-a', '-n', '430', '-s', '-screen 0 640x480x24 -nolisten tcp -noreset',
              'dbus-run-session', '--', sys.executable, __file__, '--execute', probe], env=env)
         print(f'MIME clipboard {form}: PASS', flush=True)
 

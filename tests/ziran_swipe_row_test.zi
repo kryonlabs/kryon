@@ -9,6 +9,7 @@
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
+#import "paint_queue"
 #import "ziran_keyboard_navigation_host"
 #import "scroll_props"
 #import "scroll_widget"
@@ -22,6 +23,14 @@ session: Session;
 result: SwipeRowResult;
 row: SwipeRowState;
 with_start: bool = true;
+staged: bool;
+strip_fill: Color;
+
+RecordStrip :: (command: QueuedPaint) -> bool {
+    if command.data.kind == 2 { strip_fill = command.data.color }
+    return false
+}
+
 
 Props :: (now: float64, bounds: Rectangle) -> SwipeRowProps {
     props := SwipeRowProps.{.key = cast(u64)90, .bounds = bounds, .label = "Tea", .now = now,
@@ -30,6 +39,12 @@ Props :: (now: float64, bounds: Rectangle) -> SwipeRowProps {
     // The icon color stays clear so the test paints no raster.
     if with_start {
         props.start = SwipeRowAction.{.icon_shape = TRASH, .fill = Color.{40, 80, 200, 255}}
+    }
+    if staged {
+        props.threshold = 0.15
+        props.end_threshold = 0.35
+        props.long_start = SwipeRowAction.{.icon_shape = TRASH, .fill = Color.{20, 200, 40, 255}, .removes = true}
+        props.long_end = props.long_start
     }
     return props
 }
@@ -47,6 +62,8 @@ Pointer :: (x: float32, y: float32, down: bool, pressed: bool, released: bool) {
 
 #program_export
 Answer :: () -> s32 {
+    saved_recorder := paint_recorder
+    paint_recorder = RecordStrip
     session = SessionOpen()
     if !Frame(0.0) || result.clicked || result.offset != 0.0 { return 1 }
 
@@ -127,6 +144,53 @@ Answer :: () -> s32 {
     if !ListFrame(11.05, 151.0, 200.0, true, false, false) || result.offset != 0.0 { return 36 }
     if !ListFrame(11.1, 152.0, 120.0, true, false, false) || list_offset == 0 || result.offset != 0.0 { return 37 }
     if !ListFrame(11.15, 152.0, 120.0, false, false, true) || result.clicked || result.swiped_end { return 38 }
+    if !Frame(11.9) { return 39 }
+    staged = true
+    // Short release completes, crossing the second threshold edits exclusively.
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(12.0) { return 40 }
+    Pointer(60.0, 20.0, false, false, true)
+    if !Frame(12.1) || !result.swiped_start || result.swiped_long_start || result.clicked { return 41 }
+    if !Frame(12.5) { return 52 }
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(13.0) { return 43 }
+    Pointer(120.0, 20.0, true, false, false)
+    if !Frame(13.1) || result.swiped_long_start || result.swiped_start { return 44 }
+    if result.offset != 100.0 || strip_fill.g != 200 { return 53 }
+    Pointer(120.0, 20.0, false, false, true)
+    if !Frame(13.2) { return 145 }
+    if !result.swiped_long_start { return 146 }
+    if result.swiped_start { return 147 }
+    if result.clicked { return 148 }
+    if row.key != 0 { return 149 }
+    // Crossing and retreating chooses the released distance, not the peak.
+    Pointer(20.0, 20.0, true, true, false)
+    if !Frame(14.0) { return 46 }
+    Pointer(140.0, 20.0, true, false, false)
+    if !Frame(14.1) { return 47 }
+    Pointer(60.0, 20.0, false, false, true)
+    if !Frame(14.2) || !result.swiped_start || result.swiped_long_start || strip_fill.g != 80 { return 48 }
+    if !Frame(14.5) { return 54 }
+    Pointer(180.0, 20.0, true, true, false)
+    if !Frame(15.0) { return 49 }
+    Pointer(80.0, 20.0, false, false, true)
+    if !Frame(15.1) || !result.swiped_long_end || result.swiped_end || result.clicked { return 50 }
+    // The shorter right threshold leaves the configured left-delete distance intact.
+    Pointer(180.0, 20.0, true, true, false)
+    if !Frame(16.0) { return 56 }
+    Pointer(140.0, 20.0, false, false, true)
+    if !Frame(16.1) || result.swiped_end || result.swiped_long_end || result.clicked { return 57 }
+    if !Frame(16.5) { return 58 }
+    Pointer(180.0, 20.0, true, true, false)
+    if !Frame(17.0) { return 59 }
+    Pointer(100.0, 20.0, false, false, true)
+    if !Frame(17.1) || !result.swiped_end || result.swiped_long_end || result.clicked { return 60 }
+    props := Props(18.0, Rectangle.{0.0, 0.0, 200.0, 40.0})
+    if SwipeRowStageFor(props, -40.0) != 0 || SwipeRowStageFor(props, -80.0) != 2 ||
+        SwipeRowStageFor(props, 40.0) != 1 { return 55 }
+    props.long_threshold = 0.1
+    if SwipeRowStageFor(props, 100.0) != 1 { return 51 }
+    paint_recorder = saved_recorder
     SessionClose(session)
     return 42
 }

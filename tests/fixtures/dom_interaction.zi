@@ -56,9 +56,16 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     result: TextFieldResult = Editor(session)
     cursor = result.cursor; anchor = result.anchor
     if result.edit.changed {
-        if result.edit.start != 0 || result.edit.end != length || result.edit.replacement.count > 128 { return 2 }
-        length = cast(s32)result.edit.replacement.count
-        for byte: 0..length - 1 { value[byte] = result.edit.replacement[byte] }
+        edit := result.edit
+        next: s32 = length - (edit.end - edit.start) + cast(s32)edit.replacement.count
+        if edit.start < 0 || edit.end < edit.start || edit.end > length || next > 128 { return 2 }
+        output: [128]u8
+        at: s32 = 0
+        for byte: 0..edit.start - 1 { output[at] = value[byte]; at += 1 }
+        for byte: 0..cast(s32)edit.replacement.count - 1 { output[at] = edit.replacement[byte]; at += 1 }
+        for byte: edit.end..length - 1 { output[at] = value[byte]; at += 1 }
+        for byte: 0..next - 1 { value[byte] = output[byte] }
+        length = next
     }
     if reordered { RunButton(session) }
     field: TextFieldProps

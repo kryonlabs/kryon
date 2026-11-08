@@ -50,6 +50,16 @@ main :: () -> s32 {
     AndroidTextInputBeginFrame(editor)
     request := TextRequestTake(editor, node)
     Require(request.pending && request.replace && request.value == "hello 水😀" && request.cursor == 13, 3)
+    // An IME correction in the middle retains its nonterminal byte selection,
+    // including a subsequent selection-only update on the same target.
+    Require(AndroidTextEditorUpdate(2, 3, "hello 水😀 rest", 9, 6), 8)
+    AndroidTextInputBeginFrame(editor)
+    request = TextRequestTake(editor, node)
+    Require(request.pending && request.cursor == 9 && request.anchor == 6, 9)
+    Require(AndroidTextEditorUpdate(2, 4, "hello 水😀 rest", 6, 6), 10)
+    AndroidTextInputBeginFrame(editor)
+    request = TextRequestTake(editor, node)
+    Require(request.pending && request.cursor == 6 && request.anchor == 6, 11)
     // Replacing a focused field changes its identity: late edits from the
     // previous editor never reach the new field.
     node = EditorFrame(editor, 101, "saved draft")

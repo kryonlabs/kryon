@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+- Native bitmap caches keep their shared capacity while supporting existing compiler pins.
+- Native smooth-image caches retain multiple sizes of the same picture within their existing LRU budgets, preserving sharp covers beside thumbnails.
+
+- SwipeRow supports optional short and long actions per direction with distinct release results and matching strip previews.
+- Native TextArea corrections preserve the caret viewport by replacing only the changed span; unchanged TextArea and TextField snapshots retain selection without a text edit.
+
 - Linux apps can apply reusable GTK CSS providers to individual style contexts or their process screen, and temporarily select dark styling with nested restoration.
 - Apps can handle F3 shortcuts through the shared `KeyF3` key constant.
 

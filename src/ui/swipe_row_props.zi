@@ -29,6 +29,12 @@ SwipeRowProps :: struct {
     // The share of the row's width a swipe travels to act; 0 means 0.35.
     threshold: float32
     disabled: bool
+    // Optional second stage; 0 means 0.5. It must exceed threshold.
+    long_threshold: float32
+    long_start: SwipeRowAction
+    long_end: SwipeRowAction
+    // Optional left-swipe threshold; 0 uses the effective shared threshold.
+    end_threshold: float32
 }
 
 // The swipe in progress, kept by the app between frames. One serves a whole
@@ -56,4 +62,7 @@ SwipeRowResult :: struct {
     swiped_start: bool
     swiped_end: bool
     state: SwipeRowState
+    // Exclusive with the short results, emitted only on release.
+    swiped_long_start: bool
+    swiped_long_end: bool
 }

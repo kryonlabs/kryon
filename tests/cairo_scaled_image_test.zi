@@ -93,6 +93,23 @@ main :: (argc: s32, argv: **u8) -> s32 {
             print("cairo % % % % % %\n", sources[kind], index, snapped.x, snapped.y, snapped.width, snapped.height)
         }
     }
+    // One picture can be a large cover and a small marker in the same UI.
+    // Settling either size must retain the other's exact pixels and stop jobs.
+    shared: Vec(u8); BuilderPrint(*shared, "%/opaque.png", directory); shared_path := BuilderFinish(shared)
+    if !Draw(shared_path, boxes[0], targets[0], tints[0], true) { return 20 }
+    unused Lanczos.LanczosWait()
+    if !Draw(shared_path, boxes[0], targets[0], tints[0], true) { return 21 }
+    Keep()
+    if !Draw(shared_path, boxes[0], targets[3], tints[0], true) { return 22 }
+    unused Lanczos.LanczosWait()
+    for turn: cast(s32)0..7 {
+        if !Draw(shared_path, boxes[0], targets[0], tints[0], true) || !Same() || Lanczos.LanczosPending() {
+            print("large copy was evicted by marker\n"); return 23
+        }
+        if !Draw(shared_path, boxes[0], targets[3], tints[0], true) || Lanczos.LanczosPending() {
+            print("marker copy was evicted by cover\n"); return 24
+        }
+    }
     // A sharp image never makes a copy.
     sharp: Vec(u8); BuilderPrint(*sharp, "%/opaque.png", directory); sharp_path := BuilderFinish(sharp)
     if !Draw(sharp_path, boxes[1], targets[1], tints[0], false) || Lanczos.LanczosPending() { return 9 }

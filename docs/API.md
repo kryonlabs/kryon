@@ -200,6 +200,12 @@ navigation with no edit; it does not mean committed. Enter, Escape, clipboard
 and IME composition remain available on the original result for the application
 to handle, with their existing borrowed-text lifetime requirements.
 
+Native TextArea and TextField snapshots retain the supplied cursor and anchor
+and return only the changed grapheme-aligned span as their edit. An unchanged
+snapshot updates selection without a text edit. This keeps a correction near
+the beginning of a long note from revealing the document end on its edit frame.
+Applications must apply the edit and preserve the result's cursor and anchor.
+
 A `TextArea` can preview a markup language over its value without changing
 it. `hidden` bytes take no width or caret stop, `strong` bytes are bold and
 `italic` bytes slanted (backends that register a slant raster, as Raylib
@@ -278,6 +284,27 @@ while a field has focus. `DismissibleOverlay` and `Popup` report it through
 send `KeyEscape` with `KeyboardSend`, and application shortcuts check
 `TreeEscapeCaptured(session)` before handling that same Escape. `KeyF3` is the
 canonical F3 key code (292) for application shortcuts.
+
+## Swipe rows
+
+`SwipeRow(session, props, state)` follows a horizontal drag, paints the revealed
+strip and returns its content `offset` plus state for the next frame. Right
+uses `start`, left uses `end`; an action needs `icon_shape`. `threshold` is a
+share of row width (zero means 0.35). Optional `end_threshold` overrides it
+for left swipes; zero uses the effective shared threshold. A release emits `swiped_start` or
+`swiped_end`; `clicked` reports a separate tap or keyboard activation. The app
+chooses what a tap does. Vertical scrolling does not activate swipe actions.
+
+Optional `long_start` and `long_end` actions add a second stage in either
+direction. `long_threshold` is a width share (zero means 0.5) and must exceed
+that direction’s effective short threshold; otherwise that stage is ignored. Its strip
+color/icon appears at that distance. Release emits `swiped_long_start` or
+`swiped_long_end`, exclusively with the short results, using the final distance
+even after crossing and retreating. Each chosen action's `removes` controls
+whether the row settles back. Without long actions, existing behavior remains.
+For short-swipe completion and long-swipe editing, set `threshold = 0.15`,
+`end_threshold = 0.35` to retain left-delete distance, `long_threshold = 0.5`, put completion in `start` and edit in `long_start`, and
+handle their separate results. A tap need not complete the row.
 
 ## Style rules
 
