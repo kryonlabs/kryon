@@ -108,3 +108,25 @@ thread, timer or animation is added by the default style. CPU affinity is record
 All captures use private Xvfb with inherited display/auth/session variables scrubbed
 and desktop recovery disabled. This does not measure Android hardware, a physical
 GPU, a desktop compositor, browser behavior or terminal-cell fidelity.
+
+The GPUI reference uses the same five 480 × 320 scene families in a disposable
+Cargo project pinned to GPUI 0.2.2 and libc 0.2.186. Its default measurement
+covers GPUI `TestAppContext` root render/layout/prepaint/paint only; it does not
+execute GPU work, present a frame or include compositor wall time, and therefore
+is not interchangeable with Kryon's compose-only or hardware presentation phases.
+
+```sh
+build-queue -- python3 tests/gpui_render_benchmark.py \
+  --trials 3 --warmup 120 --frames 120 \
+  --output work/backend-render-benchmark/gpui-render-benchmark.json
+build-queue -- python3 tests/gpui_render_benchmark.py --gpu-probe \
+  --device /dev/dri/renderD129 --trials 3 --warmup 120 --frames 120 \
+  --output work/backend-render-benchmark/gpui-render-benchmark-gpu.json
+```
+
+The second command starts a private headless Weston GL instance on the selected
+AMD render node. GPUI 0.2.2 currently requires the Wayland `wl_seat` global;
+headless Weston has no seat, so the report records the exact client unwrap
+limitation instead of presenting an unsupported CPU-to-GPU comparison. Generated
+Cargo inputs remain under `build/scratch/gpui-render-benchmark`, while reports and
+logs remain under ignored `work/backend-render-benchmark/`.

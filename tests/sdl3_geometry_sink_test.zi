@@ -148,7 +148,7 @@ MockGeometry :: (owner: *void, texture: *void, xy: *float32, xy_stride: s32,
     Check(owner == cast(*void)*renderer && current_target != null && current_target == expected_target, "geometry renderer and retained target")
     Check(indices == null && index_count == 0 && index_size == 0, "unindexed triangles")
     Check(xy_stride == 20 && uv_stride == 20 && color_stride == 16, "actual native byte strides: vertex20, float-color16")
-    Check(count > 0 && count <= 1536 && count % 3 == 0, "bounded complete triangles")
+    Check(count > 0 && count <= Sink.Sdl3ColorCount && count % 3 == 0, "bounded complete triangles")
     Check(cast(usize)uv - cast(usize)xy == cast(usize)12, "actual UV offset is12")
     first := *pixmap_gpu_vertices[expected_vertex]
     Check(xy == *first.x && uv == *first.u, "XY and UV borrowed from original geometry")
@@ -270,8 +270,9 @@ Lifecycle :: () {
     Check(Sink.PixmapSdl3UseTarget(target), "host restores recreated target after reset")
     // Force a batch longer than the normalized-color workspace.
     ResetObservation()
-    for index: 0..299 { Quad(-1, false) }
-    Check(Sink.PixmapSdl3Draw() && expected_vertex == 1800 && geometry_calls == 2, "large batch split only at triangle boundaries")
+    quads := Sink.Sdl3ColorCount / 6 + 1
+    for index: 0..quads - 1 { Quad(-1, false) }
+    Check(Sink.PixmapSdl3Draw() && expected_vertex == quads * 6 && geometry_calls == 2, "large batch split only at triangle boundaries")
     CloseTarget(target); MockDestroy(replacement)
 }
 

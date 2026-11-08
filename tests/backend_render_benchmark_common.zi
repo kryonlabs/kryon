@@ -145,8 +145,13 @@ RunBackendRenderBenchmark :: () -> s32 {
     for frame: cast(s32)0..warmup - 1 { if !Paint(scene, frame) || !bench_draw() || !bench_present() { return 4 } }
     if !bench_read() { return 5 } // drain warmup outside measured interval
     start := Now(); if start < 0 { return 6 }
+    profile := EnvironmentText("BENCH_PROFILE") == "1"
     for frame: cast(s32)0..count - 1 {
         a := Now(); if !Paint(scene, frame) { return 4 }; b := Now()
+        if profile {
+            print("PROFILE % % % %\n", frame, pixmap_gpu_vertices.count,
+                pixmap_gpu_batches.count, pixmap_gpu_uploads.count)
+        }
         if !bench_draw() { return 4 }; c := Now()
         if !bench_present() { return 4 }; d := Now()
         samples[frame] = .{b - a, c - b, d - c}

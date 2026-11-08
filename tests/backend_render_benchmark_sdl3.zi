@@ -38,7 +38,16 @@ BenchOpen :: () -> bool {
     target = Sink.PixmapSdl3CreateTarget(480, 320); return target != null
 }
 BenchDraw :: () -> bool { return Sink.PixmapSdl3Draw() }
-BenchPresent :: () -> bool { return SetTarget(renderer, null) && Copy(renderer, target, null, null) && Present(renderer) }
+BenchPresent :: () -> bool {
+    started := Now(); target_ok := SetTarget(renderer, null); after_target := Now()
+    copied := target_ok && Copy(renderer, target, null, null); after_copy := Now()
+    presented := copied && Present(renderer); after_present := Now()
+    if Number("BENCH_PROFILE", 0) == 1 {
+        print("PRESENTPHASE % % % %\n", after_target - started, after_copy - after_target,
+            after_present - after_copy, after_present - started)
+    }
+    return presented
+}
 BenchRead :: () -> bool {
     if !SetTarget(renderer, target) { return false }
     surface := Read(renderer, null); if surface == null { return false }; defer Free(surface)
