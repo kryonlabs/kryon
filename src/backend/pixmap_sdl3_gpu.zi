@@ -27,7 +27,7 @@ Sdl3Area :: struct { x: s32; y: s32; width: s32; height: s32 }
 Sdl3Argb :: 372645892; // SDL_PIXELFORMAT_ARGB8888, matching pixmap's packed u32.
 // A multiple of three: split large batches only at triangle boundaries. XY/UV
 // remain borrowed from the recorder; only normalized SDL_FColor data is copied.
-Sdl3ColorCount :: 16380;
+Sdl3ColorCount :: 1536;
 sdl3_colors: [Sdl3ColorCount]Sdl3Color;
 sdl3_renderer: *void;
 sdl3_target: *void;
@@ -193,9 +193,8 @@ PixmapSdl3Draw :: () -> bool {
                     vertex := pixmap_gpu_vertices[batch.first + offset + at]
                     // PixmapGpuImageQuad already premultiplies image tint RGB;
                     // atlas ink stays straight. Preserve both while normalizing.
-                    sdl3_colors[at] = .{cast(float32)vertex.r * (1.0 / 255.0),
-                        cast(float32)vertex.g * (1.0 / 255.0), cast(float32)vertex.b * (1.0 / 255.0),
-                        cast(float32)vertex.a * (1.0 / 255.0)}
+                    sdl3_colors[at] = .{cast(float32)vertex.r / 255.0,
+                        cast(float32)vertex.g / 255.0, cast(float32)vertex.b / 255.0, cast(float32)vertex.a / 255.0}
                 }
                 vertex := *pixmap_gpu_vertices[batch.first + offset]
                 if !RenderGeometryRaw(sdl3_renderer, texture, *vertex.x, cast(s32)size_of(PixmapGpuVertex),
