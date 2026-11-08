@@ -30,6 +30,7 @@ main :: () -> s32 {
     ExpectCarousel()
     item: CarouselItem
     item.label = "Cropped game"
+    item.action_ribbon = "New"
     item.portrait = "cropped.png"
     item.landscape = "cropped.png"
     item.source = Rectangle.{4.0, 8.0, 120.0, 60.0}
