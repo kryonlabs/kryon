@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Linux native apps can publish and read bounded multi-target MIME clipboards, with copied buffers, incremental transfers and conditional release of their own publication.
+
 - Apps can use icon and compact grids with multiple selection, keyboard navigation and focus scrolling.
 - Native apps carry their declared assets beside the executable and into installed packages, so images load independently of the working directory while private install prefixes stay private.
 - Linux apps can opt into their current GTK3 theme, icons and Pango text, including markup and custom font settings, through offscreen images.

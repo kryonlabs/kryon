@@ -1,0 +1,480 @@
+// Optional native X11/XWayland MIME selection transport. No toolkit callbacks,
+// URI interpretation, shell processes, or borrowed published buffers.
+#import "std/byte_text_linux"
+
+MimeClipboardStatus :: enum { Ok; Absent; Error; TooLarge; Timeout; }
+MimeClipboardPayload :: struct { mime: string; bytes: []u8; }
+MimeClipboardPublishResult :: struct { status: MimeClipboardStatus; owner: u64; }
+MimeClipboardReadResult :: struct {
+    status: MimeClipboardStatus
+    bytes: []u8
+    size: s64
+    owner: u64
+}
+
+#scope_file
+c :: #system_library "c";
+xcb :: #system_library "xcb";
+Cookie :: struct { sequence: u32; }
+Iterator :: struct { data: *u32; remaining: s32; index: s32; }
+Property :: struct {
+    response: u8; format: u8; sequence: u16; length: u32
+    kind: u32; after: u32; count: u32; pad: [12]u8
+}
+Connect :: (arg0: *u8, arg1: *s32) -> *void #foreign xcb "xcb_connect";
+Disconnect :: (arg0: *void) #foreign xcb "xcb_disconnect";
+ConnectionError :: (arg0: *void) -> s32 #foreign xcb "xcb_connection_has_error";
+Setup :: (arg0: *void) -> *void #foreign xcb "xcb_get_setup";
+Roots :: (arg0: *void) -> Iterator #foreign xcb "xcb_setup_roots_iterator";
+ScreenNext :: (arg0: *Iterator) #foreign xcb "xcb_screen_next";
+GenerateId :: (arg0: *void) -> u32 #foreign xcb "xcb_generate_id";
+CreateWindow :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: s16, arg5: s16, arg6: u16, arg7: u16, arg8: u16, arg9: u16, arg10: u32, arg11: u32, arg12: *u32) -> Cookie #foreign xcb "xcb_create_window_checked";
+DestroyWindow :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_destroy_window";
+Intern :: (arg0: *void, arg1: u8, arg2: u16, arg3: *u8) -> Cookie #foreign xcb "xcb_intern_atom";
+InternReply :: (arg0: *void, arg1: Cookie, arg2: **void) -> *u32 #foreign xcb "xcb_intern_atom_reply";
+GetOwner :: (arg0: *void, arg1: u32) -> Cookie #foreign xcb "xcb_get_selection_owner";
+OwnerReply :: (arg0: *void, arg1: Cookie, arg2: **void) -> *u32 #foreign xcb "xcb_get_selection_owner_reply";
+SetOwner :: (arg0: *void, arg1: u32, arg2: u32, arg3: u32) -> Cookie #foreign xcb "xcb_set_selection_owner_checked";
+Convert :: (arg0: *void, arg1: u32, arg2: u32, arg3: u32, arg4: u32, arg5: u32) -> Cookie #foreign xcb "xcb_convert_selection";
+ChangeProperty :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: u32, arg5: u8, arg6: u32, arg7: *void) -> Cookie #foreign xcb "xcb_change_property_checked";
+DeleteProperty :: (arg0: *void, arg1: u32, arg2: u32) -> Cookie #foreign xcb "xcb_delete_property";
+GetProperty :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: u32, arg5: u32, arg6: u32) -> Cookie #foreign xcb "xcb_get_property";
+PropertyReply :: (arg0: *void, arg1: Cookie, arg2: **void) -> *Property #foreign xcb "xcb_get_property_reply";
+PropertyValue :: (arg0: *Property) -> *u8 #foreign xcb "xcb_get_property_value";
+PropertyLength :: (arg0: *Property) -> s32 #foreign xcb "xcb_get_property_value_length";
+ChangeAttributes :: (arg0: *void, arg1: u32, arg2: u32, arg3: *u32) -> Cookie #foreign xcb "xcb_change_window_attributes_checked";
+SendEvent :: (arg0: *void, arg1: u8, arg2: u32, arg3: u32, arg4: *u8) -> Cookie #foreign xcb "xcb_send_event_checked";
+RequestCheck :: (arg0: *void, arg1: Cookie) -> *void #foreign xcb "xcb_request_check";
+PollEvent :: (arg0: *void) -> *u8 #foreign xcb "xcb_poll_for_event";
+Flush :: (arg0: *void) -> s32 #foreign xcb "xcb_flush";
+GrabServer :: (arg0: *void) -> Cookie #foreign xcb "xcb_grab_server";
+UngrabServer :: (arg0: *void) -> Cookie #foreign xcb "xcb_ungrab_server";
+Allocate :: (arg0: usize, arg1: usize) -> *u8 #foreign c "calloc";
+Free :: (arg0: *void) #foreign c "free";
+Copy :: (arg0: *void, arg1: *void, arg2: usize) -> *void #foreign c "memcpy";
+Clock :: (arg0: s32, arg1: *s64) -> s32 #foreign c "clock_gettime";
+Pause :: (arg0: u32) -> s32 #foreign c "usleep";
+Thread :: () -> u64 #foreign c "pthread_self";
+
+LIMIT :: 16777216;
+CHUNK :: 32768;
+Entry :: struct { atom: u32; data: *u8; count: s64; }
+Transfer :: struct {
+    window: u32; property: u32; atom: u32
+    data: *u8; count: s64; offset: s64; deadline: s64
+}
+connection: *void;
+thread: u64;
+root: u32;
+clipboard: u32;
+targets: u32;
+incremental: u32;
+property: u32;
+owner_window: u32;
+owner_token: u64;
+generation: u64;
+entries: [32]Entry;
+entry_count: s32;
+transfers: [16]Transfer;
+transfer_bytes: s64;
+reading: bool;
+
+Now :: () -> s64 {
+    time: [2]s64
+    if Clock(1, *time[0]) != 0 { return 0 }
+    return time[0] * 1000 + time[1] / 1000000
+}
+Ready :: () -> bool {
+    return connection != null && thread == Thread() && ConnectionError(connection) == 0
+}
+Checked :: (cookie: Cookie) -> bool {
+    error: *void = RequestCheck(connection, cookie)
+    if error == null { return ConnectionError(connection) == 0 }
+    Free(error)
+    return false
+}
+ValidName :: (name: string) -> bool {
+    if name.count < 1 || name.count > 255 { return false }
+    for i: 0..cast(s32)name.count - 1 { if name[i] == cast(u8)0 { return false } }
+    return true
+}
+Atom :: (name: string) -> u32 {
+    // XCB accepts an exact counted name, including non-ASCII MIME extensions.
+    bytes: [256]u8
+    for i: 0..cast(s64)name.count - 1 { bytes[i] = name[i] }
+    reply: *u32 = InternReply(connection, Intern(connection, 0,
+        cast(u16)name.count, *bytes[0]), null)
+    if reply == null { return 0 }
+    atom: u32 = reply[2]
+    Free(cast(*void)reply)
+    return atom
+}
+Owner :: () -> u32 {
+    reply: *u32 = OwnerReply(connection, GetOwner(connection, clipboard), null)
+    if reply == null { return 0 }
+    result: u32 = reply[2]
+    Free(cast(*void)reply)
+    return result
+}
+Window :: () -> u32 {
+    id: u32 = GenerateId(connection)
+    mask: u32 = 4194304 // PropertyChangeMask, never input or pointer masks.
+    if !Checked(CreateWindow(connection, 0, id, root, 0, 0, 1, 1,
+        0, 2, 0, 2048, *mask)) { return 0 }
+    return id
+}
+DropEntries :: () {
+    for i: 0..31 {
+        if entries[i].data != null { Free(cast(*void)entries[i].data) }
+        entries[i] = Entry.{}
+    }
+    entry_count = 0
+}
+DropTransfer :: (i: s64) {
+    window: u32 = transfers[i].window
+    transfer_bytes -= transfers[i].count
+    if transfers[i].data != null { Free(cast(*void)transfers[i].data) }
+    transfers[i] = Transfer.{}
+    // Retire subscriptions to foreign windows as soon as the last transfer ends.
+    if window != 0 && connection != null {
+        for j: 0..15 { if transfers[j].window == window { return } }
+        mask: u32 = 0
+        unused Checked(ChangeAttributes(connection, window, 2048, *mask))
+    }
+}
+PropertyWrite :: (window: u32, prop: u32, atom: u32, format: u8,
+    count: u32, data: *void) -> bool {
+    return Checked(ChangeProperty(connection, 0, window, prop, atom, format, count, data))
+}
+Notify :: (request: *u32, prop: u32) {
+    event: [8]u32
+    event[0] = 31
+    event[1] = request[1] // timestamp
+    event[2] = request[3] // requestor
+    event[3] = clipboard
+    event[4] = request[5] // exact target
+    event[5] = prop
+    unused Checked(SendEvent(connection, 0, request[3], 0, cast(*u8)*event[0]))
+}
+Serve :: (event: *u8) {
+    words: *u32 = cast(*u32)event
+    // SelectionRequest is a server event, never an arbitrary SendEvent.
+    if event[0] != cast(u8)30 || words[2] != owner_window || owner_window == 0 ||
+        words[4] != clipboard || words[3] == 0 { return }
+    // A queued request may precede SelectionClear. Verify current ownership.
+    if Owner() != owner_window { Notify(words, 0); return }
+    prop: u32 = words[6]
+    if prop == 0 { prop = words[5] } // ICCCM obsolete requestors.
+    if prop == 0 { Notify(words, 0); return }
+    for i: 0..15 {
+        if transfers[i].window == words[3] && transfers[i].property == prop {
+            Notify(words, 0); return
+        }
+    }
+    if words[5] == targets {
+        atoms: [33]u32
+        atoms[0] = targets
+        for i: 0..entry_count - 1 { atoms[i + 1] = entries[i].atom }
+        if PropertyWrite(words[3], prop, 4, 32, cast(u32)(entry_count + 1), cast(*void)*atoms[0]) {
+            Notify(words, prop)
+        } else { Notify(words, 0) }
+        return
+    }
+    for i: 0..entry_count - 1 {
+        entry: Entry = entries[i]
+        if words[5] == entry.atom {
+            if entry.count <= CHUNK {
+                if PropertyWrite(words[3], prop, entry.atom, 8, cast(u32)entry.count, cast(*void)entry.data) {
+                    Notify(words, prop)
+                } else { Notify(words, 0) }
+                return
+            }
+            // Snapshot each active transfer. Re-publishing/losing ownership may
+            // free the publication without invalidating any in-flight bytes.
+            if entry.count > LIMIT - transfer_bytes { Notify(words, 0); return }
+            for j: 0..15 {
+                if transfers[j].window == 0 {
+                    data: *u8 = Allocate(cast(usize)entry.count, 1)
+                    if data == null { Notify(words, 0); return }
+                    unused Copy(cast(*void)data, cast(*void)entry.data, cast(usize)entry.count)
+                    mask: u32 = 4325376 // PropertyChange | StructureNotify
+                    length: u32 = cast(u32)entry.count
+                    if !Checked(ChangeAttributes(connection, words[3], 2048, *mask)) ||
+                        !PropertyWrite(words[3], prop, incremental, 32, 1, cast(*void)*length) {
+                        Free(cast(*void)data); Notify(words, 0); return
+                    }
+                    transfers[j] = Transfer.{words[3], prop, entry.atom, data, entry.count, 0, Now() + 5000}
+                    transfer_bytes += entry.count
+                    Notify(words, prop)
+                    return
+                }
+            }
+            Notify(words, 0)
+            return
+        }
+    }
+    Notify(words, 0)
+}
+Dispatch :: (event: *u8) {
+    // Synthetic PropertyNotify/SelectionClear must not drive native state.
+    if event[0] == cast(u8)30 { Serve(event) }
+    words: *u32 = cast(*u32)event
+    if event[0] == cast(u8)17 {
+        for i: 0..15 {
+            if transfers[i].window != 0 && transfers[i].window == words[2] { DropTransfer(i) }
+        }
+    }
+    if event[0] == cast(u8)29 && words[2] == owner_window && words[3] == clipboard {
+        // Old clear events cannot retire a newer local publication.
+        if Owner() != owner_window {
+            DropEntries()
+            unused DestroyWindow(connection, owner_window)
+            owner_window = 0
+            owner_token = 0
+        }
+    }
+    if event[0] != cast(u8)28 || event[16] != cast(u8)1 { return }
+    for i: 0..15 {
+        transfer: *Transfer = *transfers[i]
+        if transfer.window != 0 && words[1] == transfer.window && words[2] == transfer.property {
+            remaining: s64 = transfer.count - transfer.offset
+            count: s64 = remaining
+            if count > CHUNK { count = CHUNK }
+            data: *u8 = transfer.data
+            if count > 0 { data = *transfer.data[transfer.offset] }
+            if !PropertyWrite(transfer.window, transfer.property, transfer.atom, 8,
+                cast(u32)count, cast(*void)data) || remaining == 0 { DropTransfer(i) }
+            else { transfer.offset += count }
+            return
+        }
+    }
+}
+Expire :: () {
+    now: s64 = Now()
+    for i: 0..15 {
+        if transfers[i].window != 0 && now >= transfers[i].deadline { DropTransfer(i) }
+    }
+}
+ReadProperty :: (window: u32, capacity: s64) -> *Property {
+    // Always allow the four-byte INCR header, even with an empty caller buffer.
+    // Otherwise at most capacity + 3 bytes cross the wire.
+    length: s64 = (capacity + 3) / 4
+    if length < 1 { length = 1 }
+    return PropertyReply(connection, GetProperty(connection, 0, window,
+        property, 0, 0, cast(u32)length), null)
+}
+
+#scope_export
+
+// Open once on the application's GTK/X11 thread; every call belongs there.
+MimeClipboardOpen :: () -> bool {
+    if connection != null { return Ready() }
+    thread = Thread()
+    screen: s32 = 0
+    connection = Connect(null, *screen)
+    if !Ready() { MimeClipboardClose(); return false }
+    roots: Iterator = Roots(Setup(connection))
+    while screen > 0 && roots.remaining > 0 { ScreenNext(*roots); screen -= 1 }
+    if roots.remaining <= 0 || roots.data == null { MimeClipboardClose(); return false }
+    root = roots.data[0]
+    clipboard = Atom("CLIPBOARD")
+    targets = Atom("TARGETS")
+    incremental = Atom("INCR")
+    property = Atom("_KRYON_MIME_CLIPBOARD")
+    if clipboard == 0 || targets == 0 || incremental == 0 || property == 0 {
+        MimeClipboardClose(); return false
+    }
+    return true
+}
+
+MimeClipboardOwner :: () -> u64 {
+    if !Ready() { return 0 }
+    owner: u32 = Owner()
+    if owner != 0 && owner == owner_window { return owner_token }
+    return cast(u64)owner
+}
+
+MimeClipboardPublish :: (payloads: []MimeClipboardPayload) -> MimeClipboardPublishResult {
+    result: MimeClipboardPublishResult
+    result.status = MimeClipboardStatus.Error
+    if !Ready() || reading || payloads.count < 1 || payloads.count > 32 || generation >= 4294967295 { return result }
+    staged: [32]Entry
+    count: s32 = cast(s32)payloads.count
+    total: s64 = 0
+    valid: bool = true
+    for i: 0..count - 1 {
+        value: MimeClipboardPayload = payloads[i]
+        if !ValidName(value.mime) || value.bytes.count < 0 { valid = false; break }
+        if value.bytes.count > LIMIT - total { result.status = MimeClipboardStatus.TooLarge; valid = false; break }
+        atom: u32 = Atom(value.mime)
+        if atom == 0 || atom == targets || atom == incremental ||
+            value.mime == "MULTIPLE" || value.mime == "TIMESTAMP" || value.mime == "SAVE_TARGETS" { valid = false; break }
+        for j: 0..i - 1 { if staged[j].atom == atom { valid = false } }
+        if !valid { break }
+        data: *u8 = Allocate(cast(usize)(value.bytes.count + 1), 1)
+        if data == null { valid = false; break }
+        if value.bytes.count > 0 { unused Copy(cast(*void)data, cast(*void)*value.bytes[0], cast(usize)value.bytes.count) }
+        staged[i] = Entry.{atom, data, value.bytes.count}
+        total += value.bytes.count
+    }
+    window: u32 = 0
+    if valid { window = Window(); valid = window != 0 }
+    if valid { valid = Checked(SetOwner(connection, window, clipboard, 0)) && Owner() == window }
+    if !valid {
+        if window != 0 { unused DestroyWindow(connection, window) }
+        for i: 0..31 { if staged[i].data != null { Free(cast(*void)staged[i].data) } }
+        return result
+    }
+    previous: u32 = owner_window
+    DropEntries()
+    entries = staged
+    entry_count = count
+    owner_window = window
+    generation += 1
+    owner_token = (generation << 32) | cast(u64)window
+    if previous != 0 { unused DestroyWindow(connection, previous) }
+    unused Flush(connection)
+    result.status = MimeClipboardStatus.Ok
+    result.owner = owner_token
+    return result
+}
+
+// Processes at most 256 events, with 16MiB aggregate outgoing snapshot storage.
+MimeClipboardPump :: (max_events: s32) -> s32 {
+    if !Ready() || reading || max_events <= 0 { return 0 }
+    limit: s32 = max_events
+    if limit > 256 { limit = 256 }
+    Expire()
+    count: s32 = 0
+    while count < limit {
+        event: *u8 = PollEvent(connection)
+        if event == null { break }
+        Dispatch(event)
+        Free(cast(*void)event)
+        count += 1
+    }
+    unused Flush(connection)
+    return count
+}
+
+MimeClipboardRead :: (mime: string, buffer: []u8, timeout_ms: s32) -> MimeClipboardReadResult {
+    result: MimeClipboardReadResult
+    result.status = MimeClipboardStatus.Error
+    if !Ready() || reading || !ValidName(mime) || buffer.count < 0 || timeout_ms < 1 || timeout_ms > 5000 { return result }
+    capacity: s64 = buffer.count
+    if capacity > LIMIT { capacity = LIMIT }
+    owner: u32 = Owner()
+    result.owner = cast(u64)owner
+    if owner == 0 { result.status = MimeClipboardStatus.Absent; return result }
+    target: u32 = Atom(mime)
+    if target == 0 { return result }
+    if owner == owner_window {
+        result.owner = owner_token
+        result.status = MimeClipboardStatus.Absent
+        for i: 0..entry_count - 1 {
+            if entries[i].atom == target {
+                result.size = entries[i].count
+                result.status = MimeClipboardStatus.TooLarge
+                if result.size <= capacity {
+                    if result.size > 0 { unused Copy(cast(*void)*buffer[0], cast(*void)entries[i].data, cast(usize)result.size) }
+                    result.bytes = buffer[0:result.size]
+                    result.status = MimeClipboardStatus.Ok
+                }
+                return result
+            }
+        }
+        return result
+    }
+    window: u32 = Window()
+    if window == 0 { return result }
+    reading = true
+    deadline: s64 = Now() + timeout_ms
+    unused Convert(connection, window, clipboard, target, property, 0)
+    unused Flush(connection)
+    notified: bool = false
+    incr: bool = false
+    done: bool = false
+    result.status = MimeClipboardStatus.Timeout
+    while !done && Now() < deadline && ConnectionError(connection) == 0 {
+        Expire()
+        event: *u8 = PollEvent(connection)
+        if event == null { unused Pause(1000); continue }
+        words: *u32 = cast(*u32)event
+        kind: u8 = event[0] & cast(u8)127
+        receive: bool = false
+        if kind == cast(u8)31 && words[2] == window && words[3] == clipboard && words[4] == target && !notified {
+            notified = true
+            if words[5] == 0 { result.status = MimeClipboardStatus.Absent; done = true }
+            else if words[5] != property { result.status = MimeClipboardStatus.Error; done = true }
+            else { receive = true }
+        }
+        if event[0] == cast(u8)28 && words[1] == window && words[2] == property &&
+            event[16] == cast(u8)0 && notified && incr { receive = true }
+        if receive {
+            value: *Property = ReadProperty(window, capacity - result.size)
+            if value == null { result.status = MimeClipboardStatus.Error; done = true }
+            else {
+                length: s64 = cast(s64)PropertyLength(value)
+                if !incr && value.kind == incremental {
+                    if value.format != cast(u8)32 || value.count != 1 || length != 4 || value.after != 0 {
+                        result.status = MimeClipboardStatus.Error; done = true
+                    } else {
+                        hint: u32 = (cast(*u32)PropertyValue(value)).*
+                        if cast(s64)hint > capacity { result.size = cast(s64)hint; result.status = MimeClipboardStatus.TooLarge; done = true }
+                        else { incr = true }
+                    }
+                } else if value.kind != target || value.format != cast(u8)8 || length < 0 || length != cast(s64)value.count {
+                    result.status = MimeClipboardStatus.Error; done = true
+                } else if length > capacity - result.size || value.after != 0 {
+                    result.size += length + cast(s64)value.after
+                    result.status = MimeClipboardStatus.TooLarge; done = true
+                } else {
+                    if length > 0 { unused Copy(cast(*void)*buffer[result.size], cast(*void)PropertyValue(value), cast(usize)length) }
+                    result.size += length
+                    if !incr || length == 0 { result.status = MimeClipboardStatus.Ok; done = true }
+                }
+                Free(cast(*void)value)
+            }
+            unused DeleteProperty(connection, window, property)
+            unused Flush(connection)
+        } else { Dispatch(event) }
+        Free(cast(*void)event)
+    }
+    // A foreign owner's XID is observational, not a content generation token.
+    if ConnectionError(connection) != 0 || Owner() != owner { result.status = MimeClipboardStatus.Error }
+    unused DestroyWindow(connection, window)
+    unused Flush(connection)
+    reading = false
+    if result.status == MimeClipboardStatus.Ok { result.bytes = buffer[0:result.size] }
+    return result
+}
+
+// Own-token-only. A server grab makes owner comparison + clearing atomic.
+// Foreign same-window republishing cannot be generation-checked, so never clear it.
+MimeClipboardRelease :: (owner: u64) -> bool {
+    if !Ready() || reading || owner == 0 || owner != owner_token { return false }
+    unused GrabServer(connection)
+    matches: bool = Owner() == owner_window
+    if matches { matches = Checked(SetOwner(connection, 0, clipboard, 0)) }
+    unused UngrabServer(connection)
+    unused Flush(connection)
+    if matches {
+        unused DestroyWindow(connection, owner_window)
+        owner_window = 0
+        owner_token = 0
+        DropEntries()
+    }
+    return matches
+}
+
+MimeClipboardClose :: () {
+    if connection == null || thread != Thread() || reading { return }
+    // Disconnect destroys only this connection's windows and selections.
+    Disconnect(connection)
+    connection = null
+    owner_window = 0
+    owner_token = 0
+    DropEntries()
+    for i: 0..15 { DropTransfer(i) }
+    thread = 0
+}

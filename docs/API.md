@@ -280,6 +280,67 @@ contract. Standard hosted widget policy continues to reject all guest runtime
 texture IDs and does not advertise bitmap lifecycle capabilities; an embedding
 must provide a separate authenticated ownership policy to grant those effects.
 
+### Optional native MIME clipboard on Linux
+
+Import `kryon/MimeClipboardLinux` in an X11/XWayland native app and link
+`-lxcb` (for example in `LDLIBS`). Existing text and PNG modules retain their
+interfaces. This module owns one dedicated connection and unmapped selection
+window, without toolkit callbacks or changes to the toolkit's connection.
+It does not implement a Wayland-only data source or clipboard persistence.
+
+Call `MimeClipboardOpen() -> bool` on the application's GTK/X11 owning thread,
+then keep every call serialized on that same thread until
+`MimeClipboardClose()`. Calls from another thread fail; close there does nothing.
+Close is idempotent and destroys only the transport's own connection/windows,
+freeing its copied publications and outgoing transfer snapshots. No callbacks
+or caller buffers remain registered after any call returns.
+
+- `MimeClipboardPublish(payloads: []MimeClipboardPayload) -> MimeClipboardPublishResult`
+  copies every `{mime: string, bytes: []u8}` before publishing the complete
+  target set in one selection ownership change. Reuse/free input storage after
+  return. Result fields are `status` and `owner: u64`. Duplicate/empty/NUL names,
+  reserved selection protocol targets and invalid counts fail without replacing
+  the prior publication. Empty byte payloads are supported.
+- `MimeClipboardRead(mime: string, buffer: []u8, timeout_ms: s32) -> MimeClipboardReadResult`
+  requests exactly that target, including incoming INCR. It returns `status`,
+  `bytes: []u8`, `size: s64` and `owner: u64`. Only `Ok` exposes bytes, borrowed
+  from the supplied buffer. The buffer may contain partial data on failure;
+  ignore it unless status is `Ok`. Empty success differs from `Absent`.
+  `size` is the bytes observed, the direct property's exact size, or an INCR
+  lower bound/hint when rejected as too large. INCR hints are untrusted.
+- `MimeClipboardPump(max_events: s32) -> s32` serves at most 256 events per
+  call (zero for nonpositive budgets). Call regularly from the app frame loop
+  while publishing. Reads also serve queued requests; self-reads copy directly
+  without waiting for a toolkit loop. Pump retires abandoned/expired transfers.
+- `MimeClipboardOwner() -> u64` returns zero for no owner/unavailable transport.
+  Local ownership returns the local generation token. Foreign ownership returns
+  an observational XID; it cannot identify content changes within that window.
+- `MimeClipboardRelease(owner: u64) -> bool` clears only the still-current
+  publication created by this transport, comparing server ownership atomically.
+  Every successful local publish has a fresh window and generation token;
+  stale tokens, including across close/reopen, cannot clear newer local data.
+  Foreign tokens always fail, even if a read returned that token: a foreign
+  application may republish different data from the same window.
+
+`MimeClipboardStatus` is `Ok`, `Absent`, `Error`, `TooLarge`, or `Timeout`.
+`Absent` means no owner or a refused target. Invalid arguments, malformed
+conversion properties, connection errors and owner replacement during a read
+return `Error`. Read timeouts are total monotonic deadlines (1–5000 ms),
+including trickling INCR chunks; ordinary X-server request round trips assume
+a responsive local X server. Only the UI thread may open; concurrent first
+calls and reentrant calls are unsupported.
+
+Limits: 32 targets; names 1–255 bytes; 16 MiB aggregate copied publication;
+16 MiB per read even with a larger caller buffer; 16 outgoing INCR transfers
+with 16 MiB aggregate snapshot bytes and a five-second total serving lifetime.
+Transfers use 32 KiB chunks and survive local republish/owner loss using their
+own copied snapshots. No MIME conversion, URI validation or file operation
+policy occurs here. Clipboard data and remote ownership are observations, not
+an authorization or a trustworthy content generation identifier.
+
+Run `make mime-clipboard-linux-test` for source and saved-IR native tests against
+independent Xlib fixtures and installed `xclip`, under private HOME/XDG/D-Bus/Xvfb.
+
 ### Optional GTK3 theme rendering on Linux
 
 Import `kryon/GtkStyleLinux` only in a Linux native application that links GTK3.

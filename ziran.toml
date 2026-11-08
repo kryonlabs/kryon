@@ -187,6 +187,7 @@ SystemThemeLinux = "src/backend/system_theme_linux.zi"
 SystemThemeHost = "src/ui/system_theme_host.zi"
 SystemThemeHostLinux = "src/backend/system_theme_host_linux.zi"
 SystemClipboardLinux = "src/backend/system_clipboard_linux.zi"
+MimeClipboardLinux = "src/backend/mime_clipboard_linux.zi"
 Dialog = "src/ui/dialog.zi"
 FileDialogLinux = "src/backend/file_dialog_linux.zi"
 Tray = "src/backend/Tray/module.zi"
@@ -307,7 +308,7 @@ ref = "360553150917f352e49e1beb78917370792ccaef"
 
 [dependencies.avif]
 git = "https://github.com/ziranlang/avif.git"
-ref = "2f349f8c4a46c7476c6c02b87ec570e66d3a8f34"
+ref = "be129d06b900c9e9e0d78167bd47477e08f1bfab"
 
 [dependencies.webp]
 git = "https://github.com/ziranlang/webp.git"

@@ -1,0 +1,137 @@
+#import "mime_clipboard_linux"
+#import "std/byte_text_linux"
+#import "std/number_text"
+
+c :: #system_library "c";
+Read :: (arg0: s32, arg1: *u8, arg2: u64) -> s64 #foreign c "read";
+Write :: (arg0: s32, arg1: *u8, arg2: u64) -> s64 #foreign c "write";
+Env :: (arg0: *u8) -> *u8 #foreign c "getenv";
+Allocate :: (arg0: usize, arg1: usize) -> *u8 #foreign c "calloc";
+Free :: (arg0: *void) #foreign c "free";
+Fill :: (arg0: *void, arg1: s32, arg2: usize) -> *void #foreign c "memset";
+PollFd :: struct { fd: s32; events: s16; revents: s16; }
+Poll :: (arg0: *PollFd, arg1: u64, arg2: s32) -> s32 #foreign c "poll";
+
+Number :: (value: s64) {
+    digits: [32]u8
+    text: string = FormatInteger(value, digits[:])
+    output: [32]u8
+    for i: 0..cast(s64)text.count - 1 { output[i] = text[i] }
+    unused Write(1, *output[0], cast(u64)text.count)
+    space: u8 = 32
+    unused Write(1, *space, 1)
+}
+Line :: () { newline: u8 = 10; unused Write(1, *newline, 1) }
+Environment :: (key: string) -> string {
+    buffer: [64]u8
+    for i: 0..cast(s64)key.count - 1 { buffer[i] = key[i] }
+    return TextFromCString(Env(*buffer[0]))
+}
+Decimal :: (text: string, fallback: s64) -> s64 {
+    if text.count == 0 { return fallback }
+    n: s64 = 0
+    for i: 0..cast(s64)text.count - 1 { n = n * 10 + cast(s64)text[i] - 48 }
+    return n
+}
+Report :: (value: MimeClipboardReadResult) {
+    Number(cast(s64)value.status); Number(value.size); Number(cast(s64)value.owner); Line()
+    if value.bytes.count > 0 { unused Write(1, *value.bytes[0], cast(u64)value.bytes.count) }
+}
+#program_export
+main :: () -> s32 {
+    if !MimeClipboardOpen() { return 20 }
+    mode: string = Environment("MODE")
+    if mode == "read" {
+        capacity: s64 = Decimal(Environment("CAPACITY"), 1048576)
+        data: *u8 = Allocate(cast(usize)(capacity + 1), 1)
+        if data == null { return 21 }
+        buffer: []u8 = BytesFromPointer(data, cast(u64)capacity)
+        Report(MimeClipboardRead(Environment("TARGET"), buffer,
+            cast(s32)Decimal(Environment("TIMEOUT"), 500)))
+        Free(cast(*void)data)
+        MimeClipboardClose()
+        return 0
+    }
+    // One native publisher serves a second process while remaining responsive
+    // to commands. All native clipboard functions stay on this main thread.
+    data: *u8 = Allocate(1048576, 1)
+    if data == null { return 22 }
+    bytes: []u8 = BytesFromPointer(data, 1048576)
+    for i: 0..1048575 { bytes[i] = cast(u8)(i % 251) }
+    uris: [25]u8 = .{102,105,108,101,58,47,47,47,116,109,112,47,228,184,150,231,149,140,13,10,0,0,0,0,0}
+    copied: string = "cut\nfile:///tmp/世界\n"
+    copied_bytes: [64]u8
+    for i: 0..cast(s64)copied.count - 1 { copied_bytes[i] = copied[i] }
+    payloads: [4]MimeClipboardPayload
+    payloads[0] = MimeClipboardPayload.{"text/uri-list", uris[0:20]}
+    payloads[1] = MimeClipboardPayload.{"x-special/gnome-copied-files", copied_bytes[0:cast(s64)copied.count]}
+    payloads[2] = MimeClipboardPayload.{"application/octet-stream", bytes[:]}
+    payloads[3] = MimeClipboardPayload.{"application/x-empty", bytes[0:0]}
+    publication: MimeClipboardPublishResult = MimeClipboardPublish(payloads[:])
+    if publication.status != MimeClipboardStatus.Ok { return 23 }
+    first: u64 = publication.owner
+    // Caller mutation cannot change the copied publication.
+    unused Fill(cast(*void)data, 255, 1)
+    unused Fill(cast(*void)*uris[0], 120, 1)
+    Number(cast(s64)publication.status); Number(cast(s64)publication.owner); Line()
+    running: bool = true
+    while running {
+        unused MimeClipboardPump(32)
+        descriptor: PollFd = PollFd.{0, 1, 0}
+        if Poll(*descriptor, 1, 1) > 0 {
+            command: u8
+            if Read(0, *command, 1) != 1 { break }
+            if command == cast(u8)113 { running = false }
+            if command == cast(u8)112 {
+                publication = MimeClipboardPublish(payloads[:])
+                Number(cast(s64)publication.status); Number(cast(s64)publication.owner); Line()
+            }
+            if command == cast(u8)114 { Number(cast(s64)MimeClipboardRelease(first)); Line() }
+            if command == cast(u8)120 { Number(cast(s64)MimeClipboardRelease(publication.owner)); Line() }
+            if command == cast(u8)111 { Number(cast(s64)MimeClipboardOwner()); Line() }
+            if command == cast(u8)115 {
+                tiny: [64]u8
+                Report(MimeClipboardRead("text/uri-list", tiny[:], 100))
+                Line()
+            }
+            if command == cast(u8)105 {
+                // Invalid atomic publication must leave the current owner intact.
+                invalid: [2]MimeClipboardPayload
+                invalid[0] = payloads[0]; invalid[1] = payloads[0]
+                Number(cast(s64)MimeClipboardPublish(invalid[:]).status)
+                Number(cast(s64)MimeClipboardOwner()); Line()
+            }
+            if command == cast(u8)122 {
+                stale: u64 = publication.owner
+                MimeClipboardClose()
+                if !MimeClipboardOpen() { return 24 }
+                publication = MimeClipboardPublish(payloads[:])
+                Number(cast(s64)publication.status)
+                Number(cast(s64)MimeClipboardRelease(stale))
+                Number(cast(s64)publication.owner); Line()
+            }
+            if command == cast(u8)98 {
+                oversized: *u8 = Allocate(16777217, 1)
+                if oversized == null { return 25 }
+                invalid: [33]MimeClipboardPayload
+                invalid[0] = MimeClipboardPayload.{"application/x-large", BytesFromPointer(oversized, 16777217)}
+                Number(cast(s64)MimeClipboardPublish(invalid[0:1]).status)
+                Free(cast(*void)oversized)
+                invalid[0] = MimeClipboardPayload.{"", bytes[0:0]}
+                Number(cast(s64)MimeClipboardPublish(invalid[0:1]).status)
+                invalid[0].mime = "a\0b"
+                Number(cast(s64)MimeClipboardPublish(invalid[0:1]).status)
+                invalid[0].mime = "TARGETS"
+                Number(cast(s64)MimeClipboardPublish(invalid[0:1]).status)
+                Number(cast(s64)MimeClipboardPublish(invalid[:]).status)
+                Number(cast(s64)MimeClipboardPublish(invalid[0:0]).status)
+                Number(cast(s64)MimeClipboardRead("text/uri-list", bytes[0:0], 0).status)
+                Number(cast(s64)MimeClipboardRead("text/uri-list", bytes[0:0], 5001).status)
+                Number(cast(s64)MimeClipboardOwner()); Line()
+            }
+        }
+    }
+    MimeClipboardClose()
+    Free(cast(*void)data)
+    return 0
+}

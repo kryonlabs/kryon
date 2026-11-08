@@ -498,6 +498,11 @@ system-clipboard-linux-test: build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
 		python3 tests/system_clipboard_linux_test.py
 
+.PHONY: mime-clipboard-linux-test
+mime-clipboard-linux-test:
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/mime_clipboard_linux_test.py
+test: mime-clipboard-linux-test
+
 
 .PHONY: window-test
 window-test: build/bin/kryon
