@@ -12,6 +12,13 @@ mkdir -p "$work/fixtures"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGER
 export YUE_DESKTOP_RECOVERY=0
 python3 "$repo/tests/lanczos_goldens.py" fixtures "$work/fixtures"
+python3 - "$work/fixtures" <<'PY'
+from pathlib import Path
+from PIL import Image
+import sys
+for kind, alpha in enumerate((255, 128)):
+    Image.new('RGBA', (512, 512), (20, 70, 110, alpha)).save(Path(sys.argv[1]) / f'join-{kind}.png')
+PY
 libs="$(pkg-config --libs cairo freetype2 pangocairo fontconfig glib-2.0) -ldl -lm -lpthread"
 source="$repo/tests/cairo_scaled_image_test.zi"
 image_ziran ir --define POSIX_THREADS --root "$repo/tests" --module-path "$repo/src/backend" \

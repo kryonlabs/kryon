@@ -32,6 +32,38 @@ Save :: (directory: string, name: string, index: s32) -> bool {
     return CloseFile(file) && written == 65536
 }
 
+// Two uniform pictures meeting at any fractional edge must cover each
+// device pixel once. A translucent fixture also detects double coverage.
+Adjacent :: (path: string, edge: float32, horizontal: bool, smooth: bool) -> bool {
+    Raster.BeginRasterFrame()
+    Texture.emitting_smooth = smooth
+    a := Rectangle.{-8.25, -8.25, edge + 8.25, 160.0}
+    b := Rectangle.{edge, -8.25, 160.0, 160.0}
+    if horizontal {
+        a = .{-8.25, -8.25, 160.0, edge + 8.25}
+        b = .{-8.25, edge, 160.0, 160.0}
+    }
+    source := Rectangle.{0.0, 0.0, 512.0, 512.0}
+    white := Color.{255, 255, 255, 255}
+    Raster.RasterImage(path, 0, source, a, a, .{}, 0.0, 0.0, white)
+    Raster.RasterImage(path, 0, source, b, b, .{}, 0.0, 0.0, white)
+    if !Raster.FinishRasterFrame() { return false }
+    data := Raster.RasterSurfaceData()
+    stride := Raster.RasterSurfaceStride()
+    reference := cast(*u32)*data[64 * stride + 64 * 4]
+    for at: cast(s32)0..127 {
+        x := ifx horizontal then 64 else at
+        y := ifx horizontal then at else 64
+        pixel := cast(*u32)*data[y * stride + x * 4]
+        if pixel.* != reference.* {
+            print("adjacent image seam: edge % horizontal % smooth % pixel % is % expected %\n",
+                edge, horizontal, smooth, at, pixel.*, reference.*)
+            return false
+        }
+    }
+    return true
+}
+
 // Each smooth draw first shows Cairo's filter and starts its Lanczos copy;
 // once the copy is made it is drawn, the same on every later frame, and
 // saved for tests/lanczos_backend_goldens.sh to compare with Pillow.
@@ -64,8 +96,23 @@ main :: (argc: s32, argv: **u8) -> s32 {
     // A sharp image never makes a copy.
     sharp: Vec(u8); BuilderPrint(*sharp, "%/opaque.png", directory); sharp_path := BuilderFinish(sharp)
     if !Draw(sharp_path, boxes[1], targets[1], tints[0], false) || Lanczos.LanczosPending() { return 9 }
+    for kind: cast(s32)0..1 {
+        text: Vec(u8); BuilderPrint(*text, "%/join-%.png", directory, kind); path := BuilderFinish(text)
+        for axis: cast(s32)0..1 {
+            for fraction: cast(s32)0..8 {
+                edge := 63.0 + cast(float32)fraction * 0.125
+                if !Adjacent(path, edge, axis == 1, true) { return 11 }
+                unused Lanczos.LanczosWait()
+                if !Adjacent(path, edge, axis == 1, true) { return 12 }
+                unused Lanczos.LanczosWait()
+                if !Adjacent(path, edge, axis == 1, true) { return 13 }
+                if !Adjacent(path, edge, axis == 1, false) { return 14 }
+            }
+        }
+    }
     Raster.CloseRaster()
     if !Raster.OpenRaster(128, 128) { return 10 }
     print("Cairo draws settled Lanczos copies 1:1 and keeps them stable across frames\n")
+    print("Cairo adjacent opaque and translucent images cover fractional joins once, before and after resampling\n")
     return 0
 }

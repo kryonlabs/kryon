@@ -77,6 +77,7 @@ SetSourceRGBA :: (paint: *void, red: float64, green: float64,
     blue: float64, alpha: float64) #foreign cairo_library "cairo_set_source_rgba";
 GetSource :: (paint: *void) -> *void #foreign cairo_library "cairo_get_source";
 PatternFilter :: (pattern: *void, filter: s32) #foreign cairo_library "cairo_pattern_set_filter";
+PatternExtend :: (pattern: *void, extend: s32) #foreign cairo_library "cairo_pattern_set_extend";
 Paint :: (paint: *void) #foreign cairo_library "cairo_paint";
 PaintAlpha :: (paint: *void, alpha: float64) #foreign cairo_library "cairo_paint_with_alpha";
 NewPath :: (paint: *void) #foreign cairo_library "cairo_new_path";
@@ -769,9 +770,21 @@ RasterImage :: (asset_path: string, texture_id: u32,
         sampled = ScaledImageFor(image, source, destination, *snapped)
     }
     Save(paint)
-    RoundBox(clip, radius)
-    Clip(paint)
     polygon := CurrentPaintPolygon()
+    // Adjacent rectangular images own whole device pixels at their shared
+    // edge. Antialiasing each clip separately blends both with the clear
+    // colour and leaves a seam, including over a snapped Lanczos copy.
+    // Rounded, polygonal and rotated images retain their smooth outlines.
+    rectangular := radius <= 0.0 && rotation == 0.0 && polygon.count < 3
+    if rectangular { SetAntialias(paint, 1) }
+    matrix: CairoMatrix; GetMatrix(paint, *matrix)
+    device_pixels := rectangular && matrix.xx == 1.0 && matrix.yy == 1.0 &&
+        matrix.xy == 0.0 && matrix.yx == 0.0 && matrix.x0 == 0.0 && matrix.y0 == 0.0
+    // Cairo's aliased clip and the cached copy disagree at exact half
+    // pixels. Round both to the copy's device edges, also while it loads.
+    image_clip := ifx device_pixels then Lanczos.LanczosSnap(clip) else clip
+    RoundBox(image_clip, radius)
+    Clip(paint)
     if polygon.count >= 3 {
         NewPath(paint)
         MoveTo(paint, destination.x + polygon[0].x * destination.width,
@@ -794,9 +807,17 @@ RasterImage :: (asset_path: string, texture_id: u32,
                 cast(float64)snapped.height / cast(float64)sampled.key.height)
         }
         pattern := PatternForSurface(sampled.surface)
+        PatternExtend(pattern, 3)
         PatternFilter(pattern, ifx exact then 3 else 1); PaintImagePattern(pattern, tint)
         PatternDestroy(pattern); Restore(paint)
         CairoReleaseManaged(texture_id, image); return
+    }
+    if device_pixels {
+        covered := destination
+        covered.x -= origin.x; covered.y -= origin.y
+        covered = Lanczos.LanczosSnap(covered)
+        CanvasRectangle(paint, covered.x, covered.y, covered.width, covered.height)
+        Clip(paint)
     }
     Translate(paint, destination.x,
         destination.y)
@@ -804,10 +825,12 @@ RasterImage :: (asset_path: string, texture_id: u32,
         3.14159265358979323846 / 180.0)
     Translate(paint, -cast(float64)origin.x,
         -cast(float64)origin.y)
-    CanvasRectangle(paint, 0.0, 0.0,
-        destination.width,
-        destination.height)
-    Clip(paint)
+    if !device_pixels {
+        CanvasRectangle(paint, 0.0, 0.0,
+            destination.width,
+            destination.height)
+        Clip(paint)
+    }
     Scale(paint, cast(float64)destination.width /
         cast(float64)source.width,
         cast(float64)destination.height / cast(float64)source.height)
@@ -822,6 +845,9 @@ RasterImage :: (asset_path: string, texture_id: u32,
         return
     }
     PatternFilter(pattern, ifx CurrentPaintSmooth() then 1 else 3)
+    // Filtering a full image at its edge must sample its edge pixel rather
+    // than transparent pixels beyond the surface while its copy is loading.
+    if rectangular { PatternExtend(pattern, 3) }
     PaintImagePattern(pattern, tint)
     PatternDestroy(pattern)
     Restore(paint)
