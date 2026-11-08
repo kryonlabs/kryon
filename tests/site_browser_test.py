@@ -38,6 +38,14 @@ MODULES = {'kryon', 'plot', 'data-views', 'css', 'mingcute', 'game2d'}
 PRIVATE = ('github.com/kryonlabs/terminal', 'github.com/kryonlabs/browser', 'github.com/kryonlabs/github')
 
 
+class DevToolsError(RuntimeError):
+    def __init__(self, method, error):
+        self.method = method
+        self.code = error.get('code')
+        self.message = error.get('message')
+        super().__init__(method + ': ' + str(error))
+
+
 class Browser:
     def __init__(self, profile, chromium):
         shutil.rmtree(profile, ignore_errors=True)
@@ -108,7 +116,7 @@ class Browser:
                                                  for arg in reply['params']['args'])[:300])
                 if reply.get('id') == self.sequence:
                     if 'error' in reply:
-                        raise RuntimeError(method + ': ' + str(reply['error']))
+                        raise DevToolsError(method, reply['error'])
                     return reply.get('result', {})
             if select.select([self.process.stdout], [], [], .2)[0]:
                 data = os.read(self.process.stdout.fileno(), 1 << 20)
@@ -127,7 +135,15 @@ class Browser:
         deadline = time.monotonic() + seconds
         value = None
         while time.monotonic() < deadline:
-            value = self.evaluate(expression)
+            try:
+                value = self.evaluate(expression)
+            except DevToolsError as error:
+                if error.method != 'Runtime.evaluate' or error.code != -32000 or error.message not in (
+                        'Inspected target navigated or closed', 'Execution context was destroyed.'):
+                    raise
+                # A redirect can replace the execution context while this
+                # read is pending. Poll the new page within the same deadline.
+                value = None
             if value:
                 return value
             time.sleep(.1)
@@ -303,6 +319,12 @@ def check_links(site, base, pages):
 def check_pages(browser, base, site, shots):
     reports = {}
     browser.viewport(1366, 900)
+    browser.open(base + 'index.html')
+    # Keep an evaluation pending across a real navigation, as happens when
+    # showcase.html redirects while the test is polling its legacy route.
+    browser.until("(async () => { if (location.pathname.endsWith('/apps.html')) return document.readyState === 'complete';"
+                  " location.href = 'apps.html'; await new Promise(resolve => setTimeout(resolve, 1000)); return false; })()",
+                  'navigation across a pending evaluation')
     for name in PAGES:
         browser.open(base + name + '.html')
         browser.until("[...document.images].every(img => img.loading === 'lazy' || img.complete)", 'images on ' + name, 20)

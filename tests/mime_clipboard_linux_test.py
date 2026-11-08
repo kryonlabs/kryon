@@ -334,11 +334,11 @@ def main():
     source = ROOT / 'tests/mime_clipboard_probe.zi'
     ir = WORK / 'ir'
     common = ['--module-path', ROOT / 'src/backend', '--module-path', ZIRAN_ROOT / 'std']
-    run(['build-queue', '--', ZIRAN, 'ir', '--root', ROOT / 'tests', *common, '-o', ir, source], env=env)
+    run([ZIRAN, 'ir', '--root', ROOT / 'tests', *common, '-o', ir, source], env=env)
     for form in ('source', 'saved'):
         root, input_ = (ROOT / 'tests', source) if form == 'source' else (ir, ir / 'mime_clipboard_probe.zir')
         output = WORK / 'probe'  # one stable executable, rebuild for each form
-        run(['build-queue', '--', ZIRAN, 'build', '--target=c', '--exe', '--root', root,
+        run([ZIRAN, 'build', '--target=c', '--exe', '--root', root,
              '--entry', 'mime_clipboard_probe:main', *([] if form == 'saved' else common),
              '-o', output, input_], env=env)
         probe = output / 'mime_clipboard_probe'
