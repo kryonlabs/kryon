@@ -16,6 +16,9 @@ BitmapUpload :: #type (width: s32, height: s32, rgba: []u8) -> u32;
 BitmapReplace :: #type (id: u32, width: s32, height: s32, rgba: []u8) -> bool;
 BitmapFree :: #type (id: u32) -> ();
 BitmapChanged :: #type () -> ();
+BitmapReleaseNotice :: #type (id: u32) -> ();
+bitmap_release_notice: BitmapReleaseNotice;
+bitmap_no_release_notice: BitmapReleaseNotice;
 
 BitmapStorage :: struct {
     image: Texture2D
@@ -72,6 +75,7 @@ BitmapPublish :: (at: s32) {
 BitmapDrop :: (at: s32) {
     item := *bitmap_images[at]
     if item.image.id == cast(u32)0 { return }
+    if bitmap_release_notice != null { bitmap_release_notice(item.image.id) }
     if item.provider_id != cast(u32)0 && bitmap_free != null { bitmap_free(item.provider_id) }
     bitmap_bytes -= item.pixels.count * 8
     VecFree(item.pixels); VecFree(item.premultiplied)

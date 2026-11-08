@@ -4,6 +4,9 @@
 #import "geometry"
 #import "std/vec"
 #import "std/byte_text_linux"
+Bitmaps :: #import "bitmap_store";
+
+RecordedBitmap :: struct { id: u32; revision: u64; start: s64; count: s64 }
 
 RecordedPaint :: struct {
     command: QueuedPaint
@@ -13,12 +16,17 @@ RecordedPaint :: struct {
     asset_count: s64
     mesh_start: s64
     mesh_count: s64
+    bitmap_start: s64
+    bitmap_count: s64
 }
 
 PaintFrame :: struct {
     commands: Vec(RecordedPaint)
     bytes: Vec(u8)
     points: Vec(Vector2)
+    bitmap_pixels: Vec(u32)
+    bitmaps: [Bitmaps.BITMAP_IMAGE_LIMIT]RecordedBitmap
+    bitmap_count: s32
     failed: bool
 }
 
@@ -26,6 +34,8 @@ PaintFrameClear :: (frame: *PaintFrame) {
     VecClear(frame.commands)
     VecClear(frame.bytes)
     VecClear(frame.points)
+    VecClear(frame.bitmap_pixels)
+    frame.bitmap_count = 0
     frame.failed = false
 }
 
@@ -33,6 +43,8 @@ PaintFrameClose :: (frame: *PaintFrame) {
     VecFree(frame.commands)
     VecFree(frame.bytes)
     VecFree(frame.points)
+    VecFree(frame.bitmap_pixels)
+    frame.bitmap_count = 0
     frame.failed = false
 }
 
@@ -40,6 +52,34 @@ PaintFrameAppend :: (frame: *PaintFrame, command: QueuedPaint) -> bool {
     if frame.failed { return false }
     kept: RecordedPaint
     kept.command = command
+    if Bitmaps.BitmapTagged(command.data.texture_id) {
+        // Never leave a tagged handle pointing into mutable session storage
+        // on the render thread, including an already released handle.
+        kept.command.data.bitmap_revision = 1
+        at := Bitmaps.BitmapSlot(command.data.texture_id)
+        if at >= 0 {
+            item := *Bitmaps.bitmap_images[at]
+            found: s32 = -1
+            for index: cast(s32)0..frame.bitmap_count - 1 {
+                bitmap := frame.bitmaps[index]
+                if bitmap.id == item.image.id && bitmap.revision == item.revision { found = index; break }
+            }
+            if found < 0 {
+                count := item.pixels.count
+                start := frame.bitmap_pixels.count
+                limit := cast(s64)Bitmaps.BITMAP_IMAGE_BYTE_BUDGET / 8
+                if frame.bitmap_count >= Bitmaps.BITMAP_IMAGE_LIMIT || count > limit - start ||
+                    !VecResizeBounded(frame.bitmap_pixels, start + count, limit) { frame.failed = true; return false }
+                for pixel: cast(s64)0..count - 1 { frame.bitmap_pixels[start + pixel] = item.pixels[pixel] }
+                found = frame.bitmap_count; frame.bitmap_count += 1
+                frame.bitmaps[found] = RecordedBitmap.{item.image.id,item.revision,start,count}
+            }
+            bitmap := frame.bitmaps[found]
+            kept.command.data.texture = item.image
+            kept.command.data.bitmap_revision = bitmap.revision
+            kept.bitmap_start = bitmap.start; kept.bitmap_count = bitmap.count
+        }
+    }
     kept.value_start = frame.bytes.count
     kept.value_count = command.data.value.count
     if !BuilderAppend(frame.bytes, command.data.value) { frame.failed = true; return false }
@@ -56,6 +96,8 @@ PaintFrameAppend :: (frame: *PaintFrame, command: QueuedPaint) -> bool {
     kept.command.data.asset_path = ""
     empty: []Vector2
     kept.command.data.mesh_points = empty
+    empty_pixels: []u32
+    kept.command.data.bitmap_pixels = empty_pixels
     if !VecPush(frame.commands, kept) { frame.failed = true; return false }
     return true
 }
@@ -65,6 +107,9 @@ PaintFrameEmit :: (frame: *PaintFrame) -> bool {
     for index: cast(s64)0..frame.commands.count - 1 {
         kept := frame.commands[index]
         command := kept.command
+        if kept.bitmap_count > 0 {
+            command.data.bitmap_pixels = VecSlice(frame.bitmap_pixels,kept.bitmap_start,kept.bitmap_start+kept.bitmap_count)
+        }
         if kept.value_count > 0 {
             command.data.value = TextFromBytes(BytesFromPointer(
                 *frame.bytes[kept.value_start], cast(u64)kept.value_count))

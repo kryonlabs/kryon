@@ -1,0 +1,184 @@
+#import "raylib_runtime"
+#import "session"
+#import "drawing_props"
+#import "geometry"
+#import "image_props"
+#import "paint_queue"
+#import "tree"
+#import "bitmap_image"
+#import "bitmap_store"
+#import "image_widget"
+#import "tree_draw"
+#import "paint_frame"
+Pixels :: #import "raylib_image_decode";
+
+test_raylib :: #system_library "raylib";
+ScreenImage :: () -> Pixels.RaylibGlyphImage #foreign test_raylib "LoadImageFromScreen";
+FlushNative :: () #foreign test_raylib "rlDrawRenderBatchActive";
+rgba: [16]u8 = .[220,30,70,255, 40,80,240,128, 0,0,255,0, 255,255,255,255];
+native_session: Session;
+native_image: Texture2D;
+native_failure: s32;
+native_checks: s32;
+expected_red: u32 = 0xdc1e46;
+
+NearPixel :: (bytes: *u8, x: s32, y: s32, width: s32, expected: u32) -> bool {
+    offset := (y*width+x)*4
+    for at: cast(s32)0..2 {
+        actual := cast(s32)bytes[offset+at]
+        want := cast(s32)((expected >> cast(u32)((2-at)*8)) & cast(u32)255)
+        if actual < want-2 || actual > want+2 { return false }
+    }
+    return true
+}
+CheckPixels :: (command: PaintCommand) {
+    FlushNative()
+    image := ScreenImage()
+    defer Pixels.RaylibImageRelease(image)
+    if image.data == null || image.width != 32 || image.height != 32 { native_failure = 10; return }
+    bytes := cast(*u8)image.data
+    if !NearPixel(bytes,2,2,32,command.texture_id) { native_failure = 11 }
+    if !NearPixel(bytes,14,2,32,cast(u32)0x90a5f6) { native_failure = 12 }
+    if !NearPixel(bytes,2,14,32,cast(u32)0xf8fafc) { native_failure = 13 }
+    if !NearPixel(bytes,14,14,32,cast(u32)0xffffff) { native_failure = 14 }
+    native_checks += 1
+}
+QueueImage :: (image: Texture2D, tint: u32 = cast(u32)0xffffffff) {
+    unused BeginFrame(native_session,1,Rectangle.{0.0,0.0,32.0,32.0})
+    Image(native_session,ImageProps.{.key=7,.bounds=Rectangle.{0.0,0.0,16.0,16.0},.texture=image,.tint=tint})
+    if EndFrame(native_session) != FrameStatus.FrameOk { native_failure = 20 }
+}
+QueueCheck :: (red: u32) {
+    command := QueuedPaint.{.has_emitter=true,.builtin_emitter=true,.emit=CheckPixels}
+    command.data.texture_id = red
+    EmitPaint(command)
+}
+CheckTint :: (command: PaintCommand) {
+    unused command
+    FlushNative()
+    image := ScreenImage()
+    defer Pixels.RaylibImageRelease(image)
+    if image.data == null { native_failure = 40; return }
+    bytes := cast(*u8)image.data
+    if !NearPixel(bytes,2,2,32,cast(u32)0x051e11) ||
+        !NearPixel(bytes,14,14,32,cast(u32)0x80ff40) { native_failure = 41 }
+}
+SnapshotPressure :: () -> s32 {
+    session := SessionOpen()
+    defer { unused CloseSession(session) }
+    frame: PaintFrame
+    defer PaintFrameClose(*frame)
+    image := BitmapImageCreate(session,1,1,rgba[:4])
+    command: QueuedPaint
+    command.data.texture_id = image.id; command.data.texture = image
+    for at: 0..99 { if !PaintFrameAppend(*frame,command) { return 50 } }
+    if frame.bitmap_count != 1 || frame.bitmap_pixels.count != 1 { return 51 }
+    for at: 1..63 {
+        rgba[0] = cast(u8)(at+20)
+        if !BitmapImageUpdate(session,image,rgba[:4]) || !PaintFrameAppend(*frame,command) { return 52 }
+    }
+    if frame.bitmap_count != 64 || frame.bitmap_pixels.count != 64 { return 53 }
+    rgba[0] = 200
+    if !BitmapImageUpdate(session,image,rgba[:4]) || PaintFrameAppend(*frame,command) || !frame.failed { return 54 }
+    return 0
+}
+NativePressure :: () -> s32 {
+    session := SessionOpen()
+    images: [64]Texture2D
+    for at: cast(s32)0..63 {
+        rgba[0] = cast(u8)(at*3+1)
+        images[at] = BitmapImageCreate(session,1,1,rgba[:4])
+        if images[at].id == cast(u32)0 { return 60 }
+    }
+    if BitmapImageCreate(session,1,1,rgba[:4]).id != cast(u32)0 { return 61 }
+    BeginRaylibFrame()
+    unused BeginFrame(session,1,Rectangle.{0.0,0.0,32.0,32.0})
+    for at: cast(s32)0..63 {
+        Image(session,ImageProps.{.key=cast(u64)(at+100),.texture=images[at],.tint=cast(u32)0xffffffff,
+            .bounds=Rectangle.{cast(float32)((at%8)*4),cast(float32)((at/8)*4),4.0,4.0}})
+    }
+    if EndFrame(session) != FrameStatus.FrameOk { return 62 }
+    FlushNative()
+    screen := ScreenImage()
+    if screen.data == null { return 63 }
+    bytes := cast(*u8)screen.data
+    for at: cast(s32)0..63 {
+        expected := (cast(u32)(at*3+1) << 16) | cast(u32)0x1e46
+        if !NearPixel(bytes,(at%8)*4+2,(at/8)*4+2,32,expected) { return 64 }
+    }
+    Pixels.RaylibImageRelease(screen)
+    if raylib_bitmap_bytes != 256 { return 65 }
+    unused EndRaylibFrame()
+    unused CloseSession(session)
+    if raylib_bitmap_bytes != 0 || bitmap_bytes != 0 { return 66 }
+    return 0
+}
+ComposeReleased :: (argument: *void) {
+    unused argument
+    BeginRaylibFrame()
+    QueueImage(native_image)
+    QueueCheck(cast(u32)0xdc1e46)
+    unused EndRaylibFrame()
+    // The completed frame must retain the original revision after both an
+    // update and session teardown, before the owner has replayed anything.
+    rgba[0] = 10
+    if !BitmapImageUpdate(native_session,native_image,rgba[:]) { native_failure = 21 }
+    unused CloseSession(native_session)
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenRaylib(32,32,"Managed bitmap native test",cast(u32)0) { return 1 }
+    native_session = SessionOpen()
+    native_image = BitmapImageCreate(native_session,2,2,rgba[:])
+    if native_image.id == cast(u32)0 { return 2 }
+    #if #defined(KRYON_FRAME_THREADS) {
+        if !RunRaylibAppFrame(ComposeReleased,null) || !FlushRaylibAppFrames() { return 3 }
+        if native_checks != 1 || native_failure != 0 { return ifx native_failure != 0 then native_failure else 4 }
+        if raylib_bitmap_bytes != 0 || bitmap_bytes != 0 { return 5 }
+        CloseRaylib()
+        return 0
+    }
+    BeginRaylibFrame(); QueueImage(native_image); QueueCheck(expected_red)
+    if !EndRaylibFrame() { return 70 }
+    if native_failure != 0 { return native_failure }
+    first_revision := bitmap_revision
+    if !BitmapImageUpdate(native_session,native_image,rgba[:]) || bitmap_revision != first_revision { return 30 }
+    rgba[0] = 10
+    if !BitmapImageUpdate(native_session,native_image,rgba[:]) { return 31 }
+    BeginRaylibFrame(); QueueImage(native_image); QueueCheck(cast(u32)0x0a1e46)
+    if !EndRaylibFrame() { return 70 }
+    if native_failure != 0 { return native_failure }
+    BeginRaylibFrame(); QueueImage(native_image,cast(u32)0x80ff40ff)
+    EmitPaint(QueuedPaint.{.has_emitter=true,.builtin_emitter=true,.emit=CheckTint})
+    if !EndRaylibFrame() { return 70 }
+    if native_failure != 0 { return native_failure }
+    // GPU reset and a window close/reopen preserve the session's CPU image.
+    ResetRaylibGraphics()
+    if raylib_bitmap_bytes != 0 || BitmapSlot(native_image.id) < 0 { return 32 }
+    CloseRaylib()
+    if !OpenRaylib(32,32,"Managed bitmap reopened",cast(u32)0) { return 33 }
+    BeginRaylibFrame(); QueueImage(native_image); QueueCheck(cast(u32)0x0a1e46)
+    if !EndRaylibFrame() { return 70 }
+    if native_failure != 0 { return native_failure }
+    BitmapImageRelease(native_session,native_image)
+    if raylib_bitmap_bytes != 0 { return 34 }
+    next := BitmapImageCreate(native_session,2,2,rgba[:])
+    if next.id == native_image.id || next.id == cast(u32)0 { return 35 }
+    BeginRaylibFrame()
+    QueueImage(native_image)
+    if raylib_bitmap_bytes != 0 { return 36 }
+    QueueImage(next)
+    QueueCheck(cast(u32)0x0a1e46)
+    if !EndRaylibFrame() { return 70 }
+    if native_failure != 0 { return native_failure }
+    unused CloseSession(native_session)
+    if raylib_bitmap_bytes != 0 || bitmap_bytes != 0 { return 37 }
+    if native_checks != 4 { return 71 }
+    result := SnapshotPressure()
+    if result != 0 { return result }
+    result = NativePressure()
+    if result != 0 { return result }
+    CloseRaylib()
+    return 0
+}

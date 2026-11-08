@@ -265,7 +265,15 @@ row-major straight RGBA8 and copied/consumed synchronously; reuse the input buff
 after the call. Create failure returns a zero texture. Update returns true for
 accepted unchanged data, and false preserves the old pixels. Only successful
 changed data invalidates retained paint. Smooth sampling and alpha use the
-ordinary Image renderer on Desktop/Cairo, pixmap and Canvas.
+ordinary Image renderer on native Raylib, Desktop/Cairo, pixmap and Canvas.
+Raylib resolves managed IDs to bounded native RGBA textures lazily by image
+revision. Explicit `ImageProps.tint`, including white for original colors,
+applies to straight RGBA pixels. GPU reset and native window close/reopen
+preserve the session's CPU image; textures are recreated when next painted.
+Completed native worker frames own deduplicated copies of the revisions they
+draw, so an update or session close cannot change pending pixels. Each frame
+retains at most 64 revisions and 32 MiB of straight pixels; pressure fails the
+frame explicitly. The native texture cache has the same 64-image/32 MiB bound.
 
 Managed handles belong to the complete Session (slot and epoch) and current
 provider. Dimensions must be positive, at most 4096 each and 4,194,304 pixels;

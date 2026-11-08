@@ -4,6 +4,10 @@
 // Paint emission is serial per frame. Host rasterizers read the runtime
 // texture handle here without importing the widget paint queue.
 emitting_texture: Texture2D;
+// Completed native frames carry an immutable straight-ARGB bitmap revision.
+// A zero revision means ordinary synchronous paint from the owning session.
+emitting_bitmap_revision: u64;
+emitting_bitmap_pixels: []u32;
 
 #program_export
 CurrentPaintTexture :: () -> Texture2D { return emitting_texture }

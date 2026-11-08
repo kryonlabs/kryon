@@ -47,6 +47,8 @@ PaintCommand :: struct {
     asset_path: string
     texture_id: u32
     texture: Texture2D
+    bitmap_revision: u64
+    bitmap_pixels: []u32
     source: Rectangle
     clip: Rectangle
     // Shapes are clipped only when set; their clip stays unset otherwise.
@@ -408,6 +410,14 @@ PaintRecorder :: #type (command: QueuedPaint) -> bool;
 paint_recorder: PaintRecorder;
 
 EmitPaintDirect :: (command: QueuedPaint) {
+    saved_revision := emitting_bitmap_revision
+    saved_pixels := emitting_bitmap_pixels
+    emitting_bitmap_revision = command.data.bitmap_revision
+    emitting_bitmap_pixels = command.data.bitmap_pixels
+    defer {
+        emitting_bitmap_revision = saved_revision
+        emitting_bitmap_pixels = saved_pixels
+    }
     if command.has_emitter {
         emit: PaintEmitter = command.emit
         emit(command.data)

@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Native Raylib renders managed RGBA images with revision-aware textures and owned queued pixels, preserving tint and session images across graphics resets.
 - Linux native apps can publish and read bounded multi-target MIME clipboards, with copied buffers, incremental transfers and conditional release of their own publication.
 
 - Apps can use icon and compact grids with multiple selection, keyboard navigation and focus scrolling.

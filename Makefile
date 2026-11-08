@@ -806,6 +806,11 @@ bitmap-image-test: project-toolchain
 	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran python3 tests/bitmap_image_browser_test.py
 test: bitmap-image-test
 
+.PHONY: bitmap-raylib-test
+bitmap-raylib-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/bitmap_raylib_test.sh
+test: bitmap-raylib-test
+
 .PHONY: native-assets-install-test
 native-assets-install-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER -u ICEAUTHORITY YUE_DESKTOP_RECOVERY=0 python3 tests/native_assets_install_test.py

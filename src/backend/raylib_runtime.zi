@@ -21,6 +21,8 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "program_title"
 #import "paint_texture"
 #import "paint_queue"
+Bitmaps :: #import "bitmap_store";
+#import "std/vec"
 #import "svg_icon"
 #import "tree_input"
 #import "frame_snapshot"
@@ -1567,6 +1569,102 @@ RaylibReserveAsset :: (path: string, hash: u64) -> s32 {
     return index
 }
 
+// Managed IDs never reach GL. Only the graphics owner touches this bounded
+// cache; completed worker frames supply copied pixels instead of live storage.
+RaylibBitmapEntry :: struct { id: u32; revision: u64; texture: Texture2D; smooth: bool }
+raylib_bitmaps: [Bitmaps.BITMAP_IMAGE_LIMIT]RaylibBitmapEntry;
+raylib_bitmap_bytes: s64;
+raylib_bitmap_next: s32;
+
+RaylibBitmapDelete :: (at: s32, context_lost: bool = false) {
+    entry := *raylib_bitmaps[at]
+    if entry.texture.id != cast(u32)0 {
+        if !context_lost {
+            HostRaylibFlushBatch()
+            HostRaylibUnloadTexture(entry.texture)
+        }
+        raylib_bitmap_bytes -= cast(s64)entry.texture.width * cast(s64)entry.texture.height * 4
+    }
+    entry.* = RaylibBitmapEntry.{}
+}
+RaylibBitmapClose :: (context_lost: bool = false) {
+    for at: cast(s32)0..Bitmaps.BITMAP_IMAGE_LIMIT - 1 { RaylibBitmapDelete(at,context_lost) }
+    raylib_bitmap_next = 0
+}
+RaylibBitmapReleaseOnOwner :: (argument: *void) {
+    id := cast(*u32)argument
+    for at: cast(s32)0..Bitmaps.BITMAP_IMAGE_LIMIT - 1 {
+        if raylib_bitmaps[at].id == id.* { RaylibBitmapDelete(at) }
+    }
+}
+RaylibBitmapRelease :: (id: u32) {
+    #if RAYLIB_FRAME_THREADS {
+        if RecordFrameOperation(PaintCommand.{.texture = Texture2D.{.id = id}},RaylibReplayBitmapRelease) { return }
+        RaylibDrainAppFrame()
+        RenderCall(RaylibBitmapReleaseOnOwner,cast(*void)*id)
+    } else { RaylibBitmapReleaseOnOwner(cast(*void)*id) }
+}
+RaylibReplayBitmapRelease :: (command: PaintCommand) { RaylibBitmapRelease(command.texture.id) }
+RaylibBitmapTexture :: (id: u32) -> Texture2D {
+    image := CurrentPaintTexture()
+    revision := emitting_bitmap_revision
+    pixels := emitting_bitmap_pixels
+    data: *u32
+    pixel_count := pixels.count
+    if pixel_count > 0 { data = *pixels[0] }
+    if revision == cast(u64)0 {
+        at := Bitmaps.BitmapSlot(id)
+        if at < 0 { return .{} }
+        item := *Bitmaps.bitmap_images[at]
+        image = item.image; revision = item.revision
+        pixel_count = item.pixels.count
+        if pixel_count > 0 { data = *item.pixels[0] }
+    }
+    count := Bitmaps.BitmapPixelCount(image.width,image.height)
+    if image.id != id || count == 0 || pixel_count != count || data == null { return .{} }
+    slot: s32 = -1
+    for at: cast(s32)0..Bitmaps.BITMAP_IMAGE_LIMIT - 1 {
+        entry := *raylib_bitmaps[at]
+        if entry.id == id && entry.revision == revision {
+            if entry.smooth != CurrentPaintSmooth() {
+                HostRaylibFlushBatch()
+                HostRaylibTextureFilter(entry.texture,ifx CurrentPaintSmooth() then 1 else 0)
+                entry.smooth = CurrentPaintSmooth()
+            }
+            return entry.texture
+        }
+        if entry.id == id { RaylibBitmapDelete(at) }
+        if entry.id == cast(u32)0 { slot = at }
+    }
+    if slot < 0 { slot = raylib_bitmap_next; RaylibBitmapDelete(slot) }
+    // CPU straight+premultiplied storage has an 8-byte pixel budget. Native
+    // RGBA copies use only its straight half, without expanding that bound.
+    limit := cast(s64)Bitmaps.BITMAP_IMAGE_BYTE_BUDGET / 2
+    while count * 4 > limit - raylib_bitmap_bytes {
+        RaylibBitmapDelete(raylib_bitmap_next)
+        raylib_bitmap_next = (raylib_bitmap_next + 1) % Bitmaps.BITMAP_IMAGE_LIMIT
+    }
+    rgba: Vec(u8)
+    defer VecFree(rgba)
+    if !VecResizeBounded(rgba,count*4,cast(s64)Bitmaps.BITMAP_IMAGE_MAX_PIXELS*4) { return .{} }
+    for at: cast(s64)0..count - 1 {
+        pixel := data[at]
+        rgba[at*4] = cast(u8)(pixel >> 16)
+        rgba[at*4+1] = cast(u8)(pixel >> 8)
+        rgba[at*4+2] = cast(u8)pixel
+        rgba[at*4+3] = cast(u8)(pixel >> 24)
+    }
+    native := ImagePixels.RaylibGlyphImage.{.data = cast(*void)*rgba[0],
+        .width = image.width,.height = image.height,.mipmaps = 1,.format = 7}
+    texture := HostRaylibTextureFromImage(native)
+    if texture.id == cast(u32)0 { return .{} }
+    HostRaylibTextureFilter(texture,ifx CurrentPaintSmooth() then 1 else 0)
+    raylib_bitmaps[slot] = RaylibBitmapEntry.{id,revision,texture,CurrentPaintSmooth()}
+    raylib_bitmap_bytes += count*4
+    raylib_bitmap_next = (slot + 1) % Bitmaps.BITMAP_IMAGE_LIMIT
+    return texture
+}
+
 // An icon's raster as a texture: white, with the coverage as alpha. Point
 // sampling keeps one raster pixel on one screen pixel.
 RaylibIconTexture :: (pixels: []u8, size: s32) -> Texture2D {
@@ -1751,6 +1849,7 @@ ResetRaylibGraphics :: (context_lost: bool = false) {
         raylib_resource_generation += cast(u64)1
     }
     PaintResourcesChanged()
+    RaylibBitmapClose(context_lost)
     if !context_lost {
         HostRaylibFlushBatch()
     }
@@ -1837,6 +1936,7 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
         return false
     }
     RaylibUseIconTextures()
+    Bitmaps.bitmap_release_notice = RaylibBitmapRelease
     TextSelectionEnable()
     #if #defined(PLATFORM_WEB) {
         // PollRaylib's WindowShouldClose yields to the page each frame; a
@@ -1871,6 +1971,8 @@ CloseRaylib :: () {
         CloseRaylibAppFrames()
     }
     raylib_touch_count = 0
+    RaylibBitmapClose()
+    Bitmaps.bitmap_release_notice = Bitmaps.bitmap_no_release_notice
     index: s32 = 0
     while index < 2 {
         if retained_frame_ready[index] {
@@ -3339,7 +3441,10 @@ RaylibImagePolygon :: (asset_path: string, texture_id: u32, source: Rectangle,
         return
     }
     texture: Texture2D
-    if texture_id != 0 {
+    if Bitmaps.BitmapTagged(texture_id) {
+        texture = RaylibBitmapTexture(texture_id)
+        if texture.id == cast(u32)0 { return }
+    } else if texture_id != 0 {
         texture = CurrentPaintTexture()
         if texture.id != texture_id {
             texture.id = texture_id; texture.width = cast(s32)(source.x + source.width); texture.height = cast(s32)(source.y + source.height)
@@ -3394,7 +3499,10 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32,
         return
     }
     texture: Texture2D
-    if texture_id != cast(u32)0 {
+    if Bitmaps.BitmapTagged(texture_id) {
+        texture = RaylibBitmapTexture(texture_id)
+        if texture.id == cast(u32)0 { return }
+    } else if texture_id != cast(u32)0 {
         texture = CurrentPaintTexture()
         if texture.id != texture_id {
             // Keep direct calls to the low-level raster effect usable.
@@ -3521,7 +3629,10 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     count: s64 = cast(s64)columns * cast(s64)rows
     if count > cast(s64)IMAGE_MESH_POINT_LIMIT || points.count < count { return }
     texture: Texture2D
-    if texture_id != cast(u32)0 {
+    if Bitmaps.BitmapTagged(texture_id) {
+        texture = RaylibBitmapTexture(texture_id)
+        if texture.id == cast(u32)0 { return }
+    } else if texture_id != cast(u32)0 {
         texture = CurrentPaintTexture()
         if texture.id != texture_id {
             // Keep direct calls to the low-level raster effect usable.
