@@ -1,0 +1,184 @@
+#import "grid_multi_widget"
+#import "grid_multi"
+#import "grid_multi_props"
+#import "widget_test_session"
+#import "tree"
+#import "tree_input"
+#import "paint_queue"
+#import "pixmap"
+#import "scroll_device"
+#import "widget_kind"
+pixels: [48000]u32;
+asset: [4]u32;
+items: [7]GridMultiItem;
+selected: [7]bool;
+clock_seconds: float64;
+Frame :: (props: GridMultiProps, count: s32 = 7, wheel: float32 = 0.0) -> GridMultiResult {
+    clock_seconds += 0.017
+    BeginScrollFrame(TestSession(), .{20.0, 25.0}, false, false, false, wheel, clock_seconds)
+    TreeStart(TestSession(), cast(u64)99, .{0.0, 0.0, 300.0, 160.0})
+    result := GridMulti(TestSession(), props, items[:count], selected[:count])
+    if !TreeFinish(TestSession()) { result.valid = false }
+    // Verify the emitted label geometry as well as the final raster image.
+    labels: s32 = 0; images: s32 = 0
+    for n: 0..PendingPaintCount(TestSession())-1 {
+        command := PendingPaintAt(TestSession(), n)
+        if command.kind == cast(s32)PaintKind.PaintKindImage { images += 1 }
+        if command.kind == cast(s32)PaintKind.PaintKindClippedText {
+            labels += 1
+            cell := TreeNodeAt(TestSession(), command.node).bounds
+            if command.clip.x < props.bounds.x || command.clip.y < props.bounds.y ||
+                command.clip.x + command.clip.width > props.bounds.x + props.bounds.width ||
+                command.clip.y + command.clip.height > props.bounds.y + props.bounds.height { result.valid = false }
+            if props.layout == GridMultiLayout.GridMultiIcon {
+                if command.clip.y < cell.y + 30.0 { result.valid = false }
+            } else {
+                if command.clip.x < cell.x + 20.0 { result.valid = false }
+            }
+        }
+    }
+    if count > 0 && (labels == 0 || images == 0) { result.valid = false }
+    unused PixmapBeginInto(cast(u32)0x112233, 300, 160, pixels[:])
+    PaintFlush(TestSession()); PixmapEndInto()
+    return result
+}
+Click :: (x: float32, y: float32) {
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+    TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
+}
+
+TwoGrids :: (left_offset: s32, right_home: bool, wheel: float32) -> bool {
+    clock_seconds += 0.017
+    BeginScrollFrame(TestSession(), .{20.0, 25.0}, false, false, false, wheel, clock_seconds)
+    TreeStart(TestSession(), cast(u64)99, .{0.0, 0.0, 300.0, 160.0})
+    p: GridMultiProps = .{.key = cast(u64)4001, .bounds = .{10.0, 10.0, 100.0, 100.0},
+        .cell_width = 90, .cell_height = 70, .scroll_offset = left_offset, .cursor = 0, .anchor = 0}
+    parent := TreeSubmitCurrent(TestSession(), cast(u64)100, cast(s32)WidgetKind.WidgetKindCustom, .{0.0, 0.0, 120.0, 140.0})
+    if !TreePushScope(TestSession(), parent) { return false }
+    left := GridMulti(TestSession(), p, items[:], selected[:])
+    End(TestSession())
+    parent = TreeSubmitCurrent(TestSession(), cast(u64)200, cast(s32)WidgetKind.WidgetKindCustom, .{120.0, 0.0, 120.0, 140.0})
+    if !TreePushScope(TestSession(), parent) { return false }
+    p.key = cast(u64)4002; p.bounds.x = 130.0; p.focused = true; p.cursor = 6
+    p.navigation.end = !right_home; p.navigation.home = right_home
+    right := GridMulti(TestSession(), p, items[:], selected[:])
+    End(TestSession())
+    if !TreeFinish(TestSession()) { return false }
+    PaintClear(TestSession())
+    expected: s32 = ifx right_home then 0 else 390
+    return left.valid && right.valid && left.scroll_offset > left_offset &&
+        right.scroll_offset == expected && ScrollDeviceMoving(TestSession())
+}
+
+#program_export
+main :: () -> s32 {
+    for i: 0..6 { items[i] = .{.key = cast(u64)(i + 10), .label = "Long grid label",
+        .image = .{.asset_path = "grid"}} }
+    for i: 0..3 { asset[i] = cast(u32)0xffff0000 }
+    unused PixmapSetImage(0, "grid", 2, 2, asset[:])
+    p: GridMultiProps = .{.key = cast(u64)2, .bounds = .{10.0, 10.0, 200.0, 100.0},
+        .cell_width = 90, .cell_height = 70, .cursor = 0, .anchor = 0}
+    m := GridMultiMeasure(p, 7)
+    if m.grid.columns != 2 || GridMultiNext(m, 7, 1, .{.right = true}) != 1 ||
+        GridMultiNext(m, 7, 5, .{.down = true}) != 6 || GridMultiNext(m, 7, 6, .{.down = true}) != 6 ||
+        GridMultiNext(m, 7, 0, .{.left = true}) != 0 || GridMultiNext(m, 7, 3, .{.up = true}) != 1 ||
+        GridMultiNext(m, 7, 1, .{.left = true}) != 0 { return 1 }
+    r := Frame(p)
+    if !r.valid || r.selected_count != 0 || r.clicked_index != -1 { return 2 }
+    if pixels[20 * 300 + 60] != cast(u32)0xff0000 || pixels[9 * 300 + 60] != cast(u32)0x112233 ||
+        pixels[110 * 300 + 60] != cast(u32)0x112233 { return 3 }
+    Click(30.0, 40.0); r = Frame(p)
+    if !r.changed || r.clicked_index != 0 || r.activated_index != -1 || !selected[0] { return 5 }
+    Click(30.0, 40.0); r = Frame(p)
+    if r.changed || r.clicked_index != 0 { return 6 }
+    p.control = true; Click(130.0, 40.0); r = Frame(p)
+    if r.selected_count != 2 || r.cursor != 1 || r.anchor != 1 { return 7 }
+    p.cursor = r.cursor; p.anchor = r.anchor; p.focused = true; p.navigation.down = true
+    r = Frame(p)
+    if r.anchor != 1 || r.cursor != 3 || r.changed || r.clicked_index != -1 || r.selected_count != 2 { return 8 }
+    p.cursor = r.cursor; p.anchor = r.anchor; p.control = false; p.shift = true; p.navigation = .{.end = true}
+    r = Frame(p)
+    if r.clicked_index != -1 || r.cursor != 6 || r.anchor != 1 || r.selected_count != 6 || selected[0] || r.scroll_offset <= 0 { return 9 }
+    p.cursor = 6; p.anchor = 1; p.shift = false; p.scroll_offset = r.scroll_offset; p.navigation = .{.space = true}
+    r = Frame(p)
+    if r.clicked_index != -1 || selected[6] || r.selected_count != 5 || r.activated_index != -1 { return 10 }
+    p.navigation = .{.enter = true}; r = Frame(p)
+    if r.clicked_index != -1 || !selected[6] || r.selected_count != 1 || r.activated_index != 6 { return 11 }
+    p.focused = false; p.navigation = .{.home = true}; r = Frame(p)
+    if r.cursor != 6 || r.clicked_index != -1 { return 12 }
+    p.focused = true; p.disabled = true; p.scroll_delta = -999; r = Frame(p)
+    if r.cursor != 6 || r.clicked_index != -1 || r.scroll_offset != p.scroll_offset { return 13 }
+    p.disabled = false; p.scroll_delta = 0; p.navigation = .{}; p.bounds.height = 60.0; r = Frame(p)
+    if r.scroll_offset != 220 { return 14 }
+    for i: 0..6 { selected[i] = false }
+    p.layout = GridMultiLayout.GridMultiCompact; p.bounds = .{10.0, 10.0, 200.0, 70.0}
+    p.cell_width = 120; p.cell_height = 30; p.cursor = 0; p.anchor = 0; p.scroll_offset = 0; p.focused = false
+    m = GridMultiMeasure(p, 7)
+    if m.grid.columns != 2 || GridMultiNext(m, 7, 1, .{.down = true}) != 1 ||
+        GridMultiNext(m, 7, 0, .{.right = true}) != 2 || GridMultiNext(m, 7, 5, .{.right = true}) != 6 ||
+        GridMultiNext(m, 7, 0, .{.up = true}) != 0 || GridMultiNext(m, 7, 3, .{.left = true}) != 1 ||
+        GridMultiNext(m, 7, 0, .{.down = true}) != 1 { return 15 }
+    r = Frame(p)
+    if !r.valid || pixels[25 * 300 + 20] != cast(u32)0xff0000 || pixels[25 * 300 + 210] != cast(u32)0x112233 { return 16 }
+    Click(160.0, 25.0); r = Frame(p)
+    if r.clicked_index != 2 || r.cursor != 2 || !selected[2] { return 17 }
+    p.cursor = 2; p.anchor = 2; p.focused = true; p.navigation = .{.end = true}; r = Frame(p)
+    if r.cursor != 6 || r.scroll_offset != 280 || r.selected_count != 1 { return 18 }
+    p.scroll_offset = r.scroll_offset; p.cursor = 6; p.navigation = .{.home = true}; p.control = true; p.shift = true; r = Frame(p)
+    if r.selected_count != 4 || !selected[6] || !selected[0] || !selected[2] { return 19 }
+    p.focused = false; p.navigation = .{}; p.scroll_offset = 0; r = Frame(p)
+    Click(20.0, 25.0)
+    temp := items[0]; items[0] = items[1]; items[1] = temp; r = Frame(p)
+    if r.clicked_index != 1 { return 20 }
+    r = Frame(p, 0)
+    if !r.valid || r.cursor != -1 || r.anchor != -1 || r.scroll_offset != 0 { return 21 }
+    bad := GridMulti(TestSession(), p, items[:], selected[:2])
+    if bad.valid || bad.node != -1 { return 22 }
+    // Disabled cells cannot accept queued clicks or key intents.
+    p.disabled = true; p.focused = true; p.navigation = .{.end = true}
+    r = Frame(p); Click(20.0, 25.0); r = Frame(p)
+    if r.clicked_index != -1 || r.activated_index != -1 { return 23 }
+    // Suspended pointer input is neither consumed nor applied by a passive view.
+    p.disabled = false; p.focused = false; p.navigation = .{}
+    r = Frame(p); Click(20.0, 25.0)
+    snapshot := TreeInputSuspend(TestSession())
+    r = Frame(p)
+    if r.clicked_index != -1 { return 26 }
+    if !TreeInputResume(TestSession(), snapshot) { return 27 }
+    r = Frame(p)
+    if r.clicked_index != 0 { return 28 }
+    // Real advancing scroll-device frames: keyboard reveal supersedes old wheel glide.
+    p.layout = GridMultiLayout.GridMultiIcon; p.cell_width = 90; p.cell_height = 70
+    p.bounds = .{10.0, 10.0, 200.0, 100.0}; p.cursor = 0; p.anchor = 0
+    p.focused = true; p.control = true; p.shift = false; p.navigation = .{.end = true}
+    r = Frame(p)
+    if r.cursor != 6 || r.scroll_offset != 180 { return 29 }
+    p.cursor = r.cursor; p.scroll_offset = r.scroll_offset; p.control = false
+    p.navigation = .{.space = true}; r = Frame(p)
+    p.scroll_offset = r.scroll_offset; p.navigation = .{}
+    r = Frame(p, 7, 2.0)
+    if r.scroll_offset >= p.scroll_offset || !ScrollDeviceMoving(TestSession()) { return 30 }
+    p.scroll_offset = r.scroll_offset; p.navigation = .{.home = true}; r = Frame(p)
+    if r.cursor != 0 || r.scroll_offset != 0 || ScrollDeviceMoving(TestSession()) { return 31 }
+    p.cursor = 0; p.scroll_offset = 0; p.navigation = .{.left = true}; r = Frame(p)
+    if r.cursor != 0 || r.scroll_offset != 0 { return 32 }
+    p.navigation = .{.up = true}; r = Frame(p)
+    if r.cursor != 0 || r.scroll_offset != 0 { return 33 }
+    p.navigation = .{.right = true}; r = Frame(p)
+    if r.cursor != 1 || r.scroll_offset != 0 { return 34 }
+    p.cursor = 1; p.navigation = .{}; r = Frame(p, 7, -2.0)
+    if r.scroll_offset <= 0 || !ScrollDeviceMoving(TestSession()) { return 35 }
+    p.scroll_offset = r.scroll_offset; r = Frame(p)
+    if r.scroll_offset <= p.scroll_offset { return 36 }
+    // Negative/oversized state clamps, tiny and empty viewports stay safe.
+    p.disabled = false; p.focused = false; p.scroll_offset = 2147483647
+    p.cursor = 999; p.anchor = -999; p.bounds = .{10.0, 10.0, 1.0, 1.0}
+    r = Frame(p)
+    if r.cursor < 0 || r.cursor >= 7 || r.anchor != r.cursor || r.scroll_offset < 0 { return 24 }
+    p.bounds.width = 0.0
+    r = Frame(p)
+    if r.valid { return 25 }
+    if !TwoGrids(0, false, -2.0) || !TwoGrids(1, true, 0.0) { return 37 }
+    PixmapClearImage(0)
+    return 0
+}

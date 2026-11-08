@@ -1,0 +1,33 @@
+#import "tree_draw"
+using UI :: #import "Widgets";
+Raster :: #import "cairo_raster";
+
+#program_export
+main :: () -> s32 {
+    if Raster.ImageWidth("icons/ui.webp") <= 0 || Raster.ImageHeight("assets/icons/ui.webp") <= 0 { return 1 }
+    if !Raster.OpenRaster(96, 96) { return 2 }
+    defer { Raster.CloseRaster() }
+    session := SessionOpen()
+    if !SessionValid(session) { return 3 }
+    defer { CloseSession(session) }
+    Raster.BeginRasterFrame()
+    if BeginFrame(session, cast(u64)1, .{0.0, 0.0, 96.0, 96.0}) != FrameStatus.FrameOk { return 4 }
+    image := ImageForIcon(cast(s32)IconType.IconHome, .{16.0, 16.0, 64.0, 64.0}, "Home")
+    Image(session, image)
+    if EndFrame(session) != FrameStatus.FrameOk || !Raster.FinishRasterFrame() { return 5 }
+    pixels := Raster.RasterSurfaceData()
+    stride := Raster.RasterSurfaceStride()
+    changed: s32 = 0
+    for y: 0..95 {
+        for x: 0..95 {
+            at := y * stride + x * 4
+            colored := pixels[at] != cast(u8)252 || pixels[at + 1] != cast(u8)250 || pixels[at + 2] != cast(u8)248
+            if colored {
+                if x < 16 || x >= 80 || y < 16 || y >= 80 { return 6 }
+                changed += 1
+            }
+        }
+    }
+    if changed < 20 { return 7 }
+    return 0
+}

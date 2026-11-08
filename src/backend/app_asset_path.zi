@@ -1,0 +1,79 @@
+// Native packaged assets, with literal file paths retaining precedence.
+#import "std/file"
+#import "std/byte_text_linux"
+#import "program_title"
+
+AppAssetFileExists :: (path: string) -> bool {
+    file := OpenRead(path)
+    if !file.valid { return false }
+    unused CloseFile(file)
+    return true
+}
+
+// Only ordinary relative names participate in package lookup. Dynamic paths
+// (absolute paths, parent traversal and drive names) keep their file meaning.
+AppAssetRelative :: (path: string) -> bool {
+    if path.count == 0 || path[0] == cast(u8)47 || path[0] == cast(u8)92 { return false }
+    start: s64 = 0
+    for i: 0..cast(s64)path.count {
+        if i < cast(s64)path.count {
+            if path[i] == cast(u8)0 || path[i] == cast(u8)58 { return false }
+            if path[i] != cast(u8)47 && path[i] != cast(u8)92 { continue }
+        }
+        if i == start || path[start:i] == "." || path[start:i] == ".." { return false }
+        start = i + 1
+    }
+    return true
+}
+
+AppAssetInRoot :: (root: string, path: string, output: []u8) -> string {
+    at := ProgramAppend(output, 0, root)
+    at = ProgramAppend(output, at, "/")
+    at = ProgramAppend(output, at, path)
+    if at >= 0 && AppAssetFileExists(TextView(output[:at])) { return TextView(output[:at]) }
+    // The declared directory prefix also accepts existing project-relative
+    // names, e.g. assets/icons/a.png alongside root-relative icons/a.png.
+    marker: [4096]u8
+    at = ProgramAppend(marker[:], 0, root)
+    at = ProgramAppend(marker[:], at, "/.kryon-prefix")
+    if at < 0 { return "" }
+    file := OpenRead(TextView(marker[:at]))
+    if !file.valid { return "" }
+    prefix: [4096]u8
+    count := Read(file, prefix[:])
+    unused CloseFile(file)
+    if count <= 0 || count >= cast(s64)path.count ||
+        TextView(prefix[:count]) != path[:count] || path[count] != cast(u8)47 { return "" }
+    at = ProgramAppend(output, 0, root)
+    at = ProgramAppend(output, at, "/")
+    at = ProgramAppend(output, at, path[count + 1:])
+    if at >= 0 && AppAssetFileExists(TextView(output[:at])) { return TextView(output[:at]) }
+    return ""
+}
+
+// The returned text borrows output when packaged, otherwise the original path.
+// output must not alias path or executable. No process working directory changes.
+ResolveAppAssetForExecutable :: (path: string, executable: string, output: []u8) -> string {
+    if !AppAssetRelative(path) || AppAssetFileExists(path) || executable.count == 0 { return path }
+    root: [4096]u8
+    at := ProgramAppend(root[:], 0, executable)
+    at = ProgramAppend(root[:], at, ".assets")
+    if at >= 0 {
+        found := AppAssetInRoot(TextView(root[:at]), path, output)
+        if found != "" { return found }
+    }
+    at = ProgramAppend(root[:], 0, executable[:ProgramNameStart(executable)])
+    at = ProgramAppend(root[:], at, "../share/kryon/")
+    at = ProgramAppend(root[:], at, ProgramStem(executable))
+    at = ProgramAppend(root[:], at, "/assets")
+    if at >= 0 {
+        found := AppAssetInRoot(TextView(root[:at]), path, output)
+        if found != "" { return found }
+    }
+    return path
+}
+
+ResolveAppAsset :: (path: string, output: []u8) -> string {
+    executable_bytes: [4096]u8
+    return ResolveAppAssetForExecutable(path, ProgramPath(executable_bytes[:]), output)
+}

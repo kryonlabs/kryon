@@ -1,0 +1,29 @@
+#import "app_asset_path"
+#import "std/file"
+#import "std/byte_text_linux"
+ReadText :: (path: string) -> string {
+    bytes: [32]u8
+    file := OpenRead(path)
+    if !file.valid { return "" }
+    count := Read(file, bytes[:])
+    unused CloseFile(file)
+    if count == 7 && TextView(bytes[:7]) == "fixture" { return "fixture" }
+    return ""
+}
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    absolute := TextFromCString(argv[1])
+    output: [4096]u8
+    if ReadText(ResolveAppAsset("icons/test.bin", output[:])) != "fixture" { return 2 }
+    if ReadText(ResolveAppAsset("assets/icons/test.bin", output[:])) != "fixture" { return 3 }
+    if ResolveAppAsset(absolute, output[:]) != absolute { return 4 }
+    if ResolveAppAsset("dynamic.bin", output[:]) != "dynamic.bin" { return 5 }
+    if ResolveAppAsset("missing.bin", output[:]) != "missing.bin" { return 6 }
+    if ResolveAppAsset("../missing.bin", output[:]) != "../missing.bin" { return 7 }
+    small: [2]u8
+    if ResolveAppAsset("icons/test.bin", small[:]) != "icons/test.bin" { return 8 }
+    if AppAssetRelative("/tmp/image.png") || AppAssetRelative("../image.png") ||
+        AppAssetRelative("C:/image.png") || AppAssetRelative("icons/../file") { return 9 }
+    return 0
+}

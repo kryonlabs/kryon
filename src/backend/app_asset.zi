@@ -1,6 +1,7 @@
 // A file the application ships: on Android a path inside the APK's assets,
 // elsewhere an ordinary file. raylib resolves both, so native hosts read
 // their bundles and data the same way on every platform.
+#import "app_asset_path"
 #import "std/c_string"
 #import "std/byte_text_linux"
 
@@ -11,8 +12,10 @@ AppAssetUnload :: (bytes: *u8) #foreign app_asset_raylib "UnloadFileData";
 // The whole file, or "" when it is missing or empty. Release it with
 // FreeAppAsset.
 ReadAppAsset :: (path: string) -> string {
+    resolved: [4096]u8
+    resolved_path := ResolveAppAsset(path, resolved[:])
     name: [4096]u8
-    if !CopyCString(path, name[:]) { return "" }
+    if !CopyCString(resolved_path, name[:]) { return "" }
     count: s32
     bytes := AppAssetLoad(*name[0], *count)
     if bytes == null { return "" }

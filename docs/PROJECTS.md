@@ -540,3 +540,42 @@ The host exports `main` and imports the application's widgets and platform
 modules. Kryon builds and runs that program with the profile's backend libraries.
 The host must be a `.zi` file inside the project, including when reached through
 a symlink. Profiles without `host` use Kryon's standard host.
+
+## Native asset directories
+
+A native profile's `assets = "assets"` ships that directory's contents beside
+its built executable as `PROGRAM.assets/`. `ziran install` copies the contents
+to `PREFIX/share/kryon/BIN/assets/`. The install keeps no dependency on the
+source checkout or its working directory. Undeclaring assets removes only the
+product's managed snapshot on the next build/install.
+
+Packaged asset directories use mode 755 and data files (including the prefix
+marker) use 644, even with a private source mode or caller umask. The install
+creates missing product directories with mode 755 and executable files with 755;
+desktop entries, icons and title metadata use 644. Existing directories are
+never made more permissive: callers wanting a shared installation must supply
+a prefix whose existing ancestors allow users to traverse it. An existing
+private prefix remains private. Custom installers can use
+`scripts/make-install-dirs.sh DIR...` and
+`scripts/copy-native-assets.sh SOURCE DESTINATION ORIGINAL_PREFIX` for the same
+directory-boundary and asset snapshot behavior.
+
+Native Image and ReadAppAsset lookup first preserves an accessible literal
+relative file and every absolute path. Packaged lookup then accepts paths
+relative to the declared directory (`icons/ui.webp`) and its original project
+prefix (`assets/icons/ui.webp`). Missing files keep their original path/error
+behavior. Paths containing parent traversal or drive names are never redirected.
+Web preloads, ZX bundled assets and Android APK lookup retain their existing routes.
+
+Custom native hosts can import `kryon/app_asset_path` and call
+`ResolveAppAsset(path: string, output: []u8) -> string`. Use a separate 4096-byte
+buffer: a resolved path borrows it; an unchanged path borrows the original text.
+`ResolveAppAssetForExecutable(path, executable, output)` supplies an explicit
+executable for hosts/tests. Neither changes the process working directory.
+The standard Cairo and Raylib image loaders use this resolver automatically;
+a custom asset-reader callback still has exclusive ownership of its resources.
+
+A host embedding another UI packages that UI's referenced files under its own
+declared asset directory, retaining their logical names. For example, an embedded
+Shelf's `ImageForIcon` needs `icons/ui.webp` under the Rill host's declared assets;
+Rill's executable and install prefix determine the runtime location.

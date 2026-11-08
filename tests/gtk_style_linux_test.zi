@@ -1,0 +1,278 @@
+Native :: #import "gtk_style_linux";
+Bitmap :: #import "bitmap_image";
+Store :: #import "bitmap_store";
+#import "session"
+#import "std/c_string"
+#import "std/byte_text_linux"
+#import "std/file_linux"
+#import "std/format"
+#import "std/vec"
+
+gtk :: #system_library "gtk-3";
+gdk :: #system_library "gdk-3";
+gobject :: #system_library "gobject-2.0";
+Init :: (argc: *s32, argv: ***u8) -> s32 #foreign gtk "gtk_init_check";
+ProviderNew :: () -> *void #foreign gtk "gtk_css_provider_new";
+ProviderLoad :: (provider: *void, path: *u8, error: **void) -> s32 #foreign gtk "gtk_css_provider_load_from_path";
+ProviderData :: (provider: *void, data: *u8, length: isize, error: **void) -> s32 #foreign gtk "gtk_css_provider_load_from_data";
+Screen :: () -> *void #foreign gdk "gdk_screen_get_default";
+AddProvider :: (screen: *void, provider: *void, priority: u32) #foreign gtk "gtk_style_context_add_provider_for_screen";
+RemoveProvider :: (screen: *void, provider: *void) #foreign gtk "gtk_style_context_remove_provider_for_screen";
+Unref :: (object: *void) #foreign gobject "g_object_unref";
+Settings :: () -> *void #foreign gtk "gtk_settings_get_default";
+Set :: (object: *void, property: *u8, args: ..any) #foreign gobject "g_object_set";
+IconTheme :: () -> *void #foreign gtk "gtk_icon_theme_get_default";
+IconSearch :: (theme: *void, paths: **u8, count: s32) #foreign gtk "gtk_icon_theme_set_search_path";
+libc :: #system_library "c";
+Environment :: (name: *u8) -> *u8 #foreign libc "getenv";
+cairo :: #system_library "cairo";
+RealAllocate :: (count: usize, size: usize) -> *u8 #foreign libc "__real_calloc";
+RealFree :: (data: *u8) #foreign libc "__real_free";
+RealSurface :: (format: s32, width: s32, height: s32) -> *void #foreign cairo "__real_cairo_image_surface_create";
+fail_allocate: bool;
+fail_surface: bool;
+owned: [256]*u8;
+outstanding: s32;
+
+#program_export "__wrap_calloc"
+__wrap_calloc :: (count: usize, size: usize) -> *u8 {
+    if fail_allocate && size == 4 && (count == 384 || count == 256) { return null }
+    data := RealAllocate(count,size)
+    if data != null && size == 4 && (count == 64 || count == 256 || count == 384 || count == 1024 || count == 1536 || count == 6144 || count == 24576) {
+        for i: 0..255 {
+            if owned[i] == null { owned[i]=data; outstanding+=1; break }
+        }
+    }
+    return data
+}
+#program_export "__wrap_free"
+__wrap_free :: (data: *u8) {
+    if data != null {
+        for i: 0..255 {
+            if owned[i] == data { owned[i]=null; outstanding-=1; break }
+        }
+    }
+    RealFree(data)
+}
+#program_export "__wrap_cairo_image_surface_create"
+__wrap_cairo_image_surface_create :: (format: s32, width: s32, height: s32) -> *void {
+    if fail_surface { return RealSurface(-1,width,height) }
+    return RealSurface(format,width,height)
+}
+
+Save :: (directory: string, name: string, data: []u8) -> bool {
+    text: Vec(u8)
+    BuilderPrint(*text, "%/%.rgba", directory, name)
+    file := OpenReplace(BuilderFinish(text))
+    count := Write(file, data)
+    return CloseFile(file) && count == data.count
+}
+
+#program_export "main"
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 4 { return 1 }
+    classes: [2]string = .["fixture-root","background"]
+    flat: [1]string = .["flat"]
+    nodes: [2]Native.GtkStyleNode = .[
+        .{.widget_type="GtkWindow",.element="window",.classes=classes[:]},
+        .{.widget_type="GtkButton",.element="button",.name="target",.classes=flat[:]}]
+    if TextFromCString(argv[3]) == "no-display" {
+        plain: [8]u8
+        if Native.GtkMarkupPlain("<b>&amp;</b>",plain[:]) != 1 || plain[0] != 38 || plain[1] != 0 { return 44 }
+        if Native.GtkStyleQuery(nodes[:],1).available { return 2 }
+        image := Native.GtkStyleRaster(nodes[:],24,16,1)
+        if image.rgba.count != 0 || Native.GtkStylePoll() != 0 { return 3 }
+        Native.GtkStyleBitmapRelease(*image)
+        return 0
+    }
+    if Init(null,null) == 0 { return 4 }
+    provider := ProviderNew()
+    if ProviderLoad(provider,argv[1],null) == 0 { return 5 }
+    defer Unref(provider)
+    AddProvider(Screen(),provider,800)
+    defer RemoveProvider(Screen(),provider)
+    unused Native.GtkStylePoll()
+    metrics := Native.GtkStyleQuery(nodes[:],1)
+    if !metrics.available || metrics.foreground != cast(u32)0x112233ff ||
+        metrics.border.bottom != 2 || metrics.border.top != 0 ||
+        metrics.padding.left != 5 || metrics.padding.top != 3 ||
+        TextFromCString(*metrics.font_family[0]) != "DejaVu Sans" ||
+        metrics.font_weight != 700 || metrics.font_style != 2 ||
+        metrics.font_size < 15.9 || metrics.font_size > 16.1 { return 6 }
+    print("GTK metrics: dpi=% font=% weight=% style=%\n",metrics.dpi,metrics.font_size,metrics.font_weight,metrics.font_style)
+    states: [6]u32 = .[0,2,1,2048,8,32]
+    colors: [6]u32 = .[0x112233ff,0x406080ff,0x604020ff,0x206040ff,0x777777ff,0x806040ff]
+    for index: 0..5 {
+        nodes[1].state=states[index]
+        if Native.GtkStyleQuery(nodes[:],1).foreground != colors[index] { return 7 }
+    }
+    nodes[1].state=0
+    directory := TextFromCString(argv[2])
+    image := Native.GtkStyleRaster(nodes[:],24,16,1)
+    if image.width != 24 || image.height != 16 || image.rgba.count != 1536 || !Save(directory,"normal",image.rgba) { return 8 }
+    session := SessionOpen()
+    texture := Bitmap.BitmapImageCreate(session,image.width,image.height,image.rgba)
+    if texture.id == cast(u32)0 { return 9 }
+    Native.GtkStyleBitmapRelease(*image)
+    Native.GtkStyleBitmapRelease(*image)
+    if image.width != 0 || image.height != 0 || image.rgba.count != 0 || Store.BitmapOwnedSlot(session.slot,session.epoch,texture) < 0 { return 10 }
+    Bitmap.BitmapImageRelease(session,texture)
+    unused SessionClose(session)
+    image=Native.GtkStyleRaster(nodes[:],24,16,2)
+    if image.width != 48 || image.height != 32 || !Save(directory,"scale2",image.rgba) { return 11 }
+    Native.GtkStyleBitmapRelease(*image)
+    nodes[0].state=8
+    if Native.GtkStyleQuery(nodes[:],1).padding.left != 9 { return 12 }
+    nodes[0].state=0
+    nodes[1].name="other"
+    if Native.GtkStyleQuery(nodes[:],1).border.bottom == 2 { return 13 }
+    nodes[1].name="target"
+    nodes[1].widget_type="GObject"
+    if Native.GtkStyleQuery(nodes[:],1).available { return 14 }
+    nodes[1].widget_type="GtkButton"
+    nodes[1].name="bad\0name"
+    if Native.GtkStyleQuery(nodes[:],1).available { return 15 }
+    nodes[1].name="target"
+    if Native.GtkStyleQuery(nodes[:0],1).available || Native.GtkStyleQuery(nodes[:],0).available { return 16 }
+    if Native.GtkStyleRaster(nodes[:],2147483647,1,4).rgba.count != 0 ||
+        Native.GtkStyleRaster(nodes[:],4096,4096,1).rgba.count != 0 ||
+        Native.GtkStyleRaster(nodes[:],0,16,1).rgba.count != 0 { return 17 }
+    for index: 0..127 {
+        image=Native.GtkStyleRaster(nodes[:],8,8,1)
+        if image.rgba.count != 256 { return 18 }
+        Native.GtkStyleBitmapRelease(*image)
+    }
+    if outstanding != 0 { return 25 }
+    fail_allocate=true
+    image=Native.GtkStyleRaster(nodes[:],24,16,1)
+    fail_allocate=false
+    if image.rgba.count != 0 || outstanding != 0 { return 26 }
+    Native.GtkStyleBitmapRelease(*image)
+    fail_surface=true
+    image=Native.GtkStyleRaster(nodes[:],24,16,1)
+    fail_surface=false
+    if image.rgba.count != 0 || outstanding != 0 { return 27 }
+    Native.GtkStyleBitmapRelease(*image)
+    icon_key: [64]u8
+    unused CopyCString("GTK_STYLE_ICON_PATH",icon_key[:])
+    icon_paths: [1]*u8 = .[Environment(*icon_key[0])]
+    IconSearch(IconTheme(),*icon_paths[0],1)
+    unused CopyCString("gtk-icon-theme-name",icon_key[:])
+    icon_theme: [32]u8
+    unused CopyCString("FixtureMain",icon_theme[:])
+    Set(Settings(),*icon_key[0],*icon_theme[0],cast(*u8)null)
+    unused Native.GtkStylePoll()
+    names: [3]string = .["fixture-icon","fixture-vector","fixture-symbolic"]
+    for index: 0..2 {
+        image=Native.GtkIconRaster(names[index],16,1,nodes[:])
+        if image.width != 16 || image.height != 16 || !Save(directory,names[index],image.rgba) { return 28 }
+        Native.GtkStyleBitmapRelease(*image)
+        image=Native.GtkIconRaster(names[index],16,2,nodes[:])
+        if image.width != 32 || image.height != 32 { return 29 }
+        name: Vec(u8)
+        BuilderPrint(*name,"%-2",names[index])
+        if !Save(directory,BuilderFinish(name),image.rgba) { return 30 }
+        Native.GtkStyleBitmapRelease(*image)
+    }
+    if Native.GtkIconRaster("no-such-fixture-icon",16,1,nodes[:]).rgba.count != 0 ||
+        Native.GtkIconRaster("fixture-broken",16,1,nodes[:]).rgba.count != 0 ||
+        Native.GtkIconRaster("/fixture-icon",16,1,nodes[:]).rgba.count != 0 ||
+        Native.GtkIconRaster("fixture-icon",2147483647,4,nodes[:]).rgba.count != 0 ||
+        Native.GtkIconRaster("fixture-icon",16,0,nodes[:]).rgba.count != 0 { return 31 }
+    fail_allocate=true
+    image=Native.GtkIconRaster("fixture-icon",16,1,nodes[:])
+    fail_allocate=false
+    if image.rgba.count != 0 || outstanding != 0 { return 33 }
+    unused CopyCString("FixtureOther",icon_theme[:])
+    Set(Settings(),*icon_key[0],*icon_theme[0],cast(*u8)null)
+    unused Native.GtkStylePoll()
+    image=Native.GtkIconRaster("fixture-icon",16,1,nodes[:])
+    if image.width != 16 || !Save(directory,"icon-updated",image.rgba) { return 32 }
+    Native.GtkStyleBitmapRelease(*image)
+    unused CopyCString("FixtureMain",icon_theme[:])
+    Set(Settings(),*icon_key[0],*icon_theme[0],cast(*u8)null)
+    unused Native.GtkStylePoll()
+    variants: [5]string=.["normal","bold","italic","override","markup"]
+    text_classes: [2]string=.["flat","normal"]
+    for index: 0..4 {
+        text_classes[1]=ifx index >= 3 then "normal" else variants[index]
+        nodes[1].classes=text_classes[:]
+        font:=ifx index == 3 then "DejaVu Sans Bold Italic 18" else ""
+        text:=ifx index == 4 then "<span foreground=\"#e04020\"><b>Café &amp; 世界</b></span>\n&lt;Label&gt;" else "Café 世界\nLabel"
+        measured:=Native.GtkTextMeasure(nodes[:],text,96,1,font,index == 4)
+        single:=Native.GtkTextMeasure(nodes[:],"Label",0,1)
+        if !measured.available || measured.width <= 0 || measured.height <= single.height || measured.baseline <= 0 { return 36 }
+        for scale: 1..2 {
+            image=Native.GtkTextRaster(nodes[:],text,96,64,cast(s32)scale,1,font,index == 4)
+            if image.width != 96*scale || image.height != 64*scale { return 37 }
+            name: Vec(u8)
+            BuilderPrint(*name,"text-%-%",variants[index],scale)
+            if !Save(directory,BuilderFinish(name),image.rgba) { return 38 }
+            Native.GtkStyleBitmapRelease(*image)
+        }
+    }
+    nodes[1].classes=flat[:]
+    if outstanding != 0 { return 41 }
+    plain: [64]u8
+    if Native.GtkMarkupPlain("<b>Café &amp; 世界</b> &lt;x&gt;",plain[:]) != 18 ||
+        TextFromCString(*plain[0]) != "Café & 世界 <x>" { return 42 }
+    tiny: [2]u8=.[65,66]
+    if Native.GtkMarkupPlain("<b>wide</b>",tiny[:]) != -1 || tiny[0] != 65 || tiny[1] != 66 ||
+        Native.GtkMarkupPlain("<b>broken",plain[:]) != -1 ||
+        Native.GtkMarkupPlain("<span bad='attribute'>x</span>",plain[:]) != -1 ||
+        Native.GtkMarkupPlain("",plain[:]) != 0 || plain[0] != 0 ||
+        Native.GtkMarkupPlain("x",plain[:0]) != -1 ||
+        Native.GtkTextMeasure(nodes[:],"<b>broken",0,1,"",true).available ||
+        Native.GtkTextRaster(nodes[:],"<b>broken",24,16,1,0,"",true).rgba.count != 0 { return 43 }
+    bad_utf8: [1]u8=.[255]
+    too_long: [65537]u8
+    if Native.GtkTextMeasure(nodes[:],TextView(bad_utf8[:]),0,1).available ||
+        Native.GtkMarkupPlain(TextView(bad_utf8[:]),plain[:]) != -1 ||
+        Native.GtkMarkupPlain(TextView(too_long[:]),plain[:]) != -1 ||
+        Native.GtkTextMeasure(nodes[:],TextView(too_long[:]),0,1).available ||
+        Native.GtkTextMeasure(nodes[:],"ok",0,1,"bad\0font").available ||
+        !Native.GtkTextMeasure(nodes[:],"",0,1).available ||
+        Native.GtkTextRaster(nodes[:],"Text",2147483647,1,1,0).rgba.count != 0 ||
+        Native.GtkTextRaster(nodes[:],"Text",24,16,1,3).rgba.count != 0 { return 39 }
+    fail_allocate=true
+    image=Native.GtkTextRaster(nodes[:],"Text",24,16,1,0)
+    fail_allocate=false
+    if image.rgba.count != 0 { return 40 }
+    // Change this process's provider after all old contexts have been freed.
+    css: [256]u8
+    unused CopyCString(".fixture-root button.flat#target { background-image:none; background-color:rgba(10,20,30,0.5); color:#abcdef; border:none; border-radius:0; }",css[:])
+    if ProviderData(provider,*css[0],-1,null) == 0 { return 19 }
+    unused Native.GtkStylePoll()
+    if Native.GtkStyleQuery(nodes[:],1).foreground != cast(u32)0xabcdefff { return 20 }
+    image=Native.GtkStyleRaster(nodes[:],24,16,1)
+    if !Save(directory,"updated",image.rgba) { return 21 }
+    Native.GtkStyleBitmapRelease(*image)
+    image=Native.GtkIconRaster("fixture-symbolic",16,1,nodes[:])
+    if !Save(directory,"symbolic-updated",image.rgba) { return 34 }
+    Native.GtkStyleBitmapRelease(*image)
+    if outstanding != 0 { return 35 }
+    // GTK settings, rather than a separate palette, define point conversion.
+    key: [64]u8
+    unused CopyCString("gtk-xft-dpi",key[:])
+    Set(Settings(),*key[0],cast(s32)147456,cast(*u8)null)
+    unused Native.GtkStylePoll()
+    metrics=Native.GtkStyleQuery(nodes[:],1)
+    if metrics.dpi < 143.9 || metrics.dpi > 144.1 { return 22 }
+    RemoveProvider(Screen(),provider)
+    // A real theme/settings update remains visible with no retained contexts.
+    unused CopyCString("gtk-application-prefer-dark-theme",key[:])
+    Set(Settings(),*key[0],cast(s32)0,cast(*u8)null)
+    unused Native.GtkStylePoll()
+    light := Native.GtkStyleQuery(nodes[:1],1)
+    Set(Settings(),*key[0],cast(s32)1,cast(*u8)null)
+    unused Native.GtkStylePoll()
+    dark := Native.GtkStyleQuery(nodes[:1],1)
+    print("GTK theme update: light=%/% dark=%/%\n",light.background,light.foreground,dark.background,dark.foreground)
+    if !light.available || !dark.available ||
+        (light.background == dark.background && light.foreground == dark.foreground) { return 23 }
+    // Balance the deferred removal; restoring the provider changes query again.
+    AddProvider(Screen(),provider,800)
+    if Native.GtkStyleQuery(nodes[:],1).foreground != cast(u32)0xabcdefff { return 24 }
+    print("GTK native style: selectors/state, metrics, provider/theme updates, owned BitmapImage upload, bounds and repeated disposal passed\n")
+    return 0
+}

@@ -1,3 +1,4 @@
+#import "app_asset_path"
 RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #if RAYLIB_FRAME_THREADS {
     #import "raylib_frame_render"
@@ -1374,9 +1375,11 @@ RaylibReadImageSource :: (path: string, reader: RaylibAssetReadCall,
     if active {
         source.data = reader(context, path)
     } else {
-        name: [1024]u8
+        resolved: [4096]u8
+        resolved_path := ResolveAppAsset(path, resolved[:])
+        name: [4096]u8
         count: s32
-        if CopyCString(path, name[:]) { source.owned = HostTypefaceFileData(*name[0], *count) }
+        if CopyCString(resolved_path, name[:]) { source.owned = HostTypefaceFileData(*name[0], *count) }
         if source.owned != null && count > 0 {
             source.data = TypefaceText.TextFromBytes(TypefaceText.BytesFromPointer(source.owned, cast(u64)count))
         }

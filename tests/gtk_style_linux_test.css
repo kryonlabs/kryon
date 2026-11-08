@@ -1,0 +1,38 @@
+.fixture-root {
+  background-color: rgba(30, 40, 50, 0.6);
+  color: rgb(17, 34, 51);
+  font-family: "DejaVu Sans";
+  font-size: 12pt;
+  font-weight: 700;
+  font-style: italic;
+}
+.fixture-root button.flat#target {
+  background-color: transparent;
+  background-image: linear-gradient(to bottom, rgba(200, 40, 20, 0.5), rgba(20, 60, 200, 0.75));
+  border-style: solid;
+  border-width: 0 0 2px;
+  border-image: linear-gradient(to right, #ff0000, #0000ff) 1;
+  border-radius: 3px;
+  padding: 3px 5px;
+  color: rgb(17, 34, 51);
+  box-shadow: none;
+  text-shadow: none;
+  transition: none;
+  min-width: 0;
+  min-height: 0;
+}
+.fixture-root button.flat#target:hover { color: #406080; }
+.fixture-root button.flat#target:active { color: #604020; }
+.fixture-root button.flat#target:checked { color: #206040; }
+.fixture-root button.flat#target:disabled { color: #777777; }
+.fixture-root button.flat#target:focus { color: #806040; }
+.fixture-root:disabled button.flat#target { padding-left: 9px; }
+.fixture-root button.flat#target.normal,
+.fixture-root button.flat#target.bold,
+.fixture-root button.flat#target.italic {
+  color: rgba(17, 34, 51, 0.75);
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+}
+.fixture-root button.flat#target.normal { font-weight: 400; font-style: normal; }
+.fixture-root button.flat#target.bold { font-weight: 700; font-style: normal; }
+.fixture-root button.flat#target.italic { font-weight: 400; font-style: italic; }

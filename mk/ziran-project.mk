@@ -100,6 +100,9 @@ endif
 APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
 UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRYON_DIR)/src/backend/avif*.zi)
+ifneq ($(filter $(PROJECT_BACKEND),desktop raylib),)
+HOST_SOURCES += $(KRYON_DIR)/src/backend/app_asset_path.zi $(KRYON_DIR)/src/backend/app_asset.zi $(KRYON_DIR)/src/backend/program_title.zi
+endif
 ifneq ($(filter $(PROJECT_BACKEND),desktop canvas dom),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/frame_input_provider.zi
 endif
@@ -272,11 +275,21 @@ $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bi
 	$(MAKE) --no-print-directory -C $(ZIRAN_DIR) \
 		build/bin/ziran build/bin/zi2zir build/bin/zi2c
 
+# Native assets use the same executable-relative layout before and after install.
+.PHONY: native-assets
+native-assets:
+ifeq ($(PROJECT_CODEGEN),c99)
+ifeq ($(BROWSER_BACKEND)$(RAYLIB_WEB),)
+	sh $(KRYON_DIR)/scripts/copy-native-assets.sh "$(ASSET_PATH)" "$(PROGRAM).assets" "$(PROJECT_ASSETS)"
+endif
+endif
+
 build: toolchain
 	$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(PROGRAM) $(PROGRAM_TITLE_FILE) $(BROWSER_PROGRAM) $(NATIVE_PLAYER) \
 		PROJECT_NAME=$(PROJECT_NAME) PROJECT_ENTRY=$(PROJECT_ENTRY) \
 		PROJECT_BACKEND=$(PROJECT_BACKEND) PROJECT_CODEGEN=$(PROJECT_CODEGEN) \
 		PROJECT_PROFILE=$(PROJECT_PROFILE) KRYON_DIR=$(KRYON_DIR) ZIRAN_DIR=$(ZIRAN_DIR)
+	$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk native-assets
 
 ifeq ($(PROJECT_CODEGEN),zx)
 include $(KRYON_DIR)/mk/zx-player.mk
@@ -397,24 +410,30 @@ else
 	@set -e; \
 	prefix="$$ZIRAN_INSTALL_PREFIX"; bin="$$ZIRAN_INSTALL_BIN"; \
 	program="$$prefix/bin/$$bin"; \
-	mkdir -p "$$prefix/bin" "$$prefix/share/applications"; \
+	sh $(KRYON_DIR)/scripts/make-install-dirs.sh "$$prefix/bin" "$$prefix/share/applications"; \
 	if [ "$(PROJECT_CODEGEN)" = zx ]; then \
-		app="$$prefix/share/kryon/$$bin"; mkdir -p "$$app"; \
+		app="$$prefix/share/kryon/$$bin"; sh $(KRYON_DIR)/scripts/make-install-dirs.sh "$$app"; \
 		cp $(PROGRAM) "$$app/app.zx.new"; \
+		chmod 644 "$$app/app.zx.new"; \
 		mv -f "$$app/app.zx.new" "$$app/app.zx"; \
 		cp $(PLAYER) "$$program.new"; \
 	else \
 		cp $(PROGRAM) "$$program.new"; \
 	fi; chmod 755 "$$program.new"; \
 	mv -f "$$program.new" "$$program"; echo "$$program"; \
-	share="$$prefix/share/kryon/$$bin"; mkdir -p "$$share"; \
+	share="$$prefix/share/kryon/$$bin"; sh $(KRYON_DIR)/scripts/make-install-dirs.sh "$$share"; \
+	if [ "$(PROJECT_CODEGEN)" = c99 ]; then \
+		sh $(KRYON_DIR)/scripts/copy-native-assets.sh "$(ASSET_PATH)" "$$share/assets" "$(PROJECT_ASSETS)"; \
+	fi; \
 	cp $(PROGRAM_TITLE_FILE) "$$share/app.title.new"; \
+	chmod 644 "$$share/app.title.new"; \
 	mv -f "$$share/app.title.new" "$$share/app.title"; echo "$$share/app.title"; \
 	icon=""; \
 	if [ -n "$$KRYON_INSTALL_ICON" ]; then \
-		mkdir -p "$$prefix/share/pixmaps"; \
+		sh $(KRYON_DIR)/scripts/make-install-dirs.sh "$$prefix/share/pixmaps"; \
 		icon="$$prefix/share/pixmaps/$$bin.$${KRYON_INSTALL_ICON##*.}"; \
 		cp "$(CURDIR)/$$KRYON_INSTALL_ICON" "$$icon.new"; \
+		chmod 644 "$$icon.new"; \
 		mv -f "$$icon.new" "$$icon"; echo "$$icon"; \
 	fi; \
 	directory=""; \
@@ -433,7 +452,7 @@ else
 		echo "X-Kryon-Installed=true"; \
 	}; \
 	desktop="$$prefix/share/applications/$$bin.desktop"; \
-	entry "\"$$program\"" > "$$desktop.new"; mv -f "$$desktop.new" "$$desktop"; echo "$$desktop"; \
+	entry "\"$$program\"" > "$$desktop.new"; chmod 644 "$$desktop.new"; mv -f "$$desktop.new" "$$desktop"; echo "$$desktop"; \
 	autostart="$${XDG_CONFIG_HOME:-$$HOME/.config}/autostart/$$bin.desktop"; \
 	if [ "$$KRYON_INSTALL_AUTOSTART" = true ]; then \
 		mkdir -p "$${autostart%/*}"; \

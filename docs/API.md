@@ -280,6 +280,60 @@ contract. Standard hosted widget policy continues to reject all guest runtime
 texture IDs and does not advertise bitmap lifecycle capabilities; an embedding
 must provide a separate authenticated ownership policy to grant those effects.
 
+### Optional GTK3 theme rendering on Linux
+
+Import `kryon/GtkStyleLinux` only in a Linux native application that links GTK3.
+This module reads the current GTK settings, screen CSS providers, icon theme and
+Pango fonts. It renders offscreen; the application supplies its selectors, layout,
+input and accessibility. Call its functions on the GTK owning thread, and call
+`GtkStylePoll()` from a non-GTK event loop to deliver up to 32 pending GLib events.
+
+A `GtkStyleNode` contains `widget_type` (for example `"GtkButton"`), CSS `element`,
+CSS ID `name`, `classes: []string` and GTK `state: u32`. Pass an ancestor-to-leaf
+slice of nodes. State constants are `GtkStyleNormal`, `GtkStyleActive`,
+`GtkStylePrelight`, `GtkStyleSelected`, `GtkStyleDisabled`, `GtkStyleFocused` and
+`GtkStyleChecked`; combine flags for compound states.
+
+- `GtkStyleQuery(nodes, scale)` returns `GtkStyleMetrics`: `available`,
+  `foreground` and `background` as RRGGBBAA, `border` and `padding` in logical
+  pixels, a copied NUL-terminated `font_family: [256]u8`, logical-pixel
+  `font_size: float64`, Pango `font_weight` and `font_style`, and screen `dpi`.
+- `GtkStyleRaster(nodes, width, height, scale)` paints the CSS background and frame.
+- `GtkIconRaster(name, size, scale, nodes)` resolves a named icon using the
+  current GTK icon search path and theme inheritance. PNG, SVG and symbolic
+  icons use GTK's loader; symbolic colors come from the supplied style context.
+- `GtkTextMeasure(nodes, text, width, scale, font = "", markup = false)` returns `available`,
+  logical-pixel `width`, `height` and `baseline`. A zero width measures natural
+  size; a positive width wraps by word or character.
+- `GtkTextRaster(nodes, text, width, height, scale, align, font = "", markup = false)` paints
+  Pango text and GTK text shadows onto transparency, vertically centered and
+  clipped to the box. Alignment is 0 left, 1 center or 2 right. An empty `font`
+  uses the computed CSS font; a Pango description overrides it for application
+  settings such as a clock font.
+
+Set `markup = true` to validate and render Pango markup, including styled spans,
+bold text and escaped characters. Malformed markup fails without painting.
+`GtkMarkupPlain(markup: string, output: []u8) -> s32` uses the same parser to
+decode a plain label for accessibility. It returns the UTF-8 byte count excluding
+the terminating NUL, or -1 for invalid input or insufficient space. Failure
+leaves the output unchanged; success writes a terminating NUL. This helper
+requires no display. Parsing performs no file, network or application actions.
+
+Raster calls return an owning `GtkStyleBitmap` with physical `width`, `height`
+and straight RGBA8 `rgba` bytes. Upload using `BitmapImageCreate`, then release
+the CPU buffer with `GtkStyleBitmapRelease(*bitmap)`. Do not copy owning values.
+Release is safe on an empty bitmap and resets its fields. Failure returns an
+empty bitmap or metrics with `available = false`, including when no display is
+available. Background color metrics alone cannot represent a CSS gradient;
+use the raster call for its actual appearance.
+
+Scale is 1–4. Style paths have 1–32 nodes and up to 32 classes per node;
+selector strings and font descriptions are at most 255 bytes with no NUL.
+Text must be valid UTF-8 without NUL and at most 65,536 bytes. Raster axes are
+at most 4096 physical pixels with a 4,194,304-pixel total limit; icon edges are
+at most 2048 physical pixels. Icon names cannot be paths. The module does not
+change the application's theme selection.
+
 `ImageProps.clip_polygon` clips an image without stretching its content.
 Supply 3–4096 points in normalized destination coordinates (0–1); the path
 closes automatically. Empty leaves the image unchanged. Invalid coordinates,
@@ -969,3 +1023,53 @@ including on the frame that closes an overlay. The host draws widgets but never
 calls BeginFrame/EndFrame. Callbacks run on the frame thread. Account, payment,
 authentication and application navigation policies belong to the embedding
 package. A host decides which services it offers in mini mode.
+
+## Multi-select grid
+
+`GridMulti(session: Session, props: GridMultiProps, items: []GridMultiItem,
+selected: []bool) -> GridMultiResult` is exported by `Widgets` and
+`grid_multi_widget`. Each borrowed item has `key: u64`, `label: string` and an
+optional `image: ImageProps`. Import `kryon/icon` (or `kryon/Widgets`) for
+`ImageForIcon(icon_type: s32, bounds: Rectangle, alt_text: string) -> ImageProps`
+and `IconType`. For example, assign
+`ImageForIcon(cast(s32)IconType.IconHome, Rectangle.{}, "Home")` to an item's
+image; the grid assigns its destination bounds. Ship the referenced `icons/`
+atlases as ordinary application assets. Images use the ordinary Image renderer, including
+assets, previews and session-owned textures. Bounds and child image keys are
+assigned by the grid. Use unique nonzero item keys to retain identity across
+reordering; zero falls back to the current index. Remap caller state when the
+application reorders or replaces items.
+
+Keep the mutable selection slice (exactly one bool per item), `cursor`,
+`anchor` and `scroll_offset` between calls. Items, labels and image data are
+borrowed for the call; normal Image asset/texture lifetimes still apply.
+The grid never retains the selection slice. Mismatched storage returns
+`valid = false` without changing selection. Empty matching slices are valid,
+with cursor/anchor -1 and zero scroll. `changed` reports selection changes;
+`clicked_index` reports every accepted pointer click, even when selection
+is unchanged; keyboard selection never sets it. `activated_index` reports Enter;
+ordinary pointer clicks and Space do not activate. Hosts currently expose no
+canonical double-click activation signal; callers retain their pointer-click
+action policy. Space only toggles selection. Missing actions use -1.
+`selected_count` includes offscreen items. Keep application actions in the caller.
+
+`GridMultiLayout.GridMultiIcon` (default) measures columns from available width,
+places the image above the label, and scrolls vertically. Compact measures rows
+from height, places a smaller image before the label, and scrolls horizontally.
+Set `cell_width`, `cell_height`, `image_size`, `gap`, `padding`, `scale`, `bounds`,
+a stable session-unique widget `key` (including across embedded host roots), and optional style `class_name`/focus `id`. Default logical
+cells are 96 by 96 (Icon) and 180 by 32 (Compact). Partial cells and their image
+and label children clip to the viewport. Use the normal retained frame for image
+clipping and pointer routing.
+
+Supply edge/repeat decisions through `navigation: GridMultiInput` and modifiers
+through `control` and `shift`; keyboard input requires `focused` and an enabled
+grid. Icon Left/Right moves within a row, Up/Down by measured columns; Compact
+Up/Down moves within a column, Left/Right by measured rows. Incomplete final
+rows/columns clamp to their last item. Ctrl arrows move focus alone, Ctrl click
+and Space toggle, Shift extends from the persistent anchor, and Ctrl+Shift adds
+a range. Home/End select the first/last item with the same modifiers; Enter
+selects and activates the cursor. Navigation, a newly focused cursor and viewport
+resize reveal focus; ordinary frames retain manual scrolling. `scroll_delta`
+adds caller movement, while the standard Scroll handles sampled wheel/drag input.
+Disabled grids accept no input. Unfocused grids still accept pointer input.

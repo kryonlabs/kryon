@@ -108,6 +108,15 @@ ScrollDeviceSideways :: (session: Session, wheel_x: float32) {
     if wheel_x != 0.0 { scroll_device.fling_owner = cast(u64)0 }
 }
 
+// An explicit focus reveal supersedes old momentum for this scroll only.
+// Keep fresh wheel observations and pointer drag ownership intact.
+#program_export
+ScrollDeviceStopMotion :: (session: Session, key: u64) {
+    if key == cast(u64)0 || !ScrollDeviceSampled(session) { return }
+    if scroll_device.fling_owner == key { scroll_device.fling_owner = cast(u64)0 }
+    if scroll_device.glide_owner == key { scroll_device.glide_owner = cast(u64)0 }
+}
+
 // The pointer has moved across a scroll's axis by more than along it, far
 // enough to tell.
 ScrollDeviceAcross :: (horizontal: bool, scale: float32) -> bool {

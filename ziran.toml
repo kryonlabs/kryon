@@ -4,7 +4,7 @@ module_roots = ["src/ui", "src/backend"]
 
 [toolchain]
 git = "https://github.com/ziranlang/ziran.git"
-ref = "9524616df1a1b6e63a3789b3aea055714a526c88"
+ref = "c37371586264af9ee3db233d5eaf5d6176d4bdf7"
 
 [dependencies.raylib]
 git = "https://github.com/raysan5/raylib.git"
@@ -17,6 +17,9 @@ ref = "1844042d1ca751e62e61df7617dba19c98588339"
 source = true
 
 [exports]
+GtkStyleLinux = "src/backend/gtk_style_linux.zi"
+app_asset_path = "src/backend/app_asset_path.zi"
+icon = "src/ui/icon.zi"
 swipe_props = "src/ui/swipe_props.zi"
 swipe = "src/ui/swipe.zi"
 view_transform = "src/ui/view_transform.zi"

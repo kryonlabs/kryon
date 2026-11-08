@@ -1,3 +1,4 @@
+#import "app_asset_path"
 #import "c_string"
 #import "drawing_props"
 #import "geometry"
@@ -615,8 +616,8 @@ CairoImagePixels :: (asset_path: string, width: s32, height: s32, pixels: []u32,
     return true
 }
 
-LoadPNG :: (asset_path: string) -> *void {
-    if asset_path == Video.VideoAsset {
+LoadPNG :: (original_path: string) -> *void {
+    if original_path == Video.VideoAsset {
         if Video.width <= 0 || Video.height <= 0 { if video_surface != null { SurfaceDestroy(video_surface); video_surface = null }; return null }
         if video_surface == null || video_width != Video.width || video_height != Video.height {
             if video_surface != null { SurfaceDestroy(video_surface) }
@@ -629,6 +630,8 @@ LoadPNG :: (asset_path: string) -> *void {
         }
         return video_surface
     }
+    resolved: [4096]u8
+    asset_path := ResolveAppAsset(original_path, resolved[:])
     length: s32 = cast(s32)asset_path.count
     if length == 0 || length >= 4096 { return null }
     image_clock += 1

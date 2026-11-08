@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Apps can use icon and compact grids with multiple selection, keyboard navigation and focus scrolling.
+- Native apps carry their declared assets beside the executable and into installed packages, so images load independently of the working directory while private install prefixes stay private.
+- Linux apps can opt into their current GTK3 theme, icons and Pango text, including markup and custom font settings, through offscreen images.
+
 - The DevTools test browser takes extra Chromium switches in `flags`, such as the SwiftShader ones a WebGL page needs.
 
 - DOM pages report an image's size only once the browser has decoded it for display, and keep showing that decoded image, so it never shows blank; an image the browser cannot decode reports as unavailable.

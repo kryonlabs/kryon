@@ -55,6 +55,9 @@ frame_transition.zi
 geometry.zi
 grid.zi
 grid_props.zi
+grid_multi_props.zi
+grid_multi.zi
+grid_multi_widget.zi
 group.zi
 icon.zi
 image.zi

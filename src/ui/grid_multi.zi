@@ -1,0 +1,90 @@
+#import "geometry"
+#import "grid"
+#import "grid_props"
+#import "grid_multi_props"
+#import "scroll"
+
+GridMultiMetrics :: struct {
+    grid: GridMetrics
+    compact: bool
+    cell_height: s32
+    content_extent: s32
+    max_scroll: s32
+}
+#program_export
+GridMultiMeasure :: (props: GridMultiProps, count: s32) -> GridMultiMetrics {
+    result: GridMultiMetrics
+    result.compact = props.layout == GridMultiLayout.GridMultiCompact
+    scale := props.scale
+    if !(scale > 0.0 && scale <= 100.0) { scale = 1.0 }
+    width := props.cell_width; height := props.cell_height
+    if width <= 0 { width = ifx result.compact then 180 else 96 }
+    if height <= 0 { height = ifx result.compact then 32 else 96 }
+    if width > 10000 { width = 10000 }; if height > 10000 { height = 10000 }
+    width = cast(s32)(cast(float32)width * scale)
+    height = cast(s32)(cast(float32)height * scale)
+    if width < 1 { width = 1 }; if height < 1 { height = 1 }
+    bounds := props.bounds
+    gap := props.gap; padding := props.padding
+    if gap < 0 { gap = 0 }; if gap > 10000 { gap = 10000 }
+    if padding < 0 { padding = 0 }; if padding > 10000 { padding = 10000 }
+    gap = cast(s32)(cast(float32)gap * scale)
+    padding = cast(s32)(cast(float32)padding * scale)
+    if result.compact { bounds = .{bounds.y, bounds.x, bounds.height, bounds.width} }
+    result.grid = MeasureGrid(GridProps.{.bounds = bounds,
+        .min_item_width = ifx result.compact then height else width,
+        .gap = gap, .padding = padding})
+    result.cell_height = ifx result.compact then width else height
+    extent: s64 = cast(s64)GridRowCount(result.grid, count) * (result.cell_height + gap)
+    if count > 0 { extent -= gap }
+    extent += cast(s64)padding * 2
+    if extent > 2147483647 { extent = 2147483647 }
+    result.content_extent = cast(s32)extent
+    result.max_scroll = ScrollMax(result.content_extent, cast(s32)bounds.height)
+    return result
+}
+#program_export
+GridMultiCellBounds :: (metrics: GridMultiMetrics, index: s32, offset: s32) -> Rectangle {
+    cell := GridCellBounds(metrics.grid, index, metrics.cell_height)
+    cell.y -= cast(float32)offset
+    if metrics.compact { return .{cell.y, cell.x, cell.height, cell.width} }
+    return cell
+}
+#program_export
+GridMultiNext :: (metrics: GridMultiMetrics, count: s32, cursor: s32,
+    input: GridMultiInput) -> s32 {
+    if count <= 0 { return -1 }
+    if cursor < 0 { cursor = 0 }; if cursor >= count { cursor = count - 1 }
+    if input.home { return 0 }; if input.end { return count - 1 }
+    across := metrics.grid.columns
+    minor := cursor % across
+    next := cursor
+    if metrics.compact {
+        if input.up && minor > 0 { next -= 1 }
+        else if input.down && minor + 1 < across && cursor + 1 < count { next += 1 }
+        else if input.left && cursor >= across { next -= across }
+        else if input.right && cursor / across < (count - 1) / across { next += across }
+    } else {
+        if input.left && minor > 0 { next -= 1 }
+        else if input.right && minor + 1 < across && cursor + 1 < count { next += 1 }
+        else if input.up && cursor >= across { next -= across }
+        else if input.down && cursor / across < (count - 1) / across { next += across }
+    }
+    if next >= count { next = count - 1 }
+    return next
+}
+#program_export
+GridMultiReveal :: (metrics: GridMultiMetrics, cursor: s32, offset: s32) -> s32 {
+    if cursor < 0 { return ScrollClamp(offset, metrics.max_scroll) }
+    cell := GridCellBounds(metrics.grid, cursor, metrics.cell_height)
+    start := cast(s32)(cell.y - metrics.grid.bounds.y)
+    extent := cast(s32)metrics.grid.bounds.height
+    if start < offset { offset = start }
+    else if start + metrics.cell_height > offset + extent { offset = start + metrics.cell_height - extent }
+    return ScrollClamp(offset, metrics.max_scroll)
+}
+#program_export
+GridMultiItemKey :: (item: GridMultiItem, index: s32) -> u64 {
+    if item.key != cast(u64)0 { return item.key }
+    return cast(u64)(index + 1)
+}

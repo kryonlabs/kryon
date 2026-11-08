@@ -800,3 +800,13 @@ bitmap-image-test: project-toolchain
 	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran sh tests/bitmap_host_policy_test.sh
 	@ZIRAN_ROOT=$(abspath $(ZIRAN_DIR)) ZIRAN_BIN=$(abspath $(ZIRAN_DIR))/build/bin/ziran python3 tests/bitmap_image_browser_test.py
 test: bitmap-image-test
+
+.PHONY: native-assets-install-test
+native-assets-install-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER -u ICEAUTHORITY YUE_DESKTOP_RECOVERY=0 python3 tests/native_assets_install_test.py
+test: native-assets-install-test
+
+.PHONY: gtk-style-linux-test
+gtk-style-linux-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER -u ICEAUTHORITY YUE_DESKTOP_RECOVERY=0 python3 tests/gtk_style_linux_test.py
+test: gtk-style-linux-test
