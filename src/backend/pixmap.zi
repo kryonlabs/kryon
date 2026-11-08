@@ -129,6 +129,10 @@ PixmapImageRevision :: () -> u64 {
 PixmapImagePixels :: struct { value: []u32 }
 pixmap_image_pixels: [PixmapImageLimit]PixmapImagePixels;
 pixmap_bitmap_revision: u64;
+PixmapImageIndexCapacity :: 2048;
+pixmap_image_index_hashes: [PixmapImageIndexCapacity]u64;
+pixmap_image_index_slots: [PixmapImageIndexCapacity]s32;
+pixmap_image_index_built: bool;
 
 // Separate reserved slots keep managed IDs out of the asset path namespace.
 // The frame owner synchronizes before any CPU/GPU use of these borrowed views.
@@ -180,15 +184,48 @@ PixmapClearImage :: (slot: s32) {
     if pixmap_image_lengths[slot] > 0 { pixmap_image_revision += 1; pixmap_image_revisions[slot] = pixmap_image_revision }
     pixmap_image_lengths[slot] = 0; pixmap_image_widths[slot] = 0
     pixmap_image_heights[slot] = 0; pixmap_image_pixels[slot].value = pixmap_pixels[0:0]
+    pixmap_image_index_built = false
 }
 
+PixmapImageHash :: (path: string) -> u64 {
+    hash: u64 = cast(u64)14695981039346656037
+    for byte: path { hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211 }
+    return hash
+}
+PixmapImageIndexHome :: (hash: u64) -> s32 {
+    return cast(s32)((hash * cast(u64)11400714819323198485) >> cast(u64)53)
+}
+PixmapImageIndexRebuild :: () {
+    for at: 0..PixmapImageIndexCapacity - 1 { pixmap_image_index_slots[at] = -1 }
+    for slot: 0..PixmapAssetImageLimit - 1 {
+        length := pixmap_image_lengths[slot]
+        if length <= 0 { continue }
+        hash: u64 = cast(u64)14695981039346656037
+        for i: 0..length - 1 {
+            hash = (hash ^ cast(u64)pixmap_image_paths[slot][i]) * cast(u64)1099511628211
+        }
+        at := PixmapImageIndexHome(hash)
+        while pixmap_image_index_slots[at] >= 0 { at = (at + 1) & (PixmapImageIndexCapacity - 1) }
+        pixmap_image_index_hashes[at] = hash; pixmap_image_index_slots[at] = cast(s32)slot
+    }
+    pixmap_image_index_built = true
+}
 PixmapImageIndex :: (path: string) -> s32 {
     if path.count == 0 || path.count >= 256 { return -1 }
-    for slot: 0..PixmapAssetImageLimit - 1 {
-        if pixmap_image_lengths[slot] != path.count { continue }
-        same := true
-        for i: 0..cast(s32)path.count - 1 { if pixmap_image_paths[slot][i] != path[i] { same = false; break } }
-        if same { return cast(s32)slot }
+    if !pixmap_image_index_built { PixmapImageIndexRebuild() }
+    hash := PixmapImageHash(path)
+    at := PixmapImageIndexHome(hash)
+    while true {
+        slot := pixmap_image_index_slots[at]
+        if slot < 0 { return -1 }
+        if pixmap_image_index_hashes[at] == hash && pixmap_image_lengths[slot] == path.count {
+            same := true
+            for i: 0..cast(s32)path.count - 1 {
+                if pixmap_image_paths[slot][i] != path[i] { same = false; break }
+            }
+            if same { return slot }
+        }
+        at = (at + 1) & (PixmapImageIndexCapacity - 1)
     }
     return -1
 }
@@ -208,7 +245,8 @@ PixmapSetImage :: (slot: s32, path: string, width: s32, height: s32, pixels: []u
     pixmap_image_lengths[slot] = cast(s32)path.count
     pixmap_image_widths[slot] = width; pixmap_image_heights[slot] = height
     pixmap_image_pixels[slot].value = pixels; pixmap_image_revision += 1
-    pixmap_image_revisions[slot] = pixmap_image_revision; return true
+    pixmap_image_revisions[slot] = pixmap_image_revision
+    pixmap_image_index_built = false; return true
 }
 
 // Native threaded builds draw smooth images from the shared Lanczos cache
@@ -1213,7 +1251,7 @@ PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, cli
     origin: Vector2, rotation: float32, radius: float32, tint: Color, smooth: bool = false) -> bool {
     width := cast(float32)pixmap_image_widths[slot]; height := cast(float32)pixmap_image_heights[slot]
     source_right := source.x + source.width; source_bottom := source.y + source.height
-    if rotation != 0.0 || radius > 0.0 || pixmap_image_widths[slot] > pixmap_gpu_max_image ||
+    if rotation != 0.0 || (radius > 0.0 && smooth) || pixmap_image_widths[slot] > pixmap_gpu_max_image ||
         pixmap_image_heights[slot] > pixmap_gpu_max_image ||
         source.x < 0.0 || source.y < 0.0 || source_right < 0.0 || source_bottom < 0.0 ||
         source.x > width || source.y > height || source_right > width || source_bottom > height { return false }
@@ -1228,9 +1266,30 @@ PixmapGpuImageQuad :: (slot: s32, source: Rectangle, destination: Rectangle, cli
     ink: Color = .{cast(u8)(cast(u32)tint.r * alpha / cast(u32)255), cast(u8)(cast(u32)tint.g * alpha / cast(u32)255),
         cast(u8)(cast(u32)tint.b * alpha / cast(u32)255), tint.a}
     left := destination.x - origin.x; top := destination.y - origin.y
+    right := left + destination.width; bottom := top + destination.height
+    u0 := source.x / width; v0 := source.y / height
+    u1 := source_right / width; v1 := source_bottom / height
+    if radius > 0.0 {
+        for y: clip_top..clip_bottom - 1 {
+            center_y := cast(float32)y + 0.5
+            x := clip_left
+            while x < clip_right {
+                center_x := cast(float32)x + 0.5
+                if !ImageCanvas.InsideRoundedClip(center_x, center_y, clip, radius) { x += 1; continue }
+                start := x
+                while x < clip_right {
+                    center_x = cast(float32)x + 0.5
+                    if !ImageCanvas.InsideRoundedClip(center_x, center_y, clip, radius) { break }
+                    x += 1
+                }
+                PixmapGpuQuad(left, top, right, bottom, u0, v0, u1, v1, ink, slot, false,
+                    start, y, x, y + 1)
+            }
+        }
+        return true
+    }
     PixmapGpuQuad(left, top, left + destination.width, top + destination.height,
-        source.x / width, source.y / height, source_right / width, source_bottom / height,
-        ink, slot, smooth, clip_left, clip_top, clip_right, clip_bottom)
+        u0, v0, u1, v1, ink, slot, smooth, clip_left, clip_top, clip_right, clip_bottom)
     return true
 }
 
