@@ -407,6 +407,38 @@ Theme :: #import "theme";
                 scroll.max_scroll, scroll.scroll, scale, !vertical)
             scroll.scroll = swipe.offset
         }
+        // Retained focus, rather than the caller's visual/input hint, owns
+        // roving focus. Include a removed tab (and its close button) so the
+        // replacement can receive focus in the very frame it is submitted.
+        owns_focus: bool = false
+        repair_focus: bool = false
+        if TreeIsBuilding(session) {
+            old_bar := TreePrevious(session, TreeCurrentParent(session), key, WidgetKindTabBar)
+            if old_bar >= 0 {
+                for old: 0..TreeCount(session) - 1 {
+                    if TreeFocusedAt(session, old) {
+                        ancestor := old
+                        while ancestor >= 0 && ancestor != old_bar {
+                            ancestor = TreeNodeAt(session, ancestor).parent
+                        }
+                        if ancestor == old_bar {
+                            owns_focus = true
+                            tab_node := old
+                            if TreeNodeAt(session, tab_node).parent != old_bar {
+                                tab_node = TreeNodeAt(session, tab_node).parent
+                            }
+                            repair_focus = true
+                            for current: 0..(cast(s32)tabs.count) - 1 {
+                                if TabBarTabKey(key, tabs[current], current) == TreeNodeAt(session, tab_node).key &&
+                                !tabs[current].disabled { repair_focus = false }
+                            }
+                        }
+                        break
+                    }
+                }
+            }
+        }
+        move_focus: bool = owns_focus && repair_focus
         if !props.disabled && props.input.focused && (cast(s32)tabs.count) > 0 {
             key_input: TabBarKeyboardInput = TabBarKeyboardInputFor(
                 result.selected_index, (cast(s32)tabs.count),
@@ -422,6 +454,7 @@ Theme :: #import "theme";
                 if next >= 0 && next != result.selected_index {
                     result.selected_index = next
                     result.activated_index = next
+                    if owns_focus { move_focus = true }
                 }
             }
             if key_input.close_requested &&
@@ -514,7 +547,7 @@ Theme :: #import "theme";
             }
         }
         if result.selected_index >= 0 &&
-        (props.focus_selected ||
+        (props.focus_selected || move_focus ||
             result.selected_index != props.selected_index) {
             selected_bounds: Rectangle = TabBarBoundsAt(bounds, tabs,
                 result.selected_index, metrics, font,
@@ -611,6 +644,7 @@ Theme :: #import "theme";
                         cast(SemanticKind)SemanticTab, index)
                     TreeSetLabel(session, node, tab.label)
                     TreeSetSelected(session, node, selected)
+                    if selected && move_focus { unused TreeFocusSubmittedAt(session, node) }
                 }
                 label_width: s32 = 0
                 if tab.label != "" {

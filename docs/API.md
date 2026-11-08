@@ -149,8 +149,8 @@ reveal for a reader that owns its viewport.
 so an unmodified Tab queued before `BeginFrame` remains available through
 `KeyboardTake(session)` for application completion. Only the actual retained
 focus owner can capture it, using its last committed intent; disabled,
-read-only, fully clipped and unfocused fields do not capture. Shift+Tab and
-modified Tab retain normal focus traversal. Intent is scoped to the retained
+read-only, fully clipped and unfocused fields do not capture. Shift+Tab retains normal focus traversal.
+Control-, Alt- and Super-modified Tab stay queued for application input. Intent is scoped to the retained
 node and session epoch, including suspended embedded-app input.
 `input.focus` also transfers actual focus to a newly submitted TextField in
 its first frame, so the next queued key reaches it without an idle render.

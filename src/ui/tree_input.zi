@@ -782,7 +782,7 @@ TreeKeyboardRoute :: (session: Session) -> bool {
             }
             index -= 1
         }
-    } else if key == KeyTab {
+    } else if key == KeyTab && (active_modifiers[slot] & ~KeyModifierShift) == 0 {
         direction: s32 = 1
         if (active_modifiers[slot] & KeyModifierShift) != 0 { direction = -1 }
         current: s32 = -1

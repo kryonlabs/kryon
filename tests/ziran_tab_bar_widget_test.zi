@@ -9,6 +9,9 @@
 #import "tab_bar_widget"
 #import "tree"
 #import "tree_input"
+#import "widget_kind"
+
+using WidgetKind;
 #import "ziran_widget_noop_host"
 
 using SemanticKind;
@@ -273,6 +276,86 @@ Swipe :: () -> s32 {
     return 0
 }
 
+// A nonzero, narrow viewport forces Home to unsubmit the old last tab.
+RetainedFrame :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
+    TreeStart(TestSession(), cast(u64)987, Rectangle.{240.0, 120.0, 240.0, 120.0})
+    result := TabBar(TestSession(), props, tabs)
+    unused TreeFinish(TestSession())
+    return result
+}
+FocusedTab :: (key: u64) -> bool {
+    for index: 0..TreeCount(TestSession()) - 1 {
+        if TreeNodeAt(TestSession(), index).key == key && TreeFocusedAt(TestSession(), index) { return true }
+    }
+    return false
+}
+RetainedFocus :: () -> s32 {
+    tabs: [17]Tab
+    for index: 0..16 {
+        tabs[index] = Tab.{.key = cast(u64)(1000 + index), .label = "Long tab label", .closeable = true}
+    }
+    props := TabBarProps.{.key = cast(u64)909, .id = 238,
+        .bounds = Rectangle.{240.0, 120.0, 240.0, 36.0},
+        .selected_index = 16, .focus_selected = true}
+    first := RetainedFrame(props, tabs[:])
+    props.scroll_offset = first.scroll_offset
+    for index: 0..TreeCount(TestSession()) - 1 {
+        if TreeNodeAt(TestSession(), index).key == tabs[16].key { unused TreeFocusAt(TestSession(), index) }
+    }
+    if !FocusedTab(tabs[16].key) { return 31 }
+    props.input.focused = true; props.input.home = true
+    home := RetainedFrame(props, tabs[:])
+    if home.selected_index != 0 || !FocusedTab(tabs[0].key) { return 32 }
+    props.selected_index = home.selected_index; props.scroll_offset = home.scroll_offset
+    props.input.home = false; props.input.end = true
+    end := RetainedFrame(props, tabs[:])
+    if end.selected_index != 16 || !FocusedTab(tabs[16].key) { return 33 }
+    // Remove the actual focus owner, as a caller does after close.
+    props.input.end = false; props.selected_index = 15; props.scroll_offset = end.scroll_offset
+    closed := RetainedFrame(props, tabs[0:16])
+    if !FocusedTab(tabs[15].key) { return 34 }
+    // Disabling the owner repairs focus to the enabled selected tab.
+    tabs[15].disabled = true; props.selected_index = 14; props.scroll_offset = closed.scroll_offset
+    disabled := RetainedFrame(props, tabs[0:16])
+    if !FocusedTab(tabs[14].key) { return 35 }
+    // Stable keys keep focus through reorder without replacing it by index.
+    swap := tabs[14]; tabs[14] = tabs[13]; tabs[13] = swap
+    props.selected_index = 13; props.scroll_offset = disabled.scroll_offset
+    unused RetainedFrame(props, tabs[0:16])
+    if !FocusedTab(swap.key) { return 36 }
+    // A visual focus hint alone must never claim retained focus.
+    TreeBlurAt(TestSession(), 2)
+    for index: 0..TreeCount(TestSession()) - 1 { TreeBlurAt(TestSession(), index) }
+    props.input.home = true
+    unused RetainedFrame(props, tabs[0:16])
+    if TreeHasFocus(TestSession()) { return 37 }
+    // Suspension and modal policy prevent a stale input hint stealing focus.
+    for index: 0..TreeCount(TestSession()) - 1 {
+        if TreeNodeAt(TestSession(), index).key == tabs[0].key { unused TreeFocusAt(TestSession(), index) }
+    }
+    suspended := TreeInputSuspend(TestSession())
+    props.input.home = false; props.input.end = true
+    unused RetainedFrame(props, tabs[0:16])
+    if TreeHasFocus(TestSession()) { return 38 }
+    unused TreeInputResume(TestSession(), suspended)
+    TreeStart(TestSession(), cast(u64)987, Rectangle.{240.0, 120.0, 240.0, 120.0})
+    unused TabBar(TestSession(), props, tabs[0:16])
+    modal := TreeSubmit(TestSession(), cast(u64)555, 0, WidgetKindModal, props.bounds)
+    button := TreeSubmit(TestSession(), cast(u64)556, modal, WidgetKindButton, props.bounds)
+    TreeSetInteractive(TestSession(), button, false, false, 9)
+    unused TreeFinish(TestSession())
+    if !TreeFocusAt(TestSession(), button) { return 39 }
+    TreeStart(TestSession(), cast(u64)987, Rectangle.{240.0, 120.0, 240.0, 120.0})
+    props.input.end = false; props.input.home = true
+    unused TabBar(TestSession(), props, tabs[0:16])
+    modal = TreeSubmit(TestSession(), cast(u64)555, 0, WidgetKindModal, props.bounds)
+    button = TreeSubmit(TestSession(), cast(u64)556, modal, WidgetKindButton, props.bounds)
+    TreeSetInteractive(TestSession(), button, false, false, 9)
+    unused TreeFinish(TestSession())
+    if !TreeFocusedAt(TestSession(), button) { return 40 }
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     index: s32 = 0
@@ -302,5 +385,7 @@ main :: () -> s32 {
     if !TreeFinish(TestSession()) || disabled.scroll_offset != 0 {
         return 4
     }
-    return Swipe()
+    swipe := Swipe()
+    if swipe != 0 { return swipe }
+    return RetainedFocus()
 }

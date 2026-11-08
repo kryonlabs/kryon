@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Modified Tab stays available to applications; TabBar keyboard navigation and removed or disabled focused tabs transfer retained focus to the selected tab.
+
 - Editable TextFields can opt into plain Tab for application completion while Shift+Tab retains focus traversal.
 
 - Breadcrumb provides keyed label navigation with caller-owned selection and focus, measured Unicode labels, and virtualized ancestor overflow.
