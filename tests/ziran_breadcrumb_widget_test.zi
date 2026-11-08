@@ -1,0 +1,134 @@
+#import "breadcrumb"
+#import "breadcrumb_props"
+#import "widget_test_session"
+#import "tree"
+#import "tree_input"
+#import "geometry"
+#import "paint_queue"
+#import "widget_kind"
+#import "semantic"
+#import "breadcrumb_widget_host"
+
+ClickKey :: (key: u64, kind: s32) {
+    for node: 0..TreeCount(TestSession()) - 1 {
+        entry := TreeNodeAt(TestSession(), node)
+        if entry.key == key && entry.kind == kind {
+            TreePointerUpdate(TestSession(), PointerFrame.{entry.bounds.x + 1.0, entry.bounds.y + 1.0, true, true, false})
+            TreePointerUpdate(TestSession(), PointerFrame.{entry.bounds.x + 1.0, entry.bounds.y + 1.0, false, false, true})
+        }
+    }
+}
+Small :: () -> s32 {
+    items: [3]BreadcrumbItem
+    items[0] = BreadcrumbItem.{cast(u64)101, "Root", false}
+    items[1] = BreadcrumbItem.{cast(u64)102, "Blocked", true}
+    items[2] = BreadcrumbItem.{cast(u64)103, "Tail", false}
+    props := BreadcrumbProps.{.key = cast(u64)81,
+        .bounds = Rectangle.{10.0, 10.0, 100.0, 28.0}, .active_index = 2, .open = true}
+    for phase: 0..8 {
+        if phase == 1 { props.open = false }
+        if phase == 3 { props.open = true }
+        if phase == 4 { props.open = false; props.bounds.width = 0.5; props.active_index = 0 }
+        if phase == 5 { props.bounds.width = 1000.0 }
+        if phase == 6 { swapped := items[0]; items[0] = items[2]; items[2] = swapped }
+        if phase == 7 {
+            props.bounds.width = 100.0; props.open = true
+            for i: 0..2 { items[i].disabled = true }
+        }
+        if phase == 8 { props.open = false; props.menu_input.commit = true }
+        TreeStart(TestSession(), cast(u64)2, Rectangle.{0.0, 0.0, 1000.0, 400.0})
+        result := Breadcrumb(TestSession(), props, items[:])
+        if !TreeFinish(TestSession()) { return 20 }
+        PaintFlush(TestSession())
+        if phase == 0 { ClickKey(cast(u64)102, cast(s32)WidgetKind.WidgetKindSelectable) }
+        if phase == 1 {
+            if result.activated_index != -1 || !result.open { return 21 }
+            ClickKey(cast(u64)101, cast(s32)WidgetKind.WidgetKindSelectable)
+        }
+        if phase == 2 && (result.activated_key != cast(u64)101 || result.open) { return 22 }
+        if phase == 4 {
+            if !result.open { return 23 }
+            required: s32 = 0
+            for n: 0..TreeCount(TestSession()) - 1 {
+                entry := TreeNodeAt(TestSession(), n)
+                if entry.kind == cast(s32)WidgetKind.WidgetKindButton &&
+                (entry.key == cast(u64)101 || entry.key == cast(u64)103) && entry.bounds.width > 0.0 {
+                    required += 1
+                }
+            }
+            if required != 2 { return 27 }
+        }
+        if phase == 5 {
+            if result.open { return 24 }
+            ClickKey(cast(u64)103, cast(s32)WidgetKind.WidgetKindButton)
+        }
+        if phase == 6 && (result.activated_key != cast(u64)103 || result.activated_index != 0) { return 25 }
+        if phase == 8 && result.activated_index != -1 { return 26 }
+    }
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    items: [2048]BreadcrumbItem
+    for i: 0..2047 {
+        items[i] = BreadcrumbItem.{cast(u64)(i + 10), "祖先 / café 👩‍💻", false}
+    }
+    props := BreadcrumbProps.{.key = cast(u64)71,
+        .bounds = Rectangle.{10.0, 10.0, 180.0, 28.0},
+        .active_index = 2047, .focused_index = -1, .open = true}
+    for phase: 0..14 {
+        if phase == 1 { props.open = false; props.menu_input.navigating = true; props.menu_input.end = true }
+        if phase == 2 { props.menu_input.navigating = false; props.menu_input.end = false; props.menu_input.commit = true }
+        if phase == 3 { props.menu_input.commit = false; props.focused = true; props.focused_index = 2047; props.trigger_input.enter = true }
+        if phase == 4 { props.disabled = true }
+        if phase == 5 { props.disabled = false; props.focused = false; props.trigger_input.enter = false; props.bounds.width = 0.5; props.open = true }
+        if phase == 6 { props.bounds.width = 0.0 }
+        if phase == 7 { props.bounds.width = -1.0 }
+        if phase == 8 { props.bounds.width = 1000.0; props.close = true }
+        if phase == 9 {
+            props.close = false; props.open = false; props.bounds.width = 180.0
+            props.focused = false; props.trigger_input.enter = false
+        }
+        if phase == 10 { props.open = true }
+        if phase == 11 { props.open = false }
+        if phase == 12 { props.menu_input.navigating = true; props.menu_input.home = true }
+        if phase == 13 {
+            props.menu_input.navigating = false; props.menu_input.home = false
+            swapped := items[0]; items[0] = items[1]; items[1] = swapped
+            props.menu_input.commit = true
+        }
+        if phase == 14 { props.menu_input.commit = false; props.disabled = true; props.focused = true; props.focused_index = -1; props.trigger_input.down = true }
+        TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 1000.0, 400.0})
+        result := Breadcrumb(TestSession(), props, items[:])
+        if !TreeFinish(TestSession()) { return 1 }
+        if TreeCount(TestSession()) > 30 { return 2 }
+        if phase == 9 {
+            for node: 0..TreeCount(TestSession()) - 1 {
+                entry := TreeNodeAt(TestSession(), node)
+                if entry.key == items[2047].key && entry.kind == cast(s32)WidgetKind.WidgetKindButton {
+                    TreePointerUpdate(TestSession(), PointerFrame.{entry.bounds.x + 1.0, entry.bounds.y + 1.0, true, true, false})
+                    TreePointerUpdate(TestSession(), PointerFrame.{entry.bounds.x + 1.0, entry.bounds.y + 1.0, false, false, true})
+                }
+            }
+        }
+        if phase == 10 && (result.activated_index != 2047 || result.changed) { return 8 }
+        if phase == 13 && result.activated_key != cast(u64)10 { return 9 }
+        if phase == 14 && result.open { return 10 }
+        PaintFlush(TestSession())
+        if phase == 0 && !result.open { return 3 }
+        if phase == 2 && (result.activated_index != 2046 || result.open || !result.changed) { return 4 }
+        if phase == 3 && (result.activated_key != items[2047].key || result.changed) { return 5 }
+        if phase == 4 && result.activated_index != -1 { return 6 }
+        if (phase == 6 || phase == 7) && result.node != -1 { return 7 }
+    }
+    // A clipped-empty scope submits no inaccessible controls.
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 1000.0, 400.0})
+    TreeSetChildClip(TestSession(), 0, Rectangle.{0.0, 0.0, 0.0, 0.0})
+    result := Breadcrumb(TestSession(), props, items[:])
+    if !TreeFinish(TestSession()) || result.node != -1 { return 11 }
+    small := Small()
+    if small != 0 { return small }
+    if !BreadcrumbRasterValid() { return 12 }
+    return 0
+}

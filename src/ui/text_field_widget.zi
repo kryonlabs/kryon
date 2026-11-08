@@ -527,6 +527,11 @@ Theme :: #import "theme";
             if result.node < 0 { return result }
             TreeSetInteractive(session, result.node, props.disabled,
                 false, props.focus_id)
+            TreeSetCaptureTab(session, result.node,
+                props.capture_tab && result.focused && !props.disabled && !props.read_only)
+            if props.input.focus && !props.disabled {
+                unused TreeFocusSubmittedAt(session, result.node)
+            }
             if select_number && drag.active && !drag.ended {
                 TreeSetWidgetState(session, result.node, WidgetState.{true, 0, 0})
             }

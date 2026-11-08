@@ -1,0 +1,100 @@
+#import "ziran_mesh_noop_host"
+#import "drawing_props"
+#import "geometry"
+
+// Record raster inputs without touching a display. Font advances deliberately
+// differ from UTF-8 byte length and are proportional.
+texts: s32;
+raster_failed: bool;
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    unused typeface
+    if value == "祖先 / café 👩‍💻" { return font * 4 }
+    if value == "iiii" { return font }
+    if value == "WW" { return font * 3 }
+    return font
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused typeface
+    return font
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused color
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused bounds
+    unused radius
+    unused segments
+    unused width
+    unused color
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line
+    unused color
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    unused value
+    unused x
+    unused y
+    unused font
+    unused color
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    if value == "祖先 / café 👩‍💻" { texts += 1 }
+    if clip.width < 0.0 || clip.height < 0.0 || clip.x < 0.0 || clip.y < 0.0 ||
+    clip.x + clip.width > 1000.1 || clip.y + clip.height > 400.1 {
+        raster_failed = true
+    }
+    RasterText(value, x, y, font, color)
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32,
+    tint: Color) {
+    unused asset_path
+    unused texture_id
+    unused source
+    unused destination
+    unused clip
+    unused origin
+    unused rotation
+    unused radius
+    unused tint
+}
+
+#program_export
+BreadcrumbRasterValid :: () -> bool { return texts > 0 && !raster_failed }

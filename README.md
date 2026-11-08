@@ -122,3 +122,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the library boundary and
 [Ziran's implementation
 status](https://github.com/ziranlang/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)
 for language and portable runtime gaps.
+
+`Widgets` includes `Breadcrumb` for keyed label navigation, with measured
+ancestors and an accessible, virtualized overflow menu. Applications own
+selection, focus and navigation; see [the API](docs/API.md#breadcrumbs).

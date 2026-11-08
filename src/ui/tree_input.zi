@@ -634,6 +634,26 @@ TreeFocusAt :: (session: Session, index: s32) -> bool {
     return true
 }
 
+// Explicit requests may target a control created in the frame being built.
+// Its identity is already assigned; the next committed tree observes the same
+// focus owner without an extra render or an index into the previous frame.
+#program_export
+TreeFocusSubmittedAt :: (session: Session, index: s32) -> bool {
+    if !SessionValid(session) { return false }
+    slot := SessionIndex(session)
+    if !trees[slot].building || index < 0 || index >= trees[slot].submitted_count { return false }
+    entry := trees[slot].submitted[index]
+    if entry.interaction_index < 0 { return false }
+    interaction := trees[slot].submitted_interactions[entry.interaction_index]
+    visible := entry.bounds
+    if entry.clipped { visible = RectangleIntersection(visible, entry.clip) }
+    top := trees[slot].submitted_modal_layer
+    if interaction.disabled || interaction.loading || visible.width <= 0.0 || visible.height <= 0.0 ||
+    (top > 0 && TreeLayerAt(session, index, false, false) != top) { return false }
+    active_focus[slot] = entry.identity_generation
+    return true
+}
+
 #program_export
 TreeHasFocus :: (session: Session) -> bool {
     input_slot := SessionIndex(session)
@@ -768,6 +788,21 @@ TreeKeyboardRoute :: (session: Session) -> bool {
         current: s32 = -1
         count: s32 = TreeCount(session)
         for index: 0..count - 1 { if TreeFocusedAt(session, index) { current = index; break } }
+        // Only the actual retained focus owner may reserve plain Tab. A
+        // passive field, clipped/disabled editor, another epoch or suspended
+        // embedded app cannot turn traversal off for the active application.
+        if current >= 0 && active_modifiers[slot] == 0 {
+            entry := trees[slot].committed[current]
+            input := TreeInputAt(session, current)
+            visible := entry.bounds
+            if entry.clipped { visible = RectangleIntersection(visible, entry.clip) }
+            if input.kind == WidgetKindTextField && input.interactive &&
+            !input.disabled && !input.loading && visible.width > 0.0 && visible.height > 0.0 &&
+            entry.interaction_index >= 0 &&
+            trees[slot].committed_interactions[entry.interaction_index].capture_tab {
+                return false
+            }
+        }
         if current < 0 && direction < 0 { current = 0 }
         tries: s32 = 0
         while tries < count {

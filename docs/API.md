@@ -55,6 +55,35 @@ height instead of staying at the styled icon size: up to 64 units above the
 label, or up to 40 units beside it. A vector `icon_shape` still takes
 precedence over an `image` and keeps the styled size.
 
+## Breadcrumbs
+
+`Breadcrumb(session: Session, props: BreadcrumbProps, items: []BreadcrumbItem)
+-> BreadcrumbResult` is exported by `Widgets` and `breadcrumb`. Items borrow
+`label: string` for the frame and carry a unique, stable, nonzero `key: u64`
+and `disabled: bool`. No labels are interpreted as paths.
+
+Props contain `key`, `bounds`, `id`, `class_name`, `active_index` (-1 for none),
+`disabled`, `focused`, and `focused_index`. Enter/Space in `trigger_input`
+activates the caller's focused item; `focused_index = -1` addresses overflow,
+where Down also opens the menu. Native retained button focus works normally.
+The widget never changes the caller's selection or focus. Read
+`activated_index` (-1 for none), `activated_key` (0 for none), and `changed`:
+repeat activation still reports the item, with `changed = false`.
+
+`open` and `close` request overflow transitions; internal open state persists.
+`overflow_label` defaults to an ellipsis. `menu_input: DropdownMenuInput`
+provides Up/Down/Home/End, commit and Escape. Result `open`, `opened`, `closed`
+reports menu state. Pointer, native Escape/focus dismissal and scrolling use
+standard Popup and Scroll behavior. Submit after earlier page controls.
+
+Widths use resolved Button styles and font advances. The tail and active
+ancestor remain visible, compressed when necessary; all other hidden ancestors
+remain in original order in a viewport-constrained, virtualized overflow.
+Labels are clipped/fitted without slicing UTF-8. Borrowed lists of at least
+2,048 items are supported without submitting offscreen rows. Zero, negative,
+or fully clipped bounds submit no controls. Keys, not indices or labels,
+preserve retained item identity and menu highlight across reorder.
+
 ## Cards
 
 `Card(session, CardProps)` draws a filled, elevated or outlined Material surface.
@@ -115,6 +144,16 @@ caret and selection changes. Wheel, scrollbar and touch scrolling remain
 available. Editors keep the normal caret reveal unless they enable this flag.
 `ScrollProps.manual_scroll` similarly suppresses automatic focused-field
 reveal for a reader that owns its viewport.
+
+`TextFieldProps.capture_tab` defaults to false. An editable field can opt in
+so an unmodified Tab queued before `BeginFrame` remains available through
+`KeyboardTake(session)` for application completion. Only the actual retained
+focus owner can capture it, using its last committed intent; disabled,
+read-only, fully clipped and unfocused fields do not capture. Shift+Tab and
+modified Tab retain normal focus traversal. Intent is scoped to the retained
+node and session epoch, including suspended embedded-app input.
+`input.focus` also transfers actual focus to a newly submitted TextField in
+its first frame, so the next queued key reaches it without an idle render.
 
 `TextFieldState` keeps a field's value and interaction state in caller-owned
 storage. Import it and its helpers from `Widgets` (or `text_input_props`).

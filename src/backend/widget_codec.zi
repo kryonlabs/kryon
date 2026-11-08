@@ -1401,7 +1401,7 @@ WidgetValidTextFieldInput :: (value: HostValue) -> bool {
 }
 
 WidgetTextFieldPropsCodec :: struct {
-    fields: [22]HostField
+    fields: [23]HostField
     bounds: WidgetRectangleCodec
     composition: WidgetCompositionStateCodec
     input: WidgetTextFieldInputCodec
@@ -1434,6 +1434,7 @@ WidgetEncodeTextFieldProps :: (data: TextFieldProps, codec: *WidgetTextFieldProp
     codec.fields[20] = HostField.{.name = HostTextData("disabled"), .value = HostScalar("bool", ifx data.disabled then 1 else 0)}
     codec.fields[21].name = HostTextData("input")
     codec.fields[21].value = WidgetEncodeTextFieldInput(data.input, *codec.input)
+    codec.fields[22] = HostField.{.name = HostTextData("capture_tab"), .value = HostScalar("bool", ifx data.capture_tab then 1 else 0)}
     return value
 }
 
@@ -1462,6 +1463,7 @@ WidgetDecodeTextFieldProps :: (value: HostValue, codec: *WidgetTextFieldPropsCod
     data.read_only = HostFieldValue(*value, 19, "read_only", *zero).integer != 0
     data.disabled = HostFieldValue(*value, 20, "disabled", *zero).integer != 0
     data.input = WidgetDecodeTextFieldInput(HostFieldValue(*value, 21, "input", *zero).*, *codec.input)
+    data.capture_tab = HostFieldValue(*value, 22, "capture_tab", *zero).integer != 0
     return data
 }
 
@@ -1489,6 +1491,7 @@ WidgetValidTextFieldProps :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 19, "read_only", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 20, "disabled", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldRecordValid(*value, 21, "input", WidgetValidTextFieldInput) { return false }
+    if !HostFieldScalarValid(*value, 22, "capture_tab", "bool", cast(s32)HostInteger) { return false }
     return true
 }
 

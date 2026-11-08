@@ -154,9 +154,9 @@ jobs:
             gstreamer1.0-plugins-good gstreamer1.0-libav cmake nasm meson ninja-build libwebpdemux2 libopus-dev
 
       # SDL3's GPU renderer needs Vulkan even on a software-only runner.
-      - name: Install SDL3 software GPU test tools
+      - name: Install native host test tools
         if: matrix.shard == 'hosts'
-        run: sudo apt-get install -y libvulkan-dev mesa-vulkan-drivers libx11-dev libxext-dev libxtst-dev xauth
+        run: sudo apt-get install -y libvulkan-dev mesa-vulkan-drivers libx11-dev libxext-dev libxtst-dev xauth libgtk-3-dev
 
       # Template tests serve this checkout through local Git URLs and use
       # the manifest's master ref. Keep that ref at the locked commit.

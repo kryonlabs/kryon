@@ -234,6 +234,7 @@
         focus_id: s32
         // A CursorShape the widget chose over its kind's own; 0 for none.
         cursor: s32
+        capture_tab: bool
     }
 
     // State a widget keeps on its own node from one frame to the next, such
@@ -1550,6 +1551,16 @@
     }
 
     // A widget saves its state on the node it submitted in this frame.
+    // Committed editor intent; scoped to the retained node and session epoch.
+    #program_export
+    TreeSetCaptureTab :: (session: Session, index: s32, capture: bool) {
+        if !SessionValid(session) { return }
+        slot := SessionIndex(session)
+        if !trees[slot].building || index < 0 || index >= trees[slot].submitted_count { return }
+        interaction := TreeEnsureInteraction(session, index)
+        if interaction >= 0 { trees[slot].submitted_interactions[interaction].capture_tab = capture }
+    }
+
     #program_export
     TreeSetWidgetState :: (session: Session, index: s32, state: WidgetState) {
         slot: s32 = SessionIndex(session)

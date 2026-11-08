@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+- Editable TextFields can opt into plain Tab for application completion while Shift+Tab retains focus traversal.
+
+- Breadcrumb provides keyed label navigation with caller-owned selection and focus, measured Unicode labels, and virtualized ancestor overflow.
+
 - Native Raylib renders managed RGBA images with revision-aware textures and owned queued pixels, preserving tint and session images across graphics resets.
 - Linux native apps can publish and read bounded multi-target MIME clipboards, with copied buffers, incremental transfers and conditional release of their own publication.
 

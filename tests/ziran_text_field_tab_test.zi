@@ -1,0 +1,86 @@
+#import "session"
+#import "geometry"
+#import "text_field_widget"
+#import "text_input_props"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "button_props"
+#import "button_widget"
+#import "input_props"
+#import "ziran_widget_noop_host"
+#import "ziran_system_clipboard_host"
+
+Draw :: (session: Session, props: TextFieldProps, clipped: bool) -> s32 {
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    if clipped { TreeSetChildClip(session, 0, Rectangle.{}) }
+    field := TextField(session, props)
+    Button(session, ButtonProps.{.key = cast(u64)12, .bounds = Rectangle.{10.0, 60.0, 80.0, 30.0}, .label = "Next"})
+    EndFrame(session)
+    return field.node
+}
+Case :: (session: Session, props: TextFieldProps, clipped: bool,
+    focus: bool, modifiers: s32, expected: s32) -> bool {
+    node := Draw(session, props, clipped)
+    if focus { TreeFocusAt(session, node) }
+    KeyboardModifiersSend(session, modifiers)
+    KeyboardSend(session, KeyTab)
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    observed := KeyboardTake(session)
+    EndFrame(session)
+    return observed == expected
+}
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    props := TextFieldProps.{.key = cast(u64)11, .bounds = Rectangle.{10.0, 10.0, 200.0, 36.0},
+        .value = "complete", .label = "Location", .cursor = 8, .anchor = 8, .focused = true}
+    // Focus a previous control, then create the explicit-focus field once.
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    Button(session, ButtonProps.{.key = cast(u64)12, .bounds = Rectangle.{10.0, 60.0, 80.0, 30.0}, .label = "Next"})
+    EndFrame(session)
+    TreeFocusAt(session, 1)
+    fresh := props; fresh.focused = false; fresh.capture_tab = true; fresh.input.focus = true
+    created := Draw(session, fresh, false)
+    if !TreeFocusedAt(session, created) { return 15 }
+    KeyboardSend(session, KeyTab)
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
+    if KeyboardTake(session) != KeyTab { return 16 }
+    EndFrame(session)
+    if !Case(session, props, false, true, 0, 0) { return 1 }
+    props.capture_tab = true
+    if !Case(session, props, false, true, 0, KeyTab) { return 2 }
+    if !Case(session, props, false, true, KeyModifierShift, 0) { return 3 }
+    if !Case(session, props, false, true, KeyModifierControl, 0) { return 4 }
+    props.disabled = true
+    if !Case(session, props, false, true, 0, 0) { return 5 }
+    props.disabled = false; props.read_only = true
+    if !Case(session, props, false, true, 0, 0) { return 6 }
+    props.read_only = false
+    if !Case(session, props, true, true, 0, 0) { return 7 }
+    // Merely painting a focused-looking field cannot reserve global input.
+    if !Case(session, props, false, false, 0, 0) { return 8 }
+    props.focused = false
+    if !Case(session, props, false, true, 0, 0) { return 9 }
+    props.focused = true
+    other := SessionOpen()
+    Draw(session, props, false)
+    TreeFocusAt(session, 1)
+    normal := props; normal.capture_tab = false
+    if !Case(other, normal, false, true, 0, 0) { return 10 }
+    // Suspending an embedded app clears its focus until the app resumes.
+    suspended := TreeInputSuspend(session)
+    KeyboardSend(session, KeyTab)
+    if !TreeKeyboardRoute(session) || KeyboardTake(session) != 0 { return 11 }
+    TreeInputResume(session, suspended)
+    KeyboardSend(session, KeyTab)
+    if TreeKeyboardRoute(session) || KeyboardTake(session) != KeyTab { return 12 }
+    SessionClose(session)
+    reopened := SessionOpen()
+    KeyboardSend(reopened, KeyTab)
+    TreeKeyboardRoute(reopened)
+    if TreeInputResume(reopened, suspended) { return 14 }
+    // No stale capture intent or focus may survive the session epoch.
+    if !Case(reopened, normal, false, true, 0, 0) { return 13 }
+    return 0
+}

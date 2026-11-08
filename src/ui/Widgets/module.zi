@@ -102,3 +102,5 @@ using TransitionModule :: #import "transition";
 using TextSelectionWidgetModule :: #import "text_selection_widget";
 using StylePickerPropsModule :: #import "style_picker_props";
 using StylePickerModule :: #import "style_picker";
+using BreadcrumbPropsModule :: #import "breadcrumb_props";
+using BreadcrumbModule :: #import "breadcrumb";

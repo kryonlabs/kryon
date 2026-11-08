@@ -17,6 +17,8 @@ ref = "1844042d1ca751e62e61df7617dba19c98588339"
 source = true
 
 [exports]
+breadcrumb = "src/ui/breadcrumb.zi"
+breadcrumb_props = "src/ui/breadcrumb_props.zi"
 GtkStyleLinux = "src/backend/gtk_style_linux.zi"
 app_asset_path = "src/backend/app_asset_path.zi"
 icon = "src/ui/icon.zi"

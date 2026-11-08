@@ -6,6 +6,8 @@ bevel.zi
 bitmap_store.zi
 box_props.zi
 box_widget.zi
+breadcrumb.zi
+breadcrumb_props.zi
 button.zi
 button_props.zi
 button_widget.zi
