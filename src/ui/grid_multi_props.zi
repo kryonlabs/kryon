@@ -29,6 +29,15 @@ GridMultiProps :: struct {
     scroll_delta: s32
     focused: bool
     disabled: bool
+    // Retain layout, semantics and interaction for an external native skin.
+    // Like ButtonProps.invisible, this suppresses item paint only.
+    invisible: bool
+    // A native skin supplies the scrollbar and its viewport allocation.
+    external_scrollbar: bool
+    immediate_wheel: bool
+    // Preserve a native view's manual offset when window focus returns.
+    // Cursor/navigation, layout and viewport changes still reveal the item.
+    preserve_scroll_on_focus: bool
     control: bool
     shift: bool
     navigation: GridMultiInput

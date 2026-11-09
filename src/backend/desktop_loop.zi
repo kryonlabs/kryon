@@ -103,6 +103,7 @@ RunDesktop :: (width: s32 = 960, height: s32 = 600) -> s32 {
         CloseDesktop()
         return DesktopError("kryon: could not open the desktop window")
     }
+    DesktopInputEnable()
     session: Session = SessionOpen()
     if !SessionValid(session) {
         CloseDesktop()
@@ -116,22 +117,21 @@ RunDesktop :: (width: s32 = 960, height: s32 = 600) -> s32 {
         while ok && settled < 64 && Lanczos.LanczosWait() { ok = DrawFrame(session); settled += 1 }
         if ok { ok = CaptureConfigured() }
     } else {
-        while ok && PollDesktop() {
-            KeyboardModifiersSend(session, DesktopModifiers())
-            key: s32 = DesktopPressedKey()
+        while ok {
+            if !PollDesktop() { break }
+            key, modifiers := DesktopInputTake(session)
+            KeyboardModifiersSend(session, modifiers)
             if key == 0 {
                 for candidate: cast(s32)0..349 {
                     if TestDriverKeyPressed(candidate) { key = candidate; break }
                 }
             }
             if key != 0 { KeyboardSend(session, key) }
-            codepoint: s32 = DesktopTypedCodepoint()
-            if codepoint == 0 { codepoint = TestDriverCodepoint() }
-            keyboard_activity := key != 0 || codepoint != 0
+            codepoint: s32 = ifx TypedCodepointPeek(session) == 0 then TestDriverCodepoint() else 0
+            keyboard_activity := key != 0 || TypedCodepointPeek(session) != 0 || codepoint != 0
             while codepoint != 0 {
                 TypedCodepointSend(session, codepoint)
-                codepoint = DesktopTypedCodepoint()
-                if codepoint == 0 { codepoint = TestDriverCodepoint() }
+                codepoint = ifx TypedCodepointCapacity(session)>0 then TestDriverCodepoint() else 0
             }
             ok = DrawFrame(session, keyboard_activity)
             TestDriverFrame(session)

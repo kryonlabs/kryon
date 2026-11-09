@@ -65,7 +65,7 @@ TreeCursorTest :: () -> s32 {
     TreePointerUpdate(session, PointerFrame.{150.0, 70.0, false, false, false})
     if TreeCursor(session) != cast(s32)CursorDefault { return -39 }
     // A press the app refines with its own hit test names its cursor; a
-    // disabled one still shows disabled, and an invalid shape is ignored.
+    // explicit disabled-control cursors are honored, and invalid shapes ignored.
     TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
     button = TreeSubmit(session, cast(u64)2, 0, cast(s32)WidgetKind.WidgetKindButton, .{10.0, 10.0, 40.0, 30.0})
     TreeSetInteractive(session, button, false, false, 2)
@@ -80,7 +80,7 @@ TreeCursorTest :: () -> s32 {
     TreePointerUpdate(session, PointerFrame.{30.0, 20.0, false, false, false})
     if TreeCursor(session) != cast(s32)CursorArrow || TreeHitAt(session, 30.0, 20.0) != button { return -41 }
     TreePointerUpdate(session, PointerFrame.{150.0, 20.0, false, false, false})
-    if TreeCursor(session) != cast(s32)CursorDisabled { return -42 }
+    if TreeCursor(session) != cast(s32)CursorArrow { return -42 }
     TreePointerUpdate(session, PointerFrame.{30.0, 70.0, false, false, false})
     if TreeCursor(session) != cast(s32)CursorClickable { return -43 }
     // A hover mark the app makes over a disabled widget it covers wins.

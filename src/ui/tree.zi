@@ -1079,6 +1079,14 @@
         return TreeRead(session, index, false)
     }
 
+    // Native skins inspect this frame's submitted geometry without reading the
+    // previous frame used for input routing.
+    #program_export
+    TreeSubmittedCount :: (session: Session) -> s32 {
+        if !SessionValid(session) || !trees[session.slot].building { return 0 }
+        return trees[session.slot].submitted_count
+    }
+
     // The active editor in a retained subtree, including editors which the
     // viewport clips. Focus can reveal one without copying every node.
     #program_export

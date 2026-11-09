@@ -204,6 +204,20 @@ TypedCodepointSend :: (session: Session, codepoint: s32) -> bool {
 }
 
 #program_export
+TypedCodepointPeek :: (session: Session) -> s32 {
+    if !SessionValid(session) { return 0 }
+    index: s32 = SessionIndex(session)
+    if active_codepoints[index].count == 0 { return 0 }
+    return active_codepoints[index].values[active_codepoints[index].head]
+}
+
+#program_export
+TypedCodepointCapacity :: (session: Session) -> s32 {
+    if !SessionValid(session) { return 0 }
+    return 32 - active_codepoints[SessionIndex(session)].count
+}
+
+#program_export
 TypedCodepointTake :: (session: Session) -> s32 {
     if !SessionValid(session) { return 0 }
     index: s32 = SessionIndex(session)
@@ -360,7 +374,7 @@ TreeCursor :: (session: Session) -> s32 {
         node := TreeInputAt(session, hit)
         shape = CursorShapeForWidget(cast(WidgetKind)node.kind,
             node.disabled || node.loading)
-        if node.cursor > 0 && !node.disabled && !node.loading { shape = node.cursor }
+        if node.cursor > 0 && !node.loading { shape = node.cursor }
     }
     // The app's own hover mark shows over empty space and over a disabled
     // widget it covers, such as a bubble that takes a tap anywhere.

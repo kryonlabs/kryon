@@ -88,6 +88,9 @@ Probe :: #import "app";
         event.repeat = ifx repeated then cast(u8)1 else cast(u8)0
         event.keycode = key
         if key == 0x400000E1 && down { event.modifiers = cast(u16)3 }
+        // Numpad7 emits the digit only while NumLock is active. Without it,
+        // SDL's keypad event is normalized to Home, as on a real keyboard.
+        if key == 0x4000005F { event.modifiers = cast(u16)0x1000 }
         return Push(cast(*Event)*event) == 1
     }
     Key :: (down: bool, repeated: bool = false) -> bool { return SendKey(97, down, repeated) }

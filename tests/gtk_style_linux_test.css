@@ -14,6 +14,7 @@
   border-image: linear-gradient(to right, #ff0000, #0000ff) 1;
   border-radius: 3px;
   padding: 3px 5px;
+  margin: 2px 7px 3px 11px;
   color: rgb(17, 34, 51);
   box-shadow: none;
   text-shadow: none;
@@ -25,6 +26,9 @@
 .fixture-root button.flat#target:active { color: #604020; }
 .fixture-root button.flat#target:checked { color: #206040; }
 .fixture-root button.flat#target:disabled { color: #777777; }
+.fixture-root button.flat#target.composite {
+  text-shadow: 1px 2px 1px rgba(70,80,90,0.5);
+}
 .fixture-root button.flat#target:focus { color: #806040; }
 .fixture-root:disabled button.flat#target { padding-left: 9px; }
 .fixture-root button.flat#target.normal,
@@ -36,3 +40,23 @@
 .fixture-root button.flat#target.normal { font-weight: 400; font-style: normal; }
 .fixture-root button.flat#target.bold { font-weight: 700; font-style: normal; }
 .fixture-root button.flat#target.italic { font-weight: 400; font-style: italic; }
+.fixture-root treeview.view header button {
+  min-height: 31px;
+  padding: 3px 7px;
+  font: 14px "DejaVu Sans";
+}
+.fixture-root toolbar entry { min-height: 23px; }
+
+.fixture-root treeview.view header button:not(:last-child) { border-right: 3px solid #556677; }
+
+.rounded-root { background-color: #0c0e14; background-image: none; border: 0; box-shadow: none; }
+.rounded-root entry#target {
+  background-color: #202435;
+  background-image: none;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  border-image: none;
+  border-radius: 6px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08), 0 1px rgba(255, 255, 255, 0.03);
+  padding: 0; margin: 0; min-width: 0; min-height: 0;
+  transition: none;
+}

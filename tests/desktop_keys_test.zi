@@ -23,6 +23,9 @@ main :: () -> s32 {
     if DesktopKey(0x40000062) != 320 { return 7 }
     for key: 0..8 { if DesktopKey(0x40000059 + cast(s32)key) != 321 + key { return 8 } }
     queue: DesktopKeyBuffer
+    if DesktopKeyWithModifiers(0x40000063,0)!=261 || DesktopKeyWithModifiers(0x40000063,0x1000)!=330 ||
+        DesktopKeyWithModifiers(0x40000062,0)!=260 || DesktopKeyWithModifiers(0x40000062,0x1000)!=320 ||
+        DesktopKey(0x40000057)!=334 || DesktopKey(0x40000056)!=333 { return 15 }
     keys: [4]s32 = .[263, 65, 74, 324]
     for index: 0..3 { if !DesktopKeyPush(*queue, keys[index], cast(s32)index) { return 9 } }
     for index: 0..3 {

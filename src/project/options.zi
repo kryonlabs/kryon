@@ -23,6 +23,7 @@ ProjectInstall :: struct {
     name: string
     comment: string
     icon: string
+    icon_name: string
     categories: string
     working_directory: string
     autostart: bool
@@ -192,6 +193,17 @@ ProjectTextValid :: (value: string) -> bool {
     return true
 }
 
+ProjectIconNameValid :: (value: string) -> bool {
+    for i: 0..cast(s32)value.count-1 {
+        ch:=value[i]
+        if !((ch>=cast(u8)65 && ch<=cast(u8)90) ||
+            (ch>=cast(u8)97 && ch<=cast(u8)122) ||
+            (ch>=cast(u8)48 && ch<=cast(u8)57) ||
+            ch==cast(u8)45 || ch==cast(u8)95 || ch==cast(u8)46) { return false }
+    }
+    return true
+}
+
 // Autostart environment: space-separated NAME = VALUE words.
 ProjectEnvironmentValid :: (value: string) -> bool {
     at: s32 = 0
@@ -344,6 +356,8 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
             config.install.comment = value
         } else if key == "install.icon" {
             config.install.icon = value
+        } else if key == "install.icon_name" {
+            config.install.icon_name = value
         } else if key == "install.categories" {
             config.install.categories = value
         } else if key == "install.working_directory" {
@@ -452,6 +466,8 @@ ParseProject :: (options: string, name: string, entry: string) -> ProjectConfig 
     install: ProjectInstall = config.install
     if (install.profile != "" && ProjectFindProfile(config, install.profile) < 0) ||
     (install.icon != "" && !ProjectPathValid(install.icon)) ||
+    (install.icon != "" && install.icon_name != "") ||
+    !ProjectIconNameValid(install.icon_name) ||
     (install.working_directory != "" &&
         !ProjectPathValid(install.working_directory)) ||
     !ProjectTextValid(install.name) || !ProjectTextValid(install.comment) ||

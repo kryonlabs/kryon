@@ -150,6 +150,14 @@ project-test: project-toolchain build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_host_test.py
 	@$(MAKE) --no-print-directory templates-test
 
+# This native-link regression uses GTK development libraries, supplied by
+# the host test shard alongside the desktop renderer's native dependencies.
+.PHONY: project-system-links-test
+project-system-links-test: project-toolchain build/bin/kryon
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_system_links_test.py
+
+test: project-system-links-test
+
 .PHONY: renderer-artifact-test renderer-consumer-test
 renderer-consumer-test:
 	env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/renderer_consumer_test.py
@@ -822,3 +830,18 @@ test: native-assets-install-test
 gtk-style-linux-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER -u ICEAUTHORITY YUE_DESKTOP_RECOVERY=0 python3 tests/gtk_style_linux_test.py
 test: gtk-style-linux-test
+
+.PHONY: desktop-native-test
+desktop-native-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 python3 tests/desktop_native_test.py
+test: desktop-native-test
+
+.PHONY: gtk-scroll-linux-test
+gtk-scroll-linux-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u WAYLAND_SOCKET -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 python3 tests/gtk_scroll_linux_test.py
+test: gtk-scroll-linux-test
+
+.PHONY: file-date-linux-test
+file-date-linux-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 python3 tests/file_date_linux_test.py
+test: file-date-linux-test

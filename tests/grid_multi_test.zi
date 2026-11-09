@@ -170,6 +170,24 @@ main :: () -> s32 {
     if r.scroll_offset <= 0 || !ScrollDeviceMoving(TestSession()) { return 35 }
     p.scroll_offset = r.scroll_offset; r = Frame(p)
     if r.scroll_offset <= p.scroll_offset { return 36 }
+    // Native views may retain manual scroll across focus loss. The default
+    // focus reveal and explicit navigation/cursor reveal remain available.
+    ScrollDeviceStopMotion(TestSession(),p.key)
+    p.cursor=0; p.anchor=0; p.scroll_offset=120; p.navigation=.{}
+    p.focused=false; p.disabled=true; p.preserve_scroll_on_focus=true
+    r=Frame(p); if r.scroll_offset!=120 { return 38 }
+    p.focused=true; p.disabled=false
+    r=Frame(p); if r.scroll_offset!=120 { return 39 }
+    p.navigation=.{.home=true}; r=Frame(p)
+    if r.scroll_offset!=0 { return 40 }
+    p.navigation=.{}; p.scroll_offset=120; p.focused=false; p.disabled=true
+    r=Frame(p); if r.scroll_offset!=120 { return 41 }
+    p.focused=true; p.disabled=false; p.preserve_scroll_on_focus=false
+    r=Frame(p); if r.scroll_offset!=0 { return 42 }
+    p.scroll_offset=120; p.focused=false; p.disabled=true; p.preserve_scroll_on_focus=true
+    r=Frame(p)
+    p.cursor=6; p.focused=true; p.disabled=false
+    r=Frame(p); if r.scroll_offset!=180 { return 43 }
     // Negative/oversized state clamps, tiny and empty viewports stay safe.
     p.disabled = false; p.focused = false; p.scroll_offset = 2147483647
     p.cursor = 999; p.anchor = -999; p.bounds = .{10.0, 10.0, 1.0, 1.0}

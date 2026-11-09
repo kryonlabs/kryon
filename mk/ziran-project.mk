@@ -139,6 +139,7 @@ C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
 endif
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backend/image_decode_linux.zi $(KRYON_DIR)/src/backend/avif_decode.zi $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
+HOST_SOURCES += $(wildcard $(KRYON_DIR)/src/backend/gtk_*_linux.zi) $(KRYON_DIR)/src/backend/file_date_linux.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_METHODS=FS
@@ -204,6 +205,14 @@ NATIVE_PLAYER := $(ZX_RAYLIB_PROGRAM)
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 EM_CACHE ?= $(KRYON_DIR)/build/emscripten-cache
+endif
+
+# The package driver validates these system names and preserves manifest order.
+# Portable and browser profiles do not consume native system libraries.
+ifeq ($(PROJECT_CODEGEN),c99)
+ifeq ($(BROWSER_BACKEND)$(RAYLIB_WEB),)
+HOST_LIBS += $(addprefix -l,$(PROJECT_LINKS))
+endif
 endif
 
 ifneq ($(PROJECT_LIBRARY),)
@@ -428,7 +437,7 @@ else
 	cp $(PROGRAM_TITLE_FILE) "$$share/app.title.new"; \
 	chmod 644 "$$share/app.title.new"; \
 	mv -f "$$share/app.title.new" "$$share/app.title"; echo "$$share/app.title"; \
-	icon=""; \
+	icon="$$KRYON_INSTALL_ICON_NAME"; \
 	if [ -n "$$KRYON_INSTALL_ICON" ]; then \
 		sh $(KRYON_DIR)/scripts/make-install-dirs.sh "$$prefix/share/pixmaps"; \
 		icon="$$prefix/share/pixmaps/$$bin.$${KRYON_INSTALL_ICON##*.}"; \

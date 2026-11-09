@@ -104,6 +104,8 @@
             input.content_width = props.content_width
             input.horizontal = props.horizontal
             input.keep_scrollbar = props.keep_scrollbar
+            input.external_scrollbar = props.external_scrollbar
+            input.immediate_wheel = props.immediate_wheel
             input.has_offset = true
             input.offset = result.scroll_offset
             result.frame = ScrollFrameFor(input, metrics)

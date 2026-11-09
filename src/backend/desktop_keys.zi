@@ -27,6 +27,9 @@ DesktopKey :: (sdl: s32) -> s32 {
     if sdl == 0x40000048 { return 284 }
     // SDL puts keypad zero after one through nine; shared hosts use 320–329.
     if sdl == 0x40000062 { return 320 }
+    if sdl == 0x40000063 { return 330 }
+    if sdl == 0x40000057 { return 334 }
+    if sdl == 0x40000056 { return 333 }
     if sdl >= 0x40000059 && sdl <= 0x40000061 { return sdl - 0x40000059 + 321 }
     // F1 through F12 are consecutive in both numberings.
     if sdl >= 0x4000003A && sdl <= 0x40000045 { return sdl - 0x4000003A + 290 }
@@ -41,6 +44,24 @@ DesktopKey :: (sdl: s32) -> s32 {
     if sdl >= 97 && sdl <= 122 { return sdl - 32 }
     if sdl >= 32 && sdl < 127 { return sdl }
     return 0
+}
+
+// Keypad navigation follows NumLock; numeric decimal remains text when on.
+#program_export
+DesktopKeyWithModifiers :: (sdl: s32, modifiers: s32) -> s32 {
+    if (modifiers & 0x1000) == 0 {
+        if sdl == 0x40000063 { return 261 }
+        if sdl == 0x40000062 { return 260 }
+        if sdl == 0x40000059 { return 269 }
+        if sdl == 0x4000005A { return 264 }
+        if sdl == 0x4000005B { return 267 }
+        if sdl == 0x4000005C { return 263 }
+        if sdl == 0x4000005E { return 262 }
+        if sdl == 0x4000005F { return 268 }
+        if sdl == 0x40000060 { return 265 }
+        if sdl == 0x40000061 { return 266 }
+    }
+    return DesktopKey(sdl)
 }
 
 // SDL_GameControllerButton navigation uses the same codes as keyboard input.

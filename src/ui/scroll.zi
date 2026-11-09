@@ -256,6 +256,8 @@ ScrollFrameInput :: struct {
     horizontal: bool
     // The scrollbar shows even while the content fits.
     keep_scrollbar: bool
+    external_scrollbar: bool
+    immediate_wheel: bool
     has_offset: bool
     offset: s32
     pointer_allowed: bool
@@ -413,7 +415,7 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
     if input.has_offset {
         frame.offset = ScrollClamp(input.offset, maximum)
         if input.pointer_allowed && !input.disabled && input.wheel != 0.0 {
-            if input.now_seconds > 0.0 {
+            if input.now_seconds > 0.0 && !input.immediate_wheel {
                 // Wheel steps add to a target the content glides to; the
                 // first frame of a glide takes a frame's worth of it at once.
                 base: s32 = frame.offset
@@ -428,16 +430,18 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
                     maximum, metrics.default_wheel_step)
             }
             frame.consume_wheel = true
-        } else if input.gliding && !input.disabled && !input.owns_drag {
+        } else if input.gliding && !input.immediate_wheel && !input.disabled && !input.owns_drag {
             frame = ScrollGlideStep(frame, input,
                 ScrollClamp(input.glide_target, maximum), ScrollElapsed(input))
         }
-        frame.scrollbar = (maximum > 0 || input.keep_scrollbar) &&
+        frame.scrollbar = !input.external_scrollbar && (maximum > 0 || input.keep_scrollbar) &&
         input.bounds.width > cast(float32)metrics.scrollbar_width && input.bounds.height > 0.0
     }
     // A scrollbar kept while the content fits has nothing to scroll: it
     // takes no press, drag, fling or hover.
-    scrolls: bool = frame.scrollbar && maximum > 0
+    scrolls: bool = (frame.scrollbar || input.external_scrollbar) && maximum > 0 &&
+        input.bounds.width>0.0 && input.bounds.height>0.0
+    if input.external_scrollbar && active { active=false; frame.clear_drag=true }
     if !scrolls || input.disabled || input.owner_captured {
         frame.clear_drag = active || content_active
         frame.consume_release = (active || content_active) && input.released
@@ -445,11 +449,13 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
         content_active = false
         frame.content_drag = false
     }
-    if frame.scrollbar {
+    if frame.scrollbar || input.external_scrollbar {
         x: s32 = cast(s32)(input.bounds.x + input.bounds.width) - metrics.scrollbar_width
-        frame.paint = ScrollBarPaintFor(x, cast(s32)input.bounds.y, cast(s32)input.bounds.height,
-            input.content_height, frame.offset, maximum, metrics)
-        if scrolls && !input.disabled && !input.owner_captured &&
+        if frame.scrollbar {
+            frame.paint = ScrollBarPaintFor(x, cast(s32)input.bounds.y, cast(s32)input.bounds.height,
+                input.content_height, frame.offset, maximum, metrics)
+        }
+        if frame.scrollbar && scrolls && !input.disabled && !input.owner_captured &&
         input.pointer_allowed && input.pressed &&
         ScrollPointInside(input.mouse, frame.paint.track_bounds) {
             frame.start_drag = true
@@ -552,15 +558,17 @@ ScrollFrameFor :: (input: ScrollFrameInput, metrics: ScrollMetrics) -> ScrollFra
                 active = false
             }
         }
-        frame.paint = ScrollBarPaintFor(x, cast(s32)input.bounds.y, cast(s32)input.bounds.height,
-            input.content_height, frame.offset, maximum, metrics)
-        if active {
-            frame.thumb_state = cast(s32)ButtonStatePressed
-        } else if scrolls && !input.disabled && input.pointer_allowed &&
-        ScrollPointInside(input.mouse, frame.paint.thumb_bounds) {
-            frame.thumb_state = cast(s32)ButtonStateHover
+        if frame.scrollbar {
+            frame.paint = ScrollBarPaintFor(x, cast(s32)input.bounds.y, cast(s32)input.bounds.height,
+                input.content_height, frame.offset, maximum, metrics)
+            if active {
+                frame.thumb_state = cast(s32)ButtonStatePressed
+            } else if scrolls && !input.disabled && input.pointer_allowed &&
+            ScrollPointInside(input.mouse, frame.paint.thumb_bounds) {
+                frame.thumb_state = cast(s32)ButtonStateHover
+            }
+            frame.clip = ScrollContentBounds(input.bounds, true, metrics)
         }
-        frame.clip = ScrollContentBounds(input.bounds, true, metrics)
     }
     frame.content = frame.clip
     frame.content.y -= cast(float32)frame.offset

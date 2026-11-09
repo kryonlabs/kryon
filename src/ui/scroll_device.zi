@@ -212,8 +212,8 @@ ScrollObservationFor :: (key: u64, bounds: Rectangle, horizontal: bool = false,
 // scroll submitted after it does not move too.
 #program_export
 ScrollWheelTake :: (session: Session, key: u64, bounds: Rectangle,
-    scrolls: bool) -> float32 {
-    if !scrolls || !ScrollDeviceSampled(session) || scroll_device.wheel == 0.0 ||
+    scrolls: bool, horizontal: bool=false) -> float32 {
+    if !scrolls || !ScrollDeviceSampled(session) || ScrollDeviceWheelFor(horizontal) == 0.0 ||
         scroll_device.wheel_consumed || scroll_device.owner != cast(u64)0 {
         return 0.0
     }
@@ -225,7 +225,7 @@ ScrollWheelTake :: (session: Session, key: u64, bounds: Rectangle,
         return 0.0
     }
     scroll_device.wheel_consumed = true
-    return scroll_device.wheel
+    return ScrollDeviceWheelFor(horizontal)
 }
 
 // A widget that scrolls its own content, such as a text area on a touch

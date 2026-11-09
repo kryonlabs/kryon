@@ -237,6 +237,33 @@ KeptScrollbarTest :: () -> s32 {
         !End(TestSession()) || !TreeFinish(TestSession()) { return -25 }
     PaintClear(TestSession())
     if FocusScrollTest() != 42 { return -30 }
+    if ExternalScrollTest()!=42 { return -31 }
+    return 42
+}
+
+ExternalScrollTest :: () -> s32 {
+    metrics:=ScrollMetrics.{.scrollbar_width=10,.thumb_min_height=16,.default_wheel_step=20,.drag_threshold=3}
+    input:=ScrollFrameInput.{.bounds=.{10.0,20.0,100.0,60.0},.content_height=300,.content_width=400,
+        .external_scrollbar=true,.has_offset=true,.offset=30,.pointer_allowed=true,.wheel= -1.0}
+    frame:=ScrollFrameFor(input,metrics)
+    if frame.scrollbar || frame.clip.width!=100.0 || frame.clip.height!=60.0 ||
+        frame.content.width!=100.0 || frame.offset!=50 || !frame.consume_wheel { return -1 }
+    input.horizontal=true
+    frame=ScrollFrameFor(input,metrics)
+    if frame.scrollbar || frame.clip.width!=100.0 || frame.clip.height!=60.0 ||
+        frame.content.height!=60.0 || frame.offset!=50 || !frame.consume_wheel { return -2 }
+    input.horizontal=false; input.wheel=0.0; input.pressed=true; input.down=true
+    input.mouse=.{109.0,50.0}
+    frame=ScrollFrameFor(input,metrics)
+    if !frame.start_drag || !frame.content_drag || frame.scrollbar { return -3 }
+    input.pressed=false; input.owns_drag=true; input.content_drag=true
+    input.drag_origin_y=frame.drag_origin_y; input.drag_origin_offset=frame.drag_origin_offset
+    input.mouse.y=30.0
+    frame=ScrollFrameFor(input,metrics)
+    if !frame.drag_moving || !frame.cancel_press || frame.offset!=50 || frame.clip.width!=100.0 { return -4 }
+    input.down=false; input.released=true; input.drag_moving=true
+    frame=ScrollFrameFor(input,metrics)
+    if !frame.clear_drag || !frame.consume_release { return -5 }
     return 42
 }
 

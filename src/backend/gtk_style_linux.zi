@@ -1,5 +1,6 @@
 // Optional GTK3 CSS painting. The application supplies selectors and state;
-// this backend never creates widgets, windows, input, or a widget policy.
+// Measurement uses offscreen widgets; no visible window is created, and
+// applications retain their own widget and input policy.
 GtkStyleNormal :: 0;
 GtkStyleActive :: 1;
 GtkStylePrelight :: 2;
@@ -7,6 +8,7 @@ GtkStyleSelected :: 4;
 GtkStyleDisabled :: 8;
 GtkStyleFocused :: 32;
 GtkStyleChecked :: 2048;
+GtkFileDateStyle :: enum { LocaleDate; RelativeDate; }
 
 GtkStyleProviderAttachment :: struct { provider: u64; priority: u32 }
 GtkStyleNode :: struct {
@@ -16,6 +18,9 @@ GtkStyleNode :: struct {
     classes: []string
     state: u32
     providers: []GtkStyleProviderAttachment
+    // Optional position in a homogeneous sibling group; zero count is unknown.
+    sibling_index: s32
+    sibling_count: s32
 }
 GtkStyleInsets :: struct { left: s32; right: s32; top: s32; bottom: s32 }
 GtkStyleMetrics :: struct {
@@ -24,17 +29,35 @@ GtkStyleMetrics :: struct {
     background: u32
     border: GtkStyleInsets
     padding: GtkStyleInsets
+    margin: GtkStyleInsets
     font_family: [256]u8
     font_size: float64
     font_weight: s32
     font_style: s32
     dpi: float64
+    vertical_separator: s32
+    horizontal_separator: s32
 }
 // Owns rgba. Do not copy an owning value; release it through its address.
 GtkStyleBitmap :: struct { width: s32; height: s32; rgba: []u8 }
 GtkTextMetrics :: struct { available: bool; width: s32; height: s32; baseline: s32 }
+GtkWidgetMetrics :: struct {
+    available: bool; minimum_width: s32; minimum_height: s32; natural_width: s32; natural_height: s32;
+    item_x: s32; item_y: s32; item_width: s32; item_height: s32;
+    arrow_x: s32; arrow_y: s32; arrow_width: s32; arrow_height: s32;
+    control_x: s32; control_y: s32; control_width: s32; control_height: s32;
+}
+GtkWidgetMarginLeft :: 1;
+GtkWidgetMarginRight :: 2;
+GtkWidgetMarginTop :: 4;
+GtkWidgetMarginBottom :: 8;
+GtkWidgetMarginVertical :: 12;
+GtkWidgetMarginAll :: 15;
+// Only selected edges override GTK's widget-template margins.
+GtkWidgetMeasureOptions :: struct { margin: GtkStyleInsets; margin_edges: u32 }
 
 #scope_file
+FileDate :: #import "file_date_linux";
 CString :: #import "std/c_string";
 Text :: #import "std/byte_text_linux";
 gtk :: #system_library "gtk-3";
@@ -42,8 +65,10 @@ gdk :: #system_library "gdk-3";
 gobject :: #system_library "gobject-2.0";
 glib :: #system_library "glib-2.0";
 pango :: #system_library "pango-1.0";
+pangocairo :: #system_library "pangocairo-1.0";
 cairo :: #system_library "cairo";
 pixbuf :: #system_library "gdk_pixbuf-2.0";
+gio :: #system_library "gio-2.0";
 libc :: #system_library "c";
 RGBA :: struct { red: float64; green: float64; blue: float64; alpha: float64 }
 Border :: struct { left: s16; right: s16; top: s16; bottom: s16 }
@@ -55,6 +80,7 @@ TypeIsA :: (kind: usize, parent: usize) -> s32 #foreign gobject "g_type_is_a";
 Unref :: (object: *void) #foreign gobject "g_object_unref";
 PathNew :: () -> *void #foreign gtk "gtk_widget_path_new";
 PathAppend :: (path: *void, kind: usize) -> s32 #foreign gtk "gtk_widget_path_append_type";
+PathSiblings :: (path: *void, siblings: *void, index: u32) -> s32 #foreign gtk "gtk_widget_path_append_with_siblings";
 PathClass :: (path: *void, at: s32, name: *u8) #foreign gtk "gtk_widget_path_iter_add_class";
 PathElement :: (path: *void, at: s32, name: *u8) #foreign gtk "gtk_widget_path_iter_set_object_name";
 PathName :: (path: *void, at: s32, name: *u8) #foreign gtk "gtk_widget_path_iter_set_name";
@@ -62,6 +88,70 @@ PathState :: (path: *void, at: s32, state: u32) #foreign gtk "gtk_widget_path_it
 PathUnref :: (path: *void) #foreign gtk "gtk_widget_path_unref";
 ContextNew :: () -> *void #foreign gtk "gtk_style_context_new";
 ContextPath :: (context: *void, path: *void) #foreign gtk "gtk_style_context_set_path";
+OffscreenNew :: () -> *void #foreign gtk "gtk_offscreen_window_new";
+WidgetRealize :: (widget: *void) #foreign gtk "gtk_widget_realize";
+WidgetMarginLeft :: (widget: *void, margin: s32) #foreign gtk "gtk_widget_set_margin_left";
+WidgetMarginRight :: (widget: *void, margin: s32) #foreign gtk "gtk_widget_set_margin_right";
+WidgetMarginTop :: (widget: *void, margin: s32) #foreign gtk "gtk_widget_set_margin_top";
+WidgetMarginBottom :: (widget: *void, margin: s32) #foreign gtk "gtk_widget_set_margin_bottom";
+ToolbarNew :: () -> *void #foreign gtk "gtk_toolbar_new";
+GridNew :: () -> *void #foreign gtk "gtk_grid_new";
+AlignmentNew :: (xalign: float32, yalign: float32, xscale: float32, yscale: float32) -> *void #foreign gtk "gtk_alignment_new";
+BinChild :: (widget: *void) -> *void #foreign gtk "gtk_bin_get_child";
+ContainerChildren :: (widget: *void) -> *WidgetList #foreign gtk "gtk_container_get_children";
+ImageType :: () -> u64 #foreign gtk "gtk_image_get_type";
+LabelType :: () -> u64 #foreign gtk "gtk_label_get_type";
+StatusbarNew :: () -> *void #foreign gtk "gtk_statusbar_new";
+StatusbarPush :: (statusbar: *void, context: u32, text: *u8) -> u32 #foreign gtk "gtk_statusbar_push";
+StatusbarArea :: (statusbar: *void) -> *void #foreign gtk "gtk_statusbar_get_message_area";
+EntryIcon :: (entry: *void, position: s32, name: *u8) #foreign gtk "gtk_entry_set_icon_from_icon_name";
+EntryIconArea :: (entry: *void, position: s32, bounds: *Allocation) #foreign gtk "gtk_entry_get_icon_area";
+EntryTextArea :: (entry: *void, bounds: *Allocation) #foreign gtk "gtk_entry_get_text_area";
+EntryLayout :: (entry: *void) -> *void #foreign gtk "gtk_entry_get_layout";
+EntryLayoutOffsets :: (entry: *void, x: *s32, y: *s32) #foreign gtk "gtk_entry_get_layout_offsets";
+InstanceIsA :: (widget: *void, kind: u64) -> s32 #foreign gobject "g_type_check_instance_is_a";
+WidgetListFree :: (list: *WidgetList) #foreign glib "g_list_free";
+WidgetList :: struct { data: *void; next: *WidgetList; previous: *WidgetList }
+ToolbarStyle :: (toolbar: *void, style: s32) #foreign gtk "gtk_toolbar_set_style";
+ToolbarIconSize :: (toolbar: *void, size: s32) #foreign gtk "gtk_toolbar_set_icon_size";
+ToolButtonNew :: (icon: *void, label: *u8) -> *void #foreign gtk "gtk_tool_button_new";
+MenuBarNew :: () -> *void #foreign gtk "gtk_menu_bar_new";
+MenuItemNew :: (label: *u8) -> *void #foreign gtk "gtk_menu_item_new_with_label";
+PanedNew :: (orientation: s32) -> *void #foreign gtk "gtk_paned_new";
+PanedFirst :: (paned: *void, child: *void, resize: s32, shrink: s32) #foreign gtk "gtk_paned_pack1";
+PanedSecond :: (paned: *void, child: *void, resize: s32, shrink: s32) #foreign gtk "gtk_paned_pack2";
+ToolItemNew :: () -> *void #foreign gtk "gtk_tool_item_new";
+ToolbarInsert :: (toolbar: *void, item: *void, position: s32) #foreign gtk "gtk_toolbar_insert";
+TreeViewNew :: () -> *void #foreign gtk "gtk_tree_view_new";
+ColumnNew :: () -> *void #foreign gtk "gtk_tree_view_column_new";
+ColumnTitle :: (column: *void, text: *u8) #foreign gtk "gtk_tree_view_column_set_title";
+ColumnSort :: (column: *void, visible: s32) #foreign gtk "gtk_tree_view_column_set_sort_indicator";
+ColumnAppend :: (view: *void, column: *void) -> s32 #foreign gtk "gtk_tree_view_append_column";
+ColumnButton :: (column: *void) -> *void #foreign gtk "gtk_tree_view_column_get_button";
+CellTextNew :: () -> *void #foreign gtk "gtk_cell_renderer_text_new";
+CellPreferred :: (cell: *void, widget: *void, minimum: *Requisition, natural: *Requisition) #foreign gtk "gtk_cell_renderer_get_preferred_size";
+WidgetName :: (widget: *void, name: *u8) #foreign gtk "gtk_widget_set_name";
+WidgetState :: (widget: *void, state: u32, clear: s32) #foreign gtk "gtk_widget_set_state_flags";
+ContextClass :: (context: *void, name: *u8) #foreign gtk "gtk_style_context_add_class";
+ButtonNew :: (label: *u8) -> *void #foreign gtk "gtk_button_new_with_label";
+ButtonEmpty :: () -> *void #foreign gtk "gtk_button_new";
+BoxNew :: (orientation: s32, spacing: s32) -> *void #foreign gtk "gtk_box_new";
+LabelNew :: (text: *u8) -> *void #foreign gtk "gtk_label_new";
+ImageNew :: (name: *u8, size: s32) -> *void #foreign gtk "gtk_image_new_from_icon_name";
+ContainerAdd :: (container: *void, widget: *void) #foreign gtk "gtk_container_add";
+BoxPack :: (box: *void, widget: *void, expand: s32, fill: s32, padding: u32) #foreign gtk "gtk_box_pack_start";
+WidgetShowAll :: (widget: *void) #foreign gtk "gtk_widget_show_all";
+EntryNew :: () -> *void #foreign gtk "gtk_entry_new";
+WidgetContext :: (widget: *void) -> *void #foreign gtk "gtk_widget_get_style_context";
+WidgetShow :: (widget: *void) #foreign gtk "gtk_widget_show";
+WidgetDestroy :: (widget: *void) #foreign gtk "gtk_widget_destroy";
+WidgetPreferred :: (widget: *void, minimum: *Requisition, natural: *Requisition) #foreign gtk "gtk_widget_get_preferred_size";
+WidgetAllocate :: (widget: *void, allocation: *Allocation) #foreign gtk "gtk_widget_size_allocate";
+WidgetAllocation :: (widget: *void, allocation: *Allocation) #foreign gtk "gtk_widget_get_allocation";
+RefSink :: (object: *void) -> *void #foreign gobject "g_object_ref_sink";
+IconSizeLookup :: (kind: s32, width: *s32, height: *s32) -> s32 #foreign gtk "gtk_icon_size_lookup";
+Requisition :: struct { width: s32; height: s32 }
+Allocation :: struct { x: s32; y: s32; width: s32; height: s32 }
 ContextParent :: (context: *void, parent: *void) #foreign gtk "gtk_style_context_set_parent";
 ContextState :: (context: *void, state: u32) #foreign gtk "gtk_style_context_set_state";
 ContextScale :: (context: *void, scale: s32) #foreign gtk "gtk_style_context_set_scale";
@@ -71,7 +161,13 @@ Resolution :: (screen: *void) -> float64 #foreign gdk "gdk_screen_get_resolution
 Foreground :: (context: *void, state: u32, value: *RGBA) #foreign gtk "gtk_style_context_get_color";
 Background :: (context: *void, state: u32, value: *RGBA) #foreign gtk "gtk_style_context_get_background_color";
 GetBorder :: (context: *void, state: u32, value: *Border) #foreign gtk "gtk_style_context_get_border";
+GetMargin :: (context: *void, state: u32, value: *Border) #foreign gtk "gtk_style_context_get_margin";
 GetPadding :: (context: *void, state: u32, value: *Border) #foreign gtk "gtk_style_context_get_padding";
+GetStyleProperty :: (context: *void, name: *u8, value: *GValue) #foreign gtk "gtk_style_context_get_style_property";
+ValueInt :: (value: *GValue) -> s32 #foreign gobject "g_value_get_int";
+ValueInit :: (value: *GValue, type: usize) -> *GValue #foreign gobject "g_value_init";
+ValueUnset :: (value: *GValue) #foreign gobject "g_value_unset";
+GValue :: struct { type: usize; data: [2]u64 }
 Property :: (context: *void, state: u32, name: *u8, args: ..any) #foreign gtk "gtk_style_context_get";
 FontFamily :: (font: *void) -> *u8 #foreign pango "pango_font_description_get_family";
 FontSize :: (font: *void) -> s32 #foreign pango "pango_font_description_get_size";
@@ -81,10 +177,23 @@ FontStyle :: (font: *void) -> s32 #foreign pango "pango_font_description_get_sty
 FontFree :: (font: *void) #foreign pango "pango_font_description_free";
 FontParse :: (text: *u8) -> *void #foreign pango "pango_font_description_from_string";
 Iterate :: (context: *void, block: s32) -> s32 #foreign glib "g_main_context_iteration";
+WidgetTranslate :: (source: *void, target: *void, x: s32, y: s32, out_x: *s32, out_y: *s32) -> s32 #foreign gtk "gtk_widget_translate_coordinates";
 SurfaceNew :: (format: s32, width: s32, height: s32) -> *void #foreign cairo "cairo_image_surface_create";
+SurfaceType :: (surface: *void) -> s32 #foreign cairo "cairo_surface_get_type";
+SurfaceFormat :: (surface: *void) -> s32 #foreign cairo "cairo_image_surface_get_format";
+SurfaceWidth :: (surface: *void) -> s32 #foreign cairo "cairo_image_surface_get_width";
+SurfaceHeight :: (surface: *void) -> s32 #foreign cairo "cairo_image_surface_get_height";
 SurfaceStatus :: (surface: *void) -> s32 #foreign cairo "cairo_surface_status";
 SurfaceFree :: (surface: *void) #foreign cairo "cairo_surface_destroy";
 SurfaceFlush :: (surface: *void) #foreign cairo "cairo_surface_flush";
+SurfaceDirty :: (surface: *void) #foreign cairo "cairo_surface_mark_dirty";
+SurfaceMap :: (surface: *void, extents: *void) -> *void #foreign cairo "cairo_surface_map_to_image";
+SurfaceUnmap :: (surface: *void, image: *void) #foreign cairo "cairo_surface_unmap_image";
+SurfaceSimilar :: (surface: *void, content: s32, width: s32, height: s32) -> *void #foreign cairo "cairo_surface_create_similar";
+SurfaceDeviceScale :: (surface: *void, x: float64, y: float64) #foreign cairo "cairo_surface_set_device_scale";
+DrawSourceSurface :: (draw: *void, surface: *void, x: float64, y: float64) #foreign cairo "cairo_set_source_surface";
+DrawOperator :: (draw: *void, operator: s32) #foreign cairo "cairo_set_operator";
+DrawPaint :: (draw: *void) #foreign cairo "cairo_paint";
 SurfaceData :: (surface: *void) -> *u32 #foreign cairo "cairo_image_surface_get_data";
 SurfaceStride :: (surface: *void) -> s32 #foreign cairo "cairo_image_surface_get_stride";
 DrawNew :: (surface: *void) -> *void #foreign cairo "cairo_create";
@@ -92,7 +201,11 @@ DrawStatus :: (draw: *void) -> s32 #foreign cairo "cairo_status";
 DrawFree :: (draw: *void) #foreign cairo "cairo_destroy";
 DrawScale :: (draw: *void, x: float64, y: float64) #foreign cairo "cairo_scale";
 RenderBackground :: (context: *void, draw: *void, x: float64, y: float64, width: float64, height: float64) #foreign gtk "gtk_render_background";
+NativeWidgetDraw :: (widget: *void, draw: *void) #foreign gtk "gtk_widget_draw";
 RenderFrame :: (context: *void, draw: *void, x: float64, y: float64, width: float64, height: float64) #foreign gtk "gtk_render_frame";
+RenderIconSurface :: (context: *void, draw: *void, surface: *void, x: float64, y: float64) #foreign gtk "gtk_render_icon_surface";
+PixbufSurface :: (pixbuf: *void, scale: s32, window: *void) -> *void #foreign gdk "gdk_cairo_surface_create_from_pixbuf";
+ContextDirection :: (context: *void) -> s32 #foreign gtk "gtk_style_context_get_direction";
 Allocate :: (count: usize, size: usize) -> *u8 #foreign libc "calloc";
 Free :: (data: *u8) #foreign libc "free";
 IconTheme :: () -> *void #foreign gtk "gtk_icon_theme_get_default";
@@ -106,7 +219,17 @@ PixbufChannels :: (image: *void) -> s32 #foreign pixbuf "gdk_pixbuf_get_n_channe
 PixbufBits :: (image: *void) -> s32 #foreign pixbuf "gdk_pixbuf_get_bits_per_sample";
 PixbufColorspace :: (image: *void) -> s32 #foreign pixbuf "gdk_pixbuf_get_colorspace";
 PixbufData :: (image: *void) -> *u8 #foreign pixbuf "gdk_pixbuf_get_pixels";
-PangoContext :: (screen: *void) -> *void #foreign gdk "gdk_pango_context_get_for_screen";
+PixbufFile :: (path: *u8, width: s32, height: s32, aspect: s32, error: **void) -> *void #foreign pixbuf "gdk_pixbuf_new_from_file_at_scale";
+WidgetPangoContext :: (widget: *void) -> *void #foreign gtk "gtk_widget_create_pango_context";
+RootWindow :: () -> *void #foreign gdk "gdk_get_default_root_window";
+SimilarSurface :: (window: *void, content: s32, width: s32, height: s32) -> *void #foreign gdk "gdk_window_create_similar_surface";
+PangoFontOptions :: (context: *void) -> *void #foreign pangocairo "pango_cairo_context_get_font_options";
+FontOptionsNew :: () -> *void #foreign cairo "cairo_font_options_create";
+FontOptionsFree :: (options: *void) #foreign cairo "cairo_font_options_destroy";
+FontOptionsStatus :: (options: *void) -> s32 #foreign cairo "cairo_font_options_status";
+SurfaceFontOptions :: (surface: *void, options: *void) #foreign cairo "cairo_surface_get_font_options";
+MergeFontOptions :: (options: *void, other: *void) #foreign cairo "cairo_font_options_merge";
+ContextFontOptions :: (context: *void, options: *void) #foreign pangocairo "pango_cairo_context_set_font_options";
 LayoutNew :: (context: *void) -> *void #foreign pango "pango_layout_new";
 LayoutFont :: (layout: *void, font: *void) #foreign pango "pango_layout_set_font_description";
 LayoutText :: (layout: *void, text: *u8, length: s32) #foreign pango "pango_layout_set_text";
@@ -117,6 +240,7 @@ GLibFree :: (data: *u8) #foreign glib "g_free";
 LayoutWidth :: (layout: *void, width: s32) #foreign pango "pango_layout_set_width";
 LayoutAlign :: (layout: *void, align: s32) #foreign pango "pango_layout_set_alignment";
 LayoutWrap :: (layout: *void, wrap: s32) #foreign pango "pango_layout_set_wrap";
+LayoutEllipsize :: (layout: *void, mode: s32) #foreign pango "pango_layout_set_ellipsize";
 LayoutSize :: (layout: *void, width: *s32, height: *s32) #foreign pango "pango_layout_get_pixel_size";
 LayoutBaseline :: (layout: *void) -> s32 #foreign pango "pango_layout_get_baseline";
 RenderLayout :: (context: *void, draw: *void, x: float64, y: float64, layout: *void) #foreign gtk "gtk_render_layout";
@@ -228,12 +352,25 @@ ValidText :: (value: string) -> bool {
     return true
 }
 
+AppendPathNode :: (path: *void, kind: usize, node: GtkStyleNode) -> s32 {
+    at:=PathAppend(path,kind)
+    bytes: [256]u8
+    if node.element!="" { unused CString.CopyCString(node.element,bytes[:]); PathElement(path,at,*bytes[0]) }
+    if node.name!="" { unused CString.CopyCString(node.name,bytes[:]); PathName(path,at,*bytes[0]) }
+    for name: node.classes { unused CString.CopyCString(name,bytes[:]); PathClass(path,at,*bytes[0]) }
+    PathState(path,at,node.state)
+    return at
+}
+
 MakeContext :: (nodes: []GtkStyleNode, scale: s32) -> *void {
     if nodes.count < 1 || nodes.count > 32 || scale < 1 || scale > 4 { return null }
     for node: nodes {
         if node.widget_type == "" || !ValidText(node.widget_type) ||
             !ValidText(node.element) || !ValidText(node.name) || node.classes.count < 0 || node.classes.count > 32 ||
             node.providers.count < 0 || node.providers.count > 32 ||
+            node.sibling_count<0 || node.sibling_count>64 || node.sibling_index<0 ||
+            (node.sibling_count==0 && node.sibling_index!=0) ||
+            (node.sibling_count>0 && node.sibling_index>=node.sibling_count) ||
             (node.state & cast(u32)0xFFFFE000) != 0 { return null }
         for name: node.classes { if name == "" || !ValidText(name) { return null } }
         for attachment: node.providers { if ProviderIndex(attachment.provider) < 0 { return null } }
@@ -256,20 +393,13 @@ MakeContext :: (nodes: []GtkStyleNode, scale: s32) -> *void {
             if parent != null { Unref(parent) }
             return null
         }
-        at := PathAppend(path, kind)
-        if node.element != "" {
-            unused CString.CopyCString(node.element, bytes[:])
-            PathElement(path, at, *bytes[0])
-        }
-        if node.name != "" {
-            unused CString.CopyCString(node.name, bytes[:])
-            PathName(path, at, *bytes[0])
-        }
-        for name: node.classes {
-            unused CString.CopyCString(name, bytes[:])
-            PathClass(path, at, *bytes[0])
-        }
-        PathState(path, at, node.state)
+        if node.sibling_count>0 {
+            siblings:=PathNew()
+            if siblings==null { if parent!=null { Unref(parent) }; return null }
+            for index: cast(s32)0..node.sibling_count-1 { unused AppendPathNode(siblings,kind,node) }
+            unused PathSiblings(path,siblings,cast(u32)node.sibling_index)
+            PathUnref(siblings)
+        } else { unused AppendPathNode(path,kind,node) }
         context := ContextNew()
         if context == null {
             if parent != null { Unref(parent) }
@@ -311,8 +441,10 @@ SurfaceBitmap :: (surface: *void, w: s32, h: s32) -> GtkStyleBitmap {
     SurfaceFlush(surface)
     if SurfaceStatus(surface) != 0 { return .{} }
     pixels := SurfaceData(surface)
-    stride := SurfaceStride(surface) / 4
-    if pixels == null || stride < w { return .{} }
+    stride_bytes:=SurfaceStride(surface)
+    if pixels==null || stride_bytes<w*4 || stride_bytes%4!=0 ||
+        cast(s64)stride_bytes*cast(s64)h>67108864 { return .{} }
+    stride:=stride_bytes/4
     count := cast(u64)w * cast(u64)h
     data := Allocate(cast(usize)count,4)
     if data == null { return .{} }
@@ -351,13 +483,37 @@ ParseMarkup :: (text: string) -> ParsedMarkup {
     return parsed
 }
 
+NativeFontDefaults :: (context: *void) {
+    // An unresolved screen default inherits the native drawing backend, not an
+    // image surface's defaults. Query an empty compatible pixmap; no window
+    // pixels are read. GTK's resolved widget font options retain precedence.
+    window:=RootWindow()
+    if window==null { return }
+    surface:=SimilarSurface(window,4096,1,1)
+    if surface==null { return }
+    defer SurfaceFree(surface)
+    if SurfaceStatus(surface)!=0 { return }
+    options:=FontOptionsNew()
+    if options==null { return }
+    defer FontOptionsFree(options)
+    SurfaceFontOptions(surface,options)
+    screen_options:=PangoFontOptions(context)
+    if screen_options!=null { MergeFontOptions(options,screen_options) }
+    if FontOptionsStatus(options)==0 { ContextFontOptions(context,options) }
+}
+
 MakeLayout :: (context: *void, state: u32, text: string, width: s32, align: s32, override: string, markup: bool) -> *void {
     if text.count > 65536 || width < 0 || width > 4096 || align < 0 || align > 2 || !ValidText(override) { return null }
     bytes := cast(*Text.TextDescriptor)(*text)
     if text.count > 0 && ValidUTF8(bytes.data,cast(isize)text.count,null) == 0 { return null }
-    pango_context := PangoContext(Screen())
+    widget:=LabelNew(null)
+    if widget==null { return null }
+    unused RefSink(widget)
+    pango_context := WidgetPangoContext(widget)
+    Unref(widget)
     if pango_context == null { return null }
     defer Unref(pango_context)
+    NativeFontDefaults(pango_context)
     layout := LayoutNew(pango_context)
     if layout == null { return null }
     font: *void = null
@@ -393,6 +549,11 @@ MakeLayout :: (context: *void, state: u32, text: string, width: s32, align: s32,
 }
 
 #scope_export
+// GLib's XDG user-directory identity; borrowed until process settings reload.
+GtkUserDirectory :: (directory: s32) -> string {
+    if directory<0 || directory>7 { return "" }
+    return Text.TextFromCString(UserDirectory(directory))
+}
 // Decoded UTF-8 byte count, excluding NUL. Failure leaves output untouched.
 // The parser performs no file, network or application actions.
 GtkMarkupPlain :: (markup: string, output: []u8) -> s32 {
@@ -419,6 +580,16 @@ GtkStyleQuery :: (nodes: []GtkStyleNode, scale: s32) -> GtkStyleMetrics {
     border: Border
     GetBorder(context, state, *border); result.border = Insets(border)
     GetPadding(context, state, *border); result.padding = Insets(border)
+    GetMargin(context, state, *border); result.margin = Insets(border)
+    if nodes[nodes.count-1].widget_type=="GtkTreeView" {
+        property: [32]u8; value: GValue
+        unused CString.CopyCString("vertical-separator",property[:])
+        unused ValueInit(*value,cast(usize)24) // G_TYPE_INT (G_TYPE_FUNDAMENTAL(6)).
+        GetStyleProperty(context,*property[0],*value); result.vertical_separator=ValueInt(*value); ValueUnset(*value)
+        unused CString.CopyCString("horizontal-separator",property[:])
+        unused ValueInit(*value,cast(usize)24)
+        GetStyleProperty(context,*property[0],*value); result.horizontal_separator=ValueInt(*value); ValueUnset(*value)
+    }
     result.dpi = Resolution(Screen())
     if result.dpi <= 0.0 { result.dpi = 96.0 }
     font: *void = null
@@ -438,30 +609,378 @@ GtkStyleQuery :: (nodes: []GtkStyleNode, scale: s32) -> GtkStyleMetrics {
     return result
 }
 
+#scope_file
+ApplyWidgetNode :: (widget: *void, node: GtkStyleNode) {
+    context:=WidgetContext(widget)
+    bytes: [256]u8
+    if node.name!="" { unused CString.CopyCString(node.name,bytes[:]); WidgetName(widget,*bytes[0]) }
+    for name: node.classes { unused CString.CopyCString(name,bytes[:]); ContextClass(context,*bytes[0]) }
+    WidgetState(widget,node.state,1)
+    for attachment: node.providers { ContextProvider(context,providers[ProviderIndex(attachment.provider)].object,attachment.priority) }
+}
+
+#scope_export
+// Backend adapters borrow their widgets; this module retains no widget pointer.
+// Calls must stay on GTK's owning thread, as with the other native APIs.
+GtkNativeReady :: () -> bool { return Ready() }
+GtkNativeSurfaceBitmap :: (surface: *void, width: s32, height: s32) -> GtkStyleBitmap {
+    if surface==null || width<1 || height<1 || width>4096 || height>4096 ||
+        cast(s64)width*cast(s64)height>4194304 || SurfaceStatus(surface)!=0 ||
+        SurfaceType(surface)!=0 || SurfaceFormat(surface)!=0 ||
+        SurfaceWidth(surface)!=width || SurfaceHeight(surface)!=height { return .{} }
+    return SurfaceBitmap(surface,width,height)
+}
+GtkNativeWidgetNodeApply :: (widget: *void, node: GtkStyleNode) -> bool {
+    if widget==null { return false }
+    nodes: [1]GtkStyleNode=.[node]
+    context:=MakeContext(nodes[:],1)
+    if context==null { return false }
+    Unref(context)
+    ApplyWidgetNode(widget,node)
+    return true
+}
+
+// GTK's own preferred requisition, including CSS min-size, padding, borders,
+// font and widget-specific interior spacing. These widgets remain offscreen.
+// Unsupported selectors return unavailable. Optional dimensions allocate the
+// actual native children without changing the widget's preferred requisition.
+GtkWidgetMeasure :: (nodes: []GtkStyleNode, text: string = "", sort_arrow: bool = false,
+    allocation_width: s32 = 0, allocation_height: s32 = 0, options: GtkWidgetMeasureOptions = .{}) -> GtkWidgetMetrics {
+    empty: [0]string
+    return MeasureWidget(nodes,text,sort_arrow,false,empty[:],-1,false,allocation_width,allocation_height,options)
+}
+GtkCellTextMeasure :: (nodes: []GtkStyleNode, text: string) -> GtkWidgetMetrics {
+    empty: [0]string
+    return MeasureWidget(nodes,text,false,true,empty[:],-1,false)
+}
+GtkCellTextMeasureMany :: (nodes: []GtkStyleNode, texts: []string, width_chars: s32 = -1, ellipsize: bool = false) -> GtkWidgetMetrics {
+    return MeasureWidget(nodes,"",false,true,texts,width_chars,ellipsize)
+}
+#scope_file
+MeasureWidget :: (nodes: []GtkStyleNode, text: string, sort_arrow: bool, cell_text: bool, texts: []string, width_chars: s32, ellipsize: bool,
+    allocation_width: s32 = 0, allocation_height: s32 = 0, options: GtkWidgetMeasureOptions = .{}) -> GtkWidgetMetrics {
+    if nodes.count<1 || text.count>65536 || allocation_width<0 || allocation_height<0 || allocation_width>8192 || allocation_height>8192 { return .{} }
+    margin:=options.margin
+    if options.margin_edges>15 || margin.left<0 || margin.right<0 || margin.top<0 || margin.bottom<0 ||
+        margin.left>8192 || margin.right>8192 || margin.top>8192 || margin.bottom>8192 { return .{} }
+    context:=MakeContext(nodes,1); if context==null { return .{} }; defer Unref(context)
+    final:=nodes[nodes.count-1].widget_type
+    if cell_text { if final!="GtkTreeView" { return .{} } }
+    else if final!="GtkEntry" && final!="GtkButton" && final!="GtkMenuBar" &&
+        final!="GtkMenuItem" && final!="GtkToolbar" && final!="GtkToolButton" && final!="GtkPaned" && final!="GtkStatusbar" { return .{} }
+    bytes: [65537]u8
+    if !CString.CopyCString(text,bytes[:]) { return .{} }
+    root:=OffscreenNew(); if root==null { return .{} }
+    unused RefSink(root)
+    defer { WidgetDestroy(root); Unref(root) }
+    parent: *void; widget: *void; parent_type: string; header: bool
+    at: s64
+    while at<nodes.count {
+        node:=nodes[at]
+        if at==0 && node.widget_type=="GtkWindow" { widget=root }
+        else if node.widget_type=="GtkBox" {
+            orientation: s32=1
+            for name: node.classes { if name=="horizontal" { orientation=0 } }
+            widget=BoxNew(orientation,0)
+        }
+        else if node.widget_type=="GtkGrid" { widget=GridNew() }
+        else if node.widget_type=="GtkBin" { widget=AlignmentNew(0.0,0.0,1.0,1.0) }
+        else if node.widget_type=="GtkToolItem" { widget=ToolItemNew() }
+        else if node.widget_type=="GtkToolbar" {
+            widget=ToolbarNew(); ToolbarStyle(widget,0); ToolbarIconSize(widget,3)
+        }
+        else if node.widget_type=="GtkMenuBar" { widget=MenuBarNew() }
+        else if node.widget_type=="GtkPaned" { widget=PanedNew(0) }
+        else if node.widget_type=="GtkStatusbar" { widget=StatusbarNew(); unused StatusbarPush(widget,0,*bytes[0]) }
+        else if node.widget_type=="GtkMenuItem" { widget=MenuItemNew(*bytes[0]) }
+        else if node.widget_type=="GtkToolButton" { widget=ToolButtonNew(ImageNew(*bytes[0],3),null) }
+        else if node.widget_type=="GtkTreeView" { widget=TreeViewNew() }
+        else if node.widget_type=="GtkEntry" { widget=EntryNew(); if text!="" { EntryIcon(widget,0,*bytes[0]) } }
+        else if node.widget_type=="GtkButton" { widget=ButtonNew(*bytes[0]) }
+        else { return .{} }
+        if widget==null { return .{} }
+        if widget!=root {
+            if parent==null { ContainerAdd(root,widget) }
+            else if parent_type=="GtkToolbar" {
+                if node.widget_type=="GtkToolButton" || node.widget_type=="GtkToolItem" { ToolbarInsert(parent,widget,-1) }
+                else { item:=ToolItemNew(); ContainerAdd(item,widget); ToolbarInsert(parent,item,-1); WidgetShow(item) }
+            } else { ContainerAdd(parent,widget) }
+        }
+        ApplyWidgetNode(widget,node)
+        // A tree header is an internal GTK CSS node, not a GtkWidget. Build
+        // the actual column so GTK supplies its alignment, label and arrow.
+        if node.widget_type=="GtkTreeView" && at+2==nodes.count-1 && nodes[at+1].element=="header" && final=="GtkButton" {
+            count:=nodes[nodes.count-1].sibling_count
+            index:=nodes[nodes.count-1].sibling_index
+            if count==0 { count=1 }
+            column: *void
+            for position: cast(s32)0..count-1 {
+                peer:=ColumnNew()
+                if position==index { column=peer; ColumnTitle(peer,*bytes[0]); ColumnSort(peer,cast(s32)sort_arrow) }
+                unused ColumnAppend(widget,peer)
+            }
+            WidgetShow(widget)
+            widget=ColumnButton(column); if widget==null { return .{} }
+            ApplyWidgetNode(widget,nodes[nodes.count-1])
+            header=true
+            break
+        }
+        if widget!=root { WidgetShowAll(widget) }
+        parent=widget; parent_type=node.widget_type; at+=1
+    }
+    // Never show the offscreen root. Preferred sizes only need the visible
+    // child hierarchy. Entry text areas additionally require GTK's offscreen
+    // backing surface; this surface is never mapped onto the desktop.
+    // A container requisition includes one representative child. For menus,
+    // text is its label; for icon toolbars it is a large-toolbar icon name.
+    representative: *void
+    representative_image: *void
+    if (options.margin_edges & GtkWidgetMarginLeft)!=0 { WidgetMarginLeft(widget,margin.left) }
+    if (options.margin_edges & GtkWidgetMarginRight)!=0 { WidgetMarginRight(widget,margin.right) }
+    if (options.margin_edges & GtkWidgetMarginTop)!=0 { WidgetMarginTop(widget,margin.top) }
+    if (options.margin_edges & GtkWidgetMarginBottom)!=0 { WidgetMarginBottom(widget,margin.bottom) }
+    if final=="GtkMenuBar" { representative=MenuItemNew(*bytes[0]); ContainerAdd(widget,representative) }
+    if final=="GtkToolbar" { representative_image=ImageNew(*bytes[0],3); representative=ToolButtonNew(representative_image,null); ToolbarInsert(widget,representative,-1) }
+    if final=="GtkPaned" { PanedFirst(widget,BoxNew(1,0),0,0); PanedSecond(widget,BoxNew(1,0),1,0) }
+    if header { WidgetShow(widget) } else { WidgetShowAll(widget) }
+    minimum: Requisition; natural: Requisition
+    if cell_text {
+        renderer:=CellTextNew(); if renderer==null { return .{} }
+        unused RefSink(renderer); defer Unref(renderer)
+        key: [8]u8; unused CString.CopyCString("text",key[:])
+        ObjectSet(renderer,*key[0],*bytes[0],cast(*u8)null)
+        property: [16]u8
+        if width_chars>=0 {
+            unused CString.CopyCString("width-chars",property[:]); ObjectSet(renderer,*property[0],width_chars,cast(*u8)null)
+        }
+        if ellipsize {
+            unused CString.CopyCString("ellipsize",property[:]); ObjectSet(renderer,*property[0],cast(s32)3,cast(*u8)null)
+        }
+        CellPreferred(renderer,widget,*minimum,*natural)
+        if texts.count>1048576 { return .{} }
+        for value: texts {
+            if !CString.CopyCString(value,bytes[:]) { return .{} }
+            ObjectSet(renderer,*key[0],*bytes[0],cast(*u8)null)
+            low: Requisition; high: Requisition
+            CellPreferred(renderer,widget,*low,*high)
+            if low.width>minimum.width { minimum.width=low.width }
+            if low.height>minimum.height { minimum.height=low.height }
+            if high.width>natural.width { natural.width=high.width }
+            if high.height>natural.height { natural.height=high.height }
+        }
+    } else { WidgetPreferred(widget,*minimum,*natural) }
+    result:=GtkWidgetMetrics.{.available=minimum.height>0 || minimum.width>0,.minimum_width=minimum.width,.minimum_height=minimum.height,
+        .natural_width=natural.width,.natural_height=natural.height}
+    if (representative!=null || header || final=="GtkEntry" || final=="GtkStatusbar") && result.available {
+        allocation:=Allocation.{0,0,ifx allocation_width>0 then allocation_width else natural.width,
+            ifx allocation_height>0 then allocation_height else natural.height}
+        if header { WidgetShow(widget) } else { WidgetShowAll(widget) }
+        if final=="GtkEntry" { WidgetRealize(widget) }
+        if final=="GtkToolbar" { WidgetRealize(root); WidgetRealize(widget) }
+        WidgetAllocate(widget,*allocation)
+        if header {
+            box:=BinChild(widget)
+            children:=ContainerChildren(box); defer WidgetListFree(children)
+            child:=children
+            while child!=null {
+                if InstanceIsA(child.data,ImageType())!=0 {
+                    WidgetAllocation(child.data,*allocation)
+                    if sort_arrow { result.arrow_x=allocation.x; result.arrow_y=allocation.y; result.arrow_width=allocation.width; result.arrow_height=allocation.height }
+                } else {
+                    label:=BinChild(child.data)
+                    if label!=null { WidgetAllocation(label,*allocation); result.item_x=allocation.x; result.item_y=allocation.y; result.item_width=allocation.width; result.item_height=allocation.height }
+                }
+                child=child.next
+            }
+        } else if final=="GtkEntry" {
+            area: Allocation; EntryTextArea(widget,*area)
+            EntryLayoutOffsets(widget,*result.item_x,*result.item_y)
+            width: s32; height: s32; LayoutSize(EntryLayout(widget),*width,*height)
+            result.item_width=area.x+area.width-result.item_x
+            if result.item_width<0 { result.item_width=0 }
+            result.item_height=height
+            if text!="" {
+                EntryIconArea(widget,0,*area)
+                result.arrow_x=area.x; result.arrow_y=area.y; result.arrow_width=area.width; result.arrow_height=area.height
+            }
+        } else if final=="GtkStatusbar" {
+            children:=ContainerChildren(StatusbarArea(widget)); defer WidgetListFree(children)
+            child:=children
+            while child!=null {
+                if InstanceIsA(child.data,LabelType())!=0 {
+                    WidgetAllocation(child.data,*allocation)
+                    result.item_x=allocation.x; result.item_y=allocation.y; result.item_width=allocation.width; result.item_height=allocation.height
+                    break
+                }
+                child=child.next
+            }
+        } else {
+            WidgetAllocation(representative,*allocation)
+            result.item_x=allocation.x; result.item_y=allocation.y
+            result.item_width=allocation.width; result.item_height=allocation.height
+            if final=="GtkToolbar" {
+                control:=BinChild(representative)
+                if control!=null {
+                    WidgetAllocation(control,*allocation)
+                    if WidgetTranslate(control,widget,0,0,*result.control_x,*result.control_y)!=0 {
+                        result.control_width=allocation.width; result.control_height=allocation.height
+                    }
+                }
+                if representative_image!=null {
+                    WidgetAllocation(representative_image,*allocation)
+                    if WidgetTranslate(representative_image,widget,0,0,*result.arrow_x,*result.arrow_y)!=0 {
+                        result.arrow_width=allocation.width; result.arrow_height=allocation.height
+                    }
+                }
+            }
+        }
+    }
+    return result
+}
+#scope_export
+
+// GtkIconSize categories: menu=1, small toolbar=2, large toolbar=3, button=4.
+GtkIconSize :: (category: s32) -> GtkTextMetrics {
+    result: GtkTextMetrics
+    if category<1 || category>6 || !Ready() { return result }
+    result.available=IconSizeLookup(category,*result.width,*result.height)!=0
+    return result
+}
+
+#scope_file
+// Own every target and image. The root window only selects a compatible
+// backend; no existing window pixels are read.
+NativeRasterTarget :: (w: s32, h: s32, backdrop: []u8) -> *void {
+    surface: *void
+    if backdrop.count!=0 {
+        window:=RootWindow()
+        if window!=null {
+            native:=SimilarSurface(window,12288,1,1)
+            if native!=null {
+                if SurfaceStatus(native)==0 {
+                    SurfaceDeviceScale(native,1.0,1.0)
+                    surface=SurfaceSimilar(native,12288,w,h)
+                }
+                SurfaceFree(native)
+            }
+            // Public dimensions are device pixels. GDK's window scale must
+            // not multiply them again; CSS scale is applied once below.
+            if surface!=null { SurfaceDeviceScale(surface,1.0,1.0) }
+            if surface!=null && SurfaceStatus(surface)!=0 { SurfaceFree(surface); surface=null }
+        }
+    }
+    if surface==null { surface=SurfaceNew(0,w,h) }
+    if surface == null { return null }
+    retained: bool
+    defer { if !retained { SurfaceFree(surface) } }
+    if SurfaceStatus(surface) != 0 { return null }
+    if backdrop.count==0 { retained=true; return surface }
+    backdrop_image: *void
+    defer { if backdrop_image!=null { SurfaceFree(backdrop_image) } }
+    if backdrop.count!=0 {
+        backdrop_image=SurfaceNew(0,w,h)
+        if backdrop_image==null || SurfaceStatus(backdrop_image)!=0 { return null }
+        SurfaceFlush(backdrop_image)
+        stride_bytes:=SurfaceStride(backdrop_image)
+        if stride_bytes<w*4 || stride_bytes%4!=0 || cast(s64)stride_bytes*cast(s64)h>67108864 { return null }
+        pixels:=SurfaceData(backdrop_image); stride:=stride_bytes/4
+        if pixels==null { return null }
+        for yy: cast(s32)0..h-1 { for xx: cast(s32)0..w-1 {
+            at:=(yy*w+xx)*4; a:=cast(u32)backdrop[at+3]
+            r:=(cast(u32)backdrop[at]*a+127)/255
+            g:=(cast(u32)backdrop[at+1]*a+127)/255
+            b:=(cast(u32)backdrop[at+2]*a+127)/255
+            pixels[yy*stride+xx]=(a<<24)|(r<<16)|(g<<8)|b
+        } }
+        SurfaceDirty(backdrop_image)
+    }
+    draw := DrawNew(surface)
+    if draw == null { return null }
+    defer DrawFree(draw)
+    if DrawStatus(draw) != 0 { return null }
+    if backdrop_image!=null {
+        DrawOperator(draw,1)
+        DrawSourceSurface(draw,backdrop_image,0.0,0.0)
+        DrawPaint(draw)
+        DrawOperator(draw,2)
+        // Finish the image upload before CSS drawing. Native Cairo backends
+        // can otherwise retain the image fallback compositor for later curves.
+        SurfaceFlush(surface)
+    }
+    if DrawStatus(draw)!=0 || SurfaceStatus(surface)!=0 { return null }
+    retained=true
+    return surface
+}
+
+NativeRasterBitmap :: (surface: *void, w: s32, h: s32) -> GtkStyleBitmap {
+    if SurfaceType(surface)!=0 {
+        mapped:=SurfaceMap(surface,null)
+        if mapped==null { return .{} }
+        defer SurfaceUnmap(surface,mapped)
+        if SurfaceStatus(mapped)!=0 || SurfaceType(mapped)!=0 || SurfaceFormat(mapped)!=0 ||
+            SurfaceWidth(mapped)!=w || SurfaceHeight(mapped)!=h { return .{} }
+        return SurfaceBitmap(mapped,w,h)
+    }
+    return SurfaceBitmap(surface,w,h)
+}
+#scope_export
+// The caller owns this borrowed, allocated GTK widget. Output owns its RGBA;
+// a supplied backdrop is composited once using the native window backend.
+GtkNativeWidgetRaster :: (widget: *void, width: s32, height: s32, scale: s32,
+    backdrop: []u8) -> GtkStyleBitmap {
+    if widget==null || scale<1 || scale>4 || width<1 || height<1 ||
+        width>4096/scale || height>4096/scale { return .{} }
+    w:=width*scale; h:=height*scale
+    if cast(s64)w*cast(s64)h>4194304 ||
+        (backdrop.count!=0 && backdrop.count!=cast(s64)w*cast(s64)h*4) || !Ready() { return .{} }
+    surface:=NativeRasterTarget(w,h,backdrop)
+    if surface==null { return .{} }; defer SurfaceFree(surface)
+    draw:=DrawNew(surface); if draw==null { return .{} }; defer DrawFree(draw)
+    DrawScale(draw,cast(float64)scale,cast(float64)scale)
+    NativeWidgetDraw(widget,draw)
+    if DrawStatus(draw)!=0 || SurfaceStatus(surface)!=0 { return .{} }
+    return NativeRasterBitmap(surface,w,h)
+}
+
 // Logical dimensions, integer device scale. The output is straight RGBA8 and
 // fits BitmapImageCreate's 4096-axis / 4,194,304-pixel ownership budget.
 GtkStyleRaster :: (nodes: []GtkStyleNode, width: s32, height: s32, scale: s32) -> GtkStyleBitmap {
+    return GtkStyleRasterRegion(nodes,width,height,scale,0,0,width,height)
+}
+
+// Render a crop of the original CSS box, retaining its gradient, border and
+// corner coordinates. Only the crop allocates a Cairo surface.
+GtkStyleRasterRegion :: (nodes: []GtkStyleNode, width: s32, height: s32, scale: s32,
+    x: s32, y: s32, crop_width: s32, crop_height: s32) -> GtkStyleBitmap {
+    empty: []u8
+    return GtkStyleRasterRegionOver(nodes,width,height,scale,x,y,crop_width,crop_height,empty)
+}
+
+// Draw each CSS layer directly over the supplied straight-alpha RGBA crop.
+// This preserves Cairo's per-layer rounding at translucent borders/shadows.
+// Native compatible surfaces preserve the window backend's curve coverage;
+// mapping touches only our newly allocated pixmap, never any window pixels.
+// An empty backdrop keeps the transparent raster behavior.
+GtkStyleRasterRegionOver :: (nodes: []GtkStyleNode, width: s32, height: s32, scale: s32,
+    x: s32, y: s32, crop_width: s32, crop_height: s32, backdrop: []u8) -> GtkStyleBitmap {
     if scale < 1 || scale > 4 || width < 1 || height < 1 ||
-        width > 4096 / scale || height > 4096 / scale { return .{} }
-    w := width * scale; h := height * scale
+        width > 8192 || height > 8192 || x<0 || y<0 || crop_width<1 || crop_height<1 ||
+        crop_width>4096/scale || crop_height>4096/scale ||
+        x>width-crop_width || y>height-crop_height { return .{} }
+    w := crop_width * scale; h := crop_height * scale
     count := cast(u64)w * cast(u64)h
-    if count > 4194304 { return .{} }
+    if count > 4194304 || (backdrop.count!=0 && backdrop.count!=cast(s64)count*4) { return .{} }
     context := MakeContext(nodes, scale)
     if context == null { return .{} }
     defer Unref(context)
-    surface := SurfaceNew(0, w, h)
-    if surface == null { return .{} }
-    defer SurfaceFree(surface)
-    if SurfaceStatus(surface) != 0 { return .{} }
-    draw := DrawNew(surface)
-    if draw == null { return .{} }
-    defer DrawFree(draw)
-    if DrawStatus(draw) != 0 { return .{} }
+    surface:=NativeRasterTarget(w,h,backdrop)
+    if surface==null { return .{} }; defer SurfaceFree(surface)
+    draw:=DrawNew(surface); if draw==null { return .{} }; defer DrawFree(draw)
     DrawScale(draw, cast(float64)scale, cast(float64)scale)
-    RenderBackground(context, draw, 0.0, 0.0, cast(float64)width, cast(float64)height)
-    RenderFrame(context, draw, 0.0, 0.0, cast(float64)width, cast(float64)height)
+    RenderBackground(context, draw, 0.0-cast(float64)x, 0.0-cast(float64)y, cast(float64)width, cast(float64)height)
+    RenderFrame(context, draw, 0.0-cast(float64)x, 0.0-cast(float64)y, cast(float64)width, cast(float64)height)
     if DrawStatus(draw) != 0 || SurfaceStatus(surface) != 0 { return .{} }
-    return SurfaceBitmap(surface,w,h)
+    return NativeRasterBitmap(surface,w,h)
 }
 
 GtkTextMeasure :: (nodes: []GtkStyleNode, text: string, width: s32, scale: s32, font: string = "", markup: bool = false) -> GtkTextMetrics {
@@ -481,7 +1000,7 @@ GtkTextMeasure :: (nodes: []GtkStyleNode, text: string, width: s32, scale: s32, 
 
 // Transparent CSS text paint only; the caller supplies the label and box.
 // Horizontal alignment is Pango left/center/right (0/1/2), vertically centered.
-GtkTextRaster :: (nodes: []GtkStyleNode, text: string, width: s32, height: s32, scale: s32, align: s32, font: string = "", markup: bool = false) -> GtkStyleBitmap {
+GtkTextRaster :: (nodes: []GtkStyleNode, text: string, width: s32, height: s32, scale: s32, align: s32, font: string = "", markup: bool = false, ellipsize: bool = false, snap_y: bool = false) -> GtkStyleBitmap {
     if scale < 1 || scale > 4 || width < 1 || height < 1 ||
         width > 4096 / scale || height > 4096 / scale || text.count > 65536 ||
         align < 0 || align > 2 { return .{} }
@@ -493,6 +1012,7 @@ GtkTextRaster :: (nodes: []GtkStyleNode, text: string, width: s32, height: s32, 
     layout := MakeLayout(context,nodes[nodes.count-1].state,text,width,align,font,markup)
     if layout == null { return .{} }
     defer Unref(layout)
+    if ellipsize { LayoutEllipsize(layout,3) }
     surface := SurfaceNew(0,w,h)
     if surface == null { return .{} }
     defer SurfaceFree(surface)
@@ -504,7 +1024,13 @@ GtkTextRaster :: (nodes: []GtkStyleNode, text: string, width: s32, height: s32, 
     DrawScale(draw,cast(float64)scale,cast(float64)scale)
     tw: s32; th: s32
     LayoutSize(layout,*tw,*th)
-    RenderLayout(context,draw,0.0,(cast(float64)height-cast(float64)th)/2.0,layout)
+    y: float64=(cast(float64)height-cast(float64)th)/2.0
+    if snap_y {
+        whole:=cast(s32)y
+        if y<0.0 && cast(float64)whole!=y { whole-=1 }
+        y=cast(float64)whole
+    }
+    RenderLayout(context,draw,0.0,y,layout)
     if DrawStatus(draw) != 0 { return .{} }
     return SurfaceBitmap(surface,w,h)
 }
@@ -518,7 +1044,7 @@ GtkStyleBitmapRelease :: (bitmap: *GtkStyleBitmap) {
 // Resolve current theme inheritance and symbolic colors without serializing
 // an icon to disk. Returned dimensions are physical pixels, which may differ
 // for a non-square themed image. Missing or malformed icons fail empty.
-GtkIconRaster :: (name: string, size: s32, scale: s32, nodes: []GtkStyleNode) -> GtkStyleBitmap {
+GtkIconRaster :: (name: string, size: s32, scale: s32, nodes: []GtkStyleNode, force_size: bool = true, styled: bool = false) -> GtkStyleBitmap {
     if name == "" || !ValidText(name) || scale < 1 || scale > 4 ||
         size < 1 || size > 2048 / scale { return .{} }
     for byte: name { if byte == cast(u8)47 || byte == cast(u8)92 { return .{} } }
@@ -530,12 +1056,56 @@ GtkIconRaster :: (name: string, size: s32, scale: s32, nodes: []GtkStyleNode) ->
     unused IconRescan(theme)
     bytes: [256]u8
     unused CString.CopyCString(name,bytes[:])
-    info := IconLookup(theme,*bytes[0],size,scale,16)
+    flags: s32=ifx force_size then 16 else 0
+    if styled { flags |= 4; flags |= ifx ContextDirection(context)==2 then 256 else 128 }
+    info := IconLookup(theme,*bytes[0],size,scale,flags)
     if info == null { return .{} }
     defer Unref(info)
+    if !styled { return RasterIconInfo(info,context) }
+    image:=IconLoad(info,context,null,null)
+    if image==null { return .{} }
+    defer Unref(image)
+    icon_surface:=PixbufSurface(image,scale,null)
+    if icon_surface==null { return .{} }
+    defer SurfaceFree(icon_surface)
+    if SurfaceStatus(icon_surface)!=0 { return .{} }
+    surface:=SurfaceNew(0,size*scale,size*scale)
+    if surface==null { return .{} }
+    defer SurfaceFree(surface)
+    if SurfaceStatus(surface)!=0 { return .{} }
+    draw:=DrawNew(surface)
+    if draw==null { return .{} }
+    defer DrawFree(draw)
+    DrawScale(draw,cast(float64)scale,cast(float64)scale)
+    xx:=(cast(float64)size-cast(float64)PixbufWidth(image)/cast(float64)scale)/2.0
+    yy:=(cast(float64)size-cast(float64)PixbufHeight(image)/cast(float64)scale)/2.0
+    RenderIconSurface(context,draw,icon_surface,xx,yy)
+    if DrawStatus(draw)!=0 || SurfaceStatus(surface)!=0 { return .{} }
+    return SurfaceBitmap(surface,size*scale,size*scale)
+}
+
+#scope_file
+FileNew :: (path: *u8) -> *void #foreign gio "g_file_new_for_path";
+FileQuery :: (file: *void, attributes: *u8, flags: s32, cancel: *void, error: **void) -> *void #foreign gio "g_file_query_info";
+FileSystemQuery :: (file: *void, attributes: *u8, cancel: *void, error: **void) -> *void #foreign gio "g_file_query_filesystem_info";
+FileAttributeU64 :: (info: *void, name: *u8) -> u64 #foreign gio "g_file_info_get_attribute_uint64";
+FileIcon :: (info: *void) -> *void #foreign gio "g_file_info_get_icon";
+FileContentType :: (info: *void) -> *u8 #foreign gio "g_file_info_get_content_type";
+FileLinkTarget :: (info: *void) -> *u8 #foreign gio "g_file_info_get_symlink_target";
+FileHasAttribute :: (info: *void, name: *u8) -> s32 #foreign gio "g_file_info_has_attribute";
+ContentDescription :: (content: *u8) -> *u8 #foreign gio "g_content_type_get_description";
+IconLookupGIcon :: (theme: *void, icon: *void, size: s32, scale: s32, flags: s32) -> *void #foreign gtk "gtk_icon_theme_lookup_by_gicon_for_scale";
+IconFromString :: (value: *u8, error: **void) -> *void #foreign gio "g_icon_new_for_string";
+UserDirectory :: (directory: s32) -> *u8 #foreign glib "g_get_user_special_dir";
+HomeDirectory :: () -> *u8 #foreign glib "g_get_home_dir";
+FormatSize :: (size: u64, flags: s32) -> *u8 #foreign glib "g_format_size_full";
+RasterIconInfo :: (info: *void, context: *void) -> GtkStyleBitmap {
     image := IconLoad(info,context,null,null)
     if image == null { return .{} }
     defer Unref(image)
+    return RasterPixbuf(image)
+}
+RasterPixbuf :: (image: *void) -> GtkStyleBitmap {
     w := PixbufWidth(image); h := PixbufHeight(image)
     channels := PixbufChannels(image)
     if w < 1 || h < 1 || w > 4096 || h > 4096 ||
@@ -558,6 +1128,154 @@ GtkIconRaster :: (name: string, size: s32, scale: s32, nodes: []GtkStyleNode) ->
         }
     }
     return .{w,h,Text.BytesFromPointer(data,count * cast(u64)4)}
+}
+
+#scope_export
+// GIO resolves MIME icons using the shared MIME database and the current GTK
+// icon theme. File paths remain raw Unix bytes; no shell or URI conversion.
+GtkFileIconRaster :: (path: string, size: s32, scale: s32, nodes: []GtkStyleNode) -> GtkStyleBitmap {
+    if path.count < 1 || path.count > 4095 || size < 1 || scale < 1 || scale > 4 || size > 2048/scale { return .{} }
+    for c: path { if c == 0 { return .{} } }
+    if path == "/" { return GtkIconRaster("drive-harddisk",size,scale,nodes) }
+    home := HomeDirectory()
+    if home != null && path == Text.TextFromCString(home) { return GtkIconRaster("user-home",size,scale,nodes) }
+    names: [8]string = .["user-desktop","folder-documents","folder-download","folder-music","folder-pictures","folder-publicshare","folder-templates","folder-videos"]
+    for i: 0..7 {
+        special := UserDirectory(cast(s32)i)
+        if special != null && path == Text.TextFromCString(special) { return GtkIconRaster(names[i],size,scale,nodes) }
+    }
+    context := MakeContext(nodes,scale)
+    if context == null { return .{} }
+    defer Unref(context)
+    bytes: [4096]u8
+    unused CString.CopyCString(path,bytes[:])
+    file := FileNew(*bytes[0])
+    if file == null { return .{} }
+    defer Unref(file)
+    attrs: [32]u8
+    unused CString.CopyCString("standard::icon",attrs[:])
+    metadata := FileQuery(file,*attrs[0],0,null,null)
+    if metadata == null { return .{} }
+    defer Unref(metadata)
+    if FileHasAttribute(metadata,*attrs[0])==0 { return .{} }
+    icon := FileIcon(metadata)
+    theme := IconTheme()
+    if icon == null || theme == null { return .{} }
+    info := IconLookupGIcon(theme,icon,size,scale,16)
+    if info == null { return .{} }
+    defer Unref(info)
+    return RasterIconInfo(info,context)
+}
+
+// GIcon serialization preserves complete native themed/file/emblemed identity.
+GtkSerializedIconRaster :: (value: string, size: s32, scale: s32, nodes: []GtkStyleNode) -> GtkStyleBitmap {
+    if value.count<1 || value.count>8191 || size<1 || scale<1 || scale>4 || size>2048/scale { return .{} }
+    for c: value { if c==0 { return .{} } }
+    bytes: [8192]u8;unused CString.CopyCString(value,bytes[:])
+    icon:=IconFromString(*bytes[0],null)
+    if icon==null { return .{} }
+    defer Unref(icon)
+    context:=MakeContext(nodes,scale)
+    if context==null { return .{} }
+    defer Unref(context)
+    theme:=IconTheme()
+    if theme==null { return .{} }
+    info:=IconLookupGIcon(theme,icon,size,scale,16)
+    if info==null { return .{} }
+    defer Unref(info)
+    return RasterIconInfo(info,context)
+}
+GtkContentDescription :: (content_type: string, output: []u8) -> s32 {
+    if content_type.count<1 || content_type.count>1023 { return -1 }
+    for c: content_type { if c==0 { return -1 } }
+    bytes: [1024]u8;unused CString.CopyCString(content_type,bytes[:])
+    description:=ContentDescription(*bytes[0])
+    if description==null { return -1 }
+    defer GLibFree(description)
+    text:=Text.TextFromCString(description)
+    if !CString.CopyCString(text,output) { return -1 }
+    return cast(s32)text.count
+}
+
+GtkFileDescription :: (path: string, output: []u8) -> s32 {
+    if path.count < 1 || path.count > 4095 { return -1 }
+    for c: path { if c == 0 { return -1 } }
+    bytes: [4096]u8; attrs: [32]u8
+    unused CString.CopyCString(path,bytes[:])
+    unused CString.CopyCString("standard::content-type",attrs[:])
+    file := FileNew(*bytes[0])
+    if file == null { return -1 }
+    defer Unref(file)
+    info := FileQuery(file,*attrs[0],0,null,null)
+    if info == null { return -1 }
+    defer Unref(info)
+    if FileHasAttribute(info,*attrs[0])==0 { return -1 }
+    content := FileContentType(info)
+    if content == null { return -1 }
+    description := ContentDescription(content)
+    if description == null { return -1 }
+    defer GLibFree(description)
+    text := Text.TextFromCString(description)
+    if !CString.CopyCString(text,output) { return -1 }
+    return cast(s32)text.count
+}
+
+GtkFileLinkTarget :: (path: string, output: []u8) -> s32 {
+    if path.count < 1 || path.count > 4095 { return -1 }
+    for c: path { if c == 0 { return -1 } }
+    bytes: [4096]u8; attrs: [32]u8
+    unused CString.CopyCString(path,bytes[:]); unused CString.CopyCString("standard::symlink-target",attrs[:])
+    file := FileNew(*bytes[0])
+    if file == null { return -1 }
+    defer Unref(file)
+    info := FileQuery(file,*attrs[0],1,null,null)
+    if info == null { return -1 }
+    defer Unref(info)
+    if FileHasAttribute(info,*attrs[0]) == 0 { return -1 }
+    target := FileLinkTarget(info)
+    if target == null { return -1 }
+    text := Text.TextFromCString(target)
+    if !CString.CopyCString(text,output) { return -1 }
+    return cast(s32)text.count
+}
+
+GtkImageRaster :: (path: string, width: s32, height: s32) -> GtkStyleBitmap {
+    if path.count < 1 || path.count > 4095 || width < 1 || width > 2048 || height < 1 || height > 2048 { return .{} }
+    for c: path { if c == 0 { return .{} } }
+    bytes: [4096]u8; unused CString.CopyCString(path,bytes[:])
+    image := PixbufFile(*bytes[0],width,height,1,null)
+    if image == null { return .{} }
+    defer Unref(image)
+    return RasterPixbuf(image)
+}
+
+GtkFormatFileSize :: (size: u64, output: []u8) -> s32 {
+    text := FormatSize(size,2)
+    if text == null { return -1 }
+    defer GLibFree(text)
+    value := Text.TextFromCString(text)
+    if !CString.CopyCString(value,output) { return -1 }
+    return cast(s32)value.count
+}
+
+GtkFormatFileDate :: (stamp: s64, output: []u8, style: GtkFileDateStyle = .LocaleDate,
+    now: s64 = -1, domain: string = "") -> s32 {
+    return FileDate.FormatFileDate(stamp,output,cast(FileDate.DateStyle)style,now,domain)
+}
+
+GtkFileSystemFree :: (path: string) -> s64 {
+    if path.count < 1 || path.count > 4095 { return -1 }
+    for c: path { if c == 0 { return -1 } }
+    bytes: [4096]u8; attrs: [32]u8
+    unused CString.CopyCString(path,bytes[:]); unused CString.CopyCString("filesystem::free",attrs[:])
+    file := FileNew(*bytes[0])
+    if file == null { return -1 }
+    defer Unref(file)
+    info := FileSystemQuery(file,*attrs[0],null,null)
+    if info == null { return -1 }
+    defer Unref(info)
+    value := FileAttributeU64(info,*attrs[0])
+    return ifx value <= cast(u64)9223372036854775807 then cast(s64)value else cast(s64)-1
 }
 
 // Tokens are process-local, bounded to 64 live entries and never reused.

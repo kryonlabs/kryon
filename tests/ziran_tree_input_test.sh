@@ -61,6 +61,8 @@ Answer :: () -> s32 {
         if !TypedCodepointSend(TestSession(), 65 + index) { return -38 }
         index += 1
     }
+    if TypedCodepointCapacity(TestSession()) != 0 ||
+        TypedCodepointPeek(TestSession()) != 65 { return -49 }
     if TypedCodepointSend(TestSession(), 120) { return -39 }
     index = 0
     while index < 16 {
@@ -84,6 +86,8 @@ Answer :: () -> s32 {
     }
     if TypedCodepointTake(TestSession()) != 0 ||
        !TypedCodepointSend(TestSession(), 121) { return -44 }
+    if TypedCodepointCapacity(TestSession()) != 31 ||
+        TypedCodepointPeek(TestSession()) != 121 { return -53 }
     TreeInputReset(TestSession())
     if TypedCodepointTake(TestSession()) != 0 { return -45 }
     if KeyboardModifiers(TestSession()) != 0 ||

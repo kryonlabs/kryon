@@ -65,7 +65,7 @@ GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
             if old < 0 { reveal = true }
             else {
                 stored := TreePreviousWidgetState(session, old)
-                if !stored.open || stored.index != result.cursor || stored.focus_generation != cast(u64)(cast(s32)props.layout + 1) { reveal = true }
+                if (!stored.open && !props.preserve_scroll_on_focus) || stored.index != result.cursor || stored.focus_generation != cast(u64)(cast(s32)props.layout + 1) { reveal = true }
                 bounds := TreeNodeAt(session, old).bounds
                 if bounds.width != props.bounds.width || bounds.height != props.bounds.height { reveal = true }
             }
@@ -77,7 +77,7 @@ GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
     }
     scroll_props: ScrollProps = .{.key = props.key, .bounds = props.bounds,
         .class_name = props.class_name, .scale = props.scale, .horizontal = metrics.compact,
-        .scroll_offset = offset, .manual_scroll = true}
+        .scroll_offset = offset, .manual_scroll = true, .external_scrollbar=props.external_scrollbar,.immediate_wheel=props.immediate_wheel}
     if metrics.compact { scroll_props.content_width = metrics.content_extent }
     else { scroll_props.content_height = metrics.content_extent }
     if props.disabled { scroll_props.input = .{.enabled = true, .disabled = true} }
@@ -121,6 +121,7 @@ GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
             TreeSetSelected(session, node, selected[i]); TreeSetLabel(session, node, items[i].label)
             TreeSetChildClip(session, node, clipped)
         }
+        if props.invisible { continue }
         opacity := StyleOpacityValue(face.value.fields, face.value.opacity)
         PaintRoundedFill(session, node, clipped, face.value.radius, 12, ColorFromPacked(Opacity(face.value.background, opacity)))
         if active && result.cursor == i {

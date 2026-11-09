@@ -14,6 +14,7 @@ RasterCursor :: #import "cairo_raster";
 #import "utf8"
 Presenter :: #import "pixmap_sdl";
 Video :: #import "video_linux";
+#import "std/vec"
 Clock :: #import "frame_clock";
 
 sdl_library :: #system_library "SDL2";
@@ -40,6 +41,7 @@ CreateWindow :: (title: *u8, x: s32, y: s32, width: s32,
     height: s32, flags: u32) -> *void #foreign sdl_library "SDL_CreateWindow";
 DestroyWindow :: (window: *void) #foreign sdl_library "SDL_DestroyWindow";
 SetWindowTitle :: (window: *void, title: *u8) #foreign sdl_library "SDL_SetWindowTitle";
+SetWindowIcon :: (window: *void, surface: *void) #foreign sdl_library "SDL_SetWindowIcon";
 SetWindowSize :: (window: *void, width: s32, height: s32) #foreign sdl_library "SDL_SetWindowSize";
 SetWindowPosition :: (window: *void, x: s32, y: s32) #foreign sdl_library "SDL_SetWindowPosition";
 GetWindowID :: (window: *void) -> u32 #foreign sdl_library "SDL_GetWindowID";
@@ -55,6 +57,8 @@ UpdateTexture :: (texture: *void, rect: *void, pixels: *u8,
 RenderCopy :: (renderer: *void, texture: *void, source: *void,
     destination: *void) -> s32 #foreign sdl_library "SDL_RenderCopy";
 RenderPresent :: (renderer: *void) #foreign sdl_library "SDL_RenderPresent";
+EventFilter :: #type (argument: *void, event: *Event) -> s32 #c_call;
+FilterEvents :: (filter: EventFilter, argument: *void) #foreign sdl_library "SDL_FilterEvents";
 PumpEvents :: () #foreign sdl_library "SDL_PumpEvents";
 PeepEvents :: (events: *Event, count: s32, action: s32, first: u32, last: u32) -> s32 #foreign sdl_library "SDL_PeepEvents";
 WaitEventTimeout :: (event: *Event, milliseconds: s32) -> s32 #foreign sdl_library "SDL_WaitEventTimeout";
@@ -62,6 +66,7 @@ PushEvent :: (event: *Event) -> s32 #foreign sdl_library "SDL_PushEvent";
 StartTextInput :: () #foreign sdl_library "SDL_StartTextInput";
 StopTextInput :: () #foreign sdl_library "SDL_StopTextInput";
 GetMouseState :: (x: *s32, y: *s32) -> u32 #foreign sdl_library "SDL_GetMouseState";
+GetGlobalMouseState :: (x: *s32, y: *s32) -> u32 #foreign sdl_library "SDL_GetGlobalMouseState";
 GetModState :: () -> u32 #foreign sdl_library "SDL_GetModState";
 Delay :: (milliseconds: u32) #foreign sdl_library "SDL_Delay";
 PerformanceCounter :: () -> u64 #foreign sdl_library "SDL_GetPerformanceCounter";
@@ -158,14 +163,23 @@ DesktopOrigin :: () -> Vector2 {
 renderer: *void;
 texture: *void;
 pointer: PointerFrame;
+desktop_physical_buttons: u32;
+desktop_physical_sampled: bool;
 secondary: SecondaryPointerFrame;
 desktop_wheel: float32;
 desktop_key: s32;
 desktop_frame_input: FrameInputProvider;
+desktop_frame_input_pending_carry: bool;
 desktop_raw_keys: [512]u8;
 desktop_input_focused: bool;
 desktop_input_started: s64;
 desktop_keys: DesktopKeyBuffer;
+// Durable UI delivery is independent of the current poll observations.
+DesktopInputEvent :: struct { code: s32; modifiers: s32; text: bool; editing: bool }
+desktop_ordered: bool;
+desktop_input: [32]DesktopInputEvent;
+desktop_input_head: s32;
+desktop_input_count: s32;
 // File drops are copied before SDL releases its event-owned path. Applications
 // consume them on the UI thread; unrelated windows and drop text stay separate.
 desktop_dropped_files: [16][4096]u8;
@@ -397,6 +411,14 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
         Lanczos.LanczosSetWake(DesktopLanczosWake, null)
     }
     FrameInputProviderReset(*desktop_frame_input)
+    desktop_physical_buttons=0; desktop_physical_sampled=false
+    desktop_frame_input_pending_carry = false
+    desktop_ordered = false
+    desktop_quit = false
+    desktop_intercept_close = false
+    desktop_close_requested = false
+    desktop_input_head = 0
+    desktop_input_count = 0
     desktop_raw_keys = .{}
     desktop_gamepad_keys = .{}
     desktop_input_focused = false
@@ -415,6 +437,13 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
         cast(s32)0x2fff0000, width, height, cast(u32)0x28)
     if window == null { return false }
+    // Select an explicit native arrow before the first frame is drawn. This
+    // also covers hosts that own their loop and have no retained tree yet.
+    arrow:=DesktopSystemCursor(0)
+    if arrow!=null { SetCursor(arrow); desktop_cursor_selected=arrow }
+    unused ShowCursor(1)
+    desktop_cursor_hidden=false
+    desktop_cursor_applied_valid=false
     renderer = Presenter.CreatePixmapRenderer(window)
     if renderer == null { return false }
     texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width,
@@ -469,6 +498,29 @@ DesktopSetTitle :: (title: string) -> bool {
     bytes: [4096]u8
     if !CopyCString(title, bytes[:]) { return false }
     SetWindowTitle(window, *bytes[0])
+    return true
+}
+
+// Straight RGBA supplied by the application's asset/theme resolver. SDL copies
+// the icon into this host's window; the caller retains ownership of its pixels.
+#program_export
+DesktopSetIcon :: (width: s32, height: s32, rgba: []u8) -> bool {
+    if window==null || width<1 || height<1 || width>512 || height>512 { return false }
+    count:=cast(s64)width*cast(s64)height
+    if rgba.count!=count*4 { return false }
+    pixels: Vec(u32)
+    if !VecResizeBounded(pixels,count,262144) { return false }
+    defer VecFree(pixels)
+    for i: 0..count-1 {
+        pixels[i]=(cast(u32)rgba[i*4+3]<<cast(u32)24) |
+            (cast(u32)rgba[i*4]<<cast(u32)16) |
+            (cast(u32)rgba[i*4+1]<<cast(u32)8) | cast(u32)rgba[i*4+2]
+    }
+    surface:=CursorSurface(cast(*u8)*pixels[0],width,height,32,width*4,
+        cast(u32)0xff0000,cast(u32)0xff00,cast(u32)0xff,cast(u32)0xff000000)
+    if surface==null { return false }
+    SetWindowIcon(window,surface)
+    FreeSurface(surface)
     return true
 }
 
@@ -549,12 +601,22 @@ DesktopApplyResize :: () -> bool {
 #program_export
 CloseDesktop :: () {
     FrameInputProviderReset(*desktop_frame_input)
+    desktop_physical_buttons=0; desktop_physical_sampled=false
+    desktop_frame_input_pending_carry = false
+    desktop_ordered = false
+    desktop_quit = false
+    desktop_intercept_close = false
+    desktop_close_requested = false
+    desktop_input_head = 0
+    desktop_input_count = 0
     desktop_raw_keys = .{}
     desktop_gamepad_keys = .{}
     desktop_input_focused = false
     desktop_key = 0
     desktop_keys = .{}
     desktop_key_modifiers = -1
+    desktop_codepoint_count = 0
+    desktop_codepoint_next = 0
     for slot: cast(s32)0..3 {
         if desktop_controllers[slot].handle != null { GameControllerClose(desktop_controllers[slot].handle) }
         desktop_controllers[slot] = .{}
@@ -591,9 +653,117 @@ SetPointerFrame :: (x: float32, y: float32, down: bool,
     pointer.released = released
 }
 
+DesktopEventText :: (event: *Event) -> string {
+    bytes: []u8 = BytesFromPointer(cast(*u8)event, cast(u64)56)
+    end: s32 = 12
+    while end < 44 && bytes[end] != cast(u8)0 { end += 1 }
+    return TextFromBytes(bytes[12:end])
+}
+
+DesktopInputEditing :: (code: s32, modifiers: s32) -> bool {
+    return (code >= 256 && code < 340) ||
+        ((modifiers & 0xFC0) != 0 && code >= 32 && code < 127)
+}
+
+// Opt into ordered UI delivery before the first poll. Raw last/all-key
+// observations retain their meaning for custom hosts and games.
+#program_export
+DesktopInputEnable :: () {
+    desktop_ordered = true
+    desktop_input_head = 0
+    desktop_input_count = 0
+}
+
+DesktopInputPush :: (code: s32, modifiers: s32, text: bool) {
+    if !desktop_ordered || code == 0 { return }
+    // Physical modifier transitions belong to raw observations. Each actual
+    // shortcut already carries its own modifiers; merging a later Ctrl press
+    // into preceding text would wrongly turn that text into a shortcut.
+    if !text && code >= 340 && code <= 347 { return }
+    at := (desktop_input_head + desktop_input_count) % 32
+    desktop_input[at] = .{code, modifiers, text, !text && DesktopInputEditing(code, modifiers)}
+    desktop_input_count += 1
+}
+
+// Transfer one editing action or a run of printable keys/text. Never cross
+// an editing boundary while previously delivered text remains unconsumed.
+#program_export
+DesktopInputTake :: (session: Session) -> (key: s32, modifiers: s32) {
+    if !SessionValid(session) { return 0, 0 }
+    key: s32 = 0
+    modifiers: s32 = 0
+    // Unread text blocks editing actions, while physical printable keys
+    // and further text can still use the existing bounded delivery queue.
+    consumed: bool = TypedCodepointPeek(session) != 0
+    while desktop_input_count > 0 {
+        item := desktop_input[desktop_input_head]
+        if item.editing && consumed { break }
+        if item.text {
+            if !TypedCodepointSend(session, item.code) { break }
+        } else {
+            key = item.code
+            modifiers = item.modifiers
+        }
+        desktop_input_head = (desktop_input_head + 1) % 32
+        desktop_input_count -= 1
+        consumed = true
+        if item.editing { break }
+    }
+    if !consumed { return 0, DesktopModifiers() }
+    result: s32 = 0
+    if (modifiers & 0x3) != 0 { result |= 1 }
+    if (modifiers & 0xC0) != 0 { result |= 2 }
+    if (modifiers & 0x300) != 0 { result |= 4 }
+    return key, result
+}
+
+// Remove only lifecycle requests; keep all other SDL events in place.
+DesktopLifecycleEvent :: (argument: *void, event: *Event) -> s32 {
+    if event.kind == cast(u32)0x100 {
+        desktop_quit = true
+        return 0
+    }
+    if window != null && event.kind == cast(u32)0x200 &&
+        event.window_id == GetWindowID(window) &&
+        (event.which & cast(u32)255) == cast(u32)14 {
+        if desktop_intercept_close { desktop_close_requested = true }
+        else { desktop_quit = true }
+        return 0
+    }
+    return 1
+}
+
+DesktopEventBackpressured :: (event: *Event) -> bool {
+    if window != null && event.window_id == GetWindowID(window) {
+        if event.kind == cast(u32)0x303 {
+            count := Count(DesktopEventText(event))
+            return desktop_codepoint_count + count > 32 ||
+                (desktop_ordered && desktop_input_count + count > 32)
+        }
+        if event.kind == cast(u32)0x300 {
+            code := DesktopKeyWithModifiers(event.x,event.y & 65535)
+            return code != 0 && (desktop_keys.count >= 32 ||
+                (desktop_ordered && desktop_input_count >= 32 && (code < 340 || code > 347)))
+        }
+    }
+    if event.kind == cast(u32)0x651 {
+        slot := DesktopControllerFind(cast(s32)event.window_id)
+        button := cast(s32)(event.which & cast(u32)255)
+        code := DesktopGamepadKey(button)
+        mask := cast(u32)1 << cast(u32)button
+        held := slot >= 0 && code != 0 &&
+            (desktop_controllers[slot].buttons & mask) != cast(u32)0
+        return slot >= 0 && !held && code != 0 && desktop_input_focused &&
+            !desktop_frame_input.focus_lost && desktop_frame_input.sample.focused &&
+            (desktop_keys.count >= 32 || (desktop_ordered && desktop_input_count >= 32))
+    }
+    return false
+}
+
 #program_export
 PollDesktop :: () -> bool {
     FrameInputProviderEnd(*desktop_frame_input)
+    desktop_frame_input_pending_carry = false
     if window == null { return false }
     for key: cast(s32)1..511 { desktop_raw_keys[key] &= cast(u8)FrameKeyHeld }
     for key: cast(s32)1..511 { desktop_gamepad_keys[key] &= cast(u8)FrameKeyHeld }
@@ -607,16 +777,30 @@ PollDesktop :: () -> bool {
     desktop_key = 0
     desktop_keys = .{}
     desktop_key_modifiers = -1
-    desktop_codepoint_count = 0
+    remaining := ifx desktop_ordered then 0 else desktop_codepoint_count - desktop_codepoint_next
+    for index: cast(s32)0..remaining-1 {
+        desktop_codepoints[index] = desktop_codepoints[desktop_codepoint_next + index]
+    }
+    desktop_codepoint_count = remaining
     desktop_codepoint_next = 0
     // SDL_PollEvent stops at the marker its last pump left at the end of the
     // queue, so events another thread pushed after that pump would wait for
     // the next frame. Pump once and take every queued event; SDL_GETEVENT
     // drops the marker. The bound keeps a flooding sender from holding a frame.
     PumpEvents()
+    lifecycle: EventFilter = DesktopLifecycleEvent
+    FilterEvents(lifecycle, null)
+    if desktop_quit {
+        FrameInputProviderReset(*desktop_frame_input)
+        DesktopCursorRelease()
+        return false
+    }
     taken: s32 = 0
     while taken < 4096 &&
-    PeepEvents(*event, 1, 2, cast(u32)0, cast(u32)0xFFFF) > 0 {
+    PeepEvents(*event, 1, 1, cast(u32)0, cast(u32)0xFFFF) > 0 {
+        // Keep input in SDL's bounded queue until its Kryon queue has room.
+        if DesktopEventBackpressured(*event) { break }
+        if PeepEvents(*event,1,2,cast(u32)0,cast(u32)0xFFFF)<=0 { break }
         taken += 1
         if event.kind == cast(u32)0x1000 || event.kind == cast(u32)0x1001 {
             DesktopDropEvent(*event)
@@ -670,6 +854,7 @@ PollDesktop :: () -> bool {
                         desktop_key = code
                         desktop_key_modifiers = 0
                         unused DesktopKeyPush(*desktop_keys, code, 0)
+                        DesktopInputPush(code, 0, false)
                     }
                 } else if event.kind == cast(u32)0x652 && held {
                     desktop_controllers[slot].buttons &= ~mask
@@ -721,7 +906,7 @@ PollDesktop :: () -> bool {
         if event.kind >= cast(u32)0x300 && event.kind <= cast(u32)0x403 &&
         event.window_id != GetWindowID(window) { continue }
         if event.kind == cast(u32)0x300 || event.kind == cast(u32)0x301 {
-            code := DesktopKey(event.x)
+            code := DesktopKeyWithModifiers(event.x,event.y & 65535)
             if code > 0 && code < 512 && desktop_input_focused {
                 if event.kind == cast(u32)0x301 {
                     desktop_raw_keys[code] &= cast(u8)(FrameKeyPressed | FrameKeyRepeated)
@@ -738,28 +923,25 @@ PollDesktop :: () -> bool {
         if event.kind == cast(u32)0x300 {
             // SDL_KeyboardEvent.keysym.sym occupies byte offset 20 and
             // keysym.mod the low 16 bits at offset 24.
-            desktop_key = DesktopKey(event.x)
+            desktop_key = DesktopKeyWithModifiers(event.x,event.y & 65535)
             desktop_key_modifiers = event.y & 65535
-            unused DesktopKeyPush(*desktop_keys, desktop_key, desktop_key_modifiers)
+            key := desktop_key
+            modifiers := desktop_key_modifiers
+            unused DesktopKeyPush(*desktop_keys, key, modifiers)
+            DesktopInputPush(key, modifiers, false)
         }
         if event.kind == cast(u32)0x303 {
             // SDL_TextInputEvent.text is a NUL-terminated UTF-8 array at
-            // offset 12 in SDL_Event. The event storage lives through Decode.
-            bytes: []u8 = BytesFromPointer(cast(*u8)(*event), cast(u64)56)
-            end: s32 = 12
-            while end < 44 && bytes[end] != cast(u8)0 { end += 1 }
-            if end > 12 {
-                value: string = TextFromBytes(bytes[12:end])
-                at: s32 = 0
-                while at < cast(s32)value.count {
-                    decoded: Decoded = Decode(value, at)
-                    if desktop_codepoint_count < 32 {
-                        desktop_codepoints[desktop_codepoint_count] =
-                        cast(s32)decoded.value
-                        desktop_codepoint_count += 1
-                    }
-                    at = decoded.after
-                }
+            // offset 12 in SDL_Event. The event storage lives through Decode,
+            // and the preflight above reserved space for every scalar.
+            value: string = DesktopEventText(*event)
+            at: s32 = 0
+            while at < cast(s32)value.count {
+                decoded: Decoded = Decode(value, at)
+                desktop_codepoints[desktop_codepoint_count] = cast(s32)decoded.value
+                desktop_codepoint_count += 1
+                DesktopInputPush(cast(s32)decoded.value, 0, true)
+                at = decoded.after
             }
         }
         if event.kind == cast(u32)0x403 {
@@ -783,6 +965,21 @@ PollDesktop :: () -> bool {
     x: s32 = 0
     y: s32 = 0
     buttons: u32 = GetMouseState(*x, *y)
+    // X11's SDL event cache can miss a release while another window has
+    // keyboard focus, then suppress the next press as already held. Query
+    // actual button state there and retain event edges for taps between polls.
+    // Other drivers keep their existing event-backed sampling.
+    driver:=GetCurrentVideoDriver()
+    if driver!=null && TextFromCString(driver)=="x11" {
+        buttons=GetGlobalMouseState(null,null)
+        if desktop_physical_sampled {
+            if (buttons&cast(u32)1)!=0 && (desktop_physical_buttons&cast(u32)1)==0 { pressed=true }
+            if (buttons&cast(u32)1)==0 && (desktop_physical_buttons&cast(u32)1)!=0 { released=true }
+            if (buttons&cast(u32)4)!=0 && (desktop_physical_buttons&cast(u32)4)==0 { right_pressed=true }
+            if (buttons&cast(u32)4)==0 && (desktop_physical_buttons&cast(u32)4)!=0 { right_released=true }
+        }
+        desktop_physical_buttons=buttons; desktop_physical_sampled=true
+    }
     down: bool = (buttons & cast(u32)1) != cast(u32)0
     // A press and release inside one poll (a tap) still counts as held for
     // this sample, so the press reaches the widget under it.
@@ -822,6 +1019,10 @@ PollDesktop :: () -> bool {
 // Publish the observations frozen by PollDesktop, never a consumed widget queue.
 #program_export
 DesktopFrameInputBegin :: (session: Session) -> bool {
+    if desktop_frame_input_pending_carry {
+        DesktopFrameInputAdvance()
+        desktop_frame_input_pending_carry = false
+    }
     return FrameInputProviderBegin(*desktop_frame_input, session)
 }
 
@@ -897,9 +1098,44 @@ DesktopFrameReusable :: () -> bool {
     return desktop_pixels_valid && Video.pipeline == null
 }
 
+DesktopFrameInputNeutralize :: () {
+    sample := desktop_frame_input.sample
+    if !sample.available { return }
+    for key: cast(s32)1..511 {
+        sample.keys[key] &= cast(u8)FrameKeyHeld
+    }
+    sample.pointer.pressed = false
+    sample.pointer.released = false
+    sample.secondary.pressed = false
+    sample.secondary.released = false
+    sample.wheel = 0.0
+    desktop_frame_input.sample = sample
+    desktop_frame_input.focus_lost = false
+}
+
+DesktopFrameInputAdvance :: () {
+    sample := desktop_frame_input.sample
+    if !sample.available { return }
+    elapsed := Timer.MonotonicMilliseconds() - desktop_input_started
+    sample.delta_ms = elapsed - sample.elapsed_ms
+    sample.elapsed_ms = elapsed
+    sample.sequence += cast(u64)1
+    desktop_frame_input.sample = sample
+}
+
 #program_export
 EndDesktopFrame :: () -> bool {
     FrameInputProviderEnd(*desktop_frame_input)
+    DesktopFrameInputNeutralize()
+    desktop_frame_input_pending_carry = true
+    desktop_key = 0
+    desktop_keys = .{}
+    desktop_key_modifiers = -1
+    pointer.pressed = false
+    pointer.released = false
+    secondary.pressed = false
+    secondary.released = false
+    desktop_wheel = 0.0
     if !FinishRasterFrame(desktop_frame_unchanged && desktop_pixels_valid) { return false }
     desktop_pixels_valid = true
     if !desktop_frame_unchanged { desktop_texture_dirty = true }
@@ -1012,7 +1248,13 @@ WindowQuitHost :: () {
 }
 
 #program_export
-PollPointer :: () -> PointerFrame { return pointer }
+PollPointer :: () -> PointerFrame {
+    // Legacy retained widgets must receive the same focus-loss cancellation
+    // as the frame snapshot. SDL can retain a held bit after release in a
+    // different window. PollDesktop gathers raw `pointer`, never this view.
+    if desktop_frame_input.sample.available { return desktop_frame_input.sample.pointer }
+    return pointer
+}
 
 // The clipboard snapshot SystemClipboardOpenHost takes, and the text a write
 // hands to SDL, which needs it NUL-terminated.
@@ -1059,4 +1301,7 @@ SystemClipboardWriteHost :: (text: string) -> bool {
 }
 
 #program_export
-PollSecondaryPointer :: () -> SecondaryPointerFrame { return secondary }
+PollSecondaryPointer :: () -> SecondaryPointerFrame {
+    if desktop_frame_input.sample.available { return desktop_frame_input.sample.secondary }
+    return secondary
+}

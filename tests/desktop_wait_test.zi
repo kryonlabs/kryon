@@ -55,7 +55,10 @@ main :: () -> s32 {
     if !Desktop.OpenDesktopSized(160, 120) { return 1 }
     defer Desktop.CloseDesktop()
     input_window = WindowID(Desktop.DesktopWindow())
+    Desktop.BeginDesktopFrame()
+    if !Desktop.EndDesktopFrame() { return 15 }
     Delay(cast(u32)100)
+    if !Desktop.PollDesktop() || !Desktop.WindowFocusedHost() { return 16 }
     event: Event
     // A pump between two pushes leaves SDL's poll marker between them, as
     // when the host wakes while another thread is still queueing input.
@@ -74,6 +77,8 @@ main :: () -> s32 {
         key_event.window_id = input_window
         key_event.kind = cast(u32)0x300
         key_event.x = raw[index]
+        // This fixture expects a keypad digit, so supply SDL's NumLock bit.
+        if index == 3 { key_event.y = 0x1000 }
         if Push(cast(*void)*key_event) != 1 { return 11 }
     }
     if !Desktop.PollDesktop() { return 12 }

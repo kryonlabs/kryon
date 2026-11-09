@@ -1,0 +1,331 @@
+// Native GTK3 scrolling surfaces. Widgets stay offscreen and own no OS input.
+using Gtk :: #import "gtk_style_linux";
+CString :: #import "std/c_string";
+
+GtkScrollProps :: struct {
+    width: s32; height: s32
+    content_width: s32; content_height: s32
+    offset_x: s32; offset_y: s32
+    horizontal: bool; vertical: bool
+    overlay: bool
+    pointer_present: bool
+    pointer_x: float64; pointer_y: float64
+    pressed: bool; down: bool; released: bool
+}
+GtkScrollRectangle :: struct { x: s32; y: s32; width: s32; height: s32 }
+GtkScrollBarMetrics :: struct {
+    visible: bool; overlay: bool
+    opacity: float64
+    bounds: GtkScrollRectangle
+    slider_start: s32; slider_end: s32
+    minimum_width: s32; minimum_height: s32
+    value: float64; lower: float64; upper: float64; page_size: float64
+}
+GtkScrollMetrics :: struct {
+    available: bool
+    // Owned scrollbar press capture; no OS pointer grab.
+    dragging: bool
+    generation: u64
+    viewport: GtkScrollRectangle
+    horizontal: GtkScrollBarMetrics; vertical: GtkScrollBarMetrics
+}
+#scope_file
+gtk :: #system_library "gtk-3";
+gdk :: #system_library "gdk-3";
+gobject :: #system_library "gobject-2.0";
+libm :: #system_library "m";
+Power :: (value: float64, exponent: float64) -> float64 #foreign libm "pow";
+OffscreenNew :: () -> *void #foreign gtk "gtk_offscreen_window_new";
+GridNew :: () -> *void #foreign gtk "gtk_grid_new";
+BoxNew :: (orientation: s32, spacing: s32) -> *void #foreign gtk "gtk_box_new";
+ScrollerNew :: (horizontal: *void, vertical: *void) -> *void #foreign gtk "gtk_scrolled_window_new";
+LayoutNew :: (horizontal: *void, vertical: *void) -> *void #foreign gtk "gtk_layout_new";
+LayoutSize :: (layout: *void, width: u32, height: u32) #foreign gtk "gtk_layout_set_size";
+ContainerAdd :: (parent: *void, child: *void) #foreign gtk "gtk_container_add";
+GroupNew :: () -> *void #foreign gtk "gtk_window_group_new";
+GroupAdd :: (group: *void, window: *void) #foreign gtk "gtk_window_group_add_window";
+GroupDeviceGrab :: (group: *void, device: *void) -> *void #foreign gtk "gtk_window_group_get_current_device_grab";
+GroupGrab :: (group: *void) -> *void #foreign gtk "gtk_window_group_get_current_grab";
+WidgetDestroy :: (widget: *void) #foreign gtk "gtk_widget_destroy";
+WidgetShowAll :: (widget: *void) #foreign gtk "gtk_widget_show_all";
+ContainerResize :: (container: *void) #foreign gtk "gtk_container_check_resize";
+WidgetSizeAllocate :: (widget: *void, bounds: *GtkScrollRectangle) #foreign gtk "gtk_widget_size_allocate";
+WidgetAllocation :: (widget: *void, bounds: *GtkScrollRectangle) #foreign gtk "gtk_widget_get_allocation";
+WidgetRequest :: (widget: *void, width: s32, height: s32) #foreign gtk "gtk_widget_set_size_request";
+WidgetExpandX :: (widget: *void, expand: s32) #foreign gtk "gtk_widget_set_hexpand";
+WidgetExpandY :: (widget: *void, expand: s32) #foreign gtk "gtk_widget_set_vexpand";
+WidgetTranslate :: (source: *void, target: *void, x: s32, y: s32, out_x: *s32, out_y: *s32) -> s32 #foreign gtk "gtk_widget_translate_coordinates";
+WidgetPreferred :: (widget: *void, minimum: *Size, natural: *Size) #foreign gtk "gtk_widget_get_preferred_size";
+WidgetVisible :: (widget: *void) -> s32 #foreign gtk "gtk_widget_get_child_visible";
+WidgetOpacity :: (widget: *void) -> float64 #foreign gtk "gtk_widget_get_opacity";
+WidgetContext :: (widget: *void) -> *void #foreign gtk "gtk_widget_get_style_context";
+ContextClass :: (context: *void, name: *u8) -> s32 #foreign gtk "gtk_style_context_has_class";
+ScrollerPolicy :: (widget: *void, horizontal: s32, vertical: s32) #foreign gtk "gtk_scrolled_window_set_policy";
+ScrollerOverlay :: (widget: *void, overlay: s32) #foreign gtk "gtk_scrolled_window_set_overlay_scrolling";
+ScrollerBarH :: (widget: *void) -> *void #foreign gtk "gtk_scrolled_window_get_hscrollbar";
+ScrollerBarV :: (widget: *void) -> *void #foreign gtk "gtk_scrolled_window_get_vscrollbar";
+ScrollerAdjustH :: (widget: *void) -> *void #foreign gtk "gtk_scrolled_window_get_hadjustment";
+ScrollerAdjustV :: (widget: *void) -> *void #foreign gtk "gtk_scrolled_window_get_vadjustment";
+AdjustValue :: (adjustment: *void, value: float64) #foreign gtk "gtk_adjustment_set_value";
+AdjustGetValue :: (adjustment: *void) -> float64 #foreign gtk "gtk_adjustment_get_value";
+AdjustLower :: (adjustment: *void) -> float64 #foreign gtk "gtk_adjustment_get_lower";
+AdjustUpper :: (adjustment: *void) -> float64 #foreign gtk "gtk_adjustment_get_upper";
+AdjustPage :: (adjustment: *void) -> float64 #foreign gtk "gtk_adjustment_get_page_size";
+WindowList :: struct { data: *void; next: *WindowList; previous: *WindowList }
+WindowChildren :: (window: *void) -> *WindowList #foreign gdk "gdk_window_peek_children";
+WindowUserData :: (window: *void, data: **void) #foreign gdk "gdk_window_get_user_data";
+WindowParent :: (window: *void) -> *void #foreign gdk "gdk_window_get_effective_parent";
+WindowPosition :: (window: *void, x: *s32, y: *s32) #foreign gdk "gdk_window_get_position";
+RangeSlider :: (range: *void, start: *s32, end: *s32) #foreign gtk "gtk_range_get_slider_range";
+RefSink :: (object: *void) -> *void #foreign gobject "g_object_ref_sink";
+Ref :: (object: *void) -> *void #foreign gobject "g_object_ref";
+Unref :: (object: *void) #foreign gobject "g_object_unref";
+WidgetWindow :: (widget: *void) -> *void #foreign gtk "gtk_widget_get_window";
+LayoutWindow :: (widget: *void) -> *void #foreign gtk "gtk_layout_get_bin_window";
+EventNew :: (kind: s32) -> *void #foreign gdk "gdk_event_new";
+EventFree :: (event: *void) #foreign gdk "gdk_event_free";
+EventDevice :: (event: *void, device: *void) #foreign gdk "gdk_event_set_device";
+EventSourceDevice :: (event: *void, device: *void) #foreign gdk "gdk_event_set_source_device";
+DisplayDefault :: () -> *void #foreign gdk "gdk_display_get_default";
+DisplaySeat :: (display: *void) -> *void #foreign gdk "gdk_display_get_default_seat";
+SeatPointer :: (seat: *void) -> *void #foreign gdk "gdk_seat_get_pointer";
+MainEvent :: (event: *void) #foreign gtk "gtk_main_do_event";
+Size :: struct { width: s32; height: s32 }
+MotionEvent :: struct {
+    kind: s32; window: *void; send_event: s8; time: u32
+    x: float64; y: float64; axes: *float64; state: u32; is_hint: s16
+    device: *void; x_root: float64; y_root: float64
+}
+ButtonEvent :: struct {
+    kind: s32; window: *void; send_event: s8; time: u32
+    x: float64; y: float64; axes: *float64; state: u32; button: u32
+    device: *void; x_root: float64; y_root: float64
+}
+Slot :: struct {
+    id: u64; root: *void; group: *void; scroller: *void; layout: *void
+    held: *void
+    previous: GtkScrollProps; configured: bool; generation: u64
+}
+slots: [32]Slot;
+next_id: u64=1;
+Find :: (handle: u64) -> s32 {
+    if handle==0 { return -1 }
+    for i: 0..31 { if slots[i].id==handle { return cast(s32)i } }
+    return -1
+}
+#scope_export
+// nodes describes real ancestors ending in GtkScrolledWindow. Supported
+// parents are GtkWindow, GtkGrid and GtkBox; unsupported trees fail.
+GtkScrollCreate :: (nodes: []GtkStyleNode) -> u64 {
+    if nodes.count<2 || nodes.count>16 || nodes[0].widget_type!="GtkWindow" ||
+        nodes[nodes.count-1].widget_type!="GtkScrolledWindow" || !GtkNativeReady() { return 0 }
+    at: s32=-1
+    for i: 0..31 { if slots[i].id==0 { at=cast(s32)i; break } }
+    if at<0 || next_id==0 { return 0 }
+    root:=OffscreenNew(); if root==null { return 0 }; unused RefSink(root)
+    group:=GroupNew(); if group==null { WidgetDestroy(root); Unref(root); return 0 }
+    GroupAdd(group,root)
+    retained: bool
+    defer { if !retained { WidgetDestroy(root); Unref(root); Unref(group) } }
+    parent: *void
+    for i: cast(s64)0..nodes.count-1 {
+        node:=nodes[i]
+        widget: *void
+        if i==0 { widget=root }
+        else if i==nodes.count-1 { widget=ScrollerNew(null,null) }
+        else if node.widget_type=="GtkGrid" { widget=GridNew() }
+        else if node.widget_type=="GtkBox" {
+            orientation: s32=1
+            for name: node.classes { if name=="horizontal" { orientation=0 } }
+            widget=BoxNew(orientation,0)
+        } else { return 0 }
+        if widget==null { return 0 }
+        if i>0 { ContainerAdd(parent,widget) }
+        if !GtkNativeWidgetNodeApply(widget,node) { return 0 }
+        WidgetExpandX(widget,1); WidgetExpandY(widget,1)
+        parent=widget
+    }
+    layout:=LayoutNew(null,null); if layout==null { return 0 }
+    ContainerAdd(parent,layout)
+    handle:=next_id; next_id+=1
+    slots[at]=.{.id=handle,.root=root,.group=group,.scroller=parent,.layout=layout}
+    retained=true
+    return handle
+}
+GtkScrollRelease :: (handle: u64) -> bool {
+    at:=Find(handle); if at<0 { return false }
+    unused GtkScrollCancel(handle)
+    WidgetDestroy(slots[at].root); Unref(slots[at].root); Unref(slots[at].group)
+    slots[at]=.{}
+    return true
+}
+#scope_file
+BarMetrics :: (slot: *Slot, horizontal: bool) -> GtkScrollBarMetrics {
+    bar:=ifx horizontal then ScrollerBarH(slot.scroller) else ScrollerBarV(slot.scroller)
+    adjustment:=ifx horizontal then ScrollerAdjustH(slot.scroller) else ScrollerAdjustV(slot.scroller)
+    result: GtkScrollBarMetrics
+    result.lower=AdjustLower(adjustment); result.upper=AdjustUpper(adjustment)
+    result.page_size=AdjustPage(adjustment); result.value=AdjustGetValue(adjustment)
+    result.visible=WidgetVisible(bar)!=0 && result.upper-result.lower>result.page_size
+    result.opacity=WidgetOpacity(bar)
+    overlay_name: [18]u8; unused CString.CopyCString("overlay-indicator",overlay_name[:])
+    result.overlay=ContextClass(WidgetContext(bar),*overlay_name[0])!=0
+    WidgetAllocation(bar,*result.bounds)
+    unused WidgetTranslate(bar,slot.root,0,0,*result.bounds.x,*result.bounds.y)
+    RangeSlider(bar,*result.slider_start,*result.slider_end)
+    minimum: Size; natural: Size
+    WidgetPreferred(bar,*minimum,*natural)
+    result.minimum_width=minimum.width; result.minimum_height=minimum.height
+    return result
+}
+CurrentGrab :: (slot: *Slot) -> *void {
+    if slot.held!=null { return slot.held }
+    device:=SeatPointer(DisplaySeat(DisplayDefault()))
+    if device!=null { grabbed:=GroupDeviceGrab(slot.group,device); if grabbed!=null { return grabbed } }
+    return GroupGrab(slot.group)
+}
+Inside :: (bounds: GtkScrollRectangle, x: float64, y: float64) -> bool {
+    return x>=cast(float64)bounds.x && y>=cast(float64)bounds.y &&
+        x<cast(float64)(bounds.x+bounds.width) && y<cast(float64)(bounds.y+bounds.height)
+}
+InputWindow :: (window: *void, target: *void, depth: s32=0) -> *void {
+    if window==null || depth>32 { return null }
+    child:=WindowChildren(window); count: s32
+    while child!=null && count<256 {
+        found:=InputWindow(child.data,target,depth+1)
+        if found!=null { return found }
+        child=child.next; count+=1
+    }
+    data: *void; WindowUserData(window,*data)
+    return ifx data==target then window else null
+}
+// Events target only this owned offscreen tree; no XTest or pointer warp.
+PointerEvent :: (slot: *Slot, props: GtkScrollProps, kind: s32) {
+    target:=slot.layout
+    horizontal:=BarMetrics(slot,true); vertical:=BarMetrics(slot,false)
+    if horizontal.visible && horizontal.opacity>0.0 && Inside(horizontal.bounds,props.pointer_x,props.pointer_y) { target=ScrollerBarH(slot.scroller) }
+    if vertical.visible && vertical.opacity>0.0 && Inside(vertical.bounds,props.pointer_x,props.pointer_y) { target=ScrollerBarV(slot.scroller) }
+    grabbed:=CurrentGrab(slot)
+    if grabbed!=null { target=grabbed }
+    window:=ifx target==slot.layout then LayoutWindow(target) else InputWindow(WidgetWindow(slot.root),target)
+    if window==null { return }
+    // GdkEvent coordinates belong to the actual input window, which can be a
+    // GtkLayout bin window or GtkRange's separate input-only window.
+    root_window:=WidgetWindow(slot.root)
+    ancestor:=window; x: s32; y: s32
+    for depth: 0..31 {
+        if ancestor==null || ancestor==root_window { break }
+        dx: s32; dy: s32; WindowPosition(ancestor,*dx,*dy)
+        x+=dx; y+=dy; ancestor=WindowParent(ancestor)
+    }
+    if ancestor!=root_window { return }
+    event:=EventNew(kind); if event==null { return }; defer EventFree(event)
+    device:=SeatPointer(DisplaySeat(DisplayDefault()))
+    if device==null { return }
+    EventDevice(event,device); EventSourceDevice(event,device)
+    px:=props.pointer_x-cast(float64)x; py:=props.pointer_y-cast(float64)y
+    if !props.pointer_present { px=-10000.0; py=-10000.0 }
+    if kind==3 {
+        motion:=cast(*MotionEvent)event
+        motion.window=Ref(window); motion.send_event=1; motion.x=px; motion.y=py
+        motion.x_root=props.pointer_x; motion.y_root=props.pointer_y
+        motion.state=ifx props.down then cast(u32)256 else cast(u32)0
+    } else {
+        button:=cast(*ButtonEvent)event
+        button.window=Ref(window); button.send_event=1; button.x=px; button.y=py; button.button=1
+        button.x_root=props.pointer_x; button.y_root=props.pointer_y
+        button.state=ifx kind==7 then cast(u32)256 else cast(u32)0
+    }
+    if kind==4 && (target==ScrollerBarH(slot.scroller) || target==ScrollerBarV(slot.scroller)) { slot.held=target }
+    MainEvent(event)
+    if kind==7 { slot.held=null }
+}
+ValidProps :: (props: GtkScrollProps) -> bool {
+    return props.width>0 && props.height>0 && props.width<=4096 && props.height<=4096 &&
+        props.content_width>=0 && props.content_height>=0 &&
+        props.pointer_x>= -100000.0 && props.pointer_x<=100000.0 &&
+        props.pointer_y>= -100000.0 && props.pointer_y<=100000.0
+}
+#scope_export
+GtkScrollUpdate :: (handle: u64, props: GtkScrollProps) -> GtkScrollMetrics {
+    at:=Find(handle); if at<0 || !ValidProps(props) || !GtkNativeReady() { return .{} }
+    slot:=*slots[at]
+    unused GtkStylePoll()
+    generation:=GtkStyleGeneration()
+    before:=slot.previous
+    geometry:= !slot.configured || slot.generation!=generation || before.width!=props.width || before.height!=props.height ||
+        before.content_width!=props.content_width || before.content_height!=props.content_height ||
+        before.horizontal!=props.horizontal || before.vertical!=props.vertical || before.overlay!=props.overlay
+    if geometry {
+        ScrollerPolicy(slot.scroller,ifx props.horizontal then 1 else 2,ifx props.vertical then 1 else 2)
+        ScrollerOverlay(slot.scroller,cast(s32)props.overlay)
+        LayoutSize(slot.layout,cast(u32)props.content_width,cast(u32)props.content_height)
+        WidgetRequest(slot.root,props.width,props.height)
+        WidgetShowAll(slot.root)
+        allocation:=GtkScrollRectangle.{0,0,props.width,props.height}
+        WidgetSizeAllocate(slot.root,*allocation)
+        unused GtkStylePoll()
+    }
+    // Synchronize external offset changes; unchanged stale model values must
+    // not undo GTK's adjustment while an owned gesture is in progress.
+    if CurrentGrab(slot)==null {
+        if !slot.configured || before.offset_x!=props.offset_x { AdjustValue(ScrollerAdjustH(slot.scroller),cast(float64)props.offset_x) }
+        if !slot.configured || before.offset_y!=props.offset_y { AdjustValue(ScrollerAdjustV(slot.scroller),cast(float64)props.offset_y) }
+    }
+    changed:= !slot.configured || before.pointer_present!=props.pointer_present || before.pointer_x!=props.pointer_x || before.pointer_y!=props.pointer_y
+    if changed && (props.pointer_present || before.pointer_present) { PointerEvent(slot,props,3) }
+    if props.pressed { PointerEvent(slot,props,4) }
+    if slot.held!=null && (props.released || (!props.down && !props.pressed)) { PointerEvent(slot,props,7) }
+    unused GtkStylePoll()
+    ContainerResize(slot.root)
+    result:=GtkScrollMetrics.{.available=true,.dragging=CurrentGrab(slot)!=null,.generation=generation}
+    WidgetAllocation(slot.layout,*result.viewport)
+    unused WidgetTranslate(slot.layout,slot.root,0,0,*result.viewport.x,*result.viewport.y)
+    result.horizontal=BarMetrics(slot,true); result.vertical=BarMetrics(slot,false)
+    slot.previous=props; slot.configured=true; slot.generation=generation
+    return result
+}
+// Cancel only this handle's owned native scrollbar sequence. Idempotent for
+// a valid handle, including focus loss and panes that stop receiving input.
+// GTK's discrete wheel unit is the adjustment page size to the power 2/3.
+// Keep the fractional adjustment across successive notches and apply it now.
+GtkScrollWheel :: (handle: u64, delta: float64, horizontal: bool=false) -> GtkScrollMetrics {
+    at:=Find(handle); if at<0 { return .{} }
+    slot:=*slots[at]
+    if !slot.configured || CurrentGrab(slot)!=null { return .{} }
+    adjustment:=ifx horizontal then ScrollerAdjustH(slot.scroller) else ScrollerAdjustV(slot.scroller)
+    page:=AdjustPage(adjustment)
+    if page>0.0 { AdjustValue(adjustment,AdjustGetValue(adjustment)-delta*Power(page,2.0/3.0)) }
+    props:=slot.previous
+    props.offset_x=cast(s32)AdjustGetValue(ScrollerAdjustH(slot.scroller))
+    props.offset_y=cast(s32)AdjustGetValue(ScrollerAdjustV(slot.scroller))
+    slot.previous.offset_x=props.offset_x; slot.previous.offset_y=props.offset_y
+    props.pressed=false; props.released=false
+    return GtkScrollUpdate(handle,props)
+}
+
+GtkScrollCancel :: (handle: u64) -> bool {
+    at:=Find(handle); if at<0 { return false }
+    slot:=*slots[at]
+    if slot.held!=null {
+        props:=slot.previous; props.down=false; props.pressed=false
+        PointerEvent(slot,props,7)
+        slot.previous.down=false
+        unused GtkStylePoll(); ContainerResize(slot.root)
+    }
+    return true
+}
+// Owns the returned straight-alpha RGBA buffer, released with GtkStyleBitmapRelease.
+GtkScrollRaster :: (handle: u64, horizontal: bool=false, scale: s32=1) -> GtkStyleBitmap {
+    empty: []u8
+    return GtkScrollRasterOver(handle,empty,horizontal,scale)
+}
+GtkScrollRasterOver :: (handle: u64, backdrop: []u8, horizontal: bool=false, scale: s32=1) -> GtkStyleBitmap {
+    at:=Find(handle); if at<0 || !slots[at].configured || scale<1 || scale>4 { return .{} }
+    slot:=*slots[at]
+    ContainerResize(slot.root)
+    metrics:=BarMetrics(slot,horizontal)
+    if !metrics.visible || metrics.bounds.width<1 || metrics.bounds.height<1 { return .{} }
+    bar:=ifx horizontal then ScrollerBarH(slot.scroller) else ScrollerBarV(slot.scroller)
+    return GtkNativeWidgetRaster(bar,metrics.bounds.width,metrics.bounds.height,scale,backdrop)
+}

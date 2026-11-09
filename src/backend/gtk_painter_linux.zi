@@ -1,0 +1,368 @@
+// Bounded GTK raster composition for native Kryon widgets. No disk assets or
+// host-specific texture drawing: the finished surface uses Image(ImageProps).
+using Gtk :: #import "gtk_style_linux";
+Scroll :: #import "gtk_scroll_linux";
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "image_props"
+#import "image_widget"
+using Bitmaps :: #import "bitmap_image";
+using Bytes :: #import "std/vec";
+
+GtkPaintTile :: struct { signature: u64; bitmap: GtkStyleBitmap }
+GtkPainter :: struct {
+    pixels: Vec(u8)
+    atlas: Vec(u8)
+    regions: Vec(s32)
+    region_count: s32
+    tiles: [256]GtkPaintTile
+    next_tile: s32
+    tile_bytes: s64
+    generation: u64
+    signature: u64
+    width: s32
+    height: s32
+    bounds: Rectangle
+    clip: Rectangle
+    session: Session
+    texture: Texture2D
+}
+
+GtkPainterRelease :: (p: *GtkPainter) {
+    for i: 0..255 { GtkStyleBitmapRelease(*p.tiles[i].bitmap); p.tiles[i].signature = 0 }
+    BitmapImageRelease(p.session, p.texture)
+    VecFree(p.pixels); VecFree(p.atlas); VecFree(p.regions)
+    p.texture = .{}; p.signature = 0; p.tile_bytes = 0; p.region_count = 0
+}
+
+GtkPainterBegin :: (p: *GtkPainter, session: Session, bounds: Rectangle) -> bool {
+    unused GtkStylePoll()
+    generation := GtkStyleGeneration()
+    if p.generation != generation {
+        for i: 0..255 { GtkStyleBitmapRelease(*p.tiles[i].bitmap); p.tiles[i].signature = 0 }
+        p.generation = generation
+        p.tile_bytes = 0
+    }
+    if p.session.slot != session.slot || p.session.epoch != session.epoch {
+        BitmapImageRelease(p.session, p.texture); p.texture = .{}; p.signature = 0
+    }
+    p.session = session; p.bounds = bounds; p.clip = bounds
+    p.width = cast(s32)bounds.width; p.height = cast(s32)bounds.height
+    if p.width < 1 || p.height < 1 || p.width > 8192 || p.height > 8192 ||
+        cast(s64)p.width * cast(s64)p.height > 16777216 { return false }
+    if !VecResize(p.pixels, cast(s64)p.width * cast(s64)p.height * 4) { return false }
+    for i: 0..p.pixels.count - 1 { p.pixels[i] = 0 }
+    return true
+}
+
+#scope_file
+Hash :: (hash: u64, text: string) -> u64 {
+    hash = (hash ^ cast(u64)text.count) * cast(u64)1099511628211
+    for c: text { hash = (hash ^ cast(u64)c) * cast(u64)1099511628211 }
+    return hash
+}
+TileKey :: (nodes: []GtkStyleNode, bounds: Rectangle, text: string, kind: s32, align: s32) -> u64 {
+    hash := Hash(cast(u64)1469598103934665603, text)
+    hash = (hash ^ cast(u64)cast(s32)bounds.width) * cast(u64)1099511628211
+    hash = (hash ^ cast(u64)cast(s32)bounds.height) * cast(u64)1099511628211
+    hash = (hash ^ cast(u64)(kind * 4 + align)) * cast(u64)1099511628211
+    for node: nodes {
+        hash = Hash(Hash(Hash(hash, node.widget_type), node.element), node.name)
+        hash = (hash ^ cast(u64)node.state) * cast(u64)1099511628211
+        hash = (hash ^ cast(u64)node.sibling_count) * cast(u64)1099511628211
+        hash = (hash ^ cast(u64)node.sibling_index) * cast(u64)1099511628211
+        for cls: node.classes { hash = Hash(hash, cls) }
+        for provider: node.providers { hash = (hash ^ provider.provider ^ cast(u64)provider.priority) * cast(u64)1099511628211 }
+    }
+    return ifx hash == 0 then cast(u64)1 else hash
+}
+Composite :: (p: *GtkPainter, bitmap: GtkStyleBitmap, bounds: Rectangle) {
+    x := cast(s32)(bounds.x - p.bounds.x); y := cast(s32)(bounds.y - p.bounds.y)
+    for row: 0..bitmap.height - 1 {
+        yy := y + row
+        if yy < 0 || yy >= p.height || cast(float32)yy+p.bounds.y < p.clip.y || cast(float32)yy+p.bounds.y >= p.clip.y+p.clip.height { continue }
+        for col: 0..bitmap.width - 1 {
+            xx := x + col
+            if xx < 0 || xx >= p.width || cast(float32)xx+p.bounds.x < p.clip.x || cast(float32)xx+p.bounds.x >= p.clip.x+p.clip.width { continue }
+            src := (row * bitmap.width + col) * 4; dst := (yy * p.width + xx) * 4
+            a := cast(s32)bitmap.rgba[src + 3]
+            if a == 0 { continue }
+            da := cast(s32)p.pixels[dst + 3]
+            // GTK/Cairo quantizes each premultiplied component before OVER.
+            // Combining the straight-alpha fractions rounds glyph coverage
+            // differently, even when the destination is fully opaque.
+            out_a := a + (da * (255-a) + 127)/255
+            for c: 0..2 {
+                source := (cast(s32)bitmap.rgba[src+c]*a+127)/255
+                destination := (cast(s32)p.pixels[dst+c]*da+127)/255
+                component := source + (destination*(255-a)+127)/255
+                value := (component*255+out_a/2)/out_a
+                if value>255 { value=255 }
+                p.pixels[dst+c]=cast(u8)value
+            }
+            p.pixels[dst+3] = cast(u8)out_a
+        }
+    }
+}
+
+RegionPaint :: (p: *GtkPainter, nodes: []GtkStyleNode, bounds: Rectangle) {
+    width:=cast(s32)bounds.width; height:=cast(s32)bounds.height
+    if width>8192 || height>8192 { return }
+    base:=TileKey(nodes,bounds,"",0,0)
+    yy: s32=0
+    while yy<height {
+        hh:=height-yy; if hh>256 { hh=256 }
+        xx: s32=0
+        while xx<width {
+            ww:=width-xx; if ww>512 { ww=512 }
+            box:=Rectangle.{bounds.x+cast(float32)xx,bounds.y+cast(float32)yy,cast(float32)ww,cast(float32)hh}
+            if box.x<p.clip.x+p.clip.width && box.y<p.clip.y+p.clip.height && box.x+box.width>p.clip.x && box.y+box.height>p.clip.y {
+                signature:=(base ^ cast(u64)(xx+1))*cast(u64)1099511628211 ^ cast(u64)(yy+1)
+                if signature==0 { signature=1 }
+                at: s32= -1
+                for i: 0..255 { if p.tiles[i].signature==signature { at=cast(s32)i; break } }
+                if at<0 {
+                    at=p.next_tile; p.next_tile=(p.next_tile+1)%256
+                    p.tile_bytes-=p.tiles[at].bitmap.rgba.count
+                    GtkStyleBitmapRelease(*p.tiles[at].bitmap)
+                    bitmap:=GtkStyleRasterRegion(nodes,width,height,1,xx,yy,ww,hh)
+                    while p.tile_bytes+bitmap.rgba.count>33554432 {
+                        evict:=p.next_tile; p.next_tile=(p.next_tile+1)%256
+                        p.tile_bytes-=p.tiles[evict].bitmap.rgba.count
+                        GtkStyleBitmapRelease(*p.tiles[evict].bitmap); p.tiles[evict].signature=0
+                    }
+                    p.tile_bytes+=bitmap.rgba.count; p.tiles[at].bitmap=bitmap
+                    p.tiles[at].signature=ifx bitmap.rgba.count>0 then signature else cast(u64)0
+                }
+                Composite(p,p.tiles[at].bitmap,box)
+            }
+            xx+=ww
+        }
+        yy+=hh
+    }
+}
+#scope_export
+// kind: 0 CSS surface, 1 Pango label, 2 themed icon, 3 GIO file icon.
+// Composite a borrowed native raster at its exact pixel size. This keeps
+// temporary widget layers out of the tile cache and preserves draw order.
+GtkPainterBitmap :: (p: *GtkPainter, bounds: Rectangle, bitmap: GtkStyleBitmap) -> bool {
+    if p==null || p.width<1 || p.height<1 ||
+        p.pixels.count!=cast(s64)p.width*cast(s64)p.height*4 ||
+        bitmap.width<1 || bitmap.height<1 || bitmap.width>4096 || bitmap.height>4096 ||
+        cast(s64)bitmap.width*cast(s64)bitmap.height>4194304 ||
+        bitmap.rgba.count!=cast(s64)bitmap.width*cast(s64)bitmap.height*4 ||
+        bounds.width!=cast(float32)bitmap.width || bounds.height!=cast(float32)bitmap.height ||
+        bounds.x!=bounds.x || bounds.y!=bounds.y { return false }
+    if bounds.x>=p.bounds.x+p.bounds.width || bounds.y>=p.bounds.y+p.bounds.height ||
+        bounds.x+bounds.width<=p.bounds.x || bounds.y+bounds.height<=p.bounds.y ||
+        p.clip.width<=0.0 || p.clip.height<=0.0 { return true }
+    Composite(p,bitmap,bounds)
+    return true
+}
+
+// Paint CSS layers on the current backdrop without flattening them first.
+// The output replaces this crop; a second OVER would apply its alpha twice.
+GtkPainterStyleOver :: (p: *GtkPainter, nodes: []GtkStyleNode, bounds: Rectangle) -> bool {
+    width:=cast(s32)bounds.width; height:=cast(s32)bounds.height
+    if width<1 || height<1 || width>8192 || height>8192 { return false }
+    box:=RectangleIntersection(RectangleIntersection(bounds,p.bounds),p.clip)
+    x:=cast(s32)(box.x-p.bounds.x); y:=cast(s32)(box.y-p.bounds.y)
+    w:=cast(s32)box.width; h:=cast(s32)box.height
+    if w<1 || h<1 || x<0 || y<0 || x>p.width-w || y>p.height-h ||
+        cast(s64)w*cast(s64)h>4194304 || p.pixels.count!=cast(s64)p.width*cast(s64)p.height*4 { return false }
+    background: Vec(u8)
+    if !VecResize(background,cast(s64)w*cast(s64)h*4) { return false }
+    defer VecFree(background)
+    for yy: cast(s32)0..h-1 { for xx: cast(s32)0..w-1 { for c: cast(s32)0..3 {
+        background[(yy*w+xx)*4+c]=p.pixels[((y+yy)*p.width+x+xx)*4+c]
+    } } }
+    bitmap:=GtkStyleRasterRegionOver(nodes,width,height,1,cast(s32)(box.x-bounds.x),cast(s32)(box.y-bounds.y),w,h,background[:])
+    defer GtkStyleBitmapRelease(*bitmap)
+    if bitmap.width!=w || bitmap.height!=h || bitmap.rgba.count!=background.count { return false }
+    for yy: cast(s32)0..h-1 { for xx: cast(s32)0..w-1 { for c: cast(s32)0..3 {
+        p.pixels[((y+yy)*p.width+x+xx)*4+c]=bitmap.rgba[(yy*w+xx)*4+c]
+    } } }
+    return true
+}
+
+// Draw an allocated GTK scrollbar on its actual backdrop, retaining native
+// curve coverage and clipping the replacement to the painter's visible area.
+GtkPainterScrollOver :: (p: *GtkPainter, handle: u64, bounds: Rectangle, horizontal: bool=false) -> bool {
+    if p==null || p.width<1 || p.height<1 ||
+        p.pixels.count!=cast(s64)p.width*cast(s64)p.height*4 { return false }
+    width:=cast(s32)bounds.width; height:=cast(s32)bounds.height
+    if width<1 || height<1 || width>4096 || height>4096 ||
+        cast(s64)width*cast(s64)height>4194304 ||
+        bounds.x!=bounds.x || bounds.y!=bounds.y { return false }
+    box:=RectangleIntersection(RectangleIntersection(bounds,p.bounds),p.clip)
+    if box.width<=0.0 || box.height<=0.0 { return true }
+    x:=cast(s32)(bounds.x-p.bounds.x); y:=cast(s32)(bounds.y-p.bounds.y)
+    background: Vec(u8)
+    if !VecResize(background,cast(s64)width*cast(s64)height*4) { return false }
+    defer VecFree(background)
+    for yy: cast(s32)0..height-1 { for xx: cast(s32)0..width-1 { for c: cast(s32)0..3 {
+        px:=x+xx; py:=y+yy
+        value: u8
+        if px>=0 && py>=0 && px<p.width && py<p.height { value=p.pixels[(py*p.width+px)*4+c] }
+        background[(yy*width+xx)*4+c]=value
+    } } }
+    bitmap:=Scroll.GtkScrollRasterOver(handle,background[:],horizontal,1)
+    defer GtkStyleBitmapRelease(*bitmap)
+    if bitmap.width!=width || bitmap.height!=height || bitmap.rgba.count!=background.count { return false }
+    for yy: cast(s32)0..height-1 { for xx: cast(s32)0..width-1 {
+        px:=bounds.x+cast(float32)xx; py:=bounds.y+cast(float32)yy
+        if px<box.x || py<box.y || px>=box.x+box.width || py>=box.y+box.height { continue }
+        for c: cast(s32)0..3 { p.pixels[((y+yy)*p.width+x+xx)*4+c]=bitmap.rgba[(yy*width+xx)*4+c] }
+    } }
+    return true
+}
+
+GtkPainterPaint :: (p: *GtkPainter, nodes: []GtkStyleNode, bounds: Rectangle,
+    text: string = "", kind: s32 = 0, align: s32 = 0, revision: u64 = 0) {
+    if bounds.width < 1.0 || bounds.height < 1.0 || bounds.x >= p.bounds.x+p.bounds.width ||
+        bounds.y >= p.bounds.y+p.bounds.height || bounds.x+bounds.width <= p.bounds.x ||
+        bounds.y+bounds.height <= p.bounds.y { return }
+    if kind==0 && (bounds.width>4096.0 || bounds.height>4096.0 ||
+        cast(s64)bounds.width*cast(s64)bounds.height>4194304) {
+        RegionPaint(p,nodes,bounds); return
+    }
+    signature := TileKey(nodes,bounds,text,kind,align) ^ revision
+    if signature==0 { signature=1 }
+    at: s32 = -1
+    for i: 0..255 { if p.tiles[i].signature == signature { at = cast(s32)i; break } }
+    if at < 0 {
+        at = p.next_tile; p.next_tile = (p.next_tile+1)%256
+        p.tile_bytes -= p.tiles[at].bitmap.rgba.count
+        GtkStyleBitmapRelease(*p.tiles[at].bitmap)
+        bitmap: GtkStyleBitmap
+        w := cast(s32)bounds.width; h := cast(s32)bounds.height
+        if kind == 0 { bitmap = GtkStyleRaster(nodes,w,h,1) }
+        else if kind == 1 { bitmap = GtkTextRaster(nodes,text,w,h,1,align,"",false,true,true) }
+        else if kind == 2 { bitmap = GtkIconRaster(text,w,1,nodes) }
+        else if kind == 3 { bitmap = GtkFileIconRaster(text,w,1,nodes) }
+        else if kind == 4 { bitmap = GtkImageRaster(text,w,h) }
+        else if kind == 5 { bitmap = GtkTextRaster(nodes,text,w,h,1,align,"",true,true,true) }
+        else if kind == 6 { bitmap = GtkSerializedIconRaster(text,w,1,nodes) }
+        else if kind == 7 { bitmap = GtkIconRaster(text,w,1,nodes,false,true) }
+        else if kind == 8 { bitmap = GtkTextRaster(nodes,text,w,h,1,align,"",false,false,true) }
+        while p.tile_bytes+bitmap.rgba.count > 33554432 {
+            evict := p.next_tile; p.next_tile=(p.next_tile+1)%256
+            p.tile_bytes-=p.tiles[evict].bitmap.rgba.count
+            GtkStyleBitmapRelease(*p.tiles[evict].bitmap); p.tiles[evict].signature=0
+        }
+        p.tile_bytes+=bitmap.rgba.count
+        p.tiles[at].bitmap = bitmap
+        p.tiles[at].signature = ifx bitmap.rgba.count > 0 then signature else cast(u64)0
+    }
+    image_bounds:=bounds
+    if kind==4 || kind==7 {
+        image_bounds.x+=(bounds.width-cast(float32)p.tiles[at].bitmap.width)*0.5
+        image_bounds.y+=(bounds.height-cast(float32)p.tiles[at].bitmap.height)*0.5
+    }
+    Composite(p,p.tiles[at].bitmap,image_bounds)
+}
+
+#scope_file
+// Large desktops share identical 64px raster regions in a bounded atlas. This
+// stores exact native pixels, including alpha, without increasing BitmapImage
+// ownership limits. Hash matches are always checked byte for byte.
+AtlasEnd :: (p: *GtkPainter, key: u64) -> bool {
+    columns: s32=(p.width+63)/64; rows: s32=(p.height+63)/64
+    if !VecResize(p.regions,cast(s64)(columns*rows)) || !VecResize(p.atlas,16777216) { return false }
+    hashes: [1024]u64
+    count: s32=0
+    for row: cast(s32)0..rows-1 {
+        for column: cast(s32)0..columns-1 {
+            hash: u64=1469598103934665603
+            for yy: cast(s32)0..63 {
+                for xx: cast(s32)0..63 {
+                    x:=column*64+xx; y:=row*64+yy
+                    for channel: cast(s32)0..3 {
+                        value: u8=0
+                        if x<p.width && y<p.height { value=p.pixels[(y*p.width+x)*4+channel] }
+                        hash=(hash ^ cast(u64)value)*cast(u64)1099511628211
+                    }
+                }
+            }
+            found: s32= -1
+            for candidate: cast(s32)0..count-1 {
+                if hashes[candidate]!=hash { continue }
+                matches:=true
+                for yy: cast(s32)0..63 {
+                    for xx: cast(s32)0..63 {
+                        x:=column*64+xx; y:=row*64+yy
+                        for channel: cast(s32)0..3 {
+                            value: u8=0
+                            if x<p.width && y<p.height { value=p.pixels[(y*p.width+x)*4+channel] }
+                            offset:=(((candidate/32)*64+yy)*2048+(candidate%32)*64+xx)*4+channel
+                            if value!=p.atlas[offset] { matches=false; break }
+                        }
+                        if !matches { break }
+                    }
+                    if !matches { break }
+                }
+                if matches { found=candidate; break }
+            }
+            if found<0 {
+                if count>=1024 { return false }
+                found=count; hashes[count]=hash; count+=1
+                for yy: cast(s32)0..63 {
+                    for xx: cast(s32)0..63 {
+                        x:=column*64+xx; y:=row*64+yy
+                        for channel: cast(s32)0..3 {
+                            value: u8=0
+                            if x<p.width && y<p.height { value=p.pixels[(y*p.width+x)*4+channel] }
+                            offset:=(((found/32)*64+yy)*2048+(found%32)*64+xx)*4+channel
+                            p.atlas[offset]=value
+                        }
+                    }
+                }
+            }
+            p.regions[row*columns+column]=found
+        }
+    }
+    p.region_count=count
+    height:=((count+31)/32)*64
+    // Clear unused slots so resizing/reuse cannot retain pixels from a prior frame.
+    for slot: count..((count+31)/32)*32-1 {
+        for yy: cast(s32)0..63 {
+            for xx: cast(s32)0..255 { p.atlas[((slot/32)*64+yy)*8192+(slot%32)*256+xx]=0 }
+        }
+    }
+    if !VecResize(p.atlas,cast(s64)2048*cast(s64)height*4) { return false }
+    hash: u64=1469598103934665603
+    for value: p.atlas { hash=(hash ^ cast(u64)value)*cast(u64)1099511628211 }
+    if p.texture.width!=2048 || p.texture.height!=height {
+        BitmapImageRelease(p.session,p.texture); p.texture=.{}; p.signature=0
+    }
+    if p.texture.id==0 { p.texture=BitmapImageCreate(p.session,2048,height,p.atlas[:]); p.signature=hash }
+    else if p.signature!=hash { if BitmapImageUpdate(p.session,p.texture,p.atlas[:]) { p.signature=hash } }
+    if p.texture.id==0 { return false }
+    for row: cast(s32)0..rows-1 {
+        for column: cast(s32)0..columns-1 {
+            slot:=p.regions[row*columns+column]
+            width:=p.width-column*64; if width>64 { width=64 }
+            hh:=p.height-row*64; if hh>64 { hh=64 }
+            Image(p.session,ImageProps.{.key=key+cast(u64)(row*columns+column),
+                .bounds=.{p.bounds.x+cast(float32)(column*64),p.bounds.y+cast(float32)(row*64),cast(float32)width,cast(float32)hh},
+                .source=.{cast(float32)((slot%32)*64),cast(float32)((slot/32)*64),cast(float32)width,cast(float32)hh},
+                .texture=p.texture,.tint=cast(u32)0xffffffff})
+        }
+    }
+    return true
+}
+#scope_export
+GtkPainterEnd :: (p: *GtkPainter, key: u64) -> bool {
+    if p.width>4096 || p.height>4096 || cast(s64)p.width*cast(s64)p.height>4194304 { return AtlasEnd(p,key) }
+    p.region_count=0
+    hash: u64 = 1469598103934665603
+    for c: p.pixels { hash = (hash ^ cast(u64)c) * cast(u64)1099511628211 }
+    if p.texture.width != p.width || p.texture.height != p.height {
+        BitmapImageRelease(p.session,p.texture); p.texture = .{}; p.signature = 0
+    }
+    if p.texture.id == 0 { p.texture = BitmapImageCreate(p.session,p.width,p.height,p.pixels[:]); p.signature = hash }
+    else if p.signature != hash { if BitmapImageUpdate(p.session,p.texture,p.pixels[:]) { p.signature = hash } }
+    Image(p.session,ImageProps.{.key=key,.bounds=p.bounds,.texture=p.texture,.tint=cast(u32)0xffffffff})
+    return p.texture.id!=0
+}

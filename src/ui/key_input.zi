@@ -32,14 +32,18 @@ TypedTextAppend :: (output: []u8, length: s32, codepoint: s32) -> s32 {
 }
 
 // Takes every codepoint typed since the last frame as UTF-8 text in output.
-// Codepoints that do not fit are dropped.
+// Leave a complete codepoint queued when it cannot fit; callers can drain
+// bounded buffers over successive frames without losing Unicode boundaries.
 #program_export
 TypedTextTake :: (session: Session, output: []u8) -> string {
     length: s32 = 0
-    codepoint: s32 = TypedCodepointTake(session)
+    codepoint: s32 = TypedCodepointPeek(session)
     while codepoint != 0 {
-        length = TypedTextAppend(output, length, codepoint)
-        codepoint = TypedCodepointTake(session)
+        after := TypedTextAppend(output, length, codepoint)
+        if after == length { break }
+        length = after
+        unused TypedCodepointTake(session)
+        codepoint = TypedCodepointPeek(session)
     }
     return TextView(output[0:length])
 }

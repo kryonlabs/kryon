@@ -27,6 +27,13 @@ ProjectOptionsTest :: () -> s32 {
     installed.install.name != "Demo App" || !installed.install.autostart ||
     installed.install.autostart_env != "DEMO_HIDDEN=1" { return 5 }
 
+    themed:=ParseProject("profiles=desktop\nprofiles.desktop.backend=desktop\ninstall.icon_name=system-file-manager\n","demo","")
+    if !themed.ok || themed.install.icon_name!="system-file-manager" { return 61 }
+    if ProjectIconNameValid("assets/icon.png") || ProjectIconNameValid("a b") ||
+        ProjectIconNameValid("a\nIcon=other") { return 62 }
+    conflict:=ParseProject("profiles=desktop\nprofiles.desktop.backend=desktop\ninstall.icon=assets/icon.png\ninstall.icon_name=system-file-manager\n","demo","")
+    if conflict.ok { return 63 }
+
     bad_path: ProjectConfig = ParseProject(
         "profiles=tui\nprofiles.tui.backend=terminal\n", "demo", "src/$oops.zi")
     if bad_path.ok { return 6 }

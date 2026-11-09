@@ -1,0 +1,39 @@
+#import "std/text_buffer";
+Dates :: #import "file_date_linux";
+Bytes :: #import "std/byte_text_linux";
+Number :: #import "std/number_text";
+using Format :: #import "std/format";
+libc :: #system_library "c";
+Env :: (name: *u8) -> *u8 #foreign libc "getenv";
+Locale :: (category: s32, name: *u8) -> *u8 #foreign libc "setlocale";
+Read :: (name: string) -> string {
+    buffer: [64]u8
+    for i: 0..name.count-1 { buffer[i]=name[i] }
+    return Bytes.TextFromCString(Env(*buffer[0]))
+}
+main :: () -> s32 {
+    empty: [1]u8
+    if Locale(6,*empty[0])==null { return 1 }
+    stamp, stamp_count:=Number.IntegerPrefix(Read("DATE_STAMP"))
+    if Read("DATE_STAMP")=="-9223372036854775808" { stamp=-9223372036854775807-1; stamp_count=20 }
+    if Read("DATE_STAMP")=="9223372036854775807" { stamp=9223372036854775807; stamp_count=19 }
+    now, now_count:=Number.IntegerPrefix(Read("DATE_NOW"))
+    if Read("DATE_NOW")=="9223372036854775807" { now=9223372036854775807; now_count=19 }
+    if stamp_count==0 || now_count==0 { print("invalid test stamp [%] now [%] counts % %",Read("DATE_STAMP"),Read("DATE_NOW"),stamp_count,now_count); return 2 }
+    style:=ifx Read("DATE_STYLE")=="relative" then Dates.DateStyle.RelativeDate else Dates.DateStyle.LocaleDate
+    domain:=Read("DATE_DOMAIN"); expected:=Read("DATE_EXPECTED")
+    output: [1024]u8
+    for i: 0..1023 { output[i]=165 }
+    count:=Dates.FormatFileDate(stamp,output[:],style,now,domain)
+    if expected=="ERROR" { return ifx count==-1 then 0 else 8 }
+    if count<0 || count!=expected.count || TextView(output[:count])!=expected || output[count]!=0 || output[count+1]!=165 {
+        print("date mismatch stamp % now % expected [%] got [%] length %\n",stamp,now,expected,ifx count>=0 then TextView(output[:count]) else "ERROR",count)
+        return 3
+    }
+    if Dates.FormatFileDate(stamp,output[:0],style,now,domain)!=-1 || Dates.FormatFileDate(stamp,output[:count],style,now,domain)!=-1 { return 4 }
+    if Dates.FormatFileDate(stamp,output[:count+1],style,now,domain)!=count || output[count+1]!=165 { return 5 }
+    invalid: [3]u8=.[97,0,98]
+    if Dates.FormatFileDate(stamp,output[:],style,now,TextView(invalid[:]))!=-1 { return 6 }
+    if Dates.FormatFileDate(stamp,output[:],cast(Dates.DateStyle)99,now,domain)!=-1 { return 7 }
+    return 0
+}

@@ -1,0 +1,25 @@
+using D :: #import "desktop_runtime";
+Timer :: #import "std/timer_linux";
+sdl :: #system_library "SDL2";
+Delay :: (ms: u32) #foreign sdl "SDL_Delay";
+
+#program_export
+main :: () -> s32 {
+    pixels: [16]u8=.[255,0,0,255,0,255,0,128,0,0,255,255,12,34,56,0]
+    if DesktopSetIcon(2,2,pixels[:]) { return 1 }
+    if !OpenDesktopSized(240,160) { return 2 }
+    defer CloseDesktop()
+    if !DesktopSetTitle("Kryon native window fixture") { return 3 }
+    if DesktopSetIcon(0,2,pixels[:]) || DesktopSetIcon(513,2,pixels[:]) ||
+        DesktopSetIcon(2,2,pixels[:15]) { return 4 }
+    if !DesktopSetIcon(2,2,pixels[:]) { return 5 }
+    start:=Timer.MonotonicMilliseconds()
+    // No retained session or DesktopCursor call: exercise window creation.
+    while Timer.MonotonicMilliseconds()-start<5000 {
+        if !PollDesktop() { return 7 }
+        BeginDesktopFrame()
+        if !EndDesktopFrame() { return 6 }
+        Delay(5)
+    }
+    return 0
+}

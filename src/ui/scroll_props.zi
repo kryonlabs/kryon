@@ -44,6 +44,11 @@ ScrollProps :: struct {
     // rows open, keeps its width when it starts to scroll. With nothing to
     // scroll, the scrollbar takes no input.
     keep_scrollbar: bool
+    // The caller allocates, paints and handles a native scrollbar. Keep the
+    // complete supplied viewport for wheel/content scrolling and hit testing.
+    external_scrollbar: bool
+    // Apply each wheel delta in its input frame, without a glide.
+    immediate_wheel: bool
     // Readers may suppress automatic focused-field reveal while keeping input.
     manual_scroll: bool
     scroll_offset: s32

@@ -1,0 +1,349 @@
+Desktop :: #import "desktop_runtime";
+Session :: #import "session";
+Tree :: #import "tree_input";
+Key :: #import "key_input";
+Frame :: #import "frame_snapshot";
+Input :: #import "input_protocol";
+
+sdl :: #system_library "SDL2";
+Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
+WindowID :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
+Push :: (event: *void) -> s32 #foreign sdl "SDL_PushEvent";
+Poll :: (event: *void) -> s32 #foreign sdl "SDL_PollEvent";
+
+Event :: struct {
+    kind: u32; timestamp: u32; window_id: u32; which: u32
+    button: u8; state: u8; clicks: u8; padding: u8
+    x: s32; y: s32; payload: [28]u8
+}
+
+TextInputEvent :: struct {
+    kind: u32; timestamp: u32; window_id: u32
+    text: [32]u8; padding: [12]u8
+}
+
+input_window: u32;
+
+PushEmoji :: () -> bool {
+    event: TextInputEvent
+    event.window_id = input_window
+    event.kind = cast(u32)0x303
+    event.text[0] = cast(u8)0xF0
+    event.text[1] = cast(u8)0x9F
+    event.text[2] = cast(u8)0x98
+    event.text[3] = cast(u8)0x80
+    return Push(cast(*void)*event) == 1
+}
+
+PushKey :: (down: bool, code: s32, modifiers: s32) -> bool {
+    event: Event
+    event.window_id = input_window
+    event.kind = ifx down then cast(u32)0x300 else cast(u32)0x301
+    event.x = code
+    event.y = modifiers
+    return Push(cast(*void)*event) == 1
+}
+
+PushAscii :: (codepoint: s32) -> bool {
+    event: TextInputEvent
+    event.window_id = input_window
+    event.kind = cast(u32)0x303
+    event.text[0] = cast(u8)codepoint
+    return Push(cast(*void)*event) == 1
+}
+
+PushPointer :: (released: bool) -> bool {
+    event: Event
+    event.window_id = input_window
+    event.button = cast(u8)1
+    event.kind = ifx released then cast(u32)0x402 else cast(u32)0x401
+    return Push(cast(*void)*event) == 1
+}
+
+PushWheel :: () -> bool {
+    event: Event
+    event.window_id = input_window
+    event.kind = cast(u32)0x403
+    event.x = 3
+    return Push(cast(*void)*event) == 1
+}
+
+FinishFrame :: (session: Session.Session) -> Input.FrameInputSnapshot {
+    result: Input.FrameInputSnapshot
+    Desktop.BeginDesktopFrame()
+    if !Desktop.DesktopFrameInputBegin(session) { return result }
+    result = Frame.CaptureFrameInput(session)
+    if !Desktop.EndDesktopFrame() { result = Input.FrameInputSnapshot.{} }
+    return result
+}
+
+CloseLifecycle :: () {
+    if Desktop.DesktopWindow() != null { Desktop.CloseDesktop() }
+}
+
+NativeQueueLifecycle :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 30 }
+    input_window = WindowID(Desktop.DesktopWindow())
+    Delay(cast(u32)20)
+    event: Event
+    while Poll(cast(*void)*event) != 0 {}
+    queued: bool = true
+    for index: 0..32 {
+        queued = queued && PushAscii(120)
+    }
+    if !queued || !PushAscii(121) {
+        CloseLifecycle()
+        return 31
+    }
+    if !Desktop.PollDesktop() ||
+        Desktop.DesktopTypedCodepoint() != 120 ||
+        Desktop.DesktopTypedCodepoint() != 120 {
+        CloseLifecycle()
+        return 32
+    }
+    Desktop.CloseDesktop()
+    if !Desktop.OpenDesktopSized(160, 120) { return 33 }
+    input_window = WindowID(Desktop.DesktopWindow())
+    Delay(cast(u32)20)
+    if !Desktop.PollDesktop() || Desktop.DesktopTypedCodepoint() != 0 {
+        CloseLifecycle()
+        return 34
+    }
+    Desktop.CloseDesktop()
+    return 0
+}
+
+// Raw observations and ordered UI delivery remain independent.
+OrderedBurst :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 40 }
+    defer Desktop.CloseDesktop()
+    input_window = WindowID(Desktop.DesktopWindow())
+    // Pointer delivery requires this owned window to have native input focus.
+    Desktop.BeginDesktopFrame()
+    if !Desktop.EndDesktopFrame() { return 89 }
+    Delay(cast(u32)50)
+    if !Desktop.PollDesktop() || !Desktop.WindowFocusedHost() { return 90 }
+    Delay(cast(u32)20)
+    event: Event
+    while Poll(cast(*void)*event) != 0 {}
+    Desktop.DesktopInputEnable()
+    session := Session.SessionOpen()
+    if !Session.SessionValid(session) { return 41 }
+    defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
+    for index: 0..32 { if !PushEmoji() { return 42 } }
+    if !PushPointer(false) || !PushPointer(true) || !PushWheel() ||
+        !PushKey(true, 13, 1) || !PushKey(false, 13, 1) { return 43 }
+    // Cross previous finite lookahead bounds and the normal poll limit.
+    for index: 0..4200 {
+        neutral: Event
+        neutral.kind = cast(u32)0x8000
+        if Push(cast(*void)*neutral) != 1 { return 44 }
+    }
+    if !PushKey(true, 97, 0xC0) || !PushKey(false, 97, 0xC0) ||
+        !PushKey(true, 120, 0) || !PushAscii(120) { return 45 }
+    delivered: s32 = 0
+    actions: s32 = 0
+    saw_tap: bool = false
+    saw_wheel: bool = false
+    small_checked: bool = false
+    for round: 0..99 {
+        if !Desktop.PollDesktop() { return 46 }
+        key, modifiers := Desktop.DesktopInputTake(session)
+        if key == 257 {
+            if actions != 0 || delivered != 132 || modifiers != 1 { return 47 }
+            actions += 1
+        } else if key == 65 {
+            if actions != 1 || delivered != 132 || modifiers != 2 { return 48 }
+            actions += 1
+        } else if key == 88 {
+            if actions != 2 || delivered != 132 || modifiers != 0 { return 49 }
+            actions += 1
+        } else if key != 0 { return 50 }
+        if Tree.TypedCodepointPeek(session) != 0 && !small_checked {
+            too_small: [3]u8
+            if Key.TypedTextTake(session, too_small[:]).count != 0 ||
+                Tree.TypedCodepointPeek(session) != 0x1F600 { return 51 }
+            small_checked = true
+        }
+        while Tree.TypedCodepointPeek(session) != 0 {
+            bytes: [17]u8
+            typed := Key.TypedTextTake(session, bytes[:])
+            if typed.count == 0 { return 52 }
+            for index: 0..cast(s32)typed.count-1 {
+                expected: [4]u8 = .[0xF0, 0x9F, 0x98, 0x80]
+                if delivered < 132 {
+                    if typed[index] != expected[delivered % 4] || actions != 0 { return 53 }
+                } else if typed[index] != cast(u8)120 || actions != 3 { return 54 }
+                delivered += 1
+            }
+        }
+        pointer := Desktop.PollPointer()
+        if pointer.pressed || pointer.released {
+            if saw_tap || !pointer.pressed || !pointer.released { return 55 }
+            saw_tap = true
+        }
+        if Desktop.DesktopWheelMove() != 0.0 {
+            if saw_wheel || Desktop.DesktopWheelMove() != 3.0 { return 56 }
+            saw_wheel = true
+        }
+        snapshot := FinishFrame(session)
+        carried := FinishFrame(session)
+        if !snapshot.available || !carried.available ||
+            carried.sequence != snapshot.sequence + cast(u64)1 ||
+            carried.elapsed_ms < snapshot.elapsed_ms || carried.delta_ms < 0 ||
+            carried.focused != snapshot.focused || carried.modifiers != snapshot.modifiers ||
+            carried.pointer.x != snapshot.pointer.x || carried.pointer.y != snapshot.pointer.y ||
+            carried.pointer.down != snapshot.pointer.down ||
+            carried.secondary.down != snapshot.secondary.down ||
+            carried.pointer.pressed || carried.pointer.released ||
+            carried.secondary.pressed || carried.secondary.released || carried.wheel != 0.0 { return 57 }
+        for index: 1..511 {
+            if carried.keys[index] != (snapshot.keys[index] & cast(u8)Input.FrameKeyHeld) { return 58 }
+        }
+        if delivered == 133 && actions == 3 {
+            if !small_checked || !saw_tap || !saw_wheel { return 59 }
+            return 0
+        }
+    }
+    return 60
+}
+
+// Full delivery and an undersized client buffer cannot hide lifecycle events.
+UrgentClose :: (intercept: bool, quit: bool) -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 61 }
+    defer Desktop.CloseDesktop()
+    input_window = WindowID(Desktop.DesktopWindow())
+    Delay(cast(u32)20)
+    event: Event
+    while Poll(cast(*void)*event) != 0 {}
+    Desktop.DesktopInputEnable()
+    if !Desktop.WindowInterceptCloseHost(intercept) { return 62 }
+    session := Session.SessionOpen()
+    if !Session.SessionValid(session) { return 63 }
+    defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
+    if !PushEmoji() || !Desktop.PollDesktop() { return 64 }
+    unused Desktop.DesktopInputTake(session)
+    small: [3]u8
+    if Key.TypedTextTake(session, small[:]).count != 0 { return 65 }
+    for index: 0..32 { if !PushAscii(120) { return 66 } }
+    if !Desktop.PollDesktop() { return 67 }
+    for round: 0..3 {
+        key, modifiers := Desktop.DesktopInputTake(session)
+        if key != 0 || modifiers != 0 ||
+            Tree.TypedCodepointPeek(session) != 0x1F600 ||
+            Key.TypedTextTake(session, small[:]).count != 0 ||
+            !Desktop.PollDesktop() { return 73 }
+    }
+    event.kind = cast(u32)0x200
+    event.window_id = input_window + cast(u32)99
+    event.which = cast(u32)14
+    if Push(cast(*void)*event) != 1 || !Desktop.PollDesktop() ||
+        Desktop.WindowTakeCloseRequestHost() { return 68 }
+    event.window_id = input_window
+    if quit { event.kind = cast(u32)0x100 }
+    if Push(cast(*void)*event) != 1 { return 69 }
+    alive := Desktop.PollDesktop()
+    if Tree.TypedCodepointPeek(session) != 0x1F600 { return 70 }
+    if intercept && !quit {
+        if !alive || !Desktop.WindowTakeCloseRequestHost() ||
+            Desktop.WindowTakeCloseRequestHost() { return 71 }
+    } else if alive { return 72 }
+    return 0
+}
+
+// A physical modifier arriving after text is raw state, not a text edit.
+ModifierBarrier :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160, 120) { return 80 }
+    defer Desktop.CloseDesktop()
+    input_window = WindowID(Desktop.DesktopWindow())
+    Delay(cast(u32)20)
+    event: Event
+    while Poll(cast(*void)*event) != 0 {}
+    Desktop.DesktopInputEnable()
+    session := Session.SessionOpen()
+    defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
+    if !PushAscii(120) || !PushKey(true, 0x400000E0, 0xC0) ||
+        !PushKey(true, 99, 0xC0) || !PushKey(false, 99, 0xC0) ||
+        !PushKey(false, 0x400000E0, 0) || !Desktop.PollDesktop() { return 81 }
+    // Raw observation still includes the physical Ctrl key and shortcut.
+    if Desktop.DesktopPressedKey() != 67 || Desktop.DesktopNextKey() != 341 ||
+        Desktop.DesktopNextKey() != 67 || Desktop.DesktopNextKey() != 0 { return 82 }
+    key, modifiers := Desktop.DesktopInputTake(session)
+    bytes: [4]u8
+    text := Key.TypedTextTake(session, bytes[:])
+    input := Key.TextFieldInputFor(key, modifiers, text)
+    if key != 0 || modifiers != 0 || input.text != "x" { return 83 }
+    key, modifiers = Desktop.DesktopInputTake(session)
+    if key != 67 || modifiers != 2 || !Key.TextFieldInputFor(key, modifiers, "").copy { return 84 }
+    native_modifiers: [8]s32 = .[0xC0, 3, 0x300, 0xC00, 0xC0, 3, 0x300, 0xC00]
+    normalized: [8]s32 = .[2, 1, 4, 0, 2, 1, 4, 0]
+    for index: 0..7 {
+        raw: s32 = 0x400000E0 + cast(s32)index
+        flags := native_modifiers[index]
+        if !PushAscii(120) || !PushKey(true, raw, flags) ||
+            !PushKey(true, 13, flags) || !PushKey(false, 13, flags) ||
+            !PushKey(false, raw, 0) || !Desktop.PollDesktop() { return 85 }
+        expected_keys: [8]s32 = .[341, 340, 342, 343, 345, 344, 346, 347]
+        expected_key := expected_keys[index]
+        if Desktop.DesktopNextKey() != expected_key ||
+            Desktop.DesktopNextKey() != 257 || Desktop.DesktopNextKey() != 0 { return 86 }
+        key, modifiers = Desktop.DesktopInputTake(session)
+        local_bytes: [4]u8
+        local_text := Key.TypedTextTake(session, local_bytes[:])
+        if key != 0 || modifiers != 0 || Key.TextFieldInputFor(key, modifiers, local_text).text != "x" { return 87 }
+        key, modifiers = Desktop.DesktopInputTake(session)
+        if key != 257 || modifiers != normalized[index] { return 88 }
+    }
+    return 0
+}
+
+UnreadTextKey :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160,120) { return 91 }
+    defer Desktop.CloseDesktop()
+    input_window=WindowID(Desktop.DesktopWindow())
+    Desktop.DesktopInputEnable()
+    session:=Session.SessionOpen()
+    defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
+    if !PushAscii(51) || !Desktop.PollDesktop() { return 92 }
+    key,modifiers:=Desktop.DesktopInputTake(session)
+    if key!=0 || Tree.TypedCodepointPeek(session)!=51 { return 93 }
+    if !PushKey(true,52,0) || !PushAscii(52) || !Desktop.PollDesktop() { return 94 }
+    key,modifiers=Desktop.DesktopInputTake(session)
+    if key!=52 || modifiers!=0 || Tree.TypedCodepointPeek(session)!=51 { return 95 }
+    if !PushKey(true,13,0) || !Desktop.PollDesktop() { return 96 }
+    key,modifiers=Desktop.DesktopInputTake(session)
+    if key!=0 { return 97 }
+    bytes: [8]u8
+    if Key.TypedTextTake(session,bytes[:])!="34" { return 98 }
+    key,modifiers=Desktop.DesktopInputTake(session)
+    if key!=257 || Tree.TypedCodepointPeek(session)!=0 { return 99 }
+    return 0
+}
+
+main :: () -> s32 {
+    result := UnreadTextKey()
+    if result != 0 { return result }
+    result = ModifierBarrier()
+    if result != 0 { return result }
+    result = NativeQueueLifecycle()
+    if result != 0 { return result }
+    result = OrderedBurst()
+    if result != 0 { return result }
+    result = UrgentClose(true, false)
+    if result != 0 { return result }
+    result = UrgentClose(false, false)
+    if result != 0 { return result }
+    result = UrgentClose(true, true)
+    if result != 0 { return result }
+    if !Desktop.OpenDesktopSized(160, 120) { return 74 }
+    Desktop.DesktopInputEnable()
+    session := Session.SessionOpen()
+    if !Desktop.PollDesktop() { return 75 }
+    key, modifiers := Desktop.DesktopInputTake(session)
+    if key != 0 || Tree.TypedCodepointPeek(session) != 0 ||
+        Desktop.WindowTakeCloseRequestHost() { return 76 }
+    Session.SessionClose(session)
+    Desktop.CloseDesktop()
+    print("Desktop ordered input: Unicode burst, edit ordering, full snapshot carry, lifecycle and urgent close passed\n")
+    return 0
+}

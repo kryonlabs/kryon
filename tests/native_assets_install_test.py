@@ -46,6 +46,7 @@ host = "src/host.zi"
 assets = "assets"
 [tool.kryon.install]
 profile = "desktop"
+icon_name = "system-file-manager"
 '''
     (project / 'ziran.toml').write_text(manifest)
     overrides = {'kryon': ROOT, 'ziran': ZIRAN_ROOT}
@@ -72,9 +73,40 @@ profile = "desktop"
     run(ZIRAN, 'tool', 'kryon', 'build', '--profile', 'desktop')
     program = project / 'build/asset_probe-desktop'
     run(program, cwd=neutral)
+    stamp=project/'build/generated/desktop/ir/.complete'
+    before=stamp.stat().st_mtime_ns
+    run(ZIRAN,'tool','kryon','build','--profile','desktop')
+    assert stamp.stat().st_mtime_ns==before, 'Unchanged native build regenerated IR'
+    make=['make','--no-print-directory','-f',ROOT/'mk/ziran-project.mk',
+          'PROJECT_NAME=asset_probe','PROJECT_ENTRY=src/host.zi','PROJECT_BACKEND=desktop',
+          'PROJECT_CODEGEN=c99','PROJECT_PROFILE=desktop','PROJECT_HOST=src/host.zi',
+          'ZIRAN_PACKAGE_ID=asset_probe','KRYON_DIR='+str(ROOT),'ZIRAN_DIR='+str(ZIRAN_ROOT)]
+    target='build/generated/desktop/ir/.complete'
+    def query(*extra):
+        return subprocess.run([str(v) for v in [*make,'--question',*extra,target]],
+                              cwd=project,env=env,check=False).returncode
+    assert query()==0, 'Native IR was already stale before dependency probe'
+    upstream=[*sorted((ROOT/'src/backend').glob('gtk_*_linux.zi')),ROOT/'src/backend/file_date_linux.zi']
+    for source in upstream:
+        # GNU make's what-if models an upstream edit without modifying any
+        # canonical source. Dropping host prerequisites is a negative control.
+        assert query('--what-if='+str(source))==1, ('Native dependency omitted',source.name)
+        assert query('HOST_SOURCES=','--what-if='+str(source))==0, ('Invalid dependency control',source.name)
+    binary_before=program.stat().st_mtime_ns
+    run(*make,'--what-if='+str(ROOT/'src/backend/gtk_style_linux.zi'),target)
+    assert stamp.stat().st_mtime_ns>before, 'Upstream change did not regenerate native IR'
+    run(ZIRAN,'tool','kryon','build','--profile','desktop')
+    assert program.stat().st_mtime_ns>binary_before, 'Regenerated native IR did not rebuild executable'
+    after=stamp.stat().st_mtime_ns
+    run(ZIRAN,'tool','kryon','build','--profile','desktop')
+    assert stamp.stat().st_mtime_ns==after, 'Native build stopped being incremental'
+    print('Native dependency rebuild: GTK/date upstream edits invalidate IR and executable; unchanged builds retain IR',flush=True)
     run(ZIRAN, 'install', '--prefix', prefix)
     installed = prefix / 'bin/asset_probe'
     def check_modes(installation, prefix_mode):
+        entry=(installation / 'share/applications/asset_probe.desktop').read_text()
+        assert 'Icon=system-file-manager\n' in entry
+        assert not (installation / 'share/pixmaps').exists(), 'Themed icons must remain theme names'
         assert stat.S_IMODE(installation.stat().st_mode) == prefix_mode
         for name in ('bin', 'share', 'share/applications', 'share/kryon',
                      'share/kryon/asset_probe', 'share/kryon/asset_probe/assets',

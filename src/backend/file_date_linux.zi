@@ -1,0 +1,70 @@
+// Local calendar file dates, using GLib's locale, timezone and gettext APIs.
+DateStyle :: enum { LocaleDate; RelativeDate; }
+
+#scope_file
+CString :: #import "std/c_string";
+Text :: #import "std/byte_text_linux";
+glib :: #system_library "glib-2.0";
+libc :: #system_library "c";
+DateNew :: (stamp: s64) -> *void #foreign glib "g_date_time_new_from_unix_local";
+DateNow :: () -> *void #foreign glib "g_date_time_new_now_local";
+DateFree :: (date: *void) #foreign glib "g_date_time_unref";
+DateYear :: (date: *void) -> s32 #foreign glib "g_date_time_get_year";
+DateMonth :: (date: *void) -> s32 #foreign glib "g_date_time_get_month";
+DateDay :: (date: *void) -> s32 #foreign glib "g_date_time_get_day_of_month";
+DateFormat :: (date: *void, format: *u8) -> *u8 #foreign glib "g_date_time_format";
+CalendarNew :: (day: u8, month: s32, year: u16) -> *void #foreign glib "g_date_new_dmy";
+CalendarJulian :: (date: *void) -> u32 #foreign glib "g_date_get_julian";
+CalendarFree :: (date: *void) #foreign glib "g_date_free";
+Translate :: (domain: *u8, message: *u8) -> *u8 #foreign libc "dgettext";
+Free :: (value: *void) #foreign glib "g_free";
+
+Julian :: (date: *void) -> s32 {
+    calendar:=CalendarNew(cast(u8)DateDay(date),DateMonth(date),cast(u16)DateYear(date))
+    if calendar==null { return -1 }
+    defer CalendarFree(calendar)
+    return cast(s32)CalendarJulian(calendar)
+}
+Copy :: (value: *u8, output: []u8) -> s32 {
+    if value==null { return -1 }
+    text:=Text.TextFromCString(value)
+    if !CString.CopyCString(text,output) { return -1 }
+    return cast(s32)text.count
+}
+Localized :: (label: string, domain: *u8, output: []u8) -> s32 {
+    bytes: [32]u8
+    if !CString.CopyCString(label,bytes[:]) { return -1 }
+    return Copy(Translate(domain,*bytes[0]),output)
+}
+
+#scope_export
+// UTF-8 byte length excluding NUL, or -1 for invalid arguments/output bounds.
+// Negative now selects the native clock. The process locale is left unchanged.
+FormatFileDate :: (stamp: s64, output: []u8, style: DateStyle = .LocaleDate, now: s64 = -1, domain: string = "") -> s32 {
+    if style!=.LocaleDate && style!=.RelativeDate { return -1 }
+    if output.count<1 || domain.count>255 { return -1 }
+    for byte: domain { if byte==0 { return -1 } }
+    domain_bytes: [256]u8
+    if !CString.CopyCString(domain,domain_bytes[:]) { return -1 }
+    translation_domain:=ifx domain=="" then cast(*u8)null else *domain_bytes[0]
+    if stamp==0 && style==.RelativeDate { return Localized("Unknown",translation_domain,output) }
+    date:=DateNew(stamp)
+    if date==null { if style==.RelativeDate { return Localized("Unknown",translation_domain,output) }; return -1 }
+    defer DateFree(date)
+    format: string="%x"
+    if style==.RelativeDate {
+        reference:=ifx now<0 then DateNow() else DateNew(now)
+        if reference==null { return -1 }
+        age:=Julian(reference)-Julian(date)
+        DateFree(reference)
+        if age==0 { return Localized("Today",translation_domain,output) }
+        if age==1 { return Localized("Yesterday",translation_domain,output) }
+        if age>=2 && age<=6 { format="%A" }
+    }
+    format_bytes: [3]u8
+    if !CString.CopyCString(format,format_bytes[:]) { return -1 }
+    value:=DateFormat(date,*format_bytes[0])
+    if value==null { return -1 }
+    defer Free(cast(*void)value)
+    return Copy(value,output)
+}

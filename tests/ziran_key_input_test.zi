@@ -26,6 +26,42 @@ main :: () -> s32 {
     TypedCodepointSend(session, 97)
     TypedCodepointSend(session, 0x20AC)
     if TypedTextTake(session, small[:]) != "a" { return 4 }
+    if TypedTextTake(session, small[:]) != "€" { return 14 }
+    // A burst longer than one retained queue drains without loss.
+    if TypedCodepointCapacity(session) != 32 { return 20 }
+    burst: [128]u8
+    for group: 0..1 {
+        base: s32 = 48 + cast(s32)group * 32
+        for index: 0..31 {
+            if !TypedCodepointSend(session, base + cast(s32)index) {
+                return 15
+            }
+        }
+        {
+            typed := TypedTextTake(session, burst[:])
+            if typed.count != 32 ||
+                typed[0] != cast(u8)base ||
+                typed[typed.count - 1] != cast(u8)(base + 31) { return 16 }
+        }
+    }
+    for index: 0..7 {
+        if !TypedCodepointSend(session, 112 + cast(s32)index) { return 15 }
+    }
+    {
+        typed := TypedTextTake(session, burst[:])
+        if typed.count != 8 || typed[0] != cast(u8)112 ||
+            typed[7] != cast(u8)119 { return 16 }
+    }
+    if TypedTextTake(session, burst[:]).count != 0 { return 17 }
+    // A caller-sized UTF-8 buffer keeps every scalar boundary.
+    unicode: [8]u8
+    for index: 0..4 {
+        if !TypedCodepointSend(session, 0x1F600) { return 18 }
+    }
+    if TypedTextTake(session, unicode[:]).count != 8 ||
+        TypedTextTake(session, unicode[:]).count != 8 ||
+        TypedTextTake(session, unicode[:]).count != 4 ||
+        TypedTextTake(session, unicode[:]).count != 0 { return 19 }
     // Keys map to the matching edits; typed text is inserted.
     input: TextFieldInput = TextFieldInputFor(KeyBackspace, 0, "")
     if !input.backspace || input.left || input.text.count != 0 { return 5 }

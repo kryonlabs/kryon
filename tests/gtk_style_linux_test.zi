@@ -1,6 +1,10 @@
 Native :: #import "gtk_style_linux";
+Painter :: #import "gtk_painter_linux";
+Scroll :: #import "gtk_scroll_linux";
+Raster :: #import "cairo_raster";
 Bitmap :: #import "bitmap_image";
 Store :: #import "bitmap_store";
+Queue :: #import "paint_queue";
 #import "session"
 #import "std/c_string"
 #import "std/byte_text_linux"
@@ -11,6 +15,7 @@ Store :: #import "bitmap_store";
 gtk :: #system_library "gtk-3";
 gdk :: #system_library "gdk-3";
 gobject :: #system_library "gobject-2.0";
+cairo :: #system_library "cairo";
 Init :: (argc: *s32, argv: ***u8) -> s32 #foreign gtk "gtk_init_check";
 ProviderNew :: () -> *void #foreign gtk "gtk_css_provider_new";
 ProviderLoad :: (provider: *void, path: *u8, error: **void) -> s32 #foreign gtk "gtk_css_provider_load_from_path";
@@ -30,6 +35,7 @@ DisplayOpen :: (name: *u8) -> *void #foreign gdk "gdk_display_open";
 DisplayClose :: (display: *void) #foreign gdk "gdk_display_close";
 DisplayManager :: () -> *void #foreign gdk "gdk_display_manager_get";
 DisplaySet :: (manager: *void, display: *void) #foreign gdk "gdk_display_manager_set_default_display";
+SurfaceDestroy :: (surface: *void) #foreign cairo "cairo_surface_destroy";
 WeakRef :: (object: *void, callback: *void, data: *void) #foreign gobject "g_object_weak_ref";
 WeakUnref :: (object: *void, callback: *void, data: *void) #foreign gobject "g_object_weak_unref";
 NativeWeak :: #type (*void, *void) -> void #c_call;
@@ -93,7 +99,6 @@ Rebind :: (nodes: []Native.GtkStyleNode) -> s32 {
 libc :: #system_library "c";
 Unset :: (name: *u8) -> s32 #foreign libc "unsetenv";
 Environment :: (name: *u8) -> *u8 #foreign libc "getenv";
-cairo :: #system_library "cairo";
 RealAllocate :: (count: usize, size: usize) -> *u8 #foreign libc "__real_calloc";
 RealFree :: (data: *u8) #foreign libc "__real_free";
 RealSurface :: (format: s32, width: s32, height: s32) -> *void #foreign cairo "__real_cairo_image_surface_create";
@@ -139,6 +144,157 @@ Save :: (directory: string, name: string, data: []u8) -> bool {
 }
 
 ProviderCSS :: "* { padding:7px; color:#123456; background-image:none; background-color:#203040; border:0; border-radius:0; font:16px DejaVu Sans; text-shadow:none; } .fixture-root:disabled button { padding:11px; } button:disabled { color:#556677; }";
+NativeFontCSS :: "window.font-native, label.font-native { font:10pt sans; color:#c3c7d1; background-color:#181b28; background-image:none; border:0; border-radius:0; padding:0; margin:0; text-shadow:none; }";
+NativeSurfaceAdapters :: () -> bool {
+    if !Native.GtkNativeReady() || Native.GtkNativeWidgetNodeApply(null,.{}) ||
+        Native.GtkNativeSurfaceBitmap(null,1,1).rgba.count!=0 { return false }
+    surface:=RealSurface(0,4,3)
+    if surface==null { return false }
+    defer SurfaceDestroy(surface)
+    if Native.GtkNativeSurfaceBitmap(surface,5,3).rgba.count!=0 ||
+        Native.GtkNativeSurfaceBitmap(surface,4,2).rgba.count!=0 ||
+        Native.GtkNativeSurfaceBitmap(surface,0,3).rgba.count!=0 ||
+        Native.GtkNativeSurfaceBitmap(surface,4096,4096).rgba.count!=0 { return false }
+    bitmap:=Native.GtkNativeSurfaceBitmap(surface,4,3)
+    if bitmap.width!=4 || bitmap.height!=3 || bitmap.rgba.count!=48 { return false }
+    Native.GtkStyleBitmapRelease(*bitmap)
+    rgb:=RealSurface(1,4,3)
+    if rgb==null { return false }
+    defer SurfaceDestroy(rgb)
+    if Native.GtkNativeSurfaceBitmap(rgb,4,3).rgba.count!=0 { return false }
+    invalid:=RealSurface(-1,4,3)
+    if invalid==null { return false }
+    defer SurfaceDestroy(invalid)
+    return Native.GtkNativeSurfaceBitmap(invalid,4,3).rgba.count==0 && outstanding==0
+}
+BackdropRasterScale :: (nodes: []Native.GtkStyleNode, directory: string, scale: s32) -> s32 {
+    background: [6144]u8
+    w:=24*scale; h:=16*scale; count:=w*h*4
+    for y: cast(s32)0..h-1 { for x: cast(s32)0..w-1 {
+        at:=(y*w+x)*4
+        background[at]=cast(u8)(12+x%5); background[at+1]=cast(u8)(14+y%7)
+        background[at+2]=cast(u8)(20+(x+y)%9)
+        background[at+3]=ifx x%5==0 then cast(u8)0 else ifx x%3==0 then cast(u8)128 else cast(u8)255
+    } }
+    invalid:=Native.GtkStyleRasterRegionOver(nodes,24,16,1,0,0,24,16,background[:1535])
+    if invalid.rgba.count!=0 { Native.GtkStyleBitmapRelease(*invalid); return 201 }
+    full:=Native.GtkStyleRasterRegionOver(nodes,24,16,scale,0,0,24,16,background[:count])
+    defer Native.GtkStyleBitmapRelease(*full)
+    full_name:=ifx scale==1 then "backdrop-full" else "backdrop-full-2"
+    if full.rgba.count!=cast(s64)count || !Save(directory,full_name,full.rgba) { return 202 }
+    crop_background: [2992]u8
+    cw:=17*scale; ch:=11*scale; crop_count:=cw*ch*4
+    for y: cast(s32)0..ch-1 { for x: cast(s32)0..cw-1 { for c: cast(s32)0..3 {
+        crop_background[(y*cw+x)*4+c]=background[((y+2*scale)*w+x+3*scale)*4+c]
+    } } }
+    crop:=Native.GtkStyleRasterRegionOver(nodes,24,16,scale,3,2,17,11,crop_background[:crop_count])
+    defer Native.GtkStyleBitmapRelease(*crop)
+    crop_name:=ifx scale==1 then "backdrop-crop" else "backdrop-crop-2"
+    if crop.rgba.count!=cast(s64)crop_count || !Save(directory,crop_name,crop.rgba) { return 203 }
+    if scale==2 { return 0 }
+    session:=SessionOpen(); if !SessionValid(session) { return 204 }; defer { unused SessionClose(session) }
+    painter: Painter.GtkPainter; defer Painter.GtkPainterRelease(*painter)
+    if !Painter.GtkPainterBegin(*painter,session,.{10.0,20.0,24.0,16.0}) { return 205 }
+    for i: cast(s32)0..1535 { painter.pixels[i]=background[i] }
+    if Painter.GtkPainterStyleOver(*painter,nodes,.{10.0,20.0,9000.0,16.0}) { return 207 }
+    for i: cast(s32)0..1535 { if painter.pixels[i]!=background[i] { return 208 } }
+    painter.clip=.{14.0,23.0,12.0,9.0}
+    if !Painter.GtkPainterStyleOver(*painter,nodes,painter.bounds) || !Save(directory,"backdrop-painter",painter.pixels[:]) { return 206 }
+    return 0
+}
+ScrollPainter :: () -> s32 {
+    nodes: [2]Native.GtkStyleNode=.[.{.widget_type="GtkWindow",.element="window"},
+        .{.widget_type="GtkScrolledWindow",.element="scrolledwindow"}]
+    handle:=Scroll.GtkScrollCreate(nodes[:]); if handle==0 { return 210 }
+    defer { unused Scroll.GtkScrollRelease(handle) }
+    metrics:=Scroll.GtkScrollUpdate(handle,.{.width=100,.height=80,.content_width=60,.content_height=1000,.vertical=true})
+    w:=metrics.vertical.bounds.width; h:=metrics.vertical.bounds.height
+    if !metrics.vertical.visible || w<6 || h<6 { return 211 }
+    session:=SessionOpen(); if !SessionValid(session) { return 212 }; defer { unused SessionClose(session) }
+    painter: Painter.GtkPainter; defer Painter.GtkPainterRelease(*painter)
+    if !Painter.GtkPainterBegin(*painter,session,.{10.0,20.0,cast(float32)w,cast(float32)h}) { return 213 }
+    background: Vec(u8); defer VecFree(background)
+    if !VecResize(background,cast(s64)w*cast(s64)h*4) { return 214 }
+    for shift: cast(s32)0..1 {
+        for i: cast(s64)0..painter.pixels.count/4-1 {
+            painter.pixels[i*4]=32; painter.pixels[i*4+1]=48; painter.pixels[i*4+2]=80
+            painter.pixels[i*4+3]=ifx i%3==0 then cast(u8)0 else ifx i%3==1 then cast(u8)128 else cast(u8)255
+        }
+        dx:= -3*shift; dy:= -2*shift
+        bounds:=painter.bounds; bounds.x+=cast(float32)dx; bounds.y+=cast(float32)dy
+        for y: cast(s32)0..h-1 { for x: cast(s32)0..w-1 { for c: cast(s32)0..3 {
+            px:=x+dx; py:=y+dy; value: u8
+            if px>=0 && py>=0 && px<w && py<h { value=painter.pixels[(py*w+px)*4+c] }
+            background[(y*w+x)*4+c]=value
+        } } }
+        expected:=Scroll.GtkScrollRasterOver(handle,background[:]); defer Native.GtkStyleBitmapRelease(*expected)
+        if expected.rgba.count!=background.count { return 215 }
+        painter.clip=.{12.0,23.0,cast(float32)(w-4),cast(float32)(h-6)}
+        if Painter.GtkPainterScrollOver(null,handle,bounds) || Painter.GtkPainterScrollOver(*painter,0,bounds) ||
+            !Painter.GtkPainterScrollOver(*painter,handle,bounds) { return 216 }
+        for y: cast(s32)0..h-1 { for x: cast(s32)0..w-1 { for c: cast(s32)0..3 {
+            value: u8
+            if c==0 { value=32 } else if c==1 { value=48 } else if c==2 { value=80 }
+            else { i:=y*w+x; value=ifx i%3==0 then cast(u8)0 else ifx i%3==1 then cast(u8)128 else cast(u8)255 }
+            if x>=2 && y>=3 && x<w-2 && y<h-3 && x-dx<w && y-dy<h {
+                value=expected.rgba[((y-dy)*w+x-dx)*4+c]
+            }
+            if painter.pixels[(y*w+x)*4+c]!=value { return 217 }
+        } } }
+    }
+    print("GTK scrollbar painter: exact backdrop replacement, alpha, parent clip and partial bounds passed\n")
+    return 0
+}
+BackdropRaster :: (nodes: []Native.GtkStyleNode, directory: string) -> s32 {
+    first:=BackdropRasterScale(nodes,directory,1)
+    if first!=0 { return first }
+    second:=BackdropRasterScale(nodes,directory,2)
+    if second!=0 { return second }
+    return ScrollPainter()
+}
+RoundedWindowRaster :: (directory: string) -> s32 {
+    classes: [2]string=.["background","rounded-root"]
+    flat: [1]string=.["flat"]
+    nodes: [2]Native.GtkStyleNode=.[
+        .{.widget_type="GtkWindow",.element="window",.classes=classes[:]},
+        .{.widget_type="GtkEntry",.element="entry",.name="target",.classes=flat[:]}]
+    background: [15360]u8
+    for i: cast(s32)0..3839 {
+        background[i*4]=12; background[i*4+1]=14; background[i*4+2]=20; background[i*4+3]=255
+    }
+    bitmap:=Native.GtkStyleRasterRegionOver(nodes[:],96,40,1,0,0,96,40,background[:])
+    defer Native.GtkStyleBitmapRelease(*bitmap)
+    if bitmap.rgba.count!=15360 || !Save(directory,"native-rounded",bitmap.rgba) { return 209 }
+    return 0
+}
+NativeFontWidget :: (directory: string, explicit: bool) -> s32 {
+    if explicit {
+        antialias: [32]u8; hinting: [32]u8; hintstyle: [32]u8; medium: [16]u8
+        unused CopyCString("gtk-xft-antialias",antialias[:])
+        unused CopyCString("gtk-xft-hinting",hinting[:])
+        unused CopyCString("gtk-xft-hintstyle",hintstyle[:])
+        unused CopyCString("hintmedium",medium[:])
+        Set(Settings(),*antialias[0],cast(s32)0,*hinting[0],cast(s32)1,*hintstyle[0],*medium[0],cast(*u8)null)
+    }
+    provider:=Native.GtkStyleProviderCreate(NativeFontCSS)
+    if provider==0 { return 89 }
+    defer { unused Native.GtkStyleProviderRelease(provider) }
+    if !Native.GtkStyleProviderInstall(provider,1000) { return 90 }
+    classes: [1]string=.["font-native"]
+    nodes: [2]Native.GtkStyleNode=.[
+        .{.widget_type="GtkWindow",.element="window",.classes=classes[:]},
+        .{.widget_type="GtkLabel",.element="label",.classes=classes[:]}]
+    session:=SessionOpen()
+    if !SessionValid(session) { return 91 }
+    defer { unused SessionClose(session) }
+    painter: Painter.GtkPainter
+    defer Painter.GtkPainterRelease(*painter)
+    if !Painter.GtkPainterBegin(*painter,session,.{0.0,0.0,200.0,28.0}) { return 92 }
+    Painter.GtkPainterPaint(*painter,nodes[:1],.{0.0,0.0,200.0,28.0})
+    Painter.GtkPainterPaint(*painter,nodes[:],.{0.0,0.0,200.0,28.0},"File 01 Folder Café",1)
+    if !Save(directory,ifx explicit then "native-font-explicit" else "native-font-default",painter.pixels[:]) { return 93 }
+    return 0
+}
 LocalCSS :: "* { padding:1px; color:#abcdef; background-color:#504030; font:20px DejaVu Sans; } *:disabled { color:#987654; }";
 ReplacementCSS :: "* { padding:2px; color:#aabbcc; background-color:#304050; font:18px DejaVu Sans; }";
 Snapshot :: (nodes: []Native.GtkStyleNode, directory: string, name: string) -> bool {
@@ -287,6 +443,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
         return 0
     }
     if Init(null,null) == 0 { return 4 }
+    if !NativeSurfaceAdapters() { return 184 }
+    if TextFromCString(argv[3])=="native-font-default" { return NativeFontWidget(TextFromCString(argv[2]),false) }
+    if TextFromCString(argv[3])=="native-font-explicit" { return NativeFontWidget(TextFromCString(argv[2]),true) }
     if TextFromCString(argv[3]) == "rebind" { return Rebind(nodes[:]) }
     provider := ProviderNew()
     if ProviderLoad(provider,argv[1],null) == 0 { return 5 }
@@ -294,10 +453,13 @@ main :: (argc: s32, argv: **u8) -> s32 {
     AddProvider(Screen(),provider,800)
     defer RemoveProvider(Screen(),provider)
     unused Native.GtkStylePoll()
+    if TextFromCString(argv[3])=="backdrop" { return BackdropRaster(nodes[:],TextFromCString(argv[2])) }
+    if TextFromCString(argv[3])=="native-rounded" { return RoundedWindowRaster(TextFromCString(argv[2])) }
     metrics := Native.GtkStyleQuery(nodes[:],1)
     if !metrics.available || metrics.foreground != cast(u32)0x112233ff ||
         metrics.border.bottom != 2 || metrics.border.top != 0 ||
         metrics.padding.left != 5 || metrics.padding.top != 3 ||
+        metrics.margin.top != 2 || metrics.margin.right != 7 || metrics.margin.bottom != 3 || metrics.margin.left != 11 ||
         TextFromCString(*metrics.font_family[0]) != "DejaVu Sans" ||
         metrics.font_weight != 700 || metrics.font_style != 2 ||
         metrics.font_size < 15.9 || metrics.font_size > 16.1 { return 6 }
@@ -313,6 +475,136 @@ main :: (argc: s32, argv: **u8) -> s32 {
     image := Native.GtkStyleRaster(nodes[:],24,16,1)
     if image.width != 24 || image.height != 16 || image.rgba.count != 1536 || !Save(directory,"normal",image.rgba) { return 8 }
     session := SessionOpen()
+    // Composition owns one upload regardless of the number of cached GTK tiles.
+    // Verify exact RGBA on transparency, cache reuse, clipping, and disposal.
+    painter: Painter.GtkPainter
+    if !Painter.GtkPainterBegin(*painter,session,.{0.0,0.0,24.0,16.0}) { return 140 }
+    Painter.GtkPainterPaint(*painter,nodes[:],.{0.0,0.0,24.0,16.0})
+    expected := Native.GtkStyleRaster(nodes[:],24,16,1)
+    if expected.rgba.count != painter.pixels.count { return 141 }
+    for i: 0..expected.rgba.count-1 { if expected.rgba[i] != painter.pixels[i] { return 142 } }
+    Native.GtkStyleBitmapRelease(*expected)
+    if !Raster.OpenRaster(24,16) { return 146 }
+    Raster.BeginRasterFrame()
+    Painter.GtkPainterEnd(*painter,cast(u64)901)
+    painter_texture := painter.texture
+    if painter_texture.id == 0 { return 143 }
+    Painter.GtkPainterEnd(*painter,cast(u64)901)
+    if painter.texture.id != painter_texture.id || !Raster.FinishRasterFrame() { return 144 }
+    Raster.CloseRaster()
+    painter.clip=.{0.0,0.0,0.0,0.0}
+    Painter.GtkPainterPaint(*painter,nodes[:],.{0.0,0.0,24.0,16.0})
+    Painter.GtkPainterRelease(*painter)
+    Painter.GtkPainterRelease(*painter)
+    if Store.BitmapOwnedSlot(session.slot,session.epoch,painter_texture) >= 0 { return 145 }
+    // Compare native CSS/text raster layers with Cairo OVER, including
+    // opaque/translucent destinations, gradients and text shadows.
+    composite_classes: [2]string=.["flat","composite"]
+    composite_nodes:=nodes
+    composite_nodes[1].classes=composite_classes[:]
+    for background: cast(s32)0..2 {
+        if !Painter.GtkPainterBegin(*painter,session,.{0.0,0.0,96.0,64.0}) { return 169 }
+        for pixel: cast(s64)0..96*64-1 {
+            offset:=pixel*4
+            painter.pixels[offset]=31; painter.pixels[offset+1]=41; painter.pixels[offset+2]=59
+            painter.pixels[offset+3]=ifx background==1 then cast(u8)77 else cast(u8)255
+        }
+        if background==2 {
+            // Plain glyphs are also compared directly with GTK drawing onto
+            // the opaque destination, without any intermediate group.
+            Painter.GtkPainterPaint(*painter,nodes[:],.{0.0,0.0,96.0,64.0},"Café 世界\nLabel",8,1)
+        } else {
+            layer:=Native.GtkStyleRaster(composite_nodes[:],96,64,1)
+            if !Painter.GtkPainterBitmap(*painter,.{0.0,0.0,96.0,64.0},layer) { return 185 }
+            Native.GtkStyleBitmapRelease(*layer)
+            Painter.GtkPainterPaint(*painter,composite_nodes[:],.{0.0,0.0,96.0,64.0},"Café 世界\nLabel",8,1)
+        }
+        if !Save(directory,ifx background==0 then "composite-opaque" else ifx background==1 then "composite-translucent" else "composite-plain-text",painter.pixels[:]) { return 170 }
+    }
+    // A borrowed layer can be reused after clipped paints and is not cached.
+    if !Painter.GtkPainterBegin(*painter,session,.{10.0,20.0,24.0,16.0}) { return 186 }
+    layer:=Native.GtkStyleRaster(composite_nodes[:],24,16,1)
+    if layer.rgba.count!=24*16*4 { return 187 }
+    for i: 0..painter.pixels.count-1 { painter.pixels[i]=0 }
+    painter.clip=.{14.0,23.0,8.0,7.0}
+    if Painter.GtkPainterBitmap(null,.{10.0,20.0,24.0,16.0},layer) ||
+        Painter.GtkPainterBitmap(*painter,.{10.0,20.0,23.0,16.0},layer) ||
+        Painter.GtkPainterBitmap(*painter,.{10.0,20.0,24.0,16.0},.{.width=24,.height=16}) ||
+        !Painter.GtkPainterBitmap(*painter,.{10.0,20.0,24.0,16.0},layer) { return 188 }
+    for y: 0..15 { for x: 0..23 {
+        inside:=x>=4 && x<12 && y>=3 && y<10
+        for c: 0..3 {
+            at:=(y*24+x)*4+c
+            if painter.pixels[at]!=(ifx inside then layer.rgba[at] else cast(u8)0) { return 189 }
+        }
+    } }
+    painter.clip=painter.bounds
+    if !Painter.GtkPainterBitmap(*painter,.{1000.0,1000.0,24.0,16.0},layer) { return 190 }
+    for i: 0..painter.pixels.count-1 { painter.pixels[i]=0 }
+    if !Painter.GtkPainterBitmap(*painter,painter.bounds,layer) { return 191 }
+    for i: 0..painter.pixels.count-1 { if painter.pixels[i]!=layer.rgba[i] { return 192 } }
+    Native.GtkStyleBitmapRelease(*layer)
+    Painter.GtkPainterRelease(*painter)
+    // Cropping CSS retains the original box's gradient/border coordinates.
+    for scale: cast(s32)1..2 {
+        whole:=Native.GtkStyleRaster(nodes[:],24,16,scale)
+        crop:=Native.GtkStyleRasterRegion(nodes[:],24,16,scale,5,3,11,9)
+        if crop.rgba.count!=cast(s64)(11*9*scale*scale*4) { return 156 }
+        for yy: cast(s32)0..9*scale-1 {
+            for xx: cast(s32)0..11*scale-1 {
+                for channel: cast(s32)0..3 {
+                    if crop.rgba[(yy*11*scale+xx)*4+channel]!=whole.rgba[((yy+3*scale)*24*scale+xx+5*scale)*4+channel] { return 157 }
+                }
+            }
+        }
+        Native.GtkStyleBitmapRelease(*whole); Native.GtkStyleBitmapRelease(*crop)
+    }
+    // Full 4K native composition must fit the existing managed texture budget.
+    // Repeated CSS regions share exact atlas pixels; labels remain independent.
+    large_provider:=Native.GtkStyleProviderCreate("* { background:#142638; background-image:none; border:0; color:#abcdef; }")
+    if large_provider==0 || !Native.GtkStyleProviderInstall(large_provider,1100) { return 158 }
+    if !Painter.GtkPainterBegin(*painter,session,.{0.0,0.0,3840.0,2160.0}) { return 159 }
+    Painter.GtkPainterPaint(*painter,nodes[:],.{0.0,0.0,3840.0,2160.0})
+    for row: cast(s32)0..39 {
+        text: Vec(u8)
+        BuilderPrint(*text,"Native row % — Café 世界",row)
+        Painter.GtkPainterPaint(*painter,nodes[:],.{32.0,cast(float32)(row*52),800.0,52.0},TextView(text[:]),1)
+    }
+    if !Raster.OpenRaster(3840,2160) { return 160 }
+    Raster.BeginRasterFrame()
+    Queue.PaintClear(session)
+    if !Painter.GtkPainterEnd(*painter,cast(u64)902) || painter.region_count<2 || painter.region_count>=1024 ||
+        painter.atlas.count>16777216 { return 161 }
+    // Execute the actual standard Image commands against the native Cairo
+    // renderer; this also catches source rectangles, edge seams and clipping.
+    for command_index: cast(s32)0..Queue.PendingPaintCount(session)-1 {
+        command:=Queue.PendingPaintAt(session,command_index)
+        if command.kind!=cast(s32)Queue.PaintKind.PaintKindImage { return 164 }
+        Raster.RasterImage(command.asset_path,command.texture_id,command.source,command.bounds,
+            command.clip,command.origin,command.rotation,command.radius,command.color)
+    }
+    Queue.PaintClear(session)
+    if !Raster.FinishRasterFrame() { return 165 }
+    rendered:=Raster.RasterSurfaceData(); stride:=Raster.RasterSurfaceStride()
+    for yy: cast(s32)0..2159 {
+        for xx: cast(s32)0..3839 {
+            expected_at:=(yy*3840+xx)*4; actual_at:=yy*stride+xx*4
+            alpha:=cast(s32)painter.pixels[expected_at+3]
+            red:=(cast(s32)painter.pixels[expected_at]*alpha+127)/255+(248*(255-alpha)+127)/255
+            green:=(cast(s32)painter.pixels[expected_at+1]*alpha+127)/255+(250*(255-alpha)+127)/255
+            blue:=(cast(s32)painter.pixels[expected_at+2]*alpha+127)/255+(252*(255-alpha)+127)/255
+            if cast(s32)rendered[actual_at]!=blue || cast(s32)rendered[actual_at+1]!=green ||
+                cast(s32)rendered[actual_at+2]!=red || rendered[actual_at+3]!=255 {
+                print("4K mismatch %,%; actual BGRA % % % % expected RGBA % % % %\n",xx,yy,
+                    rendered[actual_at],rendered[actual_at+1],rendered[actual_at+2],rendered[actual_at+3],
+                    painter.pixels[expected_at],painter.pixels[expected_at+1],painter.pixels[expected_at+2],painter.pixels[expected_at+3])
+                return 162
+            }
+        }
+    }
+    print("4K GTK atlas: % unique regions, % managed bytes; exact full-frame native pixels\n",painter.region_count,painter.atlas.count*2)
+    Raster.CloseRaster(); Painter.GtkPainterRelease(*painter)
+    if !Native.GtkStyleProviderRelease(large_provider) { return 163 }
     texture := Bitmap.BitmapImageCreate(session,image.width,image.height,image.rgba)
     if texture.id == cast(u32)0 { return 9 }
     Native.GtkStyleBitmapRelease(*image)
@@ -368,6 +660,10 @@ main :: (argc: s32, argv: **u8) -> s32 {
     for index: 0..2 {
         image=Native.GtkIconRaster(names[index],16,1,nodes[:])
         if image.width != 16 || image.height != 16 || !Save(directory,names[index],image.rgba) { return 28 }
+        serialized:=Native.GtkSerializedIconRaster(names[index],16,1,nodes[:])
+        if serialized.width!=image.width || serialized.height!=image.height || serialized.rgba.count!=image.rgba.count { return 147 }
+        for pixel: cast(s64)0..image.rgba.count-1 { if serialized.rgba[pixel]!=image.rgba[pixel] { return 148 } }
+        Native.GtkStyleBitmapRelease(*serialized)
         Native.GtkStyleBitmapRelease(*image)
         image=Native.GtkIconRaster(names[index],16,2,nodes[:])
         if image.width != 32 || image.height != 32 { return 29 }
@@ -381,6 +677,129 @@ main :: (argc: s32, argv: **u8) -> s32 {
         Native.GtkIconRaster("/fixture-icon",16,1,nodes[:]).rgba.count != 0 ||
         Native.GtkIconRaster("fixture-icon",2147483647,4,nodes[:]).rgba.count != 0 ||
         Native.GtkIconRaster("fixture-icon",16,0,nodes[:]).rgba.count != 0 { return 31 }
+    if Native.GtkSerializedIconRaster("fixture-icon",16,0,nodes[:]).rgba.count!=0 { return 149 }
+    icon_session:=SessionOpen()
+    natural_painter: Painter.GtkPainter
+    if !Painter.GtkPainterBegin(*natural_painter,icon_session,.{0.0,0.0,24.0,24.0}) { return 154 }
+    Painter.GtkPainterPaint(*natural_painter,nodes[:],.{0.0,0.0,24.0,24.0},"fixture-icon",7)
+    if !Save(directory,"native-image",natural_painter.pixels[:]) { return 155 }
+    image_nodes: [2]Native.GtkStyleNode
+    image_nodes[0]=nodes[0]; image_nodes[1]=.{.widget_type="GtkImage",.element="image"}
+    transformed:=Native.GtkStyleProviderCreate("image { -gtk-icon-transform:scale(0.63); -gtk-icon-shadow:1px 2px 1px rgba(20,40,80,0.5); }")
+    if transformed==0 || !Native.GtkStyleProviderInstall(transformed,1200) { return 166 }
+    for scale: cast(s32)1..2 {
+        styled:=Native.GtkIconRaster("fixture-icon",24,scale,image_nodes[:],false,true)
+        name: Vec(u8); BuilderPrint(*name,"styled-icon-%",scale)
+        if styled.width!=24*scale || !Save(directory,TextView(name[:]),styled.rgba) { return 167 }
+        Native.GtkStyleBitmapRelease(*styled)
+    }
+    if !Native.GtkStyleProviderRelease(transformed) { return 168 }
+    Painter.GtkPainterRelease(*natural_painter)
+    unused SessionClose(icon_session)
+    toolbar_icon:=Native.GtkIconSize(3)
+    if !toolbar_icon.available || toolbar_icon.width<=0 || toolbar_icon.height<=0 || Native.GtkIconSize(0).available { return 150 }
+    preferred:=Native.GtkWidgetMeasure(nodes[:],"Label")
+    if !preferred.available || preferred.minimum_height<metrics.padding.top+metrics.padding.bottom+metrics.border.top+metrics.border.bottom { return 151 }
+    sorted_preferred:=Native.GtkWidgetMeasure(nodes[:],"Label",true)
+    if !sorted_preferred.available || sorted_preferred.minimum_height<preferred.minimum_height { return 152 }
+    header_nodes: [4]Native.GtkStyleNode
+    view_class: [1]string=.["view"]
+    header_nodes[0]=nodes[0]
+    header_nodes[1]=.{.widget_type="GtkTreeView",.element="treeview",.classes=view_class[:]}
+    header_nodes[2]=.{.widget_type="GtkWidget",.element="header"}
+    header_nodes[3]=.{.widget_type="GtkButton",.element="button"}
+    separators:=Native.GtkStyleQuery(header_nodes[:2],1)
+    separator_text: Vec(u8)
+    BuilderPrint(*separator_text,"% %\n",separators.vertical_separator,separators.horizontal_separator)
+    if !separators.available || !Save(directory,"tree-separators",separator_text[:]) { return 155 }
+    header_preferred:=Native.GtkWidgetMeasure(header_nodes[:],"Name",true)
+    entry_nodes: [3]Native.GtkStyleNode
+    entry_nodes[0]=nodes[0]
+    entry_nodes[1]=.{.widget_type="GtkToolbar",.element="toolbar"}
+    entry_nodes[2]=.{.widget_type="GtkEntry",.element="entry"}
+    entry_preferred:=Native.GtkWidgetMeasure(entry_nodes[:])
+    cell_texts: [3]string=.["156 bytes","Plain text document (link to 04 Notes.txt)","11/14/23"]
+    cell_preferred:=Native.GtkCellTextMeasureMany(header_nodes[:2],cell_texts[:])
+    name_preferred:=Native.GtkCellTextMeasureMany(header_nodes[:2],cell_texts[:],60,true)
+    requisitions: Vec(u8)
+    BuilderPrint(*requisitions,"% % % %\n% % % %\n",header_preferred.minimum_width,header_preferred.minimum_height,header_preferred.natural_width,header_preferred.natural_height,
+        entry_preferred.minimum_width,entry_preferred.minimum_height,entry_preferred.natural_width,entry_preferred.natural_height)
+    BuilderPrint(*requisitions,"% % % %\n",cell_preferred.minimum_width,cell_preferred.minimum_height,cell_preferred.natural_width,cell_preferred.natural_height)
+    BuilderPrint(*requisitions,"% % % %\n",name_preferred.minimum_width,name_preferred.minimum_height,name_preferred.natural_width,name_preferred.natural_height)
+    chrome_nodes: [3]Native.GtkStyleNode
+    chrome_nodes[0]=nodes[0]
+    chrome_nodes[1]=.{.widget_type="GtkMenuBar",.element="menubar"}
+    menu_bar:=Native.GtkWidgetMeasure(chrome_nodes[:2],"Bookmarks")
+    chrome_nodes[2]=.{.widget_type="GtkMenuItem",.element="menuitem"}
+    menu_item:=Native.GtkWidgetMeasure(chrome_nodes[:],"Bookmarks")
+    chrome_nodes[1]=.{.widget_type="GtkToolbar",.element="toolbar"}
+    toolbar:=Native.GtkWidgetMeasure(chrome_nodes[:2],"fixture-icon")
+    chrome_nodes[2]=.{.widget_type="GtkToolButton",.element="toolbutton"}
+    tool_item:=Native.GtkWidgetMeasure(chrome_nodes[:],"fixture-icon")
+    chrome_metrics: [4]Native.GtkWidgetMetrics=.[menu_bar,menu_item,toolbar,tool_item]
+    for measured: chrome_metrics {
+        if !measured.available { return 167 }
+        BuilderPrint(*requisitions,"% % % %\n",measured.minimum_width,measured.minimum_height,measured.natural_width,measured.natural_height)
+    }
+    BuilderPrint(*requisitions,"% % % %\n",menu_bar.item_x,menu_bar.item_y,menu_bar.item_width,menu_bar.item_height)
+    BuilderPrint(*requisitions,"% % % %\n",toolbar.item_x,toolbar.item_y,toolbar.item_width,toolbar.item_height)
+    chrome_nodes[1]=.{.widget_type="GtkPaned",.element="paned"}
+    separator:=Native.GtkWidgetMeasure(chrome_nodes[:2])
+    if !separator.available { return 168 }
+    BuilderPrint(*requisitions,"% % % %\n",separator.minimum_width,separator.minimum_height,separator.natural_width,separator.natural_height)
+    horizontal_class: [1]string=.["horizontal"]
+    location_nodes: [7]Native.GtkStyleNode
+    location_nodes[0]=nodes[0]
+    location_nodes[1]=.{.widget_type="GtkGrid",.element="grid",.classes=horizontal_class[:]}
+    location_nodes[2]=.{.widget_type="GtkToolbar",.element="toolbar",.classes=horizontal_class[:]}
+    location_nodes[3]=.{.widget_type="GtkToolItem",.element="toolitem"}
+    location_nodes[4]=.{.widget_type="GtkBin",.element="widget"}
+    location_nodes[5]=.{.widget_type="GtkBox",.element="box",.classes=horizontal_class[:]}
+    location_nodes[6]=.{.widget_type="GtkEntry",.element="entry"}
+    location:=Native.GtkWidgetMeasure(location_nodes[:])
+    if !location.available { return 171 }
+    BuilderPrint(*requisitions,"% % % %\n",location.minimum_width,location.minimum_height,location.natural_width,location.natural_height)
+    for sorted: cast(s32)0..1 {
+        allocated:=Native.GtkWidgetMeasure(header_nodes[:],"Name",sorted==1,213,37)
+        if !allocated.available || allocated.item_height<=0 { return 172 }
+        BuilderPrint(*requisitions,"% % % %\n",allocated.item_x,allocated.item_y,allocated.item_width,allocated.item_height)
+        BuilderPrint(*requisitions,"% % % %\n",allocated.arrow_x,allocated.arrow_y,allocated.arrow_width,allocated.arrow_height)
+    }
+    // Native column siblings affect :last-child borders and child allocation.
+    header_nodes[3].sibling_count=3
+    for position: cast(s32)0..2 {
+        header_nodes[3].sibling_index=position
+        style:=Native.GtkStyleQuery(header_nodes[:],1)
+        if !style.available || style.border.right!=(ifx position==2 then 0 else 3) { return 176 }
+        allocated:=Native.GtkWidgetMeasure(header_nodes[:],"Name",true,213,37)
+        if !allocated.available { return 177 }
+        BuilderPrint(*requisitions,"% % % %\n",allocated.item_x,allocated.item_y,allocated.item_width,allocated.item_height)
+        BuilderPrint(*requisitions,"% % % %\n",allocated.arrow_x,allocated.arrow_y,allocated.arrow_width,allocated.arrow_height)
+    }
+    header_nodes[3].sibling_count=65
+    if Native.GtkStyleQuery(header_nodes[:],1).available || Native.GtkWidgetMeasure(header_nodes[:],"Name",true).available { return 178 }
+    header_nodes[3].sibling_count=3; header_nodes[3].sibling_index=3
+    if Native.GtkStyleQuery(header_nodes[:],1).available { return 179 }
+    header_nodes[3].sibling_count=0; header_nodes[3].sibling_index=0
+    for icon: cast(s32)0..1 {
+        allocated:=Native.GtkWidgetMeasure(location_nodes[:],ifx icon==1 then "folder" else "",false,347,37)
+        if !allocated.available || allocated.item_height<=0 || allocated.item_width<=0 { return 173 }
+        BuilderPrint(*requisitions,"% % % %\n",allocated.item_x,allocated.item_y,allocated.item_width,allocated.item_height)
+        BuilderPrint(*requisitions,"% % % %\n",allocated.arrow_x,allocated.arrow_y,allocated.arrow_width,allocated.arrow_height)
+    }
+    chrome_nodes[1]=.{.widget_type="GtkStatusbar",.element="statusbar"}
+    status_messages: [3]string=.[" ","17 items","17 folders | 4 files: 234 bytes | Free space: 434.3 GiB"]
+    for compact: cast(s32)0..1 {
+        options: Native.GtkWidgetMeasureOptions
+        if compact==1 { options.margin_edges=Native.GtkWidgetMarginVertical }
+        for message: status_messages {
+            status:=Native.GtkWidgetMeasure(chrome_nodes[:2],message,false,347,41,options)
+            if !status.available || status.item_height<=0 { return 174 }
+            BuilderPrint(*requisitions,"% % % %\n",status.minimum_width,status.minimum_height,status.natural_width,status.natural_height)
+            BuilderPrint(*requisitions,"% % % %\n",status.item_x,status.item_y,status.item_width,status.item_height)
+        }
+    }
+    if !header_preferred.available || !entry_preferred.available || !Save(directory,"preferred-metrics",requisitions[:]) { return 153 }
     fail_allocate=true
     image=Native.GtkIconRaster("fixture-icon",16,1,nodes[:])
     fail_allocate=false

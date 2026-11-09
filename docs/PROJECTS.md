@@ -155,8 +155,9 @@ The Raylib recipe also accepts `android-aarch64-bionic` and
 `android-armv7-bionic`. Set `[tool.kryon.renderer] android_ndk` to the installed
 NDK directory and `android_api` to a decimal API level (default 21, minimum 21).
 Set `CC` to that ABI/API's NDK clang executable so compiler identity is keyed,
-for example `aarch64-linux-android21-clang`. The provider uses Kryon's existing
-Android Raylib helper with its GLES2 batching, JPEG/PNG/TTF and OGG/audio options.
+for example `aarch64-linux-android21-clang`. This foreign Raylib artifact recipe
+is independent of Kryon's Android app host and retains its GLES2, image, font
+and audio options.
 NativeActivity glue, the application shared library, edition, packaging and
 signing remain with the app packaging build. Unsupported recipe/platform pairs
 fail explicitly. Other hosts and architectures are not yet provider targets.
@@ -189,7 +190,7 @@ terminal; otherwise it uses the default.
 | `canvas` | Canvas2D browser page | Emscripten with Asyncify; see [Canvas host](canvas.md) |
 | `dom` | semantic DOM page | Emscripten with Asyncify; see [DOM host](dom.md) |
 | `pixmap` | headless 960 × 600 frame printed as a PPM image | nothing; `kryon run shot > frame.ppm` |
-| `android` | installable APK through a generated `droid/` Gradle project | a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`, the locked raylib source package, and `[tool.kryon.android] package`; see [Android host](BACKENDS.md#android-host) |
+| `android` | installable APK through a generated `droid/` Gradle project and direct NativeActivity host | a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`, the locked codec source packages, and `[tool.kryon.android] package`; see [Android host](BACKENDS.md#android-host) |
 
 The SDL desktop host presents its already rasterized pixels through the
 software renderer and an unaccelerated window surface by default. Custom
@@ -236,6 +237,12 @@ These settings live only in `ziran.toml`. Kryon declares them under
 them, and hands the kryon tool the result, so a typo is reported with its file
 and line. To try another default profile on one machine, set it in the ignored
 `ziran.local.toml`:
+
+Native C profiles also link every system library declared in the root
+`[package].links` list, in manifest order. Use system basenames such as
+`links = ["gtk-3", "gdk-3", "gio-2.0", "gdk_pixbuf-2.0"]`; the build uses the
+system linker's normal search paths. Portable and browser profiles do not
+consume this list.
 
 `static_archive` links one project-relative `.a` file directly. The project's
 own build prepares the archive, and Kryon adds that exact path as both a build
@@ -313,7 +320,7 @@ Use a separate `ZX_RAYLIB_DIR` for each target. macOS uses the same renderer
 and has platform build settings, but has not been executed in this checkout.
 
 An Android profile with `codegen = "zx"` builds its portable guest first,
-then packages `app.zx`, the VM and the native renderer into the APK. Its
+then packages `app.zx`, the VM and the raylib-free native host into the APK. Its
 `Frame` is not compiled into native application code. The canonical scaffold
 handles display density, safe-area insets, touch, hardware/soft-keyboard input
 and graphics restoration without resetting bundle state. It also registers a
@@ -483,7 +490,10 @@ name.
 The program is copied to `~/.local/bin/example` (or `--prefix DIR`). The copy
 replaces the old file in one step, so a running copy is never touched and
 later builds in `build/` do not change the installed program. The icon goes to
-`share/pixmaps/`, the menu entry to `share/applications/example.desktop`, and
+`share/pixmaps/`. To use the desktop's icon theme instead, set
+`icon_name = "system-file-manager"` and omit `icon`; the launcher stores that
+theme name and copies no asset. The two options are mutually exclusive.
+The menu entry goes to `share/applications/example.desktop`, and
 with `autostart` the login entry to `~/.config/autostart/example.desktop`.
 Setting `autostart = false` removes an autostart entry that `ziran install`
 wrote earlier. Browser profiles cannot be installed.
