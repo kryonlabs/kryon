@@ -1,0 +1,232 @@
+#import "button_behavior"
+#import "button"
+#import "button_props"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "input_protocol"
+#import "paint_queue"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "theme"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+using ButtonEmphasis;
+using ButtonTone;
+using ButtonState;
+using WidgetKind;
+using StyleField;
+
+ButtonGroupProps :: struct {
+    key: u64
+    bounds: Rectangle
+    navigation: s32
+    full_width: bool
+    radius: float32
+    border_width: float32
+    divider_width: float32
+    background: u32
+    border: u32
+    divider: u32
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+    style: StyleData
+    states: StyleStates
+}
+
+ButtonGroupState :: struct {
+    focus_index: s32
+}
+
+ButtonGroupResult :: struct {
+    node: s32
+    focus_node: s32
+    activated_index: s32
+    pressed_index: s32
+    focus_index: s32
+    bounds: Rectangle
+}
+
+#program_export
+ButtonGroupDefaultFace :: (props: ButtonGroupProps) -> StyleData {
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleBorder |
+        cast(u32)StyleBorderWidth | cast(u32)StyleRadius
+    palette := CurrentPalette()
+    theme := CurrentTheme()
+    face.background = palette.surface
+    face.border = palette.strong_border
+    face.border_width = 1.0
+    face.radius = theme.metrics.radius_medium
+    if theme.metrics.control_height_medium * 0.5 < face.radius {
+        face.radius = theme.metrics.control_height_medium * 0.5
+    }
+    return face
+}
+
+#program_export
+ButtonGroupInstalledFaceFor :: (props: ButtonGroupProps) -> StyleData {
+    kind := props.style_kind
+    if kind <= 0 { kind = StyleKindButton() }
+    face := ResolveInstalledStyleRules(ButtonGroupDefaultFace(props),
+        StyleControlRoleFacts(kind, props.id, props.class_name, props.style_role,
+            0, 0, 0, cast(s32)ButtonStateNormal), cast(s32)ButtonStateNormal)
+    face = MergeValues(ResolveValues(face, props.states, cast(s32)ButtonStateNormal), props.style)
+    if props.background != cast(u32)0 {
+        face.fields |= cast(u32)StyleBackground
+        face.background = props.background
+    }
+    if props.border != cast(u32)0 {
+        face.fields |= cast(u32)StyleBorder
+        face.border = props.border
+    }
+    if props.border_width > 0.0 {
+        face.fields |= cast(u32)StyleBorderWidth
+        face.border_width = props.border_width
+    }
+    if props.radius > 0.0 {
+        face.fields |= cast(u32)StyleRadius
+        face.radius = props.radius
+    }
+    return face
+}
+
+#program_export
+ButtonGroupNextFocus :: (items: []ButtonProps, current: s32,
+    navigation: s32) -> s32 {
+    if items.count == 0 { return -1 }
+    result := current
+    if result < 0 || result >= cast(s32)items.count { result = -1 }
+    if navigation == KeyHome { result = 0 }
+    else if navigation == KeyEnd { result = cast(s32)items.count - 1 }
+    else if navigation == KeyRight { result += 1 }
+    else if navigation == KeyLeft { result -= 1 }
+    else if result < 0 && navigation != 0 { result = 0 }
+    else { return ifx result >= 0 && !items[result].disabled && !items[result].loading then result else -1 }
+    direction: s32 = 1
+    if navigation == KeyLeft || navigation == KeyEnd { direction = -1 }
+    tries: s32 = 0
+    while tries < cast(s32)items.count {
+        if result < 0 { result = cast(s32)items.count - 1 }
+        if result >= cast(s32)items.count { result = 0 }
+        if !items[result].disabled && !items[result].loading { return result }
+        result += direction
+        tries += 1
+    }
+    return -1
+}
+
+#program_export
+ButtonGroup :: (session: Session, props: ButtonGroupProps,
+    items: []ButtonProps, state: *ButtonGroupState) -> ButtonGroupResult {
+    result: ButtonGroupResult
+    result.node = -1
+    result.focus_node = -1
+    result.activated_index = -1
+    result.pressed_index = -1
+    if items.count == 0 { return result }
+    face := ButtonGroupInstalledFaceFor(props)
+    height: float32 = 0.0
+    natural_width: float32 = 0.0
+    at: s32 = 0
+    while at < cast(s32)items.count {
+        measured := ButtonMeasure(items[at])
+        if measured.height > height { height = measured.height }
+        natural_width += measured.width
+        at += 1
+    }
+    if props.bounds.height > 0.0 { height = props.bounds.height }
+    result.bounds = props.bounds
+    result.bounds.height = height
+    if props.bounds.width > 0.0 { result.bounds.width = props.bounds.width }
+    else { result.bounds.width = natural_width }
+    had_focus := false
+    key := props.key
+    if SessionValid(session) && TreeIsBuilding(session) {
+        if key == cast(u64)0 { key = TreeNextKey(session) }
+        result.node = TreeSubmitCurrent(session, key, WidgetKindGroup, result.bounds)
+        if result.node >= 0 {
+            // TreePrevious resolves retained children through their submitted parent.
+            focus_at: s32 = 0
+            while focus_at < cast(s32)items.count {
+                focus_key := WidgetPartKey(key, cast(s32)101 + focus_at)
+                focus_previous := TreePrevious(session, result.node, focus_key, WidgetKindButton)
+                if focus_previous >= 0 && TreeFocusedAt(session, focus_previous) {
+                    state.focus_index = focus_at
+                    had_focus = true
+                    break
+                }
+                focus_at += 1
+            }
+        }
+    }
+    state.focus_index = ButtonGroupNextFocus(items, state.focus_index, props.navigation)
+    result.focus_index = state.focus_index
+    if result.node < 0 { return result }
+    TreeSetLabel(session, result.node, "Button group")
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetChildClip(session, result.node, result.bounds)
+    PaintRoundedFill(session, result.node, result.bounds, face.radius, 12,
+        ColorFromPacked(face.background))
+    if face.border_width > 0.0 {
+        PaintRoundedOutline(session, result.node, result.bounds, face.radius, 12,
+            face.border_width, ColorFromPacked(face.border))
+    }
+    if !TreePushScope(session, result.node) { return result }
+    squeezed := props.bounds.width > 0.0 && props.bounds.width < natural_width - 0.5
+    item_width := result.bounds.width / cast(float32)items.count
+    x := result.bounds.x
+    at = 0
+    while at < cast(s32)items.count {
+        item := items[at]
+        item.key = WidgetPartKey(key, cast(s32)101 + at)
+        if item.id == 0 { item.id = at + 1 }
+        item.bounds = Rectangle.{x, result.bounds.y,
+            ifx squeezed then item_width else ButtonMeasure(item).width, height}
+        if item.emphasis == ButtonEmphasis.ButtonEmphasisFilled {
+            item.emphasis = ButtonEmphasis.ButtonEmphasisGhost
+        }
+        item.full_width = squeezed
+        item.fit_content = squeezed
+        item_previous := TreePrevious(session, result.node, item.key, WidgetKindButton)
+        pressed := item_previous >= 0 && TreePressedAt(session, item_previous)
+        submitted_before := TreeSubmittedCount(session)
+        activated_result := Button(session, item)
+        submitted_after := TreeSubmittedCount(session)
+        child: s32 = -1
+        if submitted_after > submitted_before { child = submitted_after - 1 }
+        if child >= 0 {
+            if result.focus_node < 0 && at == result.focus_index {
+                result.focus_node = child
+                if props.navigation != 0 || had_focus {
+                    unused TreeFocusSubmittedAt(session, child)
+                }
+            }
+            if activated_result != 0 && !item.disabled && !item.loading {
+                result.activated_index = at
+            }
+            if pressed { result.pressed_index = at }
+            if at > 0 {
+                divider := face.border
+                if props.divider != cast(u32)0 { divider = props.divider }
+                divider_width := face.border_width
+                if props.divider_width > 0.0 { divider_width = props.divider_width }
+                PaintLine(session, result.node,
+                    Rectangle.{x - divider_width * 0.5, result.bounds.y + 1.0,
+                        divider_width, height - 2.0},
+                    ColorFromPacked(divider))
+            }
+        }
+        x += item.bounds.width
+        at += 1
+    }
+    unused TreePopScope(session)
+    return result
+}

@@ -1,0 +1,38 @@
+// The narrow host contract independently replaceable Kryon components share.
+#import "session"
+#import "geometry"
+
+host_api :: #system_library "host_api";
+
+ComponentSessionHost :: () -> Session #foreign host_api;
+ComponentBoundsHost :: () -> Rectangle #foreign host_api;
+ComponentKeyHost :: () -> s32 #foreign host_api;
+ComponentModifiersHost :: () -> s32 #foreign host_api;
+ComponentTextHost :: () -> string #foreign host_api;
+ComponentWheelHost :: () -> float32 #foreign host_api;
+ComponentSecondsHost :: () -> float64 #foreign host_api;
+ComponentStateVersionHost :: () -> s64 #foreign host_api;
+
+#program_export
+ComponentSession :: () -> Session { return ComponentSessionHost() }
+
+#program_export
+ComponentBounds :: () -> Rectangle { return ComponentBoundsHost() }
+
+#program_export
+ComponentKey :: () -> s32 { return ComponentKeyHost() }
+
+#program_export
+ComponentModifiers :: () -> s32 { return ComponentModifiersHost() }
+
+#program_export
+ComponentText :: () -> string { return ComponentTextHost() }
+
+#program_export
+ComponentWheel :: () -> float32 { return ComponentWheelHost() }
+
+#program_export
+ComponentSeconds :: () -> float64 { return ComponentSecondsHost() }
+
+#program_export
+ComponentStateVersion :: () -> s64 { return ComponentStateVersionHost() }

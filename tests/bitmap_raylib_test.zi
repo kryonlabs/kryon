@@ -7,7 +7,7 @@
 #import "tree"
 #import "bitmap_image"
 #import "bitmap_store"
-#import "image_widget"
+#import "image"
 #import "tree_draw"
 #import "paint_frame"
 Pixels :: #import "raylib_image_decode";

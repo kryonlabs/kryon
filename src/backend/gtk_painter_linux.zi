@@ -6,7 +6,7 @@ Scroll :: #import "gtk_scroll_linux";
 #import "geometry"
 #import "drawing_props"
 #import "image_props"
-#import "image_widget"
+#import "kryon/image_widget"
 using Bitmaps :: #import "bitmap_image";
 using Bytes :: #import "std/vec";
 

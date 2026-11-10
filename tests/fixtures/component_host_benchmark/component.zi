@@ -1,0 +1,81 @@
+#import "component_protocol"
+#import "button"
+#import "button_props"
+#import "text"
+#import "text_props"
+#import "geometry"
+#import "std/vec"
+
+TextWidget :: #import "text"
+
+ComponentLabel :: struct { text: string }
+ComponentOwned :: struct { label: ComponentLabel; samples: [4]s64 }
+component_owned: ComponentOwned = ComponentOwned.{
+    .label = ComponentLabel.{.text = "BENCH"}
+};
+
+#if #defined(COMPONENT_HOST_BENCHMARK_V2) {
+component_schema_version: s64 = 2;
+component_count: s64 = 37;
+component_frames: s64;
+component_suffix_kind: s64 = 1;
+} else {
+component_schema_version: s64 = 1;
+component_count: s64 = 37;
+component_frames: s64;
+component_suffix_kind: s64;
+}
+
+Label :: () -> string {
+    value: Vec(u8)
+    BuilderPrint(*value, "% % %", component_owned.label.text,
+        component_count, component_frames)
+    #if #defined(COMPONENT_HOST_BENCHMARK_V2) {
+        BuilderPrint(*value, " v2")
+    } else {
+        BuilderPrint(*value, " v1")
+    }
+    return BuilderFinish(value)
+}
+
+#program_export
+Frame :: () -> s64 {
+    if component_schema_version < 1 || component_frames < 0 { return 1 }
+    component_frames += 1
+    component_owned.samples[2] = component_frames
+    component_owned.samples[3] = component_schema_version
+
+    session := ComponentSession()
+    bounds := ComponentBounds()
+    action := Button(session, ButtonProps.{
+        .key = 100, .bounds = Rectangle.{
+            bounds.x + 16.0, bounds.y + 16.0, 96.0, 32.0
+        }, .label = "Increment"
+    })
+    if action != 0 {
+        #if #defined(COMPONENT_HOST_BENCHMARK_V2) {
+            component_count += 2
+        } else {
+            component_count += 1
+        }
+        component_owned.samples[0] += 1
+    }
+    component_owned.samples[1] = component_count
+
+    label := Label()
+    row: s32
+    while row < 16 {
+        TextWidget.Text(session, TextProps.{
+            .key = cast(u64)(1000 + row), .bounds = Rectangle.{
+                bounds.x + 16.0, bounds.y + 56.0 + cast(float32)row * 7.0,
+                220.0, 7.0
+            }, .text = label, .font = 7
+        })
+        row += 1
+    }
+
+    if component_owned.samples[1] != component_count ||
+    component_owned.samples[2] != component_frames ||
+    component_owned.samples[3] != component_schema_version { return 2 }
+    return 0
+}

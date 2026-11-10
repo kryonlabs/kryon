@@ -1,0 +1,269 @@
+#import "button_props"
+#import "button_behavior"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "focus"
+#import "font_metrics"
+#import "geometry"
+#import "icon"
+#import "input_protocol"
+#import "paint_queue"
+#import "session"
+#import "style"
+#import "surface"
+#import "theme"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+Math :: #import "std/math"
+
+using ButtonEmphasis;
+using ButtonState;
+using ButtonTone;
+using IconType;
+using WidgetKind;
+using StyleField;
+
+ConfirmButtonState :: struct {
+    armed: bool
+    armed_at: float32
+    motion_started_at: float32
+    progress: float32
+    width: float32
+    initialized: bool
+}
+
+ConfirmButtonProps :: struct {
+    button: ButtonProps
+    confirm_button: ButtonProps
+    now: float32
+    timeout: float32
+    arm_duration: float32
+    activated: bool
+    outside_press: bool
+    escape: bool
+    key: s32
+    idle_width: float32
+    confirm_width: float32
+    countdown_color: u32
+}
+
+ConfirmButtonResult :: struct {
+    node: s32
+    armed: bool
+    armed_changed: bool
+    disarmed: bool
+    committed: bool
+    timed_out: bool
+    escaped: bool
+    outside_pressed: bool
+    progress: float32
+    remaining: float32
+    width: float32
+    bounds: Rectangle
+}
+
+#program_export
+ConfirmButtonMotion :: (elapsed: float32, duration: float32,
+    from: float32, target: float32) -> float32 {
+    if duration <= 0.0 || elapsed >= duration { return target }
+    factor := cast(float32)Math.Exp(cast(float64)(-elapsed / duration))
+    return from + (target - from) * (1.0 - factor)
+}
+
+#program_export
+ConfirmButtonApply :: (state: *ConfirmButtonState,
+    props: ConfirmButtonProps) -> ConfirmButtonResult {
+    result: ConfirmButtonResult
+    result.node = -1
+    result.remaining = -1.0
+    timeout := props.timeout
+    if timeout <= 0.0 { timeout = 3.0 }
+    duration := props.arm_duration
+    if duration <= 0.0 { duration = 0.3 }
+    idle_width := props.idle_width
+    if idle_width <= 0.0 { idle_width = 80.0 }
+    confirm_width := props.confirm_width
+    if confirm_width <= 0.0 { confirm_width = idle_width }
+    target_width := ifx state.armed then confirm_width else idle_width
+    target_progress: float32 = ifx state.armed then cast(float32)1.0 else cast(float32)0.0
+    if !state.initialized {
+        state.initialized = true
+        state.width = target_width
+        state.progress = target_progress
+        state.motion_started_at = props.now
+    }
+    if state.armed {
+        elapsed := props.now - state.armed_at
+        result.remaining = 1.0 - elapsed / timeout
+        if result.remaining < 0.0 { result.remaining = 0.0 }
+        result.timed_out = elapsed >= timeout
+        result.escaped = props.escape || props.key == KeyEscape
+        result.outside_pressed = props.outside_press
+        if result.timed_out || result.escaped || result.outside_pressed {
+            state.armed = false
+            state.motion_started_at = props.now
+            result.disarmed = true
+            result.armed_changed = true
+        }
+    }
+    if props.activated && !props.button.disabled && !props.button.loading {
+        if state.armed {
+            state.armed = false
+            result.committed = true
+        } else {
+            state.armed = true
+            state.armed_at = props.now
+        }
+        state.motion_started_at = props.now
+        result.armed = state.armed
+        result.armed_changed = true
+    }
+    if result.disarmed { result.armed = false }
+    target_width = ifx state.armed then confirm_width else idle_width
+    target_progress = ifx state.armed then cast(float32)1.0 else cast(float32)0.0
+    elapsed_motion := props.now - state.motion_started_at
+    state.width = ConfirmButtonMotion(elapsed_motion, duration,
+        state.width, target_width)
+    state.progress = ConfirmButtonMotion(elapsed_motion, duration,
+        state.progress, target_progress)
+    if state.armed {
+        result.remaining = 1.0 - (props.now - state.armed_at) / timeout
+        if result.remaining < 0.0 { result.remaining = 0.0 }
+    } else { result.remaining = -1.0 }
+    result.armed = state.armed
+    result.progress = state.progress
+    result.width = state.width
+    return result
+}
+
+#scope_file
+ConfirmFace :: (props: ConfirmButtonProps) -> ButtonProps {
+    face := props.confirm_button
+    if face.key == cast(u64)0 { face.key = props.button.key }
+    if face.bounds.width <= 0.0 { face.bounds = props.button.bounds }
+    if face.label == "" { face.label = "Click to confirm" }
+    if face.icon_type == 0 && face.icon_shape == "" &&
+    face.image.asset_path == "" && face.image.texture.id == cast(u32)0 {
+        face.icon_type = cast(s32)IconWarning
+    }
+    if face.tone == ButtonTone.ButtonToneNeutral { face.tone = ButtonTone.ButtonToneDanger }
+    return face
+}
+
+PaintConfirmFace :: (session: Session, node: s32, props: ButtonProps,
+    bounds: Rectangle, state: s32, alpha: float32, focus: bool) {
+    face := ButtonInstalledFaceFor(props, state)
+    if alpha < 1.0 {
+        face.fields |= cast(u32)StyleOpacity
+        face.opacity = alpha
+    }
+    font := ResolveFont(0, StyleFontValue(face.fields, face.font_size), 14)
+    label_width: s32 = 0
+    label_height: s32 = 0
+    if props.label != "" && !props.icon_only {
+        label_width = GlyphWidth(props.label, font, face.typeface)
+        label_height = GlyphLineHeight(font, face.typeface)
+    }
+    detail := ButtonDetailSize(props, font, face)
+    if cast(s32)detail.x > label_width { label_width = cast(s32)detail.x }
+    PaintButtonForNode(session, node, props, bounds, face, font,
+        label_width, label_height, focus)
+}
+
+#scope_export
+#program_export
+ConfirmButton :: (session: Session, props: ConfirmButtonProps,
+    state: *ConfirmButtonState) -> ConfirmButtonResult {
+    idle := props.button
+    armed := ConfirmFace(props)
+    if idle.label == "" { idle.label = "Confirm" }
+    if idle.key == cast(u64)0 && idle.id > 0 {
+        idle.key = cast(u64)cast(u32)idle.id
+    }
+    if idle.key == cast(u64)0 { idle.key = cast(u64)TreeNextKey(session) }
+    if armed.key == cast(u64)0 { armed.key = idle.key }
+    props.button = idle
+    props.confirm_button = armed
+    props.idle_width = ButtonMeasure(idle).width
+    props.confirm_width = ButtonMeasure(armed).width
+    key := idle.key
+    previous: s32 = -1
+    if SessionValid(session) && TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key,
+            WidgetKindButton)
+    }
+    activated := false
+    focused := false
+    hovered := false
+    pressed := false
+    focus_visible := false
+    if previous >= 0 {
+        activated = TreeTakeActivationAt(session, previous)
+        focused = TreeFocusedAt(session, previous)
+        hovered = TreeHoveredAt(session, previous)
+        pressed = TreePressedAt(session, previous)
+        focus_visible = TreeFocusVisibleAt(session, previous)
+    }
+    if props.key == 0 && SessionValid(session) {
+        key_event := KeyboardTake(session)
+        if key_event == KeyEscape && (focused || hovered) {
+            props.key = key_event
+        } else if key_event != 0 {
+            unused KeyboardSend(session, key_event)
+        }
+    } else if props.key == KeyEscape {
+        props.escape = true
+    }
+    if !props.outside_press && SessionValid(session) {
+        pointer := PointerSample(session)
+        props.outside_press = pointer.pressed &&
+            !PointInBounds(pointer.x, pointer.y, props.button.bounds)
+    }
+    props.activated = activated
+    result := ConfirmButtonApply(state, props)
+    submitted := armed
+    submitted.bounds = props.button.bounds
+    submitted.bounds.width = result.width
+    if submitted.bounds.height <= 0.0 {
+        submitted.bounds.height = ButtonMeasure(submitted).height
+    }
+    result.bounds = submitted.bounds
+    submitted.invisible = true
+    submitted.state = cast(ButtonState)ButtonStateAuto
+    submitted_before := TreeSubmittedCount(session)
+    unused Button(session, submitted)
+    submitted_after := TreeSubmittedCount(session)
+    if submitted_after > submitted_before { result.node = submitted_after - 1 }
+    if result.node < 0 { return result }
+    face_state := ResolveState(cast(s32)ButtonState.ButtonStateAuto,
+        submitted.disabled, submitted.loading, pressed, hovered, focused,
+        submitted.selected)
+    PaintConfirmFace(session, result.node, idle, result.bounds, face_state, 1.0,
+        focus_visible)
+    if result.progress > 0.001 {
+        PaintConfirmFace(session, result.node, armed, result.bounds, face_state,
+            result.progress, false)
+    }
+    if focus_visible {
+        face := ButtonInstalledFaceFor(submitted, face_state)
+        radius := ButtonCornerRadius(face.radius, result.bounds.height)
+        if submitted.pill || submitted.circle { radius = result.bounds.height * 0.5 }
+        focus_color := face.focus
+        if (focus_color & cast(u32)255) == cast(u32)0 { focus_color = CurrentPalette().focus }
+        PaintRoundedOutline(session, result.node,
+            FocusDefaultOutlineBounds(result.bounds, 1.0), radius + 2.0, 12,
+            2.0, ColorFromPacked(focus_color))
+    } else if result.armed && result.remaining > 0.0 {
+        face := ButtonInstalledFaceFor(armed, face_state)
+        color := props.countdown_color
+        if color == cast(u32)0 { color = Opacity(face.foreground, 115) }
+        bar := Rectangle.{result.bounds.x, result.bounds.y + result.bounds.height - 2.0,
+            result.bounds.width * result.remaining, 2.0}
+        PaintRoundedFill(session, result.node, bar, 1.0, 4,
+            ColorFromPacked(color))
+    }
+    return result
+}

@@ -1,0 +1,174 @@
+#import "grid_multi_props"
+#import "grid_multi_behavior"
+#import "list_box_multi"
+#import "listbox"
+#import "session"
+#import "geometry"
+#import "drawing_props"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+#import "control_props"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "font_metrics"
+#import "paint_queue"
+#import "kryon/image_widget"
+#import "scroll_behavior"
+#import "scroll_device"
+#import "scroll_props"
+#import "scroll"
+
+// Selection storage belongs to the caller and is never retained.
+#program_export
+GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
+    selected: []bool) -> GridMultiResult {
+    result: GridMultiResult = .{.node = -1, .clicked_index = -1, .activated_index = -1,
+        .cursor = props.cursor, .anchor = props.anchor}
+    if items.count != selected.count || items.count > 1000000 { return result }
+    if !(props.bounds.width > 0.0 && props.bounds.width <= 1000000.0 &&
+        props.bounds.height > 0.0 && props.bounds.height <= 1000000.0) { return result }
+    if props.key == cast(u64)0 && TreeIsBuilding(session) { props.key = TreeNextKey(session) }
+    count := cast(s32)items.count
+    metrics := GridMultiMeasure(props, count)
+    first: s32 = -1
+    for i: 0..count-1 { if selected[i] { result.selected_count += 1; if first < 0 { first = i } } }
+    result.cursor = ListBoxMultiFocusedRow(props.cursor, first, count)
+    if result.anchor < 0 || result.anchor >= count { result.anchor = result.cursor }
+    active := props.focused && !props.disabled
+    offset := ScrollClamp(props.scroll_offset, metrics.max_scroll)
+    if !props.disabled {
+        delta: s64 = cast(s64)offset + props.scroll_delta
+        if delta < 0 { delta = 0 }; if delta > metrics.max_scroll { delta = metrics.max_scroll }
+        offset = cast(s32)delta
+    }
+    if active && count > 0 {
+        nav := props.navigation
+        next := GridMultiNext(metrics, count, result.cursor, nav)
+        moved := next != result.cursor
+        if moved || nav.home || nav.end {
+            result.cursor = next
+            if !props.control || props.shift {
+                result.changed = ListBoxMultiApply(selected, next, result.anchor, props.control, props.shift, -1)
+            }
+            if !props.shift && !props.control { result.anchor = next }
+        } else if nav.space || nav.enter {
+            result.changed = ListBoxMultiApply(selected, result.cursor, result.anchor, nav.space, false, -1)
+            result.anchor = result.cursor
+            if nav.enter { result.activated_index = result.cursor }
+        }
+        // Retain manual scroll, but reveal navigation and changed viewport geometry.
+        reveal := props.cursor != result.cursor || moved || nav.home || nav.end || nav.space || nav.enter
+        if TreeIsBuilding(session) {
+            old := TreePrevious(session, TreeCurrentParent(session), props.key, cast(s32)WidgetKind.WidgetKindScroll)
+            if old < 0 { reveal = true }
+            else {
+                stored := TreePreviousWidgetState(session, old)
+                if (!stored.open && !props.preserve_scroll_on_focus) || stored.index != result.cursor || stored.focus_generation != cast(u64)(cast(s32)props.layout + 1) { reveal = true }
+                bounds := TreeNodeAt(session, old).bounds
+                if bounds.width != props.bounds.width || bounds.height != props.bounds.height { reveal = true }
+            }
+        }
+        if reveal {
+            offset = GridMultiReveal(metrics, result.cursor, offset)
+            ScrollDeviceStopMotion(session, props.key)
+        }
+    }
+    scroll_props: ScrollProps = .{.key = props.key, .bounds = props.bounds,
+        .class_name = props.class_name, .scale = props.scale, .horizontal = metrics.compact,
+        .scroll_offset = offset, .manual_scroll = true, .external_scrollbar=props.external_scrollbar,.immediate_wheel=props.immediate_wheel}
+    if metrics.compact { scroll_props.content_width = metrics.content_extent }
+    else { scroll_props.content_height = metrics.content_extent }
+    if props.disabled { scroll_props.input = .{.enabled = true, .disabled = true} }
+    view := Scroll(session, scroll_props)
+    if view.node >= 0 {
+        TreeSetWidgetState(session, view.node, WidgetState.{.open = active, .index = result.cursor,
+            .offset = view.scroll_offset, .focus_generation = cast(u64)(cast(s32)props.layout + 1)})
+    }
+    result.node = view.node
+    result.scroll_offset = view.scroll_offset
+    result.valid = !TreeIsBuilding(session) || view.opened
+    if !result.valid { return result }
+    if TreeIsBuilding(session) && !props.disabled {
+        for i: 0..count-1 {
+            previous := TreePrevious(session, view.node, GridMultiItemKey(items[i], i), cast(s32)WidgetKind.WidgetKindSelectable)
+            activation := TreeTakePointerActivationAt(session, previous)
+            if activation.activated && activation.pointed {
+                result.clicked_index = i; result.cursor = i
+                if ListBoxMultiApply(selected, i, result.anchor, props.control, props.shift, -1) { result.changed = true }
+                result.anchor = ListBoxMultiAnchorAfterClick(result.anchor, i, count, props.control, props.shift, -1)
+            }
+        }
+    }
+    result.selected_count = 0
+    for i: 0..count-1 {
+        if selected[i] { result.selected_count += 1 }
+        cell := GridMultiCellBounds(metrics, i, result.scroll_offset)
+        clipped := RectangleIntersection(cell, props.bounds)
+        if clipped.width <= 0.0 || clipped.height <= 0.0 { continue }
+        node: s32 = -1
+        previous := TreePrevious(session, view.node, GridMultiItemKey(items[i], i), cast(s32)WidgetKind.WidgetKindSelectable)
+        state := ResolveState(cast(s32)ButtonState.ButtonStateAuto, props.disabled, false,
+            TreePressedAt(session, previous), TreeHoveredAt(session, previous), false, selected[i])
+        if selected[i] { state = cast(s32)ButtonState.ButtonStateSelected }
+        if props.disabled { state = cast(s32)ButtonState.ButtonStateDisabled }
+        face := ListBoxFace(StyleKindListBoxMultiItem(), i + 1, props.class_name, state, true)
+        if TreeIsBuilding(session) {
+            node = TreeSubmitCurrent(session, GridMultiItemKey(items[i], i), cast(s32)WidgetKind.WidgetKindSelectable, cell)
+            if node < 0 { result.valid = false; break }
+            TreeSetInteractive(session, node, props.disabled, false, props.id)
+            TreeSetSelected(session, node, selected[i]); TreeSetLabel(session, node, items[i].label)
+            TreeSetChildClip(session, node, clipped)
+        }
+        if props.invisible { continue }
+        opacity := StyleOpacityValue(face.value.fields, face.value.opacity)
+        PaintRoundedFill(session, node, clipped, face.value.radius, 12, ColorFromPacked(Opacity(face.value.background, opacity)))
+        if active && result.cursor == i {
+            PaintRoundedOutline(session, node, clipped, face.value.radius, 12, 1.0, ColorFromPacked(Opacity(face.value.foreground, opacity)))
+        }
+        scale := props.scale; if !(scale > 0.0 && scale <= 100.0) { scale = 1.0 }
+        inset := cast(s32)(4.0 * scale)
+        size := props.image_size
+        if size <= 0 { size = ifx metrics.compact then 20 else 48 }
+        if size > 10000 { size = 10000 }
+        size = cast(s32)(cast(float32)size * scale)
+        font := ResolveFont(0, StyleFontValue(face.value.fields, face.value.font_size), 14)
+        line := GlyphLineHeight(font, face.value.typeface)
+        image_bounds := cell
+        label_bounds := cell
+        if metrics.compact {
+            if size > cast(s32)cell.height - inset * 2 { size = cast(s32)cell.height - inset * 2 }
+            if size > cast(s32)cell.width - inset * 2 { size = cast(s32)cell.width - inset * 2 }
+            if size < 0 { size = 0 }
+            image_bounds = .{cell.x + cast(float32)inset, cell.y + (cell.height - cast(float32)size) / 2.0, cast(float32)size, cast(float32)size}
+            label_bounds.x += cast(float32)(size + inset * 2)
+            label_bounds.width -= cast(float32)(size + inset * 3)
+        } else {
+            if size > cast(s32)cell.width - inset * 2 { size = cast(s32)cell.width - inset * 2 }
+            if size > cast(s32)cell.height - line - inset * 3 { size = cast(s32)cell.height - line - inset * 3 }
+            if size < 0 { size = 0 }
+            image_bounds = .{cell.x + (cell.width - cast(float32)size) / 2.0, cell.y + cast(float32)inset, cast(float32)size, cast(float32)size}
+            label_bounds.y += cast(float32)(size + inset * 2)
+            label_bounds.height -= cast(float32)(size + inset * 2)
+            label_bounds.x += cast(float32)inset; label_bounds.width -= cast(float32)(inset * 2)
+        }
+        if node >= 0 { unused TreePushScope(session, node) }
+        image := items[i].image
+        if size > 0 && (image.asset_path != "" || image.texture.id != cast(u32)0) {
+            image.bounds = image_bounds; image.key = cast(u64)1
+            Image(session, image)
+        }
+        label_clip := RectangleIntersection(label_bounds, clipped)
+        if label_clip.width > 0.0 && label_clip.height > 0.0 {
+            x := cast(s32)label_bounds.x
+            if !metrics.compact { x += (cast(s32)label_bounds.width - GlyphWidth(items[i].label, font, face.value.typeface)) / 2 }
+            PaintClippedLabel(session, node, items[i].label, x,
+                cast(s32)label_bounds.y + (cast(s32)label_bounds.height - line) / 2,
+                font, ColorFromPacked(Opacity(face.value.foreground, opacity)), label_clip)
+        }
+        if node >= 0 { End(session) }
+    }
+    if view.opened { End(session) }
+    return result
+}

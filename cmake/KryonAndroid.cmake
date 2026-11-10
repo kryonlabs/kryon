@@ -5,7 +5,7 @@
 #
 #   include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
 #   kryon_android_reproducible_paths("${REPO_ROOT}") # before dependency targets
-#   kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}")  # `raylib`, `kryonwebp`, `opus`
+#   kryon_android_codecs("${WEBP_DIR}" "${AVIF_DIR}" "${AOM_DIR}")
 #   add_library(main SHARED ${APP_SOURCES})
 #   kryon_android_app(main)                     # glue, size flags, system libs
 #
@@ -32,59 +32,15 @@ function(kryon_android_reproducible_paths source_root)
         "-ffile-prefix-map=${CMAKE_BINARY_DIR}=./build/android")
 endfunction()
 
-# Compile raylib's Android backend with the module and file-format set Kryon
-# uses: GLES2 rendering, raudio with OGG, PNG/JPG images, and TTF fonts, plus
-# Kryon's WebP codec (`kryonwebp`, cmake/WebP.cmake) from the libwebp source.
-# Application scaffolds created before WebP omit the second argument; `kryon
-# build --profile android` then supplies it as KRYON_ANDROID_WEBP_DIR.
-function(kryon_android_raylib raylib_dir)
-    set(webp_dir "${ARGV1}")
-    if(webp_dir STREQUAL "")
-        set(webp_dir "$ENV{KRYON_ANDROID_WEBP_DIR}")
+# Build the image codecs Kryon's platform-native Android host uses. Software
+# presentation needs no graphics, audio, or renderer dependency.
+function(kryon_android_codecs webp_dir)
+    if(NOT EXISTS "${webp_dir}/CMakeLists.txt")
+        message(FATAL_ERROR "No libwebp source at ${webp_dir}")
     endif()
-    if(NOT EXISTS "${raylib_dir}/raylib.h")
-        message(FATAL_ERROR "No raylib source at ${raylib_dir}")
-    endif()
-    add_library(raylib STATIC
-        "${raylib_dir}/rcore.c"
-        "${raylib_dir}/rshapes.c"
-        "${raylib_dir}/rtextures.c"
-        "${raylib_dir}/rtext.c"
-        "${raylib_dir}/raudio.c")
-    # rlgl's GLES2 batch holds 2048 quads, a few dozen anti-aliased rounded
-    # shapes, so a phone frame flushed it many times, each upload into the
-    # one vertex buffer the tiling GPU had not drawn yet. A larger batch in
-    # two alternating buffers flushes far less often and waits on neither.
-    target_compile_definitions(raylib PRIVATE
-        PLATFORM_ANDROID
-        GRAPHICS_API_OPENGL_ES2
-        RL_DEFAULT_BATCH_BUFFER_ELEMENTS=8192
-        RL_DEFAULT_BATCH_BUFFERS=2
-        SUPPORT_SCREEN_CAPTURE=0
-        SUPPORT_CUSTOM_FRAME_CONTROL=1
-        SUPPORT_COMPRESSION_API=0
-        SUPPORT_AUTOMATION_EVENTS=0
-        SUPPORT_CLIPBOARD_IMAGE=0
-        SUPPORT_FILEFORMAT_BMP=0
-        SUPPORT_FILEFORMAT_GIF=0
-        SUPPORT_FILEFORMAT_QOI=0
-        SUPPORT_FILEFORMAT_DDS=0
-        SUPPORT_FILEFORMAT_TTF=1
-        SUPPORT_FILEFORMAT_JPG=1
-        SUPPORT_FILEFORMAT_PNG=1
-        SUPPORT_FILEFORMAT_OGG=1
-        SUPPORT_MODULE_RAUDIO=1
-        # src/backend/android_fopen.zi is the app's __wrap_fopen and calls this.
-        __wrap_fopen=KryonRaylibFopen)
-    # rlgl's per-vertex batching runs for every mesh point each frame; size
-    # optimization made it the hottest code on low-end phones.
-    target_compile_options(raylib PRIVATE -O2 -ffunction-sections -fdata-sections
-        -fno-omit-frame-pointer $<$<NOT:$<CONFIG:Debug>>:-g1>)
-    target_include_directories(raylib PUBLIC
-        "${raylib_dir}" "${KRYON_ANDROID_NATIVE_APP_GLUE_DIR}")
     kryon_webp_decoder("${webp_dir}")
-    set(avif_dir "${ARGV2}")
-    set(aom_dir "${ARGV3}")
+    set(avif_dir "${ARGV1}")
+    set(aom_dir "${ARGV2}")
     if(avif_dir STREQUAL "")
         set(avif_dir "$ENV{KRYON_ANDROID_AVIF_DIR}")
     endif()
@@ -92,43 +48,15 @@ function(kryon_android_raylib raylib_dir)
         set(aom_dir "$ENV{KRYON_ANDROID_AOM_DIR}")
     endif()
     kryon_avif_decoder("${avif_dir}" "${aom_dir}")
-    target_link_libraries(raylib PUBLIC kryonwebp ziran_avif::static)
-    set(audio_dir "${ARGV4}")
-    set(opus_dir "${ARGV5}")
-    set(samplerate_dir "${ARGV6}")
-    if(audio_dir STREQUAL "")
-        set(audio_dir "$ENV{KRYON_ANDROID_AUDIO_DIR}")
-        set(opus_dir "$ENV{KRYON_ANDROID_OPUS_DIR}")
-        set(samplerate_dir "$ENV{KRYON_ANDROID_SAMPLERATE_DIR}")
-    endif()
-    if(NOT audio_dir STREQUAL "")
-        kryon_android_audio("${audio_dir}" "${opus_dir}" "${samplerate_dir}")
-    endif()
-endfunction()
-
-# Ogg Opus assets in media_audio_raylib decode with audio/opus, which needs
-# libopus. Builds it from the audio package's pinned sources (`ziran pkg path
-# audio`, `libopus`, `libsamplerate`) and links it through raylib, so a
-# NativeActivity app that imports the raylib audio backend gets it with raylib.
-# kryon_android_raylib calls this with its optional fifth to seventh arguments,
-# or with KRYON_ANDROID_AUDIO_DIR, KRYON_ANDROID_OPUS_DIR and
-# KRYON_ANDROID_SAMPLERATE_DIR, which `kryon build --profile android` sets.
-function(kryon_android_audio audio_dir opus_dir samplerate_dir)
-    if(NOT EXISTS "${audio_dir}/native/AudioCodecs.cmake")
-        message(FATAL_ERROR "No audio package at ${audio_dir}")
-    endif()
-    include("${audio_dir}/native/AudioCodecs.cmake")
-    ziran_audio_codecs("${opus_dir}" "${samplerate_dir}")
-    # As with raylib, debug APKs still need real-time decoding on slow phones.
-    target_compile_options(opus PRIVATE -O2)
-    target_link_libraries(raylib PUBLIC opus)
+    add_library(kryon_android_codecs INTERFACE)
+    target_link_libraries(kryon_android_codecs INTERFACE
+        kryonwebp ziran_avif::static)
 endfunction()
 
 # Turn a shared library into a Kryon NativeActivity payload: add the NDK's
 # native_app_glue, optimize for speed, keep symbols hidden, garbage-collect unused
-# sections, align for 16 KB page devices, route fopen() through raylib's APK
-# asset reader, retain native crash symbols, and link raylib
-# with the Android system libraries it needs.
+# sections, align for 16 KB page devices, route fopen() through Kryon's APK
+# asset reader, retain native crash symbols, and link Android's system APIs.
 function(kryon_android_app target)
     if(NOT ZI2C_BIN)
         find_program(ZI2C_BIN NAMES zi2c REQUIRED)
@@ -168,20 +96,12 @@ function(kryon_android_app target)
         -Wl,--gc-sections
         -Wl,-z,max-page-size=16384
         -Wl,-z,common-page-size=16384
-        # raylib's Android backend serves fopen() from APK assets through
-        # __wrap_fopen; the linker must redirect every call site to it.
+        # Kryon serves fopen() from APK assets through __wrap_fopen.
         -Wl,--wrap=fopen
-        -Wl,--wrap=BeginDrawing -Wl,--wrap=EndDrawing
-        -Wl,--wrap=ClearBackground
-        -Wl,--wrap=BeginMode2D -Wl,--wrap=EndMode2D
-        -Wl,--wrap=BeginScissorMode -Wl,--wrap=EndScissorMode)
-    target_link_options(${target} PRIVATE -Wl,--wrap=eglGetCurrentContext)
-    target_link_options(${target} PRIVATE -Wl,--wrap=SetTargetFPS -Wl,--wrap=GetFrameTime)
-    target_link_options(${target} PRIVATE -Wl,--wrap=CloseWindow)
+        -Wl,--wrap=fopen64)
     # Gradle strips the packaged library. Keep this original, with line
     # information, so native startup failures can be symbolicated.
-    target_link_libraries(${target}
-        raylib android log OpenSLES EGL GLESv2 atomic dl m)
+    target_link_libraries(${target} PUBLIC android log atomic dl m)
 endfunction()
 
 # Adopt Kryon's canonical Android host for a shared-library target whose
@@ -190,16 +110,14 @@ endfunction()
 # Kryon's own platform keyboard implementation; an application that supplies
 # its own JNI glue, like one with a custom SetPlatformTextKeyboardVisible,
 # must not call this. The library exposes Android's entry points and the
-# raylib CORE data symbol required by AndroidSurface synchronization, plus
 # notification JNI callbacks that Android resolves on receiver/service startup.
 function(kryon_android_host target)
     target_compile_definitions(${target} PRIVATE KRYON_ANDROID_HOST=1)
     foreach(source IN LISTS ARGN)
         get_filename_component(source_name "${source}" NAME)
         if(source_name STREQUAL "main.c")
-            # raylib's android_main calls this shared-library entry itself;
-            # its Zi argv is byte pointers, so hosted C's spelling rule for
-            # main does not apply.
+            # Kryon's NativeActivity glue calls android_main directly. The
+            # scaffold's argv-style main remains the stable application ABI.
             set_source_files_properties("${source}"
                 PROPERTIES COMPILE_OPTIONS "-ffreestanding")
         elseif(source_name STREQUAL "android_glue.c" OR

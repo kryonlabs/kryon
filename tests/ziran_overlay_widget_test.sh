@@ -19,9 +19,9 @@ set -- \
     --bind paint_queue:RasterImage=ziran_overlay_widget_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_overlay_widget_host:RasterImageMesh
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$std" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$std" \
     -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$std" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$std" \
     "$@" --entry ziran_overlay_widget_test:main \
     -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
@@ -32,14 +32,14 @@ test "$("$ziran" run "$work/source.zx")" = 0
 test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$std" -o "$work/c" "$source"
+    $kryon_ui_args --module-path "$std" -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -I"$include" -I"$work/c" \
     "$work/c"/*.c -o "$work/c/app"
 "$work/c/app"
 
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$std" -o "$work/go" "$source"
+    $kryon_ui_args --module-path "$std" -o "$work/go" "$source"
 cat > "$work/go/main.go" <<'GO'
 package main
 

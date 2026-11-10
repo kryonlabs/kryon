@@ -1,0 +1,33 @@
+ForeignNavigation :: #import "navigation";
+StdText :: #import "std/text";
+// Public aggregates must retain widget identity with either module-root order.
+#import "kryon/Widgets"
+#import "kryon/text_measure"
+#import "kryon/image_showing"
+LayoutHelpers :: #import "kryon/layout";
+ModalHelpers :: #import "kryon/modal";
+ToolbarHelpers :: #import "kryon/toolbar";
+ScrollHelpers :: #import "kryon/scroll";
+
+#program_export
+main :: () -> s32 {
+    if !StdText.StartsWithFoldASCII("Probe", "pro") { return 1 }
+    if ForeignNavigation.ForeignNavigationSentinel() != 37 { return 2 }
+    column := LayoutHelpers.CenteredColumnFor(800, 640, 24)
+    unused LayoutHelpers.IsDesktopWidth(800, 1.0)
+    unused LayoutHelpers.Clamp(column.width, 0, 800)
+    unused ModalHelpers.ModalPanelRole()
+    unused ModalHelpers.ModalScrimRole()
+    row := ToolbarHelpers.BottomIconRowLayoutFor(.{.center_x = 400, .view_width = 800, .view_height = 600, .count = 1}, 1.0)
+    unused ToolbarHelpers.BottomIconRowButtonBoundsFor(row, 0)
+    unused ScrollHelpers.ScrollClamp(10, ScrollHelpers.ScrollMax(100, 40))
+    session := SessionOpen()
+    Text(session, TextProps.{.key = LayoutHelpers.KeyHash("text"), .text = "Probe"})
+    Image(session, ImageProps.{.key = LayoutHelpers.KeyHash("image")})
+    unused TextWidth(session, TextProps.{})
+    unused ImageShowingOf(session, ImageProps.{})
+    items: [1]NavigationBarItem
+    unused NavigationBar(session, NavigationBarProps.{}, items[:])
+    SessionClose(session)
+    return 0
+}

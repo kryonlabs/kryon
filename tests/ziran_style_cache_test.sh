@@ -10,10 +10,10 @@ mkdir -p "$work"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 export GOCACHE="$repo/build/scratch/style-cache/go-cache"
 source="$repo/tests/style_cache_behavior.zi"
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for input in source saved; do
-    module="$source"; roots="--module-path $repo/src/ui --module-path $ziran_root/std"
+    module="$source"; roots="$kryon_ui_args --module-path $ziran_root/std"
     if test "$input" = saved; then module="$work/ir/style_cache_behavior.zir"; roots="--module-path $work/ir"; fi
     "$ziran" bundle --root "$repo/tests" $roots --entry style_cache_behavior:main \
         -o "$work/$input.zx" "$module"

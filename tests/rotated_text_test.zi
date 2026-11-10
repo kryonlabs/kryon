@@ -2,7 +2,7 @@
 #import "drawing_props"
 #import "pixmap"
 #import "raster_text"
-#import "text_widget"
+#import "text"
 #import "text_props"
 #import "text_measure"
 #import "session"

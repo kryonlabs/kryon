@@ -1,0 +1,530 @@
+Theme :: #import "theme";
+// Portable compositions can submit the same public widget contract to a
+// retained UI host. The host binds this effect to the ordinary implementation;
+// widget behavior, styles and input ownership have one implementation.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "text_props"
+    host_api :: #system_library "host_api";
+    TextHostedHost :: (session: Session, props: TextProps) #foreign host_api;
+    TextLinkAtHostedHost :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 #foreign host_api;
+    #program_export
+    Text :: (session: Session, props: TextProps) { TextHostedHost(session, props) }
+    #program_export
+    TextLinkAt :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 {
+        return TextLinkAtHostedHost(session, props, x, y)
+    }
+} else {
+    #import "session"
+    #import "control_props"
+    #import "drawing_props"
+    #import "font_metrics"
+    #import "geometry"
+    #import "math"
+    #import "shape_paint"
+    #import "paint_queue"
+    #import "text_layout"
+    #import "semantic"
+    #import "style"
+    #import "surface"
+    #import "text_behavior"
+    #import "text_align"
+    #import "text_props"
+    #import "text_style"
+    #import "tree"
+    #import "text_selection_host"
+    #import "widget_kind"
+    Grapheme :: #import "std/grapheme";
+
+    using WidgetKind;
+    using StyleField;
+    #program_export
+    TextSpan :: (source: string, start: s32, length: s32) -> string {
+        return source[start:start + length]
+    }
+
+    TextFace :: struct {
+        value: StyleData
+        fallback_font: s32
+    }
+
+    #program_export
+    DefaultTextFace :: () -> TextFace {
+        face: TextFace
+        face.value.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize
+        face.value.foreground = Theme.CurrentText()
+        face.value.font_size = 16.0
+        face.fallback_font = 16
+        return face
+    }
+
+    #program_export
+    TextFaceFor :: (props: TextProps, defaults: TextFace) -> TextFace {
+        face: TextFace = defaults
+        request: TextStyleRequest = .{.kind = props.style_kind, .id = props.id,
+            .class_name = props.class_name,
+            .disabled = props.disabled}
+        face.value = TextStyleFor(request, defaults.value)
+        return face
+    }
+
+    TextRangeValid :: (text: string, range: TextRange, previous_end: s32) -> bool {
+        if range.start < previous_end || range.start < 0 || range.end <= range.start ||
+        range.end > text.count {
+            return false
+        }
+        if (text[range.start] & cast(u8)192) == cast(u8)128 {
+            return false
+        }
+        return range.end == text.count || (text[range.end] & cast(u8)192) != cast(u8)128
+    }
+
+    PaintTextEmphasis :: (session: Session, node: s32, props: TextProps,
+        prepared: PreparedText, line: TextLinePlan, x: s32, y: s32, clip: Rectangle) {
+        previous_end: s32 = 0
+        for range: props.strong {
+            if !TextRangeValid(props.text, range, previous_end) {
+                continue
+            }
+            previous_end = range.end
+            start := range.start
+            end := range.end
+            if start < line.start {
+                start = line.start
+            }
+            if end > line.end {
+                end = line.end
+            }
+            if start >= end {
+                continue
+            }
+            at := start
+            while at < end {
+                run := TextLinkRunAt(props, at, end)
+                left := x + GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
+                color := ifx run.link then TextLinkColor(prepared.color) else prepared.color
+                PaintClippedEmphasis(session, node, props.text[at:run.end], left, y,
+                    prepared.font, color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
+                at = run.end
+            }
+        }
+    }
+
+    // The theme's link color, as see-through as the text around it; a theme
+    // without one uses the light accent.
+    TextLinkColor :: (text: Color) -> Color {
+        link := StyleTokenColorOr("link", ColorFromPacked(Theme.CurrentAccent()))
+        link.a = cast(u8)((cast(s32)link.a * cast(s32)text.a) / 255)
+        return link
+    }
+
+    // A run of characters that are all inside one link or all outside links.
+    TextLinkRun :: struct {
+        end: s32
+        link: bool
+    }
+
+    // The run that starts at `at` and ends at most at `limit`.
+    TextLinkRunAt :: (props: TextProps, at: s32, limit: s32) -> TextLinkRun {
+        run := TextLinkRun.{.end = limit, .link = false}
+        previous_end: s32 = 0
+        for range: props.links {
+            if !TextRangeValid(props.text, range, previous_end) {
+                continue
+            }
+            previous_end = range.end
+            if range.end <= at {
+                continue
+            }
+            if range.start <= at {
+                run.link = true
+                if range.end < limit {
+                    run.end = range.end
+                }
+                return run
+            }
+            if range.start < limit {
+                run.end = range.start
+            }
+            return run
+        }
+        return run
+    }
+
+    // Paints a line's characters, from line_start for value's length: link
+    // characters in the link color and underlined, the others in the text's
+    // color.
+    PaintTextLineRuns :: (session: Session, node: s32, props: TextProps,
+        prepared: PreparedText, line_start: s32, value: string, x: s32, y: s32, clip: Rectangle) {
+        line_end := line_start + cast(s32)value.count
+        at := line_start
+        while at < line_end {
+            run := TextLinkRunAt(props, at, line_end)
+            left := x + GlyphWidth(props.text[line_start:at], prepared.font, prepared.typeface)
+            if !run.link {
+                PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
+                    prepared.color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
+            } else {
+                color := TextLinkColor(prepared.color)
+                PaintClippedLabel(session, node, props.text[at:run.end], left, y, prepared.font,
+                    color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
+                width := GlyphWidth(props.text[at:run.end], prepared.font, prepared.typeface)
+                underline := RectangleIntersection(Rectangle.{cast(float32)left,
+                        cast(float32)(y + prepared.line_height - 1), cast(float32)width, 1.0}, clip)
+                if underline.width > 0.0 && underline.height > 0.0 {
+                    PaintTextRule(session,node,props,prepared,underline,color)
+                }
+            }
+            at = run.end
+        }
+    }
+
+    #program_export
+    PrepareText :: (props: TextProps, face: TextFace) -> PreparedText {
+        prepared: PreparedText
+        prepared.bounds = props.bounds
+        prepared.typeface = ifx props.typeface != "" then props.typeface else face.value.typeface
+        appearance: TextAppearance = ResolveTextStyle(props.font, 0,
+            ResolveFont(0, StyleFontValue(face.value.fields,
+            face.value.font_size), face.fallback_font),
+            face.value.foreground, cast(u32)0, Theme.CurrentText(),
+            false, (face.value.fields & cast(u32)StyleForeground) != cast(u32)0,
+            // A stylesheet's opacity already supplies the disabled face;
+            // the fallback must not fade it a second time.
+            props.disabled && (face.value.fields & cast(u32)StyleOpacity) == cast(u32)0, false, 0)
+        prepared.font = appearance.font
+        prepared.color = ColorFromPacked(Opacity(appearance.color,
+            StyleOpacityValue(face.value.fields, face.value.opacity)))
+        prepared.line_height = GlyphLineHeight(prepared.font,
+            prepared.typeface)
+        if prepared.line_height < 1 { prepared.line_height = prepared.font }
+        prepared.line_gap = ifx props.line_gap > 0 then props.line_gap else TextDefaultLineGap(1.0)
+        prepared.wrap = cast(TextWrap)TextWrapPolicy(props.bounds.width,
+            cast(s32)props.wrap)
+
+        start: s32 = 0
+        maximum: s32 = 0
+        while start <= (cast(s32)props.text.count) {
+            line: TextLinePlan = NextTextLine(props.text, start,
+                props.bounds.width, prepared.wrap, prepared.font,
+                prepared.typeface)
+            prepared.line_count += 1
+            if line.width > maximum { maximum = line.width }
+            start = line.next
+        }
+        prepared.bounds.width = TextExtent(props.bounds.width, cast(float32)maximum)
+        height: s32 = TextLayoutTotalHeight(prepared.line_count,
+            prepared.line_height, prepared.line_gap)
+        prepared.bounds.height = TextExtent(props.bounds.height, cast(float32)height)
+        return prepared
+    }
+
+    // The longest start of value, ending on a whole character, that is at
+    // most max_width wide.
+    TextEllipsisStart :: (value: string, max_width: s32, font: s32,
+        typeface: string) -> string {
+        end: s32 = cast(s32)value.count
+        while end > 0 {
+            end -= 1
+            while end > 0 && (value[end] & cast(u8)192) == cast(u8)128 {
+                end -= 1
+            }
+            if GlyphWidth(value[0:end], font, typeface) <= max_width {
+                return value[0:end]
+            }
+        }
+        return ""
+    }
+
+    // How many wrapped lines start at or below the bottom of a fixed-height
+    // box; PaintTextLines leaves those out.
+    #program_export
+    TextHiddenLines :: (props: TextProps, prepared: PreparedText) -> s32 {
+        if props.bounds.height <= 0.0 { return 0 }
+        total_height: s32 = TextLayoutTotalHeight(prepared.line_count,
+            prepared.line_height, prepared.line_gap)
+        y: s32 = cast(s32)prepared.bounds.y +
+        cast(s32)TextAlignmentOffset(prepared.bounds.height,
+            cast(float32)total_height, cast(s32)props.vertical_align)
+        bottom: float32 = prepared.bounds.y + prepared.bounds.height
+        hidden: s32 = 0
+        line: s32 = 0
+        while line < prepared.line_count {
+            if cast(float32)y >= bottom {
+                hidden += 1
+            }
+            y += prepared.line_height + prepared.line_gap
+            line += 1
+        }
+        return hidden
+    }
+
+    #program_export
+    PaintTextLines :: (session: Session, node: s32, props: TextProps,
+        prepared: PreparedText) {
+        total_height: s32 = TextLayoutTotalHeight(prepared.line_count,
+            prepared.line_height, prepared.line_gap)
+        y: s32 = cast(s32)prepared.bounds.y +
+        cast(s32)TextAlignmentOffset(prepared.bounds.height,
+            cast(float32)total_height, cast(s32)props.vertical_align)
+        // Text being typed is laid out whole and painted up to the end of
+        // its typed characters, so no word moves while it is typed.
+        typed_end: s32 = cast(s32)props.text.count
+        if props.typing {
+            typed_end = TextCharactersEnd(props.text, props.typed)
+        }
+        start: s32 = 0
+        while start <= (cast(s32)props.text.count) {
+            line: TextLinePlan = NextTextLine(props.text, start,
+                prepared.bounds.width, prepared.wrap, prepared.font,
+                prepared.typeface)
+            if line.start >= typed_end && typed_end < cast(s32)props.text.count {
+                break
+            }
+            value: string = TextSpan(props.text, line.start,
+                line.end - line.start)
+            // A line too wide for its bounds keeps the start that fits and
+            // ends in "...".
+            ellipsis: bool = props.wrap == TextWrap.TextWrapEllipsis &&
+            prepared.bounds.width > 0.0 &&
+            cast(float32)line.width > prepared.bounds.width
+            dots_width: s32 = 0
+            if ellipsis {
+                dots_width = GlyphWidth("...", prepared.font, prepared.typeface)
+                value = TextEllipsisStart(value,
+                    cast(s32)prepared.bounds.width - dots_width,
+                    prepared.font, prepared.typeface)
+                line.width = GlyphWidth(value, prepared.font, prepared.typeface) +
+                dots_width
+                line.end = line.start + cast(s32)value.count
+            }
+            x: s32 = TextLineXFor(cast(s32)prepared.bounds.x,
+                cast(s32)prepared.bounds.width, line.width, cast(s32)props.align)
+            // A line typed partway keeps its place and shows its typed start;
+            // an ellipsis appears once its line is typed to the end.
+            if line.end > typed_end {
+                value = TextSpan(props.text, line.start, typed_end - line.start)
+                line.end = typed_end
+                line.width = GlyphWidth(value, prepared.font, prepared.typeface)
+                ellipsis = false
+            }
+            // A line that starts inside the box is drawn whole: a box a little
+            // shorter than the line must not cut off the bottoms of its glyphs.
+            // Lines that start below the box are still clipped away.
+            clip: Rectangle = prepared.bounds
+            if cast(float32)y < clip.y + clip.height {
+                if cast(float32)y < clip.y {
+                    clip.height += clip.y - cast(float32)y
+                    clip.y = cast(float32)y
+                }
+                line_bottom: float32 = cast(float32)(y + prepared.line_height)
+                if line_bottom > clip.y + clip.height {
+                    clip.height = line_bottom - clip.y
+                }
+            }
+            if value != "" {
+                PaintTextLineRuns(session, node, props, prepared, line.start, value, x, y, clip)
+                if ellipsis {
+                    PaintClippedLabel(session, node, "...",
+                        x + line.width - dots_width, y, prepared.font,
+                        prepared.color, clip, prepared.typeface, props.rotation, TextOrigin(props, prepared))
+                }
+                PaintTextEmphasis(session, node, props, prepared, line, x, y, clip)
+                if props.strikethrough {
+                    strike: Rectangle = TextStrikethroughBounds(cast(float32)x,
+                        cast(float32)y, cast(float32)line.width,
+                        cast(float32)prepared.line_height, 1.0)
+                    strike = RectangleIntersection(strike, prepared.bounds)
+                    if strike.width > 0.0 && strike.height > 0.0 {
+                        PaintTextRule(session,node,props,prepared,strike,prepared.color)
+                    }
+                }
+            }
+            y += prepared.line_height + prepared.line_gap
+            start = line.next
+        }
+    }
+
+    PaintTextRule :: (session: Session, node: s32, props: TextProps, prepared: PreparedText,
+        bounds: Rectangle, color: Color) {
+        if props.rotation == 0.0 { PaintRoundedFill(session,node,bounds,0.0,1,color); return }
+        origin := TextOrigin(props,prepared)
+        camera: Camera = .{.offset=origin,.target=origin,.rotation=props.rotation,.zoom=1.0}
+        a := WorldToScreen(Vector2.{bounds.x,bounds.y},camera)
+        b := WorldToScreen(Vector2.{bounds.x+bounds.width,bounds.y},camera)
+        c := WorldToScreen(Vector2.{bounds.x+bounds.width,bounds.y+bounds.height},camera)
+        d := WorldToScreen(Vector2.{bounds.x,bounds.y+bounds.height},camera)
+        area := RotatedRectangleBounds(bounds,origin,props.rotation)
+        PaintTriangleShape(session,node,area,a,b,c,color)
+        PaintTriangleShape(session,node,area,a,c,d,color)
+    }
+
+    TextOrigin :: (props: TextProps, prepared: PreparedText) -> Vector2 {
+        return .{prepared.bounds.x + props.origin.x, prepared.bounds.y + props.origin.y}
+    }
+
+    // The face Text paints props with.
+    TextFaceOf :: (props: TextProps) -> TextFace {
+        defaults: TextFace = DefaultTextFace()
+        if props.fallback_font > 0 {
+            defaults.fallback_font = props.fallback_font
+            defaults.value.font_size = cast(float32)props.fallback_font
+        }
+        return TextFaceFor(props, defaults)
+    }
+
+    #program_export
+    Text :: (session: Session, props: TextProps) {
+        if !Finite32(props.rotation) || !Finite32(props.origin.x) || !Finite32(props.origin.y) { return }
+        face: TextFace = TextFaceOf(props)
+        prepared: PreparedText = PrepareText(props, face)
+        node: s32 = -1
+        if TreeIsBuilding(session) {
+            node = TreeSubmitCurrent(session, props.key, WidgetKindText,
+                RotatedRectangleBounds(prepared.bounds, TextOrigin(props, prepared), props.rotation))
+            if node < 0 { return }
+            TreeSetLabel(session, node, props.text)
+            TreeSetStyleClass(session, node, props.class_name)
+            TreeSetStyleId(session, node, props.id)
+            TreeSetSemantic(session, node, props.semantic_kind, props.heading_level)
+            hidden: s32 = TextHiddenLines(props, prepared)
+            if hidden > 0 {
+                TreeSetHiddenLines(session, node, hidden)
+            }
+        }
+        if props.selectable && node >= 0 && TextSelectionPresent(session, node, props, prepared) {
+            return
+        }
+        PaintTextLines(session, node, props, prepared)
+    }
+
+    // The index in props.links of the link whose characters Text paints
+    // under (x, y), on any of its lines, or -1.
+    #program_export
+    TextLinkAt :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 {
+        unused session
+        if props.links.count == 0 {
+            return -1
+        }
+        prepared := PrepareText(props, TextFaceOf(props))
+        origin := TextOrigin(props, prepared)
+        point := ScreenToWorld(Vector2.{x,y}, Camera.{.offset=origin,.target=origin,.rotation=props.rotation,.zoom=1.0})
+        x = point.x; y = point.y
+        top := TextFirstLineY(props, prepared)
+        start: s32 = 0
+        while start <= cast(s32)props.text.count {
+            line := NextTextLine(props.text, start, prepared.bounds.width,
+                prepared.wrap, prepared.font, prepared.typeface)
+            bottom := top + prepared.line_height + prepared.line_gap
+            if y >= cast(float32)top && y < cast(float32)bottom {
+                left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
+                    line.width, cast(s32)props.align)
+                previous_end: s32 = 0
+                for range, index: props.links {
+                    if !TextRangeValid(props.text, range, previous_end) {
+                        continue
+                    }
+                    previous_end = range.end
+                    first := ifx range.start > line.start then range.start else line.start
+                    last := ifx range.end < line.end then range.end else line.end
+                    if first >= last {
+                        continue
+                    }
+                    from := left + GlyphWidth(props.text[line.start:first], prepared.font, prepared.typeface)
+                    to := left + GlyphWidth(props.text[line.start:last], prepared.font, prepared.typeface)
+                    if x >= cast(float32)from && x < cast(float32)to {
+                        return cast(s32)index
+                    }
+                }
+                return -1
+            }
+            if line.next <= start {
+                break
+            }
+            start = line.next
+            top = bottom
+        }
+        return -1
+    }
+
+    TextFirstLineY :: (props: TextProps, prepared: PreparedText) -> s32 {
+        height := TextLayoutTotalHeight(prepared.line_count, prepared.line_height, prepared.line_gap)
+        return cast(s32)prepared.bounds.y + cast(s32)TextAlignmentOffset(
+            prepared.bounds.height, cast(float32)height, cast(s32)props.vertical_align)
+    }
+
+    TextByteAtPoint :: (props: TextProps, prepared: PreparedText, x: float32, y: float32) -> s32 {
+        origin := TextOrigin(props,prepared)
+        point := ScreenToWorld(Vector2.{x,y},Camera.{.offset=origin,.target=origin,.rotation=props.rotation,.zoom=1.0})
+        x = point.x; y = point.y
+        top := TextFirstLineY(props, prepared)
+        start: s32 = 0
+        while start <= props.text.count {
+            line := NextTextLine(props.text, start, prepared.bounds.width,
+                prepared.wrap, prepared.font, prepared.typeface)
+            if y < cast(float32)(top + prepared.line_height + prepared.line_gap) || line.next > props.text.count {
+                left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
+                    line.width, cast(s32)props.align)
+                at := line.start
+                while at < line.end {
+                    next := Grapheme.Next(props.text, at)
+                    before := GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
+                    after := GlyphWidth(props.text[line.start:next], prepared.font, prepared.typeface)
+                    if x < cast(float32)left + cast(float32)(before + after) / 2.0 {
+                        return at
+                    }
+                    at = next
+                }
+                return line.end
+            }
+            start = line.next
+            top += prepared.line_height + prepared.line_gap
+        }
+        return cast(s32)props.text.count
+    }
+
+    TextCaretBounds :: (props: TextProps, prepared: PreparedText, at: s32) -> Rectangle {
+        top := TextFirstLineY(props, prepared)
+        start: s32 = 0
+        while start <= props.text.count {
+            line := NextTextLine(props.text, start, prepared.bounds.width,
+                prepared.wrap, prepared.font, prepared.typeface)
+            if at <= line.end || line.next > props.text.count {
+                left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
+                    line.width, cast(s32)props.align)
+                width := GlyphWidth(props.text[line.start:at], prepared.font, prepared.typeface)
+                return Rectangle.{cast(float32)(left + width), cast(float32)top,
+                    1.0, cast(float32)prepared.line_height}
+            }
+            start = line.next
+            top += prepared.line_height + prepared.line_gap
+        }
+        return .{}
+    }
+
+    PaintTextSelection :: (session: Session, node: s32, props: TextProps, prepared: PreparedText,
+        anchor: s32, cursor: s32, color: Color) {
+        first := ifx anchor < cursor then anchor else cursor
+        last := ifx anchor < cursor then cursor else anchor
+        top := TextFirstLineY(props, prepared)
+        start: s32 = 0
+        while start <= props.text.count {
+            line := NextTextLine(props.text, start, prepared.bounds.width,
+                prepared.wrap, prepared.font, prepared.typeface)
+            from := ifx first > line.start then first else line.start
+            to := ifx last < line.end then last else line.end
+            if from < to {
+                left := TextLineXFor(cast(s32)prepared.bounds.x, cast(s32)prepared.bounds.width,
+                    line.width, cast(s32)props.align)
+                before := GlyphWidth(props.text[line.start:from], prepared.font, prepared.typeface)
+                after := GlyphWidth(props.text[line.start:to], prepared.font, prepared.typeface)
+                PaintTextRule(session,node,props,prepared,RectangleIntersection(prepared.bounds,
+                    Rectangle.{cast(float32)(left + before), cast(float32)top,
+                        cast(float32)(after - before), cast(float32)prepared.line_height}),color)
+            }
+            start = line.next
+            top += prepared.line_height + prepared.line_gap
+        }
+    }
+
+}

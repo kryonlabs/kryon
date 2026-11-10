@@ -7,10 +7,10 @@ output=$(mktemp -d)
 trap 'rm -rf "$output"' EXIT HUP INT TERM
 
 "$ziran" ir --root "$repo/tests/fixtures" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$output/ir" \
+    $kryon_ui_args --module-path "$ziran_root/std" -o "$output/ir" \
     "$repo/tests/fixtures/frame_replay.zi"
 "$ziran" bundle --root "$repo/tests/fixtures" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" --entry frame_replay:Frame \
+    $kryon_ui_args --module-path "$ziran_root/std" --entry frame_replay:Frame \
     -o "$output/source.zx" "$repo/tests/fixtures/frame_replay.zi"
 "$ziran" bundle --root "$output/ir" --module-path "$output/ir" \
     --entry frame_replay:Frame -o "$output/saved.zx" \

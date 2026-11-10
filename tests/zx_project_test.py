@@ -128,7 +128,7 @@ backend = "desktop"
     saved = OUTPUT / "saved.zx"
     run([ZIRAN, "bundle", "--root", ir, "--entry", module + ":main",
          "--asset-dir", "assets=" + str(project / "assets"),
-         "-o", saved, ir / (module + ".zir")], project, env)
+         "-o", saved, ir / (module + ".zir"), ir / "app.zir"], project, env)
     assert saved.read_bytes() == bundle.read_bytes()
 
     # A download contains no source, lock, project manifest or generated code.

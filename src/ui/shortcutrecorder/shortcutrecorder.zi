@@ -1,0 +1,222 @@
+#import "box"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "input_protocol"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using StyleField;
+using WidgetKind;
+
+ShortcutRecorderProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    placeholder: string
+    activate: bool
+    blur: bool
+    outside_press: bool
+    key_event: s32
+    modifiers: s32
+    disabled: bool
+    height: float32
+    font_size: float32
+    width: float32
+}
+
+ShortcutRecorderState :: struct {
+    recording: bool
+    focused: bool
+    initialized: bool
+    key: s32
+    modifiers: s32
+    label_length: s32
+    label: [64]u8
+}
+
+ShortcutRecorderResult :: struct {
+    node: s32
+    changed: bool
+    recording: bool
+    cancelled: bool
+    cleared: bool
+    unsupported: bool
+    key: s32
+    modifiers: s32
+}
+
+#program_export
+ShortcutRecorderStateFor :: (key: s32,
+    modifiers: s32) -> ShortcutRecorderState {
+    state: ShortcutRecorderState
+    state.key = key
+    state.modifiers = modifiers
+    ShortcutRecorderWriteLabel(*state)
+    state.initialized = true
+    return state
+}
+
+ShortcutAppend :: (state: *ShortcutRecorderState, text: string) {
+    at: s32 = 0
+    while at < cast(s32)text.count && state.label_length < 64 {
+        state.label[state.label_length] = text[at]
+        state.label_length += 1
+        at += 1
+    }
+}
+
+#program_export
+ShortcutRecorderWriteLabel :: (state: *ShortcutRecorderState) {
+    state.label_length = 0
+    if (state.modifiers & KeyModifierControl) != 0 { ShortcutAppend(state, "Ctrl ") }
+    if (state.modifiers & KeyModifierAlt) != 0 { ShortcutAppend(state, "Alt ") }
+    if (state.modifiers & KeyModifierShift) != 0 { ShortcutAppend(state, "Shift ") }
+    name := ""
+    key := state.key
+    if key == KeyEscape { name = "Esc" }
+    else if key == KeyEnter { name = "Enter" }
+    else if key == KeyTab { name = "Tab" }
+    else if key == KeyBackspace { name = "Backspace" }
+    else if key == KeyDelete { name = "Delete" }
+    else if key == KeyLeft { name = "Left" }
+    else if key == KeyRight { name = "Right" }
+    else if key == KeyUp { name = "Up" }
+    else if key == KeyDown { name = "Down" }
+    else if key >= 65 && key <= 90 {
+        if state.label_length < 64 {
+            state.label[state.label_length] = cast(u8)key
+            state.label_length += 1
+        }
+    } else if key >= 48 && key <= 57 {
+        if state.label_length < 64 {
+            state.label[state.label_length] = cast(u8)key
+            state.label_length += 1
+        }
+    }
+    ShortcutAppend(state, name)
+}
+
+ShortcutRecorderKeySupported :: (key: s32) -> bool {
+    return (key >= 32 && key <= 127) || (key >= KeyEscape && key <= KeyUp)
+}
+
+#program_export
+ShortcutRecorderApply :: (state: *ShortcutRecorderState,
+    props: ShortcutRecorderProps) -> ShortcutRecorderResult {
+    result: ShortcutRecorderResult
+    result.node = -1
+    if !state.initialized { state.initialized = true }
+    if props.blur || props.outside_press { state.focused = false; state.recording = false }
+    if props.disabled {
+        state.focused = false
+        state.recording = false
+        result.recording = false
+        result.key = state.key
+        result.modifiers = state.modifiers
+        return result
+    }
+    if props.activate { state.focused = true; state.recording = true }
+    if state.recording && state.focused && props.key_event != 0 {
+        key := props.key_event
+        mods := props.modifiers
+        if key == KeyEscape && mods == 0 {
+            state.recording = false
+            result.cancelled = true
+        } else if (key == KeyBackspace || key == KeyDelete) && mods == 0 {
+            result.cleared = state.key != 0
+            state.key = 0
+            state.modifiers = 0
+            state.label_length = 0
+            state.recording = false
+        } else if key == KeyTab && mods == 0 {
+            state.recording = false
+        } else if !ShortcutRecorderKeySupported(key) {
+            result.unsupported = true
+            state.recording = false
+        } else {
+            result.changed = state.key != key || state.modifiers != mods
+            state.key = key
+            state.modifiers = mods
+            ShortcutRecorderWriteLabel(state)
+            state.recording = false
+        }
+    }
+    result.recording = state.recording
+    result.key = state.key
+    result.modifiers = state.modifiers
+    return result
+}
+
+ShortcutRecorderHostedReply :: struct { state: ShortcutRecorderState; result: ShortcutRecorderResult }
+
+#if #defined(KRYON_HOSTED_UI) {
+    shortcutrecorder_host_api :: #system_library "host_api";
+    ShortcutRecorderHostedHost :: (session: Session, props: ShortcutRecorderProps,
+        state: ShortcutRecorderState) -> ShortcutRecorderHostedReply #foreign shortcutrecorder_host_api;
+    #program_export
+    ShortcutRecorder :: (session: Session,
+    props: ShortcutRecorderProps,
+    state: *ShortcutRecorderState) -> ShortcutRecorderResult {
+        reply := ShortcutRecorderHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #program_export
+    ShortcutRecorder :: (session: Session,
+    props: ShortcutRecorderProps,
+    state: *ShortcutRecorderState) -> ShortcutRecorderResult { return ShortcutRecorderCore(session, props, state, true) }
+    #program_export
+    ShortcutRecorderCore :: (session: Session,
+    props: ShortcutRecorderProps,
+    state: *ShortcutRecorderState, effects: bool) -> ShortcutRecorderResult {
+    unused effects
+    result := ShortcutRecorderApply(state, props)
+    if !TreeIsBuilding(session) { return result }
+    height := props.height
+    if height <= 0 { height = CurrentThemeMetric(.ThemeMetricControlHeightMedium) }
+    bounds := props.bounds
+    bounds.height = height
+    if props.width > 0 { bounds.width = props.width }
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup, bounds)
+    if result.node < 0 { return result }
+    if !TreePushScope(session, result.node) { return result }
+    TreeSetInteractive(session, result.node, false, false, props.id)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetLabel(session, result.node, "Shortcut recorder")
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+    cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleFontSize |
+    cast(u32)StyleMinHeight | cast(u32)StyleMotionDuration
+    face.background = CurrentSurface()
+    face.foreground = CurrentText()
+    face.border = CurrentBorderStrong()
+    face.radius = CurrentThemeMetric(.ThemeMetricRadiusControl)
+    face.font_size = ifx props.font_size > 0 then props.font_size else CurrentThemeMetric(.ThemeMetricTextBody)
+    face.min_height = height
+    face.motion_duration = CurrentTheme().motion.state_ms
+    face = ResolveInstalledStyleRules(face, StyleControlRoleFacts(StyleKindAny(),
+        props.id, props.class_name, 0, 0, 0, 0, ifx state.recording then 4 else 1),
+        ifx state.recording then 4 else 1)
+    Box(session, .{.key = props.key+101, .bounds = bounds,
+            .fill = ColorFromPacked(face.background), .border = ColorFromPacked(face.border), .radius = face.radius})
+    text: TextProps
+    text.key = props.key + 201
+    text.bounds = bounds
+    text.text = ifx state.recording then "Press a shortcut" else ifx state.key != 0 then TextView(state.label[:state.label_length]) else props.placeholder
+    text.font = cast(s32)face.font_size
+    text.class_name = props.class_name
+    Text(session, text)
+    TreePopScope(session)
+    return result
+}
+}

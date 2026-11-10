@@ -1,6 +1,6 @@
 #import "secondary_pointer"
 #import "frame_snapshot"
-#import "app"
+#import "frame_entry"
 #import "canvas_host"
 #import "canvas_frame"
 #import "geometry"

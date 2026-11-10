@@ -1,7 +1,7 @@
 #import "session"
 #import "geometry"
 #import "joystick"
-#import "direction_pad"
+#import "dpad"
 #import "paint_queue"
 #import "tree"
 #import "tree_draw"

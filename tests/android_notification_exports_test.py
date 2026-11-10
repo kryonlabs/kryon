@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 import subprocess
-from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
+from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN, ZIRAN_ROOT
 
 WORK = ROOT / 'work/android-notification-exports'
 COMMON = {
@@ -36,11 +36,11 @@ def main():
 #import "android_notifications"
 #import "notification_push"
 #program_export
-GetAndroidApp :: () -> *NativeAndroidApp { return null }
-#program_export
 ANativeActivity_finish :: (activity: *void) { unused activity }
 #program_export
 ANativeActivity_onCreate :: () {}
+#program_export
+android_main :: (app: *NativeAndroidApp) { unused app }
 #program_export
 JNI_OnLoad :: () -> s32 { return 65542 }
 #program_export
@@ -58,7 +58,7 @@ NotificationPrivateProbe :: () {}
             if edition == 'fdroid': definitions += ['--define', 'FDROID']
             run([ZIRAN, 'build', '--target=c', '--no-main', *definitions,
                  '--root', WORK, '--module-path', ROOT / 'src/backend',
-                 '--module-path', ROOT / 'src/ui', '--module-path', ZIRAN_ROOT / 'std',
+                 *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std',
                  '-o', generated, host])
             # Exercise the identity-prefixed filenames produced by package mode.
             for module in ('android_notifications', 'notification_push'):
@@ -84,7 +84,7 @@ kryon_android_host(main ${{sources}})
             symbols = run(['nm', '-D', '--defined-only', build / 'libmain.so'])
             exported = {line.split()[-1] for line in symbols.splitlines() if line.split()}
             assert COMMON <= exported, (abi, edition, COMMON - exported)
-            assert 'JNI_OnLoad' in exported and 'ANativeActivity_onCreate' in exported
+            assert {'JNI_OnLoad', 'ANativeActivity_onCreate', 'android_main'} <= exported
             assert 'NotificationPrivateProbe' not in exported, 'private symbols leaked'
             assert (GPLAY <= exported) if edition == 'gplay' else not (GPLAY & exported), (abi, edition)
             print(f'{abi} {edition}: canonical ELF JNI exports and private-symbol isolation passed', flush=True)

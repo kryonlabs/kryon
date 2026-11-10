@@ -1,0 +1,37 @@
+using UI :: #import "kryon/Widgets";
+#import "std/number_text"
+
+clicks: s32;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1,
+        .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0},
+        .text = "Button", .font = 28})
+    width := (viewport.width - 52.0) * 0.5
+    for tone: cast(s32)0..3 {
+        for emphasis: cast(s32)0..2 {
+            index := tone * 3 + emphasis
+            if Button(session, ButtonProps.{.disabled = example_disabled, .key = cast(u64)(10 + index),
+                .bounds = .{viewport.x + 20.0 + cast(float32)(index % 2) * (width + 12.0),
+                    viewport.y + 72.0 + cast(float32)(index / 2) * 56.0, width, 44.0},
+                .label = "Continue", .tone = cast(ButtonTone)tone,
+                .emphasis = cast(ButtonEmphasis)emphasis}) != 0 { clicks += 1 }
+        }
+    }
+    digits: [24]u8
+    Text(session, TextProps.{.disabled = example_disabled, .key = 2,
+        .bounds = .{viewport.x + 20.0, viewport.y + 420.0, viewport.width - 40.0, 36.0},
+        .text = FormatInteger(cast(s64)clicks, digits[:])})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

@@ -1,0 +1,15 @@
+// Browser rollback fixture: keep the same typed clipboard capability in each
+// counter revision, but only the rejected candidate executes this edit.
+#import "textfield"
+#import "text_input_props"
+#import "session"
+#import "geometry"
+
+BrowserClipboardProbe :: (session: Session, copy: bool) {
+    if !copy { return }
+    unused TextField(session, TextFieldProps.{
+        .key = 700, .bounds = Rectangle.{16.0, 110.0, 240.0, 40.0},
+        .value = "staged-clipboard-probe", .cursor = 22, .anchor = 0,
+        .focused = true, .input = TextFieldInput.{.copy = true}
+    })
+}

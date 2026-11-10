@@ -1,7 +1,7 @@
 #import "bevel"
 #import "drawing_props"
 #import "geometry"
-#import "separator"
+#import "separator_behavior"
 #import "style"
 #import "ziran_raster_host_provider"
 

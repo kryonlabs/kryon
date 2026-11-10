@@ -3,9 +3,9 @@
 
 #import "geometry"
 #import "progress_props"
-#import "progress_widget"
+#import "progress"
 #import "separator_props"
-#import "separator_widget"
+#import "separator"
 #import "tree"
 #import "tree_draw"
 #import "ziran_mixed_tree_host"

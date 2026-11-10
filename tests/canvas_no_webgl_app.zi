@@ -1,0 +1,117 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/app_context"
+#import "kryon/app_protocol"
+#import "kryon/style"
+#import "kryon/style_sheet"
+#import "kryon/text_props"
+#import "kryon/theme"
+
+using StyleField;
+using TextWrap;
+
+#import "web"
+
+field_bytes: [256]u8;
+field_state: TextFieldState;
+field_ready: bool;
+button_clicked: bool;
+checkbox_checked: bool;
+enter_committed: bool;
+styles_ready: bool;
+mesh_points: [4]Vector2 = .[
+Vector2.{96.0, 220.0}, Vector2.{160.0, 220.0},
+Vector2.{96.0, 284.0}, Vector2.{160.0, 284.0}];
+
+InstallProbeRules :: () -> bool {
+    rules: StyleRules
+    rules.count = 1
+    rules.items[0].selector = StyleDefaultSelector()
+    rules.items[0].selector.kind = StyleKindButton()
+    rules.items[0].selector.id = 77
+    rules.items[0].style.fields = cast(u32)StyleBackground |
+    cast(u32)StyleForeground | cast(u32)StyleRadius | cast(u32)StyleFontSize
+    rules.items[0].style.background = cast(u32)0x5b2a86ff
+    rules.items[0].style.foreground = cast(u32)0xffffffdd
+    rules.items[0].style.radius = 7.0
+    rules.items[0].style.font_size = 13.0
+    return InstallStyleRules(rules)
+}
+
+Main :: () -> s64 {
+    mode := AppMode()
+    if mode == APP_IDENTIFY {
+        AppIdentity("kryon.canvas.no-webgl")
+        AppDescribe("Canvas2D without WebGL", "")
+        return APP_PROTOCOL
+    }
+    if mode != APP_FRAME { return 0 }
+
+    if !field_ready {
+        field_ready = true
+        initial := "Type 🙂"
+        for index: cast(s64)0..initial.count - 1 { field_bytes[index] = initial[index] }
+        field_state = TextFieldState.{.bytes = field_bytes[:],
+            .length = cast(s32)initial.count, .cursor = cast(s32)initial.count,
+            .anchor = cast(s32)initial.count, .focused = true}
+    }
+    if !styles_ready {
+        styles_ready = InstallProbeRules()
+        if !styles_ready { return 1 }
+    }
+    theme_ready := SetThemeMode(AppDark())
+    if !theme_ready { return 2 }
+
+    session := AppSession()
+    viewport := AppBounds()
+    field_width := viewport.width - 32.0
+    if field_width > 280.0 { field_width = 280.0 }
+    if field_width < 96.0 { field_width = 96.0 }
+
+    Box(session, BoxProps.{.key = cast(u64)1, .bounds = viewport,
+            .fill = ColorFromPacked(CurrentTheme().colors.background)})
+    action := Button(session, ButtonProps.{.key = cast(u64)2,
+            .bounds = .{16.0, 16.0, 132.0, 40.0},
+            .label = ifx button_clicked then "Clicked" else "Click"})
+    if action != 0 { button_clicked = !button_clicked }
+
+    styled := Button(session, ButtonProps.{.key = cast(u64)3, .id = 77,
+            .bounds = .{164.0, 16.0, 112.0, 40.0}, .label = "Styled"})
+    if styled != 0 { button_clicked = !button_clicked }
+
+    field_props := TextFieldStateProps(field_state, TextFieldProps.{
+            .key = cast(u64)4, .bounds = .{16.0, 68.0, field_width, 40.0},
+            .label = "Input", .scale = AppScale(), .input = AppFieldInput()})
+    edited := TextField(session, field_props)
+    field_result_ready := TextFieldStateApplyResult(*field_state, edited)
+    if !field_result_ready { return 3 }
+    if edited.committed { enter_committed = true }
+
+    check := Checkbox(session, CheckboxProps.{.key = cast(u64)5,
+            .bounds = .{16.0, 124.0, 176.0, 36.0}, .label = "Checkbox",
+            .checked = checkbox_checked})
+    checkbox_checked = check.checked
+
+    Text(session, TextProps.{.key = cast(u64)6,
+            .bounds = .{16.0, 174.0, ifx viewport.width > 220.0 then viewport.width - 32.0 else viewport.width, 36.0},
+            .text = "Unicode café 🙂", .font = AppFont(),
+            .wrap = cast(TextWrap)TextWrapEllipsis})
+    Image(session, ImageProps.{.key = cast(u64)7,
+            .bounds = .{16.0, 220.0, 72.0, 72.0}, .alt_text = "Alpha probe",
+            .asset_path = AppAssetPath("assets/alpha.png"), .smooth = true})
+    Image(session, ImageProps.{.key = cast(u64)10,
+            .bounds = .{96.0, 220.0, 64.0, 64.0}, .alt_text = "Warped alpha probe",
+            .asset_path = AppAssetPath("assets/alpha.png"),
+            .mesh = ImageMesh.{.columns = 2, .rows = 2, .points = mesh_points[:]}})
+    Image(session, ImageProps.{.key = cast(u64)11,
+            .bounds = .{176.0, 220.0, 64.0, 64.0}, .alt_text = "Nested preload probe",
+            .asset_path = AppAssetPath("assets/nested/duplicate.png"), .smooth = true})
+    Box(session, BoxProps.{.key = cast(u64)8,
+            .bounds = .{104.0, 220.0, 18.0, 18.0},
+            .fill = ifx enter_committed then ColorFromPacked(CurrentTheme().colors.accent)
+            else ColorFromPacked(CurrentTheme().colors.background)})
+    Text(session, TextProps.{.key = cast(u64)9,
+            .bounds = .{16.0, 306.0, 104.0, 28.0},
+            .text = "Clipped text stays inside its bounds", .font = AppFont(),
+            .wrap = cast(TextWrap)TextWrapEllipsis})
+    return 0
+}

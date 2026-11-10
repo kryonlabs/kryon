@@ -2,7 +2,7 @@
 #import "app_protocol"
 #import "app_theme"
 #import "drawing_props"
-#import "tile_map"
+#import "tilemap"
 #import "geometry"
 #import "vec"
 

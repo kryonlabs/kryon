@@ -2,11 +2,11 @@
 #import "widget_test_session"
 
 #import "geometry"
-#import "layout_widget"
+#import "layout"
 #import "layout_props"
 #import "paint_queue"
 #import "semantic"
-#import "text_field_widget"
+#import "textfield"
 #import "text_input"
 #import "key_input"
 #import "text_input_props"

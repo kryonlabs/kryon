@@ -1,5 +1,5 @@
-#import "grid_multi_widget"
-#import "grid_multi"
+#import "gridmulti"
+#import "grid_multi_behavior"
 #import "grid_multi_props"
 #import "widget_test_session"
 #import "tree"

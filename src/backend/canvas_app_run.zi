@@ -19,7 +19,9 @@ using Host :: #import "Canvas";
 #import "tree_input"
 #import "scroll_device"
 #import "key_input"
+#import "canvas_events"
 #import "text_input_props"
+#import "theme"
 #import "app_protocol"
 #import "app_files"
 #import "bundle_storage_web"
@@ -55,6 +57,11 @@ canvas_app_unsaved: bool;
 // A page embedded with ?mini runs the app in mini mode.
 canvas_app_mini: bool;
 canvas_app_semantic_dom: bool;
+canvas_app_dark: bool;
+canvas_app_reduced_motion: bool;
+canvas_app_theme_changed: bool;
+canvas_app_theme_media: [2]s32;
+canvas_app_theme_functions: [2]s32;
 #program_export
 AppModeHost :: () -> s32 { return canvas_app_mode }
 
@@ -77,18 +84,76 @@ AppSessionHost :: () -> Session { return canvas_app_session }
 #program_export
 AppBoundsHost :: () -> Rectangle { return canvas_app_bounds }
 #program_export
-AppDarkHost :: () -> bool { return false }
+AppDarkHost :: () -> bool { return canvas_app_dark }
 #program_export
-AppScaleHost :: () -> float32 { return 1.0 }
+AppScaleHost :: () -> float32 { return cast(float32)PageDpi() }
 #program_export
-AppFontHost :: () -> s32 { return 18 }
+AppFontHost :: () -> s32 { return cast(s32)CurrentTheme().metrics.text_body }
 #program_export
 AppKeyHost :: () -> s32 { return canvas_app_key }
 #program_export
 AppModifiersHost :: () -> s32 { return canvas_app_modifiers }
+
+CanvasAppFieldInput :: () -> TextFieldInput {
+    input := TextFieldInputFor(canvas_app_key, canvas_app_modifiers,
+        TextView(canvas_app_typed[:canvas_app_typed_length]))
+    composition := CanvasCompositionFrame()
+    input.composition_event = composition
+    return input
+}
+
+CanvasAppThemeMatches :: (query: string) -> bool {
+    media := WebAsObject(WebCall1(WebGlobal, WebName("matchMedia"), WebText(query)))
+    return media != 0 && WebAsBool(WebGet(media, WebName("matches")))
+}
+
+CanvasAppThemeChanged :: (context: s32, first: s32, second: s32, third: s32) {
+    unused first
+    unused second
+    unused third
+    scope := WebScope()
+    if context == 0 {
+        canvas_app_dark = CanvasAppThemeMatches("(prefers-color-scheme: dark)")
+    } else {
+        canvas_app_reduced_motion = CanvasAppThemeMatches("(prefers-reduced-motion: reduce)")
+    }
+    canvas_app_theme_changed = true
+    WebEnd(scope)
+}
+
+CanvasAppThemeWatch :: (query: string, context: s32) -> bool {
+    scope := WebScope()
+    media := WebAsObject(WebCall1(WebGlobal, WebName("matchMedia"), WebText(query)))
+    matches := media != 0 && WebAsBool(WebGet(media, WebName("matches")))
+    if media != 0 && canvas_app_theme_functions[context] == 0 {
+        function := WebFunction(CanvasAppThemeChanged, context)
+        canvas_app_theme_functions[context] = function
+        canvas_app_theme_media[context] = WebKeep(media)
+        unused WebCall2(media, WebName("addEventListener"), WebText("change"),
+            WebObject(function))
+    }
+    WebEnd(scope)
+    return matches
+}
+
+CanvasAppThemeApply :: () {
+    unused InstallDefaultTheme(canvas_app_dark, canvas_app_reduced_motion)
+}
+
+CanvasAppThemeClose :: () {
+    scope := WebScope()
+    for index: cast(s32)0..1 {
+        if canvas_app_theme_media[index] != 0 { WebRelease(canvas_app_theme_media[index]) }
+        if canvas_app_theme_functions[index] != 0 { WebRelease(canvas_app_theme_functions[index]) }
+        canvas_app_theme_media[index] = 0
+        canvas_app_theme_functions[index] = 0
+    }
+    WebEnd(scope)
+}
+
 #program_export
 AppFieldInputHost :: () -> TextFieldInput {
-    return TextFieldInput.{.text = TextView(canvas_app_typed[:canvas_app_typed_length])}
+    return CanvasAppFieldInput()
 }
 #program_export
 AppKeyboardHost :: (visible: bool) { unused visible }
@@ -171,8 +236,8 @@ CanvasAppFrame :: (session: Session, viewport: Rectangle) -> bool {
     canvas_app_mode = APP_FRAME
     canvas_app_session = session
     canvas_app_bounds = viewport
-    replacement := CanvasAppExtensionFrame(session, viewport, canvas_app_key, canvas_app_modifiers,
-        TextFieldInputFor(canvas_app_key, canvas_app_modifiers, TextView(canvas_app_typed[:canvas_app_typed_length])))
+    replacement := CanvasAppExtensionFrame(session, viewport, canvas_app_key,
+        canvas_app_modifiers, CanvasAppFieldInput())
     if replacement < 0 { EndCanvasFrame(); return false }
     if replacement == 0 { unused CanvasAppMain() }
     commit_status: FrameStatus
@@ -203,9 +268,12 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
     }
     page_native_dom = semantic_dom
     canvas_app_mode = APP_IDENTIFY
-    query: [512]u8
-    PageRouteReadQuery(query[:])
-    canvas_app_mini = MiniModeQuery(TextUntilNul(query[:]))
+    canvas_app_dark = CanvasAppThemeWatch("(prefers-color-scheme: dark)", 0)
+    canvas_app_reduced_motion = CanvasAppThemeWatch("(prefers-reduced-motion: reduce)", 1)
+    CanvasAppThemeApply()
+    route_query: [512]u8
+    PageRouteReadQuery(route_query[:])
+    canvas_app_mini = MiniModeQuery(TextUntilNul(route_query[:]))
     if CanvasAppMain() != APP_PROTOCOL || canvas_app_id_length == 0 {
         CloseCanvas()
         return CanvasAppError("kryon: the compiled app did not identify itself")
@@ -221,6 +289,10 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
     last_saved: float64 = 0.0
     ok: bool = true
     while ok && PollCanvas() {
+        if canvas_app_theme_changed {
+            canvas_app_theme_changed = false
+            CanvasAppThemeApply()
+        }
         // Saves are read only once IndexedDB has filled their folder.
         if !files_open {
             // IndexedDB answers between frames, so the wait yields.
@@ -270,6 +342,7 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
     AppFilesClose(*canvas_app_files)
     CloseSession(session)
     if semantic_dom { DomPaintClose(); DomClose() }
+    CanvasAppThemeClose()
     CloseCanvas()
     if ok { return 0 }
     return CanvasAppError("kryon: the compiled app's frame failed")

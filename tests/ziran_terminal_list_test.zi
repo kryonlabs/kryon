@@ -1,4 +1,4 @@
-#import "terminal_list"
+#import "terminallist"
 
 #program_export
 SelfTest :: () -> s32 {

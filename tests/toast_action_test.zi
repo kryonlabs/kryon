@@ -1,0 +1,71 @@
+#import "kryon/widget_kind"
+#import "kryon/Widgets"
+#import "kryon/tree_input"
+#import "kryon/paint_queue"
+#import "ziran_test_driver_host"
+
+SubmitToast :: (session: Session, props: ToastProps) -> ToastResult {
+    PaintClear(session)
+    TreeStart(session, cast(u64)1, props.viewport)
+    result := Toast(session, props)
+    if !TreeFinish(session) { result.visible = false }
+    return result
+}
+
+main :: () -> s32 {
+    session := SessionOpen()
+    props: ToastProps = .{.key = cast(u64)17,
+        .viewport = Rectangle.{0.0, 0.0, 320.0, 200.0},
+        .message = "Photo saved", .action_label = "Open", .seconds = 5.0,
+        .now_seconds = 1.0}
+    first := SubmitToast(session, props)
+    if !first.visible || first.action_clicked || TreeCount(session) != 3 ||
+        first.state.action_label != "Open" { return 1 }
+    action := TreeNodeAt(session, 2)
+    if action.kind != cast(s32)WidgetKind.WidgetKindButton || action.parent != first.node ||
+        !action.interactive || action.semantic_label != "Open" ||
+        action.bounds.x < first.bounds.x || action.bounds.y < first.bounds.y ||
+        action.bounds.x + action.bounds.width > first.bounds.x + first.bounds.width ||
+        action.bounds.y + action.bounds.height > first.bounds.y + first.bounds.height { return 2 }
+    props.message = ""
+    props.action_label = ""
+    props.state = first.state
+    // A quick click can be pressed and released between two submissions.
+    TreePointerUpdate(session, PointerFrame.{action.bounds.x + 1.0,
+        action.bounds.y + 1.0, false, true, true})
+    clicked := SubmitToast(session, props)
+    if !clicked.action_clicked || clicked.state.action_label != "Open" { return 3 }
+    if SubmitToast(session, props).action_clicked { return 4 }
+    // The actual Button participates in Tab, Enter and Space navigation.
+    unused KeyboardSend(session, KeyTab)
+    if !TreeKeyboardRoute(session) || !TreeFocusedAt(session, 2) { return 5 }
+    unused KeyboardSend(session, KeyEnter)
+    if !TreeKeyboardRoute(session) || !SubmitToast(session, props).action_clicked { return 6 }
+    if SubmitToast(session, props).action_clicked { return 7 }
+    unused KeyboardSend(session, 32)
+    if !TreeKeyboardRoute(session) || !SubmitToast(session, props).action_clicked { return 8 }
+    props.message = "Passive replacement"
+    passive := SubmitToast(session, props)
+    if !passive.visible || passive.action_clicked || passive.state.action_label != "" ||
+        TreeCount(session) != 2 { return 9 }
+    props.message = "Photo saved"
+    props.action_label = "Open"
+    restored := SubmitToast(session, props)
+    props.message = ""
+    props.state = restored.state
+    props.now_seconds = 6.0
+    expired := SubmitToast(session, props)
+    if expired.visible || expired.action_clicked || expired.state.action_label != "" ||
+        TreeCount(session) != 1 { return 10 }
+    props.message = "Photo saved"
+    props.now_seconds = 7.0
+    restored = SubmitToast(session, props)
+    props.message = ""
+    props.state = restored.state
+    props.clear = true
+    cleared := SubmitToast(session, props)
+    if cleared.visible || cleared.action_clicked || cleared.state.action_label != "" ||
+        TreeCount(session) != 1 { return 11 }
+    SessionClose(session)
+    return 0
+}

@@ -1,0 +1,192 @@
+#import "drawing_props"
+#import "control_props"
+#import "font_metrics"
+#import "geometry"
+#import "semantic"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "theme"
+#import "tooltip_props"
+#import "tooltip_common"
+#import "tree"
+#import "widget_kind"
+
+using SemanticKind;
+using ButtonState;
+using StyleField;
+using WidgetKind;
+
+#program_export
+TooltipInstalledFaceFor :: (props: TooltipProps, state: s32) -> StyleData {
+    kind := StyleKindPopup()
+    facts := StyleControlRoleFacts(kind, props.id, props.class_name,
+        StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
+    return ResolveInstalledStyleRules(TooltipDefaultStyle(), facts, state)
+}
+
+#program_export
+TooltipApply :: (state: *TooltipState, props: TooltipProps) -> TooltipResult {
+    result: TooltipResult
+    result.node = -1
+    result.text_node = -1
+    result.fit.placement = props.placement
+    if state == null || props.disabled || props.text.count == 0 {
+        if state != null && state.visible {
+            state.visible = false
+            result.changed = true
+        }
+        return result
+    }
+
+    result.truncated = props.only_when_truncated &&
+        cast(float32)props.measured_text_width > props.anchor.width
+    if props.only_when_truncated && !result.truncated {
+        if state.visible { state.visible = false; result.changed = true }
+        return result
+    }
+    active := props.pointer.over_anchor || props.focus.anchor_focused
+    passive := props.passive
+    if active && (props.pointer.pressed || props.pointer.touch) && !props.focus.anchor_focused {
+        active = false
+    }
+    if active && state.anchor_key != props.key {
+        state.anchor_key = props.key
+        state.enter_ms = props.now_ms
+    } else if active && state.enter_ms < 0 {
+        state.enter_ms = props.now_ms
+    }
+    if !active {
+        state.anchor_key = cast(u64)0
+        state.enter_ms = -1
+    }
+
+    result.warm = cast(float32)(props.now_ms - state.last_shown_ms) < props.warm_ms
+    delay := props.delay_ms
+    if passive { delay = props.passive_delay_ms }
+    if result.warm { delay = 0.0 }
+    if props.focus.anchor_focused && !props.pointer.touch { delay = 0.0 }
+    elapsed := props.now_ms - state.enter_ms
+    if active && state.enter_ms >= 0 && cast(float32)elapsed >= delay {
+        state.visible = true
+        state.passive = passive
+    } else if !active {
+        state.visible = false
+        state.passive = false
+    }
+    if active && state.enter_ms >= 0 && cast(float32)elapsed < delay {
+        result.remaining_delay_ms = delay - cast(float32)elapsed
+    }
+    before := state.shown_key
+    if state.visible { state.shown_key = props.key; state.last_shown_ms = props.now_ms }
+    result.visible = state.visible
+    result.changed = before != state.shown_key || result.warm
+    return result
+}
+
+#program_export
+TooltipMeasure :: (props: TooltipProps, style: StyleData) -> Rectangle {
+    font := ResolveFont(0, StyleFontValue(style.fields, style.font_size), 12)
+    text_width := GlyphWidth(props.text, font, style.typeface)
+    shortcut_width := 0
+    if props.shortcut.count > 0 {
+        shortcut_width = GlyphWidth(props.shortcut, font, style.typeface) + 26
+    }
+    width := cast(float32)(text_width + shortcut_width) + style.padding_x * 2.0
+    if style.gap > 0.0 && shortcut_width > 0 { width += style.gap }
+    max_width := props.max_width
+    if max_width <= 0.0 { max_width = 280.0 }
+    if width > max_width { width = max_width }
+    line_height := GlyphLineHeight(font, style.typeface)
+    height := cast(float32)line_height + style.padding_y * 2.0
+    return Rectangle.{0.0, 0.0, width, height}
+}
+
+TooltipHostedReply :: struct {
+    state: TooltipState
+    result: TooltipResult
+}
+#if #defined(KRYON_HOSTED_UI) {
+    tooltip_host_api :: #system_library "host_api";
+    TooltipHostedHost :: (session: Session, props: TooltipProps, state: TooltipState) -> TooltipHostedReply #foreign tooltip_host_api;
+    #program_export
+    Tooltip :: (session: Session, props: TooltipProps,
+    state: *TooltipState) -> TooltipResult {
+        reply := TooltipHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #import "paint_queue"
+    #program_export
+    Tooltip :: (session: Session, props: TooltipProps,
+    state: *TooltipState) -> TooltipResult { return TooltipCore(session, props, state, true) }
+    #program_export
+TooltipCore :: (session: Session, props: TooltipProps,
+    state: *TooltipState, effects: bool) -> TooltipResult {
+    unused effects
+    result := TooltipApply(state, props)
+    if !result.visible || !SessionValid(session) || !TreeIsBuilding(session) {
+        return result
+    }
+    face := MergeValues(ResolveValues(TooltipInstalledFaceFor(props,
+        ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.states, ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal), props.style)
+    measured := TooltipMeasure(props, face)
+    gap := props.gap
+    if gap <= 0.0 { gap = 6.0 }
+    result.fit = OverlayFitPlacement(props.anchor, measured.width,
+        measured.height, gap, props.placement, props.viewport, 4.0)
+    result.bounds = result.fit.bounds
+    result.clipped = result.fit.clamped || result.fit.flipped
+    if !result.fit.visible { result.visible = false; return result }
+
+    key := props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    result.node = TreeSubmitCurrent(session, WidgetPartKey(key, 1),
+        WidgetKindBox, result.bounds)
+    if result.node < 0 { return result }
+    TreeSetPopup(session, result.node)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    opacity := OverlayStyleOpacity(face)
+    PaintRoundedFill(session, result.node, result.bounds, face.radius, 8,
+        ColorFromPacked(Opacity(face.background, opacity)))
+    if face.border != cast(u32)0 {
+        PaintRoundedOutline(session, result.node, result.bounds, face.radius,
+            8, face.border_width, ColorFromPacked(Opacity(face.border, opacity)))
+    }
+
+    result.text_node = TreeSubmitCurrent(session, WidgetPartKey(key, 2),
+        WidgetKindText, result.bounds)
+    if result.text_node >= 0 {
+        TreeSetPopup(session, result.text_node)
+        TreeSetStyleClass(session, result.text_node, props.class_name)
+        TreeSetStyleId(session, result.text_node, props.id)
+        TreeSetSemantic(session, result.text_node, cast(SemanticKind)SemanticNone, 0)
+        TreeSetLabel(session, result.text_node, props.text)
+        font := ResolveFont(0, StyleFontValue(face.fields, face.font_size), 12)
+        line_height := GlyphLineHeight(font, face.typeface)
+        text_x := cast(s32)(result.bounds.x + face.padding_x)
+        text_y := cast(s32)(result.bounds.y + (result.bounds.height -
+            cast(float32)line_height) * 0.5)
+        color := ColorFromPacked(Opacity(face.foreground, opacity))
+        PaintClippedLabel(session, result.text_node, props.text, text_x,
+            text_y, font, color, result.bounds)
+        if props.shortcut.count > 0 {
+            shortcut_bounds := Rectangle.{
+                result.bounds.x + result.bounds.width - face.padding_x - 24.0,
+                result.bounds.y + 3.0, 20.0, result.bounds.height - 6.0}
+            PaintRoundedFill(session, result.text_node, shortcut_bounds, 4.0,
+                4, ColorFromPacked(Opacity(face.foreground, opacity * 0.14)))
+            PaintClippedLabel(session, result.text_node, props.shortcut,
+                cast(s32)(shortcut_bounds.x + 3.0), text_y, font, color,
+                shortcut_bounds)
+        }
+    }
+    return result
+}
+}
+
+

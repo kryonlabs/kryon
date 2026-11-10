@@ -5,7 +5,7 @@
 #import "geometry"
 #import "paint_queue"
 #import "system_clipboard"
-#import "text_area_widget"
+#import "textarea"
 #import "text_input_props"
 #import "tree"
 #import "tree_input"

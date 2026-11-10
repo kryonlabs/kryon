@@ -4,7 +4,7 @@
 #import "control_props"
 #import "geometry"
 #import "modal_props"
-#import "modal_widget"
+#import "modal"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"

@@ -1,0 +1,215 @@
+#import "box_props"
+#import "box"
+#import "button_props"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "semantic"
+#import "style"
+#import "style_sheet"
+#import "svg_icon_props"
+#import "svgicon"
+#import "text_align"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using WidgetKind;
+using SemanticKind;
+
+BannerTone :: enum {
+    BannerToneAccent :: 0
+    BannerToneNeutral :: 1
+    BannerToneSuccess :: 2
+    BannerToneWarning :: 3
+    BannerToneDanger :: 4
+}
+
+BannerState :: struct {
+    open: bool
+    measured_height: float32
+    collapse_progress: float32
+}
+
+BannerProps :: struct {
+    key: u64
+    bounds: Rectangle
+    text: string
+    tone: BannerTone
+    icon_shape: string
+    action: string
+    dismissible: bool
+    dismiss_label: string
+    disabled: bool
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+}
+
+BannerLayout :: struct {
+    bounds: Rectangle
+    icon: Rectangle
+    text: Rectangle
+    action: Rectangle
+    dismiss: Rectangle
+    underline: Rectangle
+    stacked: bool
+}
+
+BannerResult :: struct {
+    state: BannerState
+    visible: bool
+    action: bool
+    dismissed: bool
+    node: s32
+    layout: BannerLayout
+    tone_color: u32
+}
+
+#program_export
+BannerStateFor :: (open: bool) -> BannerState {
+    return BannerState.{.open = open, .measured_height = 0.0,
+        .collapse_progress = ifx open then 1.0 else 0.0}
+}
+
+#program_export
+BannerAdvance :: (state: *BannerState, elapsed_seconds: float32,
+    reduced_motion: bool) -> bool {
+    if elapsed_seconds < 0.0 { return false }
+    target: float32 = ifx state.open then 1.0 else 0.0
+    if reduced_motion || elapsed_seconds >= 0.2 {
+        state.collapse_progress = target
+        return true
+    }
+    state.collapse_progress += elapsed_seconds / 0.2
+    if state.collapse_progress > target { state.collapse_progress = target }
+    if state.collapse_progress < target { state.collapse_progress = target }
+    return state.collapse_progress == target
+}
+
+#program_export
+BannerToneColor :: (tone: BannerTone) -> u32 {
+    if tone == .BannerToneNeutral { return CurrentPalette().text_secondary }
+    if tone == .BannerToneSuccess { return CurrentSuccess() }
+    if tone == .BannerToneWarning { return CurrentWarning() }
+    if tone == .BannerToneDanger { return CurrentDanger() }
+    return CurrentAccent()
+}
+
+#program_export
+BannerLayoutFor :: (props: BannerProps) -> BannerLayout {
+    layout: BannerLayout
+    layout.bounds = props.bounds
+    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return layout }
+    layout.underline = Rectangle.{props.bounds.x, props.bounds.y + props.bounds.height - 1.0,
+        props.bounds.width, 1.0}
+    left := props.bounds.x + 16.0
+    right := props.bounds.x + props.bounds.width - 9.0
+    if props.dismissible { right -= 34.0 }
+    cursor := left
+    if props.icon_shape != "" {
+        layout.icon = Rectangle.{cursor, props.bounds.y + (props.bounds.height - 16.0) * 0.5,
+            16.0, 16.0}
+        cursor += 26.0
+    }
+    action_width: float32 = ifx props.action != "" then 96.0 else 0.0
+    layout.stacked = props.action != "" && right - cursor < 170.0 + action_width
+    if layout.stacked {
+        text_height := (props.bounds.height - 18.0) * 0.5
+        layout.text = Rectangle.{cursor, props.bounds.y + 8.0,
+            right - cursor, text_height}
+        layout.action = Rectangle.{cursor, layout.text.y + text_height + 2.0,
+            action_width, 26.0}
+    } else {
+        layout.text = Rectangle.{cursor, props.bounds.y + (props.bounds.height - 17.0) * 0.5,
+            right - cursor - action_width - (ifx props.action != "" then 10.0 else 0.0), 17.0}
+        layout.action = Rectangle.{layout.text.x + layout.text.width + 10.0,
+            props.bounds.y + (props.bounds.height - 26.0) * 0.5, action_width, 26.0}
+    }
+    if props.dismissible {
+        layout.dismiss = Rectangle.{right + 10.0,
+            props.bounds.y + (props.bounds.height - 24.0) * 0.5, 24.0, 24.0}
+    }
+    return layout
+}
+
+#program_export
+Banner :: (session: Session, props: BannerProps,
+    state: *BannerState) -> BannerResult {
+    result: BannerResult
+    result.state = state.*
+    if !state.open || state.collapse_progress <= 0.002 { return result }
+    layout := BannerLayoutFor(props)
+    result.layout = layout
+    result.tone_color = BannerToneColor(props.tone)
+    result.visible = true
+    if !SessionValid(session) || !TreeIsBuilding(session) ||
+    props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+    dark := CurrentTheme().dark
+    tone_percent: u32 = ifx dark then cast(u32)16 else cast(u32)9
+    if props.tone == .BannerToneNeutral { tone_percent = ifx dark then cast(u32)10 else cast(u32)5 }
+    background := StateLayer(CurrentSurface(), result.tone_color, tone_percent)
+    root_bounds := props.bounds
+    if state.collapse_progress < 0.999 && state.measured_height > 0.0 {
+        root_bounds.height = state.measured_height * state.collapse_progress
+    }
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup, root_bounds)
+    if result.node < 0 { return result }
+    TreeSetChildClip(session, result.node, root_bounds)
+    TreeSetLabel(session, result.node, props.text)
+    TreeSetSemantic(session, result.node, .SemanticSection, 0)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    if !TreePushScope(session, result.node) { return result }
+    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 0),
+        .bounds = props.bounds, .id = props.id, .class_name = props.class_name,
+        .fill = ColorFromPacked(background), .radius = 0.0})
+    if props.icon_shape != "" {
+        unused SvgIcon(session, SvgIconProps.{.bounds = layout.icon,
+            .shape = props.icon_shape, .color = ColorFromPacked(result.tone_color)})
+    }
+    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 1),
+        .bounds = layout.text, .text = props.text, .font = Text12,
+        .id = props.id, .class_name = props.class_name,
+        .align = ifx layout.stacked then TextAlign.TextAlignStart else TextAlign.TextAlignStart,
+        .wrap = TextWrap.TextWrapAnywhere})
+    if props.action != "" {
+        clicked := Button(session, ButtonProps.{
+            .key = WidgetPartKey(props.key, 2), .bounds = layout.action,
+            .label = props.action, .disabled = props.disabled,
+            .id = props.id, .class_name = props.class_name,
+            .style_kind = StyleKindButton(), .emphasis = .ButtonEmphasisLink,
+            .size = .ControlSizeSmall})
+        result.action = !props.disabled && clicked == 1
+    }
+    if props.dismissible {
+        label := ifx props.dismiss_label != "" then props.dismiss_label else "Dismiss"
+        dismissed := Button(session, ButtonProps.{
+            .key = WidgetPartKey(props.key, 3), .bounds = layout.dismiss,
+            .label = label, .disabled = props.disabled, .icon_only = true, .circle = true,
+            .icon_shape = "S1.8rr:M6 6L18 18M18 6L6 18",
+            .id = props.id, .class_name = props.class_name,
+            .style_kind = StyleKindButton(), .emphasis = .ButtonEmphasisGhost,
+            .size = .ControlSizeSmall})
+        if !props.disabled && dismissed == 1 {
+            state.open = false
+            state.collapse_progress = 0.0
+            result.dismissed = true
+            result.visible = false
+            result.state = state.*
+        }
+    }
+    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 4),
+        .bounds = layout.underline, .id = props.id, .class_name = props.class_name,
+        .fill = ColorFromPacked(StateLayer(CurrentBorder(), result.tone_color, 25)), .radius = 0.0})
+    state.measured_height = props.bounds.height
+    result.state = state.*
+    unused TreePopScope(session)
+    return result
+}

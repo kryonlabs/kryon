@@ -6,7 +6,7 @@ unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 work="$repo/build/scratch/hosted-names"
 mkdir -p "$work/c"
 "$ziran" build --target=c --no-main --entry hosted_names_test:Check --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+    $kryon_ui_args --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
     -o "$work/c" "$repo/tests/hosted_names_test.zi"
 cat > "$work/c/main.c" <<'C'
 #include "hosted_names_test.h"

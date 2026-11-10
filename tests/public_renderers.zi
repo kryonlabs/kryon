@@ -1,0 +1,131 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/paint_queue"
+#import "kryon/tree_draw"
+#import "kryon/tree"
+#import "kryon/tree_input"
+#import "kryon/widget_kind"
+#import "cui_overlays_raster_host"
+
+#program_export
+Probe :: () -> s32 {
+    session := SessionOpen()
+    if !CuiOverlaysRasterBegin() { return 5 }
+    CuiOverlaysRasterReset()
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 640.0, 480.0})
+    countdown: CountdownState
+    ring: ProgressRingState
+    clock := Countdown(session, CountdownProps.{.key = cast(u64)2,
+        .bounds = .{10.0, 10.0, 320.0, 80.0}, .seconds_left = 3661.0}, *countdown)
+    empty := EmptyState(session, EmptyStateProps.{.key = cast(u64)3,
+        .bounds = .{10.0, 110.0, 320.0, 260.0}, .title = "No items",
+        .description = "Add an item to begin", .action = "Add item"})
+    progress := ProgressRing(session, ProgressRingProps.{.key = cast(u64)4,
+        .bounds = .{360.0, 10.0, 120.0, 150.0}, .value = 0.5}, *ring)
+    if clock.node <= 0 || empty.node <= clock.node || progress.node <= empty.node { return 1 }
+    if clock.parts.hours != 1 || clock.parts.minutes != 1 || clock.parts.seconds != 1 { return 2 }
+    if progress.value != 0.5 || progress.sweep_degrees != 360.0 { return 3 }
+    if PendingPaintCount(session) <= 0 { return 4 }
+    if cast(s32)EndFrame(session) != 0 { return 6 }
+    if CuiOverlaysRasterCalls() <= 0 || CuiOverlaysRasterFailed() { return 7 }
+    result := DisabledActions(session)
+    if result != 0 { return result }
+    CuiOverlaysRasterClose()
+    TreeDispose(session)
+    unused SessionClose(session)
+    return 0
+}
+
+ActionFrame :: (session: Session, disabled: bool, state: *BannerState) -> s32 {
+    CuiOverlaysRasterReset()
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 480.0, 360.0})
+    empty := EmptyState(session, EmptyStateProps.{.key = cast(u64)3,
+        .bounds = .{10.0, 0.0, 320.0, 260.0}, .title = "No items",
+        .description = "Add an item to begin", .action = "Add item", .disabled = disabled})
+    banner := Banner(session, BannerProps.{.key = cast(u64)8,
+        .bounds = .{10.0, 280.0, 460.0, 60.0}, .text = "Connection lost",
+        .action = "Retry", .dismissible = true, .disabled = disabled}, state)
+    if PendingPaintCount(session) <= 0 || cast(s32)EndFrame(session) != 0 { return -1 }
+    if CuiOverlaysRasterCalls() <= 0 || CuiOverlaysRasterFailed() { return -2 }
+    return (ifx empty.action then 1 else 0) | (ifx banner.action then 2 else 0) |
+        (ifx banner.dismissed then 4 else 0)
+}
+
+ActionAt :: (session: Session, label: string) -> s32 {
+    for index: 0..TreeCount(session) - 1 {
+        if TreeNodeAt(session, index).semantic_label == label { return index }
+    }
+    return -1
+}
+
+ClickAction :: (session: Session, label: string) -> bool {
+    index := ActionAt(session, label)
+    if index < 0 { return false }
+    bounds := TreeNodeAt(session, index).bounds
+    x := bounds.x + bounds.width / 2.0
+    y := bounds.y + bounds.height / 2.0
+    TreePointerUpdate(session, PointerFrame.{x, y, true, true, false})
+    TreePointerUpdate(session, PointerFrame.{x, y, false, false, true})
+    return true
+}
+
+DisabledActions :: (session: Session) -> s32 {
+    state := BannerStateFor(true)
+    labels: [3]string
+    labels[0] = "Add item"; labels[1] = "Retry"; labels[2] = "Dismiss"
+    if ActionFrame(session, false, *state) != 0 { return 10 }
+    enabled_hash := CuiOverlaysRasterHash()
+    for control: 0..2 {
+        // A retained enabled click must be consumed and rejected by new disabled props.
+        if !ClickAction(session, labels[control]) { return 11 }
+        if ActionFrame(session, true, *state) != 0 || !state.open { return 12 }
+        for item: 0..2 {
+            index := ActionAt(session, labels[item])
+            if index < 0 { return 13 }
+            node := TreeNodeAt(session, index)
+            if !node.interactive || !node.disabled || node.semantic_label != labels[item] ||
+                node.kind != cast(s32)WidgetKind.WidgetKindButton { return 14 }
+            if TreeFocusAt(session, index) { return 15 }
+            x := node.bounds.x + node.bounds.width / 2.0
+            y := node.bounds.y + node.bounds.height / 2.0
+            if TreeHitAt(session, x, y) != -1 { return 16 }
+        }
+        if CuiOverlaysRasterHash() == enabled_hash { return 17 }
+        if !ClickAction(session, labels[control]) { return 18 }
+        unused KeyboardSend(session, KeyEnter)
+        if ActionFrame(session, true, *state) != 0 { return 19 }
+        unused KeyboardSend(session, 32)
+        if ActionFrame(session, true, *state) != 0 || !state.open { return 20 }
+        // Reenable without replaying any rejected input.
+        if ActionFrame(session, false, *state) != 0 { return 21 }
+        index := ActionAt(session, labels[control])
+        if index < 0 || TreeNodeAt(session, index).disabled { return 22 }
+        if !ClickAction(session, labels[control]) { return 23 }
+        if ActionFrame(session, false, *state) != (1 << control) { return 24 }
+        state = BannerStateFor(true)
+        if ActionFrame(session, false, *state) != 0 { return 25 }
+        if !FocusAction(session, *state, labels[control]) { return 26 }
+        unused KeyboardSend(session, KeyEnter)
+        if ActionFrame(session, true, *state) != 0 || !state.open { return 27 }
+        if ActionFrame(session, false, *state) != 0 { return 28 }
+        if !FocusAction(session, *state, labels[control]) { return 29 }
+        unused KeyboardSend(session, KeyEnter)
+        if ActionFrame(session, false, *state) != (1 << control) { return 30 }
+        state = BannerStateFor(true)
+        if ActionFrame(session, false, *state) != 0 { return 31 }
+        if !FocusAction(session, *state, labels[control]) { return 32 }
+        unused KeyboardSend(session, 32)
+        if ActionFrame(session, false, *state) != (1 << control) { return 33 }
+        state = BannerStateFor(true)
+        if ActionFrame(session, false, *state) != 0 { return 34 }
+    }
+    return 0
+}
+
+#program_export
+main :: () -> s32 { return Probe() }
+
+FocusAction :: (session: Session, state: *BannerState, label: string) -> bool {
+    unused KeyboardSend(session, KeyTab)
+    if ActionFrame(session, false, state) != 0 { return false }
+    return TreeFocusAt(session, ActionAt(session, label))
+}

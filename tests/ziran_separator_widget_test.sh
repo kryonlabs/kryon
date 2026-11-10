@@ -10,9 +10,9 @@ set -- \
     --bind font_metrics:MeasureGlyphWidth=separator_widget_host:MeasureGlyphWidth \
     --bind raster_shape:RasterRoundedRectangle=separator_widget_host:RasterRoundedRectangle
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$portable"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     "$@" --entry separator_widget_portable_test:main \
     -o "$work/source.zx" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
@@ -117,7 +117,7 @@ C
 for target in c go; do
     output=$work/native-$target
     "$ziran" build --target="$target" --root "$repo/tests" \
-        --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$output" "$native"
+        $kryon_ui_args --module-path "$ziran_root/std" -o "$output" "$native"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \

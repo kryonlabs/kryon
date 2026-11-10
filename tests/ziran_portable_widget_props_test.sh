@@ -4,22 +4,22 @@
 cat > "$work/app.zi" <<'EOF'
 #import "button_props"
 #import "drawing_props"
-#import "fieldset"
+#import "fieldset_behavior"
 #import "fieldset_props"
 #import "geometry"
-#import "link"
+#import "link_behavior"
 #import "link_props"
-#import "progress"
+#import "progress_behavior"
 #import "progress_props"
-#import "radio"
+#import "radio_behavior"
 #import "radio_props"
 #import "router_props"
-#import "separator"
+#import "separator_behavior"
 #import "separator_props"
 #import "style"
 #import "text_behavior"
 #import "text_props"
-#import "toast"
+#import "toast_behavior"
 #import "toast_props"
 
 using TextWrap;
@@ -99,9 +99,9 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry app:Answer -o "$work/source.zx" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zx" "$work/ir/app.zir"
@@ -112,15 +112,15 @@ test "$("$ziran" run "$work/saved.zx")" = 42
 for input in source saved; do
     if test "$input" = source; then
         module=$work/app.zi
-        module_dir=$repo/src/ui
+        module_dir="$kryon_ui_args"
     else
         module=$work/ir/app.zir
-        module_dir=$work/ir
+        module_dir="--module-path $work/ir"
     fi
     for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --root "$work" \
-            --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" "$module"
+            $module_dir --module-path "$ziran_root/std" -o "$output" "$module"
         if test "$target" = c; then
             cat > "$output/main.c" <<'C'
 #include "app.h"

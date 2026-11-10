@@ -1,14 +1,15 @@
 Theme :: #import "theme";
+Math :: #import "std/math";
 // A system palette colors buttons by tone and keeps their emphasis: accent
 // takes the selection color, ghost and outline buttons stay transparent.
 #import "system_theme"
 #import "style_sheet"
 #import "style"
 #import "control_props"
-#import "scroll"
-#import "dropdown"
-#import "image"
-#import "modal"
+#import "scroll_behavior"
+#import "dropdown_behavior"
+#import "image_behavior"
+#import "modal_behavior"
 using ButtonTone;
 using ButtonEmphasis;
 using ButtonState;
@@ -16,6 +17,24 @@ using StyleField;
 
 failures: s32;
 Check :: (ok: bool, name: string) { if !ok { failures += 1; print("FAIL: %\n", name) } }
+
+Channel :: (color: u32, shift: u32) -> float64 {
+    value := cast(float64)((color >> shift) & cast(u32)255) / 255.0
+    if value <= 0.04045 { return value / 12.92 }
+    return Math.Pow((value + 0.055) / 1.055, 2.4)
+}
+
+RelativeLuminance :: (color: u32) -> float64 {
+    return 0.2126 * Channel(color, cast(u32)24) + 0.7152 * Channel(color, cast(u32)16) +
+        0.0722 * Channel(color, cast(u32)8)
+}
+
+ContrastRatio :: (first: u32, second: u32) -> float64 {
+    first_light := RelativeLuminance(first) + 0.05
+    second_light := RelativeLuminance(second) + 0.05
+    if first_light < second_light { return second_light / first_light }
+    return first_light / second_light
+}
 
 // The widget's own face, marked so an unchanged field is visible.
 Untouched :: 0x01020304
@@ -39,32 +58,46 @@ DropdownFace :: (role: s32, state: s32) -> StyleData {
 #program_export
 main :: () -> s32 {
     palette := SystemPaletteFallback(false)
-    palette.selected = CssPack(29, 185, 84, 255)
-    Check(SystemPaletteInstall(palette), "palette installs")
-    Check(Face(StyleKindButton(), ButtonToneNeutral, ButtonEmphasisFilled, 0).material == MaterialKind.MaterialFlat, "application palettes default to Material")
-    Check(SystemPaletteInstall(palette, false), "older saved widget choice is accepted")
-    Check(Face(StyleKindButton(), ButtonToneNeutral, ButtonEmphasisFilled, 0).material == MaterialKind.MaterialFlat, "older Classic choice still renders Material")
-    bg := palette.background; fg := palette.text
+    unused Theme.InstallDefaultTheme(false)
     button := StyleKindButton()
+    Check(SystemPaletteInstall(palette), "palette installs")
+    canonical_accent := Face(button, ButtonToneAccent, ButtonEmphasisFilled, 0)
+    canonical_success := Face(button, ButtonToneSuccess, ButtonEmphasisFilled, 0)
+    canonical_danger := Face(button, ButtonToneDanger, ButtonEmphasisFilled, 0)
+    Check(canonical_accent.background == palette.selected && ContrastRatio(canonical_accent.background, canonical_accent.foreground) >= 4.5,
+        "canonical light accent button text meets readable contrast")
+    Check(canonical_success.background == palette.success && ContrastRatio(canonical_success.background, canonical_success.foreground) >= 4.5,
+        "canonical light success button text meets readable contrast")
+    Check(canonical_danger.background == palette.danger && ContrastRatio(canonical_danger.background, canonical_danger.foreground) >= 4.5,
+        "canonical light danger button text meets readable contrast")
+    palette.selected = CssPack(29, 185, 84, 255)
+    Check(SystemPaletteInstall(palette), "updated application palette installs")
+    Check(Face(StyleKindButton(), ButtonToneNeutral, ButtonEmphasisFilled, 0).material == MaterialKind.MaterialFlat, "application palettes default to Material")
+    bg := palette.background; fg := palette.text
+    control_fill := Theme.StateLayer(palette.base, fg, cast(u32)5)
 
     plain := Face(button, ButtonToneNeutral, ButtonEmphasisFilled, 0)
-    Check(plain.background == CssMix(bg, palette.selected, 0.08) && plain.foreground == fg && plain.font_size == Theme.TypeLabel(), "plain buttons take the palette's button color")
+    Check(plain.background == control_fill && plain.foreground == fg && plain.font_size == Theme.TypeLabel(), "plain buttons take the palette's control fill")
     hover := Face(button, ButtonToneNeutral, ButtonEmphasisFilled, cast(s32)ButtonStateHover)
-    Check(hover.background == Theme.StateLayer(plain.background, fg, cast(u32)8), "plain buttons keep a hover color")
+    Check(hover.background == Theme.StateLayer(control_fill, fg, cast(u32)8), "plain buttons keep a hover color")
 
     accent := Face(button, ButtonToneAccent, ButtonEmphasisFilled, 0)
-    Check(accent.background == palette.selected && accent.foreground == palette.selected_text && accent.font_size == Theme.TypeLabel(), "accent buttons take the selection color")
+    accent_ink := Theme.OnColor(palette.selected)
+    Check(accent.background == palette.selected && accent.foreground == accent_ink && accent.font_size == Theme.TypeLabel(), "accent buttons take the selection color")
     pressed := Face(button, ButtonToneAccent, ButtonEmphasisFilled, cast(s32)ButtonStatePressed)
-    Check(pressed.background == Theme.StateLayer(palette.selected, palette.selected_text, cast(u32)12), "pressed uses twelve percent on-primary state layer")
+    Check(pressed.background == Theme.StateLayer(palette.selected, accent_ink, cast(u32)12), "pressed uses twelve percent on-primary state layer")
     tinted := Face(button, ButtonToneAccent, ButtonEmphasisGhost, cast(s32)ButtonStateHover)
     Check((tinted.background & cast(u32)255) == cast(u32)20, "transparent hover gains an eight percent tint")
-    Check(plain.radius == Theme.ShapeFull(), "filled buttons share full corners")
-    Check(Face(button, ButtonToneNeutral, ButtonEmphasisOutline, 0).radius == 8.0, "outlined actions retain compact stroke corners")
+    Check(plain.radius == Theme.ShapeMedium() && plain.min_height == Theme.ControlHeightFor(0) &&
+        plain.focus == palette.selected && plain.line_height == 20.0, "buttons carry canonical geometry, focus, and text metrics")
+    Check(Face(button, ButtonToneNeutral, ButtonEmphasisOutline, 0).radius == Theme.ShapeMedium(), "outlined actions share control corners")
     Check(rules_fit(), "palette rules remain within bounded capacity")
     success := Face(button, ButtonToneSuccess, ButtonEmphasisFilled, 0)
-    Check(success.background == palette.success, "success buttons take the palette's success color")
+    Check(success.background == palette.success && success.foreground == Theme.OnColor(palette.success) &&
+        ContrastRatio(success.background, success.foreground) >= 4.5, "success buttons keep readable palette colors")
     danger := Face(button, ButtonToneDanger, ButtonEmphasisFilled, 0)
-    Check(danger.background == palette.danger, "danger buttons take the palette's danger color")
+    Check(danger.background == palette.danger && danger.foreground == Theme.OnColor(palette.danger) &&
+        ContrastRatio(danger.background, danger.foreground) >= 4.5, "danger buttons keep readable palette colors")
 
     ghost := Face(button, ButtonToneNeutral, ButtonEmphasisGhost, 0)
     Check(ghost.background == cast(u32)Untouched && ghost.foreground == fg && ghost.font_size == Theme.TypeLabel(), "ghost buttons stay transparent with the text color")
@@ -76,7 +109,7 @@ main :: () -> s32 {
     Check(link.background == cast(u32)Untouched && link.foreground == fg, "link buttons keep no background")
 
     field := Face(StyleKindTextField(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
-    Check(field.background == CssMix(bg, palette.selected, 0.08) && field.font_size == Theme.TypeLabel(), "text fields keep the palette's field color")
+    Check(field.background == control_fill && field.font_size == Theme.TypeLabel(), "text fields keep the palette's control fill")
     Check(field.border == palette.border, "input borders use the subtle palette border")
     spin := Face(StyleKindSpinbox(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
     value := Face(StyleKindSpinboxValue(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
@@ -90,7 +123,20 @@ main :: () -> s32 {
     Check(CssLuminance(thumb.value.background) < CssLuminance(bg), "light scrollbar thumb contrasts with its page")
     Check(thumb.value.background != thumb_hover.value.background && thumb_hover.value.background != thumb_pressed.value.background, "scrollbar shows hover and drag feedback")
     dark := SystemPaletteFallback(true)
+    dark.selected_text = CssPack(147, 239, 208, 255)
     Check(SystemPaletteInstall(dark), "dark palette installs without a platform host")
+    dark_accent := Face(button, ButtonToneAccent, ButtonEmphasisFilled, 0)
+    dark_success := Face(button, ButtonToneSuccess, ButtonEmphasisFilled, 0)
+    dark_danger := Face(button, ButtonToneDanger, ButtonEmphasisFilled, 0)
+    Check(dark_accent.foreground == Theme.OnColor(dark.selected) &&
+        ContrastRatio(dark_accent.background, dark_accent.foreground) >= 4.5,
+        "dark filled accent ink ignores selection text when needed")
+    Check(dark_success.foreground == Theme.OnColor(dark.success) &&
+        ContrastRatio(dark_success.background, dark_success.foreground) >= 4.5,
+        "dark filled success text remains readable")
+    Check(dark_danger.foreground == Theme.OnColor(dark.danger) &&
+        ContrastRatio(dark_danger.background, dark_danger.foreground) >= 4.5,
+        "dark filled danger text remains readable")
     picture := Face(StyleKindImage(), ButtonToneNeutral, ButtonEmphasisFilled, 0)
     Check(picture.foreground == cast(u32)0xffffffff, "palette preserves bitmap and sprite colours")
     picture_facts := StyleDefaultFacts(StyleKindImage())
@@ -103,7 +149,7 @@ main :: () -> s32 {
     trigger := DropdownFace(0, 0)
     panel := DropdownFace(DropdownPanelRole(), 0)
     chosen_row := DropdownFace(DropdownOptionRole(), cast(s32)ButtonStateSelected)
-    Check(trigger.background == CssMix(dark.background, dark.selected, 0.08) && trigger.foreground == dark.text &&
+    Check(trigger.background == Theme.StateLayer(dark.base, dark.text, cast(u32)5) && trigger.foreground == dark.text &&
         trigger.border == dark.border && trigger.focus == dark.selected, "dark dropdown fields follow the palette")
     Check(panel.background == dark.base && panel.border == dark.border, "dark dropdown menus take the palette's base")
     Check(chosen_row.background == dark.selected && chosen_row.foreground == dark.selected_text, "a dropdown's chosen row takes the selection color")

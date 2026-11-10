@@ -1,0 +1,23 @@
+using UI :: #import "kryon/Widgets";
+
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Avatar", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    Avatar(session, AvatarProps.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, 72.0, 72.0}, .name = "Ada Lovelace", .size = 72.0})
+    Avatar(session, AvatarProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x + 90.0, bounds.y, 72.0, 72.0}, .name = "Grace Hopper", .size = 72.0, .square = true})
+    names := string.["Ada Lovelace", "Grace Hopper", "Katherine Johnson", "Alan Turing"]
+    AvatarGroup(session, AvatarGroupProps.{.key = 12, .bounds = .{bounds.x, bounds.y + 100.0, bounds.width, 56.0}, .size = 48.0, .max_visible = 3}, names[:])
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

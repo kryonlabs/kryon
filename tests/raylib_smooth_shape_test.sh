@@ -12,7 +12,7 @@ mkdir -p "$root/build"
 work=$(mktemp -d "$root/build/raylib-smooth-shape.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 "$compiler" --no-main --root "$root/tests" \
-    --module-path "$root/src/backend" --module-path "$root/src/ui" \
+    --module-path "$root/src/backend" $kryon_ui_args \
     --module-path "$standard" -o "$work/c" \
     "$root/tests/raylib_smooth_shape_behavior.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \

@@ -257,7 +257,7 @@ SystemPaletteFallback :: (dark: bool) -> SystemPalette {
     palette.dark = dark
     colors := Theme.DefaultPalette(dark)
     palette.background = colors.background; palette.base = colors.surface
-    palette.text = colors.text; palette.border = colors.border
+    palette.text = colors.foreground; palette.border = colors.border
     palette.selected = colors.accent; palette.selected_text = colors.on_accent
     palette.danger = colors.danger; palette.warning = colors.warning
     palette.success = colors.success
@@ -297,9 +297,9 @@ SystemPaletteFromCss :: (css: string, dark_hint: bool) -> SystemPalette {
 Sheet :: #import "style_sheet";
 Controls :: #import "control_props";
 Drawing :: #import "drawing_props";
-Menu :: #import "dropdown";
-Picture :: #import "image";
-Dialog :: #import "modal";
+Menu :: #import "dropdown_behavior";
+Picture :: #import "image_behavior";
+Dialog :: #import "modal_behavior";
 #scope_file
 PaletteRole :: (rules: *Sheet.StyleRules, kind: s32, role: s32,
     background: u32, foreground: u32, border: u32) {
@@ -343,11 +343,10 @@ ButtonColors :: (rules: *Sheet.StyleRules, tone: s32, emphasis: s32, fields: u32
 #scope_export
 // The style rules a palette gives every widget, without installing them.
 #program_export
-SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.StyleRules {
-    // Material is the shared application policy, including older saved choices.
-    unused material
+SystemPaletteRules :: (palette: SystemPalette) -> Sheet.StyleRules {
     rules: Sheet.StyleRules; bg := palette.background; fg := palette.text
-    button := CssMix(bg, palette.selected, 0.08); hover := CssMix(button, fg, 0.08)
+    button := Theme.StateLayer(palette.base, fg, cast(u32)5)
+    hover := Theme.StateLayer(button, fg, cast(u32)5)
     // A palette supplies colors while widgets keep their standard geometry.
     shared := *rules.items[rules.count]; shared.selector = Sheet.StyleDefaultSelector(); rules.count += 1
     shared.style.fields = cast(u32)Controls.StyleField.StyleForeground | cast(u32)Controls.StyleField.StyleFocus
@@ -355,7 +354,7 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.S
     muted_states: [2]s32 = .{cast(s32)Controls.ButtonState.ButtonStateDisabled, cast(s32)Controls.ButtonState.ButtonStateLoading}
     for index: 0..1 {
         muted := *rules.items[rules.count]; muted.selector = Sheet.StyleDefaultSelector(); muted.state = muted_states[index]; rules.count += 1
-        muted.style.fields = cast(u32)Controls.StyleField.StyleOpacity; muted.style.opacity = 0.45
+        muted.style.fields = cast(u32)Controls.StyleField.StyleOpacity; muted.style.opacity = 0.55
     }
     Rule(*rules, Sheet.StyleKindApp(), bg, fg); Rule(*rules, Sheet.StyleKindSurface(), palette.base, fg)
     Rule(*rules, Sheet.StyleKindText(), bg, fg)
@@ -411,10 +410,23 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.S
     for i: 0..rules.count-1 {
         kind := rules.items[i].selector.kind
         if kind == Sheet.StyleKindButton() || kind == Sheet.StyleKindTextField() || kind == Sheet.StyleKindTextArea() || kind == Sheet.StyleKindSpinbox() || kind == Sheet.StyleKindSpinboxValue() || kind == Sheet.StyleKindDropdown() {
-            rules.items[i].style.fields |= cast(u32)Controls.StyleField.StyleFontSize | cast(u32)Controls.StyleField.StyleRadius | cast(u32)Controls.StyleField.StyleFocus | cast(u32)Controls.StyleField.StyleMaterial
-            rules.items[i].style.font_size = Theme.TypeLabel(); rules.items[i].style.radius = Theme.ShapeSmall();
-            if kind == Sheet.StyleKindButton() { rules.items[i].style.radius = Theme.ShapeFull() }
-            if kind == Sheet.StyleKindDropdown() { rules.items[i].style.radius = Theme.ShapeMedium() }
+            rules.items[i].style.fields |= cast(u32)Controls.StyleField.StyleFontSize |
+                cast(u32)Controls.StyleField.StyleRadius | cast(u32)Controls.StyleField.StyleBorderWidth |
+                cast(u32)Controls.StyleField.StyleFocus | cast(u32)Controls.StyleField.StyleMaterial |
+                cast(u32)Controls.StyleField.StyleMinHeight | cast(u32)Controls.StyleField.StyleLineHeight |
+                cast(u32)Controls.StyleField.StyleFontRole | cast(u32)Controls.StyleField.StyleMotionDuration |
+                cast(u32)Controls.StyleField.StyleMotionMultiplier |
+                cast(u32)Controls.StyleField.StyleMotionEasing
+            rules.items[i].style.font_size = Theme.TypeLabel()
+            rules.items[i].style.radius = Theme.ShapeMedium()
+            rules.items[i].style.border_width = 1.0
+            rules.items[i].style.min_height = Theme.ControlHeightFor(0)
+            rules.items[i].style.line_height = 20.0
+            rules.items[i].style.font_role = Controls.FontRole.FontRoleControl
+            rules.items[i].style.motion_duration = Theme.MotionDuration(2,
+                Theme.CurrentTheme().motion.reduced_motion, Theme.CurrentTheme().motion.multiplier)
+            rules.items[i].style.motion_multiplier = 1.0
+            rules.items[i].style.motion_easing = Controls.MotionEasing.MotionEasingStandard
             rules.items[i].style.focus = palette.selected
             rules.items[i].style.material = Controls.MaterialKind.MaterialFlat
         }
@@ -423,12 +435,13 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.S
     outline_shape.selector.kind = Sheet.StyleKindButton()
     outline_shape.selector.emphasis = cast(s32)Controls.ButtonEmphasis.ButtonEmphasisOutline
     outline_shape.style.fields = cast(u32)Controls.StyleField.StyleRadius
-    outline_shape.style.radius = 8.0
+    outline_shape.style.radius = Theme.ShapeMedium()
     // Buttons keep their tone and emphasis: each tone takes its palette role
     // (accent is the selection color), and only filled and soft buttons get a
     // background. Neutral buttons that are not filled use the text color.
     fills: [5]u32 = .{button, palette.selected, palette.danger, palette.success, palette.warning}
-    inks: [5]u32 = .{fg, palette.selected_text, CssPack(255, 255, 255, 255), CssPack(255, 255, 255, 255), CssPack(0x11, 0x18, 0x27, 255)}
+    inks: [5]u32 = .{fg, Theme.OnColor(palette.selected), Theme.OnColor(palette.danger),
+        Theme.OnColor(palette.success), Theme.OnColor(palette.warning)}
     paint := cast(u32)Controls.StyleField.StyleBackground | cast(u32)Controls.StyleField.StyleForeground
     ink := cast(u32)Controls.StyleField.StyleForeground
     edge := ink | cast(u32)Controls.StyleField.StyleBorder
@@ -498,8 +511,8 @@ SystemPaletteRules :: (palette: SystemPalette, material: bool = true) -> Sheet.S
 }
 
 #program_export
-SystemPaletteInstall :: (palette: SystemPalette, material: bool = true) -> bool {
-    if !Sheet.InstallStyleRules(SystemPaletteRules(palette, material)) { return false }
+SystemPaletteInstall :: (palette: SystemPalette) -> bool {
+    if !Sheet.InstallStyleRules(SystemPaletteRules(palette)) { return false }
     SystemPaletteTokens(palette)
     return true
 }

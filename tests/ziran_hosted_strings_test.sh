@@ -16,7 +16,7 @@ for target in c; do
     output=$work/$target
     "$ziran" build --target="$target" --no-main --entry ziran_hosted_strings_test:main \
         --root "$repo/tests" --module-path "$repo/src/backend" \
-        --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+        $kryon_ui_args --module-path "$ziran_root/std" \
         -o "$output" "$repo/tests/ziran_hosted_strings_test.zi"
         compiler=${CC:-cc}; standard=c11; suffix=c
     "$compiler" -O2 -std="$standard" -ffunction-sections -fdata-sections \

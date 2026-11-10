@@ -1,7 +1,7 @@
 #import "geometry"
 #import "drawing_props"
 #import "image_props"
-#import "image_widget"
+#import "image"
 #import "session"
 #import "tree"
 #import "tree_draw"

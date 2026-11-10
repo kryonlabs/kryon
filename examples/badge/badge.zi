@@ -1,0 +1,22 @@
+using UI :: #import "kryon/Widgets";
+
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Badge", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    for i: cast(s32)0..4 {
+        Badge(session, BadgeProps.{.disabled = example_disabled, .key = cast(u64)(10 + i), .bounds = .{bounds.x, bounds.y + cast(float32)i * 48.0, 140.0, 36.0}, .text = "Ready", .tone = cast(BadgeTone)i, .dot = true, .solid = i % 2 == 0})
+    }
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

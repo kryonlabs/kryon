@@ -3,9 +3,9 @@
 
 #import "control_props"
 #import "geometry"
-#import "radio"
+#import "radio_behavior"
 #import "radio_props"
-#import "radio_widget"
+#import "radio"
 #import "style"
 #import "style_sheet"
 #import "surface"

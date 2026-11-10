@@ -80,6 +80,7 @@ DomHostNames :: struct {
 
 DomHostRecord :: struct {
     identity: u64
+    parent_identity: u64
     element: s32
     parent_element: s32
     tag: s32
@@ -248,11 +249,10 @@ DomSetAttribute :: (element: s32, key: string, value: string) {
     }
 }
 
-DomMakeElement :: (tag: string, identity: string) -> s32 {
+DomMakeElement :: (tag: string) -> s32 {
     document: s32 = WebGetObject(WebGlobal, dom_names.document)
     created: s32 = WebAsObject(WebCall1(document, dom_names.create_element,
         WebText(tag)))
-    DomSetAttribute(created, "data-kryon-id", identity)
     style: s32 = WebGetObject(created, dom_names.style)
     if dom_document_layout { return created }
     DomStyle(style, dom_names.position, "absolute")
@@ -328,7 +328,7 @@ DomHostBegin :: (count: s32, width: float64, height: float64) {
     dom_frame += 1
 }
 
-DomHostNode :: (index: s32, parent: s32, identity: u64,
+DomHostNode :: (index: s32, parent: s32, identity: u64, style_id: s32,
     widget_kind: s32, semantic: s32, level: s32,
     x: float64, y: float64, width: float64, height: float64,
     tag: string, role: string, label: string, url: string, flags: s32) {
@@ -336,7 +336,6 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
     scope: s32 = WebScope()
     key: s32 = DomHostFind(identity)
     tag_name: s32 = WebName(tag)
-    identity_text: string = DomIdentity(identity)
     if key < 0 {
         if dom_count >= DOM_HOST_MAX {
             WebEnd(scope)
@@ -345,11 +344,11 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
         key = dom_count
         dom_count += 1
         dom_records[key].identity = identity
-        dom_records[key].element = WebKeep(DomMakeElement(tag, identity_text))
+        dom_records[key].element = WebKeep(DomMakeElement(tag))
         dom_records[key].parent_element = 0
         dom_records[key].tag = tag_name
     } else if dom_records[key].tag != tag_name {
-        replacement: s32 = DomMakeElement(tag, identity_text)
+        replacement: s32 = DomMakeElement(tag)
         old: s32 = dom_records[key].element
         holder: s32 = WebGetObject(old, dom_names.parent_node)
         unused WebCall2(holder, dom_names.replace_child, WebObject(replacement),
@@ -364,6 +363,11 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
     dom_records[key].index = index
     dom_by_index[index] = key
     element: s32 = dom_records[key].element
+    if style_id != 0 {
+        DomSetAttribute(element, "data-kryon-id", DomWhole(style_id))
+    } else {
+        DomClearAttribute(element, "data-kryon-id")
+    }
     DomSetAttribute(element, "data-kryon-index", DomWhole(index))
     DomSetAttribute(element, "data-kryon-kind", DomWhole(widget_kind))
     DomSetAttribute(element, "data-kryon-widget", WidgetKindName(widget_kind))
@@ -445,10 +449,12 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
         WebSet(element, dom_names.disabled, WebBool(false))
     }
     container: s32 = dom_root
+    parent_identity: u64 = 0
     if parent >= 0 && parent < DOM_HOST_MAX && dom_by_index[parent] >= 0 {
         found: s32 = dom_by_index[parent]
         if found < dom_count && dom_records[found].frame == dom_frame {
             container = dom_records[found].element
+            parent_identity = dom_records[found].identity
         }
     }
     previous: u64 = dom_previous[parent + 1]
@@ -481,6 +487,7 @@ DomHostNode :: (index: s32, parent: s32, identity: u64,
         }
     }
     dom_records[key].parent_element = container
+    dom_records[key].parent_identity = parent_identity
     dom_records[key].previous = previous
     dom_previous[parent + 1] = identity
     DomPublishEditor(key)
@@ -550,7 +557,7 @@ DomHostClose :: () {
         WebSet(node, dom_names.id, WebText(DomIdentity(record.identity)))
         if record.parent_element != 0 && record.parent_element != dom_root {
             WebSet(node, dom_names.parent,
-                DomHostAttribute(record.parent_element, "data-kryon-id"))
+                WebText(DomIdentity(record.parent_identity)))
         } else {
             WebSet(node, dom_names.parent, WebNull())
         }

@@ -12,12 +12,12 @@ set -- \
     --bind raster_shape:RasterRoundedRectangleOutline=ziran_navigation_bar_widget_host:RasterRoundedRectangleOutline \
     --bind paint_queue:RasterImage=ziran_navigation_bar_widget_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$@" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" "$@" \
     --entry svg_icon_scale_behavior:main -o "$work/icon.zx" "$source"
 test "$("$ziran" run "$work/icon.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"
+    $kryon_ui_args --module-path "$ziran_root/std" -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c -Wl,--gc-sections -lm -o "$work/icon-test"
 "$work/icon-test"

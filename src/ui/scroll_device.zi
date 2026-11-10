@@ -1,6 +1,6 @@
 #import "control_props"
 #import "geometry"
-#import "scroll"
+#import "scroll_behavior"
 #import "scroll_props"
 #import "session"
 #import "style"

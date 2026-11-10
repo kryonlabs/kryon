@@ -1,5 +1,10 @@
 #!/bin/sh
-. "$(dirname -- "$0")/test_context.sh"
+set -eu
+repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+. "$repo/tests/toolchain.sh"
+mkdir -p "$repo/build/scratch"
+work=$(mktemp -d "$repo/build/scratch/carousel-test.XXXXXX")
+trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_carousel_widget_test.zi
 
 widget_host=ziran_image_widget_host
@@ -11,6 +16,7 @@ widget_triangles_needed=1
 . "$repo/tests/widget_raster_bindings.sh"
 
 widget_native=1
+widget_run_saved=1
 widget_std="$ziran_root/std"
 . "$repo/tests/widget_matrix.sh"
 

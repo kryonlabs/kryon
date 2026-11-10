@@ -7,9 +7,9 @@ widget_mesh_host=ziran_mixed_tree_host
 set --
 . "$repo/tests/widget_raster_bindings.sh"
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     "$@" --entry ziran_mixed_tree_test:main \
     -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
@@ -20,14 +20,14 @@ test "$("$ziran" run "$work/source.zx")" = 0
 test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$source"
+    $kryon_ui_args --module-path "$ziran_root/std" -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c -o "$work/c/app"
 "$work/c/app"
 
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/go" "$source"
+    $kryon_ui_args --module-path "$ziran_root/std" -o "$work/go" "$source"
 cat > "$work/go/main.go" <<'GO'
 package main
 

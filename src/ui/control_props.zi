@@ -50,6 +50,28 @@ MaterialKind :: enum {
     MaterialGlass :: 2
 }
 
+FontRole :: enum {
+    FontRoleInherit :: 0
+    FontRoleControl :: 1
+    FontRoleBody :: 2
+    FontRoleHeading :: 3
+    FontRoleCode :: 4
+}
+
+ElevationRole :: enum {
+    ElevationRoleNone :: 0
+    ElevationRoleRest :: 1
+    ElevationRoleRaised :: 2
+    ElevationRoleFloating :: 3
+}
+
+MotionEasing :: enum {
+    MotionEasingInherit :: 0
+    MotionEasingStandard :: 1
+    MotionEasingLinear :: 2
+    MotionEasingInstant :: 3
+}
+
 StyleField :: enum {
     StyleBackground :: 1
     StyleForeground :: 2
@@ -68,4 +90,12 @@ StyleField :: enum {
     StyleMaterial :: 16384
     StyleTypeface :: 32768
     StyleLetterSpacing :: 65536
+StyleMinHeight :: 131072
+StyleLineHeight :: 262144
+StyleFontRole :: 524288
+StyleElevation :: 1048576
+StyleMotionDuration :: 2097152
+StyleMotionMultiplier :: 4194304
+StyleMotionEasing :: 8388608
+StyleMotionReduced :: 16777216
 }

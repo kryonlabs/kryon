@@ -12,7 +12,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 "$bin/zi2c" --no-main --root "$repo/tests" --module-path "$repo/tests/dom_fake" --module-path "$repo/src/backend" \
-    --module-path "$repo/src/ui" --module-path "$ziran_dir/std" \
+    $kryon_ui_args --module-path "$ziran_dir/std" \
     -o "$work/c" "$repo/tests/dom_spec_behavior.zi"
 cat > "$work/c/main.c" <<'C'
 #include <stdio.h>

@@ -1,7 +1,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "image_props"
-#import "image_widget"
+#import "kryon/image_widget"
 #import "session"
 #import "transition"
 

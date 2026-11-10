@@ -3,7 +3,7 @@
 // Space or Enter, without any app code.
 #import "session"
 #import "button_props"
-#import "button_widget"
+#import "button"
 #import "geometry"
 #import "tree"
 #import "tree_draw"

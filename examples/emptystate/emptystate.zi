@@ -1,0 +1,24 @@
+using UI :: #import "kryon/Widgets";
+
+created: bool;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Empty state", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    if !created {
+        props: EmptyStateProps = .{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, viewport.height - 96.0}, .title = "No projects yet", .description = "Create your first project.", .action = "Create project"}
+        result := EmptyState(session, props)
+        if result.action { created = true }
+    } else { Text(session, TextProps.{.disabled = example_disabled, .key = 11, .bounds = bounds, .text = "Project created"}) }
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

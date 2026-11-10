@@ -1,0 +1,179 @@
+#import "box_props"
+#import "box"
+#import "button_props"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "svg_icon_props"
+#import "svgicon"
+#import "text_align"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using WidgetKind;
+
+AlertTone :: enum {
+    AlertToneNeutral :: 0
+    AlertToneInfo :: 1
+    AlertToneSuccess :: 2
+    AlertToneWarning :: 3
+    AlertToneDanger :: 4
+}
+
+AlertState :: struct {
+    dismissed: bool
+}
+
+AlertProps :: struct {
+    key: u64
+    bounds: Rectangle
+    title: string
+    description: string
+    tone: AlertTone
+    icon_shape: string
+    dismissible: bool
+    dismiss_label: string
+    disabled: bool
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+}
+
+AlertLayout :: struct {
+    bounds: Rectangle
+    icon: Rectangle
+    title: Rectangle
+    description: Rectangle
+    dismiss: Rectangle
+}
+
+AlertResult :: struct {
+    state: AlertState
+    visible: bool
+    dismissed: bool
+    node: s32
+    layout: AlertLayout
+    icon_shape: string
+    tone_color: u32
+}
+
+#program_export
+AlertDefaultIcon :: (tone: AlertTone) -> string {
+    if tone == .AlertToneSuccess { return "S1.7rr:M9 12l2 2 4-4M12 3a9 9 0 100 18 9 9 0 000-18" }
+    if tone == .AlertToneWarning { return "S1.7rr:M10.3 4.2L2.8 17a2 2 0 001.7 3h15a2 2 0 001.7-3L13.7 4.2a2 2 0 00-3.4 0M12 9v4M12 17h.01" }
+    if tone == .AlertToneDanger { return "S1.7rr:M12 8v5M12 16.5h.01M10.3 4.2L2.8 17a2 2 0 001.7 3h15a2 2 0 001.7-3L13.7 4.2a2 2 0 00-3.4 0" }
+    return "S1.7rr:M12 8v.01M12 3a9 9 0 100 18 9 9 0 000-18"
+}
+
+#program_export
+AlertToneColor :: (tone: AlertTone) -> u32 {
+    if tone == .AlertToneSuccess { return CurrentSuccess() }
+    if tone == .AlertToneWarning { return CurrentWarning() }
+    if tone == .AlertToneDanger { return CurrentDanger() }
+    if tone == .AlertToneInfo { return CurrentPalette().info }
+    return CurrentPalette().text_secondary
+}
+
+#program_export
+AlertLayoutFor :: (props: AlertProps) -> AlertLayout {
+    layout: AlertLayout
+    layout.bounds = props.bounds
+    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return layout }
+    left := props.bounds.x + 14.0
+    top := props.bounds.y + 14.0
+    bottom := props.bounds.y + props.bounds.height - 14.0
+    right := props.bounds.x + props.bounds.width - 16.0
+    if props.dismissible { right -= 36.0 }
+    if right < left { right = left }
+    layout.icon = Rectangle.{left, top + 1.0, 16.0, 16.0}
+    content_x := left + 28.0
+    content_width := right - content_x
+    if content_width < 0.0 { content_width = 0.0 }
+    title_height: float32 = 18.0
+    description_height: float32 = ifx props.description != "" then 19.0 else 0.0
+    layout.title = Rectangle.{content_x, top, content_width, title_height}
+    if description_height > 0.0 {
+        layout.description = Rectangle.{content_x, top + 21.0, content_width, description_height}
+    }
+    if bottom < layout.description.y + description_height {
+        bottom = layout.description.y + description_height
+    }
+    if props.dismissible {
+        dismiss_size: float32 = 24.0
+        layout.dismiss = Rectangle.{
+            props.bounds.x + props.bounds.width - 40.0,
+            top + (dismiss_size - 24.0) * 0.5,
+            dismiss_size, dismiss_size}
+    }
+    return layout
+}
+
+#program_export
+Alert :: (session: Session, props: AlertProps,
+    state: *AlertState) -> AlertResult {
+    result: AlertResult
+    result.state = state.*
+    if state.dismissed { return result }
+    layout := AlertLayoutFor(props)
+    result.layout = layout
+    result.icon_shape = ifx props.icon_shape != "" then props.icon_shape else AlertDefaultIcon(props.tone)
+    result.tone_color = AlertToneColor(props.tone)
+    result.visible = true
+    if !SessionValid(session) || !TreeIsBuilding(session) ||
+    props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+
+    dark := CurrentTheme().dark
+    background := CurrentPalette().surface
+    border := CurrentPalette().border
+    if props.tone == .AlertToneNeutral {
+        background = CurrentPalette().surface_muted
+    } else {
+        background = StateLayer(background, result.tone_color,
+            ifx dark then cast(u32)12 else cast(u32)7)
+        border = StateLayer(border, result.tone_color,
+            ifx dark then cast(u32)20 else cast(u32)12)
+    }
+    result.node = Box(session, BoxProps.{.key = props.key,
+        .bounds = layout.bounds, .id = props.id, .class_name = props.class_name,
+        .fill = ColorFromPacked(background), .border = ColorFromPacked(border),
+        .radius = CurrentThemeMetric(.ThemeMetricRadiusControl)})
+    if result.node < 0 || !TreePushScope(session, result.node) { return result }
+    unused SvgIcon(session, SvgIconProps.{.bounds = layout.icon,
+        .shape = result.icon_shape, .color = ColorFromPacked(result.tone_color)})
+    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 1),
+        .bounds = layout.title, .text = props.title, .font = Text14,
+        .id = props.id, .class_name = props.class_name,
+        .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapEllipsis})
+    if props.description != "" {
+        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 2),
+            .bounds = layout.description, .text = props.description, .font = Text14,
+            .id = props.id, .class_name = props.class_name,
+            .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapAnywhere})
+    }
+    if props.dismissible {
+        label := ifx props.dismiss_label != "" then props.dismiss_label else "Dismiss"
+        if Button(session, ButtonProps.{.key = WidgetPartKey(props.key, 3),
+            .bounds = layout.dismiss, .label = label,
+            .icon_only = true, .circle = true,
+            .icon_shape = "S1.8rr:M6 6L18 18M18 6L6 18",
+            .disabled = props.disabled, .id = props.id, .class_name = props.class_name,
+            .style_kind = StyleKindButton(), .emphasis = .ButtonEmphasisGhost,
+            .size = .ControlSizeSmall}) == 1 && !props.disabled {
+            state.dismissed = true
+            result.dismissed = true
+            result.visible = false
+            result.state = state.*
+        }
+    }
+    unused TreePopScope(session)
+    return result
+}

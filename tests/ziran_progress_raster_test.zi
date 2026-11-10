@@ -2,7 +2,7 @@
 #import "widget_test_session"
 
 #import "geometry"
-#import "progress"
+#import "progress_behavior"
 #import "progress_raster"
 #import "ziran_progress_raster_host"
 

@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+- Disabled EmptyState and Banner retain their configured controls and reject activation until enabled.
+
+- Carousel supports disabling all navigation, gestures, and actions together with `CarouselProps.disabled`.
+
+- Android source generation binds the selected Frame only for built-in native hosts; explicit custom hosts and ZX hosts retain their own entry contracts.
+
+- Reusable components now live in their own source folders while retaining public package import names. Widgets and individual package imports expose the extended core components and their public props, state, and task types.
+
+- Menu, TabBar, NavigationBar, and Collapsible support caller-owned spring motion, continuous reversals, frame activity results, and reduced motion; closing menus release interaction while their paint settles. Portable hosted TabBar calls reject nonnull state pointers until a portable motion state protocol is available.
+- OneTimeCode centers digits in their slots, ScrubField aligns its labels and numeric value, and maintained movement examples label their step counters. The four motion examples supply retained state and the input clock; the native gallery reduces its frame rate after paint settles.
+
+
 - Native bitmap caches keep their shared capacity while supporting existing compiler pins.
 - Native smooth-image caches retain multiple sizes of the same picture within their existing LRU budgets, preserving sharp covers beside thumbnails.
 

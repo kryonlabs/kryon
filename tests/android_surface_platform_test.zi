@@ -1,0 +1,54 @@
+#import, file "../src/backend/android_surface.zi";
+
+#if #defined(ANDROID_BUILD) {
+    #import "android_jni"
+    Native :: #import, file "../src/backend/android_native.zi";
+    // Only the native window dimensions are supplied by the test host.
+    #program_export
+    ANativeWindow_getWidth :: (window: *void) -> s32 { unused window; return 4 }
+    #program_export
+    ANativeWindow_getHeight :: (window: *void) -> s32 { unused window; return 3 }
+}
+
+pixels: [12]u32;
+clear_calls: s32;
+clear_handled: bool = true;
+RecordClear :: (viewport: AndroidViewport, canvas: u32, zoom: float32) -> bool {
+    if viewport.width == 2 && canvas == 0x12345678 && zoom == 2.0 { clear_calls += 1 }
+    return clear_handled
+}
+
+#program_export
+main :: () -> s32 {
+    width: s32 = -1
+    height: s32 = -1
+    if GetAndroidSurfaceSize(*width, *height) != 0 || width != 0 || height != 0 { return 1 }
+    if GetAndroidSurfaceSize(null, null) != 0 { return 2 }
+    viewport: AndroidViewport = .{.x = 1, .y = 1, .width = 2, .height = 1}
+    ClearAndroidFrame(viewport, 0x12345678)
+    android_surface_clear = RecordClear
+    ClearAndroidFrame(viewport, 0x12345678, 2.0)
+    if clear_calls != 1 { return 3 }
+    clear_handled = false
+    #if #defined(ANDROID_BUILD) {
+        app: NativeAndroidApp
+        app.window = cast(*void)(*app)
+        Native.android_native_app = *app
+        if GetAndroidSurfaceSize(*width, *height) != 1 || width != 4 || height != 3 { return 4 }
+        for index: 0..11 { pixels[index] = 0xff000000 }
+        Native.android_pixels = pixels[0:12]
+        ClearAndroidFrame(viewport, 0x12345678)
+        for index: 0..11 {
+            expected: u32 = 0xff000000
+            if index == 5 || index == 6 { expected = 0x12345678 }
+            if pixels[index] != expected { return 5 }
+        }
+        Native.android_pixels = pixels[0:1]
+        pixels[0] = 42
+        ClearAndroidFrame(viewport, 0x12345678)
+        if pixels[0] != 42 { return 6 }
+        Native.android_native_app = null
+        if GetAndroidSurfaceSize(*width, *height) != 1 || width != 4 || height != 3 { return 7 }
+    }
+    return 0
+}

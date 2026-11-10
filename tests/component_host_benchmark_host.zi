@@ -1,0 +1,243 @@
+#import "component_host"
+#import "component_raster_host"
+#import "geometry"
+#import "hosted_values"
+#import "input_protocol"
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/file"
+#import "std/timer_linux"
+#import "std/vec"
+
+NoPointer :: () -> PointerFrame { return PointerFrame.{} }
+NoSecondary :: () -> SecondaryPointerFrame { return SecondaryPointerFrame.{} }
+
+benchmark_c :: #system_library "c";
+BenchmarkGetenv :: (name: *u8) -> *u8 #foreign benchmark_c "getenv";
+
+BENCHMARK_WARMUP_DEFAULT :: 32
+BENCHMARK_FRAMES_DEFAULT :: 200
+BENCHMARK_REPLACEMENTS :: 7
+
+ReadZX :: (name: string) -> string {
+    bytes, ok := ReadEntireFile(name)
+    return ifx ok then bytes else ""
+}
+
+ZXBytes :: (value: string) -> []u8 {
+    descriptor := cast(*TextDescriptor)(*value)
+    return BytesFromPointer(descriptor.data, cast(u64)value.count)
+}
+
+BenchmarkEnvironment :: (name: string) -> string {
+    name_bytes: [64]u8
+    if !CopyCString(name, name_bytes[:]) { return "" }
+    value := BenchmarkGetenv(*name_bytes[0])
+    if value == null { return "" }
+    return TextFromCString(value)
+}
+
+BenchmarkInteger :: (name: string, fallback: s64) -> s64 {
+    value := BenchmarkEnvironment(name)
+    if value.count == 0 { return fallback }
+    result: s64
+    index: s64
+    negative := false
+    if value[0] == cast(u8)45 {
+        negative = true
+        index = 1
+    }
+    while index < cast(s64)value.count {
+        byte := value[index]
+        if byte < cast(u8)48 || byte > cast(u8)57 { return fallback }
+        result = result * 10 + cast(s64)(byte - cast(u8)48)
+        index += 1
+    }
+    if negative { result = -result }
+    return result
+}
+
+BenchmarkExpectedLabel :: (count: s64, frames: s64, version: s64) -> string {
+    value: Vec(u8)
+    BuilderPrint(*value, "BENCH % % v%", count, frames, version)
+    return BuilderFinish(value)
+}
+
+BenchmarkHasLabel :: (host: *ComponentHost, expected: string) -> bool {
+    index: s32
+    while index < TreeCount(host.session) {
+        if TreeNodeAt(host.session, index).semantic_label == expected { return true }
+        index += 1
+    }
+    return false
+}
+
+BenchmarkFocusedCount :: (host: *ComponentHost) -> s32 {
+    count: s32
+    index: s32
+    while index < TreeCount(host.session) {
+        if TreeFocusedAt(host.session, index) { count += 1 }
+        index += 1
+    }
+    return count
+}
+
+BenchmarkFrame :: (host: *ComponentHost, seconds: float64,
+    pointer: PointerFrame) -> bool {
+    if !ComponentRasterBegin() { return false }
+    return ComponentHostFrame(host, Rectangle.{0.0, 0.0, 320.0, 180.0},
+        pointer, NoSecondary(), 0, 0, 0.0, "", seconds)
+}
+
+BenchmarkPrintIdentity :: (host: *ComponentHost, warmup: s64, frames: s64) {
+    print("IDENTITY host=component_host engine=portable-zx warmup=% measured=% live_slots=1\n",
+        warmup, frames)
+    index: u64
+    while index < 32 {
+        print("CODE_BYTE index=% value=%\n", index,
+            cast(u64)host.slots[0].code_identity[index])
+        index += 1
+    }
+    capability: u64
+    while capability < host.slots[0].capability_count {
+        abi := host.slots[0].capability_abis[capability]
+        print("CAPABILITY index=% module=% function=% signature=% return=% arguments=% variable=% reads=%\n",
+            capability, TextFromCString(abi.module), TextFromCString(abi.function),
+            TextFromCString(abi.signature), TextFromCString(abi.return_type),
+            TextFromCString(abi.arguments), abi.variable_arguments,
+            abi.reads_arguments)
+        capability += 1
+    }
+}
+
+BenchmarkReject :: (host: *ComponentHost, id: u64, name: string, zx: string,
+    handle: *void, tree_count: s32, pixels: u64, focused: s32) -> bool {
+    ComponentRasterReset()
+    accepted := ComponentHostReplace(host, id, ZXBytes(zx))
+    unchanged := !accepted && ComponentHostHandleValid(handle) &&
+        ComponentHostCount(host) == 1 && TreeCount(host.session) == tree_count &&
+        ComponentRasterHash() == pixels && ComponentRasterCalls() == 0 &&
+        BenchmarkFocusedCount(host) == focused
+    print("REJECT kind=% accepted=% tree_count=% raster_hash=% focused=% live_handle=%\n",
+        name, ifx accepted then 1 else 0, TreeCount(host.session),
+        ComponentRasterHash(), BenchmarkFocusedCount(host),
+        ifx ComponentHostHandleValid(handle) then 1 else 0)
+    return unchanged
+}
+
+#program_export
+main :: () -> s32 {
+    warmup := BenchmarkInteger("BENCH_COMPONENT_WARMUP", BENCHMARK_WARMUP_DEFAULT)
+    frames := BenchmarkInteger("BENCH_COMPONENT_FRAMES", BENCHMARK_FRAMES_DEFAULT)
+    if warmup < 30 || frames < 200 { return 1 }
+
+    old_zx := ReadZX("benchmark_v1.zx")
+    new_zx := ReadZX("benchmark_v2.zx")
+    bad_abi := ReadZX("bad_abi.zx")
+    bad_migrated := ReadZX("bad_migrated.zx")
+    truncated := ReadZX("truncated.zx")
+    if old_zx.count == 0 || new_zx.count == 0 || bad_abi.count == 0 ||
+    bad_migrated.count == 0 || truncated.count == 0 { return 2 }
+
+    host: ComponentHost
+    ComponentHostInit(*host)
+    id := ComponentHostID("benchmark", "component")
+    if !ComponentHostOpen(*host, "benchmark", "component", old_zx,
+    COMPONENT_CAPABILITY_HOST | COMPONENT_CAPABILITY_INPUT |
+    COMPONENT_CAPABILITY_WIDGET | COMPONENT_CAPABILITY_TREE, 1) ||
+    ComponentHostCount(*host) != 1 { return 3 }
+    BenchmarkPrintIdentity(*host, warmup, frames)
+
+    handle := ComponentHostAcquire(*host, id)
+    if handle == null || !ComponentHostHandleValid(handle) { return 4 }
+
+    click := PointerFrame.{.x = 40.0, .y = 30.0, .pressed = true, .released = true}
+    if !BenchmarkFrame(*host, 0.016, NoPointer()) ||
+    !BenchmarkFrame(*host, 0.032, click) || ComponentRasterFailed() { return 5 }
+
+    index: s64
+    while index < warmup {
+        calls_before := ComponentRasterCalls()
+        start := MonotonicNanoseconds()
+        if !BenchmarkFrame(*host, 0.016 + cast(float64)index * 0.016,
+            NoPointer()) || ComponentRasterFailed() { return 6 }
+        elapsed := MonotonicNanoseconds() - start
+        print("SAMPLE phase=warmup index=% frame_ns=% tree_count=% raster_calls=% raster_hash=%\n",
+            index, elapsed, TreeCount(host.session),
+            ComponentRasterCalls() - calls_before, ComponentRasterHash())
+        index += 1
+    }
+
+    index = 0
+    while index < frames {
+        calls_before := ComponentRasterCalls()
+        start := MonotonicNanoseconds()
+        if !BenchmarkFrame(*host, cast(float64)(warmup + index) * 0.016,
+            NoPointer()) || ComponentRasterFailed() { return 7 }
+        elapsed := MonotonicNanoseconds() - start
+        print("SAMPLE phase=measured index=% frame_ns=% tree_count=% raster_calls=% raster_hash=%\n",
+            index, elapsed, TreeCount(host.session),
+            ComponentRasterCalls() - calls_before, ComponentRasterHash())
+        index += 1
+    }
+
+    live_frames := 2 + warmup + frames
+    if TreeCount(host.session) != 19 ||
+    !BenchmarkHasLabel(*host, BenchmarkExpectedLabel(38, live_frames, 1)) ||
+    ComponentRasterCalls() <= 0 || ComponentHostLiveBytes(*host, id) == 0 { return 8 }
+    print("CHECK phase=pre-replacement tree_count=% raster_hash=% focused=% live_bytes=% expected_label=%\n",
+        TreeCount(host.session), ComponentRasterHash(), BenchmarkFocusedCount(*host),
+        ComponentHostLiveBytes(*host, id), BenchmarkExpectedLabel(38, live_frames, 1))
+
+    tree_count := TreeCount(host.session)
+    pixels := ComponentRasterHash()
+    focused := BenchmarkFocusedCount(*host)
+    if !BenchmarkReject(*host, id, "truncated", truncated, handle,
+        tree_count, pixels, focused) ||
+    !BenchmarkReject(*host, id, "typed-abi", bad_abi, handle,
+        tree_count, pixels, focused) ||
+    !BenchmarkReject(*host, id, "migrated-frame", bad_migrated, handle,
+        tree_count, pixels, focused) { return 9 }
+
+    ComponentRasterReset()
+    replacement: s64
+    while replacement < BENCHMARK_REPLACEMENTS {
+        candidate := ifx replacement % 2 == 0 then new_zx else old_zx
+        start := MonotonicNanoseconds()
+        if !ComponentHostReplace(*host, id, ZXBytes(candidate)) { return 10 }
+        elapsed := MonotonicNanoseconds() - start
+        print("REPLACE index=% accepted=1 frame_ns=% code_version=%\n",
+            replacement, elapsed, ifx replacement % 2 == 0 then 2 else 1)
+        replacement += 1
+    }
+    if ComponentRasterCalls() != 0 || ComponentRasterHash() != pixels ||
+    TreeCount(host.session) != tree_count ||
+    BenchmarkFocusedCount(*host) != focused ||
+    ComponentHostHandleValid(handle) || ComponentHostCount(*host) != 1 { return 11 }
+    print("CHECK phase=post-replacement tree_count=% raster_hash=% focused=% live_handle=% private_session_unchanged=1\n",
+        TreeCount(host.session), ComponentRasterHash(), BenchmarkFocusedCount(*host),
+        ifx ComponentHostHandleValid(handle) then 1 else 0)
+    ComponentHostCloseHandle(handle)
+
+    if !BenchmarkFrame(*host, cast(float64)live_frames * 0.016,
+        NoPointer()) || ComponentRasterFailed() ||
+    !BenchmarkHasLabel(*host, BenchmarkExpectedLabel(38, live_frames + 1, 2)) { return 12 }
+    if !BenchmarkFrame(*host, cast(float64)(live_frames + 1) * 0.016,
+        click) || ComponentRasterFailed() ||
+    !BenchmarkHasLabel(*host, BenchmarkExpectedLabel(40, live_frames + 2, 2)) ||
+    TreeCount(host.session) != tree_count || ComponentRasterCalls() <= 0 { return 13 }
+    print("CHECK phase=post-migration tree_count=% raster_hash=% focused=% live_bytes=% click_label=%\n",
+        TreeCount(host.session), ComponentRasterHash(), BenchmarkFocusedCount(*host),
+        ComponentHostLiveBytes(*host, id), BenchmarkExpectedLabel(40, live_frames + 2, 2))
+
+    ComponentHostClose(*host)
+    if ComponentHostCount(*host) != 0 || SessionValid(host.session) { return 14 }
+    ComponentRasterClose()
+    print("SUMMARY warmup=% measured=% replacements=% rejections=3 typed_widget_calls_per_frame=17 engine=portable-zx\n",
+        warmup, frames, BENCHMARK_REPLACEMENTS)
+    return 0
+}

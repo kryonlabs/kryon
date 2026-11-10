@@ -1,0 +1,316 @@
+#import "box"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "textfield"
+#import "text_input_props"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using StyleField;
+using WidgetKind;
+
+ScrubFieldProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    label: string
+    suffix: string
+    initial_value: float32
+    minimum: float32
+    maximum: float32
+    step: float32
+    precision: s32
+    up: bool
+    down: bool
+    fine_divisor: float32
+    coarse_multiplier: float32
+    disabled: bool
+    activate: bool
+    drag_active: bool
+    drag_delta: float32
+    shift: bool
+    input: TextFieldInput
+    height: float32
+}
+
+ScrubFieldState :: struct {
+    initialized: bool
+    value: float32
+    editing: bool
+    focused: bool
+    dragged: bool
+    text_length: s32
+    cursor: s32
+    anchor: s32
+    bytes: [48]u8
+}
+
+ScrubFieldResult :: struct {
+    node: s32
+    field: TextFieldResult
+    value: float32
+    changed: bool
+    committed: bool
+    cancelled: bool
+    drag_started: bool
+}
+
+#program_export
+ScrubFieldClamp :: (value: float32, minimum: float32,
+    maximum: float32) -> float32 {
+    if value < minimum { return minimum }
+    if value > maximum { return maximum }
+    return value
+}
+
+#program_export
+ScrubFieldStepFor :: (props: ScrubFieldProps) -> float32 {
+    step := props.step
+    if step <= 0 { step = (props.maximum - props.minimum) / 100.0 }
+    if step <= 0 { step = 1.0 }
+    return step
+}
+
+#program_export
+ScrubFieldWriteValue :: (state: *ScrubFieldState,
+    value: float32, precision: s32) {
+    if precision < 0 { precision = 0 }
+    if precision > 6 { precision = 6 }
+    negative := value < 0.0
+    scaled := value
+    if negative { scaled = -scaled }
+    multiplier := 1.0
+    at := 0
+    while at < precision { multiplier *= 10.0; at += 1 }
+    units := cast(s64)(scaled * multiplier + 0.5)
+    fraction := cast(s32)(units % cast(s64)multiplier)
+    integer := units / cast(s64)multiplier
+    digits: [24]u8
+    count: s32 = 0
+    if integer == 0 { digits[0] = cast(u8)48; count = 1 }
+    while integer > 0 && count < 24 {
+        digits[count] = cast(u8)48 + cast(u8)(integer % 10)
+        integer /= 10
+        count += 1
+    }
+    out: s32 = 0
+    if negative && out < 48 { state.bytes[out] = cast(u8)45; out += 1 }
+    index := count - 1
+    while index >= 0 && out < 48 { state.bytes[out] = digits[index]; out += 1; index -= 1 }
+    if precision > 0 && out < 48 {
+        state.bytes[out] = cast(u8)46
+        out += 1
+        fraction_digit := precision
+        while fraction_digit > 0 && out < 48 {
+            place := fraction_digit - 1
+            digit := (fraction / cast(s32)Pow10(place)) % 10
+            state.bytes[out] = cast(u8)48 + cast(u8)digit
+            out += 1
+            fraction_digit -= 1
+        }
+    }
+    state.text_length = out
+    state.cursor = out
+    state.anchor = out
+}
+
+Pow10 :: (power: s32) -> float32 {
+    value: float32 = 1.0
+    at := 0
+    while at < power { value *= 10.0; at += 1 }
+    return value
+}
+
+#program_export
+ScrubFieldParse :: (text: string) -> float32 {
+    negative := false
+    value: float32 = 0.0
+    fraction: float32 = 0.0
+    divisor: float32 = 1.0
+    seen_dot := false
+    seen_digit := false
+    for byte: text {
+        if byte >= cast(u8)48 && byte <= cast(u8)57 {
+            digit := cast(float32)(byte - cast(u8)48)
+            if seen_dot { divisor *= 10.0; fraction += digit / divisor } else { value = value * 10.0 + digit }
+            seen_digit = true
+        } else if (byte == cast(u8)46 || byte == cast(u8)44) && !seen_dot {
+            seen_dot = true
+        } else if byte == cast(u8)45 && !seen_digit {
+            negative = true
+        }
+    }
+    if negative { return -(value + fraction) }
+    return value + fraction
+}
+
+#program_export
+ScrubFieldStateFor :: (value: float32,
+    precision: s32) -> ScrubFieldState {
+    state: ScrubFieldState
+    state.value = value
+    state.initialized = true
+    ScrubFieldWriteValue(*state, value, precision)
+    return state
+}
+
+#program_export
+ScrubFieldApply :: (state: *ScrubFieldState,
+    props: ScrubFieldProps) -> ScrubFieldResult {
+    result: ScrubFieldResult
+    result.node = -1
+    if !state.initialized {
+        state.value = props.initial_value
+        state.initialized = true
+        ScrubFieldWriteValue(state, state.value, props.precision)
+    }
+    old := state.value
+    step := ScrubFieldStepFor(props)
+    fine := props.fine_divisor
+    if fine <= 0 { fine = 10.0 }
+    coarse := props.coarse_multiplier
+    if coarse <= 0 { coarse = 10.0 }
+    if props.disabled { return result }
+    if !state.editing && props.activate { state.editing = true; state.focused = true; state.cursor = 0; state.anchor = state.text_length }
+    if state.editing {
+        if props.input.text.count > 0 || props.input.paste {
+            replacement := props.input.text
+            if props.input.paste { replacement = props.input.paste_text }
+            count := cast(s32)replacement.count
+            if count > 48 { count = 48 }
+            at := 0
+            while at < count { state.bytes[at] = replacement[at]; at += 1 }
+            state.text_length = count
+            state.cursor = count
+            state.anchor = count
+        }
+        if props.input.backspace && state.text_length > 0 { state.text_length -= 1; state.cursor = state.text_length; state.anchor = state.text_length }
+        if props.input.escape {
+            ScrubFieldWriteValue(state, state.value, props.precision)
+            state.editing = false
+            state.focused = false
+            result.cancelled = true
+        } else if props.input.commit || props.input.blur {
+            state.value = ScrubFieldClamp(ScrubFieldParse(TextView(state.bytes[:state.text_length])), props.minimum, props.maximum)
+            ScrubFieldWriteValue(state, state.value, props.precision)
+            state.editing = false
+            state.focused = false
+            result.committed = true
+        }
+    } else {
+        if props.drag_active {
+            per_pixel := step
+            if props.shift { per_pixel /= fine }
+            candidate := state.value + props.drag_delta * per_pixel
+            candidate /= per_pixel
+            candidate = Round(candidate) * per_pixel
+            state.value = ScrubFieldClamp(candidate, props.minimum, props.maximum)
+            result.drag_started = true
+        }
+        if props.input.left || props.input.right || props.up || props.down {
+            multiplier: float32 = 1.0
+            if props.shift { multiplier = coarse }
+            decrement := props.input.left || props.down
+            if decrement { state.value = ScrubFieldClamp(state.value - step * multiplier, props.minimum, props.maximum) }
+            else { state.value = ScrubFieldClamp(state.value + step * multiplier, props.minimum, props.maximum) }
+        }
+        ScrubFieldWriteValue(state, state.value, props.precision)
+    }
+    result.value = state.value
+    result.changed = state.value != old
+    return result
+}
+
+Round :: (value: float32) -> float32 {
+    if value < 0.0 { return -Round(-value) }
+    return cast(float32)cast(s32)(value + 0.5)
+}
+
+ScrubFieldHostedReply :: struct { state: ScrubFieldState; result: ScrubFieldResult }
+
+#if #defined(KRYON_HOSTED_UI) {
+    scrubfield_host_api :: #system_library "host_api";
+    ScrubFieldHostedHost :: (session: Session, props: ScrubFieldProps,
+        state: ScrubFieldState) -> ScrubFieldHostedReply #foreign scrubfield_host_api;
+    #program_export
+    ScrubField :: (session: Session, props: ScrubFieldProps,
+    state: *ScrubFieldState) -> ScrubFieldResult {
+        reply := ScrubFieldHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #program_export
+    ScrubField :: (session: Session, props: ScrubFieldProps,
+    state: *ScrubFieldState) -> ScrubFieldResult { return ScrubFieldCore(session, props, state, true) }
+    #program_export
+    ScrubFieldCore :: (session: Session, props: ScrubFieldProps,
+    state: *ScrubFieldState, effects: bool) -> ScrubFieldResult {
+    unused effects
+    result := ScrubFieldApply(state, props)
+    if !TreeIsBuilding(session) { return result }
+    height := props.height
+    if height <= 0 { height = CurrentThemeMetric(.ThemeMetricControlHeightMedium) }
+    bounds := props.bounds
+    bounds.height = height
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup, bounds)
+    if result.node < 0 { return result }
+    if !TreePushScope(session, result.node) { return result }
+    TreeSetInteractive(session, result.node, props.disabled, false, props.id)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetLabel(session, result.node, props.label)
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground | cast(u32)StyleBorder |
+    cast(u32)StyleRadius | cast(u32)StyleFontSize | cast(u32)StyleMinHeight
+    face.background = CurrentSurface()
+    face.foreground = CurrentText()
+    face.border = CurrentBorderStrong()
+    face.radius = CurrentThemeMetric(.ThemeMetricRadiusControl)
+    face.font_size = CurrentThemeMetric(.ThemeMetricTextBody)
+    face.min_height = height
+    face = ResolveInstalledStyleRules(face, StyleControlRoleFacts(StyleKindAny(),
+        props.id, props.class_name, 0, 0, 0, 0, 1), 1)
+    Box(session, .{.key = props.key+101, .bounds = bounds,
+            .fill = ColorFromPacked(face.background), .border = ColorFromPacked(face.border), .radius = face.radius})
+    label: TextProps
+    label.key = props.key + 201
+    label.bounds = Rectangle.{bounds.x+8.0, bounds.y, bounds.width*0.25, height}
+    label.text = props.label
+    label.font = cast(s32)CurrentThemeMetric(.ThemeMetricTextSM)
+    label.class_name = props.class_name
+    label.vertical_align = .TextAlignCenter
+    label.wrap = .TextWrapNone
+    Text(session, label)
+    value_bounds := Rectangle.{bounds.x+bounds.width*0.3, bounds.y, bounds.width*0.5, height}
+    value_text: TextProps
+    value_text.key = props.key + 301
+    value_text.bounds = value_bounds
+    value_text.text = TextView(state.bytes[:state.text_length])
+    value_text.font = cast(s32)face.font_size
+    value_text.class_name = props.class_name
+    value_text.vertical_align = .TextAlignCenter
+    value_text.wrap = .TextWrapNone
+    value_text.align = .TextAlignEnd
+    Text(session, value_text)
+    suffix: TextProps
+    suffix.key = props.key + 401
+    suffix.bounds = Rectangle.{bounds.x+bounds.width*0.82, bounds.y, bounds.width*0.16, height}
+    suffix.text = props.suffix
+    suffix.font = cast(s32)CurrentThemeMetric(.ThemeMetricTextSM)
+    suffix.class_name = props.class_name
+    suffix.vertical_align = .TextAlignCenter
+    suffix.wrap = .TextWrapNone
+    Text(session, suffix)
+    TreePopScope(session)
+    return result
+}
+}

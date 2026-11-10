@@ -12,9 +12,9 @@ set -- \
     --bind raster_text:RasterTextClipped=ziran_progress_raster_host:RasterTextClipped \
     --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$portable"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     "$@" --entry progress_widget_portable_test:main \
     -o "$work/source.zx" "$portable"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
@@ -24,7 +24,7 @@ cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
 
 # A bundle with one missing declared capability must fail before UI effects.
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     --bind font_metrics:MeasureGlyphWidth=progress_widget_metrics_host:MeasureGlyphWidth \
     --bind font_metrics:MeasureGlyphLineHeight=progress_widget_metrics_host:MeasureGlyphLineHeight \
     --bind raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
@@ -115,16 +115,16 @@ for input in source saved; do
     if test "$input" = source; then
         module=$source
         module_root=$repo/tests
-        module_dir=$repo/src/ui
+        module_dir="$kryon_ui_args"
     else
         module=$work/ir/progress_widget_behavior.zir
         module_root=$work/ir
-        module_dir=$work/ir
+        module_dir="--module-path $work/ir"
     fi
     for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --root "$module_root" \
-            --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" "$module"
+            $module_dir --module-path "$ziran_root/std" -o "$output" "$module"
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"
             "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \

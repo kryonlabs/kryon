@@ -4,6 +4,8 @@
 #import "session"
 #import "tree"
 #import "tree_draw"
+#import "tree_input"
+#import "widget_key"
 #import "widget_test_session"
 #import "ziran_image_widget_host"
 
@@ -22,6 +24,95 @@ DrawCarousel :: (item: CarouselItem) -> s32 {
     items[0] = item
     unused Carousel(TestSession(), props, items[0:1], *state)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return 90 }
+    return 0
+}
+
+
+carousel_test_time: float64 = 10.0;
+CarouselInputFrame :: (state: *CarouselState, items: []CarouselItem, disabled: bool, key: s32 = 0) -> s32 {
+    carousel_test_time += 1.0
+    unused BeginFrame(TestSession(), cast(u64)77, Rectangle.{0.0, 0.0, 640.0, 480.0})
+    result := Carousel(TestSession(), CarouselProps.{.key = cast(u64)101,
+        .bounds = Rectangle.{0.0, 0.0, 640.0, 480.0}, .now = carousel_test_time,
+        .disabled = disabled, .key_pressed = key}, items, state)
+    if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return -90 }
+    return result
+}
+CarouselClick :: (part: s32) -> bool {
+    key := WidgetPartKey(cast(u64)101, part)
+    for index: 0..TreeCount(TestSession()) - 1 {
+        node := TreeNodeAt(TestSession(), index)
+        if node.key != key { continue }
+        x := node.bounds.x + node.bounds.width * 0.5
+        y := node.bounds.y + node.bounds.height * 0.5
+        TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
+        TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
+        return true
+    }
+    return false
+}
+CarouselDisabledTest :: () -> s32 {
+    items: [3]CarouselItem
+    for index: 0..2 { items[index].action = "Run" }
+    state := CarouselState.{.selected = 1, .position = 1.0}
+    if CarouselInputFrame(*state, items[:], false) != -1 { return 100 }
+    // A queued enabled click must be rejected by the new disabled props.
+    if !CarouselClick(3) || CarouselInputFrame(*state, items[:], true) != -1 || state.selected != 1 { return 101 }
+    controls: s32
+    for index: 0..TreeCount(TestSession()) - 1 {
+        node := TreeNodeAt(TestSession(), index)
+        if !node.interactive { continue }
+        controls += 1
+        if !node.disabled { return 102 }
+    }
+    if controls != 4 || TreeHitAt(TestSession(), 100.0, 80.0) != -1 { return 103 }
+    keys: [4]s32 = .[262, 263, 257, 32]
+    for key: keys {
+        if CarouselInputFrame(*state, items[:], true, key) != -1 || state.selected != 1 { return 104 }
+    }
+    wheel_time := state.wheel_time
+    PointerWheelSend(TestSession(), 100.0, 80.0, -1.0)
+    if CarouselInputFrame(*state, items[:], true) != -1 || state.selected != 1 || state.wheel_time != wheel_time { return 105 }
+    // Disabled carousels leave scrolling available to an enclosing viewport.
+    if PointerWheelTake(TestSession(), Rectangle.{0.0, 0.0, 640.0, 480.0}) != -1.0 { return 106 }
+    TreePointerUpdate(TestSession(), PointerFrame.{100.0, 80.0, true, true, false})
+    unused CarouselInputFrame(*state, items[:], true)
+    TreePointerUpdate(TestSession(), PointerFrame.{260.0, 80.0, true, false, false})
+    unused CarouselInputFrame(*state, items[:], true)
+    TreePointerUpdate(TestSession(), PointerFrame.{260.0, 80.0, false, false, true})
+    if CarouselInputFrame(*state, items[:], true) != -1 || state.selected != 1 { return 107 }
+    // Reenable each input path, including the same retained controls.
+    if CarouselInputFrame(*state, items[:], false, 262) != -1 || state.selected != 2 { return 108 }
+    unused CarouselInputFrame(*state, items[:], false, 263)
+    if state.selected != 1 || CarouselInputFrame(*state, items[:], false, 257) != 1 || CarouselInputFrame(*state, items[:], false, 32) != 1 { return 109 }
+    if !CarouselClick(3) { return 110 }
+    unused CarouselInputFrame(*state, items[:], false)
+    if state.selected != 2 || !CarouselClick(2) { return 111 }
+    unused CarouselInputFrame(*state, items[:], false)
+    if state.selected != 1 || !CarouselClick(1) || CarouselInputFrame(*state, items[:], false) != 1 { return 112 }
+    items[1].disabled = true
+    if CarouselInputFrame(*state, items[:], false, 257) != -1 || !CarouselClick(1) || CarouselInputFrame(*state, items[:], false) != -1 { return 113 }
+    items[1].disabled = false
+    PointerWheelSend(TestSession(), 100.0, 80.0, -1.0)
+    unused CarouselInputFrame(*state, items[:], false)
+    if state.selected != 2 { return 114 }
+    PointerWheelSend(TestSession(), 100.0, 80.0, 1.0)
+    unused CarouselInputFrame(*state, items[:], false)
+    if state.selected != 1 { return 115 }
+    TreePointerUpdate(TestSession(), PointerFrame.{100.0, 80.0, true, true, false})
+    unused CarouselInputFrame(*state, items[:], false)
+    TreePointerUpdate(TestSession(), PointerFrame.{260.0, 80.0, true, false, false})
+    unused CarouselInputFrame(*state, items[:], false)
+    TreePointerUpdate(TestSession(), PointerFrame.{260.0, 80.0, false, false, true})
+    unused CarouselInputFrame(*state, items[:], false)
+    if state.selected != 0 { return 116 }
+    // Disabling during a captured swipe cancels it before reenable/release.
+    unused CarouselInputFrame(*state, items[:], false, 262)
+    TreePointerUpdate(TestSession(), PointerFrame.{100.0, 80.0, true, true, false})
+    unused CarouselInputFrame(*state, items[:], false)
+    unused CarouselInputFrame(*state, items[:], true)
+    TreePointerUpdate(TestSession(), PointerFrame.{260.0, 80.0, false, false, true})
+    if CarouselInputFrame(*state, items[:], false) != -1 || state.selected != 1 { return 117 }
     return 0
 }
 
@@ -68,5 +159,5 @@ main :: () -> s32 {
     if CarouselCoverDraws() != 4 || source.x != 4.0 || source.y != 8.0 ||
             source.width != 120.0 || source.height != 60.0 ||
             ImageHostFailed() { return 8 }
-    return 0
+    return CarouselDisabledTest()
 }

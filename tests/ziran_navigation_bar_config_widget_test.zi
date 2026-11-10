@@ -1,10 +1,10 @@
 #import "session"
 #import "widget_test_session"
 
-#import "dropdown"
+#import "dropdown_behavior"
 #import "geometry"
 #import "navigation_bar_config_props"
-#import "navigation_bar_config_widget"
+#import "navigation_config"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"

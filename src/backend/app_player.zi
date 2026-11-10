@@ -88,17 +88,9 @@ Draw :: (app: *AppContext) -> bool {
     TreePointerUpdate(app.session, pointer)
     TreeSecondaryPointerUpdate(app.session, PollSecondaryPointer())
     PointerWheelSend(app.session, pointer.x, pointer.y, DesktopWheelMove())
-    modifiers := DesktopModifiers()
+    key, modifiers := DesktopInputTake(app.session)
     KeyboardModifiersSend(app.session, modifiers)
-    key := DesktopPressedKey()
-    if key != 0 {
-        KeyboardSend(app.session, key)
-    }
-    point := DesktopTypedCodepoint()
-    while point != 0 {
-        TypedCodepointSend(app.session, point)
-        point = DesktopTypedCodepoint()
-    }
+    if key != 0 { KeyboardSend(app.session, key) }
     typed: [1024]u8
     paste: [65536]u8
     text := TypedTextTake(app.session, typed[:])
@@ -168,6 +160,7 @@ Run :: (bundle: *void, check: bool) -> s32 {
     if ready {
         ready = OpenDesktop()
         if ready {
+            DesktopInputEnable()
             SetTitle(window, *app.name[0])
             ready = WindowInterceptCloseHost(true)
         }
@@ -178,7 +171,8 @@ Run :: (bundle: *void, check: bool) -> s32 {
         if CaptureRequested() {
             ready = Draw(*app) && Draw(*app) && CaptureConfigured()
         } else {
-            while ready && PollDesktop() {
+            while ready {
+                if !PollDesktop() { break }
                 ready = Draw(*app)
                 if WindowTakeCloseRequestHost() {
                     break

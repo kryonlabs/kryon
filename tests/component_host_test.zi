@@ -1,0 +1,217 @@
+#import "component_inputs_host_test"
+#import "component_host_boundaries_test"
+#import "component_host"
+#import "component_test_codecs"
+#import "component_raster_host"
+#import "widget_host"
+#import "widget_codec"
+#import "hosted_values"
+#import "text_input_props"
+#import "tree_draw"
+#import "std/bundle_host"
+#import "session"
+#import "geometry"
+#import "tree"
+#import "tree_input"
+#import "input_protocol"
+#import "std/file"
+#import "std/c_string"
+#import "std/byte_text_linux"
+#import "std/timer_linux"
+
+using FrameStatus;
+
+NoPointer :: () -> PointerFrame { return PointerFrame.{} }
+NoSecondary :: () -> SecondaryPointerFrame { return SecondaryPointerFrame.{} }
+
+ReadZX :: (name: string) -> string {
+    bytes, ok := ReadEntireFile(name)
+    return ifx ok then bytes else ""
+}
+
+ZXBytes :: (value: string) -> []u8 {
+    descriptor := cast(*TextDescriptor)(*value)
+    return BytesFromPointer(descriptor.data, cast(u64)value.count)
+}
+
+LabelAt :: (host: *ComponentHost, index: s32) -> string {
+    return TreeNodeAt(host.session, index).semantic_label
+}
+
+Frame :: (host: *ComponentHost, pointer: PointerFrame = NoPointer(), typed: string = "") -> bool {
+    if !ComponentRasterBegin() { return false }
+    return ComponentHostFrame(host, Rectangle.{0.0, 0.0, 320.0, 180.0},
+        pointer, NoSecondary(), 0, 0, 0.0, typed, 0.016)
+}
+
+Reject :: (host: *ComponentHost, id: u64, zx: string, name: string) -> bool {
+    if ComponentHostReplace(host, id, ZXBytes(zx)) {
+        print("unexpected component acceptance: %\n", name)
+        return false
+    }
+    return true
+}
+
+// Exercise clipboard-producing editor commands through the actual widget host.
+EditorEffects :: (staging: bool) -> bool {
+    session := SessionOpen()
+    if !SessionValid(session) { return false }
+    unused BeginFrame(session, cast(u64)9, Rectangle.{0.0, 0.0, 320.0, 180.0})
+    WidgetHostBegin(session, ComponentHostAssetAllowed, ComponentHostAssetResolve,
+        null, WidgetHostAudioReadNone, null, staging)
+    session_codec: WidgetSessionCodec
+    field_codec: WidgetTextFieldPropsCodec
+    area_codec: WidgetTextAreaPropsCodec
+    arguments: [2]HostValue
+    result: HostValue
+    arguments[0] = WidgetEncodeSession(session, *session_codec)
+    arguments[1] = WidgetEncodeTextFieldProps(TextFieldProps.{
+        .key = 1, .bounds = Rectangle.{0.0, 0.0, 120.0, 40.0}, .value = "field",
+        .cursor = 5, .anchor = 0, .focused = true, .input = TextFieldInput.{.copy = true}
+    }, *field_codec)
+    field_ok := WidgetHostCall(null, HostTextData("textfield"),
+        HostTextData("TextFieldHostedHost"), *arguments[0], 2, *result) != 0
+    arguments[1] = WidgetEncodeTextAreaProps(TextAreaProps.{
+        .key = 2, .bounds = Rectangle.{0.0, 50.0, 120.0, 100.0}, .value = "area",
+        .cursor = 4, .anchor = 0, .focused = true, .input = TextAreaInput.{.copy = true}
+    }, *area_codec)
+    area_ok := WidgetHostCall(null, HostTextData("textarea"),
+        HostTextData("TextAreaHostedHost"), *arguments[0], 2, *result) != 0
+    WidgetHostEnd()
+    status := CommitFrame(session)
+    unused SessionClose(session)
+    return field_ok && area_ok && status == cast(FrameStatus)FrameOk
+}
+
+#program_export
+main :: () -> s32 {
+    inputs := ComponentInputsTest()
+    if inputs != 0 { print("hosted inputs failed %\n", inputs); return 80 + inputs }
+    old_zx := ReadZX("counter_v1.zx")
+    new_zx := ReadZX("counter_v2.zx")
+    status_zx := ReadZX("status.zx")
+    bad_entry := ReadZX("bad_entry.zx")
+    bad_abi := ReadZX("bad_abi.zx")
+    bad_migrated := ReadZX("bad_migrated.zx")
+    bad_init := ReadZX("bad_init.zx")
+    bad_schema := ReadZX("bad_schema.zx")
+    bad_resource := ReadZX("bad_resource.zx")
+    if old_zx.count == 0 || new_zx.count == 0 || status_zx.count == 0 ||
+    bad_entry.count == 0 || bad_init.count == 0 || bad_schema.count == 0 ||
+    bad_abi.count == 0 || bad_migrated.count == 0 || bad_resource.count == 0 { return 1 }
+
+    host: ComponentHost
+    ComponentHostInit(*host)
+    a_id := ComponentHostID("examples", "counter")
+    b_id := ComponentHostID("examples", "status")
+    if !ComponentHostOpen(*host, "examples", "counter", old_zx,
+    COMPONENT_CAPABILITY_HOST | COMPONENT_CAPABILITY_INPUT |
+    COMPONENT_CAPABILITY_WIDGET | COMPONENT_CAPABILITY_TREE, 1) ||
+    !ComponentHostOpen(*host, "examples", "status", status_zx,
+    COMPONENT_CAPABILITY_HOST | COMPONENT_CAPABILITY_INPUT |
+    COMPONENT_CAPABILITY_WIDGET | COMPONENT_CAPABILITY_TREE, 1) ||
+    ComponentHostCount(*host) != 2 { return 2 }
+
+    old_handle := ComponentHostAcquire(*host, a_id)
+    b_handle := ComponentHostAcquire(*host, b_id)
+    if old_handle == null || b_handle == null ||
+    !ComponentHostHandleValid(old_handle) || !ComponentHostHandleValid(b_handle) { return 3 }
+
+    ComponentRasterReset()
+    if !Frame(*host) || TreeCount(host.session) != 6 ||
+    LabelAt(*host, 3) != "A 7" || LabelAt(*host, 5) != "B 41" ||
+    ComponentRasterCalls() <= 0 || ComponentRasterFailed() { return 4 }
+
+    click := PointerFrame.{.x = 40.0, .y = 30.0, .pressed = true, .released = true}
+    if !Frame(*host, click) || LabelAt(*host, 3) != "A 8" ||
+    LabelAt(*host, 5) != "B 41" { return 5 }
+
+    before_failure_pixels := ComponentRasterHash()
+    status_pixels := ComponentRasterHash(true)
+    if !TreeFocusAt(host.session, 2) || !KeyboardSend(host.session, 77) { return 15 }
+    ComponentRasterReset()
+    if !Reject(*host, a_id, "ZX", "truncated") ||
+    !Reject(*host, a_id, bad_abi, "bad_abi") ||
+    !Reject(*host, a_id, bad_entry, "bad_entry") ||
+    !Reject(*host, a_id, bad_init, "bad_init") ||
+    !Reject(*host, a_id, bad_schema, "bad_schema") ||
+    !Reject(*host, a_id, bad_resource, "bad_resource") ||
+    !Reject(*host, a_id, bad_migrated, "bad_migrated") ||
+    !ComponentHostHandleValid(old_handle) || !ComponentHostHandleValid(b_handle) ||
+    ComponentHostCount(*host) != 2 { return 6 }
+    if ComponentRasterCalls() != 0 || ComponentRasterHash() != before_failure_pixels || TreeCount(host.session) != 6 ||
+    !TreeFocusedAt(host.session, 2) || KeyboardTake(host.session) != 77 ||
+    LabelAt(*host, 3) != "A 8" || LabelAt(*host, 5) != "B 41" { return 16 }
+    if !Frame(*host) || TreeCount(host.session) != 6 ||
+    LabelAt(*host, 3) != "A 8" || LabelAt(*host, 5) != "B 41" ||
+    ComponentRasterCalls() <= 0 || ComponentRasterFailed() { return 7 }
+
+    ComponentRasterReset()
+    before_swap_pixels := ComponentRasterHash()
+    swap_start := MonotonicNanoseconds()
+    if !ComponentHostReplace(*host, a_id, ZXBytes(new_zx)) { return 8 }
+    if ComponentRasterCalls() != 0 || ComponentRasterHash() != before_swap_pixels || !TreeFocusedAt(host.session, 2) { return 17 }
+    swap_ns := MonotonicNanoseconds() - swap_start
+    if ComponentHostHandleValid(old_handle) || !ComponentHostHandleValid(b_handle) ||
+    ComponentHostCount(*host) != 2 { return 9 }
+    ComponentHostCloseHandle(old_handle)
+    if !Frame(*host) || TreeCount(host.session) != 6 ||
+    !TreeFocusedAt(host.session, 2) || LabelAt(*host, 3) != "A 8 v2" || LabelAt(*host, 5) != "B 41" ||
+    ComponentRasterCalls() <= 0 || ComponentRasterFailed() { return 10 }
+    if ComponentRasterHash() == before_swap_pixels || ComponentRasterHash(true) != status_pixels { return 20 }
+    if !Frame(*host, click) || LabelAt(*host, 3) != "A 10 v2" ||
+    LabelAt(*host, 5) != "B 41" { return 11 }
+
+    if !Frame(*host, NoPointer(), "advance") || LabelAt(*host, 3) != "A 10 v2" ||
+    LabelAt(*host, 5) != "B 42" { return 24 }
+    frame_start := MonotonicNanoseconds()
+    frame_count: s64 = 100
+    index: s64 = 0
+    while index < frame_count {
+        if !Frame(*host) { return 12 }
+        index += 1
+    }
+    frame_ns := MonotonicNanoseconds() - frame_start
+    live_a := ComponentHostLiveBytes(*host, a_id)
+    live_b := ComponentHostLiveBytes(*host, b_id)
+    if live_a == 0 || live_b == 0 { return 13 }
+    print("component-host swap_ms=% frame_avg_ms=% live_a_bytes=% live_b_bytes=%\n",
+        cast(float64)swap_ns / 1000000.0,
+        cast(float64)frame_ns / cast(float64)(frame_count * 1000000), live_a, live_b)
+
+    // A text-only guest can use the same local key as the counter's text.
+    if TreeNodeAt(host.session, 3).key != TreeNodeAt(host.session, 5).key { return 18 }
+    if ComponentHostOpen(*host, "examples", "status", status_zx, COMPONENT_CAPABILITY_ALL, 1) ||
+    ComponentHostOpen(*host, "denied", "status", status_zx, 0, 1) { return 21 }
+    if !ComponentHostOpen(*host, "capacity", "slot00", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot01", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot02", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot03", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot04", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot05", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot06", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot07", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot08", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot09", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot10", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot11", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot12", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if !ComponentHostOpen(*host, "capacity", "slot13", status_zx, COMPONENT_CAPABILITY_ALL, 1) { return 22 }
+    if ComponentHostCount(*host) != COMPONENT_HOST_LIMIT ||
+    ComponentHostOpen(*host, "capacity", "overflow", status_zx, COMPONENT_CAPABILITY_ALL, 1) ||
+    !ComponentHostReplace(*host, a_id, ZXBytes(new_zx)) || !Frame(*host) ||
+    TreeCount(host.session) != 34 || LabelAt(*host, 3) != "A 10 v2" ||
+    !ComponentHostHandleValid(b_handle) { return 23 }
+    new_handle := ComponentHostAcquire(*host, a_id)
+    ComponentHostClose(*host)
+    if ComponentHostHandleValid(b_handle) || ComponentHostHandleValid(new_handle) { return 19 }
+    ComponentHostCloseHandle(b_handle)
+    ComponentHostCloseHandle(new_handle)
+    if ComponentHostCount(*host) != 0 || SessionValid(host.session) { return 14 }
+    if !EditorEffects(true) || ComponentClipboardWrites() != 0 { return 25 }
+    if !EditorEffects(false) || ComponentClipboardWrites() != 2 { return 26 }
+    boundary := ComponentHostBoundaryTest()
+    if boundary != 0 { return 100 + boundary }
+    ComponentRasterClose()
+    return 0
+}

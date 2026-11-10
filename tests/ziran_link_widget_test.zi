@@ -5,7 +5,7 @@
 #import "accessibility_props"
 #import "geometry"
 #import "link_props"
-#import "link_widget"
+#import "link"
 #import "semantic"
 #import "tree"
 #import "tree_draw"

@@ -9,18 +9,18 @@ flock -n 9 || { echo 'Tree identity checks are already running' >&2; exit 1; }
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 export YUE_DESKTOP_RECOVERY=0 GOCACHE="$work/go-cache"
 source="$repo/tests/tree_identity_index_test.zi"
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for input in source saved; do
     module=$source
     root=$repo/tests
-    modules=$repo/src/ui
+    modules="$kryon_ui_args"
     if test "$input" = saved; then
         module=$work/ir/tree_identity_index_test.zir
         root=$work/ir
-        modules=$work/ir
+        modules="--module-path $work/ir"
     fi
-    "$ziran" bundle --root "$root" --module-path "$modules" \
+    "$ziran" bundle --root "$root" $modules \
         --module-path "$ziran_root/std" --entry tree_identity_index_test:main \
         -o "$work/$input.zx" "$module"
     "$ziran" run "$work/$input.zx" > "$work/$input-vm.log"
@@ -30,7 +30,7 @@ for input in source saved; do
         executable=--exe
         package=
         if test "$target" = go; then package='--pkg main'; fi
-        "$ziran" build --root "$root" --module-path "$modules" \
+        "$ziran" build --root "$root" $modules \
             --module-path "$ziran_root/std" --entry tree_identity_index_test:main \
             --target="$target" $executable $package -o "$output" "$module"
         case "$target" in

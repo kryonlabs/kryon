@@ -7,9 +7,9 @@
 #import "control_props"
 #import "style"
 #import "style_sheet"
-#import "toolbar"
+#import "toolbar_behavior"
 #import "toolbar_props"
-#import "toolbar_widget"
+#import "toolbar"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -63,8 +63,8 @@ Frame :: () -> s32 {
         result.dropdown.node != 4 ||
         TreeNodeAt(TestSession(), 4).kind != WidgetKindDropdown { return -20 }
     // Three eight-pixel glyphs need 24 pixels of content plus the button's
-    // two 12-pixel insets. Text actions must not be clipped to icon slots.
-    if TreeNodeAt(TestSession(), 2).bounds.width < 48.0 ||
+    // two 10-pixel insets. Text actions must not be clipped to icon slots.
+    if TreeNodeAt(TestSession(), 2).bounds.width < 44.0 ||
         TreeNodeAt(TestSession(), 3).bounds.x < TreeNodeAt(TestSession(), 2).bounds.x +
             TreeNodeAt(TestSession(), 2).bounds.width { return -21 }
     if phase == 0 {
@@ -112,7 +112,9 @@ Frame :: () -> s32 {
 main :: () -> s32 {
     index: s32 = 0
     while index < 4 {
-        if Frame() != index || ToolbarHostFailed() { return 1 }
+        frame := Frame()
+        if frame != index { return 100 - frame }
+        if ToolbarHostFailed() { return 200 + index }
         index += 1
     }
     if ToolbarFills() < 16 || ToolbarStrokes() < 12 ||

@@ -1,23 +1,15 @@
 #!/usr/bin/env python3
-"""Check kryonlabs.com pages and the live editor in a private headless Chromium.
-
-  python3 tests/site_browser_test.py [--site docs/site] [--screenshots DIR]
-
-Serves the site from a local loopback server and drives only the browser it
-starts, over the DevTools pipe; it needs no display. It checks navigation,
-the app and module catalogs, links, images, themes, keyboard focus, narrow
-layouts, and that the browser preview host compiles and draws Text,
-including rotated text, without missing capabilities.
-"""
+"""Exercise the compiled Ziran website in a private Chromium session."""
 import argparse
 import base64
 import functools
+import hashlib
 import http.server
 import io
 import json
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 import select
 import shutil
 import subprocess
@@ -26,23 +18,26 @@ import tempfile
 import threading
 import time
 from urllib.parse import urljoin, urlsplit
-import urllib.request
+
+from PIL import Image, ImageChops
 
 ROOT = Path(__file__).resolve().parents[1]
-PAGES = ['index', 'apps', 'modules', 'widgets', 'docs', 'getting-started', 'renderers']
-NAV = ['Apps', 'Modules', 'Gallery', 'Docs']
-CURRENT = {'apps': 'Apps', 'modules': 'Modules', 'widgets': 'Gallery', 'docs': 'Docs'}
-APPS = {'terminal', 'browser', 'github', 'shelf'}
-MODULES = {'kryon', 'plot', 'data-views', 'css', 'mingcute', 'game2d'}
-# Repositories that are not public yet; the site must not send visitors there.
-PRIVATE = ('github.com/kryonlabs/terminal', 'github.com/kryonlabs/browser', 'github.com/kryonlabs/github')
+SITE = ROOT / 'docs/site'
+PAGES = ['index', 'getting-started', 'widgets', 'modules', 'apps', 'docs', 'renderers']
+REDIRECT_TARGETS = {
+    'api': 'docs.html',
+    'components': 'widgets.html', 'demo': 'widgets.html', 'live-examples': 'widgets.html',
+    'language': 'docs.html', 'showcase': 'apps.html', 'matrices': 'renderers.html',
+    'benchmarks': 'docs.html',
+}
+REDIRECTS = list(REDIRECT_TARGETS)
+VIEWPORTS = (320, 390, 768, 1024, 1366)
+EXPECTED_SCENE_COUNT = 101
 
 
 class DevToolsError(RuntimeError):
     def __init__(self, method, error):
-        self.method = method
-        self.code = error.get('code')
-        self.message = error.get('message')
+        self.method, self.code, self.message = method, error.get('code'), str(error)
         super().__init__(method + ': ' + str(error))
 
 
@@ -51,82 +46,70 @@ class Browser:
         shutil.rmtree(profile, ignore_errors=True)
         profile.mkdir(parents=True)
         environment = {key: value for key, value in os.environ.items() if key not in (
-            'DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'GDK_DISPLAY', 'DBUS_SESSION_BUS_ADDRESS',
-            'SESSION_MANAGER')}
-        environment['YUE_DESKTOP_RECOVERY'] = '0'
-        # Chromium's Unix socket path must stay below the 108-byte limit.
-        short = ROOT / 'build/scratch/t'
-        short.mkdir(parents=True, exist_ok=True)
-        environment['TMPDIR'] = str(short)
+            'DISPLAY', 'WAYLAND_DISPLAY', 'WAYLAND_SOCKET', 'XAUTHORITY', 'GDK_DISPLAY',
+            'DBUS_SESSION_BUS_ADDRESS', 'SESSION_MANAGER', 'DESKTOP_SESSION', 'DESKTOP_STARTUP_ID',
+            'XDG_SESSION_ID', 'XDG_SESSION_TYPE', 'XDG_CURRENT_DESKTOP', 'XDG_SESSION_DESKTOP', 'XDG_RUNTIME_DIR')}
+        environment.update(YUE_DESKTOP_RECOVERY='0')
+        runtime_root = os.environ.get('KRYON_TEST_RUNTIME')
+        self.runtime = tempfile.TemporaryDirectory(prefix='kryon-', dir=runtime_root) if runtime_root else None
+        runtime_profile = Path(self.runtime.name) / 'profile' if self.runtime else profile
+        temporary = Path(self.runtime.name) if self.runtime else ROOT / 'build/scratch/t'
+        temporary.mkdir(parents=True, exist_ok=True)
+        environment['TMPDIR'] = str(temporary)
         self.log = (profile / 'chromium.log').open('wb')
         self.process = subprocess.Popen(
             ['sh', '-c', 'exec 3<&0 4>&1 "$@" </dev/null >/dev/null', 'chromium', chromium,
-             '--headless', '--no-sandbox', '--disable-gpu', '--use-gl=disabled', '--disable-dev-shm-usage',
-             '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', '--mute-audio',
-             '--remote-debugging-pipe', '--user-data-dir=' + str(profile), 'about:blank'],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log, env=environment,
-            start_new_session=True)
-        self.received = b''
-        self.sequence = 0
-        self.session = None
-        self.errors = []
-        self.console = []
-        target = next(item['targetId'] for item in self.command('Target.getTargets')['targetInfos']
-                      if item['type'] == 'page')
-        self.session = self.command('Target.attachToTarget', targetId=target, flatten=True)['sessionId']
+             '--headless', '--no-sandbox', '--disable-gpu', '--use-gl=disabled',
+             '--disable-dev-shm-usage', '--no-first-run', '--no-default-browser-check',
+             '--hide-scrollbars', '--mute-audio', '--remote-debugging-pipe',
+             '--user-data-dir=' + str(runtime_profile), 'about:blank'],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log,
+            env=environment, start_new_session=True)
+        self.received, self.sequence, self.session, self.errors = b'', 0, None, []
+        target = next(item for item in self.command('Target.getTargets')['targetInfos'] if item['type'] == 'page')
+        self.session = self.command('Target.attachToTarget', targetId=target['targetId'], flatten=True)['sessionId']
         for domain in ('Runtime', 'Page', 'Log'):
             self.command(domain + '.enable')
 
     def close(self):
-        try:
-            self.process.stdin.close()
-        except OSError:
-            pass
-        try:
-            os.killpg(self.process.pid, 15)
-        except ProcessLookupError:
-            pass
-        try:
-            self.process.wait(timeout=5)
+        try: self.process.stdin.close()
+        except OSError: pass
+        try: os.killpg(self.process.pid, 15)
+        except ProcessLookupError: pass
+        try: self.process.wait(timeout=5)
         except subprocess.TimeoutExpired:
-            os.killpg(self.process.pid, 9)
-            self.process.wait(timeout=5)
+            os.killpg(self.process.pid, 9); self.process.wait()
         self.log.close()
+        if self.runtime: self.runtime.cleanup()
 
-    def command(self, method, timeout=60, **params):
+    def command(self, method, timeout=30, **params):
         self.sequence += 1
         message = {'id': self.sequence, 'method': method, 'params': params}
-        if self.session:
-            message['sessionId'] = self.session
+        if self.session: message['sessionId'] = self.session
         self.process.stdin.write(json.dumps(message).encode() + b'\0')
         self.process.stdin.flush()
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             while b'\0' in self.received:
                 raw, self.received = self.received.split(b'\0', 1)
-                if not raw:
-                    continue
+                if not raw: continue
                 reply = json.loads(raw)
                 event = reply.get('method')
                 if event == 'Runtime.exceptionThrown':
                     details = reply['params']['exceptionDetails']
                     self.errors.append((details.get('exception') or {}).get('description') or details.get('text'))
-                elif event == 'Runtime.consoleAPICalled' and reply['params'].get('type') == 'error':
-                    self.console.append(' '.join(str(arg.get('value', arg.get('description', '')))
-                                                 for arg in reply['params']['args'])[:300])
                 if reply.get('id') == self.sequence:
-                    if 'error' in reply:
-                        raise DevToolsError(method, reply['error'])
+                    if 'error' in reply: raise DevToolsError(method, reply['error'])
                     return reply.get('result', {})
             if select.select([self.process.stdout], [], [], .2)[0]:
                 data = os.read(self.process.stdout.fileno(), 1 << 20)
-                if not data:
-                    raise RuntimeError('Chromium exited (%s)' % self.process.wait(timeout=2))
+                if not data: raise RuntimeError('Chromium exited')
                 self.received += data
         raise TimeoutError(method)
 
     def evaluate(self, expression):
-        result = self.command('Runtime.evaluate', expression=expression, returnByValue=True, awaitPromise=True)
+        result = self.command('Runtime.evaluate', expression=expression,
+                              returnByValue=True, awaitPromise=True)
         if 'exceptionDetails' in result:
             raise RuntimeError(str(result['exceptionDetails'])[:1200])
         return result.get('result', {}).get('value')
@@ -135,371 +118,539 @@ class Browser:
         deadline = time.monotonic() + seconds
         value = None
         while time.monotonic() < deadline:
-            try:
-                value = self.evaluate(expression)
+            try: value = self.evaluate(expression)
             except DevToolsError as error:
-                if error.method != 'Runtime.evaluate' or error.code != -32000 or error.message not in (
-                        'Inspected target navigated or closed', 'Execution context was destroyed.'):
+                if error.method != 'Runtime.evaluate' or error.code != -32000:
                     raise
-                # A redirect can replace the execution context while this
-                # read is pending. Poll the new page within the same deadline.
-                value = None
-            if value:
-                return value
+            if value: return value
             time.sleep(.1)
-        raise AssertionError(what + ': timed out (last %r)' % (value,))
+        raise AssertionError(what + ': timed out at %r' % value)
 
-    def viewport(self, width, height, scale=1, mobile=False):
+    def viewport(self, width, height, mobile=False):
         self.command('Emulation.setDeviceMetricsOverride', width=width, height=height,
-                     deviceScaleFactor=scale, mobile=mobile)
+                     deviceScaleFactor=1, mobile=mobile)
 
-    def open(self, url, ready="document.readyState === 'complete'"):
+    def open(self, url):
         self.command('Page.navigate', url=url)
-        self.until(ready, 'load ' + url)
+        self.until("document.readyState === 'complete'", 'load ' + url)
+        self.evaluate('''(async () => {
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          return true;
+        })()''')
 
-    def key(self, key, code=None, keycode=0, shift=False):
-        modifiers = 8 if shift else 0
+    def key(self, key, keycode, modifiers=0):
+        text = {'Enter': '\r', 'Escape': '\u001b'}.get(key)
         for kind in ('keyDown', 'keyUp'):
-            self.command('Input.dispatchKeyEvent', type=kind, key=key, code=code or key,
-                         windowsVirtualKeyCode=keycode, modifiers=modifiers)
+            params = {'type': kind, 'key': key, 'code': 'Key' + key.upper() if len(key) == 1 and key.isalpha() else key,
+                      'windowsVirtualKeyCode': keycode, 'modifiers': modifiers}
+            if text and kind == 'keyDown':
+                params.update(text=text, unmodifiedText=text)
+            self.command('Input.dispatchKeyEvent', **params)
 
-    def png(self, clip=None, full=False):
-        params = {'format': 'png'}
-        if clip:
-            params['clip'] = dict(clip, scale=1)
-        if full:
-            self.evaluate('''(async () => {
-                await document.fonts.ready;
-                await Promise.all([...document.images].map(img => {
-                    img.loading = 'eager';
-                    return img.decode().catch(() => {});
-                }));
-                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-            })()''')
-            params['captureBeyondViewport'] = True
-        return base64.b64decode(self.command('Page.captureScreenshot', **params)['data'])
+        committed = self.evaluate('Module.siteFrame || 0')
+        self.until('Module.siteFrame >= ' + str(committed + 2), 'key event committed')
 
-    def element_png(self, selector):
-        clip = self.evaluate('''(() => {const r=document.querySelector(%s).getBoundingClientRect();
-            return {x:r.x+scrollX,y:r.y+scrollY,width:r.width,height:r.height};})()''' % json.dumps(selector))
-        return self.png(clip)
+    def reduced_motion(self, enabled):
+        self.command('Emulation.setEmulatedMedia', features=[
+            {'name': 'prefers-reduced-motion', 'value': 'reduce' if enabled else 'no-preference'}])
+
+    def screenshot(self, path):
+        result = self.command('Page.captureScreenshot', format='png')
+        path.write_bytes(base64.b64decode(result['data']))
 
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
-    def log_message(self, *args):
-        pass
-
+    def log_message(self, *args): pass
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store')
         super().end_headers()
 
 
+class QuietServer(http.server.ThreadingHTTPServer):
+    daemon_threads = True
+    def handle_error(self, request, client_address):
+        if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError)): return
+        super().handle_error(request, client_address)
+
+
 def serve(site):
-    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(QuietHandler, directory=str(site)))
+    server = QuietServer(('127.0.0.1', 0), functools.partial(QuietHandler, directory=str(site)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     return server
 
 
-def ink_box(png, background_tolerance=60):
-    """Bounding box of pixels clearly darker than the preview background."""
-    from PIL import Image
-    image = Image.open(io.BytesIO(png)).convert('L')
-    width, height = image.size
-    pixels = image.load()
-    background = sorted(pixels[x, y] for x in (2, width - 3) for y in (2, height - 3))[2]
-    xs, ys = [], []
-    for y in range(height):
-        for x in range(width):
-            if pixels[x, y] < background - background_tolerance:
-                xs.append(x)
-                ys.append(y)
-    if not xs:
-        return None
-    return min(xs), min(ys), max(xs) - min(xs) + 1, max(ys) - min(ys) + 1
+def tree(browser):
+    return browser.evaluate('Module.siteTree || []')
 
 
-ROTATED_SOURCE = '''using UI :: #import "kryon/Widgets";
-
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Box(session, BoxProps.{.key = 1, .bounds = viewport, .fill = Color.{255, 255, 255, 255}})
-    Text(session, TextProps.{.key = 2, .bounds = .{150.0, 30.0, 260.0, 44.0}, .text = "ROTATED TEXT",
-        .font = 34, .rotation = ROTATION})
-    return 0
-}
-'''
+def visible(node, width=1366, height=844):
+    left = max(node['x'], node['clipX'] if node.get('clipped', False) else 0, 0)
+    top = max(node['y'], node['clipY'] if node.get('clipped', False) else 0, 0)
+    right = min(node['x'] + node['width'], node['clipX'] + node['clipWidth'] if node.get('clipped', False) else width, width)
+    bottom = min(node['y'] + node['height'], node['clipY'] + node['clipHeight'] if node.get('clipped', False) else height, height)
+    return right > left and bottom > top
 
 
-def check_preview_host(browser, base, shots):
-    """The browser preview host runs bundles that import RasterTextRotated."""
-    browser.viewport(1440, 1000)
-    browser.open(base + 'demo.html')
-    status = "document.getElementById('status')?.textContent"
-    browser.until(status + " === 'Live · changes compiled' || " + status + " === 'Check the source'",
-                  'default editor source did not finish', 150)
-    diagnostics = browser.evaluate("document.getElementById('diagnostics').textContent")
-    assert browser.evaluate(status) == 'Live · changes compiled', diagnostics
-    assert 'Unavailable preview capability' not in diagnostics, diagnostics
-    boxes = {}
-    for rotation in ('0.0', '90.0'):
-        source = ROTATED_SOURCE.replace('ROTATION', rotation)
-        browser.evaluate('''(() => {const editor=document.getElementById('source-editor');
-            editor.value=%s;editor.dispatchEvent(new Event('input'));})()''' % json.dumps(source))
-        time.sleep(.3)
-        browser.until(status + " === 'Live · changes compiled' && document.getElementById('status').dataset.state !== 'busy'"
-                      " || " + status + " === 'Check the source'", 'rotated source did not compile', 120)
-        diagnostics = browser.evaluate("document.getElementById('diagnostics').textContent")
-        assert browser.evaluate(status) == 'Live · changes compiled', diagnostics
-        time.sleep(.6)
-        png = browser.element_png('#live-preview')
-        if shots:
-            (shots / ('preview-rotation-%s.png' % rotation.split('.')[0])).write_bytes(png)
-        boxes[rotation] = ink_box(png)
-        assert boxes[rotation], 'no text was painted at rotation ' + rotation
-    _, _, flat_width, flat_height = boxes['0.0']
-    _, _, turned_width, turned_height = boxes['90.0']
-    assert flat_width > flat_height * 2, boxes
-    assert turned_height > turned_width * 2, boxes
-    assert abs(turned_height - flat_width) <= max(8, flat_width // 5), boxes
-    print('preview host: default source, horizontal and RasterTextRotated text render', boxes)
-
-    browser.open(base + 'widgets.html#plot/4')
-    browser.until("document.getElementById('preview-status')?.textContent.startsWith('Live')", 'gallery preview', 90)
-    for scene in ('kryon/27', 'plot/4', 'data_views/2'):
-        browser.evaluate("location.hash = %s" % json.dumps('#' + scene))
-        browser.until("document.getElementById('compile') && !document.getElementById('compile').disabled",
-                      'gallery compiler for ' + scene, 120)
-        browser.evaluate("document.querySelector('[data-view=\"split\"]').click()")
-        browser.evaluate("document.getElementById('compile').click()")
-        browser.until(status + " === 'Live · changes compiled' || " + status + " === 'Check the source'",
-                      'gallery compile for ' + scene, 120)
-        diagnostics = browser.evaluate("document.getElementById('diagnostics').textContent")
-        assert browser.evaluate(status) == 'Live · changes compiled', (scene, diagnostics)
-    print('preview host: gallery Text, CandleChart and TableView sources compile and run')
+def node_for(browser, *, key=None, label=None, value=None, width=1366, parent_key=None):
+    nodes = tree(browser)
+    parents = [i for i, n in enumerate(nodes) if n['key'] == parent_key] if parent_key is not None else []
+    if parent_key is not None:
+        assert len(parents) == 1, ('Navigation parent', parent_key, parents)
+    matches = [n for n in nodes if
+               (parent_key is None or n['parent'] == parents[0]) and
+               (key is None or n['key'] == key) and
+               (label is None or n['label'] == label) and
+               (value is None or value in n.get('value', '')) and visible(n, width)]
+    assert matches, (key, label, value, [(n['key'], n['label']) for n in tree(browser) if n['interactive']][:20])
+    if parent_key is not None:
+        assert len(matches) == 1 and matches[0]['interactive'], ('Navigation item', matches)
+    return matches[-1]
 
 
-def page_report(browser):
-    return browser.evaluate(r'''(() => {
-      const nav = document.getElementById('primary-nav');
-      const navLinks = nav ? [...nav.querySelectorAll('a')].map(a => ({text: a.textContent.trim(), href: a.getAttribute('href'), current: a.getAttribute('aria-current')})) : [];
-      const links = [...document.querySelectorAll('a[href]')].map(a => ({href: a.getAttribute('href'), text: a.textContent.trim(), label: a.getAttribute('aria-label') || ''}));
-      const images = [...document.images].map(img => ({src: img.getAttribute('src'), alt: img.getAttribute('alt'), ok: img.complete && img.naturalWidth > 0, loading: img.loading}));
-      const ids = [...document.querySelectorAll('[id]')].map(node => node.id);
-      return {title: document.title, h1: document.querySelectorAll('h1').length, navLinks, links, images, ids,
-        lang: document.documentElement.lang, main: !!document.querySelector('main#main, main'),
-        description: document.querySelector('meta[name=description]')?.content || '',
-        overflow: document.documentElement.scrollWidth - innerWidth};
-    })()''')
+def point(node, width):
+    left, top = max(node['x'], node['clipX'] if node.get('clipped', False) else 0, 0), max(node['y'], node['clipY'] if node.get('clipped', False) else 0, 0)
+    right = min(node['x'] + node['width'], node['clipX'] + node['clipWidth'] if node.get('clipped', False) else width, width)
+    bottom = min(node['y'] + node['height'], node['clipY'] + node['clipHeight'] if node.get('clipped', False) else 844, 844)
+    assert right > left and bottom > top, node
+    return (left + right) / 2, (top + bottom) / 2
 
 
-def check_links(site, base, pages):
-    """Every same-site link resolves, and every fragment names an element."""
-    checked = {}
-    for name, report in pages.items():
-        for link in report['links']:
-            href = link['href']
-            if href.startswith(('mailto:', 'javascript:')):
-                continue
-            url = urljoin(base + name + '.html', href)
-            if not url.startswith(base):
-                continue
-            path, fragment = url.split('#', 1) if '#' in url else (url, '')
-            if path not in checked:
-                with urllib.request.urlopen(path) as response:
-                    checked[path] = response.status
-            assert checked[path] == 200, (name, href, checked[path])
-            if fragment:
-                target = urlsplit(path).path.lstrip('/') or 'index.html'
-                target_name = target[:-5] if target.endswith('.html') else target
-                if target_name in pages:
-                    assert fragment in pages[target_name]['ids'] or target_name == 'widgets', (name, href)
-    return len(checked)
+def mouse(browser, node, width=1366, click=True):
+    x, y = point(node, width)
+    browser.command('Input.dispatchMouseEvent', type='mouseMoved', x=x, y=y)
+    if click:
+        browser.command('Input.dispatchMouseEvent', type='mousePressed', x=x, y=y, button='left', clickCount=1)
+        time.sleep(.04)
+        browser.command('Input.dispatchMouseEvent', type='mouseReleased', x=x, y=y, button='left', clickCount=1)
+        committed = browser.evaluate('Module.siteFrame || 0')
+        browser.until('Module.siteFrame >= ' + str(committed + 2), 'pointer event committed')
+    return x, y
 
 
-def check_pages(browser, base, site, shots):
-    reports = {}
-    browser.viewport(1366, 900)
-    browser.open(base + 'index.html')
-    # Keep an evaluation pending across a real navigation, as happens when
-    # showcase.html redirects while the test is polling its legacy route.
-    browser.until("(async () => { if (location.pathname.endsWith('/apps.html')) return document.readyState === 'complete';"
-                  " location.href = 'apps.html'; await new Promise(resolve => setTimeout(resolve, 1000)); return false; })()",
-                  'navigation across a pending evaluation')
+def ready(browser, base, route='widgets', width=1366, hash=''):
+    browser.viewport(width, 844)
+    browser.open(base + route + '.html?test=1' + hash)
+    browser.until('Module.galleryReady === 1 && Module.siteTree?.length > 0', 'compiled Ziran ready', 60)
+
+
+def capture(browser, path):
+    data = browser.command('Page.captureScreenshot', format='png')['data']
+    with Image.open(io.BytesIO(base64.b64decode(data))).convert('RGB') as image:
+        image.thumbnail((1120, 844))
+        assert max(channel[1] - channel[0] for channel in image.getextrema()) > 50, 'Blank paint'
+        image.save(path, 'WEBP', quality=78, method=4)
+
+
+def assert_picture_pixels(image, box, name):
+    crop = image.crop(box).convert('RGB').resize((64, 64))
+    pixels = list(crop.getdata())
+    colors = {(r // 16, g // 16, b // 16) for r, g, b in pixels}
+    saturated = sum(max(pixel) - min(pixel) > 24 for pixel in pixels)
+    assert len(colors) > 48 and saturated > 80, (name, 'image did not paint', len(colors), saturated)
+
+
+def check_picture(browser, name, shots):
+    nodes = [node for node in tree(browser) if node['kind'] == 24 and visible(node, 1366)]
+    assert nodes, (name, 'no visible image widget')
+    node = max(nodes, key=lambda n: n['width'] * n['height'])
+    left, top = max(0, node['x']), max(0, node['y'])
+    right, bottom = min(1366, node['x'] + node['width']), min(844, node['y'] + node['height'])
+    box = (left + (right-left)*.15, top + (bottom-top)*.15, right - (right-left)*.15, bottom - (bottom-top)*.15)
+    time.sleep(.2)
+    data = browser.command('Page.captureScreenshot', format='png')['data']
+    with Image.open(io.BytesIO(base64.b64decode(data))) as image:
+        assert_picture_pixels(image, box, name)
+        image.convert('RGB').save(shots / (name.lower().replace(' ', '-') + '.webp'), 'WEBP', quality=82)
+
+
+def check_files(site):
     for name in PAGES:
-        browser.open(base + name + '.html')
-        browser.until("[...document.images].every(img => img.loading === 'lazy' || img.complete)", 'images on ' + name, 20)
-        report = page_report(browser)
-        reports[name] = report
-        assert report['lang'] == 'en' and report['h1'] == 1 and report['main'], (name, report['h1'])
-        assert report['description'], name
-        texts = [link['text'] for link in report['navLinks']]
-        assert texts == NAV, (name, texts)
-        current = [link['text'] for link in report['navLinks'] if link['current'] == 'page']
-        assert current == ([CURRENT[name]] if name in CURRENT else []), (name, current)
-        for image in report['images']:
-            assert image['alt'] is not None, (name, image['src'])
-        assert report['overflow'] <= 0, (name, 'desktop overflow', report['overflow'])
-        for link in report['links']:
-            assert not any(private in link['href'] for private in PRIVATE), (name, link['href'])
-            assert not re.search(r'/releases|\.deb$|\.apk$|\.tar\.gz$|download', link['href']), (name, link['href'])
-            assert link['text'] or link['label'], (name, 'unlabelled link', link['href'])
-    browser.open(base + 'showcase.html')
-    browser.until("location.pathname.endsWith('/apps.html')", 'legacy projects route')
-    with urllib.request.urlopen(base + 'showcase-data.json') as response:
-        assert response.status == 200 and json.load(response), 'showcase data must remain available'
-    count = check_links(site, base, reports)
-    print('pages: navigation, titles, descriptions, images, %d same-site links and anchors' % count)
+        source = (site / (name + '.html')).read_text()
+        assert source.count('<canvas ') == 1 and '<iframe' not in source
+        assert 'current.js' in source and 'id="kryon-ime"' in source
+        assert '<button' not in source and '<select' not in source, 'Website controls must be Ziran'
+    assert (site / 'runtime/simd128.js').stat().st_size > 10000
+    assert (site / 'runtime/baseline.js').stat().st_size > 10000
+    assets = dict(json.loads((site / 'runtime/assets.json').read_text()))
+    image = site / assets['/assets/pfp.webp']
+    assert hashlib.sha256(image.read_bytes()).digest() == hashlib.sha256((ROOT / 'examples/gallery/assets/pfp.webp').read_bytes()).digest(), 'Gallery image asset missing or changed'
+    text = (site / 'gallery-data.js').read_text()
+    scenes = json.loads(text.split('window.galleryScenes = ', 1)[1].rstrip(';\n'))
+    assert len(scenes) == EXPECTED_SCENE_COUNT
+    return scenes
 
-    # Every image, including lazily loaded previews, decodes once scrolled to.
-    for name in PAGES:
-        browser.open(base + name + '.html')
-        browser.evaluate('(async () => { for (let y = 0; y < document.body.scrollHeight; y += 500) {'
-                         ' scrollTo(0, y); await new Promise(r => setTimeout(r, 40)); } scrollTo(0, 0); })()')
-        browser.until("[...document.images].every(img => img.complete && img.naturalWidth > 0)", 'decoded images on ' + name, 20)
 
-    home = reports['index']
-    hrefs = [link['href'] for link in home['links']]
-    actions = browser.evaluate('''(() => { location.href; return null })()''')
-    browser.open(base + 'index.html')
-    actions = browser.evaluate("[...document.querySelectorAll('.hero .actions a')].map(a => a.getAttribute('href'))")
-    assert actions[:2] == ['apps.html', 'modules.html'] and 'demo.html' in actions, actions
-    assert browser.evaluate("!!document.querySelector('iframe[src=\"demo.html?mini\"]')")
-    assert not any('ziran.kryonlabs.com' in href for href in hrefs), 'homepage promotes the language'
-    previews = browser.evaluate("[...document.querySelectorAll('.hero img')].map(img => img.getAttribute('src'))")
-    assert len(previews) >= 3, previews
-    waozi = [href for href in hrefs if 'waozi.xyz' in href]
-    assert len(waozi) <= 1 and browser.evaluate(
-        "[...document.querySelectorAll('a[href*=\"waozi.xyz\"]')].every(a => a.closest('footer'))"), waozi
+def compile_ready(browser, seconds=120):
+    browser.until('Module.siteTree?.some(n => n.key === 10102)', 'source editor stays selected')
+    browser.until('!Module.compileBusy && Module.compileRevision === Module.editorRevision', 'compiler completion', seconds)
+    diagnostic = browser.evaluate('Module.compileDiagnostic')
+    assert not diagnostic, diagnostic
+    browser.until('Module.previewReady && Module.previewNodes > 0', 'portable preview paint', 30)
 
-    browser.open(base + 'apps.html')
-    apps = browser.evaluate('''[...document.querySelectorAll('[data-app]')].map(node => ({id: node.dataset.app,
-      availability: node.dataset.availability, downloads: node.querySelectorAll('a[download], [data-download]').length,
-      facts: [...node.querySelectorAll('dt')].map(dt => dt.textContent.trim())}))''')
-    details = {app['id']: app for app in apps if app['facts']}
-    assert set(details) == APPS, details.keys()
-    for app in details.values():
-        assert app['availability'] in ('unreleased', 'source'), app
-        assert app['downloads'] == 0, app
-        assert {'Platform', 'Status', 'Availability'} <= set(app['facts']), app
-    assert details['shelf']['availability'] == 'source'
-    assert browser.evaluate("!!document.querySelector('#shelf a[href=\"https://github.com/kryonlabs/shelf\"]')")
 
-    browser.open(base + 'modules.html')
-    modules = browser.evaluate('''[...document.querySelectorAll('section[data-module]')].map(node => ({id: node.dataset.module,
-      visual: !!node.querySelector('img, svg, iframe'), demo: [...node.querySelectorAll('a')].some(a => /widgets\\.html#|demo\\.html/.test(a.getAttribute('href'))),
-      source: [...node.querySelectorAll('a')].some(a => a.getAttribute('href').startsWith('https://github.com/kryonlabs/'))}))''')
-    assert {module['id'] for module in modules} == MODULES, modules
-    for module in modules:
-        assert module['visual'] and module['source'], module
-    for module in ('kryon', 'plot', 'data-views'):
-        assert next(m for m in modules if m['id'] == module)['demo'], module
-    text = browser.evaluate('document.querySelector("main").innerText')
-    assert 'Ziran language' not in text, 'the language is not a catalog module'
-    print('catalogs: %d apps with honest availability and %d visual modules' % (len(details), len(modules)))
+def replace_source(browser, text):
+    revision = browser.evaluate("Module.editorRevision")
+    assert text != node_for(browser, key=10102)['value'], 'Source replacement must change the text'
+    mouse(browser, node_for(browser, key=10102))
+    browser.command('Browser.grantPermissions', origin=browser.evaluate('location.origin'),
+                    permissions=['clipboardReadWrite', 'clipboardSanitizedWrite'])
+    browser.evaluate('navigator.clipboard.writeText(' + json.dumps(text) + ')')
+    browser.key('a', 65, modifiers=2)
+    browser.key('v', 86, modifiers=2)
+    browser.until('Module.editorRevision > ' + str(revision), 'trusted source edit')
 
-    # Light and dark themes switch, persist, and reach the embedded editor.
-    browser.open(base + 'index.html?theme=light')
-    browser.evaluate("localStorage.removeItem('kryon-theme')")
-    browser.open(base + 'index.html')
-    light = browser.evaluate('getComputedStyle(document.body).backgroundColor')
-    browser.evaluate("document.querySelector('.theme-toggle').click()")
-    assert browser.evaluate('document.documentElement.dataset.theme') == 'dark'
-    dark = browser.evaluate('getComputedStyle(document.body).backgroundColor')
-    assert light != dark, (light, dark)
-    assert browser.evaluate("document.querySelector('.theme-toggle').getAttribute('aria-pressed')") == 'true'
-    browser.open(base + 'apps.html')
-    assert browser.evaluate('document.documentElement.dataset.theme') == 'dark', 'theme did not persist'
-    if shots:
-        for name in ('index', 'apps', 'modules'):
-            browser.open(base + name + '.html')
-            (shots / (name + '-dark.png')).write_bytes(browser.png(full=True))
-    browser.evaluate("document.querySelector('.theme-toggle').click()")
-    assert browser.evaluate('document.documentElement.dataset.theme') == 'light'
-    print('themes: light and dark switch and persist')
 
-    # Keyboard: skip link first, then the primary navigation, with a visible focus ring.
-    browser.open(base + 'apps.html')
-    browser.key('Tab', keycode=9)
-    assert browser.evaluate("document.activeElement.classList.contains('skip-link')")
-    assert browser.evaluate("document.activeElement.getBoundingClientRect().top >= 0")
-    browser.key('Enter', keycode=13)
-    browser.until("location.hash === '#main'", 'skip link')
-    order = []
-    browser.open(base + 'apps.html')
-    for _ in range(8):
-        browser.key('Tab', keycode=9)
-        order.append(browser.evaluate("document.activeElement.textContent.trim() || document.activeElement.getAttribute('aria-label')"))
-    for item in NAV:
-        assert item in order, (item, order)
-    ring = browser.evaluate("getComputedStyle(document.activeElement).outlineStyle")
-    assert ring not in ('none', ''), ring
-    print('keyboard: skip link, navigation order and focus ring')
+def check_compiler(browser, base, scenes):
+    browser.open(base + 'compiler-worker.js')
+    browser.evaluate("""window.compilerWorker = new Worker('compiler-worker.js');
+      window.compilerReply = null;
+      compilerWorker.onmessage = ({data}) => { window.compilerReply = {id:data.id, status:data.status,
+        diagnostics:data.diagnostics, bytes:data.bytes?.byteLength || 0}; };
+      compilerWorker.onerror = e => { window.compilerReply = {status:1, diagnostics:e.message}; };""")
+    search = browser.evaluate("fetch('gallery-data.js').then(r => r.text()).then(t => { (0,eval)(t); return window.galleryScenes.length; })")
+    assert search == EXPECTED_SCENE_COUNT
+    sys.path.insert(0, str(ROOT / 'scripts'))
+    from gallery import compiler_paths, enabled_modules
+    search = '\n'.join(compiler_paths(enabled_modules()))
+    for index, scene in enumerate(scenes):
+        browser.evaluate('fetch(' + json.dumps(scene['code']) + ').then(r => r.text()).then(source => { window.compilerReply = null; compilerWorker.postMessage({id:' + str(index + 1) + ',source,search:' + json.dumps(search) + '}); })')
+        reply = browser.until('window.compilerReply', 'source compile ' + scene['name'], 120)
+        assert reply['status'] == 0 and reply['bytes'] > 0, (scene['name'], reply)
+    browser.evaluate('compilerWorker.terminate()')
+    print('Local browser compiler test passed: all ' + str(len(scenes)) + ' maintained source variants compile to portable bundles')
 
-    # Narrow layout: no sideways scrolling, and the menu opens, closes and traps nothing.
-    browser.viewport(390, 844, 2, True)
-    for name in PAGES + ['demo']:
-        browser.open(base + name + '.html')
-        time.sleep(.2)
-        overflow = browser.evaluate('document.documentElement.scrollWidth - innerWidth')
-        assert overflow <= 0, (name, 'narrow overflow', overflow)
-        if shots and name in ('index', 'apps', 'modules'):
-            (shots / (name + '-narrow.png')).write_bytes(browser.png(full=True))
-    for name in PAGES + ['demo']:
-        browser.open(base + name + '.html')
-        for width in (320, 360, 390, 650, 651, 768, 850, 1000, 1366):
-            browser.viewport(width, 844, mobile=width <= 650)
-            overflow = browser.evaluate('document.documentElement.scrollWidth - innerWidth')
-            assert overflow <= 0, (name, width, 'responsive overflow', overflow)
-    print('responsive: all eight pages fit 320–1366px across nine widths')
-    browser.viewport(390, 844, 2, True)
-    browser.open(base + 'modules.html')
-    assert browser.evaluate("getComputedStyle(document.querySelector('.menu-button')).display") != 'none'
-    assert not browser.evaluate("document.getElementById('primary-nav').offsetHeight")
-    browser.evaluate("document.querySelector('.menu-button').click()")
-    assert browser.evaluate("document.querySelector('.menu-button').getAttribute('aria-expanded')") == 'true'
-    assert browser.evaluate("document.getElementById('primary-nav').offsetHeight") > 100
-    browser.key('Escape', keycode=27)
-    assert browser.evaluate("document.querySelector('.menu-button').getAttribute('aria-expanded')") == 'false'
-    assert browser.evaluate("document.activeElement.classList.contains('menu-button')")
-    assert not browser.evaluate("document.getElementById('primary-nav').offsetHeight")
-    print('narrow: no horizontal overflow; the menu opens and closes with Escape')
 
-    if shots:
-        browser.viewport(1366, 900)
-        for name in PAGES:
-            browser.open(base + name + '.html')
-            (shots / (name + '.png')).write_bytes(browser.png(full=True))
-    return reports
+def frame_crop(browser, node):
+    data = browser.command('Page.captureScreenshot', format='png')['data']
+    image = Image.open(io.BytesIO(base64.b64decode(data))).convert('RGB')
+    return image.crop((int(node['x']), int(node['y']), int(node['x'] + node['width']), int(node['y'] + node['height'])))
+
+
+def assert_text_contrast(image, label):
+    from collections import Counter
+    def luminance(color):
+        values = [v / 255 for v in color]
+        values = [v / 12.92 if v <= .04045 else ((v + .055) / 1.055) ** 2.4 for v in values]
+        return sum(v * w for v, w in zip(values, (.2126, .7152, .0722)))
+    colors = Counter(image.getdata())
+    background = luminance(colors.most_common(1)[0][0])
+    readable = sum(count for color, count in colors.items()
+                   if (max(background, luminance(color)) + .05) / (min(background, luminance(color)) + .05) >= 4.5)
+    assert readable >= 12, (label, 'unreadable text', colors.most_common(4))
+
+
+def check_segment_contrast(browser):
+    for label in ('Preview', 'Source'):
+        image = frame_crop(browser, node_for(browser, label=label))
+        assert_text_contrast(image.crop((8, 6, image.width - 8, image.height - 6)), label)
+
+
+def check_portable_theme(browser, shots):
+    mouse(browser, node_for(browser, label='Source'))
+    compile_ready(browser)
+    for dark in (True, False):
+        if browser.evaluate('Module.siteDark') != dark:
+            mouse(browser, node_for(browser, key=10003))
+        browser.until('Module.siteDark === ' + str(dark).lower(), 'portable theme publication')
+        frame = browser.evaluate('Module.siteFrame')
+        browser.until('Module.siteFrame > ' + str(frame + 3), 'guest themed frames')
+        heading = browser.evaluate("Module.previewTree.find(n => n.key === 1 && n.label === 'Button')")
+        assert_text_contrast(frame_crop(browser, heading), 'portable heading ' + str(dark))
+        capture(browser, shots / ('portable-dark.webp' if dark else 'portable-light.webp'))
+    mouse(browser, node_for(browser, key=10003))
+    browser.until('Module.siteDark', 'restore dark theme')
+
+
+def select_example(browser, base, scenes, name, reload=True):
+    if reload: ready(browser, base)
+    nodes = tree(browser)
+    nav = next(n for n in nodes if n['key'] == 9003)
+    selected = next(n for n in nodes if n['selected'] and n['parent'] == nodes.index(nav))
+    mouse(browser, selected)
+    browser.key('Home', 36)
+    index = next(i for i, scene in enumerate(scenes) if scene['name'] == name)
+    if index > len(scenes) // 2:
+        browser.key('End', 35)
+        for _ in range(len(scenes) - 1 - index): browser.key('ArrowUp', 38)
+    else:
+        for _ in range(index): browser.key('ArrowDown', 40)
+    browser.until('Module.gallerySceneRendered === ' + str(index), 'options example ' + name)
+
+
+def check_example_options(browser, base, scenes, shots):
+    ready(browser, base)
+    if not browser.evaluate('Module.siteDark'): mouse(browser, node_for(browser, key=10003))
+    check_segment_contrast(browser)
+    capture(browser, shots / 'segment-dark.webp')
+    check_portable_theme(browser, shots)
+    select_example(browser, base, scenes, 'Empty state')
+    mouse(browser, node_for(browser, key=9004))
+    browser.until("Module.siteTree.some(n => n.label === 'Create project' && n.disabled)", 'native disabled empty action')
+    mouse(browser, node_for(browser, label='Create project'))
+    assert not any(n['label'] == 'Project created' for n in tree(browser))
+    select_example(browser, base, scenes, 'Copy button', reload=False)
+    assert node_for(browser, label='Copy website address')['disabled'], 'disabled flag lost on scene change'
+    mouse(browser, node_for(browser, key=9004))
+    browser.until("Module.siteTree.some(n => n.label === 'Copy website address' && !n.disabled)", 'native reenabled copy')
+    for portable in (False, True):
+        select_example(browser, base, scenes, 'Carousel')
+        if portable:
+            mouse(browser, node_for(browser, label='Source'))
+            compile_ready(browser)
+        collection = 'Module.previewTree' if portable else 'Module.siteTree'
+        mouse(browser, node_for(browser, key=9004))
+        browser.until(collection + ".some(n => n.label === 'Next' && n.disabled)", 'disabled carousel navigation')
+        arrow = browser.evaluate(collection + ".find(n => n.label === 'Next')")
+        action_kind = str(arrow['kind'])
+        mouse(browser, arrow)
+        assert browser.evaluate(collection + ".some(n => n.label === 'Open' && n.disabled && n.kind === " + action_kind + ")"), 'disabled carousel navigated'
+        mouse(browser, node_for(browser, key=9004))
+        browser.until(collection + ".some(n => n.label === 'Next' && !n.disabled)", 'reenabled carousel navigation')
+        mouse(browser, browser.evaluate(collection + ".find(n => n.label === 'Next')"))
+        browser.until(collection + ".some(n => n.label === 'Create' && !n.disabled && n.kind === " + action_kind + ")", 'reenabled carousel action advances')
+    select_example(browser, base, scenes, 'Empty state')
+    mouse(browser, node_for(browser, label='Source'))
+    compile_ready(browser)
+    mouse(browser, node_for(browser, key=9004))
+    browser.until("Module.previewTree.some(n => n.label === 'Create project' && n.disabled)", 'portable disabled empty action')
+    mouse(browser, browser.evaluate("Module.previewTree.find(n => n.label === 'Create project')"))
+    assert not browser.evaluate("Module.previewTree.some(n => n.label === 'Project created')")
+    mouse(browser, node_for(browser, key=9004))
+    browser.until("Module.previewTree.some(n => n.label === 'Create project' && !n.disabled)", 'portable reenabled empty action')
+    mouse(browser, browser.evaluate("Module.previewTree.find(n => n.label === 'Create project')"))
+    browser.until("Module.previewTree.some(n => n.label === 'Project created')", 'reenabled empty action fires')
+    select_example(browser, base, scenes, 'Button', reload=False)
+    compile_ready(browser)
+    button = browser.evaluate("Module.previewTree.find(n => n.label === 'Continue' && !n.disabled)")
+    mouse(browser, button)
+    browser.until("Module.previewTree.some(n => n.key === 2 && n.label === '1')", 'portable old example enabled')
+    mouse(browser, node_for(browser, key=9004))
+    browser.until("Module.previewTree.some(n => n.label === 'Continue' && n.disabled)", 'portable old example disabled')
+    mouse(browser, button)
+    assert browser.evaluate("Module.previewTree.some(n => n.key === 2 && n.label === '1')"), 'disabled button activated'
+    select_example(browser, base, scenes, 'Toggle', reload=False)
+    compile_ready(browser)
+    browser.until("Module.previewTree.some(n => n.label === 'Notifications' && n.disabled)", 'disabled WidgetInput survives scene change')
+    mouse(browser, node_for(browser, key=9004))
+    browser.until("Module.previewTree.some(n => n.label === 'Notifications' && !n.disabled)", 'WidgetInput reenabled without leakage')
+    browser.reduced_motion(True)
+    select_example(browser, base, scenes, 'Loading indicator')
+    browser.until('Module.siteReducedMotion', 'actual reduced motion media')
+    def unchanged(node, expected):
+        first = frame_crop(browser, node)
+        frame = browser.evaluate('Module.siteFrame')
+        browser.until('Module.siteFrame > ' + str(frame + 18), 'animation observation')
+        equal = ImageChops.difference(first, frame_crop(browser, node)).getbbox() is None
+        assert equal == expected, ('loading animation', equal, expected)
+    unchanged(node_for(browser, key=10101), True)
+    capture(browser, shots / 'reduced-motion.webp')
+    browser.reduced_motion(False)
+    browser.until('!Module.siteReducedMotion', 'actual normal motion media')
+    unchanged(node_for(browser, key=10101), False)
+    mouse(browser, node_for(browser, label='Source'))
+    compile_ready(browser)
+    heading = browser.evaluate("Module.previewTree.find(n => n.key === 1 && n.label === 'Loading indicator')")
+    area = dict(x=heading['x'], y=heading['y'] + 60, width=heading['width'], height=180)
+    unchanged(area, False)
+    browser.reduced_motion(True)
+    browser.until('Module.siteReducedMotion', 'portable reduced motion enabled')
+    frame = browser.evaluate('Module.siteFrame')
+    browser.until('Module.siteFrame > ' + str(frame + 3), 'portable option publication')
+    unchanged(area, True)
+    browser.reduced_motion(False)
+
+
+
+def check_preview_containment(browser, base, shots):
+    for width in (1366, 390):
+        ready(browser, base, 'widgets', width=width)
+        stage = node_for(browser, key=10101, width=width)
+        nodes = tree(browser)
+        actions = [n for n in nodes if n['label'] == 'Continue' and n['interactive']]
+        assert len(actions) == 12
+        assert all(n['sessionSlot'] != node_for(browser, key=10100, width=width)['sessionSlot'] for n in actions), 'Native preview must keep its own actual Session'
+        assert all(n['y'] >= stage['y'] and n['y'] + n['height'] <= stage['y'] + stage['height'] for n in actions), 'Maintained Button rows overflow stage'
+        assert all(n['clipped'] and n['clipY'] >= stage['y'] and n['clipY'] + n['clipHeight'] <= stage['y'] + stage['height'] for n in actions), 'Native example lacks stage clip'
+        usage = next(n for n in nodes if n['key'] == 10304)
+        assert usage['y'] > stage['y'] + stage['height'], 'Usage overlaps example'
+        mouse(browser, node_for(browser, label='Source', width=width), width=width)
+        compile_ready(browser)
+        overflow = ('using UI :: #import "kryon/Widgets";\n#program_export\n'
+                    'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
+                    ' Box(session, BoxProps.{.key = 771, .bounds = .{viewport.x - 80.0, viewport.y - 80.0, '
+                    'viewport.width + 160.0, viewport.height + 160.0}, .fill = .{247, 0, 223, 255}});\n return 0;\n}\n'
+                    '#program_export\nSetExampleOptions :: (disabled: bool, reduced_motion: bool) { unused disabled; unused reduced_motion }\n')
+        replace_source(browser, overflow)
+        compile_ready(browser)
+        header_height = 56 if width >= 760 else 104
+        header = frame_crop(browser, dict(x=0,y=0,width=width,height=header_height))
+        browser.command('Input.dispatchMouseEvent', type='mouseWheel', x=width-4, y=620, deltaX=0, deltaY=610)
+        browser.until('Module.siteTree.some(n=>n.key===10100 && n.y<0)', 'overflow preview article scroll')
+        time.sleep(.5)
+        guest = browser.evaluate('Module.previewTree.find(n=>n.key===771)')
+        bounds = dict(x=guest['x']+80,y=guest['y']+80,width=guest['width']-160,height=guest['height']-160)
+        pixels = frame_crop(browser, dict(x=0,y=0,width=width,height=844))
+        colored = [(x,y) for y in range(844) for x in range(width) if (lambda p:p[0]>230 and p[1]<30 and p[2]>200)(pixels.getpixel((x,y)))]
+        assert len(colored)>3000, 'Real oversized guest did not paint'
+        assert all(bounds['x'] <= x < bounds['x']+bounds['width'] and max(header_height,bounds['y']) <= y < bounds['y']+bounds['height'] for x,y in colored), 'Guest paint escaped preview intersection article'
+        assert ImageChops.difference(header, frame_crop(browser, dict(x=0,y=0,width=width,height=header_height))).getbbox() is None, 'Guest clip scope changed header pixels'
+        capture(browser, shots / ('overflow-contained-' + str(width) + '.webp'))
+
+
+def check_document_layout(browser, base, shots):
+    ready(browser, base, 'widgets', width=1366)
+    title = node_for(browser, key=10100)
+    rail = node_for(browser, key=9003)
+    assert abs(rail['x'] - 12) < 1 and abs(rail['width'] - 240) < 1, rail
+    assert title['x'] == 312 and title['width'] <= 820, title
+    mouse(browser, node_for(browser, key=10502))
+    browser.until('Module.siteTree.some(n => n.key===10304 && n.y<160)', 'Usage contents link scrolls article')
+    assert node_for(browser, key=10309)['readOnly'], 'Usage must show maintained source'
+    mouse(browser, node_for(browser, key=10501))
+    browser.until('Module.siteTree.some(n => n.key===10100 && n.y>100)', 'Example contents link restores article')
+    capture(browser, shots/'documentation-wide.webp')
+    ready(browser, base, 'index', width=390)
+    assert not any(n['key']==9003 for n in tree(browser)), 'Overview must remain a landing page'
+    capture(browser, shots/'overview-phone.webp')
+    mouse(browser, node_for(browser, key=10520, width=390), width=390)
+    mouse(browser, node_for(browser, key=10524, width=390), width=390)
+    browser.until('Module.sitePage===5', 'phone resources route')
+    ready(browser, base, 'widgets', width=390)
+    mouse(browser, node_for(browser, label='Source', width=390), width=390)
+    compile_ready(browser)
+    mouse(browser, node_for(browser, key=10103, width=390), width=390)
+    browser.until('Module.siteTree.some(n => n.key===9003)', 'mobile source navigation')
+    mouse(browser, node_for(browser, key=2, width=390), width=390)
+    browser.until('Module.gallerySceneRendered===1', 'mobile source changes real scene')
+    compile_ready(browser)
+    capture(browser, shots/'documentation-phone-source.webp')
+    header = frame_crop(browser, dict(x=0,y=0,width=390,height=104))
+    browser.command('Input.dispatchMouseEvent',type='mouseWheel',x=382,y=620,deltaX=0,deltaY=720)
+    browser.until('Module.siteTree.some(n => n.key===10100 && n.y<0)', 'phone article scroll')
+    time.sleep(.3)
+    assert ImageChops.difference(header, frame_crop(browser, dict(x=0,y=0,width=390,height=104))).getbbox() is None, 'Guest preview painted over navigation'
+    capture(browser, shots/'documentation-phone-scrolled.webp')
+
+
+
+def check_live(browser, base, scenes, shots):
+    ready(browser, base, 'index')
+    mouse(browser, node_for(browser, key=10038))
+    browser.until('Module.siteCount === 1', 'real counter click')
+    mouse(browser, node_for(browser, key=10003))
+    browser.until('Module.siteDark', 'theme toggle')
+    browser.command('Page.reload')
+    browser.until('Module.galleryReady && Module.siteDark', 'persisted theme', 60)
+    ready(browser, base)
+    assert sum(n['label'] == 'Continue' and n['interactive'] for n in tree(browser)) == 12, 'default web differs from maintained Button'
+    mouse(browser, node_for(browser, label='Continue', key=10))
+    browser.until("Module.siteTree.some(n => n.key === 2 && n.label === '1')", 'default maintained Button click')
+    select_example(browser, base, scenes, 'Button emphasis', reload=False)
+    assert sum(n['label'] == 'Continue' and n['interactive'] for n in tree(browser)) == 12
+    assert any(n['key'] == 2 and n['label'] == '1' for n in tree(browser)), 'variant lost source module state'
+    select_example(browser, base, scenes, 'Toggle', reload=False)
+    assert any(n['label'] == 'Notifications' for n in tree(browser))
+    assert not any(n['label'] == 'Continue' for n in tree(browser)), 'distinct example modules leaked content'
+    select_example(browser, base, scenes, 'Button', reload=False)
+    assert any(n['key'] == 2 and n['label'] == '1' for n in tree(browser)), 'cross-scene source state lost'
+    ready(browser, base)
+    first = node_for(browser, label=scenes[0]['name'], key=1, parent_key=9003)
+    mouse(browser, first)
+    for index, scene in enumerate(scenes):
+        if index: browser.key('ArrowDown', 40)
+        browser.until('Module.gallerySceneRendered === ' + str(index), 'sidebar ' + scene['name'])
+        browser.until('Module.siteTree?.some(n => n.key === 10100 && n.label === ' + json.dumps(scene['name']) + ')', 'committed title ' + scene['name'])
+        if scene['name'] in ('Image', 'Carousel', 'Tile map'): check_picture(browser, scene['name'], shots)
+    capture(browser, shots / 'components.webp')
+    for width in VIEWPORTS:
+        ready(browser, base, width=width)
+        for key in (10002, 10003, 10012, 10104):
+            assert visible(node_for(browser, key=key, width=width), width), (width, key)
+        if width < 760:
+            mouse(browser, node_for(browser, key=10103, width=width), width)
+            mouse(browser, node_for(browser, key=2, label=scenes[1]['name'], width=width, parent_key=9003), width)
+            browser.until('Module.gallerySceneRendered === 1', 'mobile picker')
+        capture(browser, shots / ('components-' + str(width) + '.webp'))
+    ready(browser, base)
+    mouse(browser, node_for(browser, label='Source'))
+    for index, scene in enumerate(scenes):
+        if index:
+            nav = node_for(browser, key=9003)
+            selected = next(n for n in tree(browser) if n['selected'] and n['parent'] == tree(browser).index(nav))
+            mouse(browser, selected)
+            browser.key('ArrowDown', 40)
+            browser.until('Module.gallerySceneRendered === ' + str(index), 'source selection')
+        compile_ready(browser)
+    ready(browser, base)
+    mouse(browser, node_for(browser, label='Source'))
+    compile_ready(browser)
+    text = node_for(browser, key=10102)['value']
+    assert 'Button(' in text and 'Continue' in text
+    assert browser.evaluate("Module.previewTree.filter(n => n.label === 'Continue' && n.interactive).length === 12"), 'portable differs from maintained/default Button'
+    mouse(browser, node_for(browser, key=10102))
+    browser.evaluate("window.sourceKeys=[]; window.sourceKeyListener=e=>{if(e.key==='x')sourceKeys.push({type:e.type,trusted:e.isTrusted})}; for(const kind of ['keydown','keypress','keyup'])document.addEventListener(kind,sourceKeyListener,true)")
+    revision = browser.evaluate('Module.editorRevision')
+    browser.command('Input.dispatchKeyEvent', type='keyDown', key='x', code='KeyX',
+                    windowsVirtualKeyCode=88, text='x', unmodifiedText='x')
+    browser.command('Input.dispatchKeyEvent', type='keyUp', key='x', code='KeyX', windowsVirtualKeyCode=88)
+    browser.until('Module.editorRevision > ' + str(revision), 'trusted keyboard source edit')
+    assert browser.evaluate('sourceKeys') == [{'type': kind, 'trusted': True} for kind in ('keydown', 'keypress', 'keyup')]
+    browser.evaluate("for(const kind of ['keydown','keypress','keyup'])document.removeEventListener(kind,sourceKeyListener,true)")
+    replace_source(browser, text.replace('Continue', 'Edited live'))
+    compile_ready(browser)
+    browser.until("Module.previewTree?.some(n => n.label === 'Edited live')", 'edited label in guest widget tree')
+    edited = browser.evaluate("Module.previewTree.find(n => n.label === 'Edited live' && n.interactive)")
+    mouse(browser, edited)
+    browser.until("Module.previewTree?.some(n => n.key === 2 && n.label === '1')", 'edited guest Button interaction')
+    capture(browser, shots / 'edited-source.webp')
+    replace_source(browser, 'this is invalid Ziran')
+    browser.until('!Module.compileBusy && Module.compileDiagnostic?.length > 0', 'compiler diagnostics')
+    assert browser.evaluate('Module.previewReady'), 'last valid preview discarded'
+    replace_source(browser, text)
+    compile_ready(browser)
+    assert not browser.errors, browser.errors
 
 
 def main():
+    from widget_examples_source_test import main as check_source_preservation
+    check_source_preservation()
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--site', type=Path, default=ROOT / 'docs/site')
-    parser.add_argument('--chromium', default=os.environ.get('CHROMIUM', 'chromium'))
-    parser.add_argument('--screenshots', type=Path)
-    parser.add_argument('--skip-preview', action='store_true', help='skip the compiled preview host checks')
-    parser.add_argument('--only-preview', action='store_true', help='run only the compiled preview host checks')
+    parser.add_argument('--compiler-only', action='store_true')
+    parser.add_argument('--options-only', action='store_true')
+    parser.add_argument('--compiler-scene', action='append', default=[], help='Compile only the named source variants')
+    parser.add_argument('--site', type=Path, default=SITE)
+    parser.add_argument('--shots', type=Path, default=ROOT / 'build/scratch/site-browser')
     args = parser.parse_args()
-    site = args.site.resolve()
-    shots = args.screenshots.resolve() if args.screenshots else None
-    if shots:
-        shots.mkdir(parents=True, exist_ok=True)
-    server = serve(site)
-    base = 'http://127.0.0.1:%d/' % server.server_address[1]
-    scratch = ROOT / 'build/scratch/site-browser'
-    scratch.mkdir(parents=True, exist_ok=True)
-    browser = Browser(Path(tempfile.mkdtemp(prefix='p', dir=scratch)), args.chromium)
+    if args.compiler_only:
+        text = (args.site / 'gallery-data.js').read_text()
+        scenes = json.loads(text.split('window.galleryScenes = ', 1)[1].rstrip(';\n'))
+    else: scenes = check_files(args.site)
+    if args.compiler_scene:
+        assert args.compiler_only, '--compiler-scene requires --compiler-only'
+        scenes = [scene for scene in scenes if scene['name'] in args.compiler_scene]
+        assert len(scenes) == len(set(args.compiler_scene)), 'Unknown compiler scene'
+    chromium = shutil.which('chromium') or shutil.which('chromium-browser') or shutil.which('google-chrome')
+    assert chromium, 'Chromium or Chrome is required for the integrated browser test'
+    args.shots.mkdir(parents=True, exist_ok=True)
+    server = serve(args.site)
+    browser = Browser(args.shots / 'profile', chromium)
     try:
-        if not args.only_preview:
-            check_pages(browser, base, site, shots)
-        if not args.skip_preview:
-            check_preview_host(browser, base, shots)
-        assert not browser.errors, browser.errors
-        print('kryonlabs.com local browser tests passed')
+        base = 'http://127.0.0.1:' + str(server.server_port) + '/'
+        if args.compiler_only:
+            check_compiler(browser, base, scenes)
+            return
+        if not args.options_only:
+            check_document_layout(browser, base, args.shots)
+            check_preview_containment(browser, base, args.shots)
+            check_live(browser, base, scenes, args.shots)
+        check_example_options(browser, base, scenes, args.shots)
+        print('Local website options tests: disabled flags, motion and contrast passed' if args.options_only else 'Local website browser tests: routes, 101 live scenes/sources, mobile, theme, editing, diagnostics, portable preview, disabled flags, motion and contrast passed')
+    except Exception:
+        print('Browser failure state:', browser.evaluate('window.compilerReply') if args.compiler_only else browser.evaluate("({scene:Module.gallerySceneRendered,key:Module.lastInputKey,pickerKey:Module.lastPickerKey,active:document.activeElement?.id,focused:Module.siteTree?.filter(n=>n.focused).map(n=>({key:n.key,parent:n.parent,label:n.label})),errors:document.querySelector('#result')?.textContent,compileBusy:Module.compileBusy,compileRevision:Module.compileRevision,editorRevision:Module.editorRevision,compilerResult:Module.compilerResult,diagnostic:Module.compileDiagnostic})"))
+        capture(browser, args.shots / 'failure.webp')
+        raise
     finally:
-        browser.close()
-        server.shutdown()
+        browser.close(); server.shutdown(); server.server_close()
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == '__main__': main()

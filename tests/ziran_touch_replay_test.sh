@@ -5,11 +5,14 @@ set -eu
 # one frame and a release on the next; ordinary touches pass through.
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
-work=$(mktemp -d)
-trap 'rm -rf "$work"' EXIT HUP INT TERM
+work="$repo/build/scratch/touch-replay"
+mkdir -p "$work"
+exec 9>"$work/lock"
+flock 9
+unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGER
+export YUE_DESKTOP_RECOVERY=0
 
 cat > "$work/app.zi" <<'ZI'
-#import "android_touch"
 #import "geometry"
 #import "touch_replay"
 
@@ -67,49 +70,119 @@ Answer :: () -> s32 {
     if !Same(TouchReplayStep(*replay, nothing, next), 70.0, 80.0, true, true, false) { return -9 }
     if !Same(TouchReplayStep(*replay, nothing, next), 70.0, 80.0, false, true, false) { return -10 }
 
-    // raylib's scale from Android coordinates is measured from movements far
-    // enough from the press, and kept for axes that barely moved.
-    scale := AndroidTouchScale(Vector2.{1.0, 1.0}, Vector2.{100.0, 200.0},
-        Vector2.{200.0, 400.0}, Vector2.{100.0, 300.0}, Vector2.{210.0, 600.0})
-    if scale.x != 1.0 || scale.y != 0.5 { return -12 }
     return 42
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$repo/src/backend" \
     --module-path "$ziran_root/std" -o "$work/ir" "$work/app.zi"
 for source in source saved; do
     if test "$source" = source; then
         root=$work
-        modules="$repo/src/ui --module-path $repo/src/backend"
+        modules="$kryon_ui_args --module-path $repo/src/backend"
         app=$work/app.zi
     else
         root=$work/ir
-        modules=$work/ir
+        modules="--module-path $work/ir"
         app=$work/ir/app.zir
     fi
     # shellcheck disable=SC2086
-    "$ziran" bundle --root "$root" --module-path $modules \
+    "$ziran" bundle --root "$root" $modules \
         --module-path "$ziran_root/std" \
         --entry app:Answer -o "$work/$source.zx" "$app"
     test "$("$ziran" run "$work/$source.zx")" = 42
 done
 cmp "$work/source.zx" "$work/saved.zx"
 
-# The Android hook compiles for Android, where it wraps raylib's handler.
+# The native host receives physical NDK coordinates and scales both axes
+# using explicit layout zoom. Exercise its installed callback and immutable
+# frame snapshot rather than the removed renderer calibration/hooks.
 cat > "$work/android.zi" <<'ZI'
 #import "android_touch"
+#import "android_native"
+#import "android_native_test_host"
+#import "android_jni"
 #import "touch_replay"
+#import "frame_snapshot"
+#import "input_protocol"
+#import "session"
 
+expected_focus: bool = true;
+Send :: (app: *NativeAndroidApp, action: s32, x: float32, y: float32) -> bool {
+    event := NativeTestEvent.{.kind = 2, .action = action, .x = x, .y = y}
+    return app.input_callback(cast(*void)app, cast(*void)(*event)) == 1
+}
+Sample :: (session: Session, x: float32, y: float32,
+    pressed: bool, down: bool, released: bool) -> bool {
+    if !AndroidTouchFrameInputBegin(session, 2.0) { return false }
+    pointer := PollPointer()
+    repeated := PollPointer()
+    published := CaptureFrameInput(session)
+    ok := pointer.x == x && pointer.y == y && pointer.pressed == pressed &&
+        pointer.down == down && pointer.released == released &&
+        repeated.x == x && repeated.y == y && repeated.pressed == pressed &&
+        repeated.down == down && repeated.released == released &&
+        published.available && published.focused == expected_focus &&
+        published.pointer.x == x && published.pointer.y == y &&
+        published.pointer.pressed == pressed && published.pointer.down == down &&
+        published.pointer.released == released
+    FrameInputEnd(session)
+    AndroidTouchFrameEnd()
+    return ok
+}
 #program_export
-Sample :: () -> s32 {
-    AndroidTouchInstall()
-    sample: TouchSample
-    return ifx AndroidTouchSample(sample).pressed then 1 else 0
+main :: () -> s32 {
+    app: NativeAndroidApp
+    AndroidNativeStart(*app)
+    defer { AndroidNativeClose() }
+    if AndroidNativeApp() != *app || app.input_callback == null { return 1 }
+    session := SessionOpen()
+    defer { unused SessionClose(session) }
+    AndroidTouchSetZoom(2.0)
+    if !Send(*app, 0, 200.0, 400.0) || !Sample(session, 100.0, 200.0, true, true, false) { return 2 }
+    if !Send(*app, 2, 220.0, 600.0) || !Sample(session, 110.0, 300.0, false, true, false) { return 3 }
+    if !Send(*app, 1, 260.0, 640.0) || !Sample(session, 130.0, 320.0, false, false, true) { return 4 }
+    // A complete tap between frame boundaries still publishes its press
+    // and release on separate frames at their respective coordinates.
+    if !Send(*app, 0, 20.0, 40.0) || !Send(*app, 1, 60.0, 80.0) ||
+        !Sample(session, 10.0, 20.0, true, true, false) { return 5 }
+    if !Sample(session, 30.0, 40.0, false, false, true) ||
+        !Sample(session, 30.0, 40.0, false, false, false) { return 6 }
+    AndroidTouchSetZoom(0.0)
+    if !Send(*app, 0, 7.0, 9.0) || !Sample(session, 7.0, 9.0, true, true, false) { return 7 }
+    AndroidNativeOnCommand(*app, AndroidNativeCommandLostFocus)
+    expected_focus = false
+    if !Sample(session, 7.0, 9.0, false, false, true) { return 8 }
+    AndroidNativeOnCommand(*app, AndroidNativeCommandGainedFocus)
+    expected_focus = true
+    if !Send(*app, 0, 18.0, 22.0) || !Sample(session, 18.0, 22.0, true, true, false) { return 9 }
+    if native_test_unexpected_effects != 0 || native_test_finish_calls != 0 { return 10 }
+    return 0
 }
 ZI
-"$ziran" build --target=c --define ANDROID_BUILD --root "$work" \
-    --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
-    --module-path "$ziran_root/std" -o "$work/android" "$work/android.zi"
-"${CC:-cc}" -std=c11 -fsyntax-only -I"$ziran_root/include" -I"$work/android" "$work/android"/*.c
-echo 'Touch replay: one-frame taps and swipes, platform releases and following touches passed'
+
+"$ziran" ir --define ANDROID_BUILD --define __x86_64__ --root "$work" \
+    --module-path "$repo/tests" $kryon_ui_args \
+    --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+    -o "$work/native-ir" "$work/android.zi"
+for route in source saved; do
+    input="$work/android.zi"
+    root="$work"
+    if [ "$route" = saved ]; then
+        input="$work/native-ir/android.zir"
+        root="$work/native-ir"
+    fi
+    output="$work/native-$route"
+    "$ziran_root/build/bin/zi2c" --prune-stale --define ANDROID_BUILD --define __x86_64__ \
+        --no-main --entry android:main --root "$root" \
+        --module-path "$repo/tests" $kryon_ui_args \
+        --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+        -o "$output" "$input"
+    includes=$(find "$output" -type d -printf ' -iquote %p')
+    # shellcheck disable=SC2046,SC2086
+    "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
+        -I"$ziran_root/include" $includes $(find "$output" -name '*.c') \
+        "$ziran_root/build/libziran.a" -Wl,--gc-sections -lm -lpthread -ldl -o "$work/test"
+    timeout 30s "$work/test"
+done
+printf '%s\n' 'Touch replay: portable quick taps, swipes and releases; NativeActivity zoom, immutable frames and focus passed (source and saved IR)'

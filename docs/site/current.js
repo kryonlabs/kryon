@@ -1,61 +1,48 @@
-(function () {
-  var root = document.documentElement;
-  var saved;
-  try { saved = localStorage.getItem('kryon-theme'); } catch (_) {}
-  var query = new URLSearchParams(location.search);
-  var selected = query.get('color') || query.get('theme');
-  if (selected !== 'dark' && selected !== 'light') selected = saved;
-  var toggles = document.querySelectorAll('.theme-toggle');
-  function valid(theme) { return theme === 'dark' || theme === 'light'; }
-  function sendTheme(frame) {
-    frame.contentWindow?.postMessage({type: 'site:theme', theme: root.dataset.theme}, '*');
-  }
-  function applyTheme(theme) {
-    if (!valid(theme)) return;
-    root.dataset.theme = theme;
-    toggles.forEach(function (toggle) { toggle.setAttribute('aria-pressed', String(theme === 'dark')); });
-    dispatchEvent(new CustomEvent('themechange', {detail: theme}));
-    document.querySelectorAll('iframe').forEach(sendTheme);
-  }
-  document.querySelectorAll('iframe').forEach(function (frame) {
-    frame.addEventListener('load', function () { sendTheme(frame); });
-  });
-  addEventListener('message', function (event) {
-    if (parent !== window && event.source === parent && event.data?.type === 'site:theme') applyTheme(event.data.theme);
-  });
-  addEventListener('storage', function (event) {
-    if (event.key === 'kryon-theme') applyTheme(event.newValue);
-  });
-  applyTheme(valid(selected) ? selected : 'light');
-  toggles.forEach(function (toggle) {
-    toggle.addEventListener('click', function () {
-      var next = root.dataset.theme === 'dark' ? 'light' : 'dark';
-      applyTheme(next);
-      try { localStorage.setItem('kryon-theme', next); } catch (_) {}
+// Runtime packaging only. All interface state, layout and interactions are Ziran.
+var Module = {
+  onExit: function (code) { if (code) document.getElementById('result').textContent = 'Application stopped (' + code + ').'; },
+  onAbort: function () { document.getElementById('result').textContent = 'Could not start the interactive examples.'; }
+};
+(async function () {
+  var probe = new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,96,0,1,123,3,2,1,0,10,10,1,8,0,65,0,253,15,253,98,11]);
+  var name = WebAssembly.validate(probe) ? 'simd128' : 'baseline';
+  Module.kryonBuild = name;
+  var manifest = await (await fetch('runtime/assets.json', {cache:'no-store'})).json();
+  var files = await Promise.all(manifest.map(async function (entry) {
+    var response = await fetch(entry[1], {cache:'no-store'});
+    if (!response.ok) throw new Error('Missing runtime asset');
+    return [entry[0], new Uint8Array(await response.arrayBuffer())];
+  }));
+  Module.preRun = [function () {
+    files.forEach(function (file) {
+      var directory = file[0].replace(/\/[^/]+$/, '');
+      if (directory && directory !== '/') Module.FS.createPath('/', directory.replace(/^\//, ''), true, true);
+      Module.FS.writeFile(file[0], file[1]);
     });
-  });
+  }];
+  var response = await fetch('runtime/' + name + '.js', {cache:'no-store'});
+  if (!response.ok) throw new Error('Missing compiled application');
+  var script = document.createElement('script');
+  script.id = 'mainScript'; script.text = await response.text();
+  document.body.appendChild(script);
+})().catch(function () { Module.onAbort(); });
 
-  // The narrow-screen menu opens and closes the primary navigation.
-  var menu = document.querySelector('.menu-button');
-  var nav = document.getElementById('primary-nav');
-  if (!menu || !nav) return;
-  function setMenu(open, returnFocus) {
-    menu.setAttribute('aria-expanded', String(open));
-    nav.classList.toggle('is-open', open);
-    if (!open && returnFocus) menu.focus();
+// Asynchronous compiler/FS transport. The Ziran editor owns all compile state.
+let compilerWorker;
+let compilerRequestId;
+Module.compileSource = function (request) {
+  compilerRequestId = request.id;
+  if (!compilerWorker) {
+    compilerWorker = new Worker('compiler-worker.js?v=' + document.querySelector('script[src*="current.js"]').src.split('?v=')[1]);
+    compilerWorker.onmessage = function ({data}) {
+      if (data.id !== compilerRequestId) return;
+      if (data.bytes) Module.FS.writeFile('/compiled.zx', new Uint8Array(data.bytes));
+      delete data.bytes;
+      Module.compilerResult = data;
+    };
+    compilerWorker.onerror = function (event) {
+      Module.compilerResult = {id:compilerRequestId, status:1, diagnostics:event.message};
+    };
   }
-  function isOpen() { return menu.getAttribute('aria-expanded') === 'true'; }
-  menu.addEventListener('click', function () { setMenu(!isOpen(), false); });
-  document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && isOpen()) setMenu(false, true);
-  });
-  document.addEventListener('click', function (event) {
-    if (isOpen() && !menu.contains(event.target) && !nav.contains(event.target)) setMenu(false, false);
-  });
-  nav.addEventListener('click', function (event) {
-    if (event.target.closest('a')) setMenu(false, false);
-  });
-  matchMedia('(min-width: 651px)').addEventListener('change', function (event) {
-    if (event.matches) setMenu(false, false);
-  });
-})();
+  compilerWorker.postMessage(request);
+};

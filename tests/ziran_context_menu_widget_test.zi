@@ -1,7 +1,7 @@
 #import "session"
 #import "widget_test_session"
 
-#import "context_menu_widget"
+#import "contextmenu"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"

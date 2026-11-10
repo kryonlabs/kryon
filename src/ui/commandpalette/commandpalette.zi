@@ -1,0 +1,412 @@
+#import "command_palette_props"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "semantic"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "theme"
+#import "tooltip_common"
+#import "tree"
+#import "text_input"
+#import "text_input_props"
+Grapheme :: #import "std/grapheme";
+#import "widget_kind"
+
+using ButtonState;
+using SemanticKind;
+using StyleField;
+using WidgetKind;
+
+#program_export
+CommandPaletteFuzzyScore :: (text: string,
+    query: string) -> s32 {
+    if query.count == 0 { return 1 }
+    score: s32 = 0
+    if query.count <= text.count {
+        prefix := true
+        byte_index: s32 = 0
+        while byte_index < cast(s32)query.count {
+            query_byte := query[byte_index]
+            text_byte := text[byte_index]
+            if query_byte >= cast(u8)65 && query_byte <= cast(u8)90 {
+                query_byte += cast(u8)32
+            }
+            if text_byte >= cast(u8)65 && text_byte <= cast(u8)90 {
+                text_byte += cast(u8)32
+            }
+            if query_byte != text_byte { prefix = false; break }
+            byte_index += 1
+        }
+        if prefix { score += 10 }
+    }
+    run: s32 = 0
+    text_at: s32 = 0
+    query_at: s32 = 0
+    while query_at < cast(s32)query.count {
+        query_byte := query[query_at]
+        if query_byte >= cast(u8)65 && query_byte <= cast(u8)90 {
+            query_byte += cast(u8)32
+        }
+        if query_byte == cast(u8)32 { query_at += 1; continue }
+        found := false
+        while text_at < cast(s32)text.count {
+            text_byte := text[text_at]
+            if text_byte >= cast(u8)65 && text_byte <= cast(u8)90 {
+                text_byte += cast(u8)32
+            }
+            word_start := text_at == 0 || text[text_at - 1] == cast(u8)32
+            text_at += 1
+            if text_byte == query_byte {
+                found = true
+                run += 1
+                score += 1 + run
+                if word_start { score += 3 }
+                break
+            }
+            run = 0
+        }
+        if !found { return -1 }
+        query_at += 1
+    }
+    return score
+}
+
+#program_export
+CommandPaletteSetQuery :: (state: *CommandPaletteState,
+    value: string) -> bool {
+    if state == null { return false }
+    length := cast(s32)value.count
+    if length < 0 || length > CommandPaletteCapacity { return false }
+    at := 0
+    while at < length {
+        state.query[at] = value[at]
+        at += 1
+    }
+    state.query_length = length
+    state.cursor = length
+    state.anchor = length
+    state.highlighted = 0
+    state.scroll = 0
+    return true
+}
+
+#program_export
+CommandPaletteApply :: (state: *CommandPaletteState,
+    props: CommandPaletteProps) -> CommandPaletteResult {
+    result: CommandPaletteResult
+    result.node = -1; result.scrim_node = -1; result.query_node = -1
+    result.chosen_index = -1
+    if state == null { return result }
+    if props.owner != cast(u64)0 && state.owner != props.owner {
+        state.owner = props.owner
+        state.open_previous = false
+        result.ownership_changed = true
+        unused CommandPaletteSetQuery(state, "")
+    }
+    if props.open && !state.open_previous {
+        result.changed = true
+        state.highlighted = 0
+        state.scroll = 0
+        state.transition_start_ms = props.now_ms
+    }
+    state.open_previous = props.open
+    duration := OverlayDuration(280.0, props.surface_style,
+        CurrentTheme().motion.reduced_motion)
+    state.progress = ifx props.open then OverlayProgressAt(state.transition_start_ms,
+        props.now_ms, duration) else 0.0
+    result.progress = state.progress
+    result.visible = props.open || state.progress > 0.0
+
+    if props.open && !props.disabled {
+        input := props.input.text
+        value := CommandPaletteQuery(state.query[:state.query_length])
+        state.cursor = Grapheme.Boundary(value, state.cursor)
+        state.anchor = Grapheme.Boundary(value, state.anchor)
+        selection := TextSelectionRangeForLength(state.anchor, state.cursor, state.query_length)
+        target := state.cursor
+        if input.select_all {
+            state.anchor = 0
+            state.cursor = state.query_length
+        } else if input.left || input.right || input.home || input.end {
+            if input.left {
+                target = Grapheme.Previous(value, state.cursor)
+                if selection.has_selection && !input.shift { target = selection.start }
+            } else if input.right {
+                target = Grapheme.Next(value, state.cursor)
+                if selection.has_selection && !input.shift { target = selection.end }
+            } else if input.home { target = 0 }
+            else { target = state.query_length }
+            moved := TextSelectionAfterMove(state.anchor, state.cursor, target, input.shift)
+            state.cursor = moved.cursor
+            state.anchor = moved.anchor
+        }
+        selection = TextSelectionRangeForLength(state.anchor, state.cursor, state.query_length)
+        edit: TextFieldEdit
+        edit.start = selection.start
+        edit.end = selection.end
+        edit.replacement = input.text
+        if input.text.count > 0 { edit.changed = true }
+        else if input.backspace {
+            if !selection.has_selection { edit.start = Grapheme.Previous(value, state.cursor) }
+            edit.changed = edit.end > edit.start
+        } else if input.delete_forward {
+            if !selection.has_selection { edit.end = Grapheme.Next(value, state.cursor) }
+            edit.changed = edit.end > edit.start
+        }
+        buffer := TextFieldState.{.bytes = state.query[:], .length = state.query_length,
+            .cursor = state.cursor, .anchor = state.anchor}
+        if edit.changed && TextFieldStateApplyEdit(*buffer, edit) {
+            state.query_length = buffer.length
+            state.cursor = buffer.cursor
+            state.anchor = buffer.anchor
+            state.highlighted = 0
+            state.scroll = 0
+            result.changed = true
+        }
+    }
+
+    query := CommandPaletteQuery(state.query[:state.query_length])
+    state.match_count = 0
+    command_index: s32 = 0
+    while command_index < cast(s32)props.commands.count &&
+        state.match_count < CommandPaletteCapacity {
+        score := CommandPaletteFuzzyScore(props.commands[command_index].title,
+            query)
+        if score >= 0 {
+            position := state.match_count
+            if query.count > 0 {
+                while position > 0 && state.scores[position - 1] < score {
+                    state.order[position] = state.order[position - 1]
+                    state.scores[position] = state.scores[position - 1]
+                    position -= 1
+                }
+            }
+            state.order[position] = command_index
+            state.scores[position] = score
+            state.match_count += 1
+        }
+        command_index += 1
+    }
+    result.match_count = state.match_count
+    if state.highlighted >= state.match_count {
+        state.highlighted = state.match_count - 1
+    }
+    if state.highlighted < 0 { state.highlighted = 0 }
+    result.highlighted = state.highlighted
+
+    last_group := ""
+    match_index: s32 = 0
+    while match_index < state.match_count {
+        item_index := state.order[match_index]
+        group := props.commands[item_index].group
+        state.group_starts[match_index] = query.count == 0 && group != last_group
+        last_group = group
+        match_index += 1
+    }
+
+    if props.open && !props.disabled {
+        if props.input.escape { result.close_requested = true }
+        if state.match_count > 0 {
+            if props.input.down {
+                state.highlighted = (state.highlighted + 1) % state.match_count
+                result.highlighted = state.highlighted
+                result.changed = true
+            }
+            if props.input.up {
+                state.highlighted = (state.highlighted + state.match_count - 1) %
+                    state.match_count
+                result.highlighted = state.highlighted
+                result.changed = true
+            }
+            if props.input.enter || props.input.text.commit {
+                chosen := state.order[state.highlighted]
+                if !props.commands[chosen].disabled {
+                    result.chosen_index = chosen
+                    result.chosen_action = props.commands[chosen].action
+                    result.exact_action = true
+                    result.close_requested = true
+                }
+            }
+        }
+        if props.input.pointer.released &&
+            props.input.activate_index >= 0 &&
+            props.input.activate_index < state.match_count {
+            chosen := state.order[props.input.activate_index]
+            if !props.commands[chosen].disabled {
+                result.chosen_index = chosen
+                result.chosen_action = props.commands[chosen].action
+                result.exact_action = true
+                result.close_requested = true
+            }
+        }
+    }
+    return result
+}
+
+#program_export
+CommandPaletteInstalledFaceFor :: (props: CommandPaletteProps,
+    state: s32) -> StyleData {
+    facts := StyleControlRoleFacts(StyleKindPopup(), props.id,
+        props.class_name, StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
+    return ResolveInstalledStyleRules(CommandPaletteSurfaceDefaultStyle(),
+        facts, state)
+}
+
+CommandPaletteHostedReply :: struct {
+    state: CommandPaletteState
+    result: CommandPaletteResult
+}
+#if #defined(KRYON_HOSTED_UI) {
+    command_palette_host_api :: #system_library "host_api";
+    CommandPaletteHostedHost :: (session: Session, props: CommandPaletteProps, state: CommandPaletteState) -> CommandPaletteHostedReply #foreign command_palette_host_api;
+    #program_export
+    CommandPalette :: (session: Session, props: CommandPaletteProps,
+    state: *CommandPaletteState) -> CommandPaletteResult {
+        reply := CommandPaletteHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #import "paint_queue"
+    #import "tree_input"
+    #program_export
+    CommandPalette :: (session: Session, props: CommandPaletteProps,
+    state: *CommandPaletteState) -> CommandPaletteResult { return CommandPaletteCore(session, props, state, true) }
+    #program_export
+CommandPaletteCore :: (session: Session, props: CommandPaletteProps,
+    state: *CommandPaletteState, effects: bool) -> CommandPaletteResult {
+    unused effects
+    opening := props.open && state != null && !state.open_previous
+    if props.open && TreeIsBuilding(session) {
+        scrim := TreePrevious(session, TreeCurrentParent(session),
+            WidgetPartKey(props.key, 1), WidgetKindModal)
+        // BeginFrame gives Escape to the top retained popup, including the
+        // query or a row. Consume only dismissals inside this palette.
+        for index: 0..TreeCount(session) - 1 {
+            ancestor := index
+            while scrim >= 0 && ancestor >= 0 {
+                if ancestor == scrim {
+                    if TreeTakeDismissalAt(session, index) { props.input.escape = true }
+                    break
+                }
+                ancestor = TreeNodeAt(session, ancestor).parent
+            }
+        }
+    }
+    result := CommandPaletteApply(state, props)
+    if !result.visible || !SessionValid(session) || !TreeIsBuilding(session) {
+        return result
+    }
+    face := MergeValues(ResolveValues(CommandPaletteInstalledFaceFor(props,
+        ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.states, ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.surface_style)
+    width := props.width
+    if width <= 0.0 { width = 580.0 }
+    if width > props.viewport.width - 32.0 { width = props.viewport.width - 32.0 }
+    if width < 0.0 { width = 0.0 }
+    height := props.maximum_height
+    if height <= 0.0 { height = 340.0 }
+    if height > props.viewport.height - 48.0 { height = props.viewport.height - 48.0 }
+    if height < 0.0 { height = 0.0 }
+    panel_height := height + 76.0
+    result.panel_bounds = Rectangle.{
+        props.viewport.x + (props.viewport.width - width) * 0.5,
+        props.viewport.y + 24.0, width, panel_height}
+    result.list_bounds = Rectangle.{result.panel_bounds.x + 8.0,
+        result.panel_bounds.y + 68.0, width - 16.0, height}
+    result.scrim_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 1),
+        WidgetKindModal, props.viewport)
+    if result.scrim_node >= 0 {
+        TreeSetStyleClass(session, result.scrim_node, props.class_name)
+        TreeSetStyleId(session, result.scrim_node, props.id)
+        PaintRoundedFill(session, result.scrim_node, props.viewport, 0.0, 4,
+            ColorFromPacked(Opacity(props.scrim_style.background, 0.7 * result.progress)))
+        if !TreePushScope(session, result.scrim_node) { return result }
+    }
+    result.node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 2),
+        WidgetKindBox, result.panel_bounds)
+    if result.node < 0 { return result }
+    TreeSetPopup(session, result.node)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    PaintRoundedFill(session, result.node, result.panel_bounds, face.radius, 12,
+        ColorFromPacked(Opacity(face.background, OverlayStyleOpacity(face))))
+    if face.border != cast(u32)0 {
+        PaintRoundedOutline(session, result.node, result.panel_bounds,
+            face.radius, 12, face.border_width,
+            ColorFromPacked(Opacity(face.border, OverlayStyleOpacity(face))))
+    }
+    if !TreePushScope(session, result.node) { return result }
+
+    query_bounds := Rectangle.{result.panel_bounds.x + 10.0,
+        result.panel_bounds.y + 8.0, width - 20.0, 44.0}
+    result.query_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 3),
+        WidgetKindTextField, query_bounds)
+    if result.query_node >= 0 {
+        TreeSetPopup(session, result.query_node)
+        TreeSetStyleClass(session, result.query_node, props.class_name)
+        TreeSetStyleId(session, result.query_node, props.id)
+        TreeSetInteractive(session, result.query_node, props.disabled, false, props.id + 1)
+        TreeSetSemantic(session, result.query_node, cast(SemanticKind)SemanticTextField, 0)
+        query := CommandPaletteQuery(state.query[:state.query_length])
+        TreeSetLabel(session, result.query_node,
+            ifx query.count > 0 then query else props.placeholder)
+        TreeSetCaptureTab(session, result.query_node, true)
+        if opening { unused TreeFocusSubmittedAt(session, result.query_node) }
+        font := ResolveFont(0, StyleFontValue(face.fields, face.font_size), 16)
+        PaintClippedLabel(session, result.query_node,
+            ifx query.count > 0 then query else props.placeholder,
+            cast(s32)(query_bounds.x + 8.0), cast(s32)(query_bounds.y + 12.0),
+            font, ColorFromPacked(Opacity(face.foreground, OverlayStyleOpacity(face))), query_bounds)
+    }
+
+    match_index: s32 = 0
+    row_height: float32 = 40.0
+    while match_index < state.match_count {
+        row_bounds := Rectangle.{result.list_bounds.x,
+            result.list_bounds.y + cast(float32)match_index * row_height,
+            result.list_bounds.width, row_height}
+        if row_bounds.y + row_height <= result.list_bounds.y + result.list_bounds.height {
+            command_index := state.order[match_index]
+            row_node := TreeSubmitCurrent(session,
+                WidgetPartKey(props.key, 20 + match_index),
+                WidgetKindSelectable, row_bounds)
+            if row_node >= 0 {
+                TreeSetPopup(session, row_node)
+                TreeSetStyleClass(session, row_node, props.class_name)
+                TreeSetStyleId(session, row_node, props.id)
+                TreeSetInteractive(session, row_node,
+                    props.commands[command_index].disabled, false,
+                    props.id + 20 + match_index)
+                TreeSetSemantic(session, row_node, cast(SemanticKind)SemanticOption, 0)
+                TreeSetLabel(session, row_node,
+                    props.commands[command_index].title)
+                if match_index == state.highlighted {
+                    PaintRoundedFill(session, row_node, row_bounds,
+                        props.item_style.radius, 8,
+                        ColorFromPacked(Opacity(props.item_style.background,
+                            OverlayStyleOpacity(props.item_style))))
+                }
+                font := ResolveFont(0, StyleFontValue(face.fields,
+                    props.item_style.font_size), 14)
+                PaintClippedLabel(session, row_node,
+                    props.commands[command_index].title,
+                    cast(s32)(row_bounds.x + 12.0), cast(s32)(row_bounds.y + 12.0),
+                    font, ColorFromPacked(Opacity(face.foreground,
+                        OverlayStyleOpacity(face))), row_bounds)
+            }
+        }
+        match_index += 1
+    }
+    unused TreePopScope(session)
+    if result.scrim_node >= 0 { unused TreePopScope(session) }
+    return result
+}
+}
+
+

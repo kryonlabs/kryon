@@ -3,7 +3,7 @@
 
 #import "geometry"
 #import "paint_queue"
-#import "paned_view"
+#import "panedview"
 #import "paned_view_props"
 #import "tree"
 #import "tree_input"

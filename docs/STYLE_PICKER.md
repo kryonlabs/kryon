@@ -1,7 +1,7 @@
 # Style picker
 
 `StylePicker(props, packs)` is an ordinary Ziran widget in
-`src/ui/style_picker.zi`. The caller owns a slice of `StylePackOption` values,
+`src/ui/stylepicker/stylepicker.zi`. The caller owns a slice of `StylePackOption` values,
 including stable IDs, labels, and the active flag. The picker composes the
 checked `Dropdown` widget from at most 32 options. Its result includes the
 dropdown's open, highlight, and scroll state; the caller stores those values

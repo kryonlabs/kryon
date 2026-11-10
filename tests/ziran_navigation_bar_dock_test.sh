@@ -16,9 +16,9 @@ set -- \
     --bind font_metrics:MeasureGlyphWidth=ziran_navigation_bar_dock_test:DockMeasureWidth \
     --bind font_metrics:MeasureGlyphLineHeight=ziran_navigation_bar_dock_test:DockMeasureHeight
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" "$@" \
     --entry ziran_navigation_bar_dock_test:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
@@ -31,16 +31,16 @@ for input in source saved; do
     if test "$input" = source; then
         module=$source
         module_root=$repo/tests
-        module_dir=$repo/src/ui
+        module_dir="$kryon_ui_args"
     else
         module=$work/ir/ziran_navigation_bar_dock_test.zir
         module_root=$work/ir
-        module_dir=$work/ir
+        module_dir="--module-path $work/ir"
     fi
     for target in c; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --root "$module_root" \
-            --module-path "$module_dir" --module-path "$ziran_root/std" \
+            $module_dir --module-path "$ziran_root/std" \
             -o "$output" "$module"
             "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \
                 -I"$ziran_root/include" -I"$output" "$output"/*.c \
@@ -50,7 +50,7 @@ for input in source saved; do
     output=$work/go-$input
     "$ziran" build --target=go --pkg main --exe \
         --entry ziran_navigation_bar_dock_test:main "$@" \
-        --root "$module_root" --module-path "$module_dir" \
+        --root "$module_root" $module_dir \
         --module-path "$ziran_root/std" -o "$output" "$module"
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
 done

@@ -7,6 +7,11 @@ ZI2ZX_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2zx)
 ZI2C_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/zi2c)
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
 ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
+# Legacy standalone hosts resolve the canonical package roots without changing
+# their public module names or generated C entry points.
+KRYON_MODULE_ROOTS := $(shell python3 -c 'import tomllib; from pathlib import Path; print(" ".join("../" + root for root in tomllib.loads(Path("../ziran.toml").read_text())["package"]["module_roots"]))')
+KRYON_MODULE_ARGS := $(foreach root,$(KRYON_MODULE_ROOTS),--module-path $(root))
+KRYON_SOURCES := $(foreach root,$(KRYON_MODULE_ROOTS),$(wildcard $(root)/*.zi $(root)/*/module.zi))
 BUILD_DIR ?= ../build/examples
 NATIVE_LIB := ../build/ziran/libkryon.a
 
@@ -19,51 +24,51 @@ $(ZI2ZX_BIN):
 $(ZI2C_BIN):
 	$(MAKE) -C $(ZIRAN_DIR) all
 
-$(NATIVE_LIB): ../Makefile ../src/ui/modules.txt $(wildcard ../src/ui/*.zi)
+$(NATIVE_LIB): ../Makefile ../src/ui/modules.txt $(KRYON_SOURCES)
 	$(MAKE) -C .. all
 
-$(BUILD_DIR)/hello.zx: hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZX_BIN)
+$(BUILD_DIR)/hello.zx: hello.zi $(KRYON_SOURCES) $(ZI2ZX_BIN) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)
-	$(ZI2ZX_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZX_BIN) bundle --root . $(KRYON_MODULE_ARGS) $(ZIRAN_STD_PATH) \
 		--entry hello:Frame -o $@ hello.zi
 
 $(BUILD_DIR)/hello-saved.zx: $(BUILD_DIR)/hello.zx
-	$(ZI2ZIR_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZIR_BIN) --root . $(KRYON_MODULE_ARGS) $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/ir hello.zi
 	$(ZI2ZX_BIN) bundle --root $(BUILD_DIR)/ir \
 		--module-path $(BUILD_DIR)/ir --entry hello:Frame \
 		-o $@ $(BUILD_DIR)/ir/hello.zir
 	cmp $(BUILD_DIR)/hello.zx $@
 
-$(BUILD_DIR)/image.zx: image_demo.zi $(wildcard ../src/ui/*.zi) $(ZI2ZX_BIN)
+$(BUILD_DIR)/image.zx: image_demo.zi $(KRYON_SOURCES) $(ZI2ZX_BIN) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)
-	$(ZI2ZX_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZX_BIN) bundle --root . $(KRYON_MODULE_ARGS) $(ZIRAN_STD_PATH) \
 		--entry image_demo:Frame -o $@ image_demo.zi
 
 $(BUILD_DIR)/image-saved.zx: $(BUILD_DIR)/image.zx
-	$(ZI2ZIR_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZIR_BIN) --root . $(KRYON_MODULE_ARGS) $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/image-ir image_demo.zi
 	$(ZI2ZX_BIN) bundle --root $(BUILD_DIR)/image-ir \
 		--module-path $(BUILD_DIR)/image-ir --entry image_demo:Frame \
 		-o $@ $(BUILD_DIR)/image-ir/image_demo.zir
 	cmp $(BUILD_DIR)/image.zx $@
 
-$(BUILD_DIR)/text.zx: text_hello.zi $(wildcard ../src/ui/*.zi) $(ZI2ZX_BIN)
+$(BUILD_DIR)/text.zx: text_hello.zi $(KRYON_SOURCES) $(ZI2ZX_BIN) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)
-	$(ZI2ZX_BIN) bundle --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZX_BIN) bundle --root . $(KRYON_MODULE_ARGS) $(ZIRAN_STD_PATH) \
 		--entry text_hello:Frame -o $@ text_hello.zi
 
 $(BUILD_DIR)/text-saved.zx: $(BUILD_DIR)/text.zx
-	$(ZI2ZIR_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2ZIR_BIN) --root . $(KRYON_MODULE_ARGS) $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/text-ir text_hello.zi
 	$(ZI2ZX_BIN) bundle --root $(BUILD_DIR)/text-ir \
 		--module-path $(BUILD_DIR)/text-ir --entry text_hello:Frame \
 		-o $@ $(BUILD_DIR)/text-ir/text_hello.zir
 	cmp $(BUILD_DIR)/text.zx $@
 
-$(BUILD_DIR)/hello-native/hello_host.c: hello_host.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZI2C_BIN)
+$(BUILD_DIR)/hello-native/hello_host.c: hello_host.zi hello.zi $(KRYON_SOURCES) $(ZI2C_BIN) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)/hello-native
-	$(ZI2C_BIN) --root . --module-path ../src/ui $(ZIRAN_STD_PATH) \
+	$(ZI2C_BIN) --root . $(KRYON_MODULE_ARGS) $(ZIRAN_STD_PATH) \
 		-o $(BUILD_DIR)/hello-native hello_host.zi
 
 $(BUILD_DIR)/hello-host: $(BUILD_DIR)/hello-native/hello_host.c $(NATIVE_LIB) Makefile
@@ -80,31 +85,31 @@ $(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host
 test: all $(BUILD_DIR)/hello-saved.zx
 	python3 -c 'import xml.etree.ElementTree as ET; root=ET.parse("$(BUILD_DIR)/hello.svg").getroot(); ns="{http://www.w3.org/2000/svg}"; assert root.tag==ns+"svg"; assert [node.text for node in root.iter(ns+"text")]==["Hello, Ziran"]*3+["Clicked!"]; assert len(list(root.iter(ns+"rect")))>=4'
 
-$(BUILD_DIR)/desktop-hello-native/desktop_hello.c: desktop_hello.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
+$(BUILD_DIR)/desktop-hello-native/desktop_hello.c: desktop_hello.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi hello.zi $(KRYON_SOURCES) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
 	mkdir -p $(BUILD_DIR)/desktop-hello-native
 	$(RM) $(BUILD_DIR)/desktop-hello-native/*.c $(BUILD_DIR)/desktop-hello-native/*.h
-	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
+	$(ZI2C_BIN) --root . $(KRYON_MODULE_ARGS) \
 		--module-path $(ZIRAN_DIR)/std \
 		--entry desktop_hello:main -o $(BUILD_DIR)/desktop-hello-native desktop_hello.zi
 
-$(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi image_demo.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
+$(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi image_demo.zi $(KRYON_SOURCES) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
 	mkdir -p $(BUILD_DIR)/desktop-image-native
 	$(RM) $(BUILD_DIR)/desktop-image-native/*.c $(BUILD_DIR)/desktop-image-native/*.h
-	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
+	$(ZI2C_BIN) --root . $(KRYON_MODULE_ARGS) \
 		--module-path $(ZIRAN_DIR)/std \
 		--entry desktop_image:main -o $(BUILD_DIR)/desktop-image-native desktop_image.zi
 
-$(BUILD_DIR)/desktop-text-native/desktop_text.c: desktop_text.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi text_hello.zi $(wildcard ../src/ui/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
+$(BUILD_DIR)/desktop-text-native/desktop_text.c: desktop_text.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi text_hello.zi $(KRYON_SOURCES) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
 	mkdir -p $(BUILD_DIR)/desktop-text-native
 	$(RM) $(BUILD_DIR)/desktop-text-native/*.c $(BUILD_DIR)/desktop-text-native/*.h
-	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
+	$(ZI2C_BIN) --root . $(KRYON_MODULE_ARGS) \
 		--module-path $(ZIRAN_DIR)/std \
 		--entry desktop_text:main -o $(BUILD_DIR)/desktop-text-native desktop_text.zi
 
-$(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c: desktop_time_picker.zi time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(wildcard ../src/ui/*.zi ../src/ui/Widgets/*.zi) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
+$(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c: desktop_time_picker.zi time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(KRYON_SOURCES) $(ZIRAN_DIR)/std/c_string.zi $(ZI2C_BIN) Makefile
 	mkdir -p $(BUILD_DIR)/desktop-time-picker-native
 	$(RM) $(BUILD_DIR)/desktop-time-picker-native/*.c $(BUILD_DIR)/desktop-time-picker-native/*.h
-	$(ZI2C_BIN) --root . --module-path ../src/ui --module-path ../src/backend \
+	$(ZI2C_BIN) --root . $(KRYON_MODULE_ARGS) \
 		--module-path $(ZIRAN_DIR)/std \
 		--entry desktop_time_picker:main -o $(BUILD_DIR)/desktop-time-picker-native desktop_time_picker.zi
 

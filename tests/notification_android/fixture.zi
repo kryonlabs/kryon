@@ -7,8 +7,6 @@ fixture_activity: NativeActivity;
 fixture_app: NativeAndroidApp;
 
 #program_export
-GetAndroidApp :: () -> *NativeAndroidApp { return *fixture_app }
-#program_export
 ANativeActivity_finish :: (activity: *void) { unused activity }
 
 #program_export "Java_NotificationTest_init"
@@ -17,6 +15,8 @@ Initialize :: (env: *JniEnv, klass: *void, context: *void) {
     unused env.functions.GetJavaVM(env, *fixture_activity.vm)
     fixture_activity.activity = env.functions.NewGlobalRef(env, context)
     fixture_app.activity = *fixture_activity
+    // Match android_native: publish the activity before notification JNI work.
+    jni_android_app = *fixture_app
 }
 
 #program_export "Java_NotificationTest_schedule"

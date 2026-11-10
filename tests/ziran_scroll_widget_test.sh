@@ -16,9 +16,9 @@ cat > "$work/app.zi" <<'ZI'
 
 #import "geometry"
 #import "paint_queue"
-#import "scroll"
+#import "scroll_behavior"
 #import "scroll_props"
-#import "scroll_widget"
+#import "scroll"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -408,24 +408,24 @@ HOST void RasterTextRotated(String value, int32_t x, int32_t y, int32_t font,
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$standard" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$standard" \
     -o "$work/ir" "$work/app.zi"
 for input in source saved; do
     if test "$input" = source; then
         source=$work/app.zi
         root=$work
-        module_path=$repo/src/ui
+        module_path="$kryon_ui_args"
     else
         source=$work/ir/app.zir
         root=$work/ir
-        module_path=$work/ir
+        module_path="--module-path $work/ir"
     fi
-    "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$standard" \
+    "$ziran" bundle --root "$root" $module_path --module-path "$standard" \
         --entry app:Answer -o "$work/$input.zx" "$source"
     for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
-            --root "$root" --module-path "$module_path" --module-path "$standard" \
+            --root "$root" $module_path --module-path "$standard" \
             -o "$output" "$source"
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"
@@ -463,9 +463,9 @@ set -- \
     --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
     --bind paint_queue:RasterImage=ziran_widget_noop_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$repo/tests" \
     --module-path "$standard" -o "$work/portable-ir" "$work/portable.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$repo/tests" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$repo/tests" \
     --module-path "$standard" "$@" --entry portable:PortableCheck \
     -o "$work/portable-source.zx" "$work/portable.zi"
 "$ziran" bundle --root "$work/portable-ir" --module-path "$work/portable-ir" \

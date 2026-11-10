@@ -1,0 +1,34 @@
+#import "component_protocol"
+#import "button"
+#import "button_props"
+#import "text"
+#import "text_props"
+#import "geometry"
+
+Busy :: () -> s64 {
+    value: s64 = 0
+    while value < 10000001 { value += 1 }
+    return value
+}
+
+component_schema_version: s64 = 2;
+component_count: s64 = Busy();
+component_label_kind: s64 = 2;
+
+#program_export
+Frame :: () -> s64 {
+    if component_schema_version < 2 { return 1 }
+    session := ComponentSession()
+    bounds := ComponentBounds()
+    Button(session, ButtonProps.{
+        .key = 701, .bounds = Rectangle.{
+            bounds.x + 16.0, bounds.y + 16.0, 96.0, 36.0
+        }, .label = "Increment"
+    })
+    Text(session, TextProps.{
+        .key = 702, .bounds = Rectangle.{
+            bounds.x + 16.0, bounds.y + 64.0, 180.0, 28.0
+        }, .text = "init failure", .font = Text18
+    })
+    return 0
+}

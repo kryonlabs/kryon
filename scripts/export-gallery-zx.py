@@ -34,7 +34,8 @@ def main():
     compile_env = {**os.environ, 'ZIRAN_ROOT': str(toolchain)}
     paths = ['--root', str(output / 'app'), '--module-path', str(gallery.PROJECT / 'src'),
              '--module-path', str(gallery.ROOT / 'src/ui'),
-             '--module-path', str(gallery.ROOT / 'src/backend')]
+             '--module-path', str(gallery.ROOT / 'src/backend'),
+             '--module-path', str(gallery.ROOT / 'examples/shared')]
     for module in modules:
         name = module['dependency']
         source_package = package(name)
@@ -79,8 +80,9 @@ def main():
         bundle = output / (entry['id'] + '.zx')
         bundle.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run([compiler, 'bundle', *paths, '--entry', 'zx_run:main',
+                        '--bind', 'frame_entry:ProjectFrame=app:Frame',
                         '--asset-dir', 'assets=' + str(gallery.PROJECT / 'assets'),
-                        '-o', str(bundle), str(gallery.ROOT / 'src/backend/zx_run.zi')],
+                        '-o', str(bundle), str(gallery.ROOT / 'src/backend/zx_run.zi'), str(app)],
                        cwd=gallery.PROJECT, env=compile_env, check=True)
         index.append({**entry, 'bundle': bundle.relative_to(output).as_posix()})
         print('Exported ' + entry['id'] + ': ' + entry['name'], flush=True)

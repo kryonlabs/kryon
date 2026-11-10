@@ -68,6 +68,10 @@ Applications that handle Escape as navigation can call `CanvasSetExitKey(0)`
 through `kryon/Canvas` to disable the host's default Escape-to-exit behavior.
 Other keys remain available through `CanvasPressedKey`.
 
+Custom Canvas hosts can use `BeginRasterClip(bounds)` and
+`EndRasterClip(saved)` through `kryon/Canvas` to intersect a rendering scope
+with an outer viewport, restoring the previous clip afterward.
+
 Images are RGBA8 (`format = 7`). Individual pixel allocations are limited to
 64 MiB and 16384 pixels per dimension. Tint caching retains at most 32 entries
 and 16 MiB of pixels; releasing or updating a texture invalidates its cached

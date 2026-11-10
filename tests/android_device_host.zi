@@ -1,10 +1,11 @@
 #import, file "ziran_context_menu_widget_host.zi";
 #import, file "ziran_system_clipboard_host.zi";
-// Host stubs for the Android device behavior test: the raylib JNI surface
+// Host stubs for the Android device behavior test: the renderer JNI surface
 // stays absent and the platform keyboard effect records calls instead of
 // reaching Java.
 #import "android_jni"
 #import "android_surface"
+#import "android_native"
 #import "session"
 #import "byte_text_linux"
 
@@ -18,38 +19,12 @@ SetPlatformTextKeyboardVisible :: (session: Session, visible: bool) {
     keyboard_visible = visible
 }
 
-#program_export
-GetAndroidApp :: () -> *NativeAndroidApp {
-    return ifx orientation_vm_ready then *orientation_app else null
-}
-
 activity_finish_calls: s32;
 
 #program_export
 ANativeActivity_finish :: (activity: *void) {
     unused activity
     activity_finish_calls += 1
-}
-
-#program_export
-GetScreenWidth :: () -> s32 {
-    return 1080
-}
-
-#program_export
-GetScreenHeight :: () -> s32 {
-    return 1920
-}
-
-#program_export
-SetMouseOffset :: (x: s32, y: s32) {
-    unused x
-    unused y
-}
-
-#program_export
-GetWindowHandle :: () -> *void {
-    return null
 }
 
 #program_export
@@ -78,55 +53,6 @@ ANativeWindow_getWidth :: (window: *void) -> s32 {
 ANativeWindow_getHeight :: (window: *void) -> s32 {
     unused window
     return 1920
-}
-
-#program_export
-rlViewport :: (x: s32, y: s32, width: s32, height: s32) {
-    unused x
-    unused y
-    unused width
-    unused height
-}
-
-#program_export
-rlMatrixMode :: (mode: s32) {
-    unused mode
-}
-
-#program_export
-rlLoadIdentity :: () {
-}
-
-#program_export
-rlGetMatrixProjection :: () -> SurfaceMatrix {
-    matrix: SurfaceMatrix
-    return matrix
-}
-
-#program_export
-rlOrtho :: (left: float64, right: float64, bottom: float64,
-    top: float64, near: float64, far: float64) {
-    unused left
-    unused right
-    unused bottom
-    unused top
-    unused near
-    unused far
-}
-
-#program_export
-ClearBackground :: (color: SurfaceColor) {
-    unused color
-}
-
-#program_export
-DrawRectangle :: (x: s32, y: s32, width: s32, height: s32,
-    color: SurfaceColor) {
-    unused x
-    unused y
-    unused width
-    unused height
-    unused color
 }
 
 // A minimal Java VM records orientation requests and exception cleanup.
@@ -169,6 +95,7 @@ OrientationVmOpen :: () {
     orientation_activity.vm = *orientation_vm
     orientation_activity.activity = cast(*void)*orientation_activity
     orientation_app.activity = *orientation_activity
+    jni_android_app = *orientation_app
     orientation_vm_api.GetEnv = OrientationGetEnv
     orientation_api.PushLocalFrame = OrientationPush
     orientation_api.PopLocalFrame = OrientationPop
@@ -179,4 +106,10 @@ OrientationVmOpen :: () {
     orientation_api.GetMethodID = OrientationMethod
     orientation_api.CallVoidMethodA = OrientationCall
     orientation_vm_ready = true
+}
+
+device_surface_app: NativeAndroidApp;
+DeviceSurfaceOpen :: () {
+    device_surface_app.window = cast(*void)(*device_surface_app)
+    android_native_app = *device_surface_app
 }

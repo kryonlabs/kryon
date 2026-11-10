@@ -1,7 +1,7 @@
 #import "android_run"
 
-// __NAME__: the Android entry. raylib's NativeActivity backend calls this C
-// main; the canonical host loop in android_run drives the app's Frame.
+// __NAME__: the stable application entry. Kryon's NativeActivity host calls it
+// after its native glue has delivered the Android activity.
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
     unused argc

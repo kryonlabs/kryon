@@ -1,3 +1,7 @@
+#import "button"
+#import "button_props"
+#import "tree_input"
+#import "ziran_test_driver_host"
 // Secondary windows beside a real raylib window on a private Xvfb display:
 // rendered pixels, ownership of SDL events, clicks, dragging, keyboard grab,
 // resizing, each window's own pointer, and the main window's OpenGL context
@@ -60,7 +64,7 @@ Put32 :: (event: *Event, offset: s32, value: u32) {
     }
 }
 
-Button :: (kind: u32, window: u32, x: s32, y: s32) -> Event {
+ButtonEvent :: (kind: u32, window: u32, x: s32, y: s32) -> Event {
     event: Event
     Put32(*event, 0, kind)
     Put32(*event, 8, window)
@@ -174,6 +178,69 @@ Title :: (text: string, bytes: []u8) -> *u8 {
     return *bytes[0]
 }
 
+x11 :: #system_library "X11";
+xtest :: #system_library "Xtst";
+FocusInfo :: struct { version: [3]u8; subsystem: s32; data: [8]u64; }
+GetSDLVersion :: (version: *u8) #foreign sdl "SDL_GetVersion";
+GetWindowInfo :: (window: *void, info: *FocusInfo) -> s32 #foreign sdl "SDL_GetWindowWMInfo";
+Delay :: (milliseconds: u32) #foreign sdl "SDL_Delay";
+XRoot :: (display: *void) -> u64 #foreign x11 "XDefaultRootWindow";
+XFocus :: (display: *void, window: u64, revert: s32, time: u64) -> s32 #foreign x11 "XSetInputFocus";
+XTranslate :: (display: *void, source: u64, destination: u64, x: s32, y: s32,
+    out_x: *s32, out_y: *s32, child: *u64) -> s32 #foreign x11 "XTranslateCoordinates";
+XSync :: (display: *void, discard: s32) -> s32 #foreign x11;
+XMotion :: (display: *void, screen: s32, x: s32, y: s32, delay: u64) -> s32 #foreign xtest "XTestFakeMotionEvent";
+XButton :: (display: *void, button: u32, down: s32, delay: u64) -> s32 #foreign xtest "XTestFakeButtonEvent";
+
+FocusButtonFrame :: (session: Session) -> s32 {
+    PaintClear(session)
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 248.0})
+    clicked := Button(session, ButtonProps.{.key = cast(u64)7,
+        .bounds = Rectangle.{10.0, 10.0, 160.0, 50.0}, .label = "Breathe"})
+    if !TreeFinish(session) { return -1 }
+    return clicked
+}
+
+// Native XTest goes through SDL's X11 focus handling. SDL_PushEvent would
+// bypass the exact first-click filtering this regression must exercise.
+FocusButtonClicks :: (main_window: *void, secondary: *void, handle: *void) -> s32 {
+    main_info: FocusInfo
+    secondary_info: FocusInfo
+    GetSDLVersion(*main_info.version[0])
+    GetSDLVersion(*secondary_info.version[0])
+    if GetWindowInfo(main_window, *main_info) == 0 ||
+        GetWindowInfo(secondary, *secondary_info) == 0 ||
+        main_info.subsystem != 2 || secondary_info.subsystem != 2 { return 1 }
+    display := cast(*void)secondary_info.data[0]
+    x: s32
+    y: s32
+    child: u64
+    if XTranslate(display, secondary_info.data[1], XRoot(display), 30, 30, *x, *y, *child) == 0 { return 2 }
+    session := SessionOpen()
+    if FocusButtonFrame(session) != 0 { return 3 }
+    for focused: 0..1 {
+        target := ifx focused == 0 then main_info.data[1] else secondary_info.data[1]
+        unused XFocus(display, target, 1, cast(u64)0)
+        unused XMotion(display, -1, x, y, cast(u64)0)
+        unused XSync(display, 0)
+        Delay(100)
+        SecondaryWindowPumpHost()
+        pointer: PointerFrame
+        wheel: float32
+        unused SecondaryWindowPointerHost(handle, *pointer, *wheel)
+        unused XButton(display, cast(u32)1, 1, cast(u64)0)
+        unused XButton(display, cast(u32)1, 0, cast(u64)0)
+        unused XSync(display, 0)
+        Delay(100)
+        if !SecondaryWindowPointerHost(handle, *pointer, *wheel) ||
+            !pointer.pressed || !pointer.released || pointer.down { return 4 }
+        TreePointerUpdate(session, pointer)
+        if FocusButtonFrame(session) != 1 || FocusButtonFrame(session) != 0 { return 5 }
+    }
+    SessionClose(session)
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     if !PrivateDisplay() {
@@ -229,16 +296,16 @@ main :: () -> s32 {
     if foreign == null {
         return 12
     }
-    Push(Button(0x401, WindowId(foreign), 0, 0))
-    Push(Button(0x402, WindowId(foreign), 0, 0))
+    Push(ButtonEvent(0x401, WindowId(foreign), 0, 0))
+    Push(ButtonEvent(0x402, WindowId(foreign), 0, 0))
     SecondaryWindowPumpHost()
     if SecondaryWindowClickedHost(handle) {
         return 13
     }
     DestroyWindow(foreign)
     owned := WindowId(secondary)
-    Push(Button(0x401, owned, 10, 10))
-    Push(Button(0x402, owned, 10, 10))
+    Push(ButtonEvent(0x401, owned, 10, 10))
+    Push(ButtonEvent(0x402, owned, 10, 10))
     SecondaryWindowPumpHost()
     if !SecondaryWindowClickedHost(handle) || SecondaryWindowClickedHost(handle) {
         return 14
@@ -246,9 +313,9 @@ main :: () -> s32 {
     before_x: s32
     before_y: s32
     SecondaryWindowPositionHost(handle, *before_x, *before_y)
-    Push(Button(0x401, owned, 10, 10))
+    Push(ButtonEvent(0x401, owned, 10, 10))
     Push(Motion(owned, 20, 10))
-    Push(Button(0x402, owned, 20, 10))
+    Push(ButtonEvent(0x402, owned, 20, 10))
     SecondaryWindowPumpHost()
     after_x: s32
     after_y: s32
@@ -283,6 +350,11 @@ main :: () -> s32 {
     if secondary == null || (WindowFlags(secondary) & cast(u32)WindowResizable) == 0 {
         return 26
     }
+    focus_result := FocusButtonClicks(main_window, secondary, handle)
+    if focus_result != 0 {
+        print("secondary ordinary Button focus regression: %\n", focus_result)
+        return 33
+    }
     second := SecondaryWindowOpenHost(Title("break", names[:]), 0, 0, 40, 40, 1, 0, 0, 0, 255, 1.0)
     third := SecondaryWindowOpenHost(Title("hud", names[:]), 0, 0, 40, 40, 1, 0, 0, 0, 255, 1.0)
     if second == null || third == null {
@@ -298,7 +370,7 @@ main :: () -> s32 {
     pointer.y != 40.0 || pointer.down || pointer.pressed || pointer.released || wheel != 0.0 {
         return 27
     }
-    Push(Button(0x401, owned, 50, 60))
+    Push(ButtonEvent(0x401, owned, 50, 60))
     if !SecondaryWindowPointerHost(handle, *pointer, *wheel) || pointer.x != 50.0 ||
     pointer.y != 60.0 || !pointer.down || !pointer.pressed || pointer.released {
         return 28
@@ -306,7 +378,7 @@ main :: () -> s32 {
     if !SecondaryWindowPointerHost(handle, *pointer, *wheel) || !pointer.down || pointer.pressed {
         return 29
     }
-    Push(Button(0x402, owned, 52, 61))
+    Push(ButtonEvent(0x402, owned, 52, 61))
     if !SecondaryWindowPointerHost(handle, *pointer, *wheel) || pointer.down || pointer.pressed ||
     !pointer.released || pointer.x != 52.0 || pointer.y != 61.0 || !SecondaryWindowClickedHost(handle) {
         return 30
@@ -325,7 +397,7 @@ main :: () -> s32 {
     owned = WindowId(secondary)
     Push(WindowEvent(owned, 6, 240, 300))
     Push(WindowEvent(owned, 14, 240, 300))
-    Push(Button(0x402, owned, 0, 0))
+    Push(ButtonEvent(0x402, owned, 0, 0))
     BeginDrawing()
     EndDrawing()
     if GetScreenWidth() != 100 || GetScreenHeight() != 100 || WindowShouldClose() ||

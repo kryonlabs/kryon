@@ -1,4 +1,4 @@
-#import "text_area_widget"
+#import "textarea"
 #import "text_input"
 #import "text_input_props"
 #import "text_props"

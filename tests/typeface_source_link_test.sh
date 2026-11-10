@@ -9,9 +9,9 @@ set -- \
     --bind typeface_source:SelectTypeface=typeface_source_host:SelectTypeface \
     --bind typeface_source:ReleaseTypefaces=typeface_source_host:ReleaseTypefaces \
     --bind typeface_source:ReleaseTypefaceCpu=typeface_source_host:ReleaseTypefaceCpu
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" "$@" \
     --entry typeface_source_behavior:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
@@ -24,16 +24,16 @@ for input in source saved; do
     if test "$input" = source; then
         module=$source
         module_root=$repo/tests
-        module_dir=$repo/src/ui
+        module_dir="$kryon_ui_args"
     else
         module=$work/ir/typeface_source_behavior.zir
         module_root=$work/ir
-        module_dir=$work/ir
+        module_dir="--module-path $work/ir"
     fi
     output=$work/go-$input
     "$ziran" build --target=go --pkg main --exe \
         --entry typeface_source_behavior:main "$@" \
-        --root "$module_root" --module-path "$module_dir" \
+        --root "$module_root" $module_dir \
         --module-path "$ziran_root/std" -o "$output" "$module"
     mv "$output/typeface_source_behavior.go" "$output/typeface_case.go"
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go

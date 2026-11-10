@@ -28,6 +28,7 @@ import tempfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from templates_test import KRYON, ROOT, ZIRAN_ROOT, environment  # noqa: E402
+from toolchain import UI_MODULE_ARGS  # noqa: E402
 
 ZIRAN = os.environ.get("ZIRAN_BIN") or str(ZIRAN_ROOT / "build/bin/ziran")
 TARGETS = ["c", "go", "zx"]
@@ -78,8 +79,9 @@ def template_program(work, name, env):
     ir = project / "build/parity-ir"
     host = ROOT / "src/backend/pixmap_run.zi"
     # The IR command Kryon's build rules use for a native profile.
-    run([ZIRAN, "ir", "--project", "--entry", f"{identity}_pixmap_run:main",
-         "-o", ir, host], project, env)
+    run([ZIRAN, "ir", "--project", "--bind", f"{identity}_frame_entry:ProjectFrame=app:Frame",
+         "--entry", f"{identity}_pixmap_run:main",
+         "-o", ir, host, project / "src/app.zi"], project, env)
     return Program(name, ir, f"{identity}_pixmap_run:main", [f"{identity}_pixmap"])
 
 
@@ -115,7 +117,7 @@ main :: () -> s32 {{
     ir = directory / "ir"
     run([ZIRAN, "ir", "--root", directory,
          "--module-path", ROOT / "examples", "--module-path", ROOT / "tests/pixmap_parity",
-         "--module-path", ROOT / "src/ui",
+         *UI_MODULE_ARGS,
          "--module-path", ROOT / "src/backend", "--module-path", ZIRAN_ROOT / "std",
          "--entry", f"{name}_shot:main", "-o", ir, directory / f"{name}_shot.zi"],
         directory, env)

@@ -1,0 +1,21 @@
+using UI :: #import "kryon/Widgets";
+
+state: AlertState;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Alert", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    Alert(session, AlertProps.{.disabled = example_disabled, .key = 10, .bounds = bounds, .title = "Changes saved", .description = "Your settings are up to date.", .dismissible = true}, *state)
+    if Button(session, ButtonProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, 160.0, 40.0}, .label = "Show alert"}) != 0 { state.dismissed = false }
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

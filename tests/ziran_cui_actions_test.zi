@@ -1,0 +1,604 @@
+#import "widget_test_session"
+
+#import "avatar"
+#import "badge"
+#import "buttongroup"
+#import "confirmbutton"
+#import "copybutton"
+#import "holdbutton"
+#import "keycap"
+
+#import "button_props"
+#import "button_behavior"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "icon"
+#import "image_props"
+#import "input_protocol"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "theme"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+#import "cui_actions_raster_host"
+
+using AvatarStatus;
+using BadgeTone;
+using ButtonEmphasis;
+using ButtonState;
+using ButtonTone;
+using ControlSize;
+using FrameStatus;
+using IconType;
+using StyleField;
+using WidgetKind;
+
+Same :: (value: float32, expected: float32) -> bool {
+    difference := value - expected
+    if difference < 0.0 { difference = -difference }
+    return difference < 0.01
+}
+
+ColorIs :: (color: u32, expected: u32) -> bool {
+    return color == expected
+}
+
+ColorMatches :: (color: Color, expected: u32) -> bool {
+    return color.r == cast(u8)(expected >> cast(u32)24) &&
+    color.g == cast(u8)(expected >> cast(u32)16) &&
+    color.b == cast(u8)(expected >> cast(u32)8) &&
+    color.a == cast(u8)expected
+}
+
+FinishFrame :: () -> bool {
+    return EndFrame(TestSession()) == cast(FrameStatus)FrameOk
+}
+
+CheckDisplayContracts :: () -> s32 {
+    tone_value: s32 = 0
+    while tone_value <= 8 {
+        tone := cast(BadgeTone)tone_value
+        props: BadgeProps
+        props.tone = tone
+        props.solid = true
+        face := BadgeInstalledFaceFor(props, cast(s32)ButtonState.ButtonStateNormal)
+        expected := BadgeToneColor(tone)
+        if tone == BadgeTone.BadgeToneNeutral { expected = CurrentPalette().foreground }
+        if !ColorIs(face.background, expected) { return 100 + tone_value }
+        tone_value += 1
+    }
+
+    CuiRasterReset()
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 80.0})
+    badge := Badge(TestSession(), BadgeProps.{
+        .key = cast(u64)11, .text = "New", .tone = BadgeTone.BadgeToneDanger,
+        .dot = true, .solid = true, .icon_type = cast(s32)IconType.IconCheck,
+        .size = ControlSize.ControlSizeLarge, .bounds = Rectangle.{10.0, 10.0, 0.0, 0.0}})
+    if !FinishFrame() || badge.node < 0 || badge.bounds.height != 26.0 ||
+    TreeNodeAt(TestSession(), badge.node).semantic_label != "New" { return 120 }
+    raster := CuiRasterSampleGet()
+    if raster.failed { return 121 }
+    if raster.fill_count != 2 { return 122 }
+    if raster.text_count != 1 { return 123 }
+    if raster.image_count != 1 { return 124 }
+    if !Same(raster.radius, 6.0) { return 125 }
+
+    initials: [8]u8
+    if AvatarInitials("Ada Lovelace", initials[:]) != "AL" { return 130 }
+    CuiRasterReset()
+    BeginFrame(TestSession(), cast(u64)2, Rectangle.{0.0, 0.0, 120.0, 100.0})
+    avatar := Avatar(TestSession(), AvatarProps.{.key = cast(u64)21,
+        .name = "Ada Lovelace", .status = AvatarStatus.AvatarStatusOnline,
+        .bounds = Rectangle.{10.0, 10.0, 0.0, 0.0}})
+    if !FinishFrame() || avatar.node < 0 || !avatar.image_fallback ||
+    avatar.initials_length != 2 || avatar.bounds.width != 32.0 ||
+    TreeNodeAt(TestSession(), avatar.node).semantic_label != "Ada Lovelace" { return 131 }
+    raster = CuiRasterSampleGet()
+    if raster.failed || raster.fill_count != 3 || raster.text_count != 1 ||
+    raster.image_count != 0 { return 132 }
+
+    BeginFrame(TestSession(), cast(u64)3, Rectangle.{0.0, 0.0, 120.0, 100.0})
+    image_avatar := Avatar(TestSession(), AvatarProps.{.key = cast(u64)22,
+        .name = "Ada", .image = ImageProps.{.asset_path = "avatar.png"},
+        .bounds = Rectangle.{10.0, 10.0, 0.0, 0.0}})
+    BeginAvailable := FinishFrame()
+    BeginFrame(TestSession(), cast(u64)4, Rectangle.{0.0, 0.0, 120.0, 100.0})
+    missing_avatar := Avatar(TestSession(), AvatarProps.{.key = cast(u64)23,
+        .name = "Ada", .image = ImageProps.{.asset_path = "missing.png"},
+        .square = true, .bounds = Rectangle.{10.0, 10.0, 0.0, 0.0}})
+    if !BeginAvailable || !FinishFrame() || image_avatar.image_fallback ||
+    !missing_avatar.image_fallback { return 133 }
+
+    names: [5]string = .["Ada", "Grace", "Linus", "Wao", "Zi"]
+    BeginFrame(TestSession(), cast(u64)5, Rectangle.{0.0, 0.0, 220.0, 80.0})
+    group := AvatarGroup(TestSession(), AvatarGroupProps.{
+        .key = cast(u64)24, .bounds = Rectangle.{10.0, 20.0, 0.0, 0.0}},
+        names[:])
+    if !FinishFrame() || group.node < 0 || group.visible_count != 4 ||
+    group.overflow_count != 1 || !Same(group.bounds.width, 139.52) ||
+    TreeNodeAt(TestSession(), group.node).semantic_label != "Avatar group" { return 134 }
+
+    BeginFrame(TestSession(), cast(u64)6, Rectangle.{0.0, 0.0, 180.0, 60.0})
+    keycap := Keycap(TestSession(), KeycapProps.{.key = cast(u64)31,
+        .keys = "Ctrl Shift Esc", .bounds = Rectangle.{10.0, 10.0, 0.0, 0.0}})
+    if !FinishFrame() || keycap.node < 0 || keycap.count != 3 ||
+    !Same(keycap.bounds.width, 120.0) || keycap.bounds.height != 20.0 ||
+    TreeNodeAt(TestSession(), keycap.node).semantic_label != "Ctrl Shift Esc" { return 140 }
+
+    override: StyleData
+    override.fields = cast(u32)StyleRadius | cast(u32)StylePaddingX |
+        cast(u32)StyleGap | cast(u32)StyleMinHeight
+    override.radius = 7.0
+    override.padding_x = 8.0
+    override.gap = 4.0
+    override.min_height = 24.0
+    CuiRasterReset()
+    BeginFrame(TestSession(), cast(u64)7, Rectangle.{0.0, 0.0, 180.0, 60.0})
+    custom_keycap := Keycap(TestSession(), KeycapProps.{.key = cast(u64)32,
+        .keys = "Ctrl Shift Esc", .style = override,
+        .bounds = Rectangle.{10.0, 10.0, 0.0, 0.0}})
+    if !FinishFrame() || custom_keycap.count != 3 ||
+    !Same(custom_keycap.bounds.width, 140.0) ||
+    custom_keycap.bounds.height != 24.0 ||
+    !Same(CuiRasterSampleGet().radius, 7.0) { return 141 }
+    return 0
+}
+
+GroupItems :: (items: []ButtonProps) {
+    items[0].label = "One"
+    items[1].label = "Two"
+    items[2].label = "Three"
+    items[2].disabled = true
+}
+
+DrawGroup :: (key: u64, state: *ButtonGroupState, navigation: s32,
+    width: float32) -> ButtonGroupResult {
+    items: [3]ButtonProps
+    GroupItems(items[:])
+    props: ButtonGroupProps
+    props.key = key
+    props.navigation = navigation
+    props.bounds = Rectangle.{10.0, 10.0, width, 0.0}
+    BeginFrame(TestSession(), cast(u64)40 + key, Rectangle.{0.0, 0.0, 240.0, 80.0})
+    result := ButtonGroup(TestSession(), props, items[:], state)
+    if !FinishFrame() { result.node = -1 }
+    return result
+}
+
+CheckButtonGroup :: () -> s32 {
+    state: ButtonGroupState
+    state.focus_index = -1
+    CuiRasterReset()
+    first := DrawGroup(cast(u64)51, *state, 0, 180.0)
+    if first.node < 0 || first.focus_index != -1 || first.activated_index != -1 ||
+    TreeNodeAt(TestSession(), first.node).semantic_label != "Button group" { return 200 }
+    raster := CuiRasterSampleGet()
+    if raster.failed || raster.fill_count != 1 || raster.text_count != 3 ||
+    raster.line_count != 2 { return 201 }
+
+    focused := TreeChild(TestSession(), first.node,
+        WidgetPartKey(cast(u64)51, 101), WidgetKindButton)
+    if focused < 0 || !TreeFocusAt(TestSession(), focused) { return 202 }
+    second := DrawGroup(cast(u64)51, *state, 0, 180.0)
+    if second.focus_index != 0 { return 203 }
+    if second.focus_node < 0 { return 211 }
+    if !TreeFocusedAt(TestSession(), second.focus_node) { return 212 }
+    third := DrawGroup(cast(u64)51, *state, KeyRight, 180.0)
+    if third.focus_index != 1 || !TreeFocusedAt(TestSession(), third.focus_node) { return 204 }
+    fourth := DrawGroup(cast(u64)51, *state, KeyRight, 180.0)
+    if fourth.focus_index != 0 { return 205 }
+    fifth := DrawGroup(cast(u64)51, *state, KeyRight, 180.0)
+    if fifth.focus_index != 1 { return 206 }
+
+    TreePointerUpdate(TestSession(), PointerFrame.{90.0, 25.0, true, true, false})
+    pressed := DrawGroup(cast(u64)51, *state, 0, 180.0)
+    if pressed.pressed_index != 1 || pressed.activated_index != -1 { return 207 }
+    TreePointerUpdate(TestSession(), PointerFrame.{90.0, 25.0, false, false, true})
+    clicked := DrawGroup(cast(u64)51, *state, 0, 180.0)
+    if clicked.activated_index != 1 || clicked.pressed_index != -1 { return 208 }
+
+    custom: StyleData
+    custom.fields = cast(u32)StyleBackground | cast(u32)StyleBorder |
+        cast(u32)StyleBorderWidth | cast(u32)StyleRadius
+    custom.background = cast(u32)0x123456ff
+    custom.border = cast(u32)0xfedcbaff
+    custom.border_width = 2.0
+    custom.radius = 9.0
+    items: [3]ButtonProps
+    GroupItems(items[:])
+    props: ButtonGroupProps
+    props.key = cast(u64)52
+    props.bounds = Rectangle.{10.0, 10.0, 180.0, 0.0}
+    props.style = custom
+    CuiRasterReset()
+    BeginFrame(TestSession(), cast(u64)91, Rectangle.{0.0, 0.0, 240.0, 80.0})
+    custom_group := ButtonGroup(TestSession(), props, items[:], *state)
+    if !FinishFrame() || custom_group.node < 0 { return 209 }
+    custom_raster := CuiRasterSampleGet()
+    if !ColorMatches(custom_raster.fill_color, custom.background) ||
+    !Same(custom_raster.radius, 9.0) { return 210 }
+    // Reorder nested groups and siblings without changing their keyed identities.
+    state.focus_index = -1
+    other_state: ButtonGroupState
+    other_state.focus_index = -1
+    for pass: cast(s32)0..5 {
+        BeginFrame(TestSession(), cast(u64)92, Rectangle.{0.0, 0.0, 240.0, 100.0})
+        parent := TreeSubmitCurrent(TestSession(), cast(u64)800, WidgetKindGroup,
+            Rectangle.{0.0, 0.0, 240.0, 100.0})
+        if !TreePushScope(TestSession(), parent) { return 213 }
+        nested: ButtonGroupResult
+        other: ButtonGroupResult
+        reverse := pass == 1 || pass == 3 || pass == 5
+        if reverse {
+            unused TreeSubmitCurrent(TestSession(), cast(u64)801, WidgetKindGroup,
+                Rectangle.{0.0, 0.0, 1.0, 1.0})
+            props.key = cast(u64)803
+            props.bounds.y = 50.0
+            other = ButtonGroup(TestSession(), props, items[:], *other_state)
+        }
+        props.key = cast(u64)802
+        props.bounds.y = 10.0
+        nested = ButtonGroup(TestSession(), props, items[:], *state)
+        if !reverse {
+            props.key = cast(u64)803
+            props.bounds.y = 50.0
+            other = ButtonGroup(TestSession(), props, items[:], *other_state)
+        }
+        unused TreePopScope(TestSession())
+        if !FinishFrame() { return 214 }
+        nested_child := TreeChild(TestSession(), nested.node,
+            WidgetPartKey(cast(u64)802, 102), WidgetKindButton)
+        other_child := TreeChild(TestSession(), other.node,
+            WidgetPartKey(cast(u64)803, 101), WidgetKindButton)
+        if nested_child < 0 || other_child < 0 { return 215 }
+        if pass == 1 || pass == 5 {
+            if nested.focus_index != 1 || nested.focus_node != nested_child ||
+                !TreeFocusedAt(TestSession(), nested_child) { return 216 }
+        }
+        if pass >= 2 && pass <= 4 {
+            if nested.focus_index != 1 || other.focus_index != 0 ||
+                TreeFocusedAt(TestSession(), nested_child) ||
+                !TreeFocusedAt(TestSession(), other_child) { return 217 }
+        }
+        if pass == 0 || pass == 4 {
+            if !TreeFocusAt(TestSession(), nested_child) { return 218 }
+        } else if pass == 1 {
+            if !TreeFocusAt(TestSession(), other_child) { return 219 }
+        }
+    }
+    return 0
+}
+
+CheckHoldButton :: () -> s32 {
+    if !Same(HoldButtonSpring(0.0, 0.1, 1.0), 1.0) ||
+    !Same(HoldButtonSpring(0.1, 0.1, 1.0), 0.0) { return 300 }
+    // Identical transition sequences must be independent of clock origin.
+    zero: HoldButtonState
+    shifted: HoldButtonState
+    times: [15]float32 = .[0.0, 1.0, 2.0, 2.1, 2.2, 2.25, 3.0, 4.0,
+        4.1, 5.0, 6.0, 7.0, 9.0, 9.1, 9.3]
+    progress: [15]float32 = .[0.0, 0.5, 1.0, 1.0, 1.0, 0.60653,
+        0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0]
+    for step: cast(s32)0..14 {
+        direct: HoldButtonProps
+        direct.duration = 2.0
+        direct.release_duration = 0.1
+        direct.now = times[step]
+        direct.cancel = step == 8
+        held := step != 4 && step != 5 && step != 13 && step != 14
+        focused := step != 10
+        actual := HoldButtonApply(*zero, direct, held, focused)
+        direct.now += 100.0
+        offset := HoldButtonApply(*shifted, direct, held, focused)
+        if !Same(actual.progress, progress[step]) ||
+            !Same(actual.progress, offset.progress) || actual.held != offset.held ||
+            actual.fired != offset.fired || actual.released != offset.released ||
+            actual.cancelled != offset.cancelled { return 311 + step }
+        if actual.fired != (step == 2 || step == 12) ||
+            actual.released != (step == 4 || step == 13) ||
+            actual.cancelled != (step == 8) { return 331 + step }
+    }
+    state: HoldButtonState
+    button: ButtonProps
+    button.key = cast(u64)61
+    button.label = "Delete"
+    button.bounds = Rectangle.{10.0, 10.0, 100.0, 40.0}
+    props: HoldButtonProps
+    props.button = button
+    props.duration = 2.0
+    props.release_duration = 0.1
+    BeginFrame(TestSession(), cast(u64)301, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    initial := HoldButton(TestSession(), props, *state)
+    if !FinishFrame() || initial.node < 0 || initial.held || initial.fired { return 301 }
+
+    unused KeyboardSend(TestSession(), KeyTab)
+    unused TreeKeyboardRoute(TestSession())
+    props.now = 0.0
+    props.key_held = true
+    BeginFrame(TestSession(), cast(u64)301, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    started := HoldButton(TestSession(), props, *state)
+    if !FinishFrame() || !started.held || !Same(started.progress, 0.0) { return 302 }
+    props.now = 1.0
+    BeginFrame(TestSession(), cast(u64)301, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    CuiRasterReset()
+    halfway := HoldButton(TestSession(), props, *state)
+    if !FinishFrame() || !Same(halfway.progress, 0.5) ||
+    CuiRasterSampleGet().fill_count != 2 { return 303 }
+    props.now = 2.0
+    BeginFrame(TestSession(), cast(u64)301, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    fired := HoldButton(TestSession(), props, *state)
+    if !FinishFrame() || !fired.fired || !Same(fired.progress, 1.0) { return 304 }
+    props.now = 2.1
+    BeginFrame(TestSession(), cast(u64)301, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    still_held := HoldButton(TestSession(), props, *state)
+    if !FinishFrame() || still_held.fired || !Same(still_held.progress, 1.0) { return 305 }
+    props.key = KeyEscape
+    props.key_held = false
+    props.now = 2.2
+    BeginFrame(TestSession(), cast(u64)301, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    cancelled := HoldButton(TestSession(), props, *state)
+    if !FinishFrame() || !cancelled.cancelled || cancelled.progress != 0.0 { return 306 }
+
+    pointer_state: HoldButtonState
+    pointer_props := props
+    pointer_props.key = 0
+    pointer_props.button.key = cast(u64)62
+    pointer_props.button.id = 62
+    BeginFrame(TestSession(), cast(u64)307, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    pointer_initial := HoldButton(TestSession(), pointer_props, *pointer_state)
+    if !FinishFrame() { return 307 }
+    TreePointerUpdate(TestSession(), PointerFrame.{50.0, 25.0, true, true, false})
+    pointer_props.now = 10.0
+    BeginFrame(TestSession(), cast(u64)307, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    pointer_started := HoldButton(TestSession(), pointer_props, *pointer_state)
+    if !FinishFrame() || !pointer_started.held { return 308 }
+    TreePointerUpdate(TestSession(), PointerFrame.{50.0, 25.0, false, false, true})
+    pointer_props.now = 10.1
+    BeginFrame(TestSession(), cast(u64)307, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    pointer_released := HoldButton(TestSession(), pointer_props, *pointer_state)
+    if !FinishFrame() || !pointer_released.released ||
+    pointer_released.progress != 0.0 { return 309 }
+
+    props.key = 0
+    owned_a: HoldButtonState
+    owned_b: HoldButtonState
+    owned_a.released_at = props.now
+    owned_b.released_at = props.now
+    owned_a.progress = 0.25
+    owned_b.progress = 0.75
+    result_a := HoldButtonApply(*owned_a, props, false, false)
+    result_b := HoldButtonApply(*owned_b, props, false, false)
+    if !Same(result_a.progress, 0.25) || !Same(result_b.progress, 0.75) { return 310 }
+    return 0
+}
+
+CheckCopyButton :: () -> s32 {
+    // Presentation follows the resulting state in the activation frame.
+    direct_state: CopyButtonState
+    direct_props: CopyButtonProps
+    direct_props.text = "direct transition"
+    direct_props.now = 10.0
+    before := CuiClipboardWrites()
+    direct_success := CopyButtonApply(*direct_state, direct_props, true)
+    if !direct_success.copied || !direct_success.showing_success ||
+        direct_success.showing_failure || CuiClipboardWrites() != before + 1 { return 410 }
+    direct_props.now = 10.1
+    unused CopyButtonApply(*direct_state, direct_props, false)
+    if CuiClipboardWrites() != before + 1 { return 411 }
+    CuiClipboardSetFail(true)
+    direct_props.now = 10.2
+    direct_failure := CopyButtonApply(*direct_state, direct_props, true)
+    if !direct_failure.failed || !direct_failure.showing_failure ||
+        direct_failure.showing_success || CuiClipboardWrites() != before + 2 { return 412 }
+    CuiClipboardSetFail(false)
+    direct_props.now = 10.3
+    direct_recovered := CopyButtonApply(*direct_state, direct_props, true)
+    if !direct_recovered.showing_success || direct_recovered.showing_failure ||
+        direct_recovered.failed || CuiClipboardWrites() != before + 3 { return 413 }
+    direct_props.now = 12.0
+    direct_expired := CopyButtonApply(*direct_state, direct_props, false)
+    if direct_expired.showing_success || direct_expired.showing_failure ||
+        CuiClipboardWrites() != before + 3 { return 414 }
+    state: CopyButtonState
+    button: ButtonProps
+    button.key = cast(u64)71
+    button.label = "Copy"
+    button.bounds = Rectangle.{10.0, 10.0, 90.0, 40.0}
+    props: CopyButtonProps
+    props.button = button
+    props.text = "kryon clipboard"
+    props.now = 100.0
+    BeginFrame(TestSession(), cast(u64)401, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    initial := CopyButton(TestSession(), props, *state)
+    if !FinishFrame() || initial.node < 0 || initial.copied || initial.showing_success { return 400 }
+    unused KeyboardSend(TestSession(), KeyTab)
+    unused TreeKeyboardRoute(TestSession())
+    unused KeyboardSend(TestSession(), KeyEnter)
+    unused TreeKeyboardRoute(TestSession())
+    props.now = 101.0
+    BeginFrame(TestSession(), cast(u64)401, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    copied := CopyButton(TestSession(), props, *state)
+    if !FinishFrame() || !copied.copied || !copied.clipboard_success ||
+    !copied.showing_success || CuiClipboardText() != "kryon clipboard" { return 401 }
+    props.now = 102.5
+    BeginFrame(TestSession(), cast(u64)401, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    recent := CopyButton(TestSession(), props, *state)
+    if !FinishFrame() || !recent.showing_success { return 402 }
+    // Stay beyond the 1.6-second window despite float32 rounding.
+    props.now = 102.7
+    BeginFrame(TestSession(), cast(u64)401, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    expired := CopyButton(TestSession(), props, *state)
+    if !FinishFrame() || expired.showing_success { return 403 }
+
+    CuiClipboardSetFail(true)
+    TreePointerUpdate(TestSession(), PointerFrame.{40.0, 25.0, true, true, false})
+    BeginFrame(TestSession(), cast(u64)401, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    unused CopyButton(TestSession(), props, *state)
+    if !FinishFrame() { return 404 }
+    TreePointerUpdate(TestSession(), PointerFrame.{40.0, 25.0, false, false, true})
+    props.now = 103.0
+    BeginFrame(TestSession(), cast(u64)401, Rectangle.{0.0, 0.0, 140.0, 80.0})
+    failed := CopyButton(TestSession(), props, *state)
+    if !FinishFrame() || !failed.copied || failed.clipboard_success ||
+    !failed.failed || failed.showing_success || !failed.showing_failure { return 405 }
+    CuiClipboardSetFail(false)
+
+    state_a: CopyButtonState
+    state_b: CopyButtonState
+    state_a.copied_at = props.now
+    state_a.clipboard_success = true
+    pure_a := CopyButtonApply(*state_a, props, false)
+    pure_b := CopyButtonApply(*state_b, props, false)
+    if !pure_a.showing_success || pure_b.showing_success { return 406 }
+    return 0
+}
+
+ConfirmFaceFor :: (label: string) -> ButtonProps {
+    button: ButtonProps
+    button.key = cast(u64)81
+    button.label = label
+    button.bounds = Rectangle.{10.0, 10.0, 0.0, 40.0}
+    return button
+}
+
+CheckConfirmButton :: () -> s32 {
+    if !Same(ConfirmButtonMotion(0.0, 0.3, 20.0, 40.0), 20.0) ||
+    !Same(ConfirmButtonMotion(0.3, 0.3, 20.0, 40.0), 40.0) { return 500 }
+    state: ConfirmButtonState
+    props: ConfirmButtonProps
+    props.button = ConfirmFaceFor("Delete")
+    props.confirm_button = ConfirmFaceFor("Really delete?")
+    props.timeout = 3.0
+    props.arm_duration = 0.3
+    props.now = 0.0
+    props.activated = true
+    armed := ConfirmButtonApply(*state, props)
+    if !armed.armed || armed.committed || !Same(armed.remaining, 1.0) { return 501 }
+    props.activated = false
+    props.now = 1.5
+    waiting := ConfirmButtonApply(*state, props)
+    if !waiting.armed || !Same(waiting.remaining, 0.5) { return 502 }
+    props.now = 3.1
+    timed_out := ConfirmButtonApply(*state, props)
+    if timed_out.armed || !timed_out.disarmed || !timed_out.timed_out { return 503 }
+
+    actual_state: ConfirmButtonState
+    actual_props := props
+    actual_props.activated = false
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    initial := ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() || initial.node < 0 || initial.armed { return 504 }
+    unused KeyboardSend(TestSession(), KeyTab)
+    unused TreeKeyboardRoute(TestSession())
+    actual_props.now = 10.0
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    focused := ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() || focused.armed { return 505 }
+    unused KeyboardSend(TestSession(), KeyEnter)
+    unused TreeKeyboardRoute(TestSession())
+    actual_props.now = 11.0
+    CuiRasterReset()
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    actual_armed := ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() || !actual_armed.armed || actual_armed.committed ||
+    !Same(actual_armed.remaining, 1.0) { return 506 }
+    actual_props.now = 12.0
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    actual_waiting := ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() || !actual_waiting.armed ||
+        !Same(actual_waiting.remaining, 2.0 / 3.0) { return 516 }
+    unused KeyboardSend(TestSession(), KeyEscape)
+    actual_props.now = 12.5
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    escaped := ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() || escaped.armed || !escaped.disarmed || !escaped.escaped { return 507 }
+
+    unused KeyboardSend(TestSession(), KeyTab)
+    unused TreeKeyboardRoute(TestSession())
+    unused KeyboardSend(TestSession(), KeyEnter)
+    unused TreeKeyboardRoute(TestSession())
+    actual_props.now = 20.0
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    unused ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() { return 508 }
+    TreePointerUpdate(TestSession(), PointerFrame.{170.0, 70.0, true, true, false})
+    actual_props.now = 20.5
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    outside := ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() || outside.armed || !outside.disarmed || !outside.outside_pressed { return 509 }
+
+    TreeInputReset(TestSession())
+    unused KeyboardSend(TestSession(), KeyTab)
+    unused TreeKeyboardRoute(TestSession())
+    unused KeyboardSend(TestSession(), KeyEnter)
+    unused TreeKeyboardRoute(TestSession())
+    actual_props.now = 30.0
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    unused ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() { return 510 }
+    actual_props.now = 33.1
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    timeout := ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() || timeout.armed || !timeout.timed_out { return 511 }
+
+    TreeInputReset(TestSession())
+    unused KeyboardSend(TestSession(), KeyTab)
+    unused TreeKeyboardRoute(TestSession())
+    unused KeyboardSend(TestSession(), KeyEnter)
+    unused TreeKeyboardRoute(TestSession())
+    actual_props.now = 40.0
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    unused ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() { return 512 }
+    unused KeyboardSend(TestSession(), KeyEnter)
+    unused TreeKeyboardRoute(TestSession())
+    actual_props.now = 40.5
+    BeginFrame(TestSession(), cast(u64)601, Rectangle.{0.0, 0.0, 180.0, 80.0})
+    committed := ConfirmButton(TestSession(), actual_props, *actual_state)
+    if !FinishFrame() || !committed.committed || committed.armed { return 513 }
+
+    owned_a: ConfirmButtonState
+    owned_b: ConfirmButtonState
+    owned_a.armed = true
+    owned_a.armed_at = actual_props.now
+    pure := ConfirmButtonApply(*owned_a, actual_props)
+    if !pure.armed { return 514 }
+    owned_b.armed = false
+    pure_b := ConfirmButtonApply(*owned_b, actual_props)
+    if pure_b.armed { return 515 }
+    return 0
+}
+
+#program_export
+main :: () -> s32 {
+    if !InstallDefaultTheme(false) { return 1 }
+    display := CheckDisplayContracts()
+    if display != 0 { return display }
+    group := CheckButtonGroup()
+    if group != 0 { return group }
+    hold := CheckHoldButton()
+    if hold != 0 { return hold }
+    copy := CheckCopyButton()
+    if copy != 0 { return copy }
+    confirm := CheckConfirmButton()
+    if confirm != 0 { return confirm }
+
+    light_badge := BadgeInstalledFaceFor(BadgeProps.{.tone = BadgeTone.BadgeToneInfo},
+        cast(s32)ButtonState.ButtonStateNormal)
+    if !InstallDefaultTheme(true) { return 900 }
+    dark_badge := BadgeInstalledFaceFor(BadgeProps.{.tone = BadgeTone.BadgeToneInfo},
+        cast(s32)ButtonState.ButtonStateNormal)
+    if light_badge.background == dark_badge.background ||
+    light_badge.foreground == dark_badge.foreground { return 901 }
+    CuiRasterReset()
+    BeginFrame(TestSession(), cast(u64)999, Rectangle.{0.0, 0.0, 120.0, 60.0})
+    dark_keycap := Keycap(TestSession(), KeycapProps.{.key = cast(u64)999,
+        .keys = "Ctrl C", .bounds = Rectangle.{10.0, 10.0, 0.0, 0.0}})
+    if !FinishFrame() || dark_keycap.node < 0 || CuiRasterSampleGet().failed { return 902 }
+    return 0
+}

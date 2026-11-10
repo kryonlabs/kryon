@@ -2,7 +2,7 @@
 . "$(dirname -- "$0")/test_context.sh"
 
 source=$repo/tests/ziran_image_canvas_test.zi
-set -- --module-path "$repo/src/backend" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+set -- --module-path "$repo/src/backend" $kryon_ui_args --module-path "$ziran_root/std" \
     --module-path "$ziran_root/std"
 
 "$ziran" ir --root "$repo/tests" "$@" \

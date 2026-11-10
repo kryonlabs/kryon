@@ -1,0 +1,145 @@
+#import "widget_host"
+#import "widget_codec"
+#import "hosted_values"
+#import "media_audio"
+#import "media_audio_host"
+#import "media_audio_codec"
+#import "session"
+#import "geometry"
+#import "tree"
+#import "tree_draw"
+#import "std/bundle_host"
+#import "std/c_string"
+#import "sheet_props"
+#import "taginput"
+#import "onetimecode"
+using FrameStatus;
+
+boundary_audio_calls: s32;
+BoundaryAudioProvider :: (voice: *MediaAudioVoice, command: MediaAudioCommand, bytes: string) -> MediaAudioResult {
+    unused voice; unused command; unused bytes
+    boundary_audio_calls += 1
+    return .{.code = .Ok, .state = .Playing}
+}
+BoundaryAllowed :: (path: string) -> bool { unused path; return true }
+BoundaryCall :: (module: string, name: string, args: []HostValue, result: *HostValue) -> s32 {
+    return WidgetHostCall(null, HostTextData(module), HostTextData(name), *args[0], cast(s32)args.count, result)
+}
+
+// Observe provider calls without opening an audio device.
+StagedAudioBoundary :: () -> s32 {
+    session := SessionOpen()
+    owner: MediaAudioOwner
+    owner.session = session; owner.generation = 17
+    owner.provider = BoundaryAudioProvider
+    owner.voices[0].resource = cast(*void)(*boundary_audio_calls)
+    owner.voices[0].state = .Playing
+    args: [2]HostValue
+    session_codec: WidgetSessionCodec
+    command_codec: WidgetMediaAudioCommandCodec
+    reply_codec: WidgetMediaAudioResultCodec
+    result: HostValue
+    args[0] = WidgetEncodeSession(session, *session_codec)
+    args[1] = WidgetEncodeMediaAudioCommand(MediaAudioCommand.{.operation = .Capabilities}, *command_codec)
+    boundary_audio_calls = 0
+    WidgetHostBegin(session, BoundaryAllowed, WidgetHostPackedPath, *owner, WidgetHostAudioReadNone, null, true)
+    if boundary_audio_calls != 0 || owner.generation != 17 { return 1 }
+    if BoundaryCall("media_audio", "MediaAudioHost", args[:], *result) != 1 { return 2 }
+    reply := WidgetDecodeMediaAudioResult(result, *reply_codec)
+    if reply.code != .Unsupported || boundary_audio_calls != 0 || owner.generation != 17 || owner.voices[0].resource == null { return 3 }
+    // Supplying the owner directly must not bypass staging either.
+    if WidgetHostAudioCall(*owner, WidgetHostAudioReadNone, null, *args[0], 2, *result) != 1 || boundary_audio_calls != 0 { return 4 }
+    WidgetHostEnd()
+    if boundary_audio_calls != 0 { return 5 }
+    WidgetHostBegin(session, BoundaryAllowed, WidgetHostPackedPath, *owner)
+    if boundary_audio_calls != 1 { return 6 }
+    if BoundaryCall("media_audio", "MediaAudioHost", args[:], *result) != 1 { return 7 }
+    reply = WidgetDecodeMediaAudioResult(result, *reply_codec)
+    if reply.code != .Ok || boundary_audio_calls != 2 { return 8 }
+    WidgetHostEnd()
+    if BoundaryCall("media_audio", "MediaAudioHost", args[:], *result) != 0 || boundary_audio_calls != 2 { return 9 }
+    MediaAudioOwnerClose(*owner)
+    unused SessionClose(session)
+    return 0
+}
+
+HostedStateBoundary :: () -> s32 {
+session := SessionOpen()
+unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 480.0, 360.0})
+WidgetHostBegin(session, BoundaryAllowed)
+session_codec: WidgetSessionCodec
+tag_props_codec: WidgetTagInputPropsCodec
+tag_state_codec: WidgetTagInputStateCodec
+otp_props_codec: WidgetOneTimeCodePropsCodec
+otp_state_codec: WidgetOneTimeCodeStateCodec
+sheet_props_codec: WidgetSheetPropsCodec
+sheet_state_codec: WidgetSheetStateCodec
+sheet_reply_codec: WidgetSheetHostedReplyCodec
+args: [3]HostValue
+result: HostValue
+args[0] = WidgetEncodeSession(session, *session_codec)
+args[1] = WidgetEncodeTagInputProps(TagInputProps.{.key = 10, .bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}}, *tag_props_codec)
+tag: TagInputState
+args[2] = WidgetEncodeTagInputState(tag, *tag_state_codec)
+if BoundaryCall("taginput", "TagInputHostedHost", args[:], *result) != 1 { return 11 }
+before := TreeSubmittedCount(session)
+tag.count = 33
+args[2] = WidgetEncodeTagInputState(tag, *tag_state_codec)
+if BoundaryCall("taginput", "TagInputHostedHost", args[:], *result) != 0 { return 12 }
+tag.count = 1; tag.lengths[0] = 65
+args[2] = WidgetEncodeTagInputState(tag, *tag_state_codec)
+if BoundaryCall("taginput", "TagInputHostedHost", args[:], *result) != 0 { return 13 }
+tag.count = 0; tag.text_length = 129
+args[2] = WidgetEncodeTagInputState(tag, *tag_state_codec)
+if BoundaryCall("taginput", "TagInputHostedHost", args[:], *result) != 0 || TreeSubmittedCount(session) != before { return 14 }
+args[1] = WidgetEncodeOneTimeCodeProps(OneTimeCodeProps.{.key = 20, .length = 6}, *otp_props_codec)
+otp: OneTimeCodeState
+otp.length = 6
+args[2] = WidgetEncodeOneTimeCodeState(otp, *otp_state_codec)
+if BoundaryCall("onetimecode", "OneTimeCodeHostedHost", args[:], *result) != 1 { return 15 }
+before = TreeSubmittedCount(session)
+otp.length = 13
+args[2] = WidgetEncodeOneTimeCodeState(otp, *otp_state_codec)
+if BoundaryCall("onetimecode", "OneTimeCodeHostedHost", args[:], *result) != 0 { return 16 }
+otp.length = 6; otp.count = 7
+args[2] = WidgetEncodeOneTimeCodeState(otp, *otp_state_codec)
+if BoundaryCall("onetimecode", "OneTimeCodeHostedHost", args[:], *result) != 0 { return 17 }
+otp.count = 0; otp.cursor = 1
+args[2] = WidgetEncodeOneTimeCodeState(otp, *otp_state_codec)
+if BoundaryCall("onetimecode", "OneTimeCodeHostedHost", args[:], *result) != 0 || TreeSubmittedCount(session) != before { return 18 }
+if BoundaryCall("sheet", "SheetEndHostedHost", args[:1], *result) != 0 { return 19 }
+props := SheetProps.{.key = 30, .open = true, .size = 180.0, .viewport = Rectangle.{0.0, 0.0, 480.0, 360.0}}
+props.surface_style = SheetSurfaceDefaultStyle()
+props.scrim_style = SheetScrimDefaultStyle()
+state := SheetStateFor()
+args[1] = WidgetEncodeSheetProps(props, *sheet_props_codec)
+args[2] = WidgetEncodeSheetState(state, *sheet_state_codec)
+if BoundaryCall("sheet", "SheetBeginHostedHost", args[:], *result) != 1 { return 20 }
+sheet := WidgetDecodeSheetHostedReply(result, *sheet_reply_codec)
+if sheet.result.content_node < 0 { return 21 }
+if BoundaryCall("sheet", "SheetEndHostedHost", args[:1], *result) != 1 || result.integer != 1 { return 22 }
+if BoundaryCall("sheet", "SheetEndHostedHost", args[:1], *result) != 0 { return 23 }
+for index: 0..WIDGET_HOST_SCOPE_DEPTH - 2 {
+node := TreeSubmitCurrent(session, cast(u64)(100 + index), 0, Rectangle.{0.0, 0.0, 10.0, 10.0})
+args[1] = HostScalar("s32", cast(s64)node)
+if BoundaryCall("tree", "TreePushScopeHostedHost", args[:2], *result) != 1 || result.integer != 1 { return 24 }
+}
+before = TreeSubmittedCount(session)
+args[1] = WidgetEncodeSheetProps(props, *sheet_props_codec)
+args[2] = WidgetEncodeSheetState(state, *sheet_state_codec)
+if BoundaryCall("sheet", "SheetBeginHostedHost", args[:], *result) != 0 || TreeSubmittedCount(session) != before { return 25 }
+WidgetHostEnd()
+status := CommitFrame(session)
+unused SessionClose(session)
+if status != cast(FrameStatus)FrameOk { return 26 }
+return 0
+}
+#program_export
+ComponentHostBoundaryTest :: () -> s32 {
+audio := StagedAudioBoundary()
+if audio != 0 { print("staged audio boundary failed %\n", audio); return audio }
+state := HostedStateBoundary()
+if state != 0 { print("hosted state/sheet boundary failed %\n", state); return state }
+print("Staged audio suppression, live audio control, malformed hosted state and Sheet boundaries passed\n")
+return 0
+}

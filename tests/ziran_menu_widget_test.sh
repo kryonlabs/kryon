@@ -17,19 +17,19 @@ set -- \
     --bind raster_text:RasterText=ziran_context_menu_widget_host:RasterText \
     --bind raster_text:RasterTextClipped=ziran_context_menu_widget_host:RasterTextClipped \
     --bind raster_text:RasterTextRotated=ziran_context_menu_widget_host:RasterTextRotated
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --entry "$entry" -o "$work/ir" "$source"
+"$ziran" ir --root "$repo/tests" $kryon_ui_args --entry "$entry" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source
     module_root=$repo/tests
     if test "$form" = saved; then input=$work/ir/ziran_menu_widget_test.zir; module_root=$work/ir; fi
     output=$work/$form-c
     "$ziran" build --target=c --exe --entry "$entry" \
-        --root "$module_root" --module-path "$repo/src/ui" -o "$output" "$input"
+        --root "$module_root" $kryon_ui_args -o "$output" "$input"
     timeout --kill-after=2s 20s "$output/ziran_menu_widget_test"
     "$ziran" build --target=go --pkg main --exe --entry "$entry" "$@" \
-        --root "$module_root" --module-path "$repo/src/ui" -o "$work/$form-go" "$input"
+        --root "$module_root" $kryon_ui_args -o "$work/$form-go" "$input"
     timeout --kill-after=2s 45s env GO111MODULE=off go run "$work/$form-go"/*.go
-    "$ziran" bundle --entry "$entry" "$@" --root "$module_root" --module-path "$repo/src/ui" \
+    "$ziran" bundle --entry "$entry" "$@" --root "$module_root" $kryon_ui_args \
         -o "$work/$form.zx" "$input"
     test "$("$ziran" run "$work/$form.zx")" = 0
 done

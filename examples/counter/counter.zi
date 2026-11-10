@@ -1,0 +1,15 @@
+using UI :: #import "kryon/Widgets";
+#import "std/number_text"
+
+count: s32;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    width := viewport.width - 40.0
+    digits: [24]u8
+    Text(session, TextProps.{.key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 20.0, width, 64.0},
+        .text = FormatInteger(cast(s64)count, digits[:]), .font = 40})
+    if Button(session, ButtonProps.{.key = 2, .bounds = .{viewport.x + 20.0, viewport.y + 104.0, width, 44.0},
+        .label = "Increment"}) != 0 { count += 1 }
+    return 0
+}

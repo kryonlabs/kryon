@@ -5,7 +5,7 @@
 #import "frame_snapshot"
 #import "test_driver"
 A :: #import "accessibility_linux";
-#import "app"
+#import "frame_entry"
 #import "cairo_raster"
 #import "desktop_runtime"
 Lanczos :: #import "lanczos_cache";

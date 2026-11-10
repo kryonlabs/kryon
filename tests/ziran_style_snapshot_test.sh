@@ -1,17 +1,17 @@
 #!/bin/sh
 . "$(dirname -- "$0")/test_context.sh"
 source=$repo/tests/style_snapshot_behavior.zi
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for input in "$source" "$work/ir/style_snapshot_behavior.zir"; do
-    "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+    "$ziran" bundle --root "$repo/tests" $kryon_ui_args \
         --module-path "$ziran_root/std" --entry style_snapshot_behavior:Answer \
         -o "$work/style.zx" "$input"
     test "$("$ziran" run "$work/style.zx")" = 42
     for target in c go; do
         output=$work/$target
         "$ziran" build "--target=$target" --root "$repo/tests" \
-            --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+            $kryon_ui_args --module-path "$ziran_root/std" \
             --entry style_snapshot_behavior:Answer -o "$output" "$input"
         case $target in
             c)

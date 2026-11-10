@@ -1,0 +1,250 @@
+#import "box_props"
+#import "box"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "text_align"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+NumberText :: #import "std/number_text"
+
+using WidgetKind;
+
+CountdownParts :: struct {
+    days: s64
+    hours: s64
+    minutes: s64
+    seconds: s64
+    total_seconds: s64
+}
+
+CountdownState :: struct {
+    shown: CountdownParts
+    roll_progress: float32
+}
+
+CountdownProps :: struct {
+    key: u64
+    bounds: Rectangle
+    seconds_left: float64
+    hide_days: bool
+    compact: bool
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+}
+
+CountdownLayout :: struct {
+    bounds: Rectangle
+    tiles: [4]Rectangle
+    labels: [4]Rectangle
+    separators: [3]Rectangle
+    tile_count: s32
+    tile_size: float32
+    tile_font: s32
+    gap: float32
+}
+
+CountdownResult :: struct {
+    state: CountdownState
+    node: s32
+    layout: CountdownLayout
+    parts: CountdownParts
+    redraw_after_seconds: float64
+}
+
+#program_export
+CountdownPartsFor :: (seconds_left: float64, hide_days: bool) -> CountdownParts {
+    parts: CountdownParts
+    if seconds_left != seconds_left || seconds_left < 0.0 {
+        parts.total_seconds = 0
+        return parts
+    }
+    parts.total_seconds = cast(s64)seconds_left
+    parts.days = parts.total_seconds / 86400
+    parts.hours = (parts.total_seconds / 3600) % 24
+    parts.minutes = (parts.total_seconds / 60) % 60
+    parts.seconds = parts.total_seconds % 60
+    if hide_days { parts.hours += parts.days * 24; parts.days = 0 }
+    return parts
+}
+
+#program_export
+CountdownPartsEqual :: (left: CountdownParts, right: CountdownParts) -> bool {
+    return left.days == right.days && left.hours == right.hours &&
+    left.minutes == right.minutes && left.seconds == right.seconds
+}
+
+#program_export
+CountdownStateFor :: (seconds_left: float64, hide_days: bool) -> CountdownState {
+    state: CountdownState
+    state.shown = CountdownPartsFor(seconds_left, hide_days)
+    state.roll_progress = 1.0
+    return state
+}
+
+#program_export
+CountdownAdvance :: (state: *CountdownState, target: CountdownParts,
+    elapsed_seconds: float32, reduced_motion: bool) -> bool {
+    if elapsed_seconds < 0.0 { return false }
+    if !CountdownPartsEqual(state.shown, target) {
+        state.shown = target
+        state.roll_progress = 0.0
+    }
+    if reduced_motion || elapsed_seconds >= 0.3 {
+        state.roll_progress = 1.0
+        return true
+    }
+    state.roll_progress += elapsed_seconds / 0.3
+    if state.roll_progress > 1.0 { state.roll_progress = 1.0 }
+    return state.roll_progress == 1.0
+}
+
+#program_export
+CountdownNextRedraw :: (seconds_left: float64) -> float64 {
+    if seconds_left != seconds_left || seconds_left <= 0.0 { return 0.0 }
+    fraction := seconds_left - cast(float64)cast(s64)seconds_left
+    if fraction > 0.001 { return fraction + 0.005 }
+    return 1.005
+}
+
+#program_export
+CountdownUnitText :: (value: s64, output: []u8) -> string {
+    digits: [24]u8
+    text := NumberText.FormatInteger(value, digits[:])
+    at: s32 = 0
+    if value >= 0 && value < 10 && at < cast(s32)output.count {
+        output[at] = cast(u8)48
+        at += 1
+    }
+    index: s32 = 0
+    while index < cast(s32)text.count && at < cast(s32)output.count {
+        output[at] = text[index]
+        at += 1
+        index += 1
+    }
+    return TextView(output[0:cast(s64)at])
+}
+
+#program_export
+CountdownLayoutFor :: (props: CountdownProps) -> CountdownLayout {
+    layout: CountdownLayout
+    layout.bounds = props.bounds
+    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return layout }
+    layout.tile_count = ifx props.hide_days then 3 else 4
+    width: float32 = 68.0
+    height: float32 = 72.0
+    font: s32 = 32
+    layout.gap = 12.0
+    if props.compact {
+        width = 44.0; height = 44.0; font = 20; layout.gap = 6.0
+    }
+    total := cast(float32)layout.tile_count * width +
+        cast(float32)(layout.tile_count - 1) * layout.gap
+    if !props.compact && props.bounds.width < total && props.bounds.width > 0.0 {
+        layout.gap = 8.0
+        scale := (props.bounds.width - cast(float32)(layout.tile_count - 1) * layout.gap) /
+            cast(float32)layout.tile_count / width
+        if scale < 0.7647 { scale = 0.7647 }
+        if scale > 1.0 { scale = 1.0 }
+        width *= scale; height *= scale
+        font = cast(s32)(cast(float32)font * scale)
+    }
+    layout.tile_size = height
+    layout.tile_font = font
+    cursor := props.bounds.x + (props.bounds.width - (cast(float32)layout.tile_count * width +
+        cast(float32)(layout.tile_count - 1) * layout.gap)) * 0.5
+    index: s32 = 0
+    while index < layout.tile_count {
+        layout.tiles[index] = Rectangle.{cursor, props.bounds.y, width, height}
+        layout.labels[index] = Rectangle.{cursor, props.bounds.y + height + 8.0,
+            width, 14.0}
+        cursor += width + layout.gap
+        index += 1
+    }
+    return layout
+}
+
+#scope_file
+unit_at :: (parts: CountdownParts, index: s32, hide_days: bool) -> s64 {
+    if index == 1 || hide_days {
+        if hide_days { return parts.hours }
+    }
+    if index == 0 { return parts.days }
+    if index == 1 { return parts.hours }
+    if index == 2 { return parts.minutes }
+    return parts.seconds
+}
+
+#scope_file
+unit_label :: (index: s32) -> string {
+    if index == 0 { return "Days" }
+    if index == 1 { return "Hours" }
+    if index == 2 { return "Minutes" }
+    return "Seconds"
+}
+
+#scope_export
+#program_export
+Countdown :: (session: Session, props: CountdownProps,
+    state: *CountdownState) -> CountdownResult {
+    result: CountdownResult
+    result.parts = CountdownPartsFor(props.seconds_left, props.hide_days)
+    unused CountdownAdvance(state, result.parts,
+        ifx CurrentTheme().motion.reduced_motion then 1.0 else 0.0,
+        CurrentTheme().motion.reduced_motion)
+    result.state = state.*
+    result.redraw_after_seconds = CountdownNextRedraw(props.seconds_left)
+    result.layout = CountdownLayoutFor(props)
+    countdown_digits: [24]u8
+    if !SessionValid(session) || !TreeIsBuilding(session) ||
+    props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup, props.bounds)
+    if result.node < 0 { return result }
+    TreeSetSemantic(session, result.node, .SemanticSection, 0)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    if !TreePushScope(session, result.node) { return result }
+    first: s32 = ifx props.hide_days then 1 else 0
+    index: s32 = 0
+    while index < result.layout.tile_count {
+        unit := first + index
+        tile := result.layout.tiles[index]
+        unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 10 + index),
+            .bounds = tile, .id = props.id, .class_name = props.class_name,
+            .fill = ColorFromPacked(CurrentSurface()), .border = ColorFromPacked(CurrentBorder()),
+            .radius = ifx props.compact then 8.0 else 12.0})
+        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 30 + index),
+            .bounds = Rectangle.{tile.x, tile.y + (tile.height - cast(float32)result.layout.tile_font) * 0.5,
+                tile.width, cast(float32)result.layout.tile_font},
+            .text = CountdownUnitText(unit_at(result.parts, unit, props.hide_days),
+                countdown_digits[:]),
+            .font = result.layout.tile_font, .id = props.id, .class_name = props.class_name,
+            .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapNone})
+        if !props.compact {
+            unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 50 + index),
+                .bounds = result.layout.labels[index], .text = unit_label(unit),
+                .font = Text12, .id = props.id, .class_name = props.class_name,
+                .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapEllipsis})
+        }
+        if props.compact && index > 0 {
+            separator := Rectangle.{tile.x - result.layout.gap, tile.y,
+                result.layout.gap, tile.height}
+            unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 70 + index),
+                .bounds = separator, .text = ":", .font = result.layout.tile_font,
+                .id = props.id, .class_name = props.class_name,
+                .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapNone})
+        }
+        index += 1
+    }
+    unused TreePopScope(session)
+    return result
+}

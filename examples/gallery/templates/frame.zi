@@ -6,8 +6,9 @@
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := PreviewInputRead()
     InstallCatalogPalette(example_input.theme == 2)
+    SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = "// @title", .font = 23})
+    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "// @title", .font = 23})
     disabled := example_input.disabled
     // @example
     return 0

@@ -5,6 +5,8 @@
 #import, file "../src/backend/android_device.zi";
 #import, file "android_device_host.zi";
 #import "android_text_editor"
+#import "android_jni"
+#import "byte_text_linux"
 #import "session"
 #import "tree"
 #import "tree_input"
@@ -35,6 +37,16 @@ EditorFrame :: (session: Session, key: u64, value: string) -> s32 {
     unused TreeFocusAt(session, node)
     AndroidTextInputFrame(session, true)
     return node
+}
+
+ime_calls: s32;
+ime_visible: bool;
+ImeMethod :: (env: *JniEnv, klass: *void, name: *u8, signature: *u8) -> *void {
+    if TextFromCString(name) == "setSoftKeyboardVisible" && TextFromCString(signature) == "(Z)V" { return klass }
+    return null
+}
+ImeCall :: (env: *JniEnv, object: *void, method: *void, arguments: *JniValue) {
+    ime_calls += 1; ime_visible = arguments[0].integer != 0
 }
 
 // Opening the editor and each change of the focused field start a new
@@ -73,6 +85,59 @@ main :: () -> s32 {
     node = EditorFrame(editor, 102, "")
     Require(!AndroidTextEditorUpdate(5, 1, "ab", 5, 0) && AndroidTextEditorUpdate(5, 1, "ab", 2, 0), 7)
     AndroidTextInputClose(editor)
+    AndroidTextInputOpen(editor)
+    AndroidTextEditorExternalPresent(editor, 901, "", 0, 0, 0)
+    AndroidTextInputFrame(editor, true)
+    Require(AndroidTextEditorUpdate(8, 1, "水😀", 7, 3), 12)
+    AndroidTextInputBeginFrame(editor)
+    copied: [64]u8
+    foreign := SessionOpen()
+    Require(!AndroidTextEditorExternalTake(foreign, 901, copied[:]).pending &&
+        !AndroidTextEditorExternalTake(editor, 900, copied[:]).pending, 13)
+    request = AndroidTextEditorExternalTake(editor, 901, copied[:])
+    Require(request.pending && request.value == "水😀" && request.cursor == 7 && request.anchor == 3, 14)
+    // A subsequent callback cannot mutate the snapshot copied for the VM.
+    Require(AndroidTextEditorUpdate(8, 2, "new", 3, 3) && request.value == "水😀", 15)
+    AndroidTextEditorExternalPresent(editor, 902, "other", 5, 5, 0)
+    AndroidTextInputFrame(editor, true)
+    other_copy: [64]u8
+    Require(!AndroidTextEditorUpdate(8, 3, "late", 4, 4) &&
+        !AndroidTextEditorExternalTake(editor, 901, other_copy[:]).pending, 16)
+    AndroidTextEditorExternalPresent(editor, 0, "", 0, 0, 0)
+    AndroidTextInputFrame(editor, false)
+    Require(!AndroidTextEditorUpdate(9, 1, "blurred", 7, 7), 17)
+    // The raster VM has no field in the host tree. Its committed hit intent
+    // must explicitly reopen a dismissed IME while keyboard focus stays true.
+    OrientationVmOpen()
+    orientation_api.GetMethodID = ImeMethod
+    orientation_api.CallVoidMethodA = ImeCall
+    AndroidTextInputBeginFrame(editor)
+    AndroidTextEditorExternalPresent(editor, 903, "focus", 5, 5, 0)
+    AndroidTextInputFrame(editor, true)
+    DeviceSoftKeyboard(false)
+    Require(ime_calls == 1 && !ime_visible, 18)
+    AndroidTextInputBeginFrame(editor)
+    AndroidTextEditorExternalPresent(editor, 903, "focus", 5, 5, 16)
+    AndroidTextInputFrame(editor, true)
+    Require(ime_calls == 2 && ime_visible && !AndroidTextEditorWantsKeyboard(foreign), 19)
+    // A later outside press carries no hit intent. Foreign or stale work
+    // cannot restore an earlier frame's intent, and blur revokes it too.
+    DeviceSoftKeyboard(false)
+    AndroidTextInputBeginFrame(editor)
+    AndroidTextEditorExternalPresent(editor, 903, "focus", 5, 5, 0)
+    AndroidTextEditorExternalPresent(foreign, 903, "foreign", 7, 7, 16)
+    AndroidTextInputFrame(editor, true)
+    Require(ime_calls == 3 && !ime_visible, 20)
+    AndroidTextInputBeginFrame(editor)
+    AndroidTextEditorExternalPresent(editor, 904, "replacement", 11, 11, 0)
+    AndroidTextInputFrame(editor, true)
+    Require(ime_calls == 3 && !AndroidTextEditorWantsKeyboard(editor), 21)
+    AndroidTextInputBeginFrame(editor)
+    AndroidTextEditorExternalPresent(editor, 0, "", 0, 0, 16)
+    AndroidTextInputFrame(editor, false)
+    Require(ime_calls == 3 && !AndroidTextEditorWantsKeyboard(editor), 22)
+    AndroidTextInputClose(editor)
+    SessionClose(foreign)
     SessionClose(editor)
     return 0
 }

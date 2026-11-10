@@ -34,10 +34,14 @@ PageEventBlur :: 14
 PageEventPaste :: 15
 PageEventCopy :: 16
 PageEventCut :: 17
+PageEventCompositionStart :: 18
+PageEventCompositionUpdate :: 19
+PageEventCompositionEnd :: 20
+PageEventCompositionCancel :: 21
 
 page_event_code: [64]u8;
 page_event_key: [64]u8;
-page_event_claims: [18]s32;
+page_event_claims: [22]s32;
 page_event_names: PageEventNames;
 
 PageEventNames :: struct {
@@ -68,6 +72,7 @@ PageEventNames :: struct {
     set_data: s32
     data_transfer: s32
     files: s32
+    data: s32
 }
 
 PageEventsInit :: () {
@@ -99,6 +104,7 @@ PageEventsInit :: () {
     page_event_names.set_data = WebName("setData")
     page_event_names.data_transfer = WebName("dataTransfer")
     page_event_names.files = WebName("files")
+    page_event_names.data = WebName("data")
     page_event_claims[PageEventMouseMove] = WebName("__kryonCanvasHandled_mousemove")
     page_event_claims[PageEventMouseDown] = WebName("__kryonCanvasHandled_mousedown")
     page_event_claims[PageEventMouseUp] = WebName("__kryonCanvasHandled_mouseup")
@@ -111,6 +117,10 @@ PageEventsInit :: () {
     page_event_claims[PageEventTouchEnd] = WebName("__kryonCanvasHandled_touchend")
     page_event_claims[PageEventTouchCancel] = WebName("__kryonCanvasHandled_touchcancel")
     page_event_claims[PageEventDrop] = WebName("__kryonCanvasHandled_drop")
+    page_event_claims[PageEventCompositionStart] = WebName("__kryonCanvasHandled_compositionstart")
+    page_event_claims[PageEventCompositionUpdate] = WebName("__kryonCanvasHandled_compositionupdate")
+    page_event_claims[PageEventCompositionEnd] = WebName("__kryonCanvasHandled_compositionend")
+    page_event_claims[PageEventCompositionCancel] = WebName("__kryonCanvasHandled_compositioncancel")
 }
 
 // The same DOM event reaches the document and the window; only the first to
@@ -125,7 +135,7 @@ PageEventClaim :: (event: s32, kind: s32) -> bool {
 
 PageEventSettle :: (event: s32, flags: s32) {
     if (flags & CanvasEventPreventDefault) != 0 &&
-        WebAsBool(WebGet(event, page_event_names.cancelable)) {
+    WebAsBool(WebGet(event, page_event_names.cancelable)) {
         unused WebCall0(event, page_event_names.prevent_default)
     }
 }
@@ -233,6 +243,26 @@ PageEventCopy :: (event: s32) {
     PageEventSettle(event, flags)
 }
 
+PageEventComposition :: (event: s32, phase: s32) {
+    value: WebValue = WebGet(event, page_event_names.data)
+    buffer: *u8 = *page_event_code[0]
+    if value.tag == WebStringTag {
+        handle: s32 = WebAsObject(value)
+        length: s32 = WebStringLength(handle)
+        if length > 0 {
+            allocated := cast(*u8)PageEventsAllocate(cast(usize)(length + 1))
+            if allocated != null {
+                unused WebCopyString(handle, BytesFromPointer(allocated,
+                    cast(u64)(length + 1)))
+                buffer = allocated
+            }
+        }
+    }
+    flags := CanvasEvent(phase, 0, 0, 0.0, 0.0, null, buffer)
+    if buffer != *page_event_code[0] { PageEventsRelease(cast(*void)buffer) }
+    PageEventSettle(event, flags)
+}
+
 PageEventDropped :: (event: s32) {
     unused WebCall0(event, page_event_names.prevent_default)
     transfer: s32 = WebGetObject(event, page_event_names.data_transfer)
@@ -261,6 +291,14 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
         PageEventPaste(event)
     } else if context == PageEventCopy || context == PageEventCut {
         PageEventCopy(event)
+    } else if context == PageEventCompositionStart {
+        if PageEventClaim(event, context) { PageEventComposition(event, CanvasEventCompositionStart) }
+    } else if context == PageEventCompositionUpdate {
+        if PageEventClaim(event, context) { PageEventComposition(event, CanvasEventCompositionUpdate) }
+    } else if context == PageEventCompositionEnd {
+        if PageEventClaim(event, context) { PageEventComposition(event, CanvasEventCompositionCommit) }
+    } else if context == PageEventCompositionCancel {
+        if PageEventClaim(event, context) { PageEventComposition(event, CanvasEventCompositionCancel) }
     } else if !PageEventClaim(event, context) {
         WebEnd(scope)
         return
@@ -278,7 +316,7 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
         if (flags & CanvasEventFocusCanvas) != 0 && !DomDocumentLayout() { PageFocusQuietly() }
         pointer: WebValue = WebGet(event, page_event_names.pointer_id)
         if (flags & CanvasEventCapturePointer) != 0 && !WebIsUndefined(pointer) &&
-            WebTypeOf(WebGetObject(page_canvas, page_event_names.set_pointer_capture)) == WebTypeFunction {
+        WebTypeOf(WebGetObject(page_canvas, page_event_names.set_pointer_capture)) == WebTypeFunction {
             unused WebCall1(page_canvas, page_event_names.set_pointer_capture, pointer)
         }
     } else if context == PageEventMouseUp {
@@ -305,7 +343,7 @@ PageEventHandle :: (context: s32, event: s32, second: s32, third: s32) {
         if WebAsBool(WebGet(event, page_event_names.shift_key)) { modifiers |= KeyModifierShift }
         if WebAsBool(WebGet(event, page_event_names.alt_key)) { modifiers |= KeyModifierAlt }
         if WebAsBool(WebGet(event, page_event_names.ctrl_key)) ||
-            WebAsBool(WebGet(event, page_event_names.meta_key)) { modifiers |= KeyModifierControl }
+        WebAsBool(WebGet(event, page_event_names.meta_key)) { modifiers |= KeyModifierControl }
         flags: s32 = PageEventSend(CanvasEventKeyDown, repeat, modifiers, 0.0, 0.0,
             page_event_names.code, page_event_names.key, event)
         PageEventSettle(event, flags)
@@ -338,6 +376,10 @@ PageEventsHook :: (target: s32) {
     PageListen(target, "touchmove", PageEventHandle, PageEventTouchMove, true)
     PageListen(target, "touchend", PageEventHandle, PageEventTouchEnd, true)
     PageListen(target, "touchcancel", PageEventHandle, PageEventTouchCancel, true)
+    PageListen(target, "compositionstart", PageEventHandle, PageEventCompositionStart, false)
+    PageListen(target, "compositionupdate", PageEventHandle, PageEventCompositionUpdate, false)
+    PageListen(target, "compositionend", PageEventHandle, PageEventCompositionEnd, false)
+    PageListen(target, "compositioncancel", PageEventHandle, PageEventCompositionCancel, false)
 }
 
 PageEventsHookDrop :: (target: s32) {

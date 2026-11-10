@@ -1,0 +1,74 @@
+// Deterministic OS boundary for NativeActivity unit fixtures. No real
+// Android window, looper, input device, display or mouse is contacted.
+#import "android_native"
+#import "android_jni"
+
+NativeTestEvent :: struct {
+    kind: s32
+    action: s32
+    key: s32
+    x: float32
+    y: float32
+    source: s32
+    buttons: s32
+    modifiers: s32
+    repeat: s32
+}
+native_test_unexpected_effects: s32;
+native_test_finish_calls: s32;
+
+#program_export
+AInputEvent_getType :: (event: *NativeTestEvent) -> s32 { return event.kind }
+#program_export
+AInputEvent_getSource :: (event: *NativeTestEvent) -> s32 { return ifx event.source == 0 then 0x1002 else event.source }
+#program_export
+AInputEvent_getDeviceId :: (event: *NativeTestEvent) -> s32 { unused event; return -1 }
+#program_export
+AKeyEvent_getAction :: (event: *NativeTestEvent) -> s32 { return event.action }
+#program_export
+AKeyEvent_getKeyCode :: (event: *NativeTestEvent) -> s32 { return event.key }
+#program_export
+AKeyEvent_getMetaState :: (event: *NativeTestEvent) -> s32 { return event.modifiers }
+#program_export
+AKeyEvent_getRepeatCount :: (event: *NativeTestEvent) -> s32 { return event.repeat }
+#program_export
+AMotionEvent_getAction :: (event: *NativeTestEvent) -> s32 { return event.action }
+#program_export
+AMotionEvent_getButtonState :: (event: *NativeTestEvent) -> s32 { return event.buttons }
+#program_export
+AMotionEvent_getX :: (event: *NativeTestEvent, pointer: usize) -> float32 { unused pointer; return event.x }
+#program_export
+AMotionEvent_getY :: (event: *NativeTestEvent, pointer: usize) -> float32 { unused pointer; return event.y }
+#program_export
+ANativeActivity_finish :: (activity: *void) { unused activity; native_test_finish_calls += 1 }
+#program_export
+__android_log_write :: (priority: s32, tag: *u8, text: *u8) -> s32 {
+    unused priority; unused tag; unused text; return 1
+}
+#program_export
+ALooper_pollAll :: (timeout: s32, file: *s32, events: *s32, data: **void) -> s32 {
+    unused timeout; unused file; unused events; unused data
+    native_test_unexpected_effects += 1; return -1
+}
+#program_export
+ANativeWindow_getWidth :: (window: *void) -> s32 { unused window; native_test_unexpected_effects += 1; return 0 }
+#program_export
+ANativeWindow_getHeight :: (window: *void) -> s32 { unused window; native_test_unexpected_effects += 1; return 0 }
+#program_export
+ANativeWindow_getFormat :: (window: *void) -> s32 { unused window; native_test_unexpected_effects += 1; return 0 }
+#program_export
+ANativeWindow_setBuffersGeometry :: (window: *void, width: s32, height: s32, format: s32) -> s32 {
+    unused window; unused width; unused height; unused format
+    native_test_unexpected_effects += 1; return -1
+}
+#program_export
+ANativeWindow_lock :: (window: *void, output: *NativeWindowBuffer, bounds: *void) -> s32 {
+    unused window; unused output; unused bounds
+    native_test_unexpected_effects += 1; return -1
+}
+#program_export
+ANativeWindow_unlockAndPost :: (window: *void) -> s32 { unused window; native_test_unexpected_effects += 1; return -1 }
+#program_export
+ANativeWindow_acquire :: (window: *void) { unused window; native_test_unexpected_effects += 1 }
+#program_export
+ANativeWindow_release :: (window: *void) { unused window; native_test_unexpected_effects += 1 }

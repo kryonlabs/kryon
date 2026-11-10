@@ -1,0 +1,133 @@
+#import "drawing_props"
+#import "geometry"
+Pixels :: #import "pixmap";
+
+cui_overlays_raster_calls: s32;
+cui_overlays_raster_failed: bool;
+cui_overlays_pixels: [691200]u32;
+
+CuiOverlaysRasterBegin :: () -> bool {
+    return Pixels.PixmapBeginInto(cast(u32)0xffffffff, 480, 360,
+        cui_overlays_pixels[:])
+}
+
+CuiOverlaysRasterHash :: () -> u64 {
+    hash: u64 = cast(u64)14695981039346656037
+    for y: 0..359 {
+        for x: 0..479 {
+            hash = (hash ^ cast(u64)cui_overlays_pixels[y * 480 + x]) *
+                cast(u64)1099511628211
+        }
+    }
+    return hash
+}
+
+CuiOverlaysRasterClose :: () {
+    Pixels.PixmapEndInto()
+    Pixels.PixmapCloseWorkers()
+}
+
+CuiOverlaysRasterReset :: () {
+    cui_overlays_raster_calls = 0
+    cui_overlays_raster_failed = false
+}
+
+CuiOverlaysRasterCalls :: () -> s32 { return cui_overlays_raster_calls }
+
+CuiOverlaysRasterFailed :: () -> bool { return cui_overlays_raster_failed }
+
+#program_export
+CuiOverlaysMeasureGlyphWidth :: (value: string, font: s32,
+    typeface: string) -> s32 {
+    unused typeface
+    if font <= 0 { cui_overlays_raster_failed = true }
+    return (cast(s32)value.count) * font / 2
+}
+
+#program_export
+CuiOverlaysMeasureGlyphLineHeight :: (font: s32,
+    typeface: string) -> s32 {
+    unused typeface
+    if font <= 0 { cui_overlays_raster_failed = true }
+    return font
+}
+
+#program_export
+CuiOverlaysImageWidth :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+CuiOverlaysImageHeight :: (asset_path: string) -> s32 {
+    unused asset_path
+    return 0
+}
+
+#program_export
+CuiOverlaysRasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    Pixels.RasterRoundedRectangle(bounds, radius, segments, color)
+    cui_overlays_raster_calls += 1
+}
+
+#program_export
+CuiOverlaysRasterRoundedRectangleOutline :: (bounds: Rectangle,
+    radius: float32, segments: s32, width: float32, color: Color) {
+    Pixels.RasterRoundedRectangleOutline(bounds, radius, segments, width, color)
+    cui_overlays_raster_calls += 1
+}
+
+#program_export
+CuiOverlaysRasterLine :: (line: Rectangle, color: Color) {
+    Pixels.RasterLine(line, color)
+    cui_overlays_raster_calls += 1
+}
+
+#program_export
+CuiOverlaysRasterTriangles :: (points: []Vector2, color: Color) {
+    Pixels.RasterTriangles(points, color)
+    cui_overlays_raster_calls += 1
+}
+
+#program_export
+CuiOverlaysRasterText :: (value: string, x: s32, y: s32, font: s32,
+    color: Color) {
+    if value.count == 0 || font <= 0 { cui_overlays_raster_failed = true }
+    Pixels.RasterText(value, x, y, font, color)
+    cui_overlays_raster_calls += 1
+}
+
+#program_export
+CuiOverlaysRasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused clip
+    CuiOverlaysRasterText(value, x, y, font, color)
+}
+
+#program_export
+CuiOverlaysRasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
+    outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {
+    unused clip; unused origin; unused rotation; unused outer_clip
+    unused outer_clipped; unused emphasis; unused italic
+    CuiOverlaysRasterText(value, x, y, font, color)
+}
+
+#program_export
+CuiOverlaysRasterImage :: (asset_path: string, texture_id: u32,
+    source: Rectangle, destination: Rectangle, clip: Rectangle,
+    origin: Vector2, rotation: float32, radius: float32, tint: Color) {
+    unused asset_path; unused texture_id; unused source; unused destination
+    unused clip; unused origin; unused rotation; unused radius; unused tint
+    cui_overlays_raster_calls += 1
+}
+
+#program_export
+CuiOverlaysRasterImageMesh :: (asset_path: string, texture_id: u32,
+    source: Rectangle, points: []Vector2, columns: s32, rows: s32,
+    clip: Rectangle, tint: Color) {
+    unused asset_path; unused texture_id; unused source; unused points
+    unused columns; unused rows; unused clip; unused tint
+    cui_overlays_raster_calls += 1
+}

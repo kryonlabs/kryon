@@ -4,6 +4,17 @@ Kryon is an ordinary Ziran package. An application imports the modules it
 uses; no widget names are recognized by the Ziran compiler or `.zx` loader.
 The public package imports are declared in [`ziran.toml`](../ziran.toml).
 
+Reusable component sources are grouped under `src/ui/<component>/`; shared
+tree, input, theme, and paint infrastructure stays in `src/ui/`. Package
+imports keep their public names when source files move. `kryon/Widgets`
+includes Alert, Avatar, Badge, Banner, ButtonGroup, CopyButton, Countdown,
+EmptyState, Keycap, OnboardingChecklist, ProgressRing, SwipeRow, Timeline,
+HoldButton, ConfirmButton, and Carousel, along with their public props and
+state. These widgets also have individual snake_case package imports such
+as `kryon/button_group` and `kryon/progress_ring`; checklist tasks and swipe
+actions are available from `kryon/onboarding_checklist_task` and
+`kryon/swipe_row_props`.
+
 Rendering hosts that retain pixels can call `CommitFrameDamaged(session)` to
 commit the tree and compare paint while leaving changed commands queued. An
 unchanged result needs no raster work; a partial result supplies its damage
@@ -36,10 +47,25 @@ coverage storage.
 Calls share bounded scratch storage and must be serialized. Targets may be up
 to 8192 by 16384 pixels; invalid input or exhausted scratch returns `false`.
 
+## Toast actions
+
+`Toast(session, ToastProps) -> ToastResult` accepts an optional
+`action_label: string`. A new nonempty `message` captures that label in
+`ToastState.action_label`; keep passing `result.state` on later frames.
+An empty label retains the existing passive toast.
+
+The action is a standard Button, with its label exposed to accessibility and
+normal pointer, Tab, Enter and Space activation. `ToastResult.action_clicked`
+is true only on the submission that consumes the activation. The caller owns
+the action and dismissal; set `clear = true` when it should disappear.
+A replacement message replaces the action; expiry and clearing remove both.
+
 ## Bottom navigation
 
 `NavigationBar(session, props, items)` defaults to a full-width 80-unit tonal
 bottom bar. Reserve `NavigationBarHeight(props)` above the bottom of the view.
+For an embedded preview or panel, use `compact = true` with `bounds`;
+`fit_items = true` fits the shortcuts into that rectangle.
 Each `NavigationBarItem` accepts an optional `icon_shape` (the standard Shape
 format) or `image`; the icon is 24 units inside a 64 by 32 selection pill, with
 its label below. With neither icon, the label is centered inside the pill.
@@ -47,6 +73,62 @@ Item keys, route results, disabled hit testing and custom style rules retain
 their existing contracts. Pointer hover/press and keyboard focus draw state
 layers; keyboard focus adds a ring. `compact` retains the scrolling dock/rail
 layout used by Breeze, including its footer and drag/close behavior.
+
+## Widget motion
+
+`MenuProps`, `TabBarProps`, `NavigationBarProps`, and `CollapsibleProps`
+accept `motion: *TransitionMotionState`, `now: float64` in monotonic seconds,
+and `reduced_motion: bool`. Import the state and widgets from `kryon/Widgets`.
+Retain one zero-initialized motion state per widget, with a stable widget key.
+
+Motion runs in native widgets and VM-rendered widgets. The portable
+`KRYON_HOSTED_UI` TabBar bridge currently supports immediate rendering with
+`motion = null` only. A nonnull pointer payload is rejected before dispatch;
+hosted motion needs an explicit state-value and write-back protocol. Guest
+addresses are never accepted as native host state pointers.
+The state must outlive every call and must not be shared between widgets. A
+null pointer keeps the widget immediate.
+
+Each result adds `animating: bool`. Request another application frame while
+any submitted widget returns true, supplying the real clock on that frame.
+Once every result is false, motion needs no further frames. The first
+submission initializes at the current target; subsequent target changes
+retain position and velocity, including reversals. Time zero is valid. Equal
+or backward timestamps do not advance the spring; a long pause advances at
+most 0.1 seconds per submission. Retained session and tree identities reset
+state when the widget moves to another parent, remounts, or changes kind.
+
+Menus fade, grow from 96 percent, and translate six units into place, with
+0.28-second opening and 0.16-second closing springs. Continue submitting the
+menu and its current groups during closing. Closing panels keep visual paint
+but immediately release their scrim, rows, focus, and activation ownership.
+The menu retains indices and a content signature, never borrowed item slices.
+
+Tab indicators stretch toward the selected tab using separate edge springs:
+the leading edge uses 0.26 seconds with no bounce, and the trailing edge uses
+0.42 seconds with 0.14 bounce. Navigation selection bounds use 0.42 seconds
+with 0.16 bounce in both full and compact layouts. Hit targets and returned
+selection geometry follow the actual controls independently of the paint.
+
+Collapsible uses a 0.40-second spring for its reveal and quarter-turn chevron.
+`content` is the animated reveal rectangle; the application draws and clips
+its body inside that rectangle and owns body interaction while closing.
+`open`, focus, keyboard navigation, and close results keep their logical
+meaning throughout the transition.
+
+Explicit `reduced_motion`, theme `SetReducedMotion(true)`, or a nonpositive
+theme motion multiplier snaps to the target and clears `animating`. A
+positive theme multiplier scales spring durations. These controls affect
+actual widget paint and reveal geometry.
+
+The four widgets use the shared `TransitionSpringAdvance(spring, target,
+delta, duration, bounce, immediate) -> TransitionSpring` integrator.
+`TransitionMotionBegin`, `TransitionMotionValue`, and
+`TransitionMotionActive` expose its caller-owned, four-channel state for
+compositions. `TransitionMotionBegin` takes the clock, reduced-motion flag,
+session slot/epoch, parent identity, own identity, and widget kind; callers
+using it directly must supply actual retained identities. Treat a widget's
+state as opaque while that widget owns it.
 
 ## Buttons
 
@@ -108,6 +190,13 @@ A ListBox with no explicit row height uses 40 units. Its icon size does not
 set its row height. Explicit `row_height` and style `offset_y` still win.
 
 ## Widget packages
+
+`EmptyStateProps.disabled` and `BannerProps.disabled` keep configured action and dismiss buttons visible with disabled styling and semantics. They reject pointer and keyboard activation, including input queued before disabling, and become usable again when enabled.
+
+`CarouselProps.disabled` disables swipe, wheel, keyboard navigation, arrows,
+and the selected action together. It defaults to false; item-level `disabled`
+continues to disable only that item's action. Disabled controls use their normal
+disabled styling and become interactive again when reenabled.
 
 `CarouselProps.logo_max_width` optionally caps the cover logo's logical width;
 `logo_top` optionally positions it below surrounding controls, relative to the
@@ -847,13 +936,13 @@ generates the codecs for Kryon's widget records and, with `--uses`, for an
 application's own records.
 
 A bundle measures text with its host's fonts through
-[`text_measure`](../src/ui/text_measure.zi): `TextWidth(session, props)` is
+[`text_measure`](../src/ui/text/text_measure.zi): `TextWidth(session, props)` is
 the width a line takes and `TextHeight(session, props)` the height Text
 takes to draw a paragraph wrapped in `props.bounds.width`.
 
 A vector icon that is not a button, such as a symbol beside a name or a coin
 beside an amount, is `SvgIcon(session, SvgIconProps.{bounds, shape, color})`
-from [`svg_icon_widget`](../src/ui/svg_icon_widget.zi); a bundle submits it
+from [`svg_icon_widget`](../src/ui/svgicon/svgicon.zi); a bundle submits it
 to its host like the other widgets. An icon is rasterized once at the
 screen's pixels and kept, with the 255 others painted most recently, as the
 rectangles it paints, so a screen with many icons does not rasterize them
@@ -871,18 +960,18 @@ to appear progressively keep the default, `false`.
 
 A bundle draws a row of choices, such as a week or calendar view, with
 `SegmentedControl(session, props, options)` from
-[`segmented_control_widget`](../src/ui/segmented_control_widget.zi); its host
+[`segmented_control_widget`](../src/ui/segmented/segmented.zi); its host
 draws it as it draws its own, with up to 32 options. It frames a form's
 sections with `Fieldset(session, props)` from
-[`fieldset_widget`](../src/ui/fieldset_widget.zi), and places a toggle at a
+[`fieldset_widget`](../src/ui/fieldset/fieldset.zi), and places a toggle at a
 row's end with the size `ToggleSize(session, props)` from
-[`toggle_measure`](../src/ui/toggle_measure.zi) answers, which stays apart from
+[`toggle_measure`](../src/ui/toggle/toggle_measure.zi) answers, which stays apart from
 the toggle widget as `text_measure` stays apart from Text. Lines, circles,
-rings and triangles from [`shape_widget`](../src/ui/shape_widget.zi) are
+rings and triangles from [`shape_widget`](../src/ui/shape/shape.zi) are
 hosted too, so a bundle can draw a chart's lines and dots; their host fills
 them with the renderer's `RasterTriangles`. `Slider` and `DiscreteSlider`
-from [`slider_widget`](../src/ui/slider_widget.zi) and `Progress` from
-[`progress_widget`](../src/ui/progress_widget.zi) are hosted as well: the
+from [`slider_widget`](../src/ui/slider/slider.zi) and `Progress` from
+[`progress_widget`](../src/ui/progress/progress.zi) are hosted as well: the
 host drags the slider with its own pointer and answers the value, and paints
 the progress bar.
 
@@ -1457,3 +1546,28 @@ selects and activates the cursor. Navigation, a newly focused cursor and viewpor
 resize reveal focus; ordinary frames retain manual scrolling. `scroll_delta`
 adds caller movement, while the standard Scroll handles sampled wheel/drag input.
 Disabled grids accept no input. Unfocused grids still accept pointer input.
+
+## AVIF compression and RGBA previews
+
+The native `image_preview` module provides
+`ImageCompressAVIF(data: string, file_type: string, orientation: s32,
+quality: s32 = 35) -> ImageAVIFResult`. On success, `data` owns actual AVIF
+bytes and `source_bytes`/`encoded_bytes` support a real size comparison.
+`width`/`height` are the full stored dimensions. Call `ImageAVIFFree(*result)`
+when finished. Encoding does not resize or discard a larger result.
+
+Accepted still 8-bit JPEG, PNG and WebP sources retain ICC, Exif and XMP when
+the container metadata is supported; AVIF uses the headless package's direct
+re-encode path. Alpha stays lossless. Animated, high-depth, gain-map and
+unsupported color/metadata cases return an explicit shared `DecodeError`.
+PNG compressed ICC and compressed text profiles currently return
+`UnsupportedCapability`. A host that already baked a nonidentity orientation
+must provide raw pixels before compression can preserve the stored orientation.
+
+`ImagePreviewRGBA(data, file_type, max_edge, orientation)` returns owned upright
+straight RGBA8 with `pixels`, `width`, `height` and `stride`. It uses Lanczos-3
+and retains transparency. `ImagePreviewRGBAPixels` accepts already decoded
+pixels with 1..4 channels. Call `ImagePreviewRGBAFree(*result)` to release the
+output. These RGBA previews avoid temporary JPEG files and preserve transparent
+edges for before/after comparison. Existing JPEG preview callers retain their
+existing API.

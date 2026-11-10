@@ -1,0 +1,611 @@
+// A registry of independently replaceable portable Kryon UI components.
+// Every slot shares one retained tree, input session, style state, paint
+// queue and renderer. Ziran owns code identity, nested owned state and the
+// final component replacement transaction.
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "session"
+#import "geometry"
+#import "input_protocol"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "widget_kind"
+#import "scroll_device"
+#import "key_input"
+#import "text_input_props"
+#import "widget_codec"
+#import "widget_host"
+#import "hosted_values"
+#import "bundle_names"
+#import "component_protocol"
+
+using HostValueKind;
+using FrameStatus;
+using WidgetKind;
+
+COMPONENT_HOST_LIMIT :: 16
+COMPONENT_CAPABILITY_LIMIT :: 64
+COMPONENT_STEP_LIMIT :: 10000000
+
+COMPONENT_CAPABILITY_HOST :: 1
+COMPONENT_CAPABILITY_INPUT :: 2
+COMPONENT_CAPABILITY_WIDGET :: 4
+COMPONENT_CAPABILITY_TREE :: 8
+COMPONENT_CAPABILITY_ALL :: 15
+
+ComponentSlot :: struct {
+    used: bool
+    id: u64
+    namespace: [129]u8
+    name: [129]u8
+    capabilities: u64
+    minimum_state_version: s64
+    bundle: *void
+    component: *void
+    handle: *void
+    code_identity: [32]u8
+    capability_count: u64
+    capability_abis: [COMPONENT_CAPABILITY_LIMIT]BundleCapabilityAbi
+}
+
+ComponentHost :: struct {
+    ready: bool
+    frame_active: bool
+    staging_active: bool
+    session: Session
+    staging_session: Session
+    bounds: Rectangle
+    key: s32
+    modifiers: s32
+    wheel: float32
+    typed: string
+    seconds: float64
+    call_slot: s32
+    session_codec: WidgetSessionCodec
+    bounds_codec: WidgetRectangleCodec
+    slots: [COMPONENT_HOST_LIMIT]ComponentSlot
+    candidate: ComponentSlot
+}
+
+ComponentTransaction :: struct {
+    host: *ComponentHost
+    target: s32
+}
+
+component_c :: #system_library "c";
+ComponentAllocateZeroed :: (count: usize, size: usize) -> *void #foreign component_c "calloc";
+ComponentRelease :: (memory: *void) #foreign component_c "free";
+
+ComponentTextValid :: (value: string) -> bool {
+    if value.count == 0 || value.count > 128 { return false }
+    for byte: value {
+        allowed := (byte >= cast(u8)97 && byte <= cast(u8)122) ||
+            (byte >= cast(u8)65 && byte <= cast(u8)90) ||
+            (byte >= cast(u8)48 && byte <= cast(u8)57) ||
+            byte == cast(u8)45 || byte == cast(u8)46 ||
+            byte == cast(u8)95 || byte == cast(u8)47
+        if !allowed { return false }
+    }
+    return true
+}
+
+ComponentTextEqual :: (left: string, right: string) -> bool { return left == right }
+
+ComponentHostID :: (namespace: string, name: string) -> u64 {
+    hash: u64 = cast(u64)14695981039346656037
+    for byte: namespace {
+        hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211
+    }
+    hash = (hash ^ cast(u64)0) * cast(u64)1099511628211
+    for byte: name {
+        hash = (hash ^ cast(u64)byte) * cast(u64)1099511628211
+    }
+    return hash | cast(u64)1 << 63
+}
+
+ComponentHostSlotText :: (value: []u8) -> string {
+    return TextFromCString(*value[0])
+}
+
+ComponentHostInit :: (host: *ComponentHost) {
+    if host.ready || SessionValid(host.session) { return }
+    host.session = SessionOpen()
+    host.bounds = Rectangle.{0.0, 0.0, 320.0, 180.0}
+    host.ready = SessionValid(host.session)
+}
+
+ComponentHostSlot :: (host: *ComponentHost, id: u64, used: bool) -> s32 {
+    index: s32 = 0
+    while index < COMPONENT_HOST_LIMIT {
+        if host.slots[index].used == used &&
+        (!used || host.slots[index].id == id) { return index }
+        index += 1
+    }
+    return -1
+}
+
+ComponentHostSlotFor :: (host: *ComponentHost, id: u64) -> s32 {
+    index: s32 = 0
+    while index < COMPONENT_HOST_LIMIT {
+        if host.slots[index].used && host.slots[index].id == id { return index }
+        index += 1
+    }
+    return -1
+}
+
+ComponentHostIdentityMatches :: (slot: *ComponentSlot,
+    namespace: string, name: string) -> bool {
+    return ComponentTextEqual(ComponentHostSlotText(slot.namespace[:]), namespace) &&
+        ComponentTextEqual(ComponentHostSlotText(slot.name[:]), name)
+}
+
+ComponentProtocolAllows :: (module: string, function: string) -> bool {
+    if !ModuleName(module, "component_protocol") { return false }
+    return function == "ComponentSessionHost" ||
+        function == "ComponentBoundsHost" ||
+        function == "ComponentKeyHost" ||
+        function == "ComponentModifiersHost" ||
+        function == "ComponentWheelHost" || function == "ComponentTextHost" ||
+        function == "ComponentSecondsHost" ||
+        function == "ComponentStateVersionHost"
+}
+
+ComponentCapabilityClass :: (module: string, function: string,
+    capabilities: u64) -> u64 {
+    if ComponentProtocolAllows(module, function) {
+        grant := ifx function == "ComponentKeyHost" || function == "ComponentModifiersHost" ||
+            function == "ComponentWheelHost" || function == "ComponentTextHost" then COMPONENT_CAPABILITY_INPUT else COMPONENT_CAPABILITY_HOST
+        return ifx (capabilities & cast(u64)grant) != 0 then cast(u64)grant else 0
+    }
+    if (capabilities & COMPONENT_CAPABILITY_INPUT) != 0 &&
+    ((ModuleName(module, "frame_snapshot") && function == "CaptureFrameInputHost") ||
+    (ModuleName(module, "pointer_input") && function == "PollPointer")) {
+        return COMPONENT_CAPABILITY_INPUT
+    }
+    if !WidgetHostSupports(module, function) { return 0 }
+    if ModuleName(module, "tree") && (function == "EndHostedHost" ||
+    function == "TreePushScopeHostedHost") {
+        return ifx (capabilities & COMPONENT_CAPABILITY_TREE) != 0 then COMPONENT_CAPABILITY_TREE else 0
+    }
+    return ifx (capabilities & COMPONENT_CAPABILITY_WIDGET) != 0 then COMPONENT_CAPABILITY_WIDGET else 0
+}
+
+ComponentHostOpenSlot :: (host: *ComponentHost, slot: *ComponentSlot,
+    namespace: string, name: string, zx: string, capabilities: u64,
+    minimum_state_version: s64) -> bool {
+    descriptor := cast(*TextDescriptor)(*zx)
+    bundle := OpenBundleBytes(descriptor.data, cast(u64)zx.count)
+    if bundle == null { return false }
+    count := BundleCapabilities(bundle)
+    if count > cast(u64)COMPONENT_CAPABILITY_LIMIT { CloseBundle(bundle); return false }
+    bindings: [COMPONENT_CAPABILITY_LIMIT]HostBinding
+    abis: [COMPONENT_CAPABILITY_LIMIT]BundleCapabilityAbi
+    position: u64 = 0
+    while position < count {
+        module := BundleCapabilityModuleName(bundle, position)
+        function := BundleCapabilityFunctionName(bundle, position)
+        if module == null || function == null ||
+        ReadBundleCapabilityAbi(bundle, position, *abis[position]) == 0 ||
+        abis[position].variable_arguments != 0 {
+            CloseBundle(bundle); return false
+        }
+        module_name := TextFromCString(module)
+        function_name := TextFromCString(function)
+        if ComponentCapabilityClass(module_name, function_name, capabilities) == 0 {
+            CloseBundle(bundle); return false
+        }
+        bindings[position].module = module
+        bindings[position].function = function
+        bindings[position].call = ComponentHostCall
+        bindings[position].context = cast(*void)host
+        position += 1
+    }
+    component := OpenBundleComponent(bundle, *bindings[0], count, COMPONENT_STEP_LIMIT)
+    if component == null { CloseBundle(bundle); return false }
+    handle := AcquireBundleComponent(component)
+    if handle == null {
+        CloseBundleComponent(component); CloseBundle(bundle); return false
+    }
+    slot.used = true
+    slot.id = ComponentHostID(namespace, name)
+    namespace_copied := CopyCString(namespace, slot.namespace[:])
+    name_copied := CopyCString(name, slot.name[:])
+    if !namespace_copied || !name_copied {
+        CloseBundleComponentHandle(handle); CloseBundleComponent(component)
+        CloseBundle(bundle); slot.* = ComponentSlot.{}; return false
+    }
+    slot.capabilities = capabilities
+    slot.minimum_state_version = minimum_state_version
+    slot.bundle = bundle
+    slot.component = component
+    slot.handle = handle
+    BundleCodeDigest(bundle, *slot.code_identity[0])
+    slot.capability_count = count
+    position = 0
+    while position < count {
+        slot.capability_abis[position] = abis[position]
+        position += 1
+    }
+    return true
+}
+
+ComponentHostOpen :: (host: *ComponentHost, namespace: string, name: string,
+    zx: string, capabilities: u64, minimum_state_version: s64) -> bool {
+    ComponentHostInit(host)
+    if !host.ready || !ComponentTextValid(namespace) || !ComponentTextValid(name) ||
+    ComponentHostSlotFor(host, ComponentHostID(namespace, name)) >= 0 { return false }
+    index := ComponentHostSlot(host, ComponentHostID(namespace, name), false)
+    if index < 0 { return false }
+    return ComponentHostOpenSlot(host, *host.slots[index], namespace, name, zx,
+        capabilities, minimum_state_version)
+}
+
+ComponentHostAcquire :: (host: *ComponentHost, id: u64) -> *void {
+    index := ComponentHostSlotFor(host, id)
+    if index < 0 { return null }
+    return AcquireBundleComponent(host.slots[index].component)
+}
+
+ComponentHostHandleValid :: (handle: *void) -> bool {
+    return BundleComponentHandleIsValid(handle)
+}
+
+ComponentHostCloseHandle :: (handle: *void) { CloseBundleComponentHandle(handle) }
+
+ComponentHostLiveBytes :: (host: *ComponentHost, id: u64) -> u64 {
+    index := ComponentHostSlotFor(host, id)
+    if index < 0 { return 0 }
+    return BundleComponentLiveBytes(host.slots[index].component)
+}
+
+ComponentHostCount :: (host: *ComponentHost) -> s32 {
+    count: s32 = 0
+    index: s32 = 0
+    while index < COMPONENT_HOST_LIMIT {
+        if host.slots[index].used { count += 1 }
+        index += 1
+    }
+    return count
+}
+
+ComponentHostRunHandle :: (host: *ComponentHost, index: s32,
+    handle: *void) -> bool {
+    if !host.ready || index < 0 || index >= COMPONENT_HOST_LIMIT ||
+    (!host.frame_active && !host.staging_active) || handle == null { return false }
+    host.call_slot = index
+    session := ifx host.staging_active then host.staging_session else host.session
+    scope := TreeSubmitCurrent(session, host.slots[index].id, WidgetKindGroup, host.bounds)
+    if scope < 0 || !TreePushScope(session, scope) { return false }
+    WidgetHostBegin(session, ComponentHostAssetAllowed, ComponentHostAssetResolve)
+    answer: s64
+    has_answer: s32
+    ok := RunBundleComponent(handle, *answer, *has_answer) != 0 &&
+        has_answer != 0 && answer == 0
+    WidgetHostEnd()
+    return TreePopScope(session) && ok
+}
+
+ComponentHostRun :: (host: *ComponentHost, id: u64) -> bool {
+    index := ComponentHostSlotFor(host, id)
+    if index < 0 { return false }
+    return ComponentHostRunHandle(host, index, host.slots[index].handle)
+}
+
+ComponentHostAssetAllowed :: (path: string) -> bool { return path == "" }
+
+ComponentHostAssetResolve :: (path: string) -> string { return path }
+
+ComponentHostCall :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    host := cast(*ComponentHost)context
+    if host == null || host.call_slot < 0 ||
+    host.call_slot >= COMPONENT_HOST_LIMIT { return 0 }
+    slot := *host.slots[host.call_slot]
+    active := host.frame_active || host.staging_active
+    name := TextFromCString(function)
+    owner := TextFromCString(module)
+    if ModuleName(owner, "component_protocol") {
+        if !active || count != 0 { return 0 }
+        if name == "ComponentSessionHost" {
+            session := ifx host.staging_active then host.staging_session else host.session
+            result.* = WidgetEncodeSession(session, *host.session_codec)
+            return 1
+        }
+        if name == "ComponentBoundsHost" {
+            result.* = WidgetEncodeRectangle(host.bounds, *host.bounds_codec)
+            return 1
+        }
+        if name == "ComponentKeyHost" {
+            result.* = HostScalar("s32", ifx host.staging_active then 0 else cast(s64)host.key); return 1
+        }
+        if name == "ComponentModifiersHost" {
+            result.* = HostScalar("s32", ifx host.staging_active then 0 else cast(s64)host.modifiers); return 1
+        }
+        if name == "ComponentTextHost" {
+            text := ifx host.staging_active then "" else host.typed
+            result.* = HostValue.{.kind = cast(s32)HostString,
+                .type_name = HostTextData("string"), .data = HostTextData(text),
+                .length = cast(usize)text.count}
+            return 1
+        }
+        if name == "ComponentWheelHost" {
+            result.* = HostValue.{.kind = cast(s32)HostReal,
+                .type_name = HostTextData("float32"),
+                .real = ifx host.staging_active then 0.0 else cast(float64)host.wheel}
+            return 1
+        }
+        if name == "ComponentSecondsHost" {
+            result.* = HostValue.{.kind = cast(s32)HostReal,
+                .type_name = HostTextData("float64"), .real = host.seconds}
+            return 1
+        }
+        if name == "ComponentStateVersionHost" {
+            result.* = HostScalar("s64", slot.minimum_state_version); return 1
+        }
+        return 0
+    }
+    if !active { return 0 }
+    return WidgetHostCall(context, module, function, arguments, count, result)
+}
+
+ComponentHostCloseSlot :: (host: *ComponentHost, index: s32) {
+    slot := *host.slots[index]
+    ComponentHostReleaseSlot(slot)
+}
+
+ComponentHostReleaseSlot :: (slot: *ComponentSlot) {
+    if !slot.used { return }
+    if slot.handle != null { CloseBundleComponentHandle(slot.handle) }
+    if slot.component != null { CloseBundleComponent(slot.component) }
+    if slot.bundle != null { CloseBundle(slot.bundle) }
+    slot.* = ComponentSlot.{}
+}
+
+ComponentHostClose :: (host: *ComponentHost) {
+    ComponentHostReleaseSlot(*host.candidate)
+    index: s32 = 0
+    while index < COMPONENT_HOST_LIMIT {
+        ComponentHostCloseSlot(host, index)
+        index += 1
+    }
+    if SessionValid(host.staging_session) { unused SessionClose(host.staging_session) }
+    if SessionValid(host.session) { unused SessionClose(host.session) }
+    host.* = ComponentHost.{}
+}
+
+ComponentHostField :: (record: *HostValue, name: string) -> *HostValue {
+    if record == null || record.kind != cast(s32)HostRecord ||
+    record.fields == null { return null }
+    index: usize = 0
+    while index < record.field_count {
+        if record.fields[index].name != null &&
+        TextFromCString(record.fields[index].name) == name {
+            return *record.fields[index].value
+        }
+        index += 1
+    }
+    return null
+}
+
+ComponentHostCopyString :: (target: *HostValue, source: *HostValue) -> bool {
+    if target == null || source == null || target.kind != cast(s32)HostString ||
+    source.kind != cast(s32)HostString { return false }
+    copied := cast(*u8)ComponentAllocateZeroed(cast(usize)source.length + cast(usize)1, 1)
+    if copied == null { return false }
+    index: usize = 0
+    while index < source.length {
+        copied[index] = source.data[index]
+        index += 1
+    }
+    copied[source.length] = cast(u8)0
+    if target.data != null { unused ComponentRelease(cast(*void)target.data) }
+    target.data = copied
+    target.length = source.length
+    return true
+}
+
+ComponentHostMigrateValue :: (old: *HostValue, updated: *HostValue) -> bool {
+    if old == null || updated == null || old.kind != updated.kind ||
+    TextFromCString(old.type_name) != TextFromCString(updated.type_name) { return false }
+    if old.kind == cast(s32)HostString { return ComponentHostCopyString(updated, old) }
+    if old.kind == cast(s32)HostInteger || old.kind == cast(s32)HostUnsigned ||
+    old.kind == cast(s32)HostReal {
+        updated.integer = old.integer
+        updated.bits = old.bits
+        updated.real = old.real
+        return true
+    }
+    if old.kind == cast(s32)HostRecord {
+        if old.field_count > cast(usize)HOST_FIELD_LIMIT ||
+        updated.field_count > cast(usize)HOST_FIELD_LIMIT { return false }
+        index: usize = 0
+        while index < updated.field_count {
+            field_name := TextFromCString(updated.fields[index].name)
+            previous := ComponentHostField(old, field_name)
+            if previous != null && !ComponentHostMigrateValue(previous,
+                *updated.fields[index].value) { return false }
+            index += 1
+        }
+        return true
+    }
+    if old.kind == cast(s32)HostArray {
+        if old.length != updated.length || old.elements == null ||
+        updated.elements == null { return false }
+        index: usize = 0
+        while index < old.length {
+            if !ComponentHostMigrateValue(*old.elements[index],
+                *updated.elements[index]) { return false }
+            index += 1
+        }
+        return true
+    }
+    return old.kind == cast(s32)HostVoid
+}
+
+ComponentHostStateAt :: (state: *void, index: u64,
+    value: *BundleStateValue) -> bool {
+    return ReadBundleStateValue(state, index, value)
+}
+
+ComponentHostMigrate :: (context: *void, old_state: *void,
+    new_state: *void) -> s32 {
+    transaction := cast(*ComponentTransaction)context
+    if transaction == null || old_state == null || new_state == null { return 0 }
+    old_count := BundleStateValueCount(old_state)
+    new_count := BundleStateValueCount(new_state)
+    migrated: u64 = 0
+    old_index: u64 = 0
+    while old_index < old_count {
+        old_value: BundleStateValue
+        if !ComponentHostStateAt(old_state, old_index, *old_value) { return 0 }
+        new_index: u64 = 0
+        while new_index < new_count {
+            updated := BundleStateValueReference(new_state, new_index)
+            if updated != null && TextFromCString(old_value.module) ==
+            TextFromCString(updated.module) && TextFromCString(old_value.name) ==
+            TextFromCString(updated.name) {
+                if TextFromCString(old_value.name) == "component_schema_version" {
+                    new_index += 1
+                    continue
+                }
+                if !ComponentHostMigrateValue(*old_value.value, *updated.value) { return 0 }
+                migrated += 1
+                break
+            }
+            new_index += 1
+        }
+        old_index += 1
+    }
+    unused migrated
+    return 1
+}
+
+// Validate migrated state and host effects before Ziran commits replacement.
+ComponentHostVerify :: (context: *void, instance: *void) -> s32 {
+    transaction := cast(*ComponentTransaction)context
+    if transaction == null || instance == null { return 0 }
+    host := transaction.host
+    slot := *host.slots[transaction.target]
+    state: *void
+    if !ExportBundleState(instance, *state) || state == null { return 0 }
+    count := BundleStateValueCount(state)
+    found_version := false
+    index: u64 = 0
+    while index < count {
+        value: BundleStateValue
+        if !ComponentHostStateAt(state, index, *value) {
+            CloseBundleState(state); return 0
+        }
+        if TextFromCString(value.module) == TextFromCString(BundleEntryModule(host.candidate.bundle)) &&
+        TextFromCString(value.name) == "component_schema_version" &&
+        HostScalarValid(value.value, "s64", cast(s32)HostInteger) {
+            found_version = value.value.integer >= slot.minimum_state_version
+        }
+        index += 1
+    }
+    if !found_version { CloseBundleState(state); return 0 }
+    host.staging_session = SessionOpen()
+    if !SessionValid(host.staging_session) { CloseBundleState(state); return 0 }
+    host.staging_active = true
+    host.call_slot = transaction.target
+    staged := BeginFrame(host.staging_session, cast(u64)1, host.bounds) == cast(FrameStatus)FrameOk
+    if staged {
+        scope := TreeSubmitCurrent(host.staging_session, slot.id, WidgetKindGroup, host.bounds)
+        staged = scope >= 0 && TreePushScope(host.staging_session, scope)
+        if staged {
+            WidgetHostBegin(host.staging_session, ComponentHostAssetAllowed, ComponentHostAssetResolve,
+                null, WidgetHostAudioReadNone, null, true)
+            answer: s64
+            has_answer: s32
+            staged = RunBundleInstance(instance, *answer, *has_answer) != 0 && has_answer != 0 && answer == 0
+            WidgetHostEnd()
+            staged = TreePopScope(host.staging_session) && staged
+        }
+        if staged {
+            staged = CommitFrame(host.staging_session) == cast(FrameStatus)FrameOk &&
+                TreeCount(host.staging_session) > 2
+        }
+    }
+    // CommitFrame validates tree/paint without emitting renderer effects.
+    TreeCancel(host.staging_session)
+    host.staging_active = false
+    unused SessionClose(host.staging_session)
+    host.staging_session = Session.{}
+    // Rendering validation must not consume the first live frame's state.
+    restored := ImportBundleState(instance, state)
+    CloseBundleState(state)
+    return ifx staged && restored then 1 else 0
+}
+
+ComponentHostReplace :: (host: *ComponentHost, id: u64, zx: []u8) -> bool {
+    target := ComponentHostSlotFor(host, id)
+    if !host.ready || !SessionValid(host.session) || host.frame_active ||
+    host.staging_active || target < 0 { return false }
+    target_slot := *host.slots[target]
+    candidate_slot := *host.candidate
+    if !ComponentHostOpenSlot(host, candidate_slot,
+        ComponentHostSlotText(target_slot.namespace[:]),
+        ComponentHostSlotText(target_slot.name[:]), TextFromBytes(zx),
+        target_slot.capabilities, target_slot.minimum_state_version) { return false }
+    transaction := ComponentTransaction.{.host = host, .target = target}
+    replacement_handle: *void
+    if !ReplaceBundleComponent(target_slot.component, candidate_slot.bundle,
+    ComponentHostMigrate, ComponentHostVerify, cast(*void)(*transaction),
+        *replacement_handle) {
+        ComponentHostReleaseSlot(candidate_slot)
+        return false
+    }
+    CloseBundleComponentHandle(target_slot.handle)
+    CloseBundleComponentHandle(candidate_slot.handle)
+    CloseBundleComponent(candidate_slot.component)
+    CloseBundle(target_slot.bundle)
+    target_slot.bundle = candidate_slot.bundle
+    target_slot.handle = replacement_handle
+    target_slot.code_identity = candidate_slot.code_identity
+    target_slot.capability_count = candidate_slot.capability_count
+    target_slot.capability_abis = candidate_slot.capability_abis
+    target_slot.namespace = candidate_slot.namespace
+    target_slot.name = candidate_slot.name
+    candidate_slot.used = false
+    candidate_slot.bundle = null
+    candidate_slot.component = null
+    candidate_slot.handle = null
+    candidate_slot.capability_count = 0
+    return true
+}
+
+ComponentHostFrame :: (host: *ComponentHost, bounds: Rectangle,
+    pointer: PointerFrame, secondary: SecondaryPointerFrame, key: s32,
+    modifiers: s32, wheel: float32, typed: string,
+    seconds: float64) -> bool {
+    if !host.ready || host.frame_active || host.staging_active { return false }
+    TreePointerUpdate(host.session, pointer)
+    TreeSecondaryPointerUpdate(host.session, secondary)
+    PointerWheelSend(host.session, pointer.x, pointer.y, wheel)
+    BeginScrollFrame(host.session, Vector2.{pointer.x, pointer.y},
+        pointer.pressed, pointer.down, pointer.released, wheel, seconds)
+    KeyboardModifiersSend(host.session, modifiers)
+    if key != 0 { KeyboardSend(host.session, key) }
+    host.bounds = bounds
+    host.key = key
+    host.modifiers = modifiers
+    host.typed = typed
+    host.wheel = wheel
+    host.seconds = seconds
+    host.frame_active = true
+    status := BeginFrame(host.session, cast(u64)1, bounds)
+    ok := status == cast(FrameStatus)FrameOk
+    index: s32 = 0
+    while ok && index < COMPONENT_HOST_LIMIT {
+        if host.slots[index].used {
+            ok = ComponentHostRunHandle(host, index, host.slots[index].handle)
+        }
+        index += 1
+    }
+    if !ok { TreeCancel(host.session) }
+    host.frame_active = false
+    if !ok { return false }
+    return EndFrame(host.session) == cast(FrameStatus)FrameOk
+}

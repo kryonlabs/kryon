@@ -5,6 +5,9 @@
 #import "page_core"
 #import "gamepad_navigation"
 #import "input_protocol"
+#import "text_input"
+
+using CompositionPhase;
 #if #defined(PLATFORM_WEB) {
     CanvasEventMouseMove :: 0
     CanvasEventMouseDown :: 1
@@ -20,6 +23,10 @@
     CanvasEventBlur :: 11
     CanvasEventPaste :: 12
     CanvasEventCopy :: 13
+    CanvasEventCompositionStart :: 14
+    CanvasEventCompositionUpdate :: 15
+    CanvasEventCompositionCommit :: 16
+    CanvasEventCompositionCancel :: 17
 
     // What the page does after an event.
     CanvasEventPreventDefault :: 1
@@ -32,6 +39,7 @@
     CANVAS_BUTTON_LIMIT :: 8
     CANVAS_TOUCH_LIMIT :: 8
     CANVAS_CLIPBOARD_SIZE :: 4096
+    CANVAS_COMPOSITION_SIZE :: 4096
 
     CanvasKeyEntry :: struct {
         name: string
@@ -123,6 +131,15 @@
     canvas_clipboard_gesture_until: float64;
     canvas_clipboard_text: [CANVAS_CLIPBOARD_SIZE]u8;
 
+    canvas_composition_text: [CANVAS_COMPOSITION_SIZE]u8;
+    canvas_composition_length: s32;
+    canvas_composition_phase: s32;
+    canvas_composition_active: bool;
+    canvas_composition_sequence: s32;
+    canvas_composition_frame_phase: s32;
+    canvas_composition_frame_length: s32;
+    canvas_composition_frame_sequence: s32;
+
     CanvasFrameInput :: struct {
         keys_pressed: s32
         keys_released: s32
@@ -176,7 +193,7 @@
         value: s32 = 0
         if canvas_keys_down[340] || canvas_keys_down[344] { value |= KeyModifierShift }
         if canvas_keys_down[341] || canvas_keys_down[345] ||
-            canvas_keys_down[343] || canvas_keys_down[347] { value |= KeyModifierControl }
+        canvas_keys_down[343] || canvas_keys_down[347] { value |= KeyModifierControl }
         if canvas_keys_down[342] || canvas_keys_down[346] { value |= KeyModifierAlt }
         return value
     }
@@ -312,6 +329,25 @@
         canvas_clipboard_text[length] = cast(u8)0
     }
 
+    CanvasCompositionFill :: (text: string) {
+        length := text.count
+        if length > cast(s64)CANVAS_COMPOSITION_SIZE { length = cast(s64)CANVAS_COMPOSITION_SIZE }
+        index: s64 = 0
+        while index < length {
+            canvas_composition_text[index] = text[index]
+            index += 1
+        }
+        canvas_composition_length = cast(s32)length
+    }
+
+    CanvasCompositionFrame :: () -> CompositionEvent {
+        event: CompositionEvent
+        event.phase = cast(CompositionPhase)canvas_composition_frame_phase
+        event.text = TextView(canvas_composition_text[:canvas_composition_frame_length])
+        event.cursor = canvas_composition_frame_length
+        return event
+    }
+
     CanvasTouchEnd :: () -> s32 {
         had: bool = canvas_touch_count > 0
         canvas_touch_count = canvas_touch_pending
@@ -418,11 +454,35 @@
             return CanvasKeyUp(TextFromCString(code), TextFromCString(key))
         }
         if kind == CanvasEventKeyChar {
+            if canvas_composition_active { return CanvasEventPreventDefault }
             typed: s32 = CanvasSingleCodepoint(TextFromCString(key))
             if typed != 0 && typed != 32 {
                 CanvasQueuePush(*canvas_chars[0], *canvas_chars_count, typed)
             }
             return 0
+        }
+        if kind == CanvasEventCompositionStart || kind == CanvasEventCompositionUpdate ||
+        kind == CanvasEventCompositionCommit || kind == CanvasEventCompositionCancel {
+            text := TextFromCString(key)
+            if kind == CanvasEventCompositionStart {
+                canvas_composition_phase = cast(s32)CompositionStart
+                CanvasCompositionFill("")
+                canvas_composition_active = true
+            } else if kind == CanvasEventCompositionUpdate {
+                canvas_composition_phase = cast(s32)CompositionUpdate
+                CanvasCompositionFill(text)
+                canvas_composition_active = true
+            } else if kind == CanvasEventCompositionCommit {
+                canvas_composition_phase = cast(s32)CompositionCommit
+                CanvasCompositionFill(text)
+                canvas_composition_active = false
+            } else {
+                canvas_composition_phase = cast(s32)CompositionCancel
+                CanvasCompositionFill("")
+                canvas_composition_active = false
+            }
+            canvas_composition_sequence += 1
+            return CanvasEventPreventDefault
         }
         if kind == CanvasEventTouchBegin {
             if a > 0 { canvas_clipboard_gesture_until = PageNow() + 1000.0 }
@@ -515,6 +575,13 @@
         canvas_snapshot_focus_lost = false
         canvas_cursor_hidden = false
         canvas_clipboard_gesture_until = 0.0
+        canvas_composition_length = 0
+        canvas_composition_phase = 0
+        canvas_composition_active = false
+        canvas_composition_sequence = 0
+        canvas_composition_frame_phase = 0
+        canvas_composition_frame_length = 0
+        canvas_composition_frame_sequence = 0
     }
 
     // Start with clean input.
@@ -537,6 +604,9 @@
             wheel_x = canvas_wheel_x,
             wheel_y = canvas_wheel_y
         }
+        canvas_composition_frame_phase = canvas_composition_phase
+        canvas_composition_frame_length = canvas_composition_length
+        canvas_composition_frame_sequence = canvas_composition_sequence
     }
 
     // Discard only this frame's input, preserving later arrivals.
@@ -556,6 +626,10 @@
         canvas_wheel_x -= canvas_frame_input.wheel_x
         canvas_wheel_y -= canvas_frame_input.wheel_y
         canvas_frame_input = CanvasFrameInput.{}
+        if canvas_composition_sequence == canvas_composition_frame_sequence {
+            canvas_composition_phase = 0
+            canvas_composition_length = 0
+        }
     }
     // One field of touch point `index`: 0 x, 1 y, 2 id; 0 when it is absent.
     CanvasTouchField :: (index: s32, field: s32) -> s32 {

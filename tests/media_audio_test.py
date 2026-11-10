@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Owned asset audio: real native decoder/device, source + saved IR, hosted VM."""
 
-from toolchain import JS_RUNTIME
+from toolchain import UI_MODULE_ARGS, JS_RUNTIME
 import argparse
 import json
 import os
@@ -75,7 +75,7 @@ def main():
     # media_audio_raylib routes Ogg Opus content through the audio package.
     audio = Path(os.environ['AUDIO_PACKAGE']) if 'AUDIO_PACKAGE' in os.environ else Path(
         subprocess.check_output([str(ZIRAN), 'pkg', 'path', 'audio'], cwd=ROOT, text=True).strip())
-    common = ['--root', ROOT / 'tests', '--module-path', ROOT / 'src/ui',
+    common = ['--root', ROOT / 'tests', *UI_MODULE_ARGS,
               '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN_ROOT / 'std',
               '--module-path', 'audio=' + str(audio / 'src')]
     if options.pcm:

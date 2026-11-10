@@ -96,7 +96,7 @@ int main(void) {
 }
 C
 
-"$ziran" build --target=c --root "$work" --module-path "$repo/src/ui" \
+"$ziran" build --target=c --root "$work" $kryon_ui_args \
     --module-path "$ziran_dir/std" -o "$work/c" "$work/app.zi"
 cp "$work/main.c" "$work/c/main.c"
 "${CC:-cc}" -std=c11 -I"$ziran_dir/include" -I"$work/c" "$work/c"/*.c \

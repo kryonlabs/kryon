@@ -7,14 +7,14 @@ mkdir -p "$work"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 export GOCACHE="$work/go-cache"
 source="$repo/tests/tree_labels_test.zi"
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for input in source saved; do
-    module=$source; module_root=$repo/tests; module_dir=$repo/src/ui
+    module=$source; module_root=$repo/tests; module_dir="$kryon_ui_args"
     if test "$input" = saved; then
-        module=$work/ir/tree_labels_test.zir; module_root=$work/ir; module_dir=$work/ir
+        module=$work/ir/tree_labels_test.zir; module_root=$work/ir; module_dir="--module-path $work/ir"
     fi
-    "$ziran" bundle --root "$module_root" --module-path "$module_dir" \
+    "$ziran" bundle --root "$module_root" $module_dir \
         --module-path "$ziran_root/std" --entry tree_labels_test:main \
         -o "$work/$input.zx" "$module"
     result=$("$ziran" run "$work/$input.zx")
@@ -26,7 +26,7 @@ for input in source saved; do
         output=$work/$input-$target
         executable=--exe; package=
         if test "$target" = go; then package='--pkg main'; fi
-        "$ziran" build --root "$module_root" --module-path "$module_dir" \
+        "$ziran" build --root "$module_root" $module_dir \
             --module-path "$ziran_root/std" --entry tree_labels_test:main \
             --target="$target" $executable $package -o "$output" "$module"
         case "$target" in

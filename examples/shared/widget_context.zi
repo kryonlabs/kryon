@@ -1,0 +1,42 @@
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/frame_snapshot"
+#import "kryon/style_sheet"
+
+WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
+
+WidgetInput :: (session: Session) -> WidgetContext {
+    snapshot := CaptureFrameInput(session)
+    result: WidgetContext
+    result.now = cast(float32)snapshot.elapsed_ms / 1000.0
+    result.theme = ifx StyleTokenColor("canvas").r < 128 then 2 else 1
+    result.disabled = example_disabled
+    result.reduced_motion = example_reduced_motion
+    return result
+}
+
+gallery_view: Rectangle = Rectangle.{.x = 0.0, .y = 0.0, .width = 480.0, .height = 320.0};
+gallery_live: bool;
+gallery_now: float32;
+gallery_reduced_motion: bool;
+SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion: bool) {
+    gallery_view = view; gallery_live = live; gallery_now = now
+    gallery_reduced_motion = reduced_motion
+}
+GalleryBounds :: (bounds: Rectangle) -> Rectangle {
+    if !gallery_live { return bounds }
+    bounds.x = gallery_view.x + bounds.x * gallery_view.width / 480.0
+    bounds.y += gallery_view.y
+    bounds.width *= gallery_view.width / 480.0
+    return bounds
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

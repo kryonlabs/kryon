@@ -1,7 +1,7 @@
 #import "session"
 #import "menu_props"
-#import "menu_widget"
 #import "menu"
+#import "menu_behavior"
 #import "geometry"
 #import "paint_queue"
 #import "tree"

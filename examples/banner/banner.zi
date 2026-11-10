@@ -1,0 +1,31 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/frame_snapshot"
+DemoTheme :: #import "kryon/Theme";
+
+state: BannerState;
+initialized: bool;
+requested: bool;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Banner", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    input := CaptureFrameInput(session)
+    now := cast(float64)input.elapsed_ms / 1000.0
+    if !initialized { state = BannerStateFor(true); initialized = true }
+    BannerAdvance(*state, cast(float32)input.delta_ms / 1000.0, (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion))
+    result := Banner(session, BannerProps.{.disabled = example_disabled, .key = 10, .bounds = bounds, .text = "A new version is available.", .action = "Update", .dismissible = true}, *state)
+    if result.action { requested = true; state.open = false }
+    if requested { Text(session, TextProps.{.disabled = example_disabled, .key = 12, .bounds = bounds, .text = "Update requested"}) }
+    if Button(session, ButtonProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, 160.0, 40.0}, .label = "Show banner"}) != 0 { state.open = true; requested = false }
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

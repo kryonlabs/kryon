@@ -6,7 +6,7 @@
 #import "std/file"
 #import "std/byte_text_linux"
 #import "vec"
-#import "text"
+#import "std/text"
 
 test_c :: #system_library "c";
 TestAllocate :: (size: usize) -> *void #foreign test_c "malloc";

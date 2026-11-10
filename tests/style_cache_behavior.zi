@@ -3,6 +3,9 @@
 #import "control_props"
 using StyleField;
 using ButtonState;
+using FontRole;
+using ElevationRole;
+using MotionEasing;
 
 Equal :: (a: StyleData, b: StyleData) -> bool {
     return a.fields == b.fields && a.background == b.background &&
@@ -12,7 +15,12 @@ Equal :: (a: StyleData, b: StyleData) -> bool {
     a.font_size == b.font_size && a.icon_size == b.icon_size &&
     a.offset_x == b.offset_x && a.offset_y == b.offset_y &&
     a.background_end == b.background_end && a.material == b.material &&
-    a.typeface == b.typeface && a.letter_spacing == b.letter_spacing
+    a.typeface == b.typeface && a.letter_spacing == b.letter_spacing &&
+    a.min_height == b.min_height && a.line_height == b.line_height &&
+    a.font_role == b.font_role && a.elevation == b.elevation &&
+    a.motion_duration == b.motion_duration &&
+    a.motion_multiplier == b.motion_multiplier &&
+    a.motion_easing == b.motion_easing && a.motion_reduced == b.motion_reduced
 }
 
 Base :: (index: s32) -> StyleData {
@@ -26,6 +34,12 @@ Base :: (index: s32) -> StyleData {
     value.background_end = cast(u32)789
     value.typeface = ifx index % 2 == 0 then "base-a" else "base-b"
     value.letter_spacing = 0.5
+    value.min_height = 37.0; value.line_height = 1.45
+    value.font_role = cast(FontRole)FontRoleControl
+    value.elevation = cast(ElevationRole)ElevationRoleRaised
+    value.motion_duration = 140.0; value.motion_multiplier = 1.25
+    value.motion_easing = cast(MotionEasing)MotionEasingStandard
+    value.motion_reduced = false
     return value
 }
 
@@ -51,6 +65,7 @@ Answer :: () -> s32 {
         if i == 6 { selector.validation = 6 }
         if i == 8 { selector.orientation = 8 }
         if i == 10 { selector.placement = 10 }
+        if i == 11 { selector.id = 77 }
         rules.items[i].selector = selector
         rules.items[i].state = ifx i % 4 == 0 then cast(s32)ButtonStateHover else StyleStateAny()
         rules.items[i].layer = i % 3; rules.items[i].order = i / 2
@@ -63,6 +78,7 @@ Answer :: () -> s32 {
     for i: 0..cast(s32)1199 {
         facts := StyleDefaultFacts(ifx i % 2 == 0 then StyleKindButton() else StyleKindText())
         facts.name = i % 17; facts.class_name = i % 5
+        if i % 6 == 0 { facts.id = 77 }
         facts.role = i % 2; facts.tone = i % 3; facts.emphasis = i % 4
         facts.size = i % 5; facts.state = i % 7; facts.validation = i % 7
         facts.orientation = i % 9; facts.placement = i % 11

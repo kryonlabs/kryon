@@ -1,0 +1,62 @@
+#import "component_host"
+#import "component_raster_host"
+#import "geometry"
+#import "tree"
+#import "input_protocol"
+#import "std/file"
+#import "std/c_string"
+#import "std/byte_text_linux"
+#import "std/bundle_host"
+
+InputsZX :: (name: string) -> string {
+    value, ok := ReadEntireFile(name)
+    return ifx ok then value else ""
+}
+InputsBytes :: (value: string) -> []u8 {
+    descriptor := cast(*TextDescriptor)(*value)
+    return BytesFromPointer(descriptor.data, cast(u64)value.count)
+}
+InputsLabel :: (host: *ComponentHost, label: string) -> bool {
+    index: s32 = 0
+    while index < TreeCount(host.session) {
+        if TreeNodeAt(host.session, index).semantic_label == label { return true }
+        index += 1
+    }
+    return false
+}
+InputsFrame :: (host: *ComponentHost, key: s32 = 0) -> bool {
+    if !ComponentRasterBegin() { return false }
+    return ComponentHostFrame(host, Rectangle.{0.0, 0.0, 320.0, 180.0},
+        PointerFrame.{}, SecondaryPointerFrame.{}, key, 0, 0.0, "", 0.016)
+}
+#program_export
+ComponentInputsTest :: () -> s32 {
+    old := InputsZX("inputs_v1.zx")
+    next := InputsZX("inputs_v2.zx")
+    bad := InputsZX("inputs_bad.zx")
+    host: ComponentHost
+    ComponentHostInit(*host)
+    if !ComponentHostOpen(*host, "tests", "inputs", old,
+        COMPONENT_CAPABILITY_HOST | COMPONENT_CAPABILITY_INPUT |
+        COMPONENT_CAPABILITY_WIDGET | COMPONENT_CAPABILITY_TREE, 1) { return 1 }
+    id := ComponentHostID("tests", "inputs")
+    handle := ComponentHostAcquire(*host, id)
+    if !InputsFrame(*host) || !InputsLabel(*host, "inputs ready") { return 2 }
+    if !InputsFrame(*host, 85) || !InputsLabel(*host, "inputs updated") { return 3 }
+    pixels := ComponentRasterHash()
+    count := TreeCount(host.session)
+    writes := ComponentClipboardWrites()
+    if ComponentHostReplace(*host, id, InputsBytes(bad)) ||
+    !ComponentHostHandleValid(handle) || TreeCount(host.session) != count ||
+    ComponentRasterHash() != pixels || ComponentClipboardWrites() != writes ||
+    !InputsLabel(*host, "inputs updated") { return 4 }
+    accepted := ComponentHostReplace(*host, id, InputsBytes(next))
+    if !accepted ||
+    ComponentHostHandleValid(handle) || ComponentRasterHash() != pixels ||
+    ComponentClipboardWrites() != writes { return 5 }
+    if !InputsFrame(*host) || !InputsLabel(*host, "inputs updated v2") { return 6 }
+    CloseBundleComponentHandle(handle)
+    ComponentHostClose(*host)
+    print("Twelve hosted widgets: owned state, nested slices, migration and staged clipboard rollback passed\n")
+    return 0
+}

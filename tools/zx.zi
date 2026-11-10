@@ -6,6 +6,7 @@
 #import "cairo_raster"
 #import "desktop_runtime"
 #import "geometry"
+#import "hosted_values"
 #import "drawing_props"
 #import "program_title"
 #import "vec"
@@ -28,6 +29,7 @@ RemoveDirectory :: (path: *u8) -> s32 #foreign libc "rmdir";
 PlayerReadlink :: (path: *u8, output: *u8, count: u64) -> s64 #foreign libc "readlink";
 Name :: struct { bytes: [128]u8 }
 Player :: struct {
+    editor_fields: [5]HostField
     fields: [13]HostField
     names: [27]Name
     bindings: Vec(HostBinding)
@@ -49,7 +51,8 @@ Supported :: (module: string, function: string) -> bool {
     if ModuleName(module, "zx_run") {
         return function == "ReadBundleInput" || function == "TakeBundleCodepoint" ||
             function == "BundleTextInputHost" || function == "BundleFrameFinishedHost" ||
-            function == "BundleFrameReusableHost"
+            function == "BundleFrameReusableHost" || function == "BundleTextEditorHost" ||
+            function == "BundleTextRequestHost"
     }
     if ModuleName(module, "font_metrics") {
         return function == "MeasureGlyphWidth" || function == "MeasureGlyphLineHeight"
@@ -130,6 +133,21 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     }
     if function == "SystemThemeColorHost" && count == 1 && args[0].kind == HostInteger {
         result.kind = HostUnsigned; result.bits = cast(u64)Theme.SystemThemeColorHost(cast(s32)args[0].integer); return 1
+    }
+    // This desktop player has no native snapshot editor. Its ordinary key
+    // and Unicode path remains active; optional editor requests are empty.
+    if function == "BundleTextEditorHost" && count == 5 && args[0].kind == HostUnsigned &&
+    args[1].kind == HostString && args[1].length <= cast(usize)65536 &&
+    args[2].kind == HostInteger && args[3].kind == HostInteger && args[4].kind == HostInteger { return 1 }
+    if function == "BundleTextRequestHost" && count == 1 && args[0].kind == HostUnsigned {
+        player.editor_fields[0] = HostField.{HostTextData("value"), HostValue.{.kind = HostString,
+            .type_name = HostTextData("string")}}
+        player.editor_fields[1] = HostField.{HostTextData("cursor"), HostScalar("s32", 0)}
+        player.editor_fields[2] = HostField.{HostTextData("anchor"), HostScalar("s32", 0)}
+        player.editor_fields[3] = HostField.{HostTextData("replace"), HostScalar("bool", 0)}
+        player.editor_fields[4] = HostField.{HostTextData("pending"), HostScalar("bool", 0)}
+        result.* = HostRecordValue("TextRequest", player.editor_fields[:])
+        return 1
     }
     if function=="BundleTextInputHost" && count==1 && args[0].kind==HostInteger { return 1 }
     if function == "BundleFrameReusableHost" && count == 0 {

@@ -5,11 +5,14 @@
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
+# Project mode resolves Kryon exports from its manifest. Keep only own module folders.
+kryon_ui_args=$(printf %s "$kryon_ui_args" | sed 's/--module-path kryon=[^ ]*//g')
 raylib=${RAYLIB_A:-"$("$ziran" pkg path raylib)/src/libraylib.a"}
 work=$(mktemp -d)
+export TMPDIR="$work"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-"$ziran_root/build/bin/zi2c" --no-main --define NATIVE_WINDOW_HAVE_SDL --root "$repo/tests" \
-    --module-path "$repo/src/backend" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" build --project --offline --target=c --no-main --define NATIVE_WINDOW_HAVE_SDL --root "$repo/tests" \
+    --module-path "$repo/src/backend" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/c" "$repo/tests/raylib_secondary_window_test.zi"
 includes="-I$ziran_root/include"
 for header in $(find "$work/c" -name '*.h' | xargs -n1 dirname | sort -u); do
@@ -17,7 +20,7 @@ for header in $(find "$work/c" -name '*.h' | xargs -n1 dirname | sort -u); do
 done
 # shellcheck disable=SC2046,SC2086
 "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections $includes \
-    $(find "$work/c" -name '*.c') "$raylib" $(pkg-config --libs sdl2) -lGL -lm -ldl -lpthread -o "$work/test"
-env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_DISPLAY -u DBUS_SESSION_BUS_ADDRESS \
-    YUE_DESKTOP_RECOVERY=0 xvfb-run -a -n 200 -e /dev/stderr -s '-screen 0 800x600x24' "$work/test"
+    $(find "$work/c" -name '*.c') "$raylib" $(pkg-config --libs sdl2) -lX11 -lXtst -lGL -lm -ldl -lpthread -o "$work/test"
+env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u GDK_DISPLAY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER \
+    YUE_DESKTOP_RECOVERY=0 xvfb-run -a -n 200 -e /dev/stderr -s '-screen 0 800x600x24 -nolisten tcp' dbus-run-session -- python3 "$repo/tests/private_window_manager.py" "$work/test"
 echo 'raylib secondary windows: pixels, events, clicks, dragging, own pointer and the main context passed'

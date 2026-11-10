@@ -22,13 +22,13 @@ PY
 libs="$(pkg-config --libs cairo freetype2 pangocairo fontconfig glib-2.0) -ldl -lm -lpthread"
 source="$repo/tests/cairo_scaled_image_test.zi"
 image_ziran ir --define POSIX_THREADS --root "$repo/tests" --module-path "$repo/src/backend" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" "$source"
+    $kryon_ui_args --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source; root=$repo/tests
     if test "$form" = saved; then input=$work/ir/cairo_scaled_image_test.zir; root=$work/ir; fi
     output=$work/c-$form
     image_ziran build --define POSIX_THREADS --root "$root" --module-path "$repo/src/backend" \
-        --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+        $kryon_ui_args --module-path "$ziran_root/std" \
         --target=c --no-main -o "$output" "$input"
     printf '#include "cairo_scaled_image_test.h"\nint main(int argc, char **argv) { return cairo_scaled_image_test_main(argc, (uint8_t **)argv); }\n' > "$output/entry.c"
     "${CC:-cc}" -std=c11 -O2 -I"$ziran_root/include" -I"$output" \

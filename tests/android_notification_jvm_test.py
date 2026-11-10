@@ -5,7 +5,8 @@ This verifies JNI signatures and persistent state transitions, not Android OS de
 import os
 from pathlib import Path
 import subprocess
-from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
+import shutil
+from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN, ZIRAN_ROOT
 
 WORK = ROOT / 'work/android-notification-jvm'
 FILES = {
@@ -119,12 +120,14 @@ def run(command, **kwargs):
 if __name__ == '__main__':
     run(['git', 'check-ignore', str(WORK)])
     WORK.mkdir(parents=True, exist_ok=True)
+    for name in ("c", "classes"):
+        shutil.rmtree(WORK / name, ignore_errors=True)
     for name, body in FILES.items():
         path=WORK/'java'/name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(body)
     run([ZIRAN, 'build','--target=c','--no-main','--define','ANDROID_BUILD','--root',ROOT/'tests/notification_android',
-         '--module-path',ROOT/'src/backend','--module-path',ROOT/'src/ui','--module-path',ZIRAN_ROOT/'std',
+         '--module-path',ROOT/'src/backend',*UI_MODULE_ARGS,'--module-path',ZIRAN_ROOT/'std',
          '-o',WORK/'c',ROOT/'tests/notification_android/fixture.zi'])
     run([os.environ.get('CC','cc'),'-std=c11','-shared','-fPIC','-O1','-I'+str(ZIRAN_ROOT/'include'),
          *sorted((WORK/'c').glob('*.c')),'-lpthread','-lm','-o',WORK/'libfixture.so'])

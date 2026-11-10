@@ -19,6 +19,7 @@ Require :: (condition: bool, code: s32) {
 
 #program_export
 main :: () -> s32 {
+    DeviceSurfaceOpen()
     session := SessionOpen()
     Require(SessionValid(session), 1)
 
@@ -40,7 +41,7 @@ main :: () -> s32 {
     AndroidTextInputCharacter() == 67 &&
     AndroidTextInputCharacter() == 0, 4)
 
-    // Backspace and enter translate to the raylib key codes the widgets read.
+    // Backspace and enter translate to the Kryon key codes the widgets read.
     AndroidNativeTextBackspace(null, null)
     AndroidTextInputBeginFrame(session)
     Require(AndroidTextInputKeyPressed(259) &&

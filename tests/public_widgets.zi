@@ -1,4 +1,4 @@
-using UI :: #import "Widgets";
+using UI :: #import "kryon/Widgets";
 
 PublicLoadingScreen :: (session: Session, props: LoadingScreenProps) {
     LoadingScreen(session, props)
@@ -38,4 +38,15 @@ PublicTextAlignment :: (session: Session, props: TextProps) {
 PublicTimePicker :: (session: Session, props: TimePickerProps) -> s32 {
     result: TimePickerResult = TimePicker(session, props)
     return result.value
+}
+
+// Exercise renderer visibility as well as exported props and pure layout APIs.
+PublicCountdown :: (session: Session, props: CountdownProps, state: *CountdownState) -> CountdownResult {
+    return Countdown(session, props, state)
+}
+PublicEmptyState :: (session: Session, props: EmptyStateProps) -> EmptyStateResult {
+    return EmptyState(session, props)
+}
+PublicProgressRing :: (session: Session, props: ProgressRingProps, state: *ProgressRingState) -> ProgressRingResult {
+    return ProgressRing(session, props, state)
 }

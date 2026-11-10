@@ -9,8 +9,7 @@ unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-"$ziran" build --target=c --no-main --root "$repo/tests" --module-path "$repo/src/ui" \
-    --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+"$ziran" build --project --module-path "$repo/tests" --target=c --no-main --root "$repo/tests" \
     -o "$work/c" "$repo/tests/ziran_test_driver_client_test.zi"
 "${CC:-cc}" -std=c11 -O1 -I"$ziran_root/include" -I"$work/c" "$work/c"/*.c -lm \
     -o "$work/c/ziran_test_driver_client_test"

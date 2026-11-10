@@ -2,8 +2,9 @@
 
 Kryon is a reusable UI library authored in Ziran. The Ziran language,
 compiler, `.zir` representation, `.zx` format, and portable runtime live in
-the separate Ziran repository (`~/Projects/ziranlang/ziran`). Kryon's widget
-modules live in `src/ui/*.zi`, its hosts in `src/backend/*.zi`, and the
+the separate Ziran repository (`~/Projects/ziranlang/ziran`). Kryon's reusable widgets
+live in `src/ui/<component>/`, shared UI infrastructure stays in `src/ui/`,
+its hosts live in `src/backend/*.zi`, and the
 `kryon` project tool in `src/project/*.zi`.
 
 ## 100% Ziran rule
@@ -31,7 +32,7 @@ modules live in `src/ui/*.zi`, its hosts in `src/backend/*.zi`, and the
   worktrees. Edit the root repositories on `master`; reserve temporary
   directories for disposable test outputs only.
 - `src/ui/modules.txt` lists the core modules compiled into `libkryon.a`.
-  `*_laws.zi` files are proved by `make laws`, and optional modules such as
+  `*_laws.zi` files throughout `src/ui/` are proved by `make laws`, and optional modules such as
   `Window`, `Media`, `Video`, `Clock`, and `Service` are package exports in
   `ziran.toml`. A checker pass alone does not establish native or portable
   readiness.

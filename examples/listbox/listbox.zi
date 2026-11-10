@@ -1,0 +1,23 @@
+using UI :: #import "kryon/Widgets";
+
+choice: s32;
+selected: [3]bool;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "List box", .font = 28})
+    items := ListBoxItem.[.{.key = 1, .label = "Morning walk"}, .{.key = 2, .label = "Read a chapter"}, .{.key = 3, .label = "Make something"}]
+    choice = ListBox(session, ListBoxProps.{.disabled = example_disabled, .key = 10, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 100.0}, .row_height = 32, .selected_index = choice}, items[:]).selected_index
+    ListBoxMulti(session, ListBoxMultiProps.{.disabled = example_disabled, .key = 11, .bounds = .{viewport.x + 20.0, viewport.y + 192.0, viewport.width - 40.0, 100.0}, .row_height = 32}, items[:], selected[:])
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

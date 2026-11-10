@@ -5,83 +5,11 @@ ThemePolicy :: enum {
 }
 using ThemePolicy;
 
-
 #program_export
 ResolveDark :: (policy: ThemePolicy, system_dark: bool) -> bool {
-    if policy == cast(ThemePolicy)ThemePolicyLight { return false }
-    if policy == cast(ThemePolicy)ThemePolicyDark { return true }
+    if policy == .ThemePolicyLight { return false }
+    if policy == .ThemePolicyDark { return true }
     return system_dark
-}
-
-// Shared fallback roles. Widgets use these same colors before a style sheet
-// is installed; a sheet still overrides each declared field normally.
-#program_export
-LightBackground :: () -> u32 { return cast(u32)0xf6faf8ff }
-#program_export
-LightSurface :: () -> u32 { return cast(u32)0xfffefaff }
-#program_export
-LightRaised :: () -> u32 { return cast(u32)0xdce9e5ff }
-#program_export
-LightSunken :: () -> u32 { return cast(u32)0xedf3f0ff }
-#program_export
-LightText :: () -> u32 { return cast(u32)0x191c1bff }
-#program_export
-LightMuted :: () -> u32 { return cast(u32)0x404945ff }
-#program_export
-LightDisabled :: () -> u32 { return cast(u32)0x76817bff }
-#program_export
-LightBorder :: () -> u32 { return cast(u32)0xbec9c2ff }
-#program_export
-LightBorderStrong :: () -> u32 { return cast(u32)0x6f7973ff }
-#program_export
-LightAccent :: () -> u32 { return cast(u32)0x006b5fff }
-#program_export
-LightAccentHover :: () -> u32 { return cast(u32)0x14776cff }
-#program_export
-LightAccentPressed :: () -> u32 { return cast(u32)0x005449ff }
-#program_export
-LightSelection :: () -> u32 { return cast(u32)0xbcece0ff }
-#program_export
-LightSelectionText :: () -> u32 { return cast(u32)0x002019ff }
-#program_export
-LightSuccess :: () -> u32 { return cast(u32)0x236b50ff }
-#program_export
-LightWarning :: () -> u32 { return cast(u32)0x805600ff }
-#program_export
-LightDanger :: () -> u32 { return cast(u32)0xba1a1aff }
-
-// Canonical light/dark palette. Hosts only unpack these RGBA values.
-Palette :: struct {
-    background: u32
-    surface: u32
-    surface_raised: u32
-    surface_sunken: u32
-    overlay: u32
-    text: u32
-    text_muted: u32
-    text_disabled: u32
-    icon: u32
-    icon_muted: u32
-    border: u32
-    border_strong: u32
-    divider: u32
-    focus: u32
-    selection: u32
-    accent: u32
-    on_accent: u32
-    accent_hover: u32
-    accent_pressed: u32
-    success: u32
-    on_success: u32
-    warning: u32
-    on_warning: u32
-    danger: u32
-    on_danger: u32
-    info: u32
-    on_info: u32
-    link: u32
-    link_hover: u32
-    shadow: u32
 }
 
 #program_export
@@ -89,33 +17,551 @@ PackedColor :: (rgb: u32, alpha: u32) -> u32 {
     return (rgb << cast(u32)8) | alpha
 }
 
-// Derived roles for the existing native theme APIs. Hosts supply their current
-// palette and unpack the result; tone, contrast and fallback decisions live here.
-Scheme :: struct {
-    primary: u32
-    on_primary: u32
-    secondary: u32
-    on_secondary: u32
-    surface: u32
-    on_surface: u32
-    surface_container: u32
-    surface_variant: u32
-    on_surface_variant: u32
-    outline: u32
-    error: u32
-    on_error: u32
-    disabled_container: u32
-    disabled_content: u32
-    primary_container: u32
-    on_primary_container: u32
-    secondary_container: u32
-    on_secondary_container: u32
-    surface_container_low: u32
-    surface_container_high: u32
-    outline_variant: u32
-    inverse_surface: u32
-    on_inverse_surface: u32
-    scrim: u32
+Palette :: struct {
+    background: u32; surface: u32; surface_raised: u32; surface_muted: u32; surface_sunken: u32
+    foreground: u32; text_secondary: u32; text_muted: u32; text_disabled: u32
+    icon: u32; icon_muted: u32; border: u32; subtle_border: u32; strong_border: u32
+    focus: u32; hover_layer: u32; active_layer: u32; scrim: u32
+    selection: u32; selection_text: u32; accent: u32; accent_strong: u32
+    accent_subtle: u32; on_accent: u32; control_on: u32; control_glyph: u32
+    control_track: u32; control_track_hover: u32; control_thumb: u32; control_thumb_on: u32
+    success: u32; on_success: u32; warning: u32; on_warning: u32; danger: u32; on_danger: u32
+    info: u32; on_info: u32; link: u32; shadow: u32
+}
+
+SeriesTokens :: struct { items: [6]u32 }
+
+ShadowLayer :: struct {
+    blur: float32; offset_y: float32; spread: float32; opacity: float32
+}
+
+ShadowTokens :: struct {
+    rest: ShadowLayer; raised: [2]ShadowLayer; floating: [2]ShadowLayer
+}
+
+MotionTokens :: struct {
+    highlight_ms: float32; hover_ms: float32; state_ms: float32
+    enter_ms: float32; exit_ms: float32; theme_ms: float32
+    multiplier: float32; saved_multiplier: float32; reduced_motion: bool
+    oklab_theme_transition: bool
+}
+
+FontTokens :: struct {
+    body: string; control: string; heading: string; code: string; icon: string
+}
+
+Metrics :: struct {
+    radius_mark: float32; radius_item: float32; radius_small: float32
+    radius_medium: float32; radius_large: float32; radius_surface: float32; radius_pill: float32
+    border_width: float32; focus_width: float32; focus_gap: float32
+    space_1: float32; space_2: float32; space_3: float32; space_4: float32
+    space_5: float32; space_6: float32
+    control_height_small: float32; control_height_medium: float32; control_height_large: float32
+    control_padding_small: float32; control_padding_medium: float32; control_padding_large: float32
+    control_gap: float32; text_xs: float32; text_sm: float32; text_body: float32; text_lg: float32
+    heading_1: float32; heading_2: float32; heading_3: float32; heading_4: float32
+    icon_size_small: float32; icon_size_medium: float32; icon_size_large: float32
+    disabled_opacity: float32
+}
+
+ThemeTokens :: struct {
+    dark: bool; colors: Palette; series: SeriesTokens; metrics: Metrics
+    shadows: ShadowTokens; motion: MotionTokens; fonts: FontTokens
+}
+
+ThemeColorRole :: enum {
+    ThemeColorBackground :: 0
+    ThemeColorSurface :: 1
+    ThemeColorSurfaceRaised :: 2
+    ThemeColorSurfaceMuted :: 3
+    ThemeColorSurfaceSunken :: 4
+    ThemeColorForeground :: 5
+    ThemeColorTextSecondary :: 6
+    ThemeColorTextMuted :: 7
+    ThemeColorTextDisabled :: 8
+    ThemeColorIcon :: 9
+    ThemeColorIconMuted :: 10
+    ThemeColorBorder :: 11
+    ThemeColorSubtleBorder :: 12
+    ThemeColorStrongBorder :: 13
+    ThemeColorFocus :: 14
+    ThemeColorHoverLayer :: 15
+    ThemeColorActiveLayer :: 16
+    ThemeColorScrim :: 17
+    ThemeColorSelection :: 18
+    ThemeColorSelectionText :: 19
+    ThemeColorAccent :: 20
+    ThemeColorAccentStrong :: 21
+    ThemeColorAccentSubtle :: 22
+    ThemeColorOnAccent :: 23
+    ThemeColorControlOn :: 24
+    ThemeColorControlGlyph :: 25
+    ThemeColorControlTrack :: 26
+    ThemeColorControlTrackHover :: 27
+    ThemeColorControlThumb :: 28
+    ThemeColorControlThumbOn :: 29
+    ThemeColorSuccess :: 30
+    ThemeColorOnSuccess :: 31
+    ThemeColorWarning :: 32
+    ThemeColorOnWarning :: 33
+    ThemeColorDanger :: 34
+    ThemeColorOnDanger :: 35
+    ThemeColorInfo :: 36
+    ThemeColorOnInfo :: 37
+    ThemeColorLink :: 38
+    ThemeColorShadow :: 39
+}
+using ThemeColorRole;
+
+ThemeMetricRole :: enum {
+    ThemeMetricRadiusMark :: 0
+    ThemeMetricRadiusItem :: 1
+    ThemeMetricRadiusSmall :: 2
+    ThemeMetricRadiusControl :: 3
+    ThemeMetricRadiusPanel :: 4
+    ThemeMetricRadiusSurface :: 5
+    ThemeMetricRadiusPill :: 6
+    ThemeMetricBorderWidth :: 7
+    ThemeMetricFocusWidth :: 8
+    ThemeMetricFocusGap :: 9
+    ThemeMetricSpace1 :: 10
+    ThemeMetricSpace2 :: 11
+    ThemeMetricSpace3 :: 12
+    ThemeMetricSpace4 :: 13
+    ThemeMetricSpace5 :: 14
+    ThemeMetricSpace6 :: 15
+    ThemeMetricControlHeightSmall :: 16
+    ThemeMetricControlHeightMedium :: 17
+    ThemeMetricControlHeightLarge :: 18
+    ThemeMetricControlPaddingSmall :: 19
+    ThemeMetricControlPaddingMedium :: 20
+    ThemeMetricControlPaddingLarge :: 21
+    ThemeMetricControlGap :: 22
+    ThemeMetricTextXS :: 23
+    ThemeMetricTextSM :: 24
+    ThemeMetricTextBody :: 25
+    ThemeMetricTextLG :: 26
+    ThemeMetricHeading1 :: 27
+    ThemeMetricHeading2 :: 28
+    ThemeMetricHeading3 :: 29
+    ThemeMetricHeading4 :: 30
+    ThemeMetricIconSmall :: 31
+    ThemeMetricIconMedium :: 32
+    ThemeMetricIconLarge :: 33
+    ThemeMetricDisabledOpacity :: 34
+}
+using ThemeMetricRole;
+
+ThemeMotionPurposeRole :: enum {
+    ThemeMotionHighlight :: 0
+    ThemeMotionHover :: 1
+    ThemeMotionState :: 2
+    ThemeMotionEnter :: 3
+    ThemeMotionExit :: 4
+    ThemeMotionTheme :: 5
+}
+using ThemeMotionPurposeRole;
+
+#program_export
+LightPalette :: () -> Palette {
+    palette: Palette
+    palette.background = cast(u32)0xffffffff; palette.surface = cast(u32)0xffffffff
+    palette.surface_raised = cast(u32)0xffffffff; palette.surface_muted = cast(u32)0xf8f8f8ff
+    palette.surface_sunken = cast(u32)0xf3f3f3ff; palette.foreground = cast(u32)0x0b0b0bff
+    palette.text_secondary = cast(u32)0x585858ff; palette.text_muted = cast(u32)0x767676ff
+    palette.text_disabled = cast(u32)0x76767692; palette.icon = palette.foreground
+    palette.icon_muted = palette.text_muted; palette.border = cast(u32)0xe3e3e3ff
+    palette.subtle_border = cast(u32)0xf0f0f0ff; palette.strong_border = cast(u32)0x949494ff
+    palette.focus = cast(u32)0x1f7dcfe6; palette.hover_layer = cast(u32)0x0b0b0b0d
+    palette.active_layer = cast(u32)0x0b0b0b13; palette.scrim = cast(u32)0x0a0a0c52
+    palette.selection = cast(u32)0x00864b21; palette.selection_text = cast(u32)0x006c36ff
+    palette.accent = cast(u32)0x00864bff; palette.accent_strong = cast(u32)0x006c36ff
+    palette.accent_subtle = cast(u32)0x00864b21; palette.on_accent = cast(u32)0xffffffff
+    palette.control_on = cast(u32)0x00864bff; palette.control_glyph = cast(u32)0xffffffff
+    palette.control_track = cast(u32)0xdcdcdcff; palette.control_track_hover = cast(u32)0xd1d1d1ff
+    palette.control_thumb = cast(u32)0xffffffff; palette.control_thumb_on = cast(u32)0xffffffff
+    palette.success = cast(u32)0x00774dff; palette.on_success = cast(u32)0xffffffff
+    palette.warning = cast(u32)0x9f6202ff; palette.on_warning = cast(u32)0xffffffff
+    palette.danger = cast(u32)0xc9302dff; palette.on_danger = cast(u32)0xffffffff
+    palette.info = cast(u32)0x136d9eff; palette.on_info = cast(u32)0xffffffff
+    palette.link = palette.accent; palette.shadow = cast(u32)0x00000009
+    return palette
+}
+
+#program_export
+DarkPalette :: () -> Palette {
+    palette: Palette = LightPalette()
+    palette.background = cast(u32)0x121212ff; palette.surface = cast(u32)0x181818ff
+    palette.surface_raised = cast(u32)0x1f1f1fff; palette.surface_muted = cast(u32)0x1f1f1fff
+    palette.surface_sunken = cast(u32)0x0e0e0eff; palette.foreground = cast(u32)0xf2f2f2ff
+    palette.text_secondary = cast(u32)0xb4b4b4ff; palette.text_muted = cast(u32)0x8c8c8cff
+    palette.text_disabled = cast(u32)0x8c8c8c92; palette.border = cast(u32)0x2b2b2bff
+    palette.subtle_border = cast(u32)0x222222ff; palette.strong_border = cast(u32)0x676767ff
+    palette.focus = cast(u32)0x55adffe6; palette.hover_layer = cast(u32)0xf2f2f20d
+    palette.active_layer = cast(u32)0xf2f2f213; palette.scrim = cast(u32)0x0000008c
+    palette.selection = cast(u32)0x53dca633; palette.selection_text = cast(u32)0x93efd0ff
+    palette.accent = cast(u32)0x53dca6ff; palette.accent_strong = cast(u32)0x93efd0ff
+    palette.accent_subtle = cast(u32)0x53dca633; palette.on_accent = cast(u32)0x102016ff
+    palette.control_on = cast(u32)0x1fae78ff; palette.control_glyph = cast(u32)0xffffffff
+    palette.control_track = cast(u32)0x353535ff; palette.control_track_hover = cast(u32)0x404040ff
+    palette.control_thumb = cast(u32)0xf7f7f7ff; palette.control_thumb_on = cast(u32)0x1d1d1dff
+    palette.success = cast(u32)0x55d69fff; palette.on_success = cast(u32)0x102016ff
+    palette.warning = cast(u32)0xf2bd68ff; palette.on_warning = cast(u32)0x241d0aff
+    palette.danger = cast(u32)0xf2716cff; palette.on_danger = cast(u32)0x2a0d0bff
+    palette.info = cast(u32)0x7cc4f0ff; palette.on_info = cast(u32)0x0b1a25ff
+    palette.icon = palette.foreground; palette.icon_muted = palette.text_muted
+    palette.link = palette.accent
+    palette.shadow = cast(u32)0x0000002e
+    return palette
+}
+
+#program_export
+DefaultFonts :: () -> FontTokens {
+    fonts: FontTokens
+    fonts.body = "Inter"
+    fonts.control = "Inter Medium"
+    fonts.heading = "Geist Medium"
+    fonts.code = "Geist Mono"
+    fonts.icon = "Lucide"
+    return fonts
+}
+
+#program_export
+DefaultMetrics :: () -> Metrics {
+    metrics: Metrics
+    metrics.radius_mark = 6.0; metrics.radius_item = 8.0; metrics.radius_small = 6.0
+    metrics.radius_medium = 10.0; metrics.radius_large = 14.0; metrics.radius_surface = 18.0
+    metrics.radius_pill = 999.0; metrics.border_width = 1.0; metrics.focus_width = 2.0
+    metrics.focus_gap = 3.0; metrics.space_1 = 4.0; metrics.space_2 = 8.0; metrics.space_3 = 12.0
+    metrics.space_4 = 16.0; metrics.space_5 = 20.0; metrics.space_6 = 24.0
+    metrics.control_height_small = 30.0; metrics.control_height_medium = 36.0
+    metrics.control_height_large = 44.0; metrics.control_padding_small = 8.0
+    metrics.control_padding_medium = 10.0; metrics.control_padding_large = 12.0
+    metrics.control_gap = 8.0; metrics.text_xs = 11.0; metrics.text_sm = 12.0
+    metrics.text_body = 13.0; metrics.text_lg = 15.0; metrics.heading_1 = 36.0
+    metrics.heading_2 = 28.0; metrics.heading_3 = 22.0; metrics.heading_4 = 17.0
+    metrics.icon_size_small = 12.0; metrics.icon_size_medium = 14.0
+    metrics.icon_size_large = 16.0; metrics.disabled_opacity = 0.55
+    return metrics
+}
+
+#program_export
+DefaultShadows :: (dark: bool) -> ShadowTokens {
+    shadows: ShadowTokens
+    if dark {
+        shadows.rest = ShadowLayer.{1.0, 2.0, 0.0, 0.18}
+        shadows.raised[0] = ShadowLayer.{8.0, 22.0, 0.0, 0.22}
+        shadows.floating[0] = ShadowLayer.{14.0, 36.0, -4.0, 0.40}
+        shadows.floating[1] = ShadowLayer.{1.0, 3.0, 0.0, 0.24}
+    } else {
+        shadows.rest = ShadowLayer.{1.0, 2.0, 0.0, 0.035}
+        shadows.raised[0] = ShadowLayer.{6.0, 18.0, 0.0, 0.065}
+        shadows.raised[1] = ShadowLayer.{1.0, 3.0, 0.0, 0.035}
+        shadows.floating[0] = ShadowLayer.{12.0, 32.0, -4.0, 0.12}
+        shadows.floating[1] = ShadowLayer.{1.0, 3.0, 0.0, 0.06}
+    }
+    return shadows
+}
+
+#program_export
+DefaultMotion :: (reduced_motion: bool) -> MotionTokens {
+    motion: MotionTokens
+    motion.highlight_ms = 100.0; motion.hover_ms = 140.0; motion.state_ms = 180.0
+    motion.enter_ms = 260.0; motion.exit_ms = 160.0; motion.theme_ms = 320.0
+    motion.multiplier = 1.0; motion.saved_multiplier = 1.0
+    motion.reduced_motion = reduced_motion
+    if reduced_motion { motion.multiplier = 0.0 }
+    motion.oklab_theme_transition = true
+    return motion
+}
+
+#program_export
+DefaultTheme :: (dark: bool, reduced_motion: bool = false) -> ThemeTokens {
+    theme: ThemeTokens
+    theme.dark = dark
+    theme.colors = ifx dark then DarkPalette() else LightPalette()
+    theme.metrics = DefaultMetrics(); theme.shadows = DefaultShadows(dark)
+    theme.motion = DefaultMotion(reduced_motion)
+    theme.fonts = DefaultFonts()
+    if dark {
+        theme.series.items = .{cast(u32)0x20ab7aff, cast(u32)0x8e7fe6ff,
+            cast(u32)0xd17f00ff, cast(u32)0xdd6197ff, cast(u32)0x4892edff, cast(u32)0xe8672eff}
+    } else {
+        theme.series.items = .{cast(u32)0x1baf7aff, cast(u32)0x6250d6ff,
+            cast(u32)0xeda100ff, cast(u32)0xe87ba4ff, cast(u32)0x2a78d6ff, cast(u32)0xeb6834ff}
+    }
+    return theme
+}
+
+active_theme: ThemeTokens;
+active_theme_ready: bool;
+
+#program_export
+InstallTheme :: (theme: ThemeTokens) -> bool {
+    active_theme = theme; active_theme_ready = true; return true
+}
+
+#program_export
+InstallDefaultTheme :: (dark: bool, reduced_motion: bool = false) -> bool {
+    return InstallTheme(DefaultTheme(dark, reduced_motion))
+}
+
+#program_export
+CurrentTheme :: () -> ThemeTokens {
+    if !active_theme_ready { return DefaultTheme(false) }
+    return active_theme
+}
+
+#program_export
+SetThemeMode :: (dark: bool) -> bool {
+    theme: ThemeTokens = CurrentTheme()
+    if theme.dark == dark { return true }
+    replacement := DefaultTheme(dark, theme.motion.reduced_motion)
+    replacement.metrics = theme.metrics
+    replacement.fonts = theme.fonts
+    replacement.motion = theme.motion
+    return InstallTheme(replacement)
+}
+
+#program_export
+SetReducedMotion :: (reduced_motion: bool) -> bool {
+    theme: ThemeTokens = CurrentTheme()
+    theme.motion.reduced_motion = reduced_motion
+    if reduced_motion {
+        if theme.motion.multiplier > 0.0 { theme.motion.saved_multiplier = theme.motion.multiplier }
+        theme.motion.multiplier = 0.0
+    } else {
+        if theme.motion.multiplier > 0.0 { theme.motion.saved_multiplier = theme.motion.multiplier }
+        theme.motion.multiplier = theme.motion.saved_multiplier
+    }
+    return InstallTheme(theme)
+}
+
+#program_export
+WithAccent :: (theme: ThemeTokens, accent: u32, on_accent: u32,
+    accent_strong: u32, accent_subtle: u32) -> ThemeTokens {
+    result: ThemeTokens = theme
+    result.colors.accent = accent; result.colors.on_accent = on_accent
+    result.colors.accent_strong = accent_strong; result.colors.accent_subtle = accent_subtle
+    result.colors.selection = accent_subtle; result.colors.selection_text = accent_strong
+    result.colors.link = accent
+    result.colors.control_on = accent
+    result.colors.control_glyph = OnColor(accent)
+    result.colors.control_thumb_on = OnColor(accent)
+    return result
+}
+
+#program_export
+FontSizeForRole :: (theme: ThemeTokens, role: s32) -> float32 {
+    if role == 1 { return theme.metrics.text_body }
+    if role == 2 { return theme.metrics.text_body }
+    if role == 3 { return theme.metrics.heading_3 }
+    return theme.metrics.text_sm
+}
+
+#program_export
+FontForRole :: (theme: ThemeTokens, role: s32) -> string {
+    if role == 1 { return theme.fonts.control }
+    if role == 2 { return theme.fonts.body }
+    if role == 3 { return theme.fonts.heading }
+    if role == 4 { return theme.fonts.code }
+    return theme.fonts.body
+}
+
+#program_export
+DefaultPalette :: (dark: bool) -> Palette {
+    return ifx dark then DarkPalette() else LightPalette()
+}
+
+#program_export
+ThemeColorValue :: (theme: ThemeTokens, role: ThemeColorRole) -> u32 {
+    colors := theme.colors
+    if role == .ThemeColorSurface { return colors.surface }
+    if role == .ThemeColorSurfaceRaised { return colors.surface_raised }
+    if role == .ThemeColorSurfaceMuted { return colors.surface_muted }
+    if role == .ThemeColorSurfaceSunken { return colors.surface_sunken }
+    if role == .ThemeColorForeground { return colors.foreground }
+    if role == .ThemeColorTextSecondary { return colors.text_secondary }
+    if role == .ThemeColorTextMuted { return colors.text_muted }
+    if role == .ThemeColorTextDisabled { return colors.text_disabled }
+    if role == .ThemeColorIcon { return colors.icon }
+    if role == .ThemeColorIconMuted { return colors.icon_muted }
+    if role == .ThemeColorBorder { return colors.border }
+    if role == .ThemeColorSubtleBorder { return colors.subtle_border }
+    if role == .ThemeColorStrongBorder { return colors.strong_border }
+    if role == .ThemeColorFocus { return colors.focus }
+    if role == .ThemeColorHoverLayer { return colors.hover_layer }
+    if role == .ThemeColorActiveLayer { return colors.active_layer }
+    if role == .ThemeColorScrim { return colors.scrim }
+    if role == .ThemeColorSelection { return colors.selection }
+    if role == .ThemeColorSelectionText { return colors.selection_text }
+    if role == .ThemeColorAccent { return colors.accent }
+    if role == .ThemeColorAccentStrong { return colors.accent_strong }
+    if role == .ThemeColorAccentSubtle { return colors.accent_subtle }
+    if role == .ThemeColorOnAccent { return colors.on_accent }
+    if role == .ThemeColorControlOn { return colors.control_on }
+    if role == .ThemeColorControlGlyph { return colors.control_glyph }
+    if role == .ThemeColorControlTrack { return colors.control_track }
+    if role == .ThemeColorControlTrackHover { return colors.control_track_hover }
+    if role == .ThemeColorControlThumb { return colors.control_thumb }
+    if role == .ThemeColorControlThumbOn { return colors.control_thumb_on }
+    if role == .ThemeColorSuccess { return colors.success }
+    if role == .ThemeColorOnSuccess { return colors.on_success }
+    if role == .ThemeColorWarning { return colors.warning }
+    if role == .ThemeColorOnWarning { return colors.on_warning }
+    if role == .ThemeColorDanger { return colors.danger }
+    if role == .ThemeColorOnDanger { return colors.on_danger }
+    if role == .ThemeColorInfo { return colors.info }
+    if role == .ThemeColorOnInfo { return colors.on_info }
+    if role == .ThemeColorLink { return colors.link }
+    if role == .ThemeColorShadow { return colors.shadow }
+    return colors.background
+}
+
+#program_export
+ThemeSeriesValue :: (theme: ThemeTokens, index: s32) -> u32 {
+    if index < 0 || index >= cast(s32)theme.series.items.count { return theme.colors.accent }
+    return theme.series.items[index]
+}
+
+#program_export
+ThemeMetricValue :: (theme: ThemeTokens, role: ThemeMetricRole) -> float32 {
+    metrics := theme.metrics
+    if role == .ThemeMetricRadiusItem { return metrics.radius_item }
+    if role == .ThemeMetricRadiusSmall { return metrics.radius_small }
+    if role == .ThemeMetricRadiusControl { return metrics.radius_medium }
+    if role == .ThemeMetricRadiusPanel { return metrics.radius_large }
+    if role == .ThemeMetricRadiusSurface { return metrics.radius_surface }
+    if role == .ThemeMetricRadiusPill { return metrics.radius_pill }
+    if role == .ThemeMetricBorderWidth { return metrics.border_width }
+    if role == .ThemeMetricFocusWidth { return metrics.focus_width }
+    if role == .ThemeMetricFocusGap { return metrics.focus_gap }
+    if role == .ThemeMetricSpace1 { return metrics.space_1 }
+    if role == .ThemeMetricSpace2 { return metrics.space_2 }
+    if role == .ThemeMetricSpace3 { return metrics.space_3 }
+    if role == .ThemeMetricSpace4 { return metrics.space_4 }
+    if role == .ThemeMetricSpace5 { return metrics.space_5 }
+    if role == .ThemeMetricSpace6 { return metrics.space_6 }
+    if role == .ThemeMetricControlHeightSmall { return metrics.control_height_small }
+    if role == .ThemeMetricControlHeightMedium { return metrics.control_height_medium }
+    if role == .ThemeMetricControlHeightLarge { return metrics.control_height_large }
+    if role == .ThemeMetricControlPaddingSmall { return metrics.control_padding_small }
+    if role == .ThemeMetricControlPaddingMedium { return metrics.control_padding_medium }
+    if role == .ThemeMetricControlPaddingLarge { return metrics.control_padding_large }
+    if role == .ThemeMetricControlGap { return metrics.control_gap }
+    if role == .ThemeMetricTextXS { return metrics.text_xs }
+    if role == .ThemeMetricTextSM { return metrics.text_sm }
+    if role == .ThemeMetricTextBody { return metrics.text_body }
+    if role == .ThemeMetricTextLG { return metrics.text_lg }
+    if role == .ThemeMetricHeading1 { return metrics.heading_1 }
+    if role == .ThemeMetricHeading2 { return metrics.heading_2 }
+    if role == .ThemeMetricHeading3 { return metrics.heading_3 }
+    if role == .ThemeMetricHeading4 { return metrics.heading_4 }
+    if role == .ThemeMetricIconSmall { return metrics.icon_size_small }
+    if role == .ThemeMetricIconMedium { return metrics.icon_size_medium }
+    if role == .ThemeMetricIconLarge { return metrics.icon_size_large }
+    if role == .ThemeMetricDisabledOpacity { return metrics.disabled_opacity }
+    return metrics.radius_mark
+}
+
+#program_export
+CurrentThemeColor :: (role: ThemeColorRole) -> u32 {
+    return ThemeColorValue(CurrentTheme(), role)
+}
+
+#program_export
+CurrentThemeSeries :: (index: s32) -> u32 {
+    return ThemeSeriesValue(CurrentTheme(), index)
+}
+
+#program_export
+CurrentThemeMetric :: (role: ThemeMetricRole) -> float32 {
+    return ThemeMetricValue(CurrentTheme(), role)
+}
+
+#program_export
+CurrentPalette :: () -> Palette { return CurrentTheme().colors }
+#program_export
+CurrentBackground :: () -> u32 { return CurrentPalette().background }
+#program_export
+CurrentSurface :: () -> u32 { return CurrentPalette().surface }
+#program_export
+CurrentRaised :: () -> u32 { return CurrentPalette().surface_raised }
+#program_export
+CurrentSunken :: () -> u32 { return CurrentPalette().surface_sunken }
+#program_export
+CurrentText :: () -> u32 { return CurrentPalette().foreground }
+#program_export
+CurrentMuted :: () -> u32 { return CurrentPalette().text_muted }
+#program_export
+CurrentDisabled :: () -> u32 { return CurrentPalette().text_disabled }
+#program_export
+CurrentBorder :: () -> u32 { return CurrentPalette().border }
+#program_export
+CurrentBorderStrong :: () -> u32 { return CurrentPalette().strong_border }
+#program_export
+CurrentAccent :: () -> u32 { return CurrentPalette().accent }
+#program_export
+CurrentAccentHover :: () -> u32 { return CurrentPalette().accent }
+#program_export
+CurrentAccentPressed :: () -> u32 { return CurrentPalette().accent_strong }
+#program_export
+CurrentSelection :: () -> u32 { return CurrentPalette().selection }
+#program_export
+CurrentSelectionText :: () -> u32 { return CurrentPalette().selection_text }
+#program_export
+CurrentSuccess :: () -> u32 { return CurrentPalette().success }
+#program_export
+CurrentWarning :: () -> u32 { return CurrentPalette().warning }
+#program_export
+CurrentDanger :: () -> u32 { return CurrentPalette().danger }
+#program_export
+ShapeMark :: () -> float32 { return CurrentTheme().metrics.radius_mark }
+#program_export
+ShapeItem :: () -> float32 { return CurrentTheme().metrics.radius_item }
+#program_export
+ShapeSmall :: () -> float32 { return CurrentTheme().metrics.radius_small }
+#program_export
+ShapeMedium :: () -> float32 { return CurrentTheme().metrics.radius_medium }
+#program_export
+ShapeLarge :: () -> float32 { return CurrentTheme().metrics.radius_large }
+#program_export
+ShapeSurface :: () -> float32 { return CurrentTheme().metrics.radius_surface }
+#program_export
+ShapeFull :: () -> float32 { return CurrentTheme().metrics.radius_pill }
+#program_export
+TypeCaption :: () -> float32 { return CurrentTheme().metrics.text_xs }
+#program_export
+TypeSmall :: () -> float32 { return CurrentTheme().metrics.text_sm }
+#program_export
+TypeLabel :: () -> float32 { return CurrentTheme().metrics.text_body }
+#program_export
+TypeBody :: () -> float32 { return CurrentTheme().metrics.text_body }
+#program_export
+TypeLarge :: () -> float32 { return CurrentTheme().metrics.text_lg }
+#program_export
+TypeTitle :: () -> float32 { return CurrentTheme().metrics.heading_3 }
+#program_export
+ControlHeightFor :: (size: s32) -> float32 {
+    metrics := CurrentTheme().metrics
+    if size == 1 { return metrics.control_height_small }
+    if size == 2 { return metrics.control_height_large }
+    return metrics.control_height_medium
+}
+
+#program_export
+MotionDuration :: (purpose: s32, reduced_motion: bool, multiplier: float32) -> float32 {
+    motion := CurrentTheme().motion
+    duration := motion.state_ms
+    if purpose == 0 { duration = motion.highlight_ms }
+    else if purpose == 1 { duration = motion.hover_ms }
+    else if purpose == 2 { duration = motion.state_ms }
+    else if purpose == 3 { duration = motion.enter_ms }
+    else if purpose == 4 { duration = motion.exit_ms }
+    else if purpose == 5 { duration = motion.theme_ms }
+    if reduced_motion { return 0.0 }
+    if multiplier < 0.0 { multiplier = 0.0 }
+    return duration * multiplier
 }
 
 #program_export
@@ -123,11 +569,9 @@ OnColor :: (color: u32) -> u32 {
     red: u32 = (color >> cast(u32)24) & cast(u32)255
     green: u32 = (color >> cast(u32)16) & cast(u32)255
     blue: u32 = (color >> cast(u32)8) & cast(u32)255
-    luminance: u32 = (red * cast(u32)299 + green * cast(u32)587 + blue * cast(u32)114) / cast(u32)1000
-    if luminance < cast(u32)128 {
-        return PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-    }
-    return PackedColor(cast(u32)0x1D1B20, cast(u32)255)
+    luminance := (red * cast(u32)299 + green * cast(u32)587 + blue * cast(u32)114) / cast(u32)1000
+    if luminance < cast(u32)128 { return cast(u32)0xffffffff }
+    return cast(u32)0x0b0b0bff
 }
 
 ClampChannel :: (value: s32) -> u32 {
@@ -140,7 +584,6 @@ ClampChannel :: (value: s32) -> u32 {
 ToneFor :: (base: u32, light_delta: s32, dark_delta: s32, dark: bool) -> u32 {
     delta: s32 = dark_delta
     if !dark { delta = light_delta }
-    // Clamp before negating or adding, including for extreme signed inputs.
     if delta < -255 { delta = -255 }
     if delta > 255 { delta = 255 }
     if !dark { delta = -delta }
@@ -150,177 +593,38 @@ ToneFor :: (base: u32, light_delta: s32, dark_delta: s32, dark: bool) -> u32 {
     return (red << cast(u32)24) | (green << cast(u32)16) | (blue << cast(u32)8) | (base & cast(u32)255)
 }
 
+Scheme :: struct {
+    primary: u32; on_primary: u32; secondary: u32; on_secondary: u32
+    surface: u32; on_surface: u32; surface_container: u32; surface_variant: u32
+    on_surface_variant: u32; outline: u32; error: u32; on_error: u32
+    disabled_container: u32; disabled_content: u32; primary_container: u32
+    on_primary_container: u32; secondary_container: u32; on_secondary_container: u32
+    surface_container_low: u32; surface_container_high: u32; outline_variant: u32
+    inverse_surface: u32; on_inverse_surface: u32; scrim: u32
+}
+
 #program_export
 SchemeFor :: (background: u32, surface: u32, text: u32, primary: u32,
               secondary: u32, dark: bool, disabled_alpha: u8) -> Scheme {
     scheme: Scheme
-    scheme.primary = primary
-    scheme.on_primary = OnColor(primary)
-    scheme.secondary = secondary
-    scheme.on_secondary = OnColor(secondary)
+    colors := ifx dark then DarkPalette() else LightPalette()
+    scheme.primary = primary; scheme.on_primary = OnColor(primary)
+    scheme.secondary = secondary; scheme.on_secondary = OnColor(secondary)
     scheme.surface = surface
     if (surface & cast(u32)255) == cast(u32)0 { scheme.surface = background }
-    scheme.on_surface = text
-    scheme.surface_container = ToneFor(background, 4, 10, dark)
-    scheme.surface_variant = ToneFor(background, 10, 18, dark)
-    scheme.on_surface_variant = ToneFor(text, 34, 28, dark)
-    scheme.outline = ToneFor(background, 44, 42, dark)
-    scheme.error = PackedColor(cast(u32)0xBA1A1A, cast(u32)255)
-    if dark { scheme.error = PackedColor(cast(u32)0xF2B8B5, cast(u32)255) }
-    scheme.on_error = OnColor(scheme.error)
-    scheme.disabled_container = (ToneFor(background, 14, 14, dark) & ~cast(u32)255) | cast(u32)disabled_alpha
+    scheme.on_surface = text; scheme.surface_container = colors.surface_muted
+    scheme.surface_variant = colors.surface_raised; scheme.on_surface_variant = colors.text_secondary
+    scheme.outline = colors.border; scheme.error = colors.danger; scheme.on_error = colors.on_danger
+    scheme.disabled_container = colors.surface_muted
     scheme.disabled_content = (text & ~cast(u32)255) | cast(u32)disabled_alpha
-    scheme.primary_container = StateLayer(scheme.surface, primary, cast(u32)16)
-    scheme.on_primary_container = text
-    scheme.secondary_container = StateLayer(scheme.surface, secondary, cast(u32)16)
-    scheme.on_secondary_container = text
-    scheme.surface_container_low = StateLayer(scheme.surface, text, cast(u32)4)
-    scheme.surface_container_high = StateLayer(scheme.surface, text, cast(u32)8)
-    scheme.outline_variant = StateLayer(scheme.surface, text, cast(u32)24)
-    scheme.inverse_surface = text
-    scheme.on_inverse_surface = scheme.surface
-    scheme.scrim = cast(u32)0x00000052
+    scheme.primary_container = colors.accent_subtle; scheme.on_primary_container = colors.accent_strong
+    scheme.secondary_container = StateLayer(colors.surface, secondary, cast(u32)16)
+    scheme.on_secondary_container = text; scheme.surface_container_low = colors.subtle_border
+    scheme.surface_container_high = colors.surface_muted; scheme.outline_variant = colors.subtle_border
+    scheme.inverse_surface = text; scheme.on_inverse_surface = scheme.surface; scheme.scrim = colors.scrim
     return scheme
 }
 
-#program_export
-DefaultPalette :: (dark: bool) -> Palette {
-    palette: Palette
-    if dark {
-        palette.background = PackedColor(cast(u32)0x101513, cast(u32)255)
-        palette.surface = PackedColor(cast(u32)0x171d1a, cast(u32)255)
-        palette.surface_raised = PackedColor(cast(u32)0x29332e, cast(u32)255)
-        palette.surface_sunken = PackedColor(cast(u32)0x0b100e, cast(u32)255)
-        palette.overlay = PackedColor(cast(u32)0x000000, cast(u32)217)
-        palette.text = PackedColor(cast(u32)0xdfe4df, cast(u32)255)
-        palette.text_muted = PackedColor(cast(u32)0xbec9c2, cast(u32)255)
-        palette.text_disabled = PackedColor(cast(u32)0x89938c, cast(u32)255)
-        palette.icon = PackedColor(cast(u32)0xdfe4df, cast(u32)255)
-        palette.icon_muted = PackedColor(cast(u32)0xbec9c2, cast(u32)255)
-        palette.border = PackedColor(cast(u32)0x414943, cast(u32)255)
-        palette.border_strong = PackedColor(cast(u32)0x414943, cast(u32)255)
-        palette.divider = PackedColor(cast(u32)0x414943, cast(u32)255)
-        palette.focus = PackedColor(cast(u32)0x80d5bf, cast(u32)255)
-        palette.selection = PackedColor(cast(u32)0x264e43, cast(u32)255)
-        palette.accent = PackedColor(cast(u32)0x80d5bf, cast(u32)255)
-        palette.on_accent = PackedColor(cast(u32)0x00382d, cast(u32)255)
-        palette.accent_hover = PackedColor(cast(u32)0x91dac7, cast(u32)255)
-        palette.accent_pressed = PackedColor(cast(u32)0xa1e0d0, cast(u32)255)
-        palette.success = PackedColor(cast(u32)0x8bd7b6, cast(u32)255)
-        palette.on_success = PackedColor(cast(u32)0x00382d, cast(u32)255)
-        palette.warning = PackedColor(cast(u32)0xefc16e, cast(u32)255)
-        palette.on_warning = PackedColor(cast(u32)0x432c00, cast(u32)255)
-        palette.danger = PackedColor(cast(u32)0xffb4ab, cast(u32)255)
-        palette.on_danger = PackedColor(cast(u32)0x690005, cast(u32)255)
-        palette.info = PackedColor(cast(u32)0x168BD2, cast(u32)255)
-        palette.on_info = PackedColor(cast(u32)0x000000, cast(u32)255)
-        palette.link = PackedColor(cast(u32)0x00BBFF, cast(u32)255)
-        palette.link_hover = PackedColor(cast(u32)0x8AC2FF, cast(u32)255)
-        palette.shadow = PackedColor(cast(u32)0x000000, cast(u32)128)
-    } else {
-        palette.background = LightBackground()
-        palette.surface = LightSurface()
-        palette.surface_raised = LightRaised()
-        palette.surface_sunken = LightSunken()
-        palette.overlay = PackedColor(cast(u32)0x000000, cast(u32)102)
-        palette.text = LightText()
-        palette.text_muted = LightMuted()
-        palette.text_disabled = LightDisabled()
-        palette.icon = LightText()
-        palette.icon_muted = LightMuted()
-        palette.border = LightBorder()
-        palette.border_strong = LightBorderStrong()
-        palette.divider = LightBorder()
-        palette.focus = LightAccent()
-        palette.selection = LightSelection()
-        palette.accent = LightAccent()
-        palette.on_accent = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.accent_hover = LightAccentHover()
-        palette.accent_pressed = LightAccentPressed()
-        palette.success = LightSuccess()
-        palette.on_success = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.warning = LightWarning()
-        palette.on_warning = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.danger = LightDanger()
-        palette.on_danger = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        palette.info = PackedColor(cast(u32)0x087CBF, cast(u32)255)
-        palette.on_info = PackedColor(cast(u32)0xFFFFFF, cast(u32)255)
-        // Link ink is a deeper blue than the luminous accent material.
-        palette.link = LightAccent()
-        palette.link_hover = LightAccentPressed()
-        palette.shadow = PackedColor(cast(u32)0x17324D, cast(u32)36)
-    }
-    return palette
-}
-
-Metrics :: struct {
-    radius_small: float32
-    radius_medium: float32
-    radius_large: float32
-    radius_pill: float32
-    border_width: float32
-    focus_width: float32
-    focus_gap: float32
-    space_1: float32
-    space_2: float32
-    space_3: float32
-    space_4: float32
-    space_5: float32
-    space_6: float32
-    control_height_small: float32
-    control_height_medium: float32
-    control_height_large: float32
-    control_padding_small: float32
-    control_padding_medium: float32
-    control_padding_large: float32
-    control_gap: float32
-    font_size_small: float32
-    font_size_medium: float32
-    font_size_large: float32
-    icon_size_small: float32
-    icon_size_medium: float32
-    icon_size_large: float32
-    shadow_offset_y: float32
-    shadow_blur: float32
-    disabled_opacity: float32
-    transition_fast_ms: float32
-    transition_normal_ms: float32
-}
-
-#program_export
-DefaultMetrics :: () -> Metrics {
-    return Metrics.{.radius_small = 4.0, .radius_medium = 12.0, .radius_large = 28.0,
-        .radius_pill = 999.0, .border_width = 1.0, .focus_width = 2.0, .focus_gap = 2.0,
-        .space_1 = 4.0, .space_2 = 8.0, .space_3 = 12.0, .space_4 = 16.0, .space_5 = 24.0,
-        .space_6 = 32.0, .control_height_small = 32.0, .control_height_medium = 40.0,
-        .control_height_large = 48.0, .control_padding_small = 12.0,
-        .control_padding_medium = 16.0, .control_padding_large = 20.0, .control_gap = 8.0,
-        .font_size_small = 14.0, .font_size_medium = 16.0, .font_size_large = 22.0,
-        .icon_size_small = 14.0, .icon_size_medium = 18.0, .icon_size_large = 20.0,
-        .shadow_offset_y = 2.0, .shadow_blur = 0.0, .disabled_opacity = 0.45,
-        .transition_fast_ms = 80.0, .transition_normal_ms = 140.0}
-}
-
-// Shared shape and type scale. These scalar defaults do not allocate or copy
-// a palette per control; explicit app props and installed rules still win.
-#program_export
-ShapeSmall :: () -> float32 { return 4.0 }
-#program_export
-ShapeMedium :: () -> float32 { return 12.0 }
-#program_export
-ShapeLarge :: () -> float32 { return 28.0 }
-#program_export
-ShapeFull :: () -> float32 { return 999.0 }
-#program_export
-TypeLabel :: () -> float32 { return 14.0 }
-#program_export
-TypeBody :: () -> float32 { return 16.0 }
-#program_export
-TypeTitle :: () -> float32 { return 22.0 }
-
-// Precompose Material state layers into the existing face. No extra paint
-// command, timer, cache or per-frame heap allocation is required. A transparent
-// face gains a tinted layer rather than mixing invisible RGB with white.
 #program_export
 StateLayer :: (background: u32, content: u32, percent: u32) -> u32 {
     if percent > cast(u32)100 { percent = cast(u32)100 }

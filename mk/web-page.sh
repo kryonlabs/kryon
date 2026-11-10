@@ -4,17 +4,17 @@
 # use WebAssembly SIMD128, and a baseline build. At load time a small script
 # asks WebAssembly.validate about a probe module holding one SIMD128
 # instruction and starts the build the browser can run; the other is
-# dropped unread. Each FILE@MOUNT is carried once for both and written to
-# the module's file system before main.
+# dropped unread. Each FILE@MOUNT or DIR@MOUNT is carried once for both and
+# written to the module's file system before main.
 #
-# usage: web-page.sh SHELL SIMD128_JS BASELINE_JS [FILE@MOUNT ...] > PAGE
+# usage: web-page.sh SHELL SIMD128_JS BASELINE_JS [SOURCE@MOUNT ...] > PAGE
 #
 # SHELL is an Emscripten shell page; its {{{ SCRIPT }}} marker becomes the
 # builds and the loader. Both builds are SINGLE_FILE JavaScript that export
 # FS.
 set -eu
 if test $# -lt 3; then
-    echo "usage: web-page.sh SHELL SIMD128_JS BASELINE_JS [FILE@MOUNT ...]" >&2
+    echo "usage: web-page.sh SHELL SIMD128_JS BASELINE_JS [SOURCE@MOUNT ...]" >&2
     exit 2
 fi
 shell=$1
@@ -33,10 +33,15 @@ for module in "$simd128" "$baseline"; do
         exit 1
     fi
 done
-for file in "$@"; do
-    source=${file%@*}
-    mount=${file##*@}
-    case $file in *@*) ;; *) echo "web-page: $file is not FILE@MOUNT" >&2; exit 1 ;; esac
+mkdir -p build
+manifest=$(mktemp build/kryon-web-page-manifest.XXXXXX)
+trap 'rm -f "$manifest"' EXIT HUP INT TERM
+tab=$(printf '\t')
+for entry in "$@"; do
+    case $entry in
+        *@*) source=${entry%@*}; mount=${entry##*@} ;;
+        *) echo "web-page: $entry is not SOURCE@MOUNT" >&2; exit 1 ;;
+    esac
     case $mount in
         /*) ;;
         *) echo "web-page: $mount must be an absolute path" >&2; exit 1 ;;
@@ -44,7 +49,26 @@ for file in "$@"; do
     case $mount in
         *[!A-Za-z0-9._/-]*) echo "web-page: $mount may hold only letters, digits and . _ / -" >&2; exit 1 ;;
     esac
-    test -f "$source" || { echo "web-page: $source is missing" >&2; exit 1; }
+    if [ "$mount" != / ]; then
+        mount=${mount%/}
+    fi
+    if [ -f "$source" ]; then
+        printf '%s%s%s\n' "$source" "$tab" "$mount" >> "$manifest"
+    elif [ -d "$source" ]; then
+        source=${source%/}
+        find "$source" -type f | LC_ALL=C sort | while IFS= read -r child || [ -n "$child" ]; do
+            relative=${child#"$source"/}
+            if [ "$mount" = / ]; then
+                destination="/$relative"
+            else
+                destination="$mount/$relative"
+            fi
+            printf '%s%s%s\n' "$child" "$tab" "$destination" >> "$manifest"
+        done
+    else
+        echo "web-page: $source is missing" >&2
+        exit 1
+    fi
 done
 
 awk -v marker="$marker" '{
@@ -57,11 +81,16 @@ cat "$simd128"
 printf '\n</script>\n<script type="text/plain" id="kryon-module-baseline">\n'
 cat "$baseline"
 printf '\n</script>\n'
-for file in "$@"; do
-    printf '<script type="text/plain" class="kryon-file" data-mount="%s">' "${file##*@}"
-    base64 < "${file%@*}" | tr -d '\n'
+seen_mounts=
+while IFS="$tab" read -r source mount || [ -n "$source" ]; do
+    case ",$seen_mounts," in
+        *,"$mount",*) continue ;;
+    esac
+    seen_mounts="$seen_mounts,$mount"
+    printf '<script type="text/plain" class="kryon-file" data-mount="%s">' "$mount"
+    base64 < "$source" | tr -d '\n'
     printf '</script>\n'
-done
+done < "$manifest"
 cat <<'LOADER'
 <script>
 (function () {
@@ -88,6 +117,10 @@ cat <<'LOADER'
       files.forEach(function (file) {
         var data = atob(file[1]), bytes = new Uint8Array(data.length);
         for (var index = 0; index < data.length; index++) bytes[index] = data.charCodeAt(index);
+        var directory = file[0].replace(/\/[^/]+$/, "");
+        if (directory && directory !== "/") {
+          module.FS.createPath("/", directory.replace(/^\//, ""), true, true);
+        }
         module.FS.writeFile(file[0], bytes);
       });
     });

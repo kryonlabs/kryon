@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run Zi PCM transforms and the real WebAudio effects through Wasm."""
 
-from toolchain import JS_RUNTIME
+from toolchain import UI_MODULE_ARGS, JS_RUNTIME
 import os
 from pathlib import Path
 import shlex
@@ -22,7 +22,7 @@ with tempfile.TemporaryDirectory(prefix='canvas-audio-', dir=ROOT / 'build') as 
     work = Path(directory)
     generated = work / 'generated'
     run([*RUNNER, BIN / 'zi2c', '--no-main',
-         '--define', 'PLATFORM_WEB', '--root', ROOT, '--module-path', ROOT / 'src/ui',
+         '--define', 'PLATFORM_WEB', '--root', ROOT, *UI_MODULE_ARGS,
          '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN / 'std',
          '-o', generated, ROOT / 'tests/canvas_audio_behavior.zi'])
     includes = ['-I' + str(ZIRAN / 'include')]

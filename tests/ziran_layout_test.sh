@@ -9,12 +9,12 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
 cp "$ziran_root/std/math.zi" "$work/math.zi"
-cp "$repo/src/ui/layout.zi" "$work/layout.zi"
-cp "$repo/src/ui/layout_props.zi" "$work/layout_props.zi"
+cp "$repo/src/ui/layout/layout_behavior.zi" "$work/layout_behavior.zi"
+cp "$repo/src/ui/layout/layout_props.zi" "$work/layout_props.zi"
 cp "$repo/src/ui/group.zi" "$work/group.zi"
 cat > "$work/use_layout.zi" <<'EOF'
 #import "geometry"
-#import "layout"
+#import "layout_behavior"
 #import "layout_props"
 #import "group"
 
@@ -122,7 +122,7 @@ Answer :: () -> s32 {
 }
 EOF
 cat > "$work/scalar_layout.zi" <<'EOF'
-#import "layout"
+#import "layout_behavior"
 #import "layout_props"
 #program_export
 Answer :: () -> s32 {
@@ -134,7 +134,7 @@ Answer :: () -> s32 {
 EOF
 cat > "$work/portable_layout.zi" <<'EOF'
 #import "geometry"
-#import "layout"
+#import "layout_behavior"
 #import "layout_props"
 #import "group"
 #program_export
@@ -162,41 +162,41 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" \
+"$ziran" check --root "$work" "$work/geometry.zi" "$work/layout_behavior.zi" "$work/layout_props.zi" \
     "$work/group.zi" "$work/use_layout.zi" "$work/scalar_layout.zi"
 "$ziran" ir --root "$work" -o "$work/ir" \
-    "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" \
+    "$work/geometry.zi" "$work/layout_behavior.zi" "$work/layout_props.zi" "$work/group.zi" \
     "$work/use_layout.zi" "$work/scalar_layout.zi"
 "$ziran" bundle --root "$work" --entry scalar_layout:Answer \
-    -o "$work/scalar-layout.zx" "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" \
+    -o "$work/scalar-layout.zx" "$work/geometry.zi" "$work/layout_behavior.zi" "$work/layout_props.zi" \
     "$work/group.zi" "$work/scalar_layout.zi"
 test "$("$ziran" run "$work/scalar-layout.zx")" = 42
 "$ziran" bundle --root "$work" --entry scalar_layout:Answer \
     -o "$work/scalar-layout-ir.zx" "$work/ir/geometry.zir" \
-    "$work/ir/layout.zir" "$work/ir/group.zir" \
+    "$work/ir/layout_behavior.zir" "$work/ir/group.zir" \
     "$work/ir/scalar_layout.zir"
 cmp "$work/scalar-layout.zx" "$work/scalar-layout-ir.zx"
 test "$("$ziran" run "$work/scalar-layout-ir.zx")" = 42
 "$ziran" bundle --root "$work" --entry portable_layout:Answer \
     -o "$work/portable-layout.zx" "$work/geometry.zi" \
-    "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" "$work/portable_layout.zi"
+    "$work/layout_behavior.zi" "$work/layout_props.zi" "$work/group.zi" "$work/portable_layout.zi"
 test "$("$ziran" run "$work/portable-layout.zx")" = 42
 "$ziran" ir --root "$work" -o "$work/portable-ir" \
-    "$work/geometry.zi" "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" \
+    "$work/geometry.zi" "$work/layout_behavior.zi" "$work/layout_props.zi" "$work/group.zi" \
     "$work/portable_layout.zi"
 "$ziran" bundle --root "$work" --entry portable_layout:Answer \
     -o "$work/portable-layout-ir.zx" "$work/portable-ir/geometry.zir" \
-    "$work/portable-ir/layout.zir" "$work/portable-ir/group.zir" \
+    "$work/portable-ir/layout_behavior.zir" "$work/portable-ir/group.zir" \
     "$work/portable-ir/portable_layout.zir"
 cmp "$work/portable-layout.zx" "$work/portable-layout-ir.zx"
 test "$("$ziran" run "$work/portable-layout-ir.zx")" = 42
 "$ziran" bundle --root "$work" --entry use_layout:Answer \
     -o "$work/full-layout.zx" "$work/geometry.zi" \
-    "$work/layout.zi" "$work/layout_props.zi" "$work/group.zi" "$work/use_layout.zi"
+    "$work/layout_behavior.zi" "$work/layout_props.zi" "$work/group.zi" "$work/use_layout.zi"
 test "$("$ziran" run "$work/full-layout.zx")" = 42
 "$ziran" bundle --root "$work" --entry use_layout:Answer \
     -o "$work/full-layout-ir.zx" "$work/ir/geometry.zir" \
-    "$work/ir/layout.zir" "$work/ir/group.zir" \
+    "$work/ir/layout_behavior.zir" "$work/ir/group.zir" \
     "$work/ir/use_layout.zir"
 cmp "$work/full-layout.zx" "$work/full-layout-ir.zx"
 test "$("$ziran" run "$work/full-layout-ir.zx")" = 42
@@ -212,13 +212,13 @@ PY
 for input in source ir; do
     if test "$input" = source; then
         geometry="$work/geometry.zi"
-        layout="$work/layout.zi"
+        layout="$work/layout_behavior.zi"
         layout_props="$work/layout_props.zi"
         group="$work/group.zi"
         use_layout="$work/use_layout.zi"
     else
         geometry="$work/ir/geometry.zir"
-        layout="$work/ir/layout.zir"
+        layout="$work/ir/layout_behavior.zir"
         layout_props="$work/ir/layout_props.zir"
         group="$work/ir/group.zir"
         use_layout="$work/ir/use_layout.zir"
@@ -230,7 +230,7 @@ for input in source ir; do
 int main(void) { return Answer() == 42 ? 0 : 1; }
 EOF
     ${CC:-cc} -I"$ziran_include" -I"$work/c-$input" \
-        "$work/c-$input/geometry.c" "$work/c-$input/math.c" "$work/c-$input/layout.c" \
+        "$work/c-$input/geometry.c" "$work/c-$input/math.c" "$work/c-$input/layout_behavior.c" \
         "$work/c-$input/group.c" \
         "$work/c-$input/use_layout.c" "$work/c-$input/main.c" \
         -o "$work/c-$input/app"
@@ -240,7 +240,7 @@ EOF
     "$ziran" build --target=go --pkg main --root "$work" \
         -o "$work/go-$input" "$geometry" "$layout" "$layout_props" "$group" "$use_layout"
     if grep -Fq 'github.com/waozixyz/kryon/go/kryon' \
-        "$work/go-$input/geometry.go" "$work/go-$input/math.go" "$work/go-$input/layout.go" \
+        "$work/go-$input/geometry.go" "$work/go-$input/math.go" "$work/go-$input/layout_behavior.go" \
         "$work/go-$input/group.go" "$work/go-$input/use_layout.go"; then
         echo 'ordinary imported layout code pulled in the legacy Go runtime' >&2
         exit 1
@@ -250,7 +250,7 @@ package main
 func main() { if UseLayout_Answer() != 42 { panic("wrong layout result") } }
 EOF
     GO111MODULE=off go run "$work/go-$input/geometry.go" "$work/go-$input/math.go" \
-        "$work/go-$input/layout.go" "$work/go-$input/layout_props.go" \
+        "$work/go-$input/layout_behavior.go" "$work/go-$input/layout_props.go" \
         "$work/go-$input/group.go" \
         "$work/go-$input/use_layout.go" "$work/go-$input/main.go"
 done

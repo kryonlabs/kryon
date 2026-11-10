@@ -8,6 +8,7 @@ name with a Kryon module. Run through scripts/android-build.sh for
 """
 import argparse
 import fcntl
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -20,21 +21,39 @@ parser.add_argument("--kryon", type=Path, required=True)
 parser.add_argument("--ir", type=Path, required=True)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--manifest", type=Path, required=True)
+parser.add_argument("--host", type=Path, help="Explicit NativeActivity host source for a platform test")
+parser.add_argument("--entry", type=Path, default=os.environ.get("KRYON_PROJECT_ENTRY", "src/app.zi"),
+                    help="Selected application source (or KRYON_PROJECT_ENTRY)")
+parser.add_argument("--package-id", default=os.environ.get("ZIRAN_PACKAGE_ID"),
+                    help="Resolved Kryon identity (or ZIRAN_PACKAGE_ID from ziran tool kryon)")
 parser.add_argument("--define", action="append", default=[])
 parser.add_argument("--codegen", choices=("c99", "zx"), default="c99")
 args = parser.parse_args()
 root = args.root.resolve()
 kryon = args.kryon.resolve()
+entry = (root / args.entry).resolve()
+if not entry.is_file() or entry.suffix != ".zi":
+    parser.error(f"selected application entry is not a Zi source: {entry}")
+needs_frame = args.host is None and args.codegen == "c99"
+if needs_frame and not args.package_id:
+    parser.error("--package-id is required unless ZIRAN_PACKAGE_ID is supplied by ziran tool kryon")
+entry_module = entry.parent.name if entry.stem == "module" else entry.stem
 sources = sorted((root / "src").rglob("*.zi"))
 if list((root / "src").rglob("*.c")) or list((root / "src").rglob("*.kry")):
     raise SystemExit("Android application implementation must be current Zi")
 if not sources:
     raise SystemExit("No Zi sources under src/")
 host_roots = [
-    kryon / "src/backend/android_run.zi",
+    args.host.resolve() if args.host else kryon / "src/backend/android_run.zi",
+    kryon / "src/backend/android_fopen.zi",
     root / "src/main.zi",
     root / "src/android_glue.zi",
 ]
+bindings = []
+if needs_frame:
+    host_roots.extend([entry, kryon / "src/backend/frame_entry.zi"])
+    bindings = ["--bind",
+                f"{args.package_id}_frame_entry:ProjectFrame={entry_module}:Frame"]
 for path in host_roots:
     if not path.is_file():
         raise SystemExit(f"Missing host source {path}; run scripts/android_scaffold.py")
@@ -57,7 +76,8 @@ lock_path.parent.mkdir(parents=True, exist_ok=True)
 with lock_path.open("w") as lock:
     fcntl.flock(lock, fcntl.LOCK_EX)
     subprocess.run(
-        [str(args.ziran), "ir", "--project", *defines, "-o", str(args.ir),
+        [str(args.ziran), "ir", "--project", "--entry", "main:main", "--root", str(entry.parent),
+         *bindings, *defines, "-o", str(args.ir),
          *map(str, host_roots)],
         cwd=root, check=True,
     )

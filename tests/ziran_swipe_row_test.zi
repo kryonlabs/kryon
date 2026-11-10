@@ -5,14 +5,14 @@
 #import "geometry"
 #import "drawing_props"
 #import "swipe_row_props"
-#import "swipe_row"
+#import "swiperow"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
 #import "paint_queue"
 #import "ziran_keyboard_navigation_host"
 #import "scroll_props"
-#import "scroll_widget"
+#import "scroll"
 Motion :: #import "scroll_device";
 
 using FrameStatus;

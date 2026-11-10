@@ -1,0 +1,208 @@
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "icon"
+#import "kryon/image_widget"
+#import "paint_queue"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "kryon/text_widget"
+#import "text_props"
+#import "text_align"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using ControlSize;
+using ButtonState;
+using FontRole;
+using TextAlign;
+using WidgetKind;
+using StyleField;
+
+BadgeTone :: enum {
+    BadgeToneNeutral :: 0
+    BadgeToneInfo :: 1
+    BadgeToneSuccess :: 2
+    BadgeToneWarning :: 3
+    BadgeToneDanger :: 4
+    BadgeToneViolet :: 5
+    BadgeToneTeal :: 6
+    BadgeToneRose :: 7
+    BadgeToneAccent :: 8
+}
+
+BadgeProps :: struct {
+    key: u64
+    bounds: Rectangle
+    text: string
+    tone: BadgeTone
+    dot: bool
+    solid: bool
+    icon_type: s32
+    size: ControlSize
+    disabled: bool
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+    style: StyleData
+    states: StyleStates
+}
+
+BadgeResult :: struct {
+    node: s32
+    bounds: Rectangle
+    background: u32
+    foreground: u32
+}
+
+BadgeToneColor :: (tone: BadgeTone) -> u32 {
+    palette := CurrentPalette()
+    if tone == .BadgeToneInfo { return palette.info }
+    if tone == .BadgeToneSuccess { return palette.success }
+    if tone == .BadgeToneWarning { return palette.warning }
+    if tone == .BadgeToneDanger { return palette.danger }
+    if tone == .BadgeToneViolet { return CurrentThemeSeries(0) }
+    if tone == .BadgeToneTeal { return CurrentThemeSeries(1) }
+    if tone == .BadgeToneRose { return CurrentThemeSeries(2) }
+    if tone == .BadgeToneAccent { return palette.accent }
+    return palette.foreground
+}
+
+BadgeDefaultFace :: (props: BadgeProps, state: s32) -> StyleData {
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleOpacity |
+        cast(u32)StylePaddingX | cast(u32)StylePaddingY | cast(u32)StyleGap |
+        cast(u32)StyleFontSize | cast(u32)StyleIconSize | cast(u32)StyleLineHeight |
+        cast(u32)StyleFontRole | cast(u32)StyleTypeface
+    palette := CurrentPalette()
+    theme := CurrentTheme()
+    tone := BadgeToneColor(props.tone)
+    neutral := props.tone == .BadgeToneNeutral
+    if props.solid {
+        face.background = ifx neutral then palette.foreground else tone
+        face.foreground = ifx neutral then palette.background else OnColor(face.background)
+    } else {
+        face.background = palette.active_layer
+        face.foreground = palette.text_secondary
+        if !neutral {
+            face.background = StateLayer(palette.surface, tone,
+                ifx theme.dark then cast(u32)18 else cast(u32)12)
+            face.foreground = StateLayer(palette.foreground, tone,
+                ifx theme.dark then cast(u32)80 else cast(u32)88)
+        }
+    }
+    face.border = cast(u32)0
+    face.opacity = 1.0
+    face.radius = ifx props.size == .ControlSizeSmall then 5.0 else 6.0
+    face.padding_x = ifx props.size == .ControlSizeSmall then 7.0 else 8.0
+    face.padding_y = 0.0
+    face.gap = 5.0
+    face.font_size = TypeSmall()
+    face.icon_size = 12.0
+    face.line_height = 1.2
+    face.font_role = .FontRoleControl
+    face.typeface = FontForRole(theme, cast(s32)FontRoleControl)
+    if state == cast(s32)ButtonStateDisabled {
+        face.opacity = theme.metrics.disabled_opacity
+    }
+    return face
+}
+
+#program_export
+BadgeInstalledFaceFor :: (props: BadgeProps, state: s32) -> StyleData {
+    kind := props.style_kind
+    if kind <= 0 { kind = StyleKindText() }
+    facts := StyleControlRoleFacts(kind, props.id, props.class_name,
+        props.style_role, cast(s32)props.tone, 0, cast(s32)props.size, state)
+    face := ResolveInstalledStyleRules(BadgeDefaultFace(props, state), facts, state)
+    return MergeValues(ResolveValues(face, props.states, state), props.style)
+}
+
+#program_export
+BadgeHeightFor :: (size: ControlSize) -> float32 {
+    if size == .ControlSizeSmall { return 20.0 }
+    if size == .ControlSizeLarge { return 26.0 }
+    return 22.0
+}
+
+#program_export
+Badge :: (session: Session, props: BadgeProps) -> BadgeResult {
+    result: BadgeResult
+    result.node = -1
+    state := cast(s32)ButtonStateNormal
+    if props.disabled { state = cast(s32)ButtonStateDisabled }
+    face := BadgeInstalledFaceFor(props, state)
+    font := ResolveFont(0, StyleFontValue(face.fields, face.font_size),
+        cast(s32)TypeSmall())
+    label_width := GlyphWidth(props.text, font, face.typeface)
+    icon_width: s32 = 0
+    if props.icon_type > 0 { icon_width = cast(s32)face.icon_size }
+    dot_width: float32 = 0.0
+    if props.dot { dot_width = 6.0 + face.gap }
+    if icon_width > 0 { dot_width += cast(float32)icon_width + face.gap }
+    height := BadgeHeightFor(props.size)
+    if (face.fields & cast(u32)StyleMinHeight) != cast(u32)0 && face.min_height > 0.0 {
+        height = face.min_height
+    }
+    result.bounds = props.bounds
+    result.bounds.height = height
+    result.bounds.width = cast(float32)label_width + face.padding_x * 2.0 + dot_width
+    if props.bounds.width > 0.0 { result.bounds.width = props.bounds.width }
+    if !SessionValid(session) || !TreeIsBuilding(session) { return result }
+    key := props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    result.node = TreeSubmitCurrent(session, key, WidgetKindBox, result.bounds)
+    if result.node < 0 { return result }
+    TreeSetLabel(session, result.node, props.text)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetChildClip(session, result.node, result.bounds)
+    opacity := StyleOpacityValue(face.fields, face.opacity)
+    result.background = face.background
+    result.foreground = face.foreground
+    if (face.fields & cast(u32)StyleBackground) != cast(u32)0 {
+        PaintRoundedFill(session, result.node, result.bounds, face.radius, 8,
+            ColorFromPacked(Opacity(face.background, opacity)))
+    }
+    if (face.fields & cast(u32)StyleBorder) != cast(u32)0 && face.border != cast(u32)0 {
+        PaintRoundedOutline(session, result.node, result.bounds, face.radius, 8,
+            face.border_width, ColorFromPacked(Opacity(face.border, opacity)))
+    }
+    if !TreePushScope(session, result.node) { return result }
+    cursor := result.bounds.x + face.padding_x
+    center_y := result.bounds.y + result.bounds.height * 0.5
+    if props.dot {
+        dot := Rectangle.{cursor, center_y - 3.0, 6.0, 6.0}
+        PaintRoundedFill(session, result.node, dot, 3.0, 6,
+            ColorFromPacked(Opacity(
+                ifx props.solid then face.foreground else
+                    ifx props.tone == .BadgeToneNeutral then CurrentMuted() else BadgeToneColor(props.tone),
+                opacity)))
+        cursor += 6.0 + face.gap
+    }
+    if props.icon_type > 0 {
+        icon_bounds := Rectangle.{cursor, center_y - face.icon_size * 0.5, face.icon_size, face.icon_size}
+        icon := ImageForIcon(props.icon_type, icon_bounds, props.text)
+        icon.key = WidgetPartKey(key, 1)
+        icon.tint = Opacity(face.foreground, opacity)
+        Image(session, icon)
+        cursor += face.icon_size + face.gap
+    }
+    if props.text != "" {
+        text := TextProps.{.key = WidgetPartKey(key, 2), .text = props.text,
+            .bounds = Rectangle.{cursor, result.bounds.y,
+                result.bounds.x + result.bounds.width - face.padding_x - cursor,
+                result.bounds.height}, .font = font, .typeface = face.typeface,
+            .vertical_align = .TextAlignCenter,
+            .class_name = props.class_name}
+        Text(session, text)
+    }
+    unused TreePopScope(session)
+    return result
+}

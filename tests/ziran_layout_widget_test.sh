@@ -10,9 +10,9 @@ cat > "$work/app.zi" <<'ZI'
 #import "geometry"
 #import "grid"
 #import "grid_props"
-#import "layout"
+#import "layout_behavior"
 #import "layout_props"
-#import "layout_widget"
+#import "layout"
 #import "tree"
 #import "widget_kind"
 

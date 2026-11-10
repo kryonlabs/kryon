@@ -2,7 +2,6 @@
 name = "gallery"
 entry = "src/app.zi"
 module_roots = ["src", "build/catalog"]
-bridge_modules = ["app"]
 tool = "kryon"
 
 [toolchain]
@@ -15,10 +14,12 @@ default_profile = "desktop"
 [tool.kryon.profiles.desktop]
 backend = "desktop"
 host = "src/desktop.zi"
+assets = "assets"
 
 [tool.kryon.profiles.web]
 backend = "canvas"
 host = "src/web.zi"
+assets = "assets"
 
 [tool.kryon.profiles.portable]
 backend = "desktop"

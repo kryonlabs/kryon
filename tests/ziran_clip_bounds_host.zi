@@ -3,6 +3,8 @@
 #import "geometry"
 
 font_size: s32;
+control_typeface: string;
+control_font_size: s32;
 max_x: float32;
 max_y: float32;
 check_outline: bool;
@@ -13,7 +15,9 @@ failed: bool;
 
 #program_export
 SetClipBounds :: (font: s32, width: float32, height: float32,
-    outline: bool) {
+    outline: bool, control_font: string = "", control_size: s32 = 0) {
+    control_font_size = ifx control_size > 0 then control_size else font
+    control_typeface = control_font
     font_size = font
     max_x = width
     max_y = height
@@ -29,13 +33,15 @@ WithinBounds :: (bounds: Rectangle) -> bool {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
-    if font != font_size || typeface.count != 0 { failed = true }
+    expected := ifx typeface.count > 0 && typeface == control_typeface then control_font_size else font_size
+    if font != expected || (typeface.count != 0 && typeface != control_typeface) { failed = true }
     return (cast(s32)value.count) * 8
 }
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    if font != font_size || typeface.count != 0 { failed = true }
+    expected := ifx typeface.count > 0 && typeface == control_typeface then control_font_size else font_size
+    if font != expected || (typeface.count != 0 && typeface != control_typeface) { failed = true }
     return font_size
 }
 
@@ -85,7 +91,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     unused x
     unused y
     unused color
-    if font != font_size || !WithinBounds(clip) { failed = true }
+    if font != control_font_size || !WithinBounds(clip) { failed = true }
     labels += 1
 }
 

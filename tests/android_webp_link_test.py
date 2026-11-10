@@ -4,8 +4,7 @@
 The fixture builds `kryonwebp` from the locked libwebp source through
 cmake/KryonAndroid.cmake, as application scaffolds do, and links Ziran code
 generated from src/backend/webp_image.zi into a shared library with
---no-undefined. x86_64 uses the one-argument kryon_android_raylib form that
-older scaffolds call, with KRYON_ANDROID_WEBP_DIR from `kryon build`.
+--no-undefined and no renderer dependency.
 Run with --ndk PATH; no display or device is used.
 """
 
@@ -34,11 +33,7 @@ KryonWebPProbe :: (data: *u8, count: s32) -> s32 {
 CMAKE = '''cmake_minimum_required(VERSION 3.22)
 project(KryonWebPAndroid C)
 include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
-if(ONE_ARGUMENT)
-    kryon_android_raylib("${RAYLIB_DIR}")
-else()
-    kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}" "${AVIF_DIR}" "${AOM_DIR}")
-endif()
+kryon_android_codecs("${WEBP_DIR}" "${AVIF_DIR}" "${AOM_DIR}")
 file(GLOB probe_sources "${PROBE_DIR}/*.c")
 add_library(probe SHARED ${probe_sources})
 target_include_directories(probe PRIVATE "${ZIRAN_INCLUDE}" "${PROBE_DIR}")
@@ -69,7 +64,9 @@ def main():
     ndk = args.ndk.resolve()
     nm = ndk / "toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-nm"
     assert nm.is_file(), "Use a Linux Android NDK"
-    raylib, webp = package("raylib") / "src", package("libwebp")
+    webp = package("libwebp")
+    avif = package("libavif")
+    aom = package("libaom")
     scratch = ROOT / "build/scratch/android-webp-link"
     scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=scratch) as temporary:
@@ -85,15 +82,12 @@ def main():
         (project / "CMakeLists.txt").write_text(CMAKE)
         for abi in ABIS:
             output = work / abi
-            one = abi == "x86_64"
             run(["cmake", "-S", project, "-B", output,
                  f"-DCMAKE_TOOLCHAIN_FILE={ndk}/build/cmake/android.toolchain.cmake",
                  f"-DANDROID_ABI={abi}", "-DANDROID_PLATFORM=android-21",
                  "-DCMAKE_BUILD_TYPE=Release", f"-DKRYON_DIR={ROOT}",
-                 f"-DAVIF_DIR={package('libavif')}", f"-DAOM_DIR={package('libaom')}", f"-DRAYLIB_DIR={raylib}", *([] if one else [f"-DWEBP_DIR={webp}"]),
-                 f"-DONE_ARGUMENT={'ON' if one else 'OFF'}", f"-DPROBE_DIR={generated}",
-                 f"-DZIRAN_INCLUDE={ZIRAN_ROOT / 'include'}"],
-                {"KRYON_ANDROID_WEBP_DIR": str(webp), "KRYON_ANDROID_AVIF_DIR": str(package("libavif")), "KRYON_ANDROID_AOM_DIR": str(package("libaom"))} if one else None)
+                 f"-DWEBP_DIR={webp}", f"-DAVIF_DIR={avif}", f"-DAOM_DIR={aom}",
+                 f"-DPROBE_DIR={generated}", f"-DZIRAN_INCLUDE={ZIRAN_ROOT / 'include'}"])
             run(["cmake", "--build", output, "--target", "probe", "--parallel", "2"])
             symbols = run([nm, "--defined-only", "-D", output / "libprobe.so"])
             assert "KryonWebPProbe" in symbols, abi

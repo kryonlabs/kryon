@@ -742,9 +742,8 @@ AndroidTextInputClose :: (session: Session) {
     unused session
 }
 
-// Translate the frame's leading backspace or enter into raylib key codes so
-// the same widgets accept soft-keyboard and hardware keys. 259 is raylib's
-// KEY_BACKSPACE and 257 its KEY_ENTER.
+// Translate the frame's leading backspace or enter into Kryon's key codes so
+// the same widgets accept soft-keyboard and hardware keys.
 #program_export
 AndroidTextInputBeginFrame :: (session: Session) {
     #if #defined(ANDROID_BUILD) {

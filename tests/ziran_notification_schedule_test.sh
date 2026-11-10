@@ -40,7 +40,7 @@ Answer :: () -> s32 {
     return 42
 }
 ZI
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$repo/src/backend" -o "$work/ir" "$work/app.zi"
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$repo/src/backend" -o "$work/ir" "$work/app.zi"
 for source in source saved; do
     if test "$source" = source; then
         input=$work/app.zi
@@ -51,11 +51,11 @@ for source in source saved; do
         root=$work/ir
         modules=$work/ir
     fi
-    "$ziran" bundle --root "$root" --module-path "$modules" --module-path "$repo/src/ui" --entry app:Answer -o "$work/$source.zx" "$input"
+    "$ziran" bundle --root "$root" --module-path "$modules" $kryon_ui_args --entry app:Answer -o "$work/$source.zx" "$input"
     test "$("$ziran" run "$work/$source.zx")" = 42
 done
 cmp "$work/source.zx" "$work/saved.zx"
-"$ziran" build --target=c --exe --entry app:Answer --root "$work" --module-path "$repo/src/backend" --module-path "$repo/src/ui" -o "$work/native" "$work/app.zi"
+"$ziran" build --target=c --exe --entry app:Answer --root "$work" --module-path "$repo/src/backend" $kryon_ui_args -o "$work/native" "$work/app.zi"
 set +e
 "$work/native/app"
 code=$?

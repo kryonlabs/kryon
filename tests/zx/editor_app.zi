@@ -1,0 +1,54 @@
+using UI :: #import "Widgets";
+#import "tree"
+#import "tree_input"
+#import "text_host"
+#import "text_request"
+#import "widget_kind"
+using WidgetKind;
+foreign_session: Session;
+bytes: [64]u8;
+length: s32;
+cursor: s32;
+anchor: s32;
+started: bool;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    if !started {
+        initial := "start水😀"
+        for at: 0..initial.count - 1 { bytes[at] = initial[at] }
+        length = cast(s32)initial.count; cursor = length; anchor = length
+        foreign_session = SessionOpen()
+        started = true
+    }
+    current: [64]u8
+    for at: 0..length - 1 { current[at] = bytes[at] }
+    typed: [64]u8
+    input := TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session), TypedTextTake(session, typed[:]))
+    field := TextField(session, TextFieldProps.{.key = 1, .bounds = .{20.0, 20.0, 280.0, 44.0},
+        .value = TextView(current[:length]), .cursor = cursor, .anchor = anchor, .max_bytes = 64, .input = input})
+    cursor = field.cursor; anchor = field.anchor
+    if field.edit.changed {
+        next: [64]u8
+        count: s32
+        for at: 0..field.edit.start - 1 { next[count] = bytes[at]; count += 1 }
+        for byte: field.edit.replacement { next[count] = byte; count += 1 }
+        for at: field.edit.end..length - 1 { next[count] = bytes[at]; count += 1 }
+        bytes = next; length = count
+    }
+    // A second live tree intentionally shares the primary field's numeric
+    // generation, but cannot stage its editor or consume primary requests.
+    TreeStart(foreign_session, 1, viewport)
+    other := TreeSubmitCurrent(foreign_session, 1, WidgetKindTextField, .{20.0, 20.0, 280.0, 44.0})
+    TreeSetInteractive(foreign_session, other, false, false, 1)
+    TreeSetSelected(foreign_session, other, true)
+    TreeSetTextValue(foreign_session, other, "FOREIGN", 7, 0, false, false)
+    if TreeSubmittedNodeAt(foreign_session, other).identity_generation !=
+    TreeSubmittedNodeAt(session, 1).identity_generation { return 20 }
+    if TextRequestTake(foreign_session, other).pending { return 21 }
+    TextHostPresent(foreign_session, other, "FOREIGN", 7, 0, false, false, false, false)
+    stale := Session.{session.slot, session.epoch + 1}
+    TextHostPresent(stale, 1, "STALE", 5, 0, false, false, false, false)
+    if !TreeFinish(foreign_session) { return 22 }
+    unused TreeFocusAt(foreign_session, other)
+    return 0
+}

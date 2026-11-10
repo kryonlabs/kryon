@@ -1,0 +1,123 @@
+using UI :: #import "kryon/Widgets";
+#import "tag_input"
+#import "one_time_code"
+#import "inline_edit"
+#import "scrub_field"
+#import "money_field"
+#import "shortcut_recorder"
+#import "input_protocol"
+
+SceneName :: (index: s32) -> string {
+    if index == 0 { return "TagInput" }
+    if index == 1 { return "OneTimeCode" }
+    if index == 2 { return "InlineEdit" }
+    if index == 3 { return "ScrubField" }
+    if index == 4 { return "MoneyField" }
+    if index == 5 { return "ShortcutRecorder" }
+    return ""
+}
+
+bounds: Rectangle;
+tag_state: TagInputState;
+one_time_state: OneTimeCodeState;
+inline_state: InlineEditState;
+scrub_state: ScrubFieldState;
+money_state: MoneyFieldState;
+shortcut_state: ShortcutRecorderState;
+inputs_ready: bool;
+gallery_input_key: s32;
+gallery_typed: [128]u8;
+
+Prepare :: (session: Session, scene: s32) {
+    bounds = GalleryBounds(Rectangle.{24.0, 96.0, 432.0, 104.0})
+    if !inputs_ready {
+        initial_tags: [3]TagInputTag
+        initial_tags[0] = .{.id = 11, .text = "design"}
+        initial_tags[1] = .{.id = 12, .text = "ziran"}
+        initial_tags[2] = .{.id = 13, .text = "desktop"}
+        TagInputStateInit(*tag_state, initial_tags[:], 6)
+        one_time_state = OneTimeCodeStateFor(6, "482913", true)
+        inline_state = InlineEditStateFor("Launch checklist")
+        inline_state.editing = true
+        inline_state.focused = true
+        scrub_state = ScrubFieldStateFor(5.25, 2)
+        money_state = MoneyFieldStateFor(-1234.56, 2)
+        shortcut_state = ShortcutRecorderStateFor(KeyEnter, KeyModifierControl)
+        shortcut_state.focused = true
+        inputs_ready = true
+    }
+}
+
+Compose :: (session: Session, scene: s32, disabled: bool) {
+    gallery_input: TextFieldInput
+    Prepare(session, scene)
+    if !gallery_live { gallery_input.focus = true }
+    if gallery_live {
+        gallery_input_key = KeyboardTake(session)
+        gallery_input = TextFieldInputFor(gallery_input_key, KeyboardModifiers(session), TypedTextTake(session, gallery_typed[:]))
+    }
+    if scene == 0 {
+        tag_style := TagInputDefaultStyle()
+        tag_style.width = bounds.width
+        tag_style.height = bounds.height
+        unused TagInput(session, TagInputProps.{.key = 600, .bounds = bounds,
+            .label = "Project tags", .placeholder = "Add tag", .max_tags = 6,
+            .allow_duplicates = false, .trim_spaces = true, .separator = ",",
+            .disabled = disabled, .input = gallery_input,
+            .style = tag_style}, *tag_state)
+    } else if scene == 1 {
+        code_style := OneTimeCodeDefaultStyle()
+        code_style.slot_width = ifx gallery_live && bounds.width < 340.0 then 28.0 else 40.0
+        code_style.slot_height = 48.0
+        code_style.gap = ifx gallery_live && bounds.width < 340.0 then 4.0 else 7.0
+        code_style.group_gap = 14.0
+        unused OneTimeCode(session, OneTimeCodeProps.{.key = 601,
+            .bounds = bounds, .length = 6, .focus = !gallery_live, .disabled = disabled,
+            .text = gallery_input.text, .left = gallery_input.left, .right = gallery_input.right,
+            .backspace = gallery_input.backspace, .delete_forward = gallery_input.delete_forward, .escape = gallery_input.escape,
+            .style = code_style}, *one_time_state)
+    } else if scene == 2 {
+        unused InlineEdit(session, InlineEditProps.{.key = 602, .bounds = bounds,
+            .value = "Launch checklist", .placeholder = "Document title",
+            .input = gallery_input, .disabled = disabled, .focus_visible = true, .height = 42.0,
+            .font_size = 17.0}, *inline_state)
+    } else if scene == 3 {
+        unused ScrubField(session, ScrubFieldProps.{.key = 603, .bounds = bounds,
+            .label = "Duration", .suffix = "minutes", .initial_value = 5.25,
+            .minimum = 0.0, .maximum = 90.0, .step = 0.25, .precision = 2,
+            .input = gallery_input, .fine_divisor = 10.0, .coarse_multiplier = 5.0, .disabled = disabled,
+            .height = 42.0}, *scrub_state)
+    } else if scene == 4 {
+        unused MoneyField(session, MoneyFieldProps.{.key = 604, .bounds = bounds,
+            .label = "Balance", .symbol = "$", .code = "USD",
+            .hint = "Two decimal places", .initial_value = -1234.56,
+            .minimum = -10000.0, .maximum = 10000.0, .precision = 2,
+            .input = gallery_input, .grouping = true, .grouping_separator = ",", .decimal_separator = ".",
+            .negative_style = .MoneyNegativeParentheses,
+            .locale = .MoneyLocaleDot, .disabled = disabled, .height = 42.0}, *money_state)
+    } else {
+        unused ShortcutRecorder(session, ShortcutRecorderProps.{.key = 605,
+            .bounds = bounds, .placeholder = "Record a shortcut",
+            .key_event = gallery_input_key, .modifiers = KeyboardModifiers(session),
+            .disabled = disabled, .height = 42.0, .font_size = 16.0,
+            .width = bounds.width}, *shortcut_state)
+    }
+}
+
+// The native/capture default is unchanged. Website previews supply their own
+// rectangle; heights and type remain readable while horizontal space reflows.
+gallery_view: Rectangle = .{0.0, 0.0, 480.0, 320.0};
+gallery_live: bool;
+gallery_now: float32;
+gallery_reduced_motion: bool;
+SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion: bool) {
+    gallery_view = view; gallery_live = live; gallery_now = now
+    gallery_reduced_motion = reduced_motion
+}
+GalleryBounds :: (bounds: Rectangle) -> Rectangle {
+    if !gallery_live { return bounds }
+    bounds.x = gallery_view.x + bounds.x * gallery_view.width / 480.0
+    bounds.y += gallery_view.y
+    bounds.width *= gallery_view.width / 480.0
+    return bounds
+}

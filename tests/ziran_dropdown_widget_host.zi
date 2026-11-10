@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
@@ -18,13 +19,13 @@ WithinDropdown :: (bounds: Rectangle) -> bool {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
-    if font < 8 || font > 14 || typeface.count != 0 { failed = true }
+    if font < 8 || font > 14 || (typeface.count != 0 && typeface != Theme.FontForRole(Theme.CurrentTheme(), 1)) { failed = true }
     return (cast(s32)value.count) * 8 * font / 14
 }
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    if font < 8 || font > 14 || typeface.count != 0 { failed = true }
+    if font < 8 || font > 14 || (typeface.count != 0 && typeface != Theme.FontForRole(Theme.CurrentTheme(), 1)) { failed = true }
     return font
 }
 
@@ -47,7 +48,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     unused segments
     // Floating panels paint two contact strips beyond their bottom edge.
     if color.r == cast(u8)0 && color.g == cast(u8)0 && color.b == cast(u8)0 &&
-        (color.a == cast(u8)24 || color.a == cast(u8)10) {
+        (color.a == cast(u8)(Theme.CurrentTheme().shadows.floating[0].opacity * 255.0 + 0.5) || color.a == cast(u8)(Theme.CurrentTheme().shadows.floating[1].opacity * 255.0 + 0.5)) {
         if bounds.height != 1.0 || bounds.x < 10.0 ||
             bounds.x + bounds.width > 130.0 || bounds.y < 10.0 ||
             bounds.y + bounds.height > 192.0 || radius != 0.0 { failed = true }
@@ -89,7 +90,7 @@ RasterLine :: (line: Rectangle, color: Color) {
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
     if value.count == 0 || x < 10 || x > 130 ||
-    y < 10 || y > 190 || font != 14 ||
+    y < 10 || y > 190 || font < 8 || font > cast(s32)Theme.TypeLabel() ||
     clip.x < 10.0 || clip.x + clip.width > 130.0 ||
     color.a == cast(u8)0 { failed = true }
     labels += 1

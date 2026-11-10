@@ -1,9 +1,9 @@
 #import "session"
 #import "widget_test_session"
 
-#import "checkbox"
+#import "checkbox_behavior"
 #import "checkbox_props"
-#import "checkbox_widget"
+#import "checkbox"
 #import "control_props"
 #import "geometry"
 #import "style"

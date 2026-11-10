@@ -1,0 +1,204 @@
+// Explicit platform test host; product bundle/file routing is uninvolved.
+#import "component_host"
+#import "android_native"
+#import "android_touch"
+#import "android_jni"
+#import "android_device"
+#import "android_clipboard"
+#import "android_surface"
+#import "android_process"
+#import "app_asset"
+#import "pixmap"
+#import "frame_snapshot"
+#import "session"
+#import "tree"
+#import "tree_input"
+#import "tree_draw"
+#import "input_protocol"
+#import "key_input"
+#import "geometry"
+#import "drawing_props"
+#import "std/byte_text_linux"
+#import "std/bundle_host"
+#import "std/file_linux"
+#import "std/timer_linux"
+#import "std/vec"
+
+probe: ComponentHost;
+probe_data: [5]string;
+probe_a: *void;
+probe_b: *void;
+probe_last_command: u8;
+probe_expected_b: u64;
+probe_verify_b: bool;
+probe_b_label: string;
+probe_labels: [2]string;
+probe_command_path: string;
+probe_window_count: s32;
+
+ProbeBytes :: (data: string) -> []u8 {
+    descriptor := cast(*TextDescriptor)(*data)
+    return BytesFromPointer(descriptor.data, cast(u64)data.count)
+}
+ProbeLog :: (prefix: string, label: string) {
+    text: Vec(u8)
+    BuilderPrint(*text, "% %", prefix, label)
+    AndroidNativeLog(BuilderFinish(text))
+}
+ProbeLabel :: (first: u8) -> string {
+    for i: 0..TreeCount(probe.session) - 1 {
+        label := TreeNodeAt(probe.session, i).semantic_label
+        if label.count >= 2 && label[0] == first && label[1] == 32 { return label }
+    }
+    return ""
+}
+ProbeHash :: (zoom: float32, top: float32) -> u64 {
+    width: s32; height: s32
+    unused AndroidNativeSurfaceSize(*width, *height)
+    pixels := AndroidNativePixels()
+    result: u64 = cast(u64)14695981039346656037
+    for y: cast(s32)((top + 180.0) * zoom)..cast(s32)((top + 280.0) * zoom) - 1 {
+        for x: cast(s32)(30.0 * zoom)..cast(s32)(310.0 * zoom) - 1 {
+            if y >= 0 && y < height && x >= 0 && x < width {
+                result = (result ^ cast(u64)pixels[y * width + x]) * cast(u64)1099511628211
+            }
+        }
+    }
+    return result
+}
+ProbeCommand :: (zoom: float32, top: float32) -> bool {
+    bytes: [8]u8
+    file := OpenRead(probe_command_path)
+    if !file.valid { return true }
+    read := ReadAt(file, bytes[:], 0)
+    unused CloseFile(file)
+    if read <= 0 || bytes[0] == probe_last_command { return true }
+    command := bytes[0]
+    probe_last_command = command
+    if command < 49 || command > 51 { return false }
+    index: s32 = ifx command == 49 then 2 else ifx command == 50 then 3 else 4
+    id := ComponentHostID("android", "A")
+    before := ProbeHash(zoom, top)
+    saved_b: Vec(u8); saved_a: Vec(u8)
+    BuilderPrint(*saved_b, "%", ProbeLabel(66))
+    BuilderPrint(*saved_a, "%", ProbeLabel(65))
+    b_label := BuilderFinish(saved_b)
+    a_label := BuilderFinish(saved_a)
+    accepted := ComponentHostReplace(*probe, id, ProbeBytes(probe_data[index]))
+    if accepted != (command == 49) || !ComponentHostHandleValid(probe_b) ||
+    ProbeHash(zoom, top) != before || ProbeLabel(66) != b_label { return false }
+    if accepted {
+        answer: s64; has_answer: s32
+        if ComponentHostHandleValid(probe_a) ||
+        RunBundleComponent(probe_a, *answer, *has_answer) != 0 { return false }
+        ComponentHostCloseHandle(probe_a)
+        probe_a = ComponentHostAcquire(*probe, id)
+        if !ComponentHostHandleValid(probe_a) { return false }
+        AndroidNativeLog("component replacement accepted; stale handle rejected")
+    } else {
+        if !ComponentHostHandleValid(probe_a) || ProbeLabel(65) != a_label { return false }
+        AndroidNativeLog(ifx command == 50 then "incompatible component rejected atomically" else "failing component rejected atomically")
+    }
+    probe_expected_b = before
+    probe_b_label = b_label
+    probe_verify_b = true
+    return true
+}
+
+ProbeFreeData :: () {
+    for asset_index: 0..4 { FreeAppAsset(probe_data[asset_index]) }
+}
+
+ProbeRun :: () -> bool {
+    AndroidJniKeepHostThread()
+    defer { AndroidJniReleaseHostThread() }
+    AndroidProcessPrepare()
+    ComponentHostInit(*probe)
+    defer { ComponentHostClose(*probe) }
+    if !probe.ready { return false }
+    probe.bounds = Rectangle.{0.0, 0.0, 320.0, 600.0}
+    names: [5]string = .["a-v1.zx", "b-v1.zx", "a-v2.zx", "bad-schema.zx", "fail-v2.zx"]
+    for i: 0..4 { probe_data[i] = ReadAppAsset(names[i]); if probe_data[i].count == 0 { return false } }
+    defer { ProbeFreeData() }
+    if !ComponentHostOpen(*probe, "android", "A", probe_data[0], COMPONENT_CAPABILITY_ALL, 1) ||
+    !ComponentHostOpen(*probe, "android", "B", probe_data[1], COMPONENT_CAPABILITY_ALL, 1) { return false }
+    probe_a = ComponentHostAcquire(*probe, ComponentHostID("android", "A"))
+    probe_b = ComponentHostAcquire(*probe, ComponentHostID("android", "B"))
+    defer { ComponentHostCloseHandle(probe_a); ComponentHostCloseHandle(probe_b) }
+    directory: [4096]u8
+    path: Vec(u8)
+    BuilderPrint(*path, "%/component-command", AndroidPrivateDataPath(directory[:]))
+    probe_command_path = BuilderFinish(path)
+    AndroidTextInputOpen(probe.session)
+    defer { AndroidTextInputClose(probe.session) }
+    was_ready: bool
+    first_frame := true
+    report_surface: bool
+    while !AndroidNativeDestroyRequested() {
+        unused AndroidNativePoll(100)
+        if AndroidNativeDestroyRequested() { break }
+        width: s32; height: s32
+        ready := !AndroidNativePaused() && AndroidNativeWindowReady() && AndroidNativeSurfaceSize(*width, *height)
+        if !ready { was_ready = false; continue }
+        if !was_ready { AndroidNativeLog("component surface ready"); was_ready = true; probe_window_count += 1; report_surface = true }
+        viewport: AndroidViewport
+        SyncAndroidViewport(*viewport)
+        if viewport.ready == 0 { viewport.width = width; viewport.height = height }
+        zoom := AndroidLayoutZoom()
+        bounds := Rectangle.{cast(float32)viewport.x / zoom, cast(float32)viewport.y / zoom,
+            cast(float32)viewport.width / zoom, cast(float32)viewport.height / zoom}
+        AndroidTouchSetZoom(zoom)
+        if !ProbeCommand(zoom, bounds.y) { AndroidNativeLog("component command invariant failed"); return false }
+        if !AndroidNativeEnsurePixels(width, height) || !PixmapScale(zoom, zoom) ||
+        !PixmapBeginInto(cast(u32)0xfff8fafc, width, height, AndroidNativePixels()) { return false }
+        AndroidTextInputBeginFrame(probe.session)
+        if !AndroidTouchFrameInputBegin(probe.session, zoom) { return false }
+        key := AndroidTouchTakeKey()
+        if AndroidTextInputKeyPressed(259) { key = 259 }
+        if AndroidTextInputKeyPressed(257) { key = 257 }
+        codepoint := AndroidTextInputCharacter()
+        while codepoint != 0 { TypedCodepointSend(probe.session, codepoint); codepoint = AndroidTextInputCharacter() }
+        typed: [256]u8
+        text := TypedTextTake(probe.session, typed[:])
+        ok := ComponentHostFrame(*probe, bounds, PollPointer(), PollSecondaryPointer(), key, 0, 0.0, text, 0.016)
+        RasterRoundedRectangle(Rectangle.{bounds.x, bounds.y, 8.0, 8.0}, 0.0, 0, Color.{230, 30, 40, 255})
+        FrameInputEnd(probe.session)
+        AndroidTouchFrameEnd()
+        PixmapEndInto()
+        if !ok { AndroidNativeLog("component widget frame failed"); return false }
+        AndroidTextInputFrame(probe.session, TreeTextInputActive(probe.session))
+        if probe_verify_b {
+            if !ComponentHostHandleValid(probe_b) || ProbeLabel(66) != probe_b_label ||
+            ProbeHash(zoom, bounds.y) != probe_expected_b { AndroidNativeLog("component B isolation failed"); return false }
+            probe_verify_b = false
+            AndroidNativeLog("component B pixels, state and handle unchanged")
+        }
+        for label_index: 0..1 {
+            label := ProbeLabel(ifx label_index == 0 then cast(u8)65 else cast(u8)66)
+            if label != probe_labels[label_index] {
+                saved: Vec(u8)
+                BuilderPrint(*saved, "%", label)
+                probe_labels[label_index] = BuilderFinish(saved)
+                ProbeLog("component state", label)
+            }
+        }
+        if report_surface {
+            ProbeLog("component surface state", ProbeLabel(65))
+            ProbeLog("component surface state", ProbeLabel(66))
+            report_surface = false
+        }
+        if !AndroidNativeLock() { return false }
+        copied := AndroidNativePresentDamage(0, 0, width, height)
+        if !AndroidNativeUnlock() || !copied { return false }
+        if first_frame { first_frame = false; AndroidNotifyFirstFrame() }
+    }
+    return true
+}
+#program_export
+android_main :: (app: *NativeAndroidApp) {
+    if app == null { return }
+    AndroidNativeStart(app)
+    defer { AndroidNativeClose() }
+    if !ProbeRun() { AndroidNativeLog("Android component probe FAILED") }
+    AndroidNativeFinish()
+}

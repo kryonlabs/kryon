@@ -1,4 +1,4 @@
-#import "text_area_widget"
+#import "textarea"
 #import "text_input"
 #import "text_props"
 #import "font_metrics"

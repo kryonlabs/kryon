@@ -1,0 +1,116 @@
+#import "component_overlays_guest"
+#import "component_protocol"
+#import "component_browser_clipboard"
+#import "taginput"
+#import "onetimecode"
+#import "inlineedit"
+#import "scrubfield"
+#import "moneyfield"
+#import "shortcutrecorder"
+#import "text"
+#import "text_props"
+#import "text_input_props"
+#import "geometry"
+
+#if #defined(COMPONENT_INPUTS_V2) {
+component_schema_version: s64 = 2;
+} else {
+component_schema_version: s64 = 1;
+}
+ready: bool = false;
+updated: bool = false;
+tags: TagInputState;
+code: OneTimeCodeState;
+inline: InlineEditState;
+scrub: ScrubFieldState;
+money: MoneyFieldState;
+shortcut: ShortcutRecorderState;
+
+#program_export
+Frame :: () -> s64 {
+    if component_schema_version < 1 { return 1 }
+    session := ComponentSession()
+    if !ready {
+        code = OneTimeCodeStateFor(2, "", false)
+        inline = InlineEditStateFor("old")
+        scrub = ScrubFieldStateFor(15.0, 0)
+        money = MoneyFieldStateFor(12.5, 2)
+        shortcut = ShortcutRecorderStateFor(65, 2)
+        ready = true
+    }
+    action := ComponentKey() == 85
+    if action {
+        tags.focused = true
+        money.focused = true
+        money.cursor = 0
+        money.anchor = money.text_length
+    }
+    y: float32 = ifx ComponentBounds().height > 400.0 then 180.0 else 0.0
+    initial: [1]TagInputTag
+    initial[0] = TagInputTag.{.id = 11, .text = "zx"}
+    tag := TagInput(session, TagInputProps.{.key = 1000,
+        .bounds = Rectangle.{0.0, y, 158.0, 50.0}, .label = "Tags",
+        .initial_tags = initial[0:1], .max_tags = 8, .remove_index = -1,
+        .input = TextFieldInput.{.text = ifx action then "live" else "", .commit = action},
+        .style = TagInputStyle.{.width = 158.0, .height = 28.0, .chip_height = 22.0,
+            .font_size = 12.0, .min_field_width = 50.0, .gap = 3.0, .padding_x = 3.0}
+    }, *tags)
+    otp := OneTimeCode(session, OneTimeCodeProps.{.key = 2000,
+        .bounds = Rectangle.{170.0, y, 130.0, 30.0}, .length = 2, .focus = action,
+        .text = ifx action then "12" else "",
+        .style = OneTimeCodeStyle.{.slot_width = 24.0, .slot_height = 28.0,
+            .gap = 4.0, .font_size = 14.0}
+    }, *code)
+    edit := InlineEdit(session, InlineEditProps.{.key = 3000,
+        .bounds = Rectangle.{0.0, y + 60.0, 158.0, 28.0}, .value = "old",
+        .activate = action, .height = 28.0, .font_size = 14.0,
+        .input = TextFieldInput.{.text = ifx action then "live" else ""}
+    }, *inline)
+    number := ScrubField(session, ScrubFieldProps.{.key = 4000,
+        .bounds = Rectangle.{170.0, y + 60.0, 145.0, 28.0}, .label = "Scrub",
+        .height = 28.0, .minimum = 0.0, .maximum = 100.0, .step = 1.0, .up = action, .shift = action
+    }, *scrub)
+    currency := MoneyField(session, MoneyFieldProps.{.key = 5000,
+        .bounds = Rectangle.{0.0, y + 96.0, 158.0, 28.0}, .label = "Money",
+        .height = 28.0, .minimum = 0.0, .maximum = 100.0, .precision = 2,
+        .focused = action, .input = TextFieldInput.{
+            .text = ifx action then "23.50" else "", .commit = action}
+    }, *money)
+    chord := ShortcutRecorder(session, ShortcutRecorderProps.{.key = 6000,
+        .bounds = Rectangle.{170.0, y + 96.0, 145.0, 28.0}, .height = 28.0,
+        .font_size = 14.0, .activate = action,
+        .key_event = ifx action then 66 else 0, .modifiers = 2
+    }, *shortcut)
+    unused tag
+    unused otp
+    unused edit
+    unused number
+    unused currency
+    unused chord
+    if action { updated = true }
+    if updated {
+        if tags.count != 2 || tags.ids[0] != 11 || code.count != 2 ||
+        code.bytes[0] != 49 || code.bytes[1] != 50 || inline.length != 4 ||
+        inline.bytes[0] != 108 || inline.bytes[3] != 101 || scrub.value != 25.0 ||
+        money.value != 23.5 || shortcut.key != 66 {
+            print("input state tags=% code=% inline=% scrub=% money=% shortcut=%\n", tags.count, code.count, inline.length, scrub.value, money.value, shortcut.key)
+            return 2
+        }
+    }
+    if !ComponentOverlays(session, action) { return 4 }
+    copy := ComponentSeconds() < 0.0
+    #if #defined(COMPONENT_INPUTS_BAD) {
+        copy = true
+    }
+    BrowserClipboardProbe(session, copy)
+    label := ifx updated then "inputs updated" else "inputs ready"
+    #if #defined(COMPONENT_INPUTS_V2) {
+        if updated { label = "inputs updated v2" }
+    }
+    unused Text(session, TextProps.{.key = 7000, .text = label,
+        .bounds = Rectangle.{0.0, y + 140.0, 300.0, 28.0}, .font = 14})
+    #if #defined(COMPONENT_INPUTS_BAD) {
+        if updated { return 3 }
+    }
+    return 0
+}

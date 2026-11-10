@@ -1,0 +1,34 @@
+#import "geometry"
+#import "dropdown_behavior"
+
+// Keys are unique, nonzero and stable across reorder. Labels borrow this frame.
+BreadcrumbItem :: struct {
+    key: u64
+    label: string
+    disabled: bool
+}
+BreadcrumbProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    active_index: s32
+    focused: bool
+    // -1 addresses overflow; otherwise Enter/Space activates this item.
+    focused_index: s32
+    disabled: bool
+    open: bool
+    close: bool
+    overflow_label: string
+    trigger_input: DropdownTriggerInput
+    menu_input: DropdownMenuInput
+}
+BreadcrumbResult :: struct {
+    node: s32
+    activated_index: s32
+    activated_key: u64
+    changed: bool
+    open: bool
+    opened: bool
+    closed: bool
+}

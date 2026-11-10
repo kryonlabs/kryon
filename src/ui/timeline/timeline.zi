@@ -1,0 +1,162 @@
+#import "box_props"
+#import "box"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "semantic"
+#import "shape_props"
+#import "shape"
+#import "style"
+#import "style_sheet"
+#import "svg_icon_props"
+#import "svgicon"
+#import "text_align"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using WidgetKind;
+using SemanticKind;
+
+TimelineTone :: enum {
+    TimelineToneNeutral :: 0
+    TimelineToneAccent :: 1
+    TimelineToneSuccess :: 2
+    TimelineToneWarning :: 3
+    TimelineToneDanger :: 4
+}
+
+TimelineProps :: struct {
+    key: u64
+    bounds: Rectangle
+    title: string
+    time: string
+    description: string
+    icon_shape: string
+    tone: TimelineTone
+    last: bool
+    disabled: bool
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+}
+
+TimelineLayout :: struct {
+    bounds: Rectangle
+    mark: Rectangle
+    connector: Rectangle
+    title: Rectangle
+    time: Rectangle
+    description: Rectangle
+    has_connector: bool
+}
+
+TimelineResult :: struct {
+    node: s32
+    layout: TimelineLayout
+    tone_color: u32
+}
+
+#program_export
+TimelineToneColor :: (tone: TimelineTone) -> u32 {
+    if tone == .TimelineToneAccent { return CurrentAccent() }
+    if tone == .TimelineToneSuccess { return CurrentSuccess() }
+    if tone == .TimelineToneWarning { return CurrentWarning() }
+    if tone == .TimelineToneDanger { return CurrentDanger() }
+    return CurrentPalette().text_secondary
+}
+
+#program_export
+TimelineLayoutFor :: (props: TimelineProps) -> TimelineLayout {
+    layout: TimelineLayout
+    layout.bounds = props.bounds
+    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return layout }
+    layout.mark = Rectangle.{props.bounds.x, props.bounds.y, 28.0, 28.0}
+    layout.has_connector = !props.last
+    if layout.has_connector {
+        layout.connector = Rectangle.{props.bounds.x + 13.5,
+            props.bounds.y + 32.0, 1.0, props.bounds.height - 32.0}
+        if layout.connector.height < 12.0 { layout.connector.height = 12.0 }
+    }
+    content_x := props.bounds.x + 42.0
+    content_right := props.bounds.x + props.bounds.width -
+        (ifx props.last then 0.0 else 18.0)
+    if content_right < content_x { content_right = content_x }
+    width := content_right - content_x
+    layout.title = Rectangle.{content_x, props.bounds.y + 5.0, width, 19.0}
+    layout.time = Rectangle.{content_x, props.bounds.y + 5.0, width, 17.0}
+    if props.time != "" {
+        layout.title.width -= 46.0
+        if layout.title.width < 0.0 { layout.title.width = 0.0 }
+        layout.time.x += layout.title.width + 8.0
+        layout.time.width = ifx width - layout.title.width - 8.0 > 46.0 then 46.0 else width - layout.title.width - 8.0
+    }
+    layout.description = Rectangle.{content_x, props.bounds.y + 28.0, width,
+        props.bounds.height - 28.0}
+    return layout
+}
+
+#program_export
+Timeline :: (session: Session, props: TimelineProps) -> TimelineResult {
+    result: TimelineResult
+    result.layout = TimelineLayoutFor(props)
+    result.tone_color = TimelineToneColor(props.tone)
+    if !SessionValid(session) || !TreeIsBuilding(session) ||
+    props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup,
+        result.layout.bounds)
+    if result.node < 0 { return result }
+    detail := props.description
+    TreeSetLabel(session, result.node, props.title)
+    if detail != "" { TreeSetSemanticDetail(session, result.node, detail) }
+    TreeSetSemantic(session, result.node, .SemanticTreeItem, 0)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    if !TreePushScope(session, result.node) { return result }
+    dark := CurrentTheme().dark
+    mark_fill: u32 = CurrentPalette().surface_muted
+    mark_border: u32 = CurrentBorder()
+    if props.tone != .TimelineToneNeutral {
+        mark_fill = StateLayer(CurrentSurface(), result.tone_color,
+            ifx dark then cast(u32)22 else cast(u32)12)
+        mark_border = StateLayer(CurrentBorder(), result.tone_color, 25)
+    }
+    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 1),
+        .bounds = result.layout.mark, .id = props.id, .class_name = props.class_name,
+        .fill = ColorFromPacked(mark_fill), .border = ColorFromPacked(mark_border),
+        .radius = 14.0})
+    icon := ifx props.icon_shape != "" then props.icon_shape else "F:M12 10h.01M12 3a9 9 0 100 18 9 9 0 000-18"
+    icon_bounds := Rectangle.{result.layout.mark.x + 7.0,
+        result.layout.mark.y + 7.0, 14.0, 14.0}
+    unused SvgIcon(session, SvgIconProps.{.bounds = icon_bounds, .shape = icon,
+        .color = ColorFromPacked(result.tone_color)})
+    if result.layout.has_connector {
+        connector := ifx CurrentTheme().dark then StateLayer(CurrentBorder(), CurrentBorderStrong(), 45) else CurrentBorder()
+        unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 2),
+            .bounds = result.layout.connector, .id = props.id, .class_name = props.class_name,
+            .fill = ColorFromPacked(connector), .radius = 0.0})
+    }
+    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 3),
+        .bounds = result.layout.title, .text = props.title, .font = Text14,
+        .id = props.id, .class_name = props.class_name,
+        .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapEllipsis})
+    if props.time != "" {
+        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 4),
+            .bounds = result.layout.time, .text = props.time, .font = Text12,
+            .id = props.id, .class_name = props.class_name,
+            .align = TextAlign.TextAlignEnd, .wrap = TextWrap.TextWrapEllipsis})
+    }
+    if props.description != "" {
+        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 5),
+            .bounds = result.layout.description, .text = props.description,
+            .font = Text14, .id = props.id, .class_name = props.class_name,
+            .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapAnywhere})
+    }
+    unused TreePopScope(session)
+    return result
+}

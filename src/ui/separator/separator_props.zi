@@ -1,0 +1,11 @@
+#import "geometry"
+
+SeparatorProps :: struct {
+    bounds: Rectangle
+    vertical: bool
+    label: string
+    disabled: bool
+    class_name: s32
+    id: s32
+    key: u64
+}

@@ -13,7 +13,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 unset DISPLAY WAYLAND_DISPLAY
 
 "$bin/zi2c" --no-main --root "$repo/tests" --module-path "$repo/src/backend" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+    $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/c" "$repo/tests/image_preview_behavior.zi"
 cat > "$work/c/main.c" <<'C'
 #include <stdio.h>

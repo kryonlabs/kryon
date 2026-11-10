@@ -25,9 +25,9 @@ set -- \
     --bind paint_queue:RasterImage=$host:RasterImage \
     --bind paint_queue:RasterImageMesh=$host:RasterImageMesh
 
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$std" -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args \
     --module-path "$std" "$@" \
     --entry ziran_shape_widget_test:main -o "$work/source.zx" "$source"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
@@ -41,7 +41,7 @@ for target in c; do
     output=$work/$target
     executable=--exe
     "$ziran" build --target="$target" --entry ziran_shape_widget_test:main \
-        $executable --root "$repo/tests" --module-path "$repo/src/ui" \
+        $executable --root "$repo/tests" $kryon_ui_args \
         --module-path "$std" -o "$output" "$source"
     test "$("$output/ziran_shape_widget_test" | tail -1)" = 0
 done
@@ -49,6 +49,6 @@ done
 output=$work/go
 "$ziran" build --target=go --pkg main --exe \
     --entry ziran_shape_widget_test:main "$@" --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$std" -o "$output" "$source"
+    $kryon_ui_args --module-path "$std" -o "$output" "$source"
 test "$(GOCACHE="$work/go-cache" GO111MODULE=off go run "$output"/*.go | tail -1)" = 0
 printf 'Shape widgets passed in bundles and on C and Go.\n'

@@ -7,7 +7,7 @@
 #import "geometry"
 #import "drawing_props"
 #import "paint_queue"
-#import "svg_icon"
+#import "svg_icon_behavior"
 #import "ziran_navigation_bar_widget_host"
 
 using PaintKind;

@@ -1,0 +1,31 @@
+// What an Image with these props has on screen this frame, so an app can
+// wait for a picture before something that belongs with it, such as a
+// narrated page's voice: ImageShowingFull once the picture is drawn,
+// ImageShowingPreview while its preview_path stands in, ImageShowingNone
+// while both are loading and ImageShowingUnavailable when neither can be
+// drawn. Asking starts a host loading the picture, so asking for a picture
+// shown soon also fetches it ahead. It stays apart from image_widget, so
+// portable bundles that never ask keep their reviewed bytes.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "image_props"
+    host_api :: #system_library "host_api";
+    ImageShowingHostedHost :: (session: Session, image: ImageProps) -> s32 #foreign host_api;
+    // A portable app asks its host, which applies its asset policy as an
+    // Image's draw does. A refused image is unavailable.
+    #program_export
+    ImageShowingOf :: (session: Session, image: ImageProps) -> ImageShowing {
+        showing := ImageShowingHostedHost(session, image)
+        if showing < 0 || showing > 3 { return ImageShowing.ImageShowingUnavailable }
+        return cast(ImageShowing)showing
+    }
+} else {
+    #import "session"
+    #import "image_props"
+    #import "kryon/image_widget"
+    #program_export
+    ImageShowingOf :: (session: Session, image: ImageProps) -> ImageShowing {
+        unused session
+        return ImageShownFor(image).showing
+    }
+}

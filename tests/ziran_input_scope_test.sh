@@ -8,18 +8,18 @@ work=$(mktemp -d "$repo/build/scratch/input-scope.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 export GOCACHE="$work/go-cache"
 export GOMAXPROCS=1
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$repo/tests/input_scope_test.zi"
 for form in source saved; do
     root=$repo/tests
-    modules=$repo/src/ui
+    modules="$kryon_ui_args"
     input=$repo/tests/input_scope_test.zi
     if test "$form" = saved; then
         root=$work/ir
-        modules=$work/ir
+        modules="--module-path $work/ir"
         input=$work/ir/input_scope_test.zir
     fi
-    "$ziran" bundle --root "$root" --module-path "$modules" \
+    "$ziran" bundle --root "$root" $modules \
         --module-path "$ziran_root/std" --entry input_scope_test:Answer \
         -o "$work/$form.zx" "$input"
     test "$("$ziran" run "$work/$form.zx")" = 42
@@ -27,7 +27,7 @@ for form in source saved; do
         out=$work/$form-$target
         target_flags=
         if test "$target" = go; then target_flags='--pkg main'; fi
-        "$ziran" build --root "$root" --module-path "$modules" \
+        "$ziran" build --root "$root" $modules \
             --module-path "$ziran_root/std" --target="$target" $target_flags \
             --entry input_scope_test:main -o "$out" "$input"
         case "$target" in

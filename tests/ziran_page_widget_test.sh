@@ -9,7 +9,7 @@ cat > "$work/app.zi" <<'ZI'
 
 #import "control_props"
 #import "geometry"
-#import "layout"
+#import "layout_behavior"
 #import "page"
 #import "page_props"
 #import "semantic"

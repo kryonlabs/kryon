@@ -3,7 +3,6 @@
 #import "geometry"
 #import "image"
 #import "image_props"
-#import "image_widget"
 #import "session"
 #import "style"
 #import "style_sheet"

@@ -1,0 +1,97 @@
+#import "control_props"
+#import "geometry"
+#import "style"
+#import "style_sheet"
+#import "theme"
+#import "tooltip_common"
+
+using StyleField;
+
+TooltipProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    anchor: Rectangle
+    viewport: Rectangle
+    text: string
+    shortcut: string
+    placement: OverlayPlacement
+    gap: float32
+    max_width: float32
+    delay_ms: float32
+    passive_delay_ms: float32
+    warm_ms: float32
+    now_ms: s64
+    pointer: OverlayPointer
+    focus: OverlayFocus
+    disabled: bool
+    passive: bool
+    only_when_truncated: bool
+    measured_text_width: s32
+    style: StyleData
+    states: StyleStates
+}
+
+TooltipState :: struct {
+    anchor_key: u64
+    enter_ms: s64
+    last_shown_ms: s64
+    visible: bool
+    passive: bool
+    shown_key: u64
+    progress: float32
+    transition_start_ms: s64
+}
+
+TooltipResult :: struct {
+    node: s32
+    text_node: s32
+    bounds: Rectangle
+    fit: OverlayFit
+    visible: bool
+    changed: bool
+    remaining_delay_ms: float32
+    warm: bool
+    truncated: bool
+    clipped: bool
+}
+
+#program_export
+TooltipStateFor :: (anchor_key: u64) -> TooltipState {
+    return TooltipState.{.anchor_key = anchor_key, .enter_ms = -1,
+        .last_shown_ms = -1000000, .shown_key = cast(u64)0}
+}
+
+#program_export
+TooltipDefaultStyle :: () -> StyleData {
+    style: StyleData
+    theme := CurrentTheme()
+    style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleOpacity |
+        cast(u32)StylePaddingX | cast(u32)StylePaddingY | cast(u32)StyleGap |
+        cast(u32)StyleFontSize | cast(u32)StyleFontRole | cast(u32)StyleTypeface |
+        cast(u32)StyleLineHeight | cast(u32)StyleMotionDuration |
+        cast(u32)StyleMotionMultiplier | cast(u32)StyleMotionReduced
+    if theme.dark {
+        style.background = cast(u32)0xf2f2f2ff
+        style.foreground = cast(u32)0x232323ff
+    } else {
+        style.background = cast(u32)0x232323ff
+        style.foreground = cast(u32)0xfafafaff
+    }
+    style.border = cast(u32)0
+    style.opacity = 1.0
+    style.radius = theme.metrics.radius_item
+    style.padding_x = 9.0
+    style.padding_y = 5.0
+    style.gap = 8.0
+    style.font_size = theme.metrics.text_sm
+    style.font_role = .FontRoleControl
+    style.typeface = theme.fonts.control
+    style.line_height = 1.35
+    style.motion_duration = 200.0
+    style.motion_multiplier = 1.0
+    style.motion_reduced = theme.motion.reduced_motion
+    return style
+}
+

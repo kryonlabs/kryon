@@ -1,6 +1,9 @@
+#import "control_props"
+#import "style"
+#import "style_sheet"
 #import "session"
 #import "geometry"
-#import "text_area_widget"
+#import "textarea"
 #import "text_input_props"
 #import "text_touch"
 #import "tree"
@@ -127,6 +130,14 @@ PositionedCorrection :: () -> s32 {
 
 #program_export
 main :: () -> s32 {
+    // Pin glyph geometry while retaining current theme colors and roles.
+    rules: StyleRules
+    rules.count = 1
+    rules.items[0].selector = StyleDefaultSelector()
+    rules.items[0].selector.kind = StyleKindTextArea()
+    rules.items[0].style.fields = cast(u32)StyleField.StyleFontSize
+    rules.items[0].style.font_size = 14.0
+    InstallStyleRules(rules)
     session := SessionOpen()
     props: TextAreaProps = .{.key = cast(u64)77, .focus_id = 77,
         .bounds = Rectangle.{20.0, 20.0, 100.0, 52.0},

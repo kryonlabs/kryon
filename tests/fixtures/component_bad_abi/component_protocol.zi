@@ -1,0 +1,13 @@
+// A well-typed guest requesting an incompatible host capability layout.
+#import "kryon/session"
+#import "kryon/geometry"
+host_api :: #system_library "host_api";
+BoundsABI :: struct { x: float64; y: float64; width: float64; height: float64 }
+ComponentSessionHost :: () -> Session #foreign host_api;
+ComponentBoundsHost :: () -> BoundsABI #foreign host_api;
+ComponentSession :: () -> Session { return ComponentSessionHost() }
+ComponentBounds :: () -> Rectangle {
+    value := ComponentBoundsHost()
+    return Rectangle.{cast(float32)value.x, cast(float32)value.y,
+        cast(float32)value.width, cast(float32)value.height}
+}

@@ -1,0 +1,52 @@
+#import "geometry"
+
+ReorderItem :: struct {
+    id: s32
+    bounds: Rectangle
+    disabled: s32
+}
+
+ReorderList :: struct {
+    id: s32
+    style_id: s32
+    class_name: s32
+    bounds: Rectangle
+    handle_width: s32
+    handle_height: s32
+    drag_threshold: s32
+    scroll_offset: s32
+    max_scroll: s32
+    viewport_top: s32
+    viewport_bottom: s32
+    auto_scroll_margin: s32
+    auto_scroll_step: s32
+}
+ReorderMetrics :: struct {
+    handle_width: s32
+    drag_threshold: s32
+    auto_scroll_margin: s32
+    auto_scroll_step: s32
+}
+
+ReorderHandlePaint :: struct {
+    dot0: Rectangle
+    dot1: Rectangle
+    dot2: Rectangle
+    dot3: Rectangle
+    dot4: Rectangle
+    dot5: Rectangle
+    dot_count: s32
+}
+ReorderListResult :: struct {
+    active: s32
+    dragging: s32
+    committed: s32
+    from_index: s32
+    to_index: s32
+    active_index: s32
+    target_index: s32
+    active_id: s32
+    pointer_y: s32
+    drag_delta_y: s32
+    scroll_offset: s32
+}

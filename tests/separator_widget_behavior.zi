@@ -3,9 +3,9 @@
 
 #import "control_props"
 #import "geometry"
-#import "separator"
+#import "separator_behavior"
 #import "separator_props"
-#import "separator_widget"
+#import "separator"
 #import "style"
 #import "style_sheet"
 #import "tree"

@@ -1,0 +1,23 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/onboarding_checklist_task"
+
+done: [3]bool;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Onboarding checklist", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    tasks := OnboardingChecklistTask.[.{.id = 1, .title = "Create a project", .done = done[0]}, .{.id = 2, .title = "Add a component", .done = done[1]}, .{.id = 3, .title = "Run the app", .done = done[2]}]
+    result := OnboardingChecklist(session, OnboardingChecklistProps.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, viewport.height - 96.0}, .title = "Get started", .tasks = tasks[:]})
+    if result.toggled_index >= 0 && result.toggled_index < 3 { done[result.toggled_index] = !done[result.toggled_index] }
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

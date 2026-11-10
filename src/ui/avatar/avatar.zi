@@ -1,0 +1,339 @@
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "image_props"
+#import "kryon/image_widget"
+#import "paint_queue"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "text_align"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+Grapheme :: #import "std/grapheme"
+Utf8 :: #import "std/utf8"
+
+using ButtonState;
+using FontRole;
+using TextAlign;
+using WidgetKind;
+using StyleField;
+
+AvatarStatus :: enum {
+    AvatarStatusNone :: 0
+    AvatarStatusOnline :: 1
+    AvatarStatusBusy :: 2
+    AvatarStatusAway :: 3
+    AvatarStatusOffline :: 4
+}
+
+AvatarProps :: struct {
+    key: u64
+    bounds: Rectangle
+    name: string
+    image: ImageProps
+    size: float32
+    status: AvatarStatus
+    square: bool
+    disabled: bool
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+    style: StyleData
+    states: StyleStates
+}
+
+AvatarGroupProps :: struct {
+    key: u64
+    bounds: Rectangle
+    max_visible: s32
+    size: float32
+    overlap: float32
+    ring_width: float32
+    square: bool
+    class_name: s32
+}
+
+AvatarResult :: struct {
+    node: s32
+    bounds: Rectangle
+    tone: u32
+    background: u32
+    foreground: u32
+    initials: [8]u8
+    initials_length: s32
+    image_fallback: bool
+}
+
+AvatarGroupResult :: struct {
+    node: s32
+    bounds: Rectangle
+    visible_count: s32
+    overflow_count: s32
+}
+
+#program_export
+AvatarNameTone :: (name: string) -> u32 {
+    hash: u32 = 2166136261
+    at: s32 = 0
+    while at < cast(s32)name.count {
+        hash ^= cast(u32)name[at]
+        hash *= cast(u32)16777619
+        at += 1
+    }
+    index := cast(s32)(hash % cast(u32)6)
+    return CurrentThemeSeries(index)
+}
+
+#program_export
+AvatarInitials :: (name: string, output: []u8) -> string {
+    length: s32 = 0
+    word_start: bool = true
+    at: s32 = 0
+    while at < cast(s32)name.count && length < 8 {
+        end := Grapheme.Next(name, at)
+        if end <= at { break }
+        boundary := name[at]
+        if boundary == cast(u8)32 || boundary == cast(u8)45 || boundary == cast(u8)46 {
+            word_start = true
+            at = end
+            continue
+        }
+        if word_start {
+            decoded := Utf8.Decode(name, at)
+            codepoint := decoded.value
+            if codepoint >= 97 && codepoint <= 122 { codepoint -= 32 }
+            width := decoded.after - at
+            if decoded.valid && length + width <= cast(s32)output.count {
+                copy_at := 0
+                while copy_at < width {
+                    output[length + copy_at] = name[at + copy_at]
+                    copy_at += 1
+                }
+                if codepoint != decoded.value && codepoint < 128 {
+                    output[length] = cast(u8)codepoint
+                }
+                length += width
+            }
+            word_start = false
+            if length >= 2 { break }
+        }
+        at = end
+    }
+    return TextView(output[0:length])
+}
+
+AvatarStatusColor :: (status: AvatarStatus) -> u32 {
+    palette := CurrentPalette()
+    if status == .AvatarStatusOnline { return palette.success }
+    if status == .AvatarStatusBusy { return palette.danger }
+    if status == .AvatarStatusAway { return palette.warning }
+    if status == .AvatarStatusOffline { return palette.text_muted }
+    return cast(u32)0
+}
+
+AvatarDefaultFace :: (props: AvatarProps, state: s32) -> StyleData {
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleBorderWidth | cast(u32)StyleRadius |
+        cast(u32)StyleOpacity | cast(u32)StyleFontSize |
+        cast(u32)StyleFontRole | cast(u32)StyleTypeface
+    palette := CurrentPalette()
+    theme := CurrentTheme()
+    tone := AvatarNameTone(props.name)
+    face.background = StateLayer(palette.surface, tone, ifx theme.dark then cast(u32)16 else cast(u32)16)
+    face.foreground = StateLayer(palette.foreground, tone, cast(u32)78)
+    face.border = StateLayer(tone, palette.surface, cast(u32)72)
+    face.border_width = 1.0
+    face.radius = ifx props.square then props.size * 0.28 else props.size * 0.5
+    face.opacity = 1.0
+    face.font_size = props.size * 0.38
+    face.font_role = .FontRoleControl
+    face.typeface = FontForRole(theme, cast(s32)FontRoleControl)
+    if state == cast(s32)ButtonStateDisabled { face.opacity = theme.metrics.disabled_opacity }
+    return face
+}
+
+#program_export
+AvatarInstalledFaceFor :: (props: AvatarProps, state: s32) -> StyleData {
+    kind := props.style_kind
+    if kind <= 0 { kind = StyleKindSurface() }
+    facts := StyleControlRoleFacts(kind, props.id, props.class_name,
+        props.style_role, cast(s32)props.status, 0, 0, state)
+    face := ResolveInstalledStyleRules(AvatarDefaultFace(props, state), facts, state)
+    return MergeValues(ResolveValues(face, props.states, state), props.style)
+}
+
+#program_export
+Avatar :: (session: Session, props: AvatarProps) -> AvatarResult {
+    result: AvatarResult
+    result.node = -1
+    result.tone = AvatarNameTone(props.name)
+    if props.size <= 0.0 { result.bounds.height = 32.0; result.bounds.width = 32.0 }
+    else { result.bounds.width = props.size; result.bounds.height = props.size }
+    result.bounds.x = props.bounds.x
+    result.bounds.y = props.bounds.y
+    if props.bounds.width > 0.0 { result.bounds.width = props.bounds.width }
+    if props.bounds.height > 0.0 { result.bounds.height = props.bounds.height }
+    state := cast(s32)ButtonStateNormal
+    if props.disabled { state = cast(s32)ButtonStateDisabled }
+    face := AvatarInstalledFaceFor(props, state)
+    result.background = face.background
+    result.foreground = face.foreground
+    result.initials_length = cast(s32)AvatarInitials(props.name, result.initials[:]).count
+    shown := ImageShownFor(props.image)
+    result.image_fallback = props.image.asset_path == "" && props.image.texture.id == cast(u32)0
+    if props.image.asset_path != "" || props.image.texture.id != cast(u32)0 {
+        result.image_fallback = shown.showing == .ImageShowingUnavailable
+    }
+    if !SessionValid(session) || !TreeIsBuilding(session) { return result }
+    key := props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    result.node = TreeSubmitCurrent(session, key, WidgetKindImage, result.bounds)
+    if result.node < 0 { return result }
+    TreeSetLabel(session, result.node, ifx result.image_fallback then props.name else props.image.alt_text)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetChildClip(session, result.node, result.bounds)
+    opacity := StyleOpacityValue(face.fields, face.opacity)
+    if result.image_fallback {
+        if (face.fields & cast(u32)StyleBackground) != cast(u32)0 {
+            PaintRoundedFill(session, result.node, result.bounds, face.radius, 12,
+                ColorFromPacked(Opacity(face.background, opacity)))
+        }
+        if (face.fields & cast(u32)StyleBorderWidth) != cast(u32)0 && face.border_width > 0.0 {
+            PaintRoundedOutline(session, result.node, result.bounds, face.radius, 12,
+                face.border_width, ColorFromPacked(Opacity(face.border, opacity)))
+        }
+        if result.initials_length > 0 {
+            Text(session, TextProps.{.key = WidgetPartKey(key, 1),
+                .bounds = result.bounds, .text = TextView(result.initials[0:result.initials_length]),
+                .font = ResolveFont(0, StyleFontValue(face.fields, face.font_size), 12),
+                .typeface = face.typeface, .align = .TextAlignCenter,
+                .vertical_align = cast(TextAlign)TextAlignCenter,
+                .class_name = props.class_name})
+        }
+    } else {
+        image := props.image
+        image.key = WidgetPartKey(key, 2)
+        image.bounds = result.bounds
+        image.radius = face.radius
+        Image(session, image)
+    }
+    if props.status != .AvatarStatusNone {
+        status_color := AvatarStatusColor(props.status)
+        dot_size := result.bounds.width * 0.28
+        if dot_size < 8.0 { dot_size = 8.0 }
+        dot := Rectangle.{result.bounds.x + result.bounds.width - dot_size + 1.0,
+            result.bounds.y + result.bounds.height - dot_size + 1.0, dot_size, dot_size}
+        PaintRoundedFill(session, result.node, dot, dot_size * 0.5, 12,
+            ColorFromPacked(CurrentPalette().surface))
+        PaintRoundedFill(session, result.node,
+            Rectangle.{dot.x + 2.0, dot.y + 2.0, dot.width - 4.0, dot.height - 4.0},
+            (dot.width - 4.0) * 0.5, 12, ColorFromPacked(status_color))
+    }
+    return result
+}
+
+#program_export
+AvatarGroup :: (session: Session, props: AvatarGroupProps,
+    names: []string) -> AvatarGroupResult {
+    result: AvatarGroupResult
+    result.node = -1
+    size := props.size
+    if size <= 0.0 { size = 32.0 }
+    maximum := props.max_visible
+    if maximum <= 0 { maximum = 4 }
+    visible := cast(s32)names.count
+    if visible > maximum { visible = maximum }
+    overflow := cast(s32)names.count - visible
+    slots := visible
+    if overflow > 0 { slots += 1 }
+    overlap := props.overlap
+    if overlap <= 0.0 { overlap = size * 0.16 }
+    ring := props.ring_width
+    if ring <= 0.0 { ring = 2.0 }
+    result.visible_count = visible
+    result.overflow_count = overflow
+    result.bounds = props.bounds
+    result.bounds.height = size
+    result.bounds.width = cast(float32)slots * size - cast(float32)(slots - 1) * overlap
+    if props.bounds.width > 0.0 { result.bounds.width = props.bounds.width }
+    if props.bounds.height > 0.0 { result.bounds.height = props.bounds.height }
+    if !SessionValid(session) || !TreeIsBuilding(session) { return result }
+    key := props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    result.node = TreeSubmitCurrent(session, key, WidgetKindGroup, result.bounds)
+    if result.node < 0 { return result }
+    TreeSetLabel(session, result.node, "Avatar group")
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetChildClip(session, result.node, result.bounds)
+    if !TreePushScope(session, result.node) { return result }
+    at: s32 = 0
+    while at < slots {
+        x := result.bounds.x + cast(float32)at * (size - overlap)
+        ring_bounds := Rectangle.{x - ring, result.bounds.y - ring,
+            size + ring * 2.0, size + ring * 2.0}
+        ring_node := TreeSubmitCurrent(session, WidgetPartKey(key, cast(s32)101 + at),
+            WidgetKindBox, ring_bounds)
+        if ring_node >= 0 {
+            PaintRoundedFill(session, ring_node, ring_bounds,
+                ifx props.square then face_radius(size, ring) else (size + ring * 2.0) * 0.5,
+                12, ColorFromPacked(CurrentPalette().surface))
+            if TreePushScope(session, ring_node) {
+                if at < visible {
+                    unused Avatar(session, AvatarProps.{
+                        .key = WidgetPartKey(key, cast(s32)201 + at),
+                        .bounds = Rectangle.{x, result.bounds.y, size, size},
+                        .name = names[at], .size = size, .square = props.square,
+                        .class_name = props.class_name})
+                } else {
+                    overflow_text: [8]u8
+                    overflow_length := FormatPlusCount(overflow, overflow_text[:])
+                    PaintRoundedFill(session, ring_node,
+                        Rectangle.{x, result.bounds.y, size, size}, size * 0.5, 12,
+                        ColorFromPacked(CurrentPalette().surface_muted))
+                    Text(session, TextProps.{.key = WidgetPartKey(key, 301),
+                        .bounds = Rectangle.{x, result.bounds.y, size, size},
+                        .text = TextView(overflow_text[0:overflow_length]),
+                        .font = cast(s32)(size * 0.36), .align = .TextAlignCenter,
+                        .vertical_align = cast(TextAlign)TextAlignCenter})
+                }
+                unused TreePopScope(session)
+            }
+        }
+        at += 1
+    }
+    unused TreePopScope(session)
+    return result
+}
+
+face_radius :: (size: float32, ring: float32) -> float32 {
+    return (size + ring * 2.0) * 0.28
+}
+
+FormatPlusCount :: (value: s32, output: []u8) -> s32 {
+    if output.count < 2 { return 0 }
+    output[0] = cast(u8)43
+    digits: [8]u8
+    count: s32 = 0
+    if value == 0 { digits[0] = cast(u8)48; count = 1 }
+    while value > 0 && count < 8 {
+        digits[count] = cast(u8)(48 + value % 10)
+        value /= 10
+        count += 1
+    }
+    at := count - 1
+    while at >= 0 {
+        output[1 + (count - 1 - at)] = digits[at]
+        at -= 1
+    }
+    return count + 1
+}

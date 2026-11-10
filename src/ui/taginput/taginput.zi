@@ -1,0 +1,468 @@
+#import "box"
+#import "button_props"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "style"
+#import "style_sheet"
+#import "session"
+#import "textfield"
+#import "text_input"
+#import "text_input_props"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using ControlSize;
+using ButtonState;
+using ButtonEmphasis;
+using ButtonTone;
+using StyleField;
+using WidgetKind;
+using ButtonTone;
+using StyleField;
+using WidgetKind;
+
+TagInputTag :: struct { id: u64; text: string }
+
+TagInputStyle :: struct {
+    width: float32
+    height: float32
+    chip_height: float32
+    chip_radius: float32
+    radius: float32
+    gap: float32
+    padding_x: float32
+    padding_y: float32
+    font_size: float32
+    min_field_width: float32
+}
+
+TagInputProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    chip_class_name: s32
+    label: string
+    placeholder: string
+    initial_tags: []TagInputTag
+    separator: string
+    max_tags: s32
+    allow_duplicates: bool
+    trim_spaces: bool
+    disabled: bool
+    composition: CompositionState
+    remove_index: s32
+    remove_index_requested: bool
+    remove_id: u64
+    input: TextFieldInput
+    style: TagInputStyle
+}
+
+TagInputState :: struct {
+    initialized: bool
+    count: s32
+    next_id: u64
+    ids: [64]u64
+    lengths: [64]s32
+    bytes: [2048]u8
+    text: [128]u8
+    text_length: s32
+    cursor: s32
+    anchor: s32
+    scroll_x: s32
+    focused: bool
+}
+
+TagInputResult :: struct {
+    node: s32
+    field: TextFieldResult
+    changed: bool
+    added: bool
+    removed: bool
+    duplicate_rejected: bool
+    max_reached: bool
+    removed_id: u64
+    added_count: s32
+}
+
+#program_export
+TagInputDefaultStyle :: () -> TagInputStyle {
+    style: TagInputStyle
+    style.height = CurrentThemeMetric(.ThemeMetricControlHeightMedium)
+    style.chip_height = 24.0
+    style.chip_radius = 12.0
+    style.radius = CurrentThemeMetric(.ThemeMetricRadiusControl)
+    style.gap = CurrentThemeMetric(.ThemeMetricSpace2)
+    style.padding_x = 8.0
+    style.padding_y = 4.0
+    style.font_size = CurrentThemeMetric(.ThemeMetricTextSM)
+    style.min_field_width = 60.0
+    return style
+}
+
+TagInputContains :: (state: *TagInputState, text: string) -> bool {
+    index := 0
+    while index < state.count {
+        length := state.lengths[index]
+        if length == cast(s32)text.count {
+            same := true
+            at := 0
+            while at < length {
+                if state.bytes[index * 64 + at] != text[at] { same = false }
+                at += 1
+            }
+            if same { return true }
+        }
+        index += 1
+    }
+    return false
+}
+
+TagInputAppendTag :: (state: *TagInputState, text: string,
+    trim_spaces: bool, allow_duplicates: bool, max_tags: s32,
+    result: *TagInputResult) {
+    if trim_spaces {
+        start := 0
+        finish := cast(s32)text.count
+        while start < finish && text[start] == cast(u8)32 { start += 1 }
+        while finish > start && text[finish - 1] == cast(u8)32 { finish -= 1 }
+        text = text[start:finish]
+    }
+    if text.count == 0 || state.count >= 64 ||
+    (max_tags > 0 && state.count >= max_tags) {
+        if text.count > 0 { result.max_reached = true }
+        return
+    }
+    if !allow_duplicates && TagInputContains(state, text) {
+        result.duplicate_rejected = true
+        return
+    }
+    length := cast(s32)text.count
+    if length > 64 { length = 64; result.max_reached = true }
+    start := state.count * 64
+    at := 0
+    while at < length {
+        state.bytes[start + at] = text[at]
+        at += 1
+    }
+    state.ids[state.count] = state.next_id
+    state.next_id += 1
+    if state.next_id == 0 { state.next_id = 1 }
+    state.lengths[state.count] = length
+    state.count += 1
+    result.changed = true
+    result.added = true
+    result.added_count += 1
+}
+
+TagInputRemoveAt :: (state: *TagInputState, index: s32,
+    result: *TagInputResult) {
+    if index < 0 || index >= state.count { return }
+    result.removed_id = state.ids[index]
+    at := index
+    while at < state.count - 1 {
+        source := (at + 1) * 64
+        target := at * 64
+        byte := 0
+        while byte < 64 {
+            state.bytes[target + byte] = state.bytes[source + byte]
+            byte += 1
+        }
+        state.ids[at] = state.ids[at + 1]
+        state.lengths[at] = state.lengths[at + 1]
+        at += 1
+    }
+    state.count -= 1
+    result.changed = true
+    result.removed = true
+}
+
+#program_export
+TagInputStateInit :: (state: *TagInputState, tags: []TagInputTag,
+    max_tags: s32) {
+    result: TagInputResult
+    if state != null {
+        for tag: tags {
+            TagInputAppendTag(state, tag.text, false, true, max_tags, *result)
+            if state.count > 0 && tag.id != 0 { state.ids[state.count - 1] = tag.id }
+            if state.next_id <= tag.id { state.next_id = tag.id + 1 }
+        }
+        state.initialized = true
+    }
+}
+
+TagInputSplitTyped :: (state: *TagInputState, separator: string,
+    allow_duplicates: bool, max_tags: s32,
+    result: *TagInputResult) {
+    if separator.count == 0 { separator = "," }
+    copy: [128]u8
+    copy_length := state.text_length
+    if copy_length < 0 { copy_length = 0 }
+    if copy_length > 128 { copy_length = 128 }
+    at := 0
+    while at < copy_length {
+        copy[at] = state.text[at]
+        at += 1
+    }
+    start := 0
+    at = 0
+    separator_seen := false
+    consumed_to_end := false
+    value := TextView(copy[:copy_length])
+    while at <= cast(s32)value.count && !consumed_to_end {
+        boundary := at == cast(s32)value.count
+        if !boundary {
+            matched := false
+            for byte: separator {
+                if at < cast(s32)value.count && value[at] == byte { matched = true }
+            }
+            boundary = matched
+        }
+        if boundary {
+            if at < cast(s32)value.count { separator_seen = true }
+            piece := value[start:at]
+            if piece.count > 0 { TagInputAppendTag(state, piece, false, allow_duplicates, max_tags, result) }
+            start = at + 1
+            if at == cast(s32)value.count && separator_seen { consumed_to_end = true }
+        }
+        at += 1
+    }
+    if consumed_to_end {
+        state.text_length = 0
+        state.cursor = 0
+        state.anchor = 0
+    } else if start <= cast(s32)value.count {
+        remaining := value[start:]
+        byte := 0
+        while byte < remaining.count {
+            state.text[byte] = remaining[byte]
+            byte += 1
+        }
+        state.text_length = cast(s32)remaining.count
+        state.cursor = state.text_length
+        state.anchor = state.cursor
+    }
+}
+
+TagInputSyncInput :: (state: *TagInputState, props: TagInputProps,
+    result: *TagInputResult) {
+    state.focused = state.focused || props.input.focus
+    if props.input.blur || props.input.escape { state.focused = false }
+    if props.disabled { return }
+    start := state.cursor
+    if state.anchor < start { start = state.anchor }
+    finish := state.cursor
+    if state.anchor > finish { finish = state.anchor }
+    replacement := props.input.text
+    if props.input.paste && props.input.paste_text.count > 0 { replacement = props.input.paste_text }
+    changed := false
+    if replacement.count > 0 {
+        count := cast(s32)replacement.count
+        if start + count > 128 { count = 128 - start }
+        at := start
+        while at < finish && at < 128 {
+            state.text[at] = 0
+            at += 1
+        }
+        at = 0
+        while at < count {
+            state.text[start + at] = replacement[at]
+            at += 1
+        }
+        kept := state.text_length - finish
+        if kept > 0 {
+            copy_at := 0
+            while copy_at < kept && start + count + copy_at < 128 {
+                state.text[start + count + copy_at] = state.text[finish + copy_at]
+                copy_at += 1
+            }
+        }
+        state.text_length = start + count + kept
+        state.cursor = start + count
+        state.anchor = state.cursor
+        changed = true
+    }
+    if props.input.backspace && state.text_length > 0 && start == finish && start > 0 {
+        at := start - 1
+        while at < state.text_length - 1 {
+            state.text[at] = state.text[at + 1]
+            at += 1
+        }
+        state.text_length -= 1
+        state.cursor = start - 1
+        state.anchor = state.cursor
+        changed = true
+    }
+    if changed { result.field.edit.changed = true }
+}
+
+#program_export
+TagInputApply :: (state: *TagInputState,
+    props: TagInputProps) -> TagInputResult {
+    result: TagInputResult
+    result.node = -1
+    if state == null { return result }
+    if !state.initialized {
+        for tag: props.initial_tags {
+            TagInputAppendTag(state, tag.text, props.trim_spaces, true, props.max_tags, *result)
+            if state.count > 0 && tag.id != 0 { state.ids[state.count - 1] = tag.id }
+            if state.next_id <= tag.id { state.next_id = tag.id + 1 }
+        }
+        state.initialized = true
+        result.changed = false
+        result.added = false
+        result.added_count = 0
+    }
+    if props.remove_index_requested && props.remove_index >= 0 {
+        TagInputRemoveAt(state, props.remove_index, *result)
+    }
+    if props.remove_id != 0 {
+        index := 0
+        while index < state.count {
+            if state.ids[index] == props.remove_id {
+                TagInputRemoveAt(state, cast(s32)index, *result)
+                break
+            }
+            index += 1
+        }
+    }
+    TagInputSyncInput(state, props, *result)
+    separator := props.separator
+    separator_hit := false
+    at := 0
+    while at < state.text_length && !separator_hit {
+        for want: separator {
+            if state.text[at] == want { separator_hit = true }
+        }
+        at += 1
+    }
+    if separator_hit || props.input.commit {
+        TagInputSplitTyped(state, separator, props.allow_duplicates, props.max_tags, *result)
+    }
+    if props.input.commit && state.text_length > 0 {
+        TagInputAppendTag(state, TextView(state.text[:state.text_length]),
+            props.trim_spaces, props.allow_duplicates, props.max_tags, *result)
+        state.text_length = 0
+        state.cursor = 0
+        state.anchor = 0
+    }
+    if props.input.backspace && state.text_length == 0 && state.count > 0 {
+        TagInputRemoveAt(state, state.count - 1, *result)
+    }
+    return result
+}
+
+TagInputHostedReply :: struct { state: TagInputState; result: TagInputResult }
+
+#if #defined(KRYON_HOSTED_UI) {
+    taginput_host_api :: #system_library "host_api";
+    TagInputHostedHost :: (session: Session, props: TagInputProps,
+        state: TagInputState) -> TagInputHostedReply #foreign taginput_host_api;
+    #program_export
+    TagInput :: (session: Session, props: TagInputProps,
+    state: *TagInputState) -> TagInputResult {
+        reply := TagInputHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #program_export
+    TagInput :: (session: Session, props: TagInputProps,
+    state: *TagInputState) -> TagInputResult { return TagInputCore(session, props, state, true) }
+    #program_export
+    TagInputCore :: (session: Session, props: TagInputProps,
+    state: *TagInputState, effects: bool) -> TagInputResult {
+    result := TagInputApply(state, props)
+    if !TreeIsBuilding(session) { return result }
+    style := props.style
+    if style.height <= 0 { style = TagInputDefaultStyle() }
+    bounds := props.bounds
+    if style.width > 0 { bounds.width = style.width }
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup, bounds)
+    if result.node < 0 { return result }
+    if !TreePushScope(session, result.node) { return result }
+    TreeSetInteractive(session, result.node, props.disabled, false, props.id)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetLabel(session, result.node, props.label)
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+    cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+    cast(u32)StylePaddingX | cast(u32)StylePaddingY | cast(u32)StyleGap |
+    cast(u32)StyleFontSize
+    face.background = CurrentSurface()
+    face.foreground = CurrentText()
+    face.border = CurrentBorderStrong()
+    face.radius = style.radius
+    face.border_width = 1.0
+    face.padding_x = style.padding_x
+    face.padding_y = style.padding_y
+    face.gap = style.gap
+    face.font_size = style.font_size
+    facts := StyleControlRoleFacts(StyleKindAny(), props.id, props.class_name, 0,
+        cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisSoft,
+        cast(s32)ControlSizeMedium, cast(s32)ButtonStateNormal)
+    resolved := ResolveInstalledStyleRules(face, facts, cast(s32)ButtonStateNormal)
+    y := bounds.y + style.padding_y
+    x := bounds.x + style.padding_x
+    index := 0
+    while index < state.count {
+        chip_width := style.padding_x * 2.0 + style.font_size * 0.6 *
+        cast(float32)state.lengths[index] + 16.0
+        if x + chip_width > bounds.x + bounds.width - style.min_field_width && x > bounds.x {
+            x = bounds.x + style.padding_x
+            y += style.chip_height + style.gap
+        }
+        chip_bounds := Rectangle.{x, y, chip_width, style.chip_height}
+        chip := Box(session, .{.key = props.key + 201 + cast(u64)cast(u32)index,
+                .bounds = chip_bounds, .fill = ColorFromPacked(resolved.foreground),
+                .border = ColorFromPacked(resolved.border), .radius = style.chip_radius})
+        unused chip
+        text: TextProps
+        text.key = props.key + 301 + cast(u64)cast(u32)index
+        text.bounds = Rectangle.{x + 8.0, y, chip_width - 24.0, style.chip_height}
+        start := index * 64
+        text.text = TextView(state.bytes[start:start + state.lengths[index]])
+        text.font = cast(s32)resolved.font_size
+        text.class_name = props.chip_class_name
+        Text(session, text)
+        remove: ButtonProps
+        remove.key = props.key + 401 + cast(u64)cast(u32)index
+        remove.bounds = Rectangle.{x + chip_width - 18.0, y + 3.0, 18.0, 18.0}
+        remove.label = "×"
+        remove.id = props.id + 1000 + cast(s32)index
+        remove.class_name = props.chip_class_name
+        remove.disabled = props.disabled
+        remove.icon_only = true
+        Button(session, remove)
+        x += chip_width + style.gap
+        index += 1
+    }
+    field_height := style.height
+    field_props: TextFieldProps
+    field_props.key = props.key + 101
+    field_props.bounds = Rectangle.{x, y, bounds.x + bounds.width - x, field_height}
+    field_props.value = TextView(state.text[:state.text_length])
+    field_props.label = props.label
+    field_props.placeholder = props.placeholder
+    field_props.cursor = state.cursor
+    field_props.anchor = state.anchor
+    field_props.scroll_x = state.scroll_x
+    field_props.focused = state.focused
+    field_props.max_bytes = 128
+    field_props.disabled = props.disabled
+    field_props.read_only = props.disabled || (props.max_tags > 0 && state.count >= props.max_tags)
+    field_props.class_name = props.class_name
+    field_props.composition = props.composition
+    field_props.input.composition_event = props.input.composition_event
+    field_result := ifx effects then TextField(session, field_props) else TextFieldCore(session, field_props)
+    unused field_result
+    TreePopScope(session)
+    return result
+}
+}

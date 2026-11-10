@@ -14,9 +14,9 @@ for variant in good spoof wrong disabled; do
         wrong) define='--define NOTIFICATION_WRONG_ID' ;;
         disabled) define='--define NOTIFICATION_DISABLED' ;;
     esac
-    "$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" --module-path "$repo/src/ui" \
+    "$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" $kryon_ui_args \
         --define KRYON_HOSTED_UI $define -o "$work/ir-$variant" "$repo/tests/notification_schedule_guest.zi"
-    "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/backend" --module-path "$repo/src/ui" \
+    "$ziran" bundle --root "$repo/tests" --module-path "$repo/src/backend" $kryon_ui_args \
         --define KRYON_HOSTED_UI $define --entry notification_schedule_guest:main \
         -o "$work/$variant-source.zx" "$repo/tests/notification_schedule_guest.zi"
     "$ziran" bundle --root "$work/ir-$variant" --module-path "$work/ir-$variant" \
@@ -25,7 +25,7 @@ for variant in good spoof wrong disabled; do
 done
 cp "$repo/tests/notification_schedule_provider.zi" "$work/notification_schedule.zi"
 "$ziran" build --target=c --no-main --entry notification_schedule_host_test:main \
-    --root "$repo/tests" --module-path "$work" --module-path "$repo/src/backend" --module-path "$repo/src/ui" \
+    --root "$repo/tests" --module-path "$work" --module-path "$repo/src/backend" $kryon_ui_args \
     -o "$work/native" "$repo/tests/notification_schedule_host_test.zi"
 "${CC:-cc}" -O2 -std=c11 -ffunction-sections -fdata-sections -I"$work/native" -I"$ziran_root/include" \
     "$work"/native/*.c "${ZIRAN_LIB:-$ziran_root/build/libziran.a}" -Wl,--gc-sections -lm -lpthread -o "$work/native/notification_schedule_host_test"

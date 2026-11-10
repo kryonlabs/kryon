@@ -1,0 +1,35 @@
+[package]
+name = "tilemap"
+entry = "tilemap.zi"
+module_roots = ["."]
+tool = "kryon"
+
+
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "1d616e3a1761dd4e4a1c5a960c165d30ba16da29"
+
+[tool.kryon]
+default_profile = "desktop"
+
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+assets = "assets"
+
+[tool.kryon.profiles.web]
+backend = "canvas"
+assets = "assets"
+
+[tool.kryon.profiles.portable]
+backend = "desktop"
+assets = "assets"
+codegen = "zx"
+
+[tool.kryon.profiles.portable_web]
+backend = "canvas"
+assets = "assets"
+codegen = "zx"
+
+[dependencies.kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"

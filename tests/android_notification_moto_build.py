@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 import subprocess
 import zipfile
-from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
+from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN, ZIRAN_ROOT
 
 WORK=ROOT/'work/android-notification-moto'
 SDK=Path('/home/wao/Android/Sdk')
@@ -18,7 +18,7 @@ if __name__=='__main__':
  run(['git','check-ignore',WORK]);WORK.mkdir(parents=True,exist_ok=True)
  # Same native JNI fixture as the JVM test, linked to real Android classes.
  run([ZIRAN,'build','--target=c','--no-main','--define','ANDROID_BUILD','--define','__arm__','--root',ROOT/'tests/notification_android',
-      '--module-path',ROOT/'src/backend','--module-path',ROOT/'src/ui','--module-path',ZIRAN_ROOT/'std',
+      '--module-path',ROOT/'src/backend',*UI_MODULE_ARGS,'--module-path',ZIRAN_ROOT/'std',
       '-o',WORK/'c',ROOT/'tests/notification_android/fixture.zi'])
  (WORK/'lib/armeabi-v7a').mkdir(parents=True,exist_ok=True)
  run([CC,'-std=c11','-shared','-fPIC','-O1','-I'+str(ZIRAN_ROOT/'include'),*sorted((WORK/'c').glob('*.c')),

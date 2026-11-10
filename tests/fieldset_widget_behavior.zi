@@ -3,7 +3,7 @@
 
 #import "control_props"
 #import "fieldset_props"
-#import "fieldset_widget"
+#import "fieldset"
 #import "geometry"
 #import "style"
 #import "style_sheet"

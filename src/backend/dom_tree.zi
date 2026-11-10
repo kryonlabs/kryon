@@ -156,7 +156,7 @@ DomReconcile :: (session: Session, viewport: Rectangle) -> bool {
             x -= parent.bounds.x; y -= parent.bounds.y
         }
         DomHostNode(index, node.parent,
-            node.identity_generation, node.kind,
+            node.identity_generation, node.style_id, node.kind,
             semantic, spec.level,
             x, y,
             node.bounds.width, node.bounds.height,

@@ -40,7 +40,8 @@ ZIRAN_MAKE_FLAGS := BUILD_DIR=$(ZIRAN_BUILD_DIR)
 ZIRAN_TOOL_TARGETS := $(ZI2ZIR_BIN) $(ZI2C_BIN) $(ZI2GO_BIN)
 endif
 ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
-ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std
+KRYON_UI_PATHS := $(foreach directory,$(sort $(shell find src/ui -type d)),--module-path $(directory) --module-path kryon=$(directory))
+ZIRAN_STD_PATH := --module-path $(ZIRAN_DIR)/std $(KRYON_UI_PATHS)
 KRYON_DIR := $(CURDIR)
 include mk/zx-player.mk
 ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
@@ -48,8 +49,6 @@ ZIRAN_SOURCES := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.c \
     $(ZIRAN_DIR)/scripts/* $(ZIRAN_DIR)/std/*.zi $(ZIRAN_DIR)/Makefile)
 
 SOURCE := $(addprefix src/ui/,$(shell cat src/ui/modules.txt))
-MODULES := $(basename $(notdir $(SOURCE))) utf8 grapheme grapheme_data
-OBJECTS := $(addprefix $(BUILD_DIR)/obj/,$(addsuffix .o,$(MODULES)))
 
 .PHONY: all backends-check check laws test test-focus ziran-test header-check source-check docs-check public-surface-check clean project-toolchain project-test templates-test pixmap-parity-test pixmap-font pixmap-emoji install-user dom-project-test host-keys-test
 all: source-check $(BUILD_DIR)/libkryon.a backends-check
@@ -85,15 +84,17 @@ $(BUILD_DIR)/ziran-toolchain.stamp: $(ZIRAN_SOURCES)
 	touch $@
 
 # Kryon is an ordinary Ziran library. Platform hosts are linked separately.
-$(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/ziran-toolchain.stamp
+$(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt ziran.toml ziran.lock Makefile $(BUILD_DIR)/ziran-toolchain.stamp
 	mkdir -p $(BUILD_DIR)/ir $(BUILD_DIR)/c $(BUILD_DIR)/obj
-	$(ZI2ZIR_BIN) --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/ir $(SOURCE)
-	$(ZI2C_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/c $(SOURCE)
-	@for module in $(MODULES); do \
-		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/c -c $(BUILD_DIR)/c/$$module.c -o $(BUILD_DIR)/obj/$$module.o || exit 1; \
+	rm -f $(BUILD_DIR)/ir/*.zir $(BUILD_DIR)/c/*.[ch] $(BUILD_DIR)/obj/*.o
+	$(ZIRAN_BIN) ir --project --root src/ui -o $(BUILD_DIR)/ir $(SOURCE)
+	$(ZI2C_BIN) --no-main --root $(BUILD_DIR)/ir -o $(BUILD_DIR)/c $(BUILD_DIR)/ir/*.zir
+	@for source in $(BUILD_DIR)/c/*.c; do \
+		module=$${source##*/}; module=$${module%.c}; \
+		$(CC) -std=c11 -I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/c -c "$$source" -o $(BUILD_DIR)/obj/$$module.o || exit 1; \
 	done
-	rm -f $@
-	$(AR) rcs $@ $(OBJECTS)
+	$(AR) rcs $@.new $(BUILD_DIR)/obj/*.o
+	mv $@.new $@
 
 # Go compilation is checked alongside the C archive. Packaging builds that
 # only link the C library can request that archive directly.
@@ -101,7 +102,7 @@ $(BUILD_DIR)/libkryon.a: $(SOURCE) src/ui/modules.txt Makefile $(BUILD_DIR)/zira
 backends-check: $(BUILD_DIR)/libkryon.a
 	mkdir -p $(BUILD_DIR)/go
 	rm -f $(BUILD_DIR)/go/*.go
-	$(ZI2GO_BIN) --no-main --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/go $(SOURCE)
+	$(ZI2GO_BIN) --no-main --root $(BUILD_DIR)/ir -o $(BUILD_DIR)/go $(BUILD_DIR)/ir/*.zir
 	cd $(BUILD_DIR)/go && GO111MODULE=off go test .
 
 TEST_JOBS ?= 4
@@ -148,6 +149,8 @@ project-test: project-toolchain build/bin/kryon
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_static_archive_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_artifact_test.py
 	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_host_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/project_entry_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/frame_entry_binding_test.py
 	@$(MAKE) --no-print-directory templates-test
 
 # This native-link regression uses GTK development libraries, supplied by
@@ -269,7 +272,7 @@ install-user: build/bin/kryon zx-player
 
 # Laws state policy independently of its implementation; `ziran check`
 # proves each over its whole listed domain.
-LAW_MODULES := $(wildcard src/ui/*_laws.zi)
+LAW_MODULES := $(shell find src/ui -name '*_laws.zi' | LC_ALL=C sort)
 laws: $(BUILD_DIR)/ziran-toolchain.stamp
 	@printf '%s\n' $(LAW_MODULES) | xargs -P "$(TEST_JOBS)" -I{} \
 		sh -c '$(ZIRAN_DIR)/build/bin/ziran check --root src/ui $(ZIRAN_STD_PATH) "$$1" > /dev/null' sh {}
@@ -286,9 +289,8 @@ docs-check:
 	python3 scripts/feature-matrix-html.py --check
 
 public-surface-check: canvas-hosted-import-test $(BUILD_DIR)/ziran-toolchain.stamp
-	$(ZI2ZIR_BIN) --root src/ui $(ZIRAN_STD_PATH) -o $(BUILD_DIR)/public/core src/ui/Kryon/module.zi
-	$(ZI2ZIR_BIN) --root tests --module-path src/ui $(ZIRAN_STD_PATH) \
-		-o $(BUILD_DIR)/public/widgets tests/public_widgets.zi
+	$(ZIRAN_BIN) ir --project --root src/ui -o $(BUILD_DIR)/public/core src/ui/Kryon/module.zi
+	python3 tests/public_surface_test.py
 
 .PHONY: canvas-hosted-import-test
 canvas-hosted-import-test:
@@ -341,7 +343,7 @@ canvas-audio-engine-test:
 dom-spec-test:
 	@env -u DISPLAY -u WAYLAND_DISPLAY sh tests/dom_spec_zi_test.sh
 	@mkdir -p build/scratch/dom-pixels
-	@'$(ZIRAN_BIN)' bundle --root tests --module-path src/ui --module-path src/backend --module-path '$(ZIRAN_DIR)/std' --entry dom_pixels_test:main -o build/scratch/dom-pixels/pixels.zx tests/dom_pixels_test.zi
+	@'$(ZIRAN_BIN)' bundle --root tests $(KRYON_UI_PATHS) --module-path src/backend --module-path '$(ZIRAN_DIR)/std' --entry dom_pixels_test:main -o build/scratch/dom-pixels/pixels.zx tests/dom_pixels_test.zi
 	@test "$$('$(ZIRAN_BIN)' run build/scratch/dom-pixels/pixels.zx)" = 0
 
 .PHONY: desktop-frame-input-test canvas-frame-input-test
@@ -632,6 +634,42 @@ style-cache-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_style_cache_test.sh
 test: style-cache-test
 
+.PHONY: tree-style-metadata-test
+tree-style-metadata-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_tree_style_metadata_test.sh
+test: tree-style-metadata-test
+
+.PHONY: css-dom-test
+css-dom-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 python3 tests/css_dom_browser.py
+test: css-dom-test
+
+.PHONY: component-host-test
+component-host-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/ziran_component_host_test.sh
+test: component-host-test
+
+.PHONY: theme-test theme-token-export-test button-theme-raster-test cui-inputs-test cui-overlays-test
+theme-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_theme_test.sh
+test: theme-test
+
+theme-token-export-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_theme_tokens_test.sh
+test: theme-token-export-test
+
+button-theme-raster-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_button_theme_raster_test.sh
+test: button-theme-raster-test
+
+cui-inputs-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER sh tests/ziran_cui_inputs_test.sh
+test: cui-inputs-test
+
+cui-overlays-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 sh tests/ziran_cui_overlays_test.sh
+test: cui-overlays-test
+
 .PHONY: style-cache-benchmark
 style-cache-benchmark: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/style_cache_cost.sh
@@ -845,3 +883,29 @@ test: gtk-scroll-linux-test
 file-date-linux-test: project-toolchain
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 python3 tests/file_date_linux_test.py
 test: file-date-linux-test
+
+.PHONY: android-surface-platform-test
+android-surface-platform-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS python3 tests/android_surface_platform_test.py
+test: android-surface-platform-test
+
+.PHONY: cui-motion-test
+cui-motion-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER YUE_DESKTOP_RECOVERY=0 sh tests/ziran_cui_motion_test.sh
+test: cui-motion-test
+
+.PHONY: android-source-generation-test
+android-source-generation-test: project-toolchain
+	@python3 tests/android_source_generation_test.py
+test: android-source-generation-test
+
+.PHONY: widget-import-order-test
+widget-import-order-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" sh tests/widget_import_order_test.sh
+test: widget-import-order-test
+
+.PHONY: toast-action-test
+toast-action-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/toast_action_test.py
+
+test: toast-action-test

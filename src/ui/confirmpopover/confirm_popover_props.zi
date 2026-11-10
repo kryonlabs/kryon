@@ -1,0 +1,116 @@
+#import "control_props"
+#import "geometry"
+#import "style"
+#import "style_sheet"
+#import "theme"
+#import "tooltip_common"
+
+using ButtonState;
+using StyleField;
+
+ConfirmPopoverProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    title: string
+    description: string
+    confirm_label: string
+    cancel_label: string
+    anchor: Rectangle
+    viewport: Rectangle
+    placement: OverlayPlacement
+    width: float32
+    gap: float32
+    danger: bool
+    disabled: bool
+    open: bool
+    now_ms: s64
+    pointer: OverlayPointer
+    focus: OverlayFocus
+    keys: OverlayKeyInput
+    style: StyleData
+    confirm_style: StyleData
+    cancel_style: StyleData
+    states: StyleStates
+}
+
+ConfirmPopoverState :: struct {
+    open_previous: bool
+    progress: float32
+    transition_start_ms: s64
+    focus_on_confirm: bool
+    trigger_focus_id: s32
+    focus_returned: bool
+}
+
+ConfirmPopoverResult :: struct {
+    node: s32
+    title_node: s32
+    confirm_node: s32
+    cancel_node: s32
+    bounds: Rectangle
+    fit: OverlayFit
+    visible: bool
+    progress: float32
+    confirmed: bool
+    cancelled: bool
+    closed: bool
+    focus_on_confirm: bool
+    focus_returned: bool
+}
+
+#program_export
+ConfirmPopoverStateFor :: () -> ConfirmPopoverState {
+    return ConfirmPopoverState.{.transition_start_ms = -1}
+}
+
+#program_export
+ConfirmPopoverDefaultStyle :: () -> StyleData {
+    style: StyleData
+    theme := CurrentTheme()
+    style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+        cast(u32)StyleOpacity | cast(u32)StylePaddingX | cast(u32)StylePaddingY |
+        cast(u32)StyleGap | cast(u32)StyleFontSize | cast(u32)StyleFontRole |
+        cast(u32)StyleTypeface | cast(u32)StyleLineHeight |
+        cast(u32)StyleMotionDuration | cast(u32)StyleMotionMultiplier |
+        cast(u32)StyleMotionReduced
+    style.background = theme.colors.surface_raised
+    style.foreground = theme.colors.foreground
+    style.border = theme.colors.border
+    style.radius = theme.metrics.radius_large
+    style.border_width = theme.metrics.border_width
+    style.opacity = 1.0
+    style.padding_x = 16.0
+    style.padding_y = 16.0
+    style.gap = 8.0
+    style.font_size = theme.metrics.text_body
+    style.font_role = .FontRoleBody
+    style.typeface = theme.fonts.body
+    style.line_height = 1.45
+    style.motion_duration = 280.0
+    style.motion_multiplier = 1.0
+    style.motion_reduced = theme.motion.reduced_motion
+    return style
+}
+
+#program_export
+ConfirmPopoverConfirmDefaultStyle :: (danger: bool) -> StyleData {
+    style := ConfirmPopoverDefaultStyle()
+    theme := CurrentTheme()
+    if danger {
+        style.background = theme.colors.danger
+        style.foreground = theme.colors.on_danger
+    } else {
+        style.background = theme.colors.accent
+        style.foreground = theme.colors.on_accent
+    }
+    style.radius = theme.metrics.radius_medium
+    style.padding_x = 12.0
+    style.padding_y = 5.0
+    style.font_size = theme.metrics.text_sm
+    style.font_role = .FontRoleControl
+    style.typeface = theme.fonts.control
+    return style
+}
+

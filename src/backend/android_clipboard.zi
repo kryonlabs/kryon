@@ -1,5 +1,5 @@
-// Android's raylib backend has no clipboard. Use the activity's byte-array
-// bridge so arbitrary UTF-8 (including supplementary characters) survives JNI.
+// Android's platform clipboard uses the activity's byte-array bridge so
+// arbitrary UTF-8 (including supplementary characters) survives JNI.
 #import "android_jni"
 
 // Like the native desktop clipboard API, this snapshot stays valid until the
@@ -88,4 +88,22 @@ AndroidClipboardWrite :: (text: string) -> bool {
     }
     unused text
     return false
+}
+
+#if #defined(KRYON_ANDROID_HOST) {
+    #program_export
+    SystemClipboardOpenHost :: () -> s32 {
+        return AndroidClipboardRead(android_clipboard_snapshot[:65536])
+    }
+
+    #program_export
+    SystemClipboardByteHost :: (index: s32) -> s32 {
+        if index < 0 || index > 65536 { return -1 }
+        return android_clipboard_snapshot[index]
+    }
+
+    #program_export
+    SystemClipboardWriteHost :: (text: string) -> bool {
+        return AndroidClipboardWrite(text)
+    }
 }

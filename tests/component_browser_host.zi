@@ -1,0 +1,220 @@
+// Real production ComponentHost + Canvas2D browser integration probe.
+#import "component_host"
+#import "component_browser_clipboard"
+#import "canvas_host"
+#import "canvas_raster"
+#import "session"
+#import "geometry"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "key_input"
+#import "page_core"
+#import "std/web"
+#import "std/file"
+#import "std/c_string"
+#import "std/byte_text_linux"
+
+using FrameStatus;
+host: ComponentHost;
+a_id: u64;
+b_id: u64;
+a_handle: *void;
+b_handle: *void;
+valid_zx: string;
+bad_zx: string;
+bad_abi_zx: string;
+bad_schema_zx: string;
+bad_resource_zx: string;
+bad_init_zx: string;
+frames: s32;
+command_done: s32;
+command_ok: bool;
+atomic_ok: bool;
+last_key: s32;
+pending_key: s32;
+swap_ms: float64;
+frame_paused: bool;
+typed_bytes: [1024]u8;
+inputs_mode: bool;
+
+ReadZX :: (path: string) -> string {
+    data, ok := ReadEntireFile(path)
+    return ifx ok then data else ""
+}
+Bytes :: (value: string) -> []u8 {
+    descriptor := cast(*TextDescriptor)(*value)
+    return BytesFromPointer(descriptor.data, cast(u64)value.count)
+}
+
+FocusedIndex :: (session: Session) -> s32 {
+    count := TreeCount(session)
+    for index: cast(s32)0..count - 1 {
+        if TreeFocusedAt(session, index) { return index }
+    }
+    return -1
+}
+
+InputsLabel :: () -> string {
+    index: s32 = 0
+    while index < TreeCount(host.session) {
+        text := TreeNodeAt(host.session, index).semantic_label
+        if text == "inputs ready" || text == "inputs updated" || text == "inputs updated v2" { return text }
+        index += 1
+    }
+    return ""
+}
+
+Publish :: () {
+    scope := WebScope()
+    probe := WebGetObject(WebGlobal, WebName("componentProbe"))
+    WebSet(probe, WebName("inputs"), WebText(InputsLabel()))
+    WebSet(probe, WebName("paused"), WebBool(frame_paused))
+    WebSet(probe, WebName("frames"), WebNumber(cast(float64)frames))
+    WebSet(probe, WebName("commandDone"), WebNumber(cast(float64)command_done))
+    WebSet(probe, WebName("commandOK"), WebBool(command_ok))
+    WebSet(probe, WebName("atomicOK"), WebBool(atomic_ok))
+    WebSet(probe, WebName("nodes"), WebNumber(cast(float64)TreeCount(host.session)))
+    WebSet(probe, WebName("focus"), WebNumber(cast(float64)FocusedIndex(host.session)))
+    WebSet(probe, WebName("a"), WebText(TreeNodeAt(host.session, 3).semantic_label))
+    WebSet(probe, WebName("b"), WebText(TreeNodeAt(host.session, 5).semantic_label))
+    WebSet(probe, WebName("oldValid"), WebBool(ComponentHostHandleValid(a_handle)))
+    WebSet(probe, WebName("bValid"), WebBool(ComponentHostHandleValid(b_handle)))
+    WebSet(probe, WebName("lastKey"), WebNumber(cast(float64)last_key))
+    WebSet(probe, WebName("swapMs"), WebNumber(swap_ms))
+    WebSet(probe, WebName("liveA"), WebNumber(cast(float64)ComponentHostLiveBytes(*host, a_id)))
+    WebSet(probe, WebName("liveB"), WebNumber(cast(float64)ComponentHostLiveBytes(*host, b_id)))
+    WebEnd(scope)
+}
+
+Replace :: (command: s32) {
+    before_nodes := TreeCount(host.session)
+    before_focus := FocusedIndex(host.session)
+    before_a := TreeNodeAt(host.session, 3).semantic_label
+    before_b := TreeNodeAt(host.session, 5).semantic_label
+    key := pending_key
+    pending_key = 0
+    if key != 0 { unused KeyboardSend(host.session, key) }
+    zx := valid_zx
+    if command == 1 { zx = bad_zx }
+    if command == 2 { zx = bad_abi_zx }
+    if command == 3 { zx = bad_schema_zx }
+    if command == 4 { zx = bad_resource_zx }
+    if command == 5 { zx = bad_init_zx }
+    if command == 6 { zx = "ZX" }
+    started := PageNow()
+    accepted := ComponentHostReplace(*host, a_id, Bytes(zx))
+    swap_ms = PageNow() - started
+    command_ok = accepted == (command == 7)
+    atomic_ok = TreeCount(host.session) == before_nodes &&
+        FocusedIndex(host.session) == before_focus &&
+        TreeNodeAt(host.session, 3).semantic_label == before_a &&
+        TreeNodeAt(host.session, 5).semantic_label == before_b &&
+        ComponentHostHandleValid(b_handle) &&
+        (command == 7 || ComponentHostHandleValid(a_handle))
+    if key != 0 { atomic_ok = KeyboardTake(host.session) == key && atomic_ok }
+}
+
+Pilot :: (first: string) -> bool {
+    control: ComponentHost
+    opened := ComponentHostOpen(*control, "browser", "pilot", first, COMPONENT_CAPABILITY_ALL, 1)
+    id := ComponentHostID("browser", "pilot")
+    // The identical clipboard candidate succeeds with count=7 and rejects
+    // count=8 later. This proves rejection follows migration + rendering.
+    accepted := opened && ComponentHostReplace(*control, id, Bytes(bad_zx))
+    ComponentHostClose(*control)
+    return accepted
+}
+
+PositiveCopy :: () -> bool {
+    session := SessionOpen()
+    if !SessionValid(session) { return false }
+    status := BeginFrame(session, cast(u64)99, Rectangle.{0.0, 0.0, 320.0, 180.0})
+    BrowserClipboardProbe(session, true)
+    TreeCancel(session)
+    unused SessionClose(session)
+    return status == cast(FrameStatus)FrameOk
+}
+
+#program_export
+main :: () -> s32 {
+    if !OpenCanvas() { return 1 }
+    first := ReadZX("/counter_v1.zx")
+    second := ReadZX("/status.zx")
+    valid_zx = ReadZX("/counter_v2.zx")
+    bad_zx = ReadZX("/bad_clipboard.zx")
+    bad_abi_zx = ReadZX("/bad_abi.zx")
+    bad_schema_zx = ReadZX("/bad_schema.zx")
+    bad_resource_zx = ReadZX("/bad_resource.zx")
+    bad_init_zx = ReadZX("/bad_init.zx")
+    if !Pilot(first) { CloseCanvas(); return 6 }
+    if !ComponentHostOpen(*host, "browser", "counter", first, COMPONENT_CAPABILITY_ALL, 1) ||
+        !ComponentHostOpen(*host, "browser", "status", second, COMPONENT_CAPABILITY_ALL, 1) { return 2 }
+    a_id = ComponentHostID("browser", "counter")
+    b_id = ComponentHostID("browser", "status")
+    a_handle = ComponentHostAcquire(*host, a_id)
+    b_handle = ComponentHostAcquire(*host, b_id)
+    while PollCanvas() {
+        key := CanvasPressedKey()
+        if key != 0 { last_key = key; pending_key = key }
+        scope := WebScope()
+        command := cast(s32)WebGetNumber(WebGlobal, WebName("componentCommand"))
+        paused := WebAsBool(WebGet(WebGlobal, WebName("componentPaused")))
+        WebEnd(scope)
+        frame_paused = paused
+        if command > command_done {
+            if command == 8 { command_ok = PositiveCopy() }
+            if command >= 1 && command <= 7 { Replace(command) }
+            if command == 9 {
+                ComponentHostClose(*host)
+                command_ok = !ComponentHostHandleValid(a_handle) && !ComponentHostHandleValid(b_handle)
+                ComponentHostCloseHandle(a_handle)
+                ComponentHostCloseHandle(b_handle)
+                b_handle = null
+                inputs_mode = true
+                command_ok = ComponentHostOpen(*host, "browser", "inputs", ReadZX("/inputs_v1.zx"), COMPONENT_CAPABILITY_ALL, 1) && command_ok
+                a_id = ComponentHostID("browser", "inputs")
+                a_handle = ComponentHostAcquire(*host, a_id)
+                atomic_ok = true
+            }
+            if command == 10 || command == 11 {
+                before_nodes := TreeCount(host.session)
+                before_focus := FocusedIndex(host.session)
+                before_label := InputsLabel()
+                zx := ReadZX(ifx command == 10 then "/inputs_bad.zx" else "/inputs_v2.zx")
+                accepted := ComponentHostReplace(*host, a_id, Bytes(zx))
+                command_ok = accepted == (command == 11)
+                atomic_ok = before_nodes == TreeCount(host.session) &&
+                    before_focus == FocusedIndex(host.session) && before_label == InputsLabel() &&
+                    (command == 11 || ComponentHostHandleValid(a_handle))
+            }
+            if command == 12 { break }
+            command_done = command
+        }
+        if !paused {
+            codepoint := CanvasTypedCodepoint()
+            while codepoint != 0 {
+                unused TypedCodepointSend(host.session, codepoint)
+                codepoint = CanvasTypedCodepoint()
+            }
+            typed := TypedTextTake(host.session, typed_bytes[:])
+            BeginCanvasFrame()
+            if !ComponentHostFrame(*host, CanvasViewport(), PollPointer(), PollSecondaryPointer(),
+                key, CanvasPressedKeyModifiers(), CanvasWheelMove(), typed, PageNow() / 1000.0) {
+                CloseCanvas(); return 3
+            }
+            if !EndCanvasFrame() { CloseCanvas(); return 4 }
+            frames += 1
+        } else {
+            // Keep servicing real browser events while retaining all pixels.
+            WebSleep(16)
+        }
+        Publish()
+    }
+    ComponentHostClose(*host)
+    stale := !ComponentHostHandleValid(a_handle) && !ComponentHostHandleValid(b_handle)
+    ComponentHostCloseHandle(a_handle)
+    ComponentHostCloseHandle(b_handle)
+    CloseCanvas()
+    return ifx stale then 0 else 5
+}

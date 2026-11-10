@@ -1,0 +1,159 @@
+#import "drawing_props"
+#import "geometry"
+
+CuiRasterSample :: struct {
+    fill_count: s32
+    outline_count: s32
+    text_count: s32
+    image_count: s32
+    line_count: s32
+    fill_color: Color
+    outline_color: Color
+    text_color: Color
+    fill_bounds: Rectangle
+    outline_bounds: Rectangle
+    radius: float32
+    font: s32
+    failed: bool
+}
+
+sample: CuiRasterSample;
+clipboard_text: [128]u8;
+clipboard_length: s32 = -1;
+clipboard_fail: bool;
+clipboard_writes: s32;
+
+#program_export
+CuiRasterReset :: () -> CuiRasterSample {
+    sample = CuiRasterSample.{}
+    return sample
+}
+
+#program_export
+CuiRasterSampleGet :: () -> CuiRasterSample { return sample }
+
+#program_export
+CuiClipboardText :: () -> string {
+    return TextView(clipboard_text[0:clipboard_length])
+}
+
+#program_export
+CuiClipboardSetFail :: (value: bool) { clipboard_fail = value }
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    unused font; unused typeface
+    return cast(s32)value.count * 7
+}
+
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
+    unused typeface
+    return font
+}
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 {
+    // A deterministic 8-column atlas keeps icon rendering real.
+    if asset_path == "icons/ui.webp" { return 256 }
+    if asset_path == "avatar.png" { return 32 }
+    return 0
+}
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 {
+    return ImageWidth(asset_path)
+}
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    unused value; unused x; unused y
+    sample.text_count += 1; sample.text_color = color; sample.font = font
+}
+
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
+    color: Color, clip: Rectangle) {
+    unused clip
+    RasterText(value, x, y, font, color)
+}
+
+
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
+    segments: s32, color: Color) {
+    unused segments
+    if sample.fill_count == 0 { sample.radius = radius }
+    sample.fill_count += 1; sample.fill_bounds = bounds; sample.fill_color = color
+}
+
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    unused radius; unused segments; unused width
+    sample.outline_count += 1; sample.outline_bounds = bounds
+    sample.outline_color = color
+}
+
+#program_export
+RasterLine :: (line: Rectangle, color: Color) {
+    unused line; unused color
+    sample.line_count += 1
+}
+
+#program_export
+RasterImage :: (asset_path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2,
+    rotation: float32, radius: float32, tint: Color) {
+    unused asset_path; unused texture_id; unused source; unused destination
+    unused clip; unused origin; unused rotation; unused radius; unused tint
+    if asset_path == "" { sample.failed = true }
+    sample.image_count += 1
+}
+
+#program_export
+RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle,
+    tint: Color) {
+    unused asset_path; unused texture_id; unused source; unused columns
+    unused rows; unused points; unused clip; unused tint
+}
+
+
+#program_export
+SystemClipboardOpenHost :: () -> s32 { return clipboard_length }
+
+#program_export
+SystemClipboardByteHost :: (index: s32) -> s32 {
+    if index < 0 || index >= clipboard_length { return -1 }
+    return cast(s32)clipboard_text[index]
+}
+
+#program_export
+SystemClipboardWriteHost :: (text: string) -> bool {
+    clipboard_writes += 1
+    if clipboard_fail || text.count > clipboard_text.count { return false }
+    at: s32 = 0
+    while at < cast(s32)text.count {
+        clipboard_text[at] = text[at]
+        at += 1
+    }
+    clipboard_length = cast(s32)text.count
+    return true
+}
+
+#program_export
+CuiClipboardWrites :: () -> s32 { return clipboard_writes }
+
+#program_export
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32, color: Color,
+    clip: Rectangle, origin: Vector2, rotation: float32, outer_clip: Rectangle,
+    outer_clipped: bool, emphasis: bool, italic: bool) {
+    unused value; unused x; unused y; unused font; unused color; unused clip; unused origin
+    unused rotation; unused outer_clip; unused outer_clipped; unused emphasis; unused italic
+}
+
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    unused points; unused color
+}

@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
@@ -15,13 +16,13 @@ InsideWindow :: (bounds: Rectangle) -> bool {
 
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
-    if font < 8 || font > 14 || typeface.count != 0 { failed = true }
+    if font < 8 || font > 14 || (typeface.count != 0 && typeface != Theme.FontForRole(Theme.CurrentTheme(), 1)) { failed = true }
     return (cast(s32)value.count) * 8 * font / 14
 }
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    if font < 8 || font > 14 || typeface.count != 0 { failed = true }
+    if font < 8 || font > 14 || (typeface.count != 0 && typeface != Theme.FontForRole(Theme.CurrentTheme(), 1)) { failed = true }
     return font
 }
 

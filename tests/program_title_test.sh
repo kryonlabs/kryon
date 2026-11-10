@@ -6,14 +6,14 @@ mkdir -p "$repo/build/scratch"
 work=$(mktemp -d "$repo/build/scratch/program-title.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/program_title_test.zi
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$repo/src/backend" --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source
     if test "$form" = saved; then input=$work/ir/program_title_test.zir; fi
     output=$work/$form
     "$ziran" build --target=c --root "$repo/tests" \
-        --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
+        $kryon_ui_args --module-path "$repo/src/backend" \
         --module-path "$ziran_root/std" -o "$output" "$input"
     ${CC:-cc} -std=c11 -O1 -I"$output" "$output"/*.c -lm -o "$output/probe"
     mkdir -p "$output/beside" "$output/prefix/bin" "$output/prefix/share/kryon/probe" "$output/bare"

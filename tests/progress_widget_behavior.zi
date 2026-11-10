@@ -8,10 +8,10 @@ TestSession :: () -> Session {
 
 #import "control_props"
 #import "geometry"
-#import "progress"
+#import "progress_behavior"
 #import "progress_props"
 #import "progress_style"
-#import "progress_widget"
+#import "progress"
 #import "style"
 #import "style_sheet"
 #import "tree"
@@ -76,7 +76,7 @@ Answer :: () -> s32 {
     ignored.style.background = cast(u32)0xdeadbeef
     rules.items[3] = ignored
     InstallStyleRules(rules)
-    faces: ProgressFaces = ProgressFacesFor(props.class_name, defaults)
+    faces: ProgressFaces = ProgressFacesFor(props.id, props.class_name, defaults)
     if faces.track.value.background != cast(u32)0x11223344 ||
         faces.fill.value.background != cast(u32)0x55667788 ||
         faces.label.value.font_size != 14.0 { return 0 }
@@ -95,6 +95,6 @@ Answer :: () -> s32 {
     }
     InstallStyleRules(rules)
     PaintProgressProps(TestSession(), props,
-        ProgressFacesFor(props.class_name, defaults))
+        ProgressFacesFor(props.id, props.class_name, defaults))
     return 42
 }

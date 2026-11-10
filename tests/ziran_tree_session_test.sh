@@ -4,9 +4,9 @@
 cat > "$work/app.zi" <<'ZI'
 #import "drawing_props"
 #import "geometry"
-#import "layout"
+#import "layout_behavior"
 #import "layout_props"
-#import "layout_widget"
+#import "layout"
 #import "paint_queue"
 #import "session"
 #import "tree"
@@ -211,9 +211,9 @@ main :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry app:Check -o "$work/source.zx" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Check -o "$work/saved.zx" "$work/ir/app.zir"
@@ -221,7 +221,7 @@ cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 42
 test "$("$ziran" run "$work/saved.zx")" = 42
 "$ziran" build --target=c --root "$work" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/c" "$work/app.zi"
+    $kryon_ui_args --module-path "$ziran_root/std" -o "$work/c" "$work/app.zi"
 "${CC:-cc}" -std=c99 -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c -lm -o "$work/check"
 env -u DISPLAY -u WAYLAND_DISPLAY "$work/check"

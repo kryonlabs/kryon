@@ -37,10 +37,10 @@ ImageHeight :: (asset_path: string) -> s32 {
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
     if swatch_phase && value.count == 0 { return 0 }
-    if detail_phase && value == "Uses Sunup" && font == 11 && typeface.count == 0 {
+    if detail_phase && value == "Uses Sunup" && font == 11 && typeface == "Inter Medium" {
         return 50
     }
-    if value != "Run" || font != 14 || typeface.count != 0 {
+    if value != "Run" || font != 14 || typeface != "Inter Medium" {
         failed = true
     }
     return 21
@@ -48,10 +48,10 @@ MeasureGlyphWidth :: (value: string, font: s32,
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    if detail_phase && font == 11 && typeface.count == 0 {
+    if detail_phase && font == 11 && typeface == "Inter Medium" {
         return 10
     }
-    if font != 14 || typeface.count != 0 { failed = true }
+    if font != 14 || typeface != "Inter Medium" { failed = true }
     return 12
 }
 
@@ -122,7 +122,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
         return
     }
     expected_x: s32 = 39
-    if images > 0 { expected_x = 26 }
+    if images > 0 { expected_x = 28 }
     if value != "Run" || x != expected_x || y != 29 || font != 14 ||
         clip.x != 10.0 || clip.y != 20.0 ||
         clip.width != 80.0 || clip.height != 30.0 ||
@@ -153,8 +153,8 @@ RasterImage :: (asset_path: string, texture_id: u32,
     if asset_path != "badge.png" || texture_id != cast(u32)0 ||
         source.x != 0.0 || source.y != 0.0 ||
         source.width != 32.0 || source.height != 16.0 ||
-        destination.x != 55.5 || destination.y != 30.5 ||
-        destination.width != 18.0 || destination.height != 9.0 ||
+        destination.x != 57.5 || destination.y != 31.5 ||
+        destination.width != 14.0 || destination.height != 7.0 ||
         clip.x != 10.0 || clip.y != 20.0 ||
         clip.width != 80.0 || clip.height != 30.0 ||
         origin.x != 0.0 || origin.y != 0.0 ||

@@ -1,4 +1,4 @@
-#import "app"
+#import "frame_entry"
 #import "canvas_host"
 #import "dom_tree"
 #import "dom_host"

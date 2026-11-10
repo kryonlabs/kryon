@@ -1,0 +1,10 @@
+// The project build binds this capability to the selected source module.
+#import "session"
+#import "geometry"
+
+host_api :: #system_library "host_api";
+ProjectFrame :: (session: Session, viewport: Rectangle) -> s32 #foreign host_api;
+
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    return ProjectFrame(session, viewport)
+}

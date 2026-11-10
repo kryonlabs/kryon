@@ -2,10 +2,10 @@
 #import "widget_test_session"
 
 #import "geometry"
-#import "list_box"
+#import "list_box_behavior"
 #import "list_box_multi"
 #import "list_box_props"
-#import "list_box_widget"
+#import "listbox"
 #import "paint_queue"
 #import "tree"
 #import "tree_input"

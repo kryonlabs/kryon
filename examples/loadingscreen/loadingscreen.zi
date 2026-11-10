@@ -1,0 +1,24 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/frame_snapshot"
+DemoTheme :: #import "kryon/Theme";
+
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Loading screen", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    input := CaptureFrameInput(session)
+    now := cast(float64)input.elapsed_ms / 1000.0
+    LoadingScreen(session, LoadingScreenProps.{.key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, 320.0}, .title = "Opening project", .detail = "Loading files", .now = now, .scale = 1.0, .reduced_motion = (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion)})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

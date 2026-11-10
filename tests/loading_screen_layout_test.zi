@@ -1,4 +1,4 @@
-#import "loading_screen"
+#import "loadingscreen"
 #import "geometry"
 
 Fits :: (outer: Rectangle, inner: Rectangle) -> bool {

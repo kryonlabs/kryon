@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
@@ -16,14 +17,14 @@ PillRadiusOf :: (bounds: Rectangle) -> float32 {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
-    if (value != "One" && value != "Two") || font != 14 ||
+    if (value != "One" && value != "Two") || font != cast(s32)Theme.TypeLabel() ||
         typeface.count != 0 { failed = true }
     return 21
 }
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    if font != 14 || typeface.count != 0 { failed = true }
+    if font != cast(s32)Theme.TypeLabel() || typeface.count != 0 { failed = true }
     return 12
 }
 
@@ -48,7 +49,7 @@ RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     even: bool = outlines % 2 == 0
     expected_y: float32 = 65.0
     if even { expected_y = 25.0 }
-    red: u8 = cast(u8)0x6f
+    red: u8 = ColorFromPacked(Theme.CurrentBorderStrong()).r
     alpha: u8 = cast(u8)255
     if (outlines < 4 && even) || (outlines >= 4 && !even) {
         red = cast(u8)0x12
@@ -74,7 +75,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
         expected = "One"
         expected_y = 29
     }
-    if value != expected || x != 58 || y != expected_y || font != 14 ||
+    if value != expected || x != 58 || y != expected_y || font != cast(s32)Theme.TypeLabel() ||
         clip.x != 10.0 || clip.width != 120.0 ||
         clip.height != 30.0 || color.r != cast(u8)0xaa ||
         color.g != cast(u8)0xbb || color.b != cast(u8)0xcc {

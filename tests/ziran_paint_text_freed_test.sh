@@ -28,7 +28,7 @@ set -- \
     --bind raster_triangles:RasterTriangles=$host:RasterTriangles \
     --bind paint_queue:RasterImage=$host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 cat > "$work/count.c" <<'C'
 #include "ziran_paint_text_freed_test.h"
@@ -71,16 +71,16 @@ C
 for form in source saved; do
     input=$source
     module_root=$repo/tests
-    module_path=$repo/src/ui
+    module_path="$kryon_ui_args"
     if test "$form" = saved; then
         input=$work/ir/$name.zir
         module_root=$work/ir
-        module_path=$work/ir
+        module_path="--module-path $work/ir"
     fi
     # A library build, without an entry, is called from the counting and
     # sanitized C programs.
     library=$work/$form-c
-    "$ziran" build --target=c --root "$module_root" --module-path "$module_path" \
+    "$ziran" build --target=c --root "$module_root" $module_path \
         --module-path "$ziran_root/std" -o "$library" "$input"
     "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections \
         -I"$ziran_root/include" -I"$library" \
@@ -94,11 +94,11 @@ for form in source saved; do
         -o "$work/asan-$form"
     ASAN_OPTIONS=detect_leaks=0 timeout 120 "$work/asan-$form"
     "$ziran" build --target=go --pkg main --entry "$name:PaintCheck" "$@" \
-        --root "$module_root" --module-path "$module_path" \
+        --root "$module_root" $module_path \
         --module-path "$ziran_root/std" --exe -o "$work/$form-go" "$input"
     timeout 60 env GO111MODULE=off go run "$work/$form-go"/*.go
     "$ziran" bundle --entry "$name:PaintCheck" "$@" --root "$module_root" \
-        --module-path "$module_path" --module-path "$ziran_root/std" \
+        $module_path --module-path "$ziran_root/std" \
         -o "$work/$form.zx" "$input"
     test "$(timeout 60 "$ziran" run "$work/$form.zx")" = 0
 done

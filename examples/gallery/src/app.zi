@@ -1,16 +1,50 @@
 using UI :: #import "kryon/Widgets";
 using Scenes :: #import "scenes";
+using Shot :: #import "catalog_shot";
 #import "catalog"
 #import "palette"
-#import "std/number_text"
+#import "kryon/widget_kind"
+#import "kryon/frame_snapshot"
+GalleryTheme :: #import "kryon/Theme";
 
 embedded: bool;
 scene: s32;
-catalog_scroll: s32;
 disabled_controls: bool;
+picker_key: s32;
+picker_focused: bool;
+catalog_scroll: s32;
+navigation_focus_pending: bool;
+
+// Reserve sidebar input before generic activation and scene editors consume it.
+PrepareGalleryInput :: (session: Session) {
+    picker_key = 0
+    picker_focused = false
+    if embedded { return }
+    for index: 0..TreeCount(session) - 1 {
+        entry := TreeNodeAt(session, index)
+        if TreeFocusedAt(session, index) && entry.parent >= 0 && TreeNodeAt(session, entry.parent).key == cast(u64)9003 {
+            picker_focused = TreeFocusedAt(session, index)
+            if picker_focused {
+                picker_key = KeyboardTake(session)
+                if picker_key == KeyTab {
+                    unused KeyboardSend(session, picker_key)
+                    picker_key = 0
+                    picker_focused = false
+                }
+                typed: [128]u8
+                unused TypedTextTake(session, typed[:])
+            }
+            return
+        }
+    }
+}
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    if Shot.CatalogShotActive() { return Shot.CatalogShotFrame(session, viewport) }
+    snapshot := CaptureFrameInput(session)
+    SetGalleryPreview(Rectangle.{0.0, 0.0, 480.0, viewport.height - 88.0}, true,
+        cast(float32)snapshot.elapsed_ms / 1000.0, GalleryTheme.CurrentTheme().motion.reduced_motion)
     InstallGalleryPalette(dark)
     Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
     if embedded {
@@ -18,26 +52,44 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         DrawScene(session)
         return 0
     }
-    Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 16.0, 440.0, 36.0}, .text = "Kryon widget catalog", .font = 26})
-    Text(session, TextProps.{.key = 9002, .bounds = .{500.0, 20.0, 450.0, 28.0}, .text = "Choose a widget to try", .font = 20})
+    restore_focus := navigation_focus_pending
+    navigation_focus_pending = false
+    DrawScene(session)
+    // Modal examples own the content's input layer. Keep the gallery controls
+    // in that same layer so an example cannot trap the sidebar.
+    modal: s32 = -1
+    for index: 0..TreeSubmittedCount(session) - 1 {
+        if TreeSubmittedNodeAt(session, index).kind == cast(s32)WidgetKind.WidgetKindModal { modal = index }
+    }
+    controls_scope := modal >= 0 && TreePushScope(session, modal)
+    controls_y := viewport.height - 64.0
     items: [GallerySceneCount]ListBoxItem
     for index: cast(s32)0..GallerySceneCount - 1 {
         items[index].key = cast(u64)(index + 1)
-        items[index].label = GallerySceneLabel(index)
+        items[index].label = GallerySceneName(index)
     }
-    picked := ListBox(session, ListBoxProps.{.key = 9003, .bounds = .{500.0, 64.0, viewport.width - 524.0, viewport.height - 88.0}, .selected_index = scene, .scroll_offset = catalog_scroll, .row_height = 30}, items[:])
+    navigation: s32
+    if picker_key == KeyHome { navigation = ListBoxKeyHome() }
+    else if picker_key == KeyEnd { navigation = ListBoxKeyEnd() }
+    else if picker_key == KeyUp { navigation = ListBoxKeyUp() }
+    else if picker_key == KeyDown { navigation = ListBoxKeyDown() }
+    picked := ListBox(session, ListBoxProps.{.key = 9003, .id = 9003,
+        .bounds = .{500.0, 24.0, viewport.width - 524.0, viewport.height - 48.0},
+        .selected_index = scene, .scroll_offset = catalog_scroll,
+        .row_height = 30, .focused = picker_focused, .navigation = navigation}, items[:])
     catalog_scroll = picked.scroll_offset
-    if picked.changed { scene = picked.selected_index; dismissed = false }
-    DrawScene(session)
-    Text(session, TextProps.{.key = 9004, .bounds = .{24.0, 330.0, 432.0, 40.0}, .text = items[scene].label, .font = 21})
-    disabled_controls = Checkbox(session, CheckboxProps.{.key = 9005, .bounds = .{24.0, 382.0, 208.0, 36.0}, .label = "Disabled state", .checked = disabled_controls}).checked
-    dark = Toggle(session, ToggleProps.{.key = 9006, .bounds = .{248.0, 382.0, 60.0, 36.0}, .label = "Dark palette", .value = dark}).value
-    Text(session, TextProps.{.key = 9011, .bounds = .{320.0, 382.0, 136.0, 36.0}, .text = "Dark palette", .font = 14, .vertical_align = TextAlign.TextAlignCenter})
-    Text(session, TextProps.{.key = 9007, .bounds = .{24.0, 442.0, 432.0, 72.0}, .text = "Click and type in the controls. Scroll the list for more. Tab moves keyboard focus.", .font = 16})
-    digits: [16]u8
-    Text(session, TextProps.{.key = 9008, .bounds = .{24.0, 534.0, 200.0, 24.0}, .text = "Button clicks / decisions", .font = 14})
-    Text(session, TextProps.{.key = 9009, .bounds = .{248.0, 534.0, 208.0, 24.0}, .text = FormatInteger(cast(s64)clicks, digits[:]), .font = 18})
-    Text(session, TextProps.{.key = 9010, .bounds = .{24.0, 594.0, 432.0, 52.0}, .text = "Examples from the enabled modules. The same Ziran source runs on desktop and web.", .font = 14, .disabled = true})
+    if picked.changed { scene = picked.selected_index; dismissed = false; navigation_focus_pending = true }
+    if navigation != 0 || restore_focus {
+        for index: 0..TreeSubmittedCount(session) - 1 {
+            entry := TreeSubmittedNodeAt(session, index)
+            if entry.parent == picked.node && entry.key == cast(u64)(scene + 1) {
+                unused TreeFocusSubmittedAt(session, index)
+            }
+        }
+    }
+    disabled_controls = Checkbox(session, CheckboxProps.{.key = 9004, .bounds = .{24.0, controls_y, 208.0, 40.0}, .label = "Disabled", .checked = disabled_controls}).checked
+    dark = Toggle(session, ToggleProps.{.key = 9005, .bounds = .{344.0, controls_y, 96.0, 40.0}, .label = "Dark", .value = dark}).value
+    if controls_scope { End(session) }
     return 0
 }
 

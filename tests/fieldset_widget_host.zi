@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
@@ -29,7 +30,7 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
 #program_export
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
     segments: s32, width: float32, color: Color) {
-    if radius != 12.0 || segments != 12 || width != 1.0 { failed = true }
+    if radius != Theme.ShapeMedium() || segments != 12 || width != 1.0 { failed = true }
     outlines += 1
 }
 

@@ -73,21 +73,21 @@ Send :: (props: NotificationProps) -> bool {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi" "$work/provider.zi"
 for source in source saved; do
     if test "$source" = source; then
         root=$work
-        modules=$repo/src/ui
+        modules="$kryon_ui_args"
         app=$work/app.zi
         provider=$work/provider.zi
     else
         root=$work/ir
-        modules=$work/ir
+        modules="--module-path $work/ir"
         app=$work/ir/app.zir
         provider=$work/ir/provider.zir
     fi
-    "$ziran" bundle --root "$root" --module-path "$modules" \
+    "$ziran" bundle --root "$root" $modules \
         --entry app:Answer \
         --bind notification:NotificationSupportedHost=provider:Supported \
         --bind notification:NotificationAllowedHost=provider:Allowed \

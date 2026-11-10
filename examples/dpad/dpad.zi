@@ -1,0 +1,29 @@
+using UI :: #import "kryon/Widgets";
+using Demo :: #import "kryon/direction_pad";
+#import "kryon/frame_snapshot"
+#import "std/number_text"
+
+steps: s32;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Direction pad", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    input := CaptureFrameInput(session)
+    now := cast(float64)input.elapsed_ms / 1000.0
+    result := DirectionPad(session, DirectionPadProps.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, 180.0, 180.0}, .label = "Move", .now = now})
+    if result.step { steps += 1 }
+    digits: [24]u8
+    Text(session, TextProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 192.0, 120.0, 28.0}, .text = "Steps", .font = 14, .vertical_align = .TextAlignCenter})
+    Text(session, TextProps.{.disabled = example_disabled, .key = 12, .bounds = .{bounds.x + 120.0, bounds.y + 192.0, 60.0, 28.0}, .text = FormatInteger(cast(s64)steps, digits[:]), .font = 14, .align = .TextAlignEnd, .vertical_align = .TextAlignCenter})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

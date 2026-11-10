@@ -52,7 +52,7 @@ int main(void) {
 C
 library=$work/c
 "$ziran" build --target=c --no-main --root "$repo/tests" --module-path "$repo/src/backend" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+    $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$library" "$repo/tests/$name.zi"
 "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections \
     -I"$ziran_root/include" -I"$library" "$library"/*.c "$work/count.c" \

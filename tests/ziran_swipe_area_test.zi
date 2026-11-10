@@ -2,7 +2,7 @@
 #import "geometry"
 #import "joystick"
 #import "box_props"
-#import "box_widget"
+#import "box"
 #import "drawing_props"
 #import "tree"
 #import "tree_draw"

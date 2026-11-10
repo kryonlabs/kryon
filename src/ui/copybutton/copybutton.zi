@@ -1,0 +1,129 @@
+#import "button_props"
+#import "button_behavior"
+#import "button"
+#import "control_props"
+#import "geometry"
+#import "icon"
+#import "session"
+#import "system_clipboard"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+using ButtonTone;
+using ButtonState;
+using WidgetKind;
+
+CopyButtonState :: struct {
+    copied_at: float32
+    failed_at: float32
+    clipboard_success: bool
+}
+
+CopyButtonProps :: struct {
+    button: ButtonProps
+    text: string
+    now: float32
+    success_window: float32
+    failure_window: float32
+    success_tone: ButtonTone
+    success_icon: s32
+    success_label: string
+    failure_tone: ButtonTone
+    failure_icon: s32
+    failure_label: string
+}
+
+CopyButtonResult :: struct {
+    node: s32
+    copied: bool
+    clipboard_success: bool
+    failed: bool
+    showing_success: bool
+    showing_failure: bool
+    bounds: Rectangle
+}
+
+#program_export
+CopyButtonApply :: (state: *CopyButtonState, props: CopyButtonProps,
+    activated: bool) -> CopyButtonResult {
+    result: CopyButtonResult
+    result.node = -1
+    window := props.success_window
+    if window <= 0.0 { window = 1.6 }
+    failure_window := props.failure_window
+    if failure_window <= 0.0 { failure_window = window }
+    if state.copied_at > 0.0 && props.now - state.copied_at >= window {
+        state.copied_at = 0.0
+        state.clipboard_success = false
+    }
+    if state.failed_at > 0.0 && props.now - state.failed_at >= failure_window {
+        state.failed_at = 0.0
+    }
+    if activated {
+        state.clipboard_success = SystemClipboardSet(props.text)
+        result.copied = true
+        result.clipboard_success = state.clipboard_success
+        result.failed = !state.clipboard_success
+        if state.clipboard_success {
+            state.copied_at = props.now
+            state.failed_at = 0.0
+        } else {
+            state.copied_at = 0.0
+            state.failed_at = props.now
+        }
+    } else {
+        result.clipboard_success = state.clipboard_success
+        result.failed = state.failed_at > 0.0
+    }
+    result.showing_success = state.copied_at > 0.0 && state.clipboard_success
+    result.showing_failure = state.failed_at > 0.0
+    return result
+}
+
+#program_export
+CopyButton :: (session: Session, props: CopyButtonProps,
+    state: *CopyButtonState) -> CopyButtonResult {
+    key := props.button.key
+    if key == cast(u64)0 && props.button.id > 0 { key = cast(u64)cast(u32)props.button.id }
+    previous: s32 = -1
+    if SessionValid(session) && TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindButton)
+    }
+    activated := false
+    if previous >= 0 { activated = TreeTakeActivationAt(session, previous) }
+    result := CopyButtonApply(state, props, activated)
+    button := props.button
+    if button.key == cast(u64)0 { button.key = cast(u64)button.id }
+    if button.label == "" { button.label = "Copy" }
+    if result.showing_success {
+        button.icon_only = props.button.icon_only
+        if props.button.icon_type != 0 || props.button.icon_shape != "" {
+            button.icon_type = props.button.icon_type
+        } else {
+            button.icon_type = ifx props.success_icon != 0 then props.success_icon else cast(s32)IconType.IconCheck
+        }
+        button.tone = ifx props.success_tone == ButtonTone.ButtonToneNeutral then ButtonTone.ButtonToneSuccess else props.success_tone
+        button.label = ifx props.success_label != "" then props.success_label else "Copied"
+    } else if result.showing_failure {
+        button.icon_only = props.button.icon_only
+        if props.button.icon_type != 0 || props.button.icon_shape != "" {
+            button.icon_type = props.button.icon_type
+        } else {
+            button.icon_type = ifx props.failure_icon != 0 then props.failure_icon else cast(s32)IconType.IconWarning
+        }
+        button.tone = ifx props.failure_tone == ButtonTone.ButtonToneNeutral then ButtonTone.ButtonToneDanger else props.failure_tone
+        button.label = ifx props.failure_label != "" then props.failure_label else "Copy failed"
+    } else {
+        if button.icon_type == 0 && button.icon_shape == "" {
+            button.icon_type = cast(s32)IconType.IconText
+        }
+    }
+    submitted_before := TreeSubmittedCount(session)
+    activation_result := Button(session, button)
+    submitted_after := TreeSubmittedCount(session)
+    if submitted_after > submitted_before { result.node = submitted_after - 1 }
+    unused activation_result
+    result.bounds = button.bounds
+    return result
+}

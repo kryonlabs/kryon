@@ -1,9 +1,10 @@
 #import "session"
+Theme :: #import "theme";
 #import "widget_test_session"
 
 #import "button_props"
+#import "button_behavior"
 #import "button"
-#import "button_widget"
 #import "control_props"
 #import "geometry"
 #import "drawing_props"
@@ -42,8 +43,9 @@ Frame :: () -> s32 {
     if ButtonCornerRadius(999.0, 40.0) != 999.0 || ButtonCornerRadius(999.0, 88.0) != 20.0 ||
         ButtonCornerRadius(8.0, 88.0) != 8.0 { return 85 }
     muted := ButtonDefaultFace(ButtonProps.{.tone = .ButtonToneAccent}, cast(s32)ButtonState.ButtonStateDisabled)
-    if (muted.background & cast(u32)255) != cast(u32)255 ||
-        (muted.foreground & cast(u32)255) != cast(u32)255 ||
+    disabled_alpha := cast(u32)(255.0 * Theme.CurrentTheme().metrics.disabled_opacity)
+    if (muted.background & cast(u32)255) != disabled_alpha ||
+        (muted.foreground & cast(u32)255) != disabled_alpha ||
         muted.foreground == muted.background { return 94 }
     clear := ButtonDefaultFace(ButtonProps.{.emphasis = .ButtonEmphasisGhost}, cast(s32)ButtonState.ButtonStateDisabled)
     if (clear.background & cast(u32)255) != cast(u32)0 ||
@@ -126,12 +128,13 @@ main :: () -> s32 {
         neutral: ButtonProps
         neutral.emphasis = cast(ButtonEmphasis)emphasis
         face := ButtonDefaultFace(neutral, cast(s32)ButtonState.ButtonStateNormal)
-        if face.foreground != cast(u32)0x191c1bff { return 61 }
+        if face.foreground != cast(u32)0x0b0b0bff { return 61 }
     }
     expected: [4]s32 = .[0, 42, 43, 44]
     index: s32 = 0
     while index < 4 {
-        if Frame() != expected[index] || ButtonHostFailed() ||
+        frame := Frame()
+        if frame != expected[index] || ButtonHostFailed() ||
         ButtonFills() != index + 1 ||
         ButtonLabels() != index + 1 { return 1 }
         index += 1
@@ -148,7 +151,7 @@ main :: () -> s32 {
     measured.class_name = 9
     measured.label = "Run"
     fit: Rectangle = ButtonMeasure(measured)
-    if fit.width != 45.0 || fit.height <= 0.0 || ButtonHostFailed() {
+    if fit.width != 41.0 || fit.height <= 0.0 || ButtonHostFailed() {
         return 34
     }
     measured.bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}
@@ -166,7 +169,7 @@ main :: () -> s32 {
     measured.image.asset_path = "badge.png"
     measured.icon_placement = cast(IconPlacement)IconPlacementAbove
     fit = ButtonMeasure(measured)
-    if fit.width != 45.0 || fit.height < 46.0 { return 38 }
+    if fit.width != 41.0 || fit.height != 36.0 { return 38 }
     start := ContentLayout(200.0, 56.0, 40.0, 24.0, 8.0,
         true, false, false, 0.0, 0.0, false, 14.0,
         cast(ContentAlignment)ContentAlignmentStart, 16.0)
@@ -228,7 +231,7 @@ main :: () -> s32 {
     detail.label = "Run"
     detail.detail = "Uses Sunup"
     sized := ButtonMeasure(detail)
-    if sized.width != 74.0 || sized.height < 24.0 || ButtonHostFailed() { return 49 }
+    if sized.width != 70.0 || sized.height != 36.0 || ButtonHostFailed() { return 49 }
     detail.key = cast(u64)91
     detail.id = 91
     detail.bounds = Rectangle.{10.0, 20.0, 200.0, 50.0}

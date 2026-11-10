@@ -1,6 +1,6 @@
 #import "app_context"
 #import "app_protocol"
-#import "image_widget"
+#import "image"
 #import "image_props"
 #import "geometry"
 #program_export

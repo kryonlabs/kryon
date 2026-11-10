@@ -1,0 +1,196 @@
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "input_protocol"
+#import "style"
+#import "style_sheet"
+#import "theme"
+
+using StyleField;
+
+OverlayPlacement :: enum {
+    OverlayPlaceBottomStart :: 0
+    OverlayPlaceBottom :: 1
+    OverlayPlaceBottomEnd :: 2
+    OverlayPlaceTopStart :: 3
+    OverlayPlaceTop :: 4
+    OverlayPlaceTopEnd :: 5
+    OverlayPlaceRightStart :: 6
+    OverlayPlaceLeftStart :: 7
+    OverlayPlaceRight :: 8
+    OverlayPlaceLeft :: 9
+}
+
+OverlaySide :: enum {
+    OverlaySideRight :: 0
+    OverlaySideLeft :: 1
+    OverlaySideBottom :: 2
+    OverlaySideTop :: 3
+}
+
+OverlayFit :: struct {
+    bounds: Rectangle
+    placement: OverlayPlacement
+    flipped: bool
+    clamped: bool
+    visible: bool
+}
+
+OverlayPointer :: struct {
+    x: float32
+    y: float32
+    over_anchor: bool
+    over_content: bool
+    down: bool
+    pressed: bool
+    released: bool
+    touch: bool
+}
+
+OverlayFocus :: struct {
+    focused: bool
+    anchor_focused: bool
+    content_focused: bool
+    focus_visible: bool
+    tab_forward: bool
+    tab_backward: bool
+}
+
+OverlayKeyInput :: struct {
+    escape: bool
+    enter: bool
+    space: bool
+    left: bool
+    right: bool
+    up: bool
+    down: bool
+}
+
+#program_export
+OverlayKeyInputFromSnapshot :: (snapshot: FrameInputSnapshot) -> OverlayKeyInput {
+    input: OverlayKeyInput
+    if !snapshot.available { return input }
+    if snapshot.keys[256] != cast(u8)0 { input.escape = true }
+    if snapshot.keys[257] != cast(u8)0 { input.enter = true }
+    if snapshot.keys[32] != cast(u8)0 { input.space = true }
+    if snapshot.keys[263] != cast(u8)0 { input.left = true }
+    if snapshot.keys[262] != cast(u8)0 { input.right = true }
+    if snapshot.keys[265] != cast(u8)0 { input.up = true }
+    if snapshot.keys[264] != cast(u8)0 { input.down = true }
+    return input
+}
+
+OverlayDuration :: (base_ms: float32, style: StyleData,
+    theme_reduced: bool) -> float32 {
+    duration := base_ms
+    if (style.fields & cast(u32)StyleMotionDuration) != cast(u32)0 &&
+        style.motion_duration >= 0.0 { duration = style.motion_duration }
+    multiplier := CurrentTheme().motion.multiplier
+    if (style.fields & cast(u32)StyleMotionMultiplier) != cast(u32)0 &&
+        style.motion_multiplier >= 0.0 { multiplier = style.motion_multiplier }
+    reduced := theme_reduced
+    if (style.fields & cast(u32)StyleMotionReduced) != cast(u32)0 {
+        reduced = style.motion_reduced
+    }
+    if reduced || multiplier <= 0.0 { return 0.0 }
+    if duration < 0.0 { duration = 0.0 }
+    return duration * multiplier
+}
+
+#program_export
+OverlayProgressAt :: (start_ms: s64, now_ms: s64,
+    duration_ms: float32) -> float32 {
+    if duration_ms <= 0.0 { return 1.0 }
+    elapsed := now_ms - start_ms
+    if elapsed <= 0 { return 0.0 }
+    progress := cast(float32)elapsed / duration_ms
+    if progress < 0.0 { progress = 0.0 }
+    if progress > 1.0 { progress = 1.0 }
+    return progress
+}
+
+#program_export
+OverlayFitPlacement :: (anchor: Rectangle, content_width: float32,
+    content_height: float32, gap: float32, placement: OverlayPlacement,
+    viewport: Rectangle, margin: float32) -> OverlayFit {
+    fit: OverlayFit
+    fit.placement = placement
+    if content_width < 0.0 { content_width = 0.0 }
+    if content_height < 0.0 { content_height = 0.0 }
+    if gap < 0.0 { gap = 0.0 }
+    if margin < 0.0 { margin = 0.0 }
+    top := anchor.y - gap - content_height
+    bottom := anchor.y + anchor.height + gap
+    left := anchor.x - gap - content_width
+    right := anchor.x + anchor.width + gap
+    start_x := anchor.x
+    end_x := anchor.x + anchor.width - content_width
+    center_x := anchor.x + (anchor.width - content_width) * 0.5
+    start_y := anchor.y
+    end_y := anchor.y + anchor.height - content_height
+    center_y := anchor.y + (anchor.height - content_height) * 0.5
+    x := center_x
+    y := bottom
+    if placement == .OverlayPlaceBottomStart || placement == .OverlayPlaceTopStart {
+        x = start_x; y = ifx placement == .OverlayPlaceBottomStart then bottom else top
+    } else if placement == .OverlayPlaceBottomEnd || placement == .OverlayPlaceTopEnd {
+        x = end_x; y = ifx placement == .OverlayPlaceBottomEnd then bottom else top
+    } else if placement == .OverlayPlaceBottom || placement == .OverlayPlaceTop {
+        x = center_x; y = ifx placement == .OverlayPlaceBottom then bottom else top
+    } else if placement == .OverlayPlaceRightStart || placement == .OverlayPlaceLeftStart {
+        x = ifx placement == .OverlayPlaceRightStart then right else left; y = start_y
+    } else if placement == .OverlayPlaceRight || placement == .OverlayPlaceLeft {
+        x = ifx placement == .OverlayPlaceRight then right else left; y = center_y
+    }
+    needs_vertical_flip := (y < viewport.y + margin &&
+        bottom + content_height <= viewport.y + viewport.height - margin) ||
+        (y + content_height > viewport.y + viewport.height - margin &&
+        top >= viewport.y + margin)
+    needs_horizontal_flip := (x < viewport.x + margin &&
+        right + content_width <= viewport.x + viewport.width - margin) ||
+        (x + content_width > viewport.x + viewport.width - margin &&
+        left >= viewport.x + margin)
+    if needs_vertical_flip {
+        y = ifx y >= anchor.y then top else bottom
+        fit.flipped = true
+        if placement == .OverlayPlaceBottomStart { fit.placement = .OverlayPlaceTopStart }
+        if placement == .OverlayPlaceBottom { fit.placement = .OverlayPlaceTop }
+        if placement == .OverlayPlaceBottomEnd { fit.placement = .OverlayPlaceTopEnd }
+        if placement == .OverlayPlaceTopStart { fit.placement = .OverlayPlaceBottomStart }
+        if placement == .OverlayPlaceTop { fit.placement = .OverlayPlaceBottom }
+        if placement == .OverlayPlaceTopEnd { fit.placement = .OverlayPlaceBottomEnd }
+    }
+    if needs_horizontal_flip && (placement == .OverlayPlaceRight ||
+        placement == .OverlayPlaceLeft || placement == .OverlayPlaceRightStart ||
+        placement == .OverlayPlaceLeftStart) {
+        x = ifx x >= anchor.x + anchor.width then left else right
+        fit.flipped = true
+        if placement == .OverlayPlaceRight { fit.placement = .OverlayPlaceLeft }
+        if placement == .OverlayPlaceLeft { fit.placement = .OverlayPlaceRight }
+        if placement == .OverlayPlaceRightStart { fit.placement = .OverlayPlaceLeftStart }
+        if placement == .OverlayPlaceLeftStart { fit.placement = .OverlayPlaceRightStart }
+    }
+    if x < viewport.x + margin { x = viewport.x + margin; fit.clamped = true }
+    if y < viewport.y + margin { y = viewport.y + margin; fit.clamped = true }
+    maximum_x := viewport.x + viewport.width - margin - content_width
+    maximum_y := viewport.y + viewport.height - margin - content_height
+    if x > maximum_x { x = maximum_x; fit.clamped = true }
+    if y > maximum_y { y = maximum_y; fit.clamped = true }
+    fit.bounds = .{x, y, content_width, content_height}
+    fit.visible = fit.bounds.width > 0.0 && fit.bounds.height > 0.0 &&
+        fit.bounds.x < viewport.x + viewport.width &&
+        fit.bounds.y < viewport.y + viewport.height &&
+        fit.bounds.x + fit.bounds.width > viewport.x &&
+        fit.bounds.y + fit.bounds.height > viewport.y
+    return fit
+}
+
+#program_export
+OverlayPointIn :: (pointer: OverlayPointer, bounds: Rectangle) -> bool {
+    return PointInBounds(pointer.x, pointer.y, bounds)
+}
+
+#program_export
+OverlayStyleOpacity :: (style: StyleData) -> float32 {
+    return StyleOpacityValue(style.fields, style.opacity)
+}

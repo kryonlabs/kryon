@@ -52,7 +52,7 @@ try {
     }
     if (message.method === 'Runtime.exceptionThrown') {
       const detail = message.params.exceptionDetails || {};
-      diagnostics = (diagnostics + (detail.exception?.description || detail.text || '')).slice(-4000);
+      diagnostics = (diagnostics + JSON.stringify(detail)).slice(-4000);
     }
     if (pending.has(message.id)) {
       pending.get(message.id)(message);

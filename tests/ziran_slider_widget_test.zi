@@ -3,9 +3,9 @@
 
 #import "control_props"
 #import "geometry"
-#import "slider"
+#import "slider_behavior"
 #import "slider_props"
-#import "slider_widget"
+#import "slider"
 #import "style"
 #import "style_sheet"
 #import "surface"

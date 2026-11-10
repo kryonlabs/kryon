@@ -1,0 +1,116 @@
+#import "session"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "layout_behavior"
+#import "layout"
+#import "page_props"
+#import "semantic"
+#import "style"
+#import "style_sheet"
+#import "tree"
+#import "widget_kind"
+
+using SemanticKind;
+using WidgetKind;
+using ButtonState;
+using StyleField;
+
+#program_export
+PageBoundsOrParent :: (session: Session, bounds: Rectangle) -> Rectangle {
+    parent: Rectangle = TreeCurrentParentBounds(session)
+    if bounds.width <= 0.0 { bounds.width = parent.width }
+    if bounds.height <= 0.0 { bounds.height = parent.height }
+    return bounds
+}
+
+// A page or section is flush until a style sheet declares spacing.
+#program_export
+PageBoxStyle :: (kind: s32, class_name: s32) -> StyleData {
+    base: StyleData
+    base.fields = cast(u32)StyleGap | cast(u32)StylePaddingX |
+        cast(u32)StylePaddingY
+    facts: StyleFacts = StyleDefaultFacts(kind)
+    facts.class_name = class_name
+    facts.state = cast(s32)ButtonStateNormal
+    return ResolveInstalledStyleRules(base, facts,
+        cast(s32)ButtonStateNormal)
+}
+
+#program_export
+PageLayoutMetricsFor :: (style: StyleData) -> PageSpacing {
+    spacing: PageSpacing
+    if (style.fields & cast(u32)StyleGap) != cast(u32)0 &&
+        style.gap > 0.0 { spacing.gap = cast(s32)(style.gap + 0.5) }
+    if (style.fields & cast(u32)StylePaddingX) != cast(u32)0 &&
+        style.padding_x > 0.0 {
+        spacing.padding = cast(s32)(style.padding_x + 0.5)
+    }
+    return spacing
+}
+
+// Page opens a retained tree scope. The caller closes it with End(session). The
+// returned metadata is an effect request for a platform host, not a window or
+// browser operation hidden inside the widget.
+#program_export
+Page :: (session: Session, props: PageProps) -> PageResult {
+    result: PageResult
+    result.node = -1
+    result.bounds = PageBoundsOrParent(session, props.bounds)
+    result.title = props.title
+    result.description = props.description
+    result.canonical_url = props.canonical_url
+    face: StyleData = PageBoxStyle(StyleKindPage(), props.class_name)
+    spacing: PageSpacing = PageLayoutMetricsFor(face)
+    metrics: LayoutMetrics = LayoutMetricsFor(result.bounds,
+        spacing.gap, spacing.padding)
+    result.content = metrics.content
+    result.gap = metrics.gap
+    result.padding = metrics.padding
+    result.theme_color = ColorFromPacked(face.background)
+    result.has_theme_color = result.theme_color.a != cast(u8)0
+    if !TreeIsBuilding(session) { return result }
+    key: u64 = props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    result.node = TreeSubmitCurrent(session, key, WidgetKindPage,
+        result.bounds)
+    if result.node < 0 { return result }
+    result.bounds = TreeSubmittedNodeAt(session, result.node).bounds
+    metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding)
+    result.content = metrics.content
+    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0)
+    TreeSetPlacement(session, result.node, TreePlaceColumn)
+    TreeSetLabel(session, result.node, props.title)
+    TreeSetSemantic(session, result.node, cast(SemanticKind)SemanticPage, 0)
+    result.opened = TreePushScope(session, result.node)
+    return result
+}
+
+#program_export
+Section :: (session: Session, props: SectionProps) -> SectionResult {
+    result: SectionResult
+    result.node = -1
+    result.bounds = PageBoundsOrParent(session, props.bounds)
+    face: StyleData = PageBoxStyle(StyleKindSection(), props.class_name)
+    spacing: PageSpacing = PageLayoutMetricsFor(face)
+    metrics: LayoutMetrics = LayoutMetricsFor(result.bounds,
+        spacing.gap, spacing.padding)
+    result.content = metrics.content
+    result.gap = metrics.gap
+    result.padding = metrics.padding
+    if !TreeIsBuilding(session) { return result }
+    key: u64 = props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    result.node = TreeSubmitCurrent(session, key, WidgetKindSection,
+        result.bounds)
+    if result.node < 0 { return result }
+    result.bounds = TreeSubmittedNodeAt(session, result.node).bounds
+    metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding)
+    result.content = metrics.content
+    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0)
+    TreeSetPlacement(session, result.node, TreePlaceColumn)
+    TreeSetLabel(session, result.node, props.label)
+    TreeSetSemantic(session, result.node, cast(SemanticKind)SemanticSection, 0)
+    result.opened = TreePushScope(session, result.node)
+    return result
+}

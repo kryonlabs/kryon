@@ -1,124 +1,388 @@
-// Android's native activity renders the same ordinary Frame ZX as desktop
-// and web. The APK contains a generic interpreter, renderer and app.zx.
+// Kryon's NativeActivity host for portable ordinary and app ZXs. Android owns
+// the window, lifecycle, scheduling, input, IME and pixels; guests run in the
+// current Ziran VM and Pixmap runtime.
+#import "android_bundle_file"
+#import "android_bundle_images"
+#import "android_bundle_media"
+#import "android_clipboard"
 #import "android_device"
 #import "android_jni"
+#import "android_native"
+#import "android_process"
 #import "android_surface"
-#import "android_bundle_file"
-#import "bundle_raylib"
-#import "raylib_runtime"
-#import "session"
+#import "android_touch"
+#import "app_asset"
+#import "bundle_app"
+#import "bundle_raster"
+#import "bundle_resources"
 #import "geometry"
-#import "tree_draw"
+#import "hosted_values"
+#import "android_text_editor"
+#import "text_request"
 #import "input_protocol"
+#import "key_input"
+#import "pixmap"
+#import "session"
+#import "frame_snapshot"
+#import "tree_draw"
+#import "tree_input"
+#import "std/byte_text_linux"
+#import "std/bundle_host"
+#import "std/c_string"
+#import "std/text_buffer"
+#import "std/vec"
+#import "std/timer_linux"
+App :: #import "bundle_app";
 Player :: #import "bundle_player";
+Clock :: #import "std/timer_linux";
 
-AndroidBundleDraw :: struct {
-    host: *RaylibBundle
-    viewport: AndroidViewport
-    bounds: Rectangle
-    zoom: float32
-    key: s32
-    ok: bool
+AndroidBundleHost :: struct {
+    player: Player.Player
+    raster: RasterHost
+    media: AndroidBundleMedia
+    app: BundleApp
+    images: AndroidBundleImages
+    text_session: Session
+    hosted: bool
+    media_slot: s32
 }
 
-AndroidBundleCompose :: (argument: *void) {
-    draw := cast(*AndroidBundleDraw)argument
-    BeginRaylibFrame()
-    ClearAndroidFrame(draw.viewport, cast(u32)0xf8fafcff, draw.zoom)
-    draw.ok = RaylibBundleFrame(draw.host, draw.bounds, draw.key)
-    unused EndRaylibFrame()
+android_bundle_hosts: [2]AndroidBundleHost;
+android_bundle_data: [2]string;
+android_bundle_active: s32;
+android_bundle_clipboard: [65536]u8;
+android_bundle_clipboard_length: s32;
+
+AndroidBundleRead :: (path: string) -> string { return ReadAppAsset(path) }
+
+AndroidBundleFree :: (data: string) { FreeAppAsset(data) }
+
+AndroidBundlePlatform :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    name := TextFromCString(function)
+    host := cast(*AndroidBundleHost)context
+    if AndroidBundleMediaCall(*host.media, TextFromCString(module), name,
+        arguments, count, result, host.media_slot) == 1 { return 1 }
+    if Player.ModuleName(TextFromCString(module), "clock") &&
+    name == "ClockMillisecondsHost" && count == 0 {
+        result.* = HostScalar("s64", Clock.MonotonicMilliseconds())
+        return 1
+    }
+    if name == "WindowFocusedHost" && count == 0 {
+        result.* = HostScalar("bool", ifx AndroidLifecycleFocused() != 0 then 1 else 0)
+        return 1
+    }
+    if name == "SystemClipboardOpenHost" && count == 0 {
+        android_bundle_clipboard_length = AndroidClipboardRead(android_bundle_clipboard[:])
+        result.* = HostScalar("s32", cast(s64)android_bundle_clipboard_length)
+        return 1
+    }
+    if name == "SystemClipboardByteHost" && count == 1 {
+        index := cast(s32)arguments[0].integer
+        value := -1
+        if index >= 0 && index < android_bundle_clipboard_length {
+            value = android_bundle_clipboard[index]
+        }
+        result.* = HostScalar("s32", cast(s64)value)
+        return 1
+    }
+    if name == "SystemClipboardWriteHost" && count == 1 {
+        ready := AndroidClipboardWrite(Player.TextValue(arguments[0]))
+        result.* = HostScalar("bool", ifx ready then 1 else 0)
+        return 1
+    }
+    return 0
+}
+
+AndroidBundleClose :: (host: *AndroidBundleHost) {
+    slot := host.media_slot
+    AndroidBundleMediaClose(*host.media)
+    BundleAppClose(*host.app)
+    Player.PlayerClose(*host.player)
+    AndroidBundleImagesRelease(*host.images,
+        ifx host.media_slot == 0 then 384 else 512)
+    host.* = AndroidBundleHost.{.media_slot = slot}
+}
+
+AndroidBundleEditorPresent :: (context: *void, identity: u64, value: string,
+    cursor: s32, anchor: s32, flags: s32) {
+    host := cast(*AndroidBundleHost)context
+    AndroidTextEditorExternalPresent(host.text_session, identity, value, cursor, anchor, flags)
+}
+AndroidBundleEditorRequest :: (context: *void, identity: u64, output: []u8) -> TextRequest {
+    host := cast(*AndroidBundleHost)context
+    return AndroidTextEditorExternalTake(host.text_session, identity, output)
+}
+
+AndroidBundleRaster :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    status := RasterHostCall(context, module, function, arguments, count, result)
+    if status != 1 {
+        message: Vec(u8)
+        BuilderPrint(*message, "Android raster % status=% value=%", TextFromCString(function), status, result.integer)
+        AndroidNativeLog(BuilderFinish(message))
+    }
+    return status
+}
+
+AndroidBundleOpen :: (host: *AndroidBundleHost, data: string,
+    previous: *AndroidBundleHost = null) -> bool {
+    AndroidBundleClose(host)
+    descriptor := cast(*TextDescriptor)(*data)
+    checked := OpenBundleBytes(descriptor.data, cast(u64)data.count)
+    if checked == null { return false }
+    hosted := BundleIsApp(checked)
+    accepted := ifx hosted then BundleAppCheck(checked) else Player.PlayerCheck(
+        BytesFromPointer(descriptor.data, cast(u64)data.count))
+    image_base: s32 = ifx host.media_slot == 0 then 384 else 512
+    images_ready := accepted && AndroidBundleImagesLoad(*host.images, checked, image_base)
+    CloseBundle(checked)
+    if !images_ready { AndroidNativeLog("Android bundle validation or image decode failed"); AndroidBundleClose(host); return false }
+    if previous != null {
+        AndroidBundleImagesUnregister(*previous.images,
+            ifx previous.media_slot == 0 then 384 else 512)
+    }
+    if !AndroidBundleImagesRegister(*host.images, image_base) {
+        AndroidBundleClose(host)
+        return false
+    }
+    host.hosted = hosted
+
+    if hosted {
+        canonical: [4096]u8
+        directory := AndroidPrivateDataPath(canonical[:])
+        previous_app: *BundleApp
+        if previous != null && previous.hosted { previous_app = *previous.app }
+        if !BundleAppOpen(*host.app, data, directory, previous_app) {
+            AndroidBundleClose(host)
+            return false
+        }
+        host.media.bundle = host.app.local.bundle
+        return true
+    }
+
+    if !Player.PlayerLoad(*host.player, BytesFromPointer(descriptor.data, cast(u64)data.count),
+        AndroidBundlePlatform, cast(*void)host) {
+        AndroidNativeLog("Android portable player load failed")
+        AndroidBundleClose(host)
+        return false
+    }
+    host.media.bundle = host.player.bundle
+    host.raster = RasterHost.{
+        .asset_bundle = host.player.bundle,
+        .measure_width = MeasureGlyphWidth, .measure_height = MeasureGlyphLineHeight,
+        .image_width = ImageWidth, .image_height = ImageHeight,
+        .line = RasterLine, .rectangle = RasterRoundedRectangle,
+        .outline = RasterRoundedRectangleOutline, .text = RasterText,
+        .clipped_text = RasterTextClipped, .rotated_text = RasterTextRotated,
+        .image = RasterImage, .triangles = RasterTriangles, .mesh = RasterImageMesh}
+    if !Player.PlayerUseRenderer(*host.player, AndroidBundleRaster,
+        cast(*void)(*host.raster)) || !Player.PlayerStart(*host.player) {
+        AndroidNativeLog("Android portable player start failed")
+        AndroidBundleClose(host)
+        return false
+    }
+    Player.PlayerUseTextEditor(*host.player, AndroidBundleEditorPresent,
+        AndroidBundleEditorRequest, cast(*void)host)
+    return true
+}
+
+AndroidBundlePresent :: () -> bool {
+    width: s32
+    height: s32
+    if !AndroidNativeSurfaceSize(*width, *height) || !AndroidNativeLock() { AndroidNativeLog("Android window lock failed"); return false }
+    copied := AndroidNativePresentDamage(0, 0, width, height)
+    posted := AndroidNativeUnlock()
+    if !copied || !posted { AndroidNativeLog("Android window copy or post failed") }
+    return posted && copied
+}
+
+AndroidBundleDraw :: (host: *AndroidBundleHost, session: Session,
+    viewport: AndroidViewport, bounds: Rectangle, zoom: float32, reuse: bool) -> bool {
+    width := viewport.x + viewport.width
+    height := viewport.y + viewport.height
+    if !AndroidNativeSurfaceSize(*width, *height) ||
+    !AndroidNativeEnsurePixels(width, height) || !PixmapScale(zoom, zoom) ||
+    !PixmapResumeInto(width, height, AndroidNativePixels(), true) { AndroidNativeLog("Android pixmap surface failed"); return false }
+    ok := true
+    // These VM frames replay their paint; the caller clears their canvas.
+    {
+        AndroidNativeFill(cast(u32)0xff000000)
+        ClearAndroidFrame(viewport, cast(u32)0xfff8fafc)
+    }
+    AndroidBundleMediaTick(*host.media, host.media_slot)
+    if !AndroidTouchFrameInputBegin(session, zoom) {
+        AndroidNativeLog("Android frame input failed")
+        PixmapEndInto()
+        return false
+    }
+
+    key := AndroidTouchTakeKey()
+    if AndroidTextInputKeyPressed(259) { key = 259 }
+    if AndroidTextInputKeyPressed(257) { key = 257 }
+    codepoint := AndroidTextInputCharacter()
+    while codepoint != 0 {
+        if host.hosted { unused TypedCodepointSend(session, codepoint) }
+        else { Player.PlayerTyped(*host.player, codepoint) }
+        codepoint = AndroidTextInputCharacter()
+    }
+    pointer := PollPointer()
+    secondary := PollSecondaryPointer()
+
+    if host.hosted {
+        typed: [1024]u8
+        text := TypedTextTake(session, typed[:])
+        ok = BundleAppFrame(*host.app, bounds, pointer, secondary, key, 0, 0.0,
+            text, cast(float64)Clock.MonotonicMilliseconds() / 1000.0)
+        host.player.keyboard = host.app.app.keyboard
+        host.player.failed = host.app.failed
+    } else {
+        host.text_session = session
+        host.raster.x = bounds.x
+        host.raster.y = bounds.y
+        ok = Player.PlayerFrameNative(*host.player, Player.Input.{
+            .width = cast(s32)bounds.width, .height = cast(s32)bounds.height,
+            .x = pointer.x - bounds.x, .y = pointer.y - bounds.y,
+            .down = pointer.down, .pressed = pointer.pressed,
+            .released = pointer.released, .secondary_down = secondary.down,
+            .secondary_pressed = secondary.pressed,
+            .secondary_released = secondary.released, .key = key})
+    }
+    if !ok { AndroidNativeLog(ifx host.player.failed then "Android portable VM failed" else "Android guest frame rejected") }
+    FrameInputEnd(session)
+    AndroidTouchFrameEnd()
+    PixmapEndInto()
+    return ok && AndroidBundlePresent()
 }
 
 AndroidBundleRunMain :: () -> s32 {
+    AndroidNativeLog("Android portable host starting")
     AndroidJniKeepHostThread()
     defer { AndroidJniReleaseHostThread() }
-    if !OpenRaylib() { return 1 }
-    defer { CloseRaylib() }
-    if !LoadTypefaceFile("default", "kryon-font.ttf", null, 0) || !SelectTypeface("default") { return 1 }
-    hosts: [2]RaylibBundle
-    data: [2]string
-    active: s32
-    data[0] = RaylibBundleRead("app.zx")
-    if data[0].count == 0 { return 1 }
-    defer {
-        RaylibBundleClose(*hosts[0])
-        RaylibBundleClose(*hosts[1])
-        RaylibBundleFree(data[0])
-        RaylibBundleFree(data[1])
-    }
-    if !RaylibBundleOpen(*hosts[0], data[0]) { return 1 }
+    AndroidProcessPrepare()
+
     input_session := SessionOpen()
-    if !SessionValid(input_session) { return 1 }
+    if !SessionValid(input_session) { AndroidNativeLog("Android input session failed"); return 1 }
     defer { CloseSession(input_session) }
     AndroidTextInputOpen(input_session)
     defer { AndroidTextInputClose(input_session) }
-    RaylibExitKey(0)
-    defer { CloseRaylibAppFrames() }
-    first: bool = true
-    while PollRaylib() && !hosts[active].player.closed {
+
+    android_bundle_data[0] = AndroidBundleRead("app.zx")
+    if android_bundle_data[0].count == 0 { AndroidNativeLog("Android app.zx asset is missing"); return 1 }
+    defer {
+        AndroidBundleClose(*android_bundle_hosts[0])
+        AndroidBundleClose(*android_bundle_hosts[1])
+        AndroidBundleFree(android_bundle_data[0])
+        AndroidBundleFree(android_bundle_data[1])
+        android_bundle_data[0] = ""
+        android_bundle_data[1] = ""
+        android_bundle_active = 0
+    }
+    android_bundle_hosts[0].media_slot = 0
+    android_bundle_hosts[1].media_slot = 1
+    if !AndroidBundleOpen(*android_bundle_hosts[0], android_bundle_data[0]) { AndroidNativeLog("Android app.zx failed to open"); return 1 }
+
+    ok := true
+    first_frame := true
+    reuse := false
+    quiet_frames := 0
+    was_paused := false
+    next_frame_ms := Clock.MonotonicMilliseconds()
+    while ok && !AndroidNativeDestroyRequested() {
+        now := Clock.MonotonicMilliseconds()
+        timeout := ifx next_frame_ms > now then cast(s32)(next_frame_ms - now) else 0
+        if timeout > 1000 { timeout = 1000 }
+        unused AndroidNativePoll(timeout)
+        if AndroidNativeDestroyRequested() { break }
+
         selected: [4096]u8
         path := AndroidBundleTakeFile(selected[:])
         if path.count > 0 {
-            // Finish paint that may still borrow the old bundle's resources
-            // before replacing its asset reader or closing its app state.
-            if !FlushRaylibAppFrames() { return 1 }
-            incoming := RaylibBundleRead(path)
-            candidate := 1 - active
-            if incoming.count > 0 && RaylibBundleOpen(*hosts[candidate], incoming, *hosts[active]) {
-                // Binding contexts point to stable slots. A failed candidate
-                // never destroys the running app or its retained state.
-                RaylibBundleClose(*hosts[active])
-                RaylibBundleFree(data[active])
-                data[active] = ""
-                data[candidate] = incoming
-                active = candidate
-                AndroidTextInputFrame(input_session, false)
+            incoming := AndroidBundleRead(path)
+            candidate_index := 1 - android_bundle_active
+            candidate := *android_bundle_hosts[candidate_index]
+            accepted := incoming.count > 0 && AndroidBundleOpen(candidate, incoming,
+                *android_bundle_hosts[android_bundle_active])
+            if accepted {
+                active := *android_bundle_hosts[android_bundle_active]
+                old_session := ifx active.hosted then active.app.app.session else input_session
+                AndroidTextInputClose(old_session)
+                AndroidBundleClose(active)
+                AndroidBundleFree(android_bundle_data[android_bundle_active])
+                android_bundle_data[android_bundle_active] = ""
+                android_bundle_data[candidate_index] = incoming
+                android_bundle_active = candidate_index
+                new_session := ifx candidate.hosted then candidate.app.app.session else input_session
+                AndroidTextInputOpen(new_session)
                 AndroidBundleResult(true)
             } else {
-                RaylibBundleFree(incoming)
+                AndroidBundleClose(candidate)
+                active := *android_bundle_hosts[android_bundle_active]
+                unused AndroidBundleImagesRegister(*active.images,
+                    ifx active.media_slot == 0 then 384 else 512)
+                AndroidBundleFree(incoming)
                 print("kryon: selected ZX is invalid or needs unavailable services\n")
                 AndroidBundleResult(false)
             }
-            RaylibBundleUseAssets(*hosts[active])
         }
-        host := *hosts[active]
-        if AndroidTakeGraphicsInvalidate() != 0 {
-            DiscardRaylibAppFrame()
-            ResetRaylibGraphics(true)
-            if !LoadTypefaceFile("default", "kryon-font.ttf", null, 0) || !SelectTypeface("default") { return 1 }
+
+        width: s32
+        height: s32
+        active := *android_bundle_hosts[android_bundle_active]
+        session := ifx active.hosted then active.app.app.session else input_session
+        paused := AndroidNativePaused() || !AndroidNativeWindowReady() ||
+            !AndroidNativeSurfaceSize(*width, *height)
+        if paused {
+            if !was_paused && active.media.state == 2 {
+                AndroidBundleMediaPausePlayback(*active.media)
+            }
+            was_paused = true
+            AndroidTextInputFrame(session, false)
+            reuse = false
+            quiet_frames = 0
+            next_frame_ms = Clock.MonotonicMilliseconds() + 1000
+            continue
         }
+        was_paused = false
+
+        if AndroidNativeTakeResized() || AndroidTakeGraphicsInvalidate() != 0 ||
+        AndroidNativeTakeRedraw() { reuse = false }
         viewport: AndroidViewport
         SyncAndroidViewport(*viewport)
         if viewport.ready == 0 || viewport.width <= 0 || viewport.height <= 0 {
-            width: s32
-            height: s32
-            GetAndroidSurfaceSize(*width, *height)
-            viewport.x = 0
-            viewport.y = 0
-            viewport.width = width
-            viewport.height = height
+            viewport.x = 0; viewport.y = 0
+            viewport.width = width; viewport.height = height
         }
         zoom := AndroidLayoutZoom()
-        RaylibSetZoom(zoom)
+        AndroidTouchSetZoom(zoom)
         bounds := Rectangle.{cast(float32)viewport.x / zoom,
             cast(float32)viewport.y / zoom, cast(float32)viewport.width / zoom,
             cast(float32)viewport.height / zoom}
-        AndroidTextInputBeginFrame(input_session)
-        key := RaylibPressedKey()
-        if key == 0 { key = RaylibRepeatedKey() }
-        if AndroidTextInputKeyPressed(259) { key = 259 }
-        if AndroidTextInputKeyPressed(257) { key = 257 }
-        point := AndroidTextInputCharacter()
-        while point != 0 {
-            RaylibBundleTyped(host, point)
-            point = AndroidTextInputCharacter()
+        AndroidTextInputBeginFrame(session)
+        ok = AndroidBundleDraw(active, session, viewport, bounds, zoom, reuse)
+        AndroidTextInputFrame(session, active.player.keyboard)
+        if ok && first_frame {
+            first_frame = false
+            AndroidNotifyFirstFrame()
         }
-        draw := AndroidBundleDraw.{.host = host, .viewport = viewport,
-            .bounds = bounds, .zoom = zoom, .key = ifx key == 4 then KeyEscape else key}
-        ok := RunRaylibAppFrame(AndroidBundleCompose, cast(*void)*draw) && draw.ok
-        AndroidTextInputFrame(input_session, host.player.keyboard)
-        if !ok || host.player.closed { AndroidJniFinishActivity(); break }
-        if first { first = false; AndroidNotifyFirstFrame() }
+        if !ok || active.player.closed {
+            if !ok { unused AndroidJniFinishActivity() }
+            break
+        }
+        if reuse { quiet_frames += 1 } else { quiet_frames = 0 }
+        reuse = true
+        next_frame_ms = Clock.MonotonicMilliseconds() +
+            ifx quiet_frames >= 2 then cast(s64)100 else cast(s64)16
     }
-    return ifx hosts[active].player.failed then 1 else 0
+    active := *android_bundle_hosts[android_bundle_active]
+    return ifx ok && !active.player.failed then 0 else 1
+}
+
+#program_export
+android_main :: (app: *NativeAndroidApp) {
+    if app == null { return }
+    AndroidNativeStart(app)
+    defer { AndroidNativeClose() }
+    unused AndroidBundleRunMain()
+    AndroidNativeFinish()
 }

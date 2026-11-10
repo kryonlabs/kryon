@@ -1,0 +1,198 @@
+#import "confirm_popover_props"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "semantic"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "theme"
+#import "tooltip_common"
+#import "tree"
+#import "widget_kind"
+
+using ButtonState;
+using SemanticKind;
+using StyleField;
+using WidgetKind;
+
+#program_export
+ConfirmPopoverInstalledFaceFor :: (props: ConfirmPopoverProps,
+    state: s32) -> StyleData {
+    role := StyleAny()
+    if props.danger { role = 1 }
+    facts := StyleControlRoleFacts(StyleKindPopup(), props.id,
+        props.class_name, role, StyleAny(), StyleAny(), StyleAny(), state)
+    return ResolveInstalledStyleRules(ConfirmPopoverDefaultStyle(), facts, state)
+}
+
+#program_export
+ConfirmPopoverApply :: (state: *ConfirmPopoverState,
+    props: ConfirmPopoverProps) -> ConfirmPopoverResult {
+    result: ConfirmPopoverResult
+    result.node = -1; result.title_node = -1; result.confirm_node = -1
+    result.cancel_node = -1
+    result.fit.placement = props.placement
+    if state == null { return result }
+    if props.open && !state.open_previous {
+        state.progress = 0.0
+        state.transition_start_ms = props.now_ms
+        state.focus_on_confirm = true
+        state.focus_returned = false
+        state.trigger_focus_id = ifx props.focus.anchor_focused then props.id + 100 else 0
+    }
+    state.open_previous = props.open
+    duration := OverlayDuration(280.0, props.style,
+        CurrentTheme().motion.reduced_motion)
+    state.progress = OverlayProgressAt(state.transition_start_ms,
+        props.now_ms, duration)
+    result.progress = state.progress
+    result.visible = props.open || state.progress > 0.0
+    result.focus_on_confirm = props.open && state.focus_on_confirm
+    if !props.open && state.progress >= 1.0 {
+        state.transition_start_ms = -1
+        state.progress = 0.0
+        state.focus_on_confirm = false
+        if !state.focus_returned {
+            state.focus_returned = true
+            result.focus_returned = true
+        }
+        result.visible = false
+    }
+    if !props.open { return result }
+
+    width := props.width
+    if width <= 0.0 { width = 290.0 }
+    font := ResolveFont(0, StyleFontValue(props.style.fields,
+        props.style.font_size), 13)
+    height := cast(float32)GlyphLineHeight(font, props.style.typeface) * 3.0 +
+        props.style.padding_y * 2.0 + 30.0
+    gap := props.gap
+    if gap <= 0.0 { gap = 6.0 }
+    result.fit = OverlayFitPlacement(props.anchor, width, height, gap,
+        props.placement, props.viewport, 8.0)
+    result.bounds = result.fit.bounds
+    if props.disabled { return result }
+    if props.keys.enter || (props.focus.content_focused &&
+        props.keys.space) {
+        result.confirmed = true; result.closed = true
+    }
+    if props.keys.escape {
+        result.cancelled = true; result.closed = true
+    }
+    if props.pointer.released && !OverlayPointIn(props.pointer, result.bounds) {
+        result.closed = true
+    }
+    if result.closed {
+        result.focus_returned = true
+        state.focus_returned = true
+    }
+    return result
+}
+
+ConfirmPopoverHostedReply :: struct {
+    state: ConfirmPopoverState
+    result: ConfirmPopoverResult
+}
+#if #defined(KRYON_HOSTED_UI) {
+    confirm_popover_host_api :: #system_library "host_api";
+    ConfirmPopoverHostedHost :: (session: Session, props: ConfirmPopoverProps, state: ConfirmPopoverState) -> ConfirmPopoverHostedReply #foreign confirm_popover_host_api;
+    #program_export
+    ConfirmPopover :: (session: Session, props: ConfirmPopoverProps,
+    state: *ConfirmPopoverState) -> ConfirmPopoverResult {
+        reply := ConfirmPopoverHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #import "paint_queue"
+    #program_export
+    ConfirmPopover :: (session: Session, props: ConfirmPopoverProps,
+    state: *ConfirmPopoverState) -> ConfirmPopoverResult { return ConfirmPopoverCore(session, props, state, true) }
+    #program_export
+ConfirmPopoverCore :: (session: Session, props: ConfirmPopoverProps,
+    state: *ConfirmPopoverState, effects: bool) -> ConfirmPopoverResult {
+    unused effects
+    result := ConfirmPopoverApply(state, props)
+    if !result.visible || result.bounds.width <= 0.0 ||
+        !SessionValid(session) || !TreeIsBuilding(session) { return result }
+    face := MergeValues(ResolveValues(ConfirmPopoverInstalledFaceFor(props,
+        ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.states, ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.style)
+    result.node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 1),
+        WidgetKindBox, result.bounds)
+    if result.node < 0 { return result }
+    TreeSetPopup(session, result.node)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    PaintRoundedFill(session, result.node, result.bounds, face.radius, 12,
+        ColorFromPacked(Opacity(face.background,
+            OverlayStyleOpacity(face) * result.progress)))
+    if face.border != cast(u32)0 {
+        PaintRoundedOutline(session, result.node, result.bounds, face.radius,
+            12, face.border_width, ColorFromPacked(Opacity(face.border,
+                OverlayStyleOpacity(face) * result.progress)))
+    }
+    if !TreePushScope(session, result.node) { return result }
+    row_height: float32 = 30.0
+    title_bounds := Rectangle.{result.bounds.x + face.padding_x,
+        result.bounds.y + face.padding_y,
+        result.bounds.width - face.padding_x * 2.0,
+        result.bounds.height - face.padding_y * 2.0 - row_height}
+    result.title_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 2),
+        WidgetKindText, title_bounds)
+    if result.title_node >= 0 {
+        TreeSetPopup(session, result.title_node)
+        TreeSetStyleClass(session, result.title_node, props.class_name)
+        TreeSetStyleId(session, result.title_node, props.id)
+        TreeSetSemantic(session, result.title_node, cast(SemanticKind)SemanticHeading, 4)
+        TreeSetLabel(session, result.title_node, props.title)
+        PaintClippedLabel(session, result.title_node, props.title,
+            cast(s32)title_bounds.x, cast(s32)title_bounds.y,
+            ResolveFont(0, StyleFontValue(face.fields, face.font_size), 13),
+            ColorFromPacked(Opacity(face.foreground, OverlayStyleOpacity(face))),
+            title_bounds)
+    }
+    button_width: float32 = 78.0
+    row_bounds := Rectangle.{result.bounds.x + result.bounds.width -
+        face.padding_x - button_width * 2.0 - face.gap,
+        result.bounds.y + result.bounds.height - face.padding_y - row_height,
+        button_width * 2.0 + face.gap, row_height}
+    result.cancel_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 3),
+        WidgetKindButton, Rectangle.{row_bounds.x, row_bounds.y,
+            button_width, row_bounds.height})
+    if result.cancel_node >= 0 {
+        TreeSetPopup(session, result.cancel_node)
+        TreeSetStyleClass(session, result.cancel_node, props.class_name)
+        TreeSetStyleId(session, result.cancel_node, props.id)
+        TreeSetInteractive(session, result.cancel_node, props.disabled,
+            false, props.id + 1)
+        TreeSetSemantic(session, result.cancel_node, cast(SemanticKind)SemanticButton, 0)
+        TreeSetLabel(session, result.cancel_node, props.cancel_label)
+    }
+    result.confirm_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 4),
+        WidgetKindButton, Rectangle.{row_bounds.x + button_width + face.gap,
+            row_bounds.y, button_width, row_bounds.height})
+    if result.confirm_node >= 0 {
+        TreeSetPopup(session, result.confirm_node)
+        TreeSetStyleClass(session, result.confirm_node, props.class_name)
+        TreeSetStyleId(session, result.confirm_node, props.id)
+        TreeSetInteractive(session, result.confirm_node, props.disabled,
+            false, props.id + 2)
+        TreeSetSemantic(session, result.confirm_node, cast(SemanticKind)SemanticButton, 0)
+        TreeSetLabel(session, result.confirm_node, props.confirm_label)
+        PaintRoundedFill(session, result.confirm_node,
+            Rectangle.{row_bounds.x + button_width + face.gap, row_bounds.y,
+                button_width, row_bounds.height}, props.confirm_style.radius,
+            8, ColorFromPacked(Opacity(props.confirm_style.background,
+                OverlayStyleOpacity(props.confirm_style))))
+    }
+    unused TreePopScope(session)
+    return result
+}
+}
+
+

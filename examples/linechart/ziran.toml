@@ -1,0 +1,39 @@
+[package]
+name = "linechart"
+entry = "linechart.zi"
+module_roots = ["."]
+tool = "kryon"
+
+
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "1d616e3a1761dd4e4a1c5a960c165d30ba16da29"
+
+[tool.kryon]
+default_profile = "desktop"
+
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+
+[tool.kryon.profiles.web]
+backend = "canvas"
+
+[tool.kryon.profiles.portable]
+backend = "desktop"
+codegen = "zx"
+
+[tool.kryon.profiles.portable_web]
+backend = "canvas"
+codegen = "zx"
+
+[dependencies.kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"
+
+[dependencies.plot]
+git = "https://github.com/kryonlabs/plot.git"
+ref = "master"
+
+[dependencies.data_views]
+git = "https://github.com/kryonlabs/data-views.git"
+ref = "master"

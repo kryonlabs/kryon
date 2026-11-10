@@ -7,7 +7,7 @@
 #import "c_string"
 #import "byte_text_linux"
 #import "drawing_props"
-#import "tile_map"
+#import "tilemap"
 #import "widget_codec"
 #import "text_input_platform"
 #import "session"
@@ -22,7 +22,7 @@ tile_reply: WidgetTileMapResultCodec;
 
 Widgets :: (context: *void, module: *u8, function: *u8,
     arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
-    if TextFromCString(module) != "tile_map" || TextFromCString(function) != "TileMapHostedHost" || count != 2 { return 0 }
+    if TextFromCString(module) != "tilemap" || TextFromCString(function) != "TileMapHostedHost" || count != 2 { return 0 }
     tile_calls += 1
     tile_after_write = frame_writes > 0
     result.* = WidgetEncodeTileMapResult(TileMapResult.{.cell = 10.0, .columns = 2, .rows = 1}, *tile_reply)

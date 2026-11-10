@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
@@ -8,7 +9,7 @@ failed: bool;
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    if font != 14 || typeface != "" { failed = true }
+    if font != cast(s32)Theme.TypeLabel() || typeface != "" { failed = true }
     return 12
 }
 
@@ -50,7 +51,7 @@ RasterText :: (value: string, x: s32, y: s32, font: s32,
 #program_export
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
-    if value.count == 0 || font != 14 || clip.x < 10.0 ||
+    if value.count == 0 || font != cast(s32)Theme.TypeLabel() || clip.x < 10.0 ||
         clip.y < 10.0 || clip.x + clip.width > 190.0 ||
         clip.y + clip.height > 250.0 { failed = true }
     labels += 1

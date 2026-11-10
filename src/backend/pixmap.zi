@@ -1662,21 +1662,23 @@ WindowTakeCloseRequestHost :: () -> bool {
 #program_export
 WindowQuitHost :: () {}
 
-#program_export
-SystemClipboardOpenHost :: () -> s32 {
-    return -1
-}
+#if !#defined(KRYON_ANDROID_HOST) {
+    #program_export
+    SystemClipboardOpenHost :: () -> s32 {
+        return -1
+    }
 
-#program_export
-SystemClipboardByteHost :: (index: s32) -> s32 {
-    unused index
-    return -1
-}
+    #program_export
+    SystemClipboardByteHost :: (index: s32) -> s32 {
+        unused index
+        return -1
+    }
 
-#program_export
-SystemClipboardWriteHost :: (text: string) -> bool {
-    unused text
-    return false
+    #program_export
+    SystemClipboardWriteHost :: (text: string) -> bool {
+        unused text
+        return false
+    }
 }
 
 pixmap_text_rotation: float32;

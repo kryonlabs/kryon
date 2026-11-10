@@ -2,6 +2,10 @@
 // Surface synchronization runs on the render thread; inset updates may arrive
 // on Java's UI thread and are copied under the Android mutex.
 #import "c_string"
+ANDROID_SURFACE :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
+#if ANDROID_SURFACE {
+    #import, file "android_native.zi";
+}
 
 AndroidWindowInsets :: struct {
     system_left: s32
@@ -46,20 +50,6 @@ AndroidSurfaceTransform :: struct {
     projection_y: float32
 }
 
-ANDROID_SURFACE :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
-raylib :: #system_library "raylib";
-SurfaceScreenWidth :: () -> s32 #foreign raylib "GetScreenWidth";
-SurfaceScreenHeight :: () -> s32 #foreign raylib "GetScreenHeight";
-SurfaceColor :: struct {
-    r: u8
-    g: u8
-    b: u8
-    a: u8
-}
-SurfaceClear :: (color: SurfaceColor) #foreign raylib "ClearBackground";
-SurfaceFill :: (x: s32, y: s32, width: s32, height: s32,
-    color: SurfaceColor) #foreign raylib "DrawRectangle";
-
 surface_width: s32;
 surface_height: s32;
 window_insets: AndroidWindowInsets;
@@ -72,66 +62,11 @@ viewport_policy_set: bool;
 
 #if ANDROID_SURFACE {
     c :: #system_library "c";
-    android :: #system_library "android";
-    dl :: #system_library "dl";
     SurfaceMutexLock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_lock";
     SurfaceMutexUnlock :: (mutex: *void) -> s32 #foreign c "pthread_mutex_unlock";
-    SurfaceLookup :: (library: *void, name: *u8) -> *RaylibWindowState #foreign dl "dlsym";
-    SurfaceWindow :: () -> *void #foreign raylib "GetWindowHandle";
-    SurfaceFormat :: (window: *void) -> s32 #foreign android "ANativeWindow_getFormat";
-    SurfaceGeometry :: (window: *void, width: s32,
-        height: s32, format: s32) -> s32 #foreign android "ANativeWindow_setBuffersGeometry";
-    SurfaceWidth :: (window: *void) -> s32 #foreign android "ANativeWindow_getWidth";
-    SurfaceHeight :: (window: *void) -> s32 #foreign android "ANativeWindow_getHeight";
-    SurfaceViewport :: (x: s32, y: s32, width: s32,
-        height: s32) #foreign raylib "rlViewport";
-    SurfaceMatrixMode :: (mode: s32) #foreign raylib "rlMatrixMode";
-    SurfaceIdentity :: () #foreign raylib "rlLoadIdentity";
-    SurfaceOrtho :: (left: float64, right: float64, bottom: float64,
-        top: float64, near: float64, far: float64) #foreign raylib "rlOrtho";
-    SurfaceMatrix :: struct {
-        values: [16]float32
-    }
-    SurfaceProjection :: () -> SurfaceMatrix #foreign raylib "rlGetMatrixProjection";
-    SurfaceMouseOffset :: (x: s32, y: s32) #foreign raylib "SetMouseOffset";
-
-    // raylib exposes CORE as a global. This prefix matches its Window record
-    // through screenScale; later raylib fields are never read or written here.
-    RaylibWindowSize :: struct {
-        width: u32
-        height: u32
-    }
-    RaylibWindowPoint :: struct {
-        x: s32
-        y: s32
-    }
-    RaylibWindowState :: struct {
-        title: *u8
-        flags: u32
-        ready: bool
-        should_close: bool
-        resized_last_frame: bool
-        event_waiting: bool
-        using_fbo: bool
-        display: RaylibWindowSize
-        screen: RaylibWindowSize
-        position: RaylibWindowPoint
-        previous_screen: RaylibWindowSize
-        previous_position: RaylibWindowPoint
-        render: RaylibWindowSize
-        render_offset: RaylibWindowPoint
-        current_fbo: RaylibWindowSize
-        screen_min: RaylibWindowSize
-        screen_max: RaylibWindowSize
-        screen_scale: [16]float32
-    }
-    // This record overlays raylib's native CORE.Window. Its unused fields
-    // are ABI padding and must survive executable field pruning.
-    #assert size_of(RaylibWindowState) >= 160
     // PTHREAD_MUTEX_INITIALIZER is zero on bionic. Storage also fits glibc
     // for the display-free native behavior test.
     insets_mutex: [8]u64;
-    raylib_window_state: *RaylibWindowState;
 }
 
 NonnegativeInset :: (value: s32) -> s32 {
@@ -341,10 +276,18 @@ GetAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
     w := surface_width
     h := surface_height
     if w <= 0 {
-        w = SurfaceScreenWidth()
+        w = 0
     }
     if h <= 0 {
-        h = SurfaceScreenHeight()
+        h = 0
+    }
+    #if ANDROID_SURFACE {
+        if w <= 0 || h <= 0 {
+            if AndroidNativeSurfaceSize(*w, *h) {
+                surface_width = w
+                surface_height = h
+            }
+        }
     }
     if width != null {
         width[0] = w
@@ -361,68 +304,14 @@ GetAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
 #program_export
 SyncAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
     if AndroidSurfaceOnWorker() { return GetAndroidSurfaceSize(width, height) }
-    w := SurfaceScreenWidth()
-    h := SurfaceScreenHeight()
+    w := surface_width
+    h := surface_height
     synced: s32 = 0
     #if ANDROID_SURFACE {
-        window := SurfaceWindow()
-        if raylib_window_state == null {
-            symbol: [8]u8
-            CopyCString("CORE", symbol[:])
-            // Bionic uses a distinct RTLD_DEFAULT sentinel on 32-bit ABIs.
-            lookup_scope: *void
-            if size_of(*void) == 4 {
-                lookup_scope = cast(*void)cast(usize)4294967295
-            }
-            raylib_window_state = cast(*RaylibWindowState)SurfaceLookup(lookup_scope, *symbol[0])
-        }
-        if window != null && raylib_window_state != null {
-            format := SurfaceFormat(window)
-            if SurfaceGeometry(window, 0, 0, format) == 0 {
-                native_width := SurfaceWidth(window)
-                native_height := SurfaceHeight(window)
-                if native_width > 0 && native_height > 0 {
-                    w = native_width
-                    h = native_height
-                    state := raylib_window_state
-                    changed := surface_width != w || surface_height != h ||
-                    state.screen.width != cast(u32)w || state.screen.height != cast(u32)h ||
-                    state.render.width != cast(u32)w || state.render.height != cast(u32)h
-                    changed = changed || state.render_offset.x != 0 ||
-                        state.render_offset.y != 0
-                    for index: 0..15 {
-                        expected: float32 = 0.0
-                        if index == 0 || index == 5 || index == 10 || index == 15 {
-                            expected = 1.0
-                        }
-                        if state.screen_scale[index] != expected {
-                            changed = true
-                        }
-                        state.screen_scale[index] = expected
-                    }
-                    surface_width = w
-                    surface_height = h
-                    state.display.width = cast(u32)w
-                    state.display.height = cast(u32)h
-                    state.screen = state.display
-                    state.render = state.display
-                    // Native buffers now use actual window pixels. Discard the
-                    // scale and letterbox offsets from raylib's initial size;
-                    // BeginDrawing and touch mapping apply them again otherwise.
-                    state.render_offset = RaylibWindowPoint.{0, 0}
-                    if !state.using_fbo {
-                        state.current_fbo = state.display
-                    }
-                    state.resized_last_frame = changed
-                    SurfaceViewport(0, 0, w, h)
-                    SurfaceMatrixMode(0x1701)
-                    SurfaceIdentity()
-                    SurfaceOrtho(0.0, cast(float64)w, cast(float64)h, 0.0, 0.0, 1.0)
-                    SurfaceMatrixMode(0x1700)
-                    SurfaceIdentity()
-                    synced = 1
-                }
-            }
+        if AndroidNativeSurfaceSize(*w, *h) {
+            surface_width = w
+            surface_height = h
+            synced = 1
         }
     }
     if width != null {
@@ -439,14 +328,6 @@ SyncAndroidViewport :: (output: *AndroidViewport) -> s32 {
     width: s32
     height: s32
     SyncAndroidSurfaceSize(*width, *height)
-    // Touches arrive in window frame coordinates; raylib's mouse offset
-    // moves them to the surface, where the frame is drawn.
-    #if ANDROID_SURFACE {
-        if !AndroidSurfaceOnWorker() {
-            margin := GetAndroidSurfaceMargin(width, height)
-            SurfaceMouseOffset(margin.left, margin.top)
-        }
-    }
     return ResolveAndroidViewport(width, height, GetAndroidViewportPolicy(), output)
 }
 
@@ -456,21 +337,21 @@ SyncAndroidViewport :: (output: *AndroidViewport) -> s32 {
 ReadAndroidSurfaceTransform :: (output: *AndroidSurfaceTransform) -> bool {
     if android_surface_read_transform != null && android_surface_read_transform(output) { return true }
     #if ANDROID_SURFACE {
-        if output == null || raylib_window_state == null {
+        width: s32
+        height: s32
+        if output == null || !AndroidNativeSurfaceSize(*width, *height) {
             return false
         }
-        state := raylib_window_state
-        projection := SurfaceProjection()
-        output.screen_width = cast(s32)state.screen.width
-        output.screen_height = cast(s32)state.screen.height
-        output.render_width = cast(s32)state.render.width
-        output.render_height = cast(s32)state.render.height
-        output.offset_x = state.render_offset.x
-        output.offset_y = state.render_offset.y
-        output.scale_x = state.screen_scale[0]
-        output.scale_y = state.screen_scale[5]
-        output.projection_x = projection.values[0]
-        output.projection_y = projection.values[5]
+        output.screen_width = width
+        output.screen_height = height
+        output.render_width = width
+        output.render_height = height
+        output.offset_x = 0
+        output.offset_y = 0
+        output.scale_x = 1.0
+        output.scale_y = 1.0
+        output.projection_x = 1.0
+        output.projection_y = 1.0
         return true
     } else {
         unused output
@@ -479,27 +360,40 @@ ReadAndroidSurfaceTransform :: (output: *AndroidSurfaceTransform) -> bool {
 }
 
 // Android draws the status and navigation bars light over whatever the app
-// leaves behind them, so the strips outside the viewport are black. The
-// viewport itself takes the app's canvas color, given as 0xRRGGBBAA.
+// leaves behind them, so the strips outside the viewport are black. Insets are
+// logical units and the backing store is physical pixels; zoom converts between
+// them. The viewport takes the app's canvas color, given as 0xAARRGGBB.
 #program_export
-// The frame is already scaled by the host zoom; the fill takes logical units.
 ClearAndroidFrame :: (viewport: AndroidViewport, canvas: u32, zoom: float32 = 1.0) {
     if android_surface_clear != null && android_surface_clear(viewport, canvas, zoom) { return }
 
-    fill := SurfaceColor.{cast(u8)(canvas >> 24), cast(u8)(canvas >> 16),
-        cast(u8)(canvas >> 8), cast(u8)canvas}
-    width: s32
-    height: s32
-    GetAndroidSurfaceSize(*width, *height)
-    if viewport.x <= 0 && viewport.y <= 0 && viewport.width >= width &&
-    viewport.height >= height {
-        SurfaceClear(fill)
-        return
+    #if ANDROID_SURFACE {
+        width: s32
+        height: s32
+        GetAndroidSurfaceSize(*width, *height)
+        pixels := AndroidNativePixels()
+        if width <= 0 || height <= 0 || pixels.count < cast(s64)width * cast(s64)height {
+            return
+        }
+        pixel_count := cast(s64)width * cast(s64)height
+        for index: 0..pixel_count - 1 {
+            pixels[index] = cast(u32)0xff000000
+        }
+        if zoom < 0.1 || zoom > 8.0 { zoom = 1.0 }
+        left := cast(s32)(cast(float32)viewport.x * zoom)
+        top := cast(s32)(cast(float32)viewport.y * zoom)
+        right := cast(s32)(cast(float32)(viewport.x + viewport.width) * zoom)
+        bottom := cast(s32)(cast(float32)(viewport.y + viewport.height) * zoom)
+        if left < 0 { left = 0 }
+        if top < 0 { top = 0 }
+        if right > width { right = width }
+        if bottom > height { bottom = height }
+        for row: top..bottom - 1 {
+            for column: left..right - 1 {
+                pixels[cast(s64)row * width + column] = canvas
+            }
+        }
     }
-    SurfaceClear(SurfaceColor.{0, 0, 0, 255})
-    scale := ifx zoom > 0.0 then zoom else 1.0
-    SurfaceFill(cast(s32)(cast(float32)viewport.x / scale), cast(s32)(cast(float32)viewport.y / scale),
-        cast(s32)(cast(float32)viewport.width / scale + 0.999), cast(s32)(cast(float32)viewport.height / scale + 0.999), fill)
 }
 
 // Optional host recording hooks keep surface policy usable without a UI

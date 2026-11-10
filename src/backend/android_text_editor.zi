@@ -55,6 +55,8 @@ using WidgetKind;
     editor_stage_multiline: bool;
     editor_stage_edited: bool;
     editor_stage_ready: bool;
+    editor_external: bool;
+    editor_external_retap: bool;
     editor_sent_bytes: [65536]u8;
     editor_sent_count: s32 = -1;
     editor_sent_cursor: s32;
@@ -132,6 +134,8 @@ AndroidTextEditorOpen :: (session: Session) {
         editor_pending = false
         EditorUnlock()
         editor_stage_ready = false
+        editor_external = false
+        editor_external_retap = false
         editor_sent_count = -1
         TextHostInstall(AndroidTextEditorPresent)
     }
@@ -226,7 +230,7 @@ AndroidNativeTextInputState :: (env: *JniEnv, activity: *void,
 AndroidTextEditorBeginFrame :: (session: Session) {
     #if #defined(ANDROID_BUILD) {
         EditorLock()
-        if TextInputOwnerMatches(editor_owner, session) && editor_pending {
+        if TextInputOwnerMatches(editor_owner, session) && editor_pending && !editor_external {
             for index: cast(s32)1..TreeCount(session) - 1 {
                 if TreeNodeAt(session, index).identity_generation == editor_generation &&
                 TreeNodeAt(session, index).selected && TreeInputAllowedAt(session, index) &&
@@ -241,12 +245,18 @@ AndroidTextEditorBeginFrame :: (session: Session) {
         }
         EditorUnlock()
         editor_stage_ready = false
+        editor_external_retap = false
     }
     unused session
 }
 
 AndroidTextEditorWantsKeyboard :: (session: Session) -> bool {
     #if #defined(ANDROID_BUILD) {
+        if !TextInputOwnerMatches(editor_owner, session) { return false }
+        if editor_external {
+            return editor_stage_ready && editor_stage_generation != 0 &&
+                editor_stage_generation == editor_generation && editor_external_retap
+        }
         pointer := PointerSample(session)
         if !pointer.pressed || !editor_stage_ready {
             return false
@@ -267,8 +277,8 @@ AndroidTextEditorWantsKeyboard :: (session: Session) -> bool {
 
 AndroidTextEditorFrame :: (session: Session, active: bool) {
     #if #defined(ANDROID_BUILD) {
-        focused := false
-        if active && editor_stage_ready {
+        focused := active && editor_stage_ready && editor_external
+        if active && editor_stage_ready && !editor_external {
             for index: cast(s32)1..TreeCount(session) - 1 {
                 node := TreeNodeAt(session, index)
                 if node.identity_generation == editor_stage_generation &&
@@ -329,4 +339,43 @@ AndroidTextEditorFrame :: (session: Session, active: bool) {
     }
     unused session
     unused active
+}
+
+// A raster bundle owns its retained tree inside the VM. Its committed
+// presentation uses the same editor/revision state as a native widget.
+AndroidTextEditorExternalPresent :: (session: Session, identity: u64,
+    value: string, cursor: s32, anchor: s32, flags: s32) {
+    #if #defined(ANDROID_BUILD) {
+        if !TextInputOwnerMatches(editor_owner, session) || value.count > 65536 { return }
+        editor_external = true
+        editor_stage_ready = identity != 0
+        editor_stage_generation = identity
+        editor_external_retap = identity != 0 && (flags & 16) != 0
+        for at: 0..value.count - 1 { editor_stage_bytes[at] = value[at] }
+        editor_stage_count = cast(s32)value.count
+        editor_stage_cursor = cursor; editor_stage_anchor = anchor
+        editor_stage_secure = (flags & 1) != 0
+        editor_stage_numeric = (flags & 2) != 0
+        editor_stage_multiline = (flags & 4) != 0
+        editor_stage_edited = (flags & 8) != 0
+    }
+    unused session; unused identity; unused value; unused cursor; unused anchor; unused flags
+}
+
+AndroidTextEditorExternalTake :: (session: Session, identity: u64, output: []u8) -> TextRequest {
+    request: TextRequest
+    #if #defined(ANDROID_BUILD) {
+        EditorLock()
+        defer EditorUnlock()
+        if !TextInputOwnerMatches(editor_owner, session) || !editor_external ||
+        identity == 0 || identity != editor_generation || !editor_pending ||
+        editor_pending_count > output.count { return request }
+        for at: 0..editor_pending_count - 1 { output[at] = editor_pending_bytes[at] }
+        request.value = TextView(output[:editor_pending_count])
+        request.cursor = editor_pending_cursor; request.anchor = editor_pending_anchor
+        request.replace = true; request.pending = true
+        editor_pending = false
+    }
+    unused session; unused identity; unused output
+    return request
 }

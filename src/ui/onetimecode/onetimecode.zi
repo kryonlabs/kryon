@@ -1,0 +1,277 @@
+#import "box"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "style"
+#import "style_sheet"
+#import "session"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using StyleField;
+using WidgetKind;
+
+OneTimeCodeStyle :: struct {
+    slot_width: float32
+    slot_height: float32
+    radius: float32
+    gap: float32
+    group_gap: float32
+    font_size: float32
+}
+
+OneTimeCodeProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    slot_class_name: s32
+    length: s32
+    focused: bool
+    disabled: bool
+    masked: bool
+    text: string
+    paste_text: string
+    left: bool
+    right: bool
+    backspace: bool
+    delete_forward: bool
+    paste: bool
+    escape: bool
+    focus: bool
+    blur: bool
+    style: OneTimeCodeStyle
+}
+
+OneTimeCodeState :: struct {
+    initialized: bool
+    length: s32
+    count: s32
+    cursor: s32
+    focused: bool
+    was_complete: bool
+    bytes: [13]u8
+}
+
+OneTimeCodeResult :: struct {
+    node: s32
+    changed: bool
+    complete: bool
+    cursor: s32
+    focused: bool
+    cancelled: bool
+}
+
+#program_export
+OneTimeCodeDefaultStyle :: () -> OneTimeCodeStyle {
+    style: OneTimeCodeStyle
+    style.slot_width = 44.0
+    style.slot_height = 52.0
+    style.radius = CurrentThemeMetric(.ThemeMetricRadiusControl)
+    style.gap = 8.0
+    style.group_gap = 18.0
+    style.font_size = 22.0
+    return style
+}
+
+OneTimeCodeAllowed :: (byte: u8) -> bool {
+    return (byte >= cast(u8)48 && byte <= cast(u8)57) ||
+    (byte >= cast(u8)65 && byte <= cast(u8)90) ||
+    (byte >= cast(u8)97 && byte <= cast(u8)122)
+}
+
+#program_export
+OneTimeCodeStateFor :: (length: s32, value: string,
+    focused: bool) -> OneTimeCodeState {
+    state: OneTimeCodeState
+    if length < 1 { length = 1 }
+    if length > 12 { length = 12 }
+    state.length = length
+    state.cursor = 0
+    state.focused = focused
+    at := 0
+    while at < length && at < cast(s32)value.count {
+        if OneTimeCodeAllowed(value[at]) {
+            state.bytes[state.count] = value[at]
+            state.count += 1
+            state.cursor = state.count
+        }
+        at += 1
+    }
+    state.initialized = true
+    state.was_complete = state.count == state.length
+    return state
+}
+
+#program_export
+OneTimeCodeAppend :: (state: *OneTimeCodeState,
+    text: string) -> bool {
+    changed := false
+    for byte: text {
+        if OneTimeCodeAllowed(byte) {
+            if state.cursor < state.length && state.count < state.length {
+                at := state.count
+                while at > state.cursor {
+                    state.bytes[at] = state.bytes[at - 1]
+                    at -= 1
+                }
+                state.bytes[state.cursor] = byte
+                state.cursor += 1
+                state.count += 1
+                changed = true
+            }
+        }
+    }
+    return changed
+}
+
+#program_export
+OneTimeCodeApply :: (state: *OneTimeCodeState,
+    props: OneTimeCodeProps) -> OneTimeCodeResult {
+    result: OneTimeCodeResult
+    result.node = -1
+    result.cursor = state.cursor
+    result.focused = state.focused
+    if !state.initialized {
+        state.* = OneTimeCodeStateFor(props.length, props.text, props.focused)
+    }
+    if props.disabled {
+        state.focused = false
+        result.focused = false
+        return result
+    }
+    before := state.cursor
+    focused := state.focused
+    if props.focus { focused = true }
+    if props.blur || props.escape { focused = false }
+    if focused {
+        if props.left && state.cursor > 0 { state.cursor -= 1; result.changed = true }
+        if props.right && state.cursor < state.length { state.cursor += 1; result.changed = true }
+        if OneTimeCodeAppend(state, props.text) { result.changed = true }
+        if props.paste {
+            state.cursor = 0
+            state.count = 0
+            if !OneTimeCodeAppend(state, props.paste_text) {
+                state.cursor = before
+            } else { result.changed = true }
+        }
+        if props.backspace && state.cursor > 0 {
+            state.count -= 1
+            at := state.cursor - 1
+            while at < state.count {
+                state.bytes[at] = state.bytes[at + 1]
+                at += 1
+            }
+            state.cursor -= 1
+            result.changed = true
+        }
+        if props.delete_forward && state.cursor < state.length {
+            state.count -= 1
+            at := state.cursor
+            while at < state.count {
+                state.bytes[at] = state.bytes[at + 1]
+                at += 1
+            }
+            result.changed = true
+        }
+    }
+    state.focused = focused
+    result.cursor = state.cursor
+    result.focused = focused
+    result.cancelled = props.escape
+    complete := state.count == state.length
+    result.complete = complete && !state.was_complete && result.changed
+    state.was_complete = complete
+    return result
+}
+
+OneTimeCodeHostedReply :: struct { state: OneTimeCodeState; result: OneTimeCodeResult }
+
+#if #defined(KRYON_HOSTED_UI) {
+    onetimecode_host_api :: #system_library "host_api";
+    OneTimeCodeHostedHost :: (session: Session, props: OneTimeCodeProps,
+        state: OneTimeCodeState) -> OneTimeCodeHostedReply #foreign onetimecode_host_api;
+    #program_export
+    OneTimeCode :: (session: Session, props: OneTimeCodeProps,
+    state: *OneTimeCodeState) -> OneTimeCodeResult {
+        reply := OneTimeCodeHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #program_export
+    OneTimeCode :: (session: Session, props: OneTimeCodeProps,
+    state: *OneTimeCodeState) -> OneTimeCodeResult { return OneTimeCodeCore(session, props, state, true) }
+    #program_export
+    OneTimeCodeCore :: (session: Session, props: OneTimeCodeProps,
+    state: *OneTimeCodeState, effects: bool) -> OneTimeCodeResult {
+    unused effects
+    result := OneTimeCodeApply(state, props)
+    if !TreeIsBuilding(session) { return result }
+    length := props.length
+    if length < 1 { length = 1 }
+    if length > 12 { length = 12 }
+    style := props.style
+    if style.slot_width <= 0 { style = OneTimeCodeDefaultStyle() }
+    bounds := props.bounds
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup, bounds)
+    if result.node < 0 { return result }
+    if !TreePushScope(session, result.node) { return result }
+    TreeSetInteractive(session, result.node, props.disabled, false, props.id)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetLabel(session, result.node, "One-time code")
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+    cast(u32)StyleBorder | cast(u32)StyleFocus | cast(u32)StyleRadius |
+    cast(u32)StyleBorderWidth | cast(u32)StyleFontSize |
+    cast(u32)StyleMinHeight | cast(u32)StyleMotionDuration
+    face.background = CurrentSurface()
+    face.foreground = CurrentText()
+    face.border = CurrentBorderStrong()
+    face.focus = CurrentAccent()
+    face.radius = style.radius
+    face.border_width = 1.0
+    face.font_size = style.font_size
+    face.min_height = style.slot_height
+    face.motion_duration = CurrentTheme().motion.state_ms
+    facts := StyleControlRoleFacts(StyleKindAny(), props.id, props.class_name, 0,
+        0, 0, 0, ifx result.focused then 4 else 1)
+    resolved := ResolveInstalledStyleRules(face, facts, ifx result.focused then 4 else 1)
+    total := cast(float32)length * style.slot_width + cast(float32)(length - 1) * style.gap
+    if length >= 6 { total += style.group_gap }
+    x := bounds.x + (bounds.width - total) * 0.5
+    index := 0
+    while index < length {
+        slot := Box(session, .{.key = props.key + 101 + cast(u64)cast(u32)index,
+                .bounds = Rectangle.{x, bounds.y, style.slot_width, style.slot_height},
+                .fill = ColorFromPacked(ifx props.disabled then CurrentTheme().colors.text_disabled else resolved.background),
+                .border = ColorFromPacked(ifx index < state.count then CurrentText() else resolved.border),
+                .radius = resolved.radius})
+        TreeSetStyleClass(session, slot, props.slot_class_name)
+        if index < state.count {
+            shown: [1]u8
+            shown[0] = state.bytes[index]
+            if props.masked { shown[0] = cast(u8)42 }
+            text: TextProps
+            text.key = props.key + 201 + cast(u64)cast(u32)index
+            text.bounds = Rectangle.{x, bounds.y, style.slot_width, style.slot_height}
+            text.text = TextView(shown[:])
+            text.font = cast(s32)resolved.font_size
+            text.class_name = props.slot_class_name
+            text.align = .TextAlignCenter
+            text.vertical_align = .TextAlignCenter
+            text.wrap = .TextWrapNone
+            Text(session, text)
+        }
+        x += style.slot_width + style.gap
+        if length >= 6 && index == length / 2 - 1 { x += style.group_gap }
+        index += 1
+    }
+    TreePopScope(session)
+    return result
+}
+}

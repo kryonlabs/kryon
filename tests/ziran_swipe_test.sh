@@ -178,11 +178,11 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" check --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     "$work/use_swipe.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" -o "$work/ir" \
     "$work/use_swipe.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry use_swipe:Answer -o "$work/source.zx" "$work/use_swipe.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_swipe:Answer -o "$work/ir.zx" "$work/ir/use_swipe.zir"
@@ -193,18 +193,18 @@ test "$("$ziran" run "$work/ir.zx")" = 42
 for input in source ir; do
     if test "$input" = source; then
         input_dir=$work
-        module_dir=$repo/src/ui
+        module_dir="$kryon_ui_args"
         extension=zi
     else
         input_dir=$work/ir
-        module_dir=$work/ir
+        module_dir="--module-path $work/ir"
         extension=zir
     fi
     for target in c go; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
+                $module_dir --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_swipe.$extension"
             cat > "$output/main.go" <<'GO'
 package main
@@ -215,7 +215,7 @@ GO
                 "$output/use_swipe.go" "$output/main.go"
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" \
-                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
+                $module_dir --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_swipe.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_swipe.h"

@@ -2,6 +2,7 @@
 """Build the pinned Ziran host runtime (libziran.a) for an Android target."""
 
 import argparse
+import os
 from pathlib import Path
 import subprocess
 
@@ -16,7 +17,7 @@ a = p.parse_args()
 source = a.source.resolve()
 output = a.output.resolve()
 command = [
-    "make",
+    "/usr/bin/make" if os.environ.get("HARMONY_BUILD_OWNER") else "make",
     "-j4",
     "-C",
     str(source),

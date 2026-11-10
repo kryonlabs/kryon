@@ -4,7 +4,7 @@
 #import "session"
 #import "tree"
 #import "tree_draw"
-#import "text_field_widget"
+#import "textfield"
 #import "text_input"
 #import "text_input_props"
 #import "widget_kind"

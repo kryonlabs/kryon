@@ -1,0 +1,3 @@
+// Unrelated navigation module; this root must not replace Kryon navigation.
+#program_export
+ForeignNavigationSentinel :: () -> s32 { return 37 }

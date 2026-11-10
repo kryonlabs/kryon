@@ -2,17 +2,17 @@
 // Values and editing state belong to the caller; the host never chooses UI.
 #import "session"
 #import "button_props"
-#import "button_widget"
+#import "button"
 #import "control_props"
 #import "geometry"
 #import "list_box_props"
-#import "list_box_widget"
+#import "listbox"
 #import "modal_props"
-#import "modal_frame_widget"
+#import "modal_frame"
 #import "text_input_props"
-#import "text_field_widget"
+#import "textfield"
 #import "text_props"
-#import "text_widget"
+#import "kryon/text_widget"
 #import "tree"
 
 DialogProps :: struct {

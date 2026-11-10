@@ -1,7 +1,7 @@
 // TileMap's geometry off any host: square cells fitted and centred in the
 // bounds, each cell's rectangle, and the cell under a point.
 #import "geometry"
-#import "tile_map"
+#import "tilemap"
 #import "image_mesh"
 #import "image_props"
 

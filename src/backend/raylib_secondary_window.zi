@@ -548,6 +548,12 @@ SecondaryWindowOpenHost :: (title: *u8, x: s32, y: s32, width: s32,
             if CopyCString("SDL_FRAMEBUFFER_ACCELERATION", hint[:]) {
                 unused SecondarySetHint(*hint[0], *value[0])
             }
+            // The click that focuses a detached window must also reach its
+            // controls; SDL otherwise discards that first press and release.
+            value[0] = 49
+            if CopyCString("SDL_MOUSE_FOCUS_CLICKTHROUGH", hint[:]) {
+                unused SecondarySetHint(*hint[0], *value[0])
+            }
             secondary_render_window = SecondaryCurrentWindow()
             secondary_render_context = SecondaryCurrentContext()
             if secondary_render_window == null || secondary_render_context == null {

@@ -7,7 +7,7 @@ work="$repo/build/scratch/frame-replay"
 rm -rf "$work"
 mkdir -p "$work/c"
 "$ziran" build --target=c --no-main --entry frame_replay_test:Check --root "$repo/tests" \
-    --module-path "$repo/src/backend" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+    --module-path "$repo/src/backend" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/c" "$repo/tests/frame_replay_test.zi"
 cat > "$work/c/main.c" <<'C'
 #include <stdio.h>

@@ -16,27 +16,27 @@ set -- \
     --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
     --bind paint_queue:RasterImage=ziran_paint_text_large_test:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source
     module_root=$repo/tests
-    module_path=$repo/src/ui
+    module_path="$kryon_ui_args"
     if test "$form" = saved; then
         input=$work/ir/ziran_paint_text_large_test.zir
         module_root=$work/ir
-        module_path=$work/ir
+        module_path="--module-path $work/ir"
     fi
     "$ziran" build --target=c --entry "$entry" --root "$module_root" \
-        --module-path "$module_path" --module-path "$ziran_root/std" \
+        $module_path --module-path "$ziran_root/std" \
         --exe -o "$work/$form-c" "$input"
     timeout 15 "$work/$form-c/ziran_paint_text_large_test"
     "$ziran" build --target=go --pkg main --entry "$entry" "$@" \
-        --root "$module_root" --module-path "$module_path" \
+        --root "$module_root" $module_path \
         --module-path "$ziran_root/std" --exe -o "$work/$form-go" "$input"
     timeout 30 env GO111MODULE=off go run "$work/$form-go"/*.go
     "$ziran" bundle --entry "$entry" "$@" --root "$module_root" \
-        --module-path "$module_path" --module-path "$ziran_root/std" \
+        $module_path --module-path "$ziran_root/std" \
         -o "$work/$form.zx" "$input"
     test "$(timeout 30 "$ziran" run "$work/$form.zx")" = 0
 done

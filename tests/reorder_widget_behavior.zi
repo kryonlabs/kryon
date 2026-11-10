@@ -1,10 +1,10 @@
 #import "geometry";
 #import "reorder_props";
-#import "reorder_widget";
+#import "reorder";
 #import "reorder_widget_host";
 #import "scroll_device";
 #import "scroll_props";
-#import "scroll_widget";
+#import "scroll";
 #import "session";
 #import "tree";
 #import "tree_input";

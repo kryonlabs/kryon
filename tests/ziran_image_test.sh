@@ -8,7 +8,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_image.zi" <<'EOF'
 #import "drawing_props"
-#import "image"
+#import "image_behavior"
 #import "image_props"
 #import "geometry"
 
@@ -93,10 +93,10 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$work/use_image.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" \
+"$ziran" check --root "$work" $kryon_ui_args --module-path "$ziran_root/std" "$work/use_image.zi"
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" -o "$work/ir" \
     "$work/use_image.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry use_image:Answer -o "$work/source.zx" "$work/use_image.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_image:Answer -o "$work/ir.zx" "$work/ir/use_image.zir"
@@ -107,18 +107,18 @@ test "$("$ziran" run "$work/ir.zx")" = 42
 for input in source ir; do
     if test "$input" = source; then
         input_dir=$work
-        module_dir=$repo/src/ui
+        module_dir="$kryon_ui_args"
         extension=zi
     else
         input_dir=$work/ir
-        module_dir=$work/ir
+        module_dir="--module-path $work/ir"
         extension=zir
     fi
     for target in c go; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
+                $module_dir --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_image.$extension"
             cat > "$output/main.go" <<'GO'
 package main
@@ -126,11 +126,11 @@ func main() { if UseImage_Answer() != 42 { panic("wrong image result") } }
 GO
             GO111MODULE=off go run "$output/geometry.go" "$output/math.go" \
                 "$output/text_align.go" "$output/drawing_props.go" \
-                "$output/image_props.go" "$output/image.go" \
+                "$output/image_props.go" "$output/image_behavior.go" \
                 "$output/use_image.go" "$output/main.go"
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" \
-                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
+                $module_dir --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_image.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_image.h"
@@ -139,7 +139,7 @@ C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
                 "$output/geometry.c" "$output/math.c" "$output/text_align.c" \
                 "$output/drawing_props.c" "$output/image_props.c" \
-                "$output/image.c" \
+                "$output/image_behavior.c" \
                 "$output/use_image.c" "$output/main.c" -o "$output/app"
             "$output/app"
         fi

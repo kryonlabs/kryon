@@ -1,6 +1,6 @@
 #!/bin/sh
 . "$(dirname -- "$0")/test_context.sh"
-paths="--root $repo/tests --module-path $repo/src/ui --module-path $ziran_root/std"
+paths="--root $repo/tests $kryon_ui_args --module-path $ziran_root/std"
 source=$repo/tests/ziran_key_input_test.zi
 "$ziran" bundle $paths --entry ziran_key_input_test:main -o "$work/keys.zx" "$source"
 test "$("$ziran" run "$work/keys.zx")" = 0

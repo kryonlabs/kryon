@@ -10,7 +10,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_reorder.zi" <<'EOF'
 #import "control_props"
 #import "geometry"
-#import "reorder"
+#import "reorder_behavior"
 #import "reorder_props"
 #import "style"
 
@@ -64,23 +64,23 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/use_reorder.zi"
 for input in source ir; do
     if test "$input" = source; then
         module=$work/use_reorder.zi
-        module_dir=$repo/src/ui
+        module_dir="$kryon_ui_args"
     else
         module=$work/ir/use_reorder.zir
-        module_dir=$work/ir
+        module_dir="--module-path $work/ir"
     fi
-    "$ziran" bundle --root "$work" --module-path "$module_dir" --module-path "$ziran_root/std" \
+    "$ziran" bundle --root "$work" $module_dir --module-path "$ziran_root/std" \
         --entry use_reorder:Answer -o "$work/$input.zx" "$module"
     test "$("$ziran" run "$work/$input.zx")" = 42
     for target in c go; do
         output="$work/$target-$input"
         "$ziran" build --target="$target" --root "$work" \
-            --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" "$module"
+            $module_dir --module-path "$ziran_root/std" -o "$output" "$module"
         if test "$target" = go; then
             cat > "$output/reorder_test.go" <<'GO'
 package ziran

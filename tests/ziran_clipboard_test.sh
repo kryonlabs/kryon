@@ -36,9 +36,9 @@ Answer :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry app:Answer -o "$work/source.zx" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zx" "$work/ir/app.zir"

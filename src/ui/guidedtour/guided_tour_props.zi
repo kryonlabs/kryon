@@ -1,0 +1,168 @@
+#import "control_props"
+#import "geometry"
+#import "style"
+#import "style_sheet"
+#import "theme"
+#import "tooltip_common"
+
+using ButtonState;
+using StyleField;
+
+GuidedTourPlacementDefault :: OverlayPlacement.OverlayPlaceBottomStart
+
+GuidedTourStep :: struct {
+    target_key: u64
+    target: Rectangle
+    title: string
+    body: string
+    placement: OverlayPlacement
+}
+
+GuidedTourAction :: enum {
+    GuidedTourActionNone :: 0
+    GuidedTourActionNext :: 1
+    GuidedTourActionBack :: 2
+    GuidedTourActionDone :: 3
+    GuidedTourActionSkip :: 4
+}
+
+GuidedTourInput :: struct {
+    escape: bool
+    enter: bool
+    left: bool
+    right: bool
+    pointer: OverlayPointer
+    focus: OverlayFocus
+    activate: GuidedTourAction
+}
+
+GuidedTourProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    steps: []GuidedTourStep
+    step: s32
+    width: float32
+    padding: float32
+    block_target: bool
+    next_label: string
+    back_label: string
+    done_label: string
+    skip_label: string
+    count_format: string
+    viewport: Rectangle
+    now_ms: s64
+    input: GuidedTourInput
+    disabled: bool
+    card_style: StyleData
+    scrim_style: StyleData
+    button_style: StyleData
+    states: StyleStates
+}
+
+GuidedTourGeometry :: struct {
+    hole: Rectangle
+    card: OverlayFit
+    bands: [4]Rectangle
+    band_count: s32
+    count_bounds: Rectangle
+    title_bounds: Rectangle
+    body_bounds: Rectangle
+    back_bounds: Rectangle
+    next_bounds: Rectangle
+    skip_bounds: Rectangle
+}
+
+GuidedTourState :: struct {
+    step: s32
+    previous_step: s32
+    initialized: bool
+    progress: float32
+    transition_start_ms: s64
+    focus_index: s32
+    count_label: [32]u8
+    count_label_length: s32
+}
+
+GuidedTourResult :: struct {
+    node: s32
+    scrim_nodes: [4]s32
+    card_node: s32
+    title_node: s32
+    back_node: s32
+    next_node: s32
+    skip_node: s32
+    geometry: GuidedTourGeometry
+    action: GuidedTourAction
+    step: s32
+    visible: bool
+    progress: float32
+    focus_wrapped: bool
+}
+
+#program_export
+GuidedTourStateFor :: (step: s32) -> GuidedTourState {
+    return GuidedTourState.{.step = step, .previous_step = -2,
+        .transition_start_ms = -1}
+}
+
+#program_export
+GuidedTourCardDefaultStyle :: () -> StyleData {
+    style: StyleData
+    theme := CurrentTheme()
+    style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+        cast(u32)StyleOpacity | cast(u32)StylePaddingX | cast(u32)StylePaddingY |
+        cast(u32)StyleGap | cast(u32)StyleFontSize | cast(u32)StyleFontRole |
+        cast(u32)StyleTypeface | cast(u32)StyleLineHeight |
+        cast(u32)StyleMotionDuration | cast(u32)StyleMotionMultiplier |
+        cast(u32)StyleMotionReduced
+    style.background = theme.colors.surface_raised
+    style.foreground = theme.colors.foreground
+    style.border = theme.colors.border
+    style.radius = theme.metrics.radius_surface
+    style.border_width = theme.metrics.border_width
+    style.opacity = 1.0
+    style.padding_x = 18.0
+    style.padding_y = 16.0
+    style.gap = 8.0
+    style.font_size = theme.metrics.heading_4
+    style.font_role = .FontRoleHeading
+    style.typeface = theme.fonts.heading
+    style.line_height = 1.35
+    style.motion_duration = 280.0
+    style.motion_multiplier = 1.0
+    style.motion_reduced = theme.motion.reduced_motion
+    return style
+}
+
+#program_export
+GuidedTourScrimDefaultStyle :: () -> StyleData {
+    style: StyleData
+    theme := CurrentTheme()
+    style.fields = cast(u32)StyleBackground | cast(u32)StyleOpacity |
+        cast(u32)StyleMotionDuration | cast(u32)StyleMotionMultiplier |
+        cast(u32)StyleMotionReduced
+    style.background = theme.colors.scrim
+    style.opacity = 1.0
+    style.motion_duration = 280.0
+    style.motion_multiplier = 1.0
+    style.motion_reduced = theme.motion.reduced_motion
+    return style
+}
+
+#program_export
+GuidedTourButtonDefaultStyle :: () -> StyleData {
+    style := GuidedTourCardDefaultStyle()
+    theme := CurrentTheme()
+    style.background = theme.colors.accent
+    style.foreground = theme.colors.on_accent
+    style.radius = theme.metrics.radius_medium
+    style.padding_x = 12.0
+    style.padding_y = 5.0
+    style.font_size = theme.metrics.text_sm
+    style.font_role = .FontRoleControl
+    style.typeface = theme.fonts.control
+    return style
+}
+

@@ -840,21 +840,33 @@ PageWaitFrame :: (minimum_delay: float64, target_fps: s32) {
 }
 
 PageFocus :: () {
-    if page_canvas == 0 { return }
+    target: s32 = PageFocusTarget()
+    if target == 0 { return }
     scope: s32 = WebScope()
-    unused WebCall0(page_canvas, page_names.focus)
+    unused WebCall0(target, page_names.focus)
     WebEnd(scope)
 }
 
 // Focus without scrolling the page to the canvas.
 PageFocusQuietly :: () {
-    if page_canvas == 0 { return }
+    target: s32 = PageFocusTarget()
+    if target == 0 { return }
     scope: s32 = WebScope()
     options: s32 = WebNewObject()
     WebSet(options, page_names.prevent_scroll, WebBool(true))
-    unused WebCall1(page_canvas, page_names.focus, WebObject(options))
-    if WebFailed() { unused WebCall0(page_canvas, page_names.focus) }
+    unused WebCall1(target, page_names.focus, WebObject(options))
+    if WebFailed() { unused WebCall0(target, page_names.focus) }
     WebEnd(scope)
+}
+
+PageFocusTarget :: () -> s32 {
+    document: s32 = PageDocument()
+    if document != 0 {
+        input: s32 = WebAsObject(WebCall1(document, page_names.get_element_by_id,
+            WebText("kryon-ime")))
+        if input != 0 { return input }
+    }
+    return page_canvas
 }
 
 PageSetTitle :: (title: string) {

@@ -1,0 +1,126 @@
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/frame_snapshot"
+#import "kryon/style_sheet"
+using UI :: #import "kryon/Widgets";
+Tables :: #import "data_views/TableView";
+Trees :: #import "data_views/TreeView";
+Board :: #import "data_views/Kanban";
+Theme :: #import "kryon/theme";
+
+WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
+
+WidgetInput :: (session: Session) -> WidgetContext {
+    snapshot := CaptureFrameInput(session)
+    result: WidgetContext
+    result.now = cast(float32)snapshot.elapsed_ms / 1000.0
+    result.theme = ifx StyleTokenColor("canvas").r < 128 then 2 else 1
+    result.disabled = example_disabled
+    result.reduced_motion = example_reduced_motion
+    return result
+}
+
+gallery_view: Rectangle = Rectangle.{.x = 0.0, .y = 0.0, .width = 480.0, .height = 320.0};
+
+gallery_live: bool;
+
+gallery_now: float32;
+
+gallery_reduced_motion: bool;
+
+SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion: bool) {
+    gallery_view = view; gallery_live = live; gallery_now = now
+    gallery_reduced_motion = reduced_motion
+}
+
+GalleryBounds :: (bounds: Rectangle) -> Rectangle {
+    if !gallery_live { return bounds }
+    bounds.x = gallery_view.x + bounds.x * gallery_view.width / 480.0
+    bounds.y += gallery_view.y
+    bounds.width *= gallery_view.width / 480.0
+    return bounds
+}
+
+installed_style: s32 = -1;
+
+InstallStyles :: (dark: bool) {
+    wanted: s32 = ifx dark then 1 else 0
+    if wanted == installed_style { return }
+    installed_style = wanted
+    palette := Theme.DefaultPalette(dark)
+    rules := ActiveStyleRules()
+    rule: StyleRule
+    rule.selector = StyleDefaultSelector(); rule.selector.kind = StyleKindTreeView()
+    rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
+    rule.style.background = palette.surface; rule.style.foreground = palette.foreground; rule.style.border = palette.border
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.selector.kind = StyleKindTreeViewItem()
+    rule.style.fields = cast(u32)StyleField.StyleForeground
+    rule.style.foreground = palette.foreground
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.style.fields |= cast(u32)StyleField.StyleBackground
+    rule.style.background = palette.selection
+    rule.style.foreground = palette.selection_text
+    rule.state = cast(s32)ButtonState.ButtonStateHover
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.state = cast(s32)ButtonState.ButtonStateSelected
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.state = cast(s32)ButtonState.ButtonStateNormal
+    rule.selector.kind = StyleKindTableView()
+    rule.selector.role = StyleAny()
+    rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
+    rule.style.background = palette.surface; rule.style.foreground = palette.foreground; rule.style.border = palette.border
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    rule.state = cast(s32)ButtonState.ButtonStateSelected
+    rule.style.background = palette.selection
+    rule.style.foreground = palette.selection_text
+    rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    unused InstallStyleRules(rules)
+}
+
+tree_selection: s32 = 1;
+
+tree_scroll: s32;
+
+tree_items: [5]Trees.TreeItem;
+
+tree_ready: bool;
+
+bounds: Rectangle;
+
+Prepare :: (session: Session, scene: s32) {
+    bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0})
+}
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := WidgetInput(session)
+    SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TreeView", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 0
+    InstallStyles(example_input.theme == 2)
+    Prepare(session, scene)
+    if !tree_ready {
+        tree_items[0] = .{.label = "Project", .id = 1, .expanded = true, .selectable = true}
+        tree_items[1] = .{.label = "Source", .id = 2, .depth = 1, .expanded = true, .selectable = true}
+        tree_items[2] = .{.label = "app.zi", .id = 3, .depth = 2, .selectable = true}
+        tree_items[3] = .{.label = "Assets", .id = 4, .depth = 1, .selectable = true}
+        tree_items[4] = .{.label = "README", .id = 5, .depth = 1, .selectable = true}
+        tree_ready = true
+    }
+    result := Trees.TreeView(session, Trees.TreeViewProps.{.key = 600, .bounds = bounds, .selected_id = tree_selection, .scroll_offset = tree_scroll, .row_height = 36, .disabled = disabled}, tree_items[:])
+    tree_selection = result.selected_id; tree_scroll = result.scroll_offset
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

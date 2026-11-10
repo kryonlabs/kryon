@@ -3,9 +3,9 @@
 
 #import "control_props"
 #import "geometry"
-#import "spinbox"
+#import "spinbox_behavior"
 #import "spinbox_props"
-#import "spinbox_widget"
+#import "spinbox"
 #import "style"
 #import "style_sheet"
 #import "tree"

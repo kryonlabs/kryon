@@ -1,11 +1,11 @@
 #!/bin/sh
 . "$(dirname -- "$0")/test_context.sh"
 
-"$ziran" check --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" check --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     "$repo/tests/ziran_terminal_list_test.zi"
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$repo/tests/ziran_terminal_list_test.zi"
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry ziran_terminal_list_test:SelfTest -o "$work/source.zx" \
     "$repo/tests/ziran_terminal_list_test.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \

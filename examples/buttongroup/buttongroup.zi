@@ -1,0 +1,25 @@
+using UI :: #import "kryon/Widgets";
+
+state: ButtonGroupState;
+active: s32;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Button group", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    items := ButtonProps.[.{.key = 11, .label = "Left"}, .{.key = 12, .label = "Center"}, .{.key = 13, .label = "Right"}]
+    for index: 0..cast(s32)items.count - 1 { items[index].disabled = example_disabled }
+    result := ButtonGroup(session, ButtonGroupProps.{.key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, 44.0}, .full_width = true}, items[:], *state)
+    if result.activated_index >= 0 { active = result.activated_index }
+    Text(session, TextProps.{.disabled = example_disabled, .key = 14, .bounds = .{bounds.x, bounds.y + 64.0, bounds.width, 36.0}, .text = items[active].label})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

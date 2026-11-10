@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "drawing_props"
 #import "geometry"
 
@@ -49,8 +50,8 @@ RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     if bullets != 0 || bounds.x != 155.0 || bounds.y != 25.0 ||
         bounds.width != 10.0 || bounds.height != 10.0 ||
         radius != 0.5 || segments != 32 ||
-        color.r != cast(u8)0x19 || color.g != cast(u8)0x1c ||
-        color.b != cast(u8)0x1b || color.a != cast(u8)0xff { failed = true }
+        color.r != ColorFromPacked(Theme.CurrentText()).r || color.g != ColorFromPacked(Theme.CurrentText()).g ||
+        color.b != ColorFromPacked(Theme.CurrentText()).b || color.a != cast(u8)0xff { failed = true }
     bullets += 1
 }
 

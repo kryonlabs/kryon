@@ -1,0 +1,48 @@
+#import "drawing_props"
+#import "geometry"
+
+DismissibleOverlayProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    bounds: Rectangle
+    // A release here, as well as inside bounds, keeps the overlay open: a
+    // context menu's open submenus.
+    keep_bounds: Rectangle
+    view_width: s32
+    view_height: s32
+    scrim: Color
+    dismiss_disabled: bool
+    // A floating panel can share the viewport with controls submitted later
+    // (for example a persistent rail), without becoming a modal input layer.
+    non_modal: bool
+}
+
+// A popup, such as a dropdown's menu, floats above the page without a
+// backdrop. A press outside bounds and keep_bounds closes it and still
+// reaches the control it landed on.
+PopupProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    bounds: Rectangle
+    keep_bounds: Rectangle
+}
+
+PopupResult :: struct {
+    node: s32
+    panel_node: s32
+    closed: bool
+}
+
+DismissibleOverlayResult :: struct {
+    node: s32
+    panel_node: s32
+    closed: bool
+    outside_released: bool
+    release_consumed: bool
+    // The backdrop or the panel's own background, not a control on it, was
+    // pressed and released this frame. An overlay that may not be dismissed
+    // can treat this tap as its own action, such as going on.
+    tapped: bool
+}

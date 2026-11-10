@@ -126,7 +126,7 @@ C
 for target in c go; do
     output=$work/$target
     "$ziran" build --target="$target" --root "$work" \
-        --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$output" "$work/app.zi"
+        $kryon_ui_args --module-path "$ziran_root/std" -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \

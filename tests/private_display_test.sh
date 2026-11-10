@@ -10,7 +10,7 @@ unset WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-"$ziran" build --target=c --no-main --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" build --target=c --no-main --root "$repo/tests" $kryon_ui_args \
     --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
     -o "$work/c" "$repo/tests/private_display_test.zi"
 # shellcheck disable=SC2046

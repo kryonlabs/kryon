@@ -22,3 +22,56 @@ PaintTransitionFade :: (state: TransitionState,
     if color.a == cast(u8)0 { return }
     FillRoundedRectangle(bounds, 0.0, 0, color)
 }
+
+#if #defined(KRYON_HOSTED_UI) {
+} else {
+
+#import "session"
+#import "tree"
+Theme :: #import "theme";
+
+#program_export
+WidgetTransitionBegin :: (session: Session, state: *TransitionMotionState,
+    now: float64, reduced: bool, node: s32, kind: s32) {
+    current := TreeSubmittedNodeAt(session, node)
+    parent := TreeSubmittedNodeAt(session, current.parent)
+    tokens := Theme.CurrentTheme().motion
+    TransitionMotionBegin(state, now, reduced || tokens.reduced_motion ||
+        tokens.multiplier <= 0.0, session.slot, session.epoch,
+        parent.identity_generation, current.identity_generation, kind)
+}
+
+#program_export
+WidgetTransitionValue :: (state: *TransitionMotionState, channel: s32,
+    target: float32, duration: float32, bounce: float32) -> float32 {
+    return TransitionMotionValue(state, channel, target,
+        duration * Theme.CurrentTheme().motion.multiplier, bounce)
+}
+
+// Each edge keeps its own velocity. The leading tab edge arrives first.
+#program_export
+TransitionIndicatorBounds :: (state: *TransitionMotionState,
+    target: Rectangle, axis: s32) -> Rectangle {
+    left: float32 = 0.42; right: float32 = 0.42
+    top: float32 = 0.42; bottom: float32 = 0.42
+    lb: float32 = 0.16; rb: float32 = 0.16
+    tb: float32 = 0.16; bb: float32 = 0.16
+    if state != null && axis == 1 {
+        lb = 0.14; rb = 0.14
+        if target.x < state.channels[0].value - 0.5 { left = 0.26; lb = 0.0 }
+        if target.x + target.width > state.channels[2].value + 0.5 { right = 0.26; rb = 0.0 }
+    }
+    if state != null && axis == 2 {
+        tb = 0.14; bb = 0.14
+        if target.y < state.channels[1].value - 0.5 { top = 0.26; tb = 0.0 }
+        if target.y + target.height > state.channels[3].value + 0.5 { bottom = 0.26; bb = 0.0 }
+    }
+    x := WidgetTransitionValue(state, 0, target.x, left, lb)
+    y := WidgetTransitionValue(state, 1, target.y, top, tb)
+    r := WidgetTransitionValue(state, 2, target.x + target.width, right, rb)
+    b := WidgetTransitionValue(state, 3, target.y + target.height, bottom, bb)
+    return Rectangle.{x, y, ifx r > x then r - x else 0.0, ifx b > y then b - y else 0.0}
+}
+
+
+}

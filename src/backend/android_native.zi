@@ -1,0 +1,305 @@
+// Kryon owns Android's NativeActivity application thread. The NDK glue keeps
+// only the tiny process/looper bridge; lifecycle, input, window, and pixels
+// stay in Ziran and the current Pixmap runtime.
+#import "android_jni"
+#import "android_touch"
+#import "std/c_string"
+
+AndroidPollSource :: struct {
+    id: s32
+    app: *NativeAndroidApp
+    process: AndroidSourceHandler
+}
+
+AndroidSourceHandler :: #type (*NativeAndroidApp, *AndroidPollSource) -> void #c_call;
+AndroidCommandHandler :: #type (*NativeAndroidApp, s32) -> void #c_call;
+
+#if #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__) {
+    android :: #system_library "android";
+    c :: #system_library "c";
+    native_log :: #system_library "log";
+    NativeLogWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign native_log "__android_log_write";
+
+    NativeLooperPollAll :: (timeout: s32, file: *s32, events: *s32,
+        data: **void) -> s32 #foreign android "ALooper_pollAll";
+    NativeWindowAcquire :: (window: *void) #foreign android "ANativeWindow_acquire";
+    NativeWindowRelease :: (window: *void) #foreign android "ANativeWindow_release";
+    NativeWindowWidth :: (window: *void) -> s32 #foreign android "ANativeWindow_getWidth";
+    NativeWindowHeight :: (window: *void) -> s32 #foreign android "ANativeWindow_getHeight";
+    NativeWindowFormat :: (window: *void) -> s32 #foreign android "ANativeWindow_getFormat";
+    NativeWindowGeometry :: (window: *void, width: s32, height: s32,
+        format: s32) -> s32 #foreign android "ANativeWindow_setBuffersGeometry";
+    NativeWindowLock :: (window: *void, output: *NativeWindowBuffer,
+        bounds: *void) -> s32 #foreign android "ANativeWindow_lock";
+    NativeWindowUnlockAndPost :: (window: *void) -> s32 #foreign android "ANativeWindow_unlockAndPost";
+    NativeAllocate :: (count: usize, size: usize) -> *void #foreign c "calloc";
+    NativeRelease :: (memory: *void) #foreign c "free";
+    NativeCopy :: (destination: *void, source: *void, count: usize) -> *void #foreign c "memcpy";
+}
+
+NativeWindowBuffer :: struct {
+    width: s32
+    height: s32
+    stride: s32
+    format: s32
+    bits: *u8
+    reserved: [6]u32
+}
+NativeDirtyRectangle :: struct { left: s32; top: s32; right: s32; bottom: s32 }
+WordDescriptor :: struct {
+    data: *u32
+    length: s64
+}
+
+android_native_app: *NativeAndroidApp;
+android_native_window: *void;
+android_native_window_ready: bool;
+android_native_resized: bool;
+android_native_redraw: bool;
+android_native_paused: bool;
+android_native_destroy: bool;
+android_native_locked: bool;
+android_native_buffer: NativeWindowBuffer;
+android_native_dirty: NativeDirtyRectangle;
+android_native_geometry_width: s32;
+android_native_geometry_height: s32;
+android_pixels: []u32;
+android_pixel_width: s32;
+android_pixel_height: s32;
+
+AndroidNativeCommandInitWindow :: 1
+AndroidNativeCommandTermWindow :: 2
+AndroidNativeCommandWindowResized :: 3
+AndroidNativeCommandRedraw :: 4
+AndroidNativeCommandGainedFocus :: 6
+AndroidNativeCommandLostFocus :: 7
+AndroidNativeCommandResume :: 11
+AndroidNativeCommandPause :: 13
+AndroidNativeCommandDestroy :: 15
+
+WordsFromPointer :: (data: *u32, count: s64) -> []u32 {
+    result: []u32
+    if data == null || count < 0 { return result }
+    descriptor: *WordDescriptor = cast(*WordDescriptor)(*result)
+    descriptor.data = data
+    descriptor.length = count
+    return result
+}
+
+AndroidNativeApp :: () -> *NativeAndroidApp { return android_native_app }
+
+AndroidNativeSurface :: () -> *void {
+    if android_native_app == null { return null }
+    return android_native_app.window
+}
+
+AndroidNativeSurfaceSize :: (width: *s32, height: *s32) -> bool {
+    window := AndroidNativeSurface()
+    if window == null { return false }
+    native_width := NativeWindowWidth(window)
+    native_height := NativeWindowHeight(window)
+    if native_width <= 0 || native_height <= 0 { return false }
+    if width != null { width[0] = native_width }
+    if height != null { height[0] = native_height }
+    return true
+}
+
+AndroidNativePixels :: () -> []u32 { return android_pixels }
+
+AndroidNativeWindowReady :: () -> bool { return android_native_window_ready }
+
+AndroidNativePaused :: () -> bool { return android_native_paused }
+
+AndroidNativeDestroyRequested :: () -> bool { return android_native_destroy }
+
+AndroidNativeFill :: (color: u32) {
+    for index: 0..android_pixels.count - 1 {
+        android_pixels[index] = color
+    }
+}
+
+AndroidNativeOnCommand :: (app: *NativeAndroidApp, command: s32) {
+    if app != android_native_app { return }
+    if command == AndroidNativeCommandInitWindow {
+        android_native_window_ready = app.window != null
+        android_native_resized = true
+        android_native_redraw = true
+    } else if command == AndroidNativeCommandTermWindow {
+        android_native_window_ready = false
+        android_native_window = null
+        android_native_resized = true
+    } else if command == AndroidNativeCommandWindowResized {
+        android_native_resized = true
+        android_native_redraw = true
+    } else if command == AndroidNativeCommandRedraw {
+        android_native_redraw = true
+    } else if command == AndroidNativeCommandGainedFocus {
+        AndroidTouchFocus(true)
+        android_native_redraw = true
+    } else if command == AndroidNativeCommandLostFocus {
+        AndroidTouchFocus(false)
+        android_native_redraw = true
+    } else if command == AndroidNativeCommandResume {
+        android_native_paused = false
+        android_native_redraw = true
+    } else if command == AndroidNativeCommandPause {
+        android_native_paused = true
+    } else if command == AndroidNativeCommandDestroy {
+        android_native_destroy = true
+        android_native_window_ready = false
+    }
+}
+
+AndroidNativeStart :: (app: *NativeAndroidApp) {
+    android_native_app = app
+    android_native_window = null
+    android_native_window_ready = false
+    android_native_resized = false
+    android_native_redraw = false
+    android_native_paused = false
+    android_native_destroy = false
+    android_native_locked = false
+    AndroidTouchFocus(true)
+    if app != null {
+        command: AndroidCommandHandler = AndroidNativeOnCommand
+        app.command_callback = cast(*void)command
+        app.input_callback = AndroidTouchInput
+        jni_android_app = app
+    }
+}
+
+AndroidNativePoll :: (timeout: s32) -> bool {
+    if android_native_app == null { return false }
+    file: s32
+    events: s32
+    data: *void
+    identifier := NativeLooperPollAll(timeout, *file, *events, *data)
+    if identifier >= 0 && data != null {
+        source := cast(*AndroidPollSource)data
+        if source.process != null { source.process(android_native_app, source) }
+    }
+    return identifier >= 0
+}
+
+AndroidNativeTakeResized :: () -> bool {
+    changed := android_native_resized
+    android_native_resized = false
+    return changed
+}
+
+AndroidNativeTakeRedraw :: () -> bool {
+    needed := android_native_redraw
+    android_native_redraw = false
+    return needed
+}
+
+AndroidNativeEnsurePixels :: (width: s32, height: s32) -> bool {
+    if width <= 0 || height <= 0 || width > 16384 || height > 16384 { return false }
+    count := cast(s64)width * cast(s64)height
+    if width == android_pixel_width && height == android_pixel_height &&
+    android_pixels.count >= count { return true }
+    if android_pixels.count > 0 {
+        descriptor := cast(*WordDescriptor)(*android_pixels)
+        if descriptor.data != null { NativeRelease(cast(*void)descriptor.data) }
+    }
+    memory := cast(*u32)NativeAllocate(cast(usize)count, size_of(u32))
+    android_pixels = WordsFromPointer(memory, count)
+    android_pixel_width = width
+    android_pixel_height = height
+    return memory != null
+}
+
+AndroidNativeLock :: (left: s32 = 0, top: s32 = 0, right: s32 = -1, bottom: s32 = -1) -> bool {
+    window := AndroidNativeSurface()
+    if window == null || android_native_locked { return false }
+    width := NativeWindowWidth(window)
+    height := NativeWindowHeight(window)
+    if width <= 0 || height <= 0 || !AndroidNativeEnsurePixels(width, height) { return false }
+    if window != android_native_window || width != android_native_geometry_width ||
+    height != android_native_geometry_height {
+        if NativeWindowGeometry(window, width, height, 1) != 0 { return false }
+        android_native_window = window
+        android_native_geometry_width = width
+        android_native_geometry_height = height
+        left = 0; top = 0; right = width; bottom = height
+    }
+    if right < 0 || right > width { right = width }
+    if bottom < 0 || bottom > height { bottom = height }
+    if left < 0 { left = 0 }
+    if top < 0 { top = 0 }
+    android_native_dirty = NativeDirtyRectangle.{left, top, right, bottom}
+    if NativeWindowLock(window, *android_native_buffer,
+        cast(*void)(*android_native_dirty)) != 0 { return false }
+    android_native_locked = true
+    return true
+}
+
+AndroidNativePresentDamage :: (left: s32, top: s32, right: s32, bottom: s32) -> bool {
+    if !android_native_locked || android_native_buffer.bits == null { return false }
+    // The window system may expand the requested damage. Every pixel it asks
+    // for must be copied from our retained backing store before posting.
+    if left > android_native_dirty.left { left = android_native_dirty.left }
+    if top > android_native_dirty.top { top = android_native_dirty.top }
+    if right < android_native_dirty.right { right = android_native_dirty.right }
+    if bottom < android_native_dirty.bottom { bottom = android_native_dirty.bottom }
+    if android_native_buffer.width > android_pixel_width ||
+    android_native_buffer.height > android_pixel_height ||
+    android_native_buffer.stride < android_native_buffer.width { return false }
+    if left < 0 { left = 0 }
+    if top < 0 { top = 0 }
+    if right > android_native_buffer.width { right = android_native_buffer.width }
+    if bottom > android_native_buffer.height { bottom = android_native_buffer.height }
+    if left >= right || top >= bottom { return true }
+    source := cast(*WordDescriptor)(*android_pixels)
+    if source.data == null { return false }
+    for row: top..bottom - 1 {
+        destination := cast(*u32)*android_native_buffer.bits[
+            (cast(s64)row * android_native_buffer.stride + left) * 4]
+        for column: left..right - 1 {
+            input := source.data[cast(s64)row * android_pixel_width + column]
+            output := (input & cast(u32)0xff00ff00) |
+                ((input & cast(u32)0x000000ff) << 16) |
+                ((input & cast(u32)0x00ff0000) >> 16)
+            destination[column - left] = output
+        }
+    }
+    return true
+}
+
+AndroidNativeUnlock :: () -> bool {
+    if !android_native_locked { return false }
+    window := AndroidNativeSurface()
+    android_native_locked = false
+    return window != null && NativeWindowUnlockAndPost(window) == 0
+}
+
+AndroidNativeClose :: () {
+    AndroidNativeUnlock()
+    if android_pixels.count > 0 {
+        descriptor := cast(*WordDescriptor)(*android_pixels)
+        if descriptor.data != null { NativeRelease(cast(*void)descriptor.data) }
+    }
+    android_pixels = WordsFromPointer(null, 0)
+    android_pixel_width = 0
+    android_pixel_height = 0
+    android_native_app = null
+    android_native_window = null
+    android_native_window_ready = false
+}
+
+// NativeActivity's UI thread waits synchronously for lifecycle commands.
+// Keep servicing them after the application asks to close, including failures
+// before the first window; returning early can strand onStart/onDestroy.
+AndroidNativeFinish :: () {
+    if android_native_app == null { return }
+    if !AndroidNativeDestroyRequested() { AndroidJniFinishActivity() }
+    while !AndroidNativeDestroyRequested() { unused AndroidNativePoll(100) }
+}
+
+AndroidNativeLog :: (text: string) {
+    tag: [6]u8
+    message: [512]u8
+    if CopyCString("Kryon", tag[:]) && CopyCString(text, message[:]) {
+        unused NativeLogWrite(4, *tag[0], *message[0])
+    }
+}

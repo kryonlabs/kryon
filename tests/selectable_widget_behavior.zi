@@ -3,9 +3,9 @@
 
 #import "control_props"
 #import "geometry"
-#import "selectable"
+#import "selectable_behavior"
 #import "selectable_props"
-#import "selectable_widget"
+#import "selectable"
 #import "style"
 #import "style_sheet"
 #import "tree"

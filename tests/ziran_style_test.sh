@@ -10,8 +10,8 @@ cat > "$work/use_style.zi" <<'EOF'
 #import "control_props"
 #import "surface"
 #import "style"
-#import "separator"
-#import "progress"
+#import "separator_behavior"
+#import "progress_behavior"
 #import "geometry"
 
 using ButtonState;
@@ -118,10 +118,10 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$work/use_style.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" \
+"$ziran" check --root "$work" $kryon_ui_args --module-path "$ziran_root/std" "$work/use_style.zi"
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" -o "$work/ir" \
     "$work/use_style.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry use_style:Answer -o "$work/source.zx" "$work/use_style.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_style:Answer -o "$work/ir.zx" "$work/ir/use_style.zir"
@@ -132,18 +132,18 @@ test "$("$ziran" run "$work/ir.zx")" = 42
 for input in source ir; do
     if test "$input" = source; then
         input_dir=$work
-        module_dir=$repo/src/ui
+        module_dir="$kryon_ui_args"
         extension=zi
     else
         input_dir=$work/ir
-        module_dir=$work/ir
+        module_dir="--module-path $work/ir"
         extension=zir
     fi
     for target in c go; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
+                $module_dir --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.go" <<'GO'
 package main
@@ -153,12 +153,12 @@ GO
                 "$output/surface.go" "$output/style.go" \
                 "$output/geometry.go" "$output/math.go" "$output/text_align.go" \
                 "$output/drawing_props.go" \
-                "$output/raster.go" "$output/separator.go" \
-                "$output/progress.go" \
+                "$output/raster.go" "$output/separator_behavior.go" \
+                "$output/progress_behavior.go" \
                 "$output/use_style.go" "$output/main.go"
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" \
-                --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" \
+                $module_dir --module-path "$ziran_root/std" -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_style.h"
@@ -170,7 +170,7 @@ C
                 "$output/control_props.c" "$output/surface.c" \
                 "$output/style.c" "$output/geometry.c" "$output/math.c" \
                 "$output/drawing_props.c" "$output/raster.c" \
-                "$output/separator.c" "$output/progress.c" \
+                "$output/separator_behavior.c" "$output/progress_behavior.c" \
                 "$output/use_style.c" \
                 "$output/main.c" -o "$output/app"
             "$output/app"

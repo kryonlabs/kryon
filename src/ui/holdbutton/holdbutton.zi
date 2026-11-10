@@ -1,0 +1,160 @@
+#import "button_behavior"
+#import "button_props"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "input_protocol"
+#import "paint_queue"
+#import "session"
+#import "style"
+#import "surface"
+#import "tree"
+#import "tree_input"
+#import "widget_kind"
+
+Math :: #import "std/math"
+
+using ButtonTone;
+using ButtonState;
+using WidgetKind;
+using StyleField;
+
+HoldButtonState :: struct {
+    started_at: float32
+    released_at: float32
+    progress: float32
+    fired: bool
+    had_focus: bool
+    had_hold: bool
+}
+
+HoldButtonProps :: struct {
+    button: ButtonProps
+    now: float32
+    duration: float32
+    release_duration: float32
+    key_held: bool
+    cancel: bool
+    blur: bool
+    key: s32
+    progress_color: u32
+}
+
+HoldButtonResult :: struct {
+    node: s32
+    fired: bool
+    held: bool
+    cancelled: bool
+    released: bool
+    progress: float32
+    bounds: Rectangle
+}
+
+#program_export
+HoldButtonSpring :: (elapsed: float32, duration: float32,
+    progress: float32) -> float32 {
+    if duration <= 0.0 || elapsed >= duration { return 0.0 }
+    factor := cast(float32)Math.Exp(cast(float64)(-elapsed / duration))
+    value := progress * factor
+    if value < 0.001 { return 0.0 }
+    return value
+}
+
+#program_export
+HoldButtonApply :: (state: *HoldButtonState, props: HoldButtonProps,
+    held: bool, focused: bool) -> HoldButtonResult {
+    result: HoldButtonResult
+    result.node = -1
+    duration := props.duration
+    if duration <= 0.0 { duration = 1.2 }
+    release := props.release_duration
+    if release <= 0.0 { release = 0.35 }
+    escape := props.key == KeyEscape
+    cancel := props.cancel || props.blur || escape
+    if cancel {
+        result.cancelled = true
+        state.started_at = 0.0
+        state.fired = false
+        state.progress = 0.0
+        state.had_hold = false
+        state.released_at = 0.0
+        if props.blur { state.had_focus = false }
+    }
+    pointer_or_key_held := !cancel && (held || (focused && props.key_held))
+    if state.had_focus && !focused {
+        state.started_at = 0.0
+        state.fired = false
+        state.progress = 0.0
+        state.had_hold = false
+        state.released_at = 0.0
+        pointer_or_key_held = false
+    }
+    state.had_focus = focused
+    if pointer_or_key_held {
+        if !state.fired {
+            result.held = true
+            // A hold transition, including time zero, starts a new interval.
+            if !state.had_hold {
+                state.started_at = props.now
+                state.progress = 0.0
+            }
+            state.had_hold = true
+            state.progress = (props.now - state.started_at) / duration
+            if state.progress >= 1.0 {
+                state.progress = 1.0
+                state.fired = true
+                result.fired = true
+            }
+        }
+    } else {
+        state.fired = false
+        if state.had_hold {
+            result.released = true
+            state.had_hold = false
+            state.started_at = 0.0
+            state.released_at = props.now
+        }
+        state.progress = HoldButtonSpring(props.now - state.released_at, release, state.progress)
+    }
+    result.progress = state.progress
+    return result
+}
+
+#program_export
+HoldButton :: (session: Session, props: HoldButtonProps,
+    state: *HoldButtonState) -> HoldButtonResult {
+    key := props.button.key
+    if key == cast(u64)0 && props.button.id > 0 { key = cast(u64)cast(u32)props.button.id }
+    previous: s32 = -1
+    if SessionValid(session) && TreeIsBuilding(session) {
+        previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindButton)
+    }
+    held := false
+    focused := false
+    if previous >= 0 {
+        held = TreePressedAt(session, previous)
+        focused = TreeFocusedAt(session, previous)
+        unused TreeTakeActivationAt(session, previous)
+    }
+    result := HoldButtonApply(state, props, held, focused)
+    button := props.button
+    if button.key == cast(u64)0 { button.key = key }
+    if button.tone == ButtonTone.ButtonToneNeutral { button.tone = ButtonTone.ButtonToneDanger }
+    if button.label == "" { button.label = "Hold" }
+    button.state = cast(ButtonState)ButtonStateNormal
+    submitted_before := TreeSubmittedCount(session)
+    unused Button(session, button)
+    submitted_after := TreeSubmittedCount(session)
+    if submitted_after > submitted_before { result.node = submitted_after - 1 }
+    result.bounds = button.bounds
+    if result.node >= 0 && result.progress > 0.001 {
+        fill := result.bounds
+        fill.width *= result.progress
+        color := props.progress_color
+        if color == cast(u32)0 { color = Opacity(cast(u32)0x000000ff, 56) }
+        PaintRoundedFill(session, result.node, fill, result.bounds.height * 0.5, 12,
+            ColorFromPacked(color))
+    }
+    return result
+}

@@ -1,0 +1,22 @@
+using UI :: #import "kryon/Widgets";
+using Demo :: #import "kryon/svg_icon_widget";
+#import "kryon/svg_icon_props"
+
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "SVG icon", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    SvgIcon(session, SvgIconProps.{.bounds = .{bounds.x, bounds.y, 96.0, 96.0}, .shape = "S1.7rr:M3 12L9 18L21 6", .color = .{38, 154, 98, 255}})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

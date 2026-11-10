@@ -1,0 +1,144 @@
+#import "control_props"
+#import "geometry"
+#import "input_protocol"
+#import "style"
+#import "style_sheet"
+#import "theme"
+#import "tooltip_common"
+
+using ButtonState;
+using StyleField;
+
+SheetSafeArea :: struct {
+    left: float32
+    top: float32
+    right: float32
+    bottom: float32
+}
+
+SheetInput :: struct {
+    pointer: OverlayPointer
+    keys: OverlayKeyInput
+    focus: OverlayFocus
+    focus_count: s32
+}
+
+SheetProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    title: string
+    description: string
+    close_label: string
+    open: bool
+    disabled: bool
+    side: OverlaySide
+    size: float32
+    minimum_size: float32
+    maximum_size: float32
+    viewport: Rectangle
+    safe_area: SheetSafeArea
+    scrim_close: bool
+    drag_close_distance: float32
+    drag_enabled: bool
+    now_ms: s64
+    input: SheetInput
+    surface_style: StyleData
+    scrim_style: StyleData
+    states: StyleStates
+}
+
+SheetGeometry :: struct {
+    scrim: Rectangle
+    panel: Rectangle
+    handle: Rectangle
+    title: Rectangle
+    description: Rectangle
+    close: Rectangle
+    content: Rectangle
+}
+
+SheetState :: struct {
+    open_previous: bool
+    visible: bool
+    closing: bool
+    transition_start_ms: s64
+    progress: float32
+    dragging: bool
+    drag_last_x: float32
+    drag_last_y: float32
+    drag_offset: float32
+    focus_index: s32
+    trigger_focus_id: s32
+    focus_returned: bool
+}
+
+SheetResult :: struct {
+    node: s32
+    scrim_node: s32
+    title_node: s32
+    close_node: s32
+    content_node: s32
+    geometry: SheetGeometry
+    opened: bool
+    visible: bool
+    progress: float32
+    close_requested: bool
+    closed_by_escape: bool
+    closed_by_scrim: bool
+    closed_by_drag: bool
+    drag_delta: float32
+    focus_wrapped: bool
+    focus_returned: bool
+}
+
+#program_export
+SheetStateFor :: () -> SheetState {
+    return SheetState.{.transition_start_ms = -1, .focus_index = -1}
+}
+
+#program_export
+SheetSurfaceDefaultStyle :: () -> StyleData {
+    style: StyleData
+    theme := CurrentTheme()
+    style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+        cast(u32)StyleOpacity | cast(u32)StylePaddingX | cast(u32)StylePaddingY |
+        cast(u32)StyleGap | cast(u32)StyleFontSize | cast(u32)StyleFontRole |
+        cast(u32)StyleTypeface | cast(u32)StyleLineHeight |
+        cast(u32)StyleMotionDuration | cast(u32)StyleMotionMultiplier |
+        cast(u32)StyleMotionReduced
+    style.background = theme.colors.surface_raised
+    style.foreground = theme.colors.foreground
+    style.border = theme.colors.border
+    style.radius = theme.metrics.radius_surface
+    style.border_width = theme.metrics.border_width
+    style.opacity = 1.0
+    style.padding_x = 24.0
+    style.padding_y = 24.0
+    style.gap = 16.0
+    style.font_size = theme.metrics.heading_4
+    style.font_role = .FontRoleHeading
+    style.typeface = theme.fonts.heading
+    style.line_height = 1.3
+    style.motion_duration = 420.0
+    style.motion_multiplier = 1.0
+    style.motion_reduced = theme.motion.reduced_motion
+    return style
+}
+
+#program_export
+SheetScrimDefaultStyle :: () -> StyleData {
+    style: StyleData
+    theme := CurrentTheme()
+    style.fields = cast(u32)StyleBackground | cast(u32)StyleOpacity |
+        cast(u32)StyleMotionDuration | cast(u32)StyleMotionMultiplier |
+        cast(u32)StyleMotionReduced
+    style.background = theme.colors.scrim
+    style.opacity = 0.7
+    style.motion_duration = 420.0
+    style.motion_multiplier = 1.0
+    style.motion_reduced = theme.motion.reduced_motion
+    return style
+}
+

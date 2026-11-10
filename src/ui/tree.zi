@@ -151,6 +151,7 @@
         semantic_label: string
         semantic_detail: string
         semantic_kind: SemanticKind
+        style_id: s32
         text_bytes: s32
         text_cursor: s32
         text_anchor: s32
@@ -208,6 +209,7 @@
 
     SemanticData :: struct {
         style_class: s32
+        style_id: s32
         label_offset: s64
         label_length: s64
         detail_offset: s64
@@ -599,6 +601,7 @@
                 }
             }
             entry.style_class = semantic.style_class
+            entry.style_id = semantic.style_id
             entry.text_bytes = semantic.text_bytes
             entry.text_cursor = semantic.text_cursor
             entry.text_anchor = semantic.text_anchor
@@ -1710,6 +1713,14 @@
         if !trees[slot].building || index < 0 || index >= trees[slot].submitted_count { return }
         semantic: s32 = TreeEnsureSemantic(session, index)
         if semantic >= 0 { trees[slot].submitted_semantics[semantic].style_class = style_class }
+    }
+
+    #program_export
+    TreeSetStyleId :: (session: Session, index: s32, style_id: s32) {
+        slot: s32 = SessionIndex(session)
+        if !trees[slot].building || index < 0 || index >= trees[slot].submitted_count { return }
+        semantic: s32 = TreeEnsureSemantic(session, index)
+        if semantic >= 0 { trees[slot].submitted_semantics[semantic].style_id = style_id }
     }
 
 }

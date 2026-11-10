@@ -3,18 +3,25 @@
 #import "geometry"
 #import "frame_snapshot"
 #import "input_protocol"
+#import "android_touch"
 
 fail: bool;
 frames: s32;
 seen: FrameInputSnapshot;
 foreign_seen: bool;
 foreign: Session;
+pointer_matches: bool;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     unused viewport
     frames += 1
     seen = CaptureFrameInput(session)
+    first := PollPointer()
+    second := PollPointer()
+    pointer_matches = first.x == seen.pointer.x && second.x == first.x &&
+        first.pressed == seen.pointer.pressed && second.pressed == first.pressed &&
+        first.released == seen.pointer.released && second.released == first.released
     if CaptureFrameInput(foreign).available { foreign_seen = true }
     if fail { return 1 }
     return 0

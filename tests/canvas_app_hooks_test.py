@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 import subprocess
-from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
+from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN, ZIRAN_ROOT
 
 work = ROOT / 'work/canvas-app-hooks-test'
 subprocess.run(['git', 'check-ignore', '-q', str(work)], cwd=ROOT, check=True)
@@ -10,7 +10,7 @@ work.mkdir(parents=True, exist_ok=True)
 env = dict(os.environ, ZIRAN_JOBS='1')
 def run(args):
     subprocess.run(list(map(str, args)), cwd=ROOT, env=env, check=True)
-paths = ['--root', ROOT, '--module-path', ROOT / 'src/backend', '--module-path', ROOT / 'src/ui',
+paths = ['--root', ROOT, '--module-path', ROOT / 'src/backend', *UI_MODULE_ARGS,
          '--module-path', ZIRAN_ROOT / 'std']
 source = ROOT / 'tests/canvas_app_hooks_test.zi'
 run([ZIRAN, 'ir', *paths, '-o', work / 'ir', source])

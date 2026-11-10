@@ -1,0 +1,233 @@
+#import "box"
+#import "drawing_props"
+#import "geometry"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "textfield"
+#import "text_input"
+#import "text_input_props"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "control_props"
+#import "widget_kind"
+
+using StyleField;
+using WidgetKind;
+
+InlineEditProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    value: string
+    placeholder: string
+    disabled: bool
+    activate: bool
+    focus_visible: bool
+    composition: CompositionState
+    input: TextFieldInput
+    height: float32
+    font_size: float32
+}
+
+InlineEditState :: struct {
+    initialized: bool
+    editing: bool
+    focused: bool
+    length: s32
+    cursor: s32
+    anchor: s32
+    scroll_x: s32
+    bytes: [512]u8
+    backup: [512]u8
+    backup_length: s32
+}
+
+InlineEditResult :: struct {
+    node: s32
+    field: TextFieldResult
+    editing: bool
+    committed: bool
+    cancelled: bool
+    changed: bool
+}
+
+#program_export
+InlineEditStateFor :: (value: string) -> InlineEditState {
+    state: InlineEditState
+    state.length = cast(s32)value.count
+    if state.length > 512 { state.length = 512 }
+    at := 0
+    while at < state.length {
+        state.bytes[at] = value[at]
+        state.backup[at] = value[at]
+        at += 1
+    }
+    state.cursor = state.length
+    state.anchor = state.length
+    state.backup_length = state.length
+    state.initialized = true
+    return state
+}
+
+InlineEditCopyBytes :: (state: *InlineEditState) {
+    at := 0
+    while at < state.backup_length {
+        state.bytes[at] = state.backup[at]
+        at += 1
+    }
+    state.length = state.backup_length
+    state.cursor = state.length
+    state.anchor = state.length
+}
+
+#program_export
+InlineEditApply :: (state: *InlineEditState,
+    props: InlineEditProps) -> InlineEditResult {
+    result: InlineEditResult
+    result.node = -1
+    if !state.initialized { state.* = InlineEditStateFor(props.value) }
+    if props.disabled {
+        state.editing = false
+        return result
+    }
+    if !state.editing && props.activate {
+        state.editing = true
+        state.focused = true
+        state.backup_length = state.length
+        at := 0
+        while at < state.length { state.backup[at] = state.bytes[at]; at += 1 }
+        state.cursor = 0
+        state.anchor = state.length
+    }
+    if state.editing {
+        old_length := state.length
+        state.focused = state.focused || props.input.focus
+        if props.input.blur || props.input.escape { state.focused = false }
+        start := state.cursor
+        if state.anchor < start { start = state.anchor }
+        finish := state.cursor
+        if state.anchor > finish { finish = state.anchor }
+        replacement := props.input.text
+        if props.input.paste && props.input.paste_text.count > 0 { replacement = props.input.paste_text }
+        if replacement.count > 0 {
+            count := cast(s32)replacement.count
+            if count > 512 - start { count = 512 - start }
+            kept := state.length - finish
+            at := 0
+            while at < kept && start + count + at < 512 {
+                state.bytes[start + count + at] = state.bytes[finish + at]
+                at += 1
+            }
+            at = 0
+            while at < count { state.bytes[start + at] = replacement[at]; at += 1 }
+            state.length = start + count + kept
+            state.cursor = start + count
+            state.anchor = state.cursor
+        }
+        if props.input.backspace && start > 0 && start == finish {
+            at := start - 1
+            while at < state.length - 1 { state.bytes[at] = state.bytes[at + 1]; at += 1 }
+            state.length -= 1
+            state.cursor = start - 1
+            state.anchor = state.cursor
+        }
+        if props.input.select_all { state.cursor = 0; state.anchor = state.length }
+        if props.input.left { state.cursor = start - 1; if state.cursor < 0 { state.cursor = 0 }; state.anchor = state.cursor }
+        if props.input.right { state.cursor = finish + 1; if state.cursor > state.length { state.cursor = state.length }; state.anchor = state.cursor }
+        if props.input.escape {
+            InlineEditCopyBytes(state)
+            state.editing = false
+            state.focused = false
+            result.cancelled = true
+        } else if props.input.commit || !state.focused {
+            state.editing = false
+            result.committed = true
+            result.changed = state.length != state.backup_length
+        }
+        unused old_length
+    }
+    result.editing = state.editing
+    return result
+}
+
+InlineEditHostedReply :: struct { state: InlineEditState; result: InlineEditResult }
+
+#if #defined(KRYON_HOSTED_UI) {
+    inlineedit_host_api :: #system_library "host_api";
+    InlineEditHostedHost :: (session: Session, props: InlineEditProps,
+        state: InlineEditState) -> InlineEditHostedReply #foreign inlineedit_host_api;
+    #program_export
+    InlineEdit :: (session: Session, props: InlineEditProps,
+    state: *InlineEditState) -> InlineEditResult {
+        reply := InlineEditHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #program_export
+    InlineEdit :: (session: Session, props: InlineEditProps,
+    state: *InlineEditState) -> InlineEditResult { return InlineEditCore(session, props, state, true) }
+    #program_export
+    InlineEditCore :: (session: Session, props: InlineEditProps,
+    state: *InlineEditState, effects: bool) -> InlineEditResult {
+    result := InlineEditApply(state, props)
+    if !TreeIsBuilding(session) { return result }
+    height := props.height
+    if height <= 0 { height = CurrentThemeMetric(.ThemeMetricControlHeightMedium) }
+    bounds := props.bounds
+    bounds.height = height
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup, bounds)
+    if result.node < 0 { return result }
+    if !TreePushScope(session, result.node) { return result }
+    TreeSetInteractive(session, result.node, props.disabled, false, props.id)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetLabel(session, result.node, props.placeholder)
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+    cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleFontSize
+    face.background = ifx state.editing then CurrentSurface() else CurrentTheme().colors.background
+    face.foreground = CurrentText()
+    face.border = ifx state.editing then CurrentAccent() else CurrentBorder()
+    face.radius = CurrentThemeMetric(.ThemeMetricRadiusItem)
+    face.font_size = ifx props.font_size > 0 then props.font_size else CurrentThemeMetric(.ThemeMetricTextBody)
+    face = ResolveInstalledStyleRules(face, StyleControlRoleFacts(StyleKindAny(),
+        props.id, props.class_name, 0, 0, 0, 0, ifx state.editing then 4 else 1),
+        ifx state.editing then 4 else 1)
+    surface := Box(session, .{.key = props.key+101, .bounds = bounds,
+            .fill = ColorFromPacked(face.background), .border = ColorFromPacked(face.border), .radius = face.radius})
+    TreeSetStyleClass(session, surface, props.class_name)
+    if state.editing {
+        field: TextFieldProps
+        field.key = props.key + 201
+        field.bounds = Rectangle.{bounds.x + 6.0, bounds.y, bounds.width - 12.0, height}
+        field.value = TextView(state.bytes[:state.length])
+        field.placeholder = props.placeholder
+        field.cursor = state.cursor
+        field.anchor = state.anchor
+        field.scroll_x = state.scroll_x
+        field.focused = state.focused
+        field.max_bytes = 512
+        field.disabled = props.disabled
+        field.class_name = props.class_name
+        field.composition = props.composition
+        field.input.composition_event = props.input.composition_event
+        field_result := ifx effects then TextField(session, field) else TextFieldCore(session, field)
+        unused field_result
+    } else {
+        text: TextProps
+        text.key = props.key + 301
+        text.bounds = bounds
+        text.text = ifx state.length == 0 then props.placeholder else TextView(state.bytes[:state.length])
+        text.font = cast(s32)face.font_size
+        text.class_name = props.class_name
+        Text(session, text)
+    }
+    TreePopScope(session)
+    return result
+}
+}

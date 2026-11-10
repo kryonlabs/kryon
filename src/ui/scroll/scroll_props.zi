@@ -1,0 +1,104 @@
+#import "geometry"
+#import "scroll_behavior"
+
+// Device observations and drag ownership. Scroll observes the shared scroll
+// device itself when the host sampled it this frame and `enabled` is false;
+// a caller that supplies its own input retains grab and ownership from the
+// returned frame.
+ScrollInput :: struct {
+    enabled: bool
+    pointer_allowed: bool
+    disabled: bool
+    mouse: Vector2
+    pressed: bool
+    down: bool
+    released: bool
+    wheel: float32
+    owns_drag: bool
+    owner_captured: bool
+    grab: float32
+    content_drag: bool
+    drag_origin_y: float32
+    drag_origin_offset: s32
+    drag_moving: bool
+    // Observed from the shared scroll device, which Scroll then updates.
+    device: bool
+    now_seconds: float64
+    sample_seconds: float64
+    velocity: float32
+    flinging: bool
+    gliding: bool
+    glide_target: s32
+}
+
+ScrollProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    scale: float32
+    bounds: Rectangle
+    content_height: s32
+    content_width: s32
+    horizontal: bool
+    // The scrollbar shows, and keeps its width out of the content, even
+    // while the content fits. Content that can grow, such as a list whose
+    // rows open, keeps its width when it starts to scroll. With nothing to
+    // scroll, the scrollbar takes no input.
+    keep_scrollbar: bool
+    // The caller allocates, paints and handles a native scrollbar. Keep the
+    // complete supplied viewport for wheel/content scrolling and hit testing.
+    external_scrollbar: bool
+    // Apply each wheel delta in its input frame, without a glide.
+    immediate_wheel: bool
+    // Readers may suppress automatic focused-field reveal while keeping input.
+    manual_scroll: bool
+    scroll_offset: s32
+    scroll_delta: s32
+    input: ScrollInput
+    metrics: ScrollMetrics
+}
+
+ScrollResult :: struct {
+    node: s32
+    opened: bool
+    viewport: Rectangle
+    content: Rectangle
+    scroll_offset: s32
+    max_scroll: s32
+    frame: ScrollFrame
+}
+
+// The pointer, drag and motion a frame of scrolling starts from. The caller
+// adds its bounds, content and offset.
+#program_export
+ScrollFrameInputFor :: (input: ScrollInput) -> ScrollFrameInput {
+    return ScrollFrameInput.{.pointer_allowed = input.pointer_allowed, .disabled = input.disabled,
+        .mouse = input.mouse, .pressed = input.pressed, .down = input.down,
+        .released = input.released, .wheel = input.wheel, .owns_drag = input.owns_drag,
+        .owner_captured = input.owner_captured, .grab = input.grab,
+        .content_drag = input.content_drag, .drag_origin_y = input.drag_origin_y,
+        .drag_origin_offset = input.drag_origin_offset, .drag_moving = input.drag_moving,
+        .now_seconds = input.now_seconds, .sample_seconds = input.sample_seconds,
+        .velocity = input.velocity, .flinging = input.flinging, .gliding = input.gliding,
+        .glide_target = input.glide_target}
+}
+
+// Retain the complete drag and momentum state between caller-supplied
+// frames. A content press must remain a content drag while held; retaining
+// only ownership and grab would reinterpret it as a scrollbar drag.
+#program_export
+ScrollInputAfter :: (input: ScrollInput, frame: ScrollFrame) -> ScrollInput {
+    if frame.start_drag { input.owns_drag = true }
+    if frame.clear_drag { input.owns_drag = false }
+    input.grab = frame.grab
+    input.content_drag = frame.content_drag
+    input.drag_origin_y = frame.drag_origin_y
+    input.drag_origin_offset = frame.drag_origin_offset
+    input.drag_moving = frame.drag_moving
+    input.sample_seconds = frame.sample_seconds
+    input.velocity = frame.velocity
+    input.flinging = frame.flinging
+    input.gliding = frame.gliding
+    input.glide_target = frame.glide_target
+    return input
+}

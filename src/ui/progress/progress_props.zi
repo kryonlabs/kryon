@@ -1,0 +1,12 @@
+#import "geometry"
+
+ProgressProps :: struct {
+    bounds: Rectangle
+    min: s32
+    max: s32
+    value: s32
+    label: string
+    class_name: s32
+    id: s32
+    key: u64
+}

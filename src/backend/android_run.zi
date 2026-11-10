@@ -3,21 +3,24 @@
     #program_export
     AndroidRunMain :: () -> s32 { return AndroidBundleRunMain() }
 } else {
-// Canonical Android host. raylib's NativeActivity backend owns the window
-// and calls the application's C main; the application's generated main
-// delegates to AndroidRunMain. Java reports insets, density, dark mode and
-// soft-keyboard text through android_device's natives, and this loop keeps
-// the session, viewport policy and frame protocol running.
+// Kryon owns Android's NativeActivity application thread. The NDK glue only
+// bridges lifecycle/input events to a looper; this host owns the window,
+// pixels, input, IME, density, damage presentation and frame pacing.
 #import "android_device"
+#import "android_clipboard"
 #import "android_jni"
+#import "android_native"
 #import "android_process"
 #import "android_surface"
-#import "app"
+#import "android_touch"
+#import "frame_entry"
 #import "std/byte_text_linux"
 #import "drawing_props"
 #import "frame_snapshot"
 #import "geometry"
-#import "raylib_runtime"
+#import "paint_queue"
+#import "pixmap"
+#import "pixmap_frame"
 #import "scroll_device"
 #import "secondary_pointer"
 #import "session"
@@ -33,7 +36,6 @@ Clock :: #import "std/timer_linux";
 using FrameStatus;
 
 android_log :: #system_library "log";
-// Android discards standard error; errors go to the system log (adb logcat).
 AndroidLogWrite :: (priority: s32, tag: *u8, text: *u8) -> s32 #foreign android_log "__android_log_write";
 
 AndroidError :: (message: string) -> s32 {
@@ -52,20 +54,18 @@ AndroidError :: (message: string) -> s32 {
 }
 
 AndroidCanvas :: () -> u32 {
-    // Match the raylib desktop host's clear when the app installs no canvas
-    // token, so an unstyled application stays readable on both.
     canvas := StyleTokenColorOr("canvas", Color.{248, 250, 252, 255})
-    return (cast(u32)canvas.r << 24) | (cast(u32)canvas.g << 16) |
-        (cast(u32)canvas.b << 8) | cast(u32)canvas.a
+    return (cast(u32)canvas.a << 24) | (cast(u32)canvas.r << 16) |
+        (cast(u32)canvas.g << 8) | cast(u32)canvas.b
 }
 
-// Why the session refused a frame, with the key and kind it stopped at.
 AndroidFrameFailure :: (session: Session, step: string) {
     failure := FrameFailureAt(session)
     message: [240]u8
     length: s64 = 0
     digits: [24]u8
-    parts: [7]string = .["kryon: ", step, ": ", failure.message, " (key ", FormatInteger(cast(s64)failure.key, digits[:]), ")"]
+    parts: [7]string = .["kryon: ", step, ": ", failure.message, " (key ",
+        FormatInteger(cast(s64)failure.key, digits[:]), ")"]
     for part: parts {
         for byte: part {
             if length < 239 { message[length] = byte; length += 1 }
@@ -74,159 +74,187 @@ AndroidFrameFailure :: (session: Session, step: string) {
     unused AndroidError(TextView(message[0:length]))
 }
 
+AndroidPresentPixmap :: (damage: Rectangle, width: s32, height: s32,
+    zoom: float32) -> bool {
+    if width <= 0 || height <= 0 { return false }
+    if zoom < 0.1 || zoom > 8.0 { zoom = 1.0 }
+    left := cast(s32)(damage.x * zoom)
+    top := cast(s32)(damage.y * zoom)
+    right := cast(s32)((damage.x + damage.width) * zoom) + 1
+    bottom := cast(s32)((damage.y + damage.height) * zoom) + 1
+    if left < 0 { left = 0 }
+    if top < 0 { top = 0 }
+    if right > width { right = width }
+    if bottom > height { bottom = height }
+    if left >= right || top >= bottom { return true }
+    if !AndroidNativeLock(left, top, right, bottom) { return false }
+    copied := AndroidNativePresentDamage(left, top, right, bottom)
+    return AndroidNativeUnlock() && copied
+}
+
 DrawAndroidFrame :: (session: Session, viewport: AndroidViewport,
-    bounds: Rectangle) -> bool {
-    // The application reads this frame's polled input through
-    // CaptureFrameInput. Presentation may yield to the platform, so the
-    // publication closes before every EndRaylibFrame, failures included.
-    unused RaylibFrameInputBegin(session)
-    BeginRaylibFrame()
-    ClearAndroidFrame(viewport, AndroidCanvas(), RaylibZoom())
-    pointer: PointerFrame = TestDriverPointer(session, PollPointer())
-    TreePointerUpdate(session, pointer)
-    TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
-    // Touch drags move Scroll views, as BundleApp's host frames do.
-    BeginScrollFrame(session, Vector2.{pointer.x, pointer.y}, pointer.pressed, pointer.down,
-        pointer.released, 0.0, cast(float64)Clock.MonotonicMilliseconds() / 1000.0)
-    if AndroidTextInputKeyPressed(259) {
-        KeyboardSend(session, 259)
-    }
-    if AndroidTextInputKeyPressed(257) {
-        KeyboardSend(session, 257)
-    }
-    codepoint := AndroidTextInputCharacter()
-    while codepoint != 0 {
-        TypedCodepointSend(session, codepoint)
-        codepoint = AndroidTextInputCharacter()
-    }
-    if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk {
-        AndroidFrameFailure(session, "the frame could not begin")
-        FrameInputEnd(session)
-        EndRaylibFrame()
-        return false
-    }
-    if Frame(session, bounds) != 0 {
-        unused AndroidError("kryon: the application's frame failed")
-        TreeCancel(session)
-        FrameInputEnd(session)
-        EndRaylibFrame()
-        return false
-    }
-    if EndFrame(session) != cast(FrameStatus)FrameOk {
-        AndroidFrameFailure(session, "the frame could not finish")
-        FrameInputEnd(session)
-        EndRaylibFrame()
-        return false
-    }
-    // Provider-backed images can disappear after the application composes
-    // the tree, for example when Android revokes access or pauses a gallery.
-    // RasterImage skips an unavailable asset; keep the activity alive so the
-    // next frame can read the new provider/lifecycle state. Tree and application
-    // failures above still stop the host.
-    FrameInputEnd(session)
-    unused EndRaylibFrame()
-    TestDriverFrame(session)
-    return true
-}
+    bounds: Rectangle, zoom: float32, reuse: bool) -> bool {
+    width := viewport.x + viewport.width
+    height := viewport.y + viewport.height
+    if !AndroidNativeSurfaceSize(*width, *height) ||
+    !AndroidNativeEnsurePixels(width, height) { return false }
 
-AndroidDrawJob :: struct {
-    session: Session
-    viewport: AndroidViewport
-    bounds: Rectangle
-    ok: bool
-}
-AndroidAppCompose :: (argument: *void) {
-    draw := cast(*AndroidDrawJob)argument
-    draw.ok = DrawAndroidFrame(draw.session, draw.viewport, draw.bounds)
-}
+    pixels := AndroidNativePixels()
+    if !PixmapScale(zoom, zoom) ||
+    !PixmapResumeInto(width, height, pixels, true) { return false }
+    if !reuse {
+        AndroidNativeFill(cast(u32)0xff000000)
+        ClearAndroidFrame(viewport, AndroidCanvas())
+    }
 
-#program_export
-AndroidRunMain :: () -> s32 {
-    AndroidJniKeepHostThread()
-    defer { AndroidJniReleaseHostThread() }
-    AndroidProcessPrepare()
-    if !OpenRaylib() {
-        CloseRaylib()
-        return AndroidError("kryon: could not open the android window")
-    }
-    session: Session = SessionOpen()
-    if !SessionValid(session) {
-        CloseRaylib()
-        return AndroidError("kryon: could not open a UI session")
-    }
-    AndroidTextInputOpen(session)
-    defer { AndroidTextInputClose(session) }
-    RaylibExitKey(0)
-    // Android's own interface font when the application loaded none.
-    system_font := !raylib_font_registered && LoadSystemTypeface("ui") && SelectTypeface("ui")
     ok: bool = true
-    first_frame: bool = true
-    while ok && PollRaylib() {
-        if AndroidTakeGraphicsInvalidate() != 0 {
-            DiscardRaylibAppFrame()
-            // The surface was recreated; stale texture names may belong to
-            // the new context, so forget them without deleting.
-            ResetRaylibGraphics(true)
-            // The system font's texture went with the old context.
-            if system_font { system_font = LoadSystemTypeface("ui") && SelectTypeface("ui") }
-        }
-        key := RaylibPressedKey()
+    finished: PixmapFrameResult
+    input_open := AndroidTouchFrameInputBegin(session, zoom)
+    if input_open {
+        pointer: PointerFrame = TestDriverPointer(session, PollPointer())
+        TreePointerUpdate(session, pointer)
+        TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+        BeginScrollFrame(session, Vector2.{pointer.x, pointer.y},
+            pointer.pressed, pointer.down, pointer.released, 0.0,
+            cast(float64)Clock.MonotonicMilliseconds() / 1000.0)
+        key := AndroidTouchTakeKey()
         if key == 0 {
-            // A held key repeats, as Backspace does in any text editor.
-            key = RaylibRepeatedKey()
-        }
-        if key == 0 {
-            for candidate: cast(s32)0..269 {
+            for candidate: cast(s32)0..349 {
                 if TestDriverKeyPressed(candidate) { key = candidate; break }
             }
         }
-        if key != 0 {
-            // Android Back follows the same in-app navigation and overlay
-            // dismissal path as Escape on the other hosts.
-            KeyboardSend(session, ifx key == 4 then KeyEscape else key)
+        if AndroidTextInputKeyPressed(259) { key = 259 }
+        if AndroidTextInputKeyPressed(257) { key = 257 }
+        if key != 0 { KeyboardSend(session, key) }
+        codepoint := AndroidTextInputCharacter()
+        while codepoint != 0 {
+            TypedCodepointSend(session, codepoint)
+            codepoint = AndroidTextInputCharacter()
         }
+
+        if BeginFrame(session, cast(u64)1, bounds) != cast(FrameStatus)FrameOk {
+            AndroidFrameFailure(session, "the frame could not begin")
+            ok = false
+        } else if Frame(session, bounds) != 0 {
+            unused AndroidError("kryon: the application's frame failed")
+            TreeCancel(session)
+            ok = false
+        } else {
+            finished = EndPixmapFrame(session, reuse, AndroidCanvas())
+            if finished.status != cast(FrameStatus)FrameOk {
+                AndroidFrameFailure(session, "the frame could not finish")
+                ok = false
+            }
+        }
+        FrameInputEnd(session)
+    } else {
+        ok = false
+    }
+    AndroidTouchFrameEnd()
+    PixmapEndInto()
+    if ok && !finished.paint_unchanged { ok = AndroidPresentPixmap(finished.damage, width, height, zoom) }
+    if ok { TestDriverFrame(session) }
+    return ok
+}
+
+AndroidViewportSignature :: (viewport: AndroidViewport, zoom: float32) -> u64 {
+    value := cast(u64)viewport.x | cast(u64)viewport.y << 12 |
+        cast(u64)viewport.width << 24 | cast(u64)viewport.height << 36 |
+        cast(u64)viewport.ready << 48
+    return value ^ cast(u64)(zoom * 256.0)
+}
+
+#program_export
+android_main :: (app: *NativeAndroidApp) {
+    if app == null { return }
+    AndroidNativeStart(app)
+    defer { AndroidNativeClose() }
+    defer { AndroidNativeFinish() }
+    AndroidJniKeepHostThread()
+    defer { AndroidJniReleaseHostThread() }
+    AndroidProcessPrepare()
+
+    session: Session = SessionOpen()
+    if !SessionValid(session) {
+        unused AndroidError("kryon: could not open a UI session")
+        return
+    }
+    defer { CloseSession(session) }
+    AndroidTextInputOpen(session)
+    defer { AndroidTextInputClose(session) }
+
+    ok: bool = true
+    first_frame: bool = true
+    reuse: bool = false
+    signature: u64
+    quiet_frames: s32 = 0
+    next_frame_ms := Clock.MonotonicMilliseconds()
+    while ok && !AndroidNativeDestroyRequested() {
+        now := Clock.MonotonicMilliseconds()
+        timeout := ifx next_frame_ms > now then cast(s32)(next_frame_ms - now) else 0
+        if timeout > 1000 { timeout = 1000 }
+        unused AndroidNativePoll(timeout)
+        if AndroidNativeDestroyRequested() { break }
+
+        width: s32
+        height: s32
+        if AndroidNativePaused() || !AndroidNativeWindowReady() ||
+        !AndroidNativeSurfaceSize(*width, *height) {
+            AndroidTextInputFrame(session, false)
+            reuse = false
+            quiet_frames = 0
+            next_frame_ms = Clock.MonotonicMilliseconds() + 1000
+            continue
+        }
+
+        if AndroidNativeTakeResized() || AndroidTakeGraphicsInvalidate() != 0 {
+            PaintSnapshotInvalidate(session)
+            reuse = false
+        }
+        if AndroidNativeTakeRedraw() { reuse = false }
+
         viewport: AndroidViewport
         SyncAndroidViewport(*viewport)
-        bounds: Rectangle = Rectangle.{cast(float32)viewport.x,
-            cast(float32)viewport.y, cast(float32)viewport.width,
-            cast(float32)viewport.height}
         if viewport.ready == 0 || viewport.width <= 0 || viewport.height <= 0 {
-            // Insets have not been reported yet; draw over the full surface.
-            width: s32
-            height: s32
-            GetAndroidSurfaceSize(*width, *height)
-            bounds = Rectangle.{0.0, 0.0, cast(float32)width,
-                cast(float32)height}
             viewport.x = 0
             viewport.y = 0
             viewport.width = width
             viewport.height = height
         }
-        // Android apps lay out in density-independent pixels. The host draws
-        // and reads the pointer at the device density, so the application's
-        // bounds, sizes and fonts mean the same on every screen.
         zoom := AndroidLayoutZoom()
-        RaylibSetZoom(zoom)
-        bounds = Rectangle.{bounds.x / zoom, bounds.y / zoom, bounds.width / zoom, bounds.height / zoom}
+        AndroidTouchSetZoom(zoom)
+        bounds := Rectangle.{cast(float32)viewport.x / zoom,
+            cast(float32)viewport.y / zoom, cast(float32)viewport.width / zoom,
+            cast(float32)viewport.height / zoom}
+        current_signature := AndroidViewportSignature(viewport, zoom)
+        if current_signature != signature {
+            signature = current_signature
+            reuse = false
+        }
+
         AndroidTextInputBeginFrame(session)
-        draw := AndroidDrawJob.{.session = session, .viewport = viewport, .bounds = bounds}
-        ok = RunRaylibAppFrame(AndroidAppCompose, cast(*void)*draw) && draw.ok
-        AndroidTextInputFrame(session, false)
-        if ok && first_frame {
+        ok = DrawAndroidFrame(session, viewport, bounds, zoom, reuse)
+        AndroidTextInputFrame(session, TreeTextInputActive(session))
+        if !ok { break }
+        if first_frame {
             first_frame = false
             AndroidNotifyFirstFrame()
         }
-        // The application consumes keys while composing its frame. A back
-        // key nothing took closes the activity, as Android users expect.
-        if ok && key == 4 && KeyboardTake(session) == KeyEscape {
-            AndroidJniFinishActivity()
-        }
+
+        if reuse { quiet_frames += 1 } else { quiet_frames = 0 }
+        reuse = true
+        next_frame_ms = Clock.MonotonicMilliseconds() +
+            ifx quiet_frames >= 2 then cast(s64)100 else cast(s64)16
     }
-    CloseRaylibAppFrames()
-    CloseSession(session)
-    CloseRaylib()
-    if ok { return 0 }
-    return AndroidError("kryon: android frame rendering failed")
+    if !ok { unused AndroidError("kryon: android frame rendering failed") }
+}
+
+#program_export
+AndroidRunMain :: () -> s32 {
+    app := AndroidNativeApp()
+    if app == null { return AndroidError("kryon: the android activity did not start") }
+    android_main(app)
+    return 0
 }
 
 }

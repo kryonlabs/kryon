@@ -1,3 +1,61 @@
+// Application-owned spring state, driven by monotonic seconds.
+TransitionSpring :: struct {
+    value: float32
+    velocity: float32
+    target: float32
+}
+TransitionMotionState :: struct {
+    initialized: bool
+    session_slot: s32
+    session_epoch: u64
+    parent_key: u64
+    key: u64
+    kind: s32
+    now: float64
+    delta: float32
+    immediate: bool
+    active: bool
+    channels: [4]TransitionSpring
+}
+
+#program_export
+TransitionSpringAdvance :: (spring: TransitionSpring, target: float32,
+    delta: float32, duration: float32, bounce: float32,
+    immediate: bool) -> TransitionSpring {
+    spring.target = target
+    if immediate || duration <= 0.0 {
+        spring.value = target; spring.velocity = 0.0
+        return spring
+    }
+    if delta < 0.0 { delta = 0.0 }
+    if delta > 0.1 { delta = 0.1 }
+    if bounce < 0.0 { bounce = 0.0 }
+    if bounce > 0.9 { bounce = 0.9 }
+    frequency := 6.283185307 / duration
+    stiffness := frequency * frequency
+    damping := 2.0 * (1.0 - bounce) * frequency
+    steps := cast(s32)(delta * 240.0)
+    if cast(float32)steps < delta * 240.0 { steps += 1 }
+    if steps < 1 { steps = 1 }
+    step := delta / cast(float32)steps
+    for index: 0..steps - 1 {
+        acceleration := -stiffness * (spring.value - target) - damping * spring.velocity
+        spring.velocity += acceleration * step
+        spring.value += spring.velocity * step
+    }
+    distance := spring.value - target
+    if distance < 0.0 { distance = -distance }
+    speed := spring.velocity
+    if speed < 0.0 { speed = -speed }
+    magnitude := target
+    if magnitude < 0.0 { magnitude = -magnitude }
+    epsilon := 0.002 + 0.0005 * magnitude
+    if distance < epsilon && speed < epsilon * 10.0 {
+        spring.value = target; spring.velocity = 0.0
+    }
+    return spring
+}
+
 
 TransitionPhase :: enum {
     TransitionNone :: 0
@@ -131,4 +189,41 @@ TransitionApplyAlpha :: (color_alpha: s32, fade_alpha: s32) -> s32 {
     if color_alpha < 0 { color_alpha = 0 }
     if color_alpha > 255 { color_alpha = 255 }
     return (color_alpha * fade_alpha) / 255
+}
+
+// Epoch, parent, key and kind prevent motion leaking into a reused identity.
+#program_export
+TransitionMotionBegin :: (state: *TransitionMotionState, now: float64,
+    reduced: bool, slot: s32, epoch: u64, parent: u64, key: u64, kind: s32) {
+    if state == null { return }
+    fresh := !state.initialized || state.session_slot != slot ||
+        state.session_epoch != epoch || state.parent_key != parent ||
+        state.key != key || state.kind != kind
+    if fresh {
+        state.* = TransitionMotionState.{}
+        state.initialized = true
+        state.session_slot = slot; state.session_epoch = epoch
+        state.parent_key = parent; state.key = key; state.kind = kind
+        state.now = now
+    }
+    state.delta = cast(float32)(now - state.now)
+    if state.delta < 0.0 { state.delta = 0.0 }
+    if state.delta > 0.1 { state.delta = 0.1 }
+    if now > state.now { state.now = now }
+    state.immediate = fresh || reduced
+    state.active = false
+}
+#program_export
+TransitionMotionValue :: (state: *TransitionMotionState, channel: s32,
+    target: float32, duration: float32, bounce: float32) -> float32 {
+    if state == null || channel < 0 || channel >= 4 { return target }
+    spring := TransitionSpringAdvance(state.channels[channel], target,
+        state.delta, duration, bounce, state.immediate)
+    state.channels[channel] = spring
+    if spring.value != target || spring.velocity != 0.0 { state.active = true }
+    return spring.value
+}
+#program_export
+TransitionMotionActive :: (state: *TransitionMotionState) -> bool {
+    return state != null && state.active
 }

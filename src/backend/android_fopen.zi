@@ -1,14 +1,116 @@
-// raylib's Android fopen serves relative paths from the APK, which needs the
-// running activity. A process started only to answer another app, such as an
-// account hand-off, has none. Absolute paths are never APK assets, so they open
-// directly; everything else stays with raylib, renamed to KryonRaylibFopen when
-// it is built. --wrap=fopen sends every fopen in the app here, liboqs included.
-android_fopen_library :: #system_library "raylib";
-AndroidFopenFile :: (path: *u8, mode: *u8) -> *void #foreign android_fopen_library "__real_fopen";
-AndroidFopenAsset :: (path: *u8, mode: *u8) -> *void #foreign android_fopen_library "KryonRaylibFopen";
+// --wrap=fopen sends relative names through the APK asset manager. Absolute
+// paths use libc directly. Every supported Android API receives a bounded
+// funopen stream backed by the APK asset manager.
+#import "android_jni"
+#import "std/c_string"
+
+#if #defined(ANDROID_BUILD) {
+    android_fopen_android :: #system_library "android";
+    android_fopen_c :: #system_library "c";
+    FopenAssetOpen :: (manager: *void, name: *u8, mode: s32) -> *void #foreign android_fopen_android "AAssetManager_open";
+    FopenAssetClose :: (asset: *void) #foreign android_fopen_android "AAsset_close";
+    FopenAssetLength :: (asset: *void) -> s32 #foreign android_fopen_android "AAsset_getLength";
+    FopenAssetBuffer :: (asset: *void) -> *u8 #foreign android_fopen_android "AAsset_getBuffer";
+    FopenReal :: (path: *u8, mode: *u8) -> *void #foreign android_fopen_c "__real_fopen";
+    FopenClose :: (file: *void) -> s32 #foreign android_fopen_c "fclose";
+    FopenFunopen :: (cookie: *void, read: AndroidFopenRead,
+        write: AndroidFopenWrite, seek: AndroidFopenSeek,
+        close: AndroidFopenClose) -> *void #foreign android_fopen_c "funopen";
+    FopenAllocate :: (count: usize, size: usize) -> *void #foreign android_fopen_c "calloc";
+    FopenRelease :: (memory: *void) #foreign android_fopen_c "free";
+    FopenCopy :: (destination: *void, source: *void, count: usize) -> *void #foreign android_fopen_c "memcpy";
+}
+AndroidFopenRead :: #type (*void, *u8, s32) -> s32 #c_call;
+AndroidFopenWrite :: #type (*void, *u8, s32) -> s32 #c_call;
+AndroidFopenSeek :: #type (*void, isize, s32) -> isize #c_call;
+AndroidFopenClose :: #type (*void) -> s32 #c_call;
+AndroidFopenCookie :: struct {
+    data: *u8
+    length: s64
+    position: s64
+}
+
+AndroidFopenCookieRead :: (cookie: *void, output: *u8, count: s32) -> s32 {
+    value := cast(*AndroidFopenCookie)cookie
+    if value == null || output == null || count < 0 { return 0 }
+    remaining := value.length - value.position
+    if remaining <= 0 { return 0 }
+    if cast(s64)count < remaining { remaining = cast(s64)count }
+    #if #defined(ANDROID_BUILD) {
+        source := *value.data[value.position]
+        unused FopenCopy(cast(*void)output, cast(*void)source, cast(usize)remaining)
+    }
+    value.position += remaining
+    return cast(s32)remaining
+}
+
+AndroidFopenCookieWrite :: (cookie: *void, output: *u8, count: s32) -> s32 {
+    unused cookie
+    unused output
+    unused count
+    return -1
+}
+
+AndroidFopenCookieSeek :: (cookie: *void, offset: isize, whence: s32) -> isize {
+    value := cast(*AndroidFopenCookie)cookie
+    if value == null { return -1 }
+    position := cast(s64)offset
+    if whence == 1 { position = value.position + cast(s64)offset }
+    else if whence == 2 { position = value.length + cast(s64)offset }
+    else if whence != 0 { return -1 }
+    if position < 0 || position > value.length { return -1 }
+    value.position = position
+    return cast(isize)position
+}
+
+AndroidFopenCookieClose :: (cookie: *void) -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        if cookie != null {
+            value := cast(*AndroidFopenCookie)cookie
+            if value.data != null { FopenRelease(cast(*void)value.data) }
+            FopenRelease(cookie)
+        }
+    }
+    unused cookie
+    return 0
+}
+
+AndroidFopenAsset :: (path: *u8, mode: *u8) -> *void {
+    #if #defined(ANDROID_BUILD) {
+        if path == null || mode == null || mode[0] != cast(u8)114 { return null }
+        app := JniGetAndroidApp()
+        if app == null || app.activity == null { return null }
+        asset := FopenAssetOpen(app.activity.asset_manager, path, 3)
+        if asset == null { return null }
+        length := FopenAssetLength(asset)
+        bytes := FopenAssetBuffer(asset)
+        if length <= 0 || bytes == null { FopenAssetClose(asset); return null }
+        cookie := cast(*AndroidFopenCookie)FopenAllocate(1, size_of(AndroidFopenCookie))
+        if cookie == null { FopenAssetClose(asset); return null }
+        cookie.length = length
+        cookie.data = cast(*u8)FopenAllocate(cast(usize)length, 1)
+        if cookie.data == null { FopenRelease(cast(*void)cookie); FopenAssetClose(asset); return null }
+        unused FopenCopy(cast(*void)cookie.data, cast(*void)bytes, cast(usize)length)
+        FopenAssetClose(asset)
+        file := FopenFunopen(cast(*void)cookie, AndroidFopenCookieRead, AndroidFopenCookieWrite,
+            AndroidFopenCookieSeek, AndroidFopenCookieClose)
+        if file == null { unused AndroidFopenCookieClose(cast(*void)cookie) }
+        return file
+    }
+    unused path
+    unused mode
+    return null
+}
 
 #program_export
 __wrap_fopen :: (path: *u8, mode: *u8) -> *void {
-    if path != null && path[0] == cast(u8)47 { return AndroidFopenFile(path, mode) }
+    #if #defined(ANDROID_BUILD) {
+        if path != null && path[0] == cast(u8)47 { return FopenReal(path, mode) }
+    }
     return AndroidFopenAsset(path, mode)
+}
+
+#program_export
+__wrap_fopen64 :: (path: *u8, mode: *u8) -> *void {
+    return __wrap_fopen(path, mode)
 }

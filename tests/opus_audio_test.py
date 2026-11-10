@@ -7,7 +7,7 @@ import shutil
 import shlex
 import sys
 import subprocess
-from toolchain import ZIRAN, ZIRAN_ROOT, JS_RUNTIME
+from toolchain import UI_MODULE_ARGS, ZIRAN, ZIRAN_ROOT, JS_RUNTIME, kryon_test_project
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'build/scratch/opus-audio'
 AUDIO = Path(os.environ['AUDIO_PACKAGE']) if 'AUDIO_PACKAGE' in os.environ else Path(subprocess.check_output([str(ZIRAN), 'pkg', 'path', 'audio'], cwd=ROOT, text=True).strip())
@@ -15,12 +15,12 @@ ENV = dict(os.environ)
 for key in ('DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','GDK_DISPLAY','DBUS_SESSION_BUS_ADDRESS','SESSION_MANAGER','DESKTOP_SESSION','XDG_SESSION_ID','XDG_SESSION_TYPE','PIPEWIRE_REMOTE','PIPEWIRE_RUNTIME_DIR','PULSE_SERVER','ALSA_CONFIG_PATH'):
     ENV.pop(key, None)
 ENV.update(YUE_DESKTOP_RECOVERY='0',SDL_AUDIODRIVER='dummy',PULSE_SERVER='unix:'+str(WORK/'no-pulse'),JACK_DEFAULT_SERVER='kryon-test-no-server',JACK_NO_START_SERVER='1',ALSA_CONFIG_PATH=str(WORK/'alsa.conf'))
-COMMON = ['--root',ROOT/'tests','--module-path',ROOT/'src/ui','--module-path',ROOT/'src/backend','--module-path','audio='+str(AUDIO/'src')]
+COMMON = ['--root',ROOT/'tests',*UI_MODULE_ARGS,'--module-path',ROOT/'src/backend','--module-path','audio='+str(AUDIO/'src')]
 FIXTURE = AUDIO/'build/tests/fixtures/encoded-1.opus'
 
-def run(args, env=None):
+def run(args, env=None, directory=ROOT):
     print(shlex.join(map(str,args[:8])),flush=True)
-    subprocess.run(list(map(str,args)),cwd=ROOT,env=env or ENV,check=True)
+    subprocess.run(list(map(str,args)),cwd=directory,env=env or ENV,check=True)
 
 def native():
     raylib=ROOT/'build/raylib-ziran/libraylib.a'
@@ -48,13 +48,16 @@ def native():
     assets=WORK/'assets/test'
     assets.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(FIXTURE,assets/'tone.wav')
-    guest=ROOT/'tests/media_audio_guest.zi'
-    guest_common=['--root',ROOT/'tests','--module-path','kryon='+str(ROOT/'src/ui'),'--module-path','kryon='+str(ROOT/'src/backend'),'--define','KRYON_HOSTED_UI']
-    run([ZIRAN,'ir',*guest_common,'-o',WORK/'guest-ir',guest])
+    guest_project=WORK/'guest-project'
+    kryon_test_project(guest_project)
+    guest=guest_project/'src/media_audio_guest.zi'
+    guest.write_bytes((ROOT/'tests/media_audio_guest.zi').read_bytes())
+    guest_common=['--project','--root',guest.parent,'--define','KRYON_HOSTED_UI']
+    run([ZIRAN,'ir',*guest_common,'-o',WORK/'guest-ir',guest],directory=guest_project)
     for form in ('source','saved'):
         paths=guest_common if form=='source' else ['--root',WORK/'guest-ir','--define','KRYON_HOSTED_UI']
         file=guest if form=='source' else WORK/'guest-ir/media_audio_guest.zir'
-        run([ZIRAN,'bundle',*paths,'--entry','media_audio_guest:main','--asset-dir','assets='+str(WORK/'assets'),'-o',WORK/'guest.zx',file])
+        run([ZIRAN,'bundle',*paths,'--entry','media_audio_guest:main','--asset-dir','assets='+str(WORK/'assets'),'-o',WORK/'guest.zx',file],directory=guest_project)
         compile_run(ROOT/'tests/media_audio_host_test.zi',[*COMMON,'--define','OPUS_AUDIO_TEST'],'media_audio_host_test','host')
     print('production provider: native mono/stereo, short loops, content routing, source/saved and hosted ZX Opus playback passed',flush=True)
 

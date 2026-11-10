@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
@@ -40,13 +41,13 @@ ImageHeight :: (asset_path: string) -> s32 {
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32,
     typeface: string) -> s32 {
-    if font != 14 || typeface.count != 0 { failed = true }
+    if font != cast(s32)Theme.TypeLabel() || (typeface.count != 0 && typeface != Theme.FontForRole(Theme.CurrentTheme(), 1)) { failed = true }
     return (cast(s32)value.count) * 7
 }
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    if font != 14 || typeface.count != 0 { failed = true }
+    if font != cast(s32)Theme.TypeLabel() || (typeface.count != 0 && typeface != Theme.FontForRole(Theme.CurrentTheme(), 1)) { failed = true }
     return 12
 }
 
@@ -86,7 +87,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     unused y
     unused color
     unused clip
-    if font != 14 || length + value.count >= 64 {
+    if font != cast(s32)Theme.TypeLabel() || length + value.count >= 64 {
         failed = true
         return
     }

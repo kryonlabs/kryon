@@ -28,10 +28,10 @@ paused PCM retains at most two immutable buffers and their remaining offsets.
 No owner pauses the shared context. See [MediaAudio](API.md) for capability
 bits and position availability. Native tests use Raylib/miniaudio's paced null
 backend; browser tests use a disposable muted headless context and trusted gesture.
-Ogg Opus assets decode through the `audio` package on native Linux, Windows and
-Android; those targets link `-lopus -lm` (the `renderer-raylib` artifact ships a
-static `lib/libopus.a`), and `scripts/android-build.sh` exports the package paths
-`KryonAndroid.cmake` needs to build its static `opus` target.
+Ogg Opus assets decode through the `audio` package on native Linux and Windows;
+those targets link `-lopus -lm` (the `renderer-raylib` artifact ships a static
+`lib/libopus.a`). Android portable guests use the platform `MediaPlayer`
+service through JNI instead of carrying an audio codec.
 
 ## Renderer artifacts in build scripts
 
@@ -68,7 +68,7 @@ in the application.
 | `raylib` with `platform = "web"` | `src/backend/raylib_run.zi` | raylib WebGL 1 page with Emscripten and Asyncify; see [raylib in the browser](#raylib-in-the-browser) |
 | `canvas` | `src/backend/canvas_run.zi` | Canvas2D page with Emscripten and Asyncify |
 | `dom` | `src/backend/dom_run.zi` | Semantic DOM layer over the Canvas2D raster host |
-| `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package, raylib OpenGL ES 2 |
+| `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
 
 The desktop host uses `cairo_raster.zi`. Its frame loop is `desktop_loop.zi`:
 a project host that needs its own window size imports `kryon/desktop_loop`
@@ -368,7 +368,7 @@ bytes. Only the first decoded frame is retained.
 `mk/raylib-library.mk` builds `AVIF_A`, `AOM_A` and Linux `AVIF_SO` beside the
 existing renderer archives; `AVIF_A` contains dav1d. Building it needs Meson,
 Ninja and, on x86, NASM; `ZIRAN_AVIF_TOOLS` can name a directory holding the
-avif package's pinned Meson/Ninja. `kryon_android_raylib(raylib, webp, avif, aom)`
+avif package's pinned Meson/Ninja. `kryon_android_codecs(webp, avif, aom)`
 links the static codec for each ABI; older scaffolds receive the source paths
 through `KRYON_ANDROID_AVIF_DIR`, `KRYON_ANDROID_AOM_DIR` and `KRYON_DAV1D_DIR`
 (otherwise dav1d comes from the locked package graph). The Raylib artifact
@@ -425,8 +425,8 @@ still; `ImageCompress` keeps animated originals unchanged.
   encoder or threads). Images above 67108864 pixels are refused. The static
   adapter retains its 2147483647-byte input cap; Cairo retains its 256 MiB
   encoded-file budget.
-  `mk/raylib-library.mk` builds it as `WEBP_A` beside `RAYLIB_A`;
-  `kryon_android_raylib` builds it for each ABI; the `renderer-raylib`
+	  `mk/raylib-library.mk` builds it as `WEBP_A` beside `RAYLIB_A`;
+	  `kryon_android_codecs` builds it for each ABI; the `renderer-raylib`
   artifact lists `lib/libkryonwebp.a` in its archives.
 - The desktop (Cairo) host loads the system libwebp demuxer
   (`libwebpdemux.so.2`) on first use, like its other optional codecs.
@@ -564,18 +564,18 @@ NDK, and CMake. `kryon run --profile android` additionally installs and
 launches it on a connected device through adb, and `kryon check --profile
 android` checks the whole Zi graph with the Android defines. The build needs
 a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`
-(`ANDROID_HOME`, default `$HOME/Android/Sdk`), and the locked `raylib` and
-`libwebp` source packages. Scaffolds pass `WEBP_DIR` to
-`kryon_android_raylib`; an older one-argument call receives it from `kryon
-build` as `KRYON_ANDROID_WEBP_DIR`.
+(`ANDROID_HOME`, default `$HOME/Android/Sdk`), and the locked `libwebp`,
+`libavif` and `libaom` source packages. Scaffolds pass their source roots to
+`kryon_android_codecs`; the packaged host links no renderer or audio library.
 
 At runtime a `NativeActivity` subclass owns the Java side: it reports window
 insets, display cutouts, IME state, density, dark mode and orientation
 through JNI natives registered by the generated `src/android_glue.zi`, and
 forwards soft-keyboard text as codepoint, backspace and enter events. The
-generated `src/main.zi` delegates to `AndroidRunMain`, which drives the
-session with the shared raylib host, Kryon's Android viewport policies, and
-the session-owned text input queue. `Frame` always receives the safe area, clear
+generated `src/main.zi` delegates to `AndroidRunMain`, which owns Android's
+looper and lifecycle, drives the session with the current Ziran VM and Pixmap
+runtime, and applies Kryon's Android viewport policies to the session-owned
+text input queue. `Frame` always receives the safe area, clear
 of the system bars and cutouts; a backdrop meant to run behind them draws into
 `AndroidWindowBounds()`. Applications with their own JNI surface
 keep their own `JNI_OnLoad` and call `AndroidJniOnLoad` with their activity
@@ -598,41 +598,27 @@ landscape. The caller owns route policy and deduplication. A true result means
 the Java call succeeded, not that the OS has applied a rotation. Configuration
 observations still use `AndroidOrientation()` and are independent of requests.
 
-Android frames use the shared two-stage pipeline by default. A persistent
-app thread handles input, application code, layout and paint recording.
-The NativeActivity thread keeps the EGL context, replays the previous
-completed frame and presents it while the app thread builds the next one.
-Each of the two frame buffers owns its text, asset paths and mesh points.
-Retained paint and partial repaint pass through the same recorder.
+Android runs the native host loop on NativeActivity's app thread. Each poll
+drains lifecycle and input events, snapshots the current touch/key state,
+runs one VM frame through Pixmap, and presents the damaged viewport by locking
+and unlocking `ANativeWindow`; there is no EGL, OpenGL ES or second render
+thread. Rotation, surface destruction and redraw requests invalidate the
+retained bitmap, while consecutive quiet frames can pace at 100 ms instead of
+16 ms until the next event. Pausing stops presentation and platform media;
+resuming restores the existing guest state.
 
-Custom native hosts call `RunRaylibAppFrame(callback, argument)` once per
-frame. The shared host manages the worker and its JNI attachment. Texture
-and font resource requests run on the context owner; layout caches copied
-measurements instead of borrowing mutable atlas data. Platform input is
-polled after both stages finish, giving the next app callback a stable
-event snapshot. `FlushRaylibAppFrames` finishes pending paint before an app
-or bundle is replaced, and `DiscardRaylibAppFrame` drops paint from a lost
-graphics context. Window shutdown joins the worker before closing GL.
-An active frame-rate request can interrupt an older frame's idle pacing;
-lower rates take effect with their recorded frame.
+Touch, pointer, soft-keyboard and hardware-key events are consumed only inside
+that frame boundary, so guest code receives a stable input snapshot and no
+platform callback reenters the VM. The same viewport transform maps single
+and secondary pointers into guest coordinates.
 
-`PollRaylib` gathers at most eight touch positions on the platform owner,
-alongside its pointer and frame-input snapshot. `RaylibTouches(points)` reads
-that stable screen-coordinate storage and applies the caller's current zoom;
-it never queries platform input from an app callback. The same frame barrier
-protects touch storage until the next poll. Android's mouse surface translation
-also applies to every touch, so pointer and pinch coordinates share a space.
-
-Image preparation captures encoded bytes on the app thread, before any
-frame-scoped resource views expire. At most one source is captured per frame,
-with one waiting source and one active decode job. The worker owns its bytes,
-applies orientation, and hands owned pixels to the render thread.
-Frames omit an image until its texture is ready;
-completion invalidates retained paint. Layout reads copied image sizes, and
-changing an asset reader discards results from its previous generation.
-
-The web path remains serial. Native Linux hosts can share the dispatcher
-when their window and input integration keeps all graphics on one owner.
+Portable ZX images are decoded before a guest is activated and retained in two
+bounded host slots. PNG, WebP and AVIF use native codecs; JPEG can use the
+platform decoder and all camera images apply EXIF orientation. A valid
+replacement promotes candidate pixels only after its services and images load;
+an invalid document leaves the previous guest, pixels and private data intact.
+MediaPlayer reads a private file written from bundle bytes and supports the
+portable play, pause, resume, stop, gain and completion surface.
 
 ## Frame and input ownership
 

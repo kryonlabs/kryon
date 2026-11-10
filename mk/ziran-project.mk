@@ -97,8 +97,8 @@ HOST_ID := $(basename $(notdir $(PROJECT_HOST)))
 # spelling warning does not apply to that generated entry signature.
 HOST_CFLAGS := -Wno-main
 endif
-APP_SOURCES := $(wildcard src/*.zi src/*/*.zi)
-UI_SOURCES := $(wildcard $(KRYON_DIR)/src/ui/*.zi)
+APP_SOURCES := $(shell find . -type d \( -name build -o -name .git -o -name vendor \) -prune -o -type f -name '*.zi' -print)
+UI_SOURCES := $(shell find $(KRYON_DIR)/src/ui -type f -name '*.zi')
 HOST_SOURCES := $(wildcard $(KRYON_DIR)/src/backend/$(PROJECT_BACKEND)*.zi $(KRYON_DIR)/src/backend/avif*.zi)
 ifneq ($(filter $(PROJECT_BACKEND),desktop raylib),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/app_asset_path.zi $(KRYON_DIR)/src/backend/app_asset.zi $(KRYON_DIR)/src/backend/program_title.zi
@@ -107,6 +107,16 @@ ifneq ($(filter $(PROJECT_BACKEND),desktop canvas dom),)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/frame_input_provider.zi
 endif
 HOST_ROOT_SOURCES := $(HOST)
+ifeq ($(PROJECT_HOST),)
+# Bind the host frame through Ziran's generic capability API.
+# The selected source remains one ordinary module with its own filename.
+PROJECT_ENTRY_MODULE := $(basename $(notdir $(PROJECT_ENTRY)))
+ifeq ($(PROJECT_ENTRY_MODULE),module)
+PROJECT_ENTRY_MODULE := $(notdir $(patsubst %/,%,$(dir $(PROJECT_ENTRY))))
+endif
+PROJECT_FRAME_BIND := --bind $(ZIRAN_PACKAGE_ID)_frame_entry:ProjectFrame=$(PROJECT_ENTRY_MODULE):Frame
+HOST_ROOT_SOURCES += $(PROJECT_ENTRY) $(KRYON_DIR)/src/backend/frame_entry.zi
+endif
 ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zx/canvas)
 # Portable app IR is identical on desktop and web. Only the renderer shell
 # is compiled for the browser.
@@ -121,32 +131,42 @@ ifneq ($(if $(filter c99,$(PROJECT_CODEGEN)),$(BROWSER_BACKEND)),)
 HOST_ROOT_SOURCES += $(KRYON_DIR)/src/backend/canvas_raster.zi
 # Browser hosts resolve the app's packages like native ones; every saved
 # module is lowered because the browser runtime calls into the page.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) --define PLATFORM_WEB \
-	-o $(IR_DIR) $(HOST_ROOT_SOURCES)
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) --define PLATFORM_WEB \
+	--entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB \
 	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 else ifneq ($(RAYLIB_WEB),)
 # The page has no POSIX threads: PLATFORM_WEB selects the single-threaded
 # image, Lanczos and file paths the browser runtime provides.
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) --define PLATFORM_WEB \
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) --define PLATFORM_WEB \
 	--entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN_DIR)/build/bin/zi2c --define PLATFORM_WEB --entry $(HOST_ID):main \
-	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/$(HOST_ID).zir
+	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 else
-IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(if $(filter c99,$(PROJECT_CODEGEN)),--define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
+IR_COMMAND := $(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) $(if $(filter c99,$(PROJECT_CODEGEN)),--define POSIX_THREADS) --entry $(HOST_ID):main -o $(IR_DIR) $(HOST_ROOT_SOURCES)
 C_COMMAND := $(ZIRAN) build --target=c --entry $(HOST_ID):main \
-	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/$(HOST_ID).zir
+	--root $(IR_DIR) -o $(C_DIR) $(IR_DIR)/*.zir
 endif
 ifeq ($(PROJECT_BACKEND),desktop)
 HOST_SOURCES += $(KRYON_DIR)/src/backend/cairo_raster.zi $(KRYON_DIR)/src/backend/image_decode_linux.zi $(KRYON_DIR)/src/backend/avif_decode.zi $(KRYON_DIR)/src/backend/accessibility_linux.zi $(KRYON_DIR)/src/backend/atspi_protocol.zi
 HOST_SOURCES += $(wildcard $(KRYON_DIR)/src/backend/gtk_*_linux.zi) $(KRYON_DIR)/src/backend/file_date_linux.zi
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
-CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -sEXPORTED_RUNTIME_METHODS=FS
+CANVAS_LIBS := --js-library $(ZIRAN_DIR)/web/ziran_web.js -lidbfs.js -sEXPORTED_RUNTIME_METHODS=FS
 include $(KRYON_DIR)/mk/emcc.mk
+# Ordinary Canvas applications may embed portable Ziran bundles through
+# std/bundle_host. Build that target's canonical runtime only when needed.
+CANVAS_RUNTIME := $(abspath $(GEN_DIR)/runtime/libziran.a)
+CANVAS_RUNTIME_SOURCES := $(ZIRAN_DIR)/Makefile $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/include/*.h $(ZIRAN_DIR)/bootstrap/compiler_*/*.[ch])
+CANVAS_RUNTIME_CACHE := $(KRYON_DIR)/build/emscripten-cache/canvas
+
+$(CANVAS_RUNTIME): $(CANVAS_RUNTIME_SOURCES) $(KRYON_DIR)/mk/ziran-project.mk
+	EM_CACHE=$(CANVAS_RUNTIME_CACHE) $(MAKE) -B -C $(ZIRAN_DIR) BOOTSTRAP=1 \
+		BUILD_DIR=$(abspath $(GEN_DIR)/runtime) CC=$(EMCC) AR=$(dir $(EMCC))emar \
+		OBJCOPY=true CFLAGS=-O2 $(CANVAS_RUNTIME)
 endif
 ZIRAN_STD_SOURCES := $(wildcard $(ZIRAN_DIR)/std/*.zi)
-PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(PROJECT_EXTRA_SOURCES) $(UI_SOURCES) $(HOST) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
+PROJECT_SOURCE_DEPS := $(PROJECT_CONFIG_FILES) $(PROJECT_ENTRY) $(APP_SOURCES) $(PROJECT_EXTRA_SOURCES) $(UI_SOURCES) $(HOST_ROOT_SOURCES) $(HOST_SOURCES) $(ZIRAN_STD_SOURCES)
 ifneq ($(PROJECT_ASSETS),)
 ASSET_PATH := $(realpath $(PROJECT_ASSETS))
 ifeq ($(filter $(CURDIR)/%,$(ASSET_PATH)),)
@@ -205,6 +225,16 @@ NATIVE_PLAYER := $(ZX_RAYLIB_PROGRAM)
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 EM_CACHE ?= $(KRYON_DIR)/build/emscripten-cache
+WEB_PAGE_ASSET_ENTRIES := $(strip $(PROJECT_ASSETS) $(PROJECT_PRELOAD))
+WEB_PAGE_ASSET_SOURCES := $(foreach entry,$(WEB_PAGE_ASSET_ENTRIES),$(firstword $(subst @, ,$(entry))))
+$(foreach source,$(WEB_PAGE_ASSET_SOURCES),$(if $(filter $(CURDIR)/%,$(realpath $(source))),,$(error preload $(source) must exist inside the project directory)))
+WEB_PAGE_ASSET_FILES := $(sort $(if $(WEB_PAGE_ASSET_SOURCES),$(shell find $(WEB_PAGE_ASSET_SOURCES) -type f 2>/dev/null)))
+WEB_PAGE_ASSET_ARGS := $(foreach entry,$(WEB_PAGE_ASSET_ENTRIES),\
+	$(if $(findstring @,$(entry)),\
+		$(firstword $(subst @, ,$(entry)))@/$(lastword $(subst @, ,$(entry))),\
+		$(entry)@/$(entry)))
+WEB_PAGE_EMBED_ARGS := $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf $(WEB_PAGE_ASSET_ARGS)
+HOST_DEPS += $(WEB_PAGE_ASSET_FILES) $(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf
 endif
 
 # The package driver validates these system names and preserves manifest order.
@@ -310,7 +340,7 @@ $(PROGRAM): $(IR_STAMP) $(ASSET_DEPENDENCY) $(ZIRAN_DIR)/build/bin/zi2zx
 	$(ZIRAN) bundle --root $(IR_DIR) --entry $(HOST_ID):main \
 		$(if $(filter pixmap,$(PROJECT_BACKEND)),--bind-host $(ZIRAN_PACKAGE_ID)_pixmap) \
 		$(if $(PROJECT_ASSETS),--asset-dir $(PROJECT_ASSETS)=$(PROJECT_ASSETS)) \
-		-o $@ $(IR_DIR)/$(HOST_ID).zir
+		-o $@ $(IR_DIR)/*.zir
 endif
 
 $(IR_STAMP): $(PROJECT_SOURCE_DEPS) $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN) $(KRYON_DIR)/mk/ziran-project.mk
@@ -344,14 +374,19 @@ WEB_LINK = EM_CACHE=$(EM_CACHE) $(EMCC) -O2 -I$(ZIRAN_DIR)/include -iquote $(C_D
 	-sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
 	-sALLOW_MEMORY_GROWTH=1
 
-$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL) $(if $(PAGE_SHELL),$(KRYON_DIR)/mk/web-page.sh)
+$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL) $(if $(PAGE_SHELL),$(KRYON_DIR)/mk/web-page.sh) $(CANVAS_RUNTIME_SOURCES)
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
-	@modules=$$(mktemp -d build/$(PROJECT_NAME).XXXXXX); \
+	@runtime=; \
+		if test -f "$(C_DIR)/std_bundle_host.c"; then \
+			$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(CANVAS_RUNTIME) || exit $$?; \
+			runtime="$(CANVAS_RUNTIME)"; \
+		fi; \
+		modules=$$(mktemp -d build/$(PROJECT_NAME).XXXXXX); \
 		trap 'rm -rf "$$modules"' EXIT; \
-		$(WEB_LINK) -msimd128 -o "$$modules/simd128.js" && \
-		$(WEB_LINK) -o "$$modules/baseline.js" && \
+		$(WEB_LINK) $$runtime -msimd128 -o "$$modules/simd128.js" && \
+		$(WEB_LINK) $$runtime -o "$$modules/baseline.js" && \
 		sh $(KRYON_DIR)/mk/web-page.sh $(PAGE_SHELL) "$$modules/simd128.js" "$$modules/baseline.js" \
-			$(KRYON_DIR)/assets/fonts/LiberationSans-Regular.ttf@/kryon-font.ttf > "$$modules/page.html" && \
+				$(WEB_PAGE_EMBED_ARGS) > "$$modules/page.html" && \
 		chmod 644 "$$modules/page.html" && mv "$$modules/page.html" $@
 else ifneq ($(RAYLIB_WEB),)
 	@mkdir -p build
@@ -394,9 +429,9 @@ else
 endif
 endif
 
-# Browser hosts are checked as they are built, for the web platform.
+# Check the complete bound graph through the same IR route as a build.
 check: toolchain
-	$(ZIRAN) check $(ZIRAN_MODULE_ARGS) $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND)$(RAYLIB_WEB),--define PLATFORM_WEB)) $(HOST)
+	$(ZIRAN) ir $(ZIRAN_MODULE_ARGS) $(PROJECT_FRAME_BIND) -o $(GEN_DIR)/check-ir --entry $(HOST_ID):main $(if $(filter c99,$(PROJECT_CODEGEN)),$(if $(BROWSER_BACKEND)$(RAYLIB_WEB),--define PLATFORM_WEB)) $(HOST_ROOT_SOURCES)
 
 # `ziran install` copies the built program to PREFIX/bin and describes it to
 # the desktop. The KRYON_INSTALL_* values come from [tool.kryon.install] and

@@ -1,0 +1,83 @@
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/frame_snapshot"
+#import "kryon/style_sheet"
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+
+WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
+
+WidgetInput :: (session: Session) -> WidgetContext {
+    snapshot := CaptureFrameInput(session)
+    result: WidgetContext
+    result.now = cast(float32)snapshot.elapsed_ms / 1000.0
+    result.theme = ifx StyleTokenColor("canvas").r < 128 then 2 else 1
+    result.disabled = example_disabled
+    result.reduced_motion = example_reduced_motion
+    return result
+}
+
+gallery_view: Rectangle = Rectangle.{.x = 0.0, .y = 0.0, .width = 480.0, .height = 320.0};
+
+gallery_live: bool;
+
+gallery_now: float32;
+
+gallery_reduced_motion: bool;
+
+SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion: bool) {
+    gallery_view = view; gallery_live = live; gallery_now = now
+    gallery_reduced_motion = reduced_motion
+}
+
+GalleryBounds :: (bounds: Rectangle) -> Rectangle {
+    if !gallery_live { return bounds }
+    bounds.x = gallery_view.x + bounds.x * gallery_view.width / 480.0
+    bounds.y += gallery_view.y
+    bounds.width *= gallery_view.width / 480.0
+    return bounds
+}
+
+clicks: s32;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := WidgetInput(session)
+    SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Screen", .font = 23})
+    disabled := example_input.disabled
+    scene: s32 = 48
+
+    props: ColumnProps = .{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8}
+    container: LayoutContainer
+    if scene == 36 { container = Column(session, props) }
+    else if scene == 37 { container = Row(session, props) }
+    else if scene == 38 { container = Stack(session, props) }
+    else if scene == 39 { container = Group(session, props) }
+    else if scene == 48 { container = Screen(session, props) }
+    else { grid := Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = 12, .padding = 8}); container = grid.container }
+    if container.opened {
+        first: Rectangle = .{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}
+        second: Rectangle = first
+        if scene == 39 || scene == 48 {
+            first.x = container.content.x; first.y = container.content.y
+            second.x = first.x; second.y = first.y + 60.0
+        } else if scene == 38 { second = GalleryBounds(Rectangle.{104.0, 112.0, 164.0, 44.0}) }
+        if Button(session, ButtonProps.{.label = "First item", .bounds = first, .disabled = disabled}) == 1 { clicks += 1 }
+        if Button(session, ButtonProps.{.label = "Second item", .bounds = second, .tone = ButtonTone.ButtonToneAccent, .disabled = disabled}) == 1 { clicks += 1 }
+        unused End(session)
+    }
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

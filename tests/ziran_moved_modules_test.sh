@@ -2,24 +2,24 @@
 . "$(dirname -- "$0")/test_context.sh"
 
 cat > "$work/use_moved.zi" <<'EOF'
-#import "button"
+#import "button_behavior"
 #import "button_props"
 #import "canvas"
-#import "color_picker"
+#import "color_picker_behavior"
 #import "control_props"
 #import "drawing_props"
 #import "focus"
 #import "frame_pacing"
 #import "geometry"
 #import "input_props"
-#import "list_box"
-#import "menu"
+#import "list_box_behavior"
+#import "menu_behavior"
 #import "page"
 #import "page_props"
-#import "paned_view"
-#import "radio"
-#import "scroll"
-#import "segmented_control"
+#import "panedview"
+#import "radio_behavior"
+#import "scroll_behavior"
+#import "segmented_control_behavior"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -27,7 +27,7 @@ cat > "$work/use_moved.zi" <<'EOF'
 #import "text_align"
 #import "text_layout"
 #import "text_input"
-#import "toast"
+#import "toast_behavior"
 #import "tree"
 #import "widget_kind"
 
@@ -131,10 +131,10 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" "$work/use_moved.zi"
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" check --root "$work" $kryon_ui_args --module-path "$ziran_root/std" "$work/use_moved.zi"
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/use_moved.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry use_moved:Answer -o "$work/source.zx" "$work/use_moved.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry use_moved:Answer -o "$work/ir.zx" "$work/ir/use_moved.zir"

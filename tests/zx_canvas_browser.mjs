@@ -5,9 +5,16 @@ import {readFile,writeFile,mkdir,mkdtemp,rm} from 'node:fs/promises';
 import {createServer} from 'node:http';
 import {join,resolve,extname,basename,dirname} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
+import {fileURLToPath} from 'node:url';
 const [html,mode='keyboard',bundleFile]=process.argv.slice(2);
 const downloaded=bundleFile||join(dirname(html),'zx_canvas_probe-web.zx');
-const root=dirname(html),profile=await mkdtemp(join(root,'browser-profile-'));
+const root=dirname(html);
+const repository=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+await mkdir(join(repository,'build'),{recursive:true});
+const profile=await mkdtemp(join(repository,'build/zxb-'));
+const environment={...process.env};
+for(const name of ['DISPLAY','WAYLAND_DISPLAY','WAYLAND_SOCKET','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','SESSION_MANAGER','XDG_SESSION_ID','XDG_SESSION_TYPE'])delete environment[name];
+environment.YUE_DESKTOP_RECOVERY='0';
 const server=createServer(async(req,res)=>{
   try {
     const name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
@@ -19,7 +26,7 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const query=mode==='url'||mode==='hosted'?'?bundle='+encodeURIComponent(basename(downloaded)):'';
-const browser=spawn(process.env.CHROMIUM||'chromium',['--headless','--no-sandbox','--disable-gpu','--use-gl=disabled','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'http://127.0.0.1:'+server.address().port+'/'+basename(html)+query],{detached:true,stdio:['ignore','ignore','pipe']});
+const browser=spawn(process.env.CHROMIUM||'chromium',['--headless','--no-sandbox','--disable-gpu','--use-gl=disabled','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check','--remote-debugging-port=0','--user-data-dir='+profile,'http://127.0.0.1:'+server.address().port+'/'+basename(html)+query],{detached:true,stdio:['ignore','ignore','pipe'],env:environment});
 let errors='',socket,diagnostics='';browser.stderr.on('data',v=>errors=(errors+v).slice(-2000));
 try {
   const deadline=Date.now()+45000;

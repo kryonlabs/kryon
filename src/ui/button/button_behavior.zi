@@ -1,0 +1,325 @@
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "image_props"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "control_props"
+#import "button_props"
+#import "input_props"
+#import "paint"
+#import "material"
+
+using ArrowDirection;
+using DrawingKind;
+using IconPlacement;
+using ContentAlignment;
+using ButtonState;
+using StyleField;
+
+ButtonInput :: struct {
+    flags: StateFlags
+    interaction: InteractionState
+    activated: bool
+}
+
+#program_export
+ButtonActionEnabled :: (disabled: bool, content_disabled: bool) -> bool {
+    return !disabled && !content_disabled
+}
+
+#program_export
+ButtonArrowGlyph :: (direction: ArrowDirection) -> s32 {
+    if direction == cast(ArrowDirection)ArrowRight {
+        return 62
+    }
+    if direction == cast(ArrowDirection)ArrowUp {
+        return 94
+    }
+    if direction == cast(ArrowDirection)ArrowDown {
+        return 118
+    }
+    return 60
+}
+
+// Both immediate input and retained painting use this interpretation. Painting
+// supplies its stored sample and must not poll or consume activation again.
+#program_export
+ResolveButtonInput :: (state: s32, disabled: bool, loading: bool, selected: bool,
+    sample: Activation) -> ButtonInput {
+    result: ButtonInput
+    result.flags = ResolveFlags(state, disabled, loading, selected)
+    enabled: bool = CanActivate(result.flags.disabled, result.flags.loading)
+    result.activated = enabled && sample.activated
+    result.interaction = ResolveInteraction(state, result.flags.disabled,
+        result.flags.loading, enabled && sample.pressed, enabled && sample.hovered,
+        enabled && sample.focused, result.flags.selected)
+    return result
+}
+
+// Style facts for the generic control path. A zero style_kind falls back to the
+// Button kind so generic control callers keep one policy source.
+#program_export
+ButtonRoleFactsFor :: (style_kind: s32, name: s32, class_name: s32, role: s32,
+    tone: s32, emphasis: s32, size: s32, state: s32) -> StyleFacts {
+    kind: s32 = style_kind
+    if kind == 0 { kind = StyleKindButton() }
+    return StyleControlRoleFacts(kind, name, class_name, role, tone, emphasis,
+        size, state)
+}
+
+#program_export
+AdvanceButtonMotion :: (previous: InteractionMotion, state: s32,
+    input: ButtonInput, enabled: bool,
+    delta_ms: float32, normal_ms: float32, fast_ms: float32) -> InteractionMotion {
+    return AdvanceInteractionMotion(previous, input.interaction.hovered,
+        input.interaction.pressed, input.interaction.focused, enabled,
+        state != ButtonStateAuto, input.flags.disabled, input.flags.loading,
+        delta_ms, normal_ms, fast_ms)
+}
+
+#program_export
+CanActivate :: (disabled: bool, loading: bool) -> bool {
+    return !disabled && !loading
+}
+
+
+// Hosts supply measured text and execute these bounds. All coordinates are
+// local logical pixels so scale, font rasterization and texture APIs stay out
+// of the widget definition.
+ContentSize :: struct {
+    width: float32
+    text_width: float32
+    icon_size: float32
+    gap: float32
+}
+
+// Picture-only buttons use their available space; toolbar glyphs retain the
+// style's icon size. The inset leaves room for the selection/focus treatment.
+#program_export
+ButtonPictureSize :: (width: float32, height: float32, styled_size: float32,
+    icon_only: bool, picture: bool) -> float32 {
+    if !icon_only || !picture { return styled_size }
+    side := ifx width < height then width else height
+    side -= 12.0
+    if side < 0.0 { side = 0.0 }
+    return side
+}
+
+// A labeled picture in a tall button, such as a launcher tile or a list row,
+// fills the spare height instead of staying glyph sized. Ordinary controls
+// keep the styled size.
+#program_export
+ButtonLabeledPictureSize :: (width: float32, height: float32, styled_size: float32,
+    label_height: float32, gap: float32, above: bool) -> float32 {
+    if height < 56.0 { return styled_size }
+    side := height - 24.0
+    limit: float32 = 40.0
+    if above {
+        side = height - label_height - gap - 24.0
+        limit = 64.0
+        if side > width - 24.0 { side = width - 24.0 }
+    }
+    if side > limit { side = limit }
+    if side < styled_size { return styled_size }
+    return side
+}
+
+// The full shape is a capsule for controls. A taller button is a tile and
+// takes card corners rather than becoming a stadium.
+#program_export
+ButtonCornerRadius :: (radius: float32, height: float32) -> float32 {
+    if radius >= 999.0 && height > 56.0 { return 20.0 }
+    return radius
+}
+#program_export
+ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool {
+    if clicked { return !open }
+    return open
+}
+
+#program_export
+ButtonCloseMenuAfterActivation :: (open: bool, activated_id: s32) -> bool {
+    if activated_id != 0 { return false }
+    return open
+}
+
+// The host supplies physical glyph measurements, available space, and scale.
+// The declaration reads the real props and owns shape, label, and size policy.
+#program_export
+MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
+    font: s32, label_width: float32, available_width: float32,
+    scale: float32, disclosure: bool, detail_height: float32 = 0.0) -> Rectangle {
+    if scale <= 0.0 { scale = 1.0 }
+    bounds: Rectangle = props.bounds
+    text_height: float32 = 0.0
+    if props.label != "" && !props.icon_only {
+        text_height = StyleLineHeightValue(paint.fields, paint.line_height,
+            cast(float32)font) / scale + detail_height / scale
+    }
+    height: float32 = FitHeight(bounds.height / scale, minimum_height / scale,
+        text_height, paint.padding_y)
+    has_icon: bool = disclosure || props.icon.id != cast(u32)0 ||
+    props.icon_type != 0 || props.icon_shape != "" || props.image.asset_path != "" ||
+    props.image.texture.id != cast(u32)0
+    above := props.icon_placement == cast(IconPlacement)IconPlacementAbove && has_icon && !props.icon_only
+    if above && bounds.height <= 0.0 {
+        stacked_height := text_height + paint.icon_size + paint.gap + 2.0 * paint.padding_y
+        if height < stacked_height { height = stacked_height }
+    }
+    content: ContentSize = MeasureContent(height, label_width / scale,
+        paint.icon_size, paint.gap, paint.padding_x, has_icon, props.icon_only, above)
+    width: float32 = ShapeWidth(bounds.width / scale, height, content.width,
+        available_width / scale, props.full_width,
+        props.square || props.icon_only, props.circle)
+    // Preserve explicit physical coordinates without a lossy scale roundtrip.
+    if bounds.height <= 0.0 { bounds.height = height * scale }
+    if props.square || props.circle || props.icon_only {
+        bounds.width = bounds.height
+    } else if bounds.width <= 0.0 {
+        bounds.width = width * scale
+    }
+    return bounds
+}
+
+// Measurement and placement share the same content rules. An absent label
+// consumes neither text width nor a gap; icons fit the available face height.
+// Style resolution already supplies theme defaults. Small sizes stay small;
+// zero hides the icon and its gap instead of restoring a font-sized fallback.
+#program_export
+MeasureContent :: (height: float32, label_width: float32,
+    requested_icon_size: float32, gap: float32, padding_x: float32,
+    has_icon: bool, icon_only: bool, above: bool = false) -> ContentSize {
+    result: ContentSize
+    // Match Style.ContentBounds: negative padding never shrinks the area
+    // required by content, while explicit zero remains a valid override.
+    if padding_x < 0.0 { padding_x = 0.0 }
+    icon_size: float32 = requested_icon_size
+    if icon_size > height - 12.0 { icon_size = height - 12.0 }
+    if icon_size < 0.0 { icon_size = 0.0 }
+    if icon_only { label_width = 0.0 }
+    if !has_icon || icon_size == 0.0 || icon_only || label_width <= 0.0 { gap = 0.0 }
+    result.text_width = label_width
+    result.icon_size = icon_size
+    result.gap = gap
+    result.width = label_width + gap + 2.0 * padding_x
+    if has_icon { result.width += icon_size }
+    if above && has_icon {
+        result.width = label_width
+        if result.width < icon_size { result.width = icon_size }
+        result.width += 2.0 * padding_x
+    }
+    return result
+}
+
+ButtonContent :: struct {
+    icon_x: float32
+    icon_y: float32
+    icon_size: float32
+    text_x: float32
+    text_y: float32
+    text_width: float32
+    text_height: float32
+}
+
+#program_export
+ContentLayout :: (
+    width: float32, height: float32, label_width: float32,
+    requested_icon_size: float32, gap: float32, has_icon: bool, icon_only: bool,
+    trailing: bool, offset_x: float32, offset_y: float32,
+    above: bool = false, label_height: float32 = 0.0,
+    alignment: ContentAlignment = cast(ContentAlignment)ContentAlignmentCenter,
+    padding_x: float32 = 0.0
+    ) -> ButtonContent {
+    result: ButtonContent
+    measured: ContentSize = MeasureContent(height, label_width,
+        requested_icon_size, gap, 0.0, has_icon, icon_only, above)
+    icon_size: float32 = measured.icon_size
+    label_width = measured.text_width
+    gap = measured.gap
+    x: float32 = (width - measured.width) * 0.5 + offset_x
+    if alignment == cast(ContentAlignment)ContentAlignmentStart {
+        x = padding_x + offset_x
+    } else if alignment == cast(ContentAlignment)ContentAlignmentEnd {
+        x = width - measured.width - padding_x + offset_x
+    }
+    result.icon_x = x
+    result.icon_y = (height - icon_size) * 0.5 + offset_y
+    result.icon_size = icon_size
+    result.text_x = x
+    result.text_y = offset_y
+    result.text_width = label_width
+    result.text_height = height
+    if above && has_icon && !icon_only {
+        available_icon := height - label_height - gap - 12.0
+        if icon_size > available_icon { icon_size = available_icon }
+        if icon_size < 0.0 { icon_size = 0.0 }
+        if icon_size == 0.0 { gap = 0.0 }
+        stack_height := icon_size + gap + label_height
+        result.icon_x = (width - icon_size) * 0.5 + offset_x
+        result.icon_y = (height - stack_height) * 0.5 + offset_y
+        result.icon_size = icon_size
+        result.text_x = (width - label_width) * 0.5 + offset_x
+        result.text_y = result.icon_y + icon_size + gap
+        result.text_height = label_height
+        return result
+    }
+    if has_icon {
+        if trailing {
+            result.icon_x += label_width + gap
+        } else {
+            result.text_x += icon_size + gap
+        }
+    }
+    return result
+}
+
+
+
+
+// Content selection, geometry, and ordering belong to the widget, not its host.
+// Bounds and glyph measurements are physical; style lengths are logical.
+ButtonFrame :: struct {
+    props: ButtonProps
+    appearance: StyleFrame
+    material: MaterialPaint
+    content_bounds: Rectangle
+    font: s32
+    foreground: u32
+    repaint: bool
+}
+
+// Finish the widget frame once; native backends only adapt this result to their
+// retained tree or operation stream. Rasterizers supply the physical font size.
+// Draw the resolved widget through borrowed rasterizer callbacks. Retained hosts
+// invoke this after layout; callbacks never outlive this paint pass.
+#program_export
+ShapeWidth :: (
+    width: float32,
+    height: float32,
+    measured_width: float32,
+    available_width: float32,
+    full_width: bool,
+    square: bool,
+    circle: bool
+    ) -> float32 {
+    if square || circle { return height }
+    if full_width && width <= 0.0 {
+        if available_width < height { return height }
+        return available_width
+    }
+    if width <= 0.0 { return measured_width }
+    return width
+}
+
+#program_export
+ShapeRadius :: (
+    normal_radius: float32,
+    pill_radius: float32,
+    pill: bool,
+    circle: bool
+    ) -> float32 {
+    if pill || circle { return pill_radius }
+    return normal_radius
+}

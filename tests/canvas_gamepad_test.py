@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import shlex
 import subprocess
-from toolchain import ZIRAN, ZIRAN_ROOT
+from toolchain import UI_MODULE_ARGS, ZIRAN, ZIRAN_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'work/canvas-gamepad'
@@ -50,7 +50,7 @@ def main():
         source.write_text((ROOT / 'tests/canvas_gamepad_test.zi').read_text())
         paths = ['--root', WORK, '--module-path', WORK,
                  '--module-path', ROOT / 'tests/page_fake', '--module-path', ROOT / 'src/backend',
-                 '--module-path', ROOT / 'src/ui', '--module-path', ZIRAN_ROOT / 'std']
+                 *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std']
         define = ['--define', 'PLATFORM_WEB']
         ir = WORK / 'ir'
         run([ZIRAN, 'ir', *paths, *define, '-o', ir, source])
@@ -63,7 +63,7 @@ def main():
         # Link the real CanvasPressedKey entry against its production module
         # graph as native code too; do not mistake this for WASM execution.
         host_paths = ['--root', ROOT / 'tests', '--module-path', ROOT / 'src/backend',
-                      '--module-path', ROOT / 'src/ui', '--module-path', ZIRAN_ROOT / 'std']
+                      *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std']
         host_source = ROOT / 'tests/canvas_gamepad_host_test.zi'
         host_ir = WORK / 'host-ir'
         run([ZIRAN, 'ir', *host_paths, *define, '-o', host_ir, host_source])

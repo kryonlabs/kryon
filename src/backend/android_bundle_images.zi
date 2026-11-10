@@ -1,0 +1,292 @@
+// Decode ZX still assets into stable Pixmap slots.
+#import "android_jni"
+#import "avif_image"
+#import "bundle_resources"
+#import "image_orientation"
+#import "png"
+#import "pixmap"
+#import "webp_image"
+#import "ziran_image_decode"
+#import "std/byte_text_linux"
+#import "std/bundle_host"
+#import "std/c_string"
+
+android_image_c :: #system_library "c";
+zlib :: #system_library "z";
+AndroidImageAllocate :: (count: usize, size: usize) -> *u8 #foreign android_image_c "calloc";
+AndroidImageRelease :: (memory: *void) #foreign android_image_c "free";
+AndroidUncompress :: (output: *u8, size: *usize, input: *u8,
+    count: usize) -> s32 #foreign zlib "uncompress";
+
+AndroidBundleImage :: struct {
+    path: [256]u8
+    path_length: s32
+    width: s32
+    height: s32
+    pixels: *u32
+}
+
+AndroidBundleImages :: struct {
+    images: [128]AndroidBundleImage
+    count: s32
+}
+
+AndroidImageWordDescriptor :: struct {
+    data: *u32
+    length: s64
+}
+
+AndroidImageWords :: (pixels: *u32, count: s64) -> []u32 {
+    result: []u32
+    if pixels == null || count < 0 { return result }
+    descriptor := cast(*AndroidImageWordDescriptor)(*result)
+    descriptor.data = pixels
+    descriptor.length = count
+    return result
+}
+
+AndroidBundleImagePath :: (path: []u8) -> string {
+    return TextView(path)
+}
+
+AndroidImageIsAVIF :: (data: string) -> bool {
+    if data.count < 12 { return false }
+    if data[4] != cast(u8)102 || data[5] != cast(u8)116 ||
+    data[6] != cast(u8)121 || data[7] != cast(u8)112 { return false }
+    brand := (cast(u32)data[8] << 24) | (cast(u32)data[9] << 16) |
+        (cast(u32)data[10] << 8) | cast(u32)data[11]
+    return brand == cast(u32)0x61766966 || brand == cast(u32)0x61766973 ||
+        brand == cast(u32)0x6d696631
+}
+
+AndroidImageExtension :: (path: string, first: u8, second: u8) -> bool {
+    if path.count < 4 || path[path.count - 1] != second { return false }
+    return path[path.count - 3] == cast(u8)46 && path[path.count - 2] == first
+}
+
+AndroidBundleImageCandidate :: (path: string, data: string) -> bool {
+    bytes := cast(*TextDescriptor)(*data)
+    if bytes.data == null || data.count <= 0 { return false }
+    raw := BytesFromPointer(bytes.data, cast(u64)data.count)
+    if PNGSignature(raw) || ImageWebpSignature(data) || AndroidImageIsAVIF(data) { return true }
+    if raw.count >= 2 && raw[0] == cast(u8)255 && raw[1] == cast(u8)216 { return true }
+    lower := path
+    if AndroidImageExtension(lower, cast(u8)112, cast(u8)110) { return true }
+    if AndroidImageExtension(lower, cast(u8)112, cast(u8)103) { return true }
+    if path.count >= 5 && path[path.count - 5] == cast(u8)46 &&
+    path[path.count - 4] == cast(u8)106 && path[path.count - 3] == cast(u8)112 &&
+    path[path.count - 2] == cast(u8)101 && path[path.count - 1] == cast(u8)103 { return true }
+    return false
+}
+
+AndroidImageOrient :: (input: *u32, width: s32, height: s32,
+    orientation: s32) -> *u32 {
+    if input == null || width <= 0 || height <= 0 { return null }
+    if orientation <= 1 || orientation > 8 { return input }
+    output_width := width
+    output_height := height
+    if orientation == 5 || orientation == 6 || orientation == 7 || orientation == 8 {
+        output_width = height
+        output_height = width
+    }
+    output := cast(*u32)AndroidImageAllocate(cast(usize)(cast(s64)output_width * output_height), 4)
+    if output == null { AndroidImageRelease(cast(*void)input); return null }
+    for y: 0..output_height - 1 {
+        for x: 0..output_width - 1 {
+            source_x := x
+            source_y := y
+            if orientation == 2 { source_x = width - 1 - x }
+            else if orientation == 3 { source_x = width - 1 - x; source_y = height - 1 - y }
+            else if orientation == 4 { source_y = height - 1 - y }
+            else if orientation == 5 { source_x = y; source_y = x }
+            else if orientation == 6 { source_x = y; source_y = height - 1 - x }
+            else if orientation == 7 { source_x = width - 1 - y; source_y = height - 1 - x }
+            else { source_x = width - 1 - y; source_y = x }
+            output[cast(s64)y * output_width + x] = input[cast(s64)source_y * width + source_x]
+        }
+    }
+    AndroidImageRelease(cast(*void)input)
+    return output
+}
+
+AndroidImageFromBytes :: (data: *u8, count: s64) -> *u32 {
+    if data == null || count <= 0 { return null }
+    rgba := cast(*u8)data
+    total := count / 4
+    output := cast(*u32)AndroidImageAllocate(cast(usize)total, 4)
+    if output == null { return null }
+    for at: 0..total - 1 {
+        output[at] = (cast(u32)rgba[at * 4 + 3] << 24) |
+            (cast(u32)rgba[at * 4] << 16) | (cast(u32)rgba[at * 4 + 1] << 8) |
+            cast(u32)rgba[at * 4 + 2]
+    }
+    return output
+}
+
+AndroidImageDecodePNG :: (data: []u8, width: *s32, height: *s32) -> *u32 {
+    width.* = 0
+    height.* = 0
+    info := InspectPNG(data)
+    if !info.valid || cast(s64)info.width * info.height > 16777216 { return null }
+    packed := AndroidImageAllocate(cast(usize)info.compressed, 1)
+    scanlines := AndroidImageAllocate(cast(usize)info.scanlines, 1)
+    rgba := AndroidImageAllocate(cast(usize)(cast(s64)info.width * info.height), 4)
+    converted := cast(*u32)AndroidImageAllocate(cast(usize)(cast(s64)info.width * info.height), 4)
+    if packed == null || scanlines == null || rgba == null || converted == null {
+        AndroidImageRelease(cast(*void)packed)
+        AndroidImageRelease(cast(*void)scanlines)
+        AndroidImageRelease(cast(*void)rgba)
+        AndroidImageRelease(cast(*void)converted)
+        return null
+    }
+    defer {
+        AndroidImageRelease(cast(*void)packed)
+        AndroidImageRelease(cast(*void)scanlines)
+        AndroidImageRelease(cast(*void)rgba)
+    }
+    inflated := cast(usize)info.scanlines
+    if !CollectPNGData(data, BytesFromPointer(packed, cast(u64)info.compressed)) ||
+    AndroidUncompress(scanlines, *inflated, packed, cast(usize)info.compressed) != 0 ||
+    inflated != cast(usize)info.scanlines ||
+    !DecodePNGScanlines(data, BytesFromPointer(scanlines, cast(u64)info.scanlines),
+        BytesFromPointer(rgba, cast(u64)(cast(s64)info.width * info.height * 4))) {
+        AndroidImageRelease(cast(*void)converted)
+        return null
+    }
+    for at: 0..cast(s64)info.width * info.height - 1 {
+        converted[at] = (cast(u32)rgba[at * 4 + 3] << 24) |
+            (cast(u32)rgba[at * 4] << 16) | (cast(u32)rgba[at * 4 + 1] << 8) |
+            cast(u32)rgba[at * 4 + 2]
+    }
+    width.* = info.width
+    height.* = info.height
+    return converted
+}
+
+AndroidImageDecodeBitmap :: (data: string, width: *s32, height: *s32) -> *u32 {
+    width.* = 0
+    height.* = 0
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return null }
+    defer { AndroidJniDetachCurrent(*session) }
+    method := AndroidJniMethod(*session, "decodeBundleImage", "([B)[I")
+    input := cast(*TextDescriptor)(*data)
+    if method == null || input.data == null || data.count > 2147483647 { return null }
+    env := session.env
+    array := env.functions.NewByteArray(env, cast(s32)data.count)
+    if array == null || env.functions.ExceptionCheck(env) != 0 {
+        unused env.functions.ExceptionClear(env)
+        return null
+    }
+    defer { env.functions.DeleteLocalRef(env, array) }
+    env.functions.SetByteArrayRegion(env, array, 0, cast(s32)data.count, input.data)
+    if env.functions.ExceptionCheck(env) != 0 {
+        unused env.functions.ExceptionClear(env)
+        return null
+    }
+    argument: JniValue
+    argument.reference = array
+    result := env.functions.CallObjectMethodA(env, session.activity, method, *argument)
+    if result == null || env.functions.ExceptionCheck(env) != 0 {
+        unused env.functions.ExceptionClear(env)
+        return null
+    }
+    defer { env.functions.DeleteLocalRef(env, result) }
+    count := env.functions.GetArrayLength(env, result)
+    if count < 3 || count > 67108866 {
+        return null
+    }
+    pixels := cast(*u32)AndroidImageAllocate(cast(usize)(count - 2), 4)
+    if pixels == null { return null }
+    env.functions.GetIntArrayRegion(env, result, 2, count - 2, cast(*s32)pixels)
+    if env.functions.ExceptionCheck(env) != 0 {
+        unused env.functions.ExceptionClear(env)
+        AndroidImageRelease(cast(*void)pixels)
+        return null
+    }
+    first: [2]s32
+    env.functions.GetIntArrayRegion(env, result, 0, 2, *first[0])
+    width.* = first[0]
+    height.* = first[1]
+    total := count - 2
+    if width.* <= 0 || height.* <= 0 || total != width.* * height.* {
+        AndroidImageRelease(cast(*void)pixels)
+        width.* = 0
+        height.* = 0
+        return null
+    }
+    return pixels
+}
+
+AndroidBundleImagesRelease :: (images: *AndroidBundleImages, base: s32) {
+    for index: 0..images.count - 1 {
+        if images.images[index].pixels != null {
+            AndroidImageRelease(cast(*void)images.images[index].pixels)
+        }
+        images.images[index] = AndroidBundleImage.{}
+        PixmapClearImage(base + index)
+    }
+    images.count = 0
+}
+
+AndroidBundleImagesRegister :: (images: *AndroidBundleImages, base: s32) -> bool {
+    for index: 0..images.count - 1 {
+        image := *images.images[index]
+        count := cast(s64)image.width * image.height
+        if !PixmapSetImage(base + index, AndroidBundleImagePath(image.path[:image.path_length]),
+            image.width, image.height, AndroidImageWords(image.pixels, count)) {
+            return false
+        }
+    }
+    return true
+}
+
+AndroidBundleImagesLoad :: (images: *AndroidBundleImages, bundle: *void, base: s32) -> bool {
+    AndroidBundleImagesRelease(images, base)
+    total := cast(s32)BundleAssets(bundle)
+    if total > 128 { return false }
+    for index: cast(u64)0..BundleAssets(bundle) - 1 {
+        path := TextFromCString(BundleAssetPath(bundle, index))
+        data := TextFromBytes(BytesFromPointer(BundleAssetBytes(bundle, index),
+            BundleAssetLength(bundle, index)))
+        if !AndroidBundleImageCandidate(path, data) { continue }
+        bytes := BytesFromPointer(BundleAssetBytes(bundle, index), BundleAssetLength(bundle, index))
+        width: s32
+        height: s32
+        pixels := AndroidImageDecodePNG(bytes, *width, *height)
+        rgba: *u8 = null
+        if pixels == null && ImageWebpSignature(data) {
+            rgba = WebPImageDecode(data, *width, *height)
+        }
+        if pixels == null && AndroidImageIsAVIF(data) {
+            rgba = AvifImageDecode(data, *width, *height)
+        }
+        if pixels == null && rgba != null {
+            pixels = AndroidImageFromBytes(rgba, cast(s64)width * height * 4)
+            AndroidImageRelease(cast(*void)rgba)
+        }
+        orientation: s32 = 1
+        if pixels == null {
+            pixels = AndroidImageDecodeBitmap(data, *width, *height)
+            orientation = ImageExifOrientation(data)
+        }
+        pixels = AndroidImageOrient(pixels, width, height, orientation)
+        if pixels == null || width <= 0 || height <= 0 ||
+        cast(s64)width * height > 67108864 || path.count >= 256 ||
+        !CopyCString(path, images.images[images.count].path[:]) {
+            if pixels != null { AndroidImageRelease(cast(*void)pixels) }
+            return false
+        }
+        image := *images.images[images.count]
+        image.path_length = cast(s32)path.count
+        image.width = ifx orientation >= 5 && orientation <= 8 then height else width
+        image.height = ifx orientation >= 5 && orientation <= 8 then width else height
+        image.pixels = pixels
+        images.count += 1
+    }
+    return true
+}
+
+AndroidBundleImagesUnregister :: (images: *AndroidBundleImages, base: s32) {
+    for index: 0..images.count - 1 { PixmapClearImage(base + index) }
+}

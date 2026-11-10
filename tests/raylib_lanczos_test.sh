@@ -20,7 +20,7 @@ raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl 
 python3 "$repo/tests/lanczos_goldens.py" fixtures "$work/fixtures"
 # Kryon's modules come before std, whose image module has another job.
 "$ziran" build --target=c --define POSIX_THREADS --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
+    $kryon_ui_args --module-path "$repo/src/backend" \
     --module-path "avif=$image_avif/src" --module-path "$image_avif/src" \
     --module-path "$image_avif/src/bridge" --module-path "webp=$image_webp/src" \
     --module-path "image_codec=$image_codec/src" --module-path "std=$ziran_root/std" \

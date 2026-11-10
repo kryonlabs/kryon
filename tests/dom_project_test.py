@@ -50,7 +50,7 @@ with (project / "lock").open("w") as lock:
     (assets / "mesh.png").write_bytes(b"\x89PNG\r\n\x1a\n" +
         chunk(b"IHDR", struct.pack(">IIBBBBB", 2, 1, 8, 6, 0, 0, 0)) +
         chunk(b"IDAT", zlib.compress(bytes([0,255,0,0,255,0,0,255,255]))) + chunk(b"IEND", b""))
-    ENV["EMCC_CFLAGS"] = ENV.get("EMCC_CFLAGS", "") + f" --embed-file {assets}/mesh.png@/assets/mesh.png"
+    # The profile assets directory is embedded by the package build.
     if os.environ.get("KRYON_DOM_IMAGE_DECODE"):
         # A page image, bytes no browser decodes, and one whose img decode
         # the driver rejects.
@@ -67,8 +67,6 @@ with (project / "lock").open("w") as lock:
             names.append(f"other{index}.png")
             (assets / names[-1]).write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 40, 30, 8, 2, 0, 0, 0)) +
                                               chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
-        for name in names:
-            ENV["EMCC_CFLAGS"] += f" --embed-file {assets}/{name}@/assets/{name}"
     overrides = {
         "kryon": str(ROOT),
         "ziran": str(ZIRAN_ROOT),

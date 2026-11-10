@@ -33,9 +33,9 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry app:Answer -o "$work/source.zx" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zx" "$work/ir/app.zir"
@@ -46,15 +46,15 @@ test "$("$ziran" run "$work/saved.zx")" = 42
 for input in source saved; do
     if test "$input" = source; then
         module=$work/app.zi
-        module_dir=$repo/src/ui
+        module_dir="$kryon_ui_args"
     else
         module=$work/ir/app.zir
-        module_dir=$work/ir
+        module_dir="--module-path $work/ir"
     fi
     for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --root "$work" \
-            --module-path "$module_dir" --module-path "$ziran_root/std" -o "$output" "$module"
+            $module_dir --module-path "$ziran_root/std" -o "$output" "$module"
         if test "$target" = c; then
             cat > "$output/main.c" <<'C'
 #include "app.h"

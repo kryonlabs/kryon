@@ -11,12 +11,12 @@ for route in source ir; do
     input="$repo/tests/render_pipeline_test.zi"
     if [ "$route" = ir ]; then
         "$ziran" ir --root "$repo/tests" --module-path "$repo/src/backend" \
-            --module-path "$repo/src/ui" -o "$work/test.zir" "$input"
+            $kryon_ui_args -o "$work/test.zir" "$input"
         input="$work/test.zir/render_pipeline_test.zir"
     fi
     "$ziran" build --target=c --no-main --entry render_pipeline_test:Check \
         --root "$repo/tests" --module-path "$repo/src/backend" \
-        --module-path "$repo/src/ui" -o "$output" "$input"
+        $kryon_ui_args -o "$output" "$input"
     cat > "$output/main.c" <<'C'
 #include <stdio.h>
 #include "render_pipeline_test.h"

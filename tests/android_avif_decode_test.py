@@ -16,13 +16,13 @@ DAV1D_ASM={'armeabi-v7a':('_neon',),'arm64-v8a':('_neon','_neon_dotprod','_neon_
 CMAKE='''cmake_minimum_required(VERSION 3.22)
 project(KryonAndroidAVIF C CXX)
 include("${KRYON_DIR}/cmake/KryonAndroid.cmake")
-kryon_android_raylib("${RAYLIB_DIR}" "${WEBP_DIR}" "${AVIF_DIR}" "${AOM_DIR}")
+kryon_android_codecs("${WEBP_DIR}" "${AVIF_DIR}" "${AOM_DIR}")
 file(GLOB sources "${GENERATED}/*.c")
 add_executable(codec-test ${sources})
 target_include_directories(codec-test PRIVATE "${GENERATED}" "${ZIRAN_INCLUDE}")
 target_compile_options(codec-test PRIVATE -ffunction-sections -fdata-sections -Wno-main)
 target_link_options(codec-test PRIVATE -Wl,--gc-sections -Wl,--no-undefined)
-target_link_libraries(codec-test PRIVATE raylib android log OpenSLES EGL GLESv2 atomic dl m)
+target_link_libraries(codec-test PRIVATE kryon_android_codecs android log atomic dl m)
 '''
 def run(command,env=None):
     result=subprocess.run(list(map(str,command)),cwd=ROOT,env=env,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
@@ -38,7 +38,7 @@ def main():
     if args.serial and args.serial!='ZE2223BQZT':parser.error('this test is reserved for the USB Moto ZE2223BQZT')
     env={k:v for k,v in os.environ.items() if k not in ('DISPLAY','WAYLAND_DISPLAY','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS','SESSION_MANAGER')}
     env['YUE_DESKTOP_RECOVERY']='0'
-    packages={name:run([ZIRAN,'pkg','path',name]).strip() for name in ('raylib','libwebp','libavif','libaom','dav1d')}
+    packages={name:run([ZIRAN,'pkg','path',name]).strip() for name in ('libwebp','libavif','libaom','dav1d')}
     work=ROOT/'build/scratch/android-avif';work.mkdir(parents=True,exist_ok=True)
     (work/'CMakeLists.txt').write_text(CMAKE)
     for abi in ABIS:
@@ -51,7 +51,7 @@ def main():
         for build_type in configurations:
             run(['cmake','-S',work,'-B',work/abi,f'-DCMAKE_TOOLCHAIN_FILE={args.ndk}/build/cmake/android.toolchain.cmake',
                  f'-DANDROID_ABI={abi}','-DANDROID_PLATFORM=android-21',f'-DCMAKE_BUILD_TYPE={build_type}',
-                 f'-DKRYON_DIR={ROOT}',f'-DRAYLIB_DIR={packages["raylib"]}/src',f'-DWEBP_DIR={packages["libwebp"]}',
+                 f'-DKRYON_DIR={ROOT}',f'-DWEBP_DIR={packages["libwebp"]}',
                  f'-DAVIF_DIR={packages["libavif"]}',f'-DAOM_DIR={packages["libaom"]}',f'-DDAV1D_DIR={packages["dav1d"]}',
                  f'-DGENERATED={generated}',f'-DZIRAN_INCLUDE={ZIRAN_ROOT}/include'],env)
             run(['cmake','--build',work/abi,'--target','codec-test','--parallel','2'],env)
@@ -68,7 +68,7 @@ def main():
             tiers=', '.join(f'{tier[1:]} {count}' for tier,count in counts.items())
             undefined=run([nm,'--undefined-only',work/abi/'codec-test'],env)
             assert not any(name in undefined for name in ('avifDecoder','aom_codec','WebPDecode')),undefined
-            print(f'{abi} {build_type}: Ziran raylib image boundary, dav1d default ({tiers}) plus libaom oracle linked, no unresolved codec symbols',flush=True)
+            print(f'{abi} {build_type}: Ziran codec boundary, dav1d default ({tiers}) plus libaom oracle linked, no unresolved codec symbols',flush=True)
             if abi=='armeabi-v7a' and args.serial:
                 adb=['adb','-s',args.serial]
                 assert run(adb+['get-state']).strip()=='device'

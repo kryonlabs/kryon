@@ -15,6 +15,8 @@ import android.net.Uri;
 import android.content.res.Configuration;
 import android.graphics.Insets;
 import android.graphics.Rect;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -285,6 +287,27 @@ public class __ACTIVITY__ extends NativeActivity {
         } catch (RuntimeException error) {
             Log.w(TAG, "Could not write the clipboard", error);
             return false;
+        }
+    }
+
+    // Native ZX supplies immutable bundle bytes; Android returns width, height
+    // and ARGB_8888 pixels for formats the portable native decoders cannot read.
+    public int[] decodeBundleImage(byte[] bytes) {
+        if (bytes == null) return null;
+        try {
+            Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+            if (bitmap == null || bitmap.getWidth() <= 0 || bitmap.getHeight() <= 0) return null;
+            int width = bitmap.getWidth();
+            int height = bitmap.getHeight();
+            int[] result = new int[2 + width * height];
+            result[0] = width;
+            result[1] = height;
+            bitmap.getPixels(result, 2, width, 0, 0, width, height);
+            bitmap.recycle();
+            return result;
+        } catch (RuntimeException error) {
+            Log.w(TAG, "Could not decode bundled image", error);
+            return null;
         }
     }
 

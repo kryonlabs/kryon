@@ -1,0 +1,158 @@
+#import "button_props"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "kryon/text_widget"
+#import "text_props"
+#import "text_align"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using ButtonState;
+using FontRole;
+using TextAlign;
+using WidgetKind;
+using StyleField;
+
+KeycapProps :: struct {
+    key: u64
+    bounds: Rectangle
+    keys: string
+    disabled: bool
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+    style: StyleData
+    states: StyleStates
+}
+
+KeycapResult :: struct {
+    node: s32
+    bounds: Rectangle
+    count: s32
+}
+
+KeycapDefaultFace :: (props: KeycapProps, state: s32) -> StyleData {
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+        cast(u32)StyleOpacity | cast(u32)StylePaddingX | cast(u32)StylePaddingY |
+        cast(u32)StyleGap | cast(u32)StyleFontSize | cast(u32)StyleMinHeight |
+        cast(u32)StyleLineHeight | cast(u32)StyleFontRole | cast(u32)StyleTypeface
+    palette := CurrentPalette()
+    theme := CurrentTheme()
+    face.background = palette.surface
+    face.foreground = palette.text_secondary
+    face.border = palette.subtle_border
+    face.border_width = theme.metrics.border_width
+    face.radius = 5.0
+    face.opacity = 1.0
+    face.padding_x = 5.0
+    face.padding_y = 0.0
+    face.gap = 3.0
+    face.font_size = TypeCaption()
+    face.min_height = 20.0
+    face.line_height = 1.2
+    face.font_role = .FontRoleControl
+    face.typeface = FontForRole(theme, cast(s32)FontRoleControl)
+    if state == cast(s32)ButtonStateDisabled {
+        face.opacity = theme.metrics.disabled_opacity
+    }
+    return face
+}
+
+#program_export
+KeycapInstalledFaceFor :: (props: KeycapProps, state: s32) -> StyleData {
+    kind := props.style_kind
+    if kind <= 0 { kind = StyleKindText() }
+    facts := StyleControlRoleFacts(kind, props.id, props.class_name,
+        props.style_role, 0, 0, 0, state)
+    face := ResolveInstalledStyleRules(KeycapDefaultFace(props, state), facts, state)
+    return MergeValues(ResolveValues(face, props.states, state), props.style)
+}
+
+KeycapPart :: (value: string, face: StyleData, font: s32) -> float32 {
+    width := cast(float32)GlyphWidth(value, font, face.typeface) + face.padding_x * 2.0
+    if width < 20.0 { width = 20.0 }
+    return width
+}
+
+#program_export
+Keycap :: (session: Session, props: KeycapProps) -> KeycapResult {
+    result: KeycapResult
+    result.node = -1
+    state := cast(s32)ButtonStateNormal
+    if props.disabled { state = cast(s32)ButtonStateDisabled }
+    face := KeycapInstalledFaceFor(props, state)
+    font := ResolveFont(0, StyleFontValue(face.fields, face.font_size),
+        cast(s32)TypeCaption())
+    height := StyleMinHeightValue(face.fields, face.min_height, 20.0)
+    at: s32 = 0
+    width: float32 = -face.gap
+    while at < cast(s32)props.keys.count {
+        while at < cast(s32)props.keys.count && props.keys[at] == cast(u8)32 { at += 1 }
+        end := at
+        while end < cast(s32)props.keys.count && props.keys[end] != cast(u8)32 { end += 1 }
+        if end > at {
+            width += KeycapPart(props.keys[at:end], face, font) + face.gap
+            result.count += 1
+        }
+        at = end
+    }
+    if result.count == 0 { width = 20.0; result.count = 1 }
+    result.bounds = props.bounds
+    result.bounds.width = width
+    result.bounds.height = height
+    if props.bounds.width > 0.0 { result.bounds.width = props.bounds.width }
+    if props.bounds.height > 0.0 { result.bounds.height = props.bounds.height }
+    if !SessionValid(session) || !TreeIsBuilding(session) { return result }
+    key := props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    result.node = TreeSubmitCurrent(session, key, WidgetKindBox, result.bounds)
+    if result.node < 0 { return result }
+    TreeSetLabel(session, result.node, props.keys)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetChildClip(session, result.node, result.bounds)
+    if !TreePushScope(session, result.node) { return result }
+    opacity := StyleOpacityValue(face.fields, face.opacity)
+    at = 0
+    x := props.bounds.x
+    part: s32 = 0
+    while at < cast(s32)props.keys.count {
+        while at < cast(s32)props.keys.count && props.keys[at] == cast(u8)32 { at += 1 }
+        end := at
+        while end < cast(s32)props.keys.count && props.keys[end] != cast(u8)32 { end += 1 }
+        if end > at {
+            value := props.keys[at:end]
+            part_width := KeycapPart(value, face, font)
+            cap := Rectangle.{x, props.bounds.y, part_width, height}
+            if (face.fields & cast(u32)StyleBackground) != cast(u32)0 {
+                PaintRoundedFill(session, result.node, cap, face.radius, 6,
+                    ColorFromPacked(Opacity(face.background, opacity)))
+            }
+            if (face.fields & cast(u32)StyleBorder) != cast(u32)0 && face.border != cast(u32)0 {
+                PaintRoundedOutline(session, result.node, cap, face.radius, 6,
+                    face.border_width, ColorFromPacked(Opacity(face.border, opacity)))
+            }
+            text := TextProps.{.key = WidgetPartKey(key, 101 + part),
+                .text = value, .bounds = cap, .align = .TextAlignCenter,
+                .vertical_align = cast(TextAlign)TextAlignCenter, .font = font,
+                .typeface = face.typeface, .class_name = props.class_name}
+            Text(session, text)
+            x += part_width + face.gap
+            part += 1
+        }
+        at = end
+    }
+    unused TreePopScope(session)
+    return result
+}

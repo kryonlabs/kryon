@@ -47,7 +47,6 @@ to Kryon:
 name = "Example"
 entry = "src/app.zi"
 module_roots = ["src"]
-bridge_modules = ["app"]
 tool = "kryon"
 
 [toolchain]
@@ -66,10 +65,12 @@ backend = "desktop"
 ```
 
 `tool = "kryon"` makes `ziran run`, `ziran build`, `ziran check`, and
-`ziran install` the same as the `kryon` commands. `bridge_modules` exposes
-the app's `app` module to the selected host. `[tool.kryon] entry` names the
-module with `Frame` when it is not the package entry, as in a command-line
-package that also has a window. The app imports `Kryon` for the small core
+`ziran install` the same as the `kryon` commands. The build binds the host's
+frame capability to the selected source's exported `Frame` function. The source
+can have any module filename, such as `button.zi`; no `app.zi` alias or reverse
+module bridge is needed. `[tool.kryon] entry` selects the source with `Frame`
+when it differs from the package entry, as in a command-line package that also
+has a window. The app imports `Kryon` for the small core
 surface or `Widgets` for all core widgets:
 
 ```zi
@@ -508,11 +509,12 @@ are saved in `build/generated/<profile>/ir/` as `.zir`; generated C is in
 `build/generated/<profile>/c/`. `ziran inspect FILE.zir` displays a saved
 module.
 
-Canvas and DOM projects use short host modules such as `canvas_run.zir`,
-`dom_run.zir`, and `canvas_raster.zir`. Their generator roots the selected
-host plus `canvas_raster.zi` and emits every saved module; this preserves the
-host entry point and raster adapters that the paint queue reaches indirectly.
-Native profiles keep the package-qualified entry-pruned route.
+Canvas and DOM projects resolve package-qualified hosts and bind the selected
+source through the shared frame capability. Their generator also roots
+`canvas_raster.zi` and lowers every saved module, preserving raster adapters
+and browser callbacks. Native profiles select the package-qualified host
+entry as well. The saved IR carries the frame binding into native and portable
+builds.
 
 Every host draws text in Kryon's font, Liberation Sans
 (`assets/fonts/LiberationSans-Regular.ttf`): a `font`-pixel line box from the

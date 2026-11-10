@@ -50,6 +50,7 @@ TextFieldProps :: struct {
     scroll_x: s32
     focused: bool
     composition: CompositionState
+    id: s32
     focus_id: s32
     class_name: s32
     scale: float32
@@ -260,6 +261,7 @@ TextAreaProps :: struct {
     preferred_x_valid: bool
     max_bytes: s32
     max_codepoints: s32
+    id: s32
     focus_id: s32
     colors: []TextAreaColorSpan
     composition_start: s32

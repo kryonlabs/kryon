@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 import subprocess
 
-from toolchain import BIN, ZIRAN_ROOT
+from toolchain import UI_MODULE_ARGS, BIN, ZIRAN_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser(description=__doc__)
@@ -23,7 +23,7 @@ for name in ('DISPLAY', 'WAYLAND_DISPLAY', 'XAUTHORITY', 'DBUS_SESSION_BUS_ADDRE
 environment.setdefault('EM_CACHE', str(ROOT / 'build/emscripten-cache'))
 generated = output / 'c'
 subprocess.run([str(BIN / 'zi2c'), '--no-main', '--root', str(ROOT / 'tests'),
-                '--module-path', str(ROOT / 'src/backend'), '--module-path', str(ROOT / 'src/ui'),
+                '--module-path', str(ROOT / 'src/backend'), *UI_MODULE_ARGS,
                 '--module-path', str(ZIRAN_ROOT / 'std'),
                 '-o', str(generated), str(ROOT / 'tests/canvas_performance.zi')],
                env=environment, check=True)

@@ -1,0 +1,43 @@
+#import "component_protocol"
+#import "button"
+#import "button_props"
+#import "text"
+#import "text_props"
+#import "geometry"
+#import "std/vec"
+
+ComponentLabel :: struct { text: string }
+ComponentOwned :: struct { label: ComponentLabel; samples: [2]s64 }
+component_owned: ComponentOwned = ComponentOwned.{
+    .label = ComponentLabel.{.text = "A"}
+};
+
+component_schema_version: s64 = 1;
+component_count: s64 = 99;
+component_label_kind: s64 = 0;
+
+Label :: () -> string {
+    value: Vec(u8)
+    label := component_owned.label.text
+    BuilderPrint(*value, "% %", label, component_count)
+    return BuilderFinish(value)
+}
+
+#program_export
+Frame :: () -> s64 {
+    if component_schema_version < 1 { return 1 }
+    session := ComponentSession()
+    bounds := ComponentBounds()
+    action := Button(session, ButtonProps.{
+        .key = 101, .bounds = Rectangle.{
+            bounds.x + 16.0, bounds.y + 16.0, 96.0, 36.0
+        }, .label = "Increment"
+    })
+    if action != 0 { component_count += 1; component_owned.samples[0] += 1; component_owned.samples[1] = component_count }
+    Text(session, TextProps.{
+        .key = 102, .bounds = Rectangle.{
+            bounds.x + 16.0, bounds.y + 64.0, 180.0, 28.0
+        }, .text = Label(), .font = Text18
+    })
+    return ifx component_count == 8 || component_owned.samples[0] > 0 then 1 else 0
+}

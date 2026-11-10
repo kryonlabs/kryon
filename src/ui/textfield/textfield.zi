@@ -1,0 +1,754 @@
+Theme :: #import "theme";
+#import "text_host"
+// Caller-owned buffers use TextFieldStateProps before this same widget and
+// TextFieldStateApplyResult afterwards; commit remains on TextFieldResult.
+// Portable compositions use the same widgets as retained native hosts.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "text_input_props"
+    host_api :: #system_library "host_api";
+    TextFieldHostedHost :: (session: Session, props: TextFieldProps) -> TextFieldResult #foreign host_api;
+    #program_export
+    TextField :: (session: Session, props: TextFieldProps) -> TextFieldResult {
+        return TextFieldHostedHost(session, props)
+    }
+} else {
+    #import "session"
+    #import "button_props"
+    #import "button"
+    #import "control_props"
+    #import "drawing_props"
+    #import "font_metrics"
+    #import "geometry"
+    #import "paint_queue"
+    #import "semantic"
+    #import "style"
+    #import "style_sheet"
+    #import "surface"
+    #import "system_clipboard"
+    #import "text_context_menu"
+    #import "text_input"
+    #import "text_input_platform"
+    #import "text_input_props"
+    #import "kryon/text_widget"
+    #import "tree"
+    #import "tree_input"
+    #import "text_request"
+    #import "widget_kind"
+    Grapheme :: #import "std/grapheme";
+    Utf8 :: #import "std/utf8";
+
+    using SemanticKind;
+    using WidgetKind;
+    using ButtonTone;
+    using ButtonEmphasis;
+    using ControlSize;
+    using ButtonState;
+    using StyleField;
+    using CompositionPhase;
+
+    #program_export
+    TextFieldKey :: (session: Session, props: TextFieldProps) -> u64 {
+        if props.key != cast(u64)0 { return props.key }
+        if props.id > 0 { return cast(u64)cast(u32)props.id }
+        return cast(u64)0
+    }
+
+    #program_export
+    TextFieldDefaultFace :: () -> StyleData {
+        face: StyleData
+        face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleFocus |
+        cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+        cast(u32)StyleOpacity | cast(u32)StylePaddingX |
+        cast(u32)StyleFontSize
+        face.background = Theme.CurrentSunken()
+        face.foreground = Theme.CurrentText()
+        face.border = Theme.CurrentBorderStrong()
+        face.focus = Theme.CurrentAccent()
+        face.radius = Theme.ShapeSmall()
+        face.border_width = 1.0
+        face.opacity = 1.0
+        face.padding_x = 12.0
+        face.font_size = Theme.TypeLabel()
+        return face
+    }
+
+    #program_export
+    TextFieldFaceFor :: (props: TextFieldProps,
+        focused: bool) -> StyleFrame {
+        state: s32 = cast(s32)ButtonStateNormal
+        if focused { state = cast(s32)ButtonStateFocus }
+        if props.disabled { state = cast(s32)ButtonStateDisabled }
+        facts: StyleFacts = StyleControlRoleFacts(
+            StyleKindTextField(), props.id,
+            props.class_name, 0, cast(s32)ButtonToneNeutral,
+            cast(s32)ButtonEmphasisSoft,
+            cast(s32)ControlSizeMedium, state)
+        frame: StyleFrame
+        defaults := TextFieldDefaultFace()
+        if props.disabled {
+            defaults.background = Opacity(defaults.background, 0.45)
+            defaults.foreground = Opacity(defaults.foreground, 0.45)
+            defaults.border = Opacity(defaults.border, 0.45)
+        }
+        frame.value = ResolveInstalledStyleRules(
+            defaults, facts, state)
+        return frame
+    }
+
+    #program_export
+    TextFieldPrevious :: (value: string, cursor: s32) -> s32 {
+        return Grapheme.Previous(value, cursor)
+    }
+
+    #program_export
+    TextFieldNext :: (value: string, cursor: s32) -> s32 {
+        return Grapheme.Next(value, cursor)
+    }
+
+    #program_export
+    TextFieldCodepoints :: (value: string) -> s32 {
+        count: s32 = 0
+        index: s32 = 0
+        while index < (cast(s32)value.count) {
+            if !TextUtf8Continuation(value[index]) { count += 1 }
+            index += 1
+        }
+        return count
+    }
+
+    #program_export
+    TextFieldByteAfter :: (value: string,
+        codepoints: s32) -> s32 {
+        if codepoints <= 0 { return 0 }
+        index: s32 = 0
+        seen: s32 = 0
+        while index < (cast(s32)value.count) {
+            index = Utf8.Next(value, index)
+            seen += 1
+            if seen >= codepoints { return index }
+        }
+        return (cast(s32)value.count)
+    }
+
+    #program_export
+    TextFieldInputTextAllowed :: (value: string) -> bool {
+        if value == "" { return false }
+        index: s32 = 0
+        while index < (cast(s32)value.count) {
+            if value[index] < cast(u8)32 || value[index] == cast(u8)127 {
+                return false
+            }
+            index += 1
+        }
+        return true
+    }
+
+    #program_export
+    TextFieldReplacementAllowed :: (props: TextFieldProps,
+        start: s32, end: s32, replacement: string) -> bool {
+        if start < 0 || end < start || end > (cast(s32)props.value.count) {
+            return false
+        }
+        length: s32 = (cast(s32)props.value.count) - (end - start) +
+        (cast(s32)replacement.count)
+        if props.max_bytes > 0 && length > props.max_bytes {
+            return false
+        }
+        index: s32 = 0
+        while props.numeric && index < (cast(s32)replacement.count) {
+            if replacement[index] < cast(u8)48 || replacement[index] > cast(u8)57 {
+                return false
+            }
+            index += 1
+        }
+        if props.max_codepoints > 0 {
+            removed: string = TextSpan(props.value,
+                start, end - start)
+            count: s32 = TextFieldCodepoints(props.value) -
+            TextFieldCodepoints(removed) +
+            TextFieldCodepoints(replacement)
+            if count > props.max_codepoints { return false }
+        }
+        return true
+    }
+
+    #program_export
+    TextFieldCursorAtX :: (value: string, x: s32,
+        font: s32, typeface: string) -> s32 {
+        index: s32 = 0
+        nearest: s32 = 0
+        distance: s32 = x - GlyphCaret(value, 0, font, typeface)
+        if distance < 0 { distance = -distance }
+        while index < cast(s32)value.count {
+            index = TextFieldNext(value, index)
+            candidate: s32 = x - GlyphCaret(value, index, font, typeface)
+            if candidate < 0 { candidate = -candidate }
+            if candidate <= distance { nearest = index; distance = candidate }
+        }
+        return nearest
+    }
+
+    #program_export
+    TextFieldDisplayByteFor :: (value: string, display: string,
+        cursor: s32, secure: bool) -> s32 {
+        cursor = TextCursorForLength(cursor, (cast(s32)value.count))
+        if !secure { return cursor }
+        count: s32 = TextFieldCodepoints(TextSpan(value, 0, cursor))
+        return TextFieldByteAfter(display, count)
+    }
+
+    #program_export
+    TextFieldEditFor :: (props: TextFieldProps,
+        cursor: s32, anchor: s32) -> TextFieldEdit {
+        edit: TextFieldEdit
+        selection: TextSelectionRange = TextSelectionRangeForLength(
+            anchor, cursor, (cast(s32)props.value.count))
+        if TextFieldInputTextAllowed(props.input.text) {
+            if !TextFieldReplacementAllowed(props, selection.start,
+                selection.end, props.input.text) { return edit }
+            edit.start = selection.start
+            edit.end = selection.end
+            edit.replacement = props.input.text
+            edit.changed = true
+            return edit
+        }
+        if props.input.backspace {
+            edit.start = selection.start
+            edit.end = selection.end
+            if !selection.has_selection {
+                edit.start = TextFieldPrevious(props.value, cursor)
+            }
+        } else if props.input.delete_forward {
+            edit.start = selection.start
+            edit.end = selection.end
+            if !selection.has_selection {
+                edit.end = TextFieldNext(props.value, cursor)
+            }
+        }
+        edit.changed = edit.end > edit.start
+        return edit
+    }
+
+    // The caller supplies current text and raw input samples. Kryon returns the
+    // replacement range and next selection; the caller owns text storage.
+    TextFieldCore :: (session: Session, props: TextFieldProps) -> TextFieldResult {
+        result: TextFieldResult
+        result.node = -1
+        result.cursor = Grapheme.Boundary(props.value, props.cursor)
+        result.anchor = Grapheme.Boundary(props.value, props.anchor)
+        result.scroll_x = props.scroll_x
+        result.focused = props.focused
+        result.composition = props.composition
+        if props.bounds.width <= 0.0 ||
+        props.bounds.height <= 0.0 { return result }
+        key: u64 = TextFieldKey(session, props)
+        previous: s32 = -1
+        if TreeIsBuilding(session) {
+            previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindTextField)
+        }
+        activated: bool = TreeTakeActivationAt(session, previous)
+        drag: PointerDrag = TreeTakeDragAt(session, previous)
+        // A press that focuses a numeric field selects its whole number until
+        // the release, so typing replaces the number; later taps place the
+        // cursor.
+        select_number: bool = TreePreviousWidgetState(session, previous).open &&
+        (drag.active || drag.ended || activated)
+        if props.numeric && drag.started { select_number = !props.focused }
+        if TreeHasFocus(session) { result.focused = TreeFocusedAt(session, previous) }
+        if props.disabled || props.input.blur { result.focused = false; TreeBlurAt(session, previous) }
+        // A focus request takes the session focus, as a blur releases it.
+        if !props.disabled && props.input.focus { result.focused = true; unused TreeFocusAt(session, previous) }
+        if previous >= 0 && !TreeInputAllowedAt(session, previous) { result.focused = false }
+        face: StyleFrame = TextFieldFaceFor(props, result.focused)
+        scale: float32 = props.scale
+        if scale <= 0.0 { scale = 1.0 }
+        font: s32 = ResolveFont(0,
+            StyleFontValue(face.value.fields,
+            face.value.font_size), 14)
+        padding_x: s32 = TextInputScaledMetric(
+            face.value.padding_x, scale)
+        if padding_x < 0 { padding_x = 0 }
+        clear_size: float32 = 0.0
+        if props.clear_label != "" && props.value != "" && !props.read_only {
+            clear_size = cast(float32)TextInputScaledMetric(44.0, scale)
+            if clear_size > props.bounds.height { clear_size = props.bounds.height }
+            if clear_size > props.bounds.width { clear_size = props.bounds.width }
+        }
+        display: string = props.value
+        if props.secure { display = props.display_value }
+        text_width: s32 = GlyphWidth(display, font,
+            face.value.typeface)
+        scroll: TextFieldScroll = TextFieldScrollFor(
+            props.bounds.x, props.bounds.width - clear_size,
+            padding_x, text_width, result.scroll_x)
+        result.scroll_x = scroll.scroll
+        if !props.disabled &&
+        (activated || drag.started || drag.active || drag.ended) {
+            result.focused = true
+            sample_x: float32 = drag.x
+            if drag.started {
+                sample_x = props.bounds.x + drag.grab_x
+            } else if previous >= 0 {
+                // Drag observations are in window coordinates; glyph layout
+                // and queued paint use the field's declared coordinates.
+                sample_x -= TreeNodeAt(session, previous).bounds.x - props.bounds.x
+            }
+            selected: s32 = TextFieldCursorAtX(display,
+                TextPointerOffset(sample_x, scroll.text_origin_x),
+                font, face.value.typeface)
+            if props.secure {
+                count: s32 = TextFieldCodepoints(TextSpan(display,
+                    0, selected))
+                selected = Grapheme.Boundary(props.value, TextFieldByteAfter(props.value, count))
+            }
+            if drag.started || activated {
+                result.anchor = selected
+            }
+            result.cursor = selected
+            if select_number {
+                result.anchor = 0
+                result.cursor = cast(s32)props.value.count
+            }
+        }
+        composition_state: CompositionState = props.composition
+        if activated || drag.started || drag.active || drag.ended {
+            if composition_state.active {
+                composition_state = CompositionState.{}
+                result.composition_changed = true
+            }
+        }
+        transition: CompositionTransition = CompositionTransitionFor(
+            composition_state, props.input.composition_event,
+            result.focused, props.read_only || props.disabled)
+        result.composition = transition.state
+        result.composition_changed = result.composition_changed ||
+        transition.changed
+        if result.focused && !props.disabled {
+            if props.input.composition_event.phase ==
+            cast(CompositionPhase)CompositionNone &&
+            !result.composition.active && props.input.select_all {
+                result.anchor = 0
+                result.cursor = (cast(s32)props.value.count)
+            } else if props.input.composition_event.phase ==
+            cast(CompositionPhase)CompositionNone &&
+            !result.composition.active {
+                target: s32 = result.cursor
+                selection: TextSelectionRange =
+                TextSelectionRangeForLength(result.anchor,
+                    result.cursor, (cast(s32)props.value.count))
+                moved: bool = false
+                if props.input.left {
+                    target = TextFieldPrevious(props.value,
+                        result.cursor)
+                    if selection.has_selection && !props.input.shift {
+                        target = selection.start
+                    }
+                    moved = true
+                } else if props.input.right {
+                    target = TextFieldNext(props.value, result.cursor)
+                    if selection.has_selection && !props.input.shift {
+                        target = selection.end
+                    }
+                    moved = true
+                } else if props.input.home {
+                    target = 0
+                    moved = true
+                } else if props.input.end {
+                    target = (cast(s32)props.value.count)
+                    moved = true
+                }
+                if moved {
+                    state: TextSelectionState = TextSelectionAfterMove(
+                        result.anchor, result.cursor, target,
+                        props.input.shift)
+                    result.anchor = state.anchor
+                    result.cursor = state.cursor
+                }
+            }
+            result.committed = props.input.commit &&
+            !result.composition.active &&
+            props.input.composition_event.phase ==
+            cast(CompositionPhase)CompositionNone
+            if props.input.escape && result.composition.active {
+                result.composition = CompositionState.{}
+                result.composition_changed = true
+            } else {
+                result.escaped = props.input.escape &&
+                props.input.composition_event.phase ==
+                cast(CompositionPhase)CompositionNone
+            }
+            if result.escaped { result.focused = false; TreeBlurAt(session, previous) }
+            command: s32 = 0
+            if props.input.copy {
+                command = TextContextCommandCopy()
+            } else if props.input.cut {
+                command = TextContextCommandCut()
+            } else if props.input.paste {
+                command = TextContextCommandPaste()
+            }
+            if transition.commit {
+                selection: TextSelectionRange = TextSelectionRangeForLength(
+                    result.anchor, result.cursor, (cast(s32)props.value.count))
+                if TextFieldInputTextAllowed(transition.commit_text) &&
+                TextFieldReplacementAllowed(props, selection.start,
+                    selection.end, transition.commit_text) {
+                    result.edit.start = selection.start
+                    result.edit.end = selection.end
+                    result.edit.replacement = transition.commit_text
+                    result.edit.changed = true
+                }
+            } else if props.input.composition_event.phase ==
+            cast(CompositionPhase)CompositionNone &&
+            !result.composition.active &&
+            !props.input.escape && command != 0 {
+                selection: TextSelectionRange = TextSelectionRangeForLength(
+                    result.anchor, result.cursor, (cast(s32)props.value.count))
+                allow_copy: bool = !props.secure &&
+                (command != TextContextCommandCut() || !props.read_only)
+                decision: TextContextCommandDecision =
+                TextEditCommandDecisionFor(command,
+                    selection.has_selection, true, true,
+                    (cast(s32)props.value.count) > 0, allow_copy,
+                    !props.read_only && !props.secure,
+                    !props.read_only)
+                if decision.copy_selection {
+                    result.clipboard_write = true
+                    result.clipboard_text = TextSpan(props.value,
+                        selection.start, selection.end - selection.start)
+                } else if decision.copy_all {
+                    result.clipboard_write = true
+                    result.clipboard_text = props.value
+                }
+                if decision.paste && props.input.paste_text.count == 0 {
+                    result.paste_without_text = true
+                } else if decision.paste &&
+                TextFieldInputTextAllowed(props.input.paste_text) &&
+                TextFieldReplacementAllowed(props, selection.start,
+                    selection.end, props.input.paste_text) {
+                    result.edit.start = selection.start
+                    result.edit.end = selection.end
+                    result.edit.replacement = props.input.paste_text
+                    result.edit.changed = true
+                } else if !decision.paste &&
+                (decision.delete_selection || decision.clear_all) {
+                    result.edit.start = selection.start
+                    result.edit.end = selection.end
+                    if decision.clear_all {
+                        result.edit.start = 0
+                        result.edit.end = (cast(s32)props.value.count)
+                    }
+                    result.edit.changed = result.edit.end >
+                    result.edit.start
+                }
+            } else if !props.read_only &&
+            props.input.composition_event.phase ==
+            cast(CompositionPhase)CompositionNone &&
+            !result.composition.active &&
+            !props.input.escape {
+                result.edit = TextFieldEditFor(props,
+                    result.cursor, result.anchor)
+            }
+            if result.edit.changed {
+                result.cursor = result.edit.start +
+                (cast(s32)result.edit.replacement.count)
+                result.anchor = result.cursor
+                if result.composition.active {
+                    result.composition = CompositionState.{}
+                    result.composition_changed = true
+                }
+            }
+        }
+        request: TextRequest = TextRequestTake(session, previous)
+        if request.pending && !props.disabled {
+            if !request.replace {
+                result.cursor = Grapheme.Boundary(props.value, request.cursor)
+                result.anchor = Grapheme.Boundary(props.value, request.anchor)
+            } else if !props.read_only && (request.value.count == 0 || TextFieldInputTextAllowed(request.value)) &&
+            TextFieldReplacementAllowed(props, 0, cast(s32)props.value.count, request.value) {
+                change := TextRequestChangeFor(props.value, request.value)
+                result.edit.start = change.start
+                result.edit.end = change.end
+                result.edit.replacement = change.replacement
+                result.edit.changed = change.changed
+                result.cursor = request.cursor
+                result.anchor = request.anchor
+            }
+            result.focused = true
+            result.composition = CompositionState.{}
+            result.composition_changed = result.composition_changed || props.composition.active
+        }
+        composing: bool = result.composition.active &&
+        result.focused && !props.secure
+        composition_prefix: string
+        composition_suffix: string
+        prefix_width: s32 = 0
+        preedit_width: s32 = 0
+        if composing {
+            replacing: TextSelectionRange = TextSelectionRangeForLength(
+                result.anchor, result.cursor, (cast(s32)props.value.count))
+            composition_prefix = TextSpan(display, 0,
+                replacing.start)
+            composition_suffix = TextSpan(display, replacing.end,
+                (cast(s32)display.count) - replacing.end)
+            prefix_width = GlyphWidth(composition_prefix, font,
+                face.value.typeface)
+            preedit_width = GlyphWidth(result.composition.text,
+                font, face.value.typeface)
+            text_width = prefix_width + preedit_width +
+            GlyphWidth(composition_suffix, font,
+                face.value.typeface)
+            scroll = TextFieldScrollFor(props.bounds.x,
+                props.bounds.width - clear_size, padding_x, text_width,
+                result.scroll_x)
+            result.scroll_x = scroll.scroll
+        }
+        face = TextFieldFaceFor(props, result.focused)
+        display_cursor: s32 = TextFieldDisplayByteFor(props.value,
+            display, result.cursor, props.secure)
+        cursor_prefix: string = TextSpan(display, 0, display_cursor)
+        cursor_text_x: s32 = GlyphCaret(display, display_cursor, font,
+            face.value.typeface)
+        if composing {
+            cursor_text_x = prefix_width + GlyphWidth(TextSpan(
+                result.composition.text, 0,
+                result.composition.cursor), font,
+                face.value.typeface)
+        }
+        result.scroll_x = TextFieldRevealScroll(result.scroll_x,
+            scroll.max_scroll, scroll.clip_width, cursor_text_x,
+            padding_x)
+        opacity: float32 = StyleOpacityValue(face.value.fields,
+            face.value.opacity)
+        bounds: Rectangle = props.bounds
+        if TreeIsBuilding(session) {
+            result.node = TreeSubmitCurrent(session, key,
+                WidgetKindTextField, bounds)
+            if result.node < 0 { return result }
+            TreeSetInteractive(session, result.node, props.disabled,
+                false, props.focus_id)
+            TreeSetCaptureTab(session, result.node,
+                props.capture_tab && result.focused && !props.disabled && !props.read_only)
+            if props.input.focus && !props.disabled {
+                unused TreeFocusSubmittedAt(session, result.node)
+            }
+            if select_number && drag.active && !drag.ended {
+                TreeSetWidgetState(session, result.node, WidgetState.{true, 0, 0})
+            }
+            TreeSetSemantic(session, result.node,
+                cast(SemanticKind)SemanticTextField, 0)
+            TreeSetLabel(session, result.node, props.label)
+            TreeSetStyleClass(session, result.node, props.class_name)
+            TreeSetStyleId(session, result.node, props.id)
+            TreeSetSelected(session, result.node, result.focused)
+            TreeSetTextValue(session, result.node, props.value,
+                Grapheme.Boundary(props.value, result.cursor),
+                Grapheme.Boundary(props.value, result.anchor), props.read_only, props.secure)
+            TextHostPresent(session, result.node, props.value, result.cursor,
+                result.anchor, props.secure, props.numeric, props.read_only,
+                result.edit.changed)
+            // QueuePaint applies the retained node's placement once. Keep the
+            // paint in declared coordinates, as its glyph layout already is.
+        }
+        PaintRoundedFill(session, result.node, bounds,
+            face.value.radius, 12,
+            ColorFromPacked(Opacity(face.value.background,
+            opacity)))
+        border: u32 = face.value.border
+        border_width := face.value.border_width
+        if result.focused { border = face.value.focus; border_width = 2.0 }
+        if face.value.border_width > 0.0 {
+            PaintRoundedOutline(session, result.node, bounds,
+                face.value.radius, 12,
+                border_width,
+                ColorFromPacked(Opacity(border, opacity)))
+        }
+        line_height: s32 = GlyphLineHeight(font,
+            face.value.typeface)
+        text_bounds := bounds
+        text_bounds.width -= clear_size
+        paint: TextFieldPaint = TextFieldPaintFor(text_bounds,
+            padding_x, result.scroll_x, font, line_height,
+            TextFieldMinCursorHeight(scale),
+            TextFieldCursorVerticalPadding(scale),
+            TextFieldClipGuard(scale))
+        value_to_paint: string = display
+        foreground: u32 = face.value.foreground
+        if value_to_paint == "" && !composing {
+            value_to_paint = props.placeholder
+            foreground = Theme.CurrentMuted()
+        }
+        text_y: s32 = cast(s32)bounds.y +
+        (cast(s32)bounds.height - line_height) / 2
+        selection: TextSelectionRange = TextSelectionRangeForLength(
+            result.anchor, result.cursor, (cast(s32)props.value.count))
+        if result.focused &&
+        ((selection.has_selection && !composing) ||
+            (composing && result.composition.selection_length > 0)) {
+            first: s32 = TextFieldDisplayByteFor(props.value,
+                display, selection.start, props.secure)
+            last: s32 = TextFieldDisplayByteFor(props.value,
+                display, selection.end, props.secure)
+            left: s32 = paint.text_x + GlyphCaret(display, first, font, face.value.typeface)
+            right: s32 = paint.text_x + GlyphCaret(display, last, font, face.value.typeface)
+            if composing {
+                left = paint.text_x + prefix_width +
+                GlyphWidth(TextSpan(result.composition.text,
+                    0, result.composition.cursor),
+                    font, face.value.typeface)
+                right = paint.text_x + prefix_width +
+                GlyphWidth(TextSpan(result.composition.text,
+                    0, result.composition.cursor +
+                    result.composition.selection_length),
+                    font, face.value.typeface)
+            }
+            if left > right { swap: s32 = left; left = right; right = swap }
+            clip_left: s32 = cast(s32)paint.clip_bounds.x
+            clip_right: s32 = cast(s32)(paint.clip_bounds.x +
+                paint.clip_bounds.width)
+            if left < clip_left { left = clip_left }
+            if right > clip_right { right = clip_right }
+            if right > left {
+                PaintRoundedFill(session, result.node,
+                    Rectangle.{cast(float32)left, cast(float32)text_y,
+                        cast(float32)(right - left), cast(float32)line_height},
+                    0.0, 1,
+                    ColorFromPacked(Opacity(((Theme.CurrentAccent() & ~cast(u32)255) | cast(u32)136),
+                    opacity)))
+            }
+        }
+        if composing {
+            foreground = face.value.foreground
+            if composition_prefix != "" {
+                PaintClippedLabel(session, result.node,
+                    composition_prefix, paint.text_x,
+                    text_y, font,
+                    ColorFromPacked(Opacity(foreground,
+                    opacity)), paint.clip_bounds)
+            }
+            if result.composition.text != "" {
+                PaintClippedLabel(session, result.node,
+                    result.composition.text,
+                    paint.text_x + prefix_width,
+                    text_y, font,
+                    ColorFromPacked(Opacity(foreground,
+                    opacity)), paint.clip_bounds)
+            }
+            if composition_suffix != "" {
+                PaintClippedLabel(session, result.node,
+                    composition_suffix,
+                    paint.text_x + prefix_width +
+                    preedit_width,
+                    text_y, font,
+                    ColorFromPacked(Opacity(foreground,
+                    opacity)), paint.clip_bounds)
+            }
+            stroke: s32 = TextInputStrokeWidth(scale)
+            underline: Rectangle = RectangleIntersection(
+                Rectangle.{cast(float32)(paint.text_x +
+                    prefix_width),
+                    cast(float32)TextCompositionUnderlineY(
+                    text_y, line_height, stroke),
+                    cast(float32)TextCompositionUnderlineEndX(0,
+                    preedit_width, stroke),
+                    cast(float32)stroke}, paint.clip_bounds)
+            if underline.width > 0.0 &&
+            underline.height > 0.0 {
+                PaintRoundedFill(session, result.node, underline,
+                    0.0, 1,
+                    ColorFromPacked(Opacity(face.value.focus,
+                    opacity)))
+            }
+        } else if value_to_paint != "" {
+            PaintClippedLabel(session, result.node, value_to_paint,
+                paint.text_x, text_y, font,
+                ColorFromPacked(Opacity(foreground, opacity)),
+                paint.clip_bounds)
+        }
+        if result.focused && !props.disabled {
+            x: s32 = paint.text_x + cursor_text_x
+            if x >= cast(s32)paint.clip_bounds.x &&
+            x <= cast(s32)(paint.clip_bounds.x +
+                paint.clip_bounds.width) {
+                PaintLine(session, result.node,
+                    Rectangle.{cast(float32)x, cast(float32)paint.cursor_y,
+                        0.0, cast(float32)paint.cursor_height},
+                    ColorFromPacked(Opacity(face.value.foreground,
+                    opacity)))
+            }
+        }
+        if clear_size > 0.0 {
+            clear: ButtonProps
+            field_key := key
+            if result.node >= 0 { field_key = TreeSubmittedNodeAt(session, result.node).key }
+            clear.key = field_key * cast(u64)65599 + cast(u64)41
+            clear.bounds = Rectangle.{bounds.x + bounds.width - clear_size, bounds.y,
+                clear_size, bounds.height}
+            if result.node >= 0 {
+                placed := TreeSubmittedNodeAt(session, result.node).bounds
+                clear.bounds.x += placed.x - bounds.x
+                clear.bounds.y += placed.y - bounds.y
+            }
+            clear.label = props.clear_label
+            clear.icon_shape = "S1.8rr:M6 6L18 18M18 6L6 18"
+            clear.icon_only = true
+            clear.fit_content = true
+            clear.emphasis = cast(ButtonEmphasis)ButtonEmphasisGhost
+            clear.disabled = props.disabled
+            if Button(session, clear) != 0 {
+                result.edit = TextFieldEdit.{.start = 0, .end = cast(s32)props.value.count,
+                    .replacement = "", .changed = true}
+                result.cursor = 0
+                result.anchor = 0
+                result.scroll_x = 0
+                result.composition_changed = result.composition.active
+                result.composition = CompositionState.{}
+                result.focused = true
+                unused TreeFocusAt(session, previous)
+                TextHostPresent(session, result.node, props.value, 0, 0, props.secure,
+                    props.numeric, props.read_only, true)
+            }
+        }
+        return result
+    }
+
+    // ------------------------------------------------------------ context menu
+
+    // The field with its context menu: a click of the secondary button inside it
+    // opens Cut, Copy, Paste, and Select all, working on the system clipboard, and
+    // Cut, Copy, and Paste from the keyboard reach the system clipboard too.
+    #program_export
+    TextField :: (session: Session, props: TextFieldProps) -> TextFieldResult {
+        key: u64 = TextFieldKey(session, props)
+        editable: bool = !props.read_only && !props.secure
+        selection: TextSelectionRange = TextSelectionRangeForLength(props.anchor,
+            props.cursor, (cast(s32)props.value.count))
+        // A command chosen in the menu last frame runs as if its key was pressed.
+        command: s32 = TextMenuTakeCommand(session, key)
+        if command == TEXT_MENU_CUT { props.input.cut = true }
+        if command == TEXT_MENU_COPY { props.input.copy = true }
+        if command == TEXT_MENU_PASTE { props.input.paste = true }
+        if command == TEXT_MENU_SELECT_ALL { props.input.select_all = true }
+        if props.input.paste && props.input.paste_text.count == 0 {
+            props.input.paste_text = TextMenuPasteText()
+        }
+        opened: bool = TextMenuOpenRequested(session, key, props.bounds, props.disabled)
+        result: TextFieldResult = TextFieldCore(session, props)
+        if result.clipboard_write { SystemClipboardSet(result.clipboard_text) }
+        if opened { result.focused = true }
+        // A focused editable field asks the host for the platform keyboard.
+        if result.focused && !props.read_only && !props.disabled {
+            TextInputNoteFocused(session)
+        }
+        // A secure field never gives its text away, but takes a pasted
+        // password or key like Ctrl+V does.
+        if TextMenuIsOpenFor(session, key) {
+            TextMenuShow(session, editable && selection.has_selection,
+                !props.secure && selection.has_selection, !props.read_only,
+                props.value.count > 0, props.input.escape)
+        }
+        return result
+    }
+
+}

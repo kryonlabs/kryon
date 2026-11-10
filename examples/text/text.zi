@@ -1,0 +1,20 @@
+using UI :: #import "kryon/Widgets";
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    TextSelectionEnable()
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Text", .font = 28})
+    Text(session, TextProps.{.disabled = example_disabled, .key = 10, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 56.0}, .text = "Make room for good ideas", .font = 24})
+    Text(session, TextProps.{.disabled = example_disabled, .key = 11, .bounds = .{viewport.x + 20.0, viewport.y + 148.0, viewport.width - 40.0, 144.0}, .text = "Select and copy this text. Unicode works here too: café, Ω, é.", .font = 18, .selectable = true})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

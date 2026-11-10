@@ -10,10 +10,10 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cat > "$work/app.zi" <<'ZI'
 #import "geometry"
-#import "scroll"
+#import "scroll_behavior"
 #import "scroll_device"
 #import "scroll_props"
-#import "scroll_widget"
+#import "scroll"
 #import "session"
 #import "tree"
 
@@ -252,23 +252,23 @@ C
 
 # Scroll paints its scrollbar through raster hosts, so run natively with
 # stub hosts; the bundle still has to build from source and saved IR.
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
 for input in source saved; do
     if test "$input" = source; then
         source=$work/app.zi
         root=$work
-        module_path=$repo/src/ui
+        module_path="$kryon_ui_args"
     else
         source=$work/ir/app.zir
         root=$work/ir
-        module_path=$work/ir
+        module_path="--module-path $work/ir"
     fi
-    "$ziran" bundle --root "$root" --module-path "$module_path" --module-path "$ziran_root/std" \
+    "$ziran" bundle --root "$root" $module_path --module-path "$ziran_root/std" \
         --entry app:Answer -o "$work/$input.zx" "$source"
     output=$work/c-$input
     "$ziran" build --target=c \
-        --root "$root" --module-path "$module_path" --module-path "$ziran_root/std" \
+        --root "$root" $module_path --module-path "$ziran_root/std" \
         -o "$output" "$source"
     cp "$work/native_main.h" "$output/main.c"
     "${CC:-cc}" -std=c11 -I"$ziran_root/include" \

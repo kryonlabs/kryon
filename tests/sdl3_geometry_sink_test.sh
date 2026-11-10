@@ -12,14 +12,14 @@ flock 9
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 export YUE_DESKTOP_RECOVERY=0
 source="$repo/tests/sdl3_geometry_sink_test.zi"
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
     --entry sdl3_geometry_sink_test:main -o "$work/ir" "$source"
 for form in source saved; do
     input=$source
     if test "$form" = saved; then input="$work/ir/sdl3_geometry_sink_test.zir"; fi
     # Exported Ziran functions satisfy the foreign SDL3 symbols in this binary.
-    LDLIBS= "$ziran" build --root "$repo/tests" --module-path "$repo/src/ui" \
+    LDLIBS= "$ziran" build --root "$repo/tests" $kryon_ui_args \
         --module-path "$repo/src/backend" --module-path "$ziran_root/std" --target=c \
         --entry sdl3_geometry_sink_test:main --exe -o "$work/c" "$input"
     "$work/c/sdl3_geometry_sink_test"

@@ -1,0 +1,28 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/frame_snapshot"
+
+state: ConfirmButtonState;
+confirmed: bool;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Confirm button", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    input := CaptureFrameInput(session)
+    now := cast(float64)input.elapsed_ms / 1000.0
+    result := ConfirmButton(session, ConfirmButtonProps.{.button = .{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, 220.0, 44.0}, .label = "Delete item"}, .confirm_button = .{.disabled = example_disabled, .label = "Confirm delete"}, .now = cast(float32)now, .timeout = 3.0}, *state)
+    if result.committed { confirmed = true }
+    label := "Ready"
+    if confirmed { label = "Item deleted" }
+    Text(session, TextProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 64.0, bounds.width, 36.0}, .text = label})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

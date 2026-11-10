@@ -24,7 +24,8 @@ one_mutation() {
         echo "mutation did not change $file: $expression" >&2
         return 1
     fi
-    if "$ziran" check --root "$tree" --module-path "$std" "$tree/$module" \
+    mutation_args=$(find "$tree" -type d | LC_ALL=C sort | while IFS= read -r directory; do printf -- "--module-path %s " "$directory"; done)
+    if "$ziran" check $mutation_args --root "$tree" --module-path "$std" "$tree/$module" \
         > "$work/$1/out.json" 2> "$work/$1/out.err"; then
         echo "laws accepted mutation: $file: $expression" >&2
         return 1
@@ -52,12 +53,12 @@ mutate() {
 }
 
 # Scrolling past the end, or before the start.
-mutate scroll.zi scroll_laws.zi 's/    if value > maximum { return maximum }/    if value > maximum + 1 { return maximum }/' ClampStaysInRange
-mutate scroll.zi scroll_laws.zi 's/    if value < 0 { return 0 }/    if value < -1 { return 0 }/' ClampStaysInRange
+mutate scroll/scroll_behavior.zi scroll/scroll_laws.zi 's/    if value > maximum { return maximum }/    if value > maximum + 1 { return maximum }/' ClampStaysInRange
+mutate scroll/scroll_behavior.zi scroll/scroll_laws.zi 's/    if value < 0 { return 0 }/    if value < -1 { return 0 }/' ClampStaysInRange
 # Negative overflow when content is shorter than its viewport.
-mutate scroll.zi scroll_laws.zi 's/    if maximum < 0 { maximum = 0 }/    if maximum < -5 { maximum = 0 }/' MaxNeverNegative
+mutate scroll/scroll_behavior.zi scroll/scroll_laws.zi 's/    if maximum < 0 { maximum = 0 }/    if maximum < -5 { maximum = 0 }/' MaxNeverNegative
 # Content moving the wrong way under the finger.
-mutate scroll.zi scroll_laws.zi 's/return ScrollClamp(start_scroll - delta_y, max_scroll)/return ScrollClamp(start_scroll + delta_y, max_scroll)/' DragFollowsFinger
+mutate scroll/scroll_behavior.zi scroll/scroll_laws.zi 's/return ScrollClamp(start_scroll - delta_y, max_scroll)/return ScrollClamp(start_scroll + delta_y, max_scroll)/' DragFollowsFinger
 # A corner that curves in past its own radius.
 mutate paint_queue.zi paint_shape_laws.zi 's/    if dy >= radius { return radius }/    if dy >= radius { return radius + 1.0 }/' CornerInsetInRange
 # A square root that stops iterating too early for large values.
@@ -65,80 +66,80 @@ mutate paint_queue.zi paint_shape_laws.zi 's/    while step < 12 {/    while ste
 # Truncating negative pixels toward zero instead of rounding.
 mutate dpi.zi paint_shape_laws.zi 's/    if scaled < 0.0 { return -cast(s32)(0.5 - scaled) }//' ScaleIdentity
 # A pressed checkbox that does not toggle.
-mutate checkbox.zi checkbox_laws.zi 's/        result.checked = !checked/        result.checked = checked/' PressToggles
+mutate checkbox/checkbox_behavior.zi checkbox/checkbox_laws.zi 's/        result.checked = !checked/        result.checked = checked/' PressToggles
 # Space activating a control while text is typed into it.
 mutate focus.zi focus_laws.zi 's/    (enter_pressed || (!text_input_active && space_pressed))/    (enter_pressed || space_pressed)/' TypingBlocksSpace
 # Shift+Tab moving focus forward.
 mutate focus.zi focus_laws.zi 's/    if shift_down { return -1 }/    if shift_down { return 1 }/' ShiftTabMovesBackward
 # A dropdown still marked as just opened after the pointer is released.
-mutate dropdown.zi dropdown_laws.zi 's/    return just_opened && pointer_pressed/    return just_opened/' ReleaseClearsMark
+mutate dropdown/dropdown_behavior.zi dropdown/dropdown_laws.zi 's/    return just_opened && pointer_pressed/    return just_opened/' ReleaseClearsMark
 # A disabled radio button reporting its id.
-mutate radio.zi radio_laws.zi 's/    if activated && !disabled {/    if activated {/' DisabledReportsNothing
+mutate radio/radio_behavior.zi radio/radio_laws.zi 's/    if activated && !disabled {/    if activated {/' DisabledReportsNothing
 # An input taking a release it did not act on.
 mutate input.zi input_laws.zi 's/    interaction.consume_release = interaction.activated/    interaction.consume_release = interaction.active/' ConsumesOnlyWhenActivated
 # An inspector move or resize ending without a release.
 mutate inspect.zi inspect_laws.zi 's/    decision.end_edit = released && (dragging || resizing)/    decision.end_edit = dragging || resizing/' NoReleaseNoEnd
 # A disabled link activating.
-mutate link.zi link_laws.zi 's/    return !disabled && (clicked || focus_activate)/    return clicked || focus_activate/' DisabledNeverActivates
+mutate link/link_behavior.zi link/link_laws.zi 's/    return !disabled && (clicked || focus_activate)/    return clicked || focus_activate/' DisabledNeverActivates
 # A disabled list box row toggling.
-mutate list_box_multi.zi list_box_multi_laws.zi 's/    if hot && !disabled && released {/    if hot \&\& released {/' RowToggles
+mutate listbox/list_box_multi.zi listbox/list_box_multi_laws.zi 's/    if hot && !disabled && released {/    if hot \&\& released {/' RowToggles
 # An accelerator firing without its required Alt.
-mutate menu.zi menu_laws.zi 's/    if alt_required && !alt_down { return false }//' AcceleratorRule
+mutate menu/menu_behavior.zi menu/menu_laws.zi 's/    if alt_required && !alt_down { return false }//' AcceleratorRule
 # Arrow keys skipping an item when they wrap.
-mutate menu.zi menu_laws.zi 's/    return (start + direction + item_count) % item_count/    return (start + direction + item_count + 1) % item_count/' DownFromLastWraps
+mutate menu/menu_behavior.zi menu/menu_laws.zi 's/    return (start + direction + item_count) % item_count/    return (start + direction + item_count + 1) % item_count/' DownFromLastWraps
 # A modal dismissed by a release someone else already took.
-mutate modal.zi modal_laws.zi 's/    if released && !release_consumed && !pointer_inside {/    if released \&\& !pointer_inside {/' OtherwiseStays
+mutate modal/modal_behavior.zi modal/modal_laws.zi 's/    if released && !release_consumed && !pointer_inside {/    if released \&\& !pointer_inside {/' OtherwiseStays
 # An overlay that forbids dismissing closing anyway.
-mutate overlay.zi overlay_laws.zi 's/ && !dismiss_disabled//' OtherwiseStays
+mutate overlay/overlay_behavior.zi overlay/overlay_laws.zi 's/ && !dismiss_disabled//' OtherwiseStays
 # An overlay that reports a release someone else already took as a tap.
-mutate overlay.zi overlay_laws.zi 's/policy.tapped = released && !release_consumed/policy.tapped = released/' ReleasesAreTaps
+mutate overlay/overlay_behavior.zi overlay/overlay_laws.zi 's/policy.tapped = released && !release_consumed/policy.tapped = released/' ReleasesAreTaps
 # A reorder committed by a release that ended no drag.
-mutate reorder.zi reorder_laws.zi 's/    decision.commit = mouse_released && was_dragging/    decision.commit = was_dragging/' ReleaseRule
+mutate reorder/reorder_behavior.zi reorder/reorder_laws.zi 's/    decision.commit = mouse_released && was_dragging/    decision.commit = was_dragging/' ReleaseRule
 # An empty row of segments wrapping.
-mutate segmented_control.zi segmented_control_laws.zi 's/    return wrap && row_width > 0 && next_width > available_width/    return wrap \&\& next_width > available_width/' WrapRule
+mutate segmented/segmented_control_behavior.zi segmented/segmented_control_laws.zi 's/    return wrap && row_width > 0 && next_width > available_width/    return wrap \&\& next_width > available_width/' WrapRule
 # An inverted spinbox range clamping the value anyway.
-mutate spinbox.zi spinbox_laws.zi 's/    if min_value > max_value { return value }//' InvertedRangeKeeps
+mutate spinbox/spinbox_behavior.zi spinbox/spinbox_laws.zi 's/    if min_value > max_value { return value }//' InvertedRangeKeeps
 # Deselecting an item that is not selected clearing the selection.
 mutate accessibility_policy.zi accessibility_policy_laws.zi 's/ && selected == item) { return -1 }/) { return -1 }/' DeselectOnlySelected
 # A click that leaves a menu button's menu as it was.
-mutate button.zi button_laws.zi 's/    if clicked { return !open }/    if clicked { return open }/' ClickFlipsMenu
+mutate button/button_behavior.zi button/button_laws.zi 's/    if clicked { return !open }/    if clicked { return open }/' ClickFlipsMenu
 # A leaf tree row toggling open.
-mutate collapsible.zi collapsible_laws.zi 's/    decision.toggle_open = !leaf && has_open/    decision.toggle_open = has_open/' ReleaseToggles
+mutate collapsible/collapsible_behavior.zi collapsible/collapsible_laws.zi 's/    decision.toggle_open = !leaf && has_open/    decision.toggle_open = has_open/' ReleaseToggles
 # An activated selectable item keeping its selection.
-mutate selectable.zi selectable_laws.zi 's/        result.selected = !selected/        result.selected = selected/' ActivationFlips
+mutate selectable/selectable_behavior.zi selectable/selectable_laws.zi 's/        result.selected = !selected/        result.selected = selected/' ActivationFlips
 # A disabled toggle flipping.
-mutate toggle.zi toggle_laws.zi 's/    if activated && enabled && has_value {/    if activated \&\& has_value {/' FlipRule
+mutate toggle/toggle_behavior.zi toggle/toggle_laws.zi 's/    if activated && enabled && has_value {/    if activated \&\& has_value {/' FlipRule
 # A swipe claiming the pointer again on every dragging frame.
 mutate swipe.zi swipe_laws.zi 's/    lifecycle.claim_pointer_owner = !was_dragging && next_dragging/    lifecycle.claim_pointer_owner = next_dragging/' ClaimOnStart
 # A layout clamp that lets values run one past the maximum.
-mutate layout.zi layout_laws.zi 's/    if out > max_value { out = max_value }/    if out > max_value + 1 { out = max_value }/' ClampStaysInRange
+mutate layout/layout_behavior.zi layout/layout_laws.zi 's/    if out > max_value { out = max_value }/    if out > max_value + 1 { out = max_value }/' ClampStaysInRange
 # A scroll bar taking a release while nothing is dragged.
-mutate scroll.zi scroll_drag_laws.zi 's/    decision.consume_release = drag_active && mouse_released/    decision.consume_release = mouse_released/' ReleaseClearsDrag
+mutate scroll/scroll_behavior.zi scroll/scroll_drag_laws.zi 's/    decision.consume_release = drag_active && mouse_released/    decision.consume_release = mouse_released/' ReleaseClearsDrag
 # Touch scrolling that starts at the threshold instead of past it.
-mutate scroll.zi scroll_drag_laws.zi 's/        if dragging || delta_y > drag_threshold || delta_y < -drag_threshold {/        if dragging || delta_y >= drag_threshold || delta_y < -drag_threshold {/' SmallMoveStaysArmed
+mutate scroll/scroll_behavior.zi scroll/scroll_drag_laws.zi 's/        if dragging || delta_y > drag_threshold || delta_y < -drag_threshold {/        if dragging || delta_y >= drag_threshold || delta_y < -drag_threshold {/' SmallMoveStaysArmed
 # A disabled slider following the pointer.
-mutate slider.zi slider_laws.zi 's/    decision.update_ratio = effective_active && !disabled && (pressed || down)/    decision.update_ratio = effective_active \&\& (pressed || down)/' DisabledNeverUpdates
+mutate slider/slider_behavior.zi slider/slider_laws.zi 's/    decision.update_ratio = effective_active && !disabled && (pressed || down)/    decision.update_ratio = effective_active \&\& (pressed || down)/' DisabledNeverUpdates
 # Shift stepping a slider by five instead of ten.
-mutate slider.zi slider_laws.zi 's/        if shift { step = step \* 10 }/        if shift { step = step * 5 }/' ShiftStepsTen
+mutate slider/slider_behavior.zi slider/slider_laws.zi 's/        if shift { step = step \* 10 }/        if shift { step = step * 5 }/' ShiftStepsTen
 # A paned view divider that keeps dragging after the release.
-mutate paned_view.zi paned_view_laws.zi 's/    if has_active && !mouse_down {/    if has_active \&\& mouse_down {/' ReleaseEnds
+mutate panedview/panedview.zi panedview/paned_view_laws.zi 's/    if has_active && !mouse_down {/    if has_active \&\& mouse_down {/' ReleaseEnds
 # A time past the end of the day kept instead of clamped to its last minute.
-mutate time_picker.zi time_picker_laws.zi 's/    if value > TIME_PICKER_LAST { return TIME_PICKER_LAST }/    if value > TIME_PICKER_LAST + 1 { return TIME_PICKER_LAST }/' ClampIsTime
+mutate timepicker/time_picker_behavior.zi timepicker/time_picker_laws.zi 's/    if value > TIME_PICKER_LAST { return TIME_PICKER_LAST }/    if value > TIME_PICKER_LAST + 1 { return TIME_PICKER_LAST }/' ClampIsTime
 # Stepping back from midnight stopping at 0 instead of wrapping to 23.
-mutate time_picker.zi time_picker_laws.zi 's/    if wrapped < 0 { wrapped += count }/    if wrapped < 0 { wrapped = 0 }/' HourBackWraps
+mutate timepicker/time_picker_behavior.zi timepicker/time_picker_laws.zi 's/    if wrapped < 0 { wrapped += count }/    if wrapped < 0 { wrapped = 0 }/' HourBackWraps
 # Up stepping forward like Down.
-mutate time_picker.zi time_picker_laws.zi 's/        if key == KeyUp { delta = -1 }//' UpDownStepTheColumn
+mutate timepicker/time_picker_behavior.zi timepicker/time_picker_laws.zi 's/        if key == KeyUp { delta = -1 }//' UpDownStepTheColumn
 # A popup taller than a short window.
-mutate time_picker.zi time_picker_laws.zi 's/    if height > view.height { height = view.height }//' SmallViewStaysOnScreen
+mutate timepicker/time_picker_behavior.zi timepicker/time_picker_laws.zi 's/    if height > view.height { height = view.height }//' SmallViewStaysOnScreen
 # A direction pad whose hub swallows half of every arm.
-mutate direction_pad.zi direction_pad_laws.zi 's/    hub := half \/ 5.0/    hub := half \/ 2.0/' OutsideHubPressesAnArm
+mutate dpad/dpad.zi dpad/direction_pad_laws.zi 's/    hub := half \/ 5.0/    hub := half \/ 2.0/' OutsideHubPressesAnArm
 # Ties going up or down instead of left or right.
-mutate direction_pad.zi direction_pad_laws.zi 's/    if across >= along { return ifx dx < 0.0 then 0 else 2 }/    if across > along { return ifx dx < 0.0 then 0 else 2 }/' LeftArm
+mutate dpad/dpad.zi dpad/direction_pad_laws.zi 's/    if across >= along { return ifx dx < 0.0 then 0 else 2 }/    if across > along { return ifx dx < 0.0 then 0 else 2 }/' LeftArm
 # Sliding onto another arm waiting for the repeat instead of turning at once.
-mutate direction_pad.zi direction_pad_laws.zi 's/    if arm != last {/    if arm != last \&\& last < 0 {/' PressStepsAtOnce
+mutate dpad/dpad.zi dpad/direction_pad_laws.zi 's/    if arm != last {/    if arm != last \&\& last < 0 {/' PressStepsAtOnce
 # A held arm repeating every frame.
-mutate direction_pad.zi direction_pad_laws.zi 's/    } else if repeat > 0.0 \&\& now >= next {/    } else if repeat > 0.0 {/' HeldArmRepeats
+mutate dpad/dpad.zi dpad/direction_pad_laws.zi 's/    } else if repeat > 0.0 \&\& now >= next {/    } else if repeat > 0.0 {/' HeldArmRepeats
 # Letting go remembering the arm, so pressing it again waits.
-mutate direction_pad.zi direction_pad_laws.zi 's/        hold.last = -1$/        hold.last = last/' PressAgainStepsAtOnce
+mutate dpad/dpad.zi dpad/direction_pad_laws.zi 's/        hold.last = -1$/        hold.last = last/' PressAgainStepsAtOnce
 finish_batch
 echo "Kryon laws reject all mutations"

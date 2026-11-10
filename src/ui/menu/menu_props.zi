@@ -1,0 +1,77 @@
+#import "transition"
+#import "geometry"
+#import "menu_behavior"
+
+MenuItemKind :: enum {
+    MenuCommand :: 0
+    MenuCheck :: 1
+    MenuRadio :: 2
+    MenuSeparator :: 3
+    MenuSubmenu :: 4
+}
+
+MenuItem :: struct {
+    kind: MenuItemKind
+    label: string
+    accelerator: string
+    id: s32
+    disabled: bool
+    checked: bool
+    submenu: []MenuItem
+}
+
+MenuGroup :: struct {
+    label: string
+    items: []MenuItem
+}
+
+// The application retains navigation between frames, never the item slices.
+MenuState :: struct {
+    initialized: bool
+    open_index: s32
+    top_index: s32
+    focused: bool
+    depth: s32
+    selected: [4]s32
+    scroll: [4]s32
+    reveal: bool
+    visual_open_index: s32
+    visual_depth: s32
+    visual_selected: [4]s32
+    visual_scroll: [4]s32
+    visual_signature: u64
+    pointer_valid: bool
+    pointer_x: float32
+    pointer_y: float32
+}
+
+MenuResult :: struct {
+    activated_id: s32
+    open_index: s32
+    focused: bool
+    animating: bool
+}
+
+MenuProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    bounds: Rectangle
+    scale: float32
+    focus_requested: bool
+    input: MenuKeyboardInput
+    // Null keeps immediate rendering. Retain one state per widget identity.
+    motion: *TransitionMotionState
+    now: float64
+    reduced_motion: bool
+}
+
+#program_export
+MenuStateInit :: (state: *MenuState) {
+    if state == null { return }
+    state.* = MenuState.{}
+    state.initialized = true
+    state.open_index = -1
+    state.visual_open_index = -1
+    for depth: 0..3 { state.selected[depth] = -1 }
+}

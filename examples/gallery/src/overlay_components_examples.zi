@@ -1,0 +1,221 @@
+using UI :: #import "kryon/Widgets";
+#import "tooltip"
+#import "tooltip_props"
+#import "sheet"
+#import "sheet_props"
+#import "command_palette"
+#import "command_palette_props"
+#import "hover_card"
+#import "hover_card_props"
+#import "confirm_popover"
+#import "confirm_popover_props"
+#import "guided_tour"
+#import "guided_tour_props"
+#import "tooltip_common"
+
+SceneName :: (index: s32) -> string {
+    if index == 0 { return "Tooltip" }
+    if index == 1 { return "Sheet" }
+    if index == 2 { return "CommandPalette" }
+    if index == 3 { return "HoverCard" }
+    if index == 4 { return "ConfirmPopover" }
+    if index == 5 { return "GuidedTour" }
+    return ""
+}
+
+viewport: Rectangle;
+anchor: Rectangle;
+tooltip_state: TooltipState;
+sheet_state: SheetState;
+palette_state: CommandPaletteState;
+hover_state: HoverCardState;
+confirm_state: ConfirmPopoverState;
+tour_state: GuidedTourState;
+commands: [3]CommandPaletteCommand;
+tour_steps: [2]GuidedTourStep;
+palette_open: bool;
+typed: [128]u8;
+overlays_ready: bool;
+live_sheet_open: bool;
+live_confirm_open: bool;
+live_tour_step: s32 = -1;
+live_typed: [128]u8;
+live_pointer: OverlayPointer;
+hover_state_bounds: Rectangle;
+live_keys: OverlayKeyInput;
+
+Prepare :: (session: Session, scene: s32) {
+    viewport = GalleryBounds(Rectangle.{0.0, 0.0, 480.0, 320.0})
+    anchor = GalleryBounds(Rectangle.{38.0, 128.0, 126.0, 34.0})
+    if !overlays_ready {
+        tooltip_state = TooltipStateFor(700)
+        sheet_state = SheetStateFor()
+        palette_state = CommandPaletteStateFor(701)
+        hover_state = HoverCardStateFor()
+        confirm_state = ConfirmPopoverStateFor()
+        tour_state = GuidedTourStateFor(0)
+        commands[0] = .{.title = "Find component", .group = "Search", .shortcut = "Ctrl+F", .action = 11}
+        commands[1] = .{.title = "Format source", .group = "Edit", .shortcut = "Ctrl+Shift+F", .action = 12}
+        commands[2] = .{.title = "Focus outline", .group = "Accessibility", .action = 13}
+        tour_steps[0] = .{.target_key = 710, .target = GalleryBounds(Rectangle.{168.0, 112.0, 144.0, 42.0}), .title = "Highlight the target", .body = "The scrim leaves the current control available.", .placement = .OverlayPlaceBottomStart}
+        tour_steps[1] = .{.target_key = 711, .target = GalleryBounds(Rectangle.{168.0, 180.0, 144.0, 42.0}), .title = "Finish the tour", .body = "Back, Next, Done, and Skip are explicit actions.", .placement = .OverlayPlaceTopStart}
+        overlays_ready = true
+    }
+}
+
+Compose :: (session: Session, scene: s32, disabled: bool) {
+    Prepare(session, scene)
+    if gallery_live {
+        pointer := PointerSample(session)
+        live_pointer = .{.x = pointer.x, .y = pointer.y, .down = pointer.down,
+            .pressed = pointer.pressed, .released = pointer.released,
+            .over_anchor = PointInBounds(pointer.x, pointer.y, anchor)}
+        live_keys = .{}
+        if scene != 2 {
+            key := KeyboardTake(session)
+            live_keys.escape = key == KeyEscape; live_keys.enter = key == KeyEnter
+            live_keys.left = key == KeyLeft; live_keys.right = key == KeyRight
+        }
+        tour_steps[0].target = GalleryBounds(Rectangle.{168.0, 112.0, 144.0, 42.0})
+        tour_steps[1].target = GalleryBounds(Rectangle.{168.0, 180.0, 144.0, 42.0})
+    }
+    if scene == 0 {
+        Text(session, TextProps.{.key = 700, .bounds = anchor, .text = "Save source", .font = 17})
+        props: TooltipProps = .{.key = 701, .anchor = anchor, .viewport = viewport,
+            .text = "Save the maintained Ziran source", .shortcut = "Ctrl+S",
+            .placement = .OverlayPlaceBottom, .gap = 8.0, .max_width = 240.0,
+            .delay_ms = 400.0, .passive_delay_ms = 800.0, .warm_ms = 250.0,
+            .now_ms = 0, .disabled = disabled, .style = TooltipDefaultStyle()}
+        if gallery_live {
+            props.pointer = live_pointer; props.now_ms = cast(s64)(gallery_now * 1000.0)
+            props.style.motion_reduced = gallery_reduced_motion
+        } else {
+            props.pointer.over_anchor = true
+            unused TooltipApply(*tooltip_state, props)
+            props.now_ms = 500
+        }
+        unused Tooltip(session, props, *tooltip_state)
+    } else if scene == 1 {
+        props: SheetProps = .{.key = 710, .title = "Publish checklist",
+            .description = "Run local tests, review captures, then stop.",
+            .close_label = "Close", .open = true, .side = .OverlaySideBottom,
+            .size = 156.0, .viewport = viewport, .scrim_close = true,
+            .drag_close_distance = 72.0, .drag_enabled = true, .now_ms = 500,
+            .disabled = disabled, .surface_style = SheetSurfaceDefaultStyle(),
+            .scrim_style = SheetScrimDefaultStyle()}
+        if gallery_live {
+            if Button(session, ButtonProps.{.key = 709, .bounds = anchor, .label = "Open sheet", .disabled = disabled}) != 0 { live_sheet_open = true }
+            props.open = live_sheet_open
+            props.now_ms = cast(s64)(gallery_now * 1000.0)
+            props.input.pointer = live_pointer; props.input.keys = live_keys
+            props.surface_style.motion_reduced = gallery_reduced_motion
+        }
+        sheet := Sheet(session, props, *sheet_state)
+        if gallery_live && sheet.close_requested { live_sheet_open = false }
+    } else if scene == 2 {
+        viewport = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0})
+        if Button(session, ButtonProps.{.key = 719, .bounds = anchor, .label = "Open palette", .disabled = disabled}) != 0 {
+            palette_open = true
+        }
+        input_key := KeyboardTake(session)
+        field_input := TextFieldInputFor(input_key, KeyboardModifiers(session), TypedTextTake(session, typed[:]))
+        palette_input: CommandPaletteInput
+        palette_input.activate_index = -1
+        palette_input.text = field_input
+        palette_input.escape = field_input.escape
+        palette_input.enter = field_input.commit
+        palette_input.up = input_key == KeyUp
+        palette_input.down = input_key == KeyDown
+        props: CommandPaletteProps = .{.key = 720, .owner = 701, .open = palette_open,
+            .placeholder = "Search commands", .viewport = viewport, .width = 380.0,
+            .maximum_height = 96.0, .now_ms = 500, .commands = commands[:],
+            .input = palette_input,
+            .disabled = disabled, .surface_style = CommandPaletteSurfaceDefaultStyle(),
+            .item_style = CommandPaletteItemDefaultStyle(),
+            .scrim_style = CommandPaletteSurfaceDefaultStyle()}
+        if gallery_live {
+            props.now_ms = cast(s64)(gallery_now * 1000.0)
+            props.surface_style.motion_reduced = gallery_reduced_motion
+        }
+        palette := CommandPalette(session, props, *palette_state)
+        if palette.close_requested || palette.chosen_index >= 0 { palette_open = false }
+    } else if scene == 3 {
+        Text(session, TextProps.{.key = 730, .bounds = anchor, .text = "Hover source", .font = 17})
+        props: HoverCardProps = .{.key = 731, .anchor = anchor, .viewport = viewport,
+            .title = "Source preview", .body = "Every card opens from caller-owned state.",
+            .action_label = "Open", .action = 31, .placement = .OverlayPlaceBottom,
+            .width = 270.0, .delay_ms = 350.0, .grace_ms = 150.0,
+            .movement_tolerance = 6.0, .gap = 8.0, .now_ms = 0,
+            .disabled = disabled, .style = HoverCardDefaultStyle(),
+            .action_style = HoverCardActionDefaultStyle()}
+        if gallery_live {
+            props.pointer = live_pointer
+            props.pointer.over_content = PointInBounds(live_pointer.x, live_pointer.y, hover_state_bounds)
+            props.now_ms = cast(s64)(gallery_now * 1000.0)
+            props.style.motion_reduced = gallery_reduced_motion
+        } else {
+            props.pointer.over_anchor = true
+            unused HoverCardApply(*hover_state, props)
+            props.now_ms = 450
+        }
+        card := HoverCard(session, props, *hover_state)
+        hover_state_bounds = card.bounds
+    } else if scene == 4 {
+        if !gallery_live { Text(session, TextProps.{.key = 740, .bounds = anchor, .text = "Delete source", .font = 17}) }
+        props: ConfirmPopoverProps = .{.key = 741, .title = "Delete source?",
+            .description = "This action cannot be undone.", .confirm_label = "Delete",
+            .cancel_label = "Cancel", .anchor = anchor, .viewport = viewport,
+            .placement = .OverlayPlaceBottom, .width = 270.0, .gap = 8.0,
+            .danger = true, .open = true, .now_ms = 500, .disabled = disabled,
+            .style = ConfirmPopoverDefaultStyle(),
+            .confirm_style = ConfirmPopoverConfirmDefaultStyle(true),
+            .cancel_style = ConfirmPopoverDefaultStyle()}
+        props.focus.anchor_focused = true
+        if gallery_live {
+            if Button(session, ButtonProps.{.key = 739, .bounds = anchor, .label = "Delete source", .disabled = disabled}) != 0 { live_confirm_open = true }
+            props.open = live_confirm_open; props.pointer = live_pointer; props.keys = live_keys
+            props.now_ms = cast(s64)(gallery_now * 1000.0)
+            props.style.motion_reduced = gallery_reduced_motion
+        }
+        confirmed := ConfirmPopover(session, props, *confirm_state)
+        if gallery_live && (confirmed.closed || confirmed.confirmed || confirmed.cancelled) { live_confirm_open = false }
+    } else {
+        Text(session, TextProps.{.key = 750, .bounds = tour_steps[0].target, .text = "Catalog target", .font = 17})
+        props: GuidedTourProps = .{.key = 751, .steps = tour_steps[:], .step = 0,
+            .width = 290.0, .padding = 12.0, .block_target = false,
+            .next_label = "Next", .back_label = "Back", .done_label = "Done",
+            .skip_label = "Skip", .count_format = "%d of %d", .viewport = viewport,
+            .now_ms = 500, .disabled = disabled,
+            .card_style = GuidedTourCardDefaultStyle(),
+            .scrim_style = GuidedTourScrimDefaultStyle(),
+            .button_style = GuidedTourButtonDefaultStyle()}
+        if gallery_live {
+            if Button(session, ButtonProps.{.key = 749, .bounds = anchor, .label = "Start tour", .disabled = disabled}) != 0 { live_tour_step = 0 }
+            props.step = live_tour_step; props.input.pointer = live_pointer
+            props.input.escape = live_keys.escape; props.input.enter = live_keys.enter
+            props.input.left = live_keys.left; props.input.right = live_keys.right
+            props.now_ms = cast(s64)(gallery_now * 1000.0)
+            props.card_style.motion_reduced = gallery_reduced_motion
+        }
+        tour := GuidedTour(session, props, *tour_state)
+        if gallery_live { live_tour_step = tour.step }
+    }
+}
+
+// The native/capture default is unchanged. Website previews supply their own
+// rectangle; heights and type remain readable while horizontal space reflows.
+gallery_view: Rectangle = .{0.0, 0.0, 480.0, 320.0};
+gallery_live: bool;
+gallery_now: float32;
+gallery_reduced_motion: bool;
+SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion: bool) {
+    gallery_view = view; gallery_live = live; gallery_now = now
+    gallery_reduced_motion = reduced_motion
+}
+GalleryBounds :: (bounds: Rectangle) -> Rectangle {
+    if !gallery_live { return bounds }
+    bounds.x = gallery_view.x + bounds.x * gallery_view.width / 480.0
+    bounds.y += gallery_view.y
+    bounds.width *= gallery_view.width / 480.0
+    return bounds
+}

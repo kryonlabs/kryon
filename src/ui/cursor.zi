@@ -58,8 +58,7 @@ CursorShapeForWidget :: (kind: WidgetKind,
     disabled: bool) -> s32 {
     if disabled { return cast(s32)CursorDisabled }
     if kind == cast(WidgetKind)WidgetKindTextField ||
-        kind == cast(WidgetKind)WidgetKindTextArea ||
-        kind == cast(WidgetKind)WidgetKindSelectable {
+        kind == cast(WidgetKind)WidgetKindTextArea {
         return cast(s32)CursorText
     }
     if kind == cast(WidgetKind)WidgetKindButton ||
@@ -72,6 +71,7 @@ CursorShapeForWidget :: (kind: WidgetKind,
         kind == cast(WidgetKind)WidgetKindDropdown ||
         kind == cast(WidgetKind)WidgetKindCollapsible ||
         kind == cast(WidgetKind)WidgetKindTabBar ||
+        kind == cast(WidgetKind)WidgetKindSelectable ||
         kind == cast(WidgetKind)WidgetKindColorPicker {
         return cast(s32)CursorClickable
     }

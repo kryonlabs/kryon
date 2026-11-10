@@ -6,9 +6,9 @@ build=$repo/build/frame-input-replay
 mkdir -p "$build"
 exec 8>"$build/lock"
 flock 8
-"$ziran" ir --root "$repo/tests/fixtures" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests/fixtures" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$build/ir" "$repo/tests/fixtures/frame_input_replay.zi"
-"$ziran" bundle --root "$repo/tests/fixtures" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$repo/tests/fixtures" $kryon_ui_args \
     --module-path "$ziran_root/std" --entry frame_input_replay:Frame \
     -o "$build/source.zx" "$repo/tests/fixtures/frame_input_replay.zi"
 "$ziran" bundle --root "$build/ir" --module-path "$build/ir" \

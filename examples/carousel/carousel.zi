@@ -1,0 +1,29 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/frame_snapshot"
+
+state: CarouselState;
+opened: s32 = -1;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Carousel", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    input := CaptureFrameInput(session)
+    now := cast(float64)input.elapsed_ms / 1000.0
+    items := CarouselItem.[.{.label = "Explore", .portrait = "assets/pfp.webp", .landscape = "assets/pfp.webp", .caption = "Discover the collection", .action = "Open"}, .{.label = "Create", .portrait = "assets/pfp.webp", .landscape = "assets/pfp.webp", .caption = "Start a new project", .action = "Create"}]
+    for index: 0..cast(s32)items.count - 1 { items[index].disabled = example_disabled }
+    if example_reduced_motion { state.position = cast(float32)state.selected }
+    result := Carousel(session, CarouselProps.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, 320.0}, .now = now, .label = "Featured projects", .previous_label = "Previous", .next_label = "Next", .scale = 1.0}, items[:], *state)
+    if result >= 0 { opened = result }
+    if opened >= 0 { Text(session, TextProps.{.disabled = example_disabled, .key = 2, .bounds = .{bounds.x, bounds.y + 336.0, bounds.width, 36.0}, .text = items[opened].label}) }
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

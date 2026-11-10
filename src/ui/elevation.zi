@@ -1,4 +1,8 @@
+#import "control_props"
 #import "geometry"
+Theme :: #import "theme";
+
+using ElevationRole;
 
 // Fixed contact strips under the straight part of a rounded surface. Drawing
 // only these pixels avoids rasterizing a full translucent rounded outline.
@@ -21,4 +25,22 @@ ElevationEdgeAlpha :: (layer: s32) -> u32 {
     if layer == 1 { return cast(u32)24 }
     if layer == 2 { return cast(u32)10 }
     return cast(u32)0
+}
+
+#program_export
+ElevationAlphaForRole :: (role: ElevationRole, layer: s32) -> u32 {
+    shadows := Theme.CurrentTheme().shadows
+    opacity: float32 = 0.0
+    if role == .ElevationRoleRest && layer == 1 { opacity = shadows.rest.opacity }
+    if role == .ElevationRoleRaised {
+        if layer == 1 { opacity = shadows.raised[0].opacity }
+        if layer == 2 { opacity = shadows.raised[1].opacity }
+    }
+    if role == .ElevationRoleFloating {
+        if layer == 1 { opacity = shadows.floating[0].opacity }
+        if layer == 2 { opacity = shadows.floating[1].opacity }
+    }
+    if opacity < 0.0 { opacity = 0.0 }
+    if opacity > 1.0 { opacity = 1.0 }
+    return cast(u32)(opacity * 255.0 + 0.5)
 }

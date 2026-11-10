@@ -1,13 +1,71 @@
 // A file the application ships: on Android a path inside the APK's assets,
-// elsewhere an ordinary file. raylib resolves both, so native hosts read
-// their bundles and data the same way on every platform.
+// elsewhere an ordinary file.
 #import "app_asset_path"
+#import "android_jni"
+#import "std/file_linux"
 #import "std/c_string"
 #import "std/byte_text_linux"
 
-app_asset_raylib :: #system_library "raylib";
-AppAssetLoad :: (path: *u8, count: *s32) -> *u8 #foreign app_asset_raylib "LoadFileData";
-AppAssetUnload :: (bytes: *u8) #foreign app_asset_raylib "UnloadFileData";
+#if #defined(ANDROID_BUILD) {
+    app_asset_android :: #system_library "android";
+    AppAssetOpen :: (manager: *void, path: *u8, mode: s32) -> *void #foreign app_asset_android "AAssetManager_open";
+    AppAssetClose :: (asset: *void) #foreign app_asset_android "AAsset_close";
+    AppAssetLength :: (asset: *void) -> s32 #foreign app_asset_android "AAsset_getLength";
+    AppAssetRead :: (asset: *void, output: *void, count: s32) -> s32 #foreign app_asset_android "AAsset_read";
+}
+app_asset_c :: #system_library "c";
+AppAssetAllocate :: (count: usize, size: usize) -> *u8 #foreign app_asset_c "calloc";
+AppAssetRelease :: (memory: *void) #foreign app_asset_c "free";
+
+AppAssetReadFile :: (path: *u8, count: *s64) -> *u8 {
+    file := OpenRead(TextFromCString(path))
+    if !file.valid { return null }
+    length := FileSize(file)
+    if length <= 0 || length > 2147483647 {
+        unused CloseFile(file)
+        return null
+    }
+    bytes := AppAssetAllocate(cast(usize)length, 1)
+    if bytes == null {
+        unused CloseFile(file)
+        return null
+    }
+    read := ReadAt(file, BytesFromPointer(bytes, cast(u64)length), 0)
+    unused CloseFile(file)
+    if read != length {
+        AppAssetRelease(cast(*void)bytes)
+        return null
+    }
+    if count != null { count[0] = length }
+    return bytes
+}
+
+AppAssetReadAndroid :: (path: *u8, count: *s64) -> *u8 {
+    #if #defined(ANDROID_BUILD) {
+        app := JniGetAndroidApp()
+        if app == null || app.activity == null || app.activity.asset_manager == null { return null }
+        asset := AppAssetOpen(app.activity.asset_manager, path, 2)
+        if asset == null { return null }
+        length := AppAssetLength(asset)
+        if length <= 0 {
+            AppAssetClose(asset)
+            return null
+        }
+        bytes := AppAssetAllocate(cast(usize)length, 1)
+        if bytes == null || AppAssetRead(asset, cast(*void)bytes, length) != length {
+            AppAssetRelease(cast(*void)bytes)
+            AppAssetClose(asset)
+            return null
+        }
+        AppAssetClose(asset)
+        if count != null { count[0] = length }
+        return bytes
+    } else {
+        unused path
+        unused count
+        return null
+    }
+}
 
 // The whole file, or "" when it is missing or empty. Release it with
 // FreeAppAsset.
@@ -16,16 +74,20 @@ ReadAppAsset :: (path: string) -> string {
     resolved_path := ResolveAppAsset(path, resolved[:])
     name: [4096]u8
     if !CopyCString(resolved_path, name[:]) { return "" }
-    count: s32
-    bytes := AppAssetLoad(*name[0], *count)
+    count: s64
+    #if #defined(ANDROID_BUILD) {
+        bytes := AppAssetReadAndroid(*name[0], *count)
+    } else {
+        bytes := AppAssetReadFile(*name[0], *count)
+    }
     if bytes == null { return "" }
-    if count <= 0 { AppAssetUnload(bytes); return "" }
+    if count <= 0 { AppAssetRelease(cast(*void)bytes); return "" }
     return TextFromBytes(BytesFromPointer(bytes, cast(u64)count))
 }
 
 FreeAppAsset :: (data: string) {
     if data.count > 0 {
         bytes := cast(*TextDescriptor)(*data)
-        AppAssetUnload(bytes.data)
+        AppAssetRelease(cast(*void)bytes.data)
     }
 }

@@ -1,0 +1,55 @@
+:root {
+  --save-motion: 123ms;
+}
+
+Button.primary {
+  background: #111111;
+  color: #ffffff;
+  min-height: 32px;
+  width: 180px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+Button#save {
+  background: #102030;
+  color: #f0e0d0;
+  min-height: 64px;
+  line-height: 1.4;
+  font-family: "Kryon Css Test";
+  font-size: 17px;
+  transition: opacity 123ms linear;
+  -kryon-font-role: body;
+  -kryon-elevation: floating;
+  -kryon-motion-duration: var(--save-motion);
+  -kryon-motion-multiplier: 1.25;
+  -kryon-motion-easing: standard;
+  -kryon-motion-reduced: no-preference;
+}
+
+Button#other {
+  background: #302010;
+}
+
+Button#state {
+  background: #203040;
+}
+
+Button#state:selected {
+  background: #405060;
+}
+
+Button#focus:focus {
+  background: #506070;
+}
+
+Button#disabled:disabled {
+  background: #607080;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  Button#save {
+    -kryon-motion-duration: 0ms;
+  }
+}
+

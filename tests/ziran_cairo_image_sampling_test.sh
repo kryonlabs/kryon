@@ -19,14 +19,14 @@ PY
 libs="$(pkg-config --libs cairo freetype2 pangocairo fontconfig glib-2.0) -ldl -lm -lpthread"
 source="$repo/tests/cairo_image_sampling_test.zi"
 image_ziran ir --root "$repo/tests" --module-path "$repo/src/backend" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" "$source"
+    $kryon_ui_args --module-path "$ziran_root/std" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source; root=$repo/tests
     if test "$form" = saved; then input=$work/ir/cairo_image_sampling_test.zir; root=$work/ir; fi
     for target in c; do
         output=$work/$target-$form
         image_ziran build --root "$root" --module-path "$repo/src/backend" \
-            --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+            $kryon_ui_args --module-path "$ziran_root/std" \
             --target="$target" --no-main -o "$output" "$input"
         suffix=c; header=h; compiler=${CC:-cc}; standard=c11
         printf '#include "cairo_image_sampling_test.%s"\nint main(int argc, char **argv) { return cairo_image_sampling_test_main(argc, (uint8_t **)argv); }\n' "$header" > "$output/entry.$suffix"

@@ -1,0 +1,30 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/swipe_row_props"
+#import "kryon/frame_snapshot"
+
+state: SwipeRowState;
+archived: bool;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Swipe row", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    input := CaptureFrameInput(session)
+    now := cast(float64)input.elapsed_ms / 1000.0
+    result := SwipeRow(session, SwipeRowProps.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, 64.0}, .label = "Swipe to archive", .now = now, .start = .{.fill = .{35, 140, 90, 255}, .icon_shape = "S1.7rr:M3 12L9 18L21 6", .icon_color = .{255, 255, 255, 255}}}, state)
+    state = result.state
+    if result.swiped_start { archived = true }
+    label := "Swipe right to archive"
+    if archived { label = "Archived" }
+    Text(session, TextProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x + result.offset, bounds.y + 12.0, bounds.width, 40.0}, .text = label})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

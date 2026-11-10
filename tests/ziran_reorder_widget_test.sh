@@ -10,10 +10,10 @@ fill=raster_shape:RasterRoundedRectangle=reorder_widget_host:RasterRoundedRectan
 outline=raster_shape:RasterRoundedRectangleOutline=reorder_widget_host:RasterRoundedRectangleOutline
 
 "$tool_dir/zi2zir" --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" -o "$work/ir" \
+    $kryon_ui_args --module-path "$ziran_root/std" -o "$work/ir" \
     "$repo/tests/reorder_widget_behavior.zi"
 "$tool_dir/zi2zx" bundle --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+    $kryon_ui_args --module-path "$ziran_root/std" \
     --bind "$fill" --bind "$outline" \
     --entry reorder_widget_behavior:main \
     -o "$work/source.zx" \
@@ -29,7 +29,7 @@ test "$("$tool_dir/ziran" run "$work/source.zx")" = 0
 test "$("$tool_dir/ziran" run "$work/saved.zx")" = 0
 
 "$tool_dir/ziran" build --target=c --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+    $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/c" \
     "$repo/tests/reorder_widget_behavior.zi"
 "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections \

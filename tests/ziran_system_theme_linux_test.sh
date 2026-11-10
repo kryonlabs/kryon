@@ -3,7 +3,7 @@
 
 source=$repo/tests/system_theme_linux_behavior.zi
 "$ziran" build --target=c --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$repo/src/backend" \
+    $kryon_ui_args --module-path "$repo/src/backend" \
     --module-path "$ziran_root/std" -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c -o "$work/theme-test"

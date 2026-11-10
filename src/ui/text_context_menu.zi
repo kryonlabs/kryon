@@ -3,7 +3,7 @@
 // field by key, opens where the secondary button was released inside the
 // field, and hands the command chosen back to that field, which runs it on its
 // next frame as if the key had been pressed.
-#import "context_menu_widget"
+#import "contextmenu"
 #import "geometry"
 #import "session"
 #import "system_clipboard"

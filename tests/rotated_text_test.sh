@@ -4,7 +4,7 @@ repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
 output=$repo/build/scratch/rotated-text/core
 mkdir -p "$output"
-"$ziran" build --target=c --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" build --target=c --root "$repo/tests" $kryon_ui_args \
     --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
     -o "$output" "$repo/tests/rotated_text_test.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections -Wl,--gc-sections \
@@ -23,7 +23,7 @@ set -- --bind font_metrics:MeasureGlyphWidth=pixmap:MeasureGlyphWidth \
     --bind raster_text:RasterTextRotated=pixmap:RasterTextRotated \
     --bind paint_queue:RasterImage=pixmap:RasterImage \
     --bind paint_queue:RasterImageMesh=pixmap:RasterImageMesh
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args \
     --module-path "$repo/src/backend" --module-path "$ziran_root/std" "$@" \
     --entry rotated_text_test:main -o "$output/test.zx" "$repo/tests/rotated_text_test.zi"
 test "$("$ziran" run "$output/test.zx")" = 0

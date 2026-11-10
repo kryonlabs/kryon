@@ -344,6 +344,7 @@ StyleFacts :: struct {
     kind: s32
     name: s32
     class_name: s32
+    id: s32
     role: s32
     tone: s32
     emphasis: s32
@@ -358,6 +359,7 @@ StyleSelector :: struct {
     kind: s32
     name: s32
     class_name: s32
+    id: s32
     role: s32
     tone: s32
     emphasis: s32
@@ -451,7 +453,7 @@ StyleIndexInstall :: () {
         state := installed_rules.items[source].state
         installed_selectors[i] = selector
         installed_states[i] = state
-        installed_fields |= installed_rules.items[source].style.fields & cast(u32)0x1ffff
+        installed_fields |= installed_rules.items[source].style.fields & cast(u32)0x1ffffff
         word := i / 64
         bit := cast(u64)1 << cast(u32)(i % 64)
         if selector.kind == 0 { installed_any_kind[word] |= bit }
@@ -482,7 +484,12 @@ StyleWithoutTypeface :: (source: StyleData) -> StyleData {
         .padding_x = source.padding_x, .padding_y = source.padding_y, .gap = source.gap,
         .font_size = source.font_size, .icon_size = source.icon_size, .offset_x = source.offset_x,
         .offset_y = source.offset_y, .background_end = source.background_end,
-        .material = source.material, .letter_spacing = source.letter_spacing}
+        .material = source.material, .letter_spacing = source.letter_spacing,
+        .min_height = source.min_height, .line_height = source.line_height,
+        .font_role = source.font_role, .elevation = source.elevation,
+        .motion_duration = source.motion_duration,
+        .motion_multiplier = source.motion_multiplier,
+        .motion_easing = source.motion_easing, .motion_reduced = source.motion_reduced}
 }
 
 #program_export
@@ -535,7 +542,7 @@ ResolveInstalledTextStyle :: (request: TextStyleRequest,
     kind: s32 = request.kind
     if kind <= 0 { kind = StyleKindText() }
     return ResolveInstalledStyleRules(base,
-        StyleTextFacts(0, request.class_name, kind, state), state)
+        StyleTextFacts(request.id, request.class_name, kind, state), state)
 }
 
 StylePriority :: struct {
@@ -564,6 +571,14 @@ StyleCascade :: struct {
     material_priority: StylePriority
     typeface_priority: StylePriority
     letter_spacing_priority: StylePriority
+    min_height_priority: StylePriority
+    line_height_priority: StylePriority
+    font_role_priority: StylePriority
+    elevation_priority: StylePriority
+    motion_duration_priority: StylePriority
+    motion_multiplier_priority: StylePriority
+    motion_easing_priority: StylePriority
+    motion_reduced_priority: StylePriority
 }
 #program_export
 StyleDefaultFacts :: (kind: s32) -> StyleFacts {
@@ -581,10 +596,10 @@ StyleDefaultFacts :: (kind: s32) -> StyleFacts {
 }
 
 #program_export
-StyleControlFacts :: (kind: s32, name: s32, class_name: s32, tone: s32,
+StyleControlFacts :: (kind: s32, id: s32, class_name: s32, tone: s32,
     emphasis: s32, size: s32, state: s32) -> StyleFacts {
     facts: StyleFacts = StyleDefaultFacts(kind)
-    facts.name = name
+    facts.id = id
     facts.class_name = class_name
     facts.tone = tone
     facts.emphasis = emphasis
@@ -594,19 +609,19 @@ StyleControlFacts :: (kind: s32, name: s32, class_name: s32, tone: s32,
 }
 
 #program_export
-StyleControlRoleFacts :: (kind: s32, name: s32, class_name: s32, role: s32,
+StyleControlRoleFacts :: (kind: s32, id: s32, class_name: s32, role: s32,
     tone: s32, emphasis: s32, size: s32, state: s32) -> StyleFacts {
-    facts: StyleFacts = StyleControlFacts(kind, name, class_name, tone,
+    facts: StyleFacts = StyleControlFacts(kind, id, class_name, tone,
         emphasis, size, state)
     facts.role = role
     return facts
 }
 
 #program_export
-StyleTextFacts :: (name: s32, class_name: s32, role: s32,
+StyleTextFacts :: (id: s32, class_name: s32, role: s32,
     state: s32) -> StyleFacts {
     facts: StyleFacts = StyleDefaultFacts(StyleKindText())
-    facts.name = name
+    facts.id = id
     facts.class_name = class_name
     facts.role = role
     facts.state = state
@@ -645,6 +660,9 @@ StyleSelectorMatches :: (selector: StyleSelector, facts: StyleFacts) -> bool {
         return false
     }
     if selector.class_name != 0 && selector.class_name != facts.class_name {
+        return false
+    }
+    if selector.id != 0 && selector.id != facts.id {
         return false
     }
     if !StyleMatchesOptional(selector.role, facts.role) {
@@ -716,6 +734,9 @@ StyleSelectorSpecificity :: (selector: StyleSelector) -> s32 {
     }
     if selector.class_name != 0 {
         classes = 1
+    }
+    if selector.id != 0 {
+        names += 2
     }
     if selector.name != 0 {
         names = 1
@@ -853,6 +874,54 @@ ApplyStyleRules :: (cascade: StyleCascade, rules: []StyleRule,
                 cascade.result.letter_spacing = rules[index].style.letter_spacing
                 cascade.result.fields = cascade.result.fields | cast(u32)StyleLetterSpacing
                 cascade.letter_spacing_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleMinHeight) != cast(u32)0 &&
+            StylePriorityWins(priority, cascade.min_height_priority) {
+                cascade.result.min_height = rules[index].style.min_height
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleMinHeight
+                cascade.min_height_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleLineHeight) != cast(u32)0 &&
+            StylePriorityWins(priority, cascade.line_height_priority) {
+                cascade.result.line_height = rules[index].style.line_height
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleLineHeight
+                cascade.line_height_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleFontRole) != cast(u32)0 &&
+            StylePriorityWins(priority, cascade.font_role_priority) {
+                cascade.result.font_role = rules[index].style.font_role
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleFontRole
+                cascade.font_role_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleElevation) != cast(u32)0 &&
+            StylePriorityWins(priority, cascade.elevation_priority) {
+                cascade.result.elevation = rules[index].style.elevation
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleElevation
+                cascade.elevation_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleMotionDuration) != cast(u32)0 &&
+            StylePriorityWins(priority, cascade.motion_duration_priority) {
+                cascade.result.motion_duration = rules[index].style.motion_duration
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleMotionDuration
+                cascade.motion_duration_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleMotionMultiplier) != cast(u32)0 &&
+            StylePriorityWins(priority, cascade.motion_multiplier_priority) {
+                cascade.result.motion_multiplier = rules[index].style.motion_multiplier
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleMotionMultiplier
+                cascade.motion_multiplier_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleMotionEasing) != cast(u32)0 &&
+            StylePriorityWins(priority, cascade.motion_easing_priority) {
+                cascade.result.motion_easing = rules[index].style.motion_easing
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleMotionEasing
+                cascade.motion_easing_priority = priority
+            }
+            if (rules[index].style.fields & cast(u32)StyleMotionReduced) != cast(u32)0 &&
+            StylePriorityWins(priority, cascade.motion_reduced_priority) {
+                cascade.result.motion_reduced = rules[index].style.motion_reduced
+                cascade.result.fields = cascade.result.fields | cast(u32)StyleMotionReduced
+                cascade.motion_reduced_priority = priority
             }
             if (rules[index].style.fields & cast(u32)StyleIconSize) != cast(u32)0 &&
             StylePriorityWins(priority, cascade.icon_size_priority) {

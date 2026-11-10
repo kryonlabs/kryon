@@ -79,14 +79,14 @@ def drive(probe):
 
 def main():
     if len(sys.argv)>1 and sys.argv[1]=='--drive': return drive(Path(sys.argv[2]))
-    from toolchain import ZIRAN,ZIRAN_ROOT
+    from toolchain import UI_MODULE_ARGS, ZIRAN,ZIRAN_ROOT
     WORK.mkdir(parents=True,exist_ok=True)
     env=os.environ.copy()
     for key in ('DISPLAY','WAYLAND_DISPLAY','WAYLAND_SOCKET','XAUTHORITY','DBUS_SESSION_BUS_ADDRESS',
                 'GDK_DISPLAY','SESSION_MANAGER','ICEAUTHORITY'):env.pop(key,None)
     env.update(YUE_DESKTOP_RECOVERY='0',TMPDIR=str(WORK),KRYON_PRIVATE_XVFB='1',SDL_VIDEODRIVER='x11')
     source=ROOT/'tests/desktop_native_test.zi'
-    common=['--root',ROOT/'tests','--module-path',ROOT/'src/ui','--module-path',ROOT/'src/backend','--module-path',ZIRAN_ROOT/'std']
+    common=['--root',ROOT/'tests',*UI_MODULE_ARGS,'--module-path',ROOT/'src/backend','--module-path',ZIRAN_ROOT/'std']
     for package in ('webp','image_codec','avif'):
         package_root=Path(subprocess.check_output([str(ZIRAN),'pkg','path',package],cwd=ROOT,text=True).strip())
         common+=['--module-path',package+'='+str(package_root/'src')]

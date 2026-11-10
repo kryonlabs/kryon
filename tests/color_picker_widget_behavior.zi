@@ -1,9 +1,9 @@
 #import "session"
 #import "widget_test_session"
 
-#import "color_picker"
+#import "color_picker_behavior"
 #import "color_picker_props"
-#import "color_picker_widget"
+#import "colorpicker"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"

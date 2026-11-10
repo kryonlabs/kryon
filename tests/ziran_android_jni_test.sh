@@ -20,6 +20,15 @@ module=$repo/src/backend/android_jni.zi
         '#include "android_jni.h"' \
         '_Static_assert(sizeof(JniValue) == sizeof(jvalue), "JNI value size");' \
         '_Static_assert(_Alignof(JniValue) == _Alignof(jvalue), "JNI value alignment");'
+    # The lifecycle callback values must match the NDK, independently of the
+    # deterministic host fixture's use of the Ziran constants.
+    for pair in InitWindow:INIT_WINDOW TermWindow:TERM_WINDOW WindowResized:WINDOW_RESIZED \
+        Redraw:WINDOW_REDRAW_NEEDED GainedFocus:GAINED_FOCUS LostFocus:LOST_FOCUS \
+        Resume:RESUME Pause:PAUSE Destroy:DESTROY; do
+        value=$(sed -n "s/^AndroidNativeCommand${pair%%:*} :: \([0-9]*\)$/\1/p" "$repo/src/backend/android_native.zi")
+        printf '_Static_assert(%s == APP_CMD_%s, "native command %s");\n' \
+            "$value" "${pair#*:}" "${pair%%:*}"
+    done
     for pair in callbacks:callbacks vm:vm env:env activity:clazz internal_data_path:internalDataPath \
         external_data_path:externalDataPath sdk_version:sdkVersion instance:instance asset_manager:assetManager; do
         printf '_Static_assert(offsetof(NativeActivity, %s) == offsetof(ANativeActivity, %s), "activity %s");\n' \

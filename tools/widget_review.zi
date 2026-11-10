@@ -12,7 +12,7 @@ using Scenes :: #import "scenes";
 #import "tree_draw"
 #import "page_text"
 #import "flow"
-#import "paned_view"
+#import "panedview"
 #import "paned_view_props"
 #import "transition"
 ReviewTheme :: #import "theme";

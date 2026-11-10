@@ -1,7 +1,7 @@
 // JNI uses a stable, indexed function table. These declarations mirror the
 // Android NDK JNI 1.6 ABI; calls use the A variants with explicit jvalue
-// arrays. The Android host attaches to the NativeActivity's Java VM through
-// raylib's GetAndroidApp; applications keep their own JNI_OnLoad and register
+// arrays. The Android host receives the NativeActivity's JavaVM from its
+// direct NativeActivity app; applications keep their own JNI_OnLoad and register
 // the canonical natives through android_device's registrar.
 #import "c_string"
 #import "std/byte_text_linux"
@@ -195,10 +195,9 @@ NativeAndroidApp :: struct {
 // libraries.
 JNI_ANDROID :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
 
-#if JNI_ANDROID {
-    raylib :: #system_library "raylib";
-    JniGetAndroidApp :: () -> *NativeAndroidApp #foreign raylib "GetAndroidApp";
+jni_android_app: *NativeAndroidApp;
 
+#if JNI_ANDROID {
     android :: #system_library "android";
     NativeActivityFinish :: (activity: *void) #foreign android "ANativeActivity_finish";
 
@@ -206,6 +205,8 @@ JNI_ANDROID :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined
     JniThreadSelf :: () -> *void #foreign libc "pthread_self";
     JniRealPath :: (path: *u8, output: *u8) -> *u8 #foreign libc "realpath";
 }
+
+JniGetAndroidApp :: () -> *NativeAndroidApp { return jni_android_app }
 
 // Each long-lived host thread keeps its own JNI attachment. The render
 // owner and app worker must never share an attachment flag or a JNIEnv.

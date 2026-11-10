@@ -1,0 +1,31 @@
+[package]
+name = "swipearea"
+entry = "swipearea.zi"
+module_roots = ["."]
+tool = "kryon"
+
+
+[toolchain]
+git = "https://github.com/ziranlang/ziran.git"
+ref = "1d616e3a1761dd4e4a1c5a960c165d30ba16da29"
+
+[tool.kryon]
+default_profile = "desktop"
+
+[tool.kryon.profiles.desktop]
+backend = "desktop"
+
+[tool.kryon.profiles.web]
+backend = "canvas"
+
+[tool.kryon.profiles.portable]
+backend = "desktop"
+codegen = "zx"
+
+[tool.kryon.profiles.portable_web]
+backend = "canvas"
+codegen = "zx"
+
+[dependencies.kryon]
+git = "https://github.com/kryonlabs/kryon.git"
+ref = "master"

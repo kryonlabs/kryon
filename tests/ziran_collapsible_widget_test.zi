@@ -1,9 +1,9 @@
 #import "session"
 #import "widget_test_session"
 
-#import "collapsible"
+#import "collapsible_behavior"
 #import "collapsible_props"
-#import "collapsible_widget"
+#import "collapsible"
 #import "geometry"
 #import "paint_queue"
 #import "semantic"

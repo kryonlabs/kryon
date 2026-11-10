@@ -1,0 +1,194 @@
+#import "geometry"
+#import "grid"
+#import "grid_props"
+#import "layout_behavior"
+#import "session"
+#import "tree"
+#import "widget_kind"
+#import "layout_props"
+
+using WidgetKind;
+
+LayoutContainer :: struct {
+    node: s32
+    opened: bool
+    kind: s32
+    bounds: Rectangle
+    content: Rectangle
+    gap: s32
+    padding: s32
+}
+
+GridResult :: struct {
+    container: LayoutContainer
+    cursor: GridCursor
+}
+
+TreePlaceLinear :: (session: Session, parent_index: s32, bounds: Rectangle,
+    horizontal: bool) -> Rectangle {
+    parent: LayoutInfo = TreeLayoutAt(session, parent_index)
+    metrics: LayoutMetrics = LayoutMetricsFor(parent.bounds,
+        parent.gap, parent.padding)
+    progress: LayoutProgress = TreeLayoutProgressAt(session, parent_index)
+    cursor: float32 = LayoutCursorForChild(metrics, horizontal,
+        progress.count, progress.extent)
+    placed: Rectangle = LayoutChildBounds(bounds, bounds, metrics,
+        horizontal, cursor)
+    progress.count += 1
+    if horizontal {
+        progress.extent += placed.width
+    } else {
+        progress.extent += placed.height
+    }
+    TreeSetLayoutProgress(session, parent_index, progress)
+    return placed
+}
+
+#program_export
+TreePlaceColumn :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rectangle {
+    return TreePlaceLinear(session, parent_index, bounds, false)
+}
+
+#program_export
+TreePlaceRow :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rectangle {
+    return TreePlaceLinear(session, parent_index, bounds, true)
+}
+
+#program_export
+TreePlaceStack :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rectangle {
+    parent: LayoutInfo = TreeLayoutAt(session, parent_index)
+    metrics: LayoutMetrics = LayoutMetricsFor(parent.bounds,
+        parent.gap, parent.padding)
+    return StackChildBounds(bounds, bounds, metrics)
+}
+
+#program_export
+TreePlaceGrid :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rectangle {
+    parent: LayoutInfo = TreeLayoutAt(session, parent_index)
+    grid: GridCursor = BeginGridCursor(GridProps.{.bounds = parent.bounds, .gap = parent.gap,
+        .padding = parent.padding, .columns = parent.columns,
+        .min_item_width = parent.min_item_width, .max_columns = parent.max_columns})
+    progress: LayoutProgress = TreeLayoutProgressAt(session, parent_index)
+    if progress.grid_initialized {
+        grid.y = progress.grid_y
+        grid.col = progress.grid_col
+        grid.row_height = progress.grid_row_height
+        grid.used_height = progress.grid_used_height
+    }
+    grid = GridStep(grid, cast(s32)bounds.height, 1)
+    progress.grid_initialized = true
+    progress.grid_y = grid.y
+    progress.grid_col = grid.col
+    progress.grid_row_height = grid.row_height
+    progress.grid_used_height = grid.used_height
+    TreeSetLayoutProgress(session, parent_index, progress)
+    return grid.item
+}
+
+#program_export
+ContainerFor :: (session: Session, props: ColumnProps,
+    kind: s32) -> LayoutContainer {
+    result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
+    parent: Rectangle = TreeCurrentParentBounds(session)
+    if result.bounds.width <= 0.0 { result.bounds.width = parent.width }
+    if result.bounds.height <= 0.0 { result.bounds.height = parent.height }
+    metrics: LayoutMetrics = LayoutMetricsFor(result.bounds,
+        props.gap, props.padding)
+    result.content = metrics.content
+    result.gap = metrics.gap
+    result.padding = metrics.padding
+    if !TreeIsBuilding(session) { return result }
+    key: u64 = props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    result.node = TreeSubmitCurrent(session, key, kind, result.bounds)
+    if result.node < 0 { return result }
+    result.bounds = TreeSubmittedBounds(session, result.node)
+    metrics = LayoutMetricsFor(result.bounds, props.gap, props.padding)
+    result.content = metrics.content
+    TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0)
+    result.opened = TreePushScope(session, result.node)
+    return result
+}
+
+#program_export
+Column :: (session: Session, props: ColumnProps) -> LayoutContainer {
+    result: LayoutContainer = ContainerFor(session, props, WidgetKindColumn)
+    TreeSetPlacement(session, result.node, TreePlaceColumn)
+    return result
+}
+
+#program_export
+Row :: (session: Session, props: ColumnProps) -> LayoutContainer {
+    result: LayoutContainer = ContainerFor(session, props, WidgetKindRow)
+    TreeSetPlacement(session, result.node, TreePlaceRow)
+    return result
+}
+
+#program_export
+Stack :: (session: Session, props: ColumnProps) -> LayoutContainer {
+    result: LayoutContainer = ContainerFor(session, props, WidgetKindStack)
+    TreeSetPlacement(session, result.node, TreePlaceStack)
+    return result
+}
+
+#program_export
+Group :: (session: Session, props: ColumnProps) -> LayoutContainer {
+    return ContainerFor(session, props, WidgetKindGroup)
+}
+
+#program_export
+Screen :: (session: Session, props: ColumnProps) -> LayoutContainer {
+    root: Rectangle = TreeRootBounds(session)
+    if props.bounds.width <= 0.0 { props.bounds.width = root.width }
+    if props.bounds.height <= 0.0 { props.bounds.height = root.height }
+    return ContainerFor(session, props, WidgetKindGroup)
+}
+
+#program_export
+Grid :: (session: Session, props: GridProps) -> GridResult {
+    row: ColumnProps = .{.bounds = props.bounds, .gap = props.gap, .padding = props.padding,
+        .key = props.key}
+    result: GridResult
+    result.container = ContainerFor(session, row, WidgetKindGrid)
+    TreeSetLayout(session, result.container.node, result.container.gap,
+        result.container.padding, props.columns, props.min_item_width,
+        props.max_columns)
+    TreeSetPlacement(session, result.container.node, TreePlaceGrid)
+    props.bounds = result.container.bounds
+    result.cursor = BeginGridCursor(props)
+    return result
+}
+
+ContainerMetrics :: (container: LayoutContainer) -> LayoutMetrics {
+    return LayoutMetricsFor(container.bounds, container.gap,
+        container.padding)
+}
+
+#program_export
+ColumnChildBounds :: (container: LayoutContainer,
+    declared: Rectangle, measured: Rectangle, child_index: s32,
+    previous_height_sum: float32) -> Rectangle {
+    metrics: LayoutMetrics = ContainerMetrics(container)
+    cursor: float32 = LayoutCursorForChild(metrics, false,
+        child_index, previous_height_sum)
+    return LayoutChildBounds(declared, measured, metrics,
+        false, cursor)
+}
+
+#program_export
+RowChildBounds :: (container: LayoutContainer,
+    declared: Rectangle, measured: Rectangle, child_index: s32,
+    previous_width_sum: float32) -> Rectangle {
+    metrics: LayoutMetrics = ContainerMetrics(container)
+    cursor: float32 = LayoutCursorForChild(metrics, true,
+        child_index, previous_width_sum)
+    return LayoutChildBounds(declared, measured, metrics,
+        true, cursor)
+}
+
+#program_export
+StackChildBoundsFor :: (container: LayoutContainer,
+    declared: Rectangle, measured: Rectangle) -> Rectangle {
+    return StackChildBounds(declared, measured,
+        ContainerMetrics(container))
+}

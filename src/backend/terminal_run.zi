@@ -1,6 +1,6 @@
 #import "byte_text_linux"
 #import "session"
-#import "app"
+#import "frame_entry"
 #import "geometry"
 #import "terminal"
 #import "terminal_keys"

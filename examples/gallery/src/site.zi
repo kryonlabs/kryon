@@ -1,0 +1,601 @@
+using UI :: #import "kryon/Widgets";
+using App :: #import "app";
+using Preview :: #import "site_preview";
+#import "std/web"
+using Scenes :: #import "scenes";
+#import "catalog"
+#import "kryon/PageRoute"
+#import "kryon/open_uri"
+#import "kryon/widget_kind"
+#import "kryon/cursor"
+SiteTheme :: #import "kryon/Theme";
+#import "std/number_text"
+#import "std/byte_text_linux"
+
+site_page: s32;
+site_route: string;
+site_now: float32;
+site_reduced_motion: bool;
+site_pointer: PointerFrame;
+site_key: s32;
+site_space_held: bool;
+site_focused: bool;
+site_scroll: s32;
+site_source_cursor: s32;
+site_source_anchor: s32;
+site_source_scroll: s32;
+site_mobile_navigation: bool;
+site_resources_open: bool;
+site_scene: s32 = -1;
+site_source: bool;
+site_editor_bytes: [65536]u8;
+site_editor_typed: [128]u8;
+site_editor_next: [65536]u8;
+site_editor_length: s32;
+site_editor_revision: s32;
+site_compile_revision: s32;
+site_compile_busy: bool;
+site_compile_due: float32;
+site_preview_ready: bool;
+site_diagnostic_bytes: [32768]u8;
+site_diagnostic_count: s32;
+site_modifiers: s32;
+site_wheel: float32;
+site_preview_bounds: Rectangle;
+site_preview_clip: Rectangle;
+site_native_session: Session;
+site_native_bounds: Rectangle;
+site_native_visible: bool;
+site_native_focus: bool;
+site_preview_visible: bool;
+site_guest_focus: bool;
+site_hash_length: s64;
+site_hash_bytes: [256]u8;
+site_marker: float32;
+site_marker_from: float32;
+site_marker_target: float32;
+site_marker_started: float32;
+site_marker_ready: bool;
+site_modal_active: bool;
+site_count: s32;
+site_style_theme: s32 = -1;
+site_component_scroll: s32;
+site_usage_scroll: s32;
+site_volume: float32 = 65.0;
+site_notifications: bool = true;
+site_hold: HoldButtonState;
+site_confirm: ConfirmButtonState;
+site_hold_count: s32;
+site_confirm_count: s32;
+
+SiteRouteName :: (page: s32) -> string {
+    if page == 1 { return "getting-started.html" }
+    if page == 2 { return "widgets.html" }
+    if page == 3 { return "apps.html" }
+    if page == 4 { return "docs.html" }
+    if page == 5 { return "renderers.html" }
+    if page == 6 { return "modules.html" }
+    return "index.html"
+}
+
+SitePageFor :: (path: string) -> s32 {
+    if path == "getting-started.html" { return 1 }
+    if path == "widgets.html" { return 2 }
+    if path == "apps.html" { return 3 }
+    if path == "docs.html" { return 4 }
+    if path == "renderers.html" { return 5 }
+    if path == "modules.html" { return 6 }
+    return 0
+}
+
+SiteNavigate :: (page: s32) {
+    if page == site_page { return }
+    route := SiteRouteName(page)
+    path := TextFromCString(GetRoutePath())
+    slash: s64 = -1
+    for index: cast(s64)0..path.count - 1 { if path[index] == cast(u8)47 { slash = index } }
+    bytes: [2048]u8
+    if slash + 1 + route.count >= bytes.count { return }
+    at: s32
+    for index: cast(s64)0..slash { bytes[at] = path[index]; at += 1 }
+    for byte: route { bytes[at] = byte; at += 1 }
+    bytes[at] = 0
+    PushRoute(*bytes[0])
+}
+
+PrepareSiteInput :: (session: Session) {
+    path := TextFromCString(GetRoutePath())
+    slash: s64 = -1
+    for index: cast(s64)0..path.count - 1 { if path[index] == cast(u8)47 { slash = index } }
+    page := SitePageFor(path[slash + 1:])
+    if page != site_page || site_route == "" {
+        site_page = page; site_route = SiteRouteName(page)
+        site_scroll = 0; site_component_scroll = 0; site_mobile_navigation = false; site_resources_open = false
+    }
+    hash := TextFromCString(GetRouteHash())
+    if hash != TextView(site_hash_bytes[:site_hash_length]) {
+        for index: cast(s32)0..GallerySceneCount - 1 {
+            id := GallerySceneId(index)
+            if hash.count == id.count + 1 && hash[1:] == id {
+                scene = index; dismissed = false; navigation_focus_pending = true
+            }
+        }
+        if hash.count < site_hash_bytes.count {
+            for index: cast(s64)0..hash.count - 1 { site_hash_bytes[index] = hash[index] }
+            site_hash_length = hash.count
+        }
+    }
+    PrepareGalleryInput(session)
+    if site_key == KeyEscape { site_mobile_navigation = false; site_resources_open = false }
+}
+
+SiteStyle :: () {
+    wanted: s32 = ifx dark then 1 else 0
+    if wanted == site_style_theme { return }
+    site_style_theme = wanted
+    rules := ActiveStyleRules()
+    for kind: cast(s32)0..3 {
+        rule: StyleRule
+        rule.selector = StyleDefaultSelector()
+        rule.selector.class_name = 11001 + kind
+        rule.style.fields = cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleTypeface
+        rule.style.foreground = ifx dark then 0xf2f2f2ff else 0x171717ff
+        rule.style.typeface = "assets/fonts/Inter-Regular.ttf"
+        if kind == 1 { rule.style.foreground = ifx dark then 0xb5b5b5ff else 0x626262ff }
+        if kind == 2 { rule.style.typeface = "assets/fonts/Geist-Medium.ttf" }
+        if kind == 3 { rule.style.typeface = "assets/fonts/GeistMono-Regular.ttf" }
+        rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+    }
+    for variant: cast(s32)0..2 {
+        for state: 0..2 {
+            rule: StyleRule
+            rule.selector = StyleDefaultSelector()
+            rule.selector.class_name = 11010 + variant
+            rule.selector.kind = StyleKindButton()
+            rule.layer = 1
+            if state == 1 { rule.selector.state = cast(s32)ButtonState.ButtonStateHover }
+            if state == 2 { rule.selector.state = cast(s32)ButtonState.ButtonStateSelected }
+            rule.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground |
+                cast(u32)StyleField.StyleBorder | cast(u32)StyleField.StyleBorderWidth |
+                cast(u32)StyleField.StyleRadius | cast(u32)StyleField.StyleFontSize | cast(u32)StyleField.StyleTypeface
+            rule.style.background = ifx dark then 0x121212ff else 0xffffffff
+            rule.style.foreground = ifx dark then 0xc5c5c5ff else 0x585858ff
+            rule.style.border = ifx dark then 0x333333ff else 0xe4e4e4ff
+            rule.style.border_width = ifx variant == 2 then 1.0 else 0.0
+            rule.style.radius = 8.0; rule.style.font_size = 14.0
+            rule.style.typeface = "assets/fonts/Inter-Regular.ttf"
+            if state != 0 { rule.style.background = ifx dark then 0x252525ff else 0xf0f0f0ff }
+            if variant == 1 {
+                rule.style.background = ifx dark then 0xf2f2f2ff else 0x171717ff
+                rule.style.foreground = ifx dark then 0x171717ff else 0xffffffff
+            }
+            rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+        }
+    }
+    for kind: 0..1 {
+        for state: 0..2 {
+            nav: StyleRule
+            nav.selector = StyleDefaultSelector(); nav.selector.class_name = 11030
+            nav.selector.kind = ifx kind == 0 then StyleKindListBox() else StyleKindListBoxItem()
+            if state == 1 { nav.selector.state = cast(s32)ButtonState.ButtonStateHover }
+            if state == 2 { nav.selector.state = cast(s32)ButtonState.ButtonStateSelected }
+            nav.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground |
+                cast(u32)StyleField.StyleBorder | cast(u32)StyleField.StyleBorderWidth | cast(u32)StyleField.StyleRadius |
+                cast(u32)StyleField.StyleFontSize | cast(u32)StyleField.StyleTypeface
+            nav.style.background = ifx dark then 0x121212ff else 0xffffffff
+            if kind == 1 && state > 0 { nav.style.background = ifx dark then 0x292929ff else 0xf0f0f0ff }
+            nav.style.foreground = ifx dark then 0xc5c5c5ff else 0x505050ff
+            nav.style.border = 0; nav.style.border_width = 0.0; nav.style.radius = 6.0
+            nav.style.font_size = 13.0; nav.style.typeface = "assets/fonts/Inter-Regular.ttf"
+            nav.order = rules.count; rules.items[rules.count] = nav; rules.count += 1
+        }
+    }
+    editor: StyleRule
+    editor.selector = StyleDefaultSelector(); editor.selector.class_name = 11020
+    editor.style.fields = cast(u32)StyleField.StyleFontSize | cast(u32)StyleField.StyleTypeface
+    editor.style.font_size = 13.0; editor.style.typeface = "assets/fonts/GeistMono-Regular.ttf"
+    editor.order = rules.count; rules.items[rules.count] = editor; rules.count += 1
+    unused InstallStyleRules(rules)
+}
+SiteBackground :: () -> Color { return ColorFromPacked(ifx dark then 0x121212ff else 0xffffffff) }
+SiteBorder :: () -> Color { return ColorFromPacked(ifx dark then 0x303030ff else 0xe5e5e5ff) }
+SiteSurface :: () -> Color { return ColorFromPacked(ifx dark then 0x1b1b1bff else 0xf7f7f7ff) }
+SiteText :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
+    Text(session, TextProps.{.key = key, .bounds = bounds, .text = text, .font = font,
+        .class_name = ifx font >= 20 then 11003 else 11001})
+}
+SiteMuted :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
+    Text(session, TextProps.{.key = key, .bounds = bounds, .text = text, .font = font, .class_name = 11002})
+}
+SiteCenter :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
+    Text(session, TextProps.{.key = key, .bounds = bounds, .text = text, .font = font,
+        .class_name = ifx font >= 20 then 11003 else 11002, .align = .TextAlignCenter})
+}
+SitePanel :: (session: Session, key: u64, bounds: Rectangle) {
+    Box(session, BoxProps.{.key = key, .bounds = bounds, .fill = SiteBackground(), .border = SiteBorder(), .radius = 14.0})
+}
+SiteAction :: (session: Session, key: u64, bounds: Rectangle, label: string, page: s32) {
+    if Button(session, ButtonProps.{.key = key, .bounds = bounds, .label = label, .class_name = 11010, .emphasis = .ButtonEmphasisGhost,
+        .selected = site_page == page, .disabled = site_modal_active}) != 0 { SiteNavigate(page) }
+}
+
+SiteOverview :: (session: Session, view: Rectangle) {
+    large := view.width >= 760.0
+    width := view.width - (ifx large then 96.0 else 40.0)
+    if width > 1180.0 { width = 1180.0 }
+    x := (view.width - width) * 0.5
+    scroll := Scroll(session, ScrollProps.{.key = 10030, .bounds = view,
+        .content_height = ifx large then 1640 else 2040, .scroll_offset = site_scroll})
+    site_scroll = scroll.scroll_offset
+    y := scroll.content.y + (ifx large then 60.0 else 32.0)
+    Box(session, BoxProps.{.key = 10200, .bounds = .{0.0, scroll.content.y, view.width, 620.0},
+        .fill = SiteSurface(), .fill_bottom = SiteBackground(), .has_fill_bottom = true})
+    SiteCenter(session, 10201, .{x, y, width, 24.0}, "THE ZIRAN UI LIBRARY", 12)
+    y += 48.0
+    SiteCenter(session, 10031, .{x, y, width, ifx large then 140.0 else 104.0},
+        ifx large then "Native interfaces.\nOne expressive language." else "Native interfaces.\nWritten in Ziran.", ifx large then 56 else 36)
+    y += ifx large then 160.0 else 126.0
+    SiteCenter(session, 10032, .{x, y, width, 64.0},
+        "101 real components for desktop and the web.\nCompose, explore, and make them your own.", ifx large then 18 else 16)
+    y += 88.0
+    actions: float32 = ifx width > 360.0 then 360.0 else width
+    ax: float32 = (view.width - actions) * 0.5
+    if Button(session, ButtonProps.{.key = 10033, .bounds = .{ax, y, actions * 0.5 - 6.0, 42.0},
+        .label = "Browse components", .class_name = 11011}) != 0 { SiteNavigate(2) }
+    if Button(session, ButtonProps.{.key = 10034, .bounds = .{ax + actions * 0.5 + 6.0, y, actions * 0.5 - 6.0, 42.0},
+        .label = "Get started", .class_name = 11012}) != 0 { SiteNavigate(1) }
+    y += 64.0
+    SiteCenter(session, 10202, .{x, y, width, 24.0}, "$ ziran add https://github.com/kryonlabs/kryon", ifx large then 13 else 10)
+    y += 76.0
+    SiteMuted(session, 10035, .{x, y, width, 24.0}, "A SMALL TASTE OF KRYON", 12)
+    y += 38.0
+    column := ifx large then (width - 20.0) * 0.5 else width
+    unused Card(session, CardProps.{.key = 10036, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
+    digits: [32]u8
+    SiteText(session, 10037, .{x + 20.0, y + 20.0, column - 40.0, 32.0}, "Every click counts", 20)
+    if Button(session, ButtonProps.{.key = 10038, .bounds = .{x + 20.0, y + 72.0, column - 40.0, 42.0},
+        .label = FormatInteger(cast(s64)site_count, digits[:])}) != 0 { site_count += 1 }
+    site_notifications = Toggle(session, ToggleProps.{.key = 10039,
+        .bounds = .{x + 20.0, y + 136.0, column - 40.0, 40.0}, .label = "Notifications", .value = site_notifications}).value
+    site_volume = Slider(session, SliderProps.{.key = 10040,
+        .bounds = .{x + 20.0, y + 188.0, column - 40.0, 48.0}, .label = "Volume", .value = site_volume, .max = 100.0}).value
+    if large { x += column + 20.0 } else { y += 270.0 }
+    unused Card(session, CardProps.{.key = 10041, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
+    SiteText(session, 10042, .{x + 20.0, y + 20.0, column - 40.0, 32.0}, "Actions with intent", 20)
+    held := HoldButton(session, HoldButtonProps.{.button = .{.key = 10043,
+        .bounds = .{x + 20.0, y + 72.0, column - 40.0, 42.0}, .label = "Hold to complete"},
+        .now = site_now, .duration = 1.2, .key = site_key, .key_held = site_space_held, .blur = !site_focused}, *site_hold)
+    if held.fired { site_hold_count += 1 }
+    confirmed := ConfirmButton(session, ConfirmButtonProps.{.button = .{.key = 10044,
+        .bounds = .{x + 20.0, y + 136.0, column - 40.0, 42.0}, .label = "Delete"},
+        .confirm_button = .{.label = "Confirm delete"}, .now = site_now, .key = site_key}, *site_confirm)
+    if confirmed.committed { site_confirm_count += 1 }
+    SiteText(session, 10045, .{x + 20.0, y + 196.0, column - 40.0, 34.0}, "Hold, release, confirm or Escape.", 13)
+    x = (view.width - width) * 0.5
+    y += 306.0
+    Box(session, BoxProps.{.key = 10204, .bounds = .{x, y, width, 1.0}, .fill = SiteBorder()})
+    y += 36.0
+    SiteText(session, 10205, .{x, y, width, 76.0}, "Everything starts with a component.", ifx large then 32 else 26)
+    y += 92.0
+    SiteMuted(session, 10206, .{x, y, width, 76.0}, "Controls, text, navigation, overlays, charts and data views.\nEvery example runs the real library, with the Ziran source beside it.", 16)
+    y += 110.0
+    facts: [3]string = .{"101 components", "Light & dark", "Live Ziran source"}
+    details: [3]string = .{"One maintained collection.", "A coherent native palette.", "Edit, compile, and interact."}
+    for index: 0..2 {
+        fx := ifx large then x + cast(float32)index * (width / 3.0) else x
+        fy := ifx large then y else y + cast(float32)index * 100.0
+        fw := ifx large then width / 3.0 - 20.0 else width
+        SiteText(session, cast(u64)(10210 + index), .{fx, fy, fw, 32.0}, facts[index], 22)
+        SiteMuted(session, cast(u64)(10220 + index), .{fx, fy + 42.0, fw, 30.0}, details[index], 14)
+    }
+    y += ifx large then 150.0 else 340.0
+    SitePanel(session, 10230, .{x, y, width, 180.0})
+    SiteCenter(session, 10231, .{x + 20.0, y + 28.0, width - 40.0, 40.0}, "Start with one window.", 28)
+    SiteCenter(session, 10232, .{x + 20.0, y + 80.0, width - 40.0, 42.0}, "A few lines of Ziran. An interface you can use.", 14)
+    SiteAction(session, 10233, .{(view.width - 160.0) * 0.5, y + 130.0, 160.0, 36.0}, "Read the guide  →", 1)
+    SiteMuted(session, 10234, .{x, y + 226.0, width, 32.0}, "KRYON    /    OPEN SOURCE, WRITTEN IN ZIRAN", 12)
+    if scroll.opened { End(session) }
+}
+
+SiteReading :: (session: Session, view: Rectangle) {
+    title := "Build with Kryon"
+    body := "ziran add https://github.com/kryonlabs/kryon\n\nusing UI :: #import \"kryon/Widgets\";\n\nFrame :: (session: Session, bounds: Rectangle) -> s32 {\n    Button(session, ButtonProps.{\n        .key = 1, .bounds = bounds, .label = \"Ready\"\n    });\n    return 0;\n}\n\nkryon new hello\ncd hello\nkryon run\nkryon run web"
+    if site_page == 3 {
+        title = "Apps & showcase"
+        body = "Terminal\nTabs, sessions and desktop integration.\n\nBrowser\nA reading surface with its own document engine.\n\nGitHub\nRepository and issue workflows.\n\nShelf\nA library and long-form reading surface.\n\nThese applications are in development."
+    } else if site_page == 4 {
+        title = "Documentation"
+        body = "Kryon owns widget composition, behavior, accessibility and UI policy.\n\nZiran owns the language, compiler and runtime.\n\nApplications own their screens, workflows and state.\n\nPublic APIs: src/ui/*.zi\nBuild inventory: src/ui/modules.txt\nProject integration: docs/PROJECTS.md\nBackend integration: docs/BACKENDS.md\n\nStart a project\nkryon new hello\ncd hello\nkryon run"
+    } else if site_page == 5 {
+        title = "Platforms"
+        body = "Desktop\nThe native gallery uses the canonical desktop host.\n\nBrowser\nThis page runs compiled Ziran through the Canvas host. Its controls use the same Kryon widget implementations.\n\nPortable\nKryon can host .zx applications through explicit capabilities.\n\nAndroid\nDevice validation is tracked separately."
+    } else if site_page == 6 {
+        title = "Modules"
+        body = "Kryon\n80 controls, text, layout and navigation examples.\n\nPlot\n6 chart examples.\n\nDataViews\n3 tree, board and table examples.\n\nInputs\n6 focused editing examples.\n\nOverlays\n6 overlay examples.\n\nAll 101 examples are available from Components."
+    }
+    width := view.width - 40.0
+    if width > 840.0 { width = 840.0 }
+    x := (view.width - width) * 0.5
+    scroll := Scroll(session, ScrollProps.{.key = 10400, .bounds = view,
+        .content_height = 1080, .scroll_offset = site_scroll})
+    site_scroll = scroll.scroll_offset
+    y := scroll.content.y + 44.0
+    SiteMuted(session, 10401, .{x, y, width, 24.0}, "KRYON  /  DOCUMENTATION", 12)
+    SiteText(session, 10050, .{x, y + 48.0, width, 92.0}, title, 36)
+    Box(session, BoxProps.{.key = 10402, .bounds = .{x, y + 162.0, width, 1.0}, .fill = SiteBorder()})
+    Text(session, TextProps.{.key = 10051, .bounds = .{x, y + 198.0, width, 640.0},
+        .text = body, .font = 17, .line_gap = 8, .class_name = 11002, .selectable = true})
+    if Button(session, ButtonProps.{.key = 10052,
+        .bounds = .{x, y + 900.0, width, 42.0}, .label = "Open source & API", .class_name = 11012}) != 0 {
+        unused OpenUri("https://github.com/kryonlabs/kryon/blob/master/docs/API.md")
+    }
+    if scroll.opened { End(session) }
+}
+
+SiteComponents :: (session: Session, view: Rectangle) {
+    wide := view.width >= 760.0
+    left: float32 = ifx wide then 264.0 else 0.0
+    gutter: float32 = ifx wide then 48.0 else 20.0
+    width := view.width - left - gutter * 2.0 - (ifx view.width >= 1280.0 then 240.0 else 0.0)
+    if width > 900.0 { width = 900.0 }
+    x := left + gutter
+    scroll := Scroll(session, ScrollProps.{.key = 10300,
+        .bounds = .{left, view.y, view.width - left, view.height},
+        .content_height = cast(s32)view.height + (ifx site_source then 1100 else 860), .scroll_offset = site_component_scroll})
+    site_component_scroll = scroll.scroll_offset
+    top := scroll.content.y + (ifx wide then 28.0 else 58.0)
+    SiteMuted(session, 10301, .{x, top, width, 24.0}, GallerySceneLabel(scene), 12)
+    top += 38.0
+    SiteText(session, 10100, .{x, top, width, 42.0}, GallerySceneName(scene), 30)
+    top += 54.0
+    SiteMuted(session, 10302, .{x, top, width, 52.0}, GallerySceneSummary(scene), 16)
+    top += 64.0
+    panel_height: float32 = ifx site_source then 800.0 else 552.0
+    SitePanel(session, 10303, .{x, top, width, panel_height})
+    content := Rectangle.{x + 16.0, top + 56.0, width - 32.0, ifx site_source then 196.0 else 480.0}
+    if site_scene != scene {
+        site_scene = scene; site_usage_scroll = 0; site_source_scroll = 0; site_source_cursor = 0; site_source_anchor = 0
+        code := GallerySceneCode(scene)
+        site_editor_length = cast(s32)code.count
+        for index: 0..site_editor_length - 1 { site_editor_next[index] = code[index] }
+        site_editor_revision += 1; site_compile_due = site_now + 0.4
+        site_preview_ready = false; site_diagnostic_count = 0
+    }
+    SiteCompile()
+    SetGalleryPreview(content, true, site_now, site_reduced_motion)
+    if !site_source {
+        group := Group(session, ColumnProps.{.key = 10101, .bounds = content})
+        site_native_bounds = content; site_native_visible = true
+        if group.opened { End(session) }
+    } else {
+        for index: 0..site_editor_length - 1 { site_editor_bytes[index] = site_editor_next[index] }
+        editor_input := Scenes.SceneInputFor(KeyboardTake(session), KeyboardModifiers(session),
+            TypedTextTake(session, site_editor_typed[:]))
+        area := TextArea(session, TextAreaProps.{.key = 10102, .bounds = content, .class_name = 11020,
+            .value = TextView(site_editor_bytes[:site_editor_length]), .wrap = false, .input = editor_input.area,
+            .cursor = site_source_cursor, .anchor = site_source_anchor, .scroll_y = site_source_scroll})
+        site_source_cursor = area.cursor; site_source_anchor = area.anchor; site_source_scroll = area.scroll_y
+        if area.edit.changed {
+            edit: TextFieldEdit = .{.start = area.edit.start, .end = area.edit.end,
+                .replacement = area.edit.replacement, .changed = true}
+            site_editor_length = Scenes.Apply(site_editor_next[:], site_editor_length, edit)
+            site_editor_revision += 1; site_compile_due = site_now + 0.4
+        }
+    }
+    if site_source {
+        site_preview_bounds = Rectangle.{content.x, content.y + 244.0, content.width, 480.0}
+        site_preview_visible = true
+        SiteMuted(session, 10106, .{content.x, content.y + 204.0, content.width, 32.0},
+            ifx site_compile_busy then "Compiling…" else ifx site_diagnostic_count > 0 then SiteDiagnostic() else "Live preview", 13)
+    }
+    below := top + panel_height + 40.0
+    SiteText(session, 10304, .{x, below, width, 32.0}, "Usage", 21)
+    SiteMuted(session, 10305, .{x, below + 46.0, width, 38.0}, "Maintained Ziran source. Select Source above to edit and run it.", 14)
+    usage := TextArea(session, TextAreaProps.{.key = 10309, .bounds = .{x, below + 96.0, width, 240.0},
+        .value = GallerySceneCode(scene), .read_only = true, .wrap = false, .class_name = 11020,
+        .scroll_y = site_usage_scroll, .manual_scroll = true})
+    site_usage_scroll = usage.scroll_y
+    Box(session, BoxProps.{.key = 10306, .bounds = .{x, below + 374.0, width, 1.0}, .fill = SiteBorder()})
+    SiteText(session, 10307, .{x, below + 404.0, width, 32.0}, "Keyboard & interaction", 21)
+    SiteMuted(session, 10308, .{x, below + 454.0, width, 94.0},
+        "Tab moves focus. Enter and Space activate controls. Arrow keys navigate choices.\nExamples follow your reduced motion preference.", 14)
+    options: [2]SegmentOption
+    options[0].label = "Preview"; options[1].label = "Source"
+    chosen := SegmentedControl(session, SegmentedControlProps.{.key = 10104,
+        .bounds = .{x + 12.0, top + 12.0, ifx width > 330.0 then 184.0 else 146.0, 32.0}, .has_selection = true, .selected_index = ifx site_source then 1 else 0}, options[:])
+    site_source = chosen.selected_index == 1
+    disabled_controls = Checkbox(session, CheckboxProps.{.key = 9004,
+        .bounds = .{x + width - 116.0, top + 12.0, 108.0, 32.0}, .label = "Disabled", .checked = disabled_controls}).checked
+    if scroll.opened { End(session) }
+    if wide {
+        Box(session, BoxProps.{.key = 10310, .bounds = .{0.0, view.y, 264.0, view.height}, .fill = SiteBackground()})
+        Box(session, BoxProps.{.key = 10311, .bounds = .{263.0, view.y, 1.0, view.height}, .fill = SiteBorder()})
+        SiteMuted(session, 10312, .{24.0, view.y + 24.0, 220.0, 24.0}, "COMPONENTS  /  101", 12)
+        SiteWidgetNavigation(session, .{12.0, view.y + 64.0, 240.0, view.height - 80.0})
+    }
+    else {
+        if Button(session, ButtonProps.{.key = 10103, .bounds = .{20.0, view.y + 10.0, view.width - 40.0, 34.0}, .label = "All widgets"}) != 0 { site_mobile_navigation = !site_mobile_navigation }
+    }
+    if view.width >= 1280.0 {
+        tx := x + width + 36.0
+        SiteMuted(session, 10500, .{tx, view.y + 32.0, 130.0, 24.0}, "ON THIS PAGE", 11)
+        sections: [3]string = .{"Example", "Usage", "Keyboard"}
+        for index: 0..2 {
+            if Button(session, ButtonProps.{.key = cast(u64)(10501 + index), .bounds = .{tx, view.y + 70.0 + cast(float32)index * 38.0, 130.0, 32.0},
+                .label = sections[index], .class_name = 11010}) != 0 {
+                if index == 0 { site_component_scroll = 0 }
+                else { site_component_scroll = cast(s32)(top - scroll.content.y + panel_height + 12.0 + (ifx index == 2 then 402.0 else 0.0)) }
+            }
+        }
+    }
+    if !wide && site_mobile_navigation {
+        Box(session, BoxProps.{.key = 10105, .bounds = .{12.0, view.y + 50.0, view.width - 24.0, view.height - 62.0}, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 10.0})
+        SiteWidgetNavigation(session, .{16.0, view.y + 58.0, view.width - 32.0, view.height - 78.0})
+    }
+}
+
+SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
+    site_preview_visible = false; site_native_visible = false
+    InstallGalleryPalette(dark)
+    SiteStyle()
+    unused SiteTheme.SetReducedMotion(site_reduced_motion)
+    Box(session, BoxProps.{.key = 10000, .bounds = viewport, .fill = SiteBackground()})
+    wide := viewport.width >= 760.0
+    header: float32 = ifx wide then 56.0 else 104.0
+    view := Rectangle.{0.0, header, viewport.width, viewport.height - header}
+    site_preview_clip = view
+    if site_page == 0 { SiteOverview(session, view) }
+    else if site_page == 2 { SiteComponents(session, view) }
+    else { SiteReading(session, view) }
+    site_modal_active = false
+    Box(session, BoxProps.{.key = 10001, .bounds = .{0.0, 0.0, viewport.width, header}, .fill = SiteBackground()})
+    Box(session, BoxProps.{.key = 10320, .bounds = .{0.0, header - 1.0, viewport.width, 1.0}, .fill = SiteBorder()})
+    if Button(session, ButtonProps.{.key = 10002, .bounds = .{16.0, 8.0, 94.0, 38.0},
+        .label = "Kryon", .class_name = 11010, .emphasis = .ButtonEmphasisGhost, .disabled = site_modal_active}) != 0 { SiteNavigate(0) }
+    if wide { SiteMuted(session, 10321, .{116.0, 18.0, 82.0, 24.0}, "ZIRAN UI", 11) }
+    dark = Toggle(session, ToggleProps.{.key = 10003, .bounds = .{viewport.width - 108.0, 10.0, 92.0, 36.0},
+        .label = "Dark", .value = dark, .disabled = site_modal_active}).value
+    tab_width: float32 = ifx wide then 96.0 else (viewport.width - 32.0) / 3.0
+    nav_x: float32 = ifx wide then 212.0 else 16.0
+    nav_y: float32 = ifx wide then 10.0 else 56.0
+    for index: cast(s32)0..2 {
+        label := "Overview"
+        if index == 1 { label = "Guide" } else if index == 2 { label = "Components" }
+        SiteAction(session, cast(u64)(10010 + index), .{nav_x + cast(float32)index * tab_width, nav_y, tab_width, 36.0}, label, index)
+    }
+    if viewport.width >= 1000.0 {
+        SiteAction(session, 10020, .{508.0, 10.0, 72.0, 36.0}, "Apps", 3)
+        SiteAction(session, 10021, .{588.0, 10.0, 72.0, 36.0}, "Docs", 4)
+        if Button(session, ButtonProps.{.key = 10322, .bounds = .{viewport.width - 208.0, 10.0, 88.0, 36.0},
+            .label = "GitHub  ↗", .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 { unused OpenUri("https://github.com/kryonlabs/kryon") }
+    }
+    target := cast(float32)(ifx site_page < 3 then site_page else 1)
+    if !site_marker_ready {
+        site_marker = target; site_marker_from = target; site_marker_target = target; site_marker_ready = true
+    }
+    if target != site_marker_target { site_marker_from = site_marker; site_marker_target = target; site_marker_started = site_now }
+    progress := TransitionSmoothProgress((site_now - site_marker_started) / 0.22)
+    if site_reduced_motion { progress = 1.0 }
+    site_marker = site_marker_from + (site_marker_target - site_marker_from) * progress
+    Box(session, BoxProps.{.key = 10013, .bounds = .{nav_x + site_marker * tab_width + 18.0, header - 2.0, tab_width - 36.0, 2.0},
+        .fill = ColorFromPacked(ifx dark then 0xf2f2f2ff else 0x171717ff)})
+    resources_x: float32 = ifx viewport.width >= 1000.0 then 678.0 else viewport.width - 190.0
+    if Button(session, ButtonProps.{.key = 10520, .bounds = .{resources_x, 10.0, 78.0, 36.0},
+        .label = "More", .class_name = 11010, .emphasis = .ButtonEmphasisGhost, .disabled = site_modal_active}) != 0 { site_resources_open = !site_resources_open }
+    if site_resources_open {
+        mx := viewport.width - 230.0
+        SitePanel(session, 10521, .{mx, 54.0, 214.0, 202.0})
+        labels: [4]string = .{"Apps & showcase", "Documentation", "Platforms", "Modules"}
+        for index: 0..3 {
+            SiteAction(session, cast(u64)(10522 + index), .{mx + 10.0, 66.0 + cast(float32)index * 44.0, 194.0, 38.0}, labels[index], cast(s32)index + 3)
+        }
+    }
+    return 0
+}
+
+SiteSelectScene :: (picked: s32) {
+    scene = picked; dismissed = false; navigation_focus_pending = true; site_component_scroll = 0
+    if picker_key == 0 { site_mobile_navigation = false }
+    route := GallerySceneId(scene)
+    bytes: [128]u8
+    at: s32
+    path := TextFromCString(GetRoutePath())
+    for byte: path { if at < 126 { bytes[at] = byte; at += 1 } }
+    bytes[at] = cast(u8)35; at += 1
+    for byte: route { if at < 127 { bytes[at] = byte; at += 1 } }
+    bytes[at] = 0
+    PushRoute(*bytes[0])
+}
+
+SiteWidgetNavigation :: (session: Session, bounds: Rectangle) {
+    items: [GallerySceneCount]ListBoxItem
+    for index: cast(s32)0..GallerySceneCount - 1 {
+        items[index].key = cast(u64)(index + 1)
+        items[index].label = GallerySceneName(index)
+    }
+    navigation: s32
+    if picker_key == KeyHome { navigation = ListBoxKeyHome() }
+    else if picker_key == KeyEnd { navigation = ListBoxKeyEnd() }
+    else if picker_key == KeyUp { navigation = ListBoxKeyUp() }
+    else if picker_key == KeyDown { navigation = ListBoxKeyDown() }
+    picked := ListBox(session, ListBoxProps.{.key = 9003, .id = 9003, .class_name = 11030,
+        .bounds = bounds, .selected_index = scene, .scroll_offset = catalog_scroll,
+        .row_height = 32, .focused = picker_focused, .navigation = navigation}, items[:])
+    catalog_scroll = picked.scroll_offset
+    if picked.changed { SiteSelectScene(picked.selected_index) }
+    if navigation != 0 || navigation_focus_pending {
+        navigation_focus_pending = false
+        for index: 0..TreeSubmittedCount(session) - 1 {
+            entry := TreeSubmittedNodeAt(session, index)
+            if entry.parent == picked.node && entry.key == cast(u64)(scene + 1) {
+                unused TreeFocusSubmittedAt(session, index)
+            }
+        }
+    }
+}
+
+SiteDiagnostic :: () -> string { return TextView(site_diagnostic_bytes[:site_diagnostic_count]) }
+SiteDiagnosticSet :: (message: string) {
+    site_diagnostic_count = cast(s32)message.count
+    if site_diagnostic_count > 32768 { site_diagnostic_count = 32768 }
+    for index: 0..site_diagnostic_count - 1 { site_diagnostic_bytes[index] = message[index] }
+}
+
+SiteCompile :: () {
+    mark := WebScope()
+    result := WebGetObject(WebModule, WebName("compilerResult"))
+    revision: s32
+    if result > 0 { revision = cast(s32)WebGetNumber(result, WebName("id")) }
+    if site_compile_busy && revision == site_compile_revision {
+        site_compile_busy = false
+        if revision == site_editor_revision {
+            if WebGetNumber(result, WebName("status")) == 0.0 {
+                if LoadPreview() { site_preview_ready = true; site_diagnostic_count = 0 }
+                else { SiteDiagnosticSet(PreviewError()) }
+            } else {
+                diagnostic := WebGetObject(result, WebName("diagnostics"))
+                count := WebCopyString(diagnostic, site_diagnostic_bytes[:])
+                site_diagnostic_count = cast(s32)count
+            }
+        }
+    }
+    if site_source && !site_compile_busy && site_compile_revision != site_editor_revision && site_now >= site_compile_due {
+        site_compile_revision = site_editor_revision; site_compile_busy = true
+        request := WebNewObject()
+        WebSet(request, WebName("id"), WebNumber(cast(float64)site_compile_revision))
+        WebSet(request, WebName("source"), WebText(TextView(site_editor_next[:site_editor_length])))
+        WebSet(request, WebName("search"), WebText(GalleryCompilerSearch()))
+        unused WebCall1(WebModule, WebName("compileSource"), WebObject(request))
+    }
+    WebSet(WebModule, WebName("editorRevision"), WebNumber(cast(float64)site_editor_revision))
+    WebSet(WebModule, WebName("compileRevision"), WebNumber(cast(float64)site_compile_revision))
+    WebSet(WebModule, WebName("compileBusy"), WebBool(site_compile_busy))
+    WebSet(WebModule, WebName("previewReady"), WebBool(site_preview_ready))
+    WebSet(WebModule, WebName("previewNodes"), WebNumber(cast(float64)preview_nodes))
+    WebSet(WebModule, WebName("compileDiagnostic"), WebText(SiteDiagnostic()))
+    WebEnd(mark)
+}
+
+RunSitePreview :: (session: Session) {
+    unused CursorSet(session, CursorProps.{})
+    if !site_preview_visible || !site_preview_ready || site_mobile_navigation || site_resources_open { return }
+    if site_pointer.pressed {
+        site_guest_focus = site_pointer.x >= site_preview_bounds.x && site_pointer.y >= site_preview_bounds.y &&
+            site_pointer.x < site_preview_bounds.x + site_preview_bounds.width && site_pointer.y < site_preview_bounds.y + site_preview_bounds.height &&
+            site_pointer.y >= site_preview_clip.y && site_pointer.y < site_preview_clip.y + site_preview_clip.height
+    }
+    key: s32 = ifx site_guest_focus then site_key else 0
+    if !site_guest_focus { preview_text_count = 0 }
+    guest_pointer := site_pointer
+    if site_pointer.y < site_preview_clip.y || site_pointer.y >= site_preview_clip.y + site_preview_clip.height {
+        guest_pointer.x = -10000.0; guest_pointer.y = -10000.0; guest_pointer.pressed = false
+    }
+    if !RunPreview(site_preview_bounds, guest_pointer, key, site_modifiers, site_wheel,
+        site_now, dark, disabled_controls, site_reduced_motion, site_guest_focus && site_space_held, site_guest_focus && site_focused) {
+        SiteDiagnosticSet(PreviewError()); site_preview_ready = false
+    }
+    if site_pointer.x >= site_preview_bounds.x && site_pointer.y >= site_preview_bounds.y &&
+        site_pointer.x < site_preview_bounds.x + site_preview_bounds.width && site_pointer.y < site_preview_bounds.y + site_preview_bounds.height {
+        unused CursorSet(session, CursorProps.{.shape = preview_cursor})
+    }
+}

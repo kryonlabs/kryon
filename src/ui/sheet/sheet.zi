@@ -1,0 +1,356 @@
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "semantic"
+#import "session"
+#import "sheet_props"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "theme"
+#import "tooltip_props"
+#import "tooltip_common"
+#import "tree"
+#import "widget_kind"
+
+using ButtonState;
+using SemanticKind;
+using StyleField;
+using WidgetKind;
+
+#program_export
+SheetLayoutFor :: (props: SheetProps, progress: float32,
+    drag_offset: float32) -> SheetGeometry {
+    geometry: SheetGeometry
+    if progress < 0.0 { progress = 0.0 }
+    if progress > 1.0 { progress = 1.0 }
+    left := props.safe_area.left
+    top := props.safe_area.top
+    right := props.safe_area.right
+    bottom := props.safe_area.bottom
+    if left < 0.0 { left = 0.0 }
+    if top < 0.0 { top = 0.0 }
+    if right < 0.0 { right = 0.0 }
+    if bottom < 0.0 { bottom = 0.0 }
+    viewport := props.viewport
+    viewport.x += left
+    viewport.y += top
+    viewport.width -= left + right
+    viewport.height -= top + bottom
+    if viewport.width < 0.0 { viewport.width = 0.0 }
+    if viewport.height < 0.0 { viewport.height = 0.0 }
+    geometry.scrim = props.viewport
+
+    size := props.size
+    if size <= 0.0 { size = 400.0 }
+    minimum := props.minimum_size
+    if minimum <= 0.0 { minimum = 120.0 }
+    maximum := props.maximum_size
+    if maximum <= 0.0 { maximum = viewport.width }
+    if maximum < minimum { maximum = minimum }
+    if size < minimum { size = minimum }
+    if size > maximum { size = maximum }
+    horizontal := props.side == .OverlaySideLeft || props.side == .OverlaySideRight
+    if horizontal {
+        if size > viewport.width - 16.0 { size = viewport.width - 16.0 }
+        if size < 0.0 { size = 0.0 }
+        geometry.panel.width = size
+        geometry.panel.height = viewport.height
+        geometry.panel.y = viewport.y
+        geometry.panel.x = viewport.x + viewport.width - size
+        if props.side == .OverlaySideLeft { geometry.panel.x = viewport.x }
+    } else {
+        if size > viewport.height - 16.0 { size = viewport.height - 16.0 }
+        if size < 0.0 { size = 0.0 }
+        geometry.panel.width = viewport.width
+        geometry.panel.height = size
+        geometry.panel.x = viewport.x
+        geometry.panel.y = viewport.y + viewport.height - size
+        if props.side == .OverlaySideTop { geometry.panel.y = viewport.y }
+    }
+
+    motion := 1.0 - progress
+    distance := size + 24.0 + drag_offset
+    if props.side == .OverlaySideRight { geometry.panel.x += motion * distance }
+    if props.side == .OverlaySideLeft { geometry.panel.x -= motion * distance }
+    if props.side == .OverlaySideBottom { geometry.panel.y += motion * distance }
+    if props.side == .OverlaySideTop { geometry.panel.y -= motion * distance }
+
+    geometry.handle = geometry.panel
+    if horizontal {
+        geometry.handle.width = 24.0
+        if props.side == .OverlaySideLeft { geometry.handle.x = geometry.panel.x + geometry.panel.width - 24.0 }
+    } else {
+        geometry.handle.height = 24.0
+        if props.side == .OverlaySideTop { geometry.handle.y = geometry.panel.y + geometry.panel.height - 24.0 }
+    }
+    geometry.title = Rectangle.{geometry.panel.x + 24.0, geometry.panel.y + 24.0,
+        geometry.panel.width - 112.0, 24.0}
+    geometry.description = Rectangle.{geometry.title.x,
+        geometry.title.y + geometry.title.height + 4.0,
+        geometry.title.width, 18.0}
+    geometry.close = Rectangle.{geometry.panel.x + geometry.panel.width - 56.0,
+        geometry.panel.y + 16.0, 40.0, 40.0}
+    content_y := geometry.description.y + geometry.description.height + 12.0
+    if props.description.count == 0 { content_y = geometry.title.y + geometry.title.height + 12.0 }
+    geometry.content = Rectangle.{geometry.panel.x + 24.0, content_y,
+        geometry.panel.width - 48.0,
+        geometry.panel.y + geometry.panel.height - 24.0 - content_y}
+    if geometry.content.width < 0.0 { geometry.content.width = 0.0 }
+    if geometry.content.height < 0.0 { geometry.content.height = 0.0 }
+    return geometry
+}
+
+#program_export
+SheetAdvanceFocus :: (state: *SheetState, count: s32,
+    backward: bool) -> bool {
+    if state == null || count <= 0 { return false }
+    if state.focus_index < 0 || state.focus_index >= count {
+        state.focus_index = ifx backward then count - 1 else 0
+        return true
+    }
+    if backward {
+        state.focus_index -= 1
+        if state.focus_index < 0 { state.focus_index = count - 1; return true }
+    } else {
+        state.focus_index += 1
+        if state.focus_index >= count { state.focus_index = 0; return true }
+    }
+    return false
+}
+
+#program_export
+SheetApply :: (state: *SheetState,
+    props: SheetProps) -> SheetResult {
+    result: SheetResult
+    result.node = -1; result.scrim_node = -1; result.title_node = -1
+    result.close_node = -1; result.content_node = -1
+    if state == null { return result }
+
+    was_open := state.visible
+    if props.open && !state.open_previous {
+        state.visible = true
+        state.closing = false
+        state.transition_start_ms = props.now_ms
+        state.dragging = false
+        state.drag_offset = 0.0
+        state.focus_index = 0
+        state.focus_returned = false
+        state.trigger_focus_id = ifx props.input.focus.anchor_focused then 1 else 0
+    }
+    if !props.open && state.open_previous {
+        state.closing = true
+        state.transition_start_ms = props.now_ms
+    }
+    state.open_previous = props.open
+    style := props.surface_style
+    duration := OverlayDuration(ifx style.motion_duration > 0.0 then style.motion_duration else 420.0,
+        style, CurrentTheme().motion.reduced_motion)
+    target := 1.0
+    if state.closing { target = 0.0 }
+    state.progress = OverlayProgressAt(state.transition_start_ms,
+        props.now_ms, duration)
+    if state.closing && state.progress >= 1.0 {
+        state.visible = false
+        state.closing = false
+        state.progress = 0.0
+        state.drag_offset = 0.0
+        state.focus_index = -1
+    }
+    result.visible = state.visible
+    result.progress = state.progress
+    result.opened = props.open && state.visible
+    geometry := SheetLayoutFor(props, state.progress, state.drag_offset)
+    result.geometry = geometry
+
+    if props.open && !props.disabled {
+        if props.input.keys.escape {
+            result.close_requested = true; result.closed_by_escape = true
+        }
+        if props.scrim_close && props.input.pointer.released &&
+            OverlayPointIn(props.input.pointer, geometry.scrim) &&
+            !OverlayPointIn(props.input.pointer, geometry.panel) {
+            result.close_requested = true; result.closed_by_scrim = true
+        }
+        if props.input.pointer.released && OverlayPointIn(props.input.pointer, geometry.close) {
+            result.close_requested = true
+        }
+        if props.drag_enabled {
+            if props.input.pointer.pressed && OverlayPointIn(props.input.pointer, geometry.handle) {
+                state.dragging = true
+                state.drag_last_x = props.input.pointer.x
+                state.drag_last_y = props.input.pointer.y
+            }
+            if state.dragging && props.input.pointer.down {
+                if props.side == .OverlaySideRight || props.side == .OverlaySideLeft {
+                    result.drag_delta = props.input.pointer.x - state.drag_last_x
+                    if props.side == .OverlaySideLeft { result.drag_delta = -result.drag_delta }
+                } else {
+                    result.drag_delta = props.input.pointer.y - state.drag_last_y
+                    if props.side == .OverlaySideTop { result.drag_delta = -result.drag_delta }
+                }
+                state.drag_last_x = props.input.pointer.x
+                state.drag_last_y = props.input.pointer.y
+                if result.drag_delta > 0.0 {
+                    state.drag_offset += result.drag_delta
+                    if state.drag_offset > props.viewport.width + props.viewport.height {
+                        state.drag_offset = props.viewport.width + props.viewport.height
+                    }
+                }
+            } else if state.dragging {
+                state.dragging = false
+                threshold := props.drag_close_distance
+                if threshold <= 0.0 { threshold = 96.0 }
+                if state.drag_offset >= threshold {
+                    result.close_requested = true; result.closed_by_drag = true
+                } else { state.drag_offset = 0.0 }
+            }
+        }
+        if props.input.focus.tab_forward || props.input.focus.tab_backward {
+            result.focus_wrapped = SheetAdvanceFocus(state,
+                props.input.focus_count, props.input.focus.tab_backward)
+        }
+    }
+    if !props.open && was_open && !state.visible {
+        result.focus_returned = true
+        state.focus_returned = true
+    }
+    return result
+}
+
+#program_export
+SheetInstalledFaceFor :: (props: SheetProps, state: s32) -> StyleData {
+    facts := StyleControlRoleFacts(StyleKindModal(), props.id,
+        props.class_name, StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
+    return ResolveInstalledStyleRules(SheetSurfaceDefaultStyle(), facts, state)
+}
+
+SheetHostedReply :: struct {
+    state: SheetState
+    result: SheetResult
+}
+#if #defined(KRYON_HOSTED_UI) {
+    sheet_host_api :: #system_library "host_api";
+    SheetBeginHostedHost :: (session: Session, props: SheetProps, state: SheetState) -> SheetHostedReply #foreign sheet_host_api;
+    #program_export
+    SheetBegin :: (session: Session, props: SheetProps,
+    state: *SheetState) -> SheetResult {
+        reply := SheetBeginHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #import "paint_queue"
+    #program_export
+    SheetBegin :: (session: Session, props: SheetProps,
+    state: *SheetState) -> SheetResult { return SheetBeginCore(session, props, state, true) }
+    #program_export
+SheetBeginCore :: (session: Session, props: SheetProps,
+    state: *SheetState, effects: bool) -> SheetResult {
+    unused effects
+    result := SheetApply(state, props)
+    if !result.visible || !SessionValid(session) || !TreeIsBuilding(session) {
+        return result
+    }
+    face := MergeValues(ResolveValues(SheetInstalledFaceFor(props,
+        ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.states, ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.surface_style)
+    key := props.key
+    if key == cast(u64)0 { key = TreeNextKey(session) }
+    result.scrim_node = TreeSubmitCurrent(session, WidgetPartKey(key, 1),
+        WidgetKindModal, result.geometry.scrim)
+    if result.scrim_node >= 0 {
+        TreeSetStyleClass(session, result.scrim_node, props.class_name)
+        TreeSetStyleId(session, result.scrim_node, props.id)
+        PaintRoundedFill(session, result.scrim_node, result.geometry.scrim, 0.0,
+            4, ColorFromPacked(Opacity(props.scrim_style.background,
+                OverlayStyleOpacity(props.scrim_style) * result.progress)))
+    }
+    if !TreePushScope(session, result.scrim_node) { return result }
+    result.node = TreeSubmitCurrent(session, WidgetPartKey(key, 2),
+        WidgetKindModal, result.geometry.panel)
+    if result.node < 0 { unused TreePopScope(session); return result }
+    TreeSetPopup(session, result.node)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    PaintRoundedFill(session, result.node, result.geometry.panel, face.radius,
+        12, ColorFromPacked(Opacity(face.background, OverlayStyleOpacity(face))))
+    if face.border != cast(u32)0 {
+        PaintRoundedOutline(session, result.node, result.geometry.panel,
+            face.radius, 12, face.border_width,
+            ColorFromPacked(Opacity(face.border, OverlayStyleOpacity(face))))
+    }
+    if !TreePushScope(session, result.node) { return result }
+    result.title_node = TreeSubmitCurrent(session, WidgetPartKey(key, 3),
+        WidgetKindText, result.geometry.title)
+    if result.title_node >= 0 {
+        TreeSetPopup(session, result.title_node)
+        TreeSetStyleClass(session, result.title_node, props.class_name)
+        TreeSetStyleId(session, result.title_node, props.id)
+        TreeSetSemantic(session, result.title_node, cast(SemanticKind)SemanticHeading, 3)
+        TreeSetLabel(session, result.title_node, props.title)
+        font := ResolveFont(0, StyleFontValue(face.fields, face.font_size), 17)
+        PaintClippedLabel(session, result.title_node, props.title,
+            cast(s32)result.geometry.title.x, cast(s32)result.geometry.title.y,
+            font, ColorFromPacked(Opacity(face.foreground, OverlayStyleOpacity(face))),
+            result.geometry.title)
+    }
+    result.close_node = TreeSubmitCurrent(session, WidgetPartKey(key, 4),
+        WidgetKindButton, result.geometry.close)
+    if result.close_node >= 0 {
+        TreeSetPopup(session, result.close_node)
+        TreeSetStyleClass(session, result.close_node, props.class_name)
+        TreeSetStyleId(session, result.close_node, props.id)
+        TreeSetInteractive(session, result.close_node, props.disabled, false, props.id + 1)
+        TreeSetSemantic(session, result.close_node, cast(SemanticKind)SemanticButton, 0)
+        TreeSetLabel(session, result.close_node, props.close_label)
+        PaintRoundedFill(session, result.close_node, result.geometry.close,
+            face.radius, 8, ColorFromPacked(Opacity(face.foreground, 0.08)))
+    }
+    result.content_node = TreeSubmitCurrent(session, WidgetPartKey(key, 5),
+        WidgetKindGroup, result.geometry.content)
+    if result.content_node >= 0 {
+        TreeSetPopup(session, result.content_node)
+        TreeSetStyleClass(session, result.content_node, props.class_name)
+        TreeSetStyleId(session, result.content_node, props.id)
+        if props.description.count > 0 {
+            description_node := TreeSubmitCurrent(session, WidgetPartKey(key, 6),
+                WidgetKindText, result.geometry.description)
+            if description_node >= 0 {
+                TreeSetPopup(session, description_node)
+                TreeSetSemantic(session, description_node, cast(SemanticKind)SemanticParagraph, 0)
+                TreeSetLabel(session, description_node, props.description)
+            }
+        }
+    }
+    if !TreePushScope(session, result.content_node) { return result }
+    return result
+}
+}
+
+
+#if #defined(KRYON_HOSTED_UI) {
+    SheetEndHostedHost :: (session: Session) -> bool #foreign sheet_host_api;
+    #program_export
+    SheetEnd :: (session: Session) -> bool { return SheetEndHostedHost(session) }
+} else {
+#program_export
+SheetEnd :: (session: Session) -> bool {
+    if !TreePopScope(session) { return false }
+    if !TreePopScope(session) { return false }
+    if !TreePopScope(session) { return false }
+    return true
+}
+
+}
+
+#program_export
+Sheet :: (session: Session, props: SheetProps,
+    state: *SheetState) -> SheetResult {
+    result := SheetBegin(session, props, state)
+    if result.content_node >= 0 { unused SheetEnd(session) }
+    return result
+}
+

@@ -1,0 +1,131 @@
+#import "box_props"
+#import "box"
+#import "button_props"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "semantic"
+#import "style"
+#import "style_sheet"
+#import "svg_icon_props"
+#import "svgicon"
+#import "text_align"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using WidgetKind;
+using SemanticKind;
+
+EmptyStateProps :: struct {
+    key: u64
+    bounds: Rectangle
+    title: string
+    description: string
+    icon_shape: string
+    action: string
+    disabled: bool
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+}
+
+EmptyStateLayout :: struct {
+    bounds: Rectangle
+    icon: Rectangle
+    title: Rectangle
+    description: Rectangle
+    action: Rectangle
+    description_width: float32
+}
+
+EmptyStateResult :: struct {
+    node: s32
+    action: bool
+    layout: EmptyStateLayout
+}
+
+#program_export
+EmptyStateDefaultIcon :: () -> string {
+    return "S1.7rr:M4 20h5V4H4zM15 5l5 15M9 12h5"
+}
+
+#program_export
+EmptyStateLayoutFor :: (props: EmptyStateProps) -> EmptyStateLayout {
+    layout: EmptyStateLayout
+    layout.bounds = props.bounds
+    if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result_placeholder() }
+    width := props.bounds.width - 80.0
+    if width < 1.0 { width = 1.0 }
+    layout.description_width = ifx width < 360.0 then width else 360.0
+    y := props.bounds.y + 24.0
+    if props.icon_shape != "" {
+        layout.icon = Rectangle.{props.bounds.x + (props.bounds.width - 32.0) * 0.5,
+            y, 32.0, 32.0}
+        y += 46.0
+    }
+    layout.title = Rectangle.{props.bounds.x + 40.0, y,
+        props.bounds.width - 80.0, 21.0}
+    y += 27.0
+    if props.description != "" {
+        layout.description = Rectangle.{props.bounds.x + (props.bounds.width -
+            layout.description_width) * 0.5, y, layout.description_width, 42.0}
+        y += 48.0
+    }
+    if props.action != "" { layout.action = Rectangle.{props.bounds.x + 40.0, y,
+        props.bounds.width - 80.0, 36.0} }
+    return layout
+}
+
+#scope_file
+result_placeholder :: () -> EmptyStateLayout { return EmptyStateLayout.{} }
+
+#scope_export
+#program_export
+EmptyState :: (session: Session, props: EmptyStateProps) -> EmptyStateResult {
+    result: EmptyStateResult
+    result.layout = EmptyStateLayoutFor(props)
+    if !SessionValid(session) || !TreeIsBuilding(session) ||
+    props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup,
+        result.layout.bounds)
+    if result.node < 0 { return result }
+    TreeSetLabel(session, result.node, props.title)
+    if props.description != "" { TreeSetSemanticDetail(session, result.node, props.description) }
+    TreeSetSemantic(session, result.node, .SemanticSection, 0)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    if !TreePushScope(session, result.node) { return result }
+    icon_shape := ifx props.icon_shape != "" then props.icon_shape else EmptyStateDefaultIcon()
+    unused SvgIcon(session, SvgIconProps.{.bounds = result.layout.icon,
+        .shape = icon_shape, .color = ColorFromPacked(CurrentPalette().text_muted)})
+    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 1),
+        .bounds = result.layout.title, .text = props.title, .font = Text16,
+        .id = props.id, .class_name = props.class_name,
+            .semantic_kind = .SemanticHeading, .heading_level = 3,
+        .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapEllipsis})
+    if props.description != "" {
+        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 2),
+            .bounds = result.layout.description, .text = props.description,
+            .font = Text14, .id = props.id, .class_name = props.class_name,
+            .semantic_kind = .SemanticParagraph, .align = TextAlign.TextAlignCenter,
+            .wrap = TextWrap.TextWrapAnywhere})
+    }
+    if props.action != "" {
+        clicked := Button(session, ButtonProps.{
+            .key = WidgetPartKey(props.key, 3), .bounds = result.layout.action,
+            .label = props.action, .disabled = props.disabled,
+            .icon_shape = "S2rr:M5 12h14M12 5v14", .id = props.id,
+            .class_name = props.class_name, .style_kind = StyleKindButton(),
+            .emphasis = .ButtonEmphasisFilled})
+        result.action = !props.disabled && clicked == 1
+    }
+    unused TreePopScope(session)
+    return result
+}

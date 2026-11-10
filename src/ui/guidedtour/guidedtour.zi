@@ -1,0 +1,353 @@
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "guided_tour_props"
+#import "semantic"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "theme"
+#import "tooltip_common"
+#import "tree"
+#import "widget_kind"
+
+using ButtonState;
+using SemanticKind;
+using StyleField;
+using WidgetKind;
+
+AppendTourCount :: (state: *GuidedTourState, value: s32) {
+    if value < 0 { value = -value }
+    digits: [12]u8
+    count: s32 = 0
+    if value == 0 { digits[0] = cast(u8)48; count = 1 }
+    while value > 0 && count < 12 {
+        digits[count] = cast(u8)(48 + value % 10)
+        value /= 10
+        count += 1
+    }
+    while count > 0 && state.count_label_length < 32 {
+        state.count_label[state.count_label_length] = digits[count - 1]
+        state.count_label_length += 1
+        count -= 1
+    }
+}
+
+#program_export
+GuidedTourCountLabel :: (state: *GuidedTourState, step: s32,
+    total: s32, format: string) -> s32 {
+    if state == null { return 0 }
+    state.count_label_length = 0
+    used_step := false
+    used_total := false
+    at := 0
+    while at < cast(s32)format.count && state.count_label_length < 32 {
+        if format[at] == cast(u8)37 && at + 1 < cast(s32)format.count &&
+            format[at + 1] == cast(u8)100 {
+            if !used_step {
+                AppendTourCount(state, step + 1); used_step = true
+            } else if !used_total {
+                AppendTourCount(state, total); used_total = true
+            }
+            at += 2
+        } else {
+            state.count_label[state.count_label_length] = format[at]
+            state.count_label_length += 1
+            at += 1
+        }
+    }
+    return state.count_label_length
+}
+
+#program_export
+GuidedTourAdvanceFocus :: (state: *GuidedTourState,
+    backward: bool) -> bool {
+    if state == null { return false }
+    if state.focus_index < 0 || state.focus_index > 2 {
+        state.focus_index = ifx backward then 2 else 0
+        return true
+    }
+    if backward { state.focus_index -= 1 } else { state.focus_index += 1 }
+    if state.focus_index < 0 { state.focus_index = 2; return true }
+    if state.focus_index > 2 { state.focus_index = 0; return true }
+    return false
+}
+
+#program_export
+GuidedTourApply :: (state: *GuidedTourState,
+    props: GuidedTourProps) -> GuidedTourResult {
+    result: GuidedTourResult
+    result.node = -1; result.card_node = -1; result.title_node = -1
+    result.back_node = -1; result.next_node = -1; result.skip_node = -1
+    result.scrim_nodes[0] = -1; result.scrim_nodes[1] = -1
+    result.scrim_nodes[2] = -1; result.scrim_nodes[3] = -1
+    if state == null || props.steps.count <= 0 || state.step < 0 {
+        return result
+    }
+    if state.step >= cast(s32)props.steps.count {
+        state.step = cast(s32)props.steps.count - 1
+    }
+    if !state.initialized || state.previous_step != state.step {
+        state.transition_start_ms = props.now_ms
+        state.initialized = true
+    }
+    state.previous_step = state.step
+    duration := OverlayDuration(280.0, props.card_style,
+        CurrentTheme().motion.reduced_motion)
+    state.progress = OverlayProgressAt(state.transition_start_ms,
+        props.now_ms, duration)
+    result.progress = state.progress
+    result.visible = true
+    result.step = state.step
+
+    step := props.steps[state.step]
+    padding := props.padding
+    if padding <= 0.0 { padding = 6.0 }
+    hole := Rectangle.{step.target.x - padding, step.target.y - padding,
+        step.target.width + padding * 2.0, step.target.height + padding * 2.0}
+    result.geometry.hole = hole
+    has_target := step.target.width > 0.0 && step.target.height > 0.0
+    if !has_target { hole = props.viewport }
+    if has_target {
+        result.geometry.bands[0] = Rectangle.{props.viewport.x, props.viewport.y,
+            props.viewport.width, hole.y - props.viewport.y}
+        result.geometry.bands[1] = Rectangle.{props.viewport.x,
+            hole.y + hole.height, props.viewport.width,
+            props.viewport.y + props.viewport.height - hole.y - hole.height}
+        result.geometry.bands[2] = Rectangle.{props.viewport.x, hole.y,
+            hole.x - props.viewport.x, hole.height}
+        result.geometry.bands[3] = Rectangle.{hole.x + hole.width, hole.y,
+            props.viewport.x + props.viewport.width - hole.x - hole.width,
+            hole.height}
+        result.geometry.band_count = 4
+    } else {
+        result.geometry.bands[0] = props.viewport
+        result.geometry.band_count = 1
+    }
+
+    width := props.width
+    if width <= 0.0 { width = 300.0 }
+    if width > props.viewport.width - 24.0 { width = props.viewport.width - 24.0 }
+    if width < 0.0 { width = 0.0 }
+    card_height: float32 = 132.0
+    placement := step.placement
+    if placement == .OverlayPlaceBottomStart && has_target {
+        result.geometry.card = OverlayFitPlacement(step.target, width,
+            card_height, padding + cast(float32)10.0, placement,
+            props.viewport, cast(float32)12.0)
+    } else if has_target {
+        result.geometry.card = OverlayFitPlacement(step.target, width,
+            card_height, padding + cast(float32)10.0, placement,
+            props.viewport, cast(float32)12.0)
+    } else {
+        result.geometry.card.bounds = Rectangle.{
+            props.viewport.x + (props.viewport.width - width) * 0.5,
+            props.viewport.y + (props.viewport.height - card_height) * 0.5,
+            width, card_height}
+        result.geometry.card.visible = true
+        result.geometry.card.placement = .OverlayPlaceBottomStart
+    }
+
+    action: GuidedTourAction = .GuidedTourActionNone
+    last := state.step == cast(s32)props.steps.count - 1
+    if !props.disabled {
+        if props.input.escape || props.input.activate == .GuidedTourActionSkip {
+            action = .GuidedTourActionSkip
+        } else if props.input.activate == .GuidedTourActionBack ||
+            (props.input.left && state.step > 0) {
+            action = .GuidedTourActionBack
+        } else if props.input.activate == .GuidedTourActionNext ||
+            props.input.activate == .GuidedTourActionDone ||
+            props.input.right || props.input.enter {
+            action = ifx last then .GuidedTourActionDone else .GuidedTourActionNext
+        }
+        if props.input.focus.tab_forward || props.input.focus.tab_backward {
+            result.focus_wrapped = GuidedTourAdvanceFocus(state,
+                props.input.focus.tab_backward)
+        }
+    }
+    if action == .GuidedTourActionNext { state.step += 1 }
+    if action == .GuidedTourActionBack { state.step -= 1 }
+    if action == .GuidedTourActionDone || action == .GuidedTourActionSkip {
+        state.step = -1; state.initialized = false; state.progress = 0.0
+    }
+    result.action = action
+    result.step = state.step
+    if state.step < 0 { result.visible = false }
+    return result
+}
+
+#program_export
+GuidedTourInstalledFaceFor :: (props: GuidedTourProps,
+    state: s32) -> StyleData {
+    facts := StyleControlRoleFacts(StyleKindGuide(), props.id,
+        props.class_name, StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
+    return ResolveInstalledStyleRules(GuidedTourCardDefaultStyle(), facts, state)
+}
+
+GuidedTourHostedReply :: struct {
+    state: GuidedTourState
+    result: GuidedTourResult
+}
+#if #defined(KRYON_HOSTED_UI) {
+    guided_tour_host_api :: #system_library "host_api";
+    GuidedTourHostedHost :: (session: Session, props: GuidedTourProps, state: GuidedTourState) -> GuidedTourHostedReply #foreign guided_tour_host_api;
+    #program_export
+    GuidedTour :: (session: Session, props: GuidedTourProps,
+    state: *GuidedTourState) -> GuidedTourResult {
+        reply := GuidedTourHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #import "paint_queue"
+    #program_export
+    GuidedTour :: (session: Session, props: GuidedTourProps,
+    state: *GuidedTourState) -> GuidedTourResult { return GuidedTourCore(session, props, state, true) }
+    #program_export
+GuidedTourCore :: (session: Session, props: GuidedTourProps,
+    state: *GuidedTourState, effects: bool) -> GuidedTourResult {
+    unused effects
+    result := GuidedTourApply(state, props)
+    if !result.visible || !SessionValid(session) || !TreeIsBuilding(session) {
+        return result
+    }
+    face := MergeValues(ResolveValues(GuidedTourInstalledFaceFor(props,
+        ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.states, ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.card_style)
+    scrim_color := ColorFromPacked(Opacity(props.scrim_style.background,
+        OverlayStyleOpacity(props.scrim_style) * result.progress))
+    band_index: s32 = 0
+    while band_index < result.geometry.band_count {
+        bounds := result.geometry.bands[band_index]
+        if bounds.width > 0.0 && bounds.height > 0.0 {
+            result.scrim_nodes[band_index] = TreeSubmitCurrent(session,
+                WidgetPartKey(props.key, 10 + band_index),
+                WidgetKindModal, bounds)
+            if result.scrim_nodes[band_index] >= 0 {
+                TreeSetStyleClass(session, result.scrim_nodes[band_index],
+                    props.class_name)
+                TreeSetStyleId(session, result.scrim_nodes[band_index], props.id)
+                PaintRoundedFill(session, result.scrim_nodes[band_index],
+                    bounds, 0.0, 4, scrim_color)
+            }
+        }
+        band_index += 1
+    }
+    if result.geometry.hole.width > 0.0 && result.geometry.hole.height > 0.0 {
+        ring := TreeSubmitCurrent(session, WidgetPartKey(props.key, 20),
+            WidgetKindBox, result.geometry.hole)
+        if ring >= 0 {
+            TreeSetPopup(session, ring)
+            TreeSetStyleClass(session, ring, props.class_name)
+            TreeSetStyleId(session, ring, props.id)
+            PaintRoundedOutline(session, ring, result.geometry.hole, 10.0,
+                16, 1.5, Color.{255, 255, 255,
+                    cast(u8)(235 * result.progress)})
+        }
+    }
+
+    card_bounds := result.geometry.card.bounds
+    result.card_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 1),
+        WidgetKindBox, card_bounds)
+    if result.card_node < 0 { return result }
+    TreeSetPopup(session, result.card_node)
+    TreeSetStyleClass(session, result.card_node, props.class_name)
+    TreeSetStyleId(session, result.card_node, props.id)
+    PaintRoundedFill(session, result.card_node, card_bounds, face.radius, 16,
+        ColorFromPacked(Opacity(face.background,
+            OverlayStyleOpacity(face) * result.progress)))
+    if face.border != cast(u32)0 {
+        PaintRoundedOutline(session, result.card_node, card_bounds, face.radius,
+            16, face.border_width, ColorFromPacked(Opacity(face.border,
+                OverlayStyleOpacity(face) * result.progress)))
+    }
+    if !TreePushScope(session, result.card_node) { return result }
+    result.geometry.count_bounds = Rectangle.{card_bounds.x + face.padding_x,
+        card_bounds.y + face.padding_y, card_bounds.width - 64.0, 16.0}
+    count_node := TreeSubmitCurrent(session, WidgetPartKey(props.key, 2),
+        WidgetKindText, result.geometry.count_bounds)
+    if count_node >= 0 {
+        TreeSetPopup(session, count_node)
+        TreeSetStyleClass(session, count_node, props.class_name)
+        TreeSetStyleId(session, count_node, props.id)
+        TreeSetSemantic(session, count_node, cast(SemanticKind)SemanticParagraph, 0)
+        unused GuidedTourCountLabel(state, props.step,
+            cast(s32)props.steps.count,
+            ifx props.count_format.count > 0 then props.count_format else "%d of %d")
+        count_label := TextView(
+            state.count_label[:state.count_label_length])
+        TreeSetLabel(session, count_node, count_label)
+    }
+    result.title_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 3),
+        WidgetKindText, Rectangle.{result.geometry.count_bounds.x,
+            result.geometry.count_bounds.y + 24.0,
+            card_bounds.width - face.padding_x * 2.0, 22.0})
+    if result.title_node >= 0 {
+        TreeSetPopup(session, result.title_node)
+        TreeSetStyleClass(session, result.title_node, props.class_name)
+        TreeSetStyleId(session, result.title_node, props.id)
+        TreeSetSemantic(session, result.title_node, cast(SemanticKind)SemanticHeading, 3)
+        TreeSetLabel(session, result.title_node,
+            ifx props.step >= 0 && props.step < cast(s32)props.steps.count then
+                props.steps[props.step].title else "")
+    }
+    result.geometry.back_bounds = Rectangle.{card_bounds.x + face.padding_x,
+        card_bounds.y + card_bounds.height - face.padding_y - 30.0, 64.0, 30.0}
+    result.geometry.next_bounds = Rectangle.{
+        card_bounds.x + card_bounds.width - face.padding_x - 72.0,
+        result.geometry.back_bounds.y, 72.0, 30.0}
+    result.geometry.skip_bounds = Rectangle.{
+        card_bounds.x + card_bounds.width - face.padding_x - 28.0,
+        card_bounds.y + 10.0, 24.0, 24.0}
+    if props.step > 0 {
+        result.back_node = TreeSubmitCurrent(session,
+            WidgetPartKey(props.key, 4), WidgetKindButton,
+            result.geometry.back_bounds)
+        if result.back_node >= 0 {
+            TreeSetPopup(session, result.back_node)
+            TreeSetStyleClass(session, result.back_node, props.class_name)
+            TreeSetStyleId(session, result.back_node, props.id)
+            TreeSetInteractive(session, result.back_node, props.disabled,
+                false, props.id + 1)
+            TreeSetSemantic(session, result.back_node, cast(SemanticKind)SemanticButton, 0)
+            TreeSetLabel(session, result.back_node, props.back_label)
+        }
+    }
+    result.next_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 5),
+        WidgetKindButton, result.geometry.next_bounds)
+    if result.next_node >= 0 {
+        TreeSetPopup(session, result.next_node)
+        TreeSetStyleClass(session, result.next_node, props.class_name)
+        TreeSetStyleId(session, result.next_node, props.id)
+        TreeSetInteractive(session, result.next_node, props.disabled,
+            false, props.id + 2)
+        TreeSetSemantic(session, result.next_node, cast(SemanticKind)SemanticButton, 0)
+        last := props.step == cast(s32)props.steps.count - 1
+        TreeSetLabel(session, result.next_node,
+            ifx last then props.done_label else props.next_label)
+        PaintRoundedFill(session, result.next_node,
+            result.geometry.next_bounds, props.button_style.radius, 8,
+            ColorFromPacked(Opacity(props.button_style.background,
+                OverlayStyleOpacity(props.button_style))))
+    }
+    result.skip_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 6),
+        WidgetKindButton, result.geometry.skip_bounds)
+    if result.skip_node >= 0 {
+        TreeSetPopup(session, result.skip_node)
+        TreeSetStyleClass(session, result.skip_node, props.class_name)
+        TreeSetStyleId(session, result.skip_node, props.id)
+        TreeSetInteractive(session, result.skip_node, props.disabled,
+            false, props.id + 3)
+        TreeSetSemantic(session, result.skip_node, cast(SemanticKind)SemanticButton, 0)
+        TreeSetLabel(session, result.skip_node, props.skip_label)
+    }
+    unused TreePopScope(session)
+    return result
+}
+}
+
+

@@ -1,5 +1,5 @@
 #import "session"
-#import "app"
+#import "frame_entry"
 #import "geometry"
 #import "pixmap"
 #import "tree"

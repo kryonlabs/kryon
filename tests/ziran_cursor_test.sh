@@ -11,6 +11,14 @@ cat > "$work/app.zi" <<'ZI'
 
 using CursorShape;
 
+CursorShapePolicyTest :: () -> s32 {
+    if CursorShapeForWidget(WidgetKind.WidgetKindSelectable, false) != cast(s32)CursorClickable { return -50 }
+    if CursorShapeForWidget(WidgetKind.WidgetKindTextField, false) != cast(s32)CursorText { return -51 }
+    if CursorShapeForWidget(WidgetKind.WidgetKindTextArea, false) != cast(s32)CursorText { return -52 }
+    if CursorShapeForWidget(WidgetKind.WidgetKindSelectable, true) != cast(s32)CursorDisabled { return -53 }
+    return 0
+}
+
 TreeCursorTest :: () -> s32 {
     session := SessionOpen()
     if !SessionValid(session) { return -20 }
@@ -96,6 +104,7 @@ TreeCursorTest :: () -> s32 {
 
 #program_export
 Answer :: () -> s32 {
+    if CursorShapePolicyTest() != 0 { return -50 }
     state: CursorFrame
     stage: s32 = 0
     while stage < 7 {
@@ -138,9 +147,9 @@ Answer :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
-"$ziran" bundle --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     --entry app:Answer -o "$work/source.zx" "$work/app.zi"
 "$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
     --entry app:Answer -o "$work/saved.zx" "$work/ir/app.zir"

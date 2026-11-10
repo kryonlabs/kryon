@@ -7,6 +7,10 @@
 #import "std/vec"
 #import "geometry"
 #import "drawing_props"
+#import "text_request"
+#import "hosted_values"
+Utf8 :: #import "std/utf8";
+Grapheme :: #import "std/grapheme";
 #if !#defined(BUNDLE_NATIVE_RENDERER) {
     #import "pixmap"
 }
@@ -18,6 +22,8 @@ Input :: struct {
     secondary_down: bool; secondary_pressed: bool; secondary_released: bool;
     modifiers: s32; key: s32; wheel: float32;
 }
+PlayerEditorPresent :: #type (context: *void, identity: u64, value: string, cursor: s32, anchor: s32, flags: s32) -> void;
+PlayerEditorRequest :: #type (context: *void, identity: u64, output: []u8) -> TextRequest;
 Player :: struct {
     fields: [13]HostField; names: [27]Name; bindings: [128]HostBinding;
     bundle: *void; instance: *void; input: Input;
@@ -26,10 +32,17 @@ Player :: struct {
     failed: bool
     renderer: HostCall
     renderer_context: *void
+    editor_ready: bool
+    editor_present: PlayerEditorPresent
+    editor_request: PlayerEditorRequest
+    editor_context: *void
+    editor_identity: u64
+    editor_request_bytes: [65536]u8
+    editor_fields: [5]HostField
     renderer_active: bool
 }
 Supported :: (module: string, function: string) -> bool {
-    if ModuleName(module,"zx_run") { return function=="ReadBundleInput" || function=="TakeBundleCodepoint" || function=="BundleTextInputHost" || function=="BundleFrameFinishedHost" || function=="BundleFrameReusableHost" }
+    if ModuleName(module,"zx_run") { return function=="ReadBundleInput" || function=="TakeBundleCodepoint" || function=="BundleTextInputHost" || function=="BundleFrameFinishedHost" || function=="BundleFrameReusableHost" || function=="BundleTextEditorHost" || function=="BundleTextRequestHost" }
     if ModuleName(module,"font_metrics") { return function=="MeasureGlyphWidth" || function=="MeasureGlyphLineHeight" }
     if ModuleName(module,"raster_text") { return function=="RasterText" || function=="RasterTextClipped" || function=="RasterTextRotated" }
     if ModuleName(module,"raster_shape") { return function=="RasterRoundedRectangle" || function=="RasterRoundedRectangleOutline" }
@@ -52,6 +65,40 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     args: *HostValue, count: s32, result: *HostValue) -> s32 {
     player:=cast(*Player)context; module:=TextFromCString(module_name); function:=TextFromCString(function_name)
     if !Supported(module,function) { return 0 }; result.kind = HostVoid
+    if function == "BundleTextEditorHost" {
+        if count != 5 || !HostScalarValid(args[0], "u64", HostUnsigned) ||
+        !HostScalarValid(args[1], "string", HostString) || args[1].length > cast(usize)65536 ||
+        !HostScalarValid(args[2], "s32", HostInteger) || !HostScalarValid(args[3], "s32", HostInteger) ||
+        !HostScalarValid(args[4], "s32", HostInteger) { return 0 }
+        value := TextValue(args[1]); cursor := cast(s32)args[2].integer; anchor := cast(s32)args[3].integer
+        if !Utf8.Valid(value) || cursor < 0 || anchor < 0 || cursor > value.count || anchor > value.count ||
+        Grapheme.Boundary(value, cursor) != cursor || Grapheme.Boundary(value, anchor) != anchor ||
+        args[4].integer < 0 || args[4].integer > 31 { return 0 }
+        player.editor_identity = args[0].bits
+        if player.editor_ready && player.editor_present != null {
+            player.editor_present(player.editor_context, player.editor_identity, value, cursor, anchor, cast(s32)args[4].integer)
+        }
+        return 1
+    }
+    if function == "BundleTextRequestHost" {
+        if count != 1 || !HostScalarValid(args[0], "u64", HostUnsigned) { return 0 }
+        request: TextRequest
+        if player.editor_ready && player.editor_request != null && args[0].bits != 0 && args[0].bits == player.editor_identity {
+            request = player.editor_request(player.editor_context, args[0].bits, player.editor_request_bytes[:])
+        }
+        if request.pending && (!request.replace || request.value.count > 65536 || !Utf8.Valid(request.value) ||
+        request.cursor < 0 || request.anchor < 0 || request.cursor > request.value.count || request.anchor > request.value.count ||
+        Grapheme.Boundary(request.value, request.cursor) != request.cursor ||
+        Grapheme.Boundary(request.value, request.anchor) != request.anchor) { return 0 }
+        player.editor_fields[0] = HostField.{HostTextData("value"), HostValue.{.kind = HostString,
+            .type_name = HostTextData("string"), .data = HostTextData(request.value), .length = cast(usize)request.value.count}}
+        player.editor_fields[1] = HostField.{HostTextData("cursor"), HostScalar("s32", cast(s64)request.cursor)}
+        player.editor_fields[2] = HostField.{HostTextData("anchor"), HostScalar("s32", cast(s64)request.anchor)}
+        player.editor_fields[3] = HostField.{HostTextData("replace"), HostScalar("bool", cast(s64)request.replace)}
+        player.editor_fields[4] = HostField.{HostTextData("pending"), HostScalar("bool", cast(s64)request.pending)}
+        result.* = HostRecordValue("TextRequest", player.editor_fields[:])
+        return 1
+    }
     if function=="BundleTextInputHost" && count==1 && args[0].kind==HostInteger { player.keyboard = args[0].integer!=0; return 1 }
     if function=="BundleFrameFinishedHost" && count==1 && args[0].kind==HostInteger { return 1 }
     if function=="BundleFrameReusableHost" && count==0 {
@@ -100,6 +147,9 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
 }
 #program_export
 PlayerClose :: (player: *Player) {
+    if player.editor_ready && player.editor_present != null { player.editor_present(player.editor_context, 0, "", 0, 0, 0) }
+    player.editor_ready = false; player.editor_context = null
+    player.editor_identity = 0
     if player.instance!=null { CloseBundleInstance(player.instance); player.instance = null }
     if player.bundle!=null { CloseBundle(player.bundle); player.bundle = null }
     player.closed = true
@@ -189,4 +239,11 @@ PlayerFrameNative :: (player: *Player, input: Input) -> bool {
         if !ok { player.closed = true }; return ok
     }
 
+}
+
+// Optional native editor callbacks belong to this player instance only.
+PlayerUseTextEditor :: (player: *Player, present: PlayerEditorPresent,
+    request: PlayerEditorRequest, context: *void) {
+    player.editor_present = present; player.editor_request = request; player.editor_context = context
+    player.editor_ready = true
 }

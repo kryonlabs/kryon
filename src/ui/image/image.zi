@@ -1,0 +1,209 @@
+Theme :: #import "theme";
+// Portable compositions can submit the same public widget contract to a
+// retained UI host. The host binds this effect to the ordinary implementation;
+// widget behavior, styles and input ownership have one implementation.
+#if #defined(KRYON_HOSTED_UI) {
+    #import "session"
+    #import "image_props"
+    host_api :: #system_library "host_api";
+    ImageHostedHost :: (session: Session, image: ImageProps) #foreign host_api;
+    #program_export
+    Image :: (session: Session, image: ImageProps) { ImageHostedHost(session, image) }
+} else {
+#import "session"
+#import "semantic"
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "image_behavior"
+#import "image_props"
+#import "image_raster"
+Bitmaps :: #import "bitmap_store";
+#import "paint_queue"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "tree"
+#import "widget_kind"
+
+using WidgetKind;
+using ButtonState;
+using StyleField;
+
+ImageFaces :: struct {
+    surface: StyleData
+    label: StyleData
+}
+
+#program_export
+DefaultImageFaces :: () -> ImageFaces {
+    faces: ImageFaces
+    faces.surface.fields = cast(u32)StyleForeground |
+        cast(u32)StyleOpacity
+    faces.surface.foreground = cast(u32)0xffffffff
+    faces.surface.opacity = 1.0
+    faces.label.fields = cast(u32)StyleForeground |
+        cast(u32)StyleFontSize
+    faces.label.foreground = Theme.CurrentText()
+    faces.label.font_size = 14.0
+    return faces
+}
+
+#program_export
+ImageFacesFor :: (image: ImageProps,
+    defaults: ImageFaces) -> ImageFaces {
+    faces: ImageFaces = defaults
+    facts: StyleFacts = StyleDefaultFacts(StyleKindImage())
+    facts.id = image.id
+    facts.class_name = image.class_name
+    faces.surface = ResolveInstalledStyleRules(defaults.surface, facts,
+        cast(s32)ButtonStateNormal)
+    facts.role = ImageLabelRole()
+    faces.label = ResolveInstalledStyleRules(defaults.label, facts,
+        cast(s32)ButtonStateNormal)
+    return faces
+}
+
+#program_export
+ImageTextureFor :: (image: ImageProps) -> Texture2D {
+    texture: Texture2D = image.texture
+    if texture.id != cast(u32)0 || image.asset_path == "" {
+        return texture
+    }
+    texture.width = AssetWidth(image.asset_path)
+    texture.height = AssetHeight(image.asset_path)
+    if texture.width > 0 && texture.height > 0 {
+        // This marker makes the pure fit policy treat a host-backed asset as
+        // available. RasterImage receives the original id 0 and asset path.
+        texture.id = cast(u32)1
+    }
+    return texture
+}
+
+// What an image draws this frame: its picture once that is ready, else its
+// preview with the source mapped onto the preview's pixels. Asking for the
+// picture also starts a host loading it; the preview is asked for only
+// while the picture is not ready.
+ImageShown :: struct {
+    image: ImageProps
+    texture: Texture2D
+    showing: ImageShowing
+}
+
+#program_export
+ImageShownFor :: (image: ImageProps) -> ImageShown {
+    full := ImageTextureFor(image)
+    shown := ImageShown.{.image = image, .texture = full}
+    preview_texture: Texture2D
+    if full.id == cast(u32)0 && ImagePreviewUsable(image) {
+        preview := image
+        preview.asset_path = image.preview_path
+        preview_texture = ImageTextureFor(preview)
+        if preview_texture.id != cast(u32)0 {
+            preview.source = ImagePreviewSource(image.source, image.full_size,
+                preview_texture.width, preview_texture.height)
+            shown.image = preview
+            shown.texture = preview_texture
+        }
+    }
+    shown.showing = ImageShowingFor(full, preview_texture)
+    return shown
+}
+
+#program_export
+ImageTint :: (surface: StyleData) -> Color {
+    packed: u32 = surface.foreground
+    if (surface.fields & cast(u32)StyleForeground) == cast(u32)0 {
+        packed = cast(u32)0xffffffff
+    }
+    return ColorFromPacked(Opacity(packed,
+        StyleOpacityValue(surface.fields, surface.opacity)))
+}
+
+#program_export
+PaintImagePlaceholder :: (session: Session, node: s32, image: ImageProps,
+    label_style: StyleData) {
+    label: string = image.alt_text
+    if label == "" { label = "Missing image" }
+    font: s32 = ResolveFont(0,
+        StyleFontValue(label_style.fields, label_style.font_size), 14)
+    width: s32 = GlyphWidth(label, font, label_style.typeface)
+    height: s32 = GlyphLineHeight(font, label_style.typeface)
+    layout: ImagePlaceholderLayout = ImagePlaceholderLayoutFor(image.bounds,
+        width, height)
+    PaintLabel(session, node, label, layout.label_x, layout.label_y,
+        font, ColorFromPacked(Opacity(label_style.foreground,
+            StyleOpacityValue(label_style.fields,
+                label_style.opacity))))
+}
+
+#program_export
+Image :: (session: Session, image: ImageProps) {
+    if Bitmaps.BitmapTagged(image.texture.id) &&
+        (!SessionValid(session) || Bitmaps.BitmapOwnedSlot(session.slot, session.epoch, image.texture) < 0) { return }
+    node: s32 = -1
+    if TreeIsBuilding(session) {
+        node = TreeSubmitCurrent(session, image.key, WidgetKindImage, image.bounds)
+        if node < 0 { return }
+        TreeSetStyleClass(session, node, image.class_name)
+        TreeSetStyleId(session, node, image.id)
+        TreeSetLabel(session, node, image.alt_text)
+        TreeSetSemanticDetail(session, node, image.asset_path)
+        // An image widget is an image semantically; the detail carries its
+        // source, which the DOM host reconciles into a real <img src>.
+        TreeSetSemantic(session, node, SemanticKind.SemanticImage, 0)
+    }
+    faces: ImageFaces = ImageFacesFor(image,
+        DefaultImageFaces())
+    radius: float32 = 0.0
+    if (faces.surface.fields & cast(u32)StyleRadius) != cast(u32)0 {
+        radius = faces.surface.radius
+    }
+    if image.radius > 0.0 { radius = image.radius }
+    if (faces.surface.fields & cast(u32)StyleBackground) != cast(u32)0 {
+        PaintRoundedFill(session, node, image.bounds, radius, 12,
+            ColorFromPacked(faces.surface.background))
+    }
+    // The picture, or its preview while the picture loads; `drawn` keeps
+    // the image's own bounds, mesh and clip.
+    shown := ImageShownFor(image)
+    drawn := shown.image
+    texture: Texture2D = shown.texture
+    tint: Color = ImageTint(faces.surface)
+    if image.tint != cast(u32)0 {
+        tint = ColorFromPacked(Opacity(image.tint,
+            StyleOpacityValue(faces.surface.fields, faces.surface.opacity)))
+    }
+    plan: ImageDrawPlan = ImageDrawPlanFor(drawn, texture, tint)
+    if image.clip_polygon.count > 0 && (!ImagePolygonValid(image.clip_polygon) || ImageMeshActive(image.mesh)) { return }
+    if ImageMeshActive(image.mesh) {
+        // A warped image draws its grid or nothing: no placeholder covers
+        // its bounds, which may be a whole stage of pieces.
+        if plan.draw && tint.a > cast(u8)0 && ImageMeshComplete(image.mesh) {
+            PaintImageMesh(session, node, drawn.asset_path, image.texture.id,
+                plan.source, image.mesh.columns, image.mesh.rows,
+                image.mesh.points, image.bounds, plan.tint, image.texture,
+                image.smooth)
+        }
+    } else if plan.draw && tint.a > cast(u8)0 {
+        PaintImageWithPolygon(session, node, drawn.asset_path, image.texture.id,
+            plan.source, plan.destination, image.bounds,
+            image.origin, image.rotation, radius, plan.tint, image.texture,
+            image.smooth, image.clip_polygon)
+    } else if !plan.draw && texture.width >= 0 && texture.height >= 0 &&
+        shown.showing != ImageShowing.ImageShowingNone {
+        // A host still loading the picture or its preview reports a
+        // negative size; the placeholder is only for an image that is
+        // unavailable.
+        PaintImagePlaceholder(session, node, image, faces.label)
+    }
+    if (faces.surface.fields & cast(u32)StyleBorderWidth) != cast(u32)0 &&
+        faces.surface.border_width > 0.0 {
+        PaintRoundedOutline(session, node, image.bounds, radius, 12,
+            faces.surface.border_width,
+            ColorFromPacked(faces.surface.border))
+    }
+}
+
+}

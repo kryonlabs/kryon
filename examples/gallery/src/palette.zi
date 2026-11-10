@@ -12,12 +12,12 @@ InstallCatalogPalette :: (dark: bool) {
     installed = wanted
     palette := Theme.DefaultPalette(dark)
     system := SystemPalette.{.dark = dark, .background = palette.background,
-        .base = palette.surface, .text = palette.text, .border = palette.border,
-        .selected = palette.accent, .selected_text = palette.on_accent,
+        .base = palette.surface, .text = palette.foreground, .border = palette.border,
+        .selected = palette.accent, .selected_text = palette.selection_text,
         .danger = palette.danger, .warning = palette.warning, .success = palette.success}
     unused SystemPaletteInstall(system)
     rules := ActiveStyleRules()
-    selection_text := ifx dark then Theme.OnColor(palette.selection) else Theme.LightSelectionText()
+    selection_text := palette.selection_text
     // Dropdowns and time pickers share these semantic style facts.
     dropdown: StyleRule
     dropdown.selector = StyleDefaultSelector()
@@ -25,7 +25,7 @@ InstallCatalogPalette :: (dark: bool) {
     dropdown.selector.state = cast(s32)ButtonState.ButtonStateHover
     dropdown.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground
     dropdown.style.background = palette.surface_raised
-    dropdown.style.foreground = palette.text
+    dropdown.style.foreground = palette.foreground
     dropdown.order = rules.count; rules.items[rules.count] = dropdown; rules.count += 1
     dropdown.selector.state = StyleAny()
     dropdown.selector.tone = cast(s32)ButtonTone.ButtonToneAccent
@@ -38,7 +38,7 @@ InstallCatalogPalette :: (dark: bool) {
         rule.selector = StyleDefaultSelector()
         rule.selector.kind = kinds[index]
         rule.style.fields = cast(u32)StyleField.StyleForeground
-        rule.style.foreground = palette.text
+        rule.style.foreground = palette.foreground
         if index < 2 {
             rule.style.fields |= cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleBorder
             rule.style.background = palette.surface
@@ -56,6 +56,23 @@ InstallCatalogPalette :: (dark: bool) {
             rule.state = cast(s32)ButtonState.ButtonStateSelected
             rule.order = rules.count
             rules.items[rules.count] = rule; rules.count += 1
+        }
+    }
+    segment_kinds: [2]s32 = .{StyleKindSegmentedControl(), StyleKindSegment()}
+    for index: 0..1 {
+        segment: StyleRule
+        segment.selector = StyleDefaultSelector()
+        segment.selector.kind = segment_kinds[index]
+        segment.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground | cast(u32)StyleField.StyleBorder
+        segment.style.background = palette.surface
+        segment.style.foreground = palette.foreground
+        segment.style.border = palette.border
+        segment.order = rules.count; rules.items[rules.count] = segment; rules.count += 1
+        if index == 1 {
+            segment.selector.tone = cast(s32)ButtonTone.ButtonToneAccent
+            segment.style.background = palette.selection
+            segment.style.foreground = selection_text
+            segment.order = rules.count; rules.items[rules.count] = segment; rules.count += 1
         }
     }
     unused InstallStyleRules(rules)

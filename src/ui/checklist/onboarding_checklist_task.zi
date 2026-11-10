@@ -1,0 +1,8 @@
+OnboardingChecklistTask :: struct {
+    id: u64
+    title: string
+    description: string
+    action: string
+    done: bool
+    disabled: bool
+}

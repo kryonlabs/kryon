@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 
-from toolchain import ZIRAN, ZIRAN_ROOT
+from toolchain import UI_MODULE_ARGS, ZIRAN, ZIRAN_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'build/scratch/canvas-app-key-queue'
@@ -150,7 +150,7 @@ def main():
         # No browser cursor/gamepad effects are needed by this native test.
         (WORK / 'page_input.zi').write_text('PageInputCursor :: (mode: s32) {}\nPageGamepadQuery :: (pad: s32, field: s32, index: s32) -> s32 { return 0 }\nPageGamepadAxis :: (pad: s32, axis: s32) -> float64 { return 0.0 }\n')
         paths = ['--root', WORK, '--module-path', ROOT / 'tests/page_fake',
-                 '--module-path', ROOT / 'src/backend', '--module-path', ROOT / 'src/ui',
+                 '--module-path', ROOT / 'src/backend', *UI_MODULE_ARGS,
                  '--module-path', ZIRAN_ROOT / 'std']
         define = ['--define', 'PLATFORM_WEB']
         ir = WORK / 'ir'

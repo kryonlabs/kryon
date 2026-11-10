@@ -3,7 +3,7 @@
 
 cat > "$work/app.zi" <<'ZI'
 #import "geometry"
-#import "scroll"
+#import "scroll_behavior"
 #import "scroll_device"
 #import "scroll_props"
 #import "session"
@@ -126,19 +126,19 @@ Answer :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work/ir" "$work/app.zi"
 for source in source saved; do
     if test "$source" = source; then
         root=$work
-        modules=$repo/src/ui
+        modules="$kryon_ui_args"
         app=$work/app.zi
     else
         root=$work/ir
-        modules=$work/ir
+        modules="--module-path $work/ir"
         app=$work/ir/app.zir
     fi
-    "$ziran" bundle --root "$root" --module-path "$modules" \
+    "$ziran" bundle --root "$root" $modules \
         --module-path "$ziran_root/std" \
         --entry app:Answer -o "$work/$source.zx" "$app"
     test "$("$ziran" run "$work/$source.zx")" = 42

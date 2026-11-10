@@ -3,6 +3,8 @@
 // newer request replaces an unanswered one. Runs with ANDROID_BUILD on the
 // host; a fake JNI environment stands in for the activity.
 #import "android_jni"
+#import "android_native"
+#import "android_native_test_host"
 #import "android_picker"
 #import "c_string"
 
@@ -140,16 +142,6 @@ FakeReleaseText :: (env: *JniEnv, text: *void, bytes: *u8) {
 }
 
 #program_export
-GetAndroidApp :: () -> *NativeAndroidApp {
-    return *app
-}
-
-#program_export
-ANativeActivity_finish :: (activity: *void) {
-    unused activity
-}
-
-#program_export
 main :: () -> s32 {
     environment.functions = *api
     vm.functions = *vm_api
@@ -170,6 +162,13 @@ main :: () -> s32 {
     api.GetStringUTFChars = FakeReadText
     api.ReleaseStringUTFChars = FakeReleaseText
 
+    // NativeActivity, rather than a renderer-owned getter, registers the
+    // app used by picker calls. No UI or OS window is opened by this fixture.
+    before: AndroidJniSession
+    Require(AndroidJniAttachCurrent(*before) == 0, 34)
+    AndroidNativeStart(*app)
+    defer { AndroidNativeClose() }
+    Require(AndroidNativeApp() == *app && app.input_callback != null, 35)
     // A document request reaches openImportPicker with its number.
     Require(AndroidPickerOpen(4, "image/*"), 1)
     Require(calls == 1 && last_request == 4 && frames == 0, 2)
@@ -236,5 +235,6 @@ main :: () -> s32 {
     Require(AndroidPickerOpen(8, types), 32)
     Require(last_request == 8 && CStringEquals(*java_text[0], types) &&
         CStringEquals(*method_name[0], "openImportPicker"), 33)
+    Require(native_test_unexpected_effects == 0 && native_test_finish_calls == 0, 36)
     return 0
 }

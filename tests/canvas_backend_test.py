@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compile Zi Canvas2D effects to Wasm and verify pixels in a private headless browser."""
 
-from toolchain import JS_RUNTIME
+from toolchain import UI_MODULE_ARGS, JS_RUNTIME
 import os
 from pathlib import Path
 import subprocess
@@ -28,7 +28,7 @@ with tempfile.TemporaryDirectory(prefix='canvas-browser-', dir=ROOT / 'build') a
     if os.environ.get('ZIRAN_RUNNER'):
         compiler = ['sh', os.environ['ZIRAN_RUNNER'], *compiler]
     run([*compiler,'--no-main','--define','PLATFORM_WEB','--root',ROOT/'tests',
-         '--module-path',ROOT/'src/ui','--module-path',ROOT/'src/backend','--module-path',ZIRAN/'std',
+         *UI_MODULE_ARGS,'--module-path',ROOT/'src/backend','--module-path',ZIRAN/'std',
          '-o',gen,ROOT/'tests/canvas_backend_behavior.zi'])
     shell=work/'shell.html'
     shell.write_text('''<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0}canvas{width:160px;height:120px}</style></head><body><div id="canvas-frame" style="width:160px;height:120px"><canvas id="canvas" width="160" height="120"></canvas></div><pre id="result">pending</pre><script>var Module={onExit:function(code){code=code||globalThis.canvasTestFailure||0;document.getElementById('result').textContent=code===0?'PASS':('FAIL '+code+' '+globalThis.canvasTestError)},onAbort:function(reason){document.getElementById('result').textContent='ABORT '+reason}};</script>{{{ SCRIPT }}}</body></html>''')

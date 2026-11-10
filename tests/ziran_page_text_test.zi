@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "session"
 #import "layout_props"
 test_session: Session;
@@ -8,8 +9,8 @@ TestSession :: () -> Session {
 
 #import "drawing_props"
 #import "geometry"
+#import "layout_behavior"
 #import "layout"
-#import "layout_widget"
 #import "page"
 #import "page_props"
 #import "page_text"
@@ -17,7 +18,7 @@ TestSession :: () -> Session {
 #import "semantic"
 #import "tree"
 #import "text_props"
-#import "text_widget"
+#import "text"
 #import "widget_kind"
 #import "ziran_page_text_host"
 
@@ -75,7 +76,7 @@ Answer :: () -> s32 {
         Rectangle.{20.0, 20.0, 40.0, 40.0})
     child: s32 = TreeSubmit(TestSession(), cast(u64)32, viewport, WidgetKindText,
         Rectangle.{10.0, 10.0, 70.0, 70.0})
-    ink: Color = ColorFromPacked(cast(u32)0x191c1bff)
+    ink: Color = ColorFromPacked(Theme.CurrentText())
     PaintLabel(TestSession(), child, "Plain", 10, 10, 16, ink)
     PaintClippedLabel(TestSession(), child, "Clipped", 30, 30, 16, ink,
         Rectangle.{30.0, 30.0, 50.0, 50.0})

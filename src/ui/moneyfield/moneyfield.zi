@@ -1,0 +1,335 @@
+#import "box"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "textfield"
+#import "text_input_props"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+
+using StyleField;
+using WidgetKind;
+
+MoneyFieldLocale :: enum { MoneyLocaleDot :: 0; MoneyLocaleComma :: 1 }
+MoneyNegativeStyle :: enum { MoneyNegativeMinus :: 0; MoneyNegativeParentheses :: 1 }
+
+MoneyFieldProps :: struct {
+    key: u64
+    bounds: Rectangle
+    id: s32
+    class_name: s32
+    label: string
+    symbol: string
+    code: string
+    hint: string
+    initial_value: float64
+    minimum: float64
+    maximum: float64
+    precision: s32
+    grouping: bool
+    grouping_separator: string
+    decimal_separator: string
+    negative_style: MoneyNegativeStyle
+    locale: MoneyFieldLocale
+    disabled: bool
+    focused: bool
+    input: TextFieldInput
+    height: float32
+}
+
+MoneyFieldState :: struct {
+    initialized: bool
+    value: float64
+    editing: bool
+    focused: bool
+    text_length: s32
+    cursor: s32
+    anchor: s32
+    bytes: [64]u8
+}
+
+MoneyFieldResult :: struct {
+    node: s32
+    field: TextFieldResult
+    value: float64
+    changed: bool
+    committed: bool
+    cancelled: bool
+    valid: bool
+}
+
+#program_export
+MoneyFieldClamp :: (value: float64, minimum: float64,
+    maximum: float64) -> float64 {
+    if value < minimum { return minimum }
+    if value > maximum { return maximum }
+    return value
+}
+
+MoneyRound :: (value: float64, precision: s32) -> float64 {
+    multiplier := 1.0
+    at := 0
+    while at < precision { multiplier *= 10.0; at += 1 }
+    rounded := value * multiplier
+    rounded += ifx rounded < 0.0 then -0.5 else 0.5
+    return cast(float64)cast(s64)rounded / multiplier
+}
+
+#program_export
+MoneyFieldParse :: (text: string) -> float64 {
+    negative := false
+    parentheses := false
+    whole := 0.0
+    fraction := 0.0
+    divisor := 1.0
+    decimal_at := -1
+    for index: 0..text.count - 1 {
+        if text[index] == cast(u8)46 || text[index] == cast(u8)44 {
+            decimal_at = index
+        }
+    }
+    digit := false
+    for index: 0..text.count - 1 {
+        byte := text[index]
+        if byte >= cast(u8)48 && byte <= cast(u8)57 {
+            number := cast(float64)(byte - cast(u8)48)
+            if index > decimal_at && decimal_at >= 0 {
+                divisor *= 10.0
+                fraction += number / divisor
+            } else { whole = whole * 10.0 + number }
+            digit = true
+        } else if byte == cast(u8)46 || byte == cast(u8)44 { unused byte }
+        else if byte == cast(u8)45 && !digit { negative = true }
+        else if byte == cast(u8)40 && !digit { parentheses = true }
+    }
+    if negative || parentheses { return -(whole + fraction) }
+    return whole + fraction
+}
+
+#program_export
+MoneyFieldFormat :: (value: float64, precision: s32,
+    grouping: bool, grouping_separator: string,
+    decimal_separator: string, negative_style: MoneyNegativeStyle,
+    output: []u8) -> string {
+    if precision < 0 { precision = 0 }
+    if precision > 6 { precision = 6 }
+    multiplier := 1.0
+    at := 0
+    while at < precision { multiplier *= 10.0; at += 1 }
+    units := cast(s64)(value * multiplier + ifx value < 0.0 then -0.5 else 0.5)
+    negative := units < 0
+    if negative { units = -units }
+    fraction := cast(s32)(units % cast(s64)multiplier)
+    integer := units / cast(s64)multiplier
+    digits: [24]u8
+    count: s32 = 0
+    if integer == 0 { digits[0] = cast(u8)48; count = 1 }
+    while integer > 0 && count < 24 {
+        digits[count] = cast(u8)48 + cast(u8)(integer % 10)
+        integer /= 10
+        count += 1
+    }
+    out: s32 = 0
+    parentheses := negative && negative_style == .MoneyNegativeParentheses
+    minus := negative && negative_style == .MoneyNegativeMinus
+    if parentheses && out < cast(s32)output.count { output[out] = cast(u8)40; out += 1 }
+    if minus && out < cast(s32)output.count { output[out] = cast(u8)45; out += 1 }
+    index := count - 1
+    printed: s32 = 0
+    while index >= 0 {
+        if out < cast(s32)output.count { output[out] = digits[index]; out += 1 }
+        left := index
+        if grouping && left > 0 && left % 3 == 0 && grouping_separator.count > 0 {
+            for separator: grouping_separator {
+                if out < cast(s32)output.count { output[out] = separator; out += 1 }
+            }
+        }
+        index -= 1
+        printed += 1
+    }
+    if precision > 0 {
+        if decimal_separator.count == 0 { decimal_separator = "." }
+        for separator: decimal_separator {
+            if out < cast(s32)output.count { output[out] = separator; out += 1 }
+        }
+        digit_index := precision - 1
+        while digit_index >= 0 {
+            place := 1.0
+            at = 0
+            while at < digit_index { place *= 10.0; at += 1 }
+            digit := cast(s32)(fraction / cast(s32)place) % 10
+            if out < cast(s32)output.count { output[out] = cast(u8)48 + cast(u8)digit; out += 1 }
+            digit_index -= 1
+        }
+    }
+    if parentheses && out < cast(s32)output.count { output[out] = cast(u8)41; out += 1 }
+    return TextView(output[:out])
+}
+
+#program_export
+MoneyFieldStateFor :: (value: float64,
+    precision: s32) -> MoneyFieldState {
+    state: MoneyFieldState
+    state.value = value
+    state.initialized = true
+    formatted := MoneyFieldFormat(value, precision, false, "", ".", .MoneyNegativeMinus, state.bytes[:])
+    state.text_length = cast(s32)formatted.count
+    state.cursor = state.text_length
+    state.anchor = state.text_length
+    return state
+}
+
+#program_export
+MoneyFieldApply :: (state: *MoneyFieldState,
+    props: MoneyFieldProps) -> MoneyFieldResult {
+    result: MoneyFieldResult
+    result.node = -1
+    precision := props.precision
+    if precision < 0 { precision = 0 }
+    if precision > 6 { precision = 6 }
+    if !state.initialized {
+        state.value = props.initial_value
+        state.initialized = true
+        formatted := MoneyFieldFormat(state.value, precision, false, "", ".", .MoneyNegativeMinus, state.bytes[:])
+        state.text_length = cast(s32)formatted.count
+        state.cursor = state.text_length
+        state.anchor = state.text_length
+    }
+    old := state.value
+    if props.disabled { return result }
+    gaining_focus := props.focused && !state.focused
+    if gaining_focus {
+        plain := MoneyFieldFormat(state.value, precision, false, "", ".", .MoneyNegativeMinus, state.bytes[:])
+        state.text_length = cast(s32)plain.count
+        state.cursor = state.text_length
+        state.anchor = state.text_length
+    }
+    state.focused = state.focused || props.focused
+    if props.input.blur { state.focused = false }
+    replacement := props.input.text
+    if props.input.paste && props.input.paste_text.count > 0 { replacement = props.input.paste_text }
+    if replacement.count > 0 {
+        count := cast(s32)replacement.count
+        if count > 64 { count = 64 }
+        at := 0
+        while at < count { state.bytes[at] = replacement[at]; at += 1 }
+        state.text_length = count
+        state.cursor = count
+        state.anchor = count
+        state.value = MoneyFieldParse(TextView(state.bytes[:state.text_length]))
+        result.changed = true
+    }
+    if props.input.backspace && state.text_length > 0 {
+        state.text_length -= 1
+        state.cursor = state.text_length
+        state.anchor = state.text_length
+        state.value = MoneyFieldParse(TextView(state.bytes[:state.text_length]))
+    }
+    if props.input.escape {
+        formatted := MoneyFieldDisplay(state.*, props, state.bytes[:])
+        state.text_length = cast(s32)formatted.count
+        state.cursor = state.text_length
+        state.anchor = state.text_length
+        result.cancelled = true
+    }
+    if props.input.commit || props.input.blur {
+        state.value = MoneyFieldClamp(MoneyRound(MoneyFieldParse(TextView(state.bytes[:state.text_length])), precision), props.minimum, props.maximum)
+        formatted := MoneyFieldDisplay(state.*, props, state.bytes[:])
+        state.text_length = cast(s32)formatted.count
+        state.cursor = state.text_length
+        state.anchor = state.text_length
+        result.committed = true
+    }
+    result.value = state.value
+    result.valid = state.value >= props.minimum && state.value <= props.maximum
+    if state.value != old { result.changed = true }
+    return result
+}
+
+#program_export
+MoneyFieldDisplay :: (state: MoneyFieldState,
+    props: MoneyFieldProps, output: []u8) -> string {
+    separator := props.decimal_separator
+    grouping_separator := props.grouping_separator
+    if separator.count == 0 {
+        separator = "."
+        if props.locale == .MoneyLocaleComma { separator = "," }
+    }
+    if grouping_separator.count == 0 {
+        grouping_separator = ","
+        if props.locale == .MoneyLocaleComma { grouping_separator = "." }
+    }
+    return MoneyFieldFormat(state.value, props.precision, props.grouping,
+        grouping_separator, separator, props.negative_style, output)
+}
+
+MoneyFieldHostedReply :: struct { state: MoneyFieldState; result: MoneyFieldResult }
+
+#if #defined(KRYON_HOSTED_UI) {
+    moneyfield_host_api :: #system_library "host_api";
+    MoneyFieldHostedHost :: (session: Session, props: MoneyFieldProps,
+        state: MoneyFieldState) -> MoneyFieldHostedReply #foreign moneyfield_host_api;
+    #program_export
+    MoneyField :: (session: Session, props: MoneyFieldProps,
+    state: *MoneyFieldState) -> MoneyFieldResult {
+        reply := MoneyFieldHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #program_export
+    MoneyField :: (session: Session, props: MoneyFieldProps,
+    state: *MoneyFieldState) -> MoneyFieldResult { return MoneyFieldCore(session, props, state, true) }
+    #program_export
+    MoneyFieldCore :: (session: Session, props: MoneyFieldProps,
+    state: *MoneyFieldState, effects: bool) -> MoneyFieldResult {
+    result := MoneyFieldApply(state, props)
+    if !TreeIsBuilding(session) { return result }
+    height := props.height
+    if height <= 0 { height = CurrentThemeMetric(.ThemeMetricControlHeightMedium) }
+    bounds := props.bounds
+    bounds.height = height
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup, bounds)
+    if result.node < 0 { return result }
+    if !TreePushScope(session, result.node) { return result }
+    TreeSetInteractive(session, result.node, props.disabled, false, props.id)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    TreeSetLabel(session, result.node, props.label)
+    face: StyleData
+    face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground | cast(u32)StyleBorder |
+    cast(u32)StyleRadius | cast(u32)StyleFontSize | cast(u32)StyleMinHeight
+    face.background = CurrentSurface()
+    face.foreground = CurrentText()
+    face.border = CurrentBorderStrong()
+    face.radius = CurrentThemeMetric(.ThemeMetricRadiusControl)
+    face.font_size = CurrentThemeMetric(.ThemeMetricTextBody)
+    face.min_height = height
+    face = ResolveInstalledStyleRules(face, StyleControlRoleFacts(StyleKindAny(),
+        props.id, props.class_name, 0, 0, 0, 0, ifx state.focused then 4 else 1),
+        ifx state.focused then 4 else 1)
+    Box(session, .{.key = props.key+101, .bounds = bounds,
+            .fill = ColorFromPacked(face.background), .border = ColorFromPacked(face.border), .radius = face.radius})
+    field: TextFieldProps
+    field.key = props.key + 201
+    field.bounds = bounds
+    display_buffer: [64]u8
+    field.value = ifx state.focused then TextView(state.bytes[:state.text_length]) else MoneyFieldDisplay(state.*, props, display_buffer[:])
+    field.label = props.label
+    field.placeholder = "0.00"
+    field.cursor = state.cursor
+    field.anchor = state.anchor
+    field.focused = state.focused
+    field.max_bytes = 64
+    field.disabled = props.disabled
+    field.class_name = props.class_name
+    field_result := ifx effects then TextField(session, field) else TextFieldCore(session, field)
+    unused field_result
+    TreePopScope(session)
+    return result
+}
+}

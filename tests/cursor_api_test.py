@@ -9,7 +9,7 @@ import subprocess
 import sys
 import time
 from PIL import Image
-from toolchain import ROOT, ZIRAN_ROOT, ZIRAN
+from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN_ROOT, ZIRAN
 
 OUTPUT = ROOT / 'build/test/cursor-api'
 ENV = dict(os.environ)
@@ -247,7 +247,7 @@ assets = "assets"
     run([ZIRAN,'lock'],OUTPUT)
     for profile in ('desktop','web','dom'):
         run([ZIRAN,'tool','kryon','check','--profile',profile],OUTPUT)
-    common=['--root',ROOT/'tests','--module-path',ROOT/'src/ui','--module-path',ZIRAN_ROOT/'std']
+    common=['--project','--root',ROOT/'tests','--module-path',ROOT/'tests']
     source=ROOT/'tests/cursor_model_test.zi'
     run([ZIRAN,'ir',*common,'-o',OUTPUT/'model-ir',source])
     for form in ('source','saved'):
@@ -262,8 +262,7 @@ assets = "assets"
             if target=='go':
                 run(['go','build','-o',gen/'cursor_model_test',*sorted(gen.glob('*.go'))])
             run([gen/'cursor_model_test'])
-    host_common=['--root',ROOT/'tests','--module-path',ROOT/'src/ui',
-                 '--module-path',ROOT/'src/backend','--module-path',ZIRAN_ROOT/'std']
+    host_common=['--project','--root',ROOT/'tests','--module-path',ROOT/'tests']
     host=ROOT/'tests/cursor_host_test.zi'
     noop=ROOT/'tests/ziran_widget_noop_host.zi'
     clipboard=ROOT/'tests/ziran_system_clipboard_host.zi'
@@ -293,7 +292,6 @@ assets = "assets"
         run(['xvfb-run','-a','-s','-screen 0 1400x1000x24 -nolisten tcp','env','KRYON_PRIVATE_XVFB=1',sys.executable,Path(__file__).resolve(),'--drive',mode])
     # Canvas and DOM: the same requests as CSS cursors in a private headless
     # Chromium. The short profile path keeps its sockets below 108 bytes.
-    ENV['EMCC_CFLAGS'] = ENV.get('EMCC_CFLAGS','') + f' --embed-file {OUTPUT}/assets@/assets'
     for profile in ('web','dom'):
         run([ZIRAN,'tool','kryon','build','--profile',profile],OUTPUT)
         run([sys.executable,ROOT/'tests/cursor_browser.py',OUTPUT/f'build/cursor_probe-{profile}.html',ROOT/f'build/scratch/cw-{profile}'])

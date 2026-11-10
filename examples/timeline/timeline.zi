@@ -1,0 +1,21 @@
+using UI :: #import "kryon/Widgets";
+
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Timeline", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    Timeline(session, TimelineProps.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, 100.0}, .title = "Project created", .time = "09:00", .description = "The workspace is ready."})
+    Timeline(session, TimelineProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 100.0, bounds.width, 100.0}, .title = "First component added", .time = "09:15", .description = "Button is available to use.", .last = true})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

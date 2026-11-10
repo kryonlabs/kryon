@@ -33,7 +33,7 @@ values: [8]float32 = .{3.0, 5.0, 4.0, 8.0, 6.0, 9.0, 8.0, 11.0};
 previous: [8]float32 = .{2.0, 3.0, 4.0, 5.0, 4.0, 7.0, 6.0, 8.0};
 
 Prepare :: (session: Session, scene: s32) {
-    bounds = Rectangle.{24.0, 64.0, 432.0, 208.0}
+    bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0})
 }
 
 Compose :: (session: Session, scene: s32, disabled: bool) {
@@ -57,4 +57,22 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         bands[0] = .{.low = 4.0, .high = 9.0, .has_low = true, .has_high = true}
         unused Charts.BandChart(session, Charts.BandChartProps.{.key = 600, .bounds = bounds, .semantic_label = "Values and a target band", .slots = 8, .min_value = 0.0, .max_value = 12.0, .top_label = "12", .bottom_label = "0", .font = 14, .good_color = .{35, 115, 92, 255}, .other_color = .{180, 125, 70, 255}, .band_color = .{131, 181, 160, 80}, .grid_color = .{180, 200, 210, 150}, .text_color = StyleTokenColor("text"), .label_fill = StyleTokenColor("surface")}, points[:], bands[:])
     }
+}
+
+// The native/capture default is unchanged. Website previews supply their own
+// rectangle; heights and type remain readable while horizontal space reflows.
+gallery_view: Rectangle = .{0.0, 0.0, 480.0, 320.0};
+gallery_live: bool;
+gallery_now: float32;
+gallery_reduced_motion: bool;
+SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion: bool) {
+    gallery_view = view; gallery_live = live; gallery_now = now
+    gallery_reduced_motion = reduced_motion
+}
+GalleryBounds :: (bounds: Rectangle) -> Rectangle {
+    if !gallery_live { return bounds }
+    bounds.x = gallery_view.x + bounds.x * gallery_view.width / 480.0
+    bounds.y += gallery_view.y
+    bounds.width *= gallery_view.width / 480.0
+    return bounds
 }

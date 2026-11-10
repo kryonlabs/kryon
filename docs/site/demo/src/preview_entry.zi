@@ -1,19 +1,37 @@
 using UI :: #import "kryon/Widgets";
 #import "kryon/tree_draw"
+#import "kryon/frame_snapshot"
+#import "kryon/cursor"
+GuestTheme :: #import "kryon/Theme";
 #import "app"
 #import "preview_protocol"
-#import "preview_style"
+#import "palette"
 
 preview_session: Session;
+preview_previous_ms: s64;
+preview_scroll: s32;
 
 #program_export
 Tick :: () -> s32 {
     if !SessionValid(preview_session) { preview_session = SessionOpen() }
     if !SessionValid(preview_session) { return 1 }
     input := PreviewInputRead()
-    SetPreviewTheme(input.theme)
-    viewport := Rectangle.{0.0, 0.0, input.width, input.height}
+    SetExampleOptions(input.disabled, input.reduced_motion)
+    InstallCatalogPalette(input.theme == 2)
+    unused GuestTheme.SetReducedMotion(input.reduced_motion)
+    viewport := Rectangle.{input.origin_x, input.origin_y, input.width, input.height}
     pointer := PointerFrame.{input.x, input.y, input.down, input.pressed, input.released}
+    snapshot: FrameInputSnapshot
+    snapshot.available = true; snapshot.focused = input.focused
+    snapshot.secondary = SecondaryPointerFrame.{input.secondary_down, input.secondary_pressed, input.secondary_released}
+    snapshot.pointer = pointer; snapshot.modifiers = input.modifiers
+    snapshot.elapsed_ms = cast(s64)(cast(float64)input.now * 1000.0)
+    snapshot.delta_ms = snapshot.elapsed_ms - preview_previous_ms
+    if snapshot.delta_ms < 0 || snapshot.delta_ms > 100 { snapshot.delta_ms = 16 }
+    preview_previous_ms = snapshot.elapsed_ms
+    if input.space_held { snapshot.keys[32] = cast(u8)FrameKeyHeld }
+    snapshot.wheel = input.wheel
+    unused FrameInputBegin(preview_session, snapshot)
     TreePointerUpdate(preview_session, pointer)
     TreeSecondaryPointerUpdate(preview_session,
         SecondaryPointerFrame.{input.secondary_down, input.secondary_pressed, input.secondary_released})
@@ -26,7 +44,19 @@ Tick :: () -> s32 {
     }
     PointerWheelSend(preview_session, input.x, input.y, input.wheel)
     if BeginFrame(preview_session, cast(u64)1, viewport) != FrameStatus.FrameOk { return 1 }
-    if Frame(preview_session, viewport) != 0 { return 1 }
+    height := viewport.height
+    if height < 520.0 { height = 520.0 }
+    scroll := Scroll(preview_session, ScrollProps.{.key = 190000001, .bounds = viewport,
+        .content_height = cast(s32)height, .scroll_offset = preview_scroll})
+    preview_scroll = scroll.scroll_offset
+    if Frame(preview_session, scroll.content) != 0 { return 1 }
+    if scroll.opened { End(preview_session) }
     if EndFrame(preview_session) != FrameStatus.FrameOk { return 1 }
+    for index: 0..TreeCount(preview_session) - 1 {
+        node := TreeNodeAt(preview_session, index)
+        ReportPreviewNode(node.key, node.kind, node.semantic_label, node.bounds, node.selected, node.interactive, node.disabled)
+    }
+    ReportPreviewCursor(TreeCursor(preview_session))
+    FrameInputEnd(preview_session)
     return 0
 }

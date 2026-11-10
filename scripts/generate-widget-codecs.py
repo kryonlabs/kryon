@@ -40,14 +40,15 @@ def host_decoded(kind, name):
     return (kind, name) in HOST_DECODED_SLICES
 
 KRYON_ROOT = Path(__file__).resolve().parent.parent
-KRYON_MODULES = ['session', 'input_protocol', 'geometry', 'drawing_props', 'text_props', 'image_props',
+KRYON_MODULES = ['transition', 'session', 'input_protocol', 'geometry', 'drawing_props', 'text_props', 'image_props',
                  'button_props', 'control_props', 'text_input', 'text_input_props',
-                 'scroll', 'scroll_props', 'semantic', 'text_align', 'checkbox_props',
+                 'scroll_behavior', 'scroll_props', 'semantic', 'text_align', 'checkbox_props',
                  'toggle_props', 'tab_bar_props', 'box_props', 'press_props', 'spinbox_props',
-                 'time_picker_props', 'dropdown', 'dropdown_props', 'title_bar_props',
-                 'modal', 'modal_props', 'context_menu_widget', 'svg_icon_props', 'tile_map',
+                 'time_picker_props', 'dropdown_behavior', 'dropdown_props', 'title_bar_props',
+                 'modal_behavior', 'modal_props', 'contextmenu', 'svg_icon_props', 'tilemap',
                  'segmented_control_props', 'fieldset_props', 'shape_props', 'slider_props',
-                 'progress_props', 'overlay_props']
+                 'progress_props', 'overlay_props',
+                 'taginput', 'onetimecode', 'inlineedit', 'scrubfield', 'moneyfield', 'shortcutrecorder', 'style', 'tooltip_common', 'tooltip_props', 'sheet_props', 'command_palette_props', 'hover_card_props', 'confirm_popover_props', 'guided_tour_props', 'tooltip', 'sheet', 'commandpalette', 'hovercard', 'confirmpopover', 'guidedtour']
 KRYON_ROOTS = ['FrameInputSnapshot', 'PointerFrame', 'TextProps', 'ImageProps', 'ButtonProps', 'TextAreaProps', 'TextAreaResult',
                'ScrollProps', 'ScrollResult', 'Session', 'CheckboxProps', 'CheckboxValueResult',
                'ToggleProps', 'ToggleValueResult', 'TextFieldProps', 'TextFieldResult', 'Tab',
@@ -60,7 +61,8 @@ KRYON_ROOTS = ['FrameInputSnapshot', 'PointerFrame', 'TextProps', 'ImageProps', 
                'SegmentOption', 'FieldsetProps', 'Vector2', 'LineProps', 'CircleProps',
                'RingProps', 'TriangleProps', 'SliderProps', 'SliderStep', 'DiscreteSliderProps',
                'SliderDiscreteStep', 'ProgressProps', 'DismissibleOverlayProps',
-               'DismissibleOverlayResult', 'PopupProps', 'PopupResult']
+               'DismissibleOverlayResult', 'PopupProps', 'PopupResult',
+               'TagInputProps', 'TagInputHostedReply', 'OneTimeCodeProps', 'OneTimeCodeHostedReply', 'InlineEditProps', 'InlineEditHostedReply', 'ScrubFieldProps', 'ScrubFieldHostedReply', 'MoneyFieldProps', 'MoneyFieldHostedReply', 'ShortcutRecorderProps', 'ShortcutRecorderHostedReply', 'TooltipProps', 'TooltipHostedReply', 'SheetProps', 'SheetHostedReply', 'CommandPaletteProps', 'CommandPaletteHostedReply', 'HoverCardProps', 'HoverCardHostedReply', 'ConfirmPopoverProps', 'ConfirmPopoverHostedReply', 'GuidedTourProps', 'GuidedTourHostedReply']
 
 
 # Operations used only by generated consumers and test fixtures. Their schemas
@@ -146,11 +148,15 @@ KRYON_BUILD_TIME_METHODS = {
 
 def read_schema(paths):
     schema = {}
+    constants = {}
+    for path in paths:
+        constants.update(re.findall(r"^([A-Za-z_]\w*)\s*::\s*(\d+)\s*$", Path(path).read_text(), re.M))
     for path in paths:
         for name, body in re.findall(r'(\w+)\s*::\s*struct\s*\{([^{}]*)\}', Path(path).read_text()):
             fields = []
-            for field, kind in re.findall(r'^\s*(\w+)\s*:\s*([^\n;]+)', body, re.M):
+            for field, kind in re.findall(r'(?:^|;)\s*(\w+)\s*:\s*([^\n;]+)', body, re.M):
                 kind = re.sub(r'\s+', '', kind.split('//')[0])
+                kind = re.sub(r'\[([A-Za-z_]\w*)\]', lambda match: '[' + constants.get(match[1], match[1]) + ']', kind)
                 if '=' in kind:
                     sys.exit(f'{path}: {name}.{field} has a default value, which a codec cannot carry')
                 fields.append((field, kind))
@@ -257,6 +263,10 @@ def scalar_decode(source, kind):
         return f'HostValueText({source})'
     if kind == 'bool':
         return f'{source}.integer != 0'
+    if kind.startswith('*'):
+        # Portable payloads cannot confer a native memory address.
+        # Validators reject nonnull pointers before any widget is called.
+        return 'null'
     member = 'real' if kind.startswith('float') else 'bits' if kind.startswith('u') else 'integer'
     return f'cast({kind}){source}.{member}'
 
@@ -386,6 +396,10 @@ def validator(kind, fields, records):
                           f'        HostElementRule.{{{rule}}}) {{ return false }}']
         else:
             lines += [f'    if !HostFieldScalarValid(*value, {index}, "{name}", "{field_kind}", cast(s32){scalar_kind(field_kind)}) {{ return false }}']
+            if field_kind.startswith('*'):
+                lines += matched(index, name, [
+                    '    // Pointer state requires an explicit portable value/write-back protocol.',
+                    '    if value.fields[field_at].value.integer != 0 { return false }'])
     return lines + ['    return true', '}', '']
 
 
@@ -411,7 +425,9 @@ def main():
     omitted = set(args.defer_method)
     if not sources:
         # Kryon's own hosted widgets.
-        sources = [KRYON_ROOT / 'src/ui' / (module + '.zi') for module in KRYON_MODULES]
+        inventory = {path.stem: path for path in (KRYON_ROOT / 'src/ui').rglob('*.zi')
+                     if path.name != 'module.zi'}
+        sources = [inventory[module] for module in KRYON_MODULES]
         roots = KRYON_ROOTS
         imports = ['"std/bundle_host"', '"std/byte_text_linux"', '"hosted_values"',
                    *(f'"{module}"' for module in KRYON_MODULES)]

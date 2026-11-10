@@ -1,0 +1,30 @@
+#import "component_protocol"
+#import "text"
+#import "text_props"
+#import "geometry"
+#import "std/vec"
+
+component_schema_version: s64 = 1;
+component_count: s64 = 41;
+component_label_kind: s64 = 1;
+
+Label :: () -> string {
+    value: Vec(u8)
+    label := ifx component_label_kind == 0 then "A" else "B"
+    BuilderPrint(*value, "% %", label, component_count)
+    return BuilderFinish(value)
+}
+
+#program_export
+Frame :: () -> s64 {
+    if component_schema_version < 1 { return 1 }
+    if ComponentText() == "advance" { component_count += 1 }
+    session := ComponentSession()
+    bounds := ComponentBounds()
+    Text(session, TextProps.{
+        .key = 102, .bounds = Rectangle.{
+            bounds.x + 140.0, bounds.y + 16.0, 150.0, 28.0
+        }, .text = Label(), .font = Text18
+    })
+    return 0
+}

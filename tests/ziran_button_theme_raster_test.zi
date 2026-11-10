@@ -1,0 +1,210 @@
+#import "widget_test_session"
+
+#import "button_props"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "input_protocol"
+#import "style"
+#import "style_sheet"
+#import "system_theme"
+#import "theme"
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+#import "ziran_button_theme_raster_host"
+
+using ButtonTone;
+using ButtonState;
+using MotionEasing;
+using FrameStatus;
+using StyleField;
+
+Math :: #import "std/math";
+
+ButtonPropsForTone :: (tone: ButtonTone) -> ButtonProps {
+    props: ButtonProps
+    props.key = cast(u64)77
+    props.id = 77
+    props.label = "Run"
+    props.bounds = Rectangle.{10.0, 20.0, 80.0, 0.0}
+    props.tone = tone
+    return props
+}
+
+ButtonPropsFor :: () -> ButtonProps {
+    return ButtonPropsForTone(cast(ButtonTone)ButtonToneAccent)
+}
+
+DrawButtonTone :: (tone: ButtonTone, focus: bool) -> bool {
+    props := ButtonPropsForTone(tone)
+    if focus && !KeyboardSend(TestSession(), KeyTab) { return false }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    if Button(TestSession(), props) != 0 { return false }
+    return EndFrame(TestSession()) == cast(FrameStatus)FrameOk
+}
+
+DrawButton :: (focus: bool) -> bool {
+    if focus && !KeyboardSend(TestSession(), KeyTab) { return false }
+    BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
+    if Button(TestSession(), ButtonPropsFor()) != 0 { return false }
+    return EndFrame(TestSession()) == cast(FrameStatus)FrameOk
+}
+
+ColorIs :: (color: Color, red: u8, green: u8, blue: u8,
+    alpha: u8) -> bool {
+    return color.r == red && color.g == green && color.b == blue && color.a == alpha
+}
+
+CheckRaster :: (sample: ThemeRasterSample, background: u32, foreground: u32,
+    radius: float32, height: float32, font: s32,
+    focus: bool, focus_color: u32) -> bool {
+    if sample.failed || sample.fill_count != 1 || sample.text_count != 1 { return false }
+    expected_outline: s32 = 0
+    if focus { expected_outline = 1 }
+    if sample.outline_count != expected_outline { return false }
+    if sample.fill_bounds.x != 10.0 || sample.fill_bounds.y != 20.0 ||
+        sample.fill_bounds.width != 80.0 || sample.fill_bounds.height != height ||
+        sample.radius != radius { return false }
+    if !ColorIs(sample.fill_color, cast(u8)(background >> cast(u32)24),
+        cast(u8)(background >> cast(u32)16),
+        cast(u8)(background >> cast(u32)8), cast(u8)background) ||
+        !ColorIs(sample.text_color, cast(u8)(foreground >> cast(u32)24),
+        cast(u8)(foreground >> cast(u32)16),
+        cast(u8)(foreground >> cast(u32)8), cast(u8)foreground) ||
+        sample.font != font { return false }
+    if focus && !ColorIs(sample.outline_color, cast(u8)(focus_color >> cast(u32)24),
+        cast(u8)(focus_color >> cast(u32)16),
+        cast(u8)(focus_color >> cast(u32)8), cast(u8)focus_color) { return false }
+    return true
+}
+
+Channel :: (color: u32, shift: u32) -> float64 {
+    value := cast(float64)((color >> shift) & cast(u32)255) / 255.0
+    if value <= 0.04045 { return value / 12.92 }
+    return Math.Pow((value + 0.055) / 1.055, 2.4)
+}
+
+RelativeLuminance :: (color: u32) -> float64 {
+    return 0.2126 * Channel(color, cast(u32)24) + 0.7152 * Channel(color, cast(u32)16) +
+        0.0722 * Channel(color, cast(u32)8)
+}
+
+ContrastRatio :: (first: u32, second: u32) -> float64 {
+    first_light := RelativeLuminance(first) + 0.05
+    second_light := RelativeLuminance(second) + 0.05
+    if first_light < second_light { return second_light / first_light }
+    return first_light / second_light
+}
+
+PackedColor :: (color: Color) -> u32 {
+    return (cast(u32)color.r << cast(u32)24) | (cast(u32)color.g << cast(u32)16) |
+        (cast(u32)color.b << cast(u32)8) | cast(u32)color.a
+}
+
+InstallIdRule :: () -> bool {
+    rules: StyleRules
+    rules.count = 1
+    rules.items[0].selector = StyleDefaultSelector()
+    rules.items[0].selector.kind = StyleKindButton()
+    rules.items[0].selector.id = 77
+    rules.items[0].style.fields = cast(u32)StyleBackground |
+        cast(u32)StyleForeground | cast(u32)StyleRadius |
+        cast(u32)StyleFontSize | cast(u32)StyleMinHeight |
+        cast(u32)StyleMotionDuration | cast(u32)StyleMotionMultiplier |
+        cast(u32)StyleMotionEasing
+    rules.items[0].style.background = cast(u32)0x102030ff
+    rules.items[0].style.foreground = cast(u32)0xf0e0d0ff
+    rules.items[0].style.radius = 18.0
+    rules.items[0].style.font_size = 15.0
+    rules.items[0].style.min_height = 44.0
+    rules.items[0].style.motion_duration = 177.0
+    rules.items[0].style.motion_multiplier = 1.25
+    rules.items[0].style.motion_easing = cast(MotionEasing)MotionEasingStandard
+    return InstallStyleRules(rules)
+}
+
+CheckSystemPaletteRaster :: (dark: bool) -> bool {
+    if !InstallDefaultTheme(dark) { return false }
+    palette := SystemPaletteFallback(dark)
+    palette.selected_text = CssPack(147, 239, 208, 255)
+    if !SystemPaletteInstall(palette) { return false }
+    theme := CurrentTheme()
+    tones: [4]ButtonTone = .{
+        cast(ButtonTone)ButtonToneAccent,
+        cast(ButtonTone)ButtonToneDanger,
+        cast(ButtonTone)ButtonToneSuccess,
+        cast(ButtonTone)ButtonToneWarning
+    }
+    fills: [4]u32 = .{palette.selected, palette.danger, palette.success, palette.warning}
+    for index: 0..3 {
+        ButtonThemeRasterReset()
+        if !DrawButtonTone(tones[index], false) { return false }
+        ink := OnColor(fills[index])
+        sample := ButtonThemeRasterSample()
+        if !CheckRaster(sample, fills[index], ink, theme.metrics.radius_medium,
+            theme.metrics.control_height_medium, cast(s32)theme.metrics.text_body,
+            false, 0) { return false }
+        if ContrastRatio(PackedColor(sample.fill_color), PackedColor(sample.text_color)) < 4.5 { return false }
+    }
+    return true
+}
+
+#program_export
+main :: () -> s32 {
+    if !InstallDefaultTheme(false) { return 1 }
+    light := CurrentTheme()
+    ButtonThemeRasterReset()
+    if !DrawButton(false) { return 2 }
+    if !CheckRaster(ButtonThemeRasterSample(), light.colors.accent,
+        light.colors.on_accent, light.metrics.radius_medium,
+        light.metrics.control_height_medium,
+        cast(s32)light.metrics.text_body, false, 0) { return 3 }
+
+    custom := DefaultTheme(true)
+    custom.metrics.radius_medium = 14.0
+    custom.metrics.text_body = 15.0
+    custom.metrics.control_height_medium = 40.0
+    custom.motion.multiplier = 2.0
+    custom = WithAccent(custom, cast(u32)0xd1403aff,
+        cast(u32)0xffffffff, cast(u32)0xa72d28ff, cast(u32)0xd1403a26)
+    if !InstallTheme(custom) { return 4 }
+    ButtonThemeRasterReset()
+    if !DrawButton(false) { return 5 }
+    if !CheckRaster(ButtonThemeRasterSample(), custom.colors.accent,
+        custom.colors.on_accent, custom.metrics.radius_medium,
+        custom.metrics.control_height_medium,
+        cast(s32)custom.metrics.text_body, false, 0) { return 6 }
+
+    if !CheckSystemPaletteRaster(false) || !CheckSystemPaletteRaster(true) { return 16 }
+    if !InstallTheme(custom) { return 17 }
+
+    if !InstallIdRule() { return 7 }
+    face := ButtonInstalledFaceFor(ButtonPropsFor(),
+        cast(s32)ButtonStateNormal)
+    if face.background != cast(u32)0x102030ff ||
+        face.radius != 18.0 || face.font_size != 15.0 ||
+        face.min_height != 44.0 || face.motion_duration != 177.0 ||
+        face.motion_multiplier != 1.25 { return 8 }
+    ButtonThemeRasterReset()
+    if !DrawButton(false) { return 9 }
+    if !CheckRaster(ButtonThemeRasterSample(), cast(u32)0x102030ff,
+        cast(u32)0xf0e0d0ff, 18.0, 44.0, 15, false, 0) { return 10 }
+    if !InstallStyleRules(StyleRules.{}) { return 11 }
+
+    if !SetReducedMotion(true) { return 12 }
+    face = ButtonInstalledFaceFor(ButtonPropsFor(),
+        cast(s32)ButtonStateNormal)
+    if face.motion_reduced != CurrentTheme().motion.reduced_motion ||
+        CurrentTheme().motion.multiplier != 0.0 ||
+        MotionDuration(1, face.motion_reduced, face.motion_multiplier) != 0.0 { return 13 }
+    ButtonThemeRasterReset()
+    if !DrawButton(true) { return 14 }
+    if !CheckRaster(ButtonThemeRasterSample(), custom.colors.accent,
+        custom.colors.on_accent, custom.metrics.radius_medium,
+        custom.metrics.control_height_medium,
+        cast(s32)custom.metrics.text_body, true,
+        custom.colors.focus) { return 15 }
+    return 0
+}

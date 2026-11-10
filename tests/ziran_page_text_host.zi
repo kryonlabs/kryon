@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
@@ -7,8 +8,8 @@ images: s32;
 failed: bool;
 
 InkIsExpected :: (color: Color) -> bool {
-    return color.r == cast(u8)0x19 && color.g == cast(u8)0x1c &&
-        color.b == cast(u8)0x1b && color.a == cast(u8)255
+    return color.r == ColorFromPacked(Theme.CurrentText()).r && color.g == ColorFromPacked(Theme.CurrentText()).g &&
+        color.b == ColorFromPacked(Theme.CurrentText()).b && color.a == cast(u8)255
 }
 
 #program_export

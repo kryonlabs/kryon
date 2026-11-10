@@ -1,7 +1,7 @@
 #import "frame_snapshot"
 #import "secondary_pointer"
 #import "test_driver"
-#import "app"
+#import "frame_entry"
 #import "dpi"
 #import "geometry"
 #import "raylib_runtime"

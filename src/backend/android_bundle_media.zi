@@ -1,0 +1,332 @@
+// Android media services for portable ZX guests. MediaPlayer owns platform
+// decoding and completion; packed resources are staged in this app's private
+// files directory because MediaPlayer has no stable memory-source JNI API.
+#import "android_jni"
+#import "bundle_names"
+#import "bundle_resources"
+#import "http_transfer"
+#import "hosted_values"
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/c_string"
+#import "std/file_linux"
+#import "std/net_http"
+#import "std/text_buffer"
+
+using HostValueKind;
+
+media_c :: #system_library "c";
+MediaAllocate :: (count: usize, size: usize) -> *u8 #foreign media_c "calloc";
+MediaFree :: (bytes: *u8) #foreign media_c "free";
+MEDIA_AUDIO_LIMIT :: 8388608
+MEDIA_TEXT_LIMIT :: 1048576
+
+AndroidBundleMedia :: struct {
+    bundle: *void
+    state: s32
+    message: string
+    loaded: bool
+    looping: bool
+    gain: float32
+    source: [2048]u8
+    path: [4096]u8
+    player: *void
+    fetch: HttpTransfer
+    fetch_bytes: *u8
+    fetch_state: s32
+    fetch_length: s64
+    download: HttpTransfer
+    audio_bytes: *u8
+}
+
+AndroidMediaClass :: (env: *JniEnv) -> *void {
+    name: [32]u8
+    if !CopyCString("android/media/MediaPlayer", name[:]) { return null }
+    return env.functions.FindClass(env, *name[0])
+}
+
+AndroidMediaMethod :: (env: *JniEnv, class: *void, name: string,
+    signature: string) -> *void {
+    if class == null { return null }
+    name_bytes: [40]u8
+    signature_bytes: [40]u8
+    if !CopyCString(name, name_bytes[:]) ||
+    !CopyCString(signature, signature_bytes[:]) { return null }
+    return env.functions.GetMethodID(env, class, *name_bytes[0], *signature_bytes[0])
+}
+
+AndroidMediaFailed :: (env: *JniEnv) -> bool {
+    if env.functions.ExceptionCheck(env) == 0 { return false }
+    env.functions.ExceptionClear(env)
+    return true
+}
+
+AndroidMediaVoid :: (env: *JniEnv, player: *void, name: string,
+    signature: string, arguments: *JniValue = null) -> bool {
+    if player == null { return false }
+    class := env.functions.GetObjectClass(env, player)
+    method := AndroidMediaMethod(env, class, name, signature)
+    if method == null || AndroidMediaFailed(env) { return false }
+    env.functions.CallVoidMethodA(env, player, method, arguments)
+    return !AndroidMediaFailed(env)
+}
+
+AndroidMediaPlaying :: (media: *AndroidBundleMedia) -> bool {
+    if media.player == null { return false }
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    defer { AndroidJniDetachCurrent(*session) }
+    class := AndroidMediaClass(session.env)
+    if class == null { return false }
+    method := AndroidMediaMethod(session.env, class, "isPlaying", "()Z")
+    if method == null || AndroidMediaFailed(session.env) { return false }
+    playing := session.env.functions.CallBooleanMethodA(
+        session.env, media.player, method, null)
+    return !AndroidMediaFailed(session.env) && playing != 0
+}
+
+AndroidMediaRelease :: (env: *JniEnv, player: *void) {
+    if player == null { return }
+    if !AndroidMediaVoid(env, player, "stop", "()V") {
+        unused AndroidMediaFailed(env)
+    }
+    if !AndroidMediaVoid(env, player, "release", "()V") {
+        unused AndroidMediaFailed(env)
+    }
+}
+
+AndroidBundleMediaPath :: (media: *AndroidBundleMedia, slot: s32) -> bool {
+    root: [4096]u8
+    base := AndroidPrivateDataPath(root[:])
+    if base == "" { return false }
+    suffix := ifx slot == 0 then "/kryon-zx-media-0.tmp" else "/kryon-zx-media-1.tmp"
+    length := base.count + suffix.count
+    if length >= media.path.count { return false }
+    for index: 0..base.count - 1 { media.path[index] = base[index] }
+    for index: 0..suffix.count - 1 { media.path[base.count + index] = suffix[index] }
+    media.path[length] = cast(u8)0
+    return true
+}
+
+AndroidBundleMediaWrite :: (path: string, bytes: string) -> bool {
+    file := OpenReplace(path)
+    if !file.valid { return false }
+    view := cast(*TextDescriptor)(*bytes)
+    written := WriteAt(file, BytesFromPointer(view.data, cast(u64)bytes.count), 0)
+    ready := CloseFile(file) && written == bytes.count
+    if !ready { unused RemoveFile(path) }
+    return ready
+}
+
+AndroidBundleMediaLoad :: (media: *AndroidBundleMedia, slot: s32,
+    bytes: string) -> bool {
+    if bytes.count <= 0 || bytes.count > MEDIA_AUDIO_LIMIT ||
+    !AndroidBundleMediaPath(media, slot) ||
+    !AndroidBundleMediaWrite(TextFromCString(*media.path[0]), bytes) { return false }
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    attached := true
+    defer { if attached { AndroidJniDetachCurrent(*session) } }
+    env := session.env
+    class := AndroidMediaClass(env)
+    create := AndroidMediaMethod(env, class, "<init>", "()V")
+    if class == null || create == null || AndroidMediaFailed(env) { return false }
+    arguments: [1]JniValue
+    player := env.functions.NewObjectA(env, class, create, *arguments[0])
+    if player == null || AndroidMediaFailed(env) { return false }
+    source := env.functions.NewStringUTF(env, *media.path[0])
+    data_source := AndroidMediaMethod(env, class, "setDataSource", "(Ljava/lang/String;)V")
+    if source == null || data_source == null || AndroidMediaFailed(env) {
+        AndroidMediaRelease(env, player)
+        return false
+    }
+    arguments[0].reference = source
+    env.functions.CallVoidMethodA(env, player, data_source, *arguments[0])
+    if AndroidMediaFailed(env) {
+        AndroidMediaRelease(env, player)
+        return false
+    }
+    loop_arguments: [1]JniValue
+    loop_arguments[0].boolean = ifx media.looping then cast(u8)1 else cast(u8)0
+    gain_arguments: [2]JniValue
+    gain_arguments[0].single = media.gain
+    gain_arguments[1].single = media.gain
+    if !AndroidMediaVoid(env, player, "prepare", "()V") ||
+    !AndroidMediaVoid(env, player, "setLooping", "(Z)V", *loop_arguments[0]) ||
+    !AndroidMediaVoid(env, player, "setVolume", "(FF)V", *gain_arguments[0]) ||
+    !AndroidMediaVoid(env, player, "start", "()V") {
+        AndroidMediaRelease(env, player)
+        return false
+    }
+    media.player = player
+    media.loaded = true
+    media.state = 2
+    media.message = "Playing"
+    attached = false
+    AndroidJniDetachCurrent(*session)
+    return true
+}
+
+AndroidBundleMediaCommand :: (media: *AndroidBundleMedia, name: string,
+    signature: string) -> bool {
+    if media.player == null { return false }
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    defer { AndroidJniDetachCurrent(*session) }
+    return AndroidMediaVoid(session.env, media.player, name, signature)
+}
+
+AndroidBundleMediaStop :: (media: *AndroidBundleMedia) {
+    HttpTransferCancel(*media.download)
+    if media.player != null {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 1 {
+            AndroidMediaRelease(session.env, media.player)
+            AndroidJniDetachCurrent(*session)
+        }
+        media.player = null
+    }
+    if media.path[0] != cast(u8)0 { unused RemoveFile(TextFromCString(*media.path[0])) }
+    media.loaded = false
+    media.state = 0
+    media.message = "Stopped"
+}
+
+AndroidBundleMediaClose :: (media: *AndroidBundleMedia) {
+    AndroidBundleMediaStop(media)
+    HttpTransferCancel(*media.fetch)
+    MediaFree(media.fetch_bytes)
+    MediaFree(media.audio_bytes)
+    media.* = AndroidBundleMedia.{.gain = 1.0}
+}
+
+AndroidBundleMediaOpen :: (media: *AndroidBundleMedia, source: string,
+    slot: s32) -> bool {
+    AndroidBundleMediaStop(media)
+    if !CopyCString(source, media.source[:]) { return false }
+    media.state = -1
+    media.message = "Could not decode the audio resource"
+    if TransferIsHttp(source) {
+        if media.audio_bytes == null {
+            media.audio_bytes = MediaAllocate(MEDIA_AUDIO_LIMIT, 1)
+        }
+        if media.audio_bytes == null { return false }
+        if !HttpTransferStart(*media.download,
+            HttpRequest.{.method = "GET", .url = source},
+            BytesFromPointer(media.audio_bytes, MEDIA_AUDIO_LIMIT), 20000) { return false }
+        media.state = 1
+        media.message = "Opening"
+        return true
+    }
+    return AndroidBundleMediaLoad(media, slot, BundleReadAsset(media.bundle, source))
+}
+
+AndroidBundleMediaPausePlayback :: (media: *AndroidBundleMedia) {
+    if media.state == 2 {
+        if AndroidBundleMediaCommand(media, "pause", "()V") {
+            media.state = 3
+            media.message = "Paused"
+        }
+    } else if media.state == 3 {
+        if AndroidBundleMediaCommand(media, "start", "()V") {
+            media.state = 2
+            media.message = "Playing"
+        }
+    }
+}
+
+AndroidBundleMediaSetGain :: (media: *AndroidBundleMedia, gain: float32) -> bool {
+    if gain < 0.0 || gain > 1.0 { return false }
+    media.gain = gain
+    if media.player == null { return true }
+    session: AndroidJniSession
+    if AndroidJniAttachCurrent(*session) == 0 { return false }
+    defer { AndroidJniDetachCurrent(*session) }
+    class := AndroidMediaClass(session.env)
+    method := AndroidMediaMethod(session.env, class, "setVolume", "(FF)V")
+    if method == null { return false }
+    arguments: [2]JniValue
+    arguments[0].single = media.gain
+    arguments[1].single = media.gain
+    session.env.functions.CallVoidMethodA(session.env, media.player, method, *arguments[0])
+    return !AndroidMediaFailed(session.env)
+}
+
+AndroidBundleMediaTick :: (media: *AndroidBundleMedia, slot: s32) {
+    if media.state == 1 {
+        status: s32
+        length: s64
+        ready := HttpTransferPollLength(*media.download, *status, *length)
+        if ready >= 0 {
+            HttpTransferCancel(*media.download)
+            media.state = -1
+            media.message = "Could not load the audio resource"
+            if ready == 1 && status >= 200 && status < 300 {
+                unused AndroidBundleMediaLoad(media, slot,
+                    TextFromBytes(BytesFromPointer(media.audio_bytes, cast(u64)length)))
+            }
+        }
+    }
+    if media.loaded && media.state == 2 && !AndroidMediaPlaying(media) {
+        media.state = 0
+        media.message = "Finished"
+    }
+    if media.fetch_state == 1 {
+        status: s32
+        length: s64
+        ready := HttpTransferPollLength(*media.fetch, *status, *length)
+        if ready >= 0 {
+            HttpTransferCancel(*media.fetch)
+            media.fetch_state = ifx ready == 1 && status >= 200 && status < 300 then 2 else -1
+            media.fetch_length = ifx media.fetch_state == 2 then length else 0
+        }
+    }
+}
+
+AndroidBundleMediaCall :: (media: *AndroidBundleMedia, module: string,
+    function: string, args: *HostValue, count: s32, result: *HostValue,
+    slot: s32) -> s32 {
+    if !ModuleName(module, "media") { return 0 }
+    if count == 1 && (function == "MediaOpenHost" || function == "FetchTextHost") &&
+    HostScalarValid(args[0], "string", cast(s32)HostString) {
+        source := TextFromBytes(BytesFromPointer(args[0].data, cast(u64)args[0].length))
+        ready: bool
+        if function == "MediaOpenHost" {
+            ready = AndroidBundleMediaOpen(media, source, slot)
+        } else {
+            HttpTransferCancel(*media.fetch)
+            media.fetch_state = -1
+            media.fetch_length = 0
+            if media.fetch_bytes == null { media.fetch_bytes = MediaAllocate(MEDIA_TEXT_LIMIT, 1) }
+            if media.fetch_bytes != null {
+                ready = HttpTransferStart(*media.fetch,
+                    HttpRequest.{.method = "GET", .url = source},
+                    BytesFromPointer(media.fetch_bytes, MEDIA_TEXT_LIMIT), 20000)
+            }
+            if ready { media.fetch_state = 1 }
+        }
+        result.* = HostScalar("bool", ifx ready then 1 else 0)
+        return 1
+    }
+    if count != 0 { return 0 }
+    if function == "MediaStopHost" { AndroidBundleMediaStop(media); return 1 }
+    if function == "MediaPauseHost" { AndroidBundleMediaPausePlayback(media); return 1 }
+    if function == "MediaStateHost" || function == "FetchTextStateHost" {
+        result.* = HostScalar("s32", ifx function == "MediaStateHost" then media.state else media.fetch_state)
+        return 1
+    }
+    if function == "MediaMessageHost" || function == "FetchTextResultHost" {
+        value := media.message
+        if function == "FetchTextResultHost" {
+            value = ""
+            if media.fetch_state == 2 {
+                value = TextFromBytes(BytesFromPointer(media.fetch_bytes, cast(u64)media.fetch_length))
+            }
+        }
+        result.* = HostValue.{.kind = cast(s32)HostString,
+            .type_name = HostTextData("string"), .data = HostTextData(value),
+            .length = cast(usize)value.count}
+        return 1
+    }
+    return 0
+}

@@ -1,8 +1,9 @@
+Theme :: #import "theme";
 #import "ziran_composition_widget_host"
 #import "ziran_card_image_host"
-#import "card"
+#import "card_behavior"
 #import "card_props"
-#import "card_widget"
+#import "card"
 #import "elevation"
 #import "geometry"
 #import "control_props"
@@ -13,7 +14,7 @@
 #import "tree_draw"
 #import "tree_input"
 #import "style_sheet"
-#import "list_box"
+#import "list_box_behavior"
 #import "style"
 
 #program_export
@@ -32,7 +33,7 @@ main :: () -> s32 {
     if CardEmphasis(.CardFilled) != .ButtonEmphasisSoft || CardEmphasis(.CardElevated) != .ButtonEmphasisFilled ||
         CardEmphasis(.CardOutlined) != .ButtonEmphasisOutline { return 5 }
     outlined := CardDefaultFace(.ButtonEmphasisOutline, cast(s32)ButtonState.ButtonStateNormal)
-    if outlined.border_width != 1.0 || outlined.radius != 12.0 { return 6 }
+    if outlined.border_width != 1.0 || outlined.radius != Theme.ShapeSurface() { return 6 }
     filled := CardDefaultFace(.ButtonEmphasisSoft, cast(s32)ButtonState.ButtonStateNormal)
     if filled.border_width != 0.0 || filled.background == outlined.background { return 7 }
     item: StyleFrame

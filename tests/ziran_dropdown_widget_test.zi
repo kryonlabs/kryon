@@ -2,19 +2,19 @@
 #import "widget_test_session"
 
 #import "button_props"
-#import "button_widget"
+#import "button"
 #import "control_props"
-#import "dropdown"
+#import "dropdown_behavior"
 #import "dropdown_props"
-#import "dropdown_widget"
+#import "dropdown"
 #import "geometry"
-#import "layout_widget"
+#import "layout"
 #import "layout_props"
 #import "image_props"
 #import "paint_queue"
 #import "scroll_device"
 #import "scroll_props"
-#import "scroll_widget"
+#import "scroll"
 #import "semantic"
 #import "style"
 #import "style_sheet"
@@ -635,12 +635,12 @@ main :: () -> s32 {
         expected_labels += label_steps[index]
         expected_images: s32 = 0
         if index == 13 { expected_images = 1 }
-        if DropdownHostFailed() ||
-        DropdownFills() != expected_fills ||
-        DropdownOutlines() != expected_outlines ||
-        DropdownStrokes() != expected_strokes ||
-        DropdownLabels() != expected_labels ||
-        DropdownImages() != expected_images { return 2 }
+        if DropdownHostFailed() { return 100 + index }
+        if DropdownFills() != expected_fills { return 120 + index }
+        if DropdownOutlines() != expected_outlines { return 140 + index }
+        if DropdownStrokes() != expected_strokes { return 160 + index }
+        if DropdownLabels() != expected_labels { return 180 + index }
+        if DropdownImages() != expected_images { return 200 + index }
         index += 1
     }
     // A narrow trigger must show its complete selected value without changing

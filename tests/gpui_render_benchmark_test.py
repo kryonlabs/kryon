@@ -33,7 +33,9 @@ class GpuiRenderBenchmarkTest(unittest.TestCase):
         self.assertLessEqual(len(os.fsencode(longest_socket)), 107)
 
     def test_generated_project_uses_disposable_paths_and_xkb_sysroot(self):
-        with tempfile.TemporaryDirectory(dir=ROOT / 'build/scratch') as temporary:
+        scratch = ROOT / 'build/scratch'
+        scratch.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=scratch) as temporary:
             saved_build = BENCHMARK.BUILD
             BENCHMARK.BUILD = Path(temporary) / 'gpui-render-benchmark'
             try:

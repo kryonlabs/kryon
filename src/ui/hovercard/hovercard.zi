@@ -1,0 +1,223 @@
+#import "control_props"
+#import "drawing_props"
+#import "font_metrics"
+#import "geometry"
+#import "hover_card_props"
+#import "semantic"
+#import "session"
+#import "style"
+#import "style_sheet"
+#import "surface"
+#import "theme"
+#import "tooltip_common"
+#import "tree"
+#import "widget_kind"
+
+using ButtonState;
+using SemanticKind;
+using StyleField;
+using WidgetKind;
+
+#program_export
+HoverCardInstalledFaceFor :: (props: HoverCardProps,
+    state: s32) -> StyleData {
+    facts := StyleControlRoleFacts(StyleKindPopup(), props.id,
+        props.class_name, StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
+    return ResolveInstalledStyleRules(HoverCardDefaultStyle(), facts, state)
+}
+
+#program_export
+HoverCardApply :: (state: *HoverCardState,
+    props: HoverCardProps) -> HoverCardResult {
+    result: HoverCardResult
+    result.node = -1; result.title_node = -1; result.action_node = -1
+    result.fit.placement = props.placement
+    if state == null { return result }
+    over := props.pointer.over_anchor || props.pointer.over_content ||
+        props.focus.anchor_focused || props.focus.content_focused
+    if props.disabled { over = false }
+    if over {
+        if state.enter_ms < 0 {
+            state.enter_ms = props.now_ms
+            result.changed = true
+        }
+        movement_tolerance := props.movement_tolerance
+        if movement_tolerance <= 0.0 { movement_tolerance = 8.0 }
+        delta_x := props.pointer.x - state.last_pointer_x
+        delta_y := props.pointer.y - state.last_pointer_y
+        if !state.open && delta_x * delta_x + delta_y * delta_y >
+            movement_tolerance * movement_tolerance {
+            state.enter_ms = props.now_ms
+        }
+        state.leave_ms = -1
+        state.last_pointer_x = props.pointer.x
+        state.last_pointer_y = props.pointer.y
+    } else {
+        state.enter_ms = -1
+        if state.leave_ms < 0 { state.leave_ms = props.now_ms }
+    }
+    delay := props.delay_ms
+    if delay <= 0.0 { delay = 450.0 }
+    grace := props.grace_ms
+    if grace <= 0.0 { grace = 200.0 }
+    if !state.open && over && state.enter_ms >= 0 &&
+        cast(float32)(props.now_ms - state.enter_ms) >= delay &&
+            !props.pointer.down {
+        state.open = true
+        state.transition_start_ms = props.now_ms
+        result.changed = true
+    } else if !state.open && over && state.enter_ms >= 0 {
+        result.remaining_delay_ms = delay - cast(float32)(props.now_ms - state.enter_ms)
+    }
+    if state.open && !over && state.leave_ms >= 0 {
+        gone := props.now_ms - state.leave_ms
+        if cast(float32)gone > grace {
+            state.open = false
+            result.changed = true
+            result.closed = true
+        } else {
+            result.remaining_grace_ms = grace - cast(float32)gone
+        }
+    }
+    if state.open && props.pointer.over_anchor && props.pointer.pressed {
+        state.open = false
+        result.closed = true
+        result.changed = true
+    }
+    if state.open && props.activate_action {
+        result.action = props.action
+        result.action_selected = true
+        state.open = false
+        result.closed = true
+    }
+    duration := OverlayDuration(280.0, props.style,
+        CurrentTheme().motion.reduced_motion)
+    target := 0.0
+    if state.open { target = 1.0 }
+    state.progress = OverlayProgressAt(state.transition_start_ms,
+        props.now_ms, duration)
+    if !state.open && state.progress <= 0.0 { state.transition_start_ms = -1 }
+    unused target
+    result.open = state.open
+    result.visible = state.open || state.progress > 0.0
+    return result
+}
+
+HoverCardHostedReply :: struct {
+    state: HoverCardState
+    result: HoverCardResult
+}
+#if #defined(KRYON_HOSTED_UI) {
+    hover_card_host_api :: #system_library "host_api";
+    HoverCardHostedHost :: (session: Session, props: HoverCardProps, state: HoverCardState) -> HoverCardHostedReply #foreign hover_card_host_api;
+    #program_export
+    HoverCard :: (session: Session, props: HoverCardProps,
+    state: *HoverCardState) -> HoverCardResult {
+        reply := HoverCardHostedHost(session, props, state.*)
+        state.* = reply.state
+        return reply.result
+    }
+} else {
+    #import "paint_queue"
+    #program_export
+    HoverCard :: (session: Session, props: HoverCardProps,
+    state: *HoverCardState) -> HoverCardResult { return HoverCardCore(session, props, state, true) }
+    #program_export
+HoverCardCore :: (session: Session, props: HoverCardProps,
+    state: *HoverCardState, effects: bool) -> HoverCardResult {
+    unused effects
+    result := HoverCardApply(state, props)
+    if !result.visible || !SessionValid(session) || !TreeIsBuilding(session) {
+        return result
+    }
+    face := MergeValues(ResolveValues(HoverCardInstalledFaceFor(props,
+        ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.states, ifx props.disabled then cast(s32)ButtonStateDisabled else cast(s32)ButtonStateNormal),
+        props.style)
+    width := props.width
+    if width <= 0.0 { width = 300.0 }
+    if width > props.viewport.width - 16.0 { width = props.viewport.width - 16.0 }
+    if width < 0.0 { width = 0.0 }
+    font := ResolveFont(0, StyleFontValue(face.fields, face.font_size), 15)
+    title_height := cast(float32)GlyphLineHeight(font, face.typeface)
+    body_font := ResolveFont(font, cast(s32)CurrentTheme().metrics.text_body, 13)
+    body_height := cast(float32)GlyphLineHeight(body_font, face.typeface) * 2.0
+    action_height: float32 = 30.0
+    height := face.padding_y * 2.0 + title_height + body_height + action_height + face.gap * 2.0
+    gap := props.gap
+    if gap <= 0.0 { gap = 10.0 }
+    result.fit = OverlayFitPlacement(props.anchor, width, height, gap,
+        props.placement, props.viewport, cast(float32)8.0)
+    result.bounds = result.fit.bounds
+    if !result.fit.visible { result.visible = false; return result }
+
+    result.node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 1),
+        WidgetKindBox, result.bounds)
+    if result.node < 0 { return result }
+    TreeSetPopup(session, result.node)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    PaintRoundedFill(session, result.node, result.bounds, face.radius, 12,
+        ColorFromPacked(Opacity(face.background,
+            OverlayStyleOpacity(face) * state.progress)))
+    if face.border != cast(u32)0 {
+        PaintRoundedOutline(session, result.node, result.bounds, face.radius,
+            12, face.border_width, ColorFromPacked(Opacity(face.border,
+                OverlayStyleOpacity(face) * state.progress)))
+    }
+    if !TreePushScope(session, result.node) { return result }
+
+    title_bounds := Rectangle.{result.bounds.x + face.padding_x,
+        result.bounds.y + face.padding_y,
+        result.bounds.width - face.padding_x * 2.0, title_height}
+    result.title_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 2),
+        WidgetKindText, title_bounds)
+    if result.title_node >= 0 {
+        TreeSetPopup(session, result.title_node)
+        TreeSetStyleClass(session, result.title_node, props.class_name)
+        TreeSetStyleId(session, result.title_node, props.id)
+        TreeSetSemantic(session, result.title_node, cast(SemanticKind)SemanticHeading, 3)
+        TreeSetLabel(session, result.title_node, props.title)
+        PaintClippedLabel(session, result.title_node, props.title,
+            cast(s32)title_bounds.x, cast(s32)title_bounds.y, font,
+            ColorFromPacked(Opacity(face.foreground, OverlayStyleOpacity(face))),
+            title_bounds)
+    }
+    body_bounds := Rectangle.{title_bounds.x, title_bounds.y + title_height + face.gap,
+        title_bounds.width, body_height}
+    body_node := TreeSubmitCurrent(session, WidgetPartKey(props.key, 3),
+        WidgetKindParagraph, body_bounds)
+    if body_node >= 0 {
+        TreeSetPopup(session, body_node)
+        TreeSetStyleClass(session, body_node, props.class_name)
+        TreeSetStyleId(session, body_node, props.id)
+        TreeSetSemantic(session, body_node, cast(SemanticKind)SemanticParagraph, 0)
+        TreeSetLabel(session, body_node, props.body)
+        PaintClippedLabel(session, body_node, props.body,
+            cast(s32)body_bounds.x, cast(s32)body_bounds.y, body_font,
+            ColorFromPacked(Opacity(CurrentTheme().colors.text_secondary,
+                OverlayStyleOpacity(face))), body_bounds)
+    }
+    action_bounds := Rectangle.{body_bounds.x,
+        body_bounds.y + body_height + face.gap, 96.0, action_height}
+    result.action_node = TreeSubmitCurrent(session, WidgetPartKey(props.key, 4),
+        WidgetKindButton, action_bounds)
+    if result.action_node >= 0 {
+        TreeSetPopup(session, result.action_node)
+        TreeSetStyleClass(session, result.action_node, props.class_name)
+        TreeSetStyleId(session, result.action_node, props.id)
+        TreeSetInteractive(session, result.action_node, props.disabled,
+            false, props.id + 1)
+        TreeSetSemantic(session, result.action_node, cast(SemanticKind)SemanticButton, 0)
+        TreeSetLabel(session, result.action_node, props.action_label)
+        PaintRoundedFill(session, result.action_node, action_bounds,
+            props.action_style.radius, 8,
+            ColorFromPacked(Opacity(props.action_style.background,
+                OverlayStyleOpacity(props.action_style))))
+    }
+    unused TreePopScope(session)
+    return result
+}
+}
+
+

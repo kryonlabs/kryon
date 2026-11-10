@@ -3,7 +3,7 @@
 #import "thread_linux"
 #import "process_capture_linux"
 #import "timer_linux"
-#import "text"
+#import "std/text"
 
 c :: #system_library "libc";
 glib :: #system_library "glib-2.0";

@@ -1,0 +1,194 @@
+// Canonical bridge from ThemeTokens to website CSS custom properties.
+// Invocation: ziran run --target=c --root scripts scripts/export_theme_tokens.zi
+// The website owns where the emitted bytes are written; this module owns values.
+#import, file "../src/ui/theme.zi";
+#import "std/text_tools"
+
+ColorText :: (color: u32) -> Text {
+    bytes: [4]u8
+    bytes[0] = cast(u8)(color >> cast(u32)24)
+    bytes[1] = cast(u8)(color >> cast(u32)16)
+    bytes[2] = cast(u8)(color >> cast(u32)8)
+    bytes[3] = cast(u8)color
+    return TextHex(bytes[:4])
+}
+
+EmitColor :: (name: string, color: u32) {
+    print("--kryon-%: #%;\n", name, ColorText(color))
+}
+
+EmitRoleColor :: (theme: ThemeTokens, name: string, role: ThemeColorRole) {
+    EmitColor(name, ThemeColorValue(theme, role))
+}
+
+EmitMetricParts :: (name: string, suffix: string, value: float32,
+    unit: string) {
+    if suffix.count == 0 { print("--kryon-%: ", name) }
+    else { print("--kryon-%-%: ", name, suffix) }
+    scaled: s64 = cast(s64)(value * 1000.0 + 0.5)
+    if value < 0.0 { scaled = cast(s64)(value * 1000.0 - 0.5) }
+    whole: s64 = scaled / 1000
+    fraction: s64 = scaled % 1000
+    if fraction < 0 { fraction = -fraction }
+    print("%", whole)
+    if fraction != 0 {
+        print(".")
+        if fraction < 100 { print("0") }
+        if fraction < 10 { print("0") }
+        print("%", fraction)
+    }
+    print("%;\n", unit)
+}
+
+EmitMetric :: (name: string, value: float32, unit: string) {
+    EmitMetricParts(name, "", value, unit)
+}
+
+EmitRoleMetric :: (theme: ThemeTokens, name: string, role: ThemeMetricRole,
+    unit: string) {
+    EmitMetric(name, ThemeMetricValue(theme, role), unit)
+}
+
+EmitThemeColors :: (theme: ThemeTokens) {
+    EmitRoleColor(theme, "background", .ThemeColorBackground)
+    EmitRoleColor(theme, "surface", .ThemeColorSurface)
+    EmitRoleColor(theme, "surface-raised", .ThemeColorSurfaceRaised)
+    EmitRoleColor(theme, "surface-muted", .ThemeColorSurfaceMuted)
+    EmitRoleColor(theme, "surface-sunken", .ThemeColorSurfaceSunken)
+    EmitRoleColor(theme, "foreground", .ThemeColorForeground)
+    EmitRoleColor(theme, "text-secondary", .ThemeColorTextSecondary)
+    EmitRoleColor(theme, "text-muted", .ThemeColorTextMuted)
+    EmitRoleColor(theme, "text-disabled", .ThemeColorTextDisabled)
+    EmitRoleColor(theme, "icon", .ThemeColorIcon)
+    EmitRoleColor(theme, "icon-muted", .ThemeColorIconMuted)
+    EmitRoleColor(theme, "border", .ThemeColorBorder)
+    EmitRoleColor(theme, "border-subtle", .ThemeColorSubtleBorder)
+    EmitRoleColor(theme, "border-strong", .ThemeColorStrongBorder)
+    EmitRoleColor(theme, "focus", .ThemeColorFocus)
+    EmitRoleColor(theme, "hover-layer", .ThemeColorHoverLayer)
+    EmitRoleColor(theme, "active-layer", .ThemeColorActiveLayer)
+    EmitRoleColor(theme, "scrim", .ThemeColorScrim)
+    EmitRoleColor(theme, "selection", .ThemeColorSelection)
+    EmitRoleColor(theme, "selection-text", .ThemeColorSelectionText)
+    EmitRoleColor(theme, "accent", .ThemeColorAccent)
+    EmitRoleColor(theme, "accent-strong", .ThemeColorAccentStrong)
+    EmitRoleColor(theme, "accent-subtle", .ThemeColorAccentSubtle)
+    EmitRoleColor(theme, "on-accent", .ThemeColorOnAccent)
+    EmitRoleColor(theme, "control-on", .ThemeColorControlOn)
+    EmitRoleColor(theme, "control-glyph", .ThemeColorControlGlyph)
+    EmitRoleColor(theme, "control-track", .ThemeColorControlTrack)
+    EmitRoleColor(theme, "control-track-hover", .ThemeColorControlTrackHover)
+    EmitRoleColor(theme, "control-thumb", .ThemeColorControlThumb)
+    EmitRoleColor(theme, "control-thumb-on", .ThemeColorControlThumbOn)
+    EmitRoleColor(theme, "success", .ThemeColorSuccess)
+    EmitRoleColor(theme, "on-success", .ThemeColorOnSuccess)
+    EmitRoleColor(theme, "warning", .ThemeColorWarning)
+    EmitRoleColor(theme, "on-warning", .ThemeColorOnWarning)
+    EmitRoleColor(theme, "danger", .ThemeColorDanger)
+    EmitRoleColor(theme, "on-danger", .ThemeColorOnDanger)
+    EmitRoleColor(theme, "info", .ThemeColorInfo)
+    EmitRoleColor(theme, "on-info", .ThemeColorOnInfo)
+    EmitRoleColor(theme, "link", .ThemeColorLink)
+    EmitRoleColor(theme, "shadow", .ThemeColorShadow)
+    index: s32 = 0
+    while index < cast(s32)theme.series.items.count {
+        print("--kryon-series-%: #%;\n", index + 1,
+            ColorText(ThemeSeriesValue(theme, index)))
+        index += 1
+    }
+}
+
+EmitShadowLayer :: (name: string, layer: ShadowLayer) {
+    EmitMetricParts(name, "blur", layer.blur, "px")
+    EmitMetricParts(name, "y", layer.offset_y, "px")
+    EmitMetricParts(name, "spread", layer.spread, "px")
+    EmitMetricParts(name, "opacity", layer.opacity, "")
+}
+
+EmitShadows :: (theme: ThemeTokens) {
+    EmitShadowLayer("shadow-rest", theme.shadows.rest)
+    EmitShadowLayer("shadow-raised-1", theme.shadows.raised[0])
+    EmitShadowLayer("shadow-raised-2", theme.shadows.raised[1])
+    EmitShadowLayer("shadow-floating-1", theme.shadows.floating[0])
+    EmitShadowLayer("shadow-floating-2", theme.shadows.floating[1])
+}
+
+EmitMetrics :: (theme: ThemeTokens) {
+    EmitRoleMetric(theme, "radius-mark", .ThemeMetricRadiusMark, "px")
+    EmitRoleMetric(theme, "radius-item", .ThemeMetricRadiusItem, "px")
+    EmitRoleMetric(theme, "radius-small", .ThemeMetricRadiusSmall, "px")
+    EmitRoleMetric(theme, "radius-control", .ThemeMetricRadiusControl, "px")
+    EmitRoleMetric(theme, "radius-panel", .ThemeMetricRadiusPanel, "px")
+    EmitRoleMetric(theme, "radius-surface", .ThemeMetricRadiusSurface, "px")
+    EmitRoleMetric(theme, "radius-pill", .ThemeMetricRadiusPill, "px")
+    EmitRoleMetric(theme, "border-width", .ThemeMetricBorderWidth, "px")
+    EmitRoleMetric(theme, "focus-width", .ThemeMetricFocusWidth, "px")
+    EmitRoleMetric(theme, "focus-gap", .ThemeMetricFocusGap, "px")
+    EmitRoleMetric(theme, "space-1", .ThemeMetricSpace1, "px")
+    EmitRoleMetric(theme, "space-2", .ThemeMetricSpace2, "px")
+    EmitRoleMetric(theme, "space-3", .ThemeMetricSpace3, "px")
+    EmitRoleMetric(theme, "space-4", .ThemeMetricSpace4, "px")
+    EmitRoleMetric(theme, "space-5", .ThemeMetricSpace5, "px")
+    EmitRoleMetric(theme, "space-6", .ThemeMetricSpace6, "px")
+    EmitRoleMetric(theme, "control-height-small", .ThemeMetricControlHeightSmall, "px")
+    EmitRoleMetric(theme, "control-height-medium", .ThemeMetricControlHeightMedium, "px")
+    EmitRoleMetric(theme, "control-height-large", .ThemeMetricControlHeightLarge, "px")
+    EmitRoleMetric(theme, "control-padding-small", .ThemeMetricControlPaddingSmall, "px")
+    EmitRoleMetric(theme, "control-padding-medium", .ThemeMetricControlPaddingMedium, "px")
+    EmitRoleMetric(theme, "control-padding-large", .ThemeMetricControlPaddingLarge, "px")
+    EmitRoleMetric(theme, "control-gap", .ThemeMetricControlGap, "px")
+    EmitRoleMetric(theme, "text-xs", .ThemeMetricTextXS, "px")
+    EmitRoleMetric(theme, "text-sm", .ThemeMetricTextSM, "px")
+    EmitRoleMetric(theme, "text-body", .ThemeMetricTextBody, "px")
+    EmitRoleMetric(theme, "text-lg", .ThemeMetricTextLG, "px")
+    EmitRoleMetric(theme, "heading-1", .ThemeMetricHeading1, "px")
+    EmitRoleMetric(theme, "heading-2", .ThemeMetricHeading2, "px")
+    EmitRoleMetric(theme, "heading-3", .ThemeMetricHeading3, "px")
+    EmitRoleMetric(theme, "heading-4", .ThemeMetricHeading4, "px")
+    EmitRoleMetric(theme, "icon-size-small", .ThemeMetricIconSmall, "px")
+    EmitRoleMetric(theme, "icon-size-medium", .ThemeMetricIconMedium, "px")
+    EmitRoleMetric(theme, "icon-size-large", .ThemeMetricIconLarge, "px")
+    EmitRoleMetric(theme, "disabled-opacity", .ThemeMetricDisabledOpacity, "")
+}
+
+EmitMotion :: (theme: ThemeTokens) {
+    EmitMetric("motion-highlight", theme.motion.highlight_ms, "ms")
+    EmitMetric("motion-hover", theme.motion.hover_ms, "ms")
+    EmitMetric("motion-state", theme.motion.state_ms, "ms")
+    EmitMetric("motion-enter", theme.motion.enter_ms, "ms")
+    EmitMetric("motion-exit", theme.motion.exit_ms, "ms")
+    EmitMetric("motion-theme", theme.motion.theme_ms, "ms")
+    EmitMetric("motion-multiplier", theme.motion.multiplier, "")
+}
+
+EmitFonts :: (theme: ThemeTokens) {
+    print("--kryon-font-control: %, Inter, system-ui, sans-serif;\n", theme.fonts.control)
+    print("--kryon-font-body: %, Inter, system-ui, sans-serif;\n", theme.fonts.body)
+    print("--kryon-font-heading: %, Geist, Inter, system-ui, sans-serif;\n", theme.fonts.heading)
+    print("--kryon-font-code: %, ui-monospace, monospace;\n", theme.fonts.code)
+    print("--kryon-font-icon: %;\n", theme.fonts.icon)
+}
+
+#program_export
+main :: () -> s32 {
+    light := DefaultTheme(false)
+    dark := DefaultTheme(true)
+    reduced := DefaultMotion(true)
+    print("/* Generated by scripts/export_theme_tokens.zi; do not edit. */\n")
+    print(":root {\n")
+    EmitThemeColors(light)
+    print("}\n\n[data-theme='dark'] {\n")
+    EmitThemeColors(dark)
+    print("}\n\n:root {\n")
+    EmitMetrics(light)
+    EmitShadows(light)
+    EmitMotion(light)
+    print("--kryon-motion-easing: cubic-bezier(0.22, 1, 0.36, 1);\n")
+    EmitFonts(light)
+    print("}\n\n[data-theme='dark'] {\n")
+    EmitShadows(dark)
+    print("}\n\n@media (prefers-reduced-motion: reduce) {\n")
+    EmitMetric("motion-multiplier", reduced.multiplier, "")
+    print("}\n")
+    return 0
+}

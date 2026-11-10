@@ -9,11 +9,13 @@ def envOrProp = { String envName, String propName ->
 }
 def kryonDir = envOrProp('KRYON_DIR', 'kryon.dir')
 def ziranDir = envOrProp('ZIRAN_DIR', 'ziran.dir')
-def raylibDir = envOrProp('RAYLIB_DIR', 'raylib.dir')
 def webpDir = envOrProp('WEBP_DIR', 'webp.dir')
-if (kryonDir == null || ziranDir == null || raylibDir == null || webpDir == null) {
+def avifDir = envOrProp('AVIF_DIR', 'avif.dir')
+def aomDir = envOrProp('AOM_DIR', 'aom.dir')
+if (kryonDir == null || ziranDir == null || webpDir == null || avifDir == null || aomDir == null) {
     throw new GradleException(
-        'Pass -Pkryon.dir=... -Pziran.dir=... -Praylib.dir=... -Pwebp.dir=... ' +
+        'Pass -Pkryon.dir=... -Pziran.dir=... -Pwebp.dir=... -Pavif.dir=... ' +
+        '-Paom.dir=... ' +
         'or build through kryon build --profile android')
 }
 def androidAbis = (project.findProperty('app.abis') ?:
@@ -52,8 +54,9 @@ android {
             cmake {
                 arguments '-DKRYON_DIR=' + kryonDir,
                     '-DZIRAN_DIR=' + ziranDir,
-                    '-DRAYLIB_DIR=' + raylibDir,
                     '-DWEBP_DIR=' + webpDir,
+                    '-DAVIF_DIR=' + avifDir,
+                    '-DAOM_DIR=' + aomDir,
                     '-DAPP_CODEGEN=' + appCodegen,
                     '-DAPP_EDITION=' + appEdition
             }

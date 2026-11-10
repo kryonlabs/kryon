@@ -1,0 +1,21 @@
+#import "component_protocol"
+#import "text"
+#import "text_props"
+#import "geometry"
+
+component_schema_version: s64 = 2;
+component_count: s64 = 99;
+component_label_kind: s64 = 2;
+
+#program_export
+Frame :: () -> s32 {
+    if component_schema_version < 2 { return 1 }
+    session := ComponentSession()
+    bounds := ComponentBounds()
+    Text(session, TextProps.{
+        .key = 601, .bounds = Rectangle.{
+            bounds.x + 16.0, bounds.y + 16.0, 180.0, 28.0
+        }, .text = "bad entry", .font = Text18
+    })
+    return 0
+}

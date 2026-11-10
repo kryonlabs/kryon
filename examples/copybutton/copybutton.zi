@@ -1,0 +1,23 @@
+using UI :: #import "kryon/Widgets";
+#import "kryon/frame_snapshot"
+
+state: CopyButtonState;
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Copy button", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    input := CaptureFrameInput(session)
+    now := cast(float64)input.elapsed_ms / 1000.0
+    CopyButton(session, CopyButtonProps.{.button = .{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, 240.0, 44.0}, .label = "Copy website address"}, .text = "https://github.com/kryonlabs/kryon", .now = cast(float32)now, .success_label = "Copied", .failure_label = "Copy failed"}, *state)
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

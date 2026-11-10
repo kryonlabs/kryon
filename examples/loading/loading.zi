@@ -1,0 +1,25 @@
+using UI :: #import "kryon/Widgets";
+using Demo :: #import "kryon/loading_indicator";
+#import "kryon/frame_snapshot"
+DemoTheme :: #import "kryon/Theme";
+
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Loading indicator", .font = 28})
+    bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
+    input := CaptureFrameInput(session)
+    now := cast(float64)input.elapsed_ms / 1000.0
+    LoadingIndicator(session, LoadingIndicatorProps.{.key = 10, .bounds = bounds, .now = ifx (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion) then 0.0 else now, .scale = 1.0})
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

@@ -1,118 +1,149 @@
-// The canonical Android host's DrawAndroidFrame publishes the polled raylib
-// frame input to the application callback and revokes it before presenting.
+// The software frame host driven through Android OS events and padded pixels.
 Probe :: #import "app";
 #import "android_run"
+#import "android_native"
+#import "android_bundle_images"
+#import "android_touch"
+#import "android_jni"
 #import "android_surface"
 #import "frame_snapshot"
 #import "geometry"
 #import "input_protocol"
-#import "raylib_runtime"
 #import "session"
-#import "std/c_string"
 #import "tree_draw"
-
-// Real SDL events enter raylib's platform poller; no replacement input provider.
-sdl :: #system_library "SDL2";
-raylib_input :: #system_library "raylib";
-Event :: struct {
-    kind: u32
-    timestamp: u32
-    window: u32
-    state: u8
-    repeat: u8
-    pad1: u8
-    pad2: u8
-    scancode: s32
-    keycode: s32
-    modifiers: u16
-    pad3: u16
-    unused_value: u32
-    tail: [24]u8
-}
-PushEvent :: (event: *Event) -> s32 #foreign sdl "SDL_PushEvent";
-PollEvents :: () #foreign raylib_input "PollInputEvents";
-RealEndDrawing :: () #foreign raylib_input "__real_EndDrawing";
-
-KeyEvent :: (down: bool) -> bool {
-    event: Event
-    event.kind = ifx down then cast(u32)0x300 else cast(u32)0x301
-    event.state = ifx down then cast(u8)1 else cast(u8)0
-    event.scancode = 4
-    event.keycode = 97
-    return PushEvent(*event) == 1
-}
-
-FocusEvent :: (focused: bool) -> bool {
-    event: Event
-    event.kind = cast(u32)0x200
-    event.state = ifx focused then cast(u8)12 else cast(u8)13
-    return PushEvent(*event) == 1
-}
-
+#import "std/c_string"
+Event :: struct { kind: s32; action: s32; key: s32; x: float32; y: float32 }
 watched: Session;
 presents: s32;
 presented_open: bool;
-
-// Presentation may yield to the platform; the frame's input must be closed.
+window_pixels: [64800]u32;
 #program_export
-__wrap_EndDrawing :: () {
-    presents += 1
-    if CaptureFrameInput(watched).available { presented_open = true }
-    RealEndDrawing()
+ALooper_pollAll :: (timeout: s32, file: *s32, events: *s32, data: **void) -> s32 {
+    unused timeout; unused file; unused events; unused data; return -1
 }
-
-// Android's system log; the host has none.
 #program_export
-__wrap___android_log_write :: (priority: s32, tag: *u8, text: *u8) -> s32 {
-    unused priority
-    unused tag
-    unused text
-    return 1
-}
-
-Draw :: (session: Session) -> bool {
-    PollEvents()
-    if !PollRaylib() { return false }
-    viewport := AndroidViewport.{.width = 320, .height = 200, .ready = 1}
-    return DrawAndroidFrame(session, viewport, Rectangle.{0.0, 0.0, 320.0, 200.0})
-}
-
+ANativeWindow_getWidth :: (window: *void) -> s32 { unused window; return 320 }
 #program_export
-main :: () -> s32 {
-    if !OpenRaylib(320, 200, "Android frame input local test") { return Failure(1) }
-    defer { CloseRaylib() }
-    RaylibExitKey(0)
-    session := SessionOpen()
-    Probe.foreign = SessionOpen()
-    watched = session
-    if !FocusEvent(true) || !KeyEvent(true) { return Failure(2) }
-    if !Draw(session) || Probe.frames != 1 { return Failure(3) }
-    first := Probe.seen
-    if !first.available || !first.focused || first.keys[65] != cast(u8)3 ||
-    first.delta_ms < 0 { return Failure(4) }
-    if CaptureFrameInput(session).available || presents == 0 || presented_open { return Failure(5) }
-    // Held without a new press, and published again on the next frame.
-    if !Draw(session) || !Probe.seen.available ||
-    Probe.seen.keys[65] != cast(u8)FrameKeyHeld || Probe.seen.sequence <= first.sequence { return Failure(6) }
-    // An application failure still closes the publication before presenting.
-    Probe.fail = true
-    if !KeyEvent(false) || Draw(session) { return Failure(7) }
-    if !Probe.seen.available || Probe.seen.keys[65] != cast(u8)FrameKeyReleased { return Failure(8) }
-    if CaptureFrameInput(session).available || presented_open { return Failure(9) }
-    Probe.fail = false
-    // Losing focus releases held input in the published frame.
-    if !KeyEvent(true) || !Draw(session) || Probe.seen.keys[65] != cast(u8)3 { return Failure(10) }
-    if !FocusEvent(false) || !Draw(session) { return Failure(11) }
-    lost := Probe.seen
-    if !lost.available || lost.focused || lost.keys[65] != cast(u8)FrameKeyReleased ||
-    lost.pointer.down || lost.modifiers != 0 { return Failure(12) }
-    if Probe.foreign_seen || CaptureFrameInput(session).available || presented_open { return Failure(13) }
-    unused CloseSession(Probe.foreign)
-    unused CloseSession(session)
+ANativeWindow_getHeight :: (window: *void) -> s32 { unused window; return 200 }
+#program_export
+ANativeWindow_setBuffersGeometry :: (window: *void, width: s32, height: s32, format: s32) -> s32 {
+    unused window; unused width; unused height; unused format; return 0
+}
+#program_export
+ANativeWindow_lock :: (window: *void, output: *NativeWindowBuffer, bounds: *void) -> s32 {
+    unused window; unused bounds
+    output.* = NativeWindowBuffer.{.width = 320, .height = 200, .stride = 324,
+        .format = 1, .bits = cast(*u8)(*window_pixels[0])}
     return 0
 }
-
+#program_export
+ANativeWindow_unlockAndPost :: (window: *void) -> s32 {
+    unused window; presents += 1
+    if CaptureFrameInput(watched).available { presented_open = true }
+    return 0
+}
+#program_export
+ANativeActivity_finish :: (activity: *void) { unused activity }
+#program_export
+AInputEvent_getType :: (event: *Event) -> s32 { return event.kind }
+#program_export
+AInputEvent_getSource :: (event: *Event) -> s32 { unused event; return 0x1002 }
+#program_export
+AKeyEvent_getAction :: (event: *Event) -> s32 { return event.action }
+#program_export
+AKeyEvent_getMetaState :: (event: *Event) -> s32 { unused event; return 0 }
+#program_export
+AInputEvent_getDeviceId :: (event: *Event) -> s32 { unused event; return -1 }
+#program_export
+AKeyEvent_getKeyCode :: (event: *Event) -> s32 { return event.key }
+#program_export
+AKeyEvent_getRepeatCount :: (event: *Event) -> s32 { unused event; return 0 }
+#program_export
+AMotionEvent_getAction :: (event: *Event) -> s32 { return event.action }
+#program_export
+AMotionEvent_getButtonState :: (event: *Event) -> s32 { unused event; return 0 }
+#program_export
+AMotionEvent_getX :: (event: *Event, pointer: usize) -> float32 { unused pointer; return event.x }
+#program_export
+AMotionEvent_getY :: (event: *Event, pointer: usize) -> float32 { unused pointer; return event.y }
+#program_export
+__android_log_write :: (priority: s32, tag: *u8, text: *u8) -> s32 {
+    unused priority; unused tag; unused text; return 1
+}
+Send :: (kind: s32, action: s32, key: s32 = 0, x: float32 = 0.0, y: float32 = 0.0) -> bool {
+    event := Event.{kind, action, key, x, y}
+    return AndroidTouchInput(null, cast(*void)(*event)) == 1
+}
+Draw :: (session: Session) -> bool {
+    viewport := AndroidViewport.{.width = 320, .height = 200, .ready = 1}
+    return DrawAndroidFrame(session, viewport, Rectangle.{0.0, 0.0, 320.0, 200.0}, 1.0, false)
+}
+#program_export
+main :: () -> s32 {
+    app: NativeAndroidApp
+    app.window = cast(*void)(*app)
+    AndroidNativeStart(*app)
+    defer { AndroidNativeClose() }
+    AndroidNativeOnCommand(*app, AndroidNativeCommandInitWindow)
+    session := SessionOpen()
+    defer { unused CloseSession(session) }
+    Probe.foreign = SessionOpen()
+    defer { unused CloseSession(Probe.foreign) }
+    watched = session
+    // First frame works before the first event.
+    if !Draw(session) || Probe.frames != 1 || !Probe.seen.focused { return Failure(1) }
+    if !Send(1, 0, 29) || !Draw(session) { return Failure(2) }
+    first := Probe.seen
+    if !first.available || first.keys[65] != cast(u8)3 || first.delta_ms < 0 { return Failure(3) }
+    if CaptureFrameInput(session).available || presents == 0 || presented_open { return Failure(4) }
+    if !Draw(session) || Probe.seen.keys[65] != cast(u8)FrameKeyHeld ||
+    Probe.seen.sequence <= first.sequence { return Failure(5) }
+    Probe.fail = true
+    if !Send(1, 1, 29) || Draw(session) { return Failure(6) }
+    if Probe.seen.keys[65] != cast(u8)FrameKeyReleased || CaptureFrameInput(session).available { return Failure(7) }
+    Probe.fail = false
+    if !Send(1, 0, 29) || !Draw(session) { return Failure(8) }
+    AndroidNativeOnCommand(*app, AndroidNativeCommandLostFocus)
+    if !Draw(session) || Probe.seen.focused || Probe.seen.keys[65] != cast(u8)FrameKeyReleased { return Failure(9) }
+    AndroidNativeOnCommand(*app, AndroidNativeCommandGainedFocus)
+    // A whole tap between frames produces one press, then one release.
+    if !Send(2, 0, 0, 25.0, 30.0) || !Send(2, 1, 0, 35.0, 40.0) || !Draw(session) { return Failure(10) }
+    if !Probe.seen.pointer.pressed || !Probe.seen.pointer.down || Probe.seen.pointer.x != 25.0 ||
+    !Probe.pointer_matches { return Failure(11) }
+    if !Draw(session) || !Probe.seen.pointer.released || Probe.seen.pointer.down ||
+    Probe.seen.pointer.x != 35.0 || !Probe.pointer_matches { return Failure(12) }
+    if Probe.foreign_seen || CaptureFrameInput(session).available || presented_open { return Failure(13) }
+    // Pixel stride includes NDK row padding; ARGB becomes little-endian RGBA.
+    for index: 0..64799 { window_pixels[index] = 0x12345678 }
+    pixels := AndroidNativePixels()
+    for index: 0..63999 { pixels[index] = 0xffe61e28 }
+    if !AndroidNativeLock(1, 1, 3, 3) || !AndroidNativePresentDamage(1, 1, 3, 3) || !AndroidNativeUnlock() { return Failure(14) }
+    if window_pixels[325] != 0xff281ee6 || window_pixels[650] != 0xff281ee6 ||
+    window_pixels[324] != 0x12345678 || window_pixels[323] != 0x12345678 { return Failure(15) }
+    AndroidNativeOnCommand(*app, AndroidNativeCommandPause)
+    if !AndroidNativePaused() { return Failure(16) }
+    AndroidNativeOnCommand(*app, AndroidNativeCommandResume)
+    if AndroidNativePaused() { return Failure(17) }
+    AndroidNativeOnCommand(*app, AndroidNativeCommandTermWindow)
+    if AndroidNativeWindowReady() { return Failure(18) }
+    AndroidNativeOnCommand(*app, AndroidNativeCommandDestroy)
+    if !AndroidNativeDestroyRequested() { return Failure(19) }
+    // EXIF rotations must use the source dimensions on non-square images.
+    expected: [18]u32 = .[4, 1, 5, 2, 6, 3, 6, 3, 5, 2, 4, 1, 3, 6, 2, 5, 1, 4]
+    for orientation: 6..8 {
+        source := cast(*u32)TestAllocate(6, 4)
+        if source == null { return Failure(20) }
+        for i: 0..5 { source[i] = cast(u32)(i + 1) }
+        rotated := AndroidImageOrient(source, 3, 2, cast(s32)orientation)
+        if rotated == null { return Failure(21) }
+        for i: 0..5 { if rotated[i] != expected[(orientation - 6) * 6 + i] { return Failure(22) } }
+        TestRelease(cast(*void)rotated)
+    }
+    return 0
+}
 libc :: #system_library "c";
+TestAllocate :: (count: usize, size: usize) -> *void #foreign libc "calloc";
+TestRelease :: (memory: *void) #foreign libc "free";
 PrintFailure :: (format: *u8, code: s32) -> s32 #foreign libc "printf";
 Failure :: (code: s32) -> s32 {
     format: [40]u8
@@ -120,3 +151,7 @@ Failure :: (code: s32) -> s32 {
     unused PrintFailure(*format[0], code)
     return code
 }
+// Bionic's nonblocking join probe has no glibc symbol. Ask the portable
+// thread adapter to take its ordinary pthread_join path in this OS fixture.
+#program_export
+pthread_gettid_np :: (thread: *void) -> s32 { unused thread; return -1 }

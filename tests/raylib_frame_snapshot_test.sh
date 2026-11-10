@@ -9,7 +9,7 @@ work="$repo/work/frame-input"
 mkdir -p "$work"
 exec 9>"$work/lock"
 flock 9
-set -- --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/src/backend" --module-path "$ziran_root/std"
+set -- --root "$repo/tests" $kryon_ui_args --module-path "$repo/src/backend" --module-path "$ziran_root/std"
 # Exercise the real WidgetHostCall and VM array transport with real raylib data.
 guest="$repo/tests/frame_snapshot_guest.zi"
 "$ziran" ir "$@" --define KRYON_HOSTED_UI -o "$work/guest-ir" "$guest"

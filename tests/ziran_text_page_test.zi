@@ -6,7 +6,7 @@
 #import "ziran_text_page_host"
 #import "font_metrics"
 #import "text_typeface"
-#import "text_widget"
+#import "text"
 #import "tree"
 
 #program_export

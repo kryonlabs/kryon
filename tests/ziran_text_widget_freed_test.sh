@@ -13,7 +13,7 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 name=ziran_text_widget_freed_test
 source=$repo/tests/$name.zi
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" ir --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" -o "$work/ir" "$source"
 cat > "$work/count.c" <<'C'
 #include "ziran_text_widget_freed_test.h"
@@ -55,14 +55,14 @@ C
 for form in source saved; do
     input=$source
     module_root=$repo/tests
-    module_path=$repo/src/ui
+    module_path="$kryon_ui_args"
     if test "$form" = saved; then
         input=$work/ir/$name.zir
         module_root=$work/ir
-        module_path=$work/ir
+        module_path="--module-path $work/ir"
     fi
     library=$work/$form-c
-    "$ziran" build --target=c --root "$module_root" --module-path "$module_path" \
+    "$ziran" build --target=c --root "$module_root" $module_path \
         --module-path "$ziran_root/std" -o "$library" "$input"
     "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections \
         -I"$ziran_root/include" -I"$library" \

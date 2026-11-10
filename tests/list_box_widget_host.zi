@@ -1,3 +1,4 @@
+Theme :: #import "theme";
 #import "ziran_mesh_noop_host"
 #import "drawing_props"
 #import "geometry"
@@ -14,7 +15,7 @@ InsidePaintBounds :: (bounds: Rectangle) -> bool {
 
 #program_export
 MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
-    if font != 14 || typeface != "" { failed = true }
+    if font != cast(s32)Theme.TypeLabel() || typeface != "" { failed = true }
     return 12
 }
 
@@ -46,7 +47,7 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     multi_clip: bool = clip.x >= 120.0 &&
         clip.x + clip.width <= 220.0 && clip.y >= 10.0 &&
         clip.y + clip.height <= 70.0
-    if value.count != 1 || font != 14 ||
+    if value.count != 1 || font != cast(s32)Theme.TypeLabel() ||
         !(single_clip || multi_clip) { failed = true }
     labels += 1
 }

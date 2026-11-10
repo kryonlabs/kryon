@@ -3,7 +3,7 @@ CC ?= cc
 ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
 PLAYER_DIR := $(KRYON_DIR)/build/zx-player
 PLAYER := $(KRYON_DIR)/build/bin/zx
-PLAYER_SOURCES := $(KRYON_DIR)/tools/zx.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi) $(wildcard $(KRYON_DIR)/src/ui/*.zi) $(wildcard $(ZIRAN_DIR)/std/*.zi)
+PLAYER_SOURCES := $(KRYON_DIR)/tools/zx.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi) $(shell find $(KRYON_DIR)/src/ui -name '*.zi') $(wildcard $(ZIRAN_DIR)/std/*.zi)
 
 .PHONY: zx-player
 zx-player: $(PLAYER)

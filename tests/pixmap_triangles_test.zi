@@ -2,7 +2,7 @@
 #import "drawing_props"
 #import "session"
 #import "shape_props"
-#import "shape_widget"
+#import "shape"
 #import "tree"
 #import "tree_draw"
 #import "paint_queue"

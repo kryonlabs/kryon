@@ -1,0 +1,141 @@
+#import "control_props"
+#import "geometry"
+#import "style"
+#import "style_sheet"
+#import "text_input_props"
+#import "theme"
+#import "tooltip_common"
+
+using ButtonState;
+using StyleField;
+
+CommandPaletteCapacity :: 128
+
+CommandPaletteCommand :: struct {
+    title: string
+    group: string
+    shortcut: string
+    action: u64
+    disabled: bool
+}
+
+CommandPaletteInput :: struct {
+    text: TextFieldInput
+    escape: bool
+    up: bool
+    down: bool
+    enter: bool
+    pointer: OverlayPointer
+    activate_index: s32
+}
+
+CommandPaletteProps :: struct {
+    key: u64
+    id: s32
+    class_name: s32
+    owner: u64
+    open: bool
+    disabled: bool
+    placeholder: string
+    viewport: Rectangle
+    width: float32
+    maximum_height: float32
+    now_ms: s64
+    input: CommandPaletteInput
+    commands: []CommandPaletteCommand
+    surface_style: StyleData
+    item_style: StyleData
+    scrim_style: StyleData
+    states: StyleStates
+}
+
+CommandPaletteState :: struct {
+    owner: u64
+    open_previous: bool
+    query: [CommandPaletteCapacity]u8
+    query_length: s32
+    cursor: s32
+    anchor: s32
+    scroll: s32
+    highlighted: s32
+    order: [CommandPaletteCapacity]s32
+    scores: [CommandPaletteCapacity]s32
+    group_starts: [CommandPaletteCapacity]bool
+    match_count: s32
+    progress: float32
+    transition_start_ms: s64
+}
+
+CommandPaletteResult :: struct {
+    node: s32
+    scrim_node: s32
+    query_node: s32
+    panel_bounds: Rectangle
+    list_bounds: Rectangle
+    visible: bool
+    progress: float32
+    close_requested: bool
+    changed: bool
+    chosen_index: s32
+    chosen_action: u64
+    exact_action: bool
+    match_count: s32
+    highlighted: s32
+    ownership_changed: bool
+}
+
+#program_export
+CommandPaletteStateFor :: (owner: u64) -> CommandPaletteState {
+    return CommandPaletteState.{.owner = owner, .transition_start_ms = -1}
+}
+
+#program_export
+CommandPaletteQuery :: (query: []u8) -> string {
+    if query.count <= 0 { return "" }
+    return TextView(query)
+}
+
+#program_export
+CommandPaletteSurfaceDefaultStyle :: () -> StyleData {
+    style: StyleData
+    theme := CurrentTheme()
+    style.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
+        cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
+        cast(u32)StyleOpacity | cast(u32)StylePaddingX | cast(u32)StylePaddingY |
+        cast(u32)StyleGap | cast(u32)StyleFontSize | cast(u32)StyleFontRole |
+        cast(u32)StyleTypeface | cast(u32)StyleMotionDuration |
+        cast(u32)StyleMotionMultiplier | cast(u32)StyleMotionReduced
+    style.background = theme.colors.surface_raised
+    style.foreground = theme.colors.foreground
+    style.border = theme.colors.border
+    style.radius = theme.metrics.radius_large
+    style.border_width = theme.metrics.border_width
+    style.opacity = 1.0
+    style.padding_x = 10.0
+    style.padding_y = 8.0
+    style.gap = 8.0
+    style.font_size = theme.metrics.text_lg
+    style.font_role = .FontRoleBody
+    style.typeface = theme.fonts.body
+    style.motion_duration = 280.0
+    style.motion_multiplier = 1.0
+    style.motion_reduced = theme.motion.reduced_motion
+    return style
+}
+
+#program_export
+CommandPaletteItemDefaultStyle :: () -> StyleData {
+    style := CommandPaletteSurfaceDefaultStyle()
+    style.background = theme_active_layer()
+    style.foreground = CurrentTheme().colors.foreground
+    style.radius = CurrentTheme().metrics.radius_medium
+    style.padding_x = 12.0
+    style.padding_y = 10.0
+    style.font_size = CurrentTheme().metrics.text_body
+    style.font_role = .FontRoleBody
+    style.typeface = CurrentTheme().fonts.body
+    return style
+}
+
+theme_active_layer :: () -> u32 { return CurrentTheme().colors.active_layer }
+

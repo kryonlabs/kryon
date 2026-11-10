@@ -1,4 +1,6 @@
 #import "android_jni"
+#import "android_native"
+#import "android_native_test_host"
 #import "render_dispatch"
 
 test_libc :: #system_library "c";
@@ -21,9 +23,6 @@ app: NativeAndroidApp;
 test_failure: s32;
 
 ThreadIndex :: () -> s32 { return ifx TestThread() == owner then 0 else 1 }
-
-#program_export
-GetAndroidApp :: () -> *NativeAndroidApp { return *app }
 
 GetEnv :: (input: *JniVm, output: **JniEnv, version: s32) -> s32 {
     unused input; unused version
@@ -79,6 +78,10 @@ Check :: () -> s32 {
     activity.vm = *vm
     activity.activity = cast(*void)cast(usize)1
     app.activity = *activity
+    before: AndroidJniSession
+    if AndroidJniAttachCurrent(*before) != 0 { return 10 }
+    AndroidNativeStart(*app)
+    defer { AndroidNativeClose() }
     AndroidJniKeepHostThread()
     CallJava(null)
     pipeline: RenderPipeline
@@ -97,6 +100,12 @@ Check :: () -> s32 {
     if !RenderPipelineStep(*pipeline, CallJava, null) { return 8 }
     RenderPipelineClose(*pipeline)
     if attachments[1] != 2 || detachments[1] != 2 { return 9 }
+    // A thread attached by the VM is borrowed, never detached by this host.
+    unused TestKeySet(attached_key, cast(*void)cast(usize)1)
+    CallJava(null)
+    if attachments[0] != 1 || detachments[0] != 1 || local_frames[0] != 0 { return 11 }
+    unused TestKeySet(attached_key, null)
+    if native_test_unexpected_effects != 0 || native_test_finish_calls != 0 { return 12 }
     unused TestKeyDelete(attached_key)
     return test_failure
 }

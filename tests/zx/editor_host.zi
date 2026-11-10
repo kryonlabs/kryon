@@ -1,0 +1,86 @@
+Player :: #import "bundle_player";
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/file"
+#import "text_request"
+#import "hosted_values"
+using HostValueKind;
+Probe :: struct {
+    identity: u64; bytes: [128]u8; count: s32; cursor: s32; anchor: s32;
+    flags: s32; pending: bool; requests: s32; revocations: s32
+}
+pixels: [192000]u32;
+Present :: (context: *void, identity: u64, value: string, cursor: s32, anchor: s32, flags: s32) {
+    probe := cast(*Probe)context
+    probe.identity = identity; probe.count = cast(s32)value.count
+    for at: 0..value.count - 1 { probe.bytes[at] = value[at] }
+    probe.cursor = cursor; probe.anchor = anchor
+    if identity == 0 { probe.revocations += 1 }
+    probe.flags = flags
+}
+Take :: (context: *void, identity: u64, output: []u8) -> TextRequest {
+    probe := cast(*Probe)context
+    result: TextRequest
+    if !probe.pending || identity != probe.identity { return result }
+    value := "水😀XYZ"
+    for at: 0..value.count - 1 { output[at] = value[at] }
+    result.value = TextView(output[:value.count]); result.cursor = 3; result.anchor = 7
+    result.pending = true; result.replace = true
+    probe.pending = false; probe.requests += 1
+    return result
+}
+NoPlatform :: (context: *void, module: *u8, function: *u8,
+    args: *HostValue, count: s32, result: *HostValue) -> s32 { return 0 }
+Render :: (player: *Player.Player, input: Player.Input) -> bool {
+    return Player.PlayerFrame(player, input, 320, 600, pixels[:])
+}
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    if argc != 2 { return 1 }
+    data, found := ReadEntireFile(TextFromCString(argv[1]))
+    if !found { return 2 }
+    descriptor := cast(*TextDescriptor)(*data)
+    source := BytesFromPointer(descriptor.data, cast(u64)data.count)
+    first: Player.Player; second: Player.Player
+    defer { Player.PlayerClose(*first); Player.PlayerClose(*second) }
+    if !Player.PlayerOpen(*first, source, NoPlatform, null) ||
+    !Player.PlayerOpen(*second, source, NoPlatform, null) { return 3 }
+    a: Probe; b: Probe
+    Player.PlayerUseTextEditor(*first, Present, Take, cast(*void)(*a))
+    Player.PlayerUseTextEditor(*second, Present, Take, cast(*void)(*b))
+    input := Player.Input.{.width = 320, .height = 600}
+    if !Render(*first, input) || !Render(*second, input) { return 4 }
+    input.x = 80.0; input.y = 40.0; input.down = true; input.pressed = true
+    if !Render(*first, input) || !Render(*second, input) { return 5 }
+    if (a.flags & 16) == 0 || (b.flags & 16) == 0 { return 12 }
+    input.down = false; input.pressed = false; input.released = true
+    if !Render(*first, input) || !Render(*second, input) { return 6 }
+    input.released = false
+    if a.identity == 0 || b.identity == 0 || TextView(a.bytes[:a.count]) != "start水😀" ||
+    TextView(b.bytes[:b.count]) != "start水😀" { return 7 }
+    if (a.flags & 16) != 0 || (b.flags & 16) != 0 { return 13 }
+    // A fresh press inside the committed field carries re-tap intent; a
+    // press elsewhere does not, even though a field may retain selection.
+    input.pressed = true; input.down = true
+    if !Render(*first, input) || (a.flags & 16) == 0 { return 14 }
+    input.x = 310.0; input.y = 100.0
+    if !Render(*first, input) || (a.flags & 16) != 0 { return 15 }
+    input.x = 80.0; input.y = 40.0
+    if !Render(*first, input) { return 16 }
+    input.down = false; input.pressed = false; input.released = true
+    if !Render(*first, input) { return 17 }
+    input.released = false
+    a.pending = true
+    stale: [1]HostValue = .[HostScalar("u64", cast(s64)(a.identity + 1))]
+    answer: HostValue
+    if Player.PlayerCall(cast(*void)(*first), HostTextData("zx_run"), HostTextData("BundleTextRequestHost"),
+    *stale[0], 1, *answer) != 1 || answer.fields[4].value.integer != 0 || !a.pending { return 8 }
+    if !Render(*first, input) || !Render(*first, input) || !Render(*second, input) { return 9 }
+    if TextView(a.bytes[:a.count]) != "水😀XYZ" || a.cursor != 3 || a.anchor != 7 || a.requests != 1 ||
+    TextView(b.bytes[:b.count]) != "start水😀" || b.requests != 0 { return 10 }
+    before := b.identity
+    Player.PlayerClose(*first)
+    if a.identity != 0 || b.identity != before || !Render(*second, input) || b.identity != before { return 11 }
+    print("Native VM editor UTF8 selection, copied snapshots, stale request and foreign-session rejection, committed re-tap and per-player isolation passed\n")
+    return 0
+}

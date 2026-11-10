@@ -3,8 +3,8 @@
 
 #import "control_props"
 #import "geometry"
-#import "modal"
-#import "modal_frame_widget"
+#import "modal_behavior"
+#import "modal_frame"
 #import "modal_props"
 #import "paint_queue"
 #import "style"

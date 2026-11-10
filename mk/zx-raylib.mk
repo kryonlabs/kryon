@@ -17,7 +17,7 @@ ZX_RAYLIB_GENERATED := $(ZX_RAYLIB_DIR)/generated
 ZX_RAYLIB_RUNTIME := $(ZX_RAYLIB_DIR)/runtime/libziran.a
 ZX_RAYLIB_FONT := $(dir $(ZX_RAYLIB_PROGRAM))kryon-font.ttf
 ZX_RAYLIB_DEFINE_ARGS := --define BUNDLE_NATIVE_RENDERER $(foreach define,$(ZX_RAYLIB_DEFINES),--define $(define))
-ZX_RAYLIB_SOURCES := $(KRYON_DIR)/tools/zx_raylib.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi $(KRYON_DIR)/src/ui/*.zi $(ZIRAN_DIR)/std/*.zi)
+ZX_RAYLIB_SOURCES := $(KRYON_DIR)/tools/zx_raylib.zi $(wildcard $(KRYON_DIR)/src/backend/*.zi $(ZIRAN_DIR)/std/*.zi) $(shell find $(KRYON_DIR)/src/ui -name '*.zi')
 ZX_RAYLIB_COMPILER := $(wildcard $(ZIRAN_DIR)/cmd/zir*/*.[ch] $(ZIRAN_DIR)/cmd/*.zi $(ZIRAN_DIR)/include/*.h $(ZIRAN_DIR)/build/bin/ziran $(ZIRAN_DIR)/build/bin/zi2zir $(ZIRAN_DIR)/build/bin/zi2c)
 ifneq ($(strip $(ZX_RAYLIB_PRIVATE_HEADERS)),)
 ZX_RAYLIB_PRIVATE_STAMP := $(ZX_RAYLIB_PRIVATE_HEADERS)/.complete

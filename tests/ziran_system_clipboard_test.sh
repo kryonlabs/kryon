@@ -7,7 +7,7 @@ set -- \
     --bind system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
     --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
 
-"$ziran" bundle --root "$repo/tests" --module-path "$repo/src/ui" \
+"$ziran" bundle --root "$repo/tests" $kryon_ui_args \
     --module-path "$ziran_root/std" "$@" \
     --entry ziran_system_clipboard_test:main -o "$work/clipboard.zx" "$source" "$repo/tests/ziran_system_clipboard_host.zi"
 test "$("$ziran" run "$work/clipboard.zx")" = 0

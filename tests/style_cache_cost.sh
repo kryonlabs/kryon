@@ -8,7 +8,7 @@ exec 9>"$repo/build/scratch/style-cache/cost.lock"
 flock 9
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 "$ziran" build --target=c --no-main --root "$repo/tests" \
-    --module-path "$repo/src/ui" --module-path "$ziran_root/std" \
+    $kryon_ui_args --module-path "$ziran_root/std" \
     -o "$work" "$repo/tests/style_cache_cost.zi"
 "${CC:-cc}" -O2 -shared -fPIC -I"$ziran_root/include" -I"$work" \
     "$work"/*.c -Wl,-Bsymbolic -o "$work/libstyle-cost.so"

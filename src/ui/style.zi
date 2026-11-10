@@ -62,6 +62,14 @@ StyleData :: struct {
     material: MaterialKind
     typeface: string
     letter_spacing: float32
+    min_height: float32
+    line_height: float32
+    font_role: FontRole
+    elevation: ElevationRole
+    motion_duration: float32
+    motion_multiplier: float32
+    motion_easing: MotionEasing
+    motion_reduced: bool
 }
 
 StyleFrame :: struct {
@@ -172,8 +180,30 @@ MergeValues :: (base: StyleData, override: StyleData) -> StyleData {
     if (override.fields & cast(u32)StyleMaterial) != cast(u32)0 { base.material = override.material }
     if (override.fields & cast(u32)StyleTypeface) != cast(u32)0 { base.typeface = override.typeface }
     if (override.fields & cast(u32)StyleLetterSpacing) != cast(u32)0 { base.letter_spacing = override.letter_spacing }
+    if (override.fields & cast(u32)StyleMinHeight) != cast(u32)0 { base.min_height = override.min_height }
+    if (override.fields & cast(u32)StyleLineHeight) != cast(u32)0 { base.line_height = override.line_height }
+    if (override.fields & cast(u32)StyleFontRole) != cast(u32)0 { base.font_role = override.font_role }
+    if (override.fields & cast(u32)StyleElevation) != cast(u32)0 { base.elevation = override.elevation }
+    if (override.fields & cast(u32)StyleMotionDuration) != cast(u32)0 { base.motion_duration = override.motion_duration }
+    if (override.fields & cast(u32)StyleMotionMultiplier) != cast(u32)0 { base.motion_multiplier = override.motion_multiplier }
+    if (override.fields & cast(u32)StyleMotionEasing) != cast(u32)0 { base.motion_easing = override.motion_easing }
+    if (override.fields & cast(u32)StyleMotionReduced) != cast(u32)0 { base.motion_reduced = override.motion_reduced }
     base.fields = base.fields | override.fields
     return base
+}
+
+#program_export
+StyleMinHeightValue :: (fields: u32, min_height: float32,
+    fallback: float32) -> float32 {
+    if (fields & cast(u32)StyleMinHeight) == cast(u32)0 || min_height <= 0.0 { return fallback }
+    return min_height
+}
+
+#program_export
+StyleLineHeightValue :: (fields: u32, line_height: float32,
+    fallback: float32) -> float32 {
+    if (fields & cast(u32)StyleLineHeight) == cast(u32)0 || line_height <= 0.0 { return fallback }
+    return line_height
 }
 
 #program_export

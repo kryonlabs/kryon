@@ -6,11 +6,11 @@ work=$repo/build/scratch/session-validation
 mkdir -p "$work"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 source=$repo/tests/session_validation_test.zi
-"$ziran" ir --root "$repo/tests" --module-path "$repo/src/ui" -o "$work/ir" "$source"
+"$ziran" ir --root "$repo/tests" $kryon_ui_args -o "$work/ir" "$source"
 for form in source saved; do
     input=$source
     root=$repo/tests
-    module_args="--module-path $repo/src/ui"
+    module_args="$kryon_ui_args"
     if test "$form" = saved; then
         input=$work/ir/session_validation_test.zir
         root=$work/ir

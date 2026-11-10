@@ -1,116 +1,281 @@
-// Android touches that begin and end between two frames.
-//
-// raylib's NativeActivity backend applies every queued input event once per
-// frame, so a tap or quick swipe that starts and ends while a frame is drawn
-// reports neither a press nor a release. raylib also ignores where a touch
-// lifts, so a quick swipe without movement events looks like a tap. This
-// module wraps raylib's input handler, records where each touch began and
-// lifted, and corrects or replays the pointer through TouchReplayStep.
+// Direct NativeActivity input. Touches, mouse, stylus, and hardware keys feed
+// one owned FrameInput snapshot; quick taps still use TouchReplay so a frame
+// boundary can never swallow their press or release.
 #import "android_jni"
+#import "android_device"
+#import "std/c_string"
+#import "frame_snapshot"
 #import "geometry"
+#import "input_protocol"
+#import "session"
+#import "test_driver"
 #import "touch_replay"
-
-android_touch_span: TouchSpan;
-android_touch_replay: TouchReplay;
-android_touch_last: Vector2;
-// The current touch's press in raylib and in Android screen coordinates,
-// and raylib's scale from Android to its own coordinates on each axis.
-android_touch_down: Vector2;
-android_touch_down_raw: Vector2;
-android_touch_scale: Vector2 = Vector2.{1.0, 1.0};
-android_touch_platform: AndroidInputHandler;
-android_touch_wrapped: bool;
+Clock :: #import "std/timer_linux";
 
 #if #defined(ANDROID_BUILD) {
     touch_android :: #system_library "android";
     TouchEventType :: (event: *void) -> s32 #foreign touch_android "AInputEvent_getType";
+    TouchEventSource :: (event: *void) -> s32 #foreign touch_android "AInputEvent_getSource";
+    TouchKeyAction :: (event: *void) -> s32 #foreign touch_android "AKeyEvent_getAction";
+    TouchKeyCode :: (event: *void) -> s32 #foreign touch_android "AKeyEvent_getKeyCode";
+    TouchKeyMeta :: (event: *void) -> s32 #foreign touch_android "AKeyEvent_getMetaState";
+    TouchDeviceID :: (event: *void) -> s32 #foreign touch_android "AInputEvent_getDeviceId";
+    TouchKeyRepeat :: (event: *void) -> s32 #foreign touch_android "AKeyEvent_getRepeatCount";
     TouchMotionAction :: (event: *void) -> s32 #foreign touch_android "AMotionEvent_getAction";
+    TouchMotionButton :: (event: *void) -> s32 #foreign touch_android "AMotionEvent_getButtonState";
     TouchMotionX :: (event: *void, pointer: usize) -> float32 #foreign touch_android "AMotionEvent_getX";
     TouchMotionY :: (event: *void, pointer: usize) -> float32 #foreign touch_android "AMotionEvent_getY";
-    touch_raylib :: #system_library "raylib";
-    TouchPointerPosition :: () -> Vector2 #foreign touch_raylib "GetMousePosition";
-    TouchAndroidApp :: () -> *NativeAndroidApp #foreign touch_raylib "GetAndroidApp";
 }
 
-AndroidTouchEventMotion :: 2
-AndroidTouchActionMask :: 255
-AndroidTouchActionDown :: 0
-AndroidTouchActionUp :: 1
-AndroidTouchActionMove :: 2
-AndroidTouchActionCancel :: 3
+AndroidEventMotion :: 2
+AndroidEventKey :: 1
+AndroidActionDown :: 0
+AndroidActionUp :: 1
+AndroidActionMove :: 2
+AndroidActionCancel :: 3
+AndroidButtonSecondary :: 2
 
-// raylib's handler runs first, so the pointer position already includes
-// this event.
+android_touch_span: TouchSpan;
+android_touch_replay: TouchReplay;
+android_touch_position: Vector2;
+android_touch_zoom: float32 = 1.0;
+android_touch_secondary_down: bool;
+android_touch_secondary_pressed: bool;
+android_touch_secondary_released: bool;
+android_frame_input: FrameInputSnapshot;
+android_touch_event: bool;
+android_touch_sequence: u64;
+android_touch_frame_pointer: PointerFrame;
+android_touch_frame_open: bool;
+
+AndroidNormalizedKey :: (code: s32) -> s32 {
+    if code == 4 { return KeyEscape }
+    if code == 66 { return KeyEnter }
+    if code == 61 { return KeyTab }
+    if code == 67 { return KeyBackspace }
+    if code == 112 { return KeyDelete }
+    if code == 124 { return KeyInsert }
+    if code == 21 { return KeyLeft }
+    if code == 22 { return KeyRight }
+    if code == 20 { return KeyDown }
+    if code == 19 { return KeyUp }
+    if code == 92 { return KeyPageUp }
+    if code == 93 { return KeyPageDown }
+    if code == 122 { return KeyHome }
+    if code == 123 { return KeyEnd }
+    if code == 143 { return KeyF3 }
+    if code >= 7 && code <= 16 { return code - 7 + cast(s32)48 }
+    if code >= 29 && code <= 54 { return code - 29 + cast(s32)65 }
+    return 0
+}
+
+// NativeActivity delivers keys through its input queue before Java dispatch.
+// Ask Android's device key map for the actual Unicode scalar, including the
+// layout and modifier state, rather than treating key codes as characters.
+AndroidTouchCodepoint :: (event: *void) -> s32 {
+    #if #defined(ANDROID_BUILD) {
+        session: AndroidJniSession
+        if AndroidJniAttachCurrent(*session) == 0 { return 0 }
+        defer AndroidJniDetachCurrent(*session)
+        env := session.env
+        class_name: [40]u8; member: [16]u8; signature: [48]u8
+        if !CopyCString("android/view/KeyCharacterMap", class_name[:]) { return 0 }
+        klass := env.functions.FindClass(env, *class_name[0])
+        if klass == null { return 0 }
+        unused CopyCString("load", member[:])
+        unused CopyCString("(I)Landroid/view/KeyCharacterMap;", signature[:])
+        load := env.functions.GetStaticMethodID(env, klass, *member[0], *signature[0])
+        if load == null { return 0 }
+        args: [2]JniValue
+        args[0].integer = TouchDeviceID(event)
+        map := env.functions.CallStaticObjectMethodA(env, klass, load, *args[0])
+        if map == null { return 0 }
+        unused CopyCString("get", member[:]); unused CopyCString("(II)I", signature[:])
+        get := env.functions.GetMethodID(env, klass, *member[0], *signature[0])
+        if get == null { return 0 }
+        args[0].integer = TouchKeyCode(event); args[1].integer = TouchKeyMeta(event)
+        value := env.functions.CallIntMethodA(env, map, get, *args[0])
+        if env.functions.ExceptionCheck(env) != 0 { return 0 }
+        return ifx value >= 32 && value != 127 && value <= 1114111 then value else 0
+    }
+    unused event
+    return 0
+}
+
 AndroidTouchInput :: (app: *void, event: *void) -> s32 {
-    handled: s32 = 0
-    if android_touch_wrapped {
-        handled = android_touch_platform(app, event)
-    }
+    unused app
     #if #defined(ANDROID_BUILD) {
-        if TouchEventType(event) != AndroidTouchEventMotion {
-            return handled
+        if event == null { return 0 }
+        kind := TouchEventType(event)
+        now := Clock.MonotonicMilliseconds()
+        android_touch_event = true
+        android_touch_sequence += 1
+        if !android_frame_input.available {
+            android_frame_input = FrameInputSnapshot.{.available = true, .focused = true}
         }
-        action := TouchMotionAction(event) & AndroidTouchActionMask
+        android_frame_input.sequence += 1
+        if android_frame_input.elapsed_ms != 0 {
+            android_frame_input.delta_ms = now - android_frame_input.elapsed_ms
+        }
+        android_frame_input.elapsed_ms = now
+        if kind == AndroidEventKey {
+            code := AndroidNormalizedKey(TouchKeyCode(event))
+            if code > 0 && code < 512 {
+                if TouchKeyAction(event) == AndroidActionDown {
+                    android_frame_input.keys[code] = cast(u8)(FrameKeyHeld | FrameKeyPressed)
+                    if TouchKeyRepeat(event) > 0 {
+                        android_frame_input.keys[code] |= cast(u8)FrameKeyRepeated
+                    }
+                } else if TouchKeyAction(event) == AndroidActionUp {
+                    android_frame_input.keys[code] = cast(u8)FrameKeyReleased
+                }
+            }
+            if TouchKeyAction(event) == AndroidActionDown {
+                codepoint := AndroidTouchCodepoint(event)
+                if codepoint != 0 { AndroidNativeTextCommit(null, null, codepoint) }
+            }
+            return ifx code > 0 then 1 else 0
+        }
+        if kind != AndroidEventMotion { return 0 }
+        action := TouchMotionAction(event) & 255
         raw := Vector2.{TouchMotionX(event, 0), TouchMotionY(event, 0)}
-        if action == AndroidTouchActionDown {
-            android_touch_last = TouchPointerPosition()
-            android_touch_down = android_touch_last
-            android_touch_down_raw = raw
-            TouchSpanBegin(*android_touch_span, android_touch_last)
-        } else if action == AndroidTouchActionMove {
-            android_touch_last = TouchPointerPosition()
-            android_touch_scale = AndroidTouchScale(android_touch_scale,
-                android_touch_down, android_touch_down_raw, android_touch_last, raw)
-        } else if action == AndroidTouchActionUp {
-            TouchSpanEnd(*android_touch_span, Vector2.{
-                android_touch_down.x + (raw.x - android_touch_down_raw.x) * android_touch_scale.x,
-                android_touch_down.y + (raw.y - android_touch_down_raw.y) * android_touch_scale.y})
-        } else if action == AndroidTouchActionCancel {
-            TouchSpanEnd(*android_touch_span, android_touch_last)
+        position := Vector2.{raw.x / android_touch_zoom, raw.y / android_touch_zoom}
+        mouse := (TouchEventSource(event) & 0x00010004) != 0
+        if action == AndroidActionDown {
+            android_touch_position = position
+            TouchSpanBegin(*android_touch_span, position)
+            android_frame_input.pointer.x = position.x
+            android_frame_input.pointer.y = position.y
+            android_frame_input.pointer.down = true
+            android_frame_input.pointer.pressed = true
+            android_frame_input.pointer.released = false
+            if mouse && (TouchMotionButton(event) & AndroidButtonSecondary) != 0 {
+                android_touch_secondary_down = true
+                android_touch_secondary_pressed = true
+            }
+        } else if action == AndroidActionMove {
+            android_touch_position = position
+            android_frame_input.pointer.x = position.x
+            android_frame_input.pointer.y = position.y
+            android_frame_input.pointer.down = true
+            if mouse {
+                down := (TouchMotionButton(event) & AndroidButtonSecondary) != 0
+                if down && !android_touch_secondary_down { android_touch_secondary_pressed = true }
+                if !down && android_touch_secondary_down { android_touch_secondary_released = true }
+                android_touch_secondary_down = down
+            }
+        } else if action == AndroidActionUp || action == AndroidActionCancel {
+            if action != AndroidActionCancel { android_touch_position = position }
+            TouchSpanEnd(*android_touch_span, position)
+            android_frame_input.pointer.x = position.x
+            android_frame_input.pointer.y = position.y
+            android_frame_input.pointer.down = false
+            android_frame_input.pointer.pressed = false
+            android_frame_input.pointer.released = true
+            if android_touch_secondary_down { android_touch_secondary_released = true }
+            android_touch_secondary_down = false
         }
+        return 1
     }
-    return handled
+    unused event
+    return 0
 }
 
-// raylib maps Android coordinates to its own linearly. A movement far enough
-// from the press measures that scale; it is 1 when the window fills the
-// display.
-AndroidTouchScale :: (scale: Vector2, down: Vector2, down_raw: Vector2,
-    position: Vector2, raw: Vector2) -> Vector2 {
-    measured := scale
-    if raw.x - down_raw.x >= 32.0 || down_raw.x - raw.x >= 32.0 {
-        measured.x = (position.x - down.x) / (raw.x - down_raw.x)
-    }
-    if raw.y - down_raw.y >= 32.0 || down_raw.y - raw.y >= 32.0 {
-        measured.y = (position.y - down.y) / (raw.y - down_raw.y)
-    }
-    return measured
-}
-
-// Wraps raylib's input handler once raylib has created its window; raylib
-// installs its handler during InitWindow and keeps it. Later calls do nothing.
 #program_export
-AndroidTouchInstall :: () {
-    #if #defined(ANDROID_BUILD) {
-        if android_touch_wrapped {
-            return
-        }
-        app := TouchAndroidApp()
-        if app == null {
-            return
-        }
-        android_touch_platform = app.input_callback
-        android_touch_wrapped = true
-        hook: AndroidInputHandler = AndroidTouchInput
-        app.input_callback = hook
-    }
+AndroidTouchSetZoom :: (zoom: float32) {
+    android_touch_zoom = ifx zoom >= 0.1 && zoom <= 8.0 then zoom else 1.0
 }
 
-// This frame's pointer, with a touch that began and ended since the last
-// frame replayed over this frame and the next.
-#program_export
-AndroidTouchSample :: (sample: TouchSample) -> TouchSample {
+AndroidPointerSample :: () -> TouchSample {
+    sample: TouchSample
+    sample.position = android_touch_position
+    sample.pressed = android_frame_input.pointer.pressed
+    sample.down = android_frame_input.pointer.down
+    sample.released = android_frame_input.pointer.released
     span := android_touch_span
+    if span.began > 0 && span.ended >= span.began && !sample.down {
+        sample.pressed = false
+        sample.released = false
+    }
     android_touch_span = TouchSpan.{}
     return TouchReplayStep(*android_touch_replay, span, sample)
+}
+
+#program_export
+PollPointer :: () -> PointerFrame {
+    if android_touch_frame_open { return android_touch_frame_pointer }
+    sample := AndroidPointerSample()
+    return PointerFrame.{.x = sample.position.x, .y = sample.position.y,
+        .pressed = sample.pressed, .down = sample.down, .released = sample.released}
+}
+
+#program_export
+PollSecondaryPointer :: () -> SecondaryPointerFrame {
+    return SecondaryPointerFrame.{.down = android_touch_secondary_down,
+        .pressed = android_touch_secondary_pressed, .released = android_touch_secondary_released}
+}
+
+AndroidTouchFrameInputBegin :: (session: Session, zoom: float32) -> bool {
+    unused zoom
+    sample := android_frame_input
+    sample.available = true
+    now := Clock.MonotonicMilliseconds()
+    sample.delta_ms = ifx sample.elapsed_ms == 0 then cast(s64)0 else now - sample.elapsed_ms
+    sample.elapsed_ms = now
+    sample.sequence += 1
+    android_frame_input.elapsed_ms = now
+    android_frame_input.sequence = sample.sequence
+    pointer := AndroidPointerSample()
+    sample.pointer.x = pointer.position.x
+    sample.pointer.y = pointer.position.y
+    sample.pointer.pressed = pointer.pressed
+    sample.pointer.down = pointer.down
+    sample.pointer.released = pointer.released
+    sample.secondary = PollSecondaryPointer()
+    TestDriverFrameInput(*sample)
+    android_touch_frame_pointer = sample.pointer
+    android_touch_frame_open = FrameInputBegin(session, sample)
+    return android_touch_frame_open
+}
+
+AndroidTouchSequence :: () -> u64 { return android_touch_sequence }
+
+AndroidTouchTakeKey :: () -> s32 {
+    for key: 1..511 {
+        if (android_frame_input.keys[key] & FrameKeyPressed) != 0 ||
+        (android_frame_input.keys[key] & FrameKeyRepeated) != 0 { return cast(s32)key }
+    }
+    return 0
+}
+
+AndroidTouchFrameEnd :: () {
+    android_touch_frame_open = false
+    android_touch_event = false
+    android_frame_input.pointer.pressed = false
+    android_frame_input.pointer.released = false
+    android_touch_secondary_pressed = false
+    android_touch_secondary_released = false
+    for key: 1..511 {
+        android_frame_input.keys[key] &= cast(u8)FrameKeyHeld
+    }
+}
+
+AndroidTouchFocus :: (focused: bool) {
+    android_frame_input.available = true
+    android_frame_input.focused = focused
+    if !focused {
+        for key: 1..511 {
+            if (android_frame_input.keys[key] & FrameKeyHeld) != 0 {
+                android_frame_input.keys[key] = cast(u8)FrameKeyReleased
+            }
+        }
+        android_frame_input.pointer.released = android_frame_input.pointer.down
+        android_frame_input.pointer.down = false
+        android_frame_input.pointer.pressed = false
+        android_frame_input.modifiers = 0
+        android_touch_span = TouchSpan.{}
+        android_touch_replay = TouchReplay.{}
+        android_touch_secondary_released = android_touch_secondary_down
+        android_touch_secondary_down = false
+    }
 }

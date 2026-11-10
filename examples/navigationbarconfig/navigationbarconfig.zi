@@ -1,0 +1,90 @@
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/frame_snapshot"
+#import "kryon/style_sheet"
+using UI :: #import "kryon/Widgets";
+#import "kryon/system_theme"
+#import "std/number_text"
+
+WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
+
+WidgetInput :: (session: Session) -> WidgetContext {
+    snapshot := CaptureFrameInput(session)
+    result: WidgetContext
+    result.now = cast(float32)snapshot.elapsed_ms / 1000.0
+    result.theme = ifx StyleTokenColor("canvas").r < 128 then 2 else 1
+    result.disabled = example_disabled
+    result.reduced_motion = example_reduced_motion
+    return result
+}
+
+gallery_view: Rectangle = Rectangle.{.x = 0.0, .y = 0.0, .width = 480.0, .height = 320.0};
+
+gallery_live: bool;
+
+gallery_now: float32;
+
+gallery_reduced_motion: bool;
+
+SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion: bool) {
+    gallery_view = view; gallery_live = live; gallery_now = now
+    gallery_reduced_motion = reduced_motion
+}
+
+GalleryBounds :: (bounds: Rectangle) -> Rectangle {
+    if !gallery_live { return bounds }
+    bounds.x = gallery_view.x + bounds.x * gallery_view.width / 480.0
+    bounds.y += gallery_view.y
+    bounds.width *= gallery_view.width / 480.0
+    return bounds
+}
+
+clicks: s32;
+
+config_routes: [4]s32 = .{1, 2, 0, 0};
+
+config_count: s32 = 2;
+
+config_scroll: s32;
+
+config_open: bool;
+
+config_row: s32;
+
+dismissed: bool;
+
+b: Rectangle;
+
+#program_export
+Frame :: (session: Session, viewport: Rectangle) -> s32 {
+    example_input := WidgetInput(session)
+    SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
+    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "NavigationBarConfig", .font = 23})
+    b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
+    disabled := example_input.disabled
+
+    labels: [4]string = .{"First", "Second", "Third", "Fourth"}; options: [2]NavigationBarOption
+    options[0].route = 1; options[0].label = "Home"; options[1].route = 2; options[1].label = "Library"
+    if dismissed {
+        if Button(session, ButtonProps.{.bounds = b, .label = "Configure navigation"}) == 1 { dismissed = false }
+    } else {
+        config := NavigationBarConfig(session, NavigationBarConfigProps.{.bounds = GalleryBounds(Rectangle.{24.0, 48.0, 432.0, 256.0}), .title = "Navigation", .route_count = config_count, .max_route_count = 4, .scroll_offset = config_scroll, .dropdown_open = config_open, .dropdown_row = config_row, .close_label = "Close", .remove_label = "Remove", .add_label = "Add", .save_label = "Save", .cancel_label = "Cancel"}, config_routes[:], labels[:], options[:])
+        config_count = config.route_count
+        config_scroll = config.scroll_offset
+        config_open = config.dropdown_open
+        config_row = config.dropdown_row
+        if config.action != 0 { dismissed = true; clicks += 1 }
+    }
+    return 0
+}
+
+example_disabled: bool;
+example_reduced_motion: bool;
+
+// Hosts publish these options before the unchanged application entry point.
+#program_export
+SetExampleOptions :: (disabled: bool, reduced_motion: bool) {
+    example_disabled = disabled
+    example_reduced_motion = reduced_motion
+}

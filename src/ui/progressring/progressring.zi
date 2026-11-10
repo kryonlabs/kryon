@@ -1,0 +1,210 @@
+#import "control_props"
+#import "drawing_props"
+#import "geometry"
+#import "paint_queue"
+#import "session"
+#import "semantic"
+#import "shape_props"
+#import "shape"
+#import "style"
+#import "style_sheet"
+#import "text_align"
+#import "text_props"
+#import "kryon/text_widget"
+#import "theme"
+#import "tree"
+#import "widget_kind"
+NumberText :: #import "std/number_text"
+
+using WidgetKind;
+using SemanticKind;
+
+ProgressRingStatus :: enum {
+    ProgressRingStatusNormal :: 0
+    ProgressRingStatusSuccess :: 1
+    ProgressRingStatusWarning :: 2
+    ProgressRingStatusDanger :: 3
+}
+
+ProgressRingState :: struct {
+    target_value: float32
+    shown_value: float32
+    progress: float32
+}
+
+ProgressRingProps :: struct {
+    key: u64
+    bounds: Rectangle
+    label: string
+    value: float32
+    thickness: float32
+    start_angle: float32
+    sweep_degrees: float32
+    status: ProgressRingStatus
+    show_percent: bool
+    reduced_motion: bool
+    id: s32
+    class_name: s32
+    style_kind: s32
+    style_role: s32
+}
+
+ProgressRingLayout :: struct {
+    bounds: Rectangle
+    center: Vector2
+    outer_radius: float32
+    inner_radius: float32
+    thickness: float32
+    percent: Rectangle
+    label: Rectangle
+}
+
+ProgressRingResult :: struct {
+    state: ProgressRingState
+    node: s32
+    layout: ProgressRingLayout
+    value: float32
+    sweep_degrees: float32
+}
+
+#program_export
+ProgressRingClampValue :: (value: float32) -> float32 {
+    if value != value || value < 0.0 { return 0.0 }
+    if value > 1.0 { return 1.0 }
+    return value
+}
+
+#program_export
+ProgressRingStateFor :: (value: float32) -> ProgressRingState {
+    shown := ProgressRingClampValue(value)
+    return ProgressRingState.{.target_value = shown, .shown_value = shown,
+        .progress = 1.0}
+}
+
+#program_export
+ProgressRingAdvance :: (state: *ProgressRingState, target: float32,
+    elapsed_seconds: float32, reduced_motion: bool) -> bool {
+    if elapsed_seconds < 0.0 { return false }
+    target = ProgressRingClampValue(target)
+    if target != state.target_value {
+        state.target_value = target
+        state.progress = 0.0
+    }
+    if reduced_motion || elapsed_seconds >= 0.3 {
+        state.shown_value = target
+        state.progress = 1.0
+        return true
+    }
+    state.progress += elapsed_seconds / 0.3
+    if state.progress >= 1.0 {
+        state.progress = 1.0
+        state.shown_value = target
+        return true
+    }
+    state.shown_value += (target - state.shown_value) * (elapsed_seconds / (0.3 * (1.0 - state.progress)))
+    state.shown_value = ProgressRingClampValue(state.shown_value)
+    return false
+}
+
+#program_export
+ProgressRingStatusColor :: (status: ProgressRingStatus) -> u32 {
+    if status == .ProgressRingStatusSuccess { return CurrentSuccess() }
+    if status == .ProgressRingStatusWarning { return CurrentWarning() }
+    if status == .ProgressRingStatusDanger { return CurrentDanger() }
+    return CurrentPalette().control_on
+}
+
+#program_export
+ProgressRingLayoutFor :: (props: ProgressRingProps) -> ProgressRingLayout {
+    layout: ProgressRingLayout
+    layout.bounds = props.bounds
+    size := ifx props.bounds.width < props.bounds.height then props.bounds.width else props.bounds.height
+    if size <= 0.0 { return layout }
+    layout.thickness = props.thickness
+    if layout.thickness <= 0.0 { layout.thickness = size * 0.08 }
+    if layout.thickness < 4.0 { layout.thickness = 4.0 }
+    if layout.thickness * 2.0 > size { layout.thickness = size * 0.5 }
+    layout.center = Vector2.{props.bounds.x + props.bounds.width * 0.5,
+        props.bounds.y + props.bounds.height * 0.5}
+    layout.outer_radius = size * 0.5 - layout.thickness * 0.5 - 1.0
+    layout.inner_radius = layout.outer_radius - layout.thickness
+    font := size * 0.22
+    layout.percent = Rectangle.{props.bounds.x, layout.center.y - font * 0.5 -
+        (ifx props.label != "" then font * 0.12 else 0.0), props.bounds.width, font}
+    if props.label != "" {
+        label_font := size * 0.09
+        if label_font < 10.0 { label_font = 10.0 }
+        layout.label = Rectangle.{props.bounds.x, layout.center.y + font * 0.38,
+            props.bounds.width, label_font}
+    }
+    return layout
+}
+
+#scope_file
+percent_text :: (value: float32, output: []u8) -> string {
+    rounded := cast(s32)(value * 100.0 + 0.5)
+    digits: [24]u8
+    text := NumberText.FormatInteger(cast(s64)rounded, digits[:])
+    at: s32 = 0
+    while at < cast(s32)text.count && at < cast(s32)output.count {
+        output[at] = text[at]
+        at += 1
+    }
+    if at < cast(s32)output.count { output[at] = cast(u8)37; at += 1 }
+    return TextView(output[0:cast(s64)at])
+}
+
+#scope_export
+#program_export
+ProgressRing :: (session: Session, props: ProgressRingProps,
+    state: *ProgressRingState) -> ProgressRingResult {
+    result: ProgressRingResult
+    result.value = ProgressRingClampValue(props.value)
+    unused ProgressRingAdvance(state, result.value, 0.0,
+        props.reduced_motion || CurrentTheme().motion.reduced_motion)
+    result.state = state.*
+    result.layout = ProgressRingLayoutFor(props)
+    sweep := props.sweep_degrees
+    if sweep != sweep || sweep <= 0.0 { sweep = 360.0 }
+    if sweep > 360.0 { sweep = 360.0 }
+    result.sweep_degrees = sweep
+    if !SessionValid(session) || !TreeIsBuilding(session) ||
+    props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
+    result.node = TreeSubmitCurrent(session, props.key, WidgetKindGroup, props.bounds)
+    if result.node < 0 { return result }
+    label_digits: [24]u8
+    text_digits: [24]u8
+    label := ifx props.label != "" then props.label else percent_text(result.value, label_digits[:])
+    TreeSetLabel(session, result.node, label)
+    TreeSetSemantic(session, result.node, .SemanticSection, 0)
+    TreeSetStyleClass(session, result.node, props.class_name)
+    TreeSetStyleId(session, result.node, props.id)
+    if !TreePushScope(session, result.node) { return result }
+    color := ColorFromPacked(ProgressRingStatusColor(props.status))
+    track := ColorFromPacked(CurrentPalette().control_track)
+    unused Ring(session, RingProps.{.key = WidgetPartKey(props.key, 1),
+        .center = result.layout.center, .inner_radius = result.layout.inner_radius,
+        .outer_radius = result.layout.outer_radius, .start_angle = props.start_angle,
+        .end_angle = props.start_angle + sweep, .color = track,
+        .id = props.id, .class_name = props.class_name})
+    if result.value > 0.001 {
+        unused Ring(session, RingProps.{.key = WidgetPartKey(props.key, 2),
+            .center = result.layout.center, .inner_radius = result.layout.inner_radius,
+            .outer_radius = result.layout.outer_radius, .start_angle = props.start_angle,
+            .end_angle = props.start_angle + sweep * result.value, .color = color,
+            .id = props.id, .class_name = props.class_name})
+    }
+    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 3),
+        .bounds = result.layout.percent, .text = percent_text(result.value, text_digits[:]),
+        .font = cast(s32)result.layout.bounds.width / 5, .id = props.id,
+        .class_name = props.class_name, .align = TextAlign.TextAlignCenter,
+        .wrap = TextWrap.TextWrapEllipsis})
+    if props.label != "" {
+        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 4),
+            .bounds = result.layout.label, .text = props.label, .font = Text12,
+            .id = props.id, .class_name = props.class_name,
+            .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapEllipsis})
+    }
+    unused TreePopScope(session)
+    return result
+}

@@ -12,12 +12,12 @@ for route in source ir; do
     input="$repo/tests/image_decode_thread_test.zi"
     if [ "$route" = ir ]; then
         image_ziran ir --define KRYON_FRAME_THREADS --root "$repo/tests" --module-path "$repo/src/backend" \
-            --module-path "$repo/src/ui" -o "$work/test.zir" "$input"
+            $kryon_ui_args -o "$work/test.zir" "$input"
         input="$work/test.zir/image_decode_thread_test.zir"
     fi
     image_ziran build --target=c --define KRYON_FRAME_THREADS --no-main --entry image_decode_thread_test:Check \
         --root "$repo/tests" --module-path "$repo/src/backend" \
-        --module-path "$repo/src/ui" -o "$output" "$input"
+        $kryon_ui_args -o "$output" "$input"
     cat > "$output/main.c" <<'C'
 #include <stdio.h>
 #include "image_decode_thread_test.h"

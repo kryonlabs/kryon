@@ -5,13 +5,13 @@
 #import "session"
 #import "geometry"
 #import "press_props"
-#import "press_widget"
+#import "press"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
 #import "ziran_keyboard_navigation_host"
 #import "scroll_props"
-#import "scroll_widget"
+#import "scroll"
 Motion :: #import "scroll_device";
 
 using FrameStatus;

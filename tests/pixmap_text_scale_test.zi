@@ -2,7 +2,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "font_metrics"
-#import "text_area_widget"
+#import "textarea"
 #import "text_input"
 
 // Text drawn at a fractional density stays where its logical measure puts

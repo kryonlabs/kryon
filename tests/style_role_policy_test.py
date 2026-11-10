@@ -18,7 +18,7 @@ SOURCE_DIR = ROOT / "src/ui"
 
 
 def source_files() -> list[Path]:
-    return sorted(SOURCE_DIR.glob("*.zi"))
+    return sorted(SOURCE_DIR.rglob("*.zi"))
 
 
 def split_args(text: str) -> list[str]:

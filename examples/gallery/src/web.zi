@@ -1,14 +1,23 @@
 using UI :: #import "kryon/Widgets";
 using App :: #import "app";
+using Preview :: #import "site_preview";
+using Site :: #import "site";
 using Scenes :: #import "scenes";
+#import "std/byte_text_linux"
+#import "kryon/PageRoute"
 #import "catalog"
 using Host :: #import "kryon/Canvas";
 #import "kryon/Frame"
+#import "kryon/frame_snapshot"
+#import "kryon/widget_kind"
 #import "kryon/ScrollDevice"
 #import "std/web"
 
 last_theme: s32 = -1;
 paused: bool;
+review_frame: s32;
+review_last_key: s32;
+review_last_picker_key: s32;
 
 ReadOptions :: () {
     mark := WebScope()
@@ -26,20 +35,35 @@ ReadOptions :: () {
 
 #program_export
 main :: () -> s32 {
-    embedded = true
-    scene_image = "catalog-image.png"
+    embedded = false
+    mark := WebScope()
+    storage := WebGetObject(WebGlobal, WebName("localStorage"))
+    value := WebAsObject(WebCall1(storage, WebName("getItem"), WebText("kryon-theme")))
+    theme_bytes: [16]u8
+    theme_length := WebCopyString(value, theme_bytes[:])
+    if theme_length > 0 { dark = TextView(theme_bytes[:theme_length]) == "dark" }
+    WebEnd(mark)
+    scene_image = "assets/pfp.webp"
     if !OpenCanvas() { return 1 }
     session := SessionOpen()
     if !SessionValid(session) { CloseCanvas(); return 1 }
+    site_native_session = SessionOpen()
+    if !SessionValid(site_native_session) { CloseSession(session); CloseCanvas(); return 1 }
     ok: bool = true
     while ok && PollCanvas() {
-        ReadOptions()
+        if embedded { ReadOptions() }
         if paused { WebSleep(16); continue }
-        KeyboardModifiersSend(session, CanvasModifiers())
+        unused CanvasFrameInputBegin(session)
         key := CanvasPressedKey()
+        KeyboardModifiersSend(session, CanvasPressedKeyModifiers())
+        if key != 0 { review_last_key = key }
+        site_key = key
+        site_modifiers = CanvasPressedKeyModifiers()
         if key != 0 { unused KeyboardSend(session, key) }
+        preview_text_count = 0
         codepoint := CanvasTypedCodepoint()
         while codepoint != 0 {
+            if preview_text_count < 256 { preview_text[preview_text_count] = codepoint; preview_text_count += 1 }
             unused TypedCodepointSend(session, codepoint)
             codepoint = CanvasTypedCodepoint()
         }
@@ -48,29 +72,176 @@ main :: () -> s32 {
         unused TreePointerUpdate(session, pointer)
         unused TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
         wheel := CanvasWheelMove()
-        PointerWheelSend(session, pointer.x, pointer.y, wheel)
+        site_wheel = wheel
+        document_wheel: float32 = ifx NativePreviewScrollAt(pointer.x, pointer.y) then 0.0 else wheel
+        PointerWheelSend(session, pointer.x, pointer.y, document_wheel)
         mark := WebScope()
         performance := WebGetObject(WebGlobal, WebName("performance"))
         now := WebAsNumber(WebCall0(performance, WebName("now"))) / 1000.0
         WebEnd(mark)
         BeginScrollFrame(session, .{pointer.x, pointer.y}, pointer.pressed,
-            pointer.down, pointer.released, wheel, now)
+            pointer.down, pointer.released, document_wheel, now)
         viewport := CanvasViewport()
+        site_now = cast(float32)now
+        site_pointer = pointer
+        snapshot := CaptureFrameInput(session)
+        site_space_held = (snapshot.keys[32] & cast(u8)FrameKeyHeld) != cast(u8)0
+        site_focused = snapshot.focused
+        mark = WebScope()
+        media := WebAsObject(WebCall1(WebGlobal, WebName("matchMedia"), WebText("(prefers-reduced-motion: reduce)")))
+        site_reduced_motion = WebAsBool(WebGet(media, WebName("matches")))
+        WebEnd(mark)
+        PrepareSiteInput(session)
+        if picker_key != 0 { review_last_picker_key = picker_key }
         if BeginFrame(session, 1, viewport) != FrameStatus.FrameOk { ok = false }
         else {
-            if Frame(session, viewport) != 0 { TreeCancel(session); ok = false }
+            if SiteFrame(session, viewport) != 0 { TreeCancel(session); ok = false }
             else { ok = EndFrame(session) == FrameStatus.FrameOk }
         }
-        CanvasCursor(session)
+        preview_clip := Host.BeginRasterClip(RectangleIntersection(site_preview_bounds, site_preview_clip))
+        RunSitePreview(session)
+        Host.EndRasterClip(preview_clip)
+        if site_native_visible && !RunNativeSitePreview(snapshot) { ok = false }
+        FrameInputEnd(session)
+        if site_native_visible && NativePreviewContains(pointer.x, pointer.y) { CanvasCursor(site_native_session) }
+        else { CanvasCursor(session) }
         if !EndCanvasFrame() { ok = false }
         if ok {
             mark = WebScope()
+            theme: s32 = ifx dark then 1 else 0
+            if theme != last_theme {
+                storage = WebGetObject(WebGlobal, WebName("localStorage"))
+                unused WebCall2(storage, WebName("setItem"), WebText("kryon-theme"), WebText(ifx dark then "dark" else "light"))
+                last_theme = theme
+            }
             WebSet(WebModule, WebName("galleryReady"), WebNumber(1.0))
+            WebSet(WebModule, WebName("sitePage"), WebNumber(cast(float64)site_page))
+            WebSet(WebModule, WebName("siteMarker"), WebNumber(cast(float64)site_marker))
+            WebSet(WebModule, WebName("siteCount"), WebNumber(cast(float64)site_count))
+            WebSet(WebModule, WebName("siteHoldProgress"), WebNumber(cast(float64)site_hold.progress))
+            WebSet(WebModule, WebName("siteHoldCount"), WebNumber(cast(float64)site_hold_count))
+            WebSet(WebModule, WebName("siteConfirmArmed"), WebBool(site_confirm.armed))
             WebSet(WebModule, WebName("galleryCount"), WebNumber(cast(float64)GallerySceneCount))
             WebSet(WebModule, WebName("gallerySceneRendered"), WebNumber(cast(float64)scene))
+            WebSet(WebModule, WebName("siteDark"), WebBool(dark))
+            WebSet(WebModule, WebName("siteReducedMotion"), WebBool(site_reduced_motion))
+            if TextFromCString(GetRouteQuery()) == "?test=1" {
+                WebSet(WebModule, WebName("lastInputKey"), WebNumber(cast(float64)review_last_key))
+                WebSet(WebModule, WebName("lastPickerKey"), WebNumber(cast(float64)review_last_picker_key))
+                review_frame += 1
+                WebSet(WebModule, WebName("siteFrame"), WebNumber(cast(float64)review_frame))
+                PublishReviewTree(session)
+            }
             WebEnd(mark)
         }
     }
-    CloseSession(session); CloseCanvas()
+    CloseSession(site_native_session); CloseSession(session); CloseCanvas()
     return ifx ok then 0 else 1
+}
+
+// Opt-in review data comes from the committed tree after EndFrame. Browser
+// tests still deliver trusted pointer and keyboard events through the host.
+NativePreviewScrollAt :: (x: float32, y: float32) -> bool {
+    if !site_native_visible || !NativePreviewContains(x, y) { return false }
+    for index: 1..TreeCount(site_native_session) - 1 {
+        entry := TreeNodeAt(site_native_session, index)
+        if entry.kind == cast(s32)WidgetKind.WidgetKindScroll && x >= entry.bounds.x && y >= entry.bounds.y &&
+            x < entry.bounds.x + entry.bounds.width && y < entry.bounds.y + entry.bounds.height { return true }
+    }
+    return false
+}
+
+NativePreviewContains :: (x: float32, y: float32) -> bool {
+    clip := RectangleIntersection(site_native_bounds, site_preview_clip)
+    return x >= clip.x && y >= clip.y && x < clip.x + clip.width && y < clip.y + clip.height
+}
+
+RunNativeSitePreview :: (snapshot: FrameInputSnapshot) -> bool {
+    native := site_native_session
+    if site_pointer.pressed { site_native_focus = NativePreviewContains(site_pointer.x, site_pointer.y) }
+    pointer := site_pointer
+    if !site_native_focus && !NativePreviewContains(pointer.x, pointer.y) {
+        pointer.x = -10000.0; pointer.y = -10000.0
+        pointer.pressed = false; pointer.down = false; pointer.released = false
+    }
+    snapshot.pointer = pointer; snapshot.focused = snapshot.focused && site_native_focus
+    if !site_native_focus { for index: 0..511 { snapshot.keys[index] = 0 } }
+    unused FrameInputBegin(native, snapshot)
+    KeyboardModifiersSend(native, site_modifiers)
+    if site_native_focus && site_key != 0 { unused KeyboardSend(native, site_key) }
+    if site_native_focus { for index: 0..preview_text_count - 1 { unused TypedCodepointSend(native, preview_text[index]) } }
+    unused TreePointerUpdate(native, pointer)
+    secondary := snapshot.secondary
+    if !NativePreviewContains(pointer.x, pointer.y) {
+        secondary.down = false; secondary.pressed = false; secondary.released = false
+    }
+    unused TreeSecondaryPointerUpdate(native, secondary)
+    wheel: float32 = ifx NativePreviewContains(pointer.x, pointer.y) then site_wheel else 0.0
+    PointerWheelSend(native, pointer.x, pointer.y, wheel)
+    BeginScrollFrame(native, .{pointer.x, pointer.y}, pointer.pressed,
+        pointer.down, pointer.released, wheel, cast(float64)site_now)
+    clip := RectangleIntersection(site_native_bounds, site_preview_clip)
+    saved := Host.BeginRasterClip(clip)
+    ok := BeginFrame(native, 1, site_native_bounds) == FrameStatus.FrameOk
+    if ok {
+        TreeSetChildClip(native, 0, clip)
+        SetGalleryPreview(site_native_bounds, true, site_now, site_reduced_motion)
+        ComposeGallery(native, scene, disabled_controls)
+        ok = EndFrame(native) == FrameStatus.FrameOk
+    }
+    Host.EndRasterClip(saved)
+    FrameInputEnd(native)
+    return ok
+}
+
+PublishReviewTree :: (session: Session) {
+    nodes := WebNewArray()
+    parent: s32 = -1
+    count := TreeCount(session)
+    for index: 0..count - 1 {
+        entry := TreeNodeAt(session, index)
+        if entry.key == cast(u64)10101 { parent = cast(s32)index }
+        PublishReviewNode(nodes, cast(s32)index, session, cast(s32)index, entry.parent)
+    }
+    if site_native_visible && parent >= 0 {
+        for index: cast(s32)1..TreeCount(site_native_session) - 1 {
+            entry := TreeNodeAt(site_native_session, index)
+            mapped := ifx entry.parent <= 0 then parent else count + entry.parent - 1
+            PublishReviewNode(nodes, count + index - 1, site_native_session, index, mapped)
+        }
+    }
+    WebSet(WebModule, WebName("siteTree"), WebObject(nodes))
+}
+
+PublishReviewNode :: (nodes: s32, at: s32, session: Session, index: s32, parent: s32) {
+    entry := TreeNodeAt(session, index)
+    item := WebNewObject()
+    WebSet(item, WebName("key"), WebNumber(cast(float64)entry.key))
+    WebSet(item, WebName("kind"), WebNumber(cast(float64)entry.kind))
+    WebSet(item, WebName("parent"), WebNumber(cast(float64)parent))
+    WebSet(item, WebName("label"), WebText(entry.semantic_label))
+    WebSet(item, WebName("x"), WebNumber(cast(float64)entry.bounds.x))
+    WebSet(item, WebName("y"), WebNumber(cast(float64)entry.bounds.y))
+    WebSet(item, WebName("width"), WebNumber(cast(float64)entry.bounds.width))
+    WebSet(item, WebName("height"), WebNumber(cast(float64)entry.bounds.height))
+    WebSet(item, WebName("clipX"), WebNumber(cast(float64)entry.clip.x))
+    WebSet(item, WebName("clipY"), WebNumber(cast(float64)entry.clip.y))
+    WebSet(item, WebName("clipWidth"), WebNumber(cast(float64)entry.clip.width))
+    WebSet(item, WebName("clipHeight"), WebNumber(cast(float64)entry.clip.height))
+    WebSet(item, WebName("clipped"), WebBool(entry.clipped))
+    WebSet(item, WebName("cursor"), WebNumber(cast(float64)entry.text_cursor))
+    WebSet(item, WebName("selected"), WebBool(entry.selected))
+    WebSet(item, WebName("disabled"), WebBool(entry.disabled))
+    WebSet(item, WebName("focused"), WebBool(TreeFocusedAt(session, index)))
+    WebSet(item, WebName("interactive"), WebBool(entry.interactive))
+    WebSet(item, WebName("readOnly"), WebBool(entry.read_only))
+    if entry.has_text && !entry.secure {
+        bytes: [8192]u8
+        count := entry.text_bytes
+        if count > 8192 { count = 8192 }
+        WebSet(item, WebName("value"), WebText(TreeTextRange(session, index, 0, count, bytes[:])))
+    }
+    WebSet(item, WebName("sessionSlot"), WebNumber(cast(float64)session.slot))
+    WebSet(item, WebName("sessionEpoch"), WebNumber(cast(float64)session.epoch))
+    WebSetAt(nodes, at, WebObject(item))
 }

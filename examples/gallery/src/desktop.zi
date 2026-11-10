@@ -1,12 +1,15 @@
 // Interactive desktop host. Captures run only on a private display.
 using App :: #import "app";
 using Scenes :: #import "scenes";
+using Shot :: #import "catalog_shot";
 #import "catalog"
 #import "kryon/Desktop"
 #import "kryon/Cairo"
 #import "kryon/Frame"
+#import "kryon/frame_snapshot"
 #import "kryon/ScrollDevice"
 #import "kryon/Widgets"
+#import "kryon/TestDriver"
 
 #import "std/c_string"
 #import "std/byte_text_linux"
@@ -24,21 +27,37 @@ Draw :: (session: Session, pointer: PointerFrame, wheel: float32) -> bool {
         pointer.down, pointer.released, wheel,
         cast(float64)Timer.MonotonicMilliseconds() / 1000.0)
     viewport := DesktopViewport()
+    if Shot.CatalogShotActive() {
+        snapshot: FrameInputSnapshot
+        snapshot.available = true; snapshot.focused = true; snapshot.delta_ms = 16
+        snapshot.pointer = pointer
+        if !FrameInputBegin(session, snapshot) { return false }
+    } else if !DesktopFrameInputBegin(session) { return false }
+    published := session
+    defer { FrameInputEnd(published) }
+    PrepareGalleryInput(session)
     if BeginFrame(session, 1, viewport) != FrameStatus.FrameOk { return false }
     if Frame(session, viewport) != 0 { TreeCancel(session); return false }
-    if EndFrame(session) != FrameStatus.FrameOk { return false }
+    finished := EndFrameRetained(session, false)
+    if finished.status != FrameStatus.FrameOk { return false }
+    TestDriverFrame(session)
     unused DesktopCursor(session)
-    DesktopFrameUnchanged(false)
+    DesktopFrameUnchanged(finished.paint_unchanged)
     return EndDesktopFrame()
 }
 
 #program_export
 main :: () -> s32 {
-    scene_image = "../../icons/pfp.webp"
-    if !OpenDesktopSized(1000, 700) { CloseDesktop(); return 1 }
+    scene_image = "assets/pfp.webp"
+    capture := CaptureRequested()
+    if capture {
+        if !OpenDesktopSized(480, 320) { CloseDesktop(); return 1 }
+    } else if !OpenDesktopSized(1000, 700) {
+        CloseDesktop(); return 1
+    }
     session := SessionOpen()
     ok := SessionValid(session)
-    if ok && CaptureRequested() {
+    if ok && capture {
         name: [32]u8
         if CopyCString("KRYON_CATALOG_SCENE", name[:]) {
             text := TextFromCString(RasterGetEnvironment(*name[0]))
@@ -46,8 +65,14 @@ main :: () -> s32 {
                 if byte >= 48 && byte <= 57 { scene = scene * 10 + cast(s32)byte - 48 }
             }
             if scene < 0 || scene >= GallerySceneCount { scene = 0 }
-            catalog_scroll = scene * 30
         }
+        theme: [32]u8
+        dark := false
+        if CopyCString("KRYON_CATALOG_THEME", theme[:]) {
+            theme_text := TextFromCString(RasterGetEnvironment(*theme[0]))
+            if theme_text.count > 0 && theme_text[0] == 100 { dark = true }
+        }
+        Shot.CatalogShotConfigure(scene, dark)
         for frame: 0..2 {
             if ok { ok = Draw(session, .{980.0, 680.0, false, false, false}, 0.0) }
         }

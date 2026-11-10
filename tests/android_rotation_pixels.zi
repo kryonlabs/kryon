@@ -1,117 +1,54 @@
 #import, file "../src/backend/android_surface.zi";
 #import "drawing_props"
-#import "c_string"
-
-pixels_raylib :: #system_library "raylib";
-PixelsInit :: (width: s32, height: s32, title: *u8) #foreign pixels_raylib "InitWindow";
-PixelsClose :: () #foreign pixels_raylib "CloseWindow";
-PixelsSize :: (width: s32, height: s32) #foreign pixels_raylib "SetWindowSize";
-PixelsBegin :: () #foreign pixels_raylib "BeginDrawing";
-PixelsEnd :: () #foreign pixels_raylib "EndDrawing";
-PixelsClear :: (color: Color) #foreign pixels_raylib "ClearBackground";
-PixelsCircle :: (x: s32, y: s32, radius: float32, color: Color) #foreign pixels_raylib "DrawCircle";
-PixelsText :: (text: *u8, x: s32, y: s32, size: s32, color: Color) #foreign pixels_raylib "DrawText";
-PixelsImage :: struct {
-    data: *void
-    width: s32
-    height: s32
-    mipmaps: s32
-    format: s32
+#import "geometry"
+Pixels :: #import "pixmap";
+#if #defined(PLATFORM_ANDROID) {
+    #import "android_jni"
+    Native :: #import, file "../src/backend/android_native.zi";
 }
-PixelsCapture :: () -> PixelsImage #foreign pixels_raylib "LoadImageFromScreen";
-PixelsFree :: (image: PixelsImage) #foreign pixels_raylib "UnloadImage";
-PixelsSave :: (image: PixelsImage, path: *u8) -> bool #foreign pixels_raylib "ExportImage";
 
 native_width: s32 = 360;
 native_height: s32 = 640;
-geometry_calls: s32;
-buffer_width: s32 = 360;
-buffer_height: s32 = 640;
+pixels: [230400]u32;
 
-// Only the native-window observations are synthetic. CORE, the matrices,
-// BeginDrawing, rasterization and pixel capture are the real raylib library.
-#program_export "__wrap_GetWindowHandle"
-PixelsWindow :: () -> *void {
-    return cast(*void)*native_width
-}
 #program_export
-ANativeWindow_getFormat :: (window: *void) -> s32 {
-    unused window
-    return 1
-}
+ANativeWindow_getWidth :: (window: *void) -> s32 { unused window; return native_width }
 #program_export
-ANativeWindow_setBuffersGeometry :: (window: *void, width: s32,
-    height: s32, format: s32) -> s32 {
-    unused window
-    if width != 0 || height != 0 || format != 1 {
-        return -1
-    }
-    geometry_calls += 1
-    if buffer_width != native_width || buffer_height != native_height {
-        PixelsSize(native_width, native_height)
-        // Complete SDL's asynchronous resize before testing the Android
-        // synchronization against the new native framebuffer.
-        PixelsBegin()
-        PixelsClear(Color.{0, 0, 0, 255})
-        PixelsEnd()
-        buffer_width = native_width
-        buffer_height = native_height
-    }
-    return 0
-}
-#program_export
-ANativeWindow_getWidth :: (window: *void) -> s32 {
-    unused window
-    return native_width
-}
-#program_export
-ANativeWindow_getHeight :: (window: *void) -> s32 {
-    unused window
-    return native_height
-}
+ANativeWindow_getHeight :: (window: *void) -> s32 { unused window; return native_height }
 
-CheckFrame :: (path: string) -> bool {
-    width: s32
-    height: s32
-    if SyncAndroidSurfaceSize(*width, *height) != 1 ||
-    width != native_width || height != native_height {
-        return false
+CheckFrame :: () -> u64 {
+    viewport: AndroidViewport
+    #if #defined(PLATFORM_ANDROID) {
+        width: s32; height: s32
+        if SyncAndroidSurfaceSize(*width, *height) != 1 ||
+            width != native_width || height != native_height { return cast(u64)0 }
+        if SyncAndroidViewport(*viewport) != 1 { return cast(u64)0 }
+        transform: AndroidSurfaceTransform
+        if !ReadAndroidSurfaceTransform(*transform) ||
+            transform.screen_width != native_width || transform.screen_height != native_height ||
+            transform.render_width != native_width || transform.render_height != native_height ||
+            transform.offset_x != 0 || transform.offset_y != 0 ||
+            transform.scale_x != 1.0 || transform.scale_y != 1.0 ||
+            transform.projection_x != 1.0 || transform.projection_y != 1.0 { return cast(u64)0 }
+        Native.android_pixels = pixels[:]
+    } else {
+        viewport = ResolveViewport(native_width, native_height,
+            AndroidWindowInsets.{}, AndroidViewportPolicy.{}, 1)
     }
-    transform: AndroidSurfaceTransform
-    if !ReadAndroidSurfaceTransform(*transform) ||
-    transform.offset_x != 0 || transform.offset_y != 0 ||
-    transform.scale_x != 1.0 || transform.scale_y != 1.0 ||
-    transform.projection_x * cast(float32)width < 1.99 ||
-    transform.projection_x * cast(float32)width > 2.01 ||
-    transform.projection_y * cast(float32)height < -2.01 ||
-    transform.projection_y * cast(float32)height > -1.99 {
-        return false
-    }
-    PixelsBegin()
-    PixelsClear(Color.{0, 0, 0, 255})
-    PixelsCircle(140, 140, 40.0, Color.{255, 255, 255, 255})
-    label: [16]u8
-    CopyCString("Lumi", label[:])
-    PixelsText(*label[0], 100, 220, 24, Color.{255, 255, 255, 255})
-    PixelsEnd()
-    image := PixelsCapture()
-    defer PixelsFree(image)
-    if image.data == null || image.width != native_width ||
-    image.height != native_height || image.format != 7 {
-        return false
-    }
-    output: [256]u8
-    if !CopyCString(path, output[:]) || !PixelsSave(image, *output[0]) {
-        return false
-    }
-    pixels := cast(*u8)image.data
-    min_x: s32 = native_width
-    min_y: s32 = native_height
-    max_x: s32 = -1
-    max_y: s32 = -1
+    if viewport.x != 0 || viewport.y != 0 || viewport.width != native_width ||
+        viewport.height != native_height { return cast(u64)0 }
+    // The current native host borrows this same Pixmap surface at its new size.
+    if !Pixels.PixmapBeginInto(cast(u32)0xff000000, native_width, native_height,
+        pixels[:], true) { return cast(u64)0 }
+    Pixels.RasterRoundedRectangle(Rectangle.{100.0, 100.0, 80.0, 80.0}, 40.0, 32,
+        Color.{255, 255, 255, 255})
+    Pixels.RasterText("Lumi", 100, 220, 24, Color.{255, 255, 255, 255})
+    Pixels.PixmapEndInto()
+    min_x: s32 = native_width; min_y: s32 = native_height
+    max_x: s32 = -1; max_y: s32 = -1
     for y: 0..199 {
         for x: 0..249 {
-            if pixels[(y * native_width + x) * 4] > cast(u8)128 {
+            if (pixels[y * native_width + x] & cast(u32)0xff) > cast(u32)128 {
                 if x < min_x { min_x = cast(s32)x }
                 if y < min_y { min_y = cast(s32)y }
                 if x > max_x { max_x = cast(s32)x }
@@ -119,54 +56,37 @@ CheckFrame :: (path: string) -> bool {
             }
         }
     }
-    return max_x - min_x >= 78 && max_x - min_x <= 81 &&
-        max_y - min_y >= 78 && max_y - min_y <= 81 &&
-        min_x >= 98 && min_x <= 101 && min_y >= 98 && min_y <= 101
+    if max_x - min_x < 78 || max_x - min_x > 81 || max_y - min_y < 78 ||
+        max_y - min_y > 81 || min_x < 98 || min_x > 101 || min_y < 98 || min_y > 101 { return cast(u64)0 }
+    glyph_pixels: s32
+    hash: u64 = cast(u64)14695981039346656037
+    for y: 90..259 {
+        for x: 90..249 {
+            pixel := pixels[y * native_width + x]
+            if y >= 220 && (pixel & cast(u32)0xff) > cast(u32)128 { glyph_pixels += 1 }
+            hash = (hash ^ cast(u64)pixel) * cast(u64)1099511628211
+        }
+    }
+    if glyph_pixels < 100 { return cast(u64)0 }
+    return hash
 }
 
 #program_export
 main :: () -> s32 {
-    title: [64]u8
-    CopyCString("Kryon Android rotation fixture", title[:])
-    PixelsInit(native_width, native_height, *title[0])
-    defer PixelsClose()
-    #if #defined(HIDDEN_CORE_FIXTURE) {
-        // A portrait launch initially appears correct even though the hidden
-        // CORE symbol disables synchronization. Rotation leaves that buffer
-        // and its logical screen in portrait while the native window is wide.
-        width: s32
-        height: s32
-        if SyncAndroidSurfaceSize(*width, *height) != 0 ||
-        width != 360 || height != 640 {
-            return 31
-        }
-        native_width = 640
-        native_height = 360
-        if SyncAndroidSurfaceSize(*width, *height) != 0 ||
-        width != 360 || height != 640 || geometry_calls != 0 {
-            return 32
-        }
-        return 0
+    #if #defined(PLATFORM_ANDROID) {
+        app: NativeAndroidApp
+        app.window = cast(*void)*app
+        Native.android_native_app = *app
+        SetAndroidWindowInsets(0, 0, 0, 0, 0, 0, 0, 0, 0)
+        SetAndroidViewportPolicy(AndroidViewportPolicy.{})
     }
-    if !CheckFrame("build/scratch/android-rotation/portrait.png") {
-        return 20
-    }
-    native_width = 640
-    native_height = 360
-    // raylib can retain the initial framebuffer transform after a surface
-    // recreation. BeginDrawing must receive identity in native pixel space.
-    raylib_window_state.render_offset.x = 120
-    raylib_window_state.render_offset.y = 240
-    raylib_window_state.screen_scale[0] = 0.5
-    raylib_window_state.screen_scale[5] = 0.5
-    if !CheckFrame("build/scratch/android-rotation/landscape.png") {
-        return 21
-    }
-    native_width = 360
-    native_height = 640
-    if !CheckFrame("build/scratch/android-rotation/portrait-return.png") {
-        return 22
-    }
-    if geometry_calls != 3 { return 23 }
+    portrait := CheckFrame()
+    if portrait == cast(u64)0 { return 20 }
+    native_width = 640; native_height = 360
+    landscape := CheckFrame()
+    if landscape == cast(u64)0 || landscape != portrait { return 21 }
+    native_width = 360; native_height = 640
+    if CheckFrame() != portrait { return 22 }
+    Pixels.PixmapCloseWorkers()
     return 0
 }

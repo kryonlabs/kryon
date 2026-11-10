@@ -10,7 +10,7 @@ mkdir -p "$work"
 exec 9>"$work/lock"
 flock 9
 source="$repo/tests/frame_snapshot_test.zi"
-set -- --root "$repo/tests" --module-path "$repo/src/ui" --module-path "$repo/src/backend" --module-path "$ziran_root/std"
+set -- --root "$repo/tests" $kryon_ui_args --module-path "$repo/src/backend" --module-path "$ziran_root/std"
 "$ziran" ir "$@" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source

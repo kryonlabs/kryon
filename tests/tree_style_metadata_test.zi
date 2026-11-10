@@ -1,0 +1,117 @@
+#import "session"
+#import "geometry"
+#import "tree"
+#import "widget_kind"
+
+using WidgetKind;
+
+BeginTreeFrame :: (session: Session) {
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+}
+
+SubmitStyledBox :: (session: Session, key: u64, class_name: s32,
+    style_id: s32, set_id: bool) -> s32 {
+    node := TreeSubmitCurrent(session, key, WidgetKindBox,
+        Rectangle.{0.0, 0.0, 20.0, 20.0})
+    TreeSetStyleClass(session, node, class_name)
+    if set_id { TreeSetStyleId(session, node, style_id) }
+    return node
+}
+
+#program_export
+TreeStyleMetadataAnswer :: () -> s32 {
+    session := SessionOpen()
+    BeginTreeFrame(session)
+    first := SubmitStyledBox(session, cast(u64)2, 101, 901234, true)
+    second := SubmitStyledBox(session, cast(u64)3, 102, -901234, true)
+    none := SubmitStyledBox(session, cast(u64)4, 103, 777777, false)
+    if first != 1 || second != 2 || none != 3 { return 1 }
+    if TreeSubmittedNodeAt(session, first).style_id != 901234 ||
+        TreeSubmittedNodeAt(session, second).style_id != -901234 ||
+        TreeSubmittedNodeAt(session, none).style_id != 0 { return 2 }
+    if !TreeFinish(session) { return 3 }
+    first_identity := TreeNodeAt(session, first).identity_generation
+    second_identity := TreeNodeAt(session, second).identity_generation
+    if TreeNodeAt(session, first).style_id != 901234 ||
+        TreeNodeAt(session, second).style_id != -901234 ||
+        TreeNodeAt(session, none).style_id != 0 ||
+        TreeNodeAt(session, first).style_class != 101 ||
+        TreeNodeAt(session, second).style_class != 102 { return 4 }
+
+    BeginTreeFrame(session)
+    unused SubmitStyledBox(session, cast(u64)2, 101, 901235, true)
+    unused SubmitStyledBox(session, cast(u64)3, 102, 0, false)
+    unused SubmitStyledBox(session, cast(u64)4, 103, 0, false)
+    TreeSetStyleId(session, -1, 12)
+    if !TreeFinish(session) { return 5 }
+    if TreeNodeAt(session, first).style_id != 901235 ||
+        TreeNodeAt(session, second).style_id != 0 ||
+        TreeNodeAt(session, first).identity_generation != first_identity ||
+        TreeNodeAt(session, second).identity_generation != second_identity ||
+        TreeNodeAt(session, second).parent != 0 { return 6 }
+
+    BeginTreeFrame(session)
+    unused SubmitStyledBox(session, cast(u64)2, 101, -2147483000, true)
+    TreeCancel(session)
+    if TreeNodeAt(session, first).style_id != 901235 { return 7 }
+    TreeDispose(session); unused SessionClose(session)
+    return 0
+}
+#import "session"
+#import "tree"
+#import "widget_kind"
+
+using WidgetKind;
+
+Start :: (session: Session) {
+    TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
+}
+
+Submit :: (session: Session, key: u64, class_name: s32,
+    style_id: s32, set_id: bool) -> s32 {
+    node := TreeSubmitCurrent(session, key, WidgetKindBox,
+        Rectangle.{0.0, 0.0, 20.0, 20.0})
+    TreeSetStyleClass(session, node, class_name)
+    if set_id { TreeSetStyleId(session, node, style_id) }
+    return node
+}
+
+#program_export
+main :: () -> s32 {
+    session := SessionOpen()
+    Start(session)
+    first := Submit(session, cast(u64)2, 101, 901234, true)
+    second := Submit(session, cast(u64)3, 102, -901234, true)
+    none := Submit(session, cast(u64)4, 103, 777777, false)
+    if first != 1 || second != 2 || none != 3 { return 1 }
+    if TreeSubmittedNodeAt(session, first).style_id != 901234 ||
+        TreeSubmittedNodeAt(session, second).style_id != -901234 ||
+        TreeSubmittedNodeAt(session, none).style_id != 0 { return 2 }
+    if !TreeFinish(session) { return 3 }
+    first_identity := TreeNodeAt(session, first).identity_generation
+    second_identity := TreeNodeAt(session, second).identity_generation
+    if TreeNodeAt(session, first).style_id != 901234 ||
+        TreeNodeAt(session, second).style_id != -901234 ||
+        TreeNodeAt(session, none).style_id != 0 ||
+        TreeNodeAt(session, first).style_class != 101 ||
+        TreeNodeAt(session, second).style_class != 102 { return 4 }
+
+    Start(session)
+    unused Submit(session, cast(u64)2, 101, 901235, true)
+    unused Submit(session, cast(u64)3, 102, 0, false)
+    unused Submit(session, cast(u64)4, 103, 0, false)
+    TreeSetStyleId(session, -1, 12)
+    if !TreeFinish(session) { return 5 }
+    if TreeNodeAt(session, first).style_id != 901235 ||
+        TreeNodeAt(session, second).style_id != 0 ||
+        TreeNodeAt(session, first).identity_generation != first_identity ||
+        TreeNodeAt(session, second).identity_generation != second_identity ||
+        TreeNodeAt(session, second).parent != 0 { return 6 }
+
+    Start(session)
+    unused Submit(session, cast(u64)2, 101, -2147483000, true)
+    TreeCancel(session)
+    if TreeNodeAt(session, first).style_id != 901235 { return 7 }
+    TreeDispose(session); unused SessionClose(session)
+    return 0
+}
