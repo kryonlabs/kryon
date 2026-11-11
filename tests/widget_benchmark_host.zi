@@ -1,0 +1,93 @@
+// Recording host for widget logic and paint-command benchmarks. These cases
+// use deterministic monospace metrics and consume paint payloads; they do
+// not measure pixel rasterization, device I/O or system-font loading.
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+
+paint_count: s64;
+text_count: s64;
+paint_checksum: s64;
+
+WidgetPaintReset :: () { paint_count = 0; text_count = 0; paint_checksum = 0 }
+WidgetPaintCount :: () -> s64 { return paint_count }
+WidgetTextCount :: () -> s64 { return text_count }
+WidgetPaintChecksum :: () -> s64 { return paint_checksum }
+
+RecordBounds :: (bounds: Rectangle) {
+    paint_count += 1
+    paint_checksum += cast(s64)(bounds.x + bounds.y + bounds.width + bounds.height)
+}
+
+#program_export
+MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
+    unused typeface
+    width: s32
+    maximum: s32
+    for byte: value {
+        if byte == 10 { if width > maximum { maximum = width }; width = 0 }
+        else if (byte & cast(u8)192) != cast(u8)128 { width += font / 2 }
+    }
+    return ifx width > maximum then width else maximum
+}
+#program_export
+MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 { unused typeface; return font }
+#program_export
+ImageWidth :: (path: string) -> s32 { unused path; return 0 }
+#program_export
+ImageHeight :: (path: string) -> s32 { unused path; return 0 }
+
+#program_export
+RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
+    paint_count += 1
+    text_count += 1
+    paint_checksum += cast(s64)(x + y + font) + cast(s64)color.a
+    for byte: value { paint_checksum += cast(s64)byte }
+}
+#program_export
+RasterTextClipped :: (value: string, x: s32, y: s32, font: s32, color: Color, clip: Rectangle) {
+    RasterText(value, x, y, font, color)
+    paint_checksum += cast(s64)(clip.width + clip.height)
+}
+#program_export
+RasterRoundedRectangle :: (bounds: Rectangle, radius: float32, segments: s32, color: Color) {
+    RecordBounds(bounds)
+    paint_checksum += cast(s64)radius + cast(s64)segments + cast(s64)color.a
+}
+#program_export
+RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
+    segments: s32, width: float32, color: Color) {
+    RasterRoundedRectangle(bounds, radius, segments, color)
+    paint_checksum += cast(s64)width
+}
+#program_export
+RasterLine :: (line: Rectangle, color: Color) { RecordBounds(line); paint_checksum += cast(s64)color.a }
+#program_export
+RasterImage :: (path: string, texture_id: u32, source: Rectangle,
+    destination: Rectangle, clip: Rectangle, origin: Vector2, rotation: float32,
+    radius: float32, tint: Color) {
+    RecordBounds(destination)
+    paint_checksum += path.count + cast(s64)texture_id + cast(s64)(source.width + clip.width +
+        origin.x + rotation + radius) + cast(s64)tint.a
+}
+#program_export
+RasterImageMesh :: (path: string, texture_id: u32, source: Rectangle,
+    points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
+    RecordBounds(source)
+    paint_checksum += path.count + cast(s64)texture_id + cast(s64)(columns + rows) +
+        cast(s64)clip.width + cast(s64)tint.a
+    for point: points { paint_checksum += cast(s64)(point.x + point.y) }
+}
+#program_export
+RasterTextRotated :: (value: string, x: s32, y: s32, font: s32, color: Color,
+    clip: Rectangle, origin: Vector2, rotation: float32, outer_clip: Rectangle,
+    outer_clipped: bool, emphasis: bool, italic: bool) {
+    RasterTextClipped(value, x, y, font, color, clip)
+    paint_checksum += cast(s64)(origin.x + origin.y + rotation + outer_clip.width) +
+        cast(s64)outer_clipped + cast(s64)emphasis + cast(s64)italic
+}
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    paint_count += 1
+    paint_checksum += cast(s64)color.a
+    for point: points { paint_checksum += cast(s64)(point.x + point.y) }
+}

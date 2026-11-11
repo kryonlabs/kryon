@@ -1,0 +1,49 @@
+{
+  "name": "Kryon widgets",
+  "repository": "https://github.com/kryonlabs/kryon",
+  "source": "tests/widget_benchmarks.zi",
+  "sources": [
+    "tests/widget_benchmarks.zi",
+    "tests/widget_benchmark_host.zi",
+    "tests/ziran_system_clipboard_host.zi"
+  ],
+  "bindings": [
+    "image_raster:ImageWidth=widget_benchmark_host:ImageWidth",
+    "image_raster:ImageHeight=widget_benchmark_host:ImageHeight",
+    "system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost",
+    "system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost",
+    "system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost",
+    "kryon/font_metrics:MeasureGlyphWidth=widget_benchmark_host:MeasureGlyphWidth",
+    "kryon/font_metrics:MeasureGlyphLineHeight=widget_benchmark_host:MeasureGlyphLineHeight",
+    "kryon/raster_text:RasterText=widget_benchmark_host:RasterText",
+    "kryon/raster_text:RasterTextClipped=widget_benchmark_host:RasterTextClipped",
+    "kryon/raster_text:RasterTextRotated=widget_benchmark_host:RasterTextRotated",
+    "kryon/raster_shape:RasterRoundedRectangle=widget_benchmark_host:RasterRoundedRectangle",
+    "kryon/raster_shape:RasterRoundedRectangleOutline=widget_benchmark_host:RasterRoundedRectangleOutline",
+    "kryon/raster:RasterLine=widget_benchmark_host:RasterLine",
+    "kryon/paint_queue:RasterImage=widget_benchmark_host:RasterImage",
+    "kryon/paint_queue:RasterImageMesh=widget_benchmark_host:RasterImageMesh",
+    "kryon/raster_triangles:RasterTriangles=widget_benchmark_host:RasterTriangles"
+  ],
+  "methodology": "Two frames per entry: public widget layout, interaction and paint-command generation. Deterministic monospace metrics and a recording paint host consume payloads. Pixel rasterization, system fonts and OS I/O are excluded. Sessions are retained between calls; each scenario verifies its behavior and returns zero on success.",
+  "cases": [
+    {
+      "id": "button",
+      "title": "Button",
+      "entry": "ButtonCase",
+      "expected": "0"
+    },
+    {
+      "id": "text",
+      "title": "Text",
+      "entry": "TextCase",
+      "expected": "0"
+    },
+    {
+      "id": "input",
+      "title": "Input",
+      "entry": "InputCase",
+      "expected": "0"
+    }
+  ]
+}
