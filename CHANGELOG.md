@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+- Raylib image loading links the pinned AVIF codec only for hosts that define
+  `AVIF_RAYLIB`; other builds decode no AVIF and carry no codec dependency.
+
 - Disabled EmptyState and Banner retain their configured controls and reject activation until enabled.
 
 - Carousel supports disabling all navigation, gestures, and actions together with `CarouselProps.disabled`.

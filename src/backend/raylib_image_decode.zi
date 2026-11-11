@@ -4,9 +4,13 @@
 #import "image_orientation"
 #import "webp_image"
 // A raylib page links no native AVIF codec; AVIF assets do not decode there.
+// A host links the pinned AVIF archives only when it opts in; others decode
+// no AVIF and link no codec library.
 #if !#defined(PLATFORM_WEB) {
-    #import "avif_image"
     #import "avif_decode"
+    #if #defined(AVIF_RAYLIB) {
+        #import "avif_image"
+    }
 }
 PixelsMemory :: #import "ziran_image_decode";
 
@@ -73,7 +77,7 @@ RaylibDecodePixels :: (data: string, file_type: string) -> RaylibGlyphImage {
     if data.count == 0 || data.count > 2147483647 {
         return RaylibGlyphImage.{}
     }
-    #if !#defined(PLATFORM_WEB) {
+    #if #defined(AVIF_RAYLIB) && !#defined(PLATFORM_WEB) {
         if AvifSignature(data) {
             width: s32 = 0
             height: s32 = 0

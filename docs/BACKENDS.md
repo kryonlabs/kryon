@@ -332,7 +332,9 @@ before publishing any pixels. Browser codecs and pixel-renderer inputs retain
 their existing paths.
 
 `Image(ImageProps)` accepts AVIF assets through the same path as PNG/JPEG/WebP,
-including extensionless names and packaged bundle/APK assets. Native hosts
+including extensionless names and packaged bundle/APK assets. Raylib hosts opt
+in with `AVIF_RAYLIB` and the pinned archives; builds without it decode no AVIF
+and link no codec library. Native hosts
 decode with the locked libavif 1.3 and dav1d, its assembly selected at run time
 for the CPU (x86 SSE2 to AVX-512, ARMv7 and AArch64 NEON); Android 9 requires
 no OS AVIF support. libaom is linked as the explicit comparison oracle, never
