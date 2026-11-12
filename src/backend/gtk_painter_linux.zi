@@ -10,9 +10,17 @@ Scroll :: #import "gtk_scroll_linux";
 using Bitmaps :: #import "bitmap_image";
 using Bytes :: #import "std/vec";
 
+painter_c :: #system_library "c";
+PainterCopy :: (destination: *void, source: *void, bytes: usize) -> *void #foreign painter_c "memcpy";
+PainterFill :: (destination: *void, value: s32, bytes: usize) -> *void #foreign painter_c "memset";
+PainterCompare :: (first: *void, second: *void, bytes: usize) -> s32 #foreign painter_c "memcmp";
+
 GtkPaintTile :: struct { signature: u64; bitmap: GtkStyleBitmap }
 GtkPainter :: struct {
     pixels: Vec(u8)
+    // The exact pixels last given to texture; valid only while presented_valid.
+    presented: Vec(u8)
+    presented_valid: bool
     atlas: Vec(u8)
     regions: Vec(s32)
     region_count: s32
@@ -32,8 +40,8 @@ GtkPainter :: struct {
 GtkPainterRelease :: (p: *GtkPainter) {
     for i: 0..255 { GtkStyleBitmapRelease(*p.tiles[i].bitmap); p.tiles[i].signature = 0 }
     BitmapImageRelease(p.session, p.texture)
-    VecFree(p.pixels); VecFree(p.atlas); VecFree(p.regions)
-    p.texture = .{}; p.signature = 0; p.tile_bytes = 0; p.region_count = 0
+    VecFree(p.pixels); VecFree(p.presented); VecFree(p.atlas); VecFree(p.regions)
+    p.texture = .{}; p.signature = 0; p.presented_valid = false; p.tile_bytes = 0; p.region_count = 0
 }
 
 GtkPainterBegin :: (p: *GtkPainter, session: Session, bounds: Rectangle) -> bool {
@@ -46,13 +54,14 @@ GtkPainterBegin :: (p: *GtkPainter, session: Session, bounds: Rectangle) -> bool
     }
     if p.session.slot != session.slot || p.session.epoch != session.epoch {
         BitmapImageRelease(p.session, p.texture); p.texture = .{}; p.signature = 0
+        p.presented_valid = false
     }
     p.session = session; p.bounds = bounds; p.clip = bounds
     p.width = cast(s32)bounds.width; p.height = cast(s32)bounds.height
     if p.width < 1 || p.height < 1 || p.width > 8192 || p.height > 8192 ||
         cast(s64)p.width * cast(s64)p.height > 16777216 { return false }
     if !VecResize(p.pixels, cast(s64)p.width * cast(s64)p.height * 4) { return false }
-    for i: 0..p.pixels.count - 1 { p.pixels[i] = 0 }
+    unused PainterFill(cast(*void)*p.pixels[0], 0, cast(usize)p.pixels.count)
     return true
 }
 
@@ -91,18 +100,24 @@ Composite :: (p: *GtkPainter, bitmap: GtkStyleBitmap, bounds: Rectangle) {
     while last_row>first_row && cast(float32)(y+last_row-1)+p.bounds.y>=p.clip.y+p.clip.height { last_row-=1 }
     for row: first_row..last_row-1 {
         yy := y + row
-        for col: first_col..last_col-1 {
+        col := first_col
+        while col < last_col {
             xx := x + col
             src := (row * bitmap.width + col) * 4; dst := (yy * p.width + xx) * 4
             a := cast(s32)bitmap.rgba[src + 3]
-            if a == 0 { continue }
-            // Opaque native surfaces replace the backdrop exactly. Avoid
-            // straight/premultiplied conversions for the common background
-            // and control pixels; translucent edges keep Cairo's rounding.
+            if a == 0 { col += 1; continue }
+            // Opaque native surfaces replace the backdrop exactly. Copy each
+            // opaque run at once, avoiding straight/premultiplied conversions
+            // for background and control pixels; translucent edges keep
+            // Cairo's rounding below.
             if a == 255 {
-                for c: 0..3 { p.pixels[dst+c] = bitmap.rgba[src+c] }
+                end := col + 1
+                while end < last_col && bitmap.rgba[(row * bitmap.width + end) * 4 + 3] == 255 { end += 1 }
+                unused PainterCopy(cast(*void)*p.pixels[dst], cast(*void)*bitmap.rgba[src], cast(usize)((end - col) * 4))
+                col = end
                 continue
             }
+            col += 1
             da := cast(s32)p.pixels[dst + 3]
             // GTK/Cairo quantizes each premultiplied component before OVER.
             // Combining the straight-alpha fractions rounds glyph coverage
@@ -189,15 +204,15 @@ GtkPainterStyleOver :: (p: *GtkPainter, nodes: []GtkStyleNode, bounds: Rectangle
     background: Vec(u8)
     if !VecResize(background,cast(s64)w*cast(s64)h*4) { return false }
     defer VecFree(background)
-    for yy: cast(s32)0..h-1 { for xx: cast(s32)0..w-1 { for c: cast(s32)0..3 {
-        background[(yy*w+xx)*4+c]=p.pixels[((y+yy)*p.width+x+xx)*4+c]
-    } } }
+    for yy: cast(s32)0..h-1 {
+        unused PainterCopy(cast(*void)*background[yy*w*4], cast(*void)*p.pixels[((y+yy)*p.width+x)*4], cast(usize)(w*4))
+    }
     bitmap:=GtkStyleRasterRegionOver(nodes,width,height,1,cast(s32)(box.x-bounds.x),cast(s32)(box.y-bounds.y),w,h,background[:])
     defer GtkStyleBitmapRelease(*bitmap)
     if bitmap.width!=w || bitmap.height!=h || bitmap.rgba.count!=background.count { return false }
-    for yy: cast(s32)0..h-1 { for xx: cast(s32)0..w-1 { for c: cast(s32)0..3 {
-        p.pixels[((y+yy)*p.width+x+xx)*4+c]=bitmap.rgba[(yy*w+xx)*4+c]
-    } } }
+    for yy: cast(s32)0..h-1 {
+        unused PainterCopy(cast(*void)*p.pixels[((y+yy)*p.width+x)*4], cast(*void)*bitmap.rgba[yy*w*4], cast(usize)(w*4))
+    }
     return true
 }
 
@@ -348,6 +363,8 @@ AtlasEnd :: (p: *GtkPainter, key: u64) -> bool {
     if !VecResize(p.atlas,cast(s64)2048*cast(s64)height*4) { return false }
     hash: u64=1469598103934665603
     for value: p.atlas { hash=(hash ^ cast(u64)value)*cast(u64)1099511628211 }
+    // The atlas replaces this texture's pixels; the direct copy is stale.
+    p.presented_valid=false
     if p.texture.width!=2048 || p.texture.height!=height {
         BitmapImageRelease(p.session,p.texture); p.texture=.{}; p.signature=0
     }
@@ -371,13 +388,27 @@ AtlasEnd :: (p: *GtkPainter, key: u64) -> bool {
 GtkPainterEnd :: (p: *GtkPainter, key: u64) -> bool {
     if p.width>4096 || p.height>4096 || cast(s64)p.width*cast(s64)p.height>4194304 { return AtlasEnd(p,key) }
     p.region_count=0
-    hash: u64 = 1469598103934665603
-    for c: p.pixels { hash = (hash ^ cast(u64)c) * cast(u64)1099511628211 }
     if p.texture.width != p.width || p.texture.height != p.height {
         BitmapImageRelease(p.session,p.texture); p.texture = .{}; p.signature = 0
+        p.presented_valid = false
     }
-    if p.texture.id == 0 { p.texture = BitmapImageCreate(p.session,p.width,p.height,p.pixels[:]); p.signature = hash }
-    else if p.signature != hash { if BitmapImageUpdate(p.session,p.texture,p.pixels[:]) { p.signature = hash } }
+    // Compare exact bytes with the last upload instead of hashing every pixel
+    // each frame: unchanged frames skip the texture update entirely.
+    bytes := p.pixels.count
+    unchanged := p.texture.id != 0 && p.presented_valid && bytes > 0 && p.presented.count == bytes &&
+        PainterCompare(cast(*void)*p.pixels[0], cast(*void)*p.presented[0], cast(usize)bytes) == 0
+    if !unchanged {
+        uploaded := false
+        if p.texture.id == 0 {
+            p.texture = BitmapImageCreate(p.session,p.width,p.height,p.pixels[:])
+            uploaded = p.texture.id != 0
+        } else { uploaded = BitmapImageUpdate(p.session,p.texture,p.pixels[:]) }
+        p.presented_valid = false
+        if uploaded && bytes > 0 && VecResize(p.presented,bytes) {
+            unused PainterCopy(cast(*void)*p.presented[0], cast(*void)*p.pixels[0], cast(usize)bytes)
+            p.presented_valid = true
+        }
+    }
     Image(p.session,ImageProps.{.key=key,.bounds=p.bounds,.texture=p.texture,.tint=cast(u32)0xffffffff})
     return p.texture.id!=0
 }

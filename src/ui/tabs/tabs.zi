@@ -77,6 +77,7 @@ Theme :: #import "theme";
             }
         } else if kind == StyleKindTabClose() {
             face.background = cast(u32)0x00000000
+            face.foreground = Theme.CurrentMuted()
             face.border_width = 0.0
             face.icon_size = 16.0
             face.padding_x = 4.0
@@ -102,6 +103,12 @@ Theme :: #import "theme";
             props.class_name, StyleAny(), tone,
             cast(s32)ButtonEmphasisSoft,
             cast(s32)ControlSizeMedium, state), state)
+        // Closing a tab is destructive, so its affordance turns the palette's
+        // danger color on hover whatever rules a host installs.
+        if kind == StyleKindTabClose() && hovered && !disabled {
+            frame.value.foreground = Theme.CurrentDanger()
+            frame.value.fields = frame.value.fields | cast(u32)StyleForeground
+        }
         return frame
     }
 
