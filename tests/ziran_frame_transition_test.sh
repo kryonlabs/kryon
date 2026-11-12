@@ -5,6 +5,7 @@ source=$repo/tests/ziran_frame_transition_test.zi
 widget_host=ziran_frame_transition_host
 widget_mesh_host=ziran_mesh_noop_host
 set -- \
+    --bind kryon/frame_transition:CopyFrameTexture=ziran_frame_transition_host:CopyFrameTexture \
     --bind kryon/frame_transition:DisposeFrameTexture=ziran_frame_transition_host:DisposeFrameTexture \
     --bind kryon/image_raster:ImageWidth=ziran_frame_transition_host:ImageWidth \
     --bind kryon/image_raster:ImageHeight=ziran_frame_transition_host:ImageHeight

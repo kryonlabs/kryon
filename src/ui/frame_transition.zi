@@ -8,6 +8,7 @@
 using ImageFit;
 host_api :: #system_library "host_api";
 DisposeFrameTexture :: (texture: Texture2D) #foreign host_api;
+CopyFrameTexture :: (texture: Texture2D) -> Texture2D #foreign host_api;
 
 // A retained frame is a runtime texture, so route transitions stay on the
 // declarative Image surface instead of leaking backend texture calls into apps.
@@ -19,6 +20,12 @@ FrameSurface :: struct {
 FrameSurfaceValid :: (surface: FrameSurface) -> bool {
     return surface.texture.id != cast(u32)0 &&
     surface.texture.width > 0 && surface.texture.height > 0
+}
+
+#program_export
+FrameSurfaceCopy :: (surface: FrameSurface) -> FrameSurface {
+    if !FrameSurfaceValid(surface) { return FrameSurface.{} }
+    return FrameSurface.{CopyFrameTexture(surface.texture)}
 }
 
 #program_export

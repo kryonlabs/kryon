@@ -31,6 +31,31 @@ main :: () -> s32 {
     presented != cast(u32)104 || begins != 1 || ends != 1 {
         return 6
     }
+    // Copies own their pixels and preserve the active render target.
+    if CopyFrameTexture(Texture2D.{}).id != 0 || copy_reads != 0 {
+        return 14
+    }
+    snapshot := CopyFrameTexture(RetainedPreviousFrameTexture())
+    if snapshot.id != 900 || snapshot.width != 100 || snapshot.height != 100 ||
+    copy_source.id != 104 || copy_reads != 1 || copy_uploads != 1 ||
+    copy_releases != 1 || copy_framebuffer != 777 {
+        return 15
+    }
+    copy_mode = 1
+    if CopyFrameTexture(RetainedPreviousFrameTexture()).id != 0 ||
+    copy_uploads != 1 || copy_releases != 1 || copy_framebuffer != 777 {
+        return 16
+    }
+    copy_mode = 2
+    if CopyFrameTexture(RetainedPreviousFrameTexture()).id != 0 ||
+    copy_uploads != 2 || copy_releases != 2 || copy_framebuffer != 777 {
+        return 17
+    }
+    copy_mode = 0
+    DisposeFrameTexture(snapshot)
+    if copy_disposals != 1 || RetainedPreviousFrameTexture().id != 104 {
+        return 18
+    }
     // A failed second buffer keeps the last complete frame and can retry.
     allocation_mode = 1
     if BeginRetainedFrame(100, 100) || unloads != 4 ||

@@ -2,6 +2,7 @@
 #import "paint_texture"
 #import "drawing_props"
 #import "geometry"
+ImagePixels :: #import "raylib_image_decode";
 
 allocation_mode: s32;
 loads: s32;
@@ -14,6 +15,51 @@ last_source: Rectangle;
 last_destination: Rectangle;
 retained_blend_valid: bool = true;
 retained_blend_active: bool;
+copy_mode: s32;
+copy_reads: s32;
+copy_uploads: s32;
+copy_releases: s32;
+copy_disposals: s32;
+copy_source: Texture2D;
+copy_pixel: u32;
+copy_framebuffer: u32 = 777;
+
+#program_export
+rlGetActiveFramebuffer :: () -> u32 { return copy_framebuffer }
+
+#program_export
+rlEnableFramebuffer :: (id: u32) { copy_framebuffer = id }
+
+#program_export
+rlDrawRenderBatchActive :: () {}
+
+#program_export
+LoadImageFromTexture :: (texture: Texture2D) -> ImagePixels.RaylibGlyphImage {
+    copy_reads += 1
+    copy_source = texture
+    copy_framebuffer = 0
+    if copy_mode == 1 { return ImagePixels.RaylibGlyphImage.{} }
+    return ImagePixels.RaylibGlyphImage.{cast(*void)*copy_pixel,
+        texture.width, texture.height, 1, 7}
+}
+
+#program_export
+LoadTextureFromImage :: (image: ImagePixels.RaylibGlyphImage) -> Texture2D {
+    copy_uploads += 1
+    if copy_mode == 2 { return Texture2D.{} }
+    return Texture2D.{900, image.width, image.height, 1, image.format}
+}
+
+#program_export
+UnloadImage :: (image: ImagePixels.RaylibGlyphImage) {
+    unused image
+    copy_releases += 1
+}
+
+#program_export
+UnloadTexture :: (texture: Texture2D) {
+    if texture.id == 900 { copy_disposals += 1 }
+}
 
 #program_export
 rlSetBlendFactorsSeparate :: (source_rgb: s32, destination_rgb: s32,

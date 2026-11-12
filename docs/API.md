@@ -28,6 +28,12 @@ rectangle. The host clears and clips that area before `PaintFlushArea`, or
 clears its whole surface before `PaintFlush`. `EndFrameDamaged` keeps its
 existing behavior of emitting a full repaint immediately.
 
+`frame_transition.FrameSurfaceCopy(surface)` copies a borrowed retained frame
+into an owned surface before its target is reused. The Raylib host performs
+the copy on its render thread. Capture before committing the destination
+frame, draw with `FrameTransition`, and call `FrameSurfaceRelease` when the
+transition ends. An invalid source or failed allocation returns an empty surface.
+
 `TreeSubmittedCount(session)` and `TreeSubmittedNodeAt(session, index)` expose
 the current frame's submitted geometry while building. Native skins can paint
 retained controls from it while input continues using the committed tree.

@@ -130,6 +130,8 @@ HostTypefaceFileDataFree :: (bytes: *u8) #foreign raylib "UnloadFileData";
 HostRaylibUnloadFont :: (font: RaylibFont) #foreign raylib "UnloadFont";
 HostRaylibTextureFilter :: (texture: Texture2D, filter: s32) #foreign raylib "SetTextureFilter";
 HostRaylibImageFromTexture :: (texture: Texture2D) -> ImagePixels.RaylibGlyphImage #foreign raylib "LoadImageFromTexture";
+HostRaylibActiveFramebuffer :: () -> u32 #foreign raylib "rlGetActiveFramebuffer";
+HostRaylibEnableFramebuffer :: (id: u32) #foreign raylib "rlEnableFramebuffer";
 HostRaylibGenTextureMipmaps :: (texture: *Texture2D) #foreign raylib "GenTextureMipmaps";
 HostTypefaceAllocate :: (size: usize) -> *u8 #foreign c "malloc";
 HostTypefaceFree :: (bytes: *u8) #foreign c "free";
@@ -3267,6 +3269,33 @@ RetainedPreviousFrameTexture :: () -> Texture2D {
 }
 
 #program_export
+CopyFrameTexture :: (texture: Texture2D) -> Texture2D {
+    if texture.id == cast(u32)0 || texture.width <= 0 || texture.height <= 0 {
+        return Texture2D.{}
+    }
+    #if RAYLIB_FRAME_THREADS {
+        if RenderOnAppThread() {
+            request := RaylibAppRequest.{.operation = RaylibResource.CopyFrame,
+                .texture = texture}
+            RenderCall(RaylibAppResource, cast(*void)*request)
+            return request.texture
+        }
+    }
+    // Retained targets alternate and are overwritten on later frames.
+    // A transition owns this independent copy until DisposeFrameTexture.
+    HostRaylibFlushBatch()
+    framebuffer := HostRaylibActiveFramebuffer()
+    pixels := HostRaylibImageFromTexture(texture)
+    // GLES readback binds a temporary framebuffer and returns to framebuffer
+    // zero. Keep painting into the caller's retained target, even on failure.
+    HostRaylibEnableFramebuffer(framebuffer)
+    if pixels.data == null { return Texture2D.{} }
+    copy := HostRaylibTextureFromImage(pixels)
+    ImagePixels.RaylibImageRelease(pixels)
+    return copy
+}
+
+#program_export
 DisposeFrameTexture :: (texture: Texture2D) {
     if texture.id != cast(u32)0 { RaylibIconTextureFree(texture) }
 }
@@ -4093,6 +4122,7 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
         ReleaseTypefaces
         IconTexture
         RetainedTargets
+        CopyFrame
         PendingImages
     }
 
@@ -4190,6 +4220,8 @@ PollSecondaryPointer :: () -> SecondaryPointerFrame { return raylib_secondary }
                 request.ok = RaylibPrepareRetainedFrame(request.width, request.height)
             }
             retained_frame_render_index = first
+        } else if request.operation == RaylibResource.CopyFrame {
+            request.texture = CopyFrameTexture(request.texture)
         } else if request.operation == RaylibResource.PendingImages {
             request.width = RaylibImagesPendingCount()
         }

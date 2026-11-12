@@ -8,8 +8,15 @@ failed: bool;
 
 #program_export
 DisposeFrameTexture :: (texture: Texture2D) {
-    if texture.id != cast(u32)7 { failed = true }
+    if texture.id != cast(u32)7 && texture.id != cast(u32)8 { failed = true }
     disposed += 1
+}
+
+#program_export
+CopyFrameTexture :: (texture: Texture2D) -> Texture2D {
+    if texture.id != cast(u32)7 { failed = true }
+    texture.id = 8
+    return texture
 }
 
 #program_export

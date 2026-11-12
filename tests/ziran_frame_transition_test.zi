@@ -26,7 +26,13 @@ main :: () -> s32 {
     if FrameTransitionAlpha(0.12, 0.12) != 0.0 { return 3 }
 
     surface: FrameSurface
+    if FrameSurfaceValid(FrameSurfaceCopy(surface)) { return 12 }
     surface.texture = Texture2D.{7, 20, 10, 1, 7}
+    copy := FrameSurfaceCopy(surface)
+    if copy.texture.id != 8 || copy.texture.width != 20 ||
+    copy.texture.height != 10 || surface.texture.id != 7 { return 13 }
+    copy = FrameSurfaceRelease(copy)
+    if FrameSurfaceValid(copy) || FrameTransitionDisposed() != 1 { return 14 }
     image := FrameTransitionImage(surface,
         Rectangle.{1.0, 2.0, 30.0, 20.0}, 0.0, 0.12)
     if image.texture.id != cast(u32)7 { return 4 }
@@ -43,6 +49,6 @@ main :: () -> s32 {
     if FrameTransitionDraws() != 1 || FrameTransitionHostFailed() { return 9 }
 
     surface = FrameSurfaceRelease(surface)
-    if FrameSurfaceValid(surface) || FrameTransitionDisposed() != 1 { return 10 }
+    if FrameSurfaceValid(surface) || FrameTransitionDisposed() != 2 { return 10 }
     return 0
 }
