@@ -73,7 +73,7 @@ jobs:
           export ZIRAN_ROOT="$GITHUB_WORKSPACE/ziranlang/ziran"
           python3 scripts/build-site.py
           node tests/portable_format_runtime.cjs
-          ZIRAN_PLAYGROUND_RUNTIME="$PWD/docs/site/assets/playground-runtime.js" node "$GITHUB_WORKSPACE/ziranlang/ziran/tests/web_bundle_runtime.cjs"
+          ZIRAN_PLAYGROUND_RUNTIME="$PWD/docs/site/runtime/playground-runtime.js" node "$GITHUB_WORKSPACE/ziranlang/ziran/tests/web_bundle_runtime.cjs"
       - name: Stage public website files
         run: |
           python3 - <<'PY'
@@ -146,12 +146,10 @@ jobs:
           test -f docs/site/index.html
           test -f docs/site/demo.html
           test -f docs/site/assets/widgets.html
-          test -f docs/site/assets/preview.html
-          test -f docs/site/assets/playground-runtime.js
-          test -f docs/site/assets/playground-runtime.wasm
+          test -f docs/site/runtime/playground-runtime.js
+          test -f docs/site/runtime/playground-runtime.wasm
           test -f docs/site/demo.js
           test -f docs/site/demo.css
-          test -f docs/site/demo-worker.js
           test -f docs/site/demo-theme.js
           test -f docs/site/current.css
           test -f docs/site/favicon.svg
@@ -159,10 +157,7 @@ jobs:
           test -f docs/site/og.png
           test -f docs/site/assets/brand/mark.svg
           test -f docs/site/widgets.html
-          test -f docs/site/assets/widget-gallery.html
-          test -f docs/site/assets/catalog-image.png
           test -f docs/site/gallery-data.js
-          test -f docs/site/live-editor.js
           test -f docs/site/gallery-sources/kryon/0.zi
 
       - name: Test the compiled widget gallery

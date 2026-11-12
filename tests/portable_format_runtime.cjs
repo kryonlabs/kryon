@@ -1,5 +1,5 @@
 const assert = require('node:assert/strict');
-const createRuntime = require('../docs/site/assets/playground-runtime.js');
+const createRuntime = require('../docs/site/runtime/playground-runtime.js');
 
 async function main() {
   const errors = [];
