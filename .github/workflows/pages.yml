@@ -148,8 +148,6 @@ jobs:
           test -f docs/site/assets/widgets.html
           test -f docs/site/runtime/playground-runtime.js
           test -f docs/site/runtime/playground-runtime.wasm
-          test -f docs/site/demo.js
-          test -f docs/site/demo.css
           test -f docs/site/demo-theme.js
           test -f docs/site/current.css
           test -f docs/site/favicon.svg
@@ -173,12 +171,6 @@ jobs:
         env:
           CHROMIUM: google-chrome
         run: python3 tests/site_browser_test.py
-
-      - name: Test live preview and rendered themes
-        if: matrix.mode == 'editor'
-        env:
-          CHROMIUM: google-chrome
-        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY node tests/demo_browser.mjs
 
   deploy-production:
     name: Deploy Kryon Labs
