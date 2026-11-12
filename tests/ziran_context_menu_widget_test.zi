@@ -209,6 +209,91 @@ SubmenuFrame :: () -> s32 {
     return old
 }
 
+check_phase: s32;
+check_open: bool;
+check_checked: bool;
+
+// Zoom In with an accelerator, then the check rows Show Menubar and Show
+// Borders, at (20, 20) in a 320 wide view. Glyphs are half the font wide
+// here, so labels start 34 in (the 12 inset, the 14 box and its 8 gap) and
+// the panel is 34 + 49 + 32 + 84 + 12 = 211 wide: rows at y 24, 50 and 76.
+CheckItems :: (items: []ContextMenuItem) {
+    items[0].id = 21
+    items[0].label = "Zoom In"
+    items[0].accelerator = "Shift+Ctrl+T"
+    items[1].id = 22
+    items[1].label = "Show Menubar"
+    items[1].checkable = true
+    items[1].checked = check_checked
+    items[2].id = 23
+    items[2].label = "Show Borders"
+    items[2].checkable = true
+}
+
+#program_export
+CheckFrame :: () -> s32 {
+    items: [3]ContextMenuItem
+    CheckItems(items[0:3])
+    props: ContextMenuProps = .{.key = cast(u64)33, .open = check_open, .x = 20.0, .y = 20.0}
+    TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 200.0})
+    result: ContextMenuResult = ContextMenu(TestSession(), props, items[0:3])
+    if !TreeFinish(TestSession()) { return -1 }
+    if check_phase == 0 {
+        bounds: Rectangle = ContextMenuBounds(items[0:3], 20.0, 20.0,
+            Rectangle.{0.0, 0.0, 320.0, 200.0})
+        if bounds.width != 211.0 || bounds.height != 86.0 { return -2 }
+        // Without the accelerator the rows fit the minimum width, and
+        // without check rows labels keep the plain inset.
+        plain: [3]ContextMenuItem
+        CheckItems(plain[0:3])
+        plain[0].accelerator = ""
+        if ContextMenuBounds(plain[0:3], 20.0, 20.0, Rectangle.{0.0, 0.0, 320.0, 200.0}).width != 168.0 { return -3 }
+        // Positional initializers keep their meaning.
+        positional: ContextMenuItem = .{4, "Old", true, false}
+        if positional.id != 4 || !positional.disabled || positional.accelerator != "" ||
+        positional.checkable || positional.checked { return -4 }
+        check_open = true
+        Hover(300.0, 190.0)
+    } else if check_phase == 1 {
+        if !result.open { return -5 }
+        // The check rows report their state; the plain row reports none.
+        if !TreeNodeAt(TestSession(), TreeHitAt(TestSession(), 60.0, 63.0)).selected { return -6 }
+        if TreeNodeAt(TestSession(), TreeHitAt(TestSession(), 60.0, 89.0)).selected { return -7 }
+        if TreeNodeAt(TestSession(), TreeHitAt(TestSession(), 60.0, 37.0)).selected { return -8 }
+        ContextMenuWatchLabel("Show Borders")
+    } else if check_phase == 2 {
+        // Labels line up after the box column.
+        if ContextMenuWatchedX() != 54 { return -9 }
+        ContextMenuWatchLabel("Shift+Ctrl+T")
+    } else if check_phase == 3 {
+        // The accelerator ends 12 in from the panel's right edge.
+        if ContextMenuWatchedX() != 20 + 211 - 12 - 84 { return -10 }
+        // Choosing a check row reports it; the caller flips the state.
+        Click(60.0, 89.0)
+    } else if check_phase == 4 {
+        if result.activated_id != 23 || result.open || !result.closed { return -11 }
+        check_open = true
+        Hover(300.0, 190.0)
+    }
+    PaintFlush(TestSession())
+    old: s32 = check_phase
+    check_phase += 1
+    return old
+}
+
+// Paints the check menu once with Show Menubar checked or not, and returns
+// the fills and outlines it drew.
+CheckPaint :: (checked: bool, outlines: *s32) -> s32 {
+    check_checked = checked
+    check_open = true
+    check_phase = 100
+    fills: s32 = ContextMenuFillCount()
+    before: s32 = ContextMenuOutlineCount()
+    CheckFrame()
+    outlines.* = ContextMenuOutlineCount() - before
+    return ContextMenuFillCount() - fills
+}
+
 #program_export
 main :: () -> s32 {
     expected: s32 = 0
@@ -246,5 +331,19 @@ main :: () -> s32 {
         if SubmenuFrame() != expected { return 400 + expected }
         expected += 1
     }
+    check_checked = true
+    expected = 0
+    while expected < 5 {
+        if CheckFrame() != expected { return 500 + expected }
+        expected += 1
+    }
+    // Both check rows draw an empty box beside the panel's outline; only
+    // the checked one adds its mark.
+    checked_outlines: s32
+    unchecked_outlines: s32
+    checked_fills: s32 = CheckPaint(true, *checked_outlines)
+    unchecked_fills: s32 = CheckPaint(false, *unchecked_outlines)
+    if checked_outlines != 3 || unchecked_outlines != 3 { return 600 }
+    if checked_fills <= unchecked_fills { return 601 }
     return 0
 }

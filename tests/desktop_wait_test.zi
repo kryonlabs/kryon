@@ -1,4 +1,6 @@
 Desktop :: #import "desktop_runtime";
+Session :: #import "session";
+Tree :: #import "tree_input";
 #import "std/thread_linux"
 
 sdl :: #system_library "SDL2";
@@ -33,11 +35,14 @@ Send :: (argument: *void) {
     work.ready = Counter()
     work.delivered = PushKey() && PushTextAndClick()
 }
+wait_session: Session.Session;
+
 // One poll takes the key, text and click exactly once; the next takes nothing.
 Received :: (round: s32) -> s32 {
     if !Desktop.PollDesktop() { return 5 }
-    key := Desktop.DesktopPressedKey(); key_after := Desktop.DesktopPressedKey()
-    text := Desktop.DesktopTypedCodepoint(); text_after := Desktop.DesktopTypedCodepoint()
+    key, modifiers := Desktop.DesktopInputTake(wait_session)
+    key_after, after_modifiers := Desktop.DesktopInputTake(wait_session)
+    text := Tree.TypedCodepointTake(wait_session); text_after := Tree.TypedCodepointTake(wait_session)
     if key != 32 || key_after != 0 || text != 65 || text_after != 0 {
         print("round %: key % then %, text % then %\n", round, key, key_after, text, text_after)
         return 6
@@ -46,14 +51,18 @@ Received :: (round: s32) -> s32 {
     if !pointer.pressed || !pointer.released || !pointer.down { return 7 }
     if !Desktop.PollDesktop() { return 8 }
     pointer = Desktop.PollPointer()
-    if pointer.pressed || pointer.released || Desktop.DesktopPressedKey() != 0 ||
-        Desktop.DesktopTypedCodepoint() != 0 { return 9 }
+    key, modifiers = Desktop.DesktopInputTake(wait_session)
+    if pointer.pressed || pointer.released || key != 0 ||
+        Tree.TypedCodepointTake(wait_session) != 0 { return 9 }
     return 0
 }
 
 main :: () -> s32 {
     if !Desktop.OpenDesktopSized(160, 120) { return 1 }
     defer Desktop.CloseDesktop()
+    wait_session = Session.SessionOpen()
+    if !Session.SessionValid(wait_session) { return 1 }
+    defer { Tree.TreeInputReset(wait_session); Session.SessionClose(wait_session) }
     input_window = WindowID(Desktop.DesktopWindow())
     Desktop.BeginDesktopFrame()
     if !Desktop.EndDesktopFrame() { return 15 }
@@ -68,10 +77,10 @@ main :: () -> s32 {
     if !PushTextAndClick() { return 10 }
     status := Received(-1)
     if status != 0 { return status }
-    // Four actual SDL keydown events in one poll retain every player's turn,
-    // including the physical numeric keypad, in arrival order.
+    // Four actual SDL keydown events in one poll arrive in order, including
+    // the physical numeric keypad: each edit alone, printable keys as one run.
     raw: [4]s32 = .[0x40000050, 97, 106, 0x4000005C]
-    expected: [4]s32 = .[263, 65, 74, 324]
+    expected: [4]s32 = .[263, 74, 324, 0]
     for index: 0..3 {
         key_event: Event
         key_event.window_id = input_window
@@ -82,9 +91,13 @@ main :: () -> s32 {
         if Push(cast(*void)*key_event) != 1 { return 11 }
     }
     if !Desktop.PollDesktop() { return 12 }
-    if Desktop.DesktopPressedKey() != 324 || Desktop.DesktopPressedKey() != 0 { return 13 }
-    for index: 0..3 { if Desktop.DesktopNextKey() != expected[index] { return 14 } }
-    if Desktop.DesktopNextKey() != 0 || !Desktop.PollDesktop() || Desktop.DesktopNextKey() != 0 { return 15 }
+    for index: 0..3 {
+        key, modifiers := Desktop.DesktopInputTake(wait_session)
+        if key != expected[index] { return 14 }
+    }
+    if !Desktop.PollDesktop() { return 15 }
+    key, modifiers := Desktop.DesktopInputTake(wait_session)
+    if key != 0 { return 15 }
     for sample: 0..19 {
         while Poll(cast(*void)*event) != 0 {}
         if !Desktop.PollDesktop() { return 2 }

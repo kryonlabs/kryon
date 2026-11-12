@@ -41,7 +41,7 @@
 #import "text_style"
 // The fixed 5 px test font and raster calls for native builds.
 #import "ziran_composition_widget_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 
 using HostValueKind;
 using FrameStatus;

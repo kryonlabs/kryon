@@ -1,4 +1,9 @@
 #import "desktop_keys"
+#import "input_delivery"
+#import "input_protocol"
+#import "session"
+#import "tree_input"
+#import "key_input"
 
 #program_export
 main :: () -> s32 {
@@ -22,21 +27,95 @@ main :: () -> s32 {
     DesktopKey(0) != 0 { return 6 }
     if DesktopKey(0x40000062) != 320 { return 7 }
     for key: 0..8 { if DesktopKey(0x40000059 + cast(s32)key) != 321 + key { return 8 } }
-    queue: DesktopKeyBuffer
     if DesktopKeyWithModifiers(0x40000063,0)!=261 || DesktopKeyWithModifiers(0x40000063,0x1000)!=330 ||
         DesktopKeyWithModifiers(0x40000062,0)!=260 || DesktopKeyWithModifiers(0x40000062,0x1000)!=320 ||
         DesktopKey(0x40000057)!=334 || DesktopKey(0x40000056)!=333 { return 15 }
-    keys: [4]s32 = .[263, 65, 74, 324]
-    for index: 0..3 { if !DesktopKeyPush(*queue, keys[index], cast(s32)index) { return 9 } }
-    for index: 0..3 {
-        key, modifiers := DesktopKeyTake(*queue)
-        if key != keys[index] || modifiers != index { return 10 }
-    }
-    key, modifiers := DesktopKeyTake(*queue)
-    if key != 0 { return 11 }
-    queue = .{}
-    if DesktopKeyPush(*queue, 0, 0) { return 12 }
-    for index: 0..31 { if !DesktopKeyPush(*queue, 65, 0) { return 13 } }
-    if DesktopKeyPush(*queue, 66, 0) { return 14 }
+    result := OrderedDelivery()
+    if result != 0 { return result }
+    return 0
+}
+
+// The shared ordered queue every host delivers through.
+OrderedDelivery :: () -> s32 {
+    session := SessionOpen()
+    if !SessionValid(session) { return 20 }
+    defer { TreeInputReset(session); unused SessionClose(session) }
+    queue: InputDelivery
+    // Text, printable keys and Enter after them arrive as one field commit.
+    InputDeliveryKey(*queue, 65, KeyModifierShift, false)
+    InputDeliveryText(*queue, 65)
+    InputDeliveryKey(*queue, 340, KeyModifierShift, false)
+    InputDeliveryKey(*queue, KeyEnter, 0, false)
+    InputDeliveryKey(*queue, KeyLeft, KeyModifierShift, false)
+    if queue.count != 4 { return 21 }
+    key, modifiers := InputDeliveryTake(*queue, session, 7)
+    if key != KeyEnter || modifiers != 0 || TypedCodepointTake(session) != 65 { return 22 }
+    key, modifiers = InputDeliveryTake(*queue, session, 7)
+    if key != KeyLeft || modifiers != KeyModifierShift { return 23 }
+    key, modifiers = InputDeliveryTake(*queue, session, 7)
+    if key != 0 || modifiers != 7 { return 24 }
+    // Unread text holds back the next edit; an edit never crosses a text run.
+    InputDeliveryText(*queue, 120)
+    InputDeliveryKey(*queue, KeyBackspace, 0, false)
+    InputDeliveryText(*queue, 121)
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != 0 || TypedCodepointPeek(session) != 120 { return 25 }
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != 0 || queue.count != 2 { return 26 }
+    if TypedCodepointTake(session) != 120 { return 27 }
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != KeyBackspace || TypedCodepointPeek(session) != 0 { return 28 }
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != 0 || TypedCodepointTake(session) != 121 { return 29 }
+    // A host-reported shortcut (Super or Command) edits without a modifier bit.
+    InputDeliveryText(*queue, 97)
+    InputDeliveryKey(*queue, 67, 0, true)
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != 0 || TypedCodepointTake(session) != 97 { return 30 }
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != 67 || modifiers != 0 { return 31 }
+    // Focus loss cancels pending keys and keeps typed text in order.
+    InputDeliveryKey(*queue, 68, KeyModifierControl, true)
+    InputDeliveryText(*queue, 49)
+    InputDeliveryKey(*queue, KeyTab, 0, false)
+    InputDeliveryText(*queue, 50)
+    InputDeliveryBlur(*queue)
+    if queue.count != 2 { return 32 }
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    bytes: [4]u8
+    if key != 0 || TypedTextTake(session, bytes[:]) != "12" { return 33 }
+    // Text the application leaves unread holds edits back for one take only.
+    InputDeliveryText(*queue, 122)
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    InputDeliveryKey(*queue, KeyEscape, 0, false)
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != 0 || queue.count != 1 { return 39 }
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != KeyEscape || TypedCodepointPeek(session) != 122 { return 40 }
+    // A full session the application never reads drops new text, not keys.
+    for index: 0..31 { InputDeliveryText(*queue, 97) }
+    InputDeliveryKey(*queue, KeyTab, 0, false)
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != 0 || queue.count != 1 || TypedCodepointCapacity(session) != 0 { return 41 }
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != 0 { return 42 }
+    key, modifiers = InputDeliveryTake(*queue, session, 0)
+    if key != KeyTab || queue.count != 0 { return 43 }
+    TreeInputReset(session)
+    // Keys wait at their limit; text may fill the rest, then input drops.
+    for index: 0..31 { InputDeliveryKey(*queue, 65, 0, false) }
+    if InputDeliveryAccepts(*queue, 1, 0) || !InputDeliveryAccepts(*queue, 0, 224) ||
+        InputDeliveryAccepts(*queue, 0, 225) { return 34 }
+    for index: 0..250 { InputDeliveryText(*queue, 66) }
+    if queue.count != 256 { return 35 }
+    InputDeliveryReset(*queue)
+    if queue.count != 0 { return 36 }
+    key, modifiers = InputDeliveryTake(*queue, session, 3)
+    if key != 0 || modifiers != 3 { return 37 }
+    // An invalid session takes nothing.
+    InputDeliveryKey(*queue, KeyEscape, 0, false)
+    invalid: Session
+    key, modifiers = InputDeliveryTake(*queue, invalid, 3)
+    if key != 0 || modifiers != 0 || queue.count != 1 { return 38 }
     return 0
 }

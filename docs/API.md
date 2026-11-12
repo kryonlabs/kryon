@@ -182,6 +182,37 @@ Labels are clipped/fitted without slicing UTF-8. Borrowed lists of at least
 or fully clipped bounds submit no controls. Keys, not indices or labels,
 preserve retained item identity and menu highlight across reorder.
 
+## Context menus
+
+`ContextMenu(session, props: ContextMenuProps, items: []ContextMenuItem)
+-> ContextMenuResult` is exported by `Widgets` and `contextmenu`. The caller
+keeps `open` and the pointer position (`x`, `y`); the result reports
+`activated_id` (0 for none) and `closed`. Submit it after the page's other
+controls.
+
+`ContextMenuItem` fields, in order: `id: s32` (positive; reported when
+chosen), `label: string`, `disabled: bool`, `separator: bool` (a divider; the
+other fields are ignored), `inline: bool` (a compact cell sharing a row with
+its inline neighbours), `parent: s32` (the id of the row whose submenu holds
+this one; a row others name shows › and opens the submenu instead of
+reporting), `accelerator: string`, `checkable: bool`, and `checked: bool`.
+New fields are appended, so positional `.{id, label, disabled, separator}`
+initializers keep their meaning.
+
+`accelerator` is a shortcut label such as `"Ctrl++"`, drawn right-aligned in
+the row in the theme's muted text colour, or in the disabled colour on a
+disabled row, before any ›. The panel widens so each row's label, a 32-unit
+gap and its accelerator fit. The menu only shows the label; the caller
+handles the shortcut.
+
+A `checkable` row draws a 14-unit check box at the row's left inset: empty
+when unchecked, with a check mark when `checked`. When any row of a panel
+is checkable, every label in that panel starts after the box column so the
+labels line up, as in GTK menus; panels without check rows keep the plain
+inset. Choosing a check row reports its id like any command, and the caller
+flips `checked`. Check rows keep the option role and expose `checked` as the
+row's selected state. Menus have no icons.
+
 ## Cards
 
 `Card(session, CardProps)` draws a filled, elevated or outlined Material surface.

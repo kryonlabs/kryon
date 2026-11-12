@@ -57,7 +57,7 @@ main :: (argc: s32, argv: **u8) -> s32 {
         defer { RaylibBundleClose(*host) }
         BeginRaylibFrame()
         TestClear(.{0,0,0,255})
-        if !RaylibBundleFrame(*host,.{0.0,0.0,80.0,60.0},0) { return 7 }
+        if !RaylibBundleFrame(*host,.{0.0,0.0,80.0,60.0}) { return 7 }
         unused EndRaylibFrame()
         image = TestCapture()
         if image.data == null || !CheckPixels(cast(*u8)image.data,true,image.width,golden) { return 8 }

@@ -110,14 +110,9 @@ main :: () -> s32 {
     page_native_dom = true
     ok: bool = true
     while ok && PollCanvas() {
-        key: s32 = CanvasPressedKey()
-        KeyboardModifiersSend(session, CanvasPressedKeyModifiers())
+        key, modifiers := CanvasInputTake(session)
+        KeyboardModifiersSend(session, modifiers)
         if key != 0 { KeyboardSend(session, key) }
-        codepoint: s32 = CanvasTypedCodepoint()
-        while codepoint != 0 {
-            TypedCodepointSend(session, codepoint)
-            codepoint = CanvasTypedCodepoint()
-        }
         ok = DrawDomFrame(session, CanvasViewport())
     }
     CloseSession(session)

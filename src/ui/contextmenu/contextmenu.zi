@@ -20,6 +20,14 @@ ContextMenuItem :: struct {
     // An item that others name here shows › and opens their submenu instead
     // of reporting a command.
     parent: s32
+    // A shortcut label, such as "Ctrl++", drawn dimmed at the row's right
+    // edge. The menu only shows it; the caller handles the shortcut.
+    accelerator: string
+    // A check row: a box at the row's left, marked when checked. Choosing it
+    // reports its id like any command; the caller flips checked. Labels in a
+    // panel holding a check row all start after the box column.
+    checkable: bool
+    checked: bool
 }
 
 ContextMenuProps :: struct {
@@ -63,6 +71,7 @@ ContextMenuResult :: struct {
     #import "overlay"
     #import "paint_queue"
     #import "semantic"
+    #import "svg_icon_behavior"
     #import "tree"
     #import "tree_input"
     #import "widget_kind"
@@ -82,6 +91,11 @@ ContextMenuResult :: struct {
     CONTEXT_MENU_INLINE_GAP :: 2;
     // Room after a submenu row's label for its ›.
     CONTEXT_MENU_ARROW :: 16;
+    // A check row's box, and the room between it and the label.
+    CONTEXT_MENU_CHECK :: 14;
+    CONTEXT_MENU_CHECK_GAP :: 8;
+    // The least room between a label and its accelerator.
+    CONTEXT_MENU_ACCELERATOR_GAP :: 32;
     // Nested submenus shown at once.
     CONTEXT_MENU_DEPTH :: 8;
 
@@ -111,6 +125,22 @@ ContextMenuResult :: struct {
         return false
     }
 
+    // Whether the panel holding the items under parent has a check row, so
+    // its labels leave room for the box.
+    ContextMenuLevelChecks :: (items: []ContextMenuItem, parent: s32) -> bool {
+        for item: items {
+            if item.parent == parent && item.checkable && !item.separator && !item.inline { return true }
+        }
+        return false
+    }
+
+    // Where a panel's row labels start, from the panel's left edge.
+    ContextMenuTextLeft :: (checks: bool, scale: float32) -> s32 {
+        left: s32 = ScalePixels(CONTEXT_MENU_TEXT_INSET, scale)
+        if checks { left += ScalePixels(CONTEXT_MENU_CHECK + CONTEXT_MENU_CHECK_GAP, scale) }
+        return left
+    }
+
     ContextMenuFind :: (items: []ContextMenuItem, id: s32) -> s32 {
         index: s32 = 0
         while index < cast(s32)items.count {
@@ -128,11 +158,13 @@ ContextMenuResult :: struct {
         return width
     }
 
-    // The panel holding the items under parent: as wide as its longest label
-    // or inline row, kept inside the view.
+    // The panel holding the items under parent: as wide as its longest row,
+    // with its check box, label, accelerator and ›, or inline row, kept inside
+    // the view.
     ContextMenuLevelBounds :: (items: []ContextMenuItem, parent: s32, x: float32, y: float32,
         view: Rectangle, scale: float32) -> Rectangle {
         width: s32 = ScalePixels(CONTEXT_MENU_MINIMUM_WIDTH, scale)
+        text_left: s32 = ContextMenuTextLeft(ContextMenuLevelChecks(items, parent), scale)
         height: s32 = ScalePixels(CONTEXT_MENU_PADDING, scale) * 2
         index: s32 = 0
         while index < cast(s32)items.count {
@@ -155,8 +187,12 @@ ContextMenuResult :: struct {
             } else {
                 height += ScalePixels(CONTEXT_MENU_ROW, scale)
                 label: s32 = GlyphWidth(items[index].label, ScalePixels(CONTEXT_MENU_FONT, scale), "") +
-                ScalePixels(CONTEXT_MENU_TEXT_INSET, scale) * 2
+                text_left + ScalePixels(CONTEXT_MENU_TEXT_INSET, scale)
                 if ContextMenuOpens(items, items[index].id) { label += ScalePixels(CONTEXT_MENU_ARROW, scale) }
+                if items[index].accelerator != "" {
+                    label += ScalePixels(CONTEXT_MENU_ACCELERATOR_GAP, scale) +
+                    GlyphWidth(items[index].accelerator, ScalePixels(CONTEXT_MENU_FONT, scale), "")
+                }
                 if label > width { width = label }
             }
             index += 1
@@ -231,6 +267,9 @@ ContextMenuResult :: struct {
         border: Color = StyleTokenColorOr("border", ColorFromPacked(Theme.CurrentBorder()))
         ink: Color = StyleTokenColorOr("text", ColorFromPacked(Theme.CurrentText()))
         muted: Color = StyleTokenColorOr("muted", ColorFromPacked(Theme.CurrentDisabled()))
+        // Accelerators use the theme's secondary text; disabled rows dim them
+        // with their labels.
+        secondary: Color = ColorFromPacked(Theme.CurrentMuted())
         highlight: Color = StyleTokenColorOr("accent-soft", ColorFromPacked(Theme.CurrentSelection()))
         PaintRoundedFill(session, panel_node, panel, cast(float32)ScalePixels(6, props.scale), 8, fill)
         PaintRoundedOutline(session, panel_node, panel, cast(float32)ScalePixels(6, props.scale), 8, cast(float32)ScalePixels(1, props.scale), border)
@@ -239,6 +278,7 @@ ContextMenuResult :: struct {
         inline_height: s32 = GlyphLineHeight(ScalePixels(CONTEXT_MENU_INLINE_FONT, props.scale), "")
         top: float32 = panel.y + cast(float32)ScalePixels(CONTEXT_MENU_PADDING, props.scale)
         left: float32 = panel.x + cast(float32)ScalePixels(3, props.scale)
+        text_left: s32 = ContextMenuTextLeft(ContextMenuLevelChecks(items, parent), props.scale)
         index: s32 = 0
         while index < cast(s32)items.count {
             item: ContextMenuItem = items[index]
@@ -289,6 +329,8 @@ ContextMenuResult :: struct {
                     TreeSetInteractive(session, node, item.disabled, false, 0)
                     TreeSetSemantic(session, node, cast(SemanticKind)SemanticOption, 0)
                     TreeSetLabel(session, node, item.label)
+                    // A check row reports its state as the option's selection.
+                    if item.checkable { TreeSetSelected(session, node, item.checked) }
                     hovered: bool = TreeHoveredAt(session, TreePrevious(session, panel_node,
                         ContextMenuRowKey(key, index), WidgetKindSelectable))
                     opens: bool = ContextMenuOpens(items, item.id)
@@ -300,9 +342,32 @@ ContextMenuResult :: struct {
                     color: Color = ink
                     if item.disabled { color = muted }
                     text_top: s32 = cast(s32)(top + (cast(float32)ScalePixels(CONTEXT_MENU_ROW, props.scale) - cast(float32)line_height) * 0.5)
+                    if item.checkable {
+                        size: float32 = cast(float32)ScalePixels(CONTEXT_MENU_CHECK, props.scale)
+                        box: Rectangle = Rectangle.{panel.x + cast(float32)ScalePixels(CONTEXT_MENU_TEXT_INSET, props.scale),
+                            top + (cast(float32)ScalePixels(CONTEXT_MENU_ROW, props.scale) - size) * 0.5, size, size}
+                        PaintRoundedOutline(session, node, box, cast(float32)ScalePixels(2, props.scale), 8,
+                            cast(float32)ScalePixels(1, props.scale), color)
+                        if item.checked {
+                            inset: float32 = size * 0.22
+                            check: [3]Vector2 = .[Vector2.{box.x + inset, box.y + size * 0.52},
+                                Vector2.{box.x + size * 0.42, box.y + size - inset},
+                                Vector2.{box.x + size - inset, box.y + inset}]
+                            PaintStroke(session, node, check[:], cast(float32)ScalePixels(2, props.scale), color)
+                        }
+                    }
                     PaintClippedLabel(session, node, item.label,
-                        cast(s32)(panel.x + cast(float32)ScalePixels(CONTEXT_MENU_TEXT_INSET, props.scale)),
+                        cast(s32)panel.x + text_left,
                         text_top, ScalePixels(CONTEXT_MENU_FONT, props.scale), color, row)
+                    if item.accelerator != "" {
+                        accelerator_color: Color = secondary
+                        if item.disabled { accelerator_color = muted }
+                        right: s32 = cast(s32)(panel.x + panel.width) - ScalePixels(CONTEXT_MENU_TEXT_INSET, props.scale)
+                        if opens { right -= ScalePixels(CONTEXT_MENU_ARROW, props.scale) }
+                        PaintClippedLabel(session, node, item.accelerator,
+                            right - GlyphWidth(item.accelerator, ScalePixels(CONTEXT_MENU_FONT, props.scale), ""),
+                            text_top, ScalePixels(CONTEXT_MENU_FONT, props.scale), accelerator_color, row)
+                    }
                     if opens {
                         arrow: s32 = GlyphWidth("›", ScalePixels(CONTEXT_MENU_FONT, props.scale), "")
                         PaintClippedLabel(session, node, "›",

@@ -4,7 +4,7 @@
 #import "tree"
 #import "tree_input"
 #import "ziran_widget_noop_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 
 test_session: Session;
 field_changed: bool;

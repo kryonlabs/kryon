@@ -8,6 +8,7 @@ Player :: #import "bundle_player";
 #import "bundle_storage_web"
 #import "key_input"
 #import "tree_input"
+#import "session"
 media: BundleMedia;
 apps: [2]BundleApp;
 active_app: s32;
@@ -239,6 +240,11 @@ main :: () -> s32 {
     if !RasterHostValid(raster) { return 1 }
     player: Player.Player
     defer { Player.PlayerClose(*player) }
+    // A raw player has no UI session; this one receives the page's ordered
+    // keys and text for it.
+    player_input := SessionOpen()
+    if !SessionValid(player_input) { return 1 }
+    defer { TreeInputReset(player_input); unused SessionClose(player_input) }
     initial, found := ReadEntireFile("/app.zx")
     AppFileFree(initial)
     embedded := found
@@ -256,15 +262,11 @@ main :: () -> s32 {
         BeginCanvasFrame()
         if hosted {
             app := *apps[active_app]
-            point := CanvasTypedCodepoint()
-            while point != 0 {
-                unused TypedCodepointSend(app.app.session, point)
-                point = CanvasTypedCodepoint()
-            }
+            key, modifiers := CanvasInputTake(app.app.session)
             typed: [1024]u8
             text := TypedTextTake(app.app.session, typed[:])
             if !BundleAppFrame(app, CanvasViewport(), PollPointer(), PollSecondaryPointer(),
-                CanvasPressedKey(), CanvasModifiers(), CanvasWheelMove(), text, PageNow() / 1000.0) {
+                key, modifiers, CanvasWheelMove(), text, PageNow() / 1000.0) {
                 ShowStatus("The app frame failed.")
             }
             CanvasCursor(app.app.session)
@@ -276,18 +278,19 @@ main :: () -> s32 {
             viewport := CanvasViewport()
             pointer := PollPointer()
             secondary := PollSecondaryPointer()
-            point := CanvasTypedCodepoint()
+            key, modifiers := CanvasInputTake(player_input)
+            point := TypedCodepointTake(player_input)
             while point != 0 {
                 Player.PlayerTyped(*player, point)
-                point = CanvasTypedCodepoint()
+                point = TypedCodepointTake(player_input)
             }
             if !Player.PlayerFrameNative(*player, Player.Input.{
                     .width = cast(s32)viewport.width, .height = cast(s32)viewport.height,
                     .x = pointer.x, .y = pointer.y, .down = pointer.down,
                     .pressed = pointer.pressed, .released = pointer.released,
                     .secondary_down = secondary.down, .secondary_pressed = secondary.pressed,
-                    .secondary_released = secondary.released, .modifiers = CanvasModifiers(),
-                    .key = CanvasPressedKey(), .wheel = CanvasWheelMove()}) {
+                    .secondary_released = secondary.released, .modifiers = modifiers,
+                    .key = key, .wheel = CanvasWheelMove()}) {
                 ShowStatus("The ZX finished or its frame failed. Choose a file to open another app.")
             }
         } else {

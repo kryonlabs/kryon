@@ -80,6 +80,9 @@ DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
     if finished.status != cast(FrameStatus)FrameOk { return false }
     unused DesktopCursor(session)
     DesktopFrameUnchanged(finished.paint_unchanged)
+    // Present before publishing accessibility changes: they never change
+    // pixels, and assistive technology reads the same finished tree.
+    presented := EndDesktopFrame()
     if !accessibility_attempted && !CaptureRequested() {
         accessibility_attempted = true
         title: string = ProgramTitle()
@@ -93,7 +96,7 @@ DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
         accessibility_enabled = false
         unused DesktopError("kryon: Linux accessibility synchronization failed")
     }
-    return EndDesktopFrame()
+    return presented
 }
 
 // Runs the app's frames in a desktop window of `width` by `height` pixels
@@ -103,7 +106,6 @@ RunDesktop :: (width: s32 = 960, height: s32 = 600) -> s32 {
         CloseDesktop()
         return DesktopError("kryon: could not open the desktop window")
     }
-    DesktopInputEnable()
     session: Session = SessionOpen()
     if !SessionValid(session) {
         CloseDesktop()
@@ -121,18 +123,8 @@ RunDesktop :: (width: s32 = 960, height: s32 = 600) -> s32 {
             if !PollDesktop() { break }
             key, modifiers := DesktopInputTake(session)
             KeyboardModifiersSend(session, modifiers)
-            if key == 0 {
-                for candidate: cast(s32)0..349 {
-                    if TestDriverKeyPressed(candidate) { key = candidate; break }
-                }
-            }
             if key != 0 { KeyboardSend(session, key) }
-            codepoint: s32 = ifx TypedCodepointPeek(session) == 0 then TestDriverCodepoint() else 0
-            keyboard_activity := key != 0 || TypedCodepointPeek(session) != 0 || codepoint != 0
-            while codepoint != 0 {
-                TypedCodepointSend(session, codepoint)
-                codepoint = ifx TypedCodepointCapacity(session)>0 then TestDriverCodepoint() else 0
-            }
+            keyboard_activity := key != 0 || TypedCodepointPeek(session) != 0
             ok = DrawFrame(session, keyboard_activity)
             TestDriverFrame(session)
             if ok { PauseDesktop() }

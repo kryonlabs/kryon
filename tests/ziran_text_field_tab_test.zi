@@ -9,7 +9,7 @@
 #import "button"
 #import "input_props"
 #import "ziran_widget_noop_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 
 Draw :: (session: Session, props: TextFieldProps, clipped: bool) -> s32 {
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})

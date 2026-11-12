@@ -2426,9 +2426,9 @@ WidgetValidContextMenuProps :: (value: HostValue) -> bool {
     return true
 }
 
-// Widget codec schema: ["ContextMenuItem",[["id","s32"],["label","string"],["disabled","bool"],["separator","bool"],["inline","bool"],["parent","s32"]]]
+// Widget codec schema: ["ContextMenuItem",[["id","s32"],["label","string"],["disabled","bool"],["separator","bool"],["inline","bool"],["parent","s32"],["accelerator","string"],["checkable","bool"],["checked","bool"]]]
 WidgetContextMenuItemCodec :: struct {
-    fields: [6]HostField
+    fields: [9]HostField
 }
 
 WidgetDecodeContextMenuItem :: (value: HostValue, codec: *WidgetContextMenuItemCodec) -> ContextMenuItem {
@@ -2441,6 +2441,9 @@ WidgetDecodeContextMenuItem :: (value: HostValue, codec: *WidgetContextMenuItemC
     data.separator = HostFieldValue(*value, 3, "separator", *zero).integer != 0
     data.inline = HostFieldValue(*value, 4, "inline", *zero).integer != 0
     data.parent = cast(s32)HostFieldValue(*value, 5, "parent", *zero).integer
+    data.accelerator = HostValueText(HostFieldValue(*value, 6, "accelerator", *zero).*)
+    data.checkable = HostFieldValue(*value, 7, "checkable", *zero).integer != 0
+    data.checked = HostFieldValue(*value, 8, "checked", *zero).integer != 0
     return data
 }
 
@@ -2452,6 +2455,9 @@ WidgetValidContextMenuItem :: (value: HostValue) -> bool {
     if !HostFieldScalarValid(*value, 3, "separator", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 4, "inline", "bool", cast(s32)HostInteger) { return false }
     if !HostFieldScalarValid(*value, 5, "parent", "s32", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 6, "accelerator", "string", cast(s32)HostString) { return false }
+    if !HostFieldScalarValid(*value, 7, "checkable", "bool", cast(s32)HostInteger) { return false }
+    if !HostFieldScalarValid(*value, 8, "checked", "bool", cast(s32)HostInteger) { return false }
     return true
 }
 

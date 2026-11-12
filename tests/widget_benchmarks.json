@@ -5,14 +5,14 @@
   "sources": [
     "tests/widget_benchmarks.zi",
     "tests/widget_benchmark_host.zi",
-    "tests/ziran_system_clipboard_host.zi"
+    "tests/system_clipboard_host.zi"
   ],
   "bindings": [
     "image_raster:ImageWidth=widget_benchmark_host:ImageWidth",
     "image_raster:ImageHeight=widget_benchmark_host:ImageHeight",
-    "system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost",
-    "system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost",
-    "system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost",
+    "system_clipboard:SystemClipboardOpenHost=system_clipboard_host:SystemClipboardOpenHost",
+    "system_clipboard:SystemClipboardByteHost=system_clipboard_host:SystemClipboardByteHost",
+    "system_clipboard:SystemClipboardWriteHost=system_clipboard_host:SystemClipboardWriteHost",
     "kryon/font_metrics:MeasureGlyphWidth=widget_benchmark_host:MeasureGlyphWidth",
     "kryon/font_metrics:MeasureGlyphLineHeight=widget_benchmark_host:MeasureGlyphLineHeight",
     "kryon/raster_text:RasterText=widget_benchmark_host:RasterText",

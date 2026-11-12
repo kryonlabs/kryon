@@ -40,14 +40,13 @@ Step :: (session: Session, key: s32 = 0, flags: u8 = cast(u8)0,
     if !PollDesktop() || !DesktopFrameInputBegin(session) { return false }
     sample := CaptureFrameInput(session)
     FrameInputEnd(session)
-    last := DesktopPressedKey()
-    next := DesktopNextKey()
-    after := DesktopNextKey()
+    taken, modifiers := DesktopInputTake(session)
+    after, after_modifiers := DesktopInputTake(session)
     valid := sample.available && sample.focused == focused && sample.keys[key] == flags &&
-        last == legacy && next == legacy && after == 0
+        taken == legacy && modifiers == 0 && after == 0
     if !valid {
-        print("key % flags % expected %, focus % expected %, queues %/%/% expected %/%/0\n",
-            key, sample.keys[key], flags, sample.focused, focused, last, next, after, legacy, legacy)
+        print("key % flags % expected %, focus % expected %, delivered %/% expected %/0\n",
+            key, sample.keys[key], flags, sample.focused, focused, taken, after, legacy)
     }
     return valid
 }
@@ -119,7 +118,8 @@ main :: () -> s32 {
     // Loss/regain in one poll also suppresses a controller activation.
     if !Focus(false) || !Focus(true) || !Button(instances[0], 1, true) || !Step(session, 256, cast(u8)1) { return 76 }
     CloseDesktop()
-    if DesktopPressedKey() != 0 || DesktopNextKey() != 0 || CaptureFrameInput(session).available { return 81 }
+    closed, closed_modifiers := DesktopInputTake(session)
+    if closed != 0 || CaptureFrameInput(session).available { return 81 }
     if !OpenDesktopSized(160, 120) || !Focus(true) || !Step(session) { return 80 }
     return 0
 }

@@ -265,11 +265,11 @@ assets = "assets"
     host_common=['--project','--root',ROOT/'tests','--module-path',ROOT/'tests']
     host=ROOT/'tests/cursor_host_test.zi'
     noop=ROOT/'tests/ziran_widget_noop_host.zi'
-    clipboard=ROOT/'tests/ziran_system_clipboard_host.zi'
+    clipboard=ROOT/'tests/system_clipboard_host.zi'
     run([ZIRAN,'ir',*host_common,'-o',OUTPUT/'host-ir',host,noop,clipboard])
     for form in ('source','saved'):
         paths=host_common if form=='source' else ['--root',OUTPUT/'host-ir']
-        roots=[host,noop,clipboard] if form=='source' else [OUTPUT/'host-ir/cursor_host_test.zir',OUTPUT/'host-ir/ziran_widget_noop_host.zir',OUTPUT/'host-ir/ziran_system_clipboard_host.zir']
+        roots=[host,noop,clipboard] if form=='source' else [OUTPUT/'host-ir/cursor_host_test.zir',OUTPUT/'host-ir/ziran_widget_noop_host.zir',OUTPUT/'host-ir/system_clipboard_host.zir']
         gen=OUTPUT/'host-c'
         run([ZIRAN,'build','--target=c','--no-main',*paths,'--entry','cursor_host_test:main','-o',gen,*roots])
         run([os.environ.get('CC','cc'),'-O1','-ffunction-sections','-fdata-sections',

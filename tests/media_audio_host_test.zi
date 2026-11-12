@@ -20,7 +20,7 @@
 #import "drawing_props"
 #import "frame_replay"
 #import "ziran_composition_widget_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 audio_test_c :: #system_library "c";
 AudioTestFailure :: (format: *u8, code: s64, trapped: s32) -> s32 #foreign audio_test_c "printf";
 #program_export

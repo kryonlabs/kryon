@@ -79,14 +79,9 @@ main :: () -> s32 {
         if ok { ok = CaptureConfigured() }
     } else {
         while ok && PollDesktop() {
-            KeyboardModifiersSend(session, DesktopModifiers())
-            key := DesktopPressedKey()
+            key, modifiers := DesktopInputTake(session)
+            KeyboardModifiersSend(session, modifiers)
             if key != 0 { unused KeyboardSend(session, key) }
-            codepoint := DesktopTypedCodepoint()
-            while codepoint != 0 {
-                unused TypedCodepointSend(session, codepoint)
-                codepoint = DesktopTypedCodepoint()
-            }
             ok = Draw(session, PollPointer(), DesktopWheelMove())
             if ok { PauseDesktop() }
         }

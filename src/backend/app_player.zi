@@ -160,7 +160,6 @@ Run :: (bundle: *void, check: bool) -> s32 {
     if ready {
         ready = OpenDesktop()
         if ready {
-            DesktopInputEnable()
             SetTitle(window, *app.name[0])
             ready = WindowInterceptCloseHost(true)
         }

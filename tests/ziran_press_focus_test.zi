@@ -11,7 +11,7 @@
 #import "tree_input"
 #import "ziran_button_widget_host"
 #import "ziran_composition_widget_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 
 using FrameStatus;
 

@@ -2,6 +2,11 @@
 #import "geometry"
 
 labels: s32;
+fills: s32;
+outlines: s32;
+// The x where the watched label was last drawn, -1 before it is drawn.
+watched: string;
+watched_x: s32 = -1;
 
 #program_export
 MeasureGlyphWidth :: (value: string, font: s32, typeface: string) -> s32 {
@@ -17,11 +22,15 @@ MeasureGlyphLineHeight :: (font: s32, typeface: string) -> s32 {
 
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
-    segments: s32, color: Color) {}
+    segments: s32, color: Color) {
+    fills += 1
+}
 
 #program_export
 RasterRoundedRectangleOutline :: (bounds: Rectangle, radius: float32,
-    segments: s32, width: float32, color: Color) {}
+    segments: s32, width: float32, color: Color) {
+    outlines += 1
+}
 
 #program_export
 RasterLine :: (bounds: Rectangle, color: Color) {}
@@ -35,6 +44,7 @@ RasterText :: (value: string, x: s32, y: s32, font: s32, color: Color) {
 RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle) {
     labels += 1
+    if value == watched { watched_x = x }
 }
 
 #program_export
@@ -49,6 +59,21 @@ RasterImageMesh :: (path: string, texture_id: u32, source: Rectangle,
 
 #program_export
 ContextMenuLabelCount :: () -> s32 { return labels }
+
+#program_export
+ContextMenuFillCount :: () -> s32 { return fills }
+
+#program_export
+ContextMenuOutlineCount :: () -> s32 { return outlines }
+
+#program_export
+ContextMenuWatchLabel :: (value: string) {
+    watched = value
+    watched_x = -1
+}
+
+#program_export
+ContextMenuWatchedX :: () -> s32 { return watched_x }
 
 #program_export
 RasterTextRotated :: (value: string, x: s32, y: s32, font: s32, color: Color,

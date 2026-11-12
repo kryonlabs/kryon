@@ -129,26 +129,13 @@ Step :: (session: Session, flags: u8, focused: bool = true, legacy: s32 = 0,
     Probe.expected_text = typed
     Probe.callback_fail = fail
     key: s32
+    modifiers: s32
     #if #defined(PLATFORM_WEB) {
-        key = CanvasPressedKey()
+        key, modifiers = CanvasInputTake(session)
     } else {
-        key = DesktopPressedKey()
+        key, modifiers = DesktopInputTake(session)
     }
     if key != 0 { unused KeyboardSend(session, key) }
-    codepoint: s32
-    #if #defined(PLATFORM_WEB) {
-        codepoint = CanvasTypedCodepoint()
-    } else {
-        codepoint = DesktopTypedCodepoint()
-    }
-    while codepoint != 0 {
-        unused TypedCodepointSend(session, codepoint)
-        #if #defined(PLATFORM_WEB) {
-            codepoint = CanvasTypedCodepoint()
-        } else {
-            codepoint = DesktopTypedCodepoint()
-        }
-    }
     drawn: bool
     #if #defined(PLATFORM_WEB) {
         drawn = Host.DrawCanvasFrame(session, CanvasViewport())

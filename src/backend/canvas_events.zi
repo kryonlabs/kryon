@@ -5,6 +5,7 @@
 #import "page_core"
 #import "gamepad_navigation"
 #import "input_protocol"
+#import "input_delivery"
 #import "text_input"
 
 using CompositionPhase;
@@ -87,17 +88,14 @@ using CompositionPhase;
     canvas_keys_released_count: s32;
     canvas_keys_repeated: [CANVAS_QUEUE_LIMIT]s32;
     canvas_keys_repeated_count: s32;
-    // Delivery queues outlive a drawing frame. Edge queues above still expire
-    // at EndFrame, even when the app takes only one key before BeginDrawing.
-    CanvasKeyEvent :: struct {
-        key: s32
-        modifiers: s32
-    }
-    canvas_key_event: CanvasKeyEvent;
-    canvas_pending_keys: [CANVAS_QUEUE_LIMIT]CanvasKeyEvent;
-    canvas_pending_keys_count: s32;
-    canvas_pending_repeats: [CANVAS_QUEUE_LIMIT]CanvasKeyEvent;
-    canvas_pending_repeats_count: s32;
+    // Ordered session delivery outlives a drawing frame. The edge queues
+    // above and below expire at EndFrame, even when the app takes its input
+    // before BeginDrawing.
+    canvas_input: InputDelivery;
+    // Raylib-compatible reads for apps written against raylib's API:
+    // GetKeyPressed walks this frame's fresh presses, GetCharPressed takes
+    // this frame's characters.
+    canvas_keys_pressed_read: s32;
     canvas_chars: [CANVAS_QUEUE_LIMIT]s32;
     canvas_chars_count: s32;
 
@@ -144,6 +142,7 @@ using CompositionPhase;
         keys_pressed: s32
         keys_released: s32
         keys_repeated: s32
+        chars: s32
         buttons_pressed: s32
         buttons_released: s32
         mouse_delta_x: float64
@@ -185,6 +184,9 @@ using CompositionPhase;
         if items == *canvas_keys_repeated[0] && canvas_frame_input.keys_repeated > 0 {
             canvas_frame_input.keys_repeated -= 1
         }
+        if items == *canvas_chars[0] && canvas_frame_input.chars > 0 {
+            canvas_frame_input.chars -= 1
+        }
         return first
     }
 
@@ -196,30 +198,6 @@ using CompositionPhase;
         canvas_keys_down[343] || canvas_keys_down[347] { value |= KeyModifierControl }
         if canvas_keys_down[342] || canvas_keys_down[346] { value |= KeyModifierAlt }
         return value
-    }
-
-    CanvasKeyQueuePush :: (items: *CanvasKeyEvent, count: *s32, key: s32, modifiers: s32) {
-        if count.* >= CANVAS_QUEUE_LIMIT { return }
-        items[count.*] = CanvasKeyEvent.{key, modifiers}
-        count.* += 1
-    }
-
-    CanvasKeyQueueTake :: (items: *CanvasKeyEvent, count: *s32) -> s32 {
-        canvas_key_event = CanvasKeyEvent.{0, CanvasHeldModifiers()}
-        if count.* <= 0 { return 0 }
-        canvas_key_event = items[0]
-        for index: cast(s32)1..count.* - 1 { items[index - 1] = items[index] }
-        count.* -= 1
-        return canvas_key_event.key
-    }
-
-    CanvasAppKeyTake :: () -> s32 {
-        key := CanvasKeyQueueTake(*canvas_pending_keys[0], *canvas_pending_keys_count)
-        if key != 0 { return key }
-        key = CanvasKeyQueueTake(*canvas_pending_repeats[0], *canvas_pending_repeats_count)
-        if key != 0 { return key }
-        if !canvas_focused || canvas_snapshot_focus_lost { return 0 }
-        return GamepadNavigationTake(*canvas_gamepad_navigation)
     }
 
     CanvasQueueDiscard :: (items: *s32, count: *s32, consumed: s32) {
@@ -366,19 +344,26 @@ using CompositionPhase;
         return CanvasEventPreventDefault
     }
 
+    CanvasTyped :: (codepoint: s32) {
+        InputDeliveryText(*canvas_input, codepoint)
+        CanvasQueuePush(*canvas_chars[0], *canvas_chars_count, codepoint)
+    }
+
     CanvasKeyDown :: (code: string, key: string, repeated: bool,
         modifiers: s32) -> s32 {
         mapped: s32 = CanvasKeyOf(code, key)
         if mapped <= 0 || mapped >= CANVAS_KEY_LIMIT { return 0 }
         flags: s32 = 0
+        // The page folds Command into Control, so both make shortcuts.
+        shortcut := (modifiers & (KeyModifierControl | KeyModifierAlt)) != 0
         if canvas_keys_down[mapped] && repeated {
             CanvasQueuePush(*canvas_keys_repeated[0],
                 *canvas_keys_repeated_count, mapped)
-            CanvasKeyQueuePush(*canvas_pending_repeats[0], *canvas_pending_repeats_count, mapped, modifiers)
+            InputDeliveryKey(*canvas_input, mapped, modifiers, shortcut)
         } else if !canvas_keys_down[mapped] {
             CanvasQueuePush(*canvas_keys_pressed[0],
                 *canvas_keys_pressed_count, mapped)
-            CanvasKeyQueuePush(*canvas_pending_keys[0], *canvas_pending_keys_count, mapped, modifiers)
+            InputDeliveryKey(*canvas_input, mapped, modifiers, shortcut)
         }
         canvas_keys_down[mapped] = true
         if (modifiers & KeyModifierControl) != 0 && (mapped == 65 || mapped == 67 || mapped == 86 ||
@@ -389,9 +374,7 @@ using CompositionPhase;
         }
         // Preventing Space's page scroll also suppresses DOM keypress.
         // Submit its character here so text fields retain typed spaces.
-        if mapped == 32 && key == " " {
-            CanvasQueuePush(*canvas_chars[0], *canvas_chars_count, 32)
-        }
+        if mapped == 32 && key == " " { CanvasTyped(32) }
         if CanvasKeyIsPageKey(mapped) { flags |= CanvasEventPreventDefault }
         return flags
     }
@@ -456,9 +439,7 @@ using CompositionPhase;
         if kind == CanvasEventKeyChar {
             if canvas_composition_active { return CanvasEventPreventDefault }
             typed: s32 = CanvasSingleCodepoint(TextFromCString(key))
-            if typed != 0 && typed != 32 {
-                CanvasQueuePush(*canvas_chars[0], *canvas_chars_count, typed)
-            }
+            if typed != 0 && typed != 32 { CanvasTyped(typed) }
             return 0
         }
         if kind == CanvasEventCompositionStart || kind == CanvasEventCompositionUpdate ||
@@ -506,9 +487,7 @@ using CompositionPhase;
         }
         if kind == CanvasEventBlur {
             GamepadNavigationBlur(*canvas_gamepad_navigation)
-            canvas_key_event = .{}
-            canvas_pending_keys_count = 0
-            canvas_pending_repeats_count = 0
+            InputDeliveryBlur(*canvas_input)
             canvas_focused = false
             canvas_snapshot_focus_lost = true
             index: s32 = 0
@@ -538,7 +517,7 @@ using CompositionPhase;
 
     // Forget all earlier input.
     CanvasEventsReset :: () {
-        canvas_key_event = .{}
+        InputDeliveryReset(*canvas_input)
         canvas_gamepad_navigation = .{}
         canvas_frame_input = CanvasFrameInput.{}
         index: s32 = 0
@@ -554,8 +533,7 @@ using CompositionPhase;
         canvas_keys_pressed_count = 0
         canvas_keys_released_count = 0
         canvas_keys_repeated_count = 0
-        canvas_pending_keys_count = 0
-        canvas_pending_repeats_count = 0
+        canvas_keys_pressed_read = 0
         canvas_chars_count = 0
         canvas_buttons_pressed_count = 0
         canvas_buttons_released_count = 0
@@ -597,6 +575,7 @@ using CompositionPhase;
             keys_pressed = canvas_keys_pressed_count,
             keys_released = canvas_keys_released_count,
             keys_repeated = canvas_keys_repeated_count,
+            chars = canvas_chars_count,
             buttons_pressed = canvas_buttons_pressed_count,
             buttons_released = canvas_buttons_released_count,
             mouse_delta_x = canvas_mouse_delta_x,
@@ -613,10 +592,13 @@ using CompositionPhase;
     CanvasEventsEndFrame :: () {
         CanvasQueueDiscard(*canvas_keys_pressed[0], *canvas_keys_pressed_count,
             canvas_frame_input.keys_pressed)
+        canvas_keys_pressed_read -= canvas_frame_input.keys_pressed
+        if canvas_keys_pressed_read < 0 { canvas_keys_pressed_read = 0 }
         CanvasQueueDiscard(*canvas_keys_released[0], *canvas_keys_released_count,
             canvas_frame_input.keys_released)
         CanvasQueueDiscard(*canvas_keys_repeated[0], *canvas_keys_repeated_count,
             canvas_frame_input.keys_repeated)
+        CanvasQueueDiscard(*canvas_chars[0], *canvas_chars_count, canvas_frame_input.chars)
         CanvasQueueDiscard(*canvas_buttons_pressed[0], *canvas_buttons_pressed_count,
             canvas_frame_input.buttons_pressed)
         CanvasQueueDiscard(*canvas_buttons_released[0], *canvas_buttons_released_count,

@@ -1,0 +1,124 @@
+// Ordered UI input for one host: keys and typed text in the order they
+// arrived. A host pushes what it observes while polling; its frame loop moves
+// that input into one session with InputDeliveryTake. Physical modifier
+// transitions stay raw observations: each key carries the modifiers held
+// with it, as portable KeyModifier bits.
+#import "input_protocol"
+#import "session"
+#import "tree_input"
+
+INPUT_DELIVERY_CAPACITY :: 256;
+// Key presses wait once this many events are pending; text may fill the rest.
+INPUT_DELIVERY_KEY_LIMIT :: 32;
+
+InputDeliveryEvent :: struct {
+    code: s32
+    modifiers: s32
+    text: bool
+    editing: bool
+}
+
+InputDelivery :: struct {
+    events: [INPUT_DELIVERY_CAPACITY]InputDeliveryEvent
+    head: s32
+    count: s32
+    // What the previous take left: its session, whether it delivered text,
+    // and the session's remaining text capacity.
+    session: Session
+    delivered: bool
+    capacity: s32
+}
+
+// Whether a key edits instead of typing: the named keys from Escape through
+// the keypad, and printable keys pressed with a shortcut modifier. The host
+// decides the shortcut modifiers (Control, Alt, Super or Command), so a
+// Command shortcut is an editing action even without a KeyModifier bit.
+InputDeliveryEditing :: (code: s32, shortcut: bool) -> bool {
+    return (code >= KeyEscape && code < 340) || (shortcut && code >= 32 && code < 127)
+}
+
+// Queue a key press or repeat. Modifier keys themselves are not queued: a
+// later Control press must never turn the text before it into a shortcut.
+// A full queue drops the event; hosts that can wait check InputDeliveryAccepts.
+InputDeliveryKey :: (queue: *InputDelivery, code: s32, modifiers: s32, shortcut: bool) {
+    if code <= 0 || (code >= 340 && code <= 347) || queue.count >= INPUT_DELIVERY_CAPACITY { return }
+    at := (queue.head + queue.count) % INPUT_DELIVERY_CAPACITY
+    queue.events[at] = .{code, modifiers, false, InputDeliveryEditing(code, shortcut)}
+    queue.count += 1
+}
+
+// Queue one typed Unicode scalar value.
+InputDeliveryText :: (queue: *InputDelivery, codepoint: s32) {
+    if codepoint <= 0 || queue.count >= INPUT_DELIVERY_CAPACITY { return }
+    at := (queue.head + queue.count) % INPUT_DELIVERY_CAPACITY
+    queue.events[at] = .{codepoint, 0, true, false}
+    queue.count += 1
+}
+
+// Whether `keys` more key presses and `text` more scalar values fit now. A
+// host that can leave input in its platform queue waits instead of dropping.
+InputDeliveryAccepts :: (queue: *InputDelivery, keys: s32, text: s32) -> bool {
+    return queue.count + keys + text <= INPUT_DELIVERY_CAPACITY &&
+        (keys == 0 || queue.count < INPUT_DELIVERY_KEY_LIMIT)
+}
+
+// Focus loss cancels pending keys, so no shortcut fires after the window
+// lost focus. Text already typed stays, in order.
+InputDeliveryBlur :: (queue: *InputDelivery) {
+    kept: s32 = 0
+    for index: cast(s32)0..queue.count - 1 {
+        item := queue.events[(queue.head + index) % INPUT_DELIVERY_CAPACITY]
+        if item.text {
+            queue.events[(queue.head + kept) % INPUT_DELIVERY_CAPACITY] = item
+            kept += 1
+        }
+    }
+    queue.count = kept
+}
+
+// Forget all pending input, as a host does when it opens or closes.
+InputDeliveryReset :: (queue: *InputDelivery) {
+    queue.* = .{}
+}
+
+// Move one editing action, or one run of printable keys and text, into the
+// session. Returns the key to send with KeyboardSend (0 for none) and its
+// KeyModifier bits; with nothing taken, the modifiers are held_modifiers.
+// Text the session has not read yet blocks the next editing action, so an
+// edit never overtakes the text typed before it. Enter ending a text run
+// delivered by this same call is the exception: it commits that text.
+// Text the application left entirely unread since the previous take, which
+// delivered none, is abandoned: it no longer holds edits back, and new text
+// that finds no room behind it is dropped instead of stalling every key.
+InputDeliveryTake :: (queue: *InputDelivery, session: Session,
+    held_modifiers: s32) -> (key: s32, modifiers: s32) {
+    if !SessionValid(session) { return 0, 0 }
+    key: s32 = 0
+    modifiers: s32 = 0
+    unread := TypedCodepointPeek(session) != 0
+    abandoned := unread && !queue.delivered && queue.session.slot == session.slot &&
+        queue.session.epoch == session.epoch && TypedCodepointCapacity(session) == queue.capacity
+    consumed: bool = unread && !abandoned
+    delivered_text := false
+    while queue.count > 0 {
+        item := queue.events[queue.head]
+        submit_text_run := item.code == KeyEnter && !item.text && !unread && delivered_text
+        if item.editing && consumed && !submit_text_run { break }
+        if item.text {
+            if TypedCodepointSend(session, item.code) { delivered_text = true }
+            else if !abandoned { break }
+        } else {
+            key = item.code
+            modifiers = item.modifiers
+        }
+        queue.head = (queue.head + 1) % INPUT_DELIVERY_CAPACITY
+        queue.count -= 1
+        consumed = true
+        if item.editing { break }
+    }
+    queue.session = session
+    queue.delivered = delivered_text
+    queue.capacity = TypedCodepointCapacity(session)
+    if !consumed { return 0, ifx unread then 0 else held_modifiers }
+    return key, modifiers
+}

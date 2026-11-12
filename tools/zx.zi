@@ -5,6 +5,8 @@
 #import "c_string"
 #import "cairo_raster"
 #import "desktop_runtime"
+#import "session"
+#import "tree_input"
 #import "geometry"
 #import "hosted_values"
 #import "drawing_props"
@@ -33,6 +35,11 @@ Player :: struct {
     fields: [13]HostField
     names: [27]Name
     bindings: Vec(HostBinding)
+    // A raw bundle has no UI session; this one receives the window's ordered
+    // keys and text, and the bundle reads one key and its modifiers a frame.
+    input: Session
+    key: s32
+    modifiers: s32
 }
 
 Names :: #import "bundle_names";
@@ -226,8 +233,9 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
         player.fields[7].value.integer = cast(s64)secondary.down
         player.fields[8].value.integer = cast(s64)secondary.pressed
         player.fields[9].value.integer = cast(s64)secondary.released
-        player.fields[10].value.integer = cast(s64)DesktopModifiers()
-        player.fields[11].value.integer = cast(s64)DesktopPressedKey()
+        player.fields[10].value.integer = cast(s64)player.modifiers
+        player.fields[11].value.integer = cast(s64)player.key
+        player.key = 0
         player.fields[12].value.real = cast(float64)DesktopWheelMove()
         result.kind = HostRecord
         result.type_name = *player.names[26].bytes[0]
@@ -237,7 +245,7 @@ PlayerCall :: (context: *void, module_name: *u8, function_name: *u8,
     }
     if function == "TakeBundleCodepoint" && count == 0 {
         result.kind = HostInteger
-        result.integer = cast(s64)DesktopTypedCodepoint()
+        result.integer = cast(s64)TypedCodepointTake(player.input)
         return 1
     }
     raster_status := PlayerRasterCall(function, args, count, result)
@@ -617,6 +625,10 @@ main :: (argc: s32, argv: **u8) -> s32 {
     }
     if ok { ok = OpenDesktop() }
     if ok {
+        player.input = SessionOpen()
+        ok = SessionValid(player.input)
+    }
+    if ok {
         if CaptureRequested() {
             ok = RunFrame(instance)
             if ok { ok = RunFrame(instance) }
@@ -624,6 +636,9 @@ main :: (argc: s32, argv: **u8) -> s32 {
         } else {
             next_check: s64
             while ok && PollDesktop() {
+                key, modifiers := DesktopInputTake(player.input)
+                player.key = key
+                player.modifiers = modifiers
                 now := MonotonicMilliseconds()
                 if watch && now >= next_check {
                     next_check = now + 1000
@@ -633,6 +648,10 @@ main :: (argc: s32, argv: **u8) -> s32 {
                 if ok { PauseDesktop() }
             }
         }
+    }
+    if SessionValid(player.input) {
+        TreeInputReset(player.input)
+        unused SessionClose(player.input)
     }
     Media.CloseMedia()
     Video.VideoStopHost()

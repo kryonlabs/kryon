@@ -116,14 +116,9 @@ main :: () -> s32 {
     if !SessionValid(session) { return 3 }
     frame: s32 = 0
     while Desktop.PollDesktop() && frame < 900 {
-        KeyboardModifiersSend(session, Desktop.DesktopModifiers())
-        key: s32 = Desktop.DesktopPressedKey()
+        key, modifiers := Desktop.DesktopInputTake(session)
+        KeyboardModifiersSend(session, modifiers)
         if key != 0 { unused KeyboardSend(session, key) }
-        codepoint: s32 = Desktop.DesktopTypedCodepoint()
-        while codepoint != 0 {
-            unused TypedCodepointSend(session, codepoint)
-            codepoint = Desktop.DesktopTypedCodepoint()
-        }
         Desktop.BeginDesktopFrame()
         if BeginFrame(session, cast(u64)1, Desktop.DesktopViewport()) !=
             FrameStatus.FrameOk { return 4 }

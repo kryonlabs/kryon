@@ -65,9 +65,14 @@
     IsMouseButtonReleased :: (code: s32) -> bool {
         return CanvasQueueHas(*canvas_buttons_released[0], canvas_buttons_released_count, code)
     }
+    // Raylib's frame queues, for browser builds of apps written against
+    // raylib's API. Kryon sessions take ordered input with CanvasInputTake.
     #program_export
     GetKeyPressed :: () -> s32 {
-        return CanvasKeyQueueTake(*canvas_pending_keys[0], *canvas_pending_keys_count)
+        if canvas_keys_pressed_read >= canvas_keys_pressed_count { return 0 }
+        key := canvas_keys_pressed[canvas_keys_pressed_read]
+        canvas_keys_pressed_read += 1
+        return key
     }
 
     #program_export

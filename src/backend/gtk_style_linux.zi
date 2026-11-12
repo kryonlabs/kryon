@@ -594,9 +594,52 @@ GtkMarkupPlain :: (markup: string, output: []u8) -> s32 {
     return cast(s32)plain.count
 }
 
+#scope_file
+// Resolved style metrics are a pure function of the node path, scale and the
+// current style generation, which every theme, setting, icon-theme and
+// provider change advances. Frames repeat the same paths many times, so keep
+// the resolved values instead of rebuilding GTK style contexts each time.
+StyleQueryEntry :: struct { key: u64; generation: u64; scale: s32; metrics: GtkStyleMetrics }
+style_queries: [512]StyleQueryEntry;
+StyleKeyText :: (hash: u64, text: string) -> u64 {
+    hash = (hash ^ cast(u64)text.count) * cast(u64)1099511628211
+    for c: text { hash = (hash ^ cast(u64)c) * cast(u64)1099511628211 }
+    return hash
+}
+StyleKeyValue :: (hash: u64, value: u64) -> u64 { return (hash ^ value) * cast(u64)1099511628211 }
+StyleQueryKey :: (nodes: []GtkStyleNode, scale: s32) -> u64 {
+    hash := StyleKeyValue(cast(u64)1469598103934665603, cast(u64)nodes.count)
+    hash = StyleKeyValue(hash, cast(u64)scale)
+    for node: nodes {
+        hash = StyleKeyText(StyleKeyText(StyleKeyText(hash, node.widget_type), node.element), node.name)
+        hash = StyleKeyValue(hash, cast(u64)node.state)
+        hash = StyleKeyValue(StyleKeyValue(hash, cast(u64)node.sibling_count), cast(u64)node.sibling_index)
+        hash = StyleKeyValue(hash, cast(u64)node.classes.count)
+        for cls: node.classes { hash = StyleKeyText(hash, cls) }
+        hash = StyleKeyValue(hash, cast(u64)node.providers.count)
+        for provider: node.providers { hash = StyleKeyValue(StyleKeyValue(hash, provider.provider), cast(u64)provider.priority) }
+    }
+    return ifx hash == 0 then cast(u64)1 else hash
+}
+#scope_export
+
 // Call on the GTK owning thread. All GTK contexts are temporary; no borrowed
 // GTK strings or theme snapshots escape this query.
 GtkStyleQuery :: (nodes: []GtkStyleNode, scale: s32) -> GtkStyleMetrics {
+    key := StyleQueryKey(nodes, scale)
+    entry := *style_queries[cast(s64)(key % cast(u64)512)]
+    if entry.key == key && entry.generation == style_generation && entry.scale == scale && entry.metrics.available {
+        return entry.metrics
+    }
+    result := StyleQueryResolve(nodes, scale)
+    if result.available {
+        entry.key = key; entry.generation = style_generation; entry.scale = scale; entry.metrics = result
+    }
+    return result
+}
+
+#scope_file
+StyleQueryResolve :: (nodes: []GtkStyleNode, scale: s32) -> GtkStyleMetrics {
     result: GtkStyleMetrics
     context := MakeContext(nodes, scale)
     if context == null { return result }

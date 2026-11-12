@@ -6,9 +6,9 @@ widget_mesh_host=ziran_context_menu_widget_host
 set -- \
     --bind kryon/image_raster:ImageWidth=text_touch_behavior:ImageWidth \
     --bind kryon/image_raster:ImageHeight=text_touch_behavior:ImageHeight \
-    --bind kryon/system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost \
-    --bind kryon/system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
-    --bind kryon/system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
+    --bind kryon/system_clipboard:SystemClipboardOpenHost=system_clipboard_host:SystemClipboardOpenHost \
+    --bind kryon/system_clipboard:SystemClipboardByteHost=system_clipboard_host:SystemClipboardByteHost \
+    --bind kryon/system_clipboard:SystemClipboardWriteHost=system_clipboard_host:SystemClipboardWriteHost
 widget_triangles_needed=1
 . "$repo/tests/widget_raster_bindings.sh"
 matrix_bundles=before

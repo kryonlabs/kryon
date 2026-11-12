@@ -87,6 +87,8 @@ NativeQueueLifecycle :: () -> s32 {
     Delay(cast(u32)20)
     event: Event
     while Poll(cast(*void)*event) != 0 {}
+    session := Session.SessionOpen()
+    defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
     queued: bool = true
     for index: 0..32 {
         queued = queued && PushAscii(120)
@@ -95,17 +97,21 @@ NativeQueueLifecycle :: () -> s32 {
         CloseLifecycle()
         return 31
     }
-    if !Desktop.PollDesktop() ||
-        Desktop.DesktopTypedCodepoint() != 120 ||
-        Desktop.DesktopTypedCodepoint() != 120 {
+    if !Desktop.PollDesktop() { CloseLifecycle(); return 32 }
+    unused Desktop.DesktopInputTake(session)
+    if Tree.TypedCodepointTake(session) != 120 || Tree.TypedCodepointTake(session) != 120 {
         CloseLifecycle()
         return 32
     }
+    // Closing the window forgets input it had not delivered.
     Desktop.CloseDesktop()
+    Tree.TreeInputReset(session)
     if !Desktop.OpenDesktopSized(160, 120) { return 33 }
     input_window = WindowID(Desktop.DesktopWindow())
     Delay(cast(u32)20)
-    if !Desktop.PollDesktop() || Desktop.DesktopTypedCodepoint() != 0 {
+    if !Desktop.PollDesktop() { CloseLifecycle(); return 34 }
+    key, modifiers := Desktop.DesktopInputTake(session)
+    if key != 0 || Tree.TypedCodepointPeek(session) != 0 {
         CloseLifecycle()
         return 34
     }
@@ -113,7 +119,7 @@ NativeQueueLifecycle :: () -> s32 {
     return 0
 }
 
-// Raw observations and ordered UI delivery remain independent.
+// Frame observations and ordered UI delivery remain independent.
 OrderedBurst :: () -> s32 {
     if !Desktop.OpenDesktopSized(160, 120) { return 40 }
     defer Desktop.CloseDesktop()
@@ -126,7 +132,6 @@ OrderedBurst :: () -> s32 {
     Delay(cast(u32)20)
     event: Event
     while Poll(cast(*void)*event) != 0 {}
-    Desktop.DesktopInputEnable()
     session := Session.SessionOpen()
     if !Session.SessionValid(session) { return 41 }
     defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
@@ -216,7 +221,6 @@ UrgentClose :: (intercept: bool, quit: bool) -> s32 {
     Delay(cast(u32)20)
     event: Event
     while Poll(cast(*void)*event) != 0 {}
-    Desktop.DesktopInputEnable()
     if !Desktop.WindowInterceptCloseHost(intercept) { return 62 }
     session := Session.SessionOpen()
     if !Session.SessionValid(session) { return 63 }
@@ -259,15 +263,11 @@ ModifierBarrier :: () -> s32 {
     Delay(cast(u32)20)
     event: Event
     while Poll(cast(*void)*event) != 0 {}
-    Desktop.DesktopInputEnable()
     session := Session.SessionOpen()
     defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
     if !PushAscii(120) || !PushKey(true, 0x400000E0, 0xC0) ||
         !PushKey(true, 99, 0xC0) || !PushKey(false, 99, 0xC0) ||
         !PushKey(false, 0x400000E0, 0) || !Desktop.PollDesktop() { return 81 }
-    // Raw observation still includes the physical Ctrl key and shortcut.
-    if Desktop.DesktopPressedKey() != 67 || Desktop.DesktopNextKey() != 341 ||
-        Desktop.DesktopNextKey() != 67 || Desktop.DesktopNextKey() != 0 { return 82 }
     key, modifiers := Desktop.DesktopInputTake(session)
     bytes: [4]u8
     text := Key.TypedTextTake(session, bytes[:])
@@ -283,10 +283,6 @@ ModifierBarrier :: () -> s32 {
         if !PushAscii(120) || !PushKey(true, raw, flags) ||
             !PushKey(true, 13, flags) || !PushKey(false, 13, flags) ||
             !PushKey(false, raw, 0) || !Desktop.PollDesktop() { return 85 }
-        expected_keys: [8]s32 = .[341, 340, 342, 343, 345, 344, 346, 347]
-        expected_key := expected_keys[index]
-        if Desktop.DesktopNextKey() != expected_key ||
-            Desktop.DesktopNextKey() != 257 || Desktop.DesktopNextKey() != 0 { return 86 }
         key, modifiers = Desktop.DesktopInputTake(session)
         local_bytes: [4]u8
         local_text := Key.TypedTextTake(session, local_bytes[:])
@@ -300,7 +296,6 @@ UnreadTextKey :: () -> s32 {
     if !Desktop.OpenDesktopSized(160,120) { return 91 }
     defer Desktop.CloseDesktop()
     input_window=WindowID(Desktop.DesktopWindow())
-    Desktop.DesktopInputEnable()
     session:=Session.SessionOpen()
     defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
     if !PushAscii(51) || !Desktop.PollDesktop() { return 92 }
@@ -323,7 +318,6 @@ CompletedTextSubmit :: () -> s32 {
     if !Desktop.OpenDesktopSized(160,120) { return 101 }
     defer Desktop.CloseDesktop()
     input_window=WindowID(Desktop.DesktopWindow())
-    Desktop.DesktopInputEnable()
     session:=Session.SessionOpen()
     defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
     if !PushAscii(120) || !PushKey(true,13,0) || !Desktop.PollDesktop() { return 102 }
@@ -353,7 +347,6 @@ main :: () -> s32 {
     result = UrgentClose(true, true)
     if result != 0 { return result }
     if !Desktop.OpenDesktopSized(160, 120) { return 74 }
-    Desktop.DesktopInputEnable()
     session := Session.SessionOpen()
     if !Desktop.PollDesktop() { return 75 }
     key, modifiers := Desktop.DesktopInputTake(session)

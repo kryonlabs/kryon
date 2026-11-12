@@ -9,7 +9,7 @@
 #import "tree"
 #import "tree_draw"
 #import "ziran_composition_widget_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 
 using FrameStatus;
 

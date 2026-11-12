@@ -12,7 +12,7 @@
 #import "system_clipboard"
 #import "paint_queue"
 #import "ziran_context_menu_widget_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 
 owner: Session;
 now: s64 = 1000;

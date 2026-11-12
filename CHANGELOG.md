@@ -4,6 +4,10 @@
 
 - Reuse identical GTK cell measurements, retain native raster caches across
   unrelated GLib events, and composite clipped opaque pixels efficiently.
+- Detect unchanged GTK painter surfaces by exact byte comparison instead of
+  hashing every pixel each frame, clear and copy them in bulk, reuse resolved
+  GTK style metrics and identical CSS layers within a style generation, and
+  present desktop frames before publishing accessibility changes.
 - Deliver Return with its completed text run and use the shared SDL renderer
   selector for desktop raster hosts.
 

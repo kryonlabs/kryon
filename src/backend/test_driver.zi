@@ -53,6 +53,7 @@
 #import "tree"
 #import "tree_input"
 #import "input_protocol"
+#import "input_delivery"
 #import "widget_kind"
 #import "c_string"
 #import "byte_text_linux"
@@ -160,6 +161,7 @@ TestDriverState :: struct {
     key_control: bool
     key_shift: bool
     key_frame: s64
+    key_queued: bool
     typed: [TEST_DRIVER_TYPED_LIMIT]u8
     typed_count: s32
     typed_offset: s32
@@ -301,6 +303,25 @@ TestDriverKeyPressed :: (key: s32) -> bool {
     if !TestDriverActive() { return false }
     return key != 0 && test_driver.key == key &&
     test_driver.key_frame == TestDriverCurrentFrame()
+}
+
+// Queue this frame's test text and then its key into a host's ordered input,
+// as a person typing them would. Each key command is queued once.
+#program_export
+TestDriverInput :: (queue: *InputDelivery) {
+    if !TestDriverActive() { return }
+    while InputDeliveryAccepts(queue, 0, 1) {
+        codepoint := TestDriverCodepoint()
+        if codepoint == 0 { break }
+        InputDeliveryText(queue, codepoint)
+    }
+    if test_driver.key <= 0 || test_driver.key_queued ||
+    test_driver.key_frame != TestDriverCurrentFrame() || !InputDeliveryAccepts(queue, 1, 0) { return }
+    test_driver.key_queued = true
+    modifiers: s32 = 0
+    if test_driver.key_control { modifiers |= KeyModifierControl }
+    if test_driver.key_shift { modifiers |= KeyModifierShift }
+    InputDeliveryKey(queue, test_driver.key, modifiers, test_driver.key_control)
 }
 
 // Whether a test holds this key in this frame: its pressed key and the
@@ -1028,6 +1049,7 @@ TestDriverStart :: (session: Session, command: TestDriverCommand) {
         test_driver.key_control = command.control
         test_driver.key_shift = command.shift
         test_driver.key_frame = next
+        test_driver.key_queued = false
         test_driver.waiting = true
     } else {
         TestDriverReply(session, "unknown verb", -1, false, empty)

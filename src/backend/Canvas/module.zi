@@ -9,6 +9,6 @@
     // EndCanvasUiFrame repaints only the damaged pixels of the retained canvas.
     using Retained :: #import "canvas_frame";
     Events :: #import "canvas_events";
-    // Live held modifiers; consumed key events use CanvasPressedKeyModifiers.
+    // Live held modifiers; CanvasInputTake reports each delivered key's own.
     CanvasModifiers :: () -> s32 { return Events.CanvasHeldModifiers() }
 }

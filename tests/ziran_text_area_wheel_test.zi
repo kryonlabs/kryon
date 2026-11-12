@@ -9,7 +9,7 @@
 #import "tree_draw"
 #import "tree_input"
 #import "ziran_composition_widget_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 
 // A text area on a page that scrolls, as Diary's entry is: the host samples
 // only the shared scroll device, and the area's caller gives it no wheel.

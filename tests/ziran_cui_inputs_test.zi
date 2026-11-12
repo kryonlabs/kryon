@@ -14,7 +14,7 @@
 #import "onetimecode"
 #import "scrubfield"
 #import "shortcutrecorder"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 #import "taginput"
 
 using FrameStatus;

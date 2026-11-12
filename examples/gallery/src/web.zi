@@ -54,18 +54,23 @@ main :: () -> s32 {
         if embedded { ReadOptions() }
         if paused { WebSleep(16); continue }
         unused CanvasFrameInputBegin(session)
-        key := CanvasPressedKey()
-        KeyboardModifiersSend(session, CanvasPressedKeyModifiers())
+        unread := 32 - TypedCodepointCapacity(session)
+        key, modifiers := CanvasInputTake(session)
+        KeyboardModifiersSend(session, modifiers)
         if key != 0 { review_last_key = key }
         site_key = key
-        site_modifiers = CanvasPressedKeyModifiers()
+        site_modifiers = modifiers
         if key != 0 { unused KeyboardSend(session, key) }
+        // The previews receive a copy of this take's text; the page keeps it.
         preview_text_count = 0
-        codepoint := CanvasTypedCodepoint()
-        while codepoint != 0 {
-            if preview_text_count < 256 { preview_text[preview_text_count] = codepoint; preview_text_count += 1 }
+        pending := 32 - TypedCodepointCapacity(session)
+        for index: cast(s32)0..pending - 1 {
+            codepoint := TypedCodepointTake(session)
+            if index >= unread && preview_text_count < 256 {
+                preview_text[preview_text_count] = codepoint
+                preview_text_count += 1
+            }
             unused TypedCodepointSend(session, codepoint)
-            codepoint = CanvasTypedCodepoint()
         }
         BeginCanvasFrame()
         pointer := PollPointer()

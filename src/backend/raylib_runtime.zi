@@ -18,6 +18,7 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "geometry"
 #import "math"
 #import "test_driver"
+#import "input_delivery"
 #import "session"
 #import "image_props"
 #import "image_behavior"
@@ -250,7 +251,9 @@ raylib_touch_count: s32;
 raylib_pointer: PointerFrame;
 raylib_secondary: SecondaryPointerFrame;
 raylib_middle: SecondaryPointerFrame;
-raylib_repeat_next: s32;
+// Keys and typed text in arrival order, delivered by RaylibInputTake.
+raylib_input: InputDelivery;
+raylib_input_focused: bool;
 
 // The zoom factor the frame is drawn at. Everything drawn after the frame
 // begins is scaled by it, so a single number scales the whole application;
@@ -1929,7 +1932,8 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
     raylib_pointer = PointerFrame.{}
     raylib_secondary = SecondaryPointerFrame.{}
     raylib_middle = SecondaryPointerFrame.{}
-    raylib_repeat_next = 0
+    InputDeliveryReset(*raylib_input)
+    raylib_input_focused = false
     HostRaylibSetConfigFlags(flags)
     HostRaylibInitWindow(width, height, *label[0])
     if !HostRaylibIsWindowReady() { return false }
@@ -1969,6 +1973,7 @@ OpenRaylib :: (width: s32 = 960, height: s32 = 600,
 #program_export
 CloseRaylib :: () {
     raylib_frame_input = FrameInputSnapshot.{}
+    InputDeliveryReset(*raylib_input)
     #if RAYLIB_FRAME_THREADS {
         CloseRaylibAppFrames()
     }
@@ -2085,9 +2090,9 @@ PollRaylib :: () -> bool {
     raylib_middle.down = HostRaylibMouseDown(2)
     raylib_middle.pressed = HostRaylibMousePressed(2)
     raylib_middle.released = HostRaylibMouseReleased(2)
-    raylib_repeat_next = 0
     raylib_wheel_move = HostRaylibMouseWheelMove()
     RaylibGatherFrameInput()
+    RaylibInputPoll()
     return true
 }
 
@@ -2233,21 +2238,6 @@ RaylibEnvironmentZoom :: () -> float32 {
     return cast(float32)HostRaylibParseFloat(value)
 }
 
-#program_export
-RaylibPressedKey :: () -> s32 {
-    result := RaylibPressedKeyRaw()
-    if result == 0 {
-        for candidate: cast(s32)0..349 {
-            if TestDriverKeyPressed(candidate) { return candidate }
-        }
-    }
-    return result
-}
-
-RaylibPressedKeyRaw :: () -> s32 {
-    return RaylibLayoutKey(HostRaylibGetKeyPressed())
-}
-
 // Raylib reports key positions. Shortcuts and control characters follow the
 // keyboard layout, so a position becomes the code of the key it types there,
 // as on the other hosts. A layout with no ASCII key there keeps the position.
@@ -2301,18 +2291,6 @@ RaylibTypedKey :: (key: s32, typed: s32) -> s32 {
             return RaylibTypedKey(key, HostSdlKeyFromScancode(scancode))
         }
     }
-}
-
-// OS repeats are separate from fresh presses in raylib. Return each repeated
-// key once per poll; a held key without a repeat event produces no input.
-#program_export
-RaylibRepeatedKey :: () -> s32 {
-    while raylib_repeat_next < 512 {
-        key := raylib_repeat_next
-        raylib_repeat_next += 1
-        if HostRaylibIsKeyPressedRepeat(key) { return RaylibLayoutKey(key) }
-    }
-    return 0
 }
 
 #program_export
@@ -2433,15 +2411,53 @@ RaylibModifiers :: () -> s32 {
     return modifiers
 }
 
-#program_export
-RaylibTypedCodepoint :: () -> s32 {
-    real := HostRaylibGetCharPressed()
-    #if #defined(ANDROID_BUILD) {
-        return real
+// Queue one key press or repeat at its keyboard-layout code. Raylib keeps
+// keys and characters in separate queues; a printable key without a shortcut
+// types the next character, so that text stays right after its key.
+RaylibInputKey :: (key: s32, modifiers: s32, shortcut: bool) {
+    InputDeliveryKey(*raylib_input, RaylibLayoutKey(key), modifiers, shortcut)
+    if shortcut || key < 32 || key >= 127 { return }
+    typed := HostRaylibGetCharPressed()
+    if typed != 0 { InputDeliveryText(*raylib_input, typed) }
+}
+
+// Gather this poll's keys, OS repeats and characters in order. Focus loss
+// cancels keys still waiting for the application.
+RaylibInputPoll :: () {
+    focused := HostRaylibIsWindowFocused()
+    if raylib_input_focused && !focused { InputDeliveryBlur(*raylib_input) }
+    raylib_input_focused = focused
+    modifiers := RaylibModifiers()
+    // Super (Command) makes a printable key a shortcut, as Control and Alt do.
+    shortcut := (modifiers & (KeyModifierControl | KeyModifierAlt)) != 0 ||
+        HostRaylibIsKeyDown(343) || HostRaylibIsKeyDown(347) ||
+        HostRaylibIsKeyReleased(343) || HostRaylibIsKeyReleased(347)
+    key := HostRaylibGetKeyPressed()
+    while key != 0 {
+        RaylibInputKey(key, modifiers, shortcut)
+        key = HostRaylibGetKeyPressed()
     }
-    // A test driver may stand in for the person (KRYON_TEST_DRIVER).
-    if real == 0 { return TestDriverCodepoint() }
-    return real
+    for repeated: cast(s32)1..511 {
+        if HostRaylibIsKeyPressedRepeat(repeated) { RaylibInputKey(repeated, modifiers, shortcut) }
+    }
+    typed := HostRaylibGetCharPressed()
+    while typed != 0 {
+        InputDeliveryText(*raylib_input, typed)
+        typed = HostRaylibGetCharPressed()
+    }
+    #if !#defined(ANDROID_BUILD) {
+        // A test driver may stand in for the person (KRYON_TEST_DRIVER).
+        TestDriverInput(*raylib_input)
+    }
+}
+
+// Transfer one editing action or a run of printable keys and text into the
+// session, in arrival order, including held-key repeats. The modifiers are
+// the delivered key's; with nothing taken they are the held modifiers.
+#program_export
+RaylibInputTake :: (session: Session) -> (key: s32, modifiers: s32) {
+    key, held := InputDeliveryTake(*raylib_input, session, RaylibModifiers())
+    return key, held
 }
 
 #program_export

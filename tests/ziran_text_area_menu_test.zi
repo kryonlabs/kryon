@@ -11,7 +11,7 @@
 #import "tree_input"
 #import "widget_kind"
 #import "ziran_context_menu_widget_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 
 using WidgetKind;
 

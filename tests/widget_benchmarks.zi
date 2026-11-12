@@ -13,7 +13,7 @@
 #import "kryon/tree_draw"
 #import "kryon/tree_input"
 #import "widget_benchmark_host"
-#import "ziran_system_clipboard_host"
+#import "system_clipboard_host"
 using FrameStatus;
 
 benchmark_session: Session;

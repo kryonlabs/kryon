@@ -5,6 +5,8 @@ Lanczos :: #import "lanczos_cache";
 #import "desktop_keys"
 #import "frame_input_provider"
 #import "input_protocol"
+#import "input_delivery"
+#import "test_driver"
 Timer :: #import "std/timer_linux";
 #import "geometry"
 #import "program_title"
@@ -166,19 +168,13 @@ desktop_physical_buttons: u32;
 desktop_physical_sampled: bool;
 secondary: SecondaryPointerFrame;
 desktop_wheel: float32;
-desktop_key: s32;
 desktop_frame_input: FrameInputProvider;
 desktop_frame_input_pending_carry: bool;
 desktop_raw_keys: [512]u8;
 desktop_input_focused: bool;
 desktop_input_started: s64;
-desktop_keys: DesktopKeyBuffer;
 // Durable UI delivery is independent of the current poll observations.
-DesktopInputEvent :: struct { code: s32; modifiers: s32; text: bool; editing: bool }
-desktop_ordered: bool;
-desktop_input: [256]DesktopInputEvent;
-desktop_input_head: s32;
-desktop_input_count: s32;
+desktop_input: InputDelivery;
 // File drops are copied before SDL releases its event-owned path. Applications
 // consume them on the UI thread; unrelated windows and drop text stay separate.
 desktop_dropped_files: [16][4096]u8;
@@ -192,9 +188,6 @@ DropEvent :: struct {
 }
 // SDL modifier state recorded with the last key press, or -1 without one.
 desktop_key_modifiers: s32 = -1;
-desktop_codepoints: [256]s32;
-desktop_codepoint_count: s32;
-desktop_codepoint_next: s32;
 desktop_intercept_close: bool;
 desktop_close_requested: bool;
 desktop_quit: bool;
@@ -413,12 +406,10 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     FrameInputProviderReset(*desktop_frame_input)
     desktop_physical_buttons=0; desktop_physical_sampled=false
     desktop_frame_input_pending_carry = false
-    desktop_ordered = false
     desktop_quit = false
     desktop_intercept_close = false
     desktop_close_requested = false
-    desktop_input_head = 0
-    desktop_input_count = 0
+    InputDeliveryReset(*desktop_input)
     desktop_raw_keys = .{}
     desktop_gamepad_keys = .{}
     desktop_input_focused = false
@@ -601,20 +592,14 @@ CloseDesktop :: () {
     FrameInputProviderReset(*desktop_frame_input)
     desktop_physical_buttons=0; desktop_physical_sampled=false
     desktop_frame_input_pending_carry = false
-    desktop_ordered = false
     desktop_quit = false
     desktop_intercept_close = false
     desktop_close_requested = false
-    desktop_input_head = 0
-    desktop_input_count = 0
+    InputDeliveryReset(*desktop_input)
     desktop_raw_keys = .{}
     desktop_gamepad_keys = .{}
     desktop_input_focused = false
-    desktop_key = 0
-    desktop_keys = .{}
     desktop_key_modifiers = -1
-    desktop_codepoint_count = 0
-    desktop_codepoint_next = 0
     for slot: cast(s32)0..3 {
         if desktop_controllers[slot].handle != null { GameControllerClose(desktop_controllers[slot].handle) }
         desktop_controllers[slot] = .{}
@@ -658,66 +643,22 @@ DesktopEventText :: (event: *Event) -> string {
     return TextFromBytes(bytes[12:end])
 }
 
-DesktopInputEditing :: (code: s32, modifiers: s32) -> bool {
-    return (code >= 256 && code < 340) ||
-        ((modifiers & 0xFC0) != 0 && code >= 32 && code < 127)
+// SDL's KMOD_SHIFT, KMOD_CTRL and KMOD_ALT masks cover both left and right
+// keys; KMOD_GUI (Super) only marks shortcuts.
+DesktopKeyModifierBits :: (state: s32) -> s32 {
+    modifiers: s32 = 0
+    if (state & 0x3) != 0 { modifiers |= KeyModifierShift }
+    if (state & 0xC0) != 0 { modifiers |= KeyModifierControl }
+    if (state & 0x300) != 0 { modifiers |= KeyModifierAlt }
+    return modifiers
 }
 
-// Opt into ordered UI delivery before the first poll. Raw last/all-key
-// observations retain their meaning for custom hosts and games.
-#program_export
-DesktopInputEnable :: () {
-    desktop_ordered = true
-    desktop_input_head = 0
-    desktop_input_count = 0
-}
-
-DesktopInputPush :: (code: s32, modifiers: s32, text: bool) {
-    if !desktop_ordered || code == 0 { return }
-    // Physical modifier transitions belong to raw observations. Each actual
-    // shortcut already carries its own modifiers; merging a later Ctrl press
-    // into preceding text would wrongly turn that text into a shortcut.
-    if !text && code >= 340 && code <= 347 { return }
-    at := (desktop_input_head + desktop_input_count) % 256
-    desktop_input[at] = .{code, modifiers, text, !text && DesktopInputEditing(code, modifiers)}
-    desktop_input_count += 1
-}
-
-// Transfer one editing action or a run of printable keys/text. Never cross
-// an editing boundary while previously delivered text remains unconsumed.
+// Transfer one editing action or a run of printable keys and text into the
+// session, in the order this window received them.
 #program_export
 DesktopInputTake :: (session: Session) -> (key: s32, modifiers: s32) {
-    if !SessionValid(session) { return 0, 0 }
-    key: s32 = 0
-    modifiers: s32 = 0
-    // Unread text blocks editing actions. A submit ending a text run just
-    // delivered in this call is the exception: it is the same field commit,
-    // not another editing action after text.
-    unread := TypedCodepointPeek(session) != 0
-    consumed: bool = unread
-    delivered_text := false
-    while desktop_input_count > 0 {
-        item := desktop_input[desktop_input_head]
-        submit_text_run := item.code == KeyEnter && !unread && delivered_text
-        if item.editing && consumed && !submit_text_run { break }
-        if item.text {
-            if !TypedCodepointSend(session, item.code) { break }
-            delivered_text = true
-        } else {
-            key = item.code
-            modifiers = item.modifiers
-        }
-        desktop_input_head = (desktop_input_head + 1) % 256
-        desktop_input_count -= 1
-        consumed = true
-        if item.editing { break }
-    }
-    if !consumed { return 0, DesktopModifiers() }
-    result: s32 = 0
-    if (modifiers & 0x3) != 0 { result |= 1 }
-    if (modifiers & 0xC0) != 0 { result |= 2 }
-    if (modifiers & 0x300) != 0 { result |= 4 }
-    return key, result
+    key, held := InputDeliveryTake(*desktop_input, session, DesktopModifiers())
+    return key, held
 }
 
 // Remove only lifecycle requests; keep all other SDL events in place.
@@ -739,14 +680,11 @@ DesktopLifecycleEvent :: (argument: *void, event: *Event) -> s32 {
 DesktopEventBackpressured :: (event: *Event) -> bool {
     if window != null && event.window_id == GetWindowID(window) {
         if event.kind == cast(u32)0x303 {
-            count := Count(DesktopEventText(event))
-            return desktop_codepoint_count + count > 256 ||
-                (desktop_ordered && desktop_input_count + count > 256)
+            return !InputDeliveryAccepts(*desktop_input, 0, cast(s32)Count(DesktopEventText(event)))
         }
         if event.kind == cast(u32)0x300 {
             code := DesktopKeyWithModifiers(event.x,event.y & 65535)
-            return code != 0 && (desktop_keys.count >= 32 ||
-                (desktop_ordered && desktop_input_count >= 32 && (code < 340 || code > 347)))
+            return code != 0 && (code < 340 || code > 347) && !InputDeliveryAccepts(*desktop_input, 1, 0)
         }
     }
     if event.kind == cast(u32)0x651 {
@@ -758,7 +696,7 @@ DesktopEventBackpressured :: (event: *Event) -> bool {
             (desktop_controllers[slot].buttons & mask) != cast(u32)0
         return slot >= 0 && !held && code != 0 && desktop_input_focused &&
             !desktop_frame_input.focus_lost && desktop_frame_input.sample.focused &&
-            (desktop_keys.count >= 32 || (desktop_ordered && desktop_input_count >= 32))
+            !InputDeliveryAccepts(*desktop_input, 1, 0)
     }
     return false
 }
@@ -777,15 +715,7 @@ PollDesktop :: () -> bool {
     right_pressed: bool = false
     right_released: bool = false
     desktop_wheel = 0.0
-    desktop_key = 0
-    desktop_keys = .{}
     desktop_key_modifiers = -1
-    remaining := ifx desktop_ordered then 0 else desktop_codepoint_count - desktop_codepoint_next
-    for index: cast(s32)0..remaining-1 {
-        desktop_codepoints[index] = desktop_codepoints[desktop_codepoint_next + index]
-    }
-    desktop_codepoint_count = remaining
-    desktop_codepoint_next = 0
     // SDL_PollEvent stops at the marker its last pump left at the end of the
     // queue, so events another thread pushed after that pump would wait for
     // the next frame. Pump once and take every queued event; SDL_GETEVENT
@@ -816,9 +746,8 @@ PollDesktop :: () -> bool {
             if detail == cast(u32)13 {
                 desktop_input_focused = false
                 desktop_frame_input.focus_lost = true
-                desktop_key = 0
-                desktop_keys = .{}
                 desktop_key_modifiers = -1
+                InputDeliveryBlur(*desktop_input)
                 for slot: cast(s32)0..3 { DesktopControllerRelease(slot) }
                 for key: cast(s32)1..511 {
                     held := (desktop_raw_keys[key] & cast(u8)FrameKeyHeld) != cast(u8)0
@@ -854,10 +783,8 @@ PollDesktop :: () -> bool {
                     desktop_controllers[slot].buttons |= mask
                     desktop_gamepad_keys[code] |= cast(u8)(FrameKeyHeld | FrameKeyPressed)
                     if !desktop_frame_input.focus_lost && desktop_frame_input.sample.focused {
-                        desktop_key = code
                         desktop_key_modifiers = 0
-                        unused DesktopKeyPush(*desktop_keys, code, 0)
-                        DesktopInputPush(code, 0, false)
+                        InputDeliveryKey(*desktop_input, code, 0, false)
                     }
                 } else if event.kind == cast(u32)0x652 && held {
                     desktop_controllers[slot].buttons &= ~mask
@@ -925,13 +852,11 @@ PollDesktop :: () -> bool {
         }
         if event.kind == cast(u32)0x300 {
             // SDL_KeyboardEvent.keysym.sym occupies byte offset 20 and
-            // keysym.mod the low 16 bits at offset 24.
-            desktop_key = DesktopKeyWithModifiers(event.x,event.y & 65535)
+            // keysym.mod the low 16 bits at offset 24. Super (KMOD_GUI)
+            // makes a printable key a shortcut, as Control and Alt do.
             desktop_key_modifiers = event.y & 65535
-            key := desktop_key
-            modifiers := desktop_key_modifiers
-            unused DesktopKeyPush(*desktop_keys, key, modifiers)
-            DesktopInputPush(key, modifiers, false)
+            InputDeliveryKey(*desktop_input, DesktopKeyWithModifiers(event.x, desktop_key_modifiers),
+                DesktopKeyModifierBits(desktop_key_modifiers), (desktop_key_modifiers & 0xFC0) != 0)
         }
         if event.kind == cast(u32)0x303 {
             // SDL_TextInputEvent.text is a NUL-terminated UTF-8 array at
@@ -941,9 +866,7 @@ PollDesktop :: () -> bool {
             at: s32 = 0
             while at < cast(s32)value.count {
                 decoded: Decoded = Decode(value, at)
-                desktop_codepoints[desktop_codepoint_count] = cast(s32)decoded.value
-                desktop_codepoint_count += 1
-                DesktopInputPush(cast(s32)decoded.value, 0, true)
+                InputDeliveryText(*desktop_input, cast(s32)decoded.value)
                 at = decoded.after
             }
         }
@@ -1009,6 +932,8 @@ PollDesktop :: () -> bool {
             raw.keys[key] &= ~cast(u8)FrameKeyReleased
         }
     }
+    // A test driver types through the same ordered delivery (KRYON_TEST_DRIVER).
+    TestDriverInput(*desktop_input)
     raw.focused = desktop_input_focused
     raw.pointer = pointer
     raw.secondary = secondary
@@ -1032,44 +957,14 @@ DesktopFrameInputBegin :: (session: Session) -> bool {
 #program_export
 DesktopWheelMove :: () -> float32 { return desktop_wheel }
 
-#program_export
-DesktopPressedKey :: () -> s32 {
-    // Existing widget loops use the last key and its modifiers.
-    key := desktop_key
-    desktop_key = 0
-    return key
-}
-
-// Games with several input targets drain the complete ordered snapshot.
-// Reading it does not change the ordinary single-widget event above.
-#program_export
-DesktopNextKey :: () -> s32 {
-    key, modifiers := DesktopKeyTake(*desktop_keys)
-    if key != 0 { desktop_key_modifiers = modifiers }
-    return key
-}
-
-// The held modifier keys as KeyModifier bits (SDL's KMOD_SHIFT, KMOD_CTRL,
-// and KMOD_ALT masks cover both left and right keys). A key pressed in this
-// poll reports the modifiers held with it, even if they were released before
-// the poll ended.
+// The held modifier keys as KeyModifier bits. A key pressed in this poll
+// reports the modifiers held with it, even if they were released before the
+// poll ended.
 #program_export
 DesktopModifiers :: () -> s32 {
-    state: u32 = GetModState()
-    if desktop_key_modifiers >= 0 { state = cast(u32)desktop_key_modifiers }
-    modifiers: s32 = 0
-    if (state & cast(u32)0x3) != cast(u32)0 { modifiers |= 1 }
-    if (state & cast(u32)0xC0) != cast(u32)0 { modifiers |= 2 }
-    if (state & cast(u32)0x300) != cast(u32)0 { modifiers |= 4 }
-    return modifiers
-}
-
-#program_export
-DesktopTypedCodepoint :: () -> s32 {
-    if desktop_codepoint_next >= desktop_codepoint_count { return 0 }
-    codepoint: s32 = desktop_codepoints[desktop_codepoint_next]
-    desktop_codepoint_next += 1
-    return codepoint
+    state := cast(s32)GetModState()
+    if desktop_key_modifiers >= 0 { state = desktop_key_modifiers }
+    return DesktopKeyModifierBits(state)
 }
 
 #program_export
@@ -1132,8 +1027,6 @@ EndDesktopFrame :: () -> bool {
     FrameInputProviderEnd(*desktop_frame_input)
     DesktopFrameInputNeutralize()
     desktop_frame_input_pending_carry = true
-    desktop_key = 0
-    desktop_keys = .{}
     desktop_key_modifiers = -1
     pointer.pressed = false
     pointer.released = false

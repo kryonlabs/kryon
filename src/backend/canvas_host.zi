@@ -9,6 +9,8 @@
 #import "canvas_input"
 #import "canvas_texture"
 #import "canvas_events"
+#import "input_delivery"
+#import "test_driver"
 #import "canvas_frame"
 #import "page_core"
 #import "program_title"
@@ -374,6 +376,15 @@ PollCanvas :: () -> bool {
         return false
     }
     CanvasGamepadPoll()
+    // Gamepad navigation and test input join the page's keys in order.
+    if canvas_focused && !canvas_snapshot_focus_lost {
+        navigation := GamepadNavigationTake(*canvas_gamepad_navigation)
+        while navigation != 0 {
+            InputDeliveryKey(*canvas_input, navigation, 0, false)
+            navigation = GamepadNavigationTake(*canvas_gamepad_navigation)
+        }
+    }
+    TestDriverInput(*canvas_input)
     canvas_pointer.x = cast(float32)GetMouseX()
     canvas_pointer.y = cast(float32)GetMouseY()
     canvas_pointer.pressed = IsMouseButtonPressed(0)
@@ -433,20 +444,14 @@ CanvasViewport :: () -> Rectangle {
         cast(float32)GetScreenHeight()}
 }
 
+// Transfer one editing action or a run of printable keys and text into the
+// session, in the order the page received them, including held-key repeats.
+// The modifiers belong to the delivered key, even after their physical keys
+// were released; with nothing taken they are the held modifiers.
 #program_export
-CanvasPressedKey :: () -> s32 {
-    // Hosted apps take one event per frame, including held-key repeats.
-    return CanvasAppKeyTake()
-}
-
-// Read after CanvasPressedKey: flags belong to that consumed event, even
-// after its physical modifiers were released. An empty take uses held state.
-#program_export
-CanvasPressedKeyModifiers :: () -> s32 { return canvas_key_event.modifiers }
-
-#program_export
-CanvasTypedCodepoint :: () -> s32 {
-    return GetCharPressed()
+CanvasInputTake :: (session: Session) -> (key: s32, modifiers: s32) {
+    key, held := InputDeliveryTake(*canvas_input, session, CanvasHeldModifiers())
+    return key, held
 }
 
 #program_export

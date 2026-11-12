@@ -309,26 +309,9 @@ CanvasAppMainLoop :: (semantic_dom: bool) -> s32 {
             extension_open = true
         }
         CanvasAppExtensionPump()
-        canvas_app_key = CanvasPressedKey()
-        canvas_app_modifiers = CanvasPressedKeyModifiers()
-        if canvas_app_key == 0 {
-            canvas_app_modifiers = CanvasModifiers()
-            for candidate: cast(s32)0..349 {
-                if TestDriverKeyPressed(candidate) { canvas_app_key = candidate; break }
-            }
-        }
+        canvas_app_key, canvas_app_modifiers = CanvasInputTake(session)
         KeyboardModifiersSend(session, canvas_app_modifiers)
         if canvas_app_key != 0 { unused KeyboardSend(session, canvas_app_key) }
-        codepoint: s32 = CanvasTypedCodepoint()
-        while codepoint != 0 {
-            unused TypedCodepointSend(session, codepoint)
-            codepoint = CanvasTypedCodepoint()
-        }
-        codepoint = TestDriverCodepoint()
-        while codepoint != 0 {
-            unused TypedCodepointSend(session, codepoint)
-            codepoint = TestDriverCodepoint()
-        }
         canvas_app_typed_length = TypedTextTake(session, canvas_app_typed[:]).count
         ok = CanvasAppFrame(session, CanvasViewport())
         // Written documents reach IndexedDB in one batch about each second.

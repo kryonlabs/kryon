@@ -85,24 +85,14 @@ main :: () -> s32 {
         ok = DrawRaylibFrame(session, RaylibViewport(), 0.0, true)
     } else {
         while ok && PollRaylib() {
-            modifiers: s32 = RaylibModifiers()
+            key, modifiers := RaylibInputTake(session)
             KeyboardModifiersSend(session, modifiers)
             wheel: float32 = RaylibWheelMove()
-            if ZoomWheel(session, desktop, wheel, modifiers) { wheel = 0.0 }
-            key: s32 = RaylibPressedKey()
-            if key == 0 {
-                // A held key repeats, as Backspace does in any text editor.
-                key = RaylibRepeatedKey()
-            }
+            if ZoomWheel(session, desktop, wheel, RaylibModifiers()) { wheel = 0.0 }
             if key != 0 && !ZoomKey(session, desktop, key, modifiers) {
                 KeyboardSend(session, key)
             }
             RaylibSetZoom(ZoomFactor(session))
-            codepoint: s32 = RaylibTypedCodepoint()
-            while codepoint != 0 {
-                TypedCodepointSend(session, codepoint)
-                codepoint = RaylibTypedCodepoint()
-            }
             ok = DrawRaylibFrame(session, RaylibViewport(), wheel, false)
             TestDriverFrame(session)
         }

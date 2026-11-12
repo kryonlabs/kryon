@@ -16,6 +16,11 @@ PainterFill :: (destination: *void, value: s32, bytes: usize) -> *void #foreign 
 PainterCompare :: (first: *void, second: *void, bytes: usize) -> s32 #foreign painter_c "memcmp";
 
 GtkPaintTile :: struct { signature: u64; bitmap: GtkStyleBitmap }
+// A CSS layer drawn over an exact backdrop. Reuse requires the same nodes,
+// region and style generation and a byte-identical backdrop.
+GtkStyleOverEntry :: struct { key: u64; backdrop: Vec(u8); output: Vec(u8) }
+GTK_STYLE_OVER_ENTRIES :: 16
+GTK_STYLE_OVER_BUDGET :: 16777216
 GtkPainter :: struct {
     pixels: Vec(u8)
     // The exact pixels last given to texture; valid only while presented_valid.
@@ -26,6 +31,9 @@ GtkPainter :: struct {
     region_count: s32
     tiles: [256]GtkPaintTile
     next_tile: s32
+    overs: [GTK_STYLE_OVER_ENTRIES]GtkStyleOverEntry
+    next_over: s32
+    over_bytes: s64
     tile_bytes: s64
     generation: u64
     signature: u64
@@ -37,8 +45,15 @@ GtkPainter :: struct {
     texture: Texture2D
 }
 
+StyleOverDrop :: (p: *GtkPainter, at: s32) {
+    entry := *p.overs[at]
+    p.over_bytes -= entry.backdrop.count + entry.output.count
+    VecFree(entry.backdrop); VecFree(entry.output); entry.key = 0
+}
+
 GtkPainterRelease :: (p: *GtkPainter) {
     for i: 0..255 { GtkStyleBitmapRelease(*p.tiles[i].bitmap); p.tiles[i].signature = 0 }
+    for i: cast(s32)0..GTK_STYLE_OVER_ENTRIES-1 { StyleOverDrop(p, i) }
     BitmapImageRelease(p.session, p.texture)
     VecFree(p.pixels); VecFree(p.presented); VecFree(p.atlas); VecFree(p.regions)
     p.texture = .{}; p.signature = 0; p.presented_valid = false; p.tile_bytes = 0; p.region_count = 0
@@ -49,6 +64,7 @@ GtkPainterBegin :: (p: *GtkPainter, session: Session, bounds: Rectangle) -> bool
     generation := GtkStyleGeneration()
     if p.generation != generation {
         for i: 0..255 { GtkStyleBitmapRelease(*p.tiles[i].bitmap); p.tiles[i].signature = 0 }
+        for i: cast(s32)0..GTK_STYLE_OVER_ENTRIES-1 { StyleOverDrop(p, i) }
         p.generation = generation
         p.tile_bytes = 0
     }
@@ -207,11 +223,57 @@ GtkPainterStyleOver :: (p: *GtkPainter, nodes: []GtkStyleNode, bounds: Rectangle
     for yy: cast(s32)0..h-1 {
         unused PainterCopy(cast(*void)*background[yy*w*4], cast(*void)*p.pixels[((y+yy)*p.width+x)*4], cast(usize)(w*4))
     }
+    backdrop: *void=cast(*void)*background[0]
+    key:=TileKey(nodes,bounds,"",0,0)
+    key=(key ^ cast(u64)(box.x-bounds.x+1.0))*cast(u64)1099511628211
+    key=(key ^ cast(u64)(box.y-bounds.y+1.0))*cast(u64)1099511628211
+    key=(key ^ cast(u64)w)*cast(u64)1099511628211 ^ cast(u64)h
+    if key==0 { key=1 }
+    bytes:=background.count
+    hit: s32= -1
+    for i: cast(s32)0..GTK_STYLE_OVER_ENTRIES-1 {
+        entry:=*p.overs[i]
+        if entry.key==key && entry.backdrop.count==bytes && entry.output.count==bytes &&
+            PainterCompare(cast(*void)*entry.backdrop[0],backdrop,cast(usize)bytes)==0 { hit=i; break }
+    }
+    if hit>=0 {
+        cached:=*p.overs[hit]
+        for yy: cast(s32)0..h-1 {
+            unused PainterCopy(cast(*void)*p.pixels[((y+yy)*p.width+x)*4], cast(*void)*cached.output[yy*w*4], cast(usize)(w*4))
+        }
+        return true
+    }
+    // Keep the result for an identical later backdrop, within a fixed budget.
+    // The backdrop is stored before GTK consumes it.
+    at: s32= -1
+    if bytes*2<=GTK_STYLE_OVER_BUDGET {
+        at=p.next_over; p.next_over=(p.next_over+1)%GTK_STYLE_OVER_ENTRIES
+        StyleOverDrop(p,at)
+        while p.over_bytes+bytes*2>GTK_STYLE_OVER_BUDGET {
+            evict:=p.next_over; p.next_over=(p.next_over+1)%GTK_STYLE_OVER_ENTRIES
+            StyleOverDrop(p,evict)
+        }
+        entry:=*p.overs[at]
+        if VecResize(entry.backdrop,bytes) {
+            unused PainterCopy(cast(*void)*entry.backdrop[0],backdrop,cast(usize)bytes)
+            p.over_bytes+=bytes
+        } else { StyleOverDrop(p,at); at= -1 }
+    }
     bitmap:=GtkStyleRasterRegionOver(nodes,width,height,1,cast(s32)(box.x-bounds.x),cast(s32)(box.y-bounds.y),w,h,background[:])
     defer GtkStyleBitmapRelease(*bitmap)
-    if bitmap.width!=w || bitmap.height!=h || bitmap.rgba.count!=background.count { return false }
+    if bitmap.width!=w || bitmap.height!=h || bitmap.rgba.count!=bytes {
+        if at>=0 { StyleOverDrop(p,at) }
+        return false
+    }
     for yy: cast(s32)0..h-1 {
         unused PainterCopy(cast(*void)*p.pixels[((y+yy)*p.width+x)*4], cast(*void)*bitmap.rgba[yy*w*4], cast(usize)(w*4))
+    }
+    if at>=0 {
+        entry:=*p.overs[at]
+        if VecResize(entry.output,bytes) {
+            unused PainterCopy(cast(*void)*entry.output[0],cast(*void)*bitmap.rgba[0],cast(usize)bytes)
+            p.over_bytes+=bytes; entry.key=key
+        } else { StyleOverDrop(p,at) }
     }
     return true
 }

@@ -51,10 +51,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
     defer { RaylibBundleClose(*host) }
     RaylibExitKey(0)
     while PollRaylib() && !host.player.closed {
-        key := RaylibPressedKey()
-        if key == 0 { key = RaylibRepeatedKey() }
         BeginRaylibFrame()
-        ok := RaylibBundleFrame(*host, RaylibViewport(), key)
+        ok := RaylibBundleFrame(*host, RaylibViewport())
         captured: bool
         if ok && CaptureRequested() { captured = CaptureConfigured() }
         unused EndRaylibFrame()
