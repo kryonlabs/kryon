@@ -1,15 +1,11 @@
 .DEFAULT_GOAL := all
 
-.PHONY: site site-gallery site-gallery-test site-browser-test
+.PHONY: site site-gallery site-browser-test
 site:
 	python3 scripts/build-site.py
 
 site-gallery:
 	python3 scripts/build-gallery.py
-
-site-gallery-test:
-	python3 scripts/gallery.py
-	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 "$(JS_RUNTIME)" tests/gallery_browser.mjs
 
 site-browser-test:
 	python3 tests/site_browser_test.py

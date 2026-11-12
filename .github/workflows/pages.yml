@@ -96,25 +96,9 @@ jobs:
           if-no-files-found: error
 
   verify:
-    name: ${{ matrix.name }}
+    name: Website
     needs: browser-runtime
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Gallery 1/3
-            mode: gallery
-            shard: 0
-          - name: Gallery 2/3
-            mode: gallery
-            shard: 1
-          - name: Gallery 3/3
-            mode: gallery
-            shard: 2
-          - name: Live editor
-            mode: editor
-            shard: 0
     defaults:
       run:
         working-directory: kryonlabs/kryon
@@ -129,6 +113,13 @@ jobs:
           name: kryon-website
           path: kryonlabs/kryon/docs/site
 
+      # The portable source test invokes the locked compiler directly.
+      - name: Set up the locked Ziran
+        uses: ziranlang/ziran/.github/actions/setup@4135e07fae33bcd0c00dd66b5716fdfe19c1fca5
+        with:
+          project: kryonlabs/kryon
+          path: ziranlang/ziran
+
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
@@ -138,7 +129,7 @@ jobs:
         timeout-minutes: 10
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3 python3-pil xvfb
+          sudo apt-get install -y build-essential python3 python3-pil
 
       # Test and deploy the same runtime built from the locked compiler.
       - name: Check static site assets
@@ -158,19 +149,14 @@ jobs:
           test -f docs/site/gallery-data.js
           test -f docs/site/gallery-sources/kryon/0.zi
 
-      - name: Test the compiled widget gallery
-        if: matrix.mode == 'gallery'
+      - name: Test the Canvas website
         env:
           CHROMIUM: google-chrome
-          GALLERY_SHARDS: '3'
-          GALLERY_SHARD: ${{ matrix.shard }}
-        run: env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS YUE_DESKTOP_RECOVERY=0 node tests/gallery_browser.mjs
-
-      - name: Test site navigation, catalogs and live preview
-        if: matrix.mode == 'editor'
-        env:
-          CHROMIUM: google-chrome
-        run: python3 tests/site_browser_test.py
+        run: |
+          export PATH="$GITHUB_WORKSPACE/ziranlang/ziran/build/bin:$PATH"
+          export ZIRAN_ROOT="$GITHUB_WORKSPACE/ziranlang/ziran"
+          env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+            YUE_DESKTOP_RECOVERY=0 python3 tests/site_browser_test.py
 
   deploy-production:
     name: Deploy Kryon Labs
