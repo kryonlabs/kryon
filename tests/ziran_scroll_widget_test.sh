@@ -8,7 +8,6 @@ include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-cp "$repo/tests/widget_test_session.zi" "$work/"
 
 cat > "$work/app.zi" <<'ZI'
 #import "session"
@@ -408,24 +407,24 @@ HOST void RasterTextRotated(String value, int32_t x, int32_t y, int32_t font,
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
 
-"$ziran" ir --root "$work" $kryon_ui_args --module-path "$standard" \
+"$ziran" ir --root "$work" $kryon_project_args --module-path $work \
     -o "$work/ir" "$work/app.zi"
 for input in source saved; do
     if test "$input" = source; then
         source=$work/app.zi
         root=$work
-        module_path="$kryon_ui_args"
+        module_path="$kryon_project_args --module-path $work"
     else
         source=$work/ir/app.zir
         root=$work/ir
-        module_path="--module-path $work/ir"
+        module_path="--project --module-path $work/ir"
     fi
-    "$ziran" bundle --root "$root" $module_path --module-path "$standard" \
+    "$ziran" bundle --root "$root" $module_path  \
         --entry app:Answer -o "$work/$input.zx" "$source"
     for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
-            --root "$root" $module_path --module-path "$standard" \
+            --root "$root" $module_path  \
             -o "$output" "$source"
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"
@@ -463,10 +462,10 @@ set -- \
     --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
     --bind paint_queue:RasterImage=ziran_widget_noop_host:RasterImage \
     --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
-"$ziran" ir --root "$work" $kryon_ui_args --module-path "$repo/tests" \
-    --module-path "$standard" -o "$work/portable-ir" "$work/portable.zi"
-"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$repo/tests" \
-    --module-path "$standard" "$@" --entry portable:PortableCheck \
+"$ziran" ir --root "$work" $kryon_project_args --module-path $work  \
+     -o "$work/portable-ir" "$work/portable.zi"
+"$ziran" bundle --root "$work" $kryon_project_args --module-path $work  \
+     "$@" --entry portable:PortableCheck \
     -o "$work/portable-source.zx" "$work/portable.zi"
 "$ziran" bundle --root "$work/portable-ir" --module-path "$work/portable-ir" \
     "$@" --entry portable:PortableCheck -o "$work/portable-saved.zx" "$work/portable-ir/portable.zir"

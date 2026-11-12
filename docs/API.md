@@ -15,6 +15,12 @@ as `kryon/button_group` and `kryon/progress_ring`; checklist tasks and swipe
 actions are available from `kryon/onboarding_checklist_task` and
 `kryon/swipe_row_props`.
 
+With `KRYON_HOSTED_UI`, `kryon/Widgets` exports the existing hosted widget
+contracts, including Checkbox, Fieldset, SegmentedControl, TimePicker and
+Spinbox with their props and results. Retained-only components such as Page
+and Toast require a local tree and are excluded from this hosted aggregate.
+Pointer and keyboard sampling remain separate imports.
+
 Rendering hosts that retain pixels can call `CommitFrameDamaged(session)` to
 commit the tree and compare paint while leaving changed commands queued. An
 unchanged result needs no raster work; a partial result supplies its damage
@@ -385,8 +391,9 @@ strip and returns its content `offset` plus state for the next frame. Right
 uses `start`, left uses `end`; an action needs `icon_shape`. `threshold` is a
 share of row width (zero means 0.35). Optional `end_threshold` overrides it
 for left swipes; zero uses the effective shared threshold. A release emits `swiped_start` or
-`swiped_end`; `clicked` reports a separate tap or keyboard activation. The app
-chooses what a tap does. Vertical scrolling does not activate swipe actions.
+`swiped_end`; `clicked` reports a separate tap or keyboard activation, while
+`right_clicked` and `pointer_x`/`pointer_y` expose a secondary-button release.
+The app chooses what a tap does. Vertical scrolling does not activate swipe actions.
 
 Optional `long_start` and `long_end` actions add a second stage in either
 direction. `long_threshold` is a width share (zero means 0.5) and must exceed
@@ -395,8 +402,13 @@ color/icon appears at that distance. Release emits `swiped_long_start` or
 `swiped_long_end`, exclusively with the short results, using the final distance
 even after crossing and retreating. Each chosen action's `removes` controls
 whether the row settles back. Without long actions, existing behavior remains.
-For short-swipe completion and long-swipe editing, set `threshold = 0.15`,
-`end_threshold = 0.35` to retain left-delete distance, `long_threshold = 0.5`, put completion in `start` and edit in `long_start`, and
+Positive `start_width` or `end_width` replaces that side's row-width share with
+a fixed bounds-unit travel span; zero retains row-width behavior. A two-stage
+strip divides that span into equal first and second containers and clamps the
+drag at the configured span.
+For short-swipe completion and long-swipe editing, set equal `start_width` halves,
+`threshold = 0.5`, `end_threshold = 0.35` to retain row-width left deletion,
+`long_threshold = 1.0`, put completion in `start` and edit in `long_start`, and
 handle their separate results. A tap need not complete the row.
 
 ## Style rules
@@ -928,6 +940,10 @@ bundle frame in `WidgetHostBegin(session, asset_allowed)` and
 `WidgetHostEnd()`. The callback decides which asset paths the bundle may
 draw; texture handles never cross. Records match fields by name, so a bundle
 and its host may be built against different Kryon layouts.
+Hosted `image_raster.ImageWidth(path)` and `ImageHeight(path)` return typed
+dimensions for assets approved by the same callback. Paths resolve through
+the active bundle owner; denied paths and calls outside a frame are rejected.
+An unresolved approved image returns `-1`, and an empty path returns `0`.
 Host replies copy returned strings into the bundle's memory, including text
 inside records and collections. A host may reuse its reply buffers on its
 next call; the bundle can retain those strings across calls and instance runs.
@@ -1555,6 +1571,9 @@ quality: s32 = 35) -> ImageAVIFResult`. On success, `data` owns actual AVIF
 bytes and `source_bytes`/`encoded_bytes` support a real size comparison.
 `width`/`height` are the full stored dimensions. Call `ImageAVIFFree(*result)`
 when finished. Encoding does not resize or discard a larger result.
+`ImageAVIFEncodingAvailable()` reports whether this host supports encoding.
+Browser hosts return false, and compression returns `UnsupportedCapability`
+without linking native codec archives. Browser RGBA previews remain available.
 
 Accepted still 8-bit JPEG, PNG and WebP sources retain ICC, Exif and XMP when
 the container metadata is supported; AVIF uses the headless package's direct
@@ -1571,3 +1590,305 @@ pixels with 1..4 channels. Call `ImagePreviewRGBAFree(*result)` to release the
 output. These RGBA previews avoid temporary JPEG files and preserve transparent
 edges for before/after comparison. Existing JPEG preview callers retain their
 existing API.
+
+## Programmable scene materials
+
+Import `kryon/scene`, `kryon/scene_render` and `kryon/shader`. `RenderScene`
+executes camera-projected, depth-tested 3D meshes into a `std/image.Image`.
+`SceneCamera.shift_x` and `shift_y` optionally offset a perspective view in
+normalized device coordinates, with zero preserving the symmetric projection.
+Positive X moves the scene right; positive Y moves it up. An offset of 1 moves
+it by half the viewport width or height. Position, target, field of view and
+aspect stay fixed, so this pans a bounded crop without rotating or translating
+the camera. The CPU and GPU apply the offset before homogeneous frustum
+clipping; render only the requested viewport. Orthographic bounds retain their
+existing meaning and do not use these perspective offsets. Async GPU completion
+metadata retains the exact submitted offsets with its camera.
+The shader implementation is portable Ziran on CPU, including on Android and
+WebAssembly. It does not compile GLSL or require a GPU shader context.
+
+`ShaderCompile(program: *ShaderProgram, code: []ShaderInstruction) ->
+ShaderDiagnostic` validates and copies up to 128 instructions into owned,
+bounded storage. `ok`, zero-based `instruction` (or -1 for program errors),
+and static `message` describe failures. A rejected replacement preserves the
+previous executable. Do not modify compiled storage directly.
+`ShaderFree(*program)` invalidates it and is idempotent. Programs have no
+external handles or allocations and survive presentation-context recreation.
+`ShaderProgram.input_mask` records which initial inputs the validated code reads:
+`SHADER_INPUT_COLOR`, `SHADER_INPUT_POSITION`, `SHADER_INPUT_NORMAL` and
+`SHADER_INPUT_UV`. Reads after overwriting an input register do not require
+that initial value. The renderer uses this metadata to avoid normalizing
+unused shader normals; UV-only albedo programs retain identical output.
+
+Each instruction has `op`, `dest`, `a`, `b`, `c`, `slot` and `value`.
+Registers hold `ShaderValue.{x,y,z,w:float64}`. Registers 0–3 initially contain
+linear base RGBA, world XYZ/1, world-normal XYZ/0, and UV/0/0. The renderer
+perspective-correctly interpolates these values. Registers 4–31 start undefined;
+validation rejects reads before writes and invalid destinations. Operations are
+`ShaderLiteral`, `ShaderUniform`, `ShaderSample`, `ShaderMove`, `ShaderAdd`,
+`ShaderSubtract`, `ShaderMultiply`, `ShaderDivide`, `ShaderMin`, `ShaderMax`,
+`ShaderSin`, `ShaderCos`, `ShaderFract`, `ShaderDot`, `ShaderNormalize`,
+`ShaderMix`, `ShaderDiscardLess`, and `ShaderOutput` (members of `ShaderOp`).
+Arithmetic is component-wise; dot and normalization use XYZ; dot broadcasts its
+result and normalization preserves W for nonzero XYZ (zero XYZ returns zero
+RGBA). Mix uses A, B and C per component.
+Divide by zero returns zero. DiscardLess discards when A.x < B.x. Output takes
+A and must end the program. Nonfinite outputs discard. No unbounded loops.
+
+Set `SceneMaterial.shader` to the program address, `shader_uniforms` to a
+borrowed slice of up to 16 vec4 slots, and `shader_samplers` to borrowed slots
+(up to 8). Owners must remain alive and unchanged during `RenderScene`;
+values and pixel contents can change between renders without recompilation.
+`ShaderBindings` reports missing slots, released programs, nonfinite uniforms
+and invalid RGBA dimensions. `RenderScene` rejects invalid bindings before
+drawing. `SceneFree` never frees borrowed programs, uniforms or sampler pixels.
+
+`ShaderSampler.{width,height,pixels,repeat}` samples straight linear RGBA bytes,
+top row first. UV V=0 selects the bottom row. Sampling uses nearest-neighbor
+clamp-to-edge by default, or repeat including negative coordinates. Supply
+linear data when loading an sRGB image for a custom sampler. The standard
+`SceneMaterial.texture` path continues to decode sRGB automatically.
+
+Shader output replaces base RGBA before standard lighting and tone mapping.
+Use `UnlitMaterial` for direct colour, or `LitMaterial` for procedural surfaces
+that keep scene lighting. Set `transparent=true` for fractional alpha;
+`alpha_test` also applies to shader output. Discarded and zero-alpha fragments
+write neither colour nor depth. Shadow maps still use mesh geometry; custom
+shader discard does not cut holes in shadow casters.
+
+The renderer clips triangles against all six homogeneous camera planes,
+preserving attributes when triangles cross the eye or near plane.
+Present its straight sRGB output with `BitmapImageCreate`/`BitmapImageUpdate`
+and the standard `Image` widget; widget clipping and alpha remain in effect.
+`RenderSceneRelease()` releases shared scratch buffers, recreated on the next
+render. Render and release on one owning thread; this renderer is not reentrant.
+
+Native builds with `POSIX_THREADS` prepare immutable mesh states and clipped
+triangle commands once per frame, then render through `std/parallel_linux`.
+Four lanes are the default; `ZIRAN_PAR_THREADS=1` selects serial execution.
+Each lane clears, draws and resolves its own full pixel rows in the original
+opaque and sorted transparent order. One completion barrier joins the frame.
+Conservative row bounds skip empty triangle regions while retaining the
+original edge equations at all four sample positions.
+Soft-shadow disk radii are initialized once. Each lane memoizes exact disk
+rotations in a 512-entry cache for its frame; the light's radius and depth
+comparisons are still evaluated per fragment. This uses about 44 KiB of
+temporary stack per lane, without a full-frame cache or changed shadow samples.
+`RenderSceneWorkerCount()` reports available pool lanes, including the caller;
+it returns one before initialization and after `RenderSceneRelease()`, which
+also closes the pool. Small draws and thread-creation failure remain serial.
+Portable bundles and WebAssembly builds without this capability remain serial.
+Borrowed programs, uniform values and sampler pixels must remain immutable
+until `RenderScene` returns on the owning thread.
+
+For expensive opaque materials with more than two projected surface layers,
+the renderer first tests depth and material discard without lighting. It then
+shades only candidates near the final opaque depth, preserving the original
+draw order, float32 depth comparisons and four coverage samples. Conservative
+depth ceilings temporarily reuse the existing sample color bytes; this adds
+no frame-sized buffer. Empty samples regain the scene background before the
+original sorted transparent pass. Low-overlap scenes retain the single pass.
+Programs and alpha textures still run during visibility testing, so savings
+depend on overlap and lighting cost.
+
+`RenderSceneStatistics()` returns the last completed render's
+`opaque_projected_layers` (summed clipped opaque triangle area divided by image
+area), `depth_prepass`, `depth_fragments` and `shaded_fragments`. Fragment counts
+are pixel-center material evaluations after coverage and depth testing, shared
+by covered MSAA samples; they include evaluations that discard. The depth count
+belongs to the optional visibility pass, and the shaded count includes opaque
+and transparent color passes. Lanes accumulate private counts before joining.
+Release resets the snapshot.
+
+`RenderSceneMemoryBytes()` reports retained backing-buffer bytes for renderer
+scratch, including transformed vertices and prepared draw commands. It excludes
+the caller's scene, textures and output image, static color tables, allocator
+overhead and worker stacks; it is not process RSS. Color and depth buffers grow
+without geometric spare capacity. Sized buffers retain capacity across renders
+and all reported scratch is freed by `RenderSceneRelease()`.
+`RenderSceneMemoryUsage()` returns the same backing storage split into
+`framebuffer_bytes`, `shadow_bytes`, `vertex_bytes`, `triangle_bytes`,
+`draw_bytes`, `node_bytes` and `ordering_bytes`. These fields sum to
+`RenderSceneMemoryBytes()`. Triangle commands refer to shared draw states and
+do not copy material bindings. The four coverage positions are shared constants,
+not stored in each command. Geometry reservation allows one eighth of source
+size plus 32 records for clipping; additional growth uses the same bounded
+headroom. Camera frames within retained capacities allocate no geometry storage.
+Transparent depth-sort keys also retain capacity across frames and are included
+in `ordering_bytes`.
+
+Render at a bounded resolution and reuse the image while camera, geometry,
+lights and material inputs remain unchanged. CPU rendering every UI frame
+at full window resolution can be expensive.
+
+`tests/shader_scene_test.zi` demonstrates mutable uniforms, sampling,
+diagnostics, clipping, alpha and recreation. Focused targets are
+`make shader-scene-test` and `make shader-host-test`, through `build-queue --`.
+
+### Renderer performance benchmark
+
+Run `build-queue -- python3 tests/scene_render_benchmark.py --output PATH`
+on Linux. The benchmark enables `POSIX_THREADS`; `ZIRAN_PAR_THREADS=1` selects
+the same renderer serially. `CC` can select a compiler wrapper. The benchmark
+retains four MSAA samples per pixel and the complete 960x600 and 420x900 output. It measures
+clear/resolve, unlit meshes, textured meshes, a 12-instruction programmable
+material, and standard lit meshes. The texture is 1024x1024; the scene has a
+wall and four rounded boxes. Each workload warms once, then measures three
+camera positions. Geometry construction and full-frame hashing are outside
+the timed region. Rows contain width, height, workload, frame, wall nanoseconds,
+process CPU nanoseconds and an RGBA pixel hash. CPU time separates rendering
+work from scheduling delays; it does not predict an application's frame rate.
+Use `--compare PATH` with an earlier output to require all 30 pixel hashes to
+match and report median speed ratios. Add `--motion` for 120 changing-camera
+frames per workload at 960x600, 420x900 and 1280x800. It reports p50/p95/p99,
+the count within the 16.67 ms budget, cold render time, retained scratch and
+sampled process peak RSS/HWM; it also checks all 1,800 motion hashes when the
+comparison contains them. Every sample is retained, including slow frames.
+`--shadows` instead adds 120 motion frames at each resolution for a lit
+programmable material, a 1024-square shadow map and the unchanged five-tap
+soft-shadow disk. Compare against an earlier `--shadows` output to check all
+360 shadow hashes. The original 30 reference frames still run in this mode.
+`--overdraw` instead adds 16 opaque lit programmable planes, with 12 changing
+camera frames at each resolution after warming that camera path's clipping
+capacity. Compare against an earlier `--overdraw` output to check all 36 motion
+hashes. Statistics rows record the final frame's projected layers, visibility
+pass choice and material evaluation counts.
+The benchmark checks fixed scratch capacity during these camera motions and
+zero scratch after release. It measures rendering only: presentation, image
+uploads and application geometry/state updates require application profiling.
+These are local tests, not GPU timings or application frame-rate claims.
+
+The renderer reuses sized scratch buffers, converts fragment output once for
+its covered samples, and caches the exact byte-to-linear transfer. The output
+lookup searches thresholds generated from the original transfer and rounding;
+it does not reduce color precision. Shader vector arithmetic dispatches once
+per instruction. These changes retain clipping, blending, depth and sampling
+behavior; the shader regression renders both sides of every output-byte edge.
+
+### Portable GLSL translation and optional native GPU rendering
+
+`kryon/shader_glsl` translates the same `ShaderProgram` into a GLSL ES material
+function. `ShaderGLSLTranslate(program)` returns `ShaderGLSLResult` with a
+`diagnostic`, owned `source` text, and uniform/sampler counts and input mask.
+Check `diagnostic.ok` before composing its `kryonMaterial` function into a host
+shader. `ShaderGLSLBindings` validates the borrowed values for GPU execution.
+Translation is portable Ziran; it does not create a graphics context. GPU
+highp arithmetic has different precision from the CPU's binary64 arithmetic,
+so GPU comparisons use documented pixel tolerances rather than exact hashes.
+
+Native applications can explicitly import `kryon/scene_gpu` and link
+`-lEGL -lGLESv2 -lGLX -lm`. This optional host is separate from the core UI, portable
+CPU renderer and WebAssembly path. It owns a surfaceless EGL/GLES3 context and
+renders the existing `Scene`, materials and `SceneCamera` into a reusable
+`std/image.Image` for ordinary Kryon Image presentation.
+
+Keep one `SceneGpuContext` at a stable address on its owning thread.
+`SceneGpuProbe(context)` reports availability, diagnostic, renderer labels,
+texture limits and MSAA support. The host requires highp fragment precision,
+14 texture units, four MSAA samples and bilinear depth comparisons; it reports
+unavailability when those requirements cannot be met.
+`SceneGpuRender(context, scene, camera, image)` preserves the requested image
+dimensions and returns `SceneGpuFrame` with `ok`, `accelerated`, `diagnostic`
+and submission/readback/conversion timings. Failure leaves the output untouched.
+`SceneGpuRenderOrCPU` explicitly permits the full-quality CPU renderer on
+failure, setting `accelerated=false`; inspect that flag when measuring GPU work.
+
+`SceneGpuCapabilities.async_available` separately probes pixel pack buffer
+readback, fences and read mapping. `async_diagnostic` explains unavailability;
+the synchronous GPU API remains available when only async support is missing.
+`SceneGpuSubmit(context, scene, camera, width, height, request_id)` draws at
+full quality into one of exactly two retained transfer slots. Use positive,
+strictly increasing IDs until release. `SceneGpuAsyncResult.ok` means the
+operation is valid: `queued` accepts the request, `busy` accepts nothing.
+Scene, shader and texture storage is borrowed only during submission and can
+be mutated afterward on the owner thread.
+
+`SceneGpuPoll(context, image)` tests the oldest fence with timeout zero.
+An empty/unready poll has `ok=true, completed=false` and leaves the image
+untouched. A completion returns the exact submitted ID, camera, size, original
+draw timings and submission-to-completion `latency_ms`; it never labels pending
+work as the latest camera. The image must already have the completed size.
+Poll copies only a signaled buffer, validates its read mapping and then updates
+the reusable Image. One CPU staging buffer is shared with synchronous readback.
+Synchronous render can safely interleave while both transfer slots are pending.
+Async queues add at most `2 * width * height * 4` GPU buffer bytes.
+
+`SceneGpuCancel` discards pending IDs and releases the transfer slots. Resize,
+release and context loss also discard them. Cancellation/resize/release may
+drain GPU work; poll does not wait for unfinished work. Applications must keep
+polling while work is pending, including after input stops, and retain the
+completed camera metadata separately from current input. Queueing may add
+camera latency, so measure changed presented frames and event-to-pixel latency.
+The native Desktop host exposes `DesktopRequestFrame()` for this purpose.
+Requests aggregate until the next `BeginDesktopFrame`, keep the active frame
+budget while pending, and affect only scheduling. Continue to pass the actual
+retained-paint result to `DesktopFrameUnchanged`; scheduling work must never
+claim that unchanged image pixels changed.
+
+Geometry, material programs, textures and render targets retain storage across
+frames. Scene and binding data are borrowed during the call; mutate them only
+on the owner between calls. `SceneGpuMemoryUsage` reports retained CPU/GPU
+storage estimates, object counts, upload counts and completed GPU frames; this
+is separate from process RSS and presentation-host storage.
+The resource report includes live fences/pending frames, accepted submissions
+and cancelled requests. Deleting a live slot drains it before releasing storage,
+so repeated navigation cannot accumulate deferred transfer allocations.
+`SceneGpuResize` resizes the retained target. `SceneGpuRelease` releases owned
+objects and context and can be called repeatedly; a later probe/render recreates
+them. It preserves a foreign host's current graphics context and does not
+terminate the process-shared EGL display.
+
+Run the explicit native targets `make shader-glsl-test` and
+`make scene-gpu-test` through `build-queue --`. The ordinary public-surface
+local tests also compile and execute scene, material and translator imports as
+a separate package consumer in native and portable forms without linking EGL.
+
+### Owned image pixels for scene textures
+
+`#import "kryon/image_pixels"` exposes
+`LoadImagePixels(path: string) -> std/image.Image`. Success satisfies
+`ImageValid(*image)`; missing, invalid or unsupported files return an empty image.
+The caller owns `image.pixels` and releases it with `VecFree(image.pixels)`.
+Pixels are tightly packed, top-down, straight RGBA in the source's sRGB encoding.
+Use `AddTexture(scene, image.pixels[:], image.width, image.height)` for scene
+texture color decoding. Shader samplers accept linear RGBA; convert sRGB first
+when using those bindings.
+
+Linux uses the existing system image loader and packaged WebP/AVIF adapters,
+copying the original straight pixels before Cairo premultiplies them. The
+Raylib WASM target reads files in the Emscripten filesystem and uses its existing
+image decoder; assets must be preloaded. Android reads relative APK asset paths
+through the current NativeActivity's asset manager, or absolute filesystem
+paths. It uses the existing PNG decoder and the activity's `decodeBundleImage`
+method for other supported formats, including JPEG orientation. Unsupported
+formats fail empty; this API does not promise WebAssembly/Android AVIF support.
+These are CPU images and survive presentation context teardown.
+
+`make image-pixels-test` verifies exact RGBA/alpha ownership and invalid inputs.
+`make shader-host-test`, `make shader-web-test` and the explicit hardware target
+`make shader-android-test` additionally execute the loader in their real hosts.
+The Android console test covers absolute PNG files and the real offscreen native
+window; APK asset lookup and the JNI codec require an activity integration test.
+
+Custom native and Canvas hosts can import `kryon/window_runtime` for
+`BeginWindowFrame`, `ClearWindowFrame(color)` and `EndWindowFrame`.
+`CloseNativeWindow`, `WindowHidden`, `WindowMinimized` and `WindowClosing`
+retain the backend's existing window semantics. These observations do not
+poll input, change focus, pause work, or decide whether closing hides or quits.
+Applications using retained frames keep their retained presentation lifecycle.
+`WindowWidth` and `WindowHeight` read the current drawing surface on Android,
+including after resume. Raylib hosts use the current EGL buffer extent, which
+can differ from the decorated native window while a resize settles. Surface
+synchronization releases stale fixed buffer sizes. `BeginWindowFrame`
+synchronizes its viewport and framebuffer dimensions. Kryon retained frames
+perform the same synchronization after texture mode, preserving the current
+surface when they present.
+
+Custom hosts import `kryon/window_icon` for
+`SetWindowIcon(encoded: string, file_type: string) -> bool`. Encoded bytes
+are borrowed for the call; native hosts decode through their shared image
+codecs, apply JPEG orientation, and preserve full dimensions and straight
+alpha. The native window must already exist. False means invalid or
+unsupported data, a missing SDL window, or a browser/Android host where the
+application icon belongs to the page or package manifest. Native AVIF
+requires `AVIF_RAYLIB` and the codec archives used by the renderer.

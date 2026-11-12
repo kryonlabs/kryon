@@ -11,7 +11,7 @@ python3 "$repo/scripts/generate-widget-codecs.py" --complete \
     --uses "$repo/src/backend/widget_codec.zi" --import '"widget_codec"' \
     --output "$work/widget_test_codecs.zi"
 "$ziran" build --target=c --no-main --entry ziran_widget_host_test:main --root "$repo/tests" \
-    $kryon_ui_args --module-path "$repo/src/backend" --module-path "$work" --module-path "$ziran_root/std" -o "$work/c" "$repo/tests/ziran_widget_host_test.zi"
+    $kryon_project_args --module-path "$work"  -o "$work/c" "$repo/tests/ziran_widget_host_test.zi"
 "${CC:-cc}" -O2 -std=c11 -ffunction-sections -fdata-sections -I"$work/c" "$work"/c/*.c \
     -Wl,--gc-sections -lm -o "$work/run"
 "$work/run"

@@ -2,8 +2,10 @@
 """Check real generated JNI exports through the canonical Android linker rules."""
 import argparse
 from pathlib import Path
+import os
+import signal
 import subprocess
-from toolchain import UI_MODULE_ARGS, ROOT, ZIRAN, ZIRAN_ROOT
+from toolchain import ROOT, ZIRAN, ZIRAN_ROOT
 
 WORK = ROOT / 'work/android-notification-exports'
 COMMON = {
@@ -19,22 +21,48 @@ GPLAY = {
 }
 
 
-def run(args, **kwargs):
-    return subprocess.check_output(list(map(str, args)), text=True, **kwargs)
+def run(args):
+    logs = WORK / 'command-logs'
+    logs.mkdir(exist_ok=True)
+    number = len(list(logs.glob('*.log'))) + 1
+    log = logs / f'{number:04d}.log'
+    command = list(map(str, args))
+    with log.open('x') as output:
+        child = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT,
+                                 start_new_session=True)
+        print("JNI command", number, command[0], "pid", child.pid, "log", log, flush=True)
+        try:
+            code = child.wait(timeout=300)
+        except subprocess.TimeoutExpired:
+            try: os.killpg(child.pid, signal.SIGTERM)
+            except ProcessLookupError: pass
+            try:
+                child.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                try: os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError: pass
+                child.wait()
+            raise subprocess.TimeoutExpired(command, 300) from None
+    if code:
+        with log.open('rb') as output:
+            output.seek(max(0, output.seek(0, 2) - 4000))
+            print(output.read().decode(errors='replace'))
+        raise subprocess.CalledProcessError(code, command)
+    return log
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--ndk', type=Path)
     args = parser.parse_args()
-    run(['git', '-C', ROOT, 'check-ignore', WORK])
+    subprocess.run(['git', '-C', ROOT, 'check-ignore', '-q', WORK], check=True)
     WORK.mkdir(parents=True, exist_ok=True)
     # Minimal Android entry stubs; every notification callback comes from the
     # production modules. The map must still hide all other library functions.
     host = WORK / 'android_glue.zi'
-    host.write_text('''#import "android_jni"
-#import "android_notifications"
-#import "notification_push"
+    host.write_text('''#import "kryon/android_jni"
+#import "kryon/android_notifications"
+#import "kryon/notification_push"
 #program_export
 ANativeActivity_finish :: (activity: *void) { unused activity }
 #program_export
@@ -53,16 +81,20 @@ NotificationPrivateProbe :: () {}
         for edition in ('direct', 'fdroid', 'gplay'):
             project = WORK / abi / edition
             generated = project / 'c'
+            for pattern in ('*.c', '*.h'):
+                for output in generated.glob(pattern): output.unlink()
             definitions = ['--define', 'ANDROID_BUILD', '--define', architecture]
             if edition == 'gplay': definitions += ['--define', 'GOOGLE_PLAY']
             if edition == 'fdroid': definitions += ['--define', 'FDROID']
             run([ZIRAN, 'build', '--target=c', '--no-main', *definitions,
-                 '--root', WORK, '--module-path', ROOT / 'src/backend',
-                 *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std',
+                 '--root', WORK,
+                 "--project", "--module-path", ROOT / "tests",
                  '-o', generated, host])
-            # Exercise the identity-prefixed filenames produced by package mode.
+            # Exercise identity-prefixed generated filenames through the Android linker.
             for module in ('android_notifications', 'notification_push'):
-                (generated / (module + '.c')).rename(generated / ('pkg_' + module + '.c'))
+                matches = list(generated.glob('*' + module + '.c'))
+                assert len(matches) == 1, matches
+                matches[0].rename(generated / ('pkg_' + module + '.c'))
             (project / 'CMakeLists.txt').write_text(f'''cmake_minimum_required(VERSION 3.22)
 project(NotificationExports C)
 include("{ROOT}/cmake/KryonAndroid.cmake")
@@ -82,7 +114,8 @@ kryon_android_host(main ${{sources}})
             run(command)
             run(['cmake', '--build', build, '--parallel', '2'])
             symbols = run(['nm', '-D', '--defined-only', build / 'libmain.so'])
-            exported = {line.split()[-1] for line in symbols.splitlines() if line.split()}
+            with symbols.open() as lines:
+                exported = {line.split()[-1] for line in lines if line.split()}
             assert COMMON <= exported, (abi, edition, COMMON - exported)
             assert {'JNI_OnLoad', 'ANativeActivity_onCreate', 'android_main'} <= exported
             assert 'NotificationPrivateProbe' not in exported, 'private symbols leaked'

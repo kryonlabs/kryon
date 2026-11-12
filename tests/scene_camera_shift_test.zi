@@ -1,0 +1,124 @@
+// A shifted viewport must be a crop of the same fixed view, not a rotated
+// or translated camera. The runner also compares CPU and real GLES pixels.
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "kryon/scene_gpu"
+#import "std/image"
+#import "std/vec"
+#import "std/math"
+#import "std/text_tools"
+#import "std/file"
+#import "std/c_string"
+#import "std/byte_text_linux"
+libc :: #system_library "c";
+Pause :: (microseconds: u32)->s32 #foreign libc "usleep";
+
+BuildScene :: (scene: *Scene) {
+    SceneInit(scene)
+    scene.background=.{24,32,48,255}
+    for at:0..8 {
+        material:=UnlitMaterial(.{cast(u8)(30+at*23),cast(u8)(220-at*17),cast(u8)(70+at*13),255})
+        material.exact_color=true;material.double_sided=true
+        node:=Plane(scene,1.25,2.7,material)
+        SetPosition(scene,node,-6.0+cast(float64)at*1.5,cast(float64)(at%3-1)*1.1,-1.0-cast(float64)(at%3))
+        SetRotation(scene,node,0.1,cast(float64)(at%3-1)*0.25,0.2)
+    }
+    // Two depths and a translucent overlap exercise perspective interpolation
+    // and depth order. Geometry beyond the symmetric frustum must enter on pan.
+    material:=UnlitMaterial(.{250,70,40,255});material.double_sided=true
+    material.exact_color=true
+    node:=Plane(scene,1.4,0.9,material)
+    SetPosition(scene,node,-0.4,0.4,0.2)
+    material.transparent=true;material.opacity=0.45;material.color=.{30,100,250,255}
+    node=Plane(scene,1.2,1.7,material)
+    SetPosition(scene,node,0.2,-0.2,0.6)
+    // A near-plane crossing checks clipping with shifted homogeneous x/y.
+    material.transparent=false;material.opacity=1.0;material.color=.{240,220,60,255}
+    node=Plane(scene,1.0,1.0,material)
+    SetVertexPosition(scene,node,0,.{-1.7,0.8,2.85})
+    SetVertexPosition(scene,node,1,.{-0.9,0.8,1.0})
+    SetVertexPosition(scene,node,2,.{-1.7,-0.1,2.85})
+    SetVertexPosition(scene,node,3,.{-0.9,-0.1,1.0})
+}
+
+Camera :: (width: s32,height: s32)->SceneCamera {
+    camera:=PerspectiveCamera(50.0,cast(float64)width/cast(float64)height,0.4,30.0)
+    camera.position=.{0,0,3};camera.target=.{0,0,0}
+    return camera
+}
+
+WriteFrame :: (prefix: string,label: string,size: s32,state: s32,image: *Image)->bool {
+    b: Vec(u8);BuilderPrint(*b,"%-%-%-%.rgba",prefix,label,size,state)
+    name: Text=BuilderFinish(b)
+    return WriteEntireFile(TextView(name),TextFromBytes(image.pixels[:]))
+}
+
+ZeroFrames :: (prefix: string)->bool {
+    scene: Scene;BuildScene(*scene);defer SceneFree(*scene);defer RenderSceneRelease()
+    gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+    for size:0..1 {
+        width: s32=ifx size==0 then 96 else 64
+        height: s32=ifx size==0 then 64 else 96
+        image:=NewImage(width,height);defer VecFree(image.pixels)
+        camera:=Camera(width,height)
+        if !RenderScene(*scene,camera,*image)||!WriteFrame(prefix,"zero-cpu",cast(s32)size,0,*image) {return false}
+        if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!WriteFrame(prefix,"zero-gpu",cast(s32)size,0,*image) {return false}
+    }
+    return true
+}
+
+// Off-axis tests
+ShiftFrames :: (prefix: string)->bool {
+    scene: Scene;BuildScene(*scene);defer SceneFree(*scene);defer RenderSceneRelease()
+    gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+    caps:=SceneGpuProbe(*gpu)
+    if !caps.available||!caps.async_available {return false}
+    shifts: [9]ShapePoint=.[.{0,0},.{-1.5,0},.{1.5,0},.{0,-1.5},.{0,1.5},.{-1.5,-1.5},.{1.5,1.5},.{-1.5,1.5},.{1.5,-1.5}]
+    id: u64
+    for size:0..1 {
+        width: s32=ifx size==0 then 96 else 64
+        height: s32=ifx size==0 then 64 else 96
+        camera:=Camera(width,height)
+        wide:=camera
+        wide.fov=Atan(3.0*Tan(camera.fov*3.141592653589793/360.0))*360.0/3.141592653589793
+        reference:=NewImage(width*3,height*3);defer VecFree(reference.pixels)
+        if !RenderScene(*scene,wide,*reference)||!WriteFrame(prefix,"wide-cpu",cast(s32)size,0,*reference) {return false}
+        if !SceneGpuRender(*gpu,*scene,wide,*reference).ok||!WriteFrame(prefix,"wide-gpu",cast(s32)size,0,*reference) {return false}
+        image:=NewImage(width,height);defer VecFree(image.pixels)
+        async_image:=NewImage(width,height);defer VecFree(async_image.pixels)
+        before:=SceneGpuMemoryUsage(*gpu)
+        for state:0..shifts.count-1 {
+            camera.shift_x=shifts[state].x;camera.shift_y=shifts[state].y
+            if !RenderScene(*scene,camera,*image)||!WriteFrame(prefix,"cpu",cast(s32)size,cast(s32)state,*image) {return false}
+            if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!WriteFrame(prefix,"gpu",cast(s32)size,cast(s32)state,*image) {return false}
+            id+=1
+            if !SceneGpuSubmit(*gpu,*scene,camera,width,height,id).queued {return false}
+            submitted:=camera
+            // Mutating the caller's value must not relabel queued metadata.
+            camera.shift_x=9.0;camera.shift_y=-8.0
+            result:=SceneGpuPoll(*gpu,*async_image)
+            for wait:0..4999 {
+                if result.completed||!result.ok {break}
+                unused Pause(1000);result=SceneGpuPoll(*gpu,*async_image)
+            }
+            if !result.ok||!result.completed||result.request_id!=id||result.width!=width||result.height!=height {return false}
+            if result.camera.shift_x!=submitted.shift_x||result.camera.shift_y!=submitted.shift_y||result.camera.position.z!=3.0||result.camera.target.z!=0.0 {return false}
+            for at:0..image.pixels.count-1 {if image.pixels[at]!=async_image.pixels[at] {return false}}
+        }
+        after:=SceneGpuMemoryUsage(*gpu)
+        if before.geometry_uploads!=after.geometry_uploads||before.texture_uploads!=after.texture_uploads||after.pending_frames!=0||after.fences!=0 {return false}
+    }
+    SceneGpuRelease(*gpu)
+    memory:=SceneGpuMemoryUsage(*gpu)
+    if memory.cpu_bytes!=0||memory.gpu_bytes!=0 {return false}
+    print("Off-axis source/saved fixture: 18 CPU/GPU/async views, fixed pose, clipped geometry and stable uploads passed\n")
+    return true
+}
+
+#program_export
+main :: (argc: s32,argv: **u8)->s32 {
+    if argc!=2 {return 1}
+    prefix:=TextFromCString(argv[1])
+    if !ZeroFrames(prefix)||!ShiftFrames(prefix) {return 2}
+    return 0
+}

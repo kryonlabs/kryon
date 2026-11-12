@@ -35,6 +35,13 @@ AndroidCommandHandler :: #type (*NativeAndroidApp, s32) -> void #c_call;
     NativeAllocate :: (count: usize, size: usize) -> *void #foreign c "calloc";
     NativeRelease :: (memory: *void) #foreign c "free";
     NativeCopy :: (destination: *void, source: *void, count: usize) -> *void #foreign c "memcpy";
+    #if #defined(KRYON_RAYLIB_HOST) {
+        egl :: #system_library "EGL";
+        NativeCurrentDisplay :: () -> *void #foreign egl "eglGetCurrentDisplay";
+        NativeCurrentDrawSurface :: (kind: s32) -> *void #foreign egl "eglGetCurrentSurface";
+        NativeQueryDrawSurface :: (display: *void, surface: *void,
+            attribute: s32, value: *s32) -> u32 #foreign egl "eglQuerySurface";
+    }
 }
 
 NativeWindowBuffer :: struct {
@@ -89,19 +96,114 @@ WordsFromPointer :: (data: *u32, count: s64) -> []u32 {
 AndroidNativeApp :: () -> *NativeAndroidApp { return android_native_app }
 
 AndroidNativeSurface :: () -> *void {
-    if android_native_app == null { return null }
-    return android_native_app.window
+    #if #defined(KRYON_RAYLIB_HOST) {
+        app := JniGetAndroidApp()
+        if app == null {
+            return null
+        }
+        return app.window
+    } else {
+        if android_native_app == null {
+            return null
+        }
+        return android_native_app.window
+    }
 }
+
+// Read the announced native surface before the host consumes initialization.
+// The host retains lifecycle acknowledgement and graphics ownership.
+AndroidNativePendingSurfaceSize :: (width: *s32, height: *s32) -> bool {
+    app := JniGetAndroidApp()
+    if app == null {
+        return false
+    }
+    window := app.pending_window
+    if window == null {
+        window = app.window
+    }
+    if window == null {
+        return false
+    }
+    native_width := NativeWindowWidth(window)
+    native_height := NativeWindowHeight(window)
+    if native_width <= 0 || native_height <= 0 {
+        return false
+    }
+    if width != null {
+        width[0] = native_width
+    }
+    if height != null {
+        height[0] = native_height
+    }
+    return true
+}
+
 
 AndroidNativeSurfaceSize :: (width: *s32, height: *s32) -> bool {
     window := AndroidNativeSurface()
-    if window == null { return false }
+    if window == null {
+        return false
+    }
+    // EGL can retain a buffer extent different from the native window's
+    // decorated size after a picture-in-picture transition. The render
+    // thread lays out and presents in the current drawing buffer's pixels.
+    #if #defined(KRYON_RAYLIB_HOST) {
+        display := NativeCurrentDisplay()
+        surface := NativeCurrentDrawSurface(12377) // EGL_DRAW
+        drawing_width: s32
+        drawing_height: s32
+        if display != null && surface != null &&
+        NativeQueryDrawSurface(display, surface, 12375, *drawing_width) != 0 &&
+        NativeQueryDrawSurface(display, surface, 12374, *drawing_height) != 0 &&
+        drawing_width > 0 && drawing_height > 0 {
+            if width != null {
+                width[0] = drawing_width
+            }
+            if height != null {
+                height[0] = drawing_height
+            }
+            return true
+        }
+    }
     native_width := NativeWindowWidth(window)
     native_height := NativeWindowHeight(window)
-    if native_width <= 0 || native_height <= 0 { return false }
-    if width != null { width[0] = native_width }
-    if height != null { height[0] = native_height }
+    if native_width <= 0 || native_height <= 0 {
+        return false
+    }
+    if width != null {
+        width[0] = native_width
+    }
+    if height != null {
+        height[0] = native_height
+    }
     return true
+}
+
+// Raylib requests a fixed buffer at initialization and again when rebinding
+// its window. Release that request when Android changes the decorated window
+// extent, so subsequent EGL buffers use the window's actual pixel dimensions.
+AndroidNativeSyncSurface :: () {
+    #if #defined(KRYON_RAYLIB_HOST) {
+        window := AndroidNativeSurface()
+        display := NativeCurrentDisplay()
+        surface := NativeCurrentDrawSurface(12377) // EGL_DRAW
+        if window == null || display == null || surface == null {
+            return
+        }
+        native_width := NativeWindowWidth(window)
+        native_height := NativeWindowHeight(window)
+        drawing_width: s32
+        drawing_height: s32
+        if native_width <= 0 || native_height <= 0 ||
+        NativeQueryDrawSurface(display, surface, 12375, *drawing_width) == 0 ||
+        NativeQueryDrawSurface(display, surface, 12374, *drawing_height) == 0 ||
+        drawing_width <= 0 || drawing_height <= 0 {
+            return
+        }
+        if native_width != drawing_width || native_height != drawing_height {
+            NativeWindowGeometry(window, 0, 0, 0)
+        }
+    }
 }
 
 AndroidNativePixels :: () -> []u32 { return android_pixels }
@@ -254,12 +356,12 @@ AndroidNativePresentDamage :: (left: s32, top: s32, right: s32, bottom: s32) -> 
     if source.data == null { return false }
     for row: top..bottom - 1 {
         destination := cast(*u32)*android_native_buffer.bits[
-            (cast(s64)row * android_native_buffer.stride + left) * 4]
+        (cast(s64)row * android_native_buffer.stride + left) * 4]
         for column: left..right - 1 {
             input := source.data[cast(s64)row * android_pixel_width + column]
             output := (input & cast(u32)0xff00ff00) |
-                ((input & cast(u32)0x000000ff) << 16) |
-                ((input & cast(u32)0x00ff0000) >> 16)
+            ((input & cast(u32)0x000000ff) << 16) |
+            ((input & cast(u32)0x00ff0000) >> 16)
             destination[column - left] = output
         }
     }

@@ -113,6 +113,25 @@ main :: () -> s32 {
     if !Draw(session) || !Probe.seen.pointer.released || Probe.seen.pointer.down ||
     Probe.seen.pointer.x != 35.0 || !Probe.pointer_matches { return Failure(12) }
     if Probe.foreign_seen || CaptureFrameInput(session).available || presented_open { return Failure(13) }
+    // Surface insets are added to both replayed tap positions, before the
+    // host's camera mapping. The Android host's own zoom scales the offset.
+    AndroidTouchSetZoom(2.0)
+    AndroidTouchSetSurfaceOffset(18.0, 18.0)
+    if !Send(2, 0, 0, 10.0, 14.0) || !Send(2, 1, 0, 20.0, 24.0) {
+        return Failure(23)
+    }
+    offset_press := AndroidPointerFrame()
+    if !offset_press.pressed || offset_press.x != 14.0 || offset_press.y != 16.0 {
+        return Failure(24)
+    }
+    AndroidTouchFrameEnd()
+    offset_release := AndroidPointerFrame()
+    if !offset_release.released || offset_release.x != 19.0 || offset_release.y != 21.0 {
+        return Failure(25)
+    }
+    AndroidTouchFrameEnd()
+    AndroidTouchSetZoom(1.0)
+    AndroidTouchSetSurfaceOffset(0.0, 0.0)
     // Pixel stride includes NDK row padding; ARGB becomes little-endian RGBA.
     for index: 0..64799 { window_pixels[index] = 0x12345678 }
     pixels := AndroidNativePixels()

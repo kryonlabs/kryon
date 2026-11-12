@@ -1,0 +1,110 @@
+// Portable material translation; hosts compose the function with their lighting.
+// GLSL ES 1.00 highp floats are required. CPU binary64 is compared with tolerance.
+// https://www.khronos.org/files/opengles_shading_language.pdf
+#import, file "shader.zi";
+#import "std/vec"
+#import "std/format"
+#import "std/float_text"
+#import "std/math"
+ShaderGLSLResult :: struct {
+ diagnostic: ShaderDiagnostic
+ source: Text
+ uniform_count: s32; sampler_count: s32; input_mask: s32
+}
+ShaderGLSLTranslate :: (program: *ShaderProgram) -> ShaderGLSLResult {
+ diagnostic:=Validate(program)
+ if !diagnostic.ok { return .{.diagnostic=diagnostic} }
+ for at: 0..program.count-1 {
+  i:=program.code[at]
+  if i.op==.ShaderLiteral && !Representable(i.value) {
+   return .{.diagnostic=.{false,at,"literal outside GLSL highp normal float range"}}
+  }
+ }
+ out: Vec(u8)
+ BuilderAppend(out,"// kryonMaterial returns straight linear RGBA; uniforms and inputs are highp.\n")
+ if program.uniform_count>0 { BuilderPrint(*out,"uniform vec4 kryonUniforms[%];\n",program.uniform_count) }
+ if program.sampler_count>0 {
+  BuilderPrint(*out,"uniform vec2 kryonSamplerSize[%];\nuniform float kryonSamplerRepeat[%];\n",program.sampler_count,program.sampler_count)
+  for slot: 0..program.sampler_count-1 {
+   BuilderPrint(*out,"uniform sampler2D kryonSampler%;\n",slot)
+  }
+ }
+ BuilderAppend(out,"bool kryonFinite(vec4 v){return all(lessThanEqual(abs(v),vec4(3.402823466e38)));}\n")
+ BuilderAppend(out,"float kryonDivide(float a,float b){return b==0.0?0.0:a/b;}\nvec4 kryonDivide(vec4 a,vec4 b){return vec4(kryonDivide(a.x,b.x),kryonDivide(a.y,b.y),kryonDivide(a.z,b.z),kryonDivide(a.w,b.w));}\n")
+ BuilderAppend(out,"float kryonFraction(float a){return a>-4503599627370496.0&&a<4503599627370496.0?fract(a):0.0;}\nvec4 kryonFraction(vec4 a){return vec4(kryonFraction(a.x),kryonFraction(a.y),kryonFraction(a.z),kryonFraction(a.w));}\n")
+ BuilderAppend(out,"vec4 kryonNormalize(vec4 a){float s=max(abs(a.x),max(abs(a.y),abs(a.z)));if(s==0.0)return vec4(0.0);vec3 v=a.xyz/s;return vec4(v/sqrt(dot(v,v)),a.w);}\n")
+ for slot: 0..program.sampler_count-1 {
+  BuilderPrint(*out,"vec4 kryonSample%(vec2 uv){\nvec2 size=kryonSamplerSize[%];\nif(!kryonFinite(vec4(uv,0.0,0.0)))return vec4(0.0);\nvec2 p=kryonSamplerRepeat[%]>0.5?vec2(kryonFraction(uv.x),kryonFraction(uv.y)):clamp(uv,0.0,1.0);\np=min(floor(p*size),size-1.0);\nreturn texture2D(kryonSampler%,vec2(p.x+0.5,size.y-p.y-0.5)/size);}\n",slot,slot,slot,slot)
+ }
+ BuilderAppend(out,"vec4 kryonMaterial(vec4 color,vec4 position,vec4 normal,vec4 uv){\n")
+ for r: 0..SHADER_REGISTERS-1 { BuilderPrint(*out,"vec4 r%=vec4(0.0);\n",r) }
+ BuilderAppend(out,"r0=color;r1=position;r2=normal;r3=uv;\n")
+ for at: 0..program.count-1 {
+  i:=program.code[at]
+  if i.op==.ShaderOutput { BuilderPrint(*out,"if(!kryonFinite(r%))discard;return r%;\n",i.a,i.a); continue }
+  if i.op==.ShaderDiscardLess { BuilderPrint(*out,"if(r%.x<r%.x)discard;\n",i.a,i.b); continue }
+  BuilderPrint(*out,"r%=",i.dest)
+  if i.op==.ShaderLiteral {
+   BuilderAppend(out,"vec4(")
+   values: [4]float64=.[i.value.x,i.value.y,i.value.z,i.value.w]
+   for lane: 0..3 { if lane>0 { BuilderAppend(out,",") }; unused Float64ReprInto(values[lane],*out) }
+   BuilderAppend(out,")")
+  } else if i.op==.ShaderUniform { BuilderPrint(*out,"kryonUniforms[%]",i.slot)
+  } else if i.op==.ShaderSample { BuilderPrint(*out,"kryonSample%(r%.xy)",i.slot,i.a)
+  } else if i.op==.ShaderMove { BuilderPrint(*out,"r%",i.a)
+  } else if i.op==.ShaderAdd || i.op==.ShaderSubtract || i.op==.ShaderMultiply {
+   symbol:=ifx i.op==.ShaderAdd then "+" else ifx i.op==.ShaderSubtract then "-" else "*"
+   BuilderPrint(*out,"r% % r%",i.a,symbol,i.b)
+  } else if i.op==.ShaderDivide { BuilderPrint(*out,"kryonDivide(r%,r%)",i.a,i.b)
+  } else if i.op==.ShaderMin || i.op==.ShaderMax {
+   symbol:=ifx i.op==.ShaderMin then "<" else ">"
+   BuilderAppend(out,"vec4(")
+   lanes: [4]string=.["x","y","z","w"]
+   for lane: 0..3 {
+    if lane>0 { BuilderAppend(out,",") }
+    BuilderPrint(*out,"r%.% % r%.%?r%.%:r%.%",i.a,lanes[lane],symbol,i.b,lanes[lane],i.a,lanes[lane],i.b,lanes[lane])
+   }
+   BuilderAppend(out,")")
+  } else if i.op==.ShaderSin || i.op==.ShaderCos {
+   name:=ifx i.op==.ShaderSin then "sin" else "cos"
+   BuilderPrint(*out,"%(r%)",name,i.a)
+  } else if i.op==.ShaderFract { BuilderPrint(*out,"kryonFraction(r%)",i.a)
+  } else if i.op==.ShaderDot { BuilderPrint(*out,"vec4(dot(r%.xyz,r%.xyz))",i.a,i.b)
+  } else if i.op==.ShaderNormalize { BuilderPrint(*out,"kryonNormalize(r%)",i.a)
+  } else if i.op==.ShaderMix { BuilderPrint(*out,"(r%*(vec4(1.0)-r%)+r%*r%)",i.a,i.c,i.b,i.c) }
+  BuilderAppend(out,";\n")
+ }
+ BuilderAppend(out,"}\n")
+ return .{diagnostic,BuilderFinish(out),program.uniform_count,program.sampler_count,program.input_mask}
+}
+ShaderGLSLBindings :: (program: *ShaderProgram, uniforms: []ShaderValue, samplers: []ShaderSampler) -> ShaderDiagnostic {
+ diagnostic:=Validate(program)
+ if !diagnostic.ok { return diagnostic }
+ diagnostic=ShaderBindings(program,uniforms,samplers)
+ if !diagnostic.ok { return diagnostic }
+ for slot: 0..program.uniform_count-1 {
+  if !Representable(uniforms[slot]) { return .{false,-1,"uniform outside GLSL highp normal float range"} }
+ }
+ for slot: 0..program.sampler_count-1 {
+  if samplers[slot].width>8388608 || samplers[slot].height>8388608 { return .{false,-1,"sampler exceeds exact highp texel addressing"} }
+ }
+ return .{true,-1,""}
+}
+#scope_file
+Validate :: (program: *ShaderProgram) -> ShaderDiagnostic {
+ if !program.ready { return .{false,-1,"shader not compiled or released"} }
+ if program.count<1 || program.count>SHADER_INSTRUCTIONS { return .{false,-1,"shader count outside 1..128"} }
+ checked: ShaderProgram
+ diagnostic:=ShaderCompile(*checked,program.code[0:program.count])
+ if !diagnostic.ok { return diagnostic }
+ if checked.uniform_count!=program.uniform_count || checked.sampler_count!=program.sampler_count || checked.input_mask!=program.input_mask {
+  return .{false,-1,"shader metadata differs from validated code"}
+ }
+ return diagnostic
+}
+Representable :: (v: ShaderValue) -> bool { return Component(v.x)&&Component(v.y)&&Component(v.z)&&Component(v.w) }
+Component :: (v: float64) -> bool {
+ if !Finite64(v) { return false }
+ a:=ifx v<0.0 then -v else v
+ return a<=3.4028234663852886e38 && (a==0.0 || a>=1.1754943508222875e-38)
+}

@@ -17,6 +17,7 @@
 #import "std/vec"
 #import "std/option"
 #import "drawing_props"
+#import "shader"
 
 Vector3 :: struct { x: float64; y: float64; z: float64; }
 
@@ -44,6 +45,9 @@ SceneMaterial :: struct {
     texture: s32             // AddTexture's number, or -1
     alpha_test: float64      // texels below this alpha are not drawn
     exact_color: bool        // written without tone mapping
+    shader: *ShaderProgram  // borrowed; null uses the standard material
+    shader_uniforms: []ShaderValue
+    shader_samplers: []ShaderSampler
 }
 
 SceneNode :: struct {

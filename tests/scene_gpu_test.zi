@@ -1,0 +1,424 @@
+#import, file "../src/backend/scene_gpu.zi";
+#import "std/image"
+#import "std/vec"
+#import "std/text_tools"
+#import "std/math"
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "kryon/shader"
+G :: #import, file "../src/backend/scene_gpu_gl.zi";
+#import, file "scene_gpu_padding.zi";
+libc :: #system_library "c";
+Flush :: (stream: *void)->s32 #foreign libc "fflush";
+Pause :: (microseconds: u32)->s32 #foreign libc "usleep";
+ReleaseCycles :: ()->bool {
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ pixels: Vec(u8)
+ if !VecResize(pixels,1024*1024*4) {return false}
+ for at:0..pixels.count-1 {pixels[at]=255}
+ material:=UnlitMaterial(.{120,80,30,255})
+ material.texture=AddTexture(*scene,pixels[:],1024,1024)
+ unused RoundedBox(*scene,1,1,1,0.1,material)
+ camera:=PerspectiveCamera(45,1,0.1,20);camera.position=.{0,0,3}
+ image:=NewImage(64,64)
+ gpu: SceneGpuContext
+ for cycle:0..23 {
+  if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return false}
+  SceneGpuRelease(*gpu)
+  resources:=SceneGpuMemoryUsage(*gpu)
+  if resources.cpu_bytes!=0||resources.gpu_bytes!=0||resources.textures!=0||resources.programs!=0 {return false}
+  print("release cycle %\n",cycle);unused Flush(null);unused Pause(20000)
+ }
+ return true
+}
+PrecisionFallback :: ()->bool {
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ program: ShaderProgram
+ code: [2]ShaderInstruction=.[.{op=.ShaderUniform,dest=4,slot=0},.{op=.ShaderOutput,a=4}]
+ if !ShaderCompile(*program,code[:]).ok {return false}
+ uniforms: [1]ShaderValue=.[.{1e100,0.2,0.1,1}]
+ material:=UnlitMaterial(.{255,255,255,255});material.shader=*program;material.shader_uniforms=uniforms[:]
+ unused RoundedBox(*scene,1,1,1,0.1,material)
+ camera:=PerspectiveCamera(45,1,0.1,20);camera.position=.{0,0,3}
+ image:=NewImage(64,64);reference:=NewImage(64,64)
+ for at:0..image.pixels.count-1 {image.pixels[at]=123}
+ gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ strict:=SceneGpuRender(*gpu,*scene,camera,*image)
+ if strict.ok||strict.diagnostic=="" {return false}
+ for at:0..image.pixels.count-1 {if image.pixels[at]!=123 {return false}}
+ result:=SceneGpuRenderOrCPU(*gpu,*scene,camera,*image)
+ if !result.ok||result.accelerated||result.diagnostic==""||!RenderScene(*scene,camera,*reference) {return false}
+ for at:0..image.pixels.count-1 {if image.pixels[at]!=reference.pixels[at] {return false}}
+ print("Highp range rejection leaves strict output untouched and produces exact CPU fallback\n")
+ return true
+}
+PixelHash :: (image: *Image)->u64 {
+ value: u64=1469598103934665603
+ for at:0..image.pixels.count-1 {value=(value^cast(u64)image.pixels[at])*cast(u64)1099511628211}
+ return value
+}
+PaddingBatching :: ()->bool {
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ material:=UnlitMaterial(.{180,100,40,255})
+ left:=RoundedBox(*scene,0.9,0.9,0.4,0.05,material);SetPosition(*scene,left,-0.55,0,0)
+ right:=RoundedBox(*scene,0.9,0.9,0.4,0.05,material);SetPosition(*scene,right,0.55,0,0)
+ a:=*scene.meshes[scene.nodes[left].mesh].material;b:=*scene.meshes[scene.nodes[right].mesh].material
+ camera:=PerspectiveCamera(45,1.6,0.1,20);camera.position=.{0,0,3}
+ image:=NewImage(160,100);reference:=NewImage(160,100)
+ gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ result:=SceneGpuRender(*gpu,*scene,camera,*image)
+ if !result.ok||result.draw_calls!=1 {return false}
+ original_pixels:=PixelHash(*image)
+ MaterialFillPadding(a,53);MaterialFillPadding(b,155)
+ if G.CompareMemory(cast(*void)a,cast(*void)b,size_of(SceneMaterial))==0 {return false}
+ result=SceneGpuRender(*gpu,*scene,camera,*image)
+ if PixelHash(*image)!=original_pixels {print("Padding changed GPU pixel hash\n");return false}
+ if !result.ok||result.draw_calls!=1||!RenderScene(*scene,camera,*reference) {print("Padding batch initial failure % % %\n",result.ok,result.draw_calls,result.diagnostic);return false}
+ error: s64;large: s64;maximum: s32
+ for at:0..image.pixels.count-1 {
+  d:=cast(s32)image.pixels[at]-cast(s32)reference.pixels[at];delta:=ifx d<0 then -d else d
+  error+=delta;if delta>16 {large+=1};if delta>maximum {maximum=delta}
+ }
+ if error>image.pixels.count||large>image.pixels.count/200 {print("Padding batch quality failure % %\n",error,large);return false}
+ print("Padding fixture CPU raster mean error % max %; GPU padding hash exact\n",cast(float64)error/cast(float64)image.pixels.count,maximum)
+ b.color.r=100
+ result=SceneGpuRender(*gpu,*scene,camera,*image)
+ if !result.ok||result.draw_calls!=2 {print("Padding batch distinct color failure %\n",result.draw_calls);return false}
+ b.color=a.color;a.transparent=true;b.transparent=true
+ result=SceneGpuRender(*gpu,*scene,camera,*image)
+ if !result.ok||result.draw_calls!=2 {print("Padding batch transparency failure %\n",result.draw_calls);return false}
+ a.transparent=false;b.transparent=false
+ program: ShaderProgram
+ code: [2]ShaderInstruction=.[.{op=.ShaderUniform,dest=4,slot=0},.{op=.ShaderOutput,a=4}]
+ if !ShaderCompile(*program,code[:]).ok {return false}
+ first: [1]ShaderValue=.[.{0.5,0.3,0.1,1}];second: [1]ShaderValue=.[.{0.5,0.3,0.1,1}]
+ a.shader=*program;b.shader=*program;a.shader_uniforms=first[:];b.shader_uniforms=first[:]
+ result=SceneGpuRender(*gpu,*scene,camera,*image)
+ if !result.ok||result.draw_calls!=1 {print("Padding batch shared binding failure % %\n",result.draw_calls,result.diagnostic);return false}
+ b.shader_uniforms=second[:]
+ result=SceneGpuRender(*gpu,*scene,camera,*image)
+ if !result.ok||result.draw_calls!=2 {print("Padding batch distinct binding failure % %\n",result.draw_calls,result.diagnostic);return false}
+ before:=PixelHash(*image);uploads:=gpu.resources.geometry_uploads
+ second[0].x=0.1
+ result=SceneGpuRender(*gpu,*scene,camera,*image)
+ if !result.ok||result.draw_calls!=2||gpu.resources.geometry_uploads!=uploads||PixelHash(*image)==before {print("Padding batch borrowed mutation failure % %\n",result.draw_calls,result.diagnostic);return false}
+ print("Material padding does not split opaque batches; distinct values/binding identities and transparency remain separate\n")
+ return true
+}
+FeatureVariants :: ()->bool {
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ scene.background=.{20,30,40,255}
+ AddHemisphereLight(*scene,.{180,220,255,255},.{100,70,40,255},1.0)
+ light:=AddDirectionalLight(*scene,.{255,220,190,255},3.0,.{-3,7,-5})
+ program: ShaderProgram
+ code: [3]ShaderInstruction=.[.{op=.ShaderUniform,dest=4,slot=0},
+  .{op=.ShaderMultiply,dest=0,a=0,b=4},.{op=.ShaderOutput,a=0}]
+ uniforms: [1]ShaderValue=.[.{0.8,0.6,0.4,1.0}]
+ material:=LitMaterial(.{180,100,40,255},0.65)
+ material.shader=*program;material.shader_uniforms=uniforms[:]
+ pixels: [8]u8=.[255,255,255,255,150,220,100,100]
+ material.texture=AddTexture(*scene,pixels[:],2,1)
+ left:=RoundedBox(*scene,0.9,0.9,0.4,0.12,material);SetPosition(*scene,left,-0.55,0,0)
+ right:=RoundedBox(*scene,0.9,0.9,0.4,0.12,material);SetPosition(*scene,right,0.55,0,0)
+ for at:0..scene.colors.count-1 {scene.colors[at]=.{0.4,0.8,0.6}}
+ image:=NewImage(160,100);fresh_image:=NewImage(160,100);reference:=NewImage(160,100)
+ gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ for frame:0..39 {
+  state:=frame%20
+  code[2].a=ifx state==11 then 4 else 0
+  if !ShaderCompile(*program,code[:]).ok {return false}
+  uniforms[0]=.{ifx state==10 then 0.2 else 0.8,0.6,0.4,1.0}
+  a:=*scene.meshes[scene.nodes[left].mesh].material
+  b:=*scene.meshes[scene.nodes[right].mesh].material
+  a[0]=material;b[0]=material
+  if state==1 {a.metalness=0.7}
+  if state==2 {a.kind=.MaterialUnlit}
+  if state==3 {a.kind=.MaterialShadow}
+  if state==4 {a.flat=true}
+  if state==5 {a.vertex_colors=true}
+  if state==6 {a.double_sided=true}
+  if state==8 {a.flat=true;b.kind=.MaterialUnlit;b.double_sided=true}
+  if state==9 {b.shader=null}
+  if state==12 {a.alpha_test=0.7}
+  if state==13 {a.transparent=true;a.opacity=0.5}
+  if state==14 {a.metalness=0.00000001}
+  if state==15 {a.flat=true;a.double_sided=true;a.vertex_colors=true}
+  if state==16 {a.metalness=-0.2}
+  if state==17 {a.roughness=0.0}
+  if state==18 {a.metalness=1.2}
+  scene.lights[light].position=ifx state==19 then .{0,0,-3} else .{-3,7,-5}
+  camera:=ifx state==7||state==15 then OrthographicCamera(-1.8,1.8,1.125,-1.125,0.1,20) else PerspectiveCamera(45,1.6,0.1,20)
+  camera.position=.{0,0,3}
+  result:=SceneGpuRender(*gpu,*scene,camera,*image)
+  if !result.ok {print("Feature render failure % %\n",state,result.diagnostic);return false}
+  fresh: SceneGpuContext
+  fresh_result:=SceneGpuRender(*fresh,*scene,camera,*fresh_image)
+  SceneGpuRelease(*fresh)
+  if !fresh_result.ok||PixelHash(*image)!=PixelHash(*fresh_image) {print("Retained feature cache differs from fresh context state %\n",state);return false}
+  if SceneGpuMemoryUsage(*gpu).programs>3||gpu.programs.count>8 {print("Feature variants grew without bound\n");return false}
+  if !RenderScene(*scene,camera,*reference) {return false}
+  error: s64;large: s64
+  for at:0..image.pixels.count-1 {
+   d:=cast(s32)image.pixels[at]-cast(s32)reference.pixels[at];delta:=ifx d<0 then -d else d
+   error+=delta;if delta>16 {large+=1}
+  }
+  if error>image.pixels.count||large>image.pixels.count/200 {print("Feature CPU quality failure % % %\n",state,error,large);return false}
+ }
+ print("Retained shader features match fresh contexts through kind/metal/flags/camera/program/binding mutations with bounded variants\n")
+ return true
+}
+ShadowCache :: ()->bool {
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ scene.background=.{20,30,40,255}
+ AddHemisphereLight(*scene,.{180,220,255,255},.{100,70,40,255},1.0)
+ light:=AddDirectionalLight(*scene,.{255,220,190,255},3.0,.{-3,7,-5})
+ CastLightShadow(*scene,light,5,5,0.1,20,128,-0.0006,0.06,1)
+ node:=RoundedBox(*scene,1,1,1,0.1,LitMaterial(.{160,90,40,255}))
+ unused SetShadows(*scene,node,true,true)
+ floor:=Plane(*scene,5,5,LitMaterial(.{170,170,170,255}))
+ SetRotation(*scene,floor,-1.5707963267948966,0,0);SetPosition(*scene,floor,0,-0.7,0)
+ unused SetShadows(*scene,floor,false,true)
+ camera:=PerspectiveCamera(45,1.6,0.1,20);camera.position=.{0,1,3}
+ image:=NewImage(160,100);reference:=NewImage(160,100)
+ gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=1 {return false}
+ before:=PixelHash(*image)
+ for frame:0..19 {
+  scene.lights[light].intensity=1.0+cast(float64)frame*0.02
+  scene.lights[light].color=.{255,cast(u8)(150+frame),100,255}
+  if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=1||gpu.resources.geometry_uploads!=1 {return false}
+ }
+ if PixelHash(*image)==before {return false}
+ scene.lights[light].position.x-=1.0
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=2 {return false}
+ scene.lights[light].target.x+=0.4
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=3 {return false}
+ scene.lights[light].shadow_half_width=4.5
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=4 {return false}
+ scene.lights[light].shadow_bias=-0.001;scene.lights[light].shadow_radius=1.3
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=4 {return false}
+ SetPosition(*scene,node,0.3,0,0)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=5 {return false}
+ scene.meshes[scene.nodes[node].mesh].material.opacity=0.8
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=6 {return false}
+ unused SetShadows(*scene,node,false,true)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=7 {return false}
+ unused SetShadows(*scene,node,true,true)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.shadow_renders!=8 {return false}
+ if !RenderScene(*scene,camera,*reference) {return false}
+ error: s64;large: s64
+ for at:0..image.pixels.count-1 {
+  d:=cast(s32)image.pixels[at]-cast(s32)reference.pixels[at];delta:=ifx d<0 then -d else d
+  error+=delta;if delta>16 {large+=1}
+ }
+ if error>image.pixels.count||large>image.pixels.count/200 {return false}
+ print("Shadow cache reuses radiometric/filter changes and invalidates light-space/geometry/material/caster changes\n")
+ return true
+}
+Host :: struct {display: *void;context: *void;texture: u32;framebuffer: u32}
+HostStart :: ()->Host {
+ h: Host
+ h.display=G.EGetPlatformDisplay(0x31dd,null,null)
+ major: s32;minor: s32
+ if h.display==null||G.EInitialize(h.display,*major,*minor)==0 {return h}
+ unused G.EBindAPI(0x30a0)
+ attrs: [9]s32=.[0x3033,1,0x3040,0x40,0x3024,8,0x3025,8,0x3038]
+ config: *void;count: s32
+ if G.EChooseConfig(h.display,*attrs[0],*config,1,*count)==0||count==0 {return h}
+ context_attrs: [3]s32=.[0x3098,3,0x3038]
+ h.context=G.ECreateContext(h.display,config,null,*context_attrs[0])
+ if h.context==null||G.EMakeCurrent(h.display,null,null,h.context)==0 {return h}
+ h.texture=G.Texture(2,2,0x8058,0x1908,0x1401,null)
+ G.GenFramebuffers(1,*h.framebuffer);G.BindFramebuffer(0x8d40,h.framebuffer)
+ G.FramebufferTexture(0x8d40,0x8ce0,0x0de1,h.texture,0)
+ G.ClearColor(0.25,0.5,0.75,1.0);G.Clear(0x4000)
+ return h
+}
+HostCheck :: (h: Host)->bool {
+ if h.context==null||G.EGetCurrentContext()!=h.context||G.EGetCurrentDisplay()!=h.display||G.EQueryAPI()!=0x30a0 {return false}
+ if G.EGetCurrentSurface(0x3059)!=null||G.EGetCurrentSurface(0x305a)!=null {return false}
+ framebuffer: s32;G.GetInteger(0x8ca6,*framebuffer)
+ if framebuffer!=cast(s32)h.framebuffer {return false}
+ pixel: [4]u8;G.ReadPixels(0,0,1,1,0x1908,0x1401,cast(*void)*pixel[0])
+ return G.GetError()==0&&pixel[0]==64&&pixel[1]==128&&pixel[2]==191&&pixel[3]==255
+}
+HostClose :: (h: *Host) {
+ if h.context==null {return}
+ unused G.EMakeCurrent(h.display,null,null,h.context)
+ G.DeleteTextures(1,*h.texture);G.DeleteFramebuffers(1,*h.framebuffer)
+ unused G.EMakeCurrent(h.display,null,null,null)
+ unused G.EDestroyContext(h.display,h.context)
+}
+Quality :: (kind: s32)->bool {
+ scene: Scene;SceneInit(*scene);scene.tone_mapping=true;scene.exposure=1.08
+ defer SceneFree(*scene)
+ scene.background=.{24,31,48,255}
+ AddHemisphereLight(*scene,.{229,242,245,255},.{147,113,81,255},2.5)
+ sun:=AddDirectionalLight(*scene,.{255,248,238,255},3.1,.{-2.8,8,-7})
+ CastLightShadow(*scene,sun,8,9,0.5,30,128,-0.0006,0.06,1)
+ material:=LitMaterial(.{180,100,45,255},0.82,0.1);material.double_sided=true
+ if kind==1 {material.flat=true}
+ if kind==2 {material=UnlitMaterial(.{130,220,80,255});material.transparent=true;material.opacity=0.45}
+ pixels: [16]u8=.[255,30,0,255,0,255,0,180,0,0,255,64,255,255,0,0]
+ program: ShaderProgram;samplers: [1]ShaderSampler=.[.{2,2,pixels[:],true}]
+ code: [2]ShaderInstruction=.[.{op=.ShaderSample,dest=4,a=3,slot=0},.{op=.ShaderOutput,a=4}]
+ if kind==3 {
+  if !ShaderCompile(*program,code[:]).ok {return false}
+  material.shader=*program;material.shader_samplers=samplers[:]
+ }
+ if kind==4 {material.texture=AddTexture(*scene,pixels[:],2,2);material.alpha_test=0.3;material.transparent=true}
+ if kind==6 {
+  discard_code: [3]ShaderInstruction=.[
+   .{op=.ShaderLiteral,dest=4,value=.{0.45,0,0,0}},
+   .{op=.ShaderDiscardLess,a=3,b=4},
+   .{op=.ShaderOutput,a=0}]
+  if !ShaderCompile(*program,discard_code[:]).ok {return false}
+  material.shader=*program
+ }
+ if kind==11 {material.exact_color=true}
+ node:=RoundedBox(*scene,1,1,0.6,0.1,material)
+ mesh:=scene.meshes[scene.nodes[node].mesh]
+ for at:mesh.first_vertex..mesh.first_vertex+mesh.vertex_count-1 {
+  p:=scene.positions[at]
+  scene.uvs[at]=.{p.x+0.5,p.y+0.5}
+  if kind==3 {scene.uvs[at]=.{(p.x+0.5)*2.4-0.2,(p.y+0.5)*2.4-0.2}}
+ }
+ SetRotation(*scene,node,0.1,0.25,0.05);unused SetShadows(*scene,node,true,true)
+ floor:=Plane(*scene,4,4,LitMaterial(.{190,170,145,255}))
+ SetRotation(*scene,floor,-1.5707963267948966,0,0);SetPosition(*scene,floor,0,-0.7,0)
+ unused SetShadows(*scene,floor,false,true)
+ if kind==5 {scene.meshes[scene.nodes[floor].mesh].material=ShadowMaterial(.{25,32,40,255},0.7);scene.background.a=0}
+ if kind==9 {SetScale(*scene,node,-1.2,0.8,1.4);scene.meshes[scene.nodes[node].mesh].material.double_sided=false}
+ if kind==10 {scene.nodes[node].visible=false}
+ if kind==12 {
+  scene.background.a=0
+  transparent:=UnlitMaterial(.{30,90,230,255});transparent.transparent=true;transparent.opacity=0.4;transparent.double_sided=true
+  back:=RoundedBox(*scene,1.2,1.2,0.4,0.1,transparent);SetPosition(*scene,back,0.3,0.1,-0.3)
+  scene.meshes[scene.nodes[node].mesh].material=transparent
+ }
+ camera:=PerspectiveCamera(45,1.6,0.1,20);camera.position=.{0,1,3};camera.target=.{0,0,0}
+ if kind==7 {camera.near=2.8;camera.far=3.4}
+ if kind==8 {camera=OrthographicCamera(-1.6,1.6,1,-1,0.1,20);camera.position=.{0,1,3}}
+ image:=NewImage(160,100);reference:=NewImage(160,100)
+ gpu: SceneGpuContext;defer SceneGpuRelease(*gpu)
+ result:=SceneGpuRender(*gpu,*scene,camera,*image)
+ if !result.ok {print("quality failure % log %\n",result.diagnostic,TextView(gpu.log[:]));return false}
+ if !RenderScene(*scene,camera,*reference) {return false}
+ error: s64;large: s64
+ for at:0..image.pixels.count-1 {
+  d:=cast(s32)image.pixels[at]-cast(s32)reference.pixels[at];delta:=ifx d<0 then -d else d
+  error+=delta;if delta>16 {large+=1}
+ }
+ print("quality % mae % fraction_over_16 %\n",kind,cast(float64)error/cast(float64)image.pixels.count,cast(float64)large/cast(float64)image.pixels.count)
+ if error>image.pixels.count||large>image.pixels.count/200 {return false}
+ if kind==3||kind==4 {
+  old:=gpu.resources.texture_uploads;pixels[0]=0;pixels[1]=255
+  if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return false}
+  // AddTexture copies its source; custom samplers borrow it.
+  if kind==3&&gpu.resources.texture_uploads!=old+1 {return false}
+  if kind==4 {
+   scene.texels[0]=0
+   if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.texture_uploads!=old+1 {return false}
+  }
+ }
+ if kind==3 {
+  code[0]=.{op=.ShaderLiteral,dest=4,value=.{0.1,0.3,0.7,1}}
+  if !ShaderCompile(*program,code[:]).ok||!SceneGpuRender(*gpu,*scene,camera,*image).ok {return false}
+  ShaderFree(*program)
+  if SceneGpuRender(*gpu,*scene,camera,*image).ok {return false}
+ }
+ return true
+}
+#program_export
+main :: ()->s32 {
+ host:=HostStart();defer HostClose(*host)
+ if !HostCheck(host) {return 30}
+ gpu: SceneGpuContext
+ caps:=SceneGpuProbe(*gpu)
+ if !HostCheck(host) {return 31}
+ print("GPU renderer %\n",TextView(caps.renderer[: ]))
+ print("GPU version %\n",TextView(caps.version[: ]))
+ print("GPU vendor % highp bits % range % max_samples %\n",TextView(caps.vendor[:]),caps.highp_bits,caps.highp_range,caps.max_samples)
+ if !caps.available {print("GPU unavailable %\n",caps.diagnostic);return 1}
+ print("GPU samples % units % max texture %\n",caps.samples,caps.texture_units,caps.max_texture_size)
+ scene: Scene;SceneInit(*scene)
+ material:=UnlitMaterial(.{180,90,45,255});material.double_sided=true
+ node:=RoundedBox(*scene,1.0,1.0,0.3,0.0,material)
+ camera:=PerspectiveCamera(45.0,1.0,0.1,20.0);camera.position=.{0,0,3};camera.target=.{0,0,0}
+ image:=NewImage(128,128);reference:=NewImage(128,128)
+ result:=SceneGpuRender(*gpu,*scene,camera,*image)
+ if !HostCheck(host) {return 32}
+ if !result.ok {print("GPU failed % log %\n",result.diagnostic,TextView(gpu.log[: ]));return 2}
+ if !RenderScene(*scene,camera,*reference) {return 3}
+ error: s64
+ for at: 0..image.pixels.count-1 {d:=cast(s32)image.pixels[at]-cast(s32)reference.pixels[at];error+=ifx d<0 then -d else d}
+ print("GPU quality mean absolute byte error %\n",cast(float64)error/cast(float64)image.pixels.count)
+ if error>image.pixels.count*4 {return 4}
+ before:=SceneGpuMemoryUsage(*gpu)
+ for frame: 0..124 {
+  camera.position.x=Sin(cast(float64)frame*0.03)*0.3
+  result=SceneGpuRender(*gpu,*scene,camera,*image)
+  if !result.ok {print("motion failed %\n",result.diagnostic);return 5}
+ }
+ after:=SceneGpuMemoryUsage(*gpu)
+ if before.geometry_uploads!=after.geometry_uploads||before.texture_uploads!=after.texture_uploads||before.gpu_bytes!=after.gpu_bytes||before.cpu_bytes!=after.cpu_bytes {return 6}
+ if !SceneGpuSubmit(*gpu,*scene,camera,128,128,1).queued||!HostCheck(host) {return 71}
+ if !SceneGpuSubmit(*gpu,*scene,camera,128,128,2).queued||!HostCheck(host) {return 72}
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!HostCheck(host) {return 73}
+ completion:=SceneGpuPoll(*gpu,*image)
+ if !completion.completed||completion.request_id!=1||!HostCheck(host) {return 74}
+ SceneGpuCancel(*gpu)
+ if !HostCheck(host)||SceneGpuMemoryUsage(*gpu).pending_frames!=0 {return 75}
+ SetPosition(*scene,node,0.2,0.0,0.0)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||gpu.resources.geometry_uploads!=2 {return 7}
+ // A rejected mutation must not make the previous snapshot appear valid with
+ // partially rebuilt draw commands.
+ previous_mesh:=scene.nodes[node].mesh;scene.nodes[node].mesh=99999
+ if SceneGpuRender(*gpu,*scene,camera,*image).ok {return 12}
+ scene.nodes[node].mesh=previous_mesh
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return 13}
+ image.width=96;image.height=60
+ large_target:=SceneGpuMemoryUsage(*gpu)
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return 8}
+ small_target:=SceneGpuMemoryUsage(*gpu)
+ if small_target.cpu_bytes>=large_target.cpu_bytes||small_target.gpu_bytes>=large_target.gpu_bytes {return 45}
+ if SceneGpuResize(*gpu,20000,1) {return 14}
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return 15}
+ if !HostCheck(host) {return 33}
+ // Releasing one renderer must preserve another renderer and an unrelated
+ // host context even though EGL returns the same process-shared display.
+ other: SceneGpuContext
+ if !SceneGpuRender(*other,*scene,camera,*image).ok {return 34}
+ SceneGpuRelease(*gpu);SceneGpuRelease(*gpu)
+ if !HostCheck(host)||!SceneGpuRender(*other,*scene,camera,*image).ok {return 35}
+ SceneGpuRelease(*other)
+ if SceneGpuMemoryUsage(*gpu).gpu_bytes!=0||SceneGpuMemoryUsage(*gpu).cpu_bytes!=0 {return 9}
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok {return 10}
+ // Simulate the driver losing an unbound context. Release must still forget
+ // all names, and the same public context object must be reusable.
+ unused G.EDestroyContext(gpu.display,gpu.context)
+ SceneGpuRelease(*gpu)
+ if SceneGpuMemoryUsage(*gpu).gpu_bytes!=0||SceneGpuMemoryUsage(*gpu).cpu_bytes!=0 {return 39}
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!HostCheck(host) {return 40}
+ SceneGpuRelease(*gpu)
+ gpu.attempted=true;gpu.capabilities.diagnostic="test device lacks full 4x coverage"
+ result=SceneGpuRenderOrCPU(*gpu,*scene,camera,*image)
+ if !result.ok||result.accelerated||result.diagnostic=="" {return 11}
+ reference.width=image.width;reference.height=image.height
+ if !RenderScene(*scene,camera,*reference) {return 42}
+ for at:0..image.pixels.count-1 {if image.pixels[at]!=reference.pixels[at] {return 43}}
+ SceneGpuRelease(*gpu);SceneFree(*scene);RenderSceneRelease()
+ print("Scene GPU lifecycle, mutation, resize, retention and fallback passed\n")
+ for kind:0..12 {if !Quality(cast(s32)kind) {return 50+cast(s32)kind};if !HostCheck(host) {return 36}}
+ if !FeatureVariants()||!HostCheck(host) {return 48}
+ if !ReleaseCycles()||!HostCheck(host) {return 41}
+ if !PrecisionFallback()||!HostCheck(host) {return 44}
+ if !ShadowCache()||!HostCheck(host) {return 46}
+ if !PaddingBatching()||!HostCheck(host) {return 47}
+ print("Foreign EGL context, framebuffer, pixels and API preserved through render/resize/release\n")
+ unused G.EMakeCurrent(host.display,null,null,null);unused G.EBindAPI(0x30a2)
+ if !SceneGpuProbe(*gpu).available||G.EQueryAPI()!=0x30a2||G.EGetCurrentContext()!=null {return 37}
+ SceneGpuRelease(*gpu)
+ if G.EQueryAPI()!=0x30a2||G.EGetCurrentContext()!=null {return 38}
+ return 0
+}

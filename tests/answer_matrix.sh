@@ -1,23 +1,23 @@
 # Source/saved C, Go and portable Answer=42 matrix.
-"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" --project --module-path $work \
     -o "$work/ir" "$work/app.zi"
 for input in source saved; do
     if test "$input" = source; then
         source=$work/app.zi
         root=$work
-        module_path="$kryon_ui_args"
+        module_path="--project --module-path $work"
     else
         source=$work/ir/app.zir
         root=$work/ir
         module_path="--module-path $work/ir"
     fi
-    "$ziran" bundle --root "$root" $module_path --module-path "$ziran_root/std" \
+    "$ziran" bundle --root "$root" $module_path  \
         --entry app:Answer -o "$work/$input.zx" "$source"
     test "$("$ziran" run "$work/$input.zx")" = 42
     for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
-            --root "$root" $module_path --module-path "$ziran_root/std" \
+            --root "$root" $module_path  \
             -o "$output" "$source"
         if test "$target" = c; then
             cat > "$output/main.c" <<'C'

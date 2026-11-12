@@ -37,7 +37,7 @@ redirects after catalog migration and its old implementation/assets are deleted.
 | Decision | Rule | Primary owner |
 |---|---|---|
 | Default theme | One CUI-compatible semantic contract | `src/ui/theme.zi` |
-| Customization | Typed style properties plus optional CSS selectors/rules | `src/ui/stylepicker/stylepicker.zi`, CSS package |
+| Customization | Typed style properties plus optional CSS selectors/rules | `src/ui/theme.zi`, `src/ui/style_sheet.zi`, CSS package |
 | Component API | One public family concept | `src/ui/**` |
 | Package promotion | Promote once, remove duplicate surface | `src/ui/**`, `ziran.toml` |
 | Website examples | Generated static Ziran shots | `docs/site/**`, site scripts |
@@ -114,7 +114,7 @@ renderer-artifact-test`, then browser-tier and Stage A web tests.
 `docs/CUI_COMPONENT_PARITY.tsv` is the issue tracker. Each row already supplies
 family, status, current surface, exact gap, target file/public contract, and
 acceptance test. Family workers own only those files. Shared `theme.zi`,
-`style_picker.zi`, `ziran.toml`, `src/ui/modules.txt`, codec generators, and
+`style_sheet.zi`, `ziran.toml`, `src/ui/modules.txt`, codec generators, and
 fixtures are serialized by the foundation owner to protect the already dirty
 active tree. Selective imports are mandatory: an app that does not request a
 family does not carry it.
@@ -123,7 +123,7 @@ family does not carry it.
 
 | Wave | Exact initial owners | Focused command and completion definition |
 |---|---|---|
-| 0 | `theme.zi`, `style_picker.zi`, then Stage B Kryon hosts/codecs | `make public-surface-check && python3 tests/cui_theme_contract_test.py`; every mode/accent/custom metric and reduced-motion tree/raster passes; replacement gate above passes |
+| 0 | `theme.zi`, `style_sheet.zi`, then Stage B Kryon hosts/codecs | `make public-surface-check && python3 tests/cui_theme_contract_test.py`; every mode/accent/custom metric and reduced-motion tree/raster passes; replacement gate above passes |
 | 1 | Extend `text_props.zi`, `text_widget.zi`, `button_props.zi`, `icon.zi`, `svg_icon_props.zi`, `image_props.zi`; add TSV basics/actions/inputs | `python3 tests/cui_basics_wave_test.py`; geometry, pointer, keyboard, loading/disabled, tooltip, formatting, and accessibility pass row by row |
 | 2 | Existing selection/navigation/overlay owners plus canonical `date_picker.zi`, `month_calendar.zi`, `tooltip.zi`, and all TSV targets | `python3 tests/cui_controls_overlays_wave_test.py`; keyboard, focus, placement, boundary, delay, drag, locale, and reduced-motion contracts pass |
 | 3 | Promote `table_view.zi`, `tree_view.zi`, `list_item.zi`, `kanban.zi`, `data_grid.zi` | `make public-surface-check && python3 tests/cui_data_wave_test.py`; stable IDs, virtualization, editing, selection, sorting, filtering, and accessibility pass without a package-only API |

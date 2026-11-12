@@ -7,6 +7,7 @@ Quit :: () #foreign sdl "SDL_Quit";
 CreateWindow :: (title: *u8, x: s32, y: s32, width: s32, height: s32, flags: u32) -> *void #foreign sdl "SDL_CreateWindow";
 DestroyWindow :: (window: *void) #foreign sdl "SDL_DestroyWindow";
 WindowFlags :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowFlags";
+CurrentContext :: () -> *void #foreign sdl "SDL_GL_GetCurrentContext";
 Resize :: (window: *void, width: s32, height: s32) #foreign sdl "SDL_SetWindowSize";
 Pump :: () #foreign sdl "SDL_PumpEvents";
 OutputSize :: (renderer: *void, width: *s32, height: *s32) -> s32 #foreign sdl "SDL_GetRendererOutputSize";
@@ -38,6 +39,7 @@ Matches :: (pointer: *u8, value: string) -> bool {
     return pointer[value.count] == cast(u8)0
 }
 
+#program_export "main"
 main :: () -> s32 {
     if Presenter.CreatePixmapRenderer(null) != null { return 1 }
     if Init(cast(u32)32) != 0 { return 2 }
@@ -63,7 +65,9 @@ main :: () -> s32 {
     defer DestroyRenderer(renderer)
     info: RendererInfo
     if Info(renderer, *info) != 0 { return 8 }
-    accelerated := !Matches(mode, "env-software") && !Matches(mode, "fallback")
+    // This fixture deliberately runs software GL on a private Xvfb. Explicit
+    // GL preferences stay GL; automatic presentation avoids software GL.
+    accelerated := Matches(mode, "env-driver") || Matches(mode, "hint-driver") || Matches(mode, "force-gpu")
     if accelerated {
         if !Matches(info.name, "opengl") || (info.flags & cast(u32)2) == cast(u32)0 { return 9 }
     } else {
@@ -73,7 +77,11 @@ main :: () -> s32 {
     if explicit_surface && !Matches(GetHint(*surface[0]), "1") { return 11 }
     if Matches(mode, "fallback") && !Matches(GetHint(*surface[0]), "0") { return 11 }
     if Matches(mode, "default") && GetHint(*driver[0]) != null { return 12 }
-    if !accelerated && !explicit_surface && (WindowFlags(window) & cast(u32)2) != cast(u32)0 { return 13 }
+    if (Matches(mode, "env-software") || Matches(mode, "fallback")) &&
+        !explicit_surface && (WindowFlags(window) & cast(u32)2) != cast(u32)0 { return 13 }
+    // SDL may leave OPENGL in the window flags after destroying its renderer.
+    // The actual context must be released before software presentation.
+    if !accelerated && !explicit_surface && CurrentContext() != null { return 20 }
 
     // Verify actual texture upload, presentation and exact nearest scaling
     // through both drivers, with the same four opaque pixel colors.

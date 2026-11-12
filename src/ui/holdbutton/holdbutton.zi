@@ -147,14 +147,41 @@ HoldButton :: (session: Session, props: HoldButtonProps,
     unused Button(session, button)
     submitted_after := TreeSubmittedCount(session)
     if submitted_after > submitted_before { result.node = submitted_after - 1 }
-    result.bounds = button.bounds
+    result.bounds = ButtonMeasure(button)
     if result.node >= 0 && result.progress > 0.001 {
-        fill := result.bounds
-        fill.width *= result.progress
-        color := props.progress_color
-        if color == cast(u32)0 { color = Opacity(cast(u32)0x000000ff, 56) }
-        PaintRoundedFill(session, result.node, fill, result.bounds.height * 0.5, 12,
-            ColorFromPacked(color))
+        face := ButtonInstalledFaceFor(button, cast(s32)ButtonStateNormal)
+        radius := ButtonCornerRadius(face.radius, result.bounds.height)
+        if button.pill || button.circle { radius = result.bounds.height * 0.5 }
+        inset := face.border_width
+        if inset < 0.0 { inset = 0.0 }
+        fill := Rectangle.{result.bounds.x + inset, result.bounds.y + inset,
+            result.bounds.width - inset * 2.0, result.bounds.height - inset * 2.0}
+        if fill.width > 0.0 && fill.height > 0.0 {
+            radius -= inset
+            if radius < 0.0 { radius = 0.0 }
+            color := props.progress_color
+            if color == cast(u32)0 { color = Opacity(cast(u32)0x000000ff, 0.22) }
+            // Reveal the full themed silhouette through a horizontal clip.
+            // Shrinking the rounded rectangle would change its corner curve.
+            command: QueuedPaint
+            command.data.kind = cast(s32)PaintKind.PaintKindRoundedFill
+            command.data.node = result.node
+            command.data.bounds = fill
+            command.data.radius = radius
+            command.data.segments = 12
+            command.data.color = ColorFromPacked(color)
+            command.data.clip = fill
+            command.data.clip.width *= result.progress
+            command.data.clip_set = true
+            emit: PaintEmitter = EmitRoundedFill
+            command.emit = emit
+            command.has_emitter = true
+            command.builtin_emitter = true
+            clip_for: PaintClipper = ClipShape
+            command.clip_for = clip_for
+            command.clips = true
+            QueuePaint(session, *command, "", "")
+        }
     }
     return result
 }

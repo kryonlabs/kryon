@@ -15,6 +15,7 @@ Check :: (view: []u8) -> s32 {
     if bitmap_bytes != 0 { return 7 }
     return 0
 }
+#program_export
 main :: () -> s32 {
     bytes: Vec(u8)
     if !VecResizeBounded(bytes,16777216,16777216) { return 1 }

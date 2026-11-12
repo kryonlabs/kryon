@@ -9,7 +9,7 @@ work="$repo/work/frame-input"
 mkdir -p "$work"
 exec 9>"$work/lock"
 flock 9
-set -- --root "$repo/tests" $kryon_ui_args --module-path "$repo/src/backend" --module-path "$ziran_root/std"
+set -- --root "$repo/tests" $kryon_project_args
 # Exercise the real WidgetHostCall and VM array transport with real raylib data.
 guest="$repo/tests/frame_snapshot_guest.zi"
 "$ziran" ir "$@" --define KRYON_HOSTED_UI -o "$work/guest-ir" "$guest"
@@ -31,7 +31,7 @@ for mode in serial threaded; do
     # Reuse the test's disposable output for each backend configuration.
     # shellcheck disable=SC2086
     # The native host resolves Kryon's module roots and image packages from the project.
-    "$ziran" build --project --target=c --root "$repo/tests" $defines \
+    "$ziran" build $kryon_project_args --target=c --root "$repo/tests" $defines \
         -o "$work/host-c" "$repo/tests/raylib_frame_snapshot_test.zi"
     # shellcheck disable=SC2046,SC2086
     "${CC:-cc}" -std=c11 -O1 -ffunction-sections -fdata-sections -I"$work/host-c" \

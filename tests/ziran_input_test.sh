@@ -4,7 +4,8 @@ set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
 ziran_include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
-work=$(mktemp -d)
+mkdir -p "$repo/build/scratch"
+work=$(mktemp -d "$repo/build/scratch/input-test.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
@@ -107,9 +108,7 @@ func main() {
     }
 }
 GO
-            GO111MODULE=off go run "$output/geometry.go" "$output/math.go" \
-                "$output/input_props.go" "$output/input.go" \
-                "$output/use_input.go" "$output/main.go"
+            GO111MODULE=off go run "$output"/*.go
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" -o "$output" \
                 "$input_dir/geometry.$extension" \
@@ -121,9 +120,7 @@ GO
 int main(void) { return Answer() == 42 && FormatAnswer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output/geometry.c" "$output/math.c" "$output/input_props.c" \
-                "$output/input.c" "$output/use_input.c" \
-                "$output/main.c" -o "$output/app"
+                "$output"/*.c -o "$output/app"
             "$output/app"
         fi
     done

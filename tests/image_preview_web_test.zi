@@ -1,0 +1,47 @@
+#import "kryon/image_preview"
+Errors :: #import "avif/encode";
+
+#program_export
+ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32,
+    channels: *s32, upright: *bool) -> *u8 {
+    unused data
+    unused file_type
+    unused width
+    unused height
+    unused channels
+    unused upright
+    return null
+}
+
+#program_export
+ImagePreviewRelease :: (pixels: *u8) {
+    unused pixels
+}
+
+#program_export
+Check :: () -> s32 {
+    if ImageAVIFEncodingAvailable() {
+        return 1
+    }
+    encoded := ImageCompressAVIF("not an image", ".png", 1)
+    if encoded.is_ok || encoded.data.count != 0 ||
+    encoded.error.code != Errors.UnsupportedCapability {
+        return 2
+    }
+    ImageAVIFFree(*encoded)
+    pixels: [4]u8 = .[21, 42, 84, 128]
+    preview := ImagePreviewRGBAPixels(*pixels[0], 1, 1, 4, 1, 1)
+    if !preview.is_ok {
+        return 3
+    }
+    defer ImagePreviewRGBAFree(*preview)
+    if preview.width != 1 || preview.height != 1 || preview.stride != 4 {
+        return 4
+    }
+    for index: 0..3 {
+        if preview.pixels[index] != pixels[index] {
+            return 5
+        }
+    }
+    return 0
+}

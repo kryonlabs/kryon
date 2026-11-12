@@ -173,8 +173,6 @@ spinbox/spinbox_behavior.zi
 spinbox/spinbox_props.zi
 spinbox/spinbox.zi
 style.zi
-stylepicker/stylepicker.zi
-stylepicker/style_picker_props.zi
 style_sheet.zi
 surface.zi
 svgicon/svg_icon_behavior.zi

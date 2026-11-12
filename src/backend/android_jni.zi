@@ -189,6 +189,16 @@ NativeAndroidApp :: struct {
     // The glue's command pipe; writing a command byte wakes its loop.
     command_read: s32
     command_write: s32
+    thread: usize
+    command_poll_source_storage: [3]usize
+    input_poll_source_storage: [3]usize
+    running: s32
+    state_saved: s32
+    destroyed: s32
+    redraw_needed: s32
+    pending_input_queue: *void
+    pending_window: *void
+    pending_content_rect: [4]s32
 }
 
 // Other targets compile this module too, so they never reference Android's
@@ -206,7 +216,18 @@ jni_android_app: *NativeAndroidApp;
     JniRealPath :: (path: *u8, output: *u8) -> *u8 #foreign libc "realpath";
 }
 
-JniGetAndroidApp :: () -> *NativeAndroidApp { return jni_android_app }
+#if JNI_ANDROID && #defined(KRYON_RAYLIB_HOST) {
+    jni_raylib :: #system_library "raylib";
+    JniRaylibAndroidApp :: () -> *NativeAndroidApp #foreign jni_raylib "GetAndroidApp";
+}
+
+JniGetAndroidApp :: () -> *NativeAndroidApp {
+    #if JNI_ANDROID && #defined(KRYON_RAYLIB_HOST) {
+        return JniRaylibAndroidApp()
+    } else {
+        return jni_android_app
+    }
+}
 
 // Each long-lived host thread keeps its own JNI attachment. The render
 // owner and app worker must never share an attachment flag or a JNIEnv.

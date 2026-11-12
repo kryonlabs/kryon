@@ -1,0 +1,59 @@
+// Decode and apply an icon to the current native window.
+// Encoded bytes are borrowed for this call; no pixels escape the host.
+#if !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD) {
+    Decode :: #import "raylib_image_decode";
+    icon_backend :: #system_library "raylib";
+    IconFormat :: (image: *Decode.RaylibGlyphImage, format: s32) #foreign icon_backend "ImageFormat";
+    IconApply :: (image: Decode.RaylibGlyphImage) #foreign icon_backend "SetWindowIcon";
+    #if #defined(NATIVE_WINDOW_HAVE_SDL) {
+        icon_sdl :: #system_library "SDL2";
+        IconWindow :: () -> *void #foreign icon_sdl "SDL_GL_GetCurrentWindow";
+        IconSurface :: (pixels: *void, width: s32, height: s32, depth: s32,
+            pitch: s32, red: u32, green: u32, blue: u32, alpha: u32) -> *void #foreign icon_sdl "SDL_CreateRGBSurfaceFrom";
+        IconApplySurface :: (window: *void, surface: *void) #foreign icon_sdl "SDL_SetWindowIcon";
+        IconFreeSurface :: (surface: *void) #foreign icon_sdl "SDL_FreeSurface";
+    }
+}
+
+// Native icons retain decoded dimensions, straight alpha and upright orientation.
+SetWindowIcon :: (encoded: string, file_type: string) -> bool {
+    #if !#defined(PLATFORM_WEB) && !#defined(ANDROID_BUILD) {
+        image := Decode.RaylibDecodeImage(file_type, encoded)
+        if image.data == null || image.width <= 0 || image.height <= 0 {
+            Decode.RaylibImageRelease(image)
+            return false
+        }
+        defer Decode.RaylibImageRelease(image)
+        IconFormat(*image, 7)
+        if image.data == null || image.format != 7 {
+            return false
+        }
+        #if #defined(NATIVE_WINDOW_HAVE_SDL) {
+            window := IconWindow()
+            if window == null {
+                return false
+            }
+            // SDL masks describe native integer bits, preserving RGBA byte order.
+            endian: u32 = 1
+            little := cast(*u8)*endian
+            red: u32 = ifx little.* == 1 then 0x000000ff else 0xff000000
+            green: u32 = ifx little.* == 1 then 0x0000ff00 else 0x00ff0000
+            blue: u32 = ifx little.* == 1 then 0x00ff0000 else 0x0000ff00
+            alpha: u32 = ifx little.* == 1 then 0xff000000 else 0x000000ff
+            surface := IconSurface(image.data, image.width, image.height, 32,
+                image.width * 4, red, green, blue, alpha)
+            if surface == null {
+                return false
+            }
+            IconApplySurface(window, surface)
+            IconFreeSurface(surface)
+        } else {
+            IconApply(image)
+        }
+        return true
+    } else {
+        unused encoded
+        unused file_type
+        return false
+    }
+}

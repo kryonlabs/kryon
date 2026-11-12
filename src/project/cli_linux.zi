@@ -11,7 +11,6 @@ RawIsTty :: (fd: s32) -> s32 #foreign libc "isatty";
 RawExec :: (name: *u8, arguments: *PointerSlot) -> s32 #foreign libc "execvp";
 RawSetenv :: (name: *u8, value: *u8, overwrite: s32) -> s32 #foreign libc "setenv";
 RawGetenv :: (name: *u8) -> *u8 #foreign libc "getenv";
-RawReadlink :: (path: *u8, output: *u8, count: u64) -> s64 #foreign libc "readlink";
 CopyDescriptor :: (source: *TextDescriptor, destination: *string,
     count: u64) -> void #foreign libc "bcopy";
 
@@ -391,25 +390,6 @@ FrontDoor :: (command_line: string, verb: string) -> s32 {
     return Error("cannot run ziran; install it with make install-user in the Ziran repository")
 }
 
-RunDownloadedBundle :: (command_line: string) -> s32 {
-    executable: [4096]u8
-    path: [32]u8
-    if !CString("/proc/self/exe", path[:]) { return 1 }
-    count := RawReadlink(*path[0], *executable[0], cast(u64)4096)
-    if count <= 0 || count >= 4096 { return Error("cannot locate the Zx player") }
-    location := TextFromBuffer(executable[:], cast(s32)count)
-    slash := count - 1
-    while slash >= 0 && location[slash] != cast(u8)47 { slash -= 1 }
-    if slash < 0 { return Error("cannot locate the Zx player") }
-    player_bytes: [4096]u8
-    player := Join(location[0:cast(s32)slash], "/zx", player_bytes[:])
-    if !Exists(player) { return Error("install the Zx player with make install-user") }
-    args: [2]string
-    args[0] = player
-    args[1] = ArgumentAt(command_line, 2)
-    return Execute(args[:])
-}
-
 #program_export
 main :: () -> s32 {
     command_bytes: [8192]u8
@@ -424,7 +404,8 @@ main :: () -> s32 {
     if verb == "run" && bundle_path.count >= 3 &&
     bundle_path[bundle_path.count - 3:bundle_path.count] == ".zx" {
         if ArgumentCount(command_line.text) != 3 { return Error("usage: kryon run FILE.zx") }
-        return RunDownloadedBundle(command_line.text)
+        args: [3]string = .{"ziran", "run", bundle_path}
+        return Execute(args[:])
     }
     if verb != "run" && verb != "build" && verb != "check" && verb != "install" &&
     verb != "profiles" && verb != "new" && verb != "init" {

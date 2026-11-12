@@ -14,7 +14,7 @@ import shutil
 import subprocess
 import time
 
-from toolchain import UI_MODULE_ARGS, BIN, ZIRAN_ROOT
+from toolchain import ZIRAN, ZIRAN_ROOT
 
 ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / 'build/scratch/pw-canvas'
@@ -292,9 +292,8 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX)
         generated = WORK / 'generated'
         shutil.rmtree(generated, ignore_errors=True)
-        run([BIN / 'zi2c', '--no-main', '--define', 'PLATFORM_WEB', '--root', ROOT / 'tests',
-             *UI_MODULE_ARGS, '--module-path', ROOT / 'src/backend',
-             '--module-path', ZIRAN_ROOT / 'std', '-o', generated,
+        run([ZIRAN, 'build', '--project', '--module-path', ROOT / 'tests', '--target=c', '--no-main', '--define', 'PLATFORM_WEB',
+             '--root', ROOT / 'tests', '-o', generated,
              ROOT / 'tests/password_canvas_browser_behavior.zi'])
         shell = WORK / 'shell.html'
         shell.write_text('''<!doctype html><meta charset="utf-8"><body>

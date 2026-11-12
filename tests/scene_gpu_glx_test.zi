@@ -1,0 +1,69 @@
+// The runner supplies a private Xvfb. Never execute against an inherited display.
+#import, file "../src/backend/scene_gpu.zi";
+G :: #import, file "../src/backend/scene_gpu_gl.zi";
+#import "std/image"
+#import "std/text_tools"
+#import "kryon/scene"
+#import "kryon/scene_render"
+x11 :: #system_library "X11";
+glx :: #system_library "GLX";
+XOpen :: (name: *u8)->*void #foreign x11 "XOpenDisplay";
+XClose :: (display: *void)->s32 #foreign x11 "XCloseDisplay";
+XScreen :: (display: *void)->s32 #foreign x11 "XDefaultScreen";
+XFree :: (data: *void)->s32 #foreign x11 "XFree";
+Choose :: (display: *void,screen: s32,attrs: *s32,count: *s32)->**void #foreign glx "glXChooseFBConfig";
+ConfigAttrib :: (display: *void,config: *void,attribute: s32,value: *s32)->s32 #foreign glx "glXGetFBConfigAttrib";
+Create :: (display: *void,config: *void,kind: s32,share: *void,direct: s32)->*void #foreign glx "glXCreateNewContext";
+Destroy :: (display: *void,context: *void) #foreign glx "glXDestroyContext";
+Pbuffer :: (display: *void,config: *void,attrs: *s32)->u64 #foreign glx "glXCreatePbuffer";
+DropPbuffer :: (display: *void,drawable: u64) #foreign glx "glXDestroyPbuffer";
+CloseDisplay :: (display: *void) {unused XClose(display)}
+FreeConfigs :: (configs: **void) {unused XFree(cast(*void)configs)}
+Check :: (display: *void,context: *void,drawable: u64)->bool {
+ if G.GLXCurrentDisplay()!=display||G.GLXCurrentContext()!=context||G.GLXCurrentDrawable()!=drawable||G.GLXCurrentReadDrawable()!=drawable {return false}
+ pixel: [4]u8;G.ReadPixels(0,0,1,1,0x1908,0x1401,cast(*void)*pixel[0])
+ return G.GetError()==0&&pixel[0]==64&&pixel[1]==128&&pixel[2]==191&&pixel[3]==255
+}
+#program_export
+main :: ()->s32 {
+ display:=XOpen(null);if display==null {return 1};defer CloseDisplay(display)
+ attrs: [15]s32=.[0x8010,4,0x8011,1,8,8,9,8,10,8,11,0,12,24,0]
+ count: s32;configs:=Choose(display,XScreen(display),*attrs[0],*count)
+ if configs==null||count<=0 {return 2};defer FreeConfigs(configs)
+ config: *void
+ for at:0..count-1 {
+  alpha: s32;unused ConfigAttrib(display,configs[at],11,*alpha)
+  if alpha==0 {config=configs[at];break}
+ }
+ if config==null {return 13}
+ context:=Create(display,config,0x8014,null,1);if context==null {return 3};defer Destroy(display,context)
+ pbuffer_attrs: [5]s32=.[0x8041,16,0x8040,16,0]
+ drawable:=Pbuffer(display,config,*pbuffer_attrs[0]);if drawable==0 {return 4};defer DropPbuffer(display,drawable)
+ if G.GLXMakeCurrent(display,drawable,drawable,context)==0 {return 5}
+ G.ClearColor(0.25,0.5,0.75,1.0);G.Clear(0x4000)
+ label: [256]u8;renderer:=G.GetString(0x1f01)
+ for at:0..254 {if renderer[at]==0 {break};label[at]=renderer[at]}
+ print("Private GLX host renderer %\n",TextView(label[:]))
+ if !Check(display,context,drawable) {return 6}
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ unused RoundedBox(*scene,1,1,1,0.1,UnlitMaterial(.{150,80,40,255}))
+ camera:=PerspectiveCamera(45,1,0.1,20);camera.position=.{0,0,3}
+ image:=NewImage(128,128)
+ gpu: SceneGpuContext;caps:=SceneGpuProbe(*gpu);defer SceneGpuRelease(*gpu)
+ if !caps.available {print("GPU probe %\n",caps.diagnostic);return 7}
+ if !Check(display,context,drawable) {return 8}
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!Check(display,context,drawable) {return 9}
+ if !SceneGpuSubmit(*gpu,*scene,camera,128,128,1).queued||!Check(display,context,drawable) {return 14}
+ if !SceneGpuSubmit(*gpu,*scene,camera,128,128,2).queued||!Check(display,context,drawable) {return 15}
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!Check(display,context,drawable) {return 16}
+ completion:=SceneGpuPoll(*gpu,*image)
+ if !completion.completed||completion.request_id!=1||!Check(display,context,drawable) {return 17}
+ if !SceneGpuResize(*gpu,96,60)||!Check(display,context,drawable) {return 10}
+ SceneGpuRelease(*gpu)
+ if !Check(display,context,drawable) {return 11}
+ if !SceneGpuRender(*gpu,*scene,camera,*image).ok||!Check(display,context,drawable) {return 12}
+ SceneGpuRelease(*gpu)
+ print("Foreign GLX context, draw/read pbuffers and pixels preserved through probe/render/async/sync-interleave/resize/release/recreate\n")
+ unused G.GLXMakeCurrent(display,0,0,null)
+ return 0
+}

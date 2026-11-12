@@ -1,0 +1,141 @@
+// Actual EGL/GLES execution, never a visible window. Runner scrubs desktop env.
+#import, file "../src/backend/scene_gpu.zi";
+G :: #import, file "../src/backend/scene_gpu_gl.zi";
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "kryon/shader"
+#import "std/image"
+#import "std/vec"
+#import "std/text_tools"
+libc :: #system_library "c";
+AsyncPause :: (microseconds: u32)->s32 #foreign libc "usleep";
+AsyncFlush :: (stream: *void)->s32 #foreign libc "fflush";
+AsyncHash :: (image: *Image)->u64 {
+ h: u64=1469598103934665603
+ for at:0..image.pixels.count-1 {h=(h^cast(u64)image.pixels[at])*cast(u64)1099511628211}
+ return h
+}
+AsyncWait :: (gpu: *SceneGpuContext,image: *Image)->SceneGpuAsyncResult {
+ for at:0..4999 {
+  result:=SceneGpuPoll(gpu,image)
+  if !result.ok||result.completed {return result}
+  unused AsyncPause(1000)
+ }
+ return .{diagnostic="test completion timeout"}
+}
+AsyncTests :: ()->bool {
+ gpu: SceneGpuContext;reference: SceneGpuContext
+ defer SceneGpuRelease(*gpu);defer SceneGpuRelease(*reference)
+ caps:=SceneGpuProbe(*gpu)
+ if !caps.available||!caps.async_available {print("Async capability failed % %\n",caps.diagnostic,caps.async_diagnostic);return false}
+ print("Async GPU % samples %\n",TextView(caps.renderer[:]),caps.samples)
+ scene: Scene;SceneInit(*scene);defer SceneFree(*scene)
+ program: ShaderProgram
+ code: [3]ShaderInstruction=.[.{op=.ShaderUniform,dest=4,slot=0},.{op=.ShaderMultiply,dest=5,a=4,b=0},.{op=.ShaderOutput,a=5}]
+ if !ShaderCompile(*program,code[:]).ok {return false}
+ uniforms: [1]ShaderValue=.[.{0.7,0.4,0.1,1}]
+ material:=UnlitMaterial(.{255,255,255,255});material.shader=*program;material.shader_uniforms=uniforms[:]
+ texels: [16]u8=.[255,100,40,255,80,220,100,255,50,100,230,255,190,140,70,255]
+ material.texture=AddTexture(*scene,texels[:],2,2)
+ a:=RoundedBox(*scene,0.9,0.9,0.4,0.05,material);SetPosition(*scene,a,-0.3,0,0)
+ material.transparent=true;material.color.a=110
+ unused RoundedBox(*scene,0.8,0.8,0.5,0.05,material)
+ camera:=PerspectiveCamera(45,1.6,0.1,20);camera.position=.{0,0,3}
+ image:=NewImage(160,100);sync:=NewImage(160,100);expected:=NewImage(160,100)
+ defer VecFree(image.pixels);defer VecFree(sync.pixels);defer VecFree(expected.pixels)
+ unready: s32
+ for batch:0..15 {
+  hashes: [2]u64;cameras: [2]SceneCamera
+  for slot:0..1 {
+   id:=cast(u64)(batch*2+slot+1)
+   camera.position.x=cast(float64)(batch*2+slot)*0.006
+   camera.shift_x=cast(float64)(batch%3-1)*0.45
+   camera.shift_y=ifx slot==0 then -0.3 else 0.3
+   cameras[slot]=camera
+   uniforms[0].x=0.1+cast(float64)(batch*2+slot)*0.02
+   program.code[2].a=ifx slot==0 then 5 else 4
+   scene.texels[0]=cast(u8)(100+batch*5+slot*20)
+   SetPosition(*scene,a,-0.3+cast(float64)slot*0.1,0,0)
+   scene.meshes[0].material.double_sided=slot==0
+   if !SceneGpuRender(*reference,*scene,camera,*expected).ok {return false}
+   hashes[slot]=AsyncHash(*expected)
+   submitted:=SceneGpuSubmit(*gpu,*scene,camera,160,100,id)
+   if !submitted.ok||!submitted.queued||submitted.request_id!=id {print("Submit failure %\n",submitted.diagnostic);return false}
+  }
+  before:=AsyncHash(*image)
+  busy:=SceneGpuSubmit(*gpu,*scene,camera,160,100,1000)
+  if !busy.ok||!busy.busy||busy.queued||AsyncHash(*image)!=before||SceneGpuMemoryUsage(*gpu).pending_frames!=2 {return false}
+  // Mutation and a synchronous CPU-pointer readback while BOTH PBOs are live.
+  uniforms[0].x=0.95;SetPosition(*scene,a,0.4,0,0)
+  scene.positions[0].x+=0.0001
+  if !SceneGpuRender(*gpu,*scene,camera,*sync).ok {return false}
+  // Poll never changes metadata or pixels for unready work.
+  first:=SceneGpuPoll(*gpu,*image)
+  if !first.ok {return false}
+  if !first.completed {
+   unready+=1
+   if AsyncHash(*image)!=before {return false}
+   first=AsyncWait(*gpu,*image)
+  }
+  if !first.completed||first.request_id!=cast(u64)(batch*2+1)||first.camera.position.x!=cameras[0].position.x||first.camera.shift_x!=cameras[0].shift_x||first.camera.shift_y!=cameras[0].shift_y||AsyncHash(*image)!=hashes[0] {print("First completion mismatch %\n",batch);return false}
+  second:=AsyncWait(*gpu,*image)
+  if !second.completed||second.request_id!=cast(u64)(batch*2+2)||second.camera.position.x!=cameras[1].position.x||second.camera.shift_x!=cameras[1].shift_x||second.camera.shift_y!=cameras[1].shift_y||AsyncHash(*image)!=hashes[1] {print("Second completion mismatch %\n",batch);return false}
+  stable:=AsyncHash(*image)
+  empty:=SceneGpuPoll(*gpu,*image)
+  if !empty.ok||empty.completed||AsyncHash(*image)!=stable {return false}
+  r:=SceneGpuMemoryUsage(*gpu)
+  if r.pending_frames!=0||r.fences!=0||r.buffers!=3 {return false}
+ }
+ // The real large target exercises an unfinished fence without sync interleave.
+ large:=NewImage(1280,800);defer VecFree(large.pixels)
+ before_large:=AsyncHash(*large)
+ if !SceneGpuSubmit(*gpu,*scene,camera,1280,800,40).queued {return false}
+ early:=SceneGpuPoll(*gpu,*large)
+ if !early.ok {return false}
+ if !early.completed {
+  unready+=1
+  if AsyncHash(*large)!=before_large {return false}
+  early=AsyncWait(*gpu,*large)
+ }
+ if !early.completed||early.request_id!=40 {return false}
+ expected.width=1280;expected.height=800
+ if !SceneGpuRender(*reference,*scene,camera,*expected).ok||AsyncHash(*large)!=AsyncHash(*expected) {return false}
+ // A failed request is never queued and full-quality sync remains usable.
+ uniforms[0].x=1e100
+ rejected:=SceneGpuSubmit(*gpu,*scene,camera,160,100,100)
+ if rejected.ok||rejected.diagnostic==""||SceneGpuMemoryUsage(*gpu).pending_frames!=0 {return false}
+ uniforms[0].x=0.3
+ if !SceneGpuSubmit(*gpu,*scene,camera,160,100,101).queued {return false}
+ if !SceneGpuSubmit(*gpu,*scene,camera,160,100,102).queued {return false}
+ before:=AsyncHash(*image)
+ if !SceneGpuResize(*gpu,80,50)||SceneGpuMemoryUsage(*gpu).pending_frames!=0||SceneGpuPoll(*gpu,*image).completed||AsyncHash(*image)!=before {return false}
+ image.width=80;image.height=50
+ if !SceneGpuSubmit(*gpu,*scene,camera,80,50,103).queued||!AsyncWait(*gpu,*image).completed {return false}
+ if !SceneGpuSubmit(*gpu,*scene,camera,80,50,104).queued {return false}
+ SceneGpuCancel(*gpu)
+ if SceneGpuMemoryUsage(*gpu).fences!=0||SceneGpuPoll(*gpu,*image).completed {return false}
+ // Context loss discards all pending IDs, and Release/recreate remains safe.
+ if !SceneGpuSubmit(*gpu,*scene,camera,80,50,105).queued {return false}
+ unused G.EDestroyContext(gpu.display,gpu.context)
+ lost:=SceneGpuPoll(*gpu,*image)
+ if lost.ok||lost.completed||SceneGpuMemoryUsage(*gpu).gpu_bytes!=0 {return false}
+ for cycle:0..23 {
+  if !SceneGpuSubmit(*gpu,*scene,camera,80,50,1).queued {return false}
+  if !SceneGpuSubmit(*gpu,*scene,camera,80,50,2).queued {return false}
+  SceneGpuRelease(*gpu);SceneGpuRelease(*gpu)
+  r:=SceneGpuMemoryUsage(*gpu)
+  if r.cpu_bytes!=0||r.gpu_bytes!=0||r.buffers!=0||r.fences!=0||r.pending_frames!=0 {return false}
+  print("async release cycle %\n",cycle);unused AsyncFlush(null);unused AsyncPause(20000)
+ }
+ gpu.attempted=true;gpu.capabilities.diagnostic="test lacks full 4x coverage"
+ if SceneGpuSubmit(*gpu,*scene,camera,80,50,1).ok {return false}
+ if !SceneGpuRenderOrCPU(*gpu,*scene,camera,*image).ok {return false}
+ SceneGpuRelease(*gpu)
+ if !SceneGpuProbe(*gpu).available {return false}
+ gpu.capabilities.async_available=false;gpu.capabilities.async_diagnostic="test lacks PBO mapping"
+ if SceneGpuSubmit(*gpu,*scene,camera,80,50,1).ok||!SceneGpuRender(*gpu,*scene,camera,*image).ok {return false}
+ print("Async exact camera/material/geometry/texture/program frames, sync interleave, two-slot backpressure, cancellation, loss, fallback and 24 releases passed; unready polls %\n",unready)
+ return true
+}
+#program_export
+main :: ()->s32 {if !AsyncTests() {return 1};return 0}

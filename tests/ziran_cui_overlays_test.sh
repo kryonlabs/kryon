@@ -12,7 +12,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 source="$repo/tests/cui_overlays_test.zi"
 widget_test=cui_overlays_test
 widget_std="$ziran_root/std"
-module_args="$kryon_ui_args --module-path $repo/src/backend --module-path $widget_std"
+module_args="$kryon_project_args"
 
 binds='
 --bind font_metrics:MeasureGlyphWidth=cui_overlays_raster_host:CuiOverlaysMeasureGlyphWidth
@@ -33,7 +33,7 @@ binds='
 "$ziran" bundle --root "$repo/tests" $module_args $binds \
     --entry "$widget_test:main" -o "$work/source.zx" "$source"
 # shellcheck disable=SC2086
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" $binds \
+"$ziran" bundle --root "$work/ir" --project --module-path "$work/ir" $binds \
     --entry "$widget_test:main" -o "$work/saved.zx" \
     "$work/ir/$widget_test.zir"
 
@@ -49,7 +49,7 @@ for input in source saved; do
     else
         root=$work/ir
         module=$work/ir/$widget_test.zir
-        paths="--module-path $work/ir"
+        paths="--project --module-path $work/ir"
     fi
 
     output=$work/c-$input

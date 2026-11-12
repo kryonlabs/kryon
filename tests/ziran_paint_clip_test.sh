@@ -1,7 +1,12 @@
 #!/bin/sh
-. "$(dirname -- "$0")/test_context.sh"
+set -eu
+repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+. "$repo/tests/toolchain.sh"
+mkdir -p "$repo/build/scratch"
+work=$(mktemp -d "$repo/build/scratch/paint-clip-test.XXXXXX")
+trap 'rm -rf "$work"' EXIT HUP INT TERM
+kryon_project_args="$kryon_project_args --module-path $work"
 
-cp "$repo/tests/widget_test_session.zi" "$work/"
 
 cat > "$work/app.zi" <<'ZI'
 #import "session"
@@ -126,7 +131,7 @@ C
 for target in c go; do
     output=$work/$target
     "$ziran" build --target="$target" --root "$work" \
-        $kryon_ui_args --module-path "$ziran_root/std" -o "$output" "$work/app.zi"
+        $kryon_project_args  -o "$output" "$work/app.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \

@@ -10,13 +10,24 @@ main :: () -> s32 {
     quiet: [32]u8
     format: [32]u8
     name: [16]u8
+    framebuffer_unload: [96]u8
+    framebuffer_create: [96]u8
+    framebuffer_note: [64]u8
     if !CopyCString("IMAGE: hidden", quiet[:]) || !CopyCString("values %d %.2f %s", format[:]) ||
     !CopyCString("kryon.test", name[:]) {
         return 1
     }
+    if !CopyCString("FBO: [ID %i] Unloaded framebuffer from VRAM (GPU)", framebuffer_unload[:]) ||
+    !CopyCString("FBO: [ID %i] Framebuffer object created successfully", framebuffer_create[:]) ||
+    !CopyCString("FBO: diagnostic note retained", framebuffer_note[:]) { return 4 }
     // Routine image notes are dropped; the same words in a warning are kept.
     HostTraceLog(3, *quiet[0])
     TraceLog(4, "IMAGE: retained")
+    HostTraceLog(3, *framebuffer_unload[0], 4)
+    HostTraceLog(3, *framebuffer_create[0], 4)
+    HostTraceLog(4, *framebuffer_unload[0], 7)
+    HostTraceLog(5, *framebuffer_create[0], 8)
+    HostTraceLog(3, *framebuffer_note[0])
     // raylib's own arguments are formatted once, with the target's va_list.
     HostTraceLog(3, *format[0], 42, cast(float64)3.25, *name[0])
     // Text logged by the application is never read as a format.
@@ -25,6 +36,7 @@ main :: () -> s32 {
         return 2
     }
     TraceLog(3, "file note")
+    HostTraceLog(3, *framebuffer_unload[0], 9)
     TraceLog(5, "WGL test failure")
     if RaylibTraceRecentErrors() != "[ERROR] WGL test failure\n" {
         return 3

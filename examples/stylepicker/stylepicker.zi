@@ -39,7 +39,6 @@ GalleryBounds :: (bounds: Rectangle) -> Rectangle {
     return bounds
 }
 
-dark: bool;
 
 Label :: (session: Session, value: string, y: float32 = 76.0) {
     Text(session, TextProps.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
@@ -52,16 +51,13 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
     Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "StylePicker", .font = 23})
+    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "CUI style", .font = 23})
     b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
     disabled := example_input.disabled
 
-    packs: [2]StylePackOption
-    packs[0].id = "light"; packs[0].label = "Light"; packs[0].active = !dark
-    packs[1].id = "dark"; packs[1].label = "Dark"; packs[1].active = dark
-    picked := StylePicker(session, StylePickerProps.{.dropdown = .{.bounds = b, .disabled = disabled}}, packs[:])
-    if picked.changed { dark = picked.selected_id == "dark" }
-    Label(session, "The caller applies the chosen palette.", 150.0)
+    card := Card(session, CardProps.{.key = 10, .bounds = b})
+    Text(session, TextProps.{.bounds = card.content, .text = "One modern CUI style"})
+    Label(session, "Colors and light/dark remain customizable.", 150.0)
     return 0
 }
 

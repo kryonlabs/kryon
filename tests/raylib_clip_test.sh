@@ -3,7 +3,6 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$root/tests/toolchain.sh"
 ziran_dir=$ziran_root
-compiler=${ZI2C_BIN:-"$ziran_dir/build/bin/zi2c"}
 standard=${ZIRAN_STD:-"$ziran_dir/std"}
 raylib_source=${RAYLIB_SOURCE:-$("$ziran" pkg path raylib)}
 raylib=${RAYLIB_A:-"$raylib_source/src/libraylib.a"}
@@ -12,9 +11,9 @@ test -f "$webp" || { echo "build a raylib project first, or set WEBP_A to the kr
 raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm}
 work=$(mktemp -d "$root/build/raylib-clip.XXXXXX")
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-"$compiler" --no-main --root "$root/tests" \
-    --module-path "$root/src/backend" $kryon_ui_args \
-    --module-path "$standard" -o "$work/c" \
+"$ziran" build --target=c --no-main --root "$root/tests" \
+     $kryon_project_args \
+     -o "$work/c" \
     "$root/tests/raylib_clip_behavior.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
     -Wl,--gc-sections -I"$ziran_dir/include" -iquote "$work/c" \

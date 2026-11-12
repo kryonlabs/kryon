@@ -1,15 +1,15 @@
 # Shared raster effects for widget test bundles. The caller supplies its
 # host modules and keeps its additional bindings in the positional arguments.
 set -- "$@" \
-    --bind "font_metrics:MeasureGlyphWidth=$widget_host:MeasureGlyphWidth" \
-    --bind "font_metrics:MeasureGlyphLineHeight=$widget_host:MeasureGlyphLineHeight" \
-    --bind "raster_text:RasterText=$widget_host:RasterText" \
-    --bind "raster_text:RasterTextClipped=$widget_host:RasterTextClipped" \
-    --bind "raster_shape:RasterRoundedRectangle=$widget_host:RasterRoundedRectangle" \
-    --bind "raster_shape:RasterRoundedRectangleOutline=$widget_host:RasterRoundedRectangleOutline" \
-    --bind "raster:RasterLine=$widget_host:RasterLine" \
-    --bind "paint_queue:RasterImage=$widget_host:RasterImage" \
-    --bind "paint_queue:RasterImageMesh=$widget_mesh_host:RasterImageMesh"
+    --bind "kryon/font_metrics:MeasureGlyphWidth=$widget_host:MeasureGlyphWidth" \
+    --bind "kryon/font_metrics:MeasureGlyphLineHeight=$widget_host:MeasureGlyphLineHeight" \
+    --bind "kryon/raster_text:RasterText=$widget_host:RasterText" \
+    --bind "kryon/raster_text:RasterTextClipped=$widget_host:RasterTextClipped" \
+    --bind "kryon/raster_shape:RasterRoundedRectangle=$widget_host:RasterRoundedRectangle" \
+    --bind "kryon/raster_shape:RasterRoundedRectangleOutline=$widget_host:RasterRoundedRectangleOutline" \
+    --bind "kryon/raster:RasterLine=$widget_host:RasterLine" \
+    --bind "kryon/paint_queue:RasterImage=$widget_host:RasterImage" \
+    --bind "kryon/paint_queue:RasterImageMesh=$widget_mesh_host:RasterImageMesh"
 
 widget_rotated_host=ziran_mesh_noop_host
 case "$widget_host" in
@@ -18,7 +18,7 @@ case "$widget_host" in
 esac
 widget_triangles_function=RasterTriangles
 if test "$widget_rotated_host" = ziran_mesh_noop_host; then widget_triangles_function=NoopRasterTriangles; fi
-set -- "$@" --bind "raster_text:RasterTextRotated=$widget_rotated_host:RasterTextRotated"
+set -- "$@" --bind "kryon/raster_text:RasterTextRotated=$widget_rotated_host:RasterTextRotated"
 if test "${widget_triangles_needed:-0}" = 1; then
-    set -- "$@" --bind "raster_triangles:RasterTriangles=$widget_rotated_host:$widget_triangles_function"
+    set -- "$@" --bind "kryon/raster_triangles:RasterTriangles=$widget_rotated_host:$widget_triangles_function"
 fi

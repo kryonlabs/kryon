@@ -1,0 +1,25 @@
+// Change only representation padding, leaving every public material field
+// identical. Padding is unspecified across native call/compilation contexts.
+#import "kryon/scene"
+MaterialFillPadding :: (material: *SceneMaterial,pattern: u8) {
+ saved:=material[0]
+ bytes:=cast(*u8)material
+ for at:0..cast(s64)size_of(SceneMaterial)-1 {bytes[at]=pattern}
+ material.kind=saved.kind
+ material.color=saved.color
+ material.roughness=saved.roughness
+ material.metalness=saved.metalness
+ material.glow=saved.glow
+ material.glow_strength=saved.glow_strength
+ material.opacity=saved.opacity
+ material.transparent=saved.transparent
+ material.double_sided=saved.double_sided
+ material.flat=saved.flat
+ material.vertex_colors=saved.vertex_colors
+ material.texture=saved.texture
+ material.alpha_test=saved.alpha_test
+ material.exact_color=saved.exact_color
+ material.shader=saved.shader
+ material.shader_uniforms=saved.shader_uniforms
+ material.shader_samplers=saved.shader_samplers
+}

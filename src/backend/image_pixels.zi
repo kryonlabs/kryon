@@ -1,0 +1,140 @@
+// Owned straight RGBA for scene textures and CPU image processing.
+#import "std/image"
+#import "std/vec"
+#import "std/c_string"
+#if #defined(ANDROID_BUILD) {
+    Decode :: #import "android_bundle_images";
+    android_pixels :: #system_library "android";
+    pixels_c :: #system_library "c";
+    PixelAssetOpen :: (manager: *void,name: *u8,mode: s32) -> *void #foreign android_pixels "AAssetManager_open";
+    PixelAssetClose :: (asset: *void) #foreign android_pixels "AAsset_close";
+    PixelAssetLength :: (asset: *void) -> s32 #foreign android_pixels "AAsset_getLength";
+    PixelAssetBuffer :: (asset: *void) -> *u8 #foreign android_pixels "AAsset_getBuffer";
+    PixelRelease :: (pixels: *void) #foreign pixels_c "free";
+    Jni :: #import "android_jni";
+    Orientation :: #import "image_orientation";
+} else #if #defined(PLATFORM_WEB) {
+    Decode :: #import "raylib_image_decode";
+} else {
+    Decode :: #import "image_decode_linux";
+}
+
+#if #defined(PLATFORM_WEB) || #defined(ANDROID_BUILD) {
+    #import "std/file_linux"
+    #import "std/byte_text_linux"
+}
+
+// Empty means missing, unsupported or invalid. Caller frees image.pixels.
+LoadImagePixels :: (path: string) -> Image {
+    #if #defined(PLATFORM_WEB) || #defined(ANDROID_BUILD) {
+        encoded:=ReadPixelsFile(path)
+        defer VecFree(encoded)
+        if encoded.count==0 { return .{} }
+        #if #defined(ANDROID_BUILD) {
+            width: s32; height: s32
+            words:=Decode.AndroidImageDecodePNG(encoded[:],*width,*height)
+            orientation: s32=1
+            if words==null {
+                words=Decode.AndroidImageDecodeBitmap(TextView(encoded[:]),*width,*height)
+                orientation=Orientation.ImageExifOrientation(TextView(encoded[:]))
+            }
+            if words==null || width<=0 || height<=0 || cast(s64)width*height>67108864 {
+                if words!=null { PixelRelease(cast(*void)words) }
+                return .{}
+            }
+            words=Decode.AndroidImageOrient(words,width,height,orientation)
+            if words==null { return .{} }
+            defer PixelRelease(cast(*void)words)
+            if orientation>=5 && orientation<=8 { swap:=width; width=height; height=swap }
+            result: Image
+            result.width=width; result.height=height
+            if !VecResize(result.pixels,cast(s64)width*height*4) { VecFree(result.pixels); return .{} }
+            for at:0..cast(s64)width*height-1 {
+                pixel:=words[at]
+                result.pixels[at*4]=cast(u8)((pixel>>16)&cast(u32)255)
+                result.pixels[at*4+1]=cast(u8)((pixel>>8)&cast(u32)255)
+                result.pixels[at*4+2]=cast(u8)(pixel&cast(u32)255)
+                result.pixels[at*4+3]=cast(u8)(pixel>>24)
+            }
+            return result
+        } else {
+        decoded:=Decode.RaylibDecodeImage(path,TextView(encoded[:]))
+        defer Decode.RaylibImageRelease(decoded)
+        if decoded.data==null || decoded.format!=7 { return .{} }
+        return CopyRgba(cast(*u8)decoded.data,decoded.width,decoded.height,decoded.width*4,4)
+        }
+    } else {
+        // The packaged WebP/AVIF adapters already produce straight RGBA.
+        still:=Decode.OpenStill(path)
+        if still.pixels!=null {
+            defer Decode.CloseStill(still)
+            return CopyRgba(still.pixels,still.width,still.height,still.width*4,4)
+        }
+        name: [4096]u8
+        if !CopyCString(path,name[:]) { return .{} }
+        decoded:=Decode.OpenImage(*name[0])
+        if decoded==null { return .{} }
+        defer Decode.CloseImage(decoded)
+        // Read straight RGB(A) before the Cairo adapter premultiplies ARGB.
+        pixels_of:=Decode.pixels_of; stride_of:=Decode.stride_of; channels_of:=Decode.channels_of
+        return CopyRgba(pixels_of(decoded),Decode.Width(decoded),Decode.Height(decoded),
+            stride_of(decoded),channels_of(decoded))
+    }
+}
+CopyRgba :: (pixels: *u8,width: s32,height: s32,stride: s32,channels: s32) -> Image {
+    if pixels==null || width<=0 || height<=0 || width>32768 || height>32768 ||
+        cast(s64)width*height>67108864 || (channels!=3 && channels!=4) || stride<width*channels { return .{} }
+    result: Image
+    result.width=width; result.height=height
+    if !VecResize(result.pixels,cast(s64)width*height*4) { VecFree(result.pixels); return .{} }
+    for y:0..height-1 { for x:0..width-1 {
+        source:=cast(s64)y*stride+x*channels
+        target:=(cast(s64)y*width+x)*4
+        result.pixels[target]=pixels[source]
+        result.pixels[target+1]=pixels[source+1]
+        result.pixels[target+2]=pixels[source+2]
+        result.pixels[target+3]=ifx channels==4 then pixels[source+3] else cast(u8)255
+    } }
+    return result
+}
+
+#if #defined(PLATFORM_WEB) || #defined(ANDROID_BUILD) {
+ReadPixelsFile :: (path: string) -> Vec(u8) {
+    #if #defined(ANDROID_BUILD) {
+        if path.count>0 && path[0]!=cast(u8)47 { return ReadAssetPixels(path) }
+    }
+    encoded: Vec(u8)
+    file:=OpenRead(path)
+    if !file.valid { return .{} }
+    defer { unused CloseFile(file) }
+    size:=FileSize(file)
+    if size<=0 || size>268435456 { return .{} }
+    if !VecResize(encoded,size) { VecFree(encoded); return .{} }
+    read: s64
+    while read<size {
+        count:=ReadAt(file,encoded[read:],read)
+        if count<=0 { VecFree(encoded); return .{} }
+        read+=count
+    }
+    return encoded
+}
+}
+
+#if #defined(ANDROID_BUILD) {
+ReadAssetPixels :: (path: string) -> Vec(u8) {
+    app:=Jni.JniGetAndroidApp()
+    if app==null || app.activity==null { return .{} }
+    name: [4096]u8
+    if !CopyCString(path,name[:]) { return .{} }
+    asset:=PixelAssetOpen(app.activity.asset_manager,*name[0],3)
+    if asset==null { return .{} }
+    defer PixelAssetClose(asset)
+    size:=PixelAssetLength(asset)
+    bytes:=PixelAssetBuffer(asset)
+    if size<=0 || size>268435456 || bytes==null { return .{} }
+    encoded: Vec(u8)
+    if !VecResize(encoded,cast(s64)size) { VecFree(encoded); return .{} }
+    for at:0..size-1 { encoded[at]=bytes[at] }
+    return encoded
+}
+}

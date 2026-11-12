@@ -33,6 +33,7 @@
 #import "text_props"
 #import "kryon/image_widget"
 #import "image_props"
+#import "image_raster"
 #import "geometry"
 #import "button"
 #import "checkbox"
@@ -261,6 +262,8 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
     (ModuleName(module, "text_measure") && function == "TextWidthHostedHost") ||
     (ModuleName(module, "text_measure") && function == "TextHeightHostedHost") ||
     (ModuleName(module, "image") && function == "ImageHostedHost") ||
+    (ModuleName(module, "image_raster") &&
+        (function == "ImageWidth" || function == "ImageHeight")) ||
     (ModuleName(module, "image_showing") && function == "ImageShowingHostedHost") ||
     (ModuleName(module, "tilemap") && function == "TileMapHostedHost") ||
     (ModuleName(module, "button") && function == "ButtonHostedHost") ||
@@ -469,6 +472,28 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     owner := TextFromCString(module)
     name := TextFromCString(function)
+    if ModuleName(owner, "image_raster") &&
+        (name == "ImageWidth" || name == "ImageHeight") {
+        if count != 1 ||
+            !HostScalarValid(arguments[0], "string", cast(s32)HostString) {
+            return 0
+        }
+        packed := HostValueText(arguments[0])
+        if !WidgetHostAssetAllowed(packed) { return 0 }
+        resolved := WidgetHostAssetPath(packed)
+        dimension: s32 = 0
+        if packed != "" {
+            if resolved == "" {
+                dimension = -1
+            } else if name == "ImageWidth" {
+                dimension = AssetWidth(resolved)
+            } else {
+                dimension = AssetHeight(resolved)
+            }
+        }
+        result.* = HostScalar("s32", cast(s64)dimension)
+        return 1
+    }
     if name == "MediaAudioHost" && ModuleName(owner, "media_audio") {
         return WidgetHostAudioCall(widget_host_audio, widget_host_audio_read, widget_host_audio_context,
             arguments, count, result)

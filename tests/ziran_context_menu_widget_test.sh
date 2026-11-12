@@ -7,7 +7,7 @@ widget_mesh_host=ziran_context_menu_widget_host
 set --
 . "$repo/tests/widget_raster_bindings.sh"
 
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args \
-    --module-path "$ziran_root/std" "$@" \
+"$ziran" bundle --root "$repo/tests" $kryon_project_args \
+     "$@" \
     --entry ziran_context_menu_widget_test:main -o "$work/menu.zx" "$source"
 test "$("$ziran" run "$work/menu.zx")" = 0

@@ -18,6 +18,30 @@ image_preview_c :: #system_library "c";
 PreviewAllocate :: (size: usize) -> *void #foreign image_preview_c "malloc";
 PreviewFree :: (pointer: *void) #foreign image_preview_c "free";
 
+// Full decoded dimensions, without resizing or retaining host pixel memory.
+ImageDecodeInfo :: struct {
+    is_ok: bool
+    width: s32
+    height: s32
+    channels: s32
+    upright: bool
+}
+ImageReadInfo :: (data: string, file_type: string) -> ImageDecodeInfo {
+    result: ImageDecodeInfo
+    if data.count == 0 || data.count > 268435456 {
+        return result
+    }
+    pixels := ImagePreviewDecode(data, file_type, *result.width, *result.height,
+        *result.channels, *result.upright)
+    if pixels == null {
+        return result
+    }
+    ImagePreviewRelease(pixels)
+    result.is_ok = result.width > 0 && result.height > 0 &&
+        result.channels >= 1 && result.channels <= 4
+    return result
+}
+
 // Larger images are refused rather than averaged.
 IMAGE_PREVIEW_PIXELS_MAX :: 134217728
 IMAGE_PREVIEW_EDGE_MAX :: 4096
@@ -784,7 +808,20 @@ JpegEncode :: (pixels: *u8, width: s32, height: s32, quality: s32) -> string {
 }
 
 // AVIF encoding lives in the headless package. Hosts supply only decoded pixels.
-AVIF :: #import "avif/api"
+AVIF :: #import "avif/encode"
+AVIFPreview :: #import "avif/preview"
+#if !#defined(PLATFORM_WEB) {
+    AVIFNative :: #import "avif/api"
+}
+
+// The native encoder is optional; browser image previews need no codec archive.
+ImageAVIFEncodingAvailable :: () -> bool {
+    #if #defined(PLATFORM_WEB) {
+        return false
+    } else {
+        return true
+    }
+}
 ImageAVIFResult :: struct {
     is_ok: bool; data: string; width: s32; height: s32
     source_bytes: s64; encoded_bytes: s64; error: AVIF.DecodeError
@@ -827,47 +864,52 @@ ImageAVIFHas :: (data: string, needle: string) -> bool {
 // Inspect before host decode: never let host truncation hide depth, animation or color metadata.
 ImageAVIFInspect :: (data: string, file_type: string, orientation: s32) -> ImageAVIFMetadata {
     result: ImageAVIFMetadata
+    ImageAVIFInspectInto(data, file_type, orientation, *result)
+    return result
+}
+ImageAVIFInspectInto :: (data: string, file_type: string, orientation: s32,
+    result: *ImageAVIFMetadata) {
     result.error = AVIF.Error(AVIF.UnsupportedCapability)
     result.metadata = AVIF.DefaultEncodeMetadata(); result.metadata.orientation = orientation
-    if data.count < 12 || data.count > 268435456 || orientation < 1 || orientation > 8 { result.error = AVIF.Error(AVIF.InvalidInput); return result }
+    if data.count < 12 || data.count > 268435456 || orientation < 1 || orientation > 8 { result.error = AVIF.Error(AVIF.InvalidInput); return }
     if file_type == ".jpg" || file_type == ".jpeg" {
-        if data[0] != cast(u8)255 || data[1] != cast(u8)216 { return result }
+        if data[0] != cast(u8)255 || data[1] != cast(u8)216 { return }
         chunks: [256]string; chunk_count: s32 = 0; icc_bytes: s64 = 0; seen: s32 = 0
         at: s64 = 2; scanned: s32 = 0
         while at < data.count - 1 && scanned < 4096 {
             scanned += 1
-            if data[at] != cast(u8)255 { result.error = AVIF.Error(AVIF.MalformedInput); return result }
+            if data[at] != cast(u8)255 { result.error = AVIF.Error(AVIF.MalformedInput); return }
             while at < data.count && data[at] == cast(u8)255 { at += 1 }
-            if at >= data.count { return result }
+            if at >= data.count { return }
             marker := cast(s32)data[at]; at += 1
             if marker == 218 || marker == 217 { break }
             size := ImageAVIFNumber(data, at, 2)
-            if size < 2 || size > data.count - at { result.error = AVIF.Error(AVIF.TruncatedInput); return result }
+            if size < 2 || size > data.count - at { result.error = AVIF.Error(AVIF.TruncatedInput); return }
             payload := data[at + 2:at + size]
             if marker >= 192 && marker <= 207 && marker != 196 && marker != 200 && marker != 204 {
-                if (marker != 192 && marker != 193 && marker != 194) || payload.count < 6 || payload[0] != cast(u8)8 || (payload[5] != cast(u8)1 && payload[5] != cast(u8)3) { return result }
-                if result.width != 0 { return result }
+                if (marker != 192 && marker != 193 && marker != 194) || payload.count < 6 || payload[0] != cast(u8)8 || (payload[5] != cast(u8)1 && payload[5] != cast(u8)3) { return }
+                if result.width != 0 { return }
                 result.height = cast(s32)ImageAVIFNumber(payload, 1, 2); result.width = cast(s32)ImageAVIFNumber(payload, 3, 2)
             }
             if marker == 225 && payload.count >= 6 && payload[:6] == "Exif\0\0" {
-                if result.metadata.exif.count != 0 { return result }
+                if result.metadata.exif.count != 0 { return }
                 result.metadata.exif = ImageAVIFBytes(payload[6:])
             } else if marker == 225 && payload.count >= 29 && payload[:29] == "http://ns.adobe.com/xap/1.0/\0" {
-                if result.metadata.xmp.count != 0 { return result }
+                if result.metadata.xmp.count != 0 { return }
                 result.metadata.xmp = ImageAVIFBytes(payload[29:])
-            } else if marker == 225 && ImageAVIFHas(payload, "http://ns.adobe.com/xmp/extension/") { return result }
+            } else if marker == 225 && ImageAVIFHas(payload, "http://ns.adobe.com/xmp/extension/") { return }
             if marker == 226 && payload.count >= 14 && payload[:12] == "ICC_PROFILE\0" {
                 number := cast(s32)payload[12]; total := cast(s32)payload[13]
-                if total < 1 || number < 1 || number > total || (chunk_count != 0 && chunk_count != total) || chunks[number].count != 0 { return result }
+                if total < 1 || number < 1 || number > total || (chunk_count != 0 && chunk_count != total) || chunks[number].count != 0 { return }
                 chunks[number] = payload[14:]; chunk_count = total; seen += 1; icc_bytes += payload.count - 14
-                if icc_bytes > 1048576 { result.error = AVIF.Error(AVIF.LimitExceeded); return result }
+                if icc_bytes > 1048576 { result.error = AVIF.Error(AVIF.LimitExceeded); return }
             }
-            if (marker == 226 && payload.count >= 4 && payload[:4] == "MPF\0") || marker == 235 { return result }
+            if (marker == 226 && payload.count >= 4 && payload[:4] == "MPF\0") || marker == 235 { return }
             at += size
         }
-        if scanned >= 4096 || seen != chunk_count { return result }
+        if scanned >= 4096 || seen != chunk_count { return }
         if icc_bytes > 0 {
-            if !VecResizeBounded(result.icc, icc_bytes, icc_bytes) { result.error = AVIF.Error(AVIF.AllocationFailed); return result }
+            if !VecResizeBounded(result.icc, icc_bytes, icc_bytes) { result.error = AVIF.Error(AVIF.AllocationFailed); return }
             offset: s64 = 0
             for number: 1..chunk_count {
                 for byte: chunks[number] { result.icc[offset] = byte; offset += 1 }
@@ -875,100 +917,148 @@ ImageAVIFInspect :: (data: string, file_type: string, orientation: s32) -> Image
             result.metadata.icc = VecSlice(result.icc, 0, icc_bytes)
         }
     } else if file_type == ".png" {
-        if data[:8] != "\x89PNG\r\n\x1a\n" || data.count < 33 || data[12:16] != "IHDR" { return result }
-        if data[24] > cast(u8)8 { return result }
+        if data[0] != cast(u8)137 || data[1:8] != "PNG\r\n\x1a\n" || data.count < 33 || data[12:16] != "IHDR" { return }
+        if data[24] > cast(u8)8 { return }
         result.width = cast(s32)ImageAVIFNumber(data, 16, 4); result.height = cast(s32)ImageAVIFNumber(data, 20, 4)
         at: s64 = 8; scanned: s32 = 0; ended := false
         while at <= data.count - 12 && scanned < 4096 {
             scanned += 1
             size := ImageAVIFNumber(data, at, 4)
-            if size < 0 || size > data.count - at - 12 { result.error = AVIF.Error(AVIF.TruncatedInput); return result }
+            if size < 0 || size > data.count - at - 12 { result.error = AVIF.Error(AVIF.TruncatedInput); return }
             kind := data[at + 4:at + 8]; payload := data[at + 8:at + 8 + size]
-            if kind == "acTL" || kind == "iCCP" || kind == "cHRM" || kind == "cICP" || kind == "mDCV" || kind == "cLLI" { return result }
-            if kind == "gAMA" && (size != 4 || ImageAVIFNumber(payload, 0, 4) != 45455) { return result }
+            if kind == "acTL" || kind == "iCCP" || kind == "cHRM" || kind == "cICP" || kind == "mDCV" || kind == "cLLI" { return }
+            if kind == "gAMA" && (size != 4 || ImageAVIFNumber(payload, 0, 4) != 45455) { return }
             if kind == "eXIf" {
-                if result.metadata.exif.count != 0 { return result }
+                if result.metadata.exif.count != 0 { return }
                 result.metadata.exif = ImageAVIFBytes(payload)
             }
             if kind == "iTXt" && payload.count > 18 && payload[:18] == "XML:com.adobe.xmp\0" {
-                if payload.count < 22 || payload[18] != cast(u8)0 || payload[19] != cast(u8)0 || result.metadata.xmp.count != 0 { return result }
+                if payload.count < 22 || payload[18] != cast(u8)0 || payload[19] != cast(u8)0 || result.metadata.xmp.count != 0 { return }
                 offset: s64 = 20
                 for field: 0..1 {
                     while offset < payload.count && payload[offset] != cast(u8)0 { offset += 1 }
                     offset += 1
                 }
-                if offset > payload.count { return result }
+                if offset > payload.count { return }
                 result.metadata.xmp = ImageAVIFBytes(payload[offset:])
             }
-            if kind == "zTXt" || (kind == "tEXt" && ImageAVIFHas(payload, "Raw profile type")) { return result }
+            if kind == "zTXt" || (kind == "tEXt" && ImageAVIFHas(payload, "Raw profile type")) { return }
             at += size + 12
             if kind == "IEND" { ended = true; break }
         }
-        if !ended || at != data.count { return result }
+        if !ended || at != data.count { return }
     } else if file_type == ".webp" {
-        if data[:4] != "RIFF" || data[8:12] != "WEBP" || ImageAVIFNumber(data, 4, 4, true) != data.count - 8 { return result }
+        if data[:4] != "RIFF" || data[8:12] != "WEBP" || ImageAVIFNumber(data, 4, 4, true) != data.count - 8 { return }
         at: s64 = 12; scanned: s32 = 0
         while at <= data.count - 8 && scanned < 4096 {
             scanned += 1
             size := ImageAVIFNumber(data, at + 4, 4, true)
-            if size < 0 || size > data.count - at - 8 { result.error = AVIF.Error(AVIF.TruncatedInput); return result }
+            if size < 0 || size > data.count - at - 8 { result.error = AVIF.Error(AVIF.TruncatedInput); return }
             kind := data[at:at + 4]; payload := data[at + 8:at + 8 + size]
-            if kind == "ANIM" || kind == "ANMF" { return result }
+            if kind == "ANIM" || kind == "ANMF" { return }
             if kind == "VP8X" {
-                if size != 10 || (payload[0] & cast(u8)2) != cast(u8)0 { return result }
+                if size != 10 || (payload[0] & cast(u8)2) != cast(u8)0 { return }
                 result.width = cast(s32)ImageAVIFNumber(payload, 4, 3, true) + 1; result.height = cast(s32)ImageAVIFNumber(payload, 7, 3, true) + 1
             } else if kind == "VP8 " && result.width == 0 {
-                if size < 10 || payload[3:6] != "\x9d\x01\x2a" { return result }
+                if size < 10 || payload[3] != cast(u8)157 || payload[4] != cast(u8)1 || payload[5] != cast(u8)42 { return }
                 result.width = cast(s32)ImageAVIFNumber(payload, 6, 2, true) & 16383; result.height = cast(s32)ImageAVIFNumber(payload, 8, 2, true) & 16383
             } else if kind == "VP8L" && result.width == 0 {
-                if size < 5 || payload[0] != cast(u8)47 { return result }
+                if size < 5 || payload[0] != cast(u8)47 { return }
                 bits := ImageAVIFNumber(payload, 1, 4, true)
                 result.width = cast(s32)(bits & 16383) + 1; result.height = cast(s32)((bits >> 14) & 16383) + 1
             } else if kind == "ICCP" {
-                if result.metadata.icc.count != 0 { return result }
+                if result.metadata.icc.count != 0 { return }
                 result.metadata.icc = ImageAVIFBytes(payload)
             } else if kind == "EXIF" {
-                if result.metadata.exif.count != 0 { return result }
+                if result.metadata.exif.count != 0 { return }
                 if payload.count >= 6 && payload[:6] == "Exif\0\0" { payload = payload[6:] }
                 result.metadata.exif = ImageAVIFBytes(payload)
             } else if kind == "XMP " {
-                if result.metadata.xmp.count != 0 { return result }
+                if result.metadata.xmp.count != 0 { return }
                 result.metadata.xmp = ImageAVIFBytes(payload)
             }
             at += size + 8 + size % 2
         }
-        if at != data.count { return result }
-    } else { return result }
-    if result.width <= 0 || result.height <= 0 || result.width > 32768 || result.height > 32768 || cast(s64)result.width * result.height > 67108864 { result.error = AVIF.Error(AVIF.LimitExceeded); return result }
-    if result.metadata.icc.count + result.metadata.exif.count + result.metadata.xmp.count > 1048576 { result.error = AVIF.Error(AVIF.LimitExceeded); return result }
+        if at != data.count { return }
+    } else { return }
+    if result.width <= 0 || result.height <= 0 || result.width > 32768 || result.height > 32768 || cast(s64)result.width * result.height > 67108864 { result.error = AVIF.Error(AVIF.LimitExceeded); return }
+    if result.metadata.icc.count + result.metadata.exif.count + result.metadata.xmp.count > 1048576 { result.error = AVIF.Error(AVIF.LimitExceeded); return }
     xmp := TextFromBytes(result.metadata.xmp)
-    if ImageAVIFHas(xmp, "hdrgm") || ImageAVIFHas(xmp, "GainMap") || ImageAVIFHas(xmp, "hdr-gain-map") { return result }
+    if ImageAVIFHas(xmp, "hdrgm") || ImageAVIFHas(xmp, "GainMap") || ImageAVIFHas(xmp, "hdr-gain-map") { return }
     result.is_ok = true; result.error = AVIF.Error(AVIF.DecodeOK)
-    return result
+    return
 }
 // Full stored dimensions, quality 1..100 (35 by default), lossless alpha. Caller owns returned data.
 // A larger result remains available for real byte comparison; the caller decides whether to keep it.
 ImageCompressAVIF :: (data: string, file_type: string, orientation: s32, quality: s32 = 35) -> ImageAVIFResult {
-    if quality < 1 || quality > 100 || orientation < 1 || orientation > 8 { return ImageAVIFFailure(AVIF.InvalidInput) }
-    options := AVIF.DefaultEncodeOptions(); options.quality = quality
-    encoded: AVIF.EncodeResult
-    if file_type == ".avif" {
-        encoded = AVIF.Reencode(AVIF.BorrowBytes(ImageAVIFBytes(data)), options)
+    #if #defined(PLATFORM_WEB) {
+        unused data
+        unused file_type
+        unused orientation
+        unused quality
+        return ImageAVIFFailure(AVIF.UnsupportedCapability)
     } else {
+        if quality < 1 || quality > 100 || orientation < 1 || orientation > 8 {
+            return ImageAVIFFailure(AVIF.InvalidInput)
+        }
+        options := AVIF.DefaultEncodeOptions()
+        options.quality = quality
+        if file_type == ".avif" {
+            return ImageAVIFEncoded(AVIFNative.Reencode(AVIF.BorrowBytes(ImageAVIFBytes(data)), options), data.count)
+        }
         inspected := ImageAVIFInspect(data, file_type, orientation)
-        if !inspected.is_ok { failed: ImageAVIFResult; failed.error = inspected.error; return failed }
-        width: s32; height: s32; channels: s32; upright: bool
+        result := ImageCompressAVIFInspected(data, file_type, orientation, options, *inspected)
+        VecFree(inspected.icc)
+        return result
+    }
+}
+ImageCompressAVIFInspected :: (data: string, file_type: string, orientation: s32,
+    options: AVIF.EncodeOptions, inspected: *ImageAVIFMetadata) -> ImageAVIFResult {
+    #if #defined(PLATFORM_WEB) {
+        unused data
+        unused file_type
+        unused orientation
+        unused options
+        unused inspected
+        return ImageAVIFFailure(AVIF.UnsupportedCapability)
+    } else {
+        if !inspected.is_ok {
+            failed: ImageAVIFResult
+            failed.error = inspected.error
+            return failed
+        }
+        width: s32
+        height: s32
+        channels: s32
+        upright: bool
         pixels := ImagePreviewDecode(data, file_type, *width, *height, *channels, *upright)
-        if pixels == null { return ImageAVIFFailure(AVIF.MalformedInput) }
-        defer { ImagePreviewRelease(pixels) }
-        expected_width := inspected.width; expected_height := inspected.height
-        if upright && ImagePreviewSwapsSides(orientation) { expected_width = inspected.height; expected_height = inspected.width }
-        if width != expected_width || height != expected_height || channels < 1 || channels > 4 { return ImageAVIFFailure(AVIF.UnsupportedCapability) }
+        if pixels == null {
+            return ImageAVIFFailure(AVIF.MalformedInput)
+        }
+        defer {
+            ImagePreviewRelease(pixels)
+        }
+        expected_width := inspected.width
+        expected_height := inspected.height
+        if upright && ImagePreviewSwapsSides(orientation) {
+            expected_width = inspected.height
+            expected_height = inspected.width
+        }
+        if width != expected_width || height != expected_height || channels < 1 || channels > 4 {
+            return ImageAVIFFailure(AVIF.UnsupportedCapability)
+        }
+        if upright && orientation != 1 {
+            return ImageAVIFFailure(AVIF.UnsupportedCapability)
+        }
         rgba: Vec(u8)
         size := cast(s64)width * height * 4
-        if !VecResizeBounded(rgba, size, size) { return ImageAVIFFailure(AVIF.AllocationFailed) }
+        if !VecResizeBounded(rgba, size, size) {
+            VecFree(rgba)
+            return ImageAVIFFailure(AVIF.AllocationFailed)
+        }
         for index: cast(s64)0..cast(s64)width * height - 1 {
-            from := index * channels; to := index * 4
+            from := index * channels
+            to := index * 4
             rgba[to] = pixels[from]
             rgba[to + 1] = ifx channels >= 3 then pixels[from + 1] else pixels[from]
             rgba[to + 2] = ifx channels >= 3 then pixels[from + 2] else pixels[from]
@@ -976,13 +1066,26 @@ ImageCompressAVIF :: (data: string, file_type: string, orientation: s32, quality
         }
         // Encoding preserves stored dimensions and Exif. A host which baked
         // orientation must expose raw pixels before it can encode this source.
-        if upright && orientation != 1 { return ImageAVIFFailure(AVIF.UnsupportedCapability) }
-        encoded = AVIF.EncodeRGBA8(AVIF.RgbaView.{width, height, cast(s64)width * 4, VecSlice(rgba, 0, size)}, inspected.metadata, options)
+        encoded := AVIFNative.EncodeRGBA8(AVIF.RgbaView.{width, height, cast(s64)width * 4,
+            VecSlice(rgba, 0, size)}, inspected.metadata, options)
+        VecFree(rgba)
+        return ImageAVIFEncoded(encoded, data.count)
     }
-    if !encoded.is_ok { failed: ImageAVIFResult; failed.error = encoded.error; return failed }
+}
+ImageAVIFEncoded :: (encoded: AVIF.EncodeResult, source_bytes: s64) -> ImageAVIFResult {
+    if !encoded.is_ok {
+        failed: ImageAVIFResult
+        failed.error = encoded.error
+        VecFree(encoded.bytes)
+        return failed
+    }
     result: ImageAVIFResult
-    result.is_ok = true; result.width = encoded.width; result.height = encoded.height
-    result.data = BuilderFinish(encoded.bytes); result.source_bytes = data.count; result.encoded_bytes = result.data.count
+    result.is_ok = true
+    result.width = encoded.width
+    result.height = encoded.height
+    result.data = BuilderFinish(encoded.bytes)
+    result.source_bytes = source_bytes
+    result.encoded_bytes = result.data.count
     return result
 }
 // Owned upright straight RGBA8, suitable for managed bitmap textures. No temporary file.
@@ -1020,7 +1123,7 @@ ImagePreviewRGBAPixels :: (pixels: *u8, width: s32, height: s32, channels: s32, 
     scaled: Vec(u8)
     scaled_size := cast(s64)sw * sh * 4
     if !VecResizeBounded(scaled, scaled_size, scaled_size) { result.error = AVIF.Error(AVIF.AllocationFailed); return result }
-    filtered := AVIF.LanczosRGBA8Into(AVIF.RgbaView.{width, height, cast(s64)width * 4, VecSlice(rgba, 0, size)}, sw, sh,
+    filtered := AVIFPreview.LanczosRGBA8Into(AVIF.RgbaView.{width, height, cast(s64)width * 4, VecSlice(rgba, 0, size)}, sw, sh,
         AVIF.OutputBuffer.{VecSlice(scaled, 0, scaled_size), cast(s64)sw * 4}, AVIF.DefaultOptions())
     if !filtered.is_ok { result.error = filtered.error; return result }
     result.width = ifx ImagePreviewSwapsSides(orientation) then sh else sw

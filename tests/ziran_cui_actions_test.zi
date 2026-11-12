@@ -328,7 +328,7 @@ CheckHoldButton :: () -> s32 {
     CuiRasterReset()
     halfway := HoldButton(TestSession(), props, *state)
     if !FinishFrame() || !Same(halfway.progress, 0.5) ||
-    CuiRasterSampleGet().fill_count != 2 { return 303 }
+    CuiRasterSampleGet().fill_count < 3 { return 303 }
     props.now = 2.0
     BeginFrame(TestSession(), cast(u64)301, Rectangle.{0.0, 0.0, 140.0, 80.0})
     fired := HoldButton(TestSession(), props, *state)
@@ -574,6 +574,68 @@ CheckConfirmButton :: () -> s32 {
     return 0
 }
 
+CheckHoldGeometry :: () -> s32 {
+    saved := ActiveStyleRules()
+    for mode: 0..3 {
+        rules := saved
+        rule: StyleRule
+        rule.selector = StyleDefaultSelector()
+        rule.selector.class_name = 9876
+        rule.selector.kind = StyleKindButton()
+        rule.style.fields = cast(u32)StyleRadius | cast(u32)StyleBorderWidth | cast(u32)StyleBorder
+        radius: float32 = ifx mode == 0 then 0.0 else ifx mode == 1 then 8.0 else 18.0
+        stroke: float32 = ifx mode == 0 then 0.0 else 2.0
+        rule.style.radius = radius; rule.style.border_width = stroke
+        rule.style.border = cast(u32)0x336699ff
+        rule.order = rules.count; rules.items[rules.count] = rule; rules.count += 1
+        if !InstallStyleRules(rules) { return 920 }
+        props: HoldButtonProps
+        props.button = ButtonProps.{.key = cast(u64)9876, .class_name = 9876,
+            .bounds = Rectangle.{10.0, 10.0, 120.0, 40.0}, .label = "Hold", .pill = mode == 3}
+        props.duration = 1.0
+        state: HoldButtonState
+        root := cast(u64)(950 + mode)
+        BeginFrame(TestSession(), root, Rectangle.{0.0, 0.0, 160.0, 80.0})
+        unused HoldButton(TestSession(), props, *state)
+        if !FinishFrame() { return 921 }
+        TreePointerUpdate(TestSession(), PointerFrame.{60.0, 30.0, true, true, false})
+        BeginFrame(TestSession(), root, Rectangle.{0.0, 0.0, 160.0, 80.0})
+        unused HoldButton(TestSession(), props, *state)
+        if !FinishFrame() { return 922 }
+        if mode == 3 { radius = 20.0 }
+        inner := Rectangle.{10.0 + stroke, 10.0 + stroke, 120.0 - stroke * 2.0, 40.0 - stroke * 2.0}
+        radius -= stroke
+        for step: 1..2 {
+            props.now = cast(float32)step * 0.5
+            CuiProgressExpect(inner, radius)
+            BeginFrame(TestSession(), root, Rectangle.{0.0, 0.0, 160.0, 80.0})
+            held := HoldButton(TestSession(), props, *state)
+            if !FinishFrame() || CuiProgressOutside() || CuiProgressPixels() < 100 { return 923 + cast(s32)mode }
+            if step == 1 && (!Same(held.progress, 0.5) || held.fired) { return 928 }
+            if step == 2 && (!Same(held.progress, 1.0) || !held.fired) { return 929 }
+        }
+        TreePointerUpdate(TestSession(), PointerFrame.{60.0, 30.0, false, false, true})
+        TreeInputReset(TestSession())
+        confirmation: ConfirmButtonState
+        confirmation.armed = true; confirmation.initialized = true
+        confirmation.width = 120.0; confirmation.progress = 1.0
+        confirm_props: ConfirmButtonProps
+        confirm_props.button = props.button; confirm_props.confirm_button = props.button
+        confirm_props.now = 0.25
+        CuiRasterReset()
+        BeginFrame(TestSession(), root + cast(u64)100, Rectangle.{0.0, 0.0, 160.0, 80.0})
+        confirmed := ConfirmButton(TestSession(), confirm_props, *confirmation)
+        if !FinishFrame() || !confirmed.armed { return 931 }
+        raster := CuiRasterSampleGet()
+        if raster.fill_color.a != cast(u8)114 ||
+            raster.fill_bounds.x < inner.x + radius ||
+            raster.fill_bounds.x + raster.fill_bounds.width > inner.x + inner.width - radius ||
+            raster.fill_bounds.y + raster.fill_bounds.height >= inner.y + inner.height { return 932 }
+    }
+    if !InstallStyleRules(saved) { return 930 }
+    return 0
+}
+
 #program_export
 main :: () -> s32 {
     if !InstallDefaultTheme(false) { return 1 }
@@ -583,6 +645,8 @@ main :: () -> s32 {
     if group != 0 { return group }
     hold := CheckHoldButton()
     if hold != 0 { return hold }
+    geometry := CheckHoldGeometry()
+    if geometry != 0 { return geometry }
     copy := CheckCopyButton()
     if copy != 0 { return copy }
     confirm := CheckConfirmButton()

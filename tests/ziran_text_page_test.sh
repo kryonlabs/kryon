@@ -13,7 +13,7 @@ widget_std="$ziran_root/std"
 
 # Browser-only branches also keep a font selection alive across lazy loading.
 "$ziran" ir --define PLATFORM_WEB --root "$repo/src/backend" \
-    $kryon_ui_args --module-path "$widget_std" \
+    $kryon_project_args \
     -o "$work/canvas-ir" "$repo/src/backend/canvas_state.zi"
 "$ziran" check --root "$work/canvas-ir" --module-path "$work/canvas-ir" \
     "$work/canvas-ir/canvas_state.zir"

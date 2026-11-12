@@ -15,22 +15,22 @@ source=$repo/tests/ziran_shape_widget_test.zi
 host=ziran_shape_widget_host
 
 set -- \
-    --bind raster_triangles:RasterTriangles=$host:RasterTriangles \
-    --bind raster_shape:RasterRoundedRectangle=$host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=$host:RasterRoundedRectangleOutline \
-    --bind raster:RasterLine=$host:RasterLine \
-    --bind raster_text:RasterText=$host:RasterText \
-    --bind raster_text:RasterTextClipped=$host:RasterTextClipped \
-    --bind raster_text:RasterTextRotated=ziran_shape_widget_host:RasterTextRotated \
-    --bind paint_queue:RasterImage=$host:RasterImage \
-    --bind paint_queue:RasterImageMesh=$host:RasterImageMesh
+    --bind kryon/raster_triangles:RasterTriangles=$host:RasterTriangles \
+    --bind kryon/raster_shape:RasterRoundedRectangle=$host:RasterRoundedRectangle \
+    --bind kryon/raster_shape:RasterRoundedRectangleOutline=$host:RasterRoundedRectangleOutline \
+    --bind kryon/raster:RasterLine=$host:RasterLine \
+    --bind kryon/raster_text:RasterText=$host:RasterText \
+    --bind kryon/raster_text:RasterTextClipped=$host:RasterTextClipped \
+    --bind kryon/raster_text:RasterTextRotated=ziran_shape_widget_host:RasterTextRotated \
+    --bind kryon/paint_queue:RasterImage=$host:RasterImage \
+    --bind kryon/paint_queue:RasterImageMesh=$host:RasterImageMesh
 
-"$ziran" ir --root "$repo/tests" $kryon_ui_args \
-    --module-path "$std" -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args \
-    --module-path "$std" "$@" \
+"$ziran" ir --root "$repo/tests" $kryon_project_args \
+     -o "$work/ir" "$source"
+"$ziran" bundle --root "$repo/tests" $kryon_project_args \
+     "$@" \
     --entry ziran_shape_widget_test:main -o "$work/source.zx" "$source"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" "$@" \
+"$ziran" bundle --root "$work/ir" --project --module-path "$work/ir" "$@" \
     --entry ziran_shape_widget_test:main -o "$work/saved.zx" \
     "$work/ir/ziran_shape_widget_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
@@ -41,14 +41,14 @@ for target in c; do
     output=$work/$target
     executable=--exe
     "$ziran" build --target="$target" --entry ziran_shape_widget_test:main \
-        $executable --root "$repo/tests" $kryon_ui_args \
-        --module-path "$std" -o "$output" "$source"
+        $executable --root "$repo/tests" $kryon_project_args \
+         -o "$output" "$source"
     test "$("$output/ziran_shape_widget_test" | tail -1)" = 0
 done
 
 output=$work/go
 "$ziran" build --target=go --pkg main --exe \
     --entry ziran_shape_widget_test:main "$@" --root "$repo/tests" \
-    $kryon_ui_args --module-path "$std" -o "$output" "$source"
+    $kryon_project_args  -o "$output" "$source"
 test "$(GOCACHE="$work/go-cache" GO111MODULE=off go run "$output"/*.go | tail -1)" = 0
 printf 'Shape widgets passed in bundles and on C and Go.\n'

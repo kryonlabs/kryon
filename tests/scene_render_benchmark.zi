@@ -1,0 +1,128 @@
+// Full-resolution fixed workloads. Construction and hashing are outside timing.
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "kryon/shader"
+#import "std/image"
+#import "std/vec"
+#import "std/timer_linux"
+libc :: #system_library "c";
+Stamp :: struct { seconds: s64; nanos: s64; }
+Clock :: (kind: s32, stamp: *Stamp) -> s32 #foreign libc "clock_gettime";
+CpuNanoseconds :: () -> s64 { t: Stamp; unused Clock(2,*t); return t.seconds*1000000000+t.nanos }
+Run :: (width: s32, height: s32, kind: s32, motion: bool = false) -> bool {
+    scene: Scene
+    SceneInit(*scene)
+    program: ShaderProgram
+    defer { SceneFree(*scene); ShaderFree(*program); RenderSceneRelease() }
+    scene.background=.{23,31,47,255}
+    uniforms: [2]ShaderValue=.[.{0.8,0.9,1.0,1.0},.{0.3,0.4,0.9,0.0}]
+    code: [12]ShaderInstruction=.[
+        .{op=.ShaderUniform,dest=4,slot=0},
+        .{op=.ShaderUniform,dest=5,slot=1},
+        .{op=.ShaderDot,dest=6,a=2,b=5},
+        .{op=.ShaderLiteral,dest=7,value=.{0.0,0.0,0.0,0.0}},
+        .{op=.ShaderMax,dest=6,a=6,b=7},
+        .{op=.ShaderLiteral,dest=7,value=.{0.05,0.05,0.05,0.0}},
+        .{op=.ShaderMultiply,dest=6,a=6,b=7},
+        .{op=.ShaderLiteral,dest=7,value=.{0.95,0.95,0.95,1.0}},
+        .{op=.ShaderAdd,dest=6,a=6,b=7},
+        .{op=.ShaderMultiply,dest=4,a=4,b=6},
+        .{op=.ShaderMultiply,dest=4,a=0,b=4},
+        .{op=.ShaderOutput,a=4},
+    ]
+    if !ShaderCompile(*program,code[:]).ok { return false }
+    texture:=NewImage(1024,1024)
+    defer VecFree(texture.pixels)
+    for y:0..1023 { for x:0..1023 {
+        at:=(y*1024+x)*4
+        texture.pixels[at]=cast(u8)(64+(x%128))
+        texture.pixels[at+1]=cast(u8)(32+(y%128))
+        texture.pixels[at+2]=cast(u8)(16+((x+y)%128))
+        texture.pixels[at+3]=255
+    } }
+    material:=UnlitMaterial(.{205,177,137,255})
+    if kind>=2 { material.texture=AddTexture(*scene,texture.pixels[:],1024,1024) }
+    if kind==3 { material.shader=*program; material.shader_uniforms=uniforms[:] }
+    if kind>=4 {
+        material=LitMaterial(.{205,177,137,255})
+        material.texture=AddTexture(*scene,texture.pixels[:],1024,1024)
+        AddHemisphereLight(*scene,.{255,245,225,255},.{80,65,55,255},1.0)
+        light := AddDirectionalLight(*scene,.{255,235,210,255},2.0,.{2.0,4.0,5.0})
+        if kind==5 {
+            material.shader=*program; material.shader_uniforms=uniforms[:]
+            CastLightShadow(*scene,light,6.0,5.0,0.1,30.0,1024,-0.0001,0.02,1.5)
+        }
+        if kind==6 { material.shader=*program; material.shader_uniforms=uniforms[:] }
+    }
+    if kind==6 {
+        for layer: 0..15 {
+            node:=Plane(*scene,8.0,6.0,material)
+            unused SetPosition(*scene,node,0.0,0.0,cast(float64)layer*0.01)
+        }
+    } else if kind>0 {
+        wall := Plane(*scene,8.0,6.0,material)
+        if kind==5 { unused SetShadows(*scene,wall,false,true) }
+        for at:0..3 {
+            node:=RoundedBox(*scene,0.65,0.9,0.5,0.04,material)
+            unused SetPosition(*scene,node,cast(float64)at*1.5-2.25,-1.0,0.8)
+            if kind==5 { unused SetShadows(*scene,node,true,true) }
+        }
+    }
+    camera:=PerspectiveCamera(60.0,cast(float64)width/cast(float64)height,0.1,30.0)
+    camera.position=.{0.2,0.1,4.0}; camera.target=.{0.0,0.0,0.0}
+    image:=NewImage(width,height)
+    defer VecFree(image.pixels)
+    cold_start := MonotonicNanoseconds()
+    if !RenderScene(*scene,camera,*image) { return false }
+    cold_elapsed := MonotonicNanoseconds()-cold_start
+    if kind==6 {
+        // Establish clipping high-water capacity over the measured camera path.
+        for frame: 0..11 {
+            camera.position.x=0.2+cast(float64)frame*0.03
+            if !RenderScene(*scene,camera,*image) { return false }
+        }
+    }
+    retained := RenderSceneMemoryBytes()
+    memory := RenderSceneMemoryUsage()
+    print("memory % % % % % % % % % %\n",width,height,kind,memory.framebuffer_bytes,
+        memory.shadow_bytes,memory.vertex_bytes,memory.triangle_bytes,memory.draw_bytes,
+        memory.node_bytes,memory.ordering_bytes)
+    print("cold % % % % %\n",width,height,kind,cold_elapsed,retained)
+    print("workers % % %\n",width,height,RenderSceneWorkerCount())
+    frames := ifx motion then ifx kind==6 then 12 else 120 else 3
+    for frame:0..frames-1 {
+        camera.position.x=0.2+cast(float64)(frame%30)*0.03
+        cpu_start:=CpuNanoseconds()
+        start:=MonotonicNanoseconds()
+        if !RenderScene(*scene,camera,*image) { return false }
+        elapsed:=MonotonicNanoseconds()-start
+        cpu_elapsed:=CpuNanoseconds()-cpu_start
+        if RenderSceneMemoryBytes() != retained { return false }
+        hash: u64=14695981039346656037
+        for byte:image.pixels { hash=(hash^cast(u64)byte)*1099511628211 }
+        prefix := ifx motion then "motion" else "scene"
+        print("% % % % % % % %\n",prefix,width,height,kind,frame,elapsed,cpu_elapsed,hash)
+    }
+    statistics := RenderSceneStatistics()
+    print("statistics % % % % % % %\n",width,height,kind,statistics.opaque_projected_layers,
+        statistics.depth_prepass,statistics.depth_fragments,statistics.shaded_fragments)
+    return true
+}
+#program_export
+main :: (argc: s32, argv: **u8) -> s32 {
+    for kind:0..4 {
+        if !Run(960,600,cast(s32)kind) || !Run(420,900,cast(s32)kind) { return 1 }
+    }
+    if argc > 3 {
+        if !Run(960,600,6,true) || !Run(420,900,6,true) || !Run(1280,800,6,true) { return 3 }
+    } else if argc > 2 {
+        if !Run(960,600,5,true) || !Run(420,900,5,true) || !Run(1280,800,5,true) { return 3 }
+    } else if argc > 1 {
+        for kind:0..4 {
+            if !Run(960,600,cast(s32)kind,true) || !Run(420,900,cast(s32)kind,true) || !Run(1280,800,cast(s32)kind,true) { return 3 }
+        }
+    }
+    RenderSceneRelease()
+    if RenderSceneWorkerCount()!=1 || RenderSceneMemoryBytes()!=0 { return 2 }
+    return 0
+}

@@ -1,0 +1,241 @@
+// System EGL/GLES bindings. No window creation or host renderer state.
+#import "std/vec"
+egl :: #system_library "EGL";
+gl :: #system_library "GLESv2";
+glx :: #system_library "GLX";
+c :: #system_library "c";
+#scope_export
+RawEGetPlatformDisplay :: (platform: u32, native: *void, attributes: *s64)->*void #foreign egl "eglGetPlatformDisplay";
+RawEInitialize :: (display: *void, major: *s32, minor: *s32)->u32 #foreign egl "eglInitialize";
+RawEBindAPI :: (api: u32)->u32 #foreign egl "eglBindAPI";
+RawEChooseConfig :: (display: *void, attrs: *s32, configs: **void, count: s32, found: *s32)->u32 #foreign egl "eglChooseConfig";
+RawECreateContext :: (display: *void, config: *void, share: *void, attrs: *s32)->*void #foreign egl "eglCreateContext";
+RawEDestroyContext :: (display: *void, context: *void)->u32 #foreign egl "eglDestroyContext";
+RawETerminate :: (display: *void)->u32 #foreign egl "eglTerminate";
+RawEMakeCurrent :: (display: *void, draw: *void, read: *void, context: *void)->u32 #foreign egl "eglMakeCurrent";
+RawEGetCurrentDisplay :: ()->*void #foreign egl "eglGetCurrentDisplay";
+RawEGetCurrentContext :: ()->*void #foreign egl "eglGetCurrentContext";
+RawEGetCurrentSurface :: (which: s32)->*void #foreign egl "eglGetCurrentSurface";
+RawEQueryAPI :: ()->u32 #foreign egl "eglQueryAPI";
+RawGLXCurrentDisplay :: ()->*void #foreign glx "glXGetCurrentDisplay";
+RawGLXCurrentContext :: ()->*void #foreign glx "glXGetCurrentContext";
+RawGLXCurrentDrawable :: ()->u64 #foreign glx "glXGetCurrentDrawable";
+RawGLXCurrentReadDrawable :: ()->u64 #foreign glx "glXGetCurrentReadDrawable";
+RawGLXMakeCurrent :: (display: *void,draw: u64,read: u64,context: *void)->s32 #foreign glx "glXMakeContextCurrent";
+RawGetString :: (name: u32)->*u8 #foreign gl "glGetString";
+RawGetInteger :: (name: u32, value: *s32) #foreign gl "glGetIntegerv";
+RawGetError :: ()->u32 #foreign gl "glGetError";
+RawGetPrecision :: (stage: u32, kind: u32, range: *s32, precision: *s32) #foreign gl "glGetShaderPrecisionFormat";
+RawGenFramebuffers :: (count: s32, ids: *u32) #foreign gl "glGenFramebuffers";
+RawDeleteFramebuffers :: (count: s32, ids: *u32) #foreign gl "glDeleteFramebuffers";
+RawBindFramebuffer :: (target: u32, id: u32) #foreign gl "glBindFramebuffer";
+RawCheckFramebuffer :: (target: u32)->u32 #foreign gl "glCheckFramebufferStatus";
+RawFramebufferTexture :: (target: u32, attachment: u32, texture_target: u32, id: u32, level: s32) #foreign gl "glFramebufferTexture2D";
+RawFramebufferRenderbuffer :: (target: u32, attachment: u32, renderbuffer_target: u32, id: u32) #foreign gl "glFramebufferRenderbuffer";
+RawGenRenderbuffers :: (count: s32, ids: *u32) #foreign gl "glGenRenderbuffers";
+RawDeleteRenderbuffers :: (count: s32, ids: *u32) #foreign gl "glDeleteRenderbuffers";
+RawBindRenderbuffer :: (target: u32, id: u32) #foreign gl "glBindRenderbuffer";
+RawRenderbufferStorage :: (target: u32, format: u32, width: s32, height: s32) #foreign gl "glRenderbufferStorage";
+RawRenderbufferMS :: (target: u32, samples: s32, format: u32, width: s32, height: s32) #foreign gl "glRenderbufferStorageMultisample";
+RawGetRenderbuffer :: (target: u32, name: u32, value: *s32) #foreign gl "glGetRenderbufferParameteriv";
+RawBlitFramebuffer :: (sx: s32, sy: s32, ex: s32, ey: s32, dx: s32, dy: s32, fx: s32, fy: s32, mask: u32, filter: u32) #foreign gl "glBlitFramebuffer";
+RawGenTextures :: (count: s32, ids: *u32) #foreign gl "glGenTextures";
+RawDeleteTextures :: (count: s32, ids: *u32) #foreign gl "glDeleteTextures";
+RawBindTexture :: (target: u32, id: u32) #foreign gl "glBindTexture";
+RawActiveTexture :: (unit: u32) #foreign gl "glActiveTexture";
+RawTexParameter :: (target: u32, name: u32, value: s32) #foreign gl "glTexParameteri";
+RawTexImage :: (target: u32, level: s32, internal: s32, width: s32, height: s32, border: s32, format: u32, kind: u32, data: *void) #foreign gl "glTexImage2D";
+RawGenBuffers :: (count: s32, ids: *u32) #foreign gl "glGenBuffers";
+RawDeleteBuffers :: (count: s32, ids: *u32) #foreign gl "glDeleteBuffers";
+RawBindBuffer :: (target: u32, id: u32) #foreign gl "glBindBuffer";
+RawBufferData :: (target: u32, bytes: s64, data: *void, usage: u32) #foreign gl "glBufferData";
+RawMapBufferRange :: (target: u32,offset: s64,bytes: s64,access: u32)->*void #foreign gl "glMapBufferRange";
+RawUnmapBuffer :: (target: u32)->u8 #foreign gl "glUnmapBuffer";
+RawFenceSync :: (condition: u32,flags: u32)->*void #foreign gl "glFenceSync";
+RawClientWaitSync :: (sync: *void,flags: u32,timeout: u64)->u32 #foreign gl "glClientWaitSync";
+RawDeleteSync :: (sync: *void) #foreign gl "glDeleteSync";
+RawFlush :: () #foreign gl "glFlush";
+RawEnableAttribute :: (index: u32) #foreign gl "glEnableVertexAttribArray";
+RawAttributePointer :: (index: u32, count: s32, kind: u32, normalized: u8, stride: s32, offset: *void) #foreign gl "glVertexAttribPointer";
+RawCreateShader :: (kind: u32)->u32 #foreign gl "glCreateShader";
+RawShaderSource :: (id: u32, count: s32, texts: **u8, lengths: *s32) #foreign gl "glShaderSource";
+RawCompileShader :: (id: u32) #foreign gl "glCompileShader";
+RawGetShader :: (id: u32, name: u32, value: *s32) #foreign gl "glGetShaderiv";
+RawShaderLog :: (id: u32, size: s32, length: *s32, data: *u8) #foreign gl "glGetShaderInfoLog";
+RawDeleteShader :: (id: u32) #foreign gl "glDeleteShader";
+RawCreateProgram :: ()->u32 #foreign gl "glCreateProgram";
+RawAttachShader :: (id: u32, shader: u32) #foreign gl "glAttachShader";
+RawLinkProgram :: (id: u32) #foreign gl "glLinkProgram";
+RawGetProgram :: (id: u32, name: u32, value: *s32) #foreign gl "glGetProgramiv";
+RawProgramLog :: (id: u32, size: s32, length: *s32, data: *u8) #foreign gl "glGetProgramInfoLog";
+RawDeleteProgram :: (id: u32) #foreign gl "glDeleteProgram";
+RawUseProgram :: (id: u32) #foreign gl "glUseProgram";
+RawUniformLocation :: (id: u32, name: *u8)->s32 #foreign gl "glGetUniformLocation";
+RawUniform1i :: (location: s32, value: s32) #foreign gl "glUniform1i";
+RawUniform1f :: (location: s32, value: float32) #foreign gl "glUniform1f";
+RawUniform2f :: (location: s32, x: float32, y: float32) #foreign gl "glUniform2f";
+RawUniform3f :: (location: s32, x: float32, y: float32, z: float32) #foreign gl "glUniform3f";
+RawUniform4f :: (location: s32, x: float32, y: float32, z: float32, w: float32) #foreign gl "glUniform4f";
+RawUniform4fv :: (location: s32, count: s32, data: *float32) #foreign gl "glUniform4fv";
+RawUniformMatrix :: (location: s32, count: s32, transpose: u8, data: *float32) #foreign gl "glUniformMatrix4fv";
+RawEnable :: (kind: u32) #foreign gl "glEnable";
+RawDisable :: (kind: u32) #foreign gl "glDisable";
+RawDepthMask :: (enabled: u8) #foreign gl "glDepthMask";
+RawDepthFunc :: (kind: u32) #foreign gl "glDepthFunc";
+RawBlendFuncSeparate :: (src: u32, dst: u32, src_alpha: u32, dst_alpha: u32) #foreign gl "glBlendFuncSeparate";
+RawFrontFace :: (kind: u32) #foreign gl "glFrontFace";
+RawCullFace :: (kind: u32) #foreign gl "glCullFace";
+RawViewport :: (x: s32, y: s32, width: s32, height: s32) #foreign gl "glViewport";
+RawClearColor :: (r: float32, g: float32, b: float32, a: float32) #foreign gl "glClearColor";
+RawClearDepth :: (depth: float32) #foreign gl "glClearDepthf";
+RawClear :: (mask: u32) #foreign gl "glClear";
+RawDrawArrays :: (kind: u32, first: s32, count: s32) #foreign gl "glDrawArrays";
+RawReadPixels :: (x: s32, y: s32, width: s32, height: s32, format: u32, kind: u32, data: *void) #foreign gl "glReadPixels";
+RawPixelStore :: (name: u32, value: s32) #foreign gl "glPixelStorei";
+RawFinish :: () #foreign gl "glFinish";
+RawCompareMemory :: (a: *void, b: *void, bytes: usize)->s32 #foreign c "memcmp";
+RawCopyMemory :: (a: *void, b: *void, bytes: usize)->*void #foreign c "memcpy";
+
+EGetPlatformDisplay :: (platform: u32, native: *void, attributes: *s64) ->*void {return RawEGetPlatformDisplay(platform,native,attributes)}
+EInitialize :: (display: *void, major: *s32, minor: *s32) ->u32 {return RawEInitialize(display,major,minor)}
+EBindAPI :: (api: u32) ->u32 {return RawEBindAPI(api)}
+EChooseConfig :: (display: *void, attrs: *s32, configs: **void, count: s32, found: *s32) ->u32 {return RawEChooseConfig(display,attrs,configs,count,found)}
+ECreateContext :: (display: *void, config: *void, share: *void, attrs: *s32) ->*void {return RawECreateContext(display,config,share,attrs)}
+EDestroyContext :: (display: *void, context: *void) ->u32 {return RawEDestroyContext(display,context)}
+ETerminate :: (display: *void) ->u32 {return RawETerminate(display)}
+EMakeCurrent :: (display: *void, draw: *void, read: *void, context: *void) ->u32 {return RawEMakeCurrent(display,draw,read,context)}
+EGetCurrentDisplay :: () ->*void {return RawEGetCurrentDisplay()}
+EGetCurrentContext :: () ->*void {return RawEGetCurrentContext()}
+EGetCurrentSurface :: (which: s32) ->*void {return RawEGetCurrentSurface(which)}
+EQueryAPI :: () ->u32 {return RawEQueryAPI()}
+GLXCurrentDisplay :: ()->*void {return RawGLXCurrentDisplay()}
+GLXCurrentContext :: ()->*void {return RawGLXCurrentContext()}
+GLXCurrentDrawable :: ()->u64 {return RawGLXCurrentDrawable()}
+GLXCurrentReadDrawable :: ()->u64 {return RawGLXCurrentReadDrawable()}
+GLXMakeCurrent :: (display: *void,draw: u64,read: u64,context: *void)->s32 {return RawGLXMakeCurrent(display,draw,read,context)}
+GetString :: (name: u32) ->*u8 {return RawGetString(name)}
+GetInteger :: (name: u32, value: *s32)  {RawGetInteger(name,value)}
+GetError :: () ->u32 {return RawGetError()}
+GetPrecision :: (stage: u32, kind: u32, range: *s32, precision: *s32)  {RawGetPrecision(stage,kind,range,precision)}
+GenFramebuffers :: (count: s32, ids: *u32)  {RawGenFramebuffers(count,ids)}
+DeleteFramebuffers :: (count: s32, ids: *u32)  {RawDeleteFramebuffers(count,ids)}
+BindFramebuffer :: (target: u32, id: u32)  {RawBindFramebuffer(target,id)}
+CheckFramebuffer :: (target: u32) ->u32 {return RawCheckFramebuffer(target)}
+FramebufferTexture :: (target: u32, attachment: u32, texture_target: u32, id: u32, level: s32)  {RawFramebufferTexture(target,attachment,texture_target,id,level)}
+FramebufferRenderbuffer :: (target: u32, attachment: u32, renderbuffer_target: u32, id: u32)  {RawFramebufferRenderbuffer(target,attachment,renderbuffer_target,id)}
+GenRenderbuffers :: (count: s32, ids: *u32)  {RawGenRenderbuffers(count,ids)}
+DeleteRenderbuffers :: (count: s32, ids: *u32)  {RawDeleteRenderbuffers(count,ids)}
+BindRenderbuffer :: (target: u32, id: u32)  {RawBindRenderbuffer(target,id)}
+RenderbufferStorage :: (target: u32, format: u32, width: s32, height: s32)  {RawRenderbufferStorage(target,format,width,height)}
+RenderbufferMS :: (target: u32, samples: s32, format: u32, width: s32, height: s32)  {RawRenderbufferMS(target,samples,format,width,height)}
+GetRenderbuffer :: (target: u32, name: u32, value: *s32)  {RawGetRenderbuffer(target,name,value)}
+BlitFramebuffer :: (sx: s32, sy: s32, ex: s32, ey: s32, dx: s32, dy: s32, fx: s32, fy: s32, mask: u32, filter: u32)  {RawBlitFramebuffer(sx,sy,ex,ey,dx,dy,fx,fy,mask,filter)}
+GenTextures :: (count: s32, ids: *u32)  {RawGenTextures(count,ids)}
+DeleteTextures :: (count: s32, ids: *u32)  {RawDeleteTextures(count,ids)}
+BindTexture :: (target: u32, id: u32)  {RawBindTexture(target,id)}
+ActiveTexture :: (unit: u32)  {RawActiveTexture(unit)}
+TexParameter :: (target: u32, name: u32, value: s32)  {RawTexParameter(target,name,value)}
+TexImage :: (target: u32, level: s32, internal: s32, width: s32, height: s32, border: s32, format: u32, kind: u32, data: *void)  {RawTexImage(target,level,internal,width,height,border,format,kind,data)}
+GenBuffers :: (count: s32, ids: *u32)  {RawGenBuffers(count,ids)}
+DeleteBuffers :: (count: s32, ids: *u32)  {RawDeleteBuffers(count,ids)}
+BindBuffer :: (target: u32, id: u32)  {RawBindBuffer(target,id)}
+BufferData :: (target: u32, bytes: s64, data: *void, usage: u32)  {RawBufferData(target,bytes,data,usage)}
+EnableAttribute :: (index: u32)  {RawEnableAttribute(index)}
+AttributePointer :: (index: u32, count: s32, kind: u32, normalized: u8, stride: s32, offset: *void)  {RawAttributePointer(index,count,kind,normalized,stride,offset)}
+CreateShader :: (kind: u32) ->u32 {return RawCreateShader(kind)}
+ShaderSource :: (id: u32, count: s32, texts: **u8, lengths: *s32)  {RawShaderSource(id,count,texts,lengths)}
+CompileShader :: (id: u32)  {RawCompileShader(id)}
+GetShader :: (id: u32, name: u32, value: *s32)  {RawGetShader(id,name,value)}
+ShaderLog :: (id: u32, size: s32, length: *s32, data: *u8)  {RawShaderLog(id,size,length,data)}
+DeleteShader :: (id: u32)  {RawDeleteShader(id)}
+CreateProgram :: () ->u32 {return RawCreateProgram()}
+AttachShader :: (id: u32, shader: u32)  {RawAttachShader(id,shader)}
+LinkProgram :: (id: u32)  {RawLinkProgram(id)}
+GetProgram :: (id: u32, name: u32, value: *s32)  {RawGetProgram(id,name,value)}
+ProgramLog :: (id: u32, size: s32, length: *s32, data: *u8)  {RawProgramLog(id,size,length,data)}
+DeleteProgram :: (id: u32)  {RawDeleteProgram(id)}
+UseProgram :: (id: u32)  {RawUseProgram(id)}
+UniformLocation :: (id: u32, name: *u8) ->s32 {return RawUniformLocation(id,name)}
+Uniform1i :: (location: s32, value: s32)  {RawUniform1i(location,value)}
+Uniform1f :: (location: s32, value: float32)  {RawUniform1f(location,value)}
+Uniform2f :: (location: s32, x: float32, y: float32)  {RawUniform2f(location,x,y)}
+Uniform3f :: (location: s32, x: float32, y: float32, z: float32)  {RawUniform3f(location,x,y,z)}
+Uniform4f :: (location: s32, x: float32, y: float32, z: float32, w: float32)  {RawUniform4f(location,x,y,z,w)}
+Uniform4fv :: (location: s32, count: s32, data: *float32)  {RawUniform4fv(location,count,data)}
+UniformMatrix :: (location: s32, count: s32, transpose: u8, data: *float32)  {RawUniformMatrix(location,count,transpose,data)}
+Enable :: (kind: u32)  {RawEnable(kind)}
+Disable :: (kind: u32)  {RawDisable(kind)}
+DepthMask :: (enabled: u8)  {RawDepthMask(enabled)}
+DepthFunc :: (kind: u32)  {RawDepthFunc(kind)}
+BlendFuncSeparate :: (src: u32, dst: u32, src_alpha: u32, dst_alpha: u32)  {RawBlendFuncSeparate(src,dst,src_alpha,dst_alpha)}
+FrontFace :: (kind: u32)  {RawFrontFace(kind)}
+CullFace :: (kind: u32)  {RawCullFace(kind)}
+Viewport :: (x: s32, y: s32, width: s32, height: s32)  {RawViewport(x,y,width,height)}
+ClearColor :: (r: float32, g: float32, b: float32, a: float32)  {RawClearColor(r,g,b,a)}
+ClearDepth :: (depth: float32)  {RawClearDepth(depth)}
+Clear :: (mask: u32)  {RawClear(mask)}
+DrawArrays :: (kind: u32, first: s32, count: s32)  {RawDrawArrays(kind,first,count)}
+ReadPixels :: (x: s32, y: s32, width: s32, height: s32, format: u32, kind: u32, data: *void)  {RawReadPixels(x,y,width,height,format,kind,data)}
+MapBufferRange :: (target: u32,offset: s64,bytes: s64,access: u32)->*void {return RawMapBufferRange(target,offset,bytes,access)}
+UnmapBuffer :: (target: u32)->u8 {return RawUnmapBuffer(target)}
+FenceSync :: (condition: u32,flags: u32)->*void {return RawFenceSync(condition,flags)}
+ClientWaitSync :: (sync: *void,flags: u32,timeout: u64)->u32 {return RawClientWaitSync(sync,flags,timeout)}
+DeleteSync :: (sync: *void) {RawDeleteSync(sync)}
+Flush :: () {RawFlush()}
+PixelStore :: (name: u32, value: s32)  {RawPixelStore(name,value)}
+Finish :: ()  {RawFinish()}
+CompareMemory :: (a: *void, b: *void, bytes: usize) ->s32 {return RawCompareMemory(a,b,bytes)}
+CopyMemory :: (a: *void, b: *void, bytes: usize) ->*void {return RawCopyMemory(a,b,bytes)}
+
+SavedContext :: struct {
+ display: *void; context: *void; draw: *void; read: *void; api: u32
+ glx_display: *void; glx_context: *void; glx_draw: u64; glx_read: u64
+}
+SaveContext :: ()->SavedContext {
+ return .{EGetCurrentDisplay(),EGetCurrentContext(),EGetCurrentSurface(0x3059),EGetCurrentSurface(0x305a),EQueryAPI(),
+  GLXCurrentDisplay(),GLXCurrentContext(),GLXCurrentDrawable(),GLXCurrentReadDrawable()}
+}
+MakeSceneCurrent :: (display: *void,context: *void)->bool {
+ glx_context:=GLXCurrentContext()
+ if glx_context!=null&&GLXMakeCurrent(GLXCurrentDisplay(),0,0,null)==0 {return false}
+ unused EBindAPI(0x30a0)
+ return EMakeCurrent(display,null,null,context)!=0
+}
+RestoreContext :: (saved: SavedContext, own: *void) {
+ if saved.display!=null { unused EBindAPI(saved.api); unused EMakeCurrent(saved.display,saved.draw,saved.read,saved.context) }
+ else {
+  if own!=null {unused EMakeCurrent(own,null,null,null)}
+  unused EBindAPI(saved.api)
+  if saved.glx_context!=null {unused GLXMakeCurrent(saved.glx_display,saved.glx_draw,saved.glx_read,saved.glx_context)}
+ }
+}
+Location :: (id: u32, name: string)->s32 {
+ bytes: [128]u8
+ if name.count>=128 { return -1 }
+ for at: 0..name.count-1 { bytes[at]=name[at] }
+ return UniformLocation(id,*bytes[0])
+}
+Compile :: (stage: u32, source: string, log: []u8)->u32 {
+ bytes: Vec(u8)
+ if !BuilderAppend(bytes,source)||bytes.count==0 {return 0}
+ id:=CreateShader(stage); p:=*bytes[0]; n:=cast(s32)source.count
+ ShaderSource(id,1,*p,*n); CompileShader(id)
+ ok: s32; GetShader(id,0x8b81,*ok)
+ if ok==0 { ShaderLog(id,cast(s32)log.count,null,*log[0]); DeleteShader(id); return 0 }
+ return id
+}
+Program :: (vertex: string, fragment: string, log: []u8)->u32 {
+ vs:=Compile(0x8b31,vertex,log); if vs==0 { return 0 }; defer DeleteShader(vs)
+ fs:=Compile(0x8b30,fragment,log); if fs==0 { return 0 }; defer DeleteShader(fs)
+ id:=CreateProgram(); AttachShader(id,vs); AttachShader(id,fs); LinkProgram(id)
+ ok: s32; GetProgram(id,0x8b82,*ok)
+ if ok==0 { ProgramLog(id,cast(s32)log.count,null,*log[0]); DeleteProgram(id); return 0 }
+ return id
+}
+Texture :: (width: s32,height: s32,internal: s32,format: u32,kind: u32,data: *void,linear: bool=false)->u32 {
+ id: u32; GenTextures(1,*id); BindTexture(0x0de1,id)
+ TexParameter(0x0de1,0x2801,ifx linear then 0x2601 else 0x2600); TexParameter(0x0de1,0x2800,ifx linear then 0x2601 else 0x2600)
+ TexParameter(0x0de1,0x2802,0x812f); TexParameter(0x0de1,0x2803,0x812f)
+ TexImage(0x0de1,0,internal,width,height,0,format,kind,data)
+ return id
+}

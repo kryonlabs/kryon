@@ -83,6 +83,7 @@ Compare :: (name: string, limit: s32) -> s32 {
     return wrong
 }
 
+#program_export "main"
 main :: () -> s32 {
     if Init(cast(u32)32) != 0 { return 2 }
     defer Quit()

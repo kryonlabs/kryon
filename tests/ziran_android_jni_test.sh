@@ -38,7 +38,10 @@ module=$repo/src/backend/android_jni.zi
         configuration:config saved_state:savedState saved_state_size:savedStateSize looper:looper \
         input_queue:inputQueue window:window content_rect:contentRect activity_state:activityState \
         destroy_requested:destroyRequested mutex_storage:mutex condition_storage:cond \
-        command_read:msgread command_write:msgwrite; do
+        command_read:msgread command_write:msgwrite thread:thread \
+        command_poll_source_storage:cmdPollSource input_poll_source_storage:inputPollSource \
+        running:running state_saved:stateSaved destroyed:destroyed redraw_needed:redrawNeeded \
+        pending_input_queue:pendingInputQueue pending_window:pendingWindow pending_content_rect:pendingContentRect; do
         printf '_Static_assert(offsetof(NativeAndroidApp, %s) == offsetof(struct android_app, %s), "app %s");\n' \
             "${pair%%:*}" "${pair#*:}" "${pair%%:*}"
     done

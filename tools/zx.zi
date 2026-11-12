@@ -479,11 +479,13 @@ Reload :: (pointer: string, current: *Watch.Release, bundle: **void,
 #program_export
 main :: (argc: s32, argv: **u8) -> s32 {
     check := argc == 3 && TextFromCString(argv[1]) == "--check"
+    portable := argc == 3 && TextFromCString(argv[1]) == "--vm"
     watch := argc == 3 && TextFromCString(argv[1]) == "--watch-current"
-    if argc < 1 || argc > 3 || (argc == 3 && !check && !watch) {
-        print("usage: zx [--check] FILE.zx | zx --watch-current CURRENT.json\n")
+    if argc < 1 || argc > 3 || (argc == 3 && !check && !watch && !portable) {
+        print("usage: zx [--check|--vm] FILE.zx | zx --watch-current CURRENT.json\n")
         return 2
     }
+    if portable { UsePortableBundleVm(true) }
     executable_bytes: [4096]u8
     prefix_bytes: [4096]u8
     app_bytes: [4096]u8
@@ -500,8 +502,8 @@ main :: (argc: s32, argv: **u8) -> s32 {
         bundle_name = *current.path[0]
         bundle_path = TextFromCString(bundle_name)
         unused ProgramTitleFor(bundle_path)
-    } else if argc == 2 || check {
-        bundle_name = argv[ifx check then 2 else 1]
+    } else if argc == 2 || check || portable {
+        bundle_name = argv[ifx check || portable then 2 else 1]
         bundle_path = TextFromCString(bundle_name)
         // A played file is named by its .title, or else its file name. An
         // installed app finds share/kryon/BIN/app.title from the player.

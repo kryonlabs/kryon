@@ -48,7 +48,9 @@ using FrameStatus;
 
 // Image sizes for native builds; the photo is 40 px square. Its preview
 // is 10 px, the slow picture is still loading and the gone one unavailable.
+image_size_path: [128]u8;
 TestImageSize :: (asset_path: string) -> s32 {
+    unused CopyCString(asset_path, image_size_path[:])
     if asset_path == "assets/slow.png" { return -1 }
     if asset_path == "assets/gone.png" { return 0 }
     if asset_path == "assets/photo-small.png" { return 10 }
@@ -199,6 +201,8 @@ Call :: (module: string, function: string, arguments: []HostValue, result: *Host
 
 #program_export
 main :: () -> s32 {
+    dimensions := HostedImageDimensions()
+    if dimensions != 0 { return 1000 + dimensions }
     boundary := HostedPointerBoundary()
     if boundary != 0 { print("hosted pointer boundary failed %\n", boundary); return 950 + boundary }
     if !WidgetHostSupports("modal", "ActionModalHostedHost") { return 40 }
@@ -940,6 +944,56 @@ main :: () -> s32 {
 }
 
 // Reject guest addresses before dispatch; a null-state hosted tab remains usable.
+HostedImageDimensions :: () -> s32 {
+    if !WidgetHostSupports("image_raster", "ImageWidth") ||
+        !WidgetHostSupports("p95ee34f8b47b4393_image_raster", "ImageHeight") ||
+        WidgetHostSupports("other", "ImageWidth") ||
+        WidgetHostSupports("image_raster", "RasterImage") { return 1 }
+    session := SessionOpen()
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
+    argument: [1]HostValue
+    paths: [4]string = .{"assets/photo.png", "assets/photo-small.png",
+        "assets/slow.png", "assets/gone.png"}
+    expected: [4]s64 = .{40, 10, -1, 0}
+    answer: HostValue
+    WidgetHostBegin(session, AllowPhoto)
+    for index: cast(s32)0..3 {
+        path := paths[index]
+        argument[0] = HostValue.{.kind = cast(s32)HostString,
+            .type_name = HostTextData("string"), .data = HostTextData(path),
+            .length = cast(usize)path.count}
+        if Call("image_raster", "ImageWidth", argument[:], *answer) != 1 ||
+            !HostScalarValid(answer, "s32", cast(s32)HostInteger) ||
+            answer.integer != expected[index] { return 2 }
+        if Call("p95ee34f8b47b4393_image_raster", "ImageHeight", argument[:], *answer) != 1 ||
+            answer.integer != expected[index] { return 3 }
+    }
+    argument[0] = HostScalar("s32", 0)
+    if Call("image_raster", "ImageWidth", argument[:], *answer) != 0 ||
+        Call("image_raster", "ImageWidth", argument[:0], *answer) != 0 { return 4 }
+    path := "private/key.png"
+    argument[0] = HostValue.{.kind = cast(s32)HostString,
+        .type_name = HostTextData("string"), .data = HostTextData(path),
+        .length = cast(usize)path.count}
+    if Call("image_raster", "ImageWidth", argument[:], *answer) != 0 { return 5 }
+    WidgetHostEnd()
+    if Call("image_raster", "ImageWidth", argument[:], *answer) != 0 { return 6 }
+    path = "assets/photo.png"
+    argument[0].data = HostTextData(path)
+    argument[0].length = cast(usize)path.count
+    WidgetHostBegin(session, AllowPhoto, ResolvePhoto)
+    resolved_owner = 1
+    if Call("image_raster", "ImageWidth", argument[:], *answer) != 1 ||
+        TextFromCString(*image_size_path[0]) != "apps/owner-a/assets/photo.png" { return 7 }
+    resolved_owner = 0
+    if Call("image_raster", "ImageHeight", argument[:], *answer) != 1 ||
+        answer.integer != -1 { return 8 }
+    WidgetHostEnd()
+    EndFrame(session)
+    SessionClose(session)
+    return 0
+}
+
 HostedPointerBoundary :: () -> s32 {
     session := SessionOpen()
     BeginFrame(session, cast(u64)99, Rectangle.{0.0, 0.0, 300.0, 200.0})

@@ -259,11 +259,20 @@ ConfirmButton :: (session: Session, props: ConfirmButtonProps,
     } else if result.armed && result.remaining > 0.0 {
         face := ButtonInstalledFaceFor(armed, face_state)
         color := props.countdown_color
-        if color == cast(u32)0 { color = Opacity(face.foreground, 115) }
-        bar := Rectangle.{result.bounds.x, result.bounds.y + result.bounds.height - 2.0,
-            result.bounds.width * result.remaining, 2.0}
-        PaintRoundedFill(session, result.node, bar, 1.0, 4,
-            ColorFromPacked(color))
+        if color == cast(u32)0 { color = Opacity(face.foreground, 0.45) }
+        radius := ButtonCornerRadius(face.radius, result.bounds.height)
+        if armed.pill || armed.circle { radius = result.bounds.height * 0.5 }
+        stroke := face.border_width
+        if stroke < 0.0 { stroke = 0.0 }
+        inset := radius + stroke
+        width := result.bounds.width - inset * 2.0
+        if width > 0.0 && result.bounds.height > stroke + 4.0 {
+            bar := Rectangle.{result.bounds.x + inset,
+                result.bounds.y + result.bounds.height - stroke - 4.0,
+                width * result.remaining, 2.0}
+            PaintRoundedFill(session, result.node, bar, 1.0, 4,
+                ColorFromPacked(color))
+        }
     }
     return result
 }

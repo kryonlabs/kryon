@@ -1,14 +1,14 @@
 #!/bin/sh
 . "$(dirname -- "$0")/test_context.sh"
 source=$repo/tests/ziran_raster_host_test.zi
-binding=raster:RasterLine=ziran_raster_host_provider:RasterLine
+binding=kryon/raster:RasterLine=ziran_raster_host_provider:RasterLine
 
-"$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" ir --root "$repo/tests" $kryon_project_args  \
     -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$repo/tests" $kryon_project_args  \
     --bind "$binding" --entry ziran_raster_host_test:main \
     -o "$work/source.zx" "$source"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
+"$ziran" bundle --root "$work/ir" --project --module-path "$work/ir" \
     --bind "$binding" --entry ziran_raster_host_test:main \
     -o "$work/saved.zx" "$work/ir/ziran_raster_host_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
@@ -16,7 +16,7 @@ test "$("$ziran" run "$work/source.zx")" = 0
 test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
-    $kryon_ui_args --module-path "$ziran_root/std" -o "$work/c" "$source"
+    $kryon_project_args  -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c -o "$work/c/app"
 "$work/c/app"
@@ -27,15 +27,15 @@ for input in source saved; do
     if test "$input" = source; then
         module=$source
         module_root=$repo/tests
-        module_dir="$kryon_ui_args"
+        module_dir="$kryon_project_args"
     else
         module=$work/ir/ziran_raster_host_test.zir
         module_root=$work/ir
-        module_dir="--module-path $work/ir"
+        module_dir="--project --module-path $work/ir"
     fi
     "$ziran" build --target=go --pkg main --exe \
         --entry ziran_raster_host_test:main --bind "$binding" \
         --root "$module_root" $module_dir \
-        --module-path "$ziran_root/std" -o "$output" "$module"
+         -o "$output" "$module"
     env -u DISPLAY -u WAYLAND_DISPLAY GO111MODULE=off go run "$output"/*.go
 done

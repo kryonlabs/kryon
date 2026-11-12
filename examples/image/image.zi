@@ -50,7 +50,14 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     disabled := example_input.disabled
     scene_image = "assets/pfp.webp"
 
-    Image(session, ImageProps.{.asset_path = scene_image, .alt_text = "Kryon profile image atlas", .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 192.0, 192.0}), .smooth = true})
+    Image(session, ImageProps.{.key = 10, .asset_path = "assets/alpine-lake.webp",
+        .alt_text = "Orange canoe on a turquoise alpine lake at sunrise",
+        .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 168.0}),
+        .fit = .ImageFitCover, .radius = 12.0, .smooth = true})
+    Text(session, TextProps.{.key = 11, .bounds = GalleryBounds(Rectangle.{24.0, 246.0, 432.0, 28.0}),
+        .text = "Alpine morning", .font = 18})
+    Text(session, TextProps.{.key = 12, .bounds = GalleryBounds(Rectangle.{24.0, 278.0, 432.0, 26.0}),
+        .text = "Cover fit / rounded corners / smooth scaling", .font = 12})
     return 0
 }
 

@@ -3,19 +3,19 @@
 
 portable=$repo/tests/separator_widget_portable_test.zi
 set -- \
-    --bind raster:RasterLine=separator_widget_host:RasterLine \
-    --bind raster_text:RasterText=separator_widget_host:RasterText \
-    --bind raster_text:RasterTextClipped=separator_widget_host:RasterTextClipped \
-    --bind raster_text:RasterTextRotated=separator_widget_host:RasterTextRotated \
-    --bind font_metrics:MeasureGlyphWidth=separator_widget_host:MeasureGlyphWidth \
-    --bind raster_shape:RasterRoundedRectangle=separator_widget_host:RasterRoundedRectangle
+    --bind kryon/raster:RasterLine=separator_widget_host:RasterLine \
+    --bind kryon/raster_text:RasterText=separator_widget_host:RasterText \
+    --bind kryon/raster_text:RasterTextClipped=separator_widget_host:RasterTextClipped \
+    --bind kryon/raster_text:RasterTextRotated=separator_widget_host:RasterTextRotated \
+    --bind kryon/font_metrics:MeasureGlyphWidth=separator_widget_host:MeasureGlyphWidth \
+    --bind kryon/raster_shape:RasterRoundedRectangle=separator_widget_host:RasterRoundedRectangle
 
-"$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" ir --root "$repo/tests" $kryon_project_args  \
     -o "$work/ir" "$portable"
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$repo/tests" $kryon_project_args  \
     "$@" --entry separator_widget_portable_test:main \
     -o "$work/source.zx" "$portable"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
+"$ziran" bundle --root "$work/ir" --project --module-path "$work/ir" \
     "$@" --entry separator_widget_portable_test:main \
     -o "$work/saved.zx" "$work/ir/separator_widget_portable_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
@@ -117,7 +117,7 @@ C
 for target in c go; do
     output=$work/native-$target
     "$ziran" build --target="$target" --root "$repo/tests" \
-        $kryon_ui_args --module-path "$ziran_root/std" -o "$output" "$native"
+        $kryon_project_args  -o "$output" "$native"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \

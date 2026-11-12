@@ -92,7 +92,7 @@ def main():
     environment['PROJECT_EXTRA_SOURCES'] = 'build/catalog/catalog.zi'
     subprocess.run(['ziran', 'tool', 'kryon', 'build', '--profile', 'web'],
                    cwd=PROJECT, env=environment, check=True)
-    assets = package_runtime(PROJECT / 'build/gallery-web.html')
+    assets = package_runtime(ROOT / 'build/examples/gallery/gallery-web.html')
     write(SITE / 'runtime/assets.json', __import__('json').dumps(assets) + '\n')
     write(SITE / 'current.css', 'html,body{margin:0;width:100%;height:100%;overscroll-behavior:none}#canvas-frame{width:100%;height:100%}canvas{display:block;width:100%;height:100%;outline:none}#kryon-ime{position:fixed;left:0;top:0;width:1px;height:1px;border:0;padding:0;opacity:0;pointer-events:none}#result:empty{display:none}#result:not(:empty){position:fixed;inset:auto 20px 20px;margin:0;padding:16px;border:1px solid #d4d4d4;border-radius:10px;background:#fff;color:#171717;font:14px/1.5 system-ui;white-space:pre-wrap}\n')
     with (SITE / 'runtime/simd128.js').open('rb') as stream:

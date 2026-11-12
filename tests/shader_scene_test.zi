@@ -1,0 +1,431 @@
+#import "kryon/shader"
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "std/image"
+#import "std/vec"
+#import "std/math"
+program: ShaderProgram;
+uniforms: [1]ShaderValue;
+rgba: [16]u8 = .[255,0,0,255, 0,255,0,255, 0,0,255,255, 255,255,255,255];
+samplers: [1]ShaderSampler;
+Check :: (ok: bool, text: string) -> s32 { if ok { return 0 }; print("shader: %\n",text); return 1 }
+Pixel :: (image: *Image, x: s32, y: s32, channel: s32) -> u8 { return image.pixels[(cast(s64)y*image.width+x)*4+channel] }
+ShaderSceneBuild :: (scene: *Scene) -> bool {
+    code: [4]ShaderInstruction
+    code[0] = .{op=.ShaderSample,dest=4,a=3,slot=0}
+    code[1] = .{op=.ShaderUniform,dest=5,slot=0}
+    code[2] = .{op=.ShaderMultiply,dest=6,a=4,b=5}
+    code[3] = .{op=.ShaderOutput,a=6}
+    if !ShaderCompile(*program,code[:]).ok { return false }
+    uniforms[0] = .{1.0,1.0,1.0,0.5}
+    samplers[0] = .{width=2,height=2,pixels=rgba[:]}
+    SceneInit(scene)
+    m := UnlitMaterial(.{255,255,255,255})
+    m.transparent = true
+    m.shader = *program
+    m.shader_uniforms = uniforms[:]
+    m.shader_samplers = samplers[:]
+    unused Plane(scene,2.0,2.0,m)
+    return true
+}
+ShaderSceneCamera :: () -> SceneCamera {
+    c:=OrthographicCamera(-1.0,1.0,1.0,-1.0,0.1,10.0)
+    c.position=.{0.0,0.0,3.0}; c.target=.{0.0,0.0,0.0}
+    return c
+}
+ShaderSceneUniform :: (value: ShaderValue) { uniforms[0]=value }
+ShaderSceneSampler :: (red: u8) { rgba[0]=red }
+ShaderSceneFree :: () { ShaderFree(*program); RenderSceneRelease() }
+Diagnostics :: () -> s32 {
+    p: ShaderProgram
+    code: [2]ShaderInstruction
+    code[0]=.{op=.ShaderUniform,dest=4,slot=0}
+    code[1]=.{op=.ShaderOutput,a=4}
+    fail:=Check(ShaderCompile(*p,code[:]).ok,"valid compile")
+    code[0].dest=32
+    d:=ShaderCompile(*p,code[:])
+    fail+=Check(!d.ok && d.instruction==0 && d.message.count>0 && p.ready,"bad destination preserves code")
+    u: [1]ShaderValue=.[.{0.1,0.2,0.3,0.4}]
+    s: [1]ShaderSampler
+    fail+=Check(!ShaderBindings(*p,u[:0],s[:0]).ok,"missing uniform")
+    result:=ShaderRun(*p,ShaderInputs.{},u[:],s[:0])
+    fail+=Check(!result.discard && result.color.z==0.3,"old executable")
+    code[0]=.{op=.ShaderMove,dest=4,a=31}
+    fail+=Check(!ShaderCompile(*p,code[:]).ok,"undefined register")
+    code[0]=.{op=.ShaderSample,dest=4,a=3,slot=8}
+    fail+=Check(!ShaderCompile(*p,code[:]).ok,"sampler limit")
+    code[0].slot=0
+    fail+=Check(ShaderCompile(*p,code[:]).ok && !ShaderBindings(*p,u[:],s[:]).ok,"invalid sampler dimensions")
+    code[1]=.{op=.ShaderMove,dest=5,a=4}
+    fail+=Check(!ShaderCompile(*p,code[:]).ok,"missing output")
+    ShaderFree(*p); ShaderFree(*p)
+    fail+=Check(!ShaderBindings(*p,u[:],s[:]).ok,"released program")
+    return fail
+}
+Render :: () -> s32 {
+    scene: Scene
+    if !ShaderSceneBuild(*scene) { return 1 }
+    defer { SceneFree(*scene); ShaderSceneFree() }
+    image: Image
+    image.width=16; image.height=16
+    defer VecFree(image.pixels)
+    camera:=ShaderSceneCamera()
+    fail:=Check(RenderScene(*scene,camera,*image),"render shader scene")
+    fail+=Check(Pixel(*image,2,2,0)==255 && Pixel(*image,2,2,1)==0 && Pixel(*image,2,2,3)==128,"sample red straight half alpha")
+    fail+=Check(Pixel(*image,13,2,1)==255 && Pixel(*image,2,13,2)==255,"sampler orientation")
+    ShaderSceneUniform(.{0.0,0.0,1.0,1.0})
+    fail+=Check(RenderScene(*scene,camera,*image) && Pixel(*image,2,2,0)==0 && Pixel(*image,2,2,3)==255,"uniform update")
+    ShaderSceneUniform(.{1.0,1.0,1.0,1.0}); ShaderSceneSampler(128)
+    fail+=Check(RenderScene(*scene,camera,*image) && Pixel(*image,2,2,0)>180 && Pixel(*image,2,2,0)<190,"linear sampler update")
+    RenderSceneRelease()
+    fail+=Check(RenderScene(*scene,camera,*image) && Pixel(*image,2,2,0)>180,"scratch recreation")
+    ShaderFree(*program)
+    fail+=Check(!RenderScene(*scene,camera,*image),"released material rejected")
+    return fail
+}
+Clipping :: () -> s32 {
+    scene: Scene
+    SceneInit(*scene)
+    defer { SceneFree(*scene); RenderSceneRelease() }
+    m:=UnlitMaterial(.{255,0,0,255}); m.double_sided=true
+    node:=Plane(*scene,2.0,2.0,m)
+    SetVertexPosition(*scene,node,0,.{-1.0,1.0,0.5})
+    SetVertexPosition(*scene,node,1,.{1.0,1.0,-2.0})
+    SetVertexPosition(*scene,node,2,.{-1.0,-1.0,0.5})
+    SetVertexPosition(*scene,node,3,.{1.0,-1.0,-2.0})
+    c:=PerspectiveCamera(70.0,1.0,0.1,10.0)
+    image: Image; image.width=16; image.height=16
+    defer VecFree(image.pixels)
+    fail:=Check(RenderScene(*scene,c,*image),"clip render")
+    covered: s32
+    for y: 0..15 { for x: 0..15 { if Pixel(*image,cast(s32)x,cast(s32)y,3)>0 { covered+=1 } } }
+    fail+=Check(covered>30,"near crossing keeps polygon")
+    unused SetPosition(*scene,node,0.0,0.0,20.0)
+    fail+=Check(RenderScene(*scene,c,*image),"fully clipped render")
+    for at: 0..image.pixels.count-1 { if image.pixels[at]!=cast(u8)0 { fail+=1; break } }
+    return fail
+}
+main :: () -> s32 { return Diagnostics()+InputUse()+Math()+Render()+Clipping()+CameraShift()+DiscardDepth()+ColorTransfer()+ParallelRows()+VisibilityDepth() }
+
+// Portable off-axis projection: the camera stays fixed while the viewport
+// exposes geometry that the symmetric frustum clipped away.
+CameraShift :: () -> s32 {
+    scene: Scene;SceneInit(*scene)
+    defer {SceneFree(*scene);RenderSceneRelease()}
+    m:=UnlitMaterial(.{230,70,30,255});m.double_sided=true;m.exact_color=true
+    unused Plane(*scene,1.5,1.2,m)
+    m.color=.{30,100,230,255}
+    node:=Plane(*scene,2.0,2.4,m);SetPosition(*scene,node,2.5,0.4,-1.0)
+    shifts: [9]ShapePoint=.[.{0,0},.{-1.5,0},.{1.5,0},.{0,-1.5},.{0,1.5},.{-1.5,-1.5},.{1.5,1.5},.{-1.5,1.5},.{1.5,-1.5}]
+    fail: s32
+    for size:0..1 {
+        width: s32=ifx size==0 then 24 else 16
+        height: s32=ifx size==0 then 16 else 24
+        c:=PerspectiveCamera(50.0,cast(float64)width/cast(float64)height,0.1,20.0)
+        c.position=.{0,0,3};c.target=.{0,0,0}
+        fail+=Check(c.shift_x==0.0&&c.shift_y==0.0,"camera offsets default zero")
+        wide:=c;wide.fov=Atan(3.0*Tan(c.fov*3.141592653589793/360.0))*360.0/3.141592653589793
+        reference:=NewImage(width*3,height*3);defer VecFree(reference.pixels)
+        image:=NewImage(width,height);defer VecFree(image.pixels)
+        if !RenderScene(*scene,wide,*reference) {return fail+1}
+        for state:0..shifts.count-1 {
+            c.shift_x=shifts[state].x;c.shift_y=shifts[state].y
+            if !RenderScene(*scene,c,*image) {return fail+1}
+            left:=width-cast(s32)(c.shift_x*cast(float64)width*0.5)
+            top:=height+cast(s32)(c.shift_y*cast(float64)height*0.5)
+            error: s64
+            for y:0..height-1 {for x:0..width-1 {for channel:0..3 {
+                a:=image.pixels[(y*width+x)*4+channel]
+                b:=reference.pixels[((y+top)*reference.width+x+left)*4+channel]
+                delta:=cast(s64)a-cast(s64)b
+                error+=ifx delta<0 then -delta else delta
+            }}}
+            fail+=Check(error<=cast(s64)width*height,"fixed-view off-axis crop")
+        }
+    }
+    return fail
+}
+
+InputUse :: () -> s32 {
+    p: ShaderProgram
+    defer ShaderFree(*p)
+    code: [2]ShaderInstruction = .[.{op=.ShaderMove,dest=4,a=2},.{op=.ShaderOutput,a=4}]
+    fail := Check(ShaderCompile(*p,code[:]).ok && p.input_mask==SHADER_INPUT_NORMAL,"initial normal read")
+    code[0]=.{op=.ShaderLiteral,dest=2,value=.{0.0,0.0,1.0,1.0}}
+    code[1]=.{op=.ShaderOutput,a=2}
+    fail+=Check(ShaderCompile(*p,code[:]).ok && p.input_mask==0,"overwritten normal is not an input")
+    code[0]=.{op=.ShaderDot,dest=0,a=1,b=2}; code[1]=.{op=.ShaderOutput,a=0}
+    fail+=Check(ShaderCompile(*p,code[:]).ok && p.input_mask==(SHADER_INPUT_POSITION|SHADER_INPUT_NORMAL),"read inputs before destination overwrite")
+    code[0]=.{op=.ShaderMix,dest=4,a=0,b=1,c=3}; code[1]=.{op=.ShaderOutput,a=4}
+    expected := SHADER_INPUT_COLOR|SHADER_INPUT_POSITION|SHADER_INPUT_UV
+    fail+=Check(ShaderCompile(*p,code[:]).ok && p.input_mask==expected,"all three mix sources")
+    code[0].a=32
+    fail+=Check(!ShaderCompile(*p,code[:]).ok && p.input_mask==expected,"rejected compile retains input metadata")
+    ShaderFree(*p)
+    fail+=Check(p.input_mask==0,"released input metadata")
+    return fail
+}
+
+Eval :: (op: ShaderOp, a: ShaderValue, b: ShaderValue, c: ShaderValue) -> ShaderResult {
+    p: ShaderProgram
+    code: [2]ShaderInstruction
+    code[0]=.{op=op,dest=4,a=0,b=1,c=2}
+    code[1]=.{op=.ShaderOutput,a=4}
+    u: [1]ShaderValue; samplers: [1]ShaderSampler
+    if !ShaderCompile(*p,code[:]).ok { return .{discard=true} }
+    return ShaderRun(*p,.{color=a,position=b,normal=c},u[:0],samplers[:0])
+}
+Math :: () -> s32 {
+    a: ShaderValue=.{-1.25,0.0,3.0,4.0}
+    b: ShaderValue=.{2.0,1.0,4.0,0.0}
+    c: ShaderValue=.{0.25,0.5,0.0,1.0}
+    fail:=Check(Eval(.ShaderMove,a,b,c).color.x== -1.25,"move")
+    fail+=Check(Eval(.ShaderAdd,a,b,c).color.x==0.75,"add")
+    fail+=Check(Eval(.ShaderSubtract,a,b,c).color.z== -1.0,"subtract")
+    fail+=Check(Eval(.ShaderDivide,a,b,c).color.w==0.0 && Eval(.ShaderDivide,a,b,c).color.z==0.75,"divide including zero")
+    fail+=Check(Eval(.ShaderMin,a,b,c).color.z==3.0 && Eval(.ShaderMax,a,b,c).color.z==4.0,"min max")
+    fail+=Check(Eval(.ShaderSin,a,b,c).color.y==0.0 && Eval(.ShaderCos,a,b,c).color.y==1.0,"sin cos")
+    fail+=Check(Eval(.ShaderFract,a,b,c).color.x==0.75,"negative fraction")
+    fail+=Check(Eval(.ShaderDot,a,b,c).color.x==9.5,"xyz dot")
+    normalized:=Eval(.ShaderNormalize,.{0.0,3.0,4.0,7.0},b,c)
+    fail+=Check(normalized.color.y>0.5999 && normalized.color.y<0.6001 && normalized.color.w==7.0,"normalize preserves W")
+    fail+=Check(Eval(.ShaderMix,a,b,c).color.y==0.5 && Eval(.ShaderMix,a,b,c).color.w==0.0,"component mix")
+    texels: [8]u8=.[255,0,0,255,0,255,0,255]
+    sampler: ShaderSampler=.{width=2,height=1,pixels=texels[:]}
+    fail+=Check(ShaderSample(sampler,-0.25,0.5).x==1.0,"clamp sampler")
+    sampler.repeat=true
+    fail+=Check(ShaderSample(sampler,-0.25,0.5).y==1.0,"repeat negative sampler")
+    return fail
+}
+
+DiscardDepth :: () -> s32 {
+    scene: Scene; SceneInit(*scene)
+    p: ShaderProgram
+    defer { SceneFree(*scene); ShaderFree(*p); RenderSceneRelease() }
+    code: [3]ShaderInstruction
+    code[0]=.{op=.ShaderLiteral,dest=4,value=.{0.5,0.0,0.0,0.0}}
+    code[1]=.{op=.ShaderDiscardLess,a=3,b=4}
+    code[2]=.{op=.ShaderOutput,a=0}
+    if !ShaderCompile(*p,code[:]).ok { return 1 }
+    m:=UnlitMaterial(.{255,0,0,255}); m.shader=*p
+    front:=Plane(*scene,2.0,2.0,m)
+    unused SetPosition(*scene,front,0.0,0.0,0.2)
+    unused Plane(*scene,2.0,2.0,UnlitMaterial(.{0,0,255,255}))
+    image: Image; image.width=16; image.height=16
+    defer VecFree(image.pixels)
+    fail:=Check(RenderScene(*scene,ShaderSceneCamera(),*image),"discard scene")
+    fail+=Check(Pixel(*image,2,2,2)==255 && Pixel(*image,13,2,0)==255,"discard keeps farther depth visible")
+    code[0]=.{op=.ShaderLiteral,dest=4,value=.{1.0,0.0,0.0,0.0}}
+    code[1]=.{op=.ShaderOutput,a=4}
+    fail+=Check(ShaderCompile(*p,code[:2]).ok && RenderScene(*scene,ShaderSceneCamera(),*image) && Pixel(*image,13,2,2)==255,"zero alpha leaves depth unwritten")
+    code[0].value.w=0.4
+    scene.meshes[scene.nodes[front].mesh].material.alpha_test=0.5
+    fail+=Check(ShaderCompile(*p,code[:2]).ok && RenderScene(*scene,ShaderSceneCamera(),*image) && Pixel(*image,13,2,2)==255,"shader alpha test leaves depth unwritten")
+    return fail
+}
+
+// Exercise both sides of every output-byte edge through the public renderer.
+// The reference is the original transfer, including its exponent and rounding.
+ReferenceByte :: (v: float64) -> u8 {
+    c:=ifx v<0.0 then 0.0 else ifx v>1.0 then 1.0 else v
+    encoded:=ifx c<=0.0031308 then c*12.92 else Pow(c,0.41666)*1.055-0.055
+    encoded=ifx encoded<0.0 then 0.0 else ifx encoded>1.0 then 1.0 else encoded
+    return cast(u8)(encoded*255.0+0.5)
+}
+ColorTransfer :: () -> s32 {
+    scene: Scene; SceneInit(*scene)
+    p: ShaderProgram
+    image: Image; image.width=1; image.height=1
+    defer { SceneFree(*scene); ShaderFree(*p); VecFree(image.pixels); RenderSceneRelease() }
+    code: [2]ShaderInstruction=.[.{op=.ShaderUniform,dest=4,slot=0},.{op=.ShaderOutput,a=4}]
+    if !ShaderCompile(*p,code[:]).ok { return 1 }
+    values: [1]ShaderValue
+    m:=UnlitMaterial(.{255,255,255,255}); m.shader=*p; m.shader_uniforms=values[:]
+    unused Plane(*scene,2.0,2.0,m)
+    for level:1..255 {
+        lo: float64=0.0; hi: float64=1.0
+        for step:0..79 {
+            mid:=(lo+hi)*0.5
+            if ReferenceByte(mid)>=cast(u8)level { hi=mid } else { lo=mid }
+        }
+        for side: -1..1 {
+            v:=hi+cast(float64)side*1.0e-12
+            values[0]=.{v,v,v,1.0}
+            if !RenderScene(*scene,ShaderSceneCamera(),*image) { return Check(false,"color transfer render") }
+            expected:=ReferenceByte(v)
+            if image.pixels[0]!=expected || image.pixels[1]!=expected || image.pixels[2]!=expected || image.pixels[3]!=255 {
+                print("color edge % side % expected % actual %\n",level,side,expected,image.pixels[0])
+                return 1
+            }
+        }
+    }
+    return 0
+}
+
+// A large blended draw exercises independent rows and the native pool's
+// teardown/recreation, while serial hosts execute the same pixel assertions.
+ParallelRows :: () -> s32 {
+    scene: Scene
+    if !ShaderSceneBuild(*scene) { return 1 }
+    defer { SceneFree(*scene); ShaderSceneFree() }
+    ShaderSceneSampler(255)
+    image: Image; image.width=512; image.height=256
+    defer VecFree(image.pixels)
+    if !RenderScene(*scene,ShaderSceneCamera(),*image) { return 2 }
+    retained := RenderSceneMemoryBytes()
+    if retained <= 0 { return 8 }
+    memory := RenderSceneMemoryUsage()
+    if memory.framebuffer_bytes + memory.shadow_bytes + memory.vertex_bytes + memory.triangle_bytes +
+        memory.draw_bytes + memory.node_bytes + memory.ordering_bytes != retained { return 11 }
+    if !RenderScene(*scene,ShaderSceneCamera(),*image) || RenderSceneMemoryBytes()!=retained { return 9 }
+    if Pixel(*image,32,32,0)!=255 || Pixel(*image,32,32,3)!=128 || Pixel(*image,480,32,1)!=255 || Pixel(*image,32,224,2)!=255 { return 3 }
+    RenderSceneRelease()
+    if RenderSceneWorkerCount()!=1 || RenderSceneMemoryBytes()!=0 { return 4 }
+    ShaderSceneUniform(.{0.0,0.0,1.0,1.0})
+    if !RenderScene(*scene,ShaderSceneCamera(),*image) { return 5 }
+    if Pixel(*image,32,32,0)!=0 || Pixel(*image,32,32,3)!=255 || Pixel(*image,32,224,2)!=255 { return 6 }
+    RenderSceneRelease(); RenderSceneRelease()
+    if RenderSceneWorkerCount()!=1 || RenderSceneMemoryBytes()!=0 { return 7 }
+    return OrderedRows()
+}
+
+// Cross every worker boundary at an odd height. Mesh insertion order differs
+// from blend order: red opaque, then far green, then near programmable blue.
+OrderedRows :: () -> s32 {
+    scene: Scene; SceneInit(*scene)
+    p: ShaderProgram
+    defer { SceneFree(*scene); ShaderFree(*p); RenderSceneRelease() }
+    code: [2]ShaderInstruction = .[
+        .{op=.ShaderLiteral,dest=4,value=.{0.0,0.0,1.0,0.5}},
+        .{op=.ShaderOutput,a=4},
+    ]
+    if !ShaderCompile(*p,code[:]).ok { return 10 }
+    blue := UnlitMaterial(.{255,255,255,255}); blue.transparent=true; blue.shader=*p
+    unused SetPosition(*scene,Plane(*scene,2.0,2.0,blue),0.0,0.0,0.4)
+    unused Plane(*scene,2.0,2.0,UnlitMaterial(.{255,0,0,255}))
+    green := UnlitMaterial(.{0,255,0,255}); green.transparent=true; green.opacity=0.5
+    unused SetPosition(*scene,Plane(*scene,2.0,2.0,green),0.0,0.0,0.2)
+    image: Image; image.width=511; image.height=259
+    defer VecFree(image.pixels)
+    if !RenderScene(*scene,ShaderSceneCamera(),*image) { return 11 }
+    for y: 0..258 { for x: 0..510 {
+        if Pixel(*image,cast(s32)x,cast(s32)y,0)!=64 || Pixel(*image,cast(s32)x,cast(s32)y,1)!=64 ||
+            Pixel(*image,cast(s32)x,cast(s32)y,2)!=128 || Pixel(*image,cast(s32)x,cast(s32)y,3)!=255 { return 12 }
+    } }
+    retained := RenderSceneMemoryBytes()
+    if retained > cast(s64)image.width * image.height * 32 + 65536 { return 13 }
+    image.width=257; image.height=131
+    if !RenderScene(*scene,ShaderSceneCamera(),*image) || RenderSceneMemoryBytes()!=retained { return 14 }
+    image.width=511; image.height=259
+    if !RenderScene(*scene,ShaderSceneCamera(),*image) || RenderSceneMemoryBytes()!=retained { return 15 }
+    return 0
+}
+
+// Hidden opaque layers select the visibility pass without changing the visible
+// scene. Compare every byte with the ordinary path, including empty samples,
+// cutouts, alpha textures, blended foregrounds and float32 depth boundaries.
+VisibilityBuild :: (scene: *Scene, p: *ShaderProgram, extra: bool, variant: s32) {
+    SceneInit(scene)
+    filler := UnlitMaterial(.{255,0,0,255}); filler.shader=p
+    if extra {
+        for layer: 0..3 {
+            unused SetPosition(scene,Plane(scene,1.6,1.6,filler),0.0,0.0,-1.3+cast(float64)layer*0.05)
+        }
+    }
+    unused Plane(scene,1.6,1.6,UnlitMaterial(.{31,63,95,255}))
+    front := UnlitMaterial(.{0,255,0,255}); front.shader=p
+    if variant==2 { front.alpha_test=0.5 }
+    if variant==3 {
+        texels: [16]u8=.[255,255,255,0, 255,255,255,255, 255,255,255,128, 255,255,255,64]
+        front.shader=null
+        front.texture=AddTexture(scene,texels[:],2,2)
+        front.alpha_test=0.5
+    }
+    unused SetPosition(scene,Plane(scene,0.8,0.8,front),0.0,0.0,0.5)
+    if variant>=4 {
+        // Depth 0.25 and its neighbors exercise both directions of float32
+        // rounding. Repeated planes also preserve the original <= tie rule.
+        depth := 0.25+cast(float64)(variant-6)*0.0000000075
+        z := 2.9-depth*9.9
+        unused SetPosition(scene,Plane(scene,1.0,1.0,UnlitMaterial(.{255,0,0,255})),0.0,0.0,z)
+        unused SetPosition(scene,Plane(scene,1.0,1.0,UnlitMaterial(.{0,0,255,255})),0.0,0.0,z+0.00000001)
+        unused SetPosition(scene,Plane(scene,1.0,1.0,front),0.0,0.0,z)
+    }
+    blend := UnlitMaterial(.{63,127,255,255}); blend.transparent=true; blend.opacity=0.5
+    unused SetPosition(scene,Plane(scene,2.0,2.0,blend),0.0,0.0,0.8)
+}
+
+VisibilityDepth :: () -> s32 {
+    p: ShaderProgram
+    reference: Scene; optimized: Scene
+    a: Image; b: Image
+    a.width=65; a.height=37; b.width=65; b.height=37
+    defer {
+        ShaderFree(*p); SceneFree(*reference); SceneFree(*optimized)
+        VecFree(a.pixels); VecFree(b.pixels); RenderSceneRelease()
+    }
+    for variant: 0..8 {
+        code: [3]ShaderInstruction=.[
+            .{op=.ShaderLiteral,dest=4,value=.{0.5,0.0,0.0,0.0}},
+            .{op=.ShaderDiscardLess,a=3,b=4},
+            .{op=.ShaderOutput,a=0},
+        ]
+        if variant==1 || variant==2 {
+            code[0].value=.{0.0,1.0,0.0,ifx variant==1 then 0.0 else 0.4}
+            code[1]=.{op=.ShaderMove,dest=0,a=4}
+        }
+        if !ShaderCompile(*p,code[:]).ok { return 1 }
+        VisibilityBuild(*reference,*p,false,cast(s32)variant)
+        VisibilityBuild(*optimized,*p,true,cast(s32)variant)
+        if !RenderScene(*reference,ShaderSceneCamera(),*a) || RenderSceneStatistics().depth_prepass { return 2 }
+        if !RenderScene(*optimized,ShaderSceneCamera(),*b) || !RenderSceneStatistics().depth_prepass { return 3 }
+        for at: 0..a.pixels.count-1 {
+            if a.pixels[at]!=b.pixels[at] {
+                print("visibility variant % byte % reference % actual %\n",variant,at,a.pixels[at],b.pixels[at])
+                return 4
+            }
+        }
+        retained := RenderSceneMemoryBytes()
+        if !RenderScene(*optimized,ShaderSceneCamera(),*b) || RenderSceneMemoryBytes()!=retained { return 5 }
+        SceneFree(*reference); SceneFree(*optimized)
+    }
+    RenderSceneRelease()
+    if RenderSceneStatistics().depth_prepass || RenderSceneStatistics().shaded_fragments!=0 { return 6 }
+    return 0
+}
+
+// Keep enough pixels to enter the native pool at every height. Start with an
+// odd tall frame, then reuse that pool through tiny serial and uneven chunks.
+VisibilityRows :: () -> s32 {
+    p: ShaderProgram
+    reference: Scene; optimized: Scene
+    a: Image; b: Image
+    defer {
+        ShaderFree(*p); SceneFree(*reference); SceneFree(*optimized)
+        VecFree(a.pixels); VecFree(b.pixels); RenderSceneRelease()
+    }
+    code: [3]ShaderInstruction=.[
+        .{op=.ShaderLiteral,dest=4,value=.{0.5,0.0,0.0,0.0}},
+        .{op=.ShaderDiscardLess,a=3,b=4},
+        .{op=.ShaderOutput,a=0},
+    ]
+    if !ShaderCompile(*p,code[:]).ok { return 1 }
+    VisibilityBuild(*reference,*p,false,0)
+    VisibilityBuild(*optimized,*p,true,0)
+    heights: [7]s32=.[257,1,2,3,5,7,259]
+    for index: 0..6 {
+        height := heights[index]
+        width := (65536+height-1)/height
+        a.width=width; a.height=height; b.width=width; b.height=height
+        if !RenderScene(*reference,ShaderSceneCamera(),*a) { return 2 }
+        ordinary := RenderSceneStatistics()
+        if ordinary.depth_prepass || ordinary.depth_fragments!=0 || ordinary.shaded_fragments<=0 { return 3 }
+        if !RenderScene(*optimized,ShaderSceneCamera(),*b) { return 4 }
+        visibility := RenderSceneStatistics()
+        if !visibility.depth_prepass || visibility.depth_fragments<=0 || visibility.shaded_fragments<=0 ||
+            visibility.shaded_fragments>ordinary.shaded_fragments ||
+            visibility.depth_fragments>cast(s64)width*height*16 { return 5 }
+        for at: 0..a.pixels.count-1 { if a.pixels[at]!=b.pixels[at] { return 6 } }
+    }
+    return 0
+}

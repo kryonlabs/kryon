@@ -1,0 +1,173 @@
+// GPU transforms follow the public Scene camera convention.
+#import "std/math"
+#import "scene"
+#import "scene_render"
+GPU_PI :: 3.141592653589793;
+GpuMatrix :: struct { m: [16]float64 }
+Min :: (a: float64, b: float64) -> float64 { return ifx a < b then a else b }
+Max :: (a: float64, b: float64) -> float64 { return ifx a > b then a else b }
+Abs :: (a: float64) -> float64 { return ifx a < 0.0 then -a else a }
+Saturate :: (a: float64) -> float64 { return Min(Max(a, 0.0), 1.0) }
+Add :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x + b.x, a.y + b.y, a.z + b.z} }
+Sub :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x - b.x, a.y - b.y, a.z - b.z} }
+Times :: (a: Vector3, k: float64) -> Vector3 { return .{a.x * k, a.y * k, a.z * k} }
+Mul :: (a: Vector3, b: Vector3) -> Vector3 { return .{a.x * b.x, a.y * b.y, a.z * b.z} }
+Dot :: (a: Vector3, b: Vector3) -> float64 { return a.x * b.x + a.y * b.y + a.z * b.z }
+Cross :: (a: Vector3, b: Vector3) -> Vector3 {
+    return .{a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x}
+}
+Normalize :: (a: Vector3) -> Vector3 {
+    length := Sqrt(Dot(a, a))
+    if length == 0.0 { return a }
+    return .{a.x / length, a.y / length, a.z / length}
+}
+
+Identity :: () -> GpuMatrix {
+    result: GpuMatrix
+    result.m[0] = 1.0; result.m[5] = 1.0; result.m[10] = 1.0; result.m[15] = 1.0
+    return result
+}
+
+Multiply :: (a: GpuMatrix, b: GpuMatrix) -> GpuMatrix {
+    result: GpuMatrix
+    for row: 0..3 {
+        for column: 0..3 {
+            sum: float64 = 0.0
+            for k: 0..3 { sum += a.m[row * 4 + k] * b.m[k * 4 + column] }
+            result.m[row * 4 + column] = sum
+        }
+    }
+    return result
+}
+
+// Translation, then XYZ rotation, then scale, as three.js composes.
+Compose :: (position: Vector3, rotation: Vector3, scale: Vector3) -> GpuMatrix {
+    a := Cos(rotation.x); b := Sin(rotation.x)
+    c := Cos(rotation.y); d := Sin(rotation.y)
+    e := Cos(rotation.z); f := Sin(rotation.z)
+    ae := a * e; af := a * f; be := b * e; bf := b * f
+    result := Identity()
+    result.m[0] = c * e * scale.x; result.m[1] = -c * f * scale.y; result.m[2] = d * scale.z
+    result.m[4] = (af + be * d) * scale.x; result.m[5] = (ae - bf * d) * scale.y; result.m[6] = -b * c * scale.z
+    result.m[8] = (bf - ae * d) * scale.x; result.m[9] = (be + af * d) * scale.y; result.m[10] = a * c * scale.z
+    result.m[3] = position.x; result.m[7] = position.y; result.m[11] = position.z
+    return result
+}
+
+Inverse :: (a: GpuMatrix) -> GpuMatrix {
+    m := a.m
+    inv: [16]float64
+    inv[0] = m[5] * m[10] * m[15] - m[5] * m[11] * m[14] - m[9] * m[6] * m[15] + m[9] * m[7] * m[14] + m[13] * m[6] * m[11] - m[13] * m[7] * m[10]
+    inv[4] = -m[4] * m[10] * m[15] + m[4] * m[11] * m[14] + m[8] * m[6] * m[15] - m[8] * m[7] * m[14] - m[12] * m[6] * m[11] + m[12] * m[7] * m[10]
+    inv[8] = m[4] * m[9] * m[15] - m[4] * m[11] * m[13] - m[8] * m[5] * m[15] + m[8] * m[7] * m[13] + m[12] * m[5] * m[11] - m[12] * m[7] * m[9]
+    inv[12] = -m[4] * m[9] * m[14] + m[4] * m[10] * m[13] + m[8] * m[5] * m[14] - m[8] * m[6] * m[13] - m[12] * m[5] * m[10] + m[12] * m[6] * m[9]
+    inv[1] = -m[1] * m[10] * m[15] + m[1] * m[11] * m[14] + m[9] * m[2] * m[15] - m[9] * m[3] * m[14] - m[13] * m[2] * m[11] + m[13] * m[3] * m[10]
+    inv[5] = m[0] * m[10] * m[15] - m[0] * m[11] * m[14] - m[8] * m[2] * m[15] + m[8] * m[3] * m[14] + m[12] * m[2] * m[11] - m[12] * m[3] * m[10]
+    inv[9] = -m[0] * m[9] * m[15] + m[0] * m[11] * m[13] + m[8] * m[1] * m[15] - m[8] * m[3] * m[13] - m[12] * m[1] * m[11] + m[12] * m[3] * m[9]
+    inv[13] = m[0] * m[9] * m[14] - m[0] * m[10] * m[13] - m[8] * m[1] * m[14] + m[8] * m[2] * m[13] + m[12] * m[1] * m[10] - m[12] * m[2] * m[9]
+    inv[2] = m[1] * m[6] * m[15] - m[1] * m[7] * m[14] - m[5] * m[2] * m[15] + m[5] * m[3] * m[14] + m[13] * m[2] * m[7] - m[13] * m[3] * m[6]
+    inv[6] = -m[0] * m[6] * m[15] + m[0] * m[7] * m[14] + m[4] * m[2] * m[15] - m[4] * m[3] * m[14] - m[12] * m[2] * m[7] + m[12] * m[3] * m[6]
+    inv[10] = m[0] * m[5] * m[15] - m[0] * m[7] * m[13] - m[4] * m[1] * m[15] + m[4] * m[3] * m[13] + m[12] * m[1] * m[7] - m[12] * m[3] * m[5]
+    inv[14] = -m[0] * m[5] * m[14] + m[0] * m[6] * m[13] + m[4] * m[1] * m[14] - m[4] * m[2] * m[13] - m[12] * m[1] * m[6] + m[12] * m[2] * m[5]
+    inv[3] = -m[1] * m[6] * m[11] + m[1] * m[7] * m[10] + m[5] * m[2] * m[11] - m[5] * m[3] * m[10] - m[9] * m[2] * m[7] + m[9] * m[3] * m[6]
+    inv[7] = m[0] * m[6] * m[11] - m[0] * m[7] * m[10] - m[4] * m[2] * m[11] + m[4] * m[3] * m[10] + m[8] * m[2] * m[7] - m[8] * m[3] * m[6]
+    inv[11] = -m[0] * m[5] * m[11] + m[0] * m[7] * m[9] + m[4] * m[1] * m[11] - m[4] * m[3] * m[9] - m[8] * m[1] * m[7] + m[8] * m[3] * m[5]
+    inv[15] = m[0] * m[5] * m[10] - m[0] * m[6] * m[9] - m[4] * m[1] * m[10] + m[4] * m[2] * m[9] + m[8] * m[1] * m[6] - m[8] * m[2] * m[5]
+    determinant := m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12]
+    result: GpuMatrix
+    if determinant == 0.0 { return result }
+    for at: 0..15 { result.m[at] = inv[at] / determinant }
+    return result
+}
+
+Determinant3 :: (a: GpuMatrix) -> float64 {
+    m := a.m
+    return m[0] * (m[5] * m[10] - m[6] * m[9]) - m[1] * (m[4] * m[10] - m[6] * m[8]) + m[2] * (m[4] * m[9] - m[5] * m[8])
+}
+
+// The upper 3 by 3 part inverted and transposed, for normals.
+NormalMatrix :: (a: GpuMatrix) -> GpuMatrix {
+    upper := a
+    upper.m[3] = 0.0; upper.m[7] = 0.0; upper.m[11] = 0.0
+    upper.m[12] = 0.0; upper.m[13] = 0.0; upper.m[14] = 0.0; upper.m[15] = 1.0
+    inverse := Inverse(upper)
+    result: GpuMatrix
+    for row: 0..3 { for column: 0..3 { result.m[row * 4 + column] = inverse.m[column * 4 + row] } }
+    return result
+}
+
+Point :: (a: GpuMatrix, p: Vector3) -> Vector3 {
+    return .{a.m[0] * p.x + a.m[1] * p.y + a.m[2] * p.z + a.m[3],
+        a.m[4] * p.x + a.m[5] * p.y + a.m[6] * p.z + a.m[7],
+        a.m[8] * p.x + a.m[9] * p.y + a.m[10] * p.z + a.m[11]}
+}
+
+Direction :: (a: GpuMatrix, p: Vector3) -> Vector3 {
+    return .{a.m[0] * p.x + a.m[1] * p.y + a.m[2] * p.z,
+        a.m[4] * p.x + a.m[5] * p.y + a.m[6] * p.z,
+        a.m[8] * p.x + a.m[9] * p.y + a.m[10] * p.z}
+}
+
+// The transposed rotation: from view space back to the world.
+BackDirection :: (a: GpuMatrix, p: Vector3) -> Vector3 {
+    return .{a.m[0] * p.x + a.m[4] * p.y + a.m[8] * p.z,
+        a.m[1] * p.x + a.m[5] * p.y + a.m[9] * p.z,
+        a.m[2] * p.x + a.m[6] * p.y + a.m[10] * p.z}
+}
+
+ProjectW :: (a: GpuMatrix, p: Vector3) -> float64 {
+    return a.m[12] * p.x + a.m[13] * p.y + a.m[14] * p.z + a.m[15]
+}
+
+// The world-to-eye matrix of an eye at POSITION facing TARGET, as
+// three.js's Object3D.lookAt for cameras.
+LookAt :: (position: Vector3, target: Vector3, up: Vector3) -> GpuMatrix {
+    z := Sub(position, target)
+    if Dot(z, z) == 0.0 { z.z = 1.0 }
+    z = Normalize(z)
+    x := Cross(up, z)
+    if Dot(x, x) == 0.0 {
+        if Abs(up.z) == 1.0 { z.x += 0.0001 } else { z.z += 0.0001 }
+        z = Normalize(z)
+        x = Cross(up, z)
+    }
+    x = Normalize(x)
+    y := Cross(z, x)
+    result := Identity()
+    result.m[0] = x.x; result.m[1] = x.y; result.m[2] = x.z
+    result.m[4] = y.x; result.m[5] = y.y; result.m[6] = y.z
+    result.m[8] = z.x; result.m[9] = z.y; result.m[10] = z.z
+    result.m[3] = -Dot(x, position); result.m[7] = -Dot(y, position); result.m[11] = -Dot(z, position)
+    return result
+}
+
+Orthographic :: (left: float64, right: float64, top: float64, bottom: float64, near: float64, far: float64) -> GpuMatrix {
+    result := Identity()
+    result.m[0] = 2.0 / (right - left); result.m[3] = -(right + left) / (right - left)
+    result.m[5] = 2.0 / (top - bottom); result.m[7] = -(top + bottom) / (top - bottom)
+    result.m[10] = -2.0 / (far - near); result.m[11] = -(far + near) / (far - near)
+    return result
+}
+
+Projection :: (camera: SceneCamera) -> GpuMatrix {
+    if !camera.perspective {
+        return Orthographic(camera.left, camera.right, camera.top, camera.bottom, camera.near, camera.far)
+    }
+    top := camera.near * Tan(camera.fov * GPU_PI / 360.0)
+    height := 2.0 * top
+    width := camera.aspect * height
+    left := -0.5 * width
+    right := left + width
+    bottom := top - height
+    result: GpuMatrix
+    result.m[0] = 2.0 * camera.near / (right - left)
+    // Match the CPU homogeneous clip offset, including frustum clipping.
+    result.m[2] = (right + left) / (right - left) - camera.shift_x
+    result.m[5] = 2.0 * camera.near / (top - bottom)
+    result.m[6] = (top + bottom) / (top - bottom) - camera.shift_y
+    result.m[10] = -(camera.far + camera.near) / (camera.far - camera.near)
+    result.m[11] = -2.0 * camera.far * camera.near / (camera.far - camera.near)
+    result.m[14] = -1.0
+    return result
+}
+

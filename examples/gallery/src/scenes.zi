@@ -432,12 +432,9 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         digits: [16]u8
         Label(session, FormatInteger(cast(s64)discrete, digits[:]), 180.0)
     } else if scene == 53 {
-        packs: [2]StylePackOption
-        packs[0].id = "light"; packs[0].label = "Light"; packs[0].active = !dark
-        packs[1].id = "dark"; packs[1].label = "Dark"; packs[1].active = dark
-        picked := StylePicker(session, StylePickerProps.{.dropdown = .{.bounds = b, .disabled = disabled}}, packs[:])
-        if picked.changed { dark = picked.selected_id == "dark" }
-        Label(session, "The caller applies the chosen palette.", 150.0)
+        card := Card(session, CardProps.{.key = 10, .bounds = b})
+        Text(session, TextProps.{.bounds = card.content, .text = "One modern CUI style"})
+        Label(session, "Colors and light/dark remain customizable.", 150.0)
     } else if scene == 54 {
         variants: [3]CardVariant = .{.CardFilled, .CardElevated, .CardOutlined}
         for index: cast(s32)0..2 {
@@ -507,7 +504,7 @@ SceneName :: (index: s32) -> string {
     if index == 50 { return "Text selection" }
     if index == 51 { return "Transition fade" }
     if index == 52 { return "DiscreteSlider" }
-    if index == 53 { return "StylePicker" }
+    if index == 53 { return "CUI style" }
     if index == 54 { return "Card" }
     return ""
 }

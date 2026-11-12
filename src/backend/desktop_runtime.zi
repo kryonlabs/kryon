@@ -89,6 +89,10 @@ FreeSurface :: (surface: *void) #foreign sdl_library "SDL_FreeSurface";
 CreateSystemCursor :: (shape: s32) -> *void #foreign sdl_library "SDL_CreateSystemCursor";
 SetCursor :: (cursor: *void) #foreign sdl_library "SDL_SetCursor";
 FreeCursor :: (cursor: *void) #foreign sdl_library "SDL_FreeCursor";
+GetWindowSurface :: (window: *void) -> *void #foreign sdl_library "SDL_GetWindowSurface";
+UpdateWindowSurface :: (window: *void) -> s32 #foreign sdl_library "SDL_UpdateWindowSurface";
+DestroyWindowSurface :: (window: *void) -> s32 #foreign sdl_library "SDL_DestroyWindowSurface";
+BlitSurface :: (source: *void, destination: *void) -> s32 #foreign sdl_library "SDL_UpperBlit";
 
 NumJoysticks :: () -> s32 #foreign sdl_library "SDL_NumJoysticks";
 IsGameController :: (index: s32) -> s32 #foreign sdl_library "SDL_IsGameController";
@@ -209,10 +213,12 @@ desktop_frame_unchanged: bool;
 desktop_present_pending: bool;
 desktop_texture_dirty: bool;
 desktop_texture_reset: bool;
+// Scheduling activity is independent of retained paint and presentation.
+desktop_frame_requested: bool;
 desktop_pixels_valid: bool;
-// Keep the native window hidden until its first complete frame is presented.
+// A blank mapped window appears before the first application frame.
 desktop_first_frame: bool;
-desktop_first_frame_show: bool;
+desktop_surface_present: bool;
 // A size ResizeDesktop asked for, applied when the next frame begins.
 desktop_next_width: s32;
 desktop_next_height: s32;
@@ -406,6 +412,7 @@ DesktopLanczosWake :: (argument: *void) {
 OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
+    desktop_surface_present = Presenter.PixmapSurfaceRequested()
     if Init(cast(u32)0x2020) != 0 { return false }
     #if #defined(POSIX_THREADS) || #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS) {
         Lanczos.LanczosSetWake(DesktopLanczosWake, null)
@@ -434,9 +441,12 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     unused SetHint(*hint[0], *enabled[0])
     title: [512]u8
     if !CopyCString(ProgramTitle(), title[:]) { return false }
+    window_flags := cast(u32)0x20 // RESIZABLE, visible immediately
+    if !desktop_surface_present { window_flags = window_flags | cast(u32)0x2 }
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
-        cast(s32)0x2fff0000, width, height, cast(u32)0x28)
+        cast(s32)0x2fff0000, width, height, window_flags)
     if window == null { return false }
+    ShowWindow(window)
     // Select an explicit native arrow before the first frame is drawn. This
     // also covers hosts that own their loop and have no retained tree yet.
     arrow:=DesktopSystemCursor(0)
@@ -444,11 +454,13 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     unused ShowCursor(1)
     desktop_cursor_hidden=false
     desktop_cursor_applied_valid=false
-    renderer = Presenter.CreatePixmapRenderer(window)
-    if renderer == null { return false }
-    texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width,
-        height)
-    if texture == null { return false }
+    if !desktop_surface_present {
+        renderer = Presenter.CreatePixmapRenderer(window)
+        if renderer == null { return false }
+        texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1,
+            width, height)
+        if texture == null { return false }
+    }
     desktop_width = width
     desktop_height = height
     desktop_present_pending = true
@@ -456,7 +468,6 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     desktop_texture_reset = false
     desktop_pixels_valid = false
     desktop_first_frame = true
-    desktop_first_frame_show = true
     StartTextInput()
     if !OpenRaster(width, height) { return false }
     DesktopControllersScan()
@@ -576,22 +587,27 @@ DesktopApplyResize :: () -> bool {
     if width <= 0 || (width == desktop_width && height == desktop_height) {
         return true
     }
-    next: *void = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width,
-        height)
-    if next == null { return false }
+    next: *void = null
+    if !desktop_surface_present {
+        next = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width,
+            height)
+        if next == null { return false }
+    }
     CloseRaster()
     desktop_pixels_valid = false
     desktop_texture_dirty = true
     desktop_present_pending = true
     if !OpenRaster(width, height) {
-        DestroyTexture(next)
+        if !desktop_surface_present { DestroyTexture(next) }
         // Go back to the old size, which opened before.
         CloseRaster()
         unused OpenRaster(desktop_width, desktop_height)
         return false
     }
-    DestroyTexture(texture)
-    texture = next
+    if !desktop_surface_present {
+        DestroyTexture(texture)
+        texture = next
+    }
     SetWindowSize(window, width, height)
     desktop_width = width
     desktop_height = height
@@ -1087,6 +1103,7 @@ CheckPointerEvents :: () -> bool {
 #program_export
 BeginDesktopFrame :: () {
     desktop_frame_unchanged = false
+    desktop_frame_requested = false
     unused DesktopApplyResize()
     BeginRasterFrame(true)
 }
@@ -1142,6 +1159,33 @@ EndDesktopFrame :: () -> bool {
     // A hidden window keeps running the app's frames without presenting.
     if !WindowVisibleHost() && !desktop_first_frame { return true }
     if !desktop_texture_dirty && !desktop_present_pending { return true }
+    if desktop_surface_present {
+        destination := GetWindowSurface(window)
+        if destination == null { return false }
+        source := CursorSurface(RasterSurfaceData(), desktop_width, desktop_height,
+            32, RasterSurfaceStride(), cast(u32)0x00ff0000, cast(u32)0x0000ff00,
+            cast(u32)0x000000ff, cast(u32)0)
+        if source == null { return false }
+        blitted := BlitSurface(source, destination) == 0
+        FreeSurface(source)
+        if blitted && UpdateWindowSurface(window) == 0 {
+            desktop_texture_dirty = false
+            desktop_present_pending = false
+            desktop_first_frame = false
+            return true
+        }
+        // Some X11 visuals reject window-surface blits. The window already gave
+        // Explorer its mapped startup advantage, so switch this instance to the
+        // retained texture instead of abandoning the frame.
+        if DestroyWindowSurface(window) != 0 { return false }
+        desktop_surface_present = false
+        renderer = Presenter.CreateAcceleratedPixmapRenderer(window)
+        if renderer == null { return false }
+        texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1,
+            desktop_width, desktop_height)
+        if texture == null { return false }
+        desktop_texture_reset = false
+    }
     if desktop_texture_reset {
         next := CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1,
             desktop_width, desktop_height)
@@ -1159,9 +1203,6 @@ EndDesktopFrame :: () -> bool {
     if RenderCopy(renderer, texture, null, null) != 0 { return false }
     if desktop_first_frame {
         desktop_first_frame = false
-        // SDL recreates a software window surface when it is shown. Present
-        // after that transition, before any application loading can resume.
-        if desktop_first_frame_show { ShowWindow(window) }
     }
     RenderPresent(renderer)
     desktop_present_pending = false
@@ -1173,10 +1214,17 @@ DesktopFrameUnchanged :: (unchanged: bool) {
     desktop_frame_unchanged = unchanged && Video.pipeline == null
 }
 
+// Requests aggregate for this frame. A later component cannot erase a request.
+// This changes only pacing; it never clears retained pixels or uploads texture.
+#program_export
+DesktopRequestFrame :: () {
+    desktop_frame_requested = true
+}
+
 #program_export
 PauseDesktop :: () {
     milliseconds := Clock.Wait(*frame_clock, PerformanceCounter(),
-        frame_frequency, WindowVisibleHost(), desktop_frame_unchanged)
+        frame_frequency, WindowVisibleHost(), desktop_frame_unchanged && !desktop_frame_requested)
     if milliseconds > cast(u32)0 {
         // A null event pointer leaves the first event queued for PollDesktop.
         // Input wakes a stable screen immediately rather than waiting for its
@@ -1205,11 +1253,6 @@ WindowFocusedHost :: () -> bool {
 #program_export
 WindowSetVisibleHost :: (visible: bool) {
     if window == null { return }
-    if desktop_first_frame {
-        // Explicit visibility still waits for fully painted initial pixels.
-        desktop_first_frame_show = visible
-        return
-    }
     if visible {
         ShowWindow(window)
         RaiseWindow(window)

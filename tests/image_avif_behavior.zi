@@ -2,13 +2,19 @@
 AVIFTest :: #import "avif/api"
 #import "std/byte_text_linux"
 #import "std/text"
+test_c :: #system_library "c";
+TestAllocate :: (size: usize) -> *void #foreign test_c "malloc";
+TestFree :: (pointer: *void) #foreign test_c "free";
 upright_host: bool;
 decode_calls: s32;
+release_calls: s32;
+fail_decode: bool;
 #program_export
 ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s32, channels: *s32, upright: *bool) -> *u8 {
     decode_calls += 1
+    if fail_decode { return null }
     width.* = 2; height.* = 1; channels.* = 4; upright.* = upright_host
-    pixels := cast(*u8)PreviewAllocate(8)
+    pixels := cast(*u8)TestAllocate(8)
     if pixels != null {
         pixels[0] = 255; pixels[1] = 0; pixels[2] = 0; pixels[3] = 0
         pixels[4] = 0; pixels[5] = 0; pixels[6] = 255; pixels[7] = 255
@@ -16,44 +22,60 @@ ImagePreviewDecode :: (data: string, file_type: string, width: *s32, height: *s3
     return pixels
 }
 #program_export
-ImagePreviewRelease :: (pixels: *u8) { PreviewFree(cast(*void)pixels) }
+ImagePreviewRelease :: (pixels: *u8) {
+    release_calls += 1
+    TestFree(cast(*void)pixels)
+}
 #program_export
 main :: () -> s32 {
     // Container admission fixture; host boundary deliberately supplies known pixels.
     png: [45]u8 = .[137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,2,0,0,0,1,8,6,0,0,0,0,0,0,0,0,0,0,0,73,69,78,68,0,0,0,0]
-    data := TextFromBytes(png[:])
-    encoded := ImageCompressAVIF(data,".png",1)
-    if !encoded.is_ok || encoded.width != 2 || encoded.height != 1 || encoded.source_bytes != 45 || encoded.encoded_bytes != encoded.data.count || encoded.data.count == 0 { return 1 }
-    decoded := AVIFTest.Decode(AVIFTest.BorrowBytes(ImageAVIFBytes(encoded.data)),AVIFTest.DefaultOptions())
-    if !decoded.is_ok || decoded.image.pixels[3] != cast(u8)0 || decoded.image.pixels[7] != cast(u8)255 { return 2 }
-    ImageAVIFFree(*encoded)
-    if encoded.data.count != 0 || encoded.is_ok { return 3 }
-    preview := ImagePreviewRGBA(data,".png",1,1)
-    if !preview.is_ok || preview.width != 1 || preview.height != 1 || preview.pixels[0] != cast(u8)0 || preview.pixels[2] != cast(u8)255 || preview.pixels[3] != cast(u8)128 { return 4 }
-    ImagePreviewRGBAFree(*preview)
-    if preview.pixels != null || preview.is_ok { return 5 }
-    preview = ImagePreviewRGBA(data,".png",2,6)
-    if !preview.is_ok || preview.width != 1 || preview.height != 2 || preview.pixels[3] != cast(u8)0 || preview.pixels[7] != cast(u8)255 { return 6 }
-    ImagePreviewRGBAFree(*preview)
+    {
+        data := TextFromBytes(png[:])
+        info := ImageReadInfo(data, ".png")
+        if !info.is_ok || info.width != 2 || info.height != 1 ||
+        info.channels != 4 || info.upright || decode_calls != 1 || release_calls != 1 {
+            return 12
+        }
+        info = ImageReadInfo("", ".png")
+        if info.is_ok || decode_calls != 1 || release_calls != 1 { return 13 }
+        fail_decode = true
+        info = ImageReadInfo(data, ".png")
+        fail_decode = false
+        if info.is_ok || decode_calls != 2 || release_calls != 1 { return 14 }
+        encoded := ImageCompressAVIF(data,".png",1)
+        if !encoded.is_ok || encoded.width != 2 || encoded.height != 1 || encoded.source_bytes != 45 || encoded.encoded_bytes != encoded.data.count || encoded.data.count == 0 { return 1 }
+        decoded := AVIFTest.Decode(AVIFTest.BorrowBytes(ImageAVIFBytes(encoded.data)),AVIFTest.DefaultOptions())
+        if !decoded.is_ok || decoded.image.pixels[3] != cast(u8)0 || decoded.image.pixels[7] != cast(u8)255 { return 2 }
+        ImageAVIFFree(*encoded)
+        if encoded.data.count != 0 || encoded.is_ok { return 3 }
+        preview := ImagePreviewRGBA(data,".png",1,1)
+        if !preview.is_ok || preview.width != 1 || preview.height != 1 || preview.pixels[0] != cast(u8)0 || preview.pixels[2] != cast(u8)255 || preview.pixels[3] != cast(u8)128 { return 4 }
+        ImagePreviewRGBAFree(*preview)
+        if preview.pixels != null || preview.is_ok { return 5 }
+        preview = ImagePreviewRGBA(data,".png",2,6)
+        if !preview.is_ok || preview.width != 1 || preview.height != 2 || preview.pixels[3] != cast(u8)0 || preview.pixels[7] != cast(u8)255 { return 6 }
+        ImagePreviewRGBAFree(*preview)
+    }
     before := decode_calls
     png[24] = 16
-    rejected := ImageCompressAVIF(data,".png",1)
+    rejected := ImageCompressAVIF(TextFromBytes(png[:]),".png",1)
     if rejected.is_ok || rejected.error.code != AVIFTest.UnsupportedCapability || decode_calls != before { return 7 }
     png[24] = 8; png[37] = 97; png[38] = 99; png[39] = 84; png[40] = 76
-    rejected = ImageCompressAVIF(data,".png",1)
+    rejected = ImageCompressAVIF(TextFromBytes(png[:]),".png",1)
     if rejected.is_ok || rejected.error.code != AVIFTest.UnsupportedCapability || decode_calls != before { return 8 }
     // Unhandled PNG color/HDR metadata must never disappear during encoding.
     unsupported_chunks: [3]string = .["cICP","mDCV","cLLI"]
     for kind: unsupported_chunks {
         for i: 0..3 { png[37 + i] = kind[i] }
-        rejected = ImageCompressAVIF(data,".png",1)
+        rejected = ImageCompressAVIF(TextFromBytes(png[:]),".png",1)
         if rejected.is_ok || rejected.error.code != AVIFTest.UnsupportedCapability || decode_calls != before { return 11 }
     }
     png[37] = 73; png[38] = 69; png[39] = 78; png[40] = 68
-    rejected = ImageCompressAVIF(data,".png",1,0)
+    rejected = ImageCompressAVIF(TextFromBytes(png[:]),".png",1,0)
     if rejected.is_ok || rejected.error.code != AVIFTest.InvalidInput || decode_calls != before { return 9 }
     upright_host = true
-    rejected = ImageCompressAVIF(data,".png",2)
+    rejected = ImageCompressAVIF(TextFromBytes(png[:]),".png",2)
     if rejected.is_ok || rejected.error.code != AVIFTest.UnsupportedCapability { return 10 }
     print("Kryon AVIF adapter: bytes, alpha, orientation, admission and ownership passed\n")
     return 0

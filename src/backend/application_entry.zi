@@ -1,0 +1,17 @@
+// Process-entry adapter for applications with a custom frame lifecycle.
+// The application exports KryonApplicationMain; the selected host supplies
+// arguments on native targets and an empty command line in a browser.
+application_host :: #system_library "host_api";
+KryonApplicationMain :: (argc: s32, argv: **u8) -> s32 #foreign application_host;
+
+#if #defined(PLATFORM_WEB) {
+    #program_export
+    main :: () -> s32 {
+        return KryonApplicationMain(0, null)
+    }
+} else {
+    #program_export
+    main :: (argc: s32, argv: **u8) -> s32 {
+        return KryonApplicationMain(argc, argv)
+    }
+}

@@ -1,0 +1,109 @@
+Fixture :: #import "shader_scene_test";
+Pixels :: #import "image_pixels_test";
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "kryon/bitmap_image"
+#import "kryon/session"
+#import "kryon/geometry"
+#import "kryon/drawing_props"
+#import "std/image"
+#import "std/vec"
+#if #defined(SHADER_CAIRO) {
+    Desktop :: #import "desktop_runtime";
+    Raster :: #import "cairo_raster";
+} else {
+    Raster :: #import "kryon/raylib_runtime";
+    #import "raylib_image_decode"
+    probe :: #system_library "raylib";
+    Capture :: () -> RaylibGlyphImage #foreign probe "LoadImageFromScreen";
+    FreeCapture :: (image: RaylibGlyphImage) #foreign probe "UnloadImage";
+}
+#if #defined(PLATFORM_WEB) {
+    #import "std/web"
+}
+
+Open :: () -> bool {
+    #if #defined(SHADER_CAIRO) {
+        return Desktop.OpenDesktopSized(64,64)
+    } else {
+        return Raster.OpenRaylib(64,64)
+    }
+}
+Close :: () {
+    #if #defined(SHADER_CAIRO) {
+        Desktop.CloseDesktop()
+    } else {
+        Raster.CloseRaylib()
+    }
+}
+Draw :: (image: Texture2D, clip: Rectangle) -> bool {
+    #if #defined(SHADER_CAIRO) {
+        Desktop.BeginDesktopFrame()
+    } else {
+        Raster.BeginRaylibFrame()
+    }
+    Raster.RasterImage("",image.id,.{0.0,0.0,16.0,16.0},.{0.0,0.0,64.0,64.0},clip,.{},0.0,0.0,.{255,255,255,255})
+    #if #defined(SHADER_CAIRO) {
+        return Desktop.EndDesktopFrame()
+    } else {
+        return Raster.EndRaylibFrame()
+    }
+}
+Pixel :: (x: s32,y: s32) -> u32 {
+    #if #defined(SHADER_CAIRO) {
+        bytes:=cast(*u32)Raster.RasterSurfaceData()
+        return bytes[y*(Raster.RasterSurfaceStride()/4)+x] & cast(u32)0xffffff
+    } else {
+        capture:=Capture(); defer FreeCapture(capture)
+        if capture.data==null || capture.format!=7 { return cast(u32)0xffffffff }
+        bytes:=cast(*u8)capture.data; at:=(y*capture.width+x)*4
+        return (cast(u32)bytes[at]<<16)|(cast(u32)bytes[at+1]<<8)|cast(u32)bytes[at+2]
+    }
+}
+Near :: (actual: u32, expected: u32) -> bool {
+    for shift: 0..2 {
+        a:=cast(s32)((actual >> cast(u32)(shift*8)) & cast(u32)255)
+        b:=cast(s32)((expected >> cast(u32)(shift*8)) & cast(u32)255)
+        if a<b-3 || a>b+3 { print("host colour % expected %\n",actual,expected); return false }
+    }
+    return true
+}
+Test :: () -> s32 {
+    scene: Scene
+    if !Fixture.ShaderSceneBuild(*scene) { return 1 }
+    defer { SceneFree(*scene); Fixture.ShaderSceneFree() }
+    picture: Image; picture.width=16; picture.height=16
+    defer VecFree(picture.pixels)
+    if !Open() { return 2 }
+    defer Close()
+    session:=SessionOpen(); defer { unused SessionClose(session) }
+    if !RenderScene(*scene,Fixture.ShaderSceneCamera(),*picture) { return 3 }
+    image:=BitmapImageCreate(session,16,16,picture.pixels[:])
+    if image.id==cast(u32)0 { return 4 }
+    defer BitmapImageRelease(session,image)
+    if !Draw(image,.{0.0,0.0,32.0,64.0}) || !Near(Pixel(8,8),cast(u32)0xfc7d7e) || !Near(Pixel(56,8),cast(u32)0xf8fafc) { return 5 }
+    Fixture.ShaderSceneUniform(.{0.0,0.0,1.0,1.0})
+    if !RenderScene(*scene,Fixture.ShaderSceneCamera(),*picture) || !BitmapImageUpdate(session,image,picture.pixels[:]) { return 6 }
+    if !Draw(image,.{0.0,0.0,64.0,64.0}) || !Near(Pixel(8,8),cast(u32)0) || !Near(Pixel(8,56),cast(u32)0x0000ff) { return 7 }
+    // Drop provider textures/context while keeping the owned shader and bitmap.
+    Close()
+    RenderSceneRelease()
+    if !Open() { return 8 }
+    Fixture.ShaderSceneUniform(.{1.0,1.0,1.0,1.0}); Fixture.ShaderSceneSampler(128)
+    if !RenderScene(*scene,Fixture.ShaderSceneCamera(),*picture) || !BitmapImageUpdate(session,image,picture.pixels[:]) { return 9 }
+    if !Draw(image,.{0.0,0.0,64.0,64.0}) || !Near(Pixel(8,8),cast(u32)0xbc0000) { return 10 }
+    return 0
+}
+#program_export
+main :: () -> s32 {
+    result:=Test()+Pixels.main()+Fixture.ColorTransfer()+Fixture.ParallelRows()+Fixture.VisibilityDepth()+Fixture.VisibilityRows()
+    print("Shader host result %\n",result)
+    #if #defined(PLATFORM_WEB) {
+        scope:=WebScope()
+        doc:=WebGetObject(WebGlobal,WebName("document"))
+        element:=WebAsObject(WebCall1(doc,WebName("getElementById"),WebText("result")))
+        WebSet(element,WebName("textContent"),WebText(ifx result==0 then "PASS" else "FAIL"))
+        WebEnd(scope)
+    }
+    return result
+}

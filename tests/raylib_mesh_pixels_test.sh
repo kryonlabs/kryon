@@ -15,8 +15,8 @@ webp=${WEBP_A:-"$repo/build/webp-ziran/libkryonwebp.a"}
 test -f "$archive" && test -f "$webp" || { echo "build a raylib project first, or set RAYLIB_A and WEBP_A" >&2; exit 1; }
 raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl -lpthread -lm}
 "$ziran" build --target=c --root "$repo/tests" \
-    $kryon_ui_args --module-path "$repo/src/backend" \
-    --module-path "$ziran_root/std" -o "$work/c" \
+    $kryon_project_args \
+     -o "$work/c" \
     "$repo/tests/raylib_mesh_pixels_test.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
     -Wl,--gc-sections -I"$work/c" "$work/c"/*.c "$archive" "$webp" "${AVIF_A:-$repo/build/avif-ziran/avif/libavif.a}" "${AOM_A:-$repo/build/avif-ziran/aom/libaom.a}" \

@@ -17,19 +17,19 @@ name=ziran_paint_text_freed_test
 source=$repo/tests/$name.zi
 host=$name
 set -- \
-    --bind font_metrics:MeasureGlyphWidth=$host:MeasureGlyphWidth \
-    --bind font_metrics:MeasureGlyphLineHeight=$host:MeasureGlyphLineHeight \
-    --bind raster:RasterLine=$host:RasterLine \
-    --bind raster_shape:RasterRoundedRectangle=$host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=$host:RasterRoundedRectangleOutline \
-    --bind raster_text:RasterText=$host:RasterText \
-    --bind raster_text:RasterTextClipped=$host:RasterTextClipped \
-    --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
-    --bind raster_triangles:RasterTriangles=$host:RasterTriangles \
-    --bind paint_queue:RasterImage=$host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
-"$ziran" ir --root "$repo/tests" $kryon_ui_args \
-    --module-path "$ziran_root/std" -o "$work/ir" "$source"
+    --bind kryon/font_metrics:MeasureGlyphWidth=$host:MeasureGlyphWidth \
+    --bind kryon/font_metrics:MeasureGlyphLineHeight=$host:MeasureGlyphLineHeight \
+    --bind kryon/raster:RasterLine=$host:RasterLine \
+    --bind kryon/raster_shape:RasterRoundedRectangle=$host:RasterRoundedRectangle \
+    --bind kryon/raster_shape:RasterRoundedRectangleOutline=$host:RasterRoundedRectangleOutline \
+    --bind kryon/raster_text:RasterText=$host:RasterText \
+    --bind kryon/raster_text:RasterTextClipped=$host:RasterTextClipped \
+    --bind kryon/raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
+    --bind kryon/raster_triangles:RasterTriangles=$host:RasterTriangles \
+    --bind kryon/paint_queue:RasterImage=$host:RasterImage \
+    --bind kryon/paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
+"$ziran" ir --root "$repo/tests" $kryon_project_args \
+     -o "$work/ir" "$source"
 cat > "$work/count.c" <<'C'
 #include "ziran_paint_text_freed_test.h"
 #include <stddef.h>
@@ -71,17 +71,17 @@ C
 for form in source saved; do
     input=$source
     module_root=$repo/tests
-    module_path="$kryon_ui_args"
+    module_path="$kryon_project_args"
     if test "$form" = saved; then
         input=$work/ir/$name.zir
         module_root=$work/ir
-        module_path="--module-path $work/ir"
+        module_path="--project --module-path $work/ir"
     fi
     # A library build, without an entry, is called from the counting and
     # sanitized C programs.
     library=$work/$form-c
     "$ziran" build --target=c --root "$module_root" $module_path \
-        --module-path "$ziran_root/std" -o "$library" "$input"
+         -o "$library" "$input"
     "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections \
         -I"$ziran_root/include" -I"$library" \
         "$library"/*.c "$work/count.c" -Wl,--wrap=realloc -Wl,--wrap=malloc \
@@ -95,10 +95,10 @@ for form in source saved; do
     ASAN_OPTIONS=detect_leaks=0 timeout 120 "$work/asan-$form"
     "$ziran" build --target=go --pkg main --entry "$name:PaintCheck" "$@" \
         --root "$module_root" $module_path \
-        --module-path "$ziran_root/std" --exe -o "$work/$form-go" "$input"
+         --exe -o "$work/$form-go" "$input"
     timeout 60 env GO111MODULE=off go run "$work/$form-go"/*.go
     "$ziran" bundle --entry "$name:PaintCheck" "$@" --root "$module_root" \
-        $module_path --module-path "$ziran_root/std" \
+        $module_path  \
         -o "$work/$form.zx" "$input"
     test "$(timeout 60 "$ziran" run "$work/$form.zx")" = 0
 done

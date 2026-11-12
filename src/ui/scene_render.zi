@@ -11,6 +11,11 @@
 #import "std/image"
 #import "drawing_props"
 #import "scene"
+#import "shader"
+#if #defined(POSIX_THREADS) {
+    SceneWorkers :: #import "std/parallel_linux";
+    scene_workers: SceneWorkers.ParallelPool;
+}
 
 SceneCamera :: struct {
     perspective: bool
@@ -25,6 +30,8 @@ SceneCamera :: struct {
     position: Vector3
     target: Vector3          // looked at from position
     up: Vector3
+    shift_x: float64         // perspective NDC offset: positive moves the scene right
+    shift_y: float64         // perspective NDC offset: positive moves the scene up
 }
 
 OrthographicCamera :: (left: float64, right: float64, top: float64, bottom: float64,
@@ -44,6 +51,15 @@ RenderScene :: (scene: *Scene, camera: SceneCamera, image: *Image) -> bool {
     width := image.width
     height := image.height
     if scene.failed || width <= 0 || height <= 0 || scene.open.count != 0 { return false }
+    for at: 0..scene.meshes.count - 1 {
+        m := scene.meshes[at].material
+        if m.shader != null && !ShaderBindings(m.shader, m.shader_uniforms, m.shader_samplers).ok { return false }
+    }
+    PrepareColorTable()
+    // Initialize the shared lighting lookup on the owner before any row lane
+    // can shade the first lit frame. Workers only read these tables.
+    unused DFG(0.0, 0.0)
+    PrepareShadowRadii()
     work := *scene_renderer
     work.width = width
     work.height = height
@@ -60,13 +76,18 @@ RenderScene :: (scene: *Scene, camera: SceneCamera, image: *Image) -> bool {
     if scene.background.a > 0 {
         clear[0] = scene.background.r; clear[1] = scene.background.g; clear[2] = scene.background.b; clear[3] = 255
     }
-    VecClear(work.color)
-    VecClear(work.depth)
-    for at: 0..samples - 1 {
-        if !VecPush(work.color, clear[0]) || !VecPush(work.color, clear[1]) ||
-            !VecPush(work.color, clear[2]) || !VecPush(work.color, clear[3]) ||
-            !VecPush(work.depth, 1.0) { return false }
-    }
+    // Frame buffers dominate retained storage. Grow to the requested size,
+    // keeping existing capacity on smaller frames without geometric headroom.
+    color_capacity := ifx work.color.capacity > samples * 4 then work.color.capacity else samples * 4
+    depth_capacity := ifx work.depth.capacity > samples then work.depth.capacity else samples
+    if !VecResizeBounded(work.color, samples * 4, color_capacity) ||
+        !VecResizeBounded(work.depth, samples, depth_capacity) { return false }
+    if !VecResize(image.pixels, cast(s64)width * height * 4) { return false }
+    if !PrepareGeometryCapacity(work, scene) { return false }
+    VecClear(work.vertices)
+    VecClear(work.states)
+    VecClear(work.triangles)
+    work.failed = false
     // Opaque meshes in the order they were made, then blended ones from the
     // farthest to the nearest, as three.js sorts them.
     for node: 0..scene.nodes.count - 1 {
@@ -74,15 +95,106 @@ RenderScene :: (scene: *Scene, camera: SceneCamera, image: *Image) -> bool {
             DrawMesh(work, scene, cast(s32)node)
         }
     }
+    work.opaque_triangles = work.triangles.count
+    projected_area: float64
+    expensive := false
+    for at: 0..work.opaque_triangles - 1 {
+        triangle := work.triangles[at]
+        projected_area += triangle.area * 0.5
+        material := work.states[triangle.state_index].material
+        if material.kind == .MaterialLit || material.shader != null { expensive = true }
+    }
+    work.statistics = SceneRenderStatistics.{}
+    work.statistics.opaque_projected_layers = projected_area / (cast(float64)width * cast(float64)height)
+    work.statistics.depth_prepass = expensive && work.statistics.opaque_projected_layers > 2.0
     VecClear(work.order)
     for node: 0..scene.nodes.count - 1 {
         if MeshDrawn(work, scene, cast(s32)node) && scene.meshes[scene.nodes[node].mesh].material.transparent {
-            unused VecPush(work.order, cast(s32)node)
+            if !VecPush(work.order, cast(s32)node) { return false }
         }
     }
-    SortFarthestFirst(work)
+    if !SortFarthestFirst(work) { return false }
     for at: 0..work.order.count - 1 { DrawMesh(work, scene, work.order[at]) }
-    return Resolve(work, image)
+    if work.failed { return false }
+    rows: FrameRows = .{work, image, clear}
+    #if #defined(POSIX_THREADS) {
+        if cast(s64)width * height >= 65536 {
+            procedure: SceneWorkers.RangeProcedure = DrawFrameRows
+            SceneWorkers.ParallelRun(*scene_workers, 0, cast(s64)height, procedure, cast(*void)*rows)
+            FinishStatistics(*rows)
+            return true
+        }
+    }
+    FrameRowsRange(0, cast(s64)height, *rows)
+    FinishStatistics(*rows)
+    return true
+}
+
+// Releases scratch storage, independently of the scene, programs and pictures.
+// The next RenderScene recreates it, including after a presentation context loss.
+RenderSceneRelease :: () {
+    #if #defined(POSIX_THREADS) {
+        SceneWorkers.ParallelClose(*scene_workers)
+    }
+    VecFree(scene_renderer.world)
+    VecFree(scene_renderer.shown)
+    VecFree(scene_renderer.shadow_depth)
+    VecFree(scene_renderer.color)
+    VecFree(scene_renderer.depth)
+    VecFree(scene_renderer.order)
+    VecFree(scene_renderer.order_depth)
+    VecFree(scene_renderer.vertices)
+    VecFree(scene_renderer.states)
+    VecFree(scene_renderer.triangles)
+    scene_renderer = Renderer.{}
+    scene_statistics = SceneRenderStatistics.{}
+}
+
+// Current lane count, including the submitting thread. Small draws stay serial.
+RenderSceneWorkerCount :: () -> s32 {
+    #if #defined(POSIX_THREADS) {
+        return scene_workers.workers + 1
+    }
+    return 1
+}
+
+// Last successful render's work, summed after the row lanes have joined.
+SceneRenderStatistics :: struct {
+    opaque_projected_layers: float64
+    depth_prepass: bool
+    depth_fragments: s64
+    shaded_fragments: s64
+}
+RenderSceneStatistics :: () -> SceneRenderStatistics { return scene_statistics }
+
+// Retained renderer-owned backing storage; excludes the scene and output image.
+SceneRenderMemory :: struct {
+    framebuffer_bytes: s64
+    shadow_bytes: s64
+    vertex_bytes: s64
+    triangle_bytes: s64
+    draw_bytes: s64
+    node_bytes: s64
+    ordering_bytes: s64
+}
+
+RenderSceneMemoryUsage :: () -> SceneRenderMemory {
+    w := *scene_renderer
+    return .{
+        framebuffer_bytes = w.color.capacity + w.depth.capacity * 4,
+        shadow_bytes = w.shadow_depth.capacity * 4,
+        vertex_bytes = w.vertices.capacity * cast(s64)size_of(RenderVertex),
+        triangle_bytes = w.triangles.capacity * cast(s64)size_of(TriangleRows),
+        draw_bytes = w.states.capacity * cast(s64)size_of(DrawState),
+        node_bytes = w.world.capacity * cast(s64)size_of(Matrix) + w.shown.capacity * cast(s64)size_of(bool),
+        ordering_bytes = w.order.capacity * 4 + w.order_depth.capacity * 8,
+    }
+}
+
+RenderSceneMemoryBytes :: () -> s64 {
+    m := RenderSceneMemoryUsage()
+    return m.framebuffer_bytes + m.shadow_bytes + m.vertex_bytes + m.triangle_bytes +
+        m.draw_bytes + m.node_bytes + m.ordering_bytes
 }
 
 #scope_file
@@ -111,6 +223,7 @@ RenderVertex :: struct {
     y: float64
     z: float64               // depth, 0 near to 1 far
     w: float64
+    clip: Vector3
     ndc_x: float64
     ndc_y: float64
     view: Vector3            // position seen from the camera
@@ -151,12 +264,33 @@ Renderer :: struct {
     color: Vec(u8)
     depth: Vec(float32)
     order: Vec(s32)
+    order_depth: Vec(float64)
     vertices: Vec(RenderVertex)
+    states: Vec(DrawState)
+    triangles: Vec(TriangleRows)
+    opaque_triangles: s64
+    statistics: SceneRenderStatistics
+    failed: bool
 }
 
 scene_renderer: Renderer;
+scene_statistics: SceneRenderStatistics;
 dfg_table: [512]float64;
 dfg_ready: bool;
+shadow_radii: [5]float64;
+shadow_radii_ready: bool;
+
+// Shadow rotations depend only on output coordinates, and are often reused
+// by overlapping surfaces or multiple lights. Each row lane owns its bounded
+// cache; light radius and depth comparisons remain per fragment.
+ShadowPattern :: struct { pixel: s64; offsets: [5]ShapePoint; }
+ShadowPatterns :: struct { entries: [512]ShadowPattern; }
+
+PrepareShadowRadii :: () {
+    if shadow_radii_ready { return }
+    for i: 0..4 { shadow_radii[i] = Sqrt((cast(float64)i + 0.5) / 5.0) }
+    shadow_radii_ready = true
+}
 
 Min :: (a: float64, b: float64) -> float64 { return ifx a < b then a else b }
 Max :: (a: float64, b: float64) -> float64 { return ifx a > b then a else b }
@@ -321,9 +455,11 @@ Projection :: (camera: SceneCamera) -> Matrix {
     bottom := top - height
     result: Matrix
     result.m[0] = 2.0 * camera.near / (right - left)
-    result.m[2] = (right + left) / (right - left)
+    // clip.w is -view.z: subtracting the offset here adds shift * w to
+    // clip x/y. Clipping then sees the shifted frustum, before division.
+    result.m[2] = (right + left) / (right - left) - camera.shift_x
     result.m[5] = 2.0 * camera.near / (top - bottom)
-    result.m[6] = (top + bottom) / (top - bottom)
+    result.m[6] = (top + bottom) / (top - bottom) - camera.shift_y
     result.m[10] = -(camera.far + camera.near) / (camera.far - camera.near)
     result.m[11] = -2.0 * camera.far * camera.near / (camera.far - camera.near)
     result.m[14] = -1.0
@@ -331,11 +467,38 @@ Projection :: (camera: SceneCamera) -> Matrix {
 }
 
 // sRGB to linear, as three.js's Color does.
-Linear :: (value: u8) -> float64 {
-    c := cast(float64)value / 255.0
-    if c < 0.04045 { return c * 0.0773993808 }
-    return Pow(c * 0.9478672986 + 0.0521327014, 2.4)
+linear_bytes: [256]float64;
+linear_bytes_ready: bool;
+encoded_minimum: [256]float64;
+encoded_bins: [4097]u8;
+PrepareColorTable :: () {
+    if linear_bytes_ready { return }
+    for at: 0..255 {
+        c := cast(float64)at / 255.0
+        linear_bytes[at] = ifx c < 0.04045 then c * 0.0773993808 else Pow(c * 0.9478672986 + 0.0521327014, 2.4)
+    }
+    // Find the exact double at which each output byte begins. This uses
+    // the original transfer, including its exponent and rounding, once.
+    for level: 1..255 {
+        lo: float64 = 0.0
+        hi: float64 = 1.0
+        for step: 0..79 {
+            mid := (lo + hi) * 0.5
+            if ReferenceEncode(mid) >= cast(u8)level { hi = mid } else { lo = mid }
+        }
+        encoded_minimum[level] = hi
+    }
+    // Power-of-two bins only narrow the exact threshold search. They do
+    // not quantize the input; values on either side of an edge stay distinct.
+    level: s32 = 0
+    for bin: 0..4096 {
+        c := cast(float64)bin / 4096.0
+        while level < 255 && c >= encoded_minimum[level + 1] { level += 1 }
+        encoded_bins[bin] = cast(u8)level
+    }
+    linear_bytes_ready = true
 }
+Linear :: (value: u8) -> float64 { return linear_bytes[value] }
 
 LinearColor :: (color: Color) -> Vector3 {
     return .{Linear(color.r), Linear(color.g), Linear(color.b)}
@@ -343,6 +506,12 @@ LinearColor :: (color: Color) -> Vector3 {
 
 // Linear to an sRGB byte, as three.js's output transfer.
 Encode :: (value: float64) -> u8 {
+    c := Saturate(value)
+    level := cast(s32)encoded_bins[cast(s32)(c * 4096.0)]
+    while level < 255 && c >= encoded_minimum[level + 1] { level += 1 }
+    return cast(u8)level
+}
+ReferenceEncode :: (value: float64) -> u8 {
     c := Saturate(value)
     encoded := ifx c <= 0.0031308 then c * 12.92 else Pow(c, 0.41666) * 1.055 - 0.055
     return cast(u8)(Saturate(encoded) * 255.0 + 0.5)
@@ -479,6 +648,46 @@ Corners :: (mesh: SceneMesh) -> s32 {
     return ifx mesh.index_count > 0 then mesh.index_count else mesh.vertex_count
 }
 
+// Reserve transformed source geometry once with modest clipping headroom.
+// Later frames only inspect capacities; they do not initialize spare records.
+PrepareGeometryCapacity :: (work: *Renderer, scene: *Scene) -> bool {
+    vertices: s64
+    triangles: s64
+    for node: 0..scene.nodes.count - 1 {
+        if !MeshDrawn(work, scene, cast(s32)node) { continue }
+        mesh := scene.meshes[scene.nodes[node].mesh]
+        vertices += mesh.vertex_count
+        triangles += Corners(mesh) / 3
+    }
+    if vertices > 0 {
+        reserve := vertices + vertices / 8 + 32
+        if work.vertices.capacity < reserve && !VecResizeBounded(work.vertices, reserve, reserve) { return false }
+    }
+    if triangles > 0 {
+        reserve := triangles + triangles / 8 + 32
+        if work.triangles.capacity < reserve && !VecResizeBounded(work.triangles, reserve, reserve) { return false }
+    }
+    return true
+}
+
+PushRenderVertex :: (work: *Renderer, vertex: RenderVertex) -> bool {
+    if work.vertices.count < work.vertices.capacity { return VecPush(work.vertices, vertex) }
+    count := work.vertices.count + 1
+    ceiling := count + count / 8 + 32
+    if !VecResizeBounded(work.vertices, count, ceiling) { return false }
+    work.vertices[count - 1] = vertex
+    return true
+}
+
+PushTriangle :: (work: *Renderer, triangle: TriangleRows) -> bool {
+    if work.triangles.count < work.triangles.capacity { return VecPush(work.triangles, triangle) }
+    count := work.triangles.count + 1
+    ceiling := count + count / 8 + 32
+    if !VecResizeBounded(work.triangles, count, ceiling) { return false }
+    work.triangles[count - 1] = triangle
+    return true
+}
+
 // Depths of the faces facing away from LIGHT, as three.js renders shadow
 // maps for one-sided materials.
 DrawShadowMap :: (work: *Renderer, scene: *Scene, light: s32) {
@@ -569,12 +778,15 @@ DrawMesh :: (work: *Renderer, scene: *Scene, node: s32) {
     } else {
         state.material.texture = -1
     }
-    VecClear(work.vertices)
+    first := work.vertices.count
+    state_index := work.states.count
+    if !VecPush(work.states, state) { work.failed = true; return }
     for at: 0..mesh.vertex_count - 1 {
         source := mesh.first_vertex + cast(s32)at
         vertex: RenderVertex
         vertex.view = Point(model_view, scene.positions[source])
         clip := Point(work.projection, vertex.view)
+        vertex.clip = clip
         vertex.w = ProjectW(work.projection, vertex.view)
         if vertex.w > 1.0e-12 {
             vertex.ndc_x = clip.x / vertex.w
@@ -588,7 +800,7 @@ DrawMesh :: (work: *Renderer, scene: *Scene, node: s32) {
         vertex.world_normal = Normalize(BackDirection(work.view, vertex.normal))
         vertex.color = scene.colors[source]
         vertex.uv = scene.uvs[source]
-        if !VecPush(work.vertices, vertex) { return }
+        if !PushRenderVertex(work, vertex) { work.failed = true; return }
     }
     corners := Corners(mesh)
     at: s32 = 0
@@ -596,27 +808,97 @@ DrawMesh :: (work: *Renderer, scene: *Scene, node: s32) {
         a := Corner(scene, mesh, at) - mesh.first_vertex
         b := Corner(scene, mesh, at + 1) - mesh.first_vertex
         c := Corner(scene, mesh, at + 2) - mesh.first_vertex
-        DrawTriangle(work, scene, *state, a, b, c)
+        DrawTriangle(work, state_index, first + a, first + b, first + c)
         at += 3
     }
 }
 
-DrawTriangle :: (work: *Renderer, scene: *Scene, state: *DrawState, ia: s32, ib0: s32, ic0: s32) {
-    va := *work.vertices[ia]
-    vb := *work.vertices[ib0]
-    vc := *work.vertices[ic0]
+DrawTriangle :: (work: *Renderer, state_index: s64, ia: s64, ib0: s64, ic0: s64) {
+    polygon: [12]RenderVertex
+    polygon[0] = work.vertices[ia]
+    polygon[1] = work.vertices[ib0]
+    polygon[2] = work.vertices[ic0]
+    inside := true
+    for plane: 0..5 {
+        for at: 0..2 {
+            if ClipDistance(polygon[at], cast(s32)plane) < 0.0 { inside = false }
+        }
+    }
+    if inside { RasterTriangle(work, state_index, ia, ib0, ic0); return }
+    count: s32 = 3
+    for plane: 0..5 {
+        next: [12]RenderVertex
+        kept: s32
+        for at: 0..count - 1 {
+            a := polygon[at]
+            b := polygon[(at + 1) % count]
+            da := ClipDistance(a, cast(s32)plane)
+            db := ClipDistance(b, cast(s32)plane)
+            if da >= 0.0 { next[kept] = a; kept += 1 }
+            if (da >= 0.0) != (db >= 0.0) {
+                next[kept] = InterpolateVertex(a, b, da / (da - db)); kept += 1
+            }
+        }
+        polygon = next
+        count = kept
+        if count < 3 { return }
+    }
+    first := work.vertices.count
+    for at: 0..count - 1 {
+        ProjectVertex(work, *polygon[at])
+        if !PushRenderVertex(work, polygon[at]) { work.failed = true; return }
+    }
+    for at: 1..count - 2 { RasterTriangle(work, state_index, first, first + at, first + at + 1) }
+}
+
+ClipDistance :: (v: RenderVertex, plane: s32) -> float64 {
+    if plane == 0 { return v.w + v.clip.x }
+    if plane == 1 { return v.w - v.clip.x }
+    if plane == 2 { return v.w + v.clip.y }
+    if plane == 3 { return v.w - v.clip.y }
+    if plane == 4 { return v.w + v.clip.z }
+    return v.w - v.clip.z
+}
+
+InterpolateVertex :: (a: RenderVertex, b: RenderVertex, t: float64) -> RenderVertex {
+    v: RenderVertex
+    v.w = a.w + (b.w - a.w) * t
+    v.clip = Add(a.clip, Times(Sub(b.clip, a.clip), t))
+    v.view = Add(a.view, Times(Sub(b.view, a.view), t))
+    v.world = Add(a.world, Times(Sub(b.world, a.world), t))
+    v.normal = Add(a.normal, Times(Sub(b.normal, a.normal), t))
+    v.world_normal = Add(a.world_normal, Times(Sub(b.world_normal, a.world_normal), t))
+    v.color = Add(a.color, Times(Sub(b.color, a.color), t))
+    v.uv = .{a.uv.x + (b.uv.x - a.uv.x) * t, a.uv.y + (b.uv.y - a.uv.y) * t}
+    return v
+}
+
+ProjectVertex :: (work: *Renderer, v: *RenderVertex) {
+    if v.w <= 1.0e-12 { return }
+    v.ndc_x = v.clip.x / v.w
+    v.ndc_y = v.clip.y / v.w
+    v.x = (v.ndc_x + 1.0) * 0.5 * cast(float64)work.width
+    v.y = (1.0 - v.ndc_y) * 0.5 * cast(float64)work.height
+    v.z = (v.clip.z / v.w + 1.0) * 0.5
+}
+
+RasterTriangle :: (work: *Renderer, state_index: s64, ia: s64, ib: s64, ic: s64) {
+    va0 := work.vertices[ia]; vb0 := work.vertices[ib]; vc0 := work.vertices[ic]
+    state := *work.states[state_index]
+    va := *va0
+    vb := *vb0
+    vc := *vc0
     if va.w <= 1.0e-12 || vb.w <= 1.0e-12 || vc.w <= 1.0e-12 { return }
     ndc_area := (vb.ndc_x - va.ndc_x) * (vc.ndc_y - va.ndc_y) - (vb.ndc_y - va.ndc_y) * (vc.ndc_x - va.ndc_x)
     if ndc_area == 0.0 { return }
     front := (ndc_area > 0.0) != state.flipped
     if !front && !state.material.double_sided { return }
-    ib := ib0
-    ic := ic0
     area := Edge(va.x, va.y, vb.x, vb.y, vc.x, vc.y)
-    if area < 0.0 { ib = ic0; ic = ib0; area = -area }
-    a := work.vertices[ia]
-    b := work.vertices[ib]
-    c := work.vertices[ic]
+    reversed := area < 0.0
+    a := va0
+    b := vb0
+    c := vc0
+    if area < 0.0 { b = vc0; c = vb0; area = -area }
     pa: Vector3 = .{a.x, a.y, 0.0}
     pb: Vector3 = .{b.x, b.y, 0.0}
     pc: Vector3 = .{c.x, c.y, 0.0}
@@ -636,17 +918,163 @@ DrawTriangle :: (work: *Renderer, scene: *Scene, state: *DrawState, ia: s32, ib0
         dy := Add(Add(Times(a.normal, ay), Times(b.normal, by)), Times(c.normal, cy))
         turn = Max(Max(Max(Abs(dx.x), Abs(dy.x)), Max(Abs(dx.y), Abs(dy.y))), Max(Abs(dx.z), Abs(dy.z)))
     }
-    sample_x: [SAMPLES]float64 = .[0.375, 0.875, 0.125, 0.625]
-    sample_y: [SAMPLES]float64 = .[0.125, 0.375, 0.625, 0.875]
     width := work.width
     x0 := cast(s32)Max(Floor(Min(a.x, Min(b.x, c.x))), 0.0)
     x1 := cast(s32)Min(Floor(Max(a.x, Max(b.x, c.x))) + 1.0, cast(float64)width)
     y0 := cast(s32)Max(Floor(Min(a.y, Min(b.y, c.y))), 0.0)
     y1 := cast(s32)Min(Floor(Max(a.y, Max(b.y, c.y))) + 1.0, cast(float64)work.height)
-    y := y0
-    while y < y1 {
-        x := x0
-        while x < x1 {
+    rows: TriangleRows
+    rows.state_index = state_index
+    rows.a = ia; rows.b = ib; rows.c = ic; rows.area = area
+    if reversed { rows.b = ic; rows.c = ib }
+    rows.face = face; rows.side = side; rows.turn = turn
+    rows.x0 = x0; rows.x1 = x1; rows.y0 = y0; rows.y1 = y1
+    if x0 >= x1 || y0 >= y1 { return }
+    if !PushTriangle(work, rows) { work.failed = true }
+}
+
+TriangleRows :: struct {
+    state_index: s64
+    a: s64
+    b: s64
+    c: s64
+    area: float64
+    face: Vector3
+    side: float64
+    turn: float64
+    x0: s32
+    x1: s32
+    y0: s32
+    y1: s32
+}
+
+RowStatistics :: struct { depth_fragments: s64; shaded_fragments: s64; }
+FrameRows :: struct {
+    work: *Renderer
+    image: *Image
+    clear: [4]u8
+    statistics: [64]RowStatistics
+}
+FinishStatistics :: (rows: *FrameRows) {
+    for lane: 0..63 {
+        rows.work.statistics.depth_fragments += rows.statistics[lane].depth_fragments
+        rows.work.statistics.shaded_fragments += rows.statistics[lane].shaded_fragments
+    }
+    scene_statistics = rows.work.statistics
+}
+#if #defined(POSIX_THREADS) {
+    DrawFrameRows :: (start: s64, end: s64, argument: *void) {
+        FrameRowsRange(start, end, cast(*FrameRows)argument)
+    }
+}
+FrameRowsRange :: (start: s64, end: s64, rows: *FrameRows) {
+    work := rows.work
+    patterns: ShadowPatterns
+    lane: s64
+    #if #defined(POSIX_THREADS) {
+        // Pool workers receive equal nonempty chunks; the caller receives
+        // the final remainder. A full-height serial callback always uses 0,
+        // including when a pool from an earlier, taller frame is retained.
+        if start > 0 || end < work.height {
+            if end == work.height { lane = cast(s64)scene_workers.active_workers }
+            else if end > start { lane = start / (end - start) }
+        }
+    }
+    // Raster counters remain on this callback's stack, then publish once.
+    // Adjacent lane slots must never bounce a cache line during drawing.
+    local_statistics: RowStatistics
+    statistics := *local_statistics
+    for at: start * work.width * SAMPLES..end * work.width * SAMPLES - 1 {
+        work.color[at * 4] = rows.clear[0]
+        work.color[at * 4 + 1] = rows.clear[1]
+        work.color[at * 4 + 2] = rows.clear[2]
+        work.color[at * 4 + 3] = rows.clear[3]
+        work.depth[at] = 1.0
+    }
+    if work.statistics.depth_prepass {
+        for at: 0..work.opaque_triangles - 1 {
+            FrameTriangleRows(work, start, end, *work.triangles[at], *patterns, 1, statistics)
+        }
+        // Preserve a conservative ceiling in the existing color bytes. A
+        // float32 depth may round below the winning double; starting the color
+        // pass at that depth would wrongly reject the winner. Restart ordinary
+        // depth testing and only skip candidates above this 2^-24 ceiling.
+        for at: start * work.width * SAMPLES..end * work.width * SAMPLES - 1 {
+            ceiling := cast(s64)(cast(float64)work.depth[at] * 16777216.0) + 1
+            for channel: 0..3 {
+                work.color[at * 4 + channel] = cast(u8)(ceiling % 256)
+                ceiling /= 256
+            }
+            work.depth[at] = 1.0
+        }
+        for at: 0..work.opaque_triangles - 1 {
+            FrameTriangleRows(work, start, end, *work.triangles[at], *patterns, 2, statistics)
+        }
+        for at: start * work.width * SAMPLES..end * work.width * SAMPLES - 1 {
+            // Opaque Store writes alpha 255. The ceiling's top byte is 0 or 1.
+            if work.color[at * 4 + 3] != cast(u8)255 {
+                for channel: 0..3 { work.color[at * 4 + channel] = rows.clear[channel] }
+            }
+        }
+    } else {
+        for at: 0..work.opaque_triangles - 1 {
+            FrameTriangleRows(work, start, end, *work.triangles[at], *patterns, 0, statistics)
+        }
+    }
+    // Immutable commands retain opaque and sorted transparent draw order.
+    // No lane can read or write another lane's samples.
+    for at: work.opaque_triangles..work.triangles.count - 1 {
+        FrameTriangleRows(work, start, end, *work.triangles[at], *patterns, 0, statistics)
+    }
+    ResolveRows(work, rows.image, start, end)
+    rows.statistics[lane] = local_statistics
+}
+
+FrameTriangleRows :: (work: *Renderer, start: s64, end: s64, triangle: *TriangleRows,
+    patterns: *ShadowPatterns, pass: s32, statistics: *RowStatistics) {
+    first := ifx start > triangle.y0 then start else cast(s64)triangle.y0
+    last := ifx end < triangle.y1 then end else cast(s64)triangle.y1
+    if first >= last { return }
+    if pass == 1 { DepthRows(work, first, last, triangle, patterns, statistics) }
+    else if pass == 2 { VisibleRows(work, first, last, triangle, patterns, statistics) }
+    else { ColorRows(work, first, last, triangle, patterns, statistics) }
+}
+
+// Keep each raster loop in its own procedure, with a compile-time pass choice.
+// The ordinary loop pays no visibility-mode branches at individual samples.
+ColorRows :: (work: *Renderer, start: s64, end: s64, rows: *TriangleRows,
+    patterns: *ShadowPatterns, statistics: *RowStatistics) {
+    RasterRowsRange(work, start, end, rows, patterns, 0, statistics)
+}
+DepthRows :: (work: *Renderer, start: s64, end: s64, rows: *TriangleRows,
+    patterns: *ShadowPatterns, statistics: *RowStatistics) {
+    RasterRowsRange(work, start, end, rows, patterns, 1, statistics)
+}
+VisibleRows :: (work: *Renderer, start: s64, end: s64, rows: *TriangleRows,
+    patterns: *ShadowPatterns, statistics: *RowStatistics) {
+    RasterRowsRange(work, start, end, rows, patterns, 2, statistics)
+}
+
+RasterRowsRange :: (work: *Renderer, start: s64, end: s64, rows: *TriangleRows,
+    patterns: *ShadowPatterns, pass: s32, statistics: *RowStatistics) #inline {
+    state := *work.states[rows.state_index]
+    a := work.vertices[rows.a]; b := work.vertices[rows.b]; c := work.vertices[rows.c]; area := rows.area
+    face := rows.face; side := rows.side; turn := rows.turn
+    sample_x: [SAMPLES]float64 = .[0.375, 0.875, 0.125, 0.625]
+    sample_y: [SAMPLES]float64 = .[0.125, 0.375, 0.625, 0.875]
+    x0 := rows.x0; x1 := rows.x1; width := work.width
+    pa: Vector3 = .{a.x, a.y, 0.0}
+    pb: Vector3 = .{b.x, b.y, 0.0}
+    pc: Vector3 = .{c.x, c.y, 0.0}
+    depth_fragments: s64
+    shaded_fragments: s64
+    y := cast(s32)start
+    while y < cast(s32)end {
+        span := RowSpan(*a, *b, *c, y)
+        first := cast(s32)Max(cast(float64)x0, Floor(span.x) - 1.0)
+        last := cast(s32)Min(cast(float64)x1, Floor(span.y) + 2.0)
+        x := first
+        while x < last {
             passed: [SAMPLES]bool
             depths: [SAMPLES]float64
             any := false
@@ -659,6 +1087,12 @@ DrawTriangle :: (work: *Renderer, scene: *Scene, state: *DrawState, ia: s32, ib0
                 e2 := Edge(a.x, a.y, b.x, b.y, sx, sy)
                 if Covers(e0, pb, pc) && Covers(e1, pc, pa) && Covers(e2, pa, pb) {
                     z := (e0 * a.z + e1 * b.z + e2 * c.z) / area
+                    if pass == 2 && work.color[(pixel + s) * 4 + 3] != cast(u8)255 {
+                        at := (pixel + s) * 4
+                        ceiling := cast(s64)work.color[at] + cast(s64)work.color[at + 1] * 256 +
+                            cast(s64)work.color[at + 2] * 65536 + cast(s64)work.color[at + 3] * 16777216
+                        if z * 16777216.0 > cast(float64)ceiling { continue }
+                    }
                     if z >= 0.0 && z <= 1.0 && z <= cast(float64)work.depth[pixel + s] {
                         passed[s] = true
                         depths[s] = z
@@ -678,11 +1112,37 @@ DrawTriangle :: (work: *Renderer, scene: *Scene, state: *DrawState, ia: s32, ib0
                     lb = lb / b.w / sum
                     lc = lc / c.w / sum
                 }
-                rgba := Shade(work, state, *a, *b, *c, la, lb, lc, face, side, turn, x, y)
+                rgba: Fragment
+                if pass == 1 {
+                    depth_fragments += 1
+                    if state.material.kind == .MaterialShadow {
+                        rgba = Shade(work, state, *a, *b, *c, la, lb, lc, face, side, turn, x, y, patterns)
+                    } else if state.material.shader != null || state.material.texture >= 0 {
+                        rgba = Surface(work, state, *a, *b, *c, la, lb, lc)
+                    } else {
+                        rgba.discard = state.material.opacity <= 0.0 || state.material.opacity < state.material.alpha_test
+                    }
+                } else {
+                    shaded_fragments += 1
+                    if state.material.kind == .MaterialUnlit {
+                        rgba = Surface(work, state, *a, *b, *c, la, lb, lc)
+                        if !rgba.discard {
+                            rgba = Output(work, state, .{rgba.r, rgba.g, rgba.b}, rgba.a)
+                        }
+                    } else {
+                        rgba = Shade(work, state, *a, *b, *c, la, lb, lc, face, side, turn, x, y, patterns)
+                    }
+                }
                 if rgba.discard == false {
+                    // One fragment color is shared by its covered MSAA samples.
+                    if pass != 1 {
+                        rgba.r = cast(float64)Encode(rgba.r) / 255.0
+                        rgba.g = cast(float64)Encode(rgba.g) / 255.0
+                        rgba.b = cast(float64)Encode(rgba.b) / 255.0
+                    }
                     for s: 0..SAMPLES - 1 {
                         if !passed[s] { continue }
-                        Store(work, state, (pixel + s) * 4, rgba)
+                        if pass != 1 { Store(work, state, (pixel + s) * 4, rgba) }
                         work.depth[pixel + s] = cast(float32)depths[s]
                     }
                 }
@@ -691,6 +1151,31 @@ DrawTriangle :: (work: *Renderer, scene: *Scene, state: *DrawState, ia: s32, ib0
         }
         y += 1
     }
+    statistics.depth_fragments += depth_fragments
+    statistics.shaded_fragments += shaded_fragments
+}
+
+// A conservative bound for the entire one-pixel-high strip. Keep the original
+// edge equations at each MSAA location; this only skips empty bounding-box work.
+RowSpan :: (a: *RenderVertex, b: *RenderVertex, c: *RenderVertex, y: s32) -> ShapePoint {
+    points: [3]ShapePoint = .[.{a.x,a.y},.{b.x,b.y},.{c.x,c.y}]
+    low := cast(float64)y
+    high := low + 1.0
+    span: ShapePoint = .{Max(a.x,Max(b.x,c.x)),Min(a.x,Min(b.x,c.x))}
+    for at: 0..2 {
+        p := points[at]; q := points[(at+1)%3]
+        if p.y > q.y { swap := p; p = q; q = swap }
+        first := Max(low,p.y); last := Min(high,q.y)
+        if first > last { continue }
+        left := p.x; right := q.x
+        if p.y != q.y {
+            left = p.x + (q.x-p.x)*((first-p.y)/(q.y-p.y))
+            right = p.x + (q.x-p.x)*((last-p.y)/(q.y-p.y))
+        }
+        span.x = Min(span.x,Min(left,right))
+        span.y = Max(span.y,Max(left,right))
+    }
+    return span
 }
 
 ViewDirection :: (work: *Renderer, view: Vector3) -> Vector3 {
@@ -701,9 +1186,9 @@ ViewDirection :: (work: *Renderer, view: Vector3) -> Vector3 {
 Fragment :: struct { r: float64; g: float64; b: float64; a: float64; discard: bool; }
 
 Store :: (work: *Renderer, state: *DrawState, at: s64, fragment: Fragment) {
-    r := cast(float64)Encode(fragment.r) / 255.0
-    g := cast(float64)Encode(fragment.g) / 255.0
-    b := cast(float64)Encode(fragment.b) / 255.0
+    r := fragment.r
+    g := fragment.g
+    b := fragment.b
     if !state.material.transparent {
         work.color[at] = cast(u8)(r * 255.0 + 0.5)
         work.color[at + 1] = cast(u8)(g * 255.0 + 0.5)
@@ -721,25 +1206,12 @@ Store :: (work: *Renderer, state: *DrawState, at: s64, fragment: Fragment) {
 
 Byte :: (value: float64) -> u8 { return cast(u8)(Saturate(value) * 255.0 + 0.5) }
 
-Shade :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex, c: *RenderVertex,
-    la: float64, lb: float64, lc: float64, face: Vector3, side: float64, turn: float64, x: s32, y: s32) -> Fragment {
+// Material color and discard are also needed by the visibility pass. Lighting
+// and shadow sampling cannot change ordinary material alpha.
+Surface :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex, c: *RenderVertex,
+    la: float64, lb: float64, lc: float64) -> Fragment #inline {
     material := state.material
     result: Fragment
-    view := Add(Add(Times(a.view, la), Times(b.view, lb)), Times(c.view, lc))
-    world := Add(Add(Times(a.world, la), Times(b.world, lb)), Times(c.world, lc))
-    world_normal := Add(Add(Times(a.world_normal, la), Times(b.world_normal, lb)), Times(c.world_normal, lc))
-    shadow: [MAX_LIGHTS]float64
-    for light: 0..work.light_count - 1 {
-        shadow[light] = 1.0
-        if work.lights[light].shadow && state.receive {
-            shadow[light] = ShadowAt(work, work.lights[light], world, world_normal, x, y)
-        }
-    }
-    if material.kind == .MaterialShadow {
-        mask: float64 = 1.0
-        for light: 0..work.light_count - 1 { mask *= shadow[light] }
-        return Output(work, state, state.base, material.opacity * (1.0 - mask))
-    }
     diffuse := state.base
     alpha := material.opacity
     if material.vertex_colors {
@@ -752,8 +1224,55 @@ Shade :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex
         diffuse = Mul(diffuse, .{texel.r, texel.g, texel.b})
         alpha *= texel.a
     }
-    if alpha < material.alpha_test { result.discard = true; return result }
+    if material.shader != null {
+        inputs: ShaderInputs
+        inputs.color = .{diffuse.x, diffuse.y, diffuse.z, alpha}
+        if (material.shader.input_mask & SHADER_INPUT_POSITION) != 0 {
+            world := Add(Add(Times(a.world, la), Times(b.world, lb)), Times(c.world, lc))
+            inputs.position = .{world.x, world.y, world.z, 1.0}
+        }
+        if (material.shader.input_mask & SHADER_INPUT_NORMAL) != 0 {
+            world_normal := Add(Add(Times(a.world_normal, la), Times(b.world_normal, lb)), Times(c.world_normal, lc))
+            n := Normalize(world_normal)
+            inputs.normal = .{n.x, n.y, n.z, 0.0}
+        }
+        inputs.uv = .{a.uv.x * la + b.uv.x * lb + c.uv.x * lc, a.uv.y * la + b.uv.y * lb + c.uv.y * lc, 0.0, 0.0}
+        shaded := ShaderRun(material.shader, inputs, material.shader_uniforms, material.shader_samplers)
+        if shaded.discard { result.discard = true; return result }
+        diffuse = .{shaded.color.x, shaded.color.y, shaded.color.z}
+        alpha = shaded.color.w
+    }
+    if alpha <= 0.0 || alpha < material.alpha_test { result.discard = true; return result }
+    return .{diffuse.x, diffuse.y, diffuse.z, alpha, false}
+}
+
+Shade :: (work: *Renderer, state: *DrawState, a: *RenderVertex, b: *RenderVertex, c: *RenderVertex,
+    la: float64, lb: float64, lc: float64, face: Vector3, side: float64, turn: float64, x: s32, y: s32,
+    patterns: *ShadowPatterns) -> Fragment {
+    material := state.material
+    surface: Fragment
+    if material.kind != .MaterialShadow {
+        surface = Surface(work, state, a, b, c, la, lb, lc)
+        if surface.discard { return surface }
+    }
+    diffuse: Vector3 = .{surface.r, surface.g, surface.b}
+    alpha := surface.a
     if material.kind == .MaterialUnlit { return Output(work, state, diffuse, alpha) }
+    view := Add(Add(Times(a.view, la), Times(b.view, lb)), Times(c.view, lc))
+    shadow: [MAX_LIGHTS]float64
+    for light: 0..work.light_count - 1 {
+        shadow[light] = 1.0
+        if work.lights[light].shadow && state.receive {
+            world := Add(Add(Times(a.world, la), Times(b.world, lb)), Times(c.world, lc))
+            world_normal := Add(Add(Times(a.world_normal, la), Times(b.world_normal, lb)), Times(c.world_normal, lc))
+            shadow[light] = ShadowAt(work, work.lights[light], world, world_normal, x, y, patterns)
+        }
+    }
+    if material.kind == .MaterialShadow {
+        mask: float64 = 1.0
+        for light: 0..work.light_count - 1 { mask *= shadow[light] }
+        return Output(work, state, state.base, material.opacity * (1.0 - mask))
+    }
     normal := face
     if !material.flat {
         normal = Normalize(Add(Add(Times(a.normal, la), Times(b.normal, lb)), Times(c.normal, lc)))
@@ -824,21 +1343,30 @@ Texel :: (work: *Renderer, state: *DrawState, u: float64, v: float64) -> Fragmen
 
 // three.js's soft shadow: five samples on a turning disc, each compared
 // with the four nearest depths.
-ShadowAt :: (work: *Renderer, light: RenderLight, world: Vector3, world_normal: Vector3, x: s32, y: s32) -> float64 {
+ShadowAt :: (work: *Renderer, light: RenderLight, world: Vector3, world_normal: Vector3, x: s32, y: s32,
+    patterns: *ShadowPatterns) -> float64 {
     coord := Point(light.shadow_matrix, Add(world, Times(world_normal, light.normal_bias)))
     z := coord.z + light.bias
     if coord.x < 0.0 || coord.x > 1.0 || coord.y < 0.0 || coord.y > 1.0 || z > 1.0 { return 1.0 }
     size := cast(float64)light.size
     radius := light.radius / size
-    fx := cast(float64)x + 0.5
-    fy := cast(float64)(work.height - 1 - y) + 0.5
-    noise := Fract(52.9829189 * Fract(fx * 0.06711056 + fy * 0.00583715))
-    phi := noise * 2.0 * RENDER_PI
+    pattern := *patterns.entries[(y % 8) * 64 + x % 64]
+    pixel := cast(s64)y * work.width + x + 1
+    if pattern.pixel != pixel {
+        fx := cast(float64)x + 0.5
+        fy := cast(float64)(work.height - 1 - y) + 0.5
+        noise := Fract(52.9829189 * Fract(fx * 0.06711056 + fy * 0.00583715))
+        phi := noise * 2.0 * RENDER_PI
+        for i: 0..4 {
+            theta := cast(float64)i * 2.399963229728653 + phi
+            pattern.offsets[i] = .{Cos(theta) * shadow_radii[i], Sin(theta) * shadow_radii[i]}
+        }
+        pattern.pixel = pixel
+    }
     total: float64 = 0.0
     for i: 0..4 {
-        r := Sqrt((cast(float64)i + 0.5) / 5.0)
-        theta := cast(float64)i * 2.399963229728653 + phi
-        total += Compare(work, light, coord.x + Cos(theta) * r * radius, coord.y + Sin(theta) * r * radius, z)
+        offset := pattern.offsets[i]
+        total += Compare(work, light, coord.x + offset.x * radius, coord.y + offset.y * radius, z)
     }
     return total * 0.2
 }
@@ -866,53 +1394,54 @@ Lit :: (work: *Renderer, light: RenderLight, x: s32, y: s32, z: float64) -> floa
     return ifx z <= cast(float64)depth then 1.0 else 0.0
 }
 
-SortFarthestFirst :: (work: *Renderer) {
+SortFarthestFirst :: (work: *Renderer) -> bool {
     // Insertion sort keeps equal depths in the order they were made.
-    keys: Vec(float64)
+    if !VecResize(work.order_depth, work.order.count) { return false }
     for at: 0..work.order.count - 1 {
         origin := Point(work.world[work.order[at]], .{})
         view := Point(work.view, origin)
         clip := Point(work.projection, view)
         w := ProjectW(work.projection, view)
-        unused VecPush(keys, ifx w != 0.0 then clip.z / w else clip.z)
+        work.order_depth[at] = ifx w != 0.0 then clip.z / w else clip.z
     }
     i: s64 = 1
     while i < work.order.count {
-        key := keys[i]
+        key := work.order_depth[i]
         node := work.order[i]
         j := i - 1
-        while j >= 0 && keys[j] < key {
-            keys[j + 1] = keys[j]
+        while j >= 0 && work.order_depth[j] < key {
+            work.order_depth[j + 1] = work.order_depth[j]
             work.order[j + 1] = work.order[j]
             j -= 1
         }
-        keys[j + 1] = key
+        work.order_depth[j + 1] = key
         work.order[j + 1] = node
         i += 1
     }
+    return true
 }
 
 // Averages each pixel's samples and stores them with straight alpha.
-Resolve :: (work: *Renderer, image: *Image) -> bool {
-    VecClear(image.pixels)
-    pixels := cast(s64)work.width * work.height
-    for pixel: 0..pixels - 1 {
+ResolveRows :: (work: *Renderer, image: *Image, start: s64, end: s64) {
+    for pixel: start * work.width..end * work.width - 1 {
         sum: [4]s64
         for s: 0..SAMPLES - 1 {
             at := (pixel * SAMPLES + s) * 4
             for channel: 0..3 { sum[channel] += cast(s64)work.color[at + channel] }
         }
         out: [4]u8
-        if sum[3] > 0 {
+        if sum[3] == SAMPLES * 255 {
+            for channel: 0..2 { out[channel] = cast(u8)((sum[channel] + SAMPLES / 2) / SAMPLES) }
+            out[3] = 255
+        } else if sum[3] > 0 {
             for channel: 0..2 {
                 value := (sum[channel] * 255 + sum[3] / 2) / sum[3]
                 out[channel] = cast(u8)(ifx value > 255 then 255 else value)
             }
             out[3] = cast(u8)((sum[3] + SAMPLES / 2) / SAMPLES)
         }
-        for channel: 0..3 { if !VecPush(image.pixels, out[channel]) { return false } }
+        for channel: 0..3 { image.pixels[pixel * 4 + channel] = out[channel] }
     }
-    return true
 }
 
 // The table's half floats as hex, sixteen to a line.

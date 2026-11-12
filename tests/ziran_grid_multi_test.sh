@@ -38,20 +38,20 @@ set -- \
  --bind raster_text:RasterTextRotated=pixmap:RasterTextRotated \
  --bind paint_queue:RasterImage=pixmap:RasterImage \
  --bind paint_queue:RasterImageMesh=pixmap:RasterImageMesh
-"$ziran" ir $kryon_ui_args --module-path "$repo/src/backend" --module-path "$ziran_root/std" --root "$repo/tests" -o "$work/ir" "$source"
+"$ziran" ir $kryon_project_args  --root "$repo/tests" -o "$work/ir" "$source"
 for input in source saved; do
  if test "$input" = source; then
-  module=$source; root=$repo/tests; modules="$kryon_ui_args"; project=
+  module=$source; root=$repo/tests; modules="$kryon_project_args"; project=
  else
-  module=$work/ir/grid_multi_test.zir; root=$work/ir; modules="--module-path $work/ir"; project=
+  module=$work/ir/grid_multi_test.zir; root=$work/ir; modules="--project --module-path $work/ir"; project=
  fi
- "$ziran" bundle $project --root "$root" $modules --module-path "$repo/src/backend" --module-path "$ziran_root/std" "$@" --entry grid_multi_test:main -o "$work/$input.zx" "$module"
+ "$ziran" bundle $project --root "$root" $modules   "$@" --entry grid_multi_test:main -o "$work/$input.zx" "$module"
  "$ziran" run "$work/$input.zx" > "$work/$input.result"
  cat "$work/$input.result"
  test "$(tail -1 "$work/$input.result")" = 0
  for target in c go; do
   package=; if test "$target" = go; then package='--pkg main'; fi
-  "$ziran" build $project --root "$root" $modules --module-path "$repo/src/backend" --module-path "$ziran_root/std" --target="$target" $package --exe --entry grid_multi_test:main "$@" -o "$work/$target-$input" "$module"
+  "$ziran" build $project --root "$root" $modules   --target="$target" $package --exe --entry grid_multi_test:main "$@" -o "$work/$target-$input" "$module"
   if test "$target" = c; then "$work/$target-$input/grid_multi_test"
   else GO111MODULE=off go run "$work/$target-$input"/*.go; fi
  done

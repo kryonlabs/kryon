@@ -9,27 +9,28 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_menu_widget_test.zi
 entry=ziran_menu_widget_test:main
 set -- \
-    --bind font_metrics:MeasureGlyphWidth=ziran_context_menu_widget_host:MeasureGlyphWidth \
-    --bind font_metrics:MeasureGlyphLineHeight=ziran_context_menu_widget_host:MeasureGlyphLineHeight \
-    --bind raster_shape:RasterRoundedRectangle=ziran_context_menu_widget_host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=ziran_context_menu_widget_host:RasterRoundedRectangleOutline \
-    --bind raster:RasterLine=ziran_context_menu_widget_host:RasterLine \
-    --bind raster_text:RasterText=ziran_context_menu_widget_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_context_menu_widget_host:RasterTextClipped \
-    --bind raster_text:RasterTextRotated=ziran_context_menu_widget_host:RasterTextRotated
-"$ziran" ir --root "$repo/tests" $kryon_ui_args --entry "$entry" -o "$work/ir" "$source"
+    --bind kryon/font_metrics:MeasureGlyphWidth=ziran_context_menu_widget_host:MeasureGlyphWidth \
+    --bind kryon/font_metrics:MeasureGlyphLineHeight=ziran_context_menu_widget_host:MeasureGlyphLineHeight \
+    --bind kryon/raster_shape:RasterRoundedRectangle=ziran_context_menu_widget_host:RasterRoundedRectangle \
+    --bind kryon/raster_shape:RasterRoundedRectangleOutline=ziran_context_menu_widget_host:RasterRoundedRectangleOutline \
+    --bind kryon/raster:RasterLine=ziran_context_menu_widget_host:RasterLine \
+    --bind kryon/raster_text:RasterText=ziran_context_menu_widget_host:RasterText \
+    --bind kryon/raster_text:RasterTextClipped=ziran_context_menu_widget_host:RasterTextClipped \
+    --bind kryon/raster_text:RasterTextRotated=ziran_context_menu_widget_host:RasterTextRotated
+"$ziran" ir --root "$repo/tests" $kryon_project_args --entry "$entry" -o "$work/ir" "$source"
 for form in source saved; do
     input=$source
     module_root=$repo/tests
-    if test "$form" = saved; then input=$work/ir/ziran_menu_widget_test.zir; module_root=$work/ir; fi
+    module_args=$kryon_project_args
+    if test "$form" = saved; then input=$work/ir/ziran_menu_widget_test.zir; module_root=$work/ir; module_args="--project --module-path $work/ir"; fi
     output=$work/$form-c
     "$ziran" build --target=c --exe --entry "$entry" \
-        --root "$module_root" $kryon_ui_args -o "$output" "$input"
+        --root "$module_root" $module_args -o "$output" "$input"
     timeout --kill-after=2s 20s "$output/ziran_menu_widget_test"
     "$ziran" build --target=go --pkg main --exe --entry "$entry" "$@" \
-        --root "$module_root" $kryon_ui_args -o "$work/$form-go" "$input"
+        --root "$module_root" $module_args -o "$work/$form-go" "$input"
     timeout --kill-after=2s 45s env GO111MODULE=off go run "$work/$form-go"/*.go
-    "$ziran" bundle --entry "$entry" "$@" --root "$module_root" $kryon_ui_args \
+    "$ziran" bundle --entry "$entry" "$@" --root "$module_root" $module_args \
         -o "$work/$form.zx" "$input"
     test "$("$ziran" run "$work/$form.zx")" = 0
 done

@@ -79,10 +79,56 @@ RasterTextClipped :: (value: string, x: s32, y: s32, font: s32,
 }
 
 
+progress_expected: Rectangle;
+progress_radius: float32;
+progress_pixels: s32;
+progress_outside: bool;
+progress_checking: bool;
+
+#program_export
+CuiProgressExpect :: (bounds: Rectangle, radius: float32) {
+    progress_expected = bounds; progress_radius = radius
+    progress_pixels = 0; progress_outside = false; progress_checking = true
+}
+#program_export
+CuiProgressPixels :: () -> s32 { return progress_pixels }
+#program_export
+CuiProgressOutside :: () -> bool { return progress_outside }
+
+CheckProgressRaster :: (bounds: Rectangle, radius: float32, color: Color) {
+    if !progress_checking || color.a != cast(u8)56 { return }
+    for y: cast(s32)bounds.y..cast(s32)(bounds.y + bounds.height) - 1 {
+        for x: cast(s32)bounds.x..cast(s32)(bounds.x + bounds.width) - 1 {
+            px := cast(float32)x + 0.5; py := cast(float32)y + 0.5
+            dx := px - bounds.x - bounds.width * 0.5
+            dy := py - bounds.y - bounds.height * 0.5
+            if dx < 0.0 { dx = -dx }; if dy < 0.0 { dy = -dy }
+            dx -= bounds.width * 0.5 - radius; dy -= bounds.height * 0.5 - radius
+            if dx < 0.0 { dx = 0.0 }; if dy < 0.0 { dy = 0.0 }
+            if dx * dx + dy * dy <= radius * radius {
+                progress_pixels += 1
+                ex := px - progress_expected.x - progress_expected.width * 0.5
+                ey := py - progress_expected.y - progress_expected.height * 0.5
+                if ex < 0.0 { ex = -ex }; if ey < 0.0 { ey = -ey }
+                ex -= progress_expected.width * 0.5 - progress_radius
+                ey -= progress_expected.height * 0.5 - progress_radius
+                if ex < 0.0 { ex = 0.0 }; if ey < 0.0 { ey = 0.0 }
+                if px < progress_expected.x || py < progress_expected.y ||
+                    px > progress_expected.x + progress_expected.width ||
+                    py > progress_expected.y + progress_expected.height ||
+                    ex * ex + ey * ey > progress_radius * progress_radius + 1.0 {
+                    progress_outside = true
+                }
+            }
+        }
+    }
+}
+
 #program_export
 RasterRoundedRectangle :: (bounds: Rectangle, radius: float32,
     segments: s32, color: Color) {
     unused segments
+    CheckProgressRaster(bounds, radius, color)
     if sample.fill_count == 0 { sample.radius = radius }
     sample.fill_count += 1; sample.fill_bounds = bounds; sample.fill_color = color
 }

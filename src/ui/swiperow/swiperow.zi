@@ -25,8 +25,8 @@ SwipeRowAbs :: (value: float32) -> float32 {
     return value
 }
 
-// How far the row follows the finger: never past its own width, and not
-// at all towards a side without an action.
+// How far the row follows the finger: never past the side's travel span, and
+// not at all towards a side without an action.
 #program_export
 SwipeRowOffsetFor :: (delta: float32, width: float32, has_start: bool,
     has_end: bool) -> float32 {
@@ -36,6 +36,13 @@ SwipeRowOffsetFor :: (delta: float32, width: float32, has_start: bool,
     if offset > width { offset = width }
     if offset < -width { offset = -width }
     return offset
+}
+
+SwipeRowTravelWidthFor :: (props: SwipeRowProps, offset: float32) -> float32 {
+    width: float32 = props.bounds.width
+    fixed: float32 = ifx offset >= 0.0 then props.start_width else props.end_width
+    if fixed > 0.0 { width = fixed }
+    return width
 }
 
 // The action a lifted swipe takes: 1 for start, 2 for end, 0 for none.
@@ -60,11 +67,11 @@ SwipeRowStageFor :: (props: SwipeRowProps, offset: float32) -> s32 {
     long_share := cast(float32)0.5
     if props.long_threshold > 0.0 { long_share = props.long_threshold }
     if long_share > short_share {
-        stage := SwipeRowActionFor(offset, props.bounds.width, long_share)
+        stage := SwipeRowActionFor(offset, SwipeRowTravelWidthFor(props, offset), long_share)
         if stage == 1 && props.long_start.icon_shape.count > 0 { return 3 }
         if stage == 2 && props.long_end.icon_shape.count > 0 { return 4 }
     }
-    stage := SwipeRowActionFor(offset, props.bounds.width, short_share)
+    stage := SwipeRowActionFor(offset, SwipeRowTravelWidthFor(props, offset), short_share)
     if stage == 1 && props.start.icon_shape.count == 0 { return 0 }
     if stage == 2 && props.end.icon_shape.count == 0 { return 0 }
     return stage
@@ -94,6 +101,36 @@ SwipeRowStrip :: (session: Session, props: SwipeRowProps, offset: float32,
     stage := SwipeRowStageFor(props, offset)
     if stage == 3 { action = props.long_start }
     if stage == 4 { action = props.long_end }
+    if (stage == 3 || stage == 4) && (props.start_width > 0.0 || props.end_width > 0.0) {
+        travel := SwipeRowTravelWidthFor(props, offset)
+        half := travel / 2.0
+        first: Rectangle = Rectangle.{props.bounds.x, props.bounds.y, half, props.bounds.height}
+        second: Rectangle = Rectangle.{props.bounds.x + half, props.bounds.y, half, props.bounds.height}
+        first_action: SwipeRowAction = props.start
+        second_action: SwipeRowAction = props.long_start
+        if stage == 4 {
+            first.x = props.bounds.x + props.bounds.width - travel
+            second.x = first.x + half
+            first_action = props.long_end
+            second_action = props.end
+        }
+        first_key := props.key ^ cast(u64)SWIPE_ROW_STRIP_KEY
+        unused Box(session, BoxProps.{.key = first_key, .bounds = first, .fill = first_action.fill})
+        unused Box(session, BoxProps.{.key = first_key + cast(u64)1, .bounds = second, .fill = second_action.fill})
+        icon: float32 = 24.0 * scale
+        if half >= icon {
+            first_icon := first.x + (half - icon) / 2.0
+            second_icon := second.x + (half - icon) / 2.0
+            icon_y := props.bounds.y + (props.bounds.height - icon) / 2.0
+            unused SvgIcon(session, SvgIconProps.{.shape = first_action.icon_shape,
+                    .color = first_action.icon_color,
+                    .bounds = Rectangle.{first_icon, icon_y, icon, icon}})
+            unused SvgIcon(session, SvgIconProps.{.shape = second_action.icon_shape,
+                    .color = second_action.icon_color,
+                    .bounds = Rectangle.{second_icon, icon_y, icon, icon}})
+        }
+        return
+    }
     unused Box(session, BoxProps.{.key = props.key ^ cast(u64)SWIPE_ROW_STRIP_KEY,
             .bounds = strip, .fill = action.fill})
     icon: float32 = 24.0 * scale
@@ -119,7 +156,6 @@ SwipeRow :: (session: Session, props: SwipeRowProps, state: SwipeRowState) -> Sw
             .hold_seconds = 3600.0, .disabled = props.disabled})
     scale: float32 = 1.0
     if props.scale > 0.0 { scale = props.scale }
-    width: float32 = props.bounds.width
     has_start: bool = props.start.icon_shape.count > 0 || props.long_start.icon_shape.count > 0
     has_end: bool = props.end.icon_shape.count > 0 || props.long_end.icon_shape.count > 0
     next: SwipeRowState = state
@@ -144,10 +180,14 @@ SwipeRow :: (session: Session, props: SwipeRowProps, state: SwipeRowState) -> Sw
             }
         }
         if next.sideways {
-            next.offset = SwipeRowOffsetFor(dx, width, has_start, has_end)
+            travel_width := SwipeRowTravelWidthFor(props, dx)
+            next.offset = SwipeRowOffsetFor(dx, travel_width, has_start, has_end)
         }
     }
     result.clicked = press.clicked && !(next.key == props.key && next.sideways) && !props.disabled
+    result.right_clicked = press.right_clicked && !props.disabled
+    result.pointer_x = press.x
+    result.pointer_y = press.y
     if pressing && !press.down {
         // The finger lifted, or an enclosing scroll took the press.
         action: s32 = 0
@@ -169,7 +209,7 @@ SwipeRow :: (session: Session, props: SwipeRowProps, state: SwipeRowState) -> Sw
             next.settle_from = moved
             next.settle_at = props.now
         }
-    } else if mine && !state.pressing && state.settle_at > 0.0 {
+    } else if mine && !next.pressing && state.settle_at > 0.0 {
         next.offset = SwipeRowSettleOffset(state.settle_from, props.now - state.settle_at)
         if SwipeRowAbs(next.offset) < 0.5 { next = SwipeRowState.{} }
     }

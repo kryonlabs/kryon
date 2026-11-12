@@ -153,7 +153,7 @@ OnboardingChecklist :: (session: Session, props: OnboardingChecklistProps) -> On
     props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
     result.node = Box(session, BoxProps.{.key = props.key, .bounds = props.bounds,
         .id = props.id, .class_name = props.class_name,
-        .fill = ColorFromPacked(CurrentSurface()), .border = ColorFromPacked(CurrentBorder()),
+        .fill = StyleTokenColorOr("surface", ColorFromPacked(CurrentSurface())), .border = StyleTokenColorOr("border", ColorFromPacked(CurrentBorder())),
         .radius = CurrentThemeMetric(.ThemeMetricRadiusPanel)})
     if result.node < 0 || !TreePushScope(session, result.node) { return result }
     title := ifx props.title != "" then props.title else "Get started"
@@ -179,12 +179,12 @@ OnboardingChecklist :: (session: Session, props: OnboardingChecklistProps) -> On
     unused Ring(session, RingProps.{.key = WidgetPartKey(props.key, 3),
         .center = ring_center, .inner_radius = ring_inner, .outer_radius = ring_outer,
         .start_angle = -90.0, .end_angle = -90.0 + 360.0 * result.progress,
-        .color = ColorFromPacked(CurrentSuccess()), .id = props.id,
+        .color = StyleTokenColorOr("success", ColorFromPacked(CurrentSuccess())), .id = props.id,
         .class_name = props.class_name})
     unused Ring(session, RingProps.{.key = WidgetPartKey(props.key, 4),
         .center = ring_center, .inner_radius = ring_inner, .outer_radius = ring_outer,
         .start_angle = -90.0 + 360.0 * result.progress, .end_angle = 270.0,
-        .color = ColorFromPacked(CurrentPalette().control_track), .id = props.id,
+        .color = StyleTokenColorOr("button", ColorFromPacked(CurrentPalette().control_track)), .id = props.id,
         .class_name = props.class_name})
     index: s32 = 0
     while index < result.layout.row_count {
@@ -193,7 +193,7 @@ OnboardingChecklist :: (session: Session, props: OnboardingChecklistProps) -> On
         expanded := index == result.current
         unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 20 + index),
             .bounds = row, .id = props.id, .class_name = props.class_name,
-            .fill = ColorFromPacked(ifx expanded then CurrentPalette().surface_muted else 0),
+            .fill = ifx expanded then StyleTokenColorOr("button", ColorFromPacked(CurrentPalette().surface_muted)) else ColorFromPacked(0),
             .radius = CurrentThemeMetric(.ThemeMetricRadiusItem)})
         if Button(session, ButtonProps.{.key = props.key ^ task.id,
             .bounds = result.layout.circles[index],

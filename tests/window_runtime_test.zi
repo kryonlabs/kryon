@@ -1,0 +1,84 @@
+#import "window_runtime"
+#import "drawing_props"
+
+sequence: s32;
+cleared: Color;
+hidden: bool;
+minimized: bool;
+closing: bool;
+closed: bool;
+
+#program_export "GetScreenWidth"
+TestWidth :: () -> s32 {
+    return 640
+}
+#program_export "GetScreenHeight"
+TestHeight :: () -> s32 {
+    return 480
+}
+
+#program_export "BeginDrawing"
+TestBegin :: () {
+    sequence = sequence * 10 + 1
+}
+#program_export "ClearBackground"
+TestClear :: (color: Color) {
+    sequence = sequence * 10 + 2
+    cleared = color
+}
+#program_export "EndDrawing"
+TestEnd :: () {
+    sequence = sequence * 10 + 3
+}
+#program_export "CloseWindow"
+TestClose :: () {
+    closed = true
+}
+#program_export "IsWindowHidden"
+TestHidden :: () -> bool {
+    return hidden
+}
+#program_export "IsWindowMinimized"
+TestMinimized :: () -> bool {
+    return minimized
+}
+#program_export "WindowShouldClose"
+TestClosing :: () -> bool {
+    return closing
+}
+
+#program_export
+main :: () -> s32 {
+    if WindowWidth() != 640 || WindowHeight() != 480 {
+        return 7
+    }
+    if WindowHidden() || WindowMinimized() || WindowClosing() {
+        return 1
+    }
+    hidden = true
+    if !WindowHidden() || WindowMinimized() || WindowClosing() {
+        return 2
+    }
+    hidden = false
+    minimized = true
+    if WindowHidden() || !WindowMinimized() || WindowClosing() {
+        return 3
+    }
+    // A hidden/minimized custom host still decides when to present a frame.
+    BeginWindowFrame()
+    ClearWindowFrame(Color.{11, 22, 33, 44})
+    EndWindowFrame()
+    if sequence != 123 || cleared.r != cast(u8)11 || cleared.g != cast(u8)22 ||
+    cleared.b != cast(u8)33 || cleared.a != cast(u8)44 {
+        return 4
+    }
+    closing = true
+    if !WindowClosing() || closed {
+        return 5
+    }
+    CloseNativeWindow()
+    if !closed {
+        return 6
+    }
+    return 0
+}

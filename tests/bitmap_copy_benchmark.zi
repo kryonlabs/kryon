@@ -1,0 +1,70 @@
+// Compare the shared copy operation with its pre-optimization reference.
+#import "bitmap_store"
+#import "drawing_props"
+#import "std/vec"
+libc :: #system_library "c";
+CopyTime :: struct {seconds: s64;nanoseconds: s64}
+CopyClock :: (id: s32,value: *CopyTime)->s32 #foreign libc "clock_gettime";
+CopyNow :: ()->float64 {
+ t: CopyTime;unused CopyClock(1,*t)
+ return cast(float64)t.seconds*1000.0+cast(float64)t.nanoseconds/1000000.0
+}
+ReferenceCopy :: (at: s32,rgba: []u8) {
+ item:=*bitmap_images[at]
+ for pixel: cast(s64)0..item.pixels.count-1 {
+  offset:=pixel*4
+  item.pixels[pixel]=BitmapRgbaPixel(rgba,offset)
+  alpha:=cast(u32)rgba[offset+3]
+  item.premultiplied[pixel] = (alpha << 24) |
+   (((cast(u32)rgba[offset] * alpha + 127) / 255) << 16) |
+   (((cast(u32)rgba[offset+1] * alpha + 127) / 255) << 8) |
+   ((cast(u32)rgba[offset+2] * alpha + 127) / 255)
+ }
+}
+CopyHash :: (at: s32)->u64 {
+ h: u64=1469598103934665603
+ item:=*bitmap_images[at]
+ for pixel: cast(s64)0..item.pixels.count-1 {
+  h=(h^cast(u64)item.pixels[pixel])*cast(u64)1099511628211
+  h=(h^cast(u64)item.premultiplied[pixel])*cast(u64)1099511628211
+ }
+ return h
+}
+#program_export
+main :: ()->s32 {
+ for size:0..2 {
+  width: s32=ifx size==0 then 1280 else ifx size==1 then 960 else 420
+  height: s32=ifx size==0 then 800 else ifx size==1 then 600 else 900
+  bytes: Vec(u8);if !VecResize(bytes,cast(s64)width*height*4) {return 1}
+  image:=BitmapCreateOwned(1,1,width,height,bytes[:]);at:=BitmapSlot(image.id)
+  if at<0 {return 2}
+  for mixed:0..1 {
+   for pixel: cast(s64)0..cast(s64)width*height-1 {
+    offset:=pixel*4
+    bytes[offset]=cast(u8)(pixel%256);bytes[offset+1]=cast(u8)((pixel*17+31)%256)
+    bytes[offset+2]=cast(u8)((pixel*7+19)%256)
+    bytes[offset+3]=ifx mixed==0 then cast(u8)255 else cast(u8)((pixel*37)%256)
+   }
+   previous: u64
+   for frame:0..124 {
+    bytes[0]=cast(u8)frame
+    reference: float64;actual: float64;reference_hash: u64;actual_hash: u64
+    // Alternate order to balance warm-cache and frequency effects.
+    for order:0..1 {
+     before:=CopyNow()
+     if (frame+order)%2==0 {
+      ReferenceCopy(at,bytes[:]);reference=CopyNow()-before;reference_hash=CopyHash(at)
+     } else {
+      BitmapCopyPixels(at,bytes[:]);actual=CopyNow()-before;actual_hash=CopyHash(at)
+     }
+    }
+    if actual_hash!=reference_hash||frame>0&&actual_hash==previous {return 3}
+    previous=actual_hash
+    print("copy frame % % % % % %\n",width,height,mixed,frame,reference,actual)
+   }
+  }
+  BitmapDrop(at)
+  if bitmap_bytes!=0 {return 4}
+ }
+ return 0
+}

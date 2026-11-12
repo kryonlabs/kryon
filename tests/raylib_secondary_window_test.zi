@@ -1,3 +1,7 @@
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/paint_queue"
 #import "button"
 #import "button_props"
 #import "tree_input"
@@ -39,6 +43,7 @@ CloseWindow :: () #foreign raylib;
 
 CurrentWindow :: () -> *void #foreign sdl "SDL_GL_GetCurrentWindow";
 CurrentContext :: () -> *void #foreign sdl "SDL_GL_GetCurrentContext";
+KeyboardFocus :: () -> *void #foreign sdl "SDL_GetKeyboardFocus";
 WindowFromId :: (id: u32) -> *void #foreign sdl "SDL_GetWindowFromID";
 WindowId :: (window: *void) -> u32 #foreign sdl "SDL_GetWindowID";
 WindowSurface :: (window: *void) -> *void #foreign sdl "SDL_GetWindowSurface";
@@ -188,6 +193,7 @@ XRoot :: (display: *void) -> u64 #foreign x11 "XDefaultRootWindow";
 XFocus :: (display: *void, window: u64, revert: s32, time: u64) -> s32 #foreign x11 "XSetInputFocus";
 XTranslate :: (display: *void, source: u64, destination: u64, x: s32, y: s32,
     out_x: *s32, out_y: *s32, child: *u64) -> s32 #foreign x11 "XTranslateCoordinates";
+XRaise :: (display: *void, window: u64) -> s32 #foreign x11 "XRaiseWindow";
 XSync :: (display: *void, discard: s32) -> s32 #foreign x11;
 XMotion :: (display: *void, screen: s32, x: s32, y: s32, delay: u64) -> s32 #foreign xtest "XTestFakeMotionEvent";
 XButton :: (display: *void, button: u32, down: s32, delay: u64) -> s32 #foreign xtest "XTestFakeButtonEvent";
@@ -218,24 +224,45 @@ FocusButtonClicks :: (main_window: *void, secondary: *void, handle: *void) -> s3
     if XTranslate(display, secondary_info.data[1], XRoot(display), 30, 30, *x, *y, *child) == 0 { return 2 }
     session := SessionOpen()
     if FocusButtonFrame(session) != 0 { return 3 }
+    // Wait for private WM placement, then expose the target without focusing it.
+    unused XRaise(display, secondary_info.data[1])
+    unused XSync(display, 0)
+    Delay(100)
+    PumpEvents()
+    SecondaryWindowPumpHost()
     for focused: 0..1 {
         target := ifx focused == 0 then main_info.data[1] else secondary_info.data[1]
         unused XFocus(display, target, 1, cast(u64)0)
+        unused XSync(display, 0)
+        Delay(100)
+        PumpEvents()
+        SecondaryWindowPumpHost()
+        if XTranslate(display, secondary_info.data[1], XRoot(display), 30, 30, *x, *y, *child) == 0 { return 2 }
         unused XMotion(display, -1, x, y, cast(u64)0)
         unused XSync(display, 0)
         Delay(100)
+        PumpEvents()
         SecondaryWindowPumpHost()
+        expected_focus := ifx focused == 0 then main_window else secondary
+        if KeyboardFocus() != expected_focus { return 6 }
         pointer: PointerFrame
         wheel: float32
         unused SecondaryWindowPointerHost(handle, *pointer, *wheel)
-        unused XButton(display, cast(u32)1, 1, cast(u64)0)
-        unused XButton(display, cast(u32)1, 0, cast(u64)0)
+        if XButton(display, cast(u32)1, 1, cast(u64)0) == 0 { return 7 }
+        if XButton(display, cast(u32)1, 0, cast(u64)0) == 0 { return 7 }
         unused XSync(display, 0)
         Delay(100)
-        if !SecondaryWindowPointerHost(handle, *pointer, *wheel) ||
-            !pointer.pressed || !pointer.released || pointer.down { return 4 }
+        // Pump the native OS queue before reading the observed SDL events.
+        PumpEvents()
+        SecondaryWindowPumpHost()
+        valid := SecondaryWindowPointerHost(handle, *pointer, *wheel)
+        print("focus phase=% target=% root=% % pointer=% % pressed=% released=% down=% valid=%\n",
+            focused, target, x, y, pointer.x, pointer.y, pointer.pressed, pointer.released, pointer.down, valid)
+        if !valid || !pointer.pressed || !pointer.released || pointer.down { return 4 }
         TreePointerUpdate(session, pointer)
         if FocusButtonFrame(session) != 1 || FocusButtonFrame(session) != 0 { return 5 }
+        print("secondary Button: initially focused=% single native click fired exactly once
+", focused == 1)
     }
     SessionClose(session)
     return 0

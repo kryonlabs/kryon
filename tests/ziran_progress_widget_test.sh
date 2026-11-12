@@ -4,34 +4,34 @@
 source=$repo/tests/progress_widget_behavior.zi
 portable=$repo/tests/progress_widget_portable_test.zi
 set -- \
-    --bind font_metrics:MeasureGlyphWidth=progress_widget_metrics_host:MeasureGlyphWidth \
-    --bind font_metrics:MeasureGlyphLineHeight=progress_widget_metrics_host:MeasureGlyphLineHeight \
-    --bind raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=ziran_progress_raster_host:RasterRoundedRectangleOutline \
-    --bind raster_text:RasterText=ziran_progress_raster_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_progress_raster_host:RasterTextClipped \
-    --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated
+    --bind kryon/font_metrics:MeasureGlyphWidth=progress_widget_metrics_host:MeasureGlyphWidth \
+    --bind kryon/font_metrics:MeasureGlyphLineHeight=progress_widget_metrics_host:MeasureGlyphLineHeight \
+    --bind kryon/raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
+    --bind kryon/raster_shape:RasterRoundedRectangleOutline=ziran_progress_raster_host:RasterRoundedRectangleOutline \
+    --bind kryon/raster_text:RasterText=ziran_progress_raster_host:RasterText \
+    --bind kryon/raster_text:RasterTextClipped=ziran_progress_raster_host:RasterTextClipped \
+    --bind kryon/raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated
 
-"$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" ir --root "$repo/tests" $kryon_project_args  \
     -o "$work/ir" "$portable"
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$repo/tests" $kryon_project_args  \
     "$@" --entry progress_widget_portable_test:main \
     -o "$work/source.zx" "$portable"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
+"$ziran" bundle --root "$work/ir" --project --module-path "$work/ir" \
     "$@" --entry progress_widget_portable_test:main \
     -o "$work/saved.zx" "$work/ir/progress_widget_portable_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
 test "$("$ziran" run "$work/source.zx")" = 0
 
 # A bundle with one missing declared capability must fail before UI effects.
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
-    --bind font_metrics:MeasureGlyphWidth=progress_widget_metrics_host:MeasureGlyphWidth \
-    --bind font_metrics:MeasureGlyphLineHeight=progress_widget_metrics_host:MeasureGlyphLineHeight \
-    --bind raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=ziran_progress_raster_host:RasterRoundedRectangleOutline \
-    --bind raster_text:RasterText=ziran_progress_raster_host:RasterText \
+"$ziran" bundle --root "$repo/tests" $kryon_project_args  \
+    --bind kryon/font_metrics:MeasureGlyphWidth=progress_widget_metrics_host:MeasureGlyphWidth \
+    --bind kryon/font_metrics:MeasureGlyphLineHeight=progress_widget_metrics_host:MeasureGlyphLineHeight \
+    --bind kryon/raster_shape:RasterRoundedRectangle=ziran_progress_raster_host:RasterRoundedRectangle \
+    --bind kryon/raster_shape:RasterRoundedRectangleOutline=ziran_progress_raster_host:RasterRoundedRectangleOutline \
+    --bind kryon/raster_text:RasterText=ziran_progress_raster_host:RasterText \
     --entry progress_widget_portable_test:main -o "$work/missing.zx" "$portable"
-if "$ziran" run "$work/missing.zx" > "$work/missing.log" 2>&1; then
+if "$ziran_root/build/bin/zi2zx" run --vm "$work/missing.zx" > "$work/missing.log" 2>&1; then
     echo 'progress bundle ran without its clipped-text capability' >&2
     exit 1
 fi
@@ -115,16 +115,16 @@ for input in source saved; do
     if test "$input" = source; then
         module=$source
         module_root=$repo/tests
-        module_dir="$kryon_ui_args"
+        module_dir="$kryon_project_args"
     else
         module=$work/ir/progress_widget_behavior.zir
         module_root=$work/ir
-        module_dir="--module-path $work/ir"
+        module_dir="--project --module-path $work/ir"
     fi
     for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" --root "$module_root" \
-            $module_dir --module-path "$ziran_root/std" -o "$output" "$module"
+            $module_dir  -o "$output" "$module"
         if test "$target" = c; then
             cp "$work/native_main.h" "$output/main.c"
             "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \

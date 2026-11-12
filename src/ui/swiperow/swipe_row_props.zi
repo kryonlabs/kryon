@@ -28,6 +28,9 @@ SwipeRowProps :: struct {
     end: SwipeRowAction
     // The share of the row's width a swipe travels to act; 0 means 0.35.
     threshold: float32
+    // A positive fixed travel span in bounds units, replacing the row width
+    // as this side's drag limit and threshold basis. Zero uses the full row.
+    start_width: float32
     disabled: bool
     // Optional second stage; 0 means 0.5. It must exceed threshold.
     long_threshold: float32
@@ -35,6 +38,8 @@ SwipeRowProps :: struct {
     long_end: SwipeRowAction
     // Optional left-swipe threshold; 0 uses the effective shared threshold.
     end_threshold: float32
+    // The left-swipe counterpart of start_width.
+    end_width: float32
 }
 
 // The swipe in progress, kept by the app between frames. One serves a whole
@@ -58,6 +63,11 @@ SwipeRowResult :: struct {
     offset: float32
     // A tap, or Enter or Space; never the end of a swipe.
     clicked: bool
+    // The secondary button was released on the row, as on Press.
+    right_clicked: bool
+    // Where the pointer clicked or was released.
+    pointer_x: float32
+    pointer_y: float32
     // The row was swiped right or left far enough; true on that frame only.
     swiped_start: bool
     swiped_end: bool

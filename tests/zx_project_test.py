@@ -24,6 +24,11 @@ def environment():
     env["XDG_CONFIG_HOME"] = str(OUTPUT / "config")
     env["KRYON_TEMPLATES"] = str(ROOT)
     env["KRYON_FONT_PATH"] = str(ROOT / "assets/fonts/LiberationSans-Regular.ttf")
+    providers = OUTPUT / "runtime providers"
+    providers.mkdir(parents=True, exist_ok=True)
+    (providers / "kryon-desktop.host").write_text(str(ROOT / "build/bin/zx") + "\n")
+    env["ZIRAN_HOST_PATH"] = str(providers)
+    env["YUE_DESKTOP_RECOVERY"] = "0"
     return env
 
 
@@ -145,7 +150,7 @@ backend = "desktop"
     assert checked.stdout == b"", "checking must not execute application code"
     shot = OUTPUT / "portable.png"
     capture_env = {**env, "KRYON_CAPTURE_PATH": str(shot)}
-    run(["xvfb-run", "-a", ROOT / "build/bin/kryon", "run", downloaded],
+    run(["xvfb-run", "-a", ZIRAN, "run", downloaded],
         ROOT, capture_env)
     png = png_pixels(shot)
     assert png[:2] == (960, 600)
@@ -153,6 +158,21 @@ backend = "desktop"
     assert rgb(png, 10, 10) == (248, 250, 252), "background did not render"
     assert any(sum(rgb(png, x, y)) < 400 for y in range(128, 165)
                for x in range(40, 350)), "text did not render"
+
+    portable_vm = OUTPUT / "portable-vm.png"
+    run(["xvfb-run", "-a", ZIRAN, "run", "--vm", downloaded], ROOT,
+        {**env, "KRYON_CAPTURE_PATH": str(portable_vm)})
+    assert png_pixels(portable_vm) == png, "portable VM rendering differs"
+    # Install a reusable package provider, then discover it through XDG data.
+    runtime_prefix = OUTPUT / "runtime install with spaces"
+    run(["make", "install-user", "PREFIX=" + str(runtime_prefix)], ROOT, env)
+    registration = runtime_prefix / "share/ziran/hosts/kryon-desktop.host"
+    assert registration.read_text().strip() == str(runtime_prefix / "bin/zx")
+    installed_runtime = OUTPUT / "runtime-installed.png"
+    run(["xvfb-run", "-a", ZIRAN, "run", downloaded], ROOT,
+        {**env, "ZIRAN_HOST_PATH": "", "XDG_DATA_HOME": str(runtime_prefix / "share"),
+         "KRYON_CAPTURE_PATH": str(installed_runtime)})
+    assert png_pixels(installed_runtime) == png, "installed provider rendering differs"
 
     run([ZIRAN, "tool", "kryon", "build", "desktop"], project, env)
     native = OUTPUT / "native.png"

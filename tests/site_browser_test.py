@@ -66,6 +66,7 @@ class Browser:
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log,
             env=environment, start_new_session=True)
         self.received, self.sequence, self.session, self.errors = b'', 0, None, []
+        self.console_messages = []
         target = next(item for item in self.command('Target.getTargets')['targetInfos'] if item['type'] == 'page')
         self.session = self.command('Target.attachToTarget', targetId=target['targetId'], flatten=True)['sessionId']
         for domain in ('Runtime', 'Page', 'Log'):
@@ -98,6 +99,9 @@ class Browser:
                 if event == 'Runtime.exceptionThrown':
                     details = reply['params']['exceptionDetails']
                     self.errors.append((details.get('exception') or {}).get('description') or details.get('text'))
+                if event == 'Runtime.consoleAPICalled' and reply['params'].get('type') in ('error', 'warning'):
+                    self.console_messages.append(str(reply['params'].get('args', []))[:1800])
+                    self.console_messages = self.console_messages[-12:]
                 if reply.get('id') == self.sequence:
                     if 'error' in reply: raise DevToolsError(method, reply['error'])
                     return reply.get('result', {})
@@ -274,6 +278,11 @@ def check_files(site):
     assets = dict(json.loads((site / 'runtime/assets.json').read_text()))
     image = site / assets['/assets/pfp.webp']
     assert hashlib.sha256(image.read_bytes()).digest() == hashlib.sha256((ROOT / 'examples/gallery/assets/pfp.webp').read_bytes()).digest(), 'Gallery image asset missing or changed'
+    landscape = site / assets['/assets/alpine-lake.webp']
+    assert hashlib.sha256(landscape.read_bytes()).digest() == hashlib.sha256((ROOT / 'examples/image/assets/alpine-lake.webp').read_bytes()).digest()
+    coast = site / assets['/assets/coastal-cliffs.webp']
+    assert coast.read_bytes() == (ROOT / 'examples/carousel/assets/coastal-cliffs.webp').read_bytes()
+    assert coast.read_bytes() != landscape.read_bytes(), 'Carousel must ship two distinct landscapes'
     text = (site / 'gallery-data.js').read_text()
     scenes = json.loads(text.split('window.galleryScenes = ', 1)[1].rstrip(';\n'))
     assert len(scenes) == EXPECTED_SCENE_COUNT
@@ -361,6 +370,10 @@ def check_portable_theme(browser, shots):
     browser.until('Module.siteDark', 'restore dark theme')
 
 
+def navigation_scenes(scenes):
+    return sorted(scenes, key=lambda e: (e['moduleId'] not in ('kryon', 'inputs', 'overlays'), '' if e['moduleId'] in ('kryon', 'inputs', 'overlays') else e['module'], e['category'], e['name']))
+
+
 def select_example(browser, base, scenes, name, reload=True):
     if reload: ready(browser, base)
     nodes = tree(browser)
@@ -368,12 +381,14 @@ def select_example(browser, base, scenes, name, reload=True):
     selected = next(n for n in nodes if n['selected'] and n['parent'] == nodes.index(nav))
     mouse(browser, selected)
     browser.key('Home', 36)
-    index = next(i for i, scene in enumerate(scenes) if scene['name'] == name)
-    if index > len(scenes) // 2:
+    ordered = navigation_scenes(scenes)
+    position = next(i for i, scene in enumerate(ordered) if scene['name'] == name)
+    index = ordered[position]['index']
+    if position > len(scenes) // 2:
         browser.key('End', 35)
-        for _ in range(len(scenes) - 1 - index): browser.key('ArrowUp', 38)
+        for _ in range(len(scenes) - 1 - position): browser.key('ArrowUp', 38)
     else:
-        for _ in range(index): browser.key('ArrowDown', 40)
+        for _ in range(position): browser.key('ArrowDown', 40)
     browser.until('Module.gallerySceneRendered === ' + str(index), 'options example ' + name)
 
 
@@ -520,8 +535,14 @@ def check_document_layout(browser, base, shots):
     compile_ready(browser)
     mouse(browser, node_for(browser, key=10103, width=390), width=390)
     browser.until('Module.siteTree.some(n => n.key===9003)', 'mobile source navigation')
-    mouse(browser, node_for(browser, key=2, width=390), width=390)
-    browser.until('Module.gallerySceneRendered===1', 'mobile source changes real scene')
+    nodes = tree(browser)
+    sidebar = next(i for i, node in enumerate(nodes) if node['key'] == 9003)
+    target = next(node for node in nodes if node['parent'] == sidebar and
+                  node['interactive'] and not node['selected'] and visible(node, width=390))
+    expected_scene = target['key'] - 1
+    assert expected_scene != browser.evaluate('Module.gallerySceneRendered')
+    mouse(browser, target, width=390)
+    browser.until('Module.gallerySceneRendered===' + str(expected_scene), 'mobile source changes real scene')
     compile_ready(browser)
     capture(browser, shots/'documentation-phone-source.webp')
     header = frame_crop(browser, dict(x=0,y=0,width=390,height=104))
@@ -554,12 +575,15 @@ def check_live(browser, base, scenes, shots):
     select_example(browser, base, scenes, 'Button', reload=False)
     assert any(n['key'] == 2 and n['label'] == '1' for n in tree(browser)), 'cross-scene source state lost'
     ready(browser, base)
-    first = node_for(browser, label=scenes[0]['name'], key=1, parent_key=9003)
-    mouse(browser, first)
-    for index, scene in enumerate(scenes):
-        if index: browser.key('ArrowDown', 40)
+    selected = next(n for n in tree(browser) if n['selected'] and n['parent'] >= 0 and tree(browser)[n['parent']]['key'] == 9003)
+    mouse(browser, selected)
+    browser.key('Home', 36)
+    for position, scene in enumerate(navigation_scenes(scenes)):
+        index = scene['index']
+        if position: browser.key('ArrowDown', 40)
         browser.until('Module.gallerySceneRendered === ' + str(index), 'sidebar ' + scene['name'])
         browser.until('Module.siteTree?.some(n => n.key === 10100 && n.label === ' + json.dumps(scene['name']) + ')', 'committed title ' + scene['name'])
+        assert any(n['focused'] and n['key'] == index + 1 and n['parent'] >= 0 and tree(browser)[n['parent']]['key'] == 9003 for n in tree(browser)), ('sidebar focus lost', scene['name'])
         if scene['name'] in ('Image', 'Carousel', 'Tile map'): check_picture(browser, scene['name'], shots)
     capture(browser, shots / 'components.webp')
     for width in VIEWPORTS:
@@ -568,13 +592,15 @@ def check_live(browser, base, scenes, shots):
             assert visible(node_for(browser, key=key, width=width), width), (width, key)
         if width < 760:
             mouse(browser, node_for(browser, key=10103, width=width), width)
-            mouse(browser, node_for(browser, key=2, label=scenes[1]['name'], width=width, parent_key=9003), width)
-            browser.until('Module.gallerySceneRendered === 1', 'mobile picker')
+            target = navigation_scenes(scenes)[1]
+            mouse(browser, node_for(browser, key=target['index'] + 1, label=target['name'], width=width, parent_key=9003), width)
+            browser.until('Module.gallerySceneRendered === ' + str(target['index']), 'mobile picker')
         capture(browser, shots / ('components-' + str(width) + '.webp'))
     ready(browser, base)
     mouse(browser, node_for(browser, label='Source'))
-    for index, scene in enumerate(scenes):
-        if index:
+    for position, scene in enumerate(navigation_scenes(scenes)):
+        index = scene['index']
+        if position:
             nav = node_for(browser, key=9003)
             selected = next(n for n in tree(browser) if n['selected'] and n['parent'] == tree(browser).index(nav))
             mouse(browser, selected)
@@ -611,10 +637,142 @@ def check_live(browser, base, scenes, shots):
     assert not browser.errors, browser.errors
 
 
+def check_visual_polish(browser, base, scenes, shots):
+    for width in (320, 390, 1366):
+        for dark in (False, True):
+            ready(browser, base, 'getting-started', width=width)
+            if browser.evaluate('Module.siteDark') != dark:
+                mouse(browser, node_for(browser, key=10003, width=width), width=width)
+                browser.until('Module.siteDark === ' + str(dark).lower(), 'guide theme')
+            assert not any('ZIRAN UI' in n['label'] for n in tree(browser))
+            for key in (10613, 10618, 10624):
+                node = next(n for n in tree(browser) if n['key'] == key)
+                assert node['x'] >= 16 and node['x'] + node['width'] <= width - 16, node
+            capture(browser, shots / ('guide-%s-%s-top.webp' % (width, dark)))
+            browser.command('Input.dispatchMouseEvent', type='mouseMoved', x=width-20, y=700)
+            initial_y = next(n for n in tree(browser) if n['key'] == 10622)['y']
+            for step, target in enumerate((10616, 10622, 10052)):
+                # The final 42px link rests above the bottom padding at max scroll.
+                limit = 782 if target == 10052 else 600
+                for attempt in range(12):
+                    if next(n for n in tree(browser) if n['key'] == target)['y'] < limit:
+                        break
+                    browser.command('Input.dispatchMouseEvent', type='mouseWheel', x=width-20, y=700, deltaX=0, deltaY=470)
+                    time.sleep(.25)
+                browser.until('Module.siteTree.some(n=>n.key===' + str(target) + ' && n.y<' + str(limit) + ')', 'Guide section scrolls into view')
+                assert next(n for n in tree(browser) if n['key'] == 10622)['y'] < initial_y - 100
+                if target == 10052:
+                    link = next(n for n in tree(browser) if n['key'] == target)
+                    assert link['y'] >= 104 and link['y'] + link['height'] <= 824, link
+                capture(browser, shots / ('guide-%s-%s-%s.webp' % (width, dark, step)))
+            if width == 1366:
+                ready(browser, base, 'getting-started')
+                mouse(browser, node_for(browser, key=10603))
+                browser.until('Module.siteTree.some(n=>n.key===10622 && n.y<250)', 'guide theme contents link')
+    ready(browser, base, 'index')
+    if browser.evaluate('Module.siteDark'):
+        mouse(browser, node_for(browser, key=10003))
+    assert not any('ZIRAN UI' in n['label'] for n in tree(browser))
+    capture(browser, shots/'hold-idle-after.webp')
+    browser.screenshot(shots/'hold-idle-after.png')
+    n = node_for(browser, key=10043)
+    mouse(browser, n, click=False)
+    x, y = point(n, 1366)
+    browser.command('Input.dispatchMouseEvent',type='mousePressed',x=x,y=y,button='left',clickCount=1)
+    browser.until('Module.siteHoldProgress > .35 && Module.siteHoldProgress < .9', 'intermediate hold fill')
+    capture(browser, shots/'hold-held-after.webp')
+    browser.screenshot(shots/'hold-held-after.png')
+    browser.until('Module.siteHoldCount===1', 'hold completes')
+    browser.command('Input.dispatchMouseEvent',type='mouseReleased',x=x,y=y,button='left',clickCount=1)
+    mouse(browser, node_for(browser,key=10044))
+    browser.until("Module.siteTree.some(n=>n.key===10044 && n.label==='Confirm delete')", 'confirm expanded')
+    time.sleep(.35)
+    capture(browser,shots/'confirm-expanded-after.webp')
+    browser.screenshot(shots/'confirm-expanded-after.png')
+    mouse(browser,node_for(browser,key=10044))
+    browser.until('Module.siteConfirmCount===1','confirm commits once')
+    select_example(browser,base,scenes,'Image')
+    check_picture(browser,'Image',shots)
+    assert any(n['label']=='Alpine morning' for n in tree(browser))
+    mouse(browser,node_for(browser,label='Source'))
+    compile_ready(browser)
+    assert browser.evaluate('Module.previewReady'), 'Image portable source failed'
+    capture(browser,shots/'image-editable-after.webp')
+    print('Local polish browser tests: Guide responsive/light/dark, native Image/source, Hold progress/completion and confirmation passed')
+
+
+def check_followup(browser, base, scenes, shots):
+    groups = {(s['moduleId'], s['category']) for s in scenes}
+    assert ('plot', 'Plotting') in groups and ('data_views', 'Data views') in groups
+    assert len({s['id'] for s in scenes}) == 101
+    for portable in (False, True):
+        select_example(browser, base, scenes, 'Onboarding checklist')
+        if portable:
+            mouse(browser, node_for(browser, label='Source')); compile_ready(browser)
+        collection = 'Module.previewTree' if portable else 'Module.siteTree'
+        for dark in (False, True):
+            if browser.evaluate('Module.siteDark') != dark: mouse(browser, node_for(browser, key=10003))
+            frame = browser.evaluate('Module.siteFrame')
+            browser.until('Module.siteFrame > ' + str(frame + 4), 'checklist theme rendered')
+            heading = browser.evaluate(collection + ".find(n=>n.label==='Get started')")
+            nodes = browser.evaluate(collection)
+            card = next(n for n in nodes if n['key'] == 10 and not n['interactive'] and
+                        n['x'] <= heading['x'] < n['x'] + n['width'] and
+                        n['y'] <= heading['y'] < n['y'] + n['height'])
+            image = frame_crop(browser, card)
+            surface = image.getpixel((5, 5))
+            assert (sum(surface) < 200) == dark, ('checklist surface does not follow palette', surface, dark)
+            for label in ('Get started', 'Create a project', 'Add a component', 'Run the app'):
+                n = browser.evaluate(collection + '.find(n=>n.label===' + json.dumps(label) + ' && !n.interactive)')
+                assert_text_contrast(frame_crop(browser, n), label + str(dark))
+            capture(browser, shots / ('checklist-%s-%s.webp' % (portable, dark)))
+        scope = collection + '.filter(n=>n.x>=' + str(card['x']) + ' && n.x<' + str(card['x'] + card['width']) + ' && n.y>=' + str(card['y']) + ' && n.y<' + str(card['y'] + card['height']) + ')'
+        circle = browser.evaluate(scope + '.find(n=>n.key===11 && n.interactive)')
+        before = frame_crop(browser, card)
+        mouse(browser, circle)
+        browser.until(collection + ".some(n=>n.label==='1 of 3 complete')", 'checklist task toggled and progress updated')
+        after = frame_crop(browser, card)
+        assert ImageChops.difference(before, after).getbbox(), 'checklist completion did not paint'
+        capture(browser, shots / ('checklist-checked-%s.webp' % portable))
+        mouse(browser, node_for(browser, key=9004))
+        browser.until(scope + '.some(n=>n.key===11 && n.disabled)', 'checklist disabled row')
+        mouse(browser, browser.evaluate(scope + '.find(n=>n.key===11 && n.interactive)'))
+        assert browser.evaluate(collection + ".some(n=>n.label==='1 of 3 complete')"), 'disabled checklist changed'
+        capture(browser, shots / ('checklist-disabled-%s.webp' % portable))
+    select_example(browser, base, scenes, 'Carousel')
+    check_picture(browser, 'Carousel', shots)
+    first = frame_crop(browser, node_for(browser, key=10101))
+    mouse(browser, node_for(browser, label='Next'))
+    browser.until("Module.siteTree.some(n=>n.label==='Follow the trail along the ocean')", 'second bitmap slide')
+    time.sleep(.7)
+    check_picture(browser, 'Carousel coast', shots)
+    assert ImageChops.difference(first, frame_crop(browser, node_for(browser, key=10101))).getbbox(), 'Carousel photo did not change'
+    for dark in (False, True):
+        if browser.evaluate('Module.siteDark') != dark: mouse(browser, node_for(browser, key=10003))
+        caption = node_for(browser, label='Follow the trail along the ocean')
+        pixels = frame_crop(browser, caption)
+        w, h = pixels.size
+        assert_text_contrast(pixels.crop((h // 2, h // 4, w - h // 2, h * 3 // 4)), 'Carousel caption ' + str(dark))
+        capture(browser, shots / ('carousel-caption-%s.webp' % dark))
+    mouse(browser, node_for(browser, label='Source')); compile_ready(browser)
+    for dark in (False, True):
+        if browser.evaluate('Module.siteDark') != dark: mouse(browser, node_for(browser, key=10003))
+        caption = browser.evaluate("Module.previewTree.find(n=>n.label==='A quiet morning in the mountains')")
+        assert caption, 'Portable Carousel caption missing'
+        pixels = frame_crop(browser, caption)
+        w, h = pixels.size
+        assert_text_contrast(pixels.crop((h // 2, h // 4, w - h // 2, h * 3 // 4)), 'Portable Carousel caption ' + str(dark))
+        capture(browser, shots / ('carousel-source-caption-%s.webp' % dark))
+    capture(browser, shots/'carousel-source.webp')
+    print('Local followup tests: grouped modules, native/portable checklist light/dark contrast, checked/disabled progress, two real Carousel images/source passed')
+
+
 def main():
     from widget_examples_source_test import main as check_source_preservation
     check_source_preservation()
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--followup-only', action='store_true')
+    parser.add_argument('--polish-only', action='store_true')
     parser.add_argument('--compiler-only', action='store_true')
     parser.add_argument('--options-only', action='store_true')
     parser.add_argument('--compiler-scene', action='append', default=[], help='Compile only the named source variants')
@@ -636,6 +794,12 @@ def main():
     browser = Browser(args.shots / 'profile', chromium)
     try:
         base = 'http://127.0.0.1:' + str(server.server_port) + '/'
+        if args.followup_only:
+            check_followup(browser, base, scenes, args.shots)
+            return
+        if args.polish_only:
+            check_visual_polish(browser, base, scenes, args.shots)
+            return
         if args.compiler_only:
             check_compiler(browser, base, scenes)
             return
@@ -646,6 +810,8 @@ def main():
         check_example_options(browser, base, scenes, args.shots)
         print('Local website options tests: disabled flags, motion and contrast passed' if args.options_only else 'Local website browser tests: routes, 101 live scenes/sources, mobile, theme, editing, diagnostics, portable preview, disabled flags, motion and contrast passed')
     except Exception:
+        print('Browser runtime errors:', browser.errors[-6:])
+        print('Browser console diagnostics:', browser.console_messages)
         print('Browser failure state:', browser.evaluate('window.compilerReply') if args.compiler_only else browser.evaluate("({scene:Module.gallerySceneRendered,key:Module.lastInputKey,pickerKey:Module.lastPickerKey,active:document.activeElement?.id,focused:Module.siteTree?.filter(n=>n.focused).map(n=>({key:n.key,parent:n.parent,label:n.label})),errors:document.querySelector('#result')?.textContent,compileBusy:Module.compileBusy,compileRevision:Module.compileRevision,editorRevision:Module.editorRevision,compilerResult:Module.compilerResult,diagnostic:Module.compileDiagnostic})"))
         capture(browser, args.shots / 'failure.webp')
         raise

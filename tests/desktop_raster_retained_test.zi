@@ -1,5 +1,6 @@
 Desktop :: #import "desktop_runtime";
 Raster :: #import "cairo_raster";
+Clock :: #import "frame_clock";
 
 Pixel :: (x: s32, y: s32, expected: u32) -> bool {
     pixels := cast(*u32)Raster.RasterSurfaceData()
@@ -10,6 +11,7 @@ Red :: (size: float32) {
     Raster.RasterRoundedRectangle(.{0.0, 0.0, size, size}, 0.0, 0, .{220, 40, 60, 255})
 }
 
+#program_export
 main :: () -> s32 {
     if !Desktop.OpenDesktopSized(160, 120) { return 1 }
     defer Desktop.CloseDesktop()
@@ -18,11 +20,29 @@ main :: () -> s32 {
     Red(100.0)
     if !Desktop.EndDesktopFrame() || !Pixel(50, 50, cast(u32)0xffdc283c) { return 3 }
     for i: 0..29 {
+        if !Desktop.PollDesktop() {return 15}
         Desktop.BeginDesktopFrame()
         if !Desktop.DesktopFrameReusable() || !Pixel(50, 50, cast(u32)0xffdc283c) { return 4 }
         Desktop.DesktopFrameUnchanged(true)
+        Desktop.DesktopRequestFrame()
+        Desktop.DesktopRequestFrame()
         if !Desktop.EndDesktopFrame() || !Pixel(50, 50, cast(u32)0xffdc283c) { return 5 }
+        Desktop.PauseDesktop()
+        clock: Clock.FrameClock=Desktop.frame_clock
+        if clock.rate!=60 {return 16}
     }
+    // No request in the next frame: retained pixels remain correct on idle.
+    Desktop.BeginDesktopFrame();Desktop.DesktopFrameUnchanged(true)
+    if !Desktop.EndDesktopFrame()||!Pixel(50,50,cast(u32)0xffdc283c) {return 14}
+    Desktop.PauseDesktop()
+    for i:0..3 {
+        if !Desktop.PollDesktop() {return 17}
+        Desktop.BeginDesktopFrame();Desktop.DesktopFrameUnchanged(true)
+        if !Desktop.EndDesktopFrame()||!Pixel(50,50,cast(u32)0xffdc283c) {return 18}
+        Desktop.PauseDesktop()
+    }
+    clock: Clock.FrameClock=Desktop.frame_clock
+    if clock.rate!=15 {return 19}
     // A smaller changed picture clears the old geometry before drawing.
     Desktop.BeginDesktopFrame()
     Red(30.0)
@@ -45,6 +65,6 @@ main :: () -> s32 {
     // Ordinary raster hosts retain their immediate clearing behavior.
     Raster.BeginRasterFrame()
     if !Pixel(50, 50, cast(u32)0xfff8fafc) || !Raster.FinishRasterFrame() { return 13 }
-    print("Retained Cairo pixels survive idle frames; changed, empty, clipped and resized frames replace them\n")
+    print("Retained Cairo pixels survive pending-work 60Hz and idle 15Hz frames; changed, empty, clipped and resized frames replace them\n")
     return 0
 }

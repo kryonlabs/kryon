@@ -73,28 +73,28 @@ Send :: (props: NotificationProps) -> bool {
 }
 ZI
 
-"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" ir --root "$work" $kryon_project_args --module-path "$work" \
     -o "$work/ir" "$work/app.zi" "$work/provider.zi"
 for source in source saved; do
     if test "$source" = source; then
         root=$work
-        modules="$kryon_ui_args"
+        modules="$kryon_project_args --module-path $work"
         app=$work/app.zi
         provider=$work/provider.zi
     else
         root=$work/ir
-        modules="--module-path $work/ir"
+        modules="--project --module-path $work/ir"
         app=$work/ir/app.zir
         provider=$work/ir/provider.zir
     fi
     "$ziran" bundle --root "$root" $modules \
         --entry app:Answer \
-        --bind notification:NotificationSupportedHost=provider:Supported \
-        --bind notification:NotificationAllowedHost=provider:Allowed \
-        --bind notification:NotificationRequestHost=provider:Request \
-        --bind notification:NotificationWindowFocusedHost=provider:Focused \
-        --bind notification:NotificationSetAppNameHost=provider:SetName \
-        --bind notification:NotificationSendHost=provider:Send \
+        --bind kryon/notification:NotificationSupportedHost=provider:Supported \
+        --bind kryon/notification:NotificationAllowedHost=provider:Allowed \
+        --bind kryon/notification:NotificationRequestHost=provider:Request \
+        --bind kryon/notification:NotificationWindowFocusedHost=provider:Focused \
+        --bind kryon/notification:NotificationSetAppNameHost=provider:SetName \
+        --bind kryon/notification:NotificationSendHost=provider:Send \
         -o "$work/$source.zx" "$app" "$provider"
     test "$("$ziran" run "$work/$source.zx")" = 42
 done

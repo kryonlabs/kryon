@@ -5,7 +5,6 @@
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
-. "$repo/tests/image_packages.sh"
 work="$repo/build/scratch/raylib-lanczos"
 mkdir -p "$work"
 exec 9>"$work/lock"
@@ -20,11 +19,8 @@ raylib_libs=${RAYLIB_LIBS:-$(pkg-config --libs sdl2 libdrm gbm egl glesv2) -ldl 
 python3 "$repo/tests/lanczos_goldens.py" fixtures "$work/fixtures"
 # Kryon's modules come before std, whose image module has another job.
 "$ziran" build --target=c --define POSIX_THREADS --root "$repo/tests" \
-    $kryon_ui_args --module-path "$repo/src/backend" \
-    --module-path "avif=$image_avif/src" --module-path "$image_avif/src" \
-    --module-path "$image_avif/src/bridge" --module-path "webp=$image_webp/src" \
-    --module-path "image_codec=$image_codec/src" --module-path "std=$ziran_root/std" \
-    --module-path "$ziran_root/std" -o "$work/c" \
+    $kryon_project_args \
+     -o "$work/c" \
     "$repo/tests/raylib_lanczos_test.zi"
 "${CC:-cc}" -std=c11 -O2 -ffunction-sections -fdata-sections \
     -Wl,--gc-sections -I"$work/c" "$work/c"/*.c "$archive" "$webp" "${AVIF_A:-$repo/build/avif-ziran/avif/libavif.a}" "${AOM_A:-$repo/build/avif-ziran/aom/libaom.a}" \

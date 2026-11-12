@@ -1,0 +1,114 @@
+// Explicit integration fixture. The runner supplies Jungle's host module path;
+// geometry and materials are imported unchanged from the actual application.
+#import, file "../src/backend/scene_gpu.zi";
+#import "treehouse_draw"
+#import "treehouse_scene"
+#import "treehouse_material"
+#import "treehouse_surface"
+#import "std/image"
+#import "std/vec"
+#import "std/math"
+#import "std/file"
+#import "std/c_string"
+#import "std/byte_text_linux"
+#import "kryon/scene_render"
+#import "kryon/scene"
+#import, file "scene_gpu_padding.zi";
+libc :: #system_library "c";
+TickTime :: struct {seconds: s64;nanoseconds: s64}
+TickGet :: (id: s32,value: *TickTime)->s32 #foreign libc "clock_gettime";
+Tick :: ()->float64 {t: TickTime;unused TickGet(1,*t);return cast(float64)t.seconds*1000.0+cast(float64)t.nanoseconds/1000000.0}
+window_data: string;
+wood_data: string;
+Load :: (path: string)->Image {
+ data:=ifx path==TREEHOUSE_WOOD_ASSET then wood_data else window_data
+ if data.count<8 {return .{}}
+ w:=cast(s32)data[0]+cast(s32)data[1]*256;h:=cast(s32)data[4]+cast(s32)data[5]*256
+ image:=NewImage(w,h)
+ if data.count!=8+image.pixels.count {return .{}}
+ for at:0..image.pixels.count-1 {image.pixels[at]=data[at+8]}
+ return image
+}
+Hash :: (image: *Image)->u64 {
+ h: u64=1469598103934665603
+ for at:0..image.pixels.count-1 {h=(h^cast(u64)image.pixels[at])*cast(u64)1099511628211}
+ return h
+}
+#program_export
+main :: (argc: s32,argv: **u8)->s32 {
+ if argc!=4&&argc!=5 {return 1}
+ window_data=ReadEntireFile(TextFromCString(argv[1]));wood_data=ReadEntireFile(TextFromCString(argv[2]))
+ cache: TreehouseRenderCache
+ if !TreehousePrepare(*cache,0,Load,false) {return 2}
+ // The production app passes the same materials through a different native
+ // call context. This variant tests representation independence explicitly.
+ if argc==5 {
+  for at:0..cache.scene.meshes.count-1 {MaterialFillPadding(*cache.scene.meshes[at].material,cast(u8)(at%251))}
+  print("room padding variant enabled\n")
+ }
+ print("room meshes % vertices % triangles % texels %\n",cache.scene.meshes.count,cache.scene.positions.count,cache.scene.positions.count/3,cache.scene.texels.count)
+ gpu: SceneGpuContext;caps:=SceneGpuProbe(*gpu)
+ if !caps.available {print("GPU unavailable %\n",caps.diagnostic);return 3}
+ print("GPU renderer %\n",TextView(caps.renderer[:]))
+ print("GPU version %\n",TextView(caps.version[:]))
+ print("GPU vendor % highp bits % range % max_samples % actual_samples %\n",TextView(caps.vendor[:]),caps.highp_bits,caps.highp_range,caps.max_samples,caps.samples)
+ for size:0..2 {
+  width: s32=ifx size==0 then 1280 else ifx size==1 then 960 else 420
+  height: s32=ifx size==0 then 800 else ifx size==1 then 600 else 900
+  image:=NewImage(width,height);reference:=NewImage(width,height)
+  if !TreehouseRenderInto(*cache,.{},12.0,*reference) {return 4}
+  camera:=TreehousePerspective(0,.{},cast(float64)width/cast(float64)height)
+  result:=SceneGpuRender(*gpu,*cache.scene,camera,*image)
+  if !result.ok {print("room GPU failure % log %\n",result.diagnostic,TextView(gpu.log[:]));return 5}
+  prefix:=TextFromCString(argv[3])
+  b: Vec(u8);BuilderPrint(*b,"%-%-cpu.rgba",prefix,width);cpu: Text=BuilderFinish(b)
+  c: Vec(u8);BuilderPrint(*c,"%-%-gpu.rgba",prefix,width);out: Text=BuilderFinish(c)
+  if !WriteEntireFile(TextView(cpu),TextFromBytes(reference.pixels[:]))||!WriteEntireFile(TextView(out),TextFromBytes(image.pixels[:])) {return 6}
+  print("room cold % % % % %\n",width,height,result.submit_ms,result.readback_ms,result.conversion_ms)
+  before:=SceneGpuMemoryUsage(*gpu)
+  previous: u64
+  for frame:0..124 {
+   travel: TreehouseCamera=.{Sin(cast(float64)frame*0.047)*0.3,Cos(cast(float64)frame*0.039)*0.04}
+   // Match the live application's smoothly changing solar input. It changes
+   // radiometry and shader uniforms while the sun's shadow projection stays
+   // fixed, so camera-only fixtures must not conceal shadow-cache misses.
+   hour:=18.0+cast(float64)frame/60000.0
+   cache.uniforms=TreehouseUniforms(hour,false);cache.outside_uniforms=TreehouseUniforms(hour,true)
+   cache.uniforms[3]=.{}
+   light:=TreehouseLighting(hour)
+   cache.scene.hemisphere=1.05+light.daylight*1.45
+   cache.scene.lights[0].intensity=1.1+light.daylight*2.0
+   cache.scene.lights[0].color=.{255,cast(u8)(195.0+53.0*light.daylight),cast(u8)(143.0+95.0*light.daylight),255}
+   camera=TreehousePerspective(0,travel,cast(float64)width/cast(float64)height)
+   start:=Tick()
+   result=SceneGpuRender(*gpu,*cache.scene,camera,*image)
+   wall:=Tick()-start
+   if !result.ok {print("motion failure %\n",result.diagnostic);return 7}
+   hash:=Hash(*image)
+   if frame>0&&hash==previous {return 8}
+   previous=hash
+   print("room frame % % % % % % % % % % % % %\n",width,height,frame,result.submit_ms,result.readback_ms,result.conversion_ms,wall,hash,
+    result.prepare_ms,result.shadow_ms,result.draw_ms,result.draw_calls,result.shadow_passes)
+  }
+  after:=SceneGpuMemoryUsage(*gpu)
+  print("room resources % % % % % % % % % % shadow_renders %\n",width,after.cpu_bytes,after.gpu_bytes,after.buffers,after.textures,after.programs,after.framebuffers,after.renderbuffers,after.geometry_uploads,after.texture_uploads,after.shadow_renders)
+  if before.geometry_uploads!=after.geometry_uploads||before.texture_uploads!=after.texture_uploads||before.gpu_bytes!=after.gpu_bytes||before.cpu_bytes!=after.cpu_bytes||before.shadow_renders!=after.shadow_renders {return 9}
+  // Additional CPU references exercise different camera poses, daylight,
+  // shader uniforms and moving shadow edges, beyond the approved noon view.
+  light:=cache.scene.lights[0]
+  for state:1..3 {
+   travel: TreehouseCamera=.{ifx state==1 then 0.28 else -0.24,ifx state==2 then 0.06 else -0.04}
+   hour: float64=ifx state==1 then 7.0 else ifx state==2 then 18.0 else 22.0
+   cache.scene.lights[0].position=.{-4.0+cast(float64)state,6.0+cast(float64)state,-5.0}
+   if !TreehouseRenderInto(*cache,travel,hour,*reference) {return 10}
+   camera=TreehousePerspective(0,travel,cast(float64)width/cast(float64)height)
+   if !SceneGpuRender(*gpu,*cache.scene,camera,*image).ok {return 11}
+   a: Vec(u8);BuilderPrint(*a,"%-%-state%-cpu.rgba",prefix,width,state);cpu_state: Text=BuilderFinish(a)
+   z: Vec(u8);BuilderPrint(*z,"%-%-state%-gpu.rgba",prefix,width,state);gpu_state: Text=BuilderFinish(z)
+   if !WriteEntireFile(TextView(cpu_state),TextFromBytes(reference.pixels[:]))||!WriteEntireFile(TextView(gpu_state),TextFromBytes(image.pixels[:])) {return 12}
+  }
+  cache.scene.lights[0]=light
+ }
+ SceneGpuRelease(*gpu);TreehouseRenderClose(*cache);RenderSceneRelease()
+ return 0
+}

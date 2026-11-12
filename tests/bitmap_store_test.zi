@@ -1,5 +1,6 @@
 #import "bitmap_store"
 #import "drawing_props"
+#import "std/vec"
 
 rgba: [16]u8 = .[255,0,0,255, 0,255,0,128, 0,0,255,0, 255,255,255,255];
 changes: s32;
@@ -20,7 +21,38 @@ Replace :: (id: u32, width: s32, height: s32, bytes: []u8) -> bool {
     return !fail_replace
 }
 Free :: (id: u32) { if id == cast(u32)42 { frees += 1 } }
+CheckCopyPixels :: (at: s32,bytes: []u8)->bool {
+    for pixel: cast(s64)0..bytes.count/4-1 {
+        i:=pixel*4
+        r:=cast(u32)bytes[i];g:=cast(u32)bytes[i+1];b:=cast(u32)bytes[i+2];a:=cast(u32)bytes[i+3]
+        straight: u32=(a<<24)|(r<<16)|(g<<8)|b
+        premultiplied: u32=(a<<24)|(((r*a+127)/255)<<16)|(((g*a+127)/255)<<8)|((b*a+127)/255)
+        if bitmap_images[at].pixels[pixel]!=straight||bitmap_images[at].premultiplied[pixel]!=premultiplied {return false}
+    }
+    return true
+}
+CheckAllAlpha :: ()->bool {
+    bytes: Vec(u8)
+    if !VecResize(bytes,256*256*4) {return false}
+    for alpha:0..255 {for value:0..255 {
+        i:=(alpha*256+value)*4
+        bytes[i]=cast(u8)value;bytes[i+1]=cast(u8)(255-value)
+        bytes[i+2]=cast(u8)((value*37+alpha)%256);bytes[i+3]=cast(u8)alpha
+    }}
+    image:=BitmapCreateOwned(1,99,256,256,bytes[:]);at:=BitmapSlot(image.id)
+    if at<0||!CheckCopyPixels(at,bytes[:]) {return false}
+    for pixel: cast(s64)0..256*256-1 {bytes[pixel*4+3]=255}
+    if !BitmapUpdateOwned(1,99,image,bytes[:])||!CheckCopyPixels(at,bytes[:]) {return false}
+    for pixel: cast(s64)0..256*256-1 {bytes[pixel*4+3]=cast(u8)(pixel/256)}
+    if !BitmapUpdateOwned(1,99,image,bytes[:])||!CheckCopyPixels(at,bytes[:]) {return false}
+    revision:=bitmap_revision
+    if !BitmapUpdateOwned(1,99,image,bytes[:])||bitmap_revision!=revision {return false}
+    BitmapDrop(at)
+    return bitmap_bytes==0
+}
+#program_export
 main :: () -> s32 {
+    if !CheckAllAlpha() {return 22}
     bitmap_changed = Changed
     if BitmapCreateOwned(1,1,0,2,rgba[:]).id != cast(u32)0 ||
         BitmapCreateOwned(1,1,-1,2,rgba[:]).id != cast(u32)0 ||

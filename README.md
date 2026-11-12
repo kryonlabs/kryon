@@ -84,7 +84,7 @@ example; `make -C examples desktop-text-test` renders it on a private display.
 For Ziran app manifests, the terminal backend, and `kryon run`, see
 [Ziran projects](docs/PROJECTS.md).
 Portable desktop profiles build a `.zx` with embedded assets; a downloaded
-file launches with `kryon run app.zx`. See [Zx applications](docs/PROJECTS.md#zx-applications).
+file launches with `ziran run app.zx` after installing the desktop provider. See [Zx applications](docs/PROJECTS.md#zx-applications).
 
 ## Website and widget gallery
 

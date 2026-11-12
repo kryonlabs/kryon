@@ -27,12 +27,16 @@ CC ?= cc
 # A parent application's command-line ZIRAN must not replace that absolute
 # executable with a bare make prerequisite such as "ziran".
 override ZIRAN := $(ZIRAN_DIR)/build/bin/ziran
-GEN_DIR := build/generated/$(PROJECT_PROFILE)
+# Examples share the owning repository's output tree instead of creating a
+# build folder beside every example's source.
+EXAMPLE_RELATIVE := $(patsubst $(realpath $(KRYON_DIR))/examples/%,%,$(realpath $(CURDIR)))
+PROJECT_BUILD_DIR ?= $(if $(filter $(realpath $(KRYON_DIR))/examples/%,$(realpath $(CURDIR))),$(KRYON_DIR)/build/examples/$(EXAMPLE_RELATIVE),build)
+GEN_DIR := $(PROJECT_BUILD_DIR)/generated/$(PROJECT_PROFILE)
 IR_DIR := $(GEN_DIR)/ir
 IR_STAMP := $(IR_DIR)/.complete
 C_DIR := $(GEN_DIR)/c
 C_STAMP := $(C_DIR)/.complete
-PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE)
+PROGRAM := $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE)
 ifeq ($(PROJECT_CODEGEN),zx)
 PROGRAM := $(PROGRAM).zx
 ifneq ($(strip $(PROJECT_LIBRARY)$(PROJECT_STATIC_ARCHIVE)$(PROJECT_NATIVE_ARTIFACTS)),)
@@ -41,7 +45,7 @@ endif
 endif
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 ifeq ($(PROJECT_CODEGEN),c99)
-PROGRAM := build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
+PROGRAM := $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE).html
 endif
 endif
 # platform = "web" builds the raylib host as a WebGL browser page: raylib's
@@ -55,7 +59,7 @@ ifneq ($(PROJECT_BACKEND)/$(PROJECT_CODEGEN)/$(PROJECT_PLATFORM),raylib/c99/web)
 $(error platform $(PROJECT_PLATFORM) needs a raylib profile with c99 codegen)
 endif
 RAYLIB_WEB := web
-WEB_PAGE_DIR := build/$(PROJECT_NAME)-$(PROJECT_PROFILE)
+WEB_PAGE_DIR := $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE)
 PROGRAM := $(WEB_PAGE_DIR)/index.html
 endif
 ifneq ($(PROJECT_PRELOAD),)
@@ -121,7 +125,7 @@ ifeq ($(PROJECT_CODEGEN)/$(PROJECT_BACKEND),zx/canvas)
 # Portable app IR is identical on desktop and web. Only the renderer shell
 # is compiled for the browser.
 ZX_CANVAS_DIR := $(abspath $(GEN_DIR)/player)
-ZX_CANVAS_PROGRAM := $(abspath build/$(PROJECT_NAME)-$(PROJECT_PROFILE).html)
+ZX_CANVAS_PROGRAM := $(abspath $(PROJECT_BUILD_DIR)/$(PROJECT_NAME)-$(PROJECT_PROFILE).html)
 ZX_CANVAS_BUNDLE := $(abspath $(PROGRAM))
 ZX_CANVAS_SHELL := $(PAGE_SHELL)
 include $(KRYON_DIR)/mk/zx-canvas.mk
@@ -369,19 +373,20 @@ $(GEN_DIR)/compile_commands.json: $(C_STAMP) $(ZIRAN)
 # which std/resample's Lanczos kernels use, and a baseline one for browsers
 # without it. mk/web-page.sh adds the loader that starts the one the
 # browser validates, and carries the font once for both.
+# Deep app frames share the portable renderer suspension stack budget.
 WEB_LINK = EM_CACHE=$(EM_CACHE) $(EMCC) -O2 -I$(ZIRAN_DIR)/include -iquote $(C_DIR) \
 	$(C_DIR)/*.c $(CANVAS_LIBS) \
-	-sASYNCIFY -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
+	-sASYNCIFY -sASYNCIFY_STACK_SIZE=1048576 -sSINGLE_FILE=1 -sEXIT_RUNTIME=1 -sENVIRONMENT=web -sSTACK_SIZE=8388608 \
 	-sALLOW_MEMORY_GROWTH=1
 
-$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL) $(if $(PAGE_SHELL),$(KRYON_DIR)/mk/web-page.sh) $(CANVAS_RUNTIME_SOURCES)
+$(PROGRAM): $(C_STAMP) $(GEN_DIR)/compile_commands.json $(HOST_DEPS) $(PAGE_SHELL) $(if $(PAGE_SHELL),$(KRYON_DIR)/mk/web-page.sh) $(CANVAS_RUNTIME_SOURCES) $(KRYON_DIR)/mk/ziran-project.mk
 ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 	@runtime=; \
 		if test -f "$(C_DIR)/std_bundle_host.c"; then \
 			$(MAKE) --no-print-directory -f $(KRYON_DIR)/mk/ziran-project.mk $(CANVAS_RUNTIME) || exit $$?; \
 			runtime="$(CANVAS_RUNTIME)"; \
 		fi; \
-		modules=$$(mktemp -d build/$(PROJECT_NAME).XXXXXX); \
+		modules=$$(mktemp -d $(PROJECT_BUILD_DIR)/$(PROJECT_NAME).XXXXXX); \
 		trap 'rm -rf "$$modules"' EXIT; \
 		$(WEB_LINK) $$runtime -msimd128 -o "$$modules/simd128.js" && \
 		$(WEB_LINK) $$runtime -o "$$modules/baseline.js" && \
@@ -389,15 +394,15 @@ ifneq ($(filter $(PROJECT_BACKEND),canvas dom),)
 				$(WEB_PAGE_EMBED_ARGS) > "$$modules/page.html" && \
 		chmod 644 "$$modules/page.html" && mv "$$modules/page.html" $@
 else ifneq ($(RAYLIB_WEB),)
-	@mkdir -p build
-	@page=$$(mktemp -d build/$(PROJECT_NAME).XXXXXX); \
+	@mkdir -p $(PROJECT_BUILD_DIR)
+	@page=$$(mktemp -d $(PROJECT_BUILD_DIR)/$(PROJECT_NAME).XXXXXX); \
 		trap 'rm -rf "$$page" "$$page.old"' EXIT; \
 		$(RAYLIB_WEB_LINK) -o "$$page/index.html" && \
 		chmod 755 "$$page" && chmod 644 "$$page"/index.* && \
 		{ test ! -d $(WEB_PAGE_DIR) || mv $(WEB_PAGE_DIR) "$$page.old"; } && \
 		mv "$$page" $(WEB_PAGE_DIR)
 else
-	@temporary=$$(mktemp build/$(PROJECT_NAME).XXXXXX.html); \
+	@temporary=$$(mktemp $(PROJECT_BUILD_DIR)/$(PROJECT_NAME).XXXXXX.html); \
 		trap 'rm -f "$$temporary"' EXIT; \
 		$(PROJECT_ARTIFACT_LINK) $(CC) -std=c99 -pedantic-errors $(HOST_CFLAGS) -O2 -ffunction-sections -fdata-sections \
 		-I$(ZIRAN_DIR)/include -I$(C_DIR) $(C_DIR)/*.c \

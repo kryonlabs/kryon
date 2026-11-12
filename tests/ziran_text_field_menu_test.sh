@@ -12,7 +12,7 @@ set -- \
     --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
 . "$repo/tests/widget_raster_bindings.sh"
 
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args \
-    --module-path "$ziran_root/std" "$@" \
+"$ziran" bundle --root "$repo/tests" $kryon_project_args \
+     "$@" \
     --entry ziran_text_field_menu_test:main -o "$work/field.zx" "$source"
 test "$("$ziran" run "$work/field.zx")" = 0

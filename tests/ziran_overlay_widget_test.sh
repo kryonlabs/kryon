@@ -10,21 +10,21 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_overlay_widget_test.zi
 
 set -- \
-    --bind raster_shape:RasterRoundedRectangle=ziran_overlay_widget_host:RasterRoundedRectangle \
-    --bind raster_shape:RasterRoundedRectangleOutline=ziran_overlay_widget_host:RasterRoundedRectangleOutline \
-    --bind raster:RasterLine=ziran_overlay_widget_host:RasterLine \
-    --bind raster_text:RasterText=ziran_overlay_widget_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_overlay_widget_host:RasterTextClipped \
-    --bind raster_text:RasterTextRotated=ziran_overlay_widget_host:RasterTextRotated \
-    --bind paint_queue:RasterImage=ziran_overlay_widget_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_overlay_widget_host:RasterImageMesh
+    --bind kryon/raster_shape:RasterRoundedRectangle=ziran_overlay_widget_host:RasterRoundedRectangle \
+    --bind kryon/raster_shape:RasterRoundedRectangleOutline=ziran_overlay_widget_host:RasterRoundedRectangleOutline \
+    --bind kryon/raster:RasterLine=ziran_overlay_widget_host:RasterLine \
+    --bind kryon/raster_text:RasterText=ziran_overlay_widget_host:RasterText \
+    --bind kryon/raster_text:RasterTextClipped=ziran_overlay_widget_host:RasterTextClipped \
+    --bind kryon/raster_text:RasterTextRotated=ziran_overlay_widget_host:RasterTextRotated \
+    --bind kryon/paint_queue:RasterImage=ziran_overlay_widget_host:RasterImage \
+    --bind kryon/paint_queue:RasterImageMesh=ziran_overlay_widget_host:RasterImageMesh
 
-"$ziran" ir --root "$repo/tests" $kryon_ui_args --module-path "$std" \
+"$ziran" ir --root "$repo/tests" $kryon_project_args  \
     -o "$work/ir" "$source"
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$std" \
+"$ziran" bundle --root "$repo/tests" $kryon_project_args  \
     "$@" --entry ziran_overlay_widget_test:main \
     -o "$work/source.zx" "$source"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
+"$ziran" bundle --root "$work/ir" --project --module-path "$work/ir" \
     "$@" --entry ziran_overlay_widget_test:main \
     -o "$work/saved.zx" "$work/ir/ziran_overlay_widget_test.zir"
 cmp "$work/source.zx" "$work/saved.zx"
@@ -32,14 +32,14 @@ test "$("$ziran" run "$work/source.zx")" = 0
 test "$("$ziran" run "$work/saved.zx")" = 0
 
 "$ziran" build --target=c --root "$repo/tests" \
-    $kryon_ui_args --module-path "$std" -o "$work/c" "$source"
+    $kryon_project_args  -o "$work/c" "$source"
 "${CC:-cc}" -std=c11 -I"$include" -I"$work/c" \
     "$work/c"/*.c -o "$work/c/app"
 "$work/c/app"
 
 
 "$ziran" build --target=go --pkg main --root "$repo/tests" \
-    $kryon_ui_args --module-path "$std" -o "$work/go" "$source"
+    $kryon_project_args  -o "$work/go" "$source"
 cat > "$work/go/main.go" <<'GO'
 package main
 

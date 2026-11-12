@@ -381,9 +381,13 @@ route for hosts that supply pixel buffers.
 `kryon build portable` writes `build/<package-name>-portable.zx`.
 All four project templates include this profile.
 `kryon run portable` builds it and launches the reusable desktop player.
-After downloading that file, `kryon run app.zx` works without the app's source,
+After downloading that file, `ziran run app.zx` works without the app's source,
 manifest, lock, or compiler-generated native code. Install the player with
-`make install-user` in Kryon. The player needs SDL2, Cairo and FreeType.
+`make install-user` in Kryon; this also registers the provider with Ziran.
+The player needs SDL2, Cairo and FreeType. `ziran run --vm app.zx` selects
+portable execution. `kryon run app.zx` forwards to the same Ziran runner.
+For a custom install prefix, add its `share/ziran/hosts` directory to
+`ZIRAN_HOST_PATH` or its `share` directory to `XDG_DATA_DIRS`.
 
 `assets` is an optional project-relative directory or file, embedded under that
 same path. Images retain their ordinary `ImageProps.asset_path` values. The
@@ -452,7 +456,7 @@ provide their own account-scoped storage and sync through the same calls.
 Local documents do not automatically sync between different harnesses.
 
 For example, Inner Breeze's `diary.zx` runs in its original harness,
-Werkzeug's `werk --bundle diary.zx`, or `kryon run diary.zx`; it does not
+Werkzeug's `werk --bundle diary.zx`, or `ziran run diary.zx`; it does not
 load `inbe.zx`. Werkzeug's Calculator uses the same interface. Apps that
 need device secrets or timed clipboard ownership still require a harness
 that supplies those capabilities. The common player currently has a Linux

@@ -830,7 +830,7 @@ def main():
     if args.execute_backdrop:
         execute_backdrop(Path(args.execute_backdrop[0]),Path(args.execute_backdrop[1]))
         return
-    from toolchain import UI_MODULE_ARGS, ZIRAN, ZIRAN_ROOT
+    from toolchain import ZIRAN, ZIRAN_ROOT
     env = {k: v for k, v in os.environ.items() if k not in SCRUB}
     env.pop('GTK_THEME', None)
     env.update(YUE_DESKTOP_RECOVERY='0', GDK_BACKEND='x11', NO_AT_BRIDGE='1',
@@ -852,11 +852,7 @@ def main():
     env['GTK_STYLE_ICON_PATH']=str(WORK/'icons')
     source = ROOT / 'tests/gtk_style_linux_test.zi'
     ir = WORK / 'ir'
-    common = ['--module-path', ROOT / 'src/backend', *UI_MODULE_ARGS,
-              '--module-path', ZIRAN_ROOT / 'std']
-    for package in ('webp', 'image_codec', 'avif'):
-        package_root = Path(subprocess.check_output([ZIRAN, 'pkg', 'path', package], cwd=ROOT, text=True).strip())
-        common += ['--module-path', package+'='+str(package_root/'src')]
+    common = ['--project', '--module-path', ROOT / 'tests']
     run([ZIRAN, 'ir', '--root', ROOT / 'tests', *common, '-o', ir, source], env=env)
     libs = subprocess.check_output(['pkg-config', '--libs', 'gtk+-3.0', 'cairo-ft', 'fontconfig'], text=True).split()
     for form in ('source', 'saved'):

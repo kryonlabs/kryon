@@ -230,8 +230,6 @@ SiteOverview :: (session: Session, view: Rectangle) {
     y := scroll.content.y + (ifx large then 60.0 else 32.0)
     Box(session, BoxProps.{.key = 10200, .bounds = .{0.0, scroll.content.y, view.width, 620.0},
         .fill = SiteSurface(), .fill_bottom = SiteBackground(), .has_fill_bottom = true})
-    SiteCenter(session, 10201, .{x, y, width, 24.0}, "THE ZIRAN UI LIBRARY", 12)
-    y += 48.0
     SiteCenter(session, 10031, .{x, y, width, ifx large then 140.0 else 104.0},
         ifx large then "Native interfaces.\nOne expressive language." else "Native interfaces.\nWritten in Ziran.", ifx large then 56 else 36)
     y += ifx large then 160.0 else 126.0
@@ -279,8 +277,8 @@ SiteOverview :: (session: Session, view: Rectangle) {
     y += 92.0
     SiteMuted(session, 10206, .{x, y, width, 76.0}, "Controls, text, navigation, overlays, charts and data views.\nEvery example runs the real library, with the Ziran source beside it.", 16)
     y += 110.0
-    facts: [3]string = .{"101 components", "Light & dark", "Live Ziran source"}
-    details: [3]string = .{"One maintained collection.", "A coherent native palette.", "Edit, compile, and interact."}
+    facts: [3]string = .{"101 components", "Easy theming", "Live Ziran source"}
+    details: [3]string = .{"One maintained collection.", "Your colors, type and motion.", "Edit, compile, and interact."}
     for index: 0..2 {
         fx := ifx large then x + cast(float32)index * (width / 3.0) else x
         fy := ifx large then y else y + cast(float32)index * 100.0
@@ -298,8 +296,9 @@ SiteOverview :: (session: Session, view: Rectangle) {
 }
 
 SiteReading :: (session: Session, view: Rectangle) {
-    title := "Build with Kryon"
-    body := "ziran add https://github.com/kryonlabs/kryon\n\nusing UI :: #import \"kryon/Widgets\";\n\nFrame :: (session: Session, bounds: Rectangle) -> s32 {\n    Button(session, ButtonProps.{\n        .key = 1, .bounds = bounds, .label = \"Ready\"\n    });\n    return 0;\n}\n\nkryon new hello\ncd hello\nkryon run\nkryon run web"
+    if site_page == 1 { SiteGuide(session, view); return }
+    title := "Documentation"
+    body := ""
     if site_page == 3 {
         title = "Apps & showcase"
         body = "Terminal\nTabs, sessions and desktop integration.\n\nBrowser\nA reading surface with its own document engine.\n\nGitHub\nRepository and issue workflows.\n\nShelf\nA library and long-form reading surface.\n\nThese applications are in development."
@@ -452,11 +451,10 @@ SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
     Box(session, BoxProps.{.key = 10320, .bounds = .{0.0, header - 1.0, viewport.width, 1.0}, .fill = SiteBorder()})
     if Button(session, ButtonProps.{.key = 10002, .bounds = .{16.0, 8.0, 94.0, 38.0},
         .label = "Kryon", .class_name = 11010, .emphasis = .ButtonEmphasisGhost, .disabled = site_modal_active}) != 0 { SiteNavigate(0) }
-    if wide { SiteMuted(session, 10321, .{116.0, 18.0, 82.0, 24.0}, "ZIRAN UI", 11) }
     dark = Toggle(session, ToggleProps.{.key = 10003, .bounds = .{viewport.width - 108.0, 10.0, 92.0, 36.0},
         .label = "Dark", .value = dark, .disabled = site_modal_active}).value
     tab_width: float32 = ifx wide then 96.0 else (viewport.width - 32.0) / 3.0
-    nav_x: float32 = ifx wide then 212.0 else 16.0
+    nav_x: float32 = ifx wide then 124.0 else 16.0
     nav_y: float32 = ifx wide then 10.0 else 56.0
     for index: cast(s32)0..2 {
         label := "Overview"
@@ -508,26 +506,53 @@ SiteSelectScene :: (picked: s32) {
 }
 
 SiteWidgetNavigation :: (session: Session, bounds: Rectangle) {
-    items: [GallerySceneCount]ListBoxItem
-    for index: cast(s32)0..GallerySceneCount - 1 {
-        items[index].key = cast(u64)(index + 1)
-        items[index].label = GallerySceneName(index)
+    positions: [GallerySceneCount]float32
+    height: float32
+    group: string
+    selected: s32
+    for position: cast(s32)0..GallerySceneCount - 1 {
+        index := GalleryNavigationScene(position)
+        label := GallerySceneGroup(index)
+        if label != group { height += 40.0; group = label }
+        positions[position] = height
+        height += 32.0
+        if index == scene { selected = position }
     }
-    navigation: s32
-    if picker_key == KeyHome { navigation = ListBoxKeyHome() }
-    else if picker_key == KeyEnd { navigation = ListBoxKeyEnd() }
-    else if picker_key == KeyUp { navigation = ListBoxKeyUp() }
-    else if picker_key == KeyDown { navigation = ListBoxKeyDown() }
-    picked := ListBox(session, ListBoxProps.{.key = 9003, .id = 9003, .class_name = 11030,
-        .bounds = bounds, .selected_index = scene, .scroll_offset = catalog_scroll,
-        .row_height = 32, .focused = picker_focused, .navigation = navigation}, items[:])
-    catalog_scroll = picked.scroll_offset
-    if picked.changed { SiteSelectScene(picked.selected_index) }
-    if navigation != 0 || navigation_focus_pending {
+    next := selected
+    if picker_key == KeyHome { next = 0 }
+    else if picker_key == KeyEnd { next = GallerySceneCount - 1 }
+    else if picker_key == KeyUp && next > 0 { next -= 1 }
+    else if picker_key == KeyDown && next < GallerySceneCount - 1 { next += 1 }
+    if next != selected { SiteSelectScene(GalleryNavigationScene(next)) }
+    if next != selected || navigation_focus_pending {
+        if positions[next] < cast(float32)catalog_scroll { catalog_scroll = cast(s32)positions[next] }
+        if positions[next] + 32.0 > cast(float32)catalog_scroll + bounds.height {
+            catalog_scroll = cast(s32)(positions[next] + 32.0 - bounds.height)
+        }
+    }
+    scroll := Scroll(session, ScrollProps.{.key = 9003, .bounds = bounds,
+        .content_height = cast(s32)height, .scroll_offset = catalog_scroll})
+    catalog_scroll = scroll.scroll_offset
+    group = ""
+    for position: cast(s32)0..GallerySceneCount - 1 {
+        index := GalleryNavigationScene(position)
+        label := GallerySceneGroup(index)
+        y := scroll.content.y + positions[position]
+        if label != group {
+            SiteMuted(session, cast(u64)(19000 + position), .{bounds.x + 12.0, y - 28.0, bounds.width - 24.0, 20.0}, label, 11)
+            group = label
+        }
+        if Button(session, ButtonProps.{.key = cast(u64)(index + 1),
+            .bounds = .{bounds.x + 6.0, y, bounds.width - 12.0, 32.0},
+            .label = GallerySceneName(index), .class_name = 11010,
+            .emphasis = .ButtonEmphasisGhost, .selected = index == scene}) != 0 { SiteSelectScene(index) }
+    }
+    if scroll.opened { End(session) }
+    if next != selected || navigation_focus_pending {
         navigation_focus_pending = false
         for index: 0..TreeSubmittedCount(session) - 1 {
             entry := TreeSubmittedNodeAt(session, index)
-            if entry.parent == picked.node && entry.key == cast(u64)(scene + 1) {
+            if entry.parent == scroll.node && entry.key == cast(u64)(scene + 1) {
                 unused TreeFocusSubmittedAt(session, index)
             }
         }
@@ -598,4 +623,75 @@ RunSitePreview :: (session: Session) {
         site_pointer.x < site_preview_bounds.x + site_preview_bounds.width && site_pointer.y < site_preview_bounds.y + site_preview_bounds.height {
         unused CursorSet(session, CursorProps.{.shape = preview_cursor})
     }
+}
+
+SiteGuideCode :: (session: Session, key: u64, bounds: Rectangle, code: string) {
+    Box(session, BoxProps.{.key = key, .bounds = bounds, .fill = SiteSurface(), .border = SiteBorder(), .radius = 10.0})
+    Text(session, TextProps.{.key = key + 1, .bounds = .{bounds.x + 16.0, bounds.y + 16.0, bounds.width - 32.0, bounds.height - 32.0}, .text = code, .font = 12, .line_gap = 6, .class_name = 11004, .selectable = true})
+}
+
+SiteGuide :: (session: Session, view: Rectangle) {
+    wide := view.width >= 1000.0
+    width := view.width - (ifx wide then 96.0 else 40.0)
+    if width > 1120.0 { width = 1120.0 }
+    x := (view.width - width) * 0.5
+    ax := x + (ifx wide then 220.0 else 0.0)
+    aw := width - (ifx wide then 220.0 else 0.0)
+    scroll := Scroll(session, ScrollProps.{.key = 10400, .bounds = view, .content_height = 1900, .scroll_offset = site_scroll})
+    site_scroll = scroll.scroll_offset
+    y := scroll.content.y + 40.0
+    if wide {
+        SiteMuted(session, 10600, .{x, y, 180.0, 24.0}, "BUILD WITH KRYON", 11)
+        labels: [3]string = .{"01  Get started", "02  Use a component", "03  Make it yours"}
+        for index: 0..2 {
+            if Button(session, ButtonProps.{.key = cast(u64)(10601 + index), .bounds = .{x, y + 42.0 + cast(float32)index * 42.0, 190.0, 36.0}, .label = labels[index], .class_name = 11010}) != 0 {
+                site_scroll = ifx index == 0 then 0 else ifx index == 1 then 550 else 1110
+            }
+        }
+    }
+    SiteMuted(session, 10610, .{ax, y, aw, 24.0}, "GUIDE / THE ESSENTIALS", 11)
+    SiteText(session, 10050, .{ax, y + 42.0, aw, 96.0}, "From first window\nto your own style.", ifx wide then 42 else 30)
+    SiteMuted(session, 10051, .{ax, y + 158.0, aw, 72.0}, "Start small. Compose real controls.\nMake them yours with a shared theme.", 16)
+    y += 264.0
+    SiteText(session, 10611, .{ax, y, aw, 38.0}, "01 / Get started", 24)
+    SiteMuted(session, 10612, .{ax, y + 54.0, aw, 68.0}, "With Ziran and the Kryon tool installed,\ncreate a project and run its native window.", 15)
+    SiteGuideCode(session, 10613, .{ax, y + 138.0, aw, 150.0}, "kryon new hello\ncd hello\nkryon run\nkryon run web")
+    y += 332.0
+    Box(session, BoxProps.{.key = 10615, .bounds = .{ax, y, aw, 1.0}, .fill = SiteBorder()})
+    y += 36.0
+    SiteText(session, 10616, .{ax, y, aw, 38.0}, "02 / Use a component", 24)
+    SiteMuted(session, 10617, .{ax, y + 54.0, aw, 82.0}, "Import the widgets. Keep state in your app.\nA stable key preserves input and focus\nwhen you submit the next frame.", 15)
+    SiteGuideCode(session, 10618, .{ax, y + 150.0, aw, 244.0}, #string GUIDE_WIDGETS
+using UI :: #import "kryon/Widgets";
+
+Frame :: (session: Session,
+    bounds: Rectangle) -> s32 {
+    props: ButtonProps
+    props.key = 1
+    props.bounds = bounds
+    props.label = "Ready"
+    unused Button(session, props)
+    return 0
+}
+GUIDE_WIDGETS)
+    if Button(session, ButtonProps.{.key = 10620, .bounds = .{ax, y + 410.0, aw, 42.0}, .label = "Explore 101 editable examples  →", .class_name = 11012}) != 0 { SiteNavigate(2) }
+    y += 496.0
+    Box(session, BoxProps.{.key = 10621, .bounds = .{ax, y, aw, 1.0}, .fill = SiteBorder()})
+    y += 36.0
+    SiteText(session, 10622, .{ax, y, aw, 38.0}, "03 / Easy theming", 24)
+    SiteMuted(session, 10623, .{ax, y + 54.0, aw, 90.0}, "One theme carries colors, typography,\nspacing and motion across your controls.\nStart with a palette, then set your accent.", 15)
+    SiteGuideCode(session, 10624, .{ax, y + 158.0, aw, 206.0}, #string GUIDE_THEME
+Theme :: #import "kryon/Theme";
+
+theme := Theme.DefaultTheme(false)
+theme = Theme.WithAccent(theme,
+    0x4338caff, 0xffffffff,
+    0x312e81ff, 0xe0e7ffff)
+unused Theme.InstallTheme(theme)
+GUIDE_THEME)
+    SiteMuted(session, 10626, .{ax, y + 384.0, aw, 100.0}, "Use SetThemeMode for light or dark;\nreapply custom accents after a mode change.\nSetReducedMotion controls motion.", 14)
+    if Button(session, ButtonProps.{.key = 10052, .bounds = .{ax, y + 508.0, aw, 42.0}, .label = "Read the theme API  ↗", .class_name = 11012}) != 0 {
+        unused OpenUri("https://github.com/kryonlabs/kryon/blob/master/src/ui/theme.zi")
+    }
+    if scroll.opened { End(session) }
 }

@@ -5,7 +5,7 @@ repo=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 work=$repo/build/tile-map-test
 rm -rf "$work"
 mkdir -p "$work"
-"$ziran_root/build/bin/zi2c" --no-main --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" -o "$work/c" "$repo/tests/tile_map_behavior.zi"
+"$ziran" build --target=c --no-main --root "$repo/tests" $kryon_project_args -o "$work/c" "$repo/tests/tile_map_behavior.zi"
 includes="-I$ziran_root/include -I$work/c"
 for header in $(find "$work/c" -name '*.h' | xargs -n1 dirname | sort -u); do
     includes="$includes -I$header"
@@ -14,7 +14,7 @@ done
 "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections $includes $(find "$work/c" -name '*.c') \
     -Wl,--gc-sections -lm -o "$work/test"
 "$work/test"
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$repo/tests" $kryon_project_args \
     --entry tile_map_behavior:main -o "$work/geometry.zx" "$repo/tests/tile_map_behavior.zi"
 test "$("$ziran" run "$work/geometry.zx" | tail -n 1)" = 0
 printf '%s\n' 'TileMap pixel fitting, cell lookup and transformed image mesh passed natively and portably'

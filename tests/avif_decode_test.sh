@@ -8,11 +8,11 @@ export YUE_DESKTOP_RECOVERY=0
 out="$repo/build/scratch/avif-decode"
 mkdir -p "$out/lib"
 cp "$repo/build/avif-ziran/libkryonavif.so" "$out/lib/"
-image_ziran ir --root "$repo/tests" --module-path "$repo/src/backend" -o "$out/ir" "$repo/tests/avif_decode_test.zi"
+image_ziran ir --define AVIF_RAYLIB --root "$repo/tests" --module-path "$repo/src/backend" -o "$out/ir" "$repo/tests/avif_decode_test.zi"
 for form in source saved; do
     input="$repo/tests/avif_decode_test.zi"
     if test "$form" = saved; then input="$out/ir/avif_decode_test.zir"; fi
-    image_ziran build --target=c --root "$repo/tests" --module-path "$repo/src/backend" -o "$out/$form" "$input"
+    image_ziran build --target=c --define AVIF_RAYLIB --root "$repo/tests" --module-path "$repo/src/backend" -o "$out/$form" "$input"
     "${CC:-cc}" -std=c11 -O1 -ffunction-sections -fdata-sections -Wl,--gc-sections \
         -I"$ziran_root/include" -I"$out/$form" "$out/$form"/*.c \
         "$repo/build/raylib-ziran/libraylib.a" "$repo/build/webp-ziran/libkryonwebp.a" \

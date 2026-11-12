@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Owned asset audio: real native decoder/device, source + saved IR, hosted VM."""
 
-from toolchain import UI_MODULE_ARGS, JS_RUNTIME
+from toolchain import JS_RUNTIME
 import argparse
 import json
 import os
@@ -73,11 +73,12 @@ def main():
         output.setframerate(8000)
         output.writeframes(b'\0\0' * 160)
     # media_audio_raylib routes Ogg Opus content through the audio package.
-    audio = Path(os.environ['AUDIO_PACKAGE']) if 'AUDIO_PACKAGE' in os.environ else Path(
-        subprocess.check_output([str(ZIRAN), 'pkg', 'path', 'audio'], cwd=ROOT, text=True).strip())
-    common = ['--root', ROOT / 'tests', *UI_MODULE_ARGS,
-              '--module-path', ROOT / 'src/backend', '--module-path', ZIRAN_ROOT / 'std',
-              '--module-path', 'audio=' + str(audio / 'src')]
+    audio = Path(subprocess.check_output(
+        [str(ZIRAN), 'pkg', 'path', 'audio'], cwd=ROOT, text=True).strip()).resolve()
+    if requested_audio := os.environ.get('AUDIO_PACKAGE'):
+        if Path(requested_audio).resolve() != audio:
+            raise SystemExit('AUDIO_PACKAGE must match the project audio package; set its ziran.local.toml override')
+    common = ['--project', '--module-path', ROOT / 'tests', '--root', ROOT / 'tests']
     if options.pcm:
         common += ['--define', 'PCM_AUDIO_TEST']
     ir = WORK / 'ir'

@@ -1,0 +1,28 @@
+#import "kryon/image_pixels"
+#import "std/image"
+#import "std/vec"
+TestPath :: (name: string) -> string {
+    #if #defined(ANDROID_BUILD) {
+        if name=="rgba" { return "/data/local/tmp/kryon-shader-fixtures/build/scratch/image-pixels/rgba.png" }
+        if name=="invalid" { return "/data/local/tmp/kryon-shader-fixtures/build/scratch/image-pixels/invalid.png" }
+        return "/data/local/tmp/kryon-shader-fixtures/build/scratch/image-pixels/missing.png"
+    } else {
+        if name=="rgba" { return "build/scratch/image-pixels/rgba.png" }
+        if name=="invalid" { return "build/scratch/image-pixels/invalid.png" }
+        return "build/scratch/image-pixels/missing.png"
+    }
+}
+main :: () -> s32 {
+    image:=LoadImagePixels(TestPath("rgba"))
+    defer VecFree(image.pixels)
+    if !ImageValid(*image) || image.width!=2 || image.height!=1 { return 1 }
+    expected: [8]u8=.[173,61,219,97,19,203,41,255]
+    for at:0..7 { if image.pixels[at]!=expected[at] { print("pixel % got % expected %\n",at,image.pixels[at],expected[at]); return 2 } }
+    missing:=LoadImagePixels(TestPath("missing"))
+    defer VecFree(missing.pixels)
+    if ImageValid(*missing) || missing.pixels.count!=0 { return 3 }
+    invalid:=LoadImagePixels(TestPath("invalid"))
+    defer VecFree(invalid.pixels)
+    if ImageValid(*invalid) { return 4 }
+    return 0
+}

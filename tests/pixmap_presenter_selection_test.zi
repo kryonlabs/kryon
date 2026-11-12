@@ -1,0 +1,118 @@
+Presenter :: #import "pixmap_sdl";
+#import "std/c_string"
+
+GlString :: #type (u32)->*u8 #c_call;
+driver: [64]u8;
+renderer_name: [32]u8;
+preferred: [32]u8;
+calls: [8]u32;
+creates: s32;
+destroys: s32;
+alive: s32;
+queries: s32;
+software_fails: bool;
+accelerated_fails: bool;
+info_fails: bool;
+no_proc: bool;
+no_context: bool;
+wrong_window: bool;
+explicit: bool;
+renderer_flags: u32;
+forced: bool;
+
+#program_export "SDL_GetHint"
+Hint :: (name: *u8)->*u8 {return ifx explicit then *preferred[0] else null}
+#program_export "SDL_getenv"
+Env :: (name: *u8)->*u8 {return ifx forced then *preferred[0] else null}
+#program_export "SDL_SetHintWithPriority"
+SetHint :: (name: *u8,value: *u8,priority: s32)->s32 {return 1}
+#program_export "SDL_CreateRenderer"
+Create :: (window: *void,index: s32,flags: u32)->*void {
+ if creates>=8||index!= -1||window!=cast(*void)16 {return null}
+ calls[creates]=flags;creates+=1
+ if (flags==1&&software_fails)||(flags==2&&accelerated_fails) {return null}
+ if alive!=0 {return null} // SDL allows one renderer per window.
+ alive+=1
+ return cast(*void)cast(s64)(32+creates)
+}
+#program_export "SDL_DestroyRenderer"
+Destroy :: (renderer: *void) {destroys+=1;alive-=1}
+Details :: struct {name: *u8;flags: u32;count: u32;formats: [16]u32;max_width: s32;max_height: s32}
+#program_export "SDL_GetRendererInfo"
+Info :: (renderer: *void,out: *Details)->s32 {
+ queries+=1
+ out.name=*renderer_name[0];out.flags=renderer_flags
+ return ifx info_fails then -1 else 0
+}
+#program_export "SDL_GL_GetCurrentWindow"
+CurrentWindow :: ()->*void {return cast(*void)(ifx wrong_window then 17 else 16)}
+#program_export "SDL_GL_GetCurrentContext"
+CurrentContext :: ()->*void {return ifx no_context then null else cast(*void)64}
+#program_export "SDL_GL_GetProcAddress"
+Proc :: (name: *u8)->GlString {
+ if no_proc {return cast(GlString)null}
+ return cast(GlString)MockGLString
+}
+#program_export "PixmapMockGLString"
+MockGLString :: (name: u32)->*u8 {return ifx name==0x1f01 then *driver[0] else null}
+
+Reset :: () {
+ creates=0;destroys=0;alive=0;queries=0
+ software_fails=false;accelerated_fails=false;info_fails=false
+ no_proc=false;no_context=false;wrong_window=false;explicit=false
+ forced=false
+ renderer_flags=2
+ unused CopyCString("opengl",renderer_name[:])
+ unused CopyCString("AMD Radeon Graphics",driver[:])
+ unused CopyCString("opengl",preferred[:])
+}
+Keep :: ()->bool {
+ result:=Presenter.CreatePixmapRenderer(cast(*void)16)
+ return result!=null&&creates==1&&calls[0]==2&&destroys==0&&alive==1
+}
+#program_export "main"
+main :: ()->s32 {
+ Reset()
+ if Presenter.CreatePixmapRenderer(null)!=null||creates!=0 {return 1}
+ if !Keep() {return 2} // Real hardware stays accelerated.
+ Reset();unused CopyCString("llvmpipe (LLVM)",driver[:])
+ result:=Presenter.CreatePixmapRenderer(cast(*void)16)
+ if result==null||creates!=2||calls[0]!=2||calls[1]!=1||destroys!=1||alive!=1 {return 3}
+ names: [6]string=.["softpipe","SOFTWARE Rasterizer","swrast","SwiftShader Device","GDI Generic","llvmpipe"]
+ for at:0..names.count-1 {
+  Reset();unused CopyCString(names[at],driver[:])
+  result=Presenter.CreatePixmapRenderer(cast(*void)16)
+  if result==null||creates!=2||destroys!=1||alive!=1 {return 4}
+ }
+ Reset();explicit=true;unused CopyCString("llvmpipe",driver[:])
+ result=Presenter.CreatePixmapRenderer(cast(*void)16)
+ if result==null||creates!=1||calls[0]!=0||queries!=0||destroys!=0 {return 5}
+ Reset();explicit=true;unused CopyCString("software",preferred[:])
+ result=Presenter.CreatePixmapRenderer(cast(*void)16)
+ if result==null||creates!=1||calls[0]!=0||queries!=0||destroys!=0 {return 6}
+ Reset();forced=true;unused CopyCString("1",preferred[:]);unused CopyCString("llvmpipe",driver[:])
+ if !Keep()||queries!=0 {return 13}
+ Reset();explicit=true;unused CopyCString("",preferred[:])
+ if !Keep() {return 7} // Empty preference is automatic.
+ Reset();unused CopyCString("direct3d",renderer_name[:]);unused CopyCString("llvmpipe",driver[:])
+ if !Keep() {return 8} // Non-GL renderer is never classified by an unrelated GL context.
+ for at:0..4 {
+  Reset();unused CopyCString("llvmpipe",driver[:])
+  if at==0 {no_proc=true}
+  if at==1 {no_context=true}
+  if at==2 {wrong_window=true}
+  if at==3 {info_fails=true}
+  if at==4 {renderer_flags=1}
+  if !Keep() {return 9}
+ }
+ Reset();unused CopyCString("llvmpipe",driver[:]);software_fails=true
+ result=Presenter.CreatePixmapRenderer(cast(*void)16)
+ if result==null||creates!=3||calls[0]!=2||calls[1]!=1||calls[2]!=2||destroys!=1||alive!=1 {return 10}
+ Reset();accelerated_fails=true
+ result=Presenter.CreatePixmapRenderer(cast(*void)16)
+ if result==null||creates!=2||calls[1]!=1||destroys!=0||alive!=1 {return 11}
+ Reset();accelerated_fails=true;software_fails=true
+ if Presenter.CreatePixmapRenderer(cast(*void)16)!=null||creates!=2||alive!=0||destroys!=0 {return 12}
+ print("Presenter selection: hardware, explicit authority, software GL, unknown capabilities and cleanup passed\n")
+ return 0
+}

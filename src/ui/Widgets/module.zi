@@ -1,3 +1,53 @@
+// Hosted compositions export existing host contracts without retained tree storage.
+#if #defined(KRYON_HOSTED_UI) {
+using Core :: #import "Kryon";
+using SemanticModule :: #import "semantic";
+using ControlPropsModule :: #import "control_props";
+using TreeModule :: #import "tree";
+using BoxPropsModule :: #import "box_props";
+using LoadingScreenModule :: #import "loadingscreen";
+using BoxWidgetModule :: #import "box";
+using CheckboxPropsModule :: #import "checkbox_props";
+using CheckboxWidgetModule :: #import "checkbox";
+using ContextMenuWidgetModule :: #import "contextmenu";
+using DropdownPropsModule :: #import "dropdown_props";
+using DropdownWidgetModule :: #import "dropdown";
+using FieldsetPropsModule :: #import "fieldset_props";
+using FieldsetWidgetModule :: #import "fieldset";
+using ImagePropsModule :: #import "image_props";
+using ImageWidgetModule :: #import "kryon/image_widget";
+using ModalPropsModule :: #import "modal_props";
+using ModalFrameWidgetModule :: #import "modal_frame";
+using ModalWidgetModule :: #import "modal";
+using OverlayPropsModule :: #import "overlay_props";
+using OverlayWidgetModule :: #import "overlay";
+using PressPropsModule :: #import "press_props";
+using PressWidgetModule :: #import "press";
+using ProgressPropsModule :: #import "progress_props";
+using ProgressWidgetModule :: #import "progress";
+using ScrollPropsModule :: #import "scroll_props";
+using ScrollWidgetModule :: #import "scroll";
+using SegmentedControlPropsModule :: #import "segmented_control_props";
+using SegmentedControlWidgetModule :: #import "segmented";
+using ShapePropsModule :: #import "shape_props";
+using ShapeWidgetModule :: #import "shape";
+using SliderPropsModule :: #import "slider_props";
+using SliderWidgetModule :: #import "slider";
+using TabBarPropsModule :: #import "tab_bar_props";
+using TabBarWidgetModule :: #import "tabs";
+using TextInputPropsModule :: #import "text_input_props";
+using TextInputModule :: #import "text_input";
+using TextAreaWidgetModule :: #import "textarea";
+using TextFieldWidgetModule :: #import "textfield";
+using TitleBarPropsModule :: #import "title_bar_props";
+using TitleBarWidgetModule :: #import "titlebar";
+using TogglePropsModule :: #import "toggle_props";
+using ToggleWidgetModule :: #import "toggle";
+using SpinboxPropsModule :: #import "spinbox_props";
+using SpinboxWidgetModule :: #import "spinbox";
+using TimePickerPropsModule :: #import "time_picker_props";
+using TimePickerWidgetModule :: #import "timepicker";
+} else {
 // The complete core widget surface. Plot and other optional packages stay
 // separate so applications only load them when imported explicitly.
 using Core :: #import "Kryon";
@@ -100,8 +150,6 @@ using PanedViewPropsModule :: #import "paned_view_props";
 using PanedViewModule :: #import "panedview";
 using TransitionModule :: #import "transition";
 using TextSelectionWidgetModule :: #import "text_selection_widget";
-using StylePickerPropsModule :: #import "style_picker_props";
-using StylePickerModule :: #import "stylepicker";
 using BreadcrumbPropsModule :: #import "breadcrumb_props";
 using BreadcrumbModule :: #import "breadcrumb";
 
@@ -128,3 +176,4 @@ using ProgressRingModule :: #import "progressring";
 using SwipeRowModule :: #import "swiperow";
 using SwipeRowPropsModule :: #import "swipe_row_props";
 using TimelineModule :: #import "timeline";
+}

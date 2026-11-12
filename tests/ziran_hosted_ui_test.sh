@@ -32,8 +32,8 @@ set -- --bind pointer_input:PollPointer=hosted_ui_provider:Pointer \
     --bind titlebar:TitleBarHostedHost=hosted_ui_provider:TitleBar \
     --bind dropdown:DropdownHostedHost=hosted_ui_provider:Dropdown \
     --bind modal:ActionModalHostedHost=hosted_ui_provider:ActionModal
-"$ziran" bundle --root "$repo/tests" $kryon_ui_args \
-    --module-path "$ziran_root/std" --define KRYON_HOSTED_UI "$@" \
+"$ziran" bundle --root "$repo/tests" $kryon_project_args \
+     --define KRYON_HOSTED_UI "$@" \
     --entry hosted_ui:main -o "$work/ui.zx" \
     "$repo/tests/hosted_ui.zi" "$repo/tests/hosted_ui_provider.zi"
 test "$("$ziran" run "$work/ui.zx")" = 42
@@ -42,7 +42,7 @@ for target in c; do
     executable=
     if test "$target" = c; then executable=--exe; fi
     "$ziran" build --target="$target" $executable --root "$repo/tests" \
-        $kryon_ui_args --module-path "$ziran_root/std" \
+        $kryon_project_args \
         --define KRYON_HOSTED_UI --entry hosted_ui:main \
         -o "$work/$target" "$repo/tests/hosted_ui.zi" "$repo/tests/hosted_ui_provider.zi"
     binary=$work/$target/hosted_ui

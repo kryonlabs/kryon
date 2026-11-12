@@ -5,6 +5,7 @@
 ANDROID_SURFACE :: #defined(ANDROID_BUILD) || #defined(PLATFORM_ANDROID) || #defined(__ANDROID__)
 #if ANDROID_SURFACE {
     #import, file "android_native.zi";
+    SurfaceTouch :: #import "android_touch";
 }
 
 AndroidWindowInsets :: struct {
@@ -271,6 +272,17 @@ ResolveAndroidViewport :: (width: s32, height: s32,
     return ready
 }
 
+// The announced surface can be sized before its initialization is consumed.
+// The host retains lifecycle acknowledgement and graphics ownership.
+#program_export
+GetAndroidPendingSurfaceSize :: (width: *s32, height: *s32) -> bool {
+    #if ANDROID_SURFACE {
+        return AndroidNativePendingSurfaceSize(width, height)
+    } else {
+        return false
+    }
+}
+
 #program_export
 GetAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
     w := surface_width
@@ -308,9 +320,13 @@ SyncAndroidSurfaceSize :: (width: *s32, height: *s32) -> s32 {
     h := surface_height
     synced: s32 = 0
     #if ANDROID_SURFACE {
+        AndroidNativeSyncSurface()
         if AndroidNativeSurfaceSize(*w, *h) {
             surface_width = w
             surface_height = h
+            margin := GetAndroidSurfaceMargin(w, h)
+            SurfaceTouch.AndroidTouchSetSurfaceOffset(cast(float32)margin.left,
+                cast(float32)margin.top)
             synced = 1
         }
     }

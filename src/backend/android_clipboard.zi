@@ -90,7 +90,7 @@ AndroidClipboardWrite :: (text: string) -> bool {
     return false
 }
 
-#if #defined(KRYON_ANDROID_HOST) {
+#if #defined(KRYON_ANDROID_HOST) && !#defined(KRYON_RAYLIB_HOST) {
     #program_export
     SystemClipboardOpenHost :: () -> s32 {
         return AndroidClipboardRead(android_clipboard_snapshot[:65536])

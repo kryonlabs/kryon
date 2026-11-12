@@ -1,0 +1,20 @@
+#import "application_entry"
+#import "std/byte_text_linux"
+
+#program_export "KryonApplicationMain"
+TestApplication :: (argc: s32, argv: **u8) -> s32 {
+    #if #defined(PLATFORM_WEB) {
+        if argc != 0 || argv != null {
+            return 1
+        }
+    } else {
+        if argc != 3 || argv == null {
+            return 2
+        }
+        if TextFromCString(argv[1]) != "first argument" ||
+        TextFromCString(argv[2]) != "--second" {
+            return 3
+        }
+    }
+    return 0
+}

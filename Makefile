@@ -263,12 +263,16 @@ pixmap-mono-font: $(OUTLINE_FONT_PROGRAM)
 # commands to ziran, which runs the Kryon each project's lock pins.
 PREFIX ?= $(HOME)/.local
 install-user: build/bin/kryon zx-player
-	mkdir -p $(PREFIX)/bin
-	cp build/bin/kryon $(PREFIX)/bin/kryon.new
-	mv -f $(PREFIX)/bin/kryon.new $(PREFIX)/bin/kryon
-	cp build/bin/zx $(PREFIX)/bin/zx.new
-	mv -f $(PREFIX)/bin/zx.new $(PREFIX)/bin/zx
-	$(RM) $(PREFIX)/bin/zib
+	mkdir -p "$(PREFIX)/bin"
+	cp build/bin/kryon "$(PREFIX)/bin/kryon.new"
+	mv -f "$(PREFIX)/bin/kryon.new" "$(PREFIX)/bin/kryon"
+	cp build/bin/zx "$(PREFIX)/bin/zx.new"
+	mv -f "$(PREFIX)/bin/zx.new" "$(PREFIX)/bin/zx"
+	mkdir -p "$(PREFIX)/share/ziran/hosts"
+	@provider=$$(CDPATH= cd -- "$(PREFIX)/bin" && pwd -P) && \
+		printf '%s/zx\n' "$$provider" > "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new"
+	mv -f "$(PREFIX)/share/ziran/hosts/kryon-desktop.host.new" "$(PREFIX)/share/ziran/hosts/kryon-desktop.host"
+	$(RM) "$(PREFIX)/bin/zib"
 
 # Laws state policy independently of its implementation; `ziran check`
 # proves each over its whole listed domain.
@@ -463,6 +467,18 @@ raylib-frame-input-test: project-toolchain $(RAYLIB_ARCHIVES)
 		sh tests/raylib_frame_snapshot_test.sh
 
 # The canonical Android host's frame publication, on desktop raylib and Xvfb.
+.PHONY: android-raylib-host-link-test
+android-raylib-host-link-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/android_raylib_host_link_test.sh
+
+test: android-raylib-host-link-test
+
+.PHONY: android-raylib-jni-test
+android-raylib-jni-test: project-toolchain
+	sh tests/android_raylib_jni_test.sh
+
+test: android-raylib-jni-test
+
 .PHONY: android-frame-input-test
 android-frame-input-test: project-toolchain $(RAYLIB_ARCHIVES)
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" WEBP_A="$(WEBP_A)" \
@@ -480,8 +496,8 @@ raylib-frame-pixels-test: project-toolchain $(RAYLIB_ARCHIVES)
 		--runtime "$(ZIRAN_BUILD_DIR)/libziran.a"
 
 .PHONY: raylib-secondary-window-test
-raylib-secondary-window-test: $(ZI2C_BIN)
-	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/raylib_secondary_window_test.sh
+raylib-secondary-window-test: $(ZI2C_BIN) $(RAYLIB_A)
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" RAYLIB_A="$(RAYLIB_A)" sh tests/raylib_secondary_window_test.sh
 
 .PHONY: raylib-trace-test
 raylib-trace-test: $(ZI2C_BIN)
@@ -702,10 +718,50 @@ scene-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_scene_test.sh
 test: scene-test
 
+.PHONY: scene-render-benchmark
+scene-render-benchmark: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_render_benchmark.py
+
+# Explicit native GLES tests; portable/core consumers do not import this host.
+.PHONY: shader-glsl-test scene-gpu-test
+shader-glsl-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/shader_glsl_test.sh
+scene-gpu-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_gpu_test.py
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_gpu_test.py --async-test
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_gpu_test.py --async-test --saved
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_camera_shift_test.py
+
+.PHONY: scene-camera-shift-test
+scene-camera-shift-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_camera_shift_test.py
+
+.PHONY: shader-scene-test
+shader-scene-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS HARMONY_DESKTOP_RECOVERY=0 sh tests/shader_scene_test.sh
+test: shader-scene-test
+
+.PHONY: shader-host-test shader-web-test shader-android-test image-pixels-test
+shader-host-test: project-toolchain $(RAYLIB_ARCHIVES) $(AVIF_SO)
+	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/shader_host_test.sh
+shader-web-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/shader_web_test.py
+# Explicit hardware test: USB Moto required; not part of the headless gate.
+shader-android-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/shader_android_test.sh
+image-pixels-test: project-toolchain
+	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/image_pixels_test.sh
+test: image-pixels-test
+
 .PHONY: image-preview-test
 image-preview-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/image_preview_zi_test.sh
 test: image-preview-test
+.PHONY: image-preview-web-test
+image-preview-web-test: project-toolchain
+	sh tests/image_preview_web_test.sh
+test: image-preview-web-test
+
 
 .PHONY: android-surface-test android-rotation-pixels-test
 android-surface-test: project-toolchain
@@ -909,3 +965,20 @@ toast-action-test: project-toolchain
 	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/toast_action_test.py
 
 test: toast-action-test
+
+.PHONY: hosted-widgets-import-test
+hosted-widgets-import-test: project-toolchain
+	@ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/hosted_widgets_import_test.py
+test: hosted-widgets-import-test
+
+.PHONY: window-runtime-test
+window-runtime-test: $(ZI2C_BIN)
+	ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/window_runtime_test.sh
+
+test: window-runtime-test
+
+.PHONY: application-entry-test
+application-entry-test: $(ZI2C_BIN)
+	ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/application_entry_test.sh
+
+test: application-entry-test

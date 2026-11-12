@@ -1,0 +1,27 @@
+// Ordinary dependency imports must preserve shared material type identity.
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "kryon/shader"
+#import "kryon/shader_glsl"
+#import "std/image"
+#import "std/vec"
+
+#program_export
+main :: () -> s32 {
+    program: ShaderProgram
+    scene: Scene
+    image := NewImage(3, 3)
+    defer { ShaderFree(*program); SceneFree(*scene); VecFree(image.pixels); RenderSceneRelease() }
+    code: [1]ShaderInstruction=.[.{op=.ShaderOutput,a=0}]
+    if !ShaderCompile(*program,code[:]).ok { return 1 }
+    translated := ShaderGLSLTranslate(*program)
+    if !translated.diagnostic.ok { return 2 }
+    SceneInit(*scene)
+    material := UnlitMaterial(.{255,0,0,255}); material.shader=*program
+    unused Plane(*scene,2.0,2.0,material)
+    camera := OrthographicCamera(-1.0,1.0,1.0,-1.0,0.1,10.0)
+    camera.position=.{0.0,0.0,3.0}; camera.target=.{}
+    if !RenderScene(*scene,camera,*image) || image.pixels[16]!=cast(u8)255 { return 3 }
+    if RenderSceneMemoryUsage().framebuffer_bytes<=0 || RenderSceneStatistics().shaded_fragments<=0 { return 4 }
+    return 0
+}

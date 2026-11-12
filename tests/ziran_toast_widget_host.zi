@@ -83,3 +83,9 @@ ToastOutlines :: () -> s32 { return outlines }
 
 #program_export
 ToastLabels :: () -> s32 { return labels }
+
+#program_export
+ImageWidth :: (asset_path: string) -> s32 { unused asset_path; failed = true; return 0 }
+
+#program_export
+ImageHeight :: (asset_path: string) -> s32 { unused asset_path; failed = true; return 0 }

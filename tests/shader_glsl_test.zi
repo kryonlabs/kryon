@@ -1,0 +1,113 @@
+#import, file "../src/ui/shader_glsl.zi";
+#import, file "../src/ui/shader.zi";
+#import "std/text_tools"
+#import "std/math"
+Inputs :: () -> ShaderInputs { return .{.{0.1,0.3,0.7,0.9},.{0.2,0.4,0.6,1.0},.{0.3,0.4,0.0,0.7},.{-0.25,1.25,0.0,0.0}} }
+Fixture :: (index: s32) -> s32 {
+ code: [16]ShaderInstruction
+ count: s32=4
+ code[0]=.{.op=.ShaderLiteral,.dest=4,.value=.{0.2,0.4,0.6,0.8}}
+ code[1]=.{.op=.ShaderLiteral,.dest=5,.value=.{0.5,0.0,0.25,1.0}}
+ code[2]=.{.op=.ShaderLiteral,.dest=6,.value=.{0.1,0.3,0.7,0.9}}
+ code[3]=.{.op=.ShaderOutput,.a=4}
+ if index<18 && index!=16 && index!=17 {
+  code[3]=.{.op=cast(ShaderOp)index,.dest=7,.a=4,.b=5,.c=6,.slot=0,.value=.{0.12,0.34,0.56,0.78}}
+  code[4]=.{.op=.ShaderOutput,.a=7};count=5
+ }
+ if index==2 { code[3].a=3 }
+ if index==14 { code[3].a=2 }
+ if index==16 || index==18 {
+  code[3]=.{.op=.ShaderDiscardLess,.a=ifx index==16 then 4 else 5,.b=ifx index==16 then 5 else 4}
+  code[4]=.{.op=.ShaderOutput,.a=6};count=5
+ }
+ if index==19 { code[0].value=.{};code[3]=.{.op=.ShaderNormalize,.dest=7,.a=4};code[4]=.{.op=.ShaderOutput,.a=7};count=5 }
+ if index==20 { code[0].value=.{-1.25,-0.5,2.125,0.7};code[3]=.{.op=.ShaderFract,.dest=7,.a=4};code[4]=.{.op=.ShaderOutput,.a=7};count=5 }
+ if index==21 { code[3]=.{.op=.ShaderOutput,.a=0} }
+ if index==22 { code[3]=.{.op=.ShaderOutput,.a=1} }
+ if (index>=23 && index<=25) || (index>=27 && index<=31) { code[3]=.{.op=.ShaderSample,.dest=7,.a=3,.slot=ifx index==25 then 7 else 0};code[4]=.{.op=.ShaderOutput,.a=7};count=5 }
+ if index==26 {
+  code[0].value=.{1.0e38,1.0e38,1.0e38,1.0e38}
+  for at: 1..9 { code[at]=.{.op=.ShaderMultiply,.dest=4,.a=4,.b=4} }
+  code[10]=.{.op=.ShaderOutput,.a=4};count=11
+ }
+ if index==32 { code[3]=.{.op=.ShaderUniform,.dest=7,.slot=15};code[4]=.{.op=.ShaderOutput,.a=7};count=5 }
+ if index==33 { code[3]=.{.op=.ShaderMove,.dest=0,.a=4};code[4]=.{.op=.ShaderOutput,.a=0};count=5 }
+ program: ShaderProgram
+ if !ShaderCompile(*program,code[0:count]).ok { return 10+index }
+ result:=ShaderGLSLTranslate(*program)
+ if !result.diagnostic.ok || TextView(result.source).count==0 { print("translate failed % %\n",index,result.diagnostic.message);return 40+index }
+ if !TextContains(result.source,"vec4 kryonMaterial(") { return 70+index }
+ uniforms: [16]ShaderValue
+ uniforms[0]=.{0.14,0.36,0.58,0.8};uniforms[15]=.{0.21,0.43,0.65,0.87}
+ pixels: [16]u8=.[255,0,0,255,0,255,0,128,0,0,255,64,255,255,0,192]
+ samplers: [8]ShaderSampler
+ for at: 0..7 { samplers[at]=.{2,2,pixels[:],(index==24 || index==31)} }
+ input:=Inputs()
+ if index==25 { input.uv=.{1.0,0.0,0.0,0.0} }
+ if index==27 { input.uv=.{0.0,0.0,0.0,0.0} }
+ if index==28 { input.uv=.{0.0,1.0,0.0,0.0} }
+ if index==29 { input.uv=.{1.0,1.0,0.0,0.0} }
+ if index==30 { input.uv=.{0.49,0.49,0.0,0.0} }
+ if index==31 { input.uv=.{-1.25,-0.25,0.0,0.0} }
+ if !ShaderGLSLBindings(*program,uniforms[:],samplers[:]).ok { return 100+index }
+ #if #defined(GLSL_EMIT) {
+  expected:=ShaderRun(*program,input,uniforms[:],samplers[:])
+  print("kryon-glsl-case % % % % % % % %\n",index,expected.color.x,expected.color.y,expected.color.z,expected.color.w,expected.discard,program.uniform_count,program.sampler_count)
+  print("kryon-glsl-uv % %\n",input.uv.x,input.uv.y)
+  print("kryon-glsl-repeat %\n",index==24 || index==31)
+  print("%\n",TextView(result.source))
+  print("kryon-glsl-end\n")
+ }
+ return 0
+}
+Accepted :: (program: *ShaderProgram) -> bool { result:=ShaderGLSLTranslate(program);return result.diagnostic.ok }
+#program_export
+main :: () -> s32 {
+ program: ShaderProgram
+ if Accepted(*program) { return 1 }
+ code: [2]ShaderInstruction=.[.{.op=.ShaderLiteral,.dest=4,.value=.{1.0,0.5,0.0,1.0}},.{.op=.ShaderOutput,.a=4}]
+ if !ShaderCompile(*program,code[:]).ok { return 2 }
+ program.count=129
+ if Accepted(*program) { return 3 }
+ program.count=2;program.input_mask=15
+ if Accepted(*program) { return 4 }
+ program.input_mask=0;program.code[1].a=31
+ if Accepted(*program) { return 5 }
+ program.code[1].a=4;program.code[0].value.x=1.0e100
+ if Accepted(*program) { return 6 }
+ program.code[0].value.x=1.0e-100
+ if Accepted(*program) { return 7 }
+ status:=BindingCases();if status!=0 { return status }
+ for index: 0..33 { status:=Fixture(cast(s32)index);if status!=0 { return status } }
+ return 0
+}
+
+BindingCases :: () -> s32 {
+ program: ShaderProgram
+ uniforms: [16]ShaderValue
+ samplers: [8]ShaderSampler
+ pixels: [16]u8
+ code: [2]ShaderInstruction=.[.{.op=.ShaderUniform,.dest=4,.slot=15},.{.op=.ShaderOutput,.a=4}]
+ if !ShaderCompile(*program,code[:]).ok { return 150 }
+ if ShaderGLSLBindings(*program,uniforms[0:15],samplers[:]).ok { return 151 }
+ if !ShaderGLSLBindings(*program,uniforms[:],samplers[:]).ok { return 152 }
+ uniforms[15].w=1.0e100
+ if ShaderGLSLBindings(*program,uniforms[:],samplers[:]).ok { return 153 }
+ uniforms[15].w=1.0e-100
+ if ShaderGLSLBindings(*program,uniforms[:],samplers[:]).ok { return 154 }
+ uniforms[15].w=Infinity()
+ if ShaderGLSLBindings(*program,uniforms[:],samplers[:]).ok { return 155 }
+ uniforms[15].w=0.0
+ code[0]=.{.op=.ShaderSample,.dest=4,.a=3,.slot=7}
+ if !ShaderCompile(*program,code[:]).ok { return 156 }
+ for at: 0..7 { samplers[at]=.{2,2,pixels[:],false} }
+ if ShaderGLSLBindings(*program,uniforms[:],samplers[0:7]).ok { return 157 }
+ if !ShaderGLSLBindings(*program,uniforms[:],samplers[:]).ok { return 158 }
+ samplers[7].pixels=pixels[0:15]
+ if ShaderGLSLBindings(*program,uniforms[:],samplers[:]).ok { return 159 }
+ samplers[7].pixels=pixels[:];samplers[7].width=0
+ if ShaderGLSLBindings(*program,uniforms[:],samplers[:]).ok { return 160 }
+ ShaderFree(*program)
+ if Accepted(*program) || ShaderGLSLBindings(*program,uniforms[:],samplers[:]).ok { return 161 }
+ return 0
+}

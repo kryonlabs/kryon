@@ -292,7 +292,7 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
     layout.scroll_bounds.height > 0.0 {
         scroll: ScrollProps = .{.key = key * cast(u64)65599 + cast(u64)1,
             .bounds = layout.scroll_bounds, .scale = props.scale, .horizontal = !props.vertical,
-            .scroll_offset = offset}
+            .scroll_offset = offset, .external_scrollbar = true}
         if props.vertical { scroll.content_height = layout.content_extent }
         else { scroll.content_width = layout.content_extent }
         scrolled := Scroll(session, scroll)

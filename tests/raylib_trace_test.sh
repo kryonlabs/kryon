@@ -16,11 +16,19 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 grep -qx 'WARNING: IMAGE: retained' "$work/console.txt"
 grep -qx 'INFO: values 42 3.25 kryon.test' "$work/console.txt"
 grep -qx 'WARNING: 100% %s done' "$work/console.txt"
+grep -Fxq 'WARNING: FBO: [ID 7] Unloaded framebuffer from VRAM (GPU)' "$work/console.txt"
+grep -Fxq 'ERROR: FBO: [ID 8] Framebuffer object created successfully' "$work/console.txt"
+grep -Fxq 'INFO: FBO: diagnostic note retained' "$work/console.txt"
+if grep -Fq 'INFO: FBO: [ID 4]' "$work/console.txt"; then
+    echo 'raylib trace kept a routine framebuffer lifecycle note' >&2
+    exit 1
+fi
 if grep -q 'IMAGE: hidden' "$work/console.txt"; then
     echo 'raylib trace kept a routine image note' >&2
     exit 1
 fi
 grep -qx '\[INFO\] file note' "$work/raylib_trace.log"
+grep -Fxq '[INFO] FBO: [ID 9] Unloaded framebuffer from VRAM (GPU)' "$work/raylib_trace.log"
 grep -qx '\[ERROR\] WGL test failure' "$work/raylib_trace.log"
 # The va_list record of AArch64, Android's logcat and Windows compile too.
 for defines in "--define ANDROID_BUILD --define __aarch64__" "--define ANDROID_BUILD --define __arm__" \
@@ -29,4 +37,4 @@ for defines in "--define ANDROID_BUILD --define __aarch64__" "--define ANDROID_B
     "$ziran_root/build/bin/zi2c" --no-main $defines --root "$repo/src/backend" \
         --module-path "$ziran_root/std" -o "$work/emit" "$repo/src/backend/raylib_trace.zi"
 done
-echo 'raylib trace: console filter, va_list formatting, literal text and log file passed'
+echo 'raylib trace: resource console filter, preserved diagnostics, va_list formatting and full log file passed'

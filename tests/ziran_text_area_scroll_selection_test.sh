@@ -4,11 +4,11 @@ source=$repo/tests/ziran_text_area_scroll_selection_test.zi
 widget_host=ziran_composition_widget_host
 widget_mesh_host=ziran_mesh_noop_host
 set -- \
-    --bind image_raster:ImageWidth=ziran_text_area_scroll_selection_test:ImageWidth \
-    --bind image_raster:ImageHeight=ziran_text_area_scroll_selection_test:ImageHeight \
-    --bind system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost \
-    --bind system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
-    --bind system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
+    --bind kryon/image_raster:ImageWidth=ziran_text_area_scroll_selection_test:ImageWidth \
+    --bind kryon/image_raster:ImageHeight=ziran_text_area_scroll_selection_test:ImageHeight \
+    --bind kryon/system_clipboard:SystemClipboardOpenHost=ziran_system_clipboard_host:SystemClipboardOpenHost \
+    --bind kryon/system_clipboard:SystemClipboardByteHost=ziran_system_clipboard_host:SystemClipboardByteHost \
+    --bind kryon/system_clipboard:SystemClipboardWriteHost=ziran_system_clipboard_host:SystemClipboardWriteHost
 . "$repo/tests/widget_raster_bindings.sh"
 matrix_bundles=before
 matrix_forms=source

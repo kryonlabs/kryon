@@ -4,7 +4,9 @@ set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
 ziran_include=${ZIRAN_INCLUDE:-"$ziran_root/include"}
-work=$(mktemp -d)
+mkdir -p "$repo/build/scratch"
+work=$(mktemp -d "$repo/build/scratch/style-test.XXXXXX")
+kryon_project_args="$kryon_project_args --module-path $work"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_style.zi" <<'EOF'
 #import "control_props"
@@ -118,12 +120,12 @@ Answer :: () -> s32 {
 }
 EOF
 
-"$ziran" check --root "$work" $kryon_ui_args --module-path "$ziran_root/std" "$work/use_style.zi"
-"$ziran" ir --root "$work" $kryon_ui_args --module-path "$ziran_root/std" -o "$work/ir" \
+"$ziran" check --root "$work" $kryon_project_args  "$work/use_style.zi"
+"$ziran" ir --root "$work" $kryon_project_args  -o "$work/ir" \
     "$work/use_style.zi"
-"$ziran" bundle --root "$work" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" bundle --root "$work" $kryon_project_args  \
     --entry use_style:Answer -o "$work/source.zx" "$work/use_style.zi"
-"$ziran" bundle --root "$work/ir" --module-path "$work/ir" \
+"$ziran" bundle --root "$work/ir" --project --module-path "$work/ir" \
     --entry use_style:Answer -o "$work/ir.zx" "$work/ir/use_style.zir"
 cmp "$work/source.zx" "$work/ir.zx"
 test "$("$ziran" run "$work/source.zx")" = 42
@@ -132,47 +134,35 @@ test "$("$ziran" run "$work/ir.zx")" = 42
 for input in source ir; do
     if test "$input" = source; then
         input_dir=$work
-        module_dir="$kryon_ui_args"
+        module_dir="$kryon_project_args"
         extension=zi
     else
         input_dir=$work/ir
-        module_dir="--module-path $work/ir"
+        module_dir="--project --module-path $work/ir"
         extension=zir
     fi
     for target in c go; do
         output="$work/$target-$input"
         if test "$target" = go; then
             "$ziran" build --target=go --pkg main --root "$work" \
-                $module_dir --module-path "$ziran_root/std" -o "$output" \
+                $module_dir  -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.go" <<'GO'
 package main
 func main() { if UseStyle_Answer() != 42 { panic("wrong style result") } }
 GO
-            GO111MODULE=off go run "$output/control_props.go" \
-                "$output/surface.go" "$output/style.go" \
-                "$output/geometry.go" "$output/math.go" "$output/text_align.go" \
-                "$output/drawing_props.go" \
-                "$output/raster.go" "$output/separator_behavior.go" \
-                "$output/progress_behavior.go" \
-                "$output/use_style.go" "$output/main.go"
+            GO111MODULE=off go run "$output"/*.go
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" \
-                $module_dir --module-path "$ziran_root/std" -o "$output" \
+                $module_dir  -o "$output" \
                 "$input_dir/use_style.$extension"
             cat > "$output/main.c" <<'C'
 #include "use_style.h"
-#include "raster.h"
 void RasterLine(Rectangle line, Color color) { (void)line; (void)color; }
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output/control_props.c" "$output/surface.c" \
-                "$output/style.c" "$output/geometry.c" "$output/math.c" \
-                "$output/drawing_props.c" "$output/raster.c" \
-                "$output/separator_behavior.c" "$output/progress_behavior.c" \
-                "$output/use_style.c" \
-                "$output/main.c" -o "$output/app"
+                "$output"/*.c -o "$output/app"
             "$output/app"
         fi
     done

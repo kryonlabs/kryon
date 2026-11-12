@@ -2,8 +2,18 @@
 
 ## [Unreleased]
 
+- Hosted bundles can measure approved images through typed width and height calls without gaining arbitrary file or raster access.
+
+- Custom hosts use shared application-entry and frame/window APIs; native window icons use the renderer image codecs with upright RGBA pixels. Android JNI, private files, touch and clipboard services use the selected custom raylib host, and resumed rendering and touch coordinates follow its current drawing buffers. Browser RGBA previews avoid native encoder links and expose encoding availability.
+
 - Raylib image loading links the pinned AVIF codec only for hosts that define
   `AVIF_RAYLIB`; other builds decode no AVIF and carry no codec dependency.
+
+- Hosted Widgets aggregates expose supported host contracts without importing retained-only tree implementations, including TimePicker and Spinbox.
+
+- Redesigned the Guide, added a landscape Image example and theming guidance, and corrected Hold/Confirm progress borders.
+
+- Graphical bundles launch through `ziran run app.zx`; installation registers the desktop provider, `kryon run` shares that runner, and `--vm` selects portable execution.
 
 - Disabled EmptyState and Banner retain their configured controls and reject activation until enabled.
 
@@ -20,7 +30,7 @@
 - Native bitmap caches keep their shared capacity while supporting existing compiler pins.
 - Native smooth-image caches retain multiple sizes of the same picture within their existing LRU budgets, preserving sharp covers beside thumbnails.
 
-- SwipeRow supports optional short and long actions per direction with distinct release results and matching strip previews.
+- SwipeRow supports optional short and long actions per direction with fixed travel spans, distinct release results and matching equal-width strip previews.
 - Native TextArea corrections preserve the caret viewport by replacing only the changed span; unchanged TextArea and TextField snapshots retain selection without a text edit.
 
 - Linux apps can apply reusable GTK CSS providers to individual style contexts or their process screen, and temporarily select dark styling with nested restoration.

@@ -1,0 +1,159 @@
+// Portable material programs. Code is owned; uniforms and samplers borrow per draw.
+#import "std/math"
+SHADER_REGISTERS :: 32
+SHADER_INSTRUCTIONS :: 128
+SHADER_INPUT_COLOR :: 1
+SHADER_INPUT_POSITION :: 2
+SHADER_INPUT_NORMAL :: 4
+SHADER_INPUT_UV :: 8
+ShaderValue :: struct { x: float64; y: float64; z: float64; w: float64; }
+ShaderOp :: enum {
+    ShaderLiteral :: 0
+    ShaderUniform :: 1
+    ShaderSample :: 2
+    ShaderMove :: 3
+    ShaderAdd :: 4
+    ShaderSubtract :: 5
+    ShaderMultiply :: 6
+    ShaderDivide :: 7
+    ShaderMin :: 8
+    ShaderMax :: 9
+    ShaderSin :: 10
+    ShaderCos :: 11
+    ShaderFract :: 12
+    ShaderDot :: 13
+    ShaderNormalize :: 14
+    ShaderMix :: 15
+    ShaderDiscardLess :: 16
+    ShaderOutput :: 17
+}
+ShaderInstruction :: struct { op: ShaderOp; dest: s32; a: s32; b: s32; c: s32; slot: s32; value: ShaderValue; }
+ShaderProgram :: struct { code: [SHADER_INSTRUCTIONS]ShaderInstruction; count: s32; uniform_count: s32; sampler_count: s32; input_mask: s32; ready: bool; }
+ShaderDiagnostic :: struct { ok: bool; instruction: s32; message: string; }
+ShaderSampler :: struct { width: s32; height: s32; pixels: []u8; repeat: bool; }
+ShaderInputs :: struct { color: ShaderValue; position: ShaderValue; normal: ShaderValue; uv: ShaderValue; }
+ShaderResult :: struct { color: ShaderValue; discard: bool; }
+// Invalid replacements preserve the old program. Diagnostic text is static.
+ShaderCompile :: (program: *ShaderProgram, code: []ShaderInstruction) -> ShaderDiagnostic {
+    if code.count < 1 || code.count > SHADER_INSTRUCTIONS { return .{false,-1,"shader requires 1..128 instructions"} }
+    defined: [SHADER_REGISTERS]bool
+    for at: 0..3 { defined[at] = true }
+    uniforms: s32
+    samplers: s32
+    original_inputs: s32 = 15
+    input_mask: s32
+    for at: 0..code.count-1 {
+        i := code[at]
+        if cast(s32)i.op < 0 || cast(s32)i.op > 17 { return .{false,cast(s32)at,"unknown shader operation"} }
+        if i.op != .ShaderLiteral && i.op != .ShaderUniform && !Register(defined[:],i.a) { return .{false,cast(s32)at,"undefined source register a"} }
+        if ReadsB(i.op) && !Register(defined[:],i.b) { return .{false,cast(s32)at,"undefined source register b"} }
+        if i.op == .ShaderMix && !Register(defined[:],i.c) { return .{false,cast(s32)at,"undefined source register c"} }
+        if i.op != .ShaderLiteral && i.op != .ShaderUniform && i.a < 4 { input_mask |= original_inputs & (1 << i.a) }
+        if ReadsB(i.op) && i.b < 4 { input_mask |= original_inputs & (1 << i.b) }
+        if i.op == .ShaderMix && i.c < 4 { input_mask |= original_inputs & (1 << i.c) }
+        if i.op == .ShaderLiteral && !FiniteValue(i.value) { return .{false,cast(s32)at,"nonfinite shader literal"} }
+        if i.op == .ShaderUniform {
+            if i.slot < 0 || i.slot >= 16 { return .{false,cast(s32)at,"uniform slot outside 0..15"} }
+            if i.slot >= uniforms { uniforms = i.slot+1 }
+        }
+        if i.op == .ShaderSample {
+            if i.slot < 0 || i.slot >= 8 { return .{false,cast(s32)at,"sampler slot outside 0..7"} }
+            if i.slot >= samplers { samplers = i.slot+1 }
+        }
+        if i.op == .ShaderOutput {
+            if at != code.count-1 { return .{false,cast(s32)at,"output must be final"} }
+        } else if i.op != .ShaderDiscardLess {
+            if i.dest < 0 || i.dest >= SHADER_REGISTERS { return .{false,cast(s32)at,"destination outside 0..31"} }
+            defined[i.dest] = true
+            if i.dest < 4 { original_inputs &= ~(1 << i.dest) }
+        }
+    }
+    if code[code.count-1].op != .ShaderOutput { return .{false,cast(s32)(code.count-1),"missing shader output"} }
+    for at: 0..code.count-1 { program.code[at] = code[at] }
+    program.count = cast(s32)code.count
+    program.uniform_count = uniforms
+    program.sampler_count = samplers
+    program.input_mask = input_mask
+    program.ready = true
+    return .{true,-1,""}
+}
+ShaderFree :: (program: *ShaderProgram) {
+    program.count = 0
+    program.uniform_count = 0
+    program.sampler_count = 0
+    program.input_mask = 0
+    program.ready = false
+}
+ShaderBindings :: (program: *ShaderProgram, uniforms: []ShaderValue, samplers: []ShaderSampler) -> ShaderDiagnostic {
+    if !program.ready { return .{false,-1,"shader not compiled or released"} }
+    if uniforms.count < program.uniform_count { return .{false,-1,"missing shader uniform"} }
+    if samplers.count < program.sampler_count { return .{false,-1,"missing shader sampler"} }
+    for at: 0..program.uniform_count-1 { if !FiniteValue(uniforms[at]) { return .{false,-1,"nonfinite shader uniform"} } }
+    for at: 0..program.sampler_count-1 {
+        s := samplers[at]
+        if s.width <= 0 || s.height <= 0 || cast(s64)s.width*s.height > s.pixels.count/4 { return .{false,-1,"sampler requires complete RGBA pixels"} }
+    }
+    return .{true,-1,""}
+}
+ShaderRun :: (program: *ShaderProgram, inputs: ShaderInputs, uniforms: []ShaderValue, samplers: []ShaderSampler) -> ShaderResult {
+    if !ShaderBindings(program,uniforms,samplers).ok { return .{discard=true} }
+    r: [SHADER_REGISTERS]ShaderValue
+    r[0]=inputs.color; r[1]=inputs.position; r[2]=inputs.normal; r[3]=inputs.uv
+    for at: 0..program.count-1 {
+        i := program.code[at]
+        if i.op == .ShaderLiteral { r[i.dest]=i.value; continue }
+        if i.op == .ShaderUniform { r[i.dest]=uniforms[i.slot]; continue }
+        a := r[i.a]
+        if i.op == .ShaderOutput { return .{a,!FiniteValue(a)} }
+        if i.op == .ShaderSample { r[i.dest]=ShaderSample(samplers[i.slot],a.x,a.y); continue }
+        b: ShaderValue
+        if ReadsB(i.op) { b=r[i.b] }
+        if i.op == .ShaderDiscardLess { if a.x < b.x { return .{discard=true} }; continue }
+        if i.op == .ShaderDot { d:=a.x*b.x+a.y*b.y+a.z*b.z; r[i.dest]=.{d,d,d,d}; continue }
+        if i.op == .ShaderNormalize {
+            length:=Sqrt(a.x*a.x+a.y*a.y+a.z*a.z)
+            r[i.dest]=ifx length>0.0 then ShaderValue.{a.x/length,a.y/length,a.z/length,a.w} else ShaderValue.{}
+            continue
+        }
+        c: ShaderValue
+        if i.op == .ShaderMix { c=r[i.c] }
+        r[i.dest]=VectorOp(i.op,a,b,c)
+    }
+    return .{discard=true}
+}
+// Straight linear RGBA, top row first; UV v=0 is the bottom row.
+ShaderSample :: (s: ShaderSampler, u: float64, v: float64) -> ShaderValue {
+    if !Finite64(u) || !Finite64(v) || s.width<=0 || s.height<=0 || cast(s64)s.width*s.height > s.pixels.count/4 { return .{} }
+    x:=ifx s.repeat then Fraction(u) else Clamp(u)
+    y:=ifx s.repeat then Fraction(v) else Clamp(v)
+    tx:=cast(s32)(x*cast(float64)s.width); ty:=cast(s32)(y*cast(float64)s.height)
+    if tx>=s.width { tx=s.width-1 }; if ty>=s.height { ty=s.height-1 }
+    at:=(cast(s64)(s.height-1-ty)*s.width+tx)*4
+    return .{cast(float64)s.pixels[at]/255.0,cast(float64)s.pixels[at+1]/255.0,cast(float64)s.pixels[at+2]/255.0,cast(float64)s.pixels[at+3]/255.0}
+}
+#scope_file
+FiniteValue :: (v: ShaderValue) -> bool { return Finite64(v.x) && Finite64(v.y) && Finite64(v.z) && Finite64(v.w) }
+Register :: (defined: []bool, index: s32) -> bool { return index>=0 && index<defined.count && defined[index] }
+Clamp :: (v: float64) -> float64 { return ifx v<0.0 then 0.0 else ifx v>1.0 then 1.0 else v }
+Fraction :: (v: float64) -> float64 { if !Finite64(v) || v<=-4503599627370496.0 || v>=4503599627370496.0 { return 0.0 }; f:=cast(float64)cast(s64)v; if f>v { f-=1.0 }; return v-f }
+ReadsB :: (op: ShaderOp) -> bool {
+    return op==.ShaderAdd || op==.ShaderSubtract || op==.ShaderMultiply || op==.ShaderDivide || op==.ShaderMin || op==.ShaderMax || op==.ShaderDot || op==.ShaderMix || op==.ShaderDiscardLess
+}
+// Dispatch once per vector instruction rather than once for every lane.
+VectorOp :: (op: ShaderOp, a: ShaderValue, b: ShaderValue, c: ShaderValue) -> ShaderValue {
+    if op==.ShaderMove { return a }
+    if op==.ShaderAdd { return .{a.x+b.x,a.y+b.y,a.z+b.z,a.w+b.w} }
+    if op==.ShaderSubtract { return .{a.x-b.x,a.y-b.y,a.z-b.z,a.w-b.w} }
+    if op==.ShaderMultiply { return .{a.x*b.x,a.y*b.y,a.z*b.z,a.w*b.w} }
+    if op==.ShaderDivide { return .{Divide(a.x,b.x),Divide(a.y,b.y),Divide(a.z,b.z),Divide(a.w,b.w)} }
+    if op==.ShaderMin { return .{Min(a.x,b.x),Min(a.y,b.y),Min(a.z,b.z),Min(a.w,b.w)} }
+    if op==.ShaderMax { return .{Max(a.x,b.x),Max(a.y,b.y),Max(a.z,b.z),Max(a.w,b.w)} }
+    if op==.ShaderSin { return .{Sin(a.x),Sin(a.y),Sin(a.z),Sin(a.w)} }
+    if op==.ShaderCos { return .{Cos(a.x),Cos(a.y),Cos(a.z),Cos(a.w)} }
+    if op==.ShaderFract { return .{Fraction(a.x),Fraction(a.y),Fraction(a.z),Fraction(a.w)} }
+    if op==.ShaderMix { return .{a.x*(1.0-c.x)+b.x*c.x,a.y*(1.0-c.y)+b.y*c.y,a.z*(1.0-c.z)+b.z*c.z,a.w*(1.0-c.w)+b.w*c.w} }
+    return .{}
+}
+Divide :: (a: float64,b: float64) -> float64 { return ifx b==0.0 then 0.0 else a/b }
+Min :: (a: float64,b: float64) -> float64 { return ifx a<b then a else b }
+Max :: (a: float64,b: float64) -> float64 { return ifx a>b then a else b }

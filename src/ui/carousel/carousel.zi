@@ -25,6 +25,7 @@
 #import "shape"
 #import "shape_props"
 #import "text_measure"
+#import "theme"
 
 CarouselItem :: struct {
     label: string
@@ -130,7 +131,7 @@ CarouselTitle :: (session: Session, props: CarouselProps, items: []CarouselItem,
         ifx item.logo != "" then logo.y + logo.height + 4.0 * scale else bounds.y + 40.0 * scale,
         tag_width, 44.0 * scale}
     unused Box(session, BoxProps.{.key = key + 2, .bounds = tag,
-            .fill = ifx props.dark then Color.{28, 75, 53, 235} else Color.{255, 255, 255, 225}, .radius = 22.0 * scale})
+            .fill = StyleTokenColorOr("surface", ColorFromPacked(CurrentSurface())), .radius = 22.0 * scale})
     Text(session, TextProps.{.key = key + 3, .bounds = tag, .text = item.caption,
             .font = cast(s32)(22.0 * scale),
             .align = TextAlign.TextAlignCenter, .vertical_align = TextAlign.TextAlignCenter})

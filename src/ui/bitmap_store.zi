@@ -108,8 +108,13 @@ BitmapCopyPixels :: (at: s32, rgba: []u8) {
     item := *bitmap_images[at]
     for pixel: cast(s64)0..item.pixels.count - 1 {
         offset := pixel * 4
-        item.pixels[pixel] = BitmapRgbaPixel(rgba, offset)
+        packed := BitmapRgbaPixel(rgba, offset)
+        item.pixels[pixel] = packed
         alpha := cast(u32)rgba[offset + 3]
+        if alpha == 255 {
+            item.premultiplied[pixel] = packed
+            continue
+        }
         item.premultiplied[pixel] = (alpha << 24) |
             (((cast(u32)rgba[offset] * alpha + 127) / 255) << 16) |
             (((cast(u32)rgba[offset + 1] * alpha + 127) / 255) << 8) |
@@ -120,9 +125,9 @@ BitmapCreateOwned :: (slot: s32, epoch: u64, width: s32, height: s32, rgba: []u8
     count := BitmapPixelCount(width, height)
     if slot <= 0 || count == 0 || rgba.count != count * 4 ||
         bitmap_next_id >= cast(u32)BITMAP_IMAGE_TAG { return .{} }
-    #if #defined(PLATFORM_WEB) {
-        if bitmap_upload == null || bitmap_replace == null || bitmap_free == null { return .{} }
-    }
+    // CPU-backed renderers (including Raylib/WebGL) upload lazily from these
+    // owned pixels. A Canvas provider installs synchronous upload callbacks;
+    // the compilation target alone does not select that presentation model.
     required := count * 8
     owner_bytes: s64
     free_slot: s32 = -1

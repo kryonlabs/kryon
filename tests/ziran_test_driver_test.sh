@@ -12,8 +12,7 @@ source=$repo/tests/ziran_test_driver_test.zi
 
 for target in c; do
     "$ziran" build --target="$target" --no-main \
-        --root "$repo/tests" $kryon_ui_args \
-        --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+        --root "$repo/tests" $kryon_project_args \
         -o "$work/$target" "$source"
     suffix=c
     compiler=${CC:-cc}

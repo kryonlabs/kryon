@@ -120,6 +120,7 @@ main :: () -> s32 {
             WebSet(WebModule, WebName("siteCount"), WebNumber(cast(float64)site_count))
             WebSet(WebModule, WebName("siteHoldProgress"), WebNumber(cast(float64)site_hold.progress))
             WebSet(WebModule, WebName("siteHoldCount"), WebNumber(cast(float64)site_hold_count))
+            WebSet(WebModule, WebName("siteConfirmCount"), WebNumber(cast(float64)site_confirm_count))
             WebSet(WebModule, WebName("siteConfirmArmed"), WebBool(site_confirm.armed))
             WebSet(WebModule, WebName("galleryCount"), WebNumber(cast(float64)GallerySceneCount))
             WebSet(WebModule, WebName("gallerySceneRendered"), WebNumber(cast(float64)scene))

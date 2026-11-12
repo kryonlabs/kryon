@@ -179,7 +179,7 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
             if module.get('styles'): setup += f'    {module["styles"]}(example_input.theme == 2)\n'
             code = template.replace('// @declarations', declarations.rstrip()).replace('// @title', name).replace('    // @example', setup + textwrap.indent(textwrap.dedent(preamble).strip(), '    ') + '\n' + textwrap.indent(textwrap.dedent(fragment).strip(), '    ') + '\n')
             slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
-            slug = {'button-emphasis':'button', 'dropdown-open':'dropdown', 'circle-ring-triangle-line':'shape', 'page-section-heading-paragraphtext':'page', 'text-selection':'text', 'transition-fade':'transition', 'listboxmulti':'listbox', 'plot-bars':'plotbars', 'plot-lines':'plotlines', 'separator-and-bullet':'separator'}.get(slug, slug)
+            slug = {'cui-style':'stylepicker', 'button-emphasis':'button', 'dropdown-open':'dropdown', 'circle-ring-triangle-line':'shape', 'page-section-heading-paragraphtext':'page', 'text-selection':'text', 'transition-fade':'transition', 'listboxmulti':'listbox', 'plot-bars':'plotbars', 'plot-lines':'plotlines', 'separator-and-bullet':'separator'}.get(slug, slug)
             example = examples_root / slug
             entry = example / (slug + '.zi')
             if not entry.exists():
@@ -255,6 +255,15 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
         'progressring': 'Progress ring', 'timeline': 'Timeline', 'swiperow': 'Swipe row',
         'carousel': 'Carousel', 'tilemap': 'Tile map',
     }
+    component_categories = {
+        'Actions': ['buttongroup', 'confirmbutton', 'copybutton', 'holdbutton'],
+        'Feedback': ['alert', 'badge', 'banner', 'countdown', 'emptystate', 'loading', 'loadingscreen', 'checklist', 'progressring', 'timeline'],
+        'Navigation': ['breadcrumb'],
+        'Inputs': ['dpad', 'joystick', 'swipearea', 'swiperow'],
+        'Layout': ['gridmulti'],
+        'Media & graphics': ['avatar', 'svgicon', 'carousel', 'tilemap'],
+        'Content': ['keycap'],
+    }
     core_count = sum(entry["moduleId"] == "kryon" for entry in entries)
     for extra, (slug, name) in enumerate(additional.items()):
         entry = examples_root / slug / (slug + '.zi')
@@ -263,7 +272,7 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
         code_path = 'gallery-sources/kryon/' + slug + '.zi'
         write(Path(site) / code_path, code)
         entries.append({'index': index, 'id': 'kryon/' + str(core_count + extra), 'name': name,
-                        'module': 'Kryon', 'moduleId': 'kryon', 'category': 'Components',
+                        'module': 'Kryon', 'moduleId': 'kryon', 'category': next(category for category, slugs in component_categories.items() if slug in slugs),
                         'source': 'https://github.com/kryonlabs/kryon/blob/master/' + str(entry.relative_to(ROOT)),
                         'sourcePath': str(entry.relative_to(ROOT)), 'code': code_path,
                         'available': True, 'status': 'Available in the maintained gallery',
@@ -309,6 +318,13 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
     registry += string_function('GallerySceneId', lambda e: e['id'])
     registry += string_function('GallerySceneSummary', lambda e: e['summary'])
     registry += string_function('GallerySceneLabel', lambda e: e['module'] + ' / ' + e['category'] + ' · ' + e['name'])
+    navigation = sorted(entries, key=lambda e: (e['moduleId'] not in ('kryon', 'inputs', 'overlays'), '' if e['moduleId'] in ('kryon', 'inputs', 'overlays') else e['module'], e['category'], e['name']))
+    registry += string_function('GallerySceneGroup', lambda e: ('Kryon' if e['moduleId'] in ('kryon', 'inputs', 'overlays') else e['module']) + ' / ' + e['category'])
+    registry += 'GalleryNavigationScene :: (position: s32) -> s32 {\n'
+    for position, entry in enumerate(navigation):
+        registry += f"    if position == {position} {{ return {entry['index']} }}\n"
+    registry += '    return 0\n}\n'
+
     registry += 'InstallGalleryPalette :: (dark: bool) {\n    InstallCatalogPalette(dark)\n' + '\n'.join(styles) + '\n}\n'
     registry += 'catalog_reduced_motion: bool;\n'
     registry += 'SetGalleryPreview :: (bounds: Rectangle, live: bool, now: float32, reduced_motion: bool) {\n    catalog_viewport = bounds; catalog_reduced_motion = reduced_motion\n' + '}\n'

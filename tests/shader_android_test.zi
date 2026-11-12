@@ -1,0 +1,99 @@
+// Offscreen Android window: exercise the real Pixmap -> ANativeWindow path.
+Fixture :: #import "shader_scene_test";
+Pixels :: #import "image_pixels_test";
+Native :: #import "android_native";
+Raster :: #import "pixmap";
+#import "android_jni"
+#import "kryon/scene"
+#import "kryon/scene_render"
+#import "kryon/bitmap_image"
+#import "kryon/session"
+#import "kryon/geometry"
+#import "kryon/drawing_props"
+#import "std/image"
+#import "std/vec"
+media :: #system_library "mediandk";
+c :: #system_library "c";
+ReaderNew :: (width: s32,height: s32,format: s32,usage: u64,count: s32,reader: **void) -> s32 #foreign media "AImageReader_newWithUsage";
+ReaderWindow :: (reader: *void,window: **void) -> s32 #foreign media "AImageReader_getWindow";
+ReaderAcquire :: (reader: *void,image: **void) -> s32 #foreign media "AImageReader_acquireNextImage";
+ReaderDelete :: (reader: *void) #foreign media "AImageReader_delete";
+ImageData :: (image: *void,plane: s32,data: **u8,length: *s32) -> s32 #foreign media "AImage_getPlaneData";
+ImageStride :: (image: *void,plane: s32,stride: *s32) -> s32 #foreign media "AImage_getPlaneRowStride";
+ImageDelete :: (image: *void) #foreign media "AImage_delete";
+Sleep :: (microseconds: u32) -> s32 #foreign c "usleep";
+reader: *void;
+app: NativeAndroidApp;
+Open :: () -> bool {
+    // Consumer reads on CPU; ANativeWindow_lock supplies the producer write usage.
+    status:=ReaderNew(64,64,1,cast(u64)3,2,*reader)
+    if status!=0 { print("reader create %\n",status); return false }
+    if ReaderWindow(reader,*app.window)!=0 { ReaderDelete(reader); reader=null; return false }
+    Native.android_native_app=*app
+    return Native.AndroidNativeEnsurePixels(64,64) && Raster.PixmapResumeInto(64,64,Native.AndroidNativePixels(),true)
+}
+Close :: () {
+    Raster.PixmapEndInto()
+    Native.AndroidNativeClose()
+    if reader!=null { ReaderDelete(reader); reader=null }
+    app.window=null
+}
+Draw :: (image: Texture2D,clip: Rectangle) -> bool {
+    Native.AndroidNativeFill(cast(u32)0xfff8fafc)
+    Raster.RasterImage("",image.id,.{0.0,0.0,16.0,16.0},.{0.0,0.0,64.0,64.0},clip,.{},0.0,0.0,.{255,255,255,255})
+    return Native.AndroidNativeLock() && Native.AndroidNativePresentDamage(0,0,64,64) && Native.AndroidNativeUnlock()
+}
+Verify :: (left: u32,right: u32) -> bool {
+    image: *void
+    for attempt:0..99 {
+        if ReaderAcquire(reader,*image)==0 { break }
+        unused Sleep(cast(u32)10000)
+    }
+    if image==null { print("no posted Android image\n"); return false }
+    defer ImageDelete(image)
+    bytes: *u8; length: s32; stride: s32
+    if ImageData(image,0,*bytes,*length)!=0 || ImageStride(image,0,*stride)!=0 || bytes==null || length<stride*64 { return false }
+    for at:0..1 {
+        x:=ifx at==0 then 8 else 56
+        index:=8*stride+x*4
+        actual:=(cast(u32)bytes[index]<<16)|(cast(u32)bytes[index+1]<<8)|cast(u32)bytes[index+2]
+        expected:=ifx at==0 then left else right
+        for shift:0..2 {
+            a:=cast(s32)((actual>>cast(u32)(shift*8))&cast(u32)255)
+            b:=cast(s32)((expected>>cast(u32)(shift*8))&cast(u32)255)
+            if a<b-3 || a>b+3 { print("Android pixel % expected %\n",actual,expected); return false }
+        }
+    }
+    return true
+}
+Test :: () -> s32 {
+    scene: Scene
+    if !Fixture.ShaderSceneBuild(*scene) { return 1 }
+    defer { SceneFree(*scene); Fixture.ShaderSceneFree() }
+    picture: Image; picture.width=16; picture.height=16
+    defer VecFree(picture.pixels)
+    if !Open() { Close(); return 2 }
+    defer Close()
+    session:=SessionOpen(); defer { unused SessionClose(session) }
+    if !RenderScene(*scene,Fixture.ShaderSceneCamera(),*picture) { return 3 }
+    image:=BitmapImageCreate(session,16,16,picture.pixels[:])
+    if image.id==cast(u32)0 { return 4 }
+    defer BitmapImageRelease(session,image)
+    if !Draw(image,.{0.0,0.0,32.0,64.0}) || !Verify(cast(u32)0xfc7d7e,cast(u32)0xf8fafc) { return 5 }
+    Fixture.ShaderSceneUniform(.{0.0,1.0,0.0,1.0})
+    if !RenderScene(*scene,Fixture.ShaderSceneCamera(),*picture) || !BitmapImageUpdate(session,image,picture.pixels[:]) { return 6 }
+    if !Draw(image,.{0.0,0.0,64.0,64.0}) || !Verify(cast(u32)0,cast(u32)0x00ff00) { return 7 }
+    Close(); RenderSceneRelease()
+    if !Open() { return 8 }
+    Fixture.ShaderSceneUniform(.{1.0,1.0,1.0,1.0}); Fixture.ShaderSceneSampler(128)
+    if !RenderScene(*scene,Fixture.ShaderSceneCamera(),*picture) || !BitmapImageUpdate(session,image,picture.pixels[:]) { return 9 }
+    if !Draw(image,.{0.0,0.0,64.0,64.0}) || !Verify(cast(u32)0xbc0000,cast(u32)0x00ff00) { return 10 }
+    return 0
+}
+#program_export
+main :: () -> s32 {
+    result:=Test()+Pixels.main()+Fixture.ColorTransfer()+Fixture.ParallelRows()
+    Raster.PixmapCloseWorkers()
+    print("Android shader host result %\n",result)
+    return result
+}

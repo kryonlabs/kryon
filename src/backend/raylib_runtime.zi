@@ -1,4 +1,7 @@
 #import "app_asset_path"
+#if #defined(ANDROID_BUILD) {
+    WindowRuntime :: #import "window_runtime";
+}
 RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #if RAYLIB_FRAME_THREADS {
     #import "raylib_frame_render"
@@ -3188,6 +3191,9 @@ BeginRetainedFrame :: (width: s32, height: s32) -> bool {
 }
 
 RaylibPresentTexture :: (texture: Texture2D) {
+    #if #defined(ANDROID_BUILD) {
+        WindowRuntime.SyncWindowSurface()
+    }
     // The texture covers the screen. Clearing first spares a tiling GPU
     // from loading the old screen contents before drawing over them.
     HostRaylibClearBackground(Color.{0, 0, 0, 255})
@@ -3376,7 +3382,7 @@ RasterImage :: (asset_path: string, texture_id: u32,
         if rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 && radius <= 0.0 && polygon.count <= 128 {
             RaylibImagePolygon(asset_path,texture_id,source,destination,clip,tint,polygon)
         } else { ImagePolygonScan(polygon,asset_path,texture_id,source,destination,clip,
-            origin,rotation,radius,tint,RasterImageUnmasked) }
+                origin,rotation,radius,tint,RasterImageUnmasked) }
     } else { RasterImageUnmasked(asset_path,texture_id,source,destination,clip,origin,rotation,radius,tint) }
 }
 
@@ -3414,9 +3420,9 @@ RaylibImagePolygon :: (asset_path: string, texture_id: u32, source: Rectangle,
             unused RaylibAppMetric(asset_path,0,false,true)
         }
         if RecordFrameOperation(PaintCommand.{.asset_path = asset_path,.texture_id = texture_id,
-            .texture = CurrentPaintTexture(),.source = source,.bounds = destination,.clip = clip,
-            .color = tint,.smooth = CurrentPaintSmooth(),.image_clip_count = cast(s32)points.count,
-            .mesh_points = points},RaylibReplayImagePolygon) { return }
+                .texture = CurrentPaintTexture(),.source = source,.bounds = destination,.clip = clip,
+                .color = tint,.smooth = CurrentPaintSmooth(),.image_clip_count = cast(s32)points.count,
+                .mesh_points = points},RaylibReplayImagePolygon) { return }
     }
     if points.count < 3 || source.width <= 0.0 || source.height <= 0.0 || destination.width <= 0.0 || destination.height <= 0.0 || clip.width <= 0.0 || clip.height <= 0.0 { return }
     polygon_slot := RaylibPolygonSlot(points)
@@ -3445,7 +3451,7 @@ RaylibImagePolygon :: (asset_path: string, texture_id: u32, source: Rectangle,
     }
     if texture.width <= 0 || texture.height <= 0 { return }
     inside := destination.x >= clip.x && destination.y >= clip.y &&
-        destination.x + destination.width <= clip.x + clip.width && destination.y + destination.height <= clip.y + clip.height
+    destination.x + destination.width <= clip.x + clip.width && destination.y + destination.height <= clip.y + clip.height
     saved: RasterClipState
     if !inside { saved = BeginRasterClip(clip) }
     HostRaylibSetTexture(texture.id); HostRaylibBegin(RaylibTriangles)
@@ -3505,8 +3511,8 @@ RasterImageUnmasked :: (asset_path: string, texture_id: u32,
             return
         }
         if CurrentPaintSmooth() && rotation == 0.0 && origin.x == 0.0 && origin.y == 0.0 && radius <= 0.0 &&
-            !raylib_replay_polygon && CurrentPaintPolygon().count < 3 &&
-            RaylibLanczosImage(index, source, destination, clip, tint) { return }
+        !raylib_replay_polygon && CurrentPaintPolygon().count < 3 &&
+        RaylibLanczosImage(index, source, destination, clip, tint) { return }
         if CurrentPaintSmooth() && !raylib_assets[index].smooth {
             RaylibSmoothAsset(index)
         }
@@ -4527,15 +4533,15 @@ RasterTextRotated :: (value: string, x: s32, y: s32, font: s32,
     color: Color, clip: Rectangle, origin: Vector2, rotation: float32,
     outer_clip: Rectangle, outer_clipped: bool, emphasis: bool, italic: bool) {
     #if RAYLIB_FRAME_THREADS {
-        if RecordFrameOperation(PaintCommand.{.value=value,.x=x,.y=y,.font=font,.color=color,
-            .clip=clip,.origin=origin,.rotation=rotation,.text_outer_clip=outer_clip,
-            .text_outer_clipped=outer_clipped,.emphasis=emphasis,.italic=italic}, RaylibReplayRotatedText) { return }
+        if RecordFrameOperation(PaintCommand.{.value = value,.x = x,.y = y,.font = font,.color = color,
+                .clip = clip,.origin = origin,.rotation = rotation,.text_outer_clip = outer_clip,
+                .text_outer_clipped = outer_clipped,.emphasis = emphasis,.italic = italic}, RaylibReplayRotatedText) { return }
     }
     saved: RasterClipState
     if outer_clipped { saved = BeginRasterClip(outer_clip) }
     sine := SineDegrees(rotation); cosine := CosineDegrees(rotation)
     matrix: [16]float32 = .[cosine,sine,0.0,0.0,-sine,cosine,0.0,0.0,0.0,0.0,1.0,0.0,
-        origin.x-cosine*origin.x+sine*origin.y,origin.y-sine*origin.x-cosine*origin.y,0.0,1.0]
+    origin.x-cosine*origin.x+sine*origin.y,origin.y-sine*origin.x-cosine*origin.y,0.0,1.0]
     HostRaylibPushMatrix(); HostRaylibMultMatrix(*matrix[0])
     raylib_rotated_text = true; raylib_rotated_text_clip = clip
     raylib_text_emphasis = emphasis; raylib_text_italic = italic

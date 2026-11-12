@@ -12,11 +12,11 @@ esac
 matrix_input() {
     matrix_module=$source
     matrix_root=$repo/tests
-    matrix_modules="$kryon_ui_args"
+    matrix_modules="$kryon_project_args"
     if test "$1" = saved; then
         matrix_module=$work/ir/$matrix_name.zir
         matrix_root=$work/ir
-        matrix_modules="--module-path $work/ir"
+        matrix_modules="--project --module-path $work/ir"
     fi
 }
 
@@ -26,7 +26,7 @@ matrix_bundle() {
             --entry "$matrix_name:main" -o "$work/$matrix_form.zx" "$matrix_module"
     else
         "$ziran" bundle --root "$matrix_root" $matrix_modules \
-            --module-path "$matrix_std" "$@" --entry "$matrix_name:main" \
+             "$@" --entry "$matrix_name:main" \
             -o "$work/$matrix_form.zx" "$matrix_module"
     fi
 }
@@ -41,8 +41,8 @@ matrix_run_bundle() {
     fi
 }
 
-"$ziran" ir --root "$repo/tests" $kryon_ui_args \
-    --module-path "$matrix_std" -o "$work/ir" "$source"
+"$ziran" ir --root "$repo/tests" $kryon_project_args \
+     -o "$work/ir" "$source"
 if test "$matrix_bundles" = before; then
     for matrix_form in source saved; do
         matrix_input "$matrix_form"
@@ -60,18 +60,18 @@ for matrix_form in source saved; do
     if test "$matrix_c" = driver; then
         "$ziran" build --target=c --entry "$matrix_name:main" --exe \
             --root "$matrix_root" $matrix_modules \
-            --module-path "$matrix_std" -o "$matrix_output" "$matrix_module"
+             -o "$matrix_output" "$matrix_module"
         "$matrix_output/$matrix_name"
     elif test "$matrix_c" = cc; then
         "$ziran" build --target=c --no-main --entry "$matrix_name:main" \
             --root "$matrix_root" $matrix_modules \
-            --module-path "$matrix_std" -o "$matrix_output" "$matrix_module"
+             -o "$matrix_output" "$matrix_module"
         "${CC:-cc}" -O2 -std=c11 -ffunction-sections -fdata-sections -I"$matrix_output" \
             "$matrix_output"/*.c -Wl,--gc-sections -o "$matrix_output/run"
         "$matrix_output/run"
     elif test "$matrix_c" = linked; then
         "$ziran" build --target=c --root "$matrix_root" $matrix_modules \
-            --module-path "$matrix_std" -o "$matrix_output" "$matrix_module"
+             -o "$matrix_output" "$matrix_module"
         "${CC:-cc}" -std=c11 -ffunction-sections -fdata-sections -Wl,--gc-sections \
             -I"$ziran_root/include" -I"$matrix_output" "$matrix_output"/*.c \
             -o "$matrix_output/$matrix_name"
@@ -85,7 +85,7 @@ for matrix_form in source saved; do
     if test "$matrix_forms" = source; then matrix_output=$work/go; fi
     "$ziran" build --target=go --pkg main --exe --entry "$matrix_name:main" "$@" \
         --root "$matrix_root" $matrix_modules \
-        --module-path "$matrix_std" -o "$matrix_output" "$matrix_module"
+         -o "$matrix_output" "$matrix_module"
     if test "$matrix_forms" = source; then
         env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
             GO111MODULE=off go run "$matrix_output"/*.go

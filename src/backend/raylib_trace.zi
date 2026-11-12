@@ -3,7 +3,7 @@
 //
 // RaylibTraceToConsole writes "LEVEL: message" lines to a copy of stderr
 // (Android: warnings and errors to logcat), dropping raylib's routine image,
-// texture and frame-timer notes. RaylibTraceToFile appends to a log file, for
+// texture, framebuffer and frame-timer notes. RaylibTraceToFile appends to a log file, for
 // Windows applications that have no console, and keeps recent errors for a
 // startup failure message. A terminal (KRYON_BACKEND_TERMI) build stays
 // silent unless KRYON_TERMINAL_LOG is set, so the log cannot draw over the
@@ -176,6 +176,7 @@ TraceWriteText :: (stream: *void, value: string) {
 TraceConsole :: (level: s32, format: *u8, arguments: TraceArguments) {
     if level < RAYLIB_TRACE_WARNING && (TraceStartsWith(format, "IMAGE:") ||
         TraceStartsWith(format, "TEXTURE:") ||
+        TraceStartsWith(format, "FBO: [ID ") ||
         TraceStartsWith(format, "TIMER: Target time per frame")) {
         return
     }

@@ -39,6 +39,7 @@ android_touch_span: TouchSpan;
 android_touch_replay: TouchReplay;
 android_touch_position: Vector2;
 android_touch_zoom: float32 = 1.0;
+android_touch_surface_offset: Vector2;
 android_touch_secondary_down: bool;
 android_touch_secondary_pressed: bool;
 android_touch_secondary_released: bool;
@@ -186,6 +187,13 @@ AndroidTouchSetZoom :: (zoom: float32) {
     android_touch_zoom = ifx zoom >= 0.1 && zoom <= 8.0 then zoom else 1.0
 }
 
+// Android motion coordinates are relative to the window frame. A decorated
+// surface can begin outside that frame. Apply its offset after replay, scaled
+// by the Android touch zoom, before the host maps through its camera.
+AndroidTouchSetSurfaceOffset :: (x: float32, y: float32) {
+    android_touch_surface_offset = Vector2.{x, y}
+}
+
 AndroidPointerSample :: () -> TouchSample {
     sample: TouchSample
     sample.position = android_touch_position
@@ -198,19 +206,36 @@ AndroidPointerSample :: () -> TouchSample {
         sample.released = false
     }
     android_touch_span = TouchSpan.{}
-    return TouchReplayStep(*android_touch_replay, span, sample)
+    sample = TouchReplayStep(*android_touch_replay, span, sample)
+    sample.position.x += android_touch_surface_offset.x / android_touch_zoom
+    sample.position.y += android_touch_surface_offset.y / android_touch_zoom
+    return sample
 }
 
-#program_export
-PollPointer :: () -> PointerFrame {
-    if android_touch_frame_open { return android_touch_frame_pointer }
+AndroidPointerFrame :: () -> PointerFrame {
+    if android_touch_frame_open {
+        return android_touch_frame_pointer
+    }
     sample := AndroidPointerSample()
     return PointerFrame.{.x = sample.position.x, .y = sample.position.y,
         .pressed = sample.pressed, .down = sample.down, .released = sample.released}
 }
 
-#program_export
-PollSecondaryPointer :: () -> SecondaryPointerFrame {
+// Custom raylib hosts consume Android samples while publishing their own
+// generic pointer ABI. The software Android host publishes these entries.
+#if #defined(ANDROID_BUILD) && !#defined(KRYON_RAYLIB_HOST) {
+    #program_export
+    PollPointer :: () -> PointerFrame {
+        return AndroidPointerFrame()
+    }
+
+    #program_export
+    PollSecondaryPointer :: () -> SecondaryPointerFrame {
+        return AndroidSecondarySample()
+    }
+}
+
+AndroidSecondarySample :: () -> SecondaryPointerFrame {
     return SecondaryPointerFrame.{.down = android_touch_secondary_down,
         .pressed = android_touch_secondary_pressed, .released = android_touch_secondary_released}
 }
@@ -231,7 +256,7 @@ AndroidTouchFrameInputBegin :: (session: Session, zoom: float32) -> bool {
     sample.pointer.pressed = pointer.pressed
     sample.pointer.down = pointer.down
     sample.pointer.released = pointer.released
-    sample.secondary = PollSecondaryPointer()
+    sample.secondary = AndroidSecondarySample()
     TestDriverFrameInput(*sample)
     android_touch_frame_pointer = sample.pointer
     android_touch_frame_open = FrameInputBegin(session, sample)

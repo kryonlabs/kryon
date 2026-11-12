@@ -1,0 +1,153 @@
+// Presentation and window observations for applications with a custom host.
+// Kryon owns backend selection; the application retains its frame policy.
+#import "drawing_props"
+#if #defined(ANDROID_BUILD) {
+    AndroidSurface :: #import "android_surface";
+}
+#if #defined(PLATFORM_WEB) {
+    Window :: #import "canvas_window";
+    Draw :: #import "canvas_draw";
+} else {
+    window_backend :: #system_library "raylib";
+    WindowWidthHost :: () -> s32 #foreign window_backend "GetScreenWidth";
+    WindowHeightHost :: () -> s32 #foreign window_backend "GetScreenHeight";
+    #if #defined(ANDROID_BUILD) {
+        WindowFlushHost :: () #foreign window_backend "rlDrawRenderBatchActive";
+        WindowViewportHost :: (x: s32, y: s32, width: s32, height: s32) #foreign window_backend "rlViewport";
+        WindowMatrixModeHost :: (mode: s32) #foreign window_backend "rlMatrixMode";
+        WindowMatrixIdentityHost :: () #foreign window_backend "rlLoadIdentity";
+        WindowProjectionHost :: (left: float64, right: float64, bottom: float64,
+            top: float64, near: float64, far: float64) #foreign window_backend "rlOrtho";
+        WindowFramebufferWidthHost :: (width: s32) #foreign window_backend "rlSetFramebufferWidth";
+        WindowFramebufferHeightHost :: (height: s32) #foreign window_backend "rlSetFramebufferHeight";
+    }
+    WindowFrameBeginHost :: () #foreign window_backend "BeginDrawing";
+    WindowFrameEndHost :: () #foreign window_backend "EndDrawing";
+    WindowFrameClearHost :: (color: Color) #foreign window_backend "ClearBackground";
+    WindowCloseHost :: () #foreign window_backend "CloseWindow";
+    WindowHiddenHost :: () -> bool #foreign window_backend "IsWindowHidden";
+    WindowMinimizedHost :: () -> bool #foreign window_backend "IsWindowMinimized";
+    WindowClosingHost :: () -> bool #foreign window_backend "WindowShouldClose";
+}
+
+// Android's native surface may change on resume without changing raylib's
+// original requested screen size. Layout and framebuffer presentation use
+// the current native pixel extent.
+#program_export
+WindowWidth :: () -> s32 {
+    #if #defined(PLATFORM_WEB) {
+        return Window.GetScreenWidth()
+    } else {
+        #if #defined(ANDROID_BUILD) {
+            width: s32
+            if AndroidSurface.SyncAndroidSurfaceSize(*width, null) != 0 && width > 0 {
+                return width
+            }
+        }
+        return WindowWidthHost()
+    }
+}
+
+#program_export
+WindowHeight :: () -> s32 {
+    #if #defined(PLATFORM_WEB) {
+        return Window.GetScreenHeight()
+    } else {
+        #if #defined(ANDROID_BUILD) {
+            height: s32
+            if AndroidSurface.SyncAndroidSurfaceSize(null, *height) != 0 && height > 0 {
+                return height
+            }
+        }
+        return WindowHeightHost()
+    }
+}
+
+// Call on the render thread with the default framebuffer selected. Retained
+// targets synchronize after leaving texture mode, which restores raylib's
+// original render dimensions.
+#program_export
+SyncWindowSurface :: () {
+    #if #defined(ANDROID_BUILD) {
+        width: s32
+        height: s32
+        if AndroidSurface.SyncAndroidSurfaceSize(*width, *height) == 0 ||
+        width <= 0 || height <= 0 {
+            return
+        }
+        WindowFlushHost()
+        WindowViewportHost(0, 0, width, height)
+        WindowFramebufferWidthHost(width)
+        WindowFramebufferHeightHost(height)
+        WindowMatrixModeHost(5889) // RL_PROJECTION
+        WindowMatrixIdentityHost()
+        WindowProjectionHost(0.0, cast(float64)width, cast(float64)height, 0.0, 0.0, 1.0)
+        WindowMatrixModeHost(5888) // RL_MODELVIEW
+        WindowMatrixIdentityHost()
+    }
+}
+
+#program_export
+BeginWindowFrame :: () {
+    #if #defined(PLATFORM_WEB) {
+        Window.BeginDrawing()
+    } else {
+        WindowFrameBeginHost()
+        SyncWindowSurface()
+    }
+}
+
+#program_export
+ClearWindowFrame :: (color: Color) {
+    #if #defined(PLATFORM_WEB) {
+        Draw.ClearBackground(color)
+    } else {
+        WindowFrameClearHost(color)
+    }
+}
+
+#program_export
+EndWindowFrame :: () {
+    #if #defined(PLATFORM_WEB) {
+        Window.EndDrawing()
+    } else {
+        WindowFrameEndHost()
+    }
+}
+
+#program_export
+CloseNativeWindow :: () {
+    #if #defined(PLATFORM_WEB) {
+        Window.CloseWindow()
+    } else {
+        WindowCloseHost()
+    }
+}
+
+#program_export
+WindowHidden :: () -> bool {
+    #if #defined(PLATFORM_WEB) {
+        return Window.IsWindowHidden()
+    } else {
+        return WindowHiddenHost()
+    }
+}
+
+#program_export
+WindowMinimized :: () -> bool {
+    #if #defined(PLATFORM_WEB) {
+        return Window.IsWindowMinimized()
+    } else {
+        return WindowMinimizedHost()
+    }
+}
+
+// This observes the current close request without polling input a second time.
+#program_export
+WindowClosing :: () -> bool {
+    #if #defined(PLATFORM_WEB) {
+        return Window.WindowShouldClose()
+    } else {
+        return WindowClosingHost()
+    }
+}

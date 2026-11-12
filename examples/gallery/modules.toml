@@ -5,9 +5,17 @@ label = "Kryon"
 dependency = "kryon"
 source = "src/scenes.zi"
 module = "scenes"
-category = "UI"
+category = "Controls"
 [modules.categories]
-"2D" = [30]
+"Actions" = [0, 26, 35, 46]
+"Inputs" = [1, 2, 3, 4, 5, 6, 7, 9, 18, 19, 47, 52]
+"Selection" = [10, 11, 12, 14, 43]
+"Navigation" = [13, 20, 21, 22, 25, 42]
+"Feedback" = [8, 23, 51]
+"Overlays" = [24, 32, 33, 34, 45]
+"Layout" = [15, 16, 17, 29, 31, 36, 37, 38, 39, 40, 41, 44, 48, 49, 54]
+"Media & graphics" = [27, 28, 30, 50]
+"Theming" = [53]
 [modules.summaries]
 "0" = "Four button tones with a live click counter."
 "1" = "Plain and password-style single-line text fields."
@@ -62,7 +70,7 @@ category = "UI"
 "50" = "Selectable wrapped text."
 "51" = "An out-transition color over labeled content."
 "52" = "A discrete ten-step slider with a readout."
-"53" = "A light/dark style picker that changes the palette."
+"53" = "One modern CUI style with customizable colors and light/dark modes."
 "54" = "Filled, elevated, and outlined card variants."
 
 [[modules]]
@@ -72,7 +80,7 @@ dependency = "plot"
 source = "src/plot_examples.zi"
 module = "plot_examples"
 styles = "InstallStyles"
-category = "Charts"
+category = "Plotting"
 [modules.summaries]
 "0" = "An eight-value line plot with a fixed scale."
 "1" = "An eight-value bar plot with a fixed scale."
@@ -88,7 +96,7 @@ dependency = "data_views"
 source = "src/data_views_examples.zi"
 module = "data_views_examples"
 styles = "InstallStyles"
-category = "UI"
+category = "Data views"
 [modules.summaries]
 "0" = "An expandable project tree with selection and scrolling."
 "1" = "A three-lane kanban board with draggable cards."

@@ -10,13 +10,13 @@ for route in source ir; do
     mkdir -p "$output"
     input="$repo/tests/android_jni_threads_test.zi"
     if [ "$route" = ir ]; then
-        "$ziran" ir --define ANDROID_BUILD --define __x86_64__ --root "$repo/tests" --module-path "$repo/src/backend" \
-            $kryon_ui_args -o "$work/test.zir" "$input"
+        "$ziran" ir --define ANDROID_BUILD --define __x86_64__ --root "$repo/tests"  \
+            $kryon_project_args -o "$work/test.zir" "$input"
         input="$work/test.zir/android_jni_threads_test.zir"
     fi
     "$ziran" build --define ANDROID_BUILD --define __x86_64__ --target=c --no-main --entry android_jni_threads_test:Check \
-        --root "$repo/tests" --module-path "$repo/src/backend" \
-        $kryon_ui_args -o "$output" "$input"
+        --root "$repo/tests"  \
+        $kryon_project_args -o "$output" "$input"
     cat > "$output/main.c" <<'C'
 #include <stdio.h>
 #include "android_jni_threads_test.h"

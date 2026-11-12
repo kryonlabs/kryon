@@ -570,6 +570,23 @@ a JDK, the Android SDK with NDK `28.2.13676358` and CMake `3.22.1`
 `libavif` and `libaom` source packages. Scaffolds pass their source roots to
 `kryon_android_codecs`; the packaged host links no renderer or audio library.
 
+A custom raylib Android host defines `KRYON_RAYLIB_HOST` during Ziran generation.
+This selects raylib's pointer and clipboard exports while retaining Android
+platform services. Direct touch consumers call `AndroidPointerFrame()` and
+`AndroidSecondarySample()` from `android_touch`; those samples do not replace
+the selected renderer's generic input exports.
+JNI also selects raylib's `GetAndroidApp()` for this host, so private files,
+Java calls and process preparation use the raylib-owned NativeActivity.
+Before initializing graphics, custom hosts can read the announced native window
+with `GetAndroidPendingSurfaceSize(width, height)` from `android_surface`. It
+returns positive dimensions without consuming or acknowledging lifecycle commands.
+Once EGL is current, surface synchronization reads its drawing-buffer extent.
+If raylib's fixed buffer request no longer matches the native window after
+picture-in-picture, synchronization releases that request. Subsequent EGL
+buffers follow the native window size; software hosts use the native window.
+The same synchronization maps window-local touch samples into the decorated
+surface, including replayed quick taps and logical zoom.
+
 At runtime a `NativeActivity` subclass owns the Java side: it reports window
 insets, display cutouts, IME state, density, dark mode and orientation
 through JNI natives registered by the generated `src/android_glue.zi`, and
@@ -656,3 +673,69 @@ The SDL/Cairo desktop host also exposes `DesktopSetTitle(title)` and
 up to sixteen complete UTF-8 paths (4095 bytes each), only for the host's own
 window. The application consumes and opens them during `Frame`; an output
 buffer that is too small leaves the next path queued. Text drops are ignored.
+
+## Portable programmable scene rendering
+
+`scene_render` executes `shader` material programs in Ziran on CPU before
+presentation. Cairo, Raylib (including WebAssembly), and Android's
+ANativeWindow/Pixmap host consume the resulting managed bitmap through the
+standard Image surface. These hosts do not need a shader-language bridge.
+This interface does not claim GPU execution, GLSL compilation, vertex-shader
+execution or GPU performance. See [programmable scene materials](API.md#programmable-scene-materials)
+for binding ownership, colour space, clipping, alpha and explicit scratch release.
+Programs and pictures contain no context-bound handles. Recreate the host
+presentation context as usual; keep or re-upload the owned bitmap and render
+again as needed. Shader discard affects colour rendering, not depth-map shadows.
+Host lifecycle tests must verify bitmap re-upload after teardown; checking a
+shader declaration alone does not establish host execution.
+
+The physical-device regression `make shader-android-test` executes Ziran shader
+materials and the Pixmap-to-ANativeWindow presentation path on the USB Moto. It
+uses a private offscreen AImageReader window, verifies posted RGBA pixels,
+clipping, alpha and binding changes, and destroys/recreates that window while
+keeping the CPU program and bitmap alive. It does not launch or alter an owner
+app. `make shader-web-test` exercises the corresponding Raylib WebGL presentation
+inside a private headless browser. These targets also load a real PNG through
+`kryon/image_pixels`; activity-bound Android asset/JNI decoding is a separate
+application integration responsibility.
+
+Native scene frames can render on the shared Ziran range-worker capability
+when source generation enables `POSIX_THREADS`. Immutable transformed geometry
+and ordered triangle commands are prepared once; each lane clears, draws and
+resolves disjoint rows, joining once per frame. The scene owns its pool
+separately from the presentation raster; `RenderSceneRelease` joins and
+closes it. This is CPU row parallelism and does not change texture resolution,
+four-sample coverage, shader operations or draw ordering. WebAssembly without
+pthread support retains the same serial implementation. Application code must
+keep all borrowed material inputs unchanged through the render call.
+
+## Optional native GPU scene rendering
+
+`kryon/scene_gpu` is an explicit native EGL/GLES3 host for the same Scene and
+material APIs. It renders offscreen with four MSAA samples, depth-map shadows,
+retained geometry/programs/textures and an Image readback bridge. It creates no
+window and preserves the caller's current graphics context. Link only consumers
+of this module with `-lEGL -lGLESv2 -lGLX -lm`; core UI and `scene_render` imports retain
+their existing portable and WebAssembly dependencies.
+
+`kryon/shader_glsl` supplies portable material translation used by this host.
+The translator alone has no EGL dependency. GPU execution uses highp floats
+and hardware coverage, so it has pixel tolerances relative to the binary64 CPU
+oracle. Capability failures are explicit; the separate `SceneGpuRenderOrCPU`
+call permits a full-quality CPU frame and reports `accelerated=false`.
+Probe/render/resource counters must establish acceleration and retained upload
+behavior before reporting GPU timing. A module export or successful link alone
+does not establish application integration or deployment.
+
+See [GPU scene APIs](API.md#portable-glsl-translation-and-optional-native-gpu-rendering)
+for ownership, lifecycle, capability requirements and local test targets.
+
+## Custom application entry
+
+Applications that own their frame lifecycle import `kryon/application_entry`
+and export `KryonApplicationMain(argc: s32, argv: **u8) -> s32` with
+`#program_export "KryonApplicationMain"`. The adapter owns `main`: native
+hosts forward their exact command line and browser hosts pass `(0, null)`.
+The callback retains initialization, frame scheduling and shutdown policy;
+Android's NativeActivity host can call the same native entry. Do not define
+an additional application `main` when importing this adapter.

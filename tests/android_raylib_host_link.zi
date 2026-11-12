@@ -1,0 +1,8 @@
+Raylib :: #import "raylib_runtime";
+Touch :: #import "android_touch";
+
+main :: () -> s32 {
+    unused Raylib.PollPointer()
+    unused Touch.AndroidPointerFrame()
+    return 0
+}

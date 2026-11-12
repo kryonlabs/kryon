@@ -110,7 +110,7 @@ def main():
     if not (PROJECT / 'ziran.local.toml').exists():
         command.append('--locked')
     subprocess.run(command, cwd=PROJECT, env=env, check=True)
-    binary = PROJECT / 'build/gallery-desktop'
+    binary = ROOT / 'build/examples/gallery/gallery-desktop'
     ASSETS.mkdir(parents=True, exist_ok=True)
     binary_digest = digest_file(binary)
     project_source_digest, metadata_digest = project_digests()

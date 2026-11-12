@@ -5,14 +5,11 @@
 set -eu
 repo=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$repo/tests/toolchain.sh"
-# Project mode resolves Kryon exports from its manifest. Keep only own module folders.
-kryon_ui_args=$(printf %s "$kryon_ui_args" | sed 's/--module-path kryon=[^ ]*//g')
 raylib=${RAYLIB_A:-"$("$ziran" pkg path raylib)/src/libraylib.a"}
 work=$(mktemp -d)
 export TMPDIR="$work"
 trap 'rm -rf "$work"' EXIT HUP INT TERM
-"$ziran" build --project --offline --target=c --no-main --define NATIVE_WINDOW_HAVE_SDL --root "$repo/tests" \
-    --module-path "$repo/src/backend" $kryon_ui_args --module-path "$ziran_root/std" \
+"$ziran" build --project --offline --target=c --no-main --define NATIVE_WINDOW_HAVE_SDL --root "$repo/tests" --module-path "$repo/tests" \
     -o "$work/c" "$repo/tests/raylib_secondary_window_test.zi"
 includes="-I$ziran_root/include"
 for header in $(find "$work/c" -name '*.h' | xargs -n1 dirname | sort -u); do

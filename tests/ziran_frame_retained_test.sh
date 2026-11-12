@@ -12,12 +12,14 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 source=$repo/tests/ziran_frame_retained_test.zi
 
 set -- \
-    --bind raster:RasterLine=ziran_frame_retained_host:RasterLine \
-    --bind raster_text:RasterText=ziran_frame_retained_host:RasterText \
-    --bind raster_text:RasterTextClipped=ziran_frame_retained_host:RasterTextClipped \
-    --bind raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
-    --bind paint_queue:RasterImage=ziran_frame_retained_host:RasterImage \
-    --bind paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
+    --bind kryon/raster:RasterLine=ziran_frame_retained_host:RasterLine \
+    --bind kryon/raster_text:RasterText=ziran_frame_retained_host:RasterText \
+    --bind kryon/raster_text:RasterTextClipped=ziran_frame_retained_host:RasterTextClipped \
+    --bind kryon/raster_text:RasterTextRotated=ziran_mesh_noop_host:RasterTextRotated \
+    --bind kryon/paint_queue:RasterImage=ziran_frame_retained_host:RasterImage \
+    --bind kryon/paint_queue:RasterImageMesh=ziran_mesh_noop_host:RasterImageMesh
+
+kryon_ui_args=$kryon_project_args
 
 matrix_bundles=before
 matrix_forms=both

@@ -1,3 +1,13 @@
+#import "geometry"
+
+// Paint callback values are shared by retained and hosted compositions.
+NodeGeometry :: struct {
+    bounds: Rectangle
+    measured_bounds: Rectangle
+    clip: Rectangle
+    clipped: bool
+}
+
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
@@ -13,7 +23,6 @@
         return TreePushScopeHostedHost(session, index)
     }
 } else {
-    #import "geometry"
     #import "semantic"
     #import "session"
     #import "widget_kind"
@@ -267,13 +276,6 @@
         max_columns: s32
         progress: LayoutProgress
         places_children: bool
-    }
-
-    NodeGeometry :: struct {
-        bounds: Rectangle
-        measured_bounds: Rectangle
-        clip: Rectangle
-        clipped: bool
     }
 
     NodeInput :: struct {

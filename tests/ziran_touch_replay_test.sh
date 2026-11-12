@@ -74,21 +74,20 @@ Answer :: () -> s32 {
 }
 ZI
 
-"$ziran" ir --root "$work" $kryon_ui_args --module-path "$repo/src/backend" \
-    --module-path "$ziran_root/std" -o "$work/ir" "$work/app.zi"
+"$ziran" ir --root "$work" $kryon_project_args --module-path $work \
+     -o "$work/ir" "$work/app.zi"
 for source in source saved; do
     if test "$source" = source; then
         root=$work
-        modules="$kryon_ui_args --module-path $repo/src/backend"
+        modules="$kryon_project_args --module-path $work"
         app=$work/app.zi
     else
         root=$work/ir
-        modules="--module-path $work/ir"
+        modules="--project --module-path $work/ir"
         app=$work/ir/app.zir
     fi
     # shellcheck disable=SC2086
     "$ziran" bundle --root "$root" $modules \
-        --module-path "$ziran_root/std" \
         --entry app:Answer -o "$work/$source.zx" "$app"
     test "$("$ziran" run "$work/$source.zx")" = 42
 done
@@ -162,8 +161,7 @@ main :: () -> s32 {
 ZI
 
 "$ziran" ir --define ANDROID_BUILD --define __x86_64__ --root "$work" \
-    --module-path "$repo/tests" $kryon_ui_args \
-    --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+     $kryon_project_args --module-path $work \
     -o "$work/native-ir" "$work/android.zi"
 for route in source saved; do
     input="$work/android.zi"
@@ -173,10 +171,9 @@ for route in source saved; do
         root="$work/native-ir"
     fi
     output="$work/native-$route"
-    "$ziran_root/build/bin/zi2c" --prune-stale --define ANDROID_BUILD --define __x86_64__ \
+    "$ziran" build --target=c --prune-stale --define ANDROID_BUILD --define __x86_64__ \
         --no-main --entry android:main --root "$root" \
-        --module-path "$repo/tests" $kryon_ui_args \
-        --module-path "$repo/src/backend" --module-path "$ziran_root/std" \
+         $kryon_project_args --module-path $work \
         -o "$output" "$input"
     includes=$(find "$output" -type d -printf ' -iquote %p')
     # shellcheck disable=SC2046,SC2086
