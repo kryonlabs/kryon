@@ -174,6 +174,12 @@ class Browser:
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args): pass
+    def translate_path(self, path):
+        # Like Cloudflare Pages, serve widgets.html at the clean /widgets path.
+        local = super().translate_path(path)
+        if not os.path.splitext(local)[1] and os.path.isfile(local + '.html'):
+            return local + '.html'
+        return local
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store')
         super().end_headers()
@@ -524,6 +530,18 @@ def check_preview_containment(browser, base, shots):
         capture(browser, shots / ('overflow-contained-' + str(width) + '.webp'))
 
 
+def check_clean_routes(browser, base):
+    # Cloudflare Pages redirects widgets.html to /widgets; each clean path must keep its page.
+    for page, name in enumerate(('index', 'getting-started', 'widgets', 'apps', 'docs', 'renderers', 'modules')):
+        if page == 0: continue
+        browser.viewport(1366, 844)
+        browser.open(base + name + '?test=1')
+        browser.until('Module.galleryReady === 1 && Module.siteTree?.length > 0', 'compiled Ziran ready at /' + name, 60)
+        shown = browser.evaluate('Module.sitePage')
+        assert shown == page, ('Clean route opened the wrong page', '/' + name, shown)
+    print('Local clean-route test passed: every page opens at its extensionless path')
+
+
 def check_document_layout(browser, base, shots):
     ready(browser, base, 'widgets', width=1366)
     title = node_for(browser, key=10100)
@@ -833,6 +851,7 @@ def main():
     parser.add_argument('--polish-only', action='store_true')
     parser.add_argument('--compiler-only', action='store_true')
     parser.add_argument('--options-only', action='store_true')
+    parser.add_argument('--routes-only', action='store_true')
     parser.add_argument('--compiler-scene', action='append', default=[], help='Compile only the named source variants')
     parser.add_argument('--site', type=Path, default=SITE)
     parser.add_argument('--shots', type=Path, default=ROOT / 'build/scratch/site-browser')
@@ -862,7 +881,11 @@ def main():
         if args.compiler_only:
             check_compiler(browser, base, scenes)
             return
+        if args.routes_only:
+            check_clean_routes(browser, base)
+            return
         if not args.options_only:
+            check_clean_routes(browser, base)
             check_document_layout(browser, base, args.shots)
             check_preview_containment(browser, base, args.shots)
             check_scroll_drag(browser, base)

@@ -80,13 +80,17 @@ SiteRouteName :: (page: s32) -> string {
     return "index.html"
 }
 
+// Static hosts such as Cloudflare Pages serve widgets.html at /widgets, so a
+// route names its page with or without the .html suffix.
 SitePageFor :: (path: string) -> s32 {
-    if path == "getting-started.html" { return 1 }
-    if path == "widgets.html" { return 2 }
-    if path == "apps.html" { return 3 }
-    if path == "docs.html" { return 4 }
-    if path == "renderers.html" { return 5 }
-    if path == "modules.html" { return 6 }
+    name := path
+    if name.count > 5 && name[name.count - 5:] == ".html" { name = name[:name.count - 5] }
+    if name == "getting-started" { return 1 }
+    if name == "widgets" { return 2 }
+    if name == "apps" { return 3 }
+    if name == "docs" { return 4 }
+    if name == "renderers" { return 5 }
+    if name == "modules" { return 6 }
     return 0
 }
 
