@@ -4,6 +4,7 @@
 Lanczos :: #import "lanczos_cache";
 #import "desktop_keys"
 #import "frame_input_provider"
+#import "input_protocol"
 Timer :: #import "std/timer_linux";
 #import "geometry"
 #import "program_title"
@@ -14,7 +15,6 @@ RasterCursor :: #import "cairo_raster";
 #import "utf8"
 Presenter :: #import "pixmap_sdl";
 Video :: #import "video_linux";
-#import "std/vec"
 Clock :: #import "frame_clock";
 
 sdl_library :: #system_library "SDL2";
@@ -89,11 +89,6 @@ FreeSurface :: (surface: *void) #foreign sdl_library "SDL_FreeSurface";
 CreateSystemCursor :: (shape: s32) -> *void #foreign sdl_library "SDL_CreateSystemCursor";
 SetCursor :: (cursor: *void) #foreign sdl_library "SDL_SetCursor";
 FreeCursor :: (cursor: *void) #foreign sdl_library "SDL_FreeCursor";
-GetWindowSurface :: (window: *void) -> *void #foreign sdl_library "SDL_GetWindowSurface";
-UpdateWindowSurface :: (window: *void) -> s32 #foreign sdl_library "SDL_UpdateWindowSurface";
-DestroyWindowSurface :: (window: *void) -> s32 #foreign sdl_library "SDL_DestroyWindowSurface";
-BlitSurface :: (source: *void, destination: *void) -> s32 #foreign sdl_library "SDL_UpperBlit";
-
 NumJoysticks :: () -> s32 #foreign sdl_library "SDL_NumJoysticks";
 IsGameController :: (index: s32) -> s32 #foreign sdl_library "SDL_IsGameController";
 GameControllerOpen :: (index: s32) -> *void #foreign sdl_library "SDL_GameControllerOpen";
@@ -181,7 +176,7 @@ desktop_keys: DesktopKeyBuffer;
 // Durable UI delivery is independent of the current poll observations.
 DesktopInputEvent :: struct { code: s32; modifiers: s32; text: bool; editing: bool }
 desktop_ordered: bool;
-desktop_input: [32]DesktopInputEvent;
+desktop_input: [256]DesktopInputEvent;
 desktop_input_head: s32;
 desktop_input_count: s32;
 // File drops are copied before SDL releases its event-owned path. Applications
@@ -197,7 +192,7 @@ DropEvent :: struct {
 }
 // SDL modifier state recorded with the last key press, or -1 without one.
 desktop_key_modifiers: s32 = -1;
-desktop_codepoints: [32]s32;
+desktop_codepoints: [256]s32;
 desktop_codepoint_count: s32;
 desktop_codepoint_next: s32;
 desktop_intercept_close: bool;
@@ -218,7 +213,6 @@ desktop_frame_requested: bool;
 desktop_pixels_valid: bool;
 // A blank mapped window appears before the first application frame.
 desktop_first_frame: bool;
-desktop_surface_present: bool;
 // A size ResizeDesktop asked for, applied when the next frame begins.
 desktop_next_width: s32;
 desktop_next_height: s32;
@@ -412,7 +406,6 @@ DesktopLanczosWake :: (argument: *void) {
 OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if width <= 0 || height <= 0 { return false }
     if size_of(Event) != 56 { return false }
-    desktop_surface_present = Presenter.PixmapSurfaceRequested()
     if Init(cast(u32)0x2020) != 0 { return false }
     #if #defined(POSIX_THREADS) || #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS) {
         Lanczos.LanczosSetWake(DesktopLanczosWake, null)
@@ -441,11 +434,14 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     unused SetHint(*hint[0], *enabled[0])
     title: [512]u8
     if !CopyCString(ProgramTitle(), title[:]) { return false }
-    window_flags := cast(u32)0x20 // RESIZABLE, visible immediately
-    if !desktop_surface_present { window_flags = window_flags | cast(u32)0x2 }
+    window_flags := cast(u32)0x24 // RESIZABLE | HIDDEN until transport is ready
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
         cast(s32)0x2fff0000, width, height, window_flags)
     if window == null { return false }
+    renderer = Presenter.CreatePixmapRenderer(window)
+    if renderer == null { return false }
+    texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width, height)
+    if texture == null { return false }
     ShowWindow(window)
     // Select an explicit native arrow before the first frame is drawn. This
     // also covers hosts that own their loop and have no retained tree yet.
@@ -454,13 +450,6 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     unused ShowCursor(1)
     desktop_cursor_hidden=false
     desktop_cursor_applied_valid=false
-    if !desktop_surface_present {
-        renderer = Presenter.CreatePixmapRenderer(window)
-        if renderer == null { return false }
-        texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1,
-            width, height)
-        if texture == null { return false }
-    }
     desktop_width = width
     desktop_height = height
     desktop_present_pending = true
@@ -587,27 +576,20 @@ DesktopApplyResize :: () -> bool {
     if width <= 0 || (width == desktop_width && height == desktop_height) {
         return true
     }
-    next: *void = null
-    if !desktop_surface_present {
-        next = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width,
-            height)
-        if next == null { return false }
-    }
+    next := CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width, height)
+    if next == null { return false }
     CloseRaster()
     desktop_pixels_valid = false
     desktop_texture_dirty = true
     desktop_present_pending = true
     if !OpenRaster(width, height) {
-        if !desktop_surface_present { DestroyTexture(next) }
-        // Go back to the old size, which opened before.
+        DestroyTexture(next)
         CloseRaster()
         unused OpenRaster(desktop_width, desktop_height)
         return false
     }
-    if !desktop_surface_present {
-        DestroyTexture(texture)
-        texture = next
-    }
+    DestroyTexture(texture)
+    texture = next
     SetWindowSize(window, width, height)
     desktop_width = width
     desktop_height = height
@@ -696,7 +678,7 @@ DesktopInputPush :: (code: s32, modifiers: s32, text: bool) {
     // shortcut already carries its own modifiers; merging a later Ctrl press
     // into preceding text would wrongly turn that text into a shortcut.
     if !text && code >= 340 && code <= 347 { return }
-    at := (desktop_input_head + desktop_input_count) % 32
+    at := (desktop_input_head + desktop_input_count) % 256
     desktop_input[at] = .{code, modifiers, text, !text && DesktopInputEditing(code, modifiers)}
     desktop_input_count += 1
 }
@@ -708,19 +690,24 @@ DesktopInputTake :: (session: Session) -> (key: s32, modifiers: s32) {
     if !SessionValid(session) { return 0, 0 }
     key: s32 = 0
     modifiers: s32 = 0
-    // Unread text blocks editing actions, while physical printable keys
-    // and further text can still use the existing bounded delivery queue.
-    consumed: bool = TypedCodepointPeek(session) != 0
+    // Unread text blocks editing actions. A submit ending a text run just
+    // delivered in this call is the exception: it is the same field commit,
+    // not another editing action after text.
+    unread := TypedCodepointPeek(session) != 0
+    consumed: bool = unread
+    delivered_text := false
     while desktop_input_count > 0 {
         item := desktop_input[desktop_input_head]
-        if item.editing && consumed { break }
+        submit_text_run := item.code == KeyEnter && !unread && delivered_text
+        if item.editing && consumed && !submit_text_run { break }
         if item.text {
             if !TypedCodepointSend(session, item.code) { break }
+            delivered_text = true
         } else {
             key = item.code
             modifiers = item.modifiers
         }
-        desktop_input_head = (desktop_input_head + 1) % 32
+        desktop_input_head = (desktop_input_head + 1) % 256
         desktop_input_count -= 1
         consumed = true
         if item.editing { break }
@@ -753,8 +740,8 @@ DesktopEventBackpressured :: (event: *Event) -> bool {
     if window != null && event.window_id == GetWindowID(window) {
         if event.kind == cast(u32)0x303 {
             count := Count(DesktopEventText(event))
-            return desktop_codepoint_count + count > 32 ||
-                (desktop_ordered && desktop_input_count + count > 32)
+            return desktop_codepoint_count + count > 256 ||
+                (desktop_ordered && desktop_input_count + count > 256)
         }
         if event.kind == cast(u32)0x300 {
             code := DesktopKeyWithModifiers(event.x,event.y & 65535)
@@ -1159,33 +1146,6 @@ EndDesktopFrame :: () -> bool {
     // A hidden window keeps running the app's frames without presenting.
     if !WindowVisibleHost() && !desktop_first_frame { return true }
     if !desktop_texture_dirty && !desktop_present_pending { return true }
-    if desktop_surface_present {
-        destination := GetWindowSurface(window)
-        if destination == null { return false }
-        source := CursorSurface(RasterSurfaceData(), desktop_width, desktop_height,
-            32, RasterSurfaceStride(), cast(u32)0x00ff0000, cast(u32)0x0000ff00,
-            cast(u32)0x000000ff, cast(u32)0)
-        if source == null { return false }
-        blitted := BlitSurface(source, destination) == 0
-        FreeSurface(source)
-        if blitted && UpdateWindowSurface(window) == 0 {
-            desktop_texture_dirty = false
-            desktop_present_pending = false
-            desktop_first_frame = false
-            return true
-        }
-        // Some X11 visuals reject window-surface blits. The window already gave
-        // Explorer its mapped startup advantage, so switch this instance to the
-        // retained texture instead of abandoning the frame.
-        if DestroyWindowSurface(window) != 0 { return false }
-        desktop_surface_present = false
-        renderer = Presenter.CreateAcceleratedPixmapRenderer(window)
-        if renderer == null { return false }
-        texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1,
-            desktop_width, desktop_height)
-        if texture == null { return false }
-        desktop_texture_reset = false
-    }
     if desktop_texture_reset {
         next := CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1,
             desktop_width, desktop_height)

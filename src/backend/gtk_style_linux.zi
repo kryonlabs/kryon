@@ -264,6 +264,33 @@ WeakRef :: (object: *void, callback: *void, data: *void) #foreign gobject "g_obj
 WeakUnref :: (object: *void, callback: *void, data: *void) #foreign gobject "g_object_weak_unref";
 watched_settings: *void;
 settings_signal: usize;
+watched_icon_theme: *void;
+icon_theme_signal: usize;
+IconChangedCallback :: #type (*void, *void) -> void #c_call;
+IconThemeChanged :: (object: *void, data: *void) { Changed() }
+IconThemeFinalized :: (data: *void, object: *void) {
+    watched_icon_theme = null; icon_theme_signal = 0
+    Changed()
+}
+WatchIconTheme :: () {
+    object := IconTheme()
+    if object == watched_icon_theme { return }
+    weak: WeakCallback = IconThemeFinalized
+    weak_raw: **void = cast(**void)*weak
+    if watched_icon_theme != null {
+        Changed()
+        if icon_theme_signal != 0 { SignalDisconnect(watched_icon_theme, icon_theme_signal) }
+        WeakUnref(watched_icon_theme, weak_raw[0], null)
+    }
+    watched_icon_theme = object; icon_theme_signal = 0
+    if object == null { return }
+    callback: IconChangedCallback = IconThemeChanged
+    raw: **void = cast(**void)*callback
+    key: [8]u8
+    unused CString.CopyCString("changed", key[:])
+    icon_theme_signal = SignalConnect(object, *key[0], raw[0], null, null, 0)
+    WeakRef(object, weak_raw[0], null)
+}
 SettingsNotify :: (object: *void, property: *void, data: *void) { Changed() }
 SettingsFinalized :: (data: *void, object: *void) {
     watched_settings = null; settings_signal = 0
@@ -294,6 +321,7 @@ WatchSettings :: () {
 Ready :: () -> bool {
     if Init(null, null) == 0 || Screen() == null { return false }
     WatchSettings()
+    WatchIconTheme()
     return true
 }
 ProviderSlot :: struct { id: u64; object: *void; screen: *void; priority: u32 }
@@ -758,8 +786,23 @@ MeasureWidget :: (nodes: []GtkStyleNode, text: string, sort_arrow: bool, cell_te
         }
         CellPreferred(renderer,widget,*minimum,*natural)
         if texts.count>1048576 { return .{} }
+        // Repeated cell values have identical requisitions in this widget.
+        // Keep a bounded per-call set; saturation only stops caching, so every
+        // distinct value is still measured and hash collisions change nothing.
+        seen: [256]string
         for value: texts {
             if !CString.CopyCString(value,bytes[:]) { return .{} }
+            if value=="" { continue } // already measured above
+            hash: u64=14695981039346656037
+            for byte: value { hash=(hash ^ cast(u64)byte)*cast(u64)1099511628211 }
+            slot:=cast(s32)(hash % 256)
+            duplicate:=false
+            for probe: cast(s32)0..255 {
+                if seen[slot]==value { duplicate=true; break }
+                if seen[slot]=="" { seen[slot]=value; break }
+                slot=(slot+1)%256
+            }
+            if duplicate { continue }
             ObjectSet(renderer,*key[0],*bytes[0],cast(*u8)null)
             low: Requisition; high: Requisition
             CellPreferred(renderer,widget,*low,*high)
@@ -1369,7 +1412,9 @@ GtkStylePoll :: () -> s32 {
     if !Ready() { return 0 }
     count: s32 = 0
     while count < 32 && Iterate(null, 0) != 0 { count += 1 }
-    if count > 0 { style_generation += 1 }
+    // Timers, input and unrelated GIO completions also use the default GLib
+    // context. Only settings, icon-theme and provider changes invalidate
+    // native raster caches; dispatching an event alone changes no pixels.
     if style_pending { style_pending = false; count += 1 }
     return count
 }

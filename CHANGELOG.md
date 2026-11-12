@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reuse identical GTK cell measurements, retain native raster caches across
+  unrelated GLib events, and composite clipped opaque pixels efficiently.
+- Deliver Return with its completed text run and use the shared SDL renderer
+  selector for desktop raster hosts.
+
 - Frame transitions can own a stable copy of a retained frame while rendering continues.
 
 ## [0.3.0] - 2026-11-12

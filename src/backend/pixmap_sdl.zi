@@ -17,18 +17,6 @@ PixmapGpuSelected :: () -> bool {
     return choice != null && choice[0] == cast(u8)49
 }
 
-// Decide the transport before creating the window so its SDL flags match.
-// Explicit renderer preferences and the GPU opt-out remain authoritative.
-#program_export
-PixmapSurfaceRequested :: () -> bool {
-    driver_hint: [32]u8
-    if !CopyCString("SDL_RENDER_DRIVER", driver_hint[:]) ||
-        PixmapGpuSelected() { return false }
-    preferred := GetHint(*driver_hint[0])
-    if preferred != null && preferred[0] != cast(u8)0 { return false }
-    return true
-}
-
 // Call on the window's owner thread, before creating its pixel texture.
 // Normal/override SDL hints and environment preferences take precedence.
 #program_export
@@ -54,14 +42,4 @@ CreatePixmapRenderer :: (window: *void) -> *void {
     renderer := CreateRenderer(window, -1, cast(u32)1) // SDL_RENDERER_SOFTWARE
     if renderer != null { return renderer }
     return CreateRenderer(window, -1, cast(u32)2)
-}
-
-// A direct surface may need the normal retained transport only after startup.
-// Acceleration is preferred first; headless hosts retain the software fallback.
-#program_export
-CreateAcceleratedPixmapRenderer :: (window: *void) -> *void {
-    if window == null { return null }
-    renderer := CreateRenderer(window, -1, cast(u32)2)
-    if renderer != null { return renderer }
-    return CreateRenderer(window, -1, cast(u32)1)
 }

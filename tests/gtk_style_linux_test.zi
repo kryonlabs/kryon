@@ -27,6 +27,12 @@ Unref :: (object: *void) #foreign gobject "g_object_unref";
 Get :: (object: *void, property: *u8, args: ..any) #foreign gobject "g_object_get";
 Settings :: () -> *void #foreign gtk "gtk_settings_get_default";
 Set :: (object: *void, property: *u8, args: ..any) #foreign gobject "g_object_set";
+Emit :: (object: *void, signal: *u8, args: ..any) #foreign gobject "g_signal_emit_by_name";
+glib :: #system_library "glib-2.0";
+IdleCallback :: #type (*void) -> s32 #c_call;
+IdleAdd :: (callback: *void, data: *void) -> u32 #foreign glib "g_idle_add";
+idle_calls: s32;
+Idle :: (data: *void) -> s32 { idle_calls += 1; return 0 }
 IconTheme :: () -> *void #foreign gtk "gtk_icon_theme_get_default";
 IconSearch :: (theme: *void, paths: **u8, count: s32) #foreign gtk "gtk_icon_theme_set_search_path";
 Ref :: (object: *void) -> *void #foreign gobject "g_object_ref";
@@ -327,6 +333,17 @@ ProviderLifecycle :: (nodes: []Native.GtkStyleNode, directory: string) -> s32 {
     value: [32]u8; unused CopyCString("FixtureMain",value[:]); Set(Settings(),*key[0],*value[0],cast(*u8)null)
     unused Native.GtkStylePoll()
     generation := Native.GtkStyleGeneration()
+    // An application callback on GTK's shared GLib context changes no style.
+    callback: IdleCallback = Idle
+    raw: **void = cast(**void)*callback
+    if IdleAdd(raw[0], null) == 0 || Native.GtkStylePoll() == 0 ||
+        idle_calls != 1 || Native.GtkStyleGeneration() != generation { return 218 }
+    // Icon files can change without a GtkSettings notification.
+    signal: [8]u8; unused CopyCString("changed", signal[:])
+    Emit(IconTheme(), *signal[0])
+    if Native.GtkStyleGeneration() <= generation { return 219 }
+    unused Native.GtkStylePoll()
+    generation = Native.GtkStyleGeneration()
     screen := Native.GtkStyleProviderCreate(ProviderCSS)
     local := Native.GtkStyleProviderCreate(LocalCSS)
     if screen == 0 || local == 0 || screen == local || Native.GtkStyleGeneration() != generation { return 50 }
@@ -721,6 +738,18 @@ main :: (argc: s32, argv: **u8) -> s32 {
     cell_texts: [3]string=.["156 bytes","Plain text document (link to 04 Notes.txt)","11/14/23"]
     cell_preferred:=Native.GtkCellTextMeasureMany(header_nodes[:2],cell_texts[:])
     name_preferred:=Native.GtkCellTextMeasureMany(header_nodes[:2],cell_texts[:],60,true)
+    // Batch measurement must retain a late maximum among repeated values.
+    repeated: [1024]string
+    for i: cast(s32)0..1023 { repeated[i]=cell_texts[i%3] }
+    repeated[1023]="A late and exceptionally long cell with Unicode 世界 and a second line\nsecond line"
+    expected_min: s32; expected_natural: s32
+    for value: repeated {
+        measured:=Native.GtkCellTextMeasure(header_nodes[:2],value)
+        if measured.minimum_width>expected_min { expected_min=measured.minimum_width }
+        if measured.natural_width>expected_natural { expected_natural=measured.natural_width }
+    }
+    batched:=Native.GtkCellTextMeasureMany(header_nodes[:2],repeated[:])
+    if !batched.available || batched.minimum_width!=expected_min || batched.natural_width!=expected_natural { return 220 }
     requisitions: Vec(u8)
     BuilderPrint(*requisitions,"% % % %\n% % % %\n",header_preferred.minimum_width,header_preferred.minimum_height,header_preferred.natural_width,header_preferred.natural_height,
         entry_preferred.minimum_width,entry_preferred.minimum_height,entry_preferred.natural_width,entry_preferred.natural_height)

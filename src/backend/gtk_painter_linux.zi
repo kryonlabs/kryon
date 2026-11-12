@@ -79,15 +79,30 @@ TileKey :: (nodes: []GtkStyleNode, bounds: Rectangle, text: string, kind: s32, a
 }
 Composite :: (p: *GtkPainter, bitmap: GtkStyleBitmap, bounds: Rectangle) {
     x := cast(s32)(bounds.x - p.bounds.x); y := cast(s32)(bounds.y - p.bounds.y)
-    for row: 0..bitmap.height - 1 {
+    // Clip once per bitmap, retaining the exact pixel-origin comparisons
+    // for fractional bounds. The inner loop only composites visible pixels.
+    first_col: s32=0; last_col:=bitmap.width
+    first_row: s32=0; last_row:=bitmap.height
+    if x<0 { first_col= -x }; if x+last_col>p.width { last_col=p.width-x }
+    if y<0 { first_row= -y }; if y+last_row>p.height { last_row=p.height-y }
+    while first_col<last_col && cast(float32)(x+first_col)+p.bounds.x<p.clip.x { first_col+=1 }
+    while last_col>first_col && cast(float32)(x+last_col-1)+p.bounds.x>=p.clip.x+p.clip.width { last_col-=1 }
+    while first_row<last_row && cast(float32)(y+first_row)+p.bounds.y<p.clip.y { first_row+=1 }
+    while last_row>first_row && cast(float32)(y+last_row-1)+p.bounds.y>=p.clip.y+p.clip.height { last_row-=1 }
+    for row: first_row..last_row-1 {
         yy := y + row
-        if yy < 0 || yy >= p.height || cast(float32)yy+p.bounds.y < p.clip.y || cast(float32)yy+p.bounds.y >= p.clip.y+p.clip.height { continue }
-        for col: 0..bitmap.width - 1 {
+        for col: first_col..last_col-1 {
             xx := x + col
-            if xx < 0 || xx >= p.width || cast(float32)xx+p.bounds.x < p.clip.x || cast(float32)xx+p.bounds.x >= p.clip.x+p.clip.width { continue }
             src := (row * bitmap.width + col) * 4; dst := (yy * p.width + xx) * 4
             a := cast(s32)bitmap.rgba[src + 3]
             if a == 0 { continue }
+            // Opaque native surfaces replace the backdrop exactly. Avoid
+            // straight/premultiplied conversions for the common background
+            // and control pixels; translucent edges keep Cairo's rounding.
+            if a == 255 {
+                for c: 0..3 { p.pixels[dst+c] = bitmap.rgba[src+c] }
+                continue
+            }
             da := cast(s32)p.pixels[dst + 3]
             // GTK/Cairo quantizes each premultiplied component before OVER.
             // Combining the straight-alpha fractions rounds glyph coverage

@@ -150,7 +150,7 @@ OrderedBurst :: () -> s32 {
         if !Desktop.PollDesktop() { return 46 }
         key, modifiers := Desktop.DesktopInputTake(session)
         if key == 257 {
-            if actions != 0 || delivered != 132 || modifiers != 1 { return 47 }
+            if actions != 0 || delivered != 128 || modifiers != 1 { return 47 }
             actions += 1
         } else if key == 65 {
             if actions != 1 || delivered != 132 || modifiers != 2 { return 48 }
@@ -172,7 +172,7 @@ OrderedBurst :: () -> s32 {
             for index: 0..cast(s32)typed.count-1 {
                 expected: [4]u8 = .[0xF0, 0x9F, 0x98, 0x80]
                 if delivered < 132 {
-                    if typed[index] != expected[delivered % 4] || actions != 0 { return 53 }
+                    if typed[index] != expected[delivered % 4] || actions > 1 { return 53 }
                 } else if typed[index] != cast(u8)120 || actions != 3 { return 54 }
                 delivered += 1
             }
@@ -290,9 +290,8 @@ ModifierBarrier :: () -> s32 {
         key, modifiers = Desktop.DesktopInputTake(session)
         local_bytes: [4]u8
         local_text := Key.TypedTextTake(session, local_bytes[:])
-        if key != 0 || modifiers != 0 || Key.TextFieldInputFor(key, modifiers, local_text).text != "x" { return 87 }
-        key, modifiers = Desktop.DesktopInputTake(session)
-        if key != 257 || modifiers != normalized[index] { return 88 }
+        input := Key.TextFieldInputFor(key, modifiers, local_text)
+        if key != 257 || modifiers != normalized[index] || !input.commit || local_text != "x" { return 87 }
     }
     return 0
 }
@@ -320,8 +319,26 @@ UnreadTextKey :: () -> s32 {
     return 0
 }
 
+CompletedTextSubmit :: () -> s32 {
+    if !Desktop.OpenDesktopSized(160,120) { return 101 }
+    defer Desktop.CloseDesktop()
+    input_window=WindowID(Desktop.DesktopWindow())
+    Desktop.DesktopInputEnable()
+    session:=Session.SessionOpen()
+    defer { Tree.TreeInputReset(session); Session.SessionClose(session) }
+    if !PushAscii(120) || !PushKey(true,13,0) || !Desktop.PollDesktop() { return 102 }
+    key,modifiers:=Desktop.DesktopInputTake(session)
+    bytes: [4]u8
+    text:=Key.TypedTextTake(session,bytes[:])
+    if key!=Input.KeyEnter || modifiers!=0 || text!="x" { return 103 }
+    if Tree.TypedCodepointPeek(session)!=0 { return 104 }
+    return 0
+}
+
 main :: () -> s32 {
     result := UnreadTextKey()
+    if result != 0 { return result }
+    result = CompletedTextSubmit()
     if result != 0 { return result }
     result = ModifierBarrier()
     if result != 0 { return result }

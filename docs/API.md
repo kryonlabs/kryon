@@ -795,8 +795,9 @@ text and icon results with this generation and the complete path (including
 attachments, priorities and states). The bridge itself retains no result cache.
 Native GTK settings notifications invalidate generation synchronously, without
 retaining a settings owner. A default-settings identity change invalidates
-on the next bridge call. `GtkStylePoll()` also advances generation when it
-delivers GLib events, covering external theme/settings reloads; it returns nonzero once after API invalidation
+on the next bridge call. Default icon-theme `changed` notifications also
+invalidate generation. Unrelated GLib callbacks leave caches valid.
+`GtkStylePoll()` returns nonzero once after API invalidation
 as well as for delivered events. Call it before checking cached styles. All
 provider/settings APIs share the GTK owning thread rule and fail safely without
 a display. This opt-in Linux module adds no GTK dependency to portable, WASM,
@@ -898,8 +899,9 @@ Custom SDL desktop hosts can call `DesktopInputEnable()` after `OpenDesktop()`
 to use ordered key/text delivery. Call `PollDesktop()` every frame, including
 while session text remains unread, then `DesktopInputTake(session)` to transfer
 one editing action or a printable-key/text run. Its `(key, modifiers)` result
-uses portable key and modifier codes. The bounded 32-record delivery queue
-backpressures SDL input; unread text delays later editing actions while window
+uses portable key and modifier codes. The bounded 256-record delivery queue
+backpressures SDL input; unread text delays later editing actions. Return can
+commit a text run delivered in the same call, while window
 lifecycle events continue to be pumped. Both standard desktop hosts use this
 path. Raw `DesktopPressedKey()` (last key), `DesktopNextKey()` (all keys),
 `DesktopTypedCodepoint()` and frame snapshots remain independent observations
