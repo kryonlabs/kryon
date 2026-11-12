@@ -289,6 +289,9 @@ def check_files(site):
     assert hashlib.sha256(image.read_bytes()).digest() == hashlib.sha256((ROOT / 'examples/gallery/assets/pfp.webp').read_bytes()).digest(), 'Gallery image asset missing or changed'
     landscape = site / assets['/assets/alpine-lake.webp']
     assert hashlib.sha256(landscape.read_bytes()).digest() == hashlib.sha256((ROOT / 'examples/image/assets/alpine-lake.webp').read_bytes()).digest()
+    for app in ('terminal', 'browser', 'github', 'explorer'):
+        image = site / assets['/assets/apps/' + app + '.webp']
+        assert image.stat().st_size > 2000, ('app card image missing', app)
     coast = site / assets['/assets/coastal-cliffs.webp']
     assert coast.read_bytes() == (ROOT / 'examples/carousel/assets/coastal-cliffs.webp').read_bytes()
     assert coast.read_bytes() != landscape.read_bytes(), 'Carousel must ship two distinct landscapes'
@@ -563,6 +566,52 @@ def check_document_layout(browser, base, shots):
 
 
 
+def check_scroll_drag(browser, base):
+    ready(browser, base)
+    title = node_for(browser, key=10100)
+    page = next(n for n in tree(browser) if n['key'] == 10300)
+    rail = next(n for n in tree(browser) if n['key'] == 9003)
+    first_row = next(n for n in tree(browser) if n['key'] == 1 and n['parent'] >= 0 and
+                     tree(browser)[n['parent']]['key'] == 9003)
+
+    def drag(x, y, distance):
+        browser.command('Input.dispatchMouseEvent', type='mouseMoved', x=x, y=y)
+        browser.command('Input.dispatchMouseEvent', type='mousePressed', x=x, y=y,
+                        button='left', buttons=1, clickCount=1)
+        for step in range(1, 7):
+            browser.command('Input.dispatchMouseEvent', type='mouseMoved', x=x,
+                            y=y + distance * step / 6, button='left', buttons=1)
+            time.sleep(.04)
+        browser.command('Input.dispatchMouseEvent', type='mouseReleased', x=x,
+                        y=y + distance, button='left', buttons=0, clickCount=1)
+
+    drag(page['x'] + page['width'] - 5, page['y'] + 4, 200)
+    browser.until('Module.siteTree.some(n => n.key===10100 && n.y < ' +
+                  str(title['y'] - 100) + ')', 'page scrollbar thumb drag')
+    drag(rail['x'] + rail['width'] - 5, rail['y'] + 40, 160)
+    browser.until('Module.siteTree.some(n => n.key===1 && n.parent>=0 && ' +
+                  'Module.siteTree[n.parent].key===9003 && n.y < ' +
+                  str(first_row['y'] - 60) + ')', 'navigation scrollbar thumb drag')
+    before = next(n for n in tree(browser) if n['key'] == 10100)['y']
+    drag(1200, 500, -240)
+    browser.until('Module.siteTree.some(n => n.key===10100 && n.y < ' +
+                  str(before - 40) + ')', 'page content drag')
+
+
+def check_apps(browser, base, shots):
+    ready(browser, base, 'apps')
+    nodes = tree(browser)
+    images = [n for n in nodes if n['kind'] == 24 and visible(n, 1366)]
+    assert len(images) >= 4, ('apps cards', [(n['key'], n['label']) for n in images])
+    labels = {n['label'] for n in nodes}
+    for name in ('Terminal', 'Browser', 'GitHub', 'Explorer'):
+        assert name in labels, (name, sorted(labels))
+    assert 'Shelf' not in labels, 'Explorer must not be called Shelf'
+    assert not any('in development' in (n['label'] or '') for n in nodes), 'Apps must not be labelled in development'
+    assert sum('View on GitHub' in (n['label'] or '') for n in nodes) == 4, 'Each app card links to GitHub'
+    capture(browser, shots / 'apps.webp')
+
+
 def check_live(browser, base, scenes, shots):
     ready(browser, base, 'index')
     mouse(browser, node_for(browser, key=10038))
@@ -816,6 +865,8 @@ def main():
         if not args.options_only:
             check_document_layout(browser, base, args.shots)
             check_preview_containment(browser, base, args.shots)
+            check_scroll_drag(browser, base)
+            check_apps(browser, base, args.shots)
             check_live(browser, base, scenes, args.shots)
         check_example_options(browser, base, scenes, args.shots)
         print('Local website options tests: disabled flags, motion and contrast passed' if args.options_only else 'Local website browser tests: routes, 101 live scenes/sources, mobile, theme, editing, diagnostics, portable preview, disabled flags, motion and contrast passed')

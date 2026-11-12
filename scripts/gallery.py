@@ -317,9 +317,12 @@ def prepare(only=None, *, catalog=None, site=SITE, examples=None):
     registry += string_function('GallerySceneCode', lambda e: (Path(site) / e['code']).read_text())
     registry += string_function('GallerySceneId', lambda e: e['id'])
     registry += string_function('GallerySceneSummary', lambda e: e['summary'])
-    registry += string_function('GallerySceneLabel', lambda e: e['module'] + ' / ' + e['category'] + ' · ' + e['name'])
+    core = {'kryon', 'inputs', 'overlays'}
+    registry += string_function('GallerySceneLabel', lambda e: (
+        '' if e['moduleId'] in core else e['module'] + ' / ') + e['category'] + ' · ' + e['name'])
     navigation = sorted(entries, key=lambda e: (e['moduleId'] not in ('kryon', 'inputs', 'overlays'), '' if e['moduleId'] in ('kryon', 'inputs', 'overlays') else e['module'], e['category'], e['name']))
-    registry += string_function('GallerySceneGroup', lambda e: ('Kryon' if e['moduleId'] in ('kryon', 'inputs', 'overlays') else e['module']) + ' / ' + e['category'])
+    registry += string_function('GallerySceneGroup', lambda e: (
+        '' if e['moduleId'] in core else e['module'] + ' / ') + e['category'])
     registry += 'GalleryNavigationScene :: (position: s32) -> s32 {\n'
     for position, entry in enumerate(navigation):
         registry += f"    if position == {position} {{ return {entry['index']} }}\n"

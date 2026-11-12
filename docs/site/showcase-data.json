@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-11-05",
+  "updatedAt": "2026-11-12",
   "source": "https://github.com/kryonlabs/showcase/tree/master/projects",
   "starPlatforms": [
     "github"
@@ -52,24 +52,24 @@
       "rank": 2
     },
     {
-      "slug": "shelf",
-      "name": "Shelf",
-      "summary": "File explorer for Rill and Taiji OS that also runs as a standalone desktop app.",
+      "slug": "explorer",
+      "name": "Explorer",
+      "summary": "Native Linux file manager with grid, list, compact and split views, image preview and full file operations.",
       "author": {
         "name": "KryonLabs",
         "url": "https://github.com/kryonlabs"
       },
-      "homepage": "https://github.com/kryonlabs/shelf",
-      "banner": "showcase/shelf-1dcbd10eaaa0.png",
-      "bannerAlt": "Shelf file explorer showcase banner",
+      "homepage": "https://github.com/kryonlabs/explorer",
+      "banner": "showcase/explorer-1dcbd10eaaa0.webp",
+      "bannerAlt": "Explorer file manager showcase banner",
       "tags": [
         "files",
         "desktop",
         "kryon",
-        "plan9"
+        "file-manager"
       ],
       "featured": true,
-      "repository": "https://github.com/kryonlabs/shelf",
+      "repository": "https://github.com/kryonlabs/explorer",
       "stars": 0,
       "rank": 3
     },

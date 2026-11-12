@@ -67,6 +67,8 @@ site_hold: HoldButtonState;
 site_confirm: ConfirmButtonState;
 site_hold_count: s32;
 site_confirm_count: s32;
+site_code_colors: [8192]TextAreaColorSpan;
+site_code_color_count: s32;
 
 SiteRouteName :: (page: s32) -> string {
     if page == 1 { return "getting-started.html" }
@@ -195,11 +197,131 @@ SiteStyle :: () {
     editor.style.fields = cast(u32)StyleField.StyleFontSize | cast(u32)StyleField.StyleTypeface
     editor.style.font_size = 13.0; editor.style.typeface = "assets/fonts/GeistMono-Regular.ttf"
     editor.order = rules.count; rules.items[rules.count] = editor; rules.count += 1
+    code: StyleRule
+    code.selector = StyleDefaultSelector(); code.selector.class_name = 11040
+    code.selector.kind = StyleKindTextArea()
+    code.style.fields = cast(u32)StyleField.StyleBackground | cast(u32)StyleField.StyleForeground |
+        cast(u32)StyleField.StyleBorder | cast(u32)StyleField.StyleBorderWidth |
+        cast(u32)StyleField.StyleRadius | cast(u32)StyleField.StyleFontSize |
+        cast(u32)StyleField.StyleTypeface | cast(u32)StyleField.StylePaddingX |
+        cast(u32)StyleField.StylePaddingY
+    code.style.background = cast(u32)0x00000000
+    code.style.foreground = ifx dark then 0xf2f2f2ff else 0x171717ff
+    code.style.border = cast(u32)0
+    code.style.border_width = 0.0
+    code.style.radius = 0.0
+    code.style.font_size = 12.0
+    code.style.typeface = "assets/fonts/GeistMono-Regular.ttf"
+    code.style.padding_x = 0.0
+    code.style.padding_y = 0.0
+    code.order = rules.count; rules.items[rules.count] = code; rules.count += 1
     unused InstallStyleRules(rules)
 }
 SiteBackground :: () -> Color { return ColorFromPacked(ifx dark then 0x121212ff else 0xffffffff) }
 SiteBorder :: () -> Color { return ColorFromPacked(ifx dark then 0x303030ff else 0xe5e5e5ff) }
 SiteSurface :: () -> Color { return ColorFromPacked(ifx dark then 0x1b1b1bff else 0xf7f7f7ff) }
+
+SiteCodeKeywordColor :: () -> u32 { return ifx dark then 0xff7b72ff else 0xcf222eff }
+SiteCodeTypeColor :: () -> u32 { return ifx dark then 0xffa657ff else 0x953800ff }
+SiteCodeFunctionColor :: () -> u32 { return ifx dark then 0xd2a8ffff else 0x8250dfff }
+SiteCodeStringColor :: () -> u32 { return ifx dark then 0xa5d6ffff else 0x0a3069ff }
+SiteCodeNumberColor :: () -> u32 { return ifx dark then 0x79c0ffff else 0x0550aeff }
+SiteCodeCommentColor :: () -> u32 { return ifx dark then 0x8b949eff else 0x6e7781ff }
+
+SiteCodeLetter :: (byte: u8) -> bool {
+    return (byte >= cast(u8)65 && byte <= cast(u8)90) ||
+        (byte >= cast(u8)97 && byte <= cast(u8)122) || byte == cast(u8)95
+}
+SiteCodeDigit :: (byte: u8) -> bool {
+    return byte >= cast(u8)48 && byte <= cast(u8)57
+}
+SiteCodeHex :: (byte: u8) -> bool {
+    return SiteCodeDigit(byte) || (byte >= cast(u8)65 && byte <= cast(u8)70) ||
+        (byte >= cast(u8)97 && byte <= cast(u8)102)
+}
+SiteCodeKeyword :: (word: string) -> bool {
+    return word == "using" || word == "if" || word == "else" || word == "for" ||
+        word == "while" || word == "return" || word == "struct" || word == "enum" ||
+        word == "true" || word == "false" || word == "defer" || word == "cast" ||
+        word == "import" || word == "in" || word == "as" || word == "break" ||
+        word == "continue" || word == "and" || word == "or" || word == "not" ||
+        word == "ifx" || word == "unused" || word == "let" || word == "mut" ||
+        word == "match" || word == "switch" || word == "case" || word == "const" ||
+        word == "var" || word == "law" || word == "forall"
+}
+SiteCodePrimitive :: (word: string) -> bool {
+    return word == "string" || word == "bool" || word == "u8" || word == "u16" ||
+        word == "u32" || word == "u64" || word == "s8" || word == "s16" ||
+        word == "s32" || word == "s64" || word == "f32" || word == "f64" ||
+        word == "float32" || word == "float64" || word == "usize" || word == "byte"
+}
+SiteCodeColorAdd :: (start: s32, end: s32, color: u32) {
+    if end <= start || site_code_color_count >= 8192 { return }
+    span: TextAreaColorSpan
+    span.start = start
+    span.end = end
+    span.color = color
+    site_code_colors[site_code_color_count] = span
+    site_code_color_count += 1
+}
+
+// Colors every token of Ziran source shown in the site's code areas: comments,
+// strings, directives, numbers, keywords, types and calls.
+SiteHighlightCode :: (code: string) {
+    site_code_color_count = 0
+    length := cast(s32)code.count
+    at: s32 = 0
+    while at < length {
+        byte := code[at]
+        if byte == cast(u8)47 && at + 1 < length && code[at + 1] == cast(u8)47 {
+            start := at
+            while at < length && code[at] != cast(u8)10 { at += 1 }
+            SiteCodeColorAdd(start, at, SiteCodeCommentColor())
+        } else if byte == cast(u8)34 {
+            start := at
+            at += 1
+            while at < length {
+                if code[at] == cast(u8)92 { at += 2; continue }
+                if code[at] == cast(u8)34 { at += 1; break }
+                at += 1
+            }
+            SiteCodeColorAdd(start, at, SiteCodeStringColor())
+        } else if byte == cast(u8)35 {
+            start := at
+            at += 1
+            while at < length && (SiteCodeLetter(code[at]) || SiteCodeDigit(code[at])) { at += 1 }
+            SiteCodeColorAdd(start, at, SiteCodeKeywordColor())
+        } else if SiteCodeDigit(byte) {
+            start := at
+            if byte == cast(u8)48 && at + 1 < length &&
+                (code[at + 1] == cast(u8)120 || code[at + 1] == cast(u8)88) {
+                at += 2
+                while at < length && SiteCodeHex(code[at]) { at += 1 }
+            } else {
+                while at < length && SiteCodeDigit(code[at]) { at += 1 }
+            }
+            SiteCodeColorAdd(start, at, SiteCodeNumberColor())
+        } else if SiteCodeLetter(byte) {
+            start := at
+            while at < length && (SiteCodeLetter(code[at]) || SiteCodeDigit(code[at])) { at += 1 }
+            word := code[start:at]
+            color: u32
+            if SiteCodeKeyword(word) {
+                color = SiteCodeKeywordColor()
+            } else if SiteCodePrimitive(word) || (byte >= cast(u8)65 && byte <= cast(u8)90) {
+                color = SiteCodeTypeColor()
+            } else {
+                look := at
+                while look < length && code[look] == cast(u8)32 { look += 1 }
+                if look < length && code[look] == cast(u8)40 { color = SiteCodeFunctionColor() }
+            }
+            if color != cast(u32)0 { SiteCodeColorAdd(start, at, color) }
+        } else {
+            at += 1
+        }
+    }
+}
+
 SiteText :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
     Text(session, TextProps.{.key = key, .bounds = bounds, .text = text, .font = font,
         .class_name = ifx font >= 20 then 11003 else 11001})
@@ -299,10 +421,7 @@ SiteReading :: (session: Session, view: Rectangle) {
     if site_page == 1 { SiteGuide(session, view); return }
     title := "Documentation"
     body := ""
-    if site_page == 3 {
-        title = "Apps & showcase"
-        body = "Terminal\nTabs, sessions and desktop integration.\n\nBrowser\nA reading surface with its own document engine.\n\nGitHub\nRepository and issue workflows.\n\nShelf\nA library and long-form reading surface.\n\nThese applications are in development."
-    } else if site_page == 4 {
+    if site_page == 4 {
         title = "Documentation"
         body = "Kryon owns widget composition, behavior, accessibility and UI policy.\n\nZiran owns the language, compiler and runtime.\n\nApplications own their screens, workflows and state.\n\nPublic APIs: src/ui/*.zi\nBuild inventory: src/ui/modules.txt\nProject integration: docs/PROJECTS.md\nBackend integration: docs/BACKENDS.md\n\nStart a project\nkryon new hello\ncd hello\nkryon run"
     } else if site_page == 5 {
@@ -370,9 +489,11 @@ SiteComponents :: (session: Session, view: Rectangle) {
         for index: 0..site_editor_length - 1 { site_editor_bytes[index] = site_editor_next[index] }
         editor_input := Scenes.SceneInputFor(KeyboardTake(session), KeyboardModifiers(session),
             TypedTextTake(session, site_editor_typed[:]))
+        SiteHighlightCode(TextView(site_editor_bytes[:site_editor_length]))
         area := TextArea(session, TextAreaProps.{.key = 10102, .bounds = content, .class_name = 11020,
             .value = TextView(site_editor_bytes[:site_editor_length]), .wrap = false, .input = editor_input.area,
-            .cursor = site_source_cursor, .anchor = site_source_anchor, .scroll_y = site_source_scroll})
+            .cursor = site_source_cursor, .anchor = site_source_anchor, .scroll_y = site_source_scroll,
+            .colors = site_code_colors[:site_code_color_count]})
         site_source_cursor = area.cursor; site_source_anchor = area.anchor; site_source_scroll = area.scroll_y
         if area.edit.changed {
             edit: TextFieldEdit = .{.start = area.edit.start, .end = area.edit.end,
@@ -390,9 +511,12 @@ SiteComponents :: (session: Session, view: Rectangle) {
     below := top + panel_height + 40.0
     SiteText(session, 10304, .{x, below, width, 32.0}, "Usage", 21)
     SiteMuted(session, 10305, .{x, below + 46.0, width, 38.0}, "Maintained Ziran source. Select Source above to edit and run it.", 14)
+    usage_code := GallerySceneCode(scene)
+    SiteHighlightCode(usage_code)
     usage := TextArea(session, TextAreaProps.{.key = 10309, .bounds = .{x, below + 96.0, width, 240.0},
-        .value = GallerySceneCode(scene), .read_only = true, .wrap = false, .class_name = 11020,
-        .scroll_y = site_usage_scroll, .manual_scroll = true})
+        .value = usage_code, .read_only = true, .wrap = false, .class_name = 11020,
+        .scroll_y = site_usage_scroll, .manual_scroll = true,
+        .colors = site_code_colors[:site_code_color_count]})
     site_usage_scroll = usage.scroll_y
     Box(session, BoxProps.{.key = 10306, .bounds = .{x, below + 374.0, width, 1.0}, .fill = SiteBorder()})
     SiteText(session, 10307, .{x, below + 404.0, width, 32.0}, "Keyboard & interaction", 21)
@@ -433,6 +557,81 @@ SiteComponents :: (session: Session, view: Rectangle) {
     }
 }
 
+SiteAppCard :: (session: Session, key: u64, bounds: Rectangle, image_path: string,
+    title: string, summary: string, url: string, image_height: float32) {
+    Box(session, BoxProps.{.key = key, .bounds = bounds, .fill = SiteSurface(),
+        .border = SiteBorder(), .radius = 14.0})
+    inset: float32 = 12.0
+    image_bounds := Rectangle.{bounds.x + inset, bounds.y + inset,
+        bounds.width - inset * 2.0, image_height}
+    Box(session, BoxProps.{.key = key + 5, .bounds = image_bounds,
+        .fill = SiteBackground(), .border = SiteBorder(), .radius = 10.0})
+    Image(session, ImageProps.{.key = key + 1, .asset_path = image_path,
+        .alt_text = title, .bounds = image_bounds, .fit = .ImageFitContain,
+        .radius = 10.0, .smooth = true})
+    text_y := bounds.y + inset + image_height + 14.0
+    SiteText(session, key + 2, .{bounds.x + inset, text_y,
+        bounds.width - inset * 2.0, 32.0}, title, 22)
+    SiteMuted(session, key + 3, .{bounds.x + inset, text_y + 36.0,
+        bounds.width - inset * 2.0, 40.0}, summary, 14)
+    if Button(session, ButtonProps.{.key = key + 4,
+        .bounds = .{bounds.x + inset, bounds.y + bounds.height - 46.0,
+        bounds.width - inset * 2.0, 34.0}, .label = "View on GitHub  ↗",
+        .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 {
+        unused OpenUri(url)
+    }
+}
+
+SiteApps :: (session: Session, view: Rectangle) {
+    wide := view.width >= 900.0
+    width := view.width - (ifx view.width >= 760.0 then 96.0 else 40.0)
+    if width > 1120.0 { width = 1120.0 }
+    x := (view.width - width) * 0.5
+    columns: s32 = ifx wide then 2 else 1
+    gap: float32 = 20.0
+    card_width: float32 = ifx columns == 2 then (width - gap) * 0.5 else width
+    image_height: float32 = card_width * (ifx columns == 2 then 0.58 else 0.6)
+    card_height: float32 = image_height + 168.0
+    rows: s32 = (4 + columns - 1) / columns
+    content_height := 308.0 + cast(float32)rows * (card_height + gap) + 40.0
+    scroll := Scroll(session, ScrollProps.{.key = 10700, .bounds = view,
+        .content_height = cast(s32)content_height, .scroll_offset = site_scroll})
+    site_scroll = scroll.scroll_offset
+    y := scroll.content.y + 44.0
+    SiteMuted(session, 10701, .{x, y, width, 24.0}, "KRYON LABS  /  APPS", 12)
+    y += 42.0
+    SiteText(session, 10702, .{x, y, width, 52.0}, "Apps built with Kryon", ifx wide then 42 else 32)
+    y += 62.0
+    SiteMuted(session, 10703, .{x, y, width, 52.0},
+        "Public applications built with Ziran and Kryon.\nEvery project is open source on GitHub.", 16)
+    y += 64.0
+    images: [4]string = .{"assets/apps/terminal.webp", "assets/apps/browser.webp",
+        "assets/apps/github.webp", "assets/apps/explorer.webp"}
+    names: [4]string = .{"Terminal", "Browser", "GitHub", "Explorer"}
+    summaries: [4]string = .{"Tabs, sessions and desktop integration.",
+        "A reading surface with its own document engine.",
+        "Repository, issue and pull request workflows.",
+        "A native file manager with grid, list and split views."}
+    urls: [4]string = .{"https://github.com/kryonlabs/terminal",
+        "https://github.com/kryonlabs/browser",
+        "https://github.com/kryonlabs/github",
+        "https://github.com/kryonlabs/explorer"}
+    for index: 0..3 {
+        row := index / columns
+        column := index % columns
+        cx := x + cast(float32)column * (card_width + gap)
+        cy := y + cast(float32)row * (card_height + gap)
+        SiteAppCard(session, cast(u64)(10710 + index * 10), .{cx, cy, card_width, card_height},
+            images[index], names[index], summaries[index], urls[index], image_height)
+    }
+    y += cast(float32)rows * (card_height + gap) + 16.0
+    if Button(session, ButtonProps.{.key = 10760, .bounds = .{x, y, 232.0, 40.0},
+        .label = "Kryon Labs on GitHub  ↗", .class_name = 11012}) != 0 {
+        unused OpenUri("https://github.com/kryonlabs")
+    }
+    if scroll.opened { End(session) }
+}
+
 SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
     site_preview_visible = false; site_native_visible = false
     InstallGalleryPalette(dark)
@@ -445,6 +644,7 @@ SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
     site_preview_clip = view
     if site_page == 0 { SiteOverview(session, view) }
     else if site_page == 2 { SiteComponents(session, view) }
+    else if site_page == 3 { SiteApps(session, view) }
     else { SiteReading(session, view) }
     site_modal_active = false
     Box(session, BoxProps.{.key = 10001, .bounds = .{0.0, 0.0, viewport.width, header}, .fill = SiteBackground()})
@@ -545,7 +745,8 @@ SiteWidgetNavigation :: (session: Session, bounds: Rectangle) {
         if Button(session, ButtonProps.{.key = cast(u64)(index + 1),
             .bounds = .{bounds.x + 6.0, y, bounds.width - 12.0, 32.0},
             .label = GallerySceneName(index), .class_name = 11010,
-            .emphasis = .ButtonEmphasisGhost, .selected = index == scene}) != 0 { SiteSelectScene(index) }
+            .emphasis = .ButtonEmphasisGhost, .content_alignment = .ContentAlignmentStart,
+            .selected = index == scene}) != 0 { SiteSelectScene(index) }
     }
     if scroll.opened { End(session) }
     if next != selected || navigation_focus_pending {
@@ -627,7 +828,11 @@ RunSitePreview :: (session: Session) {
 
 SiteGuideCode :: (session: Session, key: u64, bounds: Rectangle, code: string) {
     Box(session, BoxProps.{.key = key, .bounds = bounds, .fill = SiteSurface(), .border = SiteBorder(), .radius = 10.0})
-    Text(session, TextProps.{.key = key + 1, .bounds = .{bounds.x + 16.0, bounds.y + 16.0, bounds.width - 32.0, bounds.height - 32.0}, .text = code, .font = 12, .line_gap = 6, .class_name = 11004, .selectable = true})
+    SiteHighlightCode(code)
+    unused TextArea(session, TextAreaProps.{.key = key + 1,
+        .bounds = .{bounds.x + 16.0, bounds.y + 14.0, bounds.width - 32.0, bounds.height - 28.0},
+        .value = code, .read_only = true, .wrap = false, .manual_scroll = true,
+        .class_name = 11040, .colors = site_code_colors[:site_code_color_count]})
 }
 
 SiteGuide :: (session: Session, view: Rectangle) {

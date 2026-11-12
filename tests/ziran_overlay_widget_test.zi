@@ -178,7 +178,7 @@ CheckModalInput :: () -> s32 {
     overlay := DismissibleOverlay(session, props)
     TreeFinish(session)
     BeginScrollFrame(session, Vector2.{20.0, 40.0}, false, true, false, 3.0, 2.0)
-    observation := ScrollObservationFor(cast(u64)30, bounds)
+    observation := ScrollObservationFor(session, cast(u64)30, bounds)
     if TreeScrollAt(session, 20.0, 40.0) != cast(u64)0 ||
     observation.pointer_allowed || observation.owns_drag ||
     observation.wheel != 0.0 || TreeTakeDragAt(session, button).active {
@@ -192,7 +192,7 @@ CheckModalInput :: () -> s32 {
         WidgetKindScroll, bounds)
     TreeFinish(session)
     BeginScrollFrame(session, Vector2.{20.0, 40.0}, true, true, false, 3.0, 3.0)
-    observation = ScrollObservationFor(cast(u64)33, bounds)
+    observation = ScrollObservationFor(session, cast(u64)33, bounds)
     if TreeScrollAt(session, 20.0, 40.0) != cast(u64)33 ||
     !observation.pointer_allowed || observation.wheel != 3.0 { return 21 }
     CloseSession(session)

@@ -48,51 +48,91 @@ ScrollDevice :: struct {
     glide_target: s32
 }
 
-scroll_device: ScrollDevice;
+// Sessions nest: a page runs a preview inside its own frame. Each keeps its
+// own pointer, drag and momentum state, so a preview's pointer sampling
+// cannot release the page's drag or block its scroll.
+SCROLL_DEVICE_SLOTS :: 9
+scroll_devices: [SCROLL_DEVICE_SLOTS]ScrollDevice;
+scroll_device_current: s32;
+
+ScrollDeviceSlot :: (session: Session) -> s32 {
+    slot := SessionIndex(session)
+    if slot <= 0 || slot >= SCROLL_DEVICE_SLOTS { return 0 }
+    return slot
+}
+
+ScrollDeviceCurrent :: () -> *ScrollDevice {
+    return *scroll_devices[scroll_device_current]
+}
 
 // Retained views must continue composing while a drag, glide or fling owns
 // this session. Motion can continue without another OS input event.
 #program_export
 ScrollDeviceMoving :: (session: Session) -> bool {
-    return ScrollDeviceSampled(session) && (scroll_device.owner != cast(u64)0 ||
-        scroll_device.fling_owner != cast(u64)0 || scroll_device.glide_owner != cast(u64)0)
+    device := *scroll_devices[ScrollDeviceSlot(session)]
+    return ScrollDeviceSampled(session) && (device.owner != cast(u64)0 ||
+        device.fling_owner != cast(u64)0 || device.glide_owner != cast(u64)0)
 }
 
 ScrollDeviceRelease :: () {
-    scroll_device.owner = cast(u64)0
-    scroll_device.grab = 0.0
-    scroll_device.content_drag = false
-    scroll_device.drag_moving = false
-    scroll_device.sample_seconds = 0.0
-    scroll_device.velocity = 0.0
+    device := ScrollDeviceCurrent()
+    device.owner = cast(u64)0
+    device.grab = 0.0
+    device.content_drag = false
+    device.drag_moving = false
+    device.sample_seconds = 0.0
+    device.velocity = 0.0
 }
 
 // Whether the host sampled the device for this session's frames.
 ScrollDeviceSampled :: (session: Session) -> bool {
-    return scroll_device.sampled && SessionValid(session) &&
-        scroll_device.session.slot == session.slot &&
-        scroll_device.session.epoch == session.epoch
+    if !SessionValid(session) { return false }
+    device := *scroll_devices[ScrollDeviceSlot(session)]
+    return device.sampled &&
+        device.session.slot == session.slot &&
+        device.session.epoch == session.epoch
+}
+
+// Test seams keep one session's motion independent of another's frames.
+#program_export
+ScrollDeviceGlideSet :: (session: Session, key: u64) {
+    scroll_devices[ScrollDeviceSlot(session)].glide_owner = key
 }
 
 #program_export
 BeginScrollFrame :: (session: Session, mouse: Vector2, pressed: bool, down: bool,
     released: bool, wheel: float32, now_seconds: float64) {
-    scroll_device.sampled = true
-    scroll_device.now_seconds = now_seconds
-    // A new touch or wheel stops a coasting scroll.
-    if pressed || wheel != 0.0 { scroll_device.fling_owner = cast(u64)0 }
-    if pressed {
-        scroll_device.glide_owner = cast(u64)0
-        scroll_device.press_origin = mouse
+    slot := ScrollDeviceSlot(session)
+    scroll_device_current = slot
+    device := *scroll_devices[slot]
+    if device.session.slot != session.slot || device.session.epoch != session.epoch {
+        // A closed session's slot starts clean; an interrupted drag cannot
+        // own or coast the next session's scrolls.
+        device.owner = cast(u64)0
+        device.grab = 0.0
+        device.content_drag = false
+        device.drag_moving = false
+        device.sample_seconds = 0.0
+        device.velocity = 0.0
+        device.fling_owner = cast(u64)0
+        device.glide_owner = cast(u64)0
     }
-    scroll_device.session = session
-    scroll_device.mouse = mouse
-    scroll_device.pressed = pressed
-    scroll_device.down = down
-    scroll_device.released = released
-    scroll_device.wheel = wheel
-    scroll_device.wheel_x = 0.0
-    scroll_device.wheel_consumed = false
+    device.sampled = true
+    device.now_seconds = now_seconds
+    // A new touch or wheel stops a coasting scroll.
+    if pressed || wheel != 0.0 { device.fling_owner = cast(u64)0 }
+    if pressed {
+        device.glide_owner = cast(u64)0
+        device.press_origin = mouse
+    }
+    device.session = session
+    device.mouse = mouse
+    device.pressed = pressed
+    device.down = down
+    device.released = released
+    device.wheel = wheel
+    device.wheel_x = 0.0
+    device.wheel_consumed = false
     if !down && !released {
         ScrollDeviceRelease()
     }
@@ -104,8 +144,9 @@ BeginScrollFrame :: (session: Session, mouse: Vector2, pressed: bool, down: bool
 #program_export
 ScrollDeviceSideways :: (session: Session, wheel_x: float32) {
     if !ScrollDeviceSampled(session) { return }
-    scroll_device.wheel_x = wheel_x
-    if wheel_x != 0.0 { scroll_device.fling_owner = cast(u64)0 }
+    device := *scroll_devices[ScrollDeviceSlot(session)]
+    device.wheel_x = wheel_x
+    if wheel_x != 0.0 { device.fling_owner = cast(u64)0 }
 }
 
 // An explicit focus reveal supersedes old momentum for this scroll only.
@@ -113,15 +154,17 @@ ScrollDeviceSideways :: (session: Session, wheel_x: float32) {
 #program_export
 ScrollDeviceStopMotion :: (session: Session, key: u64) {
     if key == cast(u64)0 || !ScrollDeviceSampled(session) { return }
-    if scroll_device.fling_owner == key { scroll_device.fling_owner = cast(u64)0 }
-    if scroll_device.glide_owner == key { scroll_device.glide_owner = cast(u64)0 }
+    device := *scroll_devices[ScrollDeviceSlot(session)]
+    if device.fling_owner == key { device.fling_owner = cast(u64)0 }
+    if device.glide_owner == key { device.glide_owner = cast(u64)0 }
 }
 
 // The pointer has moved across a scroll's axis by more than along it, far
 // enough to tell.
 ScrollDeviceAcross :: (horizontal: bool, scale: float32) -> bool {
-    dx: float32 = ScrollWheelSize(scroll_device.mouse.x - scroll_device.press_origin.x)
-    dy: float32 = ScrollWheelSize(scroll_device.mouse.y - scroll_device.press_origin.y)
+    device := ScrollDeviceCurrent()
+    dx: float32 = ScrollWheelSize(device.mouse.x - device.press_origin.x)
+    dy: float32 = ScrollWheelSize(device.mouse.y - device.press_origin.y)
     along: float32 = dy
     across: float32 = dx
     if horizontal {
@@ -140,66 +183,70 @@ ScrollWheelSize :: (wheel: float32) -> float32 {
 // The wheel a scroll moves by, positive toward its start. A sideways scroll
 // moves with the vertical wheel too, unless the wheel moved more sideways.
 ScrollDeviceWheelFor :: (horizontal: bool) -> float32 {
-    if horizontal && ScrollWheelSize(scroll_device.wheel_x) > ScrollWheelSize(scroll_device.wheel) {
-        return 0.0 - scroll_device.wheel_x
+    device := ScrollDeviceCurrent()
+    if horizontal && ScrollWheelSize(device.wheel_x) > ScrollWheelSize(device.wheel) {
+        return 0.0 - device.wheel_x
     }
-    return scroll_device.wheel
+    return device.wheel
 }
 
 #program_export
-ScrollObservationFor :: (key: u64, bounds: Rectangle, horizontal: bool = false,
-    scale: float32 = 1.0) -> ScrollInput {
+ScrollObservationFor :: (session: Session, key: u64, bounds: Rectangle,
+    horizontal: bool = false, scale: float32 = 1.0) -> ScrollInput {
+    slot := ScrollDeviceSlot(session)
+    scroll_device_current = slot
+    device := *scroll_devices[slot]
     input: ScrollInput
     input.enabled = true
     input.device = true
-    if !TreeScrollAllowed(scroll_device.session, key) {
-        if scroll_device.owner == key { ScrollDeviceRelease() }
-        if scroll_device.fling_owner == key { scroll_device.fling_owner = cast(u64)0 }
-        if scroll_device.glide_owner == key { scroll_device.glide_owner = cast(u64)0 }
+    if !TreeScrollAllowed(session, key) {
+        if device.owner == key { ScrollDeviceRelease() }
+        if device.fling_owner == key { device.fling_owner = cast(u64)0 }
+        if device.glide_owner == key { device.glide_owner = cast(u64)0 }
         input.disabled = true
         return input
     }
-    input.mouse = scroll_device.mouse
-    input.pressed = scroll_device.pressed
-    input.down = scroll_device.down
-    input.released = scroll_device.released
-    input.owns_drag = key != cast(u64)0 && scroll_device.owner == key
-    input.owner_captured = scroll_device.owner != cast(u64)0 && !input.owns_drag
-    input.grab = scroll_device.grab
-    input.now_seconds = scroll_device.now_seconds
+    input.mouse = device.mouse
+    input.pressed = device.pressed
+    input.down = device.down
+    input.released = device.released
+    input.owns_drag = key != cast(u64)0 && device.owner == key
+    input.owner_captured = device.owner != cast(u64)0 && !input.owns_drag
+    input.grab = device.grab
+    input.now_seconds = device.now_seconds
     if input.owns_drag {
-        input.content_drag = scroll_device.content_drag
-        input.drag_origin_y = scroll_device.drag_origin_y
-        input.drag_origin_offset = scroll_device.drag_origin_offset
-        input.drag_moving = scroll_device.drag_moving
-        input.sample_seconds = scroll_device.sample_seconds
-        input.velocity = scroll_device.velocity
-    } else if key != cast(u64)0 && scroll_device.fling_owner == key {
+        input.content_drag = device.content_drag
+        input.drag_origin_y = device.drag_origin_y
+        input.drag_origin_offset = device.drag_origin_offset
+        input.drag_moving = device.drag_moving
+        input.sample_seconds = device.sample_seconds
+        input.velocity = device.velocity
+    } else if key != cast(u64)0 && device.fling_owner == key {
         input.flinging = true
-        input.sample_seconds = scroll_device.fling_seconds
-        input.velocity = scroll_device.fling_velocity
-    } else if key != cast(u64)0 && scroll_device.glide_owner == key {
+        input.sample_seconds = device.fling_seconds
+        input.velocity = device.fling_velocity
+    } else if key != cast(u64)0 && device.glide_owner == key {
         input.gliding = true
-        input.sample_seconds = scroll_device.glide_seconds
-        input.glide_target = scroll_device.glide_target
+        input.sample_seconds = device.glide_seconds
+        input.glide_target = device.glide_target
     }
     inside: bool = ScrollPointInside(input.mouse, bounds)
-    target: u64 = TreeScrollAt(scroll_device.session,
+    target: u64 = TreeScrollAt(session,
         input.mouse.x, input.mouse.y)
     targeted: bool = target == cast(u64)0 || target == key
     input.pointer_allowed = ((inside && targeted) || input.owns_drag) &&
-        !input.owner_captured && !TreePointerCapturesDrag(scroll_device.session)
+        !input.owner_captured && !TreePointerCapturesDrag(session)
     // A content drag that has not moved the content lets go once the pointer
     // goes across this scroll's axis: the gesture belongs to what moves that
     // way, such as a row swiped sideways in a list. The press stays with it.
-    if input.owns_drag && scroll_device.content_drag && !scroll_device.drag_moving &&
+    if input.owns_drag && device.content_drag && !device.drag_moving &&
     ScrollDeviceAcross(horizontal, scale) {
         input.pointer_allowed = false
     }
-    wheel_target: u64 = TreeScrollAt(scroll_device.session,
+    wheel_target: u64 = TreeScrollAt(session,
         input.mouse.x, input.mouse.y, true)
     wheel_targeted: bool = wheel_target == cast(u64)0 || wheel_target == key
-    if inside && wheel_targeted && !scroll_device.wheel_consumed && !input.owner_captured {
+    if inside && wheel_targeted && !device.wheel_consumed && !input.owner_captured {
         input.wheel = ScrollDeviceWheelFor(horizontal)
     }
     return input
@@ -213,18 +260,21 @@ ScrollObservationFor :: (key: u64, bounds: Rectangle, horizontal: bool = false,
 #program_export
 ScrollWheelTake :: (session: Session, key: u64, bounds: Rectangle,
     scrolls: bool, horizontal: bool=false) -> float32 {
+    slot := ScrollDeviceSlot(session)
+    scroll_device_current = slot
+    device := *scroll_devices[slot]
     if !scrolls || !ScrollDeviceSampled(session) || ScrollDeviceWheelFor(horizontal) == 0.0 ||
-        scroll_device.wheel_consumed || scroll_device.owner != cast(u64)0 {
+        device.wheel_consumed || device.owner != cast(u64)0 {
         return 0.0
     }
-    if !TreeScrollAllowed(session, key) || !ScrollPointInside(scroll_device.mouse, bounds) {
+    if !TreeScrollAllowed(session, key) || !ScrollPointInside(device.mouse, bounds) {
         return 0.0
     }
-    target: u64 = TreeScrollAt(session, scroll_device.mouse.x, scroll_device.mouse.y, true)
+    target: u64 = TreeScrollAt(session, device.mouse.x, device.mouse.y, true)
     if target != cast(u64)0 && target != key {
         return 0.0
     }
-    scroll_device.wheel_consumed = true
+    device.wheel_consumed = true
     return ScrollDeviceWheelFor(horizontal)
 }
 
@@ -241,9 +291,10 @@ ScrollDeviceContentDrag :: (session: Session, key: u64, bounds: Rectangle,
     max_scroll: s32, offset: s32, scale: float32, horizontal: bool = false) -> ScrollFrame {
     frame: ScrollFrame
     frame.offset = offset
+    scroll_device_current = ScrollDeviceSlot(session)
     if key == cast(u64)0 || !ScrollDeviceSampled(session) { return frame }
     if max_scroll < 0 { max_scroll = 0 }
-    input: ScrollFrameInput = ScrollFrameInputFor(ScrollObservationFor(key, bounds, horizontal, scale))
+    input: ScrollFrameInput = ScrollFrameInputFor(ScrollObservationFor(session, key, bounds, horizontal, scale))
     input.bounds = bounds
     input.horizontal = horizontal
     input.content_height = cast(s32)bounds.height + max_scroll
@@ -267,39 +318,40 @@ ScrollDeviceContentDrag :: (session: Session, key: u64, bounds: Rectangle,
 // Scroll commits its own frame when its input came from ScrollObservationFor.
 #program_export
 CommitScroll :: (key: u64, frame: ScrollFrame) {
-    if frame.consume_wheel { scroll_device.wheel_consumed = true }
+    device := ScrollDeviceCurrent()
+    if frame.consume_wheel { device.wheel_consumed = true }
     if key == cast(u64)0 { return }
     if frame.flinging {
-        scroll_device.fling_owner = key
-        scroll_device.fling_seconds = frame.sample_seconds
-        scroll_device.fling_velocity = frame.velocity
-    } else if scroll_device.fling_owner == key {
-        scroll_device.fling_owner = cast(u64)0
+        device.fling_owner = key
+        device.fling_seconds = frame.sample_seconds
+        device.fling_velocity = frame.velocity
+    } else if device.fling_owner == key {
+        device.fling_owner = cast(u64)0
     }
     if frame.gliding {
-        scroll_device.glide_owner = key
-        scroll_device.glide_seconds = frame.sample_seconds
-        scroll_device.glide_target = frame.glide_target
-    } else if scroll_device.glide_owner == key {
-        scroll_device.glide_owner = cast(u64)0
+        device.glide_owner = key
+        device.glide_seconds = frame.sample_seconds
+        device.glide_target = frame.glide_target
+    } else if device.glide_owner == key {
+        device.glide_owner = cast(u64)0
     }
-    if frame.start_drag && scroll_device.owner == cast(u64)0 {
-        scroll_device.owner = key
+    if frame.start_drag && device.owner == cast(u64)0 {
+        device.owner = key
     }
-    if scroll_device.owner != key { return }
+    if device.owner != key { return }
     // A drag that starts moving on its release frame must not also tap.
     if frame.cancel_press {
-        TreePointerCancel(scroll_device.session)
+        TreePointerCancel(device.session)
     }
     if frame.clear_drag {
         ScrollDeviceRelease()
         return
     }
-    scroll_device.grab = frame.grab
-    scroll_device.content_drag = frame.content_drag
-    scroll_device.drag_origin_y = frame.drag_origin_y
-    scroll_device.drag_origin_offset = frame.drag_origin_offset
-    scroll_device.drag_moving = frame.drag_moving
-    scroll_device.sample_seconds = frame.sample_seconds
-    scroll_device.velocity = frame.velocity
+    device.grab = frame.grab
+    device.content_drag = frame.content_drag
+    device.drag_origin_y = frame.drag_origin_y
+    device.drag_origin_offset = frame.drag_origin_offset
+    device.drag_moving = frame.drag_moving
+    device.sample_seconds = frame.sample_seconds
+    device.velocity = frame.velocity
 }

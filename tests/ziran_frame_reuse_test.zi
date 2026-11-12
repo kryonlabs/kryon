@@ -149,11 +149,11 @@ main :: () -> s32 {
     if EndFrameRetained(session, true).status != cast(FrameStatus)FrameNotBuilding { return 24 }
     // Scroll motion and editable focus continue without a fresh OS event.
     Motion.BeginScrollFrame(session, Vector2.{5.0, 5.0}, false, false, false, 0.0, 1.0)
-    Motion.scroll_device.glide_owner = cast(u64)99
+    Motion.ScrollDeviceGlideSet(session, cast(u64)99)
     Start(session)
     if RetainFrame(session) || !Motion.ScrollDeviceMoving(session) { return 25 }
     TreeCancel(session)
-    Motion.scroll_device.glide_owner = cast(u64)0
+    Motion.ScrollDeviceGlideSet(session, cast(u64)0)
     Start(session)
     TextInputNoteFocused(session)
     if RetainFrame(session) { return 26 }
