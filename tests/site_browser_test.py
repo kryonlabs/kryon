@@ -67,10 +67,18 @@ class Browser:
             env=environment, start_new_session=True)
         self.received, self.sequence, self.session, self.errors = b'', 0, None, []
         self.console_messages = []
-        target = next(item for item in self.command('Target.getTargets')['targetInfos'] if item['type'] == 'page')
-        self.session = self.command('Target.attachToTarget', targetId=target['targetId'], flatten=True)['sessionId']
-        for domain in ('Runtime', 'Page', 'Log'):
-            self.command(domain + '.enable')
+        try:
+            target = next(item for item in self.command('Target.getTargets')['targetInfos'] if item['type'] == 'page')
+            self.session = self.command('Target.attachToTarget', targetId=target['targetId'], flatten=True)['sessionId']
+            for domain in ('Runtime', 'Page', 'Log'):
+                self.command(domain + '.enable')
+        except Exception as error:
+            self.close()
+            with (profile / 'chromium.log').open('rb') as log:
+                log.seek(0, os.SEEK_END)
+                log.seek(max(0, log.tell() - 6000))
+                diagnostics = log.read().decode(errors='replace')
+            raise RuntimeError('Chromium startup failed: ' + str(error) + '\n' + diagnostics) from error
 
     def close(self):
         try: self.process.stdin.close()
@@ -80,6 +88,7 @@ class Browser:
         try: self.process.wait(timeout=5)
         except subprocess.TimeoutExpired:
             os.killpg(self.process.pid, 9); self.process.wait()
+        self.process.stdout.close()
         self.log.close()
         if self.runtime: self.runtime.cleanup()
 
@@ -787,7 +796,8 @@ def main():
         assert args.compiler_only, '--compiler-scene requires --compiler-only'
         scenes = [scene for scene in scenes if scene['name'] in args.compiler_scene]
         assert len(scenes) == len(set(args.compiler_scene)), 'Unknown compiler scene'
-    chromium = shutil.which('chromium') or shutil.which('chromium-browser') or shutil.which('google-chrome')
+    chromium = (shutil.which(os.environ['CHROMIUM']) if os.environ.get('CHROMIUM') else
+                shutil.which('chromium') or shutil.which('chromium-browser') or shutil.which('google-chrome'))
     assert chromium, 'Chromium or Chrome is required for the integrated browser test'
     args.shots.mkdir(parents=True, exist_ok=True)
     server = serve(args.site)

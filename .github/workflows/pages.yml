@@ -152,11 +152,22 @@ jobs:
       - name: Test the Canvas website
         env:
           CHROMIUM: google-chrome
+          # Chrome creates Unix sockets below TMPDIR; keep them clear of the
+          # runner's deeply nested checkout path.
+          KRYON_TEST_RUNTIME: ${{ runner.temp }}
         run: |
           export PATH="$GITHUB_WORKSPACE/ziranlang/ziran/build/bin:$PATH"
           export ZIRAN_ROOT="$GITHUB_WORKSPACE/ziranlang/ziran"
           env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
             YUE_DESKTOP_RECOVERY=0 python3 tests/site_browser_test.py
+
+      - name: Save browser startup diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: website-browser-log
+          path: kryonlabs/kryon/build/scratch/site-browser/profile/chromium.log
+          if-no-files-found: ignore
 
   deploy-production:
     name: Deploy Kryon Labs
