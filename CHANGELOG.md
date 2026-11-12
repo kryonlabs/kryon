@@ -1,6 +1,8 @@
 # Changelog
 
-## [Unreleased]
+## Unreleased
+
+## [0.3.0] - 2026-11-12
 
 - Hosted bundles can measure approved images through typed width and height calls without gaining arbitrary file or raster access.
 
