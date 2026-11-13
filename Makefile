@@ -702,6 +702,14 @@ android-webp-link-test: project-toolchain
 		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_webp_link_test.py \
 		--ndk "$(or $(ANDROID_NDK),$(HOME)/Android/Sdk/ndk/28.2.13676358)"
 
+# Android NDK configure and raylib build of the kryon:renderer-raylib
+# artifact project (cmake/renderer-artifact) for arm64; needs ANDROID_NDK.
+.PHONY: android-renderer-artifact-test
+android-renderer-artifact-test: project-toolchain
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		ZIRAN_ROOT="$(ZIRAN_DIR)" ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/android_renderer_artifact_cmake_test.py \
+		--ndk "$(or $(ANDROID_NDK),$(HOME)/Android/Sdk/ndk/28.2.13676358)"
+
 .PHONY: raylib-webp-decode-test
 raylib-webp-decode-test: project-toolchain $(RAYLIB_ARCHIVES)
 	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS -u SESSION_MANAGER \

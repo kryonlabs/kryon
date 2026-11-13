@@ -289,7 +289,7 @@ def build(name, target, stage, root):
                 run(['cmake', '-S', cmake_source, '-B', work, *config])
                 targets = ['raylib']
                 if target.startswith('android-'):
-                    # kryon_android_raylib also defines the WebP codec target.
+                    # kryon_android_raylib (cmake/renderer-artifact) also defines the codec targets.
                     targets.extend(['kryonwebp', 'avif_static', 'opus'])
                 run(['cmake', '--build', work, '--target', *targets, '--parallel', '1'])
                 if target == 'windows-x86_64-mingw':

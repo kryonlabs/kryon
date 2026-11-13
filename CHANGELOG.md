@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The Android `kryon:renderer-raylib` artifact builds raylib again: its
+  CMake project (`cmake/renderer-artifact`) owns `kryon_android_raylib`,
+  which the renderer-free native host helpers no longer define, so arm64 and
+  armv7 artifacts configure instead of failing on an unknown command.
 - Widgets are named package imports: `Text :: #import "kryon/text"` serves
   `Text.Draw` and `Text.Props`, and every widget package serves its own
   `Props` and primary `Draw` with short related names such as `Text.Wrap`,
