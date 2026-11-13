@@ -627,18 +627,24 @@ main :: () -> s32 {
     action_values: [1]HostValue
     action_values[0] = WidgetEncodeActionModalAction(Modal.ActionModalAction.{.label = "Keep editing"}, *action_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice,
-        .type_name = HostTextData("[]ActionModalAction"), .length = cast(usize)1,
+        .type_name = HostTextData("[]Modal.ActionModalAction"), .length = cast(usize)1,
         .elements = *action_values[0]}
     if Call("modal", "ActionModalHostedHost", arguments[:], *result) != 1 ||
     !WidgetValidActionModalResult(result) ||
     WidgetDecodeActionModalResult(result, *action_modal_result).action != 0 {
         return 41
     }
+    // Too many actions, or a slice not named by Kryon's qualified record, is refused.
     arguments[2].length = cast(usize)17
     if Call("modal", "ActionModalHostedHost", arguments[:], *result) != 0 {
         return 42
     }
     arguments[2].length = cast(usize)1
+    arguments[2].type_name = HostTextData("[]ActionModalAction")
+    if Call("modal", "ActionModalHostedHost", arguments[:], *result) != 0 {
+        return 42
+    }
+    arguments[2].type_name = HostTextData("[]Modal.ActionModalAction")
     action_values[0] = HostScalar("s32", 1)
     if Call("modal", "ActionModalHostedHost", arguments[:], *result) != 0 {
         return 43

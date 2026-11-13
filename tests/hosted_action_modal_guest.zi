@@ -1,0 +1,21 @@
+// A package consumer's portable action dialog, run by
+// tests/ziran_hosted_action_modal_test.sh through Kryon's real widget host.
+#import "kryon/session"
+Modal :: #import "kryon/modal";
+
+test_host :: #system_library "host_api";
+TestSessionHost :: () -> Session #foreign test_host;
+
+#program_export
+main :: () -> s32 {
+    session := TestSessionHost()
+    actions: [2]Modal.ActionModalAction = .[
+        Modal.ActionModalAction.{.key = cast(u64)1, .label = "Keep editing"},
+        Modal.ActionModalAction.{.key = cast(u64)2, .label = "Discard"},
+    ]
+    decision := Modal.ActionModal(session, Modal.ActionModalProps.{.key = cast(u64)17,
+        .title = "Unsaved changes", .message = "Your draft stays here."}, actions[:])
+    // Nothing was clicked, so the open dialog makes no decision yet.
+    if decision.action != 0 { return 1 }
+    return 7
+}

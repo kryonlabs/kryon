@@ -1069,7 +1069,7 @@ WidgetHostActionModal :: (session: Session, arguments: *HostValue, result: *Host
     }
     values := arguments[2]
     if values.kind != cast(s32)HostSlice ||
-    TextFromCString(values.type_name) != "[]ActionModalAction" ||
+    TextFromCString(values.type_name) != "[]Modal.ActionModalAction" ||
     values.length > cast(usize)16 ||
     (values.length > cast(usize)0 && values.elements == null) {
         return 0

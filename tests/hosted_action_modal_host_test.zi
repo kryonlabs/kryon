@@ -1,0 +1,85 @@
+#import "std/bundle_host"
+#import "std/byte_text_linux"
+#import "std/file"
+#import "hosted_app"
+#import "hosted_values"
+#import "widget_codec"
+#import "widget_host"
+#import "session"
+#import "geometry"
+#import "font_metrics"
+#import "tree"
+#import "tree_draw"
+#import "drawing_props"
+#import "ziran_widget_noop_host"
+#import "system_clipboard_host"
+
+using FrameStatus;
+
+// The bundle comes from tests/ziran_hosted_action_modal_test.sh. Every widget
+// call goes to Kryon's own WidgetHostCall, not a stand-in.
+app: HostedApp;
+session: Session;
+session_codec: WidgetSessionCodec;
+modal_calls: s32;
+modal_accepted: s32;
+action_slice_name: string;
+
+Allows :: (context: *void, module: string, function: string) -> bool {
+    unused context
+    return function == "TestSessionHost" || WidgetHostSupports(module, function)
+}
+
+Call :: (context: *void, module: *u8, function: *u8,
+    arguments: *HostValue, count: s32, result: *HostValue) -> s32 {
+    unused context
+    name := TextFromCString(function)
+    if name == "TestSessionHost" && count == 0 {
+        result.* = WidgetEncodeSession(session, *session_codec)
+        return 1
+    }
+    if name == "ActionModalHostedHost" && count == 3 {
+        modal_calls += 1
+        action_slice_name = TextFromCString(arguments[2].type_name)
+    }
+    accepted := WidgetHostCall(null, module, function, arguments, count, result)
+    if name == "ActionModalHostedHost" && accepted == 1 { modal_accepted += 1 }
+    return accepted
+}
+
+AllowNone :: (path: string) -> bool {
+    return path == ""
+}
+
+#program_export
+RasterTriangles :: (points: []Vector2, color: Color) {
+    unused points
+    unused color
+}
+
+#program_export
+main :: () -> s32 {
+    bytes, read := ReadEntireFile("hosted-action-modal.zx")
+    if !read || !HostedAppOpen(*app, bytes) || !HostedAppStart(*app, Allows, Call, null) {
+        return 1
+    }
+    GlyphMetricsChanged()
+    session = SessionOpen()
+    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 480.0, 320.0})
+    WidgetHostBegin(session, AllowNone)
+    answer: s64
+    ran := HostedAppRun(*app, *answer)
+    WidgetHostEnd()
+    if EndFrame(session) != cast(FrameStatus)FrameOk { return 2 }
+    // The guest sends Kryon's qualified slice type, and the host draws it.
+    if modal_calls != 1 || action_slice_name != "[]Modal.ActionModalAction" {
+        print("action modal calls % with slice %\n", modal_calls, action_slice_name)
+        return 3
+    }
+    if modal_accepted != 1 || !ran || answer != 7 {
+        print("action modal accepted % ran % answer %\n", modal_accepted, ran, answer)
+        return 4
+    }
+    HostedAppClose(*app)
+    return 0
+}
