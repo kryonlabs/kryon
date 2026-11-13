@@ -100,6 +100,21 @@ if args.codegen == "zx":
 for name in args.define:
     defines.extend(["--define", name])
 
+# Ziran target conditions are independent of the C compiler's preprocessor
+# defines. Keep the target attached to both source-to-IR and IR-to-C so Android
+# modules never retain a host-Linux branch merely because generation runs on a
+# Linux workstation.
+cpu_defines = {
+    "__aarch64__": "arm64",
+    "__x86_64__": "x64",
+    "__arm__": "none",
+    "__i386__": "none",
+}
+target_cpus = {cpu_defines[name] for name in args.define if name in cpu_defines}
+if len(target_cpus) != 1:
+    parser.error("select exactly one Android CPU define (__aarch64__, __arm__, __x86_64__ or __i386__)")
+target = ["--target-os", "android", "--target-cpu", target_cpus.pop()]
+
 if args.ir.exists():
     shutil.rmtree(args.ir)
 if args.output.exists():
@@ -115,14 +130,14 @@ with lock_path.open("w") as lock:
     fcntl.flock(lock, fcntl.LOCK_EX)
     subprocess.run(
         [str(args.ziran), "ir", "--project", "--entry", f"{ROOTS_MODULE}:{ROOTS_ENTRY}",
-         "--root", str(entry.parent), *bindings, *defines, "-o", str(args.ir),
+         *target, "--root", str(entry.parent), *bindings, *defines, "-o", str(args.ir),
          *map(str, host_roots), str(roots_source)],
         cwd=root, check=True,
     )
     # The root only selects what the IR keeps; it never enters native output.
     modules = sorted(path for path in args.ir.glob("*.zir") if path.stem != ROOTS_MODULE)
     subprocess.run(
-        [str(args.zi2c), "--no-main", *defines, "--root", str(args.ir),
+        [str(args.zi2c), "--no-main", *target, *defines, "--root", str(args.ir),
          "-o", str(args.output), *map(str, modules)],
         cwd=root, check=True,
     )

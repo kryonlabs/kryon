@@ -86,9 +86,11 @@ def main():
         if kind == "native":
             entry.write_text('\n'.join([
                 '#import "kryon/session"', '#import "kryon/geometry"',
+                '#import "std/thread_linux"',
                 '#program_export',
                 'Frame :: (session: Session, viewport: Rectangle) -> s32 {',
-                '    unused session; unused viewport; return 0', '}\n']))
+                '    unused session; unused viewport',
+                '    return ifx ThreadFinished(null) then 1 else 0', '}\n']))
         if kind == "custom":
             host = source / "custom_host.zi"
             host.write_text('#program_export\nCustomEntry :: () -> s32 { return 77 }\n')
@@ -116,6 +118,14 @@ def main():
             raise AssertionError(kind + " has the wrong native Frame adapter graph")
         if kind == "native" and not (ir / "selected.zir").is_file():
             raise AssertionError("selected native Frame provider was omitted")
+        if kind == "native":
+            thread_headers = [path for path in generated.rglob("*.h")
+                              if path.name == "std_thread_linux.h"]
+            if len(thread_headers) != 1:
+                raise AssertionError("native Android graph omitted std/thread_linux")
+            thread_header = thread_headers[0].read_text()
+            if "pthread_gettid_np" not in thread_header or "pthread_tryjoin_np" in thread_header:
+                raise AssertionError("native Android graph retained the host-Linux thread branch")
         if not (ir / "android_glue.zir").is_file():
             raise AssertionError(kind + " pruned the uncalled android_glue module")
         roots = list(ir.rglob("kryon_android_roots.zir"))
