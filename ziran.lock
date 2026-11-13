@@ -125,7 +125,7 @@
   },
   "toolchain": {
     "commit": "d2db9d35feaf2a3278dc7bed571022b0e0323247",
-    "ref": "ca392c90851473ccc621859237010f6c84727938",
+    "ref": "37a64372a6171808d1373b619f9b4f32cc367092",
     "url": "https://github.com/ziranlang/ziran.git"
   }
 }
