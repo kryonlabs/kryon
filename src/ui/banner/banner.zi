@@ -1,7 +1,7 @@
-#import "box_props"
-#import "box"
-#import "button_props"
-#import "button"
+Box :: #import "box";
+Button :: #import "button";
+SvgIcon :: #import "svgicon";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -10,11 +10,7 @@
 #import "semantic"
 #import "style"
 #import "style_sheet"
-#import "svg_icon_props"
-#import "svgicon"
 #import "text_align"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -36,7 +32,7 @@ BannerState :: struct {
     collapse_progress: float32
 }
 
-BannerProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     text: string
@@ -103,7 +99,7 @@ BannerToneColor :: (tone: BannerTone) -> u32 {
 }
 
 #program_export
-BannerLayoutFor :: (props: BannerProps) -> BannerLayout {
+BannerLayoutFor :: (props: Props) -> BannerLayout {
     layout: BannerLayout
     layout.bounds = props.bounds
     if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return layout }
@@ -139,8 +135,7 @@ BannerLayoutFor :: (props: BannerProps) -> BannerLayout {
     return layout
 }
 
-#program_export
-Banner :: (session: Session, props: BannerProps,
+Draw :: (session: Session, props: Props,
     state: *BannerState) -> BannerResult {
     result: BannerResult
     result.state = state.*
@@ -167,20 +162,20 @@ Banner :: (session: Session, props: BannerProps,
     TreeSetStyleClass(session, result.node, props.class_name)
     TreeSetStyleId(session, result.node, props.id)
     if !TreePushScope(session, result.node) { return result }
-    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 0),
+    unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 0),
         .bounds = props.bounds, .id = props.id, .class_name = props.class_name,
         .fill = ColorFromPacked(background), .radius = 0.0})
     if props.icon_shape != "" {
-        unused SvgIcon(session, SvgIconProps.{.bounds = layout.icon,
+        unused SvgIcon.Draw(session, SvgIcon.Props.{.bounds = layout.icon,
             .shape = props.icon_shape, .color = ColorFromPacked(result.tone_color)})
     }
-    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 1),
-        .bounds = layout.text, .text = props.text, .font = Text12,
+    unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 1),
+        .bounds = layout.text, .text = props.text, .size = Text.Text12,
         .id = props.id, .class_name = props.class_name,
         .align = ifx layout.stacked then TextAlign.TextAlignStart else TextAlign.TextAlignStart,
-        .wrap = TextWrap.TextWrapAnywhere})
+        .wrap = Text.Wrap.TextWrapAnywhere})
     if props.action != "" {
-        clicked := Button(session, ButtonProps.{
+        clicked := Button.Draw(session, Button.Props.{
             .key = WidgetPartKey(props.key, 2), .bounds = layout.action,
             .label = props.action, .disabled = props.disabled,
             .id = props.id, .class_name = props.class_name,
@@ -190,7 +185,7 @@ Banner :: (session: Session, props: BannerProps,
     }
     if props.dismissible {
         label := ifx props.dismiss_label != "" then props.dismiss_label else "Dismiss"
-        dismissed := Button(session, ButtonProps.{
+        dismissed := Button.Draw(session, Button.Props.{
             .key = WidgetPartKey(props.key, 3), .bounds = layout.dismiss,
             .label = label, .disabled = props.disabled, .icon_only = true, .circle = true,
             .icon_shape = "S1.8rr:M6 6L18 18M18 6L6 18",
@@ -205,7 +200,7 @@ Banner :: (session: Session, props: BannerProps,
             result.state = state.*
         }
     }
-    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 4),
+    unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 4),
         .bounds = layout.underline, .id = props.id, .class_name = props.class_name,
         .fill = ColorFromPacked(StateLayer(CurrentBorder(), result.tone_color, 25)), .radius = 0.0})
     state.measured_height = props.bounds.height

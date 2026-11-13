@@ -6,7 +6,7 @@
 #import "geometry"
 #import "drawing_props"
 
-#if #defined(PLATFORM_WEB) {
+#if OS == .WEB {
     c :: #system_library "c";
     OsAllocate :: (size: usize) -> *void #foreign c "malloc";
     OsResize :: (memory: *void, size: usize) -> *void #foreign c "realloc";

@@ -2,7 +2,11 @@
 // an image's size only when the img showing it has decoded, keep showing it
 // decoded after other images load, and report an undecodable image as
 // unavailable rather than wait on it.
-using UI :: #import "kryon/Widgets";
+Image :: #import "kryon/image";
+Page :: #import "kryon/page";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
 #import "std/web"
 Raster :: #import "kryon/image_raster";
 host_api :: #system_library "host_api";
@@ -21,22 +25,22 @@ Report :: (name: string, value: float64) {
 }
 
 PageImage :: (session: Session, key: u64, x: float32) {
-    Image(session, ImageProps.{.key = key, .bounds = .{x, 0.0, 300.0, 200.0}, .asset_path = "assets/page.png"})
+    Image.Draw(session, Image.Props.{.key = key, .bounds = .{x, 0.0, 300.0, 200.0}, .asset_path = "assets/page.png"})
 }
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     scope: s32 = WebScope()
     defer WebEnd(scope)
-    page: PageProps
+    page: Page.Props
     page.key = 2; page.bounds = viewport; page.title = "DOM Image Decode"
-    opened: PageResult = Page(session, page)
+    opened: Page.PageResult = Page.Draw(session, page)
     // The driver reads these as the frame's imgs are published.
     if Flag("__kryonOthers") {
         loaded: s32 = 0
         for at: 0..others.count - 1 {
             if Raster.AssetWidth(others[at]) == 40 { loaded += 1 }
-            Image(session, ImageProps.{.key = cast(u64)(30 + at), .bounds = .{cast(float32)(at * 50), 220.0, 40.0, 30.0},
+            Image.Draw(session, Image.Props.{.key = cast(u64)(30 + at), .bounds = .{cast(float32)(at * 50), 220.0, 40.0, 30.0},
                 .asset_path = others[at]})
         }
         Report("__kryonOthersLoaded", cast(float64)loaded)

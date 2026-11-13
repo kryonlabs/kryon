@@ -1,23 +1,17 @@
-#import "commandpalette"
-#import "command_palette_props"
+CommandPalette :: #import "kryon/command_palette";
+ConfirmPopover :: #import "kryon/confirm_popover";
+GuidedTour :: #import "kryon/guided_tour";
+HoverCard :: #import "kryon/hover_card";
+Sheet :: #import "kryon/sheet";
+Tooltip :: #import "kryon/tooltip";
 #import "component_raster_host"
-#import "confirmpopover"
-#import "confirm_popover_props"
 #import "control_props"
 #import "geometry"
-#import "guidedtour"
-#import "guided_tour_props"
-#import "hovercard"
-#import "hover_card_props"
 #import "paint_queue"
 #import "semantic"
 #import "session"
-#import "sheet"
-#import "sheet_props"
 #import "theme"
-#import "tooltip"
 #import "tooltip_common"
-#import "tooltip_props"
 #import "tree"
 #import "tree_draw"
 #import "cui_overlays_raster_host"
@@ -31,8 +25,8 @@ Viewport :: () -> Rectangle {
 }
 
 TooltipBehavior :: () -> s32 {
-    state := TooltipStateFor(1)
-    props: TooltipProps
+    state := Tooltip.TooltipStateFor(1)
+    props: Tooltip.Props
     props.key = 1
     props.id = 1001
     props.class_name = 2001
@@ -50,24 +44,24 @@ TooltipBehavior :: () -> s32 {
     props.pointer.over_anchor = true
     props.pointer.x = 40.0
     props.pointer.y = 40.0
-    props.style = TooltipDefaultStyle()
+    props.style = Tooltip.TooltipDefaultStyle()
 
-    result := TooltipApply(*state, props)
+    result := Tooltip.TooltipApply(*state, props)
     if result.visible { return 11 }
     if result.remaining_delay_ms < 548.0 { return 12 }
     if result.remaining_delay_ms > 552.0 { return 13 }
     props.now_ms = 1549
-    result = TooltipApply(*state, props)
+    result = Tooltip.TooltipApply(*state, props)
     if result.visible || result.remaining_delay_ms < 0.5 ||
         result.remaining_delay_ms > 1.0 { return 2 }
     props.now_ms = 1550
-    result = TooltipApply(*state, props)
+    result = Tooltip.TooltipApply(*state, props)
     if !result.visible { return 30 }
     if !result.changed { return 31 }
     if state.last_shown_ms != 1550 { return 32 }
 
     props.pointer.touch = true
-    result = TooltipApply(*state, props)
+    result = Tooltip.TooltipApply(*state, props)
     if result.visible { return 4 }
     props.pointer.touch = false
 
@@ -78,26 +72,26 @@ TooltipBehavior :: () -> s32 {
     truncated.anchor.width = 60.0
     truncated.delay_ms = 0.0
     truncated.pointer.over_anchor = true
-    truncated_state := TooltipStateFor(2)
-    result = TooltipApply(*truncated_state, truncated)
+    truncated_state := Tooltip.TooltipStateFor(2)
+    result = Tooltip.TooltipApply(*truncated_state, truncated)
     if !result.truncated || !result.visible { return 5 }
     truncated.measured_text_width = 40
-    truncated_state = TooltipStateFor(2)
-    result = TooltipApply(*truncated_state, truncated)
+    truncated_state = Tooltip.TooltipStateFor(2)
+    result = Tooltip.TooltipApply(*truncated_state, truncated)
     if result.truncated || result.visible { return 6 }
 
     disabled := props
     disabled.disabled = true
-    disabled_state := TooltipStateFor(1)
+    disabled_state := Tooltip.TooltipStateFor(1)
     disabled_state.visible = true
-    result = TooltipApply(*disabled_state, disabled)
+    result = Tooltip.TooltipApply(*disabled_state, disabled)
     if result.visible || !result.changed || disabled_state.visible { return 7 }
     return 0
 }
 
 SheetBehavior :: () -> s32 {
-    state := SheetStateFor()
-    props: SheetProps
+    state := Sheet.SheetStateFor()
+    props: Sheet.Props
     props.key = 10
     props.id = 1010
     props.class_name = 2010
@@ -110,15 +104,15 @@ SheetBehavior :: () -> s32 {
     props.minimum_size = 100.0
     props.maximum_size = 220.0
     props.viewport = Viewport()
-    props.safe_area = SheetSafeArea.{10.0, 12.0, 14.0, 16.0}
+    props.safe_area = Sheet.SheetSafeArea.{10.0, 12.0, 14.0, 16.0}
     props.scrim_close = true
     props.drag_enabled = true
     props.drag_close_distance = 40.0
     props.now_ms = 1000
-    props.surface_style = SheetSurfaceDefaultStyle()
-    props.scrim_style = SheetScrimDefaultStyle()
+    props.surface_style = Sheet.SheetSurfaceDefaultStyle()
+    props.scrim_style = Sheet.SheetScrimDefaultStyle()
 
-    result := SheetApply(*state, props)
+    result := Sheet.SheetApply(*state, props)
     if !result.visible { return 11 }
     if result.progress != 0.0 { return 12 }
     if result.geometry.panel.width != 180.0 { return 13 }
@@ -126,30 +120,30 @@ SheetBehavior :: () -> s32 {
     props.now_ms = 1420
     props.input.keys.escape = true
     props.input.focus_count = 4
-    result = SheetApply(*state, props)
+    result = Sheet.SheetApply(*state, props)
     if !result.close_requested || !result.closed_by_escape ||
         result.progress < 0.99 || result.geometry.panel.x < 285.0 ||
         result.geometry.panel.x > 287.0 { return 2 }
     props.open = false
     props.input.keys.escape = false
     props.now_ms = 1841
-    result = SheetApply(*state, props)
+    result = Sheet.SheetApply(*state, props)
     if !result.visible || result.progress != 0.0 { return 3 }
     props.now_ms = 2261
-    result = SheetApply(*state, props)
+    result = Sheet.SheetApply(*state, props)
     if !result.focus_returned { return 30 }
     if state.visible { return 31 }
 
-    drag_state := SheetStateFor()
+    drag_state := Sheet.SheetStateFor()
     drag := props
     drag.open = true
     drag.now_ms = 2000
-    drag.input = SheetInput.{}
-    result = SheetApply(*drag_state, drag)
+    drag.input = Sheet.SheetInput.{}
+    result = Sheet.SheetApply(*drag_state, drag)
     if result.progress != 0.0 || result.geometry.panel.x <=
         drag.viewport.width { return 46 }
     drag.now_ms = 2420
-    result = SheetApply(*drag_state, drag)
+    result = Sheet.SheetApply(*drag_state, drag)
     if result.progress != 1.0 { return 48 }
     if result.geometry.panel.x < 285.0 { return 47 }
     if result.geometry.panel.x > 287.0 { return 44 }
@@ -159,39 +153,39 @@ SheetBehavior :: () -> s32 {
     drag.input.pointer.x = drag_state_drag_x(drag)
     drag.input.pointer.y = drag_state_drag_y(drag)
     if !OverlayPointIn(drag.input.pointer, result.geometry.handle) { return 45 }
-    result = SheetApply(*drag_state, drag)
+    result = Sheet.SheetApply(*drag_state, drag)
     if !drag_state.dragging { return 42 }
     drag.input.pointer.pressed = false
     drag.input.pointer.x += 50.0
     drag.input.pointer.y += 50.0
-    result = SheetApply(*drag_state, drag)
+    result = Sheet.SheetApply(*drag_state, drag)
     if drag_state.drag_offset < 40.0 { return 43 }
     drag.input.pointer.down = false
-    result = SheetApply(*drag_state, drag)
+    result = Sheet.SheetApply(*drag_state, drag)
     if !result.closed_by_drag { return 40 }
     if drag_state.drag_offset < 40.0 { return 41 }
 
-    focus_state := SheetStateFor()
+    focus_state := Sheet.SheetStateFor()
     focus_state.focus_index = 3
-    if !SheetAdvanceFocus(*focus_state, 4, false) ||
+    if !Sheet.SheetAdvanceFocus(*focus_state, 4, false) ||
         focus_state.focus_index != 0 { return 5 }
-    if !SheetAdvanceFocus(*focus_state, 4, true) ||
+    if !Sheet.SheetAdvanceFocus(*focus_state, 4, true) ||
         focus_state.focus_index != 3 { return 6 }
     return 0
 }
 
-drag_state_drag_x :: (props: SheetProps) -> float32 {
+drag_state_drag_x :: (props: Sheet.Props) -> float32 {
     return props.viewport.x + props.safe_area.left +
         props.viewport.width - props.safe_area.left -
         props.safe_area.right - props.size + 12.0
 }
 
-drag_state_drag_y :: (props: SheetProps) -> float32 {
+drag_state_drag_y :: (props: Sheet.Props) -> float32 {
     return props.safe_area.top + 26.0
 }
 
 CommandPaletteBehavior :: () -> s32 {
-    commands: [3]CommandPaletteCommand
+    commands: [3]CommandPalette.CommandPaletteCommand
     commands[0].title = "File settings"
     commands[0].group = "File"
     commands[0].action = 11
@@ -202,8 +196,8 @@ CommandPaletteBehavior :: () -> s32 {
     commands[2].group = "Palette"
     commands[2].action = 13
 
-    state := CommandPaletteStateFor(1)
-    props: CommandPaletteProps
+    state := CommandPalette.CommandPaletteStateFor(1)
+    props: CommandPalette.Props
     props.key = 20
     props.id = 1020
     props.class_name = 2020
@@ -215,30 +209,30 @@ CommandPaletteBehavior :: () -> s32 {
     props.maximum_height = 180.0
     props.now_ms = 1000
     props.commands = commands[:]
-    props.surface_style = CommandPaletteSurfaceDefaultStyle()
-    props.item_style = CommandPaletteItemDefaultStyle()
+    props.surface_style = CommandPalette.CommandPaletteSurfaceDefaultStyle()
+    props.item_style = CommandPalette.CommandPaletteItemDefaultStyle()
     props.scrim_style = props.surface_style
     props.scrim_style.background = CurrentTheme().colors.scrim
     props.scrim_style.opacity = 0.7
 
-    result := CommandPaletteApply(*state, props)
+    result := CommandPalette.CommandPaletteApply(*state, props)
     if !result.changed { return 10 }
     if result.match_count != 3 { return 11 }
     if !state.group_starts[0] || state.group_starts[1] ||
         !state.group_starts[2] { return 12 }
 
     props.input.text.text = "file"
-    result = CommandPaletteApply(*state, props)
+    result = CommandPalette.CommandPaletteApply(*state, props)
     if result.match_count != 2 || state.order[0] != 0 ||
         state.order[1] != 1 || state.scores[0] <= state.scores[1] { return 2 }
     props.input.text.text = ""
     props.input.down = true
-    result = CommandPaletteApply(*state, props)
+    result = CommandPalette.CommandPaletteApply(*state, props)
     if result.highlighted != 1 { return 3 }
     props.input.down = false
     props.input.text.commit = false
     props.input.enter = true
-    result = CommandPaletteApply(*state, props)
+    result = CommandPalette.CommandPaletteApply(*state, props)
     if state.highlighted != 1 { return 50 }
     if state.match_count != 2 { return 51 }
     if state.order[1] != 1 { return 52 }
@@ -248,60 +242,60 @@ CommandPaletteBehavior :: () -> s32 {
     if !result.close_requested { return 43 }
 
     props.owner = 2
-    props.input = CommandPaletteInput.{}
+    props.input = CommandPalette.CommandPaletteInput.{}
     props.input.text.text = "file"
-    result = CommandPaletteApply(*state, props)
+    result = CommandPalette.CommandPaletteApply(*state, props)
     if !result.ownership_changed || state.owner != 2 ||
         state.query_length != 4 { return 5 }
 
     props.owner = 3
-    props.input = CommandPaletteInput.{}
-    result = CommandPaletteApply(*state, props)
+    props.input = CommandPalette.CommandPaletteInput.{}
+    result = CommandPalette.CommandPaletteApply(*state, props)
     if !result.ownership_changed || result.match_count != 3 { return 6 }
     props.input.activate_index = -1
     chunks: [3]string = .["fi", "l", "e"]
     for chunk: chunks {
         props.input.text.text = chunk
-        result = CommandPaletteApply(*state, props)
+        result = CommandPalette.CommandPaletteApply(*state, props)
     }
-    if CommandPaletteQuery(state.query[:state.query_length]) != "file" { return 60 }
+    if CommandPalette.CommandPaletteQuery(state.query[:state.query_length]) != "file" { return 60 }
     props.input.text = .{.left = true}
-    unused CommandPaletteApply(*state, props)
+    unused CommandPalette.CommandPaletteApply(*state, props)
     props.input.text = .{.backspace = true}
-    unused CommandPaletteApply(*state, props)
-    if CommandPaletteQuery(state.query[:state.query_length]) != "fie" { return 61 }
+    unused CommandPalette.CommandPaletteApply(*state, props)
+    if CommandPalette.CommandPaletteQuery(state.query[:state.query_length]) != "fie" { return 61 }
     props.input.text = .{.text = "l"}
-    unused CommandPaletteApply(*state, props)
+    unused CommandPalette.CommandPaletteApply(*state, props)
     props.input.text = .{.delete_forward = true}
-    unused CommandPaletteApply(*state, props)
-    if CommandPaletteQuery(state.query[:state.query_length]) != "fil" { return 62 }
+    unused CommandPalette.CommandPaletteApply(*state, props)
+    if CommandPalette.CommandPaletteQuery(state.query[:state.query_length]) != "fil" { return 62 }
     props.input.text = .{.text = "e"}
-    unused CommandPaletteApply(*state, props)
+    unused CommandPalette.CommandPaletteApply(*state, props)
     props.input.text = .{}
     props.input.escape = true
-    result = CommandPaletteApply(*state, props)
+    result = CommandPalette.CommandPaletteApply(*state, props)
     if !result.close_requested { return 63 }
     props.open = false
     props.input.escape = false
     props.now_ms += 1000
-    result = CommandPaletteApply(*state, props)
+    result = CommandPalette.CommandPaletteApply(*state, props)
     if result.visible { return 64 }
     props.open = true
-    unused CommandPaletteApply(*state, props)
-    if CommandPaletteQuery(state.query[:state.query_length]) != "file" { return 65 }
+    unused CommandPalette.CommandPaletteApply(*state, props)
+    if CommandPalette.CommandPaletteQuery(state.query[:state.query_length]) != "file" { return 65 }
     props.input.text = .{.select_all = true}
-    unused CommandPaletteApply(*state, props)
+    unused CommandPalette.CommandPaletteApply(*state, props)
     props.input.text = .{.text = "é🌿"}
-    unused CommandPaletteApply(*state, props)
+    unused CommandPalette.CommandPaletteApply(*state, props)
     props.input.text = .{.backspace = true}
-    unused CommandPaletteApply(*state, props)
-    if CommandPaletteQuery(state.query[:state.query_length]) != "é" { return 66 }
+    unused CommandPalette.CommandPaletteApply(*state, props)
+    if CommandPalette.CommandPaletteQuery(state.query[:state.query_length]) != "é" { return 66 }
     return 0
 }
 
 HoverCardBehavior :: () -> s32 {
-    state := HoverCardStateFor()
-    props: HoverCardProps
+    state := HoverCard.HoverCardStateFor()
+    props: HoverCard.Props
     props.key = 30
     props.id = 1030
     props.class_name = 2030
@@ -321,32 +315,32 @@ HoverCardBehavior :: () -> s32 {
     props.pointer.over_anchor = true
     props.pointer.x = 3.0
     props.pointer.y = 3.0
-    props.style = HoverCardDefaultStyle()
-    props.action_style = HoverCardActionDefaultStyle()
+    props.style = HoverCard.HoverCardDefaultStyle()
+    props.action_style = HoverCard.HoverCardActionDefaultStyle()
 
-    result := HoverCardApply(*state, props)
+    result := HoverCard.HoverCardApply(*state, props)
     if result.open || result.remaining_delay_ms < 449.0 { return 1 }
     props.now_ms = 550
-    result = HoverCardApply(*state, props)
+    result = HoverCard.HoverCardApply(*state, props)
     if !result.open || !result.changed { return 2 }
 
     props.pointer.over_anchor = false
     props.pointer.over_content = false
     props.now_ms = 650
-    result = HoverCardApply(*state, props)
+    result = HoverCard.HoverCardApply(*state, props)
     if result.closed || result.remaining_grace_ms < 99.0 { return 3 }
     props.now_ms = 851
-    result = HoverCardApply(*state, props)
+    result = HoverCard.HoverCardApply(*state, props)
     if !result.closed || state.open { return 4 }
 
-    action_state := HoverCardStateFor()
+    action_state := HoverCard.HoverCardStateFor()
     props.now_ms = 100
     props.pointer.over_anchor = true
-    unused HoverCardApply(*action_state, props)
+    unused HoverCard.HoverCardApply(*action_state, props)
     props.now_ms = 550
-    unused HoverCardApply(*action_state, props)
+    unused HoverCard.HoverCardApply(*action_state, props)
     props.activate_action = true
-    result = HoverCardApply(*action_state, props)
+    result = HoverCard.HoverCardApply(*action_state, props)
     if result.action != 77 { return 50 }
     if !result.action_selected { return 51 }
     if !result.closed { return 52 }
@@ -354,8 +348,8 @@ HoverCardBehavior :: () -> s32 {
 }
 
 ConfirmPopoverBehavior :: () -> s32 {
-    state := ConfirmPopoverStateFor()
-    props: ConfirmPopoverProps
+    state := ConfirmPopover.ConfirmPopoverStateFor()
+    props: ConfirmPopover.Props
     props.key = 40
     props.id = 1040
     props.class_name = 2040
@@ -371,53 +365,53 @@ ConfirmPopoverBehavior :: () -> s32 {
     props.danger = true
     props.open = true
     props.now_ms = 1000
-    props.style = ConfirmPopoverDefaultStyle()
-    props.confirm_style = ConfirmPopoverConfirmDefaultStyle(true)
-    props.cancel_style = ConfirmPopoverDefaultStyle()
+    props.style = ConfirmPopover.ConfirmPopoverDefaultStyle()
+    props.confirm_style = ConfirmPopover.ConfirmPopoverConfirmDefaultStyle(true)
+    props.cancel_style = ConfirmPopover.ConfirmPopoverDefaultStyle()
 
-    result := ConfirmPopoverApply(*state, props)
+    result := ConfirmPopover.ConfirmPopoverApply(*state, props)
     if !result.visible || !result.focus_on_confirm ||
         result.confirm_node >= 0 { return 1 }
     props.now_ms = 1280
     props.keys.enter = true
-    result = ConfirmPopoverApply(*state, props)
+    result = ConfirmPopover.ConfirmPopoverApply(*state, props)
     if !result.confirmed || result.cancelled || !result.closed {
         return 2
     }
 
-    escape_state := ConfirmPopoverStateFor()
+    escape_state := ConfirmPopover.ConfirmPopoverStateFor()
     escape := props
     escape.keys = OverlayKeyInput.{}
     escape.keys.escape = true
-    result = ConfirmPopoverApply(*escape_state, escape)
+    result = ConfirmPopover.ConfirmPopoverApply(*escape_state, escape)
     if !result.cancelled || result.confirmed { return 3 }
 
-    outside_state := ConfirmPopoverStateFor()
+    outside_state := ConfirmPopover.ConfirmPopoverStateFor()
     outside := props
     outside.keys = OverlayKeyInput.{}
     outside.pointer.released = true
     outside.pointer.x = 20.0
     outside.pointer.y = 20.0
-    result = ConfirmPopoverApply(*outside_state, outside)
+    result = ConfirmPopover.ConfirmPopoverApply(*outside_state, outside)
     if !result.closed || result.confirmed || result.cancelled {
         return 4
     }
 
-    close_state := ConfirmPopoverStateFor()
+    close_state := ConfirmPopover.ConfirmPopoverStateFor()
     closing := props
     closing.keys = OverlayKeyInput.{}
-    unused ConfirmPopoverApply(*close_state, closing)
+    unused ConfirmPopover.ConfirmPopoverApply(*close_state, closing)
     closing.open = false
     closing.now_ms = 1281
-    unused ConfirmPopoverApply(*close_state, closing)
+    unused ConfirmPopover.ConfirmPopoverApply(*close_state, closing)
     closing.now_ms = 1561
-    result = ConfirmPopoverApply(*close_state, closing)
+    result = ConfirmPopover.ConfirmPopoverApply(*close_state, closing)
     if !result.focus_returned || result.visible { return 5 }
     return 0
 }
 
 GuidedTourBehavior :: () -> s32 {
-    steps: [2]GuidedTourStep
+    steps: [2]GuidedTour.GuidedTourStep
     steps[0].target_key = 90
     steps[0].target = Rectangle.{160.0, 80.0, 100.0, 40.0}
     steps[0].title = "Select data"
@@ -429,8 +423,8 @@ GuidedTourBehavior :: () -> s32 {
     steps[1].body = "Start the portable app"
     steps[1].placement = .OverlayPlaceTopStart
 
-    state := GuidedTourStateFor(0)
-    props: GuidedTourProps
+    state := GuidedTour.GuidedTourStateFor(0)
+    props: GuidedTour.Props
     props.key = 50
     props.id = 1050
     props.class_name = 2050
@@ -446,47 +440,47 @@ GuidedTourBehavior :: () -> s32 {
     props.count_format = "%d / %d"
     props.viewport = Viewport()
     props.now_ms = 1000
-    props.card_style = GuidedTourCardDefaultStyle()
-    props.scrim_style = GuidedTourScrimDefaultStyle()
-    props.button_style = GuidedTourButtonDefaultStyle()
+    props.card_style = GuidedTour.GuidedTourCardDefaultStyle()
+    props.scrim_style = GuidedTour.GuidedTourScrimDefaultStyle()
+    props.button_style = GuidedTour.GuidedTourButtonDefaultStyle()
 
-    result := GuidedTourApply(*state, props)
+    result := GuidedTour.GuidedTourApply(*state, props)
     if !result.visible || result.geometry.band_count != 4 ||
         result.geometry.hole.x != 148.0 || result.geometry.hole.y != 68.0 ||
         result.geometry.hole.width != 124.0 ||
         result.geometry.hole.height != 64.0 { return 1 }
     props.now_ms = 1280
     props.input.enter = true
-    result = GuidedTourApply(*state, props)
+    result = GuidedTour.GuidedTourApply(*state, props)
     if result.action != .GuidedTourActionNext || state.step != 1 { return 2 }
     props.input.enter = false
     props.input.left = true
-    result = GuidedTourApply(*state, props)
+    result = GuidedTour.GuidedTourApply(*state, props)
     if result.action != .GuidedTourActionBack || state.step != 0 { return 3 }
     props.input.left = false
     props.input.right = true
-    result = GuidedTourApply(*state, props)
+    result = GuidedTour.GuidedTourApply(*state, props)
     if result.action != .GuidedTourActionNext || state.step != 1 { return 4 }
     props.input.right = false
     props.input.enter = true
-    result = GuidedTourApply(*state, props)
+    result = GuidedTour.GuidedTourApply(*state, props)
     if result.action != .GuidedTourActionDone || state.step != -1 ||
         result.visible { return 5 }
 
-    skip_state := GuidedTourStateFor(0)
+    skip_state := GuidedTour.GuidedTourStateFor(0)
     skip := props
-    skip.input = GuidedTourInput.{}
+    skip.input = GuidedTour.GuidedTourInput.{}
     skip.input.escape = true
-    result = GuidedTourApply(*skip_state, skip)
+    result = GuidedTour.GuidedTourApply(*skip_state, skip)
     if result.action != .GuidedTourActionSkip || skip_state.step != -1 {
         return 6
     }
 
-    focus_state := GuidedTourStateFor(0)
+    focus_state := GuidedTour.GuidedTourStateFor(0)
     focus_state.focus_index = 2
-    if !GuidedTourAdvanceFocus(*focus_state, false) ||
+    if !GuidedTour.GuidedTourAdvanceFocus(*focus_state, false) ||
         focus_state.focus_index != 0 { return 7 }
-    if !GuidedTourAdvanceFocus(*focus_state, true) ||
+    if !GuidedTour.GuidedTourAdvanceFocus(*focus_state, true) ||
         focus_state.focus_index != 2 { return 8 }
     return 0
 }
@@ -508,8 +502,8 @@ PendingFillRadius :: (session: Session, radius: float32) -> bool {
 RenderOverlayFrame :: (session: Session, frame: u64,
     dark: bool) -> bool {
     TreeStart(session, frame, Viewport())
-    tooltip_state := TooltipStateFor(1)
-    tooltip: TooltipProps
+    tooltip_state := Tooltip.TooltipStateFor(1)
+    tooltip: Tooltip.Props
     tooltip.key = 1
     tooltip.id = 1001
     tooltip.class_name = 2001
@@ -521,7 +515,7 @@ RenderOverlayFrame :: (session: Session, frame: u64,
     tooltip.delay_ms = 550.0
     tooltip.passive_delay_ms = 1000.0
     tooltip.warm_ms = 400.0
-    tooltip.style = TooltipDefaultStyle()
+    tooltip.style = Tooltip.TooltipDefaultStyle()
     tooltip.style.radius = 11.0
     tooltip.style.font_size = 17.0
     tooltip.style.motion_duration = 333.0
@@ -530,9 +524,9 @@ RenderOverlayFrame :: (session: Session, frame: u64,
     tooltip.pointer.x = 30.0
     tooltip.pointer.y = 30.0
     tooltip.now_ms = 1000
-    unused TooltipApply(*tooltip_state, tooltip)
+    unused Tooltip.TooltipApply(*tooltip_state, tooltip)
     tooltip.now_ms = 1550
-    tooltip_result := Tooltip(session, tooltip, *tooltip_state)
+    tooltip_result := Tooltip.Draw(session, tooltip, *tooltip_state)
     if !tooltip_result.visible { render_overlay_failure = 15; return false }
     if !tooltip_result.fit.visible { render_overlay_failure = 16; return false }
     if tooltip_result.node < 0 { render_overlay_failure = 17; return false }
@@ -540,8 +534,8 @@ RenderOverlayFrame :: (session: Session, frame: u64,
         render_overlay_failure = 14; return false
     }
 
-    sheet_state := SheetStateFor()
-    sheet: SheetProps
+    sheet_state := Sheet.SheetStateFor()
+    sheet: Sheet.Props
     sheet.key = 10
     sheet.id = 1010
     sheet.class_name = 2010
@@ -551,27 +545,27 @@ RenderOverlayFrame :: (session: Session, frame: u64,
     sheet.side = ifx dark then .OverlaySideTop else .OverlaySideBottom
     sheet.size = 220.0
     sheet.viewport = Viewport()
-    sheet.safe_area = SheetSafeArea.{10.0, 12.0, 14.0, 16.0}
+    sheet.safe_area = Sheet.SheetSafeArea.{10.0, 12.0, 14.0, 16.0}
     sheet.now_ms = 1420
-    sheet.surface_style = SheetSurfaceDefaultStyle()
+    sheet.surface_style = Sheet.SheetSurfaceDefaultStyle()
     sheet.surface_style.radius = 13.0
     sheet.surface_style.font_size = 18.0
     sheet.surface_style.motion_duration = 351.0
-    sheet.scrim_style = SheetScrimDefaultStyle()
-    sheet_result := Sheet(session, sheet, *sheet_state)
+    sheet.scrim_style = Sheet.SheetScrimDefaultStyle()
+    sheet_result := Sheet.Draw(session, sheet, *sheet_state)
     if sheet_result.node < 0 ||
         !PendingFillRadius(session, 13.0) { render_overlay_failure = 2; return false }
 
-    commands: [2]CommandPaletteCommand
+    commands: [2]CommandPalette.CommandPaletteCommand
     commands[0].title = "File"
     commands[0].group = "File"
     commands[0].action = 11
     commands[1].title = "Format"
     commands[1].group = "Edit"
     commands[1].action = 12
-    palette_state := CommandPaletteStateFor(1)
-    unused CommandPaletteSetQuery(*palette_state, "f")
-    palette: CommandPaletteProps
+    palette_state := CommandPalette.CommandPaletteStateFor(1)
+    unused CommandPalette.CommandPaletteSetQuery(*palette_state, "f")
+    palette: CommandPalette.Props
     palette.key = 20
     palette.id = 1020
     palette.class_name = 2020
@@ -583,21 +577,21 @@ RenderOverlayFrame :: (session: Session, frame: u64,
     palette.maximum_height = 180.0
     palette.now_ms = 1280
     palette.commands = commands[:]
-    palette.surface_style = CommandPaletteSurfaceDefaultStyle()
+    palette.surface_style = CommandPalette.CommandPaletteSurfaceDefaultStyle()
     palette.surface_style.radius = 15.0
     palette.surface_style.font_size = 19.0
     palette.surface_style.motion_duration = 367.0
-    palette.item_style = CommandPaletteItemDefaultStyle()
+    palette.item_style = CommandPalette.CommandPaletteItemDefaultStyle()
     palette.scrim_style = palette.surface_style
-    palette_result := CommandPalette(session, palette, *palette_state)
+    palette_result := CommandPalette.Draw(session, palette, *palette_state)
     if palette_result.node < 0 || palette_result.match_count != 2 {
         render_overlay_failure = 3; return false
     }
 
-    hover_state := HoverCardStateFor()
+    hover_state := HoverCard.HoverCardStateFor()
     hover_state.open = true
     hover_state.transition_start_ms = 0
-    hover: HoverCardProps
+    hover: HoverCard.Props
     hover.key = 30
     hover.id = 1030
     hover.class_name = 2030
@@ -611,19 +605,19 @@ RenderOverlayFrame :: (session: Session, frame: u64,
     hover.delay_ms = 450.0
     hover.grace_ms = 200.0
     hover.now_ms = 280
-    hover.style = HoverCardDefaultStyle()
+    hover.style = HoverCard.HoverCardDefaultStyle()
     hover.style.radius = 17.0
     hover.style.font_size = 20.0
     hover.style.motion_duration = 381.0
-    hover.action_style = HoverCardActionDefaultStyle()
-    hover_result := HoverCard(session, hover, *hover_state)
+    hover.action_style = HoverCard.HoverCardActionDefaultStyle()
+    hover_result := HoverCard.Draw(session, hover, *hover_state)
     if hover_result.node < 0 {
         render_overlay_failure = 4
         return false
     }
 
-    confirm_state := ConfirmPopoverStateFor()
-    confirm: ConfirmPopoverProps
+    confirm_state := ConfirmPopover.ConfirmPopoverStateFor()
+    confirm: ConfirmPopover.Props
     confirm.key = 40
     confirm.id = 1040
     confirm.class_name = 2040
@@ -636,21 +630,21 @@ RenderOverlayFrame :: (session: Session, frame: u64,
     confirm.danger = true
     confirm.open = true
     confirm.now_ms = 1280
-    confirm.style = ConfirmPopoverDefaultStyle()
-    confirm.confirm_style = ConfirmPopoverConfirmDefaultStyle(true)
-    confirm.cancel_style = ConfirmPopoverDefaultStyle()
-    confirm_result := ConfirmPopover(session, confirm, *confirm_state)
+    confirm.style = ConfirmPopover.ConfirmPopoverDefaultStyle()
+    confirm.confirm_style = ConfirmPopover.ConfirmPopoverConfirmDefaultStyle(true)
+    confirm.cancel_style = ConfirmPopover.ConfirmPopoverDefaultStyle()
+    confirm_result := ConfirmPopover.Draw(session, confirm, *confirm_state)
     if confirm_result.node < 0 { render_overlay_failure = 5; return false }
 
-    tour_steps: [2]GuidedTourStep
+    tour_steps: [2]GuidedTour.GuidedTourStep
     tour_steps[0].target = Rectangle.{160.0, 80.0, 100.0, 40.0}
     tour_steps[0].title = "Tour"
     tour_steps[0].placement = .OverlayPlaceBottomStart
     tour_steps[1].target = Rectangle.{180.0, 140.0, 100.0, 40.0}
     tour_steps[1].title = "Finish"
     tour_steps[1].placement = .OverlayPlaceTopStart
-    tour_state := GuidedTourStateFor(0)
-    tour: GuidedTourProps
+    tour_state := GuidedTour.GuidedTourStateFor(0)
+    tour: GuidedTour.Props
     tour.key = 50
     tour.id = 1050
     tour.class_name = 2050
@@ -663,13 +657,13 @@ RenderOverlayFrame :: (session: Session, frame: u64,
     tour.skip_label = "Skip"
     tour.viewport = Viewport()
     tour.now_ms = 1280
-    tour.card_style = GuidedTourCardDefaultStyle()
+    tour.card_style = GuidedTour.GuidedTourCardDefaultStyle()
     tour.card_style.radius = 19.0
     tour.card_style.font_size = 21.0
     tour.card_style.motion_duration = 397.0
-    tour.scrim_style = GuidedTourScrimDefaultStyle()
-    tour.button_style = GuidedTourButtonDefaultStyle()
-    tour_result := GuidedTour(session, tour, *tour_state)
+    tour.scrim_style = GuidedTour.GuidedTourScrimDefaultStyle()
+    tour.button_style = GuidedTour.GuidedTourButtonDefaultStyle()
+    tour_result := GuidedTour.Draw(session, tour, *tour_state)
     if tour_result.card_node < 0 ||
         !PendingFillRadius(session, 19.0) { render_overlay_failure = 6; return false }
 

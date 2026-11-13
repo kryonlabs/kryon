@@ -1,6 +1,6 @@
 #import "geometry"
 
-FieldsetProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32

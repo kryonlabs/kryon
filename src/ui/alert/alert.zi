@@ -1,7 +1,7 @@
-#import "box_props"
-#import "box"
-#import "button_props"
-#import "button"
+Box :: #import "box";
+Button :: #import "button";
+SvgIcon :: #import "svgicon";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -9,11 +9,7 @@
 #import "session"
 #import "style"
 #import "style_sheet"
-#import "svg_icon_props"
-#import "svgicon"
 #import "text_align"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -32,7 +28,7 @@ AlertState :: struct {
     dismissed: bool
 }
 
-AlertProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     title: string
@@ -84,7 +80,7 @@ AlertToneColor :: (tone: AlertTone) -> u32 {
 }
 
 #program_export
-AlertLayoutFor :: (props: AlertProps) -> AlertLayout {
+AlertLayoutFor :: (props: Props) -> AlertLayout {
     layout: AlertLayout
     layout.bounds = props.bounds
     if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return layout }
@@ -117,8 +113,7 @@ AlertLayoutFor :: (props: AlertProps) -> AlertLayout {
     return layout
 }
 
-#program_export
-Alert :: (session: Session, props: AlertProps,
+Draw :: (session: Session, props: Props,
     state: *AlertState) -> AlertResult {
     result: AlertResult
     result.state = state.*
@@ -142,26 +137,26 @@ Alert :: (session: Session, props: AlertProps,
         border = StateLayer(border, result.tone_color,
             ifx dark then cast(u32)20 else cast(u32)12)
     }
-    result.node = Box(session, BoxProps.{.key = props.key,
+    result.node = Box.Draw(session, Box.Props.{.key = props.key,
         .bounds = layout.bounds, .id = props.id, .class_name = props.class_name,
         .fill = ColorFromPacked(background), .border = ColorFromPacked(border),
         .radius = CurrentThemeMetric(.ThemeMetricRadiusControl)})
     if result.node < 0 || !TreePushScope(session, result.node) { return result }
-    unused SvgIcon(session, SvgIconProps.{.bounds = layout.icon,
+    unused SvgIcon.Draw(session, SvgIcon.Props.{.bounds = layout.icon,
         .shape = result.icon_shape, .color = ColorFromPacked(result.tone_color)})
-    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 1),
-        .bounds = layout.title, .text = props.title, .font = Text14,
+    unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 1),
+        .bounds = layout.title, .text = props.title, .size = Text.Text14,
         .id = props.id, .class_name = props.class_name,
-        .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapEllipsis})
+        .align = TextAlign.TextAlignStart, .wrap = Text.Wrap.TextWrapEllipsis})
     if props.description != "" {
-        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 2),
-            .bounds = layout.description, .text = props.description, .font = Text14,
+        unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 2),
+            .bounds = layout.description, .text = props.description, .size = Text.Text14,
             .id = props.id, .class_name = props.class_name,
-            .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapAnywhere})
+            .align = TextAlign.TextAlignStart, .wrap = Text.Wrap.TextWrapAnywhere})
     }
     if props.dismissible {
         label := ifx props.dismiss_label != "" then props.dismiss_label else "Dismiss"
-        if Button(session, ButtonProps.{.key = WidgetPartKey(props.key, 3),
+        if Button.Draw(session, Button.Props.{.key = WidgetPartKey(props.key, 3),
             .bounds = layout.dismiss, .label = label,
             .icon_only = true, .circle = true,
             .icon_shape = "S1.8rr:M6 6L18 18M18 6L6 18",

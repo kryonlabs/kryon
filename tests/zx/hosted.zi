@@ -1,16 +1,12 @@
 #import "kryon/app_context"
 #import "kryon/app_protocol"
 #import "kryon/geometry"
-#import "kryon/button_widget"
-#import "kryon/button_props"
-#import "kryon/text_widget"
-#import "kryon/text_props"
-#import "kryon/image_widget"
-#import "kryon/image_props"
-#import "kryon/joystick"
-#import "kryon/direction_pad"
-#import "kryon/scroll_widget"
-#import "kryon/scroll_props"
+Button :: #import "kryon/button";
+DirectionPad :: #import "kryon/direction_pad";
+Image :: #import "kryon/image";
+Joystick :: #import "kryon/joystick";
+Scroll :: #import "kryon/scroll";
+Text :: #import "kryon/text";
 #import "kryon/tree"
 
 loaded: bool;
@@ -45,11 +41,11 @@ main :: () -> s32 {
         if AppSupports("unavailable.service") { return 2 }
         if AppService("unavailable.service", "") != "{\"status\":\"unavailable\"}" { return 3 }
     }
-    button: ButtonProps
+    button: Button.Props
     button.key = cast(u64)1
     button.bounds = Rectangle.{40.0, 40.0, 240.0, 64.0}
     button.label = "Save a portable document"
-    if Button(AppSession(), button) > 0 {
+    if Button.Draw(AppSession(), button) > 0 {
         // Several documents in one interaction must share the browser host's
         // flush, rather than synchronizing the whole mount for each file.
         names: [8]string = .["batch/1", "batch/2", "batch/3", "batch/4",
@@ -60,29 +56,29 @@ main :: () -> s32 {
         clicked = true
         print("Hosted document clicked\n")
     }
-    label: TextProps
+    label: Text.Props
     label.bounds = Rectangle.{40.0, 128.0, 400.0, 40.0}
     label.text = ifx clicked then "Saved document" else "New document"
-    label.font = 24
-    Text(AppSession(), label)
-    image: ImageProps
+    label.size = 24
+    Text.Draw(AppSession(), label)
+    image: Image.Props
     image.bounds = Rectangle.{500.0, 80.0, 200.0, 200.0}
     image.asset_path = AppAssetPath("assets/red.png")
-    Image(AppSession(), image)
+    Image.Draw(AppSession(), image)
     if AppKey() == 263 { print("Hosted key step\n") }
-    swipe := SwipeArea(AppSession(), SwipeAreaProps.{.key = cast(u64)31000, .id = 31000,
+    swipe := Joystick.SwipeArea(AppSession(), Joystick.SwipeAreaProps.{.key = cast(u64)31000, .id = 31000,
             .bounds = Rectangle.{40.0, 320.0, 300.0, 120.0}, .now = AppNow(), .repeat_seconds = 0.1})
     if swipe.held { print("Hosted swipe step\n") }
     if swipe.lean == 2 && !swipe_leaned { print("Hosted swipe leans right\n") }
     swipe_leaned = swipe.lean == 2
     if swipe_was_down && !swipe.down { print("Hosted swipe released\n") }
     swipe_was_down = swipe.down
-    stick := Joystick(AppSession(), JoystickProps.{.key = cast(u64)32000, .id = 32000,
+    stick := Joystick.Draw(AppSession(), Joystick.Props.{.key = cast(u64)32000, .id = 32000,
             .bounds = Rectangle.{400.0, 320.0, 200.0, 120.0}, .now = AppNow(), .repeat_seconds = 0.1})
     if stick.step { print("Hosted joystick step\n") }
     if joystick_was_active && stick.direction < 0 { print("Hosted joystick released\n") }
     joystick_was_active = stick.direction >= 0
-    pad := DirectionPad(AppSession(), DirectionPadProps.{.key = cast(u64)34000, .id = 34000,
+    pad := DirectionPad.Draw(AppSession(), DirectionPad.Props.{.key = cast(u64)34000, .id = 34000,
             .bounds = Rectangle.{640.0, 300.0, 160.0, 160.0}, .now = AppNow(), .repeat_seconds = 0.1, .floating = true})
     if pad.step {
         if pad.direction == 0 { print("Hosted pad step left\n") }
@@ -90,7 +86,7 @@ main :: () -> s32 {
         if pad.direction == 2 { print("Hosted pad step right\n") }
         if pad.direction == 3 { print("Hosted pad step down\n") }
     }
-    scroll := Scroll(AppSession(), ScrollProps.{.key = cast(u64)33000,
+    scroll := Scroll.Draw(AppSession(), Scroll.Props.{.key = cast(u64)33000,
             .bounds = Rectangle.{40.0, 460.0, 300.0, 120.0},
             .content_height = 480, .scroll_offset = scroll_offset})
     scroll_offset = scroll.scroll_offset
@@ -99,10 +95,10 @@ main :: () -> s32 {
     if !at_end && scroll_at_end { print("Hosted scroll left end\n") }
     scroll_at_end = at_end
     if scroll.opened {
-        Text(AppSession(), TextProps.{.bounds = Rectangle.{scroll.content.x,
-                    scroll.content.y, 240.0, 40.0}, .text = "First row", .font = 24})
-        Text(AppSession(), TextProps.{.bounds = Rectangle.{scroll.content.x,
-                    scroll.content.y + 440.0, 240.0, 40.0}, .text = "Last row", .font = 24})
+        Text.Draw(AppSession(), Text.Props.{.bounds = Rectangle.{scroll.content.x,
+                    scroll.content.y, 240.0, 40.0}, .text = "First row", .size = 24})
+        Text.Draw(AppSession(), Text.Props.{.bounds = Rectangle.{scroll.content.x,
+                    scroll.content.y + 440.0, 240.0, 40.0}, .text = "Last row", .size = 24})
         End(AppSession())
     }
     return 0

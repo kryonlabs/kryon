@@ -1,24 +1,21 @@
+using SegmentedControl :: #import "segmented_control_props";
+Button :: #import "button";
 // Portable compositions use the same widget as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "segmented_control_props"
     host_api :: #system_library "host_api";
-    SegmentedControlHostedHost :: (session: Session, props: SegmentedControlProps,
-        options: []SegmentOption) -> SegmentedControlResult #foreign host_api;
-    #program_export
-    SegmentedControl :: (session: Session, props: SegmentedControlProps,
-        options: []SegmentOption) -> SegmentedControlResult {
+    SegmentedControlHostedHost :: (session: Session, props: SegmentedControl.Props,
+        options: []SegmentedControl.SegmentOption) -> SegmentedControl.SegmentedControlResult #foreign host_api;
+        Draw :: (session: Session, props: SegmentedControl.Props,
+        options: []SegmentedControl.SegmentOption) -> SegmentedControl.SegmentedControlResult {
         return SegmentedControlHostedHost(session, props, options)
     }
 } else {
     #import "session"
-    #import "button_props"
-    #import "button"
     #import "control_props"
     #import "font_metrics"
     #import "geometry"
     #import "segmented_control_behavior"
-    #import "segmented_control_props"
     #import "style"
     #import "style_sheet"
     #import "tree"
@@ -51,7 +48,7 @@
     }
 
     #program_export
-    SegmentedControlFaceFor :: (props: SegmentedControlProps,
+    SegmentedControlFaceFor :: (props: SegmentedControl.Props,
         kind: s32) -> StyleFrame {
         state: s32 = ButtonStateNormal
         if props.disabled { state = ButtonStateDisabled }
@@ -66,14 +63,14 @@
     }
 
     #program_export
-    SegmentedOptionKey :: (option: SegmentOption,
+    SegmentedOptionKey :: (option: SegmentedControl.SegmentOption,
         index: s32) -> u64 {
         if option.key != cast(u64)0 { return option.key }
         return cast(u64)(index + 1)
     }
 
     #program_export
-    SegmentedControlMetricsFor :: (props: SegmentedControlProps) -> SegmentedMetrics {
+    SegmentedControlMetricsFor :: (props: SegmentedControl.Props) -> SegmentedMetrics {
         control: StyleFrame = SegmentedControlFaceFor(props,
             StyleKindSegmentedControl())
         segment: StyleFrame = SegmentedControlFaceFor(props,
@@ -84,8 +81,8 @@
     }
 
     #program_export
-    SegmentedControlHeight :: (session: Session, props: SegmentedControlProps,
-        options: []SegmentOption) -> s32 {
+    SegmentedControlHeight :: (session: Session, props: SegmentedControl.Props,
+        options: []SegmentedControl.SegmentOption) -> s32 {
         metrics: SegmentedMetrics = SegmentedControlMetricsFor(props)
         if (cast(s32)options.count) <= 0 || metrics.row_height <= 0 { return 0 }
         bounds: Rectangle = props.bounds
@@ -115,10 +112,9 @@
 
     // A segment is a checked Button with the Segment style kind. Option keys
     // preserve identity when caller owned options move between rows or positions.
-    #program_export
-    SegmentedControl :: (session: Session, props: SegmentedControlProps,
-        options: []SegmentOption) -> SegmentedControlResult {
-        result: SegmentedControlResult = .{.node = -1, .clicked_index = -1, .selected_index = -1}
+        Draw :: (session: Session, props: SegmentedControl.Props,
+        options: []SegmentedControl.SegmentOption) -> SegmentedControl.SegmentedControlResult {
+        result: SegmentedControl.SegmentedControlResult = .{.node = -1, .clicked_index = -1, .selected_index = -1}
         if props.has_selection { result.selected_index = props.selected_index }
         result.height = SegmentedControlHeight(session, props, options)
         bounds: Rectangle = props.bounds
@@ -207,8 +203,8 @@
                 row_item: s32 = 0
                 while row_item < row_count {
                     item_index: s32 = row_start + row_item
-                    option: SegmentOption = options[item_index]
-                    button: ButtonProps
+                    option: SegmentedControl.SegmentOption = options[item_index]
+                    button: Button.Props
                     button.key = SegmentedOptionKey(option, item_index)
                     button.bounds = Rectangle.{cast(float32)item_x,
                         cast(float32)row_y, cast(float32)row.button_width,
@@ -224,7 +220,7 @@
                     button.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
                     button.selected = item_index == result.selected_index
                     button.disabled = props.disabled || option.disabled
-                    SubmitButton(session, button, result.node)
+                    Button.SubmitButton(session, button, result.node)
                     item_x += row.button_width + metrics.gap
                     row_item += 1
                 }

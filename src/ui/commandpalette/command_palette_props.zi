@@ -1,8 +1,8 @@
+TextField :: #import "textfield";
 #import "control_props"
 #import "geometry"
 #import "style"
 #import "style_sheet"
-#import "text_input_props"
 #import "theme"
 #import "tooltip_common"
 
@@ -20,7 +20,7 @@ CommandPaletteCommand :: struct {
 }
 
 CommandPaletteInput :: struct {
-    text: TextFieldInput
+    text: TextField.Input
     escape: bool
     up: bool
     down: bool
@@ -29,7 +29,7 @@ CommandPaletteInput :: struct {
     activate_index: s32
 }
 
-CommandPaletteProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     class_name: s32

@@ -1,6 +1,5 @@
-#import "button_props"
+Button :: #import "button";
 #import "button_behavior"
-#import "button"
 #import "control_props"
 #import "drawing_props"
 #import "focus"
@@ -35,9 +34,9 @@ ConfirmButtonState :: struct {
     initialized: bool
 }
 
-ConfirmButtonProps :: struct {
-    button: ButtonProps
-    confirm_button: ButtonProps
+Props :: struct {
+    button: Button.Props
+    confirm_button: Button.Props
     now: float32
     timeout: float32
     arm_duration: float32
@@ -75,7 +74,7 @@ ConfirmButtonMotion :: (elapsed: float32, duration: float32,
 
 #program_export
 ConfirmButtonApply :: (state: *ConfirmButtonState,
-    props: ConfirmButtonProps) -> ConfirmButtonResult {
+    props: Props) -> ConfirmButtonResult {
     result: ConfirmButtonResult
     result.node = -1
     result.remaining = -1.0
@@ -140,7 +139,7 @@ ConfirmButtonApply :: (state: *ConfirmButtonState,
 }
 
 #scope_file
-ConfirmFace :: (props: ConfirmButtonProps) -> ButtonProps {
+ConfirmFace :: (props: Props) -> Button.Props {
     face := props.confirm_button
     if face.key == cast(u64)0 { face.key = props.button.key }
     if face.bounds.width <= 0.0 { face.bounds = props.button.bounds }
@@ -153,9 +152,9 @@ ConfirmFace :: (props: ConfirmButtonProps) -> ButtonProps {
     return face
 }
 
-PaintConfirmFace :: (session: Session, node: s32, props: ButtonProps,
+PaintConfirmFace :: (session: Session, node: s32, props: Button.Props,
     bounds: Rectangle, state: s32, alpha: float32, focus: bool) {
-    face := ButtonInstalledFaceFor(props, state)
+    face := Button.ButtonInstalledFaceFor(props, state)
     if alpha < 1.0 {
         face.fields |= cast(u32)StyleOpacity
         face.opacity = alpha
@@ -167,15 +166,14 @@ PaintConfirmFace :: (session: Session, node: s32, props: ButtonProps,
         label_width = GlyphWidth(props.label, font, face.typeface)
         label_height = GlyphLineHeight(font, face.typeface)
     }
-    detail := ButtonDetailSize(props, font, face)
+    detail := Button.ButtonDetailSize(props, font, face)
     if cast(s32)detail.x > label_width { label_width = cast(s32)detail.x }
-    PaintButtonForNode(session, node, props, bounds, face, font,
+    Button.PaintButtonForNode(session, node, props, bounds, face, font,
         label_width, label_height, focus)
 }
 
 #scope_export
-#program_export
-ConfirmButton :: (session: Session, props: ConfirmButtonProps,
+Draw :: (session: Session, props: Props,
     state: *ConfirmButtonState) -> ConfirmButtonResult {
     idle := props.button
     armed := ConfirmFace(props)
@@ -187,8 +185,8 @@ ConfirmButton :: (session: Session, props: ConfirmButtonProps,
     if armed.key == cast(u64)0 { armed.key = idle.key }
     props.button = idle
     props.confirm_button = armed
-    props.idle_width = ButtonMeasure(idle).width
-    props.confirm_width = ButtonMeasure(armed).width
+    props.idle_width = Button.ButtonMeasure(idle).width
+    props.confirm_width = Button.ButtonMeasure(armed).width
     key := idle.key
     previous: s32 = -1
     if SessionValid(session) && TreeIsBuilding(session) {
@@ -228,13 +226,13 @@ ConfirmButton :: (session: Session, props: ConfirmButtonProps,
     submitted.bounds = props.button.bounds
     submitted.bounds.width = result.width
     if submitted.bounds.height <= 0.0 {
-        submitted.bounds.height = ButtonMeasure(submitted).height
+        submitted.bounds.height = Button.ButtonMeasure(submitted).height
     }
     result.bounds = submitted.bounds
     submitted.invisible = true
     submitted.state = cast(ButtonState)ButtonStateAuto
     submitted_before := TreeSubmittedCount(session)
-    unused Button(session, submitted)
+    unused Button.Draw(session, submitted)
     submitted_after := TreeSubmittedCount(session)
     if submitted_after > submitted_before { result.node = submitted_after - 1 }
     if result.node < 0 { return result }
@@ -248,7 +246,7 @@ ConfirmButton :: (session: Session, props: ConfirmButtonProps,
             result.progress, false)
     }
     if focus_visible {
-        face := ButtonInstalledFaceFor(submitted, face_state)
+        face := Button.ButtonInstalledFaceFor(submitted, face_state)
         radius := ButtonCornerRadius(face.radius, result.bounds.height)
         if submitted.pill || submitted.circle { radius = result.bounds.height * 0.5 }
         focus_color := face.focus
@@ -257,7 +255,7 @@ ConfirmButton :: (session: Session, props: ConfirmButtonProps,
             FocusDefaultOutlineBounds(result.bounds, 1.0), radius + 2.0, 12,
             2.0, ColorFromPacked(focus_color))
     } else if result.armed && result.remaining > 0.0 {
-        face := ButtonInstalledFaceFor(armed, face_state)
+        face := Button.ButtonInstalledFaceFor(armed, face_state)
         color := props.countdown_color
         if color == cast(u32)0 { color = Opacity(face.foreground, 0.45) }
         radius := ButtonCornerRadius(face.radius, result.bounds.height)

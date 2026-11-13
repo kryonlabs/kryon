@@ -3,7 +3,6 @@
 #import "file"
 #import "c_string"
 #import "byte_text_linux"
-#import "text"
 #import "vec"
 
 test_libc :: #system_library "libc";

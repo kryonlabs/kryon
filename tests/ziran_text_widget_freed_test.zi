@@ -5,8 +5,7 @@
 #import "geometry"
 #import "paint_queue"
 #import "session"
-#import "text_props"
-#import "text"
+Text :: #import "kryon/text";
 #import "text_selection_widget"
 #import "tree"
 #import "tree_draw"
@@ -33,13 +32,13 @@ Card :: (prefix: string, round: s64) -> Text {
 QueueKind :: (kind: s32, round: s64) {
     session := paint_session
     if kind == 0 {
-        Text(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+        Text.Draw(session, Text.Props.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
             .text = Card("plain text ", round)})
     } else if kind == 1 {
-        Text(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 40.0, 20.0},
-            .wrap = TextWrap.TextWrapEllipsis, .text = Card("a line too wide ", round)})
+        Text.Draw(session, Text.Props.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 40.0, 20.0},
+            .wrap = Text.Wrap.TextWrapEllipsis, .text = Card("a line too wide ", round)})
     } else {
-        Text(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+        Text.Draw(session, Text.Props.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
             .selectable = true, .text = Card("selectable ", round)})
     }
 }

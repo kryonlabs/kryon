@@ -9,10 +9,11 @@ work="$repo/build/scratch/touch-replay"
 mkdir -p "$work"
 exec 9>"$work/lock"
 flock 9
+rm -f "$work/app.zi" "$work/ir/app.zir"
 unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS SESSION_MANAGER
 export YUE_DESKTOP_RECOVERY=0
 
-cat > "$work/app.zi" <<'ZI'
+cat > "$work/test_case.zi" <<'ZI'
 #import "geometry"
 #import "touch_replay"
 
@@ -75,20 +76,20 @@ Answer :: () -> s32 {
 ZI
 
 "$ziran" ir --root "$work" $kryon_project_args --module-path $work \
-     -o "$work/ir" "$work/app.zi"
+     -o "$work/ir" "$work/test_case.zi"
 for source in source saved; do
     if test "$source" = source; then
         root=$work
         modules="$kryon_project_args --module-path $work"
-        app=$work/app.zi
+        app=$work/test_case.zi
     else
         root=$work/ir
         modules="--project --module-path $work/ir"
-        app=$work/ir/app.zir
+        app=$work/ir/test_case.zir
     fi
     # shellcheck disable=SC2086
     "$ziran" bundle --root "$root" $modules \
-        --entry app:Answer -o "$work/$source.zx" "$app"
+        --entry test_case:Answer -o "$work/$source.zx" "$app"
     test "$("$ziran" run "$work/$source.zx")" = 42
 done
 cmp "$work/source.zx" "$work/saved.zx"

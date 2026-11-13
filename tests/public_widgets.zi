@@ -1,52 +1,66 @@
-using UI :: #import "kryon/Widgets";
+Button :: #import "kryon/button";
+Checkbox :: #import "kryon/checkbox";
+Countdown :: #import "kryon/countdown";
+Dropdown :: #import "kryon/dropdown";
+EmptyState :: #import "kryon/empty_state";
+Image :: #import "kryon/image";
+LoadingScreen :: #import "kryon/loading_screen";
+ProgressRing :: #import "kryon/progress_ring";
+Slider :: #import "kryon/slider";
+Text :: #import "kryon/text";
+TextField :: #import "kryon/text_field";
+TimePicker :: #import "kryon/time_picker";
+#import "kryon/session"
+#import "kryon/text_align"
+#import "kryon/text_input"
 
-PublicLoadingScreen :: (session: Session, props: LoadingScreenProps) {
-    LoadingScreen(session, props)
+PublicLoadingScreen :: (session: Session, props: LoadingScreen.Props) {
+    LoadingScreen.Draw(session, props)
 }
 
-PublicWidgets :: (session: Session, button: ButtonProps,
-    image: ImageProps, checkbox: CheckboxProps, slider: SliderProps,
-    dropdown: DropdownProps) -> s32 {
-    Image(session, image)
-    return Button(session, button)
+PublicWidgets :: (session: Session, button: Button.Props,
+    image: Image.Props, checkbox: Checkbox.Props, slider: Slider.Props,
+    dropdown: Dropdown.Props) -> s32 {
+    Image.Draw(session, image)
+    return Button.Draw(session, button)
 }
 
 // A text field's props and result carry composition state, so an application
 // gets that type from the same import as the field.
-PublicTextField :: (session: Session, props: TextFieldProps) -> CompositionState {
-    result: TextFieldResult = TextField(session, props)
+PublicTextField :: (session: Session, props: TextField.Props) -> CompositionState {
+    result: TextField.Result = TextField.Draw(session, props)
     return result.composition
 }
 
-PublicTextFieldState :: (session: Session, state: *TextFieldState,
-    props: TextFieldProps) -> bool {
-    result := TextField(session, TextFieldStateProps(state.*, props))
-    return TextFieldStateApplyResult(state, result) && result.committed
+PublicTextFieldState :: (session: Session, state: *TextField.State,
+    props: TextField.Props) -> bool {
+    result := TextField.Draw(session, TextField.StateProps(state.*, props))
+    return TextField.StateApplyResult(state, result) && result.committed
 }
 
 // TextProps.align and wrap take values an application names from the same
 // import as Text.
-PublicTextAlignment :: (session: Session, props: TextProps) {
+PublicTextAlignment :: (session: Session, props: Text.Props) {
     props.align = TextAlign.TextAlignCenter
     props.vertical_align = TextAlign.TextAlignEnd
-    props.wrap = TextWrap.TextWrapNone
-    Text(session, props)
+    props.wrap = Text.Wrap.TextWrapNone
+    Text.Draw(session, props)
 }
 
 // A time picker takes and returns minutes after midnight, -1 for no time,
 // from the same import as the other widgets.
-PublicTimePicker :: (session: Session, props: TimePickerProps) -> s32 {
-    result: TimePickerResult = TimePicker(session, props)
+PublicTimePicker :: (session: Session, props: TimePicker.Props) -> s32 {
+    result: TimePicker.TimePickerResult = TimePicker.Draw(session, props)
     return result.value
 }
 
 // Exercise renderer visibility as well as exported props and pure layout APIs.
-PublicCountdown :: (session: Session, props: CountdownProps, state: *CountdownState) -> CountdownResult {
-    return Countdown(session, props, state)
+PublicCountdown :: (session: Session, props: Countdown.Props, state: *Countdown.CountdownState) -> Countdown.CountdownResult {
+    return Countdown.Draw(session, props, state)
 }
-PublicEmptyState :: (session: Session, props: EmptyStateProps) -> EmptyStateResult {
-    return EmptyState(session, props)
+PublicEmptyState :: (session: Session, props: EmptyState.Props) -> EmptyState.EmptyStateResult {
+    return EmptyState.Draw(session, props)
 }
-PublicProgressRing :: (session: Session, props: ProgressRingProps, state: *ProgressRingState) -> ProgressRingResult {
-    return ProgressRing(session, props, state)
+PublicProgressRing :: (session: Session, props: ProgressRing.Props, state: *ProgressRing.ProgressRingState) -> ProgressRing.ProgressRingResult {
+    return ProgressRing.Draw(session, props, state)
 }

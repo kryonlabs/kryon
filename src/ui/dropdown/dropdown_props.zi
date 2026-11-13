@@ -1,11 +1,11 @@
+Image :: #import "image";
 #import "dropdown_behavior"
 #import "geometry"
-#import "image_props"
 
-DropdownOption :: struct {
+Option :: struct {
     key: u64
     label: string
-    image: ImageProps
+    image: Image.Props
     disabled: bool
     separator_before: bool
     // An icon button at the end of the row, such as download or remove, and
@@ -15,7 +15,7 @@ DropdownOption :: struct {
     action_label: string
 }
 
-DropdownProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32
@@ -34,7 +34,7 @@ DropdownProps :: struct {
     disabled: bool
 }
 
-DropdownResult :: struct {
+Result :: struct {
     node: s32
     selected_index: s32
     open: bool

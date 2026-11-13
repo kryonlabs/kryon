@@ -14,7 +14,7 @@
 #import "geometry"
 #import "drawing_props"
 Lanczos :: #import "lanczos_cache";
-#if #defined(PLATFORM_WEB) {
+#if OS == .WEB {
     canvas_monitor_name: [32]u8;
     canvas_empty: [1]u8;
     canvas_width: s32;

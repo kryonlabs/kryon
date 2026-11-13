@@ -23,7 +23,9 @@ def main():
     (project / 'assets/icons').chmod(0o700)
     (project / 'assets/icons/ui.webp').chmod(0o600)
     source = (ROOT / 'tests/native_asset_image_test.zi').read_text()
-    source = source.replace('#import "tree_draw"', '#import "kryon/Frame"').replace('#import "Widgets"', '#import "kryon/Widgets"').replace('#import "cairo_raster"', '#import "kryon/Cairo"')
+    source = source.replace('#import "tree_draw"', '#import "kryon/Frame"').replace('#import "cairo_raster"', '#import "kryon/Cairo"')
+    for module in ('icon', 'session', 'tree'):
+        source = source.replace(f'#import "{module}"', f'#import "kryon/{module}"')
     (project / 'src/host.zi').write_text(source)
     manifest = '''[package]
 name = "asset_probe"

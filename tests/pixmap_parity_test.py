@@ -11,7 +11,7 @@ differ and write a red diff.
 The contact sheet build/pixmap-parity/grid.png shows every program once,
 labeled with the targets that matched, for a visual check:
 
-    python3 tests/pixmap_parity_test.py [--targets c,go] [--only app,hello]
+    python3 tests/pixmap_parity_test.py [--targets c,go] [--only app,image_demo]
 
 ZIRAN_BIN selects the ziran command (default: the checkout beside Kryon).
 """
@@ -33,7 +33,7 @@ from toolchain import UI_MODULE_ARGS  # noqa: E402
 ZIRAN = os.environ.get("ZIRAN_BIN") or str(ZIRAN_ROOT / "build/bin/ziran")
 TARGETS = ["c", "go", "zx"]
 TEMPLATES = ["app", "tui", "pages", "web"]
-EXAMPLES = ["hello", "text_hello", "image_demo"]
+EXAMPLES = ["image_demo"]
 # Test-only programs in tests/pixmap_parity, built like the examples.
 TEXT_CASES = ["unicode_text"]
 OUTPUT = ROOT / "build/pixmap-parity"

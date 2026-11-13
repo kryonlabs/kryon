@@ -1,6 +1,6 @@
 #import "geometry"
 
-SeparatorProps :: struct {
+Props :: struct {
     bounds: Rectangle
     vertical: bool
     label: string

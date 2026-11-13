@@ -17,8 +17,9 @@ library. The compiler and bundle loader have no Kryon-specific branches.
 | Game2D repository | Optional game API; Kryon determines its shared raylib revision when both packages are used |
 
 All maintained implementation files under `src/` are `.zi`. The core module
-inventory is [`src/ui/modules.txt`](../src/ui/modules.txt). The two public
-import modules, `Kryon` and `Widgets`, compose that surface. Optional packages
+inventory is [`src/ui/modules.txt`](../src/ui/modules.txt). Applications import
+each widget package by name, such as `Text :: #import "kryon/text";`, and the
+shared core modules they use. Optional packages
 have separate imports and build targets; the core UI does not import them.
 
 ## Widget and host boundary

@@ -1,21 +1,41 @@
-#import "tooltip_props"
-#import "sheet_props"
-#import "command_palette_props"
-#import "hover_card_props"
-#import "confirm_popover_props"
-#import "guided_tour_props"
-#import "tooltip"
-#import "sheet"
-#import "commandpalette"
-#import "hovercard"
-#import "confirmpopover"
-#import "guidedtour"
-#import "taginput"
-#import "onetimecode"
-#import "inlineedit"
-#import "scrubfield"
-#import "moneyfield"
-#import "shortcutrecorder"
+TextArea :: #import "textarea";
+TextField :: #import "textfield";
+ContextMenu :: #import "contextmenu";
+Box :: #import "box";
+Button :: #import "button";
+Checkbox :: #import "checkbox";
+CommandPalette :: #import "commandpalette";
+ConfirmPopover :: #import "confirmpopover";
+Dropdown :: #import "dropdown";
+Fieldset :: #import "fieldset";
+GuidedTour :: #import "guidedtour";
+HoverCard :: #import "hovercard";
+Image :: #import "image";
+InlineEdit :: #import "inlineedit";
+Modal :: #import "modal_frame";
+MoneyField :: #import "moneyfield";
+OneTimeCode :: #import "onetimecode";
+Overlay :: #import "overlay";
+Press :: #import "press";
+Progress :: #import "progress";
+ScrubField :: #import "scrubfield";
+Scroll :: #import "scroll";
+Shape :: #import "shape";
+Sheet :: #import "sheet";
+ShortcutRecorder :: #import "shortcutrecorder";
+Slider :: #import "slider";
+Spinbox :: #import "spinbox";
+TagInput :: #import "taginput";
+Text :: #import "text";
+TextMeasure :: #import "text_measure";
+TileMap :: #import "tilemap";
+Toggle :: #import "toggle";
+Tooltip :: #import "tooltip";
+SegmentedControl :: #import "segmented";
+SvgIcon :: #import "svgicon";
+TabBar :: #import "tabs";
+TimePicker :: #import "timepicker";
+TitleBar :: #import "titlebar";
 // Draws the widgets a portable bundle asks for. A bundle built with Kryon
 // calls the HostedHost function of each widget; its host binds
 // WidgetHostCall for those calls and wraps each bundle frame in
@@ -28,54 +48,10 @@
 #import "frame_snapshot"
 #import "tree_input"
 #import "tree"
-#import "kryon/text_widget"
-#import "text_measure"
-#import "text_props"
-#import "kryon/image_widget"
-#import "image_props"
 #import "image_raster"
 #import "geometry"
-#import "button"
-#import "checkbox"
-#import "toggle"
-#import "textarea"
-#import "textfield"
-#import "tabs"
-#import "tab_bar_props"
-#import "segmented"
-#import "segmented_control_props"
-#import "box"
-#import "fieldset"
-#import "shape"
-#import "shape_props"
-#import "fieldset_props"
-#import "slider"
-#import "slider_props"
-#import "progress"
-#import "progress_props"
-#import "overlay_props"
-#import "overlay"
-#import "toggle_measure"
-#import "tilemap"
-#import "box_props"
-#import "svgicon"
-#import "svg_icon_props"
-#import "press"
-#import "press_props"
-#import "spinbox"
-#import "spinbox_props"
-#import "timepicker"
-#import "time_picker_props"
-#import "titlebar"
-#import "title_bar_props"
-#import "dropdown_props"
-#import "dropdown"
-#import "text_input_props"
-#import "scroll"
-#import "modal_frame"
+ToggleMeasure :: #import "toggle_measure";
 #import "modal"
-#import "modal_props"
-#import "contextmenu"
 #import "widget_palette"
 #import "hosted_values"
 #import "widget_codec"
@@ -111,51 +87,51 @@ widget_host_active: bool;
 widget_host_staging: bool;
 widget_tooltip_props_codec: WidgetTooltipPropsCodec;
 widget_tooltip_state_codec: WidgetTooltipStateCodec;
-widget_tooltip_state: TooltipState;
+widget_tooltip_state: Tooltip.TooltipState;
 widget_tooltip_reply_codec: WidgetTooltipHostedReplyCodec;
 widget_sheet_props_codec: WidgetSheetPropsCodec;
 widget_sheet_state_codec: WidgetSheetStateCodec;
-widget_sheet_state: SheetState;
+widget_sheet_state: Sheet.SheetState;
 widget_sheet_reply_codec: WidgetSheetHostedReplyCodec;
 widget_command_palette_props_codec: WidgetCommandPalettePropsCodec;
 widget_command_palette_state_codec: WidgetCommandPaletteStateCodec;
-widget_command_palette_state: CommandPaletteState;
+widget_command_palette_state: CommandPalette.CommandPaletteState;
 widget_command_palette_reply_codec: WidgetCommandPaletteHostedReplyCodec;
 widget_hover_card_props_codec: WidgetHoverCardPropsCodec;
 widget_hover_card_state_codec: WidgetHoverCardStateCodec;
-widget_hover_card_state: HoverCardState;
+widget_hover_card_state: HoverCard.HoverCardState;
 widget_hover_card_reply_codec: WidgetHoverCardHostedReplyCodec;
 widget_confirm_popover_props_codec: WidgetConfirmPopoverPropsCodec;
 widget_confirm_popover_state_codec: WidgetConfirmPopoverStateCodec;
-widget_confirm_popover_state: ConfirmPopoverState;
+widget_confirm_popover_state: ConfirmPopover.ConfirmPopoverState;
 widget_confirm_popover_reply_codec: WidgetConfirmPopoverHostedReplyCodec;
 widget_guided_tour_props_codec: WidgetGuidedTourPropsCodec;
 widget_guided_tour_state_codec: WidgetGuidedTourStateCodec;
-widget_guided_tour_state: GuidedTourState;
+widget_guided_tour_state: GuidedTour.GuidedTourState;
 widget_guided_tour_reply_codec: WidgetGuidedTourHostedReplyCodec;
 widget_tag_input_props_codec: WidgetTagInputPropsCodec;
 widget_tag_input_state_codec: WidgetTagInputStateCodec;
-widget_tag_input_state: TagInputState;
+widget_tag_input_state: TagInput.TagInputState;
 widget_tag_input_reply_codec: WidgetTagInputHostedReplyCodec;
 widget_one_time_code_props_codec: WidgetOneTimeCodePropsCodec;
 widget_one_time_code_state_codec: WidgetOneTimeCodeStateCodec;
-widget_one_time_code_state: OneTimeCodeState;
+widget_one_time_code_state: OneTimeCode.OneTimeCodeState;
 widget_one_time_code_reply_codec: WidgetOneTimeCodeHostedReplyCodec;
 widget_inline_edit_props_codec: WidgetInlineEditPropsCodec;
 widget_inline_edit_state_codec: WidgetInlineEditStateCodec;
-widget_inline_edit_state: InlineEditState;
+widget_inline_edit_state: InlineEdit.InlineEditState;
 widget_inline_edit_reply_codec: WidgetInlineEditHostedReplyCodec;
 widget_scrub_field_props_codec: WidgetScrubFieldPropsCodec;
 widget_scrub_field_state_codec: WidgetScrubFieldStateCodec;
-widget_scrub_field_state: ScrubFieldState;
+widget_scrub_field_state: ScrubField.ScrubFieldState;
 widget_scrub_field_reply_codec: WidgetScrubFieldHostedReplyCodec;
 widget_money_field_props_codec: WidgetMoneyFieldPropsCodec;
 widget_money_field_state_codec: WidgetMoneyFieldStateCodec;
-widget_money_field_state: MoneyFieldState;
+widget_money_field_state: MoneyField.MoneyFieldState;
 widget_money_field_reply_codec: WidgetMoneyFieldHostedReplyCodec;
 widget_shortcut_recorder_props_codec: WidgetShortcutRecorderPropsCodec;
 widget_shortcut_recorder_state_codec: WidgetShortcutRecorderStateCodec;
-widget_shortcut_recorder_state: ShortcutRecorderState;
+widget_shortcut_recorder_state: ShortcutRecorder.ShortcutRecorderState;
 widget_shortcut_recorder_reply_codec: WidgetShortcutRecorderHostedReplyCodec;
 
 widget_host_depth: s32;
@@ -168,14 +144,14 @@ widget_text_codec: WidgetTextPropsCodec;
 widget_image_codec: WidgetImagePropsCodec;
 // The points of the warped image being drawn: the hosted Image effect
 // decodes a grid here, so image codecs elsewhere keep no room for one.
-widget_image_mesh_points: [IMAGE_MESH_POINT_LIMIT]Vector2;
+widget_image_mesh_points: [Image.IMAGE_MESH_POINT_LIMIT]Vector2;
 widget_image_mesh_point_codec: WidgetVector2Codec;
 widget_button_codec: WidgetButtonPropsCodec;
 widget_area_codec: WidgetTextAreaPropsCodec;
 widget_area_result_codec: WidgetTextAreaResultCodec;
 widget_tile_map_codec: WidgetTileMapPropsCodec;
 widget_tile_map_result_codec: WidgetTileMapResultCodec;
-widget_tile_map_used: [TILE_MAP_HOSTED_LIMIT]bool;
+widget_tile_map_used: [TileMap.TILE_MAP_HOSTED_LIMIT]bool;
 widget_scroll_codec: WidgetScrollPropsCodec;
 widget_scroll_result_codec: WidgetScrollResultCodec;
 widget_session_codec: WidgetSessionCodec;
@@ -187,11 +163,11 @@ widget_toggle_codec: WidgetTogglePropsCodec;
 widget_toggle_result_codec: WidgetToggleValueResultCodec;
 widget_field_codec: WidgetTextFieldPropsCodec;
 widget_field_result_codec: WidgetTextFieldResultCodec;
-widget_tabs: [WIDGET_HOST_TAB_LIMIT]Tab;
+widget_tabs: [WIDGET_HOST_TAB_LIMIT]TabBar.Tab;
 widget_tab_codecs: [WIDGET_HOST_TAB_LIMIT]WidgetTabCodec;
 widget_tab_bar_codec: WidgetTabBarPropsCodec;
 widget_tab_bar_result_codec: WidgetTabBarResultCodec;
-widget_segments: [WIDGET_HOST_OPTION_LIMIT]SegmentOption;
+widget_segments: [WIDGET_HOST_OPTION_LIMIT]SegmentedControl.SegmentOption;
 widget_segment_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetSegmentOptionCodec;
 widget_segmented_codec: WidgetSegmentedControlPropsCodec;
 widget_segmented_result_codec: WidgetSegmentedControlResultCodec;
@@ -222,17 +198,17 @@ widget_dropdown_codec: WidgetDropdownPropsCodec;
 widget_dropdown_result_codec: WidgetDropdownResultCodec;
 widget_title_bar_codec: WidgetTitleBarPropsCodec;
 widget_title_bar_result_codec: WidgetTitleBarResultCodec;
-widget_options: [WIDGET_HOST_OPTION_LIMIT]DropdownOption;
+widget_options: [WIDGET_HOST_OPTION_LIMIT]Dropdown.Option;
 widget_modal_frame_codec: WidgetModalFramePropsCodec;
 widget_modal_frame_result_codec: WidgetModalFrameResultCodec;
 widget_action_modal_codec: WidgetActionModalPropsCodec;
 widget_action_modal_result_codec: WidgetActionModalResultCodec;
-widget_modal_actions: [16]ActionModalAction;
+widget_modal_actions: [16]Modal.ActionModalAction;
 widget_modal_action_codecs: [16]WidgetActionModalActionCodec;
 widget_option_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetDropdownOptionCodec;
 widget_context_menu_codec: WidgetContextMenuPropsCodec;
 widget_context_menu_result_codec: WidgetContextMenuResultCodec;
-widget_menu_items: [WIDGET_HOST_OPTION_LIMIT]ContextMenuItem;
+widget_menu_items: [WIDGET_HOST_OPTION_LIMIT]ContextMenu.ContextMenuItem;
 widget_menu_item_codecs: [WIDGET_HOST_OPTION_LIMIT]WidgetContextMenuItemCodec;
 
 // The widget calls WidgetHostCall answers, for checking a bundle's
@@ -303,8 +279,8 @@ WidgetHostSupports :: (module: string, function: string) -> bool {
 WidgetHostPackedPath :: (path: string) -> string { return path }
 
 // A portable Text's props with its strong and link ranges attached.
-WidgetHostTextProps :: (props: HostValue) -> TextProps {
-    text: TextProps = WidgetDecodeTextProps(props, *widget_text_codec)
+WidgetHostTextProps :: (props: HostValue) -> Text.Props {
+    text: Text.Props = WidgetDecodeTextProps(props, *widget_text_codec)
     text.strong = widget_text_codec.strong_decoded[:HostSliceLength(props, 15, "strong")]
     text.links = widget_text_codec.links_decoded[:HostSliceLength(props, 18, "links")]
     if text.typeface.count >= 7 && text.typeface[:7] == "assets/" {
@@ -330,7 +306,7 @@ WidgetHostTextLinkAt :: (session: Session, arguments: *HostValue, result: *HostV
     !HostScalarValid(arguments[3], "float32", cast(s32)HostReal) {
         return 0
     }
-    hit := TextLinkAt(session, WidgetHostTextProps(props),
+    hit := Text.TextLinkAt(session, WidgetHostTextProps(props),
         cast(float32)arguments[2].real, cast(float32)arguments[3].real)
     result.* = HostScalar("s32", cast(s64)hit)
     return 1
@@ -387,7 +363,7 @@ WidgetHostAssetPath :: (path: string) -> string {
     return widget_host_asset_resolve(path)
 }
 
-WidgetHostImage :: (image: *ImageProps) -> bool {
+WidgetHostImage :: (image: *Image.Props) -> bool {
     if image.texture.id != cast(u32)0 { return false }
     packed := image.asset_path
     if !WidgetHostAssetAllowed(packed) { return false }
@@ -417,7 +393,7 @@ WidgetHostMeshPoints :: (mesh: HostValue) -> []Vector2 {
 
 WidgetHostImagePoints :: (points: HostValue) -> []Vector2 {
     count: usize = 0
-    while count < points.length && count < cast(usize)IMAGE_MESH_POINT_LIMIT {
+    while count < points.length && count < cast(usize)Image.IMAGE_MESH_POINT_LIMIT {
         widget_image_mesh_points[count] = WidgetDecodeVector2(points.elements[count],
             *widget_image_mesh_point_codec)
         count += cast(usize)1
@@ -547,7 +523,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "SheetEndHostedHost" && ModuleName(owner, "sheet") && count == 1 {
         if widget_host_depth < 3 { return 0 }
-        closed := SheetEnd(session)
+        closed := Sheet.SheetEnd(session)
         widget_host_depth -= 3
         result.* = HostScalar("bool", ifx closed then 1 else 0)
         return 1
@@ -610,8 +586,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             props := WidgetDecodeTooltipProps(arguments[1], *widget_tooltip_props_codec)
             widget_tooltip_state = WidgetDecodeTooltipState(arguments[2], *widget_tooltip_state_codec)
             state := *widget_tooltip_state
-            edited := TooltipCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeTooltipHostedReply(TooltipHostedReply.{.state = state.*, .result = edited},
+            edited := Tooltip.TooltipCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeTooltipHostedReply(Tooltip.TooltipHostedReply.{.state = state.*, .result = edited},
                 *widget_tooltip_reply_codec)
             return 1
         }
@@ -621,9 +597,9 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_sheet_state = WidgetDecodeSheetState(arguments[2], *widget_sheet_state_codec)
             state := *widget_sheet_state
             if widget_host_depth > WIDGET_HOST_SCOPE_DEPTH - 3 { return 0 }
-            edited := SheetBeginCore(session, props, state, !widget_host_staging)
+            edited := Sheet.SheetBeginCore(session, props, state, !widget_host_staging)
             if edited.content_node >= 0 { widget_host_depth += 3 }
-            result.* = WidgetEncodeSheetHostedReply(SheetHostedReply.{.state = state.*, .result = edited},
+            result.* = WidgetEncodeSheetHostedReply(Sheet.SheetHostedReply.{.state = state.*, .result = edited},
                 *widget_sheet_reply_codec)
             return 1
         }
@@ -634,8 +610,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_command_palette_state = WidgetDecodeCommandPaletteState(arguments[2], *widget_command_palette_state_codec)
             state := *widget_command_palette_state
             if state.query_length < 0 || state.query_length > 128 || state.cursor < 0 || state.cursor > state.query_length || state.anchor < 0 || state.anchor > state.query_length || state.match_count < 0 || state.match_count > 128 { return 0 }
-            edited := CommandPaletteCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeCommandPaletteHostedReply(CommandPaletteHostedReply.{.state = state.*, .result = edited},
+            edited := CommandPalette.CommandPaletteCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeCommandPaletteHostedReply(CommandPalette.CommandPaletteHostedReply.{.state = state.*, .result = edited},
                 *widget_command_palette_reply_codec)
             return 1
         }
@@ -644,8 +620,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             props := WidgetDecodeHoverCardProps(arguments[1], *widget_hover_card_props_codec)
             widget_hover_card_state = WidgetDecodeHoverCardState(arguments[2], *widget_hover_card_state_codec)
             state := *widget_hover_card_state
-            edited := HoverCardCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeHoverCardHostedReply(HoverCardHostedReply.{.state = state.*, .result = edited},
+            edited := HoverCard.HoverCardCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeHoverCardHostedReply(HoverCard.HoverCardHostedReply.{.state = state.*, .result = edited},
                 *widget_hover_card_reply_codec)
             return 1
         }
@@ -654,8 +630,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             props := WidgetDecodeConfirmPopoverProps(arguments[1], *widget_confirm_popover_props_codec)
             widget_confirm_popover_state = WidgetDecodeConfirmPopoverState(arguments[2], *widget_confirm_popover_state_codec)
             state := *widget_confirm_popover_state
-            edited := ConfirmPopoverCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeConfirmPopoverHostedReply(ConfirmPopoverHostedReply.{.state = state.*, .result = edited},
+            edited := ConfirmPopover.ConfirmPopoverCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeConfirmPopoverHostedReply(ConfirmPopover.ConfirmPopoverHostedReply.{.state = state.*, .result = edited},
                 *widget_confirm_popover_reply_codec)
             return 1
         }
@@ -666,8 +642,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_guided_tour_state = WidgetDecodeGuidedTourState(arguments[2], *widget_guided_tour_state_codec)
             state := *widget_guided_tour_state
             if state.count_label_length < 0 || state.count_label_length > 32 { return 0 }
-            edited := GuidedTourCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeGuidedTourHostedReply(GuidedTourHostedReply.{.state = state.*, .result = edited},
+            edited := GuidedTour.GuidedTourCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeGuidedTourHostedReply(GuidedTour.GuidedTourHostedReply.{.state = state.*, .result = edited},
                 *widget_guided_tour_reply_codec)
             return 1
         }
@@ -682,8 +658,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
                 if state.lengths[index] < 0 || state.lengths[index] > 64 { return 0 }
             }
             if props.max_tags <= 0 || props.max_tags > 32 { props.max_tags = 32 }
-            edited := TagInputCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeTagInputHostedReply(TagInputHostedReply.{.state = state.*, .result = edited},
+            edited := TagInput.TagInputCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeTagInputHostedReply(TagInput.TagInputHostedReply.{.state = state.*, .result = edited},
                 *widget_tag_input_reply_codec)
             return 1
         }
@@ -693,8 +669,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_one_time_code_state = WidgetDecodeOneTimeCodeState(arguments[2], *widget_one_time_code_state_codec)
             state := *widget_one_time_code_state
             if state.length < 0 || state.length > 12 || state.count < 0 || state.count > state.length || state.cursor < 0 || state.cursor > state.count { return 0 }
-            edited := OneTimeCodeCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeOneTimeCodeHostedReply(OneTimeCodeHostedReply.{.state = state.*, .result = edited},
+            edited := OneTimeCode.OneTimeCodeCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeOneTimeCodeHostedReply(OneTimeCode.OneTimeCodeHostedReply.{.state = state.*, .result = edited},
                 *widget_one_time_code_reply_codec)
             return 1
         }
@@ -704,8 +680,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_inline_edit_state = WidgetDecodeInlineEditState(arguments[2], *widget_inline_edit_state_codec)
             state := *widget_inline_edit_state
             if state.length < 0 || state.length > 512 || state.backup_length < 0 || state.backup_length > 512 || state.cursor < 0 || state.cursor > state.length || state.anchor < 0 || state.anchor > state.length { return 0 }
-            edited := InlineEditCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeInlineEditHostedReply(InlineEditHostedReply.{.state = state.*, .result = edited},
+            edited := InlineEdit.InlineEditCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeInlineEditHostedReply(InlineEdit.InlineEditHostedReply.{.state = state.*, .result = edited},
                 *widget_inline_edit_reply_codec)
             return 1
         }
@@ -715,8 +691,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_scrub_field_state = WidgetDecodeScrubFieldState(arguments[2], *widget_scrub_field_state_codec)
             state := *widget_scrub_field_state
             if state.text_length < 0 || state.text_length > 48 || state.cursor < 0 || state.cursor > state.text_length || state.anchor < 0 || state.anchor > state.text_length { return 0 }
-            edited := ScrubFieldCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeScrubFieldHostedReply(ScrubFieldHostedReply.{.state = state.*, .result = edited},
+            edited := ScrubField.ScrubFieldCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeScrubFieldHostedReply(ScrubField.ScrubFieldHostedReply.{.state = state.*, .result = edited},
                 *widget_scrub_field_reply_codec)
             return 1
         }
@@ -726,8 +702,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_money_field_state = WidgetDecodeMoneyFieldState(arguments[2], *widget_money_field_state_codec)
             state := *widget_money_field_state
             if state.text_length < 0 || state.text_length > 64 || state.cursor < 0 || state.cursor > state.text_length || state.anchor < 0 || state.anchor > state.text_length { return 0 }
-            edited := MoneyFieldCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeMoneyFieldHostedReply(MoneyFieldHostedReply.{.state = state.*, .result = edited},
+            edited := MoneyField.MoneyFieldCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeMoneyFieldHostedReply(MoneyField.MoneyFieldHostedReply.{.state = state.*, .result = edited},
                 *widget_money_field_reply_codec)
             return 1
         }
@@ -737,8 +713,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             widget_shortcut_recorder_state = WidgetDecodeShortcutRecorderState(arguments[2], *widget_shortcut_recorder_state_codec)
             state := *widget_shortcut_recorder_state
             if state.label_length < 0 || state.label_length > 64 { return 0 }
-            edited := ShortcutRecorderCore(session, props, state, !widget_host_staging)
-            result.* = WidgetEncodeShortcutRecorderHostedReply(ShortcutRecorderHostedReply.{.state = state.*, .result = edited},
+            edited := ShortcutRecorder.ShortcutRecorderCore(session, props, state, !widget_host_staging)
+            result.* = WidgetEncodeShortcutRecorderHostedReply(ShortcutRecorder.ShortcutRecorderHostedReply.{.state = state.*, .result = edited},
                 *widget_shortcut_recorder_reply_codec)
             return 1
         }
@@ -759,74 +735,74 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         return WidgetHostModalFrame(session, props, result)
     }
     if name == "BoxHostedHost" && ModuleName(owner, "box") && WidgetValidBoxProps(props) {
-        result.* = HostScalar("s32", cast(s64)Box(session, WidgetDecodeBoxProps(props, *widget_box_codec)))
+        result.* = HostScalar("s32", cast(s64)Box.Draw(session, WidgetDecodeBoxProps(props, *widget_box_codec)))
         return 1
     }
     if name == "LineHostedHost" && ModuleName(owner, "shape") && WidgetValidLineProps(props) {
-        result.* = HostScalar("s32", cast(s64)Line(session, WidgetDecodeLineProps(props, *widget_line_codec)))
+        result.* = HostScalar("s32", cast(s64)Shape.Draw(session, WidgetDecodeLineProps(props, *widget_line_codec)))
         return 1
     }
     if name == "CircleHostedHost" && ModuleName(owner, "shape") && WidgetValidCircleProps(props) {
-        result.* = HostScalar("s32", cast(s64)Circle(session, WidgetDecodeCircleProps(props,
+        result.* = HostScalar("s32", cast(s64)Shape.Circle(session, WidgetDecodeCircleProps(props,
             *widget_circle_codec)))
         return 1
     }
     if name == "RingHostedHost" && ModuleName(owner, "shape") && WidgetValidRingProps(props) {
-        result.* = HostScalar("s32", cast(s64)Ring(session, WidgetDecodeRingProps(props, *widget_ring_codec)))
+        result.* = HostScalar("s32", cast(s64)Shape.Ring(session, WidgetDecodeRingProps(props, *widget_ring_codec)))
         return 1
     }
     if name == "TriangleHostedHost" && ModuleName(owner, "shape") && WidgetValidTriangleProps(props) {
-        result.* = HostScalar("s32", cast(s64)Triangle(session, WidgetDecodeTriangleProps(props,
+        result.* = HostScalar("s32", cast(s64)Shape.Triangle(session, WidgetDecodeTriangleProps(props,
             *widget_triangle_codec)))
         return 1
     }
     if name == "SliderHostedHost" && ModuleName(owner, "slider") && WidgetValidSliderProps(props) {
-        step := Slider(session, WidgetDecodeSliderProps(props, *widget_slider_codec))
+        step := Slider.Draw(session, WidgetDecodeSliderProps(props, *widget_slider_codec))
         result.* = WidgetEncodeSliderStep(step, *widget_slider_step_codec)
         return 1
     }
     if name == "DiscreteSliderHostedHost" && ModuleName(owner, "slider") &&
     WidgetValidDiscreteSliderProps(props) {
-        step := DiscreteSlider(session, WidgetDecodeDiscreteSliderProps(props,
+        step := Slider.DiscreteSlider(session, WidgetDecodeDiscreteSliderProps(props,
             *widget_discrete_slider_codec))
         result.* = WidgetEncodeSliderDiscreteStep(step, *widget_discrete_step_codec)
         return 1
     }
     if name == "ProgressHostedHost" && ModuleName(owner, "progress") && WidgetValidProgressProps(props) {
-        Progress(session, WidgetDecodeProgressProps(props, *widget_progress_codec))
+        Progress.Draw(session, WidgetDecodeProgressProps(props, *widget_progress_codec))
         return 1
     }
     if name == "FieldsetHostedHost" && ModuleName(owner, "fieldset") && WidgetValidFieldsetProps(props) {
-        Fieldset(session, WidgetDecodeFieldsetProps(props, *widget_fieldset_codec))
+        Fieldset.Draw(session, WidgetDecodeFieldsetProps(props, *widget_fieldset_codec))
         result.* = HostScalar("s32", 0)
         return 1
     }
     if name == "ToggleSizeHostedHost" && ModuleName(owner, "toggle_measure") && WidgetValidToggleProps(props) {
-        result.* = WidgetEncodeVector2(ToggleSize(session, WidgetDecodeToggleProps(props,
+        result.* = WidgetEncodeVector2(ToggleMeasure.ToggleSize(session, WidgetDecodeToggleProps(props,
             *widget_toggle_codec)), *widget_vector_codec)
         return 1
     }
     if name == "SvgIconHostedHost" && ModuleName(owner, "svgicon") && WidgetValidSvgIconProps(props) {
-        SvgIcon(session, WidgetDecodeSvgIconProps(props, *widget_svg_icon_codec))
+        SvgIcon.Draw(session, WidgetDecodeSvgIconProps(props, *widget_svg_icon_codec))
         return 1
     }
     if name == "TextFieldHostedHost" && ModuleName(owner, "textfield") && WidgetValidTextFieldProps(props) {
         field := WidgetDecodeTextFieldProps(props, *widget_field_codec)
         // Validation returns edit/clipboard intents without executing OS effects.
-        edited := ifx widget_host_staging then TextFieldCore(session, field) else TextField(session, field)
+        edited := ifx widget_host_staging then TextField.TextFieldCore(session, field) else TextField.Draw(session, field)
         result.* = WidgetEncodeTextFieldResult(edited, *widget_field_result_codec)
         return 1
     }
     if name == "TextWidthHostedHost" && ModuleName(owner, "text_measure") && WidgetValidTextProps(props) {
-        result.* = HostScalar("s32", cast(s64)TextWidth(session, WidgetHostTextProps(props)))
+        result.* = HostScalar("s32", cast(s64)TextMeasure.TextWidth(session, WidgetHostTextProps(props)))
         return 1
     }
     if name == "TextHeightHostedHost" && ModuleName(owner, "text_measure") && WidgetValidTextProps(props) {
-        result.* = HostScalar("s32", cast(s64)TextHeight(session, WidgetHostTextProps(props)))
+        result.* = HostScalar("s32", cast(s64)TextMeasure.TextHeight(session, WidgetHostTextProps(props)))
         return 1
     }
     if name == "TextHostedHost" && ModuleName(owner, "text") && WidgetValidTextProps(props) {
-        Text(session, WidgetHostTextProps(props))
+        Text.Draw(session, WidgetHostTextProps(props))
         return 1
     }
     if name == "ImageHostedHost" && ModuleName(owner, "image") && WidgetValidImageProps(props) {
@@ -842,7 +818,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         }
         polygon_at := HostFieldAt(props, 14, "clip_polygon")
         if polygon_at >= 0 { image.clip_polygon = WidgetHostImagePoints(props.fields[polygon_at].value) }
-        Image(session, image)
+        Image.Draw(session, image)
         return 1
     }
     if name == "ImageShowingHostedHost" && ModuleName(owner, "image_showing") && WidgetValidImageProps(props) {
@@ -850,8 +826,8 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         if image.texture.id != cast(u32)0 { return 0 }
         // A picture the bundle may not draw is unavailable to it; the host
         // never says whether such a file exists.
-        showing := ImageShowing.ImageShowingUnavailable
-        if WidgetHostImage(*image) { showing = ImageShownFor(image).showing }
+        showing := Image.ImageShowing.ImageShowingUnavailable
+        if WidgetHostImage(*image) { showing = Image.ImageShownFor(image).showing }
         result.* = HostScalar("s32", cast(s64)showing)
         return 1
     }
@@ -881,7 +857,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
             if resolved == "" { return 0 }
             map.tiles[index] = resolved
         }
-        result.* = WidgetEncodeTileMapResult(TileMap(session, map), *widget_tile_map_result_codec)
+        result.* = WidgetEncodeTileMapResult(TileMap.Draw(session, map), *widget_tile_map_result_codec)
         return 1
     }
     if name == "ButtonHostedHost" && ModuleName(owner, "button") && WidgetValidButtonProps(props) {
@@ -889,7 +865,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         if button.icon.id != cast(u32)0 || !WidgetHostImage(*button.image) {
             return 0
         }
-        result.* = HostScalar("s32", cast(s64)Button(session, button))
+        result.* = HostScalar("s32", cast(s64)Button.Draw(session, button))
         return 1
     }
     if name == "TextAreaHostedHost" && ModuleName(owner, "textarea") && WidgetValidTextAreaProps(props) {
@@ -905,7 +881,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         for index: 0..cast(s32)area.blocks.count - 1 {
             area.blocks[index].image = WidgetHostAssetPath(area.blocks[index].image)
         }
-        edited := ifx widget_host_staging then TextAreaCore(session, area) else TextArea(session, area)
+        edited := ifx widget_host_staging then TextArea.TextAreaCore(session, area) else TextArea.Draw(session, area)
         result.* = WidgetEncodeTextAreaResult(edited, *widget_area_result_codec)
         return 1
     }
@@ -913,7 +889,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
         if widget_host_depth >= WIDGET_HOST_SCOPE_DEPTH {
             return 0
         }
-        frame := Scroll(session, WidgetDecodeScrollProps(props, *widget_scroll_codec))
+        frame := Scroll.Draw(session, WidgetDecodeScrollProps(props, *widget_scroll_codec))
         if frame.opened {
             widget_host_depth += 1
         }
@@ -922,7 +898,7 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "DismissibleOverlayHostedHost" && ModuleName(owner, "overlay") &&
     WidgetValidDismissibleOverlayProps(props) {
-        overlay := DismissibleOverlay(session,
+        overlay := Overlay.Draw(session,
             WidgetDecodeDismissibleOverlayProps(props, *widget_dismissible_overlay_codec))
         result.* = WidgetEncodeDismissibleOverlayResult(overlay,
             *widget_dismissible_overlay_result_codec)
@@ -930,32 +906,32 @@ WidgetHostCall :: (context: *void, module: *u8, function: *u8,
     }
     if name == "PopupHostedHost" && ModuleName(owner, "overlay") &&
     WidgetValidPopupProps(props) {
-        popup := Popup(session, WidgetDecodePopupProps(props, *widget_popup_codec))
+        popup := Overlay.Popup(session, WidgetDecodePopupProps(props, *widget_popup_codec))
         result.* = WidgetEncodePopupResult(popup, *widget_popup_result_codec)
         return 1
     }
     if name == "CheckboxHostedHost" && ModuleName(owner, "checkbox") && WidgetValidCheckboxProps(props) {
-        checked := Checkbox(session, WidgetDecodeCheckboxProps(props, *widget_checkbox_codec))
+        checked := Checkbox.Draw(session, WidgetDecodeCheckboxProps(props, *widget_checkbox_codec))
         result.* = WidgetEncodeCheckboxValueResult(checked, *widget_checkbox_result_codec)
         return 1
     }
     if name == "PressHostedHost" && ModuleName(owner, "press") && WidgetValidPressProps(props) {
-        pressed := Press(session, WidgetDecodePressProps(props, *widget_press_codec))
+        pressed := Press.Draw(session, WidgetDecodePressProps(props, *widget_press_codec))
         result.* = WidgetEncodePressResult(pressed, *widget_press_result_codec)
         return 1
     }
     if name == "ToggleHostedHost" && ModuleName(owner, "toggle") && WidgetValidToggleProps(props) {
-        toggled := Toggle(session, WidgetDecodeToggleProps(props, *widget_toggle_codec))
+        toggled := Toggle.Draw(session, WidgetDecodeToggleProps(props, *widget_toggle_codec))
         result.* = WidgetEncodeToggleValueResult(toggled, *widget_toggle_result_codec)
         return 1
     }
     if name == "SpinboxHostedHost" && ModuleName(owner, "spinbox") && WidgetValidSpinboxProps(props) {
-        stepped := Spinbox(session, WidgetDecodeSpinboxProps(props, *widget_spinbox_codec))
+        stepped := Spinbox.Draw(session, WidgetDecodeSpinboxProps(props, *widget_spinbox_codec))
         result.* = WidgetEncodeSpinboxStepResult(stepped, *widget_spinbox_result_codec)
         return 1
     }
     if name == "TimePickerHostedHost" && ModuleName(owner, "timepicker") && WidgetValidTimePickerProps(props) {
-        picked := TimePicker(session, WidgetDecodeTimePickerProps(props, *widget_time_picker_codec))
+        picked := TimePicker.Draw(session, WidgetDecodeTimePickerProps(props, *widget_time_picker_codec))
         result.* = WidgetEncodeTimePickerResult(picked, *widget_time_picker_result_codec)
         return 1
     }
@@ -979,7 +955,7 @@ WidgetHostTabBar :: (session: Session, arguments: *HostValue, result: *HostValue
         widget_tabs[index] = WidgetDecodeTab(values.elements[index], *widget_tab_codecs[index])
         index += cast(usize)1
     }
-    selected := TabBar(session, WidgetDecodeTabBarProps(arguments[1], *widget_tab_bar_codec),
+    selected := TabBar.Draw(session, WidgetDecodeTabBarProps(arguments[1], *widget_tab_bar_codec),
         widget_tabs[:cast(s32)values.length])
     result.* = WidgetEncodeTabBarResult(selected, *widget_tab_bar_result_codec)
     return 1
@@ -1004,7 +980,7 @@ WidgetHostSegmentedControl :: (session: Session, arguments: *HostValue, result: 
             *widget_segment_codecs[index])
         index += cast(usize)1
     }
-    chosen := SegmentedControl(session, WidgetDecodeSegmentedControlProps(arguments[1],
+    chosen := SegmentedControl.Draw(session, WidgetDecodeSegmentedControlProps(arguments[1],
         *widget_segmented_codec), widget_segments[:cast(s32)values.length])
     result.* = WidgetEncodeSegmentedControlResult(chosen, *widget_segmented_result_codec)
     return 1
@@ -1037,7 +1013,7 @@ WidgetHostTitleBar :: (session: Session, arguments: *HostValue, result: *HostVal
         widget_options[index] = option
         index += cast(usize)1
     }
-    drawn := TitleBar(session, props, widget_options[:cast(s32)values.length])
+    drawn := TitleBar.Draw(session, props, widget_options[:cast(s32)values.length])
     result.* = WidgetEncodeTitleBarResult(drawn, *widget_title_bar_result_codec)
     return 1
 }
@@ -1064,7 +1040,7 @@ WidgetHostDropdown :: (session: Session, arguments: *HostValue, result: *HostVal
         widget_options[index] = option
         index += cast(usize)1
     }
-    drawn := Dropdown(session, props, widget_options[:cast(s32)values.length])
+    drawn := Dropdown.Draw(session, props, widget_options[:cast(s32)values.length])
     result.* = WidgetEncodeDropdownResult(drawn, *widget_dropdown_result_codec)
     return 1
 }
@@ -1079,7 +1055,7 @@ WidgetHostModalFrame :: (session: Session, props: HostValue, result: *HostValue)
     if !WidgetHostImage(*modal.left_image) || !WidgetHostImage(*modal.right_image) {
         return 0
     }
-    frame := ModalFrame(session, modal)
+    frame := Modal.Draw(session, modal)
     if frame.opened {
         widget_host_depth += 1
     }
@@ -1127,7 +1103,7 @@ WidgetHostContextMenu :: (session: Session, arguments: *HostValue, result: *Host
         widget_menu_items[index] = WidgetDecodeContextMenuItem(values.elements[index], *widget_menu_item_codecs[index])
         index += cast(usize)1
     }
-    drawn := ContextMenu(session, WidgetDecodeContextMenuProps(arguments[1], *widget_context_menu_codec),
+    drawn := ContextMenu.Draw(session, WidgetDecodeContextMenuProps(arguments[1], *widget_context_menu_codec),
         widget_menu_items[:cast(s32)values.length])
     result.* = WidgetEncodeContextMenuResult(drawn, *widget_context_menu_result_codec)
     return 1

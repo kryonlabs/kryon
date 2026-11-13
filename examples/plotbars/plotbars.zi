@@ -2,7 +2,10 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Text :: #import "kryon/text";
+#import "kryon/control_props"
+#import "kryon/drawing_props"
 Plot :: #import "plot/PlotWidget";
 Charts :: #import "plot/Plot";
 Theme :: #import "kryon/theme";
@@ -68,8 +71,8 @@ Prepare :: (session: Session, scene: s32) {
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Plot · bars", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Plot · bars", .font = 23})
     disabled := example_input.disabled
     scene: s32 = 1
     InstallStyles(example_input.theme == 2)

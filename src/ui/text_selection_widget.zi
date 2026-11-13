@@ -1,3 +1,4 @@
+Text :: #import "text";
 #import "surface"
 Theme :: #import "theme";
 // Optional selection for Text. Hosts with a clipboard install this ordinary
@@ -6,8 +7,6 @@ Theme :: #import "theme";
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
-#import "text_props"
-#import "kryon/text_widget"
 #import "text_touch"
 #import "text_context_menu"
 #import "text_selection_host"
@@ -40,7 +39,7 @@ TextSelectionSameValue :: (session: Session, previous: s32, value: string) -> bo
     return true
 }
 
-TextSelectionDraw :: (session: Session, node: s32, props: TextProps, prepared: PreparedText) {
+TextSelectionDraw :: (session: Session, node: s32, props: Text.Props, prepared: Text.PreparedText) {
     props.key = TreeSubmittedNodeAt(session, node).key
     anchor: s32 = 0
     cursor: s32 = 0
@@ -62,7 +61,7 @@ TextSelectionDraw :: (session: Session, node: s32, props: TextProps, prepared: P
         if drag.started || drag.active || drag.ended {
             focused = true
             point := TextTouchHitPoint(session, previous, drag)
-            hit := TextByteAtPoint(props, prepared, point.x, point.y)
+            hit := Text.TextByteAtPoint(props, prepared, point.x, point.y)
             if drag.started {
                 anchor = hit
             }
@@ -94,13 +93,13 @@ TextSelectionDraw :: (session: Session, node: s32, props: TextProps, prepared: P
     TreeSetWidgetState(session, node, WidgetState.{focused, anchor, cursor})
     TreeSetTextValue(session, node, props.text, cursor, anchor, true, false)
     if focused && anchor != cursor {
-        PaintTextSelection(session, node, props, prepared, anchor, cursor,
+        Text.PaintTextSelection(session, node, props, prepared, anchor, cursor,
             ColorFromPacked(Opacity(Theme.CurrentAccent(), 72.0 / 255.0)))
     }
-    PaintTextLines(session, node, props, prepared)
+    Text.PaintTextLines(session, node, props, prepared)
     if props.selectable {
         TextTouchPaint(session, node, props.key, focused, false, anchor, cursor,
-            TextCaretBounds(props, prepared, anchor), TextCaretBounds(props, prepared, cursor),
+            Text.TextCaretBounds(props, prepared, anchor), Text.TextCaretBounds(props, prepared, cursor),
             prepared.bounds, ColorFromPacked(Theme.CurrentAccent()), 1.0)
     }
 }

@@ -293,6 +293,8 @@ def check_files(site):
     assets = dict(json.loads((site / 'runtime/assets.json').read_text()))
     image = site / assets['/assets/pfp.webp']
     assert hashlib.sha256(image.read_bytes()).digest() == hashlib.sha256((ROOT / 'examples/gallery/assets/pfp.webp').read_bytes()).digest(), 'Gallery image asset missing or changed'
+    mascot = site / assets['/assets/brand/mascot-dragon.png']
+    assert hashlib.sha256(mascot.read_bytes()).digest() == hashlib.sha256((ROOT / 'assets/brand/mascot-dragon.png').read_bytes()).digest(), 'Kryon mascot asset missing or changed'
     landscape = site / assets['/assets/alpine-lake.webp']
     assert hashlib.sha256(landscape.read_bytes()).digest() == hashlib.sha256((ROOT / 'examples/image/assets/alpine-lake.webp').read_bytes()).digest()
     for app in ('terminal', 'browser', 'github', 'explorer'):
@@ -508,9 +510,9 @@ def check_preview_containment(browser, base, shots):
         assert usage['y'] > stage['y'] + stage['height'], 'Usage overlaps example'
         mouse(browser, node_for(browser, label='Source', width=width), width=width)
         compile_ready(browser)
-        overflow = ('using UI :: #import "kryon/Widgets";\n#program_export\n'
+        overflow = ('Box :: #import "kryon/box";\n#import "kryon/geometry"\n#import "kryon/session"\n#program_export\n'
                     'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
-                    ' Box(session, BoxProps.{.key = 771, .bounds = .{viewport.x - 80.0, viewport.y - 80.0, '
+                    ' Box.Draw(session, Box.Props.{.key = 771, .bounds = .{viewport.x - 80.0, viewport.y - 80.0, '
                     'viewport.width + 160.0, viewport.height + 160.0}, .fill = .{247, 0, 223, 255}});\n return 0;\n}\n'
                     '#program_export\nSetExampleOptions :: (disabled: bool, reduced_motion: bool) { unused disabled; unused reduced_motion }\n')
         replace_source(browser, overflow)
@@ -556,6 +558,8 @@ def check_document_layout(browser, base, shots):
     capture(browser, shots/'documentation-wide.webp')
     ready(browser, base, 'index', width=390)
     assert not any(n['key']==9003 for n in tree(browser)), 'Overview must remain a landing page'
+    mascot = node_for(browser, key=10201, width=390)
+    assert mascot['kind'] == 24 and visible(mascot, 390), 'Mascot must paint in the overview hero'
     capture(browser, shots/'overview-phone.webp')
     mouse(browser, node_for(browser, key=10520, width=390), width=390)
     mouse(browser, node_for(browser, key=10524, width=390), width=390)
@@ -687,7 +691,7 @@ def check_live(browser, base, scenes, shots):
     mouse(browser, node_for(browser, label='Source'))
     compile_ready(browser)
     text = node_for(browser, key=10102)['value']
-    assert 'Button(' in text and 'Continue' in text
+    assert 'Button.Draw(' in text and 'Continue' in text
     assert browser.evaluate("Module.previewTree.filter(n => n.label === 'Continue' && n.interactive).length === 12"), 'portable differs from maintained/default Button'
     mouse(browser, node_for(browser, key=10102))
     browser.evaluate("window.sourceKeys=[]; window.sourceKeyListener=e=>{if(e.key==='x')sourceKeys.push({type:e.type,trusted:e.isTrusted})}; for(const kind of ['keydown','keypress','keyup'])document.addEventListener(kind,sourceKeyListener,true)")

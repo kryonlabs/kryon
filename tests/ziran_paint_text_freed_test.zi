@@ -4,9 +4,8 @@
 #import "geometry"
 #import "paint_queue"
 #import "session"
-#import "text_props"
-#import "text"
-#import "text_measure"
+Text :: #import "kryon/text";
+TextMeasure :: #import "kryon/text_measure";
 #import "tree"
 #import "tree_draw"
 
@@ -35,9 +34,9 @@ Drawn :: (value: string) {
 
 QueueWidgetText :: (round: s64) {
     owned: Text = Card("text ", round)
-    props := TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+    props := Text.Props.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
         .text = TextView(owned)}
-    Text(paint_session, props)
+    Text.Draw(paint_session, props)
 }
 
 // A fresh Text goes straight into the record literal, as an app writes
@@ -46,7 +45,7 @@ QueueWidgetText :: (round: s64) {
 // so Ziran frees it. The same holds for TextLinkAt below.
 QueueLiteralText :: (round: s64) {
     session := paint_session
-    w := TextWidth(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+    w := TextMeasure.TextWidth(session, Text.Props.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
         .text = Card("text ", round)})
     if w <= 0 { bad = true }
     Drawn(Card("w ", round))
@@ -77,7 +76,7 @@ QueueKind :: (kind: s32, round: s64) {
     } else if kind == 7 {
         QueueLiteralText(round)
     } else if kind == 8 {
-        l := TextLinkAt(session, TextProps.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
+        l := Text.TextLinkAt(session, Text.Props.{.key = cast(u64)7, .bounds = Rectangle.{0.0, 0.0, 90.0, 20.0},
             .text = Card("text ", round)}, 0.0, 0.0)
         if l != -1 { bad = true }
         Drawn(Card("w ", round))

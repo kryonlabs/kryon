@@ -1,8 +1,8 @@
+TextField :: #import "textfield";
 #import "session"
 #import "tree_input"
 #import "key_input"
 #import "text_input"
-#import "text_input_props"
 
 using CompositionPhase;
 
@@ -44,8 +44,8 @@ FrameInputApply :: (session: Session, input: FrameInput) -> bool {
 }
 
 #program_export
-FrameInputField :: (input: FrameInput) -> TextFieldInput {
-    result: TextFieldInput = TextFieldInputFor(input.key, input.modifiers, input.text)
+FrameInputField :: (input: FrameInput) -> TextField.Input {
+    result: TextField.Input = TextFieldInputFor(input.key, input.modifiers, input.text)
     result.paste_text = input.clipboard
     result.composition_event.phase = cast(CompositionPhase)input.ime_phase
     result.composition_event.text = input.ime_text

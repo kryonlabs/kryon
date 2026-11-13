@@ -1,4 +1,5 @@
-#import "button_props"
+Button :: #import "button";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -8,8 +9,6 @@
 #import "style"
 #import "style_sheet"
 #import "surface"
-#import "kryon/text_widget"
-#import "text_props"
 #import "text_align"
 #import "theme"
 #import "tree"
@@ -21,7 +20,7 @@ using TextAlign;
 using WidgetKind;
 using StyleField;
 
-KeycapProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     keys: string
@@ -40,7 +39,7 @@ KeycapResult :: struct {
     count: s32
 }
 
-KeycapDefaultFace :: (props: KeycapProps, state: s32) -> StyleData {
+KeycapDefaultFace :: (props: Props, state: s32) -> StyleData {
     face: StyleData
     face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
         cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleBorderWidth |
@@ -70,7 +69,7 @@ KeycapDefaultFace :: (props: KeycapProps, state: s32) -> StyleData {
 }
 
 #program_export
-KeycapInstalledFaceFor :: (props: KeycapProps, state: s32) -> StyleData {
+KeycapInstalledFaceFor :: (props: Props, state: s32) -> StyleData {
     kind := props.style_kind
     if kind <= 0 { kind = StyleKindText() }
     facts := StyleControlRoleFacts(kind, props.id, props.class_name,
@@ -85,8 +84,7 @@ KeycapPart :: (value: string, face: StyleData, font: s32) -> float32 {
     return width
 }
 
-#program_export
-Keycap :: (session: Session, props: KeycapProps) -> KeycapResult {
+Draw :: (session: Session, props: Props) -> KeycapResult {
     result: KeycapResult
     result.node = -1
     state := cast(s32)ButtonStateNormal
@@ -143,11 +141,11 @@ Keycap :: (session: Session, props: KeycapProps) -> KeycapResult {
                 PaintRoundedOutline(session, result.node, cap, face.radius, 6,
                     face.border_width, ColorFromPacked(Opacity(face.border, opacity)))
             }
-            text := TextProps.{.key = WidgetPartKey(key, 101 + part),
+            text := Text.Props.{.key = WidgetPartKey(key, 101 + part),
                 .text = value, .bounds = cap, .align = .TextAlignCenter,
-                .vertical_align = cast(TextAlign)TextAlignCenter, .font = font,
+                .vertical_align = cast(TextAlign)TextAlignCenter, .size = font,
                 .typeface = face.typeface, .class_name = props.class_name}
-            Text(session, text)
+            Text.Draw(session, text)
             x += part_width + face.gap
             part += 1
         }

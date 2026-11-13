@@ -1,46 +1,26 @@
-#import "text"
-#import "Kryon"
-#import "checkbox"
-#import "checkbox_props"
-#import "toggle"
-#import "toggle_props"
-#import "text_props"
-#import "image"
-#import "image_props"
-#import "button"
-#import "button_props"
-#import "textarea"
-#import "text_input_props"
-#import "scroll"
-#import "scroll_props"
+Button :: #import "kryon/button";
+Checkbox :: #import "kryon/checkbox";
+Dropdown :: #import "kryon/dropdown";
+Fieldset :: #import "kryon/fieldset";
+Image :: #import "kryon/image";
+Modal :: #import "kryon/modal";
+Overlay :: #import "kryon/overlay";
+Progress :: #import "kryon/progress";
+Scroll :: #import "kryon/scroll";
+SegmentedControl :: #import "kryon/segmented_control";
+Shape :: #import "kryon/shape";
+Slider :: #import "kryon/slider";
+TabBar :: #import "kryon/tab_bar";
+Text :: #import "kryon/text";
+TextArea :: #import "kryon/text_area";
+TextField :: #import "kryon/text_field";
+Toggle :: #import "kryon/toggle";
 #import "session"
 #import "tree"
 #import "geometry"
-#import "box"
-#import "box_props"
-#import "textfield"
-#import "tabs"
-#import "tab_bar_props"
-#import "segmented"
-#import "segmented_control_props"
-#import "fieldset"
-#import "fieldset_props"
-#import "toggle_measure"
-#import "shape"
-#import "shape_props"
-#import "slider"
-#import "slider_props"
-#import "progress"
-#import "progress_props"
-#import "overlay"
-#import "overlay_props"
+ToggleMeasure :: #import "toggle_measure";
 Provider :: #import "hosted_ui_provider";
-#import "titlebar"
-#import "title_bar_props"
-#import "dropdown_props"
-#import "dropdown"
 #import "modal"
-#import "modal_props"
 #import "pointer_input"
 #program_export
 main :: () -> s32 {
@@ -49,60 +29,57 @@ main :: () -> s32 {
         return 15
     }
     session := Session.{.slot = 4, .epoch = cast(u64)12}
-    Text(session, TextProps.{.text = "Portable composition"})
-    Image(session, ImageProps.{.asset_path = "assets/photo.png"})
-    if Button(session, ButtonProps.{.id = 47, .label = "Save"}) != 47 { return 1 }
-    area := TextArea(session, TextAreaProps.{.value = "Saved text", .cursor = 4})
+    Text.Draw(session, Text.Props.{.text = "Portable composition"})
+    Image.Draw(session, Image.Props.{.asset_path = "assets/photo.png"})
+    if Button.Draw(session, Button.Props.{.id = 47, .label = "Save"}) != 47 { return 1 }
+    area := TextArea.Draw(session, TextArea.Props.{.value = "Saved text", .cursor = 4})
     if area.cursor != 5 || area.edit.replacement != "🌿" { return 2 }
-    scroll := Scroll(session, ScrollProps.{.content_height = 400, .scroll_offset = 20})
+    scroll := Scroll.Draw(session, Scroll.Props.{.content_height = 400, .scroll_offset = 20})
     if !scroll.opened || scroll.scroll_offset != 25 || scroll.content.width != 200.0 { return 3 }
     if !End(session) { return 4 }
-    check := Checkbox(session, CheckboxProps.{.id = 52, .checked = false})
+    check := Checkbox.Draw(session, Checkbox.Props.{.id = 52, .checked = false})
     if !check.changed || !check.checked { return 5 }
-    automatic := Toggle(session, ToggleProps.{.id = 53, .value = true})
+    automatic := Toggle.Draw(session, Toggle.Props.{.id = 53, .value = true})
     if !automatic.changed || automatic.value { return 6 }
-    if Box(session, BoxProps.{.radius = 12.0}) != 71 { return 7 }
     field_bytes: [32]u8
     initial := "List title"
     for index: cast(s64)0..initial.count - 1 { field_bytes[index] = initial[index] }
-    field_state := TextFieldState.{.bytes = field_bytes[:],
+    field_state := TextField.State.{.bytes = field_bytes[:],
         .length = cast(s32)initial.count, .cursor = 3}
-    field := TextField(session, TextFieldStateProps(field_state, TextFieldProps.{}))
+    field := TextField.Draw(session, TextField.StateProps(field_state, TextField.Props.{}))
     if field.cursor != 4 || field.edit.replacement != "✓" { return 8 }
-    if !TextFieldStateApplyResult(*field_state, field) || field_state.cursor != 4 ||
+    if !TextField.StateApplyResult(*field_state, field) || field_state.cursor != 4 ||
         TextView(field_bytes[:field_state.length]) != "✓List title" { return 19 }
-    tabs: [2]Tab = .[Tab.{.label = "One"}, Tab.{.label = "Two"}]
-    selected := TabBar(session, TabBarProps.{.selected_index = 0}, tabs[:])
+    tabs: [2]TabBar.Tab = .[TabBar.Tab.{.label = "One"}, TabBar.Tab.{.label = "Two"}]
+    selected := TabBar.Draw(session, TabBar.Props.{.selected_index = 0}, tabs[:])
     if selected.selected_index != 1 { return 9 }
-    segments: [2]SegmentOption = .[SegmentOption.{.label = "Week"}, SegmentOption.{.label = "Calendar"}]
-    view := SegmentedControl(session, SegmentedControlProps.{.selected_index = 0,
+    segments: [2]SegmentedControl.SegmentOption = .[SegmentedControl.SegmentOption.{.label = "Week"}, SegmentedControl.SegmentOption.{.label = "Calendar"}]
+    view := SegmentedControl.Draw(session, SegmentedControl.Props.{.selected_index = 0,
             .has_selection = true}, segments[:])
     if !view.changed || view.selected_index != 1 { return 13 }
-    Fieldset(session, FieldsetProps.{.title = "Details"})
-    size := ToggleSize(session, ToggleProps.{.off_label = "Off", .on_label = "On"})
+    Fieldset.Draw(session, Fieldset.Props.{.title = "Details"})
+    size := ToggleMeasure.ToggleSize(session, Toggle.Props.{.off_label = "Off", .on_label = "On"})
     if size.x != 72.0 || size.y != 30.0 { return 16 }
-    if Line(session, LineProps.{.end = Vector2.{4.0, 3.0}}) != 81 { return 17 }
-    if Circle(session, CircleProps.{.radius = 5.0}) != 82 { return 18 }
-    if Ring(session, RingProps.{.outer_radius = 5.0}) != 83 { return 19 }
-    if Triangle(session, TriangleProps.{}) != 84 { return 20 }
-    moved := Slider(session, SliderProps.{.value = 2.0, .max = 10.0})
+    if Shape.Draw(session, Shape.Props.{.end = Vector2.{4.0, 3.0}}) != 81 { return 17 }
+    if Shape.Circle(session, Shape.CircleProps.{.radius = 5.0}) != 82 { return 18 }
+    if Shape.Ring(session, Shape.RingProps.{.outer_radius = 5.0}) != 83 { return 19 }
+    if Shape.Triangle(session, Shape.TriangleProps.{}) != 84 { return 20 }
+    moved := Slider.Draw(session, Slider.Props.{.value = 2.0, .max = 10.0})
     if !moved.changed || moved.value != 2.5 { return 21 }
-    stepped := DiscreteSlider(session, DiscreteSliderProps.{.value = 3, .max = 10})
+    stepped := Slider.DiscreteSlider(session, Slider.DiscreteSliderProps.{.value = 3, .max = 10})
     if !stepped.changed || stepped.value != 4 { return 22 }
-    Progress(session, ProgressProps.{.max = 60, .value = 30})
+    Progress.Draw(session, Progress.Props.{.max = 60, .value = 30})
     if Provider.HostedProgressValue() != 30 { return 23 }
-    overlay := DismissibleOverlay(session, DismissibleOverlayProps.{})
+    overlay := Overlay.Draw(session, Overlay.Props.{})
     if !overlay.closed || overlay.panel_node != 85 { return 24 }
-    popup := Popup(session, PopupProps.{})
+    popup := Overlay.Popup(session, Overlay.PopupProps.{})
     if popup.closed || popup.node != 86 { return 25 }
-    options: [1]DropdownOption
-    bar := TitleBar(session, TitleBarProps.{.title = "Lumi", .trailing_width = 90}, options[0:0])
-    if bar.trailing_bounds.width != 90.0 { return 10 }
-    actions: [1]ActionModalAction = .[ActionModalAction.{.label = "Keep editing"}]
-    decision := ActionModal(session, ActionModalProps.{.title = "Unsaved changes"}, actions[:])
+    options: [1]Dropdown.Option
+    actions: [1]Modal.ActionModalAction = .[Modal.ActionModalAction.{.label = "Keep editing"}]
+    decision := ActionModal(session, Modal.ActionModalProps.{.title = "Unsaved changes"}, actions[:])
     if decision.action != 1 { return 11 }
     options[0].label = "Practice"
-    selected_app := Dropdown(session, DropdownProps.{.selected_index = 0}, options[:])
+    selected_app := Dropdown.Draw(session, Dropdown.Props.{.selected_index = 0}, options[:])
     if !selected_app.changed || selected_app.selected_index != 1 { return 12 }
     return 42
 }

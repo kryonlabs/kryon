@@ -16,7 +16,7 @@ SwipeRowAction :: struct {
 // swiping right reveals `start`, swiping left reveals `end`. It paints only
 // the revealed strip; the app draws the row's content shifted sideways by
 // the result's offset.
-SwipeRowProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     // Names the row for accessibility; Enter or Space tap it.

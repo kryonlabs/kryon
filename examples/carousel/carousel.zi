@@ -1,20 +1,23 @@
-using UI :: #import "kryon/Widgets";
+Carousel :: #import "kryon/carousel";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 #import "kryon/frame_snapshot"
 
-state: CarouselState;
+state: Carousel.CarouselState;
 opened: s32 = -1;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Carousel", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Carousel", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
     input := CaptureFrameInput(session)
     now := cast(float64)input.elapsed_ms / 1000.0
-    items := CarouselItem.[.{.label = "Alpine lake", .portrait = "assets/alpine-lake.webp", .landscape = "assets/alpine-lake.webp", .caption = "A quiet morning in the mountains", .action = "Open"}, .{.label = "Coastal cliffs", .portrait = "assets/coastal-cliffs.webp", .landscape = "assets/coastal-cliffs.webp", .caption = "Follow the trail along the ocean", .action = "Create"}]
+    items := Carousel.CarouselItem.[.{.label = "Alpine lake", .portrait = "assets/alpine-lake.webp", .landscape = "assets/alpine-lake.webp", .caption = "A quiet morning in the mountains", .action = "Open"}, .{.label = "Coastal cliffs", .portrait = "assets/coastal-cliffs.webp", .landscape = "assets/coastal-cliffs.webp", .caption = "Follow the trail along the ocean", .action = "Create"}]
     for index: 0..cast(s32)items.count - 1 { items[index].disabled = example_disabled }
     if example_reduced_motion { state.position = cast(float32)state.selected }
-    result := Carousel(session, CarouselProps.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, 320.0}, .now = now, .label = "Places to explore", .previous_label = "Previous", .next_label = "Next", .scale = 1.0}, items[:], *state)
+    result := Carousel.Draw(session, Carousel.Props.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, 320.0}, .now = now, .label = "Places to explore", .previous_label = "Previous", .next_label = "Next", .scale = 1.0}, items[:], *state)
     if result >= 0 { opened = result }
-    if opened >= 0 { Text(session, TextProps.{.disabled = example_disabled, .key = 2, .bounds = .{bounds.x, bounds.y + 336.0, bounds.width, 36.0}, .text = items[opened].label}) }
+    if opened >= 0 { Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 2, .bounds = .{bounds.x, bounds.y + 336.0, bounds.width, 36.0}, .text = items[opened].label}) }
     return 0
 }
 

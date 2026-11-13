@@ -1,17 +1,15 @@
+Image :: #import "image";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
-#import "image_props"
-#import "kryon/image_widget"
 #import "paint_queue"
 #import "session"
 #import "style"
 #import "style_sheet"
 #import "surface"
 #import "text_align"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -33,11 +31,11 @@ AvatarStatus :: enum {
     AvatarStatusOffline :: 4
 }
 
-AvatarProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     name: string
-    image: ImageProps
+    image: Image.Props
     size: float32
     status: AvatarStatus
     square: bool
@@ -139,7 +137,7 @@ AvatarStatusColor :: (status: AvatarStatus) -> u32 {
     return cast(u32)0
 }
 
-AvatarDefaultFace :: (props: AvatarProps, state: s32) -> StyleData {
+AvatarDefaultFace :: (props: Props, state: s32) -> StyleData {
     face: StyleData
     face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
         cast(u32)StyleBorder | cast(u32)StyleBorderWidth | cast(u32)StyleRadius |
@@ -162,7 +160,7 @@ AvatarDefaultFace :: (props: AvatarProps, state: s32) -> StyleData {
 }
 
 #program_export
-AvatarInstalledFaceFor :: (props: AvatarProps, state: s32) -> StyleData {
+AvatarInstalledFaceFor :: (props: Props, state: s32) -> StyleData {
     kind := props.style_kind
     if kind <= 0 { kind = StyleKindSurface() }
     facts := StyleControlRoleFacts(kind, props.id, props.class_name,
@@ -171,8 +169,7 @@ AvatarInstalledFaceFor :: (props: AvatarProps, state: s32) -> StyleData {
     return MergeValues(ResolveValues(face, props.states, state), props.style)
 }
 
-#program_export
-Avatar :: (session: Session, props: AvatarProps) -> AvatarResult {
+Draw :: (session: Session, props: Props) -> AvatarResult {
     result: AvatarResult
     result.node = -1
     result.tone = AvatarNameTone(props.name)
@@ -188,7 +185,7 @@ Avatar :: (session: Session, props: AvatarProps) -> AvatarResult {
     result.background = face.background
     result.foreground = face.foreground
     result.initials_length = cast(s32)AvatarInitials(props.name, result.initials[:]).count
-    shown := ImageShownFor(props.image)
+    shown := Image.ImageShownFor(props.image)
     result.image_fallback = props.image.asset_path == "" && props.image.texture.id == cast(u32)0
     if props.image.asset_path != "" || props.image.texture.id != cast(u32)0 {
         result.image_fallback = shown.showing == .ImageShowingUnavailable
@@ -213,9 +210,9 @@ Avatar :: (session: Session, props: AvatarProps) -> AvatarResult {
                 face.border_width, ColorFromPacked(Opacity(face.border, opacity)))
         }
         if result.initials_length > 0 {
-            Text(session, TextProps.{.key = WidgetPartKey(key, 1),
+            Text.Draw(session, Text.Props.{.key = WidgetPartKey(key, 1),
                 .bounds = result.bounds, .text = TextView(result.initials[0:result.initials_length]),
-                .font = ResolveFont(0, StyleFontValue(face.fields, face.font_size), 12),
+                .size = ResolveFont(0, StyleFontValue(face.fields, face.font_size), 12),
                 .typeface = face.typeface, .align = .TextAlignCenter,
                 .vertical_align = cast(TextAlign)TextAlignCenter,
                 .class_name = props.class_name})
@@ -225,7 +222,7 @@ Avatar :: (session: Session, props: AvatarProps) -> AvatarResult {
         image.key = WidgetPartKey(key, 2)
         image.bounds = result.bounds
         image.radius = face.radius
-        Image(session, image)
+        Image.Draw(session, image)
     }
     if props.status != .AvatarStatusNone {
         status_color := AvatarStatusColor(props.status)
@@ -289,7 +286,7 @@ AvatarGroup :: (session: Session, props: AvatarGroupProps,
                 12, ColorFromPacked(CurrentPalette().surface))
             if TreePushScope(session, ring_node) {
                 if at < visible {
-                    unused Avatar(session, AvatarProps.{
+                    unused Draw(session, Props.{
                         .key = WidgetPartKey(key, cast(s32)201 + at),
                         .bounds = Rectangle.{x, result.bounds.y, size, size},
                         .name = names[at], .size = size, .square = props.square,
@@ -300,10 +297,10 @@ AvatarGroup :: (session: Session, props: AvatarGroupProps,
                     PaintRoundedFill(session, ring_node,
                         Rectangle.{x, result.bounds.y, size, size}, size * 0.5, 12,
                         ColorFromPacked(CurrentPalette().surface_muted))
-                    Text(session, TextProps.{.key = WidgetPartKey(key, 301),
+                    Text.Draw(session, Text.Props.{.key = WidgetPartKey(key, 301),
                         .bounds = Rectangle.{x, result.bounds.y, size, size},
                         .text = TextView(overflow_text[0:overflow_length]),
-                        .font = cast(s32)(size * 0.36), .align = .TextAlignCenter,
+                        .size = cast(s32)(size * 0.36), .align = .TextAlignCenter,
                         .vertical_align = cast(TextAlign)TextAlignCenter})
                 }
                 unused TreePopScope(session)

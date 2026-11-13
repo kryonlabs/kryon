@@ -1,25 +1,23 @@
 #import "session"
 #import "geometry"
-#import "textfield"
-#import "text_input_props"
+Button :: #import "kryon/button";
+TextField :: #import "kryon/text_field";
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
-#import "button_props"
-#import "button"
 #import "input_props"
 #import "ziran_widget_noop_host"
 #import "system_clipboard_host"
 
-Draw :: (session: Session, props: TextFieldProps, clipped: bool) -> s32 {
+Draw :: (session: Session, props: TextField.Props, clipped: bool) -> s32 {
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
     if clipped { TreeSetChildClip(session, 0, Rectangle.{}) }
-    field := TextField(session, props)
-    Button(session, ButtonProps.{.key = cast(u64)12, .bounds = Rectangle.{10.0, 60.0, 80.0, 30.0}, .label = "Next"})
+    field := TextField.Draw(session, props)
+    Button.Draw(session, Button.Props.{.key = cast(u64)12, .bounds = Rectangle.{10.0, 60.0, 80.0, 30.0}, .label = "Next"})
     EndFrame(session)
     return field.node
 }
-Case :: (session: Session, props: TextFieldProps, clipped: bool,
+Case :: (session: Session, props: TextField.Props, clipped: bool,
     focus: bool, modifiers: s32, expected: s32) -> bool {
     node := Draw(session, props, clipped)
     if focus { TreeFocusAt(session, node) }
@@ -33,11 +31,11 @@ Case :: (session: Session, props: TextFieldProps, clipped: bool,
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
-    props := TextFieldProps.{.key = cast(u64)11, .bounds = Rectangle.{10.0, 10.0, 200.0, 36.0},
+    props := TextField.Props.{.key = cast(u64)11, .bounds = Rectangle.{10.0, 10.0, 200.0, 36.0},
         .value = "complete", .label = "Location", .cursor = 8, .anchor = 8, .focused = true}
     // Focus a previous control, then create the explicit-focus field once.
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
-    Button(session, ButtonProps.{.key = cast(u64)12, .bounds = Rectangle.{10.0, 60.0, 80.0, 30.0}, .label = "Next"})
+    Button.Draw(session, Button.Props.{.key = cast(u64)12, .bounds = Rectangle.{10.0, 60.0, 80.0, 30.0}, .label = "Next"})
     EndFrame(session)
     TreeFocusAt(session, 1)
     fresh := props; fresh.focused = false; fresh.capture_tab = true; fresh.input.focus = true

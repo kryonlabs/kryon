@@ -7,7 +7,7 @@
 #import "c_string"
 #import "byte_text_linux"
 #import "drawing_props"
-#import "tilemap"
+TileMap :: #import "kryon/tile_map";
 #import "widget_codec"
 #import "text_input_platform"
 #import "session"
@@ -25,7 +25,7 @@ Widgets :: (context: *void, module: *u8, function: *u8,
     if TextFromCString(module) != "tilemap" || TextFromCString(function) != "TileMapHostedHost" || count != 2 { return 0 }
     tile_calls += 1
     tile_after_write = frame_writes > 0
-    result.* = WidgetEncodeTileMapResult(TileMapResult.{.cell = 10.0, .columns = 2, .rows = 1}, *tile_reply)
+    result.* = WidgetEncodeTileMapResult(TileMap.TileMapResult.{.cell = 10.0, .columns = 2, .rows = 1}, *tile_reply)
     return 1
 }
 

@@ -158,7 +158,7 @@ try {
   await settled();
   assert.notEqual(await pixelHash(), initialPixels, 'Editing source changes actual rendered pixels');
   console.log('Live edit and rendering: ' + (Date.now() - editedAt) + ' ms');
-  await edit('using UI :: #import "kryon/Widgets";\n#program_export\nFrame :: (session: Session, viewport: Rectangle) -> s32 { while true {} return 0; }');
+  await edit('#import "kryon/geometry"\n#import "kryon/session"\n#program_export\nFrame :: (session: Session, viewport: Rectangle) -> s32 { while true {} return 0; }');
   await waitFor(() => evaluate(`!document.getElementById('diagnostics').hidden`), 'The runaway frame did not stop');
   assert.match(await evaluate(`document.getElementById('diagnostics').textContent`), /stopped after 1000000 statements/);
   await edit(edited);
@@ -194,7 +194,7 @@ try {
   assert.match(await evaluate(`document.getElementById('diagnostics').textContent`), /missing_value/);
   assert.equal(await pixelHash(), lastGoodPixels, 'Compile errors preserve the last working preview');
   await screenshot('diagnostics');
-  await edit('using UI :: #import "kryon/Widgets";\nhost_api :: #system_library "host_api";\nOtherCall :: () -> s32 #foreign host_api;\n#program_export\nFrame :: (session: Session, viewport: Rectangle) -> s32 { return OtherCall(); }');
+  await edit('#import "kryon/geometry"\n#import "kryon/session"\nhost_api :: #system_library "host_api";\nOtherCall :: () -> s32 #foreign host_api;\n#program_export\nFrame :: (session: Session, viewport: Rectangle) -> s32 { return OtherCall(); }');
   await waitFor(() => evaluate(`document.getElementById('diagnostics').textContent.includes('OtherCall')`), 'The unsupported capability was not reported');
   await delay(150);
   assert.equal(await evaluate(`document.getElementById('status').dataset.state`), 'error', 'Rendering the previous program must not mark a rejected bundle successful');

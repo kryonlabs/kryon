@@ -1,4 +1,7 @@
-using UI :: #import "Widgets";
+TextField :: #import "kryon/text_field";
+#import "geometry"
+#import "key_input"
+#import "session"
 #import "tree"
 #import "tree_input"
 #import "text_host"
@@ -24,7 +27,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     for at: 0..length - 1 { current[at] = bytes[at] }
     typed: [64]u8
     input := TextFieldInputFor(KeyboardTake(session), KeyboardModifiers(session), TypedTextTake(session, typed[:]))
-    field := TextField(session, TextFieldProps.{.key = 1, .bounds = .{20.0, 20.0, 280.0, 44.0},
+    field := TextField.Draw(session, TextField.Props.{.key = 1, .bounds = .{20.0, 20.0, 280.0, 44.0},
         .value = TextView(current[:length]), .cursor = cursor, .anchor = anchor, .max_bytes = 64, .input = input})
     cursor = field.cursor; anchor = field.anchor
     if field.edit.changed {

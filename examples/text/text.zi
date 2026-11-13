@@ -1,11 +1,14 @@
-using UI :: #import "kryon/Widgets";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/text_selection"
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     TextSelectionEnable()
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Text", .font = 28})
-    Text(session, TextProps.{.disabled = example_disabled, .key = 10, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 56.0}, .text = "Make room for good ideas", .font = 24})
-    Text(session, TextProps.{.disabled = example_disabled, .key = 11, .bounds = .{viewport.x + 20.0, viewport.y + 148.0, viewport.width - 40.0, 144.0}, .text = "Select and copy this text. Unicode works here too: café, Ω, é.", .font = 18, .selectable = true})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Text", .size = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 10, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 56.0}, .text = "Make room for good ideas", .size = 24})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 11, .bounds = .{viewport.x + 20.0, viewport.y + 148.0, viewport.width - 40.0, 144.0}, .text = "Select and copy this text. Unicode works here too: café, Ω, é.", .size = 18, .selectable = true})
     return 0
 }
 

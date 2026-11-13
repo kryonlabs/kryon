@@ -6,7 +6,8 @@
 #import "widget_host"
 #import "widget_codec"
 #import "hosted_values"
-#import "text_input_props"
+TextArea :: #import "kryon/text_area";
+TextField :: #import "kryon/text_field";
 #import "tree_draw"
 #import "std/bundle_host"
 #import "session"
@@ -65,15 +66,15 @@ EditorEffects :: (staging: bool) -> bool {
     arguments: [2]HostValue
     result: HostValue
     arguments[0] = WidgetEncodeSession(session, *session_codec)
-    arguments[1] = WidgetEncodeTextFieldProps(TextFieldProps.{
+    arguments[1] = WidgetEncodeTextFieldProps(TextField.Props.{
         .key = 1, .bounds = Rectangle.{0.0, 0.0, 120.0, 40.0}, .value = "field",
-        .cursor = 5, .anchor = 0, .focused = true, .input = TextFieldInput.{.copy = true}
+        .cursor = 5, .anchor = 0, .focused = true, .input = TextField.Input.{.copy = true}
     }, *field_codec)
     field_ok := WidgetHostCall(null, HostTextData("textfield"),
         HostTextData("TextFieldHostedHost"), *arguments[0], 2, *result) != 0
-    arguments[1] = WidgetEncodeTextAreaProps(TextAreaProps.{
+    arguments[1] = WidgetEncodeTextAreaProps(TextArea.Props.{
         .key = 2, .bounds = Rectangle.{0.0, 50.0, 120.0, 100.0}, .value = "area",
-        .cursor = 4, .anchor = 0, .focused = true, .input = TextAreaInput.{.copy = true}
+        .cursor = 4, .anchor = 0, .focused = true, .input = TextArea.Input.{.copy = true}
     }, *area_codec)
     area_ok := WidgetHostCall(null, HostTextData("textarea"),
         HostTextData("TextAreaHostedHost"), *arguments[0], 2, *result) != 0

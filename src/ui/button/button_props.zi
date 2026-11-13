@@ -1,7 +1,7 @@
+Image :: #import "image";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
-#import "image_props"
 
 ArrowDirection :: enum {
     ArrowLeft :: 0
@@ -11,7 +11,7 @@ ArrowDirection :: enum {
 }
 
 // Shared public contract. The host renders the declared values.
-ButtonProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     label: string
@@ -42,7 +42,7 @@ ButtonProps :: struct {
     // Reduce label and icon sizes when explicit bounds cannot hold the content.
     fit_content: bool
     square: bool
-    image: ImageProps
+    image: Image.Props
     swatch: bool
     swatch_color: Color
     menu_id: s32

@@ -1,7 +1,6 @@
 #import "widget_test_session"
 
-#import "button_props"
-#import "button"
+Button :: #import "kryon/button";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -23,8 +22,8 @@ using StyleField;
 
 Math :: #import "std/math";
 
-ButtonPropsForTone :: (tone: ButtonTone) -> ButtonProps {
-    props: ButtonProps
+ButtonPropsForTone :: (tone: ButtonTone) -> Button.Props {
+    props: Button.Props
     props.key = cast(u64)77
     props.id = 77
     props.label = "Run"
@@ -33,7 +32,7 @@ ButtonPropsForTone :: (tone: ButtonTone) -> ButtonProps {
     return props
 }
 
-ButtonPropsFor :: () -> ButtonProps {
+ButtonPropsFor :: () -> Button.Props {
     return ButtonPropsForTone(cast(ButtonTone)ButtonToneAccent)
 }
 
@@ -41,14 +40,14 @@ DrawButtonTone :: (tone: ButtonTone, focus: bool) -> bool {
     props := ButtonPropsForTone(tone)
     if focus && !KeyboardSend(TestSession(), KeyTab) { return false }
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    if Button(TestSession(), props) != 0 { return false }
+    if Button.Draw(TestSession(), props) != 0 { return false }
     return EndFrame(TestSession()) == cast(FrameStatus)FrameOk
 }
 
 DrawButton :: (focus: bool) -> bool {
     if focus && !KeyboardSend(TestSession(), KeyTab) { return false }
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    if Button(TestSession(), ButtonPropsFor()) != 0 { return false }
+    if Button.Draw(TestSession(), ButtonPropsFor()) != 0 { return false }
     return EndFrame(TestSession()) == cast(FrameStatus)FrameOk
 }
 
@@ -181,7 +180,7 @@ main :: () -> s32 {
     if !InstallTheme(custom) { return 17 }
 
     if !InstallIdRule() { return 7 }
-    face := ButtonInstalledFaceFor(ButtonPropsFor(),
+    face := Button.ButtonInstalledFaceFor(ButtonPropsFor(),
         cast(s32)ButtonStateNormal)
     if face.background != cast(u32)0x102030ff ||
         face.radius != 18.0 || face.font_size != 15.0 ||
@@ -194,7 +193,7 @@ main :: () -> s32 {
     if !InstallStyleRules(StyleRules.{}) { return 11 }
 
     if !SetReducedMotion(true) { return 12 }
-    face = ButtonInstalledFaceFor(ButtonPropsFor(),
+    face = Button.ButtonInstalledFaceFor(ButtonPropsFor(),
         cast(s32)ButtonStateNormal)
     if face.motion_reduced != CurrentTheme().motion.reduced_motion ||
         CurrentTheme().motion.multiplier != 0.0 ||

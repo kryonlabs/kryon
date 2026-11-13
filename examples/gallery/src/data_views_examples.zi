@@ -1,4 +1,10 @@
-using UI :: #import "kryon/Widgets";
+Text :: #import "kryon/text";
+#import "kryon/control_props"
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/style_sheet"
+#import "kryon/tree_input"
 Tables :: #import "data_views/TableView";
 Trees :: #import "data_views/TreeView";
 Board :: #import "data_views/Kanban";
@@ -112,7 +118,7 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
                 for index: cast(s32)0..2 {
                     if card_lanes[index] == lane {
                         card := Board.KanbanCard(session, *board_cell, frame, *column, index, cast(u64)(700 + index), 64.0)
-                        Text(session, TextProps.{.bounds = .{card.x + 8.0, card.y + 8.0, card.width - 16.0, card.height - 16.0}, .text = labels[index], .font = 14})
+                        Text.Draw(session, Text.Props.{.bounds = .{card.x + 8.0, card.y + 8.0, card.width - 16.0, card.height - 16.0}, .text = labels[index], .font = 14})
                     }
                 }
             }

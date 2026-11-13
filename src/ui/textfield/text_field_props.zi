@@ -1,12 +1,12 @@
+Text :: #import "text";
 #import "geometry"
 #import "text_input"
-#import "text_props"
 Utf8 :: #import "std/utf8"
 using Vectors :: #import "std/vec"
 
 // The caller owns bytes; length excludes unused capacity, with no trailing
 // zero required. Composition and clipboard lifetimes remain with the caller.
-TextFieldState :: struct {
+State :: struct {
     bytes: []u8
     length: s32
     cursor: s32
@@ -15,7 +15,7 @@ TextFieldState :: struct {
     focused: bool
 }
 
-TextFieldInput :: struct {
+Input :: struct {
     text: string
     paste_text: string
     composition_event: CompositionEvent
@@ -36,7 +36,7 @@ TextFieldInput :: struct {
     blur: bool
 }
 
-TextFieldProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     value: string
@@ -61,20 +61,20 @@ TextFieldProps :: struct {
     numeric: bool
     read_only: bool
     disabled: bool
-    input: TextFieldInput
+    input: Input
     // Leave unmodified Tab for KeyboardTake while this editable field owns
     // retained focus. Shift+Tab continues ordinary reverse traversal.
     capture_tab: bool
 }
 
-TextFieldEdit :: struct {
+Edit :: struct {
     start: s32
     end: s32
     replacement: string
     changed: bool
 }
 
-TextFieldResult :: struct {
+Result :: struct {
     node: s32
     cursor: s32
     anchor: s32
@@ -89,10 +89,10 @@ TextFieldResult :: struct {
     // Paste ran in an editable field while the clipboard held no text; the
     // application may take an image or files from it instead.
     paste_without_text: bool
-    edit: TextFieldEdit
+    edit: Edit
 }
 
-TextFieldStateValid :: (state: TextFieldState) -> bool {
+StateValid :: (state: State) -> bool {
     return state.bytes.count <= 2147483647 && state.length >= 0 &&
         state.length <= state.bytes.count &&
         Utf8.Valid(TextView(state.bytes[:state.length]))
@@ -102,9 +102,9 @@ TextFieldStateValid :: (state: TextFieldState) -> bool {
 // The value borrows bytes until the next mutation. Other props, including
 // composition and application limits, keep their supplied values.
 #program_export
-TextFieldStateProps :: (state: TextFieldState,
-    props: TextFieldProps) -> TextFieldProps {
-    if !TextFieldStateValid(state) {
+StateProps :: (state: State,
+    props: Props) -> Props {
+    if !StateValid(state) {
         props.value = ""
         props.disabled = true
         return props
@@ -128,10 +128,10 @@ TextFieldStateProps :: (state: TextFieldState,
 // collapse selection after the replacement; result application below supplies
 // the widget's final selection, focus and scroll instead.
 #program_export
-TextFieldStateApplyEdit :: (state: *TextFieldState,
-    edit: TextFieldEdit) -> bool {
+StateApplyEdit :: (state: *State,
+    edit: Edit) -> bool {
     if state == null { return false }
-    if !TextFieldStateValid(state.*) { return false }
+    if !StateValid(state.*) { return false }
     if !edit.changed { return true }
     if edit.start < 0 || edit.end < edit.start || edit.end > state.length {
         return false
@@ -167,11 +167,11 @@ TextFieldStateApplyEdit :: (state: *TextFieldState,
 // Apply bytes and interaction state together; a rejected edit keeps both.
 // Cursor/anchor are clamped to scalar boundaries in the resulting value and
 // negative scroll becomes zero. Enter, Escape, clipboard and composition are
-// still decisions for the application using the original TextFieldResult.
+// still decisions for the application using the original Result.
 #program_export
-TextFieldStateApplyResult :: (state: *TextFieldState,
-    result: TextFieldResult) -> bool {
-    if !TextFieldStateApplyEdit(state, result.edit) { return false }
+StateApplyResult :: (state: *State,
+    result: Result) -> bool {
+    if !StateApplyEdit(state, result.edit) { return false }
     value := TextView(state.bytes[:state.length])
     state.cursor = CompositionBoundaryFor(value, result.cursor)
     state.anchor = CompositionBoundaryFor(value, result.anchor)
@@ -179,142 +179,4 @@ TextFieldStateApplyResult :: (state: *TextFieldState,
     if state.scroll_x < 0 { state.scroll_x = 0 }
     state.focused = result.focused
     return true
-}
-
-TextAreaInput :: struct {
-    text: string
-    paste_text: string
-    composition_event: CompositionEvent
-    left: bool
-    right: bool
-    up: bool
-    down: bool
-    home: bool
-    end: bool
-    document_home: bool
-    document_end: bool
-    page_up: bool
-    page_down: bool
-    shift: bool
-    backspace: bool
-    delete_forward: bool
-    select_all: bool
-    copy: bool
-    cut: bool
-    paste: bool
-    enter: bool
-    commit: bool
-    escape: bool
-    focus: bool
-    blur: bool
-    wheel: float32
-    // The host's monotonic clock in seconds. A second press on the same text
-    // soon after the first selects the word under it; zero turns that off.
-    now_seconds: float64
-}
-
-TextAreaColorSpan :: struct {
-    start: s32
-    end: s32
-    color: u32
-}
-
-// A box under a logical line of the value, such as a picture in a note, or
-// in place of the line's last row when `cover` is set, for a line whose
-// bytes are all hidden. A line's boxes follow it one under another, in
-// order; only its first may cover the row. Rows, wrapping and caret stops
-// stay those of the text; only vertical positions, hit testing and painting
-// make room for boxes. A point inside one is the end of its line.
-TextAreaBlock :: struct {
-    // The byte offset where the line starts.
-    start: s32
-    height: s32
-    cover: bool
-    // An asset drawn fitted inside the box, or "".
-    image: string
-    // Shown in a soft frame while the image is empty or unavailable.
-    label: string
-}
-
-// A logical line drawn at its own size, such as a heading. Its rows wrap,
-// take caret stops and take height at that size.
-TextAreaLine :: struct {
-    // The byte offset where the line starts.
-    start: s32
-    // The line's font size as a multiple of the area's.
-    scale: float32
-}
-
-TextAreaProps :: struct {
-    key: u64
-    bounds: Rectangle
-    value: string
-    label: string
-    placeholder: string
-    cursor: s32
-    anchor: s32
-    scroll_y: s32
-    focused: bool
-    composition: CompositionState
-    selecting: bool
-    preferred_x: s32
-    preferred_x_valid: bool
-    max_bytes: s32
-    max_codepoints: s32
-    id: s32
-    focus_id: s32
-    colors: []TextAreaColorSpan
-    composition_start: s32
-    composition_end: s32
-    read_only: bool
-    wrap: bool
-    class_name: s32
-    scale: float32
-    disabled: bool
-    input: TextAreaInput
-    // A reader may keep its viewport independent of caret/selection changes.
-    manual_scroll: bool
-    // Bytes kept in the value but not shown: no width, paint or caret stop,
-    // such as Markdown markers away from the line being edited. Sorted and
-    // disjoint on character boundaries; any other list is ignored.
-    hidden: []TextRange
-    // Bytes drawn with emphasis, as Text's strong ranges.
-    strong: []TextRange
-    // Bytes drawn slanted where the backend can, with unchanged advances;
-    // sorted and disjoint like `strong`.
-    italic: []TextRange
-    // Boxes under or in place of lines, and lines drawn at their own size.
-    // Each list is sorted by start, every start at a line start, with at
-    // most one size per line; any other list is ignored as a whole. Without
-    // them the layout is exactly the one of a plain area.
-    blocks: []TextAreaBlock
-    lines: []TextAreaLine
-}
-
-TextAreaEdit :: struct {
-    start: s32
-    end: s32
-    replacement: string
-    changed: bool
-}
-
-TextAreaResult :: struct {
-    node: s32
-    cursor: s32
-    anchor: s32
-    scroll_y: s32
-    focused: bool
-    selecting: bool
-    preferred_x: s32
-    preferred_x_valid: bool
-    committed: bool
-    escaped: bool
-    composition: CompositionState
-    composition_changed: bool
-    clipboard_write: bool
-    clipboard_text: string
-    // Paste ran in an editable area while the clipboard held no text; the
-    // application may take an image or files from it instead.
-    paste_without_text: bool
-    edit: TextAreaEdit
 }

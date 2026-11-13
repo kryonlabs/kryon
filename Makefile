@@ -289,7 +289,6 @@ docs-check:
 	python3 scripts/feature-matrix-html.py --check
 
 public-surface-check: canvas-hosted-import-test $(BUILD_DIR)/ziran-toolchain.stamp
-	$(ZIRAN_BIN) ir --project --root src/ui -o $(BUILD_DIR)/public/core src/ui/Kryon/module.zi
 	python3 tests/public_surface_test.py
 
 .PHONY: canvas-hosted-import-test
@@ -515,7 +514,8 @@ desktop-project-test: build/bin/kryon
 
 .PHONY: desktop-size-test
 desktop-size-test: build/bin/kryon
-	@env -u DISPLAY -u WAYLAND_DISPLAY python3 tests/desktop_size_test.py
+	@env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS \
+		HARMONY_DESKTOP_RECOVERY=0 python3 tests/desktop_size_test.py
 
 .PHONY: system-clipboard-linux-test
 system-clipboard-linux-test: build/bin/kryon
@@ -709,10 +709,14 @@ raylib-webp-decode-test: project-toolchain $(RAYLIB_ARCHIVES)
 		RAYLIB_LIBS="$(RAYLIB_PLATFORM_LIBS) -lm" sh tests/raylib_webp_decode_test.sh
 test: raylib-webp-decode-test
 
-.PHONY: scene-test
+.PHONY: scene-test scene-image-material-test
 scene-test: project-toolchain
 	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS sh tests/ziran_scene_test.sh
 test: scene-test
+
+scene-image-material-test: project-toolchain
+	env -u DISPLAY -u WAYLAND_DISPLAY -u XAUTHORITY -u DBUS_SESSION_BUS_ADDRESS HARMONY_DESKTOP_RECOVERY=0 sh tests/scene_image_material_test.sh
+test: scene-image-material-test
 
 .PHONY: scene-render-benchmark
 scene-render-benchmark: project-toolchain
@@ -724,6 +728,7 @@ shader-glsl-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" sh tests/shader_glsl_test.sh
 scene-gpu-test: project-toolchain
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_gpu_test.py
+	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_gpu_test.py --glx
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_gpu_test.py --async-test
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_gpu_test.py --async-test --saved
 	@ZIRAN_BIN="$(ZIRAN_BIN)" python3 tests/scene_camera_shift_test.py

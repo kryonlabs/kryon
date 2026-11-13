@@ -1,12 +1,15 @@
-#import "kryon/Widgets"
+GridMulti :: #import "kryon/grid_multi";
+#import "kryon/geometry"
+#import "kryon/icon"
+#import "kryon/session"
 Icons :: #import "kryon/icon";
-GridProcedure :: #type (session: Session, props: GridMultiProps,
-    items: []GridMultiItem, selected: []bool) -> GridMultiResult;
+GridProcedure :: #type (session: Session, props: GridMulti.Props,
+    items: []GridMulti.GridMultiItem, selected: []bool) -> GridMulti.GridMultiResult;
 #program_export
 main :: () -> s32 {
-    widget: GridProcedure = GridMulti
+    widget: GridProcedure = GridMulti.Draw
     unused widget
-    item: GridMultiItem = .{.key = cast(u64)1, .label = "Home",
+    item: GridMulti.GridMultiItem = .{.key = cast(u64)1, .label = "Home",
         .image = Icons.ImageForIcon(cast(s32)Icons.IconType.IconHome, Rectangle.{}, "Home")}
     direct := ImageForIcon(cast(s32)IconType.IconHome, Rectangle.{}, "Home")
     if item.image.asset_path != "icons/ui.webp" || direct.source.width != 64.0 { return 1 }

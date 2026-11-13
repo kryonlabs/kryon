@@ -1,12 +1,11 @@
-#import "box"
+TextField :: #import "textfield";
+Box :: #import "box";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "session"
 #import "style"
 #import "style_sheet"
-#import "textfield"
-#import "text_input_props"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -17,7 +16,7 @@ using WidgetKind;
 MoneyFieldLocale :: enum { MoneyLocaleDot :: 0; MoneyLocaleComma :: 1 }
 MoneyNegativeStyle :: enum { MoneyNegativeMinus :: 0; MoneyNegativeParentheses :: 1 }
 
-MoneyFieldProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32
@@ -37,7 +36,7 @@ MoneyFieldProps :: struct {
     locale: MoneyFieldLocale
     disabled: bool
     focused: bool
-    input: TextFieldInput
+    input: TextField.Input
     height: float32
 }
 
@@ -54,7 +53,7 @@ MoneyFieldState :: struct {
 
 MoneyFieldResult :: struct {
     node: s32
-    field: TextFieldResult
+    field: TextField.Result
     value: float64
     changed: bool
     committed: bool
@@ -185,7 +184,7 @@ MoneyFieldStateFor :: (value: float64,
 
 #program_export
 MoneyFieldApply :: (state: *MoneyFieldState,
-    props: MoneyFieldProps) -> MoneyFieldResult {
+    props: Props) -> MoneyFieldResult {
     result: MoneyFieldResult
     result.node = -1
     precision := props.precision
@@ -252,7 +251,7 @@ MoneyFieldApply :: (state: *MoneyFieldState,
 
 #program_export
 MoneyFieldDisplay :: (state: MoneyFieldState,
-    props: MoneyFieldProps, output: []u8) -> string {
+    props: Props, output: []u8) -> string {
     separator := props.decimal_separator
     grouping_separator := props.grouping_separator
     if separator.count == 0 {
@@ -271,21 +270,19 @@ MoneyFieldHostedReply :: struct { state: MoneyFieldState; result: MoneyFieldResu
 
 #if #defined(KRYON_HOSTED_UI) {
     moneyfield_host_api :: #system_library "host_api";
-    MoneyFieldHostedHost :: (session: Session, props: MoneyFieldProps,
+    MoneyFieldHostedHost :: (session: Session, props: Props,
         state: MoneyFieldState) -> MoneyFieldHostedReply #foreign moneyfield_host_api;
-    #program_export
-    MoneyField :: (session: Session, props: MoneyFieldProps,
+        Draw :: (session: Session, props: Props,
     state: *MoneyFieldState) -> MoneyFieldResult {
         reply := MoneyFieldHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
 } else {
-    #program_export
-    MoneyField :: (session: Session, props: MoneyFieldProps,
+        Draw :: (session: Session, props: Props,
     state: *MoneyFieldState) -> MoneyFieldResult { return MoneyFieldCore(session, props, state, true) }
     #program_export
-    MoneyFieldCore :: (session: Session, props: MoneyFieldProps,
+    MoneyFieldCore :: (session: Session, props: Props,
     state: *MoneyFieldState, effects: bool) -> MoneyFieldResult {
     result := MoneyFieldApply(state, props)
     if !TreeIsBuilding(session) { return result }
@@ -312,9 +309,9 @@ MoneyFieldHostedReply :: struct { state: MoneyFieldState; result: MoneyFieldResu
     face = ResolveInstalledStyleRules(face, StyleControlRoleFacts(StyleKindAny(),
         props.id, props.class_name, 0, 0, 0, 0, ifx state.focused then 4 else 1),
         ifx state.focused then 4 else 1)
-    Box(session, .{.key = props.key+101, .bounds = bounds,
+    Box.Draw(session, .{.key = props.key+101, .bounds = bounds,
             .fill = ColorFromPacked(face.background), .border = ColorFromPacked(face.border), .radius = face.radius})
-    field: TextFieldProps
+    field: TextField.Props
     field.key = props.key + 201
     field.bounds = bounds
     display_buffer: [64]u8
@@ -327,7 +324,7 @@ MoneyFieldHostedReply :: struct { state: MoneyFieldState; result: MoneyFieldResu
     field.max_bytes = 64
     field.disabled = props.disabled
     field.class_name = props.class_name
-    field_result := ifx effects then TextField(session, field) else TextFieldCore(session, field)
+    field_result := ifx effects then TextField.Draw(session, field) else TextField.TextFieldCore(session, field)
     unused field_result
     TreePopScope(session)
     return result

@@ -200,7 +200,8 @@ textfield/textfield.zi
 text_host.zi
 text_input.zi
 text_input_platform.zi
-text_input_props.zi
+textfield/text_field_props.zi
+textarea/text_area_props.zi
 text_layout.zi
 text/text_props.zi
 text_typeface.zi

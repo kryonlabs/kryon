@@ -33,7 +33,8 @@ ENV.setdefault('EM_CACHE', str(ROOT / 'build/emscripten-cache'))
 # Lanczos resizes up, down, along one axis and along both, of a fixed noise
 # picture; the app publishes an FNV-1a hash of each result, first with the
 # best kernels and then with the scalar ones.
-APP = '''using UI :: #import "kryon/Widgets";
+APP = '''#import "kryon/geometry"
+#import "kryon/session"
 #import "std/resample"
 #import "std/web"
 #import "std/vec"

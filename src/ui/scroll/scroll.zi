@@ -1,21 +1,19 @@
+using Scroll :: #import "scroll_props";
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "scroll_props"
     host_api :: #system_library "host_api";
-    ScrollHostedHost :: (session: Session, props: ScrollProps) -> ScrollResult #foreign host_api;
-    #program_export
-    Scroll :: (session: Session, props: ScrollProps) -> ScrollResult { return ScrollHostedHost(session, props) }
+    ScrollHostedHost :: (session: Session, props: Scroll.Props) -> Scroll.ScrollResult #foreign host_api;
+        Draw :: (session: Session, props: Scroll.Props) -> Scroll.ScrollResult { return ScrollHostedHost(session, props) }
 } else {
     #import "session"
     #import "control_props"
     #import "geometry"
     #import "drawing_props"
     #import "paint_queue"
-    #import "scroll_behavior"
-    #import "scroll_props"
+    using BehaviorModule :: #import "scroll_behavior";
     #import "scroll_device"
     #import "style"
     #import "style_sheet"
@@ -30,9 +28,8 @@
     // A value based scroll viewport. The caller supplies wheel or keyboard
     // movement, keeps the returned offset, and positions children in content.
     // Close the child scope with End(session).
-    #program_export
-    Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
-        result: ScrollResult
+        Draw :: (session: Session, props: Scroll.Props) -> Scroll.ScrollResult {
+        result: Scroll.ScrollResult
         result.node = -1
         result.viewport = props.bounds
         parent: Rectangle = TreeCurrentParentBounds(session)

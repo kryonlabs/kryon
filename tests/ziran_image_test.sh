@@ -11,10 +11,10 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 cat > "$work/use_image.zi" <<'EOF'
 #import "drawing_props"
 #import "image_behavior"
-#import "image_props"
+ImageSchema :: #import "image_props";
 #import "geometry"
 
-using ImageFit;
+using ImageSchema.ImageFit;
 
 #program_export
 Answer :: () -> s32 {
@@ -27,12 +27,12 @@ Answer :: () -> s32 {
     contain: Rectangle = ImageFitBounds(bounds, source, 20, 20, 1)
     if contain.x != 25.0 || contain.y != 0.0 ||
         contain.width != 50.0 || contain.height != 50.0 { return 0 }
-    image: ImageProps
+    image: ImageSchema.Props
     image.asset_path = "assets/photo.png"
     image.alt_text = "A photo"
     image.bounds = bounds
     image.source = source
-    image.fit = cast(ImageFit)ImageFitContain
+    image.fit = cast(ImageSchema.ImageFit)ImageFitContain
     texture: Texture2D
     texture.id = cast(u32)1
     texture.width = 20

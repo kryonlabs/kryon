@@ -1,4 +1,5 @@
-#import "box"
+Box :: #import "box";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -6,8 +7,6 @@
 #import "session"
 #import "style"
 #import "style_sheet"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -15,7 +14,7 @@
 using StyleField;
 using WidgetKind;
 
-ShortcutRecorderProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32
@@ -110,7 +109,7 @@ ShortcutRecorderKeySupported :: (key: s32) -> bool {
 
 #program_export
 ShortcutRecorderApply :: (state: *ShortcutRecorderState,
-    props: ShortcutRecorderProps) -> ShortcutRecorderResult {
+    props: Props) -> ShortcutRecorderResult {
     result: ShortcutRecorderResult
     result.node = -1
     if !state.initialized { state.initialized = true }
@@ -159,24 +158,22 @@ ShortcutRecorderHostedReply :: struct { state: ShortcutRecorderState; result: Sh
 
 #if #defined(KRYON_HOSTED_UI) {
     shortcutrecorder_host_api :: #system_library "host_api";
-    ShortcutRecorderHostedHost :: (session: Session, props: ShortcutRecorderProps,
+    ShortcutRecorderHostedHost :: (session: Session, props: Props,
         state: ShortcutRecorderState) -> ShortcutRecorderHostedReply #foreign shortcutrecorder_host_api;
-    #program_export
-    ShortcutRecorder :: (session: Session,
-    props: ShortcutRecorderProps,
+        Draw :: (session: Session,
+    props: Props,
     state: *ShortcutRecorderState) -> ShortcutRecorderResult {
         reply := ShortcutRecorderHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
 } else {
-    #program_export
-    ShortcutRecorder :: (session: Session,
-    props: ShortcutRecorderProps,
+        Draw :: (session: Session,
+    props: Props,
     state: *ShortcutRecorderState) -> ShortcutRecorderResult { return ShortcutRecorderCore(session, props, state, true) }
     #program_export
     ShortcutRecorderCore :: (session: Session,
-    props: ShortcutRecorderProps,
+    props: Props,
     state: *ShortcutRecorderState, effects: bool) -> ShortcutRecorderResult {
     unused effects
     result := ShortcutRecorderApply(state, props)
@@ -207,15 +204,15 @@ ShortcutRecorderHostedReply :: struct { state: ShortcutRecorderState; result: Sh
     face = ResolveInstalledStyleRules(face, StyleControlRoleFacts(StyleKindAny(),
         props.id, props.class_name, 0, 0, 0, 0, ifx state.recording then 4 else 1),
         ifx state.recording then 4 else 1)
-    Box(session, .{.key = props.key+101, .bounds = bounds,
+    Box.Draw(session, .{.key = props.key+101, .bounds = bounds,
             .fill = ColorFromPacked(face.background), .border = ColorFromPacked(face.border), .radius = face.radius})
-    text: TextProps
+    text: Text.Props
     text.key = props.key + 201
     text.bounds = bounds
     text.text = ifx state.recording then "Press a shortcut" else ifx state.key != 0 then TextView(state.label[:state.label_length]) else props.placeholder
-    text.font = cast(s32)face.font_size
+    text.size = cast(s32)face.font_size
     text.class_name = props.class_name
-    Text(session, text)
+    Text.Draw(session, text)
     TreePopScope(session)
     return result
 }

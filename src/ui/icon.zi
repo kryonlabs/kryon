@@ -1,5 +1,5 @@
+Image :: #import "image";
 #import "geometry"
-#import "image_props"
 
 // These values are persisted by applications and match icons/*.json.
 IconType :: enum {
@@ -138,8 +138,8 @@ IconType :: enum {
 // through Image, including when the icon is decorative.
 #program_export
 ImageForIcon :: (icon_type: s32, bounds: Rectangle,
-    alt_text: string) -> ImageProps {
-    image: ImageProps
+    alt_text: string) -> Image.Props {
+    image: Image.Props
     image.bounds = bounds
     image.alt_text = alt_text
     index: s32 = -1

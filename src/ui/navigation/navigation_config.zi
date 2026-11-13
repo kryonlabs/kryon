@@ -1,21 +1,18 @@
+using PropsModule :: #import "navigation_bar_config_props";
+Button :: #import "button";
+Dropdown :: #import "dropdown";
+Image :: #import "image";
+Modal :: #import "modal_frame";
+Overlay :: #import "overlay";
 Theme :: #import "theme";
 #import "session"
-#import "button_props"
-#import "button"
 #import "control_props"
 #import "drawing_props"
 #import "dropdown_behavior"
-#import "dropdown_props"
-#import "dropdown"
 #import "font_metrics"
 #import "geometry"
-#import "image_props"
 #import "modal_behavior"
-#import "modal_frame"
-#import "modal_props"
 #import "navigation_bar_behavior"
-#import "navigation_bar_config_props"
-#import "overlay"
 #import "paint_queue"
 #import "scroll_behavior"
 #import "style"
@@ -47,7 +44,7 @@ NavigationBarConfigDefaultFace :: (role: s32) -> StyleData {
 }
 
 #program_export
-NavigationBarConfigFaceFor :: (props: NavigationBarConfigProps,
+NavigationBarConfigFaceFor :: (props: PropsModule.Props,
     role: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(
         StyleKindNavigationBar(), props.id, props.class_name,
@@ -62,7 +59,7 @@ NavigationBarConfigFaceFor :: (props: NavigationBarConfigProps,
 }
 
 #program_export
-NavigationBarConfigKey :: (session: Session, props: NavigationBarConfigProps) -> u64 {
+NavigationBarConfigKey :: (session: Session, props: PropsModule.Props) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
     return TreeNextKey(session)
@@ -70,7 +67,7 @@ NavigationBarConfigKey :: (session: Session, props: NavigationBarConfigProps) ->
 
 #program_export
 NavigationBarConfigOptionIndex :: (
-    options: []NavigationBarOption, count: s32,
+    options: []PropsModule.Option, count: s32,
     route: s32) -> s32 {
     index: s32 = 0
     while index < count {
@@ -85,7 +82,7 @@ NavigationBarConfigOptionIndex :: (
 NavigationBarConfigButton :: (session: Session, key: u64, id: s32,
     class_name: s32, bounds: Rectangle, label: string,
     disabled: bool, icon_only: bool) -> bool {
-    button: ButtonProps
+    button: Button.Props
     button.key = key
     button.id = id
     button.class_name = class_name
@@ -98,16 +95,15 @@ NavigationBarConfigButton :: (session: Session, key: u64, id: s32,
     button.size = cast(ControlSize)ControlSizeSmall
     button.style_kind = StyleKindNavigationBar()
     button.style_role = NavigationBarActionRole()
-    return Button(session, button) != 0
+    return Button.Draw(session, button) != 0
 }
 
 // This editor mutates only the borrowed route slice and returns all retained
 // UI state. The caller owns save/cancel/reset effects and route persistence.
-#program_export
-NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
+Draw :: (session: Session, props: PropsModule.Props,
     routes: []s32, slot_labels: []string,
-    options: []NavigationBarOption) -> NavigationBarConfigResult {
-    result: NavigationBarConfigResult = .{.node = -1, .scroll_offset = props.scroll_offset,
+    options: []PropsModule.Option) -> PropsModule.Result {
+    result: PropsModule.Result = .{.node = -1, .scroll_offset = props.scroll_offset,
         .dropdown_open = props.dropdown_open, .dropdown_row = props.dropdown_row}
     counts: NavigationBarConfigCounts =
         NavigationBarConfigCountsFor(props.route_count,
@@ -133,14 +129,14 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
     metrics: NavigationBarConfigMetrics =
         NavigationBarConfigMetricsFor(scale, panel,
             row_face, action_face, route_face)
-    modal: ModalFrameProps = .{.key = key, .id = props.id, .class_name = props.class_name,
+    modal: Modal.Props = .{.key = key, .id = props.id, .class_name = props.class_name,
         .title = props.title, .bounds = props.bounds, .width = metrics.frame_width}
     modal.height = NavigationBarConfigFrameHeight(
         result.route_count, metrics)
     modal.scale = scale
     modal.has_right_action = true
     modal.right_label = props.close_label
-    frame: ModalFrameResult = ModalFrame(session, modal)
+    frame: Modal.ModalFrameResult = Modal.Draw(session, modal)
     result.node = frame.node
     if frame.dismissed || frame.right_clicked {
         result.action = 1
@@ -289,11 +285,11 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
         layout.save_bounds, props.save_label,
         false, false) { result.action = 2 }
 
-    dropdown_options: [16]DropdownOption
+    dropdown_options: [16]Dropdown.Option
     index = 0
     while index < counts.option_count {
-        option: NavigationBarOption = options[index]
-        dropdown_option: DropdownOption = .{.key = option.key, .label = option.label,
+        option: PropsModule.Option = options[index]
+        dropdown_option: Dropdown.Option = .{.key = option.key, .label = option.label,
             .image = option.image}
         dropdown_options[index] = dropdown_option
         index += 1
@@ -310,7 +306,7 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
             row: NavigationBarConfigRowLayout =
                 NavigationBarConfigRowLayoutFor(
                     row_content, y, line_height, metrics)
-            dropdown: DropdownProps
+            dropdown: Dropdown.Props
             dropdown.key = key * cast(u64)131071 +
                 cast(u64)cast(u32)(index + 1) * cast(u64)17 + cast(u64)2
             dropdown.id = props.id + index + 1
@@ -330,7 +326,7 @@ NavigationBarConfig :: (session: Session, props: NavigationBarConfigProps,
             if dropdown.open {
                 rendered_open = true
             }
-            selection: DropdownResult = Dropdown(session, dropdown,
+            selection: Dropdown.Result = Dropdown.Draw(session, dropdown,
                 dropdown_options[0:cast(s64)counts.option_count])
             if selection.changed && selection.selected_index >= 0 &&
                 selection.selected_index < counts.option_count {

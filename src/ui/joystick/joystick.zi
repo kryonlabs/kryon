@@ -1,3 +1,5 @@
+Box :: #import "box";
+Press :: #import "press";
 // Touch controls for games, composed from Press and Box so they also work
 // inside hosted games:
 //
@@ -14,14 +16,10 @@
 #import "session"
 #import "geometry"
 #import "drawing_props"
-#import "press_props"
-#import "press"
-#import "box_props"
-#import "box"
 #import "touch_hold"
 Math :: #import "std/math"
 
-JoystickProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     bounds: Rectangle
@@ -93,7 +91,7 @@ SwipeFeedback :: (session: Session, props: SwipeFeedbackProps) {
     gesture := props.gesture
     if !gesture.down { return }
     base := ifx props.size > 0.0 then props.size else 56.0
-    unused Box(session, BoxProps.{.key = props.key,
+    unused Box.Draw(session, Box.Props.{.key = props.key,
         .bounds = Rectangle.{gesture.start_x - base / 2.0, gesture.start_y - base / 2.0, base, base},
         .fill = Color.{255, 255, 255, 22}, .border = Color.{255, 255, 255, 90}, .radius = base / 2.0})
     dx := gesture.at_x - gesture.start_x
@@ -105,10 +103,10 @@ SwipeFeedback :: (session: Session, props: SwipeFeedbackProps) {
     glow := ball * 1.7
     cx := gesture.start_x + dx
     cy := gesture.start_y + dy
-    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 1),
+    unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 1),
         .bounds = Rectangle.{cx - glow / 2.0, cy - glow / 2.0, glow, glow},
         .fill = Color.{255, 246, 210, 46}, .radius = glow / 2.0})
-    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 2),
+    unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 2),
         .bounds = Rectangle.{cx - ball / 2.0, cy - ball / 2.0, ball, ball},
         .fill = Color.{255, 252, 236, 200}, .border = Color.{255, 255, 255, 240}, .radius = ball / 2.0})
 }
@@ -149,14 +147,14 @@ TouchDirection :: (dx: float32, dy: float32, reach: float32) -> s32 {
     return ifx dy < 0.0 then 1 else 3
 }
 
-Joystick :: (session: Session, props: JoystickProps) -> JoystickResult {
+Draw :: (session: Session, props: Props) -> JoystickResult {
     result := JoystickResult.{.direction = -1}
     slot := TouchSlotFor(props.key)
     bounds := props.bounds
     radius := ifx bounds.width < bounds.height then bounds.width / 2.0 else bounds.height / 2.0
     cx := bounds.x + bounds.width / 2.0
     cy := bounds.y + bounds.height / 2.0
-    press := Press(session, PressProps.{.key = props.key, .id = props.id, .bounds = bounds,
+    press := Press.Draw(session, Press.Props.{.key = props.key, .id = props.id, .bounds = bounds,
             .label = props.label, .now = props.now, .capture = true, .disabled = props.disabled,
             .hold_seconds = 3600.0})
     repeat := ifx props.repeat_seconds > 0.0 then cast(float64)props.repeat_seconds else 0.18
@@ -176,7 +174,7 @@ Joystick :: (session: Session, props: JoystickProps) -> JoystickResult {
     // A translucent base and knob read on light and dark themes alike.
     base := Color.{128, 140, 136, 64}
     knob := Color.{128, 140, 136, ifx result.direction >= 0 then cast(u8)170 else cast(u8)120}
-    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 1), .bounds = Rectangle.{cx - radius, cy - radius,
+    unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 1), .bounds = Rectangle.{cx - radius, cy - radius,
                 radius * 2.0, radius * 2.0}, .fill = base, .radius = radius})
     lean := radius * 0.45
     kx := cx; ky := cy
@@ -185,7 +183,7 @@ Joystick :: (session: Session, props: JoystickProps) -> JoystickResult {
     if result.direction == 2 { kx += lean }
     if result.direction == 3 { ky += lean }
     size := radius * 0.8
-    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 2), .bounds = Rectangle.{kx - size / 2.0, ky - size / 2.0,
+    unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 2), .bounds = Rectangle.{kx - size / 2.0, ky - size / 2.0,
                 size, size}, .fill = knob, .radius = size / 2.0})
     return result
 }
@@ -193,7 +191,7 @@ Joystick :: (session: Session, props: JoystickProps) -> JoystickResult {
 SwipeArea :: (session: Session, props: SwipeAreaProps) -> SwipeAreaResult {
     result := SwipeAreaResult.{.swiped = -1, .lean = -1}
     slot := TouchSlotFor(props.key)
-    press := Press(session, PressProps.{.key = props.key, .id = props.id, .bounds = props.bounds,
+    press := Press.Draw(session, Press.Props.{.key = props.key, .id = props.id, .bounds = props.bounds,
             .label = props.label, .now = props.now, .capture = true, .disabled = props.disabled,
             .hold_seconds = 3600.0})
     reach := ifx props.min_distance > 0.0 then props.min_distance else 24.0

@@ -1,20 +1,20 @@
 #import "text_layout"
-#import "text_props"
+Text :: #import "kryon/text";
 #import "ziran_text_wrap_host"
 #import "font_metrics"
 #import "text_behavior"
 Grapheme :: #import "std/grapheme";
 
-using TextWrap;
+using Text.Wrap;
 
 wrapped: [64]string;
 
 // Wrap into `wrapped` and return the number of lines.
 Wrap :: (value: string, width: float32) -> s32 {
-    return WrapWith(value, width, cast(TextWrap)TextWrapAuto)
+    return WrapWith(value, width, cast(Text.Wrap)TextWrapAuto)
 }
 
-WrapWith :: (value: string, width: float32, policy: TextWrap) -> s32 {
+WrapWith :: (value: string, width: float32, policy: Text.Wrap) -> s32 {
     count: s32 = 0
     start: s32 = 0
     while start < cast(s32)value.count && count < 64 {
@@ -33,7 +33,7 @@ WrapWith :: (value: string, width: float32, policy: TextWrap) -> s32 {
 AnywhereFits :: (value: string, width: float32) -> bool {
     start: s32
     while start < cast(s32)value.count {
-        line := NextTextLine(value, start, width, cast(TextWrap)TextWrapAnywhere, 14, "")
+        line := NextTextLine(value, start, width, cast(Text.Wrap)TextWrapAnywhere, 14, "")
         if line.start != start || line.end <= start || line.next <= start { return false }
         if Grapheme.Boundary(value, line.end) != line.end { return false }
         if line.width != MeasureGlyphWidth(value[start:line.end], 14, "") { return false }
@@ -45,7 +45,7 @@ AnywhereFits :: (value: string, width: float32) -> bool {
 }
 
 AnywhereTests :: () -> s32 {
-    anywhere := cast(TextWrap)TextWrapAnywhere
+    anywhere := cast(Text.Wrap)TextWrapAnywhere
     // The maximum-width Breeze alias is 32 wide Latin letters.
     if WrapWith("wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww", 50.0, anywhere) != 7 ||
         wrapped[0] != "wwwww" || wrapped[6] != "ww" { return 15 }

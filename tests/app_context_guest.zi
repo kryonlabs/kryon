@@ -2,7 +2,7 @@
 #import "app_protocol"
 #import "app_theme"
 #import "drawing_props"
-#import "tilemap"
+TileMap :: #import "kryon/tile_map";
 #import "geometry"
 #import "vec"
 
@@ -29,8 +29,8 @@ main :: () -> s32 {
     }
     // The map asks for optional sampling through the app service module.
     // A duplicated declaration in tile_map would reject the whole bundle.
-    props := TileMapProps.{.bounds = Rectangle.{0.0, 0.0, 20.0, 10.0}, .columns = 2, .rows = 1, .nearest = true}
-    grid: TileMapResult = TileMap(AppSession(), props)
+    props := TileMap.Props.{.bounds = Rectangle.{0.0, 0.0, 20.0, 10.0}, .columns = 2, .rows = 1, .nearest = true}
+    grid: TileMap.TileMapResult = TileMap.Draw(AppSession(), props)
     if grid.cell != 10.0 || grid.columns != 2 || grid.rows != 1 { return 6 }
     if AppSupports("missing.service") { return 1 }
     if AppService("missing.service", "") != "{\"status\":\"unavailable\"}" { return 2 }

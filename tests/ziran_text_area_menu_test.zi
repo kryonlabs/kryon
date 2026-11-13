@@ -5,8 +5,7 @@
 #import "geometry"
 #import "paint_queue"
 #import "system_clipboard"
-#import "textarea"
-#import "text_input_props"
+TextArea :: #import "kryon/text_area";
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -19,12 +18,12 @@ phase: s32;
 buffer: [64]u8;
 
 // A selected "hello" in "hello world"; the area is at (10, 10), 200 by 90.
-Field :: (copy: bool, paste: bool) -> TextAreaResult {
-    props: TextAreaProps = .{.key = cast(u64)4, .bounds = Rectangle.{10.0, 10.0, 200.0, 90.0},
+Field :: (copy: bool, paste: bool) -> TextArea.Result {
+    props: TextArea.Props = .{.key = cast(u64)4, .bounds = Rectangle.{10.0, 10.0, 200.0, 90.0},
         .value = "hello world", .anchor = 0, .cursor = 5, .focused = true}
     props.input.copy = copy
     props.input.paste = paste
-    return TextArea(TestSession(), props)
+    return TextArea.Draw(TestSession(), props)
 }
 
 Secondary :: (x: float32, y: float32) {
@@ -38,9 +37,9 @@ Click :: (x: float32, y: float32) {
     TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
 }
 
-Frame :: (copy: bool, paste: bool) -> TextAreaResult {
+Frame :: (copy: bool, paste: bool) -> TextArea.Result {
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
-    result: TextAreaResult = Field(copy, paste)
+    result: TextArea.Result = Field(copy, paste)
     if !TreeFinish(TestSession()) { result.node = -99 }
     PaintFlush(TestSession())
     return result
@@ -49,7 +48,7 @@ Frame :: (copy: bool, paste: bool) -> TextAreaResult {
 #program_export
 main :: () -> s32 {
     // No menu until the secondary button is released inside the field.
-    result: TextAreaResult = Frame(false, false)
+    result: TextArea.Result = Frame(false, false)
     if result.node < 0 || TreeCount(TestSession()) != 2 { return 1 }
 
     // Ctrl+C reaches the system clipboard without any menu.

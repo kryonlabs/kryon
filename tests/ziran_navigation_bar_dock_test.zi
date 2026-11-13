@@ -1,8 +1,7 @@
 #import "session"
 #import "geometry"
 #import "navigation_bar_behavior"
-#import "navigation_bar_props"
-#import "navigation"
+Navigation :: #import "kryon/navigation";
 #import "control_props"
 #import "style"
 #import "style_sheet"
@@ -41,16 +40,16 @@ DockMeasureHeight :: (font: s32, typeface: string) -> s32 {
 CompactOverflowViewportCheck :: () -> s32 {
     for scenario: cast(s32)0..cast(s32)1 {
         session := SessionOpen()
-        props := NavigationBarProps.{.key = cast(u64)(300 + scenario),
+        props := Navigation.Props.{.key = cast(u64)(300 + scenario),
             .compact = true, .scale = 0.8, .footer_count = 1,
             .bounds = Rectangle.{0.0, 0.0, 260.0, 56.0}}
         if scenario == 1 {
             props.vertical = true
             props.bounds = Rectangle.{0.0, 0.0, 88.0, 260.0}
         }
-        items: [6]NavigationBarItem
+        items: [6]Navigation.NavigationBarItem
         for index: cast(s32)0..cast(s32)5 {
-            items[index] = NavigationBarItem.{.key = cast(u64)(400 + index),
+            items[index] = Navigation.NavigationBarItem.{.key = cast(u64)(400 + index),
                 .route = index, .label = "Shortcut", .active = index == 4}
         }
         layout := NavigationBarDockLayoutFor(props.bounds, props.vertical, 6, 1, props.scale)
@@ -61,7 +60,7 @@ CompactOverflowViewportCheck :: () -> s32 {
             TreeStart(session, cast(u64)1, props.bounds)
             BeginScrollFrame(session, pointer, false, false, false,
                 ifx phase == 1 then 1.0 else 0.0, cast(float64)phase / 4.0)
-            result := NavigationBar(session, props, items[:])
+            result := Navigation.Draw(session, props, items[:])
             if !TreeFinish(session) { return 60 }
             scroll_node: s32 = -1
             selected_node: s32 = -1
@@ -147,9 +146,9 @@ main :: () -> s32 {
     rules.items[2] = rule
     InstallStyleRules(rules)
     session := SessionOpen()
-    props: NavigationBarProps = .{.key = cast(u64)10, .compact = true, .vertical = true,
+    props: Navigation.Props = .{.key = cast(u64)10, .compact = true, .vertical = true,
         .bounds = bounds, .footer_count = 2, .draggable = true}
-    items: [7]NavigationBarItem
+    items: [7]Navigation.NavigationBarItem
     for index: cast(s32)0..cast(s32)6 {
         items[index].key = cast(u64)(100 + index)
         items[index].route = index
@@ -162,7 +161,7 @@ main :: () -> s32 {
         if phase == 1 { props.scroll_offset = 999 }
         if phase == 2 { items[5].disabled = true }
         TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 476.0})
-        result := NavigationBar(session, props, items[:])
+        result := Navigation.Draw(session, props, items[:])
         if !TreeFinish(session) || result.node != 1 { return 5 }
         apps: s32 = -1
         profile: s32 = -1
@@ -218,7 +217,7 @@ main :: () -> s32 {
         if phase == 2 { props.scroll_offset = 60 }
         if phase == 3 { props.bounds.width = 164.0 }
         TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 476.0})
-        result := NavigationBar(session, props, items[0:6])
+        result := Navigation.Draw(session, props, items[0:6])
         if !TreeFinish(session) { return 14 }
         expected: s32 = 0
         if phase == 0 { expected = 176 }
@@ -266,7 +265,7 @@ main :: () -> s32 {
         }
         for phase: cast(s32)0..cast(s32)6 {
             TreeStart(session, cast(u64)1, props.bounds)
-            result := NavigationBar(session, props, items[0:6])
+            result := Navigation.Draw(session, props, items[0:6])
             if !TreeFinish(session) || result.scroll_offset != 0 {
                 return 17
             }
@@ -316,14 +315,14 @@ main :: () -> s32 {
     props.vertical = false
     props.scale = 1.0
     props.bounds = Rectangle.{0.0, 0.0, 390.0, 84.0}
-    closing: [3]NavigationBarItem
-    closing[0] = NavigationBarItem.{.key = cast(u64)200, .route = 0, .label = "Pinned"}
-    closing[1] = NavigationBarItem.{.key = cast(u64)201, .route = 1, .label = "Opened",
+    closing: [3]Navigation.NavigationBarItem
+    closing[0] = Navigation.NavigationBarItem.{.key = cast(u64)200, .route = 0, .label = "Pinned"}
+    closing[1] = Navigation.NavigationBarItem.{.key = cast(u64)201, .route = 1, .label = "Opened",
         .active = true, .closeable = true, .close_label = "Close"}
-    closing[2] = NavigationBarItem.{.key = cast(u64)202, .route = 2, .label = "Apps"}
+    closing[2] = Navigation.NavigationBarItem.{.key = cast(u64)202, .route = 2, .label = "Apps"}
     for phase: cast(s32)0..cast(s32)2 {
         TreeStart(session, cast(u64)1, props.bounds)
-        result := NavigationBar(session, props, closing[:])
+        result := Navigation.Draw(session, props, closing[:])
         if !TreeFinish(session) {
             return 23
         }

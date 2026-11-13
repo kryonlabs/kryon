@@ -1,14 +1,13 @@
+using TabBar :: #import "tab_bar_props";
 #import "transition"
 Theme :: #import "theme";
 #import "transition_widget"
 // Portable compositions use the same widgets as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "tab_bar_props"
     host_api :: #system_library "host_api";
-    TabBarHostedHost :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult #foreign host_api;
-    #program_export
-    TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
+    TabBarHostedHost :: (session: Session, props: TabBar.Props, tabs: []TabBar.Tab) -> TabBar.Result #foreign host_api;
+        Draw :: (session: Session, props: TabBar.Props, tabs: []TabBar.Tab) -> TabBar.Result {
         return TabBarHostedHost(session, props, tabs)
     }
 } else {
@@ -25,7 +24,6 @@ Theme :: #import "theme";
     #import "style_sheet"
     #import "surface"
     #import "tab_bar_behavior"
-    #import "tab_bar_props"
     #import "tree"
     #import "tree_input"
     #import "widget_kind"
@@ -87,7 +85,7 @@ Theme :: #import "theme";
     }
 
     #program_export
-    TabBarFaceFor :: (props: TabBarProps, kind: s32,
+    TabBarFaceFor :: (props: TabBar.Props, kind: s32,
         selected: bool, disabled: bool,
         hovered: bool) -> StyleFrame {
         state: s32 = cast(s32)ButtonStateNormal
@@ -113,7 +111,7 @@ Theme :: #import "theme";
     }
 
     #program_export
-    TabBarKey :: (session: Session, props: TabBarProps) -> u64 {
+    TabBarKey :: (session: Session, props: TabBar.Props) -> u64 {
         if props.key != cast(u64)0 { return props.key }
         if props.id > 0 { return cast(u64)cast(u32)props.id }
         return TreeNextKey(session)
@@ -133,7 +131,7 @@ Theme :: #import "theme";
 
     #program_export
     TabBarHeight :: () -> s32 {
-        props: TabBarProps
+        props: TabBar.Props
         bar: StyleFrame = TabBarFaceFor(props,
             StyleKindTabBar(), false, false, false)
         return TabBarPolicyHeight(1.0, bar)
@@ -145,7 +143,7 @@ Theme :: #import "theme";
     }
 
     #program_export
-    TabBarMetricsFor :: (props: TabBarProps) -> TabBarMetrics {
+    TabBarMetricsFor :: (props: TabBar.Props) -> TabBarMetrics {
         bar: StyleFrame = TabBarFaceFor(props,
             StyleKindTabBar(), false, props.disabled, false)
         tab: StyleFrame = TabBarFaceFor(props,
@@ -157,7 +155,7 @@ Theme :: #import "theme";
     }
 
     #program_export
-    TabBarFontFor :: (props: TabBarProps) -> s32 {
+    TabBarFontFor :: (props: TabBar.Props) -> s32 {
         tab: StyleFrame = TabBarFaceFor(props,
             StyleKindTab(), false, props.disabled, false)
         return ResolveFont(0,
@@ -335,9 +333,8 @@ Theme :: #import "theme";
 
     // Tabs are borrowed values. Kryon owns layout, style, and hit decisions;
     // callers apply the returned selection, close, and reorder events.
-    #program_export
-    TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
-        result: TabBarResult = .{.node = -1, .activated_index = -1, .closed_index = -1,
+        Draw :: (session: Session, props: TabBar.Props, tabs: []Tab) -> Result {
+        result: Result = .{.node = -1, .activated_index = -1, .closed_index = -1,
             .double_clicked_index = -1, .middle_clicked_index = -1, .reordered_from = -1,
             .reordered_to = -1, .drag_from = -1, .drag_to = -1}
         result.selected_index = TabBarSelectedIndexFor(

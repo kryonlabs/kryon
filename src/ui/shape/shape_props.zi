@@ -2,7 +2,7 @@
 #import "geometry"
 
 // A straight line at any angle, with square ends like raylib's DrawLineEx.
-LineProps :: struct {
+Props :: struct {
     key: u64
     class_name: s32
     id: s32

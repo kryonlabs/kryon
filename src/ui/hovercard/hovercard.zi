@@ -1,8 +1,8 @@
+using HoverCard :: #import "hover_card_props";
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
-#import "hover_card_props"
 #import "semantic"
 #import "session"
 #import "style"
@@ -19,7 +19,7 @@ using StyleField;
 using WidgetKind;
 
 #program_export
-HoverCardInstalledFaceFor :: (props: HoverCardProps,
+HoverCardInstalledFaceFor :: (props: HoverCard.Props,
     state: s32) -> StyleData {
     facts := StyleControlRoleFacts(StyleKindPopup(), props.id,
         props.class_name, StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
@@ -28,7 +28,7 @@ HoverCardInstalledFaceFor :: (props: HoverCardProps,
 
 #program_export
 HoverCardApply :: (state: *HoverCardState,
-    props: HoverCardProps) -> HoverCardResult {
+    props: HoverCard.Props) -> HoverCardResult {
     result: HoverCardResult
     result.node = -1; result.title_node = -1; result.action_node = -1
     result.fit.placement = props.placement
@@ -109,9 +109,8 @@ HoverCardHostedReply :: struct {
 }
 #if #defined(KRYON_HOSTED_UI) {
     hover_card_host_api :: #system_library "host_api";
-    HoverCardHostedHost :: (session: Session, props: HoverCardProps, state: HoverCardState) -> HoverCardHostedReply #foreign hover_card_host_api;
-    #program_export
-    HoverCard :: (session: Session, props: HoverCardProps,
+    HoverCardHostedHost :: (session: Session, props: HoverCard.Props, state: HoverCardState) -> HoverCardHostedReply #foreign hover_card_host_api;
+        Draw :: (session: Session, props: HoverCard.Props,
     state: *HoverCardState) -> HoverCardResult {
         reply := HoverCardHostedHost(session, props, state.*)
         state.* = reply.state
@@ -119,11 +118,10 @@ HoverCardHostedReply :: struct {
     }
 } else {
     #import "paint_queue"
-    #program_export
-    HoverCard :: (session: Session, props: HoverCardProps,
+        Draw :: (session: Session, props: HoverCard.Props,
     state: *HoverCardState) -> HoverCardResult { return HoverCardCore(session, props, state, true) }
     #program_export
-HoverCardCore :: (session: Session, props: HoverCardProps,
+HoverCardCore :: (session: Session, props: HoverCard.Props,
     state: *HoverCardState, effects: bool) -> HoverCardResult {
     unused effects
     result := HoverCardApply(state, props)

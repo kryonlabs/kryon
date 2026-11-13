@@ -1,15 +1,14 @@
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
-#import "image"
-#import "image_props"
+Image :: #import "kryon/image";
 #import "session"
 #import "style"
 #import "style_sheet"
 #import "tree"
 #import "tree_draw"
 
-using ImageFit;
+using Image.ImageFit;
 using StyleField;
 using FrameStatus;
 
@@ -33,9 +32,9 @@ Frame :: () -> s32 {
     rules.items[0] = tint
     InstallStyleRules(rules)
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 160.0})
-    Image(session, ImageProps.{.class_name = 7, .asset_path = "../docs/site/cursors/arrow.png",
+    Image.Draw(session, Image.Props.{.class_name = 7, .asset_path = "../docs/site/cursors/arrow.png",
         .alt_text = "Arrow", .bounds = Rectangle.{112.0, 32.0, 96.0, 96.0},
-        .fit = cast(ImageFit)ImageFitStretch})
+        .fit = cast(Image.ImageFit)ImageFitStretch})
     if EndFrame(session) != cast(FrameStatus)FrameOk { return -1 }
     return TreeCount(session)
 }

@@ -6,7 +6,7 @@ SegmentOption :: struct {
     disabled: bool
 }
 
-SegmentedControlProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32

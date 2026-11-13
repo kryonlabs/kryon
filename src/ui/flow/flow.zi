@@ -1,10 +1,9 @@
+Layout :: #import "layout";
 #import "session"
 #import "geometry"
 #import "layout_behavior"
-#import "layout"
-#import "layout_props"
 
-FlowProps :: struct {
+Props :: struct {
     bounds: Rectangle
     gap: s32
     padding: s32
@@ -22,9 +21,8 @@ FlowResult :: struct {
 
 // Flow places its children along a row. The caller uses FlowChildBounds before
 // submitting each child, then closes the retained scope with End(session).
-#program_export
-Flow :: (session: Session, props: FlowProps) -> FlowResult {
-    container: LayoutContainer = Row(session, ColumnProps.{.bounds = props.bounds,
+Draw :: (session: Session, props: Props) -> FlowResult {
+    container: Layout.LayoutContainer = Layout.Row(session, Layout.Props.{.bounds = props.bounds,
         .gap = props.gap, .padding = props.padding, .key = props.key})
     return FlowResult.{.node = container.node, .opened = container.opened,
         .bounds = container.bounds, .content = container.content, .gap = container.gap,
@@ -35,7 +33,7 @@ Flow :: (session: Session, props: FlowProps) -> FlowResult {
 FlowChildBounds :: (flow: FlowResult, declared: Rectangle,
     measured: Rectangle, child_index: s32,
     previous_width_sum: float32) -> Rectangle {
-    container: LayoutContainer = .{.bounds = flow.bounds, .gap = flow.gap, .padding = flow.padding}
-    return RowChildBounds(container, declared, measured,
+    container: Layout.LayoutContainer = .{.bounds = flow.bounds, .gap = flow.gap, .padding = flow.padding}
+    return Layout.RowChildBounds(container, declared, measured,
         child_index, previous_width_sum)
 }

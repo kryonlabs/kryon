@@ -1,10 +1,8 @@
 #import "kryon/session"
 #import "kryon/geometry"
-#import "kryon/box_widget"
-#import "kryon/box_props"
+Box :: #import "kryon/box";
+Press :: #import "kryon/press";
 #import "kryon/cursor"
-#import "kryon/press_props"
-#import "kryon/press_widget"
 #if #defined(KRYON_HOSTED_UI) {
     #import "kryon/pointer_input"
     ProbePointerX :: (session: Session) -> float32 { unused session; return SamplePointer().x }
@@ -35,12 +33,12 @@ DrawCursorFrame :: (session: Session, viewport: Rectangle, key: s32) -> s32 {
     started = true
     if key >= 49 && key <= 57 { mode = key - 48; changed = true }
     frame += 1
-    Box(session, BoxProps.{.key = 2, .bounds = viewport, .fill = .{240, 240, 240, 255}})
+    Box.Draw(session, Box.Props.{.key = 2, .bounds = viewport, .fill = .{240, 240, 240, 255}})
     if mode == 9 {
         if changed && !CursorSet(session, CursorProps.{}) { return 9 }
-        unused Press(session, PressProps.{.key = 3, .id = 3, .label = "Press",
+        unused Press.Draw(session, Press.Props.{.key = 3, .id = 3, .label = "Press",
             .bounds = .{viewport.x, viewport.y, viewport.width / 4.0, viewport.height}})
-        unused Press(session, PressProps.{.key = 4, .id = 4, .label = "Off the shape",
+        unused Press.Draw(session, Press.Props.{.key = 4, .id = 4, .label = "Off the shape",
             .bounds = .{viewport.x + viewport.width * 0.375, viewport.y, viewport.width / 4.0, viewport.height},
             .cursor = cast(s32)CursorShape.CursorArrow})
         if ProbePointerX(session) >= viewport.x + viewport.width * 0.75 &&

@@ -1,38 +1,34 @@
+using TitleBarSchema :: #import "title_bar_props";
+Button :: #import "button";
+DropdownWidget :: #import "dropdown";
+DropdownSchema :: #import "dropdown_props";
+Image :: #import "image";
 Theme :: #import "theme";
 // Portable compositions use the same title bar as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "dropdown_props"
-    #import "title_bar_props"
     host_api :: #system_library "host_api";
-    TitleBarHostedHost :: (session: Session, props: TitleBarProps,
-        options: []DropdownOption) -> TitleBarResult #foreign host_api;
-    #program_export
-    TitleBar :: (session: Session, props: TitleBarProps,
-        options: []DropdownOption) -> TitleBarResult {
+    TitleBarHostedHost :: (session: Session, props: TitleBarSchema.Props,
+        options: []DropdownSchema.Option) -> TitleBarSchema.TitleBarResult #foreign host_api;
+        Draw :: (session: Session, props: TitleBarSchema.Props,
+        options: []DropdownSchema.Option) -> TitleBarSchema.TitleBarResult {
         return TitleBarHostedHost(session, props, options)
     }
 } else {
 #import "session"
-#import "button_props"
-#import "button"
 #import "control_props"
 #import "drawing_props"
-#import "dropdown_props"
-#import "dropdown"
 #import "font_metrics"
 #import "geometry"
-#import "image_props"
 #import "paint_queue"
 #import "style"
 #import "style_sheet"
 #import "surface"
 #import "title_bar_behavior"
-#import "title_bar_props"
 #import "tree"
 #import "widget_kind"
 
-using ArrowDirection;
+using Button.ArrowDirection;
 using WidgetKind;
 using ButtonTone;
 using ButtonEmphasis;
@@ -69,7 +65,7 @@ TitleBarDefaultFace :: (role: s32) -> StyleData {
 }
 
 #program_export
-TitleBarFaceFor :: (props: TitleBarProps,
+TitleBarFaceFor :: (props: TitleBarSchema.Props,
     role: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(
         StyleKindTitleBar(), props.id, props.class_name, role,
@@ -83,7 +79,7 @@ TitleBarFaceFor :: (props: TitleBarProps,
 }
 
 #program_export
-TitleBarKey :: (session: Session, props: TitleBarProps) -> u64 {
+TitleBarKey :: (session: Session, props: TitleBarSchema.Props) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
     return TreeNextKey(session)
@@ -113,10 +109,9 @@ TitleBarLayoutAt :: (bounds: Rectangle, has_leading: bool,
 
 // A TitleBar is ordinary checked UI composition. A caller retains the
 // dropdown result and passes it back through props.dropdown next frame.
-#program_export
-TitleBar :: (session: Session, props: TitleBarProps,
-    options: []DropdownOption) -> TitleBarResult {
-    result: TitleBarResult
+Draw :: (session: Session, props: TitleBarSchema.Props,
+    options: []DropdownSchema.Option) -> TitleBarSchema.TitleBarResult {
+    result: TitleBarSchema.TitleBarResult
     result.node = -1
     result.dropdown.node = -1
     result.dropdown.open = props.dropdown.open
@@ -176,7 +171,7 @@ TitleBar :: (session: Session, props: TitleBarProps,
         bounds.y + bounds.height - 1.0, bounds.width, 0.0},
         ColorFromPacked(Opacity(bar.value.border, opacity)))
     if state.has_leading {
-        button: ButtonProps
+        button: Button.Props
         button.key = key * cast(u64)65599 + cast(u64)1
         button.bounds = layout.leading_bounds
         button.id = props.id
@@ -191,12 +186,12 @@ TitleBar :: (session: Session, props: TitleBarProps,
         button.label = props.leading_label
         button.arrow = props.leading_image.asset_path == "" &&
             props.leading_image.texture.id == cast(u32)0
-        button.direction = cast(ArrowDirection)ArrowLeft
-        result.clicked_leading = SubmitButton(session, button,
+        button.direction = cast(Button.ArrowDirection)ArrowLeft
+        result.clicked_leading = Button.SubmitButton(session, button,
             result.node) != 0
     }
     if state.has_dropdown {
-        dropdown: DropdownProps = props.dropdown
+        dropdown: DropdownSchema.Props = props.dropdown
         dropdown.bounds = layout.dropdown_bounds
         if dropdown.key == cast(u64)0 {
             dropdown.key = key * cast(u64)65599 + cast(u64)2
@@ -206,7 +201,7 @@ TitleBar :: (session: Session, props: TitleBarProps,
             dropdown.class_name = props.class_name
         }
         if dropdown.scale <= 0.0 { dropdown.scale = scale }
-        result.dropdown = Dropdown(session, dropdown, options)
+        result.dropdown = DropdownWidget.Draw(session, dropdown, options)
         return result
     }
     if props.title != "" {

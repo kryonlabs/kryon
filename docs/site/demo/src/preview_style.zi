@@ -1,4 +1,6 @@
-using UI :: #import "kryon/Widgets";
+#import "kryon/control_props"
+#import "kryon/drawing_props"
+#import "kryon/style_sheet"
 preview_theme: s32;
 preview_installed_theme: s32 = -1;
 

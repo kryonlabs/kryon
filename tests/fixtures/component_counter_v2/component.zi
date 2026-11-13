@@ -1,8 +1,6 @@
 #import "component_protocol"
-#import "button"
-#import "button_props"
-#import "text"
-#import "text_props"
+Button :: #import "kryon/button";
+Text :: #import "kryon/text";
 #import "geometry"
 #import "std/vec"
 
@@ -30,16 +28,16 @@ Frame :: () -> s64 {
     if component_schema_version < 2 { return 1 }
     session := ComponentSession()
     bounds := ComponentBounds()
-    action := Button(session, ButtonProps.{
+    action := Button.Draw(session, Button.Props.{
         .key = 101, .bounds = Rectangle.{
             bounds.x + 16.0, bounds.y + 16.0, 112.0, 36.0
         }, .label = "Increment"
     })
     if action != 0 { component_count += 2; component_owned.samples[0] += 1; component_owned.samples[1] = component_count }
-    Text(session, TextProps.{
+    Text.Draw(session, Text.Props.{
         .key = 102, .bounds = Rectangle.{
             bounds.x + 16.0, bounds.y + 64.0, 220.0, 28.0
-        }, .text = Label(), .font = Text18
+        }, .text = Label(), .size = Text.Text18
     })
     if component_count != 7 && component_owned.samples[1] != component_count { return 1 }
     return 0

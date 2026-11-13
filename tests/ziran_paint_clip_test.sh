@@ -8,7 +8,7 @@ trap 'rm -rf "$work"' EXIT HUP INT TERM
 kryon_project_args="$kryon_project_args --module-path $work"
 
 
-cat > "$work/app.zi" <<'ZI'
+cat > "$work/test_case.zi" <<'ZI'
 #import "session"
 #import "widget_test_session"
 
@@ -54,11 +54,11 @@ ZI
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
-#include "app.hpp"
+#include "test_case.hpp"
 #include <cassert>
 #define HOST extern "C"
 #else
-#include "app.h"
+#include "test_case.h"
 #include <assert.h>
 #define HOST
 #endif
@@ -131,7 +131,7 @@ C
 for target in c go; do
     output=$work/$target
     "$ziran" build --target="$target" --root "$work" \
-        $kryon_project_args  -o "$output" "$work/app.zi"
+        $kryon_project_args  -o "$output" "$work/test_case.zi"
     if test "$target" = c; then
         cp "$work/native_main.h" "$output/main.c"
         "${CC:-cc}" -std=c11 -I"$ziran_root/include" -I"$output" \
@@ -187,7 +187,7 @@ func TestClip(t *testing.T) {
     SetRasterTextHost(h)
     SetRasterHost(h)
     SetPaintQueueHost(h)
-    if App_Frame() != 42 || h.texts != 2 || h.images != 1 || h.shapes != 18 {
+    if TestCase_Frame() != 42 || h.texts != 2 || h.images != 1 || h.shapes != 18 {
         t.Fatal("clip paint calls", h.texts, h.images)
     }
 }

@@ -23,7 +23,7 @@ ImageMesh :: struct {
 // The most grid points one warped image draws, such as 64 × 64.
 IMAGE_MESH_POINT_LIMIT :: 4096
 
-ImageProps :: struct {
+Props :: struct {
     asset_path: string
     alt_text: string
     bounds: Rectangle

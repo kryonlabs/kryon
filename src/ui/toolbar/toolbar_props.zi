@@ -1,6 +1,6 @@
+Dropdown :: #import "dropdown";
+Image :: #import "image";
 #import "drawing_props"
-#import "dropdown_props"
-#import "image_props"
 
 IconRowItem :: struct {
     icon: Texture2D
@@ -24,11 +24,11 @@ IconRowResult :: struct {
 ToolbarAction :: struct {
     key: u64
     label: string
-    image: ImageProps
+    image: Image.Props
     disabled: bool
 }
 
-ToolbarProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     class_name: s32
@@ -38,7 +38,7 @@ ToolbarProps :: struct {
     height: s32
     scale: float32
     draw_menu: bool
-    dropdown: DropdownProps
+    dropdown: Dropdown.Props
     dropdown_min_width: s32
     dropdown_max_width: s32
     dropdown_height: s32
@@ -46,7 +46,7 @@ ToolbarProps :: struct {
 
 ToolbarResult :: struct {
     node: s32
-    dropdown: DropdownResult
+    dropdown: Dropdown.Result
     selected_menu_item: s32
     clicked_action: s32
 }

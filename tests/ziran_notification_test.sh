@@ -1,7 +1,7 @@
 #!/bin/sh
 . "$(dirname -- "$0")/test_context.sh"
 
-cat > "$work/app.zi" <<'ZI'
+cat > "$work/test_case.zi" <<'ZI'
 #import "notification"
 
 using NotificationPriority;
@@ -74,21 +74,21 @@ Send :: (props: NotificationProps) -> bool {
 ZI
 
 "$ziran" ir --root "$work" $kryon_project_args --module-path "$work" \
-    -o "$work/ir" "$work/app.zi" "$work/provider.zi"
+    -o "$work/ir" "$work/test_case.zi" "$work/provider.zi"
 for source in source saved; do
     if test "$source" = source; then
         root=$work
         modules="$kryon_project_args --module-path $work"
-        app=$work/app.zi
+        app=$work/test_case.zi
         provider=$work/provider.zi
     else
         root=$work/ir
         modules="--project --module-path $work/ir"
-        app=$work/ir/app.zir
+        app=$work/ir/test_case.zir
         provider=$work/ir/provider.zir
     fi
     "$ziran" bundle --root "$root" $modules \
-        --entry app:Answer \
+        --entry test_case:Answer \
         --bind kryon/notification:NotificationSupportedHost=provider:Supported \
         --bind kryon/notification:NotificationAllowedHost=provider:Allowed \
         --bind kryon/notification:NotificationRequestHost=provider:Request \

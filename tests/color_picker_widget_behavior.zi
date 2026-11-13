@@ -2,8 +2,7 @@
 #import "widget_test_session"
 
 #import "color_picker_behavior"
-#import "color_picker_props"
-#import "colorpicker"
+ColorPicker :: #import "kryon/color_picker";
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
@@ -19,13 +18,13 @@ alpha: float32;
 
 #program_export
 Frame :: () -> s32 {
-    compact: ColorPickerProps = .{.key = cast(u64)20,
+    compact: ColorPicker.Props = .{.key = cast(u64)20,
         .bounds = Rectangle.{10.0, 10.0, 180.0, 50.0}, .label = "Color", .channels = 3}
     compact.values[0] = compact_red
     compact.values[1] = 0.5
     compact.values[2] = 0.75
     if phase >= 3 { compact.disabled = true }
-    expanded: ColorPickerProps = .{.key = cast(u64)30,
+    expanded: ColorPicker.Props = .{.key = cast(u64)30,
         .bounds = Rectangle.{10.0, 70.0, 180.0, 180.0}, .label = "Preview", .channels = 4,
         .picker = true}
     expanded.values[0] = 0.25
@@ -33,8 +32,8 @@ Frame :: () -> s32 {
     expanded.values[2] = 0.75
     expanded.values[3] = alpha
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 270.0})
-    one: ColorPickerResult = ColorPicker(TestSession(), compact)
-    two: ColorPickerResult = ColorPicker(TestSession(), expanded)
+    one: ColorPicker.ColorPickerResult = ColorPicker.Draw(TestSession(), compact)
+    two: ColorPicker.ColorPickerResult = ColorPicker.Draw(TestSession(), expanded)
     if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 19 ||
         one.node != 1 || two.node != 9 ||
         TreeNodeAt(TestSession(), 2).kind != WidgetKindText ||

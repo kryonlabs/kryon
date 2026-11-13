@@ -1,17 +1,17 @@
+Image :: #import "image";
 #import "dropdown_behavior"
 #import "geometry"
-#import "image_props"
 
-NavigationBarOption :: struct {
+Option :: struct {
     key: u64
     route: s32
     label: string
-    image: ImageProps
+    image: Image.Props
 }
 
 // Routes are a caller owned mutable slice. The returned count and dropdown
 // state must be passed back on the next frame.
-NavigationBarConfigProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     class_name: s32
@@ -36,7 +36,7 @@ NavigationBarConfigProps :: struct {
     save_label: string
 }
 
-NavigationBarConfigResult :: struct {
+Result :: struct {
     node: s32
     action: s32
     changed: bool

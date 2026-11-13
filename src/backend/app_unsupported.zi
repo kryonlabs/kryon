@@ -1,0 +1,7 @@
+using App :: #import "app_types";
+
+Run :: (window: Window, draw: Draw = Empty) -> s32 {
+    unused window
+    unused draw
+    return 1
+}

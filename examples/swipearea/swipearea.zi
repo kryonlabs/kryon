@@ -1,21 +1,25 @@
-using UI :: #import "kryon/Widgets";
-using Demo :: #import "kryon/joystick";
+Box :: #import "kryon/box";
+Joystick :: #import "kryon/joystick";
+Text :: #import "kryon/text";
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "std/number_text"
 
 swipes: s32;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Swipe area", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Swipe area", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
     input := CaptureFrameInput(session)
     now := cast(float64)input.elapsed_ms / 1000.0
-    Box(session, BoxProps.{.key = 12, .bounds = bounds, .fill = StyleTokenColor("surface"), .radius = 12.0})
-    Text(session, TextProps.{.disabled = example_disabled, .key = 13, .bounds = .{bounds.x + 16.0, bounds.y + 16.0, bounds.width - 32.0, 36.0}, .text = "Swipe here"})
-    result := SwipeArea(session, SwipeAreaProps.{.disabled = example_disabled, .key = 10, .bounds = bounds, .label = "Swipe here", .now = now})
+    Box.Draw(session, Box.Props.{.key = 12, .bounds = bounds, .fill = StyleTokenColor("surface"), .radius = 12.0})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 13, .bounds = .{bounds.x + 16.0, bounds.y + 16.0, bounds.width - 32.0, 36.0}, .text = "Swipe here"})
+    result := Joystick.SwipeArea(session, Joystick.SwipeAreaProps.{.disabled = example_disabled, .key = 10, .bounds = bounds, .label = "Swipe here", .now = now})
     if result.swiped >= 0 { swipes += 1 }
     digits: [24]u8
-    Text(session, TextProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, bounds.width, 36.0}, .text = FormatInteger(cast(s64)swipes, digits[:])})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, bounds.width, 36.0}, .text = FormatInteger(cast(s64)swipes, digits[:])})
     return 0
 }
 

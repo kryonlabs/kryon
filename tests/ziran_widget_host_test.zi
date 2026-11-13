@@ -8,28 +8,28 @@
 #import "input_protocol"
 #import "tree_draw"
 #import "paint_queue"
-#import "text_props"
-#import "image_props"
+Button :: #import "kryon/button";
+ContextMenu :: #import "kryon/context_menu";
+Dropdown :: #import "kryon/dropdown";
+Fieldset :: #import "kryon/fieldset";
+Image :: #import "kryon/image";
+Modal :: #import "kryon/modal";
+Press :: #import "kryon/press";
+Progress :: #import "kryon/progress";
+Scroll :: #import "kryon/scroll";
+SegmentedControl :: #import "kryon/segmented_control";
+Shape :: #import "kryon/shape";
+Slider :: #import "kryon/slider";
+Spinbox :: #import "kryon/spinbox";
+SvgIcon :: #import "kryon/svg_icon";
+TabBar :: #import "kryon/tab_bar";
+Text :: #import "kryon/text";
+TextArea :: #import "kryon/text_area";
+TileMap :: #import "kryon/tile_map";
+TimePicker :: #import "kryon/time_picker";
+TitleBar :: #import "kryon/title_bar";
+Toggle :: #import "kryon/toggle";
 #import "image_showing"
-#import "tilemap"
-#import "button_props"
-#import "scroll_props"
-#import "text_input_props"
-#import "tab_bar_props"
-#import "segmented_control_props"
-#import "slider_props"
-#import "progress_props"
-#import "press_props"
-#import "spinbox_props"
-#import "time_picker_props"
-#import "title_bar_props"
-#import "modal_props"
-#import "dropdown_props"
-#import "contextmenu"
-#import "svg_icon_props"
-#import "fieldset_props"
-#import "shape_props"
-#import "toggle_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "hosted_values"
@@ -90,7 +90,7 @@ PaintHasAsset :: (session: Session, path: string) -> bool {
 
 // What a bundle's ImageShowingOf answers for IMAGE, or -1 when refused.
 showing_codec: WidgetImagePropsCodec;
-HostedShowing :: (session: Session, image: ImageProps) -> s64 {
+HostedShowing :: (session: Session, image: Image.Props) -> s64 {
     arguments: [2]HostValue
     arguments[0] = WidgetEncodeSession(session, *session_codec)
     arguments[1] = WidgetEncodeImageProps(image, *showing_codec)
@@ -223,7 +223,7 @@ main :: () -> s32 {
     result: HostValue
     arguments: [3]HostValue
     arguments[0] = WidgetEncodeSession(session, *session_codec)
-    arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted",
+    arguments[1] = WidgetEncodeTextProps(Text.Props.{.text = "Hosted",
             .bounds = Rectangle.{0.0, 0.0, 200.0, 20.0}}, *text_codec)
     // Outside a bundle frame nothing draws.
     if Call("pointer_input", "PollPointer", arguments[:0], *result) != 0 {
@@ -257,12 +257,16 @@ main :: () -> s32 {
     stale.epoch += cast(u64)1
     stale_codec: WidgetSessionCodec
     stale_arguments: [2]HostValue = .[WidgetEncodeSession(stale, *stale_codec), arguments[1]]
-    if Call("text", "TextHostedHost", stale_arguments[:], *result) != 0 ||
-    Call("text", "TextHostedHost", arguments[:1], *result) != 0 ||
-    Call("image", "ImageHostedHost", arguments[:2], *result) != 0 ||
-    Call("text", "TextUnknownHost", arguments[:2], *result) != 0 ||
-    Call("unrelated_text", "TextHostedHost", arguments[:2], *result) != 0 ||
-    Call("p0123456789abcdeg_text", "TextHostedHost", arguments[:2], *result) != 0 {
+    stale_result := Call("text", "TextHostedHost", stale_arguments[:], *result)
+    missing_result := Call("text", "TextHostedHost", arguments[:1], *result)
+    record_result := Call("image", "ImageHostedHost", arguments[:2], *result)
+    function_result := Call("text", "TextUnknownHost", arguments[:2], *result)
+    module_result := Call("unrelated_text", "TextHostedHost", arguments[:2], *result)
+    package_result := Call("p0123456789abcdeg_text", "TextHostedHost", arguments[:2], *result)
+    if stale_result != 0 || missing_result != 0 || record_result != 0 ||
+    function_result != 0 || module_result != 0 || package_result != 0 {
+        print("host rejection mismatch: % % % % % %\n", stale_result, missing_result,
+            record_result, function_result, module_result, package_result)
         return 4
     }
     // Fields match by name: a record from an older layout that lists only
@@ -277,11 +281,11 @@ main :: () -> s32 {
     // A portable Text's links cross with it, and the host answers which one
     // is under a point; a point that is not a pair of float32 is refused.
     if !WidgetHostSupports("p0123456789abcdef_text", "TextLinkAtHostedHost") { return 90 }
-    link_ranges: [1]TextRange = .[TextRange.{0, 6}]
+    link_ranges: [1]Text.Range = .[Text.Range.{0, 6}]
     link_codec: WidgetTextPropsCodec
     link_arguments: [4]HostValue
     link_arguments[0] = arguments[0]
-    link_arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted",
+    link_arguments[1] = WidgetEncodeTextProps(Text.Props.{.text = "Hosted",
             .bounds = Rectangle.{0.0, 0.0, 200.0, 20.0}, .links = link_ranges[:]}, *link_codec)
     link_arguments[2] = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = 2.0}
     link_arguments[3] = HostValue.{.kind = cast(s32)HostReal, .type_name = HostTextData("float32"), .real = 90.0}
@@ -300,25 +304,25 @@ main :: () -> s32 {
     }
     // Guest fonts stay within the same asset boundary as their pictures.
     font_codec: WidgetTextPropsCodec
-    encoded_font := WidgetEncodeTextProps(TextProps.{.typeface = "/private/font.ttf", .line_gap = 11}, *font_codec)
+    encoded_font := WidgetEncodeTextProps(Text.Props.{.typeface = "/private/font.ttf", .line_gap = 11}, *font_codec)
     refused_font := WidgetHostTextProps(encoded_font)
     if refused_font.typeface != "" || refused_font.line_gap != 11 { return 94 }
-    encoded_font = WidgetEncodeTextProps(TextProps.{.typeface = "ui"}, *font_codec)
+    encoded_font = WidgetEncodeTextProps(Text.Props.{.typeface = "ui"}, *font_codec)
     if WidgetHostTextProps(encoded_font).typeface != "ui" { return 95 }
-    encoded_font = WidgetEncodeTextProps(TextProps.{.typeface = "assets/forbidden.ttf"}, *font_codec)
+    encoded_font = WidgetEncodeTextProps(Text.Props.{.typeface = "assets/forbidden.ttf"}, *font_codec)
     if WidgetHostTextProps(encoded_font).typeface != "" { return 96 }
     // A portable app measures a line of text with the host's own fonts, to
     // place controls beside it.
     if !WidgetHostSupports("p0123456789abcdef_text_measure", "TextWidthHostedHost") { return 94 }
     width_codec: WidgetTextPropsCodec
-    width_arguments: [2]HostValue = .[arguments[0], WidgetEncodeTextProps(TextProps.{.text = "Hosted",
+    width_arguments: [2]HostValue = .[arguments[0], WidgetEncodeTextProps(Text.Props.{.text = "Hosted",
             .bounds = Rectangle.{0.0, 0.0, 200.0, 20.0}}, *width_codec)]
     if Call("text_measure", "TextWidthHostedHost", width_arguments[:], *result) != 1 ||
     TextFromCString(result.type_name) != "s32" || result.integer <= 0 {
         return 95
     }
     short_width := result.integer
-    width_arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted and longer",
+    width_arguments[1] = WidgetEncodeTextProps(Text.Props.{.text = "Hosted and longer",
             .bounds = Rectangle.{0.0, 0.0, 200.0, 20.0}}, *width_codec)
     if Call("text_measure", "TextWidthHostedHost", width_arguments[:], *result) != 1 ||
     result.integer <= short_width {
@@ -327,27 +331,27 @@ main :: () -> s32 {
     // And the height a paragraph takes, wrapped as Text wraps it by
     // default: a narrow one takes more lines.
     if !WidgetHostSupports("text_measure", "TextHeightHostedHost") { return 97 }
-    width_arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted and longer",
+    width_arguments[1] = WidgetEncodeTextProps(Text.Props.{.text = "Hosted and longer",
             .bounds = Rectangle.{0.0, 0.0, 400.0, 0.0}}, *width_codec)
     if Call("text_measure", "TextHeightHostedHost", width_arguments[:], *result) != 1 ||
     TextFromCString(result.type_name) != "s32" || result.integer <= 0 {
         return 98
     }
     one_line := result.integer
-    width_arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Hosted and longer",
+    width_arguments[1] = WidgetEncodeTextProps(Text.Props.{.text = "Hosted and longer",
             .bounds = Rectangle.{0.0, 0.0, cast(float32)short_width, 0.0}}, *width_codec)
     if Call("text_measure", "TextHeightHostedHost", width_arguments[:], *result) != 1 ||
     result.integer <= one_line {
         return 99
     }
     // Assets pass the host's policy; texture handles never cross.
-    arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "assets/photo.png",
+    arguments[1] = WidgetEncodeImageProps(Image.Props.{.asset_path = "assets/photo.png",
             .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}, *image_codec)
     if Call("kryon_image", "ImageHostedHost", arguments[:2], *result) != 1 {
         return 6
     }
     // A warped image's grid crosses with it.
-    meshed := ImageProps.{.asset_path = "assets/photo.png",
+    meshed := Image.Props.{.asset_path = "assets/photo.png",
         .bounds = Rectangle.{0.0, 20.0, 40.0, 40.0}}
     mesh_points: [4]Vector2 = .[Vector2.{0.0, 20.0}, Vector2.{30.0, 20.0},
     Vector2.{0.0, 60.0}, Vector2.{30.0, 55.0}]
@@ -379,57 +383,57 @@ main :: () -> s32 {
     queued.mesh_points[3].x != 30.0 || queued.mesh_points[3].y != 55.0 {
         return 41
     }
-    arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "private/key.png"}, *image_codec)
+    arguments[1] = WidgetEncodeImageProps(Image.Props.{.asset_path = "private/key.png"}, *image_codec)
     if Call("image", "ImageHostedHost", arguments[:2], *result) != 0 {
         return 7
     }
-    texture := ImageProps.{.asset_path = "assets/photo.png"}
+    texture := Image.Props.{.asset_path = "assets/photo.png"}
     texture.texture.id = cast(u32)3
     arguments[1] = WidgetEncodeImageProps(texture, *image_codec)
     checks := asset_checks
     if Call("image", "ImageHostedHost", arguments[:2], *result) != 0 || asset_checks != checks {
         return 8
     }
-    arguments[1] = WidgetEncodeButtonProps(ButtonProps.{.id = 9, .label = "Save",
+    arguments[1] = WidgetEncodeButtonProps(Button.Props.{.id = 9, .label = "Save",
             .bounds = Rectangle.{0.0, 60.0, 80.0, 30.0}}, *button_codec)
     if Call("button", "ButtonHostedHost", arguments[:2], *result) != 1 ||
     result.kind != cast(s32)HostInteger || TextFromCString(result.type_name) != "s32" || result.integer != 0 {
         return 9
     }
     // A press area answers with its press state.
-    arguments[1] = WidgetEncodePressProps(PressProps.{.id = 12, .label = "Message",
+    arguments[1] = WidgetEncodePressProps(Press.Props.{.id = 12, .label = "Message",
             .bounds = Rectangle.{0.0, 100.0, 200.0, 40.0}, .now = 1.0}, *press_codec)
     if Call("press", "PressHostedHost", arguments[:2], *result) != 1 ||
-    result.kind != cast(s32)HostRecord || TextFromCString(result.type_name) != "PressResult" {
+    result.kind != cast(s32)HostRecord || TextFromCString(result.type_name) != "Press.PressResult" {
         return 30
     }
     // A spinbox answers with its value, kept within its range.
-    arguments[1] = WidgetEncodeSpinboxProps(SpinboxProps.{.id = 13, .label = "Length",
+    arguments[1] = WidgetEncodeSpinboxProps(Spinbox.Props.{.id = 13, .label = "Length",
             .bounds = Rectangle.{0.0, 140.0, 150.0, 38.0}, .min = 5, .max = 35, .step = 1,
             .value = 16}, *spinbox_codec)
     if Call("spinbox", "SpinboxHostedHost", arguments[:2], *result) != 1 ||
-    TextFromCString(result.type_name) != "SpinboxStepResult" ||
+    TextFromCString(result.type_name) != "Spinbox.SpinboxStepResult" ||
     WidgetDecodeSpinboxStepResult(result, *spinbox_result).value != 16 {
         return 31
     }
     // A time picker answers with its time, clamped to the day.
-    arguments[1] = WidgetEncodeTimePickerProps(TimePickerProps.{.id = 14, .label = "Start",
+    arguments[1] = WidgetEncodeTimePickerProps(TimePicker.Props.{.id = 14, .label = "Start",
             .bounds = Rectangle.{0.0, 180.0, 150.0, 36.0}, .value = 2000, .now = -1}, *time_picker_codec)
     if Call("timepicker", "TimePickerHostedHost", arguments[:2], *result) != 1 ||
-    TextFromCString(result.type_name) != "TimePickerResult" ||
+    TextFromCString(result.type_name) != "TimePicker.TimePickerResult" ||
     WidgetDecodeTimePickerResult(result, *time_picker_result).value != 1439 ||
     WidgetDecodeTimePickerResult(result, *time_picker_result).changed {
         return 32
     }
     // A fieldset paints its frame; a toggle answers the size it needs.
     fieldset_before := PendingPaintCount(session)
-    arguments[1] = WidgetEncodeFieldsetProps(FieldsetProps.{.bounds = Rectangle.{0.0, 220.0, 200.0, 80.0}},
+    arguments[1] = WidgetEncodeFieldsetProps(Fieldset.Props.{.bounds = Rectangle.{0.0, 220.0, 200.0, 80.0}},
         *fieldset_codec)
     if Call("fieldset", "FieldsetHostedHost", arguments[:2], *result) != 1 ||
     PendingPaintCount(session) <= fieldset_before {
         return 107
     }
-    arguments[1] = WidgetEncodeToggleProps(ToggleProps.{.off_label = "Off", .on_label = "On"},
+    arguments[1] = WidgetEncodeToggleProps(Toggle.Props.{.off_label = "Off", .on_label = "On"},
         *toggle_codec)
     if Call("toggle_measure", "ToggleSizeHostedHost", arguments[:2], *result) != 1 ||
     !WidgetValidVector2(result) || WidgetDecodeVector2(result, *vector_codec).x <= 0.0 ||
@@ -439,17 +443,17 @@ main :: () -> s32 {
     // Each shape paints itself.
     shape_before := PendingPaintCount(session)
     black := Color.{0, 0, 0, 255}
-    arguments[1] = WidgetEncodeLineProps(LineProps.{.start = Vector2.{10.0, 300.0},
+    arguments[1] = WidgetEncodeLineProps(Shape.Props.{.start = Vector2.{10.0, 300.0},
             .end = Vector2.{60.0, 330.0}, .thickness = 2.0, .color = black}, *line_codec)
     if Call("shape", "LineHostedHost", arguments[:2], *result) != 1 { return 109 }
-    arguments[1] = WidgetEncodeCircleProps(CircleProps.{.center = Vector2.{80.0, 300.0},
+    arguments[1] = WidgetEncodeCircleProps(Shape.CircleProps.{.center = Vector2.{80.0, 300.0},
             .radius = 6.0, .fill = black}, *circle_codec)
     if Call("shape", "CircleHostedHost", arguments[:2], *result) != 1 { return 110 }
-    arguments[1] = WidgetEncodeRingProps(RingProps.{.center = Vector2.{100.0, 300.0},
+    arguments[1] = WidgetEncodeRingProps(Shape.RingProps.{.center = Vector2.{100.0, 300.0},
             .inner_radius = 3.0, .outer_radius = 6.0, .end_angle = 180.0, .color = black},
         *ring_codec)
     if Call("shape", "RingHostedHost", arguments[:2], *result) != 1 { return 111 }
-    arguments[1] = WidgetEncodeTriangleProps(TriangleProps.{.first = Vector2.{120.0, 300.0},
+    arguments[1] = WidgetEncodeTriangleProps(Shape.TriangleProps.{.first = Vector2.{120.0, 300.0},
             .second = Vector2.{130.0, 310.0}, .third = Vector2.{110.0, 310.0}, .color = black},
         *triangle_codec)
     if Call("shape", "TriangleHostedHost", arguments[:2], *result) != 1 ||
@@ -458,13 +462,13 @@ main :: () -> s32 {
     }
     // Sliders answer with their value as it is, untouched by a pointer;
     // a progress bar paints itself.
-    arguments[1] = WidgetEncodeSliderProps(SliderProps.{.key = cast(u64)317,
+    arguments[1] = WidgetEncodeSliderProps(Slider.Props.{.key = cast(u64)317,
             .bounds = Rectangle.{10.0, 340.0, 200.0, 36.0}, .value = 4.0, .max = 10.0}, *slider_codec)
     if Call("slider", "SliderHostedHost", arguments[:2], *result) != 1 ||
     !WidgetValidSliderStep(result) || WidgetDecodeSliderStep(result, *slider_step).value != 4.0 {
         return 113
     }
-    arguments[1] = WidgetEncodeDiscreteSliderProps(DiscreteSliderProps.{.key = cast(u64)318,
+    arguments[1] = WidgetEncodeDiscreteSliderProps(Slider.DiscreteSliderProps.{.key = cast(u64)318,
             .bounds = Rectangle.{10.0, 380.0, 200.0, 36.0}, .value = 3, .max = 10}, *discrete_codec)
     if Call("slider", "DiscreteSliderHostedHost", arguments[:2], *result) != 1 ||
     !WidgetValidSliderDiscreteStep(result) ||
@@ -472,7 +476,7 @@ main :: () -> s32 {
         return 114
     }
     progress_before := PendingPaintCount(session)
-    arguments[1] = WidgetEncodeProgressProps(ProgressProps.{.key = cast(u64)319,
+    arguments[1] = WidgetEncodeProgressProps(Progress.Props.{.key = cast(u64)319,
             .bounds = Rectangle.{10.0, 420.0, 200.0, 5.0}, .max = 60, .value = 30}, *progress_codec)
     if Call("progress", "ProgressHostedHost", arguments[:2], *result) != 1 ||
     PendingPaintCount(session) <= progress_before {
@@ -480,7 +484,7 @@ main :: () -> s32 {
     }
     // A vector icon on its own paints its cells and answers nothing.
     icon_before := PendingPaintCount(session)
-    icon: SvgIconProps
+    icon: SvgIcon.Props
     icon.bounds = Rectangle.{160.0, 180.0, 24.0, 24.0}
     icon.shape = "F:M4 4H20L12 20Z"
     icon.color = Color.{0, 0, 0, 255}
@@ -490,21 +494,21 @@ main :: () -> s32 {
         return 66
     }
     // Slices decode into the codec and are attached by name.
-    hidden: [2]TextRange = .[TextRange.{.start = 0, .end = 2}, TextRange.{.start = 6, .end = 8}]
-    encoded := WidgetEncodeTextAreaProps(TextAreaProps.{.value = "**bold**", .hidden = hidden[:]}, *area_codec)
+    hidden: [2]Text.Range = .[Text.Range.{.start = 0, .end = 2}, Text.Range.{.start = 6, .end = 8}]
+    encoded := WidgetEncodeTextAreaProps(TextArea.Props.{.value = "**bold**", .hidden = hidden[:]}, *area_codec)
     decoded := WidgetDecodeTextAreaProps(encoded, *area_decoded)
     if HostSliceLength(encoded, 25, "hidden") != 2 || decoded.value != "**bold**" ||
     area_decoded.hidden_decoded[1].start != 6 || area_decoded.hidden_decoded[1].end != 8 {
         return 10
     }
     // A tab bar holds at most 32 tabs.
-    tabs: [40]Tab
+    tabs: [40]TabBar.Tab
     index: s32 = 0
     while index < 40 {
         tab_values[index] = WidgetEncodeTab(tabs[index], *tab_codecs[index])
         index += 1
     }
-    arguments[1] = WidgetEncodeTabBarProps(TabBarProps.{}, *tab_bar_codec)
+    arguments[1] = WidgetEncodeTabBarProps(TabBar.Props.{}, *tab_bar_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]Tab"),
         .length = cast(usize)33, .elements = *tab_values[0]}
     if Call("tabs", "TabBarHostedHost", arguments[:], *result) != 0 {
@@ -512,14 +516,14 @@ main :: () -> s32 {
     }
     // A title bar answers with where the bundle draws its own controls;
     // more than 32 options or a texture handle is refused.
-    options: [40]DropdownOption
+    options: [40]Dropdown.Option
     index = 0
     while index < 40 {
         options[index].label = "Option"
         option_values[index] = WidgetEncodeDropdownOption(options[index], *option_codecs[index])
         index += 1
     }
-    arguments[1] = WidgetEncodeDropdownProps(DropdownProps.{.key = cast(u64)315,
+    arguments[1] = WidgetEncodeDropdownProps(Dropdown.Props.{.key = cast(u64)315,
             .bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}, .selected_index = 1}, *dropdown_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),
         .length = cast(usize)2, .elements = *option_values[0]}
@@ -540,14 +544,14 @@ main :: () -> s32 {
     option_values[0] = WidgetEncodeDropdownOption(options[0], *option_codecs[0])
     // A segmented control answers with its selection and holds at most 32
     // options.
-    segments: [40]SegmentOption
+    segments: [40]SegmentedControl.SegmentOption
     index = 0
     while index < 40 {
         segments[index].label = "Segment"
         segment_values[index] = WidgetEncodeSegmentOption(segments[index], *segment_codecs[index])
         index += 1
     }
-    arguments[1] = WidgetEncodeSegmentedControlProps(SegmentedControlProps.{.key = cast(u64)316,
+    arguments[1] = WidgetEncodeSegmentedControlProps(SegmentedControl.Props.{.key = cast(u64)316,
             .bounds = Rectangle.{0.0, 0.0, 240.0, 40.0}, .height = 40, .selected_index = 1,
             .has_selection = true}, *segmented_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]SegmentOption"),
@@ -566,12 +570,12 @@ main :: () -> s32 {
     if Call("segmented", "SegmentedControlHostedHost", arguments[:], *result) != 0 {
         return 106
     }
-    arguments[1] = WidgetEncodeTitleBarProps(TitleBarProps.{.key = cast(u64)15, .title = "Lumi",
+    arguments[1] = WidgetEncodeTitleBarProps(TitleBar.Props.{.key = cast(u64)15, .title = "Lumi",
             .bounds = Rectangle.{0.0, 0.0, 300.0, 40.0}, .trailing_width = 100}, *title_bar_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]DropdownOption"),
         .length = cast(usize)0, .elements = *option_values[0]}
     if Call("titlebar", "TitleBarHostedHost", arguments[:], *result) != 1 ||
-    TextFromCString(result.type_name) != "TitleBarResult" ||
+    TextFromCString(result.type_name) != "TitleBar.TitleBarResult" ||
     WidgetDecodeTitleBarResult(result, *title_bar_result).trailing_bounds.x != 188.0 ||
     WidgetDecodeTitleBarResult(result, *title_bar_result).trailing_bounds.width != 100.0 {
         return 33
@@ -580,7 +584,7 @@ main :: () -> s32 {
     if Call("titlebar", "TitleBarHostedHost", arguments[:], *result) != 0 {
         return 34
     }
-    textured := TitleBarProps.{.title = "Lumi", .has_leading_action = true}
+    textured := TitleBar.Props.{.title = "Lumi", .has_leading_action = true}
     textured.leading_image.texture.id = cast(u32)4
     arguments[1] = WidgetEncodeTitleBarProps(textured, *title_bar_codec)
     arguments[2].length = cast(usize)0
@@ -589,10 +593,10 @@ main :: () -> s32 {
     }
     // A dialog opens its panel for the bundle's content, which the bundle
     // Ends; a runtime texture on its actions is refused.
-    arguments[1] = WidgetEncodeModalFrameProps(ModalFrameProps.{.key = cast(u64)16,
+    arguments[1] = WidgetEncodeModalFrameProps(Modal.Props.{.key = cast(u64)16,
             .title = "Share", .width = 200, .height = 120, .has_right_action = true}, *modal_codec)
     if Call("modal_frame", "ModalFrameHostedHost", arguments[:2], *result) != 1 ||
-    TextFromCString(result.type_name) != "ModalFrameResult" ||
+    TextFromCString(result.type_name) != "Modal.ModalFrameResult" ||
     !WidgetDecodeModalFrameResult(result, *modal_result).opened ||
     WidgetDecodeModalFrameResult(result, *modal_result).layout.panel.width != 200.0 {
         return 36
@@ -600,7 +604,7 @@ main :: () -> s32 {
     if Call("tree", "EndHostedHost", arguments[:1], *result) != 1 {
         return 37
     }
-    dialog := ModalFrameProps.{.title = "Share", .has_right_action = true}
+    dialog := Modal.Props.{.title = "Share", .has_right_action = true}
     dialog.right_image.texture.id = cast(u32)4
     arguments[1] = WidgetEncodeModalFrameProps(dialog, *modal_codec)
     if Call("modal_frame", "ModalFrameHostedHost", arguments[:2], *result) != 0 {
@@ -611,17 +615,17 @@ main :: () -> s32 {
     if Call("tree", "EndHostedHost", arguments[:1], *result) != 0 {
         return 12
     }
-    arguments[1] = WidgetEncodeScrollProps(ScrollProps.{.key = cast(u64)7,
+    arguments[1] = WidgetEncodeScrollProps(Scroll.Props.{.key = cast(u64)7,
             .bounds = Rectangle.{0.0, 100.0, 200.0, 80.0}, .content_height = 400}, *scroll_codec)
     if Call("scroll", "ScrollHostedHost", arguments[:2], *result) != 1 ||
-    TextFromCString(result.type_name) != "ScrollResult" {
+    TextFromCString(result.type_name) != "Scroll.ScrollResult" {
         return 13
     }
     // Action dialogs validate the entire action list before drawing it.
-    arguments[1] = WidgetEncodeActionModalProps(ActionModalProps.{.key = cast(u64)17,
+    arguments[1] = WidgetEncodeActionModalProps(Modal.ActionModalProps.{.key = cast(u64)17,
             .title = "Keep changes?", .message = "Your draft stays here."}, *action_modal_codec)
     action_values: [1]HostValue
-    action_values[0] = WidgetEncodeActionModalAction(ActionModalAction.{.label = "Keep editing"}, *action_codec)
+    action_values[0] = WidgetEncodeActionModalAction(Modal.ActionModalAction.{.label = "Keep editing"}, *action_codec)
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice,
         .type_name = HostTextData("[]ActionModalAction"), .length = cast(usize)1,
         .elements = *action_values[0]}
@@ -643,7 +647,7 @@ main :: () -> s32 {
     if EndFrame(session) != cast(FrameStatus)FrameOk {
         return 14
     }
-    arguments[1] = WidgetEncodeTextProps(TextProps.{.text = "Late"}, *text_codec)
+    arguments[1] = WidgetEncodeTextProps(Text.Props.{.text = "Late"}, *text_codec)
     if Call("text", "TextHostedHost", arguments[:2], *result) != 0 {
         return 15
     }
@@ -652,22 +656,22 @@ main :: () -> s32 {
     resolved_owner = 1
     BeginFrame(session, cast(u64)2, Rectangle.{0.0, 0.0, 600.0, 400.0})
     WidgetHostBegin(session, AllowPhoto, ResolvePhoto)
-    arguments[1] = WidgetEncodeImageProps(ImageProps.{.key = cast(u64)100,
+    arguments[1] = WidgetEncodeImageProps(Image.Props.{.key = cast(u64)100,
             .asset_path = "assets/photo.png", .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}, *image_codec)
     if Call("image", "ImageHostedHost", arguments[:2], *result) != 1 ||
     !PaintHasAsset(session, "apps/owner-a/assets/photo.png") || PaintHasAsset(session, "assets/photo.png") { return 44 }
     checks = resolve_checks
-    arguments[1] = WidgetEncodeImageProps(ImageProps.{.asset_path = "private/key.png"}, *image_codec)
+    arguments[1] = WidgetEncodeImageProps(Image.Props.{.asset_path = "private/key.png"}, *image_codec)
     if Call("image", "ImageHostedHost", arguments[:2], *result) != 0 || resolve_checks != checks { return 45 }
     texture.texture.id = cast(u32)1
     arguments[1] = WidgetEncodeImageProps(texture, *image_codec)
     if Call("image", "ImageHostedHost", arguments[:2], *result) != 0 || resolve_checks != checks { return 46 }
-    button := ButtonProps.{.key = cast(u64)101, .label = "Photo", .bounds = Rectangle.{50.0, 0.0, 100.0, 50.0}}
+    button := Button.Props.{.key = cast(u64)101, .label = "Photo", .bounds = Rectangle.{50.0, 0.0, 100.0, 50.0}}
     button.image.asset_path = "assets/photo.png"
     arguments[1] = WidgetEncodeButtonProps(button, *button_codec)
     if Call("button", "ButtonHostedHost", arguments[:2], *result) != 1 ||
     resolve_checks != checks + 1 { return 47 }
-    pictured := TitleBarProps.{.key = cast(u64)102, .title = "Images",
+    pictured := TitleBar.Props.{.key = cast(u64)102, .title = "Images",
         .bounds = Rectangle.{0.0, 60.0, 600.0, 50.0}, .has_leading_action = true, .has_dropdown = true}
     pictured.leading_image.asset_path = "assets/photo.png"
     options[0].image.asset_path = "assets/photo.png"
@@ -677,7 +681,7 @@ main :: () -> s32 {
         .length = cast(usize)1, .elements = *option_values[0]}
     if Call("titlebar", "TitleBarHostedHost", arguments[:], *result) != 1 ||
     widget_options[0].image.asset_path != "apps/owner-a/assets/photo.png" || resolve_checks != checks + 3 { return 48 }
-    dialog = ModalFrameProps.{.key = cast(u64)103, .title = "Images", .width = 200, .height = 120,
+    dialog = Modal.Props.{.key = cast(u64)103, .title = "Images", .width = 200, .height = 120,
         .has_left_action = true, .has_right_action = true}
     dialog.left_image.asset_path = "assets/photo.png"
     dialog.right_image.asset_path = "assets/photo.png"
@@ -689,7 +693,7 @@ main :: () -> s32 {
     resolved_owner = 2
     BeginFrame(session, cast(u64)3, Rectangle.{0.0, 0.0, 300.0, 200.0})
     WidgetHostBegin(session, AllowPhoto, ResolvePhoto)
-    arguments[1] = WidgetEncodeImageProps(ImageProps.{.key = cast(u64)100,
+    arguments[1] = WidgetEncodeImageProps(Image.Props.{.key = cast(u64)100,
             .asset_path = "assets/photo.png", .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}, *image_codec)
     if Call("image", "ImageHostedHost", arguments[:2], *result) != 1 ||
     !PaintHasAsset(session, "apps/owner-b/assets/photo.png") || PaintHasAsset(session, "apps/owner-a/assets/photo.png") { return 51 }
@@ -708,10 +712,10 @@ main :: () -> s32 {
     // A preview stands in while its picture loads, and the bundle can ask
     // what shows, as a narrated page waits for its picture.
     if !WidgetHostSupports("kryon_image_showing", "ImageShowingHostedHost") { return 116 }
-    slow := ImageProps.{.asset_path = "assets/slow.png", .preview_path = "assets/photo-small.png",
+    slow := Image.Props.{.asset_path = "assets/slow.png", .preview_path = "assets/photo-small.png",
         .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}
-    if HostedShowing(session, slow) != cast(s64)ImageShowing.ImageShowingPreview ||
-    ImageShowingOf(session, slow) != ImageShowing.ImageShowingPreview { return 117 }
+    if HostedShowing(session, slow) != cast(s64)Image.ImageShowing.ImageShowingPreview ||
+    ImageShowingOf(session, slow) != Image.ImageShowing.ImageShowingPreview { return 117 }
     arguments[1] = WidgetEncodeImageProps(slow, *image_codec)
     if Call("image", "ImageHostedHost", arguments[:2], *result) != 1 ||
     !PaintHasAsset(session, "assets/photo-small.png") || PaintHasAsset(session, "assets/slow.png") { return 118 }
@@ -720,33 +724,33 @@ main :: () -> s32 {
     // A ready picture shows itself; its preview is not even asked for.
     ready := slow
     ready.asset_path = "assets/photo.png"
-    if HostedShowing(session, ready) != cast(s64)ImageShowing.ImageShowingFull { return 120 }
+    if HostedShowing(session, ready) != cast(s64)Image.ImageShowing.ImageShowingFull { return 120 }
     paints = PendingPaintCount(session)
     arguments[1] = WidgetEncodeImageProps(ready, *image_codec)
     if Call("image", "ImageHostedHost", arguments[:2], *result) != 1 ||
     PendingPaintCount(session) != paints + 1 || PendingPaintAt(session, paints).asset_path != "assets/photo.png" { return 121 }
     // Without a preview a loading picture draws nothing, not a placeholder;
     // an unavailable one is unavailable.
-    alone := ImageProps.{.asset_path = "assets/slow.png", .alt_text = "Slow", .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}
+    alone := Image.Props.{.asset_path = "assets/slow.png", .alt_text = "Slow", .bounds = Rectangle.{0.0, 0.0, 40.0, 40.0}}
     paints = PendingPaintCount(session)
     arguments[1] = WidgetEncodeImageProps(alone, *image_codec)
-    if HostedShowing(session, alone) != cast(s64)ImageShowing.ImageShowingNone ||
+    if HostedShowing(session, alone) != cast(s64)Image.ImageShowing.ImageShowingNone ||
     Call("image", "ImageHostedHost", arguments[:2], *result) != 1 ||
     PendingPaintCount(session) != paints { return 122 }
     gone := alone
     gone.asset_path = "assets/gone.png"
-    if HostedShowing(session, gone) != cast(s64)ImageShowing.ImageShowingUnavailable { return 123 }
+    if HostedShowing(session, gone) != cast(s64)Image.ImageShowing.ImageShowingUnavailable { return 123 }
     // A gone picture still shows its preview.
     gone.preview_path = "assets/photo-small.png"
-    if HostedShowing(session, gone) != cast(s64)ImageShowing.ImageShowingPreview { return 124 }
+    if HostedShowing(session, gone) != cast(s64)Image.ImageShowing.ImageShowingPreview { return 124 }
     // Part of a picture maps onto the preview's pixels with the full size;
     // without that size it waits for the picture.
     piece := slow
     piece.source = Rectangle.{20.0, 0.0, 20.0, 40.0}
-    if HostedShowing(session, piece) != cast(s64)ImageShowing.ImageShowingNone { return 125 }
+    if HostedShowing(session, piece) != cast(s64)Image.ImageShowing.ImageShowingNone { return 125 }
     piece.full_size = Vector2.{40.0, 40.0}
     arguments[1] = WidgetEncodeImageProps(piece, *image_codec)
-    if HostedShowing(session, piece) != cast(s64)ImageShowing.ImageShowingPreview ||
+    if HostedShowing(session, piece) != cast(s64)Image.ImageShowing.ImageShowingPreview ||
     Call("image", "ImageHostedHost", arguments[:2], *result) != 1 { return 126 }
     queued = PendingPaintAt(session, PendingPaintCount(session) - 1)
     if queued.asset_path != "assets/photo-small.png" || queued.source.x != 5.0 || queued.source.y != 0.0 ||
@@ -757,8 +761,8 @@ main :: () -> s32 {
     secret.preview_path = "private/key.png"
     arguments[1] = WidgetEncodeImageProps(secret, *image_codec)
     if Call("image", "ImageHostedHost", arguments[:2], *result) != 0 ||
-    HostedShowing(session, secret) != cast(s64)ImageShowing.ImageShowingUnavailable { return 128 }
-    handle := ImageProps.{.asset_path = "assets/photo.png"}
+    HostedShowing(session, secret) != cast(s64)Image.ImageShowing.ImageShowingUnavailable { return 128 }
+    handle := Image.Props.{.asset_path = "assets/photo.png"}
     handle.texture.id = cast(u32)3
     showing_arguments: [2]HostValue
     showing_arguments[0] = WidgetEncodeSession(session, *session_codec)
@@ -772,11 +776,11 @@ main :: () -> s32 {
     WidgetHostSupports("other_contextmenu", "ContextMenuHostedHost") { return 56 }
     BeginFrame(session, cast(u64)5, Rectangle.{0.0, 0.0, 300.0, 200.0})
     WidgetHostBegin(session, AllowPhoto)
-    arguments[1] = WidgetEncodeContextMenuProps(ContextMenuProps.{.key = cast(u64)201,
+    arguments[1] = WidgetEncodeContextMenuProps(ContextMenu.Props.{.key = cast(u64)201,
             .open = true, .x = 20.0, .y = 20.0, .scale = 1.0}, *menu_codec)
-    menu_values[0] = WidgetEncodeContextMenuItem(ContextMenuItem.{.id = 1, .label = "Open"}, *menu_item_codecs[0])
-    menu_values[1] = WidgetEncodeContextMenuItem(ContextMenuItem.{.id = 2, .label = "Disabled", .disabled = true}, *menu_item_codecs[1])
-    menu_values[2] = WidgetEncodeContextMenuItem(ContextMenuItem.{.id = 3, .label = "Update"}, *menu_item_codecs[2])
+    menu_values[0] = WidgetEncodeContextMenuItem(ContextMenu.ContextMenuItem.{.id = 1, .label = "Open"}, *menu_item_codecs[0])
+    menu_values[1] = WidgetEncodeContextMenuItem(ContextMenu.ContextMenuItem.{.id = 2, .label = "Disabled", .disabled = true}, *menu_item_codecs[1])
+    menu_values[2] = WidgetEncodeContextMenuItem(ContextMenu.ContextMenuItem.{.id = 3, .label = "Update"}, *menu_item_codecs[2])
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]ContextMenuItem"),
         .length = cast(usize)3, .elements = *menu_values[0]}
     before = PendingPaintCount(session)
@@ -808,7 +812,7 @@ main :: () -> s32 {
     if !WidgetHostSupports("p0123456789abcdef_tilemap", "TileMapHostedHost") { return 66 }
     tiles: [2]string = .["assets/photo.png", "assets/other.png"]
     layers: [6]s32 = .[0, -1, 0, 0, -1, 0]
-    map := TileMapProps.{.key = cast(u64)900, .bounds = Rectangle.{10.0, 10.0, 90.0, 40.0}, .columns = 3,
+    map := TileMap.Props.{.key = cast(u64)900, .bounds = Rectangle.{10.0, 10.0, 90.0, 40.0}, .columns = 3,
         .rows = 2, .tiles = tiles[:], .layers = layers[:], .layer_count = 1, .fill = Color.{10, 20, 30, 255},
         .label = "board"}
     BeginFrame(session, cast(u64)6, Rectangle.{0.0, 0.0, 300.0, 200.0})
@@ -820,7 +824,7 @@ main :: () -> s32 {
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk || hosted != 5 || grid.cell != 20.0 || grid.columns != 3 { return 68 }
     BeginFrame(session, cast(u64)6, Rectangle.{0.0, 0.0, 300.0, 200.0})
-    direct := TileMap(session, map)
+    direct := TileMap.Draw(session, map)
     if !TileMapPaintSame(session, hosted) || direct.cell != grid.cell || direct.board.x != grid.board.x { return 69 }
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 70 }
     // A map that shows a picture the bundle may not draw is refused, as that
@@ -937,7 +941,7 @@ main :: () -> s32 {
     WidgetHostEnd()
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 86 }
     BeginFrame(session, cast(u64)8, Rectangle.{0.0, 0.0, 300.0, 200.0})
-    unused TileMap(session, filtered)
+    unused TileMap.Draw(session, filtered)
     if !TileMapPaintSame(session, filtered_count) { return 87 }
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 88 }
     return 0
@@ -1000,13 +1004,13 @@ HostedPointerBoundary :: () -> s32 {
     WidgetHostBegin(session, AllowPhoto)
     arguments: [3]HostValue
     arguments[0] = WidgetEncodeSession(session, *session_codec)
-    tabs: [2]Tab
-    tabs[0] = Tab.{.key = 10, .label = "First"}
-    tabs[1] = Tab.{.key = 11, .label = "Second"}
+    tabs: [2]TabBar.Tab
+    tabs[0] = TabBar.Tab.{.key = 10, .label = "First"}
+    tabs[1] = TabBar.Tab.{.key = 11, .label = "Second"}
     for index: 0..1 { tab_values[index] = WidgetEncodeTab(tabs[index], *tab_codecs[index]) }
     arguments[2] = HostValue.{.kind = cast(s32)HostSlice, .type_name = HostTextData("[]Tab"),
         .length = cast(usize)2, .elements = *tab_values[0]}
-    props := TabBarProps.{.key = 80, .bounds = .{0.0, 0.0, 280.0, 44.0}, .selected_index = 1}
+    props := TabBar.Props.{.key = 80, .bounds = .{0.0, 0.0, 280.0, 44.0}, .selected_index = 1}
     arguments[1] = WidgetEncodeTabBarProps(props, *tab_bar_codec)
     result: HostValue
     before := TreeSubmittedCount(session)

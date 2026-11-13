@@ -1,6 +1,15 @@
 // Actual public widgets for the before/after contact sheets. No mock drawing
 // substitutes for a control. Nonvisual containers contain ordinary children.
-using UI :: #import "Widgets";
+Box :: #import "kryon/box";
+Button :: #import "kryon/button";
+TextField :: #import "kryon/text_field";
+Toggle :: #import "kryon/toggle";
+#import "drawing_props"
+#import "input_protocol"
+#import "paint_queue"
+#import "session"
+#import "tree"
+#import "tree_input"
 using Scenes :: #import "scenes";
 #if #defined(REVIEW_DESKTOP) {
     #import "cairo_raster"
@@ -11,9 +20,6 @@ using Scenes :: #import "scenes";
 }
 #import "tree_draw"
 #import "page_text"
-#import "flow"
-#import "panedview"
-#import "paned_view_props"
 #import "transition"
 ReviewTheme :: #import "theme";
 #import "system_theme"
@@ -106,14 +112,14 @@ Run :: () -> s32 {
         cpu_start := CpuNow()
         start := Clock.MonotonicNanoseconds()
         if BeginFrame(session, 1, .{0.0, 0.0, 480.0, 320.0}) != FrameStatus.FrameOk { return 4 }
-        unused Box(session, BoxProps.{.key = 2, .bounds = .{0.0, 0.0, 480.0, 320.0}, .fill = ColorFromPacked(background)})
+        unused Box.Draw(session, Box.Props.{.key = 2, .bounds = .{0.0, 0.0, 480.0, 320.0}, .fill = ColorFromPacked(background)})
         if scene < 54 { Compose(session, scene, state == 1) }
         else if scene >= 56 { Compose(session, 54, state == 1) }
         else {
-            unused Button(session, ButtonProps.{.key = 10, .bounds = .{24.0, 64.0, 208.0, 44.0}, .label = "Continue", .tone = .ButtonToneAccent, .disabled = state == 1})
-            unused Button(session, ButtonProps.{.key = 11, .bounds = .{248.0, 64.0, 208.0, 44.0}, .label = "Tonal action", .emphasis = .ButtonEmphasisSoft, .disabled = state == 1})
-            unused TextField(session, TextFieldProps.{.key = 12, .bounds = .{24.0, 128.0, 432.0, 44.0}, .value = "A quiet place to think", .disabled = state == 1})
-            unused Toggle(session, ToggleProps.{.key = 13, .bounds = .{24.0, 196.0, 432.0, 44.0}, .label = "Notifications", .value = true, .disabled = state == 1})
+            unused Button.Draw(session, Button.Props.{.key = 10, .bounds = .{24.0, 64.0, 208.0, 44.0}, .label = "Continue", .tone = .ButtonToneAccent, .disabled = state == 1})
+            unused Button.Draw(session, Button.Props.{.key = 11, .bounds = .{248.0, 64.0, 208.0, 44.0}, .label = "Tonal action", .emphasis = .ButtonEmphasisSoft, .disabled = state == 1})
+            unused TextField.Draw(session, TextField.Props.{.key = 12, .bounds = .{24.0, 128.0, 432.0, 44.0}, .value = "A quiet place to think", .disabled = state == 1})
+            unused Toggle.Draw(session, Toggle.Props.{.key = 13, .bounds = .{24.0, 196.0, 432.0, 44.0}, .label = "Notifications", .value = true, .disabled = state == 1})
         }
         result: FrameEndResult
         emitted: s32

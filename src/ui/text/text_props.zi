@@ -16,7 +16,7 @@ Text32 :: 32
 Text48 :: 48
 TextBaseSize :: 16
 
-TextWrap :: enum {
+Wrap :: enum {
     TextWrapAuto :: 0
     TextWrapNone :: 1
     // One line, like TextWrapNone; text wider than its bounds ends in "...".
@@ -27,29 +27,29 @@ TextWrap :: enum {
 
 // UTF-8 byte ranges in the visible text, with an exclusive end. Invalid or
 // overlapping ranges are ignored. Emphasis keeps the ordinary text layout.
-TextRange :: struct {
+Range :: struct {
     start: s32
     end: s32
 }
 
-TextProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     text: string
-    font: s32
+    size: s32
     fallback_font: s32
     style_kind: s32
     id: s32
     semantic_kind: SemanticKind
     heading_level: s32
     class_name: s32
-    wrap: TextWrap
+    wrap: Wrap
     align: TextAlign
     vertical_align: TextAlign
     disabled: bool
     selectable: bool
     strikethrough: bool
-    strong: []TextRange
+    strong: []Range
     // While typing, only the first typed characters are painted, as if they
     // were being typed. A character is a grapheme cluster. The layout, the
     // size and the accessible label always keep the whole text.
@@ -58,7 +58,7 @@ TextProps :: struct {
     // Web links in the visible text, as for strong. Each is painted in the
     // theme's link color and underlined, inside the ordinary text; TextLinkAt
     // finds the one under a pointer so the caller can open it.
-    links: []TextRange
+    links: []Range
     // Registered face or a font asset path; empty keeps the theme face.
     typeface: string
     // Extra units between lines; zero keeps the default gap.
@@ -76,5 +76,5 @@ PreparedText :: struct {
     line_height: s32
     line_gap: s32
     line_count: s32
-    wrap: TextWrap
+    wrap: Wrap
 }

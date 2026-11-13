@@ -1,12 +1,8 @@
 #import "component_protocol"
-#import "button"
-#import "button_props"
-#import "text"
-#import "text_props"
+Button :: #import "kryon/button";
+Text :: #import "kryon/text";
 #import "geometry"
 #import "std/vec"
-
-TextWidget :: #import "text"
 
 ComponentLabel :: struct { text: string }
 ComponentOwned :: struct { label: ComponentLabel; samples: [4]s64 }
@@ -47,7 +43,7 @@ Frame :: () -> s64 {
 
     session := ComponentSession()
     bounds := ComponentBounds()
-    action := Button(session, ButtonProps.{
+    action := Button.Draw(session, Button.Props.{
         .key = 100, .bounds = Rectangle.{
             bounds.x + 16.0, bounds.y + 16.0, 96.0, 32.0
         }, .label = "Increment"
@@ -65,11 +61,11 @@ Frame :: () -> s64 {
     label := Label()
     row: s32
     while row < 16 {
-        TextWidget.Text(session, TextProps.{
+        Text.Draw(session, Text.Props.{
             .key = cast(u64)(1000 + row), .bounds = Rectangle.{
                 bounds.x + 16.0, bounds.y + 56.0 + cast(float32)row * 7.0,
                 220.0, 7.0
-            }, .text = label, .font = 7
+            }, .text = label, .size = 7
         })
         row += 1
     }

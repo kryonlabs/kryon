@@ -5,46 +5,43 @@ from toolchain import ROOT, ZIRAN, kryon_test_project
 project = ROOT / 'build/scratch/public-hosted-widgets/project'
 package_id = kryon_test_project(project)
 imports = '''#import "kryon/session"
-#import "kryon/toggle_props"
-#import "kryon/tab_bar_props"
-#import "kryon/dropdown_props"
+Dropdown :: #import "kryon/dropdown";
+TabBar :: #import "kryon/tab_bar";
+Toggle :: #import "kryon/toggle";
 '''
 source = project / 'src/public_hosted_widgets.zi'
-source.write_text(imports + '''#import "kryon/toggle_widget"
-#import "kryon/tab_bar_widget"
-#import "kryon/dropdown_widget"
-main :: () -> s32 {
+source.write_text(imports + '''main :: () -> s32 {
     session := Session.{.slot = 4, .epoch = cast(u64)12}
-    toggled := Toggle(session, ToggleProps.{.id = 53, .value = true})
+    toggled := Toggle.Draw(session, Toggle.Props.{.id = 53, .value = true})
     if !toggled.changed || toggled.value { return 1 }
-    tabs: [2]Tab
+    tabs: [2]TabBar.Tab
     tabs[1].label = "Two"
-    selected := TabBar(session, TabBarProps.{.selected_index = 0}, tabs[:])
+    selected := TabBar.Draw(session, TabBar.Props.{.selected_index = 0}, tabs[:])
     if selected.selected_index != 1 { return 2 }
-    options: [1]DropdownOption
+    options: [1]Dropdown.Option
     options[0].label = "Choice"
-    dropdown := Dropdown(session, DropdownProps.{.selected_index = -1}, options[:])
+    dropdown := Dropdown.Draw(session, Dropdown.Props.{.selected_index = -1}, options[:])
     if !dropdown.changed || dropdown.selected_index != 0 { return 3 }
     return 0
 }
 ''')
 provider = project / 'src/public_hosted_widgets_provider.zi'
 provider.write_text(imports + '''#program_export "ToggleHostedHost"
-HostedToggle :: (session: Session, props: ToggleProps) -> ToggleValueResult {
-    return ToggleValueResult.{.changed = session.slot == 4 &&
+HostedToggle :: (session: Session, props: Toggle.Props) -> Toggle.ToggleValueResult {
+    return Toggle.ToggleValueResult.{.changed = session.slot == 4 &&
         session.epoch == cast(u64)12 && props.id == 53, .value = !props.value}
 }
 #program_export "TabBarHostedHost"
-HostedTabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
+HostedTabBar :: (session: Session, props: TabBar.Props, tabs: []TabBar.Tab) -> TabBar.Result {
     if session.slot != 4 || tabs.count != 2 || tabs[1].label != "Two" {
-        return TabBarResult.{.selected_index = -1}
+        return TabBar.Result.{.selected_index = -1}
     }
-    return TabBarResult.{.selected_index = props.selected_index + 1}
+    return TabBar.Result.{.selected_index = props.selected_index + 1}
 }
 #program_export "DropdownHostedHost"
-HostedDropdown :: (session: Session, props: DropdownProps,
-    options: []DropdownOption) -> DropdownResult {
-    return DropdownResult.{.changed = session.slot == 4 && options.count == 1 &&
+HostedDropdown :: (session: Session, props: Dropdown.Props,
+    options: []Dropdown.Option) -> Dropdown.Result {
+    return Dropdown.Result.{.changed = session.slot == 4 && options.count == 1 &&
         options[0].label == "Choice", .selected_index = props.selected_index + 1}
 }
 ''')

@@ -1,20 +1,24 @@
-Theme :: #import "theme";
+using Text :: #import "text_props";
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "text_props"
     host_api :: #system_library "host_api";
-    TextHostedHost :: (session: Session, props: TextProps) #foreign host_api;
-    TextLinkAtHostedHost :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 #foreign host_api;
+    TextHostedHost :: (session: Session, props: Text.Props) #foreign host_api;
+    TextLinkAtHostedHost :: (session: Session, props: Text.Props, x: float32, y: float32) -> s32 #foreign host_api;
+    DrawSession :: (session: Session, props: Text.Props) {
+        TextHostedHost(session, props)
+    }
+    Draw :: (frame: $T, props: Text.Props) {
+        DrawSession(Session.{.slot = frame.slot, .epoch = frame.epoch}, props)
+    }
     #program_export
-    Text :: (session: Session, props: TextProps) { TextHostedHost(session, props) }
-    #program_export
-    TextLinkAt :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 {
+    TextLinkAt :: (session: Session, props: Text.Props, x: float32, y: float32) -> s32 {
         return TextLinkAtHostedHost(session, props, x, y)
     }
 } else {
+    Theme :: #import "theme";
     #import "session"
     #import "control_props"
     #import "drawing_props"
@@ -29,7 +33,6 @@ Theme :: #import "theme";
     #import "surface"
     #import "text_behavior"
     #import "text_align"
-    #import "text_props"
     #import "text_style"
     #import "tree"
     #import "text_selection_host"
@@ -59,7 +62,7 @@ Theme :: #import "theme";
     }
 
     #program_export
-    TextFaceFor :: (props: TextProps, defaults: TextFace) -> TextFace {
+    TextFaceFor :: (props: Text.Props, defaults: TextFace) -> TextFace {
         face: TextFace = defaults
         request: TextStyleRequest = .{.kind = props.style_kind, .id = props.id,
             .class_name = props.class_name,
@@ -68,7 +71,7 @@ Theme :: #import "theme";
         return face
     }
 
-    TextRangeValid :: (text: string, range: TextRange, previous_end: s32) -> bool {
+    TextRangeValid :: (text: string, range: Range, previous_end: s32) -> bool {
         if range.start < previous_end || range.start < 0 || range.end <= range.start ||
         range.end > text.count {
             return false
@@ -79,7 +82,7 @@ Theme :: #import "theme";
         return range.end == text.count || (text[range.end] & cast(u8)192) != cast(u8)128
     }
 
-    PaintTextEmphasis :: (session: Session, node: s32, props: TextProps,
+    PaintTextEmphasis :: (session: Session, node: s32, props: Text.Props,
         prepared: PreparedText, line: TextLinePlan, x: s32, y: s32, clip: Rectangle) {
         previous_end: s32 = 0
         for range: props.strong {
@@ -125,7 +128,7 @@ Theme :: #import "theme";
     }
 
     // The run that starts at `at` and ends at most at `limit`.
-    TextLinkRunAt :: (props: TextProps, at: s32, limit: s32) -> TextLinkRun {
+    TextLinkRunAt :: (props: Text.Props, at: s32, limit: s32) -> TextLinkRun {
         run := TextLinkRun.{.end = limit, .link = false}
         previous_end: s32 = 0
         for range: props.links {
@@ -154,7 +157,7 @@ Theme :: #import "theme";
     // Paints a line's characters, from line_start for value's length: link
     // characters in the link color and underlined, the others in the text's
     // color.
-    PaintTextLineRuns :: (session: Session, node: s32, props: TextProps,
+    PaintTextLineRuns :: (session: Session, node: s32, props: Text.Props,
         prepared: PreparedText, line_start: s32, value: string, x: s32, y: s32, clip: Rectangle) {
         line_end := line_start + cast(s32)value.count
         at := line_start
@@ -180,11 +183,11 @@ Theme :: #import "theme";
     }
 
     #program_export
-    PrepareText :: (props: TextProps, face: TextFace) -> PreparedText {
+    PrepareText :: (props: Text.Props, face: TextFace) -> PreparedText {
         prepared: PreparedText
         prepared.bounds = props.bounds
         prepared.typeface = ifx props.typeface != "" then props.typeface else face.value.typeface
-        appearance: TextAppearance = ResolveTextStyle(props.font, 0,
+        appearance: TextAppearance = ResolveTextStyle(props.size, 0,
             ResolveFont(0, StyleFontValue(face.value.fields,
             face.value.font_size), face.fallback_font),
             face.value.foreground, cast(u32)0, Theme.CurrentText(),
@@ -199,7 +202,7 @@ Theme :: #import "theme";
             prepared.typeface)
         if prepared.line_height < 1 { prepared.line_height = prepared.font }
         prepared.line_gap = ifx props.line_gap > 0 then props.line_gap else TextDefaultLineGap(1.0)
-        prepared.wrap = cast(TextWrap)TextWrapPolicy(props.bounds.width,
+        prepared.wrap = cast(Wrap)TextWrapPolicy(props.bounds.width,
             cast(s32)props.wrap)
 
         start: s32 = 0
@@ -239,7 +242,7 @@ Theme :: #import "theme";
     // How many wrapped lines start at or below the bottom of a fixed-height
     // box; PaintTextLines leaves those out.
     #program_export
-    TextHiddenLines :: (props: TextProps, prepared: PreparedText) -> s32 {
+    TextHiddenLines :: (props: Text.Props, prepared: PreparedText) -> s32 {
         if props.bounds.height <= 0.0 { return 0 }
         total_height: s32 = TextLayoutTotalHeight(prepared.line_count,
             prepared.line_height, prepared.line_gap)
@@ -260,7 +263,7 @@ Theme :: #import "theme";
     }
 
     #program_export
-    PaintTextLines :: (session: Session, node: s32, props: TextProps,
+    PaintTextLines :: (session: Session, node: s32, props: Text.Props,
         prepared: PreparedText) {
         total_height: s32 = TextLayoutTotalHeight(prepared.line_count,
             prepared.line_height, prepared.line_gap)
@@ -285,7 +288,7 @@ Theme :: #import "theme";
                 line.end - line.start)
             // A line too wide for its bounds keeps the start that fits and
             // ends in "...".
-            ellipsis: bool = props.wrap == TextWrap.TextWrapEllipsis &&
+            ellipsis: bool = props.wrap == Wrap.TextWrapEllipsis &&
             prepared.bounds.width > 0.0 &&
             cast(float32)line.width > prepared.bounds.width
             dots_width: s32 = 0
@@ -345,7 +348,7 @@ Theme :: #import "theme";
         }
     }
 
-    PaintTextRule :: (session: Session, node: s32, props: TextProps, prepared: PreparedText,
+    PaintTextRule :: (session: Session, node: s32, props: Text.Props, prepared: PreparedText,
         bounds: Rectangle, color: Color) {
         if props.rotation == 0.0 { PaintRoundedFill(session,node,bounds,0.0,1,color); return }
         origin := TextOrigin(props,prepared)
@@ -359,12 +362,12 @@ Theme :: #import "theme";
         PaintTriangleShape(session,node,area,a,c,d,color)
     }
 
-    TextOrigin :: (props: TextProps, prepared: PreparedText) -> Vector2 {
+    TextOrigin :: (props: Text.Props, prepared: PreparedText) -> Vector2 {
         return .{prepared.bounds.x + props.origin.x, prepared.bounds.y + props.origin.y}
     }
 
     // The face Text paints props with.
-    TextFaceOf :: (props: TextProps) -> TextFace {
+    TextFaceOf :: (props: Text.Props) -> TextFace {
         defaults: TextFace = DefaultTextFace()
         if props.fallback_font > 0 {
             defaults.fallback_font = props.fallback_font
@@ -373,9 +376,11 @@ Theme :: #import "theme";
         return TextFaceFor(props, defaults)
     }
 
-    #program_export
-    Text :: (session: Session, props: TextProps) {
+    DrawSession :: (session: Session, props: Text.Props) {
         if !Finite32(props.rotation) || !Finite32(props.origin.x) || !Finite32(props.origin.y) { return }
+        if props.bounds.width == 0.0 && props.bounds.height == 0.0 {
+            props.bounds = TreeRootBounds(session)
+        }
         face: TextFace = TextFaceOf(props)
         prepared: PreparedText = PrepareText(props, face)
         node: s32 = -1
@@ -398,10 +403,14 @@ Theme :: #import "theme";
         PaintTextLines(session, node, props, prepared)
     }
 
+    Draw :: (frame: $T, props: Text.Props) {
+        DrawSession(Session.{.slot = frame.slot, .epoch = frame.epoch}, props)
+    }
+
     // The index in props.links of the link whose characters Text paints
     // under (x, y), on any of its lines, or -1.
     #program_export
-    TextLinkAt :: (session: Session, props: TextProps, x: float32, y: float32) -> s32 {
+    TextLinkAt :: (session: Session, props: Text.Props, x: float32, y: float32) -> s32 {
         unused session
         if props.links.count == 0 {
             return -1
@@ -447,13 +456,13 @@ Theme :: #import "theme";
         return -1
     }
 
-    TextFirstLineY :: (props: TextProps, prepared: PreparedText) -> s32 {
+    TextFirstLineY :: (props: Text.Props, prepared: PreparedText) -> s32 {
         height := TextLayoutTotalHeight(prepared.line_count, prepared.line_height, prepared.line_gap)
         return cast(s32)prepared.bounds.y + cast(s32)TextAlignmentOffset(
             prepared.bounds.height, cast(float32)height, cast(s32)props.vertical_align)
     }
 
-    TextByteAtPoint :: (props: TextProps, prepared: PreparedText, x: float32, y: float32) -> s32 {
+    TextByteAtPoint :: (props: Text.Props, prepared: PreparedText, x: float32, y: float32) -> s32 {
         origin := TextOrigin(props,prepared)
         point := ScreenToWorld(Vector2.{x,y},Camera.{.offset=origin,.target=origin,.rotation=props.rotation,.zoom=1.0})
         x = point.x; y = point.y
@@ -483,7 +492,7 @@ Theme :: #import "theme";
         return cast(s32)props.text.count
     }
 
-    TextCaretBounds :: (props: TextProps, prepared: PreparedText, at: s32) -> Rectangle {
+    TextCaretBounds :: (props: Text.Props, prepared: PreparedText, at: s32) -> Rectangle {
         top := TextFirstLineY(props, prepared)
         start: s32 = 0
         while start <= props.text.count {
@@ -502,7 +511,7 @@ Theme :: #import "theme";
         return .{}
     }
 
-    PaintTextSelection :: (session: Session, node: s32, props: TextProps, prepared: PreparedText,
+    PaintTextSelection :: (session: Session, node: s32, props: Text.Props, prepared: PreparedText,
         anchor: s32, cursor: s32, color: Color) {
         first := ifx anchor < cursor then anchor else cursor
         last := ifx anchor < cursor then cursor else anchor

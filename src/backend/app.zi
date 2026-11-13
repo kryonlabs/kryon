@@ -1,0 +1,13 @@
+using Types :: #import "app_types";
+
+#if TARGET == .C && OS == .LINUX {
+    Host :: #import "app_host_desktop";
+} else #if TARGET == .C && OS == .WEB {
+    Host :: #import "app_host_web";
+} else {
+    Host :: #import "app_unsupported";
+}
+
+Run :: (window: Window, draw: Draw = Empty) -> s32 {
+    return Host.Run(window, draw)
+}

@@ -1,0 +1,23 @@
+using App :: #import "app_types";
+Desktop :: #import "desktop_loop";
+Title :: #import "program_title";
+using SessionModule :: #import "session";
+using Geometry :: #import "geometry";
+
+active_draw: Draw;
+
+DrawFrame :: (session: Session, bounds: Rectangle) -> s32 {
+    unused bounds
+    active_draw(Frame.{.slot = session.slot, .epoch = session.epoch})
+    return 0
+}
+
+Run :: (window: Window, draw: Draw = Empty) -> s32 {
+    if window.title.count > 0 { unused Title.SetProgramTitle(window.title) }
+    width := window.width
+    height := window.height
+    if width <= 0 { width = 960 }
+    if height <= 0 { height = 600 }
+    active_draw = draw
+    return Desktop.Run(DrawFrame, width, height)
+}

@@ -1,12 +1,12 @@
+Image :: #import "image";
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
-#import "image_props"
 #import "style"
 #import "style_sheet"
 #import "surface"
 #import "control_props"
-#import "button_props"
+using ButtonSchema :: #import "button_props";
 #import "input_props"
 #import "paint"
 #import "material"
@@ -148,7 +148,7 @@ ButtonCloseMenuAfterActivation :: (open: bool, activated_id: s32) -> bool {
 // The host supplies physical glyph measurements, available space, and scale.
 // The declaration reads the real props and owns shape, label, and size policy.
 #program_export
-MeasureBounds :: (props: ButtonProps, paint: StyleData, minimum_height: float32,
+MeasureBounds :: (props: ButtonSchema.Props, paint: StyleData, minimum_height: float32,
     font: s32, label_width: float32, available_width: float32,
     scale: float32, disclosure: bool, detail_height: float32 = 0.0) -> Rectangle {
     if scale <= 0.0 { scale = 1.0 }
@@ -281,7 +281,7 @@ ContentLayout :: (
 // Content selection, geometry, and ordering belong to the widget, not its host.
 // Bounds and glyph measurements are physical; style lengths are logical.
 ButtonFrame :: struct {
-    props: ButtonProps
+    props: ButtonSchema.Props
     appearance: StyleFrame
     material: MaterialPaint
     content_bounds: Rectangle

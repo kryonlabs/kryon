@@ -5,7 +5,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "geometry"
 #import "scroll_behavior"
 #import "scroll_device"
-#import "scroll_props"
+Scroll :: #import "kryon/scroll";
 #import "session"
 #import "tree"
 #import "tree_input"
@@ -18,7 +18,7 @@ Answer :: () -> s32 {
     if !SessionValid(session) { return -8 }
     bounds: Rectangle = Rectangle.{20.0, 10.0, 80.0, 40.0}
     BeginScrollFrame(session, Vector2.{95.0, 20.0}, true, true, false, -1.0, 0.0)
-    first: ScrollInput = ScrollObservationFor(cast(u64)7, bounds)
+    first: Scroll.ScrollInput = ScrollObservationFor(session, cast(u64)7, bounds)
     if !first.enabled || !first.device || !first.pointer_allowed ||
         first.owns_drag || first.owner_captured || first.wheel != -1.0 { return -1 }
 
@@ -27,16 +27,16 @@ Answer :: () -> s32 {
     frame.grab = 3.0
     frame.consume_wheel = true
     CommitScroll(cast(u64)7, frame)
-    other: ScrollInput = ScrollObservationFor(cast(u64)8, bounds)
+    other: Scroll.ScrollInput = ScrollObservationFor(session, cast(u64)8, bounds)
     if other.pointer_allowed || !other.owner_captured ||
         other.wheel != 0.0 { return -2 }
-    own: ScrollInput = ScrollObservationFor(cast(u64)7, bounds)
+    own: Scroll.ScrollInput = ScrollObservationFor(session, cast(u64)7, bounds)
     if !own.owns_drag || own.grab != 3.0 || own.wheel != 0.0 {
         return -3
     }
 
     BeginScrollFrame(session, Vector2.{150.0, 70.0}, false, true, false, 0.0, 0.0)
-    own = ScrollObservationFor(cast(u64)7, bounds)
+    own = ScrollObservationFor(session, cast(u64)7, bounds)
     if !own.owns_drag || !own.pointer_allowed || own.grab != 3.0 {
         return -4
     }
@@ -44,7 +44,7 @@ Answer :: () -> s32 {
     frame.start_drag = false
     frame.clear_drag = true
     CommitScroll(cast(u64)7, frame)
-    own = ScrollObservationFor(cast(u64)7, bounds)
+    own = ScrollObservationFor(session, cast(u64)7, bounds)
     if own.owns_drag || own.grab != 0.0 { return -5 }
 
     // A content drag keeps its origin across frames and, once it moves,
@@ -62,7 +62,7 @@ Answer :: () -> s32 {
     drag.drag_origin_offset = 12
     CommitScroll(cast(u64)7, drag)
     BeginScrollFrame(session, Vector2.{50.0, 10.0}, false, true, false, 0.0, 0.0)
-    own = ScrollObservationFor(cast(u64)7, bounds)
+    own = ScrollObservationFor(session, cast(u64)7, bounds)
     if !own.owns_drag || !own.content_drag || own.drag_origin_y != 30.0 ||
         own.drag_origin_offset != 12 || own.drag_moving { return -11 }
     drag.start_drag = false
@@ -72,7 +72,7 @@ Answer :: () -> s32 {
     unused TreePointerUpdate(session, PointerFrame.{50.0, 30.0, false, false, true})
     if TreeTakeActivationAt(session, button) { return -12 }
     BeginScrollFrame(session, Vector2.{50.0, 10.0}, false, false, false, 0.0, 0.0)
-    own = ScrollObservationFor(cast(u64)7, bounds)
+    own = ScrollObservationFor(session, cast(u64)7, bounds)
     if own.owns_drag || own.content_drag { return -13 }
 
     // Drag controls reserve their press; the surrounding scroll still gets
@@ -84,7 +84,7 @@ Answer :: () -> s32 {
     if !TreeFinish(session) { return -14 }
     unused TreePointerUpdate(session, PointerFrame.{50.0, 30.0, true, true, false})
     BeginScrollFrame(session, Vector2.{50.0, 30.0}, true, true, false, -1.0, 0.0)
-    own = ScrollObservationFor(cast(u64)7, bounds)
+    own = ScrollObservationFor(session, cast(u64)7, bounds)
     if own.pointer_allowed || own.owns_drag || own.wheel != -1.0 ||
         !TreePointerCapturesDrag(session) { return -15 }
     unused TreePointerUpdate(session, PointerFrame.{150.0, 70.0, true, false, false})
@@ -92,7 +92,7 @@ Answer :: () -> s32 {
     if !TreePointerCapturesDrag(session) { return -16 }
     TreePointerCancel(session)
     BeginScrollFrame(session, Vector2.{50.0, 30.0}, true, true, false, 0.0, 0.0)
-    own = ScrollObservationFor(cast(u64)7, bounds)
+    own = ScrollObservationFor(session, cast(u64)7, bounds)
     if !own.pointer_allowed || TreePointerCapturesDrag(session) { return -17 }
 
     TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
@@ -101,8 +101,8 @@ Answer :: () -> s32 {
     unused TreeSubmit(session, cast(u64)8, outer, WidgetKindScroll, inner_bounds)
     if !TreeFinish(session) { return -6 }
     BeginScrollFrame(session, Vector2.{40.0, 20.0}, false, false, false, -1.0, 0.0)
-    first = ScrollObservationFor(cast(u64)7, bounds)
-    other = ScrollObservationFor(cast(u64)8, inner_bounds)
+    first = ScrollObservationFor(session, cast(u64)7, bounds)
+    other = ScrollObservationFor(session, cast(u64)8, inner_bounds)
     if first.pointer_allowed || first.wheel != 0.0 ||
         !other.pointer_allowed || other.wheel != -1.0 { return -7 }
 
@@ -114,12 +114,12 @@ Answer :: () -> s32 {
     if !TreeFinish(session) { return -18 }
     BeginScrollFrame(session, Vector2.{40.0, 20.0}, false, false, false, 0.0, 0.0)
     ScrollDeviceSideways(session, 1.0)
-    upright: ScrollInput = ScrollObservationFor(cast(u64)7, bounds)
-    sideways: ScrollInput = ScrollObservationFor(cast(u64)7, bounds, true)
+    upright: Scroll.ScrollInput = ScrollObservationFor(session, cast(u64)7, bounds)
+    sideways: Scroll.ScrollInput = ScrollObservationFor(session, cast(u64)7, bounds, true)
     if upright.wheel != 0.0 || sideways.wheel != -1.0 { return -19 }
     BeginScrollFrame(session, Vector2.{40.0, 20.0}, false, false, false, -1.0, 0.0)
-    sideways = ScrollObservationFor(cast(u64)7, bounds, true)
-    upright = ScrollObservationFor(cast(u64)7, bounds)
+    sideways = ScrollObservationFor(session, cast(u64)7, bounds, true)
+    upright = ScrollObservationFor(session, cast(u64)7, bounds)
     if sideways.wheel != -1.0 || upright.wheel != -1.0 { return -20 }
     if !SessionClose(session) { return -9 }
     return 42

@@ -12,8 +12,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "geometry"
 #import "scroll_behavior"
 #import "scroll_device"
-#import "scroll_props"
-#import "scroll"
+Scroll :: #import "kryon/scroll";
 #import "session"
 #import "tree"
 
@@ -23,22 +22,22 @@ test_offset: s32;
 // One host frame: sample the pointer and clock, then draw one Scroll that
 // supplies no input of its own.
 TestFrame :: (y: float32, pressed: bool, down: bool, released: bool,
-    now: float64, content_height: s32) -> ScrollResult {
+    now: float64, content_height: s32) -> Scroll.ScrollResult {
     return TestWheelFrame(y, pressed, down, released, 0.0, now, content_height)
 }
 
 TestWheelFrame :: (y: float32, pressed: bool, down: bool, released: bool,
-    wheel: float32, now: float64, content_height: s32) -> ScrollResult {
+    wheel: float32, now: float64, content_height: s32) -> Scroll.ScrollResult {
     BeginScrollFrame(test_session, Vector2.{50.0, y}, pressed, down, released,
         wheel, now)
     TreeStart(test_session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 200.0})
-    props: ScrollProps
+    props: Scroll.Props
     props.key = cast(u64)77
     props.scale = 1.0
     props.bounds = Rectangle.{0.0, 0.0, 200.0, 100.0}
     props.content_height = content_height
     props.scroll_offset = test_offset
-    result: ScrollResult = Scroll(test_session, props)
+    result: Scroll.ScrollResult = Scroll.Draw(test_session, props)
     unused End(test_session)
     unused TreeFinish(test_session)
     test_offset = result.scroll_offset
@@ -52,7 +51,7 @@ TestFlick :: (start: float64, content_height: s32) -> s32 {
     unused TestFrame(70.0, false, true, false, start + 0.016, content_height)
     unused TestFrame(50.0, false, true, false, start + 0.032, content_height)
     unused TestFrame(30.0, false, true, false, start + 0.048, content_height)
-    released: ScrollResult = TestFrame(30.0, false, false, true, start + 0.064,
+    released: Scroll.ScrollResult = TestFrame(30.0, false, false, true, start + 0.064,
         content_height)
     if !released.frame.flinging { return -1 }
     return released.scroll_offset
@@ -65,11 +64,12 @@ Answer :: () -> s32 {
 
     // The drag itself moves the content without any caller input.
     unused TestFrame(90.0, true, true, false, 1.0, 2000)
-    moved: ScrollResult = TestFrame(40.0, false, true, false, 1.016, 2000)
+    moved: Scroll.ScrollResult = TestFrame(40.0, false, true, false, 1.016, 2000)
     if !moved.frame.content_drag || moved.scroll_offset <= 0 { return -2 }
     unused TestFrame(40.0, false, false, true, 1.2, 2000)
     // A drag that rested before release does not coast.
-    if ScrollObservationFor(cast(u64)77, Rectangle.{0.0, 0.0, 200.0, 100.0}).flinging {
+    if ScrollObservationFor(test_session, cast(u64)77,
+        Rectangle.{0.0, 0.0, 200.0, 100.0}).flinging {
         return -3
     }
 
@@ -84,7 +84,7 @@ Answer :: () -> s32 {
     coasting: bool = true
     while coasting && frames < 400 {
         now += 0.016
-        result: ScrollResult = TestFrame(30.0, false, false, false, now, 2000)
+        result: Scroll.ScrollResult = TestFrame(30.0, false, false, false, now, 2000)
         moved_by: s32 = result.scroll_offset - previous
         if moved_by < 0 || moved_by > step { return -5 }
         step = moved_by
@@ -103,7 +103,7 @@ Answer :: () -> s32 {
     test_offset = 0
     unused TestFlick(10.0, 2000)
     unused TestFrame(30.0, false, false, false, 10.08, 2000)
-    touched: ScrollResult = TestFrame(30.0, true, true, false, 10.096, 2000)
+    touched: Scroll.ScrollResult = TestFrame(30.0, true, true, false, 10.096, 2000)
     held: s32 = touched.scroll_offset
     if touched.frame.flinging { return -8 }
     if TestFrame(30.0, false, false, true, 10.112, 2000).scroll_offset != held {
@@ -118,7 +118,7 @@ Answer :: () -> s32 {
     unused TestFlick(20.0, 180)
     now = 20.064
     frames = 0
-    last: ScrollResult
+    last: Scroll.ScrollResult
     last.frame.flinging = true
     while last.frame.flinging && frames < 400 {
         now += 0.016
@@ -130,14 +130,14 @@ Answer :: () -> s32 {
     // A wheel notch glides to its target instead of jumping there, and a
     // second notch during the glide extends the same target.
     test_offset = 0
-    notch: ScrollResult = TestWheelFrame(30.0, false, false, false, -1.0, 30.0, 2000)
+    notch: Scroll.ScrollResult = TestWheelFrame(30.0, false, false, false, -1.0, 30.0, 2000)
     notch_step: s32 = notch.frame.glide_target
     if !notch.frame.gliding || notch_step <= 0 || notch.scroll_offset <= 0 ||
         notch.scroll_offset >= notch_step { return -13 }
     now = 30.0
     previous = notch.scroll_offset
     frames = 0
-    glide: ScrollResult = notch
+    glide: Scroll.ScrollResult = notch
     while glide.frame.gliding && frames < 60 {
         now += 0.016
         glide = TestFrame(30.0, false, false, false, now, 2000)
@@ -148,14 +148,14 @@ Answer :: () -> s32 {
     if glide.frame.gliding || glide.scroll_offset != notch_step || frames < 3 ||
         frames > 20 { return -15 }
     now += 0.016
-    first: ScrollResult = TestWheelFrame(30.0, false, false, false, -1.0, now, 2000)
+    first: Scroll.ScrollResult = TestWheelFrame(30.0, false, false, false, -1.0, now, 2000)
     now += 0.016
-    second: ScrollResult = TestWheelFrame(30.0, false, false, false, -1.0, now, 2000)
+    second: Scroll.ScrollResult = TestWheelFrame(30.0, false, false, false, -1.0, now, 2000)
     if second.frame.glide_target != notch_step * 3 || first.frame.glide_target != notch_step * 2 {
         return -16
     }
     now += 0.016
-    stopped: ScrollResult = TestFrame(30.0, true, true, false, now, 2000)
+    stopped: Scroll.ScrollResult = TestFrame(30.0, true, true, false, now, 2000)
     if stopped.frame.gliding { return -17 }
     held = stopped.scroll_offset
     now += 0.016
@@ -170,30 +170,30 @@ Answer :: () -> s32 {
     // movement still scrolls the content and the swipe still coasts.
     test_offset = 0
     unused TestFrame(90.0, true, true, false, 40.0, 2000)
-    lifted: ScrollResult = TestFrame(20.0, false, false, true, 40.09, 2000)
+    lifted: Scroll.ScrollResult = TestFrame(20.0, false, false, true, 40.09, 2000)
     if lifted.scroll_offset < 70 || !lifted.frame.flinging { return -19 }
 
     // A swipe over three slow frames moves with the finger on every frame,
     // including the first one, and coasts after the release.
     test_offset = 0
     unused TestFrame(90.0, true, true, false, 50.0, 2000)
-    first_move: ScrollResult = TestFrame(60.0, false, true, false, 50.08, 2000)
+    first_move: Scroll.ScrollResult = TestFrame(60.0, false, true, false, 50.08, 2000)
     if first_move.scroll_offset < 30 || first_move.frame.velocity <= 0.0 { return -20 }
-    slow_release: ScrollResult = TestFrame(20.0, false, false, true, 50.16, 2000)
+    slow_release: Scroll.ScrollResult = TestFrame(20.0, false, false, true, 50.16, 2000)
     if slow_release.scroll_offset < 70 || !slow_release.frame.flinging { return -21 }
 
     // A swipe whose last short movement arrives with its release keeps the
     // speed it had: the finger lifted somewhere within that frame.
     test_offset = 0
     unused TestFrame(90.0, true, true, false, 70.0, 2000)
-    fast: ScrollResult = TestFrame(30.0, false, true, false, 70.06, 2000)
-    tail: ScrollResult = TestFrame(25.0, false, false, true, 70.12, 2000)
+    fast: Scroll.ScrollResult = TestFrame(30.0, false, true, false, 70.06, 2000)
+    tail: Scroll.ScrollResult = TestFrame(25.0, false, false, true, 70.12, 2000)
     if !tail.frame.flinging || tail.frame.velocity < fast.frame.velocity { return -23 }
 
     // A short press that lifts in place stays a tap and does not scroll.
     test_offset = 0
     unused TestFrame(60.0, true, true, false, 60.0, 2000)
-    tapped: ScrollResult = TestFrame(61.0, false, false, true, 60.09, 2000)
+    tapped: Scroll.ScrollResult = TestFrame(61.0, false, false, true, 60.09, 2000)
     if tapped.scroll_offset != 0 || tapped.frame.flinging { return -22 }
 
     if !SessionClose(test_session) { return -12 }

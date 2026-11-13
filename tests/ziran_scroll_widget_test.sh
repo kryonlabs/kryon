@@ -9,15 +9,14 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 
-cat > "$work/app.zi" <<'ZI'
+cat > "$work/test_case.zi" <<'ZI'
 #import "session"
 #import "widget_test_session"
 
 #import "geometry"
 #import "paint_queue"
 #import "scroll_behavior"
-#import "scroll_props"
-#import "scroll"
+Scroll :: #import "kryon/scroll";
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -42,13 +41,13 @@ Answer :: () -> s32 {
     }
     root: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
     TreeStart(TestSession(), cast(u64)1, root)
-    props: ScrollProps
+    props: Scroll.Props
     props.key = cast(u64)2
     props.bounds = Rectangle.{20.0, 10.0, 80.0, 40.0}
     props.content_height = 140
     props.scroll_offset = 30
     props.scroll_delta = 20
-    result: ScrollResult = Scroll(TestSession(), props)
+    result: Scroll.ScrollResult = Scroll.Draw(TestSession(), props)
     if !result.opened || result.node != 1 ||
         result.max_scroll != 100 || result.scroll_offset != 50 ||
         result.viewport.y != 10.0 || result.content.y != -40.0 ||
@@ -65,13 +64,13 @@ Answer :: () -> s32 {
 
     TreeStart(TestSession(), cast(u64)1, root)
     props.scroll_offset = 2147483647
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if result.scroll_offset != 100 || !End(TestSession()) ||
         !TreeFinish(TestSession()) { return -4 }
     TreeStart(TestSession(), cast(u64)1, root)
     props.scroll_offset = -2147483647
     props.scroll_delta = -20
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if result.scroll_offset != 0 || !End(TestSession()) ||
         !TreeFinish(TestSession()) { return -5 }
 
@@ -82,7 +81,7 @@ Answer :: () -> s32 {
     props.input.pointer_allowed = true
     props.input.wheel = -1.0
     PaintClear(TestSession())
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if result.scroll_offset != 62 || !result.frame.consume_wheel ||
         !result.frame.scrollbar || result.frame.clip.width != 70.0 ||
         result.content.y != -52.0 || PendingPaintCount(TestSession()) != 2 ||
@@ -96,22 +95,22 @@ Answer :: () -> s32 {
     props.input.pressed = true
     props.input.down = true
     props.input.mouse = Vector2.{95.0, 20.0}
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if !result.frame.start_drag || result.frame.clear_drag ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -7 }
 
     TreeStart(TestSession(), cast(u64)1, root)
     props.input.pressed = false
-    props.input = ScrollInputAfter(props.input, result.frame)
+    props.input = Scroll.ScrollInputAfter(props.input, result.frame)
     props.input.mouse.y = 45.0
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if result.scroll_offset <= 62 || result.scroll_offset > 100 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -8 }
 
     TreeStart(TestSession(), cast(u64)1, root)
     props.input.down = false
     props.input.released = true
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if !result.frame.clear_drag || !result.frame.consume_release ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -9 }
     PaintClear(TestSession())
@@ -125,28 +124,28 @@ Answer :: () -> s32 {
     props.input.pressed = true
     props.input.down = true
     props.input.mouse = Vector2.{50.0, 40.0}
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if !result.frame.start_drag || !result.frame.content_drag ||
         result.frame.drag_moving || result.scroll_offset != 40 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -11 }
     TreeStart(TestSession(), cast(u64)1, root)
     props.input.pressed = false
-    props.input = ScrollInputAfter(props.input, result.frame)
+    props.input = Scroll.ScrollInputAfter(props.input, result.frame)
     props.input.mouse.y = 42.0
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if result.frame.drag_moving || result.scroll_offset != 40 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -12 }
     TreeStart(TestSession(), cast(u64)1, root)
     props.input.mouse.y = 20.0
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if !result.frame.drag_moving || !result.frame.cancel_press ||
         result.scroll_offset != 60 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -13 }
     TreeStart(TestSession(), cast(u64)1, root)
-    props.input = ScrollInputAfter(props.input, result.frame)
+    props.input = Scroll.ScrollInputAfter(props.input, result.frame)
     props.input.down = false
     props.input.released = true
-    result = Scroll(TestSession(), props)
+    result = Scroll.Draw(TestSession(), props)
     if !result.frame.clear_drag || !result.frame.consume_release ||
         result.frame.content_drag ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -14 }
@@ -158,12 +157,12 @@ Answer :: () -> s32 {
 
     TreeStart(TestSession(), cast(u64)1, root)
     props.input.enabled = false
-    result = Scroll(TestSession(), props)
-    inner: ScrollProps
+    result = Scroll.Draw(TestSession(), props)
+    inner: Scroll.Props
     inner.key = cast(u64)4
     inner.bounds = Rectangle.{30.0, 15.0, 30.0, 20.0}
     inner.content_height = 50
-    unused Scroll(TestSession(), inner)
+    unused Scroll.Draw(TestSession(), inner)
     if !End(TestSession()) || !End(TestSession()) || !TreeFinish(TestSession()) ||
         TreeScrollAt(TestSession(), 40.0, 20.0) != cast(u64)4 ||
         TreeScrollAt(TestSession(), 25.0, 15.0) != cast(u64)2 ||
@@ -181,7 +180,7 @@ Answer :: () -> s32 {
 KeptScrollbarTest :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
     TreeStart(TestSession(), cast(u64)1, root)
-    kept: ScrollProps
+    kept: Scroll.Props
     kept.key = cast(u64)9
     kept.bounds = Rectangle.{20.0, 10.0, 80.0, 40.0}
     kept.content_height = 30
@@ -189,7 +188,7 @@ KeptScrollbarTest :: () -> s32 {
     kept.input.enabled = true
     kept.input.pointer_allowed = true
     PaintClear(TestSession())
-    result: ScrollResult = Scroll(TestSession(), kept)
+    result: Scroll.ScrollResult = Scroll.Draw(TestSession(), kept)
     if result.max_scroll != 0 || result.scroll_offset != 0 ||
         !result.frame.scrollbar || result.frame.clip.width != 70.0 ||
         result.content.width != 70.0 ||
@@ -203,13 +202,13 @@ KeptScrollbarTest :: () -> s32 {
     kept.input.pressed = true
     kept.input.down = true
     kept.input.mouse = Vector2.{95.0, 20.0}
-    result = Scroll(TestSession(), kept)
+    result = Scroll.Draw(TestSession(), kept)
     if result.frame.start_drag || result.frame.content_drag ||
         result.frame.thumb_state != 1 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -22 }
     TreeStart(TestSession(), cast(u64)1, root)
     kept.input.mouse = Vector2.{50.0, 20.0}
-    result = Scroll(TestSession(), kept)
+    result = Scroll.Draw(TestSession(), kept)
     if result.frame.start_drag || result.frame.content_drag ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -23 }
 
@@ -218,7 +217,7 @@ KeptScrollbarTest :: () -> s32 {
     TreeStart(TestSession(), cast(u64)1, root)
     kept.content_height = 140
     kept.input.mouse = Vector2.{95.0, 20.0}
-    result = Scroll(TestSession(), kept)
+    result = Scroll.Draw(TestSession(), kept)
     if result.max_scroll != 100 || !result.frame.start_drag ||
         result.frame.clip.width != 70.0 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -24 }
@@ -230,7 +229,7 @@ KeptScrollbarTest :: () -> s32 {
     kept.input.pressed = false
     kept.input.down = false
     PaintClear(TestSession())
-    result = Scroll(TestSession(), kept)
+    result = Scroll.Draw(TestSession(), kept)
     if result.frame.scrollbar || result.frame.clip.width != 80.0 ||
         PendingPaintCount(TestSession()) != 0 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -25 }
@@ -269,7 +268,7 @@ ExternalScrollTest :: () -> s32 {
 HorizontalScrollTest :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 200.0, 100.0}
     TreeStart(TestSession(), cast(u64)1, root)
-    sideways: ScrollProps
+    sideways: Scroll.Props
     sideways.key = cast(u64)8
     sideways.bounds = Rectangle.{20.0, 10.0, 80.0, 40.0}
     sideways.horizontal = true
@@ -279,7 +278,7 @@ HorizontalScrollTest :: () -> s32 {
     sideways.input.pointer_allowed = true
     sideways.input.wheel = -1.0
     PaintClear(TestSession())
-    result: ScrollResult = Scroll(TestSession(), sideways)
+    result: Scroll.ScrollResult = Scroll.Draw(TestSession(), sideways)
     if result.max_scroll != 100 || result.scroll_offset != 62 ||
         result.content.x != -42.0 || result.content.y != 10.0 ||
         result.content.width != 180.0 || result.frame.clip.height != 30.0 ||
@@ -293,7 +292,7 @@ HorizontalScrollTest :: () -> s32 {
     sideways.input.pressed = true
     sideways.input.down = true
     sideways.input.mouse = Vector2.{35.0, 45.0}
-    result = Scroll(TestSession(), sideways)
+    result = Scroll.Draw(TestSession(), sideways)
     if !result.frame.start_drag || result.frame.content_drag ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -16 }
     TreeStart(TestSession(), cast(u64)1, root)
@@ -301,20 +300,20 @@ HorizontalScrollTest :: () -> s32 {
     sideways.input.owns_drag = true
     sideways.input.grab = result.frame.grab
     sideways.input.mouse.x = 95.0
-    result = Scroll(TestSession(), sideways)
+    result = Scroll.Draw(TestSession(), sideways)
     if result.scroll_offset < 80 || result.scroll_offset > 100 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -17 }
     TreeStart(TestSession(), cast(u64)1, root)
     sideways.input.down = false
     sideways.input.released = true
-    result = Scroll(TestSession(), sideways)
+    result = Scroll.Draw(TestSession(), sideways)
     if !result.frame.clear_drag || !result.frame.consume_release ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -18 }
 
     TreeStart(TestSession(), cast(u64)1, root)
     sideways.input.enabled = false
     sideways.scroll_offset = 2147483647
-    result = Scroll(TestSession(), sideways)
+    result = Scroll.Draw(TestSession(), sideways)
     if result.scroll_offset != 100 || result.content.x != -80.0 ||
         !End(TestSession()) || !TreeFinish(TestSession()) { return -19 }
     return 42
@@ -328,10 +327,10 @@ FocusScrollTest :: () -> s32 {
         if step == 1 { viewport.height = 160.0 }
         if step == 2 { offset = 300 }
         TreeStart(session, cast(u64)900, Rectangle.{0.0, 0.0, 240.0, 700.0})
-        props := ScrollProps.{.key = cast(u64)901, .bounds = viewport,
+        props := Scroll.Props.{.key = cast(u64)901, .bounds = viewport,
             .content_height = 1000, .scroll_offset = offset,
-            .input = ScrollInput.{.enabled = true}}
-        result := Scroll(session, props)
+            .input = Scroll.ScrollInput.{.enabled = true}}
+        result := Scroll.Draw(session, props)
         if step == 1 && result.scroll_offset != 50 { return -1 }
         if (step == 2 || step == 3) && result.scroll_offset != 300 { return -2 }
         if step == 4 && result.scroll_offset != 600 { return -3 }
@@ -355,15 +354,14 @@ FocusScrollTest :: () -> s32 {
     }
     return 42
 }
-
 ZI
 
 cat > "$work/native_main.h" <<'C'
 #ifdef __cplusplus
-#include "app.hpp"
+#include "test_case.hpp"
 #define HOST extern "C"
 #else
-#include "app.h"
+#include "test_case.h"
 #include <assert.h>
 #define HOST
 #endif
@@ -408,19 +406,19 @@ int main(void) { return Answer() == 42 ? 0 : 1; }
 C
 
 "$ziran" ir --root "$work" $kryon_project_args --module-path $work \
-    -o "$work/ir" "$work/app.zi"
+    -o "$work/ir" "$work/test_case.zi"
 for input in source saved; do
     if test "$input" = source; then
-        source=$work/app.zi
+        source=$work/test_case.zi
         root=$work
         module_path="$kryon_project_args --module-path $work"
     else
-        source=$work/ir/app.zir
+        source=$work/ir/test_case.zir
         root=$work/ir
         module_path="--project --module-path $work/ir"
     fi
     "$ziran" bundle --root "$root" $module_path  \
-        --entry app:Answer -o "$work/$input.zx" "$source"
+        --entry test_case:Answer -o "$work/$input.zx" "$source"
     for target in c go; do
         output=$work/$target-$input
         "$ziran" build --target="$target" \
@@ -436,7 +434,7 @@ for input in source saved; do
 package ziran
 import "testing"
 func TestScroll(t *testing.T) {
-    if App_Answer() != 42 { t.Fatal("scroll") }
+    if TestCase_Answer() != 42 { t.Fatal("scroll") }
 }
 GO
             GO111MODULE=off go test "$output"/*.go
@@ -448,7 +446,7 @@ cmp "$work/source.zx" "$work/saved.zx"
 # Execute the same widget checks in the portable VM with the maintained
 # Ziran no-op raster host, including saved IR; a device is never opened.
 cat > "$work/portable.zi" <<'ZI'
-Case :: #import "app";
+Case :: #import "test_case";
 #import "ziran_widget_noop_host"
 #program_export
 PortableCheck :: () -> s32 { return Case.Answer() }

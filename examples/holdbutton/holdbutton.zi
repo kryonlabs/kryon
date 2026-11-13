@@ -1,19 +1,22 @@
-using UI :: #import "kryon/Widgets";
+HoldButton :: #import "kryon/hold_button";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 #import "kryon/frame_snapshot"
 
-state: HoldButtonState;
+state: HoldButton.HoldButtonState;
 fired: bool;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Hold button", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Hold button", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
     input := CaptureFrameInput(session)
     now := cast(float64)input.elapsed_ms / 1000.0
-    result := HoldButton(session, HoldButtonProps.{.button = .{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, 240.0, 48.0}, .label = "Hold to confirm"}, .now = cast(float32)now, .duration = 1.0}, *state)
+    result := HoldButton.Draw(session, HoldButton.Props.{.button = .{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, 240.0, 48.0}, .label = "Hold to confirm"}, .now = cast(float32)now, .duration = 1.0}, *state)
     if result.fired { fired = true }
     label := "Hold for one second"
     if fired { label = "Confirmed" }
-    Text(session, TextProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 68.0, bounds.width, 36.0}, .text = label})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 68.0, bounds.width, 36.0}, .text = label})
     return 0
 }
 

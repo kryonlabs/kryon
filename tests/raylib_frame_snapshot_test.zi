@@ -204,9 +204,17 @@ main :: () -> s32 {
     first := CaptureFrameInput(session)
     if first.keys[65] != cast(u8)3 || first.keys[KeyLeft] != cast(u8)3 || !first.focused || first.delta_ms < 0 ||
     first.sequence != cast(u64)2 || CaptureFrameInput(other).available { return Failure(8) }
-    // Snapshots neither drain the raylib queues nor the retained session queues.
-    if RaylibPressedKey() != 65 || RaylibPressedKey() != KeyLeft || RaylibPressedKey() != 0 ||
-    RaylibTypedCodepoint() != 120 || RaylibTypedCodepoint() != 0 { return Failure(9) }
+    // Polling queued raylib's keys and text in order for one session; the
+    // snapshot keeps its flags and the other sessions' queues stay untouched.
+    delivery := SessionOpen()
+    defer { TreeInputReset(delivery); unused SessionClose(delivery) }
+    key, modifiers := RaylibInputTake(delivery)
+    delivered: [8]u8
+    if key != 65 || TypedTextTake(delivery, delivered[:]) != "x" { return Failure(9) }
+    key, modifiers = RaylibInputTake(delivery)
+    if key != KeyLeft { return Failure(9) }
+    key, modifiers = RaylibInputTake(delivery)
+    if key != 0 { return Failure(9) }
     unused KeyboardSend(session, KeyEscape)
     unused TypedCodepointSend(session, 120)
     again := CaptureFrameInput(session)
@@ -249,8 +257,10 @@ main :: () -> s32 {
     if !PollRaylib() || !RaylibFrameInputBegin(session) { return Failure(18) }
     repeated := CaptureFrameInput(session)
     if repeated.keys[65] != cast(u8)9 || first.keys[65] != cast(u8)3 ||
-    repeated.elapsed_ms < first.elapsed_ms || repeated.sequence <= first.sequence ||
-    RaylibRepeatedKey() != 65 || RaylibRepeatedKey() != 0 { return Failure(19) }
+    repeated.elapsed_ms < first.elapsed_ms || repeated.sequence <= first.sequence { return Failure(19) }
+    key, modifiers = RaylibInputTake(delivery)
+    after, after_modifiers := RaylibInputTake(delivery)
+    if key != 65 || after != 0 { return Failure(19) }
     WidgetHostBegin(session, AllowAsset)
     if !HostedAppRun(*app, *answer) || answer != 42 { return Failure(20) }
     WidgetHostEnd()

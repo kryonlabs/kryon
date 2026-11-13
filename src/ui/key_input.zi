@@ -1,7 +1,8 @@
+TextArea :: #import "textarea";
+TextField :: #import "textfield";
 // A frame's keyboard input as a text field reads it: the key and modifiers a
 // host reported and the text typed since the last frame.
 #import "session"
-#import "text_input_props"
 #import "tree_input"
 
 // Appends a codepoint as UTF-8 and returns the new length, or the old length
@@ -51,8 +52,8 @@ TypedTextTake :: (session: Session, output: []u8) -> string {
 // The editing a focused text field does for this frame's key, modifiers, and
 // typed text. With Control held, typed letters are shortcuts, not text.
 #program_export
-TextFieldInputFor :: (key: s32, modifiers: s32, text: string) -> TextFieldInput {
-    input: TextFieldInput
+TextFieldInputFor :: (key: s32, modifiers: s32, text: string) -> TextField.Input {
+    input: TextField.Input
     control: bool = (modifiers & KeyModifierControl) != 0
     input.shift = (modifiers & KeyModifierShift) != 0
     input.left = key == KeyLeft
@@ -74,10 +75,10 @@ TextFieldInputFor :: (key: s32, modifiers: s32, text: string) -> TextFieldInput 
 // Multiline editing uses the same keys as a field, with vertical movement
 // and document navigation kept distinct from line navigation.
 #program_export
-TextAreaInputFor :: (key: s32, modifiers: s32, text: string) -> TextAreaInput {
+TextAreaInputFor :: (key: s32, modifiers: s32, text: string) -> TextArea.Input {
     field := TextFieldInputFor(key, modifiers, text)
     control := (modifiers & KeyModifierControl) != 0
-    return TextAreaInput.{.text = field.text, .left = field.left, .right = field.right,
+    return TextArea.Input.{.text = field.text, .left = field.left, .right = field.right,
         .up = key == KeyUp, .down = key == KeyDown,
         .home = field.home && !control, .end = field.end && !control,
         .document_home = field.home && control, .document_end = field.end && control,

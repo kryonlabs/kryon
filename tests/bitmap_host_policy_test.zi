@@ -1,5 +1,5 @@
 #import "widget_host"
-#import "image_props"
+Image :: #import "kryon/image";
 #import "drawing_props"
 #program_export
 main :: () -> s32 {
@@ -7,7 +7,7 @@ main :: () -> s32 {
         WidgetHostSupports("kryon/bitmap_image","BitmapImageCreate") ||
         WidgetHostSupports("bitmap_image","BitmapImageUpdate") ||
         WidgetHostSupports("bitmap_image","BitmapImageRelease") { return 1 }
-    image: ImageProps; image.texture = Texture2D.{1,2,2,1,7}
+    image: Image.Props; image.texture = Texture2D.{1,2,2,1,7}
     if WidgetHostImage(*image) { return 2 }
     image.texture.id = cast(u32)0x80000001
     if WidgetHostImage(*image) { return 3 }

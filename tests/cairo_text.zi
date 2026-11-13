@@ -1,7 +1,6 @@
 #import "cairo_raster"
 #import "font_metrics"
-#import "textfield"
-
+TextField :: #import "kryon/text_field";
 long_text: [2048]u8;
 
 #program_export
@@ -25,8 +24,8 @@ Run :: () -> s32 {
     width: s32 = GlyphWidth(rtl, 24, "")
     if width <= 0 || GlyphCaret(rtl, 0, 24, "") < width - 1 ||
         GlyphCaret(rtl, cast(s32)rtl.count, 24, "") != 0 { return 4 }
-    if TextFieldCursorAtX(rtl, 0, 24, "") != rtl.count ||
-        TextFieldCursorAtX(rtl, width, 24, "") != 0 { return 5 }
+    if TextField.TextFieldCursorAtX(rtl, 0, 24, "") != rtl.count ||
+        TextField.TextFieldCursorAtX(rtl, width, 24, "") != 0 { return 5 }
     for i: 0..2047 { long_text[i] = 65 }
     value: string = TextView(long_text[:])
     if GlyphWidth(value, 24, "") <= 10000 { return 6 }

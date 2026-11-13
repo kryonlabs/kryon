@@ -3,12 +3,9 @@
 #import "kryon/session"
 #import "kryon/geometry"
 #import "kryon/control_props"
-#import "kryon/button_widget"
-#import "kryon/button_props"
-#import "kryon/text_widget"
-#import "kryon/text_props"
-#import "kryon/text_field_widget"
-#import "kryon/text_input_props"
+Button :: #import "kryon/button";
+Text :: #import "kryon/text";
+TextField :: #import "kryon/text_field";
 #import "kryon/tree"
 #import "kryon/tree_draw"
 #import "kryon/tree_input"
@@ -29,18 +26,18 @@ BeginCase :: () -> Session {
 #program_export
 ButtonCase :: () -> s32 {
     session := BeginCase()
-    props: ButtonProps
+    props: Button.Props
     props.key = cast(u64)7
     props.label = "Run task"
     props.bounds = Rectangle.{10.0, 20.0, 120.0, 40.0}
     viewport := Rectangle.{0.0, 0.0, 300.0, 160.0}
     if BeginFrame(session, benchmark_frame, viewport) != cast(FrameStatus)FrameOk { return 1 }
-    if Button(session, props) != 0 || EndFrame(session) != cast(FrameStatus)FrameOk { return 2 }
+    if Button.Draw(session, props) != 0 || EndFrame(session) != cast(FrameStatus)FrameOk { return 2 }
     if TreeCount(session) != 2 || TreeNodeAt(session, 1).semantic_label != props.label { return 3 }
     unused TreePointerUpdate(session, PointerFrame.{30.0, 35.0, true, true, false})
     unused TreePointerUpdate(session, PointerFrame.{30.0, 35.0, false, false, true})
     if BeginFrame(session, benchmark_frame, viewport) != cast(FrameStatus)FrameOk { return 4 }
-    activated := Button(session, props)
+    activated := Button.Draw(session, props)
     if EndFrame(session) != cast(FrameStatus)FrameOk || activated != 1 { return 5 }
     if WidgetTextCount() < 2 || WidgetPaintCount() < 4 || WidgetPaintChecksum() <= 0 { return 6 }
     return 0
@@ -49,16 +46,16 @@ ButtonCase :: () -> s32 {
 #program_export
 TextCase :: () -> s32 {
     session := BeginCase()
-    props: TextProps
+    props: Text.Props
     props.key = cast(u64)8
     props.text = "Alpha beta\ncafé 世界"
     props.bounds = Rectangle.{10.0, 20.0, 70.0, 64.0}
-    props.font = 14
+    props.size = 14
     viewport := Rectangle.{0.0, 0.0, 300.0, 160.0}
     for frame: cast(s32)0..1 {
         if frame == 1 { props.bounds.width = 140.0 }
         if BeginFrame(session, benchmark_frame, viewport) != cast(FrameStatus)FrameOk { return 1 }
-        Text(session, props)
+        Text.Draw(session, props)
         if EndFrame(session) != cast(FrameStatus)FrameOk || TreeCount(session) != 2 { return 2 }
         node := TreeNodeAt(session, 1)
         if node.semantic_label != props.text || node.bounds.width != props.bounds.width { return 3 }
@@ -70,7 +67,7 @@ TextCase :: () -> s32 {
 #program_export
 InputCase :: () -> s32 {
     session := BeginCase()
-    props: TextFieldProps
+    props: TextField.Props
     props.key = cast(u64)9
     props.bounds = Rectangle.{10.0, 20.0, 220.0, 40.0}
     props.value = "AéB"
@@ -79,13 +76,13 @@ InputCase :: () -> s32 {
     props.anchor = 4
     viewport := Rectangle.{0.0, 0.0, 300.0, 160.0}
     if BeginFrame(session, benchmark_frame, viewport) != cast(FrameStatus)FrameOk { return 1 }
-    first := TextField(session, props)
+    first := TextField.Draw(session, props)
     if EndFrame(session) != cast(FrameStatus)FrameOk || first.edit.changed { return 2 }
     unused TreePointerUpdate(session, PointerFrame.{200.0, 40.0, true, true, false})
     unused TreePointerUpdate(session, PointerFrame.{200.0, 40.0, false, false, true})
     props.input.text = "Z"
     if BeginFrame(session, benchmark_frame, viewport) != cast(FrameStatus)FrameOk { return 3 }
-    edited := TextField(session, props)
+    edited := TextField.Draw(session, props)
     if EndFrame(session) != cast(FrameStatus)FrameOk || !edited.focused || !edited.edit.changed { return 4 }
     if edited.edit.start != 4 || edited.edit.end != 4 || edited.edit.replacement != "Z" || edited.cursor != 5 { return 5 }
     if TreeNodeAt(session, edited.node).semantic_label != props.label || WidgetTextCount() < 2 ||

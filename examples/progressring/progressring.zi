@@ -1,19 +1,23 @@
-using UI :: #import "kryon/Widgets";
+Button :: #import "kryon/button";
+ProgressRing :: #import "kryon/progress_ring";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 #import "kryon/frame_snapshot"
 DemoTheme :: #import "kryon/Theme";
 
-state: ProgressRingState;
+state: ProgressRing.ProgressRingState;
 value: float32 = 0.25;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Progress ring", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Progress ring", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
     input := CaptureFrameInput(session)
     now := cast(float64)input.elapsed_ms / 1000.0
-    ProgressRingAdvance(*state, value, cast(float32)input.delta_ms / 1000.0, (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion))
-    props: ProgressRingProps = .{.key = 10, .bounds = .{bounds.x, bounds.y, 180.0, 180.0}, .label = "Progress", .value = value, .show_percent = true, .reduced_motion = (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion)}
-    ProgressRing(session, props, *state)
-    if Button(session, ButtonProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, 160.0, 40.0}, .label = "Advance"}) != 0 { value += 0.25; if value > 1.0 { value = 0.0 } }
+    ProgressRing.ProgressRingAdvance(*state, value, cast(float32)input.delta_ms / 1000.0, (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion))
+    props: ProgressRing.Props = .{.key = 10, .bounds = .{bounds.x, bounds.y, 180.0, 180.0}, .label = "Progress", .value = value, .show_percent = true, .reduced_motion = (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion)}
+    ProgressRing.Draw(session, props, *state)
+    if Button.Draw(session, Button.Props.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, 160.0, 40.0}, .label = "Advance"}) != 0 { value += 0.25; if value > 1.0 { value = 0.0 } }
     return 0
 }
 

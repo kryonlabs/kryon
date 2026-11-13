@@ -2,8 +2,7 @@
 #import "kryon/session"
 #import "kryon/tree"
 #import "kryon/paint_queue"
-#import "button"
-#import "button_props"
+Button :: #import "kryon/button";
 #import "tree_input"
 #import "ziran_test_driver_host"
 // Secondary windows beside a real raylib window on a private Xvfb display:
@@ -201,7 +200,7 @@ XButton :: (display: *void, button: u32, down: s32, delay: u64) -> s32 #foreign 
 FocusButtonFrame :: (session: Session) -> s32 {
     PaintClear(session)
     TreeStart(session, cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 248.0})
-    clicked := Button(session, ButtonProps.{.key = cast(u64)7,
+    clicked := Button.Draw(session, Button.Props.{.key = cast(u64)7,
         .bounds = Rectangle.{10.0, 10.0, 160.0, 50.0}, .label = "Breathe"})
     if !TreeFinish(session) { return -1 }
     return clicked

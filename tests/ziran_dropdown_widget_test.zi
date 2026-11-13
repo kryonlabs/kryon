@@ -1,20 +1,15 @@
 #import "session"
 #import "widget_test_session"
 
-#import "button_props"
-#import "button"
+Button :: #import "kryon/button";
+Dropdown :: #import "kryon/dropdown";
+Layout :: #import "kryon/layout";
+Scroll :: #import "kryon/scroll";
 #import "control_props"
 #import "dropdown_behavior"
-#import "dropdown_props"
-#import "dropdown"
 #import "geometry"
-#import "layout"
-#import "layout_props"
-#import "image_props"
 #import "paint_queue"
 #import "scroll_device"
-#import "scroll_props"
-#import "scroll"
 #import "semantic"
 #import "style"
 #import "style_sheet"
@@ -35,8 +30,8 @@ open_state: bool;
 selected_state: s32;
 
 // Whether the long menu's option row is submitted, so on screen.
-OptionShown :: (option: DropdownOption, index: s32) -> bool {
-    key: u64 = DropdownOptionKey(cast(u64)11, option, index)
+OptionShown :: (option: Dropdown.Option, index: s32) -> bool {
+    key: u64 = Dropdown.DropdownOptionKey(cast(u64)11, option, index)
     for node: cast(s32)0..TreeCount(TestSession()) - 1 {
         entry := TreeNodeAt(TestSession(), node)
         if entry.kind == WidgetKindSelectable && entry.key == key &&
@@ -60,7 +55,7 @@ Frame :: () -> s32 {
         rules.items[0] = rule
         InstallStyleRules(rules)
     }
-    options: [3]DropdownOption
+    options: [3]Dropdown.Option
     options[0].key = cast(u64)41
     options[0].label = "First"
     options[1].key = cast(u64)42
@@ -69,7 +64,7 @@ Frame :: () -> s32 {
     options[2].key = cast(u64)43
     options[2].label = "Third"
     if phase == 13 { options[0].image.asset_path = "badge.png" }
-    long_options: [8]DropdownOption
+    long_options: [8]Dropdown.Option
     option_index: s32 = 0
     while option_index < 8 {
         long_options[option_index].key =
@@ -77,7 +72,7 @@ Frame :: () -> s32 {
         long_options[option_index].label = "Item"
         option_index += 1
     }
-    props: DropdownProps = .{.key = cast(u64)11, .id = 11, .class_name = 9,
+    props: Dropdown.Props = .{.key = cast(u64)11, .id = 11, .class_name = 9,
         .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}, .selected_index = selected_state,
         .open = open_state}
     if phase == 4 {
@@ -102,11 +97,11 @@ Frame :: () -> s32 {
         if phase == 13 { props.close = true }
     }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
-    result: DropdownResult
+    result: Dropdown.Result
     if phase >= 10 && phase <= 12 {
-        result = Dropdown(TestSession(), props, long_options[0:8])
+        result = Dropdown.Draw(TestSession(), props, long_options[0:8])
     } else {
-        result = Dropdown(TestSession(), props, options[0:3])
+        result = Dropdown.Draw(TestSession(), props, options[0:3])
     }
     if !TreeFinish(TestSession()) || result.node != 1 ||
     TreeNodeAt(TestSession(), 1).kind != WidgetKindDropdown ||
@@ -188,18 +183,18 @@ Frame :: () -> s32 {
 // open, its highlight and its scroll offset by itself between frames.
 uncontrolled_selected: s32;
 
-UncontrolledFrame :: () -> DropdownResult {
-    options: [8]DropdownOption
+UncontrolledFrame :: () -> Dropdown.Result {
+    options: [8]Dropdown.Option
     index: s32 = 0
     while index < 8 {
         options[index].key = cast(u64)cast(u32)(200 + index)
         options[index].label = "Row"
         index += 1
     }
-    props: DropdownProps = .{.key = cast(u64)31, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
+    props: Dropdown.Props = .{.key = cast(u64)31, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
         .selected_index = uncontrolled_selected}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
-    result: DropdownResult = Dropdown(TestSession(), props, options[:])
+    result: Dropdown.Result = Dropdown.Draw(TestSession(), props, options[:])
     unused TreeFinish(TestSession())
     PaintClear(TestSession())
     if result.changed {
@@ -215,7 +210,7 @@ Tap :: (x: float32, y: float32) {
 
 UncontrolledMenu :: () -> s32 {
     uncontrolled_selected = 0
-    result: DropdownResult = UncontrolledFrame()
+    result: Dropdown.Result = UncontrolledFrame()
     if result.open { return 1 }
     Tap(20.0, 20.0)
     result = UncontrolledFrame()
@@ -250,27 +245,27 @@ device_time: float64;
 DeviceLabels: [8]string = .["Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven"];
 
 DeviceFrame :: (x: float32, y: float32, pressed: bool, down: bool,
-    released: bool, wheel: float32) -> DropdownResult {
+    released: bool, wheel: float32) -> Dropdown.Result {
     device_time += 0.016
     BeginScrollFrame(TestSession(), Vector2.{x, y}, pressed, down, released,
         wheel, device_time)
     unused TreePointerUpdate(TestSession(), PointerFrame.{x, y, down, pressed, released})
-    options: [8]DropdownOption
+    options: [8]Dropdown.Option
     for index: cast(s32)0..7 {
         options[index].key = cast(u64)cast(u32)(300 + index)
         options[index].label = DeviceLabels[index]
     }
-    props: DropdownProps = .{.key = cast(u64)37, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
+    props: Dropdown.Props = .{.key = cast(u64)37, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
         .selected_index = device_selected}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
-    result: DropdownResult = Dropdown(TestSession(), props, options[:])
+    result: Dropdown.Result = Dropdown.Draw(TestSession(), props, options[:])
     unused TreeFinish(TestSession())
     PaintClear(TestSession())
     if result.changed { device_selected = result.selected_index }
     return result
 }
 
-DeviceTap :: (x: float32, y: float32) -> DropdownResult {
+DeviceTap :: (x: float32, y: float32) -> Dropdown.Result {
     unused DeviceFrame(x, y, true, true, false, 0.0)
     return DeviceFrame(x, y, false, false, true, 0.0)
 }
@@ -288,7 +283,7 @@ DeviceOption :: (label: string) -> Rectangle {
 
 DeviceMenu :: () -> s32 {
     device_selected = 0
-    result: DropdownResult = DeviceFrame(200.0, 200.0, false, false, false, 0.0)
+    result: Dropdown.Result = DeviceFrame(200.0, 200.0, false, false, false, 0.0)
     if result.open { return 1 }
     unused DeviceTap(20.0, 20.0)
     result = DeviceFrame(200.0, 200.0, false, false, false, 0.0)
@@ -354,35 +349,35 @@ sidebar_selected: s32;
 sidebar_clicks: s32;
 page_clicks: s32;
 
-SidebarFrame :: () -> DropdownResult {
-    options: [8]DropdownOption
+SidebarFrame :: () -> Dropdown.Result {
+    options: [8]Dropdown.Option
     for index: cast(s32)0..7 {
         options[index].key = cast(u64)cast(u32)(400 + index)
         options[index].label = DeviceLabels[index]
     }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
-    props: DropdownProps = .{.key = cast(u64)43, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
+    props: Dropdown.Props = .{.key = cast(u64)43, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
         .selected_index = sidebar_selected}
-    result: DropdownResult = Dropdown(TestSession(), props, options[:])
-    page: ButtonProps
+    result: Dropdown.Result = Dropdown.Draw(TestSession(), props, options[:])
+    page: Button.Props
     page.key = cast(u64)51
     page.id = 51
     page.label = "Page"
     page.bounds = Rectangle.{10.0, 60.0, 120.0, 28.0}
-    page_clicks += Button(TestSession(), page)
-    side: ButtonProps
+    page_clicks += Button.Draw(TestSession(), page)
+    side: Button.Props
     side.key = cast(u64)52
     side.id = 52
     side.label = "Home"
     side.bounds = Rectangle.{160.0, 20.0, 50.0, 40.0}
-    sidebar_clicks += Button(TestSession(), side)
+    sidebar_clicks += Button.Draw(TestSession(), side)
     unused TreeFinish(TestSession())
     PaintClear(TestSession())
     if result.changed { sidebar_selected = result.selected_index }
     return result
 }
 
-SidebarTap :: (x: float32, y: float32) -> DropdownResult {
+SidebarTap :: (x: float32, y: float32) -> Dropdown.Result {
     TreePointerUpdate(TestSession(), PointerFrame.{x, y, true, true, false})
     unused SidebarFrame()
     TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
@@ -402,7 +397,7 @@ SidebarOption :: (label: string) -> Rectangle {
 
 SidebarMenu :: () -> s32 {
     sidebar_selected = 0
-    result: DropdownResult = SidebarFrame()
+    result: Dropdown.Result = SidebarFrame()
     if result.open { return 1 }
     result = SidebarTap(20.0, 20.0)
     result = SidebarFrame()
@@ -438,22 +433,22 @@ SidebarMenu :: () -> s32 {
 page_selected: s32;
 page_to_end: bool;
 
-PageFrame :: () -> DropdownResult {
-    options: [8]DropdownOption
+PageFrame :: () -> Dropdown.Result {
+    options: [8]Dropdown.Option
     for index: cast(s32)0..7 {
         options[index].key = cast(u64)cast(u32)(500 + index)
         options[index].label = DeviceLabels[index]
     }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
-    page: ScrollProps = .{.key = cast(u64)61, .bounds = Rectangle.{0.0, 0.0, 220.0, 120.0},
+    page: Scroll.Props = .{.key = cast(u64)61, .bounds = Rectangle.{0.0, 0.0, 220.0, 120.0},
         .content_height = 120}
-    result: DropdownResult
-    if Scroll(TestSession(), page).opened {
-        props: DropdownProps = .{.key = cast(u64)47, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
+    result: Dropdown.Result
+    if Scroll.Draw(TestSession(), page).opened {
+        props: Dropdown.Props = .{.key = cast(u64)47, .bounds = Rectangle.{10.0, 10.0, 120.0, 28.0},
             .selected_index = page_selected}
         props.menu_input.end = page_to_end
         props.menu_input.navigating = page_to_end
-        result = Dropdown(TestSession(), props, options[:])
+        result = Dropdown.Draw(TestSession(), props, options[:])
         End(TestSession())
     }
     unused TreeFinish(TestSession())
@@ -464,7 +459,7 @@ PageFrame :: () -> DropdownResult {
 PageMenu :: () -> s32 {
     page_selected = 0
     page_to_end = false
-    result: DropdownResult = PageFrame()
+    result: Dropdown.Result = PageFrame()
     TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, true, true, false})
     unused PageFrame()
     TreePointerUpdate(TestSession(), PointerFrame.{20.0, 20.0, false, false, true})
@@ -494,8 +489,8 @@ PageMenu :: () -> s32 {
 // chooses it.
 action_selected: s32;
 
-ActionFrame :: () -> DropdownResult {
-    options: [4]DropdownOption
+ActionFrame :: () -> Dropdown.Result {
+    options: [4]Dropdown.Option
     for index: cast(s32)0..3 {
         options[index].key = cast(u64)cast(u32)(500 + index)
         options[index].label = DeviceLabels[index]
@@ -503,10 +498,10 @@ ActionFrame :: () -> DropdownResult {
         options[index].action_label = "Download"
     }
     options[3].action_shape = ""
-    props: DropdownProps = .{.key = cast(u64)41, .bounds = Rectangle.{10.0, 10.0, 160.0, 28.0},
+    props: Dropdown.Props = .{.key = cast(u64)41, .bounds = Rectangle.{10.0, 10.0, 160.0, 28.0},
         .selected_index = action_selected}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
-    result: DropdownResult = Dropdown(TestSession(), props, options[:])
+    result: Dropdown.Result = Dropdown.Draw(TestSession(), props, options[:])
     unused TreeFinish(TestSession())
     PaintClear(TestSession())
     if result.changed { action_selected = result.selected_index }
@@ -527,7 +522,7 @@ ActionButton :: (row: Rectangle) -> Rectangle {
 
 ActionMenu :: () -> s32 {
     action_selected = 0
-    result: DropdownResult = ActionFrame()
+    result: Dropdown.Result = ActionFrame()
     if result.open || result.action_index != -1 { return 1 }
     Tap(20.0, 20.0)
     result = ActionFrame()
@@ -556,16 +551,16 @@ ActionMenu :: () -> s32 {
 // An auto-placed trigger paints at its hit target and opens its popup there.
 PlacedDropdown :: () -> s32 {
     session := SessionOpen()
-    options: [2]DropdownOption
+    options: [2]Dropdown.Option
     options[0].label = "First"; options[1].label = "Second"
-    props: DropdownProps = .{.key = 91, .bounds = .{0.0, 0.0, 200.0, 32.0}}
+    props: Dropdown.Props = .{.key = 91, .bounds = .{0.0, 0.0, 200.0, 32.0}}
     step: s32 = 0
     while step < 2 {
         props.open = step == 1
         PaintClear(session)
         TreeStart(session, 1, .{0.0, 0.0, 400.0, 300.0})
-        column := Column(session, .{.key = 90, .bounds = .{40.0, 60.0, 240.0, 150.0}})
-        choice := Dropdown(session, props, options[:])
+        column := Layout.Draw(session, .{.key = 90, .bounds = .{40.0, 60.0, 240.0, 150.0}})
+        choice := Dropdown.Draw(session, props, options[:])
         if !End(session) || !TreeFinish(session) { return 1 }
         target := TreeNodeAt(session, choice.node).bounds
         if target.x != 40.0 || target.y != 60.0 { return 2 }
@@ -598,11 +593,11 @@ main :: () -> s32 {
     for scale_index: cast(s32)1..2 {
         scale := cast(float32)scale_index
         panel: StyleFrame
-        panel.value = DropdownDefaultFace(DropdownPanelRole(), cast(s32)ButtonStateNormal, false)
+        panel.value = Dropdown.DropdownDefaultFace(DropdownPanelRole(), cast(s32)ButtonStateNormal, false)
         option: StyleFrame
-        option.value = DropdownDefaultFace(DropdownOptionRole(), cast(s32)ButtonStateNormal, false)
+        option.value = Dropdown.DropdownDefaultFace(DropdownOptionRole(), cast(s32)ButtonStateNormal, false)
         scrollbar: StyleFrame
-        scrollbar.value = DropdownDefaultFace(DropdownScrollbarRole(), cast(s32)ButtonStateNormal, false)
+        scrollbar.value = Dropdown.DropdownDefaultFace(DropdownScrollbarRole(), cast(s32)ButtonStateNormal, false)
         metrics := DropdownMenuMetricsFor(scale, panel, option, scrollbar)
         row: Rectangle = .{20.0, 40.0, 432.0 * scale, 44.0 * scale}
         content := Content(option.value, scale)
@@ -645,13 +640,13 @@ main :: () -> s32 {
     }
     // A narrow trigger must show its complete selected value without changing
     // the control's hit target or clipping the final letters.
-    props: DropdownProps
+    props: Dropdown.Props
     props.key = cast(u64)29
     props.bounds = Rectangle.{10.0, 10.0, 120.0, 28.0}
-    options: [1]DropdownOption
+    options: [1]Dropdown.Option
     options[0].label = "Monochrome"
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 220.0, 220.0})
-    unused Dropdown(TestSession(), props, options[:])
+    unused Dropdown.Draw(TestSession(), props, options[:])
     if !TreeFinish(TestSession()) { return 3 }
     found := false
     for paint_index: cast(s32)0..PendingPaintCount(TestSession()) - 1 {

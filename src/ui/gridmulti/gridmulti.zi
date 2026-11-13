@@ -1,7 +1,9 @@
-#import "grid_multi_props"
-#import "grid_multi_behavior"
+using PropsModule :: #import "grid_multi_props";
+Image :: #import "image";
+ListBox :: #import "listbox";
+Scroll :: #import "scroll";
+using BehaviorModule :: #import "grid_multi_behavior";
 #import "list_box_multi"
-#import "listbox"
 #import "session"
 #import "geometry"
 #import "drawing_props"
@@ -14,15 +16,11 @@
 #import "surface"
 #import "font_metrics"
 #import "paint_queue"
-#import "kryon/image_widget"
 #import "scroll_behavior"
 #import "scroll_device"
-#import "scroll_props"
-#import "scroll"
 
 // Selection storage belongs to the caller and is never retained.
-#program_export
-GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
+Draw :: (session: Session, props: PropsModule.Props, items: []GridMultiItem,
     selected: []bool) -> GridMultiResult {
     result: GridMultiResult = .{.node = -1, .clicked_index = -1, .activated_index = -1,
         .cursor = props.cursor, .anchor = props.anchor}
@@ -50,11 +48,11 @@ GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
         if moved || nav.home || nav.end {
             result.cursor = next
             if !props.control || props.shift {
-                result.changed = ListBoxMultiApply(selected, next, result.anchor, props.control, props.shift, -1)
+                result.changed = ListBox.ListBoxMultiApply(selected, next, result.anchor, props.control, props.shift, -1)
             }
             if !props.shift && !props.control { result.anchor = next }
         } else if nav.space || nav.enter {
-            result.changed = ListBoxMultiApply(selected, result.cursor, result.anchor, nav.space, false, -1)
+            result.changed = ListBox.ListBoxMultiApply(selected, result.cursor, result.anchor, nav.space, false, -1)
             result.anchor = result.cursor
             if nav.enter { result.activated_index = result.cursor }
         }
@@ -75,13 +73,13 @@ GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
             ScrollDeviceStopMotion(session, props.key)
         }
     }
-    scroll_props: ScrollProps = .{.key = props.key, .bounds = props.bounds,
+    scroll_props: Scroll.Props = .{.key = props.key, .bounds = props.bounds,
         .class_name = props.class_name, .scale = props.scale, .horizontal = metrics.compact,
         .scroll_offset = offset, .manual_scroll = true, .external_scrollbar=props.external_scrollbar,.immediate_wheel=props.immediate_wheel}
     if metrics.compact { scroll_props.content_width = metrics.content_extent }
     else { scroll_props.content_height = metrics.content_extent }
     if props.disabled { scroll_props.input = .{.enabled = true, .disabled = true} }
-    view := Scroll(session, scroll_props)
+    view := Scroll.Draw(session, scroll_props)
     if view.node >= 0 {
         TreeSetWidgetState(session, view.node, WidgetState.{.open = active, .index = result.cursor,
             .offset = view.scroll_offset, .focus_generation = cast(u64)(cast(s32)props.layout + 1)})
@@ -96,7 +94,7 @@ GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
             activation := TreeTakePointerActivationAt(session, previous)
             if activation.activated && activation.pointed {
                 result.clicked_index = i; result.cursor = i
-                if ListBoxMultiApply(selected, i, result.anchor, props.control, props.shift, -1) { result.changed = true }
+                if ListBox.ListBoxMultiApply(selected, i, result.anchor, props.control, props.shift, -1) { result.changed = true }
                 result.anchor = ListBoxMultiAnchorAfterClick(result.anchor, i, count, props.control, props.shift, -1)
             }
         }
@@ -113,7 +111,7 @@ GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
             TreePressedAt(session, previous), TreeHoveredAt(session, previous), false, selected[i])
         if selected[i] { state = cast(s32)ButtonState.ButtonStateSelected }
         if props.disabled { state = cast(s32)ButtonState.ButtonStateDisabled }
-        face := ListBoxFace(StyleKindListBoxMultiItem(), i + 1, props.class_name, state, true)
+        face := ListBox.ListBoxFace(StyleKindListBoxMultiItem(), i + 1, props.class_name, state, true)
         if TreeIsBuilding(session) {
             node = TreeSubmitCurrent(session, GridMultiItemKey(items[i], i), cast(s32)WidgetKind.WidgetKindSelectable, cell)
             if node < 0 { result.valid = false; break }
@@ -157,7 +155,7 @@ GridMulti :: (session: Session, props: GridMultiProps, items: []GridMultiItem,
         image := items[i].image
         if size > 0 && (image.asset_path != "" || image.texture.id != cast(u32)0) {
             image.bounds = image_bounds; image.key = cast(u64)1
-            Image(session, image)
+            Image.Draw(session, image)
         }
         label_clip := RectangleIntersection(label_bounds, clipped)
         if label_clip.width > 0.0 && label_clip.height > 0.0 {

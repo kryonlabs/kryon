@@ -1,7 +1,7 @@
 #import "drawing_props"
 #import "geometry"
 
-PageProps :: struct {
+Props :: struct {
     bounds: Rectangle
     title: string
     description: string

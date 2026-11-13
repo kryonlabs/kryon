@@ -3,9 +3,9 @@
 #import "drawing_props"
 #import "geometry"
 #import "font_metrics"
-#import "image_props"
 #import "paint_texture"
 #import "paint_queue"
+ImageSchema :: #import "image_props";
 Bitmaps :: #import "bitmap_store";
 #import "math"
 Utf8 :: #import "std/utf8";
@@ -240,6 +240,7 @@ cached_images: [128]CachedImage;
 // at the device pixels they cover (see lanczos_cache). A copy of another
 // size, kept while the new one is made, is drawn scaled in its place.
 Lanczos :: #import "lanczos_cache";
+Image :: #import "image";
 image_serial: u64;
 CairoLanczosRelease :: (argument: *void) {
     entry := cast(*Lanczos.LanczosEntry)argument
@@ -863,7 +864,7 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     PrepareRasterPaint()
     if columns < 2 || rows < 2 || clip.width <= 0.0 || clip.height <= 0.0 { return }
     count: s64 = cast(s64)columns * cast(s64)rows
-    if count > cast(s64)IMAGE_MESH_POINT_LIMIT || points.count < count { return }
+    if count > cast(s64)ImageSchema.IMAGE_MESH_POINT_LIMIT || points.count < count { return }
     if texture_id == cast(u32)0 && asset_path.count == 0 {
         image_error = true
         return

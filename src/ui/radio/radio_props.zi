@@ -1,6 +1,6 @@
 #import "geometry"
 
-RadioProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     label: string

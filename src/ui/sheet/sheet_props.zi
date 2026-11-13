@@ -23,7 +23,7 @@ SheetInput :: struct {
     focus_count: s32
 }
 
-SheetProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     class_name: s32

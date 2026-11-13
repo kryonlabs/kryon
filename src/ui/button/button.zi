@@ -1,19 +1,18 @@
+using Button :: #import "button_props";
+Image :: #import "image";
 Theme :: #import "theme";
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "button_props"
     host_api :: #system_library "host_api";
-    ButtonHostedHost :: (session: Session, props: ButtonProps) -> s32 #foreign host_api;
-    #program_export
-    Button :: (session: Session, props: ButtonProps) -> s32 { return ButtonHostedHost(session, props) }
+    ButtonHostedHost :: (session: Session, props: Button.Props) -> s32 #foreign host_api;
+        Draw :: (session: Session, props: Button.Props) -> s32 { return ButtonHostedHost(session, props) }
 } else {
     #import "session"
     #import "card_behavior"
     #import "button_behavior"
-    #import "button_props"
     #import "control_props"
     #import "drawing_props"
     #import "focus"
@@ -21,8 +20,6 @@ Theme :: #import "theme";
     #import "geometry"
     #import "icon"
     #import "image_behavior"
-    #import "image_props"
-    #import "kryon/image_widget"
     #import "paint_queue"
     #import "style"
     #import "style_sheet"
@@ -44,7 +41,7 @@ Theme :: #import "theme";
     using MotionEasing;
 
     #program_export
-    ButtonDefaultFace :: (props: ButtonProps, state: s32) -> StyleData {
+    ButtonDefaultFace :: (props: Button.Props, state: s32) -> StyleData {
         face: StyleData
         face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
         cast(u32)StyleBorder | cast(u32)StyleRadius |
@@ -125,12 +122,12 @@ Theme :: #import "theme";
     }
     // The face under the installed style, without copying its rule table.
     #program_export
-    ButtonInstalledFaceFor :: (props: ButtonProps, state: s32) -> StyleData {
+    ButtonInstalledFaceFor :: (props: Button.Props, state: s32) -> StyleData {
         return ButtonFaceFinish(props, ResolveInstalledStyleRules(
             ButtonDefaultFace(props, state), ButtonFaceFacts(props, state), state))
     }
 
-    ButtonFaceFacts :: (props: ButtonProps, state: s32) -> StyleFacts {
+    ButtonFaceFacts :: (props: Button.Props, state: s32) -> StyleFacts {
         kind: s32 = props.style_kind
         if kind <= 0 { kind = StyleKindButton() }
         role: s32 = StyleAny()
@@ -140,7 +137,7 @@ Theme :: #import "theme";
             cast(s32)props.emphasis, cast(s32)props.size, state)
     }
 
-    ButtonFaceFinish :: (props: ButtonProps, face: StyleData) -> StyleData {
+    ButtonFaceFinish :: (props: Button.Props, face: StyleData) -> StyleData {
         kind: s32 = props.style_kind
         if kind <= 0 { kind = StyleKindButton() }
         // Modal action and close faces use offset-x/offset-y as dialog layout
@@ -169,7 +166,7 @@ Theme :: #import "theme";
     }
 
     // The detail line's width and height, or zero without one.
-    ButtonDetailSize :: (props: ButtonProps, font: s32, face: StyleData) -> Vector2 {
+    ButtonDetailSize :: (props: Button.Props, font: s32, face: StyleData) -> Vector2 {
         if props.detail == "" || props.icon_only || props.label == "" {
             return Vector2.{0.0, 0.0}
         }
@@ -180,7 +177,7 @@ Theme :: #import "theme";
 
     // Fit the resolved face, preserving interaction styling and the hit target.
     // Glyphs are measured again after scaling because font advances are discrete.
-    ButtonFitContentFace :: (props: ButtonProps, bounds: Rectangle,
+    ButtonFitContentFace :: (props: Button.Props, bounds: Rectangle,
         face: StyleData, font: s32, label_width: s32,
         label_height: s32) -> StyleData {
         has_icon := props.icon_shape != "" || props.icon_type != 0 ||
@@ -240,7 +237,7 @@ Theme :: #import "theme";
     }
 
     #program_export
-    PaintButtonForNode :: (session: Session, node: s32, props: ButtonProps, bounds: Rectangle,
+    PaintButtonForNode :: (session: Session, node: s32, props: Button.Props, bounds: Rectangle,
         face: StyleData, font: s32, label_width: s32,
         label_height: s32, focus_visible: bool = false) {
         if props.invisible { return }
@@ -297,7 +294,7 @@ Theme :: #import "theme";
         }
         // A built-in icon_type is drawn from the icon atlas unless the caller
         // supplied its own image.
-        icon_image: ImageProps = props.image
+        icon_image: Image.Props = props.image
         if icon_image.asset_path == "" && icon_image.texture.id == cast(u32)0 &&
         props.icon_type != 0 {
             icon_image = ImageForIcon(props.icon_type, bounds, props.label)
@@ -329,11 +326,11 @@ Theme :: #import "theme";
                     content.icon_size, content.icon_size},
                 ColorFromPacked(Opacity(face.foreground, opacity)))
         } else if has_image && content.icon_size > 0.0 {
-            image: ImageProps = icon_image
+            image: Image.Props = icon_image
             image.bounds = Rectangle.{bounds.x + content.icon_x,
                 bounds.y + content.icon_y, content.icon_size,
                 content.icon_size}
-            texture: Texture2D = ImageTextureFor(image)
+            texture: Texture2D = Image.ImageTextureFor(image)
             tint_color: u32 = cast(u32)0xffffffff
             if image.tint != cast(u32)0 {
                 tint_color = image.tint
@@ -421,7 +418,7 @@ Theme :: #import "theme";
     // application reserves room with this before placing a button, because a
     // label's width changes with the language.
     #program_export
-    ButtonMeasure :: (props: ButtonProps) -> Rectangle {
+    ButtonMeasure :: (props: Button.Props) -> Rectangle {
         face: StyleData = ButtonInstalledFaceFor(props, 0)
         font: s32 = ResolveFont(0,
             StyleFontValue(face.fields, face.font_size), 14)
@@ -442,7 +439,7 @@ Theme :: #import "theme";
     // A retained press is routed after the previous tree commits. The next
     // submission consumes its activation and paints from the latest input state.
     #program_export
-    SubmitButton :: (session: Session, props: ButtonProps,
+    SubmitButton :: (session: Session, props: Button.Props,
         parent_index: s32) -> s32 {
         key: u64 = props.key
         if key == cast(u64)0 && props.id > 0 { key = cast(u32)props.id }
@@ -511,8 +508,7 @@ Theme :: #import "theme";
         return 0
     }
 
-    #program_export
-    Button :: (session: Session, props: ButtonProps) -> s32 {
+        Draw :: (session: Session, props: Button.Props) -> s32 {
         return SubmitButton(session, props, TreeCurrentParent(session))
     }
 

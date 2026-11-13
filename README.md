@@ -2,7 +2,7 @@
 
 Linux desktop and portable hosts can decode local videos with synchronized audio
 using the optional GStreamer service exported as `kryon/Video` and
-`kryon/VideoLinux`. Display the returned frame with `Image(ImageProps)`.
+`kryon/VideoLinux`. Display the returned frame with `Image.Draw(Image.Props)`.
 Applications own playback controls and access checks; an optional expiring lease
 revokes both audio and decoded frames when authorization is no longer renewed.
 `make video-test` checks synthetic moving frames, paused seeking, speed, volume,
@@ -76,11 +76,9 @@ See [clipboard state](docs/CLIPBOARD.md) for the portable clipboard value and
 host effect contract.
 See [frame replay](docs/FRAME_REPLAY.md) for committed UI and paint capture
 with scripted input on a headless host.
-The [Ziran example](examples/README.md) builds a `.zx` that imports Kryon and
-runs a retained `Button` press and release through a separate Ziran SVG host
-without a display.
-The same directory also has a plain `Text(TextProps)` hello world desktop
-example; `make -C examples desktop-text-test` renders it on a private display.
+The [hello world example](examples/README.md) is one small Ziran program with
+an explicit `main`: it imports Kryon's app and text packages, opens a window,
+and draws the label `Hello, world!`.
 For Ziran app manifests, the terminal backend, and `kryon run`, see
 [Ziran projects](docs/PROJECTS.md).
 Portable desktop profiles build a `.zx` with embedded assets; a downloaded
@@ -123,6 +121,6 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the library boundary and
 status](https://github.com/ziranlang/ziran/blob/master/docs/IMPLEMENTATION_STATUS.md)
 for language and portable runtime gaps.
 
-`Widgets` includes `Breadcrumb` for keyed label navigation, with measured
+`kryon/breadcrumb` serves `Breadcrumb.Draw` for keyed label navigation, with measured
 ancestors and an accessible, virtualized overflow menu. Applications own
 selection, focus and navigation; see [the API](docs/API.md#breadcrumbs).

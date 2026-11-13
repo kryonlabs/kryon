@@ -17,8 +17,8 @@ for path in "$webp" "$avif" "$aom"; do
 done
 rm -f "$work/c"/*.c "$work/c"/*.h
 # Deterministic Android OS calls and events; no window system is contacted.
-"$ziran" build --project --entry android_frame_input_test:main --bind frame_entry:ProjectFrame=app:Frame --target=c --define ANDROID_BUILD --root "$repo/tests" --module-path "$repo/tests/android_frame_input" \
-    --module-path "$repo/tests" --no-main -o "$work/c" "$repo/tests/android_frame_input_test.zi" "$repo/tests/android_frame_input/app.zi"
+"$ziran" build --project --entry android_frame_input_test:main --bind frame_entry:ProjectFrame=android_frame_app:Frame --target=c --define ANDROID_BUILD --root "$repo/tests" --module-path "$repo/tests/android_frame_input" \
+    --module-path "$repo/tests" --no-main -o "$work/c" "$repo/tests/android_frame_input_test.zi" "$repo/tests/android_frame_input/android_frame_app.zi"
 "${CC:-cc}" -std=c11 -O1 -ffunction-sections -fdata-sections -I"$ziran_root/include" -I"$work/c" \
     "$work/c"/*.c "$webp" "$avif" "$aom" "${ZIRAN_LIB:-$ziran_root/build/libziran.a}" \
     -Wl,--gc-sections -ldl -lpthread -lm -o "$work/c/test"

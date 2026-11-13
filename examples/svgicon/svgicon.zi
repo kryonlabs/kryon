@@ -1,13 +1,12 @@
-using UI :: #import "kryon/Widgets";
-using Demo :: #import "kryon/svg_icon_widget";
-#import "kryon/svg_icon_props"
-
-
+SvgIcon :: #import "kryon/svg_icon";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "SVG icon", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "SVG icon", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
-    SvgIcon(session, SvgIconProps.{.bounds = .{bounds.x, bounds.y, 96.0, 96.0}, .shape = "S1.7rr:M3 12L9 18L21 6", .color = .{38, 154, 98, 255}})
+    SvgIcon.Draw(session, SvgIcon.Props.{.bounds = .{bounds.x, bounds.y, 96.0, 96.0}, .shape = "S1.7rr:M3 12L9 18L21 6", .color = .{38, 154, 98, 255}})
     return 0
 }
 

@@ -1,10 +1,12 @@
+Layout :: #import "layout";
+using PropsModule :: #import "page_props";
+// Headings and paragraphs are page text, served with the page layout.
+using TextModule :: #import "page_text";
 #import "session"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "layout_behavior"
-#import "layout"
-#import "page_props"
 #import "semantic"
 #import "style"
 #import "style_sheet"
@@ -52,8 +54,7 @@ PageLayoutMetricsFor :: (style: StyleData) -> PageSpacing {
 // Page opens a retained tree scope. The caller closes it with End(session). The
 // returned metadata is an effect request for a platform host, not a window or
 // browser operation hidden inside the widget.
-#program_export
-Page :: (session: Session, props: PageProps) -> PageResult {
+Draw :: (session: Session, props: PropsModule.Props) -> PageResult {
     result: PageResult
     result.node = -1
     result.bounds = PageBoundsOrParent(session, props.bounds)
@@ -79,7 +80,7 @@ Page :: (session: Session, props: PageProps) -> PageResult {
     metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding)
     result.content = metrics.content
     TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0)
-    TreeSetPlacement(session, result.node, TreePlaceColumn)
+    TreeSetPlacement(session, result.node, Layout.TreePlaceColumn)
     TreeSetLabel(session, result.node, props.title)
     TreeSetSemantic(session, result.node, cast(SemanticKind)SemanticPage, 0)
     result.opened = TreePushScope(session, result.node)
@@ -108,7 +109,7 @@ Section :: (session: Session, props: SectionProps) -> SectionResult {
     metrics = LayoutMetricsFor(result.bounds, result.gap, result.padding)
     result.content = metrics.content
     TreeSetLayout(session, result.node, result.gap, result.padding, 0, 0, 0)
-    TreeSetPlacement(session, result.node, TreePlaceColumn)
+    TreeSetPlacement(session, result.node, Layout.TreePlaceColumn)
     TreeSetLabel(session, result.node, props.label)
     TreeSetSemantic(session, result.node, cast(SemanticKind)SemanticSection, 0)
     result.opened = TreePushScope(session, result.node)

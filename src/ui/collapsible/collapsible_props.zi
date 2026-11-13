@@ -1,7 +1,7 @@
 #import "transition"
 #import "geometry"
 
-CollapsibleProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     class_name: s32

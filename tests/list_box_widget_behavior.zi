@@ -4,8 +4,7 @@
 #import "geometry"
 #import "list_box_behavior"
 #import "list_box_multi"
-#import "list_box_props"
-#import "listbox"
+ListBox :: #import "kryon/list_box";
 #import "paint_queue"
 #import "tree"
 #import "tree_input"
@@ -22,25 +21,25 @@ selected: [4]bool;
 
 #program_export
 Frame :: () -> s32 {
-    items: [4]ListBoxItem
-    items[0] = ListBoxItem.{cast(u64)11, "A"}
-    items[1] = ListBoxItem.{cast(u64)12, "B"}
-    items[2] = ListBoxItem.{cast(u64)13, "C"}
-    items[3] = ListBoxItem.{cast(u64)14, "D"}
-    single: ListBoxProps = .{.key = cast(u64)20, .bounds = Rectangle.{10.0, 10.0, 100.0, 42.0},
+    items: [4]ListBox.ListBoxItem
+    items[0] = ListBox.ListBoxItem.{cast(u64)11, "A"}
+    items[1] = ListBox.ListBoxItem.{cast(u64)12, "B"}
+    items[2] = ListBox.ListBoxItem.{cast(u64)13, "C"}
+    items[3] = ListBox.ListBoxItem.{cast(u64)14, "D"}
+    single: ListBox.Props = .{.key = cast(u64)20, .bounds = Rectangle.{10.0, 10.0, 100.0, 42.0},
         .row_height = 20, .selected_index = single_selected, .scroll_offset = single_scroll}
     if phase == 1 { single.scroll_delta = 10 }
     if phase == 2 {
         single.focused = true
-        single.navigation = ListBoxKeyEnd()
+        single.navigation = ListBox.ListBoxKeyEnd()
     }
     if phase >= 3 {
         single.disabled = true
         single.focused = true
-        single.navigation = ListBoxKeyHome()
+        single.navigation = ListBox.ListBoxKeyHome()
         single.scroll_delta = -100
     }
-    multi: ListBoxMultiProps = .{.key = cast(u64)30,
+    multi: ListBox.ListBoxMultiProps = .{.key = cast(u64)30,
         .bounds = Rectangle.{120.0, 10.0, 100.0, 60.0}, .row_height = 20, .anchor = anchor,
         .scroll_offset = multi_scroll}
     if phase == 0 { multi.anchor = -1 }
@@ -57,8 +56,8 @@ Frame :: () -> s32 {
         multi.scroll_delta = 100
     }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 100.0})
-    one: ListBoxResult = ListBox(TestSession(), single, items[0:4])
-    many: ListBoxMultiResult = ListBoxMulti(TestSession(), multi,
+    one: ListBox.ListBoxResult = ListBox.Draw(TestSession(), single, items[0:4])
+    many: ListBox.ListBoxMultiResult = ListBox.ListBoxMulti(TestSession(), multi,
         items[0:4], selected[0:4])
     if !TreeFinish(TestSession()) { return -10 }
     if TreeCount(TestSession()) != 13 { return -11 }
@@ -113,7 +112,7 @@ Frame :: () -> s32 {
         }
         if TreeHitAt(TestSession(), 130.0, 35.0) != -1 { return -8 }
         short_selection: [2]bool
-        bad: ListBoxMultiResult = ListBoxMulti(TestSession(), multi,
+        bad: ListBox.ListBoxMultiResult = ListBox.ListBoxMulti(TestSession(), multi,
             items[0:4], short_selection[0:2])
         if bad.valid || bad.node != -1 { return -6 }
     }

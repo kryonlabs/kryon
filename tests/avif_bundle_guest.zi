@@ -1,7 +1,6 @@
 #import "app_context"
 #import "app_protocol"
-#import "image"
-#import "image_props"
+Image :: #import "kryon/image";
 #import "geometry"
 #program_export
 main :: () -> s32 {
@@ -12,11 +11,11 @@ main :: () -> s32 {
         return APP_PROTOCOL
     }
     if mode != APP_FRAME { return 0 }
-    props: ImageProps
+    props: Image.Props
     props.key = cast(u64)1
     props.asset_path = "assets/image"
     props.bounds = .{0.0,0.0,80.0,60.0}
     props.alt_text = "AVIF alpha fixture"
-    Image(AppSession(),props)
+    Image.Draw(AppSession(),props)
     return 0
 }

@@ -2,10 +2,8 @@
 #import "geometry"
 #import "tree"
 #import "tree_input"
-#import "text_input_props"
-#import "textarea"
-#import "text"
-#import "text_props"
+Text :: #import "kryon/text";
+TextArea :: #import "kryon/text_area";
 #import "text_touch"
 #import "text_selection_widget"
 #import "text_context_menu"
@@ -45,13 +43,13 @@ Menu :: (session: Session, token: u64, x: float32, y: float32,
     return result
 }
 
-Area :: (read_only: bool = false, disabled: bool = false, paste: bool = false) -> TextAreaResult {
+Area :: (read_only: bool = false, disabled: bool = false, paste: bool = false) -> TextArea.Result {
     TreeStart(owner, 1, .{0.0, 0.0, 400.0, 300.0})
-    result := TextArea(owner, TextAreaProps.{.key = cast(u64)4,
+    result := TextArea.Draw(owner, TextArea.Props.{.key = cast(u64)4,
             .bounds = .{10.0, 10.0, 240.0, 100.0}, .value = "hello calm world",
             .anchor = anchor, .cursor = cursor, .focused = true,
             .read_only = read_only, .disabled = disabled,
-            .input = TextAreaInput.{.paste = paste}})
+            .input = TextArea.Input.{.paste = paste}})
     anchor = result.anchor
     cursor = result.cursor
     unused TreeFinish(owner)
@@ -65,8 +63,8 @@ Pointer :: (x: float32, y: float32, down: bool, pressed: bool, released: bool) {
 
 Chat :: (selectable: bool, value: string = "hello calm world") {
     TreeStart(owner, 2, .{0.0, 0.0, 400.0, 300.0})
-    Text(owner, TextProps.{.key = cast(u64)20, .bounds = .{10.0, 10.0, 240.0, 100.0},
-            .text = value, .font = 14, .selectable = selectable})
+    Text.Draw(owner, Text.Props.{.key = cast(u64)20, .bounds = .{10.0, 10.0, 240.0, 100.0},
+            .text = value, .size = 14, .selectable = selectable})
     unused TreeFinish(owner)
     PaintClear(owner)
 }

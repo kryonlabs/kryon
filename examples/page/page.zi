@@ -2,7 +2,11 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Page :: #import "kryon/page";
+Text :: #import "kryon/text";
+#import "kryon/drawing_props"
+#import "kryon/tree"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -47,16 +51,16 @@ details: bool = true;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Page Section Heading ParagraphText", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Page Section Heading ParagraphText", .size = 23})
     disabled := example_input.disabled
 
-    page := Page(session, PageProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .title = "A quiet workspace"})
+    page := Page.Draw(session, Page.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .title = "A quiet workspace"})
     if page.opened {
-        section := Section(session, SectionProps.{.label = "Reading", .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0})})
+        section := Page.Section(session, Page.SectionProps.{.label = "Reading", .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0})})
         if section.opened {
-            Heading(session, HeadingProps.{.text = "Small, thoughtful details", .level = 2, .bounds = GalleryBounds(Rectangle.{24.0, 76.0, 420.0, 38.0})})
-            ParagraphText(session, ParagraphTextProps.{.text = "A page groups content, a section gives it meaning, and the type stays easy to read.", .bounds = GalleryBounds(Rectangle.{24.0, 136.0, 410.0, 112.0})})
+            Page.Heading(session, Page.HeadingProps.{.text = "Small, thoughtful details", .level = 2, .bounds = GalleryBounds(Rectangle.{24.0, 76.0, 420.0, 38.0})})
+            Page.ParagraphText(session, Page.ParagraphTextProps.{.text = "A page groups content, a section gives it meaning, and the type stays easy to read.", .bounds = GalleryBounds(Rectangle.{24.0, 136.0, 410.0, 112.0})})
             unused End(session)
         }
         unused End(session)

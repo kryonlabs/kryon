@@ -20,7 +20,6 @@ RAYLIB_FRAME_THREADS :: #defined(ANDROID_BUILD) || #defined(KRYON_FRAME_THREADS)
 #import "test_driver"
 #import "input_delivery"
 #import "session"
-#import "image_props"
 #import "image_behavior"
 #import "program_title"
 #import "paint_texture"
@@ -48,6 +47,7 @@ Lanczos :: #import "lanczos_cache";
 TypefaceText :: #import "std/byte_text_linux";
 Metrics :: #import "font_metrics";
 TypefaceCollection :: #import "typeface_collection";
+Image :: #import "image";
 
 // Layout owns metric revisions while a frame pipeline is active. A render
 // callback can discover a new glyph; publish that change at the next app
@@ -3662,7 +3662,7 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     }
     if columns < 2 || rows < 2 || clip.width <= 0.0 || clip.height <= 0.0 { return }
     count: s64 = cast(s64)columns * cast(s64)rows
-    if count > cast(s64)IMAGE_MESH_POINT_LIMIT || points.count < count { return }
+    if count > cast(s64)Image.IMAGE_MESH_POINT_LIMIT || points.count < count { return }
     texture: Texture2D
     if Bitmaps.BitmapTagged(texture_id) {
         texture = RaylibBitmapTexture(texture_id)

@@ -1,16 +1,16 @@
-using UI :: #import "kryon/Widgets";
-#import "tooltip"
-#import "tooltip_props"
-#import "sheet"
-#import "sheet_props"
-#import "command_palette"
-#import "command_palette_props"
-#import "hover_card"
-#import "hover_card_props"
-#import "confirm_popover"
-#import "confirm_popover_props"
-#import "guided_tour"
-#import "guided_tour_props"
+Button :: #import "kryon/button";
+CommandPalette :: #import "kryon/command_palette";
+ConfirmPopover :: #import "kryon/confirm_popover";
+GuidedTour :: #import "kryon/guided_tour";
+HoverCard :: #import "kryon/hover_card";
+Sheet :: #import "kryon/sheet";
+Text :: #import "kryon/text";
+Tooltip :: #import "kryon/tooltip";
+#import "kryon/geometry"
+#import "kryon/input_protocol"
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/tree_input"
 #import "tooltip_common"
 
 SceneName :: (index: s32) -> string {
@@ -25,14 +25,14 @@ SceneName :: (index: s32) -> string {
 
 viewport: Rectangle;
 anchor: Rectangle;
-tooltip_state: TooltipState;
-sheet_state: SheetState;
-palette_state: CommandPaletteState;
-hover_state: HoverCardState;
-confirm_state: ConfirmPopoverState;
-tour_state: GuidedTourState;
-commands: [3]CommandPaletteCommand;
-tour_steps: [2]GuidedTourStep;
+tooltip_state: Tooltip.TooltipState;
+sheet_state: Sheet.SheetState;
+palette_state: CommandPalette.CommandPaletteState;
+hover_state: HoverCard.HoverCardState;
+confirm_state: ConfirmPopover.ConfirmPopoverState;
+tour_state: GuidedTour.GuidedTourState;
+commands: [3]CommandPalette.CommandPaletteCommand;
+tour_steps: [2]GuidedTour.GuidedTourStep;
 palette_open: bool;
 typed: [128]u8;
 overlays_ready: bool;
@@ -48,12 +48,12 @@ Prepare :: (session: Session, scene: s32) {
     viewport = GalleryBounds(Rectangle.{0.0, 0.0, 480.0, 320.0})
     anchor = GalleryBounds(Rectangle.{38.0, 128.0, 126.0, 34.0})
     if !overlays_ready {
-        tooltip_state = TooltipStateFor(700)
-        sheet_state = SheetStateFor()
-        palette_state = CommandPaletteStateFor(701)
-        hover_state = HoverCardStateFor()
-        confirm_state = ConfirmPopoverStateFor()
-        tour_state = GuidedTourStateFor(0)
+        tooltip_state = Tooltip.TooltipStateFor(700)
+        sheet_state = Sheet.SheetStateFor()
+        palette_state = CommandPalette.CommandPaletteStateFor(701)
+        hover_state = HoverCard.HoverCardStateFor()
+        confirm_state = ConfirmPopover.ConfirmPopoverStateFor()
+        tour_state = GuidedTour.GuidedTourStateFor(0)
         commands[0] = .{.title = "Find component", .group = "Search", .shortcut = "Ctrl+F", .action = 11}
         commands[1] = .{.title = "Format source", .group = "Edit", .shortcut = "Ctrl+Shift+F", .action = 12}
         commands[2] = .{.title = "Focus outline", .group = "Accessibility", .action = 13}
@@ -80,74 +80,74 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         tour_steps[1].target = GalleryBounds(Rectangle.{168.0, 180.0, 144.0, 42.0})
     }
     if scene == 0 {
-        Text(session, TextProps.{.key = 700, .bounds = anchor, .text = "Save source", .font = 17})
-        props: TooltipProps = .{.key = 701, .anchor = anchor, .viewport = viewport,
+        Text.Draw(session, Text.Props.{.key = 700, .bounds = anchor, .text = "Save source", .font = 17})
+        props: Tooltip.Props = .{.key = 701, .anchor = anchor, .viewport = viewport,
             .text = "Save the maintained Ziran source", .shortcut = "Ctrl+S",
             .placement = .OverlayPlaceBottom, .gap = 8.0, .max_width = 240.0,
             .delay_ms = 400.0, .passive_delay_ms = 800.0, .warm_ms = 250.0,
-            .now_ms = 0, .disabled = disabled, .style = TooltipDefaultStyle()}
+            .now_ms = 0, .disabled = disabled, .style = Tooltip.TooltipDefaultStyle()}
         if gallery_live {
             props.pointer = live_pointer; props.now_ms = cast(s64)(gallery_now * 1000.0)
             props.style.motion_reduced = gallery_reduced_motion
         } else {
             props.pointer.over_anchor = true
-            unused TooltipApply(*tooltip_state, props)
+            unused Tooltip.TooltipApply(*tooltip_state, props)
             props.now_ms = 500
         }
-        unused Tooltip(session, props, *tooltip_state)
+        unused Tooltip.Draw(session, props, *tooltip_state)
     } else if scene == 1 {
-        props: SheetProps = .{.key = 710, .title = "Publish checklist",
+        props: Sheet.Props = .{.key = 710, .title = "Publish checklist",
             .description = "Run local tests, review captures, then stop.",
             .close_label = "Close", .open = true, .side = .OverlaySideBottom,
             .size = 156.0, .viewport = viewport, .scrim_close = true,
             .drag_close_distance = 72.0, .drag_enabled = true, .now_ms = 500,
-            .disabled = disabled, .surface_style = SheetSurfaceDefaultStyle(),
-            .scrim_style = SheetScrimDefaultStyle()}
+            .disabled = disabled, .surface_style = Sheet.SheetSurfaceDefaultStyle(),
+            .scrim_style = Sheet.SheetScrimDefaultStyle()}
         if gallery_live {
-            if Button(session, ButtonProps.{.key = 709, .bounds = anchor, .label = "Open sheet", .disabled = disabled}) != 0 { live_sheet_open = true }
+            if Button.Draw(session, Button.Props.{.key = 709, .bounds = anchor, .label = "Open sheet", .disabled = disabled}) != 0 { live_sheet_open = true }
             props.open = live_sheet_open
             props.now_ms = cast(s64)(gallery_now * 1000.0)
             props.input.pointer = live_pointer; props.input.keys = live_keys
             props.surface_style.motion_reduced = gallery_reduced_motion
         }
-        sheet := Sheet(session, props, *sheet_state)
+        sheet := Sheet.Draw(session, props, *sheet_state)
         if gallery_live && sheet.close_requested { live_sheet_open = false }
     } else if scene == 2 {
         viewport = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0})
-        if Button(session, ButtonProps.{.key = 719, .bounds = anchor, .label = "Open palette", .disabled = disabled}) != 0 {
+        if Button.Draw(session, Button.Props.{.key = 719, .bounds = anchor, .label = "Open palette", .disabled = disabled}) != 0 {
             palette_open = true
         }
         input_key := KeyboardTake(session)
         field_input := TextFieldInputFor(input_key, KeyboardModifiers(session), TypedTextTake(session, typed[:]))
-        palette_input: CommandPaletteInput
+        palette_input: CommandPalette.CommandPaletteInput
         palette_input.activate_index = -1
         palette_input.text = field_input
         palette_input.escape = field_input.escape
         palette_input.enter = field_input.commit
         palette_input.up = input_key == KeyUp
         palette_input.down = input_key == KeyDown
-        props: CommandPaletteProps = .{.key = 720, .owner = 701, .open = palette_open,
+        props: CommandPalette.Props = .{.key = 720, .owner = 701, .open = palette_open,
             .placeholder = "Search commands", .viewport = viewport, .width = 380.0,
             .maximum_height = 96.0, .now_ms = 500, .commands = commands[:],
             .input = palette_input,
-            .disabled = disabled, .surface_style = CommandPaletteSurfaceDefaultStyle(),
-            .item_style = CommandPaletteItemDefaultStyle(),
-            .scrim_style = CommandPaletteSurfaceDefaultStyle()}
+            .disabled = disabled, .surface_style = CommandPalette.CommandPaletteSurfaceDefaultStyle(),
+            .item_style = CommandPalette.CommandPaletteItemDefaultStyle(),
+            .scrim_style = CommandPalette.CommandPaletteSurfaceDefaultStyle()}
         if gallery_live {
             props.now_ms = cast(s64)(gallery_now * 1000.0)
             props.surface_style.motion_reduced = gallery_reduced_motion
         }
-        palette := CommandPalette(session, props, *palette_state)
+        palette := CommandPalette.Draw(session, props, *palette_state)
         if palette.close_requested || palette.chosen_index >= 0 { palette_open = false }
     } else if scene == 3 {
-        Text(session, TextProps.{.key = 730, .bounds = anchor, .text = "Hover source", .font = 17})
-        props: HoverCardProps = .{.key = 731, .anchor = anchor, .viewport = viewport,
+        Text.Draw(session, Text.Props.{.key = 730, .bounds = anchor, .text = "Hover source", .font = 17})
+        props: HoverCard.Props = .{.key = 731, .anchor = anchor, .viewport = viewport,
             .title = "Source preview", .body = "Every card opens from caller-owned state.",
             .action_label = "Open", .action = 31, .placement = .OverlayPlaceBottom,
             .width = 270.0, .delay_ms = 350.0, .grace_ms = 150.0,
             .movement_tolerance = 6.0, .gap = 8.0, .now_ms = 0,
-            .disabled = disabled, .style = HoverCardDefaultStyle(),
-            .action_style = HoverCardActionDefaultStyle()}
+            .disabled = disabled, .style = HoverCard.HoverCardDefaultStyle(),
+            .action_style = HoverCard.HoverCardActionDefaultStyle()}
         if gallery_live {
             props.pointer = live_pointer
             props.pointer.over_content = PointInBounds(live_pointer.x, live_pointer.y, hover_state_bounds)
@@ -155,49 +155,49 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
             props.style.motion_reduced = gallery_reduced_motion
         } else {
             props.pointer.over_anchor = true
-            unused HoverCardApply(*hover_state, props)
+            unused HoverCard.HoverCardApply(*hover_state, props)
             props.now_ms = 450
         }
-        card := HoverCard(session, props, *hover_state)
+        card := HoverCard.Draw(session, props, *hover_state)
         hover_state_bounds = card.bounds
     } else if scene == 4 {
-        if !gallery_live { Text(session, TextProps.{.key = 740, .bounds = anchor, .text = "Delete source", .font = 17}) }
-        props: ConfirmPopoverProps = .{.key = 741, .title = "Delete source?",
+        if !gallery_live { Text.Draw(session, Text.Props.{.key = 740, .bounds = anchor, .text = "Delete source", .font = 17}) }
+        props: ConfirmPopover.Props = .{.key = 741, .title = "Delete source?",
             .description = "This action cannot be undone.", .confirm_label = "Delete",
             .cancel_label = "Cancel", .anchor = anchor, .viewport = viewport,
             .placement = .OverlayPlaceBottom, .width = 270.0, .gap = 8.0,
             .danger = true, .open = true, .now_ms = 500, .disabled = disabled,
-            .style = ConfirmPopoverDefaultStyle(),
-            .confirm_style = ConfirmPopoverConfirmDefaultStyle(true),
-            .cancel_style = ConfirmPopoverDefaultStyle()}
+            .style = ConfirmPopover.ConfirmPopoverDefaultStyle(),
+            .confirm_style = ConfirmPopover.ConfirmPopoverConfirmDefaultStyle(true),
+            .cancel_style = ConfirmPopover.ConfirmPopoverDefaultStyle()}
         props.focus.anchor_focused = true
         if gallery_live {
-            if Button(session, ButtonProps.{.key = 739, .bounds = anchor, .label = "Delete source", .disabled = disabled}) != 0 { live_confirm_open = true }
+            if Button.Draw(session, Button.Props.{.key = 739, .bounds = anchor, .label = "Delete source", .disabled = disabled}) != 0 { live_confirm_open = true }
             props.open = live_confirm_open; props.pointer = live_pointer; props.keys = live_keys
             props.now_ms = cast(s64)(gallery_now * 1000.0)
             props.style.motion_reduced = gallery_reduced_motion
         }
-        confirmed := ConfirmPopover(session, props, *confirm_state)
+        confirmed := ConfirmPopover.Draw(session, props, *confirm_state)
         if gallery_live && (confirmed.closed || confirmed.confirmed || confirmed.cancelled) { live_confirm_open = false }
     } else {
-        Text(session, TextProps.{.key = 750, .bounds = tour_steps[0].target, .text = "Catalog target", .font = 17})
-        props: GuidedTourProps = .{.key = 751, .steps = tour_steps[:], .step = 0,
+        Text.Draw(session, Text.Props.{.key = 750, .bounds = tour_steps[0].target, .text = "Catalog target", .font = 17})
+        props: GuidedTour.Props = .{.key = 751, .steps = tour_steps[:], .step = 0,
             .width = 290.0, .padding = 12.0, .block_target = false,
             .next_label = "Next", .back_label = "Back", .done_label = "Done",
             .skip_label = "Skip", .count_format = "%d of %d", .viewport = viewport,
             .now_ms = 500, .disabled = disabled,
-            .card_style = GuidedTourCardDefaultStyle(),
-            .scrim_style = GuidedTourScrimDefaultStyle(),
-            .button_style = GuidedTourButtonDefaultStyle()}
+            .card_style = GuidedTour.GuidedTourCardDefaultStyle(),
+            .scrim_style = GuidedTour.GuidedTourScrimDefaultStyle(),
+            .button_style = GuidedTour.GuidedTourButtonDefaultStyle()}
         if gallery_live {
-            if Button(session, ButtonProps.{.key = 749, .bounds = anchor, .label = "Start tour", .disabled = disabled}) != 0 { live_tour_step = 0 }
+            if Button.Draw(session, Button.Props.{.key = 749, .bounds = anchor, .label = "Start tour", .disabled = disabled}) != 0 { live_tour_step = 0 }
             props.step = live_tour_step; props.input.pointer = live_pointer
             props.input.escape = live_keys.escape; props.input.enter = live_keys.enter
             props.input.left = live_keys.left; props.input.right = live_keys.right
             props.now_ms = cast(s64)(gallery_now * 1000.0)
             props.card_style.motion_reduced = gallery_reduced_motion
         }
-        tour := GuidedTour(session, props, *tour_state)
+        tour := GuidedTour.Draw(session, props, *tour_state)
         if gallery_live { live_tour_step = tour.step }
     }
 }

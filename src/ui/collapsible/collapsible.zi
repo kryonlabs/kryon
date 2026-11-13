@@ -1,9 +1,9 @@
+using PropsModule :: #import "collapsible_props";
 #import "transition"
 Theme :: #import "theme";
 #import "session"
 #import "transition_widget"
 #import "collapsible_behavior"
-#import "collapsible_props"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -70,7 +70,7 @@ CollapsibleDefaultFace :: (role: s32, state: s32) -> StyleData {
 }
 
 #program_export
-CollapsibleFaceFor :: (props: CollapsibleProps, role: s32,
+CollapsibleFaceFor :: (props: PropsModule.Props, role: s32,
     state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(StyleKindCollapsible(),
         props.id, props.class_name, role,
@@ -89,8 +89,7 @@ CollapsibleCloseKey :: () -> u64 {
 
 // The caller owns open, hidden, and focus state. The ordered header slice
 // supplies tree navigation without a host side registration list.
-#program_export
-Collapsible :: (session: Session, props: CollapsibleProps,
+Draw :: (session: Session, props: PropsModule.Props,
     headers: []CollapsibleHeader) -> CollapsibleResult {
     result: CollapsibleResult = .{.node = -1, .open = props.open, .hidden = props.hidden}
     if props.hidden { return result }

@@ -1,22 +1,21 @@
 #import "session"
 #import "drawing_props"
 #import "geometry"
-#import "text_input_props"
+InlineEdit :: #import "kryon/inline_edit";
+MoneyField :: #import "kryon/money_field";
+OneTimeCode :: #import "kryon/one_time_code";
+ScrubField :: #import "kryon/scrub_field";
+ShortcutRecorder :: #import "kryon/shortcut_recorder";
+TagInput :: #import "kryon/tag_input";
+TextField :: #import "kryon/text_field";
 #import "tree_draw"
 #import "paint_queue"
 #import "tree"
 #import "theme"
 #import "input_protocol"
 #import "cui_inputs_raster_host"
-#import "inlineedit"
 #import "ziran_mesh_noop_host"
-#import "moneyfield"
-#import "onetimecode"
-#import "scrubfield"
-#import "shortcutrecorder"
 #import "system_clipboard_host"
-#import "taginput"
-
 using FrameStatus;
 using PaintKind;
 
@@ -25,291 +24,291 @@ ResetRaster :: () {
 }
 
 TagBehavior :: () -> s32 {
-    initial: [2]TagInputTag
+    initial: [2]TagInput.TagInputTag
     initial[0].id = 10
     initial[0].text = "alpha"
     initial[1].id = 11
     initial[1].text = "beta"
-    state: TagInputState
-    TagInputStateInit(*state, initial[:], 4)
+    state: TagInput.TagInputState
+    TagInput.TagInputStateInit(*state, initial[:], 4)
     if state.count != 2 || state.ids[0] != 10 || state.ids[1] != 11 {
         return 1
     }
 
-    props := TagInputProps.{}
+    props := TagInput.Props.{}
     props.allow_duplicates = false
     props.max_tags = 5
     props.trim_spaces = true
     props.separator = ","
     props.input.focus = true
-    result := TagInputApply(*state, props)
+    result := TagInput.TagInputApply(*state, props)
     if !state.focused || result.changed { return 2 }
 
-    props = TagInputProps.{}
+    props = TagInput.Props.{}
     props.allow_duplicates = false
     props.max_tags = 5
     props.trim_spaces = true
     props.separator = ","
     props.input.text = " alpha "
     props.input.commit = true
-    result = TagInputApply(*state, props)
+    result = TagInput.TagInputApply(*state, props)
     if !result.added || result.added_count != 1 || state.count != 3 ||
     state.text_length != 0 { return 3 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.input.paste = true
     props.input.paste_text = "gamma,delta"
     props.input.commit = true
-    result = TagInputApply(*state, props)
+    result = TagInput.TagInputApply(*state, props)
     if !result.added || result.added_count != 2 || state.count != 5 ||
     result.max_reached { return 4 }
 
     state.count = 5
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.input.text = "delta"
     props.input.commit = true
-    result = TagInputApply(*state, props)
+    result = TagInput.TagInputApply(*state, props)
     if !result.max_reached || result.added || state.count != 5 { return 5 }
 
     state.count = 4
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.input.text = "alpha"
     props.input.commit = true
-    result = TagInputApply(*state, props)
+    result = TagInput.TagInputApply(*state, props)
     if !result.duplicate_rejected || result.added || state.count != 4 { return 6 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.remove_id = 11
-    result = TagInputApply(*state, props)
+    result = TagInput.TagInputApply(*state, props)
     if !result.removed || result.removed_id != 11 || state.count != 3 { return 7 }
 
     props.remove_id = 0
     props.input.backspace = true
-    result = TagInputApply(*state, props)
+    result = TagInput.TagInputApply(*state, props)
     if !result.removed || state.count != 2 { return 8 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.input.blur = true
-    result = TagInputApply(*state, props)
+    result = TagInput.TagInputApply(*state, props)
     if state.focused || result.changed { return 9 }
     return 0
 }
 
 OneTimeCodeBehavior :: () -> s32 {
-    state := OneTimeCodeStateFor(6, "a1b2-", false)
+    state := OneTimeCode.OneTimeCodeStateFor(6, "a1b2-", false)
     if state.length != 6 || state.count != 4 || state.cursor != 4 { return 1 }
 
-    props: OneTimeCodeProps = .{.length = 6, .focus = true, .text = "CD"}
-    result := OneTimeCodeApply(*state, props)
+    props: OneTimeCode.Props = .{.length = 6, .focus = true, .text = "CD"}
+    result := OneTimeCode.OneTimeCodeApply(*state, props)
     if !result.complete || state.count != 6 || state.cursor != 6 ||
     !result.focused { return 2 }
 
-    props = OneTimeCodeProps.{.length = 6, .text = "Z"}
-    result = OneTimeCodeApply(*state, props)
+    props = OneTimeCode.Props.{.length = 6, .text = "Z"}
+    result = OneTimeCode.OneTimeCodeApply(*state, props)
     if result.complete || state.count != 6 { return 3 }
 
-    props = OneTimeCodeProps.{.length = 6, .backspace = true}
-    result = OneTimeCodeApply(*state, props)
+    props = OneTimeCode.Props.{.length = 6, .backspace = true}
+    result = OneTimeCode.OneTimeCodeApply(*state, props)
     if !result.changed || state.count != 5 || state.cursor != 5 { return 4 }
 
-    props = OneTimeCodeProps.{.length = 6, .left = true}
-    result = OneTimeCodeApply(*state, props)
+    props = OneTimeCode.Props.{.length = 6, .left = true}
+    result = OneTimeCode.OneTimeCodeApply(*state, props)
     if !result.changed || state.cursor != 4 { return 5 }
 
-    props = OneTimeCodeProps.{.length = 6, .right = true}
-    result = OneTimeCodeApply(*state, props)
+    props = OneTimeCode.Props.{.length = 6, .right = true}
+    result = OneTimeCode.OneTimeCodeApply(*state, props)
     if !result.changed || state.cursor != 5 { return 6 }
 
-    props = OneTimeCodeProps.{.length = 6, .paste = true, .paste_text = "zz9qq!"}
-    result = OneTimeCodeApply(*state, props)
+    props = OneTimeCode.Props.{.length = 6, .paste = true, .paste_text = "zz9qq!"}
+    result = OneTimeCode.OneTimeCodeApply(*state, props)
     if !result.changed || state.count != 5 || state.bytes[4] != cast(u8)113 { return 7 }
 
-    props = OneTimeCodeProps.{.length = 6, .disabled = true, .text = "A", .focus = true}
-    result = OneTimeCodeApply(*state, props)
+    props = OneTimeCode.Props.{.length = 6, .disabled = true, .text = "A", .focus = true}
+    result = OneTimeCode.OneTimeCodeApply(*state, props)
     if result.changed || result.focused || state.count != 5 { return 8 }
 
-    props = OneTimeCodeProps.{.length = 6, .escape = true}
-    result = OneTimeCodeApply(*state, props)
+    props = OneTimeCode.Props.{.length = 6, .escape = true}
+    result = OneTimeCode.OneTimeCodeApply(*state, props)
     if !result.cancelled || result.focused { return 9 }
     return 0
 }
 
 InlineEditCancelBehavior :: () -> s32 {
-    state := InlineEditStateFor("Title")
-    props: InlineEditProps = .{.activate = true}
-    result := InlineEditApply(*state, props)
+    state := InlineEdit.InlineEditStateFor("Title")
+    props: InlineEdit.Props = .{.activate = true}
+    result := InlineEdit.InlineEditApply(*state, props)
     if !result.editing || state.cursor != 0 || state.anchor != 5 { return 1 }
 
-    props = InlineEditProps.{}
+    props = InlineEdit.Props.{}
     props.input.paste = true
     props.input.paste_text = "Owner"
-    result = InlineEditApply(*state, props)
+    result = InlineEdit.InlineEditApply(*state, props)
     if result.changed || TextView(state.bytes[:state.length]) != "Owner" { return 2 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.input.escape = true
-    result = InlineEditApply(*state, props)
+    result = InlineEdit.InlineEditApply(*state, props)
     if !result.cancelled || result.changed || result.editing ||
     TextView(state.bytes[:state.length]) != "Title" { return 3 }
     return 0
 }
 
 InlineEditCommitBehavior :: () -> s32 {
-    state := InlineEditStateFor("Title")
-    props: InlineEditProps = .{.activate = true}
-    result := InlineEditApply(*state, props)
+    state := InlineEdit.InlineEditStateFor("Title")
+    props: InlineEdit.Props = .{.activate = true}
+    result := InlineEdit.InlineEditApply(*state, props)
     if !result.editing { return 1 }
 
-    props = InlineEditProps.{.activate = true}
-    props = InlineEditProps.{}
+    props = InlineEdit.Props.{.activate = true}
+    props = InlineEdit.Props.{}
     props.input.text = "New"
     props.input.commit = true
-    result = InlineEditApply(*state, props)
+    result = InlineEdit.InlineEditApply(*state, props)
     if !result.committed || !result.changed || result.editing ||
     TextView(state.bytes[:state.length]) != "New" { return 2 }
 
-    props = InlineEditProps.{.activate = true}
-    result = InlineEditApply(*state, props)
-    props = InlineEditProps.{}
+    props = InlineEdit.Props.{.activate = true}
+    result = InlineEdit.InlineEditApply(*state, props)
+    props = InlineEdit.Props.{}
     props.input.text = "Blur"
     props.input.blur = true
-    result = InlineEditApply(*state, props)
+    result = InlineEdit.InlineEditApply(*state, props)
     if !result.committed || !result.changed || state.editing ||
     TextView(state.bytes[:state.length]) != "Blur" { return 3 }
     return 0
 }
 
 ScrubBehavior :: () -> s32 {
-    state := ScrubFieldStateFor(5.25, 2)
+    state := ScrubField.ScrubFieldStateFor(5.25, 2)
     if TextView(state.bytes[:state.text_length]) != "5.25" { return 1 }
 
-    props: ScrubFieldProps = .{.minimum = 0.0, .maximum = 10.0, .step = 0.25,
+    props: ScrubField.Props = .{.minimum = 0.0, .maximum = 10.0, .step = 0.25,
         .precision = 2}
     props.input.right = true
-    result := ScrubFieldApply(*state, props)
+    result := ScrubField.ScrubFieldApply(*state, props)
     if !result.changed || result.value != 5.5 ||
     TextView(state.bytes[:state.text_length]) != "5.50" { return 2 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.input.right = true
     props.shift = true
-    result = ScrubFieldApply(*state, props)
+    result = ScrubField.ScrubFieldApply(*state, props)
     if result.value != 8.0 { return 3 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.up = true
     props.shift = false
-    result = ScrubFieldApply(*state, props)
+    result = ScrubField.ScrubFieldApply(*state, props)
     if result.value != 8.25 { return 4 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.down = true
     props.shift = true
-    result = ScrubFieldApply(*state, props)
+    result = ScrubField.ScrubFieldApply(*state, props)
     if result.value != 5.75 { return 5 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.drag_active = true
     props.shift = false
     props.up = false
     props.down = false
     props.drag_delta = 3.0
-    result = ScrubFieldApply(*state, props)
+    result = ScrubField.ScrubFieldApply(*state, props)
     if result.value != 6.5 { return 6 }
     if result.value != 6.5 { return 6 }
     if !result.drag_started { return 61 }
 
     props.drag_delta = 10.0
     props.shift = true
-    result = ScrubFieldApply(*state, props)
+    result = ScrubField.ScrubFieldApply(*state, props)
     if result.value != 6.75 { return 7 }
 
-    props = ScrubFieldProps.{.minimum = 0.0, .maximum = 8.0, .step = 0.25,
+    props = ScrubField.Props.{.minimum = 0.0, .maximum = 8.0, .step = 0.25,
         .precision = 2, .activate = true}
     props.input.text = "9.99"
     props.input.commit = true
-    result = ScrubFieldApply(*state, props)
+    result = ScrubField.ScrubFieldApply(*state, props)
     if !result.committed || result.value != 8.0 || state.editing ||
     TextView(state.bytes[:state.text_length]) != "8.00" { return 8 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.activate = true
     props.input.text = "3.00"
     props.input.escape = true
-    result = ScrubFieldApply(*state, props)
+    result = ScrubField.ScrubFieldApply(*state, props)
     if !result.cancelled || result.committed || state.editing ||
     TextView(state.bytes[:state.text_length]) != "8.00" { return 9 }
     return 0
 }
 
 MoneyBehavior :: () -> s32 {
-    state := MoneyFieldStateFor(-1234.56, 2)
+    state := MoneyField.MoneyFieldStateFor(-1234.56, 2)
     display: [64]u8
-    props: MoneyFieldProps = .{.precision = 2, .grouping = true,
+    props: MoneyField.Props = .{.precision = 2, .grouping = true,
         .locale = .MoneyLocaleComma,
         .negative_style = .MoneyNegativeParentheses}
-    formatted := MoneyFieldDisplay(state, props, display[:])
-    parsed := MoneyFieldParse(formatted)
+    formatted := MoneyField.MoneyFieldDisplay(state, props, display[:])
+    parsed := MoneyField.MoneyFieldParse(formatted)
     if formatted != "(1.234,56)" || parsed < -1234.5601 ||
     parsed > -1234.5599 { return 1 }
     rounded: [24]u8
-    if MoneyFieldFormat(1.006, 2, false, "", ".",
+    if MoneyField.MoneyFieldFormat(1.006, 2, false, "", ".",
         .MoneyNegativeMinus, rounded[:]) != "1.01" { return 2 }
 
-    props = MoneyFieldProps.{.precision = 2, .minimum = -100.0,
+    props = MoneyField.Props.{.precision = 2, .minimum = -100.0,
         .maximum = 500.0, .focused = true}
-    result := MoneyFieldApply(*state, props)
+    result := MoneyField.MoneyFieldApply(*state, props)
     if TextView(state.bytes[:state.text_length]) != "-1234.56" { return 3 }
 
     props.focused = false
     props.input.text = "-9876.50"
     props.input.commit = true
     props.input.blur = true
-    result = MoneyFieldApply(*state, props)
+    result = MoneyField.MoneyFieldApply(*state, props)
     if !result.committed || !result.changed || result.value != -100.0 ||
     !result.valid || TextView(state.bytes[:state.text_length]) != "-100.00" { return 4 }
 
-    props.input = TextFieldInput.{}
+    props.input = TextField.Input.{}
     props.focused = true
-    result = MoneyFieldApply(*state, props)
+    result = MoneyField.MoneyFieldApply(*state, props)
     if TextView(state.bytes[:state.text_length]) != "-100.00" { return 5 }
     return 0
 }
 
 ShortcutBehavior :: () -> s32 {
-    state := ShortcutRecorderStateFor(0, 0)
-    props: ShortcutRecorderProps = .{.activate = true, .key_event = 65,
+    state := ShortcutRecorder.ShortcutRecorderStateFor(0, 0)
+    props: ShortcutRecorder.Props = .{.activate = true, .key_event = 65,
         .modifiers = KeyModifierControl | KeyModifierShift}
-    result := ShortcutRecorderApply(*state, props)
+    result := ShortcutRecorder.ShortcutRecorderApply(*state, props)
     if !result.changed || result.key != 65 ||
     result.modifiers != (KeyModifierControl | KeyModifierShift) ||
     TextView(state.label[:state.label_length]) != "Ctrl Shift A" { return 1 }
 
-    props = ShortcutRecorderProps.{.activate = true, .key_event = KeyEnter,
+    props = ShortcutRecorder.Props.{.activate = true, .key_event = KeyEnter,
         .modifiers = KeyModifierControl}
-    result = ShortcutRecorderApply(*state, props)
+    result = ShortcutRecorder.ShortcutRecorderApply(*state, props)
     if !result.changed || result.key != KeyEnter ||
     result.modifiers != KeyModifierControl || result.recording ||
     TextView(state.label[:state.label_length]) != "Ctrl Enter" { return 2 }
 
-    props = ShortcutRecorderProps.{.activate = true, .key_event = 999,
+    props = ShortcutRecorder.Props.{.activate = true, .key_event = 999,
         .modifiers = KeyModifierControl}
-    result = ShortcutRecorderApply(*state, props)
+    result = ShortcutRecorder.ShortcutRecorderApply(*state, props)
     if !result.unsupported || result.changed || result.key != KeyEnter ||
     result.recording { return 5 }
 
-    props = ShortcutRecorderProps.{.activate = true, .key_event = KeyBackspace}
-    result = ShortcutRecorderApply(*state, props)
+    props = ShortcutRecorder.Props.{.activate = true, .key_event = KeyBackspace}
+    result = ShortcutRecorder.ShortcutRecorderApply(*state, props)
     if !result.cleared || result.key != 0 || state.label_length != 0 { return 3 }
 
-    props = ShortcutRecorderProps.{.activate = true, .key_event = KeyEscape}
-    result = ShortcutRecorderApply(*state, props)
+    props = ShortcutRecorder.Props.{.activate = true, .key_event = KeyEscape}
+    result = ShortcutRecorder.ShortcutRecorderApply(*state, props)
     if !result.cancelled || result.recording { return 4 }
 
-    props = ShortcutRecorderProps.{.activate = true, .key_event = 66,
+    props = ShortcutRecorder.Props.{.activate = true, .key_event = 66,
         .disabled = true}
-    result = ShortcutRecorderApply(*state, props)
+    result = ShortcutRecorder.ShortcutRecorderApply(*state, props)
     if result.changed || result.recording || result.key != 0 { return 5 }
     return 0
 }
@@ -331,8 +330,8 @@ RenderBehavior :: () -> s32 {
     ResetRaster()
     TreeStart(session, 1, Rectangle.{0.0, 0.0, 320.0, 180.0})
 
-    code_state := OneTimeCodeStateFor(3, "AB", true)
-    code: OneTimeCodeProps = .{.key = 21, .length = 3,
+    code_state := OneTimeCode.OneTimeCodeStateFor(3, "AB", true)
+    code: OneTimeCode.Props = .{.key = 21, .length = 3,
         .bounds = Rectangle.{10.0, 10.0, 130.0, 40.0},
         .id = 77, .class_name = 88, .slot_class_name = 89, .focused = true}
     code.style.slot_width = 31.0
@@ -340,7 +339,7 @@ RenderBehavior :: () -> s32 {
     code.style.radius = 7.0
     code.style.gap = 3.0
     code.style.font_size = 15.0
-    code_result := OneTimeCode(session, code, *code_state)
+    code_result := OneTimeCode.Draw(session, code, *code_state)
     PaintFlush(session)
     if code_result.node < 0 || EndFrame(session) != cast(FrameStatus)FrameOk { return 1 }
     entry := TreeNodeAt(session, code_result.node)
@@ -350,34 +349,34 @@ RenderBehavior :: () -> s32 {
     if raster.round_width < 31.0 { return 31 }
     if raster.round_radius < 7.0 { return 32 }
 
-    disabled_state := OneTimeCodeStateFor(3, "AB", false)
-    disabled: OneTimeCodeProps = code
+    disabled_state := OneTimeCode.OneTimeCodeStateFor(3, "AB", false)
+    disabled: OneTimeCode.Props = code
     disabled.key = 22
     disabled.id = 78
     disabled.disabled = true
     TreeStart(session, 2, Rectangle.{0.0, 0.0, 320.0, 180.0})
-    disabled_result := OneTimeCode(session, disabled, *disabled_state)
+    disabled_result := OneTimeCode.Draw(session, disabled, *disabled_state)
     if disabled_result.node < 0 || EndFrame(session) != cast(FrameStatus)FrameOk ||
     !TreeNodeAt(session, disabled_result.node).disabled { return 4 }
 
-    shortcut_state := ShortcutRecorderStateFor(65, KeyModifierControl)
-    shortcut: ShortcutRecorderProps = .{.key = 31,
+    shortcut_state := ShortcutRecorder.ShortcutRecorderStateFor(65, KeyModifierControl)
+    shortcut: ShortcutRecorder.Props = .{.key = 31,
         .bounds = Rectangle.{10.0, 60.0, 220.0, 40.0}, .id = 90,
         .class_name = 91}
     shortcut.font_size = 19.0
     shortcut.width = 210.0
     shortcut.height = 33.0
     TreeStart(session, 3, Rectangle.{0.0, 0.0, 320.0, 180.0})
-    shortcut_result := ShortcutRecorder(session, shortcut, *shortcut_state)
+    shortcut_result := ShortcutRecorder.Draw(session, shortcut, *shortcut_state)
     if shortcut_result.node < 0 || EndFrame(session) != cast(FrameStatus)FrameOk { return 5 }
     shortcut_entry := TreeNodeAt(session, shortcut_result.node)
     if shortcut_entry.bounds.width != 210.0 || shortcut_entry.bounds.height != 33.0 ||
     shortcut_entry.style_class != 91 { return 6 }
 
-    inline_state := InlineEditStateFor("Tit")
+    inline_state := InlineEdit.InlineEditStateFor("Tit")
     inline_state.editing = true
     inline_state.focused = true
-    inline: InlineEditProps = .{.key = 41,
+    inline: InlineEdit.Props = .{.key = 41,
         .bounds = Rectangle.{10.0, 110.0, 180.0, 34.0}, .id = 92,
         .class_name = 93}
     inline.composition.active = true
@@ -385,13 +384,13 @@ RenderBehavior :: () -> s32 {
     inline.composition.cursor = 2
     inline.composition.selection_length = 0
     TreeStart(session, 4, Rectangle.{0.0, 0.0, 320.0, 180.0})
-    inline_result := InlineEdit(session, inline, *inline_state)
+    inline_result := InlineEdit.Draw(session, inline, *inline_state)
     if inline_result.node < 0 || EndFrame(session) != cast(FrameStatus)FrameOk ||
     TreeNodeAt(session, inline_result.node).style_class != 93 { return 7 }
 
     ResetRaster()
     TreeStart(session, 5, Rectangle.{0.0, 0.0, 320.0, 180.0})
-    code_result = OneTimeCode(session, code, *code_state)
+    code_result = OneTimeCode.Draw(session, code, *code_state)
     unused code_result
     PaintFlush(session)
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 8 }
@@ -401,7 +400,7 @@ RenderBehavior :: () -> s32 {
 
     ResetRaster()
     TreeStart(session, 6, Rectangle.{0.0, 0.0, 320.0, 180.0})
-    shortcut_result = ShortcutRecorder(session, shortcut, *shortcut_state)
+    shortcut_result = ShortcutRecorder.Draw(session, shortcut, *shortcut_state)
     unused shortcut_result
     PaintFlush(session)
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 9 }
@@ -409,7 +408,7 @@ RenderBehavior :: () -> s32 {
 
     ResetRaster()
     TreeStart(session, 7, Rectangle.{0.0, 0.0, 320.0, 180.0})
-    inline_result = InlineEdit(session, inline, *inline_state)
+    inline_result = InlineEdit.Draw(session, inline, *inline_state)
     unused inline_result
     PaintFlush(session)
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 10 }

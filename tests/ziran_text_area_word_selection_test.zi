@@ -1,7 +1,6 @@
 #import "session"
 #import "geometry"
-#import "textarea"
-#import "text_input_props"
+TextArea :: #import "kryon/text_area";
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
@@ -17,9 +16,9 @@ Selection :: struct {
 }
 
 // One frame; the caller keeps the returned selection, as an app does.
-Frame :: (session: Session, props: *TextAreaProps) -> Selection {
+Frame :: (session: Session, props: *TextArea.Props) -> Selection {
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
-    result := TextArea(session, props.*)
+    result := TextArea.Draw(session, props.*)
     unused EndFrame(session)
     props.anchor = result.anchor
     props.cursor = result.cursor
@@ -29,7 +28,7 @@ Frame :: (session: Session, props: *TextAreaProps) -> Selection {
 }
 
 // A click at `x` on the text's row at `now` seconds: press, then release.
-Click :: (session: Session, props: *TextAreaProps, x: float32, now: float64) -> Selection {
+Click :: (session: Session, props: *TextArea.Props, x: float32, now: float64) -> Selection {
     props.input.now_seconds = now
     TreePointerUpdate(session, PointerFrame.{x, 30.0, true, true, false})
     unused Frame(session, props)
@@ -40,7 +39,7 @@ Click :: (session: Session, props: *TextAreaProps, x: float32, now: float64) -> 
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
-    props: TextAreaProps = .{.key = cast(u64)78, .focus_id = 78,
+    props: TextArea.Props = .{.key = cast(u64)78, .focus_id = 78,
         .bounds = Rectangle.{20.0, 20.0, 260.0, 40.0}, .value = "one two three", .read_only = true}
     unused Frame(session, *props)
     // A single click places a caret inside "two".

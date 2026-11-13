@@ -1,6 +1,6 @@
 #import "drawing_props"
 #import "geometry"
-#import "image_props"
+using ImageSchema :: #import "image_props";
 
 // Matches the ImageFit host contract without exporting a second public enum.
 ImagePlaceholderLayout :: struct {
@@ -15,7 +15,7 @@ ImageLabelRole :: () -> s32 {
 }
 
 #program_export
-ImageFitRect :: (image: ImageProps, texture: Texture2D) -> Rectangle {
+ImageFitRect :: (image: ImageSchema.Props, texture: Texture2D) -> Rectangle {
     return ImageFitBounds(image.bounds, image.source,
         texture.width, texture.height, cast(s32)image.fit)
 }
@@ -104,7 +104,7 @@ ImagePolygonTriangulate :: (points: []Vector2, triangles: []s32) -> s32 {
 
 // Whether IMAGE may draw its preview while its picture loads.
 #program_export
-ImagePreviewUsable :: (image: ImageProps) -> bool {
+ImagePreviewUsable :: (image: ImageSchema.Props) -> bool {
     if image.preview_path == "" || image.texture.id != cast(u32)0 { return false }
     if image.source.width == 0.0 || image.source.height == 0.0 { return true }
     return image.full_size.x > 0.0 && image.full_size.y > 0.0
@@ -143,7 +143,7 @@ ImageDrawPlan :: struct {
 }
 
 #program_export
-ImageDrawPlanFor :: (image: ImageProps, texture: Texture2D,
+ImageDrawPlanFor :: (image: ImageSchema.Props, texture: Texture2D,
     tint: Color) -> ImageDrawPlan {
     plan: ImageDrawPlan
     if texture.id == cast(u32)0 || texture.width <= 0 ||

@@ -1,13 +1,9 @@
 #import "transition"
 #import "widget_kind"
-#import "menu"
-#import "menu_props"
-#import "tabs"
-#import "tab_bar_props"
-#import "navigation"
-#import "navigation_bar_props"
-#import "collapsible"
-#import "collapsible_props"
+Collapsible :: #import "kryon/collapsible";
+Menu :: #import "kryon/menu";
+Navigation :: #import "kryon/navigation";
+TabBar :: #import "kryon/tab_bar";
 #import "transition_widget"
 #import "tree_draw"
 #import "tree_input"
@@ -18,7 +14,7 @@
 #import "cui_overlays_raster_host"
 using FrameStatus;
 using WidgetKind;
-using MenuItemKind;
+using Menu.MenuItemKind;
 
 SpringBehavior :: () -> s32 {
     state: TransitionMotionState
@@ -52,11 +48,11 @@ menu_motion: TransitionMotionState;
 tab_motion: TransitionMotionState;
 nav_motion: TransitionMotionState;
 collapse_motion: TransitionMotionState;
-menu_state: MenuState;
-menu_result: MenuResult;
-tab_result: TabBarResult;
-nav_result: NavigationBarResult;
-collapse_result: CollapsibleResult;
+menu_state: Menu.MenuState;
+menu_result: Menu.MenuResult;
+tab_result: TabBar.Result;
+nav_result: Navigation.NavigationBarResult;
+collapse_result: Collapsible.CollapsibleResult;
 
 MotionScene :: (frame: s32, reduced: bool, close: bool) -> s32 {
     if frame == 0 {
@@ -64,47 +60,47 @@ MotionScene :: (frame: s32, reduced: bool, close: bool) -> s32 {
         motion_session = SessionOpen()
         menu_motion = TransitionMotionState.{}; tab_motion = TransitionMotionState.{}
         nav_motion = TransitionMotionState.{}; collapse_motion = TransitionMotionState.{}
-        MenuStateInit(*menu_state)
+        Menu.MenuStateInit(*menu_state)
     }
     if !CuiOverlaysRasterBegin() { return 10 }
     BeginFrame(motion_session, cast(u64)9000, Rectangle.{0.0, 0.0, 480.0, 360.0})
     now := cast(float64)frame / 60.0
-    tabs: [2]Tab
-    tabs[0] = Tab.{.key = cast(u64)11, .label = "First"}
-    tabs[1] = Tab.{.key = cast(u64)12, .label = "Second"}
-    tab: TabBarProps
+    tabs: [2]TabBar.Tab
+    tabs[0] = TabBar.Tab.{.key = cast(u64)11, .label = "First"}
+    tabs[1] = TabBar.Tab.{.key = cast(u64)12, .label = "Second"}
+    tab: TabBar.Props
     tab.key = cast(u64)1; tab.bounds = Rectangle.{10.0, 10.0, 400.0, 44.0}
     tab.selected_index = ifx frame > 0 then 1 else 0
     tab.motion = *tab_motion; tab.now = now; tab.reduced_motion = reduced
-    tab_result = TabBar(motion_session, tab, tabs[:])
-    headers: [1]CollapsibleHeader
-    collapse: CollapsibleProps
+    tab_result = TabBar.Draw(motion_session, tab, tabs[:])
+    headers: [1]Collapsible.CollapsibleHeader
+    collapse: Collapsible.Props
     collapse.key = cast(u64)2; collapse.bounds = Rectangle.{220.0, 80.0, 240.0, 180.0}
     collapse.label = "Details"; collapse.has_open = true; collapse.open = frame > 0 && !close
     collapse.motion = *collapse_motion; collapse.now = now; collapse.reduced_motion = reduced
-    collapse_result = Collapsible(motion_session, collapse, headers[:0])
+    collapse_result = Collapsible.Draw(motion_session, collapse, headers[:0])
     if collapse_result.content.height > 0.0 {
         PaintRoundedFill(motion_session, collapse_result.node, collapse_result.content,
             4.0, 8, Color.{80, 140, 220, 255})
     }
-    items: [2]NavigationBarItem
-    items[0] = NavigationBarItem.{.key = cast(u64)21, .route = 1, .label = "Home", .active = frame == 0}
-    items[1] = NavigationBarItem.{.key = cast(u64)22, .route = 2, .label = "Library", .active = frame > 0}
-    nav: NavigationBarProps
+    items: [2]Navigation.NavigationBarItem
+    items[0] = Navigation.NavigationBarItem.{.key = cast(u64)21, .route = 1, .label = "Home", .active = frame == 0}
+    items[1] = Navigation.NavigationBarItem.{.key = cast(u64)22, .route = 2, .label = "Library", .active = frame > 0}
+    nav: Navigation.Props
     nav.key = cast(u64)3; nav.view_width = 480; nav.view_height = 360
     nav.motion = *nav_motion; nav.now = now; nav.reduced_motion = reduced
-    nav_result = NavigationBar(motion_session, nav, items[:])
-    commands: [2]MenuItem
-    commands[0] = MenuItem.{.kind = cast(MenuItemKind)MenuCommand, .label = "Open", .id = 1}
-    commands[1] = MenuItem.{.kind = cast(MenuItemKind)MenuCommand, .label = "Disabled", .id = 2, .disabled = true}
-    groups: [1]MenuGroup
-    groups[0] = MenuGroup.{.label = "File", .items = commands[:]}
-    menu: MenuProps
+    nav_result = Navigation.Draw(motion_session, nav, items[:])
+    commands: [2]Menu.MenuItem
+    commands[0] = Menu.MenuItem.{.kind = cast(Menu.MenuItemKind)MenuCommand, .label = "Open", .id = 1}
+    commands[1] = Menu.MenuItem.{.kind = cast(Menu.MenuItemKind)MenuCommand, .label = "Disabled", .id = 2, .disabled = true}
+    groups: [1]Menu.MenuGroup
+    groups[0] = Menu.MenuGroup.{.label = "File", .items = commands[:]}
+    menu: Menu.Props
     menu.key = cast(u64)4; menu.bounds = Rectangle.{10.0, 60.0, 200.0, 30.0}
     menu.motion = *menu_motion; menu.now = now; menu.reduced_motion = reduced
     if frame == 1 { menu_state.open_index = 0; menu_state.focused = true }
     menu.input.escape = close
-    menu_result = Menu(motion_session, menu, groups[:], *menu_state)
+    menu_result = Menu.Draw(motion_session, menu, groups[:], *menu_state)
     if EndFrame(motion_session) != cast(FrameStatus)FrameOk { return 11 }
     return 0
 }
@@ -172,7 +168,7 @@ main :: () -> s32 {
     // Closing paint has no scrim or item nodes; its old input ownership is gone.
     for index: 0..TreeCount(motion_session) - 1 {
         node := TreeNodeAt(motion_session, index)
-        if node.kind == WidgetKindSelectable && node.key != MenuGroupKey(cast(u64)4, 0) { return 28 }
+        if node.kind == WidgetKindSelectable && node.key != Menu.MenuGroupKey(cast(u64)4, 0) { return 28 }
     }
     if MotionScene(7, true, true) != 0 { return 29 }
     if menu_result.animating || tab_result.animating || nav_result.animating || collapse_result.animating || collapse_result.content.height != 0.0 { return 30 }
@@ -194,21 +190,21 @@ main :: () -> s32 {
 }
 
 IdentityFrame :: (session: Session, motion: *TransitionMotionState,
-    now: float64, grand_key: u64, shown: bool, open: bool) -> CollapsibleResult {
+    now: float64, grand_key: u64, shown: bool, open: bool) -> Collapsible.CollapsibleResult {
     unused CuiOverlaysRasterBegin()
     BeginFrame(session, cast(u64)5000, Rectangle.{0.0, 0.0, 480.0, 360.0})
-    result: CollapsibleResult
+    result: Collapsible.CollapsibleResult
     if shown {
         grand := TreeSubmitCurrent(session, grand_key, WidgetKindCustom, Rectangle.{0.0, 0.0, 480.0, 360.0})
         unused TreePushScope(session, grand)
         parent := TreeSubmitCurrent(session, cast(u64)7, WidgetKindCustom, Rectangle.{0.0, 0.0, 480.0, 360.0})
         unused TreePushScope(session, parent)
-        props: CollapsibleProps
+        props: Collapsible.Props
         props.key = cast(u64)9; props.has_open = true; props.open = open
         props.bounds = Rectangle.{10.0, 10.0, 200.0, 200.0}
         props.motion = motion; props.now = now
-        headers: [1]CollapsibleHeader
-        result = Collapsible(session, props, headers[:0])
+        headers: [1]Collapsible.CollapsibleHeader
+        result = Collapsible.Draw(session, props, headers[:0])
         unused TreePopScope(session); unused TreePopScope(session)
     }
     if EndFrame(session) != cast(FrameStatus)FrameOk { result.node = -1 }
@@ -242,18 +238,18 @@ ReorderBehavior :: () -> s32 {
     session := SessionOpen()
     a: TransitionMotionState; b: TransitionMotionState
     values: [2]float32
-    headers: [1]CollapsibleHeader
+    headers: [1]Collapsible.CollapsibleHeader
     for frame: 0..2 {
         unused CuiOverlaysRasterBegin()
         BeginFrame(session, cast(u64)7000, Rectangle.{0.0, 0.0, 480.0, 360.0})
         for position: 0..1 {
             index := ifx frame == 2 then 1 - position else position
-            props: CollapsibleProps
+            props: Collapsible.Props
             props.key = cast(u64)(index + 10); props.open = frame > 0; props.has_open = true
             props.bounds = Rectangle.{cast(float32)position * 220.0, 0.0, 200.0, 200.0}
             props.motion = ifx index == 0 then *a else *b
             props.now = ifx frame == 0 then 0.0 else 0.05
-            result := Collapsible(session, props, headers[:0])
+            result := Collapsible.Draw(session, props, headers[:0])
             if frame == 1 { values[index] = result.content.height }
             if frame == 2 && (result.content.height != values[index] || !result.animating) { return 206 }
         }

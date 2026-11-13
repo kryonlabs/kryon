@@ -1,3 +1,4 @@
+using PropsModule :: #import "list_box_props";
 Theme :: #import "theme";
 #import "session"
 #import "control_props"
@@ -6,7 +7,6 @@ Theme :: #import "theme";
 #import "geometry"
 #import "list_box_behavior"
 #import "list_box_multi"
-#import "list_box_props"
 #import "paint_queue"
 #import "scroll_behavior"
 #import "style"
@@ -111,7 +111,7 @@ ListBoxFace :: (kind: s32, id: s32, class_name: s32,
 }
 
 #program_export
-ListBoxSingleView :: (props: ListBoxProps) -> ListBoxView {
+ListBoxSingleView :: (props: PropsModule.Props) -> ListBoxView {
     return ListBoxView.{.key = props.key, .bounds = props.bounds, .id = props.id,
         .class_name = props.class_name, .scroll_offset = props.scroll_offset,
         .scroll_delta = props.scroll_delta, .row_height = props.row_height, .scale = props.scale,
@@ -343,8 +343,7 @@ ListBoxViewFinish :: (session: Session, view: ListBoxViewState,
 
 // Selection and scroll are returned as values. Rows keep identity through
 // their keys and use the same retained pointer routing as other controls.
-#program_export
-ListBox :: (session: Session, props: ListBoxProps,
+Draw :: (session: Session, props: PropsModule.Props,
     items: []ListBoxItem) -> ListBoxResult {
     result: ListBoxResult = .{.node = -1, .selected_index = props.selected_index,
         .scroll_offset = props.scroll_offset}

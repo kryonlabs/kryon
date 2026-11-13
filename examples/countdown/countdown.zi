@@ -1,22 +1,26 @@
-using UI :: #import "kryon/Widgets";
+Button :: #import "kryon/button";
+Countdown :: #import "kryon/countdown";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 #import "kryon/frame_snapshot"
 DemoTheme :: #import "kryon/Theme";
 
-state: CountdownState;
+state: Countdown.CountdownState;
 ends_at: float64;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Countdown", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Countdown", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
     input := CaptureFrameInput(session)
     now := cast(float64)input.elapsed_ms / 1000.0
     if ends_at == 0.0 { ends_at = now + 90.0 }
     remaining := ends_at - now
     if remaining < 0.0 { remaining = 0.0 }
-    CountdownAdvance(*state, CountdownPartsFor(remaining, true), cast(float32)input.delta_ms / 1000.0, (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion))
-    props: CountdownProps = .{.key = 10, .bounds = bounds, .seconds_left = remaining, .hide_days = true}
-    Countdown(session, props, *state)
-    if Button(session, ButtonProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, 160.0, 40.0}, .label = "Restart"}) != 0 { ends_at = now + 90.0 }
+    Countdown.CountdownAdvance(*state, Countdown.CountdownPartsFor(remaining, true), cast(float32)input.delta_ms / 1000.0, (example_reduced_motion || DemoTheme.CurrentTheme().motion.reduced_motion))
+    props: Countdown.Props = .{.key = 10, .bounds = bounds, .seconds_left = remaining, .hide_days = true}
+    Countdown.Draw(session, props, *state)
+    if Button.Draw(session, Button.Props.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, 160.0, 40.0}, .label = "Restart"}) != 0 { ends_at = now + 90.0 }
     return 0
 }
 

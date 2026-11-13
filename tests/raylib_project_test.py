@@ -135,7 +135,13 @@ def main():
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         )
         (project / "src" / "app.zi").write_text(
-            'using UI :: #import "Widgets";\n'
+            'Button :: #import "kryon/button";\n'
+            'Image :: #import "kryon/image";\n'
+            '#import "kryon/control_props"\n'
+            '#import "kryon/geometry"\n'
+            '#import "kryon/session"\n'
+            '#import "kryon/style_sheet"\n'
+            '#import "kryon/tree_input"\n'
             '#import "Zoom"\n'
             '#import "http_transfer"\n'
             '#import "net_http"\n'
@@ -165,28 +171,28 @@ def main():
             '    rounded_style.style.radius = 32.0\n'
             '    rules.items[0] = rounded_style\n'
             '    InstallStyleRules(rules)\n'
-            '    image: ImageProps\n'
+            '    image: Image.Props\n'
             '    image.key = cast(u64)1\n'
             '    image.bounds = Rectangle.{80.0, 80.0, 240.0, 240.0}\n'
             '    image.asset_path = "test.png"\n'
             '    image.alt_text = "Red sample image"\n'
-            '    Image(session, image)\n'
-            '    cropped: ImageProps\n'
+            '    Image.Draw(session, image)\n'
+            '    cropped: Image.Props\n'
             '    cropped.key = cast(u64)2\n'
             '    cropped.bounds = Rectangle.{720.0, 80.0, 160.0, 160.0}\n'
             '    cropped.asset_path = "quadrants.png"\n'
-            '    Image(session, cropped)\n'
-            '    rounded: ImageProps\n'
+            '    Image.Draw(session, cropped)\n'
+            '    rounded: Image.Props\n'
             '    rounded.key = cast(u64)4\n'
             '    rounded.bounds = Rectangle.{450.0, 80.0, 240.0, 240.0}\n'
             '    rounded.asset_path = "test.png"\n'
             '    rounded.class_name = 7\n'
-            '    Image(session, rounded)\n'
-            '    button: ButtonProps\n'
+            '    Image.Draw(session, rounded)\n'
+            '    button: Button.Props\n'
             '    button.key = cast(u64)3\n'
             '    button.bounds = Rectangle.{350.0, 400.0, 240.0, 64.0}\n'
             '    button.label = "Press me"\n'
-            '    if Button(session, button) > 0 { return 1 }\n'
+            '    if Button.Draw(session, button) > 0 { return 1 }\n'
             '    return 0\n}\n'
         )
         solid_png(project / "test.png", 64, 64, (230, 30, 40, 255))
@@ -203,7 +209,7 @@ def main():
         run(["xvfb-run", "-a", "./build/raylib_probe-raylib"], project, env)
         png = png_pixels(capture)
         assert png[:2] == (960, 600), png[:2]
-        assert rgb(png, 200, 200) == (230, 30, 40), "Image(ImageProps) asset failed"
+        assert rgb(png, 200, 200) == (230, 30, 40), "Image.Draw(Image.Props) asset failed"
         assert rgb(png, 760, 120) == (30, 200, 40), "second Image asset failed"
         assert rgb(png, 570, 200) == (230, 30, 40), "raylib image center failed"
         assert rgb(png, 451, 81) == (248, 250, 252), "rounded image corner leaked"

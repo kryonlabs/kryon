@@ -1,5 +1,4 @@
-#import "button_props"
-#import "button"
+Button :: #import "kryon/button";
 #import "control_props"
 #import "drawing_props"
 #import "frame_capture"
@@ -26,13 +25,13 @@ Frame :: () -> s32 {
     TreePointerUpdate(session, pointer)
     BeginFrame(session, cast(u64)1,
         Rectangle.{0.0, 0.0, 320.0, 160.0})
-    button: ButtonProps
+    button: Button.Props
     button.key = cast(u64)2
     button.bounds = Rectangle.{40.0, 48.0, 240.0, 64.0}
     button.label = "Hello, Ziran"
     if clicks > 0 { button.label = "Clicked!" }
     button.tone = cast(ButtonTone)ButtonToneAccent
-    clicks += Button(session, button)
+    clicks += Button.Draw(session, button)
     PaintLine(session, -1, Rectangle.{0.0, 159.0, 320.0, 159.0},
         Color.{1, 2, 3, 255})
     if !EndFrameCapture(session) { return -1 }

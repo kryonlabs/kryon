@@ -1,5 +1,5 @@
+Image :: #import "image";
 #import "transition"
-#import "image_props"
 #import "geometry"
 #import "tree_input"
 
@@ -7,7 +7,7 @@ NavigationBarItem :: struct {
     key: u64
     route: s32
     label: string
-    image: ImageProps
+    image: Image.Props
     icon_shape: string
     active: bool
     disabled: bool
@@ -17,7 +17,7 @@ NavigationBarItem :: struct {
     close_label: string
 }
 
-NavigationBarProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     view_width: s32

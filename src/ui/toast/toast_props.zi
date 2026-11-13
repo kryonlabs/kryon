@@ -8,7 +8,7 @@ ToastState :: struct {
     action_label: string
 }
 
-ToastProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     viewport: Rectangle

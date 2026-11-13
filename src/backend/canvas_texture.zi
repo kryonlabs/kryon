@@ -6,7 +6,7 @@
 #import "page_paint"
 #import "page_texture"
 Bitmaps :: #import "bitmap_store";
-#if #defined(PLATFORM_WEB) {
+#if OS == .WEB {
     // Registered by OpenCanvas; the store owns lifetime and CPU bytes.
     CanvasBitmapUpload :: (width: s32, height: s32, rgba: []u8) -> u32 {
         return cast(u32)PageTextureFromRgba(*rgba[0], width, height)

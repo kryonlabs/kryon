@@ -2,7 +2,8 @@
 // a private WebGL surface paints each mesh before the page composites it.
 #import "geometry"
 #import "drawing_props"
-#import "image_props"
+ImageSchema :: #import "image_props";
+Image :: #import "image";
 #import "page_core"
 #import "page_texture"
 #import "paint_queue"
@@ -65,8 +66,8 @@ page_mesh_right: float32;
 page_mesh_bottom: float32;
 page_mesh_textures: [PAGE_MESH_TEXTURES]PageMeshTexture;
 // This bounded vertex stream fits WebGL's core 16-bit index range.
-page_mesh_vertices: [IMAGE_MESH_POINT_LIMIT * 6]PageMeshVertex;
-page_mesh_indices: [IMAGE_MESH_POINT_LIMIT * 6]u16;
+page_mesh_vertices: [ImageSchema.IMAGE_MESH_POINT_LIMIT * 6]PageMeshVertex;
+page_mesh_indices: [ImageSchema.IMAGE_MESH_POINT_LIMIT * 6]u16;
 page_mesh_vertex_count: s32;
 page_mesh_index_count: s32;
 page_mesh_runs: [PAGE_MESH_RUNS]PageMeshRun;

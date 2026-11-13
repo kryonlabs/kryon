@@ -23,8 +23,12 @@ from toolchain import ZIRAN_ROOT
 ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
-APP = '''Desktop :: #import "kryon/Desktop";
-using UI :: #import "kryon/Widgets";
+APP = '''Desktop :: #import "kryon/desktop_runtime";
+TextField :: #import "kryon/text_field";
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/tree_input"
 using Clipboard :: #import "kryon/SystemClipboardLinux";
 using TextClipboard :: #import "kryon/system_clipboard";
 #import "kryon/Frame"
@@ -123,7 +127,7 @@ main :: () -> s32 {
         if BeginFrame(session, cast(u64)1, Desktop.DesktopViewport()) !=
             FrameStatus.FrameOk { return 4 }
         typed: [64]u8
-        field: TextFieldProps
+        field: TextField.Props
         field.key = cast(u64)7
         field.bounds = Rectangle.{10.0, 10.0, 300.0, 32.0}
         field.value = "keep"
@@ -132,7 +136,7 @@ main :: () -> s32 {
         field.focused = true
         field.input = TextFieldInputFor(KeyboardTake(session),
             KeyboardModifiers(session), TypedTextTake(session, typed[:]))
-        result: TextFieldResult = TextField(session, field)
+        result: TextField.Result = TextField.Draw(session, field)
         if EndFrame(session) != FrameStatus.FrameOk { return 5 }
         if !Desktop.EndDesktopFrame() { return 6 }
         if frame == 0 { Say(2, "ready") }

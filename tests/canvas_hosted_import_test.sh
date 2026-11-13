@@ -19,15 +19,14 @@ PYFIXTURE
 cd "$project"
 
 for mode in hosted native; do
-    defines="--define PLATFORM_WEB"
+    defines=""
     if test "$mode" = hosted; then
-        defines="--define KRYON_HOSTED_UI --define PLATFORM_WEB"
+        defines="--define KRYON_HOSTED_UI"
     fi
     # shellcheck disable=SC2086
-    "$ziran" bundle --project --offline --root "$project/src" \
-        $defines --entry canvas_hosted_import:Probe \
-        -o "$work/$mode.zx" "$project/src/canvas_hosted_import.zi"
-    test "$("$ziran" run "$work/$mode.zx")" = 0
+    "$ziran" build --project --offline --target=c --target-os web --no-main \
+        --root "$project/src" $defines -o "$work/$mode-c" \
+        "$project/src/canvas_hosted_import.zi"
 done
 
 printf '%s\n' 'Canvas hosted/native module imports passed'

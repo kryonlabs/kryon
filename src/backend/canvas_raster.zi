@@ -10,7 +10,8 @@
 Bitmaps :: #import "bitmap_store";
 Lanczos :: #import "lanczos_cache";
 #import "canvas_text"
-#import "image_props"
+ImageSchema :: #import "image_props";
+Image :: #import "image";
 #import "page_font"
 #import "page_paint"
 #import "page_texture"
@@ -327,7 +328,7 @@ RasterImageMesh :: (asset_path: string, texture_id: u32, source: Rectangle,
     points: []Vector2, columns: s32, rows: s32, clip: Rectangle, tint: Color) {
     if columns < 2 || rows < 2 || clip.width <= 0.0 || clip.height <= 0.0 { return }
     count: s64 = cast(s64)columns * cast(s64)rows
-    if count > cast(s64)IMAGE_MESH_POINT_LIMIT || points.count < count { return }
+    if count > cast(s64)ImageSchema.IMAGE_MESH_POINT_LIMIT || points.count < count { return }
     texture: Texture2D
     if Bitmaps.BitmapTagged(texture_id) {
         texture = CanvasBitmapTexture(texture_id)

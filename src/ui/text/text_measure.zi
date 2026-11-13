@@ -1,3 +1,4 @@
+using Text :: #import "text_props";
 // The width a line of text takes, so a caller can place controls right
 // beside a label, and the height a wrapped paragraph takes, so it can place
 // what follows below it. It stays apart from the Text widget, so portable
@@ -5,25 +6,23 @@
 // reviewed bytes.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "text_props"
     host_api :: #system_library "host_api";
-    TextWidthHostedHost :: (session: Session, props: TextProps) -> s32 #foreign host_api;
+    TextWidthHostedHost :: (session: Session, props: Text.Props) -> s32 #foreign host_api;
     // A portable app asks its host, which measures as Text draws.
     #program_export
-    TextWidth :: (session: Session, props: TextProps) -> s32 { return TextWidthHostedHost(session, props) }
-    TextHeightHostedHost :: (session: Session, props: TextProps) -> s32 #foreign host_api;
+    TextWidth :: (session: Session, props: Text.Props) -> s32 { return TextWidthHostedHost(session, props) }
+    TextHeightHostedHost :: (session: Session, props: Text.Props) -> s32 #foreign host_api;
     #program_export
-    TextHeight :: (session: Session, props: TextProps) -> s32 { return TextHeightHostedHost(session, props) }
+    TextHeight :: (session: Session, props: Text.Props) -> s32 { return TextHeightHostedHost(session, props) }
 } else {
     #import "session"
     #import "font_metrics"
-    #import "text_props"
-    #import "kryon/text_widget"
+    #import "text"
     #import "text_layout"
     // The width props.text takes on one line, in the font and typeface Text
     // draws it with.
     #program_export
-    TextWidth :: (session: Session, props: TextProps) -> s32 {
+    TextWidth :: (session: Session, props: Text.Props) -> s32 {
         unused session
         prepared: PreparedText = PrepareText(props, TextFaceOf(props))
         return GlyphWidth(props.text, prepared.font, prepared.typeface)
@@ -32,7 +31,7 @@
     // lines wrapped as props.wrap says, so a caller can place what follows
     // a paragraph right below it.
     #program_export
-    TextHeight :: (session: Session, props: TextProps) -> s32 {
+    TextHeight :: (session: Session, props: Text.Props) -> s32 {
         unused session
         prepared: PreparedText = PrepareText(props, TextFaceOf(props))
         return TextLayoutTotalHeight(prepared.line_count, prepared.line_height,
@@ -51,7 +50,7 @@ TextPageRange :: struct {
 // every visible character stays in one page, including an oversized word.
 // With room for less than one line no progress is reported.
 #program_export
-TextPage :: (session: Session, props: TextProps, start: s32) -> TextPageRange {
+TextPage :: (session: Session, props: Text.Props, start: s32) -> TextPageRange {
     result := TextPageRange.{start, start, start}
     count := cast(s32)props.text.count
     if start < 0 || start >= count || props.bounds.width <= 0.0 || props.bounds.height <= 0.0 {

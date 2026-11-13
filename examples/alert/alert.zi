@@ -1,12 +1,16 @@
-using UI :: #import "kryon/Widgets";
+Alert :: #import "kryon/alert";
+Button :: #import "kryon/button";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 
-state: AlertState;
+state: Alert.AlertState;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Alert", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Alert", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
-    Alert(session, AlertProps.{.disabled = example_disabled, .key = 10, .bounds = bounds, .title = "Changes saved", .description = "Your settings are up to date.", .dismissible = true}, *state)
-    if Button(session, ButtonProps.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, 160.0, 40.0}, .label = "Show alert"}) != 0 { state.dismissed = false }
+    Alert.Draw(session, Alert.Props.{.disabled = example_disabled, .key = 10, .bounds = bounds, .title = "Changes saved", .description = "Your settings are up to date.", .dismissible = true}, *state)
+    if Button.Draw(session, Button.Props.{.disabled = example_disabled, .key = 11, .bounds = .{bounds.x, bounds.y + 200.0, 160.0, 40.0}, .label = "Show alert"}) != 0 { state.dismissed = false }
     return 0
 }
 

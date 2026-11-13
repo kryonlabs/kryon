@@ -1,15 +1,14 @@
+using PropsModule :: #import "color_picker_props";
+Slider :: #import "slider";
 Theme :: #import "theme";
 #import "session"
 #import "color_picker_behavior"
-#import "color_picker_props"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
 #import "paint_queue"
 #import "slider_behavior"
-#import "slider_props"
-#import "slider"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -54,7 +53,7 @@ ColorPickerDefaultFace :: (swatch: bool,
 }
 
 #program_export
-ColorPickerFace :: (props: ColorPickerProps,
+ColorPickerFace :: (props: PropsModule.Props,
     swatch: bool) -> StyleFrame {
     kind: s32 = StyleKindColorPicker()
     if swatch { kind = StyleKindColorPickerSwatch() }
@@ -107,8 +106,7 @@ ColorPickerSliderBounds :: (row: Rectangle, thumb_radius: float32,
 
 // A zero key uses the containing tree's next key; child sliders use stable
 // per-channel keys. The returned values belong to the caller's next frame.
-#program_export
-ColorPicker :: (session: Session, props: ColorPickerProps) -> ColorPickerResult {
+Draw :: (session: Session, props: PropsModule.Props) -> ColorPickerResult {
     result: ColorPickerResult
     result.node = -1
     index: s32 = 0
@@ -140,7 +138,7 @@ ColorPicker :: (session: Session, props: ColorPickerProps) -> ColorPickerResult 
     swatch_face: StyleFrame = ColorPickerFace(props, true)
     slider_state: s32 = ButtonStateNormal
     if props.disabled { slider_state = ButtonStateDisabled }
-    thumb_face: StyleFrame = SliderFaceFor(props.id, props.class_name, props.disabled,
+    thumb_face: StyleFrame = Slider.SliderFaceFor(props.id, props.class_name, props.disabled,
         StyleKindSliderThumb(), StyleAny(),
         cast(ButtonTone)ButtonToneAccent, slider_state)
     thumb_radius: float32 = cast(float32)SliderThumbSizeForStyle(
@@ -175,7 +173,7 @@ ColorPicker :: (session: Session, props: ColorPickerProps) -> ColorPickerResult 
     }
     index = 0
     while index < channels {
-        slider: SliderProps
+        slider: Slider.Props
         slider.key = cast(u64)(index + 1)
         row: Rectangle
         if props.picker {
@@ -199,7 +197,7 @@ ColorPicker :: (session: Session, props: ColorPickerProps) -> ColorPickerResult 
         slider.max = 1.0
         slider.disabled = props.disabled
         slider.class_name = props.class_name
-        step: SliderStep = Slider(session, slider)
+        step: Slider.SliderStep = Slider.Draw(session, slider)
         result.values[index] = step.value
         if step.changed { result.changed = true }
         label_y: s32 = cast(s32)row.y

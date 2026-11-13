@@ -3,8 +3,7 @@
 
 #import "geometry"
 #import "paint_queue"
-#import "text_props"
-#import "text"
+Text :: #import "kryon/text";
 #import "tree"
 #import "ziran_widget_noop_host"
 
@@ -27,12 +26,12 @@ QueuedText :: (into: []u8) -> string {
     return TextView(into[0:used])
 }
 
-ShowText :: (text: string, width: float32, wrap: TextWrap) -> string {
+ShowText :: (text: string, width: float32, wrap: Text.Wrap) -> string {
     PaintClear(TestSession())
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 80.0})
-    props: TextProps = .{.bounds = Rectangle.{10.0, 10.0, width, 20.0}, .text = text, .font = 10,
+    props: Text.Props = .{.bounds = Rectangle.{10.0, 10.0, width, 20.0}, .text = text, .size = 10,
         .wrap = wrap}
-    Text(TestSession(), props)
+    Text.Draw(TestSession(), props)
     unused TreeFinish(TestSession())
     return QueuedText(shown[:])
 }
@@ -43,13 +42,13 @@ shown: [128]u8;
 #program_export
 main :: () -> s32 {
     // A name that fits is shown whole, without dots.
-    if ShowText("Yoga", 60.0, TextWrap.TextWrapEllipsis) != "Yoga" { return 1 }
+    if ShowText("Yoga", 60.0, Text.Wrap.TextWrapEllipsis) != "Yoga" { return 1 }
     // "Jumping Rope" is 60 wide; in 50 the start that fits before the 15
     // wide dots is 35 wide, "Jumping".
-    if ShowText("Jumping Rope", 50.0, TextWrap.TextWrapEllipsis) != "Jumping..." { return 2 }
+    if ShowText("Jumping Rope", 50.0, Text.Wrap.TextWrapEllipsis) != "Jumping..." { return 2 }
     // Without the ellipsis the line is clipped by its bounds, as before.
-    if ShowText("Jumping Rope", 50.0, TextWrap.TextWrapNone) != "Jumping Rope" { return 3 }
+    if ShowText("Jumping Rope", 50.0, Text.Wrap.TextWrapNone) != "Jumping Rope" { return 3 }
     // A multi-byte character is never cut in half: "Ä" is two bytes.
-    if ShowText("ÄÄÄÄÄÄ", 30.0, TextWrap.TextWrapEllipsis) != "Ä..." { return 4 }
+    if ShowText("ÄÄÄÄÄÄ", 30.0, Text.Wrap.TextWrapEllipsis) != "Ä..." { return 4 }
     return 0
 }

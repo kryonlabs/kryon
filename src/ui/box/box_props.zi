@@ -1,7 +1,7 @@
 #import "drawing_props"
 #import "geometry"
 
-BoxProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     class_name: s32

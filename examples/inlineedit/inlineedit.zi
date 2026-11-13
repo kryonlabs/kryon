@@ -2,8 +2,13 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
-#import "kryon/inline_edit"
+Box :: #import "kryon/box";
+InlineEdit :: #import "kryon/inline_edit";
+Text :: #import "kryon/text";
+TextField :: #import "kryon/text_field";
+#import "kryon/drawing_props"
+#import "kryon/key_input"
+#import "kryon/tree_input"
 #import "kryon/input_protocol"
 
 WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
@@ -43,7 +48,7 @@ bounds: Rectangle;
 
 
 
-inline_state: InlineEditState;
+inline_state: InlineEdit.InlineEditState;
 
 
 
@@ -58,18 +63,18 @@ gallery_typed: [128]u8;
 Prepare :: (session: Session, scene: s32) {
     bounds = GalleryBounds(Rectangle.{24.0, 96.0, 432.0, 104.0})
     if !inputs_ready {
-        inline_state = InlineEditStateFor("Launch checklist")
+        inline_state = InlineEdit.InlineEditStateFor("Launch checklist")
         inputs_ready = true
     }
 }
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    gallery_input: TextFieldInput
+    gallery_input: TextField.Input
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "InlineEdit", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "InlineEdit", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 2
     Prepare(session, scene)
@@ -78,7 +83,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         gallery_input_key = KeyboardTake(session)
         gallery_input = TextFieldInputFor(gallery_input_key, KeyboardModifiers(session), TypedTextTake(session, gallery_typed[:]))
     }
-    unused InlineEdit(session, InlineEditProps.{.key = 602, .bounds = bounds,
+    unused InlineEdit.Draw(session, InlineEdit.Props.{.key = 602, .bounds = bounds,
         .value = "Launch checklist", .placeholder = "Document title",
         .input = gallery_input, .disabled = disabled, .focus_visible = true, .height = 42.0,
         .font_size = 17.0}, *inline_state)

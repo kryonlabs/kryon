@@ -1,12 +1,11 @@
-#import "box"
+Box :: #import "box";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "style"
 #import "style_sheet"
 #import "session"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -23,7 +22,7 @@ OneTimeCodeStyle :: struct {
     font_size: float32
 }
 
-OneTimeCodeProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32
@@ -130,7 +129,7 @@ OneTimeCodeAppend :: (state: *OneTimeCodeState,
 
 #program_export
 OneTimeCodeApply :: (state: *OneTimeCodeState,
-    props: OneTimeCodeProps) -> OneTimeCodeResult {
+    props: Props) -> OneTimeCodeResult {
     result: OneTimeCodeResult
     result.node = -1
     result.cursor = state.cursor
@@ -192,21 +191,19 @@ OneTimeCodeHostedReply :: struct { state: OneTimeCodeState; result: OneTimeCodeR
 
 #if #defined(KRYON_HOSTED_UI) {
     onetimecode_host_api :: #system_library "host_api";
-    OneTimeCodeHostedHost :: (session: Session, props: OneTimeCodeProps,
+    OneTimeCodeHostedHost :: (session: Session, props: Props,
         state: OneTimeCodeState) -> OneTimeCodeHostedReply #foreign onetimecode_host_api;
-    #program_export
-    OneTimeCode :: (session: Session, props: OneTimeCodeProps,
+        Draw :: (session: Session, props: Props,
     state: *OneTimeCodeState) -> OneTimeCodeResult {
         reply := OneTimeCodeHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
 } else {
-    #program_export
-    OneTimeCode :: (session: Session, props: OneTimeCodeProps,
+        Draw :: (session: Session, props: Props,
     state: *OneTimeCodeState) -> OneTimeCodeResult { return OneTimeCodeCore(session, props, state, true) }
     #program_export
-    OneTimeCodeCore :: (session: Session, props: OneTimeCodeProps,
+    OneTimeCodeCore :: (session: Session, props: Props,
     state: *OneTimeCodeState, effects: bool) -> OneTimeCodeResult {
     unused effects
     result := OneTimeCodeApply(state, props)
@@ -246,7 +243,7 @@ OneTimeCodeHostedReply :: struct { state: OneTimeCodeState; result: OneTimeCodeR
     x := bounds.x + (bounds.width - total) * 0.5
     index := 0
     while index < length {
-        slot := Box(session, .{.key = props.key + 101 + cast(u64)cast(u32)index,
+        slot := Box.Draw(session, .{.key = props.key + 101 + cast(u64)cast(u32)index,
                 .bounds = Rectangle.{x, bounds.y, style.slot_width, style.slot_height},
                 .fill = ColorFromPacked(ifx props.disabled then CurrentTheme().colors.text_disabled else resolved.background),
                 .border = ColorFromPacked(ifx index < state.count then CurrentText() else resolved.border),
@@ -256,16 +253,16 @@ OneTimeCodeHostedReply :: struct { state: OneTimeCodeState; result: OneTimeCodeR
             shown: [1]u8
             shown[0] = state.bytes[index]
             if props.masked { shown[0] = cast(u8)42 }
-            text: TextProps
+            text: Text.Props
             text.key = props.key + 201 + cast(u64)cast(u32)index
             text.bounds = Rectangle.{x, bounds.y, style.slot_width, style.slot_height}
             text.text = TextView(shown[:])
-            text.font = cast(s32)resolved.font_size
+            text.size = cast(s32)resolved.font_size
             text.class_name = props.slot_class_name
             text.align = .TextAlignCenter
             text.vertical_align = .TextAlignCenter
             text.wrap = .TextWrapNone
-            Text(session, text)
+            Text.Draw(session, text)
         }
         x += style.slot_width + style.gap
         if length >= 6 && index == length / 2 - 1 { x += style.group_gap }

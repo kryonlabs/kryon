@@ -1,6 +1,5 @@
+Button :: #import "button";
 #import "button_behavior"
-#import "button"
-#import "button_props"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -21,7 +20,7 @@ using ButtonState;
 using WidgetKind;
 using StyleField;
 
-ButtonGroupProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     navigation: s32
@@ -54,7 +53,7 @@ ButtonGroupResult :: struct {
 }
 
 #program_export
-ButtonGroupDefaultFace :: (props: ButtonGroupProps) -> StyleData {
+ButtonGroupDefaultFace :: (props: Props) -> StyleData {
     face: StyleData
     face.fields = cast(u32)StyleBackground | cast(u32)StyleBorder |
         cast(u32)StyleBorderWidth | cast(u32)StyleRadius
@@ -71,7 +70,7 @@ ButtonGroupDefaultFace :: (props: ButtonGroupProps) -> StyleData {
 }
 
 #program_export
-ButtonGroupInstalledFaceFor :: (props: ButtonGroupProps) -> StyleData {
+ButtonGroupInstalledFaceFor :: (props: Props) -> StyleData {
     kind := props.style_kind
     if kind <= 0 { kind = StyleKindButton() }
     face := ResolveInstalledStyleRules(ButtonGroupDefaultFace(props),
@@ -98,7 +97,7 @@ ButtonGroupInstalledFaceFor :: (props: ButtonGroupProps) -> StyleData {
 }
 
 #program_export
-ButtonGroupNextFocus :: (items: []ButtonProps, current: s32,
+ButtonGroupNextFocus :: (items: []Button.Props, current: s32,
     navigation: s32) -> s32 {
     if items.count == 0 { return -1 }
     result := current
@@ -122,9 +121,8 @@ ButtonGroupNextFocus :: (items: []ButtonProps, current: s32,
     return -1
 }
 
-#program_export
-ButtonGroup :: (session: Session, props: ButtonGroupProps,
-    items: []ButtonProps, state: *ButtonGroupState) -> ButtonGroupResult {
+Draw :: (session: Session, props: Props,
+    items: []Button.Props, state: *ButtonGroupState) -> ButtonGroupResult {
     result: ButtonGroupResult
     result.node = -1
     result.focus_node = -1
@@ -136,7 +134,7 @@ ButtonGroup :: (session: Session, props: ButtonGroupProps,
     natural_width: float32 = 0.0
     at: s32 = 0
     while at < cast(s32)items.count {
-        measured := ButtonMeasure(items[at])
+        measured := Button.ButtonMeasure(items[at])
         if measured.height > height { height = measured.height }
         natural_width += measured.width
         at += 1
@@ -189,7 +187,7 @@ ButtonGroup :: (session: Session, props: ButtonGroupProps,
         item.key = WidgetPartKey(key, cast(s32)101 + at)
         if item.id == 0 { item.id = at + 1 }
         item.bounds = Rectangle.{x, result.bounds.y,
-            ifx squeezed then item_width else ButtonMeasure(item).width, height}
+            ifx squeezed then item_width else Button.ButtonMeasure(item).width, height}
         if item.emphasis == ButtonEmphasis.ButtonEmphasisFilled {
             item.emphasis = ButtonEmphasis.ButtonEmphasisGhost
         }
@@ -198,7 +196,7 @@ ButtonGroup :: (session: Session, props: ButtonGroupProps,
         item_previous := TreePrevious(session, result.node, item.key, WidgetKindButton)
         pressed := item_previous >= 0 && TreePressedAt(session, item_previous)
         submitted_before := TreeSubmittedCount(session)
-        activated_result := Button(session, item)
+        activated_result := Button.Draw(session, item)
         submitted_after := TreeSubmittedCount(session)
         child: s32 = -1
         if submitted_after > submitted_before { child = submitted_after - 1 }

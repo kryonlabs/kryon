@@ -1,20 +1,16 @@
-#import "box_props"
-#import "box"
+Shape :: #import "shape";
+Box :: #import "box";
+SvgIcon :: #import "svgicon";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
 #import "session"
 #import "semantic"
-#import "shape_props"
-#import "shape"
 #import "style"
 #import "style_sheet"
-#import "svg_icon_props"
-#import "svgicon"
 #import "text_align"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -30,7 +26,7 @@ TimelineTone :: enum {
     TimelineToneDanger :: 4
 }
 
-TimelineProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     title: string
@@ -72,7 +68,7 @@ TimelineToneColor :: (tone: TimelineTone) -> u32 {
 }
 
 #program_export
-TimelineLayoutFor :: (props: TimelineProps) -> TimelineLayout {
+TimelineLayoutFor :: (props: Props) -> TimelineLayout {
     layout: TimelineLayout
     layout.bounds = props.bounds
     if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return layout }
@@ -101,8 +97,7 @@ TimelineLayoutFor :: (props: TimelineProps) -> TimelineLayout {
     return layout
 }
 
-#program_export
-Timeline :: (session: Session, props: TimelineProps) -> TimelineResult {
+Draw :: (session: Session, props: Props) -> TimelineResult {
     result: TimelineResult
     result.layout = TimelineLayoutFor(props)
     result.tone_color = TimelineToneColor(props.tone)
@@ -126,36 +121,36 @@ Timeline :: (session: Session, props: TimelineProps) -> TimelineResult {
             ifx dark then cast(u32)22 else cast(u32)12)
         mark_border = StateLayer(CurrentBorder(), result.tone_color, 25)
     }
-    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 1),
+    unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 1),
         .bounds = result.layout.mark, .id = props.id, .class_name = props.class_name,
         .fill = ColorFromPacked(mark_fill), .border = ColorFromPacked(mark_border),
         .radius = 14.0})
     icon := ifx props.icon_shape != "" then props.icon_shape else "F:M12 10h.01M12 3a9 9 0 100 18 9 9 0 000-18"
     icon_bounds := Rectangle.{result.layout.mark.x + 7.0,
         result.layout.mark.y + 7.0, 14.0, 14.0}
-    unused SvgIcon(session, SvgIconProps.{.bounds = icon_bounds, .shape = icon,
+    unused SvgIcon.Draw(session, SvgIcon.Props.{.bounds = icon_bounds, .shape = icon,
         .color = ColorFromPacked(result.tone_color)})
     if result.layout.has_connector {
         connector := ifx CurrentTheme().dark then StateLayer(CurrentBorder(), CurrentBorderStrong(), 45) else CurrentBorder()
-        unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 2),
+        unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 2),
             .bounds = result.layout.connector, .id = props.id, .class_name = props.class_name,
             .fill = ColorFromPacked(connector), .radius = 0.0})
     }
-    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 3),
-        .bounds = result.layout.title, .text = props.title, .font = Text14,
+    unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 3),
+        .bounds = result.layout.title, .text = props.title, .size = Text.Text14,
         .id = props.id, .class_name = props.class_name,
-        .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapEllipsis})
+        .align = TextAlign.TextAlignStart, .wrap = Text.Wrap.TextWrapEllipsis})
     if props.time != "" {
-        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 4),
-            .bounds = result.layout.time, .text = props.time, .font = Text12,
+        unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 4),
+            .bounds = result.layout.time, .text = props.time, .size = Text.Text12,
             .id = props.id, .class_name = props.class_name,
-            .align = TextAlign.TextAlignEnd, .wrap = TextWrap.TextWrapEllipsis})
+            .align = TextAlign.TextAlignEnd, .wrap = Text.Wrap.TextWrapEllipsis})
     }
     if props.description != "" {
-        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 5),
+        unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 5),
             .bounds = result.layout.description, .text = props.description,
-            .font = Text14, .id = props.id, .class_name = props.class_name,
-            .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapAnywhere})
+            .size = Text.Text14, .id = props.id, .class_name = props.class_name,
+            .align = TextAlign.TextAlignStart, .wrap = Text.Wrap.TextWrapAnywhere})
     }
     unused TreePopScope(session)
     return result

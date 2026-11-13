@@ -1,4 +1,9 @@
-using UI :: #import "kryon/Widgets";
+Button :: #import "kryon/button";
+Image :: #import "kryon/image";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree_input"
 
 clicks: s32;
 frames: s32;
@@ -6,24 +11,24 @@ frames: s32;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     frames += 1
-    button: ButtonProps
+    button: Button.Props
     button.key = cast(u64)1
     button.bounds = Rectangle.{40.0, 40.0, 240.0, 64.0}
     button.label = "Click the portable app"
-    clicks += Button(session, button)
-    label: TextProps
+    clicks += Button.Draw(session, button)
+    label: Text.Props
     label.key = cast(u64)2
     label.bounds = Rectangle.{40.0, 128.0, 400.0, 40.0}
     label.text = "Zx state persists"
     if clicks > 0 { label.text = "Clicked!" }
-    label.font = 24
-    Text(session, label)
-    image: ImageProps
+    label.size = 24
+    Text.Draw(session, label)
+    image: Image.Props
     image.key = cast(u64)3
     image.bounds = Rectangle.{500.0, 80.0, 200.0, 200.0}
     image.asset_path = "assets/red.png"
     image.alt_text = "Red square"
-    Image(session, image)
+    Image.Draw(session, image)
     key := KeyboardTake(session)
     typed := TypedCodepointTake(session)
     if key == 65 || typed == 233 {

@@ -7,15 +7,14 @@
 #import "style"
 #import "style_sheet"
 #import "text_align"
-#import "text_props"
-#import "text"
+Text :: #import "kryon/text";
 #import "tree"
 #import "tree_draw"
 #import "widget_kind"
 #import "ziran_text_widget_host"
 
 using TextAlign;
-using TextWrap;
+using Text.Wrap;
 using WidgetKind;
 using StyleField;
 using FrameStatus;
@@ -46,11 +45,11 @@ Frame :: () -> s32 {
     rule.style.opacity = 0.5
     rules.items[0] = rule
     InstallStyleRules(rules)
-    props: TextProps = .{.key = cast(u64)7, .bounds = Rectangle.{10.0, 20.0, 50.0, 24.0},
-        .text = "Alpha beta\nGamma", .class_name = 7, .wrap = cast(TextWrap)TextWrapAuto,
+    props: Text.Props = .{.key = cast(u64)7, .bounds = Rectangle.{10.0, 20.0, 50.0, 24.0},
+        .text = "Alpha beta\nGamma", .class_name = 7, .wrap = cast(Text.Wrap)TextWrapAuto,
         .align = cast(TextAlign)TextAlignCenter, .strikethrough = true}
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Text(TestSession(), props)
+    Text.Draw(TestSession(), props)
     phase = 1
     return 0
 }
@@ -62,12 +61,12 @@ main :: () -> s32 {
     if Frame() != 42 || TextHostFailed() ||
     TextHostLabels() != 3 || TextHostFills() != 2 { return 2 }
     TextHostEmphasis()
-    ranges: [6]TextRange = .[TextRange.{1, 8}, TextRange.{2, 4},
-    TextRange.{9, 11}, TextRange.{8, 11}, TextRange.{-1, 2}, TextRange.{0, 99}]
-    props := TextProps.{.key = cast(u64)8, .bounds = Rectangle.{0.0, 0.0, 50.0, 28.0},
+    ranges: [6]Text.Range = .[Text.Range.{1, 8}, Text.Range.{2, 4},
+    Text.Range.{9, 11}, Text.Range.{8, 11}, Text.Range.{-1, 2}, Text.Range.{0, 99}]
+    props := Text.Props.{.key = cast(u64)8, .bounds = Rectangle.{0.0, 0.0, 50.0, 28.0},
         .text = "ab cd\né水", .class_name = 7, .strong = ranges[:]}
     BeginFrame(TestSession(), cast(u64)2, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Text(TestSession(), props)
+    Text.Draw(TestSession(), props)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TextHostFailed() ||
     TextHostLabels() != 5 || TextHostFills() != 0 ||
     TreeNodeAt(TestSession(), 1).semantic_label != props.text {
@@ -76,7 +75,7 @@ main :: () -> s32 {
     // Typed text keeps the whole text's layout and label and paints only
     // its typed characters, never part of one.
     TextHostTyping()
-    typed := TextProps.{.key = cast(u64)9, .bounds = Rectangle.{0.0, 0.0, 60.0, 28.0},
+    typed := Text.Props.{.key = cast(u64)9, .bounds = Rectangle.{0.0, 0.0, 60.0, 28.0},
         .text = "ab cd\né水", .class_name = 7, .align = cast(TextAlign)TextAlignCenter,
         .typing = true, .typed = 4}
     if TypedFrame(typed, 3) != 1 || TextHostTypedValue(0) != "ab c" ||
@@ -122,11 +121,11 @@ LinkChecks :: () -> s32 {
     name: [4]u8 = .[cast(u8)108, cast(u8)105, cast(u8)110, cast(u8)107]
     if !SetStyleTokenColorBytes(name[:], cast(u32)0x80a0ffff) { return 9 }
     TextHostLinks()
-    ranges: [1]TextRange = .[TextRange.{3, 10}]
-    linked := TextProps.{.key = cast(u64)10, .bounds = Rectangle.{0.0, 0.0, 80.0, 28.0},
+    ranges: [1]Text.Range = .[Text.Range.{3, 10}]
+    linked := Text.Props.{.key = cast(u64)10, .bounds = Rectangle.{0.0, 0.0, 80.0, 28.0},
         .text = "ab cdef gh", .class_name = 7, .links = ranges[:]}
     BeginFrame(TestSession(), cast(u64)8, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Text(TestSession(), linked)
+    Text.Draw(TestSession(), linked)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TextHostFailed() ||
     TextHostLabels() != 3 || TextHostFills() != 2 {
         return 10
@@ -150,24 +149,24 @@ LinkChecks :: () -> s32 {
     !SameColor(TextHostLinkFillColor(0), 0x80, 0xa0, 0xff, 127) {
         return 14
     }
-    if TextLinkAt(TestSession(), linked, 35.0, 5.0) != 0 ||
-    TextLinkAt(TestSession(), linked, 15.0, 5.0) != -1 ||
-    TextLinkAt(TestSession(), linked, 5.0, 20.0) != 0 ||
-    TextLinkAt(TestSession(), linked, 45.0, 20.0) != -1 ||
-    TextLinkAt(TestSession(), linked, 35.0, 40.0) != -1 {
+    if Text.TextLinkAt(TestSession(), linked, 35.0, 5.0) != 0 ||
+    Text.TextLinkAt(TestSession(), linked, 15.0, 5.0) != -1 ||
+    Text.TextLinkAt(TestSession(), linked, 5.0, 20.0) != 0 ||
+    Text.TextLinkAt(TestSession(), linked, 45.0, 20.0) != -1 ||
+    Text.TextLinkAt(TestSession(), linked, 35.0, 40.0) != -1 {
         return 15
     }
     plain := linked
     plain.links = ranges[:0]
-    if TextLinkAt(TestSession(), plain, 35.0, 5.0) != -1 { return 16 }
+    if Text.TextLinkAt(TestSession(), plain, 35.0, 5.0) != -1 { return 16 }
     // Disabled text receives one fade, with or without a palette rule.
-    face := TextFace.{.fallback_font = 14,
+    face := Text.TextFace.{.fallback_font = 14,
         .value = StyleData.{.fields = cast(u32)StyleForeground | cast(u32)StyleOpacity,
             .foreground = cast(u32)0xf2f0ffff, .opacity = 0.45}}
-    dim := PrepareText(TextProps.{.font = 14, .disabled = true}, face)
+    dim := Text.PrepareText(Text.Props.{.size = 14, .disabled = true}, face)
     if dim.color.a != cast(u8)114 { return 17 }
     face.value.fields = cast(u32)StyleForeground
-    dim = PrepareText(TextProps.{.font = 14, .disabled = true}, face)
+    dim = Text.PrepareText(Text.Props.{.size = 14, .disabled = true}, face)
     if dim.color.a != cast(u8)114 { return 18 }
     ClearStyleTokenColors()
     return 0
@@ -175,9 +174,9 @@ LinkChecks :: () -> s32 {
 
 // Paints one frame of typed text and returns how many lines it painted, or
 // -1 when the frame failed.
-TypedFrame :: (props: TextProps, frame: u64) -> s32 {
+TypedFrame :: (props: Text.Props, frame: u64) -> s32 {
     BeginFrame(TestSession(), frame, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Text(TestSession(), props)
+    Text.Draw(TestSession(), props)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TextHostFailed() {
         return -1
     }

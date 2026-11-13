@@ -152,14 +152,15 @@ def main():
         paths = ['--root', WORK, '--module-path', ROOT / 'tests/page_fake',
                  '--module-path', ROOT / 'src/backend', *UI_MODULE_ARGS,
                  '--module-path', ZIRAN_ROOT / 'std']
+        target = ['--target-os', 'web', '--target-cpu', 'wasm32']
         define = ['--define', 'PLATFORM_WEB']
         ir = WORK / 'ir'
-        run([ZIRAN, 'ir', *paths, *define, '-o', ir, fixture])
+        run([ZIRAN, 'ir', *paths, *target, *define, '-o', ir, fixture])
         for form in ('source', 'saved'):
             source = fixture if form == 'source' else ir / 'app_keys.zir'
             modules = paths if form == 'source' else ['--root', ir]
             run([ZIRAN, 'build', '--target=c', '--exe', '--entry', 'app_keys:main',
-                 *modules, *define, '-o', WORK / 'native', source])
+                 *modules, *target, *define, '-o', WORK / 'native', source])
             run([WORK / 'native/app_keys'])
             print(f'{form}: native Canvas AppKey delivery passed', flush=True)
 

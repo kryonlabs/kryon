@@ -5,8 +5,7 @@ Scroll :: #import "gtk_scroll_linux";
 #import "session"
 #import "geometry"
 #import "drawing_props"
-#import "image_props"
-#import "kryon/image_widget"
+Image :: #import "image";
 using Bitmaps :: #import "bitmap_image";
 using Bytes :: #import "std/vec";
 
@@ -438,7 +437,7 @@ AtlasEnd :: (p: *GtkPainter, key: u64) -> bool {
             slot:=p.regions[row*columns+column]
             width:=p.width-column*64; if width>64 { width=64 }
             hh:=p.height-row*64; if hh>64 { hh=64 }
-            Image(p.session,ImageProps.{.key=key+cast(u64)(row*columns+column),
+            Image.Draw(p.session,Image.Props.{.key=key+cast(u64)(row*columns+column),
                 .bounds=.{p.bounds.x+cast(float32)(column*64),p.bounds.y+cast(float32)(row*64),cast(float32)width,cast(float32)hh},
                 .source=.{cast(float32)((slot%32)*64),cast(float32)((slot/32)*64),cast(float32)width,cast(float32)hh},
                 .texture=p.texture,.tint=cast(u32)0xffffffff})
@@ -471,6 +470,6 @@ GtkPainterEnd :: (p: *GtkPainter, key: u64) -> bool {
             p.presented_valid = true
         }
     }
-    Image(p.session,ImageProps.{.key=key,.bounds=p.bounds,.texture=p.texture,.tint=cast(u32)0xffffffff})
+    Image.Draw(p.session,Image.Props.{.key=key,.bounds=p.bounds,.texture=p.texture,.tint=cast(u32)0xffffffff})
     return p.texture.id!=0
 }

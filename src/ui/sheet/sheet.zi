@@ -1,15 +1,15 @@
+using Sheet :: #import "sheet_props";
+Tooltip :: #import "tooltip";
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
 #import "semantic"
 #import "session"
-#import "sheet_props"
 #import "style"
 #import "style_sheet"
 #import "surface"
 #import "theme"
-#import "tooltip_props"
 #import "tooltip_common"
 #import "tree"
 #import "widget_kind"
@@ -20,7 +20,7 @@ using StyleField;
 using WidgetKind;
 
 #program_export
-SheetLayoutFor :: (props: SheetProps, progress: float32,
+SheetLayoutFor :: (props: Sheet.Props, progress: float32,
     drag_offset: float32) -> SheetGeometry {
     geometry: SheetGeometry
     if progress < 0.0 { progress = 0.0 }
@@ -122,7 +122,7 @@ SheetAdvanceFocus :: (state: *SheetState, count: s32,
 
 #program_export
 SheetApply :: (state: *SheetState,
-    props: SheetProps) -> SheetResult {
+    props: Sheet.Props) -> SheetResult {
     result: SheetResult
     result.node = -1; result.scrim_node = -1; result.title_node = -1
     result.close_node = -1; result.content_node = -1
@@ -220,7 +220,7 @@ SheetApply :: (state: *SheetState,
 }
 
 #program_export
-SheetInstalledFaceFor :: (props: SheetProps, state: s32) -> StyleData {
+SheetInstalledFaceFor :: (props: Sheet.Props, state: s32) -> StyleData {
     facts := StyleControlRoleFacts(StyleKindModal(), props.id,
         props.class_name, StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
     return ResolveInstalledStyleRules(SheetSurfaceDefaultStyle(), facts, state)
@@ -232,9 +232,9 @@ SheetHostedReply :: struct {
 }
 #if #defined(KRYON_HOSTED_UI) {
     sheet_host_api :: #system_library "host_api";
-    SheetBeginHostedHost :: (session: Session, props: SheetProps, state: SheetState) -> SheetHostedReply #foreign sheet_host_api;
+    SheetBeginHostedHost :: (session: Session, props: Sheet.Props, state: SheetState) -> SheetHostedReply #foreign sheet_host_api;
     #program_export
-    SheetBegin :: (session: Session, props: SheetProps,
+    SheetBegin :: (session: Session, props: Sheet.Props,
     state: *SheetState) -> SheetResult {
         reply := SheetBeginHostedHost(session, props, state.*)
         state.* = reply.state
@@ -243,10 +243,10 @@ SheetHostedReply :: struct {
 } else {
     #import "paint_queue"
     #program_export
-    SheetBegin :: (session: Session, props: SheetProps,
+    SheetBegin :: (session: Session, props: Sheet.Props,
     state: *SheetState) -> SheetResult { return SheetBeginCore(session, props, state, true) }
     #program_export
-SheetBeginCore :: (session: Session, props: SheetProps,
+SheetBeginCore :: (session: Session, props: Sheet.Props,
     state: *SheetState, effects: bool) -> SheetResult {
     unused effects
     result := SheetApply(state, props)
@@ -346,8 +346,7 @@ SheetEnd :: (session: Session) -> bool {
 
 }
 
-#program_export
-Sheet :: (session: Session, props: SheetProps,
+Draw :: (session: Session, props: Sheet.Props,
     state: *SheetState) -> SheetResult {
     result := SheetBegin(session, props, state)
     if result.content_node >= 0 { unused SheetEnd(session) }

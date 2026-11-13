@@ -1,4 +1,4 @@
-"""Compile the public Widgets API as an ordinary downstream application."""
+"""Compile the public widget packages as an ordinary downstream application."""
 import os
 import shutil
 import subprocess
@@ -11,7 +11,7 @@ source.write_bytes((ROOT / "tests/public_widgets.zi").read_bytes())
 subprocess.run([str(ZIRAN), "ir", "--project", "--offline", "--root", str(source.parent),
                 "-o", str(ROOT / "build/ziran/public/widgets"), str(source)],
                cwd=project, check=True)
-print("Public Widgets API consumer compiled")
+print("Public widget package consumer compiled")
 
 renderers = project / "src/public_renderers.zi"
 renderers.write_bytes((ROOT / "tests/public_renderers.zi").read_bytes())

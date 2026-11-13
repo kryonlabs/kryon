@@ -2,9 +2,8 @@
 #import "drawing_props"
 #import "pixmap"
 #import "raster_text"
-#import "text"
-#import "text_props"
-#import "text_measure"
+Text :: #import "kryon/text";
+TextMeasure :: #import "kryon/text_measure";
 #import "session"
 #import "tree"
 #import "widget_kind"
@@ -17,10 +16,10 @@ Clear :: () { unused PixmapBeginInto(cast(u32)0xffffff,256,256,pixels[:]) }
 
 FrameText :: (session: Session, angle: float32) -> bool {
     BeginFrame(session,cast(u64)1,Rectangle.{0.0,0.0,256.0,256.0})
-    props: TextProps = .{.key=cast(u64)2,.bounds=.{60.0,100.0,140.0,32.0},
-        .text="Diagonal",.font=32,.rotation=angle,.origin=.{70.0,16.0},.wrap=.TextWrapNone}
-    if TextWidth(session,props) <= 80 { return false }
-    Text(session,props)
+    props: Text.Props = .{.key=cast(u64)2,.bounds=.{60.0,100.0,140.0,32.0},
+        .text="Diagonal",.size=32,.rotation=angle,.origin=.{70.0,16.0},.wrap=.TextWrapNone}
+    if TextMeasure.TextWidth(session,props) <= 80 { return false }
+    Text.Draw(session,props)
     command := PendingPaintAt(session,0)
     if command.font != 32 || command.rotation != angle || command.origin.x != 130.0 || command.origin.y != 116.0 { return false }
     area: Rectangle
@@ -61,8 +60,8 @@ main :: () -> s32 {
     parent := TreeSubmitCurrent(session,cast(u64)3,WidgetKindGroup,Rectangle.{0.0,0.0,256.0,256.0})
     TreeSetChildClip(session,parent,Rectangle.{0.0,0.0,256.0,116.0})
     if !TreePushScope(session,parent) { return 8 }
-    Text(session,TextProps.{.key=cast(u64)4,.bounds=.{60.0,100.0,140.0,32.0},
-        .text="Diagonal",.font=32,.rotation=90.0,.origin=.{70.0,16.0},.wrap=.TextWrapNone})
+    Text.Draw(session,Text.Props.{.key=cast(u64)4,.bounds=.{60.0,100.0,140.0,32.0},
+        .text="Diagonal",.size=32,.rotation=90.0,.origin=.{70.0,16.0},.wrap=.TextWrapNone})
     TreePopScope(session)
     if EndFrame(session) != .FrameOk { return 9 }
     clipped: s32
@@ -74,12 +73,12 @@ main :: () -> s32 {
     } }
     if clipped < 100 || clipped >= vertical { return 11 }
     // Link hit testing follows the inverse transform around the same pivot.
-    links: [1]TextRange = .[.{0,4}]
-    props: TextProps = .{.bounds=.{40.0,40.0,120.0,32.0},.text="Link",.font=32,
+    links: [1]Text.Range = .[.{0,4}]
+    props: Text.Props = .{.bounds=.{40.0,40.0,120.0,32.0},.text="Link",.size=32,
         .rotation=90.0,.origin=.{60.0,16.0},.links=links[:],.wrap=.TextWrapNone}
     origin: Vector2 = .{100.0,56.0}
     point := WorldToScreen(Vector2.{44.0,45.0},Camera.{.offset=origin,.target=origin,.rotation=90.0,.zoom=1.0})
-    if TextLinkAt(session,props,point.x,point.y) != 0 { return 6 }
+    if Text.TextLinkAt(session,props,point.x,point.y) != 0 { return 6 }
     SessionClose(session)
     return 0
 }

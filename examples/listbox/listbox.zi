@@ -1,14 +1,17 @@
-using UI :: #import "kryon/Widgets";
+ListBox :: #import "kryon/list_box";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 
 choice: s32;
 selected: [3]bool;
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "List box", .font = 28})
-    items := ListBoxItem.[.{.key = 1, .label = "Morning walk"}, .{.key = 2, .label = "Read a chapter"}, .{.key = 3, .label = "Make something"}]
-    choice = ListBox(session, ListBoxProps.{.disabled = example_disabled, .key = 10, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 100.0}, .row_height = 32, .selected_index = choice}, items[:]).selected_index
-    ListBoxMulti(session, ListBoxMultiProps.{.disabled = example_disabled, .key = 11, .bounds = .{viewport.x + 20.0, viewport.y + 192.0, viewport.width - 40.0, 100.0}, .row_height = 32}, items[:], selected[:])
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "List box", .size = 28})
+    items := ListBox.ListBoxItem.[.{.key = 1, .label = "Morning walk"}, .{.key = 2, .label = "Read a chapter"}, .{.key = 3, .label = "Make something"}]
+    choice = ListBox.Draw(session, ListBox.Props.{.disabled = example_disabled, .key = 10, .bounds = .{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 100.0}, .row_height = 32, .selected_index = choice}, items[:]).selected_index
+    ListBox.ListBoxMulti(session, ListBox.ListBoxMultiProps.{.disabled = example_disabled, .key = 11, .bounds = .{viewport.x + 20.0, viewport.y + 192.0, viewport.width - 40.0, 100.0}, .row_height = 32}, items[:], selected[:])
     return 0
 }
 

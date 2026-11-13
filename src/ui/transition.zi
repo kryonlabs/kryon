@@ -1,3 +1,5 @@
+#import "drawing_props"
+
 // Application-owned spring state, driven by monotonic seconds.
 TransitionSpring :: struct {
     value: float32
@@ -226,4 +228,15 @@ TransitionMotionValue :: (state: *TransitionMotionState, channel: s32,
 #program_export
 TransitionMotionActive :: (state: *TransitionMotionState) -> bool {
     return state != null && state.active
+}
+
+// The colour a fade over the caller's content draws with. Kryon decides the
+// alpha; the platform only fills the rectangle.
+#program_export
+TransitionFadeColor :: (state: TransitionState,
+    color: Color) -> Color {
+    alpha: s32 = TransitionFadeAlphaByte(state.active, state.phase,
+        state.elapsed_seconds, state.duration_seconds)
+    color.a = cast(u8)TransitionApplyAlpha(cast(s32)color.a, alpha)
+    return color
 }

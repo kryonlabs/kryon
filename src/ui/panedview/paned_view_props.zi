@@ -9,7 +9,7 @@ DropZone :: enum {
     DropBottom :: 5
 }
 
-PanedViewProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32

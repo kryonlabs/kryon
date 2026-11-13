@@ -1,0 +1,57 @@
+using App :: #import "app_types";
+#import "secondary_pointer"
+using Host :: #import "Canvas";
+#import "frame_snapshot"
+using Geometry :: #import "geometry";
+using SessionModule :: #import "session";
+#import "tree"
+#import "tree_draw"
+#import "tree_input"
+Title :: #import "program_title";
+
+using FrameStatus;
+
+DrawCanvasFrame :: (session: Session, viewport: Rectangle, draw: Draw) -> bool {
+    if !CanvasFrameInputBegin(session) { return false }
+    defer { FrameInputEnd(session) }
+    BeginCanvasFrame()
+    pointer := PollPointer()
+    TreePointerUpdate(session, pointer)
+    TreeSecondaryPointerUpdate(session, PollSecondaryPointer())
+    PointerWheelSend(session, pointer.x, pointer.y, CanvasWheelMove())
+    if BeginFrame(session, cast(u64)1, viewport) != cast(FrameStatus)FrameOk {
+        EndCanvasFrame()
+        return false
+    }
+    draw(Frame.{.slot = session.slot, .epoch = session.epoch})
+    if EndCanvasUiFrame(session) != cast(FrameStatus)FrameOk {
+        EndCanvasFrame()
+        return false
+    }
+    CanvasCursor(session)
+    return EndCanvasFrame()
+}
+
+Run :: (window: Window, draw: Draw = Empty) -> s32 {
+    if window.title.count > 0 { unused Title.SetProgramTitle(window.title) }
+    if !OpenCanvas() {
+        CloseCanvas()
+        return 1
+    }
+    session := SessionOpen()
+    if !SessionValid(session) {
+        CloseCanvas()
+        return 1
+    }
+    ok := true
+    while ok && PollCanvas() {
+        key, modifiers := CanvasInputTake(session)
+        KeyboardModifiersSend(session, modifiers)
+        if key != 0 { KeyboardSend(session, key) }
+        ok = DrawCanvasFrame(session, CanvasViewport(), draw)
+    }
+    CloseSession(session)
+    CloseCanvas()
+    if ok { return 0 }
+    return 1
+}

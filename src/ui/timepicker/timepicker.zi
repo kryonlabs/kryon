@@ -1,36 +1,31 @@
+using TimePicker :: #import "time_picker_props";
+Button :: #import "button";
+Dropdown :: #import "dropdown";
+Overlay :: #import "overlay";
+Scroll :: #import "scroll";
 Theme :: #import "theme";
 // Submit the standard widget contract from a portable composition.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "time_picker_props"
     host_api :: #system_library "host_api";
-    TimePickerHostedHost :: (session: Session, props: TimePickerProps) -> TimePickerResult #foreign host_api;
-    #program_export
-    TimePicker :: (session: Session, props: TimePickerProps) -> TimePickerResult {
+    TimePickerHostedHost :: (session: Session, props: TimePicker.Props) -> TimePicker.TimePickerResult #foreign host_api;
+        Draw :: (session: Session, props: TimePicker.Props) -> TimePicker.TimePickerResult {
         return TimePickerHostedHost(session, props)
     }
 } else {
 #import "session"
-#import "button_props"
-#import "button"
 #import "control_props"
 #import "drawing_props"
 #import "dropdown_behavior"
-#import "dropdown"
 #import "font_metrics"
 #import "geometry"
-#import "overlay_props"
-#import "overlay"
 #import "paint_queue"
 #import "scroll_behavior"
-#import "scroll_props"
-#import "scroll"
 #import "semantic"
 #import "style"
 #import "style_sheet"
 #import "surface"
 #import "time_picker_behavior"
-#import "time_picker_props"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -46,7 +41,7 @@ using StyleField;
 // A time picker is a field like a dropdown's, so it takes the dropdown's
 // faces from every style sheet: its field, its popup panel and its rows.
 #program_export
-TimePickerFaceFor :: (props: TimePickerProps, role: s32, state: s32,
+TimePickerFaceFor :: (props: TimePicker.Props, role: s32, state: s32,
     selected: bool) -> StyleFrame {
     tone: s32 = cast(s32)ButtonToneNeutral
     if selected { tone = cast(s32)ButtonToneAccent }
@@ -55,12 +50,12 @@ TimePickerFaceFor :: (props: TimePickerProps, role: s32, state: s32,
         cast(s32)ControlSizeMedium, state)
     frame: StyleFrame
     frame.value = ResolveInstalledStyleRules(
-        DropdownDefaultFace(role, state, selected), facts, state)
+        Dropdown.DropdownDefaultFace(role, state, selected), facts, state)
     return frame
 }
 
 #program_export
-TimePickerKey :: (session: Session, props: TimePickerProps) -> u64 {
+TimePickerKey :: (session: Session, props: TimePicker.Props) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
     return TreeNextKey(session)
@@ -152,7 +147,7 @@ TimePickerPaintClock :: (session: Session, node: s32, bounds: Rectangle,
 
 #program_export
 TimePickerPaintField :: (session: Session, node: s32, bounds: Rectangle,
-    props: TimePickerProps, face: StyleFrame, value: s32, scale: float32,
+    props: TimePicker.Props, face: StyleFrame, value: s32, scale: float32,
     focus_visible: bool) {
     TimePickerPaintSurface(session, node, bounds, face.value)
     opacity: float32 = StyleOpacityValue(face.value.fields, face.value.opacity)
@@ -273,8 +268,7 @@ TimePickerRowHeight :: (bounds: Rectangle, scale: float32) -> float32 {
 // Escape, the field or a press outside it closes it. The picker keeps its
 // open state, keyboard column and scroll offsets on its retained nodes, so
 // a caller passes only the value and reads value and changed.
-#program_export
-TimePicker :: (session: Session, props: TimePickerProps) -> TimePickerResult {
+Draw :: (session: Session, props: TimePicker.Props) -> TimePickerResult {
     result: TimePickerResult
     result.node = -1
     result.value = TimePickerClamp(props.value)
@@ -303,7 +297,7 @@ TimePicker :: (session: Session, props: TimePickerProps) -> TimePickerResult {
         overlay: s32 = TreePrevious(session, parent, TimePickerOverlayKey(key),
             WidgetKindCustom)
         previous.panel = TreePreviousCommitted(session, overlay,
-            OverlayPanelKey(), WidgetKindCustom)
+            Overlay.OverlayPanelKey(), WidgetKindCustom)
         for column: cast(s32)0..1 {
             previous.columns[column] = TreePreviousCommitted(session,
                 previous.panel, TimePickerColumnKey(column), WidgetKindScroll)
@@ -424,7 +418,7 @@ TimePicker :: (session: Session, props: TimePickerProps) -> TimePickerResult {
 
 // Submits the open popup above the page. Returns whether it is still open:
 // a press outside it, or a window too small to show it, closes it.
-TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
+TimePickerPopupFrame :: (session: Session, props: TimePicker.Props, key: u64,
     field: Rectangle, scale: float32, state: TimePickerKeyState,
     retained: TimePickerRetained, reveal: s32, anchor: s32) -> bool {
     panel_face: StyleFrame = TimePickerFaceFor(props, DropdownPanelRole(),
@@ -476,8 +470,8 @@ TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
     popup: TimePickerPopup = TimePickerPopupFor(field, view, metrics)
     if popup.hours.width <= 0.0 || popup.hours.height <= 0.0 { return false }
 
-    overlay: PopupResult = Popup(session,
-        PopupProps.{.key = TimePickerOverlayKey(key), .id = props.id,
+    overlay: Overlay.PopupResult = Overlay.Popup(session,
+        Overlay.PopupProps.{.key = TimePickerOverlayKey(key), .id = props.id,
             .class_name = props.class_name, .bounds = popup.panel,
             .keep_bounds = field})
     if overlay.closed { return false }
@@ -512,7 +506,7 @@ TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
             offset = RevealRow(offset, chosen, cast(float32)row_height,
                 area.height, rows * row_height - cast(s32)area.height)
         }
-        scroll: ScrollProps
+        scroll: Scroll.Props
         scroll.key = TimePickerColumnKey(index)
         scroll.class_name = props.class_name
         scroll.scale = scale
@@ -520,7 +514,7 @@ TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
         scroll.content_height = rows * row_height
         scroll.scroll_offset = offset
         scroll.metrics = bar
-        scrolled: ScrollResult = Scroll(session, scroll)
+        scrolled: Scroll.ScrollResult = Scroll.Draw(session, scroll)
         if scrolled.node >= 0 {
             TreeSetWidgetState(session, scrolled.node,
                 WidgetState.{true, 0, scrolled.scroll_offset})
@@ -564,27 +558,27 @@ TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
         }
     }
     if metrics.has_clear && popup.clear.width > 0.0 {
-        clear: ButtonProps
+        clear: Button.Props
         clear.key = cast(u64)TIME_PICKER_CLEAR_KEY
         clear.bounds = popup.clear
         clear.label = props.clear_label
         clear.class_name = props.class_name
         clear.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
         clear.fit_content = true
-        unused Button(session, clear)
+        unused Button.Draw(session, clear)
     }
     if metrics.has_now && popup.now.width > 0.0 {
-        now: ButtonProps
+        now: Button.Props
         now.key = cast(u64)TIME_PICKER_NOW_KEY
         now.bounds = popup.now
         now.label = props.now_label
         now.class_name = props.class_name
         now.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
         now.fit_content = true
-        unused Button(session, now)
+        unused Button.Draw(session, now)
     }
     if metrics.has_done && popup.done.width > 0.0 {
-        done: ButtonProps
+        done: Button.Props
         done.key = cast(u64)TIME_PICKER_DONE_KEY
         done.bounds = popup.done
         done.label = props.done_label
@@ -592,7 +586,7 @@ TimePickerPopupFrame :: (session: Session, props: TimePickerProps, key: u64,
         done.tone = cast(ButtonTone)ButtonToneAccent
         done.emphasis = cast(ButtonEmphasis)ButtonEmphasisFilled
         done.fit_content = true
-        unused Button(session, done)
+        unused Button.Draw(session, done)
     }
     End(session)
     return true

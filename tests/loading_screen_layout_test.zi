@@ -1,4 +1,4 @@
-#import "loadingscreen"
+LoadingScreen :: #import "kryon/loading_screen";
 #import "geometry"
 
 Fits :: (outer: Rectangle, inner: Rectangle) -> bool {
@@ -15,18 +15,18 @@ main :: () -> s32 {
     Rectangle.{0.0, 0.0, 1.0, 1.0}]
     for area: sizes {
         for zoom: cast(s32)5..25 {
-            layout := LoadingScreenLayoutFor(area, cast(float32)zoom / 10.0)
+            layout := LoadingScreen.LoadingScreenLayoutFor(area, cast(float32)zoom / 10.0)
             if layout.scale <= 0.0 || !Fits(area, layout.mark) || !Fits(area, layout.title) ||
             !Fits(area, layout.detail) || !Fits(area, layout.progress) {
                 return 1
             }
         }
     }
-    empty := LoadingScreenLayoutFor(Rectangle.{0.0, 0.0, 0.0, 10.0}, 1.0)
+    empty := LoadingScreen.LoadingScreenLayoutFor(Rectangle.{0.0, 0.0, 0.0, 10.0}, 1.0)
     if empty.scale != 0.0 {
         return 2
     }
-    if LoadingScreenAngle(0.0) != -90.0 || LoadingScreenAngle(1.8) != -90.0 {
+    if LoadingScreen.LoadingScreenAngle(0.0) != -90.0 || LoadingScreen.LoadingScreenAngle(1.8) != -90.0 {
         return 3
     }
     return 0

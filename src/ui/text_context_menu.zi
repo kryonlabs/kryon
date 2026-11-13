@@ -1,9 +1,9 @@
+ContextMenu :: #import "contextmenu";
 // The context menu shared by the text widgets: Cut, Copy, Paste, and Select
 // all on the system clipboard. One menu is open at a time; it belongs to a
 // field by key, opens where the secondary button was released inside the
 // field, and hands the command chosen back to that field, which runs it on its
 // next frame as if the key had been pressed.
-#import "contextmenu"
 #import "geometry"
 #import "session"
 #import "system_clipboard"
@@ -183,7 +183,7 @@ TextMenuDraw :: (session: Session) {
             return
         }
     }
-    items: [5]ContextMenuItem
+    items: [5]ContextMenu.ContextMenuItem
     items[0].id = TEXT_MENU_CUT
     items[0].label = "Cut"
     items[0].disabled = !text_menu_cut_enabled
@@ -197,9 +197,9 @@ TextMenuDraw :: (session: Session) {
     items[4].id = TEXT_MENU_SELECT_ALL
     items[4].label = "Select all"
     items[4].disabled = !text_menu_select_enabled
-    props: ContextMenuProps = .{.key = text_menu_key * cast(u64)31 + cast(u64)17, .open = true,
+    props: ContextMenu.Props = .{.key = text_menu_key * cast(u64)31 + cast(u64)17, .open = true,
         .x = text_menu_x, .y = text_menu_y, .escape = text_menu_escape}
-    menu: ContextMenuResult = ContextMenu(session, props, items[0:5])
+    menu: ContextMenu.ContextMenuResult = ContextMenu.Draw(session, props, items[0:5])
     if menu.activated_id != 0 {
         text_menu_command = menu.activated_id
         text_menu_command_key = text_menu_key

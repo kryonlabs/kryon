@@ -1,7 +1,11 @@
-using UI :: #import "Widgets";
+Button :: #import "kryon/button";
+Link :: #import "kryon/link";
+Text :: #import "kryon/text";
+#import "kryon/control_props"
+#import "kryon/geometry"
+#import "kryon/semantic"
+#import "kryon/session"
 #import "std/number_text"
-#import "layout"
-
 // {{name}}: a web page written with Kryon. On the DOM host each widget
 // becomes a real HTML element: headings, paragraphs, links, and buttons
 // that screen readers and search engines understand.
@@ -13,18 +17,18 @@ using UI :: #import "Widgets";
 likes: s32;
 likes_text: [48]u8;
 
-Heading :: (session: Session, key: s32, text: string, level: s32, bounds: Rectangle, font: s32) {
-    Text(session, TextProps.{.key = cast(u64)key, .bounds = bounds, .text = text, .font = font,
+Heading :: (session: Session, key: s32, text: string, level: s32, bounds: Rectangle, size: s32) {
+    Text.Draw(session, Text.Props.{.key = cast(u64)key, .bounds = bounds, .text = text, .size = size,
         .semantic_kind = SemanticKind.SemanticHeading, .heading_level = level})
 }
 
-Paragraph :: (session: Session, key: s32, text: string, bounds: Rectangle, font: s32) {
-    Text(session, TextProps.{.key = cast(u64)key, .bounds = bounds, .text = text, .font = font,
-        .semantic_kind = SemanticKind.SemanticParagraph, .wrap = TextWrap.TextWrapAuto})
+Paragraph :: (session: Session, key: s32, text: string, bounds: Rectangle, size: s32) {
+    Text.Draw(session, Text.Props.{.key = cast(u64)key, .bounds = bounds, .text = text, .size = size,
+        .semantic_kind = SemanticKind.SemanticParagraph, .wrap = Text.Wrap.TextWrapAuto})
 }
 
 WebLink :: (session: Session, key: s32, text: string, url: string, bounds: Rectangle) {
-    unused Link(session, LinkProps.{.key = cast(u64)key, .bounds = bounds, .text = text,
+    unused Link.Draw(session, Link.Props.{.key = cast(u64)key, .bounds = bounds, .text = text,
         .link = url})
 }
 
@@ -42,14 +46,14 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     WebLink(session, 6, "The Ziran language", "https://github.com/ziranlang/ziran",
         NextRow(*page, 24.0))
 
-    like: ButtonProps
+    like: Button.Props
     like.key = cast(u64)7
     like.id = 7
     like.bounds = RowPart(*page, NextRow(*page, 40.0), 0, 3)
     like.label = "Like"
     like.tone = ButtonTone.ButtonToneAccent
     like.emphasis = ButtonEmphasis.ButtonEmphasisFilled
-    if Button(session, like) == 1 { likes += 1 }
+    if Button.Draw(session, like) == 1 { likes += 1 }
     digits: [16]u8
     Paragraph(session, 8, Joined(FormatInteger(cast(s64)likes, digits[:]), " likes so far",
         likes_text[:]), NextRow(*page, 24.0), FontSize(*page, 16))

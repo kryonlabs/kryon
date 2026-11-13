@@ -1,3 +1,4 @@
+using PropsModule :: #import "separator_props";
 Theme :: #import "theme";
 #import "session"
 #import "control_props"
@@ -6,7 +7,6 @@ Theme :: #import "theme";
 #import "geometry"
 #import "paint_queue"
 #import "separator_behavior"
-#import "separator_props"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -43,7 +43,7 @@ DefaultSeparatorFaces :: () -> SeparatorFaces {
 }
 
 #program_export
-SeparatorFacts :: (props: SeparatorProps, role: s32,
+SeparatorFacts :: (props: PropsModule.Props, role: s32,
     state: s32) -> StyleFacts {
     return StyleControlRoleFacts(StyleKindSeparator(), props.id,
         props.class_name, role, cast(s32)ButtonToneNeutral,
@@ -51,7 +51,7 @@ SeparatorFacts :: (props: SeparatorProps, role: s32,
 }
 
 #program_export
-SeparatorFacesFor :: (props: SeparatorProps,
+SeparatorFacesFor :: (props: PropsModule.Props,
     defaults: SeparatorFaces) -> SeparatorFaces {
     faces: SeparatorFaces = defaults
     state: s32 = cast(s32)ButtonStateNormal
@@ -74,7 +74,7 @@ PreparedSeparator :: struct {
 }
 
 #program_export
-PrepareSeparator :: (props: SeparatorProps,
+PrepareSeparator :: (props: PropsModule.Props,
     faces: SeparatorFaces) -> PreparedSeparator {
     prepared: PreparedSeparator
     prepared.font = ResolveFont(0,
@@ -104,7 +104,7 @@ PrepareSeparator :: (props: SeparatorProps,
 }
 
 #program_export
-PaintSeparatorForNode :: (session: Session, node: s32, props: SeparatorProps,
+PaintSeparatorForNode :: (session: Session, node: s32, props: PropsModule.Props,
     faces: SeparatorFaces) {
     prepared: PreparedSeparator = PrepareSeparator(props, faces)
     if prepared.show_text {
@@ -117,8 +117,7 @@ PaintSeparatorForNode :: (session: Session, node: s32, props: SeparatorProps,
             ColorFromPacked(prepared.line_color))
     }
 }
-#program_export
-Separator :: (session: Session, props: SeparatorProps) {
+Draw :: (session: Session, props: PropsModule.Props) {
     node: s32 = -1
     if TreeIsBuilding(session) {
         node = TreeSubmitCurrent(session, props.key, WidgetKindSeparator, props.bounds)

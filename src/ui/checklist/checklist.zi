@@ -1,7 +1,8 @@
-#import "box_props"
-#import "box"
-#import "button_props"
-#import "button"
+Shape :: #import "shape";
+Box :: #import "box";
+Button :: #import "button";
+SvgIcon :: #import "svgicon";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -9,15 +10,9 @@
 #import "paint_queue"
 #import "session"
 #import "semantic"
-#import "shape_props"
-#import "shape"
 #import "style"
 #import "style_sheet"
-#import "svg_icon_props"
-#import "svgicon"
 #import "text_align"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -26,7 +21,7 @@ NumberText :: #import "std/number_text"
 using WidgetKind;
 using SemanticKind;
 
-OnboardingChecklistProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     title: string
@@ -86,7 +81,7 @@ OnboardingChecklistCurrent :: (tasks: []OnboardingChecklistTask) -> s32 {
 }
 
 #program_export
-OnboardingChecklistLayoutFor :: (props: OnboardingChecklistProps) -> OnboardingChecklistLayout {
+OnboardingChecklistLayoutFor :: (props: Props) -> OnboardingChecklistLayout {
     layout: OnboardingChecklistLayout
     layout.bounds = props.bounds
     if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return layout }
@@ -137,8 +132,7 @@ OnboardingChecklistDescription :: (done: s32, total: s32, output: []u8) -> strin
     return TextView(output[0:cast(s64)at])
 }
 
-#program_export
-OnboardingChecklist :: (session: Session, props: OnboardingChecklistProps) -> OnboardingChecklistResult {
+Draw :: (session: Session, props: Props) -> OnboardingChecklistResult {
     result: OnboardingChecklistResult
     result.total = cast(s32)props.tasks.count
     result.current = OnboardingChecklistCurrent(props.tasks)
@@ -151,7 +145,7 @@ OnboardingChecklist :: (session: Session, props: OnboardingChecklistProps) -> On
     if result.total > 0 { result.progress = cast(float32)result.completed / cast(float32)result.total }
     if !SessionValid(session) || !TreeIsBuilding(session) ||
     props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
-    result.node = Box(session, BoxProps.{.key = props.key, .bounds = props.bounds,
+    result.node = Box.Draw(session, Box.Props.{.key = props.key, .bounds = props.bounds,
         .id = props.id, .class_name = props.class_name,
         .fill = StyleTokenColorOr("surface", ColorFromPacked(CurrentSurface())), .border = StyleTokenColorOr("border", ColorFromPacked(CurrentBorder())),
         .radius = CurrentThemeMetric(.ThemeMetricRadiusPanel)})
@@ -163,25 +157,25 @@ OnboardingChecklist :: (session: Session, props: OnboardingChecklistProps) -> On
         description = OnboardingChecklistDescription(result.completed, result.total,
             description_digits[:])
     }
-    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 1),
-        .bounds = result.layout.title, .text = title, .font = Text14,
+    unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 1),
+        .bounds = result.layout.title, .text = title, .size = Text.Text14,
         .id = props.id, .class_name = props.class_name,
             .semantic_kind = .SemanticHeading, .heading_level = 3,
-        .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapEllipsis})
-    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 2),
-        .bounds = result.layout.description, .text = description, .font = Text12,
+        .align = TextAlign.TextAlignStart, .wrap = Text.Wrap.TextWrapEllipsis})
+    unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 2),
+        .bounds = result.layout.description, .text = description, .size = Text.Text12,
         .id = props.id, .class_name = props.class_name,
-        .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapEllipsis})
+        .align = TextAlign.TextAlignStart, .wrap = Text.Wrap.TextWrapEllipsis})
     ring_center := Vector2.{result.layout.ring.x + result.layout.ring.width * 0.5,
         result.layout.ring.y + result.layout.ring.height * 0.5}
     ring_outer: float32 = 20.0
     ring_inner: float32 = 15.0
-    unused Ring(session, RingProps.{.key = WidgetPartKey(props.key, 3),
+    unused Shape.Ring(session, Shape.RingProps.{.key = WidgetPartKey(props.key, 3),
         .center = ring_center, .inner_radius = ring_inner, .outer_radius = ring_outer,
         .start_angle = -90.0, .end_angle = -90.0 + 360.0 * result.progress,
         .color = StyleTokenColorOr("success", ColorFromPacked(CurrentSuccess())), .id = props.id,
         .class_name = props.class_name})
-    unused Ring(session, RingProps.{.key = WidgetPartKey(props.key, 4),
+    unused Shape.Ring(session, Shape.RingProps.{.key = WidgetPartKey(props.key, 4),
         .center = ring_center, .inner_radius = ring_inner, .outer_radius = ring_outer,
         .start_angle = -90.0 + 360.0 * result.progress, .end_angle = 270.0,
         .color = StyleTokenColorOr("button", ColorFromPacked(CurrentPalette().control_track)), .id = props.id,
@@ -191,11 +185,11 @@ OnboardingChecklist :: (session: Session, props: OnboardingChecklistProps) -> On
         task := props.tasks[index]
         row := result.layout.rows[index]
         expanded := index == result.current
-        unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 20 + index),
+        unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 20 + index),
             .bounds = row, .id = props.id, .class_name = props.class_name,
             .fill = ifx expanded then StyleTokenColorOr("button", ColorFromPacked(CurrentPalette().surface_muted)) else ColorFromPacked(0),
             .radius = CurrentThemeMetric(.ThemeMetricRadiusItem)})
-        if Button(session, ButtonProps.{.key = props.key ^ task.id,
+        if Button.Draw(session, Button.Props.{.key = props.key ^ task.id,
             .bounds = result.layout.circles[index],
             .label = task.title, .icon_only = true, .circle = true,
             .icon_shape = "S2rr:M5 12l4 4L19 7", .disabled = props.disabled || task.disabled,
@@ -209,18 +203,18 @@ OnboardingChecklist :: (session: Session, props: OnboardingChecklistProps) -> On
             if props.tasks[index].done { result.completed += 1 } else { result.completed -= 1 }
             result.progress = cast(float32)result.completed / cast(float32)result.total
         }
-        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 60 + index),
-            .bounds = result.layout.titles[index], .text = task.title, .font = Text14,
+        unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 60 + index),
+            .bounds = result.layout.titles[index], .text = task.title, .size = Text.Text14,
             .id = props.id, .class_name = props.class_name,
-            .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapEllipsis})
+            .align = TextAlign.TextAlignStart, .wrap = Text.Wrap.TextWrapEllipsis})
         if expanded && (task.description != "" || task.action != "") {
             if task.description != "" {
-                unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 100 + index),
+                unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 100 + index),
                     .bounds = result.layout.bodies[index], .text = task.description,
-                    .font = Text12, .id = props.id, .class_name = props.class_name,
-                    .align = TextAlign.TextAlignStart, .wrap = TextWrap.TextWrapAnywhere})
+                    .size = Text.Text12, .id = props.id, .class_name = props.class_name,
+                    .align = TextAlign.TextAlignStart, .wrap = Text.Wrap.TextWrapAnywhere})
             }
-            if task.action != "" && Button(session, ButtonProps.{
+            if task.action != "" && Button.Draw(session, Button.Props.{
                 .key = (props.key ^ task.id) ^ 0xB0, .bounds = result.layout.actions[index],
                 .label = task.action, .disabled = props.disabled || task.disabled,
                 .id = props.id, .class_name = props.class_name,

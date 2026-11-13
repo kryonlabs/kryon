@@ -67,8 +67,11 @@ main :: () -> s32 {
         if TestWriteRaw(pipes[1], *byte[0], cast(u64)1) != cast(s64)1 ||
             Runtime.RaylibWaitForActivity(watched[:], 1000) != Runtime.RaylibActivityDescriptor { return 28 }
     }
-    if Runtime.RaylibPressedKey() != 65 || Runtime.RaylibPressedKey() != 0 ||
-        Runtime.RaylibRepeatedKey() != 263 || Runtime.RaylibRepeatedKey() != 0 ||
+    // The poll queued the fresh press and the OS repeat in order.
+    key, modifiers := Runtime.RaylibInputTake(input_session)
+    repeated, repeated_modifiers := Runtime.RaylibInputTake(input_session)
+    after, after_modifiers := Runtime.RaylibInputTake(input_session)
+    if key != 65 || repeated != 263 || after != 0 ||
         !Runtime.RaylibKeyDown(65) || Runtime.RaylibKeyDown(512) ||
         Runtime.RaylibKeyDown(0) || !Runtime.RaylibFocused() { return 7 }
     Probe.middle_pressed = false; Probe.middle_released = false
@@ -76,7 +79,9 @@ main :: () -> s32 {
     Probe.middle_down = true; Probe.repeated_key = 0; Probe.focused = false
     if !Runtime.PollRaylib() || !Runtime.PollMiddlePointer().down ||
         Runtime.PollMiddlePointer().pressed || Runtime.PollMiddlePointer().released ||
-        Runtime.RaylibRepeatedKey() != 0 || Runtime.RaylibFocused() { return 8 }
+        Runtime.RaylibFocused() { return 8 }
+    key, modifiers = Runtime.RaylibInputTake(input_session)
+    if key != 0 { return 8 }
     if !Runtime.RaylibFrameInputBegin(input_session) { return 17 }
     second_input := CaptureFrameInput(input_session)
     if second_input.elapsed_ms != 2000 || second_input.delta_ms != 0 ||

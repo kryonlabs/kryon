@@ -10,14 +10,17 @@ from PIL import ImageGrab
 from toolchain import ROOT, ZIRAN_ROOT, ZIRAN
 
 OUTPUT = ROOT / 'build/test/window-focus'
-APP = '''using UI :: #import "kryon/Widgets";
+APP = '''Box :: #import "kryon/box";
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/session"
 #import "kryon/Window"
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    props: BoxProps; props.key = 1; props.bounds = viewport
+    props: Box.Props; props.key = 1; props.bounds = viewport
     props.fill = ifx WindowFocused() then Color.{0,200,0,255} else Color.{200,0,0,255}
-    Box(session, props)
+    Box.Draw(session, props)
     return 0
 }
 '''

@@ -1,16 +1,14 @@
+Shape :: #import "shape";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
 #import "session"
 #import "semantic"
-#import "shape_props"
-#import "shape"
 #import "style"
 #import "style_sheet"
 #import "text_align"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -32,7 +30,7 @@ ProgressRingState :: struct {
     progress: float32
 }
 
-ProgressRingProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     label: string
@@ -115,7 +113,7 @@ ProgressRingStatusColor :: (status: ProgressRingStatus) -> u32 {
 }
 
 #program_export
-ProgressRingLayoutFor :: (props: ProgressRingProps) -> ProgressRingLayout {
+ProgressRingLayoutFor :: (props: Props) -> ProgressRingLayout {
     layout: ProgressRingLayout
     layout.bounds = props.bounds
     size := ifx props.bounds.width < props.bounds.height then props.bounds.width else props.bounds.height
@@ -155,8 +153,7 @@ percent_text :: (value: float32, output: []u8) -> string {
 }
 
 #scope_export
-#program_export
-ProgressRing :: (session: Session, props: ProgressRingProps,
+Draw :: (session: Session, props: Props,
     state: *ProgressRingState) -> ProgressRingResult {
     result: ProgressRingResult
     result.value = ProgressRingClampValue(props.value)
@@ -182,28 +179,28 @@ ProgressRing :: (session: Session, props: ProgressRingProps,
     if !TreePushScope(session, result.node) { return result }
     color := ColorFromPacked(ProgressRingStatusColor(props.status))
     track := ColorFromPacked(CurrentPalette().control_track)
-    unused Ring(session, RingProps.{.key = WidgetPartKey(props.key, 1),
+    unused Shape.Ring(session, Shape.RingProps.{.key = WidgetPartKey(props.key, 1),
         .center = result.layout.center, .inner_radius = result.layout.inner_radius,
         .outer_radius = result.layout.outer_radius, .start_angle = props.start_angle,
         .end_angle = props.start_angle + sweep, .color = track,
         .id = props.id, .class_name = props.class_name})
     if result.value > 0.001 {
-        unused Ring(session, RingProps.{.key = WidgetPartKey(props.key, 2),
+        unused Shape.Ring(session, Shape.RingProps.{.key = WidgetPartKey(props.key, 2),
             .center = result.layout.center, .inner_radius = result.layout.inner_radius,
             .outer_radius = result.layout.outer_radius, .start_angle = props.start_angle,
             .end_angle = props.start_angle + sweep * result.value, .color = color,
             .id = props.id, .class_name = props.class_name})
     }
-    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 3),
+    unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 3),
         .bounds = result.layout.percent, .text = percent_text(result.value, text_digits[:]),
-        .font = cast(s32)result.layout.bounds.width / 5, .id = props.id,
+        .size = cast(s32)result.layout.bounds.width / 5, .id = props.id,
         .class_name = props.class_name, .align = TextAlign.TextAlignCenter,
-        .wrap = TextWrap.TextWrapEllipsis})
+        .wrap = Text.Wrap.TextWrapEllipsis})
     if props.label != "" {
-        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 4),
-            .bounds = result.layout.label, .text = props.label, .font = Text12,
+        unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 4),
+            .bounds = result.layout.label, .text = props.label, .size = Text.Text12,
             .id = props.id, .class_name = props.class_name,
-            .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapEllipsis})
+            .align = TextAlign.TextAlignCenter, .wrap = Text.Wrap.TextWrapEllipsis})
     }
     unused TreePopScope(session)
     return result

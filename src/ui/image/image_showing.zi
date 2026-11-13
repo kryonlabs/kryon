@@ -4,27 +4,26 @@
 // ImageShowingPreview while its preview_path stands in, ImageShowingNone
 // while both are loading and ImageShowingUnavailable when neither can be
 // drawn. Asking starts a host loading the picture, so asking for a picture
-// shown soon also fetches it ahead. It stays apart from image_widget, so
+// shown soon also fetches it ahead. It stays apart from Image.Draw, so
 // portable bundles that never ask keep their reviewed bytes.
+using Image :: #import "image_props";
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "image_props"
     host_api :: #system_library "host_api";
-    ImageShowingHostedHost :: (session: Session, image: ImageProps) -> s32 #foreign host_api;
+    ImageShowingHostedHost :: (session: Session, image: Image.Props) -> s32 #foreign host_api;
     // A portable app asks its host, which applies its asset policy as an
     // Image's draw does. A refused image is unavailable.
     #program_export
-    ImageShowingOf :: (session: Session, image: ImageProps) -> ImageShowing {
+    ImageShowingOf :: (session: Session, image: Image.Props) -> ImageShowing {
         showing := ImageShowingHostedHost(session, image)
         if showing < 0 || showing > 3 { return ImageShowing.ImageShowingUnavailable }
         return cast(ImageShowing)showing
     }
 } else {
     #import "session"
-    #import "image_props"
-    #import "kryon/image_widget"
+    #import "image"
     #program_export
-    ImageShowingOf :: (session: Session, image: ImageProps) -> ImageShowing {
+    ImageShowingOf :: (session: Session, image: Image.Props) -> ImageShowing {
         unused session
         return ImageShownFor(image).showing
     }

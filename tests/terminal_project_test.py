@@ -87,7 +87,10 @@ def main():
             "[overrides]\n" + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         )
         (project / "src/app.zi").write_text(
-            'using UI :: #import "Widgets";\n'
+            '#import "kryon/geometry"\n'
+            '#import "kryon/input_protocol"\n'
+            '#import "kryon/session"\n'
+            '#import "kryon/tree_input"\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 {\n'
             '    key: s32 = KeyboardTake(session)\n'

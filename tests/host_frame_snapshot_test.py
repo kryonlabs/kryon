@@ -33,14 +33,13 @@ def main():
     lock = (WORK / 'lock').open('w')
     fcntl.flock(lock, fcntl.LOCK_EX)
     common = ['--project', '--root', ROOT / 'tests',
-              '--module-path', ROOT / 'tests/host_frame_snapshot',
-              '--bind', 'frame_entry:ProjectFrame=app:Frame']
+              '--module-path', ROOT / 'tests/host_frame_snapshot']
     define = ['--define', 'PLATFORM_WEB'] if args.platform == 'canvas' else []
     ir = WORK / (args.platform + '-ir')
     gen = WORK / (args.platform + '-c')
     shutil.rmtree(ir, ignore_errors=True)
     run([ZIRAN, 'ir', *common, *define, '--entry', 'host_frame_snapshot_test:main', '-o', ir, ROOT / 'tests/host_frame_snapshot_test.zi',
-         ROOT / 'tests/host_frame_snapshot/app.zi'])
+         ROOT / 'tests/host_frame_snapshot/snapshot_app.zi'])
     for form in ('source', 'saved'):
         print(args.platform + ' ' + form, flush=True)
         source = ROOT / 'tests/host_frame_snapshot_test.zi'
@@ -49,7 +48,7 @@ def main():
         shutil.rmtree(gen, ignore_errors=True)
         run([ZIRAN, 'build', '--target=c', *paths, *define,
              '--entry', 'host_frame_snapshot_test:main', '-o', gen, input_file,
-             *([ROOT / 'tests/host_frame_snapshot/app.zi'] if form == 'source' else [ir / 'app.zir'])])
+             *([ROOT / 'tests/host_frame_snapshot/snapshot_app.zi'] if form == 'source' else [ir / 'snapshot_app.zir'])])
         if args.platform == 'desktop':
             libs = subprocess.check_output(['pkg-config', '--libs', 'sdl2', 'cairo', 'freetype2',
                                             'fontconfig', 'pangocairo', 'gio-2.0'], text=True).split()

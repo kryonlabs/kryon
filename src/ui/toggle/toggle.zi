@@ -1,12 +1,11 @@
+using Toggle :: #import "toggle_props";
 Theme :: #import "theme";
 // Submit the standard widget contract from a portable composition.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "toggle_props"
     host_api :: #system_library "host_api";
-    ToggleHostedHost :: (session: Session, props: ToggleProps) -> ToggleValueResult #foreign host_api;
-    #program_export
-    Toggle :: (session: Session, props: ToggleProps) -> ToggleValueResult {
+    ToggleHostedHost :: (session: Session, props: Toggle.Props) -> Toggle.ToggleValueResult #foreign host_api;
+        Draw :: (session: Session, props: Toggle.Props) -> Toggle.ToggleValueResult {
         return ToggleHostedHost(session, props)
     }
 } else {
@@ -20,7 +19,6 @@ Theme :: #import "theme";
 #import "style_sheet"
 #import "surface"
 #import "toggle_behavior"
-#import "toggle_props"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -67,7 +65,7 @@ ToggleDefaultFace :: (kind: s32, role: s32,
 }
 
 #program_export
-ToggleFaceFor :: (props: ToggleProps,
+ToggleFaceFor :: (props: Toggle.Props,
     kind: s32, role: s32, tone: ButtonTone,
     state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(kind, props.id,
@@ -92,7 +90,7 @@ ToggleCornerRadius :: (bounds: Rectangle, style_radius: float32,
 }
 
 #program_export
-PaintToggleForNode :: (session: Session, node: s32, props: ToggleProps,
+PaintToggleForNode :: (session: Session, node: s32, props: Toggle.Props,
     paint: TogglePaint, font: s32) {
     track_opacity: float32 = StyleOpacityValue(paint.track.value.fields,
         paint.track.value.opacity)
@@ -158,7 +156,7 @@ PaintToggleForNode :: (session: Session, node: s32, props: ToggleProps,
 }
 
 // The toggle's styles and label widths for a value and pointer state.
-ToggleSpecFor :: (props: ToggleProps, value: bool, hovered: bool,
+ToggleSpecFor :: (props: Toggle.Props, value: bool, hovered: bool,
     pressed: bool) -> ToggleSpec {
     spec: ToggleSpec
     spec.bounds = props.bounds
@@ -197,7 +195,7 @@ ToggleSpecFor :: (props: ToggleProps, value: bool, hovered: bool,
 // their padding. A toggle given a size of 0 takes this size; one given less
 // keeps to its bounds, so a layout places it with this size.
 #program_export
-ToggleMinimumSize :: (props: ToggleProps) -> Vector2 {
+ToggleMinimumSize :: (props: Toggle.Props) -> Vector2 {
     spec: ToggleSpec = ToggleSpecFor(props, props.value, false, false)
     return Vector2.{
         cast(float32)ToggleMinimumWidthForStyle(spec.has_labels,
@@ -209,15 +207,14 @@ ToggleMinimumSize :: (props: ToggleProps) -> Vector2 {
 
 // The caller retains the value returned here and supplies it on the next
 // frame. Pointer activation is consumed from the previous committed tree.
-#program_export
-Toggle :: (session: Session, props: ToggleProps) -> ToggleValueResult {
+Draw :: (session: Session, props: Toggle.Props) -> Toggle.ToggleValueResult {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
     previous: s32 = -1
     if TreeIsBuilding(session) {
         previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindToggle)
     }
-    result: ToggleValueResult = ToggleValueFor(props.value,
+    result: Toggle.ToggleValueResult = ToggleValueFor(props.value,
         TreeTakeActivationAt(session, previous), !props.disabled, true)
     spec: ToggleSpec = ToggleSpecFor(props, result.value,
         TreeHoveredAt(session, previous), TreePressedAt(session, previous))

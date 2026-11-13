@@ -2,7 +2,11 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Button :: #import "kryon/button";
+NavigationBarConfig :: #import "kryon/navigation_bar_config";
+Text :: #import "kryon/text";
+#import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -59,17 +63,17 @@ b: Rectangle;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "NavigationBarConfig", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "NavigationBarConfig", .size = 23})
     b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
     disabled := example_input.disabled
 
-    labels: [4]string = .{"First", "Second", "Third", "Fourth"}; options: [2]NavigationBarOption
+    labels: [4]string = .{"First", "Second", "Third", "Fourth"}; options: [2]NavigationBarConfig.Option
     options[0].route = 1; options[0].label = "Home"; options[1].route = 2; options[1].label = "Library"
     if dismissed {
-        if Button(session, ButtonProps.{.bounds = b, .label = "Configure navigation"}) == 1 { dismissed = false }
+        if Button.Draw(session, Button.Props.{.bounds = b, .label = "Configure navigation"}) == 1 { dismissed = false }
     } else {
-        config := NavigationBarConfig(session, NavigationBarConfigProps.{.bounds = GalleryBounds(Rectangle.{24.0, 48.0, 432.0, 256.0}), .title = "Navigation", .route_count = config_count, .max_route_count = 4, .scroll_offset = config_scroll, .dropdown_open = config_open, .dropdown_row = config_row, .close_label = "Close", .remove_label = "Remove", .add_label = "Add", .save_label = "Save", .cancel_label = "Cancel"}, config_routes[:], labels[:], options[:])
+        config := NavigationBarConfig.Draw(session, NavigationBarConfig.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 48.0, 432.0, 256.0}), .title = "Navigation", .route_count = config_count, .max_route_count = 4, .scroll_offset = config_scroll, .dropdown_open = config_open, .dropdown_row = config_row, .close_label = "Close", .remove_label = "Remove", .add_label = "Add", .save_label = "Save", .cancel_label = "Cancel"}, config_routes[:], labels[:], options[:])
         config_count = config.route_count
         config_scroll = config.scroll_offset
         config_open = config.dropdown_open

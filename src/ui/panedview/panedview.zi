@@ -1,9 +1,9 @@
+using PropsModule :: #import "paned_view_props";
 Theme :: #import "theme";
 #import "session"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
-#import "paned_view_props"
 #import "style"
 #import "style_sheet"
 #import "paint_queue"
@@ -266,8 +266,7 @@ PaneDropZone :: (bounds: Rectangle, mouse: Vector2, scale: float32,
 
 // The caller stores the returned split and places its pane content in the
 // returned rectangles. The handle uses the retained pointer drag route.
-#program_export
-PanedView :: (session: Session, props: PanedViewProps) -> PanedViewResult {
+Draw :: (session: Session, props: PropsModule.Props) -> PanedViewResult {
     result: PanedViewResult
     result.node = -1
     bounds: Rectangle = props.bounds

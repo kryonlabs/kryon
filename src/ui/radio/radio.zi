@@ -1,3 +1,4 @@
+using PropsModule :: #import "radio_props";
 Theme :: #import "theme";
 #import "session"
 #import "control_props"
@@ -7,7 +8,6 @@ Theme :: #import "theme";
 #import "focus"
 #import "paint_queue"
 #import "radio_behavior"
-#import "radio_props"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -49,7 +49,7 @@ RadioDefaultFace :: (role: s32, disabled: bool) -> StyleData {
 }
 
 #program_export
-RadioFaceFor :: (props: RadioProps,
+RadioFaceFor :: (props: PropsModule.Props,
     role: s32, tone: ButtonTone, state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(StyleKindRadio(),
         props.id, props.class_name, role, cast(s32)tone,
@@ -61,7 +61,7 @@ RadioFaceFor :: (props: RadioProps,
 }
 
 #program_export
-PaintRadioForNode :: (session: Session, node: s32, props: RadioProps,
+PaintRadioForNode :: (session: Session, node: s32, props: PropsModule.Props,
     paint: RadioPaint, label: StyleFrame, font: s32,
     label_height: s32, hovered: bool, pressed: bool) {
     layer_alpha: s32 = RadioStateLayerAlpha(hovered, pressed, 0.0)
@@ -97,8 +97,7 @@ PaintRadioForNode :: (session: Session, node: s32, props: RadioProps,
 
 // A Radio reports its id on activation; the caller chooses which option in a
 // group is checked on the next frame. The checked value stays caller-owned.
-#program_export
-Radio :: (session: Session, props: RadioProps) -> s32 {
+Draw :: (session: Session, props: PropsModule.Props) -> s32 {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
     previous: s32 = -1

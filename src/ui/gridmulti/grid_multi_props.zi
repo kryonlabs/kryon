@@ -1,15 +1,15 @@
+Image :: #import "image";
 #import "geometry"
-#import "image_props"
 
 GridMultiLayout :: enum { GridMultiIcon :: 0; GridMultiCompact :: 1 }
 
 // Borrowed for the call. Nonzero unique keys preserve identity on reorder.
-GridMultiItem :: struct { key: u64; label: string; image: ImageProps }
+GridMultiItem :: struct { key: u64; label: string; image: Image.Props }
 GridMultiInput :: struct {
     home: bool; end: bool; left: bool; right: bool
     up: bool; down: bool; space: bool; enter: bool
 }
-GridMultiProps :: struct {
+Props :: struct {
     // Scroll-device ownership requires a stable session-unique key, even
     // when separate retained parent scopes would allow the same local key.
     key: u64

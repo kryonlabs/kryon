@@ -1,6 +1,6 @@
-#import "textarea"
+Text :: #import "kryon/text";
+TextArea :: #import "kryon/text_area";
 #import "text_input"
-#import "text_props"
 #import "font_metrics"
 Host :: #import "ziran_text_area_cache_host";
 
@@ -10,32 +10,32 @@ Host :: #import "ziran_text_area_cache_host";
 main :: () -> s32 {
     GlyphMetricsChanged()
     value := "**bold** end\nnext"
-    hidden: [2]TextRange = .[TextRange.{.start = 0, .end = 2}, TextRange.{.start = 6, .end = 8}]
-    if TextAreaShownWidth(value, 0, 12, 10, "", hidden[:]) != 40 { return 1 }
-    caret := TextAreaCaretForWith(value, 8, 0, 10, "", 10, hidden[:])
+    hidden: [2]Text.Range = .[Text.Range.{.start = 0, .end = 2}, Text.Range.{.start = 6, .end = 8}]
+    if TextArea.TextAreaShownWidth(value, 0, 12, 10, "", hidden[:]) != 40 { return 1 }
+    caret := TextArea.TextAreaCaretForWith(value, 8, 0, 10, "", 10, hidden[:])
     if caret.x != 20 || caret.row_index != 0 { return 2 }
     // A click right after "bold" stops before the hidden closing marker,
     // never inside it.
-    if TextAreaCursorAtPointWith(value, 20, 1, 0, 10, "", 10, hidden[:]) != 6 { return 3 }
-    if TextAreaCursorAtPointWith(value, 0, 1, 0, 10, "", 10, hidden[:]) != 0 { return 4 }
+    if TextArea.TextAreaCursorAtPointWith(value, 20, 1, 0, 10, "", 10, hidden[:]) != 6 { return 3 }
+    if TextArea.TextAreaCursorAtPointWith(value, 0, 1, 0, 10, "", 10, hidden[:]) != 0 { return 4 }
     // Wrapping measures shown text: 22 px holds "bold" but not "bold ".
-    row := TextAreaNextRowWith(value, 0, 22, 10, "", hidden[:])
+    row := TextArea.TextAreaNextRowWith(value, 0, 22, 10, "", hidden[:])
     if row.end != 8 || row.next != 8 || !row.soft_wrap { return 5 }
-    if TextAreaNextRow(value, 0, 22, 10, "").end != 4 { return 6 }
+    if TextArea.TextAreaNextRow(value, 0, 22, 10, "").end != 4 { return 6 }
     // The row cache keeps layouts with and without hidden bytes apart.
-    if TextAreaNextRowWith(value, 0, 22, 10, "", hidden[:]).end != 8 { return 7 }
-    if TextAreaRowCountWith(value, 22, 10, "", hidden[:]) != TextAreaRowCount(value, 22, 10, "") - 1 { return 8 }
+    if TextArea.TextAreaNextRowWith(value, 0, 22, 10, "", hidden[:]).end != 8 { return 7 }
+    if TextArea.TextAreaRowCountWith(value, 22, 10, "", hidden[:]) != TextArea.TextAreaRowCount(value, 22, 10, "") - 1 { return 8 }
     // An unsorted, overlapping or split-character list is ignored as a whole.
-    unsorted: [2]TextRange = .[TextRange.{.start = 6, .end = 8}, TextRange.{.start = 0, .end = 2}]
-    if TextAreaRangesFor(value, unsorted[:]).count != 0 { return 9 }
-    if TextAreaRangesFor(value, hidden[:]).count != 2 { return 10 }
+    unsorted: [2]Text.Range = .[Text.Range.{.start = 6, .end = 8}, Text.Range.{.start = 0, .end = 2}]
+    if TextArea.TextAreaRangesFor(value, unsorted[:]).count != 0 { return 9 }
+    if TextArea.TextAreaRangesFor(value, hidden[:]).count != 2 { return 10 }
     accented := "é**"
-    split: [1]TextRange = .[TextRange.{.start = 1, .end = 3}]
-    if TextAreaRangesFor(accented, split[:]).count != 0 { return 11 }
+    split: [1]Text.Range = .[Text.Range.{.start = 1, .end = 3}]
+    if TextArea.TextAreaRangesFor(accented, split[:]).count != 0 { return 11 }
     // A composition on another line measures the same hidden bytes.
-    view := TextAreaViewFor(value, 13, 13, CompositionState.{active = true, text = "xy"})
+    view := TextArea.TextAreaViewFor(value, 13, 13, CompositionState.{active = true, text = "xy"})
     view.hidden = hidden[:]
-    if TextAreaViewSpanWidth(view, 0, 12, 10, "") != 40 { return 12 }
-    if TextAreaViewSpanWidth(view, 13, 15, 10, "") != 10 { return 13 }
+    if TextArea.TextAreaViewSpanWidth(view, 0, 12, 10, "") != 40 { return 12 }
+    if TextArea.TextAreaViewSpanWidth(view, 13, 15, 10, "") != 10 { return 13 }
     return 0
 }

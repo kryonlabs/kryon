@@ -1,21 +1,20 @@
+using TextField :: #import "text_field_props";
+Button :: #import "button";
+Text :: #import "text";
 Theme :: #import "theme";
 #import "text_host"
-// Caller-owned buffers use TextFieldStateProps before this same widget and
-// TextFieldStateApplyResult afterwards; commit remains on TextFieldResult.
+// Caller-owned buffers use StateProps before this same widget and
+// StateApplyResult afterwards; commit remains on Result.
 // Portable compositions use the same widgets as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "text_input_props"
     host_api :: #system_library "host_api";
-    TextFieldHostedHost :: (session: Session, props: TextFieldProps) -> TextFieldResult #foreign host_api;
-    #program_export
-    TextField :: (session: Session, props: TextFieldProps) -> TextFieldResult {
+    TextFieldHostedHost :: (session: Session, props: TextField.Props) -> TextField.Result #foreign host_api;
+        Draw :: (session: Session, props: TextField.Props) -> TextField.Result {
         return TextFieldHostedHost(session, props)
     }
 } else {
     #import "session"
-    #import "button_props"
-    #import "button"
     #import "control_props"
     #import "drawing_props"
     #import "font_metrics"
@@ -29,8 +28,6 @@ Theme :: #import "theme";
     #import "text_context_menu"
     #import "text_input"
     #import "text_input_platform"
-    #import "text_input_props"
-    #import "kryon/text_widget"
     #import "tree"
     #import "tree_input"
     #import "text_request"
@@ -48,7 +45,7 @@ Theme :: #import "theme";
     using CompositionPhase;
 
     #program_export
-    TextFieldKey :: (session: Session, props: TextFieldProps) -> u64 {
+    TextFieldKey :: (session: Session, props: TextField.Props) -> u64 {
         if props.key != cast(u64)0 { return props.key }
         if props.id > 0 { return cast(u64)cast(u32)props.id }
         return cast(u64)0
@@ -75,7 +72,7 @@ Theme :: #import "theme";
     }
 
     #program_export
-    TextFieldFaceFor :: (props: TextFieldProps,
+    TextFieldFaceFor :: (props: TextField.Props,
         focused: bool) -> StyleFrame {
         state: s32 = cast(s32)ButtonStateNormal
         if focused { state = cast(s32)ButtonStateFocus }
@@ -146,7 +143,7 @@ Theme :: #import "theme";
     }
 
     #program_export
-    TextFieldReplacementAllowed :: (props: TextFieldProps,
+    TextFieldReplacementAllowed :: (props: TextField.Props,
         start: s32, end: s32, replacement: string) -> bool {
         if start < 0 || end < start || end > (cast(s32)props.value.count) {
             return false
@@ -164,7 +161,7 @@ Theme :: #import "theme";
             index += 1
         }
         if props.max_codepoints > 0 {
-            removed: string = TextSpan(props.value,
+            removed: string = Text.TextSpan(props.value,
                 start, end - start)
             count: s32 = TextFieldCodepoints(props.value) -
             TextFieldCodepoints(removed) +
@@ -195,14 +192,14 @@ Theme :: #import "theme";
         cursor: s32, secure: bool) -> s32 {
         cursor = TextCursorForLength(cursor, (cast(s32)value.count))
         if !secure { return cursor }
-        count: s32 = TextFieldCodepoints(TextSpan(value, 0, cursor))
+        count: s32 = TextFieldCodepoints(Text.TextSpan(value, 0, cursor))
         return TextFieldByteAfter(display, count)
     }
 
     #program_export
-    TextFieldEditFor :: (props: TextFieldProps,
-        cursor: s32, anchor: s32) -> TextFieldEdit {
-        edit: TextFieldEdit
+    TextFieldEditFor :: (props: TextField.Props,
+        cursor: s32, anchor: s32) -> Edit {
+        edit: Edit
         selection: TextSelectionRange = TextSelectionRangeForLength(
             anchor, cursor, (cast(s32)props.value.count))
         if TextFieldInputTextAllowed(props.input.text) {
@@ -233,8 +230,8 @@ Theme :: #import "theme";
 
     // The caller supplies current text and raw input samples. Kryon returns the
     // replacement range and next selection; the caller owns text storage.
-    TextFieldCore :: (session: Session, props: TextFieldProps) -> TextFieldResult {
-        result: TextFieldResult
+    TextFieldCore :: (session: Session, props: TextField.Props) -> Result {
+        result: Result
         result.node = -1
         result.cursor = Grapheme.Boundary(props.value, props.cursor)
         result.anchor = Grapheme.Boundary(props.value, props.anchor)
@@ -299,7 +296,7 @@ Theme :: #import "theme";
                 TextPointerOffset(sample_x, scroll.text_origin_x),
                 font, face.value.typeface)
             if props.secure {
-                count: s32 = TextFieldCodepoints(TextSpan(display,
+                count: s32 = TextFieldCodepoints(Text.TextSpan(display,
                     0, selected))
                 selected = Grapheme.Boundary(props.value, TextFieldByteAfter(props.value, count))
             }
@@ -415,7 +412,7 @@ Theme :: #import "theme";
                     !props.read_only)
                 if decision.copy_selection {
                     result.clipboard_write = true
-                    result.clipboard_text = TextSpan(props.value,
+                    result.clipboard_text = Text.TextSpan(props.value,
                         selection.start, selection.end - selection.start)
                 } else if decision.copy_all {
                     result.clipboard_write = true
@@ -488,9 +485,9 @@ Theme :: #import "theme";
         if composing {
             replacing: TextSelectionRange = TextSelectionRangeForLength(
                 result.anchor, result.cursor, (cast(s32)props.value.count))
-            composition_prefix = TextSpan(display, 0,
+            composition_prefix = Text.TextSpan(display, 0,
                 replacing.start)
-            composition_suffix = TextSpan(display, replacing.end,
+            composition_suffix = Text.TextSpan(display, replacing.end,
                 (cast(s32)display.count) - replacing.end)
             prefix_width = GlyphWidth(composition_prefix, font,
                 face.value.typeface)
@@ -507,11 +504,11 @@ Theme :: #import "theme";
         face = TextFieldFaceFor(props, result.focused)
         display_cursor: s32 = TextFieldDisplayByteFor(props.value,
             display, result.cursor, props.secure)
-        cursor_prefix: string = TextSpan(display, 0, display_cursor)
+        cursor_prefix: string = Text.TextSpan(display, 0, display_cursor)
         cursor_text_x: s32 = GlyphCaret(display, display_cursor, font,
             face.value.typeface)
         if composing {
-            cursor_text_x = prefix_width + GlyphWidth(TextSpan(
+            cursor_text_x = prefix_width + GlyphWidth(Text.TextSpan(
                 result.composition.text, 0,
                 result.composition.cursor), font,
                 face.value.typeface)
@@ -594,11 +591,11 @@ Theme :: #import "theme";
             right: s32 = paint.text_x + GlyphCaret(display, last, font, face.value.typeface)
             if composing {
                 left = paint.text_x + prefix_width +
-                GlyphWidth(TextSpan(result.composition.text,
+                GlyphWidth(Text.TextSpan(result.composition.text,
                     0, result.composition.cursor),
                     font, face.value.typeface)
                 right = paint.text_x + prefix_width +
-                GlyphWidth(TextSpan(result.composition.text,
+                GlyphWidth(Text.TextSpan(result.composition.text,
                     0, result.composition.cursor +
                     result.composition.selection_length),
                     font, face.value.typeface)
@@ -679,7 +676,7 @@ Theme :: #import "theme";
             }
         }
         if clear_size > 0.0 {
-            clear: ButtonProps
+            clear: Button.Props
             field_key := key
             if result.node >= 0 { field_key = TreeSubmittedNodeAt(session, result.node).key }
             clear.key = field_key * cast(u64)65599 + cast(u64)41
@@ -696,8 +693,8 @@ Theme :: #import "theme";
             clear.fit_content = true
             clear.emphasis = cast(ButtonEmphasis)ButtonEmphasisGhost
             clear.disabled = props.disabled
-            if Button(session, clear) != 0 {
-                result.edit = TextFieldEdit.{.start = 0, .end = cast(s32)props.value.count,
+            if Button.Draw(session, clear) != 0 {
+                result.edit = Edit.{.start = 0, .end = cast(s32)props.value.count,
                     .replacement = "", .changed = true}
                 result.cursor = 0
                 result.anchor = 0
@@ -718,8 +715,7 @@ Theme :: #import "theme";
     // The field with its context menu: a click of the secondary button inside it
     // opens Cut, Copy, Paste, and Select all, working on the system clipboard, and
     // Cut, Copy, and Paste from the keyboard reach the system clipboard too.
-    #program_export
-    TextField :: (session: Session, props: TextFieldProps) -> TextFieldResult {
+        Draw :: (session: Session, props: TextField.Props) -> Result {
         key: u64 = TextFieldKey(session, props)
         editable: bool = !props.read_only && !props.secure
         selection: TextSelectionRange = TextSelectionRangeForLength(props.anchor,
@@ -734,7 +730,7 @@ Theme :: #import "theme";
             props.input.paste_text = TextMenuPasteText()
         }
         opened: bool = TextMenuOpenRequested(session, key, props.bounds, props.disabled)
-        result: TextFieldResult = TextFieldCore(session, props)
+        result: Result = TextFieldCore(session, props)
         if result.clipboard_write { SystemClipboardSet(result.clipboard_text) }
         if opened { result.focused = true }
         // A focused editable field asks the host for the platform keyboard.

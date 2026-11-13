@@ -1,11 +1,10 @@
+using Fieldset :: #import "fieldset_props";
 // Portable compositions use the same widget as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "fieldset_props"
     host_api :: #system_library "host_api";
-    FieldsetHostedHost :: (session: Session, props: FieldsetProps) -> s32 #foreign host_api;
-    #program_export
-    Fieldset :: (session: Session, props: FieldsetProps) {
+    FieldsetHostedHost :: (session: Session, props: Fieldset.Props) -> s32 #foreign host_api;
+        Draw :: (session: Session, props: Fieldset.Props) {
         unused FieldsetHostedHost(session, props)
     }
 } else {
@@ -14,7 +13,6 @@
     #import "control_props"
     #import "drawing_props"
     #import "fieldset_behavior"
-    #import "fieldset_props"
     #import "font_metrics"
     #import "geometry"
     #import "paint_queue"
@@ -53,7 +51,7 @@
     }
 
     #program_export
-    FieldsetFaceFor :: (props: FieldsetProps) -> StyleFrame {
+    FieldsetFaceFor :: (props: Fieldset.Props) -> StyleFrame {
         facts: StyleFacts = StyleControlRoleFacts(StyleKindFieldset(),
             props.id, props.class_name, StyleAny(),
             cast(s32)ButtonToneNeutral, cast(s32)ButtonEmphasisFilled,
@@ -64,8 +62,7 @@
         return frame
     }
 
-    #program_export
-    Fieldset :: (session: Session, props: FieldsetProps) {
+        Draw :: (session: Session, props: Fieldset.Props) {
         key: u64 = props.key
         if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
         if key == cast(u64)0 { key = TreeNextKey(session) }

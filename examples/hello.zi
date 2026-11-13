@@ -1,33 +1,11 @@
-#import "button_props"
-#import "button"
-#import "control_props"
-#import "geometry"
-#import "pointer_input"
-#import "session"
-#import "tree"
-#import "tree_draw"
-#import "tree_input"
+App  :: #import "kryon/app";
+Text :: #import "kryon/text";
 
-using ButtonTone;
-using FrameStatus;
+main :: () -> s32 {
+    window := App.Window.{ .title = "Hello", .width = 320, .height = 160 }
+    return App.Run(window, Draw)
+}
 
-clicks: s32;
-session: Session;
-
-#program_export
-Frame :: () -> s32 {
-    if !SessionValid(session) { session = SessionOpen() }
-    if !SessionValid(session) { return -1 }
-    pointer: PointerFrame = SamplePointer()
-    TreePointerUpdate(session, pointer)
-    BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 160.0})
-    button: ButtonProps
-    button.key = cast(u64)2
-    button.bounds = Rectangle.{40.0, 48.0, 240.0, 64.0}
-    button.label = "Hello, Ziran"
-    if clicks > 0 { button.label = "Clicked!" }
-    button.tone = cast(ButtonTone)ButtonToneAccent
-    clicks += Button(session, button)
-    if EndFrame(session) != cast(FrameStatus)FrameOk { return -1 }
-    return TreeCount(session) + clicks * 100
+Draw :: (frame: App.Frame) {
+    Text.Draw(frame, Text.Props.{ .text = "Hello, world!", .size = 32 })
 }

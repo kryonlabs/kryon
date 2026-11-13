@@ -10,9 +10,9 @@
 #import "tree_draw"
 #import "std/bundle_host"
 #import "std/c_string"
-#import "sheet_props"
-#import "taginput"
-#import "onetimecode"
+OneTimeCode :: #import "kryon/one_time_code";
+Sheet :: #import "kryon/sheet";
+TagInput :: #import "kryon/tag_input";
 using FrameStatus;
 
 boundary_audio_calls: s32;
@@ -78,8 +78,8 @@ sheet_reply_codec: WidgetSheetHostedReplyCodec
 args: [3]HostValue
 result: HostValue
 args[0] = WidgetEncodeSession(session, *session_codec)
-args[1] = WidgetEncodeTagInputProps(TagInputProps.{.key = 10, .bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}}, *tag_props_codec)
-tag: TagInputState
+args[1] = WidgetEncodeTagInputProps(TagInput.Props.{.key = 10, .bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}}, *tag_props_codec)
+tag: TagInput.TagInputState
 args[2] = WidgetEncodeTagInputState(tag, *tag_state_codec)
 if BoundaryCall("taginput", "TagInputHostedHost", args[:], *result) != 1 { return 11 }
 before := TreeSubmittedCount(session)
@@ -92,8 +92,8 @@ if BoundaryCall("taginput", "TagInputHostedHost", args[:], *result) != 0 { retur
 tag.count = 0; tag.text_length = 129
 args[2] = WidgetEncodeTagInputState(tag, *tag_state_codec)
 if BoundaryCall("taginput", "TagInputHostedHost", args[:], *result) != 0 || TreeSubmittedCount(session) != before { return 14 }
-args[1] = WidgetEncodeOneTimeCodeProps(OneTimeCodeProps.{.key = 20, .length = 6}, *otp_props_codec)
-otp: OneTimeCodeState
+args[1] = WidgetEncodeOneTimeCodeProps(OneTimeCode.Props.{.key = 20, .length = 6}, *otp_props_codec)
+otp: OneTimeCode.OneTimeCodeState
 otp.length = 6
 args[2] = WidgetEncodeOneTimeCodeState(otp, *otp_state_codec)
 if BoundaryCall("onetimecode", "OneTimeCodeHostedHost", args[:], *result) != 1 { return 15 }
@@ -108,10 +108,10 @@ otp.count = 0; otp.cursor = 1
 args[2] = WidgetEncodeOneTimeCodeState(otp, *otp_state_codec)
 if BoundaryCall("onetimecode", "OneTimeCodeHostedHost", args[:], *result) != 0 || TreeSubmittedCount(session) != before { return 18 }
 if BoundaryCall("sheet", "SheetEndHostedHost", args[:1], *result) != 0 { return 19 }
-props := SheetProps.{.key = 30, .open = true, .size = 180.0, .viewport = Rectangle.{0.0, 0.0, 480.0, 360.0}}
-props.surface_style = SheetSurfaceDefaultStyle()
-props.scrim_style = SheetScrimDefaultStyle()
-state := SheetStateFor()
+props := Sheet.Props.{.key = 30, .open = true, .size = 180.0, .viewport = Rectangle.{0.0, 0.0, 480.0, 360.0}}
+props.surface_style = Sheet.SheetSurfaceDefaultStyle()
+props.scrim_style = Sheet.SheetScrimDefaultStyle()
+state := Sheet.SheetStateFor()
 args[1] = WidgetEncodeSheetProps(props, *sheet_props_codec)
 args[2] = WidgetEncodeSheetState(state, *sheet_state_codec)
 if BoundaryCall("sheet", "SheetBeginHostedHost", args[:], *result) != 1 { return 20 }

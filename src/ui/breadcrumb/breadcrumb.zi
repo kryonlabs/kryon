@@ -1,19 +1,15 @@
+using PropsModule :: #import "breadcrumb_props";
+Button :: #import "button";
+Dropdown :: #import "dropdown";
+Overlay :: #import "overlay";
+Scroll :: #import "scroll";
 // Reusable label navigation. No path interpretation or application focus policy.
-#import "breadcrumb_props"
 #import "session"
-#import "button_props"
 #import "button_behavior"
 #import "font_metrics"
-#import "button"
 #import "control_props"
 #import "dropdown_behavior"
-#import "dropdown_props"
-#import "dropdown"
 #import "geometry"
-#import "overlay_props"
-#import "overlay"
-#import "scroll_props"
-#import "scroll"
 #import "semantic"
 #import "style"
 #import "tree"
@@ -27,28 +23,28 @@ using WidgetKind;
 using SemanticKind;
 
 #scope_file
-Action :: (props: BreadcrumbProps, item: BreadcrumbItem, index: s32) -> ButtonProps {
-    return ButtonProps.{.key = item.key, .label = item.label,
+Action :: (props: PropsModule.Props, item: BreadcrumbItem, index: s32) -> Button.Props {
+    return Button.Props.{.key = item.key, .label = item.label,
         .id = props.id, .class_name = props.class_name,
         .disabled = props.disabled || item.disabled,
         .selected = props.active_index == index, .fit_content = true,
         .emphasis = ButtonEmphasis.ButtonEmphasisGhost}
 }
-Width :: (props: BreadcrumbProps, item: BreadcrumbItem, index: s32) -> float32 {
+Width :: (props: PropsModule.Props, item: BreadcrumbItem, index: s32) -> float32 {
     action := Action(props, item, index)
     state := cast(s32)ButtonState.ButtonStateNormal
     if action.selected { state = cast(s32)ButtonState.ButtonStateSelected }
     if action.disabled { state = cast(s32)ButtonState.ButtonStateDisabled }
-    face := ButtonInstalledFaceFor(action, state)
+    face := Button.ButtonInstalledFaceFor(action, state)
     font := ResolveFont(0, StyleFontValue(face.fields, face.font_size), 14)
-    return MeasureBounds(action, face, ButtonMinimumHeight(action.size), font,
+    return MeasureBounds(action, face, Button.ButtonMinimumHeight(action.size), font,
         cast(float32)GlyphWidth(item.label, font, face.typeface),
         0.0, 1.0, false, 0.0).width
 }
 Visible :: (index: s32, first: s32, active: s32) -> bool {
     return index >= first || index == active
 }
-Activate :: (props: BreadcrumbProps, item: BreadcrumbItem, index: s32,
+Activate :: (props: PropsModule.Props, item: BreadcrumbItem, index: s32,
     result: *BreadcrumbResult) {
     if props.disabled || item.disabled { return }
     result.activated_index = index
@@ -57,8 +53,7 @@ Activate :: (props: BreadcrumbProps, item: BreadcrumbItem, index: s32,
 }
 #scope_export
 
-#program_export
-Breadcrumb :: (session: Session, props: BreadcrumbProps,
+Draw :: (session: Session, props: PropsModule.Props,
     items: []BreadcrumbItem) -> BreadcrumbResult {
     result := BreadcrumbResult.{.node = -1, .activated_index = -1}
     count := cast(s32)items.count
@@ -81,15 +76,15 @@ Breadcrumb :: (session: Session, props: BreadcrumbProps,
     active := props.active_index
     if active < 0 || active >= count { active = -1 }
     // Measured suffix plus the caller's active ancestor. No byte truncation.
-    separator := ButtonMeasure(ButtonProps.{.label = "›",
+    separator := Button.ButtonMeasure(Button.Props.{.label = "›",
         .emphasis = ButtonEmphasis.ButtonEmphasisGhost, .id = props.id,
         .class_name = props.class_name}).width
-    overflow := ButtonProps.{.key = cast(u64)3,
+    overflow := Button.Props.{.key = cast(u64)3,
         .label = props.overflow_label, .id = props.id,
         .class_name = props.class_name, .disabled = props.disabled,
         .fit_content = true, .emphasis = ButtonEmphasis.ButtonEmphasisGhost}
     if overflow.label == "" { overflow.label = "…" }
-    overflow_width := ButtonMeasure(overflow).width
+    overflow_width := Button.ButtonMeasure(overflow).width
     total: float32 = 0.0
     for i: 0..count - 1 {
         total += Width(props, items[i], i)
@@ -137,7 +132,7 @@ Breadcrumb :: (session: Session, props: BreadcrumbProps,
         // Even a subpixel bar divides its positive area between overflow and tail.
         if overflow_width > remaining * 0.35 { overflow_width = remaining * 0.35 }
         overflow.bounds = Rectangle.{x, props.bounds.y, overflow_width, bounds.height}
-        toggled := Button(session, overflow) != 0
+        toggled := Button.Draw(session, overflow) != 0
         keyboard := !props.disabled && props.focused && props.focused_index == -1 &&
             (props.trigger_input.enter || props.trigger_input.space || props.trigger_input.down)
         if toggled { result.open = !result.open }
@@ -165,7 +160,7 @@ Breadcrumb :: (session: Session, props: BreadcrumbProps,
             action := Action(props, items[i], i)
             width := Width(props, items[i], i) * ratio
             action.bounds = Rectangle.{x, props.bounds.y, width, bounds.height}
-            clicked := Button(session, action) != 0
+            clicked := Button.Draw(session, action) != 0
             if props.focused && props.focused_index == i && !result.open &&
             (props.trigger_input.enter || props.trigger_input.space) { clicked = true }
             if clicked { Activate(props, items[i], i, *result) }
@@ -173,9 +168,9 @@ Breadcrumb :: (session: Session, props: BreadcrumbProps,
             remaining -= width
             visible_count -= 1
             if visible_count > 0 && gap > 0.0 {
-                sep := ButtonProps.{.bounds = Rectangle.{x, props.bounds.y, gap, bounds.height},
+                sep := Button.Props.{.bounds = Rectangle.{x, props.bounds.y, gap, bounds.height},
                     .label = "›", .disabled = true, .emphasis = ButtonEmphasis.ButtonEmphasisGhost}
-                Button(session, sep)
+                Button.Draw(session, sep)
                 x += gap; remaining -= gap
             }
         }
@@ -206,10 +201,10 @@ Breadcrumb :: (session: Session, props: BreadcrumbProps,
         }
     }
     if result.open {
-        dropdown := DropdownProps.{.id = props.id, .class_name = props.class_name}
-        panel := DropdownFaceFor(dropdown, DropdownPanelRole(), 0, false)
-        option_face := DropdownFaceFor(dropdown, DropdownOptionRole(), 0, false)
-        scrollbar := DropdownFaceFor(dropdown, DropdownScrollbarRole(), 0, false)
+        dropdown := Dropdown.Props.{.id = props.id, .class_name = props.class_name}
+        panel := Dropdown.DropdownFaceFor(dropdown, DropdownPanelRole(), 0, false)
+        option_face := Dropdown.DropdownFaceFor(dropdown, DropdownOptionRole(), 0, false)
+        scrollbar := Dropdown.DropdownFaceFor(dropdown, DropdownScrollbarRole(), 0, false)
         // Measure the longest hidden label; popup width is viewport constrained.
         anchor := bounds
         for i: 0..count - 1 {
@@ -237,7 +232,7 @@ Breadcrumb :: (session: Session, props: BreadcrumbProps,
             offset = RevealRow(offset, highlighted_row, cast(float32)row_height,
                 layout.content_bounds.height, layout.max_scroll)
         }
-        popup := Popup(session, PopupProps.{.key = overlay_key,
+        popup := Overlay.Popup(session, Overlay.PopupProps.{.key = overlay_key,
             .id = props.id, .class_name = props.class_name,
             .bounds = menu, .keep_bounds = bounds})
         if popup.closed || menu.width <= 0.0 || menu.height <= 0.0 { result.open = false }
@@ -245,7 +240,7 @@ Breadcrumb :: (session: Session, props: BreadcrumbProps,
             PaintRoundedFill(session, popup.panel_node, menu, panel.value.radius, 12,
                 ColorFromPacked(panel.value.background))
             scroll_key := key * cast(u64)65599 + cast(u64)11
-            scrolled := Scroll(session, ScrollProps.{.key = scroll_key,
+            scrolled := Scroll.Draw(session, Scroll.Props.{.key = scroll_key,
                 .id = props.id, .class_name = props.class_name,
                 .bounds = menu, .content_height = layout.content_height,
                 .scroll_offset = offset})
@@ -254,7 +249,7 @@ Breadcrumb :: (session: Session, props: BreadcrumbProps,
                 rows := Rows(hidden, scrolled.scroll_offset,
                     layout.content_bounds.height, cast(float32)row_height)
                 previous_panel := TreePreviousCommitted(session, previous_overlay,
-                    OverlayPanelKey(), WidgetKindCustom)
+                    Overlay.OverlayPanelKey(), WidgetKindCustom)
                 previous_scroll := TreePreviousCommitted(session, previous_panel, scroll_key, WidgetKindScroll)
                 ordinal = 0
                 for i: 0..count - 1 {
@@ -277,9 +272,9 @@ Breadcrumb :: (session: Session, props: BreadcrumbProps,
                             state := cast(s32)ButtonState.ButtonStateNormal
                             if hovered || i == highlight { state = cast(s32)ButtonState.ButtonStateHover }
                             if items[i].disabled { state = cast(s32)ButtonState.ButtonStateDisabled }
-                            face := DropdownFaceFor(dropdown, DropdownOptionRole(), state, i == active)
-                            DropdownPaintRow(session, node, dropdown,
-                                DropdownOption.{.label = items[i].label, .disabled = items[i].disabled},
+                            face := Dropdown.DropdownFaceFor(dropdown, DropdownOptionRole(), state, i == active)
+                            Dropdown.DropdownPaintRow(session, node, dropdown,
+                                Dropdown.Option.{.label = items[i].label, .disabled = items[i].disabled},
                                 Rectangle.{menu.x, cast(float32)paint.option_y,
                                     cast(float32)layout.option_width, cast(float32)row_height},
                                 paint.visible_bounds, i == active, hovered || i == highlight, metrics, face)

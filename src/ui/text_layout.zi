@@ -1,11 +1,11 @@
+TextSchema :: #import "text_props";
 #import "font_metrics"
 #import "text_align"
-#import "text_props"
 #import "utf8"
 Grapheme :: #import "std/grapheme";
 
 using TextAlign;
-using TextWrap;
+using TextSchema.Wrap;
 
 TextLinePlan :: struct {
     start: s32
@@ -166,7 +166,7 @@ TextLineCacheMatches :: (entry: *TextLineCache, revision: u64, hash: u64, count:
 // Anywhere instead wraps between complete extended grapheme clusters.
 #program_export
 NextTextLine :: (value: string, start: s32, max_width: float32,
-    wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
+    wrap: TextSchema.Wrap, font: s32, typeface: string) -> TextLinePlan {
     revision := GlyphMetricsRevision()
     if revision == cast(u64)0 || start < 0 || start > cast(s32)value.count {
         return NextTextLineUncached(value, start, max_width, wrap, font, typeface)
@@ -219,10 +219,10 @@ NextTextLine :: (value: string, start: s32, max_width: float32,
 }
 
 NextTextLineUncached :: (value: string, start: s32, max_width: float32,
-    wrap: TextWrap, font: s32, typeface: string) -> TextLinePlan {
+    wrap: TextSchema.Wrap, font: s32, typeface: string) -> TextLinePlan {
     line: TextLinePlan = .{.start = start, .end = start, .next = cast(s32)value.count + 1}
     if start >= cast(s32)value.count { return line }
-    if wrap == cast(TextWrap)TextWrapAnywhere && max_width > 0.0 {
+    if wrap == cast(TextSchema.Wrap)TextWrapAnywhere && max_width > 0.0 {
         offset := start
         while offset < cast(s32)value.count {
             after := Grapheme.Next(value, offset)
@@ -243,7 +243,7 @@ NextTextLineUncached :: (value: string, start: s32, max_width: float32,
         }
         return line
     }
-    wrapped: bool = wrap == cast(TextWrap)TextWrapAuto && max_width > 0.0
+    wrapped: bool = wrap == cast(TextSchema.Wrap)TextWrapAuto && max_width > 0.0
     offset: s32 = start
     while offset < cast(s32)value.count {
         token: TextToken = TextTokenNext(value, offset, false)

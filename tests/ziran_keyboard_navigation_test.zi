@@ -2,8 +2,7 @@
 // controls, shows where the focus is, and presses the focused button with
 // Space or Enter, without any app code.
 #import "session"
-#import "button_props"
-#import "button"
+Button :: #import "kryon/button";
 #import "geometry"
 #import "tree"
 #import "tree_draw"
@@ -18,12 +17,12 @@ pressed: [3]s32;
 Frame :: () -> bool {
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 100.0})
     for index: cast(s32)0..2 {
-        props: ButtonProps
+        props: Button.Props
         props.id = 100 + index
         props.label = "Go"
         props.bounds = Rectangle.{10.0 + cast(float32)index * 100.0, 10.0, 80.0, 30.0}
         props.disabled = index == 1
-        pressed[index] = Button(session, props)
+        pressed[index] = Button.Draw(session, props)
     }
     return EndFrame(session) == cast(FrameStatus)FrameOk
 }

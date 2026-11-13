@@ -3,8 +3,7 @@
 #import "style_sheet"
 #import "session"
 #import "geometry"
-#import "textarea"
-#import "text_input_props"
+TextArea :: #import "kryon/text_area";
 #import "text_touch"
 #import "tree"
 #import "tree_draw"
@@ -15,9 +14,9 @@ using Vectors :: #import "std/vec"
 
 using FrameStatus;
 
-Frame :: (session: Session, props: TextAreaProps) -> TextAreaResult {
+Frame :: (session: Session, props: TextArea.Props) -> TextArea.Result {
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
-    result := TextArea(session, props)
+    result := TextArea.Draw(session, props)
     unused EndFrame(session)
     return result
 }
@@ -30,15 +29,15 @@ PlaceArea :: (session: Session, parent: s32, bounds: Rectangle) -> Rectangle {
     return Rectangle.{-60.0, -36.0, bounds.width, bounds.height}
 }
 
-PlacedFrame :: (session: Session, props: TextAreaProps) -> TextAreaResult {
+PlacedFrame :: (session: Session, props: TextArea.Props) -> TextArea.Result {
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 200.0})
     TreeSetPlacement(session, 0, PlaceArea)
-    result := TextArea(session, props)
+    result := TextArea.Draw(session, props)
     unused EndFrame(session)
     return result
 }
 
-ApplyAreaResult :: (props: *TextAreaProps, edited: TextAreaResult) {
+ApplyAreaResult :: (props: *TextArea.Props, edited: TextArea.Result) {
     if edited.edit.changed {
         bytes: Vec(u8)
         BuilderPrint(*bytes, "%", props.value[:edited.edit.start])
@@ -59,7 +58,7 @@ TouchClock :: () -> s64 { return touch_time }
 
 PositionedCorrection :: () -> s32 {
     session := SessionOpen()
-    props: TextAreaProps = .{.key = cast(u64)78, .focus_id = 78,
+    props: TextArea.Props = .{.key = cast(u64)78, .focus_id = 78,
         .bounds = Rectangle.{0.0, 0.0, 240.0, 140.0},
         .value = "alpha bravo\ncharlie delta\necho foxtrot\ngolf hotel"}
     unused PlacedFrame(session, props)
@@ -139,7 +138,7 @@ main :: () -> s32 {
     rules.items[0].style.font_size = 14.0
     InstallStyleRules(rules)
     session := SessionOpen()
-    props: TextAreaProps = .{.key = cast(u64)77, .focus_id = 77,
+    props: TextArea.Props = .{.key = cast(u64)77, .focus_id = 77,
         .bounds = Rectangle.{20.0, 20.0, 100.0, 52.0},
         .value = "abcd\nefgh\nijkl\nmnop\nqrst\nuvwx\nyzAB\nCDEF\nGHIJ\nKLMN", .read_only = true}
     unused Frame(session, props)

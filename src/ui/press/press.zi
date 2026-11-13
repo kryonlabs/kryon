@@ -1,17 +1,15 @@
+using Press :: #import "press_props";
 // Submit the standard widget contract from a portable composition.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "press_props"
     host_api :: #system_library "host_api";
-    PressHostedHost :: (session: Session, props: PressProps) -> PressResult #foreign host_api;
-    #program_export
-    Press :: (session: Session, props: PressProps) -> PressResult {
+    PressHostedHost :: (session: Session, props: Press.Props) -> PressResult #foreign host_api;
+        Draw :: (session: Session, props: Press.Props) -> PressResult {
         return PressHostedHost(session, props)
     }
 } else {
 #import "session"
 #import "geometry"
-#import "press_props"
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -36,8 +34,7 @@ PressElapsed :: (now: s32, start: s32) -> s32 {
 // A pressable area submitted as a button, so it takes keyboard focus and
 // Enter or Space click it. Its retained state is open while pressed, offset
 // is the press's start and index is 1 once the press became a hold.
-#program_export
-Press :: (session: Session, props: PressProps) -> PressResult {
+Draw :: (session: Session, props: Press.Props) -> PressResult {
     result: PressResult
     result.node = -1
     key: u64 = props.key

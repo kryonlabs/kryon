@@ -3,17 +3,8 @@
 #import "raster_shape"
 #import "transition"
 
-// The caller draws the fade after its content. Kryon decides the alpha;
-// the platform only fills the rectangle.
-#program_export
-TransitionFadeColor :: (state: TransitionState,
-    color: Color) -> Color {
-    alpha: s32 = TransitionFadeAlphaByte(state.active, state.phase,
-        state.elapsed_seconds, state.duration_seconds)
-    color.a = cast(u8)TransitionApplyAlpha(cast(s32)color.a, alpha)
-    return color
-}
-
+// The caller draws the fade after its content; TransitionFadeColor decides
+// the alpha and the platform only fills the rectangle.
 #program_export
 PaintTransitionFade :: (state: TransitionState,
     bounds: Rectangle, color: Color) {

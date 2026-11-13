@@ -1,5 +1,5 @@
-#import "box_props"
-#import "box"
+Box :: #import "box";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -8,8 +8,6 @@
 #import "style"
 #import "style_sheet"
 #import "text_align"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -30,7 +28,7 @@ CountdownState :: struct {
     roll_progress: float32
 }
 
-CountdownProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     seconds_left: float64
@@ -135,7 +133,7 @@ CountdownUnitText :: (value: s64, output: []u8) -> string {
 }
 
 #program_export
-CountdownLayoutFor :: (props: CountdownProps) -> CountdownLayout {
+CountdownLayoutFor :: (props: Props) -> CountdownLayout {
     layout: CountdownLayout
     layout.bounds = props.bounds
     if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return layout }
@@ -193,8 +191,7 @@ unit_label :: (index: s32) -> string {
 }
 
 #scope_export
-#program_export
-Countdown :: (session: Session, props: CountdownProps,
+Draw :: (session: Session, props: Props,
     state: *CountdownState) -> CountdownResult {
     result: CountdownResult
     result.parts = CountdownPartsFor(props.seconds_left, props.hide_days)
@@ -218,30 +215,30 @@ Countdown :: (session: Session, props: CountdownProps,
     while index < result.layout.tile_count {
         unit := first + index
         tile := result.layout.tiles[index]
-        unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 10 + index),
+        unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 10 + index),
             .bounds = tile, .id = props.id, .class_name = props.class_name,
             .fill = ColorFromPacked(CurrentSurface()), .border = ColorFromPacked(CurrentBorder()),
             .radius = ifx props.compact then 8.0 else 12.0})
-        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 30 + index),
+        unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 30 + index),
             .bounds = Rectangle.{tile.x, tile.y + (tile.height - cast(float32)result.layout.tile_font) * 0.5,
                 tile.width, cast(float32)result.layout.tile_font},
             .text = CountdownUnitText(unit_at(result.parts, unit, props.hide_days),
                 countdown_digits[:]),
-            .font = result.layout.tile_font, .id = props.id, .class_name = props.class_name,
-            .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapNone})
+            .size = result.layout.tile_font, .id = props.id, .class_name = props.class_name,
+            .align = TextAlign.TextAlignCenter, .wrap = Text.Wrap.TextWrapNone})
         if !props.compact {
-            unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 50 + index),
+            unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 50 + index),
                 .bounds = result.layout.labels[index], .text = unit_label(unit),
-                .font = Text12, .id = props.id, .class_name = props.class_name,
-                .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapEllipsis})
+                .size = Text.Text12, .id = props.id, .class_name = props.class_name,
+                .align = TextAlign.TextAlignCenter, .wrap = Text.Wrap.TextWrapEllipsis})
         }
         if props.compact && index > 0 {
             separator := Rectangle.{tile.x - result.layout.gap, tile.y,
                 result.layout.gap, tile.height}
-            unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 70 + index),
-                .bounds = separator, .text = ":", .font = result.layout.tile_font,
+            unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 70 + index),
+                .bounds = separator, .text = ":", .size = result.layout.tile_font,
                 .id = props.id, .class_name = props.class_name,
-                .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapNone})
+                .align = TextAlign.TextAlignCenter, .wrap = Text.Wrap.TextWrapNone})
         }
         index += 1
     }

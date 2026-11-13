@@ -3,13 +3,12 @@
 
 #import "geometry"
 #import "paint_queue"
-#import "panedview"
-#import "paned_view_props"
+PanedView :: #import "kryon/paned_view";
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
 
-using DropZone;
+using PanedView.DropZone;
 using WidgetKind;
 
 phase: s32;
@@ -18,24 +17,24 @@ split: s32;
 #program_export
 Frame :: () -> s32 {
     bounds: Rectangle = Rectangle.{10.0, 20.0, 120.0, 80.0}
-    if PaneDropZone(bounds, Vector2.{70.0, 60.0}, 0.2, 0) !=
-            cast(DropZone)DropCenter ||
-        PaneDropZone(bounds, Vector2.{12.0, 60.0}, 0.2, 0) !=
-            cast(DropZone)DropLeft ||
-        PaneDropZone(bounds, Vector2.{129.0, 60.0}, 0.2, 0) !=
-            cast(DropZone)DropRight ||
-        PaneDropZone(bounds, Vector2.{70.0, 22.0}, 0.2, 0) !=
-            cast(DropZone)DropTop ||
-        PaneDropZone(bounds, Vector2.{70.0, 98.0}, 0.2, 0) !=
-            cast(DropZone)DropBottom { return -15 }
-    props: PanedViewProps = .{.key = cast(u64)20, .id = 20, .bounds = bounds,
+    if PanedView.PaneDropZone(bounds, Vector2.{70.0, 60.0}, 0.2, 0) !=
+            cast(PanedView.DropZone)DropCenter ||
+        PanedView.PaneDropZone(bounds, Vector2.{12.0, 60.0}, 0.2, 0) !=
+            cast(PanedView.DropZone)DropLeft ||
+        PanedView.PaneDropZone(bounds, Vector2.{129.0, 60.0}, 0.2, 0) !=
+            cast(PanedView.DropZone)DropRight ||
+        PanedView.PaneDropZone(bounds, Vector2.{70.0, 22.0}, 0.2, 0) !=
+            cast(PanedView.DropZone)DropTop ||
+        PanedView.PaneDropZone(bounds, Vector2.{70.0, 98.0}, 0.2, 0) !=
+            cast(PanedView.DropZone)DropBottom { return -15 }
+    props: PanedView.Props = .{.key = cast(u64)20, .id = 20, .bounds = bounds,
         .vertical = phase < 3, .has_split = true, .split = split, .min_first = 20,
         .min_second = 20}
     if phase == 0 { props.split = 60 }
     if phase == 3 { props.split = 40 }
     if phase == 6 { props.disabled = true }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 200.0, 150.0})
-    result: PanedViewResult = PanedView(TestSession(), props)
+    result: PanedView.PanedViewResult = PanedView.Draw(TestSession(), props)
     if !TreeFinish(TestSession()) || TreeCount(TestSession()) != 3 || result.node != 1 ||
         TreeNodeAt(TestSession(), 1).kind != WidgetKindPanedView ||
         TreeNodeAt(TestSession(), 2).kind != WidgetKindSlider { return -10 }

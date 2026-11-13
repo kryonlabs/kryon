@@ -1,7 +1,7 @@
 #import "drawing_props"
 #import "geometry"
 
-DismissibleOverlayProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     class_name: s32

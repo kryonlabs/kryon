@@ -206,6 +206,7 @@ desktop_frame_requested: bool;
 desktop_pixels_valid: bool;
 // A blank mapped window appears before the first application frame.
 desktop_first_frame: bool;
+desktop_first_frame_show: bool;
 // A size ResizeDesktop asked for, applied when the next frame begins.
 desktop_next_width: s32;
 desktop_next_height: s32;
@@ -425,7 +426,7 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     unused SetHint(*hint[0], *enabled[0])
     title: [512]u8
     if !CopyCString(ProgramTitle(), title[:]) { return false }
-    window_flags := cast(u32)0x24 // RESIZABLE | HIDDEN until transport is ready
+    window_flags := cast(u32)0x28 // RESIZABLE | HIDDEN until transport is ready
     window = CreateWindow(*title[0], cast(s32)0x2fff0000,
         cast(s32)0x2fff0000, width, height, window_flags)
     if window == null { return false }
@@ -433,7 +434,6 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     if renderer == null { return false }
     texture = CreateTexture(renderer, cast(u32)DESKTOP_PIXEL_FORMAT, 1, width, height)
     if texture == null { return false }
-    ShowWindow(window)
     // Select an explicit native arrow before the first frame is drawn. This
     // also covers hosts that own their loop and have no retained tree yet.
     arrow:=DesktopSystemCursor(0)
@@ -448,6 +448,7 @@ OpenDesktopSized :: (width: s32, height: s32) -> bool {
     desktop_texture_reset = false
     desktop_pixels_valid = false
     desktop_first_frame = true
+    desktop_first_frame_show = true
     StartTextInput()
     if !OpenRaster(width, height) { return false }
     DesktopControllersScan()
@@ -1056,6 +1057,9 @@ EndDesktopFrame :: () -> bool {
     if RenderCopy(renderer, texture, null, null) != 0 { return false }
     if desktop_first_frame {
         desktop_first_frame = false
+        // SDL recreates a software window surface when it is shown. Present
+        // after that transition, before any application loading can resume.
+        if desktop_first_frame_show { ShowWindow(window) }
     }
     RenderPresent(renderer)
     desktop_present_pending = false
@@ -1106,6 +1110,11 @@ WindowFocusedHost :: () -> bool {
 #program_export
 WindowSetVisibleHost :: (visible: bool) {
     if window == null { return }
+    if desktop_first_frame {
+        // Explicit visibility still waits for fully painted initial pixels.
+        desktop_first_frame_show = visible
+        return
+    }
     if visible {
         ShowWindow(window)
         RaiseWindow(window)

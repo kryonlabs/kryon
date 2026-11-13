@@ -20,7 +20,7 @@ using Host :: #import "Canvas";
 #import "scroll_device"
 #import "key_input"
 #import "canvas_events"
-#import "text_input_props"
+TextField :: #import "textfield";
 #import "theme"
 #import "app_protocol"
 #import "app_files"
@@ -94,7 +94,7 @@ AppKeyHost :: () -> s32 { return canvas_app_key }
 #program_export
 AppModifiersHost :: () -> s32 { return canvas_app_modifiers }
 
-CanvasAppFieldInput :: () -> TextFieldInput {
+CanvasAppFieldInput :: () -> TextField.Input {
     input := TextFieldInputFor(canvas_app_key, canvas_app_modifiers,
         TextView(canvas_app_typed[:canvas_app_typed_length]))
     composition := CanvasCompositionFrame()
@@ -152,7 +152,7 @@ CanvasAppThemeClose :: () {
 }
 
 #program_export
-AppFieldInputHost :: () -> TextFieldInput {
+AppFieldInputHost :: () -> TextField.Input {
     return CanvasAppFieldInput()
 }
 #program_export

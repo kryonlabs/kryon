@@ -1,3 +1,4 @@
+using PropsModule :: #import "selectable_props";
 Theme :: #import "theme";
 #import "session"
 #import "control_props"
@@ -7,7 +8,6 @@ Theme :: #import "theme";
 #import "focus"
 #import "paint_queue"
 #import "selectable_behavior"
-#import "selectable_props"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -51,7 +51,7 @@ SelectableDefaultFace :: (state: s32) -> StyleData {
 }
 
 #program_export
-SelectableFaceFor :: (props: SelectableProps,
+SelectableFaceFor :: (props: PropsModule.Props,
     state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(StyleKindSelectable(),
         props.id, props.class_name, StyleAny(),
@@ -63,8 +63,7 @@ SelectableFaceFor :: (props: SelectableProps,
     return frame
 }
 
-#program_export
-Selectable :: (session: Session, props: SelectableProps) -> SelectableToggleResult {
+Draw :: (session: Session, props: PropsModule.Props) -> SelectableToggleResult {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
     previous: s32 = -1

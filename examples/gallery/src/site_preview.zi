@@ -1,9 +1,9 @@
+Image :: #import "kryon/image";
 // The editor runs ordinary portable bundles using Kryon's existing Canvas
 // rasterizer and input. All UI behavior remains in the edited Ziran app.
 using Canvas :: #import "kryon/Canvas";
 using Geometry :: #import "kryon/geometry";
 using Drawing :: #import "kryon/drawing_props";
-#import "kryon/image_props"
 #import "kryon/input_protocol"
 #import "std/bundle_host"
 #import "std/byte_text_linux"
@@ -133,10 +133,10 @@ PreviewCall :: (context: *void, module_name: *u8, function_name: *u8,
     if function == "RasterTriangles" && count == 2 {
         mesh := args[0]
         if mesh.kind != HostSlice && mesh.kind != HostArray { return 0 }
-        if mesh.length > cast(usize)IMAGE_MESH_POINT_LIMIT { return 0 }
+        if mesh.length > cast(usize)Image.IMAGE_MESH_POINT_LIMIT { return 0 }
         length := cast(s32)mesh.length
         if length > 0 && mesh.elements == null { return 0 }
-        points: [IMAGE_MESH_POINT_LIMIT]Vector2
+        points: [Image.IMAGE_MESH_POINT_LIMIT]Vector2
         for index: cast(s32)0..length - 1 { points[index] = HostVector(mesh.elements[index]) }
         RasterTriangles(points[0:length], HostColor(args[1]))
         return 1
@@ -164,10 +164,10 @@ PreviewCall :: (context: *void, module_name: *u8, function_name: *u8,
     if function == "RasterImageMesh" && count == 8 {
         mesh := args[3]
         if mesh.kind != HostSlice && mesh.kind != HostArray { return 0 }
-        if mesh.length > cast(usize)IMAGE_MESH_POINT_LIMIT { return 0 }
+        if mesh.length > cast(usize)Image.IMAGE_MESH_POINT_LIMIT { return 0 }
         length := cast(s32)mesh.length
         if length > 0 && mesh.elements == null { return 0 }
-        points: [IMAGE_MESH_POINT_LIMIT]Vector2
+        points: [Image.IMAGE_MESH_POINT_LIMIT]Vector2
         for index: cast(s32)0..length - 1 { points[index] = HostVector(mesh.elements[index]) }
         RasterImageMesh(HostText(args[0]), cast(u32)args[1].bits,
             HostRectangle(args[2]), points[0:length],

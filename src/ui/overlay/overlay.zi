@@ -1,18 +1,17 @@
+using Overlay :: #import "overlay_props";
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "overlay_props"
     host_api :: #system_library "host_api";
     DismissibleOverlayHostedHost :: (session: Session,
-        props: DismissibleOverlayProps) -> DismissibleOverlayResult #foreign host_api;
+        props: Overlay.Props) -> Overlay.DismissibleOverlayResult #foreign host_api;
     PopupHostedHost :: (session: Session,
-        props: PopupProps) -> PopupResult #foreign host_api;
-    #program_export
-    DismissibleOverlay :: (session: Session,
-        props: DismissibleOverlayProps) -> DismissibleOverlayResult {
+        props: Overlay.PopupProps) -> Overlay.PopupResult #foreign host_api;
+        Draw :: (session: Session,
+        props: Overlay.Props) -> Overlay.DismissibleOverlayResult {
         return DismissibleOverlayHostedHost(session, props)
     }
     #program_export
-    Popup :: (session: Session, props: PopupProps) -> PopupResult {
+    Popup :: (session: Session, props: Overlay.PopupProps) -> Overlay.PopupResult {
         return PopupHostedHost(session, props)
     }
 } else {
@@ -20,7 +19,6 @@
     #import "drawing_props"
     #import "geometry"
     #import "overlay_behavior"
-    #import "overlay_props"
     #import "paint_queue"
     #import "tree"
     #import "tree_input"
@@ -42,9 +40,8 @@ OverlayPanelKey :: () -> u64 {
 // children can be submitted under result.panel_node with TreePushScope/End.
 // Pointer release is owned by the retained backdrop, including drags that
 // finish outside the viewport. The caller decides when to stop submitting it.
-#program_export
-DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> DismissibleOverlayResult {
-    result: DismissibleOverlayResult
+Draw :: (session: Session, props: Overlay.Props) -> Overlay.DismissibleOverlayResult {
+    result: Overlay.DismissibleOverlayResult
     result.node = -1
     result.panel_node = -1
     viewport: Rectangle = TreeRootBounds(session)
@@ -110,8 +107,8 @@ DismissibleOverlay :: (session: Session, props: DismissibleOverlayProps) -> Dism
 // still reaches whatever it landed on. A popup that just opened has seen
 // every press so far.
 #program_export
-Popup :: (session: Session, props: PopupProps) -> PopupResult {
-    result: PopupResult
+Popup :: (session: Session, props: Overlay.PopupProps) -> Overlay.PopupResult {
+    result: Overlay.PopupResult
     result.node = -1
     result.panel_node = -1
     if !TreeIsBuilding(session) { return result }

@@ -1,6 +1,5 @@
+Button :: #import "button";
 #import "button_behavior"
-#import "button_props"
-#import "button"
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -29,8 +28,8 @@ HoldButtonState :: struct {
     had_hold: bool
 }
 
-HoldButtonProps :: struct {
-    button: ButtonProps
+Props :: struct {
+    button: Button.Props
     now: float32
     duration: float32
     release_duration: float32
@@ -62,7 +61,7 @@ HoldButtonSpring :: (elapsed: float32, duration: float32,
 }
 
 #program_export
-HoldButtonApply :: (state: *HoldButtonState, props: HoldButtonProps,
+HoldButtonApply :: (state: *HoldButtonState, props: Props,
     held: bool, focused: bool) -> HoldButtonResult {
     result: HoldButtonResult
     result.node = -1
@@ -121,8 +120,7 @@ HoldButtonApply :: (state: *HoldButtonState, props: HoldButtonProps,
     return result
 }
 
-#program_export
-HoldButton :: (session: Session, props: HoldButtonProps,
+Draw :: (session: Session, props: Props,
     state: *HoldButtonState) -> HoldButtonResult {
     key := props.button.key
     if key == cast(u64)0 && props.button.id > 0 { key = cast(u64)cast(u32)props.button.id }
@@ -144,12 +142,12 @@ HoldButton :: (session: Session, props: HoldButtonProps,
     if button.label == "" { button.label = "Hold" }
     button.state = cast(ButtonState)ButtonStateNormal
     submitted_before := TreeSubmittedCount(session)
-    unused Button(session, button)
+    unused Button.Draw(session, button)
     submitted_after := TreeSubmittedCount(session)
     if submitted_after > submitted_before { result.node = submitted_after - 1 }
-    result.bounds = ButtonMeasure(button)
+    result.bounds = Button.ButtonMeasure(button)
     if result.node >= 0 && result.progress > 0.001 {
-        face := ButtonInstalledFaceFor(button, cast(s32)ButtonStateNormal)
+        face := Button.ButtonInstalledFaceFor(button, cast(s32)ButtonStateNormal)
         radius := ButtonCornerRadius(face.radius, result.bounds.height)
         if button.pill || button.circle { radius = result.bounds.height * 0.5 }
         inset := face.border_width

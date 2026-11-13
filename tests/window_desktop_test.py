@@ -19,7 +19,9 @@ from toolchain import ZIRAN_ROOT
 ROOT = Path(__file__).resolve().parents[1]
 ZIRAN = str(ZIRAN_ROOT / "build/bin/ziran")
 
-APP = '''using UI :: #import "Widgets";
+APP = '''Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 #import "Window"
 
 frames: s32;
@@ -44,11 +46,11 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         if !WindowVisible() { return 1 }
         WindowQuit()
     }
-    text: TextProps
+    text: Text.Props
     text.key = cast(u64)1
     text.bounds = Rectangle.{20.0, 20.0, 300.0, 30.0}
     text.text = "window probe"
-    Text(session, text)
+    Text.Draw(session, text)
     return 0
 }
 '''

@@ -1,5 +1,8 @@
 #import "tree_draw"
-using UI :: #import "Widgets";
+Image :: #import "kryon/image";
+#import "icon"
+#import "session"
+#import "tree"
 Raster :: #import "cairo_raster";
 
 #program_export
@@ -13,7 +16,7 @@ main :: () -> s32 {
     Raster.BeginRasterFrame()
     if BeginFrame(session, cast(u64)1, .{0.0, 0.0, 96.0, 96.0}) != FrameStatus.FrameOk { return 4 }
     image := ImageForIcon(cast(s32)IconType.IconHome, .{16.0, 16.0, 64.0, 64.0}, "Home")
-    Image(session, image)
+    Image.Draw(session, image)
     if EndFrame(session) != FrameStatus.FrameOk || !Raster.FinishRasterFrame() { return 5 }
     pixels := Raster.RasterSurfaceData()
     stride := Raster.RasterSurfaceStride()

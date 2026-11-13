@@ -1,4 +1,4 @@
-#import "confirm_popover_props"
+using ConfirmPopover :: #import "confirm_popover_props";
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -19,7 +19,7 @@ using StyleField;
 using WidgetKind;
 
 #program_export
-ConfirmPopoverInstalledFaceFor :: (props: ConfirmPopoverProps,
+ConfirmPopoverInstalledFaceFor :: (props: ConfirmPopover.Props,
     state: s32) -> StyleData {
     role := StyleAny()
     if props.danger { role = 1 }
@@ -30,7 +30,7 @@ ConfirmPopoverInstalledFaceFor :: (props: ConfirmPopoverProps,
 
 #program_export
 ConfirmPopoverApply :: (state: *ConfirmPopoverState,
-    props: ConfirmPopoverProps) -> ConfirmPopoverResult {
+    props: ConfirmPopover.Props) -> ConfirmPopoverResult {
     result: ConfirmPopoverResult
     result.node = -1; result.title_node = -1; result.confirm_node = -1
     result.cancel_node = -1
@@ -98,9 +98,8 @@ ConfirmPopoverHostedReply :: struct {
 }
 #if #defined(KRYON_HOSTED_UI) {
     confirm_popover_host_api :: #system_library "host_api";
-    ConfirmPopoverHostedHost :: (session: Session, props: ConfirmPopoverProps, state: ConfirmPopoverState) -> ConfirmPopoverHostedReply #foreign confirm_popover_host_api;
-    #program_export
-    ConfirmPopover :: (session: Session, props: ConfirmPopoverProps,
+    ConfirmPopoverHostedHost :: (session: Session, props: ConfirmPopover.Props, state: ConfirmPopoverState) -> ConfirmPopoverHostedReply #foreign confirm_popover_host_api;
+        Draw :: (session: Session, props: ConfirmPopover.Props,
     state: *ConfirmPopoverState) -> ConfirmPopoverResult {
         reply := ConfirmPopoverHostedHost(session, props, state.*)
         state.* = reply.state
@@ -108,11 +107,10 @@ ConfirmPopoverHostedReply :: struct {
     }
 } else {
     #import "paint_queue"
-    #program_export
-    ConfirmPopover :: (session: Session, props: ConfirmPopoverProps,
+        Draw :: (session: Session, props: ConfirmPopover.Props,
     state: *ConfirmPopoverState) -> ConfirmPopoverResult { return ConfirmPopoverCore(session, props, state, true) }
     #program_export
-ConfirmPopoverCore :: (session: Session, props: ConfirmPopoverProps,
+ConfirmPopoverCore :: (session: Session, props: ConfirmPopover.Props,
     state: *ConfirmPopoverState, effects: bool) -> ConfirmPopoverResult {
     unused effects
     result := ConfirmPopoverApply(state, props)

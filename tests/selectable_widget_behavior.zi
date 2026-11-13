@@ -4,8 +4,7 @@
 #import "control_props"
 #import "geometry"
 #import "selectable_behavior"
-#import "selectable_props"
-#import "selectable"
+Selectable :: #import "kryon/selectable";
 #import "style"
 #import "style_sheet"
 #import "tree"
@@ -21,7 +20,7 @@ phase: s32;
 
 #program_export
 Frame :: () -> s32 {
-    props: SelectableProps = .{.key = cast(u64)7, .id = 7, .class_name = 9,
+    props: Selectable.Props = .{.key = cast(u64)7, .id = 7, .class_name = 9,
         .bounds = Rectangle.{10.0, 20.0, 100.0, 36.0}, .label = "Alpha"}
     if phase == 2 { props.selected = true }
     if phase == 3 { props.disabled = true }
@@ -39,7 +38,7 @@ Frame :: () -> s32 {
         InstallStyleRules(rules)
     }
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 140.0, 80.0})
-    result: SelectableToggleResult = Selectable(TestSession(), props)
+    result: Selectable.SelectableToggleResult = Selectable.Draw(TestSession(), props)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
         TreeNodeAt(TestSession(), 1).kind != WidgetKindSelectable ||
         TreeNodeAt(TestSession(), 1).semantic_label != "Alpha" ||

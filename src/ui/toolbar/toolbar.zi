@@ -1,19 +1,17 @@
+using PropsModule :: #import "toolbar_props";
+Button :: #import "button";
+Dropdown :: #import "dropdown";
+Image :: #import "image";
 Theme :: #import "theme";
 #import "session"
-#import "button_props"
-#import "button"
 #import "control_props"
-#import "dropdown_props"
-#import "dropdown"
 #import "drawing_props"
 #import "geometry"
-#import "image_props"
 #import "paint_queue"
 #import "style"
 #import "style_sheet"
 #import "surface"
-#import "toolbar_behavior"
-#import "toolbar_props"
+using BehaviorModule :: #import "toolbar_behavior";
 #import "tree"
 #import "widget_kind"
 
@@ -50,7 +48,7 @@ ToolbarDefaultFace :: (role: s32) -> StyleData {
 }
 
 #program_export
-ToolbarFaceFor :: (props: ToolbarProps,
+ToolbarFaceFor :: (props: PropsModule.Props,
     role: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(
         StyleKindToolbar(), props.id, props.class_name, role,
@@ -64,7 +62,7 @@ ToolbarFaceFor :: (props: ToolbarProps,
 }
 
 #program_export
-ToolbarKey :: (session: Session, props: ToolbarProps) -> u64 {
+ToolbarKey :: (session: Session, props: PropsModule.Props) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
     return TreeNextKey(session)
@@ -79,10 +77,10 @@ ToolbarActionKey :: (toolbar_key: u64,
 
 // Image actions use square slots. A text action needs the width of the same
 // resolved Button face that will paint it, including its font and padding.
-ToolbarActionWidth :: (props: ToolbarProps, item: ToolbarAction,
+ToolbarActionWidth :: (props: PropsModule.Props, item: ToolbarAction,
     index: s32, minimum: s32, limit: s32) -> s32 {
     if item.image.asset_path != "" || item.image.texture.id != cast(u32)0 { return minimum }
-    button: ButtonProps
+    button: Button.Props
     button.id = ToolbarActionIdFor(props.id, index)
     button.class_name = props.class_name
     button.style_kind = StyleKindToolbar()
@@ -91,7 +89,7 @@ ToolbarActionWidth :: (props: ToolbarProps, item: ToolbarAction,
     button.emphasis = cast(ButtonEmphasis)ButtonEmphasisSoft
     button.label = item.label
     button.disabled = item.disabled
-    width := cast(s32)(ButtonMeasure(button).width + 0.5)
+    width := cast(s32)(Button.ButtonMeasure(button).width + 0.5)
     if width < minimum { width = minimum }
     if limit < 1 { limit = 1 }
     if width > limit { width = limit }
@@ -100,8 +98,7 @@ ToolbarActionWidth :: (props: ToolbarProps, item: ToolbarAction,
 
 // Toolbar composes checked Button and Dropdown widgets. The caller owns the
 // returned dropdown state, and passes it back in props.dropdown next frame.
-#program_export
-Toolbar :: (session: Session, props: ToolbarProps, options: []DropdownOption,
+Draw :: (session: Session, props: PropsModule.Props, options: []Dropdown.Option,
     actions: []ToolbarAction) -> ToolbarResult {
     result: ToolbarResult
     result.node = -1
@@ -177,7 +174,7 @@ Toolbar :: (session: Session, props: ToolbarProps, options: []DropdownOption,
     index: s32 = 0
     while index < (cast(s32)actions.count) {
         item: ToolbarAction = actions[index]
-        button: ButtonProps
+        button: Button.Props
         button.key = ToolbarActionKey(key, item, index)
         width := ToolbarActionWidth(props, item, index, layout.action_width, limit)
         button.bounds = .{cast(float32)action_x, cast(float32)layout.action_y,
@@ -195,13 +192,13 @@ Toolbar :: (session: Session, props: ToolbarProps, options: []DropdownOption,
             item.image.texture.id != cast(u32)0
         button.disabled = item.disabled
         button.fit_content = !button.icon_only
-        if SubmitButton(session, button, result.node) != 0 {
+        if Button.SubmitButton(session, button, result.node) != 0 {
             result.clicked_action = index
         }
         index += 1
     }
     if props.draw_menu && (cast(s32)options.count) > 0 {
-        dropdown: DropdownProps = props.dropdown
+        dropdown: Dropdown.Props = props.dropdown
         dropdown.bounds = layout.dropdown_bounds
         if dropdown.key == cast(u64)0 {
             dropdown.key = key * cast(u64)65599 + cast(u64)5
@@ -211,7 +208,7 @@ Toolbar :: (session: Session, props: ToolbarProps, options: []DropdownOption,
             dropdown.class_name = props.class_name
         }
         if dropdown.scale <= 0.0 { dropdown.scale = props.scale }
-        result.dropdown = Dropdown(session, dropdown, options)
+        result.dropdown = Dropdown.Draw(session, dropdown, options)
         if result.dropdown.changed {
             result.selected_menu_item = result.dropdown.selected_index
         }

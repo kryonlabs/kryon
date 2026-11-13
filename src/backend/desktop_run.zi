@@ -1,5 +1,6 @@
 // The default desktop host: the app's frames in a 960x600 window.
-#import "desktop_loop"
+Desktop :: #import "desktop_loop";
+#import "frame_entry"
 
 #program_export
-main :: () -> s32 { return RunDesktop() }
+main :: () -> s32 { return Desktop.Run(Frame) }

@@ -1,3 +1,4 @@
+using PropsModule :: #import "link_props";
 Theme :: #import "theme";
 #import "session"
 #import "control_props"
@@ -5,7 +6,6 @@ Theme :: #import "theme";
 #import "font_metrics"
 #import "geometry"
 #import "link_behavior"
-#import "link_props"
 #import "paint_queue"
 #import "semantic"
 #import "style"
@@ -21,7 +21,7 @@ using ButtonState;
 using StyleField;
 
 #program_export
-LinkFaceFor :: (props: LinkProps, state: s32) -> StyleFrame {
+LinkFaceFor :: (props: PropsModule.Props, state: s32) -> StyleFrame {
     base: StyleData
     base.fields = cast(u32)StyleForeground | cast(u32)StyleFontSize |
         cast(u32)StyleOpacity
@@ -39,8 +39,7 @@ LinkFaceFor :: (props: LinkProps, state: s32) -> StyleFrame {
 
 // Navigation is a returned effect. The host opens result.url when open_url is
 // true; neither a browser nor a window is required to run this widget.
-#program_export
-Link :: (session: Session, props: LinkProps) -> LinkResult {
+Draw :: (session: Session, props: PropsModule.Props) -> LinkResult {
     result: LinkResult
     result.node = -1
     key: u64 = props.key

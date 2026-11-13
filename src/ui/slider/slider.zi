@@ -1,17 +1,16 @@
+using Slider :: #import "slider_props";
 // Portable compositions use the same widget as retained native hosts.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "slider_props"
     host_api :: #system_library "host_api";
-    SliderHostedHost :: (session: Session, props: SliderProps) -> SliderStep #foreign host_api;
+    SliderHostedHost :: (session: Session, props: Slider.Props) -> Slider.SliderStep #foreign host_api;
     DiscreteSliderHostedHost :: (session: Session,
-        props: DiscreteSliderProps) -> SliderDiscreteStep #foreign host_api;
-    #program_export
-    Slider :: (session: Session, props: SliderProps) -> SliderStep {
+        props: Slider.DiscreteSliderProps) -> Slider.SliderDiscreteStep #foreign host_api;
+        Draw :: (session: Session, props: Slider.Props) -> Slider.SliderStep {
         return SliderHostedHost(session, props)
     }
     #program_export
-    DiscreteSlider :: (session: Session, props: DiscreteSliderProps) -> SliderDiscreteStep {
+    DiscreteSlider :: (session: Session, props: Slider.DiscreteSliderProps) -> Slider.SliderDiscreteStep {
         return DiscreteSliderHostedHost(session, props)
     }
 } else {
@@ -23,7 +22,6 @@
     #import "geometry"
     #import "paint_queue"
     #import "slider_behavior"
-    #import "slider_props"
     #import "style"
     #import "style_sheet"
     #import "surface"
@@ -278,12 +276,11 @@
 
     // The caller stores the proposed value for the next frame. Multiple values
     // are ordinary compositions of this scalar control and SliderCellBoundsFor.
-    #program_export
-    Slider :: (session: Session, props: SliderProps) -> SliderStep {
+        Draw :: (session: Session, props: Slider.Props) -> Slider.SliderStep {
         prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
             props.id, props.label, props.value_text, props.vertical,
             props.disabled, props.class_name)
-        result: SliderStep
+        result: Slider.SliderStep
         result.value = props.value
         if !props.disabled && props.max > props.min &&
             (prepared.drag.active || prepared.drag.started ||
@@ -299,11 +296,11 @@
     }
 
     #program_export
-    DiscreteSlider :: (session: Session, props: DiscreteSliderProps) -> SliderDiscreteStep {
+    DiscreteSlider :: (session: Session, props: Slider.DiscreteSliderProps) -> Slider.SliderDiscreteStep {
         prepared: SliderPrepared = PrepareSlider(session, props.key, props.bounds,
             props.id, props.label, props.value_text, props.vertical,
             props.disabled, props.class_name)
-        result: SliderDiscreteStep
+        result: Slider.SliderDiscreteStep
         result.value = props.value
         if !props.disabled && props.max > props.min &&
             (prepared.drag.active || prepared.drag.started ||

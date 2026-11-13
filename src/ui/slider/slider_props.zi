@@ -2,7 +2,7 @@
 
 // Each control owns one value. Applications compose any number of controls
 // with their own arrays and SliderCellBoundsFor; no C pointer crosses the API.
-SliderProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32

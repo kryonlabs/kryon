@@ -70,18 +70,19 @@ frame capability to the selected source's exported `Frame` function. The source
 can have any module filename, such as `button.zi`; no `app.zi` alias or reverse
 module bridge is needed. `[tool.kryon] entry` selects the source with `Frame`
 when it differs from the package entry, as in a command-line package that also
-has a window. The app imports `Kryon` for the small core
-surface or `Widgets` for all core widgets:
+has a window. The app imports the small `kryon/app` runner and only the named
+widget packages it uses:
 
 ```zi
-using UI :: #import "Widgets";
+App  :: #import "kryon/app";
+Text :: #import "kryon/text";
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    text: TextProps
-    text.text = "Hello, Kryon"
-    Text(session, text)
-    return 0
+main :: () -> s32 {
+    return App.Run(App.Window.{.title="Hello", .width=320, .height=160}, Draw)
+}
+
+Draw :: (frame: App.Frame) {
+    Text.Draw(frame, Text.Props.{.text="Hello, world!", .size=32})
 }
 ```
 
@@ -95,7 +96,7 @@ packages: add `https://github.com/kryonlabs/css.git`,
 building blocks listed in `ziran.toml` for code that needs those primitives
 without importing the widget catalog. Native and browser profiles resolve
 imports the same way, so an app's Git dependencies and package-qualified
-imports such as `kryon/Widgets` work in Canvas and DOM builds too.
+named imports such as `kryon/text` work in Canvas and DOM builds too.
 
 From the app directory, run:
 
@@ -390,7 +391,7 @@ For a custom install prefix, add its `share/ziran/hosts` directory to
 `ZIRAN_HOST_PATH` or its `share` directory to `XDG_DATA_DIRS`.
 
 `assets` is an optional project-relative directory or file, embedded under that
-same path. Images retain their ordinary `ImageProps.asset_path` values. The
+same path. Images retain their ordinary `Image.Props.asset_path` values. The
 player extracts validated resources into a private temporary directory and
 removes it when the app exits. Exports rebuild resource content on every build,
 including file removals. A `pixmap` profile also accepts `codegen = "zx"` and

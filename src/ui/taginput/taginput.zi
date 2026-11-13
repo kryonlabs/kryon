@@ -1,17 +1,14 @@
-#import "box"
-#import "button_props"
-#import "button"
+TextField :: #import "textfield";
+Box :: #import "box";
+Button :: #import "button";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
 #import "style"
 #import "style_sheet"
 #import "session"
-#import "textfield"
 #import "text_input"
-#import "text_input_props"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -41,7 +38,7 @@ TagInputStyle :: struct {
     min_field_width: float32
 }
 
-TagInputProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32
@@ -59,7 +56,7 @@ TagInputProps :: struct {
     remove_index: s32
     remove_index_requested: bool
     remove_id: u64
-    input: TextFieldInput
+    input: TextField.Input
     style: TagInputStyle
 }
 
@@ -80,7 +77,7 @@ TagInputState :: struct {
 
 TagInputResult :: struct {
     node: s32
-    field: TextFieldResult
+    field: TextField.Result
     changed: bool
     added: bool
     removed: bool
@@ -249,7 +246,7 @@ TagInputSplitTyped :: (state: *TagInputState, separator: string,
     }
 }
 
-TagInputSyncInput :: (state: *TagInputState, props: TagInputProps,
+TagInputSyncInput :: (state: *TagInputState, props: Props,
     result: *TagInputResult) {
     state.focused = state.focused || props.input.focus
     if props.input.blur || props.input.escape { state.focused = false }
@@ -303,7 +300,7 @@ TagInputSyncInput :: (state: *TagInputState, props: TagInputProps,
 
 #program_export
 TagInputApply :: (state: *TagInputState,
-    props: TagInputProps) -> TagInputResult {
+    props: Props) -> TagInputResult {
     result: TagInputResult
     result.node = -1
     if state == null { return result }
@@ -361,21 +358,19 @@ TagInputHostedReply :: struct { state: TagInputState; result: TagInputResult }
 
 #if #defined(KRYON_HOSTED_UI) {
     taginput_host_api :: #system_library "host_api";
-    TagInputHostedHost :: (session: Session, props: TagInputProps,
+    TagInputHostedHost :: (session: Session, props: Props,
         state: TagInputState) -> TagInputHostedReply #foreign taginput_host_api;
-    #program_export
-    TagInput :: (session: Session, props: TagInputProps,
+        Draw :: (session: Session, props: Props,
     state: *TagInputState) -> TagInputResult {
         reply := TagInputHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
 } else {
-    #program_export
-    TagInput :: (session: Session, props: TagInputProps,
+        Draw :: (session: Session, props: Props,
     state: *TagInputState) -> TagInputResult { return TagInputCore(session, props, state, true) }
     #program_export
-    TagInputCore :: (session: Session, props: TagInputProps,
+    TagInputCore :: (session: Session, props: Props,
     state: *TagInputState, effects: bool) -> TagInputResult {
     result := TagInputApply(state, props)
     if !TreeIsBuilding(session) { return result }
@@ -419,19 +414,19 @@ TagInputHostedReply :: struct { state: TagInputState; result: TagInputResult }
             y += style.chip_height + style.gap
         }
         chip_bounds := Rectangle.{x, y, chip_width, style.chip_height}
-        chip := Box(session, .{.key = props.key + 201 + cast(u64)cast(u32)index,
+        chip := Box.Draw(session, .{.key = props.key + 201 + cast(u64)cast(u32)index,
                 .bounds = chip_bounds, .fill = ColorFromPacked(resolved.foreground),
                 .border = ColorFromPacked(resolved.border), .radius = style.chip_radius})
         unused chip
-        text: TextProps
+        text: Text.Props
         text.key = props.key + 301 + cast(u64)cast(u32)index
         text.bounds = Rectangle.{x + 8.0, y, chip_width - 24.0, style.chip_height}
         start := index * 64
         text.text = TextView(state.bytes[start:start + state.lengths[index]])
-        text.font = cast(s32)resolved.font_size
+        text.size = cast(s32)resolved.font_size
         text.class_name = props.chip_class_name
-        Text(session, text)
-        remove: ButtonProps
+        Text.Draw(session, text)
+        remove: Button.Props
         remove.key = props.key + 401 + cast(u64)cast(u32)index
         remove.bounds = Rectangle.{x + chip_width - 18.0, y + 3.0, 18.0, 18.0}
         remove.label = "×"
@@ -439,12 +434,12 @@ TagInputHostedReply :: struct { state: TagInputState; result: TagInputResult }
         remove.class_name = props.chip_class_name
         remove.disabled = props.disabled
         remove.icon_only = true
-        Button(session, remove)
+        Button.Draw(session, remove)
         x += chip_width + style.gap
         index += 1
     }
     field_height := style.height
-    field_props: TextFieldProps
+    field_props: TextField.Props
     field_props.key = props.key + 101
     field_props.bounds = Rectangle.{x, y, bounds.x + bounds.width - x, field_height}
     field_props.value = TextView(state.text[:state.text_length])
@@ -460,7 +455,7 @@ TagInputHostedReply :: struct { state: TagInputState; result: TagInputResult }
     field_props.class_name = props.class_name
     field_props.composition = props.composition
     field_props.input.composition_event = props.input.composition_event
-    field_result := ifx effects then TextField(session, field_props) else TextFieldCore(session, field_props)
+    field_result := ifx effects then TextField.Draw(session, field_props) else TextField.TextFieldCore(session, field_props)
     unused field_result
     TreePopScope(session)
     return result

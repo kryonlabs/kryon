@@ -5,8 +5,7 @@
 #import "scroll_device"
 #import "semantic"
 #import "tab_bar_behavior"
-#import "tab_bar_props"
-#import "tabs"
+TabBar :: #import "kryon/tab_bar";
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -46,7 +45,7 @@ CloseBounds :: () -> Rectangle {
 
 #program_export
 Frame :: () -> s32 {
-    tabs: [4]Tab
+    tabs: [4]TabBar.Tab
     tabs[0].key = cast(u64)10
     tabs[0].label = "Home"
     tabs[1].key = cast(u64)11
@@ -58,7 +57,7 @@ Frame :: () -> s32 {
     tabs[3].key = cast(u64)13
     tabs[3].label = "Build"
     tabs[3].closeable = true
-    props: TabBarProps = .{.key = cast(u64)77, .bounds = Rectangle.{20.0, 20.0, 240.0, 36.0},
+    props: TabBar.Props = .{.key = cast(u64)77, .bounds = Rectangle.{20.0, 20.0, 240.0, 36.0},
         .selected_index = selected, .scroll_offset = scroll_offset, .dragging = dragging,
         .drag_from = drag_from, .last_clicked_index = last_clicked_index,
         .last_clicked_at = last_clicked_at, .last_click_valid = last_click_valid, .id = 77,
@@ -81,14 +80,14 @@ Frame :: () -> s32 {
     if phase == 12 { props.input.scroll_delta = -40 }
     if phase == 13 { props.focus_selected = true }
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
-    result: TabBarResult = TabBar(TestSession(), props, tabs[0:4])
+    result: TabBar.Result = TabBar.Draw(TestSession(), props, tabs[0:4])
     if !TreeFinish(TestSession()) || result.node != 1 ||
     TreeNodeAt(TestSession(), result.node).semantic_kind !=
     cast(SemanticKind)SemanticTabList { return -20 }
     if phase == 0 {
         if result.selected_index != 0 ||
         result.activated_index != -1 ||
-        TabBarHeight() != 32 { return -1 }
+        TabBar.TabBarHeight() != 32 { return -1 }
         Click(180.0, 38.0)
     } else if phase == 1 {
         if result.selected_index != 1 ||
@@ -174,13 +173,13 @@ swipe_seconds: float64 = 10.0;
 
 // One frame of a host that gives the pointer to the tree and the scroll
 // device before it draws, as a phone's does.
-SwipeFrame :: (props: *TabBarProps, tabs: []Tab, x: float32, down: bool,
-    pressed: bool, released: bool) -> TabBarResult {
+SwipeFrame :: (props: *TabBar.Props, tabs: []TabBar.Tab, x: float32, down: bool,
+    pressed: bool, released: bool) -> TabBar.Result {
     TreePointerUpdate(TestSession(), PointerFrame.{x, 38.0, down, pressed, released})
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 600.0, 100.0})
     BeginScrollFrame(TestSession(), Vector2.{x, 38.0}, pressed, down, released, 0.0,
         swipe_seconds)
-    result: TabBarResult = TabBar(TestSession(), props.*, tabs)
+    result: TabBar.Result = TabBar.Draw(TestSession(), props.*, tabs)
     unused TreeFinish(TestSession())
     swipe_seconds += 0.016
     props.selected_index = result.selected_index
@@ -211,9 +210,9 @@ Swipe :: () -> s32 {
     TabBarRevealPeek(400.0, 100.0, 2.0) != 64.0 {
         return 11
     }
-    row: [5]Tab = .[Tab.{.label = "Installed"}, Tab.{.label = "Meditation"},
-        Tab.{.label = "Yoga"}, Tab.{.label = "Martial arts"}, Tab.{.label = "Breathing"}]
-    props: TabBarProps
+    row: [5]TabBar.Tab = .[TabBar.Tab.{.label = "Installed"}, TabBar.Tab.{.label = "Meditation"},
+        TabBar.Tab.{.label = "Yoga"}, TabBar.Tab.{.label = "Martial arts"}, TabBar.Tab.{.label = "Breathing"}]
+    props: TabBar.Props
     props.key = cast(u64)900
     // Clear of the disabled bar's wheel above, which nothing took.
     props.bounds = Rectangle.{100.0, 20.0, 200.0, 40.0}
@@ -277,9 +276,9 @@ Swipe :: () -> s32 {
 }
 
 // A nonzero, narrow viewport forces Home to unsubmit the old last tab.
-RetainedFrame :: (props: TabBarProps, tabs: []Tab) -> TabBarResult {
+RetainedFrame :: (props: TabBar.Props, tabs: []TabBar.Tab) -> TabBar.Result {
     TreeStart(TestSession(), cast(u64)987, Rectangle.{240.0, 120.0, 240.0, 120.0})
-    result := TabBar(TestSession(), props, tabs)
+    result := TabBar.Draw(TestSession(), props, tabs)
     unused TreeFinish(TestSession())
     return result
 }
@@ -290,11 +289,11 @@ FocusedTab :: (key: u64) -> bool {
     return false
 }
 RetainedFocus :: () -> s32 {
-    tabs: [17]Tab
+    tabs: [17]TabBar.Tab
     for index: 0..16 {
-        tabs[index] = Tab.{.key = cast(u64)(1000 + index), .label = "Long tab label", .closeable = true}
+        tabs[index] = TabBar.Tab.{.key = cast(u64)(1000 + index), .label = "Long tab label", .closeable = true}
     }
-    props := TabBarProps.{.key = cast(u64)909, .id = 238,
+    props := TabBar.Props.{.key = cast(u64)909, .id = 238,
         .bounds = Rectangle.{240.0, 120.0, 240.0, 36.0},
         .selected_index = 16, .focus_selected = true}
     first := RetainedFrame(props, tabs[:])
@@ -339,7 +338,7 @@ RetainedFocus :: () -> s32 {
     if TreeHasFocus(TestSession()) { return 38 }
     unused TreeInputResume(TestSession(), suspended)
     TreeStart(TestSession(), cast(u64)987, Rectangle.{240.0, 120.0, 240.0, 120.0})
-    unused TabBar(TestSession(), props, tabs[0:16])
+    unused TabBar.Draw(TestSession(), props, tabs[0:16])
     modal := TreeSubmit(TestSession(), cast(u64)555, 0, WidgetKindModal, props.bounds)
     button := TreeSubmit(TestSession(), cast(u64)556, modal, WidgetKindButton, props.bounds)
     TreeSetInteractive(TestSession(), button, false, false, 9)
@@ -347,7 +346,7 @@ RetainedFocus :: () -> s32 {
     if !TreeFocusAt(TestSession(), button) { return 39 }
     TreeStart(TestSession(), cast(u64)987, Rectangle.{240.0, 120.0, 240.0, 120.0})
     props.input.end = false; props.input.home = true
-    unused TabBar(TestSession(), props, tabs[0:16])
+    unused TabBar.Draw(TestSession(), props, tabs[0:16])
     modal = TreeSubmit(TestSession(), cast(u64)555, 0, WidgetKindModal, props.bounds)
     button = TreeSubmit(TestSession(), cast(u64)556, modal, WidgetKindButton, props.bounds)
     TreeSetInteractive(TestSession(), button, false, false, 9)
@@ -363,25 +362,25 @@ main :: () -> s32 {
         if Frame() != index { return 1 }
         index += 1
     }
-    tabs: [2]Tab = .[Tab.{.label = "Home"}, Tab.{.label = "Work"}]
-    props: TabBarProps = .{.key = cast(u64)800, .bounds = Rectangle.{20.0, 20.0, 500.0, 40.0},
+    tabs: [2]TabBar.Tab = .[TabBar.Tab.{.label = "Home"}, TabBar.Tab.{.label = "Work"}]
+    props: TabBar.Props = .{.key = cast(u64)800, .bounds = Rectangle.{20.0, 20.0, 500.0, 40.0},
         .content_sized = true}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 600.0, 100.0})
-    compact := TabBar(TestSession(), props, tabs[:])
+    compact := TabBar.Draw(TestSession(), props, tabs[:])
     if !TreeFinish(TestSession()) || compact.selected_tab_bounds.width >= 250.0 {
         return 2
     }
     props.bounds.width = 100.0
     PointerWheelSend(TestSession(), 30.0, 30.0, -1.0)
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 600.0, 100.0})
-    overflow := TabBar(TestSession(), props, tabs[:])
+    overflow := TabBar.Draw(TestSession(), props, tabs[:])
     if !TreeFinish(TestSession()) || overflow.scroll_offset != 40 {
         return 3
     }
     props.disabled = true
     PointerWheelSend(TestSession(), 30.0, 30.0, -1.0)
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 600.0, 100.0})
-    disabled := TabBar(TestSession(), props, tabs[:])
+    disabled := TabBar.Draw(TestSession(), props, tabs[:])
     if !TreeFinish(TestSession()) || disabled.scroll_offset != 0 {
         return 4
     }

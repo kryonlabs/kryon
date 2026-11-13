@@ -66,7 +66,7 @@ memory is released before closing the canvas.
 
 Applications that handle Escape as navigation can call `CanvasSetExitKey(0)`
 through `kryon/Canvas` to disable the host's default Escape-to-exit behavior.
-Other keys remain available through `CanvasPressedKey`.
+Ordered keys and text remain available through `CanvasInputTake(session)`.
 
 Custom Canvas hosts can use `BeginRasterClip(bounds)` and
 `EndRasterClip(saved)` through `kryon/Canvas` to intersect a rendering scope

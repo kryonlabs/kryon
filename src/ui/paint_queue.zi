@@ -1,8 +1,8 @@
+ImageSchema :: #import "image_props";
 #import "drawing_props"
 #import "control_props"
 #import "geometry"
 #import "elevation"
-#import "image_props"
 #import "image_behavior"
 #import "paint_texture"
 #import "raster"
@@ -125,7 +125,7 @@ pending_short_text: [9]Vec(PaintShortTextBlock);
 pending_medium_text: [9]Vec(PaintMediumTextBlock);
 // The grid points of the frame's warped images. One image's grid stays in
 // one block.
-PaintMeshBlock :: struct { count: s32; points: [IMAGE_MESH_POINT_LIMIT]Vector2; }
+PaintMeshBlock :: struct { count: s32; points: [ImageSchema.IMAGE_MESH_POINT_LIMIT]Vector2; }
 pending_mesh: [9]Vec(PaintMeshBlock);
 
 // The previous committed paint plan is retained by value. Strings and asset
@@ -323,12 +323,12 @@ EmitPaintNow :: (command: QueuedPaint, value: string, asset: string) {
 PaintMeshPointCount :: (columns: s32, rows: s32) -> s64 {
     if columns < 2 || rows < 2 { return 0 }
     count: s64 = cast(s64)columns * cast(s64)rows
-    if count > cast(s64)IMAGE_MESH_POINT_LIMIT { return 0 }
+    if count > cast(s64)ImageSchema.IMAGE_MESH_POINT_LIMIT { return 0 }
     return count
 }
 
 PaintPointCount :: (data: PaintCommand) -> s64 {
-    if data.image_clip_count >= 3 && data.image_clip_count <= IMAGE_MESH_POINT_LIMIT { return data.image_clip_count }
+    if data.image_clip_count >= 3 && data.image_clip_count <= ImageSchema.IMAGE_MESH_POINT_LIMIT { return data.image_clip_count }
     return PaintMeshPointCount(data.mesh_columns, data.mesh_rows)
 }
 
@@ -343,10 +343,10 @@ PaintMeshRange :: struct {
 KeepMeshPoints :: (blocks: *Vec(PaintMeshBlock), points: []Vector2,
     count: s64, dx: float32, dy: float32) -> PaintMeshRange {
     result: PaintMeshRange
-    if count <= 0 || count > cast(s64)IMAGE_MESH_POINT_LIMIT ||
+    if count <= 0 || count > cast(s64)ImageSchema.IMAGE_MESH_POINT_LIMIT ||
     points.count < count { return result }
     block_index: s32 = cast(s32)blocks.count - 1
-    if block_index < 0 || count > cast(s64)(IMAGE_MESH_POINT_LIMIT -
+    if block_index < 0 || count > cast(s64)(ImageSchema.IMAGE_MESH_POINT_LIMIT -
         blocks.*[block_index].count) {
         empty: PaintMeshBlock
         if !VecPush(blocks.*, empty) { return result }

@@ -15,7 +15,7 @@ cp "$repo/src/ui/group.zi" "$work/group.zi"
 cat > "$work/use_layout.zi" <<'EOF'
 #import "geometry"
 #import "layout_behavior"
-#import "layout_props"
+LayoutProps :: #import "layout_props";
 #import "group"
 
 using FlexDirection;
@@ -43,7 +43,7 @@ Answer :: () -> s32 {
     bounds.y = 20.0
     bounds.width = 100.0
     bounds.height = 60.0
-    column: ColumnProps
+    column: LayoutProps.Props
     column.bounds = bounds
     column.gap = 7
     column.key = cast(u64)1 << 63
@@ -123,7 +123,6 @@ Answer :: () -> s32 {
 EOF
 cat > "$work/scalar_layout.zi" <<'EOF'
 #import "layout_behavior"
-#import "layout_props"
 #program_export
 Answer :: () -> s32 {
     if PageSidePaddingFor(300) == 12 && IsDesktopWidth(750, 1.5) {
@@ -135,7 +134,6 @@ EOF
 cat > "$work/portable_layout.zi" <<'EOF'
 #import "geometry"
 #import "layout_behavior"
-#import "layout_props"
 #import "group"
 #program_export
 Answer :: () -> s32 {

@@ -1,11 +1,11 @@
+using PropsModule :: #import "layout_props";
 #import "geometry"
 #import "grid"
 #import "grid_props"
-#import "layout_behavior"
+using BehaviorModule :: #import "layout_behavior";
 #import "session"
 #import "tree"
 #import "widget_kind"
-#import "layout_props"
 
 using WidgetKind;
 
@@ -86,7 +86,7 @@ TreePlaceGrid :: (session: Session, parent_index: s32, bounds: Rectangle) -> Rec
 }
 
 #program_export
-ContainerFor :: (session: Session, props: ColumnProps,
+ContainerFor :: (session: Session, props: PropsModule.Props,
     kind: s32) -> LayoutContainer {
     result: LayoutContainer = .{.node = -1, .kind = kind, .bounds = props.bounds}
     parent: Rectangle = TreeCurrentParentBounds(session)
@@ -110,34 +110,33 @@ ContainerFor :: (session: Session, props: ColumnProps,
     return result
 }
 
-#program_export
-Column :: (session: Session, props: ColumnProps) -> LayoutContainer {
+Draw :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
     result: LayoutContainer = ContainerFor(session, props, WidgetKindColumn)
     TreeSetPlacement(session, result.node, TreePlaceColumn)
     return result
 }
 
 #program_export
-Row :: (session: Session, props: ColumnProps) -> LayoutContainer {
+Row :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
     result: LayoutContainer = ContainerFor(session, props, WidgetKindRow)
     TreeSetPlacement(session, result.node, TreePlaceRow)
     return result
 }
 
 #program_export
-Stack :: (session: Session, props: ColumnProps) -> LayoutContainer {
+Stack :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
     result: LayoutContainer = ContainerFor(session, props, WidgetKindStack)
     TreeSetPlacement(session, result.node, TreePlaceStack)
     return result
 }
 
 #program_export
-Group :: (session: Session, props: ColumnProps) -> LayoutContainer {
+Group :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
     return ContainerFor(session, props, WidgetKindGroup)
 }
 
 #program_export
-Screen :: (session: Session, props: ColumnProps) -> LayoutContainer {
+Screen :: (session: Session, props: PropsModule.Props) -> LayoutContainer {
     root: Rectangle = TreeRootBounds(session)
     if props.bounds.width <= 0.0 { props.bounds.width = root.width }
     if props.bounds.height <= 0.0 { props.bounds.height = root.height }
@@ -146,7 +145,7 @@ Screen :: (session: Session, props: ColumnProps) -> LayoutContainer {
 
 #program_export
 Grid :: (session: Session, props: GridProps) -> GridResult {
-    row: ColumnProps = .{.bounds = props.bounds, .gap = props.gap, .padding = props.padding,
+    row: PropsModule.Props = .{.bounds = props.bounds, .gap = props.gap, .padding = props.padding,
         .key = props.key}
     result: GridResult
     result.container = ContainerFor(session, row, WidgetKindGrid)

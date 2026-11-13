@@ -2,29 +2,27 @@
 // it lasts and, with capture, keeps it off the area; Enter and Space click it.
 // Releasing the secondary button on it reports a right click there. A
 // click a host resolved at a point, such as a DOM button's, reports where.
+Press :: #import "kryon/press";
+Scroll :: #import "kryon/scroll";
 #import "session"
 #import "geometry"
-#import "press_props"
-#import "press"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
 #import "ziran_keyboard_navigation_host"
-#import "scroll_props"
-#import "scroll"
 Motion :: #import "scroll_device";
 
 using FrameStatus;
 
 session: Session;
-result: PressResult;
+result: Press.PressResult;
 capture: bool;
 disabled: bool;
 press_id: s32 = 70;
 
 Frame :: (now: float64) -> bool {
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
-    result = Press(session, PressProps.{.id = press_id, .label = "Message",
+    result = Press.Draw(session, Press.Props.{.id = press_id, .label = "Message",
             .bounds = Rectangle.{10.0, 10.0, 100.0, 40.0}, .now = now,
             .capture = capture, .disabled = disabled})
     return EndFrame(session) == cast(FrameStatus)FrameOk
@@ -34,7 +32,6 @@ Pointer :: (x: float32, y: float32, down: bool, pressed: bool, released: bool) {
     unused TreePointerUpdate(session, PointerFrame.{x, y, down, pressed, released})
 }
 
-// The secondary button, released this frame or not, with the pointer at x, y.
 Secondary :: (x: float32, y: float32, released: bool) {
     Pointer(x, y, false, false, false)
     TreeSecondaryPointerUpdate(session, SecondaryPointerFrame.{false, false, released})
@@ -138,7 +135,8 @@ Answer :: () -> s32 {
     if !ListFrame(11.0, 250.0, false, false, true) || !result.released || list_offset != 0 { return 25 }
     // Without a hold the same drag still scrolls the list.
     if !ListFrame(12.0, 250.0, true, true, false) { return 26 }
-    if !ListFrame(12.1, 150.0, true, false, false) || !ListFrame(12.2, 100.0, true, false, false) || list_offset == 0 { return 27 }
+    if !ListFrame(12.1, 150.0, true, false, false) ||
+    !ListFrame(12.2, 100.0, true, false, false) || list_offset == 0 { return 27 }
     SessionClose(session)
     return 42
 }
@@ -149,12 +147,13 @@ ListFrame :: (now: float64, y: float32, down: bool, pressed: bool, released: boo
     Pointer(20.0, y, down, pressed, released)
     Motion.BeginScrollFrame(session, Vector2.{20.0, y}, pressed, down, released, 0.0, now)
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
-    list := Scroll(session, ScrollProps.{.key = cast(u64)80, .bounds = Rectangle.{0.0, 0.0, 300.0, 300.0},
-            .content_height = 2000, .scroll_offset = list_offset})
+    list := Scroll.Draw(session, Scroll.Props.{.key = cast(u64)80,
+        .bounds = Rectangle.{0.0, 0.0, 300.0, 300.0},
+        .content_height = 2000, .scroll_offset = list_offset})
     list_offset = list.scroll_offset
     if list.opened {
-        result = Press(session, PressProps.{.id = 81, .label = "Item",
-                .bounds = Rectangle.{0.0, list.content.y, 280.0, 2000.0}, .now = now})
+        result = Press.Draw(session, Press.Props.{.id = 81, .label = "Item",
+            .bounds = Rectangle.{0.0, list.content.y, 280.0, 2000.0}, .now = now})
         End(session)
     }
     return EndFrame(session) == cast(FrameStatus)FrameOk
@@ -163,8 +162,6 @@ ListFrame :: (now: float64, y: float32, down: bool, pressed: bool, released: boo
 #program_export
 main :: () -> s32 {
     answer := Answer()
-    if answer != 42 {
-        return answer
-    }
+    if answer != 42 { return answer }
     return 0
 }

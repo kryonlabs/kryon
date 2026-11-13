@@ -1,3 +1,7 @@
+Joystick :: #import "joystick";
+Box :: #import "box";
+Press :: #import "press";
+SvgIcon :: #import "svgicon";
 // A four-way direction pad for games, like a game controller's D-pad: an
 // arm for left, up, right and down around a small hub. Pressing an arm steps
 // that way at once; holding it keeps stepping, first after twice the repeat
@@ -10,15 +14,8 @@
 #import "session"
 #import "geometry"
 #import "drawing_props"
-#import "press_props"
-#import "press"
-#import "box_props"
-#import "box"
-#import "svg_icon_props"
-#import "svgicon"
-#import "joystick"
 
-DirectionPadProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     // The pad fills the largest square centred in bounds.
@@ -125,16 +122,16 @@ DirectionPadCell :: (x: float32, y: float32, third: float32, arm: s32) -> Rectan
     return Rectangle.{x + column * third + gap, y + row * third + gap, third - gap * 2.0, third - gap * 2.0}
 }
 
-DirectionPad :: (session: Session, props: DirectionPadProps) -> DirectionPadResult {
+Draw :: (session: Session, props: Props) -> DirectionPadResult {
     result := DirectionPadResult.{.direction = -1}
-    slot := TouchSlotFor(props.key)
+    slot := Joystick.TouchSlotFor(props.key)
     bounds := props.bounds
     side := ifx bounds.width < bounds.height then bounds.width else bounds.height
     x := bounds.x + (bounds.width - side) / 2.0
     y := bounds.y + (bounds.height - side) / 2.0
     half := side / 2.0
     third := side / 3.0
-    press := Press(session, PressProps.{.key = props.key, .id = props.id, .bounds = Rectangle.{x, y, side, side},
+    press := Press.Draw(session, Press.Props.{.key = props.key, .id = props.id, .bounds = Rectangle.{x, y, side, side},
             .label = props.label, .now = props.now, .capture = true, .disabled = props.disabled,
             .hold_seconds = 3600.0})
     repeat := ifx props.repeat_seconds > 0.0 then cast(float64)props.repeat_seconds else 0.18
@@ -163,17 +160,17 @@ DirectionPad :: (session: Session, props: DirectionPadProps) -> DirectionPadResu
     for part: cast(s32)0..3 {
         cell := DirectionPadCell(x, y, third, part)
         held := part == arm
-        unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 1 + part), .bounds = cell,
+        unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 1 + part), .bounds = cell,
                 .fill = Color.{24, 30, 29, cast(u8)((ifx held then 190 else rest) / fade)},
                 .border = Color.{255, 255, 255, cast(u8)(70 / fade)}, .radius = third * 0.26})
         // The arrow points out from the hub; a round stroke softens its corners.
         arrow := ifx props.floating then DIRECTION_PAD_OUTLINES[part] else DIRECTION_PAD_ARROWS[part]
         inset := cell.width * 0.2
-        SvgIcon(session, SvgIconProps.{.bounds = Rectangle.{cell.x + inset, cell.y + inset, cell.width - inset * 2.0,
+        SvgIcon.Draw(session, SvgIcon.Props.{.bounds = Rectangle.{cell.x + inset, cell.y + inset, cell.width - inset * 2.0,
                 cell.height - inset * 2.0}, .shape = arrow, .color = Color.{255, 255, 255, cast(u8)((ifx held then 250 else 215) / fade)}})
     }
     hub := third * 0.44
-    unused Box(session, BoxProps.{.key = WidgetPartKey(props.key, 5), .bounds = Rectangle.{x + half - hub / 2.0, y + half - hub / 2.0, hub, hub},
+    unused Box.Draw(session, Box.Props.{.key = WidgetPartKey(props.key, 5), .bounds = Rectangle.{x + half - hub / 2.0, y + half - hub / 2.0, hub, hub},
             .fill = Color.{24, 30, 29, cast(u8)((ifx props.floating then 48 else 80) / fade)}, .radius = hub / 2.0})
     return result
 }

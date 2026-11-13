@@ -6,8 +6,7 @@
 #import "geometry"
 #import "paint_queue"
 #import "system_clipboard"
-#import "textfield"
-#import "text_input_props"
+TextField :: #import "kryon/text_field";
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
@@ -21,12 +20,12 @@ buffer: [64]u8;
 secure_field: bool;
 
 // A selected "hello" in "hello world"; the field is at (10, 10), 200 by 30.
-Field :: (copy: bool, paste: bool) -> TextFieldResult {
-    props: TextFieldProps = .{.key = cast(u64)4, .bounds = Rectangle.{10.0, 10.0, 200.0, 30.0},
+Field :: (copy: bool, paste: bool) -> TextField.Result {
+    props: TextField.Props = .{.key = cast(u64)4, .bounds = Rectangle.{10.0, 10.0, 200.0, 30.0},
         .value = "hello world", .anchor = 0, .cursor = 5, .focused = true, .secure = secure_field}
     props.input.copy = copy
     props.input.paste = paste
-    return TextField(TestSession(), props)
+    return TextField.Draw(TestSession(), props)
 }
 
 Secondary :: (x: float32, y: float32) {
@@ -40,9 +39,9 @@ Click :: (x: float32, y: float32) {
     TreePointerUpdate(TestSession(), PointerFrame.{x, y, false, false, true})
 }
 
-Frame :: (copy: bool, paste: bool) -> TextFieldResult {
+Frame :: (copy: bool, paste: bool) -> TextField.Result {
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
-    result: TextFieldResult = Field(copy, paste)
+    result: TextField.Result = Field(copy, paste)
     if !TreeFinish(TestSession()) { result.node = -99 }
     PaintFlush(TestSession())
     return result
@@ -51,7 +50,7 @@ Frame :: (copy: bool, paste: bool) -> TextFieldResult {
 #program_export
 main :: () -> s32 {
     // No menu until the secondary button is released inside the field.
-    result: TextFieldResult = Frame(false, false)
+    result: TextField.Result = Frame(false, false)
     if result.node < 0 || TreeCount(TestSession()) != 2 { return 1 }
 
     // Ctrl+C reaches the system clipboard without any menu.

@@ -6,7 +6,7 @@
 #import "drawing_props"
 #import "page_core"
 #import "page_input"
-#if #defined(PLATFORM_WEB) {
+#if OS == .WEB {
 
     // Sample existing page gamepad APIs once per host poll. Their button
     // IDs are raylib's; navigation uses standard Gamepad numbering internally.

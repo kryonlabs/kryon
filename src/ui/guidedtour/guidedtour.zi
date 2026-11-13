@@ -1,8 +1,8 @@
+using GuidedTour :: #import "guided_tour_props";
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
-#import "guided_tour_props"
 #import "semantic"
 #import "session"
 #import "style"
@@ -77,7 +77,7 @@ GuidedTourAdvanceFocus :: (state: *GuidedTourState,
 
 #program_export
 GuidedTourApply :: (state: *GuidedTourState,
-    props: GuidedTourProps) -> GuidedTourResult {
+    props: GuidedTour.Props) -> GuidedTourResult {
     result: GuidedTourResult
     result.node = -1; result.card_node = -1; result.title_node = -1
     result.back_node = -1; result.next_node = -1; result.skip_node = -1
@@ -180,7 +180,7 @@ GuidedTourApply :: (state: *GuidedTourState,
 }
 
 #program_export
-GuidedTourInstalledFaceFor :: (props: GuidedTourProps,
+GuidedTourInstalledFaceFor :: (props: GuidedTour.Props,
     state: s32) -> StyleData {
     facts := StyleControlRoleFacts(StyleKindGuide(), props.id,
         props.class_name, StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
@@ -193,9 +193,8 @@ GuidedTourHostedReply :: struct {
 }
 #if #defined(KRYON_HOSTED_UI) {
     guided_tour_host_api :: #system_library "host_api";
-    GuidedTourHostedHost :: (session: Session, props: GuidedTourProps, state: GuidedTourState) -> GuidedTourHostedReply #foreign guided_tour_host_api;
-    #program_export
-    GuidedTour :: (session: Session, props: GuidedTourProps,
+    GuidedTourHostedHost :: (session: Session, props: GuidedTour.Props, state: GuidedTourState) -> GuidedTourHostedReply #foreign guided_tour_host_api;
+        Draw :: (session: Session, props: GuidedTour.Props,
     state: *GuidedTourState) -> GuidedTourResult {
         reply := GuidedTourHostedHost(session, props, state.*)
         state.* = reply.state
@@ -203,11 +202,10 @@ GuidedTourHostedReply :: struct {
     }
 } else {
     #import "paint_queue"
-    #program_export
-    GuidedTour :: (session: Session, props: GuidedTourProps,
+        Draw :: (session: Session, props: GuidedTour.Props,
     state: *GuidedTourState) -> GuidedTourResult { return GuidedTourCore(session, props, state, true) }
     #program_export
-GuidedTourCore :: (session: Session, props: GuidedTourProps,
+GuidedTourCore :: (session: Session, props: GuidedTour.Props,
     state: *GuidedTourState, effects: bool) -> GuidedTourResult {
     unused effects
     result := GuidedTourApply(state, props)

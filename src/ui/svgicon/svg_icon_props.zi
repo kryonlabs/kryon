@@ -3,7 +3,7 @@
 
 // A vector icon on its own: a Shape from an icon package (see svg_shape),
 // drawn square and centered in bounds, in color.
-SvgIconProps :: struct {
+Props :: struct {
     bounds: Rectangle
     shape: string
     color: Color

@@ -2,7 +2,11 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Button :: #import "kryon/button";
+ContextMenu :: #import "kryon/context_menu";
+Text :: #import "kryon/text";
+#import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -41,17 +45,17 @@ b: Rectangle;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "ContextMenu", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "ContextMenu", .size = 23})
     b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
     disabled := example_input.disabled
 
-    items: [3]ContextMenuItem
+    items: [3]ContextMenu.ContextMenuItem
     items[0].label = "Open"; items[0].id = 1; items[1].label = "Rename"; items[1].id = 2; items[2].label = "Remove"; items[2].id = 3; items[2].disabled = disabled
     if dismissed {
-        if Button(session, ButtonProps.{.bounds = b, .label = "Open context menu"}) == 1 { dismissed = false }
+        if Button.Draw(session, Button.Props.{.bounds = b, .label = "Open context menu"}) == 1 { dismissed = false }
     } else {
-        result := ContextMenu(session, ContextMenuProps.{.open = true, .x = b.x, .y = b.y}, items[:])
+        result := ContextMenu.Draw(session, ContextMenu.Props.{.open = true, .x = b.x, .y = b.y}, items[:])
         if result.closed { dismissed = true }
         if result.activated_id > 0 { clicks += 1 }
     }

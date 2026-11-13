@@ -2,7 +2,11 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Dropdown :: #import "kryon/dropdown";
+Text :: #import "kryon/text";
+TitleBar :: #import "kryon/title_bar";
+#import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -33,7 +37,7 @@ SetGalleryViewport :: (view: Rectangle, live: bool, now: float32, reduced_motion
 
 clicks: s32;
 
-no_options: []DropdownOption;
+no_options: []Dropdown.Option;
 
 b: Rectangle;
 
@@ -41,12 +45,12 @@ b: Rectangle;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TitleBar", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TitleBar", .size = 23})
     b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
     disabled := example_input.disabled
 
-    if TitleBar(session, TitleBarProps.{.bounds = b, .title = "Library", .leading_label = "Back", .has_leading_action = true}, no_options).clicked_leading { clicks += 1 }
+    if TitleBar.Draw(session, TitleBar.Props.{.bounds = b, .title = "Library", .leading_label = "Back", .has_leading_action = true}, no_options).clicked_leading { clicks += 1 }
     return 0
 }
 

@@ -1,11 +1,11 @@
+Image :: #import "image";
 #import "control_props"
 #import "geometry"
-#import "image_props"
 #import "modal_behavior"
 
 // Caller supplied bounds support movable/resizable panels without making a
 // platform host decide the layout. Zero bounds center the requested size.
-ModalFrameProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     class_name: s32
@@ -14,8 +14,8 @@ ModalFrameProps :: struct {
     width: s32
     height: s32
     scale: float32
-    left_image: ImageProps
-    right_image: ImageProps
+    left_image: Image.Props
+    right_image: Image.Props
     left_label: string
     right_label: string
     has_left_action: bool

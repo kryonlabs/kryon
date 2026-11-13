@@ -2,13 +2,12 @@
 Theme :: #import "theme";
 #import "widget_test_session"
 
-#import "button_props"
+Button :: #import "kryon/button";
+Image :: #import "kryon/image";
 #import "button_behavior"
-#import "button"
 #import "control_props"
 #import "geometry"
 #import "drawing_props"
-#import "image_props"
 #import "style"
 #import "style_sheet"
 #import "tree"
@@ -17,7 +16,7 @@ Theme :: #import "theme";
 #import "ziran_button_widget_host"
 #import "widget_kind"
 
-using ImageFit;
+using Image.ImageFit;
 using ButtonTone;
 using IconPlacement;
 using ContentAlignment;
@@ -42,15 +41,15 @@ Frame :: () -> s32 {
     // Capsules stay capsules on controls; tall tiles take card corners.
     if ButtonCornerRadius(999.0, 40.0) != 999.0 || ButtonCornerRadius(999.0, 88.0) != 20.0 ||
         ButtonCornerRadius(8.0, 88.0) != 8.0 { return 85 }
-    muted := ButtonDefaultFace(ButtonProps.{.tone = .ButtonToneAccent}, cast(s32)ButtonState.ButtonStateDisabled)
+    muted := Button.ButtonDefaultFace(Button.Props.{.tone = .ButtonToneAccent}, cast(s32)ButtonState.ButtonStateDisabled)
     disabled_alpha := cast(u32)(255.0 * Theme.CurrentTheme().metrics.disabled_opacity)
     if (muted.background & cast(u32)255) != disabled_alpha ||
         (muted.foreground & cast(u32)255) != disabled_alpha ||
         muted.foreground == muted.background { return 94 }
-    clear := ButtonDefaultFace(ButtonProps.{.emphasis = .ButtonEmphasisGhost}, cast(s32)ButtonState.ButtonStateDisabled)
+    clear := Button.ButtonDefaultFace(Button.Props.{.emphasis = .ButtonEmphasisGhost}, cast(s32)ButtonState.ButtonStateDisabled)
     if (clear.background & cast(u32)255) != cast(u32)0 ||
         (clear.foreground & cast(u32)255) == cast(u32)255 { return 95 }
-    props: ButtonProps
+    props: Button.Props
     props.key = cast(u64)7
     props.id = 7
     props.class_name = 9
@@ -75,7 +74,7 @@ Frame :: () -> s32 {
         rules.items[0] = rule
         InstallStyleRules(rules)
         BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-        if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
+        if Button.Draw(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk || TreeCount(TestSession()) != 2 ||
         TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -1 }
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
         phase = 1
@@ -84,17 +83,17 @@ Frame :: () -> s32 {
     if phase == 1 {
         TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
         BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-        clicked: s32 = Button(TestSession(), props)
+        clicked: s32 = Button.Draw(TestSession(), props)
         if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || clicked != 1 { return -2 }
         phase = 2
         return 42
     }
     if phase == 3 {
         props.image.asset_path = "badge.png"
-        props.image.fit = cast(ImageFit)ImageFitContain
+        props.image.fit = cast(Image.ImageFit)ImageFitContain
         props.icon_placement = cast(IconPlacement)IconPlacementTrailing
         BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-        if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
+        if Button.Draw(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
         TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -4 }
         phase = 4
         return 44
@@ -105,14 +104,14 @@ Frame :: () -> s32 {
         props.icon_only = true
         ExpectIcon()
         BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-        if Button(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
+        if Button.Draw(TestSession(), props) != 0 || EndFrame(TestSession()) != cast(FrameStatus)FrameOk ||
         TreeNodeAt(TestSession(), 1).semantic_label != "Run" { return -5 }
         phase = 5
         return 45
     }
     props.disabled = true
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-    clicked: s32 = Button(TestSession(), props)
+    clicked: s32 = Button.Draw(TestSession(), props)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || clicked != 0 { return -3 }
     TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, true, true, false})
     TreePointerUpdate(TestSession(), PointerFrame.{20.0, 30.0, false, false, true})
@@ -125,9 +124,9 @@ main :: () -> s32 {
     // Neutral soft/outline/ghost/link actions retain readable ink; their
     // pale filled surface is not their text color.
     for emphasis: cast(s32)1..4 {
-        neutral: ButtonProps
+        neutral: Button.Props
         neutral.emphasis = cast(ButtonEmphasis)emphasis
-        face := ButtonDefaultFace(neutral, cast(s32)ButtonState.ButtonStateNormal)
+        face := Button.ButtonDefaultFace(neutral, cast(s32)ButtonState.ButtonStateNormal)
         if face.foreground != cast(u32)0x0b0b0bff { return 61 }
     }
     expected: [4]s32 = .[0, 42, 43, 44]
@@ -147,15 +146,15 @@ main :: () -> s32 {
 
     // A button with no width measures its label plus the style's padding;
     // one with a width keeps it.
-    measured: ButtonProps
+    measured: Button.Props
     measured.class_name = 9
     measured.label = "Run"
-    fit: Rectangle = ButtonMeasure(measured)
+    fit: Rectangle = Button.ButtonMeasure(measured)
     if fit.width != 41.0 || fit.height <= 0.0 || ButtonHostFailed() {
         return 34
     }
     measured.bounds = Rectangle.{0.0, 0.0, 200.0, 40.0}
-    fit = ButtonMeasure(measured)
+    fit = Button.ButtonMeasure(measured)
     if fit.width != 200.0 || fit.height != 40.0 { return 35 }
     stacked := ContentLayout(100.0, 80.0, 40.0, 24.0, 8.0,
         true, false, false, 0.0, 0.0, true, 14.0)
@@ -168,7 +167,7 @@ main :: () -> s32 {
     measured.bounds = Rectangle.{}
     measured.image.asset_path = "badge.png"
     measured.icon_placement = cast(IconPlacement)IconPlacementAbove
-    fit = ButtonMeasure(measured)
+    fit = Button.ButtonMeasure(measured)
     if fit.width != 41.0 || fit.height != 36.0 { return 38 }
     start := ContentLayout(200.0, 56.0, 40.0, 24.0, 8.0,
         true, false, false, 0.0, 0.0, false, 14.0,
@@ -182,10 +181,10 @@ main :: () -> s32 {
     // scroll cannot claim the same gesture.
     measured.key = cast(u64)88
     measured.id = 88
-    measured.image = ImageProps.{}
+    measured.image = Image.Props.{}
     measured.bounds = Rectangle.{10.0, 20.0, 80.0, 30.0}
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-    unused Button(TestSession(), measured)
+    unused Button.Draw(TestSession(), measured)
     submitted := TreeSubmitted(TestSession(), TreeCurrentParent(TestSession()),
         measured.key, WidgetKindButton)
     if submitted != 1 || TreeSubmitted(TestSession(), 0, cast(u64)999, WidgetKindButton) != -1 {
@@ -206,7 +205,7 @@ main :: () -> s32 {
     // A swatch paints its own colour under any theme, and only the chosen
     // one carries rings.
     ExpectSwatch()
-    swatch: ButtonProps
+    swatch: Button.Props
     swatch.key = cast(u64)90
     swatch.id = 90
     swatch.class_name = 9
@@ -215,28 +214,28 @@ main :: () -> s32 {
     swatch.swatch_color = Color.{216, 116, 164, 255}
     swatch.bounds = Rectangle.{10.0, 20.0, 40.0, 40.0}
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-    unused Button(TestSession(), swatch)
+    unused Button.Draw(TestSession(), swatch)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || ButtonHostFailed() ||
     SwatchFills() != 1 || SwatchRings() != 0 { return 47 }
     swatch.selected = true
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 100.0, 100.0})
-    unused Button(TestSession(), swatch)
+    unused Button.Draw(TestSession(), swatch)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || ButtonHostFailed() ||
     SwatchFills() != 2 || SwatchRings() != 2 { return 48 }
     // A detail line sits under the label in a smaller, muted font. The
     // button measures the wider line, and both lines are centred together.
     ExpectDetail()
-    detail: ButtonProps
+    detail: Button.Props
     detail.class_name = 9
     detail.label = "Run"
     detail.detail = "Uses Sunup"
-    sized := ButtonMeasure(detail)
+    sized := Button.ButtonMeasure(detail)
     if sized.width != 70.0 || sized.height != 36.0 || ButtonHostFailed() { return 49 }
     detail.key = cast(u64)91
     detail.id = 91
     detail.bounds = Rectangle.{10.0, 20.0, 200.0, 50.0}
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
-    unused Button(TestSession(), detail)
+    unused Button.Draw(TestSession(), detail)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || ButtonHostFailed() { return 50 }
     if DetailProblem() != 0 { return 50 + DetailProblem() }
     return 0

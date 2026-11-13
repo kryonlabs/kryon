@@ -1,13 +1,15 @@
+using Dropdown :: #import "dropdown_props";
+Image :: #import "image";
+Overlay :: #import "overlay";
+Scroll :: #import "scroll";
 // Portable packages use the same retained dropdown as their host.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "dropdown_props"
     host_api :: #system_library "host_api";
-    DropdownHostedHost :: (session: Session, props: DropdownProps,
-        options: []DropdownOption) -> DropdownResult #foreign host_api;
-    #program_export
-    Dropdown :: (session: Session, props: DropdownProps,
-        options: []DropdownOption) -> DropdownResult {
+    DropdownHostedHost :: (session: Session, props: Dropdown.Props,
+        options: []Dropdown.Option) -> Dropdown.Result #foreign host_api;
+        Draw :: (session: Session, props: Dropdown.Props,
+        options: []Dropdown.Option) -> Dropdown.Result {
         return DropdownHostedHost(session, props, options)
     }
 } else {
@@ -17,17 +19,10 @@
     #import "control_props"
     #import "drawing_props"
     #import "dropdown_behavior"
-    #import "dropdown_props"
     #import "font_metrics"
     #import "geometry"
     #import "image_behavior"
-    #import "image_props"
-    #import "kryon/image_widget"
-    #import "overlay_props"
-    #import "overlay"
     #import "paint_queue"
-    #import "scroll_props"
-    #import "scroll"
     #import "semantic"
     #import "style"
     #import "style_sheet"
@@ -102,7 +97,7 @@
     }
 
     #program_export
-    DropdownFaceFor :: (props: DropdownProps, role: s32,
+    DropdownFaceFor :: (props: Dropdown.Props, role: s32,
         state: s32, selected: bool) -> StyleFrame {
         tone: s32 = cast(s32)ButtonToneNeutral
         if selected { tone = cast(s32)ButtonToneAccent }
@@ -117,7 +112,7 @@
     }
 
     #program_export
-    DropdownKey :: (session: Session, props: DropdownProps) -> u64 {
+    DropdownKey :: (session: Session, props: Dropdown.Props) -> u64 {
         if props.key != cast(u64)0 { return props.key }
         if props.id > 0 { return cast(u64)cast(u32)props.id }
         return TreeNextKey(session)
@@ -129,7 +124,7 @@
     }
 
     #program_export
-    DropdownOptionKey :: (key: u64, option: DropdownOption,
+    DropdownOptionKey :: (key: u64, option: Option,
         index: s32) -> u64 {
         item: u64 = option.key
         if item == cast(u64)0 { item = cast(u64)cast(u32)(index + 1) }
@@ -137,7 +132,7 @@
     }
 
     #program_export
-    DropdownActionKey :: (key: u64, option: DropdownOption,
+    DropdownActionKey :: (key: u64, option: Option,
         index: s32) -> u64 {
         return DropdownOptionKey(key, option, index) * cast(u64)31 + cast(u64)5
     }
@@ -150,11 +145,11 @@
     }
 
     #program_export
-    DropdownPaintImage :: (session: Session, node: s32, image: ImageProps,
+    DropdownPaintImage :: (session: Session, node: s32, image: Image.Props,
         bounds: Rectangle, clip: Rectangle) {
         if image.asset_path == "" && image.texture.id == cast(u32)0 { return }
         image.bounds = bounds
-        texture: Texture2D = ImageTextureFor(image)
+        texture: Texture2D = Image.ImageTextureFor(image)
         plan: ImageDrawPlan = ImageDrawPlanFor(image, texture,
             Color.{255, 255, 255, 255})
         if plan.draw {
@@ -166,7 +161,7 @@
 
     #program_export
     DropdownPaintTrigger :: (session: Session, node: s32, bounds: Rectangle,
-        props: DropdownProps, options: []DropdownOption,
+        props: Dropdown.Props, options: []Option,
         face: StyleFrame, selected_index: s32,
         open: bool) {
         opacity: float32 = StyleOpacityValue(face.value.fields,
@@ -226,8 +221,8 @@
     }
 
     #program_export
-    DropdownPaintRow :: (session: Session, node: s32, props: DropdownProps,
-        option: DropdownOption, row: Rectangle, visible: Rectangle,
+    DropdownPaintRow :: (session: Session, node: s32, props: Dropdown.Props,
+        option: Option, row: Rectangle, visible: Rectangle,
         selected: bool, highlighted: bool, metrics: DropdownMenuMetrics,
         face: StyleFrame) {
         opacity: float32 = StyleOpacityValue(face.value.fields,
@@ -289,8 +284,8 @@
     // never less than the style's icon size. It is drawn only while its whole
     // square shows in the menu.
     #program_export
-    DropdownPaintAction :: (session: Session, node: s32, props: DropdownProps,
-        option: DropdownOption, bounds: Rectangle, state: s32, selected: bool) {
+    DropdownPaintAction :: (session: Session, node: s32, props: Dropdown.Props,
+        option: Option, bounds: Rectangle, state: s32, selected: bool) {
         face: StyleFrame = DropdownFaceFor(props, DropdownOptionRole(), state,
             selected)
         opacity: float32 = StyleOpacityValue(face.value.fields,
@@ -328,9 +323,8 @@
         scroll: s32
     }
 
-    #program_export
-    Dropdown :: (session: Session, props: DropdownProps,
-        options: []DropdownOption) -> DropdownResult {
+        Draw :: (session: Session, props: Dropdown.Props,
+        options: []Option) -> Result {
         menu: DropdownMenu
         if TreeIsBuilding(session) {
             previous: s32 = TreePrevious(session, TreeCurrentParent(session),
@@ -344,7 +338,7 @@
         }
         if props.open { menu.open = true }
         if props.close { menu.open = false }
-        result: DropdownResult = DropdownFrame(session, props, options, *menu)
+        result: Result = DropdownFrame(session, props, options, *menu)
         if result.node >= 0 {
             TreeSetWidgetState(session, result.node, WidgetState.{result.open,
                     menu.highlight, menu.scroll})
@@ -352,9 +346,9 @@
         return result
     }
 
-    DropdownFrame :: (session: Session, props: DropdownProps,
-        options: []DropdownOption, retained: *DropdownMenu) -> DropdownResult {
-        result: DropdownResult
+    DropdownFrame :: (session: Session, props: Dropdown.Props,
+        options: []Option, retained: *DropdownMenu) -> Result {
+        result: Result
         result.node = -1
         result.selected_index = props.selected_index
         result.action_index = -1
@@ -371,7 +365,7 @@
             previous_overlay = TreePrevious(session, TreeCurrentParent(session),
                 DropdownOverlayKey(key), WidgetKindCustom)
             previous_panel = TreePreviousCommitted(session, previous_overlay,
-                OverlayPanelKey(), WidgetKindCustom)
+                Overlay.OverlayPanelKey(), WidgetKindCustom)
             previous_scroll = TreePreviousCommitted(session, previous_panel,
                 DropdownScrollKey(key), WidgetKindScroll)
         }
@@ -530,7 +524,7 @@
         // The open menu floats above the page without blocking it: a press
         // anywhere else, such as on the app's sidebar, closes the menu and still
         // reaches what it landed on. The trigger toggles the menu itself.
-        overlay: PopupResult = Popup(session, PopupProps.{
+        overlay: Overlay.PopupResult = Overlay.Popup(session, Overlay.PopupProps.{
             .key = DropdownOverlayKey(key), .id = props.id,
             .class_name = props.class_name, .bounds = menu,
             .keep_bounds = bounds})
@@ -554,7 +548,7 @@
                 panel_opacity)))
         }
         if !TreePushScope(session, panel_node) { return result }
-        scroll: ScrollProps
+        scroll: Scroll.Props
         scroll.key = DropdownScrollKey(key)
         scroll.id = props.id
         scroll.class_name = props.class_name
@@ -562,7 +556,7 @@
         scroll.bounds = menu
         scroll.content_height = layout.content_height
         scroll.scroll_offset = retained.scroll
-        scrolled: ScrollResult = Scroll(session, scroll)
+        scrolled: Scroll.ScrollResult = Scroll.Draw(session, scroll)
         retained.scroll = scrolled.scroll_offset
         if !scrolled.opened {
             End(session)
@@ -579,7 +573,7 @@
                 metrics.highlight_inset_y)
             visible: Rectangle = paint.visible_bounds
             if visible.width > 0.0 && visible.height > 0.0 {
-                item: DropdownOption = options[index]
+                item: Option = options[index]
                 row: Rectangle = Rectangle.{menu.x,
                     cast(float32)paint.option_y,
                     cast(float32)layout.option_width, cast(float32)row_height}

@@ -1,4 +1,28 @@
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Button :: #import "kryon/button";
+Card :: #import "kryon/card";
+Checkbox :: #import "kryon/checkbox";
+ConfirmButton :: #import "kryon/confirm_button";
+HoldButton :: #import "kryon/hold_button";
+Image :: #import "kryon/image";
+Layout :: #import "kryon/layout";
+Scroll :: #import "kryon/scroll";
+SegmentedControl :: #import "kryon/segmented_control";
+Slider :: #import "kryon/slider";
+Text :: #import "kryon/text";
+TextArea :: #import "kryon/text_area";
+TextField :: #import "kryon/text_field";
+Toggle :: #import "kryon/toggle";
+#import "kryon/control_props"
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/input_protocol"
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/style_sheet"
+#import "kryon/transition"
+#import "kryon/tree"
+#import "kryon/tree_input"
 using App :: #import "app";
 using Preview :: #import "site_preview";
 #import "std/web"
@@ -63,11 +87,11 @@ site_component_scroll: s32;
 site_usage_scroll: s32;
 site_volume: float32 = 65.0;
 site_notifications: bool = true;
-site_hold: HoldButtonState;
-site_confirm: ConfirmButtonState;
+site_hold: HoldButton.HoldButtonState;
+site_confirm: ConfirmButton.ConfirmButtonState;
 site_hold_count: s32;
 site_confirm_count: s32;
-site_code_colors: [8192]TextAreaColorSpan;
+site_code_colors: [8192]TextArea.ColorSpan;
 site_code_color_count: s32;
 
 SiteRouteName :: (page: s32) -> string {
@@ -261,7 +285,7 @@ SiteCodePrimitive :: (word: string) -> bool {
 }
 SiteCodeColorAdd :: (start: s32, end: s32, color: u32) {
     if end <= start || site_code_color_count >= 8192 { return }
-    span: TextAreaColorSpan
+    span: TextArea.ColorSpan
     span.start = start
     span.end = end
     span.color = color
@@ -327,21 +351,21 @@ SiteHighlightCode :: (code: string) {
 }
 
 SiteText :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
-    Text(session, TextProps.{.key = key, .bounds = bounds, .text = text, .font = font,
+    Text.Draw(session, Text.Props.{.key = key, .bounds = bounds, .text = text, .font = font,
         .class_name = ifx font >= 20 then 11003 else 11001})
 }
 SiteMuted :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
-    Text(session, TextProps.{.key = key, .bounds = bounds, .text = text, .font = font, .class_name = 11002})
+    Text.Draw(session, Text.Props.{.key = key, .bounds = bounds, .text = text, .font = font, .class_name = 11002})
 }
 SiteCenter :: (session: Session, key: u64, bounds: Rectangle, text: string, font: s32) {
-    Text(session, TextProps.{.key = key, .bounds = bounds, .text = text, .font = font,
+    Text.Draw(session, Text.Props.{.key = key, .bounds = bounds, .text = text, .font = font,
         .class_name = ifx font >= 20 then 11003 else 11002, .align = .TextAlignCenter})
 }
 SitePanel :: (session: Session, key: u64, bounds: Rectangle) {
-    Box(session, BoxProps.{.key = key, .bounds = bounds, .fill = SiteBackground(), .border = SiteBorder(), .radius = 14.0})
+    Box.Draw(session, Box.Props.{.key = key, .bounds = bounds, .fill = SiteBackground(), .border = SiteBorder(), .radius = 14.0})
 }
 SiteAction :: (session: Session, key: u64, bounds: Rectangle, label: string, page: s32) {
-    if Button(session, ButtonProps.{.key = key, .bounds = bounds, .label = label, .class_name = 11010, .emphasis = .ButtonEmphasisGhost,
+    if Button.Draw(session, Button.Props.{.key = key, .bounds = bounds, .label = label, .class_name = 11010, .emphasis = .ButtonEmphasisGhost,
         .selected = site_page == page, .disabled = site_modal_active}) != 0 { SiteNavigate(page) }
 }
 
@@ -350,12 +374,19 @@ SiteOverview :: (session: Session, view: Rectangle) {
     width := view.width - (ifx large then 96.0 else 40.0)
     if width > 1180.0 { width = 1180.0 }
     x := (view.width - width) * 0.5
-    scroll := Scroll(session, ScrollProps.{.key = 10030, .bounds = view,
-        .content_height = ifx large then 1640 else 2040, .scroll_offset = site_scroll})
+    scroll := Scroll.Draw(session, Scroll.Props.{.key = 10030, .bounds = view,
+        .content_height = ifx large then 1840 else 2200, .scroll_offset = site_scroll})
     site_scroll = scroll.scroll_offset
     y := scroll.content.y + (ifx large then 60.0 else 32.0)
-    Box(session, BoxProps.{.key = 10200, .bounds = .{0.0, scroll.content.y, view.width, 620.0},
+    Box.Draw(session, Box.Props.{.key = 10200, .bounds = .{0.0, scroll.content.y, view.width, ifx large then 820.0 else 720.0},
         .fill = SiteSurface(), .fill_bottom = SiteBackground(), .has_fill_bottom = true})
+    mascot_size: float32 = ifx large then 180.0 else 140.0
+    Image.Draw(session, Image.Props.{.key = 10201,
+        .asset_path = "assets/brand/mascot-dragon.png",
+        .alt_text = "Kryon pastel dragon mascot",
+        .bounds = .{(view.width - mascot_size) * 0.5, y, mascot_size, mascot_size},
+        .fit = .ImageFitContain, .smooth = true})
+    y += mascot_size + (ifx large then 20.0 else 16.0)
     SiteCenter(session, 10031, .{x, y, width, ifx large then 140.0 else 104.0},
         ifx large then "Native interfaces.\nOne expressive language." else "Native interfaces.\nWritten in Ziran.", ifx large then 56 else 36)
     y += ifx large then 160.0 else 126.0
@@ -364,9 +395,9 @@ SiteOverview :: (session: Session, view: Rectangle) {
     y += 88.0
     actions: float32 = ifx width > 360.0 then 360.0 else width
     ax: float32 = (view.width - actions) * 0.5
-    if Button(session, ButtonProps.{.key = 10033, .bounds = .{ax, y, actions * 0.5 - 6.0, 42.0},
+    if Button.Draw(session, Button.Props.{.key = 10033, .bounds = .{ax, y, actions * 0.5 - 6.0, 42.0},
         .label = "Browse components", .class_name = 11011}) != 0 { SiteNavigate(2) }
-    if Button(session, ButtonProps.{.key = 10034, .bounds = .{ax + actions * 0.5 + 6.0, y, actions * 0.5 - 6.0, 42.0},
+    if Button.Draw(session, Button.Props.{.key = 10034, .bounds = .{ax + actions * 0.5 + 6.0, y, actions * 0.5 - 6.0, 42.0},
         .label = "Get started", .class_name = 11012}) != 0 { SiteNavigate(1) }
     y += 64.0
     SiteCenter(session, 10202, .{x, y, width, 24.0}, "$ ziran add https://github.com/kryonlabs/kryon", ifx large then 13 else 10)
@@ -374,30 +405,30 @@ SiteOverview :: (session: Session, view: Rectangle) {
     SiteMuted(session, 10035, .{x, y, width, 24.0}, "A SMALL TASTE OF KRYON", 12)
     y += 38.0
     column := ifx large then (width - 20.0) * 0.5 else width
-    unused Card(session, CardProps.{.key = 10036, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
+    unused Card.Draw(session, Card.Props.{.key = 10036, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
     digits: [32]u8
     SiteText(session, 10037, .{x + 20.0, y + 20.0, column - 40.0, 32.0}, "Every click counts", 20)
-    if Button(session, ButtonProps.{.key = 10038, .bounds = .{x + 20.0, y + 72.0, column - 40.0, 42.0},
+    if Button.Draw(session, Button.Props.{.key = 10038, .bounds = .{x + 20.0, y + 72.0, column - 40.0, 42.0},
         .label = FormatInteger(cast(s64)site_count, digits[:])}) != 0 { site_count += 1 }
-    site_notifications = Toggle(session, ToggleProps.{.key = 10039,
+    site_notifications = Toggle.Draw(session, Toggle.Props.{.key = 10039,
         .bounds = .{x + 20.0, y + 136.0, column - 40.0, 40.0}, .label = "Notifications", .value = site_notifications}).value
-    site_volume = Slider(session, SliderProps.{.key = 10040,
+    site_volume = Slider.Draw(session, Slider.Props.{.key = 10040,
         .bounds = .{x + 20.0, y + 188.0, column - 40.0, 48.0}, .label = "Volume", .value = site_volume, .max = 100.0}).value
     if large { x += column + 20.0 } else { y += 270.0 }
-    unused Card(session, CardProps.{.key = 10041, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
+    unused Card.Draw(session, Card.Props.{.key = 10041, .bounds = .{x, y, column, 250.0}, .variant = .CardOutlined})
     SiteText(session, 10042, .{x + 20.0, y + 20.0, column - 40.0, 32.0}, "Actions with intent", 20)
-    held := HoldButton(session, HoldButtonProps.{.button = .{.key = 10043,
+    held := HoldButton.Draw(session, HoldButton.Props.{.button = .{.key = 10043,
         .bounds = .{x + 20.0, y + 72.0, column - 40.0, 42.0}, .label = "Hold to complete"},
         .now = site_now, .duration = 1.2, .key = site_key, .key_held = site_space_held, .blur = !site_focused}, *site_hold)
     if held.fired { site_hold_count += 1 }
-    confirmed := ConfirmButton(session, ConfirmButtonProps.{.button = .{.key = 10044,
+    confirmed := ConfirmButton.Draw(session, ConfirmButton.Props.{.button = .{.key = 10044,
         .bounds = .{x + 20.0, y + 136.0, column - 40.0, 42.0}, .label = "Delete"},
         .confirm_button = .{.label = "Confirm delete"}, .now = site_now, .key = site_key}, *site_confirm)
     if confirmed.committed { site_confirm_count += 1 }
     SiteText(session, 10045, .{x + 20.0, y + 196.0, column - 40.0, 34.0}, "Hold, release, confirm or Escape.", 13)
     x = (view.width - width) * 0.5
     y += 306.0
-    Box(session, BoxProps.{.key = 10204, .bounds = .{x, y, width, 1.0}, .fill = SiteBorder()})
+    Box.Draw(session, Box.Props.{.key = 10204, .bounds = .{x, y, width, 1.0}, .fill = SiteBorder()})
     y += 36.0
     SiteText(session, 10205, .{x, y, width, 76.0}, "Everything starts with a component.", ifx large then 32 else 26)
     y += 92.0
@@ -438,16 +469,16 @@ SiteReading :: (session: Session, view: Rectangle) {
     width := view.width - 40.0
     if width > 840.0 { width = 840.0 }
     x := (view.width - width) * 0.5
-    scroll := Scroll(session, ScrollProps.{.key = 10400, .bounds = view,
+    scroll := Scroll.Draw(session, Scroll.Props.{.key = 10400, .bounds = view,
         .content_height = 1080, .scroll_offset = site_scroll})
     site_scroll = scroll.scroll_offset
     y := scroll.content.y + 44.0
     SiteMuted(session, 10401, .{x, y, width, 24.0}, "KRYON  /  DOCUMENTATION", 12)
     SiteText(session, 10050, .{x, y + 48.0, width, 92.0}, title, 36)
-    Box(session, BoxProps.{.key = 10402, .bounds = .{x, y + 162.0, width, 1.0}, .fill = SiteBorder()})
-    Text(session, TextProps.{.key = 10051, .bounds = .{x, y + 198.0, width, 640.0},
+    Box.Draw(session, Box.Props.{.key = 10402, .bounds = .{x, y + 162.0, width, 1.0}, .fill = SiteBorder()})
+    Text.Draw(session, Text.Props.{.key = 10051, .bounds = .{x, y + 198.0, width, 640.0},
         .text = body, .font = 17, .line_gap = 8, .class_name = 11002, .selectable = true})
-    if Button(session, ButtonProps.{.key = 10052,
+    if Button.Draw(session, Button.Props.{.key = 10052,
         .bounds = .{x, y + 900.0, width, 42.0}, .label = "Open source & API", .class_name = 11012}) != 0 {
         unused OpenUri("https://github.com/kryonlabs/kryon/blob/master/docs/API.md")
     }
@@ -461,7 +492,7 @@ SiteComponents :: (session: Session, view: Rectangle) {
     width := view.width - left - gutter * 2.0 - (ifx view.width >= 1280.0 then 240.0 else 0.0)
     if width > 900.0 { width = 900.0 }
     x := left + gutter
-    scroll := Scroll(session, ScrollProps.{.key = 10300,
+    scroll := Scroll.Draw(session, Scroll.Props.{.key = 10300,
         .bounds = .{left, view.y, view.width - left, view.height},
         .content_height = cast(s32)view.height + (ifx site_source then 1100 else 860), .scroll_offset = site_component_scroll})
     site_component_scroll = scroll.scroll_offset
@@ -486,7 +517,7 @@ SiteComponents :: (session: Session, view: Rectangle) {
     SiteCompile()
     SetGalleryPreview(content, true, site_now, site_reduced_motion)
     if !site_source {
-        group := Group(session, ColumnProps.{.key = 10101, .bounds = content})
+        group := Layout.Group(session, Layout.Props.{.key = 10101, .bounds = content})
         site_native_bounds = content; site_native_visible = true
         if group.opened { End(session) }
     } else {
@@ -494,13 +525,13 @@ SiteComponents :: (session: Session, view: Rectangle) {
         editor_input := Scenes.SceneInputFor(KeyboardTake(session), KeyboardModifiers(session),
             TypedTextTake(session, site_editor_typed[:]))
         SiteHighlightCode(TextView(site_editor_bytes[:site_editor_length]))
-        area := TextArea(session, TextAreaProps.{.key = 10102, .bounds = content, .class_name = 11020,
+        area := TextArea.Draw(session, TextArea.Props.{.key = 10102, .bounds = content, .class_name = 11020,
             .value = TextView(site_editor_bytes[:site_editor_length]), .wrap = false, .input = editor_input.area,
             .cursor = site_source_cursor, .anchor = site_source_anchor, .scroll_y = site_source_scroll,
             .colors = site_code_colors[:site_code_color_count]})
         site_source_cursor = area.cursor; site_source_anchor = area.anchor; site_source_scroll = area.scroll_y
         if area.edit.changed {
-            edit: TextFieldEdit = .{.start = area.edit.start, .end = area.edit.end,
+            edit: TextField.Edit = .{.start = area.edit.start, .end = area.edit.end,
                 .replacement = area.edit.replacement, .changed = true}
             site_editor_length = Scenes.Apply(site_editor_next[:], site_editor_length, edit)
             site_editor_revision += 1; site_compile_due = site_now + 0.4
@@ -517,38 +548,38 @@ SiteComponents :: (session: Session, view: Rectangle) {
     SiteMuted(session, 10305, .{x, below + 46.0, width, 38.0}, "Maintained Ziran source. Select Source above to edit and run it.", 14)
     usage_code := GallerySceneCode(scene)
     SiteHighlightCode(usage_code)
-    usage := TextArea(session, TextAreaProps.{.key = 10309, .bounds = .{x, below + 96.0, width, 240.0},
+    usage := TextArea.Draw(session, TextArea.Props.{.key = 10309, .bounds = .{x, below + 96.0, width, 240.0},
         .value = usage_code, .read_only = true, .wrap = false, .class_name = 11020,
         .scroll_y = site_usage_scroll, .manual_scroll = true,
         .colors = site_code_colors[:site_code_color_count]})
     site_usage_scroll = usage.scroll_y
-    Box(session, BoxProps.{.key = 10306, .bounds = .{x, below + 374.0, width, 1.0}, .fill = SiteBorder()})
+    Box.Draw(session, Box.Props.{.key = 10306, .bounds = .{x, below + 374.0, width, 1.0}, .fill = SiteBorder()})
     SiteText(session, 10307, .{x, below + 404.0, width, 32.0}, "Keyboard & interaction", 21)
     SiteMuted(session, 10308, .{x, below + 454.0, width, 94.0},
         "Tab moves focus. Enter and Space activate controls. Arrow keys navigate choices.\nExamples follow your reduced motion preference.", 14)
-    options: [2]SegmentOption
+    options: [2]SegmentedControl.SegmentOption
     options[0].label = "Preview"; options[1].label = "Source"
-    chosen := SegmentedControl(session, SegmentedControlProps.{.key = 10104,
+    chosen := SegmentedControl.Draw(session, SegmentedControl.Props.{.key = 10104,
         .bounds = .{x + 12.0, top + 12.0, ifx width > 330.0 then 184.0 else 146.0, 32.0}, .has_selection = true, .selected_index = ifx site_source then 1 else 0}, options[:])
     site_source = chosen.selected_index == 1
-    disabled_controls = Checkbox(session, CheckboxProps.{.key = 9004,
+    disabled_controls = Checkbox.Draw(session, Checkbox.Props.{.key = 9004,
         .bounds = .{x + width - 116.0, top + 12.0, 108.0, 32.0}, .label = "Disabled", .checked = disabled_controls}).checked
     if scroll.opened { End(session) }
     if wide {
-        Box(session, BoxProps.{.key = 10310, .bounds = .{0.0, view.y, 264.0, view.height}, .fill = SiteBackground()})
-        Box(session, BoxProps.{.key = 10311, .bounds = .{263.0, view.y, 1.0, view.height}, .fill = SiteBorder()})
+        Box.Draw(session, Box.Props.{.key = 10310, .bounds = .{0.0, view.y, 264.0, view.height}, .fill = SiteBackground()})
+        Box.Draw(session, Box.Props.{.key = 10311, .bounds = .{263.0, view.y, 1.0, view.height}, .fill = SiteBorder()})
         SiteMuted(session, 10312, .{24.0, view.y + 24.0, 220.0, 24.0}, "COMPONENTS  /  101", 12)
         SiteWidgetNavigation(session, .{12.0, view.y + 64.0, 240.0, view.height - 80.0})
     }
     else {
-        if Button(session, ButtonProps.{.key = 10103, .bounds = .{20.0, view.y + 10.0, view.width - 40.0, 34.0}, .label = "All widgets"}) != 0 { site_mobile_navigation = !site_mobile_navigation }
+        if Button.Draw(session, Button.Props.{.key = 10103, .bounds = .{20.0, view.y + 10.0, view.width - 40.0, 34.0}, .label = "All widgets"}) != 0 { site_mobile_navigation = !site_mobile_navigation }
     }
     if view.width >= 1280.0 {
         tx := x + width + 36.0
         SiteMuted(session, 10500, .{tx, view.y + 32.0, 130.0, 24.0}, "ON THIS PAGE", 11)
         sections: [3]string = .{"Example", "Usage", "Keyboard"}
         for index: 0..2 {
-            if Button(session, ButtonProps.{.key = cast(u64)(10501 + index), .bounds = .{tx, view.y + 70.0 + cast(float32)index * 38.0, 130.0, 32.0},
+            if Button.Draw(session, Button.Props.{.key = cast(u64)(10501 + index), .bounds = .{tx, view.y + 70.0 + cast(float32)index * 38.0, 130.0, 32.0},
                 .label = sections[index], .class_name = 11010}) != 0 {
                 if index == 0 { site_component_scroll = 0 }
                 else { site_component_scroll = cast(s32)(top - scroll.content.y + panel_height + 12.0 + (ifx index == 2 then 402.0 else 0.0)) }
@@ -556,21 +587,21 @@ SiteComponents :: (session: Session, view: Rectangle) {
         }
     }
     if !wide && site_mobile_navigation {
-        Box(session, BoxProps.{.key = 10105, .bounds = .{12.0, view.y + 50.0, view.width - 24.0, view.height - 62.0}, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 10.0})
+        Box.Draw(session, Box.Props.{.key = 10105, .bounds = .{12.0, view.y + 50.0, view.width - 24.0, view.height - 62.0}, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 10.0})
         SiteWidgetNavigation(session, .{16.0, view.y + 58.0, view.width - 32.0, view.height - 78.0})
     }
 }
 
 SiteAppCard :: (session: Session, key: u64, bounds: Rectangle, image_path: string,
     title: string, summary: string, url: string, image_height: float32) {
-    Box(session, BoxProps.{.key = key, .bounds = bounds, .fill = SiteSurface(),
+    Box.Draw(session, Box.Props.{.key = key, .bounds = bounds, .fill = SiteSurface(),
         .border = SiteBorder(), .radius = 14.0})
     inset: float32 = 12.0
     image_bounds := Rectangle.{bounds.x + inset, bounds.y + inset,
         bounds.width - inset * 2.0, image_height}
-    Box(session, BoxProps.{.key = key + 5, .bounds = image_bounds,
+    Box.Draw(session, Box.Props.{.key = key + 5, .bounds = image_bounds,
         .fill = SiteBackground(), .border = SiteBorder(), .radius = 10.0})
-    Image(session, ImageProps.{.key = key + 1, .asset_path = image_path,
+    Image.Draw(session, Image.Props.{.key = key + 1, .asset_path = image_path,
         .alt_text = title, .bounds = image_bounds, .fit = .ImageFitContain,
         .radius = 10.0, .smooth = true})
     text_y := bounds.y + inset + image_height + 14.0
@@ -578,7 +609,7 @@ SiteAppCard :: (session: Session, key: u64, bounds: Rectangle, image_path: strin
         bounds.width - inset * 2.0, 32.0}, title, 22)
     SiteMuted(session, key + 3, .{bounds.x + inset, text_y + 36.0,
         bounds.width - inset * 2.0, 40.0}, summary, 14)
-    if Button(session, ButtonProps.{.key = key + 4,
+    if Button.Draw(session, Button.Props.{.key = key + 4,
         .bounds = .{bounds.x + inset, bounds.y + bounds.height - 46.0,
         bounds.width - inset * 2.0, 34.0}, .label = "View on GitHub  ↗",
         .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 {
@@ -598,7 +629,7 @@ SiteApps :: (session: Session, view: Rectangle) {
     card_height: float32 = image_height + 168.0
     rows: s32 = (4 + columns - 1) / columns
     content_height := 308.0 + cast(float32)rows * (card_height + gap) + 40.0
-    scroll := Scroll(session, ScrollProps.{.key = 10700, .bounds = view,
+    scroll := Scroll.Draw(session, Scroll.Props.{.key = 10700, .bounds = view,
         .content_height = cast(s32)content_height, .scroll_offset = site_scroll})
     site_scroll = scroll.scroll_offset
     y := scroll.content.y + 44.0
@@ -629,7 +660,7 @@ SiteApps :: (session: Session, view: Rectangle) {
             images[index], names[index], summaries[index], urls[index], image_height)
     }
     y += cast(float32)rows * (card_height + gap) + 16.0
-    if Button(session, ButtonProps.{.key = 10760, .bounds = .{x, y, 232.0, 40.0},
+    if Button.Draw(session, Button.Props.{.key = 10760, .bounds = .{x, y, 232.0, 40.0},
         .label = "Kryon Labs on GitHub  ↗", .class_name = 11012}) != 0 {
         unused OpenUri("https://github.com/kryonlabs")
     }
@@ -641,7 +672,7 @@ SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
     InstallGalleryPalette(dark)
     SiteStyle()
     unused SiteTheme.SetReducedMotion(site_reduced_motion)
-    Box(session, BoxProps.{.key = 10000, .bounds = viewport, .fill = SiteBackground()})
+    Box.Draw(session, Box.Props.{.key = 10000, .bounds = viewport, .fill = SiteBackground()})
     wide := viewport.width >= 760.0
     header: float32 = ifx wide then 56.0 else 104.0
     view := Rectangle.{0.0, header, viewport.width, viewport.height - header}
@@ -651,11 +682,11 @@ SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
     else if site_page == 3 { SiteApps(session, view) }
     else { SiteReading(session, view) }
     site_modal_active = false
-    Box(session, BoxProps.{.key = 10001, .bounds = .{0.0, 0.0, viewport.width, header}, .fill = SiteBackground()})
-    Box(session, BoxProps.{.key = 10320, .bounds = .{0.0, header - 1.0, viewport.width, 1.0}, .fill = SiteBorder()})
-    if Button(session, ButtonProps.{.key = 10002, .bounds = .{16.0, 8.0, 94.0, 38.0},
+    Box.Draw(session, Box.Props.{.key = 10001, .bounds = .{0.0, 0.0, viewport.width, header}, .fill = SiteBackground()})
+    Box.Draw(session, Box.Props.{.key = 10320, .bounds = .{0.0, header - 1.0, viewport.width, 1.0}, .fill = SiteBorder()})
+    if Button.Draw(session, Button.Props.{.key = 10002, .bounds = .{16.0, 8.0, 94.0, 38.0},
         .label = "Kryon", .class_name = 11010, .emphasis = .ButtonEmphasisGhost, .disabled = site_modal_active}) != 0 { SiteNavigate(0) }
-    dark = Toggle(session, ToggleProps.{.key = 10003, .bounds = .{viewport.width - 108.0, 10.0, 92.0, 36.0},
+    dark = Toggle.Draw(session, Toggle.Props.{.key = 10003, .bounds = .{viewport.width - 108.0, 10.0, 92.0, 36.0},
         .label = "Dark", .value = dark, .disabled = site_modal_active}).value
     tab_width: float32 = ifx wide then 96.0 else (viewport.width - 32.0) / 3.0
     nav_x: float32 = ifx wide then 124.0 else 16.0
@@ -668,7 +699,7 @@ SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
     if viewport.width >= 1000.0 {
         SiteAction(session, 10020, .{508.0, 10.0, 72.0, 36.0}, "Apps", 3)
         SiteAction(session, 10021, .{588.0, 10.0, 72.0, 36.0}, "Docs", 4)
-        if Button(session, ButtonProps.{.key = 10322, .bounds = .{viewport.width - 208.0, 10.0, 88.0, 36.0},
+        if Button.Draw(session, Button.Props.{.key = 10322, .bounds = .{viewport.width - 208.0, 10.0, 88.0, 36.0},
             .label = "GitHub  ↗", .class_name = 11010, .emphasis = .ButtonEmphasisGhost}) != 0 { unused OpenUri("https://github.com/kryonlabs/kryon") }
     }
     target := cast(float32)(ifx site_page < 3 then site_page else 1)
@@ -679,10 +710,10 @@ SiteFrame :: (session: Session, viewport: Rectangle) -> s32 {
     progress := TransitionSmoothProgress((site_now - site_marker_started) / 0.22)
     if site_reduced_motion { progress = 1.0 }
     site_marker = site_marker_from + (site_marker_target - site_marker_from) * progress
-    Box(session, BoxProps.{.key = 10013, .bounds = .{nav_x + site_marker * tab_width + 18.0, header - 2.0, tab_width - 36.0, 2.0},
+    Box.Draw(session, Box.Props.{.key = 10013, .bounds = .{nav_x + site_marker * tab_width + 18.0, header - 2.0, tab_width - 36.0, 2.0},
         .fill = ColorFromPacked(ifx dark then 0xf2f2f2ff else 0x171717ff)})
     resources_x: float32 = ifx viewport.width >= 1000.0 then 678.0 else viewport.width - 190.0
-    if Button(session, ButtonProps.{.key = 10520, .bounds = .{resources_x, 10.0, 78.0, 36.0},
+    if Button.Draw(session, Button.Props.{.key = 10520, .bounds = .{resources_x, 10.0, 78.0, 36.0},
         .label = "More", .class_name = 11010, .emphasis = .ButtonEmphasisGhost, .disabled = site_modal_active}) != 0 { site_resources_open = !site_resources_open }
     if site_resources_open {
         mx := viewport.width - 230.0
@@ -734,7 +765,7 @@ SiteWidgetNavigation :: (session: Session, bounds: Rectangle) {
             catalog_scroll = cast(s32)(positions[next] + 32.0 - bounds.height)
         }
     }
-    scroll := Scroll(session, ScrollProps.{.key = 9003, .bounds = bounds,
+    scroll := Scroll.Draw(session, Scroll.Props.{.key = 9003, .bounds = bounds,
         .content_height = cast(s32)height, .scroll_offset = catalog_scroll})
     catalog_scroll = scroll.scroll_offset
     group = ""
@@ -746,7 +777,7 @@ SiteWidgetNavigation :: (session: Session, bounds: Rectangle) {
             SiteMuted(session, cast(u64)(19000 + position), .{bounds.x + 12.0, y - 28.0, bounds.width - 24.0, 20.0}, label, 11)
             group = label
         }
-        if Button(session, ButtonProps.{.key = cast(u64)(index + 1),
+        if Button.Draw(session, Button.Props.{.key = cast(u64)(index + 1),
             .bounds = .{bounds.x + 6.0, y, bounds.width - 12.0, 32.0},
             .label = GallerySceneName(index), .class_name = 11010,
             .emphasis = .ButtonEmphasisGhost, .content_alignment = .ContentAlignmentStart,
@@ -831,9 +862,9 @@ RunSitePreview :: (session: Session) {
 }
 
 SiteGuideCode :: (session: Session, key: u64, bounds: Rectangle, code: string) {
-    Box(session, BoxProps.{.key = key, .bounds = bounds, .fill = SiteSurface(), .border = SiteBorder(), .radius = 10.0})
+    Box.Draw(session, Box.Props.{.key = key, .bounds = bounds, .fill = SiteSurface(), .border = SiteBorder(), .radius = 10.0})
     SiteHighlightCode(code)
-    unused TextArea(session, TextAreaProps.{.key = key + 1,
+    unused TextArea.Draw(session, TextArea.Props.{.key = key + 1,
         .bounds = .{bounds.x + 16.0, bounds.y + 14.0, bounds.width - 32.0, bounds.height - 28.0},
         .value = code, .read_only = true, .wrap = false, .manual_scroll = true,
         .class_name = 11040, .colors = site_code_colors[:site_code_color_count]})
@@ -846,14 +877,14 @@ SiteGuide :: (session: Session, view: Rectangle) {
     x := (view.width - width) * 0.5
     ax := x + (ifx wide then 220.0 else 0.0)
     aw := width - (ifx wide then 220.0 else 0.0)
-    scroll := Scroll(session, ScrollProps.{.key = 10400, .bounds = view, .content_height = 1900, .scroll_offset = site_scroll})
+    scroll := Scroll.Draw(session, Scroll.Props.{.key = 10400, .bounds = view, .content_height = 1900, .scroll_offset = site_scroll})
     site_scroll = scroll.scroll_offset
     y := scroll.content.y + 40.0
     if wide {
         SiteMuted(session, 10600, .{x, y, 180.0, 24.0}, "BUILD WITH KRYON", 11)
         labels: [3]string = .{"01  Get started", "02  Use a component", "03  Make it yours"}
         for index: 0..2 {
-            if Button(session, ButtonProps.{.key = cast(u64)(10601 + index), .bounds = .{x, y + 42.0 + cast(float32)index * 42.0, 190.0, 36.0}, .label = labels[index], .class_name = 11010}) != 0 {
+            if Button.Draw(session, Button.Props.{.key = cast(u64)(10601 + index), .bounds = .{x, y + 42.0 + cast(float32)index * 42.0, 190.0, 36.0}, .label = labels[index], .class_name = 11010}) != 0 {
                 site_scroll = ifx index == 0 then 0 else ifx index == 1 then 550 else 1110
             }
         }
@@ -866,26 +897,25 @@ SiteGuide :: (session: Session, view: Rectangle) {
     SiteMuted(session, 10612, .{ax, y + 54.0, aw, 68.0}, "With Ziran and the Kryon tool installed,\ncreate a project and run its native window.", 15)
     SiteGuideCode(session, 10613, .{ax, y + 138.0, aw, 150.0}, "kryon new hello\ncd hello\nkryon run\nkryon run web")
     y += 332.0
-    Box(session, BoxProps.{.key = 10615, .bounds = .{ax, y, aw, 1.0}, .fill = SiteBorder()})
+    Box.Draw(session, Box.Props.{.key = 10615, .bounds = .{ax, y, aw, 1.0}, .fill = SiteBorder()})
     y += 36.0
     SiteText(session, 10616, .{ax, y, aw, 38.0}, "02 / Use a component", 24)
     SiteMuted(session, 10617, .{ax, y + 54.0, aw, 82.0}, "Import the widgets. Keep state in your app.\nA stable key preserves input and focus\nwhen you submit the next frame.", 15)
     SiteGuideCode(session, 10618, .{ax, y + 150.0, aw, 244.0}, #string GUIDE_WIDGETS
-using UI :: #import "kryon/Widgets";
 
 Frame :: (session: Session,
     bounds: Rectangle) -> s32 {
-    props: ButtonProps
+    props: Button.Props
     props.key = 1
     props.bounds = bounds
     props.label = "Ready"
-    unused Button(session, props)
+    unused Button.Draw(session, props)
     return 0
 }
 GUIDE_WIDGETS)
-    if Button(session, ButtonProps.{.key = 10620, .bounds = .{ax, y + 410.0, aw, 42.0}, .label = "Explore 101 editable examples  →", .class_name = 11012}) != 0 { SiteNavigate(2) }
+    if Button.Draw(session, Button.Props.{.key = 10620, .bounds = .{ax, y + 410.0, aw, 42.0}, .label = "Explore 101 editable examples  →", .class_name = 11012}) != 0 { SiteNavigate(2) }
     y += 496.0
-    Box(session, BoxProps.{.key = 10621, .bounds = .{ax, y, aw, 1.0}, .fill = SiteBorder()})
+    Box.Draw(session, Box.Props.{.key = 10621, .bounds = .{ax, y, aw, 1.0}, .fill = SiteBorder()})
     y += 36.0
     SiteText(session, 10622, .{ax, y, aw, 38.0}, "03 / Easy theming", 24)
     SiteMuted(session, 10623, .{ax, y + 54.0, aw, 90.0}, "One theme carries colors, typography,\nspacing and motion across your controls.\nStart with a palette, then set your accent.", 15)
@@ -899,7 +929,7 @@ theme = Theme.WithAccent(theme,
 unused Theme.InstallTheme(theme)
 GUIDE_THEME)
     SiteMuted(session, 10626, .{ax, y + 384.0, aw, 100.0}, "Use SetThemeMode for light or dark;\nreapply custom accents after a mode change.\nSetReducedMotion controls motion.", 14)
-    if Button(session, ButtonProps.{.key = 10052, .bounds = .{ax, y + 508.0, aw, 42.0}, .label = "Read the theme API  ↗", .class_name = 11012}) != 0 {
+    if Button.Draw(session, Button.Props.{.key = 10052, .bounds = .{ax, y + 508.0, aw, 42.0}, .label = "Read the theme API  ↗", .class_name = 11012}) != 0 {
         unused OpenUri("https://github.com/kryonlabs/kryon/blob/master/src/ui/theme.zi")
     }
     if scroll.opened { End(session) }

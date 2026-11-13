@@ -1,49 +1,46 @@
+Button :: #import "button";
+Text :: #import "text";
+using Modal :: #import "modal_props";
 // Portable apps use the host's ordinary action dialog, including its layout,
 // styles and input routing.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "modal_props"
     host_api :: #system_library "host_api";
-    ActionModalHostedHost :: (session: Session, props: ActionModalProps,
-        actions: []ActionModalAction) -> ActionModalResult #foreign host_api;
+    ActionModalHostedHost :: (session: Session, props: Modal.ActionModalProps,
+        actions: []Modal.ActionModalAction) -> Modal.ActionModalResult #foreign host_api;
     #program_export
-    ActionModal :: (session: Session, props: ActionModalProps,
-        actions: []ActionModalAction) -> ActionModalResult {
+    ActionModal :: (session: Session, props: Modal.ActionModalProps,
+        actions: []Modal.ActionModalAction) -> Modal.ActionModalResult {
         return ActionModalHostedHost(session, props, actions)
     }
 } else {
     #import "session"
-    #import "button_props"
-    #import "button"
     #import "control_props"
     #import "font_metrics"
     #import "geometry"
     #import "modal_behavior"
     #import "modal_frame"
-    #import "modal_props"
     #import "paint_queue"
     #import "semantic"
     #import "style"
     #import "style_sheet"
     #import "surface"
-    #import "text_props"
-    #import "kryon/text_widget"
     #import "tree"
     #import "widget_kind"
 
     using SemanticKind;
-    using TextWrap;
+    using Text.Wrap;
     using WidgetKind;
 
     #program_export
-    ActionModalKey :: (session: Session, props: ActionModalProps) -> u64 {
+    ActionModalKey :: (session: Session, props: Modal.ActionModalProps) -> u64 {
         if props.key != cast(u64)0 { return props.key }
         if props.id > 0 { return cast(u64)cast(u32)props.id }
         return TreeNextKey(session)
     }
 
     #program_export
-    ActionModalWidth :: (action: ActionModalAction,
+    ActionModalWidth :: (action: Modal.ActionModalAction,
         font: s32, typeface: string, content_width: s32,
         metrics: ModalMetrics) -> s32 {
         width: s32 = ModalActionWidth(GlyphWidth(action.label,
@@ -54,7 +51,7 @@
     }
 
     #program_export
-    ActionModalRows :: (actions: []ActionModalAction,
+    ActionModalRows :: (actions: []Modal.ActionModalAction,
         content_width: s32, font: s32, typeface: string,
         metrics: ModalMetrics) -> s32 {
         if (cast(s32)actions.count) == 0 { return 0 }
@@ -74,8 +71,8 @@
     }
 
     #program_export
-    ActionModalDrawRow :: (session: Session, props: ActionModalProps, modal_key: u64,
-        actions: []ActionModalAction, first: s32, end: s32,
+    ActionModalDrawRow :: (session: Session, props: Modal.ActionModalProps, modal_key: u64,
+        actions: []Modal.ActionModalAction, first: s32, end: s32,
         row_width: s32, content_x: s32, content_width: s32,
         y: s32, font: s32, typeface: string,
         metrics: ModalMetrics) -> s32 {
@@ -83,10 +80,10 @@
         result: s32 = 0
         index: s32 = first
         while index < end {
-            item: ActionModalAction = actions[index]
+            item: Modal.ActionModalAction = actions[index]
             width: s32 = ActionModalWidth(item, font,
                 typeface, content_width, metrics)
-            button: ButtonProps
+            button: Button.Props
             button.key = item.key
             if button.key == cast(u64)0 {
                 button.key = modal_key *
@@ -102,7 +99,7 @@
             button.disabled = item.disabled
             button.style_kind = StyleKindModal()
             button.style_role = ModalActionRole()
-            if Button(session, button) != 0 { result = index + 1 }
+            if Button.Draw(session, button) != 0 { result = index + 1 }
             x += width + metrics.button_gap
             index += 1
         }
@@ -113,15 +110,15 @@
     // index, or -1 for backdrop/close dismissal. Prompt editing is a separate
     // composition because it requires retained text-input state.
     #program_export
-    ActionModal :: (session: Session, props: ActionModalProps,
-        actions: []ActionModalAction) -> ActionModalResult {
-        result: ActionModalResult
+    ActionModal :: (session: Session, props: Modal.ActionModalProps,
+        actions: []Modal.ActionModalAction) -> Modal.ActionModalResult {
+        result: Modal.ActionModalResult
         result.node = -1
         viewport: Rectangle = TreeRootBounds(session)
         if viewport.width <= 0.0 || viewport.height <= 0.0 {
             return result
         }
-        frame_props: ModalFrameProps
+        frame_props: Props
         frame_props.key = ActionModalKey(session, props)
         frame_props.id = props.id
         frame_props.class_name = props.class_name
@@ -148,14 +145,14 @@
         width: s32 = ModalClampWidth(cast(s32)viewport.width,
             max_width, metrics)
         content_width: s32 = ModalContentWidth(width, metrics)
-        message_props: TextProps
+        message_props: Text.Props
         message_props.text = props.message
         message_props.bounds.width = cast(float32)content_width
-        message_props.wrap = cast(TextWrap)TextWrapAuto
-        face: TextFace = DefaultTextFace()
+        message_props.wrap = cast(Text.Wrap)TextWrapAuto
+        face: Text.TextFace = Text.DefaultTextFace()
         face.value = message.value
         face.fallback_font = 14
-        prepared: PreparedText = PrepareText(message_props, face)
+        prepared: Text.PreparedText = Text.PrepareText(message_props, face)
         message_height: s32 = cast(s32)prepared.bounds.height
         if props.message == "" { message_height = 0 }
         font: s32 = ResolveFont(0,
@@ -176,7 +173,7 @@
         frame_props.bounds = layout.panel
         frame_props.width = cast(s32)layout.panel.width
         frame_props.height = cast(s32)layout.panel.height
-        frame: ModalFrameResult = ModalFrame(session, frame_props)
+        frame: ModalFrameResult = Draw(session, frame_props)
         result.node = frame.node
         if frame.dismissed || frame.right_clicked {
             result.action = -1
@@ -206,7 +203,7 @@
                 TreeSetLabel(session, message_node, props.message)
                 TreeSetSemantic(session, message_node,
                     cast(SemanticKind)SemanticParagraph, 0)
-                PaintTextLines(session, message_node, message_props, prepared)
+                Text.PaintTextLines(session, message_node, message_props, prepared)
             }
         }
         row_start: s32 = 0

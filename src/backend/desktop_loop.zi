@@ -1,17 +1,16 @@
 // The desktop frame loop every desktop host runs: input, the app's frame,
 // retained painting and accessibility. desktop_run is the default host; a
-// project host can call RunDesktop with its own window size.
+// program can pass its frame directly to Run.
 #import "secondary_pointer"
 #import "frame_snapshot"
 #import "test_driver"
 A :: #import "accessibility_linux";
-#import "frame_entry"
 #import "cairo_raster"
 #import "desktop_runtime"
 Lanczos :: #import "lanczos_cache";
-#import "geometry"
+using Geometry :: #import "geometry";
 #import "program_title"
-#import "session"
+using SessionModule :: #import "session";
 #import "scroll_device"
 #import "tree"
 #import "tree_draw"
@@ -32,6 +31,8 @@ libc :: #system_library "libc";
 DesktopWrite :: (fd: s32, input: *u8, count: u64) -> s64 #foreign libc "write";
 DesktopChangeDirectory :: (path: *u8) -> s32 #foreign libc "chdir";
 
+Procedure :: #type (Session, Rectangle) -> s32;
+
 DesktopError :: (message: string) -> s32 {
     output: [256]u8
     length: s32 = cast(s32)message.count
@@ -46,7 +47,8 @@ DesktopError :: (message: string) -> s32 {
     return 1
 }
 
-DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
+DrawFrame :: (session: Session, draw: Procedure,
+    keyboard_activity: bool = false) -> bool {
     origin: Vector2 = DesktopOrigin()
     A.AccessibilityOrigin(cast(s32)origin.x, cast(s32)origin.y)
     A.AccessibilityPoll()
@@ -72,7 +74,7 @@ DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
     defer { FrameInputEnd(published_session) }
     if BeginFrame(session, cast(u64)1, viewport) !=
         cast(FrameStatus)FrameOk { return false }
-    if Frame(session, viewport) != 0 {
+    if draw(session, viewport) != 0 {
         TreeCancel(session)
         return false
     }
@@ -99,9 +101,9 @@ DrawFrame :: (session: Session, keyboard_activity: bool = false) -> bool {
     return presented
 }
 
-// Runs the app's frames in a desktop window of `width` by `height` pixels
-// until it closes, and returns the program's exit status.
-RunDesktop :: (width: s32 = 960, height: s32 = 600) -> s32 {
+// Runs `draw` in a desktop window of `width` by `height` pixels until it
+// closes, and returns the program's exit status.
+Run :: (draw: Procedure, width: s32 = 960, height: s32 = 600) -> s32 {
     if !OpenDesktopSized(width, height) {
         CloseDesktop()
         return DesktopError("kryon: could not open the desktop window")
@@ -113,10 +115,13 @@ RunDesktop :: (width: s32 = 960, height: s32 = 600) -> s32 {
     }
     ok: bool = true
     if CaptureRequested() {
-        ok = PollDesktop() && DrawFrame(session)
+        ok = PollDesktop() && DrawFrame(session, draw)
         // A capture shows smooth pictures' finished Lanczos copies.
         settled := 0
-        while ok && settled < 64 && Lanczos.LanczosWait() { ok = DrawFrame(session); settled += 1 }
+        while ok && settled < 64 && Lanczos.LanczosWait() {
+            ok = DrawFrame(session, draw)
+            settled += 1
+        }
         if ok { ok = CaptureConfigured() }
     } else {
         while ok {
@@ -125,7 +130,7 @@ RunDesktop :: (width: s32 = 960, height: s32 = 600) -> s32 {
             KeyboardModifiersSend(session, modifiers)
             if key != 0 { KeyboardSend(session, key) }
             keyboard_activity := key != 0 || TypedCodepointPeek(session) != 0
-            ok = DrawFrame(session, keyboard_activity)
+            ok = DrawFrame(session, draw, keyboard_activity)
             TestDriverFrame(session)
             if ok { PauseDesktop() }
         }

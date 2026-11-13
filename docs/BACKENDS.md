@@ -1,8 +1,8 @@
 # Kryon hosts
 
 Kryon's reusable widget, layout, input, and composition code is written in
-Ziran under `src/ui/`. An application imports the `Kryon` or `Widgets`
-package module and exports `Frame(session: Session, viewport: Rectangle) ->
+Ziran under `src/ui/`. An application imports the widget packages it uses,
+such as `Text :: #import "kryon/text";`, and exports `Frame(session: Session, viewport: Rectangle) ->
 s32`. A selected host under `src/backend/` owns the process entry point,
 window or terminal, platform input, rasterization, and presentation. Ziran has
 no special knowledge of Kryon widgets.
@@ -70,16 +70,15 @@ in the application.
 | `dom` | `src/backend/dom_run.zi` | Semantic DOM layer over the Canvas2D raster host |
 | `android` | app `src/main.zi` → `android_run.zi` | Android NativeActivity package with direct `ANativeWindow` pixel presentation |
 
-The desktop host uses `cairo_raster.zi`. Its frame loop is `desktop_loop.zi`:
-a project host that needs its own window size imports `kryon/desktop_loop`
-and returns `RunDesktop(width, height)`, and `DesktopStartBeside(marker)`
-starts a program opened from its build folder where its files are.
-`DesktopPressedKey()` supplies the frame's last key to ordinary widget loops.
-Games with several players can drain `DesktopNextKey()` for every key in arrival
-order after `PollDesktop()`, up to 32 presses per poll. This snapshot is consumed
-independently from the widget event and resets on the next poll. Numeric-keypad
-digits use the shared codes 320–329; `DesktopModifiers()` follows the key most
-recently drained.
+The small application surface selects the host from the compile-time target.
+Import `kryon/app` and call `App.Run(window, draw)`: C/Linux uses
+`kryon/host/desktop`, while C/Web uses `kryon/host/web`. Advanced hosts can
+import those named host packages directly. The desktop implementation uses
+`cairo_raster.zi` and `desktop_loop.zi`.
+After `PollDesktop()`, custom loops call `DesktopInputTake(session)` to transfer
+the next ordered editing action or printable-key/text run into that session.
+The returned key uses shared codes, including 320–329 for numeric-keypad
+digits, and carries the modifiers held when that key arrived.
 The DOM host reuses
 the Canvas raster provider and adds [semantic DOM reconciliation](dom.md).
 Standalone `AppContext` applications can use the same two presentations with
@@ -331,7 +330,7 @@ Failed decode, cancellation and changed output dimensions release the buffer
 before publishing any pixels. Browser codecs and pixel-renderer inputs retain
 their existing paths.
 
-`Image(ImageProps)` accepts AVIF assets through the same path as PNG/JPEG/WebP,
+`Image.Draw(Image.Props)` accepts AVIF assets through the same path as PNG/JPEG/WebP,
 including extensionless names and packaged bundle/APK assets. Raylib hosts opt
 in with `AVIF_RAYLIB` and the pinned archives; builds without it decode no AVIF
 and link no codec library. Native hosts
@@ -647,13 +646,13 @@ input such as `KeyboardTake`, `TypedCodepointTake`,
 `PointerWheelTake`, and pointer state. `KeyboardModifiers` reports
 Shift, Control, and Alt keys as `KeyModifierShift`, `KeyModifierControl`, and
 `KeyModifierAlt` bits, so a shortcut such as Ctrl+S is a key press read with
-the modifiers that were down. The desktop and raylib hosts submit them with
-`KeyboardModifiersSend` before each frame. Canvas and DOM app hosts submit
-the modifiers retained with the consumed key press or repeat, so shortcuts
-remain intact when all physical keys are released before a frame. Custom
-Canvas loops pair `CanvasPressedKey()` with `CanvasPressedKeyModifiers()`;
-`CanvasModifiers()` and the immutable frame snapshot keep their held-state
-semantics. Other hosts report none.
+the modifiers that were down. Desktop, Canvas and Raylib custom loops call
+`DesktopInputTake(session)`, `CanvasInputTake(session)` or
+`RaylibInputTake(session)` before each frame. Each take transfers ordered text
+to that session and returns the next key with the modifiers retained when the
+press or repeat arrived, so shortcuts remain intact even when every physical
+key is released before a frame. `CanvasModifiers()` and the immutable frame
+snapshot keep their held-state semantics. Other hosts report none.
 The host calls `BeginFrame` and
 `EndFrame` around application composition, then presents the resulting
 paint operations. Widget behavior stays in `src/ui/`.

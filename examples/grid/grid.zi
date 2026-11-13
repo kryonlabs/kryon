@@ -2,7 +2,14 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Button :: #import "kryon/button";
+Layout :: #import "kryon/layout";
+Text :: #import "kryon/text";
+#import "kryon/control_props"
+#import "kryon/drawing_props"
+#import "kryon/grid_props"
+#import "kryon/tree"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -45,19 +52,19 @@ clicks: s32;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Grid", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Grid", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 40
 
-    props: ColumnProps = .{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8}
-    container: LayoutContainer
-    if scene == 36 { container = Column(session, props) }
-    else if scene == 37 { container = Row(session, props) }
-    else if scene == 38 { container = Stack(session, props) }
-    else if scene == 39 { container = Group(session, props) }
-    else if scene == 48 { container = Screen(session, props) }
-    else { grid := Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = 12, .padding = 8}); container = grid.container }
+    props: Layout.Props = .{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8}
+    container: Layout.LayoutContainer
+    if scene == 36 { container = Layout.Draw(session, props) }
+    else if scene == 37 { container = Layout.Row(session, props) }
+    else if scene == 38 { container = Layout.Stack(session, props) }
+    else if scene == 39 { container = Layout.Group(session, props) }
+    else if scene == 48 { container = Layout.Screen(session, props) }
+    else { grid := Layout.Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = 12, .padding = 8}); container = grid.container }
     if container.opened {
         first: Rectangle = .{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}
         second: Rectangle = first
@@ -65,8 +72,8 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
             first.x = container.content.x; first.y = container.content.y
             second.x = first.x; second.y = first.y + 60.0
         } else if scene == 38 { second = GalleryBounds(Rectangle.{104.0, 112.0, 164.0, 44.0}) }
-        if Button(session, ButtonProps.{.label = "First item", .bounds = first, .disabled = disabled}) == 1 { clicks += 1 }
-        if Button(session, ButtonProps.{.label = "Second item", .bounds = second, .tone = ButtonTone.ButtonToneAccent, .disabled = disabled}) == 1 { clicks += 1 }
+        if Button.Draw(session, Button.Props.{.label = "First item", .bounds = first, .disabled = disabled}) == 1 { clicks += 1 }
+        if Button.Draw(session, Button.Props.{.label = "Second item", .bounds = second, .tone = ButtonTone.ButtonToneAccent, .disabled = disabled}) == 1 { clicks += 1 }
         unused End(session)
     }
     return 0

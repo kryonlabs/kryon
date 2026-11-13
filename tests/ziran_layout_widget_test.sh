@@ -11,8 +11,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "grid"
 #import "grid_props"
 #import "layout_behavior"
-#import "layout_props"
-#import "layout"
+Layout :: #import "kryon/layout";
 #import "tree"
 #import "widget_kind"
 
@@ -21,12 +20,12 @@ using WidgetKind;
 AutoAnswer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 100.0, 80.0}
     TreeStart(TestSession(), cast(u64)101, root)
-    props: ColumnProps
+    props: Layout.Props
     props.key = cast(u64)102
     props.bounds = root
     props.gap = 3
     props.padding = 5
-    column: LayoutContainer = Column(TestSession(), props)
+    column: Layout.LayoutContainer = Layout.Draw(TestSession(), props)
     child: Rectangle = Rectangle.{0.0, 0.0, 10.0, 12.0}
     first: s32 = TreeSubmitCurrent(TestSession(), cast(u64)103, WidgetKindText, child)
     second: s32 = TreeSubmitCurrent(TestSession(), cast(u64)104, WidgetKindText, child)
@@ -36,7 +35,7 @@ AutoAnswer :: () -> s32 {
         return -20
     }
     props.key = cast(u64)105
-    row: LayoutContainer = Row(TestSession(), props)
+    row: Layout.LayoutContainer = Layout.Row(TestSession(), props)
     first = TreeSubmitCurrent(TestSession(), cast(u64)106, WidgetKindText, child)
     second = TreeSubmitCurrent(TestSession(), cast(u64)107, WidgetKindText, child)
     if !row.opened || TreeSubmittedNodeAt(TestSession(), first).bounds.x != 5.0 ||
@@ -45,7 +44,7 @@ AutoAnswer :: () -> s32 {
         return -21
     }
     props.key = cast(u64)108
-    stack: LayoutContainer = Stack(TestSession(), props)
+    stack: Layout.LayoutContainer = Layout.Stack(TestSession(), props)
     first = TreeSubmitCurrent(TestSession(), cast(u64)109, WidgetKindText, child)
     second = TreeSubmitCurrent(TestSession(), cast(u64)110, WidgetKindText, child)
     if !stack.opened || TreeSubmittedNodeAt(TestSession(), first).bounds.x != 5.0 ||
@@ -59,7 +58,7 @@ AutoAnswer :: () -> s32 {
     grid_props.columns = 2
     grid_props.gap = 4
     grid_props.padding = 2
-    grid: GridResult = Grid(TestSession(), grid_props)
+    grid: Layout.GridResult = Layout.Grid(TestSession(), grid_props)
     first = TreeSubmitCurrent(TestSession(), cast(u64)112, WidgetKindText, child)
     second = TreeSubmitCurrent(TestSession(), cast(u64)113, WidgetKindText, child)
     third: s32 = TreeSubmitCurrent(TestSession(), cast(u64)114, WidgetKindText, child)
@@ -77,9 +76,9 @@ AutoAnswer :: () -> s32 {
 Answer :: () -> s32 {
     root: Rectangle = Rectangle.{0.0, 0.0, 300.0, 200.0}
     TreeStart(TestSession(), cast(u64)1, root)
-    props: ColumnProps
+    props: Layout.Props
     props.key = cast(u64)10
-    screen: LayoutContainer = Screen(TestSession(), props)
+    screen: Layout.LayoutContainer = Layout.Screen(TestSession(), props)
     if !screen.opened || screen.node != 1 ||
         screen.bounds.width != 300.0 ||
         screen.kind != WidgetKindGroup { return -1 }
@@ -87,13 +86,13 @@ Answer :: () -> s32 {
     props.key = cast(u64)11
     props.gap = 4
     props.padding = 5
-    column: LayoutContainer = Column(TestSession(), props)
+    column: Layout.LayoutContainer = Layout.Draw(TestSession(), props)
     if !column.opened || column.node != 2 ||
         column.content.width != 290.0 { return -2 }
     empty: Rectangle
-    first: Rectangle = ColumnChildBounds(column, empty,
+    first: Rectangle = Layout.ColumnChildBounds(column, empty,
         Rectangle.{0.0, 0.0, 0.0, 12.0}, 0, 0.0)
-    second: Rectangle = ColumnChildBounds(column, empty,
+    second: Rectangle = Layout.ColumnChildBounds(column, empty,
         Rectangle.{0.0, 0.0, 20.0, 20.0}, 1, 12.0)
     if first.x != 5.0 || first.y != 5.0 ||
         first.width != 290.0 || first.height != 12.0 ||
@@ -106,10 +105,10 @@ Answer :: () -> s32 {
     props.bounds = Rectangle.{5.0, 21.0, 200.0, 40.0}
     props.gap = 0
     props.padding = 0
-    row: LayoutContainer = Row(TestSession(), props)
+    row: Layout.LayoutContainer = Layout.Row(TestSession(), props)
     if !row.opened || row.node != 4 ||
         row.kind != WidgetKindRow { return -5 }
-    item: Rectangle = RowChildBounds(row, empty,
+    item: Rectangle = Layout.RowChildBounds(row, empty,
         Rectangle.{0.0, 0.0, 20.0, 0.0}, 0, 0.0)
     if item.x != 5.0 || item.y != 21.0 ||
         item.height != 40.0 ||
@@ -122,7 +121,7 @@ Answer :: () -> s32 {
     grid_props.columns = 2
     grid_props.gap = 4
     grid_props.padding = 2
-    grid: GridResult = Grid(TestSession(), grid_props)
+    grid: Layout.GridResult = Layout.Grid(TestSession(), grid_props)
     if !grid.container.opened || grid.container.node != 6 ||
         grid.cursor.metrics.columns != 2 ||
         grid.cursor.metrics.cell_width != 56 { return -7 }
@@ -140,15 +139,15 @@ Answer :: () -> s32 {
     props.bounds = Rectangle.{0.0, 0.0, 80.0, 60.0}
     props.gap = 0
     props.padding = 3
-    stack: LayoutContainer = Stack(TestSession(), props)
-    item = StackChildBoundsFor(stack, empty, empty)
+    stack: Layout.LayoutContainer = Layout.Stack(TestSession(), props)
+    item = Layout.StackChildBoundsFor(stack, empty, empty)
     if !stack.opened || stack.node != 9 ||
         item.x != 3.0 || item.y != 3.0 ||
         item.width != 74.0 || item.height != 54.0 ||
         TreeSubmitCurrent(TestSession(), cast(u64)19, WidgetKindBox, item) != 10 ||
         !End(TestSession()) { return -11 }
     props.key = cast(u64)20
-    group: LayoutContainer = Group(TestSession(), props)
+    group: Layout.LayoutContainer = Layout.Group(TestSession(), props)
     if !group.opened || group.node != 11 || !End(TestSession()) ||
         !End(TestSession()) || !TreeFinish(TestSession()) || TreeCount(TestSession()) != 12 ||
         TreeNodeAt(TestSession(), 5).parent != 4 || TreeNodeAt(TestSession(), 8).parent != 6 ||

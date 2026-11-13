@@ -6,31 +6,29 @@ unset DISPLAY WAYLAND_DISPLAY XAUTHORITY DBUS_SESSION_BUS_ADDRESS
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 set -- --bind pointer_input:PollPointer=hosted_ui_provider:Pointer \
-    --bind text:TextHostedHost=hosted_ui_provider:Text \
-    --bind image:ImageHostedHost=hosted_ui_provider:Image \
-    --bind button:ButtonHostedHost=hosted_ui_provider:Button \
-    --bind textarea:TextAreaHostedHost=hosted_ui_provider:TextArea \
-    --bind scroll:ScrollHostedHost=hosted_ui_provider:Scroll \
+    --bind text:TextHostedHost=hosted_ui_provider:TextHost \
+    --bind image:ImageHostedHost=hosted_ui_provider:ImageHost \
+    --bind button:ButtonHostedHost=hosted_ui_provider:ButtonHost \
+    --bind textarea:TextAreaHostedHost=hosted_ui_provider:TextAreaHost \
+    --bind scroll:ScrollHostedHost=hosted_ui_provider:ScrollHost \
     --bind tree:EndHostedHost=hosted_ui_provider:End \
-    --bind checkbox:CheckboxHostedHost=hosted_ui_provider:Checkbox \
-    --bind toggle:ToggleHostedHost=hosted_ui_provider:Toggle \
-    --bind box:BoxHostedHost=hosted_ui_provider:Box \
-    --bind textfield:TextFieldHostedHost=hosted_ui_provider:TextField \
-    --bind tabs:TabBarHostedHost=hosted_ui_provider:TabBar \
-    --bind segmented:SegmentedControlHostedHost=hosted_ui_provider:SegmentedControl \
-    --bind fieldset:FieldsetHostedHost=hosted_ui_provider:Fieldset \
+    --bind checkbox:CheckboxHostedHost=hosted_ui_provider:CheckboxHost \
+    --bind toggle:ToggleHostedHost=hosted_ui_provider:ToggleHost \
+    --bind textfield:TextFieldHostedHost=hosted_ui_provider:TextFieldHost \
+    --bind tabs:TabBarHostedHost=hosted_ui_provider:TabBarHost \
+    --bind segmented:SegmentedControlHostedHost=hosted_ui_provider:SegmentedControlHost \
+    --bind fieldset:FieldsetHostedHost=hosted_ui_provider:FieldsetHost \
     --bind toggle_measure:ToggleSizeHostedHost=hosted_ui_provider:ToggleSize \
     --bind shape:LineHostedHost=hosted_ui_provider:Line \
     --bind shape:CircleHostedHost=hosted_ui_provider:Circle \
     --bind shape:RingHostedHost=hosted_ui_provider:Ring \
     --bind shape:TriangleHostedHost=hosted_ui_provider:Triangle \
-    --bind slider:SliderHostedHost=hosted_ui_provider:Slider \
+    --bind slider:SliderHostedHost=hosted_ui_provider:SliderHost \
     --bind slider:DiscreteSliderHostedHost=hosted_ui_provider:DiscreteSlider \
-    --bind progress:ProgressHostedHost=hosted_ui_provider:Progress \
+    --bind progress:ProgressHostedHost=hosted_ui_provider:ProgressHost \
     --bind overlay:DismissibleOverlayHostedHost=hosted_ui_provider:DismissibleOverlay \
     --bind overlay:PopupHostedHost=hosted_ui_provider:Popup \
-    --bind titlebar:TitleBarHostedHost=hosted_ui_provider:TitleBar \
-    --bind dropdown:DropdownHostedHost=hosted_ui_provider:Dropdown \
+    --bind dropdown:DropdownHostedHost=hosted_ui_provider:DropdownHost \
     --bind modal:ActionModalHostedHost=hosted_ui_provider:ActionModal
 "$ziran" bundle --root "$repo/tests" $kryon_project_args \
      --define KRYON_HOSTED_UI "$@" \

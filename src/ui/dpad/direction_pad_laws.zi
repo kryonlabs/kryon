@@ -1,4 +1,4 @@
-#import "dpad"
+DirectionPad :: #import "dpad";
 
 // Laws for the four-way direction pad. Each states the expected behavior
 // independently of the implementation; `ziran check` proves it over every
@@ -6,11 +6,11 @@
 
 // A pad 20 wide: half its side is 10 and the hub reaches 2 from the centre.
 A :: (dx: s32, dy: s32) -> s32 {
-    return DirectionPadArm(cast(float32)dx, cast(float32)dy, 10.0)
+    return DirectionPad.DirectionPadArm(cast(float32)dx, cast(float32)dy, 10.0)
 }
 
-S :: (arm: s32, last: s32, now: s32, next: s32) -> DirectionPadHold {
-    return DirectionPadStep(arm, last, cast(float64)now, cast(float64)next, 0.5)
+S :: (arm: s32, last: s32, now: s32, next: s32) -> DirectionPad.DirectionPadHold {
+    return DirectionPad.DirectionPadStep(arm, last, cast(float64)now, cast(float64)next, 0.5)
 }
 
 // The hub in the middle presses no arm.
@@ -40,4 +40,4 @@ S :: (arm: s32, last: s32, now: s32, next: s32) -> DirectionPadHold {
 #law PressAgainStepsAtOnce forall arm: 0..3, now: 0..4, next: 0..8 => S(arm, S(-1, arm, now, next).last, now, next).direction == arm;
 
 // Without a repeat, a held arm never steps again; a press still steps.
-#law NoRepeatOnlyPress forall arm: 0..3, now: 0..4, next: 0..8 => DirectionPadStep(arm, arm, cast(float64)now, cast(float64)next, 0.0).direction == -1 && DirectionPadStep(arm, -1, cast(float64)now, cast(float64)next, 0.0).direction == arm;
+#law NoRepeatOnlyPress forall arm: 0..3, now: 0..4, next: 0..8 => DirectionPad.DirectionPadStep(arm, arm, cast(float64)now, cast(float64)next, 0.0).direction == -1 && DirectionPad.DirectionPadStep(arm, -1, cast(float64)now, cast(float64)next, 0.0).direction == arm;

@@ -1,6 +1,5 @@
-#import "button_props"
+Button :: #import "button";
 #import "button_behavior"
-#import "button"
 #import "control_props"
 #import "geometry"
 #import "icon"
@@ -20,8 +19,8 @@ CopyButtonState :: struct {
     clipboard_success: bool
 }
 
-CopyButtonProps :: struct {
-    button: ButtonProps
+Props :: struct {
+    button: Button.Props
     text: string
     now: float32
     success_window: float32
@@ -45,7 +44,7 @@ CopyButtonResult :: struct {
 }
 
 #program_export
-CopyButtonApply :: (state: *CopyButtonState, props: CopyButtonProps,
+CopyButtonApply :: (state: *CopyButtonState, props: Props,
     activated: bool) -> CopyButtonResult {
     result: CopyButtonResult
     result.node = -1
@@ -81,8 +80,7 @@ CopyButtonApply :: (state: *CopyButtonState, props: CopyButtonProps,
     return result
 }
 
-#program_export
-CopyButton :: (session: Session, props: CopyButtonProps,
+Draw :: (session: Session, props: Props,
     state: *CopyButtonState) -> CopyButtonResult {
     key := props.button.key
     if key == cast(u64)0 && props.button.id > 0 { key = cast(u64)cast(u32)props.button.id }
@@ -120,7 +118,7 @@ CopyButton :: (session: Session, props: CopyButtonProps,
         }
     }
     submitted_before := TreeSubmittedCount(session)
-    activation_result := Button(session, button)
+    activation_result := Button.Draw(session, button)
     submitted_after := TreeSubmittedCount(session)
     if submitted_after > submitted_before { result.node = submitted_after - 1 }
     unused activation_result

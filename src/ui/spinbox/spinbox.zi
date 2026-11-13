@@ -1,25 +1,22 @@
+using Spinbox :: #import "spinbox_props";
+Button :: #import "button";
 Theme :: #import "theme";
 // Submit the standard widget contract from a portable composition.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "spinbox_props"
     host_api :: #system_library "host_api";
-    SpinboxHostedHost :: (session: Session, props: SpinboxProps) -> SpinboxStepResult #foreign host_api;
-    #program_export
-    Spinbox :: (session: Session, props: SpinboxProps) -> SpinboxStepResult {
+    SpinboxHostedHost :: (session: Session, props: Spinbox.Props) -> Spinbox.SpinboxStepResult #foreign host_api;
+        Draw :: (session: Session, props: Spinbox.Props) -> Spinbox.SpinboxStepResult {
         return SpinboxHostedHost(session, props)
     }
 } else {
 #import "session"
-#import "button_props"
-#import "button"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
 #import "paint_queue"
 #import "spinbox_behavior"
-#import "spinbox_props"
 #import "style"
 #import "style_sheet"
 #import "surface"
@@ -56,7 +53,7 @@ SpinboxDefaultFace :: (value_face: bool, disabled: bool) -> StyleData {
 }
 
 #program_export
-SpinboxFaceFor :: (props: SpinboxProps, value_face: bool) -> StyleData {
+SpinboxFaceFor :: (props: Spinbox.Props, value_face: bool) -> StyleData {
     kind: s32 = StyleKindSpinbox()
     if value_face { kind = StyleKindSpinboxValue() }
     state: s32 = ButtonStateNormal
@@ -145,8 +142,7 @@ SpinboxPaintFace :: (session: Session, node: s32, bounds: Rectangle,
     }
 }
 
-#program_export
-Spinbox :: (session: Session, props: SpinboxProps) -> SpinboxStepResult {
+Draw :: (session: Session, props: Spinbox.Props) -> SpinboxStepResult {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
     if key == cast(u64)0 { key = TreeNextKey(session) }
@@ -188,7 +184,7 @@ Spinbox :: (session: Session, props: SpinboxProps) -> SpinboxStepResult {
     if button_inset > bounds.height * 0.25 {
         button_inset = bounds.height * 0.25
     }
-    decrement: ButtonProps
+    decrement: Button.Props
     decrement.key = cast(u64)1
     decrement.bounds = layout.left
     decrement.bounds.x += button_inset
@@ -202,7 +198,7 @@ Spinbox :: (session: Session, props: SpinboxProps) -> SpinboxStepResult {
         (!props.wrap && props.value <= props.min)
     decrement.emphasis = cast(ButtonEmphasis)ButtonEmphasisGhost
     decrement.size = cast(ControlSize)ControlSizeSmall
-    increment: ButtonProps = decrement
+    increment: Button.Props = decrement
     increment.key = cast(u64)2
     increment.bounds = layout.right
     increment.bounds.y += button_inset
@@ -212,8 +208,8 @@ Spinbox :: (session: Session, props: SpinboxProps) -> SpinboxStepResult {
     increment.id = SpinboxIncrementIdFor(props.id)
     increment.disabled = props.disabled || props.min > props.max ||
         (!props.wrap && props.value >= props.max)
-    dec: bool = SubmitButton(session, decrement, node) != 0
-    inc: bool = SubmitButton(session, increment, node) != 0
+    dec: bool = Button.SubmitButton(session, decrement, node) != 0
+    inc: bool = Button.SubmitButton(session, increment, node) != 0
     result: SpinboxStepResult
     result.value = props.value
     if !props.disabled {

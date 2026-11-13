@@ -1,18 +1,16 @@
+using Checkbox :: #import "checkbox_props";
 Theme :: #import "theme";
 // Submit the standard widget contract from a portable composition.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "checkbox_props"
     host_api :: #system_library "host_api";
-    CheckboxHostedHost :: (session: Session, props: CheckboxProps) -> CheckboxValueResult #foreign host_api;
-    #program_export
-    Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
+    CheckboxHostedHost :: (session: Session, props: Checkbox.Props) -> Checkbox.CheckboxValueResult #foreign host_api;
+        Draw :: (session: Session, props: Checkbox.Props) -> Checkbox.CheckboxValueResult {
         return CheckboxHostedHost(session, props)
     }
 } else {
 #import "session"
 #import "checkbox_behavior"
-#import "checkbox_props"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -61,7 +59,7 @@ CheckboxDefaultFace :: (role: s32, disabled: bool) -> StyleData {
 }
 
 #program_export
-CheckboxFaceFor :: (props: CheckboxProps,
+CheckboxFaceFor :: (props: Checkbox.Props,
     role: s32, tone: ButtonTone, state: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(StyleKindCheckbox(),
         props.id, props.class_name, role, cast(s32)tone,
@@ -73,7 +71,7 @@ CheckboxFaceFor :: (props: CheckboxProps,
 }
 
 #program_export
-PaintCheckboxForNode :: (session: Session, node: s32, props: CheckboxProps,
+PaintCheckboxForNode :: (session: Session, node: s32, props: Checkbox.Props,
     paint: CheckboxPaint, label: StyleFrame, font: s32,
     label_height: s32) {
     box_opacity: float32 = StyleOpacityValue(paint.box.value.fields,
@@ -123,8 +121,7 @@ PaintCheckboxForNode :: (session: Session, node: s32, props: CheckboxProps,
 
 // The caller owns the current value. A release routed from the previous tree
 // returns a proposed value, without a platform pointer or mutable host state.
-#program_export
-Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
+Draw :: (session: Session, props: Checkbox.Props) -> Checkbox.CheckboxValueResult {
     key: u64 = props.key
     if key == cast(u64)0 && props.id > 0 { key = cast(u64)cast(u32)props.id }
     previous: s32 = -1
@@ -132,7 +129,7 @@ Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
         previous = TreePrevious(session, TreeCurrentParent(session), key, WidgetKindCheckbox)
     }
     clicked: bool = TreeTakeActivationAt(session, previous)
-    result: CheckboxValueResult = CheckboxValueApply(props.checked,
+    result: Checkbox.CheckboxValueResult = CheckboxValueApply(props.checked,
         clicked && !props.disabled, true)
     state: s32 = ResolveState(cast(s32)ButtonStateAuto, props.disabled,
         false, TreePressedAt(session, previous), TreeHoveredAt(session, previous),

@@ -1,4 +1,8 @@
-using UI :: #import "kryon/Widgets";
+#import "kryon/control_props"
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/style_sheet"
 Plot :: #import "plot/PlotWidget";
 Charts :: #import "plot/Plot";
 

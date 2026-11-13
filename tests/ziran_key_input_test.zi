@@ -1,6 +1,6 @@
 #import "session"
 #import "key_input"
-#import "text_input_props"
+TextField :: #import "textfield";
 #import "tree_input"
 
 #program_export
@@ -63,7 +63,7 @@ main :: () -> s32 {
         TypedTextTake(session, unicode[:]).count != 4 ||
         TypedTextTake(session, unicode[:]).count != 0 { return 19 }
     // Keys map to the matching edits; typed text is inserted.
-    input: TextFieldInput = TextFieldInputFor(KeyBackspace, 0, "")
+    input: TextField.Input = TextFieldInputFor(KeyBackspace, 0, "")
     if !input.backspace || input.left || input.text.count != 0 { return 5 }
     input = TextFieldInputFor(KeyLeft, KeyModifierShift, "")
     if !input.left || !input.shift { return 6 }

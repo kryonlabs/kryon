@@ -47,7 +47,11 @@ preload = "data/levels@levels"
 name = "Raylib Web Probe"
 '''
 
-APP = '''using UI :: #import "Widgets";
+APP = '''Box :: #import "kryon/box";
+Image :: #import "kryon/image";
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/session"
 #import "std/file"
 
 // The UI paints only once the preloaded level file reads back as written.
@@ -59,16 +63,16 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     count := Read(file, bytes[:])
     unused CloseFile(file)
     if count != 5 || bytes[0] != cast(u8)107 || bytes[4] != cast(u8)110 { return 0 }
-    panel: BoxProps
+    panel: Box.Props
     panel.key = cast(u64)1
     panel.bounds = Rectangle.{20.0, 20.0, 160.0, 80.0}
     panel.fill = Color.{30, 60, 200, 255}
-    unused Box(session, panel)
-    image: ImageProps
+    unused Box.Draw(session, panel)
+    image: Image.Props
     image.key = cast(u64)2
     image.bounds = Rectangle.{440.0, 20.0, 64.0, 64.0}
     image.asset_path = "assets/red.png"
-    Image(session, image)
+    Image.Draw(session, image)
     return 0
 }
 '''

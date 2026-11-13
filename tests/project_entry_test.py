@@ -48,7 +48,8 @@ codegen = "zx"
 '''
             (project / 'ziran.toml').write_text(manifest)
             selected = project / entry
-            selected.write_text(r'''using UI :: #import "kryon/Kryon";
+            selected.write_text(r'''#import "kryon/geometry"
+#import "kryon/session"
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     print("selected frame\n")
@@ -79,10 +80,12 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         custom_manifest = custom_manifest.replace('backend = "pixmap"',
             'backend = "pixmap"' + chr(10) + 'host = "runner.zi"')
         (project / 'ziran.toml').write_text(custom_manifest)
-        (project / 'button.zi').write_text('using UI :: #import "kryon/Kryon";' + chr(10) +
+        (project / 'button.zi').write_text('#import "kryon/geometry"' + chr(10) +
+            '#import "kryon/session"' + chr(10) +
             '#program_export' + chr(10) +
             'Frame :: (session: Session, viewport: Rectangle) -> s32 { return 42 }' + chr(10))
-        (project / 'runner.zi').write_text('using UI :: #import "kryon/Kryon";' + chr(10) +
+        (project / 'runner.zi').write_text('#import "kryon/geometry"' + chr(10) +
+            '#import "kryon/session"' + chr(10) +
             '#import "button"' + chr(10) + '#import "kryon/pixmap"' + chr(10) + '#program_export' + chr(10) +
             'main :: () -> s32 {' + chr(10) + '    session: Session' + chr(10) +
             '    viewport: Rectangle' + chr(10) +

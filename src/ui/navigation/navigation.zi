@@ -1,3 +1,7 @@
+using PropsModule :: #import "navigation_bar_props";
+Button :: #import "button";
+Image :: #import "image";
+Scroll :: #import "scroll";
 #import "transition"
 Theme :: #import "theme";
 #import "session"
@@ -7,10 +11,7 @@ Theme :: #import "theme";
 #import "font_metrics"
 #import "geometry"
 #import "image_behavior"
-#import "image_props"
-#import "kryon/image_widget"
 #import "navigation_bar_behavior"
-#import "navigation_bar_props"
 #import "paint_queue"
 #import "semantic"
 #import "style"
@@ -19,10 +20,6 @@ Theme :: #import "theme";
 #import "tree"
 #import "tree_input"
 #import "widget_kind"
-#import "button_props"
-#import "button"
-#import "scroll_props"
-#import "scroll"
 #import "svg_icon_behavior"
 
 using SemanticKind;
@@ -70,7 +67,7 @@ NavigationBarDefaultFace :: (item: bool, active: bool,
 }
 
 #program_export
-NavigationBarFaceFor :: (props: NavigationBarProps) -> StyleFrame {
+NavigationBarFaceFor :: (props: PropsModule.Props) -> StyleFrame {
     frame: StyleFrame
     frame.value = ResolveInstalledStyleRules(
         NavigationBarDefaultFace(false, false, false, false),
@@ -85,7 +82,7 @@ NavigationBarFaceFor :: (props: NavigationBarProps) -> StyleFrame {
 }
 
 #program_export
-NavigationBarItemFaceFor :: (props: NavigationBarProps,
+NavigationBarItemFaceFor :: (props: PropsModule.Props,
     item: NavigationBarItem, hovered: bool) -> StyleFrame {
     state: s32 = cast(s32)NavigationBarItemStateFor(item.active,
         item.disabled, hovered)
@@ -107,7 +104,7 @@ NavigationBarItemFaceFor :: (props: NavigationBarProps,
 }
 
 #program_export
-NavigationBarKey :: (session: Session, props: NavigationBarProps) -> u64 {
+NavigationBarKey :: (session: Session, props: PropsModule.Props) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
     return TreeNextKey(session)
@@ -121,11 +118,11 @@ NavigationBarItemKey :: (bar_key: u64, item: NavigationBarItem,
 }
 
 #program_export
-NavigationBarPaintImage :: (session: Session, node: s32, image: ImageProps,
+NavigationBarPaintImage :: (session: Session, node: s32, image: Image.Props,
     bounds: Rectangle, clip: Rectangle, color: u32, opacity: float32) {
     if image.asset_path == "" && image.texture.id == cast(u32)0 { return }
     image.bounds = bounds
-    texture: Texture2D = ImageTextureFor(image)
+    texture: Texture2D = Image.ImageTextureFor(image)
     if image.tint != cast(u32)0 {
         color = image.tint
     }
@@ -141,7 +138,7 @@ NavigationBarPaintImage :: (session: Session, node: s32, image: ImageProps,
 // The height NavigationBar will take for these props, so a caller can
 // reserve the space before the bar is drawn.
 #program_export
-NavigationBarHeight :: (props: NavigationBarProps) -> s32 {
+NavigationBarHeight :: (props: PropsModule.Props) -> s32 {
     if props.compact { return cast(s32)props.bounds.height }
     if props.height > 0 { return props.height }
     spec: NavigationBarSpec = .{.view_width = props.view_width, .view_height = props.view_height,
@@ -150,10 +147,10 @@ NavigationBarHeight :: (props: NavigationBarProps) -> s32 {
     return NavigationBarPaintFor(spec).height
 }
 
-DrawNavigationDockItem :: (session: Session, props: NavigationBarProps,
+DrawNavigationDockItem :: (session: Session, props: PropsModule.Props,
     bar_key: u64, item: NavigationBarItem, index: s32, bounds: Rectangle,
     draggable: bool, result: *NavigationBarResult) {
-    button: ButtonProps
+    button: Button.Props
     button.key = NavigationBarItemKey(bar_key, item, index)
     button.id = props.id
     button.bounds = bounds
@@ -182,7 +179,7 @@ DrawNavigationDockItem :: (session: Session, props: NavigationBarProps,
             result.drag_bounds = bounds
         }
     }
-    clicked := Button(session, button) != 0
+    clicked := Button.Draw(session, button) != 0
     if props.motion != null {
         selected_node := TreeSubmitted(session, TreeCurrentParent(session), button.key, WidgetKindButton)
         TreeSetSelected(session, selected_node, item.active)
@@ -205,7 +202,7 @@ DrawNavigationDockItem :: (session: Session, props: NavigationBarProps,
     size := 22.0 * props.scale
     if props.scale <= 0.0 { size = 22.0 }
     inset := size / 11.0
-    close: ButtonProps
+    close: Button.Props
     close.key = button.key * cast(u64)65599 + cast(u64)43
     close.id = props.id
     close.bounds = Rectangle.{bounds.x + bounds.width - size - inset, bounds.y + inset,
@@ -219,13 +216,13 @@ DrawNavigationDockItem :: (session: Session, props: NavigationBarProps,
     close.emphasis = cast(ButtonEmphasis)ButtonEmphasisGhost
     if item.active { close.tone = cast(ButtonTone)ButtonToneAccent }
     close.disabled = item.disabled || props.dragging
-    if Button(session, close) != 0 && !close.disabled {
+    if Button.Draw(session, close) != 0 && !close.disabled {
         result.closed_index = index
         result.closed_route = item.route
     }
 }
 
-DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
+DrawCompactNavigation :: (session: Session, props: PropsModule.Props,
     items: []NavigationBarItem, result: NavigationBarResult) -> NavigationBarResult {
     if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result }
     key := NavigationBarKey(session, props)
@@ -290,12 +287,12 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
         }
     } else if layout.primary_count > 0 && layout.scroll_bounds.width > 0.0 &&
     layout.scroll_bounds.height > 0.0 {
-        scroll: ScrollProps = .{.key = key * cast(u64)65599 + cast(u64)1,
+        scroll: Scroll.Props = .{.key = key * cast(u64)65599 + cast(u64)1,
             .bounds = layout.scroll_bounds, .scale = props.scale, .horizontal = !props.vertical,
             .scroll_offset = offset, .external_scrollbar = true}
         if props.vertical { scroll.content_height = layout.content_extent }
         else { scroll.content_width = layout.content_extent }
-        scrolled := Scroll(session, scroll)
+        scrolled := Scroll.Draw(session, scroll)
         result.scroll_offset = scrolled.scroll_offset
         content = scrolled.content
         if scrolled.opened {
@@ -356,8 +353,7 @@ DrawCompactNavigation :: (session: Session, props: NavigationBarProps,
 
 // Items are borrowed values. Each item owns a stable key when routes can
 // move. The result reports the activated route; the caller applies routing.
-#program_export
-NavigationBar :: (session: Session, props: NavigationBarProps,
+Draw :: (session: Session, props: PropsModule.Props,
     items: []NavigationBarItem) -> NavigationBarResult {
     result: NavigationBarResult = .{.node = -1, .clicked_index = -1, .clicked_route = -1,
         .closed_index = -1, .closed_route = -1, .drop_index = -1, .drag_route = -1}

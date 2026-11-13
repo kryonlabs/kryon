@@ -1,35 +1,32 @@
+using Modal :: #import "modal_props";
+using ActionModule :: #import "modal";
+Button :: #import "button";
+Image :: #import "image";
+Overlay :: #import "overlay";
 Theme :: #import "theme";
 // Portable compositions submit the same dialog to a retained UI host; the
 // host draws it with this implementation and owns the panel's scope.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "modal_props"
     host_api :: #system_library "host_api";
-    ModalFrameHostedHost :: (session: Session, props: ModalFrameProps) -> ModalFrameResult #foreign host_api;
-    #program_export
-    ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
+    ModalFrameHostedHost :: (session: Session, props: Modal.Props) -> ModalFrameResult #foreign host_api;
+        Draw :: (session: Session, props: Modal.Props) -> ModalFrameResult {
         return ModalFrameHostedHost(session, props)
     }
 } else {
 #import "session"
-#import "button_props"
-#import "button"
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
-#import "image_props"
-#import "modal_behavior"
-#import "modal_props"
-#import "overlay_props"
-#import "overlay"
+using BehaviorModule :: #import "modal_behavior";
 #import "paint_queue"
 #import "style"
 #import "style_sheet"
 #import "surface"
 #import "tree"
 
-using ArrowDirection;
+using Button.ArrowDirection;
 using ButtonTone;
 using ButtonEmphasis;
 using ControlSize;
@@ -63,7 +60,7 @@ ModalFrameDefaultFace :: (role: s32) -> StyleData {
 }
 
 #program_export
-ModalFrameFaceFor :: (props: ModalFrameProps,
+ModalFrameFaceFor :: (props: Modal.Props,
     role: s32) -> StyleFrame {
     facts: StyleFacts = StyleControlRoleFacts(
         StyleKindModal(), props.id, props.class_name, role,
@@ -77,7 +74,7 @@ ModalFrameFaceFor :: (props: ModalFrameProps,
 }
 
 #program_export
-ModalFrameKey :: (session: Session, props: ModalFrameProps) -> u64 {
+ModalFrameKey :: (session: Session, props: Modal.Props) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
     return TreeNextKey(session)
@@ -99,8 +96,7 @@ ModalFrameTitleStart :: (layout: ModalFrameLayout, metrics: ModalMetrics,
 // open, the frame opens the panel's scope and reports `opened`; the caller
 // submits the content and Ends the scope. A frame whose dismissal or action
 // fired opens no scope, and its caller acts on the result instead.
-#program_export
-ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
+Draw :: (session: Session, props: Modal.Props) -> ModalFrameResult {
     result: ModalFrameResult
     result.node = -1
     result.panel_node = -1
@@ -136,7 +132,7 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
         bounds.y += viewport.y
     }
     result.layout = ModalFrameLayoutFor(bounds, metrics)
-    overlay_props: DismissibleOverlayProps
+    overlay_props: Overlay.Props
     overlay_props.key = ModalFrameKey(session, props)
     overlay_props.id = props.id
     overlay_props.class_name = props.class_name
@@ -146,8 +142,8 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
         scrim.value.background,
         StyleOpacityValue(scrim.value.fields,
             scrim.value.opacity)))
-    overlay: DismissibleOverlayResult =
-        DismissibleOverlay(session, overlay_props)
+    overlay: Overlay.DismissibleOverlayResult =
+        Overlay.Draw(session, overlay_props)
     result.node = overlay.node
     result.panel_node = overlay.panel_node
     result.dismissed = overlay.closed
@@ -201,7 +197,7 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
         }
     }
     if props.has_left_action {
-        button: ButtonProps
+        button: Button.Props
         button.key = overlay_props.key * cast(u64)65599 + cast(u64)1
         button.bounds = result.layout.left_button
         button.id = props.id
@@ -215,12 +211,12 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
         button.icon_only = true
         button.arrow = props.left_image.asset_path == "" &&
             props.left_image.texture.id == cast(u32)0
-        button.direction = cast(ArrowDirection)ArrowLeft
-        result.left_clicked = SubmitButton(session, button,
+        button.direction = cast(Button.ArrowDirection)ArrowLeft
+        result.left_clicked = Button.SubmitButton(session, button,
             result.panel_node) != 0
     }
     if props.has_right_action {
-        button: ButtonProps
+        button: Button.Props
         button.key = overlay_props.key * cast(u64)65599 + cast(u64)2
         button.bounds = result.layout.right_button
         button.id = props.id
@@ -232,7 +228,7 @@ ModalFrame :: (session: Session, props: ModalFrameProps) -> ModalFrameResult {
         button.label = props.right_label
         button.image = props.right_image
         button.icon_only = true
-        result.right_clicked = SubmitButton(session, button,
+        result.right_clicked = Button.SubmitButton(session, button,
             result.panel_node) != 0
         if button.image.asset_path == "" &&
             button.image.texture.id == cast(u32)0 {

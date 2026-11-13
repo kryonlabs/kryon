@@ -1,6 +1,5 @@
 #import "component_protocol"
-#import "text"
-#import "text_props"
+Text :: #import "kryon/text";
 #import "geometry"
 #import "std/vec"
 
@@ -21,10 +20,10 @@ Frame :: () -> s64 {
     if ComponentText() == "advance" { component_count += 1 }
     session := ComponentSession()
     bounds := ComponentBounds()
-    Text(session, TextProps.{
+    Text.Draw(session, Text.Props.{
         .key = 102, .bounds = Rectangle.{
             bounds.x + 140.0, bounds.y + 16.0, 150.0, 28.0
-        }, .text = Label(), .font = Text18
+        }, .text = Label(), .size = Text.Text18
     })
     return 0
 }

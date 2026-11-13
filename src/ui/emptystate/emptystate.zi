@@ -1,7 +1,7 @@
-#import "box_props"
-#import "box"
-#import "button_props"
-#import "button"
+Box :: #import "box";
+Button :: #import "button";
+SvgIcon :: #import "svgicon";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "geometry"
@@ -10,11 +10,7 @@
 #import "semantic"
 #import "style"
 #import "style_sheet"
-#import "svg_icon_props"
-#import "svgicon"
 #import "text_align"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "widget_kind"
@@ -22,7 +18,7 @@
 using WidgetKind;
 using SemanticKind;
 
-EmptyStateProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     title: string
@@ -57,7 +53,7 @@ EmptyStateDefaultIcon :: () -> string {
 }
 
 #program_export
-EmptyStateLayoutFor :: (props: EmptyStateProps) -> EmptyStateLayout {
+EmptyStateLayoutFor :: (props: Props) -> EmptyStateLayout {
     layout: EmptyStateLayout
     layout.bounds = props.bounds
     if props.bounds.width <= 0.0 || props.bounds.height <= 0.0 { return result_placeholder() }
@@ -87,8 +83,7 @@ EmptyStateLayoutFor :: (props: EmptyStateProps) -> EmptyStateLayout {
 result_placeholder :: () -> EmptyStateLayout { return EmptyStateLayout.{} }
 
 #scope_export
-#program_export
-EmptyState :: (session: Session, props: EmptyStateProps) -> EmptyStateResult {
+Draw :: (session: Session, props: Props) -> EmptyStateResult {
     result: EmptyStateResult
     result.layout = EmptyStateLayoutFor(props)
     if !SessionValid(session) || !TreeIsBuilding(session) ||
@@ -103,22 +98,22 @@ EmptyState :: (session: Session, props: EmptyStateProps) -> EmptyStateResult {
     TreeSetStyleId(session, result.node, props.id)
     if !TreePushScope(session, result.node) { return result }
     icon_shape := ifx props.icon_shape != "" then props.icon_shape else EmptyStateDefaultIcon()
-    unused SvgIcon(session, SvgIconProps.{.bounds = result.layout.icon,
+    unused SvgIcon.Draw(session, SvgIcon.Props.{.bounds = result.layout.icon,
         .shape = icon_shape, .color = ColorFromPacked(CurrentPalette().text_muted)})
-    unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 1),
-        .bounds = result.layout.title, .text = props.title, .font = Text16,
+    unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 1),
+        .bounds = result.layout.title, .text = props.title, .size = Text.Text16,
         .id = props.id, .class_name = props.class_name,
             .semantic_kind = .SemanticHeading, .heading_level = 3,
-        .align = TextAlign.TextAlignCenter, .wrap = TextWrap.TextWrapEllipsis})
+        .align = TextAlign.TextAlignCenter, .wrap = Text.Wrap.TextWrapEllipsis})
     if props.description != "" {
-        unused Text(session, TextProps.{.key = WidgetPartKey(props.key, 2),
+        unused Text.Draw(session, Text.Props.{.key = WidgetPartKey(props.key, 2),
             .bounds = result.layout.description, .text = props.description,
-            .font = Text14, .id = props.id, .class_name = props.class_name,
+            .size = Text.Text14, .id = props.id, .class_name = props.class_name,
             .semantic_kind = .SemanticParagraph, .align = TextAlign.TextAlignCenter,
-            .wrap = TextWrap.TextWrapAnywhere})
+            .wrap = Text.Wrap.TextWrapAnywhere})
     }
     if props.action != "" {
-        clicked := Button(session, ButtonProps.{
+        clicked := Button.Draw(session, Button.Props.{
             .key = WidgetPartKey(props.key, 3), .bounds = result.layout.action,
             .label = props.action, .disabled = props.disabled,
             .icon_shape = "S2rr:M5 12h14M12 5v14", .id = props.id,

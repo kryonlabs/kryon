@@ -14,7 +14,6 @@
 #import "widget_kind"
 #import "scroll_device"
 #import "key_input"
-#import "text_input_props"
 #import "widget_codec"
 #import "widget_host"
 #import "hosted_values"

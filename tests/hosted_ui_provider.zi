@@ -1,9 +1,21 @@
 #import "session"
-#import "text_props"
-#import "image_props"
-#import "button_props"
-#import "text_input_props"
-#import "scroll_props"
+Modal :: #import "kryon/modal";
+Overlay :: #import "kryon/overlay";
+Shape :: #import "kryon/shape";
+Button :: #import "kryon/button";
+Checkbox :: #import "kryon/checkbox";
+Dropdown :: #import "kryon/dropdown";
+Fieldset :: #import "kryon/fieldset";
+Image :: #import "kryon/image";
+Progress :: #import "kryon/progress";
+Scroll :: #import "kryon/scroll";
+SegmentedControl :: #import "kryon/segmented_control";
+Slider :: #import "kryon/slider";
+TabBar :: #import "kryon/tab_bar";
+TextArea :: #import "kryon/text_area";
+TextField :: #import "kryon/text_field";
+Text :: #import "kryon/text";
+Toggle :: #import "kryon/toggle";
 #import "geometry"
 #import "input_protocol"
 
@@ -14,144 +26,126 @@ Pointer :: () -> PointerFrame {
 
 count: s32;
 #program_export "TextHostedHost"
-Text :: (session: Session, props: TextProps) {
+TextHost :: (session: Session, props: Text.Props) {
     if session.slot == 4 && session.epoch == cast(u64)12 && props.text == "Portable composition" { count += 1 }
 }
 #program_export "ImageHostedHost"
-Image :: (session: Session, image: ImageProps) {
+ImageHost :: (session: Session, image: Image.Props) {
     if session.slot == 4 && image.asset_path == "assets/photo.png" { count += 1 }
 }
 #program_export "ButtonHostedHost"
-Button :: (session: Session, props: ButtonProps) -> s32 {
+ButtonHost :: (session: Session, props: Button.Props) -> s32 {
     if session.slot == 4 && props.label == "Save" && count == 2 { return props.id }
     return 0
 }
 #program_export "TextAreaHostedHost"
-TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
-    if session.slot != 4 || props.value != "Saved text" { return TextAreaResult.{} }
-    return TextAreaResult.{.cursor = props.cursor + 1,
-        .edit = TextAreaEdit.{.changed = true, .replacement = "🌿"}}
+TextAreaHost :: (session: Session, props: TextArea.Props) -> TextArea.Result {
+    if session.slot != 4 || props.value != "Saved text" { return TextArea.Result.{} }
+    return TextArea.Result.{.cursor = props.cursor + 1,
+        .edit = TextArea.Edit.{.changed = true, .replacement = "🌿"}}
 }
 #program_export "ScrollHostedHost"
-Scroll :: (session: Session, props: ScrollProps) -> ScrollResult {
-    if session.slot != 4 { return ScrollResult.{} }
-    return ScrollResult.{.opened = true, .scroll_offset = props.scroll_offset + 5,
+ScrollHost :: (session: Session, props: Scroll.Props) -> Scroll.ScrollResult {
+    if session.slot != 4 { return Scroll.ScrollResult.{} }
+    return Scroll.ScrollResult.{.opened = true, .scroll_offset = props.scroll_offset + 5,
         .content = Rectangle.{.width = 200.0}}
 }
 #program_export "EndHostedHost"
 End :: (session: Session) -> bool { return session.slot == 4 && count == 2 }
 
-#import "checkbox_props"
-#import "toggle_props"
 #program_export "CheckboxHostedHost"
-Checkbox :: (session: Session, props: CheckboxProps) -> CheckboxValueResult {
-    return CheckboxValueResult.{.changed = session.slot == 4 && props.id == 52, .checked = !props.checked}
+CheckboxHost :: (session: Session, props: Checkbox.Props) -> Checkbox.CheckboxValueResult {
+    return Checkbox.CheckboxValueResult.{.changed = session.slot == 4 && props.id == 52, .checked = !props.checked}
 }
 #program_export "ToggleHostedHost"
-Toggle :: (session: Session, props: ToggleProps) -> ToggleValueResult {
-    return ToggleValueResult.{.changed = session.slot == 4 && props.id == 53, .value = !props.value}
-}
-
-#import "box_props"
-#import "tab_bar_props"
-#program_export "BoxHostedHost"
-Box :: (session: Session, props: BoxProps) -> s32 {
-    return ifx session.slot == 4 && props.radius == 12.0 then 71 else 0
+ToggleHost :: (session: Session, props: Toggle.Props) -> Toggle.ToggleValueResult {
+    return Toggle.ToggleValueResult.{.changed = session.slot == 4 && props.id == 53, .value = !props.value}
 }
 
 #program_export "TextFieldHostedHost"
-TextField :: (session: Session, props: TextFieldProps) -> TextFieldResult {
+TextFieldHost :: (session: Session, props: TextField.Props) -> TextField.Result {
     if session.slot != 4 || props.value != "List title" {
-        return TextFieldResult.{}
+        return TextField.Result.{}
     }
-    return TextFieldResult.{.cursor = props.cursor + 1,
-        .edit = TextFieldEdit.{.changed = true, .replacement = "✓"}}
+    return TextField.Result.{.cursor = props.cursor + 1,
+        .edit = TextField.Edit.{.changed = true, .replacement = "✓"}}
 }
 
 #program_export "TabBarHostedHost"
-TabBar :: (session: Session, props: TabBarProps, tabs: []Tab) -> TabBarResult {
+TabBarHost :: (session: Session, props: TabBar.Props, tabs: []TabBar.Tab) -> TabBar.Result {
     if session.slot != 4 || tabs.count != 2 || tabs[1].label != "Two" {
-        return TabBarResult.{}
+        return TabBar.Result.{}
     }
-    return TabBarResult.{.selected_index = props.selected_index + 1}
+    return TabBar.Result.{.selected_index = props.selected_index + 1}
 }
 
-#import "segmented_control_props"
-#import "fieldset_props"
 #import "geometry"
 
 #program_export "FieldsetHostedHost"
-Fieldset :: (session: Session, props: FieldsetProps) -> s32 {
+FieldsetHost :: (session: Session, props: Fieldset.Props) -> s32 {
     unused session
     unused props
     return 0
 }
 
-#import "shape_props"
-
 #program_export "LineHostedHost"
-Line :: (session: Session, props: LineProps) -> s32 {
+Line :: (session: Session, props: Shape.Props) -> s32 {
     return ifx session.slot == 4 && props.end.x == 4.0 then 81 else 0
 }
 
 #program_export "CircleHostedHost"
-Circle :: (session: Session, props: CircleProps) -> s32 {
+Circle :: (session: Session, props: Shape.CircleProps) -> s32 {
     return ifx session.slot == 4 && props.radius == 5.0 then 82 else 0
 }
 
 #program_export "RingHostedHost"
-Ring :: (session: Session, props: RingProps) -> s32 {
+Ring :: (session: Session, props: Shape.RingProps) -> s32 {
     return ifx session.slot == 4 && props.outer_radius == 5.0 then 83 else 0
 }
 
 #program_export "TriangleHostedHost"
-Triangle :: (session: Session, props: TriangleProps) -> s32 {
+Triangle :: (session: Session, props: Shape.TriangleProps) -> s32 {
     unused props
     return ifx session.slot == 4 then 84 else 0
 }
 
-#import "slider_props"
-#import "progress_props"
-
 #program_export "SliderHostedHost"
-Slider :: (session: Session, props: SliderProps) -> SliderStep {
+SliderHost :: (session: Session, props: Slider.Props) -> Slider.SliderStep {
     if session.slot != 4 || props.max != 10.0 {
-        return SliderStep.{}
+        return Slider.SliderStep.{}
     }
-    return SliderStep.{.value = props.value + 0.5, .changed = true}
+    return Slider.SliderStep.{.value = props.value + 0.5, .changed = true}
 }
 
 #program_export "DiscreteSliderHostedHost"
-DiscreteSlider :: (session: Session, props: DiscreteSliderProps) -> SliderDiscreteStep {
+DiscreteSlider :: (session: Session, props: Slider.DiscreteSliderProps) -> Slider.SliderDiscreteStep {
     if session.slot != 4 || props.max != 10 {
-        return SliderDiscreteStep.{}
+        return Slider.SliderDiscreteStep.{}
     }
-    return SliderDiscreteStep.{.value = props.value + 1, .changed = true}
+    return Slider.SliderDiscreteStep.{.value = props.value + 1, .changed = true}
 }
 
 hosted_progress_value: s32;
 
 #program_export "ProgressHostedHost"
-Progress :: (session: Session, props: ProgressProps) {
+ProgressHost :: (session: Session, props: Progress.Props) {
     if session.slot == 4 {
         hosted_progress_value = props.value
     }
 }
 
-#import "overlay_props"
-
 #program_export "DismissibleOverlayHostedHost"
 DismissibleOverlay :: (session: Session,
-    props: DismissibleOverlayProps) -> DismissibleOverlayResult {
+    props: Overlay.Props) -> Overlay.DismissibleOverlayResult {
     unused props
-    return DismissibleOverlayResult.{.closed = session.slot == 4,
+    return Overlay.DismissibleOverlayResult.{.closed = session.slot == 4,
         .panel_node = ifx session.slot == 4 then 85 else -1}
 }
 
 #program_export "PopupHostedHost"
-Popup :: (session: Session, props: PopupProps) -> PopupResult {
+Popup :: (session: Session, props: Overlay.PopupProps) -> Overlay.PopupResult {
     unused props
-    return PopupResult.{.node = ifx session.slot == 4 then 86 else -1}
+    return Overlay.PopupResult.{.node = ifx session.slot == 4 then 86 else -1}
 }
 
 #program_export
@@ -160,7 +154,7 @@ HostedProgressValue :: () -> s32 {
 }
 
 #program_export "ToggleSizeHostedHost"
-ToggleSize :: (session: Session, props: ToggleProps) -> Vector2 {
+ToggleSize :: (session: Session, props: Toggle.Props) -> Vector2 {
     if session.slot != 4 || props.on_label != "On" {
         return Vector2.{}
     }
@@ -168,40 +162,28 @@ ToggleSize :: (session: Session, props: ToggleProps) -> Vector2 {
 }
 
 #program_export "SegmentedControlHostedHost"
-SegmentedControl :: (session: Session, props: SegmentedControlProps,
-    options: []SegmentOption) -> SegmentedControlResult {
+SegmentedControlHost :: (session: Session, props: SegmentedControl.Props,
+    options: []SegmentedControl.SegmentOption) -> SegmentedControl.SegmentedControlResult {
     if session.slot != 4 || options.count != 2 || options[1].label != "Calendar" ||
     !props.has_selection {
-        return SegmentedControlResult.{}
+        return SegmentedControl.SegmentedControlResult.{}
     }
-    return SegmentedControlResult.{.selected_index = props.selected_index + 1,
+    return SegmentedControl.SegmentedControlResult.{.selected_index = props.selected_index + 1,
         .clicked_index = props.selected_index + 1, .changed = true}
 }
 
-#import "title_bar_props"
-#import "dropdown_props"
-
 #program_export "DropdownHostedHost"
-Dropdown :: (session: Session, props: DropdownProps, options: []DropdownOption) -> DropdownResult {
+DropdownHost :: (session: Session, props: Dropdown.Props, options: []Dropdown.Option) -> Dropdown.Result {
     if session.slot != 4 || options.count != 1 || options[0].label != "Practice" {
-        return DropdownResult.{}
+        return Dropdown.Result.{}
     }
-    return DropdownResult.{.changed = true, .selected_index = props.selected_index + 1}
+    return Dropdown.Result.{.changed = true, .selected_index = props.selected_index + 1}
 }
-
-#program_export "TitleBarHostedHost"
-TitleBar :: (session: Session, props: TitleBarProps, options: []DropdownOption) -> TitleBarResult {
-    if session.slot != 4 || props.title != "Lumi" || options.count != 0 {
-        return TitleBarResult.{}
-    }
-    return TitleBarResult.{.trailing_bounds = Rectangle.{.width = cast(float32)props.trailing_width}}
-}
-#import "modal_props"
 
 #program_export "ActionModalHostedHost"
-ActionModal :: (session: Session, props: ActionModalProps,
-    actions: []ActionModalAction) -> ActionModalResult {
+ActionModal :: (session: Session, props: Modal.ActionModalProps,
+    actions: []Modal.ActionModalAction) -> Modal.ActionModalResult {
     unused session
     unused props
-    return ActionModalResult.{.action = ifx actions.count == 1 then 1 else 0}
+    return Modal.ActionModalResult.{.action = ifx actions.count == 1 then 1 else 0}
 }

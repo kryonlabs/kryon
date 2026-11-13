@@ -1,4 +1,7 @@
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/session"
 #import "catalog"
 #import "palette"
 
@@ -19,7 +22,7 @@ CatalogShotActive :: () -> bool { return shot_active }
 CatalogShotFrame :: (session: Session, viewport: Rectangle) -> s32 {
     SetGalleryPreview(viewport, false, 0.0, true)
     InstallGalleryPalette(shot_dark)
-    Box(session, BoxProps.{.key = 9100, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Box.Draw(session, Box.Props.{.key = 9100, .bounds = viewport, .fill = StyleTokenColor("canvas")})
     ComposeGallery(session, shot_scene, false)
     return 0
 }

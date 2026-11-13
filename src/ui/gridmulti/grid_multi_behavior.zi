@@ -12,7 +12,7 @@ GridMultiMetrics :: struct {
     max_scroll: s32
 }
 #program_export
-GridMultiMeasure :: (props: GridMultiProps, count: s32) -> GridMultiMetrics {
+GridMultiMeasure :: (props: Props, count: s32) -> GridMultiMetrics {
     result: GridMultiMetrics
     result.compact = props.layout == GridMultiLayout.GridMultiCompact
     scale := props.scale

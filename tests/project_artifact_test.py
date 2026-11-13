@@ -74,7 +74,9 @@ native_artifacts = "support:native support:extra"
 native_platform = "linux-x86_64-gnu"
 ''')
         (project/'ziran.local.toml').write_text(f'[overrides]\nziran = "{ZIRAN_ROOT}"\nkryon = "{ROOT}"\nsupport = "{provider}"\n')
-        (project/'src/app.zi').write_text('''#import "kryon/Widgets"
+        (project/'src/app.zi').write_text('''#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree_input"
 support :: #system_library "support";
 ArtifactValue :: () -> s32 #foreign support;
 #program_export

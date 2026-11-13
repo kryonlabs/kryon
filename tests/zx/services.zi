@@ -1,4 +1,8 @@
-using UI :: #import "kryon/Widgets";
+Shape :: #import "kryon/shape";
+Text :: #import "kryon/text";
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/session"
 #import "kryon/Media"
 #import "kryon/Clock"
 #import "service_urls"
@@ -17,13 +21,13 @@ Failure :: (code: s32) -> s32 {
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    label: TextProps
+    label: Text.Props
     label.bounds = Rectangle.{20.0, 20.0, 800.0, 50.0}
     label.text = "Portable audio and asynchronous HTTP"
-    Text(session, label)
+    Text.Draw(session, label)
     if ServiceKeepOpen() {
         if stage < 0 || stage == 4 {
-            unused Circle(session, CircleProps.{.center = Vector2.{160.0, 160.0},
+            unused Shape.Circle(session, Shape.CircleProps.{.center = Vector2.{160.0, 160.0},
                 .radius = 60.0, .fill = ifx stage == 4 then Color.{20, 180, 80, 255} else Color.{220, 30, 40, 255}})
             return 0
         }

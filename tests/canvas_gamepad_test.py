@@ -51,14 +51,15 @@ def main():
         paths = ['--root', WORK, '--module-path', WORK,
                  '--module-path', ROOT / 'tests/page_fake', '--module-path', ROOT / 'src/backend',
                  *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std']
+        target = ['--target-os', 'web', '--target-cpu', 'wasm32']
         define = ['--define', 'PLATFORM_WEB']
         ir = WORK / 'ir'
-        run([ZIRAN, 'ir', *paths, *define, '-o', ir, source])
+        run([ZIRAN, 'ir', *paths, *target, *define, '-o', ir, source])
         for form in ('source', 'saved'):
             entry = source if form == 'source' else ir / 'canvas_gamepad_test.zir'
             modules = paths if form == 'source' else ['--root', ir]
             run([ZIRAN, 'build', '--target=c', '--exe', '--entry', 'canvas_gamepad_test:main',
-                 *modules, *define, '-o', WORK / 'native', entry])
+                 *modules, *target, *define, '-o', WORK / 'native', entry])
             run([WORK / 'native/canvas_gamepad_test'])
         # Link the real CanvasPressedKey entry against its production module
         # graph as native code too; do not mistake this for WASM execution.
@@ -66,12 +67,12 @@ def main():
                       *UI_MODULE_ARGS, '--module-path', ZIRAN_ROOT / 'std']
         host_source = ROOT / 'tests/canvas_gamepad_host_test.zi'
         host_ir = WORK / 'host-ir'
-        run([ZIRAN, 'ir', *host_paths, *define, '-o', host_ir, host_source])
+        run([ZIRAN, 'ir', *host_paths, *target, *define, '-o', host_ir, host_source])
         for form in ('source', 'saved'):
             entry = host_source if form == 'source' else host_ir / 'canvas_gamepad_host_test.zir'
             modules = host_paths if form == 'source' else ['--root', host_ir]
             run([ZIRAN, 'build', '--target=c', '--exe', '--entry', 'canvas_gamepad_host_test:main',
-                 *modules, *define, '-o', WORK / 'host-native', entry])
+                 *modules, *target, *define, '-o', WORK / 'host-native', entry])
             run([WORK / 'host-native/canvas_gamepad_host_test'])
         # The existing queue and event suite exercises keyboard/focus behavior
         # beside this fallback, using its established test-owned page provider.

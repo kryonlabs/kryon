@@ -9,7 +9,7 @@ source=$repo/tests/ziran_raylib_graphics_test.zi
 
 # All graphics effects are injected Zi providers; no display or GPU is used.
 "$ziran" ir --project --root "$repo/tests" --module-path "$repo/tests" \
-    -o "$work/ir" "$source"
+    --define RAYLIB_GRAPHICS_HOST -o "$work/ir" "$source"
 for input in source saved; do
     module=$source
     root=$repo/tests
@@ -20,7 +20,7 @@ for input in source saved; do
     for target in c; do
         output=$work/$input-$target
         "$ziran" build --project --target="$target" --root "$root" --module-path "$root" \
-            -o "$output" "$module"
+            --define RAYLIB_GRAPHICS_HOST -o "$output" "$module"
             compiler=${CC:-cc}
             standard=c11
             extension=c

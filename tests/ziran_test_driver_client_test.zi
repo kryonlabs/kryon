@@ -3,10 +3,8 @@
 // app frame while it waits for each reply.
 #import "session"
 #import "geometry"
-#import "button_props"
-#import "button"
-#import "text_props"
-#import "text"
+Button :: #import "kryon/button";
+Text :: #import "kryon/text";
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
@@ -29,13 +27,13 @@ Frame :: () -> bool {
     unused TreePointerUpdate(session, pointer)
     if BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0}) !=
     cast(FrameStatus)FrameOk { return false }
-    if Button(session, ButtonProps.{.id = 7, .label = "Save",
+    if Button.Draw(session, Button.Props.{.id = 7, .label = "Save",
             .bounds = Rectangle.{20.0, 20.0, 100.0, 40.0}}) != 0 {
         clicks += 1
     }
-    Text(session, TextProps.{.text = ifx clicks > 0 then "Saved" else "Unsaved", .font = 14,
+    Text.Draw(session, Text.Props.{.text = ifx clicks > 0 then "Saved" else "Unsaved", .size = 14,
             .bounds = Rectangle.{20.0, 80.0, 200.0, 20.0}})
-    Text(session, TextProps.{.text = "Below", .font = 14,
+    Text.Draw(session, Text.Props.{.text = "Below", .size = 14,
             .bounds = Rectangle.{20.0, 900.0, 200.0, 20.0}})
     codepoint := TestDriverCodepoint()
     while codepoint != 0 {

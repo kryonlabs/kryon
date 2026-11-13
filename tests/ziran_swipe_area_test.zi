@@ -1,8 +1,7 @@
 #import "session"
 #import "geometry"
-#import "joystick"
-#import "box_props"
-#import "box"
+Box :: #import "kryon/box";
+Joystick :: #import "kryon/joystick";
 #import "drawing_props"
 #import "tree"
 #import "tree_draw"
@@ -10,7 +9,7 @@
 #import "ziran_keyboard_navigation_host"
 
 session: Session;
-result: SwipeAreaResult;
+result: Joystick.SwipeAreaResult;
 secondary_tap: bool;
 disabled: bool;
 shown: bool = true;
@@ -18,12 +17,12 @@ shown: bool = true;
 Frame :: (now: float64) -> bool {
     unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 300.0})
     if shown {
-        result = SwipeAreaResult.{}
-        result = SwipeArea(session, SwipeAreaProps.{.key = cast(u64)70,
+        result = Joystick.SwipeAreaResult.{}
+        result = Joystick.SwipeArea(session, Joystick.SwipeAreaProps.{.key = cast(u64)70,
                 .bounds = Rectangle.{10.0, 10.0, 100.0, 40.0}, .label = "Board", .now = now,
                 .repeat_seconds = 0.2, .secondary_tap = secondary_tap, .disabled = disabled})
     } else {
-        unused Box(session, BoxProps.{.key = cast(u64)71,
+        unused Box.Draw(session, Box.Props.{.key = cast(u64)71,
                 .bounds = Rectangle.{0.0, 0.0, 400.0, 300.0}, .fill = Color.{0, 0, 0, 255}})
     }
     return EndFrame(session) == FrameStatus.FrameOk

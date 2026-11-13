@@ -32,7 +32,7 @@ ClipModelview :: () -> RaylibMatrix #foreign raylib_clip_host "rlGetMatrixModelv
 ClipFloor :: (value: float32) -> float32 #foreign raylib_clip_math "floorf";
 ClipCeil :: (value: float32) -> float32 #foreign raylib_clip_math "ceilf";
 
-#if #defined(PLATFORM_WEB) {
+#if OS == .WEB {
     #import "page_paint"
     CanvasClipPush :: (x: s32, y: s32, width: s32, height: s32) {
         PageClipPush(x, y, width, height)
@@ -96,7 +96,7 @@ ClipScreenBounds :: (bounds: Rectangle) -> Rectangle {
 BeginRasterClip :: (bounds: Rectangle) -> RasterClipState {
     state: RasterClipState
     screen := ClipScreenBounds(bounds)
-    #if #defined(PLATFORM_WEB) {
+    #if OS == .WEB {
         CanvasClipPush(cast(s32)screen.x, cast(s32)screen.y,
             cast(s32)screen.width, cast(s32)screen.height)
     } else {
@@ -125,7 +125,7 @@ BeginRasterClip :: (bounds: Rectangle) -> RasterClipState {
 
 #scope_export
 EndRasterClip :: (state: RasterClipState) {
-    #if #defined(PLATFORM_WEB) {
+    #if OS == .WEB {
         CanvasClipPop()
         unused state
     } else {

@@ -1,15 +1,17 @@
-using UI :: #import "kryon/Widgets";
-using Demo :: #import "kryon/tile_map";
+Text :: #import "kryon/text";
+TileMap :: #import "kryon/tile_map";
+#import "kryon/geometry"
+#import "kryon/session"
 
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Tile map", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Tile map", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
     tiles := string.["assets/pfp.webp"]
     names := string.["Portrait"]
     cells := s32.[0, -1, 0, -1, 0, -1, 0, -1, 0]
-    TileMap(session, TileMapProps.{.key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, viewport.height - 96.0}, .columns = 3, .rows = 3, .tiles = tiles[:], .names = names[:], .layers = cells[:], .layer_count = 1, .label = "Picture tiles", .pixel_snap = true})
+    TileMap.Draw(session, TileMap.Props.{.key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, viewport.height - 96.0}, .columns = 3, .rows = 3, .tiles = tiles[:], .names = names[:], .layers = cells[:], .layer_count = 1, .label = "Picture tiles", .pixel_snap = true})
     return 0
 }
 

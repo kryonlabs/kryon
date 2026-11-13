@@ -9,7 +9,7 @@ ListBoxItem :: struct {
 }
 
 // The caller stores returned selection and scroll values between frames.
-ListBoxProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32
@@ -58,4 +58,31 @@ ListBoxMultiResult :: struct {
     selected_count: s32
     changed: bool
     valid: bool
+}
+
+// Navigation keys a caller passes as Props.navigation.
+// key: 1 home, 2 end, 3 up, 4 down.
+#program_export
+ListBoxKeyNone :: () -> s32 {
+    return 0
+}
+
+#program_export
+ListBoxKeyHome :: () -> s32 {
+    return 1
+}
+
+#program_export
+ListBoxKeyEnd :: () -> s32 {
+    return 2
+}
+
+#program_export
+ListBoxKeyUp :: () -> s32 {
+    return 3
+}
+
+#program_export
+ListBoxKeyDown :: () -> s32 {
+    return 4
 }

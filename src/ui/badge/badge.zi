@@ -1,16 +1,15 @@
+Image :: #import "image";
+Text :: #import "text";
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
 #import "icon"
-#import "kryon/image_widget"
 #import "paint_queue"
 #import "session"
 #import "style"
 #import "style_sheet"
 #import "surface"
-#import "kryon/text_widget"
-#import "text_props"
 #import "text_align"
 #import "theme"
 #import "tree"
@@ -35,7 +34,7 @@ BadgeTone :: enum {
     BadgeToneAccent :: 8
 }
 
-BadgeProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     text: string
@@ -73,7 +72,7 @@ BadgeToneColor :: (tone: BadgeTone) -> u32 {
     return palette.foreground
 }
 
-BadgeDefaultFace :: (props: BadgeProps, state: s32) -> StyleData {
+BadgeDefaultFace :: (props: Props, state: s32) -> StyleData {
     face: StyleData
     face.fields = cast(u32)StyleBackground | cast(u32)StyleForeground |
         cast(u32)StyleBorder | cast(u32)StyleRadius | cast(u32)StyleOpacity |
@@ -115,7 +114,7 @@ BadgeDefaultFace :: (props: BadgeProps, state: s32) -> StyleData {
 }
 
 #program_export
-BadgeInstalledFaceFor :: (props: BadgeProps, state: s32) -> StyleData {
+BadgeInstalledFaceFor :: (props: Props, state: s32) -> StyleData {
     kind := props.style_kind
     if kind <= 0 { kind = StyleKindText() }
     facts := StyleControlRoleFacts(kind, props.id, props.class_name,
@@ -131,8 +130,7 @@ BadgeHeightFor :: (size: ControlSize) -> float32 {
     return 22.0
 }
 
-#program_export
-Badge :: (session: Session, props: BadgeProps) -> BadgeResult {
+Draw :: (session: Session, props: Props) -> BadgeResult {
     result: BadgeResult
     result.node = -1
     state := cast(s32)ButtonStateNormal
@@ -191,17 +189,17 @@ Badge :: (session: Session, props: BadgeProps) -> BadgeResult {
         icon := ImageForIcon(props.icon_type, icon_bounds, props.text)
         icon.key = WidgetPartKey(key, 1)
         icon.tint = Opacity(face.foreground, opacity)
-        Image(session, icon)
+        Image.Draw(session, icon)
         cursor += face.icon_size + face.gap
     }
     if props.text != "" {
-        text := TextProps.{.key = WidgetPartKey(key, 2), .text = props.text,
+        text := Text.Props.{.key = WidgetPartKey(key, 2), .text = props.text,
             .bounds = Rectangle.{cursor, result.bounds.y,
                 result.bounds.x + result.bounds.width - face.padding_x - cursor,
-                result.bounds.height}, .font = font, .typeface = face.typeface,
+                result.bounds.height}, .size = font, .typeface = face.typeface,
             .vertical_align = .TextAlignCenter,
             .class_name = props.class_name}
-        Text(session, text)
+        Text.Draw(session, text)
     }
     unused TreePopScope(session)
     return result

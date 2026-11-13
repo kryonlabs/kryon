@@ -2,7 +2,15 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Text :: #import "kryon/text";
+TextArea :: #import "kryon/text_area";
+TextField :: #import "kryon/text_field";
+#import "kryon/drawing_props"
+#import "kryon/input_protocol"
+#import "kryon/key_input"
+#import "kryon/system_clipboard"
+#import "kryon/tree_input"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -76,7 +84,7 @@ Copy :: (target: []u8, value: string) -> s32 {
     return count
 }
 
-Apply :: (target: []u8, length: s32, edit: TextFieldEdit) -> s32 {
+Apply :: (target: []u8, length: s32, edit: TextField.Edit) -> s32 {
     if !edit.changed { return length }
     if edit.start < 0 || edit.end < edit.start || edit.end > length { return length }
     new_length := length - (edit.end - edit.start) + cast(s32)edit.replacement.count
@@ -90,15 +98,15 @@ Apply :: (target: []u8, length: s32, edit: TextFieldEdit) -> s32 {
     return new_length
 }
 
-EditArea :: (session: Session, bounds: Rectangle, disabled: bool, input: TextAreaInput) {
-    result := TextArea(session, TextAreaProps.{.bounds = bounds, .value = TextView(area_bytes[0:area_length]), .max_bytes = 4096, .wrap = true, .disabled = disabled, .cursor = demo_area_cursor, .anchor = demo_area_anchor, .scroll_y = demo_area_scroll, .input = input})
+EditArea :: (session: Session, bounds: Rectangle, disabled: bool, input: TextArea.Input) {
+    result := TextArea.Draw(session, TextArea.Props.{.bounds = bounds, .value = TextView(area_bytes[0:area_length]), .max_bytes = 4096, .wrap = true, .disabled = disabled, .cursor = demo_area_cursor, .anchor = demo_area_anchor, .scroll_y = demo_area_scroll, .input = input})
     if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
     demo_area_cursor = result.cursor; demo_area_anchor = result.anchor; demo_area_scroll = result.scroll_y
-    edit: TextFieldEdit = .{.start = result.edit.start, .end = result.edit.end, .replacement = result.edit.replacement, .changed = result.edit.changed}
+    edit: TextField.Edit = .{.start = result.edit.start, .end = result.edit.end, .replacement = result.edit.replacement, .changed = result.edit.changed}
     area_length = Apply(area_next[:], area_length, edit)
 }
 
-SceneInput :: struct { field: TextFieldInput; area: TextAreaInput }
+SceneInput :: struct { field: TextField.Input; area: TextArea.Input }
 
 b: Rectangle;
 
@@ -120,7 +128,7 @@ Prepare :: (session: Session, scene: s32) -> SceneInput {
     if scene == 1 || scene == 2 { input_key = KeyboardTake(session) }
     input_text := TypedTextTake(session, typed[:])
     field_input := TextFieldInputFor(input_key, KeyboardModifiers(session), input_text)
-    area_input: TextAreaInput
+    area_input: TextArea.Input
     area_input.text = field_input.text
     area_input.left = field_input.left; area_input.right = field_input.right
     area_input.home = field_input.home; area_input.end = field_input.end
@@ -142,8 +150,8 @@ Prepare :: (session: Session, scene: s32) -> SceneInput {
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TextArea", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TextArea", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 2
     input := Prepare(session, scene)

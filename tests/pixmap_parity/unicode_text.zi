@@ -2,12 +2,11 @@
 #import "control_props"
 #import "session"
 #import "style_sheet"
-#import "text_props"
-#import "text"
+Text :: #import "kryon/text";
 #import "tree"
 #import "tree_draw"
 
-using TextWrap;
+using Text.Wrap;
 using FrameStatus;
 
 // Text beyond Latin-1 on the pixmap host: fallback symbols, color emoji
@@ -15,8 +14,8 @@ using FrameStatus;
 session: Session;
 
 Line :: (key: u64, y: float32, text: string, font: s32) {
-    Text(session, TextProps.{.key = key, .bounds = Rectangle.{16.0, y, 288.0, 32.0}, .text = text,
-        .font = font, .wrap = cast(TextWrap)TextWrapNone})
+    Text.Draw(session, Text.Props.{.key = key, .bounds = Rectangle.{16.0, y, 288.0, 32.0}, .text = text,
+        .size = font, .wrap = cast(Text.Wrap)TextWrapNone})
 }
 
 #program_export

@@ -48,6 +48,32 @@ LoadTextureFromImage :: (image: RaylibGlyphImage) -> Texture2D {
         .height = image.height, .mipmaps = image.mipmaps, .format = image.format}
 }
 #program_export
+LoadImageFromMemory :: (extension: *u8, bytes: *u8, count: s32) -> RaylibGlyphImage {
+    unused extension; unused bytes; unused count
+    return .{}
+}
+#program_export
+LoadImageFromTexture :: (texture: Texture2D) -> RaylibGlyphImage {
+    unused texture
+    return .{}
+}
+#program_export
+UnloadImage :: (image: RaylibGlyphImage) { unused image }
+#program_export
+ImageRotateCW :: (image: *RaylibGlyphImage) { unused image }
+#program_export
+ImageRotateCCW :: (image: *RaylibGlyphImage) { unused image }
+#program_export
+ImageFlipHorizontal :: (image: *RaylibGlyphImage) { unused image }
+#program_export
+ImageFlipVertical :: (image: *RaylibGlyphImage) { unused image }
+#program_export
+GenTextureMipmaps :: (texture: *Texture2D) { unused texture }
+#program_export
+rlTexCoord2f :: (x: float32, y: float32) { unused x; unused y }
+#program_export
+rlNormal3f :: (x: float32, y: float32, z: float32) { unused x; unused y; unused z }
+#program_export
 SetTextureFilter :: (texture: Texture2D, filter: s32) {
     unused texture
     unused filter
@@ -120,6 +146,8 @@ IsMouseButtonReleased :: (button: s32) -> bool { return button == 2 && middle_re
 GetMouseWheelMove :: () -> float32 { return 0.0 }
 #program_export
 GetKeyPressed :: () -> s32 { key := fresh_key; fresh_key = 0; return key }
+#program_export
+GetCharPressed :: () -> s32 { return 0 }
 // A Dvorak position (scancode 12, I, types c) and a non-Latin one (5, B).
 input_polls: s32;
 EventWatch :: #type (*void, *void) -> s32 #c_call;

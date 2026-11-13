@@ -1,6 +1,7 @@
+using PropsModule :: #import "toast_props";
+Button :: #import "button";
+Text :: #import "text";
 Theme :: #import "theme";
-#import "button"
-#import "button_props"
 #import "session"
 #import "control_props"
 #import "drawing_props"
@@ -10,9 +11,7 @@ Theme :: #import "theme";
 #import "style"
 #import "style_sheet"
 #import "surface"
-#import "kryon/text_widget"
 #import "toast_behavior"
-#import "toast_props"
 #import "tree"
 #import "widget_kind"
 
@@ -52,7 +51,7 @@ ToastDisplayFor :: (message: string, max_width: s32, font: s32,
     limit: s32 = (cast(s32)message.count)
     while limit > 0 {
         limit = ToastPrefixBefore(message, limit)
-        display.prefix = TextSpan(message, 0, limit)
+        display.prefix = Text.TextSpan(message, 0, limit)
         display.prefix_width = GlyphWidth(display.prefix, font, typeface)
         if display.prefix_width + ellipsis_width <= max_width { break }
     }
@@ -97,8 +96,7 @@ ToastLabelFace :: (class_name: s32, id: s32 = 0) -> StyleFrame {
 
 // The caller passes the previous result.state on every frame. A nonempty
 // props.message starts or replaces the toast; props.clear removes it.
-#program_export
-Toast :: (session: Session, props: ToastProps) -> ToastResult {
+Draw :: (session: Session, props: PropsModule.Props) -> ToastResult {
     result: ToastResult
     result.node = -1
     state: ToastState = props.state
@@ -136,7 +134,7 @@ Toast :: (session: Session, props: ToastProps) -> ToastResult {
         ToastContentWidth(cast(s32)viewport.width, metrics), font,
         label.value.typeface)
     line_height: s32 = GlyphLineHeight(font, label.value.typeface)
-    action: ButtonProps
+    action: Button.Props
     action.label = state.action_label
     action.key = cast(u64)1
     action.id = state.id
@@ -148,7 +146,7 @@ Toast :: (session: Session, props: ToastProps) -> ToastResult {
     action_gap: s32 = 0
     content_width: s32 = display.width
     if state.action_label != "" {
-        measured: Rectangle = ButtonMeasure(action)
+        measured: Rectangle = Button.ButtonMeasure(action)
         action_width = cast(s32)measured.width
         maximum: s32 = ToastContentWidth(cast(s32)viewport.width, metrics)
         if action_width > maximum { action_width = maximum }
@@ -211,7 +209,7 @@ Toast :: (session: Session, props: ToastProps) -> ToastResult {
             layout.text_bounds.x + cast(float32)(content_width - action_width),
             layout.text_bounds.y + cast(float32)(line_height + action_gap),
             cast(float32)action_width, cast(float32)action_height}
-        result.action_clicked = Button(session, action) != 0
+        result.action_clicked = Button.Draw(session, action) != 0
         unused TreePopScope(session)
     }
     return result

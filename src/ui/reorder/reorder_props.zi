@@ -6,7 +6,7 @@ ReorderItem :: struct {
     disabled: s32
 }
 
-ReorderList :: struct {
+Props :: struct {
     id: s32
     style_id: s32
     class_name: s32

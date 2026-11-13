@@ -86,6 +86,11 @@ def package_runtime(page):
 
 def main():
     from gallery import PROJECT, prepare
+    mascot_source = ROOT / 'assets/brand/mascot-dragon.png'
+    mascot_asset = PROJECT / 'assets/brand/mascot-dragon.png'
+    mascot_asset.parent.mkdir(parents=True, exist_ok=True)
+    if not mascot_asset.exists() or mascot_asset.read_bytes() != mascot_source.read_bytes():
+        shutil.copyfile(mascot_source, mascot_asset)
     prepare()
     subprocess.run(['python3', str(SITE / 'demo/build_preview.py')], cwd=ROOT, check=True)
     environment = os.environ.copy()

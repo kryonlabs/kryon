@@ -1,7 +1,7 @@
 #import "control_props"
 #import "geometry"
 
-CardProps :: struct {
+Props :: struct {
     bounds: Rectangle
     id: s32
     class_name: s32

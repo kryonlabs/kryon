@@ -1,3 +1,4 @@
+using Tooltip :: #import "tooltip_props";
 #import "drawing_props"
 #import "control_props"
 #import "font_metrics"
@@ -8,7 +9,6 @@
 #import "style_sheet"
 #import "surface"
 #import "theme"
-#import "tooltip_props"
 #import "tooltip_common"
 #import "tree"
 #import "widget_kind"
@@ -19,7 +19,7 @@ using StyleField;
 using WidgetKind;
 
 #program_export
-TooltipInstalledFaceFor :: (props: TooltipProps, state: s32) -> StyleData {
+TooltipInstalledFaceFor :: (props: Tooltip.Props, state: s32) -> StyleData {
     kind := StyleKindPopup()
     facts := StyleControlRoleFacts(kind, props.id, props.class_name,
         StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
@@ -27,7 +27,7 @@ TooltipInstalledFaceFor :: (props: TooltipProps, state: s32) -> StyleData {
 }
 
 #program_export
-TooltipApply :: (state: *TooltipState, props: TooltipProps) -> TooltipResult {
+TooltipApply :: (state: *TooltipState, props: Tooltip.Props) -> TooltipResult {
     result: TooltipResult
     result.node = -1
     result.text_node = -1
@@ -86,7 +86,7 @@ TooltipApply :: (state: *TooltipState, props: TooltipProps) -> TooltipResult {
 }
 
 #program_export
-TooltipMeasure :: (props: TooltipProps, style: StyleData) -> Rectangle {
+TooltipMeasure :: (props: Tooltip.Props, style: StyleData) -> Rectangle {
     font := ResolveFont(0, StyleFontValue(style.fields, style.font_size), 12)
     text_width := GlyphWidth(props.text, font, style.typeface)
     shortcut_width := 0
@@ -109,9 +109,8 @@ TooltipHostedReply :: struct {
 }
 #if #defined(KRYON_HOSTED_UI) {
     tooltip_host_api :: #system_library "host_api";
-    TooltipHostedHost :: (session: Session, props: TooltipProps, state: TooltipState) -> TooltipHostedReply #foreign tooltip_host_api;
-    #program_export
-    Tooltip :: (session: Session, props: TooltipProps,
+    TooltipHostedHost :: (session: Session, props: Tooltip.Props, state: TooltipState) -> TooltipHostedReply #foreign tooltip_host_api;
+        Draw :: (session: Session, props: Tooltip.Props,
     state: *TooltipState) -> TooltipResult {
         reply := TooltipHostedHost(session, props, state.*)
         state.* = reply.state
@@ -119,11 +118,10 @@ TooltipHostedReply :: struct {
     }
 } else {
     #import "paint_queue"
-    #program_export
-    Tooltip :: (session: Session, props: TooltipProps,
+        Draw :: (session: Session, props: Tooltip.Props,
     state: *TooltipState) -> TooltipResult { return TooltipCore(session, props, state, true) }
     #program_export
-TooltipCore :: (session: Session, props: TooltipProps,
+TooltipCore :: (session: Session, props: Tooltip.Props,
     state: *TooltipState, effects: bool) -> TooltipResult {
     unused effects
     result := TooltipApply(state, props)

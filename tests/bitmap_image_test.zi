@@ -3,8 +3,7 @@
 #import "session"
 #import "geometry"
 #import "drawing_props"
-#import "image_props"
-#import "image"
+Image :: #import "kryon/image";
 #import "tree"
 #import "tree_draw"
 #import "paint_queue"
@@ -38,7 +37,7 @@ Frame :: (session: Session, image: Texture2D, smooth: bool) -> bool {
         if !PixmapResumeInto(16,16,pixels[:],true) { failed = true }
     }
     unused BeginFrame(session, 1, bounds)
-    Image(session, ImageProps.{.key = 7, .bounds = bounds, .texture = image,
+    Image.Draw(session, Image.Props.{.key = 7, .bounds = bounds, .texture = image,
         .smooth = smooth, .tint = cast(u32)0xffffffff})
     #if #defined(BITMAP_DESKTOP) {
         reusable := Desktop.DesktopFrameReusable()
@@ -113,7 +112,7 @@ Test :: () -> s32 {
     BitmapImageRelease(other,image)
     if !BitmapImageUpdate(session,image,rgba[:]) { return 11 }
     unused BeginFrame(other,2,bounds)
-    Image(other,ImageProps.{.key=7,.bounds=bounds,.texture=image})
+    Image.Draw(other,Image.Props.{.key=7,.bounds=bounds,.texture=image})
     if PendingPaintCount(other) != 0 { return 12 }
     PaintClear(other)
     rgba[0] = 0

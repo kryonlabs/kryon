@@ -2,10 +2,8 @@
 #import "widget_test_session"
 
 #import "geometry"
-#import "progress_props"
-#import "progress"
-#import "separator_props"
-#import "separator"
+Progress :: #import "kryon/progress";
+Separator :: #import "kryon/separator";
 #import "tree"
 #import "tree_draw"
 #import "ziran_mixed_tree_host"
@@ -14,16 +12,16 @@ using FrameStatus;
 
 #program_export
 Frame :: () -> s32 {
-    progress: ProgressProps = .{.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}, .min = 0,
+    progress: Progress.Props = .{.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}, .min = 0,
         .max = 100, .value = 50}
-    separator: SeparatorProps
+    separator: Separator.Props
     separator.bounds = Rectangle.{20.0, 50.0, 20.0, 40.0}
     separator.vertical = true
     BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 200.0})
-    Progress(TestSession(), progress)
-    Separator(TestSession(), separator)
+    Progress.Draw(TestSession(), progress)
+    Separator.Draw(TestSession(), separator)
     progress.bounds.y = 100.0
-    Progress(TestSession(), progress)
+    Progress.Draw(TestSession(), progress)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk { return -1 }
     return TreeCount(TestSession())
 }

@@ -1,15 +1,18 @@
-using UI :: #import "kryon/Widgets";
+EmptyState :: #import "kryon/empty_state";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 
 created: bool;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Empty state", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Empty state", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
     if !created {
-        props: EmptyStateProps = .{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, viewport.height - 96.0}, .title = "No projects yet", .description = "Create your first project.", .action = "Create project"}
-        result := EmptyState(session, props)
+        props: EmptyState.Props = .{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, viewport.height - 96.0}, .title = "No projects yet", .description = "Create your first project.", .action = "Create project"}
+        result := EmptyState.Draw(session, props)
         if result.action { created = true }
-    } else { Text(session, TextProps.{.disabled = example_disabled, .key = 11, .bounds = bounds, .text = "Project created"}) }
+    } else { Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 11, .bounds = bounds, .text = "Project created"}) }
     return 0
 }
 

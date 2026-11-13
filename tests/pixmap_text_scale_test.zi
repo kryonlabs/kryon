@@ -2,7 +2,7 @@
 #import "drawing_props"
 #import "geometry"
 #import "font_metrics"
-#import "textarea"
+TextArea :: #import "kryon/text_area";
 #import "text_input"
 
 // Text drawn at a fractional density stays where its logical measure puts
@@ -52,7 +52,7 @@ CheckRows :: (value: string, wrap: s32, font: s32, scale: float32) -> s32 {
     index: s32 = 0
     rows: s32 = 0
     while offset < cast(s32)value.count {
-        row := TextAreaNextRow(value, offset, wrap, font, "")
+        row := TextArea.TextAreaNextRow(value, offset, wrap, font, "")
         if row.next <= offset { return 10 }
         rows += 1
         middle: s32 = index * advance + advance / 2
@@ -76,7 +76,7 @@ CheckRows :: (value: string, wrap: s32, font: s32, scale: float32) -> s32 {
             // The pointer at the ink's right boundary, in logical units as
             // the text area converts it.
             pointer: s32 = TextPointerOffset(cast(float32)drawn / scale, Left)
-            cursor: s32 = TextAreaCursorAtPoint(value, pointer, middle, wrap, font, "", advance)
+            cursor: s32 = TextArea.TextAreaCursorAtPoint(value, pointer, middle, wrap, font, "", advance)
             if cursor != end {
                 print("Pointer past % at font % and % selects to byte %, % expected\n",
                     prefix, font, scale, cursor, end)

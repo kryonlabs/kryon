@@ -6,8 +6,7 @@
 #import "geometry"
 #import "paint_queue"
 #import "progress_behavior"
-#import "progress_props"
-#import "progress"
+Progress :: #import "kryon/progress";
 #import "style"
 #import "style_sheet"
 #import "tree"
@@ -54,10 +53,10 @@ Frame :: () -> s32 {
         rules.items[1] = fill
         InstallStyleRules(rules)
     }
-    props: ProgressProps = .{.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}, .min = 0, .max = 100,
+    props: Progress.Props = .{.bounds = Rectangle.{10.0, 20.0, 100.0, 20.0}, .min = 0, .max = 100,
         .value = 25, .label = "25%", .key = cast(u64)17}
     BeginFrame(TestSession(), cast(u64)10, Rectangle.{0.0, 0.0, 200.0, 100.0})
-    Progress(TestSession(), props)
+    Progress.Draw(TestSession(), props)
     if frame_index == 4 {
         color: Color = Color.{1, 2, 3, 4}
         index: s32 = 0

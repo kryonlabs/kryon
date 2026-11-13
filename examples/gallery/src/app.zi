@@ -1,4 +1,15 @@
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Checkbox :: #import "kryon/checkbox";
+ListBox :: #import "kryon/list_box";
+Text :: #import "kryon/text";
+Toggle :: #import "kryon/toggle";
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/input_protocol"
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/tree"
+#import "kryon/tree_input"
 using Scenes :: #import "scenes";
 using Shot :: #import "catalog_shot";
 #import "catalog"
@@ -46,9 +57,9 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     SetGalleryPreview(Rectangle.{0.0, 0.0, 480.0, viewport.height - 88.0}, true,
         cast(float32)snapshot.elapsed_ms / 1000.0, GalleryTheme.CurrentTheme().motion.reduced_motion)
     InstallGalleryPalette(dark)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
     if embedded {
-        Text(session, TextProps.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = GallerySceneName(scene), .font = 23})
+        Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{24.0, 12.0, 432.0, 36.0}, .text = GallerySceneName(scene), .font = 23})
         DrawScene(session)
         return 0
     }
@@ -63,17 +74,17 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     }
     controls_scope := modal >= 0 && TreePushScope(session, modal)
     controls_y := viewport.height - 64.0
-    items: [GallerySceneCount]ListBoxItem
+    items: [GallerySceneCount]ListBox.ListBoxItem
     for index: cast(s32)0..GallerySceneCount - 1 {
         items[index].key = cast(u64)(index + 1)
         items[index].label = GallerySceneName(index)
     }
     navigation: s32
-    if picker_key == KeyHome { navigation = ListBoxKeyHome() }
-    else if picker_key == KeyEnd { navigation = ListBoxKeyEnd() }
-    else if picker_key == KeyUp { navigation = ListBoxKeyUp() }
-    else if picker_key == KeyDown { navigation = ListBoxKeyDown() }
-    picked := ListBox(session, ListBoxProps.{.key = 9003, .id = 9003,
+    if picker_key == KeyHome { navigation = ListBox.ListBoxKeyHome() }
+    else if picker_key == KeyEnd { navigation = ListBox.ListBoxKeyEnd() }
+    else if picker_key == KeyUp { navigation = ListBox.ListBoxKeyUp() }
+    else if picker_key == KeyDown { navigation = ListBox.ListBoxKeyDown() }
+    picked := ListBox.Draw(session, ListBox.Props.{.key = 9003, .id = 9003,
         .bounds = .{500.0, 24.0, viewport.width - 524.0, viewport.height - 48.0},
         .selected_index = scene, .scroll_offset = catalog_scroll,
         .row_height = 30, .focused = picker_focused, .navigation = navigation}, items[:])
@@ -87,8 +98,8 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
             }
         }
     }
-    disabled_controls = Checkbox(session, CheckboxProps.{.key = 9004, .bounds = .{24.0, controls_y, 208.0, 40.0}, .label = "Disabled", .checked = disabled_controls}).checked
-    dark = Toggle(session, ToggleProps.{.key = 9005, .bounds = .{344.0, controls_y, 96.0, 40.0}, .label = "Dark", .value = dark}).value
+    disabled_controls = Checkbox.Draw(session, Checkbox.Props.{.key = 9004, .bounds = .{24.0, controls_y, 208.0, 40.0}, .label = "Disabled", .checked = disabled_controls}).checked
+    dark = Toggle.Draw(session, Toggle.Props.{.key = 9005, .bounds = .{344.0, controls_y, 96.0, 40.0}, .label = "Dark", .value = dark}).value
     if controls_scope { End(session) }
     return 0
 }

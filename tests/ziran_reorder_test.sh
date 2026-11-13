@@ -11,7 +11,7 @@ cat > "$work/use_reorder.zi" <<'EOF'
 #import "control_props"
 #import "geometry"
 #import "reorder_behavior"
-#import "reorder_props"
+ReorderSchema :: #import "reorder_props";
 #import "style"
 
 using StyleField;
@@ -26,7 +26,7 @@ Answer :: () -> s32 {
     placeholder.value.fields = cast(u32)StyleContentOffset
     placeholder.value.offset_x = 34.0
     placeholder.value.offset_y = 12.0
-    metrics: ReorderMetrics = ReorderMetricsFor(2.0, 0, 0, 0, 0,
+    metrics: ReorderSchema.ReorderMetrics = ReorderMetricsFor(2.0, 0, 0, 0, 0,
         handle, placeholder)
     if metrics.handle_width != 72 || metrics.drag_threshold != 10 ||
        metrics.auto_scroll_margin != 68 || metrics.auto_scroll_step != 24 {
@@ -40,7 +40,7 @@ Answer :: () -> s32 {
     if ReorderTargetIndexFor(-2, 4) != 0 ||
        ReorderTargetIndexFor(9, 4) != 3 ||
        ReorderTargetIndexFor(0, 0) != -1 { return 0 }
-    result: ReorderListResult = ReorderListActiveResultFor(1, 3, 4,
+    result: ReorderSchema.ReorderListResult = ReorderListActiveResultFor(1, 3, 4,
         99, 120, 75)
     result = ReorderListCommitResultFor(result, 6)
     if result.committed != 1 || result.from_index != 3 ||

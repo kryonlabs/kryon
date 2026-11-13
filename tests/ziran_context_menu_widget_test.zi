@@ -1,7 +1,7 @@
 #import "session"
 #import "widget_test_session"
 
-#import "contextmenu"
+ContextMenu :: #import "kryon/context_menu";
 #import "drawing_props"
 #import "geometry"
 #import "paint_queue"
@@ -24,7 +24,7 @@ Click :: (x: float32, y: float32) {
 // panel is 168 wide and 95 tall: rows at y 24, 50, and 85.
 #program_export
 Frame :: () -> s32 {
-    items: [4]ContextMenuItem
+    items: [4]ContextMenu.ContextMenuItem
     items[0].id = 1
     items[0].label = "Cut"
     items[1].id = 2
@@ -33,10 +33,10 @@ Frame :: () -> s32 {
     items[2].separator = true
     items[3].id = 3
     items[3].label = "Paste"
-    props: ContextMenuProps = .{.key = cast(u64)30, .open = open_state, .x = 20.0, .y = 20.0,
+    props: ContextMenu.Props = .{.key = cast(u64)30, .open = open_state, .x = 20.0, .y = 20.0,
         .escape = phase == 9}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 160.0})
-    result: ContextMenuResult = ContextMenu(TestSession(), props, items[0:4])
+    result: ContextMenu.ContextMenuResult = ContextMenu.Draw(TestSession(), props, items[0:4])
     if !TreeFinish(TestSession()) { return -1 }
     if phase == 0 {
         // Closed: nothing is submitted.
@@ -90,7 +90,7 @@ inline_open: bool;
 // are 32 wide at x 23, 57 and 91, y 25 to 57; Copy is the row at y 58.
 #program_export
 InlineFrame :: () -> s32 {
-    items: [4]ContextMenuItem
+    items: [4]ContextMenu.ContextMenuItem
     items[0].id = 11
     items[0].label = "A"
     items[0].inline = true
@@ -102,12 +102,12 @@ InlineFrame :: () -> s32 {
     items[2].inline = true
     items[3].id = 13
     items[3].label = "Copy"
-    props: ContextMenuProps = .{.key = cast(u64)31, .open = inline_open, .x = 20.0, .y = 20.0}
+    props: ContextMenu.Props = .{.key = cast(u64)31, .open = inline_open, .x = 20.0, .y = 20.0}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 240.0, 160.0})
-    result: ContextMenuResult = ContextMenu(TestSession(), props, items[0:4])
+    result: ContextMenu.ContextMenuResult = ContextMenu.Draw(TestSession(), props, items[0:4])
     if !TreeFinish(TestSession()) { return -1 }
     if inline_phase == 0 {
-        bounds: Rectangle = ContextMenuBounds(items[0:4], 20.0, 20.0,
+        bounds: Rectangle = ContextMenu.ContextMenuBounds(items[0:4], 20.0, 20.0,
             Rectangle.{0.0, 0.0, 240.0, 160.0})
         if bounds.width != 168.0 || bounds.height != 68.0 { return -2 }
         inline_open = true
@@ -147,7 +147,7 @@ Selectable :: (x: float32, y: float32) -> bool {
 // at x 186 with Codex level with Reopen in, at y 50, and Claude at y 76.
 #program_export
 SubmenuFrame :: () -> s32 {
-    items: [5]ContextMenuItem
+    items: [5]ContextMenu.ContextMenuItem
     items[0].id = 1
     items[0].label = "Open"
     items[1].id = 2
@@ -160,13 +160,13 @@ SubmenuFrame :: () -> s32 {
     items[3].parent = 2
     items[4].id = 5
     items[4].label = "Close"
-    props: ContextMenuProps = .{.key = cast(u64)32, .open = submenu_open, .x = 20.0, .y = 20.0,
+    props: ContextMenu.Props = .{.key = cast(u64)32, .open = submenu_open, .x = 20.0, .y = 20.0,
         .escape = submenu_phase == 9}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 480.0, 200.0})
-    result: ContextMenuResult = ContextMenu(TestSession(), props, items[0:5])
+    result: ContextMenu.ContextMenuResult = ContextMenu.Draw(TestSession(), props, items[0:5])
     if !TreeFinish(TestSession()) { return -1 }
     if submenu_phase == 0 {
-        bounds: Rectangle = ContextMenuBounds(items[0:5], 20.0, 20.0,
+        bounds: Rectangle = ContextMenu.ContextMenuBounds(items[0:5], 20.0, 20.0,
             Rectangle.{0.0, 0.0, 480.0, 200.0})
         // Only the menu's own three rows count.
         if bounds.height != 86.0 { return -2 }
@@ -217,7 +217,7 @@ check_checked: bool;
 // Borders, at (20, 20) in a 320 wide view. Glyphs are half the font wide
 // here, so labels start 34 in (the 12 inset, the 14 box and its 8 gap) and
 // the panel is 34 + 49 + 32 + 84 + 12 = 211 wide: rows at y 24, 50 and 76.
-CheckItems :: (items: []ContextMenuItem) {
+CheckItems :: (items: []ContextMenu.ContextMenuItem) {
     items[0].id = 21
     items[0].label = "Zoom In"
     items[0].accelerator = "Shift+Ctrl+T"
@@ -232,24 +232,24 @@ CheckItems :: (items: []ContextMenuItem) {
 
 #program_export
 CheckFrame :: () -> s32 {
-    items: [3]ContextMenuItem
+    items: [3]ContextMenu.ContextMenuItem
     CheckItems(items[0:3])
-    props: ContextMenuProps = .{.key = cast(u64)33, .open = check_open, .x = 20.0, .y = 20.0}
+    props: ContextMenu.Props = .{.key = cast(u64)33, .open = check_open, .x = 20.0, .y = 20.0}
     TreeStart(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 320.0, 200.0})
-    result: ContextMenuResult = ContextMenu(TestSession(), props, items[0:3])
+    result: ContextMenu.ContextMenuResult = ContextMenu.Draw(TestSession(), props, items[0:3])
     if !TreeFinish(TestSession()) { return -1 }
     if check_phase == 0 {
-        bounds: Rectangle = ContextMenuBounds(items[0:3], 20.0, 20.0,
+        bounds: Rectangle = ContextMenu.ContextMenuBounds(items[0:3], 20.0, 20.0,
             Rectangle.{0.0, 0.0, 320.0, 200.0})
         if bounds.width != 211.0 || bounds.height != 86.0 { return -2 }
         // Without the accelerator the rows fit the minimum width, and
         // without check rows labels keep the plain inset.
-        plain: [3]ContextMenuItem
+        plain: [3]ContextMenu.ContextMenuItem
         CheckItems(plain[0:3])
         plain[0].accelerator = ""
-        if ContextMenuBounds(plain[0:3], 20.0, 20.0, Rectangle.{0.0, 0.0, 320.0, 200.0}).width != 168.0 { return -3 }
+        if ContextMenu.ContextMenuBounds(plain[0:3], 20.0, 20.0, Rectangle.{0.0, 0.0, 320.0, 200.0}).width != 168.0 { return -3 }
         // Positional initializers keep their meaning.
-        positional: ContextMenuItem = .{4, "Old", true, false}
+        positional: ContextMenu.ContextMenuItem = .{4, "Old", true, false}
         if positional.id != 4 || !positional.disabled || positional.accelerator != "" ||
         positional.checkable || positional.checked { return -4 }
         check_open = true
@@ -309,7 +309,7 @@ main :: () -> s32 {
         expected += 1
     }
     // A wider row widens the panel past its minimum.
-    wide: [6]ContextMenuItem
+    wide: [6]ContextMenu.ContextMenuItem
     index: s32 = 0
     while index < 6 {
         wide[index].id = index + 1
@@ -317,12 +317,12 @@ main :: () -> s32 {
         wide[index].inline = true
         index += 1
     }
-    bounds: Rectangle = ContextMenuBounds(wide[0:6], 0.0, 0.0,
+    bounds: Rectangle = ContextMenu.ContextMenuBounds(wide[0:6], 0.0, 0.0,
         Rectangle.{0.0, 0.0, 640.0, 480.0})
     if bounds.width != 318.0 || bounds.height != 42.0 { return 300 }
     // A phone-scale menu keeps its rows, text insets and panel together,
     // including the clamped origin at the edge of the view.
-    scaled := ContextMenuBounds(wide[0:6], 600.0, 400.0,
+    scaled := ContextMenu.ContextMenuBounds(wide[0:6], 600.0, 400.0,
         Rectangle.{0.0, 0.0, 640.0, 480.0}, 2.0)
     if scaled.width != 636.0 || scaled.height != 84.0 { return 301 }
     if scaled.x != 4.0 || scaled.y != 396.0 { return 302 }

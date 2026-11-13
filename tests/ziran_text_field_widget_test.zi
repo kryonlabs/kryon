@@ -2,14 +2,12 @@
 #import "widget_test_session"
 
 #import "geometry"
-#import "layout"
-#import "layout_props"
+Layout :: #import "kryon/layout";
+TextField :: #import "kryon/text_field";
 #import "paint_queue"
 #import "semantic"
-#import "textfield"
 #import "text_input"
 #import "key_input"
-#import "text_input_props"
 #import "tree"
 #import "tree_draw"
 #import "tree_input"
@@ -84,7 +82,7 @@ Frame :: () -> s32 {
     frame_composition: CompositionState = .{.active = ime_active, .cursor = ime_cursor,
         .selection_length = ime_selection_length}
     frame_composition.text = TextView(frame_composition_text[:frame_composition_count])
-    props: TextFieldProps
+    props: TextField.Props
     props.key = cast(u64)77
     props.bounds = Rectangle.{20.0, 20.0, 220.0, 36.0}
     props.value = TextView(frame_value[:frame_value_count])
@@ -181,7 +179,7 @@ Frame :: () -> s32 {
     }
     if phase == 25 || phase == 26 { props.input.escape = true }
     BeginFrame(TestSession(), cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
-    result: TextFieldResult = TextField(TestSession(), props)
+    result: TextField.Result = TextField.Draw(TestSession(), props)
     if EndFrame(TestSession()) != cast(FrameStatus)FrameOk || result.node != 1 ||
     TreeNodeAt(TestSession(), result.node).semantic_label != "Name" ||
     TreeNodeAt(TestSession(), result.node).semantic_kind !=
@@ -353,12 +351,12 @@ number_focused: bool;
 number_blur: bool;
 
 NumberFrame :: () -> bool {
-    props: TextFieldProps = .{.key = cast(u64)78, .bounds = Rectangle.{20.0, 20.0, 120.0, 36.0},
+    props: TextField.Props = .{.key = cast(u64)78, .bounds = Rectangle.{20.0, 20.0, 120.0, 36.0},
         .value = "1250", .cursor = number_cursor, .anchor = number_anchor,
         .focused = number_focused, .focus_id = 78, .numeric = true}
     props.input.blur = number_blur
     BeginFrame(number_session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
-    result := TextField(number_session, props)
+    result := TextField.Draw(number_session, props)
     number_cursor = result.cursor
     number_anchor = result.anchor
     number_focused = result.focused
@@ -396,7 +394,7 @@ NumberTap :: () -> s32 {
 // Layout moves the hit target and paint together, including drag selection.
 PlacedField :: () -> s32 {
     session := SessionOpen()
-    props: TextFieldProps = .{.key = 91, .bounds = .{0.0, 0.0, 200.0, 32.0},
+    props: TextField.Props = .{.key = 91, .bounds = .{0.0, 0.0, 200.0, 32.0},
         .value = "abcdef", .label = "Placed field", .cursor = 6, .anchor = 6}
     step: s32 = 0
     while step < 3 {
@@ -404,8 +402,8 @@ PlacedField :: () -> s32 {
         if step == 2 { TreePointerUpdate(session, .{80.0, 76.0, true, false, false}) }
         PaintClear(session)
         TreeStart(session, 1, .{0.0, 0.0, 400.0, 300.0})
-        column := Column(session, .{.key = 90, .bounds = .{40.0, 60.0, 240.0, 150.0}})
-        field := TextField(session, props)
+        column := Layout.Draw(session, .{.key = 90, .bounds = .{40.0, 60.0, 240.0, 150.0}})
+        field := TextField.Draw(session, props)
         if !End(session) || !TreeFinish(session) { return 1 }
         target := TreeNodeAt(session, field.node).bounds
         if target.x != 40.0 || target.y != 60.0 { return 2 }
@@ -433,32 +431,32 @@ PlacedField :: () -> s32 {
 main :: () -> s32 {
     // Editing moves by user-perceived characters; byte ranges remain public.
     complex := "é👨‍👩‍👧‍👦👍🏽🇵🇾"
-    if TextFieldNext(complex, 0) != 3 || TextFieldNext(complex, 3) != 28 ||
-    TextFieldPrevious(complex, 36) != 28 || TextFieldPrevious(complex, 44) != 36 {
+    if TextField.TextFieldNext(complex, 0) != 3 || TextField.TextFieldNext(complex, 3) != 28 ||
+    TextField.TextFieldPrevious(complex, 36) != 28 || TextField.TextFieldPrevious(complex, 44) != 36 {
         return 3
     }
     // max_codepoints and secure-display mapping retain scalar semantics.
-    if TextFieldCodepoints("é") != 2 || TextFieldByteAfter("é", 1) != 1 { return 4 }
-    edit_props: TextFieldProps
+    if TextField.TextFieldCodepoints("é") != 2 || TextField.TextFieldByteAfter("é", 1) != 1 { return 4 }
+    edit_props: TextField.Props
     edit_props.value = complex
     edit_props.input.backspace = true
-    edit := TextFieldEditFor(edit_props, 28, 28)
+    edit := TextField.TextFieldEditFor(edit_props, 28, 28)
     if !edit.changed || edit.start != 3 || edit.end != 28 { return 5 }
     edit_props.input.backspace = false
     edit_props.input.delete_forward = true
-    edit = TextFieldEditFor(edit_props, 28, 28)
+    edit = TextField.TextFieldEditFor(edit_props, 28, 28)
     if !edit.changed || edit.start != 28 || edit.end != 36 { return 6 }
     // A numeric field takes digits only, typed, pasted or replaced whole.
-    number_props: TextFieldProps = .{.numeric = true, .value = "12", .max_codepoints = 4}
-    if !TextFieldReplacementAllowed(number_props, 2, 2, "34") ||
-    TextFieldReplacementAllowed(number_props, 2, 2, "3a") ||
-    TextFieldReplacementAllowed(number_props, 0, 2, "-5") ||
-    TextFieldReplacementAllowed(number_props, 2, 2, "345") ||
-    !TextFieldReplacementAllowed(number_props, 0, 2, "") { return 7 }
+    number_props: TextField.Props = .{.numeric = true, .value = "12", .max_codepoints = 4}
+    if !TextField.TextFieldReplacementAllowed(number_props, 2, 2, "34") ||
+    TextField.TextFieldReplacementAllowed(number_props, 2, 2, "3a") ||
+    TextField.TextFieldReplacementAllowed(number_props, 0, 2, "-5") ||
+    TextField.TextFieldReplacementAllowed(number_props, 2, 2, "345") ||
+    !TextField.TextFieldReplacementAllowed(number_props, 0, 2, "") { return 7 }
     number_props.input.text = "x"
-    if TextFieldEditFor(number_props, 2, 2).changed { return 8 }
+    if TextField.TextFieldEditFor(number_props, 2, 2).changed { return 8 }
     number_props.input.text = "7"
-    if !TextFieldEditFor(number_props, 2, 2).changed { return 9 }
+    if !TextField.TextFieldEditFor(number_props, 2, 2).changed { return 9 }
     index: s32 = 0
     while index < 27 {
         SetCompositionPhase(index)
@@ -473,23 +471,23 @@ main :: () -> s32 {
     // An opt-in clear button appears for text, returns one complete edit and
     // disappears when the caller applies it. The field keeps keyboard focus.
     clear_session := SessionOpen()
-    clear_props: TextFieldProps = .{.key = 90, .bounds = Rectangle.{10.0, 10.0, 240.0, 48.0},
+    clear_props: TextField.Props = .{.key = 90, .bounds = Rectangle.{10.0, 10.0, 240.0, 48.0},
         .value = "Find me", .clear_label = "Clear search"}
     TreeStart(clear_session, 1, Rectangle.{0.0, 0.0, 300.0, 160.0})
-    unused TextField(clear_session, clear_props)
+    unused TextField.Draw(clear_session, clear_props)
     if !TreeFinish(clear_session) { return 40 }
     clear_node := TreeHitAt(clear_session, 225.0, 34.0)
     if TreeNodeAt(clear_session, clear_node).kind != WidgetKindButton { return 41 }
     TreePointerUpdate(clear_session, PointerFrame.{225.0, 34.0, true, true, true})
     TreeStart(clear_session, 1, Rectangle.{0.0, 0.0, 300.0, 160.0})
-    cleared := TextField(clear_session, clear_props)
+    cleared := TextField.Draw(clear_session, clear_props)
     if !TreeFinish(clear_session) { return 42 }
     if !cleared.edit.changed || cleared.edit.start != 0 || cleared.edit.end != 7 ||
     cleared.edit.replacement != "" || !cleared.focused || cleared.cursor != 0 ||
     cleared.anchor != 0 || cleared.scroll_x != 0 { return 43 }
     clear_props.value = ""
     TreeStart(clear_session, 1, Rectangle.{0.0, 0.0, 300.0, 160.0})
-    unused TextField(clear_session, clear_props)
+    unused TextField.Draw(clear_session, clear_props)
     if !TreeFinish(clear_session) { return 44 }
     if TreeNodeAt(clear_session, TreeHitAt(clear_session, 225.0, 34.0)).kind !=
     WidgetKindTextField { return 45 }
@@ -510,19 +508,19 @@ OwnedField :: () -> s32 {
     bytes: [12]u8
     bytes[0] = cast(u8)65; bytes[1] = cast(u8)0xc3
     bytes[2] = cast(u8)0xa9; bytes[3] = cast(u8)66
-    state := TextFieldState.{.bytes = bytes[:], .length = 4,
+    state := TextField.State.{.bytes = bytes[:], .length = 4,
         .cursor = 3, .anchor = 1, .focused = true}
-    props: TextFieldProps = .{.key = cast(u64)991,
+    props: TextField.Props = .{.key = cast(u64)991,
         .bounds = Rectangle.{20.0, 20.0, 220.0, 36.0}, .label = "Owned"}
     props.input.text = "Q"
     props.input.focus = true
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
-    edited := TextField(session, TextFieldStateProps(state, props))
+    edited := TextField.Draw(session, TextField.StateProps(state, props))
     if !edited.edit.changed { return 31 }
     if edited.edit.start != 1 { return 32 }
     if edited.edit.end != 3 { return 33 }
     if edited.edit.replacement != "Q" { return 34 }
-    if !TextFieldStateApplyResult(*state, edited) { return 21 }
+    if !TextField.StateApplyResult(*state, edited) { return 21 }
     if TextView(bytes[:state.length]) != "AQB" { return 22 }
     if state.cursor != 2 { return 23 }
     if state.anchor != 2 { return 24 }
@@ -535,19 +533,19 @@ OwnedField :: () -> s32 {
     }
     if !kept { return 26 }
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 1 }
-    props.input = TextFieldInput.{.left = true, .shift = true, .commit = true}
+    props.input = TextField.Input.{.left = true, .shift = true, .commit = true}
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
-    edited = TextField(session, TextFieldStateProps(state, props))
+    edited = TextField.Draw(session, TextField.StateProps(state, props))
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 3 }
-    if !TextFieldStateApplyResult(*state, edited) || state.cursor != 1 ||
+    if !TextField.StateApplyResult(*state, edited) || state.cursor != 1 ||
         state.anchor != 2 || !edited.committed || TextView(bytes[:state.length]) != "AQB" {
         return 4
     }
-    props.input = TextFieldInput.{.blur = true}
+    props.input = TextField.Input.{.blur = true}
     BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 300.0, 100.0})
-    edited = TextField(session, TextFieldStateProps(state, props))
+    edited = TextField.Draw(session, TextField.StateProps(state, props))
     if EndFrame(session) != cast(FrameStatus)FrameOk { return 5 }
-    if !TextFieldStateApplyResult(*state, edited) || state.focused { return 6 }
+    if !TextField.StateApplyResult(*state, edited) || state.focused { return 6 }
     unused SessionClose(session)
     return 0
 }
@@ -558,14 +556,14 @@ OwnedField :: () -> s32 {
 PasswordKeyboard :: () -> s32 {
     session := SessionOpen()
     bytes: [32]u8
-    state := TextFieldState.{.bytes = bytes[:], .focused = true}
-    if !TextFieldStateApplyEdit(*state, TextFieldEdit.{.changed = true,
+    state := TextField.State.{.bytes = bytes[:], .focused = true}
+    if !TextField.StateApplyEdit(*state, TextField.Edit.{.changed = true,
         .replacement = "Aé🔑z"}) { return 1 }
-    props: TextFieldProps = .{.key = 992, .bounds = .{20.0, 20.0, 220.0, 36.0},
+    props: TextField.Props = .{.key = 992, .bounds = .{20.0, 20.0, 220.0, 36.0},
         .label = "Secret", .secure = true, .display_value = "••••"}
     step: s32 = 0
     while step < 14 {
-        props.input = TextFieldInput.{}
+        props.input = TextField.Input.{}
         if step == 0 { props.input.focus = true }
         if step == 1 || step == 4 || step == 9 || step == 12 {
             // A host may supply typed text along with the shortcut. It must
@@ -581,7 +579,7 @@ PasswordKeyboard :: () -> s32 {
         if step == 10 { props.input = TextFieldInputFor(KeyBackspace, 0, "") }
         if step == 13 { props.input = TextFieldInputFor(KeyDelete, 0, "") }
         BeginFrame(session, 1, .{0.0, 0.0, 300.0, 100.0})
-        result := TextField(session, TextFieldStateProps(state, props))
+        result := TextField.Draw(session, TextField.StateProps(state, props))
         if result.clipboard_write || result.clipboard_text != "" { return 3 }
         if step == 1 || step == 2 || step == 3 || step == 4 {
             if result.cursor != 8 || result.anchor != 0 || result.edit.changed { return 4 }
@@ -601,7 +599,7 @@ PasswordKeyboard :: () -> s32 {
         if !TreeNodeAt(session, result.node).secure { return 8 }
         hidden: [32]u8
         if TreeTextRange(session, result.node, 0, state.length, hidden[:]) != "" { return 9 }
-        if !TextFieldStateApplyResult(*state, result) { return 11 }
+        if !TextField.StateApplyResult(*state, result) { return 11 }
         if (step == 7 || step == 10 || step == 13) && state.length != 0 { return 12 }
         step += 1
     }

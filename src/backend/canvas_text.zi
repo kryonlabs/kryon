@@ -7,7 +7,7 @@
 #import "page_paint"
 #import "page_texture"
 
-#if #defined(PLATFORM_WEB) {
+#if OS == .WEB {
     c :: #system_library "c";
     browser :: #system_library "env";
     FontAllocate :: (size: usize) -> *void #foreign c "malloc";

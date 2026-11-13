@@ -6,7 +6,7 @@
 #import "tree"
 #import "tree_draw"
 #import "frame_input_provider"
-Probe :: #import "app";
+Probe :: #import "snapshot_app";
 #if #defined(PLATFORM_WEB) {
     Host :: #import "canvas_run";
     #import "canvas_host"
@@ -140,7 +140,7 @@ Step :: (session: Session, flags: u8, focused: bool = true, legacy: s32 = 0,
     #if #defined(PLATFORM_WEB) {
         drawn = Host.DrawCanvasFrame(session, CanvasViewport())
     } else {
-        drawn = Host.DrawFrame(session)
+        drawn = Host.DrawFrame(session, Probe.Frame)
     }
     return drawn != fail && Probe.failure == 0 && !CaptureFrameInput(session).available
 }

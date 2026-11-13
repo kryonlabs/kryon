@@ -1,3 +1,4 @@
+Overlay :: #import "overlay";
 // A context menu: a small list of commands that opens where the pointer was
 // when the secondary button was released. Like Dropdown, the caller retains
 // `open` and the position; the menu reports the command chosen and when it
@@ -30,7 +31,7 @@ ContextMenuItem :: struct {
     checked: bool
 }
 
-ContextMenuProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     class_name: s32
@@ -53,10 +54,9 @@ ContextMenuResult :: struct {
 
 #if #defined(KRYON_HOSTED_UI) {
     host_api :: #system_library "host_api";
-    ContextMenuHostedHost :: (session: Session, props: ContextMenuProps,
+    ContextMenuHostedHost :: (session: Session, props: Props,
         items: []ContextMenuItem) -> ContextMenuResult #foreign host_api;
-    #program_export
-    ContextMenu :: (session: Session, props: ContextMenuProps,
+        Draw :: (session: Session, props: Props,
         items: []ContextMenuItem) -> ContextMenuResult {
         return ContextMenuHostedHost(session, props, items)
     }
@@ -67,8 +67,6 @@ ContextMenuResult :: struct {
     #import "font_metrics"
     #import "geometry"
     #import "overlay_behavior"
-    #import "overlay_props"
-    #import "overlay"
     #import "paint_queue"
     #import "semantic"
     #import "svg_icon_behavior"
@@ -261,7 +259,7 @@ ContextMenuResult :: struct {
 
     // Draws the panel holding the items under parent. The rows whose
     // submenus are open, listed in open, stay highlighted.
-    ContextMenuLevel :: (session: Session, props: ContextMenuProps, items: []ContextMenuItem,
+    ContextMenuLevel :: (session: Session, props: Props, items: []ContextMenuItem,
         key: u64, parent: s32, panel: Rectangle, panel_node: s32, open: []s32) {
         fill: Color = StyleTokenColorOr("card", ColorFromPacked(Theme.CurrentSurface()))
         border: Color = StyleTokenColorOr("border", ColorFromPacked(Theme.CurrentBorder()))
@@ -382,8 +380,7 @@ ContextMenuResult :: struct {
         End(session)
     }
 
-    #program_export
-    ContextMenu :: (session: Session, props: ContextMenuProps,
+        Draw :: (session: Session, props: Props,
         items: []ContextMenuItem) -> ContextMenuResult {
         result: ContextMenuResult
         result.open = props.open
@@ -409,7 +406,7 @@ ContextMenuResult :: struct {
             while index < cast(s32)items.count {
                 item: ContextMenuItem = items[index]
                 if !item.separator {
-                    panel_key: u64 = OverlayPanelKey()
+                    panel_key: u64 = Overlay.OverlayPanelKey()
                     if item.parent != 0 { panel_key = ContextMenuPanelKey(item.parent) }
                     previous_panel: s32 = TreePreviousCommitted(session, previous_overlay,
                         panel_key, WidgetKindCustom)
@@ -481,13 +478,13 @@ ContextMenuResult :: struct {
             keep = next
             level += 1
         }
-        overlay_props: DismissibleOverlayProps
+        overlay_props: Overlay.Props
         overlay_props.key = ContextMenuOverlayKey(key)
         overlay_props.id = props.id
         overlay_props.class_name = props.class_name
         overlay_props.bounds = panels[0]
         overlay_props.keep_bounds = keep
-        overlay: DismissibleOverlayResult = DismissibleOverlay(session, overlay_props)
+        overlay: Overlay.DismissibleOverlayResult = Overlay.Draw(session, overlay_props)
         if overlay.closed {
             result.open = false
             result.closed = true

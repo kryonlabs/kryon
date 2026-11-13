@@ -1,10 +1,10 @@
+TextSchema :: #import "text_props";
 #import "session"
-#import "text_props"
 
 // Text calls the painter with its props and frees a fresh props.text after
 // the call, so every installed painter only reads its strings.
 TextSelectionPainter :: #type (session: Session, node: s32,
-    props: TextProps, prepared: PreparedText) -> void #reads;
+    props: TextSchema.Props, prepared: TextSchema.PreparedText) -> void #reads;
 selection_painter: TextSelectionPainter;
 selection_painter_ready: bool;
 TextSelectionActivity :: #type (session: Session) -> bool;
@@ -16,8 +16,8 @@ TextSelectionInstall :: (painter: TextSelectionPainter) {
     selection_painter_ready = true
 }
 
-TextSelectionPresent :: (session: Session, node: s32, props: TextProps,
-    prepared: PreparedText) -> bool {
+TextSelectionPresent :: (session: Session, node: s32, props: TextSchema.Props,
+    prepared: TextSchema.PreparedText) -> bool {
     if !selection_painter_ready {
         return false
     }

@@ -2,7 +2,10 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Reorder :: #import "kryon/reorder";
+Text :: #import "kryon/text";
+#import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -45,17 +48,17 @@ order: [3]s32 = .{0, 1, 2};
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Reorder", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Reorder", .size = 23})
     disabled := example_input.disabled
 
-    items: [3]ReorderItem
+    items: [3]Reorder.ReorderItem
     for index: 0..2 {
         items[index].id = order[index] + 10
         items[index].bounds = GalleryBounds(Rectangle.{24.0, 64.0 + cast(float32)index * 56.0, 432.0, 44.0})
-        Text(session, TextProps.{.bounds = GalleryBounds(Rectangle.{64.0, 76.0 + cast(float32)index * 56.0, 360.0, 36.0}), .text = ifx order[index] == 0 then "Morning walk" else ifx order[index] == 1 then "Read a chapter" else "Take a break"})
+        Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{64.0, 76.0 + cast(float32)index * 56.0, 360.0, 36.0}), .text = ifx order[index] == 0 then "Morning walk" else ifx order[index] == 1 then "Read a chapter" else "Take a break"})
     }
-    moved := Reorder(session, ReorderList.{.id = 10, .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 200.0}), .handle_width = 28}, items[:])
+    moved := Reorder.Draw(session, Reorder.Props.{.id = 10, .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 200.0}), .handle_width = 28}, items[:])
     if moved.committed != 0 && moved.from_index >= 0 && moved.to_index >= 0 && moved.from_index < 3 && moved.to_index < 3 {
         saved := order[moved.from_index]
         at := moved.from_index

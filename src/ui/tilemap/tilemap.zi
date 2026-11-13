@@ -1,3 +1,5 @@
+Box :: #import "box";
+Image :: #import "image";
 // TileMap: the 2D node for board and tile games. It draws a grid of square
 // cells as layers of pictures, fitted and centred in its bounds, and reports
 // where the grid landed so a game can place overlays or find the cell under
@@ -14,12 +16,8 @@
 #import "session"
 #import "geometry"
 #import "drawing_props"
-#import "image_props"
-#import "kryon/image_widget"
-#import "box_props"
-#import "box"
 
-TileMapProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     columns: s32
@@ -86,7 +84,7 @@ TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32, pixel_snap: bool = fa
 
 #if #defined(KRYON_HOSTED_UI) {
     host_api :: #system_library "host_api";
-    TileMapHostedHost :: (session: Session, props: TileMapProps) -> TileMapResult #foreign host_api;
+    TileMapHostedHost :: (session: Session, props: Props) -> TileMapResult #foreign host_api;
     AppHost :: #import "app_context";
 }
 
@@ -94,7 +92,7 @@ TileMapFit :: (bounds: Rectangle, columns: s32, rows: s32, pixel_snap: bool = fa
 // call. A larger map is drawn cell by cell.
 TILE_MAP_HOSTED_LIMIT :: 1024
 
-TileMap :: (session: Session, props: TileMapProps) -> TileMapResult {
+Draw :: (session: Session, props: Props) -> TileMapResult {
     grid := TileMapFit(props.bounds, props.columns, props.rows, props.pixel_snap)
     if grid.cell <= 0.0 { return grid }
     #if #defined(KRYON_HOSTED_UI) {
@@ -111,7 +109,7 @@ TileMap :: (session: Session, props: TileMapProps) -> TileMapResult {
         }
     }
     if props.fill.a != cast(u8)0 {
-        unused Box(session, BoxProps.{.key = props.key, .bounds = grid.board, .fill = props.fill})
+        unused Box.Draw(session, Box.Props.{.key = props.key, .bounds = grid.board, .fill = props.fill})
     }
     cells := props.columns * props.rows
     for layer: cast(s32)0..props.layer_count - 1 {
@@ -124,9 +122,9 @@ TileMap :: (session: Session, props: TileMapProps) -> TileMapResult {
             for sharp: props.nearest_tiles {
                 if tile == sharp { nearest = true; break }
             }
-            Image(session, ImageProps.{.key = WidgetPartKey(props.key, index), .asset_path = props.tiles[tile],
+            Image.Draw(session, Image.Props.{.key = WidgetPartKey(props.key, index), .asset_path = props.tiles[tile],
                     .alt_text = ifx cast(s64)tile < props.names.count then props.names[tile] else props.label,
-                    .bounds = TileMapCell(grid, at), .fit = ImageFit.ImageFitContain, .smooth = !nearest})
+                    .bounds = TileMapCell(grid, at), .fit = Image.ImageFit.ImageFitContain, .smooth = !nearest})
         }
     }
     return grid

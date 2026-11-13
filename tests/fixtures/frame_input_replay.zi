@@ -4,9 +4,8 @@
 #import "session"
 #import "tree"
 #import "tree_draw"
-#import "textfield"
+TextField :: #import "kryon/text_field";
 #import "text_input"
-#import "text_input_props"
 #import "widget_kind"
 #import "widget_key"
 
@@ -31,18 +30,18 @@ RememberComposition :: (state: CompositionState) {
     for byte: 0..ime_length - 1 { ime_bytes[byte] = state.text[byte] }
 }
 
-Editor :: (input: FrameInput) -> TextFieldResult {
-    props: TextFieldProps
+Editor :: (input: FrameInput) -> TextField.Result {
+    props: TextField.Props
     props.key = 20; props.focus_id = 20; props.focused = true
     props.bounds = .{20.0, 20.0, input.width - 40.0, 36.0}
     props.value = TextView(value[:length]); props.label = "Replay editor"
     props.cursor = cursor; props.anchor = anchor; props.composition.active = ime_active; props.composition.cursor = ime_cursor
     props.composition.selection_length = ime_selection; props.composition.text = TextView(ime_bytes[:ime_length])
     props.input = FrameInputField(input)
-    return TextField(session, props)
+    return TextField.Draw(session, props)
 }
 
-ApplyEdit :: (edit: TextFieldEdit) -> bool {
+ApplyEdit :: (edit: TextField.Edit) -> bool {
     if !edit.changed { return true }
     next: s32 = length - (edit.end - edit.start) + cast(s32)edit.replacement.count
     if edit.start < 0 || edit.end < edit.start || edit.end > length || next > 256 { return false }
@@ -64,7 +63,7 @@ Frame :: () -> s32 {
     input: FrameInput = PollFrameInput()
     if !FrameInputApply(session, input) { return -1 }
     BeginFrame(session, 1, .{0.0, 0.0, input.width, input.height})
-    result: TextFieldResult = Editor(input)
+    result: TextField.Result = Editor(input)
     cursor = result.cursor; anchor = result.anchor; RememberComposition(result.composition)
     if input.width == 13.0 {
         TreeSubmitCurrent(session, 99, WidgetKindButton, .{})

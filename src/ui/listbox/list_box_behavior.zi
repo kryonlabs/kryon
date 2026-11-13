@@ -2,6 +2,7 @@
 #import "geometry"
 #import "style"
 #import "control_props"
+#import "list_box_props"
 
 using StyleField;
 
@@ -104,31 +105,6 @@ ListBoxRevealScroll :: (selected: s32, scroll: s32, row_height: s32,
     return ListBoxClampScroll(scroll, max_scroll)
 }
 
-// key: 1 home, 2 end, 3 up, 4 down.
-#program_export
-ListBoxKeyNone :: () -> s32 {
-    return 0
-}
-
-#program_export
-ListBoxKeyHome :: () -> s32 {
-    return 1
-}
-
-#program_export
-ListBoxKeyEnd :: () -> s32 {
-    return 2
-}
-
-#program_export
-ListBoxKeyUp :: () -> s32 {
-    return 3
-}
-
-#program_export
-ListBoxKeyDown :: () -> s32 {
-    return 4
-}
 #program_export
 ListBoxNavigate :: (selected: s32, item_count: s32, key: s32,
     scroll: s32, row_height: s32, viewport_height: float32,

@@ -7,7 +7,8 @@
 #import "app_protocol"
 #import "session"
 #import "geometry"
-#import "text_input_props"
+TextArea :: #import "textarea";
+TextField :: #import "textfield";
 #import "text_input_platform"
 #import "hosted_app"
 #import "media_audio_host"
@@ -54,8 +55,8 @@ AppContext :: struct {
     font: s32
     key: s32
     modifiers: s32
-    input: TextFieldInput
-    area_input: TextAreaInput
+    input: TextField.Input
+    area_input: TextArea.Input
     keyboard: bool
     command: string
     // The context's own copy of the last reply, kept until the next run.

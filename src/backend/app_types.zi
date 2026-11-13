@@ -1,0 +1,15 @@
+Window :: struct {
+    title: string
+    width: s32
+    height: s32
+}
+
+// A frame identifies the session currently being composed. Widgets whose
+// bounds are left at zero use that session's root bounds.
+Frame :: struct {
+    slot: s32
+    epoch: u64
+}
+Draw :: #type (frame: Frame) -> void;
+
+Empty :: (frame: Frame) { unused frame }

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Widgets are named package imports: `Text :: #import "kryon/text"` serves
+  `Text.Draw` and `Text.Props`, and every widget package serves its own
+  `Props` and primary `Draw` with short related names such as `Text.Wrap`,
+  `Dropdown.Option` and `TabBar.Result`. The `Kryon` and `Widgets` facades,
+  the `*_props` and `*_widget` exports and the `TextProps`-style names are
+  removed without aliases. New `flow`, `navigation_bar_config` and
+  `text_selection` exports cover modules the facades served; `Page` serves
+  `Heading` and `ParagraphText`, `ListBox` its navigation keys and
+  `transition` `TransitionFadeColor`. Core, hosts, generated codecs,
+  examples, templates and tests use the package names.
 - Reuse identical GTK cell measurements, retain native raster caches across
   unrelated GLib events, and composite clipped opaque pixels efficiently.
 - Detect unchanged GTK painter surfaces by exact byte comparison instead of

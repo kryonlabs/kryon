@@ -5,8 +5,7 @@ cat > "$work/app.zi" <<'ZI'
 #import "drawing_props"
 #import "geometry"
 #import "layout_behavior"
-#import "layout_props"
-#import "layout"
+Layout :: #import "kryon/layout";
 #import "paint_queue"
 #import "session"
 #import "tree"
@@ -170,10 +169,10 @@ Scale :: () -> s32 {
     while repeat < 2 {
         if BeginFrame(session, cast(u64)7, bounds) !=
             cast(FrameStatus)FrameOk { return 2 }
-        row_props: ColumnProps
+        row_props: Layout.Props
         row_props.key = cast(u64)80
         row_props.bounds = bounds
-        row: LayoutContainer = Row(session, row_props)
+        row: Layout.LayoutContainer = Layout.Row(session, row_props)
         if !row.opened { return 3 }
         child: s32 = -1
         i: s32 = 0

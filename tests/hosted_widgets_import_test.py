@@ -1,4 +1,4 @@
-"""Exercise the hosted aggregate with real provider results, native and portable."""
+"""Exercise hosted widget packages with real provider results, native and portable."""
 import os
 import re
 import subprocess
@@ -16,25 +16,26 @@ subprocess.run([str(ZIRAN), 'bundle', '--project', '--offline', '--root', str(RO
                cwd=ROOT, check=True)
 assert subprocess.check_output([str(ZIRAN), 'run', str(minimal)], cwd=ROOT, text=True).strip() == '0'
 fixture = (ROOT / 'tests/hosted_ui.zi').read_text()
-fixture = re.sub(r'^#import .*\n', '', fixture, flags=re.M)
-fixture = '#import "kryon/Widgets"\n#import "pointer_input"\n#import "toggle_measure"\n' + fixture
-extra = '''    time := TimePicker(session, TimePickerProps.{.value = 71})
+fixture = 'Spinbox :: #import "kryon/spinbox";\nTimePicker :: #import "kryon/time_picker";\n' + fixture
+extra = '''    time := TimePicker.Draw(session, TimePicker.Props.{.value = 71})
     if !time.changed || time.value != 72 { return 26 }
-    spin := Spinbox(session, SpinboxProps.{.value = 13})
+    spin := Spinbox.Draw(session, Spinbox.Props.{.value = 13})
     if !spin.changed || spin.value != 14 { return 27 }
 '''
 fixture = fixture.replace('    return 42', extra + '    return 42')
 source = work / 'hosted_widgets_contract.zi'
 source.write_text(fixture)
 provider = work / 'hosted_widgets_extra.zi'
-provider.write_text('''#import "kryon/Widgets"
+provider.write_text('''#import "session"
+Spinbox :: #import "kryon/spinbox";
+TimePicker :: #import "kryon/time_picker";
 #program_export "TimePickerHostedHost"
-Time :: (session: Session, props: TimePickerProps) -> TimePickerResult {
-    return TimePickerResult.{.value = props.value + 1, .changed = session.slot == 4}
+Time :: (session: Session, props: TimePicker.Props) -> TimePicker.TimePickerResult {
+    return TimePicker.TimePickerResult.{.value = props.value + 1, .changed = session.slot == 4}
 }
 #program_export "SpinboxHostedHost"
-Spin :: (session: Session, props: SpinboxProps) -> SpinboxStepResult {
-    return SpinboxStepResult.{.value = props.value + 1, .changed = session.slot == 4}
+Spin :: (session: Session, props: Spinbox.Props) -> Spinbox.SpinboxStepResult {
+    return Spinbox.SpinboxStepResult.{.value = props.value + 1, .changed = session.slot == 4}
 }
 ''')
 # Reuse the established host contract bindings, adding the two app-required calls.
@@ -59,4 +60,4 @@ native = work / 'c'
 run([ZIRAN, 'build', *options, '--target=c', '--exe', '-o', native, *sources])
 result = subprocess.run([str(native / 'hosted_widgets_contract')], cwd=ROOT)
 assert result.returncode == 42, result.returncode
-print('Hosted Widgets aggregate: actual pointer/widgets including TimePicker and Spinbox passed portable and native C')
+print('Hosted widget packages: actual pointer/widgets including TimePicker and Spinbox passed portable and native C')

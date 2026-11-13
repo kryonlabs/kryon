@@ -1,11 +1,10 @@
+Image :: #import "image";
 #import "drawing_props"
 #import "geometry"
-#import "image_props"
-#import "kryon/image_widget"
 #import "session"
 #import "transition"
 
-using ImageFit;
+using Image.ImageFit;
 host_api :: #system_library "host_api";
 DisposeFrameTexture :: (texture: Texture2D) #foreign host_api;
 CopyFrameTexture :: (texture: Texture2D) -> Texture2D #foreign host_api;
@@ -46,10 +45,10 @@ FrameTransitionAlpha :: (elapsed_seconds: float32,
 
 #program_export
 FrameTransitionImage :: (surface: FrameSurface, bounds: Rectangle,
-    elapsed_seconds: float32, duration_seconds: float32) -> ImageProps {
+    elapsed_seconds: float32, duration_seconds: float32) -> Image.Props {
     alpha := FrameTransitionAlpha(elapsed_seconds, duration_seconds)
     alpha_byte := cast(u32)(alpha * 255.0 + 0.5)
-    image: ImageProps = .{.bounds = bounds, .fit = cast(ImageFit)ImageFitStretch,
+    image: Image.Props = .{.bounds = bounds, .fit = cast(Image.ImageFit)ImageFitStretch,
         .texture = surface.texture}
     // Raylib render targets store rows opposite to normal textures. The
     // negative source height is the host's upright sampling convention.
@@ -68,6 +67,6 @@ FrameTransition :: (session: Session, surface: FrameSurface,
     if !FrameSurfaceValid(surface) { return }
     if bounds.width <= 0.0 || bounds.height <= 0.0 { return }
     if FrameTransitionAlpha(elapsed_seconds, duration_seconds) <= 0.0 { return }
-    Image(session, FrameTransitionImage(surface, bounds,
+    Image.Draw(session, FrameTransitionImage(surface, bounds,
         elapsed_seconds, duration_seconds))
 }

@@ -1,12 +1,15 @@
-using UI :: #import "kryon/Widgets";
+Breadcrumb :: #import "kryon/breadcrumb";
+Text :: #import "kryon/text";
+#import "kryon/geometry"
+#import "kryon/session"
 
 active: s32 = 2;
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    Text(session, TextProps.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Breadcrumb", .font = 28})
+    Text.Draw(session, Text.Props.{.disabled = example_disabled, .key = 1, .bounds = .{viewport.x + 20.0, viewport.y + 16.0, viewport.width - 40.0, 40.0}, .text = "Breadcrumb", .size = 28})
     bounds := Rectangle.{viewport.x + 20.0, viewport.y + 76.0, viewport.width - 40.0, 180.0}
-    items := BreadcrumbItem.[.{.key = 11, .label = "Home"}, .{.key = 12, .label = "Projects"}, .{.key = 13, .label = "Kryon"}]
-    result := Breadcrumb(session, BreadcrumbProps.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, 44.0}, .active_index = active}, items[:])
+    items := Breadcrumb.BreadcrumbItem.[.{.key = 11, .label = "Home"}, .{.key = 12, .label = "Projects"}, .{.key = 13, .label = "Kryon"}]
+    result := Breadcrumb.Draw(session, Breadcrumb.Props.{.disabled = example_disabled, .key = 10, .bounds = .{bounds.x, bounds.y, bounds.width, 44.0}, .active_index = active}, items[:])
     if result.changed { active = result.activated_index }
     return 0
 }

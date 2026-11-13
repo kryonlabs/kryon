@@ -2,8 +2,13 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
-#import "kryon/tag_input"
+Box :: #import "kryon/box";
+TagInput :: #import "kryon/tag_input";
+Text :: #import "kryon/text";
+TextField :: #import "kryon/text_field";
+#import "kryon/drawing_props"
+#import "kryon/key_input"
+#import "kryon/tree_input"
 #import "kryon/input_protocol"
 
 WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
@@ -41,7 +46,7 @@ GalleryBounds :: (bounds: Rectangle) -> Rectangle {
 
 bounds: Rectangle;
 
-tag_state: TagInputState;
+tag_state: TagInput.TagInputState;
 
 
 
@@ -58,22 +63,22 @@ gallery_typed: [128]u8;
 Prepare :: (session: Session, scene: s32) {
     bounds = GalleryBounds(Rectangle.{24.0, 96.0, 432.0, 104.0})
     if !inputs_ready {
-        initial_tags: [3]TagInputTag
+        initial_tags: [3]TagInput.TagInputTag
         initial_tags[0] = .{.id = 11, .text = "design"}
         initial_tags[1] = .{.id = 12, .text = "ziran"}
         initial_tags[2] = .{.id = 13, .text = "desktop"}
-        TagInputStateInit(*tag_state, initial_tags[:], 6)
+        TagInput.TagInputStateInit(*tag_state, initial_tags[:], 6)
         inputs_ready = true
     }
 }
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    gallery_input: TextFieldInput
+    gallery_input: TextField.Input
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TagInput", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "TagInput", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 0
     Prepare(session, scene)
@@ -82,10 +87,10 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         gallery_input_key = KeyboardTake(session)
         gallery_input = TextFieldInputFor(gallery_input_key, KeyboardModifiers(session), TypedTextTake(session, gallery_typed[:]))
     }
-    tag_style := TagInputDefaultStyle()
+    tag_style := TagInput.TagInputDefaultStyle()
     tag_style.width = bounds.width
     tag_style.height = bounds.height
-    unused TagInput(session, TagInputProps.{.key = 600, .bounds = bounds,
+    unused TagInput.Draw(session, TagInput.Props.{.key = 600, .bounds = bounds,
         .label = "Project tags", .placeholder = "Add tag", .max_tags = 6,
         .allow_duplicates = false, .trim_spaces = true, .separator = ",",
         .disabled = disabled, .input = gallery_input,

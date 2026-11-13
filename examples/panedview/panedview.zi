@@ -2,7 +2,10 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+PanedView :: #import "kryon/paned_view";
+Text :: #import "kryon/text";
+#import "kryon/drawing_props"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -45,14 +48,14 @@ split: s32 = 210;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "PanedView", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "PanedView", .size = 23})
     disabled := example_input.disabled
 
-    panes := PanedView(session, PanedViewProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .split = split, .has_split = true, .vertical = true, .disabled = disabled})
+    panes := PanedView.Draw(session, PanedView.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .split = split, .has_split = true, .vertical = true, .disabled = disabled})
     split = panes.split
-    unused Box(session, BoxProps.{.bounds = panes.first, .fill = .{230, 239, 242, 255}, .radius = 8.0})
-    unused Box(session, BoxProps.{.bounds = panes.second, .fill = .{222, 237, 235, 255}, .radius = 8.0})
+    unused Box.Draw(session, Box.Props.{.bounds = panes.first, .fill = .{230, 239, 242, 255}, .radius = 8.0})
+    unused Box.Draw(session, Box.Props.{.bounds = panes.second, .fill = .{222, 237, 235, 255}, .radius = 8.0})
     return 0
 }
 

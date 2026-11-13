@@ -1,14 +1,12 @@
-#import "box"
+TextField :: #import "textfield";
+Box :: #import "box";
+Text :: #import "text";
 #import "drawing_props"
 #import "geometry"
 #import "session"
 #import "style"
 #import "style_sheet"
-#import "textfield"
 #import "text_input"
-#import "text_input_props"
-#import "text_props"
-#import "kryon/text_widget"
 #import "theme"
 #import "tree"
 #import "control_props"
@@ -17,7 +15,7 @@
 using StyleField;
 using WidgetKind;
 
-InlineEditProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     id: s32
@@ -28,7 +26,7 @@ InlineEditProps :: struct {
     activate: bool
     focus_visible: bool
     composition: CompositionState
-    input: TextFieldInput
+    input: TextField.Input
     height: float32
     font_size: float32
 }
@@ -48,7 +46,7 @@ InlineEditState :: struct {
 
 InlineEditResult :: struct {
     node: s32
-    field: TextFieldResult
+    field: TextField.Result
     editing: bool
     committed: bool
     cancelled: bool
@@ -86,7 +84,7 @@ InlineEditCopyBytes :: (state: *InlineEditState) {
 
 #program_export
 InlineEditApply :: (state: *InlineEditState,
-    props: InlineEditProps) -> InlineEditResult {
+    props: Props) -> InlineEditResult {
     result: InlineEditResult
     result.node = -1
     if !state.initialized { state.* = InlineEditStateFor(props.value) }
@@ -158,21 +156,19 @@ InlineEditHostedReply :: struct { state: InlineEditState; result: InlineEditResu
 
 #if #defined(KRYON_HOSTED_UI) {
     inlineedit_host_api :: #system_library "host_api";
-    InlineEditHostedHost :: (session: Session, props: InlineEditProps,
+    InlineEditHostedHost :: (session: Session, props: Props,
         state: InlineEditState) -> InlineEditHostedReply #foreign inlineedit_host_api;
-    #program_export
-    InlineEdit :: (session: Session, props: InlineEditProps,
+        Draw :: (session: Session, props: Props,
     state: *InlineEditState) -> InlineEditResult {
         reply := InlineEditHostedHost(session, props, state.*)
         state.* = reply.state
         return reply.result
     }
 } else {
-    #program_export
-    InlineEdit :: (session: Session, props: InlineEditProps,
+        Draw :: (session: Session, props: Props,
     state: *InlineEditState) -> InlineEditResult { return InlineEditCore(session, props, state, true) }
     #program_export
-    InlineEditCore :: (session: Session, props: InlineEditProps,
+    InlineEditCore :: (session: Session, props: Props,
     state: *InlineEditState, effects: bool) -> InlineEditResult {
     result := InlineEditApply(state, props)
     if !TreeIsBuilding(session) { return result }
@@ -198,11 +194,11 @@ InlineEditHostedReply :: struct { state: InlineEditState; result: InlineEditResu
     face = ResolveInstalledStyleRules(face, StyleControlRoleFacts(StyleKindAny(),
         props.id, props.class_name, 0, 0, 0, 0, ifx state.editing then 4 else 1),
         ifx state.editing then 4 else 1)
-    surface := Box(session, .{.key = props.key+101, .bounds = bounds,
+    surface := Box.Draw(session, .{.key = props.key+101, .bounds = bounds,
             .fill = ColorFromPacked(face.background), .border = ColorFromPacked(face.border), .radius = face.radius})
     TreeSetStyleClass(session, surface, props.class_name)
     if state.editing {
-        field: TextFieldProps
+        field: TextField.Props
         field.key = props.key + 201
         field.bounds = Rectangle.{bounds.x + 6.0, bounds.y, bounds.width - 12.0, height}
         field.value = TextView(state.bytes[:state.length])
@@ -216,16 +212,16 @@ InlineEditHostedReply :: struct { state: InlineEditState; result: InlineEditResu
         field.class_name = props.class_name
         field.composition = props.composition
         field.input.composition_event = props.input.composition_event
-        field_result := ifx effects then TextField(session, field) else TextFieldCore(session, field)
+        field_result := ifx effects then TextField.Draw(session, field) else TextField.TextFieldCore(session, field)
         unused field_result
     } else {
-        text: TextProps
+        text: Text.Props
         text.key = props.key + 301
         text.bounds = bounds
         text.text = ifx state.length == 0 then props.placeholder else TextView(state.bytes[:state.length])
-        text.font = cast(s32)face.font_size
+        text.size = cast(s32)face.font_size
         text.class_name = props.class_name
-        Text(session, text)
+        Text.Draw(session, text)
     }
     TreePopScope(session)
     return result

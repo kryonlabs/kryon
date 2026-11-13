@@ -2,7 +2,11 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Press :: #import "kryon/press";
+Text :: #import "kryon/text";
+#import "kryon/drawing_props"
+#import "kryon/text_align"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -42,7 +46,7 @@ GalleryBounds :: (bounds: Rectangle) -> Rectangle {
 clicks: s32;
 
 Label :: (session: Session, value: string, y: float32 = 76.0) {
-    Text(session, TextProps.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
+    Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
 }
 
 b: Rectangle;
@@ -51,14 +55,14 @@ b: Rectangle;
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Press", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "Press", .size = 23})
     b = Rectangle.{viewport.x + 24.0, viewport.y + 64.0, viewport.width - 48.0, 44.0}
     disabled := example_input.disabled
 
-    Box(session, BoxProps.{.bounds = b, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 6.0})
-    Text(session, TextProps.{.bounds = b, .text = "Press this area", .align = TextAlign.TextAlignCenter})
-    if Press(session, PressProps.{.bounds = b, .label = "Press and hold", .disabled = disabled}).clicked { clicks += 1 }
+    Box.Draw(session, Box.Props.{.bounds = b, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 6.0})
+    Text.Draw(session, Text.Props.{.bounds = b, .text = "Press this area", .align = TextAlign.TextAlignCenter})
+    if Press.Draw(session, Press.Props.{.bounds = b, .label = "Press and hold", .disabled = disabled}).clicked { clicks += 1 }
     Label(session, "Press is an invisible interaction area", 128.0)
     return 0
 }

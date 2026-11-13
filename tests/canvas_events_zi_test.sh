@@ -11,7 +11,8 @@ ziran_dir=$ziran_root
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
-"$bin/zi2c" --no-main --define PLATFORM_WEB --root "$repo/tests" \
+"$bin/zi2c" --no-main --target-os web --target-cpu wasm32 \
+    --define PLATFORM_WEB --root "$repo/tests" \
     --module-path "$repo/tests/page_fake" --module-path "$repo/src/backend" $kryon_ui_args \
     --module-path "$ziran_dir/std" \
     -o "$work/c" "$repo/tests/canvas_events_behavior.zi"

@@ -9,6 +9,24 @@ using HostValueKind;
 
 HOST_FIELD_LIMIT :: 512
 
+HostTypeFlatSame :: (qualified: string, plain: string) -> bool {
+    qualified_at: s64 = 0
+    plain_at: s64 = 0
+    while qualified_at < qualified.count && plain_at < plain.count {
+        if qualified[qualified_at] == cast(u8)46 {
+            qualified_at += 1
+            continue
+        }
+        if qualified[qualified_at] != plain[plain_at] { return false }
+        qualified_at += 1
+        plain_at += 1
+    }
+    while qualified_at < qualified.count && qualified[qualified_at] == cast(u8)46 {
+        qualified_at += 1
+    }
+    return qualified_at == qualified.count && plain_at == plain.count
+}
+
 HostFieldAt :: (value: HostValue, position: s32, name: string) -> s32 {
     count := cast(s32)value.field_count
     if position < count && value.fields[position].name != null &&
@@ -25,8 +43,63 @@ HostFieldAt :: (value: HostValue, position: s32, name: string) -> s32 {
     return -1
 }
 
+// A package body names its own record without an import qualifier while its
+// host names that record through a package import. Keep those two spellings
+// compatible, but do not confuse equally named records from two packages.
+// Container prefixes stay exact.
+HostTypeSame :: (actual: string, expected: string) -> bool {
+    if actual == expected { return true }
+    actual_at: s64 = 0
+    expected_at: s64 = 0
+    while actual_at < actual.count && expected_at < expected.count &&
+    actual[actual_at] == cast(u8)91 && expected[expected_at] == cast(u8)91 {
+        actual_close := actual_at
+        while actual_close < actual.count && actual[actual_close] != cast(u8)93 {
+            actual_close += 1
+        }
+        expected_close := expected_at
+        while expected_close < expected.count && expected[expected_close] != cast(u8)93 {
+            expected_close += 1
+        }
+        if actual_close >= actual.count || expected_close >= expected.count ||
+        actual[actual_at:actual_close + 1] != expected[expected_at:expected_close + 1] {
+            return false
+        }
+        actual_at = actual_close + 1
+        expected_at = expected_close + 1
+    }
+    while actual_at < actual.count && expected_at < expected.count &&
+    actual[actual_at] == cast(u8)42 && expected[expected_at] == cast(u8)42 {
+        actual_at += 1
+        expected_at += 1
+    }
+    actual_leaf := actual_at
+    for index: actual_at..actual.count - 1 {
+        if actual[index] == cast(u8)46 { actual_leaf = index + 1 }
+    }
+    expected_leaf := expected_at
+    for index: expected_at..expected.count - 1 {
+        if expected[index] == cast(u8)46 { expected_leaf = index + 1 }
+    }
+    actual_qualified := actual_leaf != actual_at
+    expected_qualified := expected_leaf != expected_at
+    if actual_qualified && expected_qualified { return false }
+    if actual[actual_leaf:] == expected[expected_leaf:] { return true }
+    if actual_qualified {
+        return HostTypeFlatSame(actual[actual_at:], expected[expected_at:])
+    }
+    if expected_qualified {
+        return HostTypeFlatSame(expected[expected_at:], actual[actual_at:])
+    }
+    return false
+}
+
+HostTypeValid :: (actual: *u8, expected: string) -> bool {
+    return actual != null && HostTypeSame(TextFromCString(actual), expected)
+}
+
 HostScalarValid :: (value: HostValue, type_name: string, kind: s32) -> bool {
-    if value.kind != kind || TextFromCString(value.type_name) != type_name {
+    if value.kind != kind || !HostTypeValid(value.type_name, type_name) {
         return false
     }
     if kind == cast(s32)HostString {
@@ -36,7 +109,7 @@ HostScalarValid :: (value: HostValue, type_name: string, kind: s32) -> bool {
 }
 
 HostArrayValid :: (value: HostValue, type_name: string, count: usize) -> bool {
-    return value.kind == cast(s32)HostArray && TextFromCString(value.type_name) == type_name &&
+    return value.kind == cast(s32)HostArray && HostTypeValid(value.type_name, type_name) &&
     value.length == count && value.elements != null
 }
 
@@ -86,7 +159,7 @@ HostRecordValue :: (type_name: string, fields: []HostField) -> HostValue {
 }
 
 HostRecordValid :: (value: *HostValue, type_name: string) -> bool {
-    return value.kind == cast(s32)HostRecord && TextFromCString(value.type_name) == type_name &&
+    return value.kind == cast(s32)HostRecord && HostTypeValid(value.type_name, type_name) &&
         value.field_count <= cast(usize)HOST_FIELD_LIMIT &&
         (value.field_count == cast(usize)0 || value.fields != null)
 }
@@ -110,7 +183,7 @@ HostFieldSliceValid :: (value: *HostValue, position: s32, name: string,
     field_at := HostFieldAt(value.*, position, name)
     if field_at < 0 { return true }
     field := value.fields[field_at].value
-    if field.kind != cast(s32)HostSlice || TextFromCString(field.type_name) != type_name ||
+    if field.kind != cast(s32)HostSlice || !HostTypeValid(field.type_name, type_name) ||
     field.length > limit || (field.length > cast(usize)0 && field.elements == null) {
         return false
     }

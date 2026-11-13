@@ -8,6 +8,10 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT HUP INT TERM
 
 cp "$repo/src/ui/transition.zi" "$work/transition.zi"
+cp "$repo/src/ui/drawing_props.zi" "$work/drawing_props.zi"
+cp "$repo/src/ui/geometry.zi" "$work/geometry.zi"
+cp "$repo/src/ui/text_align.zi" "$work/text_align.zi"
+cp "$ziran_root/std/math.zi" "$work/math.zi"
 cat > "$work/use_transition.zi" <<'EOF'
 #import "transition"
 
@@ -93,8 +97,7 @@ for input in source ir; do
 package main
 func main() { if UseTransition_Answer() != 42 { panic("wrong transition result") } }
 GO
-            GO111MODULE=off go run "$output/transition.go" \
-                "$output/use_transition.go" "$output/main.go"
+            GO111MODULE=off go run "$output"/*.go
         elif test "$target" = c; then
             "$ziran" build --target=c --root "$work" \
                 -o "$output" "$input_dir/transition.$extension" \
@@ -104,8 +107,7 @@ GO
 int main(void) { return Answer() == 42 ? 0 : 1; }
 C
             ${CC:-cc} -I"$ziran_include" -I"$output" \
-                "$output/transition.c" "$output/use_transition.c" \
-                "$output/main.c" -o "$output/app"
+                "$output"/*.c -o "$output/app"
             "$output/app"
         fi
     done

@@ -1,11 +1,9 @@
 #import "session"
 #import "geometry"
 #import "scroll_device"
-#import "scroll_props"
-#import "scroll"
-#import "textarea"
+Scroll :: #import "kryon/scroll";
+TextArea :: #import "kryon/text_area";
 #import "text_context_menu"
-#import "text_input_props"
 #import "text_touch"
 #import "tree"
 #import "tree_draw"
@@ -52,21 +50,21 @@ Menu :: (session: Session, token: u64, x: float32, y: float32,
     return 0
 }
 
-Frame :: (session: Session, props: *TextAreaProps, page: *s32, page_height: s32,
+Frame :: (session: Session, props: *TextArea.Props, page: *s32, page_height: s32,
     x: float32, y: float32, down: bool, pressed: bool, released: bool) -> TouchFrame {
     result: TouchFrame
     TreePointerUpdate(session, PointerFrame.{x, y, down, pressed, released})
     unused BeginFrame(session, cast(u64)1, PAGE)
     BeginScrollFrame(session, Vector2.{x, y}, pressed, down, released, 0.0,
         cast(float64)now_ms / 1000.0)
-    scroll := Scroll(session, ScrollProps.{.key = cast(u64)5, .bounds = PAGE,
+    scroll := Scroll.Draw(session, Scroll.Props.{.key = cast(u64)5, .bounds = PAGE,
             .content_height = page_height, .scroll_offset = page.*})
     page.* = scroll.scroll_offset
     result.page = scroll.scroll_offset
     if scroll.opened {
         bounds := props.bounds
         props.bounds.y = scroll.content.y + bounds.y
-        edited := TextArea(session, props.*)
+        edited := TextArea.Draw(session, props.*)
         props.bounds = bounds
         props.scroll_y = edited.scroll_y
         props.cursor = edited.cursor
@@ -85,7 +83,7 @@ Frame :: (session: Session, props: *TextAreaProps, page: *s32, page_height: s32,
 #program_export
 main :: () -> s32 {
     session := SessionOpen()
-    props: TextAreaProps = .{.key = cast(u64)77, .focus_id = 77,
+    props: TextArea.Props = .{.key = cast(u64)77, .focus_id = 77,
         .bounds = Rectangle.{20.0, 20.0, 200.0, 100.0}, .value = LONG}
     page: s32 = 0
 
@@ -176,8 +174,8 @@ main :: () -> s32 {
     // tap. A photo before the caret must count toward the reveal, without
     // a new edit or navigation key. Manual readers retain their scroll.
     session = SessionOpen()
-    photo: [1]TextAreaBlock = .[TextAreaBlock.{.start = 2, .height = 120}]
-    props = TextAreaProps.{.key = cast(u64)77, .focus_id = 77,
+    photo: [1]TextArea.Block = .[TextArea.Block.{.start = 2, .height = 120}]
+    props = TextArea.Props.{.key = cast(u64)77, .focus_id = 77,
         .bounds = Rectangle.{20.0, 0.0, 200.0, 190.0},
         .value = "a\nb\nc\nd", .cursor = 7, .anchor = 7, .blocks = photo[:]}
     page = 0

@@ -26,7 +26,7 @@ TagInputApply :: (state: *TagInputState,
 text, selection, scroll, and focus. Initial IDs can be supplied through
 `TagInputStateInit`; newly entered tags receive stable generated IDs.
 
-Commit text on Enter or `TextFieldInput.commit`. A nonempty separator also
+Commit text on Enter or `TextField.Input.commit`. A nonempty separator also
 splits committed and pasted text. Spaces can be trimmed, duplicates rejected,
 and a positive `max_tags` enforced. Backspace on an empty field requests removal
 of the final tag through `field.backspace_on_empty`; explicit removal is by

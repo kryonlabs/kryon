@@ -30,6 +30,7 @@ rlGetActiveFramebuffer :: () -> u32 { return copy_framebuffer }
 #program_export
 rlEnableFramebuffer :: (id: u32) { copy_framebuffer = id }
 
+#if !#defined(RAYLIB_GRAPHICS_HOST) {
 #program_export
 rlDrawRenderBatchActive :: () {}
 
@@ -59,6 +60,7 @@ UnloadImage :: (image: ImagePixels.RaylibGlyphImage) {
 #program_export
 UnloadTexture :: (texture: Texture2D) {
     if texture.id == 900 { copy_disposals += 1 }
+}
 }
 
 #program_export

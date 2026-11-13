@@ -1,6 +1,6 @@
 #import "geometry"
 
-LinkProps :: struct {
+Props :: struct {
     key: u64
     bounds: Rectangle
     class_name: s32

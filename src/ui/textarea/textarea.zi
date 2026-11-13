@@ -1,3 +1,7 @@
+using TextArea :: #import "text_area_props";
+TextField :: #import "textfield";
+Image :: #import "image";
+Text :: #import "text";
 Theme :: #import "theme";
 #import "text_host"
 // Portable compositions can submit the same public widget contract to a
@@ -5,11 +9,9 @@ Theme :: #import "theme";
 // widget behavior, styles and input ownership have one implementation.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "text_input_props"
     host_api :: #system_library "host_api";
-    TextAreaHostedHost :: (session: Session, props: TextAreaProps) -> TextAreaResult #foreign host_api;
-    #program_export
-    TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult { return TextAreaHostedHost(session, props) }
+    TextAreaHostedHost :: (session: Session, props: TextArea.Props) -> TextArea.Result #foreign host_api;
+        Draw :: (session: Session, props: TextArea.Props) -> TextArea.Result { return TextAreaHostedHost(session, props) }
 } else {
 #import "system_clipboard"
 #import "text_context_menu"
@@ -21,20 +23,14 @@ Theme :: #import "theme";
 #import "font_metrics"
 #import "geometry"
 #import "image_behavior"
-#import "image_props"
-#import "kryon/image_widget"
 #import "paint_queue"
 #import "semantic"
 #import "style"
 #import "style_sheet"
 #import "surface"
-#import "textfield"
 #import "text_input"
 #import "text_input_platform"
-#import "text_input_props"
-#import "text_props"
 #import "text_rows"
-#import "kryon/text_widget"
 #import "tree"
 #import "tree_input"
 #import "text_request"
@@ -43,7 +39,7 @@ Grapheme :: #import "std/grapheme";
 Utf8 :: #import "std/utf8";
 
 using SemanticKind;
-using ImageFit;
+using Image.ImageFit;
 using WidgetKind;
 using ButtonTone;
 using ButtonEmphasis;
@@ -70,7 +66,7 @@ TextAreaCaret :: struct {
 }
 
 #program_export
-TextAreaKey :: (session: Session, props: TextAreaProps) -> u64 {
+TextAreaKey :: (session: Session, props: TextArea.Props) -> u64 {
     if props.key != cast(u64)0 { return props.key }
     if props.id > 0 { return cast(u64)cast(u32)props.id }
     return cast(u64)0
@@ -100,7 +96,7 @@ TextAreaDefaultFace :: () -> StyleData {
 }
 
 #program_export
-TextAreaFaceFor :: (props: TextAreaProps,
+TextAreaFaceFor :: (props: TextArea.Props,
     focused: bool) -> StyleFrame {
     state: s32 = cast(s32)ButtonStateNormal
     if focused { state = cast(s32)ButtonStateFocus }
@@ -125,11 +121,11 @@ TextAreaFaceFor :: (props: TextAreaProps,
 // Hidden and strong ranges must be sorted, disjoint and on character
 // boundaries. Any other list is ignored as a whole, as Text ignores invalid
 // strong ranges.
-TextAreaRangesFor :: (value: string, ranges: []TextRange) -> []TextRange {
+TextAreaRangesFor :: (value: string, ranges: []Text.Range) -> []Text.Range {
     previous_end: s32 = 0
     for range: ranges {
-        if !TextRangeValid(value, range, previous_end) {
-            none: []TextRange
+        if !Text.TextRangeValid(value, range, previous_end) {
+            none: []Text.Range
             return none
         }
         previous_end = range.end
@@ -138,7 +134,7 @@ TextAreaRangesFor :: (value: string, ranges: []TextRange) -> []TextRange {
 }
 
 // A caret never stops strictly inside a hidden range.
-TextAreaHiddenInside :: (hidden: []TextRange, index: s32) -> bool {
+TextAreaHiddenInside :: (hidden: []Text.Range, index: s32) -> bool {
     for range: hidden {
         if index <= range.start { return false }
         if index < range.end { return true }
@@ -148,10 +144,10 @@ TextAreaHiddenInside :: (hidden: []TextRange, index: s32) -> bool {
 
 // The shown width of value[start:end]: hidden bytes take no width.
 TextAreaShownWidth :: (value: string, start: s32, end: s32, font: s32,
-    typeface: string, hidden: []TextRange) -> s32 {
+    typeface: string, hidden: []Text.Range) -> s32 {
     if end <= start { return 0 }
     if hidden.count == 0 {
-        return GlyphWidth(TextSpan(value, start, end - start), font, typeface)
+        return GlyphWidth(Text.TextSpan(value, start, end - start), font, typeface)
     }
     width: s32 = 0
     cursor: s32 = start
@@ -159,16 +155,16 @@ TextAreaShownWidth :: (value: string, start: s32, end: s32, font: s32,
         if range.end <= cursor { continue }
         if range.start >= end { break }
         if range.start > cursor {
-            width += GlyphWidth(TextSpan(value, cursor, range.start - cursor), font, typeface)
+            width += GlyphWidth(Text.TextSpan(value, cursor, range.start - cursor), font, typeface)
         }
         cursor = range.end
         if cursor >= end { return width }
     }
-    width += GlyphWidth(TextSpan(value, cursor, end - cursor), font, typeface)
+    width += GlyphWidth(Text.TextSpan(value, cursor, end - cursor), font, typeface)
     return width
 }
 
-TextAreaRangesHash :: (ranges: []TextRange) -> u64 {
+TextAreaRangesHash :: (ranges: []Text.Range) -> u64 {
     hash: u64 = cast(u64)14695981039346656037
     for range: ranges {
         hash = (hash ^ cast(u64)cast(u32)range.start) * cast(u64)1099511628211
@@ -181,7 +177,7 @@ TextAreaRangesHash :: (ranges: []TextRange) -> u64 {
 // can therefore address the original value without a shadow text buffer.
 TextAreaNextRowUncached :: (value: string, start: s32,
     wrap_width: s32, font: s32,
-    typeface: string, hidden: []TextRange) -> TextAreaRow {
+    typeface: string, hidden: []Text.Range) -> TextAreaRow {
     row: TextAreaRow = .{.start = start, .end = start, .next = (cast(s32)value.count) + 1}
     if start < 0 || start > (cast(s32)value.count) { return row }
     line: TextLogicalLine = TextLogicalLineFor(value, start)
@@ -192,7 +188,7 @@ TextAreaNextRowUncached :: (value: string, start: s32,
     fitted: s32 = start
     break_after: s32 = -1
     while cursor < line.end {
-        next: s32 = TextFieldNext(value, cursor)
+        next: s32 = TextField.TextFieldNext(value, cursor)
         width: s32 = TextAreaShownWidth(value, start, next, font,
             typeface, hidden)
         if width > wrap_width {
@@ -266,13 +262,13 @@ TextAreaCacheMatches :: (slot: s32, value: string, wrap_width: s32,
 #program_export
 TextAreaNextRow :: (value: string, start: s32, wrap_width: s32,
     font: s32, typeface: string) -> TextAreaRow {
-    none: []TextRange
+    none: []Text.Range
     return TextAreaNextRowWith(value, start, wrap_width, font, typeface, none)
 }
 
 #program_export
 TextAreaNextRowWith :: (value: string, start: s32, wrap_width: s32,
-    font: s32, typeface: string, hidden: []TextRange) -> TextAreaRow {
+    font: s32, typeface: string, hidden: []Text.Range) -> TextAreaRow {
     revision := GlyphMetricsRevision()
     if revision == cast(u64)0 || value.count > 4096 || typeface.count > 128 ||
         start < 0 || start > cast(s32)value.count {
@@ -325,13 +321,13 @@ TextAreaNextRowWith :: (value: string, start: s32, wrap_width: s32,
 #program_export
 TextAreaRowCount :: (value: string, wrap_width: s32,
     font: s32, typeface: string) -> s32 {
-    none: []TextRange
+    none: []Text.Range
     return TextAreaRowCountWith(value, wrap_width, font, typeface, none)
 }
 
 #program_export
 TextAreaRowCountWith :: (value: string, wrap_width: s32,
-    font: s32, typeface: string, hidden: []TextRange) -> s32 {
+    font: s32, typeface: string, hidden: []Text.Range) -> s32 {
     count: s32 = 0
     offset: s32 = 0
     while offset <= (cast(s32)value.count) {
@@ -348,14 +344,14 @@ TextAreaRowCountWith :: (value: string, wrap_width: s32,
 TextAreaCaretFor :: (value: string, cursor: s32,
     wrap_width: s32, font: s32, typeface: string,
     advance: s32) -> TextAreaCaret {
-    none: []TextRange
+    none: []Text.Range
     return TextAreaCaretForWith(value, cursor, wrap_width, font, typeface, advance, none)
 }
 
 #program_export
 TextAreaCaretForWith :: (value: string, cursor: s32,
     wrap_width: s32, font: s32, typeface: string,
-    advance: s32, hidden: []TextRange) -> TextAreaCaret {
+    advance: s32, hidden: []Text.Range) -> TextAreaCaret {
     caret: TextAreaCaret
     cursor = TextCursorForLength(cursor, (cast(s32)value.count))
     offset: s32 = 0
@@ -369,7 +365,7 @@ TextAreaCaretForWith :: (value: string, cursor: s32,
             within: s32 = cursor
             if within < row.start { within = row.start }
             if within > row.end { within = row.end }
-            caret.x = GlyphCaret(TextSpan(value, row.start, row.end - row.start),
+            caret.x = GlyphCaret(Text.TextSpan(value, row.start, row.end - row.start),
                 within - row.start, font, typeface)
             if hidden.count > 0 {
                 caret.x = TextAreaShownWidth(value, row.start, within, font,
@@ -398,9 +394,9 @@ TextAreaView :: struct {
     length: s32
     composing: bool
     // Ranges of value, not of the view; they never reach the preedit.
-    hidden: []TextRange
-    strong: []TextRange
-    italic: []TextRange
+    hidden: []Text.Range
+    strong: []Text.Range
+    italic: []Text.Range
 }
 
 TextAreaViewSegment :: struct {
@@ -497,7 +493,7 @@ TextAreaViewSpanWidth :: (view: TextAreaView,
         if right > segment.end { right = segment.end }
         if right > left {
             if part == 1 {
-                width += GlyphWidth(TextSpan(segment.source,
+                width += GlyphWidth(Text.TextSpan(segment.source,
                     segment.source_start + left - segment.start,
                     right - left), font, typeface)
             } else {
@@ -620,12 +616,12 @@ TextAreaAtLineStart :: (value: string, start: s32) -> bool {
 }
 
 #program_export
-TextAreaBlocksFor :: (value: string, blocks: []TextAreaBlock) -> []TextAreaBlock {
+TextAreaBlocksFor :: (value: string, blocks: []Block) -> []Block {
     previous: s32 = -1
     for block: blocks {
         if block.start < previous || (block.start == previous && block.cover) ||
             block.height <= 0 || !TextAreaAtLineStart(value, block.start) {
-            none: []TextAreaBlock
+            none: []Block
             return none
         }
         previous = block.start
@@ -634,12 +630,12 @@ TextAreaBlocksFor :: (value: string, blocks: []TextAreaBlock) -> []TextAreaBlock
 }
 
 #program_export
-TextAreaLinesFor :: (value: string, lines: []TextAreaLine) -> []TextAreaLine {
+TextAreaLinesFor :: (value: string, lines: []Line) -> []Line {
     previous: s32 = -1
     for line: lines {
         if line.start <= previous || line.scale <= 0.0 || line.scale > 8.0 ||
             !TextAreaAtLineStart(value, line.start) {
-            none: []TextAreaLine
+            none: []Line
             return none
         }
         previous = line.start
@@ -655,9 +651,9 @@ TextAreaLayout :: struct {
     typeface: string
     gap: s32
     wrap_width: s32
-    hidden: []TextRange
-    blocks: []TextAreaBlock
-    lines: []TextAreaLine
+    hidden: []Text.Range
+    blocks: []Block
+    lines: []Line
 }
 
 // A row and its place: its top, font and line height, and the room it takes
@@ -820,7 +816,7 @@ TextAreaCaretPlaced :: (layout: TextAreaLayout, view: TextAreaView,
                 caret.x = TextAreaShownWidth(view.value, row.start, within,
                     placed.font, layout.typeface, layout.hidden)
             } else {
-                caret.x = GlyphCaret(TextSpan(view.value, row.start, row.end - row.start),
+                caret.x = GlyphCaret(Text.TextSpan(view.value, row.start, row.end - row.start),
                     within - row.start, placed.font, layout.typeface)
             }
             caret.y = placed.y
@@ -842,7 +838,7 @@ TextAreaCaretPlaced :: (layout: TextAreaLayout, view: TextAreaView,
 // follows the edit's new bytes stays where the bytes it replaces end, so it
 // is never painted past them, on a line the edit has not reached.
 #program_export
-TextAreaPaintedOffset :: (edit: TextAreaEdit, offset: s32) -> s32 {
+TextAreaPaintedOffset :: (edit: Edit, offset: s32) -> s32 {
     if !edit.changed || offset <= edit.start {
         return offset
     }
@@ -898,7 +894,7 @@ TextAreaCursorAtRow :: (layout: TextAreaLayout, value: string,
 // A line's box: its image fitted inside it, or a soft frame with its label
 // while the image is empty or unavailable. A loading image shows the frame
 // alone. Only the part inside `clip` is painted.
-TextAreaPaintBlock :: (session: Session, node: s32, block: TextAreaBlock,
+TextAreaPaintBlock :: (session: Session, node: s32, block: Block,
     bounds: Rectangle, clip: Rectangle, font: s32, typeface: string,
     foreground: u32, opacity: float32, scale: float32) {
     visible := RectangleIntersection(bounds, clip)
@@ -906,11 +902,11 @@ TextAreaPaintBlock :: (session: Session, node: s32, block: TextAreaBlock,
         return
     }
     radius := cast(float32)TextInputScaledMetric(8.0, scale)
-    image: ImageProps
+    image: Image.Props
     image.asset_path = block.image
     image.bounds = bounds
-    image.fit = cast(ImageFit)ImageFitContain
-    texture := ImageTextureFor(image)
+    image.fit = cast(Image.ImageFit)ImageFitContain
+    texture := Image.ImageTextureFor(image)
     if block.image != "" {
         tint := ColorFromPacked(Opacity(cast(u32)0xffffffff, opacity))
         plan := ImageDrawPlanFor(image, texture, tint)
@@ -955,7 +951,7 @@ TextAreaViewPaintRow :: (session: Session, node: s32, view: TextAreaView,
             left_x := x + TextAreaViewSpanWidth(view, row.start, left, font, typeface)
             if part == 1 {
                 PaintClippedLabel(session, node,
-                    TextSpan(segment.source,
+                    Text.TextSpan(segment.source,
                         segment.source_start + left - segment.start,
                         right - left),
                     left_x, y, font, color, clip)
@@ -973,7 +969,7 @@ TextAreaViewPaintRow :: (session: Session, node: s32, view: TextAreaView,
 
 // Whether one of the sorted ranges holds the byte at cursor. The piece that
 // starts there ends no later than where that changes.
-TextAreaRangeHolds :: (ranges: []TextRange, cursor: s32, piece_end: *s32) -> bool {
+TextAreaRangeHolds :: (ranges: []Text.Range, cursor: s32, piece_end: *s32) -> bool {
     for range: ranges {
         if range.end <= cursor { continue }
         if range.start > cursor {
@@ -991,11 +987,11 @@ TextAreaRangeHolds :: (ranges: []TextRange, cursor: s32, piece_end: *s32) -> boo
 // so advances never change.
 TextAreaPaintShown :: (session: Session, node: s32, value: string,
     start: s32, end: s32, x: s32, y: s32, font: s32, typeface: string,
-    color: Color, clip: Rectangle, hidden: []TextRange, strong: []TextRange,
-    italic: []TextRange) {
+    color: Color, clip: Rectangle, hidden: []Text.Range, strong: []Text.Range,
+    italic: []Text.Range) {
     if hidden.count == 0 && strong.count == 0 && italic.count == 0 {
         if end > start {
-            PaintClippedLabel(session, node, TextSpan(value, start, end - start),
+            PaintClippedLabel(session, node, Text.TextSpan(value, start, end - start),
                 x, y, font, color, clip)
         }
         return
@@ -1008,7 +1004,7 @@ TextAreaPaintShown :: (session: Session, node: s32, value: string,
         slanted := TextAreaRangeHolds(italic, cursor, *piece_end)
         if !concealed {
             left := x + TextAreaShownWidth(value, start, cursor, font, typeface, hidden)
-            text := TextSpan(value, cursor, piece_end - cursor)
+            text := Text.TextSpan(value, cursor, piece_end - cursor)
             if slanted {
                 PaintClippedSlanted(session, node, text, left, y, font, color, clip, false)
                 if emphasized {
@@ -1029,7 +1025,7 @@ TextAreaPaintSourceSpan :: (session: Session, node: s32,
     value: string, row: TextAreaRow, start: s32, end: s32,
     x: s32, y: s32, font: s32, typeface: string,
     color: u32, opacity: float32, clip: Rectangle,
-    hidden: []TextRange, strong: []TextRange, italic: []TextRange) {
+    hidden: []Text.Range, strong: []Text.Range, italic: []Text.Range) {
     if end <= start { return }
     TextAreaPaintShown(session, node, value, start, end,
         x + TextAreaShownWidth(value, row.start, start, font, typeface, hidden),
@@ -1039,14 +1035,14 @@ TextAreaPaintSourceSpan :: (session: Session, node: s32,
 
 TextAreaPaintColorRow :: (session: Session, node: s32,
     value: string, row: TextAreaRow,
-    colors: []TextAreaColorSpan, x: s32, y: s32,
+    colors: []ColorSpan, x: s32, y: s32,
     font: s32, typeface: string, foreground: u32,
     opacity: float32, clip: Rectangle,
-    hidden: []TextRange, strong: []TextRange, italic: []TextRange) {
+    hidden: []Text.Range, strong: []Text.Range, italic: []Text.Range) {
     cursor: s32 = row.start
     index: s32 = 0
     while index < cast(s32)colors.count && cursor < row.end {
-        span: TextAreaColorSpan = colors[index]
+        span: ColorSpan = colors[index]
         index += 1
         if span.end <= cursor || span.start >= row.end ||
             span.end <= span.start { continue }
@@ -1071,14 +1067,14 @@ TextAreaPaintColorRow :: (session: Session, node: s32,
 TextAreaCursorAtPoint :: (value: string, x: s32,
     y: s32, wrap_width: s32, font: s32,
     typeface: string, advance: s32) -> s32 {
-    none: []TextRange
+    none: []Text.Range
     return TextAreaCursorAtPointWith(value, x, y, wrap_width, font, typeface, advance, none)
 }
 
 #program_export
 TextAreaCursorAtPointWith :: (value: string, x: s32,
     y: s32, wrap_width: s32, font: s32,
-    typeface: string, advance: s32, hidden: []TextRange) -> s32 {
+    typeface: string, advance: s32, hidden: []Text.Range) -> s32 {
     if advance < 1 { advance = 1 }
     if y < 0 { y = 0 }
     wanted: s32 = y / advance
@@ -1099,11 +1095,11 @@ TextAreaCursorAtPointWith :: (value: string, x: s32,
 
 // The caret stop of a row nearest x, never inside hidden bytes.
 TextAreaCursorInRow :: (value: string, row: TextAreaRow, x: s32, font: s32,
-    typeface: string, hidden: []TextRange) -> s32 {
+    typeface: string, hidden: []Text.Range) -> s32 {
     if hidden.count == 0 {
-        span: string = TextSpan(value, row.start,
+        span: string = Text.TextSpan(value, row.start,
             row.end - row.start)
-        return row.start + TextFieldCursorAtX(span,
+        return row.start + TextField.TextFieldCursorAtX(span,
             x, font, typeface)
     }
     best: s32 = row.start
@@ -1120,7 +1116,7 @@ TextAreaCursorInRow :: (value: string, row: TextAreaRow, x: s32, font: s32,
             }
         }
         if position >= row.end { break }
-        position = TextFieldNext(value, position)
+        position = TextField.TextFieldNext(value, position)
     }
     return best
 }
@@ -1141,7 +1137,7 @@ TextAreaInputTextAllowed :: (value: string) -> bool {
 }
 
 #program_export
-TextAreaReplacementAllowed :: (props: TextAreaProps,
+TextAreaReplacementAllowed :: (props: TextArea.Props,
     start: s32, end: s32,
     replacement: string) -> bool {
     if start < 0 || end < start || end > (cast(s32)props.value.count) {
@@ -1153,20 +1149,20 @@ TextAreaReplacementAllowed :: (props: TextAreaProps,
         return false
     }
     if props.max_codepoints > 0 {
-        removed: string = TextSpan(props.value,
+        removed: string = Text.TextSpan(props.value,
             start, end - start)
-        count: s32 = TextFieldCodepoints(props.value) -
-            TextFieldCodepoints(removed) +
-            TextFieldCodepoints(replacement)
+        count: s32 = TextField.TextFieldCodepoints(props.value) -
+            TextField.TextFieldCodepoints(removed) +
+            TextField.TextFieldCodepoints(replacement)
         if count > props.max_codepoints { return false }
     }
     return true
 }
 
 #program_export
-TextAreaEditFor :: (props: TextAreaProps,
-    cursor: s32, anchor: s32) -> TextAreaEdit {
-    edit: TextAreaEdit
+TextAreaEditFor :: (props: TextArea.Props,
+    cursor: s32, anchor: s32) -> Edit {
+    edit: Edit
     selection: TextSelectionRange = TextSelectionRangeForLength(
         anchor, cursor, (cast(s32)props.value.count))
     replacement: string = props.input.text
@@ -1187,13 +1183,13 @@ TextAreaEditFor :: (props: TextAreaProps,
         edit.start = selection.start
         edit.end = selection.end
         if !selection.has_selection {
-            edit.start = TextFieldPrevious(props.value, cursor)
+            edit.start = TextField.TextFieldPrevious(props.value, cursor)
         }
     } else if props.input.delete_forward {
         edit.start = selection.start
         edit.end = selection.end
         if !selection.has_selection {
-            edit.end = TextFieldNext(props.value, cursor)
+            edit.end = TextField.TextFieldNext(props.value, cursor)
         }
     }
     edit.changed = edit.end > edit.start
@@ -1202,8 +1198,8 @@ TextAreaEditFor :: (props: TextAreaProps,
 
 // The caller stores text, focus, selection, and scroll state. Kryon returns
 // UTF-8 byte edits and paints from the immutable value for this frame.
-TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
-    result: TextAreaResult
+TextAreaCore :: (session: Session, props: TextArea.Props) -> Result {
+    result: Result
     result.node = -1
     result.cursor = Grapheme.Boundary(props.value, props.cursor)
     result.anchor = Grapheme.Boundary(props.value, props.anchor)
@@ -1473,14 +1469,14 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
             caret: TextAreaCaret = TextAreaCaretPlaced(layout, plain,
                 result.cursor)
             if props.input.left {
-                target = TextFieldPrevious(props.value,
+                target = TextField.TextFieldPrevious(props.value,
                     result.cursor)
                 if selection.has_selection && !props.input.shift {
                     target = selection.start
                 }
                 moved = true
             } else if props.input.right {
-                target = TextFieldNext(props.value,
+                target = TextField.TextFieldNext(props.value,
                     result.cursor)
                 if selection.has_selection && !props.input.shift {
                     target = selection.end
@@ -1571,7 +1567,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
                     !props.read_only, !props.read_only)
             if decision.copy_selection {
                 result.clipboard_write = true
-                result.clipboard_text = TextSpan(props.value,
+                result.clipboard_text = Text.TextSpan(props.value,
                     selection.start, selection.end - selection.start)
             }
             if decision.paste && props.input.paste_text.count == 0 {
@@ -1879,8 +1875,7 @@ TextAreaCore :: (session: Session, props: TextAreaProps) -> TextAreaResult {
 // The area with its context menu, as TextField has: a click of the secondary
 // button inside it opens Cut, Copy, Paste, and Select all on the system
 // clipboard, and the keyboard's Cut, Copy, and Paste reach it too.
-#program_export
-TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
+Draw :: (session: Session, props: TextArea.Props) -> Result {
     key: u64 = TextAreaKey(session, props)
     editable: bool = !props.read_only
     command: s32 = TextMenuTakeCommand(session, key)
@@ -1892,7 +1887,7 @@ TextArea :: (session: Session, props: TextAreaProps) -> TextAreaResult {
         props.input.paste_text = TextMenuPasteText()
     }
     opened: bool = TextMenuOpenRequested(session, key, props.bounds, props.disabled)
-    result: TextAreaResult = TextAreaCore(session, props)
+    result: Result = TextAreaCore(session, props)
     if result.clipboard_write { SystemClipboardSet(result.clipboard_text) }
     if opened { result.focused = true }
     // A focused editable area asks the host for the platform keyboard.

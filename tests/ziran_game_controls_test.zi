@@ -1,7 +1,7 @@
 #import "session"
 #import "geometry"
-#import "joystick"
-#import "dpad"
+DirectionPad :: #import "kryon/direction_pad";
+Joystick :: #import "kryon/joystick";
 #import "paint_queue"
 #import "tree"
 #import "tree_draw"
@@ -16,19 +16,19 @@ main :: () -> s32 {
         Rectangle.{0.0, 0.0, 390.0, 844.0}, Rectangle.{0.0, 0.0, 844.0, 390.0},
         Rectangle.{18.0, 56.0, 640.0, 304.0}]
     for viewport: viewports {
-        pad := DirectionPadBounds(viewport)
+        pad := DirectionPad.DirectionPadBounds(viewport)
         if pad.width < 168.0 || pad.width > 216.0 || pad.width != pad.height { return 1 }
         if pad.x - viewport.x < 23.99 || viewport.y + viewport.height - pad.y - pad.height < 23.99 { return 2 }
         if pad.x + pad.width > viewport.x + viewport.width || pad.y < viewport.y { return 3 }
-        if DirectionPadCell(pad.x, pad.y, pad.width / 3.0, 0).width < 48.0 { return 4 }
+        if DirectionPad.DirectionPadCell(pad.x, pad.y, pad.width / 3.0, 0).width < 48.0 { return 4 }
     }
-    tiny := DirectionPadBounds(Rectangle.{10.0, 20.0, 100.0, 60.0})
+    tiny := DirectionPad.DirectionPadBounds(Rectangle.{10.0, 20.0, 100.0, 60.0})
     if tiny.x < 10.0 || tiny.y < 20.0 || tiny.x + tiny.width > 110.0 || tiny.y + tiny.height > 80.0 { return 5 }
 
     session := SessionOpen()
     unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
-    gesture := SwipeAreaResult.{.down = true, .start_x = 100.0, .start_y = 120.0, .at_x = 300.0, .at_y = 120.0}
-    SwipeFeedback(session, SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture, .size = 60.0})
+    gesture := Joystick.SwipeAreaResult.{.down = true, .start_x = 100.0, .start_y = 120.0, .at_x = 300.0, .at_y = 120.0}
+    Joystick.SwipeFeedback(session, Joystick.SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture, .size = 60.0})
     if PendingPaintCount(session) != 5 { return 6 }
     base := PendingPaintAt(session, 0).bounds
     ball := PendingPaintAt(session, 3).bounds
@@ -37,13 +37,13 @@ main :: () -> s32 {
     if EndFrame(session) != FrameStatus.FrameOk { return 9 }
     unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
     gesture.at_x = gesture.start_x
-    SwipeFeedback(session, SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
+    Joystick.SwipeFeedback(session, Joystick.SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
     ball = PendingPaintAt(session, 3).bounds
     if !Near(ball.x + ball.width / 2.0, 100.0) { return 10 }
     if EndFrame(session) != FrameStatus.FrameOk { return 11 }
     unused BeginFrame(session, cast(u64)1, Rectangle.{0.0, 0.0, 400.0, 400.0})
     gesture.down = false
-    SwipeFeedback(session, SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
+    Joystick.SwipeFeedback(session, Joystick.SwipeFeedbackProps.{.key = cast(u64)70, .gesture = gesture})
     if PendingPaintCount(session) != 0 { return 12 }
     if EndFrame(session) != FrameStatus.FrameOk { return 13 }
     return 0

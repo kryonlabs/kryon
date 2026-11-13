@@ -1,4 +1,9 @@
-using UI :: #import "kryon/Widgets";
+Button :: #import "kryon/button";
+Page :: #import "kryon/page";
+#import "kryon/control_props"
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/tree"
 CSS :: #import "css/Css";
 Dom :: #import "kryon/Dom";
 #import "kryon/theme"
@@ -71,8 +76,8 @@ Button#disabled:disabled {
 CSS;
 
 ButtonFor :: (key: u64, id: s32, label: string,
-    selected: bool, disabled: bool) -> ButtonProps {
-    props: ButtonProps
+    selected: bool, disabled: bool) -> Button.Props {
+    props: Button.Props
     props.key = key
     props.id = id
     props.class_name = CSS.StyleClass("primary")
@@ -97,9 +102,9 @@ Start :: () -> bool {
     if !result.ok ||
         !Dom.UseDocumentLayout(TextView(exported[:result.count])) { return false }
 
-    save: ButtonProps = ButtonFor(cast(u64)101,
+    save: Button.Props = ButtonFor(cast(u64)101,
         CSS.StyleId("save"), "Save", false, false)
-    face := ButtonInstalledFaceFor(save, cast(s32)ButtonStateNormal)
+    face := Button.ButtonInstalledFaceFor(save, cast(s32)ButtonStateNormal)
     scope: s32 = WebScope()
     WebSet(WebGlobal, WebName("__cssDomMinHeight"),
         WebNumber(cast(float64)face.min_height))
@@ -127,34 +132,34 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
     if !updated && WebAsBool(WebGet(WebGlobal,
             WebName("__cssDomUpdate"))) { updated = true }
 
-    page: PageProps
+    page: Page.Props
     page.key = cast(u64)1; page.bounds = viewport; page.title = "CSS DOM"
-    opened: PageResult = Page(session, page)
+    opened: Page.PageResult = Page.Draw(session, page)
 
-    save: ButtonProps = ButtonFor(cast(u64)101,
+    save: Button.Props = ButtonFor(cast(u64)101,
         CSS.StyleId("save"), ifx updated then "Save updated" else "Save",
         false, false)
-    other: ButtonProps = ButtonFor(cast(u64)102,
+    other: Button.Props = ButtonFor(cast(u64)102,
         CSS.StyleId("other"), "Other", true, false)
-    state: ButtonProps = ButtonFor(cast(u64)103,
+    state: Button.Props = ButtonFor(cast(u64)103,
         CSS.StyleId("state"), "State", true, false)
-    focus: ButtonProps = ButtonFor(cast(u64)104,
+    focus: Button.Props = ButtonFor(cast(u64)104,
         CSS.StyleId("focus"), "Focus", false, false)
-    disabled: ButtonProps = ButtonFor(cast(u64)105,
+    disabled: Button.Props = ButtonFor(cast(u64)105,
         CSS.StyleId("disabled"), "Disabled", false, true)
-    plain: ButtonProps = ButtonFor(cast(u64)106, 0, "Plain",
+    plain: Button.Props = ButtonFor(cast(u64)106, 0, "Plain",
         false, false)
     if updated {
-        Button(session, other)
-        Button(session, save)
+        Button.Draw(session, other)
+        Button.Draw(session, save)
     } else {
-        Button(session, save)
-        Button(session, other)
+        Button.Draw(session, save)
+        Button.Draw(session, other)
     }
-    Button(session, state)
-    Button(session, focus)
-    Button(session, disabled)
-    Button(session, plain)
+    Button.Draw(session, state)
+    Button.Draw(session, focus)
+    Button.Draw(session, disabled)
+    Button.Draw(session, plain)
 
     if opened.opened { End(session) }
     if WebAsBool(WebGet(WebGlobal, WebName("__cssDomDone"))) {

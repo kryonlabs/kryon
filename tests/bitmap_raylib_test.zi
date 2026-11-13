@@ -2,12 +2,11 @@
 #import "session"
 #import "drawing_props"
 #import "geometry"
-#import "image_props"
+Image :: #import "kryon/image";
 #import "paint_queue"
 #import "tree"
 #import "bitmap_image"
 #import "bitmap_store"
-#import "image"
 #import "tree_draw"
 #import "paint_frame"
 Pixels :: #import "raylib_image_decode";
@@ -45,7 +44,7 @@ CheckPixels :: (command: PaintCommand) {
 }
 QueueImage :: (image: Texture2D, tint: u32 = cast(u32)0xffffffff) {
     unused BeginFrame(native_session,1,Rectangle.{0.0,0.0,32.0,32.0})
-    Image(native_session,ImageProps.{.key=7,.bounds=Rectangle.{0.0,0.0,16.0,16.0},.texture=image,.tint=tint})
+    Image.Draw(native_session,Image.Props.{.key=7,.bounds=Rectangle.{0.0,0.0,16.0,16.0},.texture=image,.tint=tint})
     if EndFrame(native_session) != FrameStatus.FrameOk { native_failure = 20 }
 }
 QueueCheck :: (red: u32) {
@@ -94,7 +93,7 @@ NativePressure :: () -> s32 {
     BeginRaylibFrame()
     unused BeginFrame(session,1,Rectangle.{0.0,0.0,32.0,32.0})
     for at: cast(s32)0..63 {
-        Image(session,ImageProps.{.key=cast(u64)(at+100),.texture=images[at],.tint=cast(u32)0xffffffff,
+        Image.Draw(session,Image.Props.{.key=cast(u64)(at+100),.texture=images[at],.tint=cast(u32)0xffffffff,
             .bounds=Rectangle.{cast(float32)((at%8)*4),cast(float32)((at/8)*4),4.0,4.0}})
     }
     if EndFrame(session) != FrameStatus.FrameOk { return 62 }

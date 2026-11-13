@@ -1,6 +1,6 @@
+ImageSchema :: #import "image_props";
 #import "drawing_props"
 #import "geometry"
-#import "image_props"
 #import "math"
 
 // A portable RGBA8 raster primitive. The host resolves asset paths and texture
@@ -150,10 +150,10 @@ MeshSourcePoint :: (source: Rectangle, fx: float32, fy: float32) -> Vector2 {
 // can draw.
 #program_export
 MeshGridValid :: (points: []Vector2, columns: s32, rows: s32) -> bool {
-    if columns < 2 || rows < 2 || columns > IMAGE_MESH_POINT_LIMIT ||
-        rows > IMAGE_MESH_POINT_LIMIT { return false }
+    if columns < 2 || rows < 2 || columns > ImageSchema.IMAGE_MESH_POINT_LIMIT ||
+        rows > ImageSchema.IMAGE_MESH_POINT_LIMIT { return false }
     count: s64 = cast(s64)columns * cast(s64)rows
-    return count <= cast(s64)IMAGE_MESH_POINT_LIMIT && points.count >= count
+    return count <= cast(s64)ImageSchema.IMAGE_MESH_POINT_LIMIT && points.count >= count
 }
 
 // One textured triangle, wound so that every inside point is on the

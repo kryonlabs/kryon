@@ -1,6 +1,5 @@
-#import "gridmulti"
+GridMulti :: #import "kryon/grid_multi";
 #import "grid_multi_behavior"
-#import "grid_multi_props"
 #import "widget_test_session"
 #import "tree"
 #import "tree_input"
@@ -10,14 +9,14 @@
 #import "widget_kind"
 pixels: [48000]u32;
 asset: [4]u32;
-items: [7]GridMultiItem;
+items: [7]GridMulti.GridMultiItem;
 selected: [7]bool;
 clock_seconds: float64;
-Frame :: (props: GridMultiProps, count: s32 = 7, wheel: float32 = 0.0) -> GridMultiResult {
+Frame :: (props: GridMulti.Props, count: s32 = 7, wheel: float32 = 0.0) -> GridMulti.GridMultiResult {
     clock_seconds += 0.017
     BeginScrollFrame(TestSession(), .{20.0, 25.0}, false, false, false, wheel, clock_seconds)
     TreeStart(TestSession(), cast(u64)99, .{0.0, 0.0, 300.0, 160.0})
-    result := GridMulti(TestSession(), props, items[:count], selected[:count])
+    result := GridMulti.Draw(TestSession(), props, items[:count], selected[:count])
     if !TreeFinish(TestSession()) { result.valid = false }
     // Verify the emitted label geometry as well as the final raster image.
     labels: s32 = 0; images: s32 = 0
@@ -30,7 +29,7 @@ Frame :: (props: GridMultiProps, count: s32 = 7, wheel: float32 = 0.0) -> GridMu
             if command.clip.x < props.bounds.x || command.clip.y < props.bounds.y ||
                 command.clip.x + command.clip.width > props.bounds.x + props.bounds.width ||
                 command.clip.y + command.clip.height > props.bounds.y + props.bounds.height { result.valid = false }
-            if props.layout == GridMultiLayout.GridMultiIcon {
+            if props.layout == GridMulti.GridMultiLayout.GridMultiIcon {
                 if command.clip.y < cell.y + 30.0 { result.valid = false }
             } else {
                 if command.clip.x < cell.x + 20.0 { result.valid = false }
@@ -51,17 +50,17 @@ TwoGrids :: (left_offset: s32, right_home: bool, wheel: float32) -> bool {
     clock_seconds += 0.017
     BeginScrollFrame(TestSession(), .{20.0, 25.0}, false, false, false, wheel, clock_seconds)
     TreeStart(TestSession(), cast(u64)99, .{0.0, 0.0, 300.0, 160.0})
-    p: GridMultiProps = .{.key = cast(u64)4001, .bounds = .{10.0, 10.0, 100.0, 100.0},
+    p: GridMulti.Props = .{.key = cast(u64)4001, .bounds = .{10.0, 10.0, 100.0, 100.0},
         .cell_width = 90, .cell_height = 70, .scroll_offset = left_offset, .cursor = 0, .anchor = 0}
     parent := TreeSubmitCurrent(TestSession(), cast(u64)100, cast(s32)WidgetKind.WidgetKindCustom, .{0.0, 0.0, 120.0, 140.0})
     if !TreePushScope(TestSession(), parent) { return false }
-    left := GridMulti(TestSession(), p, items[:], selected[:])
+    left := GridMulti.Draw(TestSession(), p, items[:], selected[:])
     End(TestSession())
     parent = TreeSubmitCurrent(TestSession(), cast(u64)200, cast(s32)WidgetKind.WidgetKindCustom, .{120.0, 0.0, 120.0, 140.0})
     if !TreePushScope(TestSession(), parent) { return false }
     p.key = cast(u64)4002; p.bounds.x = 130.0; p.focused = true; p.cursor = 6
     p.navigation.end = !right_home; p.navigation.home = right_home
-    right := GridMulti(TestSession(), p, items[:], selected[:])
+    right := GridMulti.Draw(TestSession(), p, items[:], selected[:])
     End(TestSession())
     if !TreeFinish(TestSession()) { return false }
     PaintClear(TestSession())
@@ -76,7 +75,7 @@ main :: () -> s32 {
         .image = .{.asset_path = "grid"}} }
     for i: 0..3 { asset[i] = cast(u32)0xffff0000 }
     unused PixmapSetImage(0, "grid", 2, 2, asset[:])
-    p: GridMultiProps = .{.key = cast(u64)2, .bounds = .{10.0, 10.0, 200.0, 100.0},
+    p: GridMulti.Props = .{.key = cast(u64)2, .bounds = .{10.0, 10.0, 200.0, 100.0},
         .cell_width = 90, .cell_height = 70, .cursor = 0, .anchor = 0}
     m := GridMultiMeasure(p, 7)
     if m.grid.columns != 2 || GridMultiNext(m, 7, 1, .{.right = true}) != 1 ||
@@ -111,7 +110,7 @@ main :: () -> s32 {
     p.disabled = false; p.scroll_delta = 0; p.navigation = .{}; p.bounds.height = 60.0; r = Frame(p)
     if r.scroll_offset != 220 { return 14 }
     for i: 0..6 { selected[i] = false }
-    p.layout = GridMultiLayout.GridMultiCompact; p.bounds = .{10.0, 10.0, 200.0, 70.0}
+    p.layout = GridMulti.GridMultiLayout.GridMultiCompact; p.bounds = .{10.0, 10.0, 200.0, 70.0}
     p.cell_width = 120; p.cell_height = 30; p.cursor = 0; p.anchor = 0; p.scroll_offset = 0; p.focused = false
     m = GridMultiMeasure(p, 7)
     if m.grid.columns != 2 || GridMultiNext(m, 7, 1, .{.down = true}) != 1 ||
@@ -132,7 +131,7 @@ main :: () -> s32 {
     if r.clicked_index != 1 { return 20 }
     r = Frame(p, 0)
     if !r.valid || r.cursor != -1 || r.anchor != -1 || r.scroll_offset != 0 { return 21 }
-    bad := GridMulti(TestSession(), p, items[:], selected[:2])
+    bad := GridMulti.Draw(TestSession(), p, items[:], selected[:2])
     if bad.valid || bad.node != -1 { return 22 }
     // Disabled cells cannot accept queued clicks or key intents.
     p.disabled = true; p.focused = true; p.navigation = .{.end = true}
@@ -148,7 +147,7 @@ main :: () -> s32 {
     r = Frame(p)
     if r.clicked_index != 0 { return 28 }
     // Real advancing scroll-device frames: keyboard reveal supersedes old wheel glide.
-    p.layout = GridMultiLayout.GridMultiIcon; p.cell_width = 90; p.cell_height = 70
+    p.layout = GridMulti.GridMultiLayout.GridMultiIcon; p.cell_width = 90; p.cell_height = 70
     p.bounds = .{10.0, 10.0, 200.0, 100.0}; p.cursor = 0; p.anchor = 0
     p.focused = true; p.control = true; p.shift = false; p.navigation = .{.end = true}
     r = Frame(p)

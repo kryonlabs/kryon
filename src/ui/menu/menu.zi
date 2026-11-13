@@ -1,3 +1,4 @@
+using PropsModule :: #import "menu_props";
 #import "transition"
 Theme :: #import "theme";
 // Submit the menu after the page content so its panels own pointer input.
@@ -5,7 +6,6 @@ Theme :: #import "theme";
 // labels are copied into the session; navigation stores indices, not pointers.
 #import "session"
 #import "transition_widget"
-#import "menu_props"
 #import "menu_behavior"
 #import "drawing_props"
 #import "font_metrics"
@@ -97,7 +97,7 @@ Activate :: (state: *MenuState, item: MenuItem, result: *MenuResult) {
         result.activated_id = item.id; Close(state)
     }
 }
-Face :: (props: MenuProps, kind: s32, status: s32) -> StyleFrame {
+Face :: (props: PropsModule.Props, kind: s32, status: s32) -> StyleFrame {
     facts := StyleControlRoleFacts(kind, props.id, props.class_name, StyleAny(), 0, 0, 0, status)
     frame: StyleFrame
     frame.value = ResolveInstalledStyleRules(StyleData.{}, facts, status)
@@ -193,8 +193,7 @@ Keyboard :: (groups: []MenuGroup, state: *MenuState, input: MenuKeyboardInput, r
 }
 
 #scope_export
-#program_export
-Menu :: (session: Session, props: MenuProps, groups: []MenuGroup, state: *MenuState) -> MenuResult {
+Draw :: (session: Session, props: PropsModule.Props, groups: []MenuGroup, state: *MenuState) -> MenuResult {
     result: MenuResult
     result.open_index = -1
     if state == null { return result }

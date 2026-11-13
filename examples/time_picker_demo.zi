@@ -2,7 +2,14 @@
 // disabled, and in a small form, in light and dark palettes. The picker
 // keeps its popup, columns and keyboard column itself; this app keeps only
 // the times. desktop_time_picker.zi runs it in a window.
-using UI :: #import "Widgets";
+Box :: #import "kryon/box";
+SegmentedControl :: #import "kryon/segmented_control";
+Text :: #import "kryon/text";
+TimePicker :: #import "kryon/time_picker";
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/session"
+#import "kryon/text_align"
 #import "system_theme"
 #import "time_picker"
 #import "std/number_text"
@@ -31,19 +38,19 @@ DemoSetNow :: (minutes: s32) {
 
 Label :: (session: Session, key: s32, text: string, bounds: Rectangle,
     font: s32, muted: bool) {
-    Text(session, TextProps.{.key = cast(u64)key, .bounds = bounds, .text = text, .font = font,
-        .disabled = muted, .wrap = TextWrap.TextWrapNone,
+    Text.Draw(session, Text.Props.{.key = cast(u64)key, .bounds = bounds, .text = text, .font = font,
+        .disabled = muted, .wrap = Text.Wrap.TextWrapNone,
         .vertical_align = TextAlign.TextAlignCenter})
 }
 
 Card :: (session: Session, key: s32, bounds: Rectangle) {
-    props: BoxProps
+    props: Box.Props
     props.key = cast(u64)key
     props.bounds = bounds
     props.fill = StyleTokenColor("surface")
     props.border = StyleTokenColor("border")
     props.radius = 10.0
-    Box(session, props)
+    Box.Draw(session, props)
 }
 
 // Appends text to the buffer at length and returns the new length.
@@ -62,7 +69,7 @@ Picker :: (session: Session, key: s32, label: string, row: Rectangle,
     value: *s32, actions: bool, disabled: bool) {
     Label(session, key + 1, label, Rectangle.{row.x, row.y, 200.0, row.height},
         15, false)
-    props: TimePickerProps
+    props: TimePicker.Props
     props.key = cast(u64)key
     props.id = key
     props.label = label
@@ -74,7 +81,7 @@ Picker :: (session: Session, key: s32, label: string, row: Rectangle,
         props.done_label = "Done"
     }
     props.disabled = disabled
-    result: TimePickerResult = TimePicker(session, props)
+    result: TimePickerResult = TimePicker.Draw(session, props)
     if result.changed {
         value.* = result.value
         digits: [8]u8
@@ -106,26 +113,26 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         unused SystemPaletteInstall(SystemPaletteFallback(dark))
         installed = want
     }
-    background: BoxProps
+    background: Box.Props
     background.key = cast(u64)1
     background.bounds = viewport
     background.fill = StyleTokenColor("canvas")
-    Box(session, background)
+    Box.Draw(session, background)
 
     width: float32 = viewport.width - 48.0
     if width > 560.0 { width = 560.0 }
     x: float32 = viewport.x + (viewport.width - width) * 0.5
     y: float32 = viewport.y + 24.0
     Label(session, 2, "Time picker", Rectangle.{x, y, 260.0, 36.0}, 26, false)
-    options: [2]SegmentOption
+    options: [2]SegmentedControl.SegmentOption
     options[0].key = cast(u64)1
     options[0].label = "Light"
     options[1].key = cast(u64)2
     options[1].label = "Dark"
-    theme: SegmentedControlProps = .{.key = cast(u64)3, .id = 3,
+    theme: SegmentedControl.Props = .{.key = cast(u64)3, .id = 3,
         .bounds = Rectangle.{x + width - 170.0, y + 2.0, 170.0, 0.0}, .has_selection = true,
         .selected_index = want}
-    switched: SegmentedControlResult = SegmentedControl(session, theme,
+    switched: SegmentedControl.SegmentedControlResult = SegmentedControl.Draw(session, theme,
         options[:])
     if switched.changed { dark = switched.selected_index == 1 }
     y += 48.0

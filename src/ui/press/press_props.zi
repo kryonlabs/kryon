@@ -3,7 +3,7 @@
 // An area that reports a click, a hold and where the pointer is while the
 // press lasts, so a list can select an item by holding it and more items by
 // dragging across them. It paints nothing; the app draws the item.
-PressProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     bounds: Rectangle

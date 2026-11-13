@@ -1,10 +1,10 @@
+using PropsModule :: #import "reorder_props";
 Theme :: #import "theme";
 #import "control_props";
 #import "drawing_props";
 #import "geometry";
 #import "paint_queue";
 #import "reorder_behavior";
-#import "reorder_props";
 #import "session";
 #import "style";
 #import "style_sheet";
@@ -74,7 +74,7 @@ ReorderDragTarget :: (items: []ReorderItem, from_index: s32,
     return ReorderTargetIndexFor(target, cast(s32)items.count)
 }
 
-ReorderAutoScroll :: (list: ReorderList, pointer_y: s32) -> s32 {
+ReorderAutoScroll :: (list: PropsModule.Props, pointer_y: s32) -> s32 {
     offset := list.scroll_offset
     if list.max_scroll <= 0 {
         return offset
@@ -103,8 +103,7 @@ ReorderAutoScroll :: (list: ReorderList, pointer_y: s32) -> s32 {
 
 // Each handle is an ordinary retained Button. Kryon owns the gesture and
 // returns a route independent move; the caller applies it to its data.
-#program_export
-Reorder :: (session: Session, list: ReorderList,
+Draw :: (session: Session, list: PropsModule.Props,
     items: []ReorderItem) -> ReorderListResult {
     result: ReorderListResult = ReorderListResultDefault(0)
     result.scroll_offset = list.scroll_offset

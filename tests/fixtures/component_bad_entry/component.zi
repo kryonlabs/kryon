@@ -1,6 +1,5 @@
 #import "component_protocol"
-#import "text"
-#import "text_props"
+Text :: #import "kryon/text";
 #import "geometry"
 
 component_schema_version: s64 = 2;
@@ -12,10 +11,10 @@ Frame :: () -> s32 {
     if component_schema_version < 2 { return 1 }
     session := ComponentSession()
     bounds := ComponentBounds()
-    Text(session, TextProps.{
+    Text.Draw(session, Text.Props.{
         .key = 601, .bounds = Rectangle.{
             bounds.x + 16.0, bounds.y + 16.0, 180.0, 28.0
-        }, .text = "bad entry", .font = Text18
+        }, .text = "bad entry", .size = Text.Text18
     })
     return 0
 }

@@ -5,21 +5,15 @@ uses; no widget names are recognized by the Ziran compiler or `.zx` loader.
 The public package imports are declared in [`ziran.toml`](../ziran.toml).
 
 Reusable component sources are grouped under `src/ui/<component>/`; shared
-tree, input, theme, and paint infrastructure stays in `src/ui/`. Package
-imports keep their public names when source files move. `kryon/Widgets`
-includes Alert, Avatar, Badge, Banner, ButtonGroup, CopyButton, Countdown,
-EmptyState, Keycap, OnboardingChecklist, ProgressRing, SwipeRow, Timeline,
-HoldButton, ConfirmButton, and Carousel, along with their public props and
-state. These widgets also have individual snake_case package imports such
-as `kryon/button_group` and `kryon/progress_ring`; checklist tasks and swipe
-actions are available from `kryon/onboarding_checklist_task` and
-`kryon/swipe_row_props`.
+tree, input, theme, and paint infrastructure stays in `src/ui/`. Applications
+import only the packages they use. For example, use `kryon/text`,
+`kryon/button`, `kryon/button_group`, or `kryon/progress_ring`; checklist tasks
+and swipe actions are available from `kryon/onboarding_checklist_task` and
+`kryon/swipe_props`.
 
-With `KRYON_HOSTED_UI`, `kryon/Widgets` exports the existing hosted widget
-contracts, including Checkbox, Fieldset, SegmentedControl, TimePicker and
-Spinbox with their props and results. Retained-only components such as Page
-and Toast require a local tree and are excluded from this hosted aggregate.
-Pointer and keyboard sampling remain separate imports.
+With `KRYON_HOSTED_UI`, the same named widget packages expose their hosted
+contracts. Retained-only components such as Page and Toast require a local
+tree. Pointer and keyboard sampling remain separate imports.
 
 Rendering hosts that retain pixels can call `CommitFrameDamaged(session)` to
 commit the tree and compare paint while leaving changed commands queued. An
@@ -40,9 +34,9 @@ retained controls from it while input continues using the committed tree.
 
 | Import | Surface |
 | --- | --- |
-| `Kryon` | Geometry, drawing values, sessions, `Text(TextProps)`, and `Button(ButtonProps)` |
-| `Widgets` | The core widget catalog, including `Image(ImageProps)`, page structure, fields, controls, layout, and tree input |
-| `Page`, `Semantic` | Direct page and semantic-kind exports for document-oriented applications |
+| `app` | `Window`, `Frame`, and `Run` for a small executable application |
+| `text`, `button`, `image`, `page`, ... | One named package per widget, with `Props`, `Draw`, and widget-specific results |
+| `semantic` | Semantic kinds for document-oriented applications |
 | `PageRoute` | Browser route path, hash, and history (`GetRoutePath`, `PushRoute`, `GetRouteOrigin`, ...) for Canvas and DOM profiles |
 | `geometry`, `drawing_props`, `session`, `tree`, `surface`, `paint_queue`, `style`, `style_sheet`, `control_props`, `font_metrics`, `scroll`, `semantic`, `tree_input`, `widget_kind` | Building blocks for widget packages |
 
@@ -61,24 +55,24 @@ to 8192 by 16384 pixels; invalid input or exhausted scratch returns `false`.
 
 ## Toast actions
 
-`Toast(session, ToastProps) -> ToastResult` accepts an optional
+`Toast.Draw(session, Toast.Props) -> Toast.ToastResult` accepts an optional
 `action_label: string`. A new nonempty `message` captures that label in
-`ToastState.action_label`; keep passing `result.state` on later frames.
+`Toast.ToastState.action_label`; keep passing `result.state` on later frames.
 An empty label retains the existing passive toast.
 
 The action is a standard Button, with its label exposed to accessibility and
-normal pointer, Tab, Enter and Space activation. `ToastResult.action_clicked`
+normal pointer, Tab, Enter and Space activation. `Toast.ToastResult.action_clicked`
 is true only on the submission that consumes the activation. The caller owns
 the action and dismissal; set `clear = true` when it should disappear.
 A replacement message replaces the action; expiry and clearing remove both.
 
 ## Bottom navigation
 
-`NavigationBar(session, props, items)` defaults to a full-width 80-unit tonal
-bottom bar. Reserve `NavigationBarHeight(props)` above the bottom of the view.
+`Navigation.Draw(session, props, items)` defaults to a full-width 80-unit tonal
+bottom bar. Reserve `Navigation.NavigationBarHeight(props)` above the bottom of the view.
 For an embedded preview or panel, use `compact = true` with `bounds`;
 `fit_items = true` fits the shortcuts into that rectangle.
-Each `NavigationBarItem` accepts an optional `icon_shape` (the standard Shape
+Each `Navigation.NavigationBarItem` accepts an optional `icon_shape` (the standard Shape
 format) or `image`; the icon is 24 units inside a 64 by 32 selection pill, with
 its label below. With neither icon, the label is centered inside the pill.
 Item keys, route results, disabled hit testing and custom style rules retain
@@ -88,9 +82,9 @@ layout used by Breeze, including its footer and drag/close behavior.
 
 ## Widget motion
 
-`MenuProps`, `TabBarProps`, `NavigationBarProps`, and `CollapsibleProps`
+`Menu.Props`, `TabBar.Props`, `Navigation.Props`, and `Collapsible.Props`
 accept `motion: *TransitionMotionState`, `now: float64` in monotonic seconds,
-and `reduced_motion: bool`. Import the state and widgets from `kryon/Widgets`.
+and `reduced_motion: bool`. Import each widget from its named package.
 Retain one zero-initialized motion state per widget, with a stable widget key.
 
 Motion runs in native widgets and VM-rendered widgets. The portable
@@ -155,8 +149,8 @@ precedence over an `image` and keeps the styled size.
 
 ## Breadcrumbs
 
-`Breadcrumb(session: Session, props: BreadcrumbProps, items: []BreadcrumbItem)
--> BreadcrumbResult` is exported by `Widgets` and `breadcrumb`. Items borrow
+`Breadcrumb.Draw(session: Session, props: Breadcrumb.Props, items: []Breadcrumb.BreadcrumbItem)
+-> Breadcrumb.BreadcrumbResult` is exported by `kryon/breadcrumb`. Items borrow
 `label: string` for the frame and carry a unique, stable, nonzero `key: u64`
 and `disabled: bool`. No labels are interpreted as paths.
 
@@ -184,13 +178,13 @@ preserve retained item identity and menu highlight across reorder.
 
 ## Context menus
 
-`ContextMenu(session, props: ContextMenuProps, items: []ContextMenuItem)
--> ContextMenuResult` is exported by `Widgets` and `contextmenu`. The caller
+`ContextMenu.Draw(session, props: ContextMenu.Props, items: []ContextMenu.ContextMenuItem)
+-> ContextMenu.ContextMenuResult` is exported by `kryon/context_menu`. The caller
 keeps `open` and the pointer position (`x`, `y`); the result reports
 `activated_id` (0 for none) and `closed`. Submit it after the page's other
 controls.
 
-`ContextMenuItem` fields, in order: `id: s32` (positive; reported when
+`ContextMenu.ContextMenuItem` fields, in order: `id: s32` (positive; reported when
 chosen), `label: string`, `disabled: bool`, `separator: bool` (a divider; the
 other fields are ignored), `inline: bool` (a compact cell sharing a row with
 its inline neighbours), `parent: s32` (the id of the row whose submenu holds
@@ -215,8 +209,8 @@ row's selected state. Menus have no icons.
 
 ## Cards
 
-`Card(session, CardProps)` draws a filled, elevated or outlined Material surface.
-Import it from `Widgets` or `kryon/card_widget`. Set `variant` to `CardFilled`
+`Card.Draw(session, Card.Props)` draws a filled, elevated or outlined Material surface.
+Import it as `Card :: #import "kryon/card";`. Set `variant` to `CardFilled`
 (the default), `CardElevated` or `CardOutlined`, and supply `bounds` and a stable
 `key`. The returned `content` rectangle has 16 units of padding, reduced for
 small bounds. Draw your content in that rectangle; Card does not open a scope.
@@ -234,14 +228,14 @@ set its row height. Explicit `row_height` and style `offset_y` still win.
 
 ## Widget packages
 
-`EmptyStateProps.disabled` and `BannerProps.disabled` keep configured action and dismiss buttons visible with disabled styling and semantics. They reject pointer and keyboard activation, including input queued before disabling, and become usable again when enabled.
+`EmptyState.Props.disabled` and `Banner.Props.disabled` keep configured action and dismiss buttons visible with disabled styling and semantics. They reject pointer and keyboard activation, including input queued before disabling, and become usable again when enabled.
 
-`CarouselProps.disabled` disables swipe, wheel, keyboard navigation, arrows,
+`Carousel.Props.disabled` disables swipe, wheel, keyboard navigation, arrows,
 and the selected action together. It defaults to false; item-level `disabled`
 continues to disable only that item's action. Disabled controls use their normal
 disabled styling and become interactive again when reenabled.
 
-`CarouselProps.logo_max_width` optionally caps the cover logo's logical width;
+`Carousel.Props.logo_max_width` optionally caps the cover logo's logical width;
 `logo_top` optionally positions it below surrounding controls, relative to the
 carousel bounds. Zero preserves the default title layout. `CarouselArtwork`
 accepts the same optional values after its source rectangle for startup covers.
@@ -264,7 +258,7 @@ example `--bind kryon/raster_text:RasterText=my_test_host:RasterText` with
 `ziran bundle --project`.
 
 Source coloring is the separate [Syntax](https://github.com/ziranlang/syntax)
-package. Its `SyntaxColorSpan` has the same fields as `TextAreaColorSpan`.
+package. Its `SyntaxColorSpan` has the same fields as `TextArea.ColorSpan`.
 
 Hosts with stable font measurements call `font_metrics.GlyphMetricsChanged()`
 after initializing their font services and whenever fonts or their advances
@@ -275,13 +269,13 @@ font outlines. Hosts that have not published a metrics revision keep measuring
 rows on each call; they do not acquire an invalidation requirement implicitly.
 Font size, typeface, wrap width and content changes always select a new layout.
 
-`TextAreaProps.manual_scroll` keeps a reader's scroll position independent of
+`TextArea.Props.manual_scroll` keeps a reader's scroll position independent of
 caret and selection changes. Wheel, scrollbar and touch scrolling remain
 available. Editors keep the normal caret reveal unless they enable this flag.
-`ScrollProps.manual_scroll` similarly suppresses automatic focused-field
+`Scroll.Props.manual_scroll` similarly suppresses automatic focused-field
 reveal for a reader that owns its viewport.
 
-`TextFieldProps.capture_tab` defaults to false. An editable field can opt in
+`TextField.Props.capture_tab` defaults to false. An editable field can opt in
 so an unmodified Tab queued before `BeginFrame` remains available through
 `KeyboardTake(session)` for application completion. Only the actual retained
 focus owner can capture it, using its last committed intent; disabled,
@@ -291,8 +285,8 @@ node and session epoch, including suspended embedded-app input.
 `input.focus` also transfers actual focus to a newly submitted TextField in
 its first frame, so the next queued key reaches it without an idle render.
 
-`TextFieldState` keeps a field's value and interaction state in caller-owned
-storage. Import it and its helpers from `Widgets` (or `text_input_props`).
+`TextField.State` keeps a field's value and interaction state in caller-owned
+storage. Import it and its helpers as `TextField :: #import "kryon/text_field";`.
 Give `bytes` a writable slice and set `length`, `cursor`, `anchor`, `scroll_x`
 and `focused` as needed. Every byte of the slice is usable capacity; length
 does not include a terminator and the helpers do not write one.
@@ -300,24 +294,24 @@ does not include a terminator and the helpers do not write one.
 ```zi
 // Keep the bytes and state alive between frames.
 name_bytes: [96]u8;
-name: TextFieldState;
+name: TextField.State;
 // Initialize once: name.bytes = name_bytes[:]
 
 // In Frame, use the existing widget and keep the application's commit policy.
-edited := TextField(session, TextFieldStateProps(name, TextFieldProps.{
+edited := TextField.Draw(session, TextField.StateProps(name, TextField.Props.{
     .key = cast(u64)42, .bounds = bounds, .label = "Name", .input = input}))
-if TextFieldStateApplyResult(*name, edited) && edited.committed {
+if TextField.StateApplyResult(*name, edited) && edited.committed {
     // Save or navigate according to the application's workflow.
 }
 ```
 
-`TextFieldStateProps(state: TextFieldState, props: TextFieldProps) -> TextFieldProps`
+`TextField.StateProps(state: TextField.State, props: TextField.Props) -> TextField.Props`
 fills value, selection, scroll and focus, and limits `max_bytes` to storage
 capacity while preserving stricter application limits and all other props.
 The value borrows the buffer; consume borrowed result text before mutating it.
 An invalid length or UTF-8 value disables the field; zero capacity is read-only.
 
-`TextFieldStateApplyEdit(state: *TextFieldState, edit: TextFieldEdit) -> bool`
+`TextField.StateApplyEdit(state: *TextField.State, edit: TextField.Edit) -> bool`
 accepts only ordered ranges within the existing value, with both ends at
 UTF-8 scalar boundaries, valid UTF-8 replacement text, and a result that fits
 the slice. The current value must also be valid UTF-8. Replacement can borrow
@@ -327,7 +321,7 @@ field. An accepted changed edit collapses selection after the replacement.
 An unchanged edit is accepted without changing state. Application-specific
 text limits beyond storage capacity are enforced by the widget's props.
 
-`TextFieldStateApplyResult(state: *TextFieldState, result: TextFieldResult) -> bool`
+`TextField.StateApplyResult(state: *TextField.State, result: TextField.Result) -> bool`
 applies the edit and copies cursor, anchor, scroll and focus together. A rejected
 edit preserves all of them. Successful application clamps cursor and anchor
 to scalar boundaries in the resulting text and scroll to zero or greater;
@@ -346,7 +340,7 @@ A `TextArea` can preview a markup language over its value without changing
 it. `hidden` bytes take no width or caret stop, `strong` bytes are bold and
 `italic` bytes slanted (backends that register a slant raster, as Raylib
 does, draw them leaning; others upright), and `colors` tint spans.
-`lines` draws a logical line at its own size (`TextAreaLine.scale`), such as
+`lines` draws a logical line at its own size (`TextArea.Line.scale`), such as
 a heading: its rows wrap, take caret stops and take height at that size.
 `blocks` adds boxes under a line, one under another in order, the first in
 place of its last row with `cover`, each drawing `image` fitted inside it or
@@ -423,7 +417,7 @@ canonical F3 key code (292) for application shortcuts.
 
 ## Swipe rows
 
-`SwipeRow(session, props, state)` follows a horizontal drag, paints the revealed
+`SwipeRow.Draw(session, props, state)` follows a horizontal drag, paints the revealed
 strip and returns its content `offset` plus state for the next frame. Right
 uses `start`, left uses `end`; an action needs `icon_shape`. `threshold` is a
 share of row width (zero means 0.35). Optional `end_threshold` overrides it
@@ -455,18 +449,18 @@ handle their separate results. A tap need not complete the row.
 `0..320` or the combined typeface text exceeds 65,536 bytes.
 `InstallParsedStyleRules` reports the same storage failure.
 
-Use `Image(ImageProps)` for UI images. Its asset path, bounds, fit, and alt
+Use `Image.Draw(Image.Props)` for UI images. Its asset path, bounds, fit, and alt
 text describe the image at the widget boundary. Backend texture calls are
 renderer primitives, not alternate widget APIs.
 Asset paths may name PNG, JPEG, WebP or AVIF files on image-loading hosts. WebP is
 recognized by its content: lossy, lossless and transparent pictures load as
 RGBA, and an animated WebP shows its first frame (Kryon images are still).
 See [WebP images](BACKENDS.md#webp-images) and [AVIF images](BACKENDS.md#avif-images) for each host's decoder.
-`ImageProps.radius` gives an image rounded corners in native and hosted UI;
+`Image.Props.radius` gives an image rounded corners in native and hosted UI;
 a positive value overrides its style radius.
 
 Import `kryon/bitmap_image` to create a runtime RGBA image for the same
-`Image(session, ImageProps.{.texture = image, .smooth = true, ...})`:
+`Image.Draw(session, Image.Props.{.texture = image, .smooth = true, ...})`:
 `BitmapImageCreate(session: Session, width: s32, height: s32, rgba: []u8) -> Texture2D`,
 `BitmapImageUpdate(session: Session, image: Texture2D, rgba: []u8) -> bool`, and
 `BitmapImageRelease(session: Session, image: Texture2D)`. Bytes are tightly packed,
@@ -476,7 +470,7 @@ accepted unchanged data, and false preserves the old pixels. Only successful
 changed data invalidates retained paint. Smooth sampling and alpha use the
 ordinary Image renderer on native Raylib, Desktop/Cairo, pixmap and Canvas.
 Raylib resolves managed IDs to bounded native RGBA textures lazily by image
-revision. Explicit `ImageProps.tint`, including white for original colors,
+revision. Explicit `Image.Props.tint`, including white for original colors,
 applies to straight RGBA pixels. GPU reset and native window close/reopen
 preserve the session's CPU image; textures are recreated when next painted.
 Completed native worker frames own deduplicated copies of the revisions they
@@ -681,15 +675,15 @@ painter's current backdrop and clips that replacement to its visible area.
 the same bounded raster operation for a borrowed allocated GTK widget. The
 caller retains widget ownership; only newly allocated surfaces are read.
 
-`ScrollProps.external_scrollbar` and `GridMultiProps.external_scrollbar` let a
+`Scroll.Props.external_scrollbar` and `GridMulti.Props.external_scrollbar` let a
 caller supply native scrollbar visuals and input. They preserve the complete
 supplied viewport while retaining wheel, keyboard reveal, content dragging and
 momentum; the caller synchronizes the resulting offset with its native bars.
-`ScrollProps.immediate_wheel` and `GridMultiProps.immediate_wheel` opt out of
+`Scroll.Props.immediate_wheel` and `GridMulti.Props.immediate_wheel` opt out of
 wheel gliding while retaining drag behavior. The default retains wheel gliding.
 `ScrollWheelTake(session, key, bounds, scrolls, horizontal = false)` consumes
 the targeted wheel once; horizontal mode includes the sideways wheel.
-`GridMultiProps.preserve_scroll_on_focus` retains a native view's manual offset
+`GridMulti.Props.preserve_scroll_on_focus` retains a native view's manual offset
 when focus returns. Its default preserves the existing focus reveal; cursor,
 navigation, initial-open, layout and viewport changes still reveal the item.
 An explicit valid `TreeSetCursor` shape also applies to disabled controls;
@@ -834,13 +828,13 @@ provider/settings APIs share the GTK owning thread rule and fail safely without
 a display. This opt-in Linux module adds no GTK dependency to portable, WASM,
 Windows or Go application imports.
 
-`ImageProps.clip_polygon` clips an image without stretching its content.
+`Image.Props.clip_polygon` clips an image without stretching its content.
 Supply 3–4096 points in normalized destination coordinates (0–1); the path
 closes automatically. Empty leaves the image unchanged. Invalid coordinates,
 too few points, or combining a polygon with a mesh draw nothing. Native,
 hosted and browser images retain their own copy of the supplied points.
 
-`ImageProps.mesh` warps the same image over a grid of `columns` × `rows`
+`Image.Props.mesh` warps the same image over a grid of `columns` × `rows`
 screen points, row by row from the source's top left, each cell drawn as two
 textured triangles: a cut-out puppet's painted arm can bend at its elbow, or
 a picture can follow a curve. The bounds still clip it; fit, origin,
@@ -848,11 +842,11 @@ rotation and the style radius do not apply, and a grid with too few points
 draws nothing. Points are copied when the image is queued, at most 4096 per
 image (256 through a portable bundle's hosted `Image`).
 
-`ImageProps.preview_path` names a small copy of the same picture that draws in
+`Image.Props.preview_path` names a small copy of the same picture that draws in
 its place, with the image's own bounds, fit, mesh and clip, while the picture
 loads or when it is unavailable, so something shows at once and the picture
 replaces it when ready. A preview of part of a picture (a nonempty `source`,
-such as a jigsaw piece) needs `ImageProps.full_size`, the picture's size in
+such as a jigsaw piece) needs `Image.Props.full_size`, the picture's size in
 pixels, to map that rectangle onto the preview; without it the image waits for
 the picture. Hosted previews pass the same asset policy as their picture.
 `image_showing.ImageShowingOf(session, image)` reports `ImageShowingNone`
@@ -862,7 +856,7 @@ an app can wait for a picture before what belongs with it. Asking starts the
 host loading the picture, which also fetches pictures shown soon.
 
 `image_mesh.ImageMeshQuad(bounds, camera, points)` constructs a four-corner
-mesh for the standard `ImageProps.mesh`. It uses the same 2D `Camera` as
+mesh for the standard `Image.Props.mesh`. It uses the same 2D `Camera` as
 `WorldToScreen`, with caller-owned space for four points; too little space
 produces an empty mesh. Rotation and scale stay on the standard image surface.
 
@@ -886,29 +880,32 @@ Hosts call `PaintResourcesChanged()` when replacing raster resources without
 changing widget props. Retained frames then compose and paint again, including
 when a browser graphics context resets or an app updates its image assets.
 
-`Line(LineProps)`, `Circle(CircleProps)`, `Ring(RingProps)` and
-`Triangle(TriangleProps)` draw shapes as raylib's `DrawLineEx`, `DrawCircle`
+`Shape.Draw(Shape.Props)`, `Circle(Shape.CircleProps)`, `Shape.Ring(Shape.RingProps)` and
+`Shape.Triangle(Shape.TriangleProps)` draw shapes as raylib's `DrawLineEx`, `DrawCircle`
 and `DrawCircleGradient`, `DrawRing` and `DrawTriangle` do. Like `Box`, each
 is decorative: it submits a node covering what it draws and queues one paint
 command. Kryon cuts the shape into triangles, clips them to its parent's clip
 and sends each colour's triangles to the host in one `RasterTriangles` call;
-a radial fade is drawn as rings of one colour each. `BoxProps.fill_bottom`
+a radial fade is drawn as rings of one colour each. `Box.Props.fill_bottom`
 with `has_fill_bottom` fades a box's fill from top to bottom, as
 `DrawRectangleGradientV` does.
-Import `kryon/shape_props` and `kryon/shape_widget` to use these shapes without
-loading the full widget catalog, including in a portable hosted bundle.
+Import `kryon/shape` to use these shapes, including in a portable hosted
+bundle.
 
-An application using a Kryon host exports a Ziran function with this shape:
+The smallest executable application imports `kryon/app` and the widgets it
+draws:
 
 ```zi
-using UI :: #import "Widgets";
+App  :: #import "kryon/app";
+Text :: #import "kryon/text";
 
-#program_export
-Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    label: TextProps
-    label.text = "Hello, Kryon"
-    Text(session, label)
-    return 0
+main :: () -> s32 {
+    window := App.Window.{ .title = "Hello", .width = 320, .height = 160 }
+    return App.Run(window, Draw)
+}
+
+Draw :: (frame: App.Frame) {
+    Text.Draw(frame, Text.Props.{ .text = "Hello, world!", .size = 32 })
 }
 ```
 
@@ -1014,10 +1011,10 @@ sprites. Decoding continues while that frame is held. Hosts that want images
 to appear progressively keep the default, `false`.
 
 A bundle draws a row of choices, such as a week or calendar view, with
-`SegmentedControl(session, props, options)` from
+`SegmentedControl.Draw(session, props, options)` from
 [`segmented_control_widget`](../src/ui/segmented/segmented.zi); its host
 draws it as it draws its own, with up to 32 options. It frames a form's
-sections with `Fieldset(session, props)` from
+sections with `Fieldset.Draw(session, props)` from
 [`fieldset_widget`](../src/ui/fieldset/fieldset.zi), and places a toggle at a
 row's end with the size `ToggleSize(session, props)` from
 [`toggle_measure`](../src/ui/toggle/toggle_measure.zi) answers, which stays apart from
@@ -1094,8 +1091,8 @@ optional host theme colours from a portable app.
 
 ## Cover carousels
 
-`kryon/carousel` provides `Carousel(session, props, items, state)` for a
-full-cover browser. Keep a `CarouselState`, pass `CarouselItem` values with
+`kryon/carousel` provides `Carousel.Draw(session, props, items, state)` for a
+full-cover browser. Keep a `Carousel.CarouselState`, pass `Carousel.CarouselItem` values with
 portrait and landscape art, an optional source crop, an optional logo and
 caption, and an action label. A zero `source` uses the whole selected image.
 It returns the activated item index, or -1. Swipe, wheel, arrows and
@@ -1106,14 +1103,14 @@ same optional source crop, defaulting to the whole image.
 
 ## Loading surfaces
 
-`kryon/loading_screen` provides `LoadingScreen(session, LoadingScreenProps)`
+`kryon/loading_screen` provides `LoadingScreen.Draw(session, LoadingScreen.Props)`
 for app starts and longer operations. Supply a title, localized detail and
 an app icon (`icon_shape` or `icon_asset`). Its responsive composition uses
 the current canvas, surface, border and accent tokens in native and hosted
 apps. A quiet arc moves with `now`; `reduced_motion` keeps it still. Set
 `has_progress`, `completed` and `total` only for measured work, to show a
 slim standard progress bar instead. It never invents a percentage. The same
-surface is exported by `Widgets`; title/detail class IDs allow text styling.
+surface is exported by `kryon/loading_screen`; title/detail class IDs allow text styling.
 Use `loading_indicator` for small inline waits, with the same theme accent.
 
 ## Game touch controls
@@ -1140,7 +1137,7 @@ failed frame keeps the committed mark, and a frame without one shows the
 default. A widget with its own shape under the pointer wins over the mark,
 except a disabled one the app's mark covers. A `Press` the app refines with its
 own hit test, such as a painted shape inside its bounds, sets
-`PressProps.cursor` to `CursorArrow` while the pointer is off that shape; only
+`Press.Props.cursor` to `CursorArrow` while the pointer is off that shape; only
 the cursor changes, never presses, touch or keys. Invalid shapes and inactive
 sessions return false.
 
@@ -1228,8 +1225,8 @@ in logical units (56 by default). The app keeps its movement rules.
 
 ## Rotated text
 
-`TextProps.rotation` rotates text clockwise in degrees about `bounds` top left
-plus `TextProps.origin` (logical units). Zero keeps horizontal text; `origin =
+`Text.Props.rotation` rotates text clockwise in degrees about `bounds` top left
+plus `Text.Props.origin` (logical units). Zero keeps horizontal text; `origin =
 Vector2.{bounds.width / 2.0, bounds.height / 2.0}` rotates about the box centre.
 Layout and font sizes stay unchanged. Native Raylib (including Android), Canvas
 and DOM preserve the same pivot; local text clipping rotates with the text,
@@ -1243,12 +1240,12 @@ the same Text props and continue at `next`. Only separating whitespace is
 skipped; a viewport shorter than a line reports no progress. Apps keep their
 own content anchors and page indexes so reflow preserves the reading place.
 
-`TextProps.line_gap` supplies extra units between lines. `typeface` names a
+`Text.Props.line_gap` supplies extra units between lines. `typeface` names a
 registered face or a font asset. Hosted fonts pass the same asset policy as
 images; absolute host paths are refused. Raylib and Canvas select the face
 for measurement and for queued paint, restoring the interface font afterward.
 
-`TextProps.wrap = TextWrap.TextWrapAnywhere` wraps at extended Unicode grapheme
+`Text.Props.wrap = Text.Wrap.TextWrapAnywhere` wraps at extended Unicode grapheme
 boundaries, including inside unbroken usernames. Combining marks, emoji ZWJ
 sequences and flags stay whole. Spaces are preserved and CR, LF and CRLF end
 lines. A single grapheme wider than the bounds stays whole on its own line;
@@ -1524,7 +1521,7 @@ linking. `notification_desktop` dispatches immediate notification effects to the
 Android implementation when ANDROID_BUILD is defined. Custom activities provide
 `requestKryonNotifications()` using the scaffold's UI-thread callback.
 
-In-app `ToastProps.seconds` is independent: a toast's caller chooses display
+In-app `Toast.Props.seconds` is independent: a toast's caller chooses display
 length. OS notifications have no app-chosen toast deadline and remain subject
 to Android's notification settings and user dismissal.
 
@@ -1553,11 +1550,11 @@ package. A host decides which services it offers in mini mode.
 
 ## Multi-select grid
 
-`GridMulti(session: Session, props: GridMultiProps, items: []GridMultiItem,
-selected: []bool) -> GridMultiResult` is exported by `Widgets` and
-`grid_multi_widget`. Each borrowed item has `key: u64`, `label: string` and an
-optional `image: ImageProps`. Import `kryon/icon` (or `kryon/Widgets`) for
-`ImageForIcon(icon_type: s32, bounds: Rectangle, alt_text: string) -> ImageProps`
+`GridMulti.Draw(session: Session, props: GridMulti.Props, items: []GridMulti.GridMultiItem,
+selected: []bool) -> GridMulti.GridMultiResult` is exported by `kryon/grid_multi`.
+Each borrowed item has `key: u64`, `label: string` and an
+optional `image: Image.Props`. Import `kryon/icon` and `kryon/image` for
+`ImageForIcon(icon_type: s32, bounds: Rectangle, alt_text: string) -> Image.Props`
 and `IconType`. For example, assign
 `ImageForIcon(cast(s32)IconType.IconHome, Rectangle.{}, "Home")` to an item's
 image; the grid assigns its destination bounds. Ship the referenced `icons/`
@@ -1580,7 +1577,7 @@ canonical double-click activation signal; callers retain their pointer-click
 action policy. Space only toggles selection. Missing actions use -1.
 `selected_count` includes offscreen items. Keep application actions in the caller.
 
-`GridMultiLayout.GridMultiIcon` (default) measures columns from available width,
+`GridMulti.GridMultiLayout.GridMultiIcon` (default) measures columns from available width,
 places the image above the label, and scrolls vertically. Compact measures rows
 from height, places a smaller image before the label, and scrolls horizontally.
 Set `cell_width`, `cell_height`, `image_size`, `gap`, `padding`, `scale`, `bounds`,
@@ -1590,7 +1587,7 @@ and label children clip to the viewport. Set `invisible = true` to retain
 selection, input, scrolling and accessibility while supplying native painting. Use the normal retained frame for image
 clipping and pointer routing.
 
-Supply edge/repeat decisions through `navigation: GridMultiInput` and modifiers
+Supply edge/repeat decisions through `navigation: GridMulti.GridMultiInput` and modifiers
 through `control` and `shift`; keyboard input requires `focused` and an enabled
 grid. Icon Left/Right moves within a row, Up/Down by measured columns; Compact
 Up/Down moves within a column, Left/Right by measured rows. Incomplete final

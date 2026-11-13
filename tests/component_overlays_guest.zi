@@ -1,29 +1,23 @@
-#import "text_input_props"
+CommandPalette :: #import "kryon/command_palette";
+ConfirmPopover :: #import "kryon/confirm_popover";
+GuidedTour :: #import "kryon/guided_tour";
+HoverCard :: #import "kryon/hover_card";
+Sheet :: #import "kryon/sheet";
+TextField :: #import "kryon/text_field";
+Tooltip :: #import "kryon/tooltip";
 #import "component_protocol"
-#import "tooltip"
-#import "tooltip_props"
 #import "tooltip_common"
-#import "sheet"
-#import "sheet_props"
-#import "commandpalette"
-#import "command_palette_props"
-#import "hovercard"
-#import "hover_card_props"
-#import "confirmpopover"
-#import "confirm_popover_props"
-#import "guidedtour"
-#import "guided_tour_props"
 #import "geometry"
 #import "session"
 #import "style"
 
 active: bool;
-tip: TooltipState;
-panel: SheetState;
-palette: CommandPaletteState;
-card: HoverCardState;
-confirm: ConfirmPopoverState;
-tour: GuidedTourState;
+tip: Tooltip.TooltipState;
+panel: Sheet.SheetState;
+palette: CommandPalette.CommandPaletteState;
+card: HoverCard.HoverCardState;
+confirm: ConfirmPopover.ConfirmPopoverState;
+tour: GuidedTour.GuidedTourState;
 
 #program_export
 ComponentOverlays :: (session: Session, action: bool) -> bool {
@@ -32,37 +26,37 @@ ComponentOverlays :: (session: Session, action: bool) -> bool {
     viewport := ComponentBounds()
     anchor := Rectangle.{20.0, 16.0, 90.0, 25.0}
     face := StyleData.{.motion_reduced = true}
-    tip_result := Tooltip(session, TooltipProps.{.key = 8000, .text = "Hosted tip",
+    tip_result := Tooltip.Draw(session, Tooltip.Props.{.key = 8000, .text = "Hosted tip",
         .anchor = anchor, .viewport = viewport, .now_ms = 1000,
         .focus = OverlayFocus.{.anchor_focused = true}, .style = face}, *tip)
-    panel_result := Sheet(session, SheetProps.{.key = 9000, .title = "Hosted sheet",
+    panel_result := Sheet.Draw(session, Sheet.Props.{.key = 9000, .title = "Hosted sheet",
         .open = true, .viewport = viewport, .size = 150.0, .now_ms = 1000,
-        .input = SheetInput.{.focus_count = 3, .focus = OverlayFocus.{.tab_forward = action}},
+        .input = Sheet.SheetInput.{.focus_count = 3, .focus = OverlayFocus.{.tab_forward = action}},
         .surface_style = face}, *panel)
-    commands: [2]CommandPaletteCommand
-    commands[0] = CommandPaletteCommand.{.title = "Run", .group = "Actions", .action = 71}
-    commands[1] = CommandPaletteCommand.{.title = "Save", .group = "Actions", .action = 72}
-    palette_result := CommandPalette(session, CommandPaletteProps.{.key = 10000,
+    commands: [2]CommandPalette.CommandPaletteCommand
+    commands[0] = CommandPalette.CommandPaletteCommand.{.title = "Run", .group = "Actions", .action = 71}
+    commands[1] = CommandPalette.CommandPaletteCommand.{.title = "Save", .group = "Actions", .action = 72}
+    palette_result := CommandPalette.Draw(session, CommandPalette.Props.{.key = 10000,
         .owner = 33, .open = true, .viewport = viewport, .width = 220.0,
         .maximum_height = 150.0, .now_ms = 1000, .commands = commands[0:2],
-        .input = CommandPaletteInput.{.activate_index = -1, .enter = action,
-            .text = TextFieldInput.{.text = ifx action then "run" else ""}},
+        .input = CommandPalette.CommandPaletteInput.{.activate_index = -1, .enter = action,
+            .text = TextField.Input.{.text = ifx action then "run" else ""}},
         .surface_style = face}, *palette)
-    card_result := HoverCard(session, HoverCardProps.{.key = 11000, .title = "Hosted card",
+    card_result := HoverCard.Draw(session, HoverCard.Props.{.key = 11000, .title = "Hosted card",
         .body = "Details", .action_label = "Open", .action = 41,
         .anchor = anchor, .viewport = viewport, .width = 200.0, .now_ms = 1000,
         .focus = OverlayFocus.{.anchor_focused = true}, .style = face}, *card)
-    confirm_result := ConfirmPopover(session, ConfirmPopoverProps.{.key = 12000,
+    confirm_result := ConfirmPopover.Draw(session, ConfirmPopover.Props.{.key = 12000,
         .title = "Hosted confirmation", .confirm_label = "Confirm", .cancel_label = "Cancel",
         .anchor = anchor, .viewport = viewport, .open = true, .now_ms = 1000,
         .keys = OverlayKeyInput.{.enter = action}, .style = face}, *confirm)
-    steps: [2]GuidedTourStep
-    steps[0] = GuidedTourStep.{.target_key = 1, .target = anchor, .title = "First", .body = "Start"}
-    steps[1] = GuidedTourStep.{.target_key = 2, .target = anchor, .title = "Second", .body = "Continue"}
-    tour_result := GuidedTour(session, GuidedTourProps.{.key = 13000,
+    steps: [2]GuidedTour.GuidedTourStep
+    steps[0] = GuidedTour.GuidedTourStep.{.target_key = 1, .target = anchor, .title = "First", .body = "Start"}
+    steps[1] = GuidedTour.GuidedTourStep.{.target_key = 2, .target = anchor, .title = "Second", .body = "Continue"}
+    tour_result := GuidedTour.Draw(session, GuidedTour.Props.{.key = 13000,
         .steps = steps[0:2], .viewport = viewport, .width = 200.0, .now_ms = 1000,
         .next_label = "Next", .done_label = "Done", .skip_label = "Skip",
-        .input = GuidedTourInput.{.right = action}, .card_style = face}, *tour)
+        .input = GuidedTour.GuidedTourInput.{.right = action}, .card_style = face}, *tour)
     if action && (!panel_result.focus_wrapped && panel.focus_index != 1 ||
         palette_result.chosen_action != 71 ||
         !confirm_result.confirmed || tour_result.step != 1) { return false }

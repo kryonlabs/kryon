@@ -95,7 +95,9 @@ def main():
             + "".join(f'{key} = "{value}"\n' for key, value in overrides.items())
         )
         (project / "src/app.zi").write_text(
-            'using UI :: #import "Widgets";\n'
+            '#import "kryon/geometry"\n'
+            '#import "kryon/session"\n'
+            '#import "kryon/tree_input"\n'
             'static_archive :: #system_library "static_archive";\n'
             'StaticArchiveValue :: () -> s32 #foreign static_archive;\n'
             '#program_export\n'

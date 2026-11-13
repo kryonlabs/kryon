@@ -36,7 +36,7 @@ GuidedTourInput :: struct {
     activate: GuidedTourAction
 }
 
-GuidedTourProps :: struct {
+Props :: struct {
     key: u64
     id: s32
     class_name: s32

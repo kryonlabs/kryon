@@ -1,39 +1,26 @@
 .DEFAULT_GOAL := all
 
 CC ?= cc
-ZIRAN_DIR ?= $(if $(ZIRAN_ROOT),$(ZIRAN_ROOT),$(shell ziran pkg path ziran))
-ZIRAN_BIN ?= $(abspath $(ZIRAN_DIR)/build/bin/ziran)
-ZIRAN_INCLUDE ?= $(abspath $(ZIRAN_DIR)/include)
+ZIRAN_BIN ?= ziran
+ZIRAN_INCLUDE ?= $(if $(ZIRAN_ROOT),$(ZIRAN_ROOT),$(shell $(ZIRAN_BIN) pkg path ziran))/include
 # Resolve the maintained examples through the ordinary package graph.
-KRYON_MODULE_ROOTS := $(shell python3 -c 'import tomllib; from pathlib import Path; print(" ".join("../" + root for root in tomllib.loads(Path("../ziran.toml").read_text())["package"]["module_roots"]))')
-KRYON_MODULE_ARGS := --project --module-path .
-KRYON_SOURCES := $(foreach root,$(KRYON_MODULE_ROOTS),$(wildcard $(root)/*.zi $(root)/*/module.zi))
+KRYON_MODULE_ARGS := --project
+KRYON_SOURCES := $(shell find ../src/ui ../src/backend -type f -name '*.zi' -print)
 BUILD_DIR ?= ../build/examples
 NATIVE_LIB := ../build/ziran/libkryon.a
+PROGRAMS := hello window
+NATIVE_PROGRAMS := $(addprefix $(BUILD_DIR)/,$(PROGRAMS))
+GO_PROGRAMS := $(addsuffix .go.stamp,$(addprefix $(BUILD_DIR)/matrix/,$(PROGRAMS)))
+WEB_PROGRAMS := $(addsuffix .web.stamp,$(addprefix $(BUILD_DIR)/matrix/,$(PROGRAMS)))
+ZX_PROGRAMS := $(addsuffix .zx,$(addprefix $(BUILD_DIR)/matrix/,$(PROGRAMS)))
 
-.PHONY: all test desktop desktop-test desktop-image-test desktop-text-test time-picker time-picker-shots clean
-all: $(BUILD_DIR)/hello.svg $(BUILD_DIR)/hello.zx
-
-$(ZIRAN_BIN):
-	$(MAKE) -C $(ZIRAN_DIR) all
+.PHONY: all test backend-matrix desktop desktop-image-test time-picker time-picker-shots clean
+all: $(NATIVE_PROGRAMS)
 
 $(NATIVE_LIB): ../Makefile ../src/ui/modules.txt $(KRYON_SOURCES)
 	$(MAKE) -C .. all
 
-$(BUILD_DIR)/hello.zx: hello.zi $(KRYON_SOURCES) $(ZIRAN_BIN) ../ziran.toml Makefile
-	mkdir -p $(BUILD_DIR)
-	$(ZIRAN_BIN) bundle --root . $(KRYON_MODULE_ARGS) \
-		--entry hello:Frame -o $@ hello.zi
-
-$(BUILD_DIR)/hello-saved.zx: $(BUILD_DIR)/hello.zx
-	$(ZIRAN_BIN) ir --root . $(KRYON_MODULE_ARGS) \
-		-o $(BUILD_DIR)/ir hello.zi
-	$(ZIRAN_BIN) bundle --root $(BUILD_DIR)/ir \
-		--module-path $(BUILD_DIR)/ir --entry hello:Frame \
-		-o $@ $(BUILD_DIR)/ir/hello.zir
-	cmp $(BUILD_DIR)/hello.zx $@
-
-$(BUILD_DIR)/image.zx: image_demo.zi $(KRYON_SOURCES) $(ZIRAN_BIN) ../ziran.toml Makefile
+$(BUILD_DIR)/image.zx: image_demo.zi $(KRYON_SOURCES) ../ziran.toml Makefile
 	mkdir -p $(BUILD_DIR)
 	$(ZIRAN_BIN) bundle --root . $(KRYON_MODULE_ARGS) \
 		--entry image_demo:Frame -o $@ image_demo.zi
@@ -46,63 +33,47 @@ $(BUILD_DIR)/image-saved.zx: $(BUILD_DIR)/image.zx
 		-o $@ $(BUILD_DIR)/image-ir/image_demo.zir
 	cmp $(BUILD_DIR)/image.zx $@
 
-$(BUILD_DIR)/text.zx: text_hello.zi $(KRYON_SOURCES) $(ZIRAN_BIN) ../ziran.toml Makefile
-	mkdir -p $(BUILD_DIR)
-	$(ZIRAN_BIN) bundle --root . $(KRYON_MODULE_ARGS) \
-		--entry text_hello:Frame -o $@ text_hello.zi
-
-$(BUILD_DIR)/text-saved.zx: $(BUILD_DIR)/text.zx
-	$(ZIRAN_BIN) ir --root . $(KRYON_MODULE_ARGS) \
-		-o $(BUILD_DIR)/text-ir text_hello.zi
-	$(ZIRAN_BIN) bundle --root $(BUILD_DIR)/text-ir \
-		--module-path $(BUILD_DIR)/text-ir --entry text_hello:Frame \
-		-o $@ $(BUILD_DIR)/text-ir/text_hello.zir
-	cmp $(BUILD_DIR)/text.zx $@
-
-$(BUILD_DIR)/hello-native/hello_host.c: hello_host.zi hello.zi $(KRYON_SOURCES) $(ZIRAN_BIN) ../ziran.toml Makefile
-	mkdir -p $(BUILD_DIR)/hello-native
-	$(RM) $(BUILD_DIR)/hello-native/*.c $(BUILD_DIR)/hello-native/*.h
-	$(ZIRAN_BIN) build --target=c --root . $(KRYON_MODULE_ARGS) \
-		-o $(BUILD_DIR)/hello-native hello_host.zi
-
-$(BUILD_DIR)/hello-host: $(BUILD_DIR)/hello-native/hello_host.c Makefile
-	$(CC) -std=c11 -Wall -ffunction-sections -fdata-sections -Wl,--gc-sections \
-		-I$(ZIRAN_INCLUDE) -I$(BUILD_DIR)/hello-native \
-		$(BUILD_DIR)/hello-native/*.c -lm -o $@
-
-$(BUILD_DIR)/hello.svg: $(BUILD_DIR)/hello-host
-	env -u DISPLAY -u WAYLAND_DISPLAY \
-		$(BUILD_DIR)/hello-host > $@
-
-test: all $(BUILD_DIR)/hello-saved.zx
-	python3 -c 'import xml.etree.ElementTree as ET; root=ET.parse("$(BUILD_DIR)/hello.svg").getroot(); ns="{http://www.w3.org/2000/svg}"; assert root.tag==ns+"svg"; assert [node.text for node in root.iter(ns+"text")]==["Hello, Ziran"]*3+["Clicked!"]; assert len(list(root.iter(ns+"rect")))>=4'
-
-$(BUILD_DIR)/desktop-hello-native/desktop_hello.c: desktop_hello.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi hello.zi $(KRYON_SOURCES) $(ZIRAN_DIR)/std/c_string.zi $(ZIRAN_BIN) Makefile
-	mkdir -p $(BUILD_DIR)/desktop-hello-native
-	$(RM) $(BUILD_DIR)/desktop-hello-native/*.c $(BUILD_DIR)/desktop-hello-native/*.h
-	$(ZIRAN_BIN) build --target=c --root . $(KRYON_MODULE_ARGS) \
-		--entry desktop_hello:main -o $(BUILD_DIR)/desktop-hello-native desktop_hello.zi
-
-$(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi image_demo.zi $(KRYON_SOURCES) $(ZIRAN_DIR)/std/c_string.zi $(ZIRAN_BIN) Makefile
+$(BUILD_DIR)/desktop-image-native/desktop_image.c: desktop_image.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi image_demo.zi $(KRYON_SOURCES) Makefile
 	mkdir -p $(BUILD_DIR)/desktop-image-native
 	$(RM) $(BUILD_DIR)/desktop-image-native/*.c $(BUILD_DIR)/desktop-image-native/*.h
 	$(ZIRAN_BIN) build --target=c --root . $(KRYON_MODULE_ARGS) \
 		--entry desktop_image:main -o $(BUILD_DIR)/desktop-image-native desktop_image.zi
 
-$(BUILD_DIR)/desktop-text-native/desktop_text.c: desktop_text.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi text_hello.zi $(KRYON_SOURCES) $(ZIRAN_DIR)/std/c_string.zi $(ZIRAN_BIN) Makefile
-	mkdir -p $(BUILD_DIR)/desktop-text-native
-	$(RM) $(BUILD_DIR)/desktop-text-native/*.c $(BUILD_DIR)/desktop-text-native/*.h
-	$(ZIRAN_BIN) build --target=c --root . $(KRYON_MODULE_ARGS) \
-		--entry desktop_text:main -o $(BUILD_DIR)/desktop-text-native desktop_text.zi
-
-$(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c: desktop_time_picker.zi time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(KRYON_SOURCES) $(ZIRAN_DIR)/std/c_string.zi $(ZIRAN_BIN) Makefile
+$(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c: desktop_time_picker.zi time_picker_demo.zi ../src/backend/desktop_runtime.zi ../src/backend/cairo_raster.zi $(KRYON_SOURCES) Makefile
 	mkdir -p $(BUILD_DIR)/desktop-time-picker-native
 	$(RM) $(BUILD_DIR)/desktop-time-picker-native/*.c $(BUILD_DIR)/desktop-time-picker-native/*.h
 	$(ZIRAN_BIN) build --target=c --root . $(KRYON_MODULE_ARGS) \
 		--entry desktop_time_picker:main -o $(BUILD_DIR)/desktop-time-picker-native desktop_time_picker.zi
 
 # The desktop host draws with Cairo and Pango and finds fonts with Fontconfig.
-DESKTOP_LIBS = $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig glib-2.0 x11) -lm -lpthread
+DESKTOP_LIBS = $(shell pkg-config --libs sdl2 cairo freetype2 pangocairo fontconfig gio-2.0 glib-2.0 x11) -lm -lpthread
+
+define PROGRAM_RULES
+$(BUILD_DIR)/$(1): $(1).zi $(KRYON_SOURCES) ../ziran.toml Makefile
+	mkdir -p $(BUILD_DIR)/$(1)-native
+	LDLIBS='$(DESKTOP_LIBS)' $(ZIRAN_BIN) build --target=c --exe --root . $(KRYON_MODULE_ARGS) \
+		--entry $(1):main -o $(BUILD_DIR)/$(1)-native $(1).zi
+	cp $(BUILD_DIR)/$(1)-native/$(1) $$@
+
+$(BUILD_DIR)/matrix/$(1).go.stamp: $(1).zi $(KRYON_SOURCES) ../ziran.toml Makefile
+	mkdir -p $(BUILD_DIR)/matrix/$(1)-go
+	$(ZIRAN_BIN) build --target=go --pkg main --exe --root . $(KRYON_MODULE_ARGS) \
+		--entry $(1):main -o $(BUILD_DIR)/matrix/$(1)-go $(1).zi
+	touch $$@
+
+$(BUILD_DIR)/matrix/$(1).web.stamp: $(1).zi $(KRYON_SOURCES) ../ziran.toml Makefile
+	mkdir -p $(BUILD_DIR)/matrix/$(1)-web
+	$(ZIRAN_BIN) build --target=c --target-os web --root . $(KRYON_MODULE_ARGS) \
+		--entry $(1):main -o $(BUILD_DIR)/matrix/$(1)-web $(1).zi
+	touch $$@
+
+$(BUILD_DIR)/matrix/$(1).zx: $(1).zi $(KRYON_SOURCES) ../ziran.toml Makefile
+	mkdir -p $(BUILD_DIR)/matrix
+	$(ZIRAN_BIN) bundle --root . $(KRYON_MODULE_ARGS) \
+		--entry $(1):main -o $$@ $(1).zi
+endef
+
+$(foreach program,$(PROGRAMS),$(eval $(call PROGRAM_RULES,$(program))))
 
 .PHONY: widget-catalog widget-catalog-web
 widget-catalog:
@@ -112,22 +83,10 @@ widget-catalog:
 widget-catalog-web:
 	python3 ../scripts/build-gallery.py
 
-$(BUILD_DIR)/hello-desktop: $(BUILD_DIR)/desktop-hello-native/desktop_hello.c Makefile
-	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
-		-I$(BUILD_DIR)/desktop-hello-native \
-		$(BUILD_DIR)/desktop-hello-native/*.c \
-		$(DESKTOP_LIBS) -o $@
-
 $(BUILD_DIR)/image-desktop: $(BUILD_DIR)/desktop-image-native/desktop_image.c Makefile
 	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
 		-I$(BUILD_DIR)/desktop-image-native \
 		$(BUILD_DIR)/desktop-image-native/*.c \
-		$(DESKTOP_LIBS) -o $@
-
-$(BUILD_DIR)/text-desktop: $(BUILD_DIR)/desktop-text-native/desktop_text.c Makefile
-	$(CC) -std=c11 -O2 -I$(ZIRAN_INCLUDE) \
-		-I$(BUILD_DIR)/desktop-text-native \
-		$(BUILD_DIR)/desktop-text-native/*.c \
 		$(DESKTOP_LIBS) -o $@
 
 $(BUILD_DIR)/time-picker-desktop: $(BUILD_DIR)/desktop-time-picker-native/desktop_time_picker.c Makefile
@@ -136,22 +95,16 @@ $(BUILD_DIR)/time-picker-desktop: $(BUILD_DIR)/desktop-time-picker-native/deskto
 		$(BUILD_DIR)/desktop-time-picker-native/*.c \
 		$(DESKTOP_LIBS) -o $@
 
-desktop: $(BUILD_DIR)/hello-desktop
+desktop: $(BUILD_DIR)/hello
 
-desktop-test: desktop
-	env -u DISPLAY -u WAYLAND_DISPLAY \
-		KRYON_CAPTURE_PATH=$(BUILD_DIR)/hello-desktop.png \
-		xvfb-run -a $(BUILD_DIR)/hello-desktop
+backend-matrix: $(GO_PROGRAMS) $(WEB_PROGRAMS) $(ZX_PROGRAMS)
+
+test: all backend-matrix
 
 desktop-image-test: $(BUILD_DIR)/image-saved.zx $(BUILD_DIR)/image-desktop
 	env -u DISPLAY -u WAYLAND_DISPLAY \
 		KRYON_CAPTURE_PATH=$(BUILD_DIR)/image-desktop.png \
 		xvfb-run -a $(BUILD_DIR)/image-desktop
-
-desktop-text-test: $(BUILD_DIR)/text-saved.zx $(BUILD_DIR)/text-desktop
-	env -u DISPLAY -u WAYLAND_DISPLAY \
-		KRYON_CAPTURE_PATH=$(BUILD_DIR)/text-desktop.png \
-		xvfb-run -a $(BUILD_DIR)/text-desktop
 
 # The TimePicker example. `make -C examples time-picker` builds it; run
 # ../build/examples/time-picker-desktop from examples/ to open it.

@@ -3,7 +3,7 @@
 #import "drawing_props"
 #import "page_core"
 #import "page_paint"
-#if #defined(PLATFORM_WEB) {
+#if OS == .WEB {
     #program_export
     ColorToInt :: (color: Color) -> s32 {
         return cast(s32)((cast(u32)color.r << 24) | (cast(u32)color.g << 16) | (cast(u32)color.b << 8) | cast(u32)color.a)

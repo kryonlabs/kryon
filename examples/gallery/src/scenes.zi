@@ -1,5 +1,58 @@
 // Shared, interactive core widget scenes for the gallery and review renderer.
-using UI :: #import "kryon/Widgets";
+Box :: #import "kryon/box";
+Button :: #import "kryon/button";
+Card :: #import "kryon/card";
+Checkbox :: #import "kryon/checkbox";
+Collapsible :: #import "kryon/collapsible";
+ColorPicker :: #import "kryon/color_picker";
+ContextMenu :: #import "kryon/context_menu";
+Dropdown :: #import "kryon/dropdown";
+Fieldset :: #import "kryon/fieldset";
+Flow :: #import "kryon/flow";
+Image :: #import "kryon/image";
+Layout :: #import "kryon/layout";
+Link :: #import "kryon/link";
+ListBox :: #import "kryon/list_box";
+Menu :: #import "kryon/menu";
+Modal :: #import "kryon/modal";
+Navigation :: #import "kryon/navigation";
+NavigationBarConfig :: #import "kryon/navigation_bar_config";
+Overlay :: #import "kryon/overlay";
+Page :: #import "kryon/page";
+PanedView :: #import "kryon/paned_view";
+Press :: #import "kryon/press";
+Progress :: #import "kryon/progress";
+Radio :: #import "kryon/radio";
+Reorder :: #import "kryon/reorder";
+Scroll :: #import "kryon/scroll";
+SegmentedControl :: #import "kryon/segmented_control";
+Selectable :: #import "kryon/selectable";
+Separator :: #import "kryon/separator";
+Shape :: #import "kryon/shape";
+Slider :: #import "kryon/slider";
+Spinbox :: #import "kryon/spinbox";
+TabBar :: #import "kryon/tab_bar";
+Text :: #import "kryon/text";
+TextArea :: #import "kryon/text_area";
+TextField :: #import "kryon/text_field";
+TimePicker :: #import "kryon/time_picker";
+TitleBar :: #import "kryon/title_bar";
+Toast :: #import "kryon/toast";
+Toggle :: #import "kryon/toggle";
+Toolbar :: #import "kryon/toolbar";
+#import "kryon/control_props"
+#import "kryon/drawing_props"
+#import "kryon/geometry"
+#import "kryon/grid_props"
+#import "kryon/input_protocol"
+#import "kryon/key_input"
+#import "kryon/session"
+#import "kryon/system_clipboard"
+#import "kryon/text_align"
+#import "kryon/text_selection"
+#import "kryon/transition"
+#import "kryon/tree"
+#import "kryon/tree_input"
 #import "kryon/system_theme"
 #import "std/number_text"
 
@@ -25,7 +78,7 @@ details: bool = true;
 time_value: s32 = 570;
 color: [4]float32 = .{0.18, 0.52, 0.68, 1.0};
 nav: s32;
-menu_state: MenuState;
+menu_state: Menu.MenuState;
 menu_initialized: bool;
 order: [3]s32 = .{0, 1, 2};
 config_routes: [4]s32 = .{1, 2, 0, 0};
@@ -62,7 +115,7 @@ Copy :: (target: []u8, value: string) -> s32 {
     return count
 }
 
-Apply :: (target: []u8, length: s32, edit: TextFieldEdit) -> s32 {
+Apply :: (target: []u8, length: s32, edit: TextField.Edit) -> s32 {
     if !edit.changed { return length }
     if edit.start < 0 || edit.end < edit.start || edit.end > length { return length }
     new_length := length - (edit.end - edit.start) + cast(s32)edit.replacement.count
@@ -76,32 +129,32 @@ Apply :: (target: []u8, length: s32, edit: TextFieldEdit) -> s32 {
     return new_length
 }
 
-EditField :: (session: Session, key: u64, bounds: Rectangle, disabled: bool, empty: bool, input: TextFieldInput) {
+EditField :: (session: Session, key: u64, bounds: Rectangle, disabled: bool, empty: bool, input: TextField.Input) {
     index: s32 = ifx empty then 1 else 0
     value := TextView(field_bytes[0:field_length])
     if empty { value = TextView(empty_bytes[0:empty_length]) }
-    result := TextField(session, TextFieldProps.{.key = key, .bounds = bounds, .value = value, .placeholder = "Write something...", .max_bytes = 1024, .disabled = disabled, .cursor = demo_field_cursor[index], .anchor = demo_field_anchor[index], .scroll_x = demo_field_scroll[index], .input = input})
+    result := TextField.Draw(session, TextField.Props.{.key = key, .bounds = bounds, .value = value, .placeholder = "Write something...", .max_bytes = 1024, .disabled = disabled, .cursor = demo_field_cursor[index], .anchor = demo_field_anchor[index], .scroll_x = demo_field_scroll[index], .input = input})
     if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
     demo_field_cursor[index] = result.cursor; demo_field_anchor[index] = result.anchor; demo_field_scroll[index] = result.scroll_x
     if empty { empty_length = Apply(empty_next[:], empty_length, result.edit) }
     else { field_length = Apply(field_next[:], field_length, result.edit) }
 }
 
-EditArea :: (session: Session, bounds: Rectangle, disabled: bool, input: TextAreaInput) {
-    result := TextArea(session, TextAreaProps.{.bounds = bounds, .value = TextView(area_bytes[0:area_length]), .max_bytes = 4096, .wrap = true, .disabled = disabled, .cursor = demo_area_cursor, .anchor = demo_area_anchor, .scroll_y = demo_area_scroll, .input = input})
+EditArea :: (session: Session, bounds: Rectangle, disabled: bool, input: TextArea.Input) {
+    result := TextArea.Draw(session, TextArea.Props.{.bounds = bounds, .value = TextView(area_bytes[0:area_length]), .max_bytes = 4096, .wrap = true, .disabled = disabled, .cursor = demo_area_cursor, .anchor = demo_area_anchor, .scroll_y = demo_area_scroll, .input = input})
     if result.clipboard_write { unused SystemClipboardSet(result.clipboard_text) }
     demo_area_cursor = result.cursor; demo_area_anchor = result.anchor; demo_area_scroll = result.scroll_y
-    edit: TextFieldEdit = .{.start = result.edit.start, .end = result.edit.end, .replacement = result.edit.replacement, .changed = result.edit.changed}
+    edit: TextField.Edit = .{.start = result.edit.start, .end = result.edit.end, .replacement = result.edit.replacement, .changed = result.edit.changed}
     area_length = Apply(area_next[:], area_length, edit)
 }
 
 Label :: (session: Session, value: string, y: float32 = 76.0) {
-    Text(session, TextProps.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
+    Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{28.0, y, 420.0, 38.0}), .text = value})
 }
 
-SceneInput :: struct { field: TextFieldInput; area: TextAreaInput }
-no_headers: []CollapsibleHeader;
-no_options: []DropdownOption;
+SceneInput :: struct { field: TextField.Input; area: TextArea.Input }
+no_headers: []Collapsible.CollapsibleHeader;
+no_options: []Dropdown.Option;
 b: Rectangle;
 typed: [128]u8;
 
@@ -126,7 +179,7 @@ Prepare :: (session: Session, scene: s32) -> SceneInput {
 
 SceneInputFor :: (input_key: s32, modifiers: s32, input_text: string) -> SceneInput {
     field_input := TextFieldInputFor(input_key, modifiers, input_text)
-    area_input: TextAreaInput
+    area_input: TextArea.Input
     area_input.text = field_input.text
     area_input.left = field_input.left; area_input.right = field_input.right
     area_input.home = field_input.home; area_input.end = field_input.end
@@ -149,13 +202,13 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
     area_input := input.area
     if scene == 0 {
         for index: 0..3 {
-            props: ButtonProps
+            props: Button.Props
             props.key = cast(u64)(10 + index)
             props.bounds = GalleryBounds(Rectangle.{24.0 + cast(float32)(index % 2) * 220.0, 64.0 + cast(float32)(index / 2) * 64.0, 208.0, 44.0})
             props.label = "Continue"
             props.tone = cast(ButtonTone)index
             props.disabled = disabled
-            if Button(session, props) == 1 { clicks += 1 }
+            if Button.Draw(session, props) == 1 { clicks += 1 }
         }
         digits: [16]u8
         counter: [48]u8
@@ -170,164 +223,164 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
         b.height = 188.0
         EditArea(session, b, disabled, area_input)
     } else if scene == 3 {
-        options: [3]DropdownOption
+        options: [3]Dropdown.Option
         options[0].label = "Morning"; options[1].label = "Afternoon"; options[2].label = "Evening"
-        choice = Dropdown(session, DropdownProps.{.bounds = b, .selected_index = choice, .disabled = disabled}, options[:]).selected_index
+        choice = Dropdown.Draw(session, Dropdown.Props.{.bounds = b, .selected_index = choice, .disabled = disabled}, options[:]).selected_index
     } else if scene == 4 {
-        amount = Slider(session, SliderProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 80.0}), .label = "Volume", .value = amount, .max = 100.0, .disabled = disabled}).value
-        Progress(session, ProgressProps.{.bounds = GalleryBounds(Rectangle.{24.0, 180.0, 432.0, 16.0}), .value = cast(s32)amount, .max = 100})
+        amount = Slider.Draw(session, Slider.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 80.0}), .label = "Volume", .value = amount, .max = 100.0, .disabled = disabled}).value
+        Progress.Draw(session, Progress.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 180.0, 432.0, 16.0}), .value = cast(s32)amount, .max = 100})
     } else if scene == 5 {
-        toggled = Toggle(session, ToggleProps.{.key = 10, .bounds = b, .label = "Notifications", .value = toggled, .disabled = disabled}).value
+        toggled = Toggle.Draw(session, Toggle.Props.{.key = 10, .bounds = b, .label = "Notifications", .value = toggled, .disabled = disabled}).value
         b.y += 64.0
-        quiet = Toggle(session, ToggleProps.{.key = 11, .bounds = b, .label = "Quiet mode", .disabled = disabled, .value = quiet}).value
+        quiet = Toggle.Draw(session, Toggle.Props.{.key = 11, .bounds = b, .label = "Quiet mode", .disabled = disabled, .value = quiet}).value
     } else if scene == 6 {
-        checked = Checkbox(session, CheckboxProps.{.key = 10, .bounds = b, .label = "Remember my choice", .checked = checked, .disabled = disabled}).checked
+        checked = Checkbox.Draw(session, Checkbox.Props.{.key = 10, .bounds = b, .label = "Remember my choice", .checked = checked, .disabled = disabled}).checked
         b.y += 64.0
-        reminder = Checkbox(session, CheckboxProps.{.key = 11, .bounds = b, .label = "Use a gentle reminder", .disabled = disabled, .checked = reminder}).checked
+        reminder = Checkbox.Draw(session, Checkbox.Props.{.key = 11, .bounds = b, .label = "Use a gentle reminder", .disabled = disabled, .checked = reminder}).checked
     } else if scene == 7 {
-        if Radio(session, RadioProps.{.key = 10, .bounds = b, .label = "Balanced", .checked = balanced, .disabled = disabled}) == 1 { balanced = true }
+        if Radio.Draw(session, Radio.Props.{.key = 10, .bounds = b, .label = "Balanced", .checked = balanced, .disabled = disabled}) == 1 { balanced = true }
         b.y += 64.0
-        if Radio(session, RadioProps.{.key = 11, .bounds = b, .label = "Compact", .disabled = disabled, .checked = !balanced}) == 1 { balanced = false }
+        if Radio.Draw(session, Radio.Props.{.key = 11, .bounds = b, .label = "Compact", .disabled = disabled, .checked = !balanced}) == 1 { balanced = false }
     } else if scene == 8 {
-        Progress(session, ProgressProps.{.bounds = b, .value = 64, .max = 100, .label = "64%"})
+        Progress.Draw(session, Progress.Props.{.bounds = b, .value = 64, .max = 100, .label = "64%"})
     } else if scene == 9 {
         digits: [16]u8
-        minutes = Spinbox(session, SpinboxProps.{.bounds = b, .label = "Minutes", .value = minutes, .min = 0, .max = 60, .value_text = FormatInteger(cast(s64)minutes, digits[:]), .disabled = disabled}).value
+        minutes = Spinbox.Draw(session, Spinbox.Props.{.bounds = b, .label = "Minutes", .value = minutes, .min = 0, .max = 60, .value_text = FormatInteger(cast(s64)minutes, digits[:]), .disabled = disabled}).value
     } else if scene == 10 || scene == 11 {
-        items: [5]ListBoxItem
+        items: [5]ListBox.ListBoxItem
         items[0].label = "Morning walk"; items[1].label = "Read a chapter"; items[2].label = "Make something"; items[3].label = "Take a break"; items[4].label = "Reflect"
         b.height = 184.0
-        if scene == 10 { list_choice = ListBox(session, ListBoxProps.{.bounds = b, .row_height = 34, .selected_index = list_choice, .disabled = disabled}, items[:]).selected_index }
+        if scene == 10 { list_choice = ListBox.Draw(session, ListBox.Props.{.bounds = b, .row_height = 34, .selected_index = list_choice, .disabled = disabled}, items[:]).selected_index }
         else {
-            unused ListBoxMulti(session, ListBoxMultiProps.{.bounds = b, .row_height = 34, .disabled = disabled}, items[:], multi[:])
+            unused ListBox.ListBoxMulti(session, ListBox.ListBoxMultiProps.{.bounds = b, .row_height = 34, .disabled = disabled}, items[:], multi[:])
         }
     } else if scene == 12 {
-        options: [3]SegmentOption
+        options: [3]SegmentedControl.SegmentOption
         options[0].label = "Day"; options[1].label = "Week"; options[2].label = "Month"
-        segment = SegmentedControl(session, SegmentedControlProps.{.bounds = b, .selected_index = segment, .has_selection = true, .disabled = disabled}, options[:]).selected_index
+        segment = SegmentedControl.Draw(session, SegmentedControl.Props.{.bounds = b, .selected_index = segment, .has_selection = true, .disabled = disabled}, options[:]).selected_index
     } else if scene == 13 {
-        tabs: [3]Tab
+        tabs: [3]TabBar.Tab
         tabs[0].label = "Overview"; tabs[1].label = "Notes"; tabs[2].label = "Files"
-        tab = TabBar(session, TabBarProps.{.bounds = b, .selected_index = tab, .disabled = disabled}, tabs[:]).selected_index
+        tab = TabBar.Draw(session, TabBar.Props.{.bounds = b, .selected_index = tab, .disabled = disabled}, tabs[:]).selected_index
     } else if scene == 14 {
-        selected = Selectable(session, SelectableProps.{.key = 10, .bounds = b, .label = "Selected item", .selected = selected, .disabled = disabled}).selected
+        selected = Selectable.Draw(session, Selectable.Props.{.key = 10, .bounds = b, .label = "Selected item", .selected = selected, .disabled = disabled}).selected
         b.y += 64.0
-        another = Selectable(session, SelectableProps.{.key = 11, .bounds = b, .label = "Another item", .disabled = disabled, .selected = another}).selected
+        another = Selectable.Draw(session, Selectable.Props.{.key = 11, .bounds = b, .label = "Another item", .disabled = disabled, .selected = another}).selected
     } else if scene == 15 {
-        Separator(session, SeparatorProps.{.bounds = b, .label = "or continue", .disabled = disabled})
-        Bullet(session, GalleryBounds(Rectangle.{28.0, 142.0, 16.0, 16.0}))
+        Separator.Draw(session, Separator.Props.{.bounds = b, .label = "or continue", .disabled = disabled})
+        Separator.Bullet(session, GalleryBounds(Rectangle.{28.0, 142.0, 16.0, 16.0}))
         Label(session, "A clear dividing line", 168.0)
     } else if scene == 16 {
         b.height = 188.0
-        Fieldset(session, FieldsetProps.{.bounds = b, .title = "Preferences"})
+        Fieldset.Draw(session, Fieldset.Props.{.bounds = b, .title = "Preferences"})
         Label(session, "Keep related choices together", 118.0)
     } else if scene == 17 {
         b.height = 188.0
-        details = Collapsible(session, CollapsibleProps.{.bounds = b, .label = "More details", .open = details, .has_open = true, .disabled = disabled}, no_headers).open
+        details = Collapsible.Draw(session, Collapsible.Props.{.bounds = b, .label = "More details", .open = details, .has_open = true, .disabled = disabled}, no_headers).open
         if details { Label(session, "The section is open. Click its header to fold it.", 124.0) }
     } else if scene == 18 {
-        time_value = TimePicker(session, TimePickerProps.{.bounds = b, .label = "Start time", .value = time_value, .now = 570, .disabled = disabled}).value
+        time_value = TimePicker.Draw(session, TimePicker.Props.{.bounds = b, .label = "Start time", .value = time_value, .now = 570, .disabled = disabled}).value
     } else if scene == 19 {
         b.height = 208.0
-        props: ColorPickerProps
+        props: ColorPicker.Props
         props.bounds = b; props.label = "Accent"; props.channels = 4; props.disabled = disabled
         props.values = color
-        color = ColorPicker(session, props).values
+        color = ColorPicker.Draw(session, props).values
     } else if scene == 20 {
-        items: [3]NavigationBarItem
+        items: [3]Navigation.NavigationBarItem
         items[0].label = "Home"; items[0].active = nav == 0; items[1].label = "Library"; items[1].active = nav == 1; items[2].label = "Settings"; items[2].active = nav == 2; items[2].disabled = disabled
         items[0].icon_shape = "F:M3 10 L12 3 L21 10 V21 H15 V14 H9 V21 H3 Z"
         items[1].icon_shape = "F:M4 3 H10 V21 H4 Z M14 3 H20 V21 H14 Z"
         items[2].icon_shape = "F:M12 3 L21 8 V16 L12 21 L3 16 V8 Z M9 9 H15 V15 H9 Z"
-        moved := NavigationBar(session, NavigationBarProps.{.bounds = b, .view_width = 480, .view_height = 320}, items[:])
+        moved := Navigation.Draw(session, Navigation.Props.{.bounds = b, .view_width = 480, .view_height = 320}, items[:])
         if moved.clicked_index >= 0 { nav = moved.clicked_index }
     } else if scene == 21 {
-        actions: [2]ToolbarAction
+        actions: [2]Toolbar.ToolbarAction
         actions[0].label = "New note"; actions[1].label = "Share"; actions[1].disabled = disabled
-        if Toolbar(session, ToolbarProps.{.x = cast(s32)b.x, .y = cast(s32)b.y, .width = cast(s32)b.width, .height = 48}, no_options, actions[:]).clicked_action >= 0 { clicks += 1 }
+        if Toolbar.Draw(session, Toolbar.Props.{.x = cast(s32)b.x, .y = cast(s32)b.y, .width = cast(s32)b.width, .height = 48}, no_options, actions[:]).clicked_action >= 0 { clicks += 1 }
     } else if scene == 22 {
-        if TitleBar(session, TitleBarProps.{.bounds = b, .title = "Library", .leading_label = "Back", .has_leading_action = true}, no_options).clicked_leading { clicks += 1 }
+        if TitleBar.Draw(session, TitleBar.Props.{.bounds = b, .title = "Library", .leading_label = "Back", .has_leading_action = true}, no_options).clicked_leading { clicks += 1 }
     } else if scene == 23 {
-        unused Toast(session, ToastProps.{.viewport = GalleryBounds(Rectangle.{0.0, 0.0, 480.0, 280.0}), .message = "Your changes have been saved", .seconds = 4.0, .now_seconds = 1.0})
+        unused Toast.Draw(session, Toast.Props.{.viewport = GalleryBounds(Rectangle.{0.0, 0.0, 480.0, 280.0}), .message = "Your changes have been saved", .seconds = 4.0, .now_seconds = 1.0})
     } else if scene == 24 {
-        items: [3]ContextMenuItem
+        items: [3]ContextMenu.ContextMenuItem
         items[0].label = "Open"; items[0].id = 1; items[1].label = "Rename"; items[1].id = 2; items[2].label = "Remove"; items[2].id = 3; items[2].disabled = disabled
         if dismissed {
-            if Button(session, ButtonProps.{.bounds = b, .label = "Open context menu"}) == 1 { dismissed = false }
+            if Button.Draw(session, Button.Props.{.bounds = b, .label = "Open context menu"}) == 1 { dismissed = false }
         } else {
-            result := ContextMenu(session, ContextMenuProps.{.open = true, .x = b.x, .y = b.y}, items[:])
+            result := ContextMenu.Draw(session, ContextMenu.Props.{.open = true, .x = b.x, .y = b.y}, items[:])
             if result.closed { dismissed = true }
             if result.activated_id > 0 { clicks += 1 }
         }
     } else if scene == 25 {
-        items: [2]MenuItem; groups: [1]MenuGroup
+        items: [2]Menu.MenuItem; groups: [1]Menu.MenuGroup
         items[0].id = 1; items[0].label = "New note"; items[1].id = 2; items[1].label = "Open..."; items[1].disabled = disabled
         groups[0].label = "File"; groups[0].items = items[:]
-        if !menu_initialized { MenuStateInit(*menu_state); menu_state.open_index = 0; menu_initialized = true }
-        if Menu(session, MenuProps.{.bounds = b}, groups[:], *menu_state).activated_id > 0 { clicks += 1 }
+        if !menu_initialized { Menu.MenuStateInit(*menu_state); menu_state.open_index = 0; menu_initialized = true }
+        if Menu.Draw(session, Menu.Props.{.bounds = b}, groups[:], *menu_state).activated_id > 0 { clicks += 1 }
     } else if scene == 26 {
-        if Link(session, LinkProps.{.bounds = b, .text = "Read the documentation", .link = "https://kryonlabs.com/docs.html", .disabled = disabled}).activated { clicks += 1 }
+        if Link.Draw(session, Link.Props.{.bounds = b, .text = "Read the documentation", .link = "https://kryonlabs.com/docs.html", .disabled = disabled}).activated { clicks += 1 }
     } else if scene == 27 {
-        Text(session, TextProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 44.0}), .text = "Make room for good ideas", .font = 24, .disabled = disabled})
-        Text(session, TextProps.{.bounds = GalleryBounds(Rectangle.{24.0, 128.0, 410.0, 132.0}), .text = "Readable text, natural wrapping and familiar Unicode: café, Ω, é. Every little detail adds up.", .font = 16, .disabled = disabled})
+        Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 44.0}), .text = "Make room for good ideas", .font = 24, .disabled = disabled})
+        Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 128.0, 410.0, 132.0}), .text = "Readable text, natural wrapping and familiar Unicode: café, Ω, é. Every little detail adds up.", .font = 16, .disabled = disabled})
     } else if scene == 28 {
-        Image(session, ImageProps.{.asset_path = scene_image, .alt_text = "Kryon profile image atlas", .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 192.0, 192.0}), .smooth = true})
+        Image.Draw(session, Image.Props.{.asset_path = scene_image, .alt_text = "Kryon profile image atlas", .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 192.0, 192.0}), .smooth = true})
     } else if scene == 29 {
-        unused Box(session, BoxProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 164.0}), .fill = .{235, 244, 245, 255}, .border = .{135, 164, 170, 255}, .radius = 12.0})
+        unused Box.Draw(session, Box.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 164.0}), .fill = .{235, 244, 245, 255}, .border = .{135, 164, 170, 255}, .radius = 12.0})
         Label(session, "A surface with rounded edges", 118.0)
     } else if scene == 30 {
-        unused Circle(session, CircleProps.{.center = .{88.0, 128.0}, .radius = 38.0, .fill = .{30, 115, 138, 255}})
-        unused Ring(session, RingProps.{.center = .{202.0, 128.0}, .inner_radius = 27.0, .outer_radius = 38.0, .start_angle = -90.0, .end_angle = 200.0, .color = .{30, 115, 138, 255}})
-        unused Triangle(session, TriangleProps.{.first = .{292.0, 166.0}, .second = .{330.0, 90.0}, .third = .{368.0, 166.0}, .color = .{30, 115, 138, 255}})
-        unused Line(session, LineProps.{.start = .{28.0, 220.0}, .end = .{432.0, 220.0}, .thickness = 2.0, .color = .{30, 115, 138, 255}})
+        unused Shape.Circle(session, Shape.CircleProps.{.center = .{88.0, 128.0}, .radius = 38.0, .fill = .{30, 115, 138, 255}})
+        unused Shape.Ring(session, Shape.RingProps.{.center = .{202.0, 128.0}, .inner_radius = 27.0, .outer_radius = 38.0, .start_angle = -90.0, .end_angle = 200.0, .color = .{30, 115, 138, 255}})
+        unused Shape.Triangle(session, Shape.TriangleProps.{.first = .{292.0, 166.0}, .second = .{330.0, 90.0}, .third = .{368.0, 166.0}, .color = .{30, 115, 138, 255}})
+        unused Shape.Draw(session, Shape.Props.{.start = .{28.0, 220.0}, .end = .{432.0, 220.0}, .thickness = 2.0, .color = .{30, 115, 138, 255}})
     } else if scene == 31 {
         b.height = 188.0
-        result := Scroll(session, ScrollProps.{.bounds = b, .content_height = 420, .scroll_offset = scroll})
+        result := Scroll.Draw(session, Scroll.Props.{.bounds = b, .content_height = 420, .scroll_offset = scroll})
         scroll = result.scroll_offset
         if result.opened {
             for row: 0..9 {
-                Text(session, TextProps.{.bounds = .{result.content.x + 12.0, result.content.y + cast(float32)row * 40.0, 390.0, 32.0}, .text = "Scroll to see the next row"})
+                Text.Draw(session, Text.Props.{.bounds = .{result.content.x + 12.0, result.content.y + cast(float32)row * 40.0, 390.0, 32.0}, .text = "Scroll to see the next row"})
             }
             unused End(session)
         }
     } else if scene == 32 {
         b.height = 188.0
         if dismissed {
-            if Button(session, ButtonProps.{.bounds = b, .label = "Open modal again"}) == 1 { dismissed = false }
+            if Button.Draw(session, Button.Props.{.bounds = b, .label = "Open modal again"}) == 1 { dismissed = false }
         } else {
-            modal := ModalFrame(session, ModalFrameProps.{.bounds = b, .title = "A focused moment", .right_label = "Done", .has_right_action = true})
+            modal := Modal.Draw(session, Modal.Props.{.bounds = b, .title = "A focused moment", .right_label = "Done", .has_right_action = true})
             if modal.opened { Label(session, "Keep the next step clear", 140.0); unused End(session) }
             if modal.dismissed || modal.right_clicked { dismissed = true; clicks += 1 }
         }
     } else if scene == 33 {
-        actions: [2]ActionModalAction
+        actions: [2]Modal.ActionModalAction
         actions[0].label = "Cancel"; actions[1].label = "Save"; actions[1].tone = ButtonTone.ButtonToneAccent; actions[1].disabled = disabled
         if !dismissed {
-            answer := ActionModal(session, ActionModalProps.{.title = "Save changes?", .message = "Keep your latest ideas for next time.", .max_width = 420}, actions[:])
+            answer := Modal.ActionModal(session, Modal.ActionModalProps.{.title = "Save changes?", .message = "Keep your latest ideas for next time.", .max_width = 420}, actions[:])
             if answer.action != 0 { dismissed = true; clicks += 1 }
         } else {
-            if Button(session, ButtonProps.{.bounds = b, .label = "Open dialog again"}) == 1 { dismissed = false }
+            if Button.Draw(session, Button.Props.{.bounds = b, .label = "Open dialog again"}) == 1 { dismissed = false }
         }
     } else if scene == 34 {
-        popup := Popup(session, PopupProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0})})
+        popup := Overlay.Popup(session, Overlay.PopupProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0})})
         if popup.panel_node >= 0 {
-            Box(session, BoxProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0}), .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 8.0})
+            Box.Draw(session, Box.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0}), .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 8.0})
             Label(session, "A floating panel", 120.0)
         }
     } else if scene == 35 {
-        Box(session, BoxProps.{.bounds = b, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 6.0})
-        Text(session, TextProps.{.bounds = b, .text = "Press this area", .align = TextAlign.TextAlignCenter})
-        if Press(session, PressProps.{.bounds = b, .label = "Press and hold", .disabled = disabled}).clicked { clicks += 1 }
+        Box.Draw(session, Box.Props.{.bounds = b, .fill = StyleTokenColor("surface"), .border = StyleTokenColor("border"), .radius = 6.0})
+        Text.Draw(session, Text.Props.{.bounds = b, .text = "Press this area", .align = TextAlign.TextAlignCenter})
+        if Press.Draw(session, Press.Props.{.bounds = b, .label = "Press and hold", .disabled = disabled}).clicked { clicks += 1 }
         Label(session, "Press is an invisible interaction area", 128.0)
     } else if scene >= 36 && scene <= 40 || scene == 48 {
-        props: ColumnProps = .{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8}
-        container: LayoutContainer
-        if scene == 36 { container = Column(session, props) }
-        else if scene == 37 { container = Row(session, props) }
-        else if scene == 38 { container = Stack(session, props) }
-        else if scene == 39 { container = Group(session, props) }
-        else if scene == 48 { container = Screen(session, props) }
-        else { grid := Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = 12, .padding = 8}); container = grid.container }
+        props: Layout.Props = .{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8}
+        container: Layout.LayoutContainer
+        if scene == 36 { container = Layout.Draw(session, props) }
+        else if scene == 37 { container = Layout.Row(session, props) }
+        else if scene == 38 { container = Layout.Stack(session, props) }
+        else if scene == 39 { container = Layout.Group(session, props) }
+        else if scene == 48 { container = Layout.Screen(session, props) }
+        else { grid := Layout.Grid(session, GridProps.{.bounds = props.bounds, .columns = 2, .gap = 12, .padding = 8}); container = grid.container }
         if container.opened {
             first: Rectangle = .{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}
             second: Rectangle = first
@@ -335,28 +388,28 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
                 first.x = container.content.x; first.y = container.content.y
                 second.x = first.x; second.y = first.y + 60.0
             } else if scene == 38 { second = GalleryBounds(Rectangle.{104.0, 112.0, 164.0, 44.0}) }
-            if Button(session, ButtonProps.{.label = "First item", .bounds = first, .disabled = disabled}) == 1 { clicks += 1 }
-            if Button(session, ButtonProps.{.label = "Second item", .bounds = second, .tone = ButtonTone.ButtonToneAccent, .disabled = disabled}) == 1 { clicks += 1 }
+            if Button.Draw(session, Button.Props.{.label = "First item", .bounds = first, .disabled = disabled}) == 1 { clicks += 1 }
+            if Button.Draw(session, Button.Props.{.label = "Second item", .bounds = second, .tone = ButtonTone.ButtonToneAccent, .disabled = disabled}) == 1 { clicks += 1 }
             unused End(session)
         }
     } else if scene == 41 {
-        page := Page(session, PageProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .title = "A quiet workspace"})
+        page := Page.Draw(session, Page.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .title = "A quiet workspace"})
         if page.opened {
-            section := Section(session, SectionProps.{.label = "Reading", .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0})})
+            section := Page.Section(session, Page.SectionProps.{.label = "Reading", .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0})})
             if section.opened {
-                Heading(session, HeadingProps.{.text = "Small, thoughtful details", .level = 2, .bounds = GalleryBounds(Rectangle.{24.0, 76.0, 420.0, 38.0})})
-                ParagraphText(session, ParagraphTextProps.{.text = "A page groups content, a section gives it meaning, and the type stays easy to read.", .bounds = GalleryBounds(Rectangle.{24.0, 136.0, 410.0, 112.0})})
+                Page.Heading(session, Page.HeadingProps.{.text = "Small, thoughtful details", .level = 2, .bounds = GalleryBounds(Rectangle.{24.0, 76.0, 420.0, 38.0})})
+                Page.ParagraphText(session, Page.ParagraphTextProps.{.text = "A page groups content, a section gives it meaning, and the type stays easy to read.", .bounds = GalleryBounds(Rectangle.{24.0, 136.0, 410.0, 112.0})})
                 unused End(session)
             }
             unused End(session)
         }
     } else if scene == 42 {
-        labels: [4]string = .{"First", "Second", "Third", "Fourth"}; options: [2]NavigationBarOption
+        labels: [4]string = .{"First", "Second", "Third", "Fourth"}; options: [2]NavigationBarConfig.Option
         options[0].route = 1; options[0].label = "Home"; options[1].route = 2; options[1].label = "Library"
         if dismissed {
-            if Button(session, ButtonProps.{.bounds = b, .label = "Configure navigation"}) == 1 { dismissed = false }
+            if Button.Draw(session, Button.Props.{.bounds = b, .label = "Configure navigation"}) == 1 { dismissed = false }
         } else {
-            config := NavigationBarConfig(session, NavigationBarConfigProps.{.bounds = GalleryBounds(Rectangle.{24.0, 48.0, 432.0, 256.0}), .title = "Navigation", .route_count = config_count, .max_route_count = 4, .scroll_offset = config_scroll, .dropdown_open = config_open, .dropdown_row = config_row, .close_label = "Close", .remove_label = "Remove", .add_label = "Add", .save_label = "Save", .cancel_label = "Cancel"}, config_routes[:], labels[:], options[:])
+            config := NavigationBarConfig.Draw(session, NavigationBarConfig.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 48.0, 432.0, 256.0}), .title = "Navigation", .route_count = config_count, .max_route_count = 4, .scroll_offset = config_scroll, .dropdown_open = config_open, .dropdown_row = config_row, .close_label = "Close", .remove_label = "Remove", .add_label = "Add", .save_label = "Save", .cancel_label = "Cancel"}, config_routes[:], labels[:], options[:])
             config_count = config.route_count
             config_scroll = config.scroll_offset
             config_open = config.dropdown_open
@@ -364,13 +417,13 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
             if config.action != 0 { dismissed = true; clicks += 1 }
         }
     } else if scene == 43 {
-        items: [3]ReorderItem
+        items: [3]Reorder.ReorderItem
         for index: 0..2 {
             items[index].id = order[index] + 10
             items[index].bounds = GalleryBounds(Rectangle.{24.0, 64.0 + cast(float32)index * 56.0, 432.0, 44.0})
-            Text(session, TextProps.{.bounds = GalleryBounds(Rectangle.{64.0, 76.0 + cast(float32)index * 56.0, 360.0, 36.0}), .text = ifx order[index] == 0 then "Morning walk" else ifx order[index] == 1 then "Read a chapter" else "Take a break"})
+            Text.Draw(session, Text.Props.{.bounds = GalleryBounds(Rectangle.{64.0, 76.0 + cast(float32)index * 56.0, 360.0, 36.0}), .text = ifx order[index] == 0 then "Morning walk" else ifx order[index] == 1 then "Read a chapter" else "Take a break"})
         }
-        moved := Reorder(session, ReorderList.{.id = 10, .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 200.0}), .handle_width = 28}, items[:])
+        moved := Reorder.Draw(session, Reorder.Props.{.id = 10, .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 200.0}), .handle_width = 28}, items[:])
         if moved.committed != 0 && moved.from_index >= 0 && moved.to_index >= 0 && moved.from_index < 3 && moved.to_index < 3 {
             saved := order[moved.from_index]
             at := moved.from_index
@@ -379,46 +432,46 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
             order[moved.to_index] = saved
         }
     } else if scene == 44 {
-        panes := PanedView(session, PanedViewProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .split = split, .has_split = true, .vertical = true, .disabled = disabled})
+        panes := PanedView.Draw(session, PanedView.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .split = split, .has_split = true, .vertical = true, .disabled = disabled})
         split = panes.split
-        unused Box(session, BoxProps.{.bounds = panes.first, .fill = .{230, 239, 242, 255}, .radius = 8.0})
-        unused Box(session, BoxProps.{.bounds = panes.second, .fill = .{222, 237, 235, 255}, .radius = 8.0})
+        unused Box.Draw(session, Box.Props.{.bounds = panes.first, .fill = .{230, 239, 242, 255}, .radius = 8.0})
+        unused Box.Draw(session, Box.Props.{.bounds = panes.second, .fill = .{222, 237, 235, 255}, .radius = 8.0})
     } else if scene == 45 {
         if dismissed {
-            if Button(session, ButtonProps.{.bounds = b, .label = "Show overlay again"}) == 1 { dismissed = false }
+            if Button.Draw(session, Button.Props.{.bounds = b, .label = "Show overlay again"}) == 1 { dismissed = false }
         } else {
-            overlay := DismissibleOverlay(session, DismissibleOverlayProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0}), .view_width = 480, .view_height = 320, .scrim = .{16, 34, 45, 120}})
+            overlay := Overlay.Draw(session, Overlay.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 188.0}), .view_width = 480, .view_height = 320, .scrim = .{16, 34, 45, 120}})
             if overlay.panel_node >= 0 { Label(session, "Click outside the panel to dismiss it.", 128.0) }
             if overlay.closed { dismissed = true }
         }
     } else if scene == 46 {
         for index: 0..4 {
-            props: ButtonProps
+            props: Button.Props
             props.bounds = GalleryBounds(Rectangle.{24.0, 40.0 + cast(float32)index * 52.0, 208.0, 40.0}); props.label = "Neutral action"
             props.emphasis = cast(ButtonEmphasis)index; props.disabled = disabled
-            if Button(session, props) == 1 { clicks += 1 }
+            if Button.Draw(session, props) == 1 { clicks += 1 }
             props.bounds.x = GalleryBounds(Rectangle.{248.0, 0.0, 0.0, 0.0}).x; props.label = "Accent action"; props.tone = ButtonTone.ButtonToneAccent
-            if Button(session, props) == 1 { clicks += 1 }
+            if Button.Draw(session, props) == 1 { clicks += 1 }
         }
     } else if scene == 47 {
-        options: [3]DropdownOption
+        options: [3]Dropdown.Option
         options[0].label = "Morning"; options[1].label = "Afternoon"; options[2].label = "Evening"
-        choice = Dropdown(session, DropdownProps.{.bounds = b, .selected_index = choice, .open = !gallery_live}, options[:]).selected_index
+        choice = Dropdown.Draw(session, Dropdown.Props.{.bounds = b, .selected_index = choice, .open = !gallery_live}, options[:]).selected_index
     } else if scene == 49 {
-        flow := Flow(session, FlowProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8})
+        flow := Flow.Draw(session, Flow.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .gap = 12, .padding = 8})
         if flow.opened {
-            unused Button(session, ButtonProps.{.bounds = Rectangle.{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}, .label = "First item", .disabled = disabled})
-            unused Button(session, ButtonProps.{.bounds = Rectangle.{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}, .label = "Second item", .disabled = disabled})
+            unused Button.Draw(session, Button.Props.{.bounds = Rectangle.{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}, .label = "First item", .disabled = disabled})
+            unused Button.Draw(session, Button.Props.{.bounds = Rectangle.{0.0, 0.0, ifx gallery_live then 164.0 * gallery_view.width / 480.0 else 164.0, 44.0}, .label = "Second item", .disabled = disabled})
             unused End(session)
         }
     } else if scene == 50 {
         TextSelectionEnable()
-        Text(session, TextProps.{.key = 10, .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 148.0}), .text = "Select a little text.\nKeep reading in comfort.", .selectable = true, .disabled = disabled})
+        Text.Draw(session, Text.Props.{.key = 10, .bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 148.0}), .text = "Select a little text.\nKeep reading in comfort.", .selectable = true, .disabled = disabled})
     } else if scene == 51 {
         Label(session, "A transition over this content", 104.0)
         state := TransitionState.{.active = true, .phase = cast(s32)TransitionPhase.TransitionOut, .elapsed_seconds = 0.4, .duration_seconds = 1.0}
         if gallery_live {
-            if Button(session, ButtonProps.{.key = 10, .bounds = GalleryBounds(Rectangle.{24.0, 224.0, 180.0, 40.0}), .label = "Animate fade", .disabled = disabled}) != 0 { gallery_transition = TransitionStart(0.6) }
+            if Button.Draw(session, Button.Props.{.key = 10, .bounds = GalleryBounds(Rectangle.{24.0, 224.0, 180.0, 40.0}), .label = "Animate fade", .disabled = disabled}) != 0 { gallery_transition = TransitionStart(0.6) }
             delta := gallery_now - gallery_transition_previous
             if delta < 0.0 || delta > 0.1 { delta = 0.016 }
             gallery_transition_previous = gallery_now
@@ -426,22 +479,22 @@ Compose :: (session: Session, scene: s32, disabled: bool) {
             state = gallery_transition
         }
         color := TransitionFadeColor(state, .{16, 34, 45, 160})
-        Box(session, BoxProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .fill = color})
+        Box.Draw(session, Box.Props.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 208.0}), .fill = color})
     } else if scene == 52 {
-        discrete = DiscreteSlider(session, DiscreteSliderProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 80.0}), .label = "Step size", .value = discrete, .min = 1, .max = 10, .disabled = disabled}).value
+        discrete = Slider.DiscreteSlider(session, Slider.DiscreteSliderProps.{.bounds = GalleryBounds(Rectangle.{24.0, 64.0, 432.0, 80.0}), .label = "Step size", .value = discrete, .min = 1, .max = 10, .disabled = disabled}).value
         digits: [16]u8
         Label(session, FormatInteger(cast(s64)discrete, digits[:]), 180.0)
     } else if scene == 53 {
-        card := Card(session, CardProps.{.key = 10, .bounds = b})
-        Text(session, TextProps.{.bounds = card.content, .text = "One modern CUI style"})
+        card := Card.Draw(session, Card.Props.{.key = 10, .bounds = b})
+        Text.Draw(session, Text.Props.{.bounds = card.content, .text = "One modern CUI style"})
         Label(session, "Colors and light/dark remain customizable.", 150.0)
     } else if scene == 54 {
-        variants: [3]CardVariant = .{.CardFilled, .CardElevated, .CardOutlined}
+        variants: [3]Card.CardVariant = .{.CardFilled, .CardElevated, .CardOutlined}
         for index: cast(s32)0..2 {
             card_bounds := GalleryBounds(Rectangle.{24.0, 48.0 + cast(float32)index * 82.0, 432.0, 64.0})
-            result := Card(session, CardProps.{.key = cast(u64)(100 + index),
+            result := Card.Draw(session, Card.Props.{.key = cast(u64)(100 + index),
                 .bounds = card_bounds, .variant = variants[index]})
-            Text(session, TextProps.{.bounds = result.content,
+            Text.Draw(session, Text.Props.{.bounds = result.content,
                 .text = ifx index == 0 then "Filled card" else ifx index == 1 then "Elevated card" else "Outlined card"})
         }
     }

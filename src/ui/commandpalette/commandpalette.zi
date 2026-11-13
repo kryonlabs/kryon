@@ -1,4 +1,5 @@
-#import "command_palette_props"
+TextField :: #import "textfield";
+using CommandPalette :: #import "command_palette_props";
 #import "control_props"
 #import "drawing_props"
 #import "font_metrics"
@@ -12,7 +13,6 @@
 #import "tooltip_common"
 #import "tree"
 #import "text_input"
-#import "text_input_props"
 Grapheme :: #import "std/grapheme";
 #import "widget_kind"
 
@@ -96,7 +96,7 @@ CommandPaletteSetQuery :: (state: *CommandPaletteState,
 
 #program_export
 CommandPaletteApply :: (state: *CommandPaletteState,
-    props: CommandPaletteProps) -> CommandPaletteResult {
+    props: CommandPalette.Props) -> CommandPaletteResult {
     result: CommandPaletteResult
     result.node = -1; result.scrim_node = -1; result.query_node = -1
     result.chosen_index = -1
@@ -145,7 +145,7 @@ CommandPaletteApply :: (state: *CommandPaletteState,
             state.anchor = moved.anchor
         }
         selection = TextSelectionRangeForLength(state.anchor, state.cursor, state.query_length)
-        edit: TextFieldEdit
+        edit: TextField.Edit
         edit.start = selection.start
         edit.end = selection.end
         edit.replacement = input.text
@@ -157,9 +157,9 @@ CommandPaletteApply :: (state: *CommandPaletteState,
             if !selection.has_selection { edit.end = Grapheme.Next(value, state.cursor) }
             edit.changed = edit.end > edit.start
         }
-        buffer := TextFieldState.{.bytes = state.query[:], .length = state.query_length,
+        buffer := TextField.State.{.bytes = state.query[:], .length = state.query_length,
             .cursor = state.cursor, .anchor = state.anchor}
-        if edit.changed && TextFieldStateApplyEdit(*buffer, edit) {
+        if edit.changed && TextField.StateApplyEdit(*buffer, edit) {
             state.query_length = buffer.length
             state.cursor = buffer.cursor
             state.anchor = buffer.anchor
@@ -248,7 +248,7 @@ CommandPaletteApply :: (state: *CommandPaletteState,
 }
 
 #program_export
-CommandPaletteInstalledFaceFor :: (props: CommandPaletteProps,
+CommandPaletteInstalledFaceFor :: (props: CommandPalette.Props,
     state: s32) -> StyleData {
     facts := StyleControlRoleFacts(StyleKindPopup(), props.id,
         props.class_name, StyleAny(), StyleAny(), StyleAny(), StyleAny(), state)
@@ -262,9 +262,8 @@ CommandPaletteHostedReply :: struct {
 }
 #if #defined(KRYON_HOSTED_UI) {
     command_palette_host_api :: #system_library "host_api";
-    CommandPaletteHostedHost :: (session: Session, props: CommandPaletteProps, state: CommandPaletteState) -> CommandPaletteHostedReply #foreign command_palette_host_api;
-    #program_export
-    CommandPalette :: (session: Session, props: CommandPaletteProps,
+    CommandPaletteHostedHost :: (session: Session, props: CommandPalette.Props, state: CommandPaletteState) -> CommandPaletteHostedReply #foreign command_palette_host_api;
+        Draw :: (session: Session, props: CommandPalette.Props,
     state: *CommandPaletteState) -> CommandPaletteResult {
         reply := CommandPaletteHostedHost(session, props, state.*)
         state.* = reply.state
@@ -273,11 +272,10 @@ CommandPaletteHostedReply :: struct {
 } else {
     #import "paint_queue"
     #import "tree_input"
-    #program_export
-    CommandPalette :: (session: Session, props: CommandPaletteProps,
+        Draw :: (session: Session, props: CommandPalette.Props,
     state: *CommandPaletteState) -> CommandPaletteResult { return CommandPaletteCore(session, props, state, true) }
     #program_export
-CommandPaletteCore :: (session: Session, props: CommandPaletteProps,
+CommandPaletteCore :: (session: Session, props: CommandPalette.Props,
     state: *CommandPaletteState, effects: bool) -> CommandPaletteResult {
     unused effects
     opening := props.open && state != null && !state.open_previous

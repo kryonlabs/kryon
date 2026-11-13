@@ -2,19 +2,18 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
-#import "kryon/tooltip"
-#import "kryon/tooltip_props"
-#import "kryon/sheet"
-#import "kryon/sheet_props"
-#import "kryon/command_palette"
-#import "kryon/command_palette_props"
-#import "kryon/hover_card"
-#import "kryon/hover_card_props"
-#import "kryon/confirm_popover"
-#import "kryon/confirm_popover_props"
-#import "kryon/guided_tour"
-#import "kryon/guided_tour_props"
+Box :: #import "kryon/box";
+Button :: #import "kryon/button";
+CommandPalette :: #import "kryon/command_palette";
+ConfirmPopover :: #import "kryon/confirm_popover";
+GuidedTour :: #import "kryon/guided_tour";
+HoverCard :: #import "kryon/hover_card";
+Sheet :: #import "kryon/sheet";
+Text :: #import "kryon/text";
+Tooltip :: #import "kryon/tooltip";
+#import "kryon/drawing_props"
+#import "kryon/input_protocol"
+#import "kryon/tree_input"
 #import "kryon/tooltip_common"
 
 WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
@@ -54,21 +53,21 @@ viewport: Rectangle;
 
 anchor: Rectangle;
 
-tooltip_state: TooltipState;
+tooltip_state: Tooltip.TooltipState;
 
-sheet_state: SheetState;
+sheet_state: Sheet.SheetState;
 
-palette_state: CommandPaletteState;
+palette_state: CommandPalette.CommandPaletteState;
 
-hover_state: HoverCardState;
+hover_state: HoverCard.HoverCardState;
 
-confirm_state: ConfirmPopoverState;
+confirm_state: ConfirmPopover.ConfirmPopoverState;
 
-tour_state: GuidedTourState;
+tour_state: GuidedTour.GuidedTourState;
 
-commands: [3]CommandPaletteCommand;
+commands: [3]CommandPalette.CommandPaletteCommand;
 
-tour_steps: [2]GuidedTourStep;
+tour_steps: [2]GuidedTour.GuidedTourStep;
 
 overlays_ready: bool;
 
@@ -82,12 +81,12 @@ Prepare :: (session: Session, scene: s32) {
     viewport = GalleryBounds(Rectangle.{0.0, 0.0, 480.0, 320.0})
     anchor = GalleryBounds(Rectangle.{38.0, 128.0, 126.0, 34.0})
     if !overlays_ready {
-        tooltip_state = TooltipStateFor(700)
-        sheet_state = SheetStateFor()
-        palette_state = CommandPaletteStateFor(701)
-        hover_state = HoverCardStateFor()
-        confirm_state = ConfirmPopoverStateFor()
-        tour_state = GuidedTourStateFor(0)
+        tooltip_state = Tooltip.TooltipStateFor(700)
+        sheet_state = Sheet.SheetStateFor()
+        palette_state = CommandPalette.CommandPaletteStateFor(701)
+        hover_state = HoverCard.HoverCardStateFor()
+        confirm_state = ConfirmPopover.ConfirmPopoverStateFor()
+        tour_state = GuidedTour.GuidedTourStateFor(0)
         commands[0] = .{.title = "Find component", .group = "Search", .shortcut = "Ctrl+F", .action = 11}
         commands[1] = .{.title = "Format source", .group = "Edit", .shortcut = "Ctrl+Shift+F", .action = 12}
         commands[2] = .{.title = "Focus outline", .group = "Accessibility", .action = 13}
@@ -101,8 +100,8 @@ Prepare :: (session: Session, scene: s32) {
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "ConfirmPopover", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "ConfirmPopover", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 4
     Prepare(session, scene)
@@ -120,23 +119,23 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         tour_steps[0].target = GalleryBounds(Rectangle.{168.0, 112.0, 144.0, 42.0})
         tour_steps[1].target = GalleryBounds(Rectangle.{168.0, 180.0, 144.0, 42.0})
     }
-    if !gallery_live { Text(session, TextProps.{.key = 740, .bounds = anchor, .text = "Delete source", .font = 17}) }
-    props: ConfirmPopoverProps = .{.key = 741, .title = "Delete source?",
+    if !gallery_live { Text.Draw(session, Text.Props.{.key = 740, .bounds = anchor, .text = "Delete source", .size = 17}) }
+    props: ConfirmPopover.Props = .{.key = 741, .title = "Delete source?",
         .description = "This action cannot be undone.", .confirm_label = "Delete",
         .cancel_label = "Cancel", .anchor = anchor, .viewport = viewport,
         .placement = .OverlayPlaceBottom, .width = 270.0, .gap = 8.0,
         .danger = true, .open = true, .now_ms = 500, .disabled = disabled,
-        .style = ConfirmPopoverDefaultStyle(),
-        .confirm_style = ConfirmPopoverConfirmDefaultStyle(true),
-        .cancel_style = ConfirmPopoverDefaultStyle()}
+        .style = ConfirmPopover.ConfirmPopoverDefaultStyle(),
+        .confirm_style = ConfirmPopover.ConfirmPopoverConfirmDefaultStyle(true),
+        .cancel_style = ConfirmPopover.ConfirmPopoverDefaultStyle()}
     props.focus.anchor_focused = true
     if gallery_live {
-        if Button(session, ButtonProps.{.key = 739, .bounds = anchor, .label = "Delete source", .disabled = disabled}) != 0 { live_confirm_open = true }
+        if Button.Draw(session, Button.Props.{.key = 739, .bounds = anchor, .label = "Delete source", .disabled = disabled}) != 0 { live_confirm_open = true }
         props.open = live_confirm_open; props.pointer = live_pointer; props.keys = live_keys
         props.now_ms = cast(s64)(gallery_now * 1000.0)
         props.style.motion_reduced = gallery_reduced_motion
     }
-    confirmed := ConfirmPopover(session, props, *confirm_state)
+    confirmed := ConfirmPopover.Draw(session, props, *confirm_state)
     if gallery_live && (confirmed.closed || confirmed.confirmed || confirmed.cancelled) { live_confirm_open = false }
     return 0
 }

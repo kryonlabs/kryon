@@ -3,7 +3,8 @@
 // records, assets and device secrets are scoped to the app and account.
 #import "session"
 #import "geometry"
-#import "text_input_props"
+TextArea :: #import "textarea";
+TextField :: #import "textfield";
 #import "app_protocol"
 
 host_api :: #system_library "host_api";
@@ -14,7 +15,7 @@ host_api :: #system_library "host_api";
 AppIdentityHost :: (id: string, minimum_api: s32) #foreign host_api;
 AppSupportsHost :: (capability: string) -> bool #foreign host_api;
 AppLocaleHost :: (key: string) -> string #foreign host_api;
-AppAreaInputHost :: () -> TextAreaInput #foreign host_api;
+AppAreaInputHost :: () -> TextArea.Input #foreign host_api;
 AppCommandHost :: () -> string #foreign host_api;
 AppReplyHost :: (value: string) #reads #foreign host_api;
 // Optional services use a versioned app-owned document. A missing grant
@@ -41,7 +42,7 @@ AppFontHost :: () -> s32 #foreign host_api;
 AppKeyHost :: () -> s32 #foreign host_api;
 AppModifiersHost :: () -> s32 #foreign host_api;
 // Typing for the text field that has focus.
-AppFieldInputHost :: () -> TextFieldInput #foreign host_api;
+AppFieldInputHost :: () -> TextField.Input #foreign host_api;
 // Shows the touch keyboard while a field has focus.
 AppKeyboardHost :: (visible: bool) #foreign host_api;
 
@@ -132,7 +133,7 @@ AppModifiers :: () -> s32 {
 }
 
 #program_export
-AppFieldInput :: () -> TextFieldInput {
+AppFieldInput :: () -> TextField.Input {
     return AppFieldInputHost()
 }
 
@@ -260,7 +261,7 @@ AppLocale :: (key: string) -> string {
 }
 
 #program_export
-AppAreaInput :: () -> TextAreaInput {
+AppAreaInput :: () -> TextArea.Input {
     return AppAreaInputHost()
 }
 

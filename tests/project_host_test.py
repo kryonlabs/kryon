@@ -47,7 +47,8 @@ def main():
             f'[overrides]\nkryon = "{ROOT}"\nziran = "{ZIRAN_ROOT}"\n'
         )
         (project / "src/app.zi").write_text(
-            'using UI :: #import "kryon/Widgets";\n'
+            '#import "kryon/geometry"\n'
+            '#import "kryon/session"\n'
             '#program_export\n'
             'Frame :: (session: Session, viewport: Rectangle) -> s32 { return 99 }\n'
         )

@@ -2,8 +2,13 @@
 #import "kryon/session"
 #import "kryon/frame_snapshot"
 #import "kryon/style_sheet"
-using UI :: #import "kryon/Widgets";
-#import "kryon/scrub_field"
+Box :: #import "kryon/box";
+ScrubField :: #import "kryon/scrub_field";
+Text :: #import "kryon/text";
+TextField :: #import "kryon/text_field";
+#import "kryon/drawing_props"
+#import "kryon/key_input"
+#import "kryon/tree_input"
 #import "kryon/input_protocol"
 
 WidgetContext :: struct { theme: s32; now: float32; disabled: bool; reduced_motion: bool }
@@ -44,7 +49,7 @@ bounds: Rectangle;
 
 
 
-scrub_state: ScrubFieldState;
+scrub_state: ScrubField.ScrubFieldState;
 
 
 
@@ -58,18 +63,18 @@ gallery_typed: [128]u8;
 Prepare :: (session: Session, scene: s32) {
     bounds = GalleryBounds(Rectangle.{24.0, 96.0, 432.0, 104.0})
     if !inputs_ready {
-        scrub_state = ScrubFieldStateFor(5.25, 2)
+        scrub_state = ScrubField.ScrubFieldStateFor(5.25, 2)
         inputs_ready = true
     }
 }
 
 #program_export
 Frame :: (session: Session, viewport: Rectangle) -> s32 {
-    gallery_input: TextFieldInput
+    gallery_input: TextField.Input
     example_input := WidgetInput(session)
     SetGalleryViewport(viewport, true, example_input.now, example_input.reduced_motion)
-    Box(session, BoxProps.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
-    Text(session, TextProps.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "ScrubField", .font = 23})
+    Box.Draw(session, Box.Props.{.key = 9000, .bounds = viewport, .fill = StyleTokenColor("canvas")})
+    Text.Draw(session, Text.Props.{.key = 9001, .bounds = .{viewport.x + 24.0, viewport.y + 12.0, viewport.width - 48.0, 36.0}, .text = "ScrubField", .size = 23})
     disabled := example_input.disabled
     scene: s32 = 3
     Prepare(session, scene)
@@ -78,7 +83,7 @@ Frame :: (session: Session, viewport: Rectangle) -> s32 {
         gallery_input_key = KeyboardTake(session)
         gallery_input = TextFieldInputFor(gallery_input_key, KeyboardModifiers(session), TypedTextTake(session, gallery_typed[:]))
     }
-    unused ScrubField(session, ScrubFieldProps.{.key = 603, .bounds = bounds,
+    unused ScrubField.Draw(session, ScrubField.Props.{.key = 603, .bounds = bounds,
         .label = "Duration", .suffix = "minutes", .initial_value = 5.25,
         .minimum = 0.0, .maximum = 90.0, .step = 0.25, .precision = 2,
         .input = gallery_input, .fine_divisor = 10.0, .coarse_multiplier = 5.0, .disabled = disabled,

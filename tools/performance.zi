@@ -7,12 +7,9 @@
 #import "paint_queue"
 #import "pixmap"
 #import "pixmap_frame"
-#import "listbox"
-#import "list_box_props"
-#import "textarea"
-#import "text_input_props"
-#import "button"
-#import "button_props"
+Button :: #import "kryon/button";
+ListBox :: #import "kryon/list_box";
+TextArea :: #import "kryon/text_area";
 #import "std/file"
 
 // Linux resets this high-water mark at exec. wait4's ru_maxrss can include
@@ -40,7 +37,7 @@ using FrameStatus;
 
 pixels: [576000]u32;
 image: [4096]u32;
-items: [10000]ListBoxItem;
+items: [10000]ListBox.ListBoxItem;
 document: [8192]u8;
 
 Now :: () -> s64 {
@@ -49,21 +46,21 @@ Now :: () -> s64 {
 
 Compose :: (session: Session, scenario: s32, frame: s32) {
     if scenario == 0 {
-        props: ListBoxProps
+        props: ListBox.Props
         props.key = 10
         props.bounds = .{20.0, 20.0, 700.0, 540.0}
         props.row_height = 24
         props.scroll_offset = frame * 7 % 9900
         props.selected_index = props.scroll_offset + 2
-        unused ListBox(session, props, items[:])
+        unused ListBox.Draw(session, props, items[:])
     } else if scenario == 1 {
-        props: TextAreaProps
+        props: TextArea.Props
         props.key = 20
         props.bounds = .{20.0, 20.0, 700.0, 540.0}
         props.value = TextView(document[:])
         props.wrap = true
         props.scroll_y = frame % 12 * 16
-        unused TextArea(session, props)
+        unused TextArea.Draw(session, props)
     } else if scenario == 2 {
         for index: 0..143 {
             x := cast(float32)(index % 12) * 76.0
@@ -74,12 +71,12 @@ Compose :: (session: Session, scenario: s32, frame: s32) {
         }
     } else {
         for index: 0..19 {
-            props: ButtonProps
+            props: Button.Props
             props.key = cast(u64)(100 + index)
             props.bounds = .{20.0 + cast(float32)(index % 4) * 180.0,
                 20.0 + cast(float32)(index / 4) * 60.0, 160.0, 40.0}
             props.label = "Idle control"
-            unused Button(session, props)
+            unused Button.Draw(session, props)
         }
     }
 }

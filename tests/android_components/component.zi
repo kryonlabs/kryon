@@ -1,10 +1,7 @@
 #import "component_protocol"
-#import "button"
-#import "button_props"
-#import "text"
-#import "text_props"
-#import "textfield"
-#import "text_input_props"
+Button :: #import "kryon/button";
+Text :: #import "kryon/text";
+TextField :: #import "kryon/text_field";
 #import "geometry"
 #import "std/byte_text_linux"
 #import "std/vec"
@@ -33,7 +30,7 @@ Frame :: () -> s64 {
     session := ComponentSession()
     bounds := ComponentBounds()
     y := bounds.y + component_top
-    increment := Button(session, ButtonProps.{.key = 101,
+    increment := Button.Draw(session, Button.Props.{.key = 101,
         .bounds = Rectangle.{bounds.x + 40.0, y + 16.0, 240.0, 44.0}, .label = "Increment"})
     if increment != 0 {
         #if #defined(ANDROID_COMPONENT_V2) {
@@ -48,8 +45,8 @@ Frame :: () -> s64 {
     current: [64]u8
     for i: 0..editor.length - 1 { current[i] = editor.bytes[i] }
     value := TextView(current[:editor.length])
-    input := TextFieldInput.{.text = ComponentText(), .backspace = ComponentKey() == 259}
-    result := TextField(session, TextFieldProps.{.key = 103,
+    input := TextField.Input.{.text = ComponentText(), .backspace = ComponentKey() == 259}
+    result := TextField.Draw(session, TextField.Props.{.key = 103,
         .bounds = Rectangle.{bounds.x + 40.0, y + 112.0, 240.0, 44.0},
         .value = value, .placeholder = "Type into this component", .cursor = editor.cursor,
         .anchor = editor.anchor, .scroll_x = editor.scroll, .max_bytes = 64, .input = input})
@@ -69,9 +66,9 @@ Frame :: () -> s64 {
     #if #defined(ANDROID_COMPONENT_V2) {
         BuilderPrint(*label, " v2")
     }
-    unused Text(session, TextProps.{.key = 102,
+    unused Text.Draw(session, Text.Props.{.key = 102,
         .bounds = Rectangle.{bounds.x + 40.0, y + 70.0, 280.0, 28.0},
-        .text = BuilderFinish(label), .font = 18})
+        .text = BuilderFinish(label), .size = 18})
     if component_count > 0 && component_owned.samples[1] != component_count { return 8 }
     #if #defined(ANDROID_COMPONENT_FAIL) {
         if component_count > 0 { return 9 }

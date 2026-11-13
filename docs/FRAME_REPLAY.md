@@ -47,7 +47,7 @@ positive and elapsed milliseconds nonnegative. Blank lines and `#` comments
 are accepted. A trace holds at most 1,024 samples within 1 MiB.
 
 `FrameInputApply` supplies session pointer, key, modifier and wheel inputs;
-`FrameInputField` converts text and composition into a `TextFieldInput`.
+`FrameInputField` converts text and composition into a `TextField.Input`.
 Applications explicitly use the recorded viewport and elapsed time rather
 than reading wall time. Clipboard reads use the recorded input and clipboard
 writes appear in the JSON. Rich traces produce format version 2; legacy

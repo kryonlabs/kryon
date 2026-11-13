@@ -9,7 +9,7 @@
 #import "text_input"
 
 using CompositionPhase;
-#if #defined(PLATFORM_WEB) {
+#if OS == .WEB {
     CanvasEventMouseMove :: 0
     CanvasEventMouseDown :: 1
     CanvasEventMouseUp :: 2

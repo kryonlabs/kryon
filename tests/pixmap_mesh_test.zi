@@ -1,7 +1,6 @@
 #import "geometry"
 #import "drawing_props"
-#import "image_props"
-#import "image"
+Image :: #import "kryon/image";
 #import "session"
 #import "tree"
 #import "tree_draw"
@@ -9,7 +8,7 @@
 #import "pixmap"
 #import "pixmap_frame"
 using FrameStatus;
-using ImageFit;
+using Image.ImageFit;
 
 surface: [256]u32;
 image: [4]u32;
@@ -88,17 +87,17 @@ ImageFrame :: (session: Session, buffer: []Vector2, columns: s32, rows: s32,
     unused PixmapResumeInto(16, 16, surface[:])
     unused BeginFrame(session, cast(u64)1, .{0.0, 0.0, 16.0, 16.0})
     PaintRoundedFill(session, -1, .{0.0, 0.0, 16.0, 16.0}, 0.0, 0, .{16, 32, 48, 255})
-    props: ImageProps
+    props: Image.Props
     props.asset_path = "mesh.png"
     props.bounds = .{0.0, 0.0, 16.0, 16.0}
     // A mesh ignores rotation, origin and fit.
     props.rotation = 45.0
     props.origin = .{3.0, 3.0}
-    props.fit = cast(ImageFit)ImageFitContain
+    props.fit = cast(Image.ImageFit)ImageFitContain
     props.mesh.columns = columns
     props.mesh.rows = rows
     props.mesh.points = buffer
-    Image(session, props)
+    Image.Draw(session, props)
     // The caller may reuse its buffer at once: the queue kept a copy.
     for at: cast(s64)0..buffer.count - 1 { buffer[at] = .{-100.0, -100.0} }
     result := EndPixmapFrame(session, reuse, BACKGROUND, true)
@@ -153,7 +152,7 @@ PolygonFrame :: (session: Session, points: []Vector2, reuse: bool) -> PixmapFram
     unused PixmapResumeInto(16,16,surface[:])
     unused BeginFrame(session,1,.{0.0,0.0,16.0,16.0})
     PaintRoundedFill(session,-1,.{0.0,0.0,16.0,16.0},0.0,0,.{16,32,48,255})
-    Image(session,ImageProps.{.asset_path = "mesh.png",.bounds = .{0.0,0.0,16.0,16.0},
+    Image.Draw(session,Image.Props.{.asset_path = "mesh.png",.bounds = .{0.0,0.0,16.0,16.0},
         .clip_polygon = points})
     // This buffer belongs to the caller, not to the retained frame.
     for at: cast(s64)0..points.count - 1 { points[at] = .{0.8,0.8} }

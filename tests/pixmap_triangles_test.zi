@@ -1,8 +1,7 @@
 #import "geometry"
 #import "drawing_props"
 #import "session"
-#import "shape_props"
-#import "shape"
+Shape :: #import "kryon/shape";
 #import "tree"
 #import "tree_draw"
 #import "paint_queue"
@@ -97,9 +96,9 @@ ShapeFrame :: (session: Session, color: Color, reuse: bool) -> PixmapFrameResult
     unused PixmapResumeInto(SIZE, SIZE, surface[:])
     unused BeginFrame(session, cast(u64)1, .{0.0, 0.0, 64.0, 64.0})
     PaintRoundedFill(session, -1, .{0.0, 0.0, 64.0, 64.0}, 0.0, 0, .{16, 32, 48, 255})
-    unused Circle(session, CircleProps.{.key = cast(u64)2,
+    unused Shape.Circle(session, Shape.CircleProps.{.key = cast(u64)2,
             .center = Vector2.{16.0, 16.0}, .radius = 6.0, .fill = color})
-    unused Triangle(session, TriangleProps.{.key = cast(u64)3,
+    unused Shape.Triangle(session, Shape.TriangleProps.{.key = cast(u64)3,
             .first = Vector2.{40.0, 40.0}, .second = Vector2.{60.0, 40.0},
             .third = Vector2.{40.0, 60.0}, .color = .{0, 255, 0, 255}})
     result := EndPixmapFrame(session, reuse, BACKGROUND, true)

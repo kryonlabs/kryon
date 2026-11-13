@@ -10,13 +10,13 @@ TestSession :: () -> Session {
 #import "drawing_props"
 #import "frame_transition"
 #import "geometry"
-#import "image_props"
+Image :: #import "kryon/image";
 #import "tree"
 #import "tree_draw"
 #import "ziran_frame_transition_host"
 
 using FrameStatus;
-using ImageFit;
+using Image.ImageFit;
 
 #program_export
 main :: () -> s32 {

@@ -155,7 +155,7 @@ main :: () -> s32 {
     a_handle = ComponentHostAcquire(*host, a_id)
     b_handle = ComponentHostAcquire(*host, b_id)
     while PollCanvas() {
-        key := CanvasPressedKey()
+        key, modifiers := CanvasInputTake(host.session)
         if key != 0 { last_key = key; pending_key = key }
         scope := WebScope()
         command := cast(s32)WebGetNumber(WebGlobal, WebName("componentCommand"))
@@ -192,15 +192,10 @@ main :: () -> s32 {
             command_done = command
         }
         if !paused {
-            codepoint := CanvasTypedCodepoint()
-            while codepoint != 0 {
-                unused TypedCodepointSend(host.session, codepoint)
-                codepoint = CanvasTypedCodepoint()
-            }
             typed := TypedTextTake(host.session, typed_bytes[:])
             BeginCanvasFrame()
             if !ComponentHostFrame(*host, CanvasViewport(), PollPointer(), PollSecondaryPointer(),
-                key, CanvasPressedKeyModifiers(), CanvasWheelMove(), typed, PageNow() / 1000.0) {
+                key, modifiers, CanvasWheelMove(), typed, PageNow() / 1000.0) {
                 CloseCanvas(); return 3
             }
             if !EndCanvasFrame() { CloseCanvas(); return 4 }

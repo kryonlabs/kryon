@@ -1,14 +1,13 @@
+using Image :: #import "image_props";
 Theme :: #import "theme";
 // Portable compositions can submit the same public widget contract to a
 // retained UI host. The host binds this effect to the ordinary implementation;
 // widget behavior, styles and input ownership have one implementation.
 #if #defined(KRYON_HOSTED_UI) {
     #import "session"
-    #import "image_props"
     host_api :: #system_library "host_api";
-    ImageHostedHost :: (session: Session, image: ImageProps) #foreign host_api;
-    #program_export
-    Image :: (session: Session, image: ImageProps) { ImageHostedHost(session, image) }
+    ImageHostedHost :: (session: Session, image: Image.Props) #foreign host_api;
+        Draw :: (session: Session, image: Image.Props) { ImageHostedHost(session, image) }
 } else {
 #import "session"
 #import "semantic"
@@ -16,8 +15,7 @@ Theme :: #import "theme";
 #import "drawing_props"
 #import "font_metrics"
 #import "geometry"
-#import "image_behavior"
-#import "image_props"
+using BehaviorModule :: #import "image_behavior";
 #import "image_raster"
 Bitmaps :: #import "bitmap_store";
 #import "paint_queue"
@@ -51,7 +49,7 @@ DefaultImageFaces :: () -> ImageFaces {
 }
 
 #program_export
-ImageFacesFor :: (image: ImageProps,
+ImageFacesFor :: (image: Image.Props,
     defaults: ImageFaces) -> ImageFaces {
     faces: ImageFaces = defaults
     facts: StyleFacts = StyleDefaultFacts(StyleKindImage())
@@ -66,7 +64,7 @@ ImageFacesFor :: (image: ImageProps,
 }
 
 #program_export
-ImageTextureFor :: (image: ImageProps) -> Texture2D {
+ImageTextureFor :: (image: Image.Props) -> Texture2D {
     texture: Texture2D = image.texture
     if texture.id != cast(u32)0 || image.asset_path == "" {
         return texture
@@ -86,13 +84,13 @@ ImageTextureFor :: (image: ImageProps) -> Texture2D {
 // picture also starts a host loading it; the preview is asked for only
 // while the picture is not ready.
 ImageShown :: struct {
-    image: ImageProps
+    image: Image.Props
     texture: Texture2D
     showing: ImageShowing
 }
 
 #program_export
-ImageShownFor :: (image: ImageProps) -> ImageShown {
+ImageShownFor :: (image: Image.Props) -> ImageShown {
     full := ImageTextureFor(image)
     shown := ImageShown.{.image = image, .texture = full}
     preview_texture: Texture2D
@@ -122,7 +120,7 @@ ImageTint :: (surface: StyleData) -> Color {
 }
 
 #program_export
-PaintImagePlaceholder :: (session: Session, node: s32, image: ImageProps,
+PaintImagePlaceholder :: (session: Session, node: s32, image: Image.Props,
     label_style: StyleData) {
     label: string = image.alt_text
     if label == "" { label = "Missing image" }
@@ -138,8 +136,7 @@ PaintImagePlaceholder :: (session: Session, node: s32, image: ImageProps,
                 label_style.opacity))))
 }
 
-#program_export
-Image :: (session: Session, image: ImageProps) {
+Draw :: (session: Session, image: Image.Props) {
     if Bitmaps.BitmapTagged(image.texture.id) &&
         (!SessionValid(session) || Bitmaps.BitmapOwnedSlot(session.slot, session.epoch, image.texture) < 0) { return }
     node: s32 = -1
