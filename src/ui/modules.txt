@@ -207,6 +207,7 @@ text/text_props.zi
 text_typeface.zi
 text_selection_host.zi
 text_selection_widget.zi
+text_boundary.zi
 text_request.zi
 text_rows.zi
 text/text_style.zi

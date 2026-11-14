@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Programs without a text field or text area no longer carry Unicode's grapheme
+  tables. Text requests check their cut points through a procedure that the
+  editing widgets register when imported (`text_boundary`), so
+  `text_request` itself no longer imports `std/grapheme`. An empty window
+  generates 121 KB less C and its executable is 50 KB smaller. A host test
+  that sends text requests without an editing widget imports `text_boundary`.
 - The time picker and desktop image examples build again. Their shared demo
   modules moved to `examples/demo/`, which the desktop hosts name as a module
   path; `examples/` itself cannot be one because `window.zi` shares a name

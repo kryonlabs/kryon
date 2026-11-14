@@ -2,7 +2,17 @@
 #import "tree"
 #import "tree_input"
 Utf8 :: #import "std/utf8";
-Grapheme :: #import "std/grapheme";
+
+// Cut points in edited text are grapheme boundaries. The editing widgets
+// register the segmentation (see text_boundary): a request can only reach an
+// editing widget, so a program without one keeps the Unicode tables out.
+TextBoundary :: #type (value: string, at: s32) -> s32;
+text_boundary: TextBoundary;
+
+TextRequestUseBoundary :: (boundary: TextBoundary) -> bool {
+    text_boundary = boundary
+    return true
+}
 
 // A platform asks for an edit; the widget still validates its value limits
 // and returns the ordinary caller-owned replacement. One outstanding request
@@ -31,7 +41,9 @@ text_requests: [9]PendingTextRequest;
 #program_export
 TextRequestSend :: (session: Session, index: s32, value: string,
     replace: bool, cursor: s32, anchor: s32) -> bool {
-    if !SessionValid(session) || index < 0 || index >= TreeCount(session) {
+    // No editing widget in the program: nothing could take the request.
+    if text_boundary == null || !SessionValid(session) || index < 0 ||
+        index >= TreeCount(session) {
         return false
     }
     node: TreeEntry = TreeNodeAt(session, index)
@@ -55,8 +67,8 @@ TextRequestSend :: (session: Session, index: s32, value: string,
     if replace { selection_value = value }
     if cursor < 0 || anchor < 0 || cursor > selection_value.count ||
         anchor > selection_value.count ||
-        Grapheme.Boundary(selection_value, cursor) != cursor ||
-        Grapheme.Boundary(selection_value, anchor) != anchor { return false }
+        text_boundary(selection_value, cursor) != cursor ||
+        text_boundary(selection_value, anchor) != anchor { return false }
     if !TreeFocusAt(session, index) { return false }
     text_requests[slot].session = session
     text_requests[slot].generation = node.identity_generation
@@ -115,9 +127,13 @@ TextRequestChange :: struct {
 
 #program_export
 TextRequestChangeFor :: (before: string, after: string) -> TextRequestChange {
+    // Without segmentation the whole value is the change, which is always valid.
+    if text_boundary == null {
+        return TextRequestChange.{0, cast(s32)before.count, after, before != after}
+    }
     start: s32 = 0
     while start < before.count && start < after.count && before[start] == after[start] { start += 1 }
-    while Grapheme.Boundary(before, start) != start || Grapheme.Boundary(after, start) != start {
+    while text_boundary(before, start) != start || text_boundary(after, start) != start {
         start -= 1
     }
     old_end := cast(s32)before.count
@@ -126,8 +142,8 @@ TextRequestChangeFor :: (before: string, after: string) -> TextRequestChange {
         old_end -= 1
         new_end -= 1
     }
-    while old_end < before.count && (Grapheme.Boundary(before, old_end) != old_end ||
-        Grapheme.Boundary(after, new_end) != new_end) {
+    while old_end < before.count && (text_boundary(before, old_end) != old_end ||
+        text_boundary(after, new_end) != new_end) {
         old_end += 1
         new_end += 1
     }

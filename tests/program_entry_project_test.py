@@ -91,6 +91,12 @@ with tempfile.TemporaryDirectory(prefix="program-entry-", dir=ROOT / "build") as
 
     run([ZIRAN, "tool", "kryon", "build", "--profile", "desktop"], project)
     run(["xvfb-run", "-a", sys.executable, "driver.py"], project)
+    # An empty window has no editable text. The Unicode tables come with the
+    # editing widgets, which register grapheme segmentation when imported.
+    generated = sorted(path.name for path in (project / "build/generated/desktop/c").glob("*.c"))
+    assert generated, "the desktop profile kept no generated C to inspect"
+    assert not [name for name in generated if "grapheme" in name], \
+        f"an empty window carries the Unicode grapheme tables: {generated}"
 
     # A portable bundle has no window host, so the tool names the mismatch.
     portable = subprocess.run(

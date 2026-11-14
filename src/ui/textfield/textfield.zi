@@ -31,6 +31,7 @@ Theme :: #import "theme";
     #import "tree"
     #import "tree_input"
     #import "text_request"
+    #import "text_boundary"
     #import "widget_kind"
     Grapheme :: #import "std/grapheme";
     Utf8 :: #import "std/utf8";

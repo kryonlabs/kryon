@@ -1,0 +1,11 @@
+// Grapheme segmentation for text requests. The editing widgets import this
+// module, and its initializer registers the segmentation before main, so
+// only programs that can edit text carry the Unicode tables.
+Grapheme :: #import "std/grapheme";
+#import "text_request"
+
+GraphemeBoundary :: (value: string, at: s32) -> s32 {
+    return Grapheme.Boundary(value, at)
+}
+
+text_boundary_registered: bool = TextRequestUseBoundary(GraphemeBoundary);

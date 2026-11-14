@@ -12,6 +12,8 @@
 #import "tree_input"
 #import "text_host"
 #import "text_request"
+// This test stands in for an editing widget, which registers the segmentation.
+#import "text_boundary"
 #import "widget_kind"
 using WidgetKind;
 
